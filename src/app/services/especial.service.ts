@@ -20,6 +20,9 @@ import { FirebaseInjectionContextService } from "./firebase-injection-context.se
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+
+const ESPECIAL: ElementoDeCatalogo = { singular: "especial", plural: "especiales", femenino: false };
 
 function normalizeRefSimple(raw: any): EspecialRefSimple {
     return {
@@ -152,7 +155,7 @@ export class EspecialService {
             this.notificarEspecialMutado(normalized.especial);
             return normalized;
         } catch (error: any) {
-            throw this.mapEspecialError(error, "crear");
+            throw errorDeCatalogo(error, "crear", ESPECIAL);
         }
     }
 
@@ -168,7 +171,7 @@ export class EspecialService {
             this.notificarEspecialMutado(normalized.especial);
             return normalized;
         } catch (error: any) {
-            throw this.mapEspecialError(error, "actualizar");
+            throw errorDeCatalogo(error, "actualizar", ESPECIAL);
         }
     }
 
@@ -268,36 +271,5 @@ export class EspecialService {
         if (!especial || Number(especial.Id) <= 0)
             return;
         this.especialesMutadosSubject.next(especial);
-    }
-
-    private mapEspecialError(error: any, accion: "crear" | "actualizar"): Error {
-        if (!(error instanceof HttpErrorResponse))
-            return error instanceof Error ? error : new Error(`No se pudo ${accion} el especial`);
-
-        const backendMessage = this.extractErrorMessage(error.error);
-        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : "";
-        if (error.status === 400)
-            return new Error(`Solicitud inválida para ${accion} el especial.${suffix}`.trim());
-        if (error.status === 401)
-            return new Error(`Sesión no válida para ${accion} especiales.${suffix}`.trim());
-        if (error.status === 403)
-            return new Error(`No tienes permisos para ${accion} especiales.${suffix}`.trim());
-        if (error.status === 404)
-            return new Error(`No se encontró el especial o una referencia requerida.${suffix}`.trim());
-        if (error.status === 409)
-            return new Error(`Conflicto al ${accion} el especial.${suffix}`.trim());
-        if (backendMessage.length > 0)
-            return new Error(backendMessage);
-        return new Error(`No se pudo ${accion} el especial (HTTP ${error.status || 0})`);
-    }
-
-    private extractErrorMessage(errorBody: any): string {
-        if (!errorBody)
-            return "";
-        if (typeof errorBody === "string")
-            return errorBody.trim();
-        if (typeof errorBody === "object")
-            return `${errorBody?.message ?? errorBody?.error ?? ""}`.trim();
-        return "";
     }
 }

@@ -1,0 +1,58 @@
+import { HttpErrorResponse } from '@angular/common/http';
+
+/** Lo que se intentaba hacer con el elemento del catálogo. */
+export type AccionDeCatalogo = 'crear' | 'actualizar';
+
+/** Cómo se nombra un elemento del catálogo en las frases de error: «la raza», «las razas», «el especial»… */
+export interface ElementoDeCatalogo {
+    singular: string;
+    plural: string;
+    femenino: boolean;
+}
+
+/**
+ * El error de un alta o una edición de catálogo, con una sola frase por caso, igual en todos (propietario, 2026-10-24)
+ * y el mensaje de la API detrás, si lo trae. Lo que no es una respuesta HTTP (la sesión, una respuesta sin id) se
+ * devuelve tal cual.
+ */
+export function errorDeCatalogo(error: unknown, accion: AccionDeCatalogo, elemento: ElementoDeCatalogo): Error {
+    const { singular, plural, femenino } = elemento;
+    if (!(error instanceof HttpErrorResponse))
+        return error instanceof Error ? error : new Error(`No se ha podido ${accion} ${femenino ? 'la' : 'el'} ${singular}.`);
+
+    const frase = fraseDeCatalogo(error.status, accion, elemento);
+    const mensajeApi = mensajeDeLaApi(error.error);
+    return new Error(mensajeApi.length > 0 ? `${frase} ${mensajeApi}` : frase);
+}
+
+function fraseDeCatalogo(status: number, accion: AccionDeCatalogo, { singular, plural, femenino }: ElementoDeCatalogo): string {
+    const el = femenino ? 'la' : 'el';
+    switch (status) {
+        case 400:
+            return `Los datos ${femenino ? 'de la' : 'del'} ${singular} no son válidos.`;
+        case 401:
+            return `Tu sesión no es válida para ${accion} ${plural}.`;
+        case 403:
+            return `No tienes permisos para ${accion} ${plural}.`;
+        case 404:
+            return `No se ha encontrado ${el} ${singular} o algo a lo que apunta.`;
+        case 409:
+            return `Ya existe ${femenino ? 'una' : 'un'} ${singular} con ese nombre.`;
+        default:
+            return `No se ha podido ${accion} ${el} ${singular}.`;
+    }
+}
+
+/** El mensaje que trae el cuerpo del error: el texto, si es un texto, o su `error` y, si no, su `message`. */
+function mensajeDeLaApi(cuerpo: unknown): string {
+    if (typeof cuerpo === 'string')
+        return cuerpo.trim();
+    if (!cuerpo || typeof cuerpo !== 'object')
+        return '';
+    for (const campo of ['error', 'message']) {
+        const valor = (cuerpo as Record<string, unknown>)[campo];
+        if (typeof valor === 'string' && valor.trim().length > 0)
+            return valor.trim();
+    }
+    return '';
+}

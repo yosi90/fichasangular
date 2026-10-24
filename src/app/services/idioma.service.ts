@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
 import { Database } from "@angular/fire/database";
@@ -15,6 +15,9 @@ import { FirebaseInjectionContextService } from "./firebase-injection-context.se
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { escucharRtdb, listaRtdb } from './catalogo-api';
+import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+
+const IDIOMA: ElementoDeCatalogo = { singular: "idioma", plural: "idiomas", femenino: false };
 
 export function normalizeIdioma(raw: any): IdiomaDetalle {
     return {
@@ -74,7 +77,7 @@ export class IdiomaService {
             this.notificarIdiomaMutado(normalized.idioma);
             return normalized;
         } catch (error: any) {
-            throw this.mapIdiomaError(error, "crear");
+            throw errorDeCatalogo(error, "crear", IDIOMA);
         }
     }
 
@@ -88,7 +91,7 @@ export class IdiomaService {
             this.notificarIdiomaMutado(normalized.idioma);
             return normalized;
         } catch (error: any) {
-            throw this.mapIdiomaError(error, "actualizar");
+            throw errorDeCatalogo(error, "actualizar", IDIOMA);
         }
     }
 
@@ -119,36 +122,5 @@ export class IdiomaService {
         if (!idioma || Number(idioma.Id) <= 0)
             return;
         this.idiomasMutadosSubject.next(idioma);
-    }
-
-    private mapIdiomaError(error: any, accion: "crear" | "actualizar"): Error {
-        if (!(error instanceof HttpErrorResponse))
-            return error instanceof Error ? error : new Error(`No se pudo ${accion} el idioma`);
-
-        const backendMessage = this.extractErrorMessage(error.error);
-        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : "";
-        if (error.status === 400)
-            return new Error(`Solicitud inválida para ${accion} el idioma.${suffix}`.trim());
-        if (error.status === 401)
-            return new Error(`Sesión no válida para ${accion} idiomas.${suffix}`.trim());
-        if (error.status === 403)
-            return new Error(`No tienes permisos para ${accion} idiomas.${suffix}`.trim());
-        if (error.status === 404)
-            return new Error(`No se encontró el idioma solicitado.${suffix}`.trim());
-        if (error.status === 409)
-            return new Error("Ya existe un idioma con ese nombre.");
-        if (backendMessage.length > 0)
-            return new Error(backendMessage);
-        return new Error(`No se pudo ${accion} el idioma (HTTP ${error.status || 0})`);
-    }
-
-    private extractErrorMessage(errorBody: any): string {
-        if (!errorBody)
-            return "";
-        if (typeof errorBody === "string")
-            return errorBody.trim();
-        if (typeof errorBody === "object")
-            return `${errorBody?.message ?? errorBody?.error ?? ""}`.trim();
-        return "";
     }
 }

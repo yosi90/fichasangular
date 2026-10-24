@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
 import { Database } from "@angular/fire/database";
@@ -22,6 +22,9 @@ import { cabeceraApiConFirebase } from './platform-session.service';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
+import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+
+const CLASE: ElementoDeCatalogo = { singular: "clase", plural: "clases", femenino: true };
 
 const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "subtipo",
@@ -382,7 +385,7 @@ export class ClaseService {
             this.notificarClaseMutada(normalized.clase);
             return normalized;
         } catch (error: any) {
-            throw this.mapClaseError(error, "crear");
+            throw errorDeCatalogo(error, "crear", CLASE);
         }
     }
 
@@ -397,7 +400,7 @@ export class ClaseService {
             this.notificarClaseMutada(normalized.clase);
             return normalized;
         } catch (error: any) {
-            throw this.mapClaseError(error, "actualizar");
+            throw errorDeCatalogo(error, "actualizar", CLASE);
         }
     }
 
@@ -415,7 +418,7 @@ export class ClaseService {
             this.notificarClaseMutada(normalized.clase);
             return normalized;
         } catch (error: any) {
-            throw this.mapClaseError(error, "actualizar");
+            throw errorDeCatalogo(error, "actualizar", CLASE);
         }
     }
 
@@ -452,31 +455,5 @@ export class ClaseService {
         if (!clase || Number(clase.Id) <= 0)
             return;
         this.clasesMutadasSubject.next(clase);
-    }
-
-    private mapClaseError(error: any, accion: "crear" | "actualizar"): Error {
-        if (!(error instanceof HttpErrorResponse))
-            return error instanceof Error ? error : new Error(`No se pudo ${accion} la clase`);
-        const backendMessage = this.extractErrorMessage(error.error);
-        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : "";
-        if (error.status === 400)
-            return new Error(`Datos de clase inválidos.${suffix}`);
-        if (error.status === 401)
-            return new Error(`Sesión no válida para ${accion} clases.${suffix}`);
-        if (error.status === 403)
-            return new Error(`No tienes permisos para ${accion} clases.${suffix}`);
-        if (error.status === 404)
-            return new Error(`Clase o referencia no encontrada.${suffix}`);
-        if (error.status === 409)
-            return new Error(`Ya existe una clase con ese nombre.${suffix}`);
-        return new Error(`No se pudo ${accion} la clase.${suffix || ` ${error.message}`}`);
-    }
-
-    private extractErrorMessage(errorBody: any): string {
-        if (!errorBody)
-            return "";
-        if (typeof errorBody === "string")
-            return errorBody;
-        return `${errorBody.error ?? errorBody.message ?? errorBody.detail ?? ""}`.trim();
     }
 }

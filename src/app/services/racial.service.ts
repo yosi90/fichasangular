@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
 import { Observable, Subject, firstValueFrom, map } from "rxjs";
@@ -18,6 +18,9 @@ import {
 } from "../interfaces/raciales-api";
 import { normalizeRacial, normalizeRaciales } from "./utils/racial-mapper";
 import { cabeceraApiConFirebase } from './platform-session.service';
+import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+
+const RACIAL: ElementoDeCatalogo = { singular: "racial", plural: "raciales", femenino: false };
 
 function sortRaciales(raciales: RacialDetalle[]): RacialDetalle[] {
     return [...raciales]
@@ -56,7 +59,7 @@ export class RacialService {
             this.notificarRacialMutado(normalized.racial);
             return normalized;
         } catch (error: any) {
-            throw this.mapCrearRacialError(error);
+            throw errorDeCatalogo(error, "crear", RACIAL);
         }
     }
 
@@ -70,7 +73,7 @@ export class RacialService {
             this.notificarRacialMutado(normalized.racial);
             return normalized;
         } catch (error: any) {
-            throw this.mapActualizarRacialError(error);
+            throw errorDeCatalogo(error, "actualizar", RACIAL);
         }
     }
 
@@ -92,86 +95,8 @@ export class RacialService {
             this.notificarRacialMutado(normalized.racial);
             return normalized;
         } catch (error: any) {
-            throw this.mapPatchPrerrequisitosRacialError(error);
+            throw errorDeCatalogo(error, "actualizar", RACIAL);
         }
-    }
-
-    private mapCrearRacialError(error: any): Error {
-        if (!(error instanceof HttpErrorResponse))
-            return error instanceof Error ? error : new Error("No se pudo crear el racial");
-
-        const backendMessage = this.extractErrorMessage(error.error);
-        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : "";
-
-        if (error.status === 400)
-            return new Error(`Solicitud inválida para crear el racial.${suffix}`.trim());
-        if (error.status === 401)
-            return new Error(`Sesión no válida para crear raciales.${suffix}`.trim());
-        if (error.status === 403)
-            return new Error(`No tienes permisos para crear raciales.${suffix}`.trim());
-        if (error.status === 404)
-            return new Error(`No se encontró una referencia requerida para crear el racial.${suffix}`.trim());
-        if (error.status === 409) {
-            const conflictText = backendMessage.toLowerCase();
-            if (conflictText.includes("nombre") || conflictText.includes("duplic") || conflictText.includes("existe"))
-                return new Error("Ya existe un racial con ese nombre.");
-            return new Error(`Conflicto al crear el racial.${suffix}`.trim());
-        }
-        if (error.status === 502)
-            return new Error(`No se pudo sincronizar el racial con la caché del backend.${suffix}`.trim());
-
-        if (backendMessage.length > 0)
-            return new Error(backendMessage);
-
-        return new Error(`No se pudo crear el racial (HTTP ${error.status || 0})`);
-    }
-
-    private mapActualizarRacialError(error: any): Error {
-        if (!(error instanceof HttpErrorResponse))
-            return error instanceof Error ? error : new Error("No se pudo actualizar el racial");
-
-        const backendMessage = this.extractErrorMessage(error.error);
-        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : "";
-
-        if (error.status === 400)
-            return new Error(`Solicitud inválida para actualizar el racial.${suffix}`.trim());
-        if (error.status === 401)
-            return new Error(`Sesión no válida para actualizar raciales.${suffix}`.trim());
-        if (error.status === 403)
-            return new Error(`No tienes permisos para actualizar raciales.${suffix}`.trim());
-        if (error.status === 404)
-            return new Error(`No se encontró una referencia requerida para actualizar el racial.${suffix}`.trim());
-        if (error.status === 502)
-            return new Error(`No se pudo sincronizar el racial con la caché del backend.${suffix}`.trim());
-
-        if (backendMessage.length > 0)
-            return new Error(backendMessage);
-
-        return new Error(`No se pudo actualizar el racial (HTTP ${error.status || 0})`);
-    }
-
-    private mapPatchPrerrequisitosRacialError(error: any): Error {
-        if (!(error instanceof HttpErrorResponse))
-            return error instanceof Error ? error : new Error("No se pudieron actualizar los prerrequisitos del racial");
-
-        const backendMessage = this.extractErrorMessage(error.error);
-        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : "";
-
-        if (error.status === 400)
-            return new Error(`Solicitud inválida para actualizar los prerrequisitos del racial.${suffix}`.trim());
-        if (error.status === 401)
-            return new Error(`Sesión no válida para actualizar prerrequisitos de raciales.${suffix}`.trim());
-        if (error.status === 403)
-            return new Error(`No tienes permisos para actualizar prerrequisitos de raciales.${suffix}`.trim());
-        if (error.status === 404)
-            return new Error(`No se encontró el racial o una referencia requerida para actualizar sus prerrequisitos.${suffix}`.trim());
-        if (error.status === 502)
-            return new Error(`No se pudo sincronizar el racial con la caché del backend.${suffix}`.trim());
-
-        if (backendMessage.length > 0)
-            return new Error(backendMessage);
-
-        return new Error(`No se pudieron actualizar los prerrequisitos del racial (HTTP ${error.status || 0})`);
     }
 
     private normalizarMutacionResponse(
@@ -193,24 +118,6 @@ export class RacialService {
                 Descripcion: fallbackDescripcion ?? "",
             }),
         };
-    }
-
-    private extractErrorMessage(errorBody: any): string {
-        if (!errorBody)
-            return "";
-
-        if (typeof errorBody === "string") {
-            const message = errorBody.trim();
-            return message.length > 0 ? message : "";
-        }
-
-        if (typeof errorBody === "object") {
-            const message = `${errorBody?.message ?? errorBody?.error ?? ""}`.trim();
-            if (message.length > 0)
-                return message;
-        }
-
-        return "";
     }
 
     private notificarRacialMutado(racial: RacialDetalle): void {

@@ -233,7 +233,7 @@ describe('ConjuroService', () => {
         expect(body).not.toContain('createdAt');
     });
 
-    it('mapea 409 de duplicado a mensaje específico de nombre', async () => {
+    it('mapea 409 a la frase de nombre repetido, con el mensaje de la API detrás', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
         httpMock.post.and.returnValue(
             throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'nombre de conjuro duplicado' } }))
@@ -241,7 +241,7 @@ describe('ConjuroService', () => {
         const service = new ConjuroService(authMock, {} as any, httpMock, firebaseContextMock);
 
         await expectAsync(service.crearConjuro(crearPayload()))
-            .toBeRejectedWithError('Ya existe un conjuro con ese nombre.');
+            .toBeRejectedWithError('Ya existe un conjuro con ese nombre. nombre de conjuro duplicado');
     });
 
     it('mapea 403 a error de permisos', async () => {
@@ -252,7 +252,7 @@ describe('ConjuroService', () => {
         const service = new ConjuroService(authMock, {} as any, httpMock, firebaseContextMock);
 
         await expectAsync(service.crearConjuro(crearPayload()))
-            .toBeRejectedWithError(/No tienes permisos para crear conjuros/);
+            .toBeRejectedWithError('No tienes permisos para crear conjuros. forbidden');
     });
 
     it('getConjuro usa fallback HTTP cuando no existe cache RTDB', async () => {
