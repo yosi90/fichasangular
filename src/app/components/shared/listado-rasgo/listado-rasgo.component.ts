@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { RasgoService } from 'src/app/services/rasgo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-rasgo',
@@ -36,10 +37,10 @@ export class ListadoRasgoRacialComponent {
     }
 
     filtroRasgos() {
-        const texto = this.nombreText?.nativeElement.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() ?? '';
+        const texto = normalizarTexto(this.nombreText?.nativeElement.value, true);
         const homebrew = !(this.anuncioRasgosHomebrew === 'Clic para mostar rasgos homebrew');
         const rasgosFiltrados = this.rasgos.filter(rasgo =>
-            (texto === undefined || texto === '' || rasgo.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
+            (texto === undefined || texto === '' || normalizarTexto(rasgo.Nombre, true).includes(texto))
             && (homebrew || !homebrew && rasgo.Oficial)
         );
         this.rasgosDS = new MatTableDataSource(rasgosFiltrados);

@@ -59,6 +59,7 @@ import {
     findCatalogName,
     getPrerequisiteDefinition,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 interface CrearRazaEmitPayload {
     idRaza: number;
@@ -659,11 +660,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     }
 
     get prerrequisitosMutacionFiltrados(): MutacionPrerequisiteOption[] {
-        const filtro = this.normalizarTexto(this.selectorPrerrequisitosMutacionFiltro);
+        const filtro = normalizarTexto(this.selectorPrerrequisitosMutacionFiltro, true);
         return this.prerrequisitosMutacionOpciones.filter((item) => {
             if (!filtro)
                 return true;
-            return this.normalizarTexto(item.label).includes(filtro);
+            return normalizarTexto(item.label, true).includes(filtro);
         });
     }
 
@@ -1286,7 +1287,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         const descripcion = this.texto(prioridad.Descripcion);
         if (descripcion)
             return descripcion;
-        const nombre = this.normalizarTexto(prioridad.Nombre);
+        const nombre = normalizarTexto(prioridad.Nombre, true);
         if (nombre.includes('sin preferencia') || nombre.includes('sin prioridad') || nombre.includes('no aplica'))
             return 'No condiciona el alineamiento del personaje; sirve para razas sin tendencia propia.';
         if (nombre.includes('debe') || nombre.includes('tenerse en cuenta'))
@@ -1297,7 +1298,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     }
 
     private esPrioridadAlineamientoInterna(prioridad: PrioridadAlineamientoCatalogItem | null | undefined): boolean {
-        return this.normalizarTexto(prioridad?.Nombre) === 'final';
+        return normalizarTexto(prioridad?.Nombre, true) === 'final';
     }
 
     private asegurarPrioridadAlineamientoVisible(): void {
@@ -1625,7 +1626,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     }
 
     private esTextoTecnicoEditado(value: any): boolean {
-        const text = this.normalizarTexto(value);
+        const text = normalizarTexto(value, true);
         return text.length > 0 && text !== 'no especifica';
     }
 
@@ -1797,8 +1798,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     }
 
     private validarReglasDominio(): string | null {
-        const nombre = this.normalizarTexto(this.form.controls.nombre.value ?? '');
-        if (nombre && this.razasExistentes.some((raza) => this.normalizarTexto(raza.Nombre) === nombre))
+        const nombre = normalizarTexto(this.form.controls.nombre.value ?? '', true);
+        if (nombre && this.razasExistentes.some((raza) => normalizarTexto(raza.Nombre, true) === nombre))
             return 'Ya existe una raza con ese nombre.';
         if (this.form.controls.mutada.value === true && !this.tienePrerrequisitosMutacion())
             return 'Una raza mutada necesita al menos una familia de prerrequisitos.';
@@ -1876,7 +1877,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         const current = this.numero(this.form.controls.id_tipo_criatura_dgs.value);
         if (current > 0)
             return current;
-        const humanoide = this.tiposCriatura.find((item) => this.normalizarTexto(item.Nombre).includes('humanoide'));
+        const humanoide = this.tiposCriatura.find((item) => normalizarTexto(item.Nombre, true).includes('humanoide'));
         return this.numero(humanoide?.Id ?? this.tiposCriatura[0]?.Id);
     }
 
@@ -1892,7 +1893,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
 
     private filtrarCatalogo<T>(items: T[] | null | undefined, query: string | null | undefined, selectedIds: number[] = []): T[] {
         const selected = new Set(this.idsOrdenados(selectedIds));
-        const normalizedQuery = this.normalizarTexto(query ?? '');
+        const normalizedQuery = normalizarTexto(query ?? '', true);
         return [...(Array.isArray(items) ? items : [])]
             .filter((item) => {
                 const id = this.getCatalogId(item);
@@ -1900,7 +1901,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
                     return false;
                 if (!normalizedQuery)
                     return true;
-                const searchable = this.normalizarTexto(`${this.getCatalogLabel(item)} ${this.getCatalogMeta(item)}`);
+                const searchable = normalizarTexto(`${this.getCatalogLabel(item)} ${this.getCatalogMeta(item)}`, true);
                 return searchable.includes(normalizedQuery);
             })
             .slice(0, 40);
@@ -2243,7 +2244,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         if (!control || this.numero(control.value) > 0 || items.length === 0)
             return;
         const preferente = nombrePreferente
-            ? items.find((item) => this.normalizarTexto(item.Nombre).includes(this.normalizarTexto(nombrePreferente)))
+            ? items.find((item) => normalizarTexto(item.Nombre, true).includes(normalizarTexto(nombrePreferente, true)))
             : null;
         control.setValue((preferente ?? items[0]).Id);
     }
@@ -2255,7 +2256,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         if (!nombrePreferente)
             return;
         const preferente = nombrePreferente
-            ? items.find((item) => this.normalizarTexto(item.Nombre).includes(this.normalizarTexto(nombrePreferente)))
+            ? items.find((item) => normalizarTexto(item.Nombre, true).includes(normalizarTexto(nombrePreferente, true)))
             : null;
         if (preferente)
             control.setValue(preferente.Id);
@@ -2286,7 +2287,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     }
 
     private esManiobrabilidadNoVuela(item: RazaCatalogItem | null | undefined): boolean {
-        return this.normalizarTexto(item?.Nombre).includes('no vuela');
+        return normalizarTexto(item?.Nombre, true).includes('no vuela');
     }
 
     private esRacialCompatibleConRazaActual(racial: RacialDetalle | null | undefined): boolean {
@@ -2414,7 +2415,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     }
 
     private esSinPreferencia(value: any): boolean {
-        const texto = this.normalizarTexto(value);
+        const texto = normalizarTexto(value, true);
         return texto.length < 1
             || texto.includes('no aplica')
             || texto.includes('ninguna preferencia')
@@ -2451,15 +2452,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         if (!Number.isFinite(parsed))
             return 0;
         return Math.round(parsed * 100) / 100;
-    }
-
-    private normalizarTexto(value: any): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g, ' ');
     }
 
     private normalizarPasoIndex(value: any): number {

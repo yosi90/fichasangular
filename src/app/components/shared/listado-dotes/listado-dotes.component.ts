@@ -6,6 +6,7 @@ import { Dote } from 'src/app/interfaces/dote';
 import { DoteService } from 'src/app/services/dote.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-dotes',
@@ -47,13 +48,13 @@ export class ListadoDotesComponent {
     }
 
     filtroDotes() {
-        const texto = this.nombreText?.nativeElement.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() ?? '';
+        const texto = normalizarTexto(this.nombreText?.nativeElement.value, true);
 
         const dotesFiltradas = this.dotes.filter(dote =>
             (texto === '' ||
-                dote.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) ||
-                dote.Descripcion.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto) ||
-                dote.Beneficio.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
+                normalizarTexto(dote.Nombre, true).includes(texto) ||
+                normalizarTexto(dote.Descripcion, true).includes(texto) ||
+                normalizarTexto(dote.Beneficio, true).includes(texto))
             && (this.defaultManual === 'Cualquiera' || dote.Manual?.Nombre === this.defaultManual)
             && (!this.soloSinPrerrequisitos || !this.tienePrerrequisitos(dote))
             && (this.mostrarHomebrew || !this.mostrarHomebrew && dote.Oficial)

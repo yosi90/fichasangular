@@ -17,6 +17,7 @@ import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avat
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-social-lfg-section',
@@ -658,12 +659,12 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     private filterAutocompleteOptions(options: string[], query: string | null | undefined): string[] {
-        const normalizedQuery = this.normalizeAutocompleteText(query);
+        const normalizedQuery = normalizarTexto(query, true);
         const exactValue = `${query ?? ''}`.trim();
         const filtered = options.filter((option) => {
             if (normalizedQuery.length < 1)
                 return true;
-            return this.normalizeAutocompleteText(option).includes(normalizedQuery);
+            return normalizarTexto(option, true).includes(normalizedQuery);
         });
 
         if (exactValue.length > 0 && !filtered.some((option) => option.localeCompare(exactValue, 'es', { sensitivity: 'base' }) === 0))
@@ -706,7 +707,7 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
             return;
         }
 
-        const normalizedSearch = this.normalizeAutocompleteText(normalizedText);
+        const normalizedSearch = normalizarTexto(normalizedText);
         this.selectedScheduleDays = this.weekdayOptions
             .filter((item) => item.aliases.some((alias) => normalizedSearch.includes(alias)))
             .map((item) => item.value);
@@ -865,15 +866,7 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
             ['gl', 'Gallego'],
             ['ja', 'Japonés'],
         ]);
-        return aliasMap.get(this.normalizeAutocompleteText(normalized)) ?? normalized;
-    }
-
-    private normalizeAutocompleteText(value: string | null | undefined): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
+        return aliasMap.get(normalizarTexto(normalized)) ?? normalized;
     }
 
     private mapLfgActionError(error: any, fallback: string): string {

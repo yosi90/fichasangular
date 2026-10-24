@@ -29,7 +29,7 @@ import { normalizarProgresionLanzadorPersonaje } from './utils/nivel-lanzador-pe
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
 import { calcularOroPorNep } from './utils/oro-inicial';
 
@@ -149,7 +149,7 @@ export class PersonajeService {
         const idCampana = Math.trunc(toNumber(contextoIds?.idCampana));
         const idTrama = Math.trunc(toNumber(contextoIds?.idTrama));
         const idSubtrama = Math.trunc(toNumber(contextoIds?.idSubtrama));
-        const esSinCampana = normalizeLookupKey(personaje?.Campana) === 'sin campana';
+        const esSinCampana = normalizarTexto(personaje?.Campana, true) === 'sin campana';
         const tieneCampana = !esSinCampana && idCampana > 0;
         const tieneHistoriaCompletaCampana = tieneCampana && idTrama > 0 && idSubtrama > 0;
         const tieneClaseConNivel = (personaje?.desgloseClases ?? [])
@@ -194,7 +194,7 @@ export class PersonajeService {
         const idDisProhibida = Math.trunc(toNumber(contextoIds?.idDisProhibida))
             || this.resolverIdPorNombre(personaje?.Disciplina_prohibida, mapasCatalogo.disciplinas);
         const idRegion = this.resolverIdRegionParaPayload(personaje, contextoIds, mapasCatalogo.regiones);
-        const deidadSeleccionada = normalizeLookupKey(personaje?.Deidad);
+        const deidadSeleccionada = normalizarTexto(personaje?.Deidad, true);
 
         if (idAlineamiento <= 0)
             throw new Error('No se pudo resolver el id de alineamiento para el payload de creación.');
@@ -756,9 +756,9 @@ export class PersonajeService {
         const extraSeleccionado = `${entrada?.Extra ?? entrada?.extra ?? ''}`.trim();
         if (extraSeleccionado.length < 1)
             return 0;
-        const extraNorm = normalizeLookupKey(extraSeleccionado);
+        const extraNorm = normalizarTexto(extraSeleccionado, true);
         const match = toArray<any>(entrada?.Extras)
-            .find((item) => normalizeLookupKey(`${item?.Extra ?? item?.extra ?? item?.Nombre ?? item?.nombre ?? ''}`) === extraNorm);
+            .find((item) => normalizarTexto(`${item?.Extra ?? item?.extra ?? item?.Nombre ?? item?.nombre ?? ''}`, true) === extraNorm);
         const idExtra = Math.trunc(toNumber(match?.Id_extra ?? match?.id_extra ?? match?.idExtra ?? match?.Id));
         return idExtra > 0 ? idExtra : 0;
     }
@@ -767,7 +767,7 @@ export class PersonajeService {
         const mapa = new Map<string, number>();
         toArray<CatalogoNombreIdDto>(items).forEach((item) => {
             const id = Math.trunc(toNumber(item?.id));
-            const key = normalizeLookupKey(item?.nombre);
+            const key = normalizarTexto(item?.nombre, true);
             if (id > 0 && key.length > 0 && !mapa.has(key))
                 mapa.set(key, id);
         });
@@ -775,7 +775,7 @@ export class PersonajeService {
     }
 
     private resolverIdPorNombre(nombre: any, mapa: Map<string, number>): number {
-        const key = normalizeLookupKey(nombre);
+        const key = normalizarTexto(nombre, true);
         if (key.length < 1)
             return 0;
         return Math.trunc(toNumber(mapa.get(key)));
@@ -794,7 +794,7 @@ export class PersonajeService {
     }
 
     private resolverIdGeneroDesdeNombre(nombreGenero: any): number {
-        const key = normalizeLookupKey(nombreGenero);
+        const key = normalizarTexto(nombreGenero, true);
         if (key === 'macho')
             return 1;
         if (key === 'hembra')
@@ -807,7 +807,7 @@ export class PersonajeService {
     }
 
     private resolverIdAlineamientoDesdeNombre(nombreAlineamiento: any): number {
-        return getAlineamientoBasicoIdPorNombre(normalizeLookupKey(nombreAlineamiento));
+        return getAlineamientoBasicoIdPorNombre(normalizarTexto(nombreAlineamiento, true));
     }
 
     private resolverIdCargaDesdeFuerza(fuerza: any): number {
@@ -1326,15 +1326,6 @@ export class PersonajeService {
 
 }
 
-function normalizeLookupKey(value: any): string {
-    return toText(value)
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .toLowerCase();
-}
-
 function toNullableText(value: any): string | null {
     const text = toText(value).trim();
     return text.length > 0 ? text : null;
@@ -1435,7 +1426,7 @@ function normalizeCompetenciasPersonaje(
         if (id <= 0 && nombre.length < 1)
             return;
 
-        const dedupeKey = id > 0 ? `id:${id}` : `nombre:${normalizeLookupKey(nombre)}`;
+        const dedupeKey = id > 0 ? `id:${id}` : `nombre:${normalizarTexto(nombre, true)}`;
         if (seen.has(dedupeKey))
             return;
         seen.add(dedupeKey);

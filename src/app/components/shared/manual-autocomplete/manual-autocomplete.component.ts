@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { Manual } from 'src/app/interfaces/manual';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 type ManualAutocompleteOption = Manual | string;
 
@@ -32,10 +33,10 @@ export class ManualAutocompleteComponent implements OnChanges {
     }
 
     get opcionesFiltradas(): ManualAutocompleteOption[] {
-        const query = this.normalizar(this.searchText);
+        const query = normalizarTexto(this.searchText, true);
         return [...(Array.isArray(this.manuales) ? this.manuales : [])]
             .filter((manual) => !this.esOpcionAnyDuplicada(manual))
-            .filter((manual) => query.length < 1 || this.normalizar(this.getOptionLabel(manual)).includes(query))
+            .filter((manual) => query.length < 1 || normalizarTexto(this.getOptionLabel(manual), true).includes(query))
             .slice(0, 40);
     }
 
@@ -63,7 +64,7 @@ export class ManualAutocompleteComponent implements OnChanges {
     }
 
     hasValue(): boolean {
-        return this.normalizar(this.searchText).length > 0 && `${this.value ?? ''}` !== `${this.clearValue ?? ''}`;
+        return normalizarTexto(this.searchText, true).length > 0 && `${this.value ?? ''}` !== `${this.clearValue ?? ''}`;
     }
 
     getOptionValue(manual: ManualAutocompleteOption): string | number {
@@ -107,21 +108,13 @@ export class ManualAutocompleteComponent implements OnChanges {
 
     private valorActualCoincideConTexto(): boolean {
         if (this.includeAny && `${this.value ?? ''}` === `${this.anyValue ?? ''}`)
-            return this.normalizar(this.searchText) === this.normalizar(this.anyLabel);
+            return normalizarTexto(this.searchText, true) === normalizarTexto(this.anyLabel, true);
         const option = this.findOptionByValue(this.value);
-        return !!option && this.normalizar(this.searchText) === this.normalizar(this.getOptionLabel(option));
+        return !!option && normalizarTexto(this.searchText, true) === normalizarTexto(this.getOptionLabel(option), true);
     }
 
     private esOpcionAnyDuplicada(manual: ManualAutocompleteOption): boolean {
         return this.includeAny && `${this.getOptionValue(manual)}` === `${this.anyValue}`;
     }
 
-    private normalizar(value: any): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g, ' ');
-    }
 }

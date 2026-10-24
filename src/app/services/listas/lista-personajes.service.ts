@@ -9,7 +9,7 @@ import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
 import { esperarSesionFirebase, FirebaseInjectionContextService } from '../firebase-injection-context.service';
 import { PrivateUserFirestoreService } from '../private-user-firestore.service';
 import { cabeceraApiConFirebase } from '../platform-session.service';
-import { toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -419,11 +419,7 @@ export class ListaPersonajesService {
     }
 
     private normalizarCampana(value: any): string {
-        return this.resolveContextLabel(value, 'Sin campaña')
-            .trim()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase();
+        return normalizarTexto(this.resolveContextLabel(value, 'Sin campaña'));
     }
 
     private resolveContextLabel(value: any, fallback: string): string {

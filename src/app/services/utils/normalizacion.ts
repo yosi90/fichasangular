@@ -49,11 +49,15 @@ export function toArray<T = any>(value: any): T[] {
     return [];
 }
 
-/** Texto para comparar y buscar: sin tildes ni diacríticos, sin espacios a los lados y en minúsculas. */
-export function normalizarTexto(value: unknown): string {
-    return `${value ?? ''}`
+/**
+ * Texto para comparar y buscar: sin tildes ni diacríticos, sin espacios a los lados y en minúsculas. Con
+ * `juntarEspacios`, además, los espacios seguidos cuentan como uno (los buscadores lo usan así: propietario, 2026-10-24).
+ */
+export function normalizarTexto(value: unknown, juntarEspacios: boolean = false): string {
+    const texto = `${value ?? ''}`
         .normalize('NFD')
         .replace(/[̀-ͯ]/g, '')
         .trim()
         .toLowerCase();
+    return juntarEspacios ? texto.replace(/\s+/g, ' ') : texto;
 }

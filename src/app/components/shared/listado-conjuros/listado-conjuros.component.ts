@@ -6,6 +6,7 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-conjuros',
@@ -45,10 +46,10 @@ export class ListadoConjurosComponent {
     }
 
     filtroConjuros() {
-        const texto = this.nombreText?.nativeElement.value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() ?? '';
+        const texto = normalizarTexto(this.nombreText?.nativeElement.value, true);
         const homebrew = !(this.anuncioConjurosHomebrew === 'Clic para mostar conjuros homebrew');
         const conjurosFiltrados = this.conjuros.filter(conjuro =>
-            (texto === undefined || texto === '' || conjuro.Nombre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().includes(texto))
+            (texto === undefined || texto === '' || normalizarTexto(conjuro.Nombre, true).includes(texto))
             && (this.defaultManual == 'Cualquiera' || conjuro.Manual.includes(this.defaultManual))
             && (homebrew || !homebrew && conjuro.Oficial)
         );

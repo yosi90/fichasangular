@@ -4,7 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Personaje, PersonajeNivelLanzadorResumen, PersonajeTipoLanzamiento } from '../interfaces/personaje';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from '../interfaces/monstruo';
-import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 
 
@@ -723,8 +723,8 @@ export class FichaPersonajeService {
     }
 
     private esEspecialidadValida(nombre: string, calificativo: string): boolean {
-        const nombreNorm = this.normalizarTexto(nombre);
-        const calificativoNorm = this.normalizarTexto(calificativo);
+        const nombreNorm = normalizarTexto(nombre, true);
+        const calificativoNorm = normalizarTexto(calificativo, true);
         if (nombreNorm.length < 1 || calificativoNorm.length < 1)
             return false;
         const placeholders = new Set([
@@ -753,7 +753,7 @@ export class FichaPersonajeService {
             if (nombre.length < 1)
                 return;
             const origen = `${entrada?.Origen ?? entrada?.origen ?? ''}`.trim();
-            const clave = `${this.normalizarTexto(nombre)}|${this.normalizarTexto(origen)}`;
+            const clave = `${normalizarTexto(nombre, true)}|${normalizarTexto(origen, true)}`;
             if (vistos.has(clave))
                 return;
             vistos.add(clave);
@@ -782,15 +782,6 @@ export class FichaPersonajeService {
         }
         const nivelObjetivo = Math.max(0, nivelClases + Math.max(0, Math.trunc(toNumber(ajusteNivel))));
         return experienciaParaNivel(nivelObjetivo + 1);
-    }
-
-    private normalizarTexto(value: any): string {
-        return `${value ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .replace(/\s+/g, ' ')
-            .trim()
-            .toLowerCase();
     }
 
     private sumMods(mods: any): number {

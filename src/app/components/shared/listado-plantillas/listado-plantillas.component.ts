@@ -6,6 +6,7 @@ import { Plantilla } from 'src/app/interfaces/plantilla';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-plantillas',
@@ -46,12 +47,12 @@ export class ListadoPlantillasComponent {
     }
 
     filtroPlantillas() {
-        const texto = this.plantillaTextInc?.nativeElement?.value?.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() ?? '';
+        const texto = normalizarTexto(this.plantillaTextInc?.nativeElement?.value, true);
 
         const filtradas = this.plantillas.filter(plantilla =>
             (texto === ''
-                || this.normalizar(plantilla.Nombre).includes(texto)
-                || this.normalizar(plantilla.Descripcion).includes(texto))
+                || normalizarTexto(plantilla.Nombre, true).includes(texto)
+                || normalizarTexto(plantilla.Descripcion, true).includes(texto))
             && (this.defaultManual === 'Cualquiera' || plantilla.Manual?.Nombre === this.defaultManual)
             && (this.incluirHomebrew || plantilla.Oficial)
         );
@@ -95,13 +96,6 @@ export class ListadoPlantillasComponent {
         const plantilla = this.plantillas.find(p => p.Id === id);
         if (plantilla)
             this.plantillaSeleccionada.emit(plantilla);
-    }
-
-    private normalizar(value: string): string {
-        return (value ?? '')
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase();
     }
 
     abrirDetalleManual(plantilla: Plantilla, event?: Event) {

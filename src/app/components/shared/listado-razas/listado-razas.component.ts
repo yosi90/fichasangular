@@ -7,7 +7,7 @@ import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
-import { toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-listado-razas',
@@ -61,7 +61,7 @@ export class ListadoRazasComponent implements OnDestroy {
 
     filtroRazas() {
         this.sincronizarColumnaHomebrew();
-        const texto = this.normalizarTexto(this.nombreText?.nativeElement?.value ?? '');
+        const texto = normalizarTexto(this.nombreText?.nativeElement?.value ?? '', true);
         const homebrew = this.isHomebrewActivo();
         const razasFiltradas = this.razas
             .filter(raza =>
@@ -71,8 +71,8 @@ export class ListadoRazasComponent implements OnDestroy {
                 && (homebrew || this.esOficialParaFiltro(raza))
             )
             .sort((a, b) => {
-                const nombreA = this.normalizarTexto(a?.Nombre ?? '');
-                const nombreB = this.normalizarTexto(b?.Nombre ?? '');
+                const nombreA = normalizarTexto(a?.Nombre ?? '', true);
+                const nombreB = normalizarTexto(b?.Nombre ?? '', true);
                 const byNombre = nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
                 if (byNombre !== 0) return byNombre;
                 return toNumber((a as any).Id) - toNumber((b as any).Id);
@@ -144,14 +144,14 @@ export class ListadoRazasComponent implements OnDestroy {
 
     private coincideConTexto(raza: Raza, texto: string): boolean {
         const mods = this.normalizarModificadores(raza.Modificadores as any);
-        return this.normalizarTexto(raza.Nombre).includes(texto)
+        return normalizarTexto(raza.Nombre, true).includes(texto)
             || `${mods.Fuerza}`.includes(texto)
             || `${mods.Destreza}`.includes(texto)
             || `${mods.Constitucion}`.includes(texto)
             || `${mods.Inteligencia}`.includes(texto)
             || `${mods.Sabiduria}`.includes(texto)
             || `${mods.Carisma}`.includes(texto)
-            || this.normalizarTexto(raza.Clase_predilecta).includes(texto);
+            || normalizarTexto(raza.Clase_predilecta, true).includes(texto);
     }
 
     private normalizarRaza(raza: Raza): Raza {
@@ -185,13 +185,6 @@ export class ListadoRazasComponent implements OnDestroy {
 
     getDgsDado(dgs: any): string {
         return `${dgs?.Dado ?? ''}`;
-    }
-
-    private normalizarTexto(texto: string): string {
-        return `${texto ?? ''}`
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase();
     }
 
     private esOficialParaFiltro(raza: Raza): boolean {
