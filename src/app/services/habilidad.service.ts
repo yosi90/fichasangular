@@ -14,7 +14,7 @@ import {
     HabilidadExtraRef,
 } from "../interfaces/habilidad";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 import { toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
@@ -112,7 +112,7 @@ export class HabilidadService {
 
     public async crearHabilidadCustom(payload: HabilidadCustomCreateRequest): Promise<HabilidadCustomMutationResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const response = await firstValueFrom(
                 this.http.post<HabilidadCustomMutationApiResponse>(`${environment.apiUrl}habilidades/custom/add`, payload, { headers })
             );
@@ -129,7 +129,7 @@ export class HabilidadService {
         payload: HabilidadCustomUpdateRequest
     ): Promise<HabilidadCustomMutationResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const id = Math.trunc(toNumber(idHabilidad));
             const response = await firstValueFrom(
                 this.http.patch<HabilidadCustomMutationApiResponse>(`${environment.apiUrl}habilidades/custom/${id}`, payload, { headers })
@@ -203,15 +203,5 @@ export class HabilidadService {
         if (typeof errorBody === "object")
             return `${errorBody?.message ?? errorBody?.error ?? ""}`.trim();
         return "";
-    }
-
-    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
-        const user = this.auth.currentUser;
-        if (!user)
-            throw new Error("Sesión no iniciada");
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ""}`.trim().length < 1)
-            throw new Error("Token no disponible");
-        return { Authorization: `Bearer ${idToken}` };
     }
 }

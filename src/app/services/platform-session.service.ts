@@ -113,6 +113,21 @@ export function obtenerTokenApi(): Promise<string> {
 }
 
 /**
+ * Cabecera `Authorization` con el token de la API de Rol, para los servicios que además exigen la sesión de Firebase ya
+ * abierta (`auth.currentUser`, la del token que da `POST /usuarios/me/firebase-token`).
+ */
+export async function cabeceraApiConFirebase(auth: { currentUser: unknown } | null | undefined): Promise<{ Authorization: string }> {
+    if (!auth?.currentUser)
+        throw new Error('Sesión no iniciada');
+
+    const idToken = await obtenerTokenApi();
+    if (`${idToken ?? ''}`.trim().length < 1)
+        throw new Error('Token no disponible');
+
+    return { Authorization: `Bearer ${idToken}` };
+}
+
+/**
  * Cabeceras para la API de la plataforma (`/v1/...`) con el token de la persona (audiencia `cuentas`); con cuerpo, también
  * el tipo JSON. Si no hay sesión, falla como `tokenPlataforma()`.
  */

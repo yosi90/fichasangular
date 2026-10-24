@@ -29,7 +29,7 @@ import { FirebaseInjectionContextService } from './firebase-injection-context.se
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserService } from './user.service';
 import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from './platform-spaces.service';
 
 @Injectable({
@@ -1429,17 +1429,7 @@ export class CampanaService {
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
         await this.authReadyPromise;
-        const user = this.auth.currentUser;
-        if (!user)
-            throw new Error('Sesión no iniciada');
-
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ''}`.trim().length < 1)
-            throw new Error('Token no disponible');
-
-        return new HttpHeaders({
-            Authorization: `Bearer ${idToken}`,
-        });
+        return new HttpHeaders(await cabeceraApiConFirebase(this.auth));
     }
 
     private createAuthReadyPromise(): Promise<void> {

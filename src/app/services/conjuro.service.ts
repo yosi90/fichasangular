@@ -10,7 +10,7 @@ import { Conjuro } from "../interfaces/conjuro";
 import { ConjuroCreateApiResponse, ConjuroCreateRequest, ConjuroCreateResponse } from "../interfaces/conjuros-api";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeConjuroApi, normalizeConjuroLegacy } from "./utils/conjuro-mapper";
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 
 @Injectable({
     providedIn: 'root'
@@ -143,7 +143,7 @@ export class ConjuroService {
 
     public async crearConjuro(payload: ConjuroCreateRequest): Promise<ConjuroCreateResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const response = await firstValueFrom(
                 this.http.post<ConjuroCreateApiResponse>(`${environment.apiUrl}conjuros/add`, payload, { headers })
             );
@@ -207,19 +207,5 @@ export class ConjuroService {
         }
 
         return "";
-    }
-
-    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
-        const user = this.auth.currentUser;
-        if (!user)
-            throw new Error("Sesión no iniciada");
-
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ""}`.trim().length < 1)
-            throw new Error("Token no disponible");
-
-        return {
-            Authorization: `Bearer ${idToken}`,
-        };
     }
 }

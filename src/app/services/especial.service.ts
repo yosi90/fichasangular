@@ -17,7 +17,7 @@ import {
     EspecialRefSimple
 } from "../interfaces/especial";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
@@ -200,7 +200,7 @@ export class EspecialService {
 
     public async crearEspecial(payload: EspecialClaseMutationRequest): Promise<EspecialClaseMutationResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const response = await firstValueFrom(
                 this.http.post<EspecialClaseMutationApiResponse>(`${environment.apiUrl}clases/habilidades/add`, payload, { headers })
             );
@@ -215,7 +215,7 @@ export class EspecialService {
 
     public async actualizarEspecial(idEspecial: number, payload: EspecialClaseMutationRequest): Promise<EspecialClaseMutationResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const id = Math.trunc(toNumber(idEspecial));
             const response = await firstValueFrom(
                 this.http.put<EspecialClaseMutationApiResponse>(`${environment.apiUrl}clases/habilidades/${id}`, payload, { headers })
@@ -356,15 +356,5 @@ export class EspecialService {
         if (typeof errorBody === "object")
             return `${errorBody?.message ?? errorBody?.error ?? ""}`.trim();
         return "";
-    }
-
-    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
-        const user = this.auth.currentUser;
-        if (!user)
-            throw new Error("Sesión no iniciada");
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ""}`.trim().length < 1)
-            throw new Error("Token no disponible");
-        return { Authorization: `Bearer ${idToken}` };
     }
 }

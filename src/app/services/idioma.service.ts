@@ -13,7 +13,7 @@ import {
     IdiomaUpdateRequest,
 } from "../interfaces/idioma";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any): boolean {
@@ -93,7 +93,7 @@ export class IdiomaService {
 
     public async crearIdioma(payload: IdiomaCreateRequest): Promise<IdiomaMutacionResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const response = await firstValueFrom(
                 this.http.post<IdiomaMutacionApiResponse>(`${environment.apiUrl}idiomas/add`, payload, { headers })
             );
@@ -107,7 +107,7 @@ export class IdiomaService {
 
     public async actualizarIdioma(idIdioma: number, payload: IdiomaUpdateRequest): Promise<IdiomaMutacionResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const response = await firstValueFrom(
                 this.http.patch<IdiomaMutacionApiResponse>(`${environment.apiUrl}idiomas/${Math.trunc(Number(idIdioma ?? 0))}`, payload, { headers })
             );
@@ -177,15 +177,5 @@ export class IdiomaService {
         if (typeof errorBody === "object")
             return `${errorBody?.message ?? errorBody?.error ?? ""}`.trim();
         return "";
-    }
-
-    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
-        const user = this.auth.currentUser;
-        if (!user)
-            throw new Error("Sesión no iniciada");
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ""}`.trim().length < 1)
-            throw new Error("Token no disponible");
-        return { Authorization: `Bearer ${idToken}` };
     }
 }

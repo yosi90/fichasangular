@@ -14,7 +14,7 @@ import { normalizeRazaApi } from './utils/raza-mapper';
 import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 function toBoolean(value: any, fallback: boolean = false): boolean {
@@ -478,7 +478,7 @@ export class RazaService {
 
     public async crearRaza(payload: RazaCreateRequest): Promise<RazaCreateResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const response = await firstValueFrom(
                 this.http.post<RazaCreateApiResponse>(`${environment.apiUrl}razas/add`, payload, { headers })
             );
@@ -540,19 +540,5 @@ export class RazaService {
         }
 
         return '';
-    }
-
-    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
-        const user = this.auth?.currentUser;
-        if (!user)
-            throw new Error('Sesión no iniciada');
-
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ''}`.trim().length < 1)
-            throw new Error('Token no disponible');
-
-        return {
-            Authorization: `Bearer ${idToken}`,
-        };
     }
 }

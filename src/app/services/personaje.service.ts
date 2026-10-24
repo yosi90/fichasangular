@@ -28,7 +28,7 @@ import {
 import { normalizarProgresionLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
 
@@ -69,7 +69,7 @@ export class PersonajeService {
                 return of(personajePublico);
             }
 
-            const headers = await this.buildAuthHeaders();
+            const headers = new HttpHeaders(await cabeceraApiConFirebase(this.auth));
             const response = await firstValueFrom(
                 this.http.get<any>(`${environment.apiUrl}personajes/${personajeId}`, { headers })
             );
@@ -101,7 +101,7 @@ export class PersonajeService {
                 `${environment.apiUrl}personajes/${id}/visible`,
                 payload
                 ,
-                { headers: await this.buildAuthHeaders() }
+                { headers: new HttpHeaders(await cabeceraApiConFirebase(this.auth)) }
             )
         );
 
@@ -128,7 +128,7 @@ export class PersonajeService {
             this.http.patch<PersonajeArchiveUpdateResponse>(
                 `${environment.apiUrl}personajes/${id}/archivado`,
                 payload,
-                { headers: await this.buildAuthHeaders() }
+                { headers: new HttpHeaders(await cabeceraApiConFirebase(this.auth)) }
             )
         );
 
@@ -827,7 +827,7 @@ export class PersonajeService {
                 this.http.post<PersonajeCreateApiResponseDto>(
                     `${environment.apiUrl}personajes/add`,
                     payload,
-                    { headers: await this.buildAuthHeaders() }
+                    { headers: new HttpHeaders(await cabeceraApiConFirebase(this.auth)) }
                 )
             );
             const idPersonaje = Math.trunc(toNumber(response?.idPersonaje));
@@ -953,20 +953,6 @@ export class PersonajeService {
         }
 
         return new ProfileApiError(this.obtenerMensajeErrorHttp(error, fallback), '', Number(error?.status ?? 0));
-    }
-
-    private async buildAuthHeaders(): Promise<HttpHeaders> {
-        const user = this.auth.currentUser;
-        if (!user)
-            throw new Error('Sesión no iniciada');
-
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ''}`.trim().length < 1)
-            throw new Error('Token no disponible');
-
-        return new HttpHeaders({
-            Authorization: `Bearer ${idToken}`,
-        });
     }
 
     private esPayloadPersonajeCanonico(payload: any): boolean {

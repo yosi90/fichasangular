@@ -17,7 +17,7 @@ import {
     RacialUpdateResponse,
 } from "../interfaces/raciales-api";
 import { normalizeRacial, normalizeRaciales } from "./utils/racial-mapper";
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 
 function sortRaciales(raciales: RacialDetalle[]): RacialDetalle[] {
     return [...raciales]
@@ -48,7 +48,7 @@ export class RacialService {
 
     public async crearRacial(payload: RacialCreateRequest): Promise<RacialCreateResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const response = await firstValueFrom(
                 this.http.post<RacialCreateApiResponse>(`${environment.apiUrl}razas/raciales/add`, payload, { headers })
             );
@@ -62,7 +62,7 @@ export class RacialService {
 
     public async actualizarRacial(idRacial: number, payload: RacialUpdateRequest): Promise<RacialUpdateResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const response = await firstValueFrom(
                 this.http.put<RacialUpdateApiResponse>(`${environment.apiUrl}razas/raciales/${Math.trunc(Number(idRacial ?? 0))}`, payload, { headers })
             );
@@ -79,7 +79,7 @@ export class RacialService {
         prerrequisitos: RacialCreatePrerequisitos
     ): Promise<RacialPrerequisitosPatchResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const payload: RacialPrerequisitosPatchRequest = { prerrequisitos };
             const response = await firstValueFrom(
                 this.http.patch<RacialPrerequisitosPatchApiResponse>(
@@ -217,19 +217,5 @@ export class RacialService {
         if (!racial || Number(racial.Id) <= 0)
             return;
         this.racialesMutadosSubject.next(racial);
-    }
-
-    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
-        const user = this.auth.currentUser;
-        if (!user)
-            throw new Error("Sesión no iniciada");
-
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ""}`.trim().length < 1)
-            throw new Error("Token no disponible");
-
-        return {
-            Authorization: `Bearer ${idToken}`,
-        };
     }
 }

@@ -10,7 +10,7 @@ import { environment } from "src/environments/environment";
 import Swal from "sweetalert2";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeDoteApi, normalizeDoteLegacy } from "./utils/dote-mapper";
-import { obtenerTokenApi } from './platform-session.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
 
 @Injectable({
     providedIn: "root"
@@ -147,7 +147,7 @@ export class DoteService {
 
     public async crearDote(payload: DoteCreateRequest): Promise<DoteCreateResponse> {
         try {
-            const headers = await this.buildAuthHeaders();
+            const headers = await cabeceraApiConFirebase(this.auth);
             const response = await firstValueFrom(
                 this.http.post<DoteCreateApiResponse>(`${environment.apiUrl}dotes/add`, payload, { headers })
             );
@@ -207,19 +207,5 @@ export class DoteService {
         }
 
         return "";
-    }
-
-    private async buildAuthHeaders(): Promise<{ Authorization: string; }> {
-        const user = this.auth.currentUser;
-        if (!user)
-            throw new Error("Sesión no iniciada");
-
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ""}`.trim().length < 1)
-            throw new Error("Token no disponible");
-
-        return {
-            Authorization: `Bearer ${idToken}`,
-        };
     }
 }

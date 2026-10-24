@@ -8,7 +8,7 @@ import { environment } from 'src/environments/environment';
 import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
 import { FirebaseInjectionContextService } from '../firebase-injection-context.service';
 import { PrivateUserFirestoreService } from '../private-user-firestore.service';
-import { obtenerTokenApi } from '../platform-session.service';
+import { cabeceraApiConFirebase } from '../platform-session.service';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
@@ -242,17 +242,7 @@ export class ListaPersonajesService {
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
         await this.authReadyPromise;
-        const user = this.auth.currentUser;
-        if (!user)
-            throw new Error('Sesión no iniciada');
-
-        const idToken = await obtenerTokenApi();
-        if (`${idToken ?? ''}`.trim().length < 1)
-            throw new Error('Token no disponible');
-
-        return new HttpHeaders({
-            Authorization: `Bearer ${idToken}`,
-        });
+        return new HttpHeaders(await cabeceraApiConFirebase(this.auth));
     }
 
     private createAuthReadyPromise(): Promise<void> {
