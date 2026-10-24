@@ -5584,7 +5584,7 @@ export class NuevoPersonajeComponent {
 
     getMateriaVisible(item: VentajaDetalle): string {
         const materia = `${this.getMateriaVentaja(item) ?? ''}`.trim();
-        return normalizarTexto(materia) === 'elegir' ? '' : materia;
+        return esTextoExtraPorElegir(materia) ? '' : materia;
     }
 
     getMejoraVisible(item: VentajaDetalle): string {
