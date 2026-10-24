@@ -27,9 +27,12 @@ export function leerListadoCompleto<T = any>(http: HttpClient, url: string): Obs
     );
 }
 
+/** Un snapshot de la RTDB sin datos, como el de una ruta que no existe. */
+const SIN_DATOS_RTDB = { exists: () => false, val: () => null, forEach: () => false };
+
 /** Para los servicios que escuchan una ruta de la caché: responde como si no existiera, para que vayan a la API. */
 export function sinCache(onNext: (snapshot: any) => void): () => void {
-    onNext({ exists: () => false, val: () => null, forEach: () => false });
+    onNext(SIN_DATOS_RTDB);
     return () => undefined;
 }
 
@@ -40,8 +43,6 @@ export type EscuchaRtdb = (onNext: (snapshot: any) => void, onError: (error: any
 export function escucharRtdb(db: Database, contexto: FirebaseInjectionContextService, ruta: string): EscuchaRtdb {
     return (onNext, onError) => contexto.run(() => onValue(ref(db, ruta), onNext, onError));
 }
-
-const SIN_DATOS_RTDB = { exists: () => false, val: () => null, forEach: () => false };
 
 /**
  * Escucha dos rutas de la RTDB que guardan lo mismo con otro nombre (`disciplinas` y `Disciplinas`): da el snapshot
