@@ -46,7 +46,7 @@ import {
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
-import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { calcularOroPorNep } from './utils/oro-inicial';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 
@@ -1084,8 +1084,8 @@ export class NuevoPersonajeService {
 
         return {
             uid: `${borrador.uid ?? ''}`.trim(),
-            updatedAt: Math.max(0, Math.trunc(toNumber(borrador.updatedAt))),
-            personajeId: Math.max(0, Math.trunc(toNumber(borrador.personaje?.Id))),
+            updatedAt: Math.max(0, toInt(borrador.updatedAt)),
+            personajeId: Math.max(0, toInt(borrador.personaje?.Id)),
             nombre: `${borrador.personaje?.Nombre ?? ''}`.trim(),
             pasoActual: this.normalizarPasoRestaurado(
                 borrador.estadoFlujoPersistible?.pasoActual ?? 'raza',
@@ -1762,7 +1762,7 @@ export class NuevoPersonajeService {
             return false;
 
         const total = plantillasConDg.reduce((acc, plantilla) => {
-            const sumaFija = Math.max(1, Math.trunc(toNumber(plantilla?.Puntos_habilidad?.Suma_fija)));
+            const sumaFija = Math.max(1, toInt(plantilla?.Puntos_habilidad?.Suma_fija));
             return acc + sumaFija;
         }, 0);
 
@@ -1792,7 +1792,7 @@ export class NuevoPersonajeService {
     }
 
     iniciarDistribucionHabilidadesPorClase(clase: Clase, nivelAplicado: number): boolean {
-        const nivel = Math.max(1, Math.trunc(toNumber(nivelAplicado)));
+        const nivel = Math.max(1, toInt(nivelAplicado));
         const puntosBase = toNumber(clase?.Puntos_habilidad?.Valor);
         const modInt = Math.max(0, toNumber(this.personajeCreacion?.ModInteligencia));
         const puntos = nivel === 1
@@ -1810,7 +1810,7 @@ export class NuevoPersonajeService {
             return false;
 
         const id = toNumber(idHabilidad);
-        const cambio = Math.trunc(toNumber(delta));
+        const cambio = toInt(delta);
         if (id <= 0 || cambio === 0)
             return false;
 
@@ -1935,7 +1935,7 @@ export class NuevoPersonajeService {
             return [];
 
         const filtro = normalizarTexto(filtroTexto);
-        const nivelFiltro = nivelConjuro === null ? null : Math.max(0, Math.trunc(toNumber(nivelConjuro)));
+        const nivelFiltro = nivelConjuro === null ? null : Math.max(0, toInt(nivelConjuro));
         const idsNoDisponibles = new Set<number>([
             ...(entrada.seleccionadosIds ?? []),
             ...(entrada.autoadicionadosIds ?? []),
@@ -1967,7 +1967,7 @@ export class NuevoPersonajeService {
         if (!entrada || !entrada.seleccionManual)
             return false;
 
-        const id = Math.trunc(toNumber(idConjuro));
+        const id = toInt(idConjuro);
         if (id <= 0)
             return false;
         if (entrada.seleccionadosIds.includes(id) || entrada.autoadicionadosIds.includes(id))
@@ -1999,7 +1999,7 @@ export class NuevoPersonajeService {
         if (!entrada || !entrada.seleccionManual)
             return false;
 
-        const id = Math.trunc(toNumber(idConjuro));
+        const id = toInt(idConjuro);
         if (id <= 0 || !entrada.seleccionadosIds.includes(id))
             return false;
 
@@ -2095,7 +2095,7 @@ export class NuevoPersonajeService {
         puntosTotales: number,
         classSkillTemporales: number[]
     ): void {
-        const total = Math.max(0, Math.trunc(toNumber(puntosTotales)));
+        const total = Math.max(0, toInt(puntosTotales));
         const nivelReferencia = this.getNivelEfectivoParaAumentos();
         const temporales = Array.from(new Set(
             (classSkillTemporales ?? [])
@@ -2107,7 +2107,7 @@ export class NuevoPersonajeService {
             const id = toNumber(habilidad?.Id);
             if (id <= 0)
                 return;
-            rangosIniciales[id] = Math.max(0, Math.trunc(toNumber(habilidad?.Rangos)));
+            rangosIniciales[id] = Math.max(0, toInt(habilidad?.Rangos));
         });
 
         this.estadoFlujo.habilidades = {
@@ -2681,7 +2681,7 @@ export class NuevoPersonajeService {
             tipoPermitido: tipoNormalizado.length > 0 ? tipoNormalizado : null,
             estado: 'pendiente',
             nivelProgresion: fuente === 'nivel'
-                ? Math.max(0, Math.trunc(toNumber(nivelProgresion))) || null
+                ? Math.max(0, toInt(nivelProgresion)) || null
                 : null,
         };
     }
@@ -3369,7 +3369,7 @@ export class NuevoPersonajeService {
                 return;
             maximo = Math.max(
                 maximo,
-                Math.trunc(toNumber(detalleActual?.Nivel_max_poder_accesible_nivel_lanzadorPsionico))
+                toInt(detalleActual?.Nivel_max_poder_accesible_nivel_lanzadorPsionico)
             );
         });
         return Math.max(0, maximo);
@@ -3392,7 +3392,7 @@ export class NuevoPersonajeService {
             const detalleActual = this.obtenerDetalleNivelClase(clase, nivelActual);
             if (!detalleActual)
                 return;
-            total += Math.max(0, Math.trunc(toNumber(detalleActual?.Reserva_psionica)));
+            total += Math.max(0, toInt(detalleActual?.Reserva_psionica));
         });
         return Math.max(0, total);
     }
@@ -3405,7 +3405,7 @@ export class NuevoPersonajeService {
     }
 
     private resolverTamanoActualId(): number | null {
-        const id = Math.trunc(toNumber(this.personajeCreacion?.Raza?.Tamano?.Id));
+        const id = toInt(this.personajeCreacion?.Raza?.Tamano?.Id);
         return id > 0 ? id : null;
     }
 
@@ -3662,7 +3662,7 @@ export class NuevoPersonajeService {
         bonoFueDes: number;
         bonoArmaduraNatural: number;
     } {
-        const nivel = Math.max(0, Math.trunc(toNumber(nivelEfectivoCompanero)));
+        const nivel = Math.max(0, toInt(nivelEfectivoCompanero));
         if (nivel >= 18)
             return { dgAdi: 12, trucosAdi: 7, bonoFueDes: 6, bonoArmaduraNatural: 12 };
         if (nivel >= 15)
@@ -3900,7 +3900,7 @@ export class NuevoPersonajeService {
 
     private construirOrigenDoteDesdePendiente(pendiente: DotePendienteState): string {
         if (pendiente.fuente === 'nivel') {
-            const nivelProgresion = Math.max(0, Math.trunc(toNumber(pendiente?.nivelProgresion)));
+            const nivelProgresion = Math.max(0, toInt(pendiente?.nivelProgresion));
             if (nivelProgresion > 0)
                 return `Dote adicional por nivel ${nivelProgresion}`;
         }
@@ -4097,7 +4097,7 @@ export class NuevoPersonajeService {
     }
 
     getEspecialidadMagicaPendiente(clase: Clase, nivelAplicado: number): EspecialidadMagicaPendiente | null {
-        const nivel = Math.max(0, Math.trunc(toNumber(nivelAplicado)));
+        const nivel = Math.max(0, toInt(nivelAplicado));
         if (nivel !== 1)
             return null;
         if (!toBoolean(clase?.Conjuros?.puede_elegir_especialidad))
@@ -4136,7 +4136,7 @@ export class NuevoPersonajeService {
                 this.personajeCreacion.Escuelas_prohibidas = [];
             } else {
                 const escuelasEspecializables = this.obtenerCatalogoEscuelasEspecializables(escuelasCatalogo);
-                const idEspecialista = Math.trunc(toNumber(arcana?.escuelaEspecialistaId));
+                const idEspecialista = toInt(arcana?.escuelaEspecialistaId);
                 const escuelaEspecialista = escuelasEspecializables.find((escuela) => toNumber(escuela?.Id) === idEspecialista);
                 if (!escuelaEspecialista) {
                     return {
@@ -4148,7 +4148,7 @@ export class NuevoPersonajeService {
                 const escuelasProhibibles = this.obtenerCatalogoEscuelasProhibibles(escuelasCatalogo, idEspecialista);
                 const idsProhibidas = Array.from(new Set(
                     (arcana?.escuelasProhibidasIds ?? [])
-                        .map((id) => Math.trunc(toNumber(id)))
+                        .map((id) => toInt(id))
                         .filter((id) => id > 0 && id !== idEspecialista)
                 ));
                 const prohibidasSeleccionadas = escuelasProhibibles
@@ -4178,8 +4178,8 @@ export class NuevoPersonajeService {
         if (pendiente.requierePsionico) {
             const psionica = seleccion?.psionica;
             const disciplinasEspecializables = this.obtenerCatalogoDisciplinasEspecializables(disciplinasCatalogo);
-            const idEspecialista = Math.trunc(toNumber(psionica?.disciplinaEspecialistaId));
-            const idProhibida = Math.trunc(toNumber(psionica?.disciplinaProhibidaId));
+            const idEspecialista = toInt(psionica?.disciplinaEspecialistaId);
+            const idProhibida = toInt(psionica?.disciplinaProhibidaId);
             const disciplinaEspecialista = disciplinasEspecializables
                 .find((disciplina) => toNumber(disciplina?.Id) === idEspecialista);
             if (!disciplinaEspecialista) {
@@ -5527,12 +5527,12 @@ export class NuevoPersonajeService {
     }
 
     private getFirmaDoteContextualNormalizada(idDote: number, nombre: string, idExtra: number, origen: string): string {
-        const identidad = Math.max(0, Math.trunc(toNumber(idDote))) > 0
-            ? `id:${Math.max(0, Math.trunc(toNumber(idDote)))}`
+        const identidad = Math.max(0, toInt(idDote)) > 0
+            ? `id:${Math.max(0, toInt(idDote))}`
             : `nombre:${normalizarTexto(nombre)}`;
         return [
             identidad,
-            `extra:${Math.max(0, Math.trunc(toNumber(idExtra)))}`,
+            `extra:${Math.max(0, toInt(idExtra))}`,
             `origen:${normalizarTexto(origen)}`,
         ].join('|');
     }
@@ -5551,7 +5551,7 @@ export class NuevoPersonajeService {
     }
 
     private obtenerRangoInicialHabilidadSesion(idHabilidad: number): number {
-        const id = Math.max(0, Math.trunc(toNumber(idHabilidad)));
+        const id = Math.max(0, toInt(idHabilidad));
         if (id <= 0)
             return 0;
 
@@ -5997,7 +5997,7 @@ export class NuevoPersonajeService {
     }
 
     private obtenerDetalleNivelClase(clase: Clase, nivel: number): ClaseNivelDetalle | null {
-        const nivelNormalizado = Math.max(1, Math.trunc(toNumber(nivel)));
+        const nivelNormalizado = Math.max(1, toInt(nivel));
         return (clase?.Desglose_niveles ?? [])
             .find((item) => toNumber(item?.Nivel) === nivelNormalizado) ?? null;
     }
@@ -6032,7 +6032,7 @@ export class NuevoPersonajeService {
         if (this.usaConjurosDiariosParaNivelLanzador(clase))
             return this.tieneAccesoRealConjurosDiarios(detalleNivel);
         if (!!clase?.Conjuros?.Psionicos)
-            return Math.trunc(toNumber(detalleNivel?.Nivel_max_poder_accesible_nivel_lanzadorPsionico)) >= 0;
+            return toInt(detalleNivel?.Nivel_max_poder_accesible_nivel_lanzadorPsionico) >= 0;
         return false;
     }
 
@@ -6047,7 +6047,7 @@ export class NuevoPersonajeService {
             return [];
         return (clase?.Desglose_niveles ?? [])
             .filter((detalle) => this.detalleCuentaComoNivelLanzadorBase(clase, detalle))
-            .map((detalle) => Math.max(1, Math.trunc(toNumber(detalle?.Nivel))))
+            .map((detalle) => Math.max(1, toInt(detalle?.Nivel)))
             .filter((nivel, index, lista) => nivel > 0 && lista.indexOf(nivel) === index)
             .sort((a, b) => a - b);
     }
@@ -6058,7 +6058,7 @@ export class NuevoPersonajeService {
             return 0;
         const nivelLimite = nivelClaseMaximo === undefined
             ? this.obtenerNivelActualClase(nombreClase)
-            : Math.max(0, Math.trunc(toNumber(nivelClaseMaximo)));
+            : Math.max(0, toInt(nivelClaseMaximo));
         if (nivelLimite < 1)
             return 0;
         return this.obtenerNivelesClaseQueAumentanNivelLanzador(clase)
@@ -6067,7 +6067,7 @@ export class NuevoPersonajeService {
     }
 
     private obtenerDetallePorNivelLanzadorClase(clase: Clase | null | undefined, nivelLanzador: number): ClaseNivelDetalle | null {
-        const nivelObjetivo = Math.max(0, Math.trunc(toNumber(nivelLanzador)));
+        const nivelObjetivo = Math.max(0, toInt(nivelLanzador));
         if (!clase || nivelObjetivo < 1)
             return null;
         const hitos = this.obtenerNivelesClaseQueAumentanNivelLanzador(clase);
@@ -6083,7 +6083,7 @@ export class NuevoPersonajeService {
             return;
 
         const nombreNorm = normalizarTexto(nombre);
-        const nivelNormalizado = Math.max(1, Math.trunc(toNumber(nivel)));
+        const nivelNormalizado = Math.max(1, toInt(nivel));
         const desglose = [...(this.personajeCreacion.desgloseClases ?? [])];
         const index = desglose.findIndex((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
 
@@ -6225,7 +6225,7 @@ export class NuevoPersonajeService {
         ];
 
         for (const candidato of candidatos) {
-            const valor = Math.trunc(toNumber(candidato));
+            const valor = toInt(candidato);
             if (valor > 0)
                 return valor;
         }
@@ -6271,7 +6271,7 @@ export class NuevoPersonajeService {
             return [];
 
         const parsearEntrada = (value: number | string): ClaseDominioPendiente | null => {
-            const id = Math.trunc(toNumber(value));
+            const id = toInt(value);
             if (id > 0)
                 return candidatas.find((opcion) => opcion.id === id) ?? null;
             const nombreNorm = normalizarTexto(`${value ?? ''}`);
@@ -6359,7 +6359,7 @@ export class NuevoPersonajeService {
             const nombre = `${doteNivel?.Dote?.Nombre ?? ''}`.trim();
             if (nombre.length < 1)
                 return;
-            const grupoOpcional = Math.max(0, Math.trunc(toNumber(doteNivel?.Opcional)));
+            const grupoOpcional = Math.max(0, toInt(doteNivel?.Opcional));
             opciones.push({
                 tipo: 'dote',
                 clave: `dote:${contador++}`,
@@ -6379,7 +6379,7 @@ export class NuevoPersonajeService {
             const nombre = `${(especialNivel?.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim();
             if (nombre.length < 1)
                 return;
-            const grupoOpcional = Math.max(0, Math.trunc(toNumber(especialNivel?.Opcional)));
+            const grupoOpcional = Math.max(0, toInt(especialNivel?.Opcional));
             opciones.push({
                 tipo: 'especial',
                 clave: `especial:${contador++}`,
@@ -6517,13 +6517,13 @@ export class NuevoPersonajeService {
     }
 
     private registrarIdInternoDote(idInterno: number): void {
-        const id = Math.trunc(toNumber(idInterno));
+        const id = toInt(idInterno);
         if (id > 0)
             this.idsDotesInternosActivos.add(id);
     }
 
     private registrarIdInternoEspecial(idInterno: number): void {
-        const id = Math.trunc(toNumber(idInterno));
+        const id = toInt(idInterno);
         if (id > 0)
             this.idsEspecialesInternosActivos.add(id);
     }
@@ -6604,7 +6604,7 @@ export class NuevoPersonajeService {
             }
 
             const valorSeleccionado = entradas[index];
-            const idSeleccion = Math.trunc(toNumber(valorSeleccionado));
+            const idSeleccion = toInt(valorSeleccionado);
             const nombreSeleccion = normalizarTexto(`${valorSeleccionado ?? ''}`);
             const opcion = opciones.find((item) => toNumber(item.idClase) === idSeleccion)
                 ?? opciones.find((item) => normalizarTexto(item.nombreClase) === nombreSeleccion)
@@ -6702,7 +6702,7 @@ export class NuevoPersonajeService {
         aumentosLanzador: ClaseAumentoLanzadorSeleccion[]
     ): string[] {
         const errores: string[] = [];
-        const nivelReferencia = Math.max(1, Math.trunc(toNumber(nivelAplicado)));
+        const nivelReferencia = Math.max(1, toInt(nivelAplicado));
 
         if (this.tieneLanzamientoPropio(claseAplicada)) {
             const bonusActual = this.obtenerBonusNivelLanzadorClase(claseAplicada?.Nombre ?? '');
@@ -6770,11 +6770,11 @@ export class NuevoPersonajeService {
     ): string[] {
         const entradas: ConjurosSesionStateEntrada[] = [];
         const avisos: string[] = [...(advertenciasAumentos ?? [])];
-        const origenBase = `${claseAplicada?.Nombre ?? 'Clase'} nivel ${Math.max(1, Math.trunc(toNumber(nivelAplicado)))}`;
+        const origenBase = `${claseAplicada?.Nombre ?? 'Clase'} nivel ${Math.max(1, toInt(nivelAplicado))}`;
 
         if (this.tieneLanzamientoPropio(claseAplicada)) {
             const bonusActual = this.obtenerBonusNivelLanzadorClase(claseAplicada?.Nombre ?? '');
-            const nivelClaseActual = Math.max(1, Math.trunc(toNumber(nivelAplicado)));
+            const nivelClaseActual = Math.max(1, toInt(nivelAplicado));
             const nivelPrevioBase = this.obtenerNivelLanzadorBaseClase(claseAplicada?.Nombre ?? '', nivelClaseActual - 1);
             const nivelActualBase = this.obtenerNivelLanzadorBaseClase(claseAplicada?.Nombre ?? '', nivelClaseActual);
             const nivelPrevio = Math.max(0, nivelPrevioBase + bonusActual);
@@ -6976,7 +6976,7 @@ export class NuevoPersonajeService {
 
     private construirNivelesAccesiblesHastaNivelMax(nivelMax: number): Set<number> {
         const resultado = new Set<number>();
-        const limite = Math.max(-1, Math.trunc(toNumber(nivelMax)));
+        const limite = Math.max(-1, toInt(nivelMax));
         if (limite < 0)
             return resultado;
         for (let nivel = 0; nivel <= limite; nivel++) {
@@ -7013,10 +7013,10 @@ export class NuevoPersonajeService {
 
         const nivelMaxPoderPsionico = Math.max(
             -1,
-            Math.trunc(toNumber(detalleActual?.Nivel_max_poder_accesible_nivel_lanzadorPsionico))
+            toInt(detalleActual?.Nivel_max_poder_accesible_nivel_lanzadorPsionico)
         );
         const nivelMaxPoderPsionicoPrevio = detallePrevio
-            ? Math.max(-1, Math.trunc(toNumber(detallePrevio?.Nivel_max_poder_accesible_nivel_lanzadorPsionico)))
+            ? Math.max(-1, toInt(detallePrevio?.Nivel_max_poder_accesible_nivel_lanzadorPsionico))
             : -1;
 
         if (usaConjurosDiarios && requierePsionico) {
@@ -7333,7 +7333,7 @@ export class NuevoPersonajeService {
         if (key.length < 1)
             return;
         const actual = this.obtenerBonusNivelLanzadorClase(nombreClase);
-        this.bonusNivelLanzadorPorClase[key] = Math.max(0, actual + Math.max(0, Math.trunc(toNumber(delta))));
+        this.bonusNivelLanzadorPorClase[key] = Math.max(0, actual + Math.max(0, toInt(delta)));
     }
 
     private registrarSeleccionProgresionLanzador(
@@ -7343,10 +7343,10 @@ export class NuevoPersonajeService {
         claseObjetivo: Clase
     ): void {
         const entrada: PersonajeProgresionLanzadorSeleccionDto = {
-            idClaseAplicada: Math.trunc(toNumber(claseAplicada?.Id)),
-            nivelClaseAplicado: Math.trunc(toNumber(nivelAplicado)),
-            indiceAumento: Math.trunc(toNumber(seleccion?.indice)),
-            idClaseObjetivo: Math.trunc(toNumber(claseObjetivo?.Id)),
+            idClaseAplicada: toInt(claseAplicada?.Id),
+            nivelClaseAplicado: toInt(nivelAplicado),
+            indiceAumento: toInt(seleccion?.indice),
+            idClaseObjetivo: toInt(claseObjetivo?.Id),
         };
         if (
             entrada.idClaseAplicada <= 0
@@ -7385,7 +7385,7 @@ export class NuevoPersonajeService {
             this.estadoFlujo.conjuros.indiceEntradaActual = preferida;
             return this.estadoFlujo.conjuros.entradas[preferida];
         }
-        const indice = Math.max(0, Math.trunc(toNumber(this.estadoFlujo.conjuros.indiceEntradaActual)));
+        const indice = Math.max(0, toInt(this.estadoFlujo.conjuros.indiceEntradaActual));
         return this.estadoFlujo.conjuros.entradas[indice] ?? this.estadoFlujo.conjuros.entradas[0] ?? null;
     }
 
@@ -7401,7 +7401,7 @@ export class NuevoPersonajeService {
     }
 
     private obtenerConjuroCatalogoPorId(idConjuro: number): Conjuro | null {
-        const id = Math.trunc(toNumber(idConjuro));
+        const id = toInt(idConjuro);
         if (id <= 0)
             return null;
         if (this.conjurosSesionPlaceholderPorId[id])
@@ -7541,7 +7541,7 @@ export class NuevoPersonajeService {
     }
 
     private esConjuroYaConocidoPorClase(nombreClase: string, idConjuro: number): boolean {
-        const id = Math.trunc(toNumber(idConjuro));
+        const id = toInt(idConjuro);
         if (id <= 0)
             return false;
 
@@ -7559,7 +7559,7 @@ export class NuevoPersonajeService {
     }
 
     private agregarConjuroConocidoClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): void {
-        const idConjuro = Math.trunc(toNumber(ref?.Id));
+        const idConjuro = toInt(ref?.Id);
         if (idConjuro <= 0 || this.esConjuroYaConocidoPorClase(clase.Nombre, idConjuro))
             return;
 
@@ -7570,9 +7570,9 @@ export class NuevoPersonajeService {
     private crearConjuroPlaceholderDesdeClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): Conjuro {
         const nombreClase = `${clase?.Nombre ?? ''}`.trim();
         const nombre = `${ref?.Nombre ?? ''}`.trim();
-        const nivelConjuro = Math.max(0, Math.trunc(toNumber(ref?.Nivel)));
+        const nivelConjuro = Math.max(0, toInt(ref?.Nivel));
         const base: Conjuro = {
-            Id: Math.trunc(toNumber(ref?.Id)),
+            Id: toInt(ref?.Id),
             Nombre: nombre.length > 0 ? nombre : `Conjuro ${toNumber(ref?.Id)}`,
             Descripcion: 'No especifica',
             Tiempo_lanzamiento: 'No especifica',
@@ -7778,7 +7778,7 @@ export class NuevoPersonajeService {
     }
 
     private recalcularCapacidadCarga(): void {
-        const fuerza = Math.max(0, Math.trunc(toNumber(this.personajeCreacion?.Fuerza)));
+        const fuerza = Math.max(0, toInt(this.personajeCreacion?.Fuerza));
         const pesadaBase = this.calcularCargaPesadaPorFuerza(fuerza);
         const multiplicadorTamano = this.obtenerMultiplicadorCargaBipedoPorTamano();
         const pesada = Math.max(0, Math.floor(pesadaBase * multiplicadorTamano));
@@ -7793,7 +7793,7 @@ export class NuevoPersonajeService {
     }
 
     private calcularCargaPesadaPorFuerza(fuerza: number): number {
-        const valorFuerza = Math.max(0, Math.trunc(toNumber(fuerza)));
+        const valorFuerza = Math.max(0, toInt(fuerza));
         if (valorFuerza <= 0)
             return 0;
 
@@ -8321,12 +8321,12 @@ export class NuevoPersonajeService {
                 conjuros: this.clonarProfundo(this.estadoFlujo.conjuros),
             },
             dotesPendientes: this.clonarProfundo(this.dotesPendientes),
-            secuenciaDotePendiente: Math.max(1, Math.trunc(toNumber(this.secuenciaDotePendiente))),
-            dotesProgresionConcedidas: Math.max(0, Math.trunc(toNumber(this.dotesProgresionConcedidas))),
-            dotesExtraRazaConcedidas: Math.max(0, Math.trunc(toNumber(this.dotesExtraRazaConcedidas))),
+            secuenciaDotePendiente: Math.max(1, toInt(this.secuenciaDotePendiente)),
+            dotesProgresionConcedidas: Math.max(0, toInt(this.dotesProgresionConcedidas)),
+            dotesExtraRazaConcedidas: Math.max(0, toInt(this.dotesExtraRazaConcedidas)),
             aumentosPendientesCaracteristica: this.clonarProfundo(this.aumentosPendientesCaracteristica),
-            aumentosProgresionConcedidos: Math.max(0, Math.trunc(toNumber(this.aumentosProgresionConcedidos))),
-            secuenciaAumentoPendiente: Math.max(1, Math.trunc(toNumber(this.secuenciaAumentoPendiente))),
+            aumentosProgresionConcedidos: Math.max(0, toInt(this.aumentosProgresionConcedidos)),
+            secuenciaAumentoPendiente: Math.max(1, toInt(this.secuenciaAumentoPendiente)),
             bonusNivelLanzadorPorClase: this.clonarProfundo(this.bonusNivelLanzadorPorClase),
             progresionLanzadorSelecciones: this.getProgresionLanzadorPersistible()?.selecciones ?? [],
             idsEspecialesInternosActivos: Array.from(this.idsEspecialesInternosActivos.values()),
@@ -8395,12 +8395,12 @@ export class NuevoPersonajeService {
         this.restaurarBasesVentajasDesdeBorrador(borrador);
 
         this.dotesPendientes = this.clonarProfundo(borrador.dotesPendientes ?? []);
-        this.secuenciaDotePendiente = Math.max(1, Math.trunc(toNumber(borrador.secuenciaDotePendiente)));
-        this.dotesProgresionConcedidas = Math.max(0, Math.trunc(toNumber(borrador.dotesProgresionConcedidas)));
-        this.dotesExtraRazaConcedidas = Math.max(0, Math.trunc(toNumber(borrador.dotesExtraRazaConcedidas)));
+        this.secuenciaDotePendiente = Math.max(1, toInt(borrador.secuenciaDotePendiente));
+        this.dotesProgresionConcedidas = Math.max(0, toInt(borrador.dotesProgresionConcedidas));
+        this.dotesExtraRazaConcedidas = Math.max(0, toInt(borrador.dotesExtraRazaConcedidas));
         this.aumentosPendientesCaracteristica = this.clonarProfundo(borrador.aumentosPendientesCaracteristica ?? []);
-        this.aumentosProgresionConcedidos = Math.max(0, Math.trunc(toNumber(borrador.aumentosProgresionConcedidos)));
-        this.secuenciaAumentoPendiente = Math.max(1, Math.trunc(toNumber(borrador.secuenciaAumentoPendiente)));
+        this.aumentosProgresionConcedidos = Math.max(0, toInt(borrador.aumentosProgresionConcedidos));
+        this.secuenciaAumentoPendiente = Math.max(1, toInt(borrador.secuenciaAumentoPendiente));
         this.bonusNivelLanzadorPorClase = this.clonarProfundo(borrador.bonusNivelLanzadorPorClase ?? {});
         this.progresionLanzadorSelecciones = this.normalizarSeleccionesProgresionLanzadorBorrador(
             borrador.progresionLanzadorSelecciones
@@ -8408,12 +8408,12 @@ export class NuevoPersonajeService {
         this.conjurosSesionPlaceholderPorId = this.clonarProfundo(borrador.conjurosSesionPlaceholderPorId ?? {});
         this.idsEspecialesInternosActivos = new Set<number>(
             (borrador.idsEspecialesInternosActivos ?? [])
-                .map((id) => Math.trunc(toNumber(id)))
+                .map((id) => toInt(id))
                 .filter((id) => id > 0)
         );
         this.idsDotesInternosActivos = new Set<number>(
             (borrador.idsDotesInternosActivos ?? [])
-                .map((id) => Math.trunc(toNumber(id)))
+                .map((id) => toInt(id))
                 .filter((id) => id > 0)
         );
 
@@ -8442,10 +8442,10 @@ export class NuevoPersonajeService {
         return Array.isArray(selecciones)
             ? selecciones
                 .map((seleccion) => ({
-                    idClaseAplicada: Math.trunc(toNumber(seleccion?.idClaseAplicada)),
-                    nivelClaseAplicado: Math.trunc(toNumber(seleccion?.nivelClaseAplicado)),
-                    indiceAumento: Math.trunc(toNumber(seleccion?.indiceAumento)),
-                    idClaseObjetivo: Math.trunc(toNumber(seleccion?.idClaseObjetivo)),
+                    idClaseAplicada: toInt(seleccion?.idClaseAplicada),
+                    nivelClaseAplicado: toInt(seleccion?.nivelClaseAplicado),
+                    indiceAumento: toInt(seleccion?.indiceAumento),
+                    idClaseObjetivo: toInt(seleccion?.idClaseObjetivo),
                 }))
                 .filter((seleccion) =>
                     seleccion.idClaseAplicada > 0
@@ -8513,7 +8513,7 @@ export class NuevoPersonajeService {
     ): Record<CaracteristicaKey, number> | null {
         if (borrador.estadoFlujoPersistible?.caracteristicasGeneradas !== true)
             return null;
-        if (Math.max(0, Math.trunc(toNumber(borrador.aumentosProgresionConcedidos))) > 0)
+        if (Math.max(0, toInt(borrador.aumentosProgresionConcedidos)) > 0)
             return null;
 
         const asignaciones = borrador.estadoFlujoPersistible?.generador?.asignaciones;
@@ -8613,7 +8613,7 @@ export class NuevoPersonajeService {
     }
 
     private estaBorradorLocalCaducado(borrador: NuevoPersonajeDraftV1): boolean {
-        const updatedAt = Math.trunc(toNumber((borrador as any)?.updatedAt));
+        const updatedAt = toInt((borrador as any)?.updatedAt);
         if (updatedAt <= 0)
             return true;
 
@@ -9270,7 +9270,7 @@ export class NuevoPersonajeService {
     calcularVidaFinalAleatoria(): ResultadoCalculoVidaFinal {
         const raza = this.razaSeleccionada;
         const plantillas = this.estadoFlujo.plantillas.seleccionadas ?? [];
-        const dgsRaciales = Math.max(0, Math.trunc(toNumber(raza?.Dgs_adicionales?.Cantidad)));
+        const dgsRaciales = Math.max(0, toInt(raza?.Dgs_adicionales?.Cantidad));
         const bonoDotes = this.resolverBonosPgsDesdeDotes();
         const reglaConstitucion = this.resolverModConstitucionParaVida();
 
@@ -9291,9 +9291,9 @@ export class NuevoPersonajeService {
 
         plantillas.forEach((plantilla) => {
             const dadoDirecto = this.resolverDadoDesdePlantilla(plantilla);
-            const pasoDado = Math.trunc(toNumber(plantilla?.Modificacion_dg?.Id_paso_modificacion));
+            const pasoDado = toInt(plantilla?.Modificacion_dg?.Id_paso_modificacion);
             const actualizaDg = toBoolean(plantilla?.Actualiza_dg);
-            const multiplicadorLic = Math.max(0, Math.trunc(toNumber(plantilla?.Licantronia_dg?.Multiplicador)));
+            const multiplicadorLic = Math.max(0, toInt(plantilla?.Licantronia_dg?.Multiplicador));
             const sumaLic = toNumber(plantilla?.Licantronia_dg?.Suma);
 
             if (dadoDirecto > 0 && dadoDirecto > dadoRacial) {
@@ -9322,7 +9322,7 @@ export class NuevoPersonajeService {
 
         let nivelesClase = 0;
         (this.personajeCreacion.desgloseClases ?? []).forEach((claseDesglose) => {
-            const nivel = Math.max(0, Math.trunc(toNumber(claseDesglose?.Nivel)));
+            const nivel = Math.max(0, toInt(claseDesglose?.Nivel));
             if (nivel < 1)
                 return;
 
@@ -9347,7 +9347,7 @@ export class NuevoPersonajeService {
         });
 
         plantillas.forEach((plantilla) => {
-            const cantidadDgLic = Math.max(0, Math.trunc(toNumber(plantilla?.Licantronia_dg?.Multiplicador)));
+            const cantidadDgLic = Math.max(0, toInt(plantilla?.Licantronia_dg?.Multiplicador));
             const sumaDgLic = toNumber(plantilla?.Licantronia_dg?.Suma);
             const dadoLic = this.resolverCarasDadoLicantronia(plantilla, dadoRacialCalculado);
             const dadoLicCalculado = Math.max(1, Math.trunc(dadoLic));
@@ -9398,7 +9398,7 @@ export class NuevoPersonajeService {
         if (dadoRaza > 0)
             return dadoRaza;
 
-        const dadoPreview = Math.trunc(toNumber(this.personajeCreacion?.Dados_golpe));
+        const dadoPreview = toInt(this.personajeCreacion?.Dados_golpe);
         if (dadoPreview > 0)
             return dadoPreview;
 
@@ -9416,7 +9416,7 @@ export class NuevoPersonajeService {
         const dadoClase = this.resolverCarasDadoClase(clase);
         if (dadoClase > 0)
             return dadoClase;
-        return Math.max(1, Math.trunc(toNumber(fallback)));
+        return Math.max(1, toInt(fallback));
     }
 
     private resolverCarasDadoClase(clase: Clase | null): number {
@@ -9427,7 +9427,7 @@ export class NuevoPersonajeService {
         if (porNombre > 0)
             return porNombre;
 
-        const idTipo = Math.trunc(toNumber(clase?.Tipo_dado?.Id));
+        const idTipo = toInt(clase?.Tipo_dado?.Id);
         if (idTipo > 0) {
             const idx = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idTipo - 1));
             return DADOS_PROGRESION[idx];
@@ -9441,7 +9441,7 @@ export class NuevoPersonajeService {
         if (porNombre > 0)
             return porNombre;
 
-        const idDado = Math.trunc(toNumber(plantilla?.Licantronia_dg?.Id_dado));
+        const idDado = toInt(plantilla?.Licantronia_dg?.Id_dado);
         if (idDado > 0) {
             const idx = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idDado - 1));
             return DADOS_PROGRESION[idx];
@@ -9451,14 +9451,14 @@ export class NuevoPersonajeService {
         if (porPlantilla > 0)
             return porPlantilla;
 
-        return Math.max(1, Math.trunc(toNumber(fallback)));
+        return Math.max(1, toInt(fallback));
     }
 
     private resolverCarasDadoDesdeTexto(valor: string): number {
         const match = `${valor ?? ''}`.match(/d\s*(\d+)/i);
         if (!match || !match[1])
             return 0;
-        const caras = Math.trunc(toNumber(match[1]));
+        const caras = toInt(match[1]);
         if (caras <= 0)
             return 0;
         return caras;
@@ -9568,7 +9568,7 @@ export class NuevoPersonajeService {
     private crearPendienteAumento(valor: number, origen: string, descripcion: string): AumentoCaracteristicaPendiente {
         return {
             id: this.secuenciaAumentoPendiente++,
-            valor: Math.max(1, Math.trunc(toNumber(valor))),
+            valor: Math.max(1, toInt(valor)),
             origen: `${origen ?? ''}`.trim(),
             descripcion: `${descripcion ?? ''}`.trim(),
         };
@@ -9586,7 +9586,7 @@ export class NuevoPersonajeService {
         ];
 
         for (const candidato of candidatos) {
-            const valor = Math.trunc(toNumber(candidato));
+            const valor = toInt(candidato);
             if (valor > 0)
                 return valor;
         }

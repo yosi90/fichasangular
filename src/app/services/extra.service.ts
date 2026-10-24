@@ -5,7 +5,7 @@ import { Observable, throwError } from "rxjs";
 import { environment } from "src/environments/environment";
 import { ExtraDetalle } from "../interfaces/extra";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 export function normalizeExtra(raw: any): ExtraDetalle {
@@ -35,7 +35,7 @@ export class ExtraService {
     }
 
     getExtra(id: number): Observable<ExtraDetalle> {
-        const idNormalizado = Math.trunc(toNumber(id));
+        const idNormalizado = toInt(id);
         if (idNormalizado <= 0)
             return throwError(() => new Error("Id de extra invalido"));
 

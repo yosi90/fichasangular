@@ -29,7 +29,7 @@ import { normalizarProgresionLanzadorPersonaje } from './utils/nivel-lanzador-pe
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
 import { calcularOroPorNep } from './utils/oro-inicial';
@@ -58,7 +58,7 @@ export class PersonajeService {
     ) { }
 
     async getDetallesPersonaje(id: number): Promise<Observable<Personaje>> {
-        const personajeId = Math.trunc(toNumber(id));
+        const personajeId = toInt(id);
         if (personajeId <= 0)
             throw new Error('Id de personaje no válido');
 
@@ -85,7 +85,7 @@ export class PersonajeService {
         idPersonaje: number,
         visible: boolean,
     ): Promise<PersonajeVisibilityUpdateResponse> {
-        const id = Math.trunc(toNumber(idPersonaje));
+        const id = toInt(idPersonaje);
         if (id <= 0)
             throw new Error('Id de personaje no válido');
 
@@ -104,7 +104,7 @@ export class PersonajeService {
 
         return {
             ...response,
-            idPersonaje: Math.trunc(toNumber(response?.idPersonaje)),
+            idPersonaje: toInt(response?.idPersonaje),
             visible_otros_usuarios: !!visible,
         };
     }
@@ -113,7 +113,7 @@ export class PersonajeService {
         idPersonaje: number,
         archivado: boolean,
     ): Promise<PersonajeArchiveUpdateResponse> {
-        const id = Math.trunc(toNumber(idPersonaje));
+        const id = toInt(idPersonaje);
         if (id <= 0)
             throw new Error('Id de personaje no válido');
 
@@ -133,7 +133,7 @@ export class PersonajeService {
 
         return {
             ...response,
-            idPersonaje: Math.trunc(toNumber(response?.idPersonaje)),
+            idPersonaje: toInt(response?.idPersonaje),
             archivado: !!archivado,
         };
     }
@@ -145,16 +145,16 @@ export class PersonajeService {
         progresionLanzador?: PersonajeProgresionLanzadorDto | null
     ): PersonajeCreateRequestDto {
         const nombre = `${personaje?.Nombre ?? ''}`.trim();
-        const idRaza = Math.trunc(toNumber(personaje?.Raza?.Id));
-        const idTipoCriatura = Math.trunc(toNumber(personaje?.Tipo_criatura?.Id));
-        const idCampana = Math.trunc(toNumber(contextoIds?.idCampana));
-        const idTrama = Math.trunc(toNumber(contextoIds?.idTrama));
-        const idSubtrama = Math.trunc(toNumber(contextoIds?.idSubtrama));
+        const idRaza = toInt(personaje?.Raza?.Id);
+        const idTipoCriatura = toInt(personaje?.Tipo_criatura?.Id);
+        const idCampana = toInt(contextoIds?.idCampana);
+        const idTrama = toInt(contextoIds?.idTrama);
+        const idSubtrama = toInt(contextoIds?.idSubtrama);
         const esSinCampana = normalizarTexto(personaje?.Campana, true) === 'sin campana';
         const tieneCampana = !esSinCampana && idCampana > 0;
         const tieneHistoriaCompletaCampana = tieneCampana && idTrama > 0 && idSubtrama > 0;
         const tieneClaseConNivel = (personaje?.desgloseClases ?? [])
-            .some((entrada) => Math.trunc(toNumber(entrada?.Nivel)) > 0);
+            .some((entrada) => toInt(entrada?.Nivel) > 0);
         const mapasCatalogo = {
             clases: this.construirMapaNombreId(contextoIds?.catalogos?.clases),
             dominios: this.construirMapaNombreId(contextoIds?.catalogos?.dominios),
@@ -178,21 +178,21 @@ export class PersonajeService {
         if ((idTrama > 0 && idSubtrama <= 0) || (idTrama <= 0 && idSubtrama > 0))
             throw new Error('No se pudo resolver una historia de campaña completa: trama y subtrama deben viajar juntas.');
 
-        const idAlineamiento = Math.trunc(toNumber(contextoIds?.idAlineamiento))
+        const idAlineamiento = toInt(contextoIds?.idAlineamiento)
             || this.resolverIdAlineamientoDesdeNombre(personaje?.Alineamiento);
-        const idGenero = Math.trunc(toNumber(contextoIds?.idGenero))
+        const idGenero = toInt(contextoIds?.idGenero)
             || this.resolverIdGeneroDesdeNombre(personaje?.Genero);
-        const idCarga = Math.trunc(toNumber(contextoIds?.idCarga))
+        const idCarga = toInt(contextoIds?.idCarga)
             || this.resolverIdCargaDesdeFuerza(personaje?.Fuerza);
-        const idDeidadFromContexto = Math.trunc(toNumber(contextoIds?.idDeidad));
+        const idDeidadFromContexto = toInt(contextoIds?.idDeidad);
         const idDeidad = idDeidadFromContexto > 0 ? idDeidadFromContexto : 0;
-        const idManiobrabilidad = Math.trunc(toNumber(contextoIds?.idManiobrabilidad))
-            || Math.trunc(toNumber((personaje as any)?.Raza?.Maniobrabilidad?.Id));
-        const idEspArcana = Math.trunc(toNumber(contextoIds?.idEspArcana))
+        const idManiobrabilidad = toInt(contextoIds?.idManiobrabilidad)
+            || toInt((personaje as any)?.Raza?.Maniobrabilidad?.Id);
+        const idEspArcana = toInt(contextoIds?.idEspArcana)
             || this.resolverIdPorNombre((personaje?.Escuela_especialista as any)?.Nombre, mapasCatalogo.escuelas);
-        const idEspPsionica = Math.trunc(toNumber(contextoIds?.idEspPsionica))
+        const idEspPsionica = toInt(contextoIds?.idEspPsionica)
             || this.resolverIdPorNombre((personaje?.Disciplina_especialista as any)?.Nombre, mapasCatalogo.disciplinas);
-        const idDisProhibida = Math.trunc(toNumber(contextoIds?.idDisProhibida))
+        const idDisProhibida = toInt(contextoIds?.idDisProhibida)
             || this.resolverIdPorNombre(personaje?.Disciplina_prohibida, mapasCatalogo.disciplinas);
         const idRegion = this.resolverIdRegionParaPayload(personaje, contextoIds, mapasCatalogo.regiones);
         const deidadSeleccionada = normalizarTexto(personaje?.Deidad, true);
@@ -210,8 +210,8 @@ export class PersonajeService {
             ...(personaje?.Caracteristicas_perdidas ?? {}),
             Constitucion: !!(personaje?.Caracteristicas_perdidas?.Constitucion || personaje?.Constitucion_perdida),
         };
-        const idTamano = Math.trunc(toNumber(personaje?.Raza?.Tamano?.Id));
-        const idRazaBase = Math.trunc(toNumber((personaje as any)?.RazaBase?.Id));
+        const idTamano = toInt(personaje?.Raza?.Tamano?.Id);
+        const idRazaBase = toInt((personaje as any)?.RazaBase?.Id);
         const modificadores = this.construirPayloadModificadores(personaje);
         const colecciones = this.construirPayloadColecciones(personaje, mapasCatalogo);
         const progresionLanzadorNormalizada = this.normalizarProgresionLanzadorParaPayload(progresionLanzador);
@@ -224,26 +224,26 @@ export class PersonajeService {
             idRegion,
             descripcionPersonalidad: `${personaje?.Personalidad ?? ''}`.trim(),
             descripcionHistoria: `${personaje?.Contexto ?? ''}`.trim(),
-            armaduraNatural: Math.trunc(toNumber(personaje?.Armadura_natural)),
-            caDesvio: Math.trunc(toNumber(personaje?.Ca_desvio)),
+            armaduraNatural: toInt(personaje?.Armadura_natural),
+            caDesvio: toInt(personaje?.Ca_desvio),
             altura: toNumber(personaje?.Altura),
-            edad: Math.trunc(toNumber(personaje?.Edad)),
+            edad: toInt(personaje?.Edad),
             peso: toNumber(personaje?.Peso),
-            ajuste: Math.trunc(toNumber((personaje as any)?.Raza?.Ajuste_nivel)),
+            ajuste: toInt((personaje as any)?.Raza?.Ajuste_nivel),
             deidad: idDeidad > 0 ? idDeidad : 0,
             idAlineamiento,
             idGenero,
             idCarga,
-            puntosGolpe: Math.max(1, Math.trunc(toNumber(personaje?.Vida))),
-            pgsLic: Math.trunc(toNumber(personaje?.Pgs_lic)),
-            correr: Math.trunc(toNumber(personaje?.Correr)),
-            nadar: Math.trunc(toNumber(personaje?.Nadar)),
-            volar: Math.trunc(toNumber(personaje?.Volar)),
+            puntosGolpe: Math.max(1, toInt(personaje?.Vida)),
+            pgsLic: toInt(personaje?.Pgs_lic),
+            correr: toInt(personaje?.Correr),
+            nadar: toInt(personaje?.Nadar),
+            volar: toInt(personaje?.Volar),
             idManiobrabilidad: idManiobrabilidad > 0 ? idManiobrabilidad : 0,
-            trepar: Math.trunc(toNumber(personaje?.Trepar)),
-            escalar: Math.trunc(toNumber(personaje?.Escalar)),
-            espacio: Math.trunc(toNumber((personaje as any)?.Espacio)),
-            alcance: Math.trunc(toNumber((personaje as any)?.Alcance)),
+            trepar: toInt(personaje?.Trepar),
+            escalar: toInt(personaje?.Escalar),
+            espacio: toInt((personaje as any)?.Espacio),
+            alcance: toInt((personaje as any)?.Alcance),
             idEspArcana: idEspArcana > 0 ? idEspArcana : 0,
             idEspPsionica: idEspPsionica > 0 ? idEspPsionica : 0,
             idDisProhibida: idDisProhibida > 0 ? idDisProhibida : 0,
@@ -264,32 +264,32 @@ export class PersonajeService {
             personaje: personajePayload,
             caracteristicas: {
                 fuerza: {
-                    valor: Math.trunc(toNumber(personaje?.Fuerza)),
+                    valor: toInt(personaje?.Fuerza),
                     minimo: 0,
                     perdido: !!caracteristicasPerdidas.Fuerza,
                 },
                 destreza: {
-                    valor: Math.trunc(toNumber(personaje?.Destreza)),
+                    valor: toInt(personaje?.Destreza),
                     minimo: 0,
                     perdido: !!caracteristicasPerdidas.Destreza,
                 },
                 constitucion: {
-                    valor: Math.trunc(toNumber(personaje?.Constitucion)),
+                    valor: toInt(personaje?.Constitucion),
                     minimo: 0,
                     perdido: !!caracteristicasPerdidas.Constitucion,
                 },
                 inteligencia: {
-                    valor: Math.trunc(toNumber(personaje?.Inteligencia)),
+                    valor: toInt(personaje?.Inteligencia),
                     minimo: 0,
                     perdido: !!caracteristicasPerdidas.Inteligencia,
                 },
                 sabiduria: {
-                    valor: Math.trunc(toNumber(personaje?.Sabiduria)),
+                    valor: toInt(personaje?.Sabiduria),
                     minimo: 0,
                     perdido: !!caracteristicasPerdidas.Sabiduria,
                 },
                 carisma: {
-                    valor: Math.trunc(toNumber(personaje?.Carisma)),
+                    valor: toInt(personaje?.Carisma),
                     minimo: 0,
                     perdido: !!caracteristicasPerdidas.Carisma,
                 },
@@ -320,10 +320,10 @@ export class PersonajeService {
     ): PersonajeProgresionLanzadorDto | null {
         const selecciones = toArray<any>(progresionLanzador?.selecciones)
             .map((seleccion) => ({
-                idClaseAplicada: Math.trunc(toNumber(seleccion?.idClaseAplicada)),
-                nivelClaseAplicado: Math.trunc(toNumber(seleccion?.nivelClaseAplicado)),
-                indiceAumento: Math.trunc(toNumber(seleccion?.indiceAumento)),
-                idClaseObjetivo: Math.trunc(toNumber(seleccion?.idClaseObjetivo)),
+                idClaseAplicada: toInt(seleccion?.idClaseAplicada),
+                nivelClaseAplicado: toInt(seleccion?.nivelClaseAplicado),
+                indiceAumento: toInt(seleccion?.indiceAumento),
+                idClaseObjetivo: toInt(seleccion?.idClaseObjetivo),
             }))
             .filter((seleccion) =>
                 seleccion.idClaseAplicada > 0
@@ -341,12 +341,12 @@ export class PersonajeService {
         const iniciativa: { valor: number; origen?: string; }[] = [];
         const presa: { valor: number; origen?: string; }[] = [];
 
-        const modCaVarios = Math.trunc(toNumber(personaje?.Ca_varios));
+        const modCaVarios = toInt(personaje?.Ca_varios);
         if (modCaVarios !== 0)
             ca.push({ valor: modCaVarios, origen: 'Varios' });
 
         toArray<any>(personaje?.Iniciativa_varios).forEach((entrada) => {
-            const valor = Math.trunc(toNumber(entrada?.Valor ?? entrada?.valor));
+            const valor = toInt(entrada?.Valor ?? entrada?.valor);
             if (valor === 0)
                 return;
             iniciativa.push({
@@ -356,7 +356,7 @@ export class PersonajeService {
         });
 
         toArray<any>(personaje?.Presa_varios).forEach((entrada) => {
-            const valor = Math.trunc(toNumber(entrada?.Valor ?? entrada?.valor));
+            const valor = toInt(entrada?.Valor ?? entrada?.valor);
             if (valor === 0)
                 return;
             presa.push({
@@ -416,9 +416,9 @@ export class PersonajeService {
         const clases = toArray<any>(personaje?.desgloseClases)
             .map((entrada) => {
                 const nombre = `${entrada?.Nombre ?? ''}`.trim();
-                const idDirecto = Math.trunc(toNumber(entrada?.Id ?? entrada?.idClase ?? entrada?.id_clase));
+                const idDirecto = toInt(entrada?.Id ?? entrada?.idClase ?? entrada?.id_clase);
                 const idClase = idDirecto > 0 ? idDirecto : this.resolverIdPorNombre(nombre, mapasCatalogo.clases);
-                const nivel = Math.trunc(toNumber(entrada?.Nivel ?? entrada?.nivel));
+                const nivel = toInt(entrada?.Nivel ?? entrada?.nivel);
                 if (idClase <= 0 || nivel <= 0)
                     return null;
                 return { idClase, nivel };
@@ -429,7 +429,7 @@ export class PersonajeService {
 
         const plantillas = toArray<any>(personaje?.Plantillas)
             .map((entrada) => {
-                const idPlantilla = Math.trunc(toNumber(entrada?.Id ?? entrada?.id ?? entrada?.idPlantilla));
+                const idPlantilla = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idPlantilla);
                 if (idPlantilla <= 0)
                     return null;
                 return { idPlantilla };
@@ -440,7 +440,7 @@ export class PersonajeService {
 
         const subtipos = toArray<any>(personaje?.Subtipos)
             .map((entrada) => {
-                const idSubtipo = Math.trunc(toNumber(entrada?.Id ?? entrada?.id ?? entrada?.idSubtipo));
+                const idSubtipo = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idSubtipo);
                 if (idSubtipo <= 0)
                     return null;
                 return { idSubtipo };
@@ -482,7 +482,7 @@ export class PersonajeService {
             colecciones.competencia_grupo_armadura = competenciasGrupoArmadura;
 
         const dgsExtra: Array<{ valor: number; origen?: string; teriantropia?: boolean; }> = [];
-        const dgsRaza = Math.trunc(toNumber((personaje as any)?.Raza?.Dgs_adicionales?.Cantidad));
+        const dgsRaza = toInt((personaje as any)?.Raza?.Dgs_adicionales?.Cantidad);
         if (dgsRaza > 0) {
             dgsExtra.push({
                 valor: dgsRaza,
@@ -495,7 +495,7 @@ export class PersonajeService {
 
         const escuelasProhibidas = toArray<any>((personaje as any)?.Escuelas_prohibidas)
             .map((entrada) => {
-                const idDirecto = Math.trunc(toNumber(entrada?.Id ?? entrada?.id ?? entrada?.idEscuela ?? entrada?.id_escuela));
+                const idDirecto = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idEscuela ?? entrada?.id_escuela);
                 const nombre = typeof entrada === 'string'
                     ? entrada
                     : `${entrada?.Nombre ?? entrada?.nombre ?? ''}`;
@@ -520,12 +520,12 @@ export class PersonajeService {
 
         const enemigosPredilectos = toArray<any>((personaje as any)?.enemigosPredilectos)
             .map((entrada) => {
-                const idEnemigo = Math.trunc(toNumber(entrada?.id ?? entrada?.Id ?? entrada?.idEnemigo ?? entrada?.id_enemigo));
+                const idEnemigo = toInt(entrada?.id ?? entrada?.Id ?? entrada?.idEnemigo ?? entrada?.id_enemigo);
                 if (idEnemigo <= 0)
                     return null;
                 return {
                     idEnemigo,
-                    cantidad: Math.max(1, Math.trunc(toNumber(entrada?.cantidad ?? entrada?.Cantidad ?? entrada?.veces))),
+                    cantidad: Math.max(1, toInt(entrada?.cantidad ?? entrada?.Cantidad ?? entrada?.veces)),
                 };
             })
             .filter((entrada): entrada is { idEnemigo: number; cantidad: number; } => !!entrada);
@@ -550,7 +550,7 @@ export class PersonajeService {
         }> = [];
 
         toArray<any>((personaje as any)?.Habilidades).forEach((entrada) => {
-            const idHabilidad = Math.trunc(toNumber(entrada?.Id ?? entrada?.id ?? entrada?.Id_habilidad ?? entrada?.id_habilidad));
+            const idHabilidad = toInt(entrada?.Id ?? entrada?.id ?? entrada?.Id_habilidad ?? entrada?.id_habilidad);
             if (idHabilidad <= 0)
                 return;
             const idExtra = this.resolverIdExtraHabilidad(entrada);
@@ -558,8 +558,8 @@ export class PersonajeService {
                 idHabilidad,
                 idExtra: idExtra > 0 ? idExtra : 0,
                 clasea: !!entrada?.Clasea,
-                rangos: Math.max(0, Math.trunc(toNumber(entrada?.Rangos))),
-                rangosVarios: Math.max(0, Math.trunc(toNumber(entrada?.Rangos_varios))),
+                rangos: Math.max(0, toInt(entrada?.Rangos)),
+                rangosVarios: Math.max(0, toInt(entrada?.Rangos_varios)),
                 modVarios: `${entrada?.Varios ?? ''}`.trim(),
             };
             if (entrada?.Custom)
@@ -577,7 +577,7 @@ export class PersonajeService {
 
         const ventajas = toArray<any>(personaje?.Ventajas)
             .map((entrada) => {
-                const idDirecto = Math.trunc(toNumber(entrada?.Id ?? entrada?.id ?? entrada?.idVentaja ?? entrada?.id_ventaja));
+                const idDirecto = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idVentaja ?? entrada?.id_ventaja);
                 const nombre = typeof entrada === 'string'
                     ? entrada
                     : `${entrada?.Nombre ?? entrada?.nombre ?? ''}`;
@@ -592,7 +592,7 @@ export class PersonajeService {
 
         const idiomas = toArray<any>(personaje?.Idiomas)
             .map((entrada) => {
-                const idDirecto = Math.trunc(toNumber(entrada?.Id ?? entrada?.id ?? entrada?.idIdioma ?? entrada?.id_idioma));
+                const idDirecto = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idIdioma ?? entrada?.id_idioma);
                 const nombre = `${entrada?.Nombre ?? entrada?.nombre ?? ''}`.trim();
                 const idIdioma = idDirecto > 0 ? idDirecto : this.resolverIdPorNombre(nombre, mapasCatalogo.idiomas);
                 if (idIdioma <= 0)
@@ -609,10 +609,10 @@ export class PersonajeService {
 
         const dotes = toDoteContextualArray((personaje as any)?.DotesContextuales ?? (personaje as any)?.Dotes ?? [])
             .map((entrada) => {
-                const idDote = Math.trunc(toNumber(entrada?.Dote?.Id ?? (entrada as any)?.Dote?.id));
+                const idDote = toInt(entrada?.Dote?.Id ?? (entrada as any)?.Dote?.id);
                 if (idDote <= 0)
                     return null;
-                const idExtra = Math.max(0, Math.trunc(toNumber((entrada as any)?.Contexto?.Id_extra)));
+                const idExtra = Math.max(0, toInt((entrada as any)?.Contexto?.Id_extra));
                 const origen = `${(entrada as any)?.Contexto?.Origen ?? (entrada as any)?.Contexto?.Entidad ?? 'API'}`.trim() || 'API';
                 return {
                     idDote,
@@ -626,7 +626,7 @@ export class PersonajeService {
 
         const dominios = toArray<any>(personaje?.Dominios)
             .map((entrada) => {
-                const idDirecto = Math.trunc(toNumber(entrada?.Id ?? entrada?.id ?? entrada?.idDominio ?? entrada?.id_dominio));
+                const idDirecto = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idDominio ?? entrada?.id_dominio);
                 const nombre = `${entrada?.Nombre ?? entrada?.nombre ?? ''}`.trim();
                 const idDominio = idDirecto > 0 ? idDirecto : this.resolverIdPorNombre(nombre, mapasCatalogo.dominios);
                 if (idDominio <= 0)
@@ -643,7 +643,7 @@ export class PersonajeService {
 
         const conjurosConocidos = toArray<any>(personaje?.Conjuros)
             .map((entrada) => {
-                const idConjuro = Math.trunc(toNumber(entrada?.Id ?? entrada?.id ?? entrada?.idConjuro ?? entrada?.id_conjuro));
+                const idConjuro = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idConjuro ?? entrada?.id_conjuro);
                 if (idConjuro <= 0)
                     return null;
                 return { idConjuro };
@@ -654,14 +654,14 @@ export class PersonajeService {
 
         const sortilegas = toArray<any>(personaje?.Sortilegas)
             .map((entrada) => {
-                const idConjuro = Math.trunc(toNumber(entrada?.Conjuro?.Id ?? entrada?.Id ?? entrada?.idConjuro ?? entrada?.id_conjuro));
+                const idConjuro = toInt(entrada?.Conjuro?.Id ?? entrada?.Id ?? entrada?.idConjuro ?? entrada?.id_conjuro);
                 if (idConjuro <= 0)
                     return null;
                 return {
                     idConjuro,
                     nivelLanz: `${entrada?.Nivel_lanzador ?? entrada?.nivel_lanz ?? '0'}`.trim() || '0',
                     usos: `${entrada?.Usos_diarios ?? entrada?.usos ?? '0'}`.trim() || '0',
-                    dgs: Math.max(0, Math.trunc(toNumber(entrada?.Dgs_necesarios ?? entrada?.dgs))),
+                    dgs: Math.max(0, toInt(entrada?.Dgs_necesarios ?? entrada?.dgs)),
                     origen: `${entrada?.Origen ?? entrada?.origen ?? 'API'}`.trim() || 'API',
                 };
             })
@@ -671,7 +671,7 @@ export class PersonajeService {
 
         const raciales = toArray<any>(personaje?.Raciales)
             .map((entrada) => {
-                const idRacial = Math.trunc(toNumber(entrada?.Id ?? entrada?.id ?? entrada?.idRacial ?? entrada?.id_racial));
+                const idRacial = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idRacial ?? entrada?.id_racial);
                 if (idRacial <= 0)
                     return null;
                 return {
@@ -739,7 +739,7 @@ export class PersonajeService {
     private mapearModsSalvacion(values: any): { valor: number; origen?: string; }[] {
         return toArray<any>(values)
             .map((entrada) => {
-                const valor = Math.trunc(toNumber(entrada?.valor ?? entrada?.Valor));
+                const valor = toInt(entrada?.valor ?? entrada?.Valor);
                 if (valor === 0)
                     return null;
                 return {
@@ -751,7 +751,7 @@ export class PersonajeService {
     }
 
     private resolverIdExtraHabilidad(entrada: any): number {
-        const idExtraDirecto = Math.trunc(toNumber(entrada?.Id_extra ?? entrada?.id_extra ?? entrada?.idExtra));
+        const idExtraDirecto = toInt(entrada?.Id_extra ?? entrada?.id_extra ?? entrada?.idExtra);
         if (idExtraDirecto > 0)
             return idExtraDirecto;
         const extraSeleccionado = `${entrada?.Extra ?? entrada?.extra ?? ''}`.trim();
@@ -760,14 +760,14 @@ export class PersonajeService {
         const extraNorm = normalizarTexto(extraSeleccionado, true);
         const match = toArray<any>(entrada?.Extras)
             .find((item) => normalizarTexto(`${item?.Extra ?? item?.extra ?? item?.Nombre ?? item?.nombre ?? ''}`, true) === extraNorm);
-        const idExtra = Math.trunc(toNumber(match?.Id_extra ?? match?.id_extra ?? match?.idExtra ?? match?.Id));
+        const idExtra = toInt(match?.Id_extra ?? match?.id_extra ?? match?.idExtra ?? match?.Id);
         return idExtra > 0 ? idExtra : 0;
     }
 
     private construirMapaNombreId(items?: CatalogoNombreIdDto[]): Map<string, number> {
         const mapa = new Map<string, number>();
         toArray<CatalogoNombreIdDto>(items).forEach((item) => {
-            const id = Math.trunc(toNumber(item?.id));
+            const id = toInt(item?.id);
             const key = normalizarTexto(item?.nombre, true);
             if (id > 0 && key.length > 0 && !mapa.has(key))
                 mapa.set(key, id);
@@ -779,7 +779,7 @@ export class PersonajeService {
         const key = normalizarTexto(nombre, true);
         if (key.length < 1)
             return 0;
-        return Math.trunc(toNumber(mapa.get(key)));
+        return toInt(mapa.get(key));
     }
 
     private toNonNegativeIntOrNull(value: any): number | null {
@@ -812,7 +812,7 @@ export class PersonajeService {
     }
 
     private resolverIdCargaDesdeFuerza(fuerza: any): number {
-        const fuerzaValor = Math.trunc(toNumber(fuerza));
+        const fuerzaValor = toInt(fuerza);
         if (fuerzaValor >= 10)
             return Math.min(fuerzaValor - 9, 20);
         return 1;
@@ -827,7 +827,7 @@ export class PersonajeService {
                     { headers: new HttpHeaders(await cabeceraApiConFirebase(this.auth)) }
                 )
             );
-            const idPersonaje = Math.trunc(toNumber(response?.idPersonaje));
+            const idPersonaje = toInt(response?.idPersonaje);
             const ownerUserId = `${response?.ownerUserId ?? ''}`.trim();
             if (idPersonaje <= 0)
                 throw new Error('La API no devolvió un id de personaje válido.');
@@ -845,7 +845,7 @@ export class PersonajeService {
     }
 
     public normalizarPersonajeParaPersistenciaFinal(personaje: Personaje, idPersonaje: number): Personaje {
-        const id = Math.trunc(toNumber(idPersonaje));
+        const id = toInt(idPersonaje);
         const clonado = JSON.parse(JSON.stringify(personaje ?? {})) as Personaje;
         const dotesContextuales = toDoteContextualArray(clonado?.DotesContextuales ?? clonado?.Dotes ?? []);
 
@@ -863,7 +863,7 @@ export class PersonajeService {
             ? clonado.desgloseClases
                 .map((entrada) => ({
                     Nombre: `${entrada?.Nombre ?? ''}`.trim(),
-                    Nivel: Math.max(0, Math.trunc(toNumber(entrada?.Nivel))),
+                    Nivel: Math.max(0, toInt(entrada?.Nivel)),
                 }))
                 .filter((entrada) => entrada.Nombre.length > 0 && entrada.Nivel > 0)
             : [];
@@ -1154,7 +1154,7 @@ export class PersonajeService {
         const ataqueBase = `${element?.a ?? element?.Ataque_base ?? 0}`;
         const presaBase = +(ataqueBase.includes('/') ? ataqueBase.substring(0, ataqueBase.indexOf('/')) : ataqueBase);
         const razaBase = element?.RazaBase ?? element?.rb ?? element?.raza_base ?? null;
-        const idRegion = Math.max(0, Math.trunc(toNumber(
+        const idRegion = Math.max(0, toInt(
             element?.id_region
             ?? element?.idRegion
             ?? element?.Id_region
@@ -1162,14 +1162,14 @@ export class PersonajeService {
             ?? element?.Region?.id
             ?? element?.region?.Id
             ?? element?.region?.id
-        )));
+        ));
         const nombreRegion = `${element?.Region?.Nombre
             ?? element?.Region?.nombre
             ?? element?.region?.Nombre
             ?? element?.region?.nombre
             ?? ''}`.trim();
 
-        const idPersonaje = Math.trunc(toNumber(element?.i ?? element?.Id ?? element?.Id_personaje));
+        const idPersonaje = toInt(element?.i ?? element?.Id ?? element?.Id_personaje);
         const archivado = this.resolveArchivadoDetalle(element, idPersonaje);
 
         return {
@@ -1290,7 +1290,7 @@ export class PersonajeService {
     }
 
     private getArchivadoOverride(idPersonaje: number): boolean | null {
-        const id = Math.trunc(toNumber(idPersonaje));
+        const id = toInt(idPersonaje);
         if (id <= 0)
             return null;
 
@@ -1310,7 +1310,7 @@ export class PersonajeService {
     }
 
     private setArchivadoOverride(idPersonaje: number, archivado: boolean): void {
-        const id = Math.trunc(toNumber(idPersonaje));
+        const id = toInt(idPersonaje);
         if (id <= 0)
             return;
 
@@ -1463,7 +1463,7 @@ function mapCompetenciasPayload<T>(raw: any, idKeys: string[], build: (id: numbe
 
 function resolveCompetenciaId(item: any, idKeys: string[]): number {
     if (typeof item === 'number')
-        return Math.trunc(toNumber(item));
+        return toInt(item);
 
     if (typeof item === 'string') {
         const parsed = Math.trunc(Number(item));
@@ -1471,7 +1471,7 @@ function resolveCompetenciaId(item: any, idKeys: string[]): number {
     }
 
     for (const key of idKeys) {
-        const id = Math.trunc(toNumber(item?.[key]));
+        const id = toInt(item?.[key]);
         if (id > 0)
             return id;
     }

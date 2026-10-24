@@ -1,7 +1,7 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { FamiliarMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import {
     resolveEspecialId,
@@ -132,7 +132,7 @@ function claseOtorgaFuenteFamiliar(clase: Clase | null | undefined, nivelActual:
     if (!clase)
         return false;
 
-    const nivelMaximo = Math.max(0, Math.trunc(toNumber(nivelActual)));
+    const nivelMaximo = Math.max(0, toInt(nivelActual));
     if (nivelMaximo < 1)
         return false;
 
@@ -211,7 +211,7 @@ export function resolverEstadoCuposFamiliarEspecial47(
 
     const fuentesRaw: FamiliarFuenteClase[] = desglose.map((entrada) => {
         const nombreClase = `${entrada?.Nombre ?? ''}`.trim();
-        const nivelActual = Math.max(0, Math.trunc(toNumber(entrada?.Nivel)));
+        const nivelActual = Math.max(0, toInt(entrada?.Nivel));
         const clase = clases.find((item) =>
             normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombreClase)
         );
@@ -295,7 +295,7 @@ export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesIn
         );
         const nivelesClase = nivelesClaseFuente.filter((nivelClase) => toNumber(nivelClase?.Nivel) <= nivelLanzadorFamiliar);
         const nivelMinimoRequerido = nivelesClaseFuente.length > 0
-            ? Math.min(...nivelesClaseFuente.map((nivelClase) => Math.max(0, Math.trunc(toNumber(nivelClase?.Nivel)))))
+            ? Math.min(...nivelesClaseFuente.map((nivelClase) => Math.max(0, toInt(nivelClase?.Nivel))))
             : null;
         if (nivelesClaseFuente.length < 1) {
             razones.push('Esta criatura no tiene progresión válida para tus clases con familiar.');

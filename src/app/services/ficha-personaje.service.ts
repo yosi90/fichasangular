@@ -4,7 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Personaje, PersonajeNivelLanzadorResumen, PersonajeTipoLanzamiento } from '../interfaces/personaje';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from '../interfaces/monstruo';
-import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 
 
@@ -201,9 +201,9 @@ export class FichaPersonajeService {
             racialesCont++;
         });
 
-        const experiencia = Math.max(0, Math.trunc(toNumber(pj?.Experiencia)));
+        const experiencia = Math.max(0, toInt(pj?.Experiencia));
         const ajusteNivel = this.getAjusteNivelParaFicha(pj);
-        const nep = Math.max(0, Math.trunc(toNumber(pj?.NEP)));
+        const nep = Math.max(0, toInt(pj?.NEP));
         this.trySetText(form, 'experiencia', `${experiencia}`);
         this.trySetText(form, 'exp_sig_nivel', `${this.calcularExpSiguienteNivel(pj, ajusteNivel)}`);
         this.trySetText(form, 'ajuste_nivel', `${ajusteNivel}`);
@@ -664,7 +664,7 @@ export class FichaPersonajeService {
 
     private formatearNotasNivelesLanzador(pj: Personaje): string {
         const niveles = (pj?.Niveles_lanzador ?? [])
-            .filter((nivel) => Math.trunc(toNumber(nivel?.nivelLanzador)) > 0)
+            .filter((nivel) => toInt(nivel?.nivelLanzador) > 0)
             .sort((a, b) => `${a?.nombreClase ?? ''}`.localeCompare(`${b?.nombreClase ?? ''}`, 'es', { sensitivity: 'base' }));
         if (niveles.length < 1)
             return '';
@@ -676,9 +676,9 @@ export class FichaPersonajeService {
     private formatearLineaNivelLanzador(nivel: PersonajeNivelLanzadorResumen): string {
         const tipo = this.formatearTipoLanzamiento(nivel?.tipoLanzamiento);
         const tipoLabel = tipo.length > 0 ? ` (${tipo})` : '';
-        const nivelLanzador = Math.max(0, Math.trunc(toNumber(nivel?.nivelLanzador)));
-        const base = Math.max(0, Math.trunc(toNumber(nivel?.nivelLanzadorBase)));
-        const bonus = Math.max(0, Math.trunc(toNumber(nivel?.bonusNivelLanzador)));
+        const nivelLanzador = Math.max(0, toInt(nivel?.nivelLanzador));
+        const base = Math.max(0, toInt(nivel?.nivelLanzadorBase));
+        const bonus = Math.max(0, toInt(nivel?.bonusNivelLanzador));
         const desglose = bonus > 0 ? `, base ${base} + ${bonus}` : '';
         return ` - ${nivel?.nombreClase ?? 'Clase'}${tipoLabel}: ${nivelLanzador}${desglose}`;
     }
@@ -771,16 +771,16 @@ export class FichaPersonajeService {
 
     private calcularExpSiguienteNivel(pj: Personaje, ajusteNivel: number): number {
         let nivelClases = (pj?.desgloseClases ?? [])
-            .reduce((acum, clase) => acum + Math.max(0, Math.trunc(toNumber(clase?.Nivel))), 0);
+            .reduce((acum, clase) => acum + Math.max(0, toInt(clase?.Nivel)), 0);
         if (nivelClases <= 0) {
             const clasesTexto = `${pj?.Clases ?? ''}`;
             const coincidencias = (clasesTexto.match(/\((\d+)\)/g) ?? []) as string[];
             nivelClases = coincidencias.reduce((acum: number, bloque: string) => {
                 const limpio = bloque.replace(/[()]/g, '');
-                return acum + Math.max(0, Math.trunc(toNumber(limpio)));
+                return acum + Math.max(0, toInt(limpio));
             }, 0);
         }
-        const nivelObjetivo = Math.max(0, nivelClases + Math.max(0, Math.trunc(toNumber(ajusteNivel))));
+        const nivelObjetivo = Math.max(0, nivelClases + Math.max(0, toInt(ajusteNivel)));
         return experienciaParaNivel(nivelObjetivo + 1);
     }
 

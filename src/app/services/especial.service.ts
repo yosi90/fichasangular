@@ -18,7 +18,7 @@ import {
 } from "../interfaces/especial";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 
 function normalizeRefSimple(raw: any): EspecialRefSimple {
@@ -118,7 +118,7 @@ export class EspecialService {
     }
 
     getEspecialFresco(id: number): Observable<EspecialClaseDetalle> {
-        return this.http.get(`${environment.apiUrl}clases/habilidades/${Math.trunc(toNumber(id))}`)
+        return this.http.get(`${environment.apiUrl}clases/habilidades/${toInt(id)}`)
             .pipe(map((raw: any) => normalizeEspecial(raw)));
     }
 
@@ -159,7 +159,7 @@ export class EspecialService {
     public async actualizarEspecial(idEspecial: number, payload: EspecialClaseMutationRequest): Promise<EspecialClaseMutationResponse> {
         try {
             const headers = await cabeceraApiConFirebase(this.auth);
-            const id = Math.trunc(toNumber(idEspecial));
+            const id = toInt(idEspecial);
             const response = await firstValueFrom(
                 this.http.put<EspecialClaseMutationApiResponse>(`${environment.apiUrl}clases/habilidades/${id}`, payload, { headers })
             );
@@ -215,7 +215,7 @@ export class EspecialService {
         payload: EspecialClaseMutationRequest,
         fallbackMessage: string,
     ): EspecialClaseMutationResponse {
-        const idEspecial = Math.trunc(toNumber(response?.idEspecial ?? response?.id_especial ?? response?.especial?.Id));
+        const idEspecial = toInt(response?.idEspecial ?? response?.id_especial ?? response?.especial?.Id);
         if (!Number.isFinite(idEspecial) || idEspecial <= 0)
             throw new Error("La API no devolvió un idEspecial válido");
 

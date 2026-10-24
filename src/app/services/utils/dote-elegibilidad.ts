@@ -4,7 +4,7 @@ import {
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
 import { getAlineamientoBasicoIdPorNombre } from './alineamiento-contrato';
-import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
@@ -107,7 +107,7 @@ function pick(entry: Record<string, any>, keys: string[]): any {
 
 function parseOpcional(entry: Record<string, any>): number {
     const raw = pick(entry, ['Opcional', 'opcional', 'o', 'O']);
-    return Math.max(0, Math.trunc(toNumber(raw)));
+    return Math.max(0, toInt(raw));
 }
 
 function parseId(entry: Record<string, any>, keys: string[]): number {
@@ -132,7 +132,7 @@ function parseIdOpcional(entry: Record<string, any>, keys: string[]): number {
     const text = `${raw}`.trim();
     if (text.length < 1)
         return Number.NaN;
-    return Math.trunc(toNumber(raw));
+    return toInt(raw);
 }
 
 function parseText(entry: Record<string, any>, keys: string[]): string {
@@ -544,7 +544,7 @@ function buildEvaluacionDominio(entry: Record<string, any>, ctx: DoteEvaluacionC
 function buildEvaluacionDg(entry: Record<string, any>, ctx: DoteEvaluacionContexto): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
     const requerido = parseNumber(entry, ['Cantidad', 'cantidad', 'Valor', 'valor', 'c']);
-    const actual = Math.max(0, Math.trunc(toNumber(ctx.dgTotal)));
+    const actual = Math.max(0, toInt(ctx.dgTotal));
     const evaluable = Number.isFinite(requerido);
     return {
         grupoOpcional,
@@ -621,7 +621,7 @@ function buildEvaluacionNumeroMaximo(
 function buildEvaluacionTamano(entry: Record<string, any>, ctx: DoteEvaluacionContexto, maximo: boolean): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
     const requerido = parseId(entry, ['Id_tamano', 'id_tamano', 'IdTamano', 'idTamano', 'Cantidad', 'cantidad', 'Valor', 'valor', 'c']);
-    const actual = Math.trunc(toNumber(ctx.tamanoId));
+    const actual = toInt(ctx.tamanoId);
     const evaluable = requerido > 0 && actual > 0;
     return {
         grupoOpcional,
@@ -639,7 +639,7 @@ function buildEvaluacionTipoCriatura(entry: Record<string, any>, ctx: DoteEvalua
     const tipoIdReq = parseId(entry, ['Id_tipo', 'id_tipo', 'Id_tipo_criatura', 'id_tipo_criatura', 'Id', 'id', 'i']);
     const tipoNombreReq = parseText(entry, ['Tipo', 'tipo', 'Tipo_criatura', 'tipo_criatura', 'Nombre', 'nombre']);
     const tipoNombreReqNorm = normalizarTexto(tipoNombreReq);
-    const tipoActualId = Math.trunc(toNumber(ctx.tipoCriaturaId));
+    const tipoActualId = toInt(ctx.tipoCriaturaId);
     const tipoActualNombreNorm = normalizarTexto(ctx.tipoCriaturaNombre ?? '');
     const evaluable = (tipoIdReq > 0 || tipoNombreReqNorm.length > 0)
         && (tipoActualId > 0 || tipoActualNombreNorm.length > 0);
@@ -759,7 +759,7 @@ function buildEvaluacionConjuroEscuela(entry: Record<string, any>, ctx: DoteEval
     const idEscuela = parseId(entry, ['Id_escuela', 'id_escuela', 'IdEscuela', 'idEscuela']);
     const escuela = parseText(entry, ['Escuela', 'escuela', 'Nombre', 'nombre']);
     const escuelaNorm = normalizarTexto(escuela);
-    const cantidad = Math.max(1, Math.trunc(toNumber(pick(entry, ['Cantidad', 'cantidad', 'Nivel', 'nivel']))));
+    const cantidad = Math.max(1, toInt(pick(entry, ['Cantidad', 'cantidad', 'Nivel', 'nivel'])));
     const evaluable = (idEscuela > 0 || escuelaNorm.length > 0) && cantidad > 0;
     const fuenteConjuros = ctx.conjurosAccesibles !== undefined
         ? ctx.conjurosAccesibles
@@ -894,8 +894,8 @@ function buildEvaluacionDote(
     const rawIdExtraReq = pick(entry, ['Id_extra', 'id_extra', 'IdExtra', 'idExtra', 'e']);
     const idExtraReq = rawIdExtraReq === undefined || rawIdExtraReq === null || `${rawIdExtraReq}`.trim().length < 1
         ? Number.NaN
-        : Math.trunc(toNumber(rawIdExtraReq));
-    const repetidoReq = Math.max(0, Math.trunc(toNumber(pick(entry, ['Repetido', 'repetido', 'r']))));
+        : toInt(rawIdExtraReq);
+    const repetidoReq = Math.max(0, toInt(pick(entry, ['Repetido', 'repetido', 'r'])));
     const cantidadReq = repetidoReq > 0 ? repetidoReq : 1;
     const nombreObjetivo = resolverNombrePorId(idDoteReq, nombreDoteReq, ctx.catalogoDotes, 'Dote');
     const evaluable = idDoteReq > 0 || nombreNorm.length > 0;
@@ -1097,7 +1097,7 @@ export function evaluarElegibilidadDote(input: DoteEvaluacionInput): DoteEvaluac
     const advertencias: string[] = [];
     const gruposOpcionales = new Map<number, GrupoOpcionalEstado>();
     const prerrequisitos = (dote?.Prerrequisitos ?? {}) as Record<string, any>;
-    const idExtraSeleccionado = Math.max(0, Math.trunc(toNumber(input?.idExtraSeleccionado)));
+    const idExtraSeleccionado = Math.max(0, toInt(input?.idExtraSeleccionado));
     const extraSeleccionado = `${input?.extraSeleccionado ?? ''}`.trim();
     const idAlineamiento = parseAlineamientoId(ctx.alineamiento);
 

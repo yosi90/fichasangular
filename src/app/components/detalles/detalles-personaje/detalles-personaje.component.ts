@@ -23,7 +23,7 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import Swal from 'sweetalert2';
-import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 interface MadurezEdadResumen {
@@ -775,12 +775,12 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     private obtenerDetalleNivelClase(clase: Clase, nivelClase: number): any | null {
-        const nivelObjetivo = Math.max(1, Math.trunc(toNumber(nivelClase)));
+        const nivelObjetivo = Math.max(1, toInt(nivelClase));
         if (nivelObjetivo <= 0)
             return null;
 
         const desglose = Array.isArray(clase?.Desglose_niveles) ? clase.Desglose_niveles : [];
-        return desglose.find((nivel) => Math.trunc(toNumber(nivel?.Nivel)) === nivelObjetivo) ?? null;
+        return desglose.find((nivel) => toInt(nivel?.Nivel) === nivelObjetivo) ?? null;
     }
 
     private formatearNivelesDiariosAccesibles(mapa: Record<string, number> | null | undefined): string {

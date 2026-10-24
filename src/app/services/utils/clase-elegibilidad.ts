@@ -1,7 +1,7 @@
 import { Clase } from "src/app/interfaces/clase";
 import { IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from "./identidad-prerrequisitos";
 import { getAlineamientoBasicoIdPorNombre } from "./alineamiento-contrato";
-import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -86,7 +86,7 @@ function pick(entry: Record<string, any>, keys: string[]): any {
 }
 
 function parseOpcional(entry: Record<string, any>): number {
-    return Math.max(0, Math.trunc(toNumber(pick(entry, ["opcional", "Opcional", "o", "O"]), 0)));
+    return Math.max(0, toInt(pick(entry, ["opcional", "Opcional", "o", "O"]), 0));
 }
 
 function parseNumber(entry: Record<string, any>, keys: string[]): number {
@@ -118,7 +118,7 @@ function parseIdOpcional(entry: Record<string, any>, keys: string[]): number {
     const text = `${raw}`.trim();
     if (text.length < 1)
         return Number.NaN;
-    return Math.trunc(toNumber(raw, Number.NaN));
+    return toInt(raw, Number.NaN);
 }
 
 function getStatById(
@@ -391,8 +391,8 @@ function buildEvaluacionDote(entry: Record<string, any>, ctx: ClaseEvaluacionCon
     const idDote = parseId(entry, ["Id_dote", "id_dote", "Id", "id", "i"]);
     const nombreDote = parseNombre(entry, ["Dote", "dote", "Nombre", "nombre"]);
     const nombreNorm = normalizarTexto(nombreDote);
-    const idExtraReq = Math.trunc(toNumber(pick(entry, ["Id_extra", "id_extra", "IdExtra", "idExtra", "e"]), Number.NaN));
-    const repetidoReq = Math.max(0, Math.trunc(toNumber(pick(entry, ["Repetido", "repetido", "r"]), 0)));
+    const idExtraReq = toInt(pick(entry, ["Id_extra", "id_extra", "IdExtra", "idExtra", "e"]), Number.NaN);
+    const repetidoReq = Math.max(0, toInt(pick(entry, ["Repetido", "repetido", "r"]), 0));
     const cantidadReq = repetidoReq > 0 ? repetidoReq : 1;
     const coincidencias = ctx.dotes.filter((d) => {
         const coincideDote = (idDote > 0 && toNumber(d.id) === idDote)
@@ -511,7 +511,7 @@ function buildEvaluacionConjuro(entry: Record<string, any>, ctx: ClaseEvaluacion
 function buildEvaluacionDg(entry: Record<string, any>, ctx: ClaseEvaluacionContexto): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
     const requerido = parseNumber(entry, ["Cantidad", "cantidad", "Valor", "valor", "c"]);
-    const actual = Math.max(0, Math.trunc(toNumber(ctx.dgTotal)));
+    const actual = Math.max(0, toInt(ctx.dgTotal));
     const evaluable = Number.isFinite(requerido);
     const cumple = evaluable ? actual >= requerido : false;
     return {
@@ -640,7 +640,7 @@ function buildEvaluacionNumeroMinimo(
 function buildEvaluacionTamano(entry: Record<string, any>, ctx: ClaseEvaluacionContexto, maximo: boolean): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
     const requerido = parseId(entry, ["Id_tamano", "id_tamano", "IdTamano", "idTamano", "Cantidad", "cantidad", "Valor", "valor", "c"]);
-    const actual = Math.trunc(toNumber(ctx.tamanoId));
+    const actual = toInt(ctx.tamanoId);
     const evaluable = requerido > 0 && actual > 0;
     const cumple = evaluable ? (maximo ? actual <= requerido : actual >= requerido) : false;
     return {

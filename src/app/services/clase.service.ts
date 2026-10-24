@@ -19,7 +19,7 @@ import {
 } from "../interfaces/clase";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
@@ -368,7 +368,7 @@ export class ClaseService {
     }
 
     getClaseFresca(id: number): Observable<Clase> {
-        return this.http.get(`${environment.apiUrl}clases/${Math.trunc(toNumber(id))}`)
+        return this.http.get(`${environment.apiUrl}clases/${toInt(id)}`)
             .pipe(map((raw: any) => normalizeClase(raw)));
     }
 
@@ -389,7 +389,7 @@ export class ClaseService {
     public async actualizarClase(idClase: number, payload: ClaseMutationRequest): Promise<ClaseMutationResponse> {
         try {
             const headers = await this.buildAuthHeaders();
-            const id = Math.trunc(toNumber(idClase));
+            const id = toInt(idClase);
             const response = await firstValueFrom(
                 this.http.put<ClaseMutationApiResponse>(`${environment.apiUrl}clases/${id}`, this.sanitizeMutationPayload(payload), { headers })
             );
@@ -407,7 +407,7 @@ export class ClaseService {
     ): Promise<ClaseMutationResponse> {
         try {
             const headers = await this.buildAuthHeaders();
-            const id = Math.trunc(toNumber(idClase));
+            const id = toInt(idClase);
             const response = await firstValueFrom(
                 this.http.patch<ClaseMutationApiResponse>(`${environment.apiUrl}clases/${id}/prerrequisitos`, this.sanitizeMutationPayload(payload), { headers })
             );
@@ -437,7 +437,7 @@ export class ClaseService {
         fallbackMessage: string,
         fallbackId: number = 0,
     ): ClaseMutationResponse {
-        const idClase = Math.trunc(toNumber(response?.idClase ?? response?.id_clase ?? response?.clase?.Id ?? payload?.Id ?? fallbackId));
+        const idClase = toInt(response?.idClase ?? response?.id_clase ?? response?.clase?.Id ?? payload?.Id ?? fallbackId);
         if (!Number.isFinite(idClase) || idClase <= 0)
             throw new Error("La API no devolvió un idClase válido");
         const clase = normalizeClase(response?.clase ?? { ...payload, Id: idClase });
