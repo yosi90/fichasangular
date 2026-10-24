@@ -7,6 +7,7 @@ import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequis
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizarTexto, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeConjuroApi } from './conjuro-mapper';
 
 function toStrictArray<T = any>(value: any): T[] {
     return Array.isArray(value) ? value : [];
@@ -194,40 +195,6 @@ function normalizeHabilidadesApi(raw: any): RazaHabilidades {
     return {
         Base: base,
         Custom: custom,
-    };
-}
-
-function normalizeConjuroApi(raw: any): any {
-    return {
-        Id: toNumber(raw?.Id),
-        Nombre: toText(raw?.Nombre),
-        Descripcion: toText(raw?.Descripcion),
-        Tiempo_lanzamiento: toText(raw?.Tiempo_lanzamiento),
-        Alcance: toText(raw?.Alcance),
-        Escuela: raw?.Escuela ?? {},
-        Disciplina: raw?.Disciplina ?? {},
-        Manual: toText(raw?.Manual),
-        Objetivo: toText(raw?.Objetivo),
-        Efecto: toText(raw?.Efecto),
-        Area: toText(raw?.Area),
-        Arcano: toBoolean(raw?.Arcano),
-        Divino: toBoolean(raw?.Divino),
-        Psionico: toBoolean(raw?.Psionico),
-        Alma: toBoolean(raw?.Alma),
-        Duracion: toText(raw?.Duracion),
-        Tipo_salvacion: toText(raw?.Tipo_salvacion),
-        Resistencia_conjuros: toBoolean(raw?.Resistencia_conjuros),
-        Resistencia_poderes: toBoolean(raw?.Resistencia_poderes),
-        Descripcion_componentes: toText(raw?.Descripcion_componentes),
-        Permanente: toBoolean(raw?.Permanente),
-        Puntos_poder: toNumber(raw?.Puntos_poder),
-        Descripcion_aumentos: toText(raw?.Descripcion_aumentos),
-        Descriptores: toStrictArray(raw?.Descriptores),
-        Nivel_clase: toStrictArray(raw?.Nivel_clase),
-        Nivel_dominio: toStrictArray(raw?.Nivel_dominio),
-        Nivel_disciplinas: toStrictArray(raw?.Nivel_disciplinas),
-        Componentes: toStrictArray(raw?.Componentes),
-        Oficial: toBoolean(raw?.Oficial),
     };
 }
 

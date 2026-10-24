@@ -32,6 +32,7 @@ import { normalizeIdioma } from "../idioma.service";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeRacial } from "./racial-mapper";
 import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeConjuroLegacy } from './conjuro-mapper';
 
 function normalizeDepth(depth: number): number {
     const parsed = Number(depth);
@@ -176,64 +177,9 @@ function normalizeCaracteristicas(raw: any): MonstruoCaracteristicas {
     };
 }
 
-function normalizeConjuro(raw: any): Conjuro {
-    return {
-        Id: toNumber(raw?.Id),
-        Nombre: toText(raw?.Nombre),
-        Descripcion: toText(raw?.Descripcion),
-        Tiempo_lanzamiento: toText(raw?.Tiempo_lanzamiento),
-        Alcance: toText(raw?.Alcance),
-        Escuela: raw?.Escuela ?? {},
-        Disciplina: raw?.Disciplina ?? {},
-        Manual: toText(raw?.Manual),
-        Objetivo: toText(raw?.Objetivo),
-        Efecto: toText(raw?.Efecto),
-        Area: toText(raw?.Area),
-        Arcano: toBoolean(raw?.Arcano),
-        Divino: toBoolean(raw?.Divino),
-        Psionico: toBoolean(raw?.Psionico),
-        Alma: toBoolean(raw?.Alma ?? raw?.alma),
-        Duracion: toText(raw?.Duracion),
-        Tipo_salvacion: toText(raw?.Tipo_salvacion),
-        Resistencia_conjuros: toBoolean(raw?.Resistencia_conjuros),
-        Resistencia_poderes: toBoolean(raw?.Resistencia_poderes),
-        Descripcion_componentes: toText(raw?.Descripcion_componentes),
-        Permanente: toBoolean(raw?.Permanente),
-        Puntos_poder: toNumber(raw?.Puntos_poder),
-        Descripcion_aumentos: toText(raw?.Descripcion_aumentos),
-        Descriptores: toArray(raw?.Descriptores).map((item) => ({
-            Id: toNumber(item?.Id),
-            Nombre: toText(item?.Nombre),
-        })),
-        Nivel_clase: toArray(raw?.Nivel_clase ?? raw?.Niveles_clase).map((item) => ({
-            Id_clase: toNumber(item?.Id_clase),
-            Clase: toText(item?.Clase),
-            Nivel: toNumber(item?.Nivel),
-            Espontaneo: toBoolean(item?.Espontaneo),
-        })),
-        Nivel_dominio: toArray(raw?.Nivel_dominio ?? raw?.Niveles_dominio).map((item) => ({
-            Id_dominio: toNumber(item?.Id_dominio),
-            Dominio: toText(item?.Dominio),
-            Nivel: toNumber(item?.Nivel),
-            Espontaneo: toBoolean(item?.Espontaneo),
-        })),
-        Nivel_disciplinas: toArray(raw?.Nivel_disciplinas ?? raw?.Niveles_disciplina).map((item) => ({
-            Id_disciplina: toNumber(item?.Id_disciplina),
-            Disciplina: toText(item?.Disciplina),
-            Nivel: toNumber(item?.Nivel),
-            Espontaneo: toBoolean(item?.Espontaneo),
-        })),
-        Componentes: toArray(raw?.Componentes).map((item) => ({
-            Id_componente: toNumber(item?.Id_componente),
-            Componente: toText(item?.Componente),
-        })),
-        Oficial: toBoolean(raw?.Oficial),
-    };
-}
-
 function normalizeSortilega(raw: any): MonstruoSortilega {
     return {
-        Conjuro: normalizeConjuro(raw?.Conjuro),
+        Conjuro: normalizeConjuroLegacy(raw?.Conjuro),
         Nivel_lanzador: toNumber(raw?.Nivel_lanzador),
         Usos_diarios: toText(raw?.Usos_diarios),
     };
