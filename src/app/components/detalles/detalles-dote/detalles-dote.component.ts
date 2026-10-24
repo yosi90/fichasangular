@@ -4,6 +4,7 @@ import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { esCampoId, formatearClave } from 'src/app/services/utils/formato-prerrequisitos';
 
 interface PrerrequisitoCampoDetalle {
     etiqueta: string;
@@ -124,7 +125,7 @@ export class DetallesDoteComponent {
     }
 
     getEtiquetaPrerrequisito(key: string): string {
-        return this.etiquetasPrerrequisitos[key] ?? this.formatearTexto(key);
+        return this.etiquetasPrerrequisitos[key] ?? formatearClave(key);
     }
 
     getPrerrequisitosAgrupados(): PrerrequisitoGrupoDetalle[] {
@@ -201,7 +202,7 @@ export class DetallesDoteComponent {
             return [];
 
         return Object.entries(item)
-            .filter(([clave]) => !this.esCampoId(clave) && !this.esCampoTecnicoPrerrequisito(clave))
+            .filter(([clave]) => !esCampoId(clave) && !this.esCampoTecnicoPrerrequisito(clave))
             .filter(([, valor]) => this.tieneValorMostrable(valor))
             .map(([clave, valor]) => ({
                 etiqueta: this.getEtiquetaCampoPrerrequisito(prerequisiteKey, clave),
@@ -346,17 +347,12 @@ export class DetallesDoteComponent {
             return valor.map(v => this.formatearValorPrerrequisito(v)).filter(v => v.trim().length > 0).join(', ');
         if (valor && typeof valor === 'object') {
             return Object.entries(valor as Record<string, unknown>)
-                .filter(([k]) => !this.esCampoId(k))
-                .map(([k, v]) => `${this.formatearTexto(k)}: ${this.formatearValorPrerrequisito(v)}`)
+                .filter(([k]) => !esCampoId(k))
+                .map(([k, v]) => `${formatearClave(k)}: ${this.formatearValorPrerrequisito(v)}`)
                 .filter(v => v.trim().length > 0)
                 .join(' | ');
         }
         return '-';
-    }
-
-    private esCampoId(clave: string): boolean {
-        const normalizada = clave.replace(/[_\s]/g, '').toLowerCase();
-        return normalizada === 'id' || normalizada.startsWith('id');
     }
 
     private esCampoOpcional(clave: string): boolean {
@@ -387,13 +383,6 @@ export class DetallesDoteComponent {
         return `Eleccion ${index + 1}`;
     }
 
-    private formatearTexto(texto: string): string {
-        if (!texto)
-            return '';
-        const normalizado = texto.replace(/_/g, ' ').trim();
-        return normalizado.charAt(0).toUpperCase() + normalizado.slice(1);
-    }
-
     private esCampoExtraSinValor(campo: PrerrequisitoCampoDetalle): boolean {
         if (normalizarTexto(`${campo?.etiqueta ?? ''}`) !== 'extra')
             return false;
@@ -414,7 +403,7 @@ export class DetallesDoteComponent {
         if (tipo === 'claseespecial' && (campo === 'especial' || campo === 'claseespecial'))
             return 'Especial de clase';
 
-        return this.formatearTexto(fieldKey);
+        return formatearClave(fieldKey);
     }
 
     private getCampoValor(campos: PrerrequisitoCampoDetalle[], etiquetas: string[]): string {
@@ -537,7 +526,7 @@ export class DetallesDoteComponent {
         if (!item || typeof item !== 'object')
             return 0;
         const valores = Object.entries(item as Record<string, unknown>)
-            .filter(([clave]) => this.esCampoId(clave))
+            .filter(([clave]) => esCampoId(clave))
             .map(([, valor]) => Number(valor))
             .filter((valor) => Number.isFinite(valor) && valor > 0);
         return valores[0] ?? 0;
