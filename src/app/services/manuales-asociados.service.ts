@@ -16,11 +16,12 @@ import { RazaService } from './raza.service';
 import { SubtipoService } from './subtipo.service';
 import { TipoCriaturaService } from './tipo-criatura.service';
 import { normalizarTexto, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 type ColeccionAsociadosKey = keyof ManualAsociados;
 
 function ordenarReferencias(items: ReferenciaCorta[]): ReferenciaCorta[] {
-    return [...items].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+    return [...items].sort(porNombre);
 }
 
 function hasCanonicalManualAsociadoShape(raw: any): boolean {
@@ -188,7 +189,7 @@ export class ManualesAsociadosService {
     }
 
     private sortManuales(items: ManualAsociadoDetalle[]): ManualAsociadoDetalle[] {
-        return [...items].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+        return [...items].sort(porNombre);
     }
 
     private normalizeApiResponse(raw: any): ManualAsociadoDetalle[] {

@@ -13,6 +13,7 @@ import { PersonajeSimple } from '../interfaces/simplificaciones/personaje-simple
 import { UserRole } from '../interfaces/user-acl';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { toBoolean } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Injectable({
     providedIn: 'root'
@@ -331,7 +332,7 @@ export class PrivateUserFirestoreService {
     }
 
     private compareText(a: string, b: string): number {
-        return `${a ?? ''}`.localeCompare(`${b ?? ''}`, 'es', { sensitivity: 'base' });
+        return compararTexto(a, b);
     }
 
 }

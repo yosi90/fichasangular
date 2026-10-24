@@ -16,6 +16,7 @@ import { HabilidadService } from 'src/app/services/habilidad.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserService } from 'src/app/services/user.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 interface NombreIdItem {
     Id: number;
@@ -678,11 +679,11 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private ordenar<T extends { Nombre: string; }>(items: T[]): T[] {
-        return [...(items ?? [])].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+        return [...(items ?? [])].sort(porNombre);
     }
 
     private ordenarHabilidades(items: HabilidadBasicaDetalle[]): HabilidadBasicaDetalle[] {
-        return [...(items ?? [])].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+        return [...(items ?? [])].sort(porNombre);
     }
 
     private filtrarPorNombre<T extends { Nombre: string; }>(items: T[], query: string): T[] {

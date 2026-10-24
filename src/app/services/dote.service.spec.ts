@@ -199,7 +199,7 @@ describe('DoteService', () => {
         expect(body).not.toContain('createdAt');
     });
 
-    it('mapea 409 de duplicado a mensaje específico de nombre', async () => {
+    it('mapea 409 a la frase de nombre repetido, con el mensaje de la API detrás', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
         httpMock.post.and.returnValue(
             throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'nombre de dote duplicado' } }))
@@ -207,7 +207,7 @@ describe('DoteService', () => {
         const service = new DoteService(authMock, {} as any, httpMock, firebaseContextMock);
 
         await expectAsync(service.crearDote(crearPayload()))
-            .toBeRejectedWithError('Ya existe una dote con ese nombre.');
+            .toBeRejectedWithError('Ya existe una dote con ese nombre. nombre de dote duplicado');
     });
 
     it('mapea 403 a error de permisos', async () => {
@@ -218,7 +218,7 @@ describe('DoteService', () => {
         const service = new DoteService(authMock, {} as any, httpMock, firebaseContextMock);
 
         await expectAsync(service.crearDote(crearPayload()))
-            .toBeRejectedWithError(/No tienes permisos para crear dotes/);
+            .toBeRejectedWithError('No tienes permisos para crear dotes. forbidden');
     });
 
     it('getDote usa fallback HTTP cuando no existe cache RTDB', async () => {

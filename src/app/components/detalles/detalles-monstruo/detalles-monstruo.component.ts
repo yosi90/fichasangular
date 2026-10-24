@@ -6,6 +6,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-detalles-monstruo',
@@ -175,13 +176,13 @@ export class DetallesMonstruoComponent {
     getFamiliaresRelacionados(): MonstruoDetalle[] {
         return (this.monstruo?.Familiares ?? [])
             .filter(item => toNumber(item?.Id) > 0 && this.tieneTextoVisible(item?.Nombre))
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     getCompanerosRelacionados(): MonstruoDetalle[] {
         return (this.monstruo?.Companeros ?? [])
             .filter(item => toNumber(item?.Id) > 0 && this.tieneTextoVisible(item?.Nombre))
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     getRacialesActivas(): RacialDetalle[] {
@@ -276,7 +277,7 @@ export class DetallesMonstruoComponent {
                 Id: toNumber(subtipo?.Id),
                 Nombre: `${subtipo?.Nombre ?? ''}`.trim(),
             }))
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     getNivelesClaseActivos(): Array<{ idClase: number; nombreClase: string; nivel: number; plantilla: string; dote: string; }> {

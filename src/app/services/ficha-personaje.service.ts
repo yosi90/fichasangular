@@ -6,6 +6,7 @@ import { Personaje, PersonajeNivelLanzadorResumen, PersonajeTipoLanzamiento } fr
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from '../interfaces/monstruo';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 
 @Injectable({
@@ -665,7 +666,7 @@ export class FichaPersonajeService {
     private formatearNotasNivelesLanzador(pj: Personaje): string {
         const niveles = (pj?.Niveles_lanzador ?? [])
             .filter((nivel) => toInt(nivel?.nivelLanzador) > 0)
-            .sort((a, b) => `${a?.nombreClase ?? ''}`.localeCompare(`${b?.nombreClase ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a?.nombreClase, b?.nombreClase));
         if (niveles.length < 1)
             return '';
 

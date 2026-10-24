@@ -7,6 +7,7 @@ import { ChatFloatingService } from './services/chat-floating.service';
 import { FirebaseSessionBridgeService } from './services/firebase-session-bridge.service';
 import { PlatformSessionService } from './services/platform-session.service';
 import { toUserFacingErrorMessage } from './services/utils/user-facing-error.util';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-root',
@@ -108,9 +109,9 @@ export class AppComponent implements OnInit, OnDestroy {
         const normalizedTitle = `${title ?? ''}`.trim();
         const normalizedIcon = `${icon ?? ''}`.trim().toLowerCase();
         const genericTitle = normalizedTitle.length < 1
-            || normalizedTitle.localeCompare('error', 'es', { sensitivity: 'base' }) === 0
-            || normalizedTitle.localeCompare('warning', 'es', { sensitivity: 'base' }) === 0
-            || normalizedTitle.localeCompare('aviso', 'es', { sensitivity: 'base' }) === 0;
+            || compararTexto(normalizedTitle, 'error') === 0
+            || compararTexto(normalizedTitle, 'warning') === 0
+            || compararTexto(normalizedTitle, 'aviso') === 0;
 
         if (!genericTitle)
             return normalizedTitle.endsWith('.') ? normalizedTitle : `${normalizedTitle}.`;

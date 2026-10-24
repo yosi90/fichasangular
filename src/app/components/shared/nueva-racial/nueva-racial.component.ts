@@ -38,6 +38,7 @@ import {
     syncPrerequisiteRows,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 type RacialPrerequisiteType = Extract<PrerequisiteType, 'raza' | 'caracteristica'>;
 const RAZA_EN_CREACION_PREREQ_ID = 2147483647;
@@ -793,7 +794,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
 
         if ((payload.ataques?.length ?? 0) > 0) {
             normalizado.ataques = [...(payload.ataques ?? [])]
-                .sort((a, b) => this.texto(a.descripcion).localeCompare(this.texto(b.descripcion), 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(this.texto(a.descripcion), this.texto(b.descripcion)));
         }
 
         if ((payload.prerrequisitos?.raza?.length ?? 0) > 0 || (payload.prerrequisitos?.caracteristica?.length ?? 0) > 0) {
@@ -1183,11 +1184,11 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private ordenar<T extends { Nombre: string; }>(items: T[]): T[] {
-        return [...items].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+        return [...items].sort(porNombre);
     }
 
     private ordenarHabilidades(items: HabilidadBasicaDetalle[]): HabilidadBasicaDetalle[] {
-        return [...items].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+        return [...items].sort(porNombre);
     }
 
     private pick(source: any, ...keys: string[]): any {

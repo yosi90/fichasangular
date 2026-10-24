@@ -9,6 +9,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 interface VentajaListadoItem extends VentajaDetalle {
     Tipo: 'Ventaja' | 'Desventaja';
@@ -54,13 +55,13 @@ export class ListadoVentajasComponent implements OnDestroy {
                 const listadoDesventajas = desventajas.map((d) => ({ ...d, Tipo: 'Desventaja' as const }));
 
                 this.ventajas = [...listadoVentajas, ...listadoDesventajas]
-                    .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                    .sort(porNombre);
 
                 this.manuales = Array.from(new Set(
                     this.ventajas
                         .map((v) => `${v.Manual?.Nombre ?? ''}`.trim())
                         .filter((nombre) => nombre.length > 0)
-                )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+                )).sort(compararTexto);
 
                 this.filtroVentajas();
                 this.cdr.detectChanges();

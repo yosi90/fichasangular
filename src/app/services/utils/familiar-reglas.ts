@@ -11,6 +11,7 @@ import {
     cumpleAlineamientoPorPreferencias,
     getDetallePreferenciasAlineamiento,
 } from 'src/app/services/utils/nivel-clase-monstruo';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 export type FamiliarPlantillaId = 1 | 2 | 3 | 4 | 5;
 
@@ -112,9 +113,7 @@ export function construirCatalogoFamiliaresDesdeMonstruos(monstruos: MonstruoDet
         });
     });
 
-    return resultado.sort((a, b) =>
-        `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' })
-    );
+    return resultado.sort(porNombre);
 }
 
 const ESPECIAL_CONVOCAR_FAMILIAR_ID = 47;
@@ -360,5 +359,5 @@ export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesIn
     });
 
     return Array.from(dedupe.values())
-        .sort((a, b) => `${a?.familiar?.Nombre ?? ''}`.localeCompare(`${b?.familiar?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+        .sort((a, b) => compararTexto(a?.familiar?.Nombre, b?.familiar?.Nombre));
 }

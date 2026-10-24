@@ -1,5 +1,6 @@
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 /**
  * Los textos de relleno que la API manda en vez de dejar el campo vacío (propietario, 2026-10-24: una sola lista para
@@ -60,5 +61,5 @@ export function idiomasVisibles(
             Nombre: `${idioma.Nombre ?? ''}`.trim(),
             Descripcion: `${idioma.Descripcion ?? ''}`.trim(),
         }))
-        .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+        .sort(porNombre);
 }

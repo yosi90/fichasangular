@@ -4,6 +4,7 @@ import { EMPTY, Observable, expand, map, reduce } from 'rxjs';
 import Swal from 'sweetalert2';
 import { environment } from 'src/environments/environment';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 /**
  * En desarrollo (rol.dev) la caché de catálogos de la Realtime Database es la de producción: desarrollo comparte el
@@ -153,9 +154,6 @@ export function cacheRtdbOApi<T>(lectura: LecturaCacheOApi<T>): Observable<T> {
         return () => dejarDeEscuchar();
     });
 }
-
-const porNombre = (a: { Nombre: string }, b: { Nombre: string }): number =>
-    a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' });
 
 /**
  * Una lista de la caché de la RTDB, sin respaldo de la API: cada vez que cambia la ruta, emite los hijos que pasan

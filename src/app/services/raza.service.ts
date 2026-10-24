@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Database, Unsubscribe } from '@angular/fire/database';
 import { Observable, firstValueFrom } from 'rxjs';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from '../interfaces/raza';
 import { RazaCreateApiResponse, RazaCreateRequest, RazaCreateResponse } from '../interfaces/razas-api';
 import { environment } from 'src/environments/environment';
@@ -16,6 +16,9 @@ import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { ElementoDeCatalogo, errorDeCatalogo } from 'src/app/services/utils/error-catalogo';
+
+const RAZA: ElementoDeCatalogo = { singular: 'raza', plural: 'razas', femenino: true };
 
 function parseIdExtra(value: any): number {
     if (value === undefined || value === null || `${value}`.trim() === '')
@@ -391,53 +394,7 @@ export class RazaService {
             };
             return normalizedResponse;
         } catch (error: any) {
-            throw this.mapCrearRazaError(error);
+            throw errorDeCatalogo(error, 'crear', RAZA);
         }
-    }
-
-    private mapCrearRazaError(error: any): Error {
-        if (!(error instanceof HttpErrorResponse))
-            return error instanceof Error ? error : new Error('No se pudo crear la raza');
-
-        const backendMessage = this.extractErrorMessage(error.error);
-        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : '';
-
-        if (error.status === 400)
-            return new Error(`Solicitud invalida para crear la raza.${suffix}`.trim());
-        if (error.status === 401)
-            return new Error(`Sesion no valida para crear razas.${suffix}`.trim());
-        if (error.status === 403)
-            return new Error(`No tienes permisos para crear razas.${suffix}`.trim());
-        if (error.status === 404)
-            return new Error(`No se encontro una referencia requerida para crear la raza.${suffix}`.trim());
-        if (error.status === 409) {
-            const conflictText = backendMessage.toLowerCase();
-            if (conflictText.includes('nombre') || conflictText.includes('duplic') || conflictText.includes('existe'))
-                return new Error('Ya existe una raza con ese nombre.');
-            return new Error(`Conflicto al crear la raza.${suffix}`.trim());
-        }
-
-        if (backendMessage.length > 0)
-            return new Error(backendMessage);
-
-        return new Error(`No se pudo crear la raza (HTTP ${error.status || 0})`);
-    }
-
-    private extractErrorMessage(errorBody: any): string {
-        if (!errorBody)
-            return '';
-
-        if (typeof errorBody === 'string') {
-            const message = errorBody.trim();
-            return message.length > 0 ? message : '';
-        }
-
-        if (typeof errorBody === 'object') {
-            const message = `${errorBody?.message ?? errorBody?.error ?? ''}`.trim();
-            if (message.length > 0)
-                return message;
-        }
-
-        return '';
     }
 }

@@ -38,6 +38,7 @@ import { PlatformSessionService } from 'src/app/services/platform-session.servic
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
 type CampaignWorkspaceTab = 'usuarios' | 'historias';
@@ -286,7 +287,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return Object.keys(permisos)
             .filter((resource) => permisos?.[resource]?.create === true)
             .map((resource) => this.formatCreatePermissionLabel(resource))
-            .sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+            .sort(compararTexto);
     }
 
     get permisosResumen(): string {
@@ -2016,7 +2017,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     private filterManageableCampaigns(campaigns: CampaignListItem[]): CampaignListItem[] {
         return (campaigns ?? [])
             .filter((campaign) => campaign?.campaignRole === 'master')
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private scheduleUserSearch(kind: 'member' | 'transfer'): void {

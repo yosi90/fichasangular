@@ -8,6 +8,7 @@ import { FirebaseInjectionContextService } from "./firebase-injection-context.se
 import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { porNombre } from "src/app/services/utils/orden-texto";
 
 export function normalizeArmadura(raw: any): ArmaduraDetalle {
     return {
@@ -105,7 +106,7 @@ export class ArmaduraService {
         const armaduras = toArray(response)
             .map((raw: any) => normalizeArmadura(raw))
             .filter((armadura) => armadura.Id > 0);
-        armaduras.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
+        armaduras.sort(porNombre);
         return armaduras;
     }
 

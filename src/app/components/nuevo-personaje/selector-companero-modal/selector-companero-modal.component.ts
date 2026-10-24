@@ -2,6 +2,7 @@ import { Component, EventEmitter, HostListener, Input, Output } from '@angular/c
 import { CompaneroMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { CompaneroPlantillaSelector } from 'src/app/services/utils/companero-reglas';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 export interface SelectorCompaneroConfirmacion {
     companero: CompaneroMonstruoDetalle;
@@ -91,9 +92,7 @@ export class SelectorCompaneroModalComponent {
         );
         if (!existe)
             base.push(seleccionado);
-        return base.sort((a, b) =>
-            `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' })
-        );
+        return base.sort(porNombre);
     }
 
     onSeleccionarCompanero(companero: CompaneroMonstruoDetalle): void {

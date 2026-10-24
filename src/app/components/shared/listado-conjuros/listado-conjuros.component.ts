@@ -7,6 +7,7 @@ import { ConjuroService } from 'src/app/services/conjuro.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-listado-conjuros',
@@ -96,6 +97,6 @@ export class ListadoConjurosComponent {
             (conjuros ?? [])
                 .map((conjuro) => `${conjuro?.Manual ?? ''}`.trim())
                 .filter((nombre) => nombre.length > 0)
-        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        )).sort(compararTexto);
     }
 }

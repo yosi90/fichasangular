@@ -603,10 +603,10 @@ describe('RazaService helpers', () => {
     });
 
     [
-        { status: 400, expected: 'Solicitud invalida' },
-        { status: 403, expected: 'No tienes permisos' },
-        { status: 404, expected: 'No se encontro una referencia requerida' },
-        { status: 409, expected: 'Ya existe una raza con ese nombre' },
+        { status: 400, expected: 'Los datos de la raza no son válidos.' },
+        { status: 403, expected: 'No tienes permisos para crear razas.' },
+        { status: 404, expected: 'No se ha encontrado la raza o algo a lo que apunta.' },
+        { status: 409, expected: 'Ya existe una raza con ese nombre.' },
     ].forEach(({ status, expected }) => {
         it(`crearRaza traduce error HTTP ${status}`, async () => {
             const http = {
@@ -627,7 +627,7 @@ describe('RazaService helpers', () => {
             const service = new TestRazaService({} as any, http as any, firebaseContextSvc as any, auth as any);
 
             await expectAsync(service.crearRaza({ raza: { nombre: 'Duplicada' } } as any))
-                .toBeRejectedWithError(new RegExp(expected));
+                .toBeRejectedWithError(`${expected} duplicado`);
         });
     });
 });

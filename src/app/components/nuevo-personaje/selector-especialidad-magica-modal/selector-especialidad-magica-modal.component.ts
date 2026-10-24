@@ -3,6 +3,7 @@ import { DisciplinaConjuros } from 'src/app/interfaces/disciplina-conjuros';
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 export interface SelectorEspecialidadArcanaConfirmacion {
     especializar: boolean;
@@ -46,7 +47,7 @@ export class SelectorEspecialidadMagicaModalComponent {
     get escuelasEspecializables(): EscuelaConjuros[] {
         return (this.escuelas ?? [])
             .filter((escuela) => Number(escuela?.Id ?? 0) > 0)
-            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     get escuelaEspecialistaSeleccionada(): EscuelaConjuros | null {
@@ -67,7 +68,7 @@ export class SelectorEspecialidadMagicaModalComponent {
     get disciplinasEspecializables(): DisciplinaConjuros[] {
         return (this.disciplinas ?? [])
             .filter((disciplina) => Number(disciplina?.Id ?? 0) > 0)
-            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     get disciplinasProhibibles(): DisciplinaConjuros[] {

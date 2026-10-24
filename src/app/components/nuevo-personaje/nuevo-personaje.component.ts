@@ -116,6 +116,7 @@ import { DatosIdeaIa, datosIdeaDePersonaje, TipoIdeaIa } from 'src/app/services/
 import { UsoIdeaIa } from '../shared/ideas-ia/ideas-ia.component';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 interface VectorAlineamiento {
     ley: number;
@@ -729,7 +730,7 @@ export class NuevoPersonajeComponent {
         const manuales = this.plantillasCatalogo
             .map(p => p.Manual?.Nombre ?? '')
             .filter(nombre => nombre.trim().length > 0);
-        return ['Cualquiera', ...Array.from(new Set(manuales)).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
+        return ['Cualquiera', ...Array.from(new Set(manuales)).sort(compararTexto)];
     }
 
     get mostrarBloquePlantillas(): boolean {
@@ -778,7 +779,7 @@ export class NuevoPersonajeComponent {
             const customB = !!b?.Custom;
             if (customA !== customB)
                 return customA ? 1 : -1;
-            return `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' });
+            return compararTexto(a?.Nombre, b?.Nombre);
         });
     }
 
@@ -822,7 +823,7 @@ export class NuevoPersonajeComponent {
                 const nivelB = Number(entrada.nivelesPorConjuro?.[Number(b?.Id)] ?? 0);
                 if (nivelA !== nivelB)
                     return nivelA - nivelB;
-                return `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' });
+                return compararTexto(a?.Nombre, b?.Nombre);
             });
     }
 
@@ -875,7 +876,7 @@ export class NuevoPersonajeComponent {
         const manuales = this.catalogoClases
             .map((clase) => `${clase?.Manual?.Nombre ?? ''}`.trim())
             .filter((nombre) => nombre.length > 0);
-        return ['Cualquiera', ...Array.from(new Set(manuales)).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
+        return ['Cualquiera', ...Array.from(new Set(manuales)).sort(compararTexto)];
     }
 
     get claseSeleccionadaActual(): ClaseListadoItem | null {
@@ -1710,7 +1711,7 @@ export class NuevoPersonajeComponent {
                     return distA - distB;
                 if (a.oficial !== b.oficial)
                     return a.oficial ? -1 : 1;
-                return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
+                return compararTexto(a.nombre, b.nombre);
             })
             .map((item) => ({
                 nombre: item.nombre,
@@ -2459,10 +2460,10 @@ export class NuevoPersonajeComponent {
         const nombreBuscado = normalizarTexto(value?.Nombre ?? '');
         if (nombreBuscado.length < 1)
             return;
-        const porNombre = (this.catalogoConjuros ?? []).find((conjuro) => normalizarTexto(conjuro?.Nombre ?? '') === nombreBuscado)
+        const conjuroPorNombre = (this.catalogoConjuros ?? []).find((conjuro) => normalizarTexto(conjuro?.Nombre ?? '') === nombreBuscado)
             ?? (this.Personaje?.Conjuros ?? []).find((conjuro) => normalizarTexto(conjuro?.Nombre ?? '') === nombreBuscado);
-        if (porNombre)
-            this.conjuroDetalles.emit(porNombre);
+        if (conjuroPorNombre)
+            this.conjuroDetalles.emit(conjuroPorNombre);
     }
 
     verDetallesClaseDesdeFicha(nombreClase: string): void {
@@ -2502,10 +2503,10 @@ export class NuevoPersonajeComponent {
         const nombreBuscado = normalizarTexto(payload?.nombre ?? '');
         if (nombreBuscado.length < 1)
             return;
-        const porNombre = this.plantillasCatalogo.find((p) => normalizarTexto(p.Nombre) === nombreBuscado)
+        const plantillaPorNombre = this.plantillasCatalogo.find((p) => normalizarTexto(p.Nombre) === nombreBuscado)
             ?? this.plantillasSeleccionadas.find((p) => normalizarTexto(p.Nombre) === nombreBuscado);
-        if (porNombre)
-            this.plantillaDetalles.emit(porNombre);
+        if (plantillaPorNombre)
+            this.plantillaDetalles.emit(plantillaPorNombre);
     }
 
     @Output() racialDetallesPorNombre: EventEmitter<RacialReferencia> = new EventEmitter<RacialReferencia>();
@@ -3301,7 +3302,7 @@ export class NuevoPersonajeComponent {
                 Nombre: `${item?.Nombre ?? ''}`.trim(),
             }))
             .filter((item) => item.Id > 0 && item.Nombre.length > 0)
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
 
         if (opciones.length < 1) {
             await Swal.fire({
@@ -6391,7 +6392,7 @@ export class NuevoPersonajeComponent {
                 return bloqueA - bloqueB;
             if (b.siguienteNivel !== a.siguienteNivel)
                 return b.siguienteNivel - a.siguienteNivel;
-            return a.clase.Nombre.localeCompare(b.clase.Nombre, 'es', { sensitivity: 'base' });
+            return compararTexto(a.clase.Nombre, b.clase.Nombre);
         });
 
         this.clasesListadoFiltrado = evaluadas;
@@ -6590,7 +6591,7 @@ export class NuevoPersonajeComponent {
                 return a.tipo === 'especial' ? -1 : 1;
             if (a.opcional !== b.opcional)
                 return a.opcional - b.opcional;
-            return a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' });
+            return compararTexto(a.nombre, b.nombre);
         });
         return beneficios;
     }

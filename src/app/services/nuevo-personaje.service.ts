@@ -49,6 +49,7 @@ import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { calcularOroPorNep } from './utils/oro-inicial';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel';
@@ -1958,7 +1959,7 @@ export class NuevoPersonajeService {
                 const nivelB = this.resolverNivelConjuroEntrada(entrada, b);
                 if (nivelA !== nivelB)
                     return nivelA - nivelB;
-                return `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' });
+                return compararTexto(a?.Nombre, b?.Nombre);
             });
     }
 
@@ -2328,7 +2329,7 @@ export class NuevoPersonajeService {
             .filter((item) => !!item) as DoteSelectorCandidato[];
 
         return candidatos.sort((a, b) =>
-            `${a?.dote?.Nombre ?? ''}`.localeCompare(`${b?.dote?.Nombre ?? ''}`, 'es', { sensitivity: 'base' })
+            compararTexto(a?.dote?.Nombre, b?.dote?.Nombre)
         );
     }
 
@@ -2658,13 +2659,13 @@ export class NuevoPersonajeService {
                 bono: 2,
                 veces: 1,
             });
-            return lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            return lista.sort((a, b) => compararTexto(a.nombre, b.nombre));
         }
 
         existente.nombre = nombre;
         existente.bono = Math.max(0, toNumber(existente.bono)) + 2;
         existente.veces = Math.max(0, toNumber(existente.veces)) + 1;
-        return lista.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+        return lista.sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private crearDotePendiente(
@@ -2710,9 +2711,7 @@ export class NuevoPersonajeService {
                 return true;
             });
 
-        return normalizado.sort((a, b) =>
-            `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' })
-        );
+        return normalizado.sort(porNombre);
     }
 
     private doteSoportaArmaduras(dote: Dote | null | undefined): boolean {
@@ -5681,7 +5680,7 @@ export class NuevoPersonajeService {
             const idxB = ids.indexOf(toNumber(b?.Id));
             if (idxA !== idxB)
                 return idxA - idxB;
-            return `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' });
+            return compararTexto(a?.Nombre, b?.Nombre);
         }).slice(0, config.maxSlots);
     }
 
@@ -5838,7 +5837,7 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Habilidades = [
             ...this.personajeCreacion.Habilidades,
             nuevaHabilidad,
-        ].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+        ].sort(porNombre);
 
         return this.personajeCreacion.Habilidades
             .find((h) => toNumber(h.Id) === nuevoId || normalizarTexto(h.Nombre) === normalizarTexto(nuevoNombre))
@@ -6187,7 +6186,7 @@ export class NuevoPersonajeService {
 
         this.personajeCreacion.Habilidades = this.personajeCreacion.Habilidades
             .slice()
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     private getNuevoIdHabilidad(): number {
@@ -6256,7 +6255,7 @@ export class NuevoPersonajeService {
                 nombre: `${dominio.Nombre ?? ''}`.trim(),
                 oficial: dominio.Oficial !== false,
             }))
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private resolverSeleccionesDominiosClase(
@@ -6659,9 +6658,9 @@ export class NuevoPersonajeService {
             if (porId.length > 0)
                 candidatas = porId;
         } else if (hintNombre.length > 0) {
-            const porNombre = candidatas.filter((clase) => normalizarTexto(clase?.Nombre ?? '') === hintNombre);
-            if (porNombre.length > 0) {
-                candidatas = porNombre;
+            const clasesPorNombre = candidatas.filter((clase) => normalizarTexto(clase?.Nombre ?? '') === hintNombre);
+            if (clasesPorNombre.length > 0) {
+                candidatas = clasesPorNombre;
             } else {
                 const porTipo = candidatas.filter((clase) => {
                     if (hintNombre.includes('arc'))
@@ -6693,7 +6692,7 @@ export class NuevoPersonajeService {
                 usadas.add(item.idClase);
                 return true;
             })
-            .sort((a, b) => a.nombreClase.localeCompare(b.nombreClase, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombreClase, b.nombreClase));
     }
 
     private validarContratoConjurosParaAplicacionNivelClase(
@@ -7261,7 +7260,7 @@ export class NuevoPersonajeService {
                 usadas.add(id);
                 return true;
             })
-            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     private obtenerCatalogoEscuelasProhibibles(escuelasCatalogo: EscuelaConjuros[], idEspecialista: number): EscuelaConjuros[] {
@@ -7283,7 +7282,7 @@ export class NuevoPersonajeService {
                 usadas.add(id);
                 return true;
             })
-            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     private esNombreAdivinacion(value: string): boolean {
@@ -7507,7 +7506,7 @@ export class NuevoPersonajeService {
             .filter((ref) => toNumber(ref?.Id) > 0 && `${ref?.Nombre ?? ''}`.trim().length > 0)
             .filter((ref) => !acceso.nivelesAccesibles || acceso.nivelesAccesibles.has(toNumber(ref?.Nivel)))
             .sort((a, b) => toNumber(a?.Nivel) - toNumber(b?.Nivel)
-                || `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+                || compararTexto(a?.Nombre, b?.Nombre));
     }
 
     private normalizarMapaConjurosPorNivel(mapa: Record<string, number> | undefined | null): Record<number, number> {
@@ -7751,9 +7750,9 @@ export class NuevoPersonajeService {
     }
 
     private resolverDadoDesdePlantilla(plantilla: Plantilla): number {
-        const porNombre = `${plantilla?.Tipo_dado?.Nombre ?? ''}`.match(/d\s*(\d+)/i);
-        if (porNombre && porNombre[1]) {
-            const dado = toNumber(porNombre[1]);
+        const dadoPorNombre = `${plantilla?.Tipo_dado?.Nombre ?? ''}`.match(/d\s*(\d+)/i);
+        if (dadoPorNombre && dadoPorNombre[1]) {
+            const dado = toNumber(dadoPorNombre[1]);
             if (DADOS_PROGRESION.includes(dado))
                 return dado;
         }
@@ -9423,9 +9422,9 @@ export class NuevoPersonajeService {
         if (!clase)
             return 0;
 
-        const porNombre = this.resolverCarasDadoDesdeTexto(`${clase?.Tipo_dado?.Nombre ?? ''}`);
-        if (porNombre > 0)
-            return porNombre;
+        const carasPorNombre = this.resolverCarasDadoDesdeTexto(`${clase?.Tipo_dado?.Nombre ?? ''}`);
+        if (carasPorNombre > 0)
+            return carasPorNombre;
 
         const idTipo = toInt(clase?.Tipo_dado?.Id);
         if (idTipo > 0) {
@@ -9437,9 +9436,9 @@ export class NuevoPersonajeService {
     }
 
     private resolverCarasDadoLicantronia(plantilla: Plantilla, fallback: number): number {
-        const porNombre = this.resolverCarasDadoDesdeTexto(`${plantilla?.Licantronia_dg?.Dado ?? ''}`);
-        if (porNombre > 0)
-            return porNombre;
+        const carasPorNombre = this.resolverCarasDadoDesdeTexto(`${plantilla?.Licantronia_dg?.Dado ?? ''}`);
+        if (carasPorNombre > 0)
+            return carasPorNombre;
 
         const idDado = toInt(plantilla?.Licantronia_dg?.Id_dado);
         if (idDado > 0) {
@@ -9726,7 +9725,7 @@ export class NuevoPersonajeService {
                     Bonos_varios: [],
                 };
             })
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     private actualizarModsHabilidadesPorCaracteristica(): void {

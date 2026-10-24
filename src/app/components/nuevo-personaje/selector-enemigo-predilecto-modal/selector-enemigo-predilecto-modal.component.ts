@@ -2,6 +2,7 @@ import { Component, EventEmitter, HostListener, Input, Output } from '@angular/c
 import { EnemigoPredilectoDetalle } from 'src/app/interfaces/enemigo-predilecto-detalle';
 import { EnemigoPredilectoSeleccion } from 'src/app/interfaces/enemigo-predilecto-seleccion';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-selector-enemigo-predilecto-modal',
@@ -26,7 +27,7 @@ export class SelectorEnemigoPredilectoModalComponent {
                 Nombre: `${item?.Nombre ?? ''}`.trim(),
             }))
             .filter((item) => Number.isFinite(item.Id) && item.Id > 0 && item.Nombre.length > 0)
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     get enemigosFiltrados(): EnemigoPredilectoDetalle[] {
@@ -72,7 +73,7 @@ export class SelectorEnemigoPredilectoModalComponent {
                     bono: 2,
                     veces: 1,
                 }
-            ].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            ].sort((a, b) => compararTexto(a.nombre, b.nombre));
         }
 
         return base
@@ -86,7 +87,7 @@ export class SelectorEnemigoPredilectoModalComponent {
                     veces: Math.max(0, Number(item?.veces ?? 0)) + 1,
                 };
             })
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     get puedeConfirmar(): boolean {
@@ -154,6 +155,6 @@ export class SelectorEnemigoPredilectoModalComponent {
                 veces: Math.max(0, Number(item?.veces ?? 0)),
             }))
             .filter((item) => Number.isFinite(item.id) && item.id > 0 && item.nombre.length > 0 && item.bono > 0)
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 }

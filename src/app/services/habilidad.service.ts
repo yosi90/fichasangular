@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
 import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
@@ -16,6 +16,10 @@ import {
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { porNombre } from "src/app/services/utils/orden-texto";
+
+const HABILIDAD: ElementoDeCatalogo = { singular: "habilidad", plural: "habilidades", femenino: true };
 
 function toArray<T = any>(value: any): T[] {
     if (Array.isArray(value))
@@ -87,7 +91,7 @@ export class HabilidadService {
                         habilidades.push(habilidad);
                 });
 
-                habilidades.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
+                habilidades.sort(porNombre);
                 observador.next(habilidades);
             };
 
@@ -116,7 +120,7 @@ export class HabilidadService {
             this.notificarCustomMutada(normalized.habilidad);
             return normalized;
         } catch (error: any) {
-            throw this.mapHabilidadCustomError(error, "crear");
+            throw errorDeCatalogo(error, "crear", HABILIDAD);
         }
     }
 
@@ -134,7 +138,7 @@ export class HabilidadService {
             this.notificarCustomMutada(normalized.habilidad);
             return normalized;
         } catch (error: any) {
-            throw this.mapHabilidadCustomError(error, "actualizar");
+            throw errorDeCatalogo(error, "actualizar", HABILIDAD);
         }
     }
 
@@ -168,36 +172,5 @@ export class HabilidadService {
         if (!habilidad || Number(habilidad.Id_habilidad) <= 0)
             return;
         this.habilidadesCustomMutadasSubject.next(habilidad);
-    }
-
-    private mapHabilidadCustomError(error: any, accion: "crear" | "actualizar"): Error {
-        if (!(error instanceof HttpErrorResponse))
-            return error instanceof Error ? error : new Error(`No se pudo ${accion} la habilidad custom`);
-
-        const backendMessage = this.extractErrorMessage(error.error);
-        const suffix = backendMessage.length > 0 ? ` ${backendMessage}` : "";
-        if (error.status === 400)
-            return new Error(`Solicitud inválida para ${accion} la habilidad custom.${suffix}`.trim());
-        if (error.status === 401)
-            return new Error(`Sesión no válida para ${accion} habilidades custom.${suffix}`.trim());
-        if (error.status === 403)
-            return new Error(`No tienes permisos para ${accion} habilidades custom.${suffix}`.trim());
-        if (error.status === 404)
-            return new Error(`No se encontró la habilidad custom solicitada.${suffix}`.trim());
-        if (error.status === 409)
-            return new Error(`Ya existe una habilidad custom con ese nombre.${suffix}`.trim());
-        if (backendMessage.length > 0)
-            return new Error(backendMessage);
-        return new Error(`No se pudo ${accion} la habilidad custom (HTTP ${error.status || 0})`);
-    }
-
-    private extractErrorMessage(errorBody: any): string {
-        if (!errorBody)
-            return "";
-        if (typeof errorBody === "string")
-            return errorBody.trim();
-        if (typeof errorBody === "object")
-            return `${errorBody?.message ?? errorBody?.error ?? ""}`.trim();
-        return "";
     }
 }

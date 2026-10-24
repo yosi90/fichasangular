@@ -25,6 +25,7 @@ import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-l
 import Swal from 'sweetalert2';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 interface MadurezEdadResumen {
     id: number;
@@ -959,7 +960,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
                 veces: Math.max(0, toNumber(item?.['veces'] ?? item?.['Veces'])),
             }))
             .filter((item) => item.id > 0 && this.tieneTextoVisible(item.nombre) && item.bono > 0)
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     getTextoBonoEnemigoPredilecto(item: EnemigoPredilectoSeleccion): string {
@@ -1068,14 +1069,14 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         return toArray((this.pj as any)?.Familiares)
             .map((item) => item as FamiliarMonstruoDetalle)
             .filter((familiar) => toNumber((familiar as any)?.Id) > 0 && this.tieneTextoVisible(familiar?.Nombre))
-            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     getCompanerosVisibles(): CompaneroMonstruoDetalle[] {
         return toArray((this.pj as any)?.Companeros)
             .map((item) => item as CompaneroMonstruoDetalle)
             .filter((companero) => toNumber((companero as any)?.Id) > 0 && this.tieneTextoVisible(companero?.Nombre))
-            .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     tieneCompaniaMonstruoVisible(): boolean {

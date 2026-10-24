@@ -1,13 +1,9 @@
+import { ManualReferencia } from './manual';
+
 export interface DoteTipo {
     Id: number;
     Nombre: string;
     Usado: number;
-}
-
-export interface DoteManual {
-    Id: number;
-    Nombre: string;
-    Pagina: number;
 }
 
 export interface DoteExtraItem {
@@ -47,7 +43,7 @@ export interface Dote {
     Beneficio: string;
     Normal: string;
     Especial: string;
-    Manual: DoteManual;
+    Manual: ManualReferencia;
     Tipos: DoteTipo[];
     Repetible: number;
     Repetible_distinto_extra: number;

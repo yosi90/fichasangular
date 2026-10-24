@@ -3,6 +3,7 @@ import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { EstadoElegibilidadRazaBase } from 'src/app/services/utils/raza-mutacion';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 interface CandidataRazaBaseView {
     raza: Raza;
@@ -132,7 +133,7 @@ export class SelectorRazaBaseModalComponent implements OnChanges {
                 const manual = `${item.raza.Manual ?? ''}`.toLowerCase();
                 return nombre.includes(filtro) || manual.includes(filtro);
             })
-            .sort((a, b) => a.raza.Nombre.localeCompare(b.raza.Nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.raza.Nombre, b.raza.Nombre));
 
         if (this.razaSeleccionadaId === null) {
             this.seleccionActual = null;

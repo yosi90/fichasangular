@@ -9,6 +9,7 @@ import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from '
 import { getGrupoOpcionalRacial } from 'src/app/services/utils/racial-opcionales';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 interface GrupoRacialesDetalle {
     grupo: number;
@@ -61,7 +62,7 @@ export class DetallesRazaComponent {
     getRacialesActivos(): RacialDetalle[] {
         return (this.raza?.Raciales ?? [])
             .filter(racial => this.tieneTextoVisible(racial?.Nombre))
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     getRacialesAgrupados(): GrupoRacialesDetalle[] {
@@ -86,7 +87,7 @@ export class DetallesRazaComponent {
     getSubtiposActivos(): SubtipoRef[] {
         return (this.raza?.Subtipos ?? [])
             .filter(subtipo => this.tieneTextoVisible(subtipo?.Nombre))
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     getIdiomasOtorgados(): IdiomaDetalle[] {
@@ -100,7 +101,7 @@ export class DetallesRazaComponent {
                 vistos.add(key);
                 return true;
             })
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     getHabilidadesBaseOtorgadas(): HabilidadRazaVisible[] {
@@ -257,6 +258,6 @@ export class DetallesRazaComponent {
         });
 
         return Array.from(acumulado.values())
-            .sort((a, b) => a.Habilidad.localeCompare(b.Habilidad, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.Habilidad, b.Habilidad));
     }
 }

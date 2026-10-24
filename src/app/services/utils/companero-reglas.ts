@@ -11,6 +11,7 @@ import {
     cumpleAlineamientoPorPreferencias,
     getDetallePreferenciasAlineamiento,
 } from 'src/app/services/utils/nivel-clase-monstruo';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 export type CompaneroPlantillaSelector = 'base' | 'elevado' | 'sabandija';
 
@@ -322,7 +323,7 @@ export function evaluarCompanerosElegibilidad(input: FiltroCompanerosElegiblesIn
     });
 
     return Array.from(dedupe.values())
-        .sort((a, b) => `${a?.companero?.Nombre ?? ''}`.localeCompare(`${b?.companero?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+        .sort((a, b) => compararTexto(a?.companero?.Nombre, b?.companero?.Nombre));
 }
 
 export function resolverNivelesCompaneroDisponibles(input: Omit<FiltroCompanerosElegiblesInput, 'nivelSeleccionado'>): number[] {
@@ -406,7 +407,5 @@ export function construirCatalogoCompanerosDesdeMonstruos(monstruos: MonstruoDet
         });
     });
 
-    return resultado.sort((a, b) =>
-        `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' })
-    );
+    return resultado.sort(porNombre);
 }

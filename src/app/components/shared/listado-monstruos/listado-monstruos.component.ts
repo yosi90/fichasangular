@@ -8,6 +8,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { MonstruoService } from 'src/app/services/monstruo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-listado-monstruos',
@@ -54,7 +55,7 @@ export class ListadoMonstruosComponent implements OnDestroy {
             .subscribe((monstruos) => {
                 this.monstruos = [...(monstruos ?? [])]
                     .filter(monstruo => toNumber(monstruo?.Id) > 0)
-                    .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                    .sort(porNombre);
                 this.Manuales = this.buildManualesDisponibles(this.monstruos);
                 this.defaultManual = 'Cualquiera';
                 this.sincronizarColumnaHomebrew();
@@ -171,7 +172,7 @@ export class ListadoMonstruosComponent implements OnDestroy {
             (monstruos ?? [])
                 .map((monstruo) => this.getManualNombre(monstruo))
                 .filter((nombre) => nombre.length > 0)
-        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        )).sort(compararTexto);
     }
 
 }

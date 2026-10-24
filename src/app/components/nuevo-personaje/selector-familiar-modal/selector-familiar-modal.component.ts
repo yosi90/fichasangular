@@ -2,6 +2,7 @@ import { Component, EventEmitter, HostListener, Input, Output } from '@angular/c
 import { FamiliarMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { FamiliarPlantillaId } from 'src/app/services/utils/familiar-reglas';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 export interface SelectorFamiliarConfirmacion {
     familiar: FamiliarMonstruoDetalle;
@@ -87,9 +88,7 @@ export class SelectorFamiliarModalComponent {
         );
         if (!existe)
             base.push(seleccionado);
-        return base.sort((a, b) =>
-            `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' })
-        );
+        return base.sort(porNombre);
     }
 
     onSeleccionarFamiliar(familiar: FamiliarMonstruoDetalle): void {
