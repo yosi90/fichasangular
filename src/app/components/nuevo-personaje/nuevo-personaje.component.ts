@@ -114,7 +114,7 @@ import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { DatosIdeaIa, datosIdeaDePersonaje, TipoIdeaIa } from 'src/app/services/ideas-ia.service';
 import { UsoIdeaIa } from '../shared/ideas-ia/ideas-ia.component';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, primerEntero } from 'src/app/services/utils/normalizacion';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -6500,27 +6500,18 @@ export class NuevoPersonajeComponent {
         const detalleAnterior = nivelActual > 0
             ? this.getDetalleNivelClase(clase, nivelActual)
             : null;
-        const fortaleza = this.parseValorSalvacionClase(detalleSiguiente.Salvaciones?.Fortaleza)
-            - this.parseValorSalvacionClase(detalleAnterior?.Salvaciones?.Fortaleza);
-        const reflejos = this.parseValorSalvacionClase(detalleSiguiente.Salvaciones?.Reflejos)
-            - this.parseValorSalvacionClase(detalleAnterior?.Salvaciones?.Reflejos);
-        const voluntad = this.parseValorSalvacionClase(detalleSiguiente.Salvaciones?.Voluntad)
-            - this.parseValorSalvacionClase(detalleAnterior?.Salvaciones?.Voluntad);
+        const fortaleza = (primerEntero(detalleSiguiente.Salvaciones?.Fortaleza) ?? 0)
+            - (primerEntero(detalleAnterior?.Salvaciones?.Fortaleza) ?? 0);
+        const reflejos = (primerEntero(detalleSiguiente.Salvaciones?.Reflejos) ?? 0)
+            - (primerEntero(detalleAnterior?.Salvaciones?.Reflejos) ?? 0);
+        const voluntad = (primerEntero(detalleSiguiente.Salvaciones?.Voluntad) ?? 0)
+            - (primerEntero(detalleAnterior?.Salvaciones?.Voluntad) ?? 0);
 
         return {
             fortaleza,
             reflejos,
             voluntad,
         };
-    }
-
-    private parseValorSalvacionClase(texto: string | null | undefined): number {
-        const raw = `${texto ?? ''}`;
-        const match = raw.match(/[+-]?\d+/);
-        if (!match || !match[0])
-            return 0;
-        const parsed = Number(match[0]);
-        return Number.isFinite(parsed) ? parsed : 0;
     }
 
     private getDetalleNivelClase(

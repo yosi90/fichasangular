@@ -46,7 +46,7 @@ import {
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
-import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { calcularOroPorNep } from './utils/oro-inicial';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
@@ -1637,7 +1637,7 @@ export class NuevoPersonajeService {
                 Sabiduria: toNumber(this.personajeCreacion.Sabiduria),
                 Carisma: toNumber(this.personajeCreacion.Carisma),
             },
-            ataqueBase: this.extraerPrimerEnteroConSigno(this.personajeCreacion.Ataque_base),
+            ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
             alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`,
             genero: `${this.personajeCreacion.Genero ?? ''}`,
             dotes: [...dotesDesdeContexto, ...dotesLegacy],
@@ -3177,7 +3177,7 @@ export class NuevoPersonajeService {
                 Sabiduria: toNumber(this.personajeCreacion.Sabiduria),
                 Carisma: toNumber(this.personajeCreacion.Carisma),
             },
-            ataqueBase: this.extraerPrimerEnteroConSigno(this.personajeCreacion.Ataque_base),
+            ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
             nivelesClase,
             dotes: [...dotes, ...legacySinContexto],
             claseas,
@@ -5125,12 +5125,9 @@ export class NuevoPersonajeService {
                 return directo;
 
             if (typeof candidato === 'string') {
-                const match = candidato.match(/[+-]?\d+/);
-                if (match && match[0]) {
-                    const parsed = Number(match[0]);
-                    if (Number.isFinite(parsed))
-                        return parsed;
-                }
+                const entero = primerEntero(candidato);
+                if (entero !== null)
+                    return entero;
             }
         }
 
@@ -5384,7 +5381,7 @@ export class NuevoPersonajeService {
             });
 
             const textoCa = `${plantilla?.Ca ?? ''}`.trim();
-            const valorCa = this.extraerPrimerEnteroConSigno(textoCa);
+            const valorCa = primerEntero(textoCa) ?? 0;
             if (valorCa !== 0) {
                 const normalizado = normalizarTexto(textoCa);
                 if (normalizado.includes('natural'))
@@ -6110,15 +6107,15 @@ export class NuevoPersonajeService {
         detalleSiguiente: ClaseNivelDetalle,
         detalleAnterior: ClaseNivelDetalle | null
     ): void {
-        const ataqueSiguiente = this.extraerPrimerEnteroConSigno(detalleSiguiente?.Ataque_base ?? '');
+        const ataqueSiguiente = primerEntero(detalleSiguiente?.Ataque_base) ?? 0;
         const ataqueAnterior = detalleAnterior
-            ? this.extraerPrimerEnteroConSigno(detalleAnterior?.Ataque_base ?? '')
+            ? (primerEntero(detalleAnterior?.Ataque_base) ?? 0)
             : 0;
         const delta = ataqueSiguiente - ataqueAnterior;
         if (delta === 0)
             return;
 
-        const ataqueActual = this.extraerPrimerEnteroConSigno(this.personajeCreacion.Ataque_base);
+        const ataqueActual = primerEntero(this.personajeCreacion.Ataque_base) ?? 0;
         this.personajeCreacion.Ataque_base = `${ataqueActual + delta}`;
     }
 
@@ -6136,9 +6133,9 @@ export class NuevoPersonajeService {
         ];
 
         definiciones.forEach(({ key, campo }) => {
-            const siguiente = this.extraerPrimerEnteroConSigno(detalleSiguiente?.Salvaciones?.[campo] ?? '');
+            const siguiente = primerEntero(detalleSiguiente?.Salvaciones?.[campo]) ?? 0;
             const previo = detalleAnterior
-                ? this.extraerPrimerEnteroConSigno(detalleAnterior?.Salvaciones?.[campo] ?? '')
+                ? (primerEntero(detalleAnterior?.Salvaciones?.[campo]) ?? 0)
                 : 0;
             const delta = siguiente - previo;
             if (delta === 0)
@@ -7669,7 +7666,7 @@ export class NuevoPersonajeService {
             if (!detalleNivel)
                 return acumulado;
 
-            return acumulado + this.extraerPrimerEnteroConSigno(detalleNivel?.Ataque_base ?? '');
+            return acumulado + (primerEntero(detalleNivel?.Ataque_base) ?? 0);
         }, 0);
     }
 
@@ -7714,13 +7711,6 @@ export class NuevoPersonajeService {
             && normalizado !== 'no aplica'
             && normalizado !== '-'
             && normalizado !== 'ninguna';
-    }
-
-    private extraerPrimerEnteroConSigno(valor: string): number {
-        const match = `${valor ?? ''}`.match(/[+-]?\d+/);
-        if (!match || match.length < 1)
-            return 0;
-        return toNumber(match[0]);
     }
 
     private resolverDadoGolpeTipoActual(): number {
@@ -7833,9 +7823,6 @@ export class NuevoPersonajeService {
 
     private recalcularDefensasYPresa(): void {
         const modTamanoCa = toNumber(this.personajeCreacion?.Raza?.Tamano?.Modificador);
-        const modTamanoPresa = toNumber(this.personajeCreacion?.Raza?.Tamano?.Modificador_presa);
-        const presaVarios = (this.personajeCreacion?.Presa_varios ?? [])
-            .reduce((acc, mod) => acc + toNumber(mod?.Valor), 0);
 
         this.personajeCreacion.Ca = 10
             + toNumber(this.personajeCreacion.ModDestreza)
@@ -7844,11 +7831,8 @@ export class NuevoPersonajeService {
             + toNumber(this.personajeCreacion.Ca_desvio)
             + toNumber(this.personajeCreacion.Ca_varios);
 
-        const ataqueBase = toNumber(this.personajeCreacion.Ataque_base);
-        this.personajeCreacion.Presa = ataqueBase
-            + toNumber(this.personajeCreacion.ModFuerza)
-            + modTamanoPresa
-            + presaVarios;
+        // Ataque base + Fuerza + tamaño + varios, la misma regla que la presa de la API.
+        this.personajeCreacion.Presa = totalesPersonaje(this.personajeCreacion).presa?.total ?? 0;
     }
 
     private agregarRacialPlantillaTexto(

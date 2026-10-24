@@ -14,6 +14,12 @@ export function toInt(value: any, fallback: number = 0): number {
     return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
 }
 
+/** El primer entero con signo que aparece en `value` («+6/+1» → 6, «-2 a Reflejos» → -2); `null` si no hay ninguno. */
+export function primerEntero(value: unknown): number | null {
+    const encontrado = `${value ?? ''}`.match(/[+-]?\d+/);
+    return encontrado ? Number(encontrado[0]) : null;
+}
+
 /** `value` como texto; `null` y `undefined` dan `fallback`. No recorta espacios. */
 export function toText(value: any, fallback: string = ''): string {
     if (value === null || value === undefined)

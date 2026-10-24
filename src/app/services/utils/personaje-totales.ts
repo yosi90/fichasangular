@@ -1,6 +1,6 @@
 import { Personaje, PersonajeTotales } from 'src/app/interfaces/personaje';
 import { PersonajeParteDto, PersonajeTipoParteDto, PersonajeTotalDto } from 'src/app/interfaces/personajes-api';
-import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { primerEntero, toArray, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type TipoSalvacion = 'fortaleza' | 'reflejos' | 'voluntad';
 
@@ -69,7 +69,7 @@ function partesDe(total: PersonajeTotalDto | null | undefined, tipo: PersonajeTi
 }
 
 function totalesDelBorrador(pj: Personaje | null | undefined): PersonajeTotales {
-    const ataqueBase = primerNumero(pj?.Ataque_base);
+    const ataqueBase = primerEntero(pj?.Ataque_base);
     return {
         iniciativa: sumar([
             parte('caracteristica', 'Destreza', pj?.ModDestreza),
@@ -123,10 +123,4 @@ function sumar(desglose: PersonajeParteDto[]): PersonajeTotalDto {
         total: desglose.reduce((acc, item) => acc + item.valor, 0),
         desglose,
     };
-}
-
-/** El primer número del ataque base («+6/+1» → 6); `null` si no tiene ninguno. */
-function primerNumero(texto: unknown): number | null {
-    const encontrado = /[-+]?\d+/.exec(`${texto ?? ''}`);
-    return encontrado ? Number(encontrado[0]) : null;
 }
