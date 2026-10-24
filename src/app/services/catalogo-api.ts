@@ -41,6 +41,39 @@ export function escucharRtdb(db: Database, contexto: FirebaseInjectionContextSer
     return (onNext, onError) => contexto.run(() => onValue(ref(db, ruta), onNext, onError));
 }
 
+const SIN_DATOS_RTDB = { exists: () => false, val: () => null, forEach: () => false };
+
+/**
+ * Escucha dos rutas de la RTDB que guardan lo mismo con otro nombre (`disciplinas` y `Disciplinas`): da el snapshot
+ * de la preferida si existe, si no el de la otra, y si no hay ninguno, un snapshot vacío.
+ */
+export function escucharRtdbConAlternativa(
+    db: Database,
+    contexto: FirebaseInjectionContextService,
+    preferida: string,
+    alternativa: string,
+): EscuchaRtdb {
+    return (onNext, onError) => {
+        let snapshotPreferida: any = null;
+        let snapshotAlternativa: any = null;
+        const emitir = () => onNext(snapshotPreferida?.exists?.()
+            ? snapshotPreferida
+            : snapshotAlternativa?.exists?.() ? snapshotAlternativa : SIN_DATOS_RTDB);
+        const dejarPreferida = escucharRtdb(db, contexto, preferida)((snapshot) => {
+            snapshotPreferida = snapshot;
+            emitir();
+        }, onError);
+        const dejarAlternativa = escucharRtdb(db, contexto, alternativa)((snapshot) => {
+            snapshotAlternativa = snapshot;
+            emitir();
+        }, onError);
+        return () => {
+            dejarPreferida();
+            dejarAlternativa();
+        };
+    };
+}
+
 /** Los avisos que se enseñan si falla la API: uno para el 404 y otro, con el mensaje del error, para lo demás. */
 export interface AvisosFalloApi {
     noEncontrado: { titulo: string; texto: string };

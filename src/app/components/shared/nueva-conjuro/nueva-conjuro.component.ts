@@ -19,7 +19,7 @@ import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.servic
 import { ManualService } from 'src/app/services/manual.service';
 import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-conjuros.service';
 import { UserService } from 'src/app/services/user.service';
-import { normalizarTexto, toArray } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toInt } from 'src/app/services/utils/normalizacion';
 
 interface CrearConjuroEmitPayload {
     idConjuro: number;
@@ -225,7 +225,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             .subscribe({
                 next: (escuelas) => {
                     this.escuelas = (Array.isArray(escuelas) ? escuelas : [])
-                        .filter((item) => this.toInt(item?.Id, 0) > 0)
+                        .filter((item) => toInt(item?.Id, 0) > 0)
                         .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
                 },
                 error: () => {
@@ -238,7 +238,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             .subscribe({
                 next: (disciplinas) => {
                     this.disciplinas = (Array.isArray(disciplinas) ? disciplinas : [])
-                        .filter((item) => this.toInt(item?.Id, 0) > 0)
+                        .filter((item) => toInt(item?.Id, 0) > 0)
                         .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
                     this.sincronizarSubdisciplinas();
                 },
@@ -266,7 +266,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             .subscribe({
                 next: (dominios) => {
                     this.dominios = (Array.isArray(dominios) ? dominios : [])
-                        .filter((item) => this.toInt(item?.Id, 0) > 0)
+                        .filter((item) => toInt(item?.Id, 0) > 0)
                         .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
                 },
                 error: () => {
@@ -406,11 +406,11 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
     }
 
     isComponenteSeleccionado(id: number): boolean {
-        return this.componentesSeleccionados.includes(this.toInt(id, 0));
+        return this.componentesSeleccionados.includes(toInt(id, 0));
     }
 
     isDescriptorSeleccionado(id: number): boolean {
-        return this.descriptoresSeleccionados.includes(this.toInt(id, 0));
+        return this.descriptoresSeleccionados.includes(toInt(id, 0));
     }
 
     getEtiquetaComponente(item: ConjuroCatalogItem): string {
@@ -435,8 +435,8 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
     }
 
     seleccionarManual(id: number): void {
-        const idManual = this.toInt(id, 0);
-        const manual = this.manuales.find((item) => this.toInt(item?.Id, 0) === idManual);
+        const idManual = toInt(id, 0);
+        const manual = this.manuales.find((item) => toInt(item?.Id, 0) === idManual);
         this.form.controls.id_manual.setValue(idManual);
         this.form.controls.id_manual.markAsDirty();
         this.form.controls.id_manual.updateValueAndValidity();
@@ -469,8 +469,8 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
         rows[index] = {
             ...actual,
             ...patch,
-            id: patch.id !== undefined ? this.toInt(patch.id, 0) : actual.id,
-            nivel: patch.nivel !== undefined ? this.toInt(patch.nivel, 0) : actual.nivel,
+            id: patch.id !== undefined ? toInt(patch.id, 0) : actual.id,
+            nivel: patch.nivel !== undefined ? toInt(patch.nivel, 0) : actual.nivel,
             espontaneo: patch.espontaneo !== undefined ? patch.espontaneo === true : actual.espontaneo,
         };
     }
@@ -539,10 +539,10 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             variante: this.varianteActiva,
             nombre: `${raw.nombre ?? ''}`.trim(),
             descripcion: `${raw.descripcion ?? ''}`.trim(),
-            id_manual: this.toInt(raw.id_manual, 0),
-            pagina: this.toInt(raw.pagina, 0),
-            id_tiempo_lanz: this.toInt(raw.id_tiempo_lanz, 0),
-            id_alcance: this.toInt(raw.id_alcance, 0),
+            id_manual: toInt(raw.id_manual, 0),
+            pagina: toInt(raw.pagina, 0),
+            id_tiempo_lanz: toInt(raw.id_tiempo_lanz, 0),
+            id_alcance: toInt(raw.id_alcance, 0),
             objetivo: `${raw.objetivo ?? ''}`.trim(),
             efecto: `${raw.efecto ?? ''}`.trim(),
             area: `${raw.area ?? ''}`.trim(),
@@ -560,7 +560,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
                     variante: 'base',
                     arcano: raw.arcano === true,
                     divino: raw.divino === true,
-                    id_escuela: this.toInt(raw.id_escuela, 0),
+                    id_escuela: toInt(raw.id_escuela, 0),
                     resistencia_conjuros: raw.resistencia_conjuros === true,
                 },
                 componentes: this.uniqueSorted(this.componentesSeleccionados),
@@ -574,9 +574,9 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             conjuro: {
                 ...conjuroBase,
                 variante: 'psionico',
-                id_disciplina: this.toInt(raw.id_disciplina, 0),
-                id_subdisciplina: this.toInt(raw.id_subdisciplina, 0),
-                puntos_poder: this.toInt(raw.puntos_poder, 0),
+                id_disciplina: toInt(raw.id_disciplina, 0),
+                id_subdisciplina: toInt(raw.id_subdisciplina, 0),
+                puntos_poder: toInt(raw.puntos_poder, 0),
                 descripcion_aumentos: `${raw.descripcion_aumentos ?? ''}`.trim(),
                 resistencia_poderes: raw.resistencia_poderes === true,
             },
@@ -657,8 +657,8 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
     private sincronizarManualSeleccionado(): void {
         if (this.manuales.length < 1)
             return;
-        const idActual = this.toInt(this.form.controls.id_manual.value, -1);
-        if (this.manuales.some((manual) => this.toInt(manual?.Id, 0) === idActual)) {
+        const idActual = toInt(this.form.controls.id_manual.value, -1);
+        if (this.manuales.some((manual) => toInt(manual?.Id, 0) === idActual)) {
             this.sincronizarManualBusquedaDesdeControl();
             return;
         }
@@ -666,14 +666,14 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             (manual) => normalizarTexto(manual?.Nombre ?? '') === 'compendio de conjuros'
         );
         this.form.controls.id_manual.setValue(
-            this.toInt(manualPredeterminado?.Id ?? this.manuales[0]?.Id, 0)
+            toInt(manualPredeterminado?.Id ?? this.manuales[0]?.Id, 0)
         );
         this.sincronizarManualBusquedaDesdeControl();
     }
 
     private sincronizarManualBusquedaDesdeControl(): void {
-        const idActual = this.toInt(this.form.controls.id_manual.value, 0);
-        const manual = this.manuales.find((item) => this.toInt(item?.Id, 0) === idActual);
+        const idActual = toInt(this.form.controls.id_manual.value, 0);
+        const manual = this.manuales.find((item) => toInt(item?.Id, 0) === idActual);
         this.manualBusqueda = `${manual?.Nombre ?? ''}`.trim();
     }
 
@@ -683,18 +683,18 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
     ): void {
         if (items.length < 1)
             return;
-        const idActual = this.toInt(this.form.controls[control].value, -1);
+        const idActual = toInt(this.form.controls[control].value, -1);
         if (items.some((item) => item.Id === idActual))
             return;
-        this.form.controls[control].setValue(this.toInt(items[0]?.Id, 0));
+        this.form.controls[control].setValue(toInt(items[0]?.Id, 0));
     }
 
     private sincronizarSubdisciplinas(): void {
-        const idDisciplina = this.toInt(this.form.controls.id_disciplina.value, 0);
+        const idDisciplina = toInt(this.form.controls.id_disciplina.value, 0);
         const desdeCache = (this.subdisciplinasCatalogo ?? [])
-            .filter((item) => this.toInt(item?.id_disciplina, 0) === idDisciplina)
+            .filter((item) => toInt(item?.id_disciplina, 0) === idDisciplina)
             .map((item) => ({
-                Id: this.toInt(item?.Id, 0),
+                Id: toInt(item?.Id, 0),
                 Nombre: `${item?.Nombre ?? ''}`.trim(),
             }))
             .filter((item) => item.Id > 0 && item.Nombre.length > 0)
@@ -704,14 +704,14 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             this.subdisciplinasActuales = desdeCache;
         } else {
             const disciplina = this.disciplinas.find((item: any) =>
-                this.toInt(item?.Id ?? item?.id ?? item?.i, 0) === idDisciplina
+                toInt(item?.Id ?? item?.id ?? item?.i, 0) === idDisciplina
             );
             this.subdisciplinasActuales = toArray((disciplina as any)?.Subdisciplinas ?? (disciplina as any)?.subdisciplinas ?? (disciplina as any)?.sd)
                 .map((item, index) => {
                     if (typeof item === 'string')
                         return { Id: index + 1, Nombre: `${item}`.trim() };
                     return {
-                        Id: this.toInt((item as any)?.Id ?? (item as any)?.id ?? (item as any)?.i, 0),
+                        Id: toInt((item as any)?.Id ?? (item as any)?.id ?? (item as any)?.i, 0),
                         Nombre: `${(item as any)?.Nombre ?? (item as any)?.nombre ?? (item as any)?.n ?? ''}`.trim(),
                     };
                 })
@@ -722,14 +722,14 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
                 .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
         }
 
-        const idSubdisciplina = this.toInt(this.form.controls.id_subdisciplina.value, 0);
+        const idSubdisciplina = toInt(this.form.controls.id_subdisciplina.value, 0);
         if (idSubdisciplina > 0 && !this.subdisciplinasActuales.some((item) => item.Id === idSubdisciplina))
             this.form.controls.id_subdisciplina.setValue(0);
     }
 
     private sincronizarComponentesPorVariante(): void {
-        const idsValidos = new Set(this.componentesCatalogoActual.map((item) => this.toInt(item?.Id, 0)));
-        this.componentesSeleccionados = this.componentesSeleccionados.filter((id) => idsValidos.has(this.toInt(id, 0)));
+        const idsValidos = new Set(this.componentesCatalogoActual.map((item) => toInt(item?.Id, 0)));
+        this.componentesSeleccionados = this.componentesSeleccionados.filter((id) => idsValidos.has(toInt(id, 0)));
     }
 
     private validarReglasDominio(): string {
@@ -740,14 +740,14 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
         if (this.varianteActualEsBase) {
             if (this.form.controls.arcano.value !== true && this.form.controls.divino.value !== true)
                 return 'Un conjuro base debe ser arcano, divino o ambos.';
-            if (this.toInt(this.form.controls.id_escuela.value, 0) <= 0)
+            if (toInt(this.form.controls.id_escuela.value, 0) <= 0)
                 return 'Debes seleccionar una escuela válida para el conjuro base.';
         } else {
-            if (this.toInt(this.form.controls.id_disciplina.value, 0) <= 0)
+            if (toInt(this.form.controls.id_disciplina.value, 0) <= 0)
                 return 'Debes seleccionar una disciplina válida para el conjuro psiónico.';
             if (this.form.controls.puntos_poder.value === null || this.form.controls.puntos_poder.value === undefined || `${this.form.controls.puntos_poder.value}`.trim() === '')
                 return 'Debes indicar el coste en puntos de poder.';
-            const idSubdisciplina = this.toInt(this.form.controls.id_subdisciplina.value, 0);
+            const idSubdisciplina = toInt(this.form.controls.id_subdisciplina.value, 0);
             if (idSubdisciplina > 0 && !this.subdisciplinasActuales.some((item) => item.Id === idSubdisciplina))
                 return 'La subdisciplina seleccionada no pertenece a la disciplina actual.';
         }
@@ -771,13 +771,13 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
         const unique = new Map<number, ConjuroCreateNivelRef>();
 
         (Array.isArray(rows) ? rows : []).forEach((row) => {
-            const id = this.toInt(row?.id, 0);
+            const id = toInt(row?.id, 0);
             if (id <= 0)
                 return;
 
             const item: ConjuroCreateNivelRef = {
                 [idField]: id,
-                nivel: this.toInt(row?.nivel, 0),
+                nivel: toInt(row?.nivel, 0),
                 espontaneo: row?.espontaneo === true,
             };
 
@@ -792,8 +792,8 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
         });
 
         return Array.from(unique.values()).sort((a, b) => {
-            const left = this.toInt(a[idField], 0);
-            const right = this.toInt(b[idField], 0);
+            const left = toInt(a[idField], 0);
+            const right = toInt(b[idField], 0);
             return left - right;
         });
     }
@@ -816,12 +816,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
     }
 
     private uniqueSorted(ids: number[]): number[] {
-        return Array.from(new Set((ids ?? []).map((id) => this.toInt(id, 0)).filter((id) => id > 0))).sort((a, b) => a - b);
-    }
-
-    private toInt(value: any, fallback: number): number {
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) ? parsed : fallback;
+        return Array.from(new Set((ids ?? []).map((id) => toInt(id, 0)).filter((id) => id > 0))).sort((a, b) => a - b);
     }
 
 }

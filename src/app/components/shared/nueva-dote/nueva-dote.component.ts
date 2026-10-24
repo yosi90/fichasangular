@@ -44,7 +44,7 @@ import { ConjuroService } from 'src/app/services/conjuro.service';
 import { EspecialService } from 'src/app/services/especial.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { TamanoService } from 'src/app/services/tamano.service';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 
 type RepeticionKey = 'repetible' | 'repetible_distinto_extra' | 'repetible_comb';
 type ExtraFamilyKey = 'extra_arma' | 'extra_armadura' | 'extra_escuela' | 'extra_habilidad';
@@ -394,7 +394,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             const key = `${item.key ?? ''}`.trim();
             if (key.length < 1)
                 return;
-            const valor = this.toInt(item.value, 0);
+            const valor = toInt(item.value, 0);
             if (valor === 0)
                 return;
             agregado.set(key, (agregado.get(key) ?? 0) + valor);
@@ -593,8 +593,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     seleccionarManual(id: number): void {
-        const idManual = this.toInt(id, 0);
-        const manual = this.manuales.find((item) => this.toInt(item?.Id, 0) === idManual);
+        const idManual = toInt(id, 0);
+        const manual = this.manuales.find((item) => toInt(item?.Id, 0) === idManual);
         this.form.controls.id_manual.setValue(idManual);
         this.form.controls.id_manual.markAsDirty();
         this.form.controls.id_manual.updateValueAndValidity();
@@ -660,11 +660,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     isExtraTemporalSeleccionado(id: number): boolean {
-        return this.selectorExtrasTempIds.includes(this.toInt(id, 0));
+        return this.selectorExtrasTempIds.includes(toInt(id, 0));
     }
 
     toggleExtraTemporal(id: number, checked: boolean): void {
-        const idNum = this.toInt(id, 0);
+        const idNum = toInt(id, 0);
         if (idNum < 1)
             return;
         if (checked) {
@@ -776,9 +776,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
     abrirEditarCustomOtorgada(index: number): void {
         const row = this.habilidadesOtorgadasEditor[index];
-        if (!row || this.toInt(row.id_habilidad, 0) <= 0)
+        if (!row || toInt(row.id_habilidad, 0) <= 0)
             return;
-        const habilidad = this.habilidadesCustomCatalogo.find((item) => this.toInt(item.Id_habilidad, 0) === this.toInt(row.id_habilidad, 0));
+        const habilidad = this.habilidadesCustomCatalogo.find((item) => toInt(item.Id_habilidad, 0) === toInt(row.id_habilidad, 0));
         if (!habilidad)
             return;
         this.customModalModo = 'editar';
@@ -799,7 +799,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (targetIndex >= 0 && targetIndex < this.habilidadesOtorgadasEditor.length) {
             this.onHabilidadOtorgadaChange(targetIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: 0 });
         } else {
-            const emptyIndex = this.habilidadesOtorgadasEditor.findIndex((row) => this.toInt(row.id_habilidad, 0) <= 0);
+            const emptyIndex = this.habilidadesOtorgadasEditor.findIndex((row) => toInt(row.id_habilidad, 0) <= 0);
             if (emptyIndex >= 0)
                 this.onHabilidadOtorgadaChange(emptyIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: 0 });
             else
@@ -809,19 +809,19 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     habilidadPermiteExtra(idHabilidad: number): boolean {
-        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => item.Id_habilidad === this.toInt(idHabilidad, 0));
+        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => item.Id_habilidad === toInt(idHabilidad, 0));
         return !!habilidad?.Soporta_extra;
     }
 
     getExtrasDeHabilidad(idHabilidad: number): Array<{ Id_extra: number; Extra: string; }> {
-        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => item.Id_habilidad === this.toInt(idHabilidad, 0));
+        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => item.Id_habilidad === toInt(idHabilidad, 0));
         if (!habilidad?.Extras)
             return [];
         return habilidad.Extras;
     }
 
     esHabilidadCustom(idHabilidad: number): boolean {
-        return this.habilidadesCustomCatalogo.some((item) => this.toInt(item.Id_habilidad, 0) === this.toInt(idHabilidad, 0));
+        return this.habilidadesCustomCatalogo.some((item) => toInt(item.Id_habilidad, 0) === toInt(idHabilidad, 0));
     }
 
     abrirSelectorPrerrequisitos(): void {
@@ -939,7 +939,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     getOpcionesExtraDote(idDote: number): ExtraSelectorItem[] {
-        const id = this.toInt(idDote, 0);
+        const id = toInt(idDote, 0);
         if (id < 1)
             return [];
 
@@ -947,7 +947,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (cache)
             return cache;
 
-        const dote = this.dotesExistentes.find((item) => this.toInt(item?.Id, 0) === id);
+        const dote = this.dotesExistentes.find((item) => toInt(item?.Id, 0) === id);
         if (!dote)
             return [];
 
@@ -957,31 +957,31 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     habilidadCatalogoPermiteExtra(idHabilidad: number): boolean {
-        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => this.toInt(item?.Id_habilidad, 0) === this.toInt(idHabilidad, 0));
+        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => toInt(item?.Id_habilidad, 0) === toInt(idHabilidad, 0));
         return !!habilidad?.Soporta_extra;
     }
 
     especialCatalogoPermiteExtra(idEspecial: number): boolean {
-        const especial = this.especialesDetalleCatalogo.find((item) => this.toInt(item?.Id, 0) === this.toInt(idEspecial, 0));
+        const especial = this.especialesDetalleCatalogo.find((item) => toInt(item?.Id, 0) === toInt(idEspecial, 0));
         return !!(especial?.Extra || especial?.Activa_extra);
     }
 
     doteCatalogoPermiteExtra(idDote: number): boolean {
-        const dote = this.dotesExistentes.find((item) => this.toInt(item?.Id, 0) === this.toInt(idDote, 0));
+        const dote = this.dotesExistentes.find((item) => toInt(item?.Id, 0) === toInt(idDote, 0));
         return !!dote && this.doteTieneAlgunExtra(dote);
     }
 
     private getClaveCatalogoExtraDote(idDote: number): PrerequisiteCatalogKey | null {
-        const dote = this.dotesExistentes.find((item) => this.toInt(item?.Id, 0) === this.toInt(idDote, 0));
+        const dote = this.dotesExistentes.find((item) => toInt(item?.Id, 0) === toInt(idDote, 0));
         if (!dote)
             return null;
-        if (this.toInt(dote?.Extras_soportados?.Extra_arma, 0) > 0)
+        if (toInt(dote?.Extras_soportados?.Extra_arma, 0) > 0)
             return 'armas';
         if (this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote))
             return 'armaduras';
-        if (this.toInt(dote?.Extras_soportados?.Extra_escuela, 0) > 0)
+        if (toInt(dote?.Extras_soportados?.Extra_escuela, 0) > 0)
             return 'escuelas';
-        if (this.toInt(dote?.Extras_soportados?.Extra_habilidad, 0) > 0)
+        if (toInt(dote?.Extras_soportados?.Extra_habilidad, 0) > 0)
             return 'habilidades';
         return null;
     }
@@ -1068,10 +1068,10 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
                 descripcion: `${raw.descripcion ?? ''}`.trim(),
                 normal: `${raw.normal ?? ''}`.trim(),
                 especial: `${raw.especial ?? ''}`.trim(),
-                id_manual: this.toInt(raw.id_manual, 0),
-                pagina: this.toInt(raw.pagina, 0),
-                id_tipo: this.toInt(raw.id_tipo, 0),
-                id_tipo2: this.toInt(raw.id_tipo2, 0),
+                id_manual: toInt(raw.id_manual, 0),
+                pagina: toInt(raw.pagina, 0),
+                id_tipo: toInt(raw.id_tipo, 0),
+                id_tipo2: toInt(raw.id_tipo2, 0),
                 oficial: !!raw.oficial,
                 repetible: !!raw.repetible,
                 repetible_distinto_extra: !!raw.repetible_distinto_extra,
@@ -1158,7 +1158,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         const mapa = new Map<number, string>();
         dotes.forEach((dote) => {
             (dote?.Tipos ?? []).forEach((tipo) => {
-                const id = this.toInt(tipo?.Id, -1);
+                const id = toInt(tipo?.Id, -1);
                 const nombre = `${tipo?.Nombre ?? ''}`.trim();
                 if (id >= 0 && nombre.length > 0 && !mapa.has(id))
                     mapa.set(id, nombre);
@@ -1177,11 +1177,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             .filter((item) => item.Id > 0)
             .map((item) => ({ id: item.Id, nombre: item.Nombre }));
 
-        const idTipoActual = this.toInt(this.form.controls.id_tipo.value, -1);
+        const idTipoActual = toInt(this.form.controls.id_tipo.value, -1);
         if (!this.tiposPrimarios.some((tipo) => tipo.Id === idTipoActual) && this.tiposPrimarios.length > 0)
             this.form.controls.id_tipo.setValue(this.tiposPrimarios[0].Id);
 
-        const idTipo2Actual = this.toInt(this.form.controls.id_tipo2.value, -1);
+        const idTipo2Actual = toInt(this.form.controls.id_tipo2.value, -1);
         if (!this.tiposDote.some((tipo) => tipo.Id === idTipo2Actual))
             this.form.controls.id_tipo2.setValue(0);
     }
@@ -1190,8 +1190,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (this.manuales.length < 1)
             return;
 
-        const idActual = this.toInt(this.form.controls.id_manual.value, -1);
-        if (!this.manuales.some((manual) => this.toInt(manual?.Id, -1) === idActual))
+        const idActual = toInt(this.form.controls.id_manual.value, -1);
+        if (!this.manuales.some((manual) => toInt(manual?.Id, -1) === idActual))
             this.form.controls.id_manual.setValue(this.getManualPorDefectoId());
         this.sincronizarManualBusquedaDesdeControl();
     }
@@ -1201,13 +1201,13 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             normalizarTexto(`${manual?.Nombre ?? ''}`) === normalizarTexto(NuevaDoteComponent.preferredManualName)
         );
         if (manualPreferido)
-            return this.toInt(manualPreferido.Id, 0);
-        return this.toInt(this.manuales[0]?.Id, 0);
+            return toInt(manualPreferido.Id, 0);
+        return toInt(this.manuales[0]?.Id, 0);
     }
 
     private sincronizarManualBusquedaDesdeControl(): void {
-        const idActual = this.toInt(this.form.controls.id_manual.value, 0);
-        const manual = this.manuales.find((item) => this.toInt(item?.Id, 0) === idActual);
+        const idActual = toInt(this.form.controls.id_manual.value, 0);
+        const manual = this.manuales.find((item) => toInt(item?.Id, 0) === idActual);
         this.manualBusqueda = `${manual?.Nombre ?? ''}`.trim();
     }
 
@@ -1246,22 +1246,22 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
     private actualizarCatalogoDotesPrerrequisito(dotes: Dote[]): void {
         this.dotesCatalogoPrerrequisito = (Array.isArray(dotes) ? dotes : [])
-            .map((dote) => ({ id: this.toInt(dote?.Id, 0), nombre: `${dote?.Nombre ?? ''}`.trim() }))
+            .map((dote) => ({ id: toInt(dote?.Id, 0), nombre: `${dote?.Nombre ?? ''}`.trim() }))
             .filter((item) => item.id > 0 && item.nombre.length > 0)
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
 
     private actualizarCatalogoHabilidadesPrerrequisito(habilidades: HabilidadBasicaDetalle[]): void {
         this.habilidadesCatalogoPrerrequisito = (Array.isArray(habilidades) ? habilidades : [])
-            .map((item) => ({ id: this.toInt(item?.Id_habilidad, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+            .map((item) => ({ id: toInt(item?.Id_habilidad, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
             .filter((item) => item.id > 0 && item.nombre.length > 0)
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
 
     private upsertHabilidadCustom(habilidad: HabilidadBasicaDetalle): void {
-        if (!habilidad || this.toInt(habilidad.Id_habilidad, 0) <= 0)
+        if (!habilidad || toInt(habilidad.Id_habilidad, 0) <= 0)
             return;
-        const others = this.habilidadesCustomCatalogo.filter((item) => this.toInt(item.Id_habilidad, 0) !== this.toInt(habilidad.Id_habilidad, 0));
+        const others = this.habilidadesCustomCatalogo.filter((item) => toInt(item.Id_habilidad, 0) !== toInt(habilidad.Id_habilidad, 0));
         this.habilidadesCustomCatalogo = [...others, habilidad]
             .sort((a, b) => `${a.Nombre ?? ''}`.localeCompare(`${b.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
         this.actualizarCatalogoHabilidadesPrerrequisito(this.habilidadesOtorgadasCatalogo);
@@ -1270,14 +1270,14 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     private actualizarCatalogoEspecialesPrerrequisito(especiales: EspecialClaseDetalle[]): void {
         this.especialesDetalleCatalogo = Array.isArray(especiales) ? [...especiales] : [];
         this.especialesCatalogo = this.especialesDetalleCatalogo
-            .map((item) => ({ id: this.toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+            .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
             .filter((item) => item.id > 0 && item.nombre.length > 0)
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
 
     private actualizarCatalogoExtrasPrerrequisito(extras: Array<{ Id: number; Nombre: string; }>): void {
         this.extrasCatalogo = (Array.isArray(extras) ? extras : [])
-            .map((item) => ({ id: this.toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+            .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
             .filter((item) => item.id > 0 && item.nombre.length > 0)
             .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
     }
@@ -1286,7 +1286,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         const mapa = new Map<number, ExtraSelectorItem[]>();
 
         (Array.isArray(dotes) ? dotes : []).forEach((dote) => {
-            const idDote = this.toInt(dote?.Id, 0);
+            const idDote = toInt(dote?.Id, 0);
             if (idDote < 1)
                 return;
 
@@ -1347,7 +1347,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'alineamientos') {
             const alineamientos = await firstValueFrom(this.alineamientoSvc.getAlineamientosBasicosCatalogo());
             this.alineamientosCatalogo = (Array.isArray(alineamientos) ? alineamientos : [])
-                .map((item: any) => ({ id: this.toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+                .map((item: any) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             return;
@@ -1357,7 +1357,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             const armaduras = await firstValueFrom(this.armaduraSvc.getArmaduras());
             this.armadurasCatalogo = (Array.isArray(armaduras) ? armaduras : [])
                 .map((armadura) => ({
-                    id: this.toInt(armadura?.Id, 0),
+                    id: toInt(armadura?.Id, 0),
                     nombre: `${armadura?.Nombre ?? ''}`.trim(),
                     esEscudo: !!armadura?.Es_escudo,
                 }))
@@ -1370,7 +1370,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'armas') {
             const armas = await firstValueFrom(this.armaSvc.getArmas());
             this.armasCatalogo = (Array.isArray(armas) ? armas : [])
-                .map((arma) => ({ id: this.toInt(arma?.Id, 0), nombre: `${arma?.Nombre ?? ''}`.trim() }))
+                .map((arma) => ({ id: toInt(arma?.Id, 0), nombre: `${arma?.Nombre ?? ''}`.trim() }))
                 .filter((arma) => arma.id > 0 && arma.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             this.actualizarOpcionesExtraDote(this.dotesExistentes);
@@ -1380,7 +1380,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'clases') {
             const clases = await firstValueFrom(this.claseSvc.getClases());
             this.clasesCatalogo = (Array.isArray(clases) ? clases : [])
-                .map((item) => ({ id: this.toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             return;
@@ -1389,7 +1389,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'conjuros') {
             const conjuros = await firstValueFrom(this.conjuroSvc.getConjuros());
             this.conjurosCatalogo = (Array.isArray(conjuros) ? conjuros : [])
-                .map((item) => ({ id: this.toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             return;
@@ -1407,7 +1407,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'dominios') {
             const dominios = await firstValueFrom(this.dominioSvc.getDominios());
             this.dominiosCatalogo = (Array.isArray(dominios) ? dominios : [])
-                .map((item) => ({ id: this.toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             return;
@@ -1416,7 +1416,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'escuelas') {
             const escuelas = await firstValueFrom(this.escuelaSvc.getEscuelas());
             this.escuelasCatalogo = (Array.isArray(escuelas) ? escuelas : [])
-                .map((escuela) => ({ id: this.toInt(escuela?.Id, 0), nombre: `${escuela?.Nombre ?? ''}`.trim() }))
+                .map((escuela) => ({ id: toInt(escuela?.Id, 0), nombre: `${escuela?.Nombre ?? ''}`.trim() }))
                 .filter((escuela) => escuela.id > 0 && escuela.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             this.actualizarOpcionesExtraDote(this.dotesExistentes);
@@ -1438,7 +1438,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'grupos_arma') {
             const grupos = await firstValueFrom(this.grupoArmaSvc.getGruposArmas());
             this.gruposArmasCatalogo = (Array.isArray(grupos) ? grupos : [])
-                .map((item) => ({ id: this.toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             return;
@@ -1447,7 +1447,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'grupos_armadura') {
             const grupos = await firstValueFrom(this.grupoArmaduraSvc.getGruposArmaduras());
             this.gruposArmadurasCatalogo = (Array.isArray(grupos) ? grupos : [])
-                .map((item) => ({ id: this.toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             return;
@@ -1465,7 +1465,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'idiomas') {
             const idiomas = await firstValueFrom(this.idiomaSvc.getIdiomas());
             this.idiomasCatalogo = (Array.isArray(idiomas) ? idiomas : [])
-                .map((item) => ({ id: this.toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             return;
@@ -1474,7 +1474,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'razas') {
             const razas = await firstValueFrom(this.razaSvc.getRazas());
             const lista = (Array.isArray(razas) ? razas : [])
-                .map((item) => ({ id: this.toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             this.razasCatalogo = lista;
@@ -1484,7 +1484,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'tamanos') {
             const tamanos = await firstValueFrom(this.tamanoSvc.getTamanos());
             this.tamanosCatalogo = (Array.isArray(tamanos) ? tamanos : [])
-                .map((tamano) => ({ id: this.toInt(tamano?.Id, 0), nombre: `${tamano?.Nombre ?? ''}`.trim() }))
+                .map((tamano) => ({ id: toInt(tamano?.Id, 0), nombre: `${tamano?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             return;
@@ -1493,7 +1493,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'regiones') {
             const regiones = await firstValueFrom(this.regionSvc.getRegiones());
             this.regionesCatalogo = (Array.isArray(regiones) ? regiones : [])
-                .map((item) => ({ id: this.toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             return;
@@ -1502,7 +1502,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (clave === 'tipos_criatura') {
             const tipos = await firstValueFrom(this.tipoCriaturaSvc.getTiposCriatura());
             this.tiposCriaturaCatalogo = (Array.isArray(tipos) ? tipos : [])
-                .map((item) => ({ id: this.toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
             return;
@@ -1536,7 +1536,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         this.modificadoresEditor.forEach((item) => {
             if (`${item.key ?? ''}`.trim().length < 1)
                 return;
-            const valor = this.toInt(item.value, 0);
+            const valor = toInt(item.value, 0);
             if (valor !== 0)
                 out[item.key] = (out[item.key] ?? 0) + valor;
         });
@@ -1546,9 +1546,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     private construirHabilidadesOtorgadasPayload(): DoteHabilidadOtorgadaDto[] {
         return this.habilidadesOtorgadasEditor
             .map((item) => ({
-                id_habilidad: this.toInt(item.id_habilidad, 0),
-                id_extra: this.toInt(item.id_extra, 0),
-                rangos: this.toInt(item.rangos, 0),
+                id_habilidad: toInt(item.id_habilidad, 0),
+                id_extra: toInt(item.id_extra, 0),
+                rangos: toInt(item.rangos, 0),
                 custom: this.esHabilidadCustom(item.id_habilidad),
             }))
             .filter((item) => item.id_habilidad > 0)
@@ -1614,7 +1614,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             return this.escuelasCatalogo;
         if (tipo === 'extra_habilidad')
             return this.habilidadesOtorgadasCatalogo
-                .map((item) => ({ id: this.toInt(item?.Id_habilidad, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt(item?.Id_habilidad, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
         return [];
@@ -1653,7 +1653,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     private uniqueItemsById(items: ExtraSelectorItem[]): ExtraSelectorItem[] {
         const map = new Map<number, string>();
         (items ?? []).forEach((item) => {
-            const id = this.toInt(item?.id, 0);
+            const id = toInt(item?.id, 0);
             const nombre = `${item?.nombre ?? ''}`.trim();
             if (id > 0 && nombre.length > 0 && !map.has(id))
                 map.set(id, nombre);
@@ -1664,7 +1664,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     private uniqueSorted(ids: number[]): number[] {
-        return Array.from(new Set((ids ?? []).map((id) => this.toInt(id, 0)).filter((id) => id > 0))).sort((a, b) => a - b);
+        return Array.from(new Set((ids ?? []).map((id) => toInt(id, 0)).filter((id) => id > 0))).sort((a, b) => a - b);
     }
 
     private armaduraCoincideConSubtiposActivos(item: ArmaduraSelectorItem | null | undefined): boolean {
@@ -1680,7 +1680,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     private armaduraSeleccionablePorSubtipo(id: number): boolean {
-        const objetivo = this.toInt(id, 0);
+        const objetivo = toInt(id, 0);
         if (objetivo < 1)
             return false;
         const armadura = this.armadurasCatalogo.find((item) => item.id === objetivo);
@@ -1694,25 +1694,25 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     private doteSoportaArmaduras(dote: Dote | null | undefined): boolean {
-        return this.toInt(dote?.Extras_soportados?.Extra_armadura_armaduras, this.toInt(dote?.Extras_soportados?.Extra_armadura, 0)) > 0;
+        return toInt(dote?.Extras_soportados?.Extra_armadura_armaduras, toInt(dote?.Extras_soportados?.Extra_armadura, 0)) > 0;
     }
 
     private doteSoportaEscudos(dote: Dote | null | undefined): boolean {
-        return this.toInt(dote?.Extras_soportados?.Extra_armadura_escudos, this.toInt(dote?.Extras_soportados?.Extra_armadura, 0)) > 0;
+        return toInt(dote?.Extras_soportados?.Extra_armadura_escudos, toInt(dote?.Extras_soportados?.Extra_armadura, 0)) > 0;
     }
 
     private doteTieneAlgunExtra(dote: Dote | null | undefined): boolean {
-        return this.toInt(dote?.Extras_soportados?.Extra_arma, 0) > 0
+        return toInt(dote?.Extras_soportados?.Extra_arma, 0) > 0
             || this.doteSoportaArmaduras(dote)
             || this.doteSoportaEscudos(dote)
-            || this.toInt(dote?.Extras_soportados?.Extra_escuela, 0) > 0
-            || this.toInt(dote?.Extras_soportados?.Extra_habilidad, 0) > 0;
+            || toInt(dote?.Extras_soportados?.Extra_escuela, 0) > 0
+            || toInt(dote?.Extras_soportados?.Extra_habilidad, 0) > 0;
     }
 
     private getOpcionesArmaduraParaDote(dote: Dote): ExtraSelectorItem[] {
         const directos = (dote?.Extras_disponibles?.Armaduras ?? [])
             .map((item) => ({
-                id: this.toInt(item?.Id, 0),
+                id: toInt(item?.Id, 0),
                 nombre: `${item?.Nombre ?? ''}`.trim(),
                 esEscudo: !!item?.Es_escudo,
             }))
@@ -1728,18 +1728,18 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     private resolverOpcionesExtraDote(dote: Dote): ExtraSelectorItem[] {
         const directosArmas = this.uniqueItemsById(
             (dote?.Extras_disponibles?.Armas ?? [])
-                .map((item) => ({ id: this.toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
         );
         const directosEscuelas = this.uniqueItemsById(
             (dote?.Extras_disponibles?.Escuelas ?? [])
-                .map((item) => ({ id: this.toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
         );
         const directosHabilidades = this.uniqueItemsById(
             (dote?.Extras_disponibles?.Habilidades ?? [])
-                .map((item) => ({ id: this.toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
+                .map((item) => ({ id: toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
         );
 
-        if (this.toInt(dote?.Extras_soportados?.Extra_arma, 0) > 0)
+        if (toInt(dote?.Extras_soportados?.Extra_arma, 0) > 0)
             return directosArmas.length > 0 && !this.contieneOpcionElegir(directosArmas) ? directosArmas : this.armasCatalogo;
 
         if (this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote)) {
@@ -1749,10 +1749,10 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             return this.armadurasCatalogo.filter((item) => this.filtraArmaduraPorSoporteDote(dote, item));
         }
 
-        if (this.toInt(dote?.Extras_soportados?.Extra_escuela, 0) > 0)
+        if (toInt(dote?.Extras_soportados?.Extra_escuela, 0) > 0)
             return directosEscuelas.length > 0 && !this.contieneOpcionElegir(directosEscuelas) ? directosEscuelas : this.escuelasCatalogo;
 
-        if (this.toInt(dote?.Extras_soportados?.Extra_habilidad, 0) > 0)
+        if (toInt(dote?.Extras_soportados?.Extra_habilidad, 0) > 0)
             return directosHabilidades.length > 0 && !this.contieneOpcionElegir(directosHabilidades) ? directosHabilidades : this.habilidadesCatalogoPrerrequisito;
 
         return [];
@@ -1779,11 +1779,6 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         return this.dotesExistentes.some((dote) => normalizarTexto(dote?.Nombre ?? '') === objetivo);
     }
 
-    private toInt(value: any, fallback: number): number {
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) ? parsed : fallback;
-    }
-
     private esExtraFamilyKey(value: any): value is ExtraFamilyKey {
         return this.extraFamilyKeys.includes(value as ExtraFamilyKey);
     }
@@ -1806,8 +1801,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
     private tiposDistintosValidator(): ValidatorFn {
         return (group: AbstractControl): ValidationErrors | null => {
-            const idTipo = this.toInt(group.get('id_tipo')?.value, -1);
-            const idTipo2 = this.toInt(group.get('id_tipo2')?.value, -2);
+            const idTipo = toInt(group.get('id_tipo')?.value, -1);
+            const idTipo2 = toInt(group.get('id_tipo2')?.value, -2);
             if (idTipo >= 0 && idTipo2 >= 0 && idTipo === idTipo2)
                 return { tipos_iguales: true };
             return null;

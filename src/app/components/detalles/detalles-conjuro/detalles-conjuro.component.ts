@@ -3,6 +3,7 @@ import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Id_nombre } from 'src/app/interfaces/genericas';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { toInt } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-detalles-conjuro',
@@ -56,21 +57,21 @@ export class DetallesConjuroComponent {
 
     get nivelesClaseVisibles(): Conjuro['Nivel_clase'] {
         return (Array.isArray(this.conjuro?.Nivel_clase) ? this.conjuro.Nivel_clase : [])
-            .filter((item) => this.toInt(item?.Id_clase) > 0 && this.hasText(item?.Clase));
+            .filter((item) => toInt(item?.Id_clase) > 0 && this.hasText(item?.Clase));
     }
 
     get nivelesDominioVisibles(): Conjuro['Nivel_dominio'] {
         if (this.conjuro?.Psionico === true)
             return [];
         return (Array.isArray(this.conjuro?.Nivel_dominio) ? this.conjuro.Nivel_dominio : [])
-            .filter((item) => this.toInt(item?.Id_dominio) > 0 && this.hasText(item?.Dominio));
+            .filter((item) => toInt(item?.Id_dominio) > 0 && this.hasText(item?.Dominio));
     }
 
     get nivelesDisciplinaVisibles(): Conjuro['Nivel_disciplinas'] {
         if (this.conjuro?.Psionico !== true)
             return [];
         return (Array.isArray(this.conjuro?.Nivel_disciplinas) ? this.conjuro.Nivel_disciplinas : [])
-            .filter((item) => this.toInt(item?.Id_disciplina) > 0 && this.hasText(item?.Disciplina));
+            .filter((item) => toInt(item?.Id_disciplina) > 0 && this.hasText(item?.Disciplina));
     }
 
     private hasText(value: any): boolean {
@@ -78,8 +79,4 @@ export class DetallesConjuroComponent {
         return normalized.length > 0 && normalized !== 'no especifica';
     }
 
-    private toInt(value: any): number {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? Math.trunc(parsed) : 0;
-    }
 }

@@ -1,10 +1,5 @@
 import { Conjuro } from 'src/app/interfaces/conjuro';
-import { toArray, toBoolean, toText } from 'src/app/services/utils/normalizacion';
-
-function toNumber(value: any, fallback: number = 0): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
-}
+import { toArray, toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
 
 function toStrictArray<T = any>(value: any): T[] {
     return Array.isArray(value) ? value : [];
@@ -15,7 +10,7 @@ function normalizeEscuelaApi(raw: any): Conjuro['Escuela'] {
         return { Id: 0, Nombre: '', Nombre_especial: '', Prohibible: false };
 
     return {
-        Id: toNumber(raw?.Id ?? raw?.i),
+        Id: toInt(raw?.Id ?? raw?.i),
         Nombre: toText(raw?.Nombre ?? raw?.n),
         Nombre_especial: toText(raw?.Nombre_esp ?? raw?.ne),
         Prohibible: toBoolean(raw?.Prohibible ?? raw?.p),
@@ -27,12 +22,12 @@ function normalizeDisciplinaApi(raw: any): Conjuro['Disciplina'] {
         return { Id: 0, Nombre: '', Nombre_especial: '', Subdisciplinas: [] };
 
     return {
-        Id: toNumber(raw?.Id ?? raw?.i),
+        Id: toInt(raw?.Id ?? raw?.i),
         Nombre: toText(raw?.Nombre ?? raw?.n),
         Nombre_especial: toText(raw?.Nombre_esp ?? raw?.ne),
         Subdisciplinas: toStrictArray(raw?.Subdisciplinas ?? raw?.sd)
             .map((item: any) => ({
-                Id: toNumber(item?.Id ?? item?.i),
+                Id: toInt(item?.Id ?? item?.i),
                 Nombre: toText(item?.Nombre ?? item?.n),
             }))
             .filter((item) => item.Id > 0 || item.Nombre.trim().length > 0),
@@ -44,7 +39,7 @@ function normalizeEscuelaLegacy(raw: any): Conjuro['Escuela'] {
         return { Id: 0, Nombre: '', Nombre_especial: '', Prohibible: false };
 
     return {
-        Id: toNumber(raw?.Id ?? raw?.i),
+        Id: toInt(raw?.Id ?? raw?.i),
         Nombre: toText(raw?.Nombre ?? raw?.n),
         Nombre_especial: toText(raw?.Nombre_especial ?? raw?.Nombre_esp ?? raw?.ne),
         Prohibible: toBoolean(raw?.Prohibible ?? raw?.p),
@@ -56,11 +51,11 @@ function normalizeDisciplinaLegacy(raw: any): Conjuro['Disciplina'] {
         return { Id: 0, Nombre: '', Nombre_especial: '', Subdisciplinas: [] };
 
     return {
-        Id: toNumber(raw?.Id ?? raw?.i),
+        Id: toInt(raw?.Id ?? raw?.i),
         Nombre: toText(raw?.Nombre ?? raw?.n),
         Nombre_especial: toText(raw?.Nombre_especial ?? raw?.Nombre_esp ?? raw?.ne),
         Subdisciplinas: toArray(raw?.Subdisciplinas ?? raw?.sd).map((item: any) => ({
-            Id: toNumber(item?.Id ?? item?.i),
+            Id: toInt(item?.Id ?? item?.i),
             Nombre: toText(item?.Nombre ?? item?.n),
         })),
     };
@@ -105,7 +100,7 @@ export function normalizeConjuroApi(raw: any): Conjuro {
 
     return {
         ...base,
-        Id: toNumber(raw?.Id ?? raw?.i),
+        Id: toInt(raw?.Id ?? raw?.i),
         Nombre: toText(raw?.Nombre ?? raw?.n),
         Descripcion: toText(raw?.Descripcion ?? raw?.d),
         Tiempo_lanzamiento: toText(raw?.Tiempo_lanzamiento ?? raw?.tl),
@@ -126,42 +121,42 @@ export function normalizeConjuroApi(raw: any): Conjuro {
         Resistencia_poderes: toBoolean(raw?.Resistencia_poderes ?? raw?.r_p),
         Descripcion_componentes: toText(raw?.Descripcion_componentes ?? raw?.d_c),
         Permanente: toBoolean(raw?.Permanente ?? raw?.per),
-        Puntos_poder: toNumber(raw?.Puntos_poder ?? raw?.pp),
+        Puntos_poder: toInt(raw?.Puntos_poder ?? raw?.pp),
         Descripcion_aumentos: toText(raw?.Descripcion_aumentos ?? raw?.da),
         Descriptores: toStrictArray(raw?.Descriptores ?? raw?.des)
             .map((item: any) => ({
-                Id: toNumber(item?.Id),
+                Id: toInt(item?.Id),
                 Nombre: toText(item?.Nombre),
             }))
             .filter((item) => item.Id > 0 || item.Nombre.trim().length > 0),
         Nivel_clase: toStrictArray(raw?.Niveles_clase ?? raw?.ncl)
             .map((item: any) => ({
-                Id_clase: toNumber(item?.Id_clase),
+                Id_clase: toInt(item?.Id_clase),
                 Clase: toText(item?.Clase),
-                Nivel: toNumber(item?.Nivel),
+                Nivel: toInt(item?.Nivel),
                 Espontaneo: toBoolean(item?.Espontaneo),
             }))
             .filter((item) => item.Id_clase > 0 || item.Clase.trim().length > 0),
         Nivel_dominio: toStrictArray(raw?.Niveles_dominio ?? raw?.nd)
             .map((item: any) => ({
-                Id_dominio: toNumber(item?.Id_dominio),
+                Id_dominio: toInt(item?.Id_dominio),
                 Dominio: toText(item?.Dominio),
-                Nivel: toNumber(item?.Nivel),
+                Nivel: toInt(item?.Nivel),
                 Espontaneo: toBoolean(item?.Espontaneo),
             }))
             .filter((item) => item.Id_dominio > 0 || item.Dominio.trim().length > 0),
         Nivel_disciplinas: toStrictArray(raw?.Niveles_disciplina ?? raw?.ndis)
             .map((item: any) => ({
-                Id_disciplina: toNumber(item?.Id_disciplina),
+                Id_disciplina: toInt(item?.Id_disciplina),
                 Disciplina: toText(item?.Disciplina),
-                Nivel: toNumber(item?.Nivel),
+                Nivel: toInt(item?.Nivel),
                 Espontaneo: toBoolean(item?.Espontaneo),
             }))
             .filter((item) => item.Id_disciplina > 0 || item.Disciplina.trim().length > 0),
         Componentes: toStrictArray(raw?.Componentes ?? raw?.coms)
             .map((item: any) => ({
                 Componente: toText(item?.Componente),
-                Id_componente: toNumber(item?.Id_componente),
+                Id_componente: toInt(item?.Id_componente),
             }))
             .filter((item) => item.Id_componente > 0 || item.Componente.trim().length > 0),
         Oficial: toBoolean(raw?.Oficial ?? raw?.o),
@@ -173,7 +168,7 @@ export function normalizeConjuroLegacy(raw: any): Conjuro {
 
     return {
         ...base,
-        Id: toNumber(raw?.Id ?? raw?.i),
+        Id: toInt(raw?.Id ?? raw?.i),
         Nombre: toText(raw?.Nombre ?? raw?.n),
         Descripcion: toText(raw?.Descripcion ?? raw?.d),
         Tiempo_lanzamiento: toText(raw?.Tiempo_lanzamiento ?? raw?.tl),
@@ -194,33 +189,33 @@ export function normalizeConjuroLegacy(raw: any): Conjuro {
         Resistencia_poderes: toBoolean(raw?.Resistencia_poderes ?? raw?.r_p),
         Descripcion_componentes: toText(raw?.Descripcion_componentes ?? raw?.d_c),
         Permanente: toBoolean(raw?.Permanente ?? raw?.per),
-        Puntos_poder: toNumber(raw?.Puntos_poder ?? raw?.pp),
+        Puntos_poder: toInt(raw?.Puntos_poder ?? raw?.pp),
         Descripcion_aumentos: toText(raw?.Descripcion_aumentos ?? raw?.da),
         Descriptores: toArray(raw?.Descriptores ?? raw?.des).map((item: any) => ({
-            Id: toNumber(item?.Id ?? item?.i),
+            Id: toInt(item?.Id ?? item?.i),
             Nombre: toText(item?.Nombre ?? item?.n),
         })),
         Nivel_clase: toArray(raw?.Nivel_clase ?? raw?.Niveles_clase ?? raw?.ncl).map((item: any) => ({
-            Id_clase: toNumber(item?.Id_clase ?? item?.id_clase),
+            Id_clase: toInt(item?.Id_clase ?? item?.id_clase),
             Clase: toText(item?.Clase),
-            Nivel: toNumber(item?.Nivel ?? item?.nivel),
+            Nivel: toInt(item?.Nivel ?? item?.nivel),
             Espontaneo: toBoolean(item?.Espontaneo ?? item?.espontaneo),
         })),
         Nivel_dominio: toArray(raw?.Nivel_dominio ?? raw?.Niveles_dominio ?? raw?.nd).map((item: any) => ({
-            Id_dominio: toNumber(item?.Id_dominio ?? item?.id_dominio),
+            Id_dominio: toInt(item?.Id_dominio ?? item?.id_dominio),
             Dominio: toText(item?.Dominio),
-            Nivel: toNumber(item?.Nivel ?? item?.nivel),
+            Nivel: toInt(item?.Nivel ?? item?.nivel),
             Espontaneo: toBoolean(item?.Espontaneo ?? item?.espontaneo),
         })),
         Nivel_disciplinas: toArray(raw?.Nivel_disciplinas ?? raw?.Niveles_disciplina ?? raw?.ndis).map((item: any) => ({
-            Id_disciplina: toNumber(item?.Id_disciplina ?? item?.id_disciplina),
+            Id_disciplina: toInt(item?.Id_disciplina ?? item?.id_disciplina),
             Disciplina: toText(item?.Disciplina),
-            Nivel: toNumber(item?.Nivel ?? item?.nivel),
+            Nivel: toInt(item?.Nivel ?? item?.nivel),
             Espontaneo: toBoolean(item?.Espontaneo ?? item?.espontaneo),
         })),
         Componentes: toArray(raw?.Componentes ?? raw?.coms).map((item: any) => ({
             Componente: toText(item?.Componente ?? item?.n),
-            Id_componente: toNumber(item?.Id_componente ?? item?.i),
+            Id_componente: toInt(item?.Id_componente ?? item?.i),
         })),
         Oficial: toBoolean(raw?.Oficial ?? raw?.o),
     };

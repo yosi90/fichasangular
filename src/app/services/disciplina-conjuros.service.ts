@@ -1,20 +1,11 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, onValue, ref } from '@angular/fire/database';
+import { Database } from '@angular/fire/database';
 import { Observable } from "rxjs";
-import Swal from "sweetalert2";
 import { DisciplinaConjuros, Subdisciplinas } from "../interfaces/disciplina-conjuros";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray } from 'src/app/services/utils/normalizacion';
-
-function toInt(value: any, fallback: number = 0): number {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
-}
-
-function toText(value: any): string {
-    return `${value ?? ''}`.trim();
-}
+import { toArray, toInt, toText } from 'src/app/services/utils/normalizacion';
+import { escucharRtdbConAlternativa, listaRtdb } from './catalogo-api';
 
 function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
     return toArray(raw)
@@ -22,12 +13,12 @@ function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
             if (typeof item === 'string') {
                 return {
                     Id: index + 1,
-                    Nombre: toText(item),
+                    Nombre: toText(item).trim(),
                 };
             }
             return {
                 Id: toInt(item?.Id, 0),
-                Nombre: toText(item?.Nombre),
+                Nombre: toText(item?.Nombre).trim(),
             };
         })
         .filter((item) => {
@@ -39,8 +30,8 @@ function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
 function normalizeDisciplina(raw: any, fallbackId: number = 0): DisciplinaConjuros {
     return {
         Id: toInt(raw?.Id, fallbackId),
-        Nombre: toText(raw?.Nombre),
-        Nombre_especial: toText(raw?.Nombre_esp),
+        Nombre: toText(raw?.Nombre).trim(),
+        Nombre_especial: toText(raw?.Nombre_esp).trim(),
         Subdisciplinas: normalizeSubdisciplinas(raw?.Subdisciplinas),
     };
 }
@@ -57,72 +48,20 @@ export class DisciplinaConjurosService {
     ) { }
 
     getDisciplina(id: number): Observable<DisciplinaConjuros> {
-        return new Observable((observador) => {
-            const dbRefLower = ref(this.db, `disciplinas/${id}`);
-            const dbRefUpper = ref(this.db, `Disciplinas/${id}`);
-            let lowerSnapshot: any = null;
-            let upperSnapshot: any = null;
-
-            const emitPreferred = () => {
-                const snapshot = lowerSnapshot?.exists?.() ? lowerSnapshot : upperSnapshot?.exists?.() ? upperSnapshot : null;
-                if (!snapshot)
-                    return;
+        return new Observable((observador) => escucharRtdbConAlternativa(
+            this.db, this.firebaseContextSvc, `disciplinas/${id}`, `Disciplinas/${id}`,
+        )((snapshot) => {
+            if (snapshot.exists())
                 observador.next(normalizeDisciplina(snapshot.val(), id));
-            };
-
-            const onError = (error: any) => observador.error(error);
-            const unsubscribeLower = this.firebaseContextSvc.run(() => onValue(dbRefLower, (snapshot: any) => {
-                lowerSnapshot = snapshot;
-                emitPreferred();
-            }, onError));
-            const unsubscribeUpper = this.firebaseContextSvc.run(() => onValue(dbRefUpper, (snapshot: any) => {
-                upperSnapshot = snapshot;
-                emitPreferred();
-            }, onError));
-
-            return () => {
-                unsubscribeLower();
-                unsubscribeUpper();
-            };
-        });
+        }, (error) => observador.error(error)));
     }
 
     getDisciplinas(): Observable<DisciplinaConjuros[]> {
-        return new Observable((observador) => {
-            const dbRefLower = ref(this.db, 'disciplinas');
-            const dbRefUpper = ref(this.db, 'Disciplinas');
-            let lowerSnapshot: any = null;
-            let upperSnapshot: any = null;
-
-            const emitPreferred = () => {
-                const snapshot = lowerSnapshot?.exists?.() ? lowerSnapshot : upperSnapshot?.exists?.() ? upperSnapshot : null;
-                if (!snapshot) {
-                    observador.next([]);
-                    return;
-                }
-
-                const disciplinas = toArray(snapshot.val())
-                    .map((raw: any) => normalizeDisciplina(raw))
-                    .filter((disciplina) => disciplina.Id > 0 && disciplina.Nombre.length > 0)
-                    .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
-                observador.next(disciplinas);
-            };
-
-            const onError = (error: any) => observador.error(error);
-            const unsubscribeLower = this.firebaseContextSvc.run(() => onValue(dbRefLower, (snapshot: any) => {
-                lowerSnapshot = snapshot;
-                emitPreferred();
-            }, onError));
-            const unsubscribeUpper = this.firebaseContextSvc.run(() => onValue(dbRefUpper, (snapshot: any) => {
-                upperSnapshot = snapshot;
-                emitPreferred();
-            }, onError));
-
-            return () => {
-                unsubscribeLower();
-                unsubscribeUpper();
-            };
-        });
+        return listaRtdb(
+            escucharRtdbConAlternativa(this.db, this.firebaseContextSvc, 'disciplinas', 'Disciplinas'),
+            (raw) => normalizeDisciplina(raw),
+            (disciplina) => disciplina.Id > 0 && disciplina.Nombre.length > 0,
+        );
     }
 
 }

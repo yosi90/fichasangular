@@ -8,6 +8,12 @@ export function toNumber(value: any, fallback: number = 0): number {
     return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+/** El entero (truncado) que representa `value`, o `fallback` si no es un número finito. */
+export function toInt(value: any, fallback: number = 0): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
+}
+
 /** `value` como texto; `null` y `undefined` dan `fallback`. No recorta espacios. */
 export function toText(value: any, fallback: string = ''): string {
     if (value === null || value === undefined)
