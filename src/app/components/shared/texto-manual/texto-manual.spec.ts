@@ -41,6 +41,15 @@ describe('analizarTextoManual', () => {
         expect(analizarTextoManual('# Conjuros de clérigo')[0].tipo).toBe('titulo');
     });
 
+    it('reconoce las listas con guion o numeradas', () => {
+        const bloques = analizarTextoManual('- una **dote**\n- otra\n\n1. primero\n2. segundo');
+        expect(bloques.map(b => b.tipo)).toEqual(['lista', 'lista']);
+        const [guiones, numerada] = bloques as { tipo: 'lista'; elementos: { texto: string; negrita: boolean }[][] }[];
+        expect(guiones.elementos.length).toBe(2);
+        expect(guiones.elementos[0][1]).toEqual(jasmine.objectContaining({ texto: 'dote', negrita: true }));
+        expect(numerada.elementos.map(e => e[0].texto)).toEqual(['1. primero', '2. segundo']);
+    });
+
     it('sin texto no hay bloques', () => {
         expect(analizarTextoManual(null)).toEqual([]);
         expect(analizarTextoManual('   ')).toEqual([]);

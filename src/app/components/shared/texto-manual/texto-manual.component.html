@@ -3,6 +3,9 @@
 </ng-template>
 <ng-container *ngFor="let bloque of bloques">
     <p class="tw-m-1" *ngIf="bloque.tipo === 'parrafo'"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: bloque.trozos}"></ng-container></p>
+    <ul class="texto-manual-lista tw-m-1" *ngIf="bloque.tipo === 'lista'">
+        <li *ngFor="let elemento of bloque.elementos"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: elemento}"></ng-container></li>
+    </ul>
     <h3 class="texto-manual-titulo tw-m-1" *ngIf="bloque.tipo === 'titulo'"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: bloque.trozos}"></ng-container></h3>
     <div class="texto-manual-tabla tw-m-1" *ngIf="bloque.tipo === 'tabla'">
         <table>
