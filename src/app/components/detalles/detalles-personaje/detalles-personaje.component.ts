@@ -924,11 +924,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
     trackByRacial = (_index: number, racial: RacialReferencia): string => {
         const id = Number(racial?.id);
-        const nombre = `${racial?.nombre ?? ''}`
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase();
+        const nombre = normalizarTexto(racial?.nombre);
         return `${Number.isFinite(id) && id > 0 ? id : 0}|${nombre}`;
     }
 

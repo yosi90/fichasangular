@@ -7,6 +7,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { getGrupoOpcionalRacial } from 'src/app/services/utils/racial-opcionales';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 interface GrupoRacialesDetalle {
@@ -93,7 +94,7 @@ export class DetallesRazaComponent {
         return (this.raza?.Idiomas ?? [])
             .filter(idioma => this.tieneTextoVisible(idioma?.Nombre))
             .filter((idioma) => {
-                const key = idioma.Nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+                const key = normalizarTexto(idioma.Nombre);
                 if (!key || vistos.has(key))
                     return false;
                 vistos.add(key);
@@ -217,7 +218,7 @@ export class DetallesRazaComponent {
             const varios = `${(raw as any)?.Varios ?? (raw as any)?.varios ?? ''}`.trim();
             const key = idHabilidad > 0
                 ? `id:${idHabilidad}`
-                : `n:${nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase()}`;
+                : `n:${normalizarTexto(nombre)}`;
 
             const existente = acumulado.get(key);
             if (!existente) {

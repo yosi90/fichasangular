@@ -4,7 +4,7 @@ import { Database } from '@angular/fire/database';
 import { Observable } from "rxjs";
 import { DisciplinaConjuros, Subdisciplinas } from "../interfaces/disciplina-conjuros";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toInt, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toInt, toText } from 'src/app/services/utils/normalizacion';
 import { escucharRtdbConAlternativa, listaRtdb } from './catalogo-api';
 
 function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
@@ -22,7 +22,7 @@ function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
             };
         })
         .filter((item) => {
-            const nombre = item.Nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+            const nombre = normalizarTexto(item.Nombre);
             return item.Nombre.length > 0 && nombre !== 'ninguna' && nombre !== 'sin subdisciplina';
         });
 }
