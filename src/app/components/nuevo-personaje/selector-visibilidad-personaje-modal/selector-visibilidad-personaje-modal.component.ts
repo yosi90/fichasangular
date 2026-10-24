@@ -1,4 +1,5 @@
 import { Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 
 @Component({
     selector: 'app-selector-visibilidad-personaje-modal',
@@ -48,20 +49,11 @@ export class SelectorVisibilidadPersonajeModalComponent implements OnChanges {
     onEnterPresionado(event: KeyboardEvent): void {
         if (this.bloqueado)
             return;
-        if (event.repeat || this.esElementoInteractivoParaEnter(event.target as HTMLElement | null))
+        if (event.repeat || esElementoInteractivoParaEnter(event.target as HTMLElement | null))
             return;
         if (!this.puedeConfirmar)
             return;
         event.preventDefault();
         this.onConfirmar();
-    }
-
-    private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
-        if (!target)
-            return false;
-        if (target.isContentEditable)
-            return true;
-        const selectorBloqueado = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
-        return !!target.closest(selectorBloqueado);
     }
 }

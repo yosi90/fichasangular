@@ -2,6 +2,7 @@ import { Component, EventEmitter, HostListener, Input, Output } from '@angular/c
 import { DisciplinaConjuros } from 'src/app/interfaces/disciplina-conjuros';
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 
 export interface SelectorEspecialidadArcanaConfirmacion {
     especializar: boolean;
@@ -236,7 +237,7 @@ export class SelectorEspecialidadMagicaModalComponent {
 
     @HostListener('document:keydown.enter', ['$event'])
     onEnterPresionado(event: KeyboardEvent): void {
-        if (event.repeat || this.esElementoInteractivoParaEnter(event.target as HTMLElement | null))
+        if (event.repeat || esElementoInteractivoParaEnter(event.target as HTMLElement | null))
             return;
         if (!this.puedeConfirmar)
             return;
@@ -261,15 +262,5 @@ export class SelectorEspecialidadMagicaModalComponent {
         if (!Number.isFinite(id))
             return 0;
         return id > 0 ? id : 0;
-    }
-
-    private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
-        if (!target)
-            return false;
-        if (target.isContentEditable)
-            return true;
-
-        const selectorBloqueado = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
-        return !!target.closest(selectorBloqueado);
     }
 }

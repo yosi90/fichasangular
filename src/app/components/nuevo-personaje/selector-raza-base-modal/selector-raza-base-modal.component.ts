@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, 
 import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { EstadoElegibilidadRazaBase } from 'src/app/services/utils/raza-mutacion';
+import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 
 interface CandidataRazaBaseView {
     raza: Raza;
@@ -107,7 +108,7 @@ export class SelectorRazaBaseModalComponent implements OnChanges {
 
     @HostListener('document:keydown.enter', ['$event'])
     onEnterPresionado(event: KeyboardEvent): void {
-        if (event.repeat || this.esElementoInteractivoParaEnter(event.target as HTMLElement | null))
+        if (event.repeat || esElementoInteractivoParaEnter(event.target as HTMLElement | null))
             return;
         if (!this.puedeConfirmar)
             return;
@@ -142,15 +143,5 @@ export class SelectorRazaBaseModalComponent implements OnChanges {
         this.seleccionActual = seleccion;
         if (!seleccion)
             this.razaSeleccionadaId = null;
-    }
-
-    private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
-        if (!target)
-            return false;
-        if (target.isContentEditable)
-            return true;
-
-        const selectorBloqueado = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
-        return !!target.closest(selectorBloqueado);
     }
 }

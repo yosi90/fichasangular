@@ -13,6 +13,7 @@ import {
     NuevoPersonajeService
 } from 'src/app/services/nuevo-personaje.service';
 import Swal from 'sweetalert2';
+import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 
 type CaracteristicaKey = keyof AsignacionCaracteristicas;
 type CaracteristicasPerdidasState = Partial<Record<CaracteristicaKey, boolean>>;
@@ -408,7 +409,7 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit, Do
             return;
         }
 
-        if (event.repeat || this.esElementoInteractivoParaEnter(event.target as HTMLElement | null))
+        if (event.repeat || esElementoInteractivoParaEnter(event.target as HTMLElement | null))
             return;
         if (!this.puedeFinalizar)
             return;
@@ -584,16 +585,6 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit, Do
             active.blur();
 
         panel.focus({ preventScroll: true });
-    }
-
-    private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
-        if (!target)
-            return false;
-        if (target.isContentEditable)
-            return true;
-
-        const selectorBloqueado = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
-        return !!target.closest(selectorBloqueado);
     }
 
     private refreshViewModelSiNecesario(): void {

@@ -1,6 +1,7 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 
 @Component({
     selector: 'app-selector-idioma-modal',
@@ -115,7 +116,7 @@ export class SelectorIdiomaModalComponent {
 
     @HostListener('document:keydown.enter', ['$event'])
     onEnterPresionado(event: KeyboardEvent): void {
-        if (event.repeat || this.esElementoInteractivoParaEnter(event.target as HTMLElement | null))
+        if (event.repeat || esElementoInteractivoParaEnter(event.target as HTMLElement | null))
             return;
         if (!this.puedeConfirmar)
             return;
@@ -145,15 +146,5 @@ export class SelectorIdiomaModalComponent {
         if (!this.puedeCerrar)
             return;
         this.cerrar.emit();
-    }
-
-    private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
-        if (!target)
-            return false;
-        if (target.isContentEditable)
-            return true;
-
-        const selectorBloqueado = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
-        return !!target.closest(selectorBloqueado);
     }
 }

@@ -4,6 +4,7 @@ import {
     AumentoCaracteristicaPendiente,
     CaracteristicaKeyAumento,
 } from 'src/app/services/nuevo-personaje.service';
+import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 
 type CaracteristicaKey = CaracteristicaKeyAumento;
 
@@ -107,7 +108,7 @@ export class SelectorAumentosCaracteristicaModalComponent {
 
     @HostListener('document:keydown.enter', ['$event'])
     onEnterPresionado(event: KeyboardEvent): void {
-        if (event.repeat || this.esElementoInteractivoParaEnter(event.target as HTMLElement | null))
+        if (event.repeat || esElementoInteractivoParaEnter(event.target as HTMLElement | null))
             return;
         if (!this.puedeConfirmar)
             return;
@@ -205,15 +206,5 @@ export class SelectorAumentosCaracteristicaModalComponent {
             return normalizado === '1' || normalizado === 'true' || normalizado === 'si' || normalizado === 'sí';
         }
         return false;
-    }
-
-    private esElementoInteractivoParaEnter(target: HTMLElement | null): boolean {
-        if (!target)
-            return false;
-        if (target.isContentEditable)
-            return true;
-
-        const selectorBloqueado = 'input, textarea, select, button, a, [role="button"], [role="checkbox"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
-        return !!target.closest(selectorBloqueado);
     }
 }
