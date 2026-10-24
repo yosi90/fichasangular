@@ -6,7 +6,7 @@ import { BehaviorSubject, Observable, firstValueFrom } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
-import { FirebaseInjectionContextService } from '../firebase-injection-context.service';
+import { esperarSesionFirebase, FirebaseInjectionContextService } from '../firebase-injection-context.service';
 import { PrivateUserFirestoreService } from '../private-user-firestore.service';
 import { cabeceraApiConFirebase } from '../platform-session.service';
 import { toNumber } from 'src/app/services/utils/normalizacion';
@@ -30,7 +30,7 @@ export class ListaPersonajesService {
         private firebaseContextSvc: FirebaseInjectionContextService,
         private privateUserFirestoreSvc?: PrivateUserFirestoreService
     ) {
-        this.authReadyPromise = this.createAuthReadyPromise();
+        this.authReadyPromise = esperarSesionFirebase(this.auth, this.firebaseContextSvc);
         this.actorCacheKey = this.buildActorCacheKey(this.auth.currentUser);
         this.subscribeAuthState((user) => {
             const nextActorCacheKey = this.buildActorCacheKey(user);
@@ -243,34 +243,6 @@ export class ListaPersonajesService {
     private async buildAuthHeaders(): Promise<HttpHeaders> {
         await this.authReadyPromise;
         return new HttpHeaders(await cabeceraApiConFirebase(this.auth));
-    }
-
-    private createAuthReadyPromise(): Promise<void> {
-        if (this.auth.currentUser)
-            return Promise.resolve();
-
-        return new Promise((resolve) => {
-            let resolved = false;
-            let unsubscribe: (() => void) | null = null;
-            const finish = () => {
-                if (resolved)
-                    return;
-                resolved = true;
-                unsubscribe?.();
-                resolve();
-            };
-
-            try {
-                unsubscribe = this.firebaseContextSvc.run(() => onAuthStateChanged(
-                    this.auth,
-                    () => finish(),
-                    () => finish()
-                ));
-                setTimeout(() => finish(), 1500);
-            } catch {
-                finish();
-            }
-        });
     }
 
     protected subscribeAuthState(handler: (firebaseUser: any) => void): () => void {

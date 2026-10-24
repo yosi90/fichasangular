@@ -1,6 +1,6 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Auth, onAuthStateChanged } from '@angular/fire/auth';
+import { Auth } from '@angular/fire/auth';
 import { Observable, Subscription, filter, firstValueFrom, from, map, merge, of, shareReplay, skip, timer } from 'rxjs';
 import { Campana } from '../interfaces/campaña';
 import {
@@ -25,7 +25,7 @@ import {
 import { ProfileApiError, ProfileApiErrorResponse } from '../interfaces/user-account';
 import { environment } from 'src/environments/environment';
 import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
-import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { esperarSesionFirebase, FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserService } from './user.service';
 import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
@@ -59,7 +59,7 @@ export class CampanaService {
         private userSvc?: UserService,
         private platformSpacesSvc?: PlatformSpacesService,
     ) {
-        this.authReadyPromise = this.createAuthReadyPromise();
+        this.authReadyPromise = esperarSesionFirebase(this.auth, this.firebaseContextSvc);
         this.liveCampanas$ = this.privateUserFirestoreSvc
             ? this.createFirestoreLiveCampanasObservable()
             : this.createMissingReadModelCampanasObservable();
@@ -1430,33 +1430,5 @@ export class CampanaService {
     private async buildAuthHeaders(): Promise<HttpHeaders> {
         await this.authReadyPromise;
         return new HttpHeaders(await cabeceraApiConFirebase(this.auth));
-    }
-
-    private createAuthReadyPromise(): Promise<void> {
-        if (this.auth.currentUser)
-            return Promise.resolve();
-
-        return new Promise((resolve) => {
-            let resolved = false;
-            let unsubscribe: (() => void) | null = null;
-            const finish = () => {
-                if (resolved)
-                    return;
-                resolved = true;
-                unsubscribe?.();
-                resolve();
-            };
-
-            try {
-                unsubscribe = this.firebaseContextSvc.run(() => onAuthStateChanged(
-                    this.auth,
-                    () => finish(),
-                    () => finish()
-                ));
-                setTimeout(() => finish(), 1500);
-            } catch {
-                finish();
-            }
-        });
     }
 }
