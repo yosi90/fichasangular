@@ -1,6 +1,5 @@
 import { UserRole } from './user-acl';
 import { UserComplianceSnapshot } from './user-moderation';
-import { AuthProviderType } from './user-profile';
 import { SocialHubOpenRequest, SocialHubSectionId } from './social';
 import { UserSettingsV1 } from './user-settings';
 
@@ -13,13 +12,6 @@ export type UserPermissionMap = Record<string, UserPermissionActionMap>;
 export interface UserPrivateProfile {
     uid: string;
     displayName: string | null;
-    bio: string | null;
-    genderIdentity: string | null;
-    pronouns: string | null;
-    email: string | null;
-    emailVerified: boolean;
-    authProvider: AuthProviderType;
-    photoUrl: string | null;
     photoThumbUrl: string | null;
     createdAt: string | null;
     lastSeenAt: string | null;
