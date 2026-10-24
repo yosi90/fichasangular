@@ -3,7 +3,7 @@ import { Clase, ClaseDoteNivel, ClaseNivelDetalle, ClasePrerrequisitos } from 's
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { idiomasVisibles, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { esCampoId, extraVisibleDesdeRegistro, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-prerrequisitos';
 
 type PrerrequisitoActivo = {
@@ -237,25 +237,7 @@ export class DetallesClaseComponent {
     }
 
     getIdiomasOtorgados(): { Nombre: string; Descripcion: string; }[] {
-        const vistos = new Set<string>();
-        return (this.claseData?.Idiomas ?? [])
-            .filter(idioma => this.tieneTextoVisible(idioma?.Nombre))
-            .filter((idioma) => {
-                const key = `${idioma.Nombre ?? ''}`
-                    .normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g, '')
-                    .trim()
-                    .toLowerCase();
-                if (!key || vistos.has(key))
-                    return false;
-                vistos.add(key);
-                return true;
-            })
-            .map(idioma => ({
-                Nombre: `${idioma.Nombre ?? ''}`.trim(),
-                Descripcion: `${idioma.Descripcion ?? ''}`.trim(),
-            }))
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+        return idiomasVisibles(this.claseData?.Idiomas);
     }
 
     tieneBloqueConjuros(): boolean {

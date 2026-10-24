@@ -4,7 +4,7 @@ import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { toNumber } from 'src/app/services/utils/normalizacion';
-import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { idiomasVisibles, nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-subtipo',
@@ -127,25 +127,7 @@ export class DetallesSubtipoComponent {
     }
 
     getIdiomasOtorgados(): { Nombre: string; Descripcion: string; }[] {
-        const vistos = new Set<string>();
-        return (this.subtipo?.Idiomas ?? [])
-            .filter(idioma => this.tieneTextoVisible(idioma?.Nombre))
-            .filter((idioma) => {
-                const key = `${idioma.Nombre ?? ''}`
-                    .normalize('NFD')
-                    .replace(/[\u0300-\u036f]/g, '')
-                    .trim()
-                    .toLowerCase();
-                if (!key || vistos.has(key))
-                    return false;
-                vistos.add(key);
-                return true;
-            })
-            .map(idioma => ({
-                Nombre: `${idioma.Nombre ?? ''}`.trim(),
-                Descripcion: `${idioma.Descripcion ?? ''}`.trim(),
-            }))
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+        return idiomasVisibles(this.subtipo?.Idiomas);
     }
 
     get tieneResumenSubtipo(): boolean {

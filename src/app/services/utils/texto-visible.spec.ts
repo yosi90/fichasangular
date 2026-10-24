@@ -1,4 +1,4 @@
-import { tieneTextoVisible } from './texto-visible';
+import { idiomasVisibles, nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
 import { extraerValorSimple, formatearValor } from './formato-prerrequisitos';
 
 describe('tieneTextoVisible', () => {
@@ -12,6 +12,34 @@ describe('tieneTextoVisible', () => {
     it('enseña lo demás', () => {
         for (const texto of ['Elfo', 'No muerto', '+2 a Fuerza', 'Nada en particular'])
             expect(tieneTextoVisible(texto)).withContext(texto).toBeTrue();
+    });
+});
+
+describe('nombreDoteConExtra', () => {
+    const conExtra = (extra: any) => nombreDoteConExtra({ Dote: { Nombre: 'Soltura' }, Contexto: { Extra: extra } } as any);
+
+    it('añade el extra visible entre paréntesis, sin espacios a los lados', () => {
+        expect(conExtra('  Espada larga ')).toBe('Soltura (Espada larga)');
+    });
+
+    it('sin extra o con relleno, solo el nombre', () => {
+        for (const extra of [undefined, '', 'No aplica', 'Nada'])
+            expect(conExtra(extra)).withContext(`${extra}`).toBe('Soltura');
+    });
+});
+
+describe('idiomasVisibles', () => {
+    it('quita los de relleno y los repetidos, recorta y ordena', () => {
+        expect(idiomasVisibles([
+            { Nombre: ' Élfico ', Descripcion: ' Uno ' },
+            { Nombre: 'Común', Descripcion: '' },
+            { Nombre: 'elfico', Descripcion: 'Repetido' },
+            { Nombre: 'Ninguno', Descripcion: '' },
+        ])).toEqual([
+            { Nombre: 'Común', Descripcion: '' },
+            { Nombre: 'Élfico', Descripcion: 'Uno' },
+        ]);
+        expect(idiomasVisibles(undefined)).toEqual([]);
     });
 });
 

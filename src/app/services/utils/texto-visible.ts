@@ -35,3 +35,27 @@ export function nombreDoteConExtra(doteCtx: DoteContextual): string {
     const nombre = doteCtx?.Dote?.Nombre ?? '';
     return tieneTextoVisible(extra) ? `${nombre} (${extra})` : nombre;
 }
+
+/**
+ * Los idiomas que enseña un detalle: los que tienen nombre visible, sin repetir (sin distinguir tildes ni mayúsculas),
+ * recortados y por orden alfabético.
+ */
+export function idiomasVisibles(
+    idiomas: { Nombre?: string | null; Descripcion?: string | null; }[] | null | undefined,
+): { Nombre: string; Descripcion: string; }[] {
+    const vistos = new Set<string>();
+    return (idiomas ?? [])
+        .filter(idioma => tieneTextoVisible(idioma?.Nombre))
+        .filter((idioma) => {
+            const key = normalizarTexto(idioma.Nombre);
+            if (!key || vistos.has(key))
+                return false;
+            vistos.add(key);
+            return true;
+        })
+        .map(idioma => ({
+            Nombre: `${idioma.Nombre ?? ''}`.trim(),
+            Descripcion: `${idioma.Descripcion ?? ''}`.trim(),
+        }))
+        .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+}
