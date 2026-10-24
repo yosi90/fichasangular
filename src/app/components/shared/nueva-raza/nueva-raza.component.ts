@@ -21,6 +21,7 @@ import { Manual } from 'src/app/interfaces/manual';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { Raza } from 'src/app/interfaces/raza';
 import { ActitudCatalogItem, RazaCatalogItem, TipoDadoCatalogItem } from 'src/app/interfaces/raza-catalogos';
+import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { RazaCreateRequest } from 'src/app/interfaces/razas-api';
 import { SubtipoResumen } from 'src/app/interfaces/subtipo';
 import { Tamano } from 'src/app/interfaces/tamaño';
@@ -147,6 +148,17 @@ const NUEVA_RAZA_DRAFT_AUTOSAVE_MS = 1200;
 const NUEVA_RAZA_DRAFT_DEBOUNCE_MS = 300;
 const NUEVA_RAZA_MAX_STEP_INDEX = 4;
 const HABILIDAD_EXTRA_ELEGIR: CatalogItem = { Id: 0, Nombre: 'Elegir' };
+
+/**
+ * Las opciones «sin X» del alta de razas (`conOpcionSinValor`): el alineamiento básico y las preferencias 0 «No aplica»,
+ * la prioridad 0 «Sin prioridad» y la maniobrabilidad 0 «No vuela», con el id 0 que `POST /razas` sigue aceptando (comprueba
+ * que la fila exista). Son el valor por defecto, como cuando la API las listaba.
+ */
+const SIN_ALINEAMIENTO_BASICO: AlineamientoBasicoCatalogItem = { Id: 0, Nombre: 'No aplica' };
+const SIN_PREFERENCIA: PreferenciaLeyCatalogItem & PreferenciaMoralCatalogItem = { Id: 0, Nombre: 'No aplica', Descripcion: '' };
+const SIN_PRIORIDAD: PrioridadAlineamientoCatalogItem = { Id: 0, Nombre: 'Sin prioridad', Descripcion: '' };
+const SIN_VUELO: RazaCatalogItem = { Id: 0, Nombre: 'No vuela' };
+
 
 @Component({
     selector: 'app-nueva-raza',
@@ -1686,7 +1698,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.alineamientoSvc.getAlineamientosBasicosCatalogo()
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (alineamientos) => {
-                this.alineamientosBasicos = this.ordenarPorId(alineamientos);
+                this.alineamientosBasicos = this.ordenarPorId(conOpcionSinValor(alineamientos, SIN_ALINEAMIENTO_BASICO));
                 this.sincronizarSelectConFallback('id_alineamiento_basico', this.alineamientosBasicos, 'no aplica');
                 this.sincronizarAlineamientoDesdeSeleccion();
             }, error: () => this.alineamientosBasicos = [] });
@@ -1694,7 +1706,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.alineamientoSvc.getAlineamientosPrioridadesCatalogo()
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (prioridades) => {
-                this.prioridadesAlineamiento = this.ordenarPorId(prioridades);
+                this.prioridadesAlineamiento = this.ordenarPorId(conOpcionSinValor(prioridades, SIN_PRIORIDAD));
                 this.asegurarPrioridadAlineamientoVisible();
                 this.sincronizarAlineamientoDesdeSeleccion();
             }, error: () => this.prioridadesAlineamiento = [] });
@@ -1702,7 +1714,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.alineamientoSvc.getAlineamientosPreferenciaLeyCatalogo()
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (preferencias) => {
-                this.preferenciasLey = this.ordenarPorId(preferencias);
+                this.preferenciasLey = this.ordenarPorId(conOpcionSinValor(preferencias, { ...SIN_PREFERENCIA }));
                 this.sincronizarSelectConFallback('id_preferencia_ley', this.preferenciasLey, 'ninguna preferencia');
                 this.sincronizarAlineamientoDesdeSeleccion();
             }, error: () => this.preferenciasLey = [] });
@@ -1710,7 +1722,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.alineamientoSvc.getAlineamientosPreferenciaMoralCatalogo()
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (preferencias) => {
-                this.preferenciasMoral = this.ordenarPorId(preferencias);
+                this.preferenciasMoral = this.ordenarPorId(conOpcionSinValor(preferencias, { ...SIN_PREFERENCIA }));
                 this.sincronizarSelectConFallback('id_preferencia_moral', this.preferenciasMoral, 'ninguna preferencia');
                 this.sincronizarAlineamientoDesdeSeleccion();
             }, error: () => this.preferenciasMoral = [] });
@@ -1768,7 +1780,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.razaCatalogosSvc.getManiobrabilidades()
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (items) => {
-                this.maniobrabilidades = this.ordenarPorId(items);
+                this.maniobrabilidades = this.ordenarPorId(conOpcionSinValor(items, SIN_VUELO));
                 this.sincronizarSelect('id_maniobrabilidad', this.maniobrabilidades, 'no vuela');
                 this.sincronizarManiobrabilidadConVuelo();
             }, error: () => this.maniobrabilidades = [] });

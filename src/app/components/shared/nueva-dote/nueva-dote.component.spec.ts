@@ -12,7 +12,7 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { of } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { DoteService } from 'src/app/services/dote.service';
 import { ExtraService } from 'src/app/services/extra.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
@@ -95,6 +95,8 @@ describe('NuevaDoteComponent', () => {
                 Extras: [{ Id_extra: 3, Extra: 'Cuerda floja' }],
             },
         ]),
+        getHabilidadesCustom: () => of([]),
+        habilidadesCustomMutadas$: new Subject<any>(),
     };
 
     const manualSvcMock = {
@@ -172,6 +174,12 @@ describe('NuevaDoteComponent', () => {
         component.form.updateValueAndValidity();
 
         expect(component.form.hasError('tipos_iguales')).toBeTrue();
+    });
+
+    it('ofrece «Sin tipo secundario» con el id 0: el tipo 0 «Cualquiera» ya no sale en los tipos de las dotes', () => {
+        expect(component.tiposDote[0]).toEqual({ Id: 0, Nombre: 'Sin tipo secundario' });
+        expect(component.tiposPrimarios.some((tipo) => tipo.Id === 0)).toBeFalse();
+        expect(component.form.controls.id_tipo2.value).toBe(0);
     });
 
     it('detecta nombre duplicado normalizado', () => {

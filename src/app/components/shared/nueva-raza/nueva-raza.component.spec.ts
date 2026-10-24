@@ -80,23 +80,20 @@ describe('NuevaRazaComponent', () => {
                         { Id: 10, Basico: { Id: 2, Nombre: 'Legal bueno' }, Ley: { Id: 10, Nombre: 'Ninguna preferencia' }, Moral: { Id: 10, Nombre: 'Ninguna preferencia' }, Prioridad: { Id: 2, Nombre: 'Importante', Descripcion: '' } },
                         { Id: 9, Basico: { Id: 0, Nombre: 'No aplica' }, Ley: { Id: 2, Nombre: 'Casi siempre legal' }, Moral: { Id: 4, Nombre: 'Casi siempre bueno' }, Prioridad: { Id: 2, Nombre: 'Importante', Descripcion: 'Tendencia importante.' } },
                     ]),
+                    // Como la API desde el 2026-10-24: sin las filas 0 de relleno («No aplica», «Sin prioridad»).
                     getAlineamientosBasicosCatalogo: () => of([
-                        { Id: 0, Nombre: 'No aplica' },
                         { Id: 2, Nombre: 'Legal bueno' },
                     ]),
                     getAlineamientosPrioridadesCatalogo: () => of([
                         { Id: 4, Nombre: 'Final', Descripcion: 'Marca interna.' },
                         { Id: 2, Nombre: 'Importante', Descripcion: 'Tendencia importante.' },
                         { Id: 1, Nombre: 'Debe tenerse en cuenta', Descripcion: 'Debe respetarse.' },
-                        { Id: 0, Nombre: 'Sin prioridad', Descripcion: 'No condiciona el alineamiento.' },
                     ]),
                     getAlineamientosPreferenciaLeyCatalogo: () => of([
-                        { Id: 0, Nombre: 'No aplica', Descripcion: '' },
                         { Id: 2, Nombre: 'Casi siempre legal', Descripcion: '' },
                         { Id: 10, Nombre: 'Ninguna preferencia', Descripcion: '' },
                     ]),
                     getAlineamientosPreferenciaMoralCatalogo: () => of([
-                        { Id: 0, Nombre: 'No aplica', Descripcion: '' },
                         { Id: 4, Nombre: 'Casi siempre bueno', Descripcion: '' },
                         { Id: 10, Nombre: 'Ninguna preferencia', Descripcion: '' },
                     ]),
@@ -106,6 +103,7 @@ describe('NuevaRazaComponent', () => {
                 { provide: HabilidadService, useValue: {
                     getHabilidades: () => of([{ Id_habilidad: 11, Nombre: 'Avistar' }, { Id_habilidad: 12, Nombre: 'Escuchar' }]),
                     getHabilidadesCustom: () => of([{ Id_habilidad: 13, Nombre: 'Saber antiguo' }]),
+                    habilidadesCustomMutadas$: new Subject<any>(),
                 } },
                 { provide: DoteService, useValue: { getDotes: () => of([{ Id: 14, Nombre: 'Alerta', Extras_soportados: {}, Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] } }]) } },
                 { provide: RacialService, useValue: racialSvc },
@@ -131,7 +129,6 @@ describe('NuevaRazaComponent', () => {
                             Angulo_descenso: 'Cualquiera',
                             Descenso_ascenso: 1,
                         },
-                        { Id: 20, Nombre: 'No vuela' },
                         {
                             Id: 21,
                             Nombre: 'Media',
@@ -477,8 +474,9 @@ describe('NuevaRazaComponent', () => {
     });
 
     it('carga prioridades de alineamiento desde catalogo de servicio', () => {
+        // La 0 «Sin prioridad» ya no viene del catálogo: es la opción del editor, sin descripción propia.
         expect(component.prioridadesAlineamiento).toEqual([
-            { Id: 0, Nombre: 'Sin prioridad', Descripcion: 'No condiciona el alineamiento.' },
+            { Id: 0, Nombre: 'Sin prioridad', Descripcion: '' },
             { Id: 1, Nombre: 'Debe tenerse en cuenta', Descripcion: 'Debe respetarse.' },
             { Id: 2, Nombre: 'Importante', Descripcion: 'Tendencia importante.' },
             { Id: 4, Nombre: 'Final', Descripcion: 'Marca interna.' },
@@ -503,7 +501,7 @@ describe('NuevaRazaComponent', () => {
         const texto = JSON.stringify(secciones);
 
         expect(texto).toContain('Cada raza puede o no condicionar');
-        expect(texto).toContain('Sin prioridad: No condiciona el alineamiento.');
+        expect(texto).toContain('Sin prioridad: No condiciona el alineamiento del personaje; sirve para razas sin tendencia propia.');
         expect(texto).toContain('Importante: Tendencia importante.');
         expect(texto).not.toContain('Final');
     });
@@ -786,13 +784,27 @@ describe('NuevaRazaComponent', () => {
     });
 
     it('oculta no vuela del selector visible y ordena maniobrabilidades por id', () => {
-        expect(component.maniobrabilidades.map((item) => item.Id)).toEqual([20, 21, 22]);
+        // La API ya no lista la maniobrabilidad 0 «No vuela»: la pone el editor, con su id 0.
+        expect(component.maniobrabilidades.map((item) => item.Id)).toEqual([0, 21, 22]);
+        expect(component.maniobrabilidades[0].Nombre).toBe('No vuela');
         expect(component.getManiobrabilidadesVisibles().map((item) => item.Nombre)).toEqual(['Media', 'Buena']);
 
-        component.form.controls.id_maniobrabilidad.setValue(20);
+        component.form.controls.id_maniobrabilidad.setValue(0);
         component.form.controls.volar.setValue(40);
 
         expect(component.form.controls.id_maniobrabilidad.value).toBe(21);
+    });
+
+    it('ofrece sus propias opciones «sin X» con el id 0 que la API ya no lista, y son el valor por defecto', () => {
+        expect(component.alineamientosBasicos[0]).toEqual(jasmine.objectContaining({ Id: 0, Nombre: 'No aplica' }));
+        expect(component.preferenciasLey[0]).toEqual(jasmine.objectContaining({ Id: 0, Nombre: 'No aplica' }));
+        expect(component.preferenciasMoral[0]).toEqual(jasmine.objectContaining({ Id: 0, Nombre: 'No aplica' }));
+        expect(component.getPrioridadesAlineamientoVisibles().map((item) => item.Id)).toContain(0);
+
+        expect(component.form.controls.id_alineamiento_basico.value).toBe(0);
+        expect(component.form.controls.id_prioridad_alineamiento.value).toBe(0);
+        // «No aplica» con «Sin prioridad» es la combinación 0, como cuando la API listaba esas filas.
+        expect(component.form.controls.id_alineamiento.value).toBe(0);
     });
 
     it('sincroniza maniobrabilidad como no vuela cuando no hay velocidad de vuelo', () => {
@@ -802,8 +814,8 @@ describe('NuevaRazaComponent', () => {
         component.form.patchValue({ volar: 0 });
 
         expect(component.tieneVelocidadVuelo()).toBeFalse();
-        expect(component.form.controls.id_maniobrabilidad.value).toBe(20);
-        expect(component.buildPayload().raza.id_maniobrabilidad).toBe(20);
+        expect(component.form.controls.id_maniobrabilidad.value).toBe(0);
+        expect(component.buildPayload().raza.id_maniobrabilidad).toBe(0);
     });
 
     it('valida rangos y orden de edades', () => {

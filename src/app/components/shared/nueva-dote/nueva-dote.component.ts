@@ -45,6 +45,7 @@ import { EspecialService } from 'src/app/services/especial.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 type RepeticionKey = 'repetible' | 'repetible_distinto_extra' | 'repetible_comb';
@@ -1170,10 +1171,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             .map(([Id, Nombre]) => ({ Id, Nombre }))
             .sort(porNombre);
 
-        if (!tipos.some((tipo) => tipo.Id === 0))
-            tipos.unshift({ Id: 0, Nombre: 'Sin tipo secundario' });
-
-        this.tiposDote = tipos;
+        // El tipo 0 («Cualquiera», que en una dote quería decir «sin segundo tipo») ya no sale en sus `Tipos`.
+        this.tiposDote = conOpcionSinValor(tipos, { Id: 0, Nombre: 'Sin tipo secundario' });
         this.tiposDoteCatalogoPrerrequisito = tipos
             .filter((item) => item.Id > 0)
             .map((item) => ({ id: item.Id, nombre: item.Nombre }));
