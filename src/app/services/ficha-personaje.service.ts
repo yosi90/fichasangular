@@ -4,7 +4,7 @@ import { PDFDocument } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Personaje, PersonajeNivelLanzadorResumen, PersonajeTipoLanzamiento } from '../interfaces/personaje';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from '../interfaces/monstruo';
-import { normalizarTexto, toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 
 
@@ -445,7 +445,7 @@ export class FichaPersonajeService {
                 return;
 
             const index = id - 1;
-            if ((habilidad as any)?.Clasea === true || (habilidad as any)?.Clasea === 1)
+            if (toBoolean((habilidad as any)?.Clasea))
                 this.tryCheck(form, `clasea${index}`, true);
             this.trySetText(form, `rangos${index}`, `${toNumber(habilidad?.Rangos)}`);
 

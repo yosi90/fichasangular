@@ -7,7 +7,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { getGrupoOpcionalRacial } from 'src/app/services/utils/racial-opcionales';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 interface GrupoRacialesDetalle {
@@ -214,7 +214,7 @@ export class DetallesRazaComponent {
             const idExtra = Number.isFinite(idExtraRaw) ? idExtraRaw : 0;
             const extra = `${(raw as any)?.Extra ?? (raw as any)?.extra ?? (raw as any)?.x ?? ''}`.trim();
             const soportaExtraRaw = (raw as any)?.Soporta_extra ?? (raw as any)?.soporta_extra;
-            const soportaExtra = soportaExtraRaw === true || soportaExtraRaw === 1 || soportaExtraRaw === '1';
+            const soportaExtra = toBoolean(soportaExtraRaw);
             const varios = `${(raw as any)?.Varios ?? (raw as any)?.varios ?? ''}`.trim();
             const key = idHabilidad > 0
                 ? `id:${idHabilidad}`
