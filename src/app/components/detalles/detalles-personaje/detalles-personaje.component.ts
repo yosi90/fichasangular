@@ -420,10 +420,11 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     }
 
     tieneTextoVisible(texto: string | undefined | null): boolean {
-        // Sin ocultar faltantes se enseña todo lo que no esté vacío; si no, la regla común (fuera de la clase).
+        // Sin ocultar faltantes se enseña todo lo que no esté vacío; si no, la regla común (fuera de la clase), que en
+        // la ficha oculta también «Cualquiera», como hacía este detalle antes de unificar las listas.
         if (!this.modoOcultarFaltantes)
             return `${texto ?? ''}`.trim().length > 0;
-        return tieneTextoVisible(texto);
+        return tieneTextoVisible(texto, { cualquieraEsRelleno: true });
     }
 
     tieneNumeroVisible(value: number | string | null | undefined): boolean {

@@ -4,7 +4,8 @@ import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 /**
  * Los textos de relleno que la API manda en vez de dejar el campo vacío (propietario, 2026-10-24: una sola lista para
  * todos los detalles, la unión de las que tenía cada uno). Se comparan sin tildes, mayúsculas ni puntos. Cuando la
- * API deje de mandarlos (roadmap de duplicados, «Entre partes»), esta lista sobra.
+ * API deje de mandarlos (roadmap de duplicados, «Entre partes»), esta lista sobra. «Cualquiera» y «Elegir» no son
+ * relleno (propietario, 2026-10-24): «Cualquiera» se usa en los prerrequisitos y «Elegir» en la tabla de habilidades.
  */
 const TEXTOS_DE_RELLENO = new Set([
     'no especifica',
@@ -17,16 +18,18 @@ const TEXTOS_DE_RELLENO = new Set([
     'sin genero',
     'no tener deidad',
     'desconocido',
-    'cualquiera',
     'ninguna',
     'ninguno',
     'placeholder',
 ]);
 
-/** Si `texto` tiene algo que enseñar: no está vacío y no es un texto de relleno. */
-export function tieneTextoVisible(texto: string | null | undefined): boolean {
+/**
+ * Si `texto` tiene algo que enseñar: no está vacío y no es un texto de relleno. En la ficha de un personaje,
+ * «Cualquiera» tampoco es una elección real y se oculta (`cualquieraEsRelleno`); en los catálogos sí significa algo.
+ */
+export function tieneTextoVisible(texto: string | null | undefined, { cualquieraEsRelleno = false } = {}): boolean {
     const limpio = normalizarTexto(texto).replace(/[.]/g, '');
-    return limpio.length > 0 && !TEXTOS_DE_RELLENO.has(limpio);
+    return limpio.length > 0 && !TEXTOS_DE_RELLENO.has(limpio) && !(cualquieraEsRelleno && limpio === 'cualquiera');
 }
 
 /** El nombre de una dote con su extra entre paréntesis, si el extra tiene algo que enseñar. */

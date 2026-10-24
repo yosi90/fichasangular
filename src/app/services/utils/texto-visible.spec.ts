@@ -4,9 +4,16 @@ import { extraerValorSimple, formatearValor } from './formato-prerrequisitos';
 describe('tieneTextoVisible', () => {
     it('oculta lo vacío y los textos de relleno, sin tildes, mayúsculas ni puntos', () => {
         for (const texto of [null, undefined, '', '  ', 'No aplica', 'No especifica.', 'no se especifica', 'No modifica',
-            'No vuela.', '-', 'Nada', 'Sin género', 'No tener deidad', 'Desconocido', 'Cualquiera', 'Ninguna', 'Ninguno',
+            'No vuela.', '-', 'Nada', 'Sin género', 'No tener deidad', 'Desconocido', 'Ninguna', 'Ninguno',
             'Placeholder'])
             expect(tieneTextoVisible(texto)).withContext(`${texto}`).toBeFalse();
+    });
+
+    it('«Cualquiera» y «Elegir» no son relleno en los catálogos; «Cualquiera» sí en la ficha de un personaje', () => {
+        expect(tieneTextoVisible('Cualquiera')).toBeTrue();
+        expect(tieneTextoVisible('Elegir')).toBeTrue();
+        expect(tieneTextoVisible('Cualquiera', { cualquieraEsRelleno: true })).toBeFalse();
+        expect(tieneTextoVisible('Elegir', { cualquieraEsRelleno: true })).toBeTrue();
     });
 
     it('enseña lo demás', () => {
