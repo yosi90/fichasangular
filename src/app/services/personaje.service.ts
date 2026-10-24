@@ -31,6 +31,7 @@ import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
+import { calcularOroPorNep } from './utils/oro-inicial';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -1264,7 +1265,7 @@ export class PersonajeService {
             Rcs: rcs,
             Res: res,
             Capacidad_carga: cargas,
-            Oro_inicial: toNumber(calc_oro(nep)),
+            Oro_inicial: calcularOroPorNep(nep),
             Escuela_especialista: escuela_esp,
             Disciplina_especialista: disciplina_esp,
             Disciplina_prohibida: element?.disp ?? element?.Disciplina_prohibida,
@@ -1328,36 +1329,6 @@ export class PersonajeService {
         }
     }
 
-}
-
-function calc_oro(nep: number) {
-    const nepValue = Math.trunc(toNumber(nep));
-    const valoresOro: { [key: number]: number } = {
-        1: 0,
-        2: 900,
-        3: 2700,
-        4: 5400,
-        5: 9000,
-        6: 13000,
-        7: 19000,
-        8: 27000,
-        9: 36000,
-        10: 49000,
-        11: 66000,
-        12: 88000,
-        13: 110000,
-        14: 150000,
-        15: 200000,
-        16: 260000,
-        17: 340000,
-        18: 440000,
-        19: 580000,
-        20: 760000,
-    };
-    if (nepValue <= 20)
-        return valoresOro[nepValue] || 0;
-    else
-        return Math.round(760000 * (1.3 * (nepValue - 20)));
 }
 
 function normalizeLookupKey(value: any): string {

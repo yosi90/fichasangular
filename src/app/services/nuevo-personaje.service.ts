@@ -47,6 +47,7 @@ import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-persona
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { calcularOroPorNep } from './utils/oro-inicial';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel';
@@ -7698,7 +7699,7 @@ export class NuevoPersonajeService {
 
         this.personajeCreacion.NEP = nivelEfectivo;
         this.personajeCreacion.Experiencia = this.calcularExperienciaPorNivel(nivelClases + ajusteRaza + ajustePlantillas);
-        this.personajeCreacion.Oro_inicial = this.calcularOroPorNep(nivelEfectivo);
+        this.personajeCreacion.Oro_inicial = calcularOroPorNep(nivelEfectivo);
     }
 
     private recalcularDerivadasPorCaracteristicas(): void {
@@ -7781,35 +7782,6 @@ export class NuevoPersonajeService {
         for (let i = 0; i < nivel; i++)
             acumulado += i * 1000;
         return acumulado;
-    }
-
-    private calcularOroPorNep(nep: number): number {
-        const valorNep = Math.max(0, Math.trunc(toNumber(nep)));
-        const tabla: Record<number, number> = {
-            1: 0,
-            2: 900,
-            3: 2700,
-            4: 5400,
-            5: 9000,
-            6: 13000,
-            7: 19000,
-            8: 27000,
-            9: 36000,
-            10: 49000,
-            11: 66000,
-            12: 88000,
-            13: 110000,
-            14: 150000,
-            15: 200000,
-            16: 260000,
-            17: 340000,
-            18: 440000,
-            19: 580000,
-            20: 760000,
-        };
-        if (valorNep <= 20)
-            return tabla[valorNep] || 0;
-        return Math.round(760000 * (1.3 * (valorNep - 20)));
     }
 
     private recalcularCapacidadCarga(): void {
