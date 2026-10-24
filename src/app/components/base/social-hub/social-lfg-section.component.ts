@@ -18,6 +18,7 @@ import { AppToastService } from 'src/app/services/app-toast.service';
 import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-social-lfg-section',
@@ -667,7 +668,7 @@ export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
             return normalizarTexto(option, true).includes(normalizedQuery);
         });
 
-        if (exactValue.length > 0 && !filtered.some((option) => option.localeCompare(exactValue, 'es', { sensitivity: 'base' }) === 0))
+        if (exactValue.length > 0 && !filtered.some((option) => compararTexto(option, exactValue) === 0))
             return [exactValue, ...filtered];
         return filtered;
     }

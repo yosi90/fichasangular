@@ -1070,11 +1070,11 @@ export class CampanaService {
         const id = this.toPositiveInt(campaignId);
         if (normalizedName.length < 1)
             return true;
-        if (normalizedName.localeCompare(CampanaService.CAMPAIGN_UNNAMED_LABEL, 'es', { sensitivity: 'base' }) === 0)
+        if (compararTexto(normalizedName, CampanaService.CAMPAIGN_UNNAMED_LABEL) === 0)
             return true;
         if (!id)
             return false;
-        return normalizedName.localeCompare(`Campaña ${id}`, 'es', { sensitivity: 'base' }) === 0;
+        return compararTexto(normalizedName, `Campaña ${id}`) === 0;
     }
 
     private buildSinCampanaOption(): Campana {
