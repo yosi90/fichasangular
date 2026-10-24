@@ -4,12 +4,7 @@ import { DoteContextual } from "./dote-contextual";
 import { Maniobrabilidad } from "./maniobrabilidad";
 import { SubtipoRef } from "./subtipo";
 import { Tamano } from "./tamaño";
-
-export interface PlantillaManual {
-    Id: number;
-    Nombre: string;
-    Pagina: number;
-}
+import { ManualReferencia } from "./manual";
 
 export interface PlantillaTipoDado {
     Id_tipo_dado: number;
@@ -101,7 +96,7 @@ export interface Plantilla {
     Id: number;
     Nombre: string;
     Descripcion: string;
-    Manual: PlantillaManual;
+    Manual: ManualReferencia;
     Tamano: Tamano;
     Tipo_dado: PlantillaTipoDado;
     Actualiza_dg: boolean;

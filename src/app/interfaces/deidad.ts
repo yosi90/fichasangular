@@ -1,12 +1,7 @@
 import { AmbitoDetalle } from "./ambito";
 import { DominioDetalle } from "./dominio";
 import { PabellonDetalle } from "./pabellon";
-
-export interface DeidadManualRef {
-    Id: number;
-    Nombre: string;
-    Pagina: number;
-}
+import { ManualReferencia } from "./manual";
 
 export interface DeidadAlineamientoRef {
     Id: number;
@@ -28,7 +23,7 @@ export interface DeidadDetalle {
     Id: number;
     Nombre: string;
     Descripcion: string;
-    Manual: DeidadManualRef;
+    Manual: ManualReferencia;
     Alineamiento: DeidadAlineamientoRef;
     Arma: DeidadArmaRef;
     Pabellon: PabellonDetalle;

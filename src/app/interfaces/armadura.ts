@@ -1,3 +1,5 @@
+import { ManualReferencia } from './manual';
+
 export interface ArmaduraTipoRef {
     Id: number;
     Nombre: string;
@@ -22,12 +24,6 @@ export interface ArmaduraEncantamientoRef {
     Tipo: number;
 }
 
-export interface ArmaduraManualRef {
-    Id: number;
-    Nombre: string;
-    Pagina: number;
-}
-
 export interface ArmaduraTamanoRef {
     Id: number;
     Nombre: string;
@@ -37,7 +33,7 @@ export interface ArmaduraDetalle {
     Id: number;
     Nombre: string;
     Descripcion: string;
-    Manual: ArmaduraManualRef;
+    Manual: ManualReferencia;
     Ca: number;
     Bon_des: number;
     Penalizador: number;

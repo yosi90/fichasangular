@@ -1,11 +1,6 @@
 import { Alineamiento } from "./alineamiento";
 import { Dote } from "./dote";
-
-export interface ClaseManual {
-    Id: number;
-    Nombre: string;
-    Pagina: number;
-}
+import { ManualReferencia } from "./manual";
 
 export interface ClaseTipoDado {
     Id: number;
@@ -198,7 +193,7 @@ export interface Clase {
     Id: number;
     Nombre: string;
     Descripcion: string;
-    Manual: ClaseManual;
+    Manual: ManualReferencia;
     Tipo_dado: ClaseTipoDado;
     Puntos_habilidad: ClasePuntosHabilidad;
     Ataque_base?: ClaseProgresionBaseMutationRef;

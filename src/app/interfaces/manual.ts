@@ -11,3 +11,10 @@ export interface Manual {
     Incluye_subtipos: boolean;
     Oficial: boolean;
 }
+
+/** El manual en el que viene un elemento del catálogo y su página: la referencia de dotes, clases, armas… */
+export interface ManualReferencia {
+    Id: number;
+    Nombre: string;
+    Pagina: number;
+}

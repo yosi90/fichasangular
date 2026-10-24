@@ -1,6 +1,6 @@
 import { Alineamiento } from "./alineamiento";
 import { Conjuro } from "./conjuro";
-import { DoteManual } from "./dote";
+import { ManualReferencia } from "./manual";
 import { DoteContextual } from "./dote-contextual";
 import { EspecialClaseDetalle } from "./especial";
 import { IdiomaDetalle } from "./idioma";
@@ -157,7 +157,7 @@ export interface MonstruoDetalle {
     Id: number;
     Nombre: string;
     Descripcion: string;
-    Manual: DoteManual;
+    Manual: ManualReferencia;
     Tipo: MonstruoTipoRef;
     Tamano: Tamano;
     Dados_golpe: MonstruoDadosGolpe;

@@ -1,13 +1,9 @@
+import { ManualReferencia } from './manual';
+
 export interface ReferenciaCorta {
     Id: number;
     Nombre: string;
     Descripcion: string;
-}
-
-export interface VentajaManual {
-    Id: number;
-    Nombre: string;
-    Pagina: number;
 }
 
 export interface VentajaDetalle {
@@ -31,7 +27,7 @@ export interface VentajaDetalle {
     Duplica_oro: boolean;
     Aumenta_oro: boolean;
     Idioma_extra: boolean;
-    Manual: VentajaManual;
+    Manual: ManualReferencia;
     Rasgo: ReferenciaCorta;
     Idioma: ReferenciaCorta;
     Habilidad: ReferenciaCorta;

@@ -2,16 +2,11 @@ import { Alineamiento } from "./alineamiento";
 import { Conjuro } from "./conjuro";
 import { DoteContextual } from "./dote-contextual";
 import { Rasgo } from "./rasgo";
+import { ManualReferencia } from "./manual";
 
 export interface SubtipoRef {
     Id: number;
     Nombre: string;
-}
-
-export interface SubtipoManual {
-    Id: number;
-    Nombre: string;
-    Pagina: number;
 }
 
 export interface SubtipoCaracteristicas {
@@ -68,7 +63,7 @@ export interface SubtipoResumen {
     Id: number;
     Nombre: string;
     Descripcion: string;
-    Manual: SubtipoManual;
+    Manual: ManualReferencia;
     Heredada: boolean;
     Oficial: boolean;
 }
@@ -83,7 +78,7 @@ export interface SubtipoDetalle {
     Id: number;
     Nombre: string;
     Descripcion: string;
-    Manual: SubtipoManual;
+    Manual: ManualReferencia;
     Heredada: boolean;
     Oficial: boolean;
     Modificadores_caracteristicas: SubtipoCaracteristicas;
