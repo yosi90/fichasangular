@@ -187,3 +187,68 @@ export interface PersonajeCreateResponseDto {
     idPersonaje: number;
     ownerUserId: string;
 }
+
+/*
+ * Las partes nuevas de `PersonajeDetalle` (`GET /personajes/{id}`, desde el 2026-10-24). Contrato:
+ * `docs/publica/endpoints/personajes.md` y la guía `docs/publica/FICHA_NUEVA_FRONT.md`.
+ */
+
+/** «Elegir» (falta escoger el extra) o «Cualquiera» (vale cualquiera), marcados por la API en los extras de la ficha. */
+export type PersonajeExtraComodinDto = 'elegir' | 'cualquiera';
+
+export interface PersonajeNombreIdDto {
+    id: number;
+    nombre: string;
+}
+
+export interface PersonajeClaseDto extends PersonajeNombreIdDto {
+    nivel: number;
+    lanzaConjuros: boolean;
+    caracteristicaLanzamiento: string | null;
+    modificadorLanzamiento: number | null;
+}
+
+export interface PersonajeEspecialDto extends PersonajeNombreIdDto {
+    idExtra: number | null;
+    extra: string | null;
+    extraComodin: PersonajeExtraComodinDto | null;
+}
+
+export type PersonajeTipoParteDto = 'caracteristica' | 'ataqueBase' | 'tamano' | 'clase' | 'varios' | 'rangos' | 'rangosVarios';
+
+/** Una parte de un total: de dónde sale y cuánto suma. `origen` es `null` si la base no lo dice. */
+export interface PersonajeParteDto {
+    tipo: PersonajeTipoParteDto;
+    origen: string | null;
+    valor: number;
+}
+
+/** Un total hecho por la API, con su desglose (el total es la suma del desglose). */
+export interface PersonajeTotalDto {
+    total: number;
+    desglose: PersonajeParteDto[];
+}
+
+export interface PersonajeSalvacionesDto {
+    fortaleza: PersonajeTotalDto;
+    reflejos: PersonajeTotalDto;
+    voluntad: PersonajeTotalDto;
+}
+
+export interface PersonajeHabilidadDto extends PersonajeNombreIdDto, PersonajeTotalDto {
+    custom: boolean;
+    deClase: boolean;
+    idExtra: number | null;
+    extra: string | null;
+    extraComodin: PersonajeExtraComodinDto | null;
+    caracteristica: string | null;
+    modificadorCaracteristica: number;
+    rangos: number;
+    rangosVarios: number;
+    varios: string | null;
+}
+
+export interface PersonajeDefensaDto {
+    valor: string;
+    origen: string | null;
+}

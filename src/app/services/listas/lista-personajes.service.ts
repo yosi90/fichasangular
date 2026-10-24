@@ -10,6 +10,7 @@ import { esperarSesionFirebase, FirebaseInjectionContextService } from '../fireb
 import { PrivateUserFirestoreService } from '../private-user-firestore.service';
 import { cabeceraApiConFirebase } from '../platform-session.service';
 import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { resumenClases } from '../utils/resumen-clases';
 
 @Injectable({
     providedIn: 'root'
@@ -181,10 +182,12 @@ export class ListaPersonajesService {
             ?? element?.Raza
             ?? element?.raza
             ?? { Id: 0, Nombre: 'Sin raza' }) as RazaSimple;
-        const clases = `${element?.c
-            ?? element?.cla
-            ?? element?.Clases
-            ?? ''}`.trim();
+        // `GET /personajes` da las clases como lista (`clases`); las proyecciones de Firestore y la RTDB, como texto.
+        const clases = Array.isArray(element?.clases)
+            ? resumenClases(element.clases.map((clase: any) => ({ Nombre: clase?.nombre, Nivel: clase?.nivel })))
+            : `${element?.c
+                ?? element?.Clases
+                ?? ''}`.trim();
         const contexto = `${element?.co
             ?? element?.dh
             ?? element?.Contexto

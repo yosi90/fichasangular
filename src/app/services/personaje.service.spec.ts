@@ -3,6 +3,7 @@ import { Personaje } from '../interfaces/personaje';
 import { ProfileApiError } from '../interfaces/user-account';
 import { PersonajeService } from './personaje.service';
 import { simularTokenApi } from 'src/testing/simular-token-api';
+import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
 
 function crearServicio(httpMock: any): PersonajeService {
     return new PersonajeService(
@@ -238,106 +239,14 @@ describe('PersonajeService', () => {
 
     it('getDetallesPersonaje usa API actor-scoped con Bearer y shape canónico', async () => {
         const httpMock = {
-            get: jasmine.createSpy('get').and.returnValue(of({
+            get: jasmine.createSpy('get').and.returnValue(of(crearDetalleApi({
                 i: 77,
                 n: 'Aldric',
                 ownerUid: 'uid-77',
                 ownerDisplayName: 'Aldric Owner',
-                visible_otros_usuarios: true,
-                id_region: 4,
-                dcp: 'Personalidad',
-                dh: 'Historia',
-                a: '2',
-                ca: 16,
-                an: 1,
-                cd: 0,
-                cv: 0,
-                ra: {
-                    Id: 1,
-                    Nombre: 'Humano',
-                    Ajuste_nivel: 0,
-                    Tamano: { Nombre: 'Mediano', Modificador_presa: 0 },
-                    Dgs_adicionales: { Cantidad: 0 },
-                },
-                tc: { Id: 1, Nombre: 'Humanoide' },
-                f: 12,
-                mf: 1,
-                d: 10,
-                md: 0,
-                co: 10,
-                mco: 0,
-                int: 10,
-                mint: 0,
-                s: 10,
-                ms: 0,
-                car: 8,
-                mcar: -1,
-                de: 'No tener deidad',
-                ali: 'Neutral autentico',
-                g: 'Macho',
-                ncam: 'Sin campaña',
-                ntr: 'Trama base',
-                nst: 'Subtrama base',
-                v: 12,
-                cor: 30,
-                na: 0,
-                vo: 0,
-                t: 0,
-                e: 0,
-                o: true,
                 archivado: true,
-                dg: 0,
-                cla: 'Guerrero;2',
-                dom: '',
-                stc: '',
-                competencia_arma: [],
-                competencia_armadura: [],
-                competencia_grupo_arma: [],
-                competencia_grupo_armadura: [],
-                pla: [],
-                con: [],
-                esp: [],
-                espX: [],
-                rac: [],
-                hab: [],
-                habN: [],
-                habC: [],
-                habCa: [],
-                habMc: [],
-                habR: [],
-                habRv: [],
-                habX: [],
-                habV: [],
-                habCu: [],
-                dotes: [],
-                ve: '',
-                idi: [],
-                familiares: [],
-                companeros: [],
-                sor: [],
-                ju: 'Jugador visible',
-                pgl: 0,
-                ini_v: [],
-                pr_v: [],
-                edad: 20,
-                alt: 1.8,
-                peso: 80,
-                salv: {},
-                rds: [],
-                rcs: [],
-                res: [],
-                ccl: 0,
-                ccm: 0,
-                ccp: 0,
-                espa: '',
-                espan: '',
-                espp: '',
-                esppn: '',
-                disp: '',
-                ecp: '',
-                cper: {},
-                cperd: false,
-            })),
+                clases: [{ id: 9, nombre: 'Guerrero', nivel: 2, lanzaConjuros: false, caracteristicaLanzamiento: null, modificadorLanzamiento: null }],
+            }))),
         } as any;
         const service = crearServicio(httpMock);
 
@@ -361,106 +270,7 @@ describe('PersonajeService', () => {
 
     it('getDetallesPersonaje usa GET /personajes/publicos/:id para invitados', async () => {
         const httpMock = {
-            get: jasmine.createSpy('get').and.returnValue(of({
-                i: 78,
-                n: 'Sir Test',
-                ownerUid: 'uid-78',
-                ownerDisplayName: 'Owner',
-                visible_otros_usuarios: true,
-                id_region: 3,
-                dcp: 'Serio',
-                dh: 'Veterano de frontera',
-                a: '2',
-                ca: 12,
-                an: 0,
-                cd: 0,
-                cv: 0,
-                ra: {
-                    Id: 1,
-                    Nombre: 'Humano',
-                    Ajuste_nivel: 0,
-                    Tamano: { Nombre: 'Mediano', Modificador_presa: 0 },
-                    Dgs_adicionales: { Cantidad: 0 },
-                },
-                tc: { Id: 1, Nombre: 'Humanoide' },
-                f: 10,
-                mf: 0,
-                d: 10,
-                md: 0,
-                co: 10,
-                mco: 0,
-                int: 10,
-                mint: 0,
-                s: 10,
-                ms: 0,
-                car: 10,
-                mcar: 0,
-                de: 'No tener deidad',
-                ali: 'Neutral autentico',
-                g: 'Macho',
-                ncam: 'Sin campaña',
-                ntr: 'Trama base',
-                nst: 'Subtrama base',
-                v: 10,
-                cor: 30,
-                na: 0,
-                vo: 0,
-                t: 0,
-                e: 0,
-                o: true,
-                dg: 0,
-                cla: 'Guerrero;2',
-                dom: '',
-                stc: '',
-                competencia_arma: [],
-                competencia_armadura: [],
-                competencia_grupo_arma: [],
-                competencia_grupo_armadura: [],
-                pla: [],
-                con: [],
-                esp: [],
-                espX: [],
-                rac: [],
-                hab: [],
-                habN: [],
-                habC: [],
-                habCa: [],
-                habMc: [],
-                habR: [],
-                habRv: [],
-                habX: [],
-                habV: [],
-                habCu: [],
-                dotes: [],
-                ve: '',
-                idi: [],
-                familiares: [],
-                companeros: [],
-                sor: [],
-                ju: 'Jugador visible',
-                pgl: 0,
-                ini_v: [],
-                pr_v: [],
-                edad: 20,
-                alt: 1.8,
-                peso: 80,
-                salv: {},
-                rds: [],
-                rcs: [],
-                res: [],
-                ccl: 0,
-                ccm: 0,
-                ccp: 0,
-                espa: '',
-                espan: '',
-                espp: '',
-                esppn: '',
-                disp: '',
-                ecp: '',
-                cper: {},
-                cperd: false,
-                archivado: false,
-            })),
+            get: jasmine.createSpy('get').and.returnValue(of(crearDetalleApi({ i: 78, n: 'Sir Test' }))),
         } as any;
         const service = crearServicioInvitado(httpMock);
 
@@ -472,10 +282,104 @@ describe('PersonajeService', () => {
         );
         expect(personaje.Id).toBe(78);
         expect(personaje.Nombre).toBe('Sir Test');
-        expect(personaje.Contexto).toBe('Veterano de frontera');
-        expect(personaje.Personalidad).toBe('Serio');
-        expect(personaje.Campana).toBe('Sin campaña');
-        expect(personaje.Clases).toBe('Guerrero (2)');
+        expect(personaje.Contexto).toBe('Exploradora del bosque');
+        expect(personaje.Personalidad).toBe('Seria');
+        expect(personaje.Campana).toBe('');
+        expect(personaje.Clases).toBe('Explorador (8)');
+    });
+
+    it('mapApiDetalleToPersonaje lee las listas de objetos de la ficha nueva', () => {
+        const service = crearServicio({} as any);
+        const personaje = (service as any).mapApiDetalleToPersonaje(crearDetalleApi({
+            dominios: [{ id: 31, nombre: 'Sol' }],
+            escuelasProhibidas: [{ id: 5, nombre: 'Evocación' }, { id: 6, nombre: 'Ilusión' }],
+            ventajas: [{ id: 3, nombre: 'Afortunado' }],
+            reduccionesDano: [{ valor: '15/contundente y mágica', origen: 'Liche' }],
+            resistenciasConjuros: [{ valor: '25 + niveles de clase', origen: 'Azotamentes' }],
+            resistenciasElementales: [{ valor: 'Fuego 10', origen: null }],
+        })) as Personaje;
+
+        expect(personaje.desgloseClases).toEqual([
+            { Id: 6, Nombre: 'Explorador', Nivel: 8, Caracteristica_lanzamiento: 'Sabiduría' },
+        ]);
+        expect(personaje.NEP).toBe(14);
+        expect(personaje.Dominios).toEqual([{ Id: 31, Nombre: 'Sol' }]);
+        expect(personaje.Escuelas_prohibidas).toEqual([{ Id: 5, Nombre: 'Evocación' }, { Id: 6, Nombre: 'Ilusión' }]);
+        expect(personaje.Ventajas).toEqual([{ Id: 3, Nombre: 'Afortunado' }]);
+        expect(personaje.Rds).toEqual([{ Modificador: '15/contundente y mágica', Origen: 'Liche' }]);
+        expect(personaje.Rcs).toEqual([{ Modificador: '25 + niveles de clase', Origen: 'Azotamentes' }]);
+        expect(personaje.Res).toEqual([{ Modificador: 'Fuego 10', Origen: '' }]);
+        expect(personaje.Claseas).toEqual([
+            { Id: 30, Id_extra: 0, Nombre: 'Empatía salvaje', Extra: '', Extra_comodin: null },
+            { Id: 38, Id_extra: 40, Nombre: 'Enemigo predilecto', Extra: 'Primero', Extra_comodin: null },
+        ]);
+        expect(personaje.Habilidades).toEqual([
+            jasmine.objectContaining({
+                Id: 6, Nombre: 'Avistar', Clasea: true, Car: 'Sabiduría', Mod_car: 4, Rangos: 14, Rangos_varios: 0,
+                Extra: '', Varios: '', Custom: false, Total: 18, Extra_comodin: null,
+            }),
+            jasmine.objectContaining({ Id: 3, Nombre: 'Artesanía', Extra: 'Elegir', Extra_comodin: 'elegir', Total: 4 }),
+        ]);
+    });
+
+    it('mapApiDetalleToPersonaje toma los totales de la API sin volver a sumarlos', () => {
+        const service = crearServicio({} as any);
+        const personaje = (service as any).mapApiDetalleToPersonaje(crearDetalleApi()) as Personaje;
+
+        expect(personaje.Totales?.iniciativa.total).toBe(8);
+        expect(personaje.Totales?.presa?.total).toBe(20);
+        expect(personaje.Totales?.salvaciones.fortaleza.total).toBe(11);
+        expect(personaje.Totales?.salvaciones.reflejos.desglose[1]).toEqual({ tipo: 'clase', origen: null, valor: 6 });
+        expect(personaje.Presa).toBe(20);
+        expect(personaje.Iniciativa_varios).toEqual([{ Valor: 4, Origen: 'Iniciativa mejorada' }]);
+        expect(personaje.Presa_varios).toEqual([]);
+        expect(personaje.Salvaciones.reflejos).toEqual({
+            modsClaseos: [{ valor: 6, origen: '' }],
+            modsVarios: [{ valor: 4, origen: 'Centauro' }],
+        });
+    });
+
+    it('mapApiDetalleToPersonaje deja la presa sin total cuando el ataque base no tiene número', () => {
+        const service = crearServicio({} as any);
+        const personaje = (service as any).mapApiDetalleToPersonaje(crearDetalleApi({ a: '-', presa: null })) as Personaje;
+
+        expect(personaje.Totales?.presa).toBeNull();
+        expect(personaje.Presa).toBe(0);
+        expect(personaje.Ataque_base).toBe('-');
+    });
+
+    it('mapApiDetalleToPersonaje trata los rellenos a null como vacíos', () => {
+        const service = crearServicio({} as any);
+        const personaje = (service as any).mapApiDetalleToPersonaje(crearDetalleApi({ g: null })) as Personaje;
+
+        expect(personaje.Deidad).toBe('');
+        expect(personaje.Alineamiento).toBe('');
+        expect(personaje.Genero).toBe('');
+        expect(personaje.Campana).toBe('');
+        expect(personaje.Trama).toBe('');
+        expect(personaje.Subtrama).toBe('');
+        expect(personaje.Id_region).toBe(0);
+        expect(personaje.Region).toBeNull();
+        expect(personaje.Escuela_especialista).toEqual({ Nombre: 'Cualquiera', Calificativo: '' });
+        expect(personaje.Disciplina_especialista).toEqual({ Nombre: '', Calificativo: '' });
+        expect(personaje.Disciplina_prohibida).toBe('');
+    });
+
+    it('mapApiDetalleToPersonaje conserva la campaña, la trama y la región cuando las hay', () => {
+        const service = crearServicio({} as any);
+        const personaje = (service as any).mapApiDetalleToPersonaje(crearDetalleApi({
+            ncam: 'Costa de la Espada',
+            ntr: 'Torre eclipsada',
+            nst: null,
+            id_region: 3,
+            de: 'Ehlonna',
+        })) as Personaje;
+
+        expect(personaje.Campana).toBe('Costa de la Espada');
+        expect(personaje.Trama).toBe('Torre eclipsada');
+        expect(personaje.Subtrama).toBe('');
+        expect(personaje.Region).toEqual({ Id: 3, Nombre: '' });
+        expect(personaje.Deidad).toBe('Ehlonna');
     });
 
     it('getDetallesPersonaje para invitados propaga el error del endpoint público y no cae a RTDB legacy', async () => {
@@ -541,7 +445,7 @@ describe('PersonajeService', () => {
                     Dgs_adicionales: { Cantidad: 0 },
                 },
                 tc: { Id: 1, Nombre: 'Humanoide' },
-                cla: 'Guerrero;2',
+                clases: [{ id: 9, nombre: 'Guerrero', nivel: 2, lanzaConjuros: false, caracteristicaLanzamiento: null, modificadorLanzamiento: null }],
             })),
         } as any;
         const service = crearServicio(httpMock);
@@ -561,7 +465,7 @@ describe('PersonajeService', () => {
                 n: 'Ataque no archivo',
                 ownerUid: 'uid-88',
                 visible_otros_usuarios: true,
-                a: 2,
+                a: '2',
                 archivado: false,
                 ra: {
                     Id: 1,
@@ -571,7 +475,7 @@ describe('PersonajeService', () => {
                     Dgs_adicionales: { Cantidad: 0 },
                 },
                 tc: { Id: 1, Nombre: 'Humanoide' },
-                cla: 'Guerrero;2',
+                clases: [{ id: 9, nombre: 'Guerrero', nivel: 2, lanzaConjuros: false, caracteristicaLanzamiento: null, modificadorLanzamiento: null }],
             })),
         } as any;
         const service = crearServicio(httpMock);
@@ -579,7 +483,7 @@ describe('PersonajeService', () => {
         const observable = await service.getDetallesPersonaje(88);
         const personaje = await new Promise<any>((resolve) => observable.subscribe(resolve));
 
-        expect(personaje.Ataque_base).toBe(2);
+        expect(personaje.Ataque_base).toBe('2');
         expect(personaje.Archivado).toBeFalse();
     });
 
@@ -898,7 +802,10 @@ describe('PersonajeService', () => {
         const personaje = (service as any).mapApiDetalleToPersonaje({
             i: 9,
             n: 'Aldric',
-            cla: 'Mago;10|Archimago;2',
+            clases: [
+                { id: 186, nombre: 'Mago', nivel: 10, lanzaConjuros: true, caracteristicaLanzamiento: 'Inteligencia', modificadorLanzamiento: 3 },
+                { id: 187, nombre: 'Archimago', nivel: 2, lanzaConjuros: false, caracteristicaLanzamiento: null, modificadorLanzamiento: null },
+            ],
             ra: {
                 Nombre: 'Humano',
                 Ajuste_nivel: 0,
@@ -914,8 +821,8 @@ describe('PersonajeService', () => {
         } as any) as Personaje;
 
         expect(personaje.desgloseClases).toEqual([
-            { Nombre: 'Mago', Nivel: 10 },
-            { Nombre: 'Archimago', Nivel: 2 },
+            { Id: 186, Nombre: 'Mago', Nivel: 10, Caracteristica_lanzamiento: 'Inteligencia' },
+            { Id: 187, Nombre: 'Archimago', Nivel: 2, Caracteristica_lanzamiento: null },
         ]);
         expect(personaje.ProgresionLanzador).toEqual({
             selecciones: [

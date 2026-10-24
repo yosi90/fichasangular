@@ -7,7 +7,12 @@ import { RacialDetalle } from "./racial";
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
 import { SubtipoRef } from "./subtipo";
 import { TipoCriatura } from "./tipo_criatura";
-import { PersonajeProgresionLanzadorDto } from "./personajes-api";
+import {
+    PersonajeExtraComodinDto,
+    PersonajeProgresionLanzadorDto,
+    PersonajeSalvacionesDto,
+    PersonajeTotalDto
+} from "./personajes-api";
 
 export type CaracteristicaPerdidaKey = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
 export type PersonajeTipoLanzamiento = 'arcano' | 'divino' | 'psionico' | 'alma' | 'mixto';
@@ -70,6 +75,13 @@ export interface AutoRepartoRecomendacion {
     afinadaPorTop3: boolean;
 }
 
+/** Los totales que da hechos la API en la ficha (`iniciativa`, `presa` y `salvaciones` de `PersonajeDetalle`). */
+export interface PersonajeTotales {
+    iniciativa: PersonajeTotalDto;
+    presa: PersonajeTotalDto | null;
+    salvaciones: PersonajeSalvacionesDto;
+}
+
 export interface PersonajeCompetenciaDirecta {
     Id: number;
     Nombre: string;
@@ -86,10 +98,15 @@ export interface Personaje extends PersonajeSimple {
     ProgresionLanzador?: PersonajeProgresionLanzadorDto;
     Niveles_lanzador?: PersonajeNivelLanzadorResumen[];
     desgloseClases: {
+        Id?: number;
         Nombre: string;
         Nivel: number;
+        /** La característica de la CD de sus conjuros; `null` o sin dato si no lanza. */
+        Caracteristica_lanzamiento?: string | null;
     }[],
     Ataque_base: string;
+    /** Solo en la ficha que llega de la API; el borrador de la creación los calcula (`totalesPersonaje`). */
+    Totales?: PersonajeTotales;
     Ca: number;
     Armadura_natural: number;
     Ca_desvio: number;
@@ -223,6 +240,7 @@ export interface Personaje extends PersonajeSimple {
         }
     }
     Dominios: {
+        Id?: number;
         Nombre: string;
     }[]
     competencia_arma: PersonajeCompetenciaDirecta[];
@@ -271,6 +289,8 @@ export interface Personaje extends PersonajeSimple {
         Id_extra?: number;
         Nombre: string;
         Extra: string;
+        /** Solo en la ficha de la API: qué comodín es el extra («Elegir», «Cualquiera») o `null`. */
+        Extra_comodin?: PersonajeExtraComodinDto | null;
     }[]
     Raciales: RacialDetalle[];
     Habilidades: {
@@ -286,6 +306,9 @@ export interface Personaje extends PersonajeSimple {
         Extra_bloqueado?: boolean;
         Varios: string;
         Custom: boolean;
+        /** Solo en la ficha de la API: el total hecho y si el extra está por elegir. */
+        Total?: number;
+        Extra_comodin?: PersonajeExtraComodinDto | null;
         Soporta_extra?: boolean;
         Extras?: {
             Id_extra: number;
@@ -312,6 +335,7 @@ export interface Personaje extends PersonajeSimple {
         updatedAt: number;
     } | null;
     Ventajas: (string | {
+        Id?: number;
         Nombre: string;
         Origen?: string;
     })[];
@@ -324,6 +348,7 @@ export interface Personaje extends PersonajeSimple {
     }[];
     Sortilegas: AptitudSortilega[];
     Escuelas_prohibidas: Array<string | {
+        Id?: number;
         Nombre: string;
     }>;
 }
