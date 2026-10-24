@@ -53,3 +53,13 @@ export function resolverExtraHabilidadVisible(options: ResolverExtraHabilidadOpt
 
     return '';
 }
+
+/**
+ * Si el extra de una habilidad de la ficha está por elegir (un Saber o una Artesanía sin escoger). La ficha de la API lo
+ * marca en `extraComodin`; el borrador de la creación aún lo dice con el texto «Elegir».
+ */
+export function habilidadConExtraPorElegir(habilidad: { Extra?: string | null; Extra_comodin?: string | null; } | null | undefined): boolean {
+    if (habilidad?.Extra_comodin !== undefined)
+        return habilidad.Extra_comodin === 'elegir';
+    return normalizarTexto(habilidad?.Extra) === 'elegir';
+}

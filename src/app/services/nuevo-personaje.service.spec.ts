@@ -1580,8 +1580,17 @@ describe('NuevoPersonajeService (clases)', () => {
     it('aplicarSiguienteNivelClase crea entrada de clase a nivel 1', () => {
         const res = service.aplicarSiguienteNivelClase(claseBase);
         expect(res.aplicado).toBeTrue();
-        expect(service.PersonajeCreacion.desgloseClases).toEqual([{ Nombre: 'Guerrero', Nivel: 1 }]);
+        expect(service.PersonajeCreacion.desgloseClases).toEqual([{ Nombre: 'Guerrero', Nivel: 1, Caracteristica_lanzamiento: null }]);
         expect(service.PersonajeCreacion.Clases).toContain('Guerrero (1)');
+    });
+
+    it('aplicarSiguienteNivelClase guarda la característica de lanzamiento de la clase, como la ficha de la API', () => {
+        claseBase.Mod_salv_conjuros = 'Sabiduría';
+        service.setCatalogoClases([claseBase]);
+
+        service.aplicarSiguienteNivelClase(claseBase);
+
+        expect(service.PersonajeCreacion.desgloseClases[0].Caracteristica_lanzamiento).toBe('Sabiduría');
     });
 
     it('repetir clase incrementa al nivel 2', () => {

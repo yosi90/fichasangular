@@ -26,6 +26,14 @@ import Swal from 'sweetalert2';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import {
+    origenesDePartes,
+    sumarPartes,
+    textoDesglose,
+    TipoSalvacion,
+    totalesPersonaje,
+    totalHabilidad
+} from 'src/app/services/utils/personaje-totales';
 
 interface MadurezEdadResumen {
     id: number;
@@ -33,6 +41,23 @@ interface MadurezEdadResumen {
     modFisico: number;
     modMental: number;
 }
+
+/** Una salvación como se enseña: el total y, por separado, la parte de clase y la de varios con sus orígenes. */
+interface SalvacionVisible {
+    nombre: string;
+    total: number;
+    desglose: string;
+    clase: number;
+    claseOrigenes: string;
+    varios: number;
+    variosOrigenes: string;
+}
+
+const SALVACIONES: { tipo: TipoSalvacion; nombre: string; }[] = [
+    { tipo: 'fortaleza', nombre: 'Fortaleza' },
+    { tipo: 'reflejos', nombre: 'Reflejos' },
+    { tipo: 'voluntad', nombre: 'Voluntad' },
+];
 
 interface VentajaVisible {
     nombre: string;
@@ -72,19 +97,11 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     Este es el valor usado para determinar cosas como el oro inicial o el nivel de encuentro`;
     caDisclaimer: string = "Error";
     iniciativa: string = "0";
+    iniciativaDesglose = '';
     presa: string = "0";
-    fortaleza = 0;
-    fortaleza_origenes: string = "";
-    fortaleza_varios = 0;
-    fortaleza_varios_origenes: string = "";
-    reflejos = 0;
-    reflejos_origenes: string = "";
-    reflejos_varios = 0;
-    reflejos_varios_origenes: string = "";
-    voluntad = 0;
-    voluntad_origenes: string = "";
-    voluntad_varios = 0;
-    voluntad_varios_origenes: string = "";
+    presaDesglose = '';
+    presaDisponible = false;
+    salvacionesVisibles: SalvacionVisible[] = [];
     cLigera: string = "0 Kilogramos";
     cMedia: string = "0 Kilogramos";
     cPesada: string = "0 Kilogramos";
@@ -102,7 +119,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     velDisclaimer: string = `
     Medido en pies
     5 pies equivalen a una casilla`;
-    Habilidades: { Nombre: string; Mod_car: number; Rangos: number; Rangos_varios: number; Extra: string; Varios: string; }[] = [];
+    Habilidades: Personaje['Habilidades'] = [];
 
     constructor(
         private fichasDescargaBgSvc: FichasDescargaBackgroundService,
@@ -162,9 +179,9 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     }
 
     getTotalVisibleHabilidad(
-        habilidad: { Mod_car: number; Rangos: number; Rangos_varios: number; }
+        habilidad: { Total?: number; Mod_car: number; Rangos: number; Rangos_varios: number; }
     ): string {
-        const total = Number(habilidad?.Rangos ?? 0) + Number(habilidad?.Rangos_varios ?? 0) + Number(habilidad?.Mod_car ?? 0);
+        const total = totalHabilidad(habilidad);
         return total >= 0 ? `+${total}` : `${total}`;
     }
 
@@ -409,10 +426,6 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         this.perfilPublicoDisponible = true;
     }
 
-    private sumarMods(mods: { valor: number, origen: string }[] | undefined): number {
-        return (mods ?? []).reduce((c, v) => c + toNumber(v?.valor), 0);
-    }
-
     private getNivelPersonaje(): number {
         const nivelesClase = (this.pj?.desgloseClases ?? []).reduce((c, clase) => c + toNumber(clase?.Nivel), 0);
         const ajusteRaza = toNumber(this.pj?.Raza?.Ajuste_nivel);
@@ -547,7 +560,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     }
 
     tienePresaVisible(): boolean {
-        return this.tieneNumeroNoCero(this.presa);
+        return this.presaDisponible && this.tieneNumeroNoCero(this.presa);
     }
 
     tieneVelocidadVisible(valor: number): boolean {
@@ -690,7 +703,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         return (this.pj?.Plantillas ?? []).filter((p: any) => this.tieneTextoVisible(p?.Nombre));
     }
 
-    getSubchipsLanzadorClase(claseDesglose: { Nombre: string; Nivel: number; }): string[] {
+    getSubchipsLanzadorClase(claseDesglose: Personaje['desgloseClases'][number]): string[] {
         const nombreClase = `${claseDesglose?.Nombre ?? ''}`.trim();
         if (!this.tieneTextoVisible(nombreClase))
             return [];
@@ -720,8 +733,9 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             chips.push('Lanzamiento espontáneo');
         if (conjuros.Dependientes_alineamiento)
             chips.push('Dependiente de alineamiento');
-        if (this.tieneTextoVisible(claseCatalogo.Mod_salv_conjuros))
-            chips.push(`Salvación (${claseCatalogo.Mod_salv_conjuros})`);
+        const caracteristicaLanzamiento = `${claseDesglose?.Caracteristica_lanzamiento ?? ''}`.trim();
+        if (caracteristicaLanzamiento.length > 0)
+            chips.push(`Salvación (${caracteristicaLanzamiento})`);
 
         const nivelClase = Math.max(0, toNumber(claseDesglose?.Nivel));
         const nivelDetalleObjetivo = resumenLanzador?.nivelDesgloseLanzador ?? nivelClase;
@@ -873,8 +887,19 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         return (this.pj?.Claseas ?? []).filter(c => this.tieneTextoVisible(c?.Nombre));
     }
 
+    getExtraVisibleEspecial(especial: Personaje['Claseas'][number]): string {
+        // La ficha de la API marca el comodín; «Cualquiera» no es una elección y no se enseña. El borrador de la
+        // creación aún trae el texto de relleno.
+        if (especial?.Extra_comodin !== undefined)
+            return especial.Extra_comodin === 'cualquiera' ? '' : `${especial?.Extra ?? ''}`.trim();
+        return this.tieneTextoVisible(especial?.Extra) ? `${especial.Extra}`.trim() : '';
+    }
+
     getExtraVisibleHabilidad(habilidad: Record<string, any> | null | undefined): string {
         const item = habilidad ?? {};
+        // La ficha de la API ya da el extra visible («Elegir» si está por escoger) y `null` sin extra.
+        if (item['Extra_comodin'] !== undefined)
+            return `${item['Extra'] ?? ''}`.trim();
         const hasIdExtra = Object.prototype.hasOwnProperty.call(item, 'Id_extra')
             || Object.prototype.hasOwnProperty.call(item, 'id_extra')
             || Object.prototype.hasOwnProperty.call(item, 'i_ex')
@@ -968,12 +993,13 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     private actualizarValoresDerivadosVisuales(): void {
-        const iniciativaTotal = toNumber(this.pj?.ModDestreza)
-            + (this.pj?.Iniciativa_varios ?? []).reduce((c, v) => c + toNumber(v?.Valor), 0);
-        this.iniciativa = this.formatSigned(iniciativaTotal);
+        const totales = totalesPersonaje(this.pj);
+        this.iniciativa = this.formatSigned(toNumber(totales.iniciativa.total));
+        this.iniciativaDesglose = textoDesglose(totales.iniciativa);
 
-        const presaTotal = toNumber(this.pj?.Presa);
-        this.presa = this.formatSigned(presaTotal);
+        this.presaDisponible = !!totales.presa;
+        this.presa = this.formatSigned(toNumber(totales.presa?.total));
+        this.presaDesglose = textoDesglose(totales.presa);
 
         const ligera = toNumber(this.pj?.Capacidad_carga?.Ligera);
         const media = toNumber(this.pj?.Capacidad_carga?.Media);
@@ -990,38 +1016,19 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     }
 
     private actualizarResumenSalvaciones(): void {
-        this.fortaleza = this.sumarMods(this.pj?.Salvaciones?.fortaleza?.modsClaseos);
-        this.fortaleza_origenes = (this.pj?.Salvaciones?.fortaleza?.modsClaseos ?? [])
-            .filter(m => m.origen != "" && m.origen != "Placeholder")
-            .map(m => m.origen)
-            .join(', ') ?? "";
-        this.fortaleza_varios = this.sumarMods(this.pj?.Salvaciones?.fortaleza?.modsVarios);
-        this.fortaleza_varios_origenes = (this.pj?.Salvaciones?.fortaleza?.modsVarios ?? [])
-            .filter(m => m.origen != "" && m.origen != "Placeholder")
-            .map(m => m.origen)
-            .join(', ') ?? "";
-
-        this.reflejos = this.sumarMods(this.pj?.Salvaciones?.reflejos?.modsClaseos);
-        this.reflejos_origenes = (this.pj?.Salvaciones?.reflejos?.modsClaseos ?? [])
-            .filter(m => m.origen != "" && m.origen != "Placeholder")
-            .map(m => m.origen)
-            .join(', ') ?? "";
-        this.reflejos_varios = this.sumarMods(this.pj?.Salvaciones?.reflejos?.modsVarios);
-        this.reflejos_varios_origenes = (this.pj?.Salvaciones?.reflejos?.modsVarios ?? [])
-            .filter(m => m.origen != "" && m.origen != "Placeholder")
-            .map(m => m.origen)
-            .join(', ') ?? "";
-
-        this.voluntad = this.sumarMods(this.pj?.Salvaciones?.voluntad?.modsClaseos);
-        this.voluntad_origenes = (this.pj?.Salvaciones?.voluntad?.modsClaseos ?? [])
-            .filter(m => m.origen != "" && m.origen != "Placeholder")
-            .map(m => m.origen)
-            .join(', ') ?? "";
-        this.voluntad_varios = this.sumarMods(this.pj?.Salvaciones?.voluntad?.modsVarios);
-        this.voluntad_varios_origenes = (this.pj?.Salvaciones?.voluntad?.modsVarios ?? [])
-            .filter(m => m.origen != "" && m.origen != "Placeholder")
-            .map(m => m.origen)
-            .join(', ') ?? "";
+        const salvaciones = totalesPersonaje(this.pj).salvaciones;
+        this.salvacionesVisibles = SALVACIONES.map(({ tipo, nombre }) => {
+            const salvacion = salvaciones[tipo];
+            return {
+                nombre,
+                total: toNumber(salvacion?.total),
+                desglose: textoDesglose(salvacion),
+                clase: sumarPartes(salvacion, 'clase'),
+                claseOrigenes: origenesDePartes(salvacion, 'clase').join(', '),
+                varios: sumarPartes(salvacion, 'varios'),
+                variosOrigenes: origenesDePartes(salvacion, 'varios').join(', '),
+            };
+        });
     }
 
     private tieneContextoNepParaPreview(): boolean {

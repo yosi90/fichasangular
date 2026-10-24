@@ -28,8 +28,8 @@
                 <mat-chip class="tw-ms-3 tw-m-1">Fue/Des/Con {{formatSigned(madurezEdad.modFisico)}}</mat-chip>
                 <mat-chip class="tw-m-1">Int/Sab/Car {{formatSigned(madurezEdad.modMental)}}</mat-chip>
             </mat-chip>
-            <mat-chip class="tw-m-1" *ngIf="tieneIniciativaVisible()">Iniciativa {{iniciativa}}</mat-chip>
-            <mat-chip class="tw-m-1" *ngIf="tienePresaVisible()">Presa {{presa}}</mat-chip>
+            <mat-chip class="tw-m-1" *ngIf="tieneIniciativaVisible()" [matTooltip]="iniciativaDesglose" matTooltipClass="tt-accent tt-multiline">Iniciativa {{iniciativa}}</mat-chip>
+            <mat-chip class="tw-m-1" *ngIf="tienePresaVisible()" [matTooltip]="presaDesglose" matTooltipClass="tt-accent tt-multiline">Presa {{presa}}</mat-chip>
             <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Correr)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Velocidad {{pj.Correr}}'</mat-chip>
             <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Nadar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Nadar {{pj.Nadar}}'</mat-chip>
             <mat-chip class="tw-m-1" *ngIf="tieneVelocidadVisible(pj.Volar)" [matTooltip]="velDisclaimer" matTooltipClass="tt-accent tt-multiline">Volar {{pj.Volar}}'</mat-chip>
@@ -81,20 +81,13 @@
             <mat-chip class="tw-h-auto tw-m-1" *ngIf="tieneEscuelasProhibidasVisibles()"><p class="tw-m-0 tw-me-2">Escuelas prohibidas:</p>
                 <mat-chip class="tw-m-1" *ngFor="let e of getEscuelasProhibidasVisibles()">{{e}}</mat-chip>
             </mat-chip>
-            <mat-chip class="warm tw-m-1" *ngIf="pj.Disciplina_especialista.Nombre != 'Ninguna'">{{pj.Disciplina_especialista.Calificativo}}</mat-chip>
-            <mat-chip class="warm tw-m-1" *ngIf="pj.Disciplina_prohibida != 'Ninguna'">{{pj.Disciplina_prohibida}}</mat-chip>
+            <mat-chip class="warm tw-m-1" *ngIf="tieneTextoVisible(pj.Disciplina_especialista?.Nombre)">{{pj.Disciplina_especialista.Calificativo}}</mat-chip>
+            <mat-chip class="warm tw-m-1" *ngIf="tieneTextoVisible(pj.Disciplina_prohibida)">{{pj.Disciplina_prohibida}}</mat-chip>
             <mat-chip class="tw-h-auto tw-m-1" *ngIf="tieneBloqueSalvacionesVisible()">Salvaciones
-                <mat-chip class="tw-ms-3 tw-m-1">Fortaleza: 
-                    <p class="tw-m-0 tw-ms-1" [matTooltip]="fortaleza_origenes" matTooltipClass="tt-accent">{{fortaleza}}</p>
-                    <p class="tw-m-0 tw-ms-1" [matTooltip]="fortaleza_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(fortaleza_varios)">{{formatSigned(fortaleza_varios)}}</p>
-                </mat-chip>
-                <mat-chip class="tw-m-1">Reflejos:
-                    <p class="tw-m-0 tw-ms-1" [matTooltip]="reflejos_origenes" matTooltipClass="tt-accent">{{reflejos}}</p>
-                    <p class="tw-m-0 tw-ms-1" [matTooltip]="reflejos_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(reflejos_varios)">{{formatSigned(reflejos_varios)}}</p>
-                </mat-chip>
-                <mat-chip class="tw-m-1">Voluntad:
-                    <p class="tw-m-0 tw-ms-1" [matTooltip]="voluntad_origenes" matTooltipClass="tt-accent">{{voluntad}}</p>
-                    <p class="tw-m-0 tw-ms-1" [matTooltip]="voluntad_varios_origenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(voluntad_varios)">{{formatSigned(voluntad_varios)}}</p>
+                <mat-chip class="tw-m-1" *ngFor="let salvacion of salvacionesVisibles; let primera = first" [class.tw-ms-3]="primera">{{salvacion.nombre}}:
+                    <p class="tw-m-0 tw-ms-1" [matTooltip]="salvacion.desglose" matTooltipClass="tt-accent tt-multiline">{{formatSigned(salvacion.total)}}</p>
+                    <p class="tw-m-0 tw-ms-1" [matTooltip]="salvacion.claseOrigenes" matTooltipClass="tt-accent">clase {{formatSigned(salvacion.clase)}}</p>
+                    <p class="tw-m-0 tw-ms-1" [matTooltip]="salvacion.variosOrigenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(salvacion.varios)">varios {{formatSigned(salvacion.varios)}}</p>
                 </mat-chip>
             </mat-chip>
         </div>
@@ -176,11 +169,11 @@
                 <mat-chip class="warm tw-m-1" *ngIf="tieneAtaqueBaseVisible()">Ataque base {{pj.Ataque_base}}</mat-chip>
                 <mat-chip class="tw-m-1" *ngIf="tienePgVisible()">Pg {{pj.Vida}}</mat-chip>
                 <mat-chip class="tw-m-1" *ngIf="tieneCaVisible()" [matTooltip]="caDisclaimer"  matTooltipClass="tt-accent tt-multiline">Ca {{pj.Ca}}</mat-chip>
-                <ng-template *ngIf="pj.Campana != 'Sin campaña'">
-                    <mat-chip class="tw-m-1">Campaña {{pj.Campana}}</mat-chip>
-                    <mat-chip class="tw-m-1">Trama {{pj.Trama}}</mat-chip>
-                    <mat-chip class="tw-m-1">Subtrama {{pj.Subtrama}}</mat-chip>
-                </ng-template>
+                <ng-container *ngIf="!esPreviewNuevoPersonaje">
+                    <mat-chip class="tw-m-1" *ngIf="pj.Campana">Campaña {{pj.Campana}}</mat-chip>
+                    <mat-chip class="tw-m-1" *ngIf="pj.Trama">Trama {{pj.Trama}}</mat-chip>
+                    <mat-chip class="tw-m-1" *ngIf="pj.Subtrama">Subtrama {{pj.Subtrama}}</mat-chip>
+                </ng-container>
                 <mat-chip class="tw-m-1 chip-clic" *ngIf="tieneDeidadVisible()"
                     matTooltip="Pulsa para ver los detalles de la deidad" [matTooltipShowDelay]="250"
                     matTooltipClass="tt-accent" (click)="verDetallesDeidadPorNombre(pj.Deidad)">
@@ -268,7 +261,7 @@
                         <mat-chip *ngFor="let c of getClaseasVisibles()" class="chip-clic sombra3d-sm"
                             matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
                             (click)="verDetallesEspecialPorNombre(c.Nombre)">
-                            {{c.Nombre}}{{tieneTextoVisible(c.Extra) ? ' ' + c.Extra : ''}}
+                            {{c.Nombre}}{{getExtraVisibleEspecial(c) ? ' ' + getExtraVisibleEspecial(c) : ''}}
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>

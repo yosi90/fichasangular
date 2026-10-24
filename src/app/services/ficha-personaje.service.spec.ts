@@ -3,6 +3,18 @@ import * as fileSaver from 'file-saver';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from '../interfaces/monstruo';
 import { Personaje } from '../interfaces/personaje';
 import { FichaPersonajeService } from './ficha-personaje.service';
+import { PersonajeService } from './personaje.service';
+import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
+
+/** La plantilla de verdad de la ficha (Karma sirve `src/assets`). */
+async function plantillaFicha(fetchOriginal: typeof fetch): Promise<ArrayBuffer> {
+    for (const ruta of ['/assets/pdf/Ficha.pdf', '/_karma_webpack_/assets/pdf/Ficha.pdf']) {
+        const respuesta = await fetchOriginal(ruta);
+        if (respuesta.ok)
+            return respuesta.arrayBuffer();
+    }
+    throw new Error('No se encuentra la plantilla de la ficha en Karma.');
+}
 
 function crearPersonajeBase(): Personaje {
     return {
@@ -77,6 +89,7 @@ describe('FichaPersonajeService', () => {
     let service: FichaPersonajeService;
     let fetchSpy: jasmine.Spy;
     let saveAsSpy: jasmine.Spy;
+    const fetchOriginal = window.fetch.bind(window);
 
     beforeEach(async () => {
         service = new FichaPersonajeService();
@@ -106,6 +119,55 @@ describe('FichaPersonajeService', () => {
 
         expect(fetchSpy).toHaveBeenCalledWith('../../assets/pdf/compañero.pdf');
         expect(saveAsSpy).toHaveBeenCalled();
+    });
+
+    it('rellena salvaciones, iniciativa, presa y habilidades con las partes de cada tipo que da la API', async () => {
+        const plantilla = await plantillaFicha(fetchOriginal);
+        fetchSpy.and.returnValue(Promise.resolve({ arrayBuffer: () => Promise.resolve(plantilla) } as any));
+        const personajeSvc = new PersonajeService({ currentUser: null } as any, {} as any);
+        const pj = (personajeSvc as any).mapApiDetalleToPersonaje(crearDetalleApi({
+            presa: {
+                total: 22,
+                desglose: [
+                    { tipo: 'ataqueBase', origen: 'Ataque base', valor: 8 },
+                    { tipo: 'caracteristica', origen: 'Fuerza', valor: 8 },
+                    { tipo: 'tamano', origen: 'Tamaño (Grande)', valor: 4 },
+                    { tipo: 'varios', origen: 'Agarrón mejorado', valor: 2 },
+                ],
+            },
+            habilidades: [
+                {
+                    id: 3, nombre: 'Artesanía', custom: false, deClase: false, idExtra: 0, extra: 'Elegir', extraComodin: 'elegir',
+                    caracteristica: 'Inteligencia', modificadorCaracteristica: 4, rangos: 2, rangosVarios: 0, varios: null, total: 6,
+                    desglose: [],
+                },
+                {
+                    id: 1, nombre: 'Interpretar (onomatopeyas)', custom: true, deClase: true, idExtra: null, extra: null, extraComodin: null,
+                    caracteristica: 'Carisma', modificadorCaracteristica: 3, rangos: 2, rangosVarios: 2, varios: null, total: 7,
+                    desglose: [],
+                },
+            ],
+        }));
+
+        await service.generarPDF(pj);
+
+        const blob = saveAsSpy.calls.mostRecent().args[0] as Blob;
+        const form = (await PDFDocument.load(await blob.arrayBuffer())).getForm();
+        const campo = (nombre: string) => form.getTextField(nombre).getText();
+        expect(campo('fort_clase')).toBe('6');
+        expect(campo('mod_varios_fortaleza')).toBe('1');
+        expect(campo('ref_clase')).toBe('6');
+        expect(campo('mod_varios_reflejos')).toBe('4');
+        expect(campo('vol_clase')).toBe('2');
+        expect(campo('mod_varios_voluntad')).toBe('0');
+        expect(campo('mod_varios_iniciativa')).toBe('4');
+        expect(campo('mod_tamaño_presa')).toBe('4');
+        expect(campo('mod_varios_presa')).toBe('2');
+        expect(campo('campaña') ?? '').toBe('');
+        expect(campo('extra2') ?? '').toBe('');
+        expect(campo('custom1')).toBe('Interpretar (onomatopeyas)');
+        expect(campo('car1')).toBe('CAR');
+        expect(campo('mod_custom1')).toBe('3');
     });
 
     it('formatea niveles de lanzador en notas de ficha', () => {

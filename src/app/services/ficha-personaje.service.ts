@@ -7,6 +7,8 @@ import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } fr
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { sumarPartes, totalesPersonaje } from 'src/app/services/utils/personaje-totales';
+import { habilidadConExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 
 
 @Injectable({
@@ -24,6 +26,7 @@ export class FichaPersonajeService {
         const pdfDoc = await PDFDocument.load(pdfTemplateBytes);
         const form = pdfDoc.getForm();
         const jugadorFicha = this.resolverNombreJugador(pj);
+        const totales = totalesPersonaje(pj);
         if (!pj.Oficial) {
             const field = form.getTextField('oficial');
             // TODO El campo está oculto, mostrarlo
@@ -58,9 +61,9 @@ export class FichaPersonajeService {
         form.getTextField('mod_int').setText(`${pj.ModInteligencia > 0 ? '+' : ''}${pj.ModInteligencia}`);
         form.getTextField('mod_sab').setText(`${pj.ModSabiduria > 0 ? '+' : ''}${pj.ModSabiduria}`);
         form.getTextField('mod_car').setText(`${pj.ModCarisma > 0 ? '+' : ''}${pj.ModCarisma}`);
-        form.getTextField('mod_varios_iniciativa').setText(pj.Iniciativa_varios ? `${pj.Iniciativa_varios.reduce((c, v) => c + v.Valor, 0)}` : '0');
+        form.getTextField('mod_varios_iniciativa').setText(`${sumarPartes(totales.iniciativa, 'varios')}`);
         form.getTextField('mod_tamaño_presa').setText(pj.Raza.Tamano.Modificador_presa.toString());
-        form.getTextField('mod_varios_presa').setText(pj.Presa_varios ? `${pj.Presa_varios.reduce((c, v) => c + v.Valor, 0)}` : '0');
+        form.getTextField('mod_varios_presa').setText(`${sumarPartes(totales.presa, 'varios')}`);
         form.getTextField('ca').setText(pj.Ca.toString());
         form.getTextField('ca_armadura').setText('0');
         form.getTextField('ca_escudo').setText('0');
@@ -71,15 +74,15 @@ export class FichaPersonajeService {
         form.getTextField('ca_toque').setText(pj.Ca.toString());
         form.getTextField('ca_desprevenido').setText((pj.Ca - pj.ModDestreza).toString());
         form.getTextField('pg').setText(pj.Vida.toString());
-        form.getTextField('fort_clase').setText(this.sumMods((pj as any)?.Salvaciones?.fortaleza?.modsClaseos).toString());
+        form.getTextField('fort_clase').setText(`${sumarPartes(totales.salvaciones.fortaleza, 'clase')}`);
         form.getTextField('mod_magico_fortaleza').setText('0');
-        form.getTextField('mod_varios_fortaleza').setText(this.sumMods((pj as any)?.Salvaciones?.fortaleza?.modsVarios).toString());
-        form.getTextField('ref_clase').setText(this.sumMods((pj as any)?.Salvaciones?.reflejos?.modsClaseos).toString());
+        form.getTextField('mod_varios_fortaleza').setText(`${sumarPartes(totales.salvaciones.fortaleza, 'varios')}`);
+        form.getTextField('ref_clase').setText(`${sumarPartes(totales.salvaciones.reflejos, 'clase')}`);
         form.getTextField('mod_magico_reflejos').setText('0');
-        form.getTextField('mod_varios_reflejos').setText(this.sumMods((pj as any)?.Salvaciones?.reflejos?.modsVarios).toString());
-        form.getTextField('vol_clase').setText(this.sumMods((pj as any)?.Salvaciones?.voluntad?.modsClaseos).toString());
+        form.getTextField('mod_varios_reflejos').setText(`${sumarPartes(totales.salvaciones.reflejos, 'varios')}`);
+        form.getTextField('vol_clase').setText(`${sumarPartes(totales.salvaciones.voluntad, 'clase')}`);
         form.getTextField('mod_magico_voluntad').setText('0');
-        form.getTextField('mod_varios_voluntad').setText(this.sumMods((pj as any)?.Salvaciones?.voluntad?.modsVarios).toString());
+        form.getTextField('mod_varios_voluntad').setText(`${sumarPartes(totales.salvaciones.voluntad, 'varios')}`);
         var notas = `Personalidad:\r\n${pj.Personalidad}\r\n\r\nContexto:\r\n${pj.Contexto}`;
         notas += this.formatearNotasNivelesLanzador(pj);
         if (pj.Rds && pj.Rds.length > 0) {
@@ -262,14 +265,14 @@ export class FichaPersonajeService {
                     self.tryCheck(form, `clasea${habilidadIndex}`, true);
 
                 self.trySetText(form, `rangos${habilidadIndex}`, `${toNumber(h.Rangos)}`);
-                if (h.Extra != "" && h.Extra != "Elegir") {
+                if (`${h.Extra ?? ''}`.trim() !== '' && !habilidadConExtraPorElegir(h)) {
                     self.trySetText(form, `extra${habilidadIndex}`, `${h.Extra ?? ''}`);
                 } else if (h.Custom) {
                     if (contHabsCustom < 3) {
                         const car = `${h.Car ?? ''}`.substring(0, 3).toUpperCase();
                         self.trySetText(form, `custom${contHabsCustom}`, `${h.Nombre ?? ''}`);
                         self.trySetText(form, `car${contHabsCustom}`, car);
-                        self.trySetText(form, `mod_custom${contHabsCustom}`, h.Mod_car == 1 ? `${pj.ModFuerza}` : h.Mod_car == 2 ? `${pj.ModDestreza}` : h.Mod_car == 3 ? `${pj.ModConstitucion}` : h.Mod_car == 4 ? `${pj.ModInteligencia}` : h.Mod_car == 5 ? `${pj.ModSabiduria}` : `${pj.ModCarisma}`);
+                        self.trySetText(form, `mod_custom${contHabsCustom}`, `${toNumber(h.Mod_car)}`);
                         self.trySetText(form, `rangos_custom${contHabsCustom}`, `${toNumber(h.Rangos)}`);
                         self.trySetText(form, `varios_custom${contHabsCustom}`, `${toNumber(h.Rangos_varios)}`);
                         if (h.Varios != "") {
@@ -783,11 +786,6 @@ export class FichaPersonajeService {
         }
         const nivelObjetivo = Math.max(0, nivelClases + Math.max(0, toInt(ajusteNivel)));
         return experienciaParaNivel(nivelObjetivo + 1);
-    }
-
-    private sumMods(mods: any): number {
-        const arr = Array.isArray(mods) ? mods : [];
-        return arr.reduce((acum, mod) => acum + toNumber((mod as any)?.valor ?? (mod as any)?.Valor), 0);
     }
 
     private formatSigned(value: number): string {

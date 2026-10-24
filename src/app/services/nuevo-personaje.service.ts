@@ -50,6 +50,9 @@ import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/ut
 import { calcularOroPorNep } from './utils/oro-inicial';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { totalesPersonaje } from './utils/personaje-totales';
+import { resumenClases } from './utils/resumen-clases';
+import { tieneTextoVisible } from './utils/texto-visible';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel';
@@ -3419,20 +3422,11 @@ export class NuevoPersonajeService {
     }
 
     private resolverSalvacionesTotales(): { fortaleza: number; reflejos: number; voluntad: number; } {
-        const fortaleza = toNumber(this.personajeCreacion.ModConstitucion)
-            + (this.personajeCreacion.Salvaciones?.fortaleza?.modsClaseos ?? []).reduce((acc, item) => acc + toNumber(item?.valor), 0)
-            + (this.personajeCreacion.Salvaciones?.fortaleza?.modsVarios ?? []).reduce((acc, item) => acc + toNumber(item?.valor), 0);
-        const reflejos = toNumber(this.personajeCreacion.ModDestreza)
-            + (this.personajeCreacion.Salvaciones?.reflejos?.modsClaseos ?? []).reduce((acc, item) => acc + toNumber(item?.valor), 0)
-            + (this.personajeCreacion.Salvaciones?.reflejos?.modsVarios ?? []).reduce((acc, item) => acc + toNumber(item?.valor), 0);
-        const voluntad = toNumber(this.personajeCreacion.ModSabiduria)
-            + (this.personajeCreacion.Salvaciones?.voluntad?.modsClaseos ?? []).reduce((acc, item) => acc + toNumber(item?.valor), 0)
-            + (this.personajeCreacion.Salvaciones?.voluntad?.modsVarios ?? []).reduce((acc, item) => acc + toNumber(item?.valor), 0);
-
+        const salvaciones = totalesPersonaje(this.personajeCreacion).salvaciones;
         return {
-            fortaleza,
-            reflejos,
-            voluntad,
+            fortaleza: salvaciones.fortaleza.total,
+            reflejos: salvaciones.reflejos.total,
+            voluntad: salvaciones.voluntad.total,
         };
     }
 
@@ -4334,7 +4328,7 @@ export class NuevoPersonajeService {
             };
         }
 
-        this.actualizarDesgloseClase(clase.Nombre, siguienteNivel);
+        this.actualizarDesgloseClase(clase, siguienteNivel);
         this.aplicarDeltaAtaqueBaseClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
         this.recalcularDerivadasPorCombate();
         this.aplicarDeltaSalvacionesClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
@@ -6076,13 +6070,15 @@ export class NuevoPersonajeService {
         return this.obtenerDetalleNivelClase(clase, nivelClase);
     }
 
-    private actualizarDesgloseClase(nombreClase: string, nivel: number): void {
-        const nombre = `${nombreClase ?? ''}`.trim();
+    private actualizarDesgloseClase(clase: Clase, nivel: number): void {
+        const nombre = `${clase?.Nombre ?? ''}`.trim();
         if (nombre.length < 1)
             return;
 
         const nombreNorm = normalizarTexto(nombre);
         const nivelNormalizado = Math.max(1, toInt(nivel));
+        // La característica de la CD de sus conjuros, como la da la API en la ficha guardada (`clases[]`).
+        const caracteristicaLanzamiento = tieneTextoVisible(clase?.Mod_salv_conjuros) ? `${clase.Mod_salv_conjuros}`.trim() : null;
         const desglose = [...(this.personajeCreacion.desgloseClases ?? [])];
         const index = desglose.findIndex((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
 
@@ -6090,11 +6086,13 @@ export class NuevoPersonajeService {
             desglose[index] = {
                 Nombre: desglose[index].Nombre,
                 Nivel: nivelNormalizado,
+                Caracteristica_lanzamiento: caracteristicaLanzamiento,
             };
         } else {
             desglose.push({
                 Nombre: nombre,
                 Nivel: nivelNormalizado,
+                Caracteristica_lanzamiento: caracteristicaLanzamiento,
             });
         }
 
@@ -6103,17 +6101,7 @@ export class NuevoPersonajeService {
     }
 
     private regenerarTextoClasesDesdeDesglose(): void {
-        const texto = (this.personajeCreacion.desgloseClases ?? [])
-            .map((clase) => {
-                const nombre = `${clase?.Nombre ?? ''}`.trim();
-                const nivel = toNumber(clase?.Nivel);
-                if (nombre.length < 1 || nivel <= 0)
-                    return '';
-                return `${nombre} (${nivel})`;
-            })
-            .filter((item) => item.length > 0)
-            .join(', ');
-        this.personajeCreacion.Clases = texto;
+        this.personajeCreacion.Clases = resumenClases(this.personajeCreacion.desgloseClases);
     }
 
     private aplicarDeltaAtaqueBaseClase(

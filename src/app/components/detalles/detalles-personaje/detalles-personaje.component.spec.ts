@@ -10,7 +10,15 @@ import { PersonajeService } from 'src/app/services/personaje.service';
 import { RegionService } from 'src/app/services/region.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserService } from 'src/app/services/user.service';
+import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
+import { Personaje } from 'src/app/interfaces/personaje';
 import { DetallesPersonajeComponent } from './detalles-personaje.component';
+
+/** La ficha de la API tal como la deja `PersonajeService` (el mapper real, sin HTTP). */
+function fichaDeLaApi(cambios: Record<string, any> = {}): Personaje {
+    const servicio = new PersonajeService({ currentUser: null } as any, {} as any);
+    return (servicio as any).mapApiDetalleToPersonaje(crearDetalleApi(cambios));
+}
 
 describe('DetallesPersonajeComponent', () => {
     let component: DetallesPersonajeComponent;
@@ -604,7 +612,7 @@ describe('DetallesPersonajeComponent', () => {
     });
 
     it('muestra subchips de lanzador en el chip de clase cuando hay catálogo', () => {
-        component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 1 }];
+        component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 1, Caracteristica_lanzamiento: 'Inteligencia' }];
         component.clasesCatalogo = [{
             Id: 1,
             Nombre: 'Mago',
@@ -622,7 +630,7 @@ describe('DetallesPersonajeComponent', () => {
                 Clase_origen: { Id: 0, Nombre: '' },
                 Listado: [],
             },
-            Mod_salv_conjuros: 'Inteligencia',
+            Mod_salv_conjuros: 'Carisma',
             Desglose_niveles: [{
                 Nivel: 1,
                 Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
@@ -649,6 +657,7 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).toContain('Lanzador arcano');
         expect(html).toContain('Nivel de lanzador 1');
         expect(html).toContain('Salvación (Inteligencia)');
+        expect(html).not.toContain('Salvación (Carisma)');
         expect(html).toContain('Niveles diarios 0, 1');
         expect(html).toContain('Conocidos 3');
         expect(html).toContain('Dependiente de alineamiento');
@@ -961,9 +970,8 @@ describe('DetallesPersonajeComponent', () => {
 
         const html = `${fixture.nativeElement.textContent ?? ''}`;
         expect(component.tieneBloqueSalvacionesVisible()).toBeTrue();
-        expect(component.fortaleza).toBe(0);
-        expect(component.reflejos).toBe(0);
-        expect(component.voluntad).toBe(0);
+        expect(component.salvacionesVisibles.map((salvacion) => salvacion.clase)).toEqual([0, 0, 0]);
+        expect(component.salvacionesVisibles.map((salvacion) => salvacion.varios)).toEqual([0, 0, 0]);
         expect(html).toContain('Salvaciones');
     });
 
@@ -984,18 +992,107 @@ describe('DetallesPersonajeComponent', () => {
     });
 
     it('actualiza resumen de salvaciones cuando cambian mods tras inicializar', () => {
+        component.pj.ModConstitucion = 1;
         component.pj.Salvaciones.fortaleza.modsClaseos = [];
         component.pj.Salvaciones.fortaleza.modsVarios = [];
 
         fixture.detectChanges();
-        expect(component.fortaleza).toBe(0);
-        expect(component.fortaleza_varios).toBe(0);
+        expect(component.salvacionesVisibles[0]).toEqual(jasmine.objectContaining({ total: 1, clase: 0, varios: 0 }));
 
         component.pj.Salvaciones.fortaleza.modsClaseos = [{ valor: 2, origen: 'Clase test' }];
         component.pj.Salvaciones.fortaleza.modsVarios = [{ valor: -1, origen: 'Plantilla test' }];
         fixture.detectChanges();
 
-        expect(component.fortaleza).toBe(2);
-        expect(component.fortaleza_varios).toBe(-1);
+        // En el borrador de la creación se suma como en la API: característica + clase + varios.
+        expect(component.salvacionesVisibles[0]).toEqual(jasmine.objectContaining({
+            nombre: 'Fortaleza',
+            total: 2,
+            clase: 2,
+            claseOrigenes: 'Clase test',
+            varios: -1,
+            variosOrigenes: 'Plantilla test',
+        }));
+    });
+
+    it('enseña las salvaciones de la ficha de la API con su total, que incluye la característica', () => {
+        component.pj = fichaDeLaApi();
+
+        fixture.detectChanges();
+
+        expect(component.salvacionesVisibles.map((salvacion) => salvacion.total)).toEqual([11, 14, 6]);
+        expect(component.salvacionesVisibles[0]).toEqual(jasmine.objectContaining({
+            clase: 6,
+            claseOrigenes: 'Explorador',
+            varios: 1,
+            variosOrigenes: 'Centauro',
+            desglose: 'Constitución +4\nExplorador +6\nCentauro +1',
+        }));
+        // La parte de clase sin origen (el «Placeholder» de las fichas antiguas) cuenta y se nombra por su tipo.
+        expect(component.salvacionesVisibles[1].claseOrigenes).toBe('');
+        expect(component.salvacionesVisibles[1].desglose).toContain('Clase +6');
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Fortaleza: +11');
+        expect(html).toContain('clase +6');
+        expect(html).toContain('varios +1');
+    });
+
+    it('enseña la iniciativa, la presa y las habilidades con los totales de la API', () => {
+        component.pj = fichaDeLaApi({
+            md: 0,
+            habilidades: [{
+                id: 6, nombre: 'Avistar', custom: false, deClase: true, idExtra: null, extra: null, extraComodin: null,
+                caracteristica: 'Sabiduría', modificadorCaracteristica: 4, rangos: 14, rangosVarios: 0, varios: null, total: 18,
+                desglose: [],
+            }],
+        });
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Iniciativa +8');
+        expect(component.iniciativaDesglose).toBe('Destreza +4\nIniciativa mejorada +4');
+        expect(html).toContain('Presa +20');
+        expect(html).toContain('Avistar +18');
+    });
+
+    it('no enseña la presa cuando la API no la da', () => {
+        component.pj = fichaDeLaApi({ a: '-', presa: null });
+
+        fixture.detectChanges();
+
+        expect(component.tienePresaVisible()).toBeFalse();
+        expect(`${fixture.nativeElement.textContent ?? ''}`).not.toContain('Presa');
+    });
+
+    it('usa el comodín de la API para los extras de los especiales', () => {
+        component.pj = fichaDeLaApi({
+            especiales: [
+                { id: 38, nombre: 'Enemigo predilecto', idExtra: 40, extra: 'Primero', extraComodin: null },
+                { id: 50, nombre: 'Saber bárdico', idExtra: 13, extra: 'Cualquiera', extraComodin: 'cualquiera' },
+                { id: 51, nombre: 'Esquiva asombrosa', idExtra: 110, extra: 'Elegir', extraComodin: 'elegir' },
+                { id: 30, nombre: 'Empatía salvaje', idExtra: null, extra: null, extraComodin: null },
+            ],
+        });
+
+        expect(component.pj.Claseas.map((especial) => component.getExtraVisibleEspecial(especial)))
+            .toEqual(['Primero', '', 'Elegir', '']);
+    });
+
+    it('enseña la campaña, la trama y la subtrama que da la API y nada cuando son null', () => {
+        component.pj = fichaDeLaApi({ ncam: 'Costa de la Espada', ntr: 'Torre eclipsada', nst: null });
+
+        fixture.detectChanges();
+
+        let html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Campaña Costa de la Espada');
+        expect(html).toContain('Trama Torre eclipsada');
+        expect(html).not.toContain('Subtrama');
+
+        component.pj = fichaDeLaApi();
+        fixture.detectChanges();
+
+        html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).not.toContain('Campaña');
+        expect(html).not.toContain('Deidad');
     });
 });
