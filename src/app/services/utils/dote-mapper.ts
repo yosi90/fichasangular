@@ -199,8 +199,6 @@ export function normalizeDoteLegacy(raw: any): Dote {
     };
 }
 
-export const normalizeDote = normalizeDoteLegacy;
-
 function getEntidad(raw: any): "personaje" | "raza" | "plantilla" {
     if (raw?.Entidad === "raza")
         return "raza";

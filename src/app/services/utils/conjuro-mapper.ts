@@ -237,5 +237,3 @@ export function normalizeConjuroLegacy(raw: any): Conjuro {
         Oficial: toBoolean(raw?.Oficial ?? raw?.o),
     };
 }
-
-export const normalizeConjuro = normalizeConjuroLegacy;
