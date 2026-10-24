@@ -48,6 +48,7 @@ import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { calcularOroPorNep } from './utils/oro-inicial';
+import { experienciaParaNivel } from './utils/experiencia-nivel';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel';
@@ -7698,7 +7699,7 @@ export class NuevoPersonajeService {
         const nivelEfectivo = nivelClases + ajusteRaza + ajustePlantillas + dgsRaza + dgsPlantillas;
 
         this.personajeCreacion.NEP = nivelEfectivo;
-        this.personajeCreacion.Experiencia = this.calcularExperienciaPorNivel(nivelClases + ajusteRaza + ajustePlantillas);
+        this.personajeCreacion.Experiencia = experienciaParaNivel(nivelClases + ajusteRaza + ajustePlantillas);
         this.personajeCreacion.Oro_inicial = calcularOroPorNep(nivelEfectivo);
     }
 
@@ -7774,14 +7775,6 @@ export class NuevoPersonajeService {
             idxActual = 0;
         const idxFinal = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idxActual + pasos));
         return DADOS_PROGRESION[idxFinal];
-    }
-
-    private calcularExperienciaPorNivel(nivelAjustado: number): number {
-        const nivel = Math.max(0, Math.trunc(toNumber(nivelAjustado)));
-        let acumulado = 0;
-        for (let i = 0; i < nivel; i++)
-            acumulado += i * 1000;
-        return acumulado;
     }
 
     private recalcularCapacidadCarga(): void {

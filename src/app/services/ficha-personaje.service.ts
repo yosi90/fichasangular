@@ -5,6 +5,7 @@ import { saveAs } from 'file-saver';
 import { Personaje, PersonajeNivelLanzadorResumen, PersonajeTipoLanzamiento } from '../interfaces/personaje';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from '../interfaces/monstruo';
 import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { experienciaParaNivel } from './utils/experiencia-nivel';
 
 
 @Injectable({
@@ -780,10 +781,7 @@ export class FichaPersonajeService {
             }, 0);
         }
         const nivelObjetivo = Math.max(0, nivelClases + Math.max(0, Math.trunc(toNumber(ajusteNivel))));
-        let acumulado = 0;
-        for (let i = 0; i <= nivelObjetivo; i++)
-            acumulado += i * 1000;
-        return acumulado;
+        return experienciaParaNivel(nivelObjetivo + 1);
     }
 
     private normalizarTexto(value: any): string {
