@@ -60,6 +60,7 @@ import {
     getPrerequisiteDefinition,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 interface CrearRazaEmitPayload {
     idRaza: number;
@@ -1264,7 +1265,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
             ...(extras?.Habilidades ?? []),
         ].map((item) => ({ Id: item.Id, Nombre: item.Nombre }))
             .filter((item) => item.Id > 0)
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     doteRequiereExtra(idDote: number): boolean {
@@ -2221,7 +2222,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
             return;
         const others = this.habilidadesCustom.filter((item) => this.numero(item.Id_habilidad) !== this.numero(habilidad.Id_habilidad));
         this.habilidadesCustom = [...others, { ...habilidad, Id: habilidad.Id_habilidad } as HabilidadBasicaDetalle]
-            .sort((a, b) => `${a.Nombre ?? ''}`.localeCompare(`${b.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
         this.habilidadesCustomRows = this.habilidadesCustomRows.map((row) => this.numero(row.id_habilidad) === this.numero(habilidad.Id_habilidad)
             ? { ...row, busqueda: habilidad.Nombre }
             : row);
@@ -2324,7 +2325,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
 
     private ordenar<T extends CatalogItem>(items: T[] | null | undefined): T[] {
         return [...(Array.isArray(items) ? items : [])]
-            .sort((a, b) => `${a.Nombre ?? ''}`.localeCompare(`${b.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     private ordenarPorId<T extends { Id: number }>(items: T[] | null | undefined): T[] {

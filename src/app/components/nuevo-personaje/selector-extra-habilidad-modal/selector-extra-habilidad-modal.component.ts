@@ -1,6 +1,7 @@
 import { Component, EventEmitter, HostListener, Input, OnChanges, Output } from '@angular/core';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 export interface SelectorExtraHabilidadModalOpcion {
     valor: string;
@@ -43,7 +44,7 @@ export class SelectorExtraHabilidadModalComponent implements OnChanges {
                 const descripcion = normalizarTexto(opcion?.descripcion ?? '');
                 return valor.includes(filtro) || descripcion.includes(filtro);
             })
-            .sort((a, b) => `${a?.valor ?? ''}`.localeCompare(`${b?.valor ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a?.valor, b?.valor));
     }
 
     get puedeConfirmar(): boolean {

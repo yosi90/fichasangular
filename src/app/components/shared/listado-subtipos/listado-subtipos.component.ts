@@ -7,6 +7,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-listado-subtipos',
@@ -104,7 +105,7 @@ export class ListadoSubtiposComponent {
             (subtipos ?? [])
                 .map((subtipo) => `${subtipo?.Manual?.Nombre ?? ''}`.trim())
                 .filter((nombre) => nombre.length > 0)
-        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        )).sort(compararTexto);
     }
 
 }

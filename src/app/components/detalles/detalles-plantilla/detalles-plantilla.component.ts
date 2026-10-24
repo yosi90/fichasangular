@@ -6,6 +6,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { esCampoId, extraVisibleDesdeRegistro, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-prerrequisitos';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 type PrerrequisitoCondicion = {
     familiaEtiqueta: string;
@@ -337,7 +338,7 @@ export class DetallesPlantillaComponent {
     getSubtiposActivos(): SubtipoRef[] {
         return (this.plantillaData?.Subtipos ?? [])
             .filter(subtipo => this.tieneTextoVisible(subtipo?.Nombre))
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     abrirDetalleSubtipo(subtipo: SubtipoRef) {

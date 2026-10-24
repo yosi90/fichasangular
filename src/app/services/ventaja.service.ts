@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { VentajaDetalle } from "../interfaces/ventaja";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { porNombre } from "src/app/services/utils/orden-texto";
 
 function toArray<T = any>(value: any): T[] {
     if (Array.isArray(value))
@@ -163,7 +164,7 @@ export class VentajaService {
                     if (ventaja.Id > 0)
                         ventajas.push(ventaja);
                 });
-                ventajas.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
+                ventajas.sort(porNombre);
                 observador.next(ventajas);
             };
 

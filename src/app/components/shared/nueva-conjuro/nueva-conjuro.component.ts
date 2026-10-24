@@ -20,6 +20,7 @@ import { ManualService } from 'src/app/services/manual.service';
 import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-conjuros.service';
 import { UserService } from 'src/app/services/user.service';
 import { normalizarTexto, toArray, toInt } from 'src/app/services/utils/normalizacion';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 interface CrearConjuroEmitPayload {
     idConjuro: number;
@@ -163,7 +164,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             .subscribe({
                 next: (manuales) => {
                     this.manuales = (Array.isArray(manuales) ? manuales : [])
-                        .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                        .sort(porNombre);
                     this.sincronizarManualSeleccionado();
                 },
                 error: () => {
@@ -226,7 +227,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
                 next: (escuelas) => {
                     this.escuelas = (Array.isArray(escuelas) ? escuelas : [])
                         .filter((item) => toInt(item?.Id, 0) > 0)
-                        .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+                        .sort(porNombre);
                 },
                 error: () => {
                     this.escuelas = [];
@@ -239,7 +240,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
                 next: (disciplinas) => {
                     this.disciplinas = (Array.isArray(disciplinas) ? disciplinas : [])
                         .filter((item) => toInt(item?.Id, 0) > 0)
-                        .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+                        .sort(porNombre);
                     this.sincronizarSubdisciplinas();
                 },
                 error: () => {
@@ -267,7 +268,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
                 next: (dominios) => {
                     this.dominios = (Array.isArray(dominios) ? dominios : [])
                         .filter((item) => toInt(item?.Id, 0) > 0)
-                        .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+                        .sort(porNombre);
                 },
                 error: () => {
                     this.dominios = [];
@@ -281,10 +282,10 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
                     const lista = Array.isArray(clases) ? clases : [];
                     this.clasesBase = lista
                         .filter((clase) => clase?.Conjuros?.Arcanos === true || clase?.Conjuros?.Divinos === true)
-                        .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+                        .sort(porNombre);
                     this.clasesPsionicas = lista
                         .filter((clase) => clase?.Conjuros?.Psionicos === true)
-                        .sort((a, b) => `${a?.Nombre ?? ''}`.localeCompare(`${b?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+                        .sort(porNombre);
                 },
                 error: () => {
                     this.clasesBase = [];
@@ -324,7 +325,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
                 ...item,
                 Nombre: this.getEtiquetaComponente(item),
             }))
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     get varianteActualEsBase(): boolean {
@@ -698,7 +699,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
                 Nombre: `${item?.Nombre ?? ''}`.trim(),
             }))
             .filter((item) => item.Id > 0 && item.Nombre.length > 0)
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
 
         if (desdeCache.length > 0) {
             this.subdisciplinasActuales = desdeCache;
@@ -719,7 +720,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
                     const nombre = normalizarTexto(item.Nombre);
                     return item.Nombre.length > 0 && nombre !== 'ninguna' && nombre !== 'sin subdisciplina';
                 })
-                .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                .sort(porNombre);
         }
 
         const idSubdisciplina = toInt(this.form.controls.id_subdisciplina.value, 0);

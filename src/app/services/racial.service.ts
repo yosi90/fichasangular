@@ -19,12 +19,13 @@ import {
 import { normalizeRacial, normalizeRaciales } from "./utils/racial-mapper";
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { porNombre } from "src/app/services/utils/orden-texto";
 
 const RACIAL: ElementoDeCatalogo = { singular: "racial", plural: "raciales", femenino: false };
 
 function sortRaciales(raciales: RacialDetalle[]): RacialDetalle[] {
     return [...raciales]
-        .sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
+        .sort(porNombre);
 }
 
 @Injectable({

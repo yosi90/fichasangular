@@ -8,6 +8,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { RazaService } from 'src/app/services/raza.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-listado-razas',
@@ -73,7 +74,7 @@ export class ListadoRazasComponent implements OnDestroy {
             .sort((a, b) => {
                 const nombreA = normalizarTexto(a?.Nombre ?? '', true);
                 const nombreB = normalizarTexto(b?.Nombre ?? '', true);
-                const byNombre = nombreA.localeCompare(nombreB, 'es', { sensitivity: 'base' });
+                const byNombre = compararTexto(nombreA, nombreB);
                 if (byNombre !== 0) return byNombre;
                 return toNumber((a as any).Id) - toNumber((b as any).Id);
             });
@@ -202,6 +203,6 @@ export class ListadoRazasComponent implements OnDestroy {
             (razas ?? [])
                 .map((raza) => `${raza?.Manual ?? ''}`.trim())
                 .filter((nombre) => nombre.length > 0)
-        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        )).sort(compararTexto);
     }
 }

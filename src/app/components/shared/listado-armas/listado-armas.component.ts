@@ -8,6 +8,7 @@ import { ArmaService } from 'src/app/services/arma.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-listado-armas',
@@ -53,7 +54,7 @@ export class ListadoArmasComponent implements OnDestroy {
             .subscribe((armas) => {
                 this.armas = [...(armas ?? [])]
                     .filter(arma => Number(arma?.Id) > 0)
-                    .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                    .sort(porNombre);
                 this.manuales = this.buildManualesDisponibles(this.armas);
                 this.defaultManual = 'Cualquiera';
                 this.defaultTipoArma = 'Cualquiera';
@@ -72,7 +73,7 @@ export class ListadoArmasComponent implements OnDestroy {
             this.armas
                 .map((arma) => `${arma?.Tipo_arma?.Nombre ?? ''}`.trim())
                 .filter((value) => value.length > 0)
-        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
+        )).sort(compararTexto)];
     }
 
     get anuncioHomebrew(): string {
@@ -166,7 +167,7 @@ export class ListadoArmasComponent implements OnDestroy {
             (armas ?? [])
                 .map((arma) => `${arma?.Manual?.Nombre ?? ''}`.trim())
                 .filter((nombre) => nombre.length > 0)
-        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        )).sort(compararTexto);
     }
 
 }

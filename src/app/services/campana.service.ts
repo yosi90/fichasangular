@@ -32,6 +32,7 @@ import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from './platform-spaces.service';
 import { toBoolean } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Injectable({
     providedIn: 'root'
@@ -598,7 +599,7 @@ export class CampanaService {
 
         return filtered
             .filter((campana): campana is CampaignListItem => campana !== null)
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private async buildCampanasTree(campanas: CampaignListItem[], headers: HttpHeaders): Promise<Campana[]> {
@@ -728,7 +729,7 @@ export class CampanaService {
             .sort((a, b) => {
                 if (a.campaignRole !== b.campaignRole)
                     return a.campaignRole === 'master' ? -1 : 1;
-                return this.getDisplayLabel(a).localeCompare(this.getDisplayLabel(b), 'es', { sensitivity: 'base' });
+                return compararTexto(this.getDisplayLabel(a), this.getDisplayLabel(b));
             });
     }
 
@@ -780,7 +781,7 @@ export class CampanaService {
 
         return tramas
             .filter((item): item is CampaignTramaItem => item !== null)
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private async fetchCampaignSubtramas(idTrama: number, headers: HttpHeaders): Promise<CampaignSubtramaItem[]> {
@@ -791,7 +792,7 @@ export class CampanaService {
         return raw
             .map((item) => this.normalizeCampaignSubtrama(item))
             .filter((item): item is CampaignSubtramaItem => item !== null)
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private normalizeCampaignSpace(raw: any): CampaignSpace | null {
@@ -973,7 +974,7 @@ export class CampanaService {
             merged.push({ ...item });
         }
 
-        return merged.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+        return merged.sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private async normalizeWatchCampaignSummaries(items: CampaignListItem[]): Promise<CampaignListItem[]> {
@@ -991,14 +992,14 @@ export class CampanaService {
                     this.rememberCanonicalCampaignSummary(normalized);
                     return normalized;
                 })
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
         }
 
         const headers = await this.buildAuthHeaders();
         const normalized = await Promise.all(
             merged.map((campana) => this.ensureCanonicalCampaignName(campana, headers))
         );
-        return normalized.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+        return normalized.sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private rememberCanonicalCampaignSummary(campana: CampaignListItem): void {
@@ -1259,11 +1260,11 @@ export class CampanaService {
                     subtramas: subtramasRaw
                         .map((subtrama: any) => this.normalizeCampaignSubtrama(subtrama))
                         .filter((subtrama: CampaignSubtramaItem | null): subtrama is CampaignSubtramaItem => subtrama !== null)
-                        .sort((a: CampaignSubtramaItem, b: CampaignSubtramaItem) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })),
+                        .sort((a: CampaignSubtramaItem, b: CampaignSubtramaItem) => compararTexto(a.nombre, b.nombre)),
                 };
             })
             .filter((item): item is CampaignTramaItem => item !== null)
-            .sort((a: CampaignTramaItem, b: CampaignTramaItem) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a: CampaignTramaItem, b: CampaignTramaItem) => compararTexto(a.nombre, b.nombre));
     }
 
     private normalizeRequiredName(value: string, emptyMessage: string): string {

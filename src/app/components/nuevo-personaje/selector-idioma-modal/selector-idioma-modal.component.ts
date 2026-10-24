@@ -2,6 +2,7 @@ import { Component, EventEmitter, HostListener, Input, Output } from '@angular/c
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
+import { porNombre } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-selector-idioma-modal',
@@ -35,7 +36,7 @@ export class SelectorIdiomaModalComponent {
             .filter((idioma) => !idioma.Secreto)
             .filter((idioma) => !yaIncluidos.has(normalizarTexto(idioma.Nombre)))
             .filter((idioma) => this.incluirHomebrewEfectivo || idioma.Oficial)
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     get seleccionActual(): IdiomaDetalle[] {

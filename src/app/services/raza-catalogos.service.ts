@@ -9,6 +9,7 @@ import { CacheCatalogMissReportService } from "./cache-catalog-miss-report.servi
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toArray } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
+import { porNombre } from "src/app/services/utils/orden-texto";
 
 function normalizeCatalogItem(raw: any, preserveRaw = false): RazaCatalogItem {
     const rawId = raw?.Id ?? raw?.id ?? raw?.Id_maniobrabilidad ?? raw?.Id_tipo_dado ?? raw?.Id_actitud ?? raw?.id_actitud;
@@ -22,7 +23,7 @@ function normalizeCatalogItem(raw: any, preserveRaw = false): RazaCatalogItem {
 function sortCatalog<T extends RazaCatalogItem>(items: T[]): T[] {
     return items
         .filter((item) => Number.isFinite(item.Id) && item.Id >= 0 && item.Nombre.length > 0)
-        .sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
+        .sort(porNombre);
 }
 
 @Injectable({

@@ -8,6 +8,7 @@ import { DeidadService } from 'src/app/services/deidad.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-listado-deidades',
@@ -48,7 +49,7 @@ export class ListadoDeidadesComponent implements OnDestroy {
             .subscribe((deidades) => {
                 this.deidades = [...(deidades ?? [])]
                     .filter((deidad) => Number(deidad?.Id) > 0)
-                    .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+                    .sort(porNombre);
                 this.manuales = this.buildManualesDisponibles(this.deidades);
                 this.defaultManual = 'Cualquiera';
                 this.defaultAlineamiento = 'Cualquiera';
@@ -68,7 +69,7 @@ export class ListadoDeidadesComponent implements OnDestroy {
             this.deidades
                 .map((deidad) => `${deidad?.Alineamiento?.Nombre ?? ''}`.trim())
                 .filter((value) => value.length > 0)
-        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
+        )).sort(compararTexto)];
     }
 
     get pabellones(): string[] {
@@ -76,7 +77,7 @@ export class ListadoDeidadesComponent implements OnDestroy {
             this.deidades
                 .map((deidad) => `${deidad?.Pabellon?.Nombre ?? ''}`.trim())
                 .filter((value) => value.length > 0)
-        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
+        )).sort(compararTexto)];
     }
 
     get anuncioHomebrew(): string {
@@ -168,7 +169,7 @@ export class ListadoDeidadesComponent implements OnDestroy {
             (deidades ?? [])
                 .map((deidad) => `${deidad?.Manual?.Nombre ?? ''}`.trim())
                 .filter((nombre) => nombre.length > 0)
-        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        )).sort(compararTexto);
     }
 
 }

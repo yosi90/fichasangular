@@ -7,6 +7,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-listado-tipos-criatura',
@@ -96,6 +97,6 @@ export class ListadoTiposCriaturaComponent {
             (tipos ?? [])
                 .map((tipo) => `${tipo?.Manual ?? ''}`.trim())
                 .filter((nombre) => nombre.length > 0)
-        )).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+        )).sort(compararTexto);
     }
 }

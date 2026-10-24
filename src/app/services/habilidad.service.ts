@@ -17,6 +17,7 @@ import { FirebaseInjectionContextService } from "./firebase-injection-context.se
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { porNombre } from "src/app/services/utils/orden-texto";
 
 const HABILIDAD: ElementoDeCatalogo = { singular: "habilidad", plural: "habilidades", femenino: true };
 
@@ -90,7 +91,7 @@ export class HabilidadService {
                         habilidades.push(habilidad);
                 });
 
-                habilidades.sort((a, b) => a.Nombre.localeCompare(b.Nombre, "es", { sensitivity: "base" }));
+                habilidades.sort(porNombre);
                 observador.next(habilidades);
             };
 

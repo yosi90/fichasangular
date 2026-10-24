@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-detalles-especial',
@@ -43,7 +44,7 @@ export class DetallesEspecialComponent {
     getHabilidadesOrdenadas() {
         return [...(this.especial?.Habilidades ?? [])]
             .filter(habilidad => this.tieneTextoVisible(habilidad?.Habilidad))
-            .sort((a, b) => `${a.Habilidad}`.localeCompare(`${b.Habilidad}`, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.Habilidad, b.Habilidad));
     }
 
     getExtraVisibleHabilidad(habilidad: { Id_extra?: number; Extra?: string; }): string {

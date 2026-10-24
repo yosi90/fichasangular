@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, 
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteSeleccionConfirmada, DoteSelectorCandidato, DotePendienteState } from 'src/app/services/nuevo-personaje.service';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-selector-dotes-modal',
@@ -206,7 +207,7 @@ export class SelectorDotesModalComponent implements OnChanges {
                 return (candidato?.dote?.Tipos ?? [])
                     .some((tipo) => normalizarTexto(tipo?.Nombre ?? '') === tipoNorm);
             })
-            .sort((a, b) => `${a?.dote?.Nombre ?? ''}`.localeCompare(`${b?.dote?.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a?.dote?.Nombre, b?.dote?.Nombre));
         this.candidatosColumnaA = this.candidatosFiltrados.filter((_candidato, index) => index % 2 === 0);
         this.candidatosColumnaB = this.candidatosFiltrados.filter((_candidato, index) => index % 2 === 1);
         this.syncSelectedCandidateState();
@@ -248,7 +249,7 @@ export class SelectorDotesModalComponent implements OnChanges {
         const base = (this.candidatos ?? [])
             .map((candidato) => `${candidato?.dote?.Manual?.Nombre ?? ''}`.trim())
             .filter((nombre) => nombre.length > 0);
-        return ['Cualquiera', ...Array.from(new Set(base)).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
+        return ['Cualquiera', ...Array.from(new Set(base)).sort(compararTexto)];
     }
 
     private buildTiposDisponibles(): string[] {
@@ -256,7 +257,7 @@ export class SelectorDotesModalComponent implements OnChanges {
             .flatMap((candidato) => candidato?.dote?.Tipos ?? [])
             .map((tipo) => `${tipo?.Nombre ?? ''}`.trim())
             .filter((nombre) => nombre.length > 0);
-        return ['Cualquiera', ...Array.from(new Set(tipos)).sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))];
+        return ['Cualquiera', ...Array.from(new Set(tipos)).sort(compararTexto)];
     }
 
     private esElementoInteractivo(target: HTMLElement | null): boolean {

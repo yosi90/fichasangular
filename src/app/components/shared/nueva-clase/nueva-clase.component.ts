@@ -51,6 +51,7 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 interface NombreIdItem {
     Id: number;
@@ -1508,11 +1509,11 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private ordenar<T extends { Nombre?: string; }>(items: T[]): T[] {
-        return [...(items ?? [])].sort((a, b) => `${a.Nombre ?? ''}`.localeCompare(`${b.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+        return [...(items ?? [])].sort(porNombre);
     }
 
     private ordenarHabilidades(items: HabilidadBasicaDetalle[]): HabilidadBasicaDetalle[] {
-        return [...(items ?? [])].sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+        return [...(items ?? [])].sort(porNombre);
     }
 
     private ordenarCatalog(items: PrerequisiteCatalogItem[]): PrerequisiteCatalogItem[] {
@@ -1523,7 +1524,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         });
         return Array.from(map.entries())
             .map(([id, nombre]) => ({ id, nombre }))
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private getId(item: any): number {

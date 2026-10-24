@@ -45,6 +45,7 @@ import { EspecialService } from 'src/app/services/especial.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 type RepeticionKey = 'repetible' | 'repetible_distinto_extra' | 'repetible_comb';
 type ExtraFamilyKey = 'extra_arma' | 'extra_armadura' | 'extra_escuela' | 'extra_habilidad';
@@ -214,7 +215,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
     get habilidadesOtorgadasCatalogo(): HabilidadBasicaDetalle[] {
         return [...this.habilidadesCatalogo, ...this.habilidadesCustomCatalogo]
-            .sort((a, b) => `${a.Nombre ?? ''}`.localeCompare(`${b.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
     }
 
     readonly form = this.fb.group({
@@ -309,7 +310,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             .subscribe({
                 next: (manuales) => {
                     this.manuales = (Array.isArray(manuales) ? [...manuales] : [])
-                        .sort((a, b) => `${a.Nombre ?? ''}`.localeCompare(`${b.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+                        .sort(porNombre);
                     this.sincronizarManualSeleccionado();
                 },
                 error: () => {
@@ -1167,7 +1168,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
         const tipos = Array.from(mapa.entries())
             .map(([Id, Nombre]) => ({ Id, Nombre }))
-            .sort((a, b) => a.Nombre.localeCompare(b.Nombre, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
 
         if (!tipos.some((tipo) => tipo.Id === 0))
             tipos.unshift({ Id: 0, Nombre: 'Sin tipo secundario' });
@@ -1248,14 +1249,14 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         this.dotesCatalogoPrerrequisito = (Array.isArray(dotes) ? dotes : [])
             .map((dote) => ({ id: toInt(dote?.Id, 0), nombre: `${dote?.Nombre ?? ''}`.trim() }))
             .filter((item) => item.id > 0 && item.nombre.length > 0)
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private actualizarCatalogoHabilidadesPrerrequisito(habilidades: HabilidadBasicaDetalle[]): void {
         this.habilidadesCatalogoPrerrequisito = (Array.isArray(habilidades) ? habilidades : [])
             .map((item) => ({ id: toInt(item?.Id_habilidad, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
             .filter((item) => item.id > 0 && item.nombre.length > 0)
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private upsertHabilidadCustom(habilidad: HabilidadBasicaDetalle): void {
@@ -1263,7 +1264,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             return;
         const others = this.habilidadesCustomCatalogo.filter((item) => toInt(item.Id_habilidad, 0) !== toInt(habilidad.Id_habilidad, 0));
         this.habilidadesCustomCatalogo = [...others, habilidad]
-            .sort((a, b) => `${a.Nombre ?? ''}`.localeCompare(`${b.Nombre ?? ''}`, 'es', { sensitivity: 'base' }));
+            .sort(porNombre);
         this.actualizarCatalogoHabilidadesPrerrequisito(this.habilidadesOtorgadasCatalogo);
     }
 
@@ -1272,14 +1273,14 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         this.especialesCatalogo = this.especialesDetalleCatalogo
             .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
             .filter((item) => item.id > 0 && item.nombre.length > 0)
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private actualizarCatalogoExtrasPrerrequisito(extras: Array<{ Id: number; Nombre: string; }>): void {
         this.extrasCatalogo = (Array.isArray(extras) ? extras : [])
             .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
             .filter((item) => item.id > 0 && item.nombre.length > 0)
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private actualizarOpcionesExtraDote(dotes: Dote[]): void {
@@ -1349,7 +1350,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.alineamientosCatalogo = (Array.isArray(alineamientos) ? alineamientos : [])
                 .map((item: any) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             return;
         }
 
@@ -1362,7 +1363,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
                     esEscudo: !!armadura?.Es_escudo,
                 }))
                 .filter((armadura) => armadura.id > 0 && armadura.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             this.actualizarOpcionesExtraDote(this.dotesExistentes);
             return;
         }
@@ -1372,7 +1373,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.armasCatalogo = (Array.isArray(armas) ? armas : [])
                 .map((arma) => ({ id: toInt(arma?.Id, 0), nombre: `${arma?.Nombre ?? ''}`.trim() }))
                 .filter((arma) => arma.id > 0 && arma.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             this.actualizarOpcionesExtraDote(this.dotesExistentes);
             return;
         }
@@ -1382,7 +1383,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.clasesCatalogo = (Array.isArray(clases) ? clases : [])
                 .map((item) => ({ id: toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             return;
         }
 
@@ -1391,7 +1392,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.conjurosCatalogo = (Array.isArray(conjuros) ? conjuros : [])
                 .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             return;
         }
 
@@ -1409,7 +1410,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.dominiosCatalogo = (Array.isArray(dominios) ? dominios : [])
                 .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             return;
         }
 
@@ -1418,7 +1419,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.escuelasCatalogo = (Array.isArray(escuelas) ? escuelas : [])
                 .map((escuela) => ({ id: toInt(escuela?.Id, 0), nombre: `${escuela?.Nombre ?? ''}`.trim() }))
                 .filter((escuela) => escuela.id > 0 && escuela.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             this.actualizarOpcionesExtraDote(this.dotesExistentes);
             return;
         }
@@ -1440,7 +1441,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.gruposArmasCatalogo = (Array.isArray(grupos) ? grupos : [])
                 .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             return;
         }
 
@@ -1449,7 +1450,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.gruposArmadurasCatalogo = (Array.isArray(grupos) ? grupos : [])
                 .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             return;
         }
 
@@ -1467,7 +1468,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.idiomasCatalogo = (Array.isArray(idiomas) ? idiomas : [])
                 .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             return;
         }
 
@@ -1476,7 +1477,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             const lista = (Array.isArray(razas) ? razas : [])
                 .map((item) => ({ id: toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             this.razasCatalogo = lista;
             return;
         }
@@ -1486,7 +1487,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.tamanosCatalogo = (Array.isArray(tamanos) ? tamanos : [])
                 .map((tamano) => ({ id: toInt(tamano?.Id, 0), nombre: `${tamano?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             return;
         }
 
@@ -1495,7 +1496,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.regionesCatalogo = (Array.isArray(regiones) ? regiones : [])
                 .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             return;
         }
 
@@ -1504,7 +1505,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             this.tiposCriaturaCatalogo = (Array.isArray(tipos) ? tipos : [])
                 .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
             return;
         }
 
@@ -1616,7 +1617,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             return this.habilidadesOtorgadasCatalogo
                 .map((item) => ({ id: toInt(item?.Id_habilidad, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
         return [];
     }
 
@@ -1660,7 +1661,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         });
         return Array.from(map.entries())
             .map(([id, nombre]) => ({ id, nombre }))
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     private uniqueSorted(ids: number[]): number[] {
