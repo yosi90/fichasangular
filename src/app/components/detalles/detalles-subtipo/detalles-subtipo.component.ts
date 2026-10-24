@@ -4,6 +4,7 @@ import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-subtipo',
@@ -166,19 +167,6 @@ export class DetallesSubtipoComponent {
             || this.tieneTextoVisible(this.manualNombre);
     }
 
-    tieneTextoVisible(texto: string | undefined | null): boolean {
-        if (!texto)
-            return false;
-        const base = normalizarTexto(texto);
-        if (!base)
-            return false;
-        const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica'
-            && limpiado !== 'no se especifica'
-            && limpiado !== 'no aplica'
-            && limpiado !== 'no modifica'
-            && limpiado !== 'no vuela'
-            && limpiado !== '-';
-    }
+    readonly tieneTextoVisible = tieneTextoVisible;
 
 }

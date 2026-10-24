@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-racial',
@@ -30,19 +31,7 @@ export class DetallesRacialComponent {
         return this.racial?.Prerrequisitos?.caracteristica ?? [];
     }
 
-    tieneTextoVisible(texto: string | undefined | null): boolean {
-        if (!texto)
-            return false;
-        const base = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-        if (!base)
-            return false;
-        const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica'
-            && limpiado !== 'no se especifica'
-            && limpiado !== 'no aplica'
-            && limpiado !== 'no modifica'
-            && limpiado !== 'no vuela';
-    }
+    readonly tieneTextoVisible = tieneTextoVisible;
 
     tieneColeccionVisible<T>(value: T[] | null | undefined): boolean {
         return Array.isArray(value) && value.length > 0;

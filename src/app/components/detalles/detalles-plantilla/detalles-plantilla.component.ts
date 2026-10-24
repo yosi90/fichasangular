@@ -3,8 +3,9 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Plantilla, PlantillaPrerrequisitos } from 'src/app/interfaces/plantilla';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { esCampoId, extraVisibleDesdeRegistro, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-prerrequisitos';
 
 type PrerrequisitoCondicion = {
     familiaEtiqueta: string;
@@ -83,20 +84,7 @@ export class DetallesPlantillaComponent {
             this.doteDetalles.emit(id);
     }
 
-    tieneTextoVisible(texto: string | undefined | null): boolean {
-        if (!texto)
-            return false;
-        const base = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-        if (!base)
-            return false;
-        const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica'
-            && limpiado !== 'no se especifica'
-            && limpiado !== 'no aplica'
-            && limpiado !== 'no modifica'
-            && limpiado !== 'no vuela'
-            && limpiado !== '-';
-    }
+    readonly tieneTextoVisible = tieneTextoVisible;
 
     getSigno(valor: number): string {
         return valor > 0 ? `+${valor}` : `${valor}`;
@@ -304,7 +292,7 @@ export class DetallesPlantillaComponent {
             return [];
 
         return Object.entries(item)
-            .filter(([clave]) => !this.esCampoId(clave) && !this.esCampoTecnicoPrerrequisito(clave))
+            .filter(([clave]) => !esCampoId(clave) && !this.esCampoTecnicoPrerrequisito(clave))
             .map(([clave, valor]) => this.mapCampoPrerrequisito(clave, valor, item))
             .filter(campo => this.tieneTextoVisible(campo.valor) || campo.valor === '0');
     }
@@ -369,37 +357,6 @@ export class DetallesPlantillaComponent {
         });
     }
 
-    private formatearValor(valor: unknown): string {
-        if (valor === null || valor === undefined)
-            return '';
-        if (typeof valor === 'boolean')
-            return valor ? 'Si' : 'No';
-        if (typeof valor === 'number' || typeof valor === 'string')
-            return `${valor}`;
-        if (Array.isArray(valor))
-            return valor.map(v => this.formatearValor(v)).filter(v => v.trim().length > 0).join(', ');
-        if (typeof valor === 'object') {
-            return Object.entries(valor as Record<string, unknown>)
-                .filter(([key]) => !this.esCampoId(key))
-                .map(([key, v]) => `${this.formatearTexto(key)}: ${this.formatearValor(v)}`)
-                .filter(v => v.trim().length > 0)
-                .join(' | ');
-        }
-        return '';
-    }
-
-    private formatearTexto(texto: string): string {
-        if (!texto)
-            return '';
-        const normalizado = texto.replace(/_/g, ' ').trim();
-        return normalizado.charAt(0).toUpperCase() + normalizado.slice(1);
-    }
-
-    private esCampoId(clave: string): boolean {
-        const normalizada = clave.replace(/[_\s]/g, '').toLowerCase();
-        return normalizada === 'id' || normalizada.startsWith('id');
-    }
-
     private esCampoOpcional(clave: string): boolean {
         const normalizada = clave.replace(/[_\s]/g, '').toLowerCase();
         return normalizada === 'opcional' || normalizada === 'o';
@@ -434,12 +391,12 @@ export class DetallesPlantillaComponent {
         if (base === 'tipocomp' || base === 'tipocompatible' || base === 'tipocriatura' || base === 'criaturacompatible') {
             return {
                 etiqueta: 'Tipo compatible',
-                valor: this.extraerValorSimple(valor),
+                valor: extraerValorSimple(valor),
             };
         }
 
         if (base === 'tiponuevo' || base === 'tiponuevotipo' || base === 'tiporesultante') {
-            const tipoNuevo = this.extraerValorSimple(valor);
+            const tipoNuevo = extraerValorSimple(valor);
             if (normalizarTexto(tipoNuevo) === 'cualquiera') {
                 return {
                     etiqueta: 'Tipo nuevo',
@@ -453,17 +410,17 @@ export class DetallesPlantillaComponent {
         }
 
         if (base.includes('rangos')) {
-            const n = Number(this.extraerValorSimple(valor));
+            const n = Number(extraerValorSimple(valor));
             return {
                 etiqueta: 'Rangos',
-                valor: Number.isFinite(n) && n > 0 ? `>= ${n}` : `${this.formatearValor(valor)}`,
+                valor: Number.isFinite(n) && n > 0 ? `>= ${n}` : `${formatearValor(valor)}`,
             };
         }
 
         if (base === 'extra' || base === 'extras') {
             return {
                 etiqueta: 'Extra',
-                valor: this.getExtraVisibleDesdeRegistro(item, valor),
+                valor: extraVisibleDesdeRegistro(item, valor),
             };
         }
 
@@ -475,8 +432,8 @@ export class DetallesPlantillaComponent {
         }
 
         return {
-            etiqueta: this.formatearTexto(clave),
-            valor: this.formatearValor(valor),
+            etiqueta: formatearClave(clave),
+            valor: formatearValor(valor),
         };
     }
 
@@ -491,7 +448,7 @@ export class DetallesPlantillaComponent {
         ];
 
         for (const candidato of candidatos) {
-            const valor = this.extraerValorSimple(candidato);
+            const valor = extraerValorSimple(candidato);
             if (this.tieneTextoVisible(valor))
                 return valor;
         }
@@ -500,8 +457,8 @@ export class DetallesPlantillaComponent {
     }
 
     private formatearHabilidadPrerrequisito(valor: unknown, item: Record<string, any>): string {
-        const habilidad = this.extraerValorSimple(valor);
-        const extra = this.getExtraVisibleDesdeRegistro(
+        const habilidad = extraerValorSimple(valor);
+        const extra = extraVisibleDesdeRegistro(
             item,
             item?.['Extra'] ?? item?.['extra'] ?? item?.['Extras'] ?? item?.['extras'],
         );
@@ -509,42 +466,6 @@ export class DetallesPlantillaComponent {
         if (matchSaberGenerico && this.tieneTextoVisible(extra))
             return 'Saber';
         return habilidad;
-    }
-
-    private getExtraVisibleDesdeRegistro(item: Record<string, any>, extraRaw: unknown): string {
-        const hasIdExtra = Object.prototype.hasOwnProperty.call(item ?? {}, 'Id_extra')
-            || Object.prototype.hasOwnProperty.call(item ?? {}, 'id_extra')
-            || Object.prototype.hasOwnProperty.call(item ?? {}, 'i_ex')
-            || Object.prototype.hasOwnProperty.call(item ?? {}, 'ie');
-
-        return resolverExtraHabilidadVisible({
-            extra: this.extraerValorSimple(extraRaw),
-            idExtra: item?.['Id_extra'] ?? item?.['id_extra'] ?? item?.['i_ex'] ?? item?.['ie'],
-            soportaExtra: item?.['Soporta_extra'] ?? item?.['soporta_extra'],
-            allowIdZeroAsChoose: hasIdExtra,
-        });
-    }
-
-    private extraerValorSimple(valor: unknown): string {
-        if (valor === null || valor === undefined)
-            return '';
-        if (typeof valor === 'string' || typeof valor === 'number')
-            return `${valor}`.trim();
-        if (typeof valor === 'boolean')
-            return valor ? 'Si' : 'No';
-        if (Array.isArray(valor))
-            return valor.map(v => this.extraerValorSimple(v)).filter(v => this.tieneTextoVisible(v)).join(', ');
-        if (typeof valor === 'object') {
-            const obj = valor as Record<string, unknown>;
-            const prioridad = ['Extra', 'extra', 'Nombre', 'nombre', 'Habilidad', 'habilidad', 'Valor', 'valor'];
-            for (const key of prioridad) {
-                const picked = this.extraerValorSimple(obj[key]);
-                if (this.tieneTextoVisible(picked))
-                    return picked;
-            }
-            return this.formatearValor(valor);
-        }
-        return '';
     }
 
 }

@@ -24,6 +24,7 @@ import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabi
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import Swal from 'sweetalert2';
 import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 interface MadurezEdadResumen {
     id: number;
@@ -419,27 +420,10 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     }
 
     tieneTextoVisible(texto: string | undefined | null): boolean {
-        if (!texto)
-            return false;
-        const base = normalizarTexto(texto);
-        if (!base)
-            return false;
-        const limpiado = base.replace(/[.]/g, '');
-        if (limpiado === 'no modifica' || limpiado === 'no vuela')
-            return false;
+        // Sin ocultar faltantes se enseña todo lo que no esté vacío; si no, la regla común (fuera de la clase).
         if (!this.modoOcultarFaltantes)
-            return limpiado.length > 0;
-        return limpiado !== 'no especifica'
-            && limpiado !== 'no se especifica'
-            && limpiado !== 'no aplica'
-            && limpiado !== 'nada'
-            && limpiado !== 'sin genero'
-            && limpiado !== 'no tener deidad'
-            && limpiado !== '-'
-            && limpiado !== 'desconocido'
-            && limpiado !== 'cualquiera'
-            && limpiado !== 'ninguna'
-            && limpiado !== 'placeholder';
+            return `${texto ?? ''}`.trim().length > 0;
+        return tieneTextoVisible(texto);
     }
 
     tieneNumeroVisible(value: number | string | null | undefined): boolean {

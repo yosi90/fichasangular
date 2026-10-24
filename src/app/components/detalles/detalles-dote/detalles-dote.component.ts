@@ -3,6 +3,7 @@ import { Dote } from 'src/app/interfaces/dote';
 import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 interface PrerrequisitoCampoDetalle {
     etiqueta: string;
@@ -506,18 +507,7 @@ export class DetallesDoteComponent {
         return this.getExtrasSoportadosActivos().length > 0;
     }
 
-    tieneTextoVisible(texto: string | undefined | null): boolean {
-        if (!texto)
-            return false;
-        const base = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-        if (!base)
-            return false;
-        const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica'
-            && limpiado !== 'no se especifica'
-            && limpiado !== 'no modifica'
-            && limpiado !== 'no vuela';
-    }
+    readonly tieneTextoVisible = tieneTextoVisible;
 
     tienePrerrequisitoNavegable(key: string, item: unknown): boolean {
         if (key !== 'competencia_arma' && key !== 'competencia_armadura')

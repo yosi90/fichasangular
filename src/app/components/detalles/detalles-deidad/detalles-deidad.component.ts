@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-deidad',
@@ -35,9 +36,7 @@ export class DetallesDeidadComponent {
             this.armaDetallesId.emit(id);
     }
 
-    tieneTextoVisible(texto: string | undefined | null): boolean {
-        return `${texto ?? ''}`.trim().length > 0;
-    }
+    readonly tieneTextoVisible = tieneTextoVisible;
 
     tieneColeccionVisible(items: { Nombre: string }[] | undefined | null): boolean {
         return Array.isArray(items) && items.some((item) => this.tieneTextoVisible(item?.Nombre));

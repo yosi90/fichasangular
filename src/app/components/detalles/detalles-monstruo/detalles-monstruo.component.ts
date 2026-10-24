@@ -5,6 +5,7 @@ import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-monstruo',
@@ -348,18 +349,7 @@ export class DetallesMonstruoComponent {
         return buildManiobrabilidadInfoSecciones(this.monstruo?.Maniobrabilidad);
     }
 
-    tieneTextoVisible(texto: string | undefined | null): boolean {
-        if (!texto)
-            return false;
-        const base = normalizarTexto(texto);
-        if (!base)
-            return false;
-        const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica'
-            && limpiado !== 'no se especifica'
-            && limpiado !== 'no aplica'
-            && limpiado !== '-';
-    }
+    readonly tieneTextoVisible = tieneTextoVisible;
 
     private formatearListaPersonajes(items: Array<{ id: any; nombre: any; extra?: string; }>): string {
         const textos = items

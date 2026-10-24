@@ -3,6 +3,8 @@ import { Clase, ClaseDoteNivel, ClaseNivelDetalle, ClasePrerrequisitos } from 's
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { esCampoId, extraVisibleDesdeRegistro, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-prerrequisitos';
 
 type PrerrequisitoActivo = {
     clave: keyof ClasePrerrequisitos;
@@ -262,20 +264,7 @@ export class DetallesClaseComponent {
             || (this.claseData?.Conjuros?.Listado?.length ?? 0) > 0;
     }
 
-    tieneTextoVisible(texto: string | undefined | null): boolean {
-        if (!texto)
-            return false;
-        const base = texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
-        if (!base)
-            return false;
-        const limpiado = base.replace(/[.]/g, '');
-        return limpiado !== 'no especifica'
-            && limpiado !== 'no se especifica'
-            && limpiado !== 'no aplica'
-            && limpiado !== 'no modifica'
-            && limpiado !== 'no vuela'
-            && limpiado !== '-';
-    }
+    readonly tieneTextoVisible = tieneTextoVisible;
 
     getCompetenciasVisibles(grupo: keyof Clase['Competencias']): ElementoVisual[] {
         return this.competenciasVisibles[grupo] ?? [];
@@ -319,7 +308,7 @@ export class DetallesClaseComponent {
                     .filter(item => this.getCamposVisibles(item).length > 0);
                 return {
                     clave,
-                    etiqueta: this.etiquetasPrerrequisitos[clave] ?? this.formatearTexto(clave),
+                    etiqueta: this.etiquetasPrerrequisitos[clave] ?? formatearClave(clave),
                     items,
                 };
             })
@@ -361,7 +350,7 @@ export class DetallesClaseComponent {
             return [];
 
         return Object.entries(item)
-            .filter(([clave]) => !this.esCampoId(clave))
+            .filter(([clave]) => !esCampoId(clave))
             .filter(([clave]) => !this.esCampoTecnicoPrerrequisito(clave))
             .filter(([, valor]) => this.tieneValorMostrable(valor))
             .map(([clave, valor]) => this.mapCampoPrerrequisito(clave, valor, item))
@@ -705,12 +694,12 @@ export class DetallesClaseComponent {
 
     private mapVisualItem(item: Record<string, any>): ElementoVisual {
         if (!item || typeof item !== 'object') {
-            const texto = this.formatearValor(item);
+            const texto = formatearValor(item);
             return { nombre: texto || 'Elemento', extras: [], detalle: '' };
         }
 
         const entradas = Object.entries(item)
-            .filter(([clave]) => !this.esCampoId(clave))
+            .filter(([clave]) => !esCampoId(clave))
             .filter(([, valor]) => this.tieneValorMostrable(valor));
 
         const nombre = this.detectarNombre(entradas);
@@ -731,7 +720,7 @@ export class DetallesClaseComponent {
 
     private detectarIdEntidad(item: Record<string, any>): number | null {
         const ids = Object.entries(item ?? {})
-            .filter(([clave]) => this.esCampoId(clave))
+            .filter(([clave]) => esCampoId(clave))
             .map(([, valor]) => Number(valor))
             .filter((valor) => Number.isFinite(valor) && valor > 0);
         return ids[0] ?? null;
@@ -742,15 +731,15 @@ export class DetallesClaseComponent {
         for (const clave of prioridades) {
             const encontrado = entradas.find(([k]) => k === clave);
             if (encontrado) {
-                const valor = this.formatearValor(encontrado[1]);
+                const valor = formatearValor(encontrado[1]);
                 if (this.tieneTextoVisible(valor))
                     return { valor, origen: clave };
             }
         }
 
-        const primerTexto = entradas.find(([, value]) => this.tieneTextoVisible(this.formatearValor(value)));
+        const primerTexto = entradas.find(([, value]) => this.tieneTextoVisible(formatearValor(value)));
         if (primerTexto)
-            return { valor: this.formatearValor(primerTexto[1]), origen: primerTexto[0] };
+            return { valor: formatearValor(primerTexto[1]), origen: primerTexto[0] };
 
         return { valor: '', origen: null };
     }
@@ -768,14 +757,14 @@ export class DetallesClaseComponent {
             clavesOrigen.push(clave);
             if (Array.isArray(valor)) {
                 valor.forEach(v => {
-                    const t = this.formatearValor(v);
+                    const t = formatearValor(v);
                     if (this.tieneTextoVisible(t))
                         valores.push(t);
                 });
                 return;
             }
 
-            const texto = this.formatearValor(valor);
+            const texto = formatearValor(valor);
             if (this.tieneTextoVisible(texto))
                 valores.push(texto);
         });
@@ -786,7 +775,7 @@ export class DetallesClaseComponent {
     private detectarDetalle(entradas: [string, any][], claveNombre: string | null, clavesExtra: string[]): string {
         return entradas
             .filter(([clave]) => clave !== claveNombre && !clavesExtra.includes(clave))
-            .map(([clave, valor]) => `${this.formatearTexto(clave)}: ${this.formatearValor(valor)}`)
+            .map(([clave, valor]) => `${formatearClave(clave)}: ${formatearValor(valor)}`)
             .filter(v => this.tieneTextoVisible(v))
             .join(' | ');
     }
@@ -808,8 +797,8 @@ export class DetallesClaseComponent {
     private esRegistroHabilidad(item: Record<string, any>): boolean {
         if (!item || typeof item !== 'object')
             return false;
-        return this.tieneTextoVisible(this.extraerValorSimple(item?.['Habilidad'] ?? item?.['habilidad']))
-            || this.tieneTextoVisible(this.extraerValorSimple(item?.['Nombre'] ?? item?.['nombre']));
+        return this.tieneTextoVisible(extraerValorSimple(item?.['Habilidad'] ?? item?.['habilidad']))
+            || this.tieneTextoVisible(extraerValorSimple(item?.['Nombre'] ?? item?.['nombre']));
     }
 
     private getExtraVisibleRegistroHabilidad(item: Record<string, any>): string {
@@ -829,20 +818,6 @@ export class DetallesClaseComponent {
         });
     }
 
-    private getExtraVisibleDesdeRegistro(item: Record<string, any>, extraRaw: unknown): string {
-        const hasIdExtra = Object.prototype.hasOwnProperty.call(item ?? {}, 'Id_extra')
-            || Object.prototype.hasOwnProperty.call(item ?? {}, 'id_extra')
-            || Object.prototype.hasOwnProperty.call(item ?? {}, 'i_ex')
-            || Object.prototype.hasOwnProperty.call(item ?? {}, 'ie');
-
-        return resolverExtraHabilidadVisible({
-            extra: this.extraerValorSimple(extraRaw),
-            idExtra: item?.['Id_extra'] ?? item?.['id_extra'] ?? item?.['i_ex'] ?? item?.['ie'],
-            soportaExtra: item?.['Soporta_extra'] ?? item?.['soporta_extra'],
-            allowIdZeroAsChoose: hasIdExtra,
-        });
-    }
-
     private esCampoTecnicoPrerrequisito(clave: string): boolean {
         const base = clave.replace(/[_\s]/g, '').toLowerCase();
         return base === 'opcional'
@@ -855,17 +830,17 @@ export class DetallesClaseComponent {
         const base = clave.replace(/[_\s]/g, '').toLowerCase();
 
         if (base.includes('rangos')) {
-            const n = Number(this.extraerValorSimple(valor));
+            const n = Number(extraerValorSimple(valor));
             return {
                 etiqueta: 'Rangos',
-                valor: Number.isFinite(n) && n > 0 ? `>= ${n}` : `${this.formatearValor(valor)}`,
+                valor: Number.isFinite(n) && n > 0 ? `>= ${n}` : `${formatearValor(valor)}`,
             };
         }
 
         if (base === 'extra' || base === 'extras') {
             return {
                 etiqueta: 'Extra',
-                valor: this.getExtraVisibleDesdeRegistro(item, valor),
+                valor: extraVisibleDesdeRegistro(item, valor),
             };
         }
 
@@ -877,47 +852,25 @@ export class DetallesClaseComponent {
         }
 
         return {
-            etiqueta: this.formatearTexto(clave),
-            valor: this.formatearValor(valor),
+            etiqueta: formatearClave(clave),
+            valor: formatearValor(valor),
         };
     }
 
     private formatearHabilidadPrerrequisito(valor: unknown, item: Record<string, any>): string {
-        const habilidad = this.extraerValorSimple(valor);
-        const extra = this.extraerValorSimple(item?.['Extra'] ?? item?.['extra'] ?? item?.['Extras'] ?? item?.['extras']);
+        const habilidad = extraerValorSimple(valor);
+        const extra = extraerValorSimple(item?.['Extra'] ?? item?.['extra'] ?? item?.['Extras'] ?? item?.['extras']);
         const matchSaberGenerico = /^saber\s*\d+$/i.test(habilidad);
         if (matchSaberGenerico && this.tieneTextoVisible(extra))
             return 'Saber';
         return habilidad;
     }
 
-    private extraerValorSimple(valor: unknown): string {
-        if (valor === null || valor === undefined)
-            return '';
-        if (typeof valor === 'string' || typeof valor === 'number')
-            return `${valor}`.trim();
-        if (typeof valor === 'boolean')
-            return valor ? 'Si' : 'No';
-        if (Array.isArray(valor))
-            return valor.map(v => this.extraerValorSimple(v)).filter(v => this.tieneTextoVisible(v)).join(', ');
-        if (typeof valor === 'object') {
-            const obj = valor as Record<string, unknown>;
-            const prioridad = ['Extra', 'extra', 'Nombre', 'nombre', 'Habilidad', 'habilidad', 'Valor', 'valor'];
-            for (const key of prioridad) {
-                const picked = this.extraerValorSimple(obj[key]);
-                if (this.tieneTextoVisible(picked))
-                    return picked;
-            }
-            return this.formatearValor(valor);
-        }
-        return '';
-    }
-
     private getIdPrerrequisito(item: unknown): number {
         if (!item || typeof item !== 'object')
             return 0;
         const ids = Object.entries(item as Record<string, unknown>)
-            .filter(([clave]) => this.esCampoId(clave))
+            .filter(([clave]) => esCampoId(clave))
             .map(([, valor]) => Number(valor))
             .filter((valor) => Number.isFinite(valor) && valor > 0);
         return ids[0] ?? 0;
@@ -936,9 +889,9 @@ export class DetallesClaseComponent {
 
     private formatearObjeto(item: any): string {
         if (!item || typeof item !== 'object')
-            return this.formatearValor(item);
+            return formatearValor(item);
 
-        const claves = Object.keys(item).filter(key => !this.esCampoId(key) && this.tieneValorMostrable(item[key]));
+        const claves = Object.keys(item).filter(key => !esCampoId(key) && this.tieneValorMostrable(item[key]));
         if (claves.length < 1)
             return '';
 
@@ -946,7 +899,7 @@ export class DetallesClaseComponent {
             return item.Nombre;
 
         return claves
-            .map(key => `${this.formatearTexto(key)}: ${this.formatearValor(item[key])}`)
+            .map(key => `${formatearClave(key)}: ${formatearValor(item[key])}`)
             .filter(part => part.trim().length > 0)
             .join(' | ');
     }
@@ -962,10 +915,10 @@ export class DetallesClaseComponent {
         if (this.tieneTextoVisible(especial['Especial']))
             return especial['Especial'];
 
-        const claves = Object.keys(especial).filter(k => !this.esCampoId(k) && this.tieneValorMostrable(especial[k]));
+        const claves = Object.keys(especial).filter(k => !esCampoId(k) && this.tieneValorMostrable(especial[k]));
         if (claves.length < 1)
             return 'Especial';
-        return this.formatearValor(especial[claves[0]]);
+        return formatearValor(especial[claves[0]]);
     }
 
     private getNombreEspecialNivel(especialNivel: any): string {
@@ -1119,37 +1072,6 @@ export class DetallesClaseComponent {
         if (typeof valor === 'object')
             return Object.keys(valor as object).length > 0;
         return true;
-    }
-
-    private formatearValor(valor: unknown): string {
-        if (valor === null || valor === undefined)
-            return '';
-        if (typeof valor === 'boolean')
-            return valor ? 'Si' : 'No';
-        if (typeof valor === 'number' || typeof valor === 'string')
-            return `${valor}`;
-        if (Array.isArray(valor))
-            return valor.map(v => this.formatearValor(v)).filter(v => v.trim().length > 0).join(', ');
-        if (typeof valor === 'object') {
-            return Object.entries(valor as Record<string, unknown>)
-                .filter(([key]) => !this.esCampoId(key))
-                .map(([key, v]) => `${this.formatearTexto(key)}: ${this.formatearValor(v)}`)
-                .filter(v => v.trim().length > 0)
-                .join(' | ');
-        }
-        return '';
-    }
-
-    private formatearTexto(texto: string): string {
-        if (!texto)
-            return '';
-        const normalizado = texto.replace(/_/g, ' ').trim();
-        return normalizado.charAt(0).toUpperCase() + normalizado.slice(1);
-    }
-
-    private esCampoId(clave: string): boolean {
-        const normalizada = clave.replace(/[_\s]/g, '').toLowerCase();
-        return normalizada === 'id' || normalizada.startsWith('id');
     }
 
     private getExtraVisibleDoteNivel(doteNivel: ClaseDoteNivel): string {
