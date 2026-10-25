@@ -86,14 +86,14 @@ describe('cabeceraApiConFirebase', () => {
     it('sin la sesión de Firebase no pide el token', async () => {
         const token = simularTokenApi('token-api');
 
-        await expectAsync(cabeceraApiConFirebase({ currentUser: null })).toBeRejectedWithError('Sesión no iniciada');
+        await expectAsync(cabeceraApiConFirebase({ currentUser: null })).toBeRejectedWithError('Necesitas iniciar sesión para continuar.');
         expect(token).not.toHaveBeenCalled();
     });
 
     it('sin token, el error que construya quien llama', async () => {
         simularTokenApi('  ');
 
-        await expectAsync(cabeceraApiConFirebase(conFirebase)).toBeRejectedWithError('Token no disponible');
+        await expectAsync(cabeceraApiConFirebase(conFirebase)).toBeRejectedWithError('Necesitas iniciar sesión para continuar.');
         const error = await cabeceraApiConFirebase(conFirebase, ProfileApiError.sinSesion).catch((e) => e);
         expect(error).toEqual(jasmine.any(ProfileApiError));
         expect(error.code).toBe('TOKEN_INVALID');
@@ -103,7 +103,7 @@ describe('cabeceraApiConFirebase', () => {
     it('sin sesión, ProfileApiError.sinSesion da UNAUTHORIZED', async () => {
         const error = await cabeceraApiConFirebase(null, ProfileApiError.sinSesion).catch((e) => e);
 
-        expect(error.message).toBe('Sesión no iniciada.');
+        expect(error.message).toBe('Necesitas iniciar sesión para continuar.');
         expect(error.code).toBe('UNAUTHORIZED');
         expect(error.status).toBe(401);
     });

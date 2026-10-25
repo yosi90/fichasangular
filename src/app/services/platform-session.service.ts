@@ -1,6 +1,7 @@
 import { HttpHeaders } from '@angular/common/http';
 import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
+import { ProfileApiError } from 'src/app/interfaces/user-account';
 import { environment } from 'src/environments/environment';
 
 // La cuenta de Yosiftware en el navegador, por el SDK de la plataforma (ecosistema-kit/ACCESO.md). Rol no tiene
@@ -108,15 +109,12 @@ export function recargandoPorCambioDeIdentidad(): boolean {
 /** Token de la API de Rol (audiencia `fichas-api`) para la petición que se va a hacer. No se guarda. */
 export function obtenerTokenApi(): Promise<string> {
     if (!instancia)
-        return Promise.reject(new Error('Sesión no iniciada'));
+        return Promise.reject(ProfileApiError.sinSesion('sin_sesion'));
     return instancia.tokenApi();
 }
 
 /** Por qué no se ha podido montar la cabecera de la API: sin sesión de Firebase o sin token. */
 export type MotivoSinCabeceraApi = 'sin_sesion' | 'sin_token';
-
-const errorSinCabeceraApi = (motivo: MotivoSinCabeceraApi): Error =>
-    new Error(motivo === 'sin_sesion' ? 'Sesión no iniciada' : 'Token no disponible');
 
 /**
  * Cabecera `Authorization` con el token de la API de Rol, para los servicios que además exigen la sesión de Firebase ya
@@ -125,7 +123,7 @@ const errorSinCabeceraApi = (motivo: MotivoSinCabeceraApi): Error =>
  */
 export async function cabeceraApiConFirebase(
     auth: { currentUser: unknown } | null | undefined,
-    crearError: (motivo: MotivoSinCabeceraApi) => Error = errorSinCabeceraApi,
+    crearError: (motivo: MotivoSinCabeceraApi) => Error = ProfileApiError.sinSesion,
 ): Promise<{ Authorization: string }> {
     if (!auth?.currentUser)
         throw crearError('sin_sesion');
@@ -197,7 +195,7 @@ export class PlatformSessionService {
         const sdk = await this.cargarSdk();
         const token = await sdk.token();
         if (!token)
-            throw new Error('Sesión no iniciada');
+            throw ProfileApiError.sinSesion('sin_sesion');
         return token;
     }
 
@@ -205,7 +203,7 @@ export class PlatformSessionService {
     async tokenPlataforma(): Promise<string> {
         const token = await (await this.cargarSdk()).tokenPlataforma();
         if (!token)
-            throw new Error('Sesión no iniciada');
+            throw ProfileApiError.sinSesion('sin_sesion');
         return token;
     }
 

@@ -55,6 +55,9 @@ export interface ProfileApiErrorResponse {
     message: string;
 }
 
+/** El texto para la persona cuando falta la sesión (o su token). */
+export const MENSAJE_SIN_SESION = 'Necesitas iniciar sesión para continuar.';
+
 export class ProfileApiError extends Error {
     constructor(
         message: string,
@@ -65,11 +68,9 @@ export class ProfileApiError extends Error {
         this.name = 'ProfileApiError';
     }
 
-    /** El error de las llamadas a la API sin sesión o sin token (para `cabeceraApiConFirebase`). */
+    /** El error de las llamadas a la API sin sesión o sin token (para `cabeceraApiConFirebase`), con el código de la API. */
     static sinSesion(motivo: 'sin_sesion' | 'sin_token'): ProfileApiError {
-        return motivo === 'sin_sesion'
-            ? new ProfileApiError('Sesión no iniciada.', 'UNAUTHORIZED', 401)
-            : new ProfileApiError('Token no disponible.', 'TOKEN_INVALID', 401);
+        return new ProfileApiError(MENSAJE_SIN_SESION, motivo === 'sin_sesion' ? 'UNAUTHORIZED' : 'TOKEN_INVALID', 401);
     }
 }
 
