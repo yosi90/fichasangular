@@ -14,8 +14,8 @@ export class DetallesVentajaComponent {
 
     private ventajaData!: VentajaDetalle;
 
-    // Lo que pinta la ficha, calculado una vez al recibir la ventaja. El contrato de `VentajaDetalle` no trae si es
-    // oficial (la web lo rellenaba siempre a `false`), así que la cabecera no lleva Oficial ni Homebrew.
+    // Lo que pinta la ficha, calculado una vez al recibir la ventaja. Las ventajas y desventajas son un sistema propio
+    // del propietario (decisión del 2026-10-25), así que la cabecera siempre dice Homebrew.
     /** «Ventaja» o «Desventaja», según el coste. */
     tipoCabecera = '';
     datos: DatoFicha[] = [];

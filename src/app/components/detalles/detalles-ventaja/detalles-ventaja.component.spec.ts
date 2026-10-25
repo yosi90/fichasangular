@@ -66,14 +66,14 @@ describe('DetallesVentajaComponent', () => {
         component = fixture.componentInstance;
     });
 
-    it('pinta la cabecera, el coste y lo que afecta, sin inventar si es oficial', () => {
+    it('pinta la cabecera como homebrew, el coste y lo que afecta', () => {
         component.ventaja = crearVentaja();
         fixture.detectChanges();
 
         expect(limpio(elemento().querySelector('.ficha-cabecera__tipo'))).toBe('Ventaja');
         expect(limpio(elemento().querySelector('.ficha-cabecera__nombre'))).toBe('Afortunado');
         expect(limpio(elemento().querySelector('.ficha-cabecera__manual'))).toContain('Unearthed Arcana · pág. 88');
-        expect(elemento().querySelector('.ficha-etiqueta')).toBeNull();
+        expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map(e => limpio(e))).toEqual(['Homebrew']);
         expect(datos()).toEqual([['Coste', '-2']]);
         expect(titulos()).toEqual(['Descripción', 'Afecta a', 'Efectos']);
         expect(lista('Afecta a')).toEqual(['Fortaleza', 'Reflejos']);
