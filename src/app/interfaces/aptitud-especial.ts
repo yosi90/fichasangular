@@ -1,6 +1,6 @@
 import { Comodin } from './comodin';
 
-/** Lo que otorga una aptitud especial: un racial (`/razas/raciales`), un especial de clase o una plantilla. */
+/** Lo que otorga una aptitud especial: un racial (`/razas/raciales`), un especial de clase, una plantilla o una dote. */
 export interface AptitudEspecialOtorgante {
     Id: number;
     Nombre: string;
@@ -17,5 +17,6 @@ export interface AptitudEspecial {
     Raciales: AptitudEspecialOtorgante[];
     Especiales: AptitudEspecialOtorgante[];
     Plantillas: AptitudEspecialOtorgante[];
+    Dotes: AptitudEspecialOtorgante[];
     Comodin: Comodin | null;
 }

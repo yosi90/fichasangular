@@ -377,7 +377,7 @@ describe('clase-elegibilidad', () => {
                 tamano_minimo: [{ Id_tamano: 4, opcional: 0 }],
                 aptitud_especial: [{
                     Id_aptitud_especial: 10, Aptitud_especial: 'Alas', Raciales: [{ Id: 41, Nombre: 'Aspecto de dragón (Alas)' }],
-                    Especiales: [], Plantillas: [], Opcional: 0, Frase: 'Alas',
+                    Especiales: [], Plantillas: [], Dotes: [], Opcional: 0, Frase: 'Alas',
                 }],
             },
         });
@@ -410,7 +410,7 @@ describe('clase-elegibilidad', () => {
             Id_aptitud_especial: 13, Aptitud_especial: 'Arma de aliento',
             Raciales: [{ Id: 74, Nombre: 'Arma de aliento (dragón azul)' }],
             Especiales: [{ Id: 2388, Nombre: 'Arma de aliento' }],
-            Plantillas: [{ Id: 6, Nombre: 'Semidragón' }],
+            Plantillas: [{ Id: 6, Nombre: 'Semidragón' }], Dotes: [],
             Opcional: 0, Frase: 'Arma de aliento',
         };
 
@@ -432,12 +432,12 @@ describe('clase-elegibilidad', () => {
 
         it('sin equivalencias se deja elegir con un aviso', () => {
             const res = evaluarElegibilidadClase(claseConAptitud({
-                Id_aptitud_especial: 11, Aptitud_especial: 'Cuerpo flexible', Raciales: [], Especiales: [], Plantillas: [],
-                Opcional: 0, Frase: 'Cuerpo flexible',
+                Id_aptitud_especial: 11, Aptitud_especial: 'Cuerpo o ataque flexible', Raciales: [], Especiales: [], Plantillas: [], Dotes: [],
+                Opcional: 0, Frase: 'Cuerpo o ataque flexible',
             }), crearContextoBase());
             expect(res.estado).toBe('eligible');
             expect(res.razones).toEqual([]);
-            expect(res.advertencias).toEqual(['La web no puede comprobar este requisito: Cuerpo flexible']);
+            expect(res.advertencias).toEqual(['La web no puede comprobar este requisito: Cuerpo o ataque flexible']);
         });
     });
 

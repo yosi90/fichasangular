@@ -17,6 +17,7 @@ export function normalizeAptitudEspecial(raw: any): AptitudEspecial {
         Raciales: toArray(raw?.Raciales).map(normalizeOtorgante),
         Especiales: toArray(raw?.Especiales).map(normalizeOtorgante),
         Plantillas: toArray(raw?.Plantillas).map(normalizeOtorgante),
+        Dotes: toArray(raw?.Dotes).map(normalizeOtorgante),
         Comodin: leerComodin(raw?.Comodin),
     };
 }

@@ -29,7 +29,7 @@ export interface PrerrequisitoDotePedida extends PrerrequisitoItem {
 
 /**
  * `aptitud_especial` de las dotes y las clases: la aptitud pedida y lo que la otorga. El personaje la cumple si tiene
- * alguno de esos raciales, especiales de clase o plantillas; con las tres listas vacías no se puede comprobar.
+ * alguno de esos raciales, especiales de clase, plantillas o dotes; con las cuatro listas vacías no se puede comprobar.
  */
 export interface PrerrequisitoAptitudEspecial extends PrerrequisitoItem {
     Id_aptitud_especial: number;
@@ -37,6 +37,7 @@ export interface PrerrequisitoAptitudEspecial extends PrerrequisitoItem {
     Raciales: AptitudEspecialOtorgante[];
     Especiales: AptitudEspecialOtorgante[];
     Plantillas: AptitudEspecialOtorgante[];
+    Dotes: AptitudEspecialOtorgante[];
 }
 
 /** Un tipo de prerrequisito de `GET /prerrequisitos/tipos`, con el nombre que enseña el editor. */

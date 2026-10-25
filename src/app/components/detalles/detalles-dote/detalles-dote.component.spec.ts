@@ -88,7 +88,7 @@ describe('DetallesDoteComponent', () => {
         component.dote = {
             ...(component.doteData as any),
             Prerrequisitos: {
-                aptitud_especial: [{ Id_aptitud_especial: 10, Aptitud_especial: 'Alas', Raciales: [{ Id: 41, Nombre: 'Aspecto de dragón (Alas)' }], Especiales: [{ Id: 1631, Nombre: 'Alas' }], Plantillas: [], Opcional: 0, Frase: 'Alas' }],
+                aptitud_especial: [{ Id_aptitud_especial: 10, Aptitud_especial: 'Alas', Raciales: [{ Id: 41, Nombre: 'Aspecto de dragón (Alas)' }], Especiales: [{ Id: 1631, Nombre: 'Alas' }], Plantillas: [], Dotes: [], Opcional: 0, Frase: 'Alas' }],
                 competencia_armadura: [{ Id_armadura: 9, Armadura: 'Escudo pesado', Opcional: 0, Frase: 'Competencia con escudo pesado' }],
             },
         } as any;

@@ -641,7 +641,7 @@ describe('dote-elegibilidad', () => {
             Aptitud_especial: 'Alas',
             Raciales: [{ Id: 41, Nombre: 'Aspecto de dragón (Alas)' }],
             Especiales: [{ Id: 1631, Nombre: 'Alas' }, { Id: 1752, Nombre: 'Desarrollar alas' }],
-            Plantillas: [],
+            Plantillas: [], Dotes: [],
             Opcional: 0,
             Frase: 'Alas',
         };
@@ -650,7 +650,7 @@ describe('dote-elegibilidad', () => {
             Aptitud_especial: 'Arma de aliento',
             Raciales: [{ Id: 74, Nombre: 'Arma de aliento (dragón azul)' }],
             Especiales: [{ Id: 2388, Nombre: 'Arma de aliento' }],
-            Plantillas: [{ Id: 6, Nombre: 'Semidragón' }],
+            Plantillas: [{ Id: 6, Nombre: 'Semidragón' }], Dotes: [],
             Opcional: 0,
             Frase: 'Arma de aliento',
         };
@@ -672,6 +672,12 @@ describe('dote-elegibilidad', () => {
             expect(evaluar(armaDeAliento, { plantillas: [{ id: 6, nombre: 'Semidragón' }] }).estado).toBe('eligible');
         });
 
+        it('se cumple con una de las dotes que la otorgan', () => {
+            const conDote = { ...armaDeAliento, Dotes: [{ Id: 296, Nombre: 'Aliento dragonil' }] };
+            const resultado = evaluar(conDote, { dotes: [{ id: 296, nombre: 'Aliento dragonil', idExtra: 0, extra: '' }] });
+            expect(resultado.estado).toBe('eligible');
+        });
+
         it('sin el id, se reconoce el racial por su nombre', () => {
             expect(evaluar(armaDeAliento, { raciales: [{ id: null, nombre: 'Arma de aliento (dragón azul)' }] }).estado).toBe('eligible');
         });
@@ -686,7 +692,7 @@ describe('dote-elegibilidad', () => {
         });
 
         const ampliasZancadas = {
-            Id_aptitud_especial: 14, Aptitud_especial: 'Amplias zancadas', Raciales: [], Especiales: [], Plantillas: [],
+            Id_aptitud_especial: 14, Aptitud_especial: 'Amplias zancadas', Raciales: [], Especiales: [], Plantillas: [], Dotes: [],
             Opcional: 0, Frase: 'Amplias zancadas',
         };
 

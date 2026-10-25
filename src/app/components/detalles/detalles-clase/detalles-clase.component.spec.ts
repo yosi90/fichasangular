@@ -166,7 +166,7 @@ describe('DetallesClaseComponent', () => {
         component.clase = crearClaseMock({
             Prerrequisitos: {
                 ...crearClaseMock().Prerrequisitos,
-                aptitud_especial: [{ Id_aptitud_especial: 13, Aptitud_especial: 'Arma de aliento', Raciales: [], Especiales: [], Plantillas: [{ Id: 6, Nombre: 'Semidragón' }], Opcional: 0, Frase: 'Arma de aliento' }],
+                aptitud_especial: [{ Id_aptitud_especial: 13, Aptitud_especial: 'Arma de aliento', Raciales: [], Especiales: [], Plantillas: [{ Id: 6, Nombre: 'Semidragón' }], Dotes: [], Opcional: 0, Frase: 'Arma de aliento' }],
                 competencia_arma: [{ Id_arma: 8, Arma: 'Alabarda', Opcional: 0, Frase: 'Competencia con alabarda' }],
             },
         });

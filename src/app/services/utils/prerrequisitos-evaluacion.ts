@@ -107,18 +107,19 @@ export class MotivosPrerrequisitos {
 }
 
 /**
- * Lo que tiene el personaje y puede otorgar una aptitud especial: sus raciales, sus especiales de clase (`claseas`) y sus
- * plantillas (los contextos de `dote-elegibilidad` y `clase-elegibilidad`).
+ * Lo que tiene el personaje y puede otorgar una aptitud especial: sus raciales, sus especiales de clase (`claseas`), sus
+ * plantillas y sus dotes (los contextos de `dote-elegibilidad` y `clase-elegibilidad`).
  */
 export interface OtorgantesAptitudPersonaje {
     raciales?: ClaveEntidadPrerrequisito[];
     claseas?: ClaveEntidadPrerrequisito[];
     plantillas?: ClaveEntidadPrerrequisito[];
+    dotes?: ClaveEntidadPrerrequisito[];
 }
 
 /**
  * El prerrequisito `aptitud_especial` (dotes y clases) contra el personaje: lo cumple si tiene **alguno** de sus
- * `Raciales`, `Especiales` o `Plantillas` (por su `Id` o, sin él, por su nombre). Con las tres listas vacías la base no
+ * `Raciales`, `Especiales`, `Plantillas` o `Dotes` (por su `Id` o, sin él, por su nombre). Con las cuatro listas vacías la base no
  * sabe qué la otorga y la web no puede comprobarla: se deja elegir con el aviso «La web no puede comprobar este requisito:
  * {Frase}» (decisión del propietario del 2026-10-25). Contrato: «El prerrequisito "aptitud especial"» en
  * `docs/publica/FRASES_PRERREQUISITOS_FRONT.md`.
@@ -131,6 +132,7 @@ export function evaluarAptitudEspecial(
         [toArray(pedido?.['Raciales']), personaje.raciales ?? []],
         [toArray(pedido?.['Especiales']), personaje.claseas ?? []],
         [toArray(pedido?.['Plantillas']), personaje.plantillas ?? []],
+        [toArray(pedido?.['Dotes']), personaje.dotes ?? []],
     ];
     const grupoOpcional = grupoOpcionalPrerrequisito(pedido);
     if (otorgantes.every(([lista]) => lista.length < 1)) {

@@ -6853,7 +6853,7 @@ describe('NuevoPersonajeService (avisos de la elegibilidad de clases)', () => {
         expect(service.esBloqueoSoloPorAlineamiento({
             estado: 'blocked_failed',
             razones: ['No cumple: Neutral bueno'],
-            advertencias: ['La web no puede comprobar este requisito: Cuerpo flexible'],
+            advertencias: ['La web no puede comprobar este requisito: Cuerpo o ataque flexible'],
             soloPorAlineamiento: true,
         })).toBeTrue();
         expect(service.esBloqueoSoloPorAlineamiento({
