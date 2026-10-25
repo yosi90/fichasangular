@@ -86,7 +86,7 @@ function crearClaseMock(partial?: Partial<Clase>): Clase {
             lanzar_conjuros_arcanos_nivel: [],
             lanzar_conjuros_divinos_nivel: [],
             conjuro_conocido: [],
-            inherente: [],
+            aptitud_especial: [],
             clase_especial: [],
             tamano_maximo: [],
             tamano_minimo: [],
@@ -162,17 +162,18 @@ describe('DetallesClaseComponent', () => {
         expect(texto).not.toContain('Nivel max poder accesible');
     });
 
-    it('oculta inherente de los prerrequisitos visibles', () => {
+    it('enseña la aptitud especial con su frase, como los demás prerrequisitos', () => {
         component.clase = crearClaseMock({
             Prerrequisitos: {
                 ...crearClaseMock().Prerrequisitos,
-                inherente: [{ Id_especial: 4, Especial: 'Legado antiguo', Opcional: 0, Frase: 'Tener legado antiguo' }],
+                aptitud_especial: [{ Id_aptitud_especial: 13, Aptitud_especial: 'Arma de aliento', Raciales: [], Especiales: [], Plantillas: [{ Id: 6, Nombre: 'Semidragón' }], Opcional: 0, Frase: 'Arma de aliento' }],
                 competencia_arma: [{ Id_arma: 8, Arma: 'Alabarda', Opcional: 0, Frase: 'Competencia con alabarda' }],
             },
         });
 
-        const claves = component.prerrequisitosAgrupados.flatMap((grupo) => grupo.condiciones.map((c) => c.clave));
-        expect(claves).toEqual(['competencia_arma']);
+        const frases = component.prerrequisitosAgrupados.flatMap((grupo) => grupo.condiciones.map((c) => c.frase));
+        expect(frases).toContain('Arma de aliento');
+        expect(frases).toContain('Competencia con alabarda');
     });
 
     it('enseña la frase de cada prerrequisito y agrupa los alineamientos alternativos', () => {

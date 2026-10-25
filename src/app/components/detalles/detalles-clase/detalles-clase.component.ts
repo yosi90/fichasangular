@@ -83,13 +83,13 @@ export class DetallesClaseComponent {
         Custom: [],
     };
 
-    /** Los prerrequisitos con la frase de la API, agrupados por `Opcional` («inherente» no se enseña). */
+    /** Los prerrequisitos con la frase de la API, agrupados por `Opcional`. */
     prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];
 
     @Input()
     set clase(value: Clase) {
         this.claseData = value;
-        this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos, ['inherente']);
+        this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos);
         this.recalcularBloquesVisuales();
         this.recalcularTablaProgresion();
     }

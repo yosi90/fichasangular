@@ -41,6 +41,11 @@ export function razonNoCumple(frases: string[]): string {
     return `No cumple: ${textosUnicos(frases).join(' o ')}`;
 }
 
+/** El motivo de un prerrequisito que la web no puede comprobar con los datos que hay: «No se puede comprobar: Alas». */
+export function razonSinComprobar(frase: string): string {
+    return `No se puede comprobar: ${frase}`;
+}
+
 export interface CondicionPrerrequisito {
     clave: string;
     item: PrerrequisitoItem;
@@ -57,17 +62,13 @@ export interface GrupoPrerrequisitos {
 /**
  * Los prerrequisitos de una entidad como se enseñan en los detalles: primero los obligatorios y después cada grupo de
  * alternativas («Elección A», «Elección B»…), cada uno con su frase, en el orden de los tipos del objeto. Un grupo con una
- * sola alternativa es obligatorio (como en 3.5 Companion). `excluir` quita los tipos que no se enseñan.
+ * sola alternativa es obligatorio (como en 3.5 Companion).
  */
-export function agruparPrerrequisitos(
-    prerrequisitos: object | null | undefined,
-    excluir: readonly string[] = [],
-): GrupoPrerrequisitos[] {
+export function agruparPrerrequisitos(prerrequisitos: object | null | undefined): GrupoPrerrequisitos[] {
     const obligatorias: CondicionPrerrequisito[] = [];
     const alternativas = new Map<number, CondicionPrerrequisito[]>();
 
     Object.entries((prerrequisitos ?? {}) as Record<string, unknown>)
-        .filter(([clave]) => !excluir.includes(clave))
         .forEach(([clave, items]) => {
             toArray<PrerrequisitoItem>(items)
                 .filter((item) => !!item && typeof item === 'object')

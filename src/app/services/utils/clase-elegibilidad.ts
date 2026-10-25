@@ -1,9 +1,9 @@
 import { Clase } from "src/app/interfaces/clase";
-import { IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from "./identidad-prerrequisitos";
+import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from "./identidad-prerrequisitos";
 import { getAlineamientoBasicoIdPorNombre } from "./alineamiento-contrato";
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
-import { frasePrerrequisito } from './prerrequisito-frase';
-import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido } from './prerrequisitos-evaluacion';
+import { frasePrerrequisito, razonSinComprobar } from './prerrequisito-frase';
+import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -22,6 +22,10 @@ export interface ClaseEvaluacionContexto {
     genero: string;
     dotes: { id: number | null; nombre: string; idExtra: number | null; extra: string; }[];
     claseas?: { id: number | null; nombre: string; idExtra: number | null; extra: string; }[];
+    /** Los raciales del personaje (los de su raza), para `aptitud_especial`. */
+    raciales?: ClaveEntidadPrerrequisito[];
+    /** Las plantillas del personaje, para `aptitud_especial`. */
+    plantillas?: ClaveEntidadPrerrequisito[];
     habilidades?: { id: number | null; nombre: string; rangos: number; idExtra: number | null; extra: string; }[];
     conjuros?: { id: number | null; nombre: string; idEscuela: number | null; escuela: string; }[];
     idiomas: { id: number | null; nombre: string; }[];
@@ -66,7 +70,7 @@ const FLAGS_SOPORTADAS: (keyof Clase["Prerrequisitos_flags"])[] = [
     "nivel_escuela",
     "rangos_habilidad",
     "idioma",
-    "inherente",
+    "aptitud_especial",
     "lanzador_arcano",
     "lanzador_divino",
     "lanzar_conjuros_arcanos_nivel",
@@ -555,12 +559,17 @@ function buildEvaluacionTamano(entry: Record<string, any>, ctx: ClaseEvaluacionC
     };
 }
 
-function buildEvaluacionInherente(entry: Record<string, any>): EvaluacionItem {
+function buildEvaluacionAptitudEspecial(entry: Record<string, any>, ctx: ClaseEvaluacionContexto): EvaluacionItem {
+    const { evaluable, cumple } = evaluarAptitudEspecial(entry, {
+        raciales: ctx.raciales ?? [],
+        especiales: ctx.claseas ?? [],
+        plantillas: ctx.plantillas ?? [],
+    });
     return {
         grupoOpcional: parseOpcional(entry),
-        evaluable: true,
-        cumple: true,
-        razonUnknown: "",
+        evaluable,
+        cumple: evaluable ? cumple : false,
+        razonUnknown: razonSinComprobar(frasePrerrequisito("aptitud_especial", entry)),
     };
 }
 
@@ -642,7 +651,7 @@ export function evaluarElegibilidadClase(clase: Clase, ctx: ClaseEvaluacionConte
     evaluarFamilia(motivos, "nivel_escuela", flags?.nivel_escuela, toArray(prer?.nivel_escuela), (entry) => buildEvaluacionNivelEscuela(entry, ctx));
     evaluarFamilia(motivos, "rangos_habilidad", flags?.rangos_habilidad, toArray(prer?.rangos_habilidad), (entry) => buildEvaluacionRangosHabilidad(entry, ctx));
     evaluarFamilia(motivos, "idioma", flags?.idioma, toArray(prer?.idioma), (entry) => buildEvaluacionIdioma(entry, ctx));
-    evaluarFamilia(motivos, "inherente", flags?.inherente, toArray(prer?.inherente), (entry) => buildEvaluacionInherente(entry), { permitirSinDatos: true });
+    evaluarFamilia(motivos, "aptitud_especial", flags?.aptitud_especial, toArray(prer?.aptitud_especial), (entry) => buildEvaluacionAptitudEspecial(entry, ctx), { permitirSinDatos: true });
     evaluarFamilia(motivos, "lanzador_arcano", flags?.lanzador_arcano, toArray(prer?.lanzador_arcano), (entry) => buildEvaluacionNumeroMinimo(
         entry,
         toNumber(ctx.lanzador?.arcano),

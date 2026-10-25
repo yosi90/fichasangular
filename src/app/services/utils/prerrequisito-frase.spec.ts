@@ -29,11 +29,11 @@ describe('prerrequisito-frase', () => {
             raza: [{ Id_raza: 2, Raza: 'Elfo', Frase: 'Elfo' }],
             lanzador_arcano: [{ Nivel: 1, Opcional: 1, Frase: 'Lanzador arcano de nivel 1' }],
             lanzador_divino: [{ Nivel: 1, Opcional: 1, Frase: 'Lanzador divino de nivel 1' }],
-            inherente: [{ Opcional: 0, Frase: 'Tener alas' }],
-        }, ['inherente']);
+            aptitud_especial: [{ Id_aptitud_especial: 13, Opcional: 0, Frase: 'Arma de aliento', Raciales: [], Especiales: [], Plantillas: [] }],
+        });
 
         expect(grupos.map((grupo) => grupo.titulo)).toEqual(['Obligatorios', 'Elección A', 'Elección B']);
-        expect(grupos[0].condiciones.map((c) => c.frase)).toEqual(['Ataque base +1', 'Elfo']);
+        expect(grupos[0].condiciones.map((c) => c.frase)).toEqual(['Ataque base +1', 'Elfo', 'Arma de aliento']);
         expect(grupos[1].condiciones.map((c) => c.frase)).toEqual(['Lanzador arcano de nivel 1', 'Lanzador divino de nivel 1']);
         expect(grupos[2].condiciones.map((c) => c.frase)).toEqual(['Fuerza 13', 'Destreza 13']);
         expect(grupos[1].descripcion).toBe('Basta con una de estas opciones');

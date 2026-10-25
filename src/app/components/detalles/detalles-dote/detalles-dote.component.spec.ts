@@ -84,17 +84,17 @@ describe('DetallesDoteComponent', () => {
         expect(component.bloqueExtraRequiereCompetencia('Armaduras')).toBeFalse();
     });
 
-    it('oculta inherente de la lista de prerrequisitos visibles', () => {
+    it('enseña la aptitud especial con su frase, como los demás prerrequisitos', () => {
         component.dote = {
             ...(component.doteData as any),
             Prerrequisitos: {
-                inherente: [{ Id_especial: 4, Especial: 'Alas', Opcional: 0, Frase: 'Tener alas' }],
+                aptitud_especial: [{ Id_aptitud_especial: 10, Aptitud_especial: 'Alas', Raciales: [{ Id: 41, Nombre: 'Aspecto de dragón (Alas)' }], Especiales: [{ Id: 1631, Nombre: 'Alas' }], Plantillas: [], Opcional: 0, Frase: 'Alas' }],
                 competencia_armadura: [{ Id_armadura: 9, Armadura: 'Escudo pesado', Opcional: 0, Frase: 'Competencia con escudo pesado' }],
             },
         } as any;
 
         const frases = component.prerrequisitosAgrupados.flatMap((grupo) => grupo.condiciones.map((c) => c.frase));
-        expect(frases).toEqual(['Competencia con escudo pesado']);
+        expect(frases).toEqual(['Alas', 'Competencia con escudo pesado']);
     });
 
     it('enseña la frase de la API y agrupa las alternativas por Opcional', () => {

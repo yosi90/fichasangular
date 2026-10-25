@@ -1,13 +1,14 @@
 import { Dote } from 'src/app/interfaces/dote';
 import {
+    ClaveEntidadPrerrequisito,
     IdentidadPrerrequisitos,
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
 import { getAlineamientoBasicoIdPorNombre } from './alineamiento-contrato';
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
-import { frasePrerrequisito } from './prerrequisito-frase';
-import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido } from './prerrequisitos-evaluacion';
+import { frasePrerrequisito, razonSinComprobar } from './prerrequisito-frase';
+import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
@@ -25,6 +26,10 @@ export interface DoteEvaluacionContexto {
     nivelesClase: Array<{ id: number | null; nombre: string; nivel: number; }>;
     dotes: Array<{ id: number | null; nombre: string; idExtra: number; extra: string; }>;
     claseas?: Array<{ id: number | null; nombre: string; idExtra: number | null; extra: string; }>;
+    /** Los raciales del personaje (los de su raza), para `aptitud_especial`. */
+    raciales?: ClaveEntidadPrerrequisito[];
+    /** Las plantillas del personaje, para `aptitud_especial`. */
+    plantillas?: ClaveEntidadPrerrequisito[];
     dominios?: Array<{ id: number | null; nombre: string; }>;
     idiomas: Array<{ id: number | null; nombre: string; }>;
     habilidades: Array<{ id: number | null; nombre: string; rangos: number; extra: string; }>;
@@ -560,12 +565,17 @@ function buildEvaluacionRegion(entry: Record<string, any>, ctx: DoteEvaluacionCo
     };
 }
 
-function buildEvaluacionInherente(entry: Record<string, any>): EvaluacionItem {
+function buildEvaluacionAptitudEspecial(entry: Record<string, any>, ctx: DoteEvaluacionContexto): EvaluacionItem {
+    const { evaluable, cumple } = evaluarAptitudEspecial(entry, {
+        raciales: ctx.raciales ?? [],
+        especiales: ctx.claseas ?? [],
+        plantillas: ctx.plantillas ?? [],
+    });
     return {
         grupoOpcional: parseOpcional(entry),
-        evaluable: true,
-        cumple: true,
-        razonUnknown: '',
+        evaluable,
+        cumple: evaluable ? cumple : false,
+        razonUnknown: razonSinComprobar(frasePrerrequisito('aptitud_especial', entry)),
     };
 }
 
@@ -757,6 +767,8 @@ function evaluateFamily(
         return entries.map((entry) => buildEvaluacionHabilidad(entry, ctx));
     if (keyNorm === 'nivel_de_clase')
         return entries.map((entry) => buildEvaluacionNivelClase(entry, ctx));
+    if (keyNorm === 'aptitud_especial')
+        return entries.map((entry) => buildEvaluacionAptitudEspecial(entry, ctx));
     if (keyNorm === 'alineamiento_requerido')
         return entries.map((entry) => buildEvaluacionAlineamiento(entry, idAlineamiento, false));
     if (keyNorm === 'alineamiento_prohibido')
@@ -804,8 +816,6 @@ function evaluateFamily(
         return entries.map((entry) => buildEvaluacionDote(entry, ctx, idExtraSeleccionado, extraSeleccionado));
     if (keyNorm === 'escuela_nivel')
         return entries.map((entry) => buildEvaluacionEscuelaNivel(entry, ctx));
-    if (keyNorm === 'inherente')
-        return entries.map((entry) => buildEvaluacionInherente(entry));
     if (keyNorm === 'lanzador_arcano')
         return entries.map((entry) => buildEvaluacionLanzador(entry, toNumber(ctx.lanzador.arcano), 'arcano'));
     if (keyNorm === 'lanzador_divino')

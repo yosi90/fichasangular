@@ -25,7 +25,7 @@ import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
-import { buildIdentidadPrerrequisitos } from './utils/identidad-prerrequisitos';
+import { buildIdentidadPrerrequisitos, clavesDeEntidades } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
 import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
@@ -1630,6 +1630,8 @@ export class NuevoPersonajeService {
             genero: `${this.personajeCreacion.Genero ?? ''}`,
             dotes: [...dotesDesdeContexto, ...dotesLegacy],
             claseas,
+            raciales: clavesDeEntidades(this.personajeCreacion.Raciales),
+            plantillas: clavesDeEntidades(this.personajeCreacion.Plantillas),
             habilidades,
             conjuros,
             idiomas,
@@ -3143,6 +3145,8 @@ export class NuevoPersonajeService {
             nivelesClase,
             dotes: [...dotes, ...legacySinContexto],
             claseas,
+            raciales: clavesDeEntidades(this.personajeCreacion.Raciales),
+            plantillas: clavesDeEntidades(this.personajeCreacion.Plantillas),
             dominios,
             idiomas,
             habilidades,

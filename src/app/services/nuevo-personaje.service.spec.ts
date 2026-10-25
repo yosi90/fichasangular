@@ -145,7 +145,7 @@ function crearClaseBase(partial?: Partial<Clase>): Clase {
             lanzar_conjuros_arcanos_nivel: [],
             lanzar_conjuros_divinos_nivel: [],
             conjuro_conocido: [],
-            inherente: [],
+            aptitud_especial: [],
             clase_especial: [],
             tamano_maximo: [],
             tamano_minimo: [],

@@ -62,6 +62,11 @@ function dedupeClaves(claves: (ClaveEntidadPrerrequisito | null | undefined)[]):
     return resultado;
 }
 
+/** Las claves (`Id` y `Nombre`) de una lista de entidades del personaje, sin vacías ni repetidas. */
+export function clavesDeEntidades(entidades: Array<{ Id?: unknown; Nombre?: unknown; }> | null | undefined): ClaveEntidadPrerrequisito[] {
+    return dedupeClaves(toArray<{ Id?: unknown; Nombre?: unknown; }>(entidades).map((entidad) => crearClave(entidad?.Id, entidad?.Nombre)));
+}
+
 function extraerTipoCriatura(raza: Partial<Raza> | null | undefined): TipoCriatura | null {
     const tipo = (raza as any)?.Tipo_criatura;
     if (!tipo || typeof tipo !== 'object')

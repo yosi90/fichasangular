@@ -634,4 +634,76 @@ describe('dote-elegibilidad', () => {
         });
         expect(resultado.estado).toBe('blocked_failed');
     });
+
+    describe('aptitud_especial', () => {
+        const alas = {
+            Id_aptitud_especial: 10,
+            Aptitud_especial: 'Alas',
+            Raciales: [{ Id: 41, Nombre: 'Aspecto de dragón (Alas)' }],
+            Especiales: [{ Id: 1631, Nombre: 'Alas' }, { Id: 1752, Nombre: 'Desarrollar alas' }],
+            Plantillas: [],
+            Opcional: 0,
+            Frase: 'Alas',
+        };
+        const armaDeAliento = {
+            Id_aptitud_especial: 13,
+            Aptitud_especial: 'Arma de aliento',
+            Raciales: [{ Id: 74, Nombre: 'Arma de aliento (dragón azul)' }],
+            Especiales: [{ Id: 2388, Nombre: 'Arma de aliento' }],
+            Plantillas: [{ Id: 6, Nombre: 'Semidragón' }],
+            Opcional: 0,
+            Frase: 'Arma de aliento',
+        };
+        const evaluar = (aptitud: Record<string, any>, contexto: Partial<DoteEvaluacionContexto>) => evaluarElegibilidadDote({
+            dote: crearDoteBase({ Prerrequisitos: { aptitud_especial: [aptitud] } }),
+            contexto: crearContextoBase(contexto),
+        });
+
+        it('se cumple con uno de los raciales que la otorgan', () => {
+            expect(evaluar(alas, { raciales: [{ id: 41, nombre: 'Aspecto de dragón (Alas)' }] }).estado).toBe('eligible');
+        });
+
+        it('se cumple con uno de los especiales de clase que la otorgan', () => {
+            const resultado = evaluar(alas, { claseas: [{ id: 1752, nombre: 'Desarrollar alas', idExtra: null, extra: '' }] });
+            expect(resultado.estado).toBe('eligible');
+        });
+
+        it('se cumple con una de las plantillas que la otorgan', () => {
+            expect(evaluar(armaDeAliento, { plantillas: [{ id: 6, nombre: 'Semidragón' }] }).estado).toBe('eligible');
+        });
+
+        it('sin el id, se reconoce el racial por su nombre', () => {
+            expect(evaluar(armaDeAliento, { raciales: [{ id: null, nombre: 'Arma de aliento (dragón azul)' }] }).estado).toBe('eligible');
+        });
+
+        it('no se cumple sin ninguno de los que la otorgan: «No cumple: {Frase}»', () => {
+            const resultado = evaluar(alas, {
+                raciales: [{ id: 74, nombre: 'Arma de aliento (dragón azul)' }],
+                plantillas: [{ id: 6, nombre: 'Semidragón' }],
+            });
+            expect(resultado.estado).toBe('blocked_failed');
+            expect(resultado.razones).toEqual(['No cumple: Alas']);
+        });
+
+        it('sin equivalencias no se puede comprobar: ni se da por cumplida ni por incumplida', () => {
+            const resultado = evaluar({
+                Id_aptitud_especial: 14, Aptitud_especial: 'Amplias zancadas', Raciales: [], Especiales: [], Plantillas: [],
+                Opcional: 0, Frase: 'Amplias zancadas',
+            }, { raciales: [{ id: 41, nombre: 'Aspecto de dragón (Alas)' }] });
+            expect(resultado.estado).toBe('blocked_unknown');
+            expect(resultado.razones).toEqual(['No se puede comprobar: Amplias zancadas']);
+        });
+
+        it('como alternativa, basta con que se cumpla otra del grupo', () => {
+            const resultado = evaluarElegibilidadDote({
+                dote: crearDoteBase({
+                    Prerrequisitos: {
+                        aptitud_especial: [{ ...alas, Opcional: 1 }, { ...armaDeAliento, Opcional: 1 }],
+                    },
+                }),
+                contexto: crearContextoBase({ plantillas: [{ id: 6, nombre: 'Semidragón' }] }),
+            });
+            expect(resultado.estado).toBe('eligible');
+        });
+    });
 });

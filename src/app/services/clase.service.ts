@@ -27,7 +27,8 @@ import { leerComodin } from "src/app/services/utils/comodin";
 
 const CLASE: ElementoDeCatalogo = { singular: "clase", plural: "clases", femenino: true };
 
-const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
+/** Los tipos de prerrequisito de las clases (`Prerrequisitos` de la API y de sus escrituras). */
+export const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "subtipo",
     "caracteristica",
     "dg",
@@ -54,7 +55,7 @@ const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "lanzar_conjuros_arcanos_nivel",
     "lanzar_conjuros_divinos_nivel",
     "conjuro_conocido",
-    "inherente",
+    "aptitud_especial",
     "clase_especial",
     "tamano_maximo",
     "tamano_minimo",
@@ -89,7 +90,7 @@ const ALIAS_PRERREQUISITOS: Record<keyof ClasePrerrequisitos, string[]> = {
     lanzar_conjuros_arcanos_nivel: ["lanzar_conjuros_arcanos_nivel"],
     lanzar_conjuros_divinos_nivel: ["lanzar_conjuros_divinos_nivel"],
     conjuro_conocido: ["conjuro_conocido"],
-    inherente: ["inherente"],
+    aptitud_especial: ["aptitud_especial"],
     clase_especial: ["clase_especial"],
     tamano_maximo: ["tamano_maximo"],
     tamano_minimo: ["tamano_minimo"],

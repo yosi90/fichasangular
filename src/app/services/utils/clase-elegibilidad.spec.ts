@@ -71,7 +71,7 @@ function crearClaseBase(partial?: Partial<Clase>): Clase {
             lanzar_conjuros_arcanos_nivel: [],
             lanzar_conjuros_divinos_nivel: [],
             conjuro_conocido: [],
-            inherente: [],
+            aptitud_especial: [],
             clase_especial: [],
             tamano_maximo: [],
             tamano_minimo: [],
@@ -353,7 +353,7 @@ describe('clase-elegibilidad', () => {
                 reserva_psionica: true,
                 tamano_maximo: true,
                 tamano_minimo: true,
-                inherente: true,
+                aptitud_especial: true,
             } as any,
             Prerrequisitos: {
                 ...crearClaseBase().Prerrequisitos,
@@ -375,11 +375,14 @@ describe('clase-elegibilidad', () => {
                 reserva_psionica: [{ Cantidad: 12, opcional: 0 }],
                 tamano_maximo: [{ Id_tamano: 5, opcional: 0 }],
                 tamano_minimo: [{ Id_tamano: 4, opcional: 0 }],
-                inherente: [],
+                aptitud_especial: [{
+                    Id_aptitud_especial: 10, Aptitud_especial: 'Alas', Raciales: [{ Id: 41, Nombre: 'Aspecto de dragón (Alas)' }],
+                    Especiales: [], Plantillas: [], Opcional: 0, Frase: 'Alas',
+                }],
             },
         });
 
-        const res = evaluarElegibilidadClase(clase, crearContextoBase());
+        const res = evaluarElegibilidadClase(clase, { ...crearContextoBase(), raciales: [{ id: 41, nombre: 'Aspecto de dragón (Alas)' }] });
         expect(res.estado).toBe('eligible');
     });
 
@@ -396,5 +399,44 @@ describe('clase-elegibilidad', () => {
 
         const res = evaluarElegibilidadClase(clase, crearContextoBase());
         expect(res.estado).toBe('blocked_failed');
+    });
+
+    describe('aptitud_especial', () => {
+        const claseConAptitud = (aptitud: Record<string, any>) => crearClaseBase({
+            Prerrequisitos_flags: { aptitud_especial: true },
+            Prerrequisitos: { ...crearClaseBase().Prerrequisitos, aptitud_especial: [aptitud as any] },
+        });
+        const armaDeAliento = {
+            Id_aptitud_especial: 13, Aptitud_especial: 'Arma de aliento',
+            Raciales: [{ Id: 74, Nombre: 'Arma de aliento (dragón azul)' }],
+            Especiales: [{ Id: 2388, Nombre: 'Arma de aliento' }],
+            Plantillas: [{ Id: 6, Nombre: 'Semidragón' }],
+            Opcional: 0, Frase: 'Arma de aliento',
+        };
+
+        it('se cumple con un especial de clase que la otorga', () => {
+            const ctx = { ...crearContextoBase(), claseas: [{ id: 2388, nombre: 'Arma de aliento', idExtra: null, extra: '' }] };
+            expect(evaluarElegibilidadClase(claseConAptitud(armaDeAliento), ctx).estado).toBe('eligible');
+        });
+
+        it('se cumple con una plantilla que la otorga', () => {
+            const ctx = { ...crearContextoBase(), plantillas: [{ id: 6, nombre: 'Semidragón' }] };
+            expect(evaluarElegibilidadClase(claseConAptitud(armaDeAliento), ctx).estado).toBe('eligible');
+        });
+
+        it('no se cumple sin ninguno de los que la otorgan', () => {
+            const res = evaluarElegibilidadClase(claseConAptitud(armaDeAliento), crearContextoBase());
+            expect(res.estado).toBe('blocked_failed');
+            expect(res.razones).toEqual(['No cumple: Arma de aliento']);
+        });
+
+        it('sin equivalencias no se puede comprobar', () => {
+            const res = evaluarElegibilidadClase(claseConAptitud({
+                Id_aptitud_especial: 11, Aptitud_especial: 'Cuerpo flexible', Raciales: [], Especiales: [], Plantillas: [],
+                Opcional: 0, Frase: 'Cuerpo flexible',
+            }), crearContextoBase());
+            expect(res.estado).toBe('blocked_unknown');
+            expect(res.razones).toEqual(['No se puede comprobar: Cuerpo flexible']);
+        });
     });
 });

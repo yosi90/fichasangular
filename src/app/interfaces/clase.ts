@@ -1,4 +1,4 @@
-import { PrerrequisitoItem } from "./prerrequisito";
+import { PrerrequisitoAptitudEspecial, PrerrequisitoItem } from "./prerrequisito";
 import { Alineamiento } from "./alineamiento";
 import { Comodin } from "./comodin";
 import { Dote } from "./dote";
@@ -144,7 +144,7 @@ export interface ClasePrerrequisitosFlags {
     nivel_escuela?: boolean;
     rangos_habilidad?: boolean;
     idioma?: boolean;
-    inherente?: boolean;
+    aptitud_especial?: boolean;
     lanzador_arcano?: boolean;
     lanzador_divino?: boolean;
     lanzar_conjuros_arcanos_nivel?: boolean;
@@ -187,7 +187,7 @@ export interface ClasePrerrequisitos {
     lanzar_conjuros_arcanos_nivel: PrerrequisitoItem[];
     lanzar_conjuros_divinos_nivel: PrerrequisitoItem[];
     conjuro_conocido: PrerrequisitoItem[];
-    inherente: PrerrequisitoItem[];
+    aptitud_especial: PrerrequisitoAptitudEspecial[];
     clase_especial: PrerrequisitoItem[];
     tamano_maximo: PrerrequisitoItem[];
     tamano_minimo: PrerrequisitoItem[];

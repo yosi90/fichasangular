@@ -21,7 +21,7 @@ export class DetallesDoteComponent {
 
     doteData!: Dote;
     contexto?: DoteContexto;
-    /** Los prerrequisitos con la frase de la API, agrupados por `Opcional` («inherente» no se enseña). */
+    /** Los prerrequisitos con la frase de la API, agrupados por `Opcional`. */
     prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];
 
     @Input()
@@ -33,7 +33,7 @@ export class DetallesDoteComponent {
             this.doteData = value as Dote;
             this.contexto = undefined;
         }
-        this.prerrequisitosAgrupados = agruparPrerrequisitos(this.doteData?.Prerrequisitos, ['inherente']);
+        this.prerrequisitosAgrupados = agruparPrerrequisitos(this.doteData?.Prerrequisitos);
     }
 
     abrirDetalleManual() {
