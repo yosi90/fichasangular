@@ -64,7 +64,8 @@
                 </button>
                 <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origenInsertar"
                     [cdkConnectedOverlayOpen]="otrosAbierto === 'insertar'"
-                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayHasBackdrop]="true"
+                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayPush]="true"
+                    [cdkConnectedOverlayViewportMargin]="8" [cdkConnectedOverlayHasBackdrop]="true"
                     [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
                     (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
                     <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
@@ -187,7 +188,8 @@
                 </button>
                 <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origenModificar"
                     [cdkConnectedOverlayOpen]="otrosAbierto === 'modificar'"
-                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayHasBackdrop]="true"
+                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayPush]="true"
+                    [cdkConnectedOverlayViewportMargin]="8" [cdkConnectedOverlayHasBackdrop]="true"
                     [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
                     (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
                     <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
@@ -284,7 +286,8 @@
                 </button>
                 <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origenDetalles"
                     [cdkConnectedOverlayOpen]="otrosAbierto === 'detalles'"
-                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayHasBackdrop]="true"
+                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayPush]="true"
+                    [cdkConnectedOverlayViewportMargin]="8" [cdkConnectedOverlayHasBackdrop]="true"
                     [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
                     (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
                     <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
