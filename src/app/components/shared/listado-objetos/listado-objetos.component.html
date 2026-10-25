@@ -3,7 +3,7 @@
         <button matTooltip="Filtros de objetos" mat-icon-button aria-label="Filtros de objetos" [matMenuTriggerFor]="menuObjetos" class="filtros">
             <mat-icon>filter_alt</mat-icon>
         </button>
-        <mat-menu #menuObjetos="matMenu" class="tw-me-1 menu-filtros-estandar menu-objetos-filtros">
+        <mat-menu #menuObjetos="matMenu" class="tw-me-1 menu-filtros-estandar">
             <div id="menu">
                 <mat-form-field appearance="fill" (click)="$event.stopPropagation();">
                     <mat-label>Incluye texto</mat-label>
