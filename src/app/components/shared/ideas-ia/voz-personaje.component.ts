@@ -1,7 +1,7 @@
 import { Component, Input, NgZone, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { datosIdeaDePersonaje, DisponibilidadIa, IdeasIaError, IdeasIaService, ProveedorDeVoz, VocesIaProveedor, VozIa } from 'src/app/services/ideas-ia.service';
+import { datosIdeaDePersonaje, DisponibilidadIa, IdeasIaError, IdeasIaService, MAX_FRASE_VOZ_IA, ProveedorDeVoz, VocesIaProveedor, VozIa } from 'src/app/services/ideas-ia.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { elegirVozAutomatica, ordenarVoces } from 'src/app/services/utils/voz-personaje';
 import { VozGuardada, VozPersonajeService } from 'src/app/services/voz-personaje.service';
@@ -34,6 +34,7 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
 
     guardadas: VozGuardada[] = [];
     maximo = 3;
+    readonly maxFrase = MAX_FRASE_VOZ_IA;
     /** La voz guardada que suena, si alguna. */
     sonando: number | null = null;
     eligiendo = false;
@@ -175,7 +176,7 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
         this.cargando = true;
         this.error = null;
         try {
-            this.textoParaGuardar = (await this.ideasIaSvc.pedir('frase', datosIdeaDePersonaje(this.pj))).texto.slice(0, 300);
+            this.textoParaGuardar = (await this.ideasIaSvc.pedir('frase', datosIdeaDePersonaje(this.pj))).texto.slice(0, MAX_FRASE_VOZ_IA);
             this.textoDeIa = true;
         } catch (error) {
             this.error = error instanceof IdeasIaError ? error : new IdeasIaError('No se ha podido pedir la frase.', '', 0);

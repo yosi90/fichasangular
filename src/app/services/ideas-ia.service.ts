@@ -186,7 +186,12 @@ export class IdeasIaService {
     }
 
     async pedir(tipo: TipoIdeaIa, datos: DatosIdeaIa): Promise<IdeaIa> {
-        const cuerpo: Record<string, unknown> = { tipo, datos: limpiarDatos(datos) };
+        const limpios = limpiarDatos(datos);
+        // La API lo rechazaría igual (kit 1.58): se avisa sin llamar.
+        const largo = datoDemasiadoLargo(limpios);
+        if (largo)
+            throw largo;
+        const cuerpo: Record<string, unknown> = { tipo, datos: limpios };
         const seleccion = this.seleccion();
         if (seleccion) {
             cuerpo['proveedor'] = seleccion.proveedor;
@@ -316,23 +321,78 @@ function texto(valor: unknown): string | undefined {
     return limpio.length > 0 ? limpio : undefined;
 }
 
-/** Quita lo vacío para no mandar campos sin nada. */
+/** Un texto corto en una línea, con los espacios de sobra quitados, como lo cuenta la API. */
+function textoCorto(valor: unknown): string | undefined {
+    return texto(`${valor ?? ''}`.replace(/\s+/g, ' '));
+}
+
+type CampoDeTextoIa = 'nombre' | 'raza' | 'alineamiento' | 'deidad' | 'genero' | 'edad' | 'region' | 'campana' | 'trasfondo' | 'personalidad';
+
+/**
+ * La longitud máxima de cada dato que va a la IA y cómo se nombra en el aviso, igual que la API
+ * (`docs/publica/endpoints/personajes.md`, `POST /personajes/ideas`; kit 1.58). Por encima no se pide la idea.
+ */
+export const LIMITES_DATOS_IA: Record<CampoDeTextoIa, { maximo: number; nombre: string }> = {
+    nombre: { maximo: 150, nombre: 'El nombre' },
+    raza: { maximo: 100, nombre: 'La raza' },
+    alineamiento: { maximo: 60, nombre: 'El alineamiento' },
+    deidad: { maximo: 100, nombre: 'La deidad' },
+    genero: { maximo: 60, nombre: 'El género' },
+    edad: { maximo: 40, nombre: 'La edad' },
+    region: { maximo: 100, nombre: 'La región' },
+    campana: { maximo: 150, nombre: 'El nombre de la campaña' },
+    trasfondo: { maximo: 20000, nombre: 'El trasfondo' },
+    personalidad: { maximo: 10000, nombre: 'La personalidad' },
+};
+export const MAX_CLASES_IA = 10;
+export const MAX_NOMBRE_CLASE_IA = 100;
+/** Lo que dice el personaje con su voz (`POST /personajes/{id}/voces`). */
+export const MAX_FRASE_VOZ_IA = 300;
+/** Los detalles del aspecto para generar su imagen (`POST /personajes/{id}/imagenes/{tipo}/ia`). */
+export const MAX_DETALLES_IMAGEN_IA = 2000;
+
+/** El primer dato que pasa de su máximo, con el mismo error que daría la API (`400 texto_demasiado_largo`); o `null`. */
+export function datoDemasiadoLargo(datos: DatosIdeaIa): IdeasIaError | null {
+    for (const [campo, { maximo, nombre }] of Object.entries(LIMITES_DATOS_IA)) {
+        const valor = datos[campo as CampoDeTextoIa];
+        if (valor !== undefined && `${valor}`.length > maximo)
+            return demasiadoLargo(nombre, maximo, `datos.${campo}`);
+    }
+    const clase = (datos.clases ?? []).find(c => c.nombre.length > MAX_NOMBRE_CLASE_IA);
+    return clase ? demasiadoLargo('El nombre de una clase', MAX_NOMBRE_CLASE_IA, 'datos.clases.nombre') : null;
+}
+
+function demasiadoLargo(nombre: string, maximo: number, field: string): IdeasIaError {
+    return new IdeasIaError(`${nombre}: como mucho, ${cifra(maximo)} caracteres.`, 'texto_demasiado_largo', 400, field);
+}
+
+/** Como la API: de cinco dígitos en adelante, con un espacio fino de no separación entre los millares («20 000»). */
+export function cifra(numero: number): string {
+    return numero >= 10000 ? `${numero}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') : `${numero}`;
+}
+
+/** Quita lo vacío para no mandar campos sin nada (y los espacios de sobra de los textos cortos). */
 export function limpiarDatos(datos: DatosIdeaIa): DatosIdeaIa {
     const limpio: DatosIdeaIa = {};
-    for (const campo of ['nombre', 'raza', 'alineamiento', 'deidad', 'genero', 'region', 'campana', 'trasfondo', 'personalidad'] as const) {
+    for (const campo of ['nombre', 'raza', 'alineamiento', 'deidad', 'genero', 'region', 'campana'] as const) {
+        const valor = textoCorto(datos?.[campo]);
+        if (valor)
+            limpio[campo] = valor;
+    }
+    for (const campo of ['trasfondo', 'personalidad'] as const) {
         const valor = texto(datos?.[campo]);
         if (valor)
             limpio[campo] = valor;
     }
     if (typeof datos?.edad === 'number' && Number.isFinite(datos.edad) && datos.edad > 0)
         limpio.edad = Math.trunc(datos.edad);
-    else if (typeof datos?.edad === 'string' && texto(datos.edad))
-        limpio.edad = texto(datos.edad);
+    else if (typeof datos?.edad === 'string' && textoCorto(datos.edad))
+        limpio.edad = textoCorto(datos.edad);
     const clases: ClaseIdeaIa[] = [];
     for (const clase of datos?.clases ?? []) {
-        const nombre = texto(clase?.nombre);
+        const nombre = textoCorto(clase?.nombre);
         const nivel = Number(clase?.nivel);
-        if (nombre && clases.length < 10)
+        if (nombre && clases.length < MAX_CLASES_IA)
             clases.push({ nombre, nivel: Number.isInteger(nivel) && nivel > 0 ? nivel : null });
     }
     if (clases.length > 0)

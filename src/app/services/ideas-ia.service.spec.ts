@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from 'src/environments/environment';
-import { combinarTexto, datosIdeaDePersonaje, IdeasIaError, IdeasIaService, limpiarDatos } from './ideas-ia.service';
+import { cifra, combinarTexto, datoDemasiadoLargo, datosIdeaDePersonaje, IdeasIaError, IdeasIaService, limpiarDatos } from './ideas-ia.service';
 import { PlatformSessionService } from './platform-session.service';
 
 describe('IdeasIaService', () => {
@@ -140,6 +140,16 @@ describe('IdeasIaService', () => {
         expect(olvidar).toHaveBeenCalled();
     });
 
+    it('un dato más largo que su máximo no se pide (kit 1.58) y se explica como la API', async () => {
+        const error = await service.pedir('trasfondo', { nombre: 'Thorin', trasfondo: 'y'.repeat(20001) }).catch(e => e);
+        expect(error instanceof IdeasIaError).toBeTrue();
+        expect(error.code).toBe('texto_demasiado_largo');
+        expect(error.field).toBe('datos.trasfondo');
+        expect(error.message).toBe('El trasfondo: como mucho, 20 000 caracteres.');
+        http.expectNone(urlIdeas);
+        http.expectNone(urlEstado);
+    });
+
     it('sin sesión de la API no llama', async () => {
         session.tokenApi.and.rejectWith(new Error('Sesión no iniciada'));
         const promesa = service.pedir('frase', {}).catch(e => e);
@@ -176,6 +186,16 @@ describe('ideas-ia: datos y texto', () => {
         });
         expect(datosIdeaDePersonaje(null)).toEqual({});
         expect(limpiarDatos({ edad: 120, campana: 'La costa' })).toEqual({ campana: 'La costa', edad: 120 });
+    });
+
+    it('cuenta los textos como la API: los cortos sin espacios de sobra, los largos con sus párrafos', () => {
+        expect(limpiarDatos({ nombre: ' Thorin   Escudo\n de Roble ', trasfondo: ' Uno.\n\nDos. ' }))
+            .toEqual({ nombre: 'Thorin Escudo de Roble', trasfondo: 'Uno.\n\nDos.' });
+        expect(datoDemasiadoLargo({ nombre: 'x'.repeat(150), trasfondo: 'y'.repeat(20000), personalidad: 'z'.repeat(10000) })).toBeNull();
+        expect(datoDemasiadoLargo({ nombre: 'x'.repeat(151) })?.message).toBe('El nombre: como mucho, 150 caracteres.');
+        expect(datoDemasiadoLargo({ clases: [{ nombre: 'c'.repeat(101) }] })?.field).toBe('datos.clases.nombre');
+        expect(cifra(2000)).toBe('2000');
+        expect(cifra(10000)).toBe('10 000');
     });
 
     it('sustituye o añade al final con una línea en blanco', () => {

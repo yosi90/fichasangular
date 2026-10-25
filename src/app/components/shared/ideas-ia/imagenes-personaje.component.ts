@@ -1,7 +1,7 @@
 import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { datosIdeaDePersonaje, DisponibilidadIa, IdeasIaError, IdeasIaService } from 'src/app/services/ideas-ia.service';
+import { datosIdeaDePersonaje, DisponibilidadIa, IdeasIaError, IdeasIaService, MAX_DETALLES_IMAGEN_IA } from 'src/app/services/ideas-ia.service';
 import {
     ImagenesPersonaje,
     ImagenesPersonajeService,
@@ -36,6 +36,7 @@ export class ImagenesPersonajeComponent implements OnInit, OnChanges, OnDestroy 
     /** El tipo con el panel de «Con IA» abierto. */
     conIa: TipoImagenPersonaje | null = null;
     detalles = '';
+    readonly maxDetalles = MAX_DETALLES_IMAGEN_IA;
     /** El tipo que se está subiendo o generando. */
     ocupado: TipoImagenPersonaje | null = null;
     error: IdeasIaError | null = null;

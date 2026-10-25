@@ -23,10 +23,10 @@
         <div class="ideas-ia__voz" *ngIf="eligiendo">
             <mat-form-field appearance="outline" class="ideas-ia__campo">
                 <mat-label>Lo que dice</mat-label>
-                <textarea matInput [(ngModel)]="textoParaGuardar" (ngModelChange)="textoDeIa = false" maxlength="300" rows="2"
+                <textarea matInput [(ngModel)]="textoParaGuardar" (ngModelChange)="textoDeIa = false" [maxlength]="maxFrase" rows="2"
                     placeholder="Escribe una frase suya o genérala con IA"></textarea>
                 <mat-hint *ngIf="textoDeIa">Frase escrita por IA: cámbiala si quieres.</mat-hint>
-                <mat-hint align="end">{{textoParaGuardar.length}} / 300</mat-hint>
+                <mat-hint align="end">{{textoParaGuardar.length}} / {{maxFrase}}</mat-hint>
             </mat-form-field>
             <div class="ideas-ia__barra">
                 <button type="button" mat-stroked-button class="ideas-ia__boton" [disabled]="cargando || generando" (click)="generarTexto()"

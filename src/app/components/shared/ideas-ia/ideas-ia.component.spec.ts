@@ -6,6 +6,7 @@ import { PlatformSessionService } from 'src/app/services/platform-session.servic
 import { ImagenesPersonajeService } from 'src/app/services/imagenes-personaje.service';
 import { VozPersonajeService } from 'src/app/services/voz-personaje.service';
 import Swal from 'sweetalert2';
+import { TextoManualComponent } from '../texto-manual/texto-manual.component';
 import { IdeasIaComponent } from './ideas-ia.component';
 import { ImagenesPersonajeComponent } from './imagenes-personaje.component';
 import { ModeloIaMenuComponent } from './modelo-ia-menu.component';
@@ -150,6 +151,34 @@ describe('IdeasIaComponent', () => {
         expect(texto()).toContain('Tus claves de IA han llegado a su tope de este mes.');
         expect(texto()).toContain('Ir a tus claves de IA');
         expect(servicio.disponibilidad).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('IdeasIaComponent: la respuesta de la IA, como texto (kit 1.58)', () => {
+    it('lo que parece HTML se enseña como texto, sin crear elementos', async () => {
+        const servicio = crearServicio();
+        servicio.pedir.and.resolveTo({
+            texto: '<img src="x" onerror="window.__ia=1"> **Valiente** y <script>window.__ia=2</script>',
+            proveedor: 'anthropic', modelo: 'claude-haiku-5-5', recortada: false,
+        });
+        await TestBed.configureTestingModule({
+            declarations: [IdeasIaComponent, TextoManualComponent],
+            providers: [
+                { provide: IdeasIaService, useValue: servicio },
+                { provide: PlatformSessionService, useValue: { estado$: new BehaviorSubject<any>({ tipo: 'con_sesion' }) } },
+            ],
+            schemas: [NO_ERRORS_SCHEMA],
+        }).compileComponents();
+        const fixture = TestBed.createComponent(IdeasIaComponent);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        await fixture.componentInstance.pedir('personaje');
+        fixture.detectChanges();
+        const propuesta = (fixture.nativeElement as HTMLElement).querySelector('.ideas-ia__propuesta') as HTMLElement;
+        expect(propuesta.querySelector('img, script')).toBeNull();
+        expect(propuesta.textContent).toContain('<img src="x" onerror="window.__ia=1">');
+        expect(propuesta.querySelector('strong')?.textContent).toBe('Valiente');
+        expect((window as any).__ia).toBeUndefined();
     });
 });
 

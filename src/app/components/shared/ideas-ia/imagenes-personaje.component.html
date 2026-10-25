@@ -35,10 +35,10 @@
     <div class="ideas-ia__voz" *ngIf="conIa && esDueno">
         <mat-form-field appearance="outline" class="ideas-ia__campo">
             <mat-label>{{nombre(conIa)}} con IA: detalles de su aspecto (opcional)</mat-label>
-            <textarea matInput [(ngModel)]="detalles" maxlength="500" rows="2"
+            <textarea matInput [(ngModel)]="detalles" [maxlength]="maxDetalles" rows="2"
                 placeholder="Pelo, ropa, armas, expresión…"></textarea>
             <mat-hint>Se usan también su raza, sus clases, su género y su edad.</mat-hint>
-            <mat-hint align="end">{{detalles.length}} / 500</mat-hint>
+            <mat-hint align="end">{{detalles.length}} / {{maxDetalles}}</mat-hint>
         </mat-form-field>
         <div class="ideas-ia__acciones">
             <app-modelo-ia-menu uso="imagen"></app-modelo-ia-menu>
