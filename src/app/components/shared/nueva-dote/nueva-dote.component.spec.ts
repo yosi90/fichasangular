@@ -34,6 +34,7 @@ import { EspecialService } from 'src/app/services/especial.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
+import { AptitudEspecialService } from 'src/app/services/aptitud-especial.service';
 import { NuevaDoteComponent } from './nueva-dote.component';
 
 describe('NuevaDoteComponent', () => {
@@ -155,6 +156,10 @@ describe('NuevaDoteComponent', () => {
                     { Id: 8, Nombre: 'Musica de bardo', Extra: true, Activa_extra: false, Extras: [] },
                     { Id: 9, Nombre: 'Esquiva asombrosa', Extra: false, Activa_extra: false, Extras: [] },
                 ]) } },
+                { provide: AptitudEspecialService, useValue: { getAptitudesEspeciales: () => of([
+                    { Id: 13, Nombre: 'Arma de aliento', Raciales: [], Especiales: [], Plantillas: [{ Id: 6, Nombre: 'Semidragón' }], Comodin: null },
+                    { Id: 9, Nombre: 'Agarrón mejorado', Raciales: [{ Id: 47, Nombre: 'Agarrón mejorado (azotamentes)' }], Especiales: [], Plantillas: [], Comodin: null },
+                ]) } },
                 { provide: AlineamientoService, useValue: { getAlineamientosBasicosCatalogo: () => of([]) } },
                 { provide: TamanoService, useValue: { getTamanos: () => of([
                     { Id: 1, Nombre: 'Pequeno', Modificador: 1, Modificador_presa: -4 },
@@ -263,8 +268,34 @@ describe('NuevaDoteComponent', () => {
         expect(component.prerrequisitosPendientes).toBeTrue();
     });
 
-    it('oculta el prerrequisito inherente del selector visible', () => {
-        expect(component.prerrequisitoOpciones.some((item) => item.key === 'inherente')).toBeFalse();
+    it('ofrece la aptitud especial con las aptitudes de su catálogo, no con los especiales de clase', async () => {
+        expect(component.prerrequisitoOpciones.some((item) => item.key === 'aptitud_especial')).toBeTrue();
+
+        await (component as any).asegurarCatalogo('aptitudes_especiales');
+
+        expect(component.getCatalogoPrerrequisito('aptitud_especial')).toEqual([
+            { id: 9, nombre: 'Agarrón mejorado' },
+            { id: 13, nombre: 'Arma de aliento' },
+        ]);
+    });
+
+    it('guarda la aptitud especial con su Id_aptitud_especial', async () => {
+        await (component as any).asegurarCatalogo('aptitudes_especiales');
+        component.prerrequisitosEditor = [{
+            uid: 'apt',
+            tipo: 'aptitud_especial',
+            id: 13,
+            valor: 1,
+            opcional: 0,
+            id_extra: null,
+            repetido: 1,
+            requiere_extra: false,
+            salvacion_tipo: 'fortaleza',
+        }];
+
+        expect((component as any).construirPrerrequisitosPayload()).toEqual({
+            aptitud_especial: [{ Id_aptitud_especial: 13, Aptitud_especial: 'Arma de aliento' }],
+        });
     });
 
     it('detecta si un especial permite extra', async () => {

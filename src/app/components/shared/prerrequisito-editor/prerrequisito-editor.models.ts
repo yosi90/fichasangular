@@ -1,5 +1,6 @@
 export type PrerequisiteCatalogKey =
     | 'alineamientos'
+    | 'aptitudes_especiales'
     | 'armaduras'
     | 'armas'
     | 'clases'
@@ -25,6 +26,7 @@ export type PrerequisiteType =
     | 'actitud_requerido'
     | 'alineamiento_prohibido'
     | 'alineamiento_requerido'
+    | 'aptitud_especial'
     | 'ataque_base'
     | 'caracteristica'
     | 'clase_especial'
@@ -39,7 +41,6 @@ export type PrerequisiteType =
     | 'escuela_nivel'
     | 'habilidad'
     | 'idioma'
-    | 'inherente'
     | 'lanz_espontaneo'
     | 'lanzador_arcano'
     | 'lanzador_divino'

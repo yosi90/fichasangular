@@ -43,6 +43,7 @@ import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
 import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { EspecialService } from 'src/app/services/especial.service';
+import { AptitudEspecialService } from 'src/app/services/aptitud-especial.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
@@ -131,7 +132,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         { key: 'velocidad_escalar', label: 'Aumenta velocidad de escalada' },
     ];
     readonly prerrequisitoOpciones: PrerrequisitoOption[] = getPrerequisiteTypeOptions(
-        (type) => type !== 'inherente' && !this.prerrequisitosSoloClase.has(type)
+        (type) => !this.prerrequisitosSoloClase.has(type)
     );
     readonly caracteristicasCatalogo: ExtraSelectorItem[] = [
         { id: 1, nombre: 'Fuerza' },
@@ -177,6 +178,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     gruposArmadurasCatalogo: ExtraSelectorItem[] = [];
     conjurosCatalogo: ExtraSelectorItem[] = [];
     especialesCatalogo: ExtraSelectorItem[] = [];
+    aptitudesEspecialesCatalogo: ExtraSelectorItem[] = [];
     especialesDetalleCatalogo: EspecialClaseDetalle[] = [];
     extrasCatalogo: ExtraSelectorItem[] = [];
     alineamientosCatalogo: ExtraSelectorItem[] = [];
@@ -270,6 +272,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         private grupoArmaduraSvc: GrupoArmaduraService,
         private conjuroSvc: ConjuroService,
         private especialSvc: EspecialService,
+        private aptitudEspecialSvc: AptitudEspecialService,
         private alineamientoSvc: AlineamientoService,
         private tamanoSvc: TamanoService,
         private prerrequisitosTiposSvc: PrerrequisitosTiposService,
@@ -906,7 +909,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             return this.alineamientosCatalogo;
         if (tipo === 'caracteristica')
             return this.caracteristicasCatalogo;
-        if (tipo === 'clase_especial' || tipo === 'inherente')
+        if (tipo === 'aptitud_especial')
+            return this.aptitudesEspecialesCatalogo;
+        if (tipo === 'clase_especial')
             return this.especialesCatalogo;
         if (tipo === 'competencia_arma')
             return this.armasCatalogo;
@@ -1351,6 +1356,15 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             const alineamientos = await firstValueFrom(this.alineamientoSvc.getAlineamientosBasicosCatalogo());
             this.alineamientosCatalogo = (Array.isArray(alineamientos) ? alineamientos : [])
                 .map((item: any) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+                .filter((item) => item.id > 0 && item.nombre.length > 0)
+                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            return;
+        }
+
+        if (clave === 'aptitudes_especiales') {
+            const aptitudes = await firstValueFrom(this.aptitudEspecialSvc.getAptitudesEspeciales());
+            this.aptitudesEspecialesCatalogo = aptitudes
+                .map((item) => ({ id: item.Id, nombre: item.Nombre }))
                 .filter((item) => item.id > 0 && item.nombre.length > 0)
                 .sort((a, b) => compararTexto(a.nombre, b.nombre));
             return;

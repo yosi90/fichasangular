@@ -65,6 +65,8 @@ function buildCatalogPayload(
         return { ...base, Id_actitud: id, Actitud: context.getCatalogName(tipo, id) };
     if (tipo === 'alineamiento_prohibido' || tipo === 'alineamiento_requerido')
         return { ...base, Id_alineamiento: id, Alineamiento: context.getCatalogName(tipo, id) };
+    if (tipo === 'aptitud_especial')
+        return { ...base, Id_aptitud_especial: id, Aptitud_especial: context.getCatalogName(tipo, id) };
     if (tipo === 'caracteristica')
         return { ...base, Id_caracteristica: id, Caracteristica: context.getCatalogName(tipo, id), Cantidad: valor };
     if (tipo === 'clase_especial')
@@ -98,8 +100,6 @@ function buildCatalogPayload(
         return { ...base, Id_habilidad: id, Habilidad: context.getCatalogName(tipo, id), Cantidad: valor, Requiere_extra: row.requiere_extra };
     if (tipo === 'idioma')
         return { ...base, Id_idioma: id, Idioma: context.getCatalogName(tipo, id) };
-    if (tipo === 'inherente')
-        return { ...base, Id_especial: id, Clase_especial: context.getCatalogName(tipo, id) };
     if (tipo === 'lanz_espontaneo')
         return { ...base, Id_conjuro: id, Conjuro: context.getCatalogName(tipo, id) };
     if (tipo === 'limite_tipo_dote')
@@ -199,6 +199,12 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
     definition('alineamiento_requerido', 'catalog-only', {
         requiredCatalogs: ['alineamientos'],
         catalogLabel: 'Alineamiento',
+        isComplete: isCatalogOnlyComplete,
+        toPayload: buildCatalogPayload,
+    }),
+    definition('aptitud_especial', 'catalog-only', {
+        requiredCatalogs: ['aptitudes_especiales'],
+        catalogLabel: 'Aptitud especial',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
@@ -306,12 +312,6 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
     definition('idioma', 'catalog-only', {
         requiredCatalogs: ['idiomas'],
         catalogLabel: 'Idioma',
-        isComplete: isCatalogOnlyComplete,
-        toPayload: buildCatalogPayload,
-    }),
-    definition('inherente', 'catalog-only', {
-        requiredCatalogs: ['especiales'],
-        catalogLabel: 'Especial',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),

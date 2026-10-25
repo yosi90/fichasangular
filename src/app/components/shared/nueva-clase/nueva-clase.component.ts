@@ -33,7 +33,8 @@ import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipo
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
-import { ClaseService } from 'src/app/services/clase.service';
+import { CLAVES_PRERREQUISITOS, ClaseService } from 'src/app/services/clase.service';
+import { AptitudEspecialService } from 'src/app/services/aptitud-especial.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DominioService } from 'src/app/services/dominio.service';
 import { DoteService } from 'src/app/services/dote.service';
@@ -187,7 +188,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     ];
     aumentosClaseLanzadoraCatalogo: ClaseAumentoClaseLanzadoraCatalogItem[] = [];
     readonly nivelesConjuro = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    readonly prerrequisitoOpciones = getPrerequisiteTypeOptions((type) => type !== 'inherente');
+    readonly prerrequisitoOpciones = getPrerequisiteTypeOptions(() => true);
     readonly generoCatalogo: PrerequisiteCatalogItem[] = [
         { id: 1, nombre: 'Masculino' },
         { id: 2, nombre: 'Femenino' },
@@ -203,6 +204,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
 
     private catalogosPrerrequisito: Record<string, PrerequisiteCatalogItem[]> = {
         alineamientos: [],
+        aptitudes_especiales: [],
         armaduras: [],
         armas: [],
         clases: [],
@@ -287,6 +289,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         private habilidadSvc: HabilidadService,
         private doteSvc: DoteService,
         private especialSvc: EspecialService,
+        private aptitudEspecialSvc: AptitudEspecialService,
         private extraSvc: ExtraService,
         private conjuroSvc: ConjuroService,
         private alineamientoSvc: AlineamientoService,
@@ -945,15 +948,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
             dote: 'dote_elegida',
             escuela_nivel: 'nivel_escuela',
         };
-        const keys: (keyof ClasePrerrequisitos)[] = [
-            'subtipo', 'caracteristica', 'dg', 'dominio', 'nivel_escuela', 'ataque_base', 'reserva_psionica',
-            'lanzar_poder_psionico_nivel', 'conocer_poder_psionico', 'genero', 'competencia_arma', 'competencia_armadura',
-            'competencia_grupo_arma', 'competencia_grupo_armadura', 'dote_elegida', 'rangos_habilidad', 'idioma',
-            'alineamiento_requerido', 'alineamiento_prohibido', 'actitud_requerido', 'actitud_prohibido', 'lanzador_arcano',
-            'lanzador_divino', 'lanzar_conjuros_arcanos_nivel', 'lanzar_conjuros_divinos_nivel', 'conjuro_conocido',
-            'inherente', 'clase_especial', 'tamano_maximo', 'tamano_minimo', 'raza', 'no_raza',
-        ];
-        const out = keys.reduce((acc, key) => ({ ...acc, [key]: [] }), {} as ClasePrerrequisitos);
+        const out = CLAVES_PRERREQUISITOS.reduce((acc, key) => ({ ...acc, [key]: [] }), {} as ClasePrerrequisitos);
         Object.keys(raw).forEach((key) => {
             const target = aliases[key] ?? key;
             if (Array.isArray((out as any)[target]))
@@ -1306,6 +1301,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
             };
             if (key === 'alineamientos') {
                 this.alineamientoSvc.getAlineamientosCombinacionesCatalogo().pipe(take(1)).subscribe({ next: (items: any[]) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
+            } else if (key === 'aptitudes_especiales') {
+                this.aptitudEspecialSvc.getAptitudesEspeciales().pipe(take(1)).subscribe({ next: (items) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
             } else if (key === 'dominios') {
                 this.dominioSvc.getDominios().pipe(take(1)).subscribe({ next: (items) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
             } else if (key === 'escuelas') {
@@ -1355,6 +1352,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
             return this.catalogosPrerrequisito['habilidades'];
         if (type === 'idioma')
             return this.catalogosPrerrequisito['idiomas'];
+        if (type === 'aptitud_especial')
+            return this.catalogosPrerrequisito['aptitudes_especiales'];
         if (type === 'clase_especial')
             return this.catalogosPrerrequisito['especiales'];
         if (type === 'raza' || type === 'no_raza')
