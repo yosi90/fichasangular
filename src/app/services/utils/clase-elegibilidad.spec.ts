@@ -440,4 +440,56 @@ describe('clase-elegibilidad', () => {
             expect(res.advertencias).toEqual(['La web no puede comprobar este requisito: Cuerpo flexible']);
         });
     });
+
+    describe('solo por alineamiento (por el tipo, no por el texto de la frase)', () => {
+        const clase = (flags: Record<string, boolean>, prerrequisitos: Record<string, any[]>) => crearClaseBase({
+            Prerrequisitos_flags: flags as any,
+            Prerrequisitos: { ...crearClaseBase().Prerrequisitos, ...prerrequisitos } as any,
+        });
+
+        it('un alineamiento requerido con la frase corta («No cumple: Neutral bueno») cuenta como solo por alineamiento', () => {
+            const res = evaluarElegibilidadClase(clase(
+                { alineamiento_requerido: true },
+                { alineamiento_requerido: [{ Alineamiento: 'Neutral bueno', Opcional: 0, Frase: 'Neutral bueno' }] },
+            ), crearContextoBase());
+            expect(res.estado).toBe('blocked_failed');
+            expect(res.razones).toEqual(['No cumple: Neutral bueno']);
+            expect(res.soloPorAlineamiento).toBeTrue();
+        });
+
+        it('una actitud («No cumple: Cualquier alineamiento caótico») también', () => {
+            const res = evaluarElegibilidadClase(clase(
+                { actitud_requerido: true },
+                { actitud_requerido: [{ Id_actitud: 3, Opcional: 0, Frase: 'Cualquier alineamiento caótico' }] },
+            ), crearContextoBase());
+            expect(res.razones).toEqual(['No cumple: Cualquier alineamiento caótico']);
+            expect(res.soloPorAlineamiento).toBeTrue();
+        });
+
+        it('un grupo de alineamientos alternativos que no se cumple también', () => {
+            const res = evaluarElegibilidadClase(clase(
+                { alineamiento_requerido: true },
+                {
+                    alineamiento_requerido: [
+                        { Alineamiento: 'Neutral bueno', Opcional: 1, Frase: 'Neutral bueno' },
+                        { Alineamiento: 'Caótico bueno', Opcional: 1, Frase: 'Caótico bueno' },
+                    ],
+                },
+            ), crearContextoBase());
+            expect(res.razones).toEqual(['No cumple: Neutral bueno o Caótico bueno']);
+            expect(res.soloPorAlineamiento).toBeTrue();
+        });
+
+        it('si además falla otro prerrequisito, no es solo por alineamiento', () => {
+            const res = evaluarElegibilidadClase(clase(
+                { alineamiento_prohibido: true, ataque_base: true },
+                {
+                    alineamiento_prohibido: [{ Alineamiento: 'Legal bueno', Opcional: 0, Frase: 'No legal bueno' }],
+                    ataque_base: [{ Cantidad: 10, Opcional: 0, Frase: 'Ataque base +10' }],
+                },
+            ), crearContextoBase());
+            expect(res.estado).toBe('blocked_failed');
+            expect(res.soloPorAlineamiento).toBeFalse();
+        });
+    });
 });

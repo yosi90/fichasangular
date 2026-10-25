@@ -18,6 +18,8 @@ export interface EvaluacionPrerrequisito {
     razonUnknown: string;
     /** La frase del prerrequisito (`frasePrerrequisito`), para el motivo «No cumple: …». */
     frase: string;
+    /** El tipo del prerrequisito (`alineamiento_requerido`…), para saber qué bloquea sin leer el texto del motivo. */
+    clave?: string;
     /**
      * Si la web no puede comprobarlo y lo deja elegir (decisión del propietario del 2026-10-25): cuenta como cumplido y
      * este aviso acompaña a la entidad. No es saltarse una restricción, así que no la vuelve homebrew.
@@ -31,6 +33,7 @@ interface EstadoGrupo {
     unknown: boolean;
     frases: string[];
     avisos: string[];
+    claves: string[];
 }
 
 /**
@@ -43,20 +46,24 @@ export class MotivosPrerrequisitos {
     readonly unknown: string[] = [];
     readonly avisos: string[] = [];
     private readonly grupos = new Map<number, EstadoGrupo>();
+    /** Los tipos de prerrequisito de cada motivo de `fail` y `unknown` añadido aquí (los añadidos a mano no tienen). */
+    private readonly clavesDeMotivos: string[][] = [];
 
     registrar(evaluacion: EvaluacionPrerrequisito): void {
+        const claves = evaluacion.clave ? [evaluacion.clave] : [];
         if (evaluacion.grupoOpcional <= 0) {
             if (evaluacion.aviso)
                 this.avisos.push(evaluacion.aviso);
             else if (!evaluacion.evaluable)
-                this.unknown.push(evaluacion.razonUnknown);
+                this.anotar(this.unknown, evaluacion.razonUnknown, claves);
             else if (!evaluacion.cumple)
-                this.fail.push(razonNoCumple([evaluacion.frase]));
+                this.anotar(this.fail, razonNoCumple([evaluacion.frase]), claves);
             return;
         }
 
-        const estado = this.grupos.get(evaluacion.grupoOpcional) ?? { cumple: false, falla: false, unknown: false, frases: [], avisos: [] };
+        const estado = this.grupos.get(evaluacion.grupoOpcional) ?? { cumple: false, falla: false, unknown: false, frases: [], avisos: [], claves: [] };
         estado.frases.push(evaluacion.frase);
+        estado.claves.push(...claves);
         if (evaluacion.aviso)
             estado.avisos.push(evaluacion.aviso);
         else if (!evaluacion.evaluable)
@@ -76,10 +83,26 @@ export class MotivosPrerrequisitos {
             if (estado.avisos.length > 0)
                 this.avisos.push(...estado.avisos);
             else if (estado.unknown)
-                this.unknown.push(`No se pudo validar por completo el grupo opcional ${grupo}`);
+                this.anotar(this.unknown, `No se pudo validar por completo el grupo opcional ${grupo}`, estado.claves);
             else if (estado.falla)
-                this.fail.push(razonNoCumple(estado.frases));
+                this.anotar(this.fail, razonNoCumple(estado.frases), estado.claves);
         });
+    }
+
+    /**
+     * Si todo lo que bloquea son prerrequisitos de estos tipos (por ejemplo, solo el alineamiento): se decide por el tipo,
+     * no por el texto del motivo. Un motivo añadido a mano, sin tipo, cuenta como de otro tipo.
+     */
+    soloPorTipos(tipos: readonly string[]): boolean {
+        const total = this.fail.length + this.unknown.length;
+        return total > 0
+            && this.clavesDeMotivos.length === total
+            && this.clavesDeMotivos.every((claves) => claves.length > 0 && claves.every((clave) => tipos.includes(clave)));
+    }
+
+    private anotar(destino: string[], motivo: string, claves: string[]): void {
+        destino.push(motivo);
+        this.clavesDeMotivos.push(claves);
     }
 }
 

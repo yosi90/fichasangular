@@ -6848,12 +6848,20 @@ describe('NuevoPersonajeService (dotes repetibles con extra)', () => {
 });
 
 describe('NuevoPersonajeService (avisos de la elegibilidad de clases)', () => {
-    it('un aviso no impide que el bloqueo cuente como solo por alineamiento', () => {
+    it('el bloqueo solo por alineamiento lo dice la evaluación (por tipo), aunque haya avisos', () => {
         const service = new NuevoPersonajeService();
         expect(service.esBloqueoSoloPorAlineamiento({
             estado: 'blocked_failed',
-            razones: ['No cumple: Cualquier alineamiento legal'],
+            razones: ['No cumple: Neutral bueno'],
             advertencias: ['La web no puede comprobar este requisito: Cuerpo flexible'],
+            soloPorAlineamiento: true,
         })).toBeTrue();
+        expect(service.esBloqueoSoloPorAlineamiento({
+            estado: 'blocked_failed',
+            razones: ['No cumple: Cualquier alineamiento legal', 'No cumple: Ataque base +10'],
+            advertencias: [],
+            soloPorAlineamiento: false,
+        })).toBeFalse();
+        expect(service.esBloqueoSoloPorAlineamiento({ estado: 'eligible', razones: [], advertencias: [], soloPorAlineamiento: true })).toBeFalse();
     });
 });

@@ -46,7 +46,17 @@ export interface ClaseEvaluacionResultado {
     estado: EstadoElegibilidadClase;
     razones: string[];
     advertencias: string[];
+    /** Bloqueada y solo por prerrequisitos de alineamiento o de actitud (`PRERREQUISITOS_DE_ALINEAMIENTO`). */
+    soloPorAlineamiento?: boolean;
 }
+
+/** Los tipos de prerrequisito de alineamiento: una clase que solo falla por ellos se puede elegir como homebrew. */
+export const PRERREQUISITOS_DE_ALINEAMIENTO: readonly string[] = [
+    "alineamiento_requerido",
+    "alineamiento_prohibido",
+    "actitud_requerido",
+    "actitud_prohibido",
+];
 
 const FLAGS_SOPORTADAS: (keyof Clase["Prerrequisitos_flags"])[] = [
     "raza",
@@ -575,7 +585,7 @@ function evaluarFamilia(
         return;
     }
 
-    entries.forEach((entry) => motivos.registrar({ ...build(entry), frase: frasePrerrequisito(clave, entry) }));
+    entries.forEach((entry) => motivos.registrar({ ...build(entry), frase: frasePrerrequisito(clave, entry), clave }));
 }
 
 export function evaluarElegibilidadClase(clase: Clase, ctx: ClaseEvaluacionContexto): ClaseEvaluacionResultado {
@@ -676,11 +686,13 @@ export function evaluarElegibilidadClase(clase: Clase, ctx: ClaseEvaluacionConte
     motivos.cerrarGrupos();
     advertencias.push(...textosUnicos(motivos.avisos));
 
+    const soloPorAlineamiento = motivos.soloPorTipos(PRERREQUISITOS_DE_ALINEAMIENTO);
     if (motivos.unknown.length > 0) {
         return {
             estado: "blocked_unknown",
             razones: Array.from(new Set(motivos.unknown)),
             advertencias,
+            soloPorAlineamiento,
         };
     }
 
@@ -689,6 +701,7 @@ export function evaluarElegibilidadClase(clase: Clase, ctx: ClaseEvaluacionConte
             estado: "blocked_failed",
             razones: Array.from(new Set(motivos.fail)),
             advertencias,
+            soloPorAlineamiento,
         };
     }
 

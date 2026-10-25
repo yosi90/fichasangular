@@ -1662,16 +1662,8 @@ export class NuevoPersonajeService {
     }
 
     esBloqueoSoloPorAlineamiento(evaluacion: ClaseEvaluacionResultado | null | undefined): boolean {
-        if (!evaluacion || evaluacion.estado === 'eligible')
-            return false;
-
-        // Solo los motivos: los avisos (lo que la web no puede comprobar) no bloquean.
-        const mensajes = (evaluacion.razones ?? [])
-            .map((msg) => `${msg ?? ''}`.trim()).filter((msg) => msg.length > 0);
-        if (mensajes.length < 1)
-            return false;
-
-        return mensajes.every((mensaje) => this.esMensajeRelacionAlineamiento(mensaje));
+        // Lo decide el tipo de cada prerrequisito que falla (`clase-elegibilidad`), no el texto de su frase.
+        return !!evaluacion && evaluacion.estado !== 'eligible' && evaluacion.soloPorAlineamiento === true;
     }
 
     obtenerOpcionalesSiguienteNivelClase(clase: Clase): ClaseGrupoOpcionalPendiente[] {
@@ -4350,23 +4342,6 @@ export class NuevoPersonajeService {
             gruposOpcionalesPendientes: resolucionOpcionales.gruposPendientes,
             especialesAplicados: especialesAplicar.map((especialNivel) => ({ ...especialNivel })),
         };
-    }
-
-    private esMensajeRelacionAlineamiento(mensaje: string): boolean {
-        const normalizado = normalizarTexto(mensaje);
-        if (normalizado.length < 1)
-            return false;
-        if (normalizado.includes('alineamiento') || normalizado.includes('actitud'))
-            return true;
-        if (normalizado.includes('alineamiento_requerido'))
-            return true;
-        if (normalizado.includes('alineamiento_prohibido'))
-            return true;
-        if (normalizado.includes('actitud_requerido'))
-            return true;
-        if (normalizado.includes('actitud_prohibido'))
-            return true;
-        return false;
     }
 
     toggleVentaja(idVentaja: number): ToggleVentajaResult {
