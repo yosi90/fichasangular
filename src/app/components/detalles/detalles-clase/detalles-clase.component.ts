@@ -1,10 +1,11 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { Clase, ClaseDoteNivel, ClaseNivelDetalle } from 'src/app/interfaces/clase';
+import { DatoFicha, EtiquetaFicha, datosVisibles, unirTipo } from 'src/app/components/detalles/ficha';
+import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseNivelDetalle } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { idiomasVisibles, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
-import { esCampoId, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-registros';
+import { esCampoId, extraerValorSimple, formatearClave, formatearValor, mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import {
     CondicionPrerrequisito,
     GrupoPrerrequisitos,
@@ -49,17 +50,63 @@ type ResumenEspecialRenderItem = {
     opciones: ResumenEspecial[];
 };
 
+/** Una fila de la tabla de progresión, ya con lo que enseña cada celda. */
+type FilaProgresion = {
+    nivel: number;
+    ataqueBase: string;
+    fortaleza: string;
+    reflejos: string;
+    voluntad: string;
+    especiales: ResumenEspecialRenderItem[];
+    nivelMaxPoder: string;
+    reservaPsionica: string;
+    aumentos: string;
+    /** En el orden de `columnasDiarios` y `columnasConocidos`. */
+    diarios: string[];
+    conocidos: string[];
+    conocidosTotal: string;
+};
+
+/** Los conjuros del listado de la clase de un mismo nivel. */
+type NivelListadoConjuros = {
+    nivel: number;
+    etiqueta: string;
+    conjuros: ClaseConjuroRef[];
+};
+
 @Component({
     selector: 'app-detalles-clase',
     templateUrl: './detalles-clase.component.html',
-    styleUrls: ['./detalles-clase.component.sass'],
     standalone: false
 })
 export class DetallesClaseComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
 
     claseData!: Clase;
+    /** El nombre con la primera letra en mayúscula (algunos llegan en minúscula de los datos). */
+    nombreClase = '';
+    /** «Clase básica» o «Clase de prestigio». */
+    tipoCabecera = '';
+    etiquetas: EtiquetaFicha[] = [];
+    /** Los datos clave: dado de golpe, puntos de habilidad, niveles y roles. */
+    datos: DatoFicha[] = [];
+    flagsConjuros: string[] = [];
+    datosConjuros: DatoFicha[] = [];
+    listadoConjuros: NivelListadoConjuros[] = [];
+    idiomas: { Nombre: string; Descripcion: string; }[] = [];
+    flagsPrerrequisito: string[] = [];
+    hayCompetencias = false;
+    hayHabilidades = false;
+    readonly gruposCompetencias: { clave: keyof Clase['Competencias'], titulo: string }[] = [
+        { clave: 'Armas', titulo: 'Armas' },
+        { clave: 'Armaduras', titulo: 'Armaduras' },
+        { clave: 'Grupos_arma', titulo: 'Grupos de arma' },
+        { clave: 'Grupos_armadura', titulo: 'Grupos de armadura' },
+    ];
     filasNivel: ClaseNivelDetalle[] = [];
+    filasTabla: FilaProgresion[] = [];
+    /** Dos filas de cabecera si la tabla lleva conjuros diarios o conocidos por nivel de conjuro. */
+    filasCabecera = 1;
     columnasDiarios: number[] = [];
     columnasConocidos: number[] = [];
     mostrarConocidosTotal: boolean = false;
@@ -89,7 +136,16 @@ export class DetallesClaseComponent {
     @Input()
     set clase(value: Clase) {
         this.claseData = value;
+        this.nombreClase = mayusculaInicial(value?.Nombre);
+        this.tipoCabecera = unirTipo([value?.Prestigio ? 'Clase de prestigio' : 'Clase básica']);
+        this.etiquetas = value?.Aumenta_clase_lanzadora ? [{ texto: 'Aumenta clase lanzadora' }] : [];
+        this.datos = this.construirDatos();
+        this.flagsConjuros = this.construirFlagsConjuros();
+        this.datosConjuros = datosVisibles([{ etiqueta: 'Salvación de conjuros', valor: value?.Mod_salv_conjuros }]);
+        this.listadoConjuros = this.construirListadoConjuros();
+        this.idiomas = idiomasVisibles(value?.Idiomas);
         this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos);
+        this.flagsPrerrequisito = value?.Prerrequisitos_flags?.habilidad_clase ? ['Habilidad de clase'] : [];
         this.recalcularBloquesVisuales();
         this.recalcularTablaProgresion();
     }
@@ -141,47 +197,6 @@ export class DetallesClaseComponent {
             this.doteDetallesPorNombre.emit(nombreFallback);
     }
 
-    getTooltipEspecial(especial: ResumenEspecial): string {
-        const detalle = this.tieneTextoVisible(especial.tooltip) ? especial.tooltip : '';
-        if (this.esChipEspecialInteractivo(especial))
-            return detalle ? `Pulsa para ver detalles | ${detalle}` : 'Pulsa para ver detalles';
-        return detalle;
-    }
-
-    get rolesActivos(): string[] {
-        if (!this.claseData?.Roles)
-            return [];
-        const roles: string[] = [];
-        if (this.claseData.Roles.Dps) roles.push('DPS');
-        if (this.claseData.Roles.Tanque) roles.push('Tanque');
-        if (this.claseData.Roles.Support) roles.push('Support');
-        if (this.claseData.Roles.Utilidad) roles.push('Utilidad');
-        return roles;
-    }
-
-    get flagsConjurosActivos(): string[] {
-        if (!this.claseData?.Conjuros)
-            return [];
-        const flags: { clave: keyof Clase['Conjuros'], etiqueta: string }[] = [
-            { clave: 'Arcanos', etiqueta: 'Arcanos' },
-            { clave: 'Conocidos_nivel_a_nivel', etiqueta: 'Conocidos nivel a nivel' },
-            { clave: 'Lanzamiento_espontaneo', etiqueta: 'Lanzamiento espontaneo' },
-        ];
-        return flags
-            .filter(item => this.claseData.Conjuros[item.clave] === true)
-            .map(item => item.etiqueta);
-    }
-
-    getIdiomasOtorgados(): { Nombre: string; Descripcion: string; }[] {
-        return idiomasVisibles(this.claseData?.Idiomas);
-    }
-
-    tieneBloqueConjuros(): boolean {
-        return this.flagsConjurosActivos.length > 0
-            || this.tieneTextoVisible(this.claseData?.Mod_salv_conjuros)
-            || (this.claseData?.Conjuros?.Listado?.length ?? 0) > 0;
-    }
-
     readonly tieneTextoVisible = tieneTextoVisible;
 
     getCompetenciasVisibles(grupo: keyof Clase['Competencias']): ElementoVisual[] {
@@ -204,34 +219,15 @@ export class DetallesClaseComponent {
             this.armaduraDetallesId.emit(id);
     }
 
-    tieneCompetenciasVisibles(): boolean {
-        return Object.values(this.competenciasVisibles).some(items => items.length > 0);
-    }
-
     getHabilidadesVisibles(grupo: keyof Clase['Habilidades']): ElementoVisual[] {
         return this.habilidadesVisibles[grupo] ?? [];
     }
 
-    tieneHabilidadesVisibles(): boolean {
-        return Object.values(this.habilidadesVisibles).some(items => items.length > 0);
-    }
-
-    getPrerrequisitosFlagsActivos(): string[] {
-        const flags = this.claseData?.Prerrequisitos_flags;
-        if (!flags)
-            return [];
-
-        const activos: string[] = [];
-        if (flags.habilidad_clase)
-            activos.push('Habilidad de clase');
-
-        return activos;
-    }
-
-    esPrerrequisitoNavegable(condicion: CondicionPrerrequisito): boolean {
+    /** Las competencias con un arma o una armadura llevan a su detalle (función: la usa `<app-ficha-prerrequisitos>`). */
+    readonly esPrerrequisitoNavegable = (condicion: CondicionPrerrequisito): boolean => {
         const destino = destinoPrerrequisito(condicion);
         return destino?.entidad === 'arma' || destino?.entidad === 'armadura';
-    }
+    };
 
     abrirDetallePrerrequisito(condicion: CondicionPrerrequisito): void {
         const destino = destinoPrerrequisito(condicion);
@@ -374,42 +370,18 @@ export class DetallesClaseComponent {
         return this.renderEspecialesPorNivel[key] ?? [];
     }
 
-    trackByNivel = (index: number, nivel: ClaseNivelDetalle): number => {
-        const key = Number(nivel?.Nivel ?? 0);
-        return Number.isFinite(key) ? key : index;
-    };
+    trackByFila = (_index: number, fila: FilaProgresion): number => fila.nivel;
 
-    trackByRenderEspecial = (index: number, item: ResumenEspecialRenderItem): string => {
-        if (item.tipoRender === 'simple') {
-            const nombre = normalizarTexto(item.item.nombreEntidad || item.item.texto || '');
-            const id = Number(item.item.idEntidad ?? 0);
-            return `s|${item.item.tipo}|${id}|${nombre}|${item.item.grupoOpcional}|${item.item.extras.join('|')}`;
-        }
-
-        const opciones = item.opciones
-            .map((opcion) => {
-                const id = Number(opcion.idEntidad ?? 0);
-                const nombre = normalizarTexto(opcion.nombreEntidad || opcion.texto || '');
-                return `${opcion.tipo}:${id}:${nombre}:${opcion.extras.join('|')}`;
-            })
-            .join('||');
-        return `g|${item.grupo}|${opciones}`;
-    };
-
-    trackByResumenEspecial = (index: number, item: ResumenEspecial): string => {
-        const id = Number(item?.idEntidad ?? 0);
-        const nombre = normalizarTexto(item?.nombreEntidad || item?.texto || '');
-        return `${item?.tipo ?? 'especial'}|${id}|${nombre}|${item?.grupoOpcional ?? 0}|${(item?.extras ?? []).join('|')}`;
-    };
-
-    trackByTexto = (index: number, texto: string): string => {
-        return `${index}|${texto ?? ''}`;
-    };
+    /** El nombre del especial o la dote con sus extras: «Dote adicional (Guerrero)». */
+    textoEspecial(especial: ResumenEspecial): string {
+        return especial.extras.length > 0 ? `${especial.texto} (${especial.extras.join(', ')})` : especial.texto;
+    }
 
     getAumentosLanzadora(nivel: ClaseNivelDetalle): string[] {
         return (nivel?.Aumentos_clase_lanzadora ?? [])
             .map(a => a.Nombre)
-            .filter(nombre => this.tieneTextoVisible(nombre));
+            .filter(nombre => this.tieneTextoVisible(nombre))
+            .map(nombre => mayusculaInicial(nombre));
     }
 
     getValorDiarios(nivel: ClaseNivelDetalle, nivelConjuro: number): string {
@@ -432,13 +404,6 @@ export class DetallesClaseComponent {
         return `${nivel.Conjuros_conocidos_total}`;
     }
 
-    getTextoSalvaciones(nivel: ClaseNivelDetalle): string {
-        const fortaleza = this.tieneTextoVisible(nivel?.Salvaciones?.Fortaleza) ? `${nivel.Salvaciones.Fortaleza}` : '-';
-        const reflejos = this.tieneTextoVisible(nivel?.Salvaciones?.Reflejos) ? `${nivel.Salvaciones.Reflejos}` : '-';
-        const voluntad = this.tieneTextoVisible(nivel?.Salvaciones?.Voluntad) ? `${nivel.Salvaciones.Voluntad}` : '-';
-        return `Fort ${fortaleza} / Ref ${reflejos} / Vol ${voluntad}`;
-    }
-
     getEtiquetaNivelConjuro(nivel: number): string {
         if (Number(nivel) === 0)
             return 'Truco';
@@ -448,6 +413,8 @@ export class DetallesClaseComponent {
     private recalcularTablaProgresion() {
         if (!this.claseData) {
             this.filasNivel = [];
+            this.filasTabla = [];
+            this.filasCabecera = 1;
             this.columnasDiarios = [];
             this.columnasConocidos = [];
             this.renderEspecialesPorNivel = {};
@@ -496,6 +463,67 @@ export class DetallesClaseComponent {
         this.mostrarNivelMaxPoderAccesible = this.filasNivel.some(n => (n.Nivel_max_poder_accesible_nivel_lanzadorPsionico ?? -1) >= 0);
         this.mostrarReservaPsionica = this.filasNivel.some(n => (n.Reserva_psionica ?? 0) > 0);
         this.mostrarAumentosClaseLanzadora = this.filasNivel.some(n => this.getAumentosLanzadora(n).length > 0);
+        this.filasCabecera = this.columnasDiarios.length > 0 || this.columnasConocidos.length > 0 ? 2 : 1;
+        this.filasTabla = this.filasNivel.map((nivel) => this.construirFilaProgresion(nivel));
+    }
+
+    private construirFilaProgresion(nivel: ClaseNivelDetalle): FilaProgresion {
+        const texto = (valor: string | null | undefined): string => this.tieneTextoVisible(valor) ? `${valor}` : '';
+        const nivelMaxPoder = nivel.Nivel_max_poder_accesible_nivel_lanzadorPsionico;
+        return {
+            nivel: nivel.Nivel,
+            ataqueBase: texto(nivel.Ataque_base),
+            fortaleza: texto(nivel.Salvaciones?.Fortaleza),
+            reflejos: texto(nivel.Salvaciones?.Reflejos),
+            voluntad: texto(nivel.Salvaciones?.Voluntad),
+            especiales: this.getRenderEspecialesFila(nivel),
+            nivelMaxPoder: nivelMaxPoder >= 0 ? `${nivelMaxPoder}` : '',
+            reservaPsionica: nivel.Reserva_psionica > 0 ? `${nivel.Reserva_psionica}` : '',
+            aumentos: this.getAumentosLanzadora(nivel).join(', '),
+            diarios: this.columnasDiarios.map((nivelConjuro) => this.getValorDiarios(nivel, nivelConjuro)),
+            conocidos: this.columnasConocidos.map((nivelConjuro) => this.getValorConocidos(nivel, nivelConjuro)),
+            conocidosTotal: this.getValorConocidosTotal(nivel),
+        };
+    }
+
+    private construirDatos(): DatoFicha[] {
+        const c = this.claseData;
+        const roles = [
+            c?.Roles?.Dps ? 'DPS' : '',
+            c?.Roles?.Tanque ? 'Tanque' : '',
+            c?.Roles?.Support ? 'Support' : '',
+            c?.Roles?.Utilidad ? 'Utilidad' : '',
+        ].filter(Boolean);
+        const puntos = c?.Puntos_habilidad?.Valor;
+        return [
+            { etiqueta: 'Dado de golpe', valor: c?.Tipo_dado?.Nombre },
+            { etiqueta: 'Puntos de habilidad por nivel', valor: puntos, detalle: puntos !== null && puntos !== undefined ? '+ mod. de Int' : null },
+            { etiqueta: 'Niveles', valor: c?.Nivel_max_claseo > 0 ? `1 a ${c.Nivel_max_claseo}` : null },
+            { etiqueta: 'Roles', valor: roles.join(', ') },
+        ];
+    }
+
+    private construirFlagsConjuros(): string[] {
+        const conjuros = this.claseData?.Conjuros;
+        return [
+            conjuros?.Arcanos === true ? 'Arcanos' : '',
+            conjuros?.Conocidos_nivel_a_nivel === true ? 'Conocidos nivel a nivel' : '',
+            conjuros?.Lanzamiento_espontaneo === true ? 'Lanzamiento espontáneo' : '',
+        ].filter(Boolean);
+    }
+
+    /** El listado de conjuros de la clase por nivel («Truco», 1, 2…), en el orden de la API dentro de cada nivel. */
+    private construirListadoConjuros(): NivelListadoConjuros[] {
+        const porNivel = new Map<number, ClaseConjuroRef[]>();
+        (this.claseData?.Conjuros?.Listado ?? [])
+            .filter((conjuro) => this.tieneTextoVisible(conjuro?.Nombre))
+            .forEach((conjuro) => {
+                const nivel = Number(conjuro.Nivel) || 0;
+                porNivel.set(nivel, [...(porNivel.get(nivel) ?? []), conjuro]);
+            });
+        return Array.from(porNivel.entries())
+            .sort(([a], [b]) => a - b)
+            .map(([nivel, conjuros]) => ({ nivel, etiqueta: this.getEtiquetaNivelConjuro(nivel), conjuros }));
     }
 
     private getColumnasDinamicas(
@@ -546,12 +574,8 @@ export class DetallesClaseComponent {
             Base: this.toVisualItems(this.claseData?.Habilidades?.Base ?? []),
             Custom: this.toVisualItems(this.claseData?.Habilidades?.Custom ?? []),
         };
-    }
-
-    private toVisibleTokens(items: Record<string, any>[]): string[] {
-        return items
-            .map(item => this.formatearObjeto(item))
-            .filter(texto => texto.length > 0);
+        this.hayCompetencias = Object.values(this.competenciasVisibles).some(items => items.length > 0);
+        this.hayHabilidades = Object.values(this.habilidadesVisibles).some(items => items.length > 0);
     }
 
     private toVisualItems(items: Record<string, any>[]): ElementoVisual[] {
@@ -685,24 +709,6 @@ export class DetallesClaseComponent {
             soportaExtra: item?.['Soporta_extra'] ?? item?.['soporta_extra'],
             allowIdZeroAsChoose: hasIdExtra,
         });
-    }
-
-
-    private formatearObjeto(item: any): string {
-        if (!item || typeof item !== 'object')
-            return formatearValor(item);
-
-        const claves = Object.keys(item).filter(key => !esCampoId(key) && this.tieneValorMostrable(item[key]));
-        if (claves.length < 1)
-            return '';
-
-        if (claves.includes('Nombre') && this.tieneTextoVisible(item.Nombre))
-            return item.Nombre;
-
-        return claves
-            .map(key => `${formatearClave(key)}: ${formatearValor(item[key])}`)
-            .filter(part => part.trim().length > 0)
-            .join(' | ');
     }
 
     private getNombreEspecial(especial: Record<string, any>): string {
@@ -846,13 +852,6 @@ export class DetallesClaseComponent {
                 };
             })
             .filter(extra => extra.Id > 0 && this.tieneTextoVisible(extra.Nombre));
-    }
-
-    tieneReferenciaDetalle(especial: ResumenEspecial): boolean {
-        const id = Number(especial?.idEntidad ?? 0);
-        if (Number.isFinite(id) && id > 0)
-            return true;
-        return this.tieneTextoVisible(especial?.nombreEntidad ?? '');
     }
 
     esChipEspecialInteractivo(especial: ResumenEspecial): boolean {

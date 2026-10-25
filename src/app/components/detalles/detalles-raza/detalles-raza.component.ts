@@ -1,14 +1,17 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { DatoFicha, unirTipo } from 'src/app/components/detalles/ficha';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Raza, RazaHabilidadBase, RazaHabilidadCustom } from 'src/app/interfaces/raza';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { getGrupoOpcionalRacial } from 'src/app/services/utils/racial-opcionales';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { leerComodin } from 'src/app/services/utils/comodin';
@@ -31,6 +34,12 @@ interface HabilidadRazaVisible {
     Varios: string;
 }
 
+/** Un par de nombre y valor de una lista lateral («Fuerza … +2», «Adulto … 15 años»). */
+interface ParRaza {
+    nombre: string;
+    valor: string;
+}
+
 @Component({
     selector: 'app-detalles-raza',
     templateUrl: './detalles-raza.component.html',
@@ -40,8 +49,45 @@ interface HabilidadRazaVisible {
 export class DetallesRazaComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
 
-    @Input() raza!: Raza;
+    private razaActual!: Raza;
     mostrarInfoManiobrabilidad = false;
+
+    /** «Raza · Mediano · Humanoide». */
+    tipoCabecera = '';
+    /** Los datos clave, en el orden del manual. Lo que la API da `null` o 0 no sale. */
+    datos: DatoFicha[] = [];
+    /** Los dados de golpe raciales y lo que dan, si la raza los tiene. */
+    datosDgs: DatoFicha[] = [];
+    modificadores: ParRaza[] = [];
+    edades: ParRaza[] = [];
+    subtipos: SubtipoRef[] = [];
+    habilidadesBase: HabilidadRazaVisible[] = [];
+    habilidadesCustom: HabilidadRazaVisible[] = [];
+    idiomas: IdiomaDetalle[] = [];
+    gruposRaciales: GrupoRacialesDetalle[] = [];
+    /** Si alguna sortílega tiene dados de golpe mínimos o descripción (si no, la tabla no lleva esas columnas). */
+    sortilegasConDgs = false;
+    sortilegasConDescripcion = false;
+
+    @Input()
+    set raza(value: Raza) {
+        this.razaActual = value;
+        this.tipoCabecera = unirTipo(['Raza', value?.Tamano?.Nombre, value?.Tipo_criatura?.Nombre]);
+        this.datos = this.construirDatos();
+        this.datosDgs = this.construirDatosDgs();
+        this.modificadores = this.construirModificadores();
+        this.edades = this.construirEdades();
+        this.subtipos = this.getSubtiposActivos();
+        this.habilidadesBase = this.getHabilidadesBaseOtorgadas();
+        this.habilidadesCustom = this.getHabilidadesCustomOtorgadas();
+        this.idiomas = this.getIdiomasOtorgados();
+        this.gruposRaciales = this.getRacialesAgrupados();
+        this.sortilegasConDgs = (value?.Sortilegas ?? []).some((s) => tieneNumeroVisible(s?.Dgs_necesarios));
+        this.sortilegasConDescripcion = (value?.Sortilegas ?? []).some((s) => tieneTextoVisible(s?.Descripcion));
+    }
+    get raza(): Raza {
+        return this.razaActual;
+    }
 
     @Output() racialDetallesPorNombre: EventEmitter<RacialReferencia> = new EventEmitter<RacialReferencia>();
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
@@ -150,18 +196,12 @@ export class DetallesRazaComponent {
         return '';
     }
 
-    tieneAlineamientoVisible(): boolean {
-        return this.getAlineamientoResumen().length > 0;
-    }
-
     mostrarManiobrabilidad(): boolean {
         return this.tieneNumeroNoCero(this.raza?.Volar)
             && tieneManiobrabilidadVisible(this.raza?.Maniobrabilidad);
     }
 
-    abrirInfoManiobrabilidad(event?: Event): void {
-        event?.preventDefault();
-        event?.stopPropagation();
+    abrirInfoManiobrabilidad(): void {
         this.mostrarInfoManiobrabilidad = true;
     }
 
@@ -193,6 +233,87 @@ export class DetallesRazaComponent {
 
     trackByGrupoRacial(_index: number, grupo: GrupoRacialesDetalle): number {
         return Number(grupo.grupo);
+    }
+
+    private construirDatos(): DatoFicha[] {
+        const r = this.raza;
+        return [
+            { etiqueta: 'Ajuste de nivel', valor: tieneNumeroVisible(r?.Ajuste_nivel) ? `+${r.Ajuste_nivel}` : null },
+            { etiqueta: 'Clase predilecta', valor: mayusculaInicial(r?.Clase_predilecta) },
+            { etiqueta: 'Alineamiento', valor: this.getAlineamientoResumen() },
+            { etiqueta: 'Altura', valor: this.textoRango(r?.Altura_rango_inf, r?.Altura_rango_sup, 'm') },
+            { etiqueta: 'Peso', valor: this.textoRango(r?.Peso_rango_inf, r?.Peso_rango_sup, 'kg') },
+            { etiqueta: 'Espacio', valor: this.textoPies(r?.Espacio) },
+            { etiqueta: 'Alcance', valor: this.textoPies(r?.Alcance) },
+            { etiqueta: 'Correr', valor: this.textoPies(r?.Correr) },
+            { etiqueta: 'Nadar', valor: this.textoPies(r?.Nadar) },
+            { etiqueta: 'Volar', valor: this.textoPies(r?.Volar) },
+            {
+                etiqueta: 'Maniobrabilidad',
+                valor: this.mostrarManiobrabilidad() ? r.Maniobrabilidad.Nombre : null,
+                ayuda: 'Reglas de maniobrabilidad',
+                alPulsar: () => this.abrirInfoManiobrabilidad(),
+            },
+            { etiqueta: 'Trepar', valor: this.textoPies(r?.Trepar) },
+            { etiqueta: 'Escalar', valor: this.textoPies(r?.Escalar) },
+            { etiqueta: 'Armadura natural', valor: this.tieneNumeroNoCero(r?.Armadura_natural) ? textoConSigno(Number(r.Armadura_natural)) : null },
+            { etiqueta: 'CA varios', valor: this.tieneNumeroNoCero(r?.Varios_armadura) ? textoConSigno(Number(r.Varios_armadura)) : null },
+        ];
+    }
+
+    private construirDatosDgs(): DatoFicha[] {
+        const dgs = this.raza?.Dgs_adicionales;
+        if (!dgs || !(dgs.Cantidad > 0))
+            return [];
+        return [
+            { etiqueta: 'Dados de golpe', valor: `+${dgs.Cantidad}${dgs.Dado} de ${dgs.Tipo_criatura}`, ancho: 2 },
+            { etiqueta: 'Ataque base', valor: textoConSigno(Number(dgs.Ataque_base ?? 0)) },
+            { etiqueta: 'Fortaleza', valor: textoConSigno(Number(dgs.Fortaleza ?? 0)) },
+            { etiqueta: 'Reflejos', valor: textoConSigno(Number(dgs.Reflejos ?? 0)) },
+            { etiqueta: 'Voluntad', valor: textoConSigno(Number(dgs.Voluntad ?? 0)) },
+            { etiqueta: 'Dotes extra', valor: dgs.Dotes_extra },
+            { etiqueta: 'Puntos de habilidad', valor: dgs.Puntos_habilidad },
+            { etiqueta: 'Multiplicador', valor: `x${dgs.Multiplicador_puntos_habilidad}` },
+        ];
+    }
+
+    /** Los modificadores de característica distintos de 0, con signo. */
+    private construirModificadores(): ParRaza[] {
+        const m = this.raza?.Modificadores;
+        return [
+            { nombre: 'Fuerza', valor: m?.Fuerza },
+            { nombre: 'Destreza', valor: m?.Destreza },
+            { nombre: 'Constitución', valor: m?.Constitucion },
+            { nombre: 'Inteligencia', valor: m?.Inteligencia },
+            { nombre: 'Sabiduría', valor: m?.Sabiduria },
+            { nombre: 'Carisma', valor: m?.Carisma },
+        ]
+            .filter((item) => this.tieneNumeroNoCero(item.valor))
+            .map((item) => ({ nombre: item.nombre, valor: textoConSigno(Number(item.valor)) }));
+    }
+
+    private construirEdades(): ParRaza[] {
+        const r = this.raza;
+        return [
+            { nombre: 'Adulto', valor: r?.Edad_adulto },
+            { nombre: 'Mediana', valor: r?.Edad_mediana },
+            { nombre: 'Viejo', valor: r?.Edad_viejo },
+            { nombre: 'Venerable', valor: r?.Edad_venerable },
+        ]
+            .filter((item) => tieneNumeroVisible(item.valor))
+            .map((item) => ({ nombre: item.nombre, valor: `${item.valor} años` }));
+    }
+
+    /** «1.5 - 1.8 m»; sin ninguno de los dos extremos, nada. */
+    private textoRango(inferior: number | null | undefined, superior: number | null | undefined, unidad: string): string | null {
+        if (!tieneNumeroVisible(inferior) && !tieneNumeroVisible(superior))
+            return null;
+        return `${inferior ?? 0} - ${superior ?? 0} ${unidad}`;
+    }
+
+    /** «30'», o nada si no lo tiene. */
+    private textoPies(valor: number | null | undefined): string | null {
+        return tieneNumeroVisible(valor) ? `${valor}'` : null;
     }
 
     private normalizarHabilidadesOtorgadas(

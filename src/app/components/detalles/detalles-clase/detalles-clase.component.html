@@ -1,288 +1,185 @@
-<div class="tw-w-full tw-px-3 detalle-view" *ngIf="claseData">
-    <div class="tw-flex tw-flex-wrap">
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
-                    {{claseData.Nombre}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" matTooltip="Pulsa para ver el manual" [matTooltipShowDelay]="250"
-                    matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
-                    <mat-icon class="tw-me-2">auto_stories</mat-icon>
-                    {{claseData.Manual.Nombre}} (p. {{claseData.Manual.Pagina}})
-                </mat-chip>
-                <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1">
-                    Tipo de dado
-                    <mat-chip class="sombra3d-sm tw-m-1">{{claseData.Tipo_dado.Nombre}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1">
-                    Puntos de habilidad
-                    <mat-chip class="sombra3d-sm tw-m-1">{{claseData.Puntos_habilidad.Valor}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1">
-                    Nivel máximo
-                    <mat-chip class="sombra3d-sm tw-m-1">{{claseData.Nivel_max_claseo}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="claseData.Prestigio">Clase de prestigio</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="claseData.Aumenta_clase_lanzadora">Aumenta clase lanzadora</mat-chip>
-                <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="!claseData.Oficial" matTooltip="Esta clase es homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
-                <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngIf="rolesActivos.length > 0">
-                    Roles
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let rol of rolesActivos">{{rol}}</mat-chip>
-                </mat-chip>
-            </div>
-        </div>
+<app-ficha-detalle *ngIf="claseData">
+    <app-ficha-cabecera
+        [tipo]="tipoCabecera"
+        [nombre]="nombreClase"
+        [manual]="claseData.Manual"
+        [oficial]="claseData.Oficial"
+        [etiquetas]="etiquetas"
+        (abrirManual)="abrirDetalleManual()">
+    </app-ficha-cabecera>
 
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneTextoVisible(claseData.Descripcion)">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Descripción</mat-chip>
-                <p class="tw-m-1">{{claseData.Descripcion}}</p>
-            </div>
-        </div>
+    <app-ficha-datos [datos]="datos" titulo="Datos de la clase"></app-ficha-datos>
 
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <mat-accordion>
-                <mat-expansion-panel *ngIf="tieneBloqueConjuros()">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
-                            <h2 class="tw-mb-0">Conjuros y lanzamiento</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <div class="tw-w-full tw-p-2">
-                        <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let flag of flagsConjurosActivos">{{flag}}</mat-chip>
-                        <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(claseData.Mod_salv_conjuros)">
-                            Salvaciones conjuros
-                            <mat-chip class="sombra3d-sm tw-m-1">{{claseData.Mod_salv_conjuros}}</mat-chip>
-                        </mat-chip>
-                    </div>
-                    <div class="tw-w-full tw-p-2" *ngIf="(claseData.Conjuros.Listado?.length ?? 0) > 0">
-                        <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Listado asociado</mat-chip>
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto sombra3d-sm tw-m-1 chip-conjuro" *ngFor="let conjuro of claseData.Conjuros.Listado"
-                                matTooltip="Click para abrir detalle del conjuro" [matTooltipShowDelay]="250"
-                                (click)="abrirDetallesConjuro(conjuro.Id)">
-                                {{conjuro.Nombre}}
-                                <mat-chip class="sombra3d-sm tw-m-1">{{getEtiquetaNivelConjuro(conjuro.Nivel)}}</mat-chip>
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="conjuro.Espontaneo">Espontáneo</mat-chip>
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="getIdiomasOtorgados().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Idiomas otorgados</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let idioma of getIdiomasOtorgados()"
-                            [matTooltip]="idioma.Descripcion" [matTooltipShowDelay]="250"
-                            [matTooltipDisabled]="!tieneTextoVisible(idioma.Descripcion)" matTooltipClass="tt-accent">
-                            {{idioma.Nombre}}
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="tieneCompetenciasVisibles()">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
-                            <h2 class="tw-mb-0">Competencias</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <div class="tw-w-full tw-p-2" *ngIf="getCompetenciasVisibles('Armas').length > 0">
-                        <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Armas</mat-chip>
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1"
-                                [ngClass]="esCompetenciaNavegable('Armas', item) ? 'chip-clic' : ''"
-                                *ngFor="let item of getCompetenciasVisibles('Armas')"
-                                (click)="abrirDetalleCompetencia('Armas', item)">
-                                {{item.nombre}}
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let extra of item.extras">{{extra}}</mat-chip>
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(item.detalle)">{{item.detalle}}</mat-chip>
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                    <div class="tw-w-full tw-p-2" *ngIf="getCompetenciasVisibles('Armaduras').length > 0">
-                        <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Armaduras</mat-chip>
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1"
-                                [ngClass]="esCompetenciaNavegable('Armaduras', item) ? 'chip-clic' : ''"
-                                *ngFor="let item of getCompetenciasVisibles('Armaduras')"
-                                (click)="abrirDetalleCompetencia('Armaduras', item)">
-                                {{item.nombre}}
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let extra of item.extras">{{extra}}</mat-chip>
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(item.detalle)">{{item.detalle}}</mat-chip>
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                    <div class="tw-w-full tw-p-2" *ngIf="getCompetenciasVisibles('Grupos_arma').length > 0">
-                        <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Grupos de arma</mat-chip>
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngFor="let item of getCompetenciasVisibles('Grupos_arma')">
-                                {{item.nombre}}
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let extra of item.extras">{{extra}}</mat-chip>
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(item.detalle)">{{item.detalle}}</mat-chip>
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                    <div class="tw-w-full tw-p-2" *ngIf="getCompetenciasVisibles('Grupos_armadura').length > 0">
-                        <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Grupos de armadura</mat-chip>
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngFor="let item of getCompetenciasVisibles('Grupos_armadura')">
-                                {{item.nombre}}
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let extra of item.extras">{{extra}}</mat-chip>
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(item.detalle)">{{item.detalle}}</mat-chip>
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="tieneHabilidadesVisibles()">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-b-md">
-                            <h2 class="tw-mb-0">Habilidades</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <div class="tw-w-full tw-p-2" *ngIf="getHabilidadesVisibles('Base').length > 0">
-                        <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Base</mat-chip>
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngFor="let item of getHabilidadesVisibles('Base')">
-                                {{item.nombre}}
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let extra of item.extras">{{extra}}</mat-chip>
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(item.detalle)">{{item.detalle}}</mat-chip>
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                    <div class="tw-w-full tw-p-2" *ngIf="getHabilidadesVisibles('Custom').length > 0">
-                        <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Custom</mat-chip>
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngFor="let item of getHabilidadesVisibles('Custom')">
-                                {{item.nombre}}
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let extra of item.extras">{{extra}}</mat-chip>
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(item.detalle)">{{item.detalle}}</mat-chip>
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="prerrequisitosAgrupados.length > 0 || getPrerrequisitosFlagsActivos().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
-                            <h2 class="tw-mb-0">Prerrequisitos</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <div class="tw-w-full tw-p-2" *ngIf="getPrerrequisitosFlagsActivos().length > 0">
-                        <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let flag of getPrerrequisitosFlagsActivos()">{{flag}}</mat-chip>
-                    </div>
-                    <div class="prerrequisito-bloque tw-p-2" *ngFor="let grupo of prerrequisitosAgrupados">
-                        <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">
-                            {{grupo.titulo}}
-                            <span class="tw-ms-2 prerrequisito-subtitulo">{{grupo.descripcion}}</span>
-                        </mat-chip>
-                        <!-- Cada condición es la frase que escribe la API («Lanzador arcano de nivel 3»). -->
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto sombra3d-sm tw-m-1"
-                                [ngClass]="esPrerrequisitoNavegable(condicion) ? 'chip-clic' : ''"
-                                *ngFor="let condicion of grupo.condiciones"
-                                (click)="abrirDetallePrerrequisito(condicion)">
-                                {{condicion.frase}}
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                </mat-expansion-panel>
-            </mat-accordion>
-        </div>
-    </div>
+    <app-ficha-cuerpo>
+        <app-ficha-seccion titulo="Descripción" [texto]="claseData.Descripcion"></app-ficha-seccion>
 
-    <div class="tw-flex tw-flex-wrap">
-        <div class="detalle-col tw-w-full tw-p-2">
-            <div class="tabla-progresion-container sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Progresión por nivel</mat-chip>
-                <div class="tabla-scroll">
-                    <table class="tabla-progresion">
-                        <thead>
-                            <tr>
-                                <th>Nivel</th>
-                                <th *ngIf="mostrarAtaqueBase">Ataque base</th>
-                                <th *ngIf="mostrarFortaleza || mostrarReflejos || mostrarVoluntad">Salvaciones</th>
-                                <th *ngIf="mostrarEspeciales" class="columna-especiales">Especiales</th>
-                                <th *ngIf="mostrarNivelMaxPoderAccesible">Nivel max poder accesible</th>
-                                <th *ngIf="mostrarReservaPsionica">Reserva psiónica</th>
-                                <th *ngIf="mostrarAumentosClaseLanzadora">Aumentos clase lanzadora</th>
-                                <th *ngFor="let nivelConjuro of columnasDiarios">Diarios {{nivelConjuro}}</th>
-                                <th *ngFor="let nivelConjuro of columnasConocidos">Conocidos {{nivelConjuro}}</th>
-                                <th *ngIf="mostrarConocidosTotal">Conocidos total</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr *ngFor="let nivel of filasNivel; trackBy: trackByNivel">
-                                <td>{{nivel.Nivel}}</td>
-                                <td *ngIf="mostrarAtaqueBase">{{tieneTextoVisible(nivel.Ataque_base) ? nivel.Ataque_base : ''}}</td>
-                                <td *ngIf="mostrarFortaleza || mostrarReflejos || mostrarVoluntad">{{getTextoSalvaciones(nivel)}}</td>
-                                <td *ngIf="mostrarEspeciales" class="columna-especiales">
-                                    <ng-container *ngIf="getRenderEspecialesFila(nivel) as renderEspeciales">
-                                        <div class="chips-celda" *ngIf="renderEspeciales.length > 0; else sinEspeciales">
-                                            <ng-container *ngFor="let renderItem of renderEspeciales; trackBy: trackByRenderEspecial">
-                                                <mat-chip *ngIf="renderItem.tipoRender === 'simple'"
-                                                    class="tw-h-auto chip-celda sombra3d-sm"
-                                                    [ngClass]="esChipEspecialInteractivo(renderItem.item) ? 'chip-clic' : ''"
-                                                    [matTooltip]="getTooltipEspecial(renderItem.item)"
-                                                    [matTooltipShowDelay]="250"
-                                                    [matTooltipDisabled]="!esChipEspecialInteractivo(renderItem.item)"
-                                                    matTooltipClass="tt-accent tt-multiline"
-                                                    [attr.title]="esChipEspecialInteractivo(renderItem.item) ? getTooltipEspecial(renderItem.item) : null"
-                                                    [style.cursor]="esChipEspecialInteractivo(renderItem.item) ? 'pointer' : 'default'"
-                                                    (click)="abrirDetalleEspecialFila(renderItem.item)">
-                                                    <span>{{renderItem.item.texto}}</span>
-                                                    <mat-chip class="tw-m-1" *ngFor="let extra of renderItem.item.extras; trackBy: trackByTexto"
-                                                        [ngClass]="esChipEspecialInteractivo(renderItem.item) ? 'chip-clic' : ''"
-                                                        [style.cursor]="esChipEspecialInteractivo(renderItem.item) ? 'pointer' : 'default'"
-                                                        (click)="abrirDetalleEspecialFila(renderItem.item); $event.stopPropagation()">{{extra}}</mat-chip>
-                                                    <mat-chip class="tw-m-1" *ngIf="renderItem.item.grupoOpcional > 0">Opcional</mat-chip>
-                                                </mat-chip>
-
-                                                <mat-chip *ngIf="renderItem.tipoRender === 'grupo_opcional'"
-                                                    class="tw-h-auto chip-celda sombra3d-sm chip-opcional-grupo"
-                                                    (click)="$event.stopPropagation()">
-                                                    <span class="chip-opcional-grupo-label">Elige entre</span>
-                                                    <span class="chip-opcional-grupo-opciones">
-                                                        <ng-container *ngFor="let opcion of renderItem.opciones; let ultima = last; trackBy: trackByResumenEspecial">
-                                                            <mat-chip class="tw-h-auto chip-celda sombra3d-sm chip-opcional-subchip"
-                                                                [ngClass]="esChipEspecialInteractivo(opcion) ? 'chip-clic' : ''"
-                                                                [matTooltip]="getTooltipEspecial(opcion)"
-                                                                [matTooltipShowDelay]="250"
-                                                                [matTooltipDisabled]="!esChipEspecialInteractivo(opcion)"
-                                                                matTooltipClass="tt-accent tt-multiline"
-                                                                [attr.title]="esChipEspecialInteractivo(opcion) ? getTooltipEspecial(opcion) : null"
-                                                                [style.cursor]="esChipEspecialInteractivo(opcion) ? 'pointer' : 'default'"
-                                                                (click)="abrirDetalleEspecialFila(opcion); $event.stopPropagation()">
-                                                                <span>{{opcion.texto}}</span>
-                                                                <mat-chip class="tw-m-1" *ngFor="let extra of opcion.extras; trackBy: trackByTexto"
-                                                                    [ngClass]="esChipEspecialInteractivo(opcion) ? 'chip-clic' : ''"
-                                                                    [style.cursor]="esChipEspecialInteractivo(opcion) ? 'pointer' : 'default'"
-                                                                    (click)="abrirDetalleEspecialFila(opcion); $event.stopPropagation()">{{extra}}</mat-chip>
-                                                            </mat-chip>
-                                                            <span class="chip-opcional-separador" *ngIf="!ultima">o</span>
-                                                        </ng-container>
-                                                    </span>
-                                                </mat-chip>
-                                            </ng-container>
-                                        </div>
-                                    </ng-container>
-                                    <ng-template #sinEspeciales></ng-template>
-                                </td>
-                                <td *ngIf="mostrarNivelMaxPoderAccesible">{{nivel.Nivel_max_poder_accesible_nivel_lanzadorPsionico >= 0 ? nivel.Nivel_max_poder_accesible_nivel_lanzadorPsionico : ''}}</td>
-                                <td *ngIf="mostrarReservaPsionica">{{nivel.Reserva_psionica}}</td>
-                                <td *ngIf="mostrarAumentosClaseLanzadora">
-                                    <div class="chips-celda" *ngIf="getAumentosLanzadora(nivel).length > 0; else sinAumentos">
-                                        <mat-chip class="chip-celda sombra3d-sm" *ngFor="let aumento of getAumentosLanzadora(nivel)">{{aumento}}</mat-chip>
-                                    </div>
-                                    <ng-template #sinAumentos></ng-template>
-                                </td>
-                                <td *ngFor="let nivelConjuro of columnasDiarios">{{getValorDiarios(nivel, nivelConjuro)}}</td>
-                                <td *ngFor="let nivelConjuro of columnasConocidos">{{getValorConocidos(nivel, nivelConjuro)}}</td>
-                                <td *ngIf="mostrarConocidosTotal">{{getValorConocidosTotal(nivel)}}</td>
-                            </tr>
-                        </tbody>
-                    </table>
+        <app-ficha-seccion titulo="Competencias" *ngIf="hayCompetencias">
+            <ng-container *ngFor="let grupo of gruposCompetencias">
+                <div class="ficha-grupo" *ngIf="getCompetenciasVisibles(grupo.clave).length > 0">
+                    <h3 class="ficha-subtitulo">{{grupo.titulo}}</h3>
+                    <ul class="ficha-lista ficha-lista--columnas">
+                        <li class="ficha-lista__item" *ngFor="let item of getCompetenciasVisibles(grupo.clave)">
+                            <span>
+                                <button type="button" class="ficha-enlace" *ngIf="esCompetenciaNavegable(grupo.clave, item); else competenciaTexto"
+                                    (click)="abrirDetalleCompetencia(grupo.clave, item)">{{item.nombre}}</button>
+                                <ng-template #competenciaTexto>{{item.nombre}}</ng-template>
+                                <ng-container *ngTemplateOutlet="extrasYDetalle; context: { $implicit: item }"></ng-container>
+                            </span>
+                        </li>
+                    </ul>
                 </div>
+            </ng-container>
+        </app-ficha-seccion>
+
+        <app-ficha-lateral titulo="Habilidades de clase" *ngIf="hayHabilidades">
+            <div class="ficha-grupo" *ngIf="getHabilidadesVisibles('Base').length > 0">
+                <h3 class="ficha-subtitulo" *ngIf="getHabilidadesVisibles('Custom').length > 0">Base</h3>
+                <ng-container *ngTemplateOutlet="habilidades; context: { $implicit: getHabilidadesVisibles('Base') }"></ng-container>
             </div>
-        </div>
-    </div>
-</div>
+            <div class="ficha-grupo" *ngIf="getHabilidadesVisibles('Custom').length > 0">
+                <h3 class="ficha-subtitulo">Custom</h3>
+                <ng-container *ngTemplateOutlet="habilidades; context: { $implicit: getHabilidadesVisibles('Custom') }"></ng-container>
+            </div>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Prerrequisitos" *ngIf="prerrequisitosAgrupados.length > 0 || flagsPrerrequisito.length > 0">
+            <!-- Cada condición es la frase que escribe la API («Lanzador arcano de nivel 3»). -->
+            <app-ficha-prerrequisitos
+                [grupos]="prerrequisitosAgrupados"
+                [esNavegable]="esPrerrequisitoNavegable"
+                (abrir)="abrirDetallePrerrequisito($event)">
+                <ul class="ficha-lista" *ngIf="flagsPrerrequisito.length > 0">
+                    <li class="ficha-lista__item" *ngFor="let flag of flagsPrerrequisito">
+                        <mat-icon class="ficha-icono" aria-hidden="true">check</mat-icon>
+                        <span>{{flag}}</span>
+                    </li>
+                </ul>
+            </app-ficha-prerrequisitos>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Lanzamiento de conjuros" *ngIf="flagsConjuros.length > 0 || datosConjuros.length > 0">
+            <ul class="ficha-lista" *ngIf="flagsConjuros.length > 0">
+                <li class="ficha-lista__item" *ngFor="let flag of flagsConjuros">
+                    <mat-icon class="ficha-icono" aria-hidden="true">check</mat-icon>
+                    <span>{{flag}}</span>
+                </li>
+            </ul>
+            <app-ficha-datos [datos]="datosConjuros" [columnas]="2" [tarjeta]="false"></app-ficha-datos>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Idiomas otorgados" *ngIf="idiomas.length > 0">
+            <ul class="ficha-lista ficha-lista--columnas">
+                <li class="ficha-lista__item" *ngFor="let idioma of idiomas"
+                    [matTooltip]="idioma.Descripcion" [matTooltipShowDelay]="250"
+                    [matTooltipDisabled]="!tieneTextoVisible(idioma.Descripcion)" matTooltipClass="tt-accent">
+                    {{idioma.Nombre}}
+                </li>
+            </ul>
+        </app-ficha-lateral>
+    </app-ficha-cuerpo>
+
+    <app-ficha-bloque titulo="Progresión por nivel" *ngIf="filasTabla.length > 0">
+        <table class="ficha-tabla">
+            <thead>
+                <tr>
+                    <th scope="col" [attr.rowspan]="filasCabecera">Nivel</th>
+                    <th scope="col" [attr.rowspan]="filasCabecera" *ngIf="mostrarAtaqueBase">Ataque base</th>
+                    <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarFortaleza">Fort</th>
+                    <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarReflejos">Ref</th>
+                    <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarVoluntad">Vol</th>
+                    <th scope="col" [attr.rowspan]="filasCabecera" *ngIf="mostrarEspeciales">Especiales</th>
+                    <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarNivelMaxPoderAccesible">Nivel máx. de poder accesible</th>
+                    <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarReservaPsionica">Reserva psiónica</th>
+                    <th scope="col" [attr.rowspan]="filasCabecera" *ngIf="mostrarAumentosClaseLanzadora">Aumentos de clase lanzadora</th>
+                    <th scope="colgroup" class="ficha-num" [attr.colspan]="columnasDiarios.length" *ngIf="columnasDiarios.length > 0">Conjuros diarios</th>
+                    <th scope="colgroup" class="ficha-num" [attr.colspan]="columnasConocidos.length" *ngIf="columnasConocidos.length > 0">Conjuros conocidos</th>
+                    <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarConocidosTotal">Conocidos en total</th>
+                </tr>
+                <tr *ngIf="filasCabecera > 1">
+                    <th scope="col" class="ficha-num" *ngFor="let nivelConjuro of columnasDiarios">{{getEtiquetaNivelConjuro(nivelConjuro)}}</th>
+                    <th scope="col" class="ficha-num" *ngFor="let nivelConjuro of columnasConocidos">{{getEtiquetaNivelConjuro(nivelConjuro)}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let fila of filasTabla; trackBy: trackByFila">
+                    <td>{{fila.nivel}}.º</td>
+                    <td class="ficha-num" *ngIf="mostrarAtaqueBase">{{fila.ataqueBase}}</td>
+                    <td class="ficha-num" *ngIf="mostrarFortaleza">{{fila.fortaleza}}</td>
+                    <td class="ficha-num" *ngIf="mostrarReflejos">{{fila.reflejos}}</td>
+                    <td class="ficha-num" *ngIf="mostrarVoluntad">{{fila.voluntad}}</td>
+                    <td *ngIf="mostrarEspeciales">
+                        <!-- Los especiales y las dotes del nivel como texto, cada uno un enlace a su detalle. -->
+                        <ng-container *ngFor="let render of fila.especiales; let ultimo = last">
+                            <ng-container *ngIf="render.tipoRender === 'simple'">
+                                <ng-container *ngTemplateOutlet="especial; context: { $implicit: render.item }"></ng-container>
+                                <span class="ficha-nota" *ngIf="render.item.grupoOpcional > 0"> (opcional)</span>
+                            </ng-container>
+                            <ng-container *ngIf="render.tipoRender === 'grupo_opcional'">
+                                <span class="ficha-nota">Elige entre </span>
+                                <ng-container *ngFor="let opcion of render.opciones; let ultimaOpcion = last">
+                                    <ng-container *ngTemplateOutlet="especial; context: { $implicit: opcion }"></ng-container>
+                                    <span class="ficha-nota" *ngIf="!ultimaOpcion"> o </span>
+                                </ng-container>
+                            </ng-container>
+                            <ng-container *ngIf="!ultimo">, </ng-container>
+                        </ng-container>
+                    </td>
+                    <td class="ficha-num" *ngIf="mostrarNivelMaxPoderAccesible">{{fila.nivelMaxPoder}}</td>
+                    <td class="ficha-num" *ngIf="mostrarReservaPsionica">{{fila.reservaPsionica}}</td>
+                    <td *ngIf="mostrarAumentosClaseLanzadora">{{fila.aumentos}}</td>
+                    <td class="ficha-num" *ngFor="let valor of fila.diarios">{{valor}}</td>
+                    <td class="ficha-num" *ngFor="let valor of fila.conocidos">{{valor}}</td>
+                    <td class="ficha-num" *ngIf="mostrarConocidosTotal">{{fila.conocidosTotal}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </app-ficha-bloque>
+
+    <app-ficha-bloque titulo="Listado de conjuros" *ngIf="listadoConjuros.length > 0">
+        <table class="ficha-tabla">
+            <thead>
+                <tr>
+                    <th scope="col">Nivel</th>
+                    <th scope="col">Conjuros</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let nivel of listadoConjuros">
+                    <td>{{nivel.etiqueta}}</td>
+                    <td>
+                        <ng-container *ngFor="let conjuro of nivel.conjuros; let ultimo = last">
+                            <button type="button" class="ficha-enlace" (click)="abrirDetallesConjuro(conjuro.Id)">{{conjuro.Nombre}}</button>
+                            <span class="ficha-nota" *ngIf="conjuro.Espontaneo"> (espontáneo)</span>
+                            <ng-container *ngIf="!ultimo">, </ng-container>
+                        </ng-container>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </app-ficha-bloque>
+</app-ficha-detalle>
+
+<!-- Un especial o una dote de la progresión: enlace a su detalle, con su extra entre paréntesis. -->
+<ng-template #especial let-item>
+    <button type="button" class="ficha-enlace" *ngIf="esChipEspecialInteractivo(item); else especialTexto"
+        [matTooltip]="item.tooltip" [matTooltipDisabled]="!tieneTextoVisible(item.tooltip)" [matTooltipShowDelay]="250"
+        matTooltipClass="tt-accent tt-multiline" (click)="abrirDetalleEspecialFila(item)">{{textoEspecial(item)}}</button>
+    <ng-template #especialTexto>{{textoEspecial(item)}}</ng-template>
+</ng-template>
+
+<!-- Los extras de una competencia o habilidad entre paréntesis y lo demás («Varios»), debajo. -->
+<ng-template #extrasYDetalle let-item>
+    <span class="ficha-nota" *ngIf="item.extras.length > 0"> ({{item.extras.join(', ')}})</span>
+    <div class="ficha-nota" *ngIf="tieneTextoVisible(item.detalle)">{{item.detalle}}</div>
+</ng-template>
+
+<ng-template #habilidades let-items>
+    <ul class="ficha-lista ficha-lista--columnas">
+        <li class="ficha-lista__item" *ngFor="let item of items">
+            <span>
+                {{item.nombre}}
+                <ng-container *ngTemplateOutlet="extrasYDetalle; context: { $implicit: item }"></ng-container>
+            </span>
+        </li>
+    </ul>
+</ng-template>

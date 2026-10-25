@@ -14,12 +14,20 @@ function esCampoComodin(clave: string): boolean {
     return clave.replace(/[_\s]/g, '').toLowerCase().endsWith('comodin');
 }
 
+/**
+ * El texto recortado y con la primera letra en mayúscula. Para los nombres que llegan en minúscula desde los datos
+ * («explorador» como clase predilecta): los detalles los enseñan como nombre propio.
+ */
+export function mayusculaInicial(texto: string | null | undefined): string {
+    const limpio = `${texto ?? ''}`.trim();
+    return limpio.charAt(0).toUpperCase() + limpio.slice(1);
+}
+
 /** Una clave como etiqueta: guiones bajos por espacios y la primera letra en mayúscula. */
 export function formatearClave(texto: string): string {
     if (!texto)
         return '';
-    const normalizado = texto.replace(/_/g, ' ').trim();
-    return normalizado.charAt(0).toUpperCase() + normalizado.slice(1);
+    return mayusculaInicial(texto.replace(/_/g, ' '));
 }
 
 /** Cualquier valor como texto: listas separadas por comas y objetos como «Clave: valor | …», sin los ids. */
