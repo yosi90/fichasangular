@@ -1,45 +1,27 @@
-<div class="tw-w-full tw-px-3 detalle-view" *ngIf="tipo">
-    <div class="tw-flex tw-flex-wrap">
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
-                    {{tipo.Nombre}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" matTooltip="Pulsa para ver el manual" [matTooltipShowDelay]="250"
-                    matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
-                    <mat-icon class="tw-me-2">auto_stories</mat-icon>{{tipo.Manual}}
-                </mat-chip>
-                <mat-chip class="tw-h-auto warm sombra3d-sm tw-m-1">Dados de golpe: <mat-chip class="sombra3d-sm tw-m-1">{{tipo.Tipo_dado}}</mat-chip></mat-chip>
-                <mat-chip class="warm sombra3d-sm tw-m-1">Progresión de ataque base {{tipo.Id_ataque === 1 ? 'alta (+20)' : tipo.Id_ataque === 2 ? 'media (+15)' : 'baja (+10)'}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">Progresión de fortaleza {{tipo.Id_fortaleza === 1 ? 'alta (+12)' : 'baja (+6)'}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">Progresión de reflejos {{tipo.Id_reflejos === 1 ? 'alta (+12)' : 'baja (+6)'}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">Progresión de voluntad {{tipo.Id_voluntad === 1 ? 'alta (+12)' : 'baja (+6)'}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">Modificador de puntos de habilidad: {{tipo.Id_puntos_habilidad * 2}}</mat-chip>
-                <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="!tipo.Oficial" matTooltip="Este tipo de criatura es homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
-            </div>
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Detalles<mat-icon class="tw-ms-2">format_list_numbered</mat-icon></mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">{{tipo.Come ? 'N' : 'No n'}}ecesitan comer</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">{{tipo.Respira ? 'N' : 'No n'}}ecesitan respirar</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">{{tipo.Duerme ? 'N' : 'No n'}}ecesitan dormir</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">{{tipo.Recibe_criticos ? 'P' : 'No p'}}uede recibir críticos</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">{{tipo.Puede_ser_flanqueado ? 'P' : 'No p'}}uede ser flanqueado</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tipo.Pierde_constitucion">Pierde la característica de constitución</mat-chip>
-            </div>
-        </div>
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Descripción<mat-icon class="tw-ms-2">short_text</mat-icon></mat-chip>
-                <p class="tw-m-1">{{tipo.Descripcion}}</p>
-            </div>
-        </div>
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tipo.Rasgos">
-                <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Rasgos<mat-icon class="tw-ms-2">auto_awesome_motion</mat-icon></mat-chip>
-                <mat-chip *ngFor="let r of tipo.Rasgos" matTooltip="Pulsa para ver los detalles" [matTooltipShowDelay]="250" (click)="verDetallesRasgo(r);" class="sombra3d-sm tw-m-1" matTooltipClass="tt-accent">
-                    {{r.Nombre}}
-                </mat-chip>
-            </div>
-        </div>
-    </div>
-</div>
+<app-ficha-detalle *ngIf="tipo">
+    <app-ficha-cabecera
+        tipo="Tipo de criatura"
+        [nombre]="tipo.Nombre"
+        [manual]="tipo.Manual"
+        [oficial]="tipo.Oficial"
+        (abrirManual)="abrirDetalleManual()">
+    </app-ficha-cabecera>
+
+    <app-ficha-datos [datos]="datos" [columnas]="3" titulo="Datos del tipo de criatura"></app-ficha-datos>
+
+    <app-ficha-cuerpo>
+        <app-ficha-seccion titulo="Descripción" [texto]="tipo.Descripcion"></app-ficha-seccion>
+
+        <app-ficha-lateral titulo="Naturaleza">
+            <app-ficha-datos [datos]="naturaleza" [columnas]="2" [tarjeta]="false" titulo="Naturaleza"></app-ficha-datos>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Rasgos" *ngIf="rasgos.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let rasgo of rasgos">
+                    <button type="button" class="ficha-enlace" (click)="verDetallesRasgo(rasgo)">{{rasgo.Nombre}}</button>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+    </app-ficha-cuerpo>
+</app-ficha-detalle>
