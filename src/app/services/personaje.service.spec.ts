@@ -1,3 +1,4 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { of, throwError } from 'rxjs';
 import { Personaje } from '../interfaces/personaje';
 import { ProfileApiError } from '../interfaces/user-account';
@@ -386,9 +387,9 @@ describe('PersonajeService', () => {
 
     it('getDetallesPersonaje para invitados propaga el error del endpoint público y no cae a RTDB legacy', async () => {
         const httpMock = {
-            get: jasmine.createSpy('get').and.returnValue(throwError(() => ({
+            get: jasmine.createSpy('get').and.returnValue(throwError(() => new HttpErrorResponse({
                 status: 404,
-                error: { message: 'No encontrado' },
+                error: { error: 'No encontrado', code: 'no_encontrado', message: 'otro' },
             }))),
         } as any;
         const service = crearServicioInvitado(httpMock);
@@ -423,6 +424,26 @@ describe('PersonajeService', () => {
         expect(options.headers.get('Authorization')).toBe('Bearer token');
         expect(response.idPersonaje).toBe(15);
         expect(response.archivado).toBeTrue();
+    });
+
+    it('actualizarVisibilidadPersonaje y actualizarArchivadoPersonaje dan el error de la API, no el texto de Angular', async () => {
+        const httpMock = {
+            patch: jasmine.createSpy('patch').and.returnValue(throwError(() => new HttpErrorResponse({
+                status: 403,
+                url: 'http://api/personajes/15/visible',
+                error: { error: 'Solo el dueño puede cambiar el personaje.', code: 'sin_permiso' },
+            }))),
+        } as any;
+        const service = crearServicio(httpMock);
+
+        const visibilidad = await service.actualizarVisibilidadPersonaje(15, true).catch((e) => e);
+        expect(visibilidad instanceof ProfileApiError).toBeTrue();
+        expect(visibilidad.message).toBe('Solo el dueño puede cambiar el personaje.');
+        expect(visibilidad.code).toBe('sin_permiso');
+
+        httpMock.patch.and.returnValue(throwError(() => new HttpErrorResponse({ status: 502, error: '<html>Bad gateway</html>' })));
+        const archivado = await service.actualizarArchivadoPersonaje(15, true).catch((e) => e);
+        expect(archivado.message).toBe('No se ha podido cambiar el archivado del personaje.');
     });
 
     it('mantiene el archivado recién cambiado si el detalle actor-scoped todavía no devuelve la flag', async () => {
@@ -724,11 +745,12 @@ describe('PersonajeService', () => {
 
     it('crearPersonajeApiDesdeCreacion preserva status y code en 403 funcionales', async () => {
         const httpMock = {
-            post: jasmine.createSpy('post').and.returnValue(throwError(() => ({
+            post: jasmine.createSpy('post').and.returnValue(throwError(() => new HttpErrorResponse({
                 status: 403,
                 error: {
-                    code: 'mustAcceptCreation',
-                    message: 'Debes aceptar las normas de creación vigentes antes de continuar.',
+                    error: 'Debes aceptar las normas de creación vigentes antes de continuar.',
+                    code: 'CREATION_POLICY_ACCEPTANCE_REQUIRED',
+                    policyKind: 'creation',
                 },
             }))),
         } as any;
@@ -762,7 +784,7 @@ describe('PersonajeService', () => {
         }
 
         expect(captured instanceof ProfileApiError).toBeTrue();
-        expect(captured?.code).toBe('mustAcceptCreation');
+        expect(captured?.code).toBe('CREATION_POLICY_ACCEPTANCE_REQUIRED');
         expect(captured?.status).toBe(403);
         expect(captured?.message).toBe('Debes aceptar las normas de creación vigentes antes de continuar.');
     });

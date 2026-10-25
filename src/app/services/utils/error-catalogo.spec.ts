@@ -37,15 +37,26 @@ describe('errorDeCatalogo', () => {
             expect(errorDeCatalogo(http(status), 'actualizar', ESPECIAL).message).withContext(`${status}`).toBe(frase);
     });
 
-    it('pone detrás el mensaje de la API: primero su error, luego su message', () => {
-        expect(errorDeCatalogo(http(403, { error: 'Falta razas.create', message: 'otro' }), 'crear', RAZA).message)
+    it('pone detrás el error de la API; nunca su message ni otras claves, ni un cuerpo que no es el suyo', () => {
+        expect(errorDeCatalogo(http(403, { error: 'Falta razas.create', code: 'sin_permiso', message: 'otro' }), 'crear', RAZA).message)
             .toBe('No tienes permisos para crear razas. Falta razas.create');
         expect(errorDeCatalogo(http(409, { error: '  ', message: 'Nombre repetido' }), 'crear', RAZA).message)
-            .toBe('Ya existe una raza con ese nombre. Nombre repetido');
-        expect(errorDeCatalogo(http(500, '  Caída  '), 'crear', RAZA).message)
-            .toBe('No se ha podido crear la raza. Caída');
+            .toBe('Ya existe una raza con ese nombre.');
+        expect(errorDeCatalogo(http(502, '<html>Bad gateway</html>'), 'crear', RAZA).message)
+            .toBe('No se ha podido crear la raza.');
         expect(errorDeCatalogo(http(400, { detail: 'no se usa' }), 'crear', RAZA).message)
             .toBe('Los datos de la raza no son válidos.');
+    });
+
+    it('no repite la frase si la API dice lo mismo', () => {
+        expect(errorDeCatalogo(http(409, { error: 'Ya existe una raza con ese nombre.', code: 'nombre_duplicado' }), 'crear', RAZA).message)
+            .toBe('Ya existe una raza con ese nombre.');
+    });
+
+    it('en un fallo del servidor, con el código de la incidencia', () => {
+        const cuerpo = { error: 'Error interno del servidor.', code: 'error_interno', debug: { requestId: 'abc123' } };
+        expect(errorDeCatalogo(http(500, cuerpo), 'crear', RAZA).message)
+            .toBe('No se ha podido crear la raza. Error interno del servidor. Código de la incidencia: abc123');
     });
 
     it('lo que no es una respuesta HTTP se devuelve tal cual', () => {

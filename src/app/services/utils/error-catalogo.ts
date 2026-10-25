@@ -1,4 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
+import { leerErrorDeApi, textoParaMostrar } from './error-api';
+import { normalizarTexto } from './normalizacion';
 
 /** Lo que se intentaba hacer con el elemento del catálogo. */
 export type AccionDeCatalogo = 'crear' | 'actualizar';
@@ -12,7 +14,8 @@ export interface ElementoDeCatalogo {
 
 /**
  * El error de un alta o una edición de catálogo, con una sola frase por caso, igual en todos (propietario, 2026-10-24)
- * y el mensaje de la API detrás, si lo trae. Lo que no es una respuesta HTTP (la sesión, una respuesta sin id) se
+ * y el mensaje de la API (su `error`) detrás, si lo trae y no repite la frase; en un fallo del servidor, con el código de
+ * la incidencia. Lo que no es una respuesta HTTP (la sesión, una respuesta sin id) se
  * devuelve tal cual.
  */
 export function errorDeCatalogo(error: unknown, accion: AccionDeCatalogo, elemento: ElementoDeCatalogo): Error {
@@ -21,8 +24,9 @@ export function errorDeCatalogo(error: unknown, accion: AccionDeCatalogo, elemen
         return error instanceof Error ? error : new Error(`No se ha podido ${accion} ${femenino ? 'la' : 'el'} ${singular}.`);
 
     const frase = fraseDeCatalogo(error.status, accion, elemento);
-    const mensajeApi = mensajeDeLaApi(error.error);
-    return new Error(mensajeApi.length > 0 ? `${frase} ${mensajeApi}` : frase);
+    const leido = leerErrorDeApi(error, frase);
+    const repetido = !leido.deLaApi || normalizarTexto(leido.mensaje) === normalizarTexto(frase);
+    return new Error(textoParaMostrar({ ...leido, mensaje: repetido ? frase : `${frase} ${leido.mensaje}` }));
 }
 
 function fraseDeCatalogo(status: number, accion: AccionDeCatalogo, { singular, plural, femenino }: ElementoDeCatalogo): string {
@@ -41,18 +45,4 @@ function fraseDeCatalogo(status: number, accion: AccionDeCatalogo, { singular, p
         default:
             return `No se ha podido ${accion} ${el} ${singular}.`;
     }
-}
-
-/** El mensaje que trae el cuerpo del error: el texto, si es un texto, o su `error` y, si no, su `message`. */
-function mensajeDeLaApi(cuerpo: unknown): string {
-    if (typeof cuerpo === 'string')
-        return cuerpo.trim();
-    if (!cuerpo || typeof cuerpo !== 'object')
-        return '';
-    for (const campo of ['error', 'message']) {
-        const valor = (cuerpo as Record<string, unknown>)[campo];
-        if (typeof valor === 'string' && valor.trim().length > 0)
-            return valor.trim();
-    }
-    return '';
 }

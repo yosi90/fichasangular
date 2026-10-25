@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { firstValueFrom } from 'rxjs';
@@ -24,6 +24,7 @@ import {
     SocialWebSocketTicketResponse,
 } from '../interfaces/social-v3';
 import { cabeceraApiConFirebase } from './platform-session.service';
+import { errorDePerfil } from './utils/error-api';
 
 @Injectable({
     providedIn: 'root'
@@ -58,7 +59,7 @@ export class SocialV3ApiService {
             );
             return this.normalizeEnvelope(response, (raw) => this.normalizeCommunityUserItem(raw));
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo cargar la comunidad.');
+            throw errorDePerfil(error, 'No se pudo cargar la comunidad.');
         }
     }
 
@@ -77,7 +78,7 @@ export class SocialV3ApiService {
                 friendLinks: this.toNonNegativeInt(response?.friendLinks),
             };
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudieron cargar las estadísticas de comunidad.');
+            throw errorDePerfil(error, 'No se pudieron cargar las estadísticas de comunidad.');
         }
     }
 
@@ -101,7 +102,7 @@ export class SocialV3ApiService {
                     : [],
             };
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudieron cargar los rankings.');
+            throw errorDePerfil(error, 'No se pudieron cargar los rankings.');
         }
     }
 
@@ -118,7 +119,7 @@ export class SocialV3ApiService {
             );
             return this.normalizeRelationshipProfile(response);
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo cargar el perfil relacional.');
+            throw errorDePerfil(error, 'No se pudo cargar el perfil relacional.');
         }
     }
 
@@ -140,7 +141,7 @@ export class SocialV3ApiService {
             );
             return this.normalizeEnvelope(response, (raw) => this.normalizeLfgPost(raw));
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudieron cargar las convocatorias.');
+            throw errorDePerfil(error, 'No se pudieron cargar las convocatorias.');
         }
     }
 
@@ -157,7 +158,7 @@ export class SocialV3ApiService {
             );
             return this.normalizeLfgPost(response);
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo cargar la convocatoria.');
+            throw errorDePerfil(error, 'No se pudo cargar la convocatoria.');
         }
     }
 
@@ -173,7 +174,7 @@ export class SocialV3ApiService {
             );
             return this.normalizeLfgPost(response);
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo crear la convocatoria.');
+            throw errorDePerfil(error, 'No se pudo crear la convocatoria.');
         }
     }
 
@@ -193,7 +194,7 @@ export class SocialV3ApiService {
             );
             return this.normalizeLfgPost(response);
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo actualizar la convocatoria.');
+            throw errorDePerfil(error, 'No se pudo actualizar la convocatoria.');
         }
     }
 
@@ -219,7 +220,7 @@ export class SocialV3ApiService {
             );
             return this.normalizeEnvelope(response, (raw) => this.normalizeLfgApplication(raw));
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudieron cargar las aplicaciones.');
+            throw errorDePerfil(error, 'No se pudieron cargar las aplicaciones.');
         }
     }
 
@@ -241,7 +242,7 @@ export class SocialV3ApiService {
             );
             return this.normalizeLfgApplication(response);
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo enviar la aplicación.');
+            throw errorDePerfil(error, 'No se pudo enviar la aplicación.');
         }
     }
 
@@ -262,7 +263,7 @@ export class SocialV3ApiService {
             );
             return this.normalizeLfgApplication(response);
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo actualizar la aplicación.');
+            throw errorDePerfil(error, 'No se pudo actualizar la aplicación.');
         }
     }
 
@@ -289,7 +290,7 @@ export class SocialV3ApiService {
                 pendingMembers: response?.pendingMembers === true,
             };
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo abrir la conversación contextual.');
+            throw errorDePerfil(error, 'No se pudo abrir la conversación contextual.');
         }
     }
 
@@ -308,7 +309,7 @@ export class SocialV3ApiService {
                 websocketUrl: this.toNullableText(response?.websocketUrl),
             };
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo abrir el ticket realtime social.');
+            throw errorDePerfil(error, 'No se pudo abrir el ticket realtime social.');
         }
     }
 
@@ -527,19 +528,6 @@ export class SocialV3ApiService {
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
         return new HttpHeaders(await cabeceraApiConFirebase(this.auth, ProfileApiError.sinSesion));
-    }
-
-    private toProfileApiError(error: any, fallbackMessage: string): ProfileApiError {
-        if (error instanceof ProfileApiError)
-            return error;
-
-        if (error instanceof HttpErrorResponse) {
-            const code = `${error.error?.code ?? ''}`.trim();
-            const message = `${error.error?.message ?? fallbackMessage}`.trim() || fallbackMessage;
-            return new ProfileApiError(message, code, error.status || 0);
-        }
-
-        return new ProfileApiError(`${error?.message ?? fallbackMessage}`.trim() || fallbackMessage, '', 0);
     }
 
     private resolveFallbackWebSocketBaseUrl(): string {

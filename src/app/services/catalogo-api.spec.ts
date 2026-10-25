@@ -79,7 +79,25 @@ describe('cacheRtdbOApi', () => {
 
         emitir(snapshot(null, false));
 
-        expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({ title: 'Error al obtener', text: error.message }));
+        expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({ title: 'Error al obtener', text: 'Error al obtener' }));
+    });
+
+    it('si la API falla con su formato, enseña su error con el código de la incidencia', () => {
+        const error = new HttpErrorResponse({
+            status: 500,
+            error: { error: 'Error interno del servidor.', code: 'error_interno', debug: { requestId: 'abc' } },
+        });
+        cacheRtdbOApi(lectura({
+            pedir: () => throwError(() => error),
+            avisos: { noEncontrado: { titulo: 'No está', texto: 'No existe' }, error: 'Error al obtener' },
+        })).subscribe({ error: () => undefined });
+
+        emitir(snapshot(null, false));
+
+        expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({
+            title: 'Error al obtener',
+            text: 'Error interno del servidor. Código de la incidencia: abc',
+        }));
     });
 
     it('sin avisos, el error solo llega a quien se suscribe', () => {

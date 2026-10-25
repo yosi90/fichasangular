@@ -22,6 +22,7 @@ import { toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/ut
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { leerComodin } from "src/app/services/utils/comodin";
+import { mensajeDeError } from './utils/error-api';
 
 const ESPECIAL: ElementoDeCatalogo = { singular: "especial", plural: "especiales", femenino: false };
 
@@ -208,7 +209,7 @@ export class EspecialService {
                 Swal.fire({
                     icon: "warning",
                     title: "Error al actualizar el listado de especiales",
-                    text: error?.message ?? "Error no identificado",
+                    text: mensajeDeError(error, "Error no identificado"),
                     showConfirmButton: true
                 });
             }

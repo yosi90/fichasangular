@@ -54,6 +54,7 @@ import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { mensajeDeError } from 'src/app/services/utils/error-api';
 
 interface NombreIdItem {
     Id: number;
@@ -1041,7 +1042,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
             },
             error: async (error) => {
                 this.cargandoEdicion = false;
-                await Swal.fire({ icon: 'error', title: 'No se pudo cargar la clase', text: error?.message ?? 'Error no identificado', showConfirmButton: true });
+                await Swal.fire({ icon: 'error', title: 'No se pudo cargar la clase', text: mensajeDeError(error, 'Error no identificado'), showConfirmButton: true });
             },
         });
     }

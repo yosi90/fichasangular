@@ -5,6 +5,7 @@ import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from '../interfaces
 import { Personaje } from '../interfaces/personaje';
 import { FichaPersonajeService } from './ficha-personaje.service';
 import { toArray } from 'src/app/services/utils/normalizacion';
+import { mensajeDeError } from './utils/error-api';
 
 @Injectable({
     providedIn: 'root'
@@ -97,10 +98,7 @@ export class FichasDescargaBackgroundService {
     }
 
     private resumirError(error: any): string {
-        const message = `${error?.message ?? ''}`.trim();
-        if (message.length > 0)
-            return message;
-        return 'Error no identificado';
+        return mensajeDeError(error, 'Error no identificado');
     }
 
     private pushJob(job: FichasDescargaJobView): void {

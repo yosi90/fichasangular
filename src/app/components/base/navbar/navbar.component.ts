@@ -10,6 +10,7 @@ import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navi
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
+import { mensajeDeError } from 'src/app/services/utils/error-api';
 
 @Component({
     selector: 'app-navbar',
@@ -73,7 +74,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
                 this.notificarManualesDesincronizados();
             },
             error: (error) => {
-                this.errorState = error?.message ?? 'No se pudieron cargar los manuales';
+                this.errorState = mensajeDeError(error, 'No se pudieron cargar los manuales');
                 this.isLoading = false;
             }
         });

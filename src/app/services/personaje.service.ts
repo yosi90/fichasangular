@@ -8,7 +8,6 @@ import {
     PersonajeCompetenciaDirecta,
     PersonajeTotales
 } from '../interfaces/personaje';
-import { ProfileApiError } from '../interfaces/user-account';
 import { environment } from 'src/environments/environment';
 import { toDoteContextualArray, toDoteLegacyArray } from './utils/dote-mapper';
 import {
@@ -44,6 +43,7 @@ import { calcularOroPorNep } from './utils/oro-inicial';
 import { modificadoresDePartes } from './utils/personaje-totales';
 import { resumenClases } from './utils/resumen-clases';
 import { leerComodin } from './utils/comodin';
+import { errorDePerfil, mensajeDeError } from './utils/error-api';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -88,7 +88,7 @@ export class PersonajeService {
             );
             return of(this.mapApiDetalleToPersonaje(response));
         } catch (error: any) {
-            throw new Error(this.obtenerMensajeErrorHttp(error, 'No se pudo cargar el detalle del personaje.'));
+            throw new Error(mensajeDeError(error, 'No se pudo cargar el detalle del personaje.'));
         }
     }
 
@@ -104,14 +104,18 @@ export class PersonajeService {
             visible_otros_usuarios: !!visible,
         };
 
-        const response = await firstValueFrom(
-            this.http.patch<PersonajeVisibilityUpdateResponse>(
-                `${environment.apiUrl}personajes/${id}/visible`,
-                payload
-                ,
-                { headers: new HttpHeaders(await cabeceraApiConFirebase(this.auth)) }
-            )
-        );
+        let response: PersonajeVisibilityUpdateResponse;
+        try {
+            response = await firstValueFrom(
+                this.http.patch<PersonajeVisibilityUpdateResponse>(
+                    `${environment.apiUrl}personajes/${id}/visible`,
+                    payload,
+                    { headers: new HttpHeaders(await cabeceraApiConFirebase(this.auth)) }
+                )
+            );
+        } catch (error) {
+            throw errorDePerfil(error, 'No se ha podido cambiar la visibilidad del personaje.');
+        }
 
         return {
             ...response,
@@ -132,13 +136,18 @@ export class PersonajeService {
             archivado: !!archivado,
         };
 
-        const response = await firstValueFrom(
-            this.http.patch<PersonajeArchiveUpdateResponse>(
-                `${environment.apiUrl}personajes/${id}/archivado`,
-                payload,
-                { headers: new HttpHeaders(await cabeceraApiConFirebase(this.auth)) }
-            )
-        );
+        let response: PersonajeArchiveUpdateResponse;
+        try {
+            response = await firstValueFrom(
+                this.http.patch<PersonajeArchiveUpdateResponse>(
+                    `${environment.apiUrl}personajes/${id}/archivado`,
+                    payload,
+                    { headers: new HttpHeaders(await cabeceraApiConFirebase(this.auth)) }
+                )
+            );
+        } catch (error) {
+            throw errorDePerfil(error, 'No se ha podido cambiar el archivado del personaje.');
+        }
 
         this.setArchivadoOverride(id, !!archivado);
 
@@ -851,7 +860,7 @@ export class PersonajeService {
                 ownerUserId,
             };
         } catch (error: any) {
-            throw this.toProfileApiError(error, 'No se pudo crear el personaje en la API.');
+            throw errorDePerfil(error, 'No se pudo crear el personaje en la API.');
         }
     }
 
@@ -935,30 +944,6 @@ export class PersonajeService {
             Nombre: nombreRegion.length > 0 ? nombreRegion : (idRegion === 0 ? 'Sin región' : ''),
         };
         return clonado;
-    }
-
-    private obtenerMensajeErrorHttp(error: any, fallback: string): string {
-        const body = error?.error;
-        if (typeof body === 'string' && body.trim().length > 0)
-            return body.trim();
-        if (body && typeof body === 'object') {
-            const msg = `${body?.message ?? body?.error ?? ''}`.trim();
-            if (msg.length > 0)
-                return msg;
-        }
-        const direct = `${error?.message ?? ''}`.trim();
-        return direct.length > 0 ? direct : fallback;
-    }
-
-    private toProfileApiError(error: any, fallback: string): ProfileApiError {
-        const body = error?.error;
-        if (body && typeof body === 'object') {
-            const message = `${body?.message ?? body?.error ?? fallback}`.trim() || fallback;
-            const code = `${body?.code ?? ''}`.trim();
-            return new ProfileApiError(message, code, Number(error?.status ?? 0));
-        }
-
-        return new ProfileApiError(this.obtenerMensajeErrorHttp(error, fallback), '', Number(error?.status ?? 0));
     }
 
     /**

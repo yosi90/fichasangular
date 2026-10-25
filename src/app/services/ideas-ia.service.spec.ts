@@ -1,8 +1,8 @@
-import { provideHttpClient } from '@angular/common/http';
+import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { environment } from 'src/environments/environment';
-import { cifra, combinarTexto, datoDemasiadoLargo, datosIdeaDePersonaje, IdeasIaError, IdeasIaService, limpiarDatos } from './ideas-ia.service';
+import { cifra, combinarTexto, datoDemasiadoLargo, datosIdeaDePersonaje, errorDeIa, IdeasIaError, IdeasIaService, limpiarDatos } from './ideas-ia.service';
 import { PlatformSessionService } from './platform-session.service';
 
 describe('IdeasIaService', () => {
@@ -202,5 +202,32 @@ describe('ideas-ia: datos y texto', () => {
         expect(combinarTexto('Viejo', 'Nuevo', 'sustituir')).toBe('Nuevo');
         expect(combinarTexto('Viejo\n', ' Nuevo ', 'anadir')).toBe('Viejo\n\nNuevo');
         expect(combinarTexto('  ', 'Nuevo', 'anadir')).toBe('Nuevo');
+    });
+});
+
+describe('errorDeIa', () => {
+    it('lee el error, el code y el field de la API; nunca su message', () => {
+        const error = errorDeIa(new HttpErrorResponse({
+            status: 409,
+            error: { error: 'Ya tiene 3 voces.', code: 'tope_de_voces', field: null, message: 'otro' },
+        }), 'Respaldo.');
+        expect(error.message).toBe('Ya tiene 3 voces.');
+        expect(error.code).toBe('tope_de_voces');
+
+        const soloMessage = errorDeIa(new HttpErrorResponse({ status: 400, error: { message: 'Solo message' } }), 'Respaldo.');
+        expect(soloMessage.message).toBe('Respaldo.');
+    });
+
+    it('sin respuesta, sin_conexion; en un fallo del servidor, con el código de la incidencia', () => {
+        const sinRed = errorDeIa(new HttpErrorResponse({ status: 0 }), 'Respaldo.');
+        expect(sinRed.code).toBe('sin_conexion');
+        expect(sinRed.message).toBe('No hay conexión con Rol. Revisa tu red y vuelve a probar.');
+
+        const interno = errorDeIa(new HttpErrorResponse({
+            status: 500,
+            error: { error: 'Error interno del servidor.', code: 'error_interno', debug: { requestId: 'r9' } },
+        }), 'Respaldo.');
+        expect(interno.message).toBe('Error interno del servidor. Código de la incidencia: r9');
+        expect(interno.code).toBe('error_interno');
     });
 });

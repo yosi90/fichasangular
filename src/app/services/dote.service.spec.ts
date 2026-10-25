@@ -219,7 +219,7 @@ describe('DoteService', () => {
     it('mapea 409 a la frase de nombre repetido, con el mensaje de la API detrás', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
         httpMock.post.and.returnValue(
-            throwError(() => new HttpErrorResponse({ status: 409, error: { message: 'nombre de dote duplicado' } }))
+            throwError(() => new HttpErrorResponse({ status: 409, error: { error: 'nombre de dote duplicado', code: 'nombre_duplicado' } }))
         );
         const service = new DoteService(authMock, {} as any, httpMock, firebaseContextMock);
 
@@ -230,7 +230,7 @@ describe('DoteService', () => {
     it('mapea 403 a error de permisos', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
         httpMock.post.and.returnValue(
-            throwError(() => new HttpErrorResponse({ status: 403, error: { message: 'forbidden' } }))
+            throwError(() => new HttpErrorResponse({ status: 403, error: { error: 'forbidden', code: 'sin_permiso' } }))
         );
         const service = new DoteService(authMock, {} as any, httpMock, firebaseContextMock);
 

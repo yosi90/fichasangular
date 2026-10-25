@@ -612,7 +612,7 @@ describe('RazaService helpers', () => {
             const http = {
                 post: jasmine.createSpy().and.returnValue(throwError(() => new HttpErrorResponse({
                     status,
-                    error: { message: 'duplicado' },
+                    error: { error: 'duplicado' },
                 }))),
                 get: jasmine.createSpy(),
             };

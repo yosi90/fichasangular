@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import { environment } from 'src/environments/environment';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { porNombre } from 'src/app/services/utils/orden-texto';
+import { mensajeDeError } from './utils/error-api';
 
 /**
  * En desarrollo (rol.dev) la caché de catálogos de la Realtime Database es la de producción: desarrollo comparte el
@@ -94,7 +95,7 @@ export function avisarFalloApi(error: HttpErrorResponse, avisos: AvisosFalloApi)
         Swal.fire({
             icon: 'warning',
             title: avisos.error,
-            text: error.message,
+            text: mensajeDeError(error, avisos.error),
             showConfirmButton: true,
         });
     }

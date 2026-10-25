@@ -212,23 +212,43 @@ describe('SocialV3ApiService', () => {
         expect(unknown).toBeNull();
     });
 
-    it('propaga errores http como ProfileApiError', async () => {
+    it('propaga errores http como ProfileApiError, con el error y el code de la API (nunca su message)', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
         httpMock.get.and.returnValue(throwError(() => new HttpErrorResponse({
-            status: 401,
+            status: 404,
             error: {
-                code: 'UNAUTHORIZED',
-                message: 'No autorizado',
+                error: 'Convocatoria no encontrada.',
+                code: 'no_encontrado',
+                field: null,
+                debug: { message: 'no_encontrado', requestId: 'abc' },
+                message: 'otro texto',
             },
         })));
         const service = new SocialV3ApiService(httpMock, authMock);
 
         await expectAsync(service.getCommunityStats()).toBeRejectedWith(
             jasmine.objectContaining({
-                code: 'UNAUTHORIZED',
-                status: 401,
-                message: 'No autorizado',
+                code: 'no_encontrado',
+                status: 404,
+                message: 'Convocatoria no encontrada.',
             })
         );
+    });
+
+    it('sin el error de la API, el texto de cada operación; sin respuesta, el de sin conexión', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
+        const service = new SocialV3ApiService(httpMock, authMock);
+
+        httpMock.get.and.returnValue(throwError(() => new HttpErrorResponse({ status: 401, error: { code: 'UNAUTHORIZED', message: 'No autorizado' } })));
+        await expectAsync(service.getCommunityStats()).toBeRejectedWith(jasmine.objectContaining({
+            code: 'UNAUTHORIZED',
+            message: 'No se pudieron cargar las estadísticas de comunidad.',
+        }));
+
+        httpMock.get.and.returnValue(throwError(() => new HttpErrorResponse({ status: 0 })));
+        await expectAsync(service.getCommunityStats()).toBeRejectedWith(jasmine.objectContaining({
+            status: 0,
+            message: 'No hay conexión con Rol. Revisa tu red y vuelve a probar.',
+        }));
     });
 });

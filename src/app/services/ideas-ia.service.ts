@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Personaje } from '../interfaces/personaje';
 import { cabecerasPlataforma, PlatformSessionService } from './platform-session.service';
+import { leerErrorDeApi, textoParaMostrar } from './utils/error-api';
 
 // Ideas para los personajes con la clave de IA de cada persona (docs/publica/IDEAS_CON_IA.md). La web nunca ve la
 // clave ni llama al proveedor: pregunta a la plataforma si hay una clave lista (`GET /v1/ia/estado`, con el token de
@@ -305,13 +306,10 @@ export function errorDeIa(error: unknown, porDefecto: string): IdeasIaError {
     if (error instanceof IdeasIaError)
         return error;
     if (error instanceof HttpErrorResponse) {
-        const cuerpo = error.error && typeof error.error === 'object' ? error.error : {};
-        const code = `${cuerpo.code ?? ''}`.trim();
-        const mensaje = `${cuerpo.error ?? cuerpo.message ?? ''}`.trim();
-        const field = typeof cuerpo.field === 'string' ? cuerpo.field : null;
-        if (error.status === 0)
-            return new IdeasIaError('No hay conexión con Rol. Revisa tu red y vuelve a probar.', 'sin_conexion', 0);
-        return new IdeasIaError(mensaje || porDefecto, code, error.status, field);
+        const leido = leerErrorDeApi(error, porDefecto);
+        if (leido.estado === 0)
+            return new IdeasIaError(leido.mensaje, 'sin_conexion', 0);
+        return new IdeasIaError(textoParaMostrar(leido), leido.codigo, leido.estado, leido.campo);
     }
     return new IdeasIaError(porDefecto, '', 0);
 }

@@ -66,7 +66,7 @@ describe('RacialService', () => {
     it('mapea errores 403 a mensaje de permisos', async () => {
         http.post.and.returnValue(throwError(() => new HttpErrorResponse({
             status: 403,
-            error: { message: 'Falta razas.create' },
+            error: { error: 'Falta razas.create', code: 'sin_permiso' },
         })));
 
         await expectAsync(service.crearRacial({ racial: { nombre: 'Alas', oficial: true } } as any))

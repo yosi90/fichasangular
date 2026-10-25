@@ -17,6 +17,7 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserService } from 'src/app/services/user.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
+import { mensajeDeError } from 'src/app/services/utils/error-api';
 
 interface NombreIdItem {
     Id: number;
@@ -234,7 +235,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
             await Swal.fire({
                 icon: 'error',
                 title: this.esModoEdicion ? 'No se pudo actualizar el especial' : 'No se pudo crear el especial',
-                text: error?.message ?? 'Error no identificado',
+                text: mensajeDeError(error, 'Error no identificado'),
                 showConfirmButton: true,
             });
         } finally {
@@ -382,7 +383,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
             await Swal.fire({
                 icon: 'error',
                 title: this.customModalModo === 'editar' ? 'No se pudo actualizar la habilidad' : 'No se pudo crear la habilidad',
-                text: error?.message ?? 'Error no identificado',
+                text: mensajeDeError(error, 'Error no identificado'),
                 showConfirmButton: true,
             });
         } finally {
@@ -490,7 +491,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
                     await Swal.fire({
                         icon: 'error',
                         title: 'No se pudo cargar el especial',
-                        text: error?.message ?? 'Error no identificado',
+                        text: mensajeDeError(error, 'Error no identificado'),
                         showConfirmButton: true,
                     });
                 },

@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import { IdiomaCreateRequest, IdiomaDetalle, IdiomaUpdateRequest } from 'src/app/interfaces/idioma';
 import { IdiomaService } from 'src/app/services/idioma.service';
 import { UserService } from 'src/app/services/user.service';
+import { mensajeDeError } from 'src/app/services/utils/error-api';
 
 @Component({
     selector: 'app-nueva-idioma',
@@ -157,7 +158,7 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
             await Swal.fire({
                 icon: 'error',
                 title: this.esModoEdicion ? 'No se pudo actualizar el idioma' : 'No se pudo crear el idioma',
-                text: error?.message ?? 'Error no identificado',
+                text: mensajeDeError(error, 'Error no identificado'),
                 showConfirmButton: true,
             });
         } finally {
@@ -222,7 +223,7 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
                     await Swal.fire({
                         icon: 'error',
                         title: 'No se pudo cargar el idioma',
-                        text: error?.message ?? 'Error no identificado',
+                        text: mensajeDeError(error, 'Error no identificado'),
                         showConfirmButton: true,
                     });
                 },

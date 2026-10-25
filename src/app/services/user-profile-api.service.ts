@@ -1,11 +1,10 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import {
     ProfileApiError,
-    ProfileApiErrorResponse,
     UserPublicProfile,
 } from '../interfaces/user-account';
 import {
@@ -20,6 +19,7 @@ import {
     UserModerationSanction,
 } from '../interfaces/user-moderation';
 import { cabeceraApiConFirebase } from './platform-session.service';
+import { errorDePerfil } from './utils/error-api';
 
 @Injectable({
     providedIn: 'root'
@@ -45,7 +45,7 @@ export class UserProfileApiService {
             );
             return this.normalizeAbuseLockResponse(response);
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo escalar el bloqueo técnico por abuso.');
+            throw errorDePerfil(error, 'No se pudo escalar el bloqueo técnico por abuso.');
         }
     }
 
@@ -58,7 +58,7 @@ export class UserProfileApiService {
             );
             return this.normalizeRoleRequestStatus(response);
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo cargar el estado de tu solicitud de rol.');
+            throw errorDePerfil(error, 'No se pudo cargar el estado de tu solicitud de rol.');
         }
     }
 
@@ -82,7 +82,7 @@ export class UserProfileApiService {
             );
             return await this.getMyRoleRequestStatus();
         } catch (error) {
-            throw this.toProfileApiError(error, 'No se pudo crear la solicitud de rol.');
+            throw errorDePerfil(error, 'No se pudo crear la solicitud de rol.');
         }
     }
 
@@ -112,47 +112,6 @@ export class UserProfileApiService {
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
         return new HttpHeaders(await cabeceraApiConFirebase(this.auth, ProfileApiError.sinSesion));
-    }
-
-    private toProfileApiError(error: any, fallbackMessage: string): ProfileApiError {
-        if (error instanceof ProfileApiError)
-            return error;
-
-        if (error instanceof HttpErrorResponse) {
-            const parsed = this.extractErrorBody(error.error);
-            const message = parsed.message || `${fallbackMessage} (HTTP ${error.status || '0'})`;
-            return new ProfileApiError(message, parsed.code, error.status || 0);
-        }
-
-        const message = `${error?.message ?? fallbackMessage}`.trim() || fallbackMessage;
-        return new ProfileApiError(message, '', 0);
-    }
-
-    private extractErrorBody(body: any): ProfileApiErrorResponse {
-        if (!body)
-            return { code: '', message: '' };
-
-        if (typeof body === 'string')
-            return { code: '', message: body.trim() };
-
-        if (typeof body === 'object') {
-            const code = `${body?.code ?? ''}`.trim();
-            const message = `${body?.message ?? body?.error ?? ''}`.trim();
-            if (code.length > 0 || message.length > 0)
-                return { code, message };
-
-            const firstEntry = Object.entries(body as Record<string, any>)[0];
-            if (!firstEntry)
-                return { code: '', message: '' };
-
-            const [key, value] = firstEntry;
-            return {
-                code: '',
-                message: `${key}${value ? `: ${value}` : ''}`.trim(),
-            };
-        }
-
-        return { code: '', message: '' };
     }
 
     private normalizeCompliance(raw: any): UserComplianceSnapshot | null {

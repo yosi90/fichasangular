@@ -41,6 +41,7 @@ import {
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { mensajeDeError } from 'src/app/services/utils/error-api';
 
 type RacialPrerequisiteType = Extract<PrerequisiteType, 'raza' | 'caracteristica'>;
 const RAZA_EN_CREACION_PREREQ_ID = 2147483647;
@@ -341,7 +342,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
             await Swal.fire({
                 icon: 'error',
                 title: this.esModoEdicion ? 'No se pudo actualizar el racial' : 'No se pudo crear el racial',
-                text: error?.message ?? 'Error no identificado',
+                text: mensajeDeError(error, 'Error no identificado'),
                 showConfirmButton: true,
             });
         } finally {
@@ -655,7 +656,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
                     await Swal.fire({
                         icon: 'error',
                         title: 'No se pudo cargar el racial',
-                        text: error?.message ?? 'Error no identificado',
+                        text: mensajeDeError(error, 'Error no identificado'),
                         showConfirmButton: true,
                     });
                 },
