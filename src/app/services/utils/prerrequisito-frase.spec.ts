@@ -41,9 +41,23 @@ describe('prerrequisito-frase', () => {
 
     it('lee el opcional en minúscula de las razas (`pr`)', () => {
         const grupos = agruparPrerrequisitos({
-            tipo_criatura: [{ id_tipo_criatura: 11, opcional: 1, Frase: 'Criatura de tipo humanoide' }],
+            tipo_criatura: [
+                { id_tipo_criatura: 11, opcional: 1, Frase: 'Criatura de tipo humanoide' },
+                { id_tipo_criatura: 7, opcional: 1, Frase: 'Criatura de tipo gigante' },
+            ],
         });
+        expect(grupos.length).toBe(1);
         expect(grupos[0].opcional).toBeTrue();
+    });
+
+    it('un grupo con una sola alternativa es obligatorio', () => {
+        const grupos = agruparPrerrequisitos({
+            dote: [{ Id_dote_prerrequisito: 4, Opcional: 0, Frase: 'Soltura con un arma (daga)' }],
+            idioma: [{ Id_idioma: 7, Opcional: 3, Frase: 'Hablar dracónico' }],
+        });
+        expect(grupos.length).toBe(1);
+        expect(grupos[0].titulo).toBe('Obligatorios');
+        expect(grupos[0].condiciones.map((c) => c.frase)).toEqual(['Soltura con un arma (daga)', 'Hablar dracónico']);
     });
 
     it('sin prerrequisitos no hay grupos', () => {

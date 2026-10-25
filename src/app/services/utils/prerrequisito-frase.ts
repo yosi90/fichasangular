@@ -56,8 +56,8 @@ export interface GrupoPrerrequisitos {
 
 /**
  * Los prerrequisitos de una entidad como se enseñan en los detalles: primero los obligatorios y después cada grupo de
- * alternativas («Elección A», «Elección B»…), cada uno con su frase, en el orden de los tipos del objeto. `excluir`
- * quita los tipos que no se enseñan.
+ * alternativas («Elección A», «Elección B»…), cada uno con su frase, en el orden de los tipos del objeto. Un grupo con una
+ * sola alternativa es obligatorio (como en 3.5 Companion). `excluir` quita los tipos que no se enseñan.
  */
 export function agruparPrerrequisitos(
     prerrequisitos: object | null | undefined,
@@ -82,20 +82,25 @@ export function agruparPrerrequisitos(
                 });
         });
 
-    const grupos: GrupoPrerrequisitos[] = [];
-    if (obligatorias.length > 0)
-        grupos.push({ titulo: 'Obligatorios', descripcion: 'Se deben cumplir todos', opcional: false, condiciones: obligatorias });
-
-    Array.from(alternativas.keys())
+    const grupos = Array.from(alternativas.keys())
         .sort((a, b) => a - b)
-        .forEach((grupo, index) => grupos.push({
+        .map((grupo) => alternativas.get(grupo) ?? [])
+        .filter((condiciones) => {
+            if (condiciones.length > 1)
+                return true;
+            obligatorias.push(...condiciones);
+            return false;
+        })
+        .map((condiciones, index): GrupoPrerrequisitos => ({
             titulo: `Elección ${letraGrupo(index)}`,
             descripcion: 'Basta con una de estas opciones',
             opcional: true,
-            condiciones: alternativas.get(grupo) ?? [],
+            condiciones,
         }));
 
-    return grupos;
+    return obligatorias.length > 0
+        ? [{ titulo: 'Obligatorios', descripcion: 'Se deben cumplir todos', opcional: false, condiciones: obligatorias }, ...grupos]
+        : grupos;
 }
 
 const DESTINOS: Record<string, { entidad: 'arma' | 'armadura' | 'raza'; campoId: string; }> = {
