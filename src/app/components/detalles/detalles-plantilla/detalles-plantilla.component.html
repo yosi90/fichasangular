@@ -127,42 +127,23 @@
                     </mat-chip-set>
                 </mat-expansion-panel>
 
-                <mat-expansion-panel *ngIf="getPrerrequisitosAgrupados().length > 0">
+                <mat-expansion-panel *ngIf="prerrequisitosAgrupados.length > 0">
                     <mat-expansion-panel-header>
                         <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-b-md">
                             <h2 class="tw-mb-0">Prerrequisitos</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <div class="prerrequisito-bloque tw-p-2" *ngFor="let grupo of getPrerrequisitosAgrupados()">
+                    <div class="prerrequisito-bloque tw-p-2" *ngFor="let grupo of prerrequisitosAgrupados">
                         <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">
                             {{grupo.titulo}}
                             <span class="tw-ms-2 prerrequisito-subtitulo">{{grupo.descripcion}}</span>
                         </mat-chip>
-                        <div class="prerrequisito-condicion sombra-caja-sm tw-m-1 tw-p-2" *ngFor="let condicion of grupo.condiciones; let i = index">
-                            <p class="tw-mb-2 tw-font-bold">{{grupo.opcional ? 'Opcion' : 'Condicion'}} {{i + 1}}</p>
-                            <mat-chip-set class="tw-m-0">
-                                <mat-chip class="sombra3d-sm tw-m-1 chip-familia">{{condicion.familiaEtiqueta}}</mat-chip>
-                                <ng-container *ngIf="esBloqueHabilidad(condicion.campos); else chipsCondicionGenericos">
-                                    <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1">
-                                        {{getValorCampo(condicion.campos, 'Habilidad')}}
-                                        <mat-chip class="tw-m-1" *ngIf="tieneTextoVisible(getValorCampo(condicion.campos, 'Extra'))">
-                                            {{getValorCampo(condicion.campos, 'Extra')}}
-                                        </mat-chip>
-                                        <mat-chip class="tw-m-1" *ngIf="tieneTextoVisible(getValorCampo(condicion.campos, 'Rangos'))">
-                                            {{getValorCampo(condicion.campos, 'Rangos')}}
-                                        </mat-chip>
-                                    </mat-chip>
-                                    <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let campo of getCamposSinEtiquetas(condicion.campos, ['Habilidad', 'Extra', 'Rangos'])">
-                                        {{campo.etiqueta}}: {{campo.valor}}
-                                    </mat-chip>
-                                </ng-container>
-                                <ng-template #chipsCondicionGenericos>
-                                    <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let campo of condicion.campos">
-                                        {{campo.etiqueta}}: {{campo.valor}}
-                                    </mat-chip>
-                                </ng-template>
-                            </mat-chip-set>
-                        </div>
+                        <!-- Cada condición es la frase que escribe la API («Criatura de tipo humanoide (conserva su tipo)»). -->
+                        <mat-chip-set class="tw-m-1">
+                            <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let condicion of grupo.condiciones">
+                                {{condicion.frase}}
+                            </mat-chip>
+                        </mat-chip-set>
                     </div>
                 </mat-expansion-panel>
             </mat-accordion>

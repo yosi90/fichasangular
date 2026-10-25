@@ -102,34 +102,23 @@
                 </mat-chip-set>
             </div>
 
-            <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneColeccionVisible(prerrequisitosRaza) || tieneColeccionVisible(prerrequisitosCaracteristica)">
+            <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="prerrequisitosAgrupados.length > 0">
                 <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">Prerrequisitos</mat-chip>
-                <mat-chip-set class="tw-m-1" *ngIf="tieneColeccionVisible(prerrequisitosRaza)">
-                    <ng-container *ngFor="let item of prerrequisitosRaza">
+                <!-- Cada condición es la frase que escribe la API («Etheri», «Carisma 10»); la raza lleva a su detalle. -->
+                <ng-container *ngFor="let grupo of prerrequisitosAgrupados">
+                    <p class="tw-m-1" *ngIf="grupo.opcional">{{grupo.titulo}}: {{grupo.descripcion}}</p>
+                    <mat-chip-set class="tw-m-1">
                         <mat-chip class="tw-h-auto sombra3d-sm tw-m-1"
-                            *ngIf="tienePrerrequisitoRazaNombrado(item); else prerrequisitoRazaGenerico">
-                            Requiere
-                            <mat-chip class="sombra3d-sm tw-m-1"
-                                [ngClass]="tienePrerrequisitoRazaNavegable(item) ? 'chip-clic' : ''"
-                                [matTooltip]="tienePrerrequisitoRazaNavegable(item) ? 'Pulsa para ver los detalles de la raza' : ''"
-                                [matTooltipShowDelay]="250"
-                                matTooltipClass="tt-accent"
-                                (click)="emitirRaza(getIdPrerrequisitoRaza(item)); $event.stopPropagation()">
-                                {{getNombrePrerrequisitoRaza(item)}}
-                            </mat-chip>
+                            *ngFor="let condicion of grupo.condiciones"
+                            [ngClass]="esPrerrequisitoNavegable(condicion) ? 'chip-clic' : ''"
+                            [matTooltip]="esPrerrequisitoNavegable(condicion) ? 'Pulsa para ver los detalles de la raza' : ''"
+                            [matTooltipShowDelay]="250"
+                            matTooltipClass="tt-accent"
+                            (click)="abrirDetallePrerrequisito(condicion)">
+                            {{condicion.frase}}
                         </mat-chip>
-                        <ng-template #prerrequisitoRazaGenerico>
-                            <mat-chip class="tw-h-auto sombra3d-sm tw-m-1">
-                                {{formatOpenObject(item)}}
-                            </mat-chip>
-                        </ng-template>
-                    </ng-container>
-                </mat-chip-set>
-                <mat-chip-set class="tw-m-1" *ngIf="tieneColeccionVisible(prerrequisitosCaracteristica)">
-                    <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let item of prerrequisitosCaracteristica">
-                        Caracteristica: {{formatOpenObject(item)}}
-                    </mat-chip>
-                </mat-chip-set>
+                    </mat-chip-set>
+                </ng-container>
             </div>
         </div>
     </div>

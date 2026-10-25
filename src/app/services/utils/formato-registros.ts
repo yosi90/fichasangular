@@ -1,8 +1,7 @@
-import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
-// Formateo de los registros de prerrequisitos y relaciones que enseñan los detalles (clase y plantilla): convierte
-// valores crudos (objetos, listas, booleanos) en texto legible.
+// Formateo de los registros genéricos que enseña el detalle de clase (competencias, especiales): convierte valores
+// crudos (objetos, listas, booleanos) en texto legible. Los prerrequisitos no pasan por aquí: los enseña su `Frase`.
 
 /** Si la clave es un identificador técnico (`Id`, `Id_dote`, `id extra`…), que no se enseña. */
 export function esCampoId(clave: string): boolean {
@@ -11,18 +10,8 @@ export function esCampoId(clave: string): boolean {
 }
 
 /** Si la clave es una marca de comodín (`Comodin`, `Extra_comodin`, `Arma_comodin`…): se lee, pero no se enseña. */
-export function esCampoComodin(clave: string): boolean {
+function esCampoComodin(clave: string): boolean {
     return clave.replace(/[_\s]/g, '').toLowerCase().endsWith('comodin');
-}
-
-/** Si la clave de un prerrequisito es técnica (el grupo opcional, si requiere extra, las marcas de comodín). */
-export function esCampoTecnicoPrerrequisito(clave: string): boolean {
-    const normalizada = clave.replace(/[_\s]/g, '').toLowerCase();
-    return normalizada === 'opcional'
-        || normalizada === 'o'
-        || normalizada === 'requiereextra'
-        || normalizada === 'requierex'
-        || esCampoComodin(clave);
 }
 
 /** Una clave como etiqueta: guiones bajos por espacios y la primera letra en mayúscula. */
@@ -74,20 +63,4 @@ export function extraerValorSimple(valor: unknown): string {
         return formatearValor(valor);
     }
     return '';
-}
-
-/** El extra que se enseña de un registro con habilidad (con su id de extra y si lo admite). */
-export function extraVisibleDesdeRegistro(item: Record<string, any>, extraRaw: unknown): string {
-    const hasIdExtra = Object.prototype.hasOwnProperty.call(item ?? {}, 'Id_extra')
-        || Object.prototype.hasOwnProperty.call(item ?? {}, 'id_extra')
-        || Object.prototype.hasOwnProperty.call(item ?? {}, 'i_ex')
-        || Object.prototype.hasOwnProperty.call(item ?? {}, 'ie');
-
-    return resolverExtraHabilidadVisible({
-        extra: extraerValorSimple(extraRaw),
-        idExtra: item?.['Id_extra'] ?? item?.['id_extra'] ?? item?.['i_ex'] ?? item?.['ie'],
-        extraComodin: item?.['Extra_comodin'],
-        soportaExtra: item?.['Soporta_extra'] ?? item?.['soporta_extra'],
-        allowIdZeroAsChoose: hasIdExtra,
-    });
 }

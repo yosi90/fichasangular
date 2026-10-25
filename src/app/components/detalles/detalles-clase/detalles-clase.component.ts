@@ -1,16 +1,16 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { Clase, ClaseDoteNivel, ClaseNivelDetalle, ClasePrerrequisitos } from 'src/app/interfaces/clase';
+import { Clase, ClaseDoteNivel, ClaseNivelDetalle } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { idiomasVisibles, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
-import { esCampoId, esCampoTecnicoPrerrequisito, extraVisibleDesdeRegistro, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-prerrequisitos';
-
-type PrerrequisitoActivo = {
-    clave: keyof ClasePrerrequisitos;
-    etiqueta: string;
-    items: Record<string, any>[];
-};
+import { esCampoId, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-registros';
+import {
+    CondicionPrerrequisito,
+    GrupoPrerrequisitos,
+    agruparPrerrequisitos,
+    destinoPrerrequisito,
+} from 'src/app/services/utils/prerrequisito-frase';
 
 type ElementoVisual = {
     nombre: string;
@@ -83,77 +83,13 @@ export class DetallesClaseComponent {
         Custom: [],
     };
 
-    private readonly ordenPrerrequisitos: (keyof ClasePrerrequisitos)[] = [
-        'subtipo',
-        'caracteristica',
-        'dg',
-        'dominio',
-        'nivel_escuela',
-        'ataque_base',
-        'reserva_psionica',
-        'lanzar_poder_psionico_nivel',
-        'conocer_poder_psionico',
-        'genero',
-        'competencia_arma',
-        'competencia_armadura',
-        'competencia_grupo_arma',
-        'competencia_grupo_armadura',
-        'dote_elegida',
-        'rangos_habilidad',
-        'idioma',
-        'alineamiento_requerido',
-        'alineamiento_prohibido',
-        'actitud_requerido',
-        'actitud_prohibido',
-        'lanzador_arcano',
-        'lanzador_divino',
-        'lanzar_conjuros_arcanos_nivel',
-        'lanzar_conjuros_divinos_nivel',
-        'conjuro_conocido',
-        'clase_especial',
-        'tamano_maximo',
-        'tamano_minimo',
-        'raza',
-        'no_raza',
-    ];
-
-    private readonly etiquetasPrerrequisitos: Record<string, string> = {
-        subtipo: 'Subtipo',
-        caracteristica: 'Caracteristica',
-        dg: 'Dados de golpe',
-        dominio: 'Dominio',
-        nivel_escuela: 'Nivel de escuela',
-        ataque_base: 'Ataque base',
-        reserva_psionica: 'Reserva psionica',
-        lanzar_poder_psionico_nivel: 'Poder psionico de nivel',
-        conocer_poder_psionico: 'Poder psionico conocido',
-        genero: 'Genero',
-        competencia_arma: 'Competencia de arma',
-        competencia_armadura: 'Competencia de armadura',
-        competencia_grupo_arma: 'Competencia de grupo de armas',
-        competencia_grupo_armadura: 'Competencia de grupo de armaduras',
-        dote_elegida: 'Dote elegida',
-        rangos_habilidad: 'Rangos en habilidad',
-        idioma: 'Idioma',
-        alineamiento_requerido: 'Alineamiento requerido',
-        alineamiento_prohibido: 'Alineamiento prohibido',
-        actitud_requerido: 'Actitud requerida',
-        actitud_prohibido: 'Actitud prohibida',
-        lanzador_arcano: 'Lanzador arcano',
-        lanzador_divino: 'Lanzador divino',
-        lanzar_conjuros_arcanos_nivel: 'Conjuros arcanos de nivel',
-        lanzar_conjuros_divinos_nivel: 'Conjuros divinos de nivel',
-        conjuro_conocido: 'Conjuro conocido',
-        clase_especial: 'Clase especial',
-        tamano_maximo: 'Tamaño máximo',
-        tamano_minimo: 'Tamaño mínimo',
-        raza: 'Raza',
-        no_raza: 'No raza',
-    };
+    /** Los prerrequisitos con la frase de la API, agrupados por `Opcional` («inherente» no se enseña). */
+    prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];
 
     @Input()
     set clase(value: Clase) {
         this.claseData = value;
+        this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos, ['inherente']);
         this.recalcularBloquesVisuales();
         this.recalcularTablaProgresion();
     }
@@ -280,23 +216,6 @@ export class DetallesClaseComponent {
         return Object.values(this.habilidadesVisibles).some(items => items.length > 0);
     }
 
-    getPrerrequisitosActivos(): PrerrequisitoActivo[] {
-        if (!this.claseData?.Prerrequisitos)
-            return [];
-
-        return this.ordenPrerrequisitos
-            .map(clave => {
-                const items = (this.claseData.Prerrequisitos[clave] ?? [])
-                    .filter(item => this.getCamposVisibles(item).length > 0);
-                return {
-                    clave,
-                    etiqueta: this.etiquetasPrerrequisitos[clave] ?? formatearClave(clave),
-                    items,
-                };
-            })
-            .filter(f => Array.isArray(f.items) && f.items.length > 0);
-    }
-
     getPrerrequisitosFlagsActivos(): string[] {
         const flags = this.claseData?.Prerrequisitos_flags;
         if (!flags)
@@ -309,50 +228,17 @@ export class DetallesClaseComponent {
         return activos;
     }
 
-    tienePrerrequisitoNavegable(clave: keyof ClasePrerrequisitos, item: unknown): boolean {
-        if (clave !== 'competencia_arma' && clave !== 'competencia_armadura')
-            return false;
-        return this.getIdPrerrequisito(item) > 0;
+    esPrerrequisitoNavegable(condicion: CondicionPrerrequisito): boolean {
+        const destino = destinoPrerrequisito(condicion);
+        return destino?.entidad === 'arma' || destino?.entidad === 'armadura';
     }
 
-    abrirDetallePrerrequisito(clave: keyof ClasePrerrequisitos, item: unknown): void {
-        const id = this.getIdPrerrequisito(item);
-        if (id <= 0)
-            return;
-        if (clave === 'competencia_arma') {
-            this.armaDetallesId.emit(id);
-            return;
-        }
-        if (clave === 'competencia_armadura')
-            this.armaduraDetallesId.emit(id);
-    }
-
-    getCamposVisibles(item: any): { etiqueta: string, valor: string }[] {
-        if (!item || typeof item !== 'object')
-            return [];
-
-        return Object.entries(item)
-            .filter(([clave]) => !esCampoId(clave))
-            .filter(([clave]) => !esCampoTecnicoPrerrequisito(clave))
-            .filter(([, valor]) => this.tieneValorMostrable(valor))
-            .map(([clave, valor]) => this.mapCampoPrerrequisito(clave, valor, item))
-            .filter(campo => campo.valor.trim().length > 0)
-            .sort((a, b) => this.getOrdenCampoPrerrequisito(a.etiqueta) - this.getOrdenCampoPrerrequisito(b.etiqueta));
-    }
-
-    esBloqueHabilidad(campos: { etiqueta: string, valor: string }[]): boolean {
-        return this.tieneTextoVisible(this.getValorCampo(campos, 'Habilidad'));
-    }
-
-    getValorCampo(campos: { etiqueta: string, valor: string }[], etiqueta: string): string {
-        const normalizada = etiqueta.replace(/[_\s]/g, '').toLowerCase();
-        const campo = campos.find(c => c.etiqueta.replace(/[_\s]/g, '').toLowerCase() === normalizada);
-        return campo?.valor ?? '';
-    }
-
-    getCamposSinEtiquetas(campos: { etiqueta: string, valor: string }[], etiquetas: string[]): { etiqueta: string, valor: string }[] {
-        const normalizadas = etiquetas.map(e => e.replace(/[_\s]/g, '').toLowerCase());
-        return campos.filter(c => !normalizadas.includes(c.etiqueta.replace(/[_\s]/g, '').toLowerCase()));
+    abrirDetallePrerrequisito(condicion: CondicionPrerrequisito): void {
+        const destino = destinoPrerrequisito(condicion);
+        if (destino?.entidad === 'arma')
+            this.armaDetallesId.emit(destino.id);
+        else if (destino?.entidad === 'armadura')
+            this.armaduraDetallesId.emit(destino.id);
     }
 
     private getResumenDotes(nivel: ClaseNivelDetalle): ResumenDote[] {
@@ -801,67 +687,6 @@ export class DetallesClaseComponent {
         });
     }
 
-
-    private mapCampoPrerrequisito(clave: string, valor: unknown, item: Record<string, any>): { etiqueta: string, valor: string } {
-        const base = clave.replace(/[_\s]/g, '').toLowerCase();
-
-        if (base.includes('rangos')) {
-            const n = Number(extraerValorSimple(valor));
-            return {
-                etiqueta: 'Rangos',
-                valor: Number.isFinite(n) && n > 0 ? `>= ${n}` : `${formatearValor(valor)}`,
-            };
-        }
-
-        if (base === 'extra' || base === 'extras') {
-            return {
-                etiqueta: 'Extra',
-                valor: extraVisibleDesdeRegistro(item, valor),
-            };
-        }
-
-        if (base.includes('habilidad')) {
-            return {
-                etiqueta: 'Habilidad',
-                valor: this.formatearHabilidadPrerrequisito(valor, item),
-            };
-        }
-
-        return {
-            etiqueta: formatearClave(clave),
-            valor: formatearValor(valor),
-        };
-    }
-
-    private formatearHabilidadPrerrequisito(valor: unknown, item: Record<string, any>): string {
-        const habilidad = extraerValorSimple(valor);
-        const extra = extraerValorSimple(item?.['Extra'] ?? item?.['extra'] ?? item?.['Extras'] ?? item?.['extras']);
-        const matchSaberGenerico = /^saber\s*\d+$/i.test(habilidad);
-        if (matchSaberGenerico && this.tieneTextoVisible(extra))
-            return 'Saber';
-        return habilidad;
-    }
-
-    private getIdPrerrequisito(item: unknown): number {
-        if (!item || typeof item !== 'object')
-            return 0;
-        const ids = Object.entries(item as Record<string, unknown>)
-            .filter(([clave]) => esCampoId(clave))
-            .map(([, valor]) => Number(valor))
-            .filter((valor) => Number.isFinite(valor) && valor > 0);
-        return ids[0] ?? 0;
-    }
-
-    private getOrdenCampoPrerrequisito(etiqueta: string): number {
-        const base = etiqueta.replace(/[_\s]/g, '').toLowerCase();
-        if (base === 'habilidad')
-            return 1;
-        if (base === 'extra')
-            return 2;
-        if (base === 'rangos')
-            return 3;
-        return 10;
-    }
 
     private formatearObjeto(item: any): string {
         if (!item || typeof item !== 'object')

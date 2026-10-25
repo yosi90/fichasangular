@@ -1,3 +1,4 @@
+import { PrerrequisitoItem } from './prerrequisito';
 import { ManualReferencia } from './manual';
 
 export interface DoteTipo {
@@ -44,7 +45,7 @@ export interface DoteModificadores {
 }
 
 export interface DotePrerrequisitos {
-    [key: string]: any[];
+    [key: string]: PrerrequisitoItem[];
 }
 
 export interface Dote {

@@ -51,7 +51,7 @@ describe('DetallesDoteComponent', () => {
                 Habilidades: [],
             },
             Prerrequisitos: {
-                competencia_armadura: [{ Id_armadura: 9, Nombre: 'Escudo pesado' }],
+                competencia_armadura: [{ Id_armadura: 9, Armadura: 'Escudo pesado', Opcional: 0, Frase: 'Competencia con escudo pesado' }],
             } as any,
         } as any;
         fixture.detectChanges();
@@ -65,7 +65,9 @@ describe('DetallesDoteComponent', () => {
 
     it('emite detalle de armadura desde prerrequisito', () => {
         const spy = spyOn(component.armaduraDetallesId, 'emit');
-        component.abrirDetallePrerrequisito('competencia_armadura', { Id_armadura: 9, Nombre: 'Escudo pesado' });
+        const condicion = component.prerrequisitosAgrupados[0].condiciones[0];
+        expect(component.esPrerrequisitoNavegable(condicion)).toBeTrue();
+        component.abrirDetallePrerrequisito(condicion);
         expect(spy).toHaveBeenCalledWith(9);
     });
 
@@ -86,85 +88,56 @@ describe('DetallesDoteComponent', () => {
         component.dote = {
             ...(component.doteData as any),
             Prerrequisitos: {
-                inherente: [{ Id_especial: 4, Clase_especial: 'Legado antiguo' }],
-                competencia_armadura: [{ Id_armadura: 9, Nombre: 'Escudo pesado' }],
+                inherente: [{ Id_especial: 4, Especial: 'Alas', Opcional: 0, Frase: 'Tener alas' }],
+                competencia_armadura: [{ Id_armadura: 9, Armadura: 'Escudo pesado', Opcional: 0, Frase: 'Competencia con escudo pesado' }],
             },
         } as any;
 
-        expect(component.getPrerrequisitosConDatos()).toEqual(['competencia_armadura']);
+        const frases = component.prerrequisitosAgrupados.flatMap((grupo) => grupo.condiciones.map((c) => c.frase));
+        expect(frases).toEqual(['Competencia con escudo pesado']);
     });
 
-    it('agrupa prerrequisitos opcionales con el mismo valor como alternativas', () => {
+    it('enseña la frase de la API y agrupa las alternativas por Opcional', () => {
         component.dote = {
             ...(component.doteData as any),
             Prerrequisitos: {
                 clase_especial: [
-                    // Sin extra, la API da `Id_extra` y `Extra` a null (antes, el extra 0 «Nada»), con su marca de comodín.
-                    { Id_especial: 7, Especial: 'Expulsar o reprender muertos vivientes', Id_extra: null, Extra: null, Extra_comodin: null, Opcional: 1 },
-                    { Id_especial: 8, Especial: 'Expulsar muertos vivientes', Id_extra: null, Extra: null, Extra_comodin: null, Opcional: 1 },
+                    { Id_especial: 7, Especial: 'Expulsar o reprender muertos vivientes', Id_extra: null, Extra: null, Extra_comodin: null, Opcional: 1, Frase: 'Expulsar o reprender muertos vivientes' },
+                    { Id_especial: 8, Especial: 'Expulsar muertos vivientes', Id_extra: null, Extra: null, Extra_comodin: null, Opcional: 1, Frase: 'Expulsar muertos vivientes' },
                 ],
                 habilidad: [
-                    { Id_habilidad: 4, Habilidad: 'Concentracion', Rangos: 8, Opcional: 0 },
+                    { Id_habilidad: 4, Habilidad: 'Concentración', Cantidad: 8, Opcional: 0, Frase: 'Concentración 8 rangos' },
+                ],
+                dote: [
+                    { Id_dote_prerrequisito: 4, Dote_prerrequisito: 'Soltura con un arma', Id_extra: 0, Extra: null, Extra_comodin: 'elegir', Repetido: 0, Opcional: 0, Frase: 'Soltura con un arma (el arma elegida)' },
                 ],
             },
         } as any;
+        fixture.detectChanges();
 
-        const grupos = component.getPrerrequisitosAgrupados();
-
+        const grupos = component.prerrequisitosAgrupados;
         expect(grupos.length).toBe(2);
         expect(grupos[0].titulo).toBe('Obligatorios');
-        expect(grupos[0].condiciones.length).toBe(1);
-        expect(grupos[0].condiciones[0].familiaEtiqueta).toBe('Tener estos rangos en habilidad');
-        expect(grupos[1].titulo).toBe('Eleccion A');
+        expect(grupos[0].condiciones.map((c) => c.frase)).toEqual(['Concentración 8 rangos', 'Soltura con un arma (el arma elegida)']);
+        expect(grupos[1].titulo).toBe('Elección A');
         expect(grupos[1].opcional).toBeTrue();
         expect(grupos[1].descripcion).toContain('Basta con una');
-        expect(grupos[1].condiciones.length).toBe(2);
-        expect(grupos[1].condiciones.every((condicion) => condicion.familiaEtiqueta === 'Tener este especial de clase')).toBeTrue();
-        expect(grupos[1].condiciones[0].campos.some((campo) => campo.etiqueta === 'Especial de clase')).toBeTrue();
-        expect(grupos[1].condiciones[0].campos.some((campo) => campo.etiqueta === 'Opcional')).toBeFalse();
-        expect(grupos[1].condiciones[0].campos.some((campo) => campo.etiqueta === 'Extra')).toBeFalse();
-        expect(grupos[1].condiciones[0].campos.some((campo) => /comodin/i.test(campo.etiqueta))).toBeFalse();
+        expect(grupos[1].condiciones.map((c) => c.frase)).toEqual(['Expulsar o reprender muertos vivientes', 'Expulsar muertos vivientes']);
+
+        const texto = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(texto).toContain('Soltura con un arma (el arma elegida)');
+        expect(texto).not.toContain('Frase');
+        expect(texto).not.toContain('Extra:');
     });
 
-    it('resume caracteristica y dote sin repetir etiquetas internas', () => {
+    it('sin frase (una caché anterior) enseña el nombre del tipo', () => {
         component.dote = {
             ...(component.doteData as any),
             Prerrequisitos: {
-                caracteristica: [{ Caracteristica: 'Fuerza', Cantidad: 13, Opcional: 0 }],
-                dote: [{ Dote_prerrequisito: 'Ataque poderoso', Opcional: 0 }],
+                poder_seleccionar_familiar: [{ Opcional: 0 }],
             },
         } as any;
 
-        const grupos = component.getPrerrequisitosAgrupados();
-        const chipsCaracteristica = component.getTextosCondicionPrerrequisito(grupos[0].condiciones[0]);
-        const chipsDote = component.getTextosCondicionPrerrequisito(grupos[0].condiciones[1]);
-
-        expect(grupos[0].condiciones[0].familiaEtiqueta).toBe('Tener esta característica mínima');
-        expect(chipsCaracteristica).toEqual(['Fuerza 13']);
-        expect(grupos[0].condiciones[1].familiaEtiqueta).toBe('Tener esta dote');
-        expect(chipsDote).toEqual(['Ataque poderoso']);
-    });
-
-    it('muestra prerrequisitos flag-only con descripcion legible', () => {
-        component.dote = {
-            ...(component.doteData as any),
-            Prerrequisitos: {
-                poder_seleccionar_companero: [{ Activo: true }],
-                poder_seleccionar_familiar: [{ Activo: true }],
-            },
-        } as any;
-
-        const grupos = component.getPrerrequisitosAgrupados();
-
-        expect(grupos.length).toBe(1);
-        expect(grupos[0].condiciones.length).toBe(2);
-        expect(grupos[0].condiciones[0].familiaEtiqueta).toBe('Poder elegir un compañero nuevo');
-        expect(component.getTextosCondicionPrerrequisito(grupos[0].condiciones[0])).toEqual([
-            'Tener la capacidad de obtener un nuevo compañero animal en este momento.',
-        ]);
-        expect(grupos[0].condiciones[1].familiaEtiqueta).toBe('Poder elegir un familiar nuevo');
-        expect(component.getTextosCondicionPrerrequisito(grupos[0].condiciones[1])).toEqual([
-            'Tener la capacidad de obtener un nuevo familiar en este momento.',
-        ]);
+        expect(component.prerrequisitosAgrupados[0].condiciones[0].frase).toBe('Poder seleccionar familiar');
     });
 });

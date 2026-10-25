@@ -31,8 +31,8 @@ describe('DetallesRacialComponent', () => {
             Ataques: [{ Descripcion: 'Mordisco 1d6' }],
             Prerrequisitos_flags: { raza: true, caracteristica_minima: false },
             Prerrequisitos: {
-                raza: [{ id_raza: 2, raza: 'Elfo' }],
-                caracteristica: [{ caracteristica: 'Inteligencia', cantidad: 13 }],
+                raza: [{ Id_raza: 2, Raza: 'Elfo', Frase: 'Elfo' }],
+                caracteristica: [{ Id_caracteristica: 4, Caracteristica: 'Inteligencia', Cantidad: 13, Opcional: 0, Frase: 'Inteligencia 13' }],
             },
         });
     });
@@ -58,19 +58,23 @@ describe('DetallesRacialComponent', () => {
         expect(conjuroSpy).toHaveBeenCalledWith(12);
     });
 
-    it('emite navegación por id para la raza prerrequerida y renderiza su nombre sin el id', () => {
+    it('enseña la frase de cada prerrequisito y navega a la raza pedida', () => {
         const razaSpy = spyOn(component.razaDetallesId, 'emit');
 
         fixture.detectChanges();
         const html = `${fixture.nativeElement.textContent ?? ''}`;
-        const chipRaza = fixture.debugElement.queryAll(By.css('mat-chip'))
-            .find((debug) => `${debug.nativeElement.textContent ?? ''}`.includes('Elfo'));
-        component.emitirRaza(2);
+        const condiciones = component.prerrequisitosAgrupados.flatMap((grupo) => grupo.condiciones);
+        const raza = condiciones.find((condicion) => condicion.clave === 'raza')!;
+        const caracteristica = condiciones.find((condicion) => condicion.clave === 'caracteristica')!;
+        component.abrirDetallePrerrequisito(raza);
+        component.abrirDetallePrerrequisito(caracteristica);
 
-        expect(html).toContain('Requiere');
         expect(html).toContain('Elfo');
-        expect(html).not.toContain('id_raza');
-        expect(chipRaza).toBeTruthy();
-        expect(razaSpy).toHaveBeenCalledWith(2);
+        expect(html).toContain('Inteligencia 13');
+        expect(html).not.toContain('Id_raza');
+        expect(html).not.toContain('Caracteristica: Inteligencia');
+        expect(component.esPrerrequisitoNavegable(raza)).toBeTrue();
+        expect(component.esPrerrequisitoNavegable(caracteristica)).toBeFalse();
+        expect(razaSpy).toHaveBeenCalledOnceWith(2);
     });
 });

@@ -1,3 +1,4 @@
+import { PrerrequisitoItem } from "./prerrequisito";
 import { Alineamiento } from "./alineamiento";
 import { Comodin } from "./comodin";
 import { AptitudSortilega } from "./aptitud-sortilega";
@@ -18,11 +19,11 @@ export interface RazaPrerrequisitosFlags {
 }
 
 export interface RazaPrerrequisitos {
-    actitud_prohibido?: Record<string, any>[];
-    actitud_requerido?: Record<string, any>[];
-    alineamiento_prohibido?: Record<string, any>[];
-    alineamiento_requerido?: Record<string, any>[];
-    tipo_criatura?: Record<string, any>[];
+    actitud_prohibido?: PrerrequisitoItem[];
+    actitud_requerido?: PrerrequisitoItem[];
+    alineamiento_prohibido?: PrerrequisitoItem[];
+    alineamiento_requerido?: PrerrequisitoItem[];
+    tipo_criatura?: PrerrequisitoItem[];
 }
 
 export interface MutacionRaza {

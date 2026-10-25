@@ -166,12 +166,36 @@ describe('DetallesClaseComponent', () => {
         component.clase = crearClaseMock({
             Prerrequisitos: {
                 ...crearClaseMock().Prerrequisitos,
-                inherente: [{ Id_especial: 4, Clase_especial: 'Legado antiguo' }],
-                competencia_arma: [{ Id_arma: 8, Nombre: 'Alabarda' }],
+                inherente: [{ Id_especial: 4, Especial: 'Legado antiguo', Opcional: 0, Frase: 'Tener legado antiguo' }],
+                competencia_arma: [{ Id_arma: 8, Arma: 'Alabarda', Opcional: 0, Frase: 'Competencia con alabarda' }],
             },
         });
 
-        expect(component.getPrerrequisitosActivos().map((item) => item.clave)).toEqual(['competencia_arma']);
+        const claves = component.prerrequisitosAgrupados.flatMap((grupo) => grupo.condiciones.map((c) => c.clave));
+        expect(claves).toEqual(['competencia_arma']);
+    });
+
+    it('enseña la frase de cada prerrequisito y agrupa los alineamientos alternativos', () => {
+        component.clase = crearClaseMock({
+            Prerrequisitos_flags: { dote_elegida: true, alineamiento_requerido: true },
+            Prerrequisitos: {
+                ...crearClaseMock().Prerrequisitos,
+                dote_elegida: [{
+                    Id_dote_prerrequisito: 27, Dote_prerrequisito: 'Soltura con una escuela de magia', Id_extra: 0, Extra: null,
+                    Extra_comodin: 'cualquiera', Repetido: 1, Opcional: 0, Frase: 'Soltura con una escuela de magia (cualquier escuela)',
+                }],
+                alineamiento_requerido: [
+                    { Id_alineamiento: 4, Alineamiento_basico: 'Neutral bueno', Opcional: 1, Frase: 'Neutral bueno' },
+                    { Id_alineamiento: 1, Alineamiento_basico: 'Legal bueno', Opcional: 1, Frase: 'Legal bueno' },
+                ],
+            },
+        });
+        fixture.detectChanges();
+
+        const grupos = component.prerrequisitosAgrupados;
+        expect(grupos.map((grupo) => grupo.titulo)).toEqual(['Obligatorios', 'Elección A']);
+        expect(grupos[0].condiciones.map((c) => c.frase)).toEqual(['Soltura con una escuela de magia (cualquier escuela)']);
+        expect(grupos[1].condiciones.map((c) => c.frase)).toEqual(['Neutral bueno', 'Legal bueno']);
     });
 
     it('separa el extra de especial en subchip y navega por nombre cuando falta id', () => {
@@ -319,12 +343,14 @@ describe('DetallesClaseComponent', () => {
         component.clase = crearClaseMock({
             Prerrequisitos: {
                 ...crearClaseMock().Prerrequisitos,
-                competencia_armadura: [{ Id_armadura: 5, Nombre: 'Escudo pesado' }],
+                competencia_armadura: [{ Id_armadura: 5, Armadura: 'Escudo pesado', Opcional: 0, Frase: 'Competencia con escudo pesado' }],
             },
         });
 
         const spy = spyOn(component.armaduraDetallesId, 'emit');
-        component.abrirDetallePrerrequisito('competencia_armadura', { Id_armadura: 5, Nombre: 'Escudo pesado' } as any);
+        const condicion = component.prerrequisitosAgrupados[0].condiciones[0];
+        expect(component.esPrerrequisitoNavegable(condicion)).toBeTrue();
+        component.abrirDetallePrerrequisito(condicion);
 
         expect(spy).toHaveBeenCalledWith(5);
     });

@@ -1,3 +1,4 @@
+import { PrerrequisitoItem } from "./prerrequisito";
 import { Alineamiento } from "./alineamiento";
 import { Comodin } from "./comodin";
 import { Conjuro } from "./conjuro";
@@ -75,7 +76,7 @@ export interface PlantillaPrerrequisitosFlags {
     criaturas_compatibles?: boolean;
 }
 
-export type PlantillaPrerrequisitoItem = Record<string, any>;
+export type PlantillaPrerrequisitoItem = PrerrequisitoItem;
 
 export interface PlantillaPrerrequisitos {
     actitud_requerido: PlantillaPrerrequisitoItem[];

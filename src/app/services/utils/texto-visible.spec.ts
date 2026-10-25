@@ -1,5 +1,5 @@
 import { idiomasVisibles, nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
-import { extraerValorSimple, formatearValor } from './formato-prerrequisitos';
+import { extraerValorSimple, formatearValor } from './formato-registros';
 
 describe('tieneTextoVisible', () => {
     it('oculta lo vacío y los textos que pone la propia web, sin tildes, mayúsculas ni puntos', () => {

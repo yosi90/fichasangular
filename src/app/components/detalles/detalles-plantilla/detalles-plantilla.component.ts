@@ -1,24 +1,12 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
-import { Plantilla, PlantillaPrerrequisitos } from 'src/app/interfaces/plantilla';
+import { Plantilla } from 'src/app/interfaces/plantilla';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
-import { esCampoId, esCampoTecnicoPrerrequisito, extraVisibleDesdeRegistro, extraerValorSimple, formatearClave, formatearValor } from 'src/app/services/utils/formato-prerrequisitos';
+import { GrupoPrerrequisitos, agruparPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
 import { porNombre } from 'src/app/services/utils/orden-texto';
-
-type PrerrequisitoCondicion = {
-    familiaEtiqueta: string;
-    campos: { etiqueta: string; valor: string }[];
-};
-
-type PrerrequisitoGrupo = {
-    titulo: string;
-    descripcion: string;
-    opcional: boolean;
-    condiciones: PrerrequisitoCondicion[];
-};
 
 type CambioNumerico = {
     etiqueta: string;
@@ -41,25 +29,13 @@ export class DetallesPlantillaComponent {
 
     plantillaData!: Plantilla;
 
-    private readonly ordenPrerrequisitos: (keyof PlantillaPrerrequisitos)[] = [
-        'actitud_requerido',
-        'actitud_prohibido',
-        'alineamiento_requerido',
-        'caracteristica',
-        'criaturas_compatibles',
-    ];
-
-    private readonly etiquetasPrerrequisitos: Record<keyof PlantillaPrerrequisitos, string> = {
-        actitud_requerido: 'Actitud requerida',
-        actitud_prohibido: 'Actitud prohibida',
-        alineamiento_requerido: 'Alineamiento requerido',
-        caracteristica: 'Caracteristica',
-        criaturas_compatibles: 'Criaturas compatibles',
-    };
+    /** Los prerrequisitos con la frase de la API, agrupados por `Opcional`. */
+    prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];
 
     @Input()
     set plantilla(value: Plantilla) {
         this.plantillaData = value;
+        this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos);
     }
 
     @Output() conjuroDetalles: EventEmitter<number> = new EventEmitter<number>();
@@ -217,92 +193,6 @@ export class DetallesPlantillaComponent {
             || this.getMinimosCaracteristicasVisibles().length > 0;
     }
 
-    getPrerrequisitosAgrupados(): PrerrequisitoGrupo[] {
-        if (!this.plantillaData?.Prerrequisitos)
-            return [];
-
-        // Convencion de opcional: 0 = condicion obligatoria, >0 = grupo de eleccion vinculado por ese valor.
-        const condiciones: { opcional: number; condicion: PrerrequisitoCondicion; }[] = [];
-
-        this.ordenPrerrequisitos.forEach(clave => {
-            const items = this.plantillaData.Prerrequisitos[clave] ?? [];
-            const familiaEtiqueta = this.etiquetasPrerrequisitos[clave];
-            items.forEach(item => {
-                const campos = this.getCamposVisibles(item);
-                if (campos.length < 1)
-                    return;
-
-                condiciones.push({
-                    opcional: this.getOpcional(item),
-                    condicion: {
-                        familiaEtiqueta,
-                        campos,
-                    },
-                });
-            });
-        });
-
-        if (condiciones.length < 1)
-            return [];
-
-        const grupos: PrerrequisitoGrupo[] = [];
-        const obligatorias = condiciones.filter(c => c.opcional === 0).map(c => c.condicion);
-        if (obligatorias.length > 0) {
-            grupos.push({
-                titulo: 'Obligatorios',
-                descripcion: 'Se deben cumplir todos',
-                opcional: false,
-                condiciones: obligatorias,
-            });
-        }
-
-        const opcionalesMap = new Map<number, PrerrequisitoCondicion[]>();
-        condiciones
-            .filter(c => c.opcional > 0)
-            .forEach(c => {
-                if (!opcionalesMap.has(c.opcional))
-                    opcionalesMap.set(c.opcional, []);
-                opcionalesMap.get(c.opcional)?.push(c.condicion);
-            });
-
-        const opcionalesOrdenados = Array.from(opcionalesMap.keys()).sort((a, b) => a - b);
-        opcionalesOrdenados.forEach((opcional, index) => {
-            grupos.push({
-                titulo: this.getEtiquetaGrupoEleccion(index),
-                descripcion: 'Debes cumplir al menos una de estas opciones',
-                opcional: true,
-                condiciones: opcionalesMap.get(opcional) ?? [],
-            });
-        });
-
-        return grupos.filter(g => g.condiciones.length > 0);
-    }
-
-    getCamposVisibles(item: any): { etiqueta: string; valor: string }[] {
-        if (!item || typeof item !== 'object')
-            return [];
-
-        return Object.entries(item)
-            .filter(([clave]) => !esCampoId(clave) && !esCampoTecnicoPrerrequisito(clave))
-            .map(([clave, valor]) => this.mapCampoPrerrequisito(clave, valor, item))
-            .filter(campo => this.tieneTextoVisible(campo.valor) || campo.valor === '0');
-    }
-
-    esBloqueHabilidad(campos: { etiqueta: string; valor: string }[]): boolean {
-        return this.tieneTextoVisible(this.getValorCampo(campos, 'Habilidad'));
-    }
-
-    getValorCampo(campos: { etiqueta: string; valor: string }[], etiqueta: string): string {
-        const normalizada = etiqueta.replace(/[_\s]/g, '').toLowerCase();
-        const campo = campos.find(c => c.etiqueta.replace(/[_\s]/g, '').toLowerCase() === normalizada);
-        return campo?.valor ?? '';
-    }
-
-    getCamposSinEtiquetas(campos: { etiqueta: string; valor: string }[], etiquetas: string[]): { etiqueta: string; valor: string }[] {
-        const normalizadas = etiquetas.map(e => e.replace(/[_\s]/g, '').toLowerCase());
-        return campos.filter(c => !normalizadas.includes(c.etiqueta.replace(/[_\s]/g, '').toLowerCase()));
-    }
-
     getCompatibilidadesVisibles(): { tipoComp: string; tipoNuevo: string; }[] {
         return (this.plantillaData?.Compatibilidad_tipos ?? [])
             .map(item => {
@@ -339,106 +229,4 @@ export class DetallesPlantillaComponent {
             Nombre: nombre,
         });
     }
-
-
-
-    private getOpcional(item: Record<string, any>): number {
-        if (!item || typeof item !== 'object')
-            return 0;
-
-        const raw = item['opcional'] ?? item['Opcional'] ?? item['o'] ?? item['O'] ?? 0;
-        const valor = toNumber(raw);
-        return valor > 0 ? valor : 0;
-    }
-
-    private getEtiquetaGrupoEleccion(index: number): string {
-        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-        if (index >= 0 && index < letters.length)
-            return `Eleccion ${letters[index]}`;
-        return `Eleccion ${(index + 1)}`;
-    }
-
-    private mapCampoPrerrequisito(clave: string, valor: unknown, item: Record<string, any>): { etiqueta: string; valor: string } {
-        const base = clave.replace(/[_\s]/g, '').toLowerCase();
-
-        if (base === 'tipocomp' || base === 'tipocompatible' || base === 'tipocriatura' || base === 'criaturacompatible') {
-            return {
-                etiqueta: 'Tipo compatible',
-                valor: extraerValorSimple(valor),
-            };
-        }
-
-        if (base === 'tiponuevo' || base === 'tiponuevotipo' || base === 'tiporesultante') {
-            const tipoNuevo = extraerValorSimple(valor);
-            if (item?.['Tipo_nuevo_comodin'] === 'cualquiera') {
-                return {
-                    etiqueta: 'Tipo nuevo',
-                    valor: this.getTipoCompatibleEnCondicion(item),
-                };
-            }
-            return {
-                etiqueta: 'Tipo nuevo',
-                valor: tipoNuevo,
-            };
-        }
-
-        if (base.includes('rangos')) {
-            const n = Number(extraerValorSimple(valor));
-            return {
-                etiqueta: 'Rangos',
-                valor: Number.isFinite(n) && n > 0 ? `>= ${n}` : `${formatearValor(valor)}`,
-            };
-        }
-
-        if (base === 'extra' || base === 'extras') {
-            return {
-                etiqueta: 'Extra',
-                valor: extraVisibleDesdeRegistro(item, valor),
-            };
-        }
-
-        if (base.includes('habilidad')) {
-            return {
-                etiqueta: 'Habilidad',
-                valor: this.formatearHabilidadPrerrequisito(valor, item),
-            };
-        }
-
-        return {
-            etiqueta: formatearClave(clave),
-            valor: formatearValor(valor),
-        };
-    }
-
-    private getTipoCompatibleEnCondicion(item: Record<string, any>): string {
-        const candidatos = [
-            item?.['Tipo_comp'],
-            item?.['tipo_comp'],
-            item?.['Tipo compatible'],
-            item?.['tipo compatible'],
-            item?.['Tipo_criatura'],
-            item?.['tipo_criatura'],
-        ];
-
-        for (const candidato of candidatos) {
-            const valor = extraerValorSimple(candidato);
-            if (this.tieneTextoVisible(valor))
-                return valor;
-        }
-
-        return 'No cambia';
-    }
-
-    private formatearHabilidadPrerrequisito(valor: unknown, item: Record<string, any>): string {
-        const habilidad = extraerValorSimple(valor);
-        const extra = extraVisibleDesdeRegistro(
-            item,
-            item?.['Extra'] ?? item?.['extra'] ?? item?.['Extras'] ?? item?.['extras'],
-        );
-        const matchSaberGenerico = /^saber\s*\d+$/i.test(habilidad);
-        if (matchSaberGenerico && this.tieneTextoVisible(extra))
-            return 'Saber';
-        return habilidad;
-    }
-
 }

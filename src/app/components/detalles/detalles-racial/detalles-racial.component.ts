@@ -2,6 +2,12 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import {
+    CondicionPrerrequisito,
+    GrupoPrerrequisitos,
+    agruparPrerrequisitos,
+    destinoPrerrequisito,
+} from 'src/app/services/utils/prerrequisito-frase';
 
 @Component({
     selector: 'app-detalles-racial',
@@ -10,7 +16,20 @@ import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
     standalone: false
 })
 export class DetallesRacialComponent {
-    @Input() racial!: RacialDetalle;
+    private racialActual!: RacialDetalle;
+    /** Los prerrequisitos (raza y característica) con la frase de la API, agrupados por `Opcional`. */
+    prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];
+
+    @Input()
+    set racial(value: RacialDetalle) {
+        this.racialActual = value;
+        this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos);
+    }
+
+    get racial(): RacialDetalle {
+        return this.racialActual;
+    }
+
     @Output() razaDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() doteDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() conjuroDetallesId: EventEmitter<number> = new EventEmitter<number>();
@@ -21,14 +40,6 @@ export class DetallesRacialComponent {
 
     get habilidadesCustom(): Record<string, any>[] {
         return this.racial?.Habilidades?.Custom ?? [];
-    }
-
-    get prerrequisitosRaza(): Record<string, any>[] {
-        return this.racial?.Prerrequisitos?.raza ?? [];
-    }
-
-    get prerrequisitosCaracteristica(): Record<string, any>[] {
-        return this.racial?.Prerrequisitos?.caracteristica ?? [];
     }
 
     readonly tieneTextoVisible = tieneTextoVisible;
@@ -68,28 +79,14 @@ export class DetallesRacialComponent {
             this.doteDetallesId.emit(id);
     }
 
-    getNombrePrerrequisitoRaza(item: Record<string, any> | null | undefined): string {
-        const nombre = `${item?.['Raza'] ?? item?.['raza'] ?? item?.['Nombre_raza'] ?? item?.['nombre_raza'] ?? item?.['Nombre'] ?? item?.['nombre'] ?? ''}`.trim();
-        return nombre;
+    esPrerrequisitoNavegable(condicion: CondicionPrerrequisito): boolean {
+        return destinoPrerrequisito(condicion)?.entidad === 'raza';
     }
 
-    getIdPrerrequisitoRaza(item: Record<string, any> | null | undefined): number {
-        const id = Number(item?.['Id_raza'] ?? item?.['id_raza'] ?? item?.['IdRaza'] ?? item?.['idRaza'] ?? 0);
-        return Number.isFinite(id) && id > 0 ? id : 0;
-    }
-
-    tienePrerrequisitoRazaNavegable(item: Record<string, any> | null | undefined): boolean {
-        return this.getIdPrerrequisitoRaza(item) > 0;
-    }
-
-    tienePrerrequisitoRazaNombrado(item: Record<string, any> | null | undefined): boolean {
-        return this.getNombrePrerrequisitoRaza(item).length > 0;
-    }
-
-    emitirRaza(idRaza: number | null | undefined): void {
-        const id = Number(idRaza);
-        if (Number.isFinite(id) && id > 0)
-            this.razaDetallesId.emit(id);
+    abrirDetallePrerrequisito(condicion: CondicionPrerrequisito): void {
+        const destino = destinoPrerrequisito(condicion);
+        if (destino?.entidad === 'raza')
+            this.razaDetallesId.emit(destino.id);
     }
 
     puedeAbrirConjuro(sortilega: { Conjuro?: { Id?: number | null; } | null; } | null | undefined): boolean {

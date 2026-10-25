@@ -1,3 +1,4 @@
+import { PrerrequisitoItem } from "./prerrequisito";
 import { Alineamiento } from "./alineamiento";
 import { Comodin } from "./comodin";
 import { Dote } from "./dote";
@@ -160,38 +161,38 @@ export interface ClasePrerrequisitosFlags {
 }
 
 export interface ClasePrerrequisitos {
-    subtipo: Record<string, any>[];
-    caracteristica: Record<string, any>[];
-    dg: Record<string, any>[];
-    dominio: Record<string, any>[];
-    nivel_escuela: Record<string, any>[];
-    ataque_base: Record<string, any>[];
-    reserva_psionica: Record<string, any>[];
-    lanzar_poder_psionico_nivel: Record<string, any>[];
-    conocer_poder_psionico: Record<string, any>[];
-    genero: Record<string, any>[];
-    competencia_arma: Record<string, any>[];
-    competencia_armadura: Record<string, any>[];
-    competencia_grupo_arma: Record<string, any>[];
-    competencia_grupo_armadura: Record<string, any>[];
-    dote_elegida: Record<string, any>[];
-    rangos_habilidad: Record<string, any>[];
-    idioma: Record<string, any>[];
-    alineamiento_requerido: Record<string, any>[];
-    alineamiento_prohibido: Record<string, any>[];
-    actitud_requerido: Record<string, any>[];
-    actitud_prohibido: Record<string, any>[];
-    lanzador_arcano: Record<string, any>[];
-    lanzador_divino: Record<string, any>[];
-    lanzar_conjuros_arcanos_nivel: Record<string, any>[];
-    lanzar_conjuros_divinos_nivel: Record<string, any>[];
-    conjuro_conocido: Record<string, any>[];
-    inherente: Record<string, any>[];
-    clase_especial: Record<string, any>[];
-    tamano_maximo: Record<string, any>[];
-    tamano_minimo: Record<string, any>[];
-    raza: Record<string, any>[];
-    no_raza: Record<string, any>[];
+    subtipo: PrerrequisitoItem[];
+    caracteristica: PrerrequisitoItem[];
+    dg: PrerrequisitoItem[];
+    dominio: PrerrequisitoItem[];
+    nivel_escuela: PrerrequisitoItem[];
+    ataque_base: PrerrequisitoItem[];
+    reserva_psionica: PrerrequisitoItem[];
+    lanzar_poder_psionico_nivel: PrerrequisitoItem[];
+    conocer_poder_psionico: PrerrequisitoItem[];
+    genero: PrerrequisitoItem[];
+    competencia_arma: PrerrequisitoItem[];
+    competencia_armadura: PrerrequisitoItem[];
+    competencia_grupo_arma: PrerrequisitoItem[];
+    competencia_grupo_armadura: PrerrequisitoItem[];
+    dote_elegida: PrerrequisitoItem[];
+    rangos_habilidad: PrerrequisitoItem[];
+    idioma: PrerrequisitoItem[];
+    alineamiento_requerido: PrerrequisitoItem[];
+    alineamiento_prohibido: PrerrequisitoItem[];
+    actitud_requerido: PrerrequisitoItem[];
+    actitud_prohibido: PrerrequisitoItem[];
+    lanzador_arcano: PrerrequisitoItem[];
+    lanzador_divino: PrerrequisitoItem[];
+    lanzar_conjuros_arcanos_nivel: PrerrequisitoItem[];
+    lanzar_conjuros_divinos_nivel: PrerrequisitoItem[];
+    conjuro_conocido: PrerrequisitoItem[];
+    inherente: PrerrequisitoItem[];
+    clase_especial: PrerrequisitoItem[];
+    tamano_maximo: PrerrequisitoItem[];
+    tamano_minimo: PrerrequisitoItem[];
+    raza: PrerrequisitoItem[];
+    no_raza: PrerrequisitoItem[];
 }
 
 export interface Clase {

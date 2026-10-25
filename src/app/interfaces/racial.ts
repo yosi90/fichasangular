@@ -1,3 +1,4 @@
+import { PrerrequisitoItem } from "./prerrequisito";
 import { Conjuro } from "./conjuro";
 
 export interface RacialReferencia {
@@ -34,8 +35,8 @@ export interface RacialPrerrequisitosFlags {
 }
 
 export interface RacialPrerrequisitos {
-    raza: Record<string, any>[];
-    caracteristica: Record<string, any>[];
+    raza: PrerrequisitoItem[];
+    caracteristica: PrerrequisitoItem[];
 }
 
 export interface RacialDetalle {

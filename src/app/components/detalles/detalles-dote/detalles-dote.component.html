@@ -86,29 +86,21 @@
                             <h2 class="tw-mb-0">Prerrequisitos</h2>
                         </button>
                     </mat-expansion-panel-header>
-                    <div *ngIf="getPrerrequisitosAgrupados().length > 0; else sinPrerrequisitos">
-                        <div class="prerrequisito-bloque tw-p-2" *ngFor="let grupo of getPrerrequisitosAgrupados()">
+                    <div *ngIf="prerrequisitosAgrupados.length > 0; else sinPrerrequisitos">
+                        <div class="prerrequisito-bloque tw-p-2" *ngFor="let grupo of prerrequisitosAgrupados">
                             <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">
                                 {{grupo.titulo}}
                                 <span class="tw-ms-2 prerrequisito-subtitulo">{{grupo.descripcion}}</span>
                             </mat-chip>
-                            <div class="prerrequisito-condicion sombra-caja-sm tw-m-1 tw-p-2"
-                                *ngFor="let condicion of grupo.condiciones; let i = index">
-                                <p class="tw-mb-2 tw-font-bold">{{grupo.opcional ? 'Opcion' : 'Condicion'}} {{i + 1}}</p>
-                                <!-- El tipo va como texto delante de su valor: con dos chips parecía que eran dos requisitos. -->
-                                <mat-chip-set class="tw-m-0" *ngIf="condicion.campos.length > 0; else condicionSinCampos">
-                                    <span class="tw-m-1 familia-condicion">{{condicion.familiaEtiqueta}}:</span>
-                                    <mat-chip class="sombra3d-sm tw-m-1"
-                                        [ngClass]="tienePrerrequisitoNavegable(condicion.key, condicion.item) ? 'chip-clic' : ''"
-                                        *ngFor="let texto of getTextosCondicionPrerrequisito(condicion)"
-                                        (click)="abrirDetallePrerrequisito(condicion.key, condicion.item)">
-                                        {{texto}}
-                                    </mat-chip>
-                                </mat-chip-set>
-                                <ng-template #condicionSinCampos>
-                                    <p class="tw-m-0">Condicion sin datos mostrables.</p>
-                                </ng-template>
-                            </div>
+                            <!-- Cada condición es la frase que escribe la API («Lanzador arcano de nivel 3»). -->
+                            <mat-chip-set class="tw-m-1">
+                                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1"
+                                    [ngClass]="esPrerrequisitoNavegable(condicion) ? 'chip-clic' : ''"
+                                    *ngFor="let condicion of grupo.condiciones"
+                                    (click)="abrirDetallePrerrequisito(condicion)">
+                                    {{condicion.frase}}
+                                </mat-chip>
+                            </mat-chip-set>
                         </div>
                     </div>
                     <ng-template #sinPrerrequisitos>
