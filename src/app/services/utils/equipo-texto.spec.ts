@@ -1,4 +1,4 @@
-import { categoriaArmadura, nombreConCantidad, textoConSigno, textoDestrezaMaxima, textoOrigenDescripcion, textoPeso, textoPrecio, textoPrecioGenerico } from './equipo-texto';
+import { categoriaArmadura, nombreConCantidad, textoConSigno, textoDestrezaMaxima, textoMejora, textoOrigenDescripcion, textoPeso, textoPrecio, textoPrecioGenerico } from './equipo-texto';
 
 describe('equipo-texto', () => {
     it('la Destreza máxima sin límite se enseña «Sin límite»', () => {
@@ -28,6 +28,12 @@ describe('equipo-texto', () => {
         expect(textoOrigenDescripcion('propia')).toBe('Descripción propia');
         expect(textoConSigno(-1)).toBe('-1');
         expect(textoConSigno(0)).toBe('+0');
+    });
+
+    it('la mejora, con la segunda cabeza de un arma doble solo si la lleva', () => {
+        expect(textoMejora(2, null)).toBe('+2');
+        expect(textoMejora(1, 1)).toBe('+1/+1');
+        expect(textoMejora(1, 0)).toBe('+1');
     });
 
     it('el precio de un genérico y una pieza con su cantidad', () => {

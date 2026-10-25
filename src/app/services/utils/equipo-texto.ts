@@ -38,6 +38,14 @@ export function textoConSigno(valor: number): string {
     return `${valor >= 0 ? '+' : ''}${valor}`;
 }
 
+/**
+ * La mejora de un arma o armadura: «+2», o «+1/+1» en un arma doble. La segunda cabeza no se enseña si no la tiene o no
+ * lleva mejora (`null` o 0). La usan el detalle de un arma o armadura específica del catálogo y las piezas de la ficha.
+ */
+export function textoMejora(mejora: number, mejora2: number | null): string {
+    return mejora2 ? `${textoConSigno(mejora)}/${textoConSigno(mejora2)}` : textoConSigno(mejora);
+}
+
 /** Lo que se dice del texto de una entrada: un resumen nuestro o el texto del SRD. */
 export function textoOrigenDescripcion(origen: OrigenDescripcion): string {
     return origen === 'srd' ? 'Texto del SRD' : 'Descripción propia';
@@ -132,10 +140,7 @@ export function detallesPiezaEquipo(pieza: PersonajeEquipoPiezaDto): string[] {
     if (pieza.elementoBase) detalles.push(pieza.elementoBase.nombre);
     if (pieza.material) detalles.push(pieza.material.nombre);
     if (pieza.granCalidad) detalles.push('Gran calidad');
-    if (pieza.bonificadorMejora > 0) {
-        const segunda = pieza.bonificadorMejora2 ? `/${textoConSigno(pieza.bonificadorMejora2)}` : '';
-        detalles.push(`${textoConSigno(pieza.bonificadorMejora)}${segunda}`);
-    }
+    if (pieza.bonificadorMejora > 0) detalles.push(textoMejora(pieza.bonificadorMejora, pieza.bonificadorMejora2));
     if (pieza.encantamientos.length > 0) detalles.push(pieza.encantamientos.map((enc) => enc.nombre).join(', '));
     if (pieza.conjuro) {
         const niveles = [

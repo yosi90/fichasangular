@@ -11,7 +11,7 @@ import {
     TipoCatalogoEquipo,
 } from 'src/app/interfaces/equipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { formatoNumero, textoAplicaA, textoConSigno, textoModificador, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { formatoNumero, textoAplicaA, textoConSigno, textoMejora, textoModificador, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
@@ -95,7 +95,7 @@ export class DetallesEquipoComponent {
             poner('Usos al día', this.numero(objeto.Usos_por_dia));
             poner('Para usarlo', objeto.Requisitos_uso);
             poner('Montura', objeto.Monstruo?.Nombre);
-            poner('Mejora', this.textoMejora(objeto.Bonificador_mejora, objeto.Bonificador_mejora_2));
+            poner('Mejora', objeto.Bonificador_mejora === null ? null : textoMejora(objeto.Bonificador_mejora, objeto.Bonificador_mejora_2));
             poner('Material', objeto.Material?.Nombre);
         }
         const material = this.material;
@@ -200,13 +200,6 @@ export class DetallesEquipoComponent {
     abrirConjuro(id: number): void {
         if (Number(id) > 0)
             this.conjuroDetallesId.emit(Number(id));
-    }
-
-    /** La mejora de un arma o armadura específica: «+2», o «+1/+1» en un arma doble. */
-    private textoMejora(mejora: number | null, mejora2: number | null): string | null {
-        if (mejora === null)
-            return null;
-        return mejora2 === null ? textoConSigno(mejora) : `${textoConSigno(mejora)}/${textoConSigno(mejora2)}`;
     }
 
     private numero(valor: number | null | undefined): string | null {
