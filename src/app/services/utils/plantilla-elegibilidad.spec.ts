@@ -142,14 +142,14 @@ describe("plantilla-elegibilidad", () => {
                 actitud_requerido: [],
                 actitud_prohibido: [],
                 alineamiento_requerido: [],
-                caracteristica: [{ Id_caracteristica: 1, Cantidad: 18, opcional: 4 }],
+                caracteristica: [{ Id_caracteristica: 1, Cantidad: 18, opcional: 4, Frase: "Fuerza 18" }],
                 criaturas_compatibles: [],
             },
         });
 
         const res = evaluarElegibilidadPlantilla(plantilla, crearContextoBase());
         expect(res.estado).toBe("blocked_failed");
-        expect(res.razones.some((r) => r.includes("grupo opcional 4"))).toBeTrue();
+        expect(res.razones).toEqual(["No cumple: Fuerza 18"]);
     });
 
     it("grupo opcional mayor que 3 cumple si alguna fila del grupo pasa", () => {

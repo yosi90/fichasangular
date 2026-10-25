@@ -139,7 +139,7 @@ describe('clase-elegibilidad', () => {
                 ataque_base: [{ Cantidad: 5, opcional: 0 }],
                 alineamiento_requerido: [{ Id_alineamiento: 1, opcional: 0 }],
                 genero: [{ Genero: 'Macho', opcional: 0 }],
-                dote_elegida: [{ Id_dote: 100, opcional: 0 }],
+                dote_elegida: [{ Id_dote_prerrequisito: 100, Id_extra: -1, Extra_comodin: null, Opcional: 0 }],
                 idioma: [{ Id_idioma: 200, opcional: 0 }],
                 subtipo: [{ Id_subtipo: 20, opcional: 0 }],
             },
@@ -156,12 +156,13 @@ describe('clase-elegibilidad', () => {
             },
             Prerrequisitos: {
                 ...crearClaseBase().Prerrequisitos,
-                caracteristica: [{ Id_caracteristica: 1, Cantidad: 18, opcional: 0 }],
+                caracteristica: [{ Id_caracteristica: 1, Cantidad: 18, opcional: 0, Frase: 'Fuerza 18' }],
             },
         });
 
         const res = evaluarElegibilidadClase(clase, crearContextoBase());
         expect(res.estado).toBe('blocked_failed');
+        expect(res.razones).toEqual(['No cumple: Fuerza 18']);
     });
 
     it('retorna blocked_unknown cuando hay una flag desconocida activa', () => {
@@ -205,14 +206,15 @@ describe('clase-elegibilidad', () => {
             Prerrequisitos: {
                 ...crearClaseBase().Prerrequisitos,
                 idioma: [
-                    { Id_idioma: 999, opcional: 1 },
-                    { Id_idioma: 998, opcional: 1 },
+                    { Id_idioma: 999, opcional: 1, Frase: 'Hablar dracónico' },
+                    { Id_idioma: 998, opcional: 1, Frase: 'Hablar infernal' },
                 ],
             },
         });
 
         const res = evaluarElegibilidadClase(clase, crearContextoBase());
         expect(res.estado).toBe('blocked_failed');
+        expect(res.razones).toEqual(['No cumple: Hablar dracónico o Hablar infernal']);
     });
 
     it('resuelve grupo opcional global entre familias distintas', () => {
@@ -224,7 +226,7 @@ describe('clase-elegibilidad', () => {
             Prerrequisitos: {
                 ...crearClaseBase().Prerrequisitos,
                 idioma: [{ Id_idioma: 999, opcional: 1 }],
-                dote_elegida: [{ Id_dote: 100, opcional: 1 }],
+                dote_elegida: [{ Id_dote_prerrequisito: 100, Id_extra: -1, Extra_comodin: null, Opcional: 1 }],
             },
         });
 
@@ -260,7 +262,7 @@ describe('clase-elegibilidad', () => {
             },
             Prerrequisitos: {
                 ...crearClaseBase().Prerrequisitos,
-                dote_elegida: [{ Id_dote: 100, Repetido: 2, opcional: 0 }],
+                dote_elegida: [{ Id_dote_prerrequisito: 100, Id_extra: -1, Extra_comodin: null, Repetido: 2, Opcional: 0 }],
             },
         });
 
@@ -277,28 +279,56 @@ describe('clase-elegibilidad', () => {
         expect(ok.estado).toBe('eligible');
     });
 
-    it('evalúa id_extra en dote_elegida', () => {
+    it('dote_elegida con Extra_comodin «cualquiera» vale con la dote y cualquier extra', () => {
         const clase = crearClaseBase({
             Prerrequisitos_flags: {
                 dote_elegida: true,
             },
             Prerrequisitos: {
                 ...crearClaseBase().Prerrequisitos,
-                dote_elegida: [{ Id_dote: 100, Id_extra: 0, opcional: 0 }],
+                dote_elegida: [{
+                    Id_dote_prerrequisito: 100, Dote_prerrequisito: 'Soltura con una escuela de magia', Id_extra: 0, Extra: null,
+                    Extra_comodin: 'cualquiera', Repetido: 0, Opcional: 0, Frase: 'Soltura con una escuela de magia (cualquier escuela)',
+                }],
             },
         });
 
-        const okConExtra = evaluarElegibilidadClase(clase, {
+        const ok = evaluarElegibilidadClase(clase, {
             ...crearContextoBase(),
-            dotes: [{ id: 100, nombre: 'Ataque poderoso', idExtra: 7, extra: 'Espada larga' }],
+            dotes: [{ id: 100, nombre: 'Soltura con una escuela de magia', idExtra: 7, extra: 'Conjuración' }],
         });
-        expect(okConExtra.estado).toBe('eligible');
+        expect(ok.estado).toBe('eligible');
 
-        const falloSinExtra = evaluarElegibilidadClase(clase, {
-            ...crearContextoBase(),
-            dotes: [{ id: 100, nombre: 'Ataque poderoso', idExtra: 0, extra: '' }],
+        const sinDote = evaluarElegibilidadClase(clase, { ...crearContextoBase(), dotes: [] });
+        expect(sinDote.estado).toBe('blocked_failed');
+        expect(sinDote.razones).toEqual(['No cumple: Soltura con una escuela de magia (cualquier escuela)']);
+    });
+
+    it('dote_elegida con un extra concreto exige ese extra', () => {
+        const clase = crearClaseBase({
+            Prerrequisitos_flags: {
+                dote_elegida: true,
+            },
+            Prerrequisitos: {
+                ...crearClaseBase().Prerrequisitos,
+                dote_elegida: [{
+                    Id_dote_prerrequisito: 4, Dote_prerrequisito: 'Soltura con un arma', Id_extra: 48, Extra: 'Arco corto',
+                    Extra_comodin: null, Repetido: 0, Opcional: 0, Frase: 'Soltura con un arma (arco corto)',
+                }],
+            },
         });
-        expect(falloSinExtra.estado).toBe('blocked_failed');
+
+        const ok = evaluarElegibilidadClase(clase, {
+            ...crearContextoBase(),
+            dotes: [{ id: 4, nombre: 'Soltura con un arma', idExtra: 48, extra: 'Arco corto' }],
+        });
+        expect(ok.estado).toBe('eligible');
+
+        const otraArma = evaluarElegibilidadClase(clase, {
+            ...crearContextoBase(),
+            dotes: [{ id: 4, nombre: 'Soltura con un arma', idExtra: 50, extra: 'Arco largo' }],
+        });
+        expect(otraArma.estado).toBe('blocked_failed');
     });
 
     it('evalua familias extendidas de prerrequisitos de clase', () => {

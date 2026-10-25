@@ -63,7 +63,7 @@ function crearContextoBase(parcial?: Partial<DoteEvaluacionContexto>): DoteEvalu
             divino: 0,
             psionico: 0,
         },
-        salvaciones: {
+        salvacionesBase: {
             fortaleza: 0,
             reflejos: 0,
             voluntad: 0,
@@ -133,7 +133,7 @@ describe('dote-elegibilidad', () => {
     it('bloquea por fallo si no cumple ataque base', () => {
         const dote = crearDoteBase({
             Prerrequisitos: {
-                ataque_base: [{ Ataque_base: 3, Opcional: 0 }],
+                ataque_base: [{ Ataque_base: 3, Opcional: 0, Frase: 'Ataque base +3' }],
             },
         });
         const resultado = evaluarElegibilidadDote({
@@ -142,7 +142,54 @@ describe('dote-elegibilidad', () => {
         });
 
         expect(resultado.estado).toBe('blocked_failed');
-        expect(resultado.razones.length).toBeGreaterThan(0);
+        expect(resultado.razones).toEqual(['No cumple: Ataque base +3']);
+    });
+
+    it('un grupo de alternativas sin ninguna cumplida da sus frases unidas con «o»', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                caracteristica: [
+                    { Id_caracteristica: 1, Caracteristica: 'Fuerza', Cantidad: 13, Opcional: 1, Frase: 'Fuerza 13' },
+                    { Id_caracteristica: 2, Caracteristica: 'Destreza', Cantidad: 13, Opcional: 1, Frase: 'Destreza 13' },
+                ],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({ dote, contexto: crearContextoBase() });
+
+        expect(resultado.estado).toBe('blocked_failed');
+        expect(resultado.razones).toEqual(['No cumple: Fuerza 13 o Destreza 13']);
+    });
+
+    it('sin frase (una caché anterior) el motivo nombra el tipo', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                dg: [{ Cantidad: 4, Opcional: 0 }],
+            },
+        });
+        const resultado = evaluarElegibilidadDote({ dote, contexto: crearContextoBase({ dgTotal: 1 }) });
+
+        expect(resultado.razones).toEqual(['No cumple: Dg']);
+    });
+
+    it('salvacion_minimo se compara con la salvación base de clase, no con el total', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                salvacion_minimo: [{ Fortaleza: 2, Reflejos: 0, Voluntad: 0, Opcional: 0, Frase: 'Salvación base de Fortaleza +2' }],
+            },
+        });
+
+        const sinBase = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({ salvacionesBase: { fortaleza: 1, reflejos: 0, voluntad: 0 } }),
+        });
+        expect(sinBase.estado).toBe('blocked_failed');
+        expect(sinBase.razones).toEqual(['No cumple: Salvación base de Fortaleza +2']);
+
+        const conBase = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({ salvacionesBase: { fortaleza: 2, reflejos: 0, voluntad: 0 } }),
+        });
+        expect(conBase.estado).toBe('eligible');
     });
 
     it('resuelve grupo opcional global entre familias distintas', () => {
@@ -162,33 +209,101 @@ describe('dote-elegibilidad', () => {
         expect(resultado.estado).toBe('eligible');
     });
 
-    it('exige dote previa con mismo extra cuando Id_extra es 0 y hay extra seleccionado', () => {
+    it('Extra_comodin «elegir» exige la dote pedida con el mismo extra que se elige', () => {
         const dote = crearDoteBase({
             Prerrequisitos: {
                 dote: [{
                     Dote_prerrequisito: 'Soltura con un arma',
                     Id_dote_prerrequisito: 4,
                     Id_extra: 0,
+                    Extra: null,
+                    Extra_comodin: 'elegir',
                     Opcional: 0,
                     Repetido: 0,
+                    Frase: 'Soltura con un arma (el arma elegida)',
+                }],
+            },
+        });
+        const contexto = crearContextoBase({
+            dotes: [{ id: 4, nombre: 'Soltura con un arma', idExtra: 33, extra: 'Lanza' }],
+        });
+
+        expect(evaluarElegibilidadDote({ dote, contexto, idExtraSeleccionado: 33, extraSeleccionado: 'Lanza' }).estado).toBe('eligible');
+        const otraArma = evaluarElegibilidadDote({ dote, contexto, idExtraSeleccionado: 7, extraSeleccionado: 'Daga' });
+        expect(otraArma.estado).toBe('blocked_failed');
+        expect(otraArma.razones).toEqual(['No cumple: Soltura con un arma (el arma elegida)']);
+    });
+
+    it('Extra_comodin «cualquiera» vale con la dote pedida y cualquier extra', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                dote: [{
+                    Dote_prerrequisito: 'Soltura con un arma',
+                    Id_dote_prerrequisito: 4,
+                    Id_extra: 0,
+                    Extra: null,
+                    Extra_comodin: 'cualquiera',
+                    Opcional: 0,
+                    Repetido: 0,
+                    Frase: 'Soltura con un arma (cualquier arma)',
                 }],
             },
         });
         const resultado = evaluarElegibilidadDote({
             dote,
-            contexto: crearContextoBase({
-                dotes: [{
-                    id: 4,
-                    nombre: 'Soltura con un arma',
-                    idExtra: 33,
-                    extra: 'Lanza',
+            contexto: crearContextoBase({ dotes: [{ id: 4, nombre: 'Soltura con un arma', idExtra: 12, extra: 'Alabarda' }] }),
+            idExtraSeleccionado: 3,
+            extraSeleccionado: 'Otra',
+        });
+
+        expect(resultado.estado).toBe('eligible');
+    });
+
+    it('el 0 sin marca de comodín (la dote pedida no admite extras) no exige el extra elegido', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                dote: [{
+                    Dote_prerrequisito: 'Ataque poderoso',
+                    Id_dote_prerrequisito: 2,
+                    Id_extra: 0,
+                    Extra: null,
+                    Extra_comodin: null,
+                    Opcional: 0,
+                    Repetido: 0,
+                    Frase: 'Ataque poderoso',
                 }],
-            }),
+            },
+        });
+        const resultado = evaluarElegibilidadDote({
+            dote,
+            contexto: crearContextoBase({ dotes: [{ id: 2, nombre: 'Ataque poderoso', idExtra: 0, extra: '' }] }),
             idExtraSeleccionado: 33,
             extraSeleccionado: 'Lanza',
         });
 
         expect(resultado.estado).toBe('eligible');
+    });
+
+    it('un extra concreto exige ese extra', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                dote: [{
+                    Dote_prerrequisito: 'Soltura con un arma',
+                    Id_dote_prerrequisito: 4,
+                    Id_extra: 5,
+                    Extra: 'Daga',
+                    Extra_comodin: null,
+                    Opcional: 0,
+                    Repetido: 0,
+                    Frase: 'Soltura con un arma (daga)',
+                }],
+            },
+        });
+        const conDaga = crearContextoBase({ dotes: [{ id: 4, nombre: 'Soltura con un arma', idExtra: 5, extra: 'Daga' }] });
+        const conLanza = crearContextoBase({ dotes: [{ id: 4, nombre: 'Soltura con un arma', idExtra: 33, extra: 'Lanza' }] });
+
+        expect(evaluarElegibilidadDote({ dote, contexto: conDaga }).estado).toBe('eligible');
+        expect(evaluarElegibilidadDote({ dote, contexto: conLanza }).estado).toBe('blocked_failed');
     });
 
     it('evalúa repetido para prerrequisito de dote', () => {
@@ -226,33 +341,6 @@ describe('dote-elegibilidad', () => {
             }),
         });
         expect(ok.estado).toBe('eligible');
-    });
-
-    it('acepta aliases legacy para id_extra y repetido en prerrequisito de dote', () => {
-        const dote = crearDoteBase({
-            Prerrequisitos: {
-                dote: [{
-                    Id_dote_prerrequisito: 4,
-                    e: 2,
-                    r: 1,
-                    Opcional: 0,
-                }],
-            },
-        });
-
-        const resultado = evaluarElegibilidadDote({
-            dote,
-            contexto: crearContextoBase({
-                dotes: [{
-                    id: 4,
-                    nombre: 'Soltura con un arma',
-                    idExtra: 2,
-                    extra: 'Lanza',
-                }],
-            }),
-        });
-
-        expect(resultado.estado).toBe('eligible');
     });
 
     it('conjuros_escuela cuenta conjuros accesibles efectivos y no solo conjuros seleccionados', () => {

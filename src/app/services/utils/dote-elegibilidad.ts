@@ -6,6 +6,8 @@ import {
 import { getAlineamientoBasicoIdPorNombre } from './alineamiento-contrato';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
+import { frasePrerrequisito } from './prerrequisito-frase';
+import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraDotePedida } from './prerrequisitos-evaluacion';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
@@ -56,7 +58,11 @@ export interface DoteEvaluacionContexto {
         id: number | null;
         nombre: string;
     };
-    salvaciones: {
+    /**
+     * La salvación base que dan las clases, sin la característica ni otros modificadores: `salvacion_minimo` se compara
+     * con ella (decisión del propietario del 2026-10-25).
+     */
+    salvacionesBase: {
         fortaleza: number;
         reflejos: number;
         voluntad: number;
@@ -64,10 +70,6 @@ export interface DoteEvaluacionContexto {
     alineamiento: string;
     puedeSeleccionarCompanero: boolean;
     puedeSeleccionarFamiliar: boolean;
-    catalogoIdiomas?: Array<{ id: number | null; nombre: string; }>;
-    catalogoHabilidades?: Array<{ id: number | null; nombre: string; }>;
-    catalogoClases?: Array<{ id: number | null; nombre: string; }>;
-    catalogoDotes?: Array<{ id: number | null; nombre: string; }>;
     catalogoRegiones?: Array<{ id: number | null; nombre: string; }>;
 }
 
@@ -84,19 +86,7 @@ export interface DoteEvaluacionResultado {
     advertencias: string[];
 }
 
-interface EvaluacionItem {
-    grupoOpcional: number;
-    evaluable: boolean;
-    cumple: boolean;
-    razonFail: string;
-    razonUnknown: string;
-}
-
-interface GrupoOpcionalEstado {
-    cumple: boolean;
-    falla: boolean;
-    unknown: boolean;
-}
+type EvaluacionItem = Omit<EvaluacionPrerrequisito, 'frase'>;
 
 function pick(entry: Record<string, any>, keys: string[]): any {
     for (const key of keys) {
@@ -160,55 +150,6 @@ function dedupeTextList(values: string[]): string[] {
         result.push(value);
     });
     return result;
-}
-
-function getCaracteristicaNombreById(idCaracteristica: number): string {
-    if (idCaracteristica === 1)
-        return 'Fuerza';
-    if (idCaracteristica === 2)
-        return 'Destreza';
-    if (idCaracteristica === 3)
-        return 'Constitución';
-    if (idCaracteristica === 4)
-        return 'Inteligencia';
-    if (idCaracteristica === 5)
-        return 'Sabiduría';
-    if (idCaracteristica === 6)
-        return 'Carisma';
-    return `Característica ${idCaracteristica}`;
-}
-
-function getActitudNombreById(idActitud: number): string {
-    if (idActitud === 1)
-        return 'Legal';
-    if (idActitud === 2)
-        return 'Neutral';
-    if (idActitud === 3)
-        return 'Caótica';
-    if (idActitud === 4)
-        return 'Buena';
-    if (idActitud === 5)
-        return 'Maligna';
-    return `Actitud ${idActitud}`;
-}
-
-function resolverNombrePorId(
-    id: number,
-    nombrePreferido: string,
-    catalogo: Array<{ id: number | null; nombre: string; }> | null | undefined,
-    fallback: string
-): string {
-    const nombre = `${nombrePreferido ?? ''}`.trim();
-    if (nombre.length > 0)
-        return nombre;
-    if (id > 0) {
-        const encontrado = (catalogo ?? []).find((item) => toNumber(item?.id) === id);
-        const nombreCatalogo = `${encontrado?.nombre ?? ''}`.trim();
-        if (nombreCatalogo.length > 0)
-            return nombreCatalogo;
-        return `${fallback} ${id}`;
-    }
-    return fallback;
 }
 
 function getCaracteristicaById(
@@ -277,54 +218,6 @@ function cumpleActitud(idActitud: number, idAlineamientoBasico: number): boolean
     return false;
 }
 
-function registrarEvaluacion(
-    evaluacion: EvaluacionItem,
-    gruposOpcionales: Map<number, GrupoOpcionalEstado>,
-    fail: string[],
-    unknown: string[]
-): void {
-    if (evaluacion.grupoOpcional <= 0) {
-        if (!evaluacion.evaluable) {
-            unknown.push(evaluacion.razonUnknown);
-            return;
-        }
-        if (!evaluacion.cumple)
-            fail.push(evaluacion.razonFail);
-        return;
-    }
-
-    const estado = gruposOpcionales.get(evaluacion.grupoOpcional) ?? {
-        cumple: false,
-        falla: false,
-        unknown: false,
-    };
-    if (!evaluacion.evaluable)
-        estado.unknown = true;
-    else if (evaluacion.cumple)
-        estado.cumple = true;
-    else
-        estado.falla = true;
-
-    gruposOpcionales.set(evaluacion.grupoOpcional, estado);
-}
-
-function resolverGruposOpcionales(
-    gruposOpcionales: Map<number, GrupoOpcionalEstado>,
-    fail: string[],
-    unknown: string[]
-): void {
-    gruposOpcionales.forEach((estado, grupo) => {
-        if (estado.cumple)
-            return;
-        if (estado.unknown) {
-            unknown.push(`No se pudo validar por completo el grupo opcional ${grupo}`);
-            return;
-        }
-        if (estado.falla)
-            fail.push(`No se cumple el grupo opcional ${grupo}`);
-    });
-}
-
 function buildEvaluacionAtaqueBase(entry: Record<string, any>, ataqueBase: number): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
     const requerido = toNumber(pick(entry, ['Ataque_base', 'ataque_base', 'Cantidad', 'cantidad', 'Valor', 'valor']));
@@ -333,7 +226,6 @@ function buildEvaluacionAtaqueBase(entry: Record<string, any>, ataqueBase: numbe
         grupoOpcional,
         evaluable,
         cumple: evaluable ? ataqueBase >= requerido : false,
-        razonFail: `Ataque base insuficiente (${ataqueBase} < ${requerido})`,
         razonUnknown: 'Prerrequisito de ataque base con formato no reconocido',
     };
 }
@@ -343,13 +235,11 @@ function buildEvaluacionCaracteristica(entry: Record<string, any>, ctx: DoteEval
     const idCaracteristica = parseId(entry, ['Id_caracteristica', 'id_caracteristica', 'Id', 'id']);
     const minimo = toNumber(pick(entry, ['Cantidad', 'cantidad', 'Valor', 'valor']));
     const actual = getCaracteristicaById(ctx.caracteristicas, idCaracteristica);
-    const nombreCaracteristica = getCaracteristicaNombreById(idCaracteristica);
     const evaluable = idCaracteristica > 0 && minimo > 0 && Number.isFinite(actual);
     return {
         grupoOpcional,
         evaluable,
         cumple: evaluable ? actual >= minimo : false,
-        razonFail: `Característica mínima no cumplida (${nombreCaracteristica} >= ${minimo})`,
         razonUnknown: 'Prerrequisito de característica con formato no reconocido',
     };
 }
@@ -358,13 +248,11 @@ function buildEvaluacionRaza(entry: Record<string, any>, ctx: DoteEvaluacionCont
     const grupoOpcional = parseOpcional(entry);
     const idRaza = parseId(entry, ['Id_raza', 'id_raza', 'IdRaza', 'idRaza']);
     const nombreRaza = parseText(entry, ['Raza', 'raza', 'Nombre', 'nombre']);
-    const nombreObjetivo = `${nombreRaza ?? ''}`.trim() || (idRaza > 0 ? `Raza ${idRaza}` : 'Raza requerida');
     const evaluable = idRaza > 0 || normalizarTexto(nombreRaza).length > 0;
     return {
         grupoOpcional,
         evaluable,
         cumple: evaluable ? existeCoincidenciaClaveEntidad(ctx.identidad.razas, idRaza, nombreRaza) : false,
-        razonFail: `Raza requerida no cumplida: ${nombreObjetivo}`,
         razonUnknown: 'Prerrequisito de raza con formato no reconocido',
     };
 }
@@ -374,7 +262,6 @@ function buildEvaluacionIdioma(entry: Record<string, any>, ctx: DoteEvaluacionCo
     const idIdioma = parseId(entry, ['Id_idioma', 'id_idioma', 'Id', 'id']);
     const nombreIdioma = parseText(entry, ['Idioma', 'idioma', 'Nombre', 'nombre']);
     const nombreNorm = normalizarTexto(nombreIdioma);
-    const nombreObjetivo = resolverNombrePorId(idIdioma, nombreIdioma, ctx.catalogoIdiomas, 'Idioma');
     const evaluable = idIdioma > 0 || nombreNorm.length > 0;
     const cumple = ctx.idiomas.some((idioma) => {
         if (idIdioma > 0 && toNumber(idioma.id) === idIdioma)
@@ -385,7 +272,6 @@ function buildEvaluacionIdioma(entry: Record<string, any>, ctx: DoteEvaluacionCo
         grupoOpcional,
         evaluable,
         cumple: evaluable ? cumple : false,
-        razonFail: `Idioma requerido no encontrado: ${nombreObjetivo}`,
         razonUnknown: 'Prerrequisito de idioma con formato no reconocido',
     };
 }
@@ -398,7 +284,6 @@ function buildEvaluacionHabilidad(entry: Record<string, any>, ctx: DoteEvaluacio
     const minimo = toNumber(pick(entry, ['Cantidad', 'cantidad', 'Valor', 'valor']));
     const requiereExtra = toBoolean(pick(entry, ['Requiere_extra', 'requiere_extra']));
     const evaluable = (idHabilidad > 0 || nombreNorm.length > 0) && minimo > 0;
-    const nombreObjetivo = resolverNombrePorId(idHabilidad, nombreHabilidad, ctx.catalogoHabilidades, 'Habilidad');
 
     const habilidad = ctx.habilidades.find((item) => {
         if (idHabilidad > 0 && toNumber(item.id) === idHabilidad)
@@ -413,7 +298,6 @@ function buildEvaluacionHabilidad(entry: Record<string, any>, ctx: DoteEvaluacio
         grupoOpcional,
         evaluable,
         cumple: evaluable ? rangos >= minimo && cumpleExtra : false,
-        razonFail: `Rangos mínimos no cumplidos en ${nombreObjetivo} (${minimo})`,
         razonUnknown: 'Prerrequisito de habilidad con formato no reconocido',
     };
 }
@@ -424,7 +308,6 @@ function buildEvaluacionNivelClase(entry: Record<string, any>, ctx: DoteEvaluaci
     const nombreClase = parseText(entry, ['Clase', 'clase', 'Nombre', 'nombre']);
     const nombreNorm = normalizarTexto(nombreClase);
     const nivel = toNumber(pick(entry, ['Nivel', 'nivel', 'Cantidad', 'cantidad']));
-    const nombreObjetivo = resolverNombrePorId(idClase, nombreClase, ctx.catalogoClases, 'Clase');
     const evaluable = (idClase > 0 || nombreNorm.length > 0) && nivel > 0;
     const cumple = ctx.nivelesClase.some((clase) => {
         const coincideClase = (idClase > 0 && toNumber(clase.id) === idClase)
@@ -437,7 +320,6 @@ function buildEvaluacionNivelClase(entry: Record<string, any>, ctx: DoteEvaluaci
         grupoOpcional,
         evaluable,
         cumple: evaluable ? cumple : false,
-        razonFail: `Nivel de clase requerido no cumplido: ${nombreObjetivo} ${nivel}`,
         razonUnknown: 'Prerrequisito nivel_de_clase con formato no reconocido',
     };
 }
@@ -457,9 +339,6 @@ function buildEvaluacionAlineamiento(
         grupoOpcional,
         evaluable,
         cumple: prohibido ? !coincide : coincide,
-        razonFail: prohibido
-            ? 'Alineamiento prohibido'
-            : 'Alineamiento requerido no cumplido',
         razonUnknown: 'Prerrequisito de alineamiento con formato no reconocido',
     };
 }
@@ -490,7 +369,6 @@ function buildEvaluacionClaseEspecial(entry: Record<string, any>, ctx: DoteEvalu
         grupoOpcional,
         evaluable,
         cumple: evaluable ? cumple : false,
-        razonFail: 'Clase especial requerida no encontrada',
         razonUnknown: 'Prerrequisito clase_especial con formato no reconocido',
     };
 }
@@ -500,7 +378,6 @@ function buildEvaluacionCompetencia(
     actuales: Array<{ id: number | null; nombre: string; }>,
     idKeys: string[],
     nombreKeys: string[],
-    razonFail: string,
     razonUnknown: string
 ): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
@@ -517,7 +394,6 @@ function buildEvaluacionCompetencia(
         grupoOpcional,
         evaluable,
         cumple: evaluable ? cumple : false,
-        razonFail,
         razonUnknown,
     };
 }
@@ -538,7 +414,6 @@ function buildEvaluacionDominio(entry: Record<string, any>, ctx: DoteEvaluacionC
         grupoOpcional,
         evaluable,
         cumple: evaluable ? cumple : false,
-        razonFail: 'Dominio requerido no encontrado',
         razonUnknown: 'Prerrequisito dominio con formato no reconocido',
     };
 }
@@ -552,7 +427,6 @@ function buildEvaluacionDg(entry: Record<string, any>, ctx: DoteEvaluacionContex
         grupoOpcional,
         evaluable,
         cumple: evaluable ? actual >= requerido : false,
-        razonFail: `DG insuficientes (${actual} < ${requerido})`,
         razonUnknown: 'Prerrequisito dg con formato no reconocido',
     };
 }
@@ -579,7 +453,6 @@ function buildEvaluacionEscuelaNivel(entry: Record<string, any>, ctx: DoteEvalua
         grupoOpcional,
         evaluable,
         cumple: evaluable ? coincideEscuela && nivelArcanoActual >= nivelReq : false,
-        razonFail: 'Nivel de escuela requerido no cumplido',
         razonUnknown: 'Prerrequisito escuela_nivel con formato no reconocido',
     };
 }
@@ -587,7 +460,6 @@ function buildEvaluacionEscuelaNivel(entry: Record<string, any>, ctx: DoteEvalua
 function buildEvaluacionNumeroMinimo(
     entry: Record<string, any>,
     actual: number,
-    razonFail: string,
     razonUnknown: string
 ): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
@@ -597,7 +469,6 @@ function buildEvaluacionNumeroMinimo(
         grupoOpcional,
         evaluable,
         cumple: evaluable ? actual >= requerido : false,
-        razonFail,
         razonUnknown,
     };
 }
@@ -605,7 +476,6 @@ function buildEvaluacionNumeroMinimo(
 function buildEvaluacionNumeroMaximo(
     entry: Record<string, any>,
     actual: number,
-    razonFail: string,
     razonUnknown: string
 ): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
@@ -615,7 +485,6 @@ function buildEvaluacionNumeroMaximo(
         grupoOpcional,
         evaluable,
         cumple: evaluable ? actual <= requerido : false,
-        razonFail,
         razonUnknown,
     };
 }
@@ -629,7 +498,6 @@ function buildEvaluacionTamano(entry: Record<string, any>, ctx: DoteEvaluacionCo
         grupoOpcional,
         evaluable,
         cumple: evaluable ? (maximo ? actual <= requerido : actual >= requerido) : false,
-        razonFail: maximo ? 'No cumple tamaño máximo' : 'No cumple tamaño mínimo',
         razonUnknown: maximo
             ? 'Prerrequisito de tamaño máximo con formato no reconocido'
             : 'Prerrequisito de tamaño mínimo con formato no reconocido',
@@ -653,7 +521,6 @@ function buildEvaluacionTipoCriatura(entry: Record<string, any>, ctx: DoteEvalua
         grupoOpcional,
         evaluable,
         cumple: evaluable ? (cumplePorId || cumplePorNombre) : false,
-        razonFail: 'Tipo de criatura requerido no cumplido',
         razonUnknown: 'Prerrequisito tipo_criatura con formato no reconocido',
     };
 }
@@ -661,7 +528,6 @@ function buildEvaluacionTipoCriatura(entry: Record<string, any>, ctx: DoteEvalua
 function buildEvaluacionTipoDote(
     entry: Record<string, any>,
     ctx: DoteEvaluacionContexto,
-    razonFail: string,
     razonUnknown: string
 ): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
@@ -679,7 +545,6 @@ function buildEvaluacionTipoDote(
         grupoOpcional,
         evaluable,
         cumple: evaluable ? cumple : false,
-        razonFail,
         razonUnknown,
     };
 }
@@ -724,7 +589,6 @@ function buildEvaluacionRegion(entry: Record<string, any>, ctx: DoteEvaluacionCo
         grupoOpcional,
         evaluable,
         cumple: evaluable ? cumple : false,
-        razonFail: 'Región requerida no cumplida',
         razonUnknown: 'Prerrequisito region con formato no reconocido',
     };
 }
@@ -734,7 +598,6 @@ function buildEvaluacionInherente(entry: Record<string, any>): EvaluacionItem {
         grupoOpcional: parseOpcional(entry),
         evaluable: true,
         cumple: true,
-        razonFail: '',
         razonUnknown: '',
     };
 }
@@ -751,7 +614,6 @@ function buildEvaluacionLanzador(
         grupoOpcional,
         evaluable,
         cumple: evaluable ? nivelActual >= nivelRequerido : false,
-        razonFail: `Nivel de lanzador ${tipo} insuficiente`,
         razonUnknown: `Prerrequisito lanzador_${tipo} con formato no reconocido`,
     };
 }
@@ -775,7 +637,6 @@ function buildEvaluacionConjuroEscuela(entry: Record<string, any>, ctx: DoteEval
         grupoOpcional,
         evaluable,
         cumple: evaluable ? total >= cantidad : false,
-        razonFail: 'Conjuros de escuela insuficientes',
         razonUnknown: 'Prerrequisito conjuros_escuela con formato no reconocido',
     };
 }
@@ -795,7 +656,6 @@ function buildEvaluacionLanzEspontaneo(entry: Record<string, any>, ctx: DoteEval
         grupoOpcional,
         evaluable,
         cumple: evaluable ? cumple : false,
-        razonFail: 'Conjuro espontáneo requerido no encontrado',
         razonUnknown: 'Prerrequisito lanz_espontaneo con formato no reconocido',
     };
 }
@@ -808,14 +668,13 @@ function buildEvaluacionSalvacion(entry: Record<string, any>, ctx: DoteEvaluacio
     const evaluable = fortReq > 0 || reflReq > 0 || volReq > 0;
     const cumple = (!evaluable)
         ? false
-        : toNumber(ctx.salvaciones.fortaleza) >= fortReq
-        && toNumber(ctx.salvaciones.reflejos) >= reflReq
-        && toNumber(ctx.salvaciones.voluntad) >= volReq;
+        : toNumber(ctx.salvacionesBase.fortaleza) >= fortReq
+        && toNumber(ctx.salvacionesBase.reflejos) >= reflReq
+        && toNumber(ctx.salvacionesBase.voluntad) >= volReq;
     return {
         grupoOpcional,
         evaluable,
         cumple,
-        razonFail: 'Salvación mínima no cumplida',
         razonUnknown: 'Prerrequisito salvacion_minimo con formato no reconocido',
     };
 }
@@ -827,16 +686,12 @@ function buildEvaluacionActitud(
 ): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
     const idActitud = parseId(entry, ['Id_actitud', 'id_actitud', 'Id', 'id']);
-    const nombreActitud = getActitudNombreById(idActitud);
     const evaluable = idActitud > 0 && idAlineamiento > 0;
     const coincide = evaluable ? cumpleActitud(idActitud, idAlineamiento) : false;
     return {
         grupoOpcional,
         evaluable,
         cumple: prohibido ? !coincide : coincide,
-        razonFail: prohibido
-            ? `Actitud prohibida: ${nombreActitud}`
-            : `Actitud requerida no cumplida: ${nombreActitud}`,
         razonUnknown: 'Prerrequisito de actitud con formato no reconocido',
     };
 }
@@ -858,7 +713,6 @@ function buildEvaluacionCompArma(
             grupoOpcional,
             evaluable: true,
             cumple: true,
-            razonFail: 'No tiene competencia con el arma requerida',
             razonUnknown: 'Prerrequisito competencia_arma con formato no reconocido',
         };
     }
@@ -878,7 +732,6 @@ function buildEvaluacionCompArma(
         grupoOpcional,
         evaluable,
         cumple: evaluable ? cumple : false,
-        razonFail: 'No tiene competencia con el arma requerida',
         razonUnknown: 'Prerrequisito competencia_arma con formato no reconocido',
     };
 }
@@ -893,43 +746,21 @@ function buildEvaluacionDote(
     const idDoteReq = parseId(entry, ['Id_dote_prerrequisito', 'id_dote_prerrequisito', 'Id_dote', 'id_dote', 'Id', 'id']);
     const nombreDoteReq = parseText(entry, ['Dote_prerrequisito', 'dote_prerrequisito', 'Dote', 'dote', 'Nombre', 'nombre']);
     const nombreNorm = normalizarTexto(nombreDoteReq);
-    const rawIdExtraReq = pick(entry, ['Id_extra', 'id_extra', 'IdExtra', 'idExtra', 'e']);
-    const idExtraReq = rawIdExtraReq === undefined || rawIdExtraReq === null || `${rawIdExtraReq}`.trim().length < 1
-        ? Number.NaN
-        : toInt(rawIdExtraReq);
     const repetidoReq = Math.max(0, toInt(pick(entry, ['Repetido', 'repetido', 'r'])));
     const cantidadReq = repetidoReq > 0 ? repetidoReq : 1;
-    const nombreObjetivo = resolverNombrePorId(idDoteReq, nombreDoteReq, ctx.catalogoDotes, 'Dote');
     const evaluable = idDoteReq > 0 || nombreNorm.length > 0;
+    const seleccion = { idExtra: idExtraSeleccionado, extra: extraSeleccionado };
 
     const coincidencias = ctx.dotes.filter((dote) => {
         const coincideDote = (idDoteReq > 0 && toNumber(dote.id) === idDoteReq)
             || (nombreNorm.length > 0 && normalizarTexto(dote.nombre) === nombreNorm);
-        if (!coincideDote)
-            return false;
-
-        if (Number.isNaN(idExtraReq))
-            return true;
-        if (idExtraReq < 0)
-            return toNumber(dote.idExtra) <= 0;
-        if (idExtraReq > 0)
-            return toNumber(dote.idExtra) === idExtraReq;
-
-        if (idExtraSeleccionado > 0)
-            return toNumber(dote.idExtra) === idExtraSeleccionado;
-
-        const extraSelNorm = normalizarTexto(extraSeleccionado);
-        if (extraSelNorm.length > 0)
-            return normalizarTexto(dote.extra) === extraSelNorm;
-
-        return true;
+        return coincideDote && cumpleExtraDotePedida(entry, dote, seleccion);
     });
 
     return {
         grupoOpcional,
         evaluable,
         cumple: evaluable ? coincidencias.length >= cantidadReq : false,
-        razonFail: `Dote prerrequisito no cumplida: ${nombreObjetivo}`,
         razonUnknown: 'Prerrequisito de dote con formato no reconocido',
     };
 }
@@ -977,7 +808,6 @@ function evaluateFamily(
             ctx.competenciasArmaduras ?? [],
             ['Id_armadura', 'id_armadura', 'IdArmadura', 'idArmadura', 'Id', 'id', 'i'],
             ['Armadura', 'armadura', 'Nombre', 'nombre'],
-            'No tiene competencia con la armadura requerida',
             'Prerrequisito competencia_armadura con formato no reconocido'
         ));
     }
@@ -987,7 +817,6 @@ function evaluateFamily(
             ctx.competenciasGrupoArmas ?? [],
             ['Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'Id', 'id', 'i'],
             ['Grupo', 'grupo', 'Nombre', 'nombre'],
-            'No tiene competencia con el grupo de arma requerido',
             'Prerrequisito competencia_grupo_arma con formato no reconocido'
         ));
     }
@@ -997,7 +826,6 @@ function evaluateFamily(
             ctx.competenciasGrupoArmaduras ?? [],
             ['Id_grupo', 'id_grupo', 'IdGrupo', 'idGrupo', 'Id', 'id', 'i'],
             ['Grupo', 'grupo', 'Nombre', 'nombre'],
-            'No tiene competencia con el grupo de armadura requerido',
             'Prerrequisito competencia_grupo_armadura con formato no reconocido'
         ));
     }
@@ -1021,7 +849,6 @@ function evaluateFamily(
         return entries.map((entry) => buildEvaluacionNumeroMinimo(
             entry,
             toNumber(ctx.nivelesConjuroMaximos?.arcano),
-            'No puede lanzar conjuros arcanos del nivel requerido',
             'Prerrequisito lanzar_conjuros_arcanos_nivel con formato no reconocido'
         ));
     }
@@ -1029,7 +856,6 @@ function evaluateFamily(
         return entries.map((entry) => buildEvaluacionNumeroMinimo(
             entry,
             toNumber(ctx.nivelesConjuroMaximos?.divino),
-            'No puede lanzar conjuros divinos del nivel requerido',
             'Prerrequisito lanzar_conjuros_divinos_nivel con formato no reconocido'
         ));
     }
@@ -1038,11 +864,11 @@ function evaluateFamily(
     if (keyNorm === 'lanz_espontaneo')
         return entries.map((entry) => buildEvaluacionLanzEspontaneo(entry, ctx));
     if (keyNorm === 'limite_tipo_dote')
-        return entries.map((entry) => buildEvaluacionTipoDote(entry, ctx, 'Límite de tipo de dote no cumplido', 'Prerrequisito limite_tipo_dote con formato no reconocido'));
+        return entries.map((entry) => buildEvaluacionTipoDote(entry, ctx, 'Prerrequisito limite_tipo_dote con formato no reconocido'));
     if (keyNorm === 'nivel')
-        return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.nivelTotal), 'Nivel insuficiente', 'Prerrequisito nivel con formato no reconocido'));
+        return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.nivelTotal), 'Prerrequisito nivel con formato no reconocido'));
     if (keyNorm === 'nivel_max')
-        return entries.map((entry) => buildEvaluacionNumeroMaximo(entry, toNumber(ctx.nivelTotal), 'Supera el nivel máximo permitido', 'Prerrequisito nivel_max con formato no reconocido'));
+        return entries.map((entry) => buildEvaluacionNumeroMaximo(entry, toNumber(ctx.nivelTotal), 'Prerrequisito nivel_max con formato no reconocido'));
     if (keyNorm === 'region')
         return entries.map((entry) => buildEvaluacionRegion(entry, ctx));
     if (keyNorm === 'salvacion_minimo')
@@ -1054,13 +880,12 @@ function evaluateFamily(
     if (keyNorm === 'tipo_criatura')
         return entries.map((entry) => buildEvaluacionTipoCriatura(entry, ctx));
     if (keyNorm === 'tipo_dote')
-        return entries.map((entry) => buildEvaluacionTipoDote(entry, ctx, 'Tipo de dote requerido no cumplido', 'Prerrequisito tipo_dote con formato no reconocido'));
+        return entries.map((entry) => buildEvaluacionTipoDote(entry, ctx, 'Prerrequisito tipo_dote con formato no reconocido'));
     if (keyNorm === 'poder_seleccionar_companero') {
         return entries.map((entry) => ({
             grupoOpcional: parseOpcional(entry),
             evaluable: true,
             cumple: !!ctx.puedeSeleccionarCompanero,
-            razonFail: 'No puede seleccionar compañero animal',
             razonUnknown: 'Prerrequisito de poder elegir compañero no interpretable',
         }));
     }
@@ -1069,7 +894,6 @@ function evaluateFamily(
             grupoOpcional: parseOpcional(entry),
             evaluable: true,
             cumple: !!ctx.puedeSeleccionarFamiliar,
-            razonFail: 'No puede seleccionar familiar',
             razonUnknown: 'Prerrequisito poder_seleccionar_familiar no interpretable',
         }));
     }
@@ -1078,7 +902,6 @@ function evaluateFamily(
         grupoOpcional: parseOpcional(entry),
         evaluable: false,
         cumple: false,
-        razonFail: `Prerrequisito no soportado: ${key}`,
         razonUnknown: `Prerrequisito no soportado: ${key}`,
     }));
 }
@@ -1094,10 +917,8 @@ export function evaluarElegibilidadDote(input: DoteEvaluacionInput): DoteEvaluac
         };
     }
 
-    const fail: string[] = [];
-    const unknown: string[] = [];
+    const motivos = new MotivosPrerrequisitos();
     const advertencias: string[] = [];
-    const gruposOpcionales = new Map<number, GrupoOpcionalEstado>();
     const prerrequisitos = (dote?.Prerrequisitos ?? {}) as Record<string, any>;
     const idExtraSeleccionado = Math.max(0, toInt(input?.idExtraSeleccionado));
     const extraSeleccionado = `${input?.extraSeleccionado ?? ''}`.trim();
@@ -1116,14 +937,14 @@ export function evaluarElegibilidadDote(input: DoteEvaluacionInput): DoteEvaluac
             extraSeleccionado,
             idAlineamiento
         );
-        evaluaciones.forEach((evaluacion) => {
-            registrarEvaluacion(evaluacion, gruposOpcionales, fail, unknown);
+        evaluaciones.forEach((evaluacion, index) => {
+            motivos.registrar({ ...evaluacion, frase: frasePrerrequisito(key, entries[index]) });
         });
     });
 
-    resolverGruposOpcionales(gruposOpcionales, fail, unknown);
-    const failDedupe = dedupeTextList(fail);
-    const unknownDedupe = dedupeTextList(unknown);
+    motivos.cerrarGrupos();
+    const failDedupe = dedupeTextList(motivos.fail);
+    const unknownDedupe = dedupeTextList(motivos.unknown);
 
     if (unknownDedupe.length > 0) {
         return {

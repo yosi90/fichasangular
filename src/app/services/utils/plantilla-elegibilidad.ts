@@ -8,6 +8,8 @@ import {
 } from "./alineamiento-contrato";
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
+import { frasePrerrequisito } from './prerrequisito-frase';
+import { MotivosPrerrequisitos } from './prerrequisitos-evaluacion';
 
 export type EstadoElegibilidadPlantilla = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -191,71 +193,26 @@ function parseOpcional(entry: Record<string, any>): { value: number; unknown: bo
     return { value: 0, unknown: true };
 }
 
-interface EstadoGrupoOpcional {
-    cumple: boolean;
-    falla: boolean;
-    unknown: boolean;
-}
-
-function registrarResultadoOpcionalLiteral(
-    opcional: { value: number; unknown: boolean },
+/** Registra un prerrequisito con su frase; un `Opcional` que no se entiende no deja evaluarlo. */
+function registrarPrerrequisito(
+    motivos: MotivosPrerrequisitos,
+    clave: string,
+    entry: Record<string, any>,
     evaluable: boolean,
     cumple: boolean,
-    razonFail: string,
-    razonUnknown: string,
-    gruposOpcionales: Map<number, EstadoGrupoOpcional>,
-    fail: string[],
-    unknown: string[]
+    razonUnknown: string
 ): void {
+    const opcional = parseOpcional(entry);
     if (opcional.unknown) {
-        unknown.push("Campo opcional con formato no reconocido");
+        motivos.unknown.push("Campo opcional con formato no reconocido");
         return;
     }
-
-    if (opcional.value === 0) {
-        if (!evaluable) {
-            unknown.push(razonUnknown);
-            return;
-        }
-
-        if (cumple)
-            return;
-
-        fail.push(razonFail);
-        return;
-    }
-
-    const estado = gruposOpcionales.get(opcional.value) ?? {
-        cumple: false,
-        falla: false,
-        unknown: false,
-    };
-    if (!evaluable)
-        estado.unknown = true;
-    else if (cumple)
-        estado.cumple = true;
-    else
-        estado.falla = true;
-
-    gruposOpcionales.set(opcional.value, estado);
-}
-
-function resolverGruposOpcionales(
-    gruposOpcionales: Map<number, EstadoGrupoOpcional>,
-    fail: string[],
-    unknown: string[]
-): void {
-    gruposOpcionales.forEach((estado, grupo) => {
-        if (estado.cumple)
-            return;
-
-        if (estado.unknown) {
-            unknown.push(`No se pudo validar por completo el grupo opcional ${grupo}`);
-            return;
-        }
-
-        if (estado.falla)
-            fail.push(`No se cumple el grupo opcional ${grupo}`);
+    motivos.registrar({
+        grupoOpcional: opcional.value,
+        evaluable,
+        cumple,
+        razonUnknown,
+        frase: frasePrerrequisito(clave, entry),
     });
 }
 
@@ -490,7 +447,7 @@ export function evaluarElegibilidadPlantilla(
         caracteristica: [],
         criaturas_compatibles: [],
     };
-    const gruposOpcionales = new Map<number, EstadoGrupoOpcional>();
+    const motivos = new MotivosPrerrequisitos();
     const tiposMiembroRaw = Array.isArray(ctx.tiposCriaturaMiembroIds)
         ? ctx.tiposCriaturaMiembroIds
         : [];
@@ -502,57 +459,27 @@ export function evaluarElegibilidadPlantilla(
     if (flags.actitud_prohibido) {
         (prer.actitud_prohibido ?? []).forEach((entry) => {
             const actitudId = parseActitudId(entry);
-            const opcional = parseOpcional(entry);
             const evaluable = actitudId > 0 && alineamientoId > 0;
             const cumple = evaluable ? !cumpleActitud(actitudId, alineamientoId) : false;
-            registrarResultadoOpcionalLiteral(
-                opcional,
-                evaluable,
-                cumple,
-                `Actitud prohibida incumplida (${actitudId})`,
-                "Actitud prohibida con formato no reconocido",
-                gruposOpcionales,
-                fail,
-                unknown
-            );
+            registrarPrerrequisito(motivos, "actitud_prohibido", entry, evaluable, cumple, "Actitud prohibida con formato no reconocido");
         });
     }
 
     if (flags.actitud_requerido) {
         (prer.actitud_requerido ?? []).forEach((entry) => {
             const actitudId = parseActitudId(entry);
-            const opcional = parseOpcional(entry);
             const evaluable = actitudId > 0 && alineamientoId > 0;
             const cumple = evaluable ? cumpleActitud(actitudId, alineamientoId) : false;
-            registrarResultadoOpcionalLiteral(
-                opcional,
-                evaluable,
-                cumple,
-                `Actitud requerida no cumplida (${actitudId})`,
-                "Actitud requerida con formato no reconocido",
-                gruposOpcionales,
-                fail,
-                unknown
-            );
+            registrarPrerrequisito(motivos, "actitud_requerido", entry, evaluable, cumple, "Actitud requerida con formato no reconocido");
         });
     }
 
     if (flags.alineamiento_requerido) {
         (prer.alineamiento_requerido ?? []).forEach((entry) => {
             const requiredId = parseAlineamientoId(entry);
-            const opcional = parseOpcional(entry);
             const evaluable = requiredId > 0 && alineamientoId > 0;
             const cumple = evaluable ? requiredId === alineamientoId : false;
-            registrarResultadoOpcionalLiteral(
-                opcional,
-                evaluable,
-                cumple,
-                `Alineamiento requerido no cumplido (${requiredId})`,
-                "Alineamiento requerido con formato no reconocido",
-                gruposOpcionales,
-                fail,
-                unknown
-            );
+            registrarPrerrequisito(motivos, "alineamiento_requerido", entry, evaluable, cumple, "Alineamiento requerido con formato no reconocido");
         });
     }
 
@@ -561,42 +488,24 @@ export function evaluarElegibilidadPlantilla(
             const carId = parseCaracteristicaId(entry);
             const valorMin = parseCantidad(entry);
             const valorActual = getStatById(ctx.caracteristicas, carId);
-            const opcional = parseOpcional(entry);
             const evaluable = carId > 0 && Number.isFinite(valorMin) && Number.isFinite(valorActual);
             const cumple = evaluable ? valorActual >= valorMin : false;
-            registrarResultadoOpcionalLiteral(
-                opcional,
-                evaluable,
-                cumple,
-                `Caracteristica minima no cumplida (${carId} >= ${valorMin})`,
-                "Caracteristica requerida con formato no reconocido",
-                gruposOpcionales,
-                fail,
-                unknown
-            );
+            registrarPrerrequisito(motivos, "caracteristica", entry, evaluable, cumple, "Caracteristica requerida con formato no reconocido");
         });
     }
 
     if (flags.criaturas_compatibles) {
         (prer.criaturas_compatibles ?? []).forEach((entry) => {
             const tipoCompId = parseTipoCompId(entry);
-            const opcional = parseOpcional(entry);
             const evaluable = tipoCompId > 0 && tiposCriaturaMiembroIds.length > 0;
             const cumple = evaluable ? tiposCriaturaMiembroIds.includes(tipoCompId) : false;
-            registrarResultadoOpcionalLiteral(
-                opcional,
-                evaluable,
-                cumple,
-                `Tipo de criatura incompatible (${tipoCompId})`,
-                "Compatibilidad de criatura con formato no reconocido",
-                gruposOpcionales,
-                fail,
-                unknown
-            );
+            registrarPrerrequisito(motivos, "criaturas_compatibles", entry, evaluable, cumple, "Compatibilidad de criatura con formato no reconocido");
         });
     }
 
-    resolverGruposOpcionales(gruposOpcionales, fail, unknown);
+    motivos.cerrarGrupos();
+    fail.push(...motivos.fail);
+    unknown.push(...motivos.unknown);
 
     if (unknown.length > 0) {
         return {

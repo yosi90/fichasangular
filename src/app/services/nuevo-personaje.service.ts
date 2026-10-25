@@ -51,7 +51,7 @@ import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-vi
 import { calcularOroPorNep } from './utils/oro-inicial';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
-import { totalesPersonaje } from './utils/personaje-totales';
+import { sumarPartes, totalesPersonaje } from './utils/personaje-totales';
 import { resumenClases } from './utils/resumen-clases';
 import { tieneTextoVisible } from './utils/texto-visible';
 
@@ -3051,33 +3051,6 @@ export class NuevoPersonajeService {
             .filter((item) => item.nombre.length > 0);
         const conjurosAccesibles = this.resolverConjurosAccesiblesParaPrerrequisitosDote();
 
-        const catalogoIdiomas = (this.estadoFlujo.ventajas.catalogoIdiomas ?? [])
-            .map((idioma) => ({
-                id: toNumber(idioma?.Id) > 0 ? toNumber(idioma?.Id) : null,
-                nombre: `${idioma?.Nombre ?? ''}`.trim(),
-            }))
-            .filter((item) => item.nombre.length > 0);
-        const catalogoHabilidades = [
-            ...(this.estadoFlujo.ventajas.catalogoHabilidades ?? []),
-            ...(this.estadoFlujo.ventajas.catalogoHabilidadesCustom ?? []),
-        ]
-            .map((habilidad) => ({
-                id: toNumber(habilidad?.Id_habilidad) > 0 ? toNumber(habilidad?.Id_habilidad) : null,
-                nombre: `${habilidad?.Nombre ?? ''}`.trim(),
-            }))
-            .filter((item) => item.nombre.length > 0);
-        const catalogoClases = (this.catalogoClases ?? [])
-            .map((clase) => ({
-                id: toNumber(clase?.Id) > 0 ? toNumber(clase?.Id) : null,
-                nombre: `${clase?.Nombre ?? ''}`.trim(),
-            }))
-            .filter((item) => item.nombre.length > 0);
-        const catalogoDotes = (this.catalogoDotes ?? [])
-            .map((doteCatalogo) => ({
-                id: toNumber(doteCatalogo?.Id) > 0 ? toNumber(doteCatalogo?.Id) : null,
-                nombre: `${doteCatalogo?.Nombre ?? ''}`.trim(),
-            }))
-            .filter((item) => item.nombre.length > 0);
         const catalogoRegiones = (this.catalogoRegiones ?? [])
             .map((regionCatalogo) => ({
                 id: toNumber(regionCatalogo?.Id) > 0 ? toNumber(regionCatalogo?.Id) : null,
@@ -3205,14 +3178,10 @@ export class NuevoPersonajeService {
                 id: regionIdContexto,
                 nombre: regionNombre,
             },
-            salvaciones: this.resolverSalvacionesTotales(),
+            salvacionesBase: this.resolverSalvacionesBaseClase(),
             alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`.trim(),
             puedeSeleccionarCompanero: estadoCuposCompanero.cuposDisponibles > 0,
             puedeSeleccionarFamiliar: estadoCuposFamiliar.cuposDisponibles > 0,
-            catalogoIdiomas,
-            catalogoHabilidades,
-            catalogoClases,
-            catalogoDotes,
             catalogoRegiones,
         };
 
@@ -3410,12 +3379,13 @@ export class NuevoPersonajeService {
         return id > 0 ? id : null;
     }
 
-    private resolverSalvacionesTotales(): { fortaleza: number; reflejos: number; voluntad: number; } {
+    /** La salvación base que dan las clases (la parte «clase» de cada total): la que pide `salvacion_minimo`. */
+    private resolverSalvacionesBaseClase(): { fortaleza: number; reflejos: number; voluntad: number; } {
         const salvaciones = totalesPersonaje(this.personajeCreacion).salvaciones;
         return {
-            fortaleza: salvaciones.fortaleza.total,
-            reflejos: salvaciones.reflejos.total,
-            voluntad: salvaciones.voluntad.total,
+            fortaleza: sumarPartes(salvaciones.fortaleza, 'clase'),
+            reflejos: sumarPartes(salvaciones.reflejos, 'clase'),
+            voluntad: sumarPartes(salvaciones.voluntad, 'clase'),
         };
     }
 
