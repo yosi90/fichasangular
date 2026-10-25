@@ -50,11 +50,6 @@ export interface UserAvatarResponse {
     photoThumbUrl: string | null;
 }
 
-export interface ProfileApiErrorResponse {
-    code: string;
-    message: string;
-}
-
 /** El texto para la persona cuando falta la sesión (o su token). */
 export const MENSAJE_SIN_SESION = 'Necesitas iniciar sesión para continuar.';
 
