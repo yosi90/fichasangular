@@ -5,6 +5,7 @@ import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
@@ -48,7 +49,7 @@ export class DetallesPlantillaComponent {
             { etiqueta: 'Tamaño', valor: value?.Tamano?.Nombre },
             { etiqueta: 'Dado de golpe', valor: this.tieneTipoDadoVisible() ? value?.Tipo_dado?.Nombre : null },
         ]);
-        this.modificadoresCaracteristicas = this.caracteristicas(value?.Modificadores_caracteristicas, (n) => n !== 0 ? this.signo(n) : null);
+        this.modificadoresCaracteristicas = this.caracteristicas(value?.Modificadores_caracteristicas, (n) => n !== 0 ? textoConSigno(n) : null);
         this.minimosCaracteristicas = this.caracteristicas(value?.Minimos_caracteristicas, (n) => n > 0 ? n : null);
         this.combate = this.calcularCombate();
         this.movimiento = this.calcularMovimiento();
@@ -129,7 +130,7 @@ export class DetallesPlantillaComponent {
 
     private calcularCombate(): DatoFicha[] {
         const p = this.plantillaData;
-        const cambio = (valor: unknown) => toNumber(valor) !== 0 ? this.signo(toNumber(valor)) : null;
+        const cambio = (valor: unknown) => toNumber(valor) !== 0 ? textoConSigno(toNumber(valor)) : null;
         return datosVisibles([
             { etiqueta: 'Ataque base', valor: cambio(p?.Ataque_base) },
             { etiqueta: 'Presa', valor: cambio(p?.Presa) },
@@ -169,7 +170,7 @@ export class DetallesPlantillaComponent {
         return datosVisibles([
             { etiqueta: 'DG otorgados', valor: multiplicador > 0 ? multiplicador : null },
             { etiqueta: 'Dado', valor: dado },
-            { etiqueta: 'Suma de PG', valor: suma !== 0 ? this.signo(suma) : null },
+            { etiqueta: 'Suma de PG', valor: suma !== 0 ? textoConSigno(suma) : null },
         ]);
     }
 
@@ -186,9 +187,5 @@ export class DetallesPlantillaComponent {
                         : 'No cambia',
                 };
             });
-    }
-
-    private signo(valor: number): string {
-        return valor > 0 ? `+${valor}` : `${valor}`;
     }
 }

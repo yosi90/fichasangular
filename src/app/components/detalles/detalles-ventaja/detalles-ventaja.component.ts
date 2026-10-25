@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { DatoFicha } from 'src/app/components/detalles/ficha';
 import { ReferenciaCorta, VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
@@ -30,8 +31,9 @@ export class DetallesVentajaComponent {
         const mejora = Number(value?.Mejora ?? 0);
         this.tipoCabecera = coste > 0 ? 'Desventaja' : 'Ventaja';
         this.datos = [
-            { etiqueta: 'Coste', valor: value ? this.signo(coste) : null },
-            { etiqueta: 'Mejora', valor: mejora !== 0 ? this.signo(mejora) : null },
+            // Un coste 0 se enseña sin signo («0»); el resto, con él.
+            { etiqueta: 'Coste', valor: value ? (coste === 0 ? 0 : textoConSigno(coste)) : null },
+            { etiqueta: 'Mejora', valor: mejora !== 0 ? textoConSigno(mejora) : null },
             { etiqueta: 'Rasgo', valor: this.referencia(value?.Rasgo) },
             { etiqueta: 'Idioma', valor: this.referencia(value?.Idioma) },
             // Sin habilidad, la API da `null` (antes, la habilidad 0 «No»). Ninguna ventaja tiene una habilidad comodín.
@@ -72,9 +74,5 @@ export class DetallesVentajaComponent {
     /** El nombre de un rasgo, idioma o habilidad, si viene con id y nombre. */
     private referencia(ref: ReferenciaCorta | null | undefined): string | null {
         return Number(ref?.Id ?? 0) > 0 && tieneTextoVisible(ref?.Nombre) ? `${ref?.Nombre}`.trim() : null;
-    }
-
-    private signo(valor: number): string {
-        return `${valor > 0 ? '+' : ''}${valor}`;
     }
 }

@@ -4,6 +4,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { idiomasVisibles, nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
@@ -32,7 +33,7 @@ export class DetallesSubtipoComponent {
     set subtipo(value: SubtipoDetalle) {
         this.subtipoData = value;
         this.etiquetas = value?.Heredada ? ['Heredado'] : [];
-        const cambio = (valor: unknown) => toNumber(valor) !== 0 ? this.signo(toNumber(valor)) : null;
+        const cambio = (valor: unknown) => toNumber(valor) !== 0 ? textoConSigno(toNumber(valor)) : null;
         this.datos = datosVisibles([
             { etiqueta: 'Ajuste de nivel', valor: cambio(value?.Ajuste_nivel) },
             { etiqueta: 'Alineamiento', valor: this.textoAlineamiento() },
@@ -123,9 +124,5 @@ export class DetallesSubtipoComponent {
         const ley = `${al?.Ley?.Nombre ?? ''}`.trim();
         const moral = `${al?.Moral?.Nombre ?? ''}`.trim();
         return `${ley}/${moral}`.replace(/^\/+|\/+$/g, '');
-    }
-
-    private signo(valor: number): string {
-        return valor > 0 ? `+${valor}` : `${valor}`;
     }
 }

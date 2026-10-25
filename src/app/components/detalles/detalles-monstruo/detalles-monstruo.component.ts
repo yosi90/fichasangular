@@ -5,6 +5,7 @@ import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristi
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
@@ -287,7 +288,7 @@ export class DetallesMonstruoComponent {
                 valor: defensa?.Ca,
                 detalle: defensa ? `toque ${defensa.Toque}, desprevenido ${defensa.Desprevenido}` : null,
             },
-            { etiqueta: 'Iniciativa', valor: m ? this.signo(toNumber(m.Iniciativa)) : null },
+            { etiqueta: 'Iniciativa', valor: m ? textoConSigno(toNumber(m.Iniciativa)) : null },
             { etiqueta: 'Velocidad', valor: movimientos[0] ?? null, detalle: movimientos.slice(1).join(', ') },
         ]);
         const velocidad = pares.find((par) => par.etiqueta === 'Velocidad');
@@ -303,7 +304,7 @@ export class DetallesMonstruoComponent {
         if (!tieneTextoVisible(cantidad))
             return '';
         const suma = toNumber(dg?.Suma);
-        return `${cantidad}${`${dg?.Tipo_dado?.Nombre ?? ''}`.trim()}${suma !== 0 ? this.signo(suma) : ''}`;
+        return `${cantidad}${`${dg?.Tipo_dado?.Nombre ?? ''}`.trim()}${suma !== 0 ? textoConSigno(suma) : ''}`;
     }
 
     /** «40'», «nadar 30'», «volar 80' (buena)»: el primero es la velocidad base y el resto, sus otros movimientos. */
@@ -329,18 +330,18 @@ export class DetallesMonstruoComponent {
         return this.pintar([
             {
                 etiqueta: 'Ataque base / presa',
-                valor: ataque ? `${this.signo(toNumber(ataque.Ataque_base))} / ${this.signo(toNumber(ataque.Presa))}` : null,
+                valor: ataque ? `${textoConSigno(toNumber(ataque.Ataque_base))} / ${textoConSigno(toNumber(ataque.Presa))}` : null,
             },
             { etiqueta: 'Ataque', valor: ataque?.Ataques },
             { etiqueta: 'Ataque completo', valor: ataque?.Ataque_completo },
             {
                 etiqueta: 'Salvaciones',
                 valor: salvaciones
-                    ? `Fortaleza ${this.signo(toNumber(salvaciones.Fortaleza))}, Reflejos ${this.signo(toNumber(salvaciones.Reflejos))}, `
-                    + `Voluntad ${this.signo(toNumber(salvaciones.Voluntad))}`
+                    ? `Fortaleza ${textoConSigno(toNumber(salvaciones.Fortaleza))}, Reflejos ${textoConSigno(toNumber(salvaciones.Reflejos))}, `
+                    + `Voluntad ${textoConSigno(toNumber(salvaciones.Voluntad))}`
                     : null,
             },
-            { etiqueta: 'Armadura natural', valor: toNumber(defensa?.Armadura_natural) !== 0 ? this.signo(toNumber(defensa?.Armadura_natural)) : null },
+            { etiqueta: 'Armadura natural', valor: toNumber(defensa?.Armadura_natural) !== 0 ? textoConSigno(toNumber(defensa?.Armadura_natural)) : null },
             this.espacioYAlcance(),
             { etiqueta: 'Reducción de daño', valor: defensa?.Reduccion_dano },
             { etiqueta: 'Resistencia a conjuros', valor: defensa?.Resistencia_conjuros },
@@ -438,10 +439,6 @@ export class DetallesMonstruoComponent {
             valor: textoDato(dato.valor) ?? '',
             detalle: tieneTextoVisible(dato.detalle) ? `${dato.detalle}`.trim() : null,
         }));
-    }
-
-    private signo(valor: number): string {
-        return valor >= 0 ? `+${valor}` : `${valor}`;
     }
 
     private formatearListaPersonajes(items: Array<{ id: any; nombre: any; extra?: string; }>): string {
