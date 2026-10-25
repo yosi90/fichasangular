@@ -9,7 +9,7 @@ import { RazaSimple } from 'src/app/interfaces/simplificaciones/raza-simple';
 import { esperarSesionFirebase, FirebaseInjectionContextService } from '../firebase-injection-context.service';
 import { PrivateUserFirestoreService } from '../private-user-firestore.service';
 import { cabeceraApiConFirebase } from '../platform-session.service';
-import { toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { resumenClases } from '../utils/resumen-clases';
 
 @Injectable({
@@ -449,11 +449,6 @@ export class ListaPersonajesService {
 function toNullablePositiveInt(value: any): number | null {
     const parsed = toInt(value);
     return parsed > 0 ? parsed : null;
-}
-
-function toNullableText(value: any): string | null {
-    const text = `${value ?? ''}`.trim();
-    return text.length > 0 ? text : null;
 }
 
 function extractOwnerUid(value: any): string | null {

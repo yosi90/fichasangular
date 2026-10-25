@@ -1,6 +1,7 @@
 import { firstValueFrom, of } from "rxjs";
 import { ArmaduraDetalle } from "../interfaces/armadura";
-import { ArmaduraService } from "./armadura.service";
+import { ArmaduraService, normalizeArmadura } from "./armadura.service";
+import { crearArmaduraApi, crearRodelaApi } from "src/testing/equipo-api";
 
 describe("ArmaduraService", () => {
     class TestArmaduraService extends ArmaduraService {
@@ -30,7 +31,6 @@ describe("ArmaduraService", () => {
             Ca: 1,
             Bon_des: 0,
             Penalizador: 0,
-            Tipo_armadura: { Id: 1, Nombre: "Ligera" },
             Precio: 0,
             Material: { Id: 1, Nombre: "Acero" },
             Peso_armadura: { Id: 1, Nombre: "Ligera" },
@@ -77,5 +77,16 @@ describe("ArmaduraService", () => {
         expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/armaduras$/));
         expect(armaduras.map((item) => item.Id)).toEqual([2, 4]);
         expect(service.writes).toEqual([]);
+    });
+
+    it("normalizeArmadura conserva Bon_des null (sin límite) y lee el tipo de escudo y la velocidad", () => {
+        const armadura = normalizeArmadura(crearRodelaApi());
+        expect(armadura.Bon_des).toBeNull();
+        expect(armadura.Tipo_escudo).toEqual({ Id: 1, Nombre: "Broquel" });
+        expect(armadura.Peso_armadura).toBeNull();
+        expect("Tipo_armadura" in armadura).toBeFalse();
+        const cota = normalizeArmadura(crearArmaduraApi());
+        expect(cota.Velocidad_30).toBe(20);
+        expect(cota.Origen_descripcion).toBe("srd");
     });
 });

@@ -35,6 +35,12 @@ export function toText(value: any, fallback: string = ''): string {
     return `${value}`;
 }
 
+/** `value` como texto sin espacios a los lados, o `null` si queda vacío (un texto que falta no es «»). */
+export function toNullableText(value: unknown): string | null {
+    const text = `${value ?? ''}`.trim();
+    return text.length > 0 ? text : null;
+}
+
 const VALORES_SI = new Set(['true', '1', 'sí', 'si', 'yes']);
 
 /**

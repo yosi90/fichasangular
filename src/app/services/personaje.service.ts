@@ -36,7 +36,7 @@ import { normalizarProgresionLanzadorPersonaje } from './utils/nivel-lanzador-pe
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
 import { calcularOroPorNep } from './utils/oro-inicial';
@@ -1144,11 +1144,6 @@ function borrarMarcaDeArchivadoAntigua(): void {
     } catch {
         // Sin almacenamiento local no hay nada que borrar.
     }
-}
-
-function toNullableText(value: any): string | null {
-    const text = toText(value).trim();
-    return text.length > 0 ? text : null;
 }
 
 function extractOwnerUid(value: any): string | null {

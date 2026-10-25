@@ -2,6 +2,8 @@ import { ChangeDetectorRef } from '@angular/core';
 import { of } from 'rxjs';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ListadoArmadurasComponent } from './listado-armaduras.component';
+import { normalizeArmadura } from 'src/app/services/armadura.service';
+import { crearArmaduraApi, crearRodelaApi } from 'src/testing/equipo-api';
 
 describe('ListadoArmadurasComponent', () => {
     let component: ListadoArmadurasComponent;
@@ -22,25 +24,10 @@ describe('ListadoArmadurasComponent', () => {
         component.armaduraSort = { active: '', direction: '', sortChange: of({}), initialized: of({}) } as any;
         component.armaduraPaginator = { page: of({}), initialized: of({}) } as any;
         component.nombreText = { nativeElement: { value: '' } } as any;
-        component.armaduras = [{
-            Id: 1,
-            Nombre: 'Escudo pesado',
-            Descripcion: 'Escudo robusto',
-            Manual: { Id: 1, Nombre: 'Manual base', Pagina: 10 },
-            Ca: 2,
-            Bon_des: 0,
-            Penalizador: -2,
-            Tipo_armadura: { Id: 1, Nombre: 'Escudo' },
-            Precio: 20,
-            Material: { Id: 1, Nombre: 'Acero' },
-            Peso_armadura: { Id: 1, Nombre: 'Ligera' },
-            Peso: 15,
-            Tamano: { Id: 1, Nombre: 'Mediano' },
-            Fallo_arcano: 5,
-            Es_escudo: true,
-            Oficial: true,
-            Encantamientos: [],
-        }];
+        component.armaduras = [
+            normalizeArmadura(crearRodelaApi({ Id: 1, Nombre: 'Escudo pesado', Manual: { Id: 1, Nombre: 'Manual base', Pagina: 10 }, Tipo_escudo: { Id: 3, Nombre: 'Pesado' } })),
+            normalizeArmadura(crearArmaduraApi({ Id: 2, Nombre: 'Cota de mallas' })),
+        ];
     });
 
     it('emite detalle al abrir desde listado', () => {
@@ -61,5 +48,20 @@ describe('ListadoArmadurasComponent', () => {
         expect(event.preventDefault).toHaveBeenCalled();
         expect(event.stopPropagation).toHaveBeenCalled();
         expect(manualDetalleNavSvcMock.abrirDetalleManual).toHaveBeenCalledWith({ id: 1, nombre: 'Manual base' });
+    });
+
+    it('enseña la categoría (peso o tipo de escudo) y la Destreza máxima en lugar del tipo de armadura', () => {
+        expect(component.armaduraColumns).toEqual(['Nombre', 'Manual', 'Categoria', 'Bon_des']);
+        expect(component.getCategoria(component.armaduras[0])).toBe('Escudo (pesado)');
+        expect(component.getCategoria(component.armaduras[1])).toBe('Intermedia');
+        expect(component.getDestrezaMaxima(component.armaduras[0])).toBe('Sin límite');
+        expect(component.getDestrezaMaxima(component.armaduras[1])).toBe('+2');
+        expect(component.tiposArmadura).toEqual(['Cualquiera', 'Escudo (pesado)', 'Intermedia']);
+    });
+
+    it('filtra por categoría', () => {
+        component.defaultTipoArmadura = 'Intermedia';
+        component.filtroArmaduras();
+        expect(component.armadurasDS.data.map((a) => a.Id)).toEqual([2]);
     });
 });

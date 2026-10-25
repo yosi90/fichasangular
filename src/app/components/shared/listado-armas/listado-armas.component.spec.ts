@@ -2,6 +2,8 @@ import { ChangeDetectorRef } from '@angular/core';
 import { of } from 'rxjs';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ListadoArmasComponent } from './listado-armas.component';
+import { normalizeArma } from 'src/app/services/arma.service';
+import { crearArmaApi } from 'src/testing/equipo-api';
 
 describe('ListadoArmasComponent', () => {
     let component: ListadoArmasComponent;
@@ -22,23 +24,7 @@ describe('ListadoArmasComponent', () => {
         component.armaSort = { active: '', direction: '', sortChange: of({}), initialized: of({}) } as any;
         component.armaPaginator = { page: of({}), initialized: of({}) } as any;
         component.nombreText = { nativeElement: { value: '' } } as any;
-        component.armas = [{
-            Id: 1,
-            Nombre: 'Espada larga',
-            Descripcion: 'Marcial',
-            Manual: { Id: 1, Nombre: 'Manual base', Pagina: 5 },
-            Dano: '1d8',
-            Tipo_dano: { Id: 1, Nombre: 'Cortante' },
-            Tipo_arma: { Id: 1, Nombre: 'Marcial' },
-            Precio: 15,
-            Material: { Id: 1, Nombre: 'Acero' },
-            Tamano: { Id: 1, Nombre: 'Mediano' },
-            Peso: 4,
-            Critico: '19-20/x2',
-            Incremento_distancia: 0,
-            Oficial: true,
-            Encantamientos: [],
-        }];
+        component.armas = [normalizeArma(crearArmaApi({ Id: 1, Nombre: 'Espada larga', Manual: { Id: 1, Nombre: 'Manual base', Pagina: 5 } }))];
     });
 
     it('emite detalle al abrir desde listado', () => {

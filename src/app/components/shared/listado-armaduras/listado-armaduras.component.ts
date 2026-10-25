@@ -8,6 +8,7 @@ import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
+import { categoriaArmadura, etiquetaManual, textoDestrezaMaxima } from 'src/app/services/utils/equipo-texto';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 @Component({
@@ -23,7 +24,13 @@ export class ListadoArmadurasComponent implements OnDestroy {
     defaultTipoArmadura = 'Cualquiera';
     soloEscudos = false;
     armadurasDS = new MatTableDataSource<ArmaduraDetalle>([]);
-    armaduraColumns = ['Nombre', 'Manual', 'Tipo_armadura'];
+    armaduraColumns = ['Nombre', 'Manual', 'Categoria', 'Bon_des'];
+    private readonly columnLabels: Record<string, string> = {
+        Nombre: 'Nombre',
+        Manual: 'Manual',
+        Categoria: 'Categoría',
+        Bon_des: 'Destreza máx.',
+    };
 
     private mostrarHomebrew = false;
     private readonly destroy$ = new Subject<void>();
@@ -66,7 +73,7 @@ export class ListadoArmadurasComponent implements OnDestroy {
     get tiposArmadura(): string[] {
         return ['Cualquiera', ...Array.from(new Set(
             this.armaduras
-                .map((armadura) => `${armadura?.Tipo_armadura?.Nombre ?? ''}`.trim())
+                .map((armadura) => categoriaArmadura(armadura))
                 .filter((value) => value.length > 0)
         )).sort(compararTexto)];
     }
@@ -99,7 +106,7 @@ export class ListadoArmadurasComponent implements OnDestroy {
             const visiblePorManual = this.defaultManual === 'Cualquiera'
                 || normalizarTexto(armadura?.Manual?.Nombre) === normalizarTexto(this.defaultManual);
             const visiblePorTipo = this.defaultTipoArmadura === 'Cualquiera'
-                || normalizarTexto(armadura?.Tipo_armadura?.Nombre) === tipoArmadura;
+                || normalizarTexto(categoriaArmadura(armadura)) === tipoArmadura;
             const visiblePorEscudo = !this.soloEscudos || toBoolean(armadura?.Es_escudo);
             const visiblePorHomebrew = this.mostrarHomebrew || toBoolean(armadura?.Oficial, true);
             return visiblePorTexto && visiblePorManual && visiblePorTipo && visiblePorEscudo && visiblePorHomebrew;
@@ -142,18 +149,28 @@ export class ListadoArmadurasComponent implements OnDestroy {
     }
 
     getManualVisible(armadura: ArmaduraDetalle): string {
-        const nombre = `${armadura?.Manual?.Nombre ?? ''}`.trim();
-        const pagina = Number(armadura?.Manual?.Pagina ?? 0);
-        if (nombre.length < 1)
-            return 'Sin manual';
-        return pagina > 0 ? `${nombre} (p. ${pagina})` : nombre;
+        return etiquetaManual(armadura?.Manual);
+    }
+
+    getColumnLabel(column: string): string {
+        return this.columnLabels[column] ?? column;
+    }
+
+    getCategoria(armadura: ArmaduraDetalle): string {
+        return categoriaArmadura(armadura);
+    }
+
+    getDestrezaMaxima(armadura: ArmaduraDetalle): string {
+        return textoDestrezaMaxima(armadura?.Bon_des);
     }
 
     private sortingAccessor(item: ArmaduraDetalle, property: string): string | number {
         if (property === 'Manual')
             return `${item?.Manual?.Nombre ?? ''}`;
-        if (property === 'Tipo_armadura')
-            return `${item?.Tipo_armadura?.Nombre ?? ''}`;
+        if (property === 'Categoria')
+            return categoriaArmadura(item);
+        if (property === 'Bon_des')
+            return item?.Bon_des ?? Number.MAX_SAFE_INTEGER;
         return (item as any)?.[property] ?? '';
     }
 

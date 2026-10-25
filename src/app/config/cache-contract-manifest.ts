@@ -36,6 +36,11 @@ export type CacheEntityKey =
     | "tamanos"
     | "armas"
     | "armaduras"
+    | "equipo_catalogos"
+    | "materiales"
+    | "municiones"
+    | "encantamientos"
+    | "conjuntos_objetos"
     | "grupos_armas"
     | "grupos_armaduras"
     | "dominios"
@@ -88,8 +93,13 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "idiomas", label: "Idiomas", schemaVersion: 1 },
     { key: "enemigos_predilectos", label: "Enemigos predilectos", schemaVersion: 1 },
     { key: "tamanos", label: "Tamaños", schemaVersion: 1 },
-    { key: "armas", label: "Armas", schemaVersion: 1 },
-    { key: "armaduras", label: "Armaduras", schemaVersion: 2 },
+    { key: "armas", label: "Armas", schemaVersion: 2 },
+    { key: "armaduras", label: "Armaduras", schemaVersion: 4 },
+    { key: "equipo_catalogos", label: "Catálogos del equipo", schemaVersion: 1 },
+    { key: "materiales", label: "Materiales", schemaVersion: 1 },
+    { key: "municiones", label: "Munición", schemaVersion: 1 },
+    { key: "encantamientos", label: "Aptitudes especiales de armas y armaduras", schemaVersion: 1 },
+    { key: "conjuntos_objetos", label: "Conjuntos de objetos", schemaVersion: 1 },
     { key: "grupos_armas", label: "Grupos de armas", schemaVersion: 1 },
     { key: "grupos_armaduras", label: "Grupos de armaduras", schemaVersion: 1 },
     { key: "dominios", label: "Dominios", schemaVersion: 1 },

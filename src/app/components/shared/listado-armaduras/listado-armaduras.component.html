@@ -16,7 +16,7 @@
                     (selectionChange)="filtroArmaduras()">
                 </app-manual-autocomplete>
                 <mat-form-field (click)="$event.stopPropagation();">
-                    <mat-label>Tipo de armadura</mat-label>
+                    <mat-label>Categoría</mat-label>
                     <mat-select appearance="fill" [(value)]="defaultTipoArmadura" (selectionChange)="filtroArmaduras();">
                         <mat-option *ngFor="let tipo of tiposArmadura" [value]="tipo">{{tipo}}</mat-option>
                     </mat-select>
@@ -33,8 +33,8 @@
         <table id="armaduras" #tablaArmaduras mat-table [dataSource]="armadurasDS" matSort *ngIf="armaduras.length > 0; else cargando">
             <ng-container matColumnDef="{{column}}" *ngFor="let column of armaduraColumns">
                 <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header
-                    sortActionDescription="Ordenar por {{column}}">
-                    {{column.replace('_', ' ')}}
+                    sortActionDescription="Ordenar por {{getColumnLabel(column)}}">
+                    {{getColumnLabel(column)}}
                 </th>
                 <td mat-cell *matCellDef="let element">
                     <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
@@ -47,7 +47,8 @@
                         <mat-icon>read_more</mat-icon>
                         {{element[column]}}
                     </button>
-                    <span *ngIf="column == 'Tipo_armadura'">{{element.Tipo_armadura?.Nombre}}</span>
+                    <span *ngIf="column == 'Categoria'">{{getCategoria(element)}}</span>
+                    <span *ngIf="column == 'Bon_des'">{{getDestrezaMaxima(element)}}</span>
                 </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="armaduraColumns; sticky: true"></tr>

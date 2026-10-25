@@ -5,7 +5,8 @@ import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import { ArmaduraDetalle } from "../interfaces/armadura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeEncantamientosDeCatalogo, normalizeEquipoRef, normalizeTextoEquipo } from 'src/app/services/utils/equipo-mapper';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 import { porNombre } from "src/app/services/utils/orden-texto";
@@ -14,40 +15,27 @@ export function normalizeArmadura(raw: any): ArmaduraDetalle {
     return {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
-        Descripcion: toText(raw?.Descripcion),
+        ...normalizeTextoEquipo(raw),
         Manual: normalizeManualApi(raw?.Manual),
         Ca: toNumber(raw?.Ca),
-        Bon_des: toNumber(raw?.Bon_des),
+        Bon_des: toNumberOrNull(raw?.Bon_des),
         Penalizador: toNumber(raw?.Penalizador),
-        Tipo_armadura: {
-            Id: toNumber(raw?.Tipo_armadura?.Id),
-            Nombre: toText(raw?.Tipo_armadura?.Nombre),
-        },
         Precio: toNumber(raw?.Precio),
-        Material: {
-            Id: toNumber(raw?.Material?.Id),
-            Nombre: toText(raw?.Material?.Nombre),
-        },
-        Peso_armadura: {
-            Id: toNumber(raw?.Peso_armadura?.Id),
-            Nombre: toText(raw?.Peso_armadura?.Nombre),
-        },
+        Material: normalizeEquipoRef(raw?.Material),
+        Peso_armadura: normalizeEquipoRef(raw?.Peso_armadura),
+        Tipo_escudo: normalizeEquipoRef(raw?.Tipo_escudo),
         Peso: toNumber(raw?.Peso),
-        Tamano: {
-            Id: toNumber(raw?.Tamano?.Id),
-            Nombre: toText(raw?.Tamano?.Nombre),
-        },
+        Tamano: normalizeEquipoRef(raw?.Tamano) ?? { Id: 0, Nombre: '' },
         Fallo_arcano: toNumber(raw?.Fallo_arcano),
         Es_escudo: toBoolean(raw?.Es_escudo),
+        Velocidad_30: toNumberOrNull(raw?.Velocidad_30),
+        Velocidad_20: toNumberOrNull(raw?.Velocidad_20),
+        Correr_multiplicador: toNumberOrNull(raw?.Correr_multiplicador),
+        Tiempo_poner: toNullableText(raw?.Tiempo_poner),
+        Tiempo_poner_rapido: toNullableText(raw?.Tiempo_poner_rapido),
+        Tiempo_quitar: toNullableText(raw?.Tiempo_quitar),
         Oficial: toBoolean(raw?.Oficial),
-        Encantamientos: toArray(raw?.Encantamientos).map((item: any) => ({
-            Id: toNumber(item?.Id),
-            Nombre: toText(item?.Nombre),
-            Descripcion: toText(item?.Descripcion),
-            Modificador: toNumber(item?.Modificador),
-            Coste: toNumber(item?.Coste),
-            Tipo: toNumber(item?.Tipo),
-        })),
+        Encantamientos: normalizeEncantamientosDeCatalogo(raw?.Encantamientos),
     };
 }
 

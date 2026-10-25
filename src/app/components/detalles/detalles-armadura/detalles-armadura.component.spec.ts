@@ -2,6 +2,8 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesArmaduraComponent } from './detalles-armadura.component';
+import { normalizeArmadura } from 'src/app/services/armadura.service';
+import { crearArmaduraApi, crearRodelaApi } from 'src/testing/equipo-api';
 
 describe('DetallesArmaduraComponent', () => {
     let component: DetallesArmaduraComponent;
@@ -21,32 +23,13 @@ describe('DetallesArmaduraComponent', () => {
 
         fixture = TestBed.createComponent(DetallesArmaduraComponent);
         component = fixture.componentInstance;
-        component.armadura = {
+        component.armadura = normalizeArmadura(crearArmaduraApi({
             Id: 1,
-            Nombre: 'Cota de mallas',
             Descripcion: 'Protección sólida.',
             Manual: { Id: 2, Nombre: 'Manual base', Pagina: 87 },
-            Ca: 5,
-            Bon_des: 2,
-            Penalizador: -5,
-            Tipo_armadura: { Id: 1, Nombre: 'Pesada' },
-            Precio: 150,
-            Material: { Id: 1, Nombre: 'Acero' },
-            Peso_armadura: { Id: 1, Nombre: 'Pesada' },
-            Peso: 20,
-            Tamano: { Id: 1, Nombre: 'Mediano' },
-            Fallo_arcano: 35,
-            Es_escudo: false,
-            Oficial: true,
-            Encantamientos: [{
-                Id: 1,
-                Nombre: 'Resistente',
-                Descripcion: 'Protección adicional.',
-                Modificador: 2,
-                Coste: 4000,
-                Tipo: 1,
-            }],
-        };
+            Peso_armadura: { Id: 3, Nombre: 'Pesada' },
+            Encantamientos: [{ Id: 1, Nombre: 'Resistente', Descripcion: 'Protección adicional.', Modificador: 2, Coste: 4000 }],
+        }));
         fixture.detectChanges();
     });
 
@@ -61,5 +44,21 @@ describe('DetallesArmaduraComponent', () => {
     it('abre el detalle del manual', () => {
         component.abrirDetalleManual();
         expect(manualNavSpy.abrirDetalleManual).toHaveBeenCalledWith({ id: 2, nombre: 'Manual base' });
+    });
+
+    it('enseña la velocidad y la Destreza máxima', () => {
+        const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+        expect(text).toContain('Destreza máxima +2');
+        expect(text).toContain('20 pies (de 30)');
+    });
+
+    it('un escudo sin límite de Destreza enseña «Sin límite» y su tipo de escudo', () => {
+        component.armadura = normalizeArmadura(crearRodelaApi());
+        fixture.detectChanges();
+        const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+        expect(component.armadura.Bon_des).toBeNull();
+        expect(text).toContain('Destreza máxima Sin límite');
+        expect(text).toContain('Broquel');
+        expect(text).not.toContain('Tipo_armadura');
     });
 });

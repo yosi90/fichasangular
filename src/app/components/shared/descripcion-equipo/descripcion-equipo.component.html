@@ -1,0 +1,10 @@
+<div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="visible">
+    <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Descripción</mat-chip>
+    <app-texto-manual class="tw-w-full" *ngIf="tieneDescripcion" [texto]="descripcion"></app-texto-manual>
+    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneDescripcion" [matTooltip]="ayudaOrigen" matTooltipClass="tt-accent tt-multiline">
+        {{textoOrigen}}
+    </mat-chip>
+    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="traducido" matTooltip="Viene de un libro en inglés, traducido por nosotros" matTooltipClass="tt-accent">
+        Traducido<ng-container *ngIf="nombreOriginal">: {{nombreOriginal}}</ng-container>
+    </mat-chip>
+</div>
