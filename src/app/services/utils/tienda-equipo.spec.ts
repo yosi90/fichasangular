@@ -10,7 +10,9 @@ import {
     crearObjetoGenericoApi,
     crearRodelaApi,
 } from 'src/testing/equipo-api';
+import { crearArmaEspecificaApi } from 'src/testing/equipo-api';
 import {
+    indicePiezaDelCampo,
     articuloDeArma,
     articuloDeArmadura,
     articuloDeMunicion,
@@ -37,35 +39,35 @@ describe('tienda-equipo', () => {
 
     describe('el dinero inicial', () => {
         it('en nivel 1, el oro de su clase con sus dados', () => {
-            const regla = reglaDineroInicial({ nivel: 1, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: false }, catalogos);
+            const regla = reglaDineroInicial({ nivelEfectivo: 1, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: false }, catalogos);
             expect(regla).toEqual(jasmine.objectContaining({ modo: 'dados', dados: '6d4', multiplicador: 10, maximo: 240, sugerido: 0 }));
             expect(regla.descripcion).toContain('Guerrero');
         });
 
         it('la ventaja que duplica el oro dobla la tirada y el tope', () => {
-            const regla = reglaDineroInicial({ nivel: 1, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: true, aumentaOro: false }, catalogos);
+            const regla = reglaDineroInicial({ nivelEfectivo: 1, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: true, aumentaOro: false }, catalogos);
             expect(regla.multiplicador).toBe(20);
             expect(regla.maximo).toBe(480);
         });
 
         it('sin id, busca la clase por su nombre (sin tildes ni mayúsculas)', () => {
-            const regla = reglaDineroInicial({ nivel: 1, clases: [{ Nombre: 'barbaro' }], duplicaOro: false, aumentaOro: false }, catalogos);
+            const regla = reglaDineroInicial({ nivelEfectivo: 1, clases: [{ Nombre: 'barbaro' }], duplicaOro: false, aumentaOro: false }, catalogos);
             expect(regla.dados).toBe('4d4');
         });
 
         it('la ventaja que aumenta el oro, o una clase sin oro, no tienen tope', () => {
-            expect(reglaDineroInicial({ nivel: 1, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: true }, catalogos).maximo).toBeNull();
-            expect(reglaDineroInicial({ nivel: 1, clases: [{ Id: 77, Nombre: 'Clase rara' }], duplicaOro: false, aumentaOro: false }, catalogos).modo).toBe('libre');
+            expect(reglaDineroInicial({ nivelEfectivo: 1, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: true }, catalogos).maximo).toBeNull();
+            expect(reglaDineroInicial({ nivelEfectivo: 1, clases: [{ Id: 77, Nombre: 'Clase rara' }], duplicaOro: false, aumentaOro: false }, catalogos).modo).toBe('libre');
         });
 
         it('en nivel 2 o más, la riqueza de su nivel; por encima de la tabla, sin tope', () => {
-            const regla = reglaDineroInicial({ nivel: 3, clases: [], duplicaOro: false, aumentaOro: false }, catalogos);
+            const regla = reglaDineroInicial({ nivelEfectivo: 3, clases: [], duplicaOro: false, aumentaOro: false }, catalogos);
             expect(regla).toEqual(jasmine.objectContaining({ modo: 'riqueza', maximo: 2700, sugerido: 2700 }));
-            expect(reglaDineroInicial({ nivel: 25, clases: [], duplicaOro: false, aumentaOro: false }, catalogos).maximo).toBeNull();
+            expect(reglaDineroInicial({ nivelEfectivo: 25, clases: [], duplicaOro: false, aumentaOro: false }, catalogos).maximo).toBeNull();
         });
 
         it('tira los dados del oro inicial', () => {
-            const regla = reglaDineroInicial({ nivel: 1, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: false }, catalogos);
+            const regla = reglaDineroInicial({ nivelEfectivo: 1, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: false }, catalogos);
             expect(tirarOroInicial(regla, () => 0)).toBe(60);
             expect(tirarOroInicial(regla, () => 0.999)).toBe(240);
         });
@@ -116,7 +118,7 @@ describe('tienda-equipo', () => {
     });
 
     it('el resumen dice lo gastado, lo que queda y si alcanza', () => {
-        const regla = reglaDineroInicial({ nivel: 1, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: false }, catalogos);
+        const regla = reglaDineroInicial({ nivelEfectivo: 1, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: false }, catalogos);
         const piezas = [nuevaPieza(espada), nuevaPieza(cota), nuevaPieza(rodela)];
         expect(resumenCompra(200, piezas, regla)).toEqual({ gastado: 180, queda: 20, peso: 49, alcanza: true, dentroDelTope: true });
         expect(resumenCompra(100, piezas, regla).alcanza).toBeFalse();
@@ -138,6 +140,34 @@ describe('tienda-equipo', () => {
                 { tipo: 'municion', id: 1, cantidad: 20, equipado: false },
                 { tipo: 'objeto', id: 1, cantidad: 2, equipado: false, idConjuro: 1, nivelConjuro: 1, nivelLanzador: 1 },
             ],
+        });
+    });
+
+    describe('los ajustes del 2026-10-25', () => {
+        it('cuenta por el NEP: un guerrero de nivel 1 con ajuste +1 (NEP 2) compra con la riqueza de NEP 2', () => {
+            const regla = reglaDineroInicial({ nivelEfectivo: 2, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: false }, catalogos);
+            expect(regla).toEqual(jasmine.objectContaining({ modo: 'riqueza', maximo: 900, sugerido: 900 }));
+            expect(regla.descripcion).toContain('NEP 2');
+        });
+
+        it('el error de la compra señala la pieza de su `field`', () => {
+            expect(indicePiezaDelCampo('piezas[2].cantidad')).toBe(2);
+            expect(indicePiezaDelCampo('piezas[0]')).toBe(0);
+            expect(indicePiezaDelCampo('piezas')).toBeNull();
+            expect(indicePiezaDelCampo(null)).toBeNull();
+            expect(indicePiezaDelCampo('dineroInicial')).toBeNull();
+        });
+
+        it('un arma mágica específica se compra como objeto, a su precio, y se lleva puesta', () => {
+            const espadaSolar = articuloDeObjeto(normalizeObjeto(crearArmaEspecificaApi()));
+            const pieza = nuevaPieza(espadaSolar);
+            expect(espadaSolar.tipo).toBe('objeto');
+            expect(pieza.equipado).toBeTrue();
+            expect(precioEstimado(pieza)).toBe(50335);
+            expect(construirCompra(60000, [{ ...pieza, granCalidad: true, bonificadorMejora: 2 }]).piezas).toEqual([
+                { tipo: 'objeto', id: 120, cantidad: 1, equipado: true },
+            ]);
+            expect(nuevaPieza(capa).equipado).toBeFalse();
         });
     });
 });

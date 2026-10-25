@@ -1407,13 +1407,11 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
         expect(typeof desventajaGuardada !== 'string' ? desventajaGuardada?.Origen : '').toBe('Desventaja');
     });
 
-    it('pendientesOro se acumula y no altera Oro_inicial', () => {
-        const oroBase = service.PersonajeCreacion.Oro_inicial;
+    it('pendientesOro se acumula', () => {
         service.toggleDesventaja(desventajaPuntos.Id);
         service.toggleVentaja(ventajaOro.Id);
 
         expect(service.EstadoFlujo.ventajas.pendientesOro.length).toBe(2);
-        expect(service.PersonajeCreacion.Oro_inicial).toBe(oroBase);
     });
 });
 
@@ -1730,11 +1728,10 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.Salvaciones.voluntad.modsVarios[0].valor).toBe(2);
     });
 
-    it('recalcula NEP, experiencia y oro tras aplicar clase', () => {
+    it('recalcula NEP y experiencia tras aplicar clase', () => {
         service.aplicarSiguienteNivelClase(claseBase);
         expect(service.PersonajeCreacion.NEP).toBe(3);
         expect(service.PersonajeCreacion.Experiencia).toBe(1000);
-        expect(service.PersonajeCreacion.Oro_inicial).toBe(2700);
     });
 
     it('recalcula capacidad de carga base con fuerza 14 en tamaño mediano', () => {
@@ -6423,7 +6420,6 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
 
         expect(svc.PersonajeCreacion.NEP).toBe(4);
         expect(svc.PersonajeCreacion.Experiencia).toBe(6000);
-        expect(svc.PersonajeCreacion.Oro_inicial).toBe(5400);
     });
 
     it('fase 2: aplica alineamiento por prioridad de plantilla', () => {

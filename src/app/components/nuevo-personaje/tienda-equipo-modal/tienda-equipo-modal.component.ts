@@ -51,6 +51,10 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
     @Input() conjuros: { Id: number; Nombre: string; }[] = [];
     @Input() guardando = false;
     @Input() error = '';
+    /** La pieza que señala el error de la API (`field: piezas[i]`), o `null`. */
+    @Input() piezaConError: number | null = null;
+    /** En una campaña que no admite homebrew: solo lo oficial (también en los objetos que se buscan en la API). */
+    @Input() soloOficial = false;
     @Output() confirmar = new EventEmitter<PersonajeCompraRequestDto>();
     @Output() omitir = new EventEmitter<void>();
 
@@ -63,6 +67,8 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
     readonly faltaEnPieza = faltaEnPieza;
 
     seccion: SeccionTienda = 'arma';
+    /** La pieza que señaló la API; deja de señalarse en cuanto cambia la compra. */
+    piezaSenalada: number | null = null;
     busqueda = '';
     dineroInicial = 0;
     piezas: PiezaTienda[] = [];
@@ -98,6 +104,8 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['regla'] && this.regla)
             this.dineroInicial = this.regla.sugerido;
+        if (changes['piezaConError'])
+            this.piezaSenalada = this.piezaConError;
     }
 
     ngOnDestroy(): void {
@@ -113,7 +121,7 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
         const texto = normalizarTexto(this.busqueda, true);
         const fuente = this.seccion === 'objeto' ? this.objetos : this.articulos.filter((articulo) => articulo.tipo === this.seccion);
         return fuente
-            .filter((articulo) => sePuedeComprar(articulo))
+            .filter((articulo) => sePuedeComprar(articulo) && (!this.soloOficial || articulo.oficial))
             .filter((articulo) => this.seccion === 'objeto' || texto.length < 1
                 || normalizarTexto(articulo.nombre, true).includes(texto)
                 || normalizarTexto(articulo.categoria, true).includes(texto))
@@ -170,15 +178,18 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
     }
 
     anadir(articulo: ArticuloTienda): void {
+        this.piezaSenalada = null;
         this.piezas = [...this.piezas, nuevaPieza(articulo)];
     }
 
     quitar(indice: number): void {
+        this.piezaSenalada = null;
         this.piezas = this.piezas.filter((_, i) => i !== indice);
     }
 
     /** Cambia un dato de una pieza (la cantidad, la mejora, el conjuro…). */
     cambiarPieza(indice: number, cambios: Partial<PiezaTienda>): void {
+        this.piezaSenalada = null;
         this.piezas = this.piezas.map((pieza, i) => i === indice ? { ...pieza, ...cambios } : pieza);
     }
 

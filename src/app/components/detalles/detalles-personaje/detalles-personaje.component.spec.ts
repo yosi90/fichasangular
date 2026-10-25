@@ -881,18 +881,17 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).toContain('Pesada 0');
     });
 
-    it('preview nuevo personaje muestra experiencia y oro en 0 cuando ya aplica NEP', () => {
+    it('preview nuevo personaje muestra la experiencia en 0 cuando ya aplica NEP, y nada de oro (lo da la tienda)', () => {
         component.esPreviewNuevoPersonaje = true;
         component.pj.Raza.Ajuste_nivel = 1;
         component.pj.Experiencia = 0;
-        component.pj.Oro_inicial = 0;
 
         fixture.detectChanges();
 
         const html = `${fixture.nativeElement.textContent ?? ''}`;
         expect(html).toContain('Exp 0');
-        expect(html).toContain('Oro inicial');
-        expect(html).toContain('0');
+        expect(html).not.toContain('Oro inicial');
+        expect(html).not.toContain('Dinero');
     });
 
     it('reordena bloques en la preview de nuevo personaje sin tocar el layout compacto', () => {
@@ -1047,7 +1046,6 @@ describe('DetallesPersonajeComponent', () => {
         expect(component.caDisclaimer).toContain('Cota de mallas +5 (armadura)');
         expect(component.llevaArmaduraPuesta).toBeTrue();
         expect(component.piezasEquipo.length).toBe(6);
-        expect(component.tieneOroVisible()).toBeFalse();
         const html = `${fixture.nativeElement.textContent ?? ''}`;
         expect(html).toContain('Ca 18');
         expect(html).toContain('Toque 11');

@@ -25,7 +25,7 @@ describe('TiendaEquipoModalComponent', () => {
     const flechas = articuloDeMunicion(normalizeMunicion(crearMunicionApi()));
 
     function abrir(nivel = 1): void {
-        component.regla = reglaDineroInicial({ nivel, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: false }, catalogos);
+        component.regla = reglaDineroInicial({ nivelEfectivo: nivel, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: false }, catalogos);
         component.articulos = [espada, cota, flechas];
         component.conjuros = [{ Id: 1, Nombre: 'Curar heridas leves' }, { Id: 2, Nombre: 'Curar heridas moderadas' }];
         component.ngOnChanges({ regla: new SimpleChange(null, component.regla, true) });
@@ -134,5 +134,25 @@ describe('TiendaEquipoModalComponent', () => {
         component.onOmitir();
         expect(confirmar).not.toHaveBeenCalled();
         expect(omitir).not.toHaveBeenCalled();
+    });
+
+    it('en una campaña sin homebrew solo ofrece lo oficial', () => {
+        abrir();
+        component.articulos = [espada, { ...espada, id: 99, nombre: 'Hacha casera', oficial: false }];
+        expect(component.opciones.length).toBe(2);
+        component.soloOficial = true;
+        expect(component.opciones.map((a) => a.nombre)).toEqual(['Espada larga']);
+    });
+
+    it('señala la pieza del error de la API hasta que cambia la compra', () => {
+        abrir();
+        component.anadir(espada);
+        component.anadir(cota);
+        component.error = 'Esta campaña no deja comprar homebrew.';
+        component.piezaConError = 1;
+        component.ngOnChanges({ piezaConError: new SimpleChange(null, 1, false) });
+        expect(component.piezaSenalada).toBe(1);
+        component.cambiarPieza(0, { cantidad: 2 });
+        expect(component.piezaSenalada).toBeNull();
     });
 });

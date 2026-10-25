@@ -16,6 +16,14 @@
                     <mat-chip class="sombra3d-sm tw-m-1">{{dato.valor}}</mat-chip>
                 </mat-chip>
                 <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let marca of marcas">{{marca}}</mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="objeto?.Arma_base as arma"
+                    matTooltip="Pulsa para ver el arma base" matTooltipClass="tt-accent" (click)="abrirArma(arma.Id)">
+                    Arma base {{arma.Nombre}}
+                </mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="objeto?.Armadura_base as armadura"
+                    matTooltip="Pulsa para ver la armadura base" matTooltipClass="tt-accent" (click)="abrirArmadura(armadura.Id)">
+                    Armadura base {{armadura.Nombre}}
+                </mat-chip>
                 <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="objeto?.Conjunto as conjunto"
                     matTooltip="Pulsa para ver el conjunto" matTooltipClass="tt-accent" (click)="abrirEquipo('conjunto', conjunto.Id)">
                     Conjunto {{conjunto.Nombre}}
@@ -40,6 +48,14 @@
                 <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let modificador of modificadores"
                     [class.chip-condicional]="!!modificador.Condicion">
                     {{textoModificador(modificador)}}
+                </mat-chip>
+            </div>
+
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="(objeto?.Encantamientos?.length ?? 0) > 0">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Aptitudes especiales</mat-chip>
+                <mat-chip class="chip-clic tw-h-auto sombra3d-sm tw-m-1" *ngFor="let encantamiento of objeto?.Encantamientos"
+                    matTooltip="Pulsa para ver la aptitud" matTooltipClass="tt-accent" (click)="abrirEquipo('encantamiento', encantamiento.Id)">
+                    {{encantamiento.Nombre}}<ng-container *ngIf="encantamiento.Cabeza > 1"> (segunda cabeza)</ng-container>
                 </mat-chip>
             </div>
 

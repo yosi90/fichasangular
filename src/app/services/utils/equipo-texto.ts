@@ -129,6 +129,7 @@ export function textoModificadorEquipo(modificador: PersonajeModificadorEquipoDt
  */
 export function detallesPiezaEquipo(pieza: PersonajeEquipoPiezaDto): string[] {
     const detalles: string[] = [];
+    if (pieza.elementoBase) detalles.push(pieza.elementoBase.nombre);
     if (pieza.material) detalles.push(pieza.material.nombre);
     if (pieza.granCalidad) detalles.push('Gran calidad');
     if (pieza.bonificadorMejora > 0) {

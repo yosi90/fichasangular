@@ -1352,7 +1352,8 @@
 
     <ng-container *ngIf="modalTiendaAbierto && tiendaRegla">
         <app-tienda-equipo-modal [regla]="tiendaRegla" [articulos]="tiendaArticulos" [conjuros]="catalogoConjuros"
-            [guardando]="tiendaGuardando" [error]="tiendaError" (confirmar)="onConfirmarTienda($event)"
+            [guardando]="tiendaGuardando" [error]="tiendaError" [piezaConError]="tiendaPiezaConError"
+            [soloOficial]="tiendaSoloOficial" (confirmar)="onConfirmarTienda($event)"
             (omitir)="onOmitirTienda()">
         </app-tienda-equipo-modal>
     </ng-container>

@@ -86,7 +86,7 @@ export function errorDePerfil(error: unknown, porDefecto: string): ProfileApiErr
         return error;
     if (error instanceof HttpErrorResponse) {
         const leido = leerErrorDeApi(error, porDefecto);
-        return new ProfileApiError(textoParaMostrar(leido), leido.codigo, leido.estado);
+        return new ProfileApiError(textoParaMostrar(leido), leido.codigo, leido.estado, leido.campo);
     }
     return new ProfileApiError(mensajeDeError(error, porDefecto), '', 0);
 }

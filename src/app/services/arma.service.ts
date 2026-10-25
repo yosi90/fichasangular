@@ -6,7 +6,7 @@ import { environment } from "src/environments/environment";
 import { ArmaDetalle } from "../interfaces/arma";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
-import { normalizeEncantamientosDeCatalogo, normalizeEquipoRef, normalizeTextoEquipo } from 'src/app/services/utils/equipo-mapper';
+import { normalizeEquipoRef, normalizeTextoEquipo } from 'src/app/services/utils/equipo-mapper';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
@@ -44,7 +44,6 @@ export function normalizeArma(raw: any): ArmaDetalle {
             Valor: toNumberOrNull(item?.Valor),
         })),
         Oficial: toBoolean(raw?.Oficial),
-        Encantamientos: normalizeEncantamientosDeCatalogo(raw?.Encantamientos),
     };
 }
 

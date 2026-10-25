@@ -36,6 +36,7 @@ export function crearDetalleApi(cambios: Record<string, any> = {}): Record<strin
         v: 80, cor: 50, na: 0, vo: 0, t: 0, e: 0,
         o: true,
         dg: 4,
+        nivelEfectivo: 14,
         clases: [
             { id: 6, nombre: 'Explorador', nivel: 8, lanzaConjuros: true, caracteristicaLanzamiento: 'Sabiduría', modificadorLanzamiento: 4 },
         ],

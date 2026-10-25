@@ -36,7 +36,6 @@ export function crearArmaApi(cambios: Record<string, any> = {}): Record<string, 
         Indice_fuerza_coste: null,
         Propiedades: [],
         Oficial: true,
-        Encantamientos: [],
         Comodin: null,
         ...cambios,
     };
@@ -69,7 +68,6 @@ export function crearArmaduraApi(cambios: Record<string, any> = {}): Record<stri
         Tiempo_poner_rapido: null,
         Tiempo_quitar: null,
         Oficial: true,
-        Encantamientos: [],
         Comodin: null,
         ...cambios,
     };
@@ -233,11 +231,37 @@ export function crearObjetoApi(cambios: Record<string, any> = {}): Record<string
         }],
         Conjunto: null,
         Monstruo: null,
+        Arma_base: null,
+        Armadura_base: null,
+        Bonificador_mejora: null,
+        Bonificador_mejora_2: null,
+        Material: null,
+        Encantamientos: [],
         Generico_conjuro: null,
         Oficial: true,
         Comodin: null,
         ...cambios,
     };
+}
+
+/** Un arma mágica específica (tipo 30 de `GET /objetos`): un objeto enlazado a su arma base, con su mejora y aptitudes. */
+export function crearArmaEspecificaApi(cambios: Record<string, any> = {}): Record<string, any> {
+    return crearObjetoApi({
+        Id: 120,
+        Nombre: 'Espada solar',
+        Descripcion: 'Una espada bastarda que brilla como el sol.',
+        Nombre_original: 'Sun blade',
+        Tipo: { Id: 30, Nombre: 'Arma mágica específica', Categoria: 'magico' },
+        Precio: 50335,
+        Peso: 2,
+        Ranura: null,
+        Modificadores: [],
+        Arma_base: { Id: 33, Nombre: 'Espada bastarda' },
+        Bonificador_mejora: 2,
+        Material: null,
+        Encantamientos: [{ Id: 1, Nombre: 'Afilada', Descripcion: 'Dobla el rango de amenaza.', Modificador: 1, Coste: 0, Cabeza: 1, Oficial: true }],
+        ...cambios,
+    });
 }
 
 export function crearConjuntoApi(cambios: Record<string, any> = {}): Record<string, any> {

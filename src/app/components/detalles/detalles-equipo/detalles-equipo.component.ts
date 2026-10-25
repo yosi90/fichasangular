@@ -39,6 +39,7 @@ export class DetallesEquipoComponent {
     @Input() entrada!: EntradaEquipo;
     @Output() equipoDetalles = new EventEmitter<{ tipo: TipoCatalogoEquipo; id: number; }>();
     @Output() armaDetallesId = new EventEmitter<number>();
+    @Output() armaduraDetallesId = new EventEmitter<number>();
     @Output() doteDetallesId = new EventEmitter<number>();
     @Output() conjuroDetallesId = new EventEmitter<number>();
 
@@ -94,6 +95,8 @@ export class DetallesEquipoComponent {
             poner('Usos al día', this.numero(objeto.Usos_por_dia));
             poner('Para usarlo', objeto.Requisitos_uso);
             poner('Montura', objeto.Monstruo?.Nombre);
+            poner('Mejora', this.textoMejora(objeto.Bonificador_mejora, objeto.Bonificador_mejora_2));
+            poner('Material', objeto.Material?.Nombre);
         }
         const material = this.material;
         if (material) {
@@ -184,6 +187,11 @@ export class DetallesEquipoComponent {
             this.armaDetallesId.emit(Number(id));
     }
 
+    abrirArmadura(id: number): void {
+        if (Number(id) > 0)
+            this.armaduraDetallesId.emit(Number(id));
+    }
+
     abrirDote(id: number): void {
         if (Number(id) > 0)
             this.doteDetallesId.emit(Number(id));
@@ -192,6 +200,13 @@ export class DetallesEquipoComponent {
     abrirConjuro(id: number): void {
         if (Number(id) > 0)
             this.conjuroDetallesId.emit(Number(id));
+    }
+
+    /** La mejora de un arma o armadura específica: «+2», o «+1/+1» en un arma doble. */
+    private textoMejora(mejora: number | null, mejora2: number | null): string | null {
+        if (mejora === null)
+            return null;
+        return mejora2 === null ? textoConSigno(mejora) : `${textoConSigno(mejora)}/${textoConSigno(mejora2)}`;
     }
 
     private numero(valor: number | null | undefined): string | null {

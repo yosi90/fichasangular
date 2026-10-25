@@ -161,7 +161,7 @@ export class FichaPersonajeService {
         });
         form.getTextField('monedas_cobre').setText("0");
         form.getTextField('monedas_plata').setText("0");
-        form.getTextField('monedas_oro').setText(pj.Oro_inicial.toString());
+        form.getTextField('monedas_oro').setText('0');
         form.getTextField('monedas_platino').setText("0");
         let contador = 1;
         if (pj.Dotes)

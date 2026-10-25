@@ -174,6 +174,15 @@ export interface GenericoConjuro {
     Usos_componente_caro: number;
 }
 
+/** Una aptitud especial de un arma o armadura mágica específica (`Cabeza` 2: la segunda cabeza de un arma doble). */
+export interface EncantamientoDeObjeto extends EquipoRef {
+    Descripcion: string;
+    Modificador: number;
+    Coste: number;
+    Cabeza: number;
+    Oficial: boolean;
+}
+
 export interface ObjetoDetalle extends TextoEquipo {
     Id: number;
     Nombre: string;
@@ -203,6 +212,14 @@ export interface ObjetoDetalle extends TextoEquipo {
     Conjunto: EquipoRef | null;
     /** Las monturas: el monstruo enlazado. */
     Monstruo: EquipoRef | null;
+    /** Las armas y armaduras mágicas específicas (tipos 30 y 31): su base, mejora, material y aptitudes; `null` en los demás. */
+    Arma_base: EquipoRef | null;
+    Armadura_base: EquipoRef | null;
+    Bonificador_mejora: number | null;
+    /** El de la segunda cabeza de un arma doble. */
+    Bonificador_mejora_2: number | null;
+    Material: EquipoRef | null;
+    Encantamientos: EncantamientoDeObjeto[];
     /** Pociones, pergaminos, varitas…: el genérico de un conjuro, con su fórmula. */
     Generico_conjuro: GenericoConjuro | null;
     Oficial: boolean;

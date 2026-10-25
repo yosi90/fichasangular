@@ -77,7 +77,7 @@ export function camposPdfEquipo(pj: Personaje): Record<string, string> {
     }
 
     const armas = piezas
-        .filter((pieza) => pieza.tipo === 'arma')
+        .filter((pieza) => pieza.arma !== null)
         .sort((a, b) => Number(b.equipado) - Number(a.equipado))
         .slice(0, ARMAS_EN_HOJA);
     armas.forEach((arma, indice) => {

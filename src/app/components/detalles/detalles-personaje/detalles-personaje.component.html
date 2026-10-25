@@ -203,10 +203,6 @@
                     Dinero &nbsp;{{dineroVisible}}
                     <mat-icon style="width: 20px; height: 20px; font-size: 20px;">currency_bitcoin</mat-icon>
                 </mat-chip>
-                <mat-chip class="tw-m-1" *ngIf="tieneOroVisible()" matTooltip="Monedas de oro" matTooltipClass="tt-accent">
-                    Oro inicial &nbsp;{{pj.Oro_inicial}}
-                    <mat-icon style="width: 20px; height: 20px; font-size: 20px;">currency_bitcoin</mat-icon>
-                </mat-chip>
                 <mat-chip class="warm tw-m-1" *ngIf="!pj.Oficial" matTooltip="Este personaje tiene elementos homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
             </div>
             <ng-container *ngIf="usaLayoutPreviewReordenado(); else columnaIzquierdaDefaultTpl">

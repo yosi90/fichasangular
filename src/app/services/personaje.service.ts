@@ -41,7 +41,6 @@ import { cabeceraApiConFirebase } from './platform-session.service';
 import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
-import { calcularOroPorNep } from './utils/oro-inicial';
 import { modificadoresDePartes, normalizarTotal, totalVacio } from './utils/personaje-totales';
 import { normalizarDefensa, normalizarDinero, normalizarModificadoresEquipo, normalizarPiezasEquipo } from './utils/personaje-equipo-mapper';
 import { resumenClases } from './utils/resumen-clases';
@@ -993,10 +992,8 @@ export class PersonajeService {
             }))
             .filter((clase) => clase.Nombre.length > 0);
         const plantillas = toArray<any>(element?.pla);
-        const nep = toNumber(raza?.Dgs_adicionales?.Cantidad)
-            + clases.reduce((acc, clase) => acc + clase.Nivel, 0)
-            + Math.max(0, toNumber(raza?.Ajuste_nivel))
-            + plantillas.reduce((acc, plantilla) => acc + toNumber(plantilla?.Ajuste_nivel) + toNumber(plantilla?.Multiplicador_dgs_lic), 0);
+        // El NEP lo da la API (`nivelEfectivo`, un solo sitio): niveles de clase + DG raciales + ajustes de nivel.
+        const nep = toNumber(element?.nivelEfectivo);
 
         const dotesContextuales = toDoteContextualArray(element?.dotes);
         const totales: PersonajeTotales = {
@@ -1143,7 +1140,6 @@ export class PersonajeService {
                 Media: toNumber(element?.ccm),
                 Pesada: toNumber(element?.ccp),
             },
-            Oro_inicial: calcularOroPorNep(nep),
             Escuela_especialista: {
                 Nombre: toText(element?.espa),
                 Calificativo: toText(element?.espan),

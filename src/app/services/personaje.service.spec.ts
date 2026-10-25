@@ -167,7 +167,6 @@ function crearPersonajeMock(): Personaje {
         Rds: [],
         Rcs: [],
         Res: [],
-        Oro_inicial: 0,
         Escuela_especialista: { Nombre: '', Calificativo: '' },
         Disciplina_especialista: { Nombre: '', Calificativo: '' },
         Disciplina_prohibida: '',

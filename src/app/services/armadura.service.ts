@@ -6,7 +6,7 @@ import { environment } from "src/environments/environment";
 import { ArmaduraDetalle } from "../interfaces/armadura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
-import { normalizeEncantamientosDeCatalogo, normalizeEquipoRef, normalizeTextoEquipo } from 'src/app/services/utils/equipo-mapper';
+import { normalizeEquipoRef, normalizeTextoEquipo } from 'src/app/services/utils/equipo-mapper';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 import { porNombre } from "src/app/services/utils/orden-texto";
@@ -35,7 +35,6 @@ export function normalizeArmadura(raw: any): ArmaduraDetalle {
         Tiempo_poner_rapido: toNullableText(raw?.Tiempo_poner_rapido),
         Tiempo_quitar: toNullableText(raw?.Tiempo_quitar),
         Oficial: toBoolean(raw?.Oficial),
-        Encantamientos: normalizeEncantamientosDeCatalogo(raw?.Encantamientos),
     };
 }
 

@@ -39,7 +39,6 @@ describe('DetallesArmaComponent', () => {
             Peso: 4,
             Incremento_distancia: 0,
             Propiedades: [{ Id: 2, Nombre: 'Desarmar', Descripcion: 'Ayuda a desarmar.', Valor: 2 }],
-            Encantamientos: [{ Id: 1, Nombre: 'Afilada', Descripcion: 'Mejora el filo.', Modificador: 1, Coste: 2000 }],
         }));
         fixture.detectChanges();
     });
@@ -50,7 +49,6 @@ describe('DetallesArmaComponent', () => {
         expect(text).toContain('Marcial');
         expect(text).toContain('Cortante');
         expect(text).toContain('1d8');
-        expect(text).toContain('Afilada');
     });
 
     it('abre el detalle del manual', () => {

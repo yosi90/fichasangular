@@ -58,7 +58,9 @@ export class ProfileApiError extends Error {
     constructor(
         message: string,
         public readonly code: string = '',
-        public readonly status: number = 0
+        public readonly status: number = 0,
+        /** El `field` de la API: el campo afectado («piezas[2].cantidad»), si lo dice. */
+        public readonly field: string | null = null,
     ) {
         super(message);
         this.name = 'ProfileApiError';

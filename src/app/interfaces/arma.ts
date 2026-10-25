@@ -1,15 +1,6 @@
 import { EquipoPropiedadArma, EquipoRef, TextoEquipo } from './equipo';
 import { ManualReferencia } from './manual';
 
-/** Las aptitudes de un arma o armadura específica del catálogo (sin `Tipo`, retirado: ver `Aplica_a` en `/encantamientos`). */
-export interface EncantamientoDeCatalogoRef {
-    Id: number;
-    Nombre: string;
-    Descripcion: string;
-    Modificador: number;
-    Coste: number;
-}
-
 /** Derribo, desarmar (con su bonificador en `Valor`), apuntalar, arma especial de monje, sutileza… */
 export interface ArmaPropiedad extends EquipoPropiedadArma {
     Valor: number | null;
@@ -46,5 +37,4 @@ export interface ArmaDetalle extends TextoEquipo {
     Indice_fuerza_coste: number | null;
     Propiedades: ArmaPropiedad[];
     Oficial: boolean;
-    Encantamientos: EncantamientoDeCatalogoRef[];
 }

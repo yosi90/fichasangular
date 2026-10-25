@@ -294,7 +294,9 @@ export interface PersonajeEquipoPiezaDto {
     notas: string | null;
     /** Peso de todas las unidades, con el tamaño y el material; `null` si el catálogo no lo dice. */
     peso: number | null;
-    /** En las armas: el daño para su tamaño y el crítico compuesto. */
+    /** En un arma o armadura mágica específica (`tipo: objeto`): su arma o armadura base; `null` en las demás. */
+    elementoBase: (PersonajeNombreIdDto & { tipo: 'arma' | 'armadura'; }) | null;
+    /** En las armas (y las armas específicas): el daño para su tamaño y el crítico compuesto. */
     arma: { dano: string | null; critico: string | null; } | null;
     /** En armaduras y escudos: sus cifras con la mejora, la gran calidad y el material. */
     armadura: { esEscudo: boolean; ca: number; bonDes: number | null; penalizador: number; falloArcano: number; } | null;

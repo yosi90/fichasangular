@@ -22,6 +22,13 @@ function ref(raw: any): PersonajeNombreIdDto | null {
     return { id: toNumber(raw.id), nombre: toText(raw.nombre) };
 }
 
+function elementoBase(raw: any): PersonajeEquipoPiezaDto['elementoBase'] {
+    const base = ref(raw);
+    if (!base)
+        return null;
+    return { ...base, tipo: `${raw?.tipo ?? ''}` === 'armadura' ? 'armadura' : 'arma' };
+}
+
 export function normalizarPiezasEquipo(raw: any): PersonajeEquipoPiezaDto[] {
     return toArray(raw).map((pieza: any) => {
         const tipo = `${pieza?.tipo ?? ''}`;
@@ -52,6 +59,7 @@ export function normalizarPiezasEquipo(raw: any): PersonajeEquipoPiezaDto[] {
             cargasRestantes: toNumberOrNull(pieza?.cargasRestantes),
             notas: toNullableText(pieza?.notas),
             peso: toNumberOrNull(pieza?.peso),
+            elementoBase: elementoBase(pieza?.elementoBase),
             arma: pieza?.arma && typeof pieza.arma === 'object'
                 ? { dano: toNullableText(pieza.arma.dano), critico: toNullableText(pieza.arma.critico) }
                 : null,

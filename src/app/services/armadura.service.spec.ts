@@ -39,7 +39,6 @@ describe("ArmaduraService", () => {
             Fallo_arcano: 0,
             Es_escudo: false,
             Oficial: true,
-            Encantamientos: [],
         };
     }
 

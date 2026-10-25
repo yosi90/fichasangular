@@ -1,3 +1,4 @@
+import { ProfileApiError } from 'src/app/interfaces/user-account';
 import Swal from 'sweetalert2';
 import { Campana } from 'src/app/interfaces/campaña';
 import { Clase } from 'src/app/interfaces/clase';
@@ -5060,6 +5061,8 @@ describe('NuevoPersonajeComponent', () => {
             component.catalogoArmas = [normalizeArma(crearArmaApi()), normalizeArma(crearArmaApi({ Id: 99, Nombre: 'Hacha casera', Oficial: false }))];
             component.catalogoArmaduras = [normalizeArmadura(crearArmaduraApi())];
             component.Personaje.desgloseClases = [{ Id: 9, Nombre: 'Guerrero', Nivel: 1 }];
+            // La ficha recién guardada, con el NEP que da la API (`nivelEfectivo`).
+            personajeSvcMock.getDetallesPersonaje.and.resolveTo(of({ Id: 123, Nombre: 'Aldric', NEP: 1, desgloseClases: [{ Id: 9, Nombre: 'Guerrero', Nivel: 1 }] } as any));
             personajeSvcMock.comprarEquipoPersonaje = jasmine.createSpy('comprarEquipoPersonaje').and.resolveTo({
                 idPersonaje: 123, coste: 2, dineroInicial: 60, dinero: 58, costes: [2], oficial: true,
             });
@@ -5108,6 +5111,43 @@ describe('NuevoPersonajeComponent', () => {
             expect(component.modalTiendaAbierto).toBeFalse();
             expect(emitSpy).toHaveBeenCalledWith(123);
             expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledTimes(1);
+        });
+
+        it('el dinero inicial sale del NEP de la ficha, no de los niveles de clase', async () => {
+            personajeSvcMock.getDetallesPersonaje.and.resolveTo(of({ Id: 123, Nombre: 'Aldric', NEP: 2, desgloseClases: [{ Id: 9, Nombre: 'Guerrero', Nivel: 1 }] } as any));
+            await component.onConfirmarSelectorVisibilidad(false);
+            expect(component.tiendaRegla).toEqual(jasmine.objectContaining({ modo: 'riqueza', maximo: 900, sugerido: 900 }));
+        });
+
+        it('sin campaña se ofrece también lo homebrew', async () => {
+            await component.onConfirmarSelectorVisibilidad(false);
+            expect(component.tiendaSoloOficial).toBeFalse();
+            expect(component.tiendaArticulos.some((articulo) => !articulo.oficial)).toBeTrue();
+        });
+
+        it('si la campaña no deja comprar homebrew, la API lo dice y se señala la pieza', async () => {
+            personajeSvcMock.comprarEquipoPersonaje.and.rejectWith(new ProfileApiError('Esta campaña no deja comprar homebrew: «Hacha casera».', 'homebrew_no_permitido', 400, 'piezas[1]'));
+            await component.onConfirmarSelectorVisibilidad(false);
+            await component.onConfirmarTienda({ dineroInicial: 60, piezas: [] });
+            expect(component.tiendaError).toBe('Esta campaña no deja comprar homebrew: «Hacha casera».');
+            expect(component.tiendaPiezaConError).toBe(1);
+            expect(component.modalTiendaAbierto).toBeTrue();
+        });
+
+        it('el límite de fuentes homebrew no señala ninguna pieza', async () => {
+            personajeSvcMock.comprarEquipoPersonaje.and.rejectWith(new ProfileApiError('La compra pasa del límite de fuentes homebrew de la campaña.', 'limite_fuentes_homebrew', 400, 'piezas'));
+            await component.onConfirmarSelectorVisibilidad(false);
+            await component.onConfirmarTienda({ dineroInicial: 60, piezas: [] });
+            expect(component.tiendaError).toBe('La compra pasa del límite de fuentes homebrew de la campaña.');
+            expect(component.tiendaPiezaConError).toBeNull();
+        });
+
+        it('si no llega la ficha guardada (sin su NEP), termina sin tienda', async () => {
+            personajeSvcMock.getDetallesPersonaje.and.rejectWith(new Error('sin red'));
+            const emitSpy = spyOn(component.personajeFinalizado, 'emit');
+            await component.onConfirmarSelectorVisibilidad(false);
+            expect(component.modalTiendaAbierto).toBeFalse();
+            expect(emitSpy).toHaveBeenCalledWith(123);
         });
 
         it('si no hay catálogos del equipo, termina sin tienda', async () => {

@@ -28,7 +28,6 @@ describe('DetallesArmaduraComponent', () => {
             Descripcion: 'Protección sólida.',
             Manual: { Id: 2, Nombre: 'Manual base', Pagina: 87 },
             Peso_armadura: { Id: 3, Nombre: 'Pesada' },
-            Encantamientos: [{ Id: 1, Nombre: 'Resistente', Descripcion: 'Protección adicional.', Modificador: 2, Coste: 4000 }],
         }));
         fixture.detectChanges();
     });
@@ -38,7 +37,6 @@ describe('DetallesArmaduraComponent', () => {
         expect(text).toContain('Cota de mallas');
         expect(text).toContain('Pesada');
         expect(text).toContain('CA +5');
-        expect(text).toContain('Resistente');
     });
 
     it('abre el detalle del manual', () => {

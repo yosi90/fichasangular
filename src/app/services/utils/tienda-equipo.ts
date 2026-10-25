@@ -26,6 +26,8 @@ export interface ArticuloTienda {
     oficial: boolean;
     /** Para agrupar y buscar: «Marcial», «Intermedia», «Poción»… */
     categoria: string;
+    /** Si se lleva puesto al comprarlo: armas, armaduras y las armas y armaduras mágicas específicas (objetos 30 y 31). */
+    sePone: boolean;
 }
 
 /** Una pieza de la compra, con lo que la persona elige. */
@@ -57,8 +59,8 @@ export interface ReglaDineroInicial {
 }
 
 export interface ContextoDineroInicial {
-    /** Los niveles de clase sumados (la API no cuenta el ajuste de nivel ni los DG raciales). */
-    nivel: number;
+    /** El NEP de la ficha (`nivelEfectivo`): niveles de clase + DG raciales + ajustes de nivel. Lo calcula la API. */
+    nivelEfectivo: number;
     /** Sus clases, con id o con nombre (el borrador de la creación puede no tener el id). */
     clases: { Id?: number; Nombre: string; }[];
     duplicaOro: boolean;
@@ -73,7 +75,7 @@ export const MEJORA_MAXIMA = 5;
 export function articuloDeArma(arma: ArmaDetalle): ArticuloTienda {
     return {
         tipo: 'arma', id: arma.Id, nombre: arma.Nombre, precio: arma.Precio, peso: arma.Peso, lote: 1, generico: null,
-        oficial: arma.Oficial, categoria: arma.Tipo_arma?.Nombre ?? '',
+        oficial: arma.Oficial, categoria: arma.Tipo_arma?.Nombre ?? '', sePone: true,
     };
 }
 
@@ -81,7 +83,7 @@ export function articuloDeArmadura(armadura: ArmaduraDetalle): ArticuloTienda {
     return {
         tipo: 'armadura', id: armadura.Id, nombre: armadura.Nombre, precio: armadura.Precio, peso: armadura.Peso, lote: 1,
         generico: null, oficial: armadura.Oficial,
-        categoria: armadura.Es_escudo ? 'Escudo' : (armadura.Peso_armadura?.Nombre ?? ''),
+        categoria: armadura.Es_escudo ? 'Escudo' : (armadura.Peso_armadura?.Nombre ?? ''), sePone: true,
     };
 }
 
@@ -89,6 +91,7 @@ export function articuloDeMunicion(municion: MunicionDetalle): ArticuloTienda {
     return {
         tipo: 'municion', id: municion.Id, nombre: municion.Nombre, precio: municion.Precio, peso: municion.Peso,
         lote: Math.max(1, municion.Cantidad_por_precio), generico: null, oficial: municion.Oficial, categoria: 'Munición',
+        sePone: false,
     };
 }
 
@@ -96,6 +99,7 @@ export function articuloDeObjeto(objeto: ObjetoDetalle): ArticuloTienda {
     return {
         tipo: 'objeto', id: objeto.Id, nombre: objeto.Nombre, precio: objeto.Precio, peso: objeto.Peso, lote: 1,
         generico: objeto.Generico_conjuro, oficial: objeto.Oficial, categoria: objeto.Tipo?.Nombre ?? '',
+        sePone: objeto.Arma_base !== null || objeto.Armadura_base !== null,
     };
 }
 
@@ -109,7 +113,7 @@ export function nuevaPieza(articulo: ArticuloTienda): PiezaTienda {
     return {
         articulo,
         cantidad: articulo.tipo === 'municion' ? articulo.lote : 1,
-        equipado: articulo.tipo === 'arma' || articulo.tipo === 'armadura',
+        equipado: articulo.sePone,
         granCalidad: false,
         bonificadorMejora: 0,
         idConjuro: null,
@@ -193,21 +197,21 @@ export function resumenCompra(dineroInicial: number, piezas: PiezaTienda[], regl
 }
 
 /**
- * Cómo se decide el dinero inicial (`dineroInicial` de la compra), con las reglas de la API: en nivel 1, el oro inicial
- * de su clase (los dados de la tabla 7-1 del Manual del jugador, el doble con la ventaja que duplica el oro); en nivel 2
- * a 20, la riqueza por nivel de la Guía del DM. Sin oro de clase, por encima del nivel 20 o con la ventaja que aumenta el
- * oro, no hay tope.
+ * Cómo se decide el dinero inicial (`dineroInicial` de la compra), por el NEP y con las reglas de la API: con NEP 1, el
+ * oro inicial de su clase (los dados de la tabla 7-1 del Manual del jugador, el doble con la ventaja que duplica el oro);
+ * con NEP 2 o más, la fila de su NEP en `Riqueza_por_nivel` (la única tabla: la web no lleva otra). Sin oro de clase, sin
+ * fila para su NEP (por encima de 20) o con la ventaja que aumenta el oro, no hay tope.
  */
 export function reglaDineroInicial(contexto: ContextoDineroInicial, catalogos: Pick<EquipoCatalogos, 'Oro_inicial_por_clase' | 'Riqueza_por_nivel'>): ReglaDineroInicial {
-    const nivel = Math.max(1, Math.trunc(contexto.nivel || 1));
+    const nep = Math.max(1, Math.trunc(contexto.nivelEfectivo || 1));
     const libre = (descripcion: string): ReglaDineroInicial => ({ modo: 'libre', dados: null, multiplicador: 1, maximo: null, sugerido: 0, descripcion });
-    if (nivel >= 2) {
-        const riqueza = catalogos.Riqueza_por_nivel.find((fila) => fila.Nivel === nivel);
+    if (nep >= 2) {
+        const riqueza = catalogos.Riqueza_por_nivel.find((fila) => fila.Nivel === nep);
         if (!riqueza)
-            return libre(`La Guía del DM no da riqueza para el nivel ${nivel}: pon el dinero que acuerdes con tu máster.`);
+            return libre(`La Guía del DM no da riqueza para un NEP ${nep}: pon el dinero que acuerdes con tu máster.`);
         return {
             modo: 'riqueza', dados: null, multiplicador: 1, maximo: riqueza.Po, sugerido: riqueza.Po,
-            descripcion: `Riqueza de un personaje de nivel ${nivel} (Guía del DM).`,
+            descripcion: `Riqueza de un personaje de NEP ${nep} (Guía del DM).`,
         };
     }
     if (contexto.aumentaOro)
@@ -231,6 +235,12 @@ function oroDeSusClases(clases: ContextoDineroInicial['clases'], tabla: EquipoCa
     const candidatas = tabla.filter((fila) => clases.some((clase) =>
         (clase.Id && clase.Id > 0) ? clase.Id === fila.Clase.Id : normalizarTexto(clase.Nombre) === normalizarTexto(fila.Clase.Nombre)));
     return candidatas.sort((a, b) => a.Clase.Id - b.Clase.Id)[0] ?? null;
+}
+
+/** La pieza que nombra el `field` de un error de la compra («piezas[2].cantidad» → 2), o `null` si no nombra ninguna. */
+export function indicePiezaDelCampo(campo: unknown): number | null {
+    const encontrado = `${campo ?? ''}`.match(/^piezas\[(\d+)\]/);
+    return encontrado ? Number(encontrado[1]) : null;
 }
 
 /** Tira los dados del oro inicial («6d4» × 10); `aleatorio` da un número en [0, 1), como `Math.random`. */

@@ -202,7 +202,6 @@ export interface Personaje extends PersonajeSimple {
         Modificador: string;
         Origen: string;
     }[]
-    Oro_inicial: number;
     Escuela_especialista: {
         Nombre: string;
         Calificativo: string;

@@ -27,11 +27,11 @@ describe('normalizeArma (familia 1 de objetos)', () => {
         expect(arma.Tipo_arma).toBeNull();
     });
 
-    it('las aptitudes del catálogo ya no traen `Tipo`', () => {
+    it('ya no lee `Encantamientos` (retirado: las armas mágicas específicas son objetos)', () => {
         const arma = normalizeArma(crearArmaApi({
-            Encantamientos: [{ Id: 1, Nombre: 'Afilada', Descripcion: '', Modificador: 1, Coste: 0, Tipo: 2 }],
+            Encantamientos: [{ Id: 1, Nombre: 'Afilada', Descripcion: '', Modificador: 1, Coste: 0 }],
         }));
-        expect(arma.Encantamientos).toEqual([{ Id: 1, Nombre: 'Afilada', Descripcion: '', Modificador: 1, Coste: 0 }]);
+        expect('Encantamientos' in arma).toBeFalse();
     });
 
     it('precio y peso con decimales (el dardo)', () => {

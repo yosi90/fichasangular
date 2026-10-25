@@ -10,6 +10,7 @@ import {
     normalizeObjeto,
 } from 'src/app/services/utils/equipo-mapper';
 import {
+    crearArmaEspecificaApi,
     crearConjuntoApi,
     crearEncantamientoApi,
     crearMaterialApi,
@@ -99,5 +100,31 @@ describe('DetallesEquipoComponent', () => {
         mostrar({ tipo: 'municion', item: normalizeMunicion(crearMunicionApi()) });
         component.abrirDetalleManual();
         expect(manualNav.abrirDetalleManual).toHaveBeenCalledWith({ id: 54, nombre: 'Manual del jugador 1' });
+    });
+
+    it('un arma mágica específica enseña su arma base (que se abre), su mejora y sus aptitudes', () => {
+        const arma = spyOn(component.armaDetallesId, 'emit');
+        const equipo = spyOn(component.equipoDetalles, 'emit');
+        const texto = mostrar({ tipo: 'objeto', item: normalizeObjeto(crearArmaEspecificaApi({ Bonificador_mejora_2: 1 })) });
+        expect(texto).toContain('Arma base Espada bastarda');
+        expect(texto).toContain('+2/+1');
+        expect(texto).toContain('Aptitudes especiales');
+        expect(texto).toContain('Afilada');
+        component.abrirArma(33);
+        component.abrirEquipo('encantamiento', 1);
+        expect(arma).toHaveBeenCalledWith(33);
+        expect(equipo).toHaveBeenCalledWith({ tipo: 'encantamiento', id: 1 });
+    });
+
+    it('una armadura específica abre su armadura base', () => {
+        const emit = spyOn(component.armaduraDetallesId, 'emit');
+        const texto = mostrar({ tipo: 'objeto', item: normalizeObjeto(crearArmaEspecificaApi({
+            Nombre: 'Armadura de mithril élfica', Tipo: { Id: 31, Nombre: 'Armadura mágica específica', Categoria: 'magico' },
+            Arma_base: null, Armadura_base: { Id: 8, Nombre: 'Cota de mallas' }, Material: { Id: 9, Nombre: 'Mithril' }, Encantamientos: [],
+        })) });
+        expect(texto).toContain('Armadura base Cota de mallas');
+        expect(texto).toContain('Mithril');
+        component.abrirArmadura(8);
+        expect(emit).toHaveBeenCalledWith(8);
     });
 });

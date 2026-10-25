@@ -558,14 +558,6 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     readonly textoEquipadoPieza = textoEquipadoPieza;
     readonly textoModificadorEquipo = textoModificadorEquipo;
 
-    tieneOroVisible(): boolean {
-        if (this.pj?.Dinero)
-            return false;
-        if (this.esPreviewNuevoPersonaje && this.tieneContextoNepParaPreview())
-            return true;
-        return this.tieneNumeroVisible(this.pj?.Oro_inicial);
-    }
-
     tieneRazaVisible(): boolean {
         return this.tieneTextoVisible(this.pj?.Raza?.Nombre);
     }

@@ -128,6 +128,7 @@ import {
     articuloDeArma,
     articuloDeArmadura,
     articuloDeMunicion,
+    indicePiezaDelCampo,
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
 
@@ -528,6 +529,10 @@ export class NuevoPersonajeComponent {
     tiendaArticulos: ArticuloTienda[] = [];
     tiendaGuardando = false;
     tiendaError = '';
+    /** La pieza que señala el error de la API (`field: piezas[i]…`), o `null`. */
+    tiendaPiezaConError: number | null = null;
+    /** En una campaña que no admite homebrew, la tienda solo ofrece lo oficial (la API lo comprueba igualmente). */
+    tiendaSoloOficial = false;
     private tiendaPersonaje: Personaje | null = null;
     finalizacionEnCurso = false;
     finalizacionState: {
@@ -4275,8 +4280,9 @@ export class NuevoPersonajeComponent {
     }
 
     /**
-     * Abre la tienda con el dinero inicial que le toca (el oro de su clase en nivel 1 o la riqueza de su nivel, de
-     * `GET /equipo/catalogos`) y lo que se puede comprar. Devuelve `false` si no puede abrirse (sin catálogos).
+     * Abre la tienda con el dinero inicial que le toca por su NEP (el `nivelEfectivo` de la ficha recién guardada: con
+     * NEP 1, el oro de su clase; con más, la riqueza de `GET /equipo/catalogos`) y lo que se puede comprar. Devuelve
+     * `false` si no puede abrirse (sin la ficha o sin los catálogos).
      */
     private async abrirTiendaEquipo(pj: Personaje): Promise<boolean> {
         if (!this.equipoSvc)
@@ -4287,6 +4293,9 @@ export class NuevoPersonajeComponent {
         } catch {
             return false;
         }
+        const ficha = await this.fichaDeLaApi(pj.Id);
+        if (!ficha)
+            return false;
         let municiones: MunicionDetalle[] = [];
         try {
             municiones = await firstValueFrom(this.equipoSvc.getMuniciones());
@@ -4296,20 +4305,23 @@ export class NuevoPersonajeComponent {
         const ventajas = this.flujoVentajas.seleccionVentajas
             .map((seleccion) => (this.catalogoVentajas ?? []).find((ventaja) => Number(ventaja?.Id) === Number(seleccion.id)))
             .filter((ventaja): ventaja is VentajaDetalle => !!ventaja);
-        const soloOficial = this.getCurrentCampaignHomebrewMode(this.effectiveSelectedCampaignPolicy) !== 'unrestricted';
+        // Sin campaña, todo (también lo homebrew); en una campaña, su política: si no admite homebrew, solo lo oficial.
+        // Con un límite de fuentes homebrew se ofrece todo y la API dice si la compra se pasa.
+        this.tiendaSoloOficial = this.getCurrentCampaignHomebrewMode(this.effectiveSelectedCampaignPolicy) === 'forbidden';
         this.tiendaArticulos = [
             ...(this.catalogoArmas ?? []).map((arma) => articuloDeArma(arma)),
             ...(this.catalogoArmaduras ?? []).map((armadura) => articuloDeArmadura(armadura)),
             ...municiones.map((municion) => articuloDeMunicion(municion)),
-        ].filter((articulo) => !soloOficial || articulo.oficial);
+        ];
         this.tiendaRegla = reglaDineroInicial({
-            nivel: (pj?.desgloseClases ?? []).reduce((acc, clase) => acc + Math.max(0, Number(clase?.Nivel) || 0), 0),
-            clases: pj?.desgloseClases ?? [],
+            nivelEfectivo: ficha.NEP,
+            clases: ficha.desgloseClases ?? [],
             duplicaOro: ventajas.some((ventaja) => !!ventaja.Duplica_oro),
             aumentaOro: ventajas.some((ventaja) => !!ventaja.Aumenta_oro),
         }, catalogos);
         this.tiendaPersonaje = pj;
         this.tiendaError = '';
+        this.tiendaPiezaConError = null;
         this.tiendaGuardando = false;
         this.modalTiendaAbierto = true;
         return true;
@@ -4322,17 +4334,21 @@ export class NuevoPersonajeComponent {
             return;
         this.tiendaGuardando = true;
         this.tiendaError = '';
+        this.tiendaPiezaConError = null;
         try {
             const respuesta = await this.personajeSvc.comprarEquipoPersonaje(pj.Id, compra);
             pj.Oficial = respuesta.oficial;
             this.listaPersonajesSvc?.upsertPersonajeCreadoEnCache(pj);
         } catch (error: any) {
+            // El `error` de la API tal cual (también `homebrew_no_permitido` y `limite_fuentes_homebrew`) y, si su
+            // `field` nombra una pieza, esa pieza señalada.
             this.tiendaError = `${error?.message ?? ''}`.trim() || 'No se ha podido guardar el equipo.';
+            this.tiendaPiezaConError = indicePiezaDelCampo(error?.field);
             this.tiendaGuardando = false;
             return;
         }
         this.cerrarTienda();
-        this.completarFinalizacion(await this.fichaConEquipo(pj));
+        this.completarFinalizacion(await this.fichaDeLaApi(pj.Id) ?? pj);
     }
 
     onOmitirTienda(): void {
@@ -4347,16 +4363,17 @@ export class NuevoPersonajeComponent {
         this.modalTiendaAbierto = false;
         this.tiendaGuardando = false;
         this.tiendaError = '';
+        this.tiendaPiezaConError = null;
         this.tiendaPersonaje = null;
     }
 
-    /** La ficha de la API, ya con el equipo y la defensa, para las hojas; si no llega, la de la creación. */
-    private async fichaConEquipo(pj: Personaje): Promise<Personaje> {
+    /** La ficha de la API (con su `nivelEfectivo` y, tras la compra, el equipo y la defensa); `null` si no llega. */
+    private async fichaDeLaApi(idPersonaje: number): Promise<Personaje | null> {
         try {
-            const detalle$ = await this.personajeSvc.getDetallesPersonaje(pj.Id);
+            const detalle$ = await this.personajeSvc.getDetallesPersonaje(idPersonaje);
             return await firstValueFrom(detalle$.pipe(take(1)));
         } catch {
-            return pj;
+            return null;
         }
     }
 

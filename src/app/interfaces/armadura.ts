@@ -1,4 +1,3 @@
-import { EncantamientoDeCatalogoRef } from './arma';
 import { EquipoRef, TextoEquipo } from './equipo';
 import { ManualReferencia } from './manual';
 
@@ -28,5 +27,4 @@ export interface ArmaduraDetalle extends TextoEquipo {
     Tiempo_poner_rapido: string | null;
     Tiempo_quitar: string | null;
     Oficial: boolean;
-    Encantamientos: EncantamientoDeCatalogoRef[];
 }

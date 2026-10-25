@@ -49,7 +49,6 @@ import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
-import { calcularOroPorNep } from './utils/oro-inicial';
 import { modificadorCaracteristica } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
@@ -7629,7 +7628,6 @@ export class NuevoPersonajeService {
 
         this.personajeCreacion.NEP = nivelEfectivo;
         this.personajeCreacion.Experiencia = experienciaParaNivel(nivelClases + ajusteRaza + ajustePlantillas);
-        this.personajeCreacion.Oro_inicial = calcularOroPorNep(nivelEfectivo);
     }
 
     private recalcularDerivadasPorCaracteristicas(): void {
@@ -9891,7 +9889,6 @@ export class NuevoPersonajeService {
             Rds: [],
             Rcs: [],
             Res: [],
-            Oro_inicial: 0,
             Escuela_especialista: {
                 Nombre: 'Cualquiera',
                 Calificativo: 'Cualquiera',

@@ -62,7 +62,7 @@
             <section class="bloque">
                 <p class="subtitulo">Lo que compra</p>
                 <p class="vacio" *ngIf="piezas.length < 1">Todavía nada. Puedes terminar sin comprar y quedarte con todo el dinero.</p>
-                <div class="pieza" *ngFor="let pieza of piezas; let i = index" [class.incompleta]="faltaEnPieza(pieza)">
+                <div class="pieza" *ngFor="let pieza of piezas; let i = index" [class.incompleta]="faltaEnPieza(pieza) || i === piezaSenalada">
                     <div class="pieza-cabecera">
                         <span class="opcion-nombre">{{pieza.articulo.nombre}}</span>
                         <span class="opcion-dato">{{textoPrecio(precioEstimado(pieza))}}</span>
@@ -113,6 +113,7 @@
                         </ng-container>
                     </div>
                     <p class="falta" *ngIf="faltaEnPieza(pieza) as falta">{{falta}}</p>
+                    <p class="falta" *ngIf="i === piezaSenalada && error">{{error}}</p>
                 </div>
                 <mat-chip class="chip-estado warm" *ngIf="hayHomebrew">Comprar algo homebrew hace homebrew al personaje.</mat-chip>
             </section>

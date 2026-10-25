@@ -15,7 +15,6 @@ import {
     TextoEquipo,
 } from 'src/app/interfaces/equipo';
 import { ManualReferencia } from 'src/app/interfaces/manual';
-import { EncantamientoDeCatalogoRef } from 'src/app/interfaces/arma';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 
@@ -263,6 +262,20 @@ export function normalizeObjeto(raw: any): ObjetoDetalle {
         Modificadores: toArray(raw?.Modificadores).map((mod: any) => normalizeModificadorEstructurado(mod)),
         Conjunto: normalizeEquipoRef(raw?.Conjunto),
         Monstruo: normalizeEquipoRef(raw?.Monstruo),
+        Arma_base: normalizeEquipoRef(raw?.Arma_base),
+        Armadura_base: normalizeEquipoRef(raw?.Armadura_base),
+        Bonificador_mejora: toNumberOrNull(raw?.Bonificador_mejora),
+        Bonificador_mejora_2: toNumberOrNull(raw?.Bonificador_mejora_2),
+        Material: normalizeEquipoRef(raw?.Material),
+        Encantamientos: toArray(raw?.Encantamientos).map((item: any) => ({
+            Id: toNumber(item?.Id),
+            Nombre: toText(item?.Nombre),
+            Descripcion: toText(item?.Descripcion),
+            Modificador: toNumber(item?.Modificador),
+            Coste: toNumber(item?.Coste),
+            Cabeza: toNumber(item?.Cabeza, 1),
+            Oficial: toBoolean(item?.Oficial),
+        })),
         Generico_conjuro: generico && typeof generico === 'object'
             ? {
                 Precio_por_nivel: toNumber(generico.Precio_por_nivel),
@@ -286,15 +299,4 @@ export function normalizeConjuntoObjetos(raw: any): ConjuntoObjetosDetalle {
         })),
         Oficial: toBoolean(raw?.Oficial),
     };
-}
-
-/** Las aptitudes de un arma o armadura específica del catálogo (`Encantamientos` de `/armas` y `/armaduras`). */
-export function normalizeEncantamientosDeCatalogo(raw: any): EncantamientoDeCatalogoRef[] {
-    return toArray(raw).map((item: any) => ({
-        Id: toNumber(item?.Id),
-        Nombre: toText(item?.Nombre),
-        Descripcion: toText(item?.Descripcion),
-        Modificador: toNumber(item?.Modificador),
-        Coste: toNumber(item?.Coste),
-    }));
 }

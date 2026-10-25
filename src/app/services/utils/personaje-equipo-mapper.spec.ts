@@ -93,4 +93,35 @@ describe('camposPdfEquipo', () => {
         const campos = camposPdfEquipo({ ...pj, Totales: undefined });
         expect(campos).toEqual({});
     });
+
+describe('Los ajustes del 2026-10-25 en la ficha', () => {
+    const espadaSolar = {
+        id: 7, orden: 7, tipo: 'objeto', elemento: { id: 120, nombre: 'Espada solar' }, elementoBase: { id: 33, nombre: 'Espada bastarda', tipo: 'arma' },
+        nombre: 'Espada solar', cantidad: 1, equipado: true, ranura: null, empunadura: { id: 1, nombre: 'Mano principal' }, tamano: null,
+        material: null, granCalidad: true, bonificadorMejora: 2, bonificadorMejora2: null, indiceFuerza: null,
+        encantamientos: [{ id: 1, nombre: 'Afilada', cabeza: 1 }], conjuro: null, nivelConjuro: null, nivelLanzador: null,
+        cargasRestantes: null, notas: null, peso: 2, arma: { dano: '1d10', critico: '17-20/x2' }, armadura: null,
+    };
+
+    it('el NEP sale de `nivelEfectivo`, sin calcularlo en la web', () => {
+        expect(fichaDeLaApi({ nivelEfectivo: 16 }).NEP).toBe(16);
+    });
+
+    it('un arma mágica específica es un objeto con su arma base', () => {
+        const [pieza] = normalizarPiezasEquipo([espadaSolar]);
+        expect(pieza.tipo).toBe('objeto');
+        expect(pieza.elementoBase).toEqual({ id: 33, nombre: 'Espada bastarda', tipo: 'arma' });
+        expect(detallesPiezaEquipo(pieza)).toEqual(['Espada bastarda', 'Gran calidad', '+2', 'Afilada', 'Daño 1d10', 'Crítico 17-20/x2', '2 lb']);
+        expect(normalizarPiezasEquipo([{ ...espadaSolar, elementoBase: undefined }])[0].elementoBase).toBeNull();
+    });
+
+    it('en el PDF va con las armas', () => {
+        const equipo = crearEquipoFichaApi();
+        const campos = camposPdfEquipo(fichaDeLaApi({ ...equipo, equipo: [espadaSolar, ...equipo['equipo']] }));
+        expect(campos['ataque_arma1']).toBe('Espada solar');
+        expect(campos['daño_arma1']).toBe('1d10');
+        expect(campos['ataque_arma2']).toBe('Daga');
+        expect(campos['notas_arma1']).toBe('Espada bastarda, Gran calidad, +2, Afilada');
+    });
+});
 });
