@@ -16,6 +16,7 @@ import {
     textoModificadorCaracteristica,
     textoValorCaracteristica,
 } from 'src/app/services/utils/caracteristicas';
+import { camposPdfEquipo } from './utils/ficha-pdf-equipo';
 
 /** Cada característica de un familiar o un compañero y su campo en la hoja (`fue`, y su modificador `mod_fue`). */
 const CAMPOS_CARACTERISTICAS_PDF: ReadonlyArray<[Caracteristica, string]> = [
@@ -229,6 +230,9 @@ export class FichaPersonajeService {
         if (pj?.Ataque_base?.trim().length > 0)
             this.trySetText(form, 'mod_ataque_base', `${pj.Ataque_base}`);
         this.trySetText(form, 'fallo_arcano', '0');
+
+        // El equipo, la defensa y el dinero de la ficha (familia 1 de objetos), encima de lo de siempre.
+        Object.entries(camposPdfEquipo(pj)).forEach(([campo, valor]) => this.trySetText(form, campo, valor));
 
         if (`${pj?.Jugador ?? ''}`.trim().length < 1 && jugadorFicha.length > 0)
             notas += `\r\n\r\nJugador: ${jugadorFicha}`;

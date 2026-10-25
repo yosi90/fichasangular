@@ -1,6 +1,6 @@
 import { Personaje, PersonajeTotales } from 'src/app/interfaces/personaje';
 import { PersonajeParteDto, PersonajeTipoParteDto, PersonajeTotalDto } from 'src/app/interfaces/personajes-api';
-import { primerEntero, toArray, toNumber } from 'src/app/services/utils/normalizacion';
+import { primerEntero, toArray, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type TipoSalvacion = 'fortaleza' | 'reflejos' | 'voluntad';
 
@@ -12,6 +12,9 @@ const ETIQUETA_TIPO: Record<PersonajeTipoParteDto, string> = {
     varios: 'Varios',
     rangos: 'Rangos',
     rangosVarios: 'Rangos varios',
+    equipo: 'Equipo',
+    base: 'Base',
+    bonificador: 'Bonificador',
 };
 
 /**
@@ -21,6 +24,30 @@ const ETIQUETA_TIPO: Record<PersonajeTipoParteDto, string> = {
  */
 export function totalesPersonaje(pj: Personaje | null | undefined): PersonajeTotales {
     return pj?.Totales ?? totalesDelBorrador(pj);
+}
+
+/** Un total de la API (`{ total, desglose }`), o `null` si no viene. Las partes del equipo traen su `bonificador`. */
+export function normalizarTotal(raw: any): PersonajeTotalDto | null {
+    if (!raw || typeof raw !== 'object')
+        return null;
+    return {
+        total: toNumber(raw.total),
+        desglose: toArray<PersonajeParteDto>(raw.desglose).map((parte) => {
+            const normalizada: PersonajeParteDto = {
+                tipo: parte?.tipo,
+                origen: toNullableText(parte?.origen),
+                valor: toNumber(parte?.valor),
+            };
+            const bonificador = toNullableText(parte?.bonificador);
+            if (bonificador !== null)
+                normalizada.bonificador = bonificador;
+            return normalizada;
+        }),
+    };
+}
+
+export function totalVacio(): PersonajeTotalDto {
+    return { total: 0, desglose: [] };
 }
 
 /** Lo que suman las partes de un `tipo` (la de clase, la de varios…), para enseñarlas por separado. */
@@ -46,13 +73,17 @@ export function modificadoresDePartes(
     }));
 }
 
-/** El desglose en una línea por parte («Destreza +1»); si la parte no dice su origen, se nombra por su tipo. */
+/**
+ * El desglose en una línea por parte («Destreza +1», «Cota de mallas +5 (armadura)»); si la parte no dice su origen, se
+ * nombra por su tipo.
+ */
 export function textoDesglose(total: PersonajeTotalDto | null | undefined): string {
     return toArray<PersonajeParteDto>(total?.desglose)
         .map((parte) => {
             const origen = `${parte?.origen ?? ''}`.trim() || ETIQUETA_TIPO[parte?.tipo] || 'Varios';
             const valor = toNumber(parte?.valor);
-            return `${origen} ${valor >= 0 ? '+' : ''}${valor}`;
+            const bonificador = `${parte?.bonificador ?? ''}`.trim();
+            return `${origen} ${valor >= 0 ? '+' : ''}${valor}${bonificador.length > 0 ? ` (${bonificador.toLowerCase()})` : ''}`;
         })
         .join('\n');
 }

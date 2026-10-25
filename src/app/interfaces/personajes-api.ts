@@ -216,13 +216,20 @@ export interface PersonajeEspecialDto extends PersonajeNombreIdDto {
     extraComodin: PersonajeExtraComodinDto | null;
 }
 
-export type PersonajeTipoParteDto = 'caracteristica' | 'ataqueBase' | 'tamano' | 'clase' | 'varios' | 'rangos' | 'rangosVarios';
+/**
+ * El tipo de una parte: `equipo` en las salvaciones (lo que suma el equipo); `base` y `bonificador` en la defensa (la CA de
+ * base 10 y los bonificadores de armadura, escudo, armadura natural, desvío, esquiva…).
+ */
+export type PersonajeTipoParteDto = 'caracteristica' | 'ataqueBase' | 'tamano' | 'clase' | 'varios' | 'rangos' | 'rangosVarios'
+    | 'equipo' | 'base' | 'bonificador';
 
 /** Una parte de un total: de dónde sale y cuánto suma. `origen` es `null` si la base no lo dice. */
 export interface PersonajeParteDto {
     tipo: PersonajeTipoParteDto;
     origen: string | null;
     valor: number;
+    /** En las partes `equipo` y `bonificador`: el tipo de bonificador («Resistencia», «Armadura», «Desvío»…). */
+    bonificador?: string | null;
 }
 
 /** Un total hecho por la API, con su desglose (el total es la suma del desglose). */
@@ -253,4 +260,72 @@ export interface PersonajeHabilidadDto extends PersonajeNombreIdDto, PersonajeTo
 export interface PersonajeDefensaDto {
     valor: string;
     origen: string | null;
+}
+
+/*
+ * El equipo de la ficha (familia 1 de objetos, `docs/publica/endpoints/personajes.md`, «El equipo de la ficha»): las
+ * piezas que lleva, los modificadores de lo equipado, la defensa calculada, el peso y el dinero. La web enseña los
+ * totales sin volver a sumar.
+ */
+
+export type PersonajeTipoPiezaDto = 'arma' | 'armadura' | 'objeto' | 'municion';
+
+export interface PersonajeEquipoPiezaDto {
+    id: number;
+    orden: number;
+    tipo: PersonajeTipoPiezaDto;
+    elemento: PersonajeNombreIdDto | null;
+    nombre: string;
+    cantidad: number;
+    equipado: boolean;
+    ranura: PersonajeNombreIdDto | null;
+    empunadura: PersonajeNombreIdDto | null;
+    tamano: PersonajeNombreIdDto | null;
+    material: PersonajeNombreIdDto | null;
+    granCalidad: boolean;
+    bonificadorMejora: number;
+    bonificadorMejora2: number | null;
+    indiceFuerza: number | null;
+    encantamientos: (PersonajeNombreIdDto & { cabeza: number; })[];
+    conjuro: PersonajeNombreIdDto | null;
+    nivelConjuro: number | null;
+    nivelLanzador: number | null;
+    cargasRestantes: number | null;
+    notas: string | null;
+    /** Peso de todas las unidades, con el tamaño y el material; `null` si el catálogo no lo dice. */
+    peso: number | null;
+    /** En las armas: el daño para su tamaño y el crítico compuesto. */
+    arma: { dano: string | null; critico: string | null; } | null;
+    /** En armaduras y escudos: sus cifras con la mejora, la gran calidad y el material. */
+    armadura: { esEscudo: boolean; ca: number; bonDes: number | null; penalizador: number; falloArcano: number; } | null;
+}
+
+export interface PersonajeModificadorEquipoDto {
+    origen: string;
+    objetivo: PersonajeNombreIdDto | null;
+    tipoBonificador: PersonajeNombreIdDto & { apila: boolean; } | null;
+    valor: number;
+    caracteristica: PersonajeNombreIdDto | null;
+    habilidad: PersonajeNombreIdDto | null;
+    tipoDano: PersonajeNombreIdDto | null;
+    /** Lo condicional: se enseña y no se suma. */
+    condicion: string | null;
+    /** Si la API lo ha sumado a la CA o a una salvación. */
+    sumado: boolean;
+}
+
+export interface PersonajeDefensaTotalesDto {
+    ca: PersonajeTotalDto;
+    toque: PersonajeTotalDto;
+    desprevenido: PersonajeTotalDto;
+    /** La menor de la armadura y el escudo puestos; `null` sin límite. */
+    destrezaMaxima: number | null;
+    penalizadorArmadura: number;
+    falloConjuroArcano: number;
+}
+
+/** Lo que le queda tras las compras del final de la creación y con lo que compró. */
+export interface PersonajeDineroDto {
+    po: number;
+    dineroInicial: number;
 }

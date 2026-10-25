@@ -40,7 +40,8 @@ import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, t
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
 import { calcularOroPorNep } from './utils/oro-inicial';
-import { modificadoresDePartes } from './utils/personaje-totales';
+import { modificadoresDePartes, normalizarTotal, totalVacio } from './utils/personaje-totales';
+import { normalizarDefensa, normalizarDinero, normalizarModificadoresEquipo, normalizarPiezasEquipo } from './utils/personaje-equipo-mapper';
 import { resumenClases } from './utils/resumen-clases';
 import { leerComodin } from './utils/comodin';
 import { errorDePerfil, mensajeDeError } from './utils/error-api';
@@ -992,6 +993,11 @@ export class PersonajeService {
             Totales: totales,
             Tamano: raza?.Tamano?.Nombre,
             Ca: element?.ca,
+            Equipo: normalizarPiezasEquipo(element?.equipo),
+            ModificadoresEquipo: normalizarModificadoresEquipo(element?.modificadoresEquipo),
+            Defensa: normalizarDefensa(element?.defensa),
+            PesoEquipo: toNumber(element?.pesoEquipo),
+            Dinero: normalizarDinero(element?.dinero),
             Armadura_natural: element?.an,
             Ca_desvio: element?.cd,
             Ca_varios: element?.cv,
@@ -1175,23 +1181,6 @@ function defensas(raw: unknown): { Modificador: string; Origen: string; }[] {
     return toArray<PersonajeDefensaDto>(raw)
         .map((item) => ({ Modificador: toText(item?.valor).trim(), Origen: toText(item?.origen).trim() }))
         .filter((item) => item.Modificador.length > 0);
-}
-
-function normalizarTotal(raw: any): PersonajeTotalDto | null {
-    if (!raw || typeof raw !== 'object')
-        return null;
-    return {
-        total: toNumber(raw.total),
-        desglose: toArray<PersonajeParteDto>(raw.desglose).map((parte) => ({
-            tipo: parte?.tipo,
-            origen: toNullableText(parte?.origen),
-            valor: toNumber(parte?.valor),
-        })),
-    };
-}
-
-function totalVacio(): PersonajeTotalDto {
-    return { total: 0, desglose: [] };
 }
 
 function salvacionComoModificadores(total: PersonajeTotalDto): Personaje['Salvaciones']['fortaleza'] {

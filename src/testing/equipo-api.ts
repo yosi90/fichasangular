@@ -285,3 +285,62 @@ export function crearEquipoCatalogosApi(cambios: Record<string, any> = {}): Reco
         ...cambios,
     };
 }
+
+/**
+ * Lo que trae la ficha (`GET /personajes/{id}`) de un personaje con equipo: una cota de mallas y una rodela puestas, una
+ * daga empuñada, 20 flechas, una capa de resistencia +1 y una poción de curar heridas leves; para mezclar con
+ * `crearDetalleApi` (`src/testing/personaje-detalle-api.ts`).
+ */
+export function crearEquipoFichaApi(cambios: Record<string, any> = {}): Record<string, any> {
+    const pieza = (datos: Record<string, any>) => ({
+        id: 1, orden: 1, tipo: 'objeto', elemento: null, nombre: '', cantidad: 1, equipado: false, ranura: null, empunadura: null,
+        tamano: null, material: null, granCalidad: false, bonificadorMejora: 0, bonificadorMejora2: null, indiceFuerza: null,
+        encantamientos: [], conjuro: null, nivelConjuro: null, nivelLanzador: null, cargasRestantes: null, notas: null,
+        peso: null, arma: null, armadura: null,
+        ...datos,
+    });
+    const parte = (origen: string, valor: number, bonificador: string) => ({ tipo: 'bonificador', origen, valor, bonificador });
+    const base = [
+        { tipo: 'base', origen: 'Base', valor: 10 },
+        { tipo: 'caracteristica', origen: 'Destreza', valor: 2 },
+        { tipo: 'tamano', origen: 'Tamaño (Grande)', valor: -1 },
+    ];
+    return {
+        ca: 18,
+        equipo: [
+            pieza({ id: 1, orden: 1, tipo: 'armadura', elemento: { id: 8, nombre: 'Cota de mallas' }, nombre: 'Cota de mallas', equipado: true, granCalidad: true, peso: 80, armadura: { esEscudo: false, ca: 5, bonDes: 2, penalizador: -4, falloArcano: 30 } }),
+            pieza({ id: 2, orden: 2, tipo: 'armadura', elemento: { id: 14, nombre: 'Rodela' }, nombre: 'Rodela', equipado: true, peso: 10, armadura: { esEscudo: true, ca: 1, bonDes: null, penalizador: -1, falloArcano: 5 } }),
+            pieza({ id: 3, orden: 3, tipo: 'arma', elemento: { id: 5, nombre: 'Daga' }, nombre: 'Daga', equipado: true, empunadura: { id: 1, nombre: 'Mano principal' }, bonificadorMejora: 1, encantamientos: [{ id: 1, nombre: 'Afilada', cabeza: 1 }], peso: 2, arma: { dano: '1d6', critico: '17-20/x2' } }),
+            pieza({ id: 4, orden: 4, tipo: 'municion', elemento: { id: 1, nombre: 'Flechas' }, nombre: 'Flechas', cantidad: 20, peso: 3 }),
+            pieza({ id: 5, orden: 5, tipo: 'objeto', elemento: { id: 40, nombre: 'Capa de resistencia +1' }, nombre: 'Capa de resistencia +1', equipado: true, ranura: { id: 4, nombre: 'Hombros' }, peso: 1 }),
+            pieza({ id: 6, orden: 6, tipo: 'objeto', elemento: { id: 1, nombre: 'Poción' }, nombre: 'Poción', cantidad: 2, conjuro: { id: 1, nombre: 'Curar heridas leves' }, nivelConjuro: 1, nivelLanzador: 1, notas: 'Para el camino' }),
+        ],
+        modificadoresEquipo: [{
+            origen: 'Capa de resistencia +1',
+            objetivo: { id: 3, nombre: 'Salvaciones' },
+            tipoBonificador: { id: 15, nombre: 'Resistencia', apila: false },
+            valor: 1, caracteristica: null, habilidad: null, tipoDano: null, condicion: null, sumado: true,
+        }, {
+            origen: 'Capa de resistencia +1',
+            objetivo: { id: 3, nombre: 'Salvaciones' },
+            tipoBonificador: { id: 4, nombre: 'Competencia', apila: false },
+            valor: 2, caracteristica: null, habilidad: null, tipoDano: null, condicion: 'contra encantamientos', sumado: false,
+        }],
+        defensa: {
+            ca: { total: 18, desglose: [...base, parte('Cota de mallas', 5, 'Armadura'), parte('Rodela', 1, 'Escudo'), parte('Armadura natural', 1, 'Armadura natural')] },
+            toque: { total: 11, desglose: base },
+            desprevenido: { total: 16, desglose: [base[0], base[2], parte('Cota de mallas', 5, 'Armadura'), parte('Rodela', 1, 'Escudo'), parte('Armadura natural', 1, 'Armadura natural')] },
+            destrezaMaxima: 2,
+            penalizadorArmadura: -5,
+            falloConjuroArcano: 35,
+        },
+        pesoEquipo: 96,
+        dinero: { po: 12.5, dineroInicial: 240 },
+        salvaciones: {
+            fortaleza: { total: 12, desglose: [{ tipo: 'caracteristica', origen: 'Constitución', valor: 4 }, { tipo: 'clase', origen: 'Explorador', valor: 6 }, { tipo: 'varios', origen: 'Centauro', valor: 1 }, { tipo: 'equipo', origen: 'Capa de resistencia +1', valor: 1, bonificador: 'Resistencia' }] },
+            reflejos: { total: 15, desglose: [{ tipo: 'caracteristica', origen: 'Destreza', valor: 4 }, { tipo: 'clase', origen: null, valor: 6 }, { tipo: 'varios', origen: 'Centauro', valor: 4 }, { tipo: 'equipo', origen: 'Capa de resistencia +1', valor: 1, bonificador: 'Resistencia' }] },
+            voluntad: { total: 7, desglose: [{ tipo: 'caracteristica', origen: 'Sabiduría', valor: 4 }, { tipo: 'clase', origen: 'Explorador', valor: 2 }, { tipo: 'equipo', origen: 'Capa de resistencia +1', valor: 1, bonificador: 'Resistencia' }] },
+        },
+        ...cambios,
+    };
+}

@@ -1,5 +1,6 @@
 import { OrigenDescripcion } from 'src/app/interfaces/equipo';
 import { ManualReferencia } from 'src/app/interfaces/manual';
+import { PersonajeEquipoPiezaDto, PersonajeModificadorEquipoDto } from 'src/app/interfaces/personajes-api';
 
 // Cómo enseña la web los datos del equipo (armas, armaduras, munición, materiales, aptitudes, objetos y conjuntos).
 // Guía: `docs/publica/OBJETOS_FRONT.md`.
@@ -111,4 +112,60 @@ export function textoAplicaA(aplica: {
         aplica.Armadura ? 'armaduras' : '',
         aplica.Escudo ? 'escudos' : '',
     ].filter((parte) => parte.length > 0).join(', ');
+}
+
+/** Un modificador del equipo de la ficha en una línea, como los del catálogo. */
+export function textoModificadorEquipo(modificador: PersonajeModificadorEquipoDto): string {
+    const nombre = (ref: { nombre: string } | null) => ref ? { Nombre: ref.nombre } : null;
+    return textoModificador({
+        Objetivo: nombre(modificador.objetivo),
+        Tipo_bonificador: nombre(modificador.tipoBonificador),
+        Valor: modificador.valor,
+        Caracteristica: nombre(modificador.caracteristica),
+        Habilidad: nombre(modificador.habilidad),
+        Tipo_dano: nombre(modificador.tipoDano),
+        Condicion: modificador.condicion,
+    });
+}
+
+/**
+ * Lo que se enseña de una pieza del equipo de la ficha, además de su nombre: el material, la gran calidad, la mejora,
+ * las aptitudes, el conjuro de un genérico, las cifras de un arma o armadura, las cargas y el peso.
+ */
+export function detallesPiezaEquipo(pieza: PersonajeEquipoPiezaDto): string[] {
+    const detalles: string[] = [];
+    if (pieza.material) detalles.push(pieza.material.nombre);
+    if (pieza.granCalidad) detalles.push('Gran calidad');
+    if (pieza.bonificadorMejora > 0) {
+        const segunda = pieza.bonificadorMejora2 ? `/${textoConSigno(pieza.bonificadorMejora2)}` : '';
+        detalles.push(`${textoConSigno(pieza.bonificadorMejora)}${segunda}`);
+    }
+    if (pieza.encantamientos.length > 0) detalles.push(pieza.encantamientos.map((enc) => enc.nombre).join(', '));
+    if (pieza.conjuro) {
+        const niveles = [
+            pieza.nivelConjuro !== null ? `nivel ${pieza.nivelConjuro}` : '',
+            pieza.nivelLanzador !== null ? `NL ${pieza.nivelLanzador}` : '',
+        ].filter((parte) => parte.length > 0).join(', ');
+        detalles.push(niveles.length > 0 ? `${pieza.conjuro.nombre} (${niveles})` : pieza.conjuro.nombre);
+    }
+    if (pieza.indiceFuerza !== null) detalles.push(`Índice de Fuerza ${textoConSigno(pieza.indiceFuerza)}`);
+    if (pieza.arma?.dano) detalles.push(`Daño ${pieza.arma.dano}`);
+    if (pieza.arma?.critico) detalles.push(`Crítico ${pieza.arma.critico}`);
+    if (pieza.armadura) {
+        detalles.push(`CA ${textoConSigno(pieza.armadura.ca)}`);
+        detalles.push(`Destreza máxima ${textoDestrezaMaxima(pieza.armadura.bonDes)}`);
+        if (pieza.armadura.penalizador !== 0) detalles.push(`Penalizador ${pieza.armadura.penalizador}`);
+        if (pieza.armadura.falloArcano > 0) detalles.push(`Fallo arcano ${pieza.armadura.falloArcano}%`);
+    }
+    if (pieza.cargasRestantes !== null) detalles.push(`${pieza.cargasRestantes} cargas`);
+    if (pieza.peso !== null) detalles.push(textoPeso(pieza.peso));
+    return detalles;
+}
+
+/** Dónde lo lleva: «Equipado (hombros)», «Equipado (mano principal)» o nada si no lo lleva puesto. */
+export function textoEquipadoPieza(pieza: PersonajeEquipoPiezaDto): string {
+    if (!pieza.equipado)
+        return '';
+    const donde = pieza.ranura?.nombre ?? pieza.empunadura?.nombre ?? '';
+    return donde.length > 0 ? `Equipado (${donde.toLowerCase()})` : 'Equipado';
 }

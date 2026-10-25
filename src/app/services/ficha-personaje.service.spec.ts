@@ -5,6 +5,7 @@ import { Personaje } from '../interfaces/personaje';
 import { FichaPersonajeService } from './ficha-personaje.service';
 import { PersonajeService } from './personaje.service';
 import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
+import { crearEquipoFichaApi } from 'src/testing/equipo-api';
 
 /** La plantilla de verdad de la ficha (Karma sirve `src/assets`). */
 async function plantillaFicha(fetchOriginal: typeof fetch): Promise<ArrayBuffer> {
@@ -195,6 +196,33 @@ describe('FichaPersonajeService', () => {
         expect(campo('custom1')).toBe('Interpretar (onomatopeyas)');
         expect(campo('car1')).toBe('CAR');
         expect(campo('mod_custom1')).toBe('3');
+    });
+
+    it('escribe en la hoja la defensa, el equipo y el dinero de la ficha', async () => {
+        const plantilla = await plantillaFicha(fetchOriginal);
+        fetchSpy.and.returnValue(Promise.resolve({ arrayBuffer: () => Promise.resolve(plantilla) } as any));
+        const personajeSvc = new PersonajeService({ currentUser: null } as any, {} as any);
+        const pj = (personajeSvc as any).mapApiDetalleToPersonaje(crearDetalleApi(crearEquipoFichaApi()));
+
+        await service.generarPDF(pj);
+
+        const blob = saveAsSpy.calls.mostRecent().args[0] as Blob;
+        const form = (await PDFDocument.load(await blob.arrayBuffer())).getForm();
+        const campo = (nombre: string) => form.getTextField(nombre).getText();
+        expect(campo('ca')).toBe('18');
+        expect(campo('ca_toque')).toBe('11');
+        expect(campo('ca_desprevenido')).toBe('16');
+        expect(campo('ca_armadura')).toBe('5');
+        expect(campo('ca_escudo')).toBe('1');
+        expect(campo('mod_magico_voluntad')).toBe('1');
+        expect(campo('armadura')).toBe('Cota de mallas');
+        expect(campo('escudo')).toBe('Rodela');
+        expect(campo('ataque_arma1')).toBe('Daga');
+        expect(campo('daño_arma1')).toBe('1d6');
+        expect(campo('objeto1')).toBe('Flechas ×20');
+        expect(campo('peso_total')).toBe('96');
+        expect(campo('monedas_oro')).toBe('12,5');
+        expect(campo('fallo_arcano')).toBe('35');
     });
 
     it('formatea niveles de lanzador en notas de ficha', () => {

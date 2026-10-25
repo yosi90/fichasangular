@@ -11,6 +11,7 @@ import { RegionService } from 'src/app/services/region.service';
 import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserService } from 'src/app/services/user.service';
 import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
+import { crearEquipoFichaApi } from 'src/testing/equipo-api';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { DetallesPersonajeComponent } from './detalles-personaje.component';
 
@@ -1035,6 +1036,43 @@ describe('DetallesPersonajeComponent', () => {
         expect(html).toContain('Fortaleza: +11');
         expect(html).toContain('clase +6');
         expect(html).toContain('varios +1');
+    });
+
+    it('enseña la defensa, lo que suma el equipo a las salvaciones, el equipo y el dinero', () => {
+        component.pj = fichaDeLaApi(crearEquipoFichaApi());
+
+        fixture.detectChanges();
+
+        expect(component.salvacionesVisibles[0]).toEqual(jasmine.objectContaining({ equipo: 1, equipoOrigenes: 'Capa de resistencia +1' }));
+        expect(component.caDisclaimer).toContain('Cota de mallas +5 (armadura)');
+        expect(component.llevaArmaduraPuesta).toBeTrue();
+        expect(component.piezasEquipo.length).toBe(6);
+        expect(component.tieneOroVisible()).toBeFalse();
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Ca 18');
+        expect(html).toContain('Toque 11');
+        expect(html).toContain('Desprevenido 16');
+        expect(html).toContain('Destreza máxima +2');
+        expect(html).toContain('Penalizador de armadura -5');
+        expect(html).toContain('Fallo de conjuro arcano 35%');
+        expect(html).toContain('equipo +1');
+        expect(html).toContain('Dinero');
+        expect(html).toContain('12,5 po');
+        expect(html).toContain('Flechas ×20');
+        expect(html).toContain('Equipado (hombros)');
+        expect(html).toContain('Peso total 96 lb');
+        expect(html).toContain('Salvaciones +2 (competencia) contra encantamientos');
+    });
+
+    it('sin armadura puesta no enseña la Destreza máxima ni el penalizador', () => {
+        component.pj = fichaDeLaApi(crearEquipoFichaApi({ equipo: [], defensa: { ...crearEquipoFichaApi()['defensa'], destrezaMaxima: null, penalizadorArmadura: 0, falloConjuroArcano: 0 } }));
+
+        fixture.detectChanges();
+
+        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        expect(html).toContain('Toque 11');
+        expect(html).not.toContain('Destreza máxima');
+        expect(html).not.toContain('Penalizador de armadura');
     });
 
     it('enseña la iniciativa, la presa y las habilidades con los totales de la API', () => {

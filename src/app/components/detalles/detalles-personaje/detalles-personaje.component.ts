@@ -35,6 +35,15 @@ import {
     totalesPersonaje,
     totalHabilidad
 } from 'src/app/services/utils/personaje-totales';
+import { PersonajeEquipoPiezaDto, PersonajeModificadorEquipoDto } from 'src/app/interfaces/personajes-api';
+import {
+    detallesPiezaEquipo,
+    textoDestrezaMaxima,
+    textoEquipadoPieza,
+    textoModificadorEquipo,
+    textoPeso,
+    textoPrecio,
+} from 'src/app/services/utils/equipo-texto';
 
 interface MadurezEdadResumen {
     id: number;
@@ -52,6 +61,9 @@ interface SalvacionVisible {
     claseOrigenes: string;
     varios: number;
     variosOrigenes: string;
+    /** Lo que suma el equipo (capa de resistencia…), con sus orígenes. */
+    equipo: number;
+    equipoOrigenes: string;
 }
 
 const SALVACIONES: { tipo: TipoSalvacion; nombre: string; }[] = [
@@ -138,7 +150,9 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         this.nivelPersonaje = this.getNivelPersonaje();
         this.actualizarValoresDerivadosVisuales();
         this.actualizarResumenSalvaciones();
-        this.caDisclaimer = `
+        this.caDisclaimer = this.pj.Defensa
+            ? textoDesglose(this.pj.Defensa.ca)
+            : `
         Armadura natural: ${this.pj.Armadura_natural > 0 ? this.pj.Armadura_natural : '0'}
         Desvio: ${this.pj.Ca_desvio > 0 ? this.pj.Ca_desvio : '0'}
         Varios: ${this.pj.Ca_varios > 0 ? this.pj.Ca_varios : '0'}
@@ -510,7 +524,41 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         return this.tieneNumeroVisible(this.pj?.Ca);
     }
 
+    /** Las piezas del equipo que compró al final de la creación (vacío en las fichas sin compra y en la creación). */
+    get piezasEquipo(): PersonajeEquipoPiezaDto[] {
+        return this.pj?.Equipo ?? [];
+    }
+
+    get modificadoresEquipo(): PersonajeModificadorEquipoDto[] {
+        return this.pj?.ModificadoresEquipo ?? [];
+    }
+
+    /** Si lleva puesta armadura o escudo: entonces se enseñan la Destreza máxima, el penalizador y el fallo arcano. */
+    get llevaArmaduraPuesta(): boolean {
+        return this.piezasEquipo.some((pieza) => pieza.equipado && !!pieza.armadura);
+    }
+
+    get pesoEquipoVisible(): string {
+        return textoPeso(this.pj?.PesoEquipo ?? 0);
+    }
+
+    get dineroVisible(): string {
+        return textoPrecio(this.pj?.Dinero?.po ?? 0);
+    }
+
+    get dineroInicialVisible(): string {
+        return `Dinero inicial: ${textoPrecio(this.pj?.Dinero?.dineroInicial ?? 0)}`;
+    }
+
+    readonly textoDesglose = textoDesglose;
+    readonly textoDestrezaMaxima = textoDestrezaMaxima;
+    readonly detallesPiezaEquipo = detallesPiezaEquipo;
+    readonly textoEquipadoPieza = textoEquipadoPieza;
+    readonly textoModificadorEquipo = textoModificadorEquipo;
+
     tieneOroVisible(): boolean {
+        if (this.pj?.Dinero)
+            return false;
         if (this.esPreviewNuevoPersonaje && this.tieneContextoNepParaPreview())
             return true;
         return this.tieneNumeroVisible(this.pj?.Oro_inicial);
@@ -1028,6 +1076,8 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
                 claseOrigenes: origenesDePartes(salvacion, 'clase').join(', '),
                 varios: sumarPartes(salvacion, 'varios'),
                 variosOrigenes: origenesDePartes(salvacion, 'varios').join(', '),
+                equipo: sumarPartes(salvacion, 'equipo'),
+                equipoOrigenes: origenesDePartes(salvacion, 'equipo').join(', '),
             };
         });
     }

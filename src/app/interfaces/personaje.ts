@@ -8,7 +8,11 @@ import { PersonajeSimple } from "./simplificaciones/personaje-simple";
 import { SubtipoRef } from "./subtipo";
 import { TipoCriatura } from "./tipo_criatura";
 import {
+    PersonajeDefensaTotalesDto,
+    PersonajeDineroDto,
+    PersonajeEquipoPiezaDto,
     PersonajeExtraComodinDto,
+    PersonajeModificadorEquipoDto,
     PersonajeProgresionLanzadorDto,
     PersonajeSalvacionesDto,
     PersonajeTotalDto
@@ -108,6 +112,12 @@ export interface Personaje extends PersonajeSimple {
     /** Solo en la ficha que llega de la API; el borrador de la creación los calcula (`totalesPersonaje`). */
     Totales?: PersonajeTotales;
     Ca: number;
+    /** Solo en la ficha de la API (`equipo`…`dinero`); el borrador de la creación aún no tiene equipo. */
+    Equipo?: PersonajeEquipoPiezaDto[];
+    ModificadoresEquipo?: PersonajeModificadorEquipoDto[];
+    Defensa?: PersonajeDefensaTotalesDto | null;
+    PesoEquipo?: number;
+    Dinero?: PersonajeDineroDto | null;
     Armadura_natural: number;
     Ca_desvio: number;
     Ca_varios: number;

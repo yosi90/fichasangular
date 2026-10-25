@@ -88,6 +88,7 @@
                     <p class="tw-m-0 tw-ms-1" [matTooltip]="salvacion.desglose" matTooltipClass="tt-accent tt-multiline">{{formatSigned(salvacion.total)}}</p>
                     <p class="tw-m-0 tw-ms-1" [matTooltip]="salvacion.claseOrigenes" matTooltipClass="tt-accent">clase {{formatSigned(salvacion.clase)}}</p>
                     <p class="tw-m-0 tw-ms-1" [matTooltip]="salvacion.variosOrigenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(salvacion.varios)">varios {{formatSigned(salvacion.varios)}}</p>
+                    <p class="tw-m-0 tw-ms-1" [matTooltip]="salvacion.equipoOrigenes" matTooltipClass="tt-accent" *ngIf="tieneNumeroNoCero(salvacion.equipo)">equipo {{formatSigned(salvacion.equipo)}}</p>
                 </mat-chip>
             </mat-chip>
         </div>
@@ -169,6 +170,15 @@
                 <mat-chip class="warm tw-m-1" *ngIf="tieneAtaqueBaseVisible()">Ataque base {{pj.Ataque_base}}</mat-chip>
                 <mat-chip class="tw-m-1" *ngIf="tienePgVisible()">Pg {{pj.Vida}}</mat-chip>
                 <mat-chip class="tw-m-1" *ngIf="tieneCaVisible()" [matTooltip]="caDisclaimer"  matTooltipClass="tt-accent tt-multiline">Ca {{pj.Ca}}</mat-chip>
+                <ng-container *ngIf="pj.Defensa as defensa">
+                    <mat-chip class="tw-m-1" [matTooltip]="textoDesglose(defensa.toque)" matTooltipClass="tt-accent tt-multiline">Toque {{defensa.toque.total}}</mat-chip>
+                    <mat-chip class="tw-m-1" [matTooltip]="textoDesglose(defensa.desprevenido)" matTooltipClass="tt-accent tt-multiline">Desprevenido {{defensa.desprevenido.total}}</mat-chip>
+                    <ng-container *ngIf="llevaArmaduraPuesta">
+                        <mat-chip class="tw-m-1" matTooltip="La menor de la armadura y el escudo que lleva puestos" matTooltipClass="tt-accent">Destreza máxima {{textoDestrezaMaxima(defensa.destrezaMaxima)}}</mat-chip>
+                        <mat-chip class="tw-m-1" *ngIf="tieneNumeroNoCero(defensa.penalizadorArmadura)">Penalizador de armadura {{defensa.penalizadorArmadura}}</mat-chip>
+                        <mat-chip class="tw-m-1" *ngIf="tieneNumeroNoCero(defensa.falloConjuroArcano)">Fallo de conjuro arcano {{defensa.falloConjuroArcano}}%</mat-chip>
+                    </ng-container>
+                </ng-container>
                 <ng-container *ngIf="!esPreviewNuevoPersonaje">
                     <mat-chip class="tw-m-1" *ngIf="pj.Campana">Campaña {{pj.Campana}}</mat-chip>
                     <mat-chip class="tw-m-1" *ngIf="pj.Trama">Trama {{pj.Trama}}</mat-chip>
@@ -188,6 +198,10 @@
                 </mat-chip>
                 <mat-chip class="tw-h-auto tw-m-1" *ngIf="pj.Res && pj.Res.length > 0"><p class="tw-m-0 tw-me-2">Resistencia a la energía</p>
                     <mat-chip class="tw-m-1" *ngFor="let r of pj.Res" [matTooltip]="getTooltip_simples('Origen:', r.Origen)" matTooltipClass="tt-accent" >{{r.Modificador}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="tw-m-1" *ngIf="pj.Dinero" [matTooltip]="dineroInicialVisible" matTooltipClass="tt-accent">
+                    Dinero &nbsp;{{dineroVisible}}
+                    <mat-icon style="width: 20px; height: 20px; font-size: 20px;">currency_bitcoin</mat-icon>
                 </mat-chip>
                 <mat-chip class="tw-m-1" *ngIf="tieneOroVisible()" matTooltip="Monedas de oro" matTooltipClass="tt-accent">
                     Oro inicial &nbsp;{{pj.Oro_inicial}}
@@ -338,6 +352,30 @@
                             matTooltipClass="tt-accent"
                             (click)="verDetallesMonstruo(companero)">
                             {{companero.Nombre}}
+                        </mat-chip>
+                    </mat-chip-set>
+                </mat-expansion-panel>
+                <mat-expansion-panel *ngIf="piezasEquipo.length > 0">
+                    <mat-expansion-panel-header>
+                        <button mat-stroked-button color="accent" class="tw-rounded-none">
+                            <h2 class="tw-mb-0">Equipo</h2>
+                        </button>
+                    </mat-expansion-panel-header>
+                    <mat-chip-set class="tw-m-1">
+                        <mat-chip class="tw-h-auto sombra3d-sm" *ngFor="let pieza of piezasEquipo" [matTooltip]="pieza.notas ?? ''"
+                            [matTooltipDisabled]="!pieza.notas" matTooltipClass="tt-accent tt-multiline">
+                            {{pieza.nombre}}<ng-container *ngIf="pieza.cantidad > 1"> ×{{pieza.cantidad}}</ng-container>
+                            <mat-chip class="tw-m-1 chip-origen" *ngIf="textoEquipadoPieza(pieza) as equipado">{{equipado}}</mat-chip>
+                            <mat-chip class="tw-m-1" *ngFor="let detalle of detallesPiezaEquipo(pieza)">{{detalle}}</mat-chip>
+                        </mat-chip>
+                        <mat-chip class="tw-m-1" matTooltip="El peso de todo lo que lleva" matTooltipClass="tt-accent">Peso total {{pesoEquipoVisible}}</mat-chip>
+                    </mat-chip-set>
+                    <mat-chip-set class="tw-m-1" *ngIf="modificadoresEquipo.length > 0">
+                        <mat-chip class="tw-h-auto" *ngFor="let modificador of modificadoresEquipo"
+                            [matTooltip]="modificador.sumado ? 'Ya está sumado en la ficha' : 'Se enseña, pero la ficha aún no lo suma'"
+                            matTooltipClass="tt-accent">
+                            {{textoModificadorEquipo(modificador)}}
+                            <mat-chip class="tw-m-1 chip-origen">{{modificador.origen}}</mat-chip>
                         </mat-chip>
                     </mat-chip-set>
                 </mat-expansion-panel>
