@@ -1,0 +1,408 @@
+@use '../../../../assets/css/variables' as *
+
+// La ficha común de las pantallas de detalle (lienzo aprobado por el propietario el 2026-10-25). Es el único sitio de
+// sus estilos: los carga `FichaDetalleComponent` sin encapsular, así que todas las clases llevan el prefijo `ficha-` y
+// valen también en lo que cada pantalla proyecta (listas, enlaces, pares y tablas). Guía: «Pantallas de detalle» en
+// `docs/guias-estilo/GUIA_ESTILO_WEB_GENERAL.md`.
+
+// Tonos del lienzo que no están en `_variables.sass` (que no se toca): superficies y textos sobre el fondo $contrast.
+$ficha-tarjeta: #424242
+$ficha-fila-alterna: #4a4a4a
+$ficha-texto: #e6e9eb
+$ficha-texto-suave: #cfd8dc
+$ficha-separador: #555555
+$ficha-aviso: #f0b45a
+$ficha-blanco: #ffffff
+$ficha-radio: 6px
+$ficha-hueco: 18px
+// La misma sombra que `.sombra`, la de lo que flota sobre el fondo.
+$ficha-sombra: 3px 3px 10px black
+
+// Los títulos son h1, h2 y h3, a los que `.mat-typography` (en el body) pone fuente, interlineado y margen: aquí se
+// fijan todos, y los estilos van dentro de `.ficha` para ganarle.
+@mixin ficha-versalitas
+    margin: 0
+    font-size: 12px
+    font-weight: 700
+    line-height: 1.4
+    letter-spacing: .14em
+    text-transform: uppercase
+    color: $accent
+
+// Los componentes de la ficha no ocupan sitio propio: solo cuenta lo que pintan (así, uno vacío no deja hueco).
+app-ficha-cabecera, app-ficha-datos, app-ficha-cuerpo, app-ficha-seccion, app-ficha-lateral, app-ficha-bloque, app-ficha-prerrequisitos
+    display: contents
+
+app-ficha-detalle
+    display: block
+    container-type: inline-size
+    container-name: ficha
+
+.ficha
+    display: flex
+    flex-direction: column
+    gap: $ficha-hueco
+    padding: 20px
+    color: $accent
+    font-family: Roboto, "Segoe UI", system-ui, sans-serif
+
+    .ficha-oculta
+        display: none !important
+
+    .ficha-tarjeta
+        background: $ficha-tarjeta
+        border-radius: $ficha-radio
+        box-shadow: $ficha-sombra
+
+    .ficha-titulo
+        @include ficha-versalitas
+
+    .ficha-icono.mat-icon
+        flex-shrink: 0
+        width: 16px
+        height: 16px
+        font-size: 16px
+        line-height: 16px
+        color: $accent
+
+    // Cabecera
+    .ficha-cabecera
+        display: flex
+        align-items: flex-end
+        justify-content: space-between
+        gap: 24px
+        padding: 18px 24px
+        background: $primary
+        border-radius: $ficha-radio
+        border-bottom: 3px solid $active
+        box-shadow: $ficha-sombra
+
+    .ficha-cabecera__identidad
+        display: flex
+        flex-direction: column
+        gap: 6px
+        min-width: 0
+
+    .ficha-cabecera__tipo
+        @include ficha-versalitas
+
+    .ficha-cabecera__nombre
+        margin: 0
+        font-size: 32px
+        font-weight: 500
+        line-height: 1.2
+        letter-spacing: .01em
+        color: $ficha-blanco
+        overflow-wrap: anywhere
+
+    .ficha-cabecera__subtitulo
+        font-size: 15px
+        font-style: italic
+        line-height: 1.5
+        color: $ficha-texto-suave
+
+        .texto-manual-bloque
+            margin: 0
+
+    .ficha-cabecera__referencias
+        display: flex
+        flex-direction: column
+        align-items: flex-end
+        gap: 8px
+        flex-shrink: 0
+        max-width: 45%
+
+    .ficha-cabecera__manual
+        display: inline-flex
+        align-items: center
+        gap: 8px
+        font-size: 14px
+        color: $ficha-texto-suave
+        text-align: right
+
+        .ficha-icono.mat-icon
+            width: 18px
+            height: 18px
+            font-size: 18px
+            line-height: 18px
+            color: currentColor
+
+    .ficha-etiquetas
+        display: flex
+        flex-wrap: wrap
+        justify-content: flex-end
+        gap: 8px
+
+    .ficha-etiqueta
+        padding: 2px 10px
+        border: 1px solid $accent
+        border-radius: 3px
+        font-size: 12px
+        font-weight: 500
+        line-height: 1.5
+        color: $accent
+
+    .ficha-etiqueta--aviso
+        border-color: $ficha-aviso
+        color: $ficha-aviso
+
+    // Datos clave
+    .ficha-datos-contenedor--tarjeta
+        padding: 18px 24px
+
+    .ficha-datos
+        display: grid
+        grid-template-columns: repeat(var(--ficha-columnas, 4), minmax(0, 1fr))
+        gap: 16px 28px
+        margin: 0
+
+    .ficha-dato
+        min-width: 0
+
+    .ficha-dato__etiqueta
+        font-size: 12px
+        color: $font-base
+
+    .ficha-dato__valor
+        margin: 3px 0 0
+        font-size: 15px
+        color: $ficha-blanco
+        overflow-wrap: anywhere
+
+    .ficha-dato__detalle
+        font-size: 14px
+        color: $ficha-texto-suave
+
+    // Cuerpo: texto a la izquierda (2fr) y listas siempre a la vista a la derecha (1fr)
+    .ficha-cuerpo
+        display: grid
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr)
+        gap: $ficha-hueco
+        align-items: start
+
+    .ficha-cuerpo--sin-lateral
+        grid-template-columns: minmax(0, 1fr)
+
+    .ficha-cuerpo--sin-principal
+        grid-template-columns: minmax(0, 1fr)
+
+        .ficha-columna-lateral
+            display: grid
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))
+            align-items: start
+
+    .ficha-principal
+        display: flex
+        flex-direction: column
+        gap: 22px
+        min-width: 0
+        padding: 22px 26px
+
+    .ficha-columna-lateral
+        display: flex
+        flex-direction: column
+        gap: $ficha-hueco
+        min-width: 0
+
+    .ficha-seccion
+        display: flex
+        flex-direction: column
+        gap: 8px
+        min-width: 0
+
+    // La prosa: 15px, interlineado 1.65 y como mucho 74 caracteres de ancho, con el formato de los manuales.
+    .ficha-texto
+        display: block
+        max-width: 74ch
+        font-size: 15px
+        line-height: 1.65
+        color: $ficha-texto
+
+        .texto-manual-bloque
+            margin: 0 0 8px
+
+            &:last-child
+                margin-bottom: 0
+
+        // Las tablas que vienen dentro del texto conservan el estilo de `<app-texto-manual>`.
+        .texto-manual-titulo
+            font-size: 15px
+            font-weight: 600
+            color: $ficha-blanco
+
+    .ficha-lateral-tarjeta, .ficha-bloque
+        display: flex
+        flex-direction: column
+        gap: 12px
+        min-width: 0
+        padding: 20px 22px
+
+    .ficha-bloque__contenido
+        overflow-x: auto
+
+    // Piezas para lo que proyecta cada pantalla
+    .ficha-grupo
+        display: flex
+        flex-direction: column
+        gap: 8px
+
+        & + .ficha-grupo
+            margin-top: 6px
+
+    .ficha-subtitulo
+        display: flex
+        flex-wrap: wrap
+        align-items: baseline
+        gap: 4px 8px
+        margin: 0
+        font-size: 13px
+        font-weight: 500
+        line-height: 1.4
+        color: $ficha-texto-suave
+
+    .ficha-subtitulo__ayuda
+        font-size: 12px
+        font-weight: 400
+        color: $font-base
+
+    .ficha-lista
+        display: flex
+        flex-direction: column
+        gap: 8px
+        margin: 0
+        padding: 0
+        list-style: none
+        font-size: 15px
+        color: $ficha-blanco
+
+    .ficha-lista--columnas
+        display: grid
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+        gap: 8px 16px
+
+    .ficha-lista__item
+        display: flex
+        align-items: flex-start
+        gap: 10px
+        min-width: 0
+        overflow-wrap: anywhere
+
+        .ficha-icono.mat-icon
+            margin-top: 3px
+
+    .ficha-nota
+        margin: 0
+        font-size: 14px
+        color: $font-base
+
+    // Pares de nombre y valor a dos lados (nivel por clase, por dominio…)
+    .ficha-pares
+        width: 100%
+        border-collapse: collapse
+        font-size: 15px
+
+        td
+            padding: 6px 0
+            color: $ficha-blanco
+            border-bottom: 1px solid $ficha-separador
+            vertical-align: top
+
+        td:last-child
+            padding-left: 12px
+            text-align: right
+            white-space: nowrap
+
+        tr:last-child td
+            border-bottom: 0
+
+    // Tablas a todo lo ancho, con cabecera $primary y filas alternas
+    .ficha-tabla
+        width: 100%
+        border-collapse: collapse
+        font-size: 14px
+        color: $ficha-blanco
+
+        thead tr
+            background: $primary
+            color: $accent
+
+        th
+            padding: 9px 12px
+            font-size: 12px
+            font-weight: 700
+            letter-spacing: .08em
+            text-align: left
+            text-transform: uppercase
+
+        td
+            padding: 7px 12px
+            vertical-align: top
+
+        tbody tr:nth-child(odd)
+            background: $ficha-tarjeta
+
+        tbody tr:nth-child(even)
+            background: $ficha-fila-alterna
+
+        .ficha-num
+            text-align: center
+            font-variant-numeric: tabular-nums
+
+    // Enlace a otra entrada (abre su detalle): un botón con aspecto de enlace, subrayado en rosa.
+    .ficha-enlace
+        padding: 0
+        border: 0
+        background: none
+        font: inherit
+        text-align: left
+        color: $ficha-texto-suave
+        text-decoration: underline
+        text-decoration-color: $active
+        text-underline-offset: 3px
+        cursor: pointer
+
+        &:hover
+            color: $ficha-blanco
+
+        &:focus-visible
+            outline: 2px solid $active
+            outline-offset: 2px
+            border-radius: 2px
+
+// Pantallas estrechas: las columnas se apilan (según el ancho de la ficha, no de la ventana, porque el menú lateral
+// se lleva parte).
+@container ficha (max-width: 900px)
+    .ficha
+        .ficha-cuerpo
+            grid-template-columns: minmax(0, 1fr)
+
+        .ficha-datos
+            grid-template-columns: repeat(2, minmax(0, 1fr))
+
+@container ficha (max-width: 640px)
+    .ficha
+        padding: 12px
+
+        .ficha-cabecera
+            flex-direction: column
+            align-items: flex-start
+            padding: 16px 18px
+
+        .ficha-cabecera__nombre
+            font-size: 26px
+
+        .ficha-cabecera__referencias
+            align-items: flex-start
+            max-width: none
+
+        .ficha-etiquetas
+            justify-content: flex-start
+
+        .ficha-principal
+            padding: 18px
+
+        .ficha-datos, .ficha-lista--columnas
+            grid-template-columns: minmax(0, 1fr)
+
+        .ficha-dato
+            grid-column: auto !important

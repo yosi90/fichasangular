@@ -1,0 +1,244 @@
+import { Component, NO_ERRORS_SCHEMA } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
+import { ManualReferencia } from 'src/app/interfaces/manual';
+import { CondicionPrerrequisito, GrupoPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
+import {
+    DatoFicha,
+    FICHA_DETALLE_COMPONENTES,
+    datosVisibles,
+    esTextoCorto,
+    etiquetasVisibles,
+    textoDato,
+    unirTipo,
+} from './index';
+
+describe('Ficha de detalle: reglas', () => {
+    it('textoDato oculta null, vacío y relleno, y enseña números (también el 0) y booleanos', () => {
+        expect(textoDato(null)).toBeNull();
+        expect(textoDato(undefined)).toBeNull();
+        expect(textoDato('   ')).toBeNull();
+        expect(textoDato('No especifica')).toBeNull();
+        expect(textoDato(' Corto ')).toBe('Corto');
+        expect(textoDato(0)).toBe('0');
+        expect(textoDato(Number.NaN)).toBeNull();
+        expect(textoDato(true)).toBe('Sí');
+        expect(textoDato(false)).toBe('No');
+        // «Cualquiera» y «Ninguno» son datos.
+        expect(textoDato('Cualquiera')).toBe('Cualquiera');
+        expect(textoDato('Ninguno')).toBe('Ninguno');
+    });
+
+    it('datosVisibles conserva el orden y quita los que no tienen nada que enseñar', () => {
+        const datos: DatoFicha[] = [
+            { etiqueta: 'A', valor: 'uno' },
+            { etiqueta: 'B', valor: null },
+            { etiqueta: 'C', valor: 3 },
+            { etiqueta: 'D', valor: '' },
+        ];
+        expect(datosVisibles(datos).map(d => d.etiqueta)).toEqual(['A', 'C']);
+        expect(datosVisibles(null)).toEqual([]);
+    });
+
+    it('etiquetasVisibles acepta textos sueltos y quita los vacíos', () => {
+        expect(etiquetasVisibles(['Alma', '', { texto: 'Aviso', aviso: true }, { texto: ' ' }]))
+            .toEqual([{ texto: 'Alma' }, { texto: 'Aviso', aviso: true }]);
+    });
+
+    it('unirTipo une con « · » las partes visibles', () => {
+        expect(unirTipo(['Dote', null, 'General', '', ' Guerrero '])).toBe('Dote · General · Guerrero');
+    });
+
+    it('esTextoCorto solo acepta un párrafo corto', () => {
+        expect(esTextoCorto('Puedes atacar con más fuerza.')).toBeTrue();
+        expect(esTextoCorto(null)).toBeFalse();
+        expect(esTextoCorto('Uno.\n\nDos.')).toBeFalse();
+        expect(esTextoCorto('- uno\n- dos')).toBeFalse();
+        expect(esTextoCorto('x'.repeat(241))).toBeFalse();
+    });
+});
+
+@Component({
+    template: `
+        <app-ficha-detalle>
+            <app-ficha-cabecera [tipo]="tipo" [nombre]="nombre" [subtitulo]="subtitulo" [manual]="manual" [oficial]="oficial"
+                [etiquetas]="etiquetas" (abrirManual)="manualesAbiertos = manualesAbiertos + 1">
+            </app-ficha-cabecera>
+            <app-ficha-datos [datos]="datos" titulo="Datos de prueba"></app-ficha-datos>
+            <app-ficha-cuerpo>
+                <app-ficha-seccion titulo="Beneficio" [texto]="beneficio"></app-ficha-seccion>
+                <app-ficha-seccion titulo="Normal" [texto]="normal"></app-ficha-seccion>
+                <app-ficha-lateral titulo="Prerrequisitos" *ngIf="conLateral">
+                    <app-ficha-prerrequisitos [grupos]="grupos" [esNavegable]="esNavegable" textoVacio="Sin prerrequisitos."
+                        (abrir)="abiertas.push($event)">
+                    </app-ficha-prerrequisitos>
+                </app-ficha-lateral>
+            </app-ficha-cuerpo>
+            <app-ficha-bloque titulo="Progresión" *ngIf="conBloque">
+                <table class="ficha-tabla"><tbody><tr><td>1.º</td></tr></tbody></table>
+            </app-ficha-bloque>
+        </app-ficha-detalle>`,
+    standalone: false,
+})
+class FichaPruebaComponent {
+    tipo = 'Dote · General';
+    nombre = 'Ataque poderoso';
+    subtitulo: string | null = 'Puedes atacar con más fuerza.';
+    manual: ManualReferencia | string | null = { Id: 1, Nombre: 'Manual del jugador 1', Pagina: 92 };
+    oficial: boolean | null = true;
+    etiquetas: string[] = [];
+    manualesAbiertos = 0;
+    datos: DatoFicha[] = [
+        { etiqueta: 'Alcance', valor: 'Corto' },
+        { etiqueta: 'Duración', valor: null },
+        { etiqueta: 'Resistencia a conjuros', valor: true },
+        { etiqueta: 'Objetivo', valor: 'Un arma o 50 proyectiles, todos los cuales deben estar en contacto' },
+    ];
+    beneficio: string | null = 'Restas al ataque y sumas al daño.';
+    normal: string | null = null;
+    conLateral = true;
+    conBloque = false;
+    grupos: GrupoPrerrequisitos[] = [];
+    abiertas: CondicionPrerrequisito[] = [];
+    esNavegable = (condicion: CondicionPrerrequisito) => condicion.clave === 'competencia_arma';
+}
+
+describe('Ficha de detalle: componentes', () => {
+    let fixture: ComponentFixture<FichaPruebaComponent>;
+    let host: FichaPruebaComponent;
+    const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
+    const texto = (): string => `${elemento().textContent ?? ''}`;
+
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            declarations: [FichaPruebaComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
+            schemas: [NO_ERRORS_SCHEMA],
+        }).compileComponents();
+        fixture = TestBed.createComponent(FichaPruebaComponent);
+        host = fixture.componentInstance;
+        fixture.detectChanges();
+    });
+
+    it('la cabecera enseña tipo, nombre, cursiva, manual con página y Oficial', () => {
+        const cabecera = elemento().querySelector('.ficha-cabecera') as HTMLElement;
+        expect(cabecera.querySelector('.ficha-cabecera__tipo')?.textContent?.trim()).toBe('Dote · General');
+        expect(cabecera.querySelector('h1')?.textContent?.trim()).toBe('Ataque poderoso');
+        expect(cabecera.querySelector('.ficha-cabecera__subtitulo')?.textContent).toContain('Puedes atacar con más fuerza.');
+        expect(cabecera.querySelector('.ficha-cabecera__manual')?.textContent).toContain('Manual del jugador 1 · pág. 92');
+        expect(Array.from(cabecera.querySelectorAll('.ficha-etiqueta')).map(e => e.textContent?.trim())).toEqual(['Oficial']);
+    });
+
+    it('la cabecera oculta lo que no viene y marca el homebrew', () => {
+        host.subtitulo = null;
+        host.manual = { Id: 0, Nombre: '', Pagina: 0 };
+        host.oficial = false;
+        host.etiquetas = ['Alma'];
+        fixture.detectChanges();
+        const cabecera = elemento().querySelector('.ficha-cabecera') as HTMLElement;
+        expect(cabecera.querySelector('.ficha-cabecera__subtitulo')).toBeNull();
+        expect(cabecera.querySelector('.ficha-cabecera__manual')).toBeNull();
+        const etiquetas = Array.from(cabecera.querySelectorAll('.ficha-etiqueta'));
+        expect(etiquetas.map(e => e.textContent?.trim())).toEqual(['Alma', 'Homebrew']);
+        expect(etiquetas[1].classList).toContain('ficha-etiqueta--aviso');
+    });
+
+    it('un manual en texto (con su página dentro) sale tal cual, sin página aparte', () => {
+        host.manual = 'Compendio de conjuros, página: 79';
+        fixture.detectChanges();
+        const manual = elemento().querySelector('.ficha-cabecera__manual') as HTMLElement;
+        expect(manual.textContent).toContain('Compendio de conjuros, página: 79');
+        expect(manual.textContent).not.toContain('pág.');
+    });
+
+    it('pulsar el manual emite abrirManual', () => {
+        (elemento().querySelector('button.ficha-cabecera__manual') as HTMLButtonElement).click();
+        expect(host.manualesAbiertos).toBe(1);
+    });
+
+    it('la rejilla de datos enseña los pares visibles, los booleanos como Sí y los largos a dos columnas', () => {
+        const datos = Array.from(elemento().querySelectorAll('.ficha-dato')) as HTMLElement[];
+        expect(datos.map(d => d.querySelector('dt')?.textContent?.trim())).toEqual(['Alcance', 'Resistencia a conjuros', 'Objetivo']);
+        expect(datos[1].querySelector('dd')?.textContent?.trim()).toBe('Sí');
+        expect(datos[2].style.gridColumn).toContain('span 2');
+        expect(texto()).not.toContain('Duración');
+        expect(elemento().querySelector('.ficha-datos-contenedor')?.getAttribute('aria-label')).toBe('Datos de prueba');
+    });
+
+    it('sin datos visibles, la rejilla no se pinta', () => {
+        host.datos = [{ etiqueta: 'Duración', valor: null }, { etiqueta: 'Área', valor: 'No especifica' }];
+        fixture.detectChanges();
+        expect(elemento().querySelector('.ficha-datos-contenedor')).toBeNull();
+    });
+
+    it('un dato con alPulsar es un enlace', () => {
+        let pulsado = false;
+        host.datos = [{ etiqueta: 'Manual', valor: 'Manual del jugador 1', alPulsar: () => pulsado = true }];
+        fixture.detectChanges();
+        (elemento().querySelector('.ficha-dato button.ficha-enlace') as HTMLButtonElement).click();
+        expect(pulsado).toBeTrue();
+    });
+
+    it('las secciones con texto null no se ven', () => {
+        const titulos = Array.from(elemento().querySelectorAll('.ficha-principal .ficha-titulo')).map(t => t.textContent?.trim());
+        expect(titulos).toEqual(['Beneficio']);
+        expect(texto()).toContain('Restas al ataque y sumas al daño.');
+        expect(texto()).not.toContain('Normal');
+    });
+
+    it('sin secciones visibles se oculta la tarjeta de texto; sin laterales, el texto va a todo lo ancho', () => {
+        const cuerpo = elemento().querySelector('.ficha-cuerpo') as HTMLElement;
+        expect(cuerpo.classList).not.toContain('ficha-cuerpo--sin-lateral');
+
+        host.conLateral = false;
+        fixture.detectChanges();
+        expect(cuerpo.classList).toContain('ficha-cuerpo--sin-lateral');
+
+        host.beneficio = null;
+        fixture.detectChanges();
+        expect((elemento().querySelector('.ficha-principal') as HTMLElement).classList).toContain('ficha-oculta');
+        expect(getComputedStyle(elemento().querySelector('.ficha-principal') as HTMLElement).display).toBe('none');
+    });
+
+    it('las laterales van a la columna derecha y siempre a la vista', () => {
+        const lateral = elemento().querySelector('.ficha-columna-lateral .ficha-lateral-tarjeta') as HTMLElement;
+        expect(lateral.querySelector('.ficha-titulo')?.textContent?.trim()).toBe('Prerrequisitos');
+        expect(lateral.textContent).toContain('Sin prerrequisitos.');
+        expect(elemento().querySelector('mat-expansion-panel')).toBeNull();
+    });
+
+    it('los prerrequisitos enseñan la frase de la API y las condiciones navegables son enlaces', () => {
+        const arma: CondicionPrerrequisito = { clave: 'competencia_arma', item: { Id_arma: 7, Opcional: 0 } as any, frase: 'Competencia con espada larga' };
+        const fuerza: CondicionPrerrequisito = { clave: 'caracteristica', item: { Opcional: 0 } as any, frase: 'Fuerza 13' };
+        host.grupos = [{ titulo: 'Obligatorios', descripcion: 'Se deben cumplir todos', opcional: false, condiciones: [fuerza, arma] }];
+        fixture.detectChanges();
+
+        const lateral = elemento().querySelector('.ficha-lateral-tarjeta') as HTMLElement;
+        expect(lateral.textContent).toContain('Fuerza 13');
+        expect(lateral.textContent).not.toContain('Sin prerrequisitos.');
+        // Con solo obligatorios no hace falta el título del grupo.
+        expect(lateral.querySelector('.ficha-subtitulo')).toBeNull();
+        const enlaces = Array.from(lateral.querySelectorAll('button.ficha-enlace')) as HTMLButtonElement[];
+        expect(enlaces.map(e => e.textContent?.trim())).toEqual(['Competencia con espada larga']);
+        enlaces[0].click();
+        expect(host.abiertas).toEqual([arma]);
+    });
+
+    it('con elecciones, cada grupo lleva su título y su explicación', () => {
+        const a: CondicionPrerrequisito = { clave: 'caracteristica', item: { Opcional: 1 } as any, frase: 'Fuerza 13' };
+        const b: CondicionPrerrequisito = { clave: 'caracteristica', item: { Opcional: 1 } as any, frase: 'Destreza 13' };
+        host.grupos = [{ titulo: 'Elección A', descripcion: 'Basta con una de estas opciones', opcional: true, condiciones: [a, b] }];
+        fixture.detectChanges();
+        const subtitulo = elemento().querySelector('.ficha-subtitulo') as HTMLElement;
+        expect(subtitulo.textContent).toContain('Elección A');
+        expect(subtitulo.textContent).toContain('Basta con una de estas opciones');
+    });
+
+    it('el bloque a todo lo ancho va fuera del cuerpo', () => {
+        host.conBloque = true;
+        fixture.detectChanges();
+        const bloque = elemento().querySelector('.ficha-bloque') as HTMLElement;
+        expect(bloque.closest('.ficha-cuerpo')).toBeNull();
+        expect(bloque.querySelector('.ficha-titulo')?.textContent?.trim()).toBe('Progresión');
+        expect(bloque.querySelector('table.ficha-tabla')).not.toBeNull();
+    });
+});

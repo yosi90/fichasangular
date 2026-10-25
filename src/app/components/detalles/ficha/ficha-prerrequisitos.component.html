@@ -1,0 +1,19 @@
+<ng-container *ngIf="gruposVisibles.length > 0; else vacio">
+    <div class="ficha-grupo" *ngFor="let grupo of gruposVisibles">
+        <h3 class="ficha-subtitulo" *ngIf="conTitulos">
+            {{grupo.titulo}}
+            <span class="ficha-subtitulo__ayuda">{{grupo.descripcion}}</span>
+        </h3>
+        <ul class="ficha-lista">
+            <li class="ficha-lista__item" *ngFor="let condicion of grupo.condiciones">
+                <mat-icon class="ficha-icono" aria-hidden="true">{{grupo.opcional ? 'radio_button_unchecked' : 'check'}}</mat-icon>
+                <button type="button" class="ficha-enlace" *ngIf="esNavegable(condicion); else frase" (click)="abrir.emit(condicion)">{{condicion.frase}}</button>
+                <ng-template #frase><span>{{condicion.frase}}</span></ng-template>
+            </li>
+        </ul>
+    </div>
+</ng-container>
+<ng-template #vacio>
+    <p class="ficha-nota" *ngIf="textoVacio">{{textoVacio}}</p>
+</ng-template>
+<ng-content></ng-content>

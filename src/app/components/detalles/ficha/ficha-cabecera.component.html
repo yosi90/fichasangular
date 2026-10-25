@@ -1,0 +1,29 @@
+<header class="ficha-cabecera">
+    <div class="ficha-cabecera__identidad">
+        <span class="ficha-cabecera__tipo" *ngIf="tipo">{{tipo}}</span>
+        <h1 class="ficha-cabecera__nombre">{{nombre}}</h1>
+        <app-texto-manual class="ficha-cabecera__subtitulo" *ngIf="subtituloVisible" [texto]="subtitulo"></app-texto-manual>
+    </div>
+    <div class="ficha-cabecera__referencias">
+        <ng-container *ngIf="nombreManual">
+            <button type="button" class="ficha-cabecera__manual ficha-enlace" *ngIf="manualNavegable; else manualTexto"
+                matTooltip="Ver el manual" matTooltipClass="tt-accent" [matTooltipShowDelay]="250" (click)="abrirManual.emit()">
+                <mat-icon class="ficha-icono" aria-hidden="true">auto_stories</mat-icon>
+                <span>{{nombreManual}}<ng-container *ngIf="paginaManual"> · pág. {{paginaManual}}</ng-container></span>
+            </button>
+            <ng-template #manualTexto>
+                <span class="ficha-cabecera__manual">
+                    <mat-icon class="ficha-icono" aria-hidden="true">auto_stories</mat-icon>
+                    <span>{{nombreManual}}<ng-container *ngIf="paginaManual"> · pág. {{paginaManual}}</ng-container></span>
+                </span>
+            </ng-template>
+        </ng-container>
+        <div class="ficha-etiquetas" *ngIf="etiquetasCabecera.length > 0">
+            <span class="ficha-etiqueta" *ngFor="let etiqueta of etiquetasCabecera" [class.ficha-etiqueta--aviso]="etiqueta.aviso"
+                [matTooltip]="etiqueta.ayuda ?? ''" [matTooltipDisabled]="!etiqueta.ayuda" matTooltipClass="tt-accent">
+                {{etiqueta.texto}}
+            </span>
+        </div>
+        <ng-content></ng-content>
+    </div>
+</header>

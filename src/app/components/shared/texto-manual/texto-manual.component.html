@@ -2,12 +2,12 @@
     <ng-container *ngFor="let t of trozos"><strong *ngIf="t.negrita">{{t.texto}}</strong><em *ngIf="t.cursiva">{{t.texto}}</em><ng-container *ngIf="!t.negrita && !t.cursiva">{{t.texto}}</ng-container></ng-container>
 </ng-template>
 <ng-container *ngFor="let bloque of bloques">
-    <p class="tw-m-1" *ngIf="bloque.tipo === 'parrafo'"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: bloque.trozos}"></ng-container></p>
-    <ul class="texto-manual-lista tw-m-1" *ngIf="bloque.tipo === 'lista'">
+    <p class="texto-manual-bloque" *ngIf="bloque.tipo === 'parrafo'"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: bloque.trozos}"></ng-container></p>
+    <ul class="texto-manual-bloque texto-manual-lista" *ngIf="bloque.tipo === 'lista'">
         <li *ngFor="let elemento of bloque.elementos"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: elemento}"></ng-container></li>
     </ul>
-    <h3 class="texto-manual-titulo tw-m-1" *ngIf="bloque.tipo === 'titulo'"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: bloque.trozos}"></ng-container></h3>
-    <div class="texto-manual-tabla tw-m-1" *ngIf="bloque.tipo === 'tabla'">
+    <h3 class="texto-manual-bloque texto-manual-titulo" *ngIf="bloque.tipo === 'titulo'"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: bloque.trozos}"></ng-container></h3>
+    <div class="texto-manual-bloque texto-manual-tabla" *ngIf="bloque.tipo === 'tabla'">
         <table>
             <thead *ngIf="bloque.cabecera.length">
                 <tr><th *ngFor="let celda of bloque.cabecera"><ng-container *ngTemplateOutlet="enLinea; context: {$implicit: celda}"></ng-container></th></tr>
