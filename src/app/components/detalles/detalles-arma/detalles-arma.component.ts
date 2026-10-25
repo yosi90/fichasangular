@@ -3,7 +3,7 @@ import { ArmaDetalle, ArmaPropiedad } from 'src/app/interfaces/arma';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { textoConSigno, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-arma',
@@ -69,10 +69,6 @@ export class DetallesArmaComponent {
     }
 
     readonly tieneTextoVisible = tieneTextoVisible;
+    readonly tieneNumeroVisible = tieneNumeroVisible;
     readonly textoConSigno = textoConSigno;
-
-    tieneNumeroVisible(valor: unknown): boolean {
-        const numero = Number(valor);
-        return valor !== null && valor !== undefined && Number.isFinite(numero) && numero > 0;
-    }
 }

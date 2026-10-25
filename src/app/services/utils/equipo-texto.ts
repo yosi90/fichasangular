@@ -25,7 +25,7 @@ export function textoPeso(lb: number | null | undefined): string {
 export function textoDestrezaMaxima(bonDes: number | null | undefined): string {
     if (bonDes === null || bonDes === undefined)
         return 'Sin límite';
-    return `${bonDes >= 0 ? '+' : ''}${bonDes}`;
+    return textoConSigno(bonDes);
 }
 
 /** Un bonificador con signo («+2», «-1», «+0»). */

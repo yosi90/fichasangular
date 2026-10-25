@@ -1,4 +1,4 @@
-import { EquipoRef, TextoEquipo } from './equipo';
+import { EquipoPropiedadArma, EquipoRef, TextoEquipo } from './equipo';
 import { ManualReferencia } from './manual';
 
 /** Las aptitudes de un arma o armadura específica del catálogo (sin `Tipo`, retirado: ver `Aplica_a` en `/encantamientos`). */
@@ -11,8 +11,7 @@ export interface EncantamientoDeCatalogoRef {
 }
 
 /** Derribo, desarmar (con su bonificador en `Valor`), apuntalar, arma especial de monje, sutileza… */
-export interface ArmaPropiedad extends EquipoRef {
-    Descripcion: string;
+export interface ArmaPropiedad extends EquipoPropiedadArma {
     Valor: number | null;
 }
 

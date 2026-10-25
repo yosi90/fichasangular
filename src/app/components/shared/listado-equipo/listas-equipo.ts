@@ -29,7 +29,11 @@ export function etiquetaEntradaEquipo(entrada: EntradaEquipo): string {
     return `${entrada.item.Nombre} (${ETIQUETA_TIPO[entrada.tipo]})`;
 }
 
-/** La clave estable de la pestaña de su detalle: «equipo:objeto:40». */
+/** La clave estable de la pestaña del detalle de una entrada por su tipo y su id: «equipo:objeto:40». */
+export function claveEquipo(tipo: TipoCatalogoEquipo, id: number): string {
+    return `equipo:${tipo}:${Number(id ?? 0)}`;
+}
+
 export function claveEntradaEquipo(entrada: EntradaEquipo): string {
-    return `equipo:${entrada.tipo}:${Number(entrada.item.Id ?? 0)}`;
+    return claveEquipo(entrada.tipo, entrada.item.Id);
 }

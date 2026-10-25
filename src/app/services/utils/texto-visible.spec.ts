@@ -1,4 +1,4 @@
-import { idiomasVisibles, nombreDoteConExtra, tieneTextoVisible } from './texto-visible';
+import { idiomasVisibles, nombreDoteConExtra, tieneNumeroVisible, tieneTextoVisible } from './texto-visible';
 import { extraerValorSimple, formatearValor } from './formato-registros';
 
 describe('tieneTextoVisible', () => {
@@ -63,5 +63,14 @@ describe('formato de prerrequisitos', () => {
 
     it('extrae el valor principal de un registro', () => {
         expect(extraerValorSimple({ Nombre: 'No aplica', Valor: 'Escudo' })).toBe('Escudo');
+    });
+});
+
+describe('tieneNumeroVisible', () => {
+    it('enseña los números mayores que 0 y oculta lo que falta, el 0, los negativos y lo que no es un número', () => {
+        for (const valor of [1, 0.5, '20'])
+            expect(tieneNumeroVisible(valor)).withContext(`${valor}`).toBeTrue();
+        for (const valor of [null, undefined, '', 0, -1, 'abc'])
+            expect(tieneNumeroVisible(valor)).withContext(`${valor}`).toBeFalse();
     });
 });

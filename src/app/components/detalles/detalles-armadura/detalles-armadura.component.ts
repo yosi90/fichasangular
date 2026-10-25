@@ -3,7 +3,7 @@ import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { textoConSigno, textoDestrezaMaxima, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-armadura',
@@ -60,12 +60,8 @@ export class DetallesArmaduraComponent {
     }
 
     readonly tieneTextoVisible = tieneTextoVisible;
+    readonly tieneNumeroVisible = tieneNumeroVisible;
     readonly textoConSigno = textoConSigno;
-
-    tieneNumeroVisible(valor: unknown): boolean {
-        const numero = Number(valor);
-        return valor !== null && valor !== undefined && Number.isFinite(numero) && numero > 0;
-    }
 
     tieneNumeroNoCero(valor: unknown): boolean {
         const numero = Number(valor);

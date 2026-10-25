@@ -54,7 +54,7 @@ import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { EntradaEquipo, TipoCatalogoEquipo } from 'src/app/interfaces/equipo';
 import { EquipoService } from 'src/app/services/equipo.service';
-import { claveEntradaEquipo, etiquetaEntradaEquipo, tipoDeListaEquipo } from '../../shared/listado-equipo/listas-equipo';
+import { claveEntradaEquipo, claveEquipo, etiquetaEntradaEquipo, tipoDeListaEquipo } from '../../shared/listado-equipo/listas-equipo';
 
 interface ListadoTabAbierto {
     key: string;
@@ -2003,7 +2003,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (!referencia?.tipo || !Number.isFinite(id) || id <= 0)
             return;
 
-        const targetKey = `equipo:${referencia.tipo}:${id}`;
+        const targetKey = claveEquipo(referencia.tipo, id);
         if (this.detallesEquipoAbiertos.some((abierta) => claveEntradaEquipo(abierta) === targetKey)) {
             this.selectTabByKey(targetKey);
             return;
