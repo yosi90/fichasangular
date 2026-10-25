@@ -32,7 +32,7 @@ export function buildManiobrabilidadInfoSecciones(
             items: [
                 `Velocidad de avance: ${valorCatalogoTexto(maniobrabilidad, 'Velocidad_avance')}.`,
                 `Flotar: ${formatearBooleanoCatalogo(maniobrabilidad.Flotar)}.`,
-                `Volar atras: ${formatearBooleanoCatalogo(maniobrabilidad.Volar_atras)}.`,
+                `Volar atrás: ${formatearBooleanoCatalogo(maniobrabilidad.Volar_atras)}.`,
                 `Contramarcha: ${formatearContramarcha(maniobrabilidad.Contramarcha)}.`,
                 `Giro: ${valorCatalogoTexto(maniobrabilidad, 'Giro')}.`,
                 `Rotacion: ${valorCatalogoTexto(maniobrabilidad, 'Rotacion')}.`,
@@ -64,15 +64,15 @@ export function tieneManiobrabilidadVisible(maniobrabilidad: ManiobrabilidadLike
 
 function formatearBooleanoCatalogo(value: any): string {
     if (value === true)
-        return 'Si';
+        return 'Sí';
     if (value === false)
         return 'No';
     const numero = Number(value);
     if (Number.isFinite(numero))
-        return numero > 0 ? 'Si' : 'No';
+        return numero > 0 ? 'Sí' : 'No';
     const normalizado = normalizarTexto(value, true);
     if (['si', 'true', '1'].includes(normalizado))
-        return 'Si';
+        return 'Sí';
     if (['no', 'false', '0'].includes(normalizado))
         return 'No';
     return texto(value) || 'No especifica';

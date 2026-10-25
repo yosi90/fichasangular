@@ -129,7 +129,7 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
             return '';
 
         if (typeof value === 'boolean')
-            return value ? 'Si' : 'No';
+            return value ? 'Sí' : 'No';
 
         if (Array.isArray(value)) {
             if (value.length === 0)

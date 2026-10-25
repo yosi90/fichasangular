@@ -942,7 +942,7 @@ describe('DetallesPersonajeComponent', () => {
         expect(component.mostrarInfoManiobrabilidad).toBeTrue();
         expect(component.getManiobrabilidadNombre()).toBe('Perfecta');
         expect(texto).toContain('Perfecta');
-        expect(texto).toContain('Flotar: Si.');
+        expect(texto).toContain('Flotar: Sí.');
     });
 
     it('calcula iniciativa como ModDestreza + bonos varios', () => {

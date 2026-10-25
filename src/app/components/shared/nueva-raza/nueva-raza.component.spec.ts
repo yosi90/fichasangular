@@ -781,7 +781,7 @@ describe('NuevaRazaComponent', () => {
 
         expect(texto).toContain('Media');
         expect(texto).toContain('Velocidad de avance: La mitad.');
-        expect(texto).toContain('Volar atras: Si.');
+        expect(texto).toContain('Volar atrás: Sí.');
         expect(texto).toContain('Giro maximo: 90 grados.');
     });
 

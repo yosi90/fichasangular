@@ -57,7 +57,7 @@ describe('idiomasVisibles', () => {
 
 describe('formato de prerrequisitos', () => {
     it('formatea objetos y listas sin los ids', () => {
-        expect(formatearValor({ Id_dote: 3, Dote: 'Soltura', es_opcional: true })).toBe('Dote: Soltura | Es opcional: Si');
+        expect(formatearValor({ Id_dote: 3, Dote: 'Soltura', es_opcional: true })).toBe('Dote: Soltura | Es opcional: Sí');
         expect(formatearValor([1, null, 'dos'])).toBe('1, dos');
     });
 

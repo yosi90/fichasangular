@@ -27,7 +27,7 @@ export function formatearValor(valor: unknown): string {
     if (valor === null || valor === undefined)
         return '';
     if (typeof valor === 'boolean')
-        return valor ? 'Si' : 'No';
+        return valor ? 'Sí' : 'No';
     if (typeof valor === 'number' || typeof valor === 'string')
         return `${valor}`;
     if (Array.isArray(valor))
@@ -49,7 +49,7 @@ export function extraerValorSimple(valor: unknown): string {
     if (typeof valor === 'string' || typeof valor === 'number')
         return `${valor}`.trim();
     if (typeof valor === 'boolean')
-        return valor ? 'Si' : 'No';
+        return valor ? 'Sí' : 'No';
     if (Array.isArray(valor))
         return valor.map(v => extraerValorSimple(v)).filter(v => tieneTextoVisible(v)).join(', ');
     if (typeof valor === 'object') {

@@ -5593,7 +5593,7 @@ export class NuevoPersonajeComponent {
     }
 
     getDisipableVisible(item: VentajaDetalle): string {
-        return item.Disipable ? 'Si' : '';
+        return item.Disipable ? 'Sí' : '';
     }
 
     private cargarRazasCatalogo(): void {

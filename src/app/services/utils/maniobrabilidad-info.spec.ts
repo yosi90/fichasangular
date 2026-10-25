@@ -20,8 +20,8 @@ describe('maniobrabilidad-info', () => {
         });
         expect(seccion.items).toContain('Contramarcha: Libre.');
         expect(seccion.items).toContain("Descenso y ascenso: 0'.");
-        expect(seccion.items).toContain('Flotar: Si.');
-        expect(seccion.items).toContain('Volar atras: Si.');
+        expect(seccion.items).toContain('Flotar: Sí.');
+        expect(seccion.items).toContain('Volar atrás: Sí.');
     });
 
     it('la buena cuesta 5 pies y la mala no puede', () => {
