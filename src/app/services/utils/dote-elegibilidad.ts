@@ -4,10 +4,10 @@ import {
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
 import { getAlineamientoBasicoIdPorNombre } from './alineamiento-contrato';
-import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraDotePedida } from './prerrequisitos-evaluacion';
+import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido } from './prerrequisitos-evaluacion';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
@@ -116,16 +116,6 @@ function parseNumber(entry: Record<string, any>, keys: string[]): number {
     return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
-function parseIdOpcional(entry: Record<string, any>, keys: string[]): number {
-    const raw = pick(entry, keys);
-    if (raw === undefined || raw === null)
-        return Number.NaN;
-    const text = `${raw}`.trim();
-    if (text.length < 1)
-        return Number.NaN;
-    return toInt(raw);
-}
-
 function parseText(entry: Record<string, any>, keys: string[]): string {
     for (const key of keys) {
         const value = `${entry?.[key] ?? ''}`.trim();
@@ -137,19 +127,6 @@ function parseText(entry: Record<string, any>, keys: string[]): string {
 
 function normalizarClavePrerrequisito(key: string): string {
     return normalizarTexto(`${key ?? ''}`).replace(/\s+/g, '_');
-}
-
-function dedupeTextList(values: string[]): string[] {
-    const seen = new Set<string>();
-    const result: string[] = [];
-    values.forEach((value) => {
-        const norm = normalizarTexto(value);
-        if (norm.length < 1 || seen.has(norm))
-            return;
-        seen.add(norm);
-        result.push(value);
-    });
-    return result;
 }
 
 function getCaracteristicaById(
@@ -348,22 +325,12 @@ function buildEvaluacionClaseEspecial(entry: Record<string, any>, ctx: DoteEvalu
     const idEspecial = parseId(entry, ['Id_especial', 'id_especial', 'IdClaseEspecial', 'idClaseEspecial', 'Id', 'id', 'i']);
     const nombreEspecial = parseText(entry, ['Clase_especial', 'clase_especial', 'Especial', 'especial', 'Nombre', 'nombre']);
     const nombreNorm = normalizarTexto(nombreEspecial);
-    // Sin `Id_extra` (`null` desde el 2026-10-24, donde antes venía el extra 0 «Nada») o con 0, vale cualquier extra.
-    const idExtraReq = parseIdOpcional(entry, ['Id_extra', 'id_extra', 'IdExtra', 'idExtra', 'e']);
     const evaluable = idEspecial > 0 || nombreNorm.length > 0;
     const claseas = ctx.claseas ?? [];
     const cumple = claseas.some((especial) => {
         const coincide = (idEspecial > 0 && toNumber(especial.id) === idEspecial)
             || (nombreNorm.length > 0 && normalizarTexto(especial.nombre) === nombreNorm);
-        if (!coincide)
-            return false;
-        if (!Number.isFinite(idExtraReq))
-            return true;
-        if (idExtraReq === 0)
-            return true;
-        if (idExtraReq < 0)
-            return toNumber(especial.idExtra) <= 0;
-        return toNumber(especial.idExtra) === idExtraReq;
+        return coincide && cumpleExtraPedido(entry, especial);
     });
     return {
         grupoOpcional,
@@ -754,7 +721,7 @@ function buildEvaluacionDote(
     const coincidencias = ctx.dotes.filter((dote) => {
         const coincideDote = (idDoteReq > 0 && toNumber(dote.id) === idDoteReq)
             || (nombreNorm.length > 0 && normalizarTexto(dote.nombre) === nombreNorm);
-        return coincideDote && cumpleExtraDotePedida(entry, dote, seleccion);
+        return coincideDote && cumpleExtraPedido(entry, dote, seleccion);
     });
 
     return {
@@ -943,8 +910,8 @@ export function evaluarElegibilidadDote(input: DoteEvaluacionInput): DoteEvaluac
     });
 
     motivos.cerrarGrupos();
-    const failDedupe = dedupeTextList(motivos.fail);
-    const unknownDedupe = dedupeTextList(motivos.unknown);
+    const failDedupe = textosUnicos(motivos.fail);
+    const unknownDedupe = textosUnicos(motivos.unknown);
 
     if (unknownDedupe.length > 0) {
         return {

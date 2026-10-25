@@ -1,4 +1,4 @@
-import { normalizarTexto, toBoolean, toInt } from './normalizacion';
+import { normalizarTexto, textosUnicos, toBoolean, toInt } from './normalizacion';
 
 describe('toBoolean', () => {
     it('es sí con true, 1 y los textos de sí, sin distinguir mayúsculas ni espacios alrededor', () => {
@@ -38,5 +38,11 @@ describe('toInt', () => {
         expect(toInt(-2.5)).toBe(-2);
         expect(toInt('x', 7)).toBe(7);
         expect(toInt(Infinity)).toBe(0);
+    });
+});
+
+describe('textosUnicos', () => {
+    it('quita los vacíos y los repetidos sin mirar tildes ni mayúsculas, y conserva la primera forma', () => {
+        expect(textosUnicos(['Elfo', '', 'elfo ', 'Semiélfo', 'semielfo', '  '])).toEqual(['Elfo', 'Semiélfo']);
     });
 });

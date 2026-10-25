@@ -3,7 +3,7 @@ import {
     IdentidadPrerrequisitos,
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
-import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, textosUnicos, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoEvaluacionRacial = 'eligible' | 'blocked' | 'eligible_with_warning';
 
@@ -63,19 +63,6 @@ function parseOpcional(entry: Record<string, any>): { grupo: number; unknown: bo
         grupo: Math.max(0, Math.trunc(parsed)),
         unknown: false,
     };
-}
-
-function uniqueTexts(values: string[]): string[] {
-    const seen = new Set<string>();
-    const result: string[] = [];
-    values.forEach((value) => {
-        const normalized = normalizarTexto(value);
-        if (normalized.length < 1 || seen.has(normalized))
-            return;
-        seen.add(normalized);
-        result.push(value);
-    });
-    return result;
 }
 
 function parseId(entry: Record<string, any>, keys: string[]): number {
@@ -340,8 +327,8 @@ export function evaluarRacialParaSeleccion(
 
     resolverGruposOpcionales(gruposOpcionales, fail, warnings);
 
-    const razones = uniqueTexts(fail);
-    const advertencias = uniqueTexts(warnings);
+    const razones = textosUnicos(fail);
+    const advertencias = textosUnicos(warnings);
 
     if (razones.length > 0) {
         return {

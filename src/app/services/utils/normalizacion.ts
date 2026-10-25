@@ -67,3 +67,15 @@ export function normalizarTexto(value: unknown, juntarEspacios: boolean = false)
         .toLowerCase();
     return juntarEspacios ? texto.replace(/\s+/g, ' ') : texto;
 }
+
+/** Los textos sin vacíos ni repetidos, comparados con `normalizarTexto`; se queda la primera forma de cada uno. */
+export function textosUnicos(valores: string[]): string[] {
+    const vistos = new Set<string>();
+    return valores.filter((valor) => {
+        const clave = normalizarTexto(valor);
+        if (clave.length < 1 || vistos.has(clave))
+            return false;
+        vistos.add(clave);
+        return true;
+    });
+}

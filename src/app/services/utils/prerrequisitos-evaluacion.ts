@@ -68,30 +68,30 @@ export class MotivosPrerrequisitos {
 }
 
 /**
- * Si una dote del personaje vale por su extra como la dote pedida (`dote` de las dotes, `dote_elegida` de las clases).
- * El 0 de `Id_extra` lo explica `Extra_comodin`: `'elegir'`, el mismo extra que se elige para la dote que lo pide
- * (`seleccion`); `'cualquiera'`, con cualquier extra. Sin marca, -1 es sin extra, > 0 ese extra, y el 0 o la falta de
- * `Id_extra`, cualquiera (la dote pedida no admite extras).
+ * Si lo que tiene el personaje (una dote, un especial) vale por su extra como el prerrequisito que lo pide (`dote` de las
+ * dotes, `dote_elegida` de las clases, `clase_especial`). `Extra_comodin` manda: `'elegir'`, el mismo extra que se elige
+ * para la dote que lo pide (`seleccion`); `'cualquiera'`, con cualquier extra. Sin marca, -1 es sin extra, > 0 ese
+ * extra, y el 0 o la falta de `Id_extra`, cualquiera (lo pedido no admite extras).
  */
-export function cumpleExtraDotePedida(
-    pedida: PrerrequisitoItem,
-    dote: { idExtra: number | null; extra: string; },
+export function cumpleExtraPedido(
+    pedido: PrerrequisitoItem,
+    actual: { idExtra: number | null; extra: string; },
     seleccion: { idExtra: number; extra: string; } = { idExtra: 0, extra: '' },
 ): boolean {
-    const comodin = leerComodin(pedida?.['Extra_comodin']);
+    const comodin = leerComodin(pedido?.['Extra_comodin']);
     if (comodin === 'cualquiera')
         return true;
     if (comodin === 'elegir') {
         if (seleccion.idExtra > 0)
-            return toNumber(dote.idExtra) === seleccion.idExtra;
+            return toNumber(actual.idExtra) === seleccion.idExtra;
         const extraSeleccionado = normalizarTexto(seleccion.extra);
-        return extraSeleccionado.length < 1 || normalizarTexto(dote.extra) === extraSeleccionado;
+        return extraSeleccionado.length < 1 || normalizarTexto(actual.extra) === extraSeleccionado;
     }
 
-    const idExtra = toInt(pedida?.['Id_extra'], 0);
+    const idExtra = toInt(pedido?.['Id_extra'], 0);
     if (idExtra > 0)
-        return toNumber(dote.idExtra) === idExtra;
+        return toNumber(actual.idExtra) === idExtra;
     if (idExtra < 0)
-        return toNumber(dote.idExtra) <= 0;
+        return toNumber(actual.idExtra) <= 0;
     return true;
 }

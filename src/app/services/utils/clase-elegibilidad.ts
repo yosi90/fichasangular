@@ -3,7 +3,7 @@ import { IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from "./ident
 import { getAlineamientoBasicoIdPorNombre } from "./alineamiento-contrato";
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraDotePedida } from './prerrequisitos-evaluacion';
+import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido } from './prerrequisitos-evaluacion';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -327,7 +327,7 @@ function buildEvaluacionDote(entry: Record<string, any>, ctx: ClaseEvaluacionCon
     const coincidencias = ctx.dotes.filter((d) => {
         const coincideDote = (idDote > 0 && toNumber(d.id) === idDote)
             || (nombreNorm.length > 0 && normalizarTexto(d.nombre) === nombreNorm);
-        return coincideDote && cumpleExtraDotePedida(entry, d);
+        return coincideDote && cumpleExtraPedido(entry, d);
     });
     const evaluable = idDote > 0 || nombreNorm.length > 0;
     return {
@@ -505,22 +505,13 @@ function buildEvaluacionClaseEspecial(entry: Record<string, any>, ctx: ClaseEval
     const idEspecial = parseId(entry, ["Id_especial", "id_especial", "IdClaseEspecial", "idClaseEspecial", "Id", "id", "i"]);
     const nombreEspecial = parseNombre(entry, ["Clase_especial", "clase_especial", "Especial", "especial", "Nombre", "nombre"]);
     const nombreNorm = normalizarTexto(nombreEspecial);
-    // Sin `Id_extra` vale el especial con cualquier extra. Desde el 2026-10-24 la API da `null` donde antes daba el
-    // extra 0 «Nada» (que aquí era «el especial con el extra 0»): con los datos de hoy son especiales sin extras.
-    const idExtraReq = parseIdOpcional(entry, ["Id_extra", "id_extra", "IdExtra", "idExtra", "e"]);
     const claseasActuales = ctx.claseas ?? [];
     const evaluable = idEspecial > 0 || nombreNorm.length > 0;
 
     const cumple = claseasActuales.some((especial) => {
         const coincide = (idEspecial > 0 && toNumber(especial.id) === idEspecial)
             || (nombreNorm.length > 0 && normalizarTexto(especial.nombre) === nombreNorm);
-        if (!coincide)
-            return false;
-        if (!Number.isFinite(idExtraReq))
-            return true;
-        if (idExtraReq < 0)
-            return toNumber(especial.idExtra) <= 0;
-        return toNumber(especial.idExtra) === idExtraReq;
+        return coincide && cumpleExtraPedido(entry, especial);
     });
 
     return {

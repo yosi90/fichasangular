@@ -1,6 +1,6 @@
 import { PrerrequisitoItem, PrerrequisitoTipo } from 'src/app/interfaces/prerrequisito';
 import { formatearClave } from 'src/app/services/utils/formato-registros';
-import { normalizarTexto, toArray, toInt } from 'src/app/services/utils/normalizacion';
+import { textosUnicos, toArray, toInt } from 'src/app/services/utils/normalizacion';
 
 // Las frases de los prerrequisitos las escribe el backend, en un solo sitio, para la web y la app (fase 3 del roadmap de
 // duplicados, `docs/publica/FRASES_PRERREQUISITOS_FRONT.md`): aquí solo se leen, se agrupan y se nombran sus tipos.
@@ -38,15 +38,7 @@ export function grupoOpcionalPrerrequisito(item: PrerrequisitoItem | null | unde
 
 /** El motivo de «no cumple» de un prerrequisito, o de un grupo de alternativas: «No cumple: Fuerza 13 o Destreza 13». */
 export function razonNoCumple(frases: string[]): string {
-    const vistas = new Set<string>();
-    const unicas = frases.filter((frase) => {
-        const clave = normalizarTexto(frase);
-        if (clave.length < 1 || vistas.has(clave))
-            return false;
-        vistas.add(clave);
-        return true;
-    });
-    return `No cumple: ${unicas.join(' o ')}`;
+    return `No cumple: ${textosUnicos(frases).join(' o ')}`;
 }
 
 export interface CondicionPrerrequisito {
