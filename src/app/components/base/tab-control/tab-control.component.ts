@@ -52,6 +52,9 @@ import { NuevaEspecialComponent } from '../../shared/nueva-especial/nueva-especi
 import { NuevaClaseComponent } from '../../shared/nueva-clase/nueva-clase.component';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
+import { EntradaEquipo, TipoCatalogoEquipo } from 'src/app/interfaces/equipo';
+import { EquipoService } from 'src/app/services/equipo.service';
+import { claveEntradaEquipo, etiquetaEntradaEquipo, tipoDeListaEquipo } from '../../shared/listado-equipo/listas-equipo';
 
 interface ListadoTabAbierto {
     key: string;
@@ -121,6 +124,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public detallesMonstruoAbiertos: MonstruoDetalle[] = [];
     public detallesArmaAbiertos: ArmaDetalle[] = [];
     public detallesArmaduraAbiertos: ArmaduraDetalle[] = [];
+    /** Los detalles de objetos, materiales, munición, aptitudes especiales de armas y armaduras y conjuntos. */
+    public detallesEquipoAbiertos: EntradaEquipo[] = [];
     public detallesDeidadAbiertos: DeidadDetalle[] = [];
     public detallesIdiomaAbiertos: IdiomaDetalle[] = [];
     public listadoTabsAbiertos: ListadoTabAbierto[] = [];
@@ -162,6 +167,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private manualVistaNavSvc: ManualVistaNavigationService,
         private ngZone: NgZone,
         private userProfileNavSvc?: UserProfileNavigationService,
+        private equipoSvc?: EquipoService,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
@@ -364,6 +370,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         else if (this.detallesArmaduraAbiertos.map(a => this.getEtiquetaArmadura(a)).includes(tabLabel) && this.quitarDetallesArmadura(tabLabel))
             return;
+        else if (this.detallesEquipoAbiertos.map(e => this.getEtiquetaEquipo(e)).includes(tabLabel) && this.quitarDetallesEquipo(tabLabel))
+            return;
         else if (this.detallesDeidadAbiertos.map(d => this.getEtiquetaDeidad(d)).includes(tabLabel) && this.quitarDetallesDeidad(tabLabel))
             return;
         else if (this.detallesIdiomaAbiertos.map(i => this.getEtiquetaIdioma(i)).includes(tabLabel) && this.quitarDetallesIdioma(tabLabel))
@@ -410,6 +418,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         keys.push(...this.detallesMonstruoAbiertos.map((monstruo) => this.getMonstruoTabKey(monstruo)));
         keys.push(...this.detallesArmaAbiertos.map((arma) => this.getArmaTabKey(arma)));
         keys.push(...this.detallesArmaduraAbiertos.map((armadura) => this.getArmaduraTabKey(armadura)));
+        keys.push(...this.detallesEquipoAbiertos.map((entrada) => claveEntradaEquipo(entrada)));
         keys.push(...this.detallesDeidadAbiertos.map((deidad) => this.getDeidadTabKey(deidad)));
         keys.push(...this.detallesIdiomaAbiertos.map((idioma) => this.getIdiomaTabKey(idioma)));
         return keys;
@@ -619,6 +628,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.detallesMonstruoAbiertos = [];
         this.detallesArmaAbiertos = [];
         this.detallesArmaduraAbiertos = [];
+        this.detallesEquipoAbiertos = [];
         this.detallesDeidadAbiertos = [];
         this.detallesIdiomaAbiertos = [];
         this.listadoTabsAbiertos = [];
@@ -793,6 +803,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDetallesDeidad(value.item);
         } else if (value.tipo === 'idiomas') {
             this.abrirDetallesIdioma(value.item);
+        } else if (tipoDeListaEquipo(value.tipo)) {
+            this.abrirDetallesEquipo(value.item);
         }
     }
 
@@ -1035,6 +1047,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     getEtiquetaArmadura(armadura: ArmaduraDetalle): string {
         return `${armadura.Nombre} (${armadura.Es_escudo ? 'Escudo' : 'Armadura'})`;
+    }
+
+    getEtiquetaEquipo(entrada: EntradaEquipo): string {
+        return etiquetaEntradaEquipo(entrada);
     }
 
     getEtiquetaDeidad(deidad: DeidadDetalle): string {
@@ -1967,6 +1983,38 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
+    abrirDetallesEquipo(entrada: EntradaEquipo) {
+        if (!entrada?.item || Number(entrada.item.Id) <= 0)
+            return;
+
+        const targetKey = claveEntradaEquipo(entrada);
+        if (this.detallesEquipoAbiertos.some((abierta) => claveEntradaEquipo(abierta) === targetKey)) {
+            this.selectTabByKey(targetKey);
+            return;
+        }
+
+        this.detallesEquipoAbiertos.push(entrada);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
+    }
+
+    abrirDetallesEquipoPorId(referencia: { tipo: TipoCatalogoEquipo; id: number; }) {
+        const id = Number(referencia?.id);
+        if (!referencia?.tipo || !Number.isFinite(id) || id <= 0)
+            return;
+
+        const targetKey = `equipo:${referencia.tipo}:${id}`;
+        if (this.detallesEquipoAbiertos.some((abierta) => claveEntradaEquipo(abierta) === targetKey)) {
+            this.selectTabByKey(targetKey);
+            return;
+        }
+
+        this.equipoSvc?.getEntrada(referencia.tipo, id).pipe(take(1)).subscribe({
+            next: (entrada) => this.abrirDetallesEquipo(entrada),
+            error: () => undefined,
+        });
+    }
+
     abrirDetallesDeidad(deidad: DeidadDetalle) {
         if (!deidad || Number(deidad?.Id) <= 0)
             return;
@@ -2097,6 +2145,21 @@ export class TabControlComponent implements OnInit, OnDestroy {
             if (indexTab < 0)
                 return false;
             this.detallesArmaduraAbiertos.splice(indexTab, 1);
+            return true;
+        });
+    }
+
+    quitarDetallesEquipo(value: string | EntradaEquipo): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesEquipoAbiertos.find((entrada) => this.getEtiquetaEquipo(entrada) === value)
+            : this.detallesEquipoAbiertos.find((entrada) => claveEntradaEquipo(entrada) === claveEntradaEquipo(value));
+        if (!tab)
+            return false;
+        return this.closeTabWithNavigation(claveEntradaEquipo(tab), () => {
+            const indexTab = this.detallesEquipoAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesEquipoAbiertos.splice(indexTab, 1);
             return true;
         });
     }

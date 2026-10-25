@@ -1,0 +1,122 @@
+<div class="tw-w-full tw-px-3 detalle-view" *ngIf="entrada">
+    <div class="tw-flex tw-flex-wrap">
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
+                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
+                    {{entrada.item.Nombre}}
+                </mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="tieneManual" matTooltip="Pulsa para ver el manual"
+                    [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
+                    <mat-icon class="tw-me-2">auto_stories</mat-icon>
+                    {{manualLabel}}
+                </mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let dato of datos"
+                    [matTooltip]="dato.ayuda ?? ''" [matTooltipDisabled]="!dato.ayuda" matTooltipClass="tt-accent tt-multiline">
+                    {{dato.etiqueta}}
+                    <mat-chip class="sombra3d-sm tw-m-1">{{dato.valor}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let marca of marcas">{{marca}}</mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="objeto?.Conjunto as conjunto"
+                    matTooltip="Pulsa para ver el conjunto" matTooltipClass="tt-accent" (click)="abrirEquipo('conjunto', conjunto.Id)">
+                    Conjunto {{conjunto.Nombre}}
+                </mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="encantamiento?.Encantamiento_base as base"
+                    matTooltip="La aptitud que pide antes" matTooltipClass="tt-accent" (click)="abrirEquipo('encantamiento', base.Id)">
+                    Pide {{base.Nombre}}
+                </mat-chip>
+                <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="!entrada.item.Oficial" matTooltip="Es homebrew" matTooltipClass="tt-accent">
+                    No es oficial
+                </mat-chip>
+            </div>
+        </div>
+
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <app-descripcion-equipo [descripcion]="entrada.item.Descripcion" [origen]="entrada.item.Origen_descripcion"
+                [nombreOriginal]="entrada.item.Nombre_original" [traducido]="entrada.item.Traducido">
+            </app-descripcion-equipo>
+
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="modificadores.length > 0">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Modificadores</mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let modificador of modificadores"
+                    [class.chip-condicional]="!!modificador.Condicion">
+                    {{textoModificador(modificador)}}
+                </mat-chip>
+            </div>
+
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="danosEncantamiento.length > 0">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Daño que suma</mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let dano of danosEncantamiento">{{dano}}</mat-chip>
+            </div>
+
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="costesMaterial.length > 0">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Coste según a qué se aplica</mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let coste of costesMaterial">{{coste}}</mat-chip>
+            </div>
+
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="(municion?.Armas?.length ?? 0) > 0">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Armas que la disparan</mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let arma of municion?.Armas"
+                    matTooltip="Pulsa para ver el arma" matTooltipClass="tt-accent" (click)="abrirArma(arma.Id)">
+                    {{arma.Nombre}}
+                </mat-chip>
+            </div>
+
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="(conjunto?.Piezas?.length ?? 0) > 0">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Piezas</mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let pieza of conjunto?.Piezas"
+                    matTooltip="Pulsa para ver el objeto" matTooltipClass="tt-accent" (click)="abrirEquipo('objeto', pieza.Id)">
+                    {{pieza.Nombre}}
+                </mat-chip>
+            </div>
+
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="(conjunto?.Bonificaciones?.length ?? 0) > 0">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Bonificaciones del conjunto</mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let bonificacion of conjunto?.Bonificaciones">
+                    {{bonificacion.Piezas}} piezas: {{bonificacion.Descripcion}}
+                </mat-chip>
+            </div>
+
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="(objeto?.Conjuros?.length ?? 0) > 0">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Conjuros</mat-chip>
+                <mat-chip class="chip-clic tw-h-auto sombra3d-sm tw-m-1" *ngFor="let conjuro of objeto?.Conjuros"
+                    matTooltip="Pulsa para ver el conjuro" matTooltipClass="tt-accent" (click)="abrirConjuro(conjuro.Id)">
+                    {{conjuro.Nombre}}
+                    <mat-chip class="tw-m-1" *ngIf="conjuro.Nivel_lanzador !== null">NL {{conjuro.Nivel_lanzador}}</mat-chip>
+                    <mat-chip class="tw-m-1" *ngIf="conjuro.Cargas_por_uso !== null">{{conjuro.Cargas_por_uso}} cargas</mat-chip>
+                    <mat-chip class="tw-m-1" *ngIf="conjuro.Usos_por_dia !== null">{{conjuro.Usos_por_dia}}/día</mat-chip>
+                </mat-chip>
+            </div>
+        </div>
+
+        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneCreacion">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Creación</mat-chip>
+                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let dato of creacion">
+                    {{dato.etiqueta}}
+                    <mat-chip class="sombra3d-sm tw-m-1">{{dato.valor}}</mat-chip>
+                </mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let dote of objeto?.Creacion?.Requisitos?.Dotes"
+                    matTooltip="Pulsa para ver la dote" matTooltipClass="tt-accent" (click)="abrirDote(dote.Id)">
+                    {{dote.Nombre}}
+                </mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let conjuro of objeto?.Creacion?.Requisitos?.Conjuros"
+                    matTooltip="Pulsa para ver el conjuro" matTooltipClass="tt-accent" (click)="abrirConjuro(conjuro.Id)">
+                    {{conjuro.Nombre}}
+                </mat-chip>
+            </div>
+
+            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2"
+                *ngIf="(encantamiento?.Requisitos?.Dotes?.length ?? 0) + (encantamiento?.Requisitos?.Conjuros?.length ?? 0) > 0">
+                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Requisitos para crearla</mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let dote of encantamiento?.Requisitos?.Dotes"
+                    matTooltip="Pulsa para ver la dote" matTooltipClass="tt-accent" (click)="abrirDote(dote.Id)">
+                    {{dote.Nombre}}
+                </mat-chip>
+                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let conjuro of encantamiento?.Requisitos?.Conjuros"
+                    matTooltip="Pulsa para ver el conjuro" matTooltipClass="tt-accent" (click)="abrirConjuro(conjuro.Id)">
+                    {{conjuro.Nombre}}<ng-container *ngIf="conjuro.Opcional"> (o bien)</ng-container>
+                </mat-chip>
+            </div>
+        </div>
+    </div>
+</div>

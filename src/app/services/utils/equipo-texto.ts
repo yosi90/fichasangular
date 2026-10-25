@@ -67,3 +67,48 @@ export function categoriaArmadura(armadura: {
     }
     return `${armadura.Peso_armadura?.Nombre ?? ''}`.trim();
 }
+
+/**
+ * Un modificador estructurado en una línea: «Salvaciones +1 (resistencia)», «Habilidad Avistar +5 (competencia)»,
+ * con lo condicional al final («contra encantamientos»), que se enseña y no se suma.
+ */
+export function textoModificador(modificador: {
+    Objetivo: { Nombre: string } | null;
+    Tipo_bonificador: { Nombre: string } | null;
+    Valor: number;
+    Caracteristica: { Nombre: string } | null;
+    Habilidad: { Nombre: string } | null;
+    Tipo_dano: { Nombre: string } | null;
+    Condicion: string | null;
+}): string {
+    const objetivo = [modificador.Objetivo?.Nombre, modificador.Caracteristica?.Nombre, modificador.Habilidad?.Nombre, modificador.Tipo_dano?.Nombre]
+        .map((parte) => `${parte ?? ''}`.trim())
+        .filter((parte) => parte.length > 0)
+        .join(' ');
+    const tipo = `${modificador.Tipo_bonificador?.Nombre ?? ''}`.trim();
+    const condicion = `${modificador.Condicion ?? ''}`.trim();
+    return [
+        `${objetivo} ${textoConSigno(modificador.Valor)}`.trim(),
+        tipo.length > 0 ? `(${tipo.toLowerCase()})` : '',
+        condicion,
+    ].filter((parte) => parte.length > 0).join(' ');
+}
+
+/** A qué se puede poner una aptitud especial: «armas cuerpo a cuerpo, munición». */
+export function textoAplicaA(aplica: {
+    Arma_cuerpo_a_cuerpo: boolean;
+    Arma_a_distancia: boolean;
+    Municion: boolean;
+    Armadura: boolean;
+    Escudo: boolean;
+} | null | undefined): string {
+    if (!aplica)
+        return '';
+    return [
+        aplica.Arma_cuerpo_a_cuerpo ? 'armas cuerpo a cuerpo' : '',
+        aplica.Arma_a_distancia ? 'armas a distancia' : '',
+        aplica.Municion ? 'munición' : '',
+        aplica.Armadura ? 'armaduras' : '',
+        aplica.Escudo ? 'escudos' : '',
+    ].filter((parte) => parte.length > 0).join(', ');
+}

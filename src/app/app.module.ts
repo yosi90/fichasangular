@@ -114,6 +114,9 @@ import { DetallesArmaComponent } from './components/detalles/detalles-arma/detal
 import { DetallesArmaduraComponent } from './components/detalles/detalles-armadura/detalles-armadura.component';
 import { ListadoArmasComponent } from './components/shared/listado-armas/listado-armas.component';
 import { ListadoArmadurasComponent } from './components/shared/listado-armaduras/listado-armaduras.component';
+import { ListadoEquipoComponent } from './components/shared/listado-equipo/listado-equipo.component';
+import { ListadoObjetosComponent } from './components/shared/listado-objetos/listado-objetos.component';
+import { DetallesEquipoComponent } from './components/detalles/detalles-equipo/detalles-equipo.component';
 import { DetallesDeidadComponent } from './components/detalles/detalles-deidad/detalles-deidad.component';
 import { ListadoDeidadesComponent } from './components/shared/listado-deidades/listado-deidades.component';
 import { ListadoIdiomasComponent } from './components/shared/listado-idiomas/listado-idiomas.component';
@@ -206,6 +209,9 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         DetallesArmaduraComponent,
         ListadoArmasComponent,
         ListadoArmadurasComponent,
+        ListadoEquipoComponent,
+        ListadoObjetosComponent,
+        DetallesEquipoComponent,
         DetallesDeidadComponent,
         ListadoDeidadesComponent,
         ListadoIdiomasComponent,

@@ -289,15 +289,25 @@
                     (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
                     <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
                         <button mat-button color="primary"
+                            (click)="AbrirListado('aptitudes de armas y armaduras', 'detalles'); closeAcordion(); cerrarOtros();">Aptitudes de armas y armaduras</button>
+                        <button mat-button color="primary"
                             (click)="AbrirListado('armaduras', 'detalles'); closeAcordion(); cerrarOtros();">Armaduras</button>
                         <button mat-button color="primary"
                             (click)="AbrirListado('armas', 'detalles'); closeAcordion(); cerrarOtros();">Armas</button>
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('conjuntos de objetos', 'detalles'); closeAcordion(); cerrarOtros();">Conjuntos de objetos</button>
                         <button mat-button color="primary"
                             (click)="AbrirListado('deidades', 'detalles'); closeAcordion(); cerrarOtros();">Deidades</button>
                         <button mat-button color="primary"
                             (click)="AbrirListado('especiales', 'detalles'); closeAcordion(); cerrarOtros();">Especiales</button>
                         <button mat-button color="primary"
                             (click)="AbrirListado('idiomas', 'detalles'); closeAcordion(); cerrarOtros();">Idiomas</button>
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('materiales especiales', 'detalles'); closeAcordion(); cerrarOtros();">Materiales especiales</button>
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('munición', 'detalles'); closeAcordion(); cerrarOtros();">Munición</button>
+                        <button mat-button color="primary"
+                            (click)="AbrirListado('objetos', 'detalles'); closeAcordion(); cerrarOtros();">Objetos</button>
                         <button mat-button color="primary"
                             (click)="AbrirListado('raciales', 'detalles'); closeAcordion(); cerrarOtros();">Raciales</button>
                         <button mat-button color="primary"

@@ -365,7 +365,8 @@
             {{getEtiquetaArma(arma)}}
             <button (click)="quitarDetallesArma(arma)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-arma [arma]="detallesArmaAbiertos[index]"></app-detalles-arma>
+        <app-detalles-arma [arma]="detallesArmaAbiertos[index]"
+            (municionDetallesId)="abrirDetallesEquipoPorId({ tipo: 'municion', id: $event })"></app-detalles-arma>
     </mat-tab>
     <mat-tab *ngFor="let armadura of detallesArmaduraAbiertos; let index = index" [label]="getEtiquetaArmadura(armadura)">
         <ng-template mat-tab-label>
@@ -374,6 +375,20 @@
             <button (click)="quitarDetallesArmadura(armadura)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-armadura [armadura]="detallesArmaduraAbiertos[index]"></app-detalles-armadura>
+    </mat-tab>
+    <mat-tab *ngFor="let entrada of detallesEquipoAbiertos" [label]="getEtiquetaEquipo(entrada)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">backpack</mat-icon>
+            {{getEtiquetaEquipo(entrada)}}
+            <button (click)="quitarDetallesEquipo(entrada)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-equipo
+            [entrada]="entrada"
+            (equipoDetalles)="abrirDetallesEquipoPorId($event)"
+            (armaDetallesId)="abrirDetallesArmaPorId($event)"
+            (doteDetallesId)="abrirDetallesDotePorId($event)"
+            (conjuroDetallesId)="abrirDetallesConjuroPorId($event)">
+        </app-detalles-equipo>
     </mat-tab>
     <mat-tab *ngFor="let deidad of detallesDeidadAbiertos; let index = index" [label]="getEtiquetaDeidad(deidad)">
         <ng-template mat-tab-label>

@@ -27,6 +27,9 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         getDeidad: jasmine.createSpy('getDeidad').and.returnValue(of({ Id: 72, Nombre: 'Heironeous' })),
         getDeidades: jasmine.createSpy('getDeidades').and.returnValue(of([{ Id: 72, Nombre: 'Heironeous' }])),
     } as any;
+    const equipoSvc = {
+        getEntrada: jasmine.createSpy('getEntrada').and.callFake((tipo: string, id: number) => of({ tipo, item: { Id: id, Nombre: 'Flechas' } })),
+    } as any;
     const pSvc = overrides?.pSvc ?? {} as any;
     const manualRefNavSvc = { aperturas$: new Subject<any>() } as any;
     const manualVistaNavSvc = { aperturas$: new Subject<any>() } as any;
@@ -61,6 +64,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         manualVistaNavSvc,
         ngZone,
         userProfileNavSvc,
+        equipoSvc,
     );
 
     const buildTabs = () => {
@@ -98,6 +102,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         (component.detallesMonstruoAbiertos ?? []).forEach((monstruo: any) => tabs.push({ textLabel: component.getEtiquetaMonstruo(monstruo) }));
         (component.detallesArmaAbiertos ?? []).forEach((arma: any) => tabs.push({ textLabel: component.getEtiquetaArma(arma) }));
         (component.detallesArmaduraAbiertos ?? []).forEach((armadura: any) => tabs.push({ textLabel: component.getEtiquetaArmadura(armadura) }));
+        (component.detallesEquipoAbiertos ?? []).forEach((entrada: any) => tabs.push({ textLabel: component.getEtiquetaEquipo(entrada) }));
         (component.detallesDeidadAbiertos ?? []).forEach((deidad: any) => tabs.push({ textLabel: component.getEtiquetaDeidad(deidad) }));
         return tabs;
     };
@@ -108,6 +113,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     };
     (component as any).activeTabKey = 'base:personajes';
     (component as any).__monstruoSvc = monstruoSvc;
+    (component as any).__equipoSvc = equipoSvc;
     (component as any).__userSvc = userSvc;
     (component as any).__isLoggedIn$ = isLoggedIn$;
     (component as any).__permisos$ = permisos$;
@@ -345,6 +351,37 @@ describe('TabControlComponent navegación por origen', () => {
 
         expect(cerrado).toBeTrue();
         expect(component.edicionRacialesAbiertos.length).toBe(0);
+    });
+
+    it('abre el detalle de un objeto desde su listado y lo cierra volviendo al listado', fakeAsync(() => {
+        const component = crearComponente();
+        const objeto = { Id: 40, Nombre: 'Capa de resistencia +1' } as any;
+
+        component.abrirListadoTab('objetos', 'detalles');
+        tick(120);
+        component.recibirObjetoListado({ item: { tipo: 'objeto', item: objeto }, tipo: 'objetos' });
+        tick(120);
+
+        expect(component.detallesEquipoAbiertos.length).toBe(1);
+        expect((component as any).activeTabKey).toBe('equipo:objeto:40');
+        expect(component.getEtiquetaEquipo(component.detallesEquipoAbiertos[0])).toBe('Capa de resistencia +1 (Objeto)');
+
+        component.recibirObjetoListado({ item: { tipo: 'objeto', item: objeto }, tipo: 'objetos' });
+        expect(component.detallesEquipoAbiertos.length).toBe(1);
+
+        component.quitarDetallesEquipo(component.detallesEquipoAbiertos[0]);
+        tick(120);
+        expect(component.detallesEquipoAbiertos.length).toBe(0);
+        expect((component as any).activeTabKey).toBe('listado:detalles:objetos');
+    }));
+
+    it('abre la munición por id con su tipo', () => {
+        const component = crearComponente();
+
+        component.abrirDetallesEquipoPorId({ tipo: 'municion', id: 1 });
+
+        expect((component as any).__equipoSvc.getEntrada).toHaveBeenCalledWith('municion', 1);
+        expect(component.detallesEquipoAbiertos.map((e) => e.tipo)).toEqual(['municion']);
     });
 
     it('abre detalle de armadura por id', () => {

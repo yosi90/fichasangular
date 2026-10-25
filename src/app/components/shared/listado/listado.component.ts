@@ -31,6 +31,10 @@ import { ListadoDeidadesComponent } from '../listado-deidades/listado-deidades.c
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { ListadoIdiomasComponent } from '../listado-idiomas/listado-idiomas.component';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
+import { EntradaEquipo } from 'src/app/interfaces/equipo';
+import { ListadoEquipoComponent, TipoListadoEquipo } from '../listado-equipo/listado-equipo.component';
+import { ListadoObjetosComponent } from '../listado-objetos/listado-objetos.component';
+import { tipoDeListaEquipo } from '../listado-equipo/listas-equipo';
 
 @Component({
     selector: 'app-listado',
@@ -61,6 +65,11 @@ export class ListadoComponent {
         'armaduras': ListadoArmadurasComponent,
         'deidades': ListadoDeidadesComponent,
         'idiomas': ListadoIdiomasComponent,
+        'objetos': ListadoObjetosComponent,
+        'materiales especiales': ListadoEquipoComponent,
+        'munición': ListadoEquipoComponent,
+        'aptitudes de armas y armaduras': ListadoEquipoComponent,
+        'conjuntos de objetos': ListadoEquipoComponent,
     };
 
     constructor(private cdr: ChangeDetectorRef) { }
@@ -185,6 +194,15 @@ export class ListadoComponent {
                 this.handleItemDetalles(item);
             });
             componentRef.instance.deidadSeleccionada.subscribe((item: DeidadDetalle) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoEquipoComponent || componentRef.instance instanceof ListadoObjetosComponent) {
+            if (componentRef.instance instanceof ListadoEquipoComponent)
+                componentRef.setInput('tipo', tipoDeListaEquipo(this.tipoLista) as TipoListadoEquipo);
+            componentRef.instance.entradaDetalles.subscribe((item: EntradaEquipo) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.entradaSeleccionada.subscribe((item: EntradaEquipo) => {
                 this.handleItemSeleccionado(item);
             });
         } else if (componentRef.instance instanceof ListadoIdiomasComponent) {
