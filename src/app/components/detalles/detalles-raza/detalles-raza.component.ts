@@ -1,11 +1,13 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DatoFicha, unirTipo } from 'src/app/components/detalles/ficha';
+import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Raza, RazaHabilidadBase, RazaHabilidadCustom } from 'src/app/interfaces/raza';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
@@ -280,14 +282,7 @@ export class DetallesRazaComponent {
     /** Los modificadores de característica distintos de 0, con signo. */
     private construirModificadores(): ParRaza[] {
         const m = this.raza?.Modificadores;
-        return [
-            { nombre: 'Fuerza', valor: m?.Fuerza },
-            { nombre: 'Destreza', valor: m?.Destreza },
-            { nombre: 'Constitución', valor: m?.Constitucion },
-            { nombre: 'Inteligencia', valor: m?.Inteligencia },
-            { nombre: 'Sabiduría', valor: m?.Sabiduria },
-            { nombre: 'Carisma', valor: m?.Carisma },
-        ]
+        return CARACTERISTICAS.map((clave) => ({ nombre: NOMBRES_CARACTERISTICAS[clave], valor: m?.[clave] }))
             .filter((item) => this.tieneNumeroNoCero(item.valor))
             .map((item) => ({ nombre: item.nombre, valor: textoConSigno(Number(item.valor)) }));
     }

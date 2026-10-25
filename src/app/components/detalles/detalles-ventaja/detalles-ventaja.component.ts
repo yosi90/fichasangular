@@ -1,7 +1,9 @@
 import { Component, Input } from '@angular/core';
 import { DatoFicha } from 'src/app/components/detalles/ficha';
+import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { ReferenciaCorta, VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
@@ -40,12 +42,7 @@ export class DetallesVentajaComponent {
             { etiqueta: 'Habilidad', valor: this.referencia(value?.Habilidad) },
         ];
         this.afectaA = [
-            value?.Fuerza ? 'Fuerza' : '',
-            value?.Destreza ? 'Destreza' : '',
-            value?.Constitucion ? 'Constitución' : '',
-            value?.Inteligencia ? 'Inteligencia' : '',
-            value?.Sabiduria ? 'Sabiduría' : '',
-            value?.Carisma ? 'Carisma' : '',
+            ...CARACTERISTICAS.map((clave) => value?.[clave] ? NOMBRES_CARACTERISTICAS[clave] : ''),
             value?.Fortaleza ? 'Fortaleza' : '',
             value?.Reflejos ? 'Reflejos' : '',
             value?.Voluntad ? 'Voluntad' : '',

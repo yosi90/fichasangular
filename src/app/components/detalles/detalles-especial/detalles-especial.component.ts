@@ -3,13 +3,13 @@ import { DatoFicha } from 'src/app/components/detalles/ficha';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { EspecialClaseDetalle, EspecialExtraRef, EspecialHabilidadRef } from 'src/app/interfaces/especial';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 /** Cómo se enseñan las claves de `Bonificadores` que no se leen bien tal cual. */
 const NOMBRE_BONIFICADOR: Readonly<Record<string, string>> = {
-    Constitucion: 'Constitución',
-    Sabiduria: 'Sabiduría',
+    ...NOMBRES_CARACTERISTICAS,
     Armadura_natural: 'Armadura natural',
 };
 
