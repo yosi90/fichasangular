@@ -46,7 +46,7 @@
                         <mat-chip class="chip-homebrew" *ngIf="!articulo.oficial">Homebrew</mat-chip>
                         <span class="opcion-dato">{{articulo.categoria}}</span>
                         <span class="opcion-dato">
-                            <ng-container *ngIf="articulo.generico; else precioFijo">{{textoPrecio(articulo.generico.Precio_por_nivel)}} × nivel × NL</ng-container>
+                            <ng-container *ngIf="articulo.generico; else precioFijo">{{textoPrecioGenerico(articulo.generico)}}</ng-container>
                             <ng-template #precioFijo>{{textoPrecio(articulo.precio)}}<ng-container *ngIf="articulo.lote > 1"> ({{articulo.lote}})</ng-container></ng-template>
                         </span>
                         <button mat-icon-button type="button" color="accent" [disabled]="guardando" (click)="anadir(articulo)"

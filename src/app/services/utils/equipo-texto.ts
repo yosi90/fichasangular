@@ -16,6 +16,11 @@ export function textoPrecio(po: number | null | undefined): string {
     return po === null || po === undefined ? '—' : `${formatoNumero(po)} po`;
 }
 
+/** El precio de un genérico de un conjuro (poción, pergamino, varita…), que depende del conjuro: «50 po × nivel × NL». */
+export function textoPrecioGenerico(generico: { Precio_por_nivel: number }): string {
+    return `${textoPrecio(generico.Precio_por_nivel)} × nivel × NL`;
+}
+
 /** El peso en libras («½ lb» se enseña «0,5 lb»); «—» si no tiene. */
 export function textoPeso(lb: number | null | undefined): string {
     return lb === null || lb === undefined ? '—' : `${formatoNumero(lb)} lb`;
@@ -150,6 +155,11 @@ export function detallesPiezaEquipo(pieza: PersonajeEquipoPiezaDto): string[] {
     if (pieza.cargasRestantes !== null) detalles.push(`${pieza.cargasRestantes} cargas`);
     if (pieza.peso !== null) detalles.push(textoPeso(pieza.peso));
     return detalles;
+}
+
+/** Una pieza del equipo de la ficha con su cantidad: «Flechas ×20»; solo el nombre si es una. */
+export function nombreConCantidad(pieza: { nombre: string; cantidad: number; }): string {
+    return pieza.cantidad > 1 ? `${pieza.nombre} ×${pieza.cantidad}` : pieza.nombre;
 }
 
 /** Dónde lo lleva: «Equipado (hombros)», «Equipado (mano principal)» o nada si no lo lleva puesto. */

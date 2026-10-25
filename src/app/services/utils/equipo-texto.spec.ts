@@ -1,4 +1,4 @@
-import { categoriaArmadura, textoConSigno, textoDestrezaMaxima, textoOrigenDescripcion, textoPeso, textoPrecio } from './equipo-texto';
+import { categoriaArmadura, nombreConCantidad, textoConSigno, textoDestrezaMaxima, textoOrigenDescripcion, textoPeso, textoPrecio, textoPrecioGenerico } from './equipo-texto';
 
 describe('equipo-texto', () => {
     it('la Destreza máxima sin límite se enseña «Sin límite»', () => {
@@ -28,5 +28,11 @@ describe('equipo-texto', () => {
         expect(textoOrigenDescripcion('propia')).toBe('Descripción propia');
         expect(textoConSigno(-1)).toBe('-1');
         expect(textoConSigno(0)).toBe('+0');
+    });
+
+    it('el precio de un genérico y una pieza con su cantidad', () => {
+        expect(textoPrecioGenerico({ Precio_por_nivel: 50 })).toBe('50 po × nivel × NL');
+        expect(nombreConCantidad({ nombre: 'Flechas', cantidad: 20 })).toBe('Flechas ×20');
+        expect(nombreConCantidad({ nombre: 'Espada larga', cantidad: 1 })).toBe('Espada larga');
     });
 });

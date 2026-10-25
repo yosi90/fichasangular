@@ -6,7 +6,7 @@ import { Manual } from 'src/app/interfaces/manual';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ManualService } from 'src/app/services/manual.service';
-import { textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { textoPrecio, textoPrecioGenerico } from 'src/app/services/utils/equipo-texto';
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
 
@@ -153,7 +153,7 @@ export class ListadoObjetosComponent implements OnInit, OnDestroy {
 
     precioVisible(objeto: ObjetoDetalle): string {
         if (objeto.Generico_conjuro)
-            return `${textoPrecio(objeto.Generico_conjuro.Precio_por_nivel)} × nivel × NL`;
+            return textoPrecioGenerico(objeto.Generico_conjuro);
         return textoPrecio(objeto.Precio);
     }
 

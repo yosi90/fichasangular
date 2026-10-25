@@ -1,6 +1,6 @@
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeEquipoPiezaDto, PersonajeTotalDto } from 'src/app/interfaces/personajes-api';
-import { detallesPiezaEquipo, formatoNumero, textoDestrezaMaxima } from 'src/app/services/utils/equipo-texto';
+import { detallesPiezaEquipo, formatoNumero, nombreConCantidad, textoDestrezaMaxima } from 'src/app/services/utils/equipo-texto';
 import { toArray, toNumber } from 'src/app/services/utils/normalizacion';
 import { sumarPartes } from 'src/app/services/utils/personaje-totales';
 
@@ -13,10 +13,6 @@ function bonificadorCa(ca: PersonajeTotalDto, tipo: string): number {
     return toArray(ca?.desglose)
         .filter((parte) => parte?.tipo === 'bonificador' && `${parte?.bonificador ?? ''}`.toLowerCase() === tipo)
         .reduce((acc, parte) => acc + toNumber(parte?.valor), 0);
-}
-
-function nombreConCantidad(pieza: PersonajeEquipoPiezaDto): string {
-    return pieza.cantidad > 1 ? `${pieza.nombre} ×${pieza.cantidad}` : pieza.nombre;
 }
 
 /** Los detalles de una pieza sin las cifras que la hoja ya tiene en su casilla (daño, crítico, CA…). */

@@ -364,7 +364,7 @@
                     <mat-chip-set class="tw-m-1">
                         <mat-chip class="tw-h-auto sombra3d-sm" *ngFor="let pieza of piezasEquipo" [matTooltip]="pieza.notas ?? ''"
                             [matTooltipDisabled]="!pieza.notas" matTooltipClass="tt-accent tt-multiline">
-                            {{pieza.nombre}}<ng-container *ngIf="pieza.cantidad > 1"> ×{{pieza.cantidad}}</ng-container>
+                            {{nombreConCantidad(pieza)}}
                             <mat-chip class="tw-m-1 chip-origen" *ngIf="textoEquipadoPieza(pieza) as equipado">{{equipado}}</mat-chip>
                             <mat-chip class="tw-m-1" *ngFor="let detalle of detallesPiezaEquipo(pieza)">{{detalle}}</mat-chip>
                         </mat-chip>

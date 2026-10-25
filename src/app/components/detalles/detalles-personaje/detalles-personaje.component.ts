@@ -38,6 +38,7 @@ import {
 import { PersonajeEquipoPiezaDto, PersonajeModificadorEquipoDto } from 'src/app/interfaces/personajes-api';
 import {
     detallesPiezaEquipo,
+    nombreConCantidad,
     textoDestrezaMaxima,
     textoEquipadoPieza,
     textoModificadorEquipo,
@@ -553,6 +554,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     readonly textoDesglose = textoDesglose;
     readonly textoDestrezaMaxima = textoDestrezaMaxima;
     readonly detallesPiezaEquipo = detallesPiezaEquipo;
+    readonly nombreConCantidad = nombreConCantidad;
     readonly textoEquipadoPieza = textoEquipadoPieza;
     readonly textoModificadorEquipo = textoModificadorEquipo;
 

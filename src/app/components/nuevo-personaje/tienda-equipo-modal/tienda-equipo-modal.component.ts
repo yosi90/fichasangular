@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, S
 import { Subject, Subscription, catchError, defer, of, switchMap, timer } from 'rxjs';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
 import { EquipoService } from 'src/app/services/equipo.service';
-import { textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { textoPeso, textoPrecio, textoPrecioGenerico } from 'src/app/services/utils/equipo-texto';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import {
     ArticuloTienda,
@@ -57,6 +57,7 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
     readonly secciones = SECCIONES;
     readonly mejoras = Array.from({ length: MEJORA_MAXIMA + 1 }, (_, i) => i);
     readonly textoPrecio = textoPrecio;
+    readonly textoPrecioGenerico = textoPrecioGenerico;
     readonly textoPeso = textoPeso;
     readonly precioEstimado = precioEstimado;
     readonly faltaEnPieza = faltaEnPieza;
