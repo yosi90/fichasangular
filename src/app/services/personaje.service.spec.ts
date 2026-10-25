@@ -446,6 +446,35 @@ describe('PersonajeService', () => {
         expect(archivado.message).toBe('No se ha podido cambiar el archivado del personaje.');
     });
 
+    it('comprarEquipoPersonaje manda la compra con PUT /personajes/{id}/equipo y lee lo que queda', async () => {
+        const httpMock = {
+            put: jasmine.createSpy('put').and.returnValue(of({ idPersonaje: 15, coste: 17, dineroInicial: 60, dinero: 43, costes: [15, 2], oficial: true })),
+        } as any;
+        const service = crearServicio(httpMock);
+        const compra = { dineroInicial: 60, piezas: [{ tipo: 'arma' as const, id: 30, cantidad: 1, equipado: true }, { tipo: 'arma' as const, id: 5 }] };
+
+        const respuesta = await service.comprarEquipoPersonaje(15, compra);
+
+        const [url, cuerpo, opciones] = httpMock.put.calls.mostRecent().args;
+        expect(url).toMatch(/personajes\/15\/equipo$/);
+        expect(cuerpo).toEqual(compra);
+        expect(opciones.headers.get('Authorization')).toBe('Bearer token');
+        expect(respuesta).toEqual({ idPersonaje: 15, coste: 17, dineroInicial: 60, dinero: 43, costes: [15, 2], oficial: true });
+    });
+
+    it('comprarEquipoPersonaje da el error de la API (qué pieza no cuadra)', async () => {
+        const httpMock = {
+            put: jasmine.createSpy('put').and.returnValue(throwError(() => new HttpErrorResponse({
+                status: 400,
+                error: { error: 'El equipo cuesta 315 po y solo hay 60 po.', code: 'dinero_insuficiente', field: 'piezas' },
+            }))),
+        } as any;
+        const service = crearServicio(httpMock);
+        const error = await service.comprarEquipoPersonaje(15, { dineroInicial: 60, piezas: [] }).catch((e) => e);
+        expect(error.message).toBe('El equipo cuesta 315 po y solo hay 60 po.');
+        expect(error.code).toBe('dinero_insuficiente');
+    });
+
     it('el archivado sale solo del detalle de la API: no guarda nada en el navegador que vea otra cuenta', async () => {
         localStorage.setItem('fichas.personajes.archivado.override.v1', JSON.stringify({ 77: true }));
         const detalle = (archivado?: boolean) => {

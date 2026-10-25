@@ -118,6 +118,17 @@ import { normalizarTexto, primerEntero } from 'src/app/services/utils/normalizac
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { EquipoService } from 'src/app/services/equipo.service';
+import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
+import { EquipoCatalogos, MunicionDetalle } from 'src/app/interfaces/equipo';
+import {
+    ArticuloTienda,
+    ReglaDineroInicial,
+    articuloDeArma,
+    articuloDeArmadura,
+    articuloDeMunicion,
+    reglaDineroInicial,
+} from 'src/app/services/utils/tienda-equipo';
 
 interface VectorAlineamiento {
     ley: number;
@@ -510,6 +521,13 @@ export class NuevoPersonajeComponent {
     tiradasVidaTotales = 3;
     tiradasVidaRestantes = 0;
     selectorVisibilidadValorInicial: boolean | null = null;
+    /** La tienda del final de la creación: se abre con el personaje ya guardado (decisión del propietario, 2026-10-25). */
+    modalTiendaAbierto = false;
+    tiendaRegla: ReglaDineroInicial | null = null;
+    tiendaArticulos: ArticuloTienda[] = [];
+    tiendaGuardando = false;
+    tiendaError = '';
+    private tiendaPersonaje: Personaje | null = null;
     finalizacionEnCurso = false;
     finalizacionState: {
         idPersonaje: number | null;
@@ -577,6 +595,7 @@ export class NuevoPersonajeComponent {
         private userSvc: UserService,
         private userProfileNavigationSvc: UserProfileNavigationService,
         private listaPersonajesSvc?: ListaPersonajesService,
+        private equipoSvc?: EquipoService,
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -4224,14 +4243,10 @@ export class NuevoPersonajeComponent {
             etapa = 'navegacion';
             this.modalSelectorVisibilidadAbierto = false;
             this.selectorVisibilidadValorInicial = null;
-            this.nuevoPSvc.descartarBorradorLocal(this.obtenerUidSesionActiva());
-            this.personajeFinalizado.emit(idPersonaje);
-            this.fichasDescargaBgSvc.descargarFichas(pjNormalizado, {
-                incluirConjuros: true,
-                incluirFamiliares: true,
-                incluirCompaneros: true,
-            });
-            this.resetearEstadoFinalizacion();
+            // El último paso: las compras, con el personaje ya guardado. Si la tienda no puede abrirse, se termina sin ella.
+            if (await this.abrirTiendaEquipo(pjNormalizado))
+                return;
+            this.completarFinalizacion(pjNormalizado);
         } catch (error: any) {
             const complianceMessage = this.userSvc.getComplianceErrorMessage(error, 'creation');
             const texto = `${complianceMessage || error?.message || 'Error no identificado'}`.trim();
@@ -4249,6 +4264,105 @@ export class NuevoPersonajeComponent {
             });
         } finally {
             this.finalizacionEnCurso = false;
+        }
+    }
+
+    /** Lo que queda tras guardar el personaje (y, si la hay, tras la tienda): abrir su ficha y descargar sus hojas. */
+    private completarFinalizacion(pj: Personaje): void {
+        const idPersonaje = Math.trunc(Number(pj?.Id ?? 0));
+        this.nuevoPSvc.descartarBorradorLocal(this.obtenerUidSesionActiva());
+        this.personajeFinalizado.emit(idPersonaje);
+        this.fichasDescargaBgSvc.descargarFichas(pj, {
+            incluirConjuros: true,
+            incluirFamiliares: true,
+            incluirCompaneros: true,
+        });
+        this.resetearEstadoFinalizacion();
+    }
+
+    /**
+     * Abre la tienda con el dinero inicial que le toca (el oro de su clase en nivel 1 o la riqueza de su nivel, de
+     * `GET /equipo/catalogos`) y lo que se puede comprar. Devuelve `false` si no puede abrirse (sin catálogos).
+     */
+    private async abrirTiendaEquipo(pj: Personaje): Promise<boolean> {
+        if (!this.equipoSvc)
+            return false;
+        let catalogos: EquipoCatalogos;
+        try {
+            catalogos = await firstValueFrom(this.equipoSvc.getCatalogos());
+        } catch {
+            return false;
+        }
+        let municiones: MunicionDetalle[] = [];
+        try {
+            municiones = await firstValueFrom(this.equipoSvc.getMuniciones());
+        } catch {
+            municiones = [];
+        }
+        const ventajas = this.flujoVentajas.seleccionVentajas
+            .map((seleccion) => (this.catalogoVentajas ?? []).find((ventaja) => Number(ventaja?.Id) === Number(seleccion.id)))
+            .filter((ventaja): ventaja is VentajaDetalle => !!ventaja);
+        const soloOficial = this.getCurrentCampaignHomebrewMode(this.effectiveSelectedCampaignPolicy) !== 'unrestricted';
+        this.tiendaArticulos = [
+            ...(this.catalogoArmas ?? []).map((arma) => articuloDeArma(arma)),
+            ...(this.catalogoArmaduras ?? []).map((armadura) => articuloDeArmadura(armadura)),
+            ...municiones.map((municion) => articuloDeMunicion(municion)),
+        ].filter((articulo) => !soloOficial || articulo.oficial);
+        this.tiendaRegla = reglaDineroInicial({
+            nivel: (pj?.desgloseClases ?? []).reduce((acc, clase) => acc + Math.max(0, Number(clase?.Nivel) || 0), 0),
+            clases: pj?.desgloseClases ?? [],
+            duplicaOro: ventajas.some((ventaja) => !!ventaja.Duplica_oro),
+            aumentaOro: ventajas.some((ventaja) => !!ventaja.Aumenta_oro),
+        }, catalogos);
+        this.tiendaPersonaje = pj;
+        this.tiendaError = '';
+        this.tiendaGuardando = false;
+        this.modalTiendaAbierto = true;
+        return true;
+    }
+
+    /** Guarda la compra (`PUT /personajes/{id}/equipo`); la API calcula los precios y comprueba el dinero. */
+    async onConfirmarTienda(compra: PersonajeCompraRequestDto): Promise<void> {
+        const pj = this.tiendaPersonaje;
+        if (!pj || this.tiendaGuardando)
+            return;
+        this.tiendaGuardando = true;
+        this.tiendaError = '';
+        try {
+            const respuesta = await this.personajeSvc.comprarEquipoPersonaje(pj.Id, compra);
+            pj.Oficial = respuesta.oficial;
+            this.listaPersonajesSvc?.upsertPersonajeCreadoEnCache(pj);
+        } catch (error: any) {
+            this.tiendaError = `${error?.message ?? ''}`.trim() || 'No se ha podido guardar el equipo.';
+            this.tiendaGuardando = false;
+            return;
+        }
+        this.cerrarTienda();
+        this.completarFinalizacion(await this.fichaConEquipo(pj));
+    }
+
+    onOmitirTienda(): void {
+        const pj = this.tiendaPersonaje;
+        if (!pj || this.tiendaGuardando)
+            return;
+        this.cerrarTienda();
+        this.completarFinalizacion(pj);
+    }
+
+    private cerrarTienda(): void {
+        this.modalTiendaAbierto = false;
+        this.tiendaGuardando = false;
+        this.tiendaError = '';
+        this.tiendaPersonaje = null;
+    }
+
+    /** La ficha de la API, ya con el equipo y la defensa, para las hojas; si no llega, la de la creación. */
+    private async fichaConEquipo(pj: Personaje): Promise<Personaje> {
+        try {
+            const detalle$ = await this.personajeSvc.getDetallesPersonaje(pj.Id);
+            return await firstValueFrom(detalle$.pipe(take(1)));
+        } catch {
+            return pj;
         }
     }
 

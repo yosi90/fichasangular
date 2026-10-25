@@ -1,0 +1,157 @@
+// Versión funcional sencilla con el patrón `selector-dialog` de la creación; el diseño definitivo, con lienzo.
+:host
+    position: absolute
+    inset: 0
+    z-index: 65
+
+.selector-overlay
+    position: absolute
+    inset: 0
+    display: flex
+    justify-content: center
+    align-items: center
+    background: rgba(0, 0, 0, 0.6)
+    padding: 12px
+
+.selector-dialog
+    width: min(960px, 96vw)
+    max-height: 92vh
+    overflow: auto
+    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
+    border: 1px solid #6f7683
+    border-radius: 10px
+    padding: 14px
+    display: flex
+    flex-direction: column
+    gap: 12px
+    color: #f3f6ff
+
+.selector-header
+    display: flex
+    flex-direction: column
+    gap: 8px
+
+.selector-title
+    font-size: 1.45rem
+    font-weight: 700
+
+.chip-estado
+    width: 100%
+    min-height: 40px
+    white-space: normal
+    line-height: 1.25
+    padding: 8px 12px
+    box-sizing: border-box
+    display: flex
+    align-items: center
+
+.chip-estado.ok
+    background: rgba(62, 146, 62, 0.25)
+    border: 1px solid rgba(104, 199, 104, 0.55)
+    color: #d2f3d2
+
+.chip-estado.warm
+    background: rgba(255, 152, 102, 0.2)
+    border: 1px solid rgba(255, 177, 132, 0.55)
+    color: #ffe5d8
+
+.contenido
+    display: flex
+    flex-direction: column
+    gap: 12px
+
+.bloque
+    display: flex
+    flex-direction: column
+    gap: 6px
+    padding: 10px
+    border: 1px solid rgba(255, 255, 255, 0.08)
+    border-radius: 8px
+    background: rgba(255, 255, 255, 0.03)
+
+.subtitulo
+    margin: 0
+    font-weight: 600
+
+.ayuda
+    margin: 0
+    font-size: .92rem
+    opacity: .9
+
+.fila-dinero, .fila-catalogo, .pieza-opciones
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 8px
+
+.campo-dinero
+    width: 220px
+
+.campo-busqueda, .campo-conjuro
+    flex: 1 1 220px
+
+.campo-corto
+    width: 140px
+
+.lista-opciones
+    max-height: 260px
+    overflow: auto
+    display: flex
+    flex-direction: column
+    gap: 2px
+
+.opcion, .pieza-cabecera
+    display: flex
+    align-items: center
+    gap: 8px
+    padding: 2px 6px
+    border-radius: 6px
+
+.opcion:hover
+    background: rgba(255, 255, 255, 0.05)
+
+.opcion-nombre
+    flex: 1 1 auto
+    overflow-wrap: anywhere
+
+.opcion-dato
+    font-size: .9rem
+    opacity: .85
+    white-space: nowrap
+
+.chip-homebrew
+    background: rgba(255, 152, 102, 0.2)
+    color: #ffe5d8
+
+.pieza
+    border-top: 1px solid rgba(255, 255, 255, 0.08)
+    padding: 6px 0
+
+.pieza.incompleta .pieza-cabecera
+    border-left: 3px solid rgba(255, 177, 132, 0.8)
+
+.falta, .vacio
+    margin: 0
+    font-size: .9rem
+    opacity: .85
+
+.falta
+    color: #ffe5d8
+
+.bloque-error
+    margin: 0
+    padding: 8px 12px
+    color: #ffd6d6
+    background: rgba(198, 40, 40, .18)
+    border: 1px solid rgba(239, 83, 80, .45)
+    border-radius: 8px
+
+.selector-actions
+    display: flex
+    justify-content: space-between
+    gap: 8px
+    flex-wrap: wrap
+
+@media (max-width: 600px)
+    .campo-dinero, .campo-corto
+        width: 100%

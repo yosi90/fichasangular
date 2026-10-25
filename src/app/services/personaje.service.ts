@@ -26,6 +26,8 @@ import {
     PersonajeProgresionLanzadorDto,
     PersonajeCreateRequestDto,
     PersonajeCreateResponseDto,
+    PersonajeCompraRequestDto,
+    PersonajeCompraResponseDto,
     PersonajeTotalDto
 } from '../interfaces/personajes-api';
 import {
@@ -122,6 +124,36 @@ export class PersonajeService {
             ...response,
             idPersonaje: toInt(response?.idPersonaje),
             visible_otros_usuarios: !!visible,
+        };
+    }
+
+    /**
+     * Las compras del final de la creación (`PUT /personajes/{id}/equipo`): la API calcula el precio de cada pieza,
+     * comprueba el dinero inicial y guarda el equipo y lo que le queda. Solo el dueño. Sustituye la compra anterior.
+     */
+    public async comprarEquipoPersonaje(idPersonaje: number, compra: PersonajeCompraRequestDto): Promise<PersonajeCompraResponseDto> {
+        const id = toInt(idPersonaje);
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+        let response: PersonajeCompraResponseDto;
+        try {
+            response = await firstValueFrom(
+                this.http.put<PersonajeCompraResponseDto>(
+                    `${environment.apiUrl}personajes/${id}/equipo`,
+                    compra,
+                    { headers: new HttpHeaders(await cabeceraApiConFirebase(this.auth)) }
+                )
+            );
+        } catch (error) {
+            throw errorDePerfil(error, 'No se ha podido guardar el equipo.');
+        }
+        return {
+            idPersonaje: toInt(response?.idPersonaje),
+            coste: toNumber(response?.coste),
+            dineroInicial: toNumber(response?.dineroInicial),
+            dinero: toNumber(response?.dinero),
+            costes: toArray(response?.costes).map((coste) => toNumber(coste)),
+            oficial: toBoolean(response?.oficial),
         };
     }
 

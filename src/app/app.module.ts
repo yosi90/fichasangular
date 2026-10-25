@@ -117,6 +117,7 @@ import { ListadoArmadurasComponent } from './components/shared/listado-armaduras
 import { ListadoEquipoComponent } from './components/shared/listado-equipo/listado-equipo.component';
 import { ListadoObjetosComponent } from './components/shared/listado-objetos/listado-objetos.component';
 import { DetallesEquipoComponent } from './components/detalles/detalles-equipo/detalles-equipo.component';
+import { TiendaEquipoModalComponent } from './components/nuevo-personaje/tienda-equipo-modal/tienda-equipo-modal.component';
 import { DetallesDeidadComponent } from './components/detalles/detalles-deidad/detalles-deidad.component';
 import { ListadoDeidadesComponent } from './components/shared/listado-deidades/listado-deidades.component';
 import { ListadoIdiomasComponent } from './components/shared/listado-idiomas/listado-idiomas.component';
@@ -212,6 +213,7 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         ListadoEquipoComponent,
         ListadoObjetosComponent,
         DetallesEquipoComponent,
+        TiendaEquipoModalComponent,
         DetallesDeidadComponent,
         ListadoDeidadesComponent,
         ListadoIdiomasComponent,

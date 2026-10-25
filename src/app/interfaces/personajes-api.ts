@@ -329,3 +329,46 @@ export interface PersonajeDineroDto {
     po: number;
     dineroInicial: number;
 }
+
+/** Una pieza de `PUT /personajes/{id}/equipo`, las compras del final de la creación. La API calcula su precio. */
+export interface PersonajeCompraPiezaDto {
+    tipo: PersonajeTipoPiezaDto;
+    id: number;
+    cantidad?: number;
+    equipado?: boolean;
+    idRanura?: number;
+    idEmpunadura?: number;
+    idTamano?: number;
+    idMaterial?: number;
+    granCalidad?: boolean;
+    bonificadorMejora?: number;
+    bonificadorMejora2?: number;
+    indiceFuerza?: number;
+    encantamientos?: { id: number; cabeza: number; }[];
+    /** Los tres, obligatorios en los genéricos de un conjuro (poción, pergamino, varita…). */
+    idConjuro?: number;
+    nivelConjuro?: number;
+    nivelLanzador?: number;
+    cargasRestantes?: number;
+    nombrePersonalizado?: string;
+    notas?: string;
+}
+
+export interface PersonajeCompraRequestDto {
+    /** En po: el oro inicial de su clase (nivel 1) o la riqueza de su nivel. */
+    dineroInicial: number;
+    piezas: PersonajeCompraPiezaDto[];
+}
+
+export interface PersonajeCompraResponseDto {
+    idPersonaje: number;
+    /** Lo que cuesta todo, en po. */
+    coste: number;
+    dineroInicial: number;
+    /** Lo que le queda. */
+    dinero: number;
+    /** El precio de cada pieza, en su orden. */
+    costes: number[];
+    /** Si sigue siendo oficial (comprar algo homebrew lo pasa a homebrew). */
+    oficial: boolean;
+}

@@ -7,7 +7,11 @@ import { Raza } from 'src/app/interfaces/raza';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { AsignacionCaracteristicas, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { NuevoPersonajeComponent } from './nuevo-personaje.component';
-import { Subject, of } from 'rxjs';
+import { Subject, of, throwError } from 'rxjs';
+import { normalizeArma } from 'src/app/services/arma.service';
+import { normalizeArmadura } from 'src/app/services/armadura.service';
+import { normalizeEquipoCatalogos, normalizeMunicion } from 'src/app/services/utils/equipo-mapper';
+import { crearArmaApi, crearArmaduraApi, crearEquipoCatalogosApi, crearMunicionApi } from 'src/testing/equipo-api';
 
 function crearRazaMock(oficial = true): Raza {
     return {
@@ -5042,6 +5046,77 @@ describe('NuevoPersonajeComponent', () => {
         expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledTimes(1);
         expect(emitSpy).toHaveBeenCalledWith(123);
         expect(component.modalSelectorVisibilidadAbierto).toBeFalse();
+    });
+
+    describe('la tienda del final de la creación', () => {
+        let equipoSvcMock: any;
+
+        beforeEach(() => {
+            equipoSvcMock = {
+                getCatalogos: jasmine.createSpy('getCatalogos').and.returnValue(of(normalizeEquipoCatalogos(crearEquipoCatalogosApi()))),
+                getMuniciones: jasmine.createSpy('getMuniciones').and.returnValue(of([normalizeMunicion(crearMunicionApi())])),
+            };
+            (component as any).equipoSvc = equipoSvcMock;
+            component.catalogoArmas = [normalizeArma(crearArmaApi()), normalizeArma(crearArmaApi({ Id: 99, Nombre: 'Hacha casera', Oficial: false }))];
+            component.catalogoArmaduras = [normalizeArmadura(crearArmaduraApi())];
+            component.Personaje.desgloseClases = [{ Id: 9, Nombre: 'Guerrero', Nivel: 1 }];
+            personajeSvcMock.comprarEquipoPersonaje = jasmine.createSpy('comprarEquipoPersonaje').and.resolveTo({
+                idPersonaje: 123, coste: 2, dineroInicial: 60, dinero: 58, costes: [2], oficial: true,
+            });
+        });
+
+        it('se abre como último paso, con el personaje ya guardado, y aún no abre la ficha', async () => {
+            const emitSpy = spyOn(component.personajeFinalizado, 'emit');
+            await component.onConfirmarSelectorVisibilidad(false);
+            expect(personajeSvcMock.crearPersonajeApiDesdeCreacion).toHaveBeenCalledTimes(1);
+            expect(component.modalSelectorVisibilidadAbierto).toBeFalse();
+            expect(component.modalTiendaAbierto).toBeTrue();
+            expect(component.tiendaRegla).toEqual(jasmine.objectContaining({ modo: 'dados', dados: '6d4', maximo: 240 }));
+            expect(component.tiendaArticulos.map((a) => a.nombre)).toEqual(['Daga', 'Hacha casera', 'Cota de mallas', 'Flechas']);
+            expect(emitSpy).not.toHaveBeenCalled();
+            expect(fichasDescargaBgSvcMock.descargarFichas).not.toHaveBeenCalled();
+        });
+
+        it('comprar guarda el equipo con la API y termina la creación con la ficha ya equipada', async () => {
+            const emitSpy = spyOn(component.personajeFinalizado, 'emit');
+            await component.onConfirmarSelectorVisibilidad(false);
+            const compra = { dineroInicial: 60, piezas: [{ tipo: 'arma' as const, id: 5, cantidad: 1, equipado: true }] };
+            await component.onConfirmarTienda(compra);
+            expect(personajeSvcMock.comprarEquipoPersonaje).toHaveBeenCalledWith(123, compra);
+            expect(personajeSvcMock.getDetallesPersonaje).toHaveBeenCalledWith(123);
+            expect(component.modalTiendaAbierto).toBeFalse();
+            expect(emitSpy).toHaveBeenCalledWith(123);
+            expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledWith(jasmine.objectContaining({ Id: 123, Nombre: 'Aldric' }), jasmine.anything());
+        });
+
+        it('si la API rechaza la compra, enseña el error y la tienda sigue abierta', async () => {
+            personajeSvcMock.comprarEquipoPersonaje.and.rejectWith(new Error('El equipo cuesta 300 po y solo hay 60 po.'));
+            const emitSpy = spyOn(component.personajeFinalizado, 'emit');
+            await component.onConfirmarSelectorVisibilidad(false);
+            await component.onConfirmarTienda({ dineroInicial: 60, piezas: [] });
+            expect(component.modalTiendaAbierto).toBeTrue();
+            expect(component.tiendaError).toBe('El equipo cuesta 300 po y solo hay 60 po.');
+            expect(component.tiendaGuardando).toBeFalse();
+            expect(emitSpy).not.toHaveBeenCalled();
+        });
+
+        it('terminar sin comprar abre la ficha sin tocar el equipo', async () => {
+            const emitSpy = spyOn(component.personajeFinalizado, 'emit');
+            await component.onConfirmarSelectorVisibilidad(false);
+            component.onOmitirTienda();
+            expect(personajeSvcMock.comprarEquipoPersonaje).not.toHaveBeenCalled();
+            expect(component.modalTiendaAbierto).toBeFalse();
+            expect(emitSpy).toHaveBeenCalledWith(123);
+            expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledTimes(1);
+        });
+
+        it('si no hay catálogos del equipo, termina sin tienda', async () => {
+            equipoSvcMock.getCatalogos.and.returnValue(throwError(() => new Error('sin red')));
+            const emitSpy = spyOn(component.personajeFinalizado, 'emit');
+            await component.onConfirmarSelectorVisibilidad(false);
+            expect(component.modalTiendaAbierto).toBeFalse();
+            expect(emitSpy).toHaveBeenCalledWith(123);
+        });
     });
 
     it('finalizarPersonajeCompleto pasa progresionLanzador al payload de creación', async () => {

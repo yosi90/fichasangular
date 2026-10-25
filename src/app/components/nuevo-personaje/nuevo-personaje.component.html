@@ -1350,6 +1350,13 @@
         </app-selector-visibilidad-personaje-modal>
     </ng-container>
 
+    <ng-container *ngIf="modalTiendaAbierto && tiendaRegla">
+        <app-tienda-equipo-modal [regla]="tiendaRegla" [articulos]="tiendaArticulos" [conjuros]="catalogoConjuros"
+            [guardando]="tiendaGuardando" [error]="tiendaError" (confirmar)="onConfirmarTienda($event)"
+            (omitir)="onOmitirTienda()">
+        </app-tienda-equipo-modal>
+    </ng-container>
+
     <ng-container *ngIf="modalInformacionBasicosAbierto">
         <app-informacion-basicos-modal [titulo]="informacionBasicosModalTitulo" [icono]="informacionBasicosModalIcono"
             [secciones]="informacionBasicosModalSecciones" (cerrar)="onCerrarModalInformacionBasicos()">
