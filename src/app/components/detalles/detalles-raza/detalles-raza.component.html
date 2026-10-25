@@ -1,243 +1,129 @@
-<div class="tw-w-full tw-px-3 detalle-view" *ngIf="raza">
-    <div class="tw-flex tw-flex-wrap">
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
-                    {{raza.Nombre}}
-                    <mat-chip class="sombra3d-sm tw-m-1 tw-ms-6" *ngIf="raza.Tamano">{{raza.Tamano.Nombre}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Tipo_criatura">{{raza.Tipo_criatura.Nombre}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" matTooltip="Pulsa para ver el manual" [matTooltipShowDelay]="250"
-                    matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
-                    <mat-icon class="tw-me-2">auto_stories</mat-icon>{{raza.Manual}}
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="getSubtiposActivos().length > 0">
-                    Subtipos
-                    <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let subtipo of getSubtiposActivos()"
-                        matTooltip="Pulsa para ver detalles de este subtipo" [matTooltipShowDelay]="250"
-                        matTooltipClass="tt-accent" (click)="abrirDetalleSubtipo(subtipo)">
-                        {{subtipo.Nombre}}
-                    </mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto warm sombra3d-sm tw-m-1">
-                    Clase predilecta
-                    <mat-chip class="sombra3d-sm tw-m-1">{{raza.Clase_predilecta}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto warm sombra3d-sm tw-m-1" *ngIf="raza.Ajuste_nivel > 0">
-                    Ajuste de nivel
-                    <mat-chip class="sombra3d-sm tw-m-1">+{{raza.Ajuste_nivel}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="!raza.Oficial" matTooltip="Esta raza es homebrew" matTooltipClass="tt-accent">
-                    No es oficial
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneAlineamientoVisible()">
-                    Alineamiento
-                    <mat-chip class="sombra3d-sm tw-m-1">
-                        {{getAlineamientoResumen()}}
-                    </mat-chip>
-                </mat-chip>
-            </div>
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">
-                    Modificadores
-                    <mat-icon class="tw-ms-2">tune</mat-icon>
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" [ngClass]="raza.Modificadores.Fuerza > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Fuerza !== 0">
-                    FUE {{raza.Modificadores.Fuerza > 0 ? '+' + raza.Modificadores.Fuerza : raza.Modificadores.Fuerza}}
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" [ngClass]="raza.Modificadores.Destreza > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Destreza !== 0">
-                    DES {{raza.Modificadores.Destreza > 0 ? '+' + raza.Modificadores.Destreza : raza.Modificadores.Destreza}}
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" [ngClass]="raza.Modificadores.Constitucion > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Constitucion !== 0">
-                    CON {{raza.Modificadores.Constitucion > 0 ? '+' + raza.Modificadores.Constitucion : raza.Modificadores.Constitucion}}
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" [ngClass]="raza.Modificadores.Inteligencia > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Inteligencia !== 0">
-                    INT {{raza.Modificadores.Inteligencia > 0 ? '+' + raza.Modificadores.Inteligencia : raza.Modificadores.Inteligencia}}
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" [ngClass]="raza.Modificadores.Sabiduria > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Sabiduria !== 0">
-                    SAB {{raza.Modificadores.Sabiduria > 0 ? '+' + raza.Modificadores.Sabiduria : raza.Modificadores.Sabiduria}}
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" [ngClass]="raza.Modificadores.Carisma > 0 ? 'good' : 'bad'" *ngIf="raza.Modificadores.Carisma !== 0">
-                    CAR {{raza.Modificadores.Carisma > 0 ? '+' + raza.Modificadores.Carisma : raza.Modificadores.Carisma}}
-                </mat-chip>
-            </div>
-        </div>
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">
-                    Detalles
-                    <mat-icon class="tw-ms-2">format_list_numbered</mat-icon>
-                </mat-chip>
-                <mat-chip class="tw-h-auto warm sombra3d-sm tw-m-1" *ngIf="raza.Dgs_adicionales && raza.Dgs_adicionales.Cantidad > 0">
-                    Dados de golpe extra
-                    <mat-chip class="sombra3d-sm tw-m-1">
-                        +{{raza.Dgs_adicionales.Cantidad}}{{raza.Dgs_adicionales.Dado}} de {{raza.Dgs_adicionales.Tipo_criatura}}
-                    </mat-chip>
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroNoCero(raza.Armadura_natural)">Armadura natural {{raza.Armadura_natural > 0 ? '+' : ''}}{{raza.Armadura_natural}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroNoCero(raza.Varios_armadura)">CA varios {{raza.Varios_armadura > 0 ? '+' : ''}}{{raza.Varios_armadura}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Espacio > 0">Espacio {{raza.Espacio}}'</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Alcance > 0">Alcance {{raza.Alcance}}'</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Correr > 0">Correr {{raza.Correr}}'</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Nadar > 0">Nadar {{raza.Nadar}}'</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Volar > 0">Volar {{raza.Volar}}'</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Trepar > 0">Trepar {{raza.Trepar}}'</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="raza.Escalar > 0">Escalar {{raza.Escalar}}'</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1 maniobrabilidad-chip" *ngIf="mostrarManiobrabilidad()">
-                    Maniobrabilidad {{raza.Maniobrabilidad.Nombre}}
-                    <button mat-icon-button type="button" class="maniobrabilidad-help-btn"
-                        matTooltip="Reglas de maniobrabilidad" aria-label="Reglas de maniobrabilidad"
-                        (click)="abrirInfoManiobrabilidad($event)">
-                        <mat-icon>help_outline</mat-icon>
-                    </button>
-                </mat-chip>
-            </div>
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">
-                    Rangos
-                    <mat-icon class="tw-ms-2">straighten</mat-icon>
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1">
-                    Altura
-                    <mat-chip class="sombra3d-sm tw-m-1">{{raza.Altura_rango_inf}} - {{raza.Altura_rango_sup}} m</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1">
-                    Peso
-                    <mat-chip class="sombra3d-sm tw-m-1">{{raza.Peso_rango_inf}} - {{raza.Peso_rango_sup}} kg</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1">
-                    Edades
-                    <mat-chip class="sombra3d-sm tw-m-1">Adulto {{raza.Edad_adulto}} años</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">Mediana {{raza.Edad_mediana}} años</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">Viejo {{raza.Edad_viejo}} años</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">Venerable {{raza.Edad_venerable}} años</mat-chip>
-                </mat-chip>
-            </div>
-        </div>
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <mat-accordion>
-                <mat-expansion-panel *ngIf="raza.Dgs_adicionales && raza.Dgs_adicionales.Cantidad > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
-                            <h2 class="tw-mb-0">Progresion de DGS adicionales</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="sombra3d-sm tw-m-1">Ataque base {{raza.Dgs_adicionales.Ataque_base > 0 ? '+' : ''}}{{raza.Dgs_adicionales.Ataque_base}}</mat-chip>
-                        <mat-chip class="sombra3d-sm tw-m-1">Fortaleza {{raza.Dgs_adicionales.Fortaleza > 0 ? '+' : ''}}{{raza.Dgs_adicionales.Fortaleza}}</mat-chip>
-                        <mat-chip class="sombra3d-sm tw-m-1">Reflejos {{raza.Dgs_adicionales.Reflejos > 0 ? '+' : ''}}{{raza.Dgs_adicionales.Reflejos}}</mat-chip>
-                        <mat-chip class="sombra3d-sm tw-m-1">Voluntad {{raza.Dgs_adicionales.Voluntad > 0 ? '+' : ''}}{{raza.Dgs_adicionales.Voluntad}}</mat-chip>
-                        <mat-chip class="sombra3d-sm tw-m-1">Dotes extra {{raza.Dgs_adicionales.Dotes_extra}}</mat-chip>
-                        <mat-chip class="sombra3d-sm tw-m-1">Puntos de habilidad {{raza.Dgs_adicionales.Puntos_habilidad}}</mat-chip>
-                        <mat-chip class="sombra3d-sm tw-m-1">Multiplicador x{{raza.Dgs_adicionales.Multiplicador_puntos_habilidad}}</mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="getHabilidadesBaseOtorgadas().length > 0 || getHabilidadesCustomOtorgadas().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Habilidades otorgadas</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <section *ngIf="getHabilidadesBaseOtorgadas().length > 0">
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let habilidad of getHabilidadesBaseOtorgadas()">
-                                {{habilidad.Habilidad}}
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(habilidad))">
-                                    {{getExtraVisibleHabilidad(habilidad)}}
-                                </mat-chip>
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="habilidad.Cantidad !== 0">
-                                    {{habilidad.Cantidad > 0 ? '+' : ''}}{{habilidad.Cantidad}}
-                                </mat-chip>
-                                <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(habilidad.Varios)">
-                                    {{habilidad.Varios}}
-                                </div>
-                            </mat-chip>
-                        </mat-chip-set>
-                    </section>
-                    <section *ngIf="getHabilidadesCustomOtorgadas().length > 0">
-                        <p class="tw-m-2"><strong>Custom</strong></p>
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let habilidad of getHabilidadesCustomOtorgadas()">
-                                {{habilidad.Habilidad}}
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(habilidad))">
-                                    {{getExtraVisibleHabilidad(habilidad)}}
-                                </mat-chip>
-                                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="habilidad.Cantidad !== 0">
-                                    {{habilidad.Cantidad > 0 ? '+' : ''}}{{habilidad.Cantidad}}
-                                </mat-chip>
-                                <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(habilidad.Varios)">
-                                    {{habilidad.Varios}}
-                                </div>
-                            </mat-chip>
-                        </mat-chip-set>
-                    </section>
-                </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="getIdiomasOtorgados().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Idiomas otorgados</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let idioma of getIdiomasOtorgados()"
-                            [matTooltip]="idioma.Descripcion" [matTooltipShowDelay]="250"
-                            [matTooltipDisabled]="!tieneTextoVisible(idioma.Descripcion)" matTooltipClass="tt-accent">
-                            {{idioma.Nombre}}
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="getRacialesActivos().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Raciales</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <ng-container *ngFor="let grupo of getRacialesAgrupados(); trackBy: trackByGrupoRacial">
-                        <section class="racial-grupo-card" [class.opcional]="grupo.opcionales">
-                            <p class="tw-m-2 racial-grupo-titulo" *ngIf="grupo.opcionales">
-                                Grupo de opciones {{grupo.grupo}}
-                            </p>
-                            <p class="tw-m-2 racial-grupo-aviso" *ngIf="grupo.opcionales">
-                                Solo podrás elegir una de estas raciales.
-                            </p>
-                            <mat-chip-set class="tw-m-1">
-                                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1 chip-clic"
-                                    matTooltip="Pulsa para ver detalles de esta racial" [matTooltipShowDelay]="250"
-                                    matTooltipClass="tt-accent" (click)="abrirDetalleRacial(racial)"
-                                    *ngFor="let racial of grupo.raciales">
-                                    {{racial.Nombre}}
-                                    <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(racial.Descripcion)">
-                                        {{racial.Descripcion}}
-                                    </div>
-                                </mat-chip>
-                            </mat-chip-set>
-                        </section>
-                    </ng-container>
-                </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="raza.Sortilegas && raza.Sortilegas.length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-b-md">
-                            <h2 class="tw-mb-0">Sortilegas</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let s of raza.Sortilegas">
-                            {{s.Conjuro.Nombre}}
-                            <mat-chip class="sombra3d-sm tw-m-1">Nivel de lanzador {{s.Nivel_lanzador}}</mat-chip>
-                            <mat-chip class="sombra3d-sm tw-m-1">Usos {{s.Usos_diarios}}</mat-chip>
-                            <mat-chip class="sombra3d-sm tw-m-1" *ngIf="s.Dgs_necesarios > 0">DGs min {{s.Dgs_necesarios}}</mat-chip>
-                            <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(s.Descripcion)">{{s.Descripcion}}</div>
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-            </mat-accordion>
-        </div>
-    </div>
+<app-ficha-detalle *ngIf="raza">
+    <app-ficha-cabecera
+        [tipo]="tipoCabecera"
+        [nombre]="raza.Nombre"
+        [manual]="raza.Manual"
+        [oficial]="raza.Oficial"
+        (abrirManual)="abrirDetalleManual()">
+    </app-ficha-cabecera>
 
-    <app-informacion-basicos-modal *ngIf="mostrarInfoManiobrabilidad"
-        titulo="Maniobrabilidad"
-        icono="flight"
-        [secciones]="getManiobrabilidadInfoSecciones()"
-        (cerrar)="cerrarInfoManiobrabilidad()">
-    </app-informacion-basicos-modal>
-</div>
+    <app-ficha-datos [datos]="datos" titulo="Datos de la raza"></app-ficha-datos>
+
+    <app-ficha-cuerpo>
+        <app-ficha-lateral titulo="Subtipos" *ngIf="subtipos.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let subtipo of subtipos">
+                    <button type="button" class="ficha-enlace" (click)="abrirDetalleSubtipo(subtipo)">{{subtipo.Nombre}}</button>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Modificadores de característica" *ngIf="modificadores.length > 0">
+            <ng-container *ngTemplateOutlet="pares; context: { $implicit: modificadores }"></ng-container>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Raciales" *ngIf="gruposRaciales.length > 0">
+            <div class="ficha-grupo" *ngFor="let grupo of gruposRaciales; trackBy: trackByGrupoRacial">
+                <h3 class="ficha-subtitulo" *ngIf="grupo.opcionales">
+                    Grupo de opciones {{grupo.grupo}}
+                    <span class="ficha-subtitulo__ayuda">Solo podrás elegir una de estas raciales.</span>
+                </h3>
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let racial of grupo.raciales">
+                        <mat-icon class="ficha-icono" aria-hidden="true">{{grupo.opcionales ? 'radio_button_unchecked' : 'check'}}</mat-icon>
+                        <span>
+                            <button type="button" class="ficha-enlace" (click)="abrirDetalleRacial(racial)">{{racial.Nombre}}</button>
+                            <span class="ficha-nota" *ngIf="tieneTextoVisible(racial.Descripcion)"> · {{racial.Descripcion}}</span>
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Habilidades otorgadas" *ngIf="habilidadesBase.length > 0 || habilidadesCustom.length > 0">
+            <div class="ficha-grupo" *ngIf="habilidadesBase.length > 0">
+                <h3 class="ficha-subtitulo" *ngIf="habilidadesCustom.length > 0">Base</h3>
+                <ng-container *ngTemplateOutlet="habilidades; context: { $implicit: habilidadesBase }"></ng-container>
+            </div>
+            <div class="ficha-grupo" *ngIf="habilidadesCustom.length > 0">
+                <h3 class="ficha-subtitulo">Custom</h3>
+                <ng-container *ngTemplateOutlet="habilidades; context: { $implicit: habilidadesCustom }"></ng-container>
+            </div>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Idiomas otorgados" *ngIf="idiomas.length > 0">
+            <ul class="ficha-lista ficha-lista--columnas">
+                <li class="ficha-lista__item" *ngFor="let idioma of idiomas"
+                    [matTooltip]="idioma.Descripcion" [matTooltipShowDelay]="250"
+                    [matTooltipDisabled]="!tieneTextoVisible(idioma.Descripcion)" matTooltipClass="tt-accent">
+                    {{idioma.Nombre}}
+                </li>
+            </ul>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Dados de golpe adicionales" *ngIf="datosDgs.length > 0">
+            <app-ficha-datos [datos]="datosDgs" [columnas]="2" [tarjeta]="false"></app-ficha-datos>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Edades" *ngIf="edades.length > 0">
+            <ng-container *ngTemplateOutlet="pares; context: { $implicit: edades }"></ng-container>
+        </app-ficha-lateral>
+    </app-ficha-cuerpo>
+
+    <app-ficha-bloque titulo="Aptitudes sortílegas" *ngIf="raza.Sortilegas?.length">
+        <table class="ficha-tabla">
+            <thead>
+                <tr>
+                    <th scope="col">Conjuro</th>
+                    <th scope="col" class="ficha-num">Nivel de lanzador</th>
+                    <th scope="col">Usos</th>
+                    <th scope="col" class="ficha-num" *ngIf="sortilegasConDgs">DG mínimos</th>
+                    <th scope="col" *ngIf="sortilegasConDescripcion">Descripción</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let s of raza.Sortilegas">
+                    <td>{{s.Conjuro.Nombre}}</td>
+                    <td class="ficha-num">{{s.Nivel_lanzador}}</td>
+                    <td>{{s.Usos_diarios}}</td>
+                    <td class="ficha-num" *ngIf="sortilegasConDgs">{{s.Dgs_necesarios > 0 ? s.Dgs_necesarios : ''}}</td>
+                    <td *ngIf="sortilegasConDescripcion">{{tieneTextoVisible(s.Descripcion) ? s.Descripcion : ''}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </app-ficha-bloque>
+</app-ficha-detalle>
+
+<!-- Cubre la pantalla de la raza entera (el host es su contenedor). -->
+<app-informacion-basicos-modal *ngIf="mostrarInfoManiobrabilidad"
+    titulo="Maniobrabilidad"
+    icono="flight"
+    [secciones]="getManiobrabilidadInfoSecciones()"
+    (cerrar)="cerrarInfoManiobrabilidad()">
+</app-informacion-basicos-modal>
+
+<ng-template #pares let-filas>
+    <table class="ficha-pares">
+        <tbody>
+            <tr *ngFor="let fila of filas">
+                <td>{{fila.nombre}}</td>
+                <td>{{fila.valor}}</td>
+            </tr>
+        </tbody>
+    </table>
+</ng-template>
+
+<!-- «Avistar (Elegir) … +2», con lo que añade la raza («Varios») debajo. -->
+<ng-template #habilidades let-filas>
+    <table class="ficha-pares">
+        <tbody>
+            <tr *ngFor="let habilidad of filas">
+                <td>
+                    {{habilidad.Habilidad}}<ng-container *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(habilidad))"> ({{getExtraVisibleHabilidad(habilidad)}})</ng-container>
+                    <div class="ficha-nota" *ngIf="tieneTextoVisible(habilidad.Varios)">{{habilidad.Varios}}</div>
+                </td>
+                <td>{{habilidad.Cantidad !== 0 ? (habilidad.Cantidad > 0 ? '+' : '') + habilidad.Cantidad : ''}}</td>
+            </tr>
+        </tbody>
+    </table>
+</ng-template>
