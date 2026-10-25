@@ -5,6 +5,7 @@ import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristi
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
@@ -371,7 +372,7 @@ export class DetallesMonstruoComponent {
                 alPulsar: idTipo > 0 ? () => this.abrirDetallesTipoCriatura(idTipo) : undefined,
             },
             { etiqueta: 'Tamaño', valor: m?.Tamano?.Nombre },
-            { etiqueta: 'Alineamiento', valor: this.textoAlineamiento() },
+            { etiqueta: 'Alineamiento', valor: textoAlineamiento(this.monstruoData?.Alineamiento) },
             { etiqueta: 'Tesoro', valor: m?.Tesoro },
             {
                 etiqueta: 'Idiomas',
@@ -379,15 +380,6 @@ export class DetallesMonstruoComponent {
                 ancho: 2,
             },
         ];
-    }
-
-    private textoAlineamiento(): string {
-        const basico = `${this.monstruoData?.Alineamiento?.Basico?.Nombre ?? ''}`.trim();
-        if (tieneTextoVisible(basico))
-            return basico;
-        const ley = `${this.monstruoData?.Alineamiento?.Ley?.Nombre ?? ''}`.trim();
-        const moral = `${this.monstruoData?.Alineamiento?.Moral?.Nombre ?? ''}`.trim();
-        return `${ley}/${moral}`.replace(/^\/+|\/+$/g, '');
     }
 
     private calcularRelacion(): DatoFicha[] {

@@ -4,6 +4,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { idiomasVisibles, nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
@@ -36,7 +37,7 @@ export class DetallesSubtipoComponent {
         const cambio = (valor: unknown) => toNumber(valor) !== 0 ? textoConSigno(toNumber(valor)) : null;
         this.datos = datosVisibles([
             { etiqueta: 'Ajuste de nivel', valor: cambio(value?.Ajuste_nivel) },
-            { etiqueta: 'Alineamiento', valor: this.textoAlineamiento() },
+            { etiqueta: 'Alineamiento', valor: textoAlineamiento(value?.Alineamiento) },
             { etiqueta: 'Tesoro', valor: value?.Tesoro },
         ]);
         this.combate = datosVisibles([
@@ -114,15 +115,5 @@ export class DetallesSubtipoComponent {
         const id = Number(idPlantilla);
         if (Number.isFinite(id) && id > 0)
             this.plantillaDetalles.emit(id);
-    }
-
-    private textoAlineamiento(): string {
-        const al = this.subtipoData?.Alineamiento;
-        const basico = `${al?.Basico?.Nombre ?? ''}`.trim();
-        if (tieneTextoVisible(basico))
-            return basico;
-        const ley = `${al?.Ley?.Nombre ?? ''}`.trim();
-        const moral = `${al?.Moral?.Nombre ?? ''}`.trim();
-        return `${ley}/${moral}`.replace(/^\/+|\/+$/g, '');
     }
 }

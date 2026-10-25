@@ -1,4 +1,6 @@
+import { Alineamiento } from 'src/app/interfaces/alineamiento';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 export interface AlineamientoVector {
     ley: number;
@@ -89,6 +91,19 @@ export function parseMoralDesdePreferencia(nombre: string): number | null {
 
 export function nombreBasicoDesdeVector(ley: number, moral: number): string {
     return NOMBRE_POR_VECTOR[`${ley},${moral}`] ?? "Neutral autentico";
+}
+
+/**
+ * El alineamiento de una criatura (monstruo, subtipo) como lo enseñan los detalles: el básico («Neutral bueno») o, sin
+ * él, sus ejes («Legal/Bueno», o solo el que tenga). Vacío si no hay ninguno.
+ */
+export function textoAlineamiento(alineamiento: Alineamiento | null | undefined): string {
+    const basico = `${alineamiento?.Basico?.Nombre ?? ''}`.trim();
+    if (tieneTextoVisible(basico))
+        return basico;
+    const ley = `${alineamiento?.Ley?.Nombre ?? ''}`.trim();
+    const moral = `${alineamiento?.Moral?.Nombre ?? ''}`.trim();
+    return `${ley}/${moral}`.replace(/^\/+|\/+$/g, '');
 }
 
 export function extraerEjesAlineamientoDesdeContrato(alineamiento: any): AlineamientoEjes {
