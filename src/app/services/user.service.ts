@@ -10,6 +10,7 @@ import { FirebaseInjectionContextService } from './firebase-injection-context.se
 import { EstadoPlataforma, PlatformSessionService, RestriccionesPlataforma } from './platform-session.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserProfileApiService } from './user-profile-api.service';
+import { codigoDeError } from './utils/error-api';
 
 @Injectable({
     providedIn: 'root'
@@ -113,16 +114,7 @@ export class UserService {
     ): UserAccessRestrictionReason | null {
         const localRestriction = this.getAccessRestriction(scope);
         const status = Number(error?.status ?? 0);
-        const code = this.normalizeFunctionalErrorCode(error?.code);
-        const localBanRestriction = localRestriction === 'temporaryBan' || localRestriction === 'permanentBan'
-            ? localRestriction
-            : null;
-
-        if (this.isBannedFunctionalErrorCode(code))
-            return localBanRestriction ?? 'permanentBan';
-        if (this.isUsagePolicyFunctionalErrorCode(code))
-            return 'mustAcceptUsage';
-        if (this.isCreationPolicyFunctionalErrorCode(code))
+        if (codigoDeError(error) === 'CREATION_POLICY_ACCEPTANCE_REQUIRED')
             return 'mustAcceptCreation';
         if (status === 403 && localRestriction)
             return localRestriction;
@@ -551,27 +543,6 @@ export class UserService {
         await this.validateCurrentAdminAccess(true);
         this.isBannedSubject.next(this.isBanned());
         this.actualizarPermisosDesdeAcl();
-    }
-
-    private normalizeFunctionalErrorCode(value: unknown): string {
-        return `${value ?? ''}`
-            .trim()
-            .toLowerCase()
-            .replace(/[^a-z0-9]/g, '');
-    }
-
-    private isBannedFunctionalErrorCode(code: string): boolean {
-        return code.includes('banned');
-    }
-
-    private isUsagePolicyFunctionalErrorCode(code: string): boolean {
-        return code.includes('mustacceptusage')
-            || code.includes('usagepolicyacceptancerequired');
-    }
-
-    private isCreationPolicyFunctionalErrorCode(code: string): boolean {
-        return code.includes('mustacceptcreation')
-            || code.includes('creationpolicyacceptancerequired');
     }
 
     private isActiveUser(uid: string): boolean {

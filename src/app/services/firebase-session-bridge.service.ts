@@ -1,10 +1,11 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Auth, signInWithCustomToken, signOut } from '@angular/fire/auth';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { EstadoPlataforma, PlatformSessionService } from './platform-session.service';
+import { codigoDeError } from './utils/error-api';
 
 // Firebase solo da acceso a los datos de Rol (Firestore `private_users/{uid}` y RTDB): nunca identifica a la
 // persona, eso lo hace la plataforma. Con sesión en la plataforma se pide a la API el token propio de Firebase
@@ -57,7 +58,7 @@ export class FirebaseSessionBridgeService {
             await this.firebaseContextSvc.run(() => signInWithCustomToken(this.auth, respuesta.token));
         } catch (error) {
             // 403 ACCOUNT_NOT_ACTIVE: la cuenta está cerrada o suspendida; sin datos de Rol.
-            if (error instanceof HttpErrorResponse && error.status === 403 && this.auth.currentUser)
+            if (codigoDeError(error) === 'ACCOUNT_NOT_ACTIVE' && this.auth.currentUser)
                 await this.salirDeFirebase();
             throw error;
         }

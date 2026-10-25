@@ -129,35 +129,40 @@ describe('CampanaService', () => {
         expect(httpMock.patch).not.toHaveBeenCalled();
     });
 
-    it('traduce errores de nombre duplicado a un mensaje funcional', async () => {
-        httpMock.post.and.returnValue(new Subject<any>().asObservable());
+    it('enseña el error de la API (nunca su message) y conserva su code', async () => {
+        httpMock.patch.and.callFake(() => {
+            throw new HttpErrorResponse({
+                status: 403,
+                error: { error: 'Solo el máster puede cambiar la campaña.', code: 'sin_permiso', message: 'otro texto' },
+            });
+        });
+
+        const error = await service.updateCampaign(7, { nombre: 'Costa de la Espada' }).catch((e) => e);
+
+        expect(error.message).toBe('Solo el máster puede cambiar la campaña.');
+        expect(error.code).toBe('sin_permiso');
+        expect(error.status).toBe(403);
+    });
+
+    it('un fallo del servidor lleva el código de la incidencia', async () => {
         httpMock.post.and.callFake(() => {
             throw new HttpErrorResponse({
                 status: 500,
-                error: {
-                    message: "Violation of UNIQUE KEY constraint 'UQ_Campanas_Nombre'. Cannot insert duplicate key row in object 'dbo.Campanas' with unique index 'IX_Campanas_Nombre'.",
-                },
+                error: { error: 'Error de base de datos.', code: 'error_de_base_de_datos', debug: { message: 'x', requestId: '9c1f0e5b' } },
             });
         });
 
         await expectAsync(service.createCampaign('Costa de la Espada')).toBeRejectedWithError(
-            'Ese nombre ya está en uso por otra campaña.'
+            'Error de base de datos. Código de la incidencia: 9c1f0e5b'
         );
     });
 
-    it('traduce errores vagos de integridad al renombrar una campaña como nombre ya usado', async () => {
-        httpMock.patch.and.callFake(() => {
-            throw new HttpErrorResponse({
-                status: 409,
-                error: {
-                    message: 'Error de integridad de datos.',
-                },
-            });
+    it('sin sesión (por el código), pide iniciar sesión', async () => {
+        httpMock.post.and.callFake(() => {
+            throw new HttpErrorResponse({ status: 401, error: { error: 'Tienes que iniciar sesión.', code: 'TOKEN_EXPIRED' } });
         });
 
-        await expectAsync(service.updateCampaign(7, { nombre: 'Costa de la Espada' })).toBeRejectedWithError(
-            'Ese nombre ya está en uso por otra campaña.'
-        );
+        await expectAsync(service.createCampaign('Costa de la Espada')).toBeRejectedWithError('Necesitas iniciar sesión para continuar.');
     });
 
     it('listSocialCampaigns recupera campañas propias aunque la proyección privada llegue sin membresía activa', async () => {

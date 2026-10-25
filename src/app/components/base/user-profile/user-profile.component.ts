@@ -13,7 +13,6 @@ import {
     CampaignUserSearchResult,
 } from 'src/app/interfaces/campaign-management';
 import {
-    ProfileApiError,
     UserPrivateProfile,
     UserPrivateProfileOpenRequest,
     UserPrivateProfileSectionId,
@@ -37,7 +36,6 @@ import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
@@ -1632,22 +1630,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (complianceError)
             return complianceError;
 
-        if (error instanceof ProfileApiError) {
-            if (error.code === 'PROFILE_NAME_INVALID')
-                return 'El nombre visible no es válido.';
-            if (error.code === 'PROFILE_NAME_TOO_LONG')
-                return 'El nombre visible supera el límite permitido.';
-            if (error.code === 'PROFILE_FIELD_INVALID')
-                return 'Uno de los campos de identidad no es válido.';
-            if (error.code === 'PROFILE_FIELD_TOO_LONG')
-                return 'Uno de los campos de identidad supera el límite permitido.';
-            if (error.code === 'AVATAR_FILE_TOO_LARGE')
-                return 'El avatar no puede superar 5 MB.';
-            if (error.code === 'AVATAR_FILE_TYPE_INVALID')
-                return 'El avatar debe ser JPEG, PNG o WEBP.';
-            if (error.code === 'AVATAR_IMAGE_INVALID')
-                return 'La imagen seleccionada no es válida.';
-        }
         return toUserFacingErrorMessage(error, fallback);
     }
 
@@ -1655,9 +1637,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         const complianceError = this.resolveComplianceErrorMessage(error, scope);
         if (complianceError)
             return complianceError;
-        return toUserFacingErrorMessage(error, fallback, {
-            duplicateNameEntity: this.isCampaignNameFallback(fallback) ? 'campaign' : undefined,
-        });
+        return toUserFacingErrorMessage(error, fallback);
     }
 
     private resolveComplianceErrorMessage(error: any, scope: UserAccessScope): string {
@@ -2132,11 +2112,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             return;
 
         await this.reloadCampaigns(this.selectedCampaignId ?? event.campaignId);
-    }
-
-    private isCampaignNameFallback(value: string): boolean {
-        const normalized = normalizarTexto(value);
-        return normalized.includes('crear la campana') || normalized.includes('actualizar la campana');
     }
 
     private toPositiveInt(value: any): number | null {

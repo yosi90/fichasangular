@@ -1,7 +1,9 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Auth, User } from '@angular/fire/auth';
 import { Database } from '@angular/fire/database';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { UserService } from './user.service';
+import { ProfileApiError } from '../interfaces/user-account';
 import { BehaviorSubject } from 'rxjs';
 import { EstadoPlataforma } from './platform-session.service';
 
@@ -358,6 +360,20 @@ describe('UserService', () => {
         expect(service.getComplianceErrorMessage({ status: 403 }, 'usage')).toBe(
             'Debes aceptar las normas de uso vigentes antes de continuar.'
         );
+    });
+
+    it('getComplianceErrorMessage reconoce las normas de creación por el código de la API', () => {
+        const service = new UserServiceTestDouble();
+        const http = new HttpErrorResponse({
+            status: 403,
+            error: { error: 'Faltan por aceptar las normas.', code: 'CREATION_POLICY_ACCEPTANCE_REQUIRED', policyKind: 'creation' },
+        });
+
+        expect(service.getComplianceErrorMessage(http, 'creation')).toBe('Debes aceptar las normas de Rol vigentes antes de crear o editar contenido.');
+        expect(service.getComplianceErrorMessage(new ProfileApiError('x', 'CREATION_POLICY_ACCEPTANCE_REQUIRED', 403), 'usage'))
+            .toBe('Debes aceptar las normas de Rol vigentes antes de crear o editar contenido.');
+        expect(service.getComplianceErrorMessage({ code: 'USER_BANNED', status: 400 }, 'usage')).toBe('');
+        expect(service.getComplianceErrorMessage(new HttpErrorResponse({ status: 400, error: { message: 'CREATION_POLICY_ACCEPTANCE_REQUIRED' } }), 'usage')).toBe('');
     });
 
     it('usa permisos del perfil privado como fallback si el ACL todavía no está en RTDB', async () => {

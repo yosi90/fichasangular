@@ -22,13 +22,14 @@ import {
     UpdateCampaignSubtramaInput,
     UpdateCampaignTramaInput,
 } from '../interfaces/campaign-management';
-import { ProfileApiError, ProfileApiErrorResponse } from '../interfaces/user-account';
+import { ProfileApiError } from '../interfaces/user-account';
 import { environment } from 'src/environments/environment';
 import { CampaignRealtimeSyncService } from './campaign-realtime-sync.service';
 import { esperarSesionFirebase, FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserService } from './user.service';
 import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
+import { codigoDeError } from './utils/error-api';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from './platform-spaces.service';
 import { toBoolean } from 'src/app/services/utils/normalizacion';
@@ -1312,97 +1313,10 @@ export class CampanaService {
     private toError(error: any, fallbackMessage: string): Error {
         if (error instanceof ProfileApiError)
             return error;
-        if (error instanceof HttpErrorResponse) {
-            const parsed = this.extractErrorBody(error.error);
-            const bodyMessage = parsed.message;
-            const duplicateNameMessage = this.toDuplicateCampaignNameMessage(error.status, bodyMessage, parsed.code, fallbackMessage);
-            if (duplicateNameMessage)
-                return new ProfileApiError(duplicateNameMessage, parsed.code, error.status || 0);
-            return new ProfileApiError(
-                toUserFacingErrorMessage(
-                    { ...error, message: bodyMessage || error.message, code: parsed.code },
-                    fallbackMessage,
-                    {
-                        duplicateNameEntity: this.isCampaignNameOperation(fallbackMessage) ? 'campaign' : undefined,
-                    }
-                ),
-                parsed.code,
-                error.status || 0
-            );
-        }
-        if (error instanceof Error)
-            return new Error(
-                toUserFacingErrorMessage(
-                    error,
-                    fallbackMessage,
-                    {
-                        duplicateNameEntity: this.isCampaignNameOperation(fallbackMessage) ? 'campaign' : undefined,
-                    }
-                )
-            );
-
-        return new Error(
-            toUserFacingErrorMessage(
-                error,
-                fallbackMessage,
-                {
-                    duplicateNameEntity: this.isCampaignNameOperation(fallbackMessage) ? 'campaign' : undefined,
-                }
-            )
-        );
-    }
-
-    private extractErrorBody(body: any): ProfileApiErrorResponse {
-        if (!body)
-            return { code: '', message: '' };
-        if (typeof body === 'string')
-            return { code: '', message: body.trim() };
-        if (typeof body === 'object') {
-            const code = `${body?.code ?? ''}`.trim();
-            const directMessage = `${body?.message ?? body?.error ?? ''}`.trim();
-            if (code.length > 0 || directMessage.length > 0)
-                return { code, message: directMessage };
-            const firstEntry = Object.entries(body)[0];
-            if (!firstEntry)
-                return { code: '', message: '' };
-            return {
-                code: '',
-                message: `${firstEntry[0]}${firstEntry[1] ? `: ${firstEntry[1]}` : ''}`.trim(),
-            };
-        }
-        return { code: '', message: '' };
-    }
-
-    private toDuplicateCampaignNameMessage(status: number, message: string, code: string, fallbackMessage: string): string {
-        const normalized = `${message ?? ''}`.trim().toLowerCase();
-        const normalizedCode = `${code ?? ''}`.trim().toLowerCase();
-        const normalizedFallback = `${fallbackMessage ?? ''}`.trim().toLowerCase();
-
-        const looksLikeDuplicate = normalized.includes('duplicate')
-            || normalized.includes('duplicado')
-            || normalized.includes('duplicada')
-            || normalized.includes('unique')
-            || normalized.includes('uq_')
-            || normalized.includes('ix_')
-            || normalized.includes('integridad')
-            || normalizedCode.includes('duplicate')
-            || normalizedCode.includes('conflict')
-            || normalizedCode.includes('alreadyexists');
-        const looksLikeCampaignName = normalized.includes('campa')
-            || normalized.includes('nombre');
-
-        if (!this.isCampaignNameOperation(normalizedFallback))
-            return '';
-
-        if ((status === 409 || status === 400 || status === 500) && (looksLikeDuplicate || looksLikeCampaignName))
-            return 'Ese nombre ya está en uso por otra campaña.';
-
-        return '';
-    }
-
-    private isCampaignNameOperation(value: string): boolean {
-        const normalized = `${value ?? ''}`.trim().toLowerCase();
-        return normalized.includes('crear la campaña') || normalized.includes('renombrar la campaña');
+        const mensaje = toUserFacingErrorMessage(error, fallbackMessage);
+        if (error instanceof HttpErrorResponse)
+            return new ProfileApiError(mensaje, codigoDeError(error), error.status || 0);
+        return new Error(mensaje);
     }
 
     private normalizeNullableHomebrewSourceLimit(value: any): number | null {

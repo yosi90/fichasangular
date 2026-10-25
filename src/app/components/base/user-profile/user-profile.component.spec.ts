@@ -149,12 +149,7 @@ describe('UserProfileComponent', () => {
             getAccessRestriction: jasmine.createSpy('getAccessRestriction').and.returnValue(null),
             getAccessRestrictionMessage: jasmine.createSpy('getAccessRestrictionMessage').and.returnValue(''),
             resolveComplianceRestrictionFromError: jasmine.createSpy('resolveComplianceRestrictionFromError').and.callFake((error: any, scope: 'usage' | 'creation' = 'usage') => {
-                const code = `${error?.code ?? ''}`.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (code.includes('banned'))
-                    return 'banned';
-                if (code.includes('mustacceptusage') || code.includes('usagepolicyacceptancerequired'))
-                    return 'mustAcceptUsage';
-                if (code.includes('mustacceptcreation') || code.includes('creationpolicyacceptancerequired'))
+                if (error?.code === 'CREATION_POLICY_ACCEPTANCE_REQUIRED')
                     return 'mustAcceptCreation';
                 if (Number(error?.status ?? 0) === 403)
                     return scope === 'creation' ? 'mustAcceptCreation' : 'mustAcceptUsage';

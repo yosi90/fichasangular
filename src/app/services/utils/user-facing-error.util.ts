@@ -1,17 +1,8 @@
+import { HttpErrorResponse } from '@angular/common/http';
+import { MENSAJE_SIN_SESION } from 'src/app/interfaces/user-account';
+import { esErrorDeSesion, leerErrorDeApi, mensajeDeError, textoParaMostrar } from 'src/app/services/utils/error-api';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
-export interface UserFacingErrorOptions {
-    duplicateNameEntity?: 'campaign' | 'generic';
-    sessionRequiredMessage?: string;
-}
-
-interface ErrorDetails {
-    message: string;
-    code: string;
-    status: number;
-}
-
-const SESSION_REQUIRED_MESSAGE = 'Necesitas iniciar sesión para continuar.';
 const TECHNICAL_MESSAGE_PATTERNS = [
     'http ',
     'backend',
@@ -47,97 +38,28 @@ const GENERIC_TECHNICAL_MESSAGES = new Set([
     'internal server error',
 ]);
 
-export function toUserFacingErrorMessage(
-    error: unknown,
-    fallback: string,
-    options: UserFacingErrorOptions = {}
-): string {
+/**
+ * El texto para la persona de cualquier error (una respuesta de la API, un error propio o un texto): si falta la
+ * sesión (por el código), «Necesitas iniciar sesión…»; si el texto parece técnico, `fallback`. En un fallo del
+ * servidor, con el código de la incidencia detrás.
+ */
+export function toUserFacingErrorMessage(error: unknown, fallback: string): string {
     const normalizedFallback = `${fallback ?? ''}`.trim() || 'No se pudo completar la acción.';
-    const details = extractErrorDetails(error);
-    const rawMessage = details.message;
-    const normalizedMessage = normalizarTexto(rawMessage);
-    const normalizedCode = normalizarTexto(details.code);
 
-    if (isSessionRequiredError(normalizedMessage, normalizedCode, details.status))
-        return options.sessionRequiredMessage ?? SESSION_REQUIRED_MESSAGE;
+    if (esErrorDeSesion(error))
+        return MENSAJE_SIN_SESION;
 
-    if (looksLikeDuplicateNameError(normalizedMessage, normalizedCode, details.status)) {
-        if (options.duplicateNameEntity === 'campaign')
-            return 'Ese nombre ya está en uso por otra campaña.';
-        if (options.duplicateNameEntity === 'generic')
-            return 'Ese nombre ya está en uso.';
+    if (error instanceof HttpErrorResponse) {
+        const leido = leerErrorDeApi(error, normalizedFallback);
+        return textoParaMostrar({ ...leido, mensaje: textoNoTecnico(leido.mensaje, normalizedFallback) });
     }
 
-    if (rawMessage.length < 1)
-        return normalizedFallback;
-
-    if (looksTechnicalMessage(normalizedMessage))
-        return normalizedFallback;
-
-    return rawMessage;
+    return textoNoTecnico(mensajeDeError(error, ''), normalizedFallback);
 }
 
-function extractErrorDetails(error: unknown): ErrorDetails {
-    if (!error || typeof error !== 'object') {
-        const message = `${error ?? ''}`.trim();
-        return {
-            message,
-            code: '',
-            status: 0,
-        };
-    }
-
-    const record = error as Record<string, any>;
-    const nested = record['error'];
-    const nestedMessage = typeof nested === 'string'
-        ? nested.trim()
-        : `${nested?.message ?? nested?.error ?? ''}`.trim();
-    const directMessage = `${record['message'] ?? ''}`.trim();
-    const code = `${record['code'] ?? nested?.code ?? ''}`.trim();
-    const status = Math.trunc(Number(record['status'] ?? 0));
-
-    return {
-        message: nestedMessage || directMessage,
-        code,
-        status: Number.isFinite(status) ? status : 0,
-    };
-}
-
-function isSessionRequiredError(message: string, code: string, status: number): boolean {
-    if (code.includes('unauthorized') || code.includes('tokeninvalid'))
-        return true;
-
-    if (message.includes('sesion no iniciada') || message.includes('token no disponible'))
-        return true;
-
-    return status === 401 && GENERIC_TECHNICAL_MESSAGES.has(message);
-}
-
-function looksLikeDuplicateNameError(message: string, code: string, status: number): boolean {
-    const hasDuplicateSignal = message.includes('duplicate')
-        || message.includes('duplicad')
-        || message.includes('ya existe')
-        || message.includes('ya esta en uso')
-        || message.includes('ya está en uso')
-        || message.includes('unique')
-        || message.includes('constraint')
-        || message.includes('integridad')
-        || code.includes('duplicate')
-        || code.includes('alreadyexists')
-        || code.includes('conflict');
-
-    if (!hasDuplicateSignal)
-        return false;
-
-    return status === 409 || status === 400 || status === 500 || message.includes('nombre');
-}
-
-function looksTechnicalMessage(message: string): boolean {
-    if (message.length < 1)
-        return false;
-
-    if (GENERIC_TECHNICAL_MESSAGES.has(message))
-        return true;
-
-    return TECHNICAL_MESSAGE_PATTERNS.some((pattern) => message.includes(pattern));
+function textoNoTecnico(message: string, fallback: string): string {
+    const normalized = normalizarTexto(message);
+    if (normalized.length < 1 || GENERIC_TECHNICAL_MESSAGES.has(normalized))
+        return fallback;
+    return TECHNICAL_MESSAGE_PATTERNS.some((pattern) => normalized.includes(pattern)) ? fallback : message;
 }

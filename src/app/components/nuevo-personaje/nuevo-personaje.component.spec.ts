@@ -5126,14 +5126,14 @@ describe('NuevoPersonajeComponent', () => {
         expect((swalSpy.calls.mostRecent().args[0] as any).text).toBe('Debes aceptar las normas de creación vigentes antes de continuar.');
     });
 
-    it('finalizarPersonajeCompleto traduce mustAcceptCreation cuando el POST responde 403 funcional', async () => {
+    it('finalizarPersonajeCompleto traduce CREATION_POLICY_ACCEPTANCE_REQUIRED cuando el POST responde 403 funcional', async () => {
         personajeSvcMock.crearPersonajeApiDesdeCreacion.and.rejectWith({
             status: 403,
-            code: 'mustAcceptCreation',
+            code: 'CREATION_POLICY_ACCEPTANCE_REQUIRED',
             message: 'Forbidden',
         });
         userSvcMock.getComplianceErrorMessage.and.callFake((error: any, scope: string) => {
-            if (scope === 'creation' && `${error?.code ?? ''}` === 'mustAcceptCreation')
+            if (scope === 'creation' && `${error?.code ?? ''}` === 'CREATION_POLICY_ACCEPTANCE_REQUIRED')
                 return 'Debes aceptar las normas de creación vigentes antes de continuar.';
             return '';
         });
