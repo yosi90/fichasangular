@@ -1,4 +1,6 @@
 import { analizarTextoManual } from 'src/app/components/shared/texto-manual/texto-manual';
+import { Alineamiento } from 'src/app/interfaces/alineamiento';
+import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 /**
@@ -71,4 +73,19 @@ export function esTextoCorto(texto: string | null | undefined, maximo = 240): bo
         return false;
     const bloques = analizarTextoManual(texto);
     return bloques.length === 1 && bloques[0].tipo === 'parrafo' && `${texto}`.trim().length <= maximo;
+}
+
+/**
+ * El dato «Alineamiento» (`textoAlineamiento`), con su prioridad y su descripción de la API en el tooltip («Prioridad:
+ * Siempre. Se debe respetar a raja tabla.»). Lo usan los detalles que traen un `AlineamientoDetalle`.
+ */
+export function datoAlineamiento(alineamiento: Alineamiento | null | undefined): DatoFicha {
+    const valor = textoAlineamiento(alineamiento);
+    const prioridad = `${alineamiento?.Prioridad?.Nombre ?? ''}`.trim();
+    const descripcion = `${alineamiento?.Descripcion ?? ''}`.trim();
+    const ayuda = [
+        tieneTextoVisible(prioridad) ? `Prioridad: ${prioridad}.` : '',
+        tieneTextoVisible(descripcion) ? descripcion : '',
+    ].filter(Boolean).join(' ');
+    return { etiqueta: 'Alineamiento', valor, ayuda: valor ? ayuda : null };
 }

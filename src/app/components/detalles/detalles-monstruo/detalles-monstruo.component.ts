@@ -1,11 +1,11 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, DoteFicha, SortilegaFicha, datosVisibles, dotesVisibles, sortilegasVisibles, textoDato, unirTipo } from 'src/app/components/detalles/ficha';
+import { DatoFicha, DoteFicha, SortilegaFicha, datoAlineamiento, datosVisibles, dotesVisibles, sortilegasVisibles, textoDato, unirTipo } from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
+import { textoEjesAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
@@ -44,6 +44,8 @@ interface NivelClaseRequerido {
     nivel: number;
     plantilla: string;
     dote: string;
+    /** Las preferencias de ley y de moral que pide ese nivel de clase («Siempre bueno»), o vacío. */
+    alineamiento: string;
 }
 
 interface RequisitosRelacion {
@@ -363,7 +365,7 @@ export class DetallesMonstruoComponent {
                 alPulsar: idTipo > 0 ? () => this.abrirDetallesTipoCriatura(idTipo) : undefined,
             },
             { etiqueta: 'Tamaño', valor: m?.Tamano?.Nombre },
-            { etiqueta: 'Alineamiento', valor: textoAlineamiento(this.monstruoData?.Alineamiento) },
+            datoAlineamiento(this.monstruoData?.Alineamiento),
             { etiqueta: 'Tesoro', valor: m?.Tesoro },
             {
                 etiqueta: 'Idiomas',
@@ -449,6 +451,7 @@ export class DetallesMonstruoComponent {
                 nivel: item.nivel,
                 plantilla: item.plantilla,
                 dote: item.dote,
+                alineamiento: item.alineamiento,
             }));
     }
 
@@ -463,6 +466,7 @@ export class DetallesMonstruoComponent {
                 plantilla: `${item?.Plantilla?.Nombre ?? ''}`.trim(),
                 doteId: toNumber(item?.Dote?.Id),
                 dote: `${item?.Dote?.Nombre ?? ''}`.trim(),
+                alineamiento: textoEjesAlineamiento(item?.Preferencia_legal?.Nombre, item?.Preferencia_moral?.Nombre),
             }));
     }
 

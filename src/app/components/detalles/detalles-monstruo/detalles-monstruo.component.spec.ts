@@ -91,7 +91,7 @@ describe('DetallesMonstruoComponent', () => {
     let fixture: ComponentFixture<DetallesMonstruoComponent>;
     let manualNavSpy: jasmine.SpyObj<ManualDetalleNavigationService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, titulos, datos, enlace } = lectorFicha(elemento);
+    const { texto, titulos, datos, enlace, valor } = lectorFicha(elemento);
     const franja = (): string[][] => Array.from(elemento().querySelectorAll('.monstruo-franja__dato'))
         .map((d) => [limpio(d.querySelector('dt')), limpio(d.querySelector('dd'))]);
     const combate = (): string[][] => {
@@ -245,6 +245,22 @@ describe('DetallesMonstruoComponent', () => {
         expect(titulos()).toEqual(['Combate', 'Descripción', 'En resumen']);
     });
 
+    it('sin preferencia de ley ni de moral, el alineamiento dice «Sin preferencia», como en el lienzo', () => {
+        component.monstruo = crearMonstruoMock({
+            Alineamiento: {
+                Id: 2,
+                Basico: null,
+                Ley: { Id_ley: 10, Nombre: 'Ninguna preferencia' },
+                Moral: { Id_moral: 10, Nombre: 'Ninguna preferencia' },
+                Prioridad: null,
+                Descripcion: null,
+            } as any,
+        });
+        fixture.detectChanges();
+
+        expect(valor('Alineamiento')).toBe('Sin preferencia');
+    });
+
     it('no enseña lo que la API da vacío o null, ni secciones sin contenido', () => {
         component.monstruo = crearMonstruoMock({
             Descripcion: null as any,
@@ -320,6 +336,14 @@ describe('DetallesMonstruoComponent', () => {
                 Preferencia_legal: null,
                 Preferencia_moral: null,
                 Dote: { Id: 53, Nombre: 'Compañero elevado' },
+            }, {
+                // La preferencia de ley sin preferencia no sale; la de moral, sí.
+                Clase: { Id: 7, Nombre: 'Paladín' },
+                Nivel: 5,
+                Plantilla: null,
+                Preferencia_legal: { Id: 10, Nombre: 'Ninguna preferencia' },
+                Preferencia_moral: { Id: 4, Nombre: 'Siempre Bueno' },
+                Dote: null,
             }] as any,
         });
         fixture.detectChanges();
@@ -331,7 +355,7 @@ describe('DetallesMonstruoComponent', () => {
         expect(Array.from(lateral.querySelectorAll('.ficha-subtitulo')).map((t) => limpio(t)))
             .toEqual(['Alineamiento requerido', 'Niveles de clase requeridos']);
         expect(Array.from(lateral.querySelectorAll('.ficha-lista__item')).map((i) => limpio(i)))
-            .toEqual(['Neutral', 'Druida 4 · Compañero elevado']);
+            .toEqual(['Neutral', 'Druida 4 · Compañero elevado', 'Paladín 5 · Siempre bueno']);
         lateral.querySelector<HTMLButtonElement>('button.ficha-enlace')!.click();
         expect(claseSpy).toHaveBeenCalledWith(5);
     });

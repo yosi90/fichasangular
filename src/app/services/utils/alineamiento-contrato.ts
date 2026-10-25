@@ -1,4 +1,5 @@
 import { Alineamiento } from 'src/app/interfaces/alineamiento';
+import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
@@ -93,17 +94,35 @@ export function nombreBasicoDesdeVector(ley: number, moral: number): string {
     return NOMBRE_POR_VECTOR[`${ley},${moral}`] ?? "Neutral autentico";
 }
 
+/** Un eje del alineamiento en minúscula («nunca legal»), o vacío si no tiene preferencia. */
+function textoEjeAlineamiento(nombre: string | null | undefined): string {
+    const limpio = `${nombre ?? ''}`.trim();
+    return tieneTextoVisible(limpio) && !esAlineamientoSinPreferencia(limpio) ? limpio.toLowerCase() : '';
+}
+
 /**
- * El alineamiento de una criatura (monstruo, subtipo) como lo enseñan los detalles: el básico («Neutral bueno») o, sin
- * él, sus ejes («Legal/Bueno», o solo el que tenga). Vacío si no hay ninguno.
+ * Las preferencias de ley y de moral como las enseñan los detalles (lienzo aprobado): «Nunca legal», «Siempre caótico,
+ * siempre bueno». Las que no tienen preferencia no salen; vacío si no queda ninguna.
+ */
+export function textoEjesAlineamiento(ley: string | null | undefined, moral: string | null | undefined): string {
+    const ejes = [textoEjeAlineamiento(ley), textoEjeAlineamiento(moral)].filter((eje) => eje.length > 0);
+    return mayusculaInicial(ejes.filter((eje, indice) => ejes.indexOf(eje) === indice).join(', '));
+}
+
+/**
+ * El alineamiento de una criatura, una plantilla o una clase como lo enseñan los detalles: el básico («Neutral bueno»)
+ * o, sin él, sus preferencias («Nunca legal»), y «Sin preferencia» si ninguna la tiene. Vacío si no hay alineamiento.
  */
 export function textoAlineamiento(alineamiento: Alineamiento | null | undefined): string {
     const basico = `${alineamiento?.Basico?.Nombre ?? ''}`.trim();
     if (tieneTextoVisible(basico))
         return basico;
-    const ley = `${alineamiento?.Ley?.Nombre ?? ''}`.trim();
-    const moral = `${alineamiento?.Moral?.Nombre ?? ''}`.trim();
-    return `${ley}/${moral}`.replace(/^\/+|\/+$/g, '');
+    const ley = alineamiento?.Ley?.Nombre;
+    const moral = alineamiento?.Moral?.Nombre;
+    const ejes = textoEjesAlineamiento(ley, moral);
+    if (ejes.length > 0)
+        return ejes;
+    return tieneTextoVisible(ley) || tieneTextoVisible(moral) ? 'Sin preferencia' : '';
 }
 
 export function extraerEjesAlineamientoDesdeContrato(alineamiento: any): AlineamientoEjes {

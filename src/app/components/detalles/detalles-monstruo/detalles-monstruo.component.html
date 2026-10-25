@@ -173,6 +173,7 @@
                     <button type="button" class="ficha-enlace" (click)="abrirDetallesClase(nivel.idClase)">{{nivel.nombreClase}} {{nivel.nivel}}</button>
                     <span class="ficha-nota" *ngIf="nivel.plantilla"> · {{nivel.plantilla}}</span>
                     <span class="ficha-nota" *ngIf="nivel.dote"> · {{nivel.dote}}</span>
+                    <span class="ficha-nota" *ngIf="nivel.alineamiento"> · {{nivel.alineamiento}}</span>
                 </span>
             </li>
         </ul>

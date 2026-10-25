@@ -1,10 +1,9 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, DoteFicha, SortilegaFicha, datosMovimiento, datosVisibles, dotesVisibles, sortilegasVisibles } from 'src/app/components/detalles/ficha';
+import { DatoFicha, DoteFicha, SortilegaFicha, datosMovimiento, datoAlineamiento, datosVisibles, dotesVisibles, sortilegasVisibles } from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { idiomasVisibles, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
@@ -37,7 +36,7 @@ export class DetallesSubtipoComponent {
         const cambio = (valor: unknown) => toNumber(valor) !== 0 ? textoConSigno(toNumber(valor)) : null;
         this.datos = datosVisibles([
             { etiqueta: 'Ajuste de nivel', valor: cambio(value?.Ajuste_nivel) },
-            { etiqueta: 'Alineamiento', valor: textoAlineamiento(value?.Alineamiento) },
+            datoAlineamiento(value?.Alineamiento),
             { etiqueta: 'Tesoro', valor: value?.Tesoro },
         ]);
         this.combate = datosVisibles([

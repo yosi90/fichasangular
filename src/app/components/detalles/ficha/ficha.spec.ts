@@ -6,6 +6,7 @@ import { CondicionPrerrequisito, GrupoPrerrequisitos } from 'src/app/services/ut
 import {
     DatoFicha,
     FICHA_DETALLE_COMPONENTES,
+    datoAlineamiento,
     datosMovimiento,
     datosVisibles,
     esTextoCorto,
@@ -71,6 +72,28 @@ describe('Ficha de detalle: reglas', () => {
         const datos = datosMovimiento({ Correr: 20, Nadar: 0, Volar: 60, Trepar: 0, Escalar: 0 }, 'Buena');
         expect(datos.map((dato) => `${dato.etiqueta} ${dato.valor}`)).toEqual(["Correr 20'", "Volar 60'", 'Maniobrabilidad Buena']);
         expect(datosMovimiento(null, null)).toEqual([]);
+    });
+
+    it('datoAlineamiento enseña el básico o las preferencias que tiene, y «Sin preferencia» si ninguna la tiene', () => {
+        const ninguna = { Id_ley: 10, Nombre: 'Ninguna preferencia' };
+        expect(datoAlineamiento({
+            Id: 32, Basico: null, Ley: ninguna, Moral: { Id_moral: 6, Nombre: 'Siempre Maligno' },
+            Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' }, Descripcion: 'Se debe respetar a raja tabla.',
+        } as any)).toEqual({ etiqueta: 'Alineamiento', valor: 'Siempre maligno', ayuda: 'Prioridad: Siempre. Se debe respetar a raja tabla.' });
+        expect(datoAlineamiento({ Id: 7, Basico: { Id_basico: 1, Nombre: 'Legal bueno' }, Ley: null, Moral: null } as any).valor)
+            .toBe('Legal bueno');
+        expect(datoAlineamiento({
+            Id: 40, Basico: null, Ley: { Id_ley: 6, Nombre: 'Siempre Caótico' }, Moral: { Id_moral: 4, Nombre: 'Siempre Bueno' },
+        } as any).valor).toBe('Siempre caótico, siempre bueno');
+        expect(datoAlineamiento({
+            Id: 3, Basico: null, Ley: { Id_ley: 5, Nombre: 'Casi siempre Neutral' }, Moral: { Id_moral: 5, Nombre: 'Casi siempre Neutral' },
+        } as any).valor).toBe('Casi siempre neutral');
+        expect(datoAlineamiento({ Id: 2, Basico: null, Ley: ninguna, Moral: { Id_moral: 10, Nombre: 'Ninguna preferencia' } } as any).valor)
+            .toBe('Sin preferencia');
+        // Sin alineamiento (la API da `null` en cada parte), nada; tampoco tooltip.
+        expect(datoAlineamiento({ Id: 0, Basico: null, Ley: null, Moral: null, Prioridad: null, Descripcion: 'Texto' } as any))
+            .toEqual({ etiqueta: 'Alineamiento', valor: '', ayuda: null });
+        expect(datoAlineamiento(null).valor).toBe('');
     });
 
     it('sortilegasVisibles quita las que no tienen conjuro y une nivel de lanzador y usos', () => {
