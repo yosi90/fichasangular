@@ -448,23 +448,12 @@ describe('PersonajeService', () => {
 
     it('el archivado sale solo del detalle de la API: no guarda nada en el navegador que vea otra cuenta', async () => {
         localStorage.setItem('fichas.personajes.archivado.override.v1', JSON.stringify({ 77: true }));
-        const detalle = (archivado?: boolean) => ({
-            i: 77,
-            n: 'Archivado reciente',
-            ownerUid: 'uid-77',
-            visible_otros_usuarios: true,
-            a: '2',
-            ...(archivado === undefined ? {} : { archivado }),
-            ra: {
-                Id: 1,
-                Nombre: 'Humano',
-                Ajuste_nivel: 0,
-                Tamano: { Nombre: 'Mediano', Modificador_presa: 0 },
-                Dgs_adicionales: { Cantidad: 0 },
-            },
-            tc: { Id: 1, Nombre: 'Humanoide' },
-            clases: [{ id: 9, nombre: 'Guerrero', nivel: 2, lanzaConjuros: false, caracteristicaLanzamiento: null, modificadorLanzamiento: null }],
-        });
+        const detalle = (archivado?: boolean) => {
+            const api = crearDetalleApi({ i: 77, archivado });
+            if (archivado === undefined)
+                delete api['archivado'];
+            return api;
+        };
         const httpMock = {
             patch: jasmine.createSpy('patch').and.returnValue(of({ message: 'ok', idPersonaje: 77, archivado: true })),
             get: jasmine.createSpy('get').and.returnValue(of(detalle(true))),
