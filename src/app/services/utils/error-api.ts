@@ -22,7 +22,7 @@ export interface ErrorDeApi {
 }
 
 /** El texto de respaldo cuando la respuesta no trae el `error` de la API y quien llama no da otro. */
-export const ERROR_GENERICO_API = 'No se ha podido completar la acción.';
+export const ERROR_GENERICO_API = 'No se pudo completar la acción.';
 /** El texto cuando no hubo respuesta (estado 0). */
 export const ERROR_SIN_CONEXION = 'No hay conexión con Rol. Revisa tu red y vuelve a probar.';
 

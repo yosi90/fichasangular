@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { MENSAJE_SIN_SESION } from 'src/app/interfaces/user-account';
-import { esErrorDeSesion, leerErrorDeApi, mensajeDeError, textoParaMostrar } from 'src/app/services/utils/error-api';
+import { ERROR_GENERICO_API, esErrorDeSesion, leerErrorDeApi, mensajeDeError, textoParaMostrar } from 'src/app/services/utils/error-api';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 const TECHNICAL_MESSAGE_PATTERNS = [
@@ -44,7 +44,7 @@ const GENERIC_TECHNICAL_MESSAGES = new Set([
  * servidor, con el código de la incidencia detrás.
  */
 export function toUserFacingErrorMessage(error: unknown, fallback: string): string {
-    const normalizedFallback = `${fallback ?? ''}`.trim() || 'No se pudo completar la acción.';
+    const normalizedFallback = `${fallback ?? ''}`.trim() || ERROR_GENERICO_API;
 
     if (esErrorDeSesion(error))
         return MENSAJE_SIN_SESION;
