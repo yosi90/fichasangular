@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { DatoFicha, datosVisibles } from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
@@ -9,13 +10,75 @@ import { idiomasVisibles, nombreDoteConExtra, tieneTextoVisible } from 'src/app/
 @Component({
     selector: 'app-detalles-subtipo',
     templateUrl: './detalles-subtipo.component.html',
-    styleUrls: ['./detalles-subtipo.component.sass'],
     standalone: false
 })
 export class DetallesSubtipoComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
 
-    @Input() subtipo!: SubtipoDetalle;
+    private subtipoData!: SubtipoDetalle;
+
+    // Lo que pinta la ficha, calculado una vez al recibir el subtipo.
+    etiquetas: string[] = [];
+    datos: DatoFicha[] = [];
+    combate: DatoFicha[] = [];
+    movimiento: DatoFicha[] = [];
+    dotes: { contexto: DoteContextual; nombre: string; }[] = [];
+    sortilegas: { id: number; nombre: string; detalle: string; }[] = [];
+    rasgos: Rasgo[] = [];
+    idiomas: { Nombre: string; Descripcion: string; }[] = [];
+    plantillas: { Id: number; Nombre: string; }[] = [];
+
+    @Input()
+    set subtipo(value: SubtipoDetalle) {
+        this.subtipoData = value;
+        this.etiquetas = value?.Heredada ? ['Heredado'] : [];
+        const cambio = (valor: unknown) => toNumber(valor) !== 0 ? this.signo(toNumber(valor)) : null;
+        this.datos = datosVisibles([
+            { etiqueta: 'Ajuste de nivel', valor: cambio(value?.Ajuste_nivel) },
+            { etiqueta: 'Alineamiento', valor: this.textoAlineamiento() },
+            { etiqueta: 'Tesoro', valor: value?.Tesoro },
+        ]);
+        this.combate = datosVisibles([
+            { etiqueta: 'Ataque base', valor: cambio(value?.Ataque_base) },
+            { etiqueta: 'Presa', valor: cambio(value?.Presa) },
+            { etiqueta: 'Iniciativa', valor: cambio(value?.Iniciativa) },
+            { etiqueta: 'Fortaleza', valor: cambio(value?.Fortaleza) },
+            { etiqueta: 'Reflejos', valor: cambio(value?.Reflejos) },
+            { etiqueta: 'Voluntad', valor: cambio(value?.Voluntad) },
+            { etiqueta: 'CA', valor: value?.Ca },
+            { etiqueta: 'Reducción de daño', valor: value?.Rd },
+            { etiqueta: 'Resistencia a conjuros', valor: value?.Rc },
+            { etiqueta: 'Resistencia elemental', valor: value?.Re },
+            { etiqueta: 'CD', valor: value?.Cd },
+        ]);
+        const pies = (valor: unknown) => toNumber(valor) > 0 ? `${toNumber(valor)}'` : null;
+        this.movimiento = datosVisibles([
+            { etiqueta: 'Correr', valor: pies(value?.Movimientos?.Correr) },
+            { etiqueta: 'Nadar', valor: pies(value?.Movimientos?.Nadar) },
+            { etiqueta: 'Volar', valor: pies(value?.Movimientos?.Volar) },
+            { etiqueta: 'Trepar', valor: pies(value?.Movimientos?.Trepar) },
+            { etiqueta: 'Escalar', valor: pies(value?.Movimientos?.Escalar) },
+            { etiqueta: 'Maniobrabilidad', valor: `${value?.Maniobrabilidad?.['Nombre'] ?? ''}` },
+        ]);
+        this.dotes = (value?.Dotes ?? [])
+            .map((contexto) => ({ contexto, nombre: nombreDoteConExtra(contexto) }))
+            .filter((dote) => tieneTextoVisible(dote.nombre));
+        this.sortilegas = (value?.Sortilegas ?? [])
+            .filter((s) => tieneTextoVisible(s?.Conjuro?.Nombre))
+            .map((s) => ({
+                id: toNumber(s.Conjuro.Id),
+                nombre: `${s.Conjuro.Nombre}`.trim(),
+                detalle: [`NL ${toNumber(s.Nivel_lanzador)}`, tieneTextoVisible(s.Usos_diarios) ? `${s.Usos_diarios}`.trim() : '']
+                    .filter(Boolean).join(' · '),
+            }));
+        this.rasgos = (value?.Rasgos ?? []).filter((rasgo) => tieneTextoVisible(rasgo?.Nombre));
+        this.idiomas = idiomasVisibles(value?.Idiomas);
+        this.plantillas = (value?.Plantillas ?? []).filter((plantilla) => tieneTextoVisible(plantilla?.Nombre));
+    }
+
+    get subtipo(): SubtipoDetalle {
+        return this.subtipoData;
+    }
 
     @Output() doteDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() conjuroDetalles: EventEmitter<number> = new EventEmitter<number>();
@@ -42,7 +105,7 @@ export class DetallesSubtipoComponent {
     }
 
     abrirDetallesRasgo(rasgo: Rasgo) {
-        if (rasgo && this.tieneTextoVisible(rasgo?.Nombre))
+        if (rasgo && tieneTextoVisible(rasgo?.Nombre))
             this.rasgoDetalles.emit(rasgo);
     }
 
@@ -52,97 +115,17 @@ export class DetallesSubtipoComponent {
             this.plantillaDetalles.emit(id);
     }
 
-    getAlineamientoResumen(): string {
-        const al = this.subtipo?.Alineamiento;
-        if (!al)
-            return '-';
-        const basico = `${al.Basico?.Nombre ?? ''}`.trim();
-        const ley = `${al.Ley?.Nombre ?? ''}`.trim();
-        const moral = `${al.Moral?.Nombre ?? ''}`.trim();
-        if (this.tieneTextoVisible(basico))
+    private textoAlineamiento(): string {
+        const al = this.subtipoData?.Alineamiento;
+        const basico = `${al?.Basico?.Nombre ?? ''}`.trim();
+        if (tieneTextoVisible(basico))
             return basico;
-        if (this.tieneTextoVisible(ley) || this.tieneTextoVisible(moral))
-            return `${ley}/${moral}`.replace(/^\/|\/$/g, '');
-        return '-';
+        const ley = `${al?.Ley?.Nombre ?? ''}`.trim();
+        const moral = `${al?.Moral?.Nombre ?? ''}`.trim();
+        return `${ley}/${moral}`.replace(/^\/+|\/+$/g, '');
     }
 
-    get manualNombre(): string {
-        return `${this.subtipo?.Manual?.Nombre ?? ''}`.trim();
+    private signo(valor: number): string {
+        return valor > 0 ? `+${valor}` : `${valor}`;
     }
-
-    get manualPagina(): number {
-        return toNumber(this.subtipo?.Manual?.Pagina);
-    }
-
-    get maniobrabilidadNombre(): string {
-        const raw = this.subtipo?.Maniobrabilidad?.['Nombre'];
-        return `${raw ?? ''}`.trim();
-    }
-
-    getMovimientoValor(tipo: 'Correr' | 'Nadar' | 'Volar' | 'Trepar' | 'Escalar'): number {
-        return toNumber(this.subtipo?.Movimientos?.[tipo]);
-    }
-
-    get tieneSeccionCombateDefensas(): boolean {
-        return this.subtipo.Fortaleza !== 0
-            || this.subtipo.Reflejos !== 0
-            || this.subtipo.Voluntad !== 0
-            || this.getTextosCombateDefensas().length > 0
-            || this.tieneTextoVisible(this.subtipo.Tesoro);
-    }
-
-    get tieneBonosCombateDefensas(): boolean {
-        return this.subtipo.Fortaleza !== 0
-            || this.subtipo.Reflejos !== 0
-            || this.subtipo.Voluntad !== 0;
-    }
-
-    getTextosCombateDefensas(): { etiqueta: string; valor: string; }[] {
-        const campos = [
-            { etiqueta: 'CA', valor: `${this.subtipo?.Ca ?? ''}` },
-            { etiqueta: 'RD', valor: `${this.subtipo?.Rd ?? ''}` },
-            { etiqueta: 'RC', valor: `${this.subtipo?.Rc ?? ''}` },
-            { etiqueta: 'RE', valor: `${this.subtipo?.Re ?? ''}` },
-            { etiqueta: 'CD', valor: `${this.subtipo?.Cd ?? ''}` },
-            { etiqueta: 'Tesoro', valor: `${this.subtipo?.Tesoro ?? ''}` },
-        ];
-
-        return campos.filter((c) => this.tieneTextoVisible(c.valor));
-    }
-
-    get tieneSeccionMovimientos(): boolean {
-        return this.getMovimientoValor('Correr') > 0
-            || this.getMovimientoValor('Nadar') > 0
-            || this.getMovimientoValor('Volar') > 0
-            || this.getMovimientoValor('Trepar') > 0
-            || this.getMovimientoValor('Escalar') > 0
-            || this.tieneTextoVisible(this.maniobrabilidadNombre);
-    }
-
-    get tienePanelesRelacionados(): boolean {
-        return (this.subtipo.Dotes?.length ?? 0) > 0
-            || (this.subtipo.Sortilegas?.length ?? 0) > 0
-            || (this.subtipo.Rasgos?.length ?? 0) > 0
-            || (this.subtipo.Plantillas?.length ?? 0) > 0;
-    }
-
-    getIdiomasOtorgados(): { Nombre: string; Descripcion: string; }[] {
-        return idiomasVisibles(this.subtipo?.Idiomas);
-    }
-
-    get tieneResumenSubtipo(): boolean {
-        return this.subtipo.Heredada
-            || !this.subtipo.Oficial
-            || this.subtipo.Ajuste_nivel !== 0
-            || this.subtipo.Ataque_base !== 0
-            || this.subtipo.Presa !== 0
-            || this.subtipo.Iniciativa !== 0
-            || this.tieneTextoVisible(this.getAlineamientoResumen())
-            || this.manualPagina > 0
-            || this.tieneTextoVisible(this.manualNombre);
-    }
-
-    readonly tieneTextoVisible = tieneTextoVisible;
-    readonly getNombreDote = nombreDoteConExtra;
-
 }
