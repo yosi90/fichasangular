@@ -8,6 +8,14 @@ export function toNumber(value: any, fallback: number = 0): number {
     return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+/** El número que representa `value`, o `null` si no hay número (`null`, `undefined`, `''` o algo que no lo es): un dato que falta no es un 0. */
+export function toNumberOrNull(value: unknown): number | null {
+    if (value === null || value === undefined || `${value}`.trim().length < 1)
+        return null;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
 /** El entero (truncado) que representa `value`, o `fallback` si no es un número finito. */
 export function toInt(value: any, fallback: number = 0): number {
     const parsed = Number(value);

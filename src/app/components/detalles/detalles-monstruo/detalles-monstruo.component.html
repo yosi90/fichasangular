@@ -97,12 +97,7 @@
 
             <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
                 <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 chip-titulo">Caracteristicas</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">Fuerza {{monstruo.Caracteristicas.Fuerza}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">Destreza {{monstruo.Caracteristicas.Destreza}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">Constitucion {{monstruo.Caracteristicas.Constitucion}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">Inteligencia {{monstruo.Caracteristicas.Inteligencia}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">Sabiduria {{monstruo.Caracteristicas.Sabiduria}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">Carisma {{monstruo.Caracteristicas.Carisma}}</mat-chip>
+                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let clave of caracteristicas">{{nombresCaracteristicas[clave]}} {{textoCaracteristica(clave)}}</mat-chip>
             </div>
         </div>
 

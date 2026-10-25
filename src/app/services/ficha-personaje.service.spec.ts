@@ -63,12 +63,12 @@ function crearMonstruoBase(nombre: string): FamiliarMonstruoDetalle {
             Escalar: 0,
         },
         Caracteristicas: {
-            Fuerza: 10,
-            Destreza: 10,
-            Constitucion: 10,
-            Inteligencia: 10,
-            Sabiduria: 10,
-            Carisma: 10,
+            Fuerza: 10, Fuerza_modificador: 0,
+            Destreza: 10, Destreza_modificador: 0,
+            Constitucion: 10, Constitucion_modificador: 0,
+            Inteligencia: 10, Inteligencia_modificador: 0,
+            Sabiduria: 10, Sabiduria_modificador: 0,
+            Carisma: 10, Carisma_modificador: 0,
         },
         Salvaciones: {
             Fortaleza: 0,
@@ -119,6 +119,33 @@ describe('FichaPersonajeService', () => {
 
         expect(fetchSpy).toHaveBeenCalledWith('../../assets/pdf/compañero.pdf');
         expect(saveAsSpy).toHaveBeenCalled();
+    });
+
+    it('la hoja de un compañero usa los modificadores de la API y «—» sin valor (no -5 a un constructo)', async () => {
+        const companero = crearMonstruoBase('Horror de platino') as unknown as CompaneroMonstruoDetalle;
+        companero.Caracteristicas = {
+            Fuerza: 16, Fuerza_modificador: 3,
+            Destreza: 17, Destreza_modificador: 3,
+            Constitucion: null, Constitucion_modificador: null,
+            Inteligencia: 13, Inteligencia_modificador: 1,
+            Sabiduria: 20, Sabiduria_modificador: 5,
+            Carisma: 15, Carisma_modificador: 2,
+        };
+        companero.Habilidades = [
+            { Id_habilidad: 40, Habilidad: 'Aguante', Id_caracteristica: 3, Caracteristica: 'Constitucion', Custom: true, Rangos: 2 },
+            { Id_habilidad: 41, Habilidad: 'Fuerza bruta', Id_caracteristica: 1, Caracteristica: 'Fuerza', Custom: true, Rangos: 1 },
+        ] as any;
+        const escrito = new Map<string, string>();
+        spyOn<any>(service, 'trySetText').and.callFake((_form: unknown, campo: string, valor: string) => escrito.set(campo, valor));
+
+        await service.generarPDF_Companero(crearPersonajeBase(), companero, 0);
+
+        expect(escrito.get('fue')).toBe('16');
+        expect(escrito.get('mod_fue')).toBe('+3');
+        expect(escrito.get('con')).toBe('—');
+        expect(escrito.get('mod_con')).toBe('—');
+        expect(escrito.get('mod_custom1')).toBe('0');
+        expect(escrito.get('mod_custom2')).toBe('3');
     });
 
     it('rellena salvaciones, iniciativa, presa y habilidades con las partes de cada tipo que da la API', async () => {

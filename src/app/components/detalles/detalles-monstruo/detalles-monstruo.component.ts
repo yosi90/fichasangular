@@ -1,12 +1,13 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
-import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { MONSTRUO_CARACTERISTICAS, MonstruoCaracteristica, MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
+import { NOMBRES_CARACTERISTICAS, textoCaracteristicaMonstruo } from 'src/app/services/utils/caracteristicas';
 
 @Component({
     selector: 'app-detalles-monstruo',
@@ -21,6 +22,8 @@ export class DetallesMonstruoComponent {
     private static readonly CLASE_IDS_FAMILIAR = new Set<number>([8, 9]);
     private monstruoData!: MonstruoDetalle;
     mostrarInfoManiobrabilidad = false;
+    readonly caracteristicas = MONSTRUO_CARACTERISTICAS;
+    readonly nombresCaracteristicas = NOMBRES_CARACTERISTICAS;
 
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
 
@@ -40,6 +43,11 @@ export class DetallesMonstruoComponent {
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
     @Output() tipoCriaturaDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() monstruoRelacionadoDetalles: EventEmitter<MonstruoDetalle> = new EventEmitter<MonstruoDetalle>();
+
+    /** «16 (+3)» con el modificador de la API, o «—» si la característica no tiene valor. */
+    textoCaracteristica(clave: MonstruoCaracteristica): string {
+        return textoCaracteristicaMonstruo(this.monstruo?.Caracteristicas, clave);
+    }
 
     abrirDetalleManual() {
         this.manualDetalleNavSvc.abrirDetalleManual({

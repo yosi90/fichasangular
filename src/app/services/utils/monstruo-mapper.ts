@@ -22,7 +22,8 @@ import {
     MonstruoSubtipoRef,
     MonstruoTipoRef,
     MonstruoTipoDadoRef,
-    PersonajeRefMonstruo
+    PersonajeRefMonstruo,
+    MONSTRUO_CARACTERISTICAS,
 } from "src/app/interfaces/monstruo";
 import { RacialDetalle } from "src/app/interfaces/racial";
 import { Tamano } from "src/app/interfaces/tamaño";
@@ -30,7 +31,7 @@ import { normalizeEspecial } from "../especial.service";
 import { normalizeIdioma } from "../idioma.service";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeRacial } from "./racial-mapper";
-import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizeManualLegacy } from './manual-mapper';
 
@@ -151,14 +152,12 @@ function normalizeSalvaciones(raw: any): MonstruoSalvaciones {
 }
 
 function normalizeCaracteristicas(raw: any): MonstruoCaracteristicas {
-    return {
-        Fuerza: toNumber(raw?.Fuerza),
-        Destreza: toNumber(raw?.Destreza),
-        Constitucion: toNumber(raw?.Constitucion),
-        Inteligencia: toNumber(raw?.Inteligencia),
-        Sabiduria: toNumber(raw?.Sabiduria),
-        Carisma: toNumber(raw?.Carisma),
-    };
+    const caracteristicas = {} as MonstruoCaracteristicas;
+    MONSTRUO_CARACTERISTICAS.forEach((clave) => {
+        caracteristicas[clave] = toNumberOrNull(raw?.[clave]);
+        caracteristicas[`${clave}_modificador`] = toNumberOrNull(raw?.[`${clave}_modificador`]);
+    });
+    return caracteristicas;
 }
 
 function normalizeSortilega(raw: any): MonstruoSortilega {

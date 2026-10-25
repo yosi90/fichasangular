@@ -49,6 +49,7 @@ import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { calcularOroPorNep } from './utils/oro-inicial';
+import { modificadorCaracteristica } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from './utils/personaje-totales';
@@ -2220,7 +2221,7 @@ export class NuevoPersonajeService {
             const actual = toNumber((this.personajeCreacion as Record<string, any>)[key]);
             const final = actual + aumento;
             this.setValorCaracteristica(key, final);
-            this.setModCaracteristica(key, this.calcularModificador(final));
+            this.setModCaracteristica(key, modificadorCaracteristica(final));
         });
 
         this.recalcularDerivadasPorCaracteristicas();
@@ -4831,7 +4832,7 @@ export class NuevoPersonajeService {
             const base = perdida ? 0 : toNumber(asignaciones[key]);
             const final = perdida ? 0 : base + toNumber(razaMods?.[key]);
             this.setValorCaracteristica(key, final);
-            this.setModCaracteristica(key, perdida ? 0 : this.calcularModificador(final));
+            this.setModCaracteristica(key, perdida ? 0 : modificadorCaracteristica(final));
         });
         this.sincronizarAliasConstitucionPerdida();
 
@@ -4967,7 +4968,7 @@ export class NuevoPersonajeService {
             const finalSinMin = perdida ? 0 : toNumber(base[key]) + suma;
             const final = perdida ? 0 : Math.max(finalSinMin, minimoPlantilla);
             this.setValorCaracteristica(key, final);
-            this.setModCaracteristica(key, perdida ? 0 : this.calcularModificador(final));
+            this.setModCaracteristica(key, perdida ? 0 : modificadorCaracteristica(final));
         });
         this.recalcularDerivadasPorCaracteristicas();
         this.sincronizarAliasConstitucionPerdida();
@@ -9425,10 +9426,6 @@ export class NuevoPersonajeService {
 
     private normalizarClaveModificadorDote(clave: string): string {
         return normalizarTexto(`${clave ?? ''}`).replace(/[^a-z0-9]/g, '');
-    }
-
-    private calcularModificador(valor: number): number {
-        return Math.floor((valor - 10) / 2);
     }
 
     private esCaracteristicaAumentoValida(value: string): value is CaracteristicaKey {

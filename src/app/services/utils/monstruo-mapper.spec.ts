@@ -155,6 +155,28 @@ describe("monstruo-mapper", () => {
         expect(normalized.Companeros[0].Companeros.length).toBe(0);
     });
 
+    it("copia las características y sus modificadores de la API sin convertir el «—» (null) en 0", () => {
+        const normalized = normalizeMonstruoDetalle(createRawMonstruo({
+            Caracteristicas: {
+                Fuerza: 16, Fuerza_modificador: 3,
+                Destreza: "17", Destreza_modificador: "3",
+                Constitucion: null, Constitucion_modificador: null,
+                Inteligencia: 13, Inteligencia_modificador: 1,
+                Sabiduria: 20, Sabiduria_modificador: 5,
+                Carisma: 10, Carisma_modificador: 0,
+            },
+        }), 1);
+
+        expect(normalized.Caracteristicas).toEqual({
+            Fuerza: 16, Fuerza_modificador: 3,
+            Destreza: 17, Destreza_modificador: 3,
+            Constitucion: null, Constitucion_modificador: null,
+            Inteligencia: 13, Inteligencia_modificador: 1,
+            Sabiduria: 20, Sabiduria_modificador: 5,
+            Carisma: 10, Carisma_modificador: 0,
+        });
+    });
+
     it("normaliza familiar con Id_familiar y datos extendidos", () => {
         const normalized = normalizeFamiliarMonstruoDetalle(createRawFamiliar(), 1);
 

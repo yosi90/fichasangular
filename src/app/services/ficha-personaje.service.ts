@@ -3,14 +3,30 @@ import { Auth } from '@angular/fire/auth';
 import { PDFDocument } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Personaje, PersonajeNivelLanzadorResumen, PersonajeTipoLanzamiento } from '../interfaces/personaje';
-import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from '../interfaces/monstruo';
+import {
+    CompaneroMonstruoDetalle,
+    FamiliarMonstruoDetalle,
+    MONSTRUO_CARACTERISTICAS,
+    MonstruoCaracteristica,
+    MonstruoDetalle,
+} from '../interfaces/monstruo';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from 'src/app/services/utils/personaje-totales';
 import { esTextoExtraPorElegir, habilidadConExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { esNombreComodin } from 'src/app/services/utils/comodin';
+import {
+    modificadorParaSumar,
+    textoModificadorCaracteristica,
+    textoValorCaracteristica,
+} from 'src/app/services/utils/caracteristicas';
 
+/** Cada característica de un familiar o un compañero y su campo en la hoja (`fue`, y su modificador `mod_fue`). */
+const CAMPOS_CARACTERISTICAS_PDF: ReadonlyArray<[MonstruoCaracteristica, string]> = [
+    ['Fuerza', 'fue'], ['Destreza', 'des'], ['Constitucion', 'con'],
+    ['Inteligencia', 'int'], ['Sabiduria', 'sab'], ['Carisma', 'car'],
+];
 
 @Injectable({
     providedIn: 'root'
@@ -391,25 +407,11 @@ export class FichaPersonajeService {
         this.trySetText(form, 'presa', `${toNumber((monstruo as any)?.Ataque?.Presa ?? (monstruo as any)?.Presa)}`);
         this.trySetText(form, 'iniciativa', `${toNumber(monstruo?.Iniciativa)}`);
 
-        const fue = toNumber(monstruo?.Caracteristicas?.Fuerza);
-        const des = toNumber(monstruo?.Caracteristicas?.Destreza);
-        const con = toNumber(monstruo?.Caracteristicas?.Constitucion);
-        const intel = toNumber(monstruo?.Caracteristicas?.Inteligencia);
-        const sab = toNumber(monstruo?.Caracteristicas?.Sabiduria);
-        const car = toNumber(monstruo?.Caracteristicas?.Carisma);
-
-        this.trySetText(form, 'fue', `${fue}`);
-        this.trySetText(form, 'des', `${des}`);
-        this.trySetText(form, 'con', `${con}`);
-        this.trySetText(form, 'int', `${intel}`);
-        this.trySetText(form, 'sab', `${sab}`);
-        this.trySetText(form, 'car', `${car}`);
-        this.trySetText(form, 'mod_fue', this.formatSigned(this.calcularModificador(fue)));
-        this.trySetText(form, 'mod_des', this.formatSigned(this.calcularModificador(des)));
-        this.trySetText(form, 'mod_con', this.formatSigned(this.calcularModificador(con)));
-        this.trySetText(form, 'mod_int', this.formatSigned(this.calcularModificador(intel)));
-        this.trySetText(form, 'mod_sab', this.formatSigned(this.calcularModificador(sab)));
-        this.trySetText(form, 'mod_car', this.formatSigned(this.calcularModificador(car)));
+        // Los valores y sus modificadores los da la API; sin valor (el «—» del manual), «—» en los dos.
+        CAMPOS_CARACTERISTICAS_PDF.forEach(([clave, campo]) => {
+            this.trySetText(form, campo, textoValorCaracteristica(monstruo?.Caracteristicas, clave));
+            this.trySetText(form, `mod_${campo}`, textoModificadorCaracteristica(monstruo?.Caracteristicas, clave));
+        });
 
         this.trySetText(form, 'ca', `${toNumber(monstruo?.Defensa?.Ca)}`);
         this.trySetText(form, 'ca_armadura', '0');
@@ -630,21 +632,10 @@ export class FichaPersonajeService {
         return totales;
     }
 
+    /** El modificador de la característica de una habilidad del monstruo, el de la API (sin valor, +0). */
     private calcularModHabilidadMonstruo(monstruo: MonstruoDetalle, habilidad: any): number {
-        const idCar = toNumber(habilidad?.Id_caracteristica);
-        if (idCar === 1)
-            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Fuerza));
-        if (idCar === 2)
-            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Destreza));
-        if (idCar === 3)
-            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Constitucion));
-        if (idCar === 4)
-            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Inteligencia));
-        if (idCar === 5)
-            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Sabiduria));
-        if (idCar === 6)
-            return this.calcularModificador(toNumber(monstruo?.Caracteristicas?.Carisma));
-        return 0;
+        const clave = MONSTRUO_CARACTERISTICAS[toNumber(habilidad?.Id_caracteristica) - 1];
+        return clave ? modificadorParaSumar(monstruo?.Caracteristicas, clave) : 0;
     }
 
     private trySetText(form: any, fieldName: string, value: string): void {
@@ -781,15 +772,6 @@ export class FichaPersonajeService {
         }
         const nivelObjetivo = Math.max(0, nivelClases + Math.max(0, toInt(ajusteNivel)));
         return experienciaParaNivel(nivelObjetivo + 1);
-    }
-
-    private formatSigned(value: number): string {
-        const v = toNumber(value);
-        return v > 0 ? `+${v}` : `${v}`;
-    }
-
-    private calcularModificador(valor: number): number {
-        return Math.floor((toNumber(valor) - 10) / 2);
     }
 
     private normalizarNombreArchivo(nombre: string): string {

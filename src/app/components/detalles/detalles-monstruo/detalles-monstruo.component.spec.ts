@@ -53,7 +53,14 @@ function crearMonstruoMock(partial?: Partial<MonstruoDetalle>): MonstruoDetalle 
         Espacio: 5,
         Alcance: 5,
         Salvaciones: { Fortaleza: 4, Reflejos: 5, Voluntad: 1 },
-        Caracteristicas: { Fuerza: 15, Destreza: 13, Constitucion: 14, Inteligencia: 2, Sabiduria: 12, Carisma: 6 },
+        Caracteristicas: {
+            Fuerza: 15, Fuerza_modificador: 2,
+            Destreza: 13, Destreza_modificador: 1,
+            Constitucion: 14, Constitucion_modificador: 2,
+            Inteligencia: 2, Inteligencia_modificador: -4,
+            Sabiduria: 12, Sabiduria_modificador: 1,
+            Carisma: 10, Carisma_modificador: 0,
+        },
         Cd_sortilegas: '',
         Valor_desafio: '2',
         Tesoro: 'Ninguno',
@@ -164,6 +171,25 @@ describe('DetallesMonstruoComponent', () => {
         expect(subtipoSpy).toHaveBeenCalledWith({ Id: 3, Nombre: 'Frio' });
         expect(tipoSpy).toHaveBeenCalledWith(2);
         expect(relacionadoSpy).toHaveBeenCalledWith(relacionado);
+    });
+
+    it('enseña cada característica con el modificador de la API entre paréntesis y «—» sin valor', () => {
+        component.monstruo = crearMonstruoMock({
+            Caracteristicas: {
+                ...crearMonstruoMock().Caracteristicas,
+                Constitucion: null,
+                Constitucion_modificador: null,
+            },
+        });
+        fixture.detectChanges();
+
+        const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+        expect(texto).toContain('Fuerza 15 (+2)');
+        expect(texto).toContain('Inteligencia 2 (-4)');
+        expect(texto).toContain('Carisma 10 (+0)');
+        expect(texto).toContain('Constitución —');
+        expect(texto).not.toContain('Constitución — (');
+        expect(texto).not.toContain('null');
     });
 
     it('abre detalle de manual con referencia normalizada', () => {

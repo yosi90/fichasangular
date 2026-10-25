@@ -15,6 +15,7 @@ import {
 import Swal from 'sweetalert2';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 import { toBoolean } from 'src/app/services/utils/normalizacion';
+import { modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
 
 type CaracteristicaKey = keyof AsignacionCaracteristicas;
 type CaracteristicasPerdidasState = Partial<Record<CaracteristicaKey, boolean>>;
@@ -482,12 +483,8 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit, Do
         const valorFinal = Number(baseAsignada) + this.getModRacial(caracteristica);
         return {
             valorFinal,
-            modificador: this.getModCaracteristica(valorFinal),
+            modificador: modificadorCaracteristica(valorFinal),
         };
-    }
-
-    private getModCaracteristica(valor: number): number {
-        return Math.floor((Number(valor) - 10) / 2);
     }
 
     private esCaracteristicaPerdida(caracteristica: CaracteristicaKey): boolean {
