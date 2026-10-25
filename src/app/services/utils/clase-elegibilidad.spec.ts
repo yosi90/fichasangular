@@ -430,13 +430,14 @@ describe('clase-elegibilidad', () => {
             expect(res.razones).toEqual(['No cumple: Arma de aliento']);
         });
 
-        it('sin equivalencias no se puede comprobar', () => {
+        it('sin equivalencias se deja elegir con un aviso', () => {
             const res = evaluarElegibilidadClase(claseConAptitud({
                 Id_aptitud_especial: 11, Aptitud_especial: 'Cuerpo flexible', Raciales: [], Especiales: [], Plantillas: [],
                 Opcional: 0, Frase: 'Cuerpo flexible',
             }), crearContextoBase());
-            expect(res.estado).toBe('blocked_unknown');
-            expect(res.razones).toEqual(['No se puede comprobar: Cuerpo flexible']);
+            expect(res.estado).toBe('eligible');
+            expect(res.razones).toEqual([]);
+            expect(res.advertencias).toEqual(['La web no puede comprobar este requisito: Cuerpo flexible']);
         });
     });
 });

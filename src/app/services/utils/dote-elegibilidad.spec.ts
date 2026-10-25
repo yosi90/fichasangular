@@ -685,13 +685,50 @@ describe('dote-elegibilidad', () => {
             expect(resultado.razones).toEqual(['No cumple: Alas']);
         });
 
-        it('sin equivalencias no se puede comprobar: ni se da por cumplida ni por incumplida', () => {
-            const resultado = evaluar({
-                Id_aptitud_especial: 14, Aptitud_especial: 'Amplias zancadas', Raciales: [], Especiales: [], Plantillas: [],
-                Opcional: 0, Frase: 'Amplias zancadas',
-            }, { raciales: [{ id: 41, nombre: 'Aspecto de dragón (Alas)' }] });
-            expect(resultado.estado).toBe('blocked_unknown');
-            expect(resultado.razones).toEqual(['No se puede comprobar: Amplias zancadas']);
+        const ampliasZancadas = {
+            Id_aptitud_especial: 14, Aptitud_especial: 'Amplias zancadas', Raciales: [], Especiales: [], Plantillas: [],
+            Opcional: 0, Frase: 'Amplias zancadas',
+        };
+
+        it('sin equivalencias la web no puede comprobarla: se deja elegir con un aviso', () => {
+            const resultado = evaluar(ampliasZancadas, { raciales: [{ id: 41, nombre: 'Aspecto de dragón (Alas)' }] });
+            expect(resultado.estado).toBe('eligible');
+            expect(resultado.razones).toEqual([]);
+            expect(resultado.advertencias).toEqual(['La web no puede comprobar este requisito: Amplias zancadas']);
+        });
+
+        it('el aviso acompaña a la dote aunque otro prerrequisito la bloquee', () => {
+            const resultado = evaluarElegibilidadDote({
+                dote: crearDoteBase({
+                    Prerrequisitos: { aptitud_especial: [ampliasZancadas], ataque_base: [{ Ataque_base: 4, Opcional: 0, Frase: 'Ataque base +4' }] },
+                }),
+                contexto: crearContextoBase({ ataqueBase: 1 }),
+            });
+            expect(resultado.estado).toBe('blocked_failed');
+            expect(resultado.razones).toEqual(['No cumple: Ataque base +4']);
+            expect(resultado.advertencias).toEqual(['La web no puede comprobar este requisito: Amplias zancadas']);
+        });
+
+        it('en un grupo de alternativas, sin otra que se cumpla, avisa y deja elegir', () => {
+            const resultado = evaluarElegibilidadDote({
+                dote: crearDoteBase({
+                    Prerrequisitos: { aptitud_especial: [{ ...alas, Opcional: 1 }, { ...ampliasZancadas, Opcional: 1 }] },
+                }),
+                contexto: crearContextoBase(),
+            });
+            expect(resultado.estado).toBe('eligible');
+            expect(resultado.advertencias).toEqual(['La web no puede comprobar este requisito: Amplias zancadas']);
+        });
+
+        it('en un grupo de alternativas, si otra se cumple de verdad, no avisa', () => {
+            const resultado = evaluarElegibilidadDote({
+                dote: crearDoteBase({
+                    Prerrequisitos: { aptitud_especial: [{ ...alas, Opcional: 1 }, { ...ampliasZancadas, Opcional: 1 }] },
+                }),
+                contexto: crearContextoBase({ raciales: [{ id: 41, nombre: 'Aspecto de dragón (Alas)' }] }),
+            });
+            expect(resultado.estado).toBe('eligible');
+            expect(resultado.advertencias).toEqual([]);
         });
 
         it('como alternativa, basta con que se cumpla otra del grupo', () => {

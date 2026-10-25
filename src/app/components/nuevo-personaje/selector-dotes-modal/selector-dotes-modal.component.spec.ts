@@ -68,3 +68,33 @@ describe('SelectorDotesModalComponent', () => {
         expect(component.puedeConfirmar).toBeTrue();
     });
 });
+
+// Sin TestBed: los motivos y avisos de cada candidato son métodos puros del componente.
+describe('SelectorDotesModalComponent: motivos y avisos', () => {
+    const aviso = 'La web no puede comprobar este requisito: Amplias zancadas';
+    const candidato = (estado: string, razones: string[], advertencias: string[]) => ({
+        dote: { Id: 9, Nombre: 'Zancada de dragón', Manual: { Nombre: 'MM', Pagina: 1 }, Tipos: [] },
+        restringidaPorTipo: false,
+        repeticionValida: true,
+        requiereExtra: false,
+        extrasDisponibles: [],
+        evaluacion: { estado, razones, advertencias },
+    } as any);
+
+    it('una dote elegible con un aviso se puede elegir y enseña el aviso, sin motivos de bloqueo', () => {
+        const component = new SelectorDotesModalComponent();
+        const elegible = candidato('eligible', [], [aviso]);
+
+        expect(component.esCandidatoElegible(elegible)).toBeTrue();
+        expect(component.getMotivosBloqueo(elegible)).toEqual([]);
+        expect(component.getAvisos(elegible)).toEqual([aviso]);
+    });
+
+    it('una dote bloqueada enseña sus motivos y también el aviso', () => {
+        const component = new SelectorDotesModalComponent();
+        const bloqueada = candidato('blocked_failed', ['No cumple: Ataque base +4'], [aviso]);
+
+        expect(component.getMotivosBloqueo(bloqueada)).toEqual(['No cumple: Ataque base +4']);
+        expect(component.getAvisos(bloqueada)).toEqual([aviso]);
+    });
+});

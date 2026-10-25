@@ -1665,10 +1665,9 @@ export class NuevoPersonajeService {
         if (!evaluacion || evaluacion.estado === 'eligible')
             return false;
 
-        const mensajes = [
-            ...(evaluacion.razones ?? []),
-            ...(evaluacion.advertencias ?? []),
-        ].map((msg) => `${msg ?? ''}`.trim()).filter((msg) => msg.length > 0);
+        // Solo los motivos: los avisos (lo que la web no puede comprobar) no bloquean.
+        const mensajes = (evaluacion.razones ?? [])
+            .map((msg) => `${msg ?? ''}`.trim()).filter((msg) => msg.length > 0);
         if (mensajes.length < 1)
             return false;
 
@@ -4344,6 +4343,7 @@ export class NuevoPersonajeService {
             nivelAplicado: siguienteNivel,
             evaluacion,
             advertencias: [
+                ...(evaluacion.advertencias ?? []),
                 ...resolucionOpcionales.advertencias,
                 ...advertenciasConjuros,
             ],

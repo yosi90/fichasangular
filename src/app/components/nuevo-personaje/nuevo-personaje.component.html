@@ -792,6 +792,8 @@
                                                             *ngIf="item.clase.Prestigio">Prestigio</mat-chip>
                                                         <mat-chip class="tw-m-1 bad"
                                                             *ngIf="item.campaignBlockedReason">{{item.campaignBlockedReason}}</mat-chip>
+                                                        <mat-chip class="tw-m-1 tw-h-auto aviso"
+                                                            *ngFor="let aviso of item.evaluacion.advertencias">{{aviso}}</mat-chip>
                                                     </div>
                                                 </div>
                                             </td>

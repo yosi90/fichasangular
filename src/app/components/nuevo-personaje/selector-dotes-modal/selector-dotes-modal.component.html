@@ -68,8 +68,9 @@
                         </div>
                     </div>
                     <p class="tw-m-0 dote-beneficio" *ngIf="(candidato.dote.Beneficio || candidato.dote.Descripcion) as resumen">{{resumen}}</p>
-                    <div class="dote-motivos" *ngIf="!esCandidatoElegible(candidato)">
+                    <div class="dote-motivos" *ngIf="getMotivosBloqueo(candidato).length > 0 || getAvisos(candidato).length > 0">
                         <p class="tw-m-0" *ngFor="let motivo of getMotivosBloqueo(candidato)">• {{motivo}}</p>
+                        <p class="tw-m-0 dote-aviso" *ngFor="let aviso of getAvisos(candidato)">• {{aviso}}</p>
                     </div>
                 </div>
             </div>
@@ -101,8 +102,9 @@
                         </div>
                     </div>
                     <p class="tw-m-0 dote-beneficio" *ngIf="(candidato.dote.Beneficio || candidato.dote.Descripcion) as resumen">{{resumen}}</p>
-                    <div class="dote-motivos" *ngIf="!esCandidatoElegible(candidato)">
+                    <div class="dote-motivos" *ngIf="getMotivosBloqueo(candidato).length > 0 || getAvisos(candidato).length > 0">
                         <p class="tw-m-0" *ngFor="let motivo of getMotivosBloqueo(candidato)">• {{motivo}}</p>
+                        <p class="tw-m-0 dote-aviso" *ngFor="let aviso of getAvisos(candidato)">• {{aviso}}</p>
                     </div>
                 </div>
             </div>

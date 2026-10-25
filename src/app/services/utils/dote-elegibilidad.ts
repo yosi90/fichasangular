@@ -906,6 +906,7 @@ export function evaluarElegibilidadDote(input: DoteEvaluacionInput): DoteEvaluac
     });
 
     motivos.cerrarGrupos();
+    advertencias.push(...textosUnicos(motivos.avisos));
     const failDedupe = textosUnicos(motivos.fail);
     const unknownDedupe = textosUnicos(motivos.unknown);
 

@@ -3,7 +3,7 @@ import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { leerComodin } from 'src/app/services/utils/comodin';
 import { ClaveEntidadPrerrequisito, existeCoincidenciaClaveEntidad } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normalizarTexto, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
-import { frasePrerrequisito, grupoOpcionalPrerrequisito, razonNoCumple, razonSinComprobar } from 'src/app/services/utils/prerrequisito-frase';
+import { frasePrerrequisito, grupoOpcionalPrerrequisito, avisoSinComprobar, razonNoCumple } from 'src/app/services/utils/prerrequisito-frase';
 
 // Lo común de evaluar los prerrequisitos contra el personaje (`dote-elegibilidad`, `clase-elegibilidad`,
 // `plantilla-elegibilidad`).
@@ -18,6 +18,11 @@ export interface EvaluacionPrerrequisito {
     razonUnknown: string;
     /** La frase del prerrequisito (`frasePrerrequisito`), para el motivo «No cumple: …». */
     frase: string;
+    /**
+     * Si la web no puede comprobarlo y lo deja elegir (decisión del propietario del 2026-10-25): cuenta como cumplido y
+     * este aviso acompaña a la entidad. No es saltarse una restricción, así que no la vuelve homebrew.
+     */
+    aviso?: string;
 }
 
 interface EstadoGrupo {
@@ -25,29 +30,36 @@ interface EstadoGrupo {
     falla: boolean;
     unknown: boolean;
     frases: string[];
+    avisos: string[];
 }
 
 /**
  * Los motivos por los que una entidad (dote, clase, plantilla) no se puede elegir: cada obligatorio que no se cumple da
- * «No cumple: {Frase}», y cada grupo de alternativas sin ninguna que se cumpla, «No cumple: A o B».
+ * «No cumple: {Frase}», y cada grupo de alternativas sin ninguna que se cumpla, «No cumple: A o B». En `avisos`, lo que
+ * la web no puede comprobar y deja elegir (un grupo solo avisa si ninguna otra alternativa se cumple de verdad).
  */
 export class MotivosPrerrequisitos {
     readonly fail: string[] = [];
     readonly unknown: string[] = [];
+    readonly avisos: string[] = [];
     private readonly grupos = new Map<number, EstadoGrupo>();
 
     registrar(evaluacion: EvaluacionPrerrequisito): void {
         if (evaluacion.grupoOpcional <= 0) {
-            if (!evaluacion.evaluable)
+            if (evaluacion.aviso)
+                this.avisos.push(evaluacion.aviso);
+            else if (!evaluacion.evaluable)
                 this.unknown.push(evaluacion.razonUnknown);
             else if (!evaluacion.cumple)
                 this.fail.push(razonNoCumple([evaluacion.frase]));
             return;
         }
 
-        const estado = this.grupos.get(evaluacion.grupoOpcional) ?? { cumple: false, falla: false, unknown: false, frases: [] };
+        const estado = this.grupos.get(evaluacion.grupoOpcional) ?? { cumple: false, falla: false, unknown: false, frases: [], avisos: [] };
         estado.frases.push(evaluacion.frase);
-        if (!evaluacion.evaluable)
+        if (evaluacion.aviso)
+            estado.avisos.push(evaluacion.aviso);
+        else if (!evaluacion.evaluable)
             estado.unknown = true;
         else if (evaluacion.cumple)
             estado.cumple = true;
@@ -61,7 +73,9 @@ export class MotivosPrerrequisitos {
         this.grupos.forEach((estado, grupo) => {
             if (estado.cumple)
                 return;
-            if (estado.unknown)
+            if (estado.avisos.length > 0)
+                this.avisos.push(...estado.avisos);
+            else if (estado.unknown)
                 this.unknown.push(`No se pudo validar por completo el grupo opcional ${grupo}`);
             else if (estado.falla)
                 this.fail.push(razonNoCumple(estado.frases));
@@ -82,8 +96,9 @@ export interface OtorgantesAptitudPersonaje {
 /**
  * El prerrequisito `aptitud_especial` (dotes y clases) contra el personaje: lo cumple si tiene **alguno** de sus
  * `Raciales`, `Especiales` o `Plantillas` (por su `Id` o, sin él, por su nombre). Con las tres listas vacías la base no
- * sabe qué la otorga y no se puede comprobar (`evaluable: false`, «No se puede comprobar: {Frase}»), que no es lo mismo
- * que no cumplirlo. Contrato: «El prerrequisito "aptitud especial"» en `docs/publica/FRASES_PRERREQUISITOS_FRONT.md`.
+ * sabe qué la otorga y la web no puede comprobarla: se deja elegir con el aviso «La web no puede comprobar este requisito:
+ * {Frase}» (decisión del propietario del 2026-10-25). Contrato: «El prerrequisito "aptitud especial"» en
+ * `docs/publica/FRASES_PRERREQUISITOS_FRONT.md`.
  */
 export function evaluarAptitudEspecial(
     pedido: PrerrequisitoItem,
@@ -94,13 +109,17 @@ export function evaluarAptitudEspecial(
         [toArray(pedido?.['Especiales']), personaje.claseas ?? []],
         [toArray(pedido?.['Plantillas']), personaje.plantillas ?? []],
     ];
-    const evaluable = otorgantes.some(([lista]) => lista.length > 0);
+    const grupoOpcional = grupoOpcionalPrerrequisito(pedido);
+    if (otorgantes.every(([lista]) => lista.length < 1)) {
+        const aviso = avisoSinComprobar(frasePrerrequisito('aptitud_especial', pedido));
+        return { grupoOpcional, evaluable: true, cumple: true, razonUnknown: '', aviso };
+    }
     return {
-        grupoOpcional: grupoOpcionalPrerrequisito(pedido),
-        evaluable,
-        cumple: evaluable && otorgantes.some(([lista, actuales]) => lista.some((otorgante) =>
+        grupoOpcional,
+        evaluable: true,
+        cumple: otorgantes.some(([lista, actuales]) => lista.some((otorgante) =>
             existeCoincidenciaClaveEntidad(actuales, otorgante?.Id, otorgante?.Nombre))),
-        razonUnknown: razonSinComprobar(frasePrerrequisito('aptitud_especial', pedido)),
+        razonUnknown: '',
     };
 }
 

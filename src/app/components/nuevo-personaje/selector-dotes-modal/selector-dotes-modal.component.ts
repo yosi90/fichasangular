@@ -86,7 +86,10 @@ export class SelectorDotesModalComponent implements OnChanges {
         return 'Bloqueada';
     }
 
+    /** Lo que no deja elegir la dote, si está bloqueada. */
     getMotivosBloqueo(candidato: DoteSelectorCandidato): string[] {
+        if (this.esCandidatoElegible(candidato))
+            return [];
         const motivos: string[] = [];
         if (candidato?.restringidaPorTipo)
             motivos.push('No cumple la restricción de tipo para esta dote pendiente.');
@@ -94,6 +97,11 @@ export class SelectorDotesModalComponent implements OnChanges {
             motivos.push('Regla de repetición no cumplida.');
         motivos.push(...(candidato?.evaluacion?.razones ?? []));
         return Array.from(new Set(motivos.filter((motivo) => `${motivo ?? ''}`.trim().length > 0)));
+    }
+
+    /** Los avisos de la dote (lo que la web no puede comprobar y deja elegir), se pueda elegir o no. */
+    getAvisos(candidato: DoteSelectorCandidato): string[] {
+        return candidato?.evaluacion?.advertencias ?? [];
     }
 
     getTiposTexto(candidato: DoteSelectorCandidato): string {

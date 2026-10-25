@@ -6846,3 +6846,14 @@ describe('NuevoPersonajeService (dotes repetibles con extra)', () => {
         })).toBeTrue();
     });
 });
+
+describe('NuevoPersonajeService (avisos de la elegibilidad de clases)', () => {
+    it('un aviso no impide que el bloqueo cuente como solo por alineamiento', () => {
+        const service = new NuevoPersonajeService();
+        expect(service.esBloqueoSoloPorAlineamiento({
+            estado: 'blocked_failed',
+            razones: ['No cumple: Cualquier alineamiento legal'],
+            advertencias: ['La web no puede comprobar este requisito: Cuerpo flexible'],
+        })).toBeTrue();
+    });
+});

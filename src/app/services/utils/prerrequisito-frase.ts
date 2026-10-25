@@ -41,9 +41,12 @@ export function razonNoCumple(frases: string[]): string {
     return `No cumple: ${textosUnicos(frases).join(' o ')}`;
 }
 
-/** El motivo de un prerrequisito que la web no puede comprobar con los datos que hay: «No se puede comprobar: Alas». */
-export function razonSinComprobar(frase: string): string {
-    return `No se puede comprobar: ${frase}`;
+/**
+ * El aviso de un prerrequisito que la web no puede comprobar con los datos que hay y deja elegir: «La web no puede
+ * comprobar este requisito: Amplias zancadas».
+ */
+export function avisoSinComprobar(frase: string): string {
+    return `La web no puede comprobar este requisito: ${frase}`;
 }
 
 export interface CondicionPrerrequisito {
