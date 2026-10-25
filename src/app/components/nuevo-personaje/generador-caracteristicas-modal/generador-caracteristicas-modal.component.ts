@@ -15,7 +15,8 @@ import {
 import Swal from 'sweetalert2';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 import { toBoolean } from 'src/app/services/utils/normalizacion';
-import { modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
+import { NOMBRES_CARACTERISTICAS, modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
+import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 
 type CaracteristicaKey = keyof AsignacionCaracteristicas;
 type CaracteristicasPerdidasState = Partial<Record<CaracteristicaKey, boolean>>;
@@ -64,14 +65,8 @@ export class GeneradorCaracteristicasModalComponent implements AfterViewInit, Do
 
     readonly minimos: number[] = Array.from({ length: 11 }, (_, i) => i + 3);
     readonly tablasPermitidasOpciones: number[] = [1, 2, 3, 4, 5];
-    readonly caracteristicas: { key: CaracteristicaKey; label: string; }[] = [
-        { key: 'Fuerza', label: 'Fuerza' },
-        { key: 'Destreza', label: 'Destreza' },
-        { key: 'Constitucion', label: 'Constitución' },
-        { key: 'Inteligencia', label: 'Inteligencia' },
-        { key: 'Sabiduria', label: 'Sabiduría' },
-        { key: 'Carisma', label: 'Carisma' },
-    ];
+    readonly caracteristicas: { key: CaracteristicaKey; label: string; }[] = CARACTERISTICAS
+        .map((key) => ({ key, label: NOMBRES_CARACTERISTICAS[key] }));
     readonly opcionesQ1: GeneradorAutoPreguntaOpcion<GeneradorAutoRespuestaQ1>[] = [
         {
             key: 'acero_musculo',

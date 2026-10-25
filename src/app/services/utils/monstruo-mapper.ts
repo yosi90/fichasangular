@@ -23,8 +23,8 @@ import {
     MonstruoTipoRef,
     MonstruoTipoDadoRef,
     PersonajeRefMonstruo,
-    MONSTRUO_CARACTERISTICAS,
 } from "src/app/interfaces/monstruo";
+import { CARACTERISTICAS } from "src/app/interfaces/caracteristica";
 import { RacialDetalle } from "src/app/interfaces/racial";
 import { Tamano } from "src/app/interfaces/tamaño";
 import { normalizeEspecial } from "../especial.service";
@@ -153,7 +153,7 @@ function normalizeSalvaciones(raw: any): MonstruoSalvaciones {
 
 function normalizeCaracteristicas(raw: any): MonstruoCaracteristicas {
     const caracteristicas = {} as MonstruoCaracteristicas;
-    MONSTRUO_CARACTERISTICAS.forEach((clave) => {
+    CARACTERISTICAS.forEach((clave) => {
         caracteristicas[clave] = toNumberOrNull(raw?.[clave]);
         caracteristicas[`${clave}_modificador`] = toNumberOrNull(raw?.[`${clave}_modificador`]);
     });

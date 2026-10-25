@@ -1,4 +1,5 @@
-import { MonstruoCaracteristica, MonstruoCaracteristicas } from 'src/app/interfaces/monstruo';
+import { Caracteristica } from 'src/app/interfaces/caracteristica';
+import { MonstruoCaracteristicas } from 'src/app/interfaces/monstruo';
 
 // El modificador de una característica lo calcula la API (`utils/caracteristicas.py` del backend) para las fichas y los
 // monstruos, familiares y compañeros (`docs/publica/MODIFICADORES_MONSTRUOS_FRONT.md`). La web solo lo calcula para el
@@ -12,7 +13,8 @@ export function modificadorCaracteristica(valor: number): number {
 /** Sin valor, una característica se enseña con «—», como en el manual. */
 export const SIN_CARACTERISTICA = '—';
 
-export const NOMBRES_CARACTERISTICAS: Readonly<Record<MonstruoCaracteristica, string>> = {
+/** El nombre de cada característica, con sus tildes. */
+export const NOMBRES_CARACTERISTICAS: Readonly<Record<Caracteristica, string>> = {
     Fuerza: 'Fuerza',
     Destreza: 'Destreza',
     Constitucion: 'Constitución',
@@ -22,13 +24,13 @@ export const NOMBRES_CARACTERISTICAS: Readonly<Record<MonstruoCaracteristica, st
 };
 
 /** El valor de una característica de un monstruo («16»), o «—» si no tiene. */
-export function textoValorCaracteristica(caracteristicas: MonstruoCaracteristicas | null | undefined, clave: MonstruoCaracteristica): string {
+export function textoValorCaracteristica(caracteristicas: MonstruoCaracteristicas | null | undefined, clave: Caracteristica): string {
     const valor = caracteristicas?.[clave];
     return valor === null || valor === undefined ? SIN_CARACTERISTICA : `${valor}`;
 }
 
 /** El modificador de una característica de un monstruo, el que da la API, con signo («+3», «+0», «-1»), o «—» sin él. */
-export function textoModificadorCaracteristica(caracteristicas: MonstruoCaracteristicas | null | undefined, clave: MonstruoCaracteristica): string {
+export function textoModificadorCaracteristica(caracteristicas: MonstruoCaracteristicas | null | undefined, clave: Caracteristica): string {
     const modificador = caracteristicas?.[`${clave}_modificador`];
     if (modificador === null || modificador === undefined)
         return SIN_CARACTERISTICA;
@@ -36,7 +38,7 @@ export function textoModificadorCaracteristica(caracteristicas: MonstruoCaracter
 }
 
 /** Una característica de un monstruo con su modificador entre paréntesis («16 (+3)»), o «—» si no tiene valor. */
-export function textoCaracteristicaMonstruo(caracteristicas: MonstruoCaracteristicas | null | undefined, clave: MonstruoCaracteristica): string {
+export function textoCaracteristicaMonstruo(caracteristicas: MonstruoCaracteristicas | null | undefined, clave: Caracteristica): string {
     const valor = textoValorCaracteristica(caracteristicas, clave);
     if (valor === SIN_CARACTERISTICA)
         return valor;
@@ -45,6 +47,6 @@ export function textoCaracteristicaMonstruo(caracteristicas: MonstruoCaracterist
 }
 
 /** El modificador de una característica de un monstruo para sumarlo a un total: sin valor, cuenta +0. */
-export function modificadorParaSumar(caracteristicas: MonstruoCaracteristicas | null | undefined, clave: MonstruoCaracteristica): number {
+export function modificadorParaSumar(caracteristicas: MonstruoCaracteristicas | null | undefined, clave: Caracteristica): number {
     return caracteristicas?.[`${clave}_modificador`] ?? 0;
 }

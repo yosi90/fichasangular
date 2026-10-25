@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
+import { CARACTERISTICAS, Caracteristica } from '../interfaces/caracteristica';
 import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseEspecialNivel, ClaseNivelDetalle } from '../interfaces/clase';
 import { Conjuro } from '../interfaces/conjuro';
 import { DisciplinaConjuros } from '../interfaces/disciplina-conjuros';
@@ -132,16 +133,16 @@ export interface GeneradorAutoRecomendacion {
     clases: [GeneradorAutoClaseRecomendada, GeneradorAutoClaseRecomendada];
     explicacion: string;
     explicacionKey: GeneradorAutoExplicacionKey;
-    top1: CaracteristicaKeyAumento;
-    top2: CaracteristicaKeyAumento;
-    top3: CaracteristicaKeyAumento;
+    top1: Caracteristica;
+    top2: Caracteristica;
+    top3: Caracteristica;
     afinadaPorTop3: boolean;
 }
 
 export interface GeneradorAutoDiagnostico {
     score: GeneradorAutoScore;
-    ranking: CaracteristicaKeyAumento[];
-    top2: CaracteristicaKeyAumento[];
+    ranking: Caracteristica[];
+    top2: Caracteristica[];
     recomendacion: GeneradorAutoRecomendacion | null;
     requierePregunta4: boolean;
     pregunta4Aplicada: boolean;
@@ -181,8 +182,7 @@ export interface ResultadoCalculoVidaFinal {
     };
 }
 
-export type CaracteristicaKeyAumento = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
-type CaracteristicaKey = CaracteristicaKeyAumento;
+type CaracteristicaKey = Caracteristica;
 type SalvacionKey = 'fortaleza' | 'reflejos' | 'voluntad';
 type GeneradorAutoComboKey = `${CaracteristicaKey}_${CaracteristicaKey}`;
 
@@ -192,7 +192,6 @@ interface GeneradorAutoRecomendacionBase {
     explicacionKey: GeneradorAutoExplicacionKey;
 }
 
-const CARACTERISTICAS_KEYS: CaracteristicaKey[] = ['Fuerza', 'Destreza', 'Constitucion', 'Inteligencia', 'Sabiduria', 'Carisma'];
 
 const MIN_TIRADA = 3;
 const MAX_TIRADA = 13;
@@ -676,7 +675,7 @@ export interface AumentoCaracteristicaPendiente {
 
 export interface AsignacionAumentoCaracteristica {
     idPendiente: number;
-    caracteristica: CaracteristicaKeyAumento;
+    caracteristica: Caracteristica;
 }
 
 export type DoteFuentePendiente = 'nivel' | 'adicional' | 'raza_dg';
@@ -2214,7 +2213,7 @@ export class NuevoPersonajeService {
             incrementos[caracteristica] += Math.max(0, toNumber(pendiente?.valor));
         }
 
-        CARACTERISTICAS_KEYS.forEach((key) => {
+        CARACTERISTICAS.forEach((key) => {
             const aumento = toNumber(incrementos[key]);
             if (aumento < 1)
                 return;
@@ -2233,8 +2232,8 @@ export class NuevoPersonajeService {
         return true;
     }
 
-    getTopesCaracteristicas(): Partial<Record<CaracteristicaKeyAumento, number>> {
-        const topes: Partial<Record<CaracteristicaKeyAumento, number>> = {};
+    getTopesCaracteristicas(): Partial<Record<Caracteristica, number>> {
+        const topes: Partial<Record<Caracteristica, number>> = {};
         const limiteInteligencia = toNumber(this.personajeCreacion?.Tipo_criatura?.Limite_inteligencia);
         if (limiteInteligencia > 0)
             topes.Inteligencia = limiteInteligencia;
@@ -3949,7 +3948,7 @@ export class NuevoPersonajeService {
         const mods = (dote?.Modificadores ?? {}) as Record<string, any>;
         const get = (clave: string): number => toNumber(mods?.[clave]);
 
-        CARACTERISTICAS_KEYS.forEach((key) => {
+        CARACTERISTICAS.forEach((key) => {
             const valor = get(key);
             if (valor === 0)
                 return;
@@ -4544,7 +4543,7 @@ export class NuevoPersonajeService {
         this.estadoFlujo.generador.asignaciones = this.crearAsignacionesVacias();
         this.estadoFlujo.generador.origenesAsignacion = this.crearOrigenesAsignacionVacios();
 
-        CARACTERISTICAS_KEYS.forEach((key) => {
+        CARACTERISTICAS.forEach((key) => {
             if (this.esCaracteristicaPerdida(key))
                 this.estadoFlujo.generador.asignaciones[key] = 0;
         });
@@ -4561,7 +4560,7 @@ export class NuevoPersonajeService {
         this.estadoFlujo.generador.poolDisponible = [];
         this.estadoFlujo.generador.asignaciones = this.crearAsignacionesVacias();
         this.estadoFlujo.generador.origenesAsignacion = this.crearOrigenesAsignacionVacios();
-        CARACTERISTICAS_KEYS.forEach((key) => {
+        CARACTERISTICAS.forEach((key) => {
             if (this.esCaracteristicaPerdida(key))
                 this.estadoFlujo.generador.asignaciones[key] = 0;
         });
@@ -4644,8 +4643,8 @@ export class NuevoPersonajeService {
             : null;
         return {
             score,
-            ranking: ranking.slice() as CaracteristicaKeyAumento[],
-            top2: ranking.slice(0, 2) as CaracteristicaKeyAumento[],
+            ranking: ranking.slice() as Caracteristica[],
+            top2: ranking.slice(0, 2) as Caracteristica[],
             recomendacion,
             requierePregunta4,
             pregunta4Aplicada,
@@ -4792,7 +4791,7 @@ export class NuevoPersonajeService {
             return false;
         }
 
-        const caracteristica = CARACTERISTICAS_KEYS.find((key) =>
+        const caracteristica = CARACTERISTICAS.find((key) =>
             this.estadoFlujo.generador.origenesAsignacion[key] === indexPool
             && this.estadoFlujo.generador.asignaciones[key] !== null
         );
@@ -4806,7 +4805,7 @@ export class NuevoPersonajeService {
 
     puedeFinalizarGenerador(): boolean {
         const asigs = this.estadoFlujo.generador.asignaciones;
-        return CARACTERISTICAS_KEYS.every((key) => this.esCaracteristicaPerdida(key) || asigs[key] !== null);
+        return CARACTERISTICAS.every((key) => this.esCaracteristicaPerdida(key) || asigs[key] !== null);
     }
 
     getAsignacionesGenerador(): AsignacionCaracteristicas {
@@ -4823,11 +4822,11 @@ export class NuevoPersonajeService {
     aplicarCaracteristicasGeneradas(asignaciones: AsignacionCaracteristicas): boolean {
         const razaMods = this.personajeCreacion.Raza?.Modificadores;
 
-        if (CARACTERISTICAS_KEYS.some((key) => !this.esCaracteristicaPerdida(key) && asignaciones[key] === null)) {
+        if (CARACTERISTICAS.some((key) => !this.esCaracteristicaPerdida(key) && asignaciones[key] === null)) {
             return false;
         }
 
-        CARACTERISTICAS_KEYS.forEach((key) => {
+        CARACTERISTICAS.forEach((key) => {
             const perdida = this.esCaracteristicaPerdida(key);
             const base = perdida ? 0 : toNumber(asignaciones[key]);
             const final = perdida ? 0 : base + toNumber(razaMods?.[key]);
@@ -4958,7 +4957,7 @@ export class NuevoPersonajeService {
         if (!base)
             return;
 
-        CARACTERISTICAS_KEYS.forEach((key) => {
+        CARACTERISTICAS.forEach((key) => {
             const perdida = this.esCaracteristicaPerdida(key);
             const minimoPlantilla = this.obtenerMinimoCaracteristicaPorPlantillas(key);
             const suma = perdida
@@ -5340,7 +5339,7 @@ export class NuevoPersonajeService {
                 });
             }
 
-            CARACTERISTICAS_KEYS.forEach((key) => {
+            CARACTERISTICAS.forEach((key) => {
                 const valor = toNumber((plantilla?.Modificadores_caracteristicas as Record<string, any>)?.[key]);
                 if (valor !== 0) {
                     caracteristicasVarios[key].push({
@@ -8428,7 +8427,7 @@ export class NuevoPersonajeService {
         const caracteristicasVarios = personaje?.CaracteristicasVarios as Record<string, Array<{ valor?: number | null; Valor?: number | null; }>> | undefined;
         const resultado = {} as Record<CaracteristicaKey, number>;
 
-        CARACTERISTICAS_KEYS.forEach((key) => {
+        CARACTERISTICAS.forEach((key) => {
             if (this.esCaracteristicaPerdida(key)) {
                 resultado[key] = 0;
                 return;
@@ -8458,7 +8457,7 @@ export class NuevoPersonajeService {
         const razaMods = borrador.razaSeleccionada?.Modificadores ?? this.razaSeleccionada?.Modificadores;
         const resultado = {} as Record<CaracteristicaKey, number>;
 
-        for (const key of CARACTERISTICAS_KEYS) {
+        for (const key of CARACTERISTICAS) {
             if (this.esCaracteristicaPerdida(key)) {
                 resultado[key] = 0;
                 continue;
@@ -8873,7 +8872,7 @@ export class NuevoPersonajeService {
     }
 
     private getRankingCaracteristicasAutoGenerador(score: GeneradorAutoScore): CaracteristicaKey[] {
-        return [...CARACTERISTICAS_KEYS].sort((a, b) => {
+        return [...CARACTERISTICAS].sort((a, b) => {
             const scoreA = toNumber(score[a]);
             const scoreB = toNumber(score[b]);
             const modA = this.getModRacialGenerador(a);
@@ -8882,7 +8881,7 @@ export class NuevoPersonajeService {
                 return scoreB - scoreA;
             if (modB !== modA)
                 return modB - modA;
-            return CARACTERISTICAS_KEYS.indexOf(a) - CARACTERISTICAS_KEYS.indexOf(b);
+            return CARACTERISTICAS.indexOf(a) - CARACTERISTICAS.indexOf(b);
         });
     }
 
@@ -8959,7 +8958,7 @@ export class NuevoPersonajeService {
     ): void {
         if (!delta)
             return;
-        CARACTERISTICAS_KEYS.forEach((key) => {
+        CARACTERISTICAS.forEach((key) => {
             const actual = toNumber(score[key]);
             const extra = toNumber(delta[key]);
             score[key] = actual + extra;
@@ -9184,7 +9183,7 @@ export class NuevoPersonajeService {
         if ((this.estadoFlujo.generador.poolDisponible?.length ?? 0) > 0)
             return true;
 
-        return CARACTERISTICAS_KEYS.some((key) => {
+        return CARACTERISTICAS.some((key) => {
             if (this.esCaracteristicaPerdida(key))
                 return false;
             return this.estadoFlujo.generador.asignaciones[key] !== null;
@@ -9429,7 +9428,7 @@ export class NuevoPersonajeService {
     }
 
     private esCaracteristicaAumentoValida(value: string): value is CaracteristicaKey {
-        return (CARACTERISTICAS_KEYS as string[]).includes(`${value ?? ''}`.trim());
+        return (CARACTERISTICAS as string[]).includes(`${value ?? ''}`.trim());
     }
 
     private getNivelEfectivoParaAumentos(): number {
@@ -9571,7 +9570,7 @@ export class NuevoPersonajeService {
     }
 
     private aplicarPerdidasSinGenerador(): void {
-        CARACTERISTICAS_KEYS.forEach((key) => {
+        CARACTERISTICAS.forEach((key) => {
             if (!this.esCaracteristicaPerdida(key))
                 return;
             this.setValorCaracteristica(key, 0);

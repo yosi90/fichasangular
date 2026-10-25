@@ -2,7 +2,7 @@ import { Clase } from "src/app/interfaces/clase";
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from "./identidad-prerrequisitos";
 import { getAlineamientoBasicoIdPorNombre } from "./alineamiento-contrato";
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
-import { frasePrerrequisito, razonSinComprobar } from './prerrequisito-frase';
+import { frasePrerrequisito } from './prerrequisito-frase';
 import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
@@ -559,20 +559,6 @@ function buildEvaluacionTamano(entry: Record<string, any>, ctx: ClaseEvaluacionC
     };
 }
 
-function buildEvaluacionAptitudEspecial(entry: Record<string, any>, ctx: ClaseEvaluacionContexto): EvaluacionItem {
-    const { evaluable, cumple } = evaluarAptitudEspecial(entry, {
-        raciales: ctx.raciales ?? [],
-        especiales: ctx.claseas ?? [],
-        plantillas: ctx.plantillas ?? [],
-    });
-    return {
-        grupoOpcional: parseOpcional(entry),
-        evaluable,
-        cumple: evaluable ? cumple : false,
-        razonUnknown: razonSinComprobar(frasePrerrequisito("aptitud_especial", entry)),
-    };
-}
-
 function evaluarFamilia(
     motivos: MotivosPrerrequisitos,
     clave: string,
@@ -651,7 +637,7 @@ export function evaluarElegibilidadClase(clase: Clase, ctx: ClaseEvaluacionConte
     evaluarFamilia(motivos, "nivel_escuela", flags?.nivel_escuela, toArray(prer?.nivel_escuela), (entry) => buildEvaluacionNivelEscuela(entry, ctx));
     evaluarFamilia(motivos, "rangos_habilidad", flags?.rangos_habilidad, toArray(prer?.rangos_habilidad), (entry) => buildEvaluacionRangosHabilidad(entry, ctx));
     evaluarFamilia(motivos, "idioma", flags?.idioma, toArray(prer?.idioma), (entry) => buildEvaluacionIdioma(entry, ctx));
-    evaluarFamilia(motivos, "aptitud_especial", flags?.aptitud_especial, toArray(prer?.aptitud_especial), (entry) => buildEvaluacionAptitudEspecial(entry, ctx), { permitirSinDatos: true });
+    evaluarFamilia(motivos, "aptitud_especial", flags?.aptitud_especial, toArray(prer?.aptitud_especial), (entry) => evaluarAptitudEspecial(entry, ctx), { permitirSinDatos: true });
     evaluarFamilia(motivos, "lanzador_arcano", flags?.lanzador_arcano, toArray(prer?.lanzador_arcano), (entry) => buildEvaluacionNumeroMinimo(
         entry,
         toNumber(ctx.lanzador?.arcano),

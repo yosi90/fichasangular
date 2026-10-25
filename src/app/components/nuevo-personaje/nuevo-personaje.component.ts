@@ -2,6 +2,7 @@ import { Component, EventEmitter, HostListener, Output, ViewChild } from '@angul
 import { Auth } from '@angular/fire/auth';
 import { MatTabGroup } from '@angular/material/tabs';
 import { Subscription, firstValueFrom, take } from 'rxjs';
+import { Caracteristica } from 'src/app/interfaces/caracteristica';
 import { Campana, Super } from 'src/app/interfaces/campaña';
 import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
 import { ArmaDetalle } from 'src/app/interfaces/arma';
@@ -58,7 +59,6 @@ import {
     CompaneroPlantillaSelector,
     EstadoCuposFamiliar,
     EstadoCuposCompanero,
-    CaracteristicaKeyAumento,
     ClaseAumentoLanzadorPendiente,
     ClaseDominiosPendientes,
     ClaseGrupoOpcionalPendiente,
@@ -183,7 +183,7 @@ type FiltroPrestigioClase = 'todas' | 'basica' | 'prestigio';
 type ClaseRolChip = 'DPS' | 'Tanque' | 'Support' | 'Utilidad';
 type ClaseBeneficioTipo = 'dote' | 'especial';
 type EstadoCompatibilidadAlineamientoClase = 'compatible' | 'incompatible' | 'neutro';
-type CaracteristicaAumentoKey = CaracteristicaKeyAumento;
+type CaracteristicaAumentoKey = Caracteristica;
 
 interface ClaseBeneficioNivelItem {
     tipo: ClaseBeneficioTipo;

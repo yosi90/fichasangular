@@ -3,7 +3,7 @@ import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { leerComodin } from 'src/app/services/utils/comodin';
 import { ClaveEntidadPrerrequisito, existeCoincidenciaClaveEntidad } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normalizarTexto, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
-import { razonNoCumple } from 'src/app/services/utils/prerrequisito-frase';
+import { frasePrerrequisito, grupoOpcionalPrerrequisito, razonNoCumple, razonSinComprobar } from 'src/app/services/utils/prerrequisito-frase';
 
 // Lo común de evaluar los prerrequisitos contra el personaje (`dote-elegibilidad`, `clase-elegibilidad`,
 // `plantilla-elegibilidad`).
@@ -69,32 +69,39 @@ export class MotivosPrerrequisitos {
     }
 }
 
-/** Lo que tiene el personaje y puede otorgar una aptitud especial: sus raciales, sus especiales de clase y sus plantillas. */
+/**
+ * Lo que tiene el personaje y puede otorgar una aptitud especial: sus raciales, sus especiales de clase (`claseas`) y sus
+ * plantillas (los contextos de `dote-elegibilidad` y `clase-elegibilidad`).
+ */
 export interface OtorgantesAptitudPersonaje {
-    raciales: ClaveEntidadPrerrequisito[];
-    especiales: ClaveEntidadPrerrequisito[];
-    plantillas: ClaveEntidadPrerrequisito[];
+    raciales?: ClaveEntidadPrerrequisito[];
+    claseas?: ClaveEntidadPrerrequisito[];
+    plantillas?: ClaveEntidadPrerrequisito[];
 }
 
 /**
  * El prerrequisito `aptitud_especial` (dotes y clases) contra el personaje: lo cumple si tiene **alguno** de sus
  * `Raciales`, `Especiales` o `Plantillas` (por su `Id` o, sin él, por su nombre). Con las tres listas vacías la base no
- * sabe qué la otorga y no se puede comprobar (`evaluable: false`), que no es lo mismo que no cumplirlo. Contrato: «El
- * prerrequisito "aptitud especial"» en `docs/publica/FRASES_PRERREQUISITOS_FRONT.md`.
+ * sabe qué la otorga y no se puede comprobar (`evaluable: false`, «No se puede comprobar: {Frase}»), que no es lo mismo
+ * que no cumplirlo. Contrato: «El prerrequisito "aptitud especial"» en `docs/publica/FRASES_PRERREQUISITOS_FRONT.md`.
  */
 export function evaluarAptitudEspecial(
     pedido: PrerrequisitoItem,
     personaje: OtorgantesAptitudPersonaje,
-): { evaluable: boolean; cumple: boolean; } {
+): Omit<EvaluacionPrerrequisito, 'frase'> {
     const otorgantes: Array<[AptitudEspecialOtorgante[], ClaveEntidadPrerrequisito[]]> = [
-        [toArray(pedido?.['Raciales']), personaje.raciales],
-        [toArray(pedido?.['Especiales']), personaje.especiales],
-        [toArray(pedido?.['Plantillas']), personaje.plantillas],
+        [toArray(pedido?.['Raciales']), personaje.raciales ?? []],
+        [toArray(pedido?.['Especiales']), personaje.claseas ?? []],
+        [toArray(pedido?.['Plantillas']), personaje.plantillas ?? []],
     ];
     const evaluable = otorgantes.some(([lista]) => lista.length > 0);
-    const cumple = otorgantes.some(([lista, actuales]) => lista.some((otorgante) =>
-        existeCoincidenciaClaveEntidad(actuales, otorgante?.Id, otorgante?.Nombre)));
-    return { evaluable, cumple };
+    return {
+        grupoOpcional: grupoOpcionalPrerrequisito(pedido),
+        evaluable,
+        cumple: evaluable && otorgantes.some(([lista, actuales]) => lista.some((otorgante) =>
+            existeCoincidenciaClaveEntidad(actuales, otorgante?.Id, otorgante?.Nombre))),
+        razonUnknown: razonSinComprobar(frasePrerrequisito('aptitud_especial', pedido)),
+    };
 }
 
 /**

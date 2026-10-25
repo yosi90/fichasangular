@@ -2,12 +2,12 @@ import { Component, EventEmitter, HostListener, Input, Output } from '@angular/c
 import {
     AsignacionAumentoCaracteristica,
     AumentoCaracteristicaPendiente,
-    CaracteristicaKeyAumento,
 } from 'src/app/services/nuevo-personaje.service';
+import { Caracteristica } from 'src/app/interfaces/caracteristica';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 import { toBoolean } from 'src/app/services/utils/normalizacion';
 
-type CaracteristicaKey = CaracteristicaKeyAumento;
+type CaracteristicaKey = Caracteristica;
 
 @Component({
     selector: 'app-selector-aumentos-caracteristica-modal',

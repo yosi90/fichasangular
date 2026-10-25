@@ -1,4 +1,5 @@
 import { Alineamiento } from "./alineamiento";
+import { Caracteristica } from "./caracteristica";
 import { Conjuro } from "./conjuro";
 import { ManualReferencia } from "./manual";
 import { DoteContextual } from "./dote-contextual";
@@ -67,19 +68,12 @@ export interface MonstruoSalvaciones {
     Voluntad: number;
 }
 
-/** Las seis características de un monstruo, un familiar o un compañero. */
-export type MonstruoCaracteristica = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
-
-export const MONSTRUO_CARACTERISTICAS: readonly MonstruoCaracteristica[] = [
-    'Fuerza', 'Destreza', 'Constitucion', 'Inteligencia', 'Sabiduria', 'Carisma',
-];
-
 /**
  * Cada característica y su modificador, hecho por la API (`<Característica>_modificador`). Una característica sin valor
  * (el «—» del manual: la Constitución de un constructo, la Inteligencia de una sabandija) llega con los dos a `null`.
  * Contrato: `docs/publica/MODIFICADORES_MONSTRUOS_FRONT.md`.
  */
-export type MonstruoCaracteristicas = Record<MonstruoCaracteristica | `${MonstruoCaracteristica}_modificador`, number | null>;
+export type MonstruoCaracteristicas = Record<Caracteristica | `${Caracteristica}_modificador`, number | null>;
 
 export interface MonstruoSortilega {
     Conjuro: Conjuro;

@@ -7,7 +7,7 @@ import {
 import { getAlineamientoBasicoIdPorNombre } from './alineamiento-contrato';
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
-import { frasePrerrequisito, razonSinComprobar } from './prerrequisito-frase';
+import { frasePrerrequisito } from './prerrequisito-frase';
 import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
@@ -565,20 +565,6 @@ function buildEvaluacionRegion(entry: Record<string, any>, ctx: DoteEvaluacionCo
     };
 }
 
-function buildEvaluacionAptitudEspecial(entry: Record<string, any>, ctx: DoteEvaluacionContexto): EvaluacionItem {
-    const { evaluable, cumple } = evaluarAptitudEspecial(entry, {
-        raciales: ctx.raciales ?? [],
-        especiales: ctx.claseas ?? [],
-        plantillas: ctx.plantillas ?? [],
-    });
-    return {
-        grupoOpcional: parseOpcional(entry),
-        evaluable,
-        cumple: evaluable ? cumple : false,
-        razonUnknown: razonSinComprobar(frasePrerrequisito('aptitud_especial', entry)),
-    };
-}
-
 function buildEvaluacionLanzador(
     entry: Record<string, any>,
     nivelActual: number,
@@ -768,7 +754,7 @@ function evaluateFamily(
     if (keyNorm === 'nivel_de_clase')
         return entries.map((entry) => buildEvaluacionNivelClase(entry, ctx));
     if (keyNorm === 'aptitud_especial')
-        return entries.map((entry) => buildEvaluacionAptitudEspecial(entry, ctx));
+        return entries.map((entry) => evaluarAptitudEspecial(entry, ctx));
     if (keyNorm === 'alineamiento_requerido')
         return entries.map((entry) => buildEvaluacionAlineamiento(entry, idAlineamiento, false));
     if (keyNorm === 'alineamiento_prohibido')
