@@ -16,6 +16,7 @@ function crearServicio() {
         seleccion: signal(null),
         urlGestion: 'https://qa-social.yosiftware.es/?vista=claves-ia',
         disponibilidad: jasmine.createSpy('disponibilidad').and.resolveTo('lista'),
+        preferido: jasmine.createSpy('preferido').and.resolveTo(null),
         pedir: jasmine.createSpy('pedir').and.resolveTo({ texto: 'Hijo de la forja.', proveedor: 'anthropic', modelo: 'claude-haiku-5-5', recortada: false }),
         modelos: jasmine.createSpy('modelos').and.resolveTo([]),
         voces: jasmine.createSpy('voces').and.resolveTo([

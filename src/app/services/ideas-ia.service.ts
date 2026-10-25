@@ -55,6 +55,16 @@ export interface ModelosIaProveedor {
 
 export type ProveedorDeVoz = 'elevenlabs' | 'openai';
 
+/** Los usos de `preferidos` en `GET /v1/ia/estado` (kit 1.54, `CLAVES_DE_IA.md`). */
+export type UsoIa = 'texto' | 'imagen' | 'voz' | 'transcripcion';
+
+/** Lo que dice `GET /v1/ia/estado`: qué proveedores tienen la clave lista y cuál prefiere la persona para cada uso. */
+interface EstadoIa {
+    disponibilidad: DisponibilidadIa;
+    listos: string[];
+    preferidos: Partial<Record<UsoIa, string | null>>;
+}
+
 export interface VozIa {
     id: string;
     nombre: string;
@@ -106,7 +116,7 @@ export class IdeasIaService {
     /** Modelo elegido para las imágenes del personaje (de OpenAI); `null` deja el del backend (gpt-image-1-mini). */
     readonly seleccionImagen = signal<SeleccionModeloIa | null>(null);
 
-    private estadoEnCurso: { hasta: number; promesa: Promise<DisponibilidadIa> } | null = null;
+    private estadoEnCurso: { hasta: number; promesa: Promise<EstadoIa> } | null = null;
     private modelosEnCurso: { hasta: number; promesa: Promise<any[]> } | null = null;
 
     constructor(private http: HttpClient, private platformSessionSvc: PlatformSessionService) { }
@@ -119,6 +129,22 @@ export class IdeasIaService {
     async disponibilidad(): Promise<DisponibilidadIa> {
         if (this.platformSessionSvc.estado.tipo !== 'con_sesion')
             return 'sin_sesion';
+        return (await this.estado()).disponibilidad;
+    }
+
+    /**
+     * El proveedor preferido de la persona para [uso], solo si su clave está lista (kit 1.54, «El proveedor preferido de
+     * la persona»); `null` si no ha elegido o no está lista: entonces decide la web.
+     */
+    async preferido(uso: UsoIa): Promise<string | null> {
+        if (this.platformSessionSvc.estado.tipo !== 'con_sesion')
+            return null;
+        const { listos, preferidos } = await this.estado();
+        const elegido = preferidos[uso] ?? null;
+        return elegido && listos.includes(elegido) ? elegido : null;
+    }
+
+    private estado(): Promise<EstadoIa> {
         const ahora = Date.now();
         if (!this.estadoEnCurso || this.estadoEnCurso.hasta < ahora)
             this.estadoEnCurso = { hasta: ahora + VIGENCIA_ESTADO_MS, promesa: this.consultarEstado() };
@@ -165,6 +191,12 @@ export class IdeasIaService {
         if (seleccion) {
             cuerpo['proveedor'] = seleccion.proveedor;
             cuerpo['modelo'] = seleccion.modelo;
+        } else {
+            // Sin modelo elegido, el proveedor preferido de la persona para el texto, si está listo (kit 1.54); si no,
+            // la API prueba Anthropic y después OpenAI, y la idea dice con cuál se hizo.
+            const preferido = await this.preferido('texto');
+            if (preferido === 'anthropic' || preferido === 'openai')
+                cuerpo['proveedor'] = preferido;
         }
         let token: string;
         try {
@@ -196,13 +228,18 @@ export class IdeasIaService {
         }
     }
 
-    private async consultarEstado(): Promise<DisponibilidadIa> {
+    private async consultarEstado(): Promise<EstadoIa> {
         try {
-            const respuesta = await this.getPlataforma<{ proveedores?: { proveedor: string; estado: string }[] }>('/v1/ia/estado');
+            const respuesta = await this.getPlataforma<{
+                proveedores?: { proveedor: string; estado: string }[];
+                preferidos?: Partial<Record<UsoIa, string | null>>;
+            }>('/v1/ia/estado');
             const proveedores = Array.isArray(respuesta?.proveedores) ? respuesta.proveedores : [];
-            return proveedores.some(p => p?.estado === 'lista') ? 'lista' : 'sin_clave';
+            const listos = proveedores.filter(p => p?.estado === 'lista').map(p => p.proveedor);
+            const preferidos = respuesta?.preferidos && typeof respuesta.preferidos === 'object' ? respuesta.preferidos : {};
+            return { disponibilidad: listos.length ? 'lista' : 'sin_clave', listos, preferidos };
         } catch {
-            return 'no_disponible';
+            return { disponibilidad: 'no_disponible', listos: [], preferidos: {} };
         }
     }
 

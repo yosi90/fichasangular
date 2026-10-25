@@ -32,4 +32,16 @@ describe('elegirVozAutomatica', () => {
     it('para elegir, las de ElevenLabs van primero', () => {
         expect(ordenarVoces(voces).map(v => v.voz.id)).toEqual(['alice', 'lucia', 'emilio', 'alloy']);
     });
+
+    it('con un proveedor preferido para la voz, empieza por el suyo (kit 1.54)', () => {
+        const conNovaEnEspanol = [...voces, voz('openai', 'nova', 'es', 'female')];
+        expect(elegirVozAutomatica(conNovaEnEspanol, 'Femenino', 'openai')?.voz.id).toBe('nova');
+        expect(ordenarVoces(conNovaEnEspanol, 'openai').map(v => v.voz.id)).toEqual(['alloy', 'nova', 'alice', 'lucia', 'emilio']);
+    });
+
+    it('si el preferido no tiene voces, sigue la regla de siempre', () => {
+        const soloElevenLabs = voces.filter(v => v.proveedor === 'elevenlabs');
+        expect(elegirVozAutomatica(soloElevenLabs, 'Femenino', 'openai')?.voz.id).toBe('lucia');
+        expect(elegirVozAutomatica(voces, 'Masculino', null)?.voz.id).toBe('emilio');
+    });
 });

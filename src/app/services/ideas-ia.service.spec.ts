@@ -24,6 +24,11 @@ describe('IdeasIaService', () => {
         return http.expectOne(url);
     }
 
+    /** Responde a `GET /v1/ia/estado`, que `pedir` consulta para saber el proveedor preferido (kit 1.54). */
+    async function responderEstado(preferidos: Record<string, string | null> = {}, listos: string[] = ['anthropic', 'openai']) {
+        (await esperarPeticion(urlEstado)).flush({ proveedores: listos.map(proveedor => ({ proveedor, estado: 'lista' })), preferidos });
+    }
+
     beforeEach(() => {
         session = {
             estado: { tipo: 'con_sesion', cuenta: { id: 'c1', alias: 'yosi', correo: null } },
@@ -81,6 +86,7 @@ describe('IdeasIaService', () => {
 
     it('pide la idea a la API de Rol con el token de la API y sin campos vacíos', async () => {
         const promesa = service.pedir('trasfondo', { nombre: ' Thorin ', raza: '', clases: [{ nombre: 'Guerrero', nivel: 3 }, { nombre: ' ' }] });
+        await responderEstado();
         const req = await esperarPeticion(urlIdeas);
         expect(req.request.method).toBe('POST');
         expect(req.request.headers.get('Authorization')).toBe('Bearer token-api');
@@ -98,9 +104,29 @@ describe('IdeasIaService', () => {
         expect((await promesa).recortada).toBeTrue();
     });
 
+    it('sin modelo elegido, manda el proveedor preferido para el texto si está listo (kit 1.54)', async () => {
+        const promesa = service.pedir('frase', {});
+        await responderEstado({ texto: 'openai', voz: 'elevenlabs' });
+        const req = await esperarPeticion(urlIdeas);
+        expect(req.request.body).toEqual({ tipo: 'frase', datos: {}, proveedor: 'openai' });
+        req.flush({ texto: 'Hola', proveedor: 'openai', modelo: 'gpt-5.4-mini', recortada: false });
+        await promesa;
+    });
+
+    it('si el preferido no está listo, no manda proveedor y decide la API', async () => {
+        const promesa = service.pedir('frase', {});
+        await responderEstado({ texto: 'openai' }, ['anthropic']);
+        const req = await esperarPeticion(urlIdeas);
+        expect(req.request.body).toEqual({ tipo: 'frase', datos: {} });
+        req.flush({ texto: 'Hola', proveedor: 'anthropic', modelo: 'claude-haiku-5-5', recortada: false });
+        await promesa;
+        expect(await service.preferido('texto')).toBeNull();
+    });
+
     it('traduce los errores con el formato objetivo y olvida el estado si es de la clave', async () => {
         const olvidar = spyOn(service, 'olvidarEstado').and.callThrough();
         const promesa = service.pedir('frase', {});
+        await responderEstado();
         (await esperarPeticion(urlIdeas)).flush(
             { error: 'Tu clave de IA no tiene un tope de gasto.', code: 'tope_sin_fijar', field: null, debug: { message: 'x', requestId: 'r' } },
             { status: 409, statusText: 'Conflict' },
@@ -116,7 +142,9 @@ describe('IdeasIaService', () => {
 
     it('sin sesión de la API no llama', async () => {
         session.tokenApi.and.rejectWith(new Error('Sesión no iniciada'));
-        const error = await service.pedir('frase', {}).catch(e => e);
+        const promesa = service.pedir('frase', {}).catch(e => e);
+        await responderEstado();
+        const error = await promesa;
         expect(error.code).toBe('UNAUTHORIZED');
         http.expectNone(urlIdeas);
     });

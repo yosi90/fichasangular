@@ -38,6 +38,8 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
     sonando: number | null = null;
     eligiendo = false;
     vocesDisponibles: VozElegible[] | null = null;
+    /** El proveedor preferido de la persona para la voz, si está listo (kit 1.54): la «Automática» empieza por él. */
+    proveedorPreferido: ProveedorDeVoz | null = null;
     /** null es «Automática». */
     vozElegida: VozElegible | null = null;
     textoParaGuardar = '';
@@ -156,8 +158,9 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
         if (this.vocesDisponibles)
             return;
         try {
-            const proveedores: VocesIaProveedor[] = await this.ideasIaSvc.voces();
-            this.vocesDisponibles = ordenarVoces(proveedores.flatMap(p => p.voces.map(voz => ({ proveedor: p.proveedor, voz }))));
+            const [proveedores, preferido] = await Promise.all([this.ideasIaSvc.voces(), this.ideasIaSvc.preferido('voz')]);
+            this.proveedorPreferido = preferido === 'elevenlabs' || preferido === 'openai' ? preferido : null;
+            this.vocesDisponibles = ordenarVoces(proveedores.flatMap(p => p.voces.map(voz => ({ proveedor: p.proveedor, voz }))), this.proveedorPreferido);
             const ultima = this.leerUltimaVoz();
             this.vozElegida = this.vocesDisponibles.find(v => `${v.proveedor}:${v.voz.id}` === ultima) ?? null;
         } catch {
@@ -185,7 +188,7 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
 
     /** La voz con la que se generará: la elegida o, con «Automática», una en español del género del personaje. */
     get vozQueSeUsara(): VozElegible | null {
-        return this.vozElegida ?? elegirVozAutomatica(this.vocesDisponibles ?? [], this.pj?.Genero);
+        return this.vozElegida ?? elegirVozAutomatica(this.vocesDisponibles ?? [], this.pj?.Genero, this.proveedorPreferido);
     }
 
     async guardarConVoz(): Promise<void> {
