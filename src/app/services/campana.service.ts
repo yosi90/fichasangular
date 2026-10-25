@@ -32,7 +32,7 @@ import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
 import { codigoDeError } from './utils/error-api';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from './platform-spaces.service';
-import { toBoolean } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toNullableText } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Injectable({
@@ -252,7 +252,7 @@ export class CampanaService {
             return {
                 idCampana: this.toPositiveInt(response?.idCampana) ?? id,
                 nombre: `${response?.nombre ?? ''}`.trim() || CampanaService.CAMPAIGN_UNNAMED_LABEL,
-                masterDisplayName: this.toNullableText(response?.masterDisplayName),
+                masterDisplayName: toNullableText(response?.masterDisplayName),
                 esMiembro: response?.esMiembro === true,
                 espacio: this.normalizeCampaignSpace(response?.espacio),
             };
@@ -702,10 +702,10 @@ export class CampanaService {
 
         return {
             campaign,
-            ownerUid: this.toNullableText(response?.ownerUid),
-            ownerDisplayName: this.toNullableText(response?.ownerDisplayName),
-            activeMasterUid: this.toNullableText(response?.activeMasterUid),
-            activeMasterDisplayName: this.toNullableText(response?.activeMasterDisplayName),
+            ownerUid: toNullableText(response?.ownerUid),
+            ownerDisplayName: toNullableText(response?.ownerDisplayName),
+            activeMasterUid: toNullableText(response?.activeMasterUid),
+            activeMasterDisplayName: toNullableText(response?.activeMasterDisplayName),
             espacio: this.normalizeCampaignSpace(response?.espacio),
             politicaCreacion: this.normalizeCampaignCreationPolicy(response?.politicaCreacion),
             tramas,
@@ -824,7 +824,7 @@ export class CampanaService {
             ?? raw?.Estado;
 
         const isOwner = raw?.isOwner === true;
-        const detailRevision = this.toNullableText(raw?.detailRevision ?? raw?.DetailRevision);
+        const detailRevision = toNullableText(raw?.detailRevision ?? raw?.DetailRevision);
         return {
             id,
             nombre: `${raw?.n ?? raw?.Nombre ?? raw?.nombre ?? raw?.NombreCampana ?? ''}`.trim(),
@@ -859,15 +859,15 @@ export class CampanaService {
             ?? raw?.Estado
         );
         return {
-            userId: this.toNullableText(raw?.userId),
+            userId: toNullableText(raw?.userId),
             uid,
-            displayName: this.toNullableText(raw?.displayName),
-            email: this.toNullableText(raw?.email),
+            displayName: toNullableText(raw?.displayName),
+            email: toNullableText(raw?.email),
             campaignRole,
             membershipStatus,
             isActive: raw?.isActive === true || membershipStatus === 'activo',
-            addedAtUtc: this.toNullableText(raw?.addedAtUtc),
-            addedByUserId: this.toNullableText(raw?.addedByUserId),
+            addedAtUtc: toNullableText(raw?.addedAtUtc),
+            addedByUserId: toNullableText(raw?.addedByUserId),
         };
     }
 
@@ -909,8 +909,8 @@ export class CampanaService {
 
         return {
             uid,
-            displayName: this.toNullableText(raw?.displayName),
-            photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
+            displayName: toNullableText(raw?.displayName),
+            photoThumbUrl: toNullableText(raw?.photoThumbUrl),
         };
     }
 
@@ -1299,11 +1299,6 @@ export class CampanaService {
             return null;
         const parsed = Math.trunc(Number(value));
         return Number.isFinite(parsed) ? parsed : null;
-    }
-
-    private toNullableText(value: any): string | null {
-        const text = `${value ?? ''}`.trim();
-        return text.length > 0 ? text : null;
     }
 
     private getDisplayLabel(member: CampaignMemberItem): string {

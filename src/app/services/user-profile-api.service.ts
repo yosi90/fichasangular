@@ -20,6 +20,7 @@ import {
 } from '../interfaces/user-moderation';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { errorDePerfil } from './utils/error-api';
+import { toNullableText } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -139,11 +140,11 @@ export class UserProfileApiService {
             return null;
 
         return {
-            version: this.toNullableText(raw?.version ?? raw?.versionTag ?? raw?.versionCode),
+            version: toNullableText(raw?.version ?? raw?.versionTag ?? raw?.versionCode),
             accepted: raw?.accepted === true || raw?.isAccepted === true || raw?.acceptedVersionMatchesActive === true,
-            acceptedAtUtc: this.toNullableText(raw?.acceptedAtUtc ?? raw?.acceptedAt),
-            publishedAtUtc: this.toNullableText(raw?.publishedAtUtc ?? raw?.effectiveAtUtc ?? raw?.activeSinceUtc),
-            title: this.toNullableText(raw?.title ?? raw?.name),
+            acceptedAtUtc: toNullableText(raw?.acceptedAtUtc ?? raw?.acceptedAt),
+            publishedAtUtc: toNullableText(raw?.publishedAtUtc ?? raw?.effectiveAtUtc ?? raw?.activeSinceUtc),
+            title: toNullableText(raw?.title ?? raw?.name),
         };
     }
 
@@ -162,7 +163,7 @@ export class UserProfileApiService {
         const status = this.normalizeAbuseLockStatus(raw?.status) ?? 'ignored';
         const moderationStatus = this.normalizeAbuseLockStatus(raw?.moderationStatus ?? raw?.effectiveStatus);
         const explicitSanction = this.normalizeModerationSanction(raw?.activeSanction ?? raw?.sanction);
-        const blockedUntilUtc = this.toNullableText(raw?.blockedUntilUtc ?? explicitSanction?.endsAtUtc);
+        const blockedUntilUtc = toNullableText(raw?.blockedUntilUtc ?? explicitSanction?.endsAtUtc);
         const isPermanent = this.normalizeOptionalBoolean(raw?.isPermanent ?? explicitSanction?.isPermanent);
         const activeSanction = explicitSanction ?? this.buildFallbackAbuseLockSanction({
             status,
@@ -232,7 +233,7 @@ export class UserProfileApiService {
     }): UserModerationSanction | null {
         const status = this.normalizeAbuseLockStatus(fallback.status);
         const moderationStatus = this.normalizeAbuseLockStatus(fallback.moderationStatus);
-        const endsAtUtc = this.toNullableText(fallback.blockedUntilUtc);
+        const endsAtUtc = toNullableText(fallback.blockedUntilUtc);
         const isPermanent = fallback.isPermanent === true
             || (endsAtUtc === null && (status === 'banned' || moderationStatus === 'banned'));
         if (!isPermanent && !endsAtUtc)
@@ -254,7 +255,7 @@ export class UserProfileApiService {
             return null;
 
         const moderationStatus = this.normalizeAbuseLockStatus(raw?.moderationStatus ?? raw?.effectiveStatus);
-        const blockedUntilUtc = this.toNullableText(raw?.blockedUntilUtc ?? raw?.expiresAtUtc ?? raw?.endAtUtc);
+        const blockedUntilUtc = toNullableText(raw?.blockedUntilUtc ?? raw?.expiresAtUtc ?? raw?.endAtUtc);
         const isPermanent = this.normalizeOptionalBoolean(raw?.isPermanent);
         if (moderationStatus !== 'blocked' && moderationStatus !== 'banned' && !blockedUntilUtc && isPermanent !== true)
             return null;
@@ -311,11 +312,11 @@ export class UserProfileApiService {
             return null;
 
         const sanctionId = this.toPositiveIntOrNull(raw?.sanctionId ?? raw?.id);
-        const kind = this.toNullableText(raw?.kind ?? raw?.sanctionKind ?? raw?.type);
-        const code = this.toNullableText(raw?.code ?? raw?.sanctionCode);
-        const name = this.toNullableText(raw?.name ?? raw?.title ?? raw?.label);
-        const startsAtUtc = this.toNullableText(raw?.startsAtUtc ?? raw?.startAtUtc ?? raw?.appliedAtUtc);
-        const endsAtUtc = this.toNullableText(raw?.endsAtUtc ?? raw?.endAtUtc ?? raw?.expiresAtUtc);
+        const kind = toNullableText(raw?.kind ?? raw?.sanctionKind ?? raw?.type);
+        const code = toNullableText(raw?.code ?? raw?.sanctionCode);
+        const name = toNullableText(raw?.name ?? raw?.title ?? raw?.label);
+        const startsAtUtc = toNullableText(raw?.startsAtUtc ?? raw?.startAtUtc ?? raw?.appliedAtUtc);
+        const endsAtUtc = toNullableText(raw?.endsAtUtc ?? raw?.endAtUtc ?? raw?.expiresAtUtc);
         const hasExplicitPermanent = raw?.isPermanent === true || raw?.permanent === true;
         const hasExplicitNullEnd = (Object.prototype.hasOwnProperty.call(raw, 'endsAtUtc') && raw?.endsAtUtc === null)
             || (Object.prototype.hasOwnProperty.call(raw, 'endAtUtc') && raw?.endAtUtc === null)
@@ -341,15 +342,15 @@ export class UserProfileApiService {
             currentRole: (raw?.currentRole ?? 'jugador') as UserRoleRequestStatus['currentRole'],
             requestedRole: raw?.requestedRole ?? null,
             status: raw?.status ?? 'none',
-            blockedUntilUtc: this.toNullableText(raw?.blockedUntilUtc),
+            blockedUntilUtc: toNullableText(raw?.blockedUntilUtc),
             requestId: this.toPositiveIntOrNull(raw?.requestId),
-            requestedAtUtc: this.toNullableText(raw?.requestedAtUtc),
-            resolvedAtUtc: this.toNullableText(raw?.resolvedAtUtc),
+            requestedAtUtc: toNullableText(raw?.requestedAtUtc),
+            resolvedAtUtc: toNullableText(raw?.resolvedAtUtc),
             eligible: raw?.eligible === true,
-            reasonCode: this.toNullableText(raw?.reasonCode),
+            reasonCode: toNullableText(raw?.reasonCode),
             currentRoleAtRequest: raw?.currentRoleAtRequest ?? null,
             requestComment: this.normalizeMultilineText(raw?.requestComment),
-            adminComment: this.toNullableText(raw?.adminComment),
+            adminComment: toNullableText(raw?.adminComment),
         };
     }
 
@@ -370,11 +371,6 @@ export class UserProfileApiService {
             .replace(/\r\n/g, '\n')
             .replace(/\r/g, '\n')
             .trim();
-        return text.length > 0 ? text : null;
-    }
-
-    private toNullableText(value: any): string | null {
-        const text = `${value ?? ''}`.trim();
         return text.length > 0 ? text : null;
     }
 

@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { cabecerasPlataforma, PlatformSessionService } from './platform-session.service';
+import { toNullableText } from 'src/app/services/utils/normalizacion';
 
 // La pertenencia de las campañas en los espacios de la plataforma (ecosistema-kit/ESPACIOS.md, «Con tu propia
 // interfaz»): las rutas /v1/espacios con el token de la plataforma. Rol no guarda invitaciones ni solicitudes; tras
@@ -122,11 +123,11 @@ export class PlatformSpacesService {
         const respuesta = await this.peticion<any>('GET', `/v1/espacios/${idEspacio}/invitaciones`);
         return this.lista(respuesta?.invitaciones).map((item) => ({
             id: Number(item.id),
-            cuenta: this.texto(item.cuenta),
-            alias: this.texto(item.alias),
-            correo: this.texto(item.correo),
-            creada: this.texto(item.creada),
-            caduca: this.texto(item.caduca),
+            cuenta: toNullableText(item.cuenta),
+            alias: toNullableText(item.alias),
+            correo: toNullableText(item.correo),
+            creada: toNullableText(item.creada),
+            caduca: toNullableText(item.caduca),
         }));
     }
 
@@ -144,9 +145,9 @@ export class PlatformSpacesService {
                 idExterno: `${item.espacio?.idExterno ?? ''}`,
                 nombre: `${item.espacio?.nombre ?? ''}`,
             },
-            de: { cuenta: this.texto(item.de?.cuenta), nombre: this.texto(item.de?.nombre) },
+            de: { cuenta: toNullableText(item.de?.cuenta), nombre: toNullableText(item.de?.nombre) },
             miembros: Number(item.miembros ?? 0),
-            caduca: this.texto(item.caduca),
+            caduca: toNullableText(item.caduca),
         }));
     }
 
@@ -167,10 +168,10 @@ export class PlatformSpacesService {
         return this.lista(respuesta?.solicitudes).map((item) => ({
             id: Number(item.id),
             cuenta: `${item.cuenta ?? ''}`,
-            alias: this.texto(item.alias),
-            nombre: this.texto(item.nombre),
-            mensaje: this.texto(item.mensaje),
-            creada: this.texto(item.creada),
+            alias: toNullableText(item.alias),
+            nombre: toNullableText(item.nombre),
+            mensaje: toNullableText(item.mensaje),
+            creada: toNullableText(item.creada),
         }));
     }
 
@@ -211,11 +212,11 @@ export class PlatformSpacesService {
             idExterno: `${raw?.idExterno ?? ''}`,
             nombre: `${raw?.nombre ?? ''}`,
             entrada: raw?.entrada === 'solicitud' || raw?.entrada === 'abierto' ? raw.entrada : 'invitacion',
-            propietario: this.texto(raw?.propietario),
+            propietario: toNullableText(raw?.propietario),
             miembros: Number(raw?.miembros ?? 0),
             yo: yo ? {
                 rol: `${yo.rol ?? ''}`,
-                nombreRol: this.texto(yo.nombreRol),
+                nombreRol: toNullableText(yo.nombreRol),
                 propietario: yo.propietario === true,
                 estado: `${yo.estado ?? ''}`,
                 capacidades: {
@@ -226,19 +227,14 @@ export class PlatformSpacesService {
             } : null,
             traspaso: traspaso ? {
                 cuenta: `${traspaso.cuenta ?? ''}`,
-                rolSaliente: this.texto(traspaso.rolSaliente),
-                caduca: this.texto(traspaso.caduca),
+                rolSaliente: toNullableText(traspaso.rolSaliente),
+                caduca: toNullableText(traspaso.caduca),
             } : null,
         };
     }
 
     private lista(value: unknown): any[] {
         return Array.isArray(value) ? value : [];
-    }
-
-    private texto(value: unknown): string | null {
-        const text = `${value ?? ''}`.trim();
-        return text.length > 0 ? text : null;
     }
 
     private async peticion<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', ruta: string, body?: unknown): Promise<T> {

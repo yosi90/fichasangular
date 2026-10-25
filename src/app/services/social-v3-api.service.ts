@@ -25,6 +25,7 @@ import {
 } from '../interfaces/social-v3';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { errorDePerfil } from './utils/error-api';
+import { toNullableText } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -49,9 +50,9 @@ export class SocialV3ApiService {
                 this.http.get<any>(`${this.socialBaseUrl}/community/users`, {
                     headers: await this.buildAuthHeaders(),
                     params: this.compactParams({
-                        query: this.toNullableText(filters.query),
-                        role: this.toNullableText(filters.role),
-                        sort: this.toNullableText(filters.sort) ?? 'recent',
+                        query: toNullableText(filters.query),
+                        role: toNullableText(filters.role),
+                        sort: toNullableText(filters.sort) ?? 'recent',
                         limit: `${this.normalizeLimit(filters.limit, 25)}`,
                         offset: `${this.normalizeOffset(filters.offset)}`,
                     }),
@@ -96,7 +97,7 @@ export class SocialV3ApiService {
             );
             return {
                 metric: this.normalizeRankingMetric(response?.metric ?? normalizedMetric),
-                generatedAtUtc: this.toNullableText(response?.generatedAtUtc),
+                generatedAtUtc: toNullableText(response?.generatedAtUtc),
                 items: Array.isArray(response?.items)
                     ? response.items.map((raw: any) => this.normalizeRankingItem(raw)).filter((item: SocialRankingItem) => item.uid.length > 0)
                     : [],
@@ -133,7 +134,7 @@ export class SocialV3ApiService {
                 this.http.get<any>(`${this.socialBaseUrl}/lfg/posts`, {
                     headers: await this.buildAuthHeaders(),
                     params: this.compactParams({
-                        status: this.toNullableText(filters.status),
+                        status: toNullableText(filters.status),
                         limit: `${this.normalizeLimit(filters.limit, 25)}`,
                         offset: `${this.normalizeOffset(filters.offset)}`,
                     }),
@@ -212,7 +213,7 @@ export class SocialV3ApiService {
                 this.http.get<any>(`${this.socialBaseUrl}/lfg/posts/${normalizedPostId}/applications`, {
                     headers: await this.buildAuthHeaders(),
                     params: this.compactParams({
-                        status: this.toNullableText(filters.status),
+                        status: toNullableText(filters.status),
                         limit: `${this.normalizeLimit(filters.limit, 25)}`,
                         offset: `${this.normalizeOffset(filters.offset)}`,
                     }),
@@ -305,8 +306,8 @@ export class SocialV3ApiService {
             );
             return {
                 ticket: `${response?.ticket ?? ''}`.trim(),
-                expiresAtUtc: this.toNullableText(response?.expiresAtUtc),
-                websocketUrl: this.toNullableText(response?.websocketUrl),
+                expiresAtUtc: toNullableText(response?.expiresAtUtc),
+                websocketUrl: toNullableText(response?.websocketUrl),
             };
         } catch (error) {
             throw errorDePerfil(error, 'No se pudo abrir el ticket realtime social.');
@@ -365,11 +366,11 @@ export class SocialV3ApiService {
     private normalizeCommunityUserItem(raw: any): SocialCommunityUserItem {
         return {
             uid: `${raw?.uid ?? ''}`.trim(),
-            displayName: this.toNullableText(raw?.displayName),
-            photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
+            displayName: toNullableText(raw?.displayName),
+            photoThumbUrl: toNullableText(raw?.photoThumbUrl),
             role: this.normalizeCommunityRole(raw?.role),
-            joinedAtUtc: this.toNullableText(raw?.joinedAtUtc),
-            lastSeenAtUtc: this.toNullableText(raw?.lastSeenAtUtc),
+            joinedAtUtc: toNullableText(raw?.joinedAtUtc),
+            lastSeenAtUtc: toNullableText(raw?.lastSeenAtUtc),
             publicStats: {
                 totalCharacters: this.toNonNegativeInt(raw?.publicStats?.totalCharacters),
                 publicCharacters: this.toNonNegativeInt(raw?.publicStats?.publicCharacters),
@@ -388,8 +389,8 @@ export class SocialV3ApiService {
         return {
             position: this.toNonNegativeInt(raw?.position),
             uid: `${raw?.uid ?? ''}`.trim(),
-            displayName: this.toNullableText(raw?.displayName),
-            photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
+            displayName: toNullableText(raw?.displayName),
+            photoThumbUrl: toNullableText(raw?.photoThumbUrl),
             value: this.toNonNegativeInt(raw?.value),
         };
     }
@@ -398,11 +399,11 @@ export class SocialV3ApiService {
         return {
             profile: {
                 uid: `${raw?.profile?.uid ?? ''}`.trim(),
-                displayName: this.toNullableText(raw?.profile?.displayName),
-                photoThumbUrl: this.toNullableText(raw?.profile?.photoThumbUrl),
-                bio: this.toNullableText(raw?.profile?.bio),
-                pronouns: this.toNullableText(raw?.profile?.pronouns),
-                joinedAtUtc: this.toNullableText(raw?.profile?.joinedAtUtc),
+                displayName: toNullableText(raw?.profile?.displayName),
+                photoThumbUrl: toNullableText(raw?.profile?.photoThumbUrl),
+                bio: toNullableText(raw?.profile?.bio),
+                pronouns: toNullableText(raw?.profile?.pronouns),
+                joinedAtUtc: toNullableText(raw?.profile?.joinedAtUtc),
             },
             relationship: {
                 state: this.normalizeRelationshipState(raw?.relationship?.state),
@@ -438,11 +439,11 @@ export class SocialV3ApiService {
             status: this.normalizeLfgStatus(raw?.status),
             author: {
                 uid: `${raw?.author?.uid ?? ''}`.trim(),
-                displayName: this.toNullableText(raw?.author?.displayName),
-                photoThumbUrl: this.toNullableText(raw?.author?.photoThumbUrl),
+                displayName: toNullableText(raw?.author?.displayName),
+                photoThumbUrl: toNullableText(raw?.author?.photoThumbUrl),
             },
-            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
-            updatedAtUtc: this.toNullableText(raw?.updatedAtUtc),
+            createdAtUtc: toNullableText(raw?.createdAtUtc),
+            updatedAtUtc: toNullableText(raw?.updatedAtUtc),
         };
     }
 
@@ -454,11 +455,11 @@ export class SocialV3ApiService {
             message: `${raw?.message ?? ''}`.trim(),
             applicant: {
                 uid: `${raw?.applicant?.uid ?? ''}`.trim(),
-                displayName: this.toNullableText(raw?.applicant?.displayName),
-                photoThumbUrl: this.toNullableText(raw?.applicant?.photoThumbUrl),
+                displayName: toNullableText(raw?.applicant?.displayName),
+                photoThumbUrl: toNullableText(raw?.applicant?.photoThumbUrl),
             },
-            createdAtUtc: this.toNullableText(raw?.createdAtUtc),
-            resolvedAtUtc: this.toNullableText(raw?.resolvedAtUtc),
+            createdAtUtc: toNullableText(raw?.createdAtUtc),
+            resolvedAtUtc: toNullableText(raw?.resolvedAtUtc),
             permissions: {
                 canWithdraw: raw?.permissions?.canWithdraw === true,
                 canResolve: raw?.permissions?.canResolve === true,
@@ -593,11 +594,6 @@ export class SocialV3ApiService {
     private toNonNegativeInt(value: any): number {
         const parsed = Math.trunc(Number(value));
         return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-    }
-
-    private toNullableText(value: any): string | null {
-        const text = `${value ?? ''}`.trim();
-        return text.length > 0 ? text : null;
     }
 
     private compactParams(params: Record<string, string | null | undefined>): Record<string, string> {

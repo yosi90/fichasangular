@@ -12,7 +12,7 @@ import { CampaignListItem } from '../interfaces/campaign-management';
 import { PersonajeSimple } from '../interfaces/simplificaciones/personaje-simple';
 import { UserRole } from '../interfaces/user-acl';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { toBoolean } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toNullableText } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Injectable({
@@ -128,19 +128,19 @@ export class PrivateUserFirestoreService {
 
     private mapPrivateProfile(raw: any, fallbackUid: string): UserPrivateProfile {
         const currentUser = this.auth.currentUser;
-        const fallbackEmail = this.toNullableText(currentUser?.email);
-        const fallbackDisplayName = this.toNullableText(currentUser?.displayName)
+        const fallbackEmail = toNullableText(currentUser?.email);
+        const fallbackDisplayName = toNullableText(currentUser?.displayName)
             ?? this.fallbackDisplayName(fallbackEmail)
             ?? 'Usuario';
 
         // `meta/profile` trae solo esto (docs/publica/endpoints/usuarios.md). El cumplimiento ya no viene en el
         // perfil: lo da la plataforma en el estado de la sesión (UserService).
         return {
-            uid: this.toNullableText(raw?.uid) ?? fallbackUid,
-            displayName: this.toNullableText(raw?.displayName) ?? fallbackDisplayName,
-            photoThumbUrl: this.toNullableText(raw?.photoThumbUrl),
-            createdAt: this.toNullableText(raw?.createdAt),
-            lastSeenAt: this.toNullableText(raw?.lastSeenAt),
+            uid: toNullableText(raw?.uid) ?? fallbackUid,
+            displayName: toNullableText(raw?.displayName) ?? fallbackDisplayName,
+            photoThumbUrl: toNullableText(raw?.photoThumbUrl),
+            createdAt: toNullableText(raw?.createdAt),
+            lastSeenAt: toNullableText(raw?.lastSeenAt),
             role: this.normalizeRole(
                 raw?.role
                 ?? raw?.currentRole
@@ -164,10 +164,10 @@ export class PrivateUserFirestoreService {
         if (!id)
             return null;
 
-        const detailRevision = this.toNullableText(raw?.detailRevision ?? raw?.DetailRevision);
+        const detailRevision = toNullableText(raw?.detailRevision ?? raw?.DetailRevision);
         return {
             id,
-            nombre: this.toNullableText(raw?.nombre ?? raw?.Nombre ?? raw?.NombreCampana ?? raw?.n) ?? `Campaña ${id}`,
+            nombre: toNullableText(raw?.nombre ?? raw?.Nombre ?? raw?.NombreCampana ?? raw?.n) ?? `Campaña ${id}`,
             campaignRole: this.normalizeNullableCampaignRole(
                 raw?.campaignRole
                 ?? raw?.CampaignRole
@@ -204,7 +204,7 @@ export class PrivateUserFirestoreService {
             ?? raw?.region?.Id
             ?? 0
         )));
-        const regionNombre = this.toNullableText(
+        const regionNombre = toNullableText(
             raw?.Region?.Nombre
             ?? raw?.Region?.nombre
             ?? raw?.region?.Nombre
@@ -213,11 +213,11 @@ export class PrivateUserFirestoreService {
 
         return {
             Id: id,
-            Nombre: this.toNullableText(raw?.Nombre ?? raw?.n) ?? `Personaje ${id}`,
-            ownerUid: this.toNullableText(raw?.ownerUid),
-            ownerDisplayName: this.toNullableText(raw?.ownerDisplayName),
+            Nombre: toNullableText(raw?.Nombre ?? raw?.n) ?? `Personaje ${id}`,
+            ownerUid: toNullableText(raw?.ownerUid),
+            ownerDisplayName: toNullableText(raw?.ownerDisplayName),
             campaignId: this.toPositiveInt(raw?.campaignId ?? raw?.campaign_id ?? raw?.idCampana) ?? null,
-            campaignName: this.toNullableText(raw?.campaignName ?? raw?.campaign_name ?? raw?.nombreCampana),
+            campaignName: toNullableText(raw?.campaignName ?? raw?.campaign_name ?? raw?.nombreCampana),
             accessReason: this.normalizeCharacterAccessReason(raw?.accessReason ?? raw?.access_reason),
             visible_otros_usuarios: raw?.visible_otros_usuarios === true,
             Id_region: idRegion,
@@ -227,13 +227,13 @@ export class PrivateUserFirestoreService {
             },
             Raza: raw?.Raza ?? raw?.r ?? { Id: 0, Nombre: 'Sin raza' },
             RazaBase: raw?.RazaBase ?? raw?.razaBase ?? null,
-            Clases: this.toNullableText(raw?.Clases ?? raw?.c) ?? '',
-            Contexto: this.toNullableText(raw?.Contexto ?? raw?.co) ?? '',
-            Personalidad: this.toNullableText(raw?.Personalidad ?? raw?.p) ?? '',
+            Clases: toNullableText(raw?.Clases ?? raw?.c) ?? '',
+            Contexto: toNullableText(raw?.Contexto ?? raw?.co) ?? '',
+            Personalidad: toNullableText(raw?.Personalidad ?? raw?.p) ?? '',
             // Sin campaña, trama o subtrama, la proyección los da a `null`: quedan vacíos (se agrupa por `campaignId`).
-            Campana: this.toNullableText(raw?.Campana ?? raw?.Campaña ?? raw?.ca) ?? '',
-            Trama: this.toNullableText(raw?.Trama ?? raw?.t) ?? '',
-            Subtrama: this.toNullableText(raw?.Subtrama ?? raw?.s) ?? '',
+            Campana: toNullableText(raw?.Campana ?? raw?.Campaña ?? raw?.ca) ?? '',
+            Trama: toNullableText(raw?.Trama ?? raw?.t) ?? '',
+            Subtrama: toNullableText(raw?.Subtrama ?? raw?.s) ?? '',
             Archivado: toBoolean(raw?.archivado ?? raw?.Archivado ?? raw?.a),
         };
     }
@@ -314,11 +314,6 @@ export class PrivateUserFirestoreService {
     private toPositiveInt(value: any): number | null {
         const parsed = Math.trunc(Number(value));
         return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-    }
-
-    private toNullableText(value: any): string | null {
-        const text = `${value ?? ''}`.trim();
-        return text.length > 0 ? text : null;
     }
 
     private fallbackDisplayName(email: string | null): string | null {
