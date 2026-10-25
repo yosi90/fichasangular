@@ -192,19 +192,43 @@ export class PlatformSessionService {
     }
 
     async tokenApi(): Promise<string> {
+        return this.tokenDeLaCuentaVigente((sdk) => sdk.token());
+    }
+
+    /** Token de la API de la plataforma (audiencia `cuentas`), para lo social de las páginas de comunidad. */
+    async tokenPlataforma(): Promise<string> {
+        return this.tokenDeLaCuentaVigente((sdk) => sdk.tokenPlataforma());
+    }
+
+    /**
+     * Un token del SDK solo si sigue siendo de la cuenta que ve esta página (ecosistema-kit/CAMBIO_DE_CUENTA.md). Las
+     * llamadas de Rol van con `HttpClient`, no con `yosiftware.fetch`, así que se protegen aquí: si la cuenta ha cambiado
+     * o la página ya se está recargando por eso, falla con `CAMBIO_DE_IDENTIDAD`, antes de pedirlo y después (el SDK pudo
+     * confirmar la cuenta nueva mientras se esperaba). `window.location.reload()` no para el JavaScript al momento: así
+     * una acción que empezó con A no sale con el token de B en lo que tarda en irse la página.
+     */
+    private async tokenDeLaCuentaVigente(pedir: (sdk: YosiftwareSdk) => Promise<string | null>): Promise<string> {
+        this.comprobarCuentaVigente();
         const sdk = await this.cargarSdk();
-        const token = await sdk.token();
+        this.comprobarCuentaVigente(sdk);
+        const token = await pedir(sdk);
+        this.comprobarCuentaVigente(sdk);
         if (!token)
             throw ProfileApiError.sinSesion('sin_sesion');
         return token;
     }
 
-    /** Token de la API de la plataforma (audiencia `cuentas`), para lo social de las páginas de comunidad. */
-    async tokenPlataforma(): Promise<string> {
-        const token = await (await this.cargarSdk()).tokenPlataforma();
-        if (!token)
-            throw ProfileApiError.sinSesion('sin_sesion');
-        return token;
+    private comprobarCuentaVigente(sdk?: YosiftwareSdk): void {
+        if (!this.recargando && sdk && this.esOtraIdentidad(sdk.estado))
+            this.recargarPorCambioDeIdentidad();
+        if (this.recargando)
+            throw ProfileApiError.cambioDeIdentidad();
+    }
+
+    /** Si [estado] ya no es la cuenta que ha visto esta página: otra cuenta o sin sesión (sin red, no). */
+    private esOtraIdentidad(estado: EstadoPlataforma): boolean {
+        return this.cuentaConfirmada !== null
+            && (estado.tipo === 'sin_sesion' || (estado.tipo === 'con_sesion' && estado.cuenta.id !== this.cuentaConfirmada));
     }
 
     async entrar(vista: 'entrar' | 'registro' = 'entrar'): Promise<boolean> {
@@ -292,10 +316,7 @@ export class PlatformSessionService {
      * borradores de A se guardan con su `beforeunload`, en las claves de A (cada entorno tiene su origen y sus cuentas).
      */
     private aplicarEstado(estado: EstadoPlataforma): void {
-        const anterior = this.cuentaConfirmada;
-        const cambia = estado.tipo === 'sin_sesion'
-            || (estado.tipo === 'con_sesion' && estado.cuenta.id !== anterior);
-        if (anterior && cambia) {
+        if (this.esOtraIdentidad(estado)) {
             this.recargarPorCambioDeIdentidad();
             return;
         }

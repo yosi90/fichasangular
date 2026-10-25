@@ -52,6 +52,7 @@ export interface UserAvatarResponse {
 
 /** El texto para la persona cuando falta la sesión (o su token). */
 export const MENSAJE_SIN_SESION = 'Necesitas iniciar sesión para continuar.';
+export const MENSAJE_CAMBIO_DE_IDENTIDAD = 'Has cambiado de cuenta: la página se está recargando.';
 
 export class ProfileApiError extends Error {
     constructor(
@@ -66,6 +67,14 @@ export class ProfileApiError extends Error {
     /** El error de las llamadas a la API sin sesión o sin token (para `cabeceraApiConFirebase`), con el código de la API. */
     static sinSesion(motivo: 'sin_sesion' | 'sin_token'): ProfileApiError {
         return new ProfileApiError(MENSAJE_SIN_SESION, motivo === 'sin_sesion' ? 'UNAUTHORIZED' : 'TOKEN_INVALID', 401);
+    }
+
+    /**
+     * La acción empezó con una cuenta y la cuenta ha cambiado (la página se está recargando): no se le da el token de la
+     * nueva (ecosistema-kit/CAMBIO_DE_CUENTA.md).
+     */
+    static cambioDeIdentidad(): ProfileApiError {
+        return new ProfileApiError(MENSAJE_CAMBIO_DE_IDENTIDAD, 'CAMBIO_DE_IDENTIDAD', 0);
     }
 }
 

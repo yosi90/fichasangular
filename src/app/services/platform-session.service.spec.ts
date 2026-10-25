@@ -74,6 +74,141 @@ describe('PlatformSessionService, cambio de cuenta', () => {
     });
 });
 
+/** Lo justo del SDK de la plataforma: su estado y unos tokens que se resuelven cuando dice la prueba. */
+class SdkFalso {
+    estado: EstadoPlataforma = { tipo: 'comprobando' };
+    pendientes: Array<{ resolver: (token: string | null) => void; plataforma: boolean }> = [];
+    oyentes: Array<(estado: EstadoPlataforma) => void> = [];
+
+    alCambiar(oyente: (estado: EstadoPlataforma) => void): () => void {
+        this.oyentes.push(oyente);
+        return () => undefined;
+    }
+
+    token(): Promise<string | null> {
+        return new Promise((resolver) => this.pendientes.push({ resolver, plataforma: false }));
+    }
+
+    tokenPlataforma(): Promise<string | null> {
+        return new Promise((resolver) => this.pendientes.push({ resolver, plataforma: true }));
+    }
+
+    /** El SDK cambia de estado (y lo anuncia por `alCambiar`, como el de verdad). */
+    cambiar(estado: EstadoPlataforma): void {
+        this.estado = estado;
+        this.oyentes.forEach((oyente) => oyente(estado));
+    }
+
+    /** Resuelve el primer token pendiente con el de la cuenta que tenga el SDK en ese momento. */
+    dar(): void {
+        const pendiente = this.pendientes.shift()!;
+        const cuenta = this.estado.tipo === 'con_sesion' ? this.estado.cuenta.id : null;
+        pendiente.resolver(cuenta ? `${pendiente.plataforma ? 'plataforma' : 'api'}-${cuenta}` : null);
+    }
+}
+
+/** Deja que corran las promesas encadenadas (cargar el SDK, pedir el token). */
+const esperar = () => new Promise<void>((resolve) => setTimeout(resolve));
+
+describe('PlatformSessionService, tokens al cambiar de cuenta (CAMBIO_DE_CUENTA.md)', () => {
+    let servicio: PlatformSessionServicePrueba;
+    let sdk: SdkFalso;
+    let anterior: unknown;
+
+    beforeEach(async () => {
+        anterior = (window as any).yosiftware;
+        sdk = new SdkFalso();
+        (window as any).yosiftware = sdk;
+        servicio = new PlatformSessionServicePrueba(new NgZone({ enableLongStackTrace: false }));
+        servicio.iniciar();
+        await esperar();
+        sdk.cambiar(conSesion('a'));
+    });
+
+    afterEach(() => {
+        (window as any).yosiftware = anterior;
+    });
+
+    async function codigoDe(promesa: Promise<unknown>): Promise<string> {
+        const error = await promesa.then(() => null, (e) => e);
+        return error?.code ?? 'sin error';
+    }
+
+    it('da el token de la cuenta que ve la página', async () => {
+        const token = servicio.tokenApi();
+        await esperar();
+        sdk.dar();
+
+        expect(await token).toBe('api-a');
+        expect(servicio.recargas).toBe(0);
+    });
+
+    it('A → B mientras se espera el token: no da el de B y recarga', async () => {
+        const token = servicio.tokenApi();
+        await esperar();
+        sdk.estado = conSesion('b'); // el SDK ya tiene B, aún sin anunciarlo
+        sdk.dar();
+
+        expect(await codigoDe(token)).toBe('CAMBIO_DE_IDENTIDAD');
+        expect(servicio.recargas).toBe(1);
+    });
+
+    it('una escritura de A que pide el token tarde no sale como B', async () => {
+        const cabecera = cabeceraApiConFirebase({ currentUser: { uid: 'a' } });
+        await esperar();
+        sdk.cambiar(conSesion('b'));
+        sdk.dar();
+
+        expect(await codigoDe(cabecera)).toBe('CAMBIO_DE_IDENTIDAD');
+        expect(emitidaLaCuenta(servicio, 'b')).toBeFalse();
+    });
+
+    it('A → B → A: tras el aviso yosiftware:identidad ningún token, aunque vuelva A', async () => {
+        const token = servicio.tokenPlataforma();
+        await esperar();
+        window.dispatchEvent(new Event('yosiftware:identidad'));
+        sdk.estado = conSesion('b');
+        sdk.estado = conSesion('a');
+        sdk.dar();
+
+        expect(await codigoDe(token)).toBe('CAMBIO_DE_IDENTIDAD');
+        expect(await codigoDe(servicio.tokenApi())).toBe('CAMBIO_DE_IDENTIDAD');
+        expect(sdk.pendientes.length).toBe(0); // ni siquiera se le pide al SDK
+        expect(servicio.recargas).toBe(1);
+    });
+
+    it('cerrar la sesión o una revocación al volver a la pestaña: sin token y recarga una vez', async () => {
+        const token = servicio.tokenApi();
+        await esperar();
+        sdk.cambiar({ tipo: 'sin_sesion', motivo: 'revocada' });
+        sdk.dar();
+
+        expect(await codigoDe(token)).toBe('CAMBIO_DE_IDENTIDAD');
+        expect(await codigoDe(servicio.tokenPlataforma())).toBe('CAMBIO_DE_IDENTIDAD');
+        expect(servicio.recargas).toBe(1);
+        expect(recargandoPorCambioDeIdentidad()).toBeTrue();
+    });
+
+    it('sin red (no_disponible) no es otra cuenta: no recarga y no da token', async () => {
+        const token = servicio.tokenApi();
+        await esperar();
+        sdk.cambiar({ tipo: 'no_disponible' });
+        sdk.dar();
+
+        expect(await codigoDe(token)).toBe('UNAUTHORIZED');
+        expect(servicio.recargas).toBe(0);
+        sdk.cambiar(conSesion('a'));
+        const otro = servicio.tokenApi();
+        await esperar();
+        sdk.dar();
+        expect(await otro).toBe('api-a');
+    });
+});
+
+function emitidaLaCuenta(servicio: PlatformSessionService, id: string): boolean {
+    return servicio.cuenta?.id === id;
+}
+
 describe('cabeceraApiConFirebase', () => {
     const conFirebase = { currentUser: { uid: 'a' } };
 
