@@ -7,6 +7,7 @@ import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesMonstruoComponent } from './detalles-monstruo.component';
+import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
 function crearMonstruoMock(partial?: Partial<MonstruoDetalle>): MonstruoDetalle {
     return {
@@ -90,9 +91,7 @@ describe('DetallesMonstruoComponent', () => {
     let fixture: ComponentFixture<DetallesMonstruoComponent>;
     let manualNavSpy: jasmine.SpyObj<ManualDetalleNavigationService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`;
-    const limpio = (nodo: Element | null | undefined): string => `${nodo?.textContent ?? ''}`.replace(/\s+/g, ' ').trim();
-    const titulos = (): string[] => Array.from(elemento().querySelectorAll('.ficha-titulo')).map((t) => limpio(t));
+    const { texto, titulos, datos, enlace } = lectorFicha(elemento);
     const franja = (): string[][] => Array.from(elemento().querySelectorAll('.monstruo-franja__dato'))
         .map((d) => [limpio(d.querySelector('dt')), limpio(d.querySelector('dd'))]);
     const combate = (): string[][] => {
@@ -100,10 +99,6 @@ describe('DetallesMonstruoComponent', () => {
         const dds = Array.from(elemento().querySelectorAll('.monstruo-pares dd')).map((d) => limpio(d));
         return dts.map((dt, i) => [dt, dds[i]]);
     };
-    const datos = (): string[][] => Array.from(elemento().querySelectorAll('.ficha-dato'))
-        .map((d) => [limpio(d.querySelector('dt')), limpio(d.querySelector('dd'))]);
-    const enlace = (nombre: string): HTMLButtonElement => Array.from(elemento().querySelectorAll<HTMLButtonElement>('button.ficha-enlace'))
-        .find((b) => limpio(b) === nombre)!;
 
     beforeEach(async () => {
         manualNavSpy = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);

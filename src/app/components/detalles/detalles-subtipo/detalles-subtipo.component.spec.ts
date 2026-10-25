@@ -5,6 +5,7 @@ import { TextoManualComponent } from 'src/app/components/shared/texto-manual/tex
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesSubtipoComponent } from './detalles-subtipo.component';
+import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
 function caracteristicas(): SubtipoDetalle['Modificadores_caracteristicas'] {
     return { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 };
@@ -51,15 +52,7 @@ describe('DetallesSubtipoComponent', () => {
     let fixture: ComponentFixture<DetallesSubtipoComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`;
-    const limpio = (nodo: Element | null | undefined): string => `${nodo?.textContent ?? ''}`.replace(/\s+/g, ' ').trim();
-    const titulos = (): string[] => Array.from(elemento().querySelectorAll('.ficha-titulo')).map((t) => limpio(t));
-    const datosDe = (raiz: Element | null): string[][] => Array.from(raiz?.querySelectorAll('.ficha-dato') ?? [])
-        .map((d) => [limpio(d.querySelector('dt')), limpio(d.querySelector('dd'))]);
-    const seccion = (titulo: string): Element | null => Array.from(elemento().querySelectorAll('.ficha-seccion'))
-        .find((s) => limpio(s.querySelector('.ficha-titulo')) === titulo) ?? null;
-    const enlace = (nombre: string): HTMLButtonElement => Array.from(elemento().querySelectorAll<HTMLButtonElement>('button.ficha-enlace'))
-        .find((b) => limpio(b) === nombre)!;
+    const { texto, titulos, datos, seccion, enlace } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
@@ -88,14 +81,14 @@ describe('DetallesSubtipoComponent', () => {
         expect(limpio(elemento().querySelector('.ficha-cabecera__nombre'))).toBe('Fuego');
         expect(limpio(elemento().querySelector('.ficha-cabecera__manual'))).toContain('Manual de monstruos · pág. 312');
         expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => limpio(e))).toEqual(['Heredado', 'Oficial']);
-        expect(datosDe(elemento().querySelector('.ficha-datos-contenedor--tarjeta'))).toEqual([
+        expect(datos(elemento().querySelector('.ficha-datos-contenedor--tarjeta'))).toEqual([
             ['Ajuste de nivel', '+1'], ['Alineamiento', 'Caótico neutral'], ['Tesoro', 'Estándar'],
         ]);
         expect(titulos()).toEqual(['Descripción', 'Combate y defensas', 'Movimiento']);
-        expect(datosDe(seccion('Combate y defensas'))).toEqual([
+        expect(datos(seccion('Combate y defensas'))).toEqual([
             ['Iniciativa', '+4'], ['Fortaleza', '+2'], ['Resistencia elemental', 'Inmunidad al fuego'],
         ]);
-        expect(datosDe(seccion('Movimiento'))).toEqual([['Volar', "50'"], ['Maniobrabilidad', 'Perfecta']]);
+        expect(datos(seccion('Movimiento'))).toEqual([['Volar', "50'"], ['Maniobrabilidad', 'Perfecta']]);
     });
 
     it('no enseña lo que la API da vacío o null, ni las secciones sin datos', () => {

@@ -5,6 +5,7 @@ import { TextoManualComponent } from 'src/app/components/shared/texto-manual/tex
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesVentajaComponent } from './detalles-ventaja.component';
+import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
 function crearVentaja(partial: Partial<VentajaDetalle> = {}): VentajaDetalle {
     return {
@@ -42,17 +43,9 @@ describe('DetallesVentajaComponent', () => {
     let fixture: ComponentFixture<DetallesVentajaComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`;
-    const limpio = (nodo: Element | null | undefined): string => `${nodo?.textContent ?? ''}`.replace(/\s+/g, ' ').trim();
-    const titulos = (): string[] => Array.from(elemento().querySelectorAll('.ficha-titulo')).map((t) => limpio(t));
-    const datos = (): string[][] => Array.from(elemento().querySelectorAll('.ficha-dato'))
-        .map((d) => [limpio(d.querySelector('dt')), limpio(d.querySelector('dd'))]);
-    const lista = (titulo: string): string[] => {
-        const lateral = Array.from(elemento().querySelectorAll('.ficha-lateral-tarjeta'))
-            .find((l) => limpio(l.querySelector('.ficha-titulo')) === titulo);
-        return Array.from(lateral?.querySelectorAll('.ficha-lista__item') ?? [])
-            .map((item) => limpio(item.querySelector('span') ?? item));
-    };
+    const { texto, titulos, datos, lateral } = lectorFicha(elemento);
+    const lista = (titulo: string): string[] => Array.from(lateral(titulo)?.querySelectorAll('.ficha-lista__item') ?? [])
+        .map((item) => limpio(item.querySelector('span') ?? item));
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };

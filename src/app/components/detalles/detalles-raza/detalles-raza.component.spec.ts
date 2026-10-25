@@ -6,6 +6,7 @@ import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { createRacialPlaceholder } from 'src/app/services/utils/racial-mapper';
 import { DetallesRazaComponent } from './detalles-raza.component';
+import { lectorFicha } from 'src/testing/ficha-detalle';
 
 function crearRazaMock(extra: Partial<Raza> = {}): Raza {
     return {
@@ -88,24 +89,7 @@ describe('DetallesRazaComponent', () => {
     let fixture: ComponentFixture<DetallesRazaComponent>;
     let manualNav: jasmine.SpyObj<ManualDetalleNavigationService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`.replace(/\s+/g, ' ');
-    const titulos = (): string[] =>
-        Array.from(elemento().querySelectorAll('.ficha-titulo')).map((t) => `${t.textContent ?? ''}`.trim());
-    const etiquetasDatos = (): string[] =>
-        Array.from(elemento().querySelectorAll('.ficha-dato__etiqueta')).map((dt) => `${dt.textContent ?? ''}`.trim());
-    const valorDato = (etiqueta: string): string | undefined => {
-        const dato = Array.from(elemento().querySelectorAll('.ficha-dato'))
-            .find((d) => `${d.querySelector('dt')?.textContent ?? ''}`.trim() === etiqueta);
-        return dato ? `${dato.querySelector('dd')?.textContent ?? ''}`.replace(/\s+/g, ' ').trim() : undefined;
-    };
-    /** Las filas de las listas de pares, cada nodo de la celda por separado (el nombre y su nota van en líneas distintas). */
-    const filasPares = (): string[][] => Array.from(elemento().querySelectorAll('.ficha-pares tr'))
-        .map((fila) => Array.from(fila.querySelectorAll('td')).map((td) => Array.from(td.childNodes)
-            .filter((nodo) => nodo.nodeType !== Node.COMMENT_NODE)
-            .map((nodo) => `${nodo.textContent ?? ''}`.trim()).filter(Boolean).join(' ')));
-    const enlace = (nombre: string): HTMLButtonElement =>
-        Array.from(elemento().querySelectorAll('button.ficha-enlace'))
-            .find((b) => `${b.textContent ?? ''}`.trim() === nombre) as HTMLButtonElement;
+    const { texto, titulos, etiquetasDatos, valor, filasPares, enlace } = lectorFicha(elemento);
 
     function pintar(extra: Partial<Raza> = {}): void {
         component.raza = crearRazaMock(extra);
@@ -141,19 +125,19 @@ describe('DetallesRazaComponent', () => {
 
     it('enseña los datos clave y no los que valen 0 o no vienen', () => {
         expect(etiquetasDatos()).toEqual(['Clase predilecta', 'Alineamiento', 'Altura', 'Peso', 'Espacio', 'Alcance', 'Correr']);
-        expect(valorDato('Clase predilecta')).toBe('Mago');
-        expect(valorDato('Alineamiento')).toBe('Neutral bueno (Tendencia legal/Tendencia buena)');
-        expect(valorDato('Altura')).toBe('1.4 - 1.9 m');
-        expect(valorDato('Peso')).toBe('45 - 90 kg');
-        expect(valorDato('Correr')).toBe("30'");
+        expect(valor('Clase predilecta')).toBe('Mago');
+        expect(valor('Alineamiento')).toBe('Neutral bueno (Tendencia legal/Tendencia buena)');
+        expect(valor('Altura')).toBe('1.4 - 1.9 m');
+        expect(valor('Peso')).toBe('45 - 90 kg');
+        expect(valor('Correr')).toBe("30'");
     });
 
     it('la clase predilecta en minúscula se enseña con la primera letra en mayúscula', () => {
         pintar({ Clase_predilecta: 'explorador', Ajuste_nivel: 2, Armadura_natural: 1, Varios_armadura: -1 });
-        expect(valorDato('Clase predilecta')).toBe('Explorador');
-        expect(valorDato('Ajuste de nivel')).toBe('+2');
-        expect(valorDato('Armadura natural')).toBe('+1');
-        expect(valorDato('CA varios')).toBe('-1');
+        expect(valor('Clase predilecta')).toBe('Explorador');
+        expect(valor('Ajuste de nivel')).toBe('+2');
+        expect(valor('Armadura natural')).toBe('+1');
+        expect(valor('CA varios')).toBe('-1');
     });
 
     it('enseña los modificadores distintos de 0 y las edades en listas siempre a la vista', () => {
@@ -262,10 +246,10 @@ describe('DetallesRazaComponent', () => {
             Sortilegas: [{ Conjuro: { Id: 1, Nombre: 'Luces danzantes' } as any, Nivel_lanzador: 3, Usos_diarios: '1/día', Descripcion: '', Dgs_necesarios: 0, Origen: '' }],
         });
 
-        expect(valorDato('Dados de golpe')).toBe('+2d8 de Humanoide monstruoso');
-        expect(valorDato('Ataque base')).toBe('+2');
-        expect(valorDato('Fortaleza')).toBe('+0');
-        expect(valorDato('Multiplicador')).toBe('x4');
+        expect(valor('Dados de golpe')).toBe('+2d8 de Humanoide monstruoso');
+        expect(valor('Ataque base')).toBe('+2');
+        expect(valor('Fortaleza')).toBe('+0');
+        expect(valor('Multiplicador')).toBe('x4');
         const cabecera = Array.from(elemento().querySelectorAll('.ficha-tabla th')).map((th) => `${th.textContent ?? ''}`.trim());
         expect(cabecera).toEqual(['Conjuro', 'Nivel de lanzador', 'Usos']);
         expect(texto()).toContain('Luces danzantes');
@@ -278,7 +262,7 @@ describe('DetallesRazaComponent', () => {
                 Moral: { Nombre: 'Casi siempre maligno' },
             } as any,
         });
-        expect(valorDato('Alineamiento')).toBe('Siempre legal/Casi siempre maligno');
+        expect(valor('Alineamiento')).toBe('Siempre legal/Casi siempre maligno');
     });
 
     it('oculta el alineamiento cuando no hay datos visibles', () => {

@@ -5,6 +5,7 @@ import { TextoManualComponent } from 'src/app/components/shared/texto-manual/tex
 import { Clase, ClaseNivelDetalle } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesClaseComponent } from './detalles-clase.component';
+import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
 function crearClaseMock(partial?: Partial<Clase>): Clase {
     return {
@@ -104,21 +105,11 @@ describe('DetallesClaseComponent', () => {
     let fixture: ComponentFixture<DetallesClaseComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`.replace(/\s+/g, ' ');
-    const titulos = (): string[] =>
-        Array.from(elemento().querySelectorAll('.ficha-titulo')).map((t) => `${t.textContent ?? ''}`.trim());
-    const valorDato = (etiqueta: string): string | undefined => {
-        const dato = Array.from(elemento().querySelectorAll('.ficha-dato'))
-            .find((d) => `${d.querySelector('dt')?.textContent ?? ''}`.trim() === etiqueta);
-        return dato ? `${dato.querySelector('dd')?.textContent ?? ''}`.replace(/\s+/g, ' ').trim() : undefined;
-    };
-    const enlace = (nombre: string): HTMLButtonElement =>
-        Array.from(elemento().querySelectorAll('button.ficha-enlace'))
-            .find((b) => `${b.textContent ?? ''}`.trim() === nombre) as HTMLButtonElement;
+    const { texto, titulos, valor, enlace } = lectorFicha(elemento);
     /** Las celdas de la tabla de progresión (`tabla` 0) o del listado de conjuros (1). */
     const celdas = (tabla: number, selector: string): string[][] =>
         Array.from(elemento().querySelectorAll('table.ficha-tabla')[tabla]?.querySelectorAll(`${selector} tr`) ?? [])
-            .map((fila) => Array.from(fila.querySelectorAll('th, td')).map((c) => `${c.textContent ?? ''}`.replace(/\s+/g, ' ').trim()));
+            .map((fila) => Array.from(fila.querySelectorAll('th, td')).map((c) => limpio(c)));
 
     function nivel(nivelClase: number, extra: Partial<ClaseNivelDetalle> = {}): ClaseNivelDetalle {
         return {
@@ -408,10 +399,10 @@ describe('DetallesClaseComponent', () => {
         expect(elemento().querySelector('.ficha-cabecera__nombre')?.textContent?.trim()).toBe('Explorador');
         expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => e.textContent?.trim()))
             .toEqual(['Aumenta clase lanzadora', 'Oficial']);
-        expect(valorDato('Dado de golpe')).toBe('d8');
-        expect(valorDato('Puntos de habilidad por nivel')).toBe('6 + mod. de Int');
-        expect(valorDato('Niveles')).toBe('1 a 20');
-        expect(valorDato('Roles')).toBe('DPS, Utilidad');
+        expect(valor('Dado de golpe')).toBe('d8');
+        expect(valor('Puntos de habilidad por nivel')).toBe('6 + mod. de Int');
+        expect(valor('Niveles')).toBe('1 a 20');
+        expect(valor('Roles')).toBe('DPS, Utilidad');
         expect(titulos()).toContain('Descripción');
         expect(elemento().querySelector('mat-chip')).toBeNull();
         expect(elemento().querySelector('mat-expansion-panel')).toBeNull();
@@ -425,8 +416,8 @@ describe('DetallesClaseComponent', () => {
         fixture.detectChanges();
 
         expect(elemento().querySelector('.ficha-cabecera__tipo')?.textContent?.trim()).toBe('Clase de prestigio');
-        expect(valorDato('Dado de golpe')).toBeUndefined();
-        expect(valorDato('Roles')).toBeUndefined();
+        expect(valor('Dado de golpe')).toBeNull();
+        expect(valor('Roles')).toBeNull();
         expect(titulos()).toEqual(['Progresión por nivel']);
     });
 
@@ -528,7 +519,7 @@ describe('DetallesClaseComponent', () => {
         expect(celdas(0, 'tbody')).toEqual([['1.º', '+1', '+2', '+0', '+0', '3', '1']]);
         expect(titulos()).toContain('Lanzamiento de conjuros');
         expect(texto()).toContain('Arcanos');
-        expect(valorDato('Salvación de conjuros')).toBe('Inteligencia');
+        expect(valor('Salvación de conjuros')).toBe('Inteligencia');
         expect(celdas(1, 'tbody')).toEqual([
             ['Truco', 'Luz'],
             ['1', 'Proyectil mágico (espontáneo), Escudo'],

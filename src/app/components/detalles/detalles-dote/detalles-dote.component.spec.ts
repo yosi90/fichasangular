@@ -4,15 +4,14 @@ import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesDoteComponent } from './detalles-dote.component';
+import { lectorFicha } from 'src/testing/ficha-detalle';
 
 describe('DetallesDoteComponent', () => {
     let component: DetallesDoteComponent;
     let fixture: ComponentFixture<DetallesDoteComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`;
-    const titulos = (selector: string): string[] =>
-        Array.from(elemento().querySelectorAll(`${selector} .ficha-titulo`)).map((t) => `${t.textContent ?? ''}`.trim());
+    const { texto, titulos } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };

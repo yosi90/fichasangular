@@ -4,17 +4,14 @@ import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesConjuroComponent } from './detalles-conjuro.component';
+import { lectorFicha } from 'src/testing/ficha-detalle';
 
 describe('DetallesConjuroComponent', () => {
     let component: DetallesConjuroComponent;
     let fixture: ComponentFixture<DetallesConjuroComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`;
-    const titulos = (selector: string): string[] =>
-        Array.from(elemento().querySelectorAll(`${selector} .ficha-titulo`)).map((t) => `${t.textContent ?? ''}`.trim());
-    const datos = (): string[] => Array.from(elemento().querySelectorAll('.ficha-dato'))
-        .map((d) => `${d.querySelector('dt')?.textContent?.trim()}: ${d.querySelector('dd')?.textContent?.trim()}`);
+    const { texto, titulos, datos } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
@@ -130,14 +127,14 @@ describe('DetallesConjuroComponent', () => {
             .toEqual(['Puede hacerse permanente', 'Oficial']);
 
         expect(datos()).toEqual([
-            'Tiempo de lanzamiento: 1 acción gratuita',
-            'Componentes: Verbal',
-            'Alcance: Personal',
-            'Duración: 1 min/nivel',
-            'Objetivo: Tú',
-            'Efecto: Desvía rayos dirigidos al objetivo',
-            'Tirada de salvación: Ninguno',
-            'Resistencia a conjuros: No',
+            ['Tiempo de lanzamiento', '1 acción gratuita'],
+            ['Componentes', 'Verbal'],
+            ['Alcance', 'Personal'],
+            ['Duración', '1 min/nivel'],
+            ['Objetivo', 'Tú'],
+            ['Efecto', 'Desvía rayos dirigidos al objetivo'],
+            ['Tirada de salvación', 'Ninguno'],
+            ['Resistencia a conjuros', 'No'],
         ]);
 
         expect(titulos('.ficha-principal')).toEqual(['Descripción']);
@@ -153,8 +150,8 @@ describe('DetallesConjuroComponent', () => {
     it('el alcance 0 es Personal y la resistencia a conjuros sí', () => {
         component.conjuro = desvioDeRayos({ Alcance: '0', Resistencia_conjuros: true });
         fixture.detectChanges();
-        expect(datos()).toContain('Alcance: Personal');
-        expect(datos()).toContain('Resistencia a conjuros: Sí');
+        expect(datos()).toContain(['Alcance', 'Personal']);
+        expect(datos()).toContain(['Resistencia a conjuros', 'Sí']);
     });
 
     it('no enseña los null de la API', () => {
@@ -164,7 +161,7 @@ describe('DetallesConjuroComponent', () => {
         });
         fixture.detectChanges();
 
-        expect(datos()).toEqual(['Resistencia a conjuros: No']);
+        expect(datos()).toEqual([['Resistencia a conjuros', 'No']]);
         expect(elemento().querySelector('.ficha-cabecera__tipo')?.textContent?.trim()).toBe('Conjuro arcano');
         expect((elemento().querySelector('.ficha-principal') as HTMLElement).classList).toContain('ficha-oculta');
         expect(texto()).not.toContain('Nivel por clase');
@@ -189,10 +186,10 @@ describe('DetallesConjuroComponent', () => {
         expect(component.nivelesDominioVisibles).toEqual([]);
         expect(component.nivelesDisciplinaVisibles.length).toBe(1);
         expect(elemento().querySelector('.ficha-cabecera__tipo')?.textContent?.trim()).toBe('Poder psiónico · Psicoquinesis [Fuerza]');
-        expect(datos()).toContain('Despliegues: Mental');
-        expect(datos()).toContain('Resistencia a poderes: Sí');
-        expect(datos()).toContain('Puntos de poder: 3');
-        expect(datos().some((d) => d.startsWith('Resistencia a conjuros'))).toBeFalse();
+        expect(datos()).toContain(['Despliegues', 'Mental']);
+        expect(datos()).toContain(['Resistencia a poderes', 'Sí']);
+        expect(datos()).toContain(['Puntos de poder', '3']);
+        expect(datos().some(([etiqueta]) => etiqueta.startsWith('Resistencia a conjuros'))).toBeFalse();
         expect(titulos('.ficha-principal')).toEqual(['Descripción', 'Descripción de los despliegues', 'Descripción de los aumentos']);
         expect(html).toContain('Contacto visual y concentración.');
         expect(html).toContain('Nivel por disciplina');

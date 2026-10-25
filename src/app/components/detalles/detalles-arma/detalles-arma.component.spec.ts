@@ -7,20 +7,14 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { DetallesArmaComponent } from './detalles-arma.component';
 import { normalizeArma } from 'src/app/services/arma.service';
 import { crearArmaApi } from 'src/testing/equipo-api';
+import { lectorFicha } from 'src/testing/ficha-detalle';
 
 describe('DetallesArmaComponent', () => {
     let component: DetallesArmaComponent;
     let fixture: ComponentFixture<DetallesArmaComponent>;
     let manualNavSpy: jasmine.SpyObj<ManualDetalleNavigationService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`;
-    const etiquetas = (): string[] => Array.from(elemento().querySelectorAll('.ficha-dato dt')).map((dt) => `${dt.textContent ?? ''}`.trim());
-    const valor = (etiqueta: string): string | null => {
-        const dato = Array.from(elemento().querySelectorAll('.ficha-dato'))
-            .find((d) => `${d.querySelector('dt')?.textContent ?? ''}`.trim() === etiqueta);
-        return dato ? `${dato.querySelector('dd')?.textContent ?? ''}`.replace(/\s+/g, ' ').trim() : null;
-    };
-    const titulos = (): string[] => Array.from(elemento().querySelectorAll('.ficha-titulo')).map((t) => `${t.textContent ?? ''}`.trim());
+    const { texto, etiquetasDatos, valor, titulos } = lectorFicha(elemento);
 
     function mostrar(cambios: Record<string, any> = {}): void {
         component.arma = normalizeArma(crearArmaApi(cambios));
@@ -98,11 +92,11 @@ describe('DetallesArmaComponent', () => {
     it('sin dado ni crítico (un rayo) no enseña daño ni crítico, ni lo que es null', () => {
         mostrar({ Nombre: 'Rayo', Dano: null, Dano_pequeno: null, Dano_mediano: null, Critico: null, Critico_rango: null, Critico_multiplicador: null, Manejo: null, Material: null, Incremento_distancia: 0, Alcance: null, Descripcion: '' });
         expect(texto()).toContain('Rayo');
-        expect(etiquetas().some((e) => e.startsWith('Daño'))).toBeFalse();
-        expect(etiquetas()).not.toContain('Crítico');
-        expect(etiquetas()).not.toContain('Material');
-        expect(etiquetas()).not.toContain('Incremento de distancia');
-        expect(etiquetas()).not.toContain('Alcance');
+        expect(etiquetasDatos().some((e) => e.startsWith('Daño'))).toBeFalse();
+        expect(etiquetasDatos()).not.toContain('Crítico');
+        expect(etiquetasDatos()).not.toContain('Material');
+        expect(etiquetasDatos()).not.toContain('Incremento de distancia');
+        expect(etiquetasDatos()).not.toContain('Alcance');
         expect(titulos()).not.toContain('Descripción');
         expect(texto()).not.toContain('null');
     });

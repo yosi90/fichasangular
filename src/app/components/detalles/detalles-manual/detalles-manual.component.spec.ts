@@ -9,6 +9,7 @@ import { DetallesManualComponent } from './detalles-manual.component';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualReferenciaNavigationService } from 'src/app/services/manual-referencia-navigation.service';
 import { UserService } from 'src/app/services/user.service';
+import { lectorFicha } from 'src/testing/ficha-detalle';
 
 describe('DetallesManualComponent', () => {
     let component: DetallesManualComponent;
@@ -16,13 +17,7 @@ describe('DetallesManualComponent', () => {
     let permisos$: BehaviorSubject<number>;
     let navegacion: jasmine.SpyObj<ManualReferenciaNavigationService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`;
-    const valor = (etiqueta: string): string | null => {
-        const dato = Array.from(elemento().querySelectorAll('.ficha-dato'))
-            .find((d) => `${d.querySelector('dt')?.textContent ?? ''}`.trim() === etiqueta);
-        return dato ? `${dato.querySelector('dd')?.textContent ?? ''}`.replace(/\s+/g, ' ').trim() : null;
-    };
-    const titulosBloques = (): string[] => Array.from(elemento().querySelectorAll('.ficha-bloque .ficha-titulo')).map((t) => `${t.textContent ?? ''}`.trim());
+    const { texto, valor, titulos } = lectorFicha(elemento);
 
     function manual(cambios: Partial<ManualAsociadoDetalle> = {}): ManualAsociadoDetalle {
         return {
@@ -82,7 +77,7 @@ describe('DetallesManualComponent', () => {
         expect(valor('Categorías')).toBe('Razas');
         expect(valor('Secciones')).toBe('1');
         expect(valor('Entradas')).toBe('1');
-        expect(titulosBloques()).toEqual(['Razas (1)']);
+        expect(titulos('.ficha-bloque')).toEqual(['Razas (1)']);
         expect(texto()).toContain('Thri-kreen');
         expect(elemento().querySelector('mat-chip')).toBeNull();
     });
@@ -102,16 +97,16 @@ describe('DetallesManualComponent', () => {
             },
         });
         fixture.detectChanges();
-        expect(titulosBloques().sort()).toEqual(['Dotes (1)', 'Razas (1)']);
+        expect(titulos('.ficha-bloque').sort()).toEqual(['Dotes (1)', 'Razas (1)']);
         expect(texto()).toContain('Ganas puntos de poder.');
 
         component.toggleSeccion('Dotes');
         fixture.detectChanges();
-        expect(titulosBloques()).toEqual(['Razas (1)']);
+        expect(titulos('.ficha-bloque')).toEqual(['Razas (1)']);
 
         component.toggleSeccion('Dotes');
         fixture.detectChanges();
-        expect(titulosBloques().sort()).toEqual(['Dotes (1)', 'Razas (1)']);
+        expect(titulos('.ficha-bloque').sort()).toEqual(['Dotes (1)', 'Razas (1)']);
     });
 
     it('recorta las descripciones largas', () => {
@@ -128,6 +123,6 @@ describe('DetallesManualComponent', () => {
         fixture.detectChanges();
         expect(valor('Categorías')).toBe('Sin categorías');
         expect(texto()).toContain('Este manual no tiene entradas asociadas.');
-        expect(titulosBloques()).toEqual([]);
+        expect(titulos('.ficha-bloque')).toEqual([]);
     });
 });

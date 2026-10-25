@@ -4,27 +4,16 @@ import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { DetallesEspecialComponent } from './detalles-especial.component';
+import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
 describe('DetallesEspecialComponent', () => {
     let component: DetallesEspecialComponent;
     let fixture: ComponentFixture<DetallesEspecialComponent>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`.replace(/\s+/g, ' ');
-    const etiquetasDatos = (): string[] => Array.from(elemento().querySelectorAll('.ficha-dato dt')).map((dt) => `${dt.textContent ?? ''}`.trim());
-    const valor = (etiqueta: string): string | null => {
-        const dato = Array.from(elemento().querySelectorAll('.ficha-dato'))
-            .find((d) => `${d.querySelector('dt')?.textContent ?? ''}`.trim() === etiqueta);
-        return dato ? `${dato.querySelector('dd')?.textContent ?? ''}`.replace(/\s+/g, ' ').trim() : null;
-    };
-    const titulos = (): string[] => Array.from(elemento().querySelectorAll('.ficha-titulo')).map((t) => `${t.textContent ?? ''}`.trim());
+    const { texto, etiquetasDatos, valor, titulos, lateral, etiquetasCabecera } = lectorFicha(elemento);
     /** Las filas de los pares de una lateral, con sus celdas separadas por « · »: «Fuerza · +4». */
-    const filas = (titulo: string): string[] => {
-        const lateral = Array.from(elemento().querySelectorAll('.ficha-lateral-tarjeta'))
-            .find((l) => `${l.querySelector('.ficha-titulo')?.textContent ?? ''}`.trim() === titulo);
-        return Array.from(lateral?.querySelectorAll('tr') ?? []).map((tr) => Array.from(tr.querySelectorAll('td'))
-            .map((td) => `${td.textContent ?? ''}`.replace(/\s+/g, ' ').trim()).join(' · '));
-    };
-    const etiquetasCabecera = (): string[] => Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => `${e.textContent ?? ''}`.trim());
+    const filas = (titulo: string): string[] => Array.from(lateral(titulo)?.querySelectorAll('tr') ?? [])
+        .map((tr) => Array.from(tr.querySelectorAll('td')).map((td) => limpio(td)).join(' · '));
 
     function furia(cambios: Partial<EspecialClaseDetalle> = {}): EspecialClaseDetalle {
         return {

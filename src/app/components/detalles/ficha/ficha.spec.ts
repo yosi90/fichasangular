@@ -15,6 +15,7 @@ import {
     textoPies,
     unirTipo,
 } from './index';
+import { lectorFicha } from 'src/testing/ficha-detalle';
 
 describe('Ficha de detalle: reglas', () => {
     it('textoDato oculta null, vacío y relleno, y enseña números (también el 0) y booleanos', () => {
@@ -134,7 +135,7 @@ describe('Ficha de detalle: componentes', () => {
     let fixture: ComponentFixture<FichaPruebaComponent>;
     let host: FichaPruebaComponent;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`;
+    const { texto } = lectorFicha(elemento);
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({

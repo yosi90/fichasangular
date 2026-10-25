@@ -7,20 +7,14 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { DetallesArmaduraComponent } from './detalles-armadura.component';
 import { normalizeArmadura } from 'src/app/services/armadura.service';
 import { crearArmaduraApi, crearRodelaApi } from 'src/testing/equipo-api';
+import { lectorFicha } from 'src/testing/ficha-detalle';
 
 describe('DetallesArmaduraComponent', () => {
     let component: DetallesArmaduraComponent;
     let fixture: ComponentFixture<DetallesArmaduraComponent>;
     let manualNavSpy: jasmine.SpyObj<ManualDetalleNavigationService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`;
-    const etiquetas = (): string[] => Array.from(elemento().querySelectorAll('.ficha-dato dt')).map((dt) => `${dt.textContent ?? ''}`.trim());
-    const valor = (etiqueta: string): string | null => {
-        const dato = Array.from(elemento().querySelectorAll('.ficha-dato'))
-            .find((d) => `${d.querySelector('dt')?.textContent ?? ''}`.trim() === etiqueta);
-        return dato ? `${dato.querySelector('dd')?.textContent ?? ''}`.replace(/\s+/g, ' ').trim() : null;
-    };
-    const tipo = (): string => `${elemento().querySelector('.ficha-cabecera__tipo')?.textContent ?? ''}`.trim();
+    const { texto, etiquetasDatos, valor, tipoCabecera } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNavSpy = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
@@ -45,7 +39,7 @@ describe('DetallesArmaduraComponent', () => {
     });
 
     it('la cabecera dice que es una armadura y su peso', () => {
-        expect(tipo()).toBe('Armadura · Pesada');
+        expect(tipoCabecera()).toBe('Armadura · Pesada');
         expect(elemento().querySelector('.ficha-cabecera__nombre')?.textContent?.trim()).toBe('Cota de mallas');
         expect(elemento().querySelector('.ficha-cabecera__manual')?.textContent).toContain('Manual base · pág. 87');
     });
@@ -71,9 +65,9 @@ describe('DetallesArmaduraComponent', () => {
     });
 
     it('no enseña lo que la API da null (los tiempos aún sin leer)', () => {
-        expect(etiquetas()).not.toContain('Ponérsela');
-        expect(etiquetas()).not.toContain('Ponérsela deprisa');
-        expect(etiquetas()).not.toContain('Quitársela');
+        expect(etiquetasDatos()).not.toContain('Ponérsela');
+        expect(etiquetasDatos()).not.toContain('Ponérsela deprisa');
+        expect(etiquetasDatos()).not.toContain('Quitársela');
         expect(texto()).not.toContain('null');
     });
 
@@ -81,10 +75,10 @@ describe('DetallesArmaduraComponent', () => {
         component.armadura = normalizeArmadura(crearRodelaApi());
         fixture.detectChanges();
         expect(component.armadura.Bon_des).toBeNull();
-        expect(tipo()).toBe('Escudo · Broquel');
+        expect(tipoCabecera()).toBe('Escudo · Broquel');
         expect(valor('Destreza máxima')).toBe('Sin límite');
-        expect(etiquetas()).not.toContain('Velocidad');
-        expect(etiquetas()).not.toContain('Correr');
+        expect(etiquetasDatos()).not.toContain('Velocidad');
+        expect(etiquetasDatos()).not.toContain('Correr');
         expect(texto()).not.toContain('Descripción');
         expect(texto()).not.toContain('Tipo_armadura');
     });

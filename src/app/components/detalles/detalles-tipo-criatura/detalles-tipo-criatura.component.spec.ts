@@ -5,6 +5,7 @@ import { TextoManualComponent } from 'src/app/components/shared/texto-manual/tex
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesTipoCriaturaComponent } from './detalles-tipo-criatura.component';
+import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
 function crearTipo(partial: Partial<TipoCriatura> = {}): TipoCriatura {
     return {
@@ -39,11 +40,7 @@ describe('DetallesTipoCriaturaComponent', () => {
     let fixture: ComponentFixture<DetallesTipoCriaturaComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`;
-    const limpio = (nodo: Element | null | undefined): string => `${nodo?.textContent ?? ''}`.replace(/\s+/g, ' ').trim();
-    const titulos = (): string[] => Array.from(elemento().querySelectorAll('.ficha-titulo')).map((t) => limpio(t));
-    const datosDe = (raiz: Element | null): string[][] => Array.from(raiz?.querySelectorAll('.ficha-dato') ?? [])
-        .map((d) => [limpio(d.querySelector('dt')), limpio(d.querySelector('dd'))]);
+    const { texto, titulos, datos } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
@@ -65,7 +62,7 @@ describe('DetallesTipoCriaturaComponent', () => {
         expect(limpio(elemento().querySelector('.ficha-cabecera__nombre'))).toBe('Muerto viviente');
         expect(limpio(elemento().querySelector('.ficha-cabecera__manual'))).toContain('Manual de monstruos, página: 317');
         expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => limpio(e))).toEqual(['Oficial']);
-        expect(datosDe(elemento().querySelector('.ficha-datos-contenedor--tarjeta'))).toEqual([
+        expect(datos(elemento().querySelector('.ficha-datos-contenedor--tarjeta'))).toEqual([
             ['Dados de golpe', 'd12'],
             ['Ataque base', 'Media (+15)'],
             ['Fortaleza', 'Baja (+6)'],
@@ -75,7 +72,7 @@ describe('DetallesTipoCriaturaComponent', () => {
         ]);
         expect(titulos()).toEqual(['Descripción', 'Naturaleza']);
         const lateral = elemento().querySelector('.ficha-lateral-tarjeta');
-        expect(datosDe(lateral)).toEqual([
+        expect(datos(lateral)).toEqual([
             ['Necesita comer', 'No'],
             ['Necesita respirar', 'No'],
             ['Necesita dormir', 'No'],
@@ -90,9 +87,9 @@ describe('DetallesTipoCriaturaComponent', () => {
         fixture.detectChanges();
 
         expect(titulos()).toEqual(['Naturaleza']);
-        const datosClave = datosDe(elemento().querySelector('.ficha-datos-contenedor--tarjeta')).map(([dt]) => dt);
+        const datosClave = datos(elemento().querySelector('.ficha-datos-contenedor--tarjeta')).map(([dt]) => dt);
         expect(datosClave).not.toContain('Dados de golpe');
-        expect(datosDe(elemento().querySelector('.ficha-lateral-tarjeta')).map(([dt]) => dt)).not.toContain('Pierde la Constitución');
+        expect(datos(elemento().querySelector('.ficha-lateral-tarjeta')).map(([dt]) => dt)).not.toContain('Pierde la Constitución');
         expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => limpio(e))).toEqual(['Homebrew']);
         expect(texto()).not.toContain('null');
     });

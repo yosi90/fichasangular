@@ -4,17 +4,13 @@ import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { normalizeRacial } from 'src/app/services/utils/racial-mapper';
 import { DetallesRacialComponent } from './detalles-racial.component';
+import { lectorFicha } from 'src/testing/ficha-detalle';
 
 describe('DetallesRacialComponent', () => {
     let component: DetallesRacialComponent;
     let fixture: ComponentFixture<DetallesRacialComponent>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`.replace(/\s+/g, ' ');
-    const titulos = (): string[] =>
-        Array.from(elemento().querySelectorAll('.ficha-titulo')).map((t) => `${t.textContent ?? ''}`.trim());
-    const enlace = (nombre: string): HTMLButtonElement =>
-        Array.from(elemento().querySelectorAll('button.ficha-enlace'))
-            .find((b) => `${b.textContent ?? ''}`.trim() === nombre) as HTMLButtonElement;
+    const { texto, titulos, enlace, filasPares } = lectorFicha(elemento);
 
     /** Un racial completo, con la forma de `RacialDetalle` del contrato. */
     function sangreAntigua(extra: object = {}): any {
@@ -67,11 +63,7 @@ describe('DetallesRacialComponent', () => {
     });
 
     it('enseña los bonificadores con signo y sus condiciones, sin ids ni claves técnicas', () => {
-        const filas = Array.from(elemento().querySelectorAll('.ficha-pares tr'))
-            // Cada nodo de la celda por separado: el nombre y cada nota, que van en su propia línea.
-            .map((fila) => Array.from(fila.querySelectorAll('td')).map((td) => Array.from(td.childNodes)
-                .filter((nodo) => nodo.nodeType !== Node.COMMENT_NODE)
-                .map((nodo) => `${nodo.textContent ?? ''}`.trim()).filter(Boolean).join(' ')));
+        const filas = filasPares();
         expect(filas).toContain(['Sabiduria', '+2']);
         expect(filas).toContain(['Voluntad Contra encantamientos', '+1']);
         expect(filas).toContain(['Avistar De noche Se considera de clase', '+2']);

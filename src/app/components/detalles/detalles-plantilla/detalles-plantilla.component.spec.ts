@@ -5,6 +5,7 @@ import { TextoManualComponent } from 'src/app/components/shared/texto-manual/tex
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesPlantillaComponent } from './detalles-plantilla.component';
+import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
 function caracteristicas(valores: Partial<Plantilla['Modificadores_caracteristicas']> = {}): Plantilla['Modificadores_caracteristicas'] {
     return { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0, ...valores };
@@ -68,15 +69,7 @@ describe('DetallesPlantillaComponent', () => {
     let fixture: ComponentFixture<DetallesPlantillaComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const texto = (): string => `${elemento().textContent ?? ''}`;
-    const limpio = (nodo: Element | null | undefined): string => `${nodo?.textContent ?? ''}`.replace(/\s+/g, ' ').trim();
-    const titulos = (): string[] => Array.from(elemento().querySelectorAll('.ficha-titulo')).map((t) => limpio(t));
-    const datosDe = (raiz: Element | null): string[][] => Array.from(raiz?.querySelectorAll('.ficha-dato') ?? [])
-        .map((d) => [limpio(d.querySelector('dt')), limpio(d.querySelector('dd'))]);
-    const seccion = (titulo: string): Element | null => Array.from(elemento().querySelectorAll('.ficha-seccion'))
-        .find((s) => limpio(s.querySelector('.ficha-titulo')) === titulo) ?? null;
-    const enlace = (nombre: string): HTMLButtonElement => Array.from(elemento().querySelectorAll<HTMLButtonElement>('button.ficha-enlace'))
-        .find((b) => limpio(b) === nombre)!;
+    const { texto, titulos, datos, seccion, enlace, filasPares } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
@@ -100,17 +93,17 @@ describe('DetallesPlantillaComponent', () => {
         expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => limpio(e))).toEqual(['Heredada', 'Oficial']);
 
         const datosClave = elemento().querySelector('.ficha-datos-contenedor--tarjeta');
-        expect(datosDe(datosClave)).toEqual([['Ajuste de nivel', '+3'], ['Dado de golpe', 'd12']]);
+        expect(datos(datosClave)).toEqual([['Ajuste de nivel', '+3'], ['Dado de golpe', 'd12']]);
 
         expect(titulos()).toEqual(['Descripción', 'Características', 'Combate y defensas', 'Movimiento', 'Prerrequisitos']);
-        expect(datosDe(seccion('Características'))).toEqual([
+        expect(datos(seccion('Características'))).toEqual([
             ['Fuerza', '+8'], ['Constitución', '+2'], ['Inteligencia', '+2'], ['Carisma', '+2'],
         ]);
         expect(Array.from(seccion('Características')!.querySelectorAll('.ficha-subtitulo')).map((t) => limpio(t))).toEqual(['Modificadores']);
-        expect(datosDe(seccion('Combate y defensas'))).toEqual([
+        expect(datos(seccion('Combate y defensas'))).toEqual([
             ['CA', '+4 armadura natural'], ['Resistencia elemental', 'Inmune al fuego'],
         ]);
-        expect(datosDe(seccion('Movimiento'))).toEqual([['Volar', "60'"], ['Maniobrabilidad', 'Media']]);
+        expect(datos(seccion('Movimiento'))).toEqual([['Volar', "60'"], ['Maniobrabilidad', 'Media']]);
         expect(texto()).toContain('Criatura corpórea');
     });
 
@@ -150,11 +143,9 @@ describe('DetallesPlantillaComponent', () => {
 
         expect(Array.from(seccion('Características')!.querySelectorAll('.ficha-subtitulo')).map((t) => limpio(t)))
             .toEqual(['Modificadores', 'Mínimos']);
-        expect(datosDe(seccion('Características'))).toContain(['Inteligencia', '3']);
-        expect(datosDe(seccion('Dados de golpe adicionales'))).toEqual([['DG otorgados', '2'], ['Dado', 'd8'], ['Suma de PG', '+4']]);
-        const filas = Array.from(elemento().querySelectorAll('.ficha-pares tr'))
-            .map((tr) => Array.from(tr.querySelectorAll('td')).map((td) => limpio(td)));
-        expect(filas).toEqual([['Humanoide', 'Cambiaformas'], ['Gigante', 'Gigante']]);
+        expect(datos(seccion('Características'))).toContain(['Inteligencia', '3']);
+        expect(datos(seccion('Dados de golpe adicionales'))).toEqual([['DG otorgados', '2'], ['Dado', 'd8'], ['Suma de PG', '+4']]);
+        expect(filasPares()).toEqual([['Humanoide', 'Cambiaformas'], ['Gigante', 'Gigante']]);
     });
 
     it('enlaza dotes, sortílegas, subtipos y el manual con su detalle', () => {
