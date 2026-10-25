@@ -1,152 +1,79 @@
-<div class="tw-w-full tw-px-3 detalle-view" *ngIf="plantillaData">
-    <div class="tw-flex tw-flex-wrap">
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">{{plantillaData.Nombre}}</mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" matTooltip="Pulsa para ver el manual" [matTooltipShowDelay]="250"
-                    matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
-                    <mat-icon class="tw-me-2">auto_stories</mat-icon>
-                    {{plantillaData.Manual.Nombre}} (p. {{plantillaData.Manual.Pagina}})
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="!plantillaData.Oficial">No oficial</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="plantillaData.Nacimiento">Heredada</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="plantillaData.Ajuste_nivel > 0">Ajuste de nivel +{{plantillaData.Ajuste_nivel}}</mat-chip>
-                <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(plantillaData.Tamano?.Nombre)">
-                    Tamaño
-                    <mat-chip class="sombra3d-sm tw-m-1">{{plantillaData.Tamano.Nombre}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngIf="tieneTipoDadoVisible()">
-                    Tipo de dado
-                    <mat-chip class="sombra3d-sm tw-m-1">{{plantillaData.Tipo_dado.Nombre}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngIf="tieneBloqueDgsPlantilla()">
-                    DGs adicionales
-                    <mat-chip class="sombra3d-sm tw-m-1">DGs otorgados {{getDgsOtorgadosPlantilla()}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">Multiplicador {{getMultiplicadorDgsPlantilla()}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">Dado {{getDadoDgsPlantilla()}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">Suma PGs {{getSigno(getSumaPgsPlantilla())}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngIf="getSubtiposActivos().length > 0">
-                    Subtipos
-                    <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let subtipo of getSubtiposActivos()"
-                        matTooltip="Pulsa para ver detalles de este subtipo" [matTooltipShowDelay]="250"
-                        matTooltipClass="tt-accent" (click)="abrirDetalleSubtipo(subtipo)">
-                        {{subtipo.Nombre}}
-                    </mat-chip>
-                </mat-chip>
+<app-ficha-detalle *ngIf="plantillaData">
+    <app-ficha-cabecera
+        tipo="Plantilla"
+        [nombre]="plantillaData.Nombre"
+        [manual]="plantillaData.Manual"
+        [oficial]="plantillaData.Oficial"
+        [etiquetas]="etiquetas"
+        (abrirManual)="abrirDetalleManual()">
+    </app-ficha-cabecera>
+
+    <app-ficha-datos [datos]="datos" titulo="Datos de la plantilla"></app-ficha-datos>
+
+    <app-ficha-cuerpo>
+        <app-ficha-seccion titulo="Descripción" [texto]="plantillaData.Descripcion"></app-ficha-seccion>
+        <app-ficha-seccion titulo="Características" *ngIf="hayCaracteristicas">
+            <div class="ficha-grupo" *ngIf="modificadoresCaracteristicas.length > 0">
+                <h3 class="ficha-subtitulo">Modificadores</h3>
+                <app-ficha-datos [datos]="modificadoresCaracteristicas" [columnas]="3" [tarjeta]="false" titulo="Modificadores de característica"></app-ficha-datos>
             </div>
-
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneCambiosCaracteristicas()">
-                <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 chip-titulo">Caracteristicas</mat-chip>
-                <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngIf="getModificadoresCaracteristicasVisibles().length > 0">Modificadores
-                    <mat-chip class="tw-m-1" *ngFor="let mod of getModificadoresCaracteristicasVisibles()">
-                        {{mod.etiqueta}} {{getSigno(mod.valor)}}
-                    </mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngIf="getMinimosCaracteristicasVisibles().length > 0">Minimos
-                    <mat-chip class="tw-m-1" *ngFor="let min of getMinimosCaracteristicasVisibles()">
-                        {{min.etiqueta}} {{min.valor}}
-                    </mat-chip>
-                </mat-chip>
+            <div class="ficha-grupo" *ngIf="minimosCaracteristicas.length > 0">
+                <h3 class="ficha-subtitulo">Mínimos</h3>
+                <app-ficha-datos [datos]="minimosCaracteristicas" [columnas]="3" [tarjeta]="false" titulo="Características mínimas"></app-ficha-datos>
             </div>
+        </app-ficha-seccion>
+        <app-ficha-seccion titulo="Combate y defensas" *ngIf="combate.length > 0">
+            <app-ficha-datos [datos]="combate" [columnas]="3" [tarjeta]="false" titulo="Combate y defensas"></app-ficha-datos>
+        </app-ficha-seccion>
+        <app-ficha-seccion titulo="Movimiento" *ngIf="movimiento.length > 0">
+            <app-ficha-datos [datos]="movimiento" [columnas]="3" [tarjeta]="false" titulo="Movimiento"></app-ficha-datos>
+        </app-ficha-seccion>
+        <app-ficha-seccion titulo="Dados de golpe adicionales" *ngIf="dadosGolpeAnimal.length > 0">
+            <app-ficha-datos [datos]="dadosGolpeAnimal" [columnas]="3" [tarjeta]="false" titulo="Dados de golpe adicionales"></app-ficha-datos>
+        </app-ficha-seccion>
 
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneCambiosMovimientos()">
-                <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 chip-titulo">Movimientos</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let mov of getMovimientosVisibles()">{{mov.etiqueta}} {{mov.valor}}</mat-chip>
-                <mat-chip class="tw-h-auto chip-anidada sombra3d-sm tw-m-1" *ngIf="tieneManiobrabilidadVisible()">
-                    Maniobrabilidad
-                    <mat-chip class="sombra3d-sm tw-m-1">{{plantillaData.Maniobrabilidad.Nombre}}</mat-chip>
-                </mat-chip>
-            </div>
+        <app-ficha-lateral titulo="Prerrequisitos">
+            <!-- Cada condición es la frase que escribe la API («Criatura de tipo humanoide (conserva su tipo)»). -->
+            <app-ficha-prerrequisitos [grupos]="prerrequisitosAgrupados" textoVacio="Sin prerrequisitos."></app-ficha-prerrequisitos>
+        </app-ficha-lateral>
 
-            <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneCambiosCombateDefensas()">
-                <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 chip-titulo">Combate y defensas</mat-chip>
-                <div class="tw-flex tw-flex-wrap tw-items-center tw-mb-2 chips-row" *ngIf="getCambiosCombateNumericos().length > 0">
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let cambio of getCambiosCombateNumericos()">
-                        {{cambio.etiqueta}} {{getSigno(cambio.valor)}}
-                    </mat-chip>
-                </div>
-                <div class="detalle-texto-largo campo-texto" *ngFor="let texto of getCambiosCombateTexto()">
-                    <p class="tw-m-1"><strong>{{texto.etiqueta}}:</strong> {{texto.valor}}</p>
-                </div>
-            </div>
-        </div>
+        <app-ficha-lateral titulo="Compatibilidad de tipo" *ngIf="compatibilidades.length > 0">
+            <p class="ficha-nota">Tipo de la criatura base y tipo que pasa a tener.</p>
+            <table class="ficha-pares">
+                <tbody>
+                    <tr *ngFor="let comp of compatibilidades">
+                        <td>{{comp.tipoComp}}</td>
+                        <td>{{comp.tipoNuevo}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </app-ficha-lateral>
 
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneTextoVisible(plantillaData.Descripcion)">
-                <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 chip-titulo">Descripcion</mat-chip>
-                <p class="tw-m-1">{{plantillaData.Descripcion}}</p>
-            </div>
-        </div>
+        <app-ficha-lateral titulo="Subtipos" *ngIf="subtipos.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let subtipo of subtipos">
+                    <button type="button" class="ficha-enlace" (click)="abrirDetalleSubtipo(subtipo)">{{subtipo.Nombre}}</button>
+                </li>
+            </ul>
+        </app-ficha-lateral>
 
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <mat-accordion>
-                <mat-expansion-panel *ngIf="plantillaData.Dotes.length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
-                            <h2 class="tw-mb-0">Dotes</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="chip-clic sombra3d-sm" *ngFor="let doteCtx of plantillaData.Dotes"
-                            matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
-                            (click)="abrirDetallesDote(doteCtx)">
-                            {{getNombreDote(doteCtx)}}
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
+        <app-ficha-lateral titulo="Dotes" *ngIf="dotes.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let dote of dotes">
+                    <button type="button" class="ficha-enlace" (click)="abrirDetallesDote(dote.contexto)">{{dote.nombre}}</button>
+                </li>
+            </ul>
+        </app-ficha-lateral>
 
-                <mat-expansion-panel *ngIf="plantillaData.Sortilegas.length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Sortilegas</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="tw-h-auto chip-clic sombra3d-sm" *ngFor="let sortilega of plantillaData.Sortilegas"
-                            matTooltip="Pulsa para ver detalles del conjuro" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
-                            (click)="abrirDetallesConjuro(sortilega.Conjuro.Id)">
-                            {{sortilega.Conjuro.Nombre}}
-                            <mat-chip class="tw-m-1">NL {{sortilega.Nivel_lanzador}}</mat-chip>
-                            <mat-chip class="tw-m-1" *ngIf="tieneTextoVisible(sortilega.Usos_diarios)">{{sortilega.Usos_diarios}}</mat-chip>
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-
-                <mat-expansion-panel *ngIf="getCompatibilidadesVisibles().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Compatibilidad de tipo</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="tw-h-auto sombra3d-sm" *ngFor="let comp of getCompatibilidadesVisibles()">
-                            {{comp.tipoComp}}
-                            <mat-chip class="tw-m-1">{{comp.tipoNuevo}}</mat-chip>
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-
-                <mat-expansion-panel *ngIf="prerrequisitosAgrupados.length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-b-md">
-                            <h2 class="tw-mb-0">Prerrequisitos</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <div class="prerrequisito-bloque tw-p-2" *ngFor="let grupo of prerrequisitosAgrupados">
-                        <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">
-                            {{grupo.titulo}}
-                            <span class="tw-ms-2 prerrequisito-subtitulo">{{grupo.descripcion}}</span>
-                        </mat-chip>
-                        <!-- Cada condición es la frase que escribe la API («Criatura de tipo humanoide (conserva su tipo)»). -->
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let condicion of grupo.condiciones">
-                                {{condicion.frase}}
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                </mat-expansion-panel>
-            </mat-accordion>
-        </div>
-    </div>
-</div>
+        <app-ficha-lateral titulo="Aptitudes sortílegas" *ngIf="sortilegas.length > 0">
+            <table class="ficha-pares">
+                <tbody>
+                    <tr *ngFor="let sortilega of sortilegas">
+                        <td><button type="button" class="ficha-enlace" (click)="abrirDetallesConjuro(sortilega.id)">{{sortilega.nombre}}</button></td>
+                        <td>{{sortilega.detalle}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </app-ficha-lateral>
+    </app-ficha-cuerpo>
+</app-ficha-detalle>
