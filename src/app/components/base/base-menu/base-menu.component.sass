@@ -224,7 +224,8 @@
     display: flex
     flex-direction: column
 
-    width: 250px
+    width: max-content
+    min-width: 250px
     max-height: calc(100vh - 16px)
     overflow-x: hidden
     overflow-y: auto
@@ -236,6 +237,12 @@
 
         width: 100%
         border-radius: 0
+        white-space: nowrap
+        // El área táctil de Material (48 px) sobresale de los botones de 36 y haría aparecer el desplazamiento.
+        overflow: hidden
+
+    > span
+        display: block
 
     > button:nth-child(odd):not([disabled]),
     > span:nth-child(odd) > button:not([disabled])

@@ -134,4 +134,52 @@ describe('BaseMenuComponent', () => {
 
         expect(emitSpy).not.toHaveBeenCalled();
     });
+
+    it('ofrece los mismos grupos de «Otros» en Insertar, Modificar y Detalles', () => {
+        const titulos = (seccion: 'insertar' | 'modificar' | 'detalles') => component.gruposOtros[seccion].map(grupo => grupo.titulo);
+
+        expect(titulos('insertar')).toEqual(['Equipo', 'Rasgos y aptitudes', 'Criaturas y mundo']);
+        expect(titulos('modificar')).toEqual(titulos('insertar'));
+        expect(titulos('detalles')).toEqual(titulos('insertar'));
+        expect(component.gruposOtros.detalles[0].opciones.map(opcion => opcion.etiqueta)).toEqual([
+            'Armas', 'Armaduras y escudos', 'Munición', 'Materiales especiales',
+            'Aptitudes de armas y armaduras', 'Objetos', 'Conjuntos de objetos',
+        ]);
+    });
+
+    it('abre el listado de un grupo de Detalles y cierra el menú', () => {
+        const emitSpy = spyOn(component.ListadoTab, 'emit');
+        component.otrosAbierto = 'detalles:equipo';
+
+        component.gruposOtros.detalles[0].opciones[0].abrir();
+
+        expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'armas', operacion: 'detalles' });
+        expect(component.primero.close).toHaveBeenCalled();
+        expect(component.otrosAbierto).toBeNull();
+    });
+
+    it('abre cada grupo por separado y lo cierra al pulsarlo otra vez', () => {
+        const evento = new MouseEvent('click');
+
+        component.toggleOtros('insertar', 'equipo', evento);
+        expect(component.estaAbiertoOtros('insertar', 'equipo')).toBeTrue();
+        expect(component.estaAbiertoOtros('insertar', 'rasgos')).toBeFalse();
+        expect(component.estaAbiertoOtros('detalles', 'equipo')).toBeFalse();
+
+        component.toggleOtros('insertar', 'rasgos', evento);
+        expect(component.estaAbiertoOtros('insertar', 'rasgos')).toBeTrue();
+
+        component.toggleOtros('insertar', 'rasgos', evento);
+        expect(component.otrosAbierto).toBeNull();
+    });
+
+    it('marca sin opciones solo el grupo sin permisos', () => {
+        canCreateRazas = false;
+        permissions['armas:create'] = true;
+        const [equipo, rasgos, mundo] = component.gruposOtros.insertar;
+
+        expect(component.tieneOpcionesGrupo(equipo)).toBeTrue();
+        expect(component.tieneOpcionesGrupo(rasgos)).toBeFalse();
+        expect(component.tieneOpcionesGrupo(mundo)).toBeFalse();
+    });
 });

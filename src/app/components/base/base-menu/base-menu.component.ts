@@ -5,8 +5,20 @@ import { MatExpansionPanel } from '@angular/material/expansion';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
+type GrupoOtros = 'equipo' | 'rasgos' | 'mundo';
 type PermissionAction = 'create' | 'update';
-type PermissionResource = string;
+
+interface OpcionOtros {
+    readonly etiqueta: string;
+    readonly habilitada: () => boolean;
+    readonly abrir: () => void;
+}
+
+interface GrupoMenuOtros {
+    readonly id: GrupoOtros;
+    readonly titulo: string;
+    readonly opciones: readonly OpcionOtros[];
+}
 
 @Component({
     selector: 'app-base-menu',
@@ -21,29 +33,71 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     @ViewChild('cuarto') cuarto!: MatExpansionPanel;
 
     usr: string = 'Invitado';
-    otrosAbierto: SeccionOtros | null = null;
+    /** El grupo de «Otros» abierto, como `seccion:grupo`. */
+    otrosAbierto: string | null = null;
     private timerCierreOtros: ReturnType<typeof setTimeout> | null = null;
-    private readonly recursosOtrosInsertar: readonly PermissionResource[] = [
-        'tipos_criatura',
-        'armas',
-        'armaduras',
-        'deidades',
-        'subtipos',
-        'rasgos',
-        'especiales',
-        'ventajas',
-    ];
-    private readonly recursosOtrosModificar: readonly PermissionResource[] = [
-        'tipos_criatura',
-        'armas',
-        'armaduras',
-        'deidades',
-        'subtipos',
-        'rasgos',
-        'especiales',
-        'raciales',
-        'ventajas',
-    ];
+    /** Los mismos grupos en los tres menús: todo lo que tiene detalle tendrá también inserción y modificación. */
+    readonly gruposOtros: Readonly<Record<SeccionOtros, readonly GrupoMenuOtros[]>> = {
+        insertar: [
+            this.grupo('equipo', 'Equipo', [
+                this.opcion('Armas', () => this.canGestionar('armas', 'create')),
+                this.opcion('Armaduras y escudos', () => this.canGestionar('armaduras', 'create')),
+            ]),
+            this.grupo('rasgos', 'Rasgos y aptitudes', [
+                this.opcion('Especiales', () => this.canGestionar('clases', 'create'), () => this.onInsertarEspecial()),
+                this.opcion('Raciales', () => this.canInsertarRaciales(), () => this.onInsertarRacial()),
+                this.opcion('Rasgos', () => this.canGestionar('rasgos', 'create')),
+                this.opcion('Idiomas', () => this.canGestionarIdiomas(), () => this.onInsertarIdioma()),
+                this.opcion('Ventajas y desventajas', () => this.canGestionar('ventajas', 'create')),
+            ]),
+            this.grupo('mundo', 'Criaturas y mundo', [
+                this.opcion('Tipos de criatura', () => this.canGestionar('tipos_criatura', 'create')),
+                this.opcion('Subtipos de criatura', () => this.canGestionar('subtipos', 'create')),
+                this.opcion('Deidades', () => this.canGestionar('deidades', 'create')),
+            ]),
+        ],
+        modificar: [
+            this.grupo('equipo', 'Equipo', [
+                this.opcion('Armas', () => this.canGestionar('armas', 'update')),
+                this.opcion('Armaduras y escudos', () => this.canGestionar('armaduras', 'update')),
+            ]),
+            this.grupo('rasgos', 'Rasgos y aptitudes', [
+                this.opcion('Especiales', () => this.canGestionar('especiales', 'update') || this.canGestionar('clases', 'update'), () => this.onModificarEspecial()),
+                this.opcion('Raciales', () => this.canGestionar('raciales', 'update'), () => this.onModificarRacial()),
+                this.opcion('Rasgos', () => this.canGestionar('rasgos', 'update')),
+                this.opcion('Idiomas', () => this.canGestionarIdiomas(), () => this.onModificarIdioma()),
+                this.opcion('Ventajas y desventajas', () => this.canGestionar('ventajas', 'update')),
+            ]),
+            this.grupo('mundo', 'Criaturas y mundo', [
+                this.opcion('Tipos de criatura', () => this.canGestionar('tipos_criatura', 'update')),
+                this.opcion('Subtipos de criatura', () => this.canGestionar('subtipos', 'update')),
+                this.opcion('Deidades', () => this.canGestionar('deidades', 'update')),
+            ]),
+        ],
+        detalles: [
+            this.grupo('equipo', 'Equipo', [
+                this.detalle('Armas', 'armas'),
+                this.detalle('Armaduras y escudos', 'armaduras'),
+                this.detalle('Munición', 'munición'),
+                this.detalle('Materiales especiales', 'materiales especiales'),
+                this.detalle('Aptitudes de armas y armaduras', 'aptitudes de armas y armaduras'),
+                this.detalle('Objetos', 'objetos'),
+                this.detalle('Conjuntos de objetos', 'conjuntos de objetos'),
+            ]),
+            this.grupo('rasgos', 'Rasgos y aptitudes', [
+                this.detalle('Especiales', 'especiales'),
+                this.detalle('Raciales', 'raciales'),
+                this.detalle('Rasgos', 'rasgos'),
+                this.detalle('Idiomas', 'idiomas'),
+                this.detalle('Ventajas y desventajas', 'ventajas'),
+            ]),
+            this.grupo('mundo', 'Criaturas y mundo', [
+                this.detalle('Tipos de criatura', 'tipos de criatura'),
+                this.detalle('Subtipos de criatura', 'subtipos'),
+                this.detalle('Deidades', 'deidades'),
+            ]),
+        ],
+    };
     readonly posicionesOtros: ConnectedPosition[] = [
         { originX: 'end', overlayX: 'start', originY: 'top', overlayY: 'top', offsetX: 4 },
         { originX: 'end', overlayX: 'start', originY: 'bottom', overlayY: 'bottom', offsetX: 4 },
@@ -78,16 +132,21 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
             this.cuarto.close();
     }
 
-    abrirOtros(seccion: SeccionOtros) {
+    abrirOtros(seccion: SeccionOtros, grupo: GrupoOtros) {
         this.cancelarCierreOtros();
-        this.otrosAbierto = seccion;
+        this.otrosAbierto = this.claveOtros(seccion, grupo);
     }
 
-    toggleOtros(seccion: SeccionOtros, event: MouseEvent) {
+    toggleOtros(seccion: SeccionOtros, grupo: GrupoOtros, event: MouseEvent) {
         event.preventDefault();
         event.stopPropagation();
         this.cancelarCierreOtros();
-        this.otrosAbierto = this.otrosAbierto === seccion ? null : seccion;
+        const clave = this.claveOtros(seccion, grupo);
+        this.otrosAbierto = this.otrosAbierto === clave ? null : clave;
+    }
+
+    estaAbiertoOtros(seccion: SeccionOtros, grupo: GrupoOtros): boolean {
+        return this.otrosAbierto === this.claveOtros(seccion, grupo);
     }
 
     programarCierreOtros() {
@@ -152,15 +211,37 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         return this.nuevoPersonajeDeshabilitado ? this.mensajePermisosInsuficientes : '';
     }
 
+    gruposDe(seccion: SeccionOtros): readonly GrupoMenuOtros[] {
+        return this.gruposOtros[seccion];
+    }
+
     tieneOpcionesOtros(seccion: SeccionOtros): boolean {
-        if (seccion === 'insertar')
-            return this.recursosOtrosInsertar.some(resource => this.canGestionar(resource, 'create'))
-                || this.canInsertarRaciales()
-                || this.canGestionarIdiomas();
-        if (seccion === 'modificar')
-            return this.recursosOtrosModificar.some(resource => this.canGestionar(resource, 'update'))
-                || this.canGestionarIdiomas();
-        return true;
+        return this.gruposOtros[seccion].some(grupo => this.tieneOpcionesGrupo(grupo));
+    }
+
+    tieneOpcionesGrupo(grupo: GrupoMenuOtros): boolean {
+        return grupo.opciones.some(opcion => opcion.habilitada());
+    }
+
+    private claveOtros(seccion: SeccionOtros, grupo: GrupoOtros): string {
+        return `${seccion}:${grupo}`;
+    }
+
+    private grupo(id: GrupoOtros, titulo: string, opciones: OpcionOtros[]): GrupoMenuOtros {
+        return { id, titulo, opciones };
+    }
+
+    /** Una opción de Insertar o Modificar; sin acción propia (aún no tiene pantalla), solo cierra el menú. */
+    private opcion(etiqueta: string, habilitada: () => boolean, abrir: () => void = () => this.cerrarOtros()): OpcionOtros {
+        return { etiqueta, habilitada, abrir };
+    }
+
+    private detalle(etiqueta: string, tipo: string): OpcionOtros {
+        return this.opcion(etiqueta, () => true, () => {
+            this.AbrirListado(tipo, 'detalles');
+            this.closeAcordion();
+            this.cerrarOtros();
+        });
     }
 
     canInsertarDotes(): boolean {

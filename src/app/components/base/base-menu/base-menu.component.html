@@ -55,92 +55,7 @@
                     [matTooltipDisabled]="canGestionar('plantillas', 'create')">
                     <button mat-button color="primary" [disabled]="!canGestionar('plantillas', 'create')">Plantilla</button>
                 </span>
-                <button mat-button color="primary" cdkOverlayOrigin #origenInsertar="cdkOverlayOrigin"
-                    [class.menu-otros-trigger--sin-opciones]="!tieneOpcionesOtros('insertar')"
-                    (mouseenter)="abrirOtros('insertar')" (mouseleave)="programarCierreOtros()"
-                    (click)="toggleOtros('insertar', $event)">
-                    Otros
-                    <mat-icon iconPositionEnd>arrow_right</mat-icon>
-                </button>
-                <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origenInsertar"
-                    [cdkConnectedOverlayOpen]="otrosAbierto === 'insertar'"
-                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayPush]="true"
-                    [cdkConnectedOverlayViewportMargin]="8" [cdkConnectedOverlayHasBackdrop]="true"
-                    [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
-                    (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
-                    <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('armaduras', 'create') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('armaduras', 'create')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('armaduras', 'create')" (click)="cerrarOtros()">Armaduras</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('armas', 'create') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('armas', 'create')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('armas', 'create')" (click)="cerrarOtros()">Armas</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('deidades', 'create') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('deidades', 'create')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('deidades', 'create')" (click)="cerrarOtros()">Deidades</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('clases', 'create') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('clases', 'create')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('clases', 'create')" (click)="onInsertarEspecial()">Especiales</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionarIdiomas() ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionarIdiomas()">
-                            <button mat-button color="primary" [disabled]="!canGestionarIdiomas()" (click)="onInsertarIdioma()">Idiomas</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canInsertarRaciales() ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canInsertarRaciales()">
-                            <button mat-button color="primary" [disabled]="!canInsertarRaciales()" (click)="onInsertarRacial()">Raciales</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('rasgos', 'create') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('rasgos', 'create')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('rasgos', 'create')" (click)="cerrarOtros()">Rasgos</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('subtipos', 'create') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('subtipos', 'create')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('subtipos', 'create')" (click)="cerrarOtros()">Subtipos de criatura</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('tipos_criatura', 'create') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('tipos_criatura', 'create')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('tipos_criatura', 'create')" (click)="cerrarOtros()">Tipos de criatura</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('ventajas', 'create') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('ventajas', 'create')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('ventajas', 'create')" (click)="cerrarOtros()">Ventajas y desventajas</button>
-                        </span>
-                    </div>
-                </ng-template>
+                <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'insertar' }"></ng-container>
             </mat-expansion-panel>
             <mat-expansion-panel #segundo>
                 <mat-expansion-panel-header>
@@ -179,92 +94,7 @@
                     [matTooltipDisabled]="canGestionar('plantillas', 'update')">
                     <button mat-button color="primary" [disabled]="!canGestionar('plantillas', 'update')">Plantilla</button>
                 </span>
-                <button mat-button color="primary" cdkOverlayOrigin #origenModificar="cdkOverlayOrigin"
-                    [class.menu-otros-trigger--sin-opciones]="!tieneOpcionesOtros('modificar')"
-                    (mouseenter)="abrirOtros('modificar')" (mouseleave)="programarCierreOtros()"
-                    (click)="toggleOtros('modificar', $event)">
-                    Otros
-                    <mat-icon iconPositionEnd>arrow_right</mat-icon>
-                </button>
-                <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origenModificar"
-                    [cdkConnectedOverlayOpen]="otrosAbierto === 'modificar'"
-                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayPush]="true"
-                    [cdkConnectedOverlayViewportMargin]="8" [cdkConnectedOverlayHasBackdrop]="true"
-                    [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
-                    (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
-                    <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('armaduras', 'update') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('armaduras', 'update')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('armaduras', 'update')" (click)="cerrarOtros()">Armaduras</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('armas', 'update') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('armas', 'update')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('armas', 'update')" (click)="cerrarOtros()">Armas</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('deidades', 'update') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('deidades', 'update')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('deidades', 'update')" (click)="cerrarOtros()">Deidades</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="(canGestionar('especiales', 'update') || canGestionar('clases', 'update')) ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('especiales', 'update') || canGestionar('clases', 'update')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('especiales', 'update') && !canGestionar('clases', 'update')" (click)="onModificarEspecial()">Especiales</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionarIdiomas() ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionarIdiomas()">
-                            <button mat-button color="primary" [disabled]="!canGestionarIdiomas()" (click)="onModificarIdioma()">Idiomas</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('raciales', 'update') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('raciales', 'update')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('raciales', 'update')" (click)="onModificarRacial()">Raciales</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('rasgos', 'update') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('rasgos', 'update')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('rasgos', 'update')" (click)="cerrarOtros()">Rasgos raciales</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('subtipos', 'update') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('subtipos', 'update')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('subtipos', 'update')" (click)="cerrarOtros()">Subtipos de criatura</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('tipos_criatura', 'update') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('tipos_criatura', 'update')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('tipos_criatura', 'update')" (click)="cerrarOtros()">Tipos de criatura</button>
-                        </span>
-                        <span
-                            matTooltipClass="menu-otros-tooltip"
-                            matTooltipPosition="right"
-                            [matTooltip]="canGestionar('ventajas', 'update') ? '' : mensajePermisosInsuficientes"
-                            [matTooltipDisabled]="canGestionar('ventajas', 'update')">
-                            <button mat-button color="primary" [disabled]="!canGestionar('ventajas', 'update')" (click)="cerrarOtros()">Ventajas y desventajas</button>
-                        </span>
-                    </div>
-                </ng-template>
+                <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'modificar' }"></ng-container>
             </mat-expansion-panel>
             <mat-expansion-panel class="tw-rounded-none tw-rounded-b-md" #tercero>
                 <mat-expansion-panel-header>
@@ -278,51 +108,7 @@
                 <button mat-button color="primary" (click)="AbrirListado('conjuros', 'detalles'); closeAcordion();">Conjuro</button>
                 <button mat-button color="primary" (click)="AbrirListado('monstruos', 'detalles'); closeAcordion();">Monstruo</button>
                 <button mat-button color="primary" (click)="AbrirListado('plantillas', 'detalles'); closeAcordion();">Plantilla</button>
-                <button mat-button color="primary" cdkOverlayOrigin #origenDetalles="cdkOverlayOrigin"
-                    (mouseenter)="abrirOtros('detalles')" (mouseleave)="programarCierreOtros()"
-                    (click)="toggleOtros('detalles', $event)">
-                    Otros
-                    <mat-icon iconPositionEnd>arrow_right</mat-icon>
-                </button>
-                <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origenDetalles"
-                    [cdkConnectedOverlayOpen]="otrosAbierto === 'detalles'"
-                    [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayPush]="true"
-                    [cdkConnectedOverlayViewportMargin]="8" [cdkConnectedOverlayHasBackdrop]="true"
-                    [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
-                    (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
-                    <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('aptitudes de armas y armaduras', 'detalles'); closeAcordion(); cerrarOtros();">Aptitudes de armas y armaduras</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('armaduras', 'detalles'); closeAcordion(); cerrarOtros();">Armaduras</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('armas', 'detalles'); closeAcordion(); cerrarOtros();">Armas</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('conjuntos de objetos', 'detalles'); closeAcordion(); cerrarOtros();">Conjuntos de objetos</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('deidades', 'detalles'); closeAcordion(); cerrarOtros();">Deidades</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('especiales', 'detalles'); closeAcordion(); cerrarOtros();">Especiales</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('idiomas', 'detalles'); closeAcordion(); cerrarOtros();">Idiomas</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('materiales especiales', 'detalles'); closeAcordion(); cerrarOtros();">Materiales especiales</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('munición', 'detalles'); closeAcordion(); cerrarOtros();">Munición</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('objetos', 'detalles'); closeAcordion(); cerrarOtros();">Objetos</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('raciales', 'detalles'); closeAcordion(); cerrarOtros();">Raciales</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('rasgos', 'detalles'); closeAcordion(); cerrarOtros();">Rasgos</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('subtipos', 'detalles'); closeAcordion(); cerrarOtros();">Subtipos de criatura</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('tipos de criatura', 'detalles'); closeAcordion(); cerrarOtros();">Tipos de criatura</button>
-                        <button mat-button color="primary"
-                            (click)="AbrirListado('ventajas', 'detalles'); closeAcordion(); cerrarOtros();">Ventajas y desventajas</button>
-                    </div>
-                </ng-template>
+                <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'detalles' }"></ng-container>
             </mat-expansion-panel>
             <mat-expansion-panel hideToggle="true" #cuarto>
                 <mat-expansion-panel-header>
@@ -368,4 +154,33 @@
             </mat-expansion-panel>
         </mat-accordion>
     </aside>
+    <!-- Los «Otros» de Insertar, Modificar y Detalles: los mismos grupos en los tres (gruposOtros). -->
+    <ng-template #gruposOtrosMenu let-seccion>
+        <ng-container *ngFor="let grupo of gruposDe(seccion)">
+            <button mat-button color="primary" cdkOverlayOrigin #origenGrupo="cdkOverlayOrigin"
+                [class.menu-otros-trigger--sin-opciones]="!tieneOpcionesGrupo(grupo)"
+                [attr.aria-expanded]="estaAbiertoOtros(seccion, grupo.id)"
+                (mouseenter)="abrirOtros(seccion, grupo.id)" (mouseleave)="programarCierreOtros()"
+                (click)="toggleOtros(seccion, grupo.id, $event)">
+                {{ grupo.titulo }} ({{ grupo.opciones.length }})
+                <mat-icon iconPositionEnd>arrow_right</mat-icon>
+            </button>
+            <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origenGrupo"
+                [cdkConnectedOverlayOpen]="estaAbiertoOtros(seccion, grupo.id)"
+                [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayPush]="true"
+                [cdkConnectedOverlayViewportMargin]="8" [cdkConnectedOverlayHasBackdrop]="true"
+                [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
+                (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
+                <div class="menu-otros-panel" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
+                    <span *ngFor="let opcion of grupo.opciones"
+                        matTooltipClass="menu-otros-tooltip"
+                        matTooltipPosition="right"
+                        [matTooltip]="opcion.habilitada() ? '' : mensajePermisosInsuficientes"
+                        [matTooltipDisabled]="opcion.habilitada()">
+                        <button mat-button color="primary" [disabled]="!opcion.habilitada()" (click)="opcion.abrir()">{{ opcion.etiqueta }}</button>
+                    </span>
+                </div>
+            </ng-template>
+        </ng-container>
+    </ng-template>
 </mat-card>
