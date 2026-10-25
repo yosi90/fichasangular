@@ -1,54 +1,122 @@
-@use '../../../../assets/css/preformas/_detalles' as *
+@use '../../../../assets/css/variables' as *
+
+// Piezas del lienzo del monstruo que la ficha común (`ficha/ficha.sass`) aún no tiene: la franja grande de datos
+// principales, las casillas de características y los pares de etiqueta y valor del combate. Se quedan aquí hasta
+// subirlas a la ficha común; usan sus mismos tonos.
+$monstruo-blanco: #ffffff
+$monstruo-texto-suave: #cfd8dc
+$monstruo-tarjeta: #424242
+
+// El modal de la maniobrabilidad se coloca sobre la pantalla (position: absolute).
 :host
+    display: block
     position: relative
 
-.chip-clic
+.monstruo-franja
+    overflow: hidden
+
+.monstruo-franja__datos
+    display: grid
+    grid-template-columns: repeat(5, minmax(0, 1fr))
+    gap: 1px
+    margin: 0
+    background: $primary
+
+.monstruo-franja__dato
+    min-width: 0
+    padding: 14px 18px
+    background: $monstruo-tarjeta
+
+.monstruo-franja__etiqueta
+    font-size: 12px
+    color: $font-base
+
+.monstruo-franja__valor
+    display: flex
+    flex-wrap: wrap
+    align-items: baseline
+    gap: 4px 8px
+    margin: 3px 0 0
+    font-size: 24px
+    font-weight: 500
+    line-height: 1.25
+    color: $monstruo-blanco
+    overflow-wrap: anywhere
+
+.monstruo-franja__detalle
+    font-size: 14px
+    font-weight: 400
+    color: $monstruo-texto-suave
+
+.monstruo-ayuda
+    display: inline-flex
+    align-self: center
+    padding: 0
+    border: 0
+    background: none
     cursor: pointer
 
-.chip-descripcion-bloque
-    display: block
-    white-space: normal
-    margin-top: .25rem
-    max-width: 100%
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+        border-radius: 2px
 
-.detalle-texto-largo
-    overflow-wrap: anywhere
-    word-break: break-word
+.monstruo-caracteristicas
+    display: grid
+    grid-template-columns: repeat(6, minmax(0, 1fr))
+    gap: 12px
 
-.campo-texto
-    border: 1px ridge #747474 !important
-    border-radius: 2px
-    padding: .15rem .3rem
-    margin: .4rem .25rem
+.monstruo-caracteristica
+    display: flex
+    flex-direction: column
+    align-items: center
+    padding: 12px
 
-.combate-chips
-    border: 0 !important
-    box-shadow: none !important
-    outline: 0 !important
-    background-color: transparent !important
+.monstruo-caracteristica__nombre
+    font-size: 12px
+    font-weight: 700
+    letter-spacing: .12em
+    color: $accent
 
-.requisito-bloque
-    border: 1px ridge #747474 !important
-    border-radius: 2px
-    margin: .35rem .25rem
+.monstruo-caracteristica__valor
+    font-size: 26px
+    font-weight: 500
+    line-height: 1.3
+    color: $monstruo-blanco
 
-.combate-titulo
-    width: calc(100% - .5rem)
+.monstruo-caracteristica__modificador
+    font-size: 14px
+    color: $monstruo-texto-suave
 
-.maniobrabilidad-chip
-    ::ng-deep .mat-mdc-chip-action-label
-        display: inline-flex
-        align-items: center
-        gap: 0.25rem
+.monstruo-pares
+    display: grid
+    grid-template-columns: 170px minmax(0, 1fr)
+    gap: 8px 16px
+    margin: 0
+    font-size: 15px
 
-.maniobrabilidad-help-btn
-    width: 24px
-    height: 24px
-    padding: 0
-    margin-left: 0.15rem
-    color: inherit
+    dt
+        color: $font-base
 
-    mat-icon
-        width: 17px
-        height: 17px
-        font-size: 17px
+    dd
+        margin: 0
+        color: $monstruo-blanco
+        overflow-wrap: anywhere
+
+@container ficha (max-width: 900px)
+    .monstruo-franja__datos
+        grid-template-columns: repeat(3, minmax(0, 1fr))
+
+    .monstruo-caracteristicas
+        grid-template-columns: repeat(3, minmax(0, 1fr))
+
+@container ficha (max-width: 640px)
+    .monstruo-franja__datos
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+
+    .monstruo-pares
+        grid-template-columns: minmax(0, 1fr)
+        gap: 2px
+
+        dd
+            margin-bottom: 8px

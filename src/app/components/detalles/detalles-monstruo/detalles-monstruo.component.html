@@ -1,313 +1,187 @@
-<div class="tw-w-full tw-px-3 detalle-view" *ngIf="monstruo">
-    <div class="tw-flex tw-flex-wrap">
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
-                    {{monstruo.Nombre}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" matTooltip="Pulsa para ver el manual" [matTooltipShowDelay]="250"
-                    matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
-                    <mat-icon class="tw-me-2">auto_stories</mat-icon>{{getManualLabel()}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" matTooltip="Pulsa para ver el tipo de criatura"
-                    [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
-                    (click)="abrirDetallesTipoCriatura(monstruo.Tipo.Id)">
-                    {{getTipoSizeLabel()}}
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Familiar && !esDetalleFamiliarOCompanero">Puede ser familiar</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Companero && !esDetalleFamiliarOCompanero">Puede ser compañero animal</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="!monstruo.Oficial">No oficial</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1">VD {{monstruo.Valor_desafio}}</mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1">
-                    DG
-                    <mat-chip class="sombra3d-sm tw-m-1">
-                        {{monstruo.Dados_golpe.Cantidad}}{{monstruo.Dados_golpe.Tipo_dado.Nombre}}
-                        <span *ngIf="monstruo.Dados_golpe.Suma !== 0">{{monstruo.Dados_golpe.Suma > 0 ? '+' : ''}}{{monstruo.Dados_golpe.Suma}}</span>
-                    </mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1">
-                    Alineamiento
-                    <mat-chip class="sombra3d-sm tw-m-1">{{getAlineamientoLabel()}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1">
-                    Idiomas
-                    <mat-chip class="sombra3d-sm tw-m-1">{{getIdiomasLabel()}}</mat-chip>
-                </mat-chip>
+<app-ficha-detalle *ngIf="monstruo">
+    <app-ficha-cabecera
+        [tipo]="tipoCabecera"
+        [nombre]="monstruo.Nombre"
+        [manual]="monstruo.Manual"
+        [oficial]="monstruo.Oficial"
+        [etiquetas]="etiquetas"
+        (abrirManual)="abrirDetalleManual()">
+    </app-ficha-cabecera>
 
-                <mat-chip class="tw-h-auto warm sombra3d-sm tw-m-1" *ngIf="tieneRelacionFamiliarExtendida || tieneRelacionCompaneroExtendida">
-                    Relacion especial
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="idFamiliarExtendido > 0">Familiar #{{idFamiliarExtendido}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="idCompaneroExtendido > 0">Compañero #{{idCompaneroExtendido}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="vidaRelacionExtendida > 0">Vida {{vidaRelacionExtendida}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="dgAdicionalCompanero > 0">DG adi {{dgAdicionalCompanero}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="trucosAdicionalesCompanero > 0">Trucos adi {{trucosAdicionalesCompanero}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(monstruoOrigenLabel)">Origen {{monstruoOrigenLabel}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(plantillaRelacionLabel)">Plantilla {{plantillaRelacionLabel}}</mat-chip>
-                </mat-chip>
+    <!-- La franja grande y las casillas de características son propias del monstruo (lienzo aprobado); sus estilos,
+         en la hoja de la pantalla hasta que la ficha común los tenga. -->
+    <section class="ficha-tarjeta monstruo-franja" aria-label="Datos principales" *ngIf="principales.length > 0">
+        <dl class="monstruo-franja__datos">
+            <div class="monstruo-franja__dato" *ngFor="let dato of principales">
+                <dt class="monstruo-franja__etiqueta">{{dato.etiqueta}}</dt>
+                <dd class="monstruo-franja__valor">
+                    {{dato.valor}}
+                    <span class="monstruo-franja__detalle" *ngIf="dato.detalle">{{dato.detalle}}</span>
+                    <button type="button" class="monstruo-ayuda" *ngIf="dato.ayudaManiobrabilidad"
+                        matTooltip="Reglas de maniobrabilidad" matTooltipClass="tt-accent" aria-label="Reglas de maniobrabilidad"
+                        (click)="abrirInfoManiobrabilidad($event)">
+                        <mat-icon class="ficha-icono" aria-hidden="true">help_outline</mat-icon>
+                    </button>
+                </dd>
             </div>
+        </dl>
+    </section>
 
-            <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo combate-titulo">Combate</mat-chip>
-                <div class="tw-flex tw-flex-wrap tw-items-center combate-chips">
-                    <mat-chip class="sombra3d-sm tw-m-1">Ataque base {{getSignoConCeroPositivo(monstruo.Ataque.Ataque_base)}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">Presa {{getSigno(monstruo.Ataque.Presa)}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">CA {{monstruo.Defensa.Ca}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">CA de toque {{monstruo.Defensa.Toque}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">CA de desprevenido {{monstruo.Defensa.Desprevenido}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Defensa.Armadura_natural !== 0">Armadura natural {{getSigno(monstruo.Defensa.Armadura_natural)}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">Fortaleza {{getSigno(monstruo.Salvaciones.Fortaleza)}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">Reflejos {{getSigno(monstruo.Salvaciones.Reflejos)}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1">Voluntad {{getSigno(monstruo.Salvaciones.Voluntad)}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Iniciativa !== 0">Iniciativa {{getSigno(monstruo.Iniciativa)}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Espacio > 0">Espacio {{monstruo.Espacio}}'</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Alcance > 0">Alcance {{monstruo.Alcance}}'</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Movimientos.Correr > 0">Correr {{monstruo.Movimientos.Correr}}'</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Movimientos.Nadar > 0">Nadar {{monstruo.Movimientos.Nadar}}'</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Movimientos.Volar > 0">Volar {{monstruo.Movimientos.Volar}}'</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Movimientos.Trepar > 0">Trepar {{monstruo.Movimientos.Trepar}}'</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="monstruo.Movimientos.Escalar > 0">Escalar {{monstruo.Movimientos.Escalar}}'</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1 maniobrabilidad-chip" *ngIf="mostrarManiobrabilidad()">
-                        Maniobrabilidad {{monstruo.Maniobrabilidad.Nombre}}
-                        <button mat-icon-button type="button" class="maniobrabilidad-help-btn"
-                            matTooltip="Reglas de maniobrabilidad" aria-label="Reglas de maniobrabilidad"
-                            (click)="abrirInfoManiobrabilidad($event)">
-                            <mat-icon>help_outline</mat-icon>
-                        </button>
-                    </mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(monstruo.Defensa.Reduccion_dano)">RD: {{monstruo.Defensa.Reduccion_dano}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(monstruo.Defensa.Resistencia_conjuros)">RC: {{monstruo.Defensa.Resistencia_conjuros}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(monstruo.Defensa.Resistencia_elemental)">RE: {{monstruo.Defensa.Resistencia_elemental}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(monstruo.Cd_sortilegas)">CD sortilegas {{monstruo.Cd_sortilegas}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(monstruo.Tesoro)">Tesoro: {{monstruo.Tesoro}}</mat-chip>
-                </div>
-                <div class="detalle-texto-largo campo-texto" *ngIf="tieneTextoVisible(monstruo.Ataque.Ataques)">
-                    <p class="tw-m-1"><strong>Ataques:</strong> {{monstruo.Ataque.Ataques}}</p>
-                </div>
-                <div class="detalle-texto-largo campo-texto" *ngIf="tieneTextoVisible(monstruo.Ataque.Ataque_completo)">
-                    <p class="tw-m-1"><strong>Ataque completo:</strong> {{monstruo.Ataque.Ataque_completo}}</p>
-                </div>
-            </div>
+    <section class="monstruo-caracteristicas" aria-label="Características">
+        <div class="ficha-tarjeta monstruo-caracteristica" *ngFor="let casilla of casillas" role="group" [attr.aria-label]="casilla.texto">
+            <span class="monstruo-caracteristica__nombre" [matTooltip]="casilla.nombre" matTooltipClass="tt-accent" aria-hidden="true">{{casilla.abreviatura}}</span>
+            <span class="monstruo-caracteristica__valor" aria-hidden="true">{{casilla.valor}}</span>
+            <span class="monstruo-caracteristica__modificador" *ngIf="casilla.modificador" aria-hidden="true">{{casilla.modificador}}</span>
         </div>
+    </section>
 
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneTextoVisible(monstruo.Descripcion)">
-                <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 chip-titulo">Descripcion</mat-chip>
-                <p class="tw-m-1">{{monstruo.Descripcion}}</p>
+    <app-ficha-cuerpo>
+        <app-ficha-seccion titulo="Combate" *ngIf="combate.length > 0">
+            <dl class="monstruo-pares">
+                <ng-container *ngFor="let par of combate">
+                    <dt>{{par.etiqueta}}</dt>
+                    <dd>{{par.valor}}</dd>
+                </ng-container>
+            </dl>
+        </app-ficha-seccion>
+        <app-ficha-seccion titulo="Descripción" [texto]="monstruo.Descripcion"></app-ficha-seccion>
+
+        <app-ficha-lateral *ngIf="hayAptitudes">
+            <app-ficha-seccion titulo="Habilidades (rangos)" *ngIf="habilidades.length > 0">
+                <table class="ficha-pares">
+                    <tbody>
+                        <tr *ngFor="let habilidad of habilidades">
+                            <td>{{habilidad.nombre}}</td>
+                            <td>{{habilidad.rangos}}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </app-ficha-seccion>
+            <app-ficha-seccion titulo="Dotes" *ngIf="dotes.length > 0">
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let dote of dotes">
+                        <button type="button" class="ficha-enlace" (click)="abrirDetallesDote(dote.contexto)">{{dote.nombre}}</button>
+                    </li>
+                </ul>
+            </app-ficha-seccion>
+            <app-ficha-seccion titulo="Aptitudes raciales" *ngIf="raciales.length > 0">
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let racial of raciales">
+                        <button type="button" class="ficha-enlace" (click)="abrirDetallesRacial(racial)">{{racial.Nombre}}</button>
+                    </li>
+                </ul>
+            </app-ficha-seccion>
+            <app-ficha-seccion titulo="Ataques especiales" *ngIf="ataquesEspeciales.length > 0">
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let ataque of ataquesEspeciales">
+                        <button type="button" class="ficha-enlace" (click)="abrirDetallesRacial(ataque)">{{ataque.Nombre}}</button>
+                    </li>
+                </ul>
+            </app-ficha-seccion>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Aptitudes sortílegas" *ngIf="sortilegas.length > 0">
+            <table class="ficha-pares">
+                <tbody>
+                    <tr *ngFor="let sortilega of sortilegas">
+                        <td><button type="button" class="ficha-enlace" (click)="abrirDetallesConjuro(sortilega.id)">{{sortilega.nombre}}</button></td>
+                        <td>{{sortilega.detalle}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="En resumen">
+            <app-ficha-datos [datos]="resumen" [columnas]="2" [tarjeta]="false" titulo="Resumen del monstruo"></app-ficha-datos>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Subtipos" *ngIf="subtipos.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let subtipo of subtipos">
+                    <button type="button" class="ficha-enlace" (click)="abrirDetallesSubtipo(subtipo)">{{subtipo.Nombre}}</button>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Requisitos como familiar" *ngIf="requisitosFamiliar">
+            <ng-container *ngTemplateOutlet="requisitos; context: { $implicit: requisitosFamiliar }"></ng-container>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Requisitos como compañero animal" *ngIf="requisitosCompanero">
+            <ng-container *ngTemplateOutlet="requisitos; context: { $implicit: requisitosCompanero }"></ng-container>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Datos del familiar o compañero" *ngIf="esDetalleFamiliarOCompanero">
+            <app-ficha-datos [datos]="relacion" [columnas]="2" [tarjeta]="false" titulo="Datos del familiar o compañero"></app-ficha-datos>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Familiares y compañeros" *ngIf="familiares.length > 0 || companeros.length > 0">
+            <div class="ficha-grupo" *ngIf="familiares.length > 0">
+                <h3 class="ficha-subtitulo">Familiares</h3>
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let familiar of familiares">
+                        <button type="button" class="ficha-enlace" (click)="abrirDetallesMonstruoRelacionado(familiar)">{{familiar.Nombre}}</button>
+                    </li>
+                </ul>
             </div>
-
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-w-full sombra-caja-sm tw-mb-2 chip-titulo">Caracteristicas</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let clave of caracteristicas">{{nombresCaracteristicas[clave]}} {{textoCaracteristica(clave)}}</mat-chip>
+            <div class="ficha-grupo" *ngIf="companeros.length > 0">
+                <h3 class="ficha-subtitulo">Compañeros animales</h3>
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let companero of companeros">
+                        <button type="button" class="ficha-enlace" (click)="abrirDetallesMonstruoRelacionado(companero)">{{companero.Nombre}}</button>
+                    </li>
+                </ul>
             </div>
-        </div>
+        </app-ficha-lateral>
 
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <mat-accordion>
-                <mat-expansion-panel *ngIf="monstruo.Sortilegas.length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
-                            <h2 class="tw-mb-0">Sortilegas</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="tw-h-auto chip-clic sombra3d-sm" *ngFor="let sortilega of monstruo.Sortilegas"
-                            matTooltip="Pulsa para ver detalles del conjuro" [matTooltipShowDelay]="250"
-                            matTooltipClass="tt-accent" (click)="abrirDetallesConjuro(sortilega.Conjuro.Id)">
-                            {{sortilega.Conjuro.Nombre}}
-                            <mat-chip class="tw-m-1">NL {{sortilega.Nivel_lanzador}}</mat-chip>
-                            <mat-chip class="tw-m-1" *ngIf="tieneTextoVisible(sortilega.Usos_diarios)">{{sortilega.Usos_diarios}}</mat-chip>
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
+        <app-ficha-lateral titulo="Personajes y especiales relacionados" *ngIf="hayPersonajesRelacionados">
+            <ul class="ficha-lista" *ngIf="personajesDirectos.length > 0">
+                <li class="ficha-lista__item" *ngFor="let pj of personajesDirectos">{{pj.Nombre}} (P#{{pj.Id_personaje}})</li>
+            </ul>
+            <div class="ficha-grupo" *ngIf="especiales.length > 0">
+                <h3 class="ficha-subtitulo">Especiales</h3>
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let especial of especiales">
+                        <span>{{especial.nombre}} <span class="ficha-nota" *ngIf="especial.contexto">{{especial.contexto}}</span></span>
+                    </li>
+                </ul>
+            </div>
+            <div class="ficha-grupo" *ngIf="personajesPorFamiliar">
+                <h3 class="ficha-subtitulo">Por familiar</h3>
+                <p class="ficha-nota">{{personajesPorFamiliar}}</p>
+            </div>
+            <div class="ficha-grupo" *ngIf="personajesPorCompanero">
+                <h3 class="ficha-subtitulo">Por compañero</h3>
+                <p class="ficha-nota">{{personajesPorCompanero}}</p>
+            </div>
+        </app-ficha-lateral>
+    </app-ficha-cuerpo>
+</app-ficha-detalle>
 
-                <mat-expansion-panel *ngIf="monstruo.Dotes.length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Dotes</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="chip-clic sombra3d-sm" *ngFor="let doteCtx of monstruo.Dotes"
-                            matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
-                            (click)="abrirDetallesDote(doteCtx)">
-                            {{getNombreDote(doteCtx)}}
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-
-                <mat-expansion-panel *ngIf="getRacialesActivas().length > 0 || getAtaquesEspecialesActivos().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Raciales y ataques especiales</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1" *ngIf="getRacialesActivas().length > 0">
-                        <mat-chip class="chip-clic sombra3d-sm" *ngFor="let racial of getRacialesActivas()"
-                            matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
-                            (click)="abrirDetallesRacial(racial)">
-                            {{racial.Nombre}}
-                        </mat-chip>
-                    </mat-chip-set>
-                    <mat-chip-set class="tw-m-1" *ngIf="getAtaquesEspecialesActivos().length > 0">
-                        <mat-chip class="chip-clic sombra3d-sm" *ngFor="let ataque of getAtaquesEspecialesActivos()"
-                            matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
-                            (click)="abrirDetallesRacial(ataque)">
-                            {{ataque.Nombre}} (Ataque especial)
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-
-                <mat-expansion-panel *ngIf="!esDetalleFamiliarOCompanero && tieneRequisitosFamiliar()">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Requisitos para obtener como familiar</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <div class="requisito-bloque tw-p-2" *ngIf="tieneAlineamientosRequeridos('Familiar')">
-                        <p class="tw-mb-2 tw-font-bold">Alineamiento requerido</p>
-                        <mat-chip-set class="tw-m-0">
-                            <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let alineamiento of getAlineamientosRequeridos('Familiar')">
-                                {{alineamiento}}
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                    <ng-container *ngIf="getNivelesClaseRequeridosFamiliar().length > 0">
-                        <div class="requisito-bloque tw-p-2">
-                            <p class="tw-mb-2 tw-font-bold">Niveles de clase requeridos</p>
-                            <mat-chip-set class="tw-m-0">
-                                <mat-chip class="tw-h-auto chip-clic sombra3d-sm tw-m-1" *ngFor="let nivel of getNivelesClaseRequeridosFamiliar()"
-                                    matTooltip="Pulsa para ver detalles de la clase" [matTooltipShowDelay]="250"
-                                    matTooltipClass="tt-accent" (click)="abrirDetallesClase(nivel.idClase)">
-                                    {{nivel.nombreClase}} {{nivel.nivel}}
-                                    <mat-chip class="tw-m-1" *ngIf="tieneTextoVisible(nivel.plantilla)">{{nivel.plantilla}}</mat-chip>
-                                    <mat-chip class="tw-m-1" *ngIf="tieneTextoVisible(nivel.dote)">{{nivel.dote}}</mat-chip>
-                                </mat-chip>
-                            </mat-chip-set>
-                        </div>
-                    </ng-container>
-                </mat-expansion-panel>
-
-                <mat-expansion-panel *ngIf="!esDetalleFamiliarOCompanero && tieneRequisitosCompanero()">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Requisitos para obtener como compañero animal</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <div class="requisito-bloque tw-p-2" *ngIf="tieneAlineamientosRequeridos('Companero')">
-                        <p class="tw-mb-2 tw-font-bold">Alineamiento requerido</p>
-                        <mat-chip-set class="tw-m-0">
-                            <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let alineamiento of getAlineamientosRequeridos('Companero')">
-                                {{alineamiento}}
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                    <ng-container *ngIf="getNivelesClaseRequeridosCompanero().length > 0">
-                        <div class="requisito-bloque tw-p-2">
-                            <p class="tw-mb-2 tw-font-bold">Niveles de clase requeridos</p>
-                            <mat-chip-set class="tw-m-0">
-                                <mat-chip class="tw-h-auto chip-clic sombra3d-sm tw-m-1" *ngFor="let nivel of getNivelesClaseRequeridosCompanero()"
-                                    matTooltip="Pulsa para ver detalles de la clase" [matTooltipShowDelay]="250"
-                                    matTooltipClass="tt-accent" (click)="abrirDetallesClase(nivel.idClase)">
-                                    {{nivel.nombreClase}} {{nivel.nivel}}
-                                    <mat-chip class="tw-m-1" *ngIf="tieneTextoVisible(nivel.plantilla)">{{nivel.plantilla}}</mat-chip>
-                                    <mat-chip class="tw-m-1" *ngIf="tieneTextoVisible(nivel.dote)">{{nivel.dote}}</mat-chip>
-                                </mat-chip>
-                            </mat-chip-set>
-                        </div>
-                    </ng-container>
-                </mat-expansion-panel>
-
-                <mat-expansion-panel *ngIf="getHabilidadesConRangos().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Habilidades</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let habilidad of getHabilidadesConRangos()">
-                            {{habilidad.Habilidad}}
-                            <mat-chip class="sombra3d-sm tw-m-1">Rangos {{habilidad.Rangos}}</mat-chip>
-                            <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(habilidad.Extra)">{{habilidad.Extra}}</mat-chip>
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-
-                <mat-expansion-panel *ngIf="getSubtiposActivos().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Subtipos</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="chip-clic sombra3d-sm" *ngFor="let subtipo of getSubtiposActivos()"
-                            matTooltip="Pulsa para ver detalles del subtipo" [matTooltipShowDelay]="250"
-                            matTooltipClass="tt-accent" (click)="abrirDetallesSubtipo(subtipo)">
-                            {{subtipo.Nombre}}
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-
-                <mat-expansion-panel *ngIf="getFamiliaresRelacionados().length > 0 || getCompanerosRelacionados().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Familiares y compañeros</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <p class="tw-m-2" *ngIf="getFamiliaresRelacionados().length > 0"><strong>Familiares</strong></p>
-                    <mat-chip-set class="tw-m-1" *ngIf="getFamiliaresRelacionados().length > 0">
-                        <mat-chip class="chip-clic sombra3d-sm" *ngFor="let familiar of getFamiliaresRelacionados()"
-                            matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
-                            (click)="abrirDetallesMonstruoRelacionado(familiar)">
-                            {{familiar.Nombre}}
-                        </mat-chip>
-                    </mat-chip-set>
-                    <p class="tw-m-2" *ngIf="getCompanerosRelacionados().length > 0"><strong>Compañeros animales</strong></p>
-                    <mat-chip-set class="tw-m-1" *ngIf="getCompanerosRelacionados().length > 0">
-                        <mat-chip class="chip-clic sombra3d-sm" *ngFor="let companero of getCompanerosRelacionados()"
-                            matTooltip="Pulsa para ver detalles" [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
-                            (click)="abrirDetallesMonstruoRelacionado(companero)">
-                            {{companero.Nombre}}
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-
-                <mat-expansion-panel *ngIf="personajesDirectosRelacionados.length > 0 || especialesRelacionados.length > 0 || tieneTextoVisible(getPersonajesRelacionadosFamiliarLabel()) || tieneTextoVisible(getPersonajesRelacionadosCompaneroLabel())">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-b-md">
-                            <h2 class="tw-mb-0">Personajes y especiales relacionados</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-
-                    <mat-chip-set class="tw-m-1" *ngIf="personajesDirectosRelacionados.length > 0">
-                        <mat-chip class="sombra3d-sm" *ngFor="let pj of personajesDirectosRelacionados">
-                            {{pj.Nombre}} (P#{{pj.Id_personaje}})
-                        </mat-chip>
-                    </mat-chip-set>
-
-                    <mat-chip-set class="tw-m-1" *ngIf="especialesRelacionados.length > 0">
-                        <mat-chip class="tw-h-auto sombra3d-sm" *ngFor="let especial of especialesRelacionados">
-                            {{especial.nombre}}
-                            <div class="chip-descripcion-bloque" *ngIf="tieneTextoVisible(especial.contexto)">{{especial.contexto}}</div>
-                        </mat-chip>
-                    </mat-chip-set>
-
-                    <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(getPersonajesRelacionadosFamiliarLabel())">
-                        Por familiar
-                        <mat-chip class="sombra3d-sm tw-m-1">{{getPersonajesRelacionadosFamiliarLabel()}}</mat-chip>
-                    </mat-chip>
-                    <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(getPersonajesRelacionadosCompaneroLabel())">
-                        Por compañero
-                        <mat-chip class="sombra3d-sm tw-m-1">{{getPersonajesRelacionadosCompaneroLabel()}}</mat-chip>
-                    </mat-chip>
-                </mat-expansion-panel>
-            </mat-accordion>
-        </div>
+<ng-template #requisitos let-requisitos>
+    <div class="ficha-grupo" *ngIf="requisitos.alineamientos.length > 0">
+        <h3 class="ficha-subtitulo">Alineamiento requerido</h3>
+        <ul class="ficha-lista">
+            <li class="ficha-lista__item" *ngFor="let alineamiento of requisitos.alineamientos">{{alineamiento}}</li>
+        </ul>
     </div>
+    <div class="ficha-grupo" *ngIf="requisitos.niveles.length > 0">
+        <h3 class="ficha-subtitulo">Niveles de clase requeridos</h3>
+        <ul class="ficha-lista">
+            <li class="ficha-lista__item" *ngFor="let nivel of requisitos.niveles">
+                <span>
+                    <button type="button" class="ficha-enlace" (click)="abrirDetallesClase(nivel.idClase)">{{nivel.nombreClase}} {{nivel.nivel}}</button>
+                    <span class="ficha-nota" *ngIf="nivel.plantilla"> · {{nivel.plantilla}}</span>
+                    <span class="ficha-nota" *ngIf="nivel.dote"> · {{nivel.dote}}</span>
+                </span>
+            </li>
+        </ul>
+    </div>
+</ng-template>
 
-    <app-informacion-basicos-modal *ngIf="mostrarInfoManiobrabilidad"
-        titulo="Maniobrabilidad"
-        icono="flight"
-        [secciones]="getManiobrabilidadInfoSecciones()"
-        (cerrar)="cerrarInfoManiobrabilidad()">
-    </app-informacion-basicos-modal>
-</div>
+<app-informacion-basicos-modal *ngIf="mostrarInfoManiobrabilidad"
+    titulo="Maniobrabilidad"
+    icono="flight"
+    [secciones]="getManiobrabilidadInfoSecciones()"
+    (cerrar)="cerrarInfoManiobrabilidad()">
+</app-informacion-basicos-modal>
