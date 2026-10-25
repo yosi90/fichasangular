@@ -8,7 +8,8 @@ import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
-import { categoriaArmadura, etiquetaManual, textoDestrezaMaxima } from 'src/app/services/utils/equipo-texto';
+import { categoriaArmadura, textoDestrezaMaxima } from 'src/app/services/utils/equipo-texto';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
 @Component({

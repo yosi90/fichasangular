@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 
 @Component({
     selector: 'app-detalles-deidad',
@@ -16,11 +17,7 @@ export class DetallesDeidadComponent {
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
 
     get manualLabel(): string {
-        const nombre = `${this.deidad?.Manual?.Nombre ?? ''}`.trim();
-        const pagina = Number(this.deidad?.Manual?.Pagina ?? 0);
-        if (nombre.length < 1)
-            return 'Sin manual';
-        return pagina > 0 ? `${nombre} (p. ${pagina})` : nombre;
+        return etiquetaManual(this.deidad?.Manual);
     }
 
     abrirDetalleManual(): void {

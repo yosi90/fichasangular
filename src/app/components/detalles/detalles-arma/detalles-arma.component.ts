@@ -1,7 +1,8 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { ArmaDetalle, ArmaPropiedad } from 'src/app/interfaces/arma';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { etiquetaManual, textoConSigno, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { textoConSigno, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({

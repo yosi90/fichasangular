@@ -1,5 +1,4 @@
 import { OrigenDescripcion } from 'src/app/interfaces/equipo';
-import { ManualReferencia } from 'src/app/interfaces/manual';
 import { PersonajeEquipoPiezaDto, PersonajeModificadorEquipoDto } from 'src/app/interfaces/personajes-api';
 
 // Cómo enseña la web los datos del equipo (armas, armaduras, munición, materiales, aptitudes, objetos y conjuntos).
@@ -32,15 +31,6 @@ export function textoDestrezaMaxima(bonDes: number | null | undefined): string {
 /** Un bonificador con signo («+2», «-1», «+0»). */
 export function textoConSigno(valor: number): string {
     return `${valor >= 0 ? '+' : ''}${valor}`;
-}
-
-/** El manual y la página («Manual del jugador 1 (p. 118)»), o «Sin manual». */
-export function etiquetaManual(manual: ManualReferencia | null | undefined): string {
-    const nombre = `${manual?.Nombre ?? ''}`.trim();
-    const pagina = Number(manual?.Pagina ?? 0);
-    if (nombre.length < 1)
-        return 'Sin manual';
-    return pagina > 0 ? `${nombre} (p. ${pagina})` : nombre;
 }
 
 /** Lo que se dice del texto de una entrada: un resumen nuestro o el texto del SRD. */

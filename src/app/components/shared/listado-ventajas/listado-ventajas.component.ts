@@ -10,6 +10,7 @@ import { VentajaService } from 'src/app/services/ventaja.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 
 interface VentajaListadoItem extends VentajaDetalle {
     Tipo: 'Ventaja' | 'Desventaja';
@@ -132,11 +133,7 @@ export class ListadoVentajasComponent implements OnDestroy {
     }
 
     getManualVisible(item: VentajaListadoItem): string {
-        const nombre = `${item.Manual?.Nombre ?? ''}`.trim();
-        const pagina = Number(item.Manual?.Pagina ?? 0);
-        if (nombre.length < 1)
-            return 'Sin manual';
-        return pagina > 0 ? `${nombre} (p. ${pagina})` : nombre;
+        return etiquetaManual(item.Manual);
     }
 
     abrirDetalleManual(item: VentajaListadoItem, event?: Event) {

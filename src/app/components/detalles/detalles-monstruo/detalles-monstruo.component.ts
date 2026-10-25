@@ -8,6 +8,7 @@ import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from '
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { NOMBRES_CARACTERISTICAS, textoCaracteristicaMonstruo } from 'src/app/services/utils/caracteristicas';
 
 @Component({
@@ -104,11 +105,7 @@ export class DetallesMonstruoComponent {
     }
 
     getManualLabel(): string {
-        const nombre = `${this.monstruo?.Manual?.Nombre ?? ''}`.trim();
-        const pagina = toNumber(this.monstruo?.Manual?.Pagina);
-        if (nombre.length < 1)
-            return 'Sin manual';
-        return pagina > 0 ? `${nombre} (p. ${pagina})` : nombre;
+        return etiquetaManual(this.monstruo?.Manual);
     }
 
     getAlineamientoLabel(): string {

@@ -11,7 +11,8 @@ import {
     TipoCatalogoEquipo,
 } from 'src/app/interfaces/equipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { etiquetaManual, formatoNumero, textoAplicaA, textoConSigno, textoModificador, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { formatoNumero, textoAplicaA, textoConSigno, textoModificador, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 /** Un dato corto del detalle: «Dureza 15». */

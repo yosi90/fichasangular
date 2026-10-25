@@ -9,6 +9,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 
 @Component({
     selector: 'app-listado-deidades',
@@ -149,11 +150,7 @@ export class ListadoDeidadesComponent implements OnDestroy {
     }
 
     getManualVisible(deidad: DeidadDetalle): string {
-        const nombre = `${deidad?.Manual?.Nombre ?? ''}`.trim();
-        const pagina = Number(deidad?.Manual?.Pagina ?? 0);
-        if (nombre.length < 1)
-            return 'Sin manual';
-        return pagina > 0 ? `${nombre} (p. ${pagina})` : nombre;
+        return etiquetaManual(deidad?.Manual);
     }
 
     private sortingAccessor(item: DeidadDetalle, property: string): string | number {

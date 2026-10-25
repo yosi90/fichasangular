@@ -9,6 +9,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 
 @Component({
     selector: 'app-listado-armas',
@@ -141,11 +142,7 @@ export class ListadoArmasComponent implements OnDestroy {
     }
 
     getManualVisible(arma: ArmaDetalle): string {
-        const nombre = `${arma?.Manual?.Nombre ?? ''}`.trim();
-        const pagina = Number(arma?.Manual?.Pagina ?? 0);
-        if (nombre.length < 1)
-            return 'Sin manual';
-        return pagina > 0 ? `${nombre} (p. ${pagina})` : nombre;
+        return etiquetaManual(arma?.Manual);
     }
 
     getColumnLabel(column: string): string {

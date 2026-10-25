@@ -118,6 +118,7 @@ import { normalizarTexto, primerEntero } from 'src/app/services/utils/normalizac
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
 import { EquipoCatalogos, MunicionDetalle } from 'src/app/interfaces/equipo';
@@ -1270,14 +1271,7 @@ export class NuevoPersonajeComponent {
     }
 
     get deidadManualInfo(): string {
-        const detalle = this.deidadSeleccionadaDetalle;
-        if (!detalle)
-            return 'No disponible';
-        const nombreManual = `${detalle?.Manual?.Nombre ?? ''}`.trim();
-        const pagina = Number(detalle?.Manual?.Pagina ?? 0);
-        if (nombreManual.length < 1)
-            return 'No disponible';
-        return pagina > 0 ? `${nombreManual} (p. ${pagina})` : nombreManual;
+        return etiquetaManual(this.deidadSeleccionadaDetalle?.Manual, 'No disponible');
     }
 
     get deidadAmbitosInfo(): string[] {

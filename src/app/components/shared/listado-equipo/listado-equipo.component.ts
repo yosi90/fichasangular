@@ -13,7 +13,8 @@ import {
 } from 'src/app/interfaces/equipo';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { etiquetaManual, formatoNumero, textoAplicaA, textoConSigno, textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { formatoNumero, textoAplicaA, textoConSigno, textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { compararTexto } from 'src/app/services/utils/orden-texto';

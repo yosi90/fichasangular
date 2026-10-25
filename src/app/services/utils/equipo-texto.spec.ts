@@ -1,4 +1,4 @@
-import { categoriaArmadura, etiquetaManual, textoConSigno, textoDestrezaMaxima, textoOrigenDescripcion, textoPeso, textoPrecio } from './equipo-texto';
+import { categoriaArmadura, textoConSigno, textoDestrezaMaxima, textoOrigenDescripcion, textoPeso, textoPrecio } from './equipo-texto';
 
 describe('equipo-texto', () => {
     it('la Destreza máxima sin límite se enseña «Sin límite»', () => {
@@ -23,10 +23,7 @@ describe('equipo-texto', () => {
         expect(categoriaArmadura(null)).toBe('');
     });
 
-    it('el manual con su página y el origen del texto', () => {
-        expect(etiquetaManual({ Id: 1, Nombre: 'Manual del jugador 1', Pagina: 118 })).toBe('Manual del jugador 1 (p. 118)');
-        expect(etiquetaManual({ Id: 1, Nombre: 'Manual', Pagina: 0 })).toBe('Manual');
-        expect(etiquetaManual(null)).toBe('Sin manual');
+    it('el origen del texto y el signo', () => {
         expect(textoOrigenDescripcion('srd')).toBe('Texto del SRD');
         expect(textoOrigenDescripcion('propia')).toBe('Descripción propia');
         expect(textoConSigno(-1)).toBe('-1');

@@ -9,6 +9,7 @@ import { MonstruoService } from 'src/app/services/monstruo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 
 @Component({
     selector: 'app-listado-monstruos',
@@ -128,11 +129,7 @@ export class ListadoMonstruosComponent implements OnDestroy {
     }
 
     getManualVisible(monstruo: MonstruoDetalle): string {
-        const nombre = this.getManualNombre(monstruo);
-        const pagina = toNumber(monstruo?.Manual?.Pagina);
-        if (nombre.length < 1)
-            return 'Sin manual';
-        return pagina > 0 ? `${nombre} (p. ${pagina})` : nombre;
+        return etiquetaManual(monstruo?.Manual);
     }
 
     getColumnLabel(column: string): string {

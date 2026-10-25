@@ -1,7 +1,8 @@
 import { Component, Input } from '@angular/core';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { etiquetaManual, textoConSigno, textoDestrezaMaxima, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { textoConSigno, textoDestrezaMaxima, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
