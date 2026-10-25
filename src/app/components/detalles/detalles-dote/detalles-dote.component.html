@@ -1,113 +1,56 @@
-<div class="tw-w-full tw-px-3 detalle-view" *ngIf="doteData">
-    <div class="tw-flex tw-flex-wrap">
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
-                    {{doteData.Nombre}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" matTooltip="Pulsa para ver el manual" [matTooltipShowDelay]="250"
-                    matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
-                    <mat-icon class="tw-me-2">auto_stories</mat-icon>
-                    {{doteData.Manual.Nombre}} (p. {{doteData.Manual.Pagina}})
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="doteData.Tipos?.length">
-                    Tipos
-                    <mat-chip class="sombra3d-sm tw-m-1">{{getTipos()}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="doteData.Repetible">Repetible</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="doteData.Repetible_distinto_extra">Repetible con extra distinto</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="doteData.Repetible_comb">Repetible en combinación</mat-chip>
-                <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="!doteData.Oficial" matTooltip="Esta dote es homebrew" matTooltipClass="tt-accent">No es oficial</mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="getOrigenContexto()">
-                    Origen
-                    <mat-chip class="sombra3d-sm tw-m-1">{{getOrigenContexto()}}</mat-chip>
-                </mat-chip>
+<app-ficha-detalle *ngIf="doteData">
+    <app-ficha-cabecera
+        [tipo]="tipoCabecera"
+        [nombre]="doteData.Nombre"
+        [subtitulo]="descripcionEnCabecera ? doteData.Descripcion : null"
+        [manual]="doteData.Manual"
+        [oficial]="doteData.Oficial"
+        (abrirManual)="abrirDetalleManual()">
+    </app-ficha-cabecera>
+
+    <app-ficha-cuerpo>
+        <app-ficha-seccion titulo="Descripción" [texto]="descripcionEnCabecera ? null : doteData.Descripcion"></app-ficha-seccion>
+        <app-ficha-seccion titulo="Beneficio" [texto]="doteData.Beneficio"></app-ficha-seccion>
+        <app-ficha-seccion titulo="Normal" [texto]="doteData.Normal"></app-ficha-seccion>
+        <app-ficha-seccion titulo="Especial" [texto]="doteData.Especial"></app-ficha-seccion>
+
+        <app-ficha-lateral titulo="Prerrequisitos">
+            <!-- Cada condición es la frase que escribe la API («Lanzador arcano de nivel 3»). -->
+            <app-ficha-prerrequisitos
+                [grupos]="prerrequisitosAgrupados"
+                [esNavegable]="esPrerrequisitoNavegable"
+                textoVacio="Sin prerrequisitos."
+                (abrir)="abrirDetallePrerrequisito($event)">
+            </app-ficha-prerrequisitos>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="En resumen">
+            <app-ficha-datos [datos]="resumen" [columnas]="2" [tarjeta]="false"></app-ficha-datos>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Extras" *ngIf="tieneExtras()">
+            <p class="ficha-nota">Admite: {{getTextoExtrasSoportados()}}</p>
+            <div class="ficha-grupo" *ngFor="let extra of getExtrasDisponibles()">
+                <h3 class="ficha-subtitulo">
+                    {{extra.nombre}}
+                    <span class="ficha-subtitulo__ayuda" *ngIf="bloqueExtraRequiereCompetencia(extra.nombre)">Requiere competencia</span>
+                </h3>
+                <ul class="ficha-lista ficha-lista--columnas">
+                    <li class="ficha-lista__item" *ngFor="let item of extra.items">
+                        <button type="button" class="ficha-enlace" *ngIf="esExtraNavegable(extra.nombre); else extraSinEnlace"
+                            (click)="abrirDetalleExtra(extra.nombre, item)">{{item.Nombre}}</button>
+                        <ng-template #extraSinEnlace><span>{{item.Nombre}}</span></ng-template>
+                    </li>
+                </ul>
             </div>
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneTextoVisible(doteData.Descripcion)">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Descripción</mat-chip>
-                <app-texto-manual [texto]="doteData.Descripcion"></app-texto-manual>
-            </div>
-        </div>
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneTextoVisible(doteData.Beneficio)">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Beneficio</mat-chip>
-                <app-texto-manual [texto]="doteData.Beneficio"></app-texto-manual>
-            </div>
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneTextoVisible(doteData.Normal)">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Normal</mat-chip>
-                <app-texto-manual [texto]="doteData.Normal"></app-texto-manual>
-            </div>
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneTextoVisible(doteData.Especial)">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Especial</mat-chip>
-                <app-texto-manual [texto]="doteData.Especial"></app-texto-manual>
-            </div>
-        </div>
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <mat-accordion>
-                <mat-expansion-panel *ngIf="tieneExtras()">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
-                            <h2 class="tw-mb-0">Extras</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let extra of getExtrasSoportadosActivos()">{{extra.nombre}}</mat-chip>
-                    </mat-chip-set>
-                    <div class="tw-p-2" *ngFor="let extra of getExtrasDisponibles()">
-                        <div class="tw-flex tw-flex-wrap tw-items-center tw-m-1 tw-mb-2">
-                            <mat-chip class="sombra-caja-sm chip-titulo">{{extra.nombre}}</mat-chip>
-                            <mat-chip class="sombra3d-sm tw-ms-2" *ngIf="bloqueExtraRequiereCompetencia(extra.nombre)">Requiere competencia</mat-chip>
-                        </div>
-                        <mat-chip-set class="tw-m-1">
-                            <mat-chip class="sombra3d-sm tw-m-1"
-                                [ngClass]="esExtraNavegable(extra.nombre) ? 'chip-clic' : ''"
-                                *ngFor="let item of extra.items"
-                                (click)="abrirDetalleExtra(extra.nombre, item)">
-                                {{item.Nombre}}
-                            </mat-chip>
-                        </mat-chip-set>
-                    </div>
-                </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="getModificadoresActivos().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none">
-                            <h2 class="tw-mb-0">Modificadores</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let mod of getModificadoresActivos()">
-                            {{mod.clave}} {{mod.valor > 0 ? '+' : ''}}{{mod.valor}}
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-                <mat-expansion-panel>
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-b-md">
-                            <h2 class="tw-mb-0">Prerrequisitos</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <div *ngIf="prerrequisitosAgrupados.length > 0; else sinPrerrequisitos">
-                        <div class="prerrequisito-bloque tw-p-2" *ngFor="let grupo of prerrequisitosAgrupados">
-                            <mat-chip class="tw-w-full sombra-caja-sm tw-m-1 tw-mb-2 chip-titulo">
-                                {{grupo.titulo}}
-                                <span class="tw-ms-2 prerrequisito-subtitulo">{{grupo.descripcion}}</span>
-                            </mat-chip>
-                            <!-- Cada condición es la frase que escribe la API («Lanzador arcano de nivel 3»). -->
-                            <mat-chip-set class="tw-m-1">
-                                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1"
-                                    [ngClass]="esPrerrequisitoNavegable(condicion) ? 'chip-clic' : ''"
-                                    *ngFor="let condicion of grupo.condiciones"
-                                    (click)="abrirDetallePrerrequisito(condicion)">
-                                    {{condicion.frase}}
-                                </mat-chip>
-                            </mat-chip-set>
-                        </div>
-                    </div>
-                    <ng-template #sinPrerrequisitos>
-                        <p class="tw-m-2">Sin prerrequisitos.</p>
-                    </ng-template>
-                </mat-expansion-panel>
-            </mat-accordion>
-        </div>
-    </div>
-</div>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Modificadores" *ngIf="getModificadoresActivos().length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let mod of getModificadoresActivos()">
+                    {{mod.clave}} {{mod.valor > 0 ? '+' : ''}}{{mod.valor}}
+                </li>
+            </ul>
+        </app-ficha-lateral>
+    </app-ficha-cuerpo>
+</app-ficha-detalle>

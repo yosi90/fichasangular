@@ -1,20 +1,25 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
+import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesDoteComponent } from './detalles-dote.component';
 
 describe('DetallesDoteComponent', () => {
     let component: DetallesDoteComponent;
     let fixture: ComponentFixture<DetallesDoteComponent>;
+    let manualNav: { abrirDetalleManual: jasmine.Spy };
+    const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
+    const texto = (): string => `${elemento().textContent ?? ''}`;
+    const titulos = (selector: string): string[] =>
+        Array.from(elemento().querySelectorAll(`${selector} .ficha-titulo`)).map((t) => `${t.textContent ?? ''}`.trim());
 
     beforeEach(async () => {
+        manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
         await TestBed.configureTestingModule({
-            declarations: [DetallesDoteComponent],
+            declarations: [DetallesDoteComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
             providers: [
-                {
-                    provide: ManualDetalleNavigationService,
-                    useValue: { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') },
-                },
+                { provide: ManualDetalleNavigationService, useValue: manualNav },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -57,6 +62,31 @@ describe('DetallesDoteComponent', () => {
         fixture.detectChanges();
     });
 
+    /** Una dote completa, como la del lienzo aprobado. */
+    function ataquePoderoso(extra: object = {}): any {
+        return {
+            ...(component.doteData as any),
+            Nombre: 'Ataque poderoso',
+            Manual: { Id: 1, Nombre: 'Manual del jugador 1', Pagina: 92 },
+            Tipos: [{ Id: 1, Nombre: 'General', Usado: 1 }, { Id: 2, Nombre: 'Guerrero', Usado: 1 }],
+            Descripcion: 'Puedes llevar a cabo ataques de cuerpo a cuerpo excepcionalmente potentes.',
+            Beneficio: 'Restas a tus ataques y sumas al daño.',
+            Normal: null,
+            Especial: 'Un guerrero puede elegirla como dote adicional.',
+            Comp_arma: 0,
+            Repetible: 0,
+            Repetible_distinto_extra: 0,
+            Repetible_comb: 0,
+            Extras_soportados: null,
+            Extras_disponibles: null,
+            Modificadores: { Fuerza: 0, Ataque: -1 },
+            Prerrequisitos: {
+                caracteristica: [{ Id_caracteristica: 1, Caracteristica: 'Fuerza', Cantidad: 13, Opcional: 0, Frase: 'Fuerza 13' }],
+            },
+            ...extra,
+        };
+    }
+
     it('emite detalle de arma desde extras', () => {
         const spy = spyOn(component.armaDetallesId, 'emit');
         component.abrirDetalleExtra('Armas', { Id: 7, Nombre: 'Espada larga' });
@@ -71,17 +101,103 @@ describe('DetallesDoteComponent', () => {
         expect(spy).toHaveBeenCalledWith(9);
     });
 
+    it('el prerrequisito de competencia es un enlace que abre la armadura', () => {
+        const spy = spyOn(component.armaduraDetallesId, 'emit');
+        const enlace = Array.from(elemento().querySelectorAll('button.ficha-enlace'))
+            .find((b) => b.textContent?.includes('Competencia con escudo pesado')) as HTMLButtonElement;
+        enlace.click();
+        expect(spy).toHaveBeenCalledWith(9);
+    });
+
+    it('los extras de armas y escudos son enlaces a su detalle', () => {
+        const armaSpy = spyOn(component.armaDetallesId, 'emit');
+        const armaduraSpy = spyOn(component.armaduraDetallesId, 'emit');
+        const enlaces = Array.from(elemento().querySelectorAll('button.ficha-enlace')) as HTMLButtonElement[];
+        enlaces.find((b) => b.textContent?.trim() === 'Espada larga')?.click();
+        enlaces.find((b) => b.textContent?.trim() === 'Escudo pesado')?.click();
+        expect(armaSpy).toHaveBeenCalledWith(7);
+        expect(armaduraSpy).toHaveBeenCalledWith(9);
+    });
+
     it('no muestra la chip general de competencia y la sitúa en extras de escudos', () => {
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
+        const html = texto();
         expect(html).not.toContain('Competencia de arma');
         expect(html).toContain('Escudos');
         expect(html).toContain('Requiere competencia');
+        expect(html).toContain('Admite: Armas, Escudos');
     });
 
     it('marca que solo armas y escudos requieren competencia contextual', () => {
         expect(component.bloqueExtraRequiereCompetencia('Escudos')).toBeTrue();
         expect(component.bloqueExtraRequiereCompetencia('Armas')).toBeTrue();
         expect(component.bloqueExtraRequiereCompetencia('Armaduras')).toBeFalse();
+    });
+
+    it('enseña la ficha común: cabecera, texto a la izquierda y listas siempre a la vista', () => {
+        component.dote = ataquePoderoso();
+        fixture.detectChanges();
+
+        const cabecera = elemento().querySelector('.ficha-cabecera') as HTMLElement;
+        expect(cabecera.querySelector('.ficha-cabecera__tipo')?.textContent?.trim()).toBe('Dote · General · Guerrero');
+        expect(cabecera.querySelector('h1')?.textContent?.trim()).toBe('Ataque poderoso');
+        expect(cabecera.querySelector('.ficha-cabecera__subtitulo')?.textContent).toContain('excepcionalmente potentes');
+        expect(cabecera.querySelector('.ficha-cabecera__manual')?.textContent).toContain('Manual del jugador 1 · pág. 92');
+        expect(cabecera.textContent).toContain('Oficial');
+
+        expect(titulos('.ficha-principal')).toEqual(['Beneficio', 'Especial']);
+        expect(titulos('.ficha-columna-lateral')).toEqual(['Prerrequisitos', 'En resumen', 'Modificadores']);
+        expect(texto()).toContain('Fuerza 13');
+        expect(texto()).toContain('Ataque -1');
+        expect(texto()).not.toContain('Fuerza 0');
+        expect(elemento().querySelector('mat-expansion-panel')).toBeNull();
+        expect(elemento().querySelector('mat-chip')).toBeNull();
+    });
+
+    it('no enseña lo que la API da null ni los bloques vacíos', () => {
+        component.dote = ataquePoderoso({ Especial: null, Beneficio: 'No especifica', Modificadores: null });
+        fixture.detectChanges();
+
+        expect(texto()).not.toContain('Normal');
+        expect(texto()).not.toContain('Especial');
+        expect(texto()).not.toContain('Beneficio');
+        expect(texto()).not.toContain('Extras');
+        expect(texto()).not.toContain('Modificadores');
+        expect(texto()).not.toContain('Origen');
+        expect((elemento().querySelector('.ficha-principal') as HTMLElement).classList).toContain('ficha-oculta');
+    });
+
+    it('«En resumen» dice cómo se elige y, en un personaje, su origen', () => {
+        component.dote = {
+            Dote: ataquePoderoso({ Repetible: 1, Repetible_comb: 1 }),
+            Contexto: { Entidad: 'personaje', Id_personaje: 3, Extra: '', Id_extra: 0, Origen: 'Nivel 1' },
+        } as any;
+        fixture.detectChanges();
+
+        const resumen = Array.from(elemento().querySelectorAll('.ficha-dato'))
+            .map((d) => `${d.querySelector('dt')?.textContent?.trim()} ${d.querySelector('dd')?.textContent?.trim()}`);
+        expect(resumen).toEqual(['Tipos General, Guerrero', 'Se elige Repetible, Repetible en combinación', 'Origen Nivel 1']);
+
+        component.dote = ataquePoderoso();
+        fixture.detectChanges();
+        expect(texto()).toContain('Una vez');
+    });
+
+    it('una descripción larga va como sección y no en la cabecera', () => {
+        component.dote = ataquePoderoso({ Descripcion: 'Primer párrafo.\n\nSegundo párrafo.' });
+        fixture.detectChanges();
+        expect(elemento().querySelector('.ficha-cabecera__subtitulo')).toBeNull();
+        expect(titulos('.ficha-principal')).toEqual(['Descripción', 'Beneficio', 'Especial']);
+    });
+
+    it('homebrew: la etiqueta lo dice', () => {
+        component.dote = ataquePoderoso({ Oficial: false });
+        fixture.detectChanges();
+        expect(elemento().querySelector('.ficha-etiqueta--aviso')?.textContent?.trim()).toBe('Homebrew');
+    });
+
+    it('pulsar el manual abre su detalle', () => {
+        (elemento().querySelector('button.ficha-cabecera__manual') as HTMLButtonElement).click();
+        expect(manualNav.abrirDetalleManual).toHaveBeenCalledWith({ id: 1, nombre: 'Manual base' });
     });
 
     it('enseña la aptitud especial con su frase, como los demás prerrequisitos', () => {
@@ -124,10 +240,18 @@ describe('DetallesDoteComponent', () => {
         expect(grupos[1].descripcion).toContain('Basta con una');
         expect(grupos[1].condiciones.map((c) => c.frase)).toEqual(['Expulsar o reprender muertos vivientes', 'Expulsar muertos vivientes']);
 
-        const texto = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(texto).toContain('Soltura con un arma (el arma elegida)');
-        expect(texto).not.toContain('Frase');
-        expect(texto).not.toContain('Extra:');
+        const html = texto();
+        expect(html).toContain('Soltura con un arma (el arma elegida)');
+        expect(html).toContain('Obligatorios');
+        expect(html).toContain('Elección A');
+        expect(html).not.toContain('Frase');
+        expect(html).not.toContain('Extra:');
+    });
+
+    it('sin prerrequisitos lo dice', () => {
+        component.dote = ataquePoderoso({ Prerrequisitos: {} });
+        fixture.detectChanges();
+        expect(texto()).toContain('Sin prerrequisitos.');
     });
 
     it('sin frase (una caché anterior) enseña el nombre del tipo', () => {

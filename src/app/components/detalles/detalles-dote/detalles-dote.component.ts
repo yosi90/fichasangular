@@ -1,8 +1,8 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { DatoFicha, esTextoCorto, unirTipo } from 'src/app/components/detalles/ficha';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import {
     CondicionPrerrequisito,
     GrupoPrerrequisitos,
@@ -13,7 +13,6 @@ import {
 @Component({
     selector: 'app-detalles-dote',
     templateUrl: './detalles-dote.component.html',
-    styleUrls: ['./detalles-dote.component.sass'],
     standalone: false
 })
 export class DetallesDoteComponent {
@@ -34,6 +33,37 @@ export class DetallesDoteComponent {
             this.contexto = undefined;
         }
         this.prerrequisitosAgrupados = agruparPrerrequisitos(this.doteData?.Prerrequisitos);
+        this.resumen = this.construirResumen();
+        this.descripcionEnCabecera = esTextoCorto(this.doteData?.Descripcion);
+    }
+
+    /** «En resumen», en la columna derecha (como en el lienzo aprobado). */
+    resumen: DatoFicha[] = [];
+
+    /** «Dote · General · Guerrero». */
+    get tipoCabecera(): string {
+        return unirTipo(['Dote', ...(this.doteData?.Tipos ?? []).map(t => t.Nombre)]);
+    }
+
+    /** La descripción va en cursiva bajo el nombre si es un párrafo corto; si no, como sección del cuerpo. */
+    descripcionEnCabecera = false;
+
+    private construirResumen(): DatoFicha[] {
+        return [
+            { etiqueta: 'Tipos', valor: this.getTipos() },
+            { etiqueta: 'Se elige', valor: this.textoRepeticion() },
+            { etiqueta: 'Origen', valor: this.getOrigenContexto() },
+        ];
+    }
+
+    /** «Una vez», o las formas en que se puede repetir. */
+    private textoRepeticion(): string {
+        const formas = [
+            this.doteData?.Repetible ? 'Repetible' : '',
+            this.doteData?.Repetible_distinto_extra ? 'Repetible con extra distinto' : '',
+            this.doteData?.Repetible_comb ? 'Repetible en combinación' : '',
+        ].filter(Boolean);
+        return formas.length > 0 ? formas.join(', ') : 'Una vez';
     }
 
     abrirDetalleManual() {
@@ -111,16 +141,20 @@ export class DetallesDoteComponent {
         ].filter(extra => extra.activo);
     }
 
+    /** «Armas, Escudos»: los tipos de extra que admite. */
+    getTextoExtrasSoportados(): string {
+        return this.getExtrasSoportadosActivos().map(extra => extra.nombre).join(', ');
+    }
+
     tieneExtras(): boolean {
         return this.getExtrasSoportadosActivos().length > 0;
     }
 
-    readonly tieneTextoVisible = tieneTextoVisible;
-
-    esPrerrequisitoNavegable(condicion: CondicionPrerrequisito): boolean {
+    /** Las competencias con un arma o una armadura llevan a su detalle (función: la usa `<app-ficha-prerrequisitos>`). */
+    readonly esPrerrequisitoNavegable = (condicion: CondicionPrerrequisito): boolean => {
         const destino = destinoPrerrequisito(condicion);
         return destino?.entidad === 'arma' || destino?.entidad === 'armadura';
-    }
+    };
 
     abrirDetallePrerrequisito(condicion: CondicionPrerrequisito): void {
         const destino = destinoPrerrequisito(condicion);
