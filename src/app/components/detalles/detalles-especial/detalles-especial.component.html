@@ -1,79 +1,56 @@
-<div class="tw-w-full tw-px-3 detalle-view" *ngIf="especial">
-    <div class="tw-flex tw-flex-wrap">
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
-                    {{especial.Nombre}}
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="especial.Extra">Usa extra</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="especial.Repetible">Repetible</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="especial.Repite_mismo_extra">Repite mismo extra</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="especial.Repite_combinacion">Repite combinacion</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="especial.Activa_extra">Activa extra</mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="(especial.Caracteristica?.Id ?? 0) > 0">
-                    Caracteristica
-                    <mat-chip class="sombra3d-sm tw-m-1">{{especial.Caracteristica.Nombre}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="(especial.Subtipo?.Id ?? 0) > 0">
-                    Subtipo
-                    <mat-chip class="chip-clic sombra3d-sm tw-m-1" matTooltip="Pulsa para ver detalles"
-                        [matTooltipShowDelay]="250" matTooltipClass="tt-accent"
-                        (click)="abrirDetalleSubtipo()">
-                        {{especial.Subtipo.Nombre}}
-                    </mat-chip>
-                </mat-chip>
-            </div>
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneTextoVisible(especial.Descripcion)">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Descripcion</mat-chip>
-                <p class="tw-m-1">{{especial.Descripcion}}</p>
-            </div>
-        </div>
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="getBonificadoresActivos().length > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Bonificadores</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let mod of getBonificadoresActivos()">
-                    {{mod.clave}} {{mod.valor > 0 ? '+' : ''}}{{mod.valor}}
-                </mat-chip>
-            </div>
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="getFlagsExtraActivos().length > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Flags extra</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let flag of getFlagsExtraActivos()">
-                    {{flag}}
-                </mat-chip>
-            </div>
-        </div>
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <mat-accordion>
-                <mat-expansion-panel *ngIf="getExtrasOrdenados().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-t-md">
-                            <h2 class="tw-mb-0">Extras</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let extra of getExtrasOrdenados()">
-                            {{extra.Extra}}
-                            <mat-chip class="sombra3d-sm tw-m-1">Orden {{extra.Orden}}</mat-chip>
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-                <mat-expansion-panel *ngIf="getHabilidadesOrdenadas().length > 0">
-                    <mat-expansion-panel-header>
-                        <button mat-stroked-button color="accent" class="tw-rounded-none tw-rounded-b-md">
-                            <h2 class="tw-mb-0">Habilidades</h2>
-                        </button>
-                    </mat-expansion-panel-header>
-                    <mat-chip-set class="tw-m-1">
-                        <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let habilidad of getHabilidadesOrdenadas()">
-                            {{habilidad.Habilidad}}
-                            <mat-chip class="sombra3d-sm tw-m-1">Rangos {{habilidad.Rangos}}</mat-chip>
-                            <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(habilidad))">
-                                {{getExtraVisibleHabilidad(habilidad)}}
-                            </mat-chip>
-                        </mat-chip>
-                    </mat-chip-set>
-                </mat-expansion-panel>
-            </mat-accordion>
-        </div>
-    </div>
-</div>
+<app-ficha-detalle *ngIf="especial">
+    <app-ficha-cabecera
+        tipo="Especial de clase"
+        [nombre]="especial.Nombre"
+        [oficial]="especial.Oficial"
+        [etiquetas]="etiquetas">
+    </app-ficha-cabecera>
+
+    <app-ficha-datos [datos]="datos" titulo="Datos del especial"></app-ficha-datos>
+
+    <app-ficha-cuerpo>
+        <app-ficha-seccion titulo="Descripción" [texto]="especial.Descripcion"></app-ficha-seccion>
+
+        <app-ficha-lateral titulo="Bonificadores" *ngIf="bonificadores.length > 0">
+            <table class="ficha-pares">
+                <tbody>
+                    <tr *ngFor="let mod of bonificadores">
+                        <td>{{mod.clave}}</td>
+                        <td>{{mod.valor > 0 ? '+' : ''}}{{mod.valor}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Lo que da el extra" *ngIf="flagsExtra.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let flag of flagsExtra">
+                    <mat-icon class="ficha-icono" aria-hidden="true">check</mat-icon>
+                    <span>{{flag}}</span>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Extras" *ngIf="extras.length > 0">
+            <table class="ficha-pares">
+                <tbody>
+                    <tr *ngFor="let extra of extras">
+                        <td>{{extra.Extra}}</td>
+                        <td><span class="ficha-nota">orden</span> {{extra.Orden}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Habilidades" *ngIf="habilidades.length > 0">
+            <table class="ficha-pares">
+                <tbody>
+                    <tr *ngFor="let habilidad of habilidades">
+                        <td>{{habilidad.nombre}} <span class="ficha-nota" *ngIf="tieneTextoVisible(habilidad.extra)">({{habilidad.extra}})</span></td>
+                        <td>{{habilidad.rangos}} <span class="ficha-nota">{{habilidad.rangos === 1 ? 'rango' : 'rangos'}}</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </app-ficha-lateral>
+    </app-ficha-cuerpo>
+</app-ficha-detalle>

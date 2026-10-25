@@ -1,9 +1,12 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { DatoFicha, EtiquetaFicha, unirTipo } from 'src/app/components/detalles/ficha';
+import { descripcionEquipoVisible } from 'src/app/components/shared/descripcion-equipo/descripcion-equipo.component';
 import {
     ConjuntoObjetosDetalle,
     EncantamientoDetalle,
     EntradaEquipo,
     EquipoAura,
+    EquipoRef,
     MaterialDetalle,
     ModificadorEstructurado,
     MunicionDetalle,
@@ -12,166 +15,100 @@ import {
 } from 'src/app/interfaces/equipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { formatoNumero, textoAplicaA, textoConSigno, textoMejora, textoModificador, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
-import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
-
-/** Un dato corto del detalle: «Dureza 15». */
-interface DatoEquipo {
-    etiqueta: string;
-    valor: string;
-    ayuda?: string;
-}
 
 const CATEGORIA_OBJETO: Readonly<Record<string, string>> = { mundano: 'Mundano', magico: 'Mágico', psionico: 'Psiónico' };
 
+/** El nombre de cada catálogo, para el tipo de la cabecera. */
+const TIPO_CATALOGO: Readonly<Record<TipoCatalogoEquipo, string>> = {
+    objeto: 'Objeto',
+    material: 'Material especial',
+    municion: 'Munición',
+    encantamiento: 'Aptitud especial',
+    conjunto: 'Conjunto de objetos',
+};
+
+/** Un modificador en una línea; los condicionales se enseñan y no se suman. */
+interface ModificadorVisible {
+    texto: string;
+    condicional: boolean;
+}
+
+/** Un conjuro de un objeto, con lo que se sepa de él. */
+interface ConjuroObjetoVisible {
+    id: number;
+    nombre: string;
+    nivelLanzador: string;
+    cargasPorUso: string;
+    usosPorDia: string;
+}
+
+/** Un coste de un material según a qué se aplica («Armadura ligera», +1.000 po). */
+interface CosteMaterialVisible {
+    aplicacion: string;
+    coste: string;
+    porLibra: string;
+    multiplicador: string;
+    encantar: string;
+}
+
+/** Qué columnas de una tabla tienen algo en alguna fila (las vacías en todas no se pintan). */
+type Columnas<T> = Partial<Record<keyof T, boolean>>;
+
 /**
  * El detalle de una entrada de los catálogos nuevos del equipo (objeto, material, munición, aptitud especial de armas y
- * armaduras, conjunto de objetos), con el patrón de las vistas `detalles-*`. Los enlaces a otras entradas (las armas que
- * disparan una munición, las piezas de un conjunto, los requisitos de una aptitud) abren su detalle.
+ * armaduras, conjunto de objetos), con la ficha común de los detalles. Los enlaces a otras entradas (la base de un arma
+ * o armadura específica, las armas que disparan una munición, las piezas de un conjunto, los requisitos de una aptitud)
+ * abren su detalle.
  */
 @Component({
     selector: 'app-detalles-equipo',
     templateUrl: './detalles-equipo.component.html',
-    styleUrls: ['./detalles-equipo.component.sass'],
     standalone: false
 })
 export class DetallesEquipoComponent {
-    @Input() entrada!: EntradaEquipo;
+    private entradaActual!: EntradaEquipo;
+
+    @Input()
+    set entrada(valor: EntradaEquipo) {
+        this.entradaActual = valor;
+        this.recalcular();
+    }
+    get entrada(): EntradaEquipo {
+        return this.entradaActual;
+    }
+
     @Output() equipoDetalles = new EventEmitter<{ tipo: TipoCatalogoEquipo; id: number; }>();
     @Output() armaDetallesId = new EventEmitter<number>();
     @Output() armaduraDetallesId = new EventEmitter<number>();
     @Output() doteDetallesId = new EventEmitter<number>();
     @Output() conjuroDetallesId = new EventEmitter<number>();
 
-    readonly tieneTextoVisible = tieneTextoVisible;
-    readonly textoModificador = textoModificador;
+    objeto: ObjetoDetalle | null = null;
+    material: MaterialDetalle | null = null;
+    municion: MunicionDetalle | null = null;
+    encantamiento: EncantamientoDetalle | null = null;
+    conjunto: ConjuntoObjetosDetalle | null = null;
+
+    /** «Objeto maravilloso · Mágico», «Material especial»… */
+    tipoCabecera = '';
+    /** Lo que es la entrada además de sus datos: maldito, inteligente, reliquia, plantilla. */
+    etiquetas: EtiquetaFicha[] = [];
+    datos: DatoFicha[] = [];
+    conDescripcion = false;
+    modificadores: ModificadorVisible[] = [];
+    /** Lo que da un material además de sus efectos: cuenta como de gran calidad, supera la RD… */
+    propiedadesMaterial: string[] = [];
+    danosEncantamiento: string[] = [];
+    creacion: DatoFicha[] = [];
+    tieneCreacion = false;
+    tieneRequisitosEncantamiento = false;
+    conjuros: ConjuroObjetoVisible[] = [];
+    columnasConjuros: Columnas<ConjuroObjetoVisible> = {};
+    costesMaterial: CosteMaterialVisible[] = [];
+    columnasCostes: Columnas<CosteMaterialVisible> = {};
 
     constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
-
-    get objeto(): ObjetoDetalle | null { return this.entrada?.tipo === 'objeto' ? this.entrada.item : null; }
-    get material(): MaterialDetalle | null { return this.entrada?.tipo === 'material' ? this.entrada.item : null; }
-    get municion(): MunicionDetalle | null { return this.entrada?.tipo === 'municion' ? this.entrada.item : null; }
-    get encantamiento(): EncantamientoDetalle | null { return this.entrada?.tipo === 'encantamiento' ? this.entrada.item : null; }
-    get conjunto(): ConjuntoObjetosDetalle | null { return this.entrada?.tipo === 'conjunto' ? this.entrada.item : null; }
-
-    get manualLabel(): string {
-        return etiquetaManual(this.entrada?.item?.Manual);
-    }
-
-    get tieneManual(): boolean {
-        return tieneTextoVisible(this.entrada?.item?.Manual?.Nombre);
-    }
-
-    get modificadores(): ModificadorEstructurado[] {
-        return this.objeto?.Modificadores ?? this.encantamiento?.Modificadores ?? [];
-    }
-
-    /** Los datos cortos de la entrada, según su tipo. */
-    get datos(): DatoEquipo[] {
-        const datos: DatoEquipo[] = [];
-        const poner = (etiqueta: string, valor: string | null | undefined, ayuda?: string) => {
-            if (tieneTextoVisible(valor))
-                datos.push({ etiqueta, valor: `${valor}`, ayuda });
-        };
-        const objeto = this.objeto;
-        if (objeto) {
-            poner('Tipo', objeto.Tipo ? `${objeto.Tipo.Nombre} (${CATEGORIA_OBJETO[objeto.Tipo.Categoria] ?? objeto.Tipo.Categoria})` : null);
-            if (objeto.Generico_conjuro) {
-                poner('Precio', `${textoPrecio(objeto.Generico_conjuro.Precio_por_nivel)} × nivel del conjuro × nivel de lanzador`,
-                    'El conjuro de nivel 0 cuenta como ½. El conjuro se elige al comprarlo.');
-                poner('Conjuros hasta el nivel', this.numero(objeto.Generico_conjuro.Nivel_maximo));
-            } else {
-                poner('Precio', objeto.Precio === null ? null : textoPrecio(objeto.Precio));
-            }
-            poner('Peso', objeto.Peso === null ? null : textoPeso(objeto.Peso));
-            poner('Ranura', objeto.Ranura?.Nombre);
-            poner('Nivel de objeto', this.numero(objeto.Nivel_objeto));
-            poner('Nivel de lanzador', this.numero(objeto.Nivel_lanzador));
-            poner('Aura', this.textoAura(objeto.Aura));
-            poner('Activación', objeto.Activaciones
-                .map((activacion) => activacion.Accion ? `${activacion.Nombre} (${activacion.Accion.Nombre.toLowerCase()})` : activacion.Nombre)
-                .join(', '));
-            poner('Cargas', this.numero(objeto.Cargas));
-            poner('Usos al día', this.numero(objeto.Usos_por_dia));
-            poner('Para usarlo', objeto.Requisitos_uso);
-            poner('Montura', objeto.Monstruo?.Nombre);
-            poner('Mejora', objeto.Bonificador_mejora === null ? null : textoMejora(objeto.Bonificador_mejora, objeto.Bonificador_mejora_2));
-            poner('Material', objeto.Material?.Nombre);
-        }
-        const material = this.material;
-        if (material) {
-            poner('Dureza', this.numero(material.Dureza));
-            poner('PG por pulgada', this.numero(material.Pg_por_pulgada));
-            const efectos = material.Efectos;
-            poner('Peso', efectos.Peso_multiplicador === null ? null : `×${formatoNumero(efectos.Peso_multiplicador)}`);
-            poner('Destreza máxima', efectos.Bon_des_mas === null ? null : textoConSigno(efectos.Bon_des_mas));
-            poner('Penalizador de armadura', efectos.Penalizador_menos === null ? null : `${formatoNumero(efectos.Penalizador_menos)} menos`);
-            poner('Fallo de conjuro arcano', efectos.Fallo_arcano_menos === null ? null : `${formatoNumero(efectos.Fallo_arcano_menos)}% menos`);
-            poner('Daño', efectos.Dano_mod === null ? null : textoConSigno(efectos.Dano_mod));
-        }
-        const municion = this.municion;
-        if (municion) {
-            poner('Precio', municion.Precio === null ? null : `${textoPrecio(municion.Precio)} las ${municion.Cantidad_por_precio}`);
-            poner('Peso', municion.Peso === null ? null : `${textoPeso(municion.Peso)} las ${municion.Cantidad_por_precio}`);
-        }
-        const encantamiento = this.encantamiento;
-        if (encantamiento) {
-            poner('Bonificador equivalente', encantamiento.Modificador > 0 ? textoConSigno(encantamiento.Modificador) : null);
-            poner('Precio', encantamiento.Coste > 0 ? textoPrecio(encantamiento.Coste) : null);
-            poner('Se aplica a', textoAplicaA(encantamiento.Aplica_a));
-            poner('Solo armas', encantamiento.Tipos_dano_requeridos.map((tipo) => tipo.Nombre.toLowerCase()).join(', '));
-            poner('Nivel de lanzador', this.numero(encantamiento.Nivel_lanzador));
-            poner('Aura', this.textoAura(encantamiento.Aura));
-        }
-        return datos;
-    }
-
-    /** Lo que es la entrada además de sus datos: maldito, inteligente, reliquia, de gran calidad… */
-    get marcas(): string[] {
-        const marcas: string[] = [];
-        if (this.objeto?.Maldito) marcas.push('Maldito');
-        if (this.objeto?.Inteligente) marcas.push('Inteligente');
-        if (this.objeto?.Reliquia) marcas.push('Reliquia');
-        if (this.material?.Cuenta_como_gran_calidad) marcas.push('Cuenta como de gran calidad');
-        if (this.material?.Supera_rd) marcas.push('Supera la reducción de daño');
-        if (this.material?.Efectos.Categoria_mas_ligera) marcas.push('La armadura cuenta una categoría más ligera');
-        if (this.encantamiento?.Es_plantilla) marcas.push('Plantilla');
-        return marcas;
-    }
-
-    /** Los costes de un material, uno por línea: «Armadura ligera: +1.000 po». */
-    get costesMaterial(): string[] {
-        return (this.material?.Costes ?? []).map((coste) => {
-            const partes: string[] = [];
-            if (coste.Coste !== null) partes.push(`+${textoPrecio(coste.Coste)}`);
-            if (coste.Coste_por_libra !== null) partes.push(`+${textoPrecio(coste.Coste_por_libra)} por libra`);
-            if (coste.Multiplicador_precio !== null) partes.push(`precio ×${formatoNumero(coste.Multiplicador_precio)}`);
-            if (coste.Coste_encantar !== null) partes.push(`+${textoPrecio(coste.Coste_encantar)} al encantarlo`);
-            return `${coste.Aplicacion.Nombre}: ${partes.join(', ') || '—'}`;
-        });
-    }
-
-    get danosEncantamiento(): string[] {
-        return (this.encantamiento?.Danos ?? []).map((dano) =>
-            [dano.Dados, dano.Tipo_dano?.Nombre?.toLowerCase() ?? '', dano.Condicion ?? ''].filter((p) => p.length > 0).join(' '));
-    }
-
-    get creacion(): DatoEquipo[] {
-        const creacion = this.objeto?.Creacion;
-        if (!creacion)
-            return [];
-        return [
-            { etiqueta: 'Coste', valor: creacion.Coste_po === null ? '' : textoPrecio(creacion.Coste_po) },
-            { etiqueta: 'PX', valor: this.numero(creacion.Coste_px) ?? '' },
-            { etiqueta: 'Días', valor: this.numero(creacion.Dias) ?? '' },
-            { etiqueta: 'Otros requisitos', valor: creacion.Otros_requisitos ?? '' },
-        ].filter((dato) => tieneTextoVisible(dato.valor));
-    }
-
-    get tieneCreacion(): boolean {
-        const creacion = this.objeto?.Creacion;
-        return !!creacion && (this.creacion.length > 0 || creacion.Requisitos.Dotes.length > 0 || creacion.Requisitos.Conjuros.length > 0);
-    }
 
     abrirDetalleManual(): void {
         this.manualDetalleNavSvc.abrirDetalleManual({ id: this.entrada?.item?.Manual?.Id, nombre: this.entrada?.item?.Manual?.Nombre });
@@ -202,6 +139,174 @@ export class DetallesEquipoComponent {
             this.conjuroDetallesId.emit(Number(id));
     }
 
+    private recalcular(): void {
+        const entrada = this.entrada;
+        this.objeto = entrada?.tipo === 'objeto' ? entrada.item : null;
+        this.material = entrada?.tipo === 'material' ? entrada.item : null;
+        this.municion = entrada?.tipo === 'municion' ? entrada.item : null;
+        this.encantamiento = entrada?.tipo === 'encantamiento' ? entrada.item : null;
+        this.conjunto = entrada?.tipo === 'conjunto' ? entrada.item : null;
+
+        this.tipoCabecera = this.construirTipo();
+        this.etiquetas = this.construirEtiquetas();
+        this.datos = this.construirDatos();
+        this.conDescripcion = descripcionEquipoVisible(entrada?.item);
+        this.modificadores = (this.objeto?.Modificadores ?? this.encantamiento?.Modificadores ?? [])
+            .map((modificador: ModificadorEstructurado) => ({ texto: textoModificador(modificador), condicional: !!modificador.Condicion }));
+        this.propiedadesMaterial = this.construirPropiedadesMaterial();
+        this.danosEncantamiento = (this.encantamiento?.Danos ?? []).map((dano) =>
+            [dano.Dados, dano.Tipo_dano?.Nombre?.toLowerCase() ?? '', dano.Condicion ?? ''].filter((p) => p.length > 0).join(' '));
+        this.creacion = this.construirCreacion();
+        const requisitosCreacion = this.objeto?.Creacion?.Requisitos;
+        this.tieneCreacion = this.creacion.length > 0 || (requisitosCreacion?.Dotes?.length ?? 0) + (requisitosCreacion?.Conjuros?.length ?? 0) > 0;
+        this.tieneRequisitosEncantamiento = (this.encantamiento?.Requisitos?.Dotes?.length ?? 0) + (this.encantamiento?.Requisitos?.Conjuros?.length ?? 0) > 0;
+        this.conjuros = (this.objeto?.Conjuros ?? []).map((conjuro) => ({
+            id: conjuro.Id,
+            nombre: conjuro.Nombre,
+            nivelLanzador: this.numero(conjuro.Nivel_lanzador) ?? '',
+            cargasPorUso: this.numero(conjuro.Cargas_por_uso) ?? '',
+            usosPorDia: conjuro.Usos_por_dia === null ? '' : `${formatoNumero(conjuro.Usos_por_dia)}/día`,
+        }));
+        this.columnasConjuros = columnasConDatos(this.conjuros, ['nivelLanzador', 'cargasPorUso', 'usosPorDia']);
+        this.costesMaterial = (this.material?.Costes ?? []).map((coste) => ({
+            aplicacion: coste.Aplicacion?.Nombre ?? '',
+            coste: coste.Coste === null ? '' : `+${textoPrecio(coste.Coste)}`,
+            porLibra: coste.Coste_por_libra === null ? '' : `+${textoPrecio(coste.Coste_por_libra)}`,
+            multiplicador: coste.Multiplicador_precio === null ? '' : `×${formatoNumero(coste.Multiplicador_precio)}`,
+            encantar: coste.Coste_encantar === null ? '' : `+${textoPrecio(coste.Coste_encantar)}`,
+        }));
+        this.columnasCostes = columnasConDatos(this.costesMaterial, ['coste', 'porLibra', 'multiplicador', 'encantar']);
+    }
+
+    private construirTipo(): string {
+        const entrada = this.entrada;
+        if (!entrada)
+            return '';
+        const objeto = this.objeto;
+        if (objeto?.Tipo)
+            return unirTipo([objeto.Tipo.Nombre, CATEGORIA_OBJETO[objeto.Tipo.Categoria] ?? objeto.Tipo.Categoria]);
+        return TIPO_CATALOGO[entrada.tipo] ?? '';
+    }
+
+    private construirEtiquetas(): EtiquetaFicha[] {
+        const etiquetas: EtiquetaFicha[] = [];
+        if (this.objeto?.Maldito) etiquetas.push({ texto: 'Maldito', aviso: true });
+        if (this.objeto?.Inteligente) etiquetas.push({ texto: 'Inteligente' });
+        if (this.objeto?.Reliquia) etiquetas.push({ texto: 'Reliquia' });
+        if (this.encantamiento?.Es_plantilla) etiquetas.push({ texto: 'Plantilla' });
+        return etiquetas;
+    }
+
+    private construirPropiedadesMaterial(): string[] {
+        const material = this.material;
+        if (!material)
+            return [];
+        return [
+            material.Cuenta_como_gran_calidad ? 'Cuenta como de gran calidad' : '',
+            material.Supera_rd ? 'Supera la reducción de daño' : '',
+            material.Efectos?.Categoria_mas_ligera ? 'La armadura cuenta una categoría más ligera' : '',
+        ].filter((propiedad) => propiedad.length > 0);
+    }
+
+    /** Los datos clave de la entrada, según su tipo. Los que no tienen valor no se enseñan. */
+    private construirDatos(): DatoFicha[] {
+        const objeto = this.objeto;
+        if (objeto)
+            return this.datosObjeto(objeto);
+        const material = this.material;
+        if (material) {
+            const efectos = material.Efectos;
+            return [
+                { etiqueta: 'Dureza', valor: this.numero(material.Dureza) },
+                { etiqueta: 'PG por pulgada', valor: this.numero(material.Pg_por_pulgada) },
+                { etiqueta: 'Peso', valor: efectos?.Peso_multiplicador == null ? null : `×${formatoNumero(efectos.Peso_multiplicador)}` },
+                { etiqueta: 'Destreza máxima', valor: efectos?.Bon_des_mas == null ? null : textoConSigno(efectos.Bon_des_mas) },
+                { etiqueta: 'Penalizador de armadura', valor: efectos?.Penalizador_menos == null ? null : `${formatoNumero(efectos.Penalizador_menos)} menos` },
+                { etiqueta: 'Fallo de conjuro arcano', valor: efectos?.Fallo_arcano_menos == null ? null : `${formatoNumero(efectos.Fallo_arcano_menos)}% menos` },
+                { etiqueta: 'Daño', valor: efectos?.Dano_mod == null ? null : textoConSigno(efectos.Dano_mod) },
+            ];
+        }
+        const municion = this.municion;
+        if (municion) {
+            return [
+                { etiqueta: 'Precio', valor: municion.Precio === null ? null : `${textoPrecio(municion.Precio)} las ${municion.Cantidad_por_precio}` },
+                { etiqueta: 'Peso', valor: municion.Peso === null ? null : `${textoPeso(municion.Peso)} las ${municion.Cantidad_por_precio}` },
+            ];
+        }
+        const encantamiento = this.encantamiento;
+        if (encantamiento) {
+            const base = encantamiento.Encantamiento_base;
+            return [
+                { etiqueta: 'Bonificador equivalente', valor: encantamiento.Modificador > 0 ? textoConSigno(encantamiento.Modificador) : null },
+                { etiqueta: 'Precio', valor: encantamiento.Coste > 0 ? textoPrecio(encantamiento.Coste) : null },
+                { etiqueta: 'Se aplica a', valor: textoAplicaA(encantamiento.Aplica_a) },
+                { etiqueta: 'Solo armas', valor: encantamiento.Tipos_dano_requeridos.map((tipo) => tipo.Nombre.toLowerCase()).join(', ') },
+                { etiqueta: 'Nivel de lanzador', valor: this.numero(encantamiento.Nivel_lanzador) },
+                { etiqueta: 'Aura', valor: this.textoAura(encantamiento.Aura) },
+                { ...this.enlace('Requiere antes', base, () => this.abrirEquipo('encantamiento', base?.Id ?? 0)), ayuda: 'La aptitud que pide antes' },
+            ];
+        }
+        return [];
+    }
+
+    private datosObjeto(objeto: ObjetoDetalle): DatoFicha[] {
+        const datos: DatoFicha[] = [
+            // Las armas y armaduras mágicas específicas: su base (que se abre), su mejora y su material.
+            this.enlace('Arma base', objeto.Arma_base, () => this.abrirArma(objeto.Arma_base?.Id ?? 0)),
+            this.enlace('Armadura base', objeto.Armadura_base, () => this.abrirArmadura(objeto.Armadura_base?.Id ?? 0)),
+            { etiqueta: 'Mejora', valor: objeto.Bonificador_mejora === null ? null : textoMejora(objeto.Bonificador_mejora, objeto.Bonificador_mejora_2) },
+            this.enlace('Material', objeto.Material, () => this.abrirEquipo('material', objeto.Material?.Id ?? 0)),
+        ];
+        if (objeto.Generico_conjuro) {
+            datos.push(
+                {
+                    etiqueta: 'Precio',
+                    valor: `${textoPrecio(objeto.Generico_conjuro.Precio_por_nivel)} × nivel del conjuro × nivel de lanzador`,
+                    ayuda: 'El conjuro de nivel 0 cuenta como ½. El conjuro se elige al comprarlo.',
+                },
+                { etiqueta: 'Conjuros hasta el nivel', valor: this.numero(objeto.Generico_conjuro.Nivel_maximo) },
+            );
+        } else {
+            datos.push({ etiqueta: 'Precio', valor: objeto.Precio === null ? null : textoPrecio(objeto.Precio) });
+        }
+        datos.push(
+            { etiqueta: 'Peso', valor: objeto.Peso === null ? null : textoPeso(objeto.Peso) },
+            { etiqueta: 'Ranura', valor: objeto.Ranura?.Nombre },
+            { etiqueta: 'Nivel de objeto', valor: this.numero(objeto.Nivel_objeto) },
+            { etiqueta: 'Nivel de lanzador', valor: this.numero(objeto.Nivel_lanzador) },
+            { etiqueta: 'Aura', valor: this.textoAura(objeto.Aura) },
+            {
+                etiqueta: 'Activación',
+                valor: (objeto.Activaciones ?? [])
+                    .map((activacion) => activacion.Accion ? `${activacion.Nombre} (${activacion.Accion.Nombre.toLowerCase()})` : activacion.Nombre)
+                    .join(', '),
+            },
+            { etiqueta: 'Cargas', valor: this.numero(objeto.Cargas) },
+            { etiqueta: 'Usos al día', valor: this.numero(objeto.Usos_por_dia) },
+            { etiqueta: 'Para usarlo', valor: objeto.Requisitos_uso },
+            { etiqueta: 'Montura', valor: objeto.Monstruo?.Nombre },
+            this.enlace('Conjunto', objeto.Conjunto, () => this.abrirEquipo('conjunto', objeto.Conjunto?.Id ?? 0)),
+        );
+        return datos;
+    }
+
+    /** Un dato que abre otra entrada si tiene id; si no, es solo texto. */
+    private enlace(etiqueta: string, ref: EquipoRef | null | undefined, abrir: () => void): DatoFicha {
+        return { etiqueta, valor: ref?.Nombre, alPulsar: Number(ref?.Id ?? 0) > 0 ? abrir : undefined };
+    }
+
+    private construirCreacion(): DatoFicha[] {
+        const creacion = this.objeto?.Creacion;
+        if (!creacion)
+            return [];
+        return [
+            { etiqueta: 'Coste', valor: creacion.Coste_po === null ? null : textoPrecio(creacion.Coste_po) },
+            { etiqueta: 'PX', valor: this.numero(creacion.Coste_px) },
+            { etiqueta: 'Días', valor: this.numero(creacion.Dias) },
+            { etiqueta: 'Otros requisitos', valor: creacion.Otros_requisitos, ancho: 2 },
+        ].filter((dato) => tieneTextoVisible(dato.valor));
+    }
+
     private numero(valor: number | null | undefined): string | null {
         return valor === null || valor === undefined ? null : formatoNumero(valor);
     }
@@ -211,4 +316,12 @@ export class DetallesEquipoComponent {
         const escuelas = (aura?.Escuelas ?? []).map((escuela) => escuela.Nombre.toLowerCase()).join(', ');
         return [intensidad, escuelas].filter((parte) => parte.length > 0).join(', ');
     }
+}
+
+/** Las columnas que tienen algún valor en alguna fila. */
+function columnasConDatos<T>(filas: T[], columnas: (keyof T)[]): Columnas<T> {
+    const resultado: Columnas<T> = {};
+    for (const columna of columnas)
+        resultado[columna] = filas.some((fila) => `${fila[columna] ?? ''}`.trim().length > 0);
+    return resultado;
 }

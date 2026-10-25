@@ -1,6 +1,6 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { DescripcionEquipoComponent } from './descripcion-equipo.component';
+import { DescripcionEquipoComponent, descripcionEquipoVisible } from './descripcion-equipo.component';
 
 describe('DescripcionEquipoComponent', () => {
     let fixture: ComponentFixture<DescripcionEquipoComponent>;
@@ -45,5 +45,12 @@ describe('DescripcionEquipoComponent', () => {
         component.traducido = true;
         component.nombreOriginal = 'Cloak of resistance';
         expect(texto()).toContain('Traducido: Cloak of resistance');
+    });
+
+    it('se ve con texto o traducida, y no con un texto vacío o de relleno', () => {
+        expect(descripcionEquipoVisible({ Descripcion: 'Hoja corta.', Traducido: false })).toBeTrue();
+        expect(descripcionEquipoVisible({ Descripcion: '', Traducido: true })).toBeTrue();
+        expect(descripcionEquipoVisible({ Descripcion: 'No especifica', Traducido: false })).toBeFalse();
+        expect(descripcionEquipoVisible(null)).toBeFalse();
     });
 });

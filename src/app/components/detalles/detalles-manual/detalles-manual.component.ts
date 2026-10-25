@@ -1,20 +1,27 @@
 import { Component, Input, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { ICONOS_ENTIDAD, getManualCategorias, getManualReferenciasValidas, getManualTipoPorSeccion, isManualSeccionIncluida, MANUAL_SECCIONES_CONFIG, ManualCategoriaConIcono } from 'src/app/config/manual-secciones.config';
+import { DatoFicha } from 'src/app/components/detalles/ficha';
+import { ICONOS_ENTIDAD, getManualCategorias, getManualReferenciasValidas, getManualTipoPorSeccion, isManualSeccionIncluida, MANUAL_SECCIONES_CONFIG } from 'src/app/config/manual-secciones.config';
 import { ManualAsociadoDetalle, ManualAsociados, ReferenciaCorta } from 'src/app/interfaces/manual-asociado';
 import { ManualReferenciaTipo } from 'src/app/interfaces/manual-referencia-navegacion';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualReferenciaNavigationService } from 'src/app/services/manual-referencia-navigation.service';
 import { UserService } from 'src/app/services/user.service';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 type SeccionManualKey = keyof ManualAsociados;
 type SeccionManual = { key: SeccionManualKey, label: string, icono: string };
-type BloqueManualObjeto = { seccion: SeccionManual, referencia: ReferenciaCorta };
+/** Una entrada del manual, lista para la tabla de su sección. */
+type FilaManual = { referencia: ReferenciaCorta, descripcion: string, extras: string };
+/** Una sección del manual (dotes, conjuros…) con sus entradas. */
+type BloqueManual = { seccion: SeccionManual, filas: FilaManual[] };
+
+/** Las descripciones de las entradas se recortan en la tabla: el texto entero está en su detalle. */
+const LARGO_DESCRIPCION = 220;
 
 @Component({
     selector: 'app-detalles-manual',
     templateUrl: './detalles-manual.component.html',
-    styleUrls: ['./detalles-manual.component.sass'],
     standalone: false
 })
 export class DetallesManualComponent implements OnInit, OnDestroy {
@@ -36,8 +43,11 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
         icono: ICONOS_ENTIDAD[seccion.tipo],
     }));
     seccionesRender: SeccionManual[] = [];
-    bloquesRender: BloqueManualObjeto[] = [];
+    bloquesRender: BloqueManual[] = [];
+    bloquesFiltrados: BloqueManual[] = [];
     seccionesActivas: Partial<Record<SeccionManualKey, boolean>> = {};
+    datos: DatoFicha[] = [];
+    hayAsociados = false;
 
     constructor(
         private manualRefNavSvc: ManualReferenciaNavigationService,
@@ -55,10 +65,6 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
 
     ngOnDestroy(): void {
         this.permisosSub?.unsubscribe();
-    }
-
-    getCategorias(manual: ManualAsociadoDetalle): ManualCategoriaConIcono[] {
-        return getManualCategorias(manual);
     }
 
     tieneAsociados(manual: ManualAsociadoDetalle): boolean {
@@ -104,20 +110,22 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
         return getManualReferenciasValidas(manual, key);
     }
 
-    get bloquesFiltrados(): BloqueManualObjeto[] {
-        return this.bloquesRender.filter((bloque) => this.isSeccionActiva(bloque.seccion.key));
-    }
-
     isSeccionActiva(key: SeccionManualKey): boolean {
         return this.seccionesActivas[key] !== false;
     }
 
     toggleSeccion(key: SeccionManualKey): void {
         this.seccionesActivas[key] = !this.isSeccionActiva(key);
+        this.filtrarBloques();
     }
 
     getConteoTotalAsociados(manual: ManualAsociadoDetalle): number {
         return this.seccionesBase.reduce((total, seccion) => total + this.getReferenciasValidas(manual, seccion.key).length, 0);
+    }
+
+    /** Las entradas de una sección, para el resumen. */
+    contarSeccion(key: SeccionManualKey): number {
+        return this.manual ? this.getReferenciasValidas(this.manual, key).length : 0;
     }
 
     formatearExtraKey(key: string): string {
@@ -150,29 +158,51 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
     }
 
     private recalcularSeccionesRender(): void {
+        this.seccionesRender = [];
+        this.bloquesRender = [];
+        this.seccionesActivas = {};
+        this.datos = [];
+        this.hayAsociados = false;
         if (!this.manual) {
-            this.seccionesRender = [];
+            this.filtrarBloques();
             return;
         }
 
         const manual = this.manual;
+        // Las secciones y sus entradas, en un orden al azar cada vez que se abre (como antes, para descubrir).
         const conDatos = this.seccionesBase.filter((seccion) => this.seccionIncluidaEnManual(manual, seccion.key));
         this.seccionesRender = this.shuffle([...conDatos]);
-        this.bloquesRender = [];
-        this.seccionesActivas = {};
-
         this.seccionesRender.forEach((seccion) => {
             this.seccionesActivas[seccion.key] = true;
         });
+        this.bloquesRender = this.seccionesRender
+            .map((seccion) => ({
+                seccion,
+                filas: this.shuffle([...this.getReferenciasValidas(manual, seccion.key)]).map((referencia) => this.construirFila(referencia)),
+            }))
+            .filter((bloque) => bloque.filas.length > 0);
+        this.hayAsociados = this.tieneAsociados(manual);
 
-        this.seccionesRender.forEach((seccion) => {
-            const refs = this.shuffle([...this.getReferenciasValidas(manual, seccion.key)]);
-            refs.forEach((referencia) => {
-                this.bloquesRender.push({ seccion, referencia });
-            });
-        });
+        const categorias = getManualCategorias(manual).map((categoria) => categoria.label);
+        this.datos = [
+            { etiqueta: 'Categorías', valor: categorias.length > 0 ? categorias.join(', ') : 'Sin categorías' },
+            { etiqueta: 'Secciones', valor: this.seccionesRender.length },
+            { etiqueta: 'Entradas', valor: this.getConteoTotalAsociados(manual) },
+        ];
+        this.filtrarBloques();
+    }
 
-        this.bloquesRender = this.shuffle([...this.bloquesRender]);
+    private construirFila(referencia: ReferenciaCorta): FilaManual {
+        const descripcion = tieneTextoVisible(referencia?.Descripcion) ? `${referencia.Descripcion}`.trim() : '';
+        return {
+            referencia,
+            descripcion: recortar(descripcion, LARGO_DESCRIPCION),
+            extras: this.getCamposExtra(referencia).map((extra) => `${this.formatearExtraKey(extra.key)}: ${extra.value}`).join(' · '),
+        };
+    }
+
+    private filtrarBloques(): void {
+        this.bloquesFiltrados = this.bloquesRender.filter((bloque) => this.isSeccionActiva(bloque.seccion.key));
     }
 
     private seccionIncluidaEnManual(manual: ManualAsociadoDetalle, key: SeccionManualKey): boolean {
@@ -192,4 +222,12 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
     private notificarDesajusteSiProcede(): void {
         this.manualFlagNoticeSvc.notifyAdminIfNeeded(this.manual, this.isAdmin);
     }
+}
+
+/** El texto hasta `largo` caracteres, cortado en una palabra y con «…». */
+function recortar(texto: string, largo: number): string {
+    if (texto.length <= largo)
+        return texto;
+    const corte = texto.lastIndexOf(' ', largo);
+    return `${texto.slice(0, corte > largo / 2 ? corte : largo).trimEnd()}…`;
 }
