@@ -326,7 +326,8 @@ function textoCorto(valor: unknown): string | undefined {
     return texto(`${valor ?? ''}`.replace(/\s+/g, ' '));
 }
 
-type CampoDeTextoIa = 'nombre' | 'raza' | 'alineamiento' | 'deidad' | 'genero' | 'edad' | 'region' | 'campana' | 'trasfondo' | 'personalidad';
+/** Los datos de texto de `DatosIdeaIa` (todos menos las clases): un dato nuevo obliga a darle su límite. */
+type CampoDeTextoIa = Exclude<keyof DatosIdeaIa, 'clases'>;
 
 /**
  * La longitud máxima de cada dato que va a la IA y cómo se nombra en el aviso, igual que la API
