@@ -55,11 +55,12 @@ import {
     PrerequisiteType,
 } from '../prerrequisito-editor/prerrequisito-editor.models';
 import {
-    PREREQUISITE_EDITOR_DEFINITIONS,
     arePrerequisitesIncomplete,
     findCatalogName,
     getPrerequisiteDefinition,
+    getPrerequisiteTypeOptions,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
+import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -141,7 +142,7 @@ type MutacionPrerequisiteType = Extract<PrerequisiteType,
 
 interface MutacionPrerequisiteOption {
     key: MutacionPrerequisiteType;
-    label: string;
+    readonly label: string;
 }
 
 const NUEVA_RAZA_DRAFT_AUTOSAVE_MS = 1200;
@@ -259,9 +260,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     selectorPrerrequisitosMutacionTempKeys: MutacionPrerequisiteType[] = [];
     pasoActivoIndex: number = 0;
 
-    readonly prerrequisitosMutacionOpciones: MutacionPrerequisiteOption[] = PREREQUISITE_EDITOR_DEFINITIONS
-        .filter((item) => this.esTipoPrerrequisitoMutacion(item.type))
-        .map((item) => ({ key: item.type as MutacionPrerequisiteType, label: item.label }));
+    readonly prerrequisitosMutacionOpciones: MutacionPrerequisiteOption[] = getPrerequisiteTypeOptions<MutacionPrerequisiteType>(
+        (type) => this.esTipoPrerrequisitoMutacion(type)
+    );
 
     readonly prerrequisitosMutacionCatalogContext: PrerequisiteCatalogContext = {
         getCatalog: (type) => this.getCatalogoPrerrequisitoMutacion(type),
@@ -356,9 +357,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         private armaduraSvc: ArmaduraService,
         private grupoArmaSvc: GrupoArmaService,
         private grupoArmaduraSvc: GrupoArmaduraService,
+        private prerrequisitosTiposSvc: PrerrequisitosTiposService,
     ) { }
 
     ngOnInit(): void {
+        void this.prerrequisitosTiposSvc.cargar();
         this.resetRows();
         this.recalcularPermisos();
         this.userSvc.acl$

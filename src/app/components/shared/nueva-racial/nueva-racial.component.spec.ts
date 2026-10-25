@@ -64,6 +64,7 @@ describe('NuevaRacialComponent', () => {
             } as any,
             { getConjuros: () => of([{ Id: 9, Nombre: 'Luz' }]) } as any,
             { getRazas: () => of([{ Id: 2, Nombre: 'Elfo' }]) } as any,
+            { cargar: () => Promise.resolve() } as any,
         );
         spyOn(Swal, 'fire').and.returnValue(Promise.resolve({ isConfirmed: true } as any));
         component.ngOnInit();

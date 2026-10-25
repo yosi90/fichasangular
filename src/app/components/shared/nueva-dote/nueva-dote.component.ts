@@ -11,13 +11,14 @@ import {
     PrerequisiteType,
 } from '../prerrequisito-editor/prerrequisito-editor.models';
 import {
-    PREREQUISITE_EDITOR_DEFINITIONS,
     arePrerequisitesIncomplete,
     buildPrerequisitePayload,
     findCatalogName,
     getPrerequisiteCatalogsForTypes,
     getPrerequisiteDefinition,
+    getPrerequisiteTypeOptions,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
+import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { DoteCreateRequest, DoteCreateResponse, DoteHabilidadOtorgadaDto } from 'src/app/interfaces/dotes-api';
 import { Dote } from 'src/app/interfaces/dote';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
@@ -74,7 +75,7 @@ interface HabilidadOtorgadaEditorItem {
 
 interface PrerrequisitoOption {
     key: PrerequisiteType;
-    label: string;
+    readonly label: string;
 }
 
 type PrerrequisitoEditorItem = PrerequisiteRowModel;
@@ -129,9 +130,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         { key: 'velocidad_trepar', label: 'Aumenta velocidad de trepado' },
         { key: 'velocidad_escalar', label: 'Aumenta velocidad de escalada' },
     ];
-    readonly prerrequisitoOpciones: PrerrequisitoOption[] = PREREQUISITE_EDITOR_DEFINITIONS
-        .filter((item) => item.type !== 'inherente' && !this.prerrequisitosSoloClase.has(item.type))
-        .map((item) => ({ key: item.type, label: item.label }));
+    readonly prerrequisitoOpciones: PrerrequisitoOption[] = getPrerequisiteTypeOptions(
+        (type) => type !== 'inherente' && !this.prerrequisitosSoloClase.has(type)
+    );
     readonly caracteristicasCatalogo: ExtraSelectorItem[] = [
         { id: 1, nombre: 'Fuerza' },
         { id: 2, nombre: 'Destreza' },
@@ -271,9 +272,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         private especialSvc: EspecialService,
         private alineamientoSvc: AlineamientoService,
         private tamanoSvc: TamanoService,
+        private prerrequisitosTiposSvc: PrerrequisitosTiposService,
     ) { }
 
     ngOnInit(): void {
+        void this.prerrequisitosTiposSvc.cargar();
         this.agregarModificador();
         this.agregarHabilidadOtorgada();
 

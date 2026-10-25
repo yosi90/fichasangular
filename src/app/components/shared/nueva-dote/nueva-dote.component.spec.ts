@@ -33,6 +33,7 @@ import { ConjuroService } from 'src/app/services/conjuro.service';
 import { EspecialService } from 'src/app/services/especial.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { TamanoService } from 'src/app/services/tamano.service';
+import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { NuevaDoteComponent } from './nueva-dote.component';
 
 describe('NuevaDoteComponent', () => {
@@ -130,6 +131,7 @@ describe('NuevaDoteComponent', () => {
             ],
             providers: [
                 { provide: DoteService, useValue: doteSvcMock },
+                { provide: PrerrequisitosTiposService, useValue: { cargar: () => Promise.resolve() } },
                 { provide: ExtraService, useValue: { getExtras: () => of([{ Id: 55, Nombre: 'Planos' }]) } },
                 { provide: HabilidadService, useValue: habilidadSvcMock },
                 { provide: ManualService, useValue: manualSvcMock },

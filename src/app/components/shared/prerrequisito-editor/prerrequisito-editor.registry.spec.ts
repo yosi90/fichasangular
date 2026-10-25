@@ -3,7 +3,8 @@ import {
     PrerequisiteCatalogItem,
     PrerequisiteRowModel,
 } from './prerrequisito-editor.models';
-import { buildPrerequisitePayload } from './prerrequisito-editor.registry';
+import { registrarTiposPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
+import { buildPrerequisitePayload, getPrerequisiteDefinition, getPrerequisiteTypeOptions } from './prerrequisito-editor.registry';
 
 describe('prerrequisito-editor.registry', () => {
     const catalogosPorTipo = new Map<string, PrerequisiteCatalogItem[]>([
@@ -85,5 +86,18 @@ describe('prerrequisito-editor.registry', () => {
             Reflejos: 6,
             Voluntad: 0,
         });
+    });
+
+    it('nombra cada tipo con el nombre de GET /prerrequisitos/tipos, también en las opciones ya construidas', () => {
+        const opciones = getPrerequisiteTypeOptions((type) => type === 'caracteristica' || type === 'raza');
+        expect(opciones.map((opcion) => opcion.key)).toEqual(['caracteristica', 'raza']);
+
+        registrarTiposPrerrequisito([
+            { Clave: 'caracteristica', Nombre: 'Característica mínima', Ejemplo: 'Fuerza 13', Entidades: ['dote'] },
+            { Clave: 'raza', Nombre: 'Raza', Ejemplo: 'Kobold', Entidades: ['dote'] },
+        ]);
+
+        expect(getPrerequisiteDefinition('caracteristica').label).toBe('Característica mínima');
+        expect(opciones.map((opcion) => opcion.label)).toEqual(['Característica mínima', 'Raza']);
     });
 });

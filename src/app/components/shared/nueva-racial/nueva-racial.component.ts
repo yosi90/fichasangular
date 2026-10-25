@@ -35,8 +35,10 @@ import {
 import {
     arePrerequisitesIncomplete,
     findCatalogName,
+    getPrerequisiteTypeOptions,
     syncPrerequisiteRows,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
+import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -169,10 +171,9 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
         { Id: 1, Nombre: 'Completa (+2 a +12)' },
         { Id: 2, Nombre: 'Corta (+0 a +6)' },
     ];
-    readonly tiposPrerrequisito: Array<{ key: RacialPrerequisiteType; label: string; }> = [
-        { key: 'raza', label: 'Raza requerida' },
-        { key: 'caracteristica', label: 'Mínimo de característica' },
-    ];
+    readonly tiposPrerrequisito = getPrerequisiteTypeOptions<RacialPrerequisiteType>(
+        (type) => type === 'raza' || type === 'caracteristica'
+    );
     readonly prerrequisitosCatalogContext: PrerequisiteCatalogContext = {
         getCatalog: (type) => this.getCatalogoPrerrequisito(type),
         getCatalogName: (type, id) => this.getNombreCatalogoPrerrequisito(type, id),
@@ -198,9 +199,11 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
         private habilidadSvc: HabilidadService,
         private conjuroSvc: ConjuroService,
         private razaSvc: RazaService,
+        private prerrequisitosTiposSvc: PrerrequisitosTiposService,
     ) { }
 
     ngOnInit(): void {
+        void this.prerrequisitosTiposSvc.cargar();
         this.resetFilas();
         this.actualizarPermisos();
         this.userSvc.acl$

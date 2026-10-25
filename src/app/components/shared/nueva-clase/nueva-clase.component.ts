@@ -23,12 +23,13 @@ import {
     PrerequisiteType,
 } from '../prerrequisito-editor/prerrequisito-editor.models';
 import {
-    PREREQUISITE_EDITOR_DEFINITIONS,
     arePrerequisitesIncomplete,
     buildPrerequisitePayload,
     findCatalogName,
     getPrerequisiteCatalogsForTypes,
+    getPrerequisiteTypeOptions,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
+import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
@@ -186,9 +187,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     ];
     aumentosClaseLanzadoraCatalogo: ClaseAumentoClaseLanzadoraCatalogItem[] = [];
     readonly nivelesConjuro = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    readonly prerrequisitoOpciones = PREREQUISITE_EDITOR_DEFINITIONS
-        .filter((item) => item.type !== 'inherente')
-        .map((item) => ({ key: item.type, label: item.label }));
+    readonly prerrequisitoOpciones = getPrerequisiteTypeOptions((type) => type !== 'inherente');
     readonly generoCatalogo: PrerequisiteCatalogItem[] = [
         { id: 1, nombre: 'Masculino' },
         { id: 2, nombre: 'Femenino' },
@@ -298,9 +297,11 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         private subtipoSvc: SubtipoService,
         private tamanoSvc: TamanoService,
         private tipoCriaturaSvc: TipoCriaturaService,
+        private prerrequisitosTiposSvc: PrerrequisitosTiposService,
     ) { }
 
     ngOnInit(): void {
+        void this.prerrequisitosTiposSvc.cargar();
         this.reiniciarFilas();
         this.actualizarPermisos();
         this.userSvc.acl$.pipe(takeUntil(this.destroy$)).subscribe(() => this.actualizarPermisos());

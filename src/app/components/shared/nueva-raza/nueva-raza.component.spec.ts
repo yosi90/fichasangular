@@ -21,6 +21,7 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
+import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { NuevaRazaComponent } from './nueva-raza.component';
 
 describe('NuevaRazaComponent', () => {
@@ -59,6 +60,7 @@ describe('NuevaRazaComponent', () => {
             declarations: [NuevaRazaComponent],
             providers: [
                 { provide: RazaService, useValue: razaSvc },
+                { provide: PrerrequisitosTiposService, useValue: { cargar: () => Promise.resolve() } },
                 { provide: UserService, useValue: {
                     acl$: acl$.asObservable(),
                     isLoggedIn$: isLoggedIn$.asObservable(),

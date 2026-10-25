@@ -8,6 +8,7 @@ import {
     PrerequisiteType,
 } from './prerrequisito-editor.models';
 import { toInt } from 'src/app/services/utils/normalizacion';
+import { nombreTipoPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 
 function withOpcional(base: Record<string, any>, payload: Record<string, any>): Record<string, any> {
     const out = { ...base };
@@ -150,7 +151,6 @@ function buildFlagPayload(row: PrerequisiteRowModel): Record<string, any> {
 
 function definition(
     type: PrerequisiteType,
-    label: string,
     editorKind: PrerequisiteEditorKind,
     config: Partial<Omit<PrerequisiteEditorDefinition, 'type' | 'label' | 'editorKind' | 'isComplete' | 'toPayload' | 'createDefaultRow'>> & {
         isComplete?: PrerequisiteEditorDefinition['isComplete'];
@@ -159,7 +159,11 @@ function definition(
 ): PrerequisiteEditorDefinition {
     return {
         type,
-        label,
+        // El nombre del tipo es el de `GET /prerrequisitos/tipos` (la clave del editor es la de la API); se lee cada vez
+        // porque la ruta responde después de construir el registro.
+        get label(): string {
+            return nombreTipoPrerrequisito(type);
+        },
         editorKind,
         requiredCatalogs: config.requiredCatalogs ?? [],
         catalogLabel: config.catalogLabel,
@@ -176,106 +180,106 @@ function definition(
 }
 
 export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
-    definition('actitud_prohibido', 'Actitud prohibida', 'catalog-only', {
+    definition('actitud_prohibido', 'catalog-only', {
         catalogLabel: 'Actitud',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('actitud_requerido', 'Actitud requerida', 'catalog-only', {
+    definition('actitud_requerido', 'catalog-only', {
         catalogLabel: 'Actitud',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('alineamiento_prohibido', 'Alineamiento prohibido', 'catalog-only', {
+    definition('alineamiento_prohibido', 'catalog-only', {
         requiredCatalogs: ['alineamientos'],
         catalogLabel: 'Alineamiento',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('alineamiento_requerido', 'Alineamiento requerido', 'catalog-only', {
+    definition('alineamiento_requerido', 'catalog-only', {
         requiredCatalogs: ['alineamientos'],
         catalogLabel: 'Alineamiento',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('ataque_base', 'Minimo de ataque base', 'value-only', {
+    definition('ataque_base', 'value-only', {
         valueLabel: 'Ataque base minimo',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
-    definition('caracteristica', 'Minimo de caracteristicas', 'catalog-plus-value', {
+    definition('caracteristica', 'catalog-plus-value', {
         catalogLabel: 'Caracteristica',
         valueLabel: 'Puntuacion minima',
         isComplete: isCatalogValueComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('clase_especial', 'Tener X habilidad clasea', 'catalog-plus-special', {
+    definition('clase_especial', 'catalog-plus-special', {
         requiredCatalogs: ['especiales', 'extras'],
         catalogLabel: 'Especial',
         supportsExtraSelector: true,
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('competencia_arma', 'Competencia con arma', 'catalog-only', {
+    definition('competencia_arma', 'catalog-only', {
         requiredCatalogs: ['armas'],
         catalogLabel: 'Arma',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('competencia_armadura', 'Competencia con armadura', 'catalog-only', {
+    definition('competencia_armadura', 'catalog-only', {
         requiredCatalogs: ['armaduras'],
         catalogLabel: 'Armadura',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('competencia_grupo_arma', 'Competencia con grupo de armas', 'catalog-only', {
+    definition('competencia_grupo_arma', 'catalog-only', {
         requiredCatalogs: ['grupos_arma'],
         catalogLabel: 'Grupo arma',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('competencia_grupo_armadura', 'Competencia con grupo de armaduras', 'catalog-only', {
+    definition('competencia_grupo_armadura', 'catalog-only', {
         requiredCatalogs: ['grupos_armadura'],
         catalogLabel: 'Grupo armadura',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('conjuros_escuela', 'Conocer X cantidad de conjuros de una escuela', 'catalog-plus-value', {
+    definition('conjuros_escuela', 'catalog-plus-value', {
         requiredCatalogs: ['escuelas'],
         catalogLabel: 'Escuela',
         valueLabel: 'Cantidad minima',
         isComplete: isCatalogValueComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('conjuro_conocido', 'Conjuro conocido', 'catalog-only', {
+    definition('conjuro_conocido', 'catalog-only', {
         requiredCatalogs: ['conjuros'],
         catalogLabel: 'Conjuro',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('conocer_poder_psionico', 'Conocer poder psionico concreto', 'catalog-only', {
+    definition('conocer_poder_psionico', 'catalog-only', {
         requiredCatalogs: ['conjuros'],
         catalogLabel: 'Poder',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('dg', 'Cantidad de DGs minima', 'value-only', {
+    definition('dg', 'value-only', {
         valueLabel: 'DG minimos',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
-    definition('genero', 'Genero requerido', 'catalog-only', {
+    definition('genero', 'catalog-only', {
         catalogLabel: 'Genero',
         isComplete: isCatalogOnlyComplete,
         toPayload: (row) => ({ ...buildBase(row), Id_genero: toInt(row.id, 0), Genero: row.id === 1 ? 'Masculino' : row.id === 2 ? 'Femenino' : 'Otro' }),
     }),
-    definition('dominio', 'Dominio requerido', 'catalog-only', {
+    definition('dominio', 'catalog-only', {
         requiredCatalogs: ['dominios'],
         catalogLabel: 'Dominio',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('dote', 'Dote ya elegida requerida', 'catalog-plus-special', {
+    definition('dote', 'catalog-plus-special', {
         requiredCatalogs: ['dotes'],
         catalogLabel: 'Dote',
         supportsRepeated: true,
@@ -284,14 +288,14 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('escuela_nivel', 'Nivel minimo en una escuela de magia', 'catalog-plus-value', {
+    definition('escuela_nivel', 'catalog-plus-value', {
         requiredCatalogs: ['escuelas'],
         catalogLabel: 'Escuela',
         valueLabel: 'Nivel minimo',
         isComplete: isCatalogValueComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('habilidad', 'Minimo de rangos en habilidad concreta', 'catalog-plus-value', {
+    definition('habilidad', 'catalog-plus-value', {
         requiredCatalogs: ['habilidades'],
         catalogLabel: 'Habilidad',
         valueLabel: 'Rangos minimos',
@@ -299,140 +303,140 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         isComplete: isCatalogValueComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('idioma', 'Hablar un idioma', 'catalog-only', {
+    definition('idioma', 'catalog-only', {
         requiredCatalogs: ['idiomas'],
         catalogLabel: 'Idioma',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('inherente', 'Habilidad inherente a raza y/o clase', 'catalog-only', {
+    definition('inherente', 'catalog-only', {
         requiredCatalogs: ['especiales'],
         catalogLabel: 'Especial',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('lanz_espontaneo', 'Lanzar X conjuro espontaneo', 'catalog-only', {
+    definition('lanz_espontaneo', 'catalog-only', {
         requiredCatalogs: ['conjuros'],
         catalogLabel: 'Conjuro',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('lanzador_arcano', 'Nivel de lanzador arcano', 'value-only', {
+    definition('lanzador_arcano', 'value-only', {
         valueLabel: 'Nivel',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
-    definition('lanzador_divino', 'Nivel de lanzador divino', 'value-only', {
+    definition('lanzador_divino', 'value-only', {
         valueLabel: 'Nivel',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
-    definition('lanzador_psionico', 'Nivel de manifestador', 'value-only', {
+    definition('lanzador_psionico', 'value-only', {
         valueLabel: 'Nivel',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
-    definition('lanzar_conjuros_arcanos_nivel', 'Nivel minimo de conjuro arcano', 'value-only', {
+    definition('lanzar_conjuros_arcanos_nivel', 'value-only', {
         valueLabel: 'Nivel',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
-    definition('lanzar_conjuros_divinos_nivel', 'Nivel minimo de conjuro divino', 'value-only', {
+    definition('lanzar_conjuros_divinos_nivel', 'value-only', {
         valueLabel: 'Nivel',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
-    definition('lanzar_poder_psionico_nivel', 'Nivel minimo de poder psionico', 'value-only', {
+    definition('lanzar_poder_psionico_nivel', 'value-only', {
         valueLabel: 'Nivel',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
-    definition('limite_tipo_dote', 'Limitada a X dotes de X tipo', 'catalog-plus-value', {
+    definition('limite_tipo_dote', 'catalog-plus-value', {
         requiredCatalogs: ['tipos_dote'],
         catalogLabel: 'Tipo dote',
         valueLabel: 'Cantidad maxima',
         isComplete: isCatalogValueComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('nivel', 'Nivel minimo de personaje', 'value-only', {
+    definition('nivel', 'value-only', {
         valueLabel: 'Nivel minimo personaje',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
-    definition('nivel_de_clase', 'Nivel minimo de clase', 'catalog-plus-value', {
+    definition('nivel_de_clase', 'catalog-plus-value', {
         requiredCatalogs: ['clases'],
         catalogLabel: 'Clase',
         valueLabel: 'Nivel minimo clase',
         isComplete: isCatalogValueComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('nivel_max', 'Nivel maximo de personaje', 'value-only', {
+    definition('nivel_max', 'value-only', {
         valueLabel: 'Nivel maximo personaje',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
-    definition('poder_seleccionar_companero', 'Poder elegir un compañero nuevo', 'flag-only', {
+    definition('poder_seleccionar_companero', 'flag-only', {
         isComplete: () => true,
         toPayload: (row) => buildFlagPayload(row),
     }),
-    definition('poder_seleccionar_familiar', 'Poder elegir un familiar nuevo', 'flag-only', {
+    definition('poder_seleccionar_familiar', 'flag-only', {
         isComplete: () => true,
         toPayload: (row) => buildFlagPayload(row),
     }),
-    definition('raza', 'Raza requerida', 'catalog-only', {
+    definition('raza', 'catalog-only', {
         requiredCatalogs: ['razas'],
         catalogLabel: 'Raza',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('no_raza', 'Raza prohibida', 'catalog-only', {
+    definition('no_raza', 'catalog-only', {
         requiredCatalogs: ['razas'],
         catalogLabel: 'Raza',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('region', 'Region requerida', 'catalog-only', {
+    definition('region', 'catalog-only', {
         requiredCatalogs: ['regiones'],
         catalogLabel: 'Region',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('reserva_psionica', 'Reserva psionica minima', 'value-only', {
+    definition('reserva_psionica', 'value-only', {
         valueLabel: 'Reserva minima',
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
-    definition('salvacion_minimo', 'Puntuacion minima en una salvacion', 'catalog-plus-value', {
+    definition('salvacion_minimo', 'catalog-plus-value', {
         valueLabel: 'Puntuacion minima',
         usesSaveSelector: true,
         isComplete: isValueOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('tamano_maximo', 'Tamaño máximo', 'catalog-only', {
+    definition('tamano_maximo', 'catalog-only', {
         requiredCatalogs: ['tamanos'],
         catalogLabel: 'Tamaño',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('tamano_minimo', 'Tamaño mínimo', 'catalog-only', {
+    definition('tamano_minimo', 'catalog-only', {
         requiredCatalogs: ['tamanos'],
         catalogLabel: 'Tamaño',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('subtipo', 'Subtipo requerido', 'catalog-only', {
+    definition('subtipo', 'catalog-only', {
         requiredCatalogs: ['subtipos'],
         catalogLabel: 'Subtipo',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('tipo_criatura', 'Ser un tipo especifico de criatura', 'catalog-only', {
+    definition('tipo_criatura', 'catalog-only', {
         requiredCatalogs: ['tipos_criatura'],
         catalogLabel: 'Tipo criatura',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
-    definition('tipo_dote', 'Tener dotes con tipo especifico', 'catalog-only', {
+    definition('tipo_dote', 'catalog-only', {
         requiredCatalogs: ['tipos_dote'],
         catalogLabel: 'Tipo dote',
         isComplete: isCatalogOnlyComplete,
@@ -449,6 +453,23 @@ export function getPrerequisiteDefinition(type: PrerequisiteType): PrerequisiteE
     if (!definition)
         throw new Error(`Prerequisite definition not found for type "${type}"`);
     return definition;
+}
+
+/**
+ * Las opciones de un selector de tipos de prerrequisito: su clave y su nombre, que se lee cada vez porque llega de
+ * `GET /prerrequisitos/tipos` después de construir el selector.
+ */
+export function getPrerequisiteTypeOptions<T extends PrerequisiteType = PrerequisiteType>(
+    incluir: (type: PrerequisiteType) => boolean,
+): Array<{ key: T; readonly label: string; }> {
+    return PREREQUISITE_EDITOR_DEFINITIONS
+        .filter((definition) => incluir(definition.type))
+        .map((definition) => ({
+            key: definition.type as T,
+            get label(): string {
+                return definition.label;
+            },
+        }));
 }
 
 export function getPrerequisiteCatalogsForTypes(types: PrerequisiteType[]): PrerequisiteCatalogKey[] {
