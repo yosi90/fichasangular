@@ -1,138 +1,158 @@
-<div class="tw-w-full tw-px-3 detalle-view" *ngIf="entrada">
-    <div class="tw-flex tw-flex-wrap">
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
-                    {{entrada.item.Nombre}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="tieneManual" matTooltip="Pulsa para ver el manual"
-                    [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
-                    <mat-icon class="tw-me-2">auto_stories</mat-icon>
-                    {{manualLabel}}
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let dato of datos"
-                    [matTooltip]="dato.ayuda ?? ''" [matTooltipDisabled]="!dato.ayuda" matTooltipClass="tt-accent tt-multiline">
-                    {{dato.etiqueta}}
-                    <mat-chip class="sombra3d-sm tw-m-1">{{dato.valor}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let marca of marcas">{{marca}}</mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="objeto?.Arma_base as arma"
-                    matTooltip="Pulsa para ver el arma base" matTooltipClass="tt-accent" (click)="abrirArma(arma.Id)">
-                    Arma base {{arma.Nombre}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="objeto?.Armadura_base as armadura"
-                    matTooltip="Pulsa para ver la armadura base" matTooltipClass="tt-accent" (click)="abrirArmadura(armadura.Id)">
-                    Armadura base {{armadura.Nombre}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="objeto?.Conjunto as conjunto"
-                    matTooltip="Pulsa para ver el conjunto" matTooltipClass="tt-accent" (click)="abrirEquipo('conjunto', conjunto.Id)">
-                    Conjunto {{conjunto.Nombre}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="encantamiento?.Encantamiento_base as base"
-                    matTooltip="La aptitud que pide antes" matTooltipClass="tt-accent" (click)="abrirEquipo('encantamiento', base.Id)">
-                    Pide {{base.Nombre}}
-                </mat-chip>
-                <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="!entrada.item.Oficial" matTooltip="Es homebrew" matTooltipClass="tt-accent">
-                    No es oficial
-                </mat-chip>
-            </div>
-        </div>
+<app-ficha-detalle *ngIf="entrada">
+    <app-ficha-cabecera
+        [tipo]="tipoCabecera"
+        [nombre]="entrada.item.Nombre"
+        [manual]="entrada.item.Manual"
+        [oficial]="entrada.item.Oficial"
+        [etiquetas]="etiquetas"
+        (abrirManual)="abrirDetalleManual()">
+    </app-ficha-cabecera>
 
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
+    <app-ficha-datos [datos]="datos" titulo="Datos clave"></app-ficha-datos>
+
+    <app-ficha-cuerpo>
+        <app-ficha-seccion titulo="Descripción" *ngIf="conDescripcion">
             <app-descripcion-equipo [descripcion]="entrada.item.Descripcion" [origen]="entrada.item.Origen_descripcion"
                 [nombreOriginal]="entrada.item.Nombre_original" [traducido]="entrada.item.Traducido">
             </app-descripcion-equipo>
+        </app-ficha-seccion>
 
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="modificadores.length > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Modificadores</mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let modificador of modificadores"
-                    [class.chip-condicional]="!!modificador.Condicion">
-                    {{textoModificador(modificador)}}
-                </mat-chip>
-            </div>
+        <app-ficha-lateral titulo="Aptitudes especiales" *ngIf="(objeto?.Encantamientos?.length ?? 0) > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let aptitud of objeto?.Encantamientos">
+                    <button type="button" class="ficha-enlace" (click)="abrirEquipo('encantamiento', aptitud.Id)">{{aptitud.Nombre}}</button>
+                    <span class="ficha-nota" *ngIf="aptitud.Cabeza > 1">(segunda cabeza)</span>
+                </li>
+            </ul>
+        </app-ficha-lateral>
 
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="(objeto?.Encantamientos?.length ?? 0) > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Aptitudes especiales</mat-chip>
-                <mat-chip class="chip-clic tw-h-auto sombra3d-sm tw-m-1" *ngFor="let encantamiento of objeto?.Encantamientos"
-                    matTooltip="Pulsa para ver la aptitud" matTooltipClass="tt-accent" (click)="abrirEquipo('encantamiento', encantamiento.Id)">
-                    {{encantamiento.Nombre}}<ng-container *ngIf="encantamiento.Cabeza > 1"> (segunda cabeza)</ng-container>
-                </mat-chip>
-            </div>
+        <app-ficha-lateral titulo="Modificadores" *ngIf="modificadores.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let modificador of modificadores">
+                    <span>{{modificador.texto}}</span>
+                    <span class="ficha-nota" *ngIf="modificador.condicional"
+                        matTooltip="Solo en ese caso: se enseña y no se suma" matTooltipClass="tt-accent">(condicional)</span>
+                </li>
+            </ul>
+        </app-ficha-lateral>
 
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="danosEncantamiento.length > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Daño que suma</mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let dano of danosEncantamiento">{{dano}}</mat-chip>
-            </div>
+        <app-ficha-lateral titulo="Daño que suma" *ngIf="danosEncantamiento.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let dano of danosEncantamiento">{{dano}}</li>
+            </ul>
+        </app-ficha-lateral>
 
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="costesMaterial.length > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Coste según a qué se aplica</mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let coste of costesMaterial">{{coste}}</mat-chip>
-            </div>
+        <app-ficha-lateral titulo="Propiedades" *ngIf="propiedadesMaterial.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let propiedad of propiedadesMaterial">
+                    <mat-icon class="ficha-icono" aria-hidden="true">check</mat-icon>
+                    <span>{{propiedad}}</span>
+                </li>
+            </ul>
+        </app-ficha-lateral>
 
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="(municion?.Armas?.length ?? 0) > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Armas que la disparan</mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let arma of municion?.Armas"
-                    matTooltip="Pulsa para ver el arma" matTooltipClass="tt-accent" (click)="abrirArma(arma.Id)">
-                    {{arma.Nombre}}
-                </mat-chip>
-            </div>
+        <app-ficha-lateral titulo="Armas que la disparan" *ngIf="(municion?.Armas?.length ?? 0) > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let arma of municion?.Armas">
+                    <button type="button" class="ficha-enlace" (click)="abrirArma(arma.Id)">{{arma.Nombre}}</button>
+                </li>
+            </ul>
+        </app-ficha-lateral>
 
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="(conjunto?.Piezas?.length ?? 0) > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Piezas</mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let pieza of conjunto?.Piezas"
-                    matTooltip="Pulsa para ver el objeto" matTooltipClass="tt-accent" (click)="abrirEquipo('objeto', pieza.Id)">
-                    {{pieza.Nombre}}
-                </mat-chip>
-            </div>
+        <app-ficha-lateral titulo="Piezas" *ngIf="(conjunto?.Piezas?.length ?? 0) > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let pieza of conjunto?.Piezas">
+                    <button type="button" class="ficha-enlace" (click)="abrirEquipo('objeto', pieza.Id)">{{pieza.Nombre}}</button>
+                </li>
+            </ul>
+        </app-ficha-lateral>
 
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="(conjunto?.Bonificaciones?.length ?? 0) > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Bonificaciones del conjunto</mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let bonificacion of conjunto?.Bonificaciones">
-                    {{bonificacion.Piezas}} piezas: {{bonificacion.Descripcion}}
-                </mat-chip>
+        <app-ficha-lateral titulo="Creación" *ngIf="tieneCreacion">
+            <app-ficha-datos [datos]="creacion" [columnas]="2" [tarjeta]="false" titulo="Datos de la creación"></app-ficha-datos>
+            <div class="ficha-grupo" *ngIf="(objeto?.Creacion?.Requisitos?.Dotes?.length ?? 0) + (objeto?.Creacion?.Requisitos?.Conjuros?.length ?? 0) > 0">
+                <h3 class="ficha-subtitulo">Requisitos</h3>
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let dote of objeto?.Creacion?.Requisitos?.Dotes">
+                        <button type="button" class="ficha-enlace" (click)="abrirDote(dote.Id)">{{dote.Nombre}}</button>
+                    </li>
+                    <li class="ficha-lista__item" *ngFor="let conjuro of objeto?.Creacion?.Requisitos?.Conjuros">
+                        <button type="button" class="ficha-enlace" (click)="abrirConjuro(conjuro.Id)">{{conjuro.Nombre}}</button>
+                    </li>
+                </ul>
             </div>
+        </app-ficha-lateral>
 
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="(objeto?.Conjuros?.length ?? 0) > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Conjuros</mat-chip>
-                <mat-chip class="chip-clic tw-h-auto sombra3d-sm tw-m-1" *ngFor="let conjuro of objeto?.Conjuros"
-                    matTooltip="Pulsa para ver el conjuro" matTooltipClass="tt-accent" (click)="abrirConjuro(conjuro.Id)">
-                    {{conjuro.Nombre}}
-                    <mat-chip class="tw-m-1" *ngIf="conjuro.Nivel_lanzador !== null">NL {{conjuro.Nivel_lanzador}}</mat-chip>
-                    <mat-chip class="tw-m-1" *ngIf="conjuro.Cargas_por_uso !== null">{{conjuro.Cargas_por_uso}} cargas</mat-chip>
-                    <mat-chip class="tw-m-1" *ngIf="conjuro.Usos_por_dia !== null">{{conjuro.Usos_por_dia}}/día</mat-chip>
-                </mat-chip>
-            </div>
-        </div>
+        <app-ficha-lateral titulo="Requisitos para crearla" *ngIf="tieneRequisitosEncantamiento">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let dote of encantamiento?.Requisitos?.Dotes">
+                    <button type="button" class="ficha-enlace" (click)="abrirDote(dote.Id)">{{dote.Nombre}}</button>
+                </li>
+                <li class="ficha-lista__item" *ngFor="let conjuro of encantamiento?.Requisitos?.Conjuros">
+                    <button type="button" class="ficha-enlace" (click)="abrirConjuro(conjuro.Id)">{{conjuro.Nombre}}</button>
+                    <span class="ficha-nota" *ngIf="conjuro.Opcional">(o bien)</span>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+    </app-ficha-cuerpo>
 
-        <div class="detalle-col tw-w-full md:tw-w-1/3 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="tieneCreacion">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Creación</mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngFor="let dato of creacion">
-                    {{dato.etiqueta}}
-                    <mat-chip class="sombra3d-sm tw-m-1">{{dato.valor}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let dote of objeto?.Creacion?.Requisitos?.Dotes"
-                    matTooltip="Pulsa para ver la dote" matTooltipClass="tt-accent" (click)="abrirDote(dote.Id)">
-                    {{dote.Nombre}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let conjuro of objeto?.Creacion?.Requisitos?.Conjuros"
-                    matTooltip="Pulsa para ver el conjuro" matTooltipClass="tt-accent" (click)="abrirConjuro(conjuro.Id)">
-                    {{conjuro.Nombre}}
-                </mat-chip>
-            </div>
+    <app-ficha-bloque titulo="Conjuros" *ngIf="conjuros.length > 0">
+        <table class="ficha-tabla">
+            <thead>
+                <tr>
+                    <th scope="col">Conjuro</th>
+                    <th scope="col" class="ficha-num" *ngIf="columnasConjuros.nivelLanzador">Nivel de lanzador</th>
+                    <th scope="col" class="ficha-num" *ngIf="columnasConjuros.cargasPorUso">Cargas por uso</th>
+                    <th scope="col" class="ficha-num" *ngIf="columnasConjuros.usosPorDia">Usos al día</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let conjuro of conjuros">
+                    <td><button type="button" class="ficha-enlace" (click)="abrirConjuro(conjuro.id)">{{conjuro.nombre}}</button></td>
+                    <td class="ficha-num" *ngIf="columnasConjuros.nivelLanzador">{{conjuro.nivelLanzador || '—'}}</td>
+                    <td class="ficha-num" *ngIf="columnasConjuros.cargasPorUso">{{conjuro.cargasPorUso || '—'}}</td>
+                    <td class="ficha-num" *ngIf="columnasConjuros.usosPorDia">{{conjuro.usosPorDia || '—'}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </app-ficha-bloque>
 
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2"
-                *ngIf="(encantamiento?.Requisitos?.Dotes?.length ?? 0) + (encantamiento?.Requisitos?.Conjuros?.length ?? 0) > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Requisitos para crearla</mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let dote of encantamiento?.Requisitos?.Dotes"
-                    matTooltip="Pulsa para ver la dote" matTooltipClass="tt-accent" (click)="abrirDote(dote.Id)">
-                    {{dote.Nombre}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngFor="let conjuro of encantamiento?.Requisitos?.Conjuros"
-                    matTooltip="Pulsa para ver el conjuro" matTooltipClass="tt-accent" (click)="abrirConjuro(conjuro.Id)">
-                    {{conjuro.Nombre}}<ng-container *ngIf="conjuro.Opcional"> (o bien)</ng-container>
-                </mat-chip>
-            </div>
-        </div>
-    </div>
-</div>
+    <app-ficha-bloque titulo="Coste según a qué se aplica" *ngIf="costesMaterial.length > 0">
+        <table class="ficha-tabla">
+            <thead>
+                <tr>
+                    <th scope="col">Se aplica a</th>
+                    <th scope="col" class="ficha-num" *ngIf="columnasCostes.coste">Coste</th>
+                    <th scope="col" class="ficha-num" *ngIf="columnasCostes.porLibra">Por libra</th>
+                    <th scope="col" class="ficha-num" *ngIf="columnasCostes.multiplicador">Precio</th>
+                    <th scope="col" class="ficha-num" *ngIf="columnasCostes.encantar">Al encantarlo</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let coste of costesMaterial">
+                    <td>{{coste.aplicacion}}</td>
+                    <td class="ficha-num" *ngIf="columnasCostes.coste">{{coste.coste || '—'}}</td>
+                    <td class="ficha-num" *ngIf="columnasCostes.porLibra">{{coste.porLibra || '—'}}</td>
+                    <td class="ficha-num" *ngIf="columnasCostes.multiplicador">{{coste.multiplicador || '—'}}</td>
+                    <td class="ficha-num" *ngIf="columnasCostes.encantar">{{coste.encantar || '—'}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </app-ficha-bloque>
+
+    <app-ficha-bloque titulo="Bonificaciones del conjunto" *ngIf="(conjunto?.Bonificaciones?.length ?? 0) > 0">
+        <table class="ficha-tabla">
+            <thead>
+                <tr>
+                    <th scope="col" class="ficha-num">Piezas</th>
+                    <th scope="col">Bonificación</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let bonificacion of conjunto?.Bonificaciones">
+                    <td class="ficha-num">{{bonificacion.Piezas}}</td>
+                    <td>{{bonificacion.Descripcion}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </app-ficha-bloque>
+</app-ficha-detalle>

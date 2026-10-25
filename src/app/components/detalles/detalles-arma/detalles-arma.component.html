@@ -1,77 +1,32 @@
-<div class="tw-w-full tw-px-3 detalle-view" *ngIf="arma">
-    <div class="tw-flex tw-flex-wrap">
-        <div class="detalle-col tw-w-full md:tw-w-1/2 tw-p-2">
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto warm tw-w-full sombra-caja-sm tw-py-2 tw-m-1 chip-titulo">
-                    {{arma.Nombre}}
-                </mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" matTooltip="Pulsa para ver el manual"
-                    [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="abrirDetalleManual()">
-                    <mat-icon class="tw-me-2">auto_stories</mat-icon>
-                    {{manualLabel}}
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(arma.Tipo_arma?.Nombre)">
-                    Tipo de arma
-                    <mat-chip class="sombra3d-sm tw-m-1">{{arma.Tipo_arma?.Nombre}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(arma.Manejo?.Nombre)">
-                    Manejo
-                    <mat-chip class="sombra3d-sm tw-m-1">{{arma.Manejo?.Nombre}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let rasgo of rasgos">{{rasgo}}</mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(arma.Tipo_dano?.Nombre)">
-                    Tipo de daño
-                    <mat-chip class="sombra3d-sm tw-m-1">{{arma.Tipo_dano.Nombre}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(arma.Dano_pequeno) || tieneTextoVisible(arma.Dano_mediano); else danoCompuesto">
-                    Daño
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(arma.Dano_pequeno)">Pequeño {{arma.Dano_pequeno}}</mat-chip>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(arma.Dano_mediano)">Mediano {{arma.Dano_mediano}}</mat-chip>
-                </mat-chip>
-                <ng-template #danoCompuesto>
-                    <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(arma.Dano)">Daño {{arma.Dano}}</mat-chip>
-                </ng-template>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(arma.Critico)">Crítico {{arma.Critico}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(incrementoDistanciaVisible)">Incremento {{incrementoDistanciaVisible}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroVisible(arma.Alcance)">Alcance {{arma.Alcance}} pies</mat-chip>
-                <mat-chip class="chip-clic sombra3d-sm tw-m-1" *ngIf="arma.Municion" matTooltip="Pulsa para ver la munición"
-                    [matTooltipShowDelay]="250" matTooltipClass="tt-accent" (click)="abrirMunicion()">
-                    Munición {{arma.Municion.Nombre}}
-                </mat-chip>
-                <mat-chip class="warm sombra3d-sm tw-m-1" *ngIf="!arma.Oficial" matTooltip="Esta arma es homebrew" matTooltipClass="tt-accent">
-                    No es oficial
-                </mat-chip>
-            </div>
-        </div>
+<app-ficha-detalle *ngIf="arma">
+    <app-ficha-cabecera
+        [tipo]="tipoCabecera"
+        [nombre]="arma.Nombre"
+        [manual]="arma.Manual"
+        [oficial]="arma.Oficial"
+        [etiquetas]="etiquetas"
+        (abrirManual)="abrirDetalleManual()">
+    </app-ficha-cabecera>
 
-        <div class="detalle-col tw-w-full md:tw-w-1/2 tw-p-2">
+    <app-ficha-datos [datos]="datos" titulo="Datos del arma"></app-ficha-datos>
+
+    <app-ficha-cuerpo>
+        <app-ficha-seccion titulo="Descripción" *ngIf="conDescripcion">
             <app-descripcion-equipo [descripcion]="arma.Descripcion" [origen]="arma.Origen_descripcion"
                 [nombreOriginal]="arma.Nombre_original" [traducido]="arma.Traducido">
             </app-descripcion-equipo>
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Datos</mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(arma.Material?.Nombre)">
-                    Material
-                    <mat-chip class="sombra3d-sm tw-m-1">{{arma.Material?.Nombre}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="tw-h-auto sombra3d-sm tw-m-1" *ngIf="tieneTextoVisible(arma.Tamano?.Nombre)">
-                    Tamaño
-                    <mat-chip class="sombra3d-sm tw-m-1">{{arma.Tamano.Nombre}}</mat-chip>
-                </mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroVisible(arma.Peso)">Peso {{pesoVisible}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroVisible(arma.Precio)">Precio {{precioVisible}}</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngIf="tieneNumeroVisible(arma.Indice_fuerza_coste)"
-                    matTooltip="Arcos compuestos: lo que cuesta cada punto de índice de Fuerza" matTooltipClass="tt-accent">
-                    Índice de Fuerza {{arma.Indice_fuerza_coste}} po por punto
-                </mat-chip>
-            </div>
-            <div class="tw-flex tw-flex-wrap tw-items-center sombra-caja-sm tw-rounded-md tw-p-2 tw-my-2" *ngIf="(arma.Propiedades?.length ?? 0) > 0">
-                <mat-chip class="tw-h-auto tw-w-full sombra-caja-sm tw-py-2 tw-m-1 tw-mb-2 chip-titulo">Propiedades</mat-chip>
-                <mat-chip class="sombra3d-sm tw-m-1" *ngFor="let propiedad of arma.Propiedades"
-                    [matTooltip]="propiedad.Descripcion" matTooltipClass="tt-accent tt-multiline">
-                    {{textoPropiedad(propiedad)}}
-                </mat-chip>
-            </div>
-        </div>
-    </div>
-</div>
+        </app-ficha-seccion>
+
+        <app-ficha-lateral titulo="Propiedades" *ngIf="propiedades.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let propiedad of propiedades">
+                    <mat-icon class="ficha-icono" aria-hidden="true">check</mat-icon>
+                    <div>
+                        <div>{{propiedad.texto}}</div>
+                        <p class="ficha-nota" *ngIf="propiedad.descripcion">{{propiedad.descripcion}}</p>
+                    </div>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+    </app-ficha-cuerpo>
+</app-ficha-detalle>
