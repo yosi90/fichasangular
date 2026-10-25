@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, datosVisibles, textoDato, unirTipo } from 'src/app/components/detalles/ficha';
+import { DatoFicha, DoteFicha, SortilegaFicha, datosVisibles, dotesVisibles, sortilegasVisibles, textoDato, unirTipo } from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
@@ -9,7 +9,7 @@ import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato'
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
-import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 import {
     NOMBRES_CARACTERISTICAS,
@@ -94,9 +94,9 @@ export class DetallesMonstruoComponent {
     casillas: CasillaCaracteristica[] = [];
     combate: ParPintado[] = [];
     resumen: DatoFicha[] = [];
-    sortilegas: { id: number; nombre: string; detalle: string; }[] = [];
+    sortilegas: SortilegaFicha[] = [];
     habilidades: { nombre: string; rangos: number; }[] = [];
-    dotes: { contexto: DoteContextual; nombre: string; }[] = [];
+    dotes: DoteFicha[] = [];
     raciales: RacialDetalle[] = [];
     ataquesEspeciales: RacialDetalle[] = [];
     subtipos: { Id: number; Nombre: string; }[] = [];
@@ -235,14 +235,7 @@ export class DetallesMonstruoComponent {
         this.casillas = CARACTERISTICAS.map((clave) => this.casilla(clave));
         this.combate = this.calcularCombate();
         this.resumen = this.calcularResumen();
-        this.sortilegas = (m?.Sortilegas ?? [])
-            .filter((s) => tieneTextoVisible(s?.Conjuro?.Nombre))
-            .map((s) => ({
-                id: toNumber(s.Conjuro.Id),
-                nombre: `${s.Conjuro.Nombre}`.trim(),
-                detalle: [`NL ${toNumber(s.Nivel_lanzador)}`, tieneTextoVisible(s.Usos_diarios) ? `${s.Usos_diarios}`.trim() : '']
-                    .filter(Boolean).join(' · '),
-            }));
+        this.sortilegas = sortilegasVisibles(m?.Sortilegas);
         this.habilidades = (m?.Habilidades ?? [])
             .map((h) => {
                 const habilidad = `${h?.Habilidad ?? ''}`.trim();
@@ -251,9 +244,7 @@ export class DetallesMonstruoComponent {
             })
             .filter((h) => tieneTextoVisible(h.habilidad) && h.rangos > 0)
             .map(({ nombre, rangos }) => ({ nombre, rangos }));
-        this.dotes = (m?.Dotes ?? [])
-            .map((contexto) => ({ contexto, nombre: nombreDoteConExtra(contexto) }))
-            .filter((dote) => tieneTextoVisible(dote.nombre));
+        this.dotes = dotesVisibles(m?.Dotes);
         this.raciales = (m?.Raciales ?? []).filter((racial) => tieneTextoVisible(racial?.Nombre));
         this.ataquesEspeciales = (m?.Ataques_especiales ?? []).filter((ataque) => tieneTextoVisible(ataque?.Nombre));
         this.subtipos = (m?.Subtipos ?? [])

@@ -8,6 +8,7 @@ import { FichaPrerrequisitosComponent } from './ficha-prerrequisitos.component';
 import { FichaSeccionComponent } from './ficha-seccion.component';
 
 export * from './ficha';
+export * from './criatura';
 
 /**
  * Los componentes de la ficha común de los detalles. Se declaran juntos en `AppModule` y en las pruebas de cada

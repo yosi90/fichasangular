@@ -6,10 +6,13 @@ import { CondicionPrerrequisito, GrupoPrerrequisitos } from 'src/app/services/ut
 import {
     DatoFicha,
     FICHA_DETALLE_COMPONENTES,
+    datosMovimiento,
     datosVisibles,
     esTextoCorto,
     etiquetasVisibles,
+    sortilegasVisibles,
     textoDato,
+    textoPies,
     unirTipo,
 } from './index';
 
@@ -55,6 +58,30 @@ describe('Ficha de detalle: reglas', () => {
         expect(esTextoCorto('Uno.\n\nDos.')).toBeFalse();
         expect(esTextoCorto('- uno\n- dos')).toBeFalse();
         expect(esTextoCorto('x'.repeat(241))).toBeFalse();
+    });
+
+    it('textoPies enseña los pies con apóstrofo y nada sin un número mayor que 0', () => {
+        expect(textoPies(30)).toBe("30'");
+        expect(textoPies(0)).toBeNull();
+        expect(textoPies(null)).toBeNull();
+    });
+
+    it('datosMovimiento enseña los movimientos que tiene, en pies, y la maniobrabilidad', () => {
+        const datos = datosMovimiento({ Correr: 20, Nadar: 0, Volar: 60, Trepar: 0, Escalar: 0 }, 'Buena');
+        expect(datos.map((dato) => `${dato.etiqueta} ${dato.valor}`)).toEqual(["Correr 20'", "Volar 60'", 'Maniobrabilidad Buena']);
+        expect(datosMovimiento(null, null)).toEqual([]);
+    });
+
+    it('sortilegasVisibles quita las que no tienen conjuro y une nivel de lanzador y usos', () => {
+        const conjuro = (Id: number, Nombre: string) => ({ Id, Nombre });
+        expect(sortilegasVisibles([
+            { Conjuro: conjuro(7, ' Luz '), Nivel_lanzador: 3, Usos_diarios: 'A voluntad' },
+            { Conjuro: conjuro(8, 'Oscuridad'), Nivel_lanzador: 5, Usos_diarios: '' },
+            { Conjuro: conjuro(9, ''), Nivel_lanzador: 1, Usos_diarios: '1/día' },
+        ])).toEqual([
+            { id: 7, nombre: 'Luz', detalle: 'NL 3 · A voluntad' },
+            { id: 8, nombre: 'Oscuridad', detalle: 'NL 5' },
+        ]);
     });
 });
 

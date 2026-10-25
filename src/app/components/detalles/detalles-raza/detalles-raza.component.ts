@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, unirTipo } from 'src/app/components/detalles/ficha';
+import { DatoFicha, textoPies, unirTipo } from 'src/app/components/detalles/ficha';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
@@ -245,19 +245,19 @@ export class DetallesRazaComponent {
             { etiqueta: 'Alineamiento', valor: this.getAlineamientoResumen() },
             { etiqueta: 'Altura', valor: this.textoRango(r?.Altura_rango_inf, r?.Altura_rango_sup, 'm') },
             { etiqueta: 'Peso', valor: this.textoRango(r?.Peso_rango_inf, r?.Peso_rango_sup, 'kg') },
-            { etiqueta: 'Espacio', valor: this.textoPies(r?.Espacio) },
-            { etiqueta: 'Alcance', valor: this.textoPies(r?.Alcance) },
-            { etiqueta: 'Correr', valor: this.textoPies(r?.Correr) },
-            { etiqueta: 'Nadar', valor: this.textoPies(r?.Nadar) },
-            { etiqueta: 'Volar', valor: this.textoPies(r?.Volar) },
+            { etiqueta: 'Espacio', valor: textoPies(r?.Espacio) },
+            { etiqueta: 'Alcance', valor: textoPies(r?.Alcance) },
+            { etiqueta: 'Correr', valor: textoPies(r?.Correr) },
+            { etiqueta: 'Nadar', valor: textoPies(r?.Nadar) },
+            { etiqueta: 'Volar', valor: textoPies(r?.Volar) },
             {
                 etiqueta: 'Maniobrabilidad',
                 valor: this.mostrarManiobrabilidad() ? r.Maniobrabilidad.Nombre : null,
                 ayuda: 'Reglas de maniobrabilidad',
                 alPulsar: () => this.abrirInfoManiobrabilidad(),
             },
-            { etiqueta: 'Trepar', valor: this.textoPies(r?.Trepar) },
-            { etiqueta: 'Escalar', valor: this.textoPies(r?.Escalar) },
+            { etiqueta: 'Trepar', valor: textoPies(r?.Trepar) },
+            { etiqueta: 'Escalar', valor: textoPies(r?.Escalar) },
             { etiqueta: 'Armadura natural', valor: this.tieneNumeroNoCero(r?.Armadura_natural) ? textoConSigno(Number(r.Armadura_natural)) : null },
             { etiqueta: 'CA varios', valor: this.tieneNumeroNoCero(r?.Varios_armadura) ? textoConSigno(Number(r.Varios_armadura)) : null },
         ];
@@ -304,11 +304,6 @@ export class DetallesRazaComponent {
         if (!tieneNumeroVisible(inferior) && !tieneNumeroVisible(superior))
             return null;
         return `${inferior ?? 0} - ${superior ?? 0} ${unidad}`;
-    }
-
-    /** «30'», o nada si no lo tiene. */
-    private textoPies(valor: number | null | undefined): string | null {
-        return tieneNumeroVisible(valor) ? `${valor}'` : null;
     }
 
     private normalizarHabilidadesOtorgadas(

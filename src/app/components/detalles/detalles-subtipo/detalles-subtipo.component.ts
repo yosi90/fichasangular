@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, datosVisibles } from 'src/app/components/detalles/ficha';
+import { DatoFicha, DoteFicha, SortilegaFicha, datosMovimiento, datosVisibles, dotesVisibles, sortilegasVisibles } from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
@@ -7,7 +7,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { toNumber } from 'src/app/services/utils/normalizacion';
-import { idiomasVisibles, nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { idiomasVisibles, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-subtipo',
@@ -24,8 +24,8 @@ export class DetallesSubtipoComponent {
     datos: DatoFicha[] = [];
     combate: DatoFicha[] = [];
     movimiento: DatoFicha[] = [];
-    dotes: { contexto: DoteContextual; nombre: string; }[] = [];
-    sortilegas: { id: number; nombre: string; detalle: string; }[] = [];
+    dotes: DoteFicha[] = [];
+    sortilegas: SortilegaFicha[] = [];
     rasgos: Rasgo[] = [];
     idiomas: { Nombre: string; Descripcion: string; }[] = [];
     plantillas: { Id: number; Nombre: string; }[] = [];
@@ -53,26 +53,9 @@ export class DetallesSubtipoComponent {
             { etiqueta: 'Resistencia elemental', valor: value?.Re },
             { etiqueta: 'CD', valor: value?.Cd },
         ]);
-        const pies = (valor: unknown) => toNumber(valor) > 0 ? `${toNumber(valor)}'` : null;
-        this.movimiento = datosVisibles([
-            { etiqueta: 'Correr', valor: pies(value?.Movimientos?.Correr) },
-            { etiqueta: 'Nadar', valor: pies(value?.Movimientos?.Nadar) },
-            { etiqueta: 'Volar', valor: pies(value?.Movimientos?.Volar) },
-            { etiqueta: 'Trepar', valor: pies(value?.Movimientos?.Trepar) },
-            { etiqueta: 'Escalar', valor: pies(value?.Movimientos?.Escalar) },
-            { etiqueta: 'Maniobrabilidad', valor: `${value?.Maniobrabilidad?.['Nombre'] ?? ''}` },
-        ]);
-        this.dotes = (value?.Dotes ?? [])
-            .map((contexto) => ({ contexto, nombre: nombreDoteConExtra(contexto) }))
-            .filter((dote) => tieneTextoVisible(dote.nombre));
-        this.sortilegas = (value?.Sortilegas ?? [])
-            .filter((s) => tieneTextoVisible(s?.Conjuro?.Nombre))
-            .map((s) => ({
-                id: toNumber(s.Conjuro.Id),
-                nombre: `${s.Conjuro.Nombre}`.trim(),
-                detalle: [`NL ${toNumber(s.Nivel_lanzador)}`, tieneTextoVisible(s.Usos_diarios) ? `${s.Usos_diarios}`.trim() : '']
-                    .filter(Boolean).join(' · '),
-            }));
+        this.movimiento = datosMovimiento(value?.Movimientos, `${value?.Maniobrabilidad?.['Nombre'] ?? ''}`);
+        this.dotes = dotesVisibles(value?.Dotes);
+        this.sortilegas = sortilegasVisibles(value?.Sortilegas);
         this.rasgos = (value?.Rasgos ?? []).filter((rasgo) => tieneTextoVisible(rasgo?.Nombre));
         this.idiomas = idiomasVisibles(value?.Idiomas);
         this.plantillas = (value?.Plantillas ?? []).filter((plantilla) => tieneTextoVisible(plantilla?.Nombre));

@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, datosVisibles } from 'src/app/components/detalles/ficha';
+import { DatoFicha, DoteFicha, SortilegaFicha, datosMovimiento, datosVisibles, dotesVisibles, sortilegasVisibles } from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { Plantilla } from 'src/app/interfaces/plantilla';
@@ -8,7 +8,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { toNumber } from 'src/app/services/utils/normalizacion';
-import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { GrupoPrerrequisitos, agruparPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -34,8 +34,8 @@ export class DetallesPlantillaComponent {
     combate: DatoFicha[] = [];
     movimiento: DatoFicha[] = [];
     dadosGolpeAnimal: DatoFicha[] = [];
-    dotes: { contexto: DoteContextual; nombre: string; }[] = [];
-    sortilegas: { id: number; nombre: string; detalle: string; }[] = [];
+    dotes: DoteFicha[] = [];
+    sortilegas: SortilegaFicha[] = [];
     compatibilidades: { tipoComp: string; tipoNuevo: string; }[] = [];
     subtipos: SubtipoRef[] = [];
 
@@ -52,19 +52,10 @@ export class DetallesPlantillaComponent {
         this.modificadoresCaracteristicas = this.caracteristicas(value?.Modificadores_caracteristicas, (n) => n !== 0 ? textoConSigno(n) : null);
         this.minimosCaracteristicas = this.caracteristicas(value?.Minimos_caracteristicas, (n) => n > 0 ? n : null);
         this.combate = this.calcularCombate();
-        this.movimiento = this.calcularMovimiento();
+        this.movimiento = datosMovimiento(value?.Movimientos, value?.Maniobrabilidad?.Nombre);
         this.dadosGolpeAnimal = this.calcularDadosGolpeAnimal();
-        this.dotes = (value?.Dotes ?? [])
-            .map((contexto) => ({ contexto, nombre: nombreDoteConExtra(contexto) }))
-            .filter((dote) => tieneTextoVisible(dote.nombre));
-        this.sortilegas = (value?.Sortilegas ?? [])
-            .filter((s) => tieneTextoVisible(s?.Conjuro?.Nombre))
-            .map((s) => ({
-                id: toNumber(s.Conjuro.Id),
-                nombre: `${s.Conjuro.Nombre}`.trim(),
-                detalle: [`NL ${toNumber(s.Nivel_lanzador)}`, tieneTextoVisible(s.Usos_diarios) ? `${s.Usos_diarios}`.trim() : '']
-                    .filter(Boolean).join(' · '),
-            }));
+        this.dotes = dotesVisibles(value?.Dotes);
+        this.sortilegas = sortilegasVisibles(value?.Sortilegas);
         this.compatibilidades = this.calcularCompatibilidades();
         this.subtipos = (value?.Subtipos ?? [])
             .filter(subtipo => tieneTextoVisible(subtipo?.Nombre))
@@ -142,20 +133,6 @@ export class DetallesPlantillaComponent {
             { etiqueta: 'Reducción de daño', valor: p?.Reduccion_dano },
             { etiqueta: 'Resistencia a conjuros', valor: p?.Resistencia_conjuros },
             { etiqueta: 'Resistencia elemental', valor: p?.Resistencia_elemental },
-        ]);
-    }
-
-    private calcularMovimiento(): DatoFicha[] {
-        const mov = this.plantillaData?.Movimientos;
-        const pies = (valor: unknown) => toNumber(valor) > 0 ? `${toNumber(valor)}'` : null;
-        return datosVisibles([
-            { etiqueta: 'Correr', valor: pies(mov?.Correr) },
-            { etiqueta: 'Nadar', valor: pies(mov?.Nadar) },
-            { etiqueta: 'Volar', valor: pies(mov?.Volar) },
-            { etiqueta: 'Trepar', valor: pies(mov?.Trepar) },
-            { etiqueta: 'Escalar', valor: pies(mov?.Escalar) },
-            // Sin vuelo, la API da la maniobrabilidad a `null` (antes, «No vuela»).
-            { etiqueta: 'Maniobrabilidad', valor: this.plantillaData?.Maniobrabilidad?.Nombre },
         ]);
     }
 
