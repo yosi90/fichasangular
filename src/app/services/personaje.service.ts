@@ -61,12 +61,12 @@ interface PersonajeArchiveUpdateResponse {
     providedIn: 'root'
 })
 export class PersonajeService {
-    private readonly archivadoOverrideStorageKey = 'fichas.personajes.archivado.override.v1';
-
     constructor(
         private auth: Auth,
         private http: HttpClient,
-    ) { }
+    ) {
+        borrarMarcaDeArchivadoAntigua();
+    }
 
     async getDetallesPersonaje(id: number): Promise<Observable<Personaje>> {
         const personajeId = toInt(id);
@@ -148,8 +148,6 @@ export class PersonajeService {
         } catch (error) {
             throw errorDePerfil(error, 'No se ha podido cambiar el archivado del personaje.');
         }
-
-        this.setArchivadoOverride(id, !!archivado);
 
         return {
             ...response,
@@ -1119,7 +1117,8 @@ export class PersonajeService {
             },
             Disciplina_prohibida: toText(element?.disp),
             Escuelas_prohibidas: nombresConId(element?.escuelasProhibidas),
-            Archivado: this.resolveArchivadoDetalle(element, idPersonaje),
+            // `archivado` viene siempre en `PersonajeDetalle` (docs/publica/endpoints/personajes.md).
+            Archivado: toBoolean(element?.archivado),
             CaracteristicasVarios: {
                 Fuerza: [],
                 Destreza: [],
@@ -1130,54 +1129,21 @@ export class PersonajeService {
             },
         } as Personaje;
     }
+}
 
-    private resolveArchivadoDetalle(element: any, idPersonaje: number): boolean {
-        const raw = element && typeof element === 'object' ? element : {};
-        const keys = ['archivado', 'Archivado', 'isArchived', 'archived'];
-        for (const key of keys) {
-            if (Object.prototype.hasOwnProperty.call(raw, key))
-                return toBoolean(raw[key]);
-        }
+/**
+ * Hasta el 2026-10-25 se guardaba aquí, sin la cuenta, qué personajes había archivado quien usaba el navegador, por si
+ * el detalle no traía `archivado`. El contrato lo trae siempre: se borra lo que quede para que otra cuenta no lo vea
+ * (ecosistema-kit/CAMBIO_DE_CUENTA.md). Se puede quitar cuando haya pasado un tiempo.
+ */
+const MARCA_DE_ARCHIVADO_ANTIGUA = 'fichas.personajes.archivado.override.v1';
 
-        return this.getArchivadoOverride(idPersonaje) ?? false;
+function borrarMarcaDeArchivadoAntigua(): void {
+    try {
+        globalThis.localStorage?.removeItem(MARCA_DE_ARCHIVADO_ANTIGUA);
+    } catch {
+        // Sin almacenamiento local no hay nada que borrar.
     }
-
-    private getArchivadoOverride(idPersonaje: number): boolean | null {
-        const id = toInt(idPersonaje);
-        if (id <= 0)
-            return null;
-
-        try {
-            const raw = globalThis.localStorage?.getItem(this.archivadoOverrideStorageKey);
-            if (!raw)
-                return null;
-            const parsed = JSON.parse(raw);
-            if (!parsed || typeof parsed !== 'object')
-                return null;
-            if (!Object.prototype.hasOwnProperty.call(parsed, `${id}`))
-                return null;
-            return toBoolean(parsed[`${id}`]);
-        } catch {
-            return null;
-        }
-    }
-
-    private setArchivadoOverride(idPersonaje: number, archivado: boolean): void {
-        const id = toInt(idPersonaje);
-        if (id <= 0)
-            return;
-
-        try {
-            const raw = globalThis.localStorage?.getItem(this.archivadoOverrideStorageKey);
-            const parsed = raw ? JSON.parse(raw) : {};
-            const state = parsed && typeof parsed === 'object' ? parsed : {};
-            state[`${id}`] = !!archivado;
-            globalThis.localStorage?.setItem(this.archivadoOverrideStorageKey, JSON.stringify(state));
-        } catch {
-            // La persistencia local solo evita detalles stale; no debe bloquear la mutación real.
-        }
-    }
-
 }
 
 function toNullableText(value: any): string | null {

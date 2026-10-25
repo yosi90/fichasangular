@@ -446,39 +446,45 @@ describe('PersonajeService', () => {
         expect(archivado.message).toBe('No se ha podido cambiar el archivado del personaje.');
     });
 
-    it('mantiene el archivado recién cambiado si el detalle actor-scoped todavía no devuelve la flag', async () => {
-        localStorage.removeItem('fichas.personajes.archivado.override.v1');
+    it('el archivado sale solo del detalle de la API: no guarda nada en el navegador que vea otra cuenta', async () => {
+        localStorage.setItem('fichas.personajes.archivado.override.v1', JSON.stringify({ 77: true }));
+        const detalle = (archivado?: boolean) => ({
+            i: 77,
+            n: 'Archivado reciente',
+            ownerUid: 'uid-77',
+            visible_otros_usuarios: true,
+            a: '2',
+            ...(archivado === undefined ? {} : { archivado }),
+            ra: {
+                Id: 1,
+                Nombre: 'Humano',
+                Ajuste_nivel: 0,
+                Tamano: { Nombre: 'Mediano', Modificador_presa: 0 },
+                Dgs_adicionales: { Cantidad: 0 },
+            },
+            tc: { Id: 1, Nombre: 'Humanoide' },
+            clases: [{ id: 9, nombre: 'Guerrero', nivel: 2, lanzaConjuros: false, caracteristicaLanzamiento: null, modificadorLanzamiento: null }],
+        });
         const httpMock = {
-            patch: jasmine.createSpy('patch').and.returnValue(of({
-                message: 'ok',
-                idPersonaje: 77,
-                archivado: true,
-            })),
-            get: jasmine.createSpy('get').and.returnValue(of({
-                i: 77,
-                n: 'Archivado reciente',
-                ownerUid: 'uid-77',
-                visible_otros_usuarios: true,
-                a: '2',
-                ra: {
-                    Id: 1,
-                    Nombre: 'Humano',
-                    Ajuste_nivel: 0,
-                    Tamano: { Nombre: 'Mediano', Modificador_presa: 0 },
-                    Dgs_adicionales: { Cantidad: 0 },
-                },
-                tc: { Id: 1, Nombre: 'Humanoide' },
-                clases: [{ id: 9, nombre: 'Guerrero', nivel: 2, lanzaConjuros: false, caracteristicaLanzamiento: null, modificadorLanzamiento: null }],
-            })),
+            patch: jasmine.createSpy('patch').and.returnValue(of({ message: 'ok', idPersonaje: 77, archivado: true })),
+            get: jasmine.createSpy('get').and.returnValue(of(detalle(true))),
         } as any;
         const service = crearServicio(httpMock);
+        const leer = async () => {
+            const observable = await service.getDetallesPersonaje(77);
+            return new Promise<any>((resolve) => observable.subscribe(resolve));
+        };
 
+        // La marca antigua, sin la cuenta, se borra al empezar.
+        expect(localStorage.getItem('fichas.personajes.archivado.override.v1')).toBeNull();
         await service.actualizarArchivadoPersonaje(77, true);
-        const observable = await service.getDetallesPersonaje(77);
-        const personaje = await new Promise<any>((resolve) => observable.subscribe(resolve));
-
-        expect(personaje.Archivado).toBeTrue();
-        localStorage.removeItem('fichas.personajes.archivado.override.v1');
+        expect(localStorage.getItem('fichas.personajes.archivado.override.v1')).toBeNull();
+        expect((await leer()).Archivado).toBeTrue();
+        // Lo que diga la API manda; sin el campo, no archivado.
+        httpMock.get.and.returnValue(of(detalle(false)));
+        expect((await leer()).Archivado).toBeFalse();
+        httpMock.get.and.returnValue(of(detalle()));
+        expect((await leer()).Archivado).toBeFalse();
     });
 
     it('no interpreta el campo a del detalle como archivado porque ahora es ataque base', async () => {
