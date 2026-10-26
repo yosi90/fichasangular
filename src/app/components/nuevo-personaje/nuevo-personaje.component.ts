@@ -379,15 +379,15 @@ export class NuevoPersonajeComponent {
     catalogoVentajas: VentajaDetalle[] = [];
     catalogoDesventajas: VentajaDetalle[] = [];
     private catalogoIdiomasCompleto: IdiomaDetalle[] = [];
+    /** Los idiomas adicionales permitidos mientras está abierto su selector (calculados al abrirlo). */
+    private catalogoIdiomasAdicionales: IdiomaDetalle[] | null = null;
 
     /**
      * El catálogo de idiomas; al elegir los idiomas adicionales por Inteligencia, solo los que permiten la raza y las
      * clases del personaje (MJ cap. 2). Las ventajas que dan un idioma siguen eligiendo de todo el catálogo.
      */
     get catalogoIdiomas(): IdiomaDetalle[] {
-        return this.contextoSelectorIdioma === 'idiomasIniciales'
-            ? this.nuevoPSvc.filtrarIdiomasAdicionalesPermitidos(this.catalogoIdiomasCompleto)
-            : this.catalogoIdiomasCompleto;
+        return this.catalogoIdiomasAdicionales ?? this.catalogoIdiomasCompleto;
     }
 
     set catalogoIdiomas(idiomas: IdiomaDetalle[]) {
@@ -5503,6 +5503,7 @@ export class NuevoPersonajeComponent {
 
         this.limpiarFocoActivoAntesDeModal();
         this.contextoSelectorIdioma = 'idiomasIniciales';
+        this.catalogoIdiomasAdicionales = this.nuevoPSvc.filtrarIdiomasAdicionalesPermitidos(this.catalogoIdiomasCompleto);
         this.selectorIdiomaTitulo = 'Seleccionar idiomas iniciales';
         this.selectorIdiomaCantidadObjetivo = objetivo;
         this.selectorIdiomaCantidadSeleccionada = 0;
@@ -5551,6 +5552,7 @@ export class NuevoPersonajeComponent {
         this.modalSelectorIdiomaAbierto = false;
         this.ventajaPendienteIdiomaId = null;
         this.contextoSelectorIdioma = null;
+        this.catalogoIdiomasAdicionales = null;
         this.selectorIdiomaTitulo = 'Seleccionar idioma extra';
         this.selectorIdiomaCantidadObjetivo = 0;
         this.selectorIdiomaCantidadSeleccionada = 0;

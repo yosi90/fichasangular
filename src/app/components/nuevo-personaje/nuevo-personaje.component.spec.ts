@@ -1767,6 +1767,22 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalCaracteristicasAbierto).toBeTrue();
     });
 
+    it('el selector de idiomas adicionales solo ofrece los de la lista de la raza mientras está abierto (MJ cap. 2)', () => {
+        component.catalogoIdiomas = [
+            { Id: 8, Nombre: 'Élfico', Descripcion: '', Secreto: false, Oficial: true },
+            { Id: 13, Nombre: 'Gigante', Descripcion: '', Secreto: false, Oficial: true },
+        ] as any;
+        (nuevoPSvc as any).razaSeleccionada = { Idiomas_adicionales_cualquiera: false, Idiomas_adicionales: [{ Id: 13, Nombre: 'Gigante' }] };
+
+        void component.abrirSelectorIdiomasIniciales(1);
+        const ofrecidos = component.catalogoIdiomas;
+
+        expect(ofrecidos.map((idioma) => idioma.Nombre)).toEqual(['Gigante']);
+        expect(component.catalogoIdiomas).toBe(ofrecidos);
+        (component as any).cerrarSelectorIdiomaContexto('cancelado');
+        expect(component.catalogoIdiomas.length).toBe(2);
+    });
+
     it('la regla de la deidad solo la tienen las clases con Alineamiento_deidad (el clérigo): LB de Gruumsh, incompatible y homebrew', () => {
         component.Personaje.Alineamiento = 'Legal bueno';
         component.Personaje.Deidad = 'Gruumsh';
