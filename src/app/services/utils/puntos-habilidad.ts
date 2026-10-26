@@ -1,3 +1,5 @@
+import { toInt } from 'src/app/services/utils/normalizacion';
+
 /**
  * Reglas de los puntos de habilidad y los rangos (Manual del jugador, cap. 4).
  *
@@ -26,14 +28,9 @@ export interface PuntosHabilidadNivelClase {
     extraPorNivel?: number;
 }
 
-function entero(valor: number | null | undefined): number {
-    const numero = Math.trunc(Number(valor ?? 0));
-    return Number.isFinite(numero) ? numero : 0;
-}
-
 export function puntosHabilidadNivelClase(entrada: PuntosHabilidadNivelClase): number {
-    const porNivel = Math.max(1, entero(entrada.puntosClase) + entero(entrada.modInteligencia));
-    const extra = Math.max(0, entero(entrada.primerNivelPersonaje ? entrada.extraPrimerNivel : entrada.extraPorNivel));
+    const porNivel = Math.max(1, toInt(entrada.puntosClase) + toInt(entrada.modInteligencia));
+    const extra = Math.max(0, toInt(entrada.primerNivelPersonaje ? entrada.extraPrimerNivel : entrada.extraPorNivel));
     return (entrada.primerNivelPersonaje ? porNivel * MULTIPLICADOR_PRIMER_NIVEL : porNivel) + extra;
 }
 
@@ -42,6 +39,6 @@ export function costeRangoHabilidad(clasea: boolean): number {
 }
 
 export function limiteRangosHabilidad(nivelPersonaje: number, clasea: boolean): number {
-    const tope = Math.max(0, entero(nivelPersonaje)) + 3;
+    const tope = Math.max(0, toInt(nivelPersonaje)) + 3;
     return clasea ? tope : Math.floor(tope / 2);
 }
