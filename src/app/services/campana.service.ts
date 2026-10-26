@@ -35,6 +35,7 @@ import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, Tras
 import { toBoolean, toNullableText } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
+import { tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 
 @Injectable({
     providedIn: 'root'
@@ -1135,7 +1136,14 @@ export class CampanaService {
             permitirObjetosMagicos: toBoolean(raw?.permitirObjetosMagicos, true),
             permitirObjetosAMedida: toBoolean(raw?.permitirObjetosAMedida, true),
             precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(raw?.precioMaximoPorObjeto),
+            maxTiradasPuntosGolpe: this.normalizeNullableTiradasPuntosGolpe(raw?.maxTiradasPuntosGolpe),
         };
+    }
+
+    /** Las tiradas de PG de la política (`tiradasPuntosGolpe`); `null` si no las limita. */
+    private normalizeNullableTiradasPuntosGolpe(value: any): number | null {
+        const parsed = this.toNullableNumber(value);
+        return parsed === null ? null : tiradasPuntosGolpe(parsed);
     }
 
     private normalizeCreateCampaignInput(input: string | CreateCampaignInput): CreateCampaignInput {
@@ -1252,6 +1260,8 @@ export class CampanaService {
             payload.permitirObjetosAMedida = toBoolean(raw.permitirObjetosAMedida, true);
         if ('precioMaximoPorObjeto' in raw)
             payload.precioMaximoPorObjeto = normalizarPrecioMaximoPorPieza(raw.precioMaximoPorObjeto);
+        if ('maxTiradasPuntosGolpe' in raw)
+            payload.maxTiradasPuntosGolpe = this.normalizeNullableTiradasPuntosGolpe(raw.maxTiradasPuntosGolpe);
 
         return payload;
     }

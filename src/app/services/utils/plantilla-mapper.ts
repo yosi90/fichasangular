@@ -157,6 +157,11 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
             Dado: toText(raw.Licantronia_dg.Dado),
             Multiplicador: toNumber(raw.Licantronia_dg.Multiplicador),
             Suma: toNumber(raw.Licantronia_dg.Suma),
+            Tipo_criatura: raw.Licantronia_dg.Tipo_criatura ? {
+                Id: toNumber(raw.Licantronia_dg.Tipo_criatura.Id),
+                Nombre: toText(raw.Licantronia_dg.Tipo_criatura.Nombre),
+                Puntos_habilidad: toNumber(raw.Licantronia_dg.Tipo_criatura.Puntos_habilidad),
+            } : null,
         },
         Cd: toNumber(raw?.Cd),
         Puntos_habilidad: {

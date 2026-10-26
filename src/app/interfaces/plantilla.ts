@@ -33,6 +33,8 @@ export interface PlantillaLicantroniaDg {
     Dado: string;
     Multiplicador: number;
     Suma: number;
+    /** El tipo de esos DG (el animal) con sus puntos de habilidad por DG; `null` si la plantilla no lo dice. */
+    Tipo_criatura?: { Id: number; Nombre: string; Puntos_habilidad: number; } | null;
 }
 
 export interface PlantillaPuntosHabilidad {

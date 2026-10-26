@@ -235,8 +235,6 @@ export class PersonajeService {
             || this.resolverIdAlineamientoDesdeNombre(personaje?.Alineamiento);
         const idGenero = toInt(contextoIds?.idGenero)
             || this.resolverIdGeneroDesdeNombre(personaje?.Genero);
-        const idCarga = toInt(contextoIds?.idCarga)
-            || this.resolverIdCargaDesdeFuerza(personaje?.Fuerza);
         const idDeidadFromContexto = toInt(contextoIds?.idDeidad);
         const idDeidad = idDeidadFromContexto > 0 ? idDeidadFromContexto : 0;
         const idManiobrabilidad = toInt(contextoIds?.idManiobrabilidad)
@@ -254,8 +252,6 @@ export class PersonajeService {
             throw new Error('No se pudo resolver el id de alineamiento para el payload de creación.');
         if (idGenero <= 0)
             throw new Error('No se pudo resolver el id de género para el payload de creación.');
-        if (idCarga <= 0)
-            throw new Error('No se pudo resolver el id de carga para el payload de creación.');
         if (deidadSeleccionada.length > 0 && deidadSeleccionada !== 'no tener deidad' && idDeidad <= 0)
             throw new Error('No se pudo resolver el id de deidad para el payload de creación.');
 
@@ -286,7 +282,6 @@ export class PersonajeService {
             deidad: idDeidad > 0 ? idDeidad : 0,
             idAlineamiento,
             idGenero,
-            idCarga,
             puntosGolpe: Math.max(1, toInt(personaje?.Vida)),
             pgsLic: toInt(personaje?.Pgs_lic),
             correr: toInt(personaje?.Correr),
@@ -806,18 +801,21 @@ export class PersonajeService {
             .filter((entrada) => !!entrada);
     }
 
-    private mapearModsSalvacion(values: any): { valor: number; origen?: string; }[] {
+    /** Los modificadores de una salvación; los condicionales («Contra veneno») llevan su `condicion` y no se suman. */
+    private mapearModsSalvacion(values: any): { valor: number; origen?: string; condicion?: string; }[] {
         return toArray<any>(values)
             .map((entrada) => {
                 const valor = toInt(entrada?.valor ?? entrada?.Valor);
                 if (valor === 0)
                     return null;
+                const condicion = toNullableText(entrada?.condicion);
                 return {
                     valor,
                     origen: `${entrada?.origen ?? entrada?.Origen ?? 'Varios'}`.trim() || 'Varios',
+                    ...(condicion !== null ? { condicion } : {}),
                 };
             })
-            .filter((entrada) => !!entrada) as { valor: number; origen?: string; }[];
+            .filter((entrada) => !!entrada) as { valor: number; origen?: string; condicion?: string; }[];
     }
 
     private construirMapaNombreId(items?: CatalogoNombreIdDto[]): Map<string, number> {
@@ -865,13 +863,6 @@ export class PersonajeService {
 
     private resolverIdAlineamientoDesdeNombre(nombreAlineamiento: any): number {
         return getAlineamientoBasicoIdPorNombre(normalizarTexto(nombreAlineamiento, true));
-    }
-
-    private resolverIdCargaDesdeFuerza(fuerza: any): number {
-        const fuerzaValor = toInt(fuerza);
-        if (fuerzaValor >= 10)
-            return Math.min(fuerzaValor - 9, 20);
-        return 1;
     }
 
     public async crearPersonajeApiDesdeCreacion(payload: PersonajeCreateRequestDto): Promise<PersonajeCreateResponseDto> {
@@ -1131,6 +1122,8 @@ export class PersonajeService {
                 Custom: toBoolean(habilidad?.custom),
                 Total: toNumber(habilidad?.total),
                 Extra_comodin: habilidad?.extraComodin ?? null,
+                Bonos: (normalizarTotal(habilidad)?.desglose ?? []).filter((parte) => parte.tipo === 'sinergia' || parte.tipo === 'armadura'),
+                Bonos_condicionales: normalizarTotal(habilidad)?.condicionales ?? [],
             })),
             Dotes: toDoteLegacyArray(dotesContextuales),
             DotesContextuales: dotesContextuales,

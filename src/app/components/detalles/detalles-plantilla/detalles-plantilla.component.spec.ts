@@ -195,7 +195,7 @@ describe('DetallesPlantillaComponent', () => {
         const resistencia = { Id: 21, Nombre: 'Resistencia al frío' } as any;
         const aura = { Id: 22, Nombre: 'Aura de miedo' } as any;
         component.plantilla = crearPlantilla({
-            Licantronia_dg: { Id_dado: 2, Dado: 'd8', Multiplicador: 2, Suma: 4 },
+            Licantronia_dg: { Id_dado: 2, Dado: 'd8', Multiplicador: 2, Suma: 4, Tipo_criatura: { Id: 3, Nombre: 'Animal', Puntos_habilidad: 2 } },
             Puntos_habilidad: { Suma: 0, Suma_fija: 8 },
             Habilidades: [
                 { Habilidad: 'Esconderse', Extra: null, Extra_comodin: null, Rangos: 8, Varios: null } as any,
@@ -209,7 +209,8 @@ describe('DetallesPlantillaComponent', () => {
         fixture.detectChanges();
 
         expect(datos(seccion('Dados de golpe adicionales'))).toEqual([
-            ['DG otorgados', '2'], ['Dado', 'd8'], ['Suma de PG', '+4'], ['Puntos de habilidad', '8'],
+            ['DG otorgados', '2'], ['Dado', 'd8'], ['Tipo de los DG', 'Animal'], ['Suma de PG', '+4'],
+            ['Puntos de habilidad', '2 + mod. de Int por DG'],
         ]);
         expect(filasPares(lateral('Habilidades'))).toEqual([['Avistar De clase', ''], ['Esconderse', '+8'], ['Saber (Elegir)', '+2']]);
         expect(limpio(lateral('Aptitudes raciales')?.querySelector('ul'))).toBe('Resistencia al frío · desde 4 DG');

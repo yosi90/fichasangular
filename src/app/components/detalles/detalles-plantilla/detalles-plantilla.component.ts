@@ -167,19 +167,23 @@ export class DetallesPlantillaComponent {
     }
 
     /**
-     * Los DG del animal base de un licántropo (`Licantronia_dg`; `null` en las demás plantillas) y los puntos de
-     * habilidad que dan (`Puntos_habilidad.Suma_fija`).
+     * Los DG del animal base de un licántropo (`Licantronia_dg`; `null` en las demás plantillas), su tipo y los puntos de
+     * habilidad que da cada uno (los del tipo + mod. de Int, mínimo 1; Manual de monstruos).
      */
     private calcularDadosGolpeAnimal(): DatoFicha[] {
         const dg = this.plantillaData?.Licantronia_dg;
         const multiplicador = toNumber(dg?.Multiplicador);
         const suma = toNumber(dg?.Suma);
-        const puntosHabilidad = toNumber(this.plantillaData?.Puntos_habilidad?.Suma_fija);
+        const tipo = dg?.Tipo_criatura ?? null;
         return datosVisibles([
             { etiqueta: 'DG otorgados', valor: multiplicador > 0 ? multiplicador : null },
             { etiqueta: 'Dado', valor: dg?.Dado },
+            { etiqueta: 'Tipo de los DG', valor: tipo?.Nombre ?? null },
             { etiqueta: 'Suma de PG', valor: suma !== 0 ? textoConSigno(suma) : null },
-            { etiqueta: 'Puntos de habilidad', valor: puntosHabilidad > 0 ? puntosHabilidad : null },
+            {
+                etiqueta: 'Puntos de habilidad',
+                valor: tipo && toNumber(tipo.Puntos_habilidad) > 0 ? `${toNumber(tipo.Puntos_habilidad)} + mod. de Int por DG` : null,
+            },
         ]);
     }
 

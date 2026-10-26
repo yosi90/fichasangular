@@ -759,6 +759,10 @@ export class FichaPersonajeService {
     }
 
     private calcularExpSiguienteNivel(pj: Personaje, ajusteNivel: number): number {
+        // La experiencia va por el NEP (niveles de clase + DG raciales y de plantilla + ajustes; GDM cap. 6), el de la API.
+        const nep = Math.max(0, toInt(pj?.NEP));
+        if (nep > 0)
+            return experienciaParaNivel(nep + 1);
         let nivelClases = (pj?.desgloseClases ?? [])
             .reduce((acum, clase) => acum + Math.max(0, toInt(clase?.Nivel)), 0);
         if (nivelClases <= 0) {

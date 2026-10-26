@@ -2281,7 +2281,7 @@ describe('NuevoPersonajeComponent', () => {
         const plantillaFijada = crearPlantillaMock({
             Id: 805,
             Nombre: 'Licántropo fijado',
-            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 1, Suma: 0 },
+            Licantronia_dg: { Id_dado: 3, Dado: 'D8', Multiplicador: 1, Suma: 0, Tipo_criatura: { Id: 3, Nombre: 'Animal', Puntos_habilidad: 2 } },
             Puntos_habilidad: { Suma: 0, Suma_fija: 4 },
         });
         component.seleccionarPlantilla(plantillaFijada);
@@ -2289,8 +2289,9 @@ describe('NuevoPersonajeComponent', () => {
 
         await component.continuarDesdePlantillas();
 
+        // 1 DG de animal con Int 12: 2 + 1 (Manual de monstruos, «Licántropo»).
         expect(nuevoPSvc.EstadoFlujo.pasoActual).toBe('habilidades');
-        expect(nuevoPSvc.EstadoFlujo.habilidades.puntosTotales).toBe(4);
+        expect(nuevoPSvc.EstadoFlujo.habilidades.puntosTotales).toBe(3);
 
         nuevoPSvc.EstadoFlujo.habilidades.puntosRestantes = 0;
         expect(nuevoPSvc.cerrarDistribucionHabilidades()).toBe('ventajas');
@@ -4958,6 +4959,21 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalSelectorPuntosGolpeAbierto).toBeTrue();
         expect(component.tiradasVidaRestantes).toBe(2);
         expect(component.resultadoVidaActual?.total).toBe(18);
+    });
+
+    it('las tiradas de PG las decide la campaña: con 1 (el Manual del jugador) no se puede recalcular; sin límite, 3', async () => {
+        component.Personaje.desgloseClases = [{ Nombre: 'Mago', Nivel: 1 } as any];
+        spyOn(nuevoPSvc, 'calcularVidaFinalAleatoria').and.returnValue({ total: 4, maximo: 4, detalle: {} as any });
+
+        component.selectedCampaignPolicy = { maxTiradasPuntosGolpe: 1 } as any;
+        await component.onFinalizarCreacionTemporal();
+        expect(component.tiradasVidaTotales).toBe(1);
+        expect(component.tiradasVidaRestantes).toBe(0);
+
+        component.selectedCampaignPolicy = { maxTiradasPuntosGolpe: null } as any;
+        await component.onFinalizarCreacionTemporal();
+        expect(component.tiradasVidaTotales).toBe(3);
+        expect(component.tiradasVidaRestantes).toBe(2);
     });
 
     it('recalcular PG consume intentos y se bloquea al llegar a cero', () => {

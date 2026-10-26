@@ -1,5 +1,6 @@
 import { Personaje, PersonajeTotales } from 'src/app/interfaces/personaje';
 import { PersonajeParteDto, PersonajeTipoParteDto, PersonajeTotalDto } from 'src/app/interfaces/personajes-api';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { primerEntero, toArray, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type TipoSalvacion = 'fortaleza' | 'reflejos' | 'voluntad';
@@ -12,6 +13,8 @@ const ETIQUETA_TIPO: Record<PersonajeTipoParteDto, string> = {
     varios: 'Varios',
     rangos: 'Rangos',
     rangosVarios: 'Rangos varios',
+    sinergia: 'Sinergia',
+    armadura: 'Penalizador de armadura',
     equipo: 'Equipo',
     base: 'Base',
     bonificador: 'Bonificador',
@@ -30,20 +33,30 @@ export function totalesPersonaje(pj: Personaje | null | undefined): PersonajeTot
 export function normalizarTotal(raw: any): PersonajeTotalDto | null {
     if (!raw || typeof raw !== 'object')
         return null;
-    return {
+    const total: PersonajeTotalDto = {
         total: toNumber(raw.total),
-        desglose: toArray<PersonajeParteDto>(raw.desglose).map((parte) => {
-            const normalizada: PersonajeParteDto = {
-                tipo: parte?.tipo,
-                origen: toNullableText(parte?.origen),
-                valor: toNumber(parte?.valor),
-            };
-            const bonificador = toNullableText(parte?.bonificador);
-            if (bonificador !== null)
-                normalizada.bonificador = bonificador;
-            return normalizada;
-        }),
+        desglose: toArray<PersonajeParteDto>(raw.desglose).map(normalizarParte),
     };
+    // Las salvaciones traen `condicionales`; las habilidades, `sinergiasCondicionales`. Ninguna se suma.
+    const condicionales = toArray<PersonajeParteDto>(raw.condicionales ?? raw.sinergiasCondicionales).map(normalizarParte);
+    if (condicionales.length > 0)
+        total.condicionales = condicionales;
+    return total;
+}
+
+function normalizarParte(parte: any): PersonajeParteDto {
+    const normalizada: PersonajeParteDto = {
+        tipo: parte?.tipo,
+        origen: toNullableText(parte?.origen),
+        valor: toNumber(parte?.valor),
+    };
+    const bonificador = toNullableText(parte?.bonificador);
+    if (bonificador !== null)
+        normalizada.bonificador = bonificador;
+    const condicion = toNullableText(parte?.condicion);
+    if (condicion !== null)
+        normalizada.condicion = condicion;
+    return normalizada;
 }
 
 export function totalVacio(): PersonajeTotalDto {
@@ -78,21 +91,33 @@ export function modificadoresDePartes(
  * nombra por su tipo. Con otro `separador` (« · »), todo en una línea.
  */
 export function textoDesglose(total: PersonajeTotalDto | null | undefined, separador = '\n'): string {
-    return toArray<PersonajeParteDto>(total?.desglose)
-        .map((parte) => {
-            const origen = `${parte?.origen ?? ''}`.trim() || ETIQUETA_TIPO[parte?.tipo] || 'Varios';
-            const valor = toNumber(parte?.valor);
-            const bonificador = `${parte?.bonificador ?? ''}`.trim();
-            return `${origen} ${valor >= 0 ? '+' : ''}${valor}${bonificador.length > 0 ? ` (${bonificador.toLowerCase()})` : ''}`;
-        })
-        .join(separador);
+    const linea = (parte: PersonajeParteDto, entreParentesis: string) => {
+        const origen = `${parte?.origen ?? ''}`.trim() || ETIQUETA_TIPO[parte?.tipo] || 'Varios';
+        return `${origen} ${textoConSigno(toNumber(parte?.valor))}${entreParentesis.length > 0 ? ` (${entreParentesis})` : ''}`;
+    };
+    // Lo condicional va detrás, con su condición, y no cuenta en el total.
+    return [
+        ...toArray<PersonajeParteDto>(total?.desglose).map((parte) => linea(parte, `${parte?.bonificador ?? ''}`.trim().toLowerCase())),
+        ...toArray<PersonajeParteDto>(total?.condicionales).map((parte) => linea(parte, `solo ${`${parte?.condicion ?? ''}`.trim().toLowerCase()}`)),
+    ].join(separador);
 }
 
-/** El total de una habilidad: el de la API o, en el borrador, rangos + rangos varios + modificador de su característica. */
-export function totalHabilidad(habilidad: { Total?: number; Mod_car?: number; Rangos?: number; Rangos_varios?: number; } | null | undefined): number {
+/**
+ * El total de una habilidad: el de la API o, en el borrador, rangos + rangos varios + modificador de su característica +
+ * sus sinergias (`Bonos`).
+ */
+export function totalHabilidad(
+    habilidad: { Total?: number; Mod_car?: number; Rangos?: number; Rangos_varios?: number; Bonos?: PersonajeParteDto[]; } | null | undefined,
+): number {
     if (habilidad?.Total !== undefined && habilidad?.Total !== null)
         return toNumber(habilidad.Total);
-    return toNumber(habilidad?.Rangos) + toNumber(habilidad?.Rangos_varios) + toNumber(habilidad?.Mod_car);
+    return toNumber(habilidad?.Rangos) + toNumber(habilidad?.Rangos_varios) + toNumber(habilidad?.Mod_car)
+        + toArray<PersonajeParteDto>(habilidad?.Bonos).reduce((acc, parte) => acc + toNumber(parte?.valor), 0);
+}
+
+/** Los bonos de una habilidad en texto («Sinergia (Saltar) +2», «… +2 (solo para seguir rastros)»), para su nota. */
+export function textoBonosHabilidad(habilidad: { Bonos?: PersonajeParteDto[]; Bonos_condicionales?: PersonajeParteDto[]; } | null | undefined): string {
+    return textoDesglose({ total: 0, desglose: toArray(habilidad?.Bonos), condicionales: toArray(habilidad?.Bonos_condicionales) }, ' · ');
 }
 
 function partesDe(total: PersonajeTotalDto | null | undefined, tipo: PersonajeTipoParteDto): PersonajeParteDto[] {
@@ -127,11 +152,19 @@ function salvacionDelBorrador(
     modificador: number | undefined,
     mods: { modsClaseos?: unknown; modsVarios?: unknown; } | undefined,
 ): PersonajeTotalDto {
-    return sumar([
+    const varios = toArray<any>(mods?.modsVarios);
+    const esCondicional = (mod: any) => toNullableText(mod?.condicion) !== null;
+    const total = sumar([
         parte('caracteristica', caracteristica, modificador),
         ...partesVarias('clase', mods?.modsClaseos),
-        ...partesVarias('varios', mods?.modsVarios),
+        ...partesVarias('varios', varios.filter((mod) => !esCondicional(mod))),
     ]);
+    const condicionales = varios.filter(esCondicional)
+        .map((mod) => ({ ...partesVarias('varios', [mod])[0], condicion: toNullableText(mod.condicion) }))
+        .filter((item) => item.valor !== undefined);
+    if (condicionales.length > 0)
+        total.condicionales = condicionales;
+    return total;
 }
 
 function parte(tipo: PersonajeTipoParteDto, origen: string, valor: unknown): PersonajeParteDto {

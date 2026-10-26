@@ -92,6 +92,7 @@ export function normalizeSubtipoResumen(raw: any): SubtipoResumen {
         Manual: normalizeManualApi(raw?.Manual),
         Heredada: toBoolean(raw?.Heredada),
         Oficial: toBoolean(raw?.Oficial),
+        Ajuste_nivel: toNumber(raw?.Ajuste_nivel),
     };
 }
 

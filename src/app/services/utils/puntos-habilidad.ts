@@ -4,9 +4,11 @@ import { toInt } from 'src/app/services/utils/normalizacion';
  * Reglas de los puntos de habilidad y los rangos (Manual del jugador, cap. 4).
  *
  * - Cada nivel de clase da (puntos de la clase + modificador de Inteligencia), con un mínimo de 1 aunque la
- *   Inteligencia reste. En el primer nivel del personaje se multiplica por 4; si la raza o una plantilla ya da DG
- *   raciales, el primer nivel ya fue el de esos DG (sus puntos llevan su propio multiplicador) y el primer nivel de
- *   clase no lleva ×4.
+ *   Inteligencia reste. En el primer nivel del personaje se multiplica por 4; si la raza ya da DG raciales, el primer
+ *   nivel ya fue el de esos DG (sus puntos llevan su propio multiplicador) y el primer nivel de clase no lleva ×4. Los DG
+ *   de una plantilla no cuentan: el animal de un licántropo nunca es su primer DG (Manual de monstruos).
+ * - Los DG de una plantilla (el animal de un licántropo; Manual de monstruos, «Licántropo»): (puntos por DG de su tipo +
+ *   modificador de Inteligencia, mínimo 1) por cada DG, sin ×4 en ninguno.
  * - Los DG raciales (Manual de monstruos, cap. 1): (puntos por DG + modificador de Inteligencia, mínimo 1) × (DG + 3). La
  *   raza guarda los dos factores: `Dgs_adicionales.Multiplicador_puntos_habilidad` (los puntos por DG del tipo, 2 en un
  *   humanoide monstruoso) y `Dgs_adicionales.Puntos_habilidad` (DG + 3).
@@ -53,6 +55,17 @@ export interface PuntosHabilidadDgRaciales {
 export function puntosHabilidadDgRaciales(entrada: PuntosHabilidadDgRaciales): number {
     const multiplicador = Math.max(0, toInt(entrada.multiplicador));
     return multiplicador * puntosPorNivel(entrada.puntosPorDg, entrada.modInteligencia);
+}
+
+export interface PuntosHabilidadDgPlantilla {
+    /** Puntos por DG del tipo de esos DG (`Licantronia_dg.Tipo_criatura.Puntos_habilidad`: 2 en un animal). */
+    puntosPorDg: number;
+    dgs: number;
+    modInteligencia: number;
+}
+
+export function puntosHabilidadDgPlantilla(entrada: PuntosHabilidadDgPlantilla): number {
+    return Math.max(0, toInt(entrada.dgs)) * puntosPorNivel(entrada.puntosPorDg, entrada.modInteligencia);
 }
 
 export function costeRangoHabilidad(clasea: boolean): number {

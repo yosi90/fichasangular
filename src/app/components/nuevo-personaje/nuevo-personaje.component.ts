@@ -1,7 +1,7 @@
 import { Component, EventEmitter, HostListener, Output, ViewChild } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { MatTabGroup } from '@angular/material/tabs';
-import { Subscription, firstValueFrom, take } from 'rxjs';
+import { Observable, Subscription, firstValueFrom, take } from 'rxjs';
 import { Caracteristica } from 'src/app/interfaces/caracteristica';
 import { Campana, Super } from 'src/app/interfaces/campaña';
 import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
@@ -96,6 +96,9 @@ import { InformacionBasicosModalSection } from './informacion-basicos-modal/info
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
+import { TamanoService } from 'src/app/services/tamano.service';
+import { SubtipoService } from 'src/app/services/subtipo.service';
+import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
@@ -122,6 +125,8 @@ import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineam
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { esEspecializable } from 'src/app/services/utils/reglas-magia';
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
+import { tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
+import { dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
 import { EquipoCatalogos, MunicionDetalle } from 'src/app/interfaces/equipo';
@@ -317,6 +322,7 @@ const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
     permitirVentajasDesventajas: true,
     permitirIgnorarRestriccionesAlineamiento: true,
     maxFuentesHomebrewGeneralesPorPersonaje: null,
+    maxTiradasPuntosGolpe: null,
 };
 
 @Component({
@@ -575,6 +581,7 @@ export class NuevoPersonajeComponent {
     private deidadesSub?: Subscription;
     private tiposCriaturaSub?: Subscription;
     private alineamientosBasicosSub?: Subscription;
+    private catalogosCifrasSubs: Subscription[] = [];
     @ViewChild(MatTabGroup) TabGroup?: MatTabGroup;
     @Output() personajeFinalizado = new EventEmitter<number>();
 
@@ -693,6 +700,9 @@ export class NuevoPersonajeComponent {
         private userProfileNavigationSvc: UserProfileNavigationService,
         private listaPersonajesSvc?: ListaPersonajesService,
         private equipoSvc?: EquipoService,
+        private tamanoSvc?: TamanoService,
+        private subtipoSvc?: SubtipoService,
+        private razaCatalogosSvc?: RazaCatalogosService,
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -724,6 +734,7 @@ export class NuevoPersonajeComponent {
         this.deidadesSub?.unsubscribe();
         this.tiposCriaturaSub?.unsubscribe();
         this.alineamientosBasicosSub?.unsubscribe();
+        this.catalogosCifrasSubs.forEach((sub) => sub.unsubscribe());
         this.restaurarChatTrasModalCaracteristicas();
     }
 
@@ -769,6 +780,7 @@ export class NuevoPersonajeComponent {
         this.cargarClases();
         this.cargarDotes();
         this.cargarTiposCriatura();
+        this.cargarCatalogosCifras();
         this.cargarAlineamientosBasicos();
         if (uid.length > 0)
             this.nuevoPSvc.activarPersistenciaBorradorLocal(uid);
@@ -861,7 +873,7 @@ export class NuevoPersonajeComponent {
 
         if (origen === 'plantilla_dg') {
             const plantillasConDg = this.plantillasSeleccionadas
-                .filter((plantilla) => this.aportaDgPlantilla(plantilla));
+                .filter((plantilla) => dgsDePlantilla(plantilla) > 0);
             if (plantillasConDg.length === 1) {
                 const nombrePlantilla = `${plantillasConDg[0]?.Nombre ?? ''}`.trim();
                 return nombrePlantilla.length > 0 ? nombrePlantilla : 'Plantilla';
@@ -2372,11 +2384,6 @@ export class NuevoPersonajeComponent {
         // pero evitamos interferir en controles donde Enter tiene semántica propia.
         const selectorBloqueado = 'textarea, button, a, [role="button"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
         return !!target.closest(selectorBloqueado);
-    }
-
-    private aportaDgPlantilla(plantilla: Plantilla | null | undefined): boolean {
-        const multiplicador = Number(plantilla?.Licantronia_dg?.Multiplicador ?? 0);
-        return Number.isFinite(multiplicador) && Math.trunc(multiplicador) > 0;
     }
 
     private async cargarCampanas() {
@@ -4213,7 +4220,8 @@ export class NuevoPersonajeComponent {
 
     private abrirSelectorPuntosGolpe(): void {
         this.resetearEstadoFinalizacion();
-        this.tiradasVidaTotales = 3;
+        // Las tiradas que deja la campaña (`tiradasPuntosGolpe`); sin campaña o sin límite, el máximo.
+        this.tiradasVidaTotales = tiradasPuntosGolpe(this.selectedCampaignPolicy?.maxTiradasPuntosGolpe);
         this.tiradasVidaRestantes = Math.max(0, this.tiradasVidaTotales - 1);
         this.resultadoVidaActual = this.nuevoPSvc.calcularVidaFinalAleatoria();
         this.modalSelectorVisibilidadAbierto = false;
@@ -4458,7 +4466,6 @@ export class NuevoPersonajeComponent {
             idAlineamiento: this.resolverIdAlineamientoCreacion(),
             idDeidad: this.resolverIdDeidadCreacion(),
             idGenero: this.resolverIdGeneroCreacion(),
-            idCarga: this.resolverIdCargaCreacion(),
             idManiobrabilidad: this.toPositiveInt((this.Personaje as any)?.Raza?.Maniobrabilidad?.Id) ?? 0,
             idEspArcana: this.resolverIdEscuelaEspecialistaCreacion(),
             idEspPsionica: this.resolverIdDisciplinaEspecialistaCreacion(),
@@ -4574,15 +4581,6 @@ export class NuevoPersonajeComponent {
         if (genero === 'sin genero')
             return 4;
         return null;
-    }
-
-    private resolverIdCargaCreacion(): number {
-        const fuerza = Math.trunc(Number(this.Personaje?.Fuerza ?? 0));
-        if (!Number.isFinite(fuerza))
-            return 1;
-        if (fuerza >= 10)
-            return Math.min(fuerza - 9, 20);
-        return 1;
     }
 
     private resolverIdEscuelaEspecialistaCreacion(): number {
@@ -6463,6 +6461,23 @@ export class NuevoPersonajeComponent {
                 this.refreshBasicosDerivedState();
             },
         });
+    }
+
+    /**
+     * Los catálogos de las cifras de la creación: la tabla de carga y los tamaños con sus multiplicadores (la carga), los
+     * subtipos con su ajuste de nivel (el NEP) y los tipos de dado (la escalera de dados de las plantillas).
+     */
+    private cargarCatalogosCifras(): void {
+        this.catalogosCifrasSubs.forEach((sub) => sub.unsubscribe());
+        this.catalogosCifrasSubs = [];
+        const escuchar = <T>(origen: Observable<T[]> | undefined, aplicar: (items: T[]) => void) => {
+            if (origen)
+                this.catalogosCifrasSubs.push(origen.subscribe({ next: (items) => aplicar(items ?? []), error: () => aplicar([]) }));
+        };
+        escuchar(this.tamanoSvc?.getCapacidadesCarga(), (filas) => this.nuevoPSvc.setTablaCarga(filas));
+        escuchar(this.tamanoSvc?.getTamanos(), (tamanos) => this.nuevoPSvc.setCatalogoTamanos(tamanos));
+        escuchar(this.subtipoSvc?.getSubtipos(), (subtipos) => this.nuevoPSvc.setCatalogoSubtipos(subtipos));
+        escuchar(this.razaCatalogosSvc?.getTiposDado(), (tipos) => this.nuevoPSvc.setCatalogoTiposDado(tipos));
     }
 
     private cargarTiposCriatura(): void {

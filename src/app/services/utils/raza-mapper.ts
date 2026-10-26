@@ -282,6 +282,7 @@ export function normalizeRazaApi(raw: any): Raza {
         Dotes_adicionales: toNumber(raw?.Dotes_adicionales),
         Puntos_habilidad_extra_primer_nivel: toNumber(raw?.Puntos_habilidad_extra_primer_nivel),
         Puntos_habilidad_extra_por_nivel: toNumber(raw?.Puntos_habilidad_extra_por_nivel),
+        Cuadrupedo: toBoolean(raw?.Cuadrupedo),
         Reduccion_dano: toText(raw?.rd),
         Resistencia_magica: toText(raw?.rc),
         Resistencia_energia: toText(raw?.re),

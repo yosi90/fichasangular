@@ -14,6 +14,7 @@ import {
     PersonajeEquipoPiezaDto,
     PersonajeExtraComodinDto,
     PersonajeModificadorEquipoDto,
+    PersonajeParteDto,
     PersonajeProgresionLanzadorDto,
     PersonajePuntosPoderDto,
     PersonajeSalvacionesDto,
@@ -230,9 +231,11 @@ export interface Personaje extends PersonajeSimple {
                 valor: number,
                 origen: string
             }[],
+            /** Con `condicion` («Contra veneno»), solo cuenta en esas tiradas: se guarda y se enseña, no se suma. */
             modsVarios:{
                 valor: number,
-                origen: string
+                origen: string,
+                condicion?: string | null
             }[],
         }
         reflejos: {
@@ -240,9 +243,11 @@ export interface Personaje extends PersonajeSimple {
                 valor: number,
                 origen: string
             }[],
+            /** Con `condicion` («Contra veneno»), solo cuenta en esas tiradas: se guarda y se enseña, no se suma. */
             modsVarios:{
                 valor: number,
-                origen: string
+                origen: string,
+                condicion?: string | null
             }[],
         }
         voluntad: {
@@ -250,9 +255,11 @@ export interface Personaje extends PersonajeSimple {
                 valor: number,
                 origen: string
             }[],
+            /** Con `condicion` («Contra veneno»), solo cuenta en esas tiradas: se guarda y se enseña, no se suma. */
             modsVarios:{
                 valor: number,
-                origen: string
+                origen: string,
+                condicion?: string | null
             }[],
         }
     }
@@ -336,6 +343,10 @@ export interface Personaje extends PersonajeSimple {
             valor: number;
             origen: string;
         }[];
+        /** Sinergias y penalizador de armadura que suman (en la ficha, las partes de la API; en la creación, las sinergias). */
+        Bonos?: PersonajeParteDto[];
+        /** Sinergias que solo cuentan en unas pruebas: se enseñan y no se suman. */
+        Bonos_condicionales?: PersonajeParteDto[];
     }[]
     Dotes: DoteLegacy[];
     DotesContextuales: DoteContextual[];

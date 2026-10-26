@@ -38,6 +38,7 @@ import { ApiActionGuardService } from 'src/app/services/api-action-guard.service
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
+import { MAX_TIRADAS_PUNTOS_GOLPE, MIN_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 
 type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
 type CampaignWorkspaceTab = 'usuarios' | 'historias';
@@ -145,6 +146,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     readonly campaignNepMax = 20;
     readonly campaignMaxTablesMin = 1;
     readonly campaignMaxTablesMax = 5;
+    /** Tiradas de PG de la campaña: 1 es el Manual del jugador y 3, lo que deja la web sin campaña. */
+    readonly campaignHpRollsMin = MIN_TIRADAS_PUNTOS_GOLPE;
+    readonly campaignHpRollsMax = MAX_TIRADAS_PUNTOS_GOLPE;
     readonly campaignHomebrewSourcesMin = 1;
     readonly campaignHomebrewSourcesMax = 20;
     readonly generadorMinimoOpciones = Array.from({ length: 11 }, (_, index) => index + 3);
@@ -886,6 +890,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         );
     }
 
+    onCampaignHpRollsBlur(): void {
+        this.campaignCreatePolicyDraft.maxTiradasPuntosGolpe = tiradasPuntosGolpe(
+            this.campaignCreatePolicyDraft.maxTiradasPuntosGolpe
+        );
+    }
+
     abrirInfoCampaignHomebrew(event?: Event): void {
         event?.preventDefault();
         event?.stopPropagation();
@@ -1532,6 +1542,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirObjetosMagicos: true,
             permitirObjetosAMedida: true,
             precioMaximoPorObjeto: null,
+            maxTiradasPuntosGolpe: this.campaignHpRollsMax,
         };
     }
 
@@ -1559,6 +1570,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirObjetosMagicos: this.campaignCreatePolicyDraft.permitirObjetosMagicos !== false,
             permitirObjetosAMedida: this.campaignCreatePolicyDraft.permitirObjetosAMedida !== false,
             precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(this.campaignCreatePolicyDraft.precioMaximoPorObjeto),
+            maxTiradasPuntosGolpe: tiradasPuntosGolpe(this.campaignCreatePolicyDraft.maxTiradasPuntosGolpe),
         };
     }
 
@@ -1979,6 +1991,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirObjetosMagicos: source?.permitirObjetosMagicos !== false,
             permitirObjetosAMedida: source?.permitirObjetosAMedida !== false,
             precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(source?.precioMaximoPorObjeto),
+            maxTiradasPuntosGolpe: tiradasPuntosGolpe(source?.maxTiradasPuntosGolpe),
         };
     }
 
