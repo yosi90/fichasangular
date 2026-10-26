@@ -1629,6 +1629,44 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.Raciales.map((racial) => racial.Id)).toEqual([8]);
     });
 
+    it('la creación guarda todas las habilidades del catálogo, también las que no tienen rangos', () => {
+        service.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+            { Id_habilidad: 7, Nombre: 'Nadar', Id_caracteristica: 1, Caracteristica: 'Fuerza', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+            { Id_habilidad: 32, Nombre: 'Saber', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: true, Extras: [] },
+        ]);
+        expect(service.aplicarSiguienteNivelClase(claseBase).aplicado).toBeTrue();
+        service.PersonajeCreacion.Nombre = 'Completo';
+        service.PersonajeCreacion.Campana = 'Sin campaña';
+
+        const payload = new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+            service.PersonajeCreacion,
+            { idAlineamiento: 1, idGenero: 1, idCarga: 1, idDeidad: 1 } as any,
+        );
+
+        expect((payload.colecciones?.habilidades?.base ?? []).map((h) => h.idHabilidad).sort((a, b) => a - b)).toEqual([6, 7, 32]);
+    });
+
+    it('un clérigo 5 suma Fortaleza base +4 (salvación buena, MJ tabla 3-6) con los incrementos de cada nivel', () => {
+        const fortaleza = ['+2', '+3', '+3', '+4', '+4'];
+        const nivel1 = claseBase.Desglose_niveles[0];
+        const clerigo = crearClaseBase({
+            Id: 4,
+            Nombre: 'Clérigo',
+            Desglose_niveles: fortaleza.map((valor, indice) => ({
+                ...nivel1,
+                Nivel: indice + 1,
+                Salvaciones: { Fortaleza: valor, Reflejos: '+0', Voluntad: valor },
+            })),
+        });
+        service.setCatalogoClases([clerigo]);
+        for (let nivel = 1; nivel <= 5; nivel++)
+            expect(service.aplicarSiguienteNivelClase(clerigo).aplicado).toBeTrue();
+
+        const base = service.PersonajeCreacion.Salvaciones.fortaleza.modsClaseos.reduce((acc, mod) => acc + Number(mod.valor), 0);
+        expect(base).toBe(4);
+    });
+
     it('aplicarSiguienteNivelClase crea entrada de clase a nivel 1', () => {
         const res = service.aplicarSiguienteNivelClase(claseBase);
         expect(res.aplicado).toBeTrue();
