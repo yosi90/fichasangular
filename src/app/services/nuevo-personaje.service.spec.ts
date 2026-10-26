@@ -1633,6 +1633,21 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(fuerza.map((mod) => mod.valor)).toEqual([2]);
     });
 
+    it('las dotes que da un racial pasan al personaje con el racial como origen', () => {
+        const raza = crearRazaBase(crearTipoBase());
+        const racial = createRacialPlaceholder('Linaje celestial', 90);
+        racial.Dotes = [{ Id_dote: 501, Dote: 'Alerta', Id_extra: 0, Extra: '' }];
+        raza.Raciales = [racial];
+        service.setCatalogoDotes([{
+            Id: 501, Nombre: 'Alerta', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Modificadores: {},
+        } as any]);
+        service.seleccionarRaza(raza);
+
+        const dote = service.PersonajeCreacion.DotesContextuales.find((item) => item.Dote.Id === 501);
+        expect((dote?.Contexto as any)?.Origen).toBe('Linaje celestial');
+        expect(service.PersonajeCreacion.Dotes.find((item) => item.Nombre === 'Alerta')?.Origen).toBe('Linaje celestial');
+    });
+
     it('al elegir la raza (la primera vez o cambiándola) el personaje se queda con sus raciales', () => {
         const nuevo = new NuevoPersonajeService();
         nuevo.resetearCreacionNuevoPersonaje();

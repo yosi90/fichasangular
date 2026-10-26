@@ -5474,19 +5474,30 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Las dotes que tienen todos los de la raza (`raza_dotes`, como la Resistencia al calor del asherati), con la raza
-     * como origen. La dote es la del catálogo si está (con sus modificadores) y si no, la que trae la raza.
+     * Las dotes que tienen todos los de la raza: las de la raza (`raza_dotes`, como la Resistencia al calor del asherati),
+     * con la raza como origen, y las de sus raciales (`racial_dotes`), con el racial como origen. La dote es la del
+     * catálogo si está (con sus modificadores); si no, la que trae la raza o, de un racial, su id y su nombre.
      */
     private resolverDotesDeRaza(raza: Raza | null): DoteDeRaza[] {
-        const origen = `${raza?.Nombre ?? ''}`.trim() || 'Raza';
-        return (raza?.DotesContextuales ?? [])
+        const delCatalogo = (id: number): Dote | undefined => this.catalogoDotes.find((item) => toNumber(item?.Id) === id);
+        const origenRaza = `${raza?.Nombre ?? ''}`.trim() || 'Raza';
+        const deLaRaza = (raza?.DotesContextuales ?? [])
             .filter((entrada) => toNumber(entrada?.Dote?.Id) > 0)
             .map((entrada) => ({
-                dote: this.catalogoDotes.find((item) => toNumber(item?.Id) === toNumber(entrada.Dote.Id)) ?? entrada.Dote,
+                dote: delCatalogo(toNumber(entrada.Dote.Id)) ?? entrada.Dote,
                 idExtra: toNumber(entrada?.Contexto?.Id_extra),
                 extra: `${entrada?.Contexto?.Extra ?? ''}`.trim() || 'No aplica',
-                origen,
+                origen: origenRaza,
             }));
+        const deSusRaciales = (raza?.Raciales ?? []).flatMap((racial) => (racial?.Dotes ?? [])
+            .filter((entrada) => toNumber(entrada?.Id_dote) > 0)
+            .map((entrada) => ({
+                dote: delCatalogo(toNumber(entrada.Id_dote)) ?? ({ Id: toNumber(entrada.Id_dote), Nombre: `${entrada?.Dote ?? ''}`.trim() } as Dote),
+                idExtra: toNumber(entrada?.Id_extra),
+                extra: `${entrada?.Extra ?? ''}`.trim() || 'No aplica',
+                origen: `${racial?.Nombre ?? ''}`.trim() || origenRaza,
+            })));
+        return [...deLaRaza, ...deSusRaciales];
     }
 
     /** Las dotes de la raza pasan al personaje: se guardan con él y cuentan para los prerrequisitos. */
