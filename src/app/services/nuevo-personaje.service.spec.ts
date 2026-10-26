@@ -5734,6 +5734,8 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
             Subtipos: [],
             Habilidades: [],
             Sortilegas: [],
+            Raciales: [],
+            Ataques_especiales: [],
             Prerrequisitos_flags: {
                 actitud_requerido: false,
                 actitud_prohibido: false,

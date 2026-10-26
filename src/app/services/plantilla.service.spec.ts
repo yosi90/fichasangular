@@ -81,6 +81,21 @@ describe('Plantilla mappers', () => {
         }]);
     });
 
+    it('lee las aptitudes raciales y los ataques especiales con sus DG, y el comodín del extra de las habilidades', () => {
+        const plantilla = normalizePlantillaApi(createPlantillaRaw({
+            Raciales: [{ Racial: { Id: 21, Nombre: 'Resistencia al frío', Descripcion: 'Resiste 5.' }, Dg: 4 }],
+            Ataques_especiales: [{ Racial: { Id: 22, Nombre: 'Aura de miedo' }, Dg: 0 }],
+            Habilidades: [{ Id_habilidad: 30, Habilidad: 'Saber', Extra: null, Extra_comodin: 'elegir', Rangos: 2 }],
+        }));
+
+        expect(plantilla.Raciales.map((item) => [item.Racial.Id, item.Racial.Nombre, item.Racial.Descripcion, item.Dg]))
+            .toEqual([[21, 'Resistencia al frío', 'Resiste 5.', 4]]);
+        expect(plantilla.Ataques_especiales.map((item) => [item.Racial.Nombre, item.Dg])).toEqual([['Aura de miedo', 0]]);
+        expect(plantilla.Habilidades[0].Extra_comodin).toBe('elegir');
+        // Sin ellas (la caché de la RTDB aún no las guarda), listas vacías.
+        expect(normalizePlantilla(createPlantillaRaw()).Raciales).toEqual([]);
+    });
+
     it('descarta aliases legacy en el mapper HTTP de plantilla', () => {
         const plantilla = normalizePlantillaApi(createPlantillaRaw({
             subtipos: [{ Id: 11, Nombre: 'Humano' }],

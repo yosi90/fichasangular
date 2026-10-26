@@ -4,6 +4,7 @@ import { Comodin } from "./comodin";
 import { Conjuro } from "./conjuro";
 import { DoteContextual } from "./dote-contextual";
 import { Maniobrabilidad } from "./maniobrabilidad";
+import { RacialDetalle } from "./racial";
 import { SubtipoRef } from "./subtipo";
 import { Tamano } from "./tamaño";
 import { ManualReferencia } from "./manual";
@@ -57,6 +58,8 @@ export interface PlantillaHabilidadRef {
     Entrenada: boolean;
     Id_extra: number;
     Extra: string;
+    /** «elegir» si el extra está por escoger, «cualquiera» si vale cualquiera. */
+    Extra_comodin?: Comodin | null;
     Rangos: number;
     Varios: string;
 }
@@ -65,6 +68,12 @@ export interface PlantillaSortilega {
     Conjuro: Conjuro;
     Nivel_lanzador: number;
     Usos_diarios: string;
+    Dg: number;
+}
+
+/** Una aptitud racial o un ataque especial que da la plantilla, con los DG desde los que lo da. */
+export interface PlantillaRacialContextual {
+    Racial: RacialDetalle;
     Dg: number;
 }
 
@@ -137,6 +146,8 @@ export interface Plantilla {
     Subtipos: SubtipoRef[];
     Habilidades: PlantillaHabilidadRef[];
     Sortilegas: PlantillaSortilega[];
+    Raciales: PlantillaRacialContextual[];
+    Ataques_especiales: PlantillaRacialContextual[];
     Prerrequisitos_flags: PlantillaPrerrequisitosFlags;
     Prerrequisitos: PlantillaPrerrequisitos;
     Compatibilidad_tipos: PlantillaCompatibilidadTipo[];

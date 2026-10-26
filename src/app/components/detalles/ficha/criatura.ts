@@ -1,5 +1,9 @@
+import { Comodin } from 'src/app/interfaces/comodin';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { toNumber } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { nombreDoteConExtra, tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { DatoFicha, datosVisibles } from './ficha';
 
@@ -33,18 +37,64 @@ interface SortilegaCriatura {
     Conjuro: { Id: number; Nombre: string; };
     Nivel_lanzador: number;
     Usos_diarios: string;
+    /** Los DG que hacen falta para tenerla (las de una plantilla). */
+    Dg?: number | null;
 }
 
-/** Las aptitudes sortílegas cuyo conjuro tiene nombre, con su nivel de lanzador y sus usos. */
+/** Los DG desde los que se tiene una aptitud de una plantilla («desde 13 DG»), o vacío si no pide ninguno. */
+export function textoDesdeDg(dg: unknown): string {
+    return tieneNumeroVisible(dg) ? `desde ${Number(dg)} DG` : '';
+}
+
+/** Las aptitudes sortílegas cuyo conjuro tiene nombre, con su nivel de lanzador, sus usos y los DG que pide. */
 export function sortilegasVisibles(sortilegas: SortilegaCriatura[] | null | undefined): SortilegaFicha[] {
     return (sortilegas ?? [])
         .filter((s) => tieneTextoVisible(s?.Conjuro?.Nombre))
         .map((s) => ({
             id: toNumber(s.Conjuro.Id),
             nombre: `${s.Conjuro.Nombre}`.trim(),
-            detalle: [`NL ${toNumber(s.Nivel_lanzador)}`, tieneTextoVisible(s.Usos_diarios) ? `${s.Usos_diarios}`.trim() : '']
+            detalle: [`NL ${toNumber(s.Nivel_lanzador)}`, tieneTextoVisible(s.Usos_diarios) ? `${s.Usos_diarios}`.trim() : '', textoDesdeDg(s.Dg)]
                 .filter(Boolean).join(' · '),
         }));
+}
+
+/** Una habilidad que da una criatura o lo que la cambia: «Saber (arcano)», el bonificador y lo que añade («Varios»). */
+export interface HabilidadFicha {
+    nombre: string;
+    /** «+8», o vacío si no da bonificador (una habilidad que pasa a ser de clase). */
+    valor: string;
+    nota: string;
+}
+
+/** Lo que leen de una habilidad de plantilla, subtipo o raza (la cantidad la da quien llama). */
+interface HabilidadCriatura {
+    Habilidad: string;
+    Extra?: string | null;
+    Extra_comodin?: Comodin | null;
+    Varios?: string | null;
+}
+
+/**
+ * Las habilidades con nombre, por orden alfabético: el nombre con su extra («Elegir» si está por escoger), la cantidad
+ * (`Rangos` o `Cantidad`, según el tipo) con signo y «Varios» como nota. Se pintan en una tabla `ficha-pares`.
+ */
+export function habilidadesVisibles<T extends HabilidadCriatura>(
+    habilidades: T[] | null | undefined,
+    cantidad: (habilidad: T) => unknown,
+): HabilidadFicha[] {
+    return (habilidades ?? [])
+        .filter((h) => tieneTextoVisible(h?.Habilidad))
+        .map((h) => {
+            const extra = resolverExtraHabilidadVisible({ extra: h.Extra, extraComodin: h.Extra_comodin });
+            const nombre = `${h.Habilidad}`.trim();
+            const valor = toNumber(cantidad(h));
+            return {
+                nombre: tieneTextoVisible(extra) ? `${nombre} (${extra})` : nombre,
+                valor: valor !== 0 ? textoConSigno(valor) : '',
+                nota: tieneTextoVisible(h.Varios) ? `${h.Varios}`.trim() : '',
+            };
+        })
+        .sort((a, b) => compararTexto(a.nombre, b.nombre));
 }
 
 /** Una distancia en pies como en el manual («30'»), o `null` si no hay un número mayor que 0. */

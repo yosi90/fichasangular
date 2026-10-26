@@ -61,6 +61,8 @@ function crearPlantillaMock(overrides?: Partial<Plantilla>): Plantilla {
         Subtipos: [],
         Habilidades: [],
         Sortilegas: [],
+        Raciales: [],
+        Ataques_especiales: [],
         Prerrequisitos_flags: {
             actitud_requerido: false,
             actitud_prohibido: false,

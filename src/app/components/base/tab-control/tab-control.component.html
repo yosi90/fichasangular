@@ -325,7 +325,8 @@
             [plantilla]="detallesPlantillaAbiertos[index]"
             (conjuroDetalles)="abrirDetallesConjuroPorId($event)"
             (doteDetalles)="abrirDetallesDotePorId($event)"
-            (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)">
+            (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)"
+            (racialDetalles)="abrirDetallesRacial($event)">
         </app-detalles-plantilla>
     </mat-tab>
     <mat-tab *ngFor="let subtipo of detallesSubtipoAbiertos; let index = index" [label]="getEtiquetaSubtipo(subtipo)">

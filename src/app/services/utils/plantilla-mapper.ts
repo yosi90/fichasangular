@@ -5,6 +5,7 @@ import {
     PlantillaMovimientos,
     PlantillaPrerrequisitos,
     PlantillaPrerrequisitosFlags,
+    PlantillaRacialContextual,
 } from "src/app/interfaces/plantilla";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
@@ -12,6 +13,7 @@ import { normalizeSubtipoRefArray } from "./subtipo-mapper";
 import { leerComodin } from "./comodin";
 import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualLegacy } from './manual-mapper';
+import { normalizeRacial } from './racial-mapper';
 
 function toStrictArray<T = any>(raw: any): T[] {
     return Array.isArray(raw) ? raw : [];
@@ -36,6 +38,14 @@ function normalizeMovimientos(raw: any): PlantillaMovimientos {
         Trepar: toNumber(raw?.Trepar),
         Escalar: toNumber(raw?.Escalar),
     };
+}
+
+/** Las aptitudes raciales y los ataques especiales de la plantilla: el `RacialDetalle` y los DG desde los que los da. */
+function normalizeRacialesContextuales(raw: any): PlantillaRacialContextual[] {
+    return toArray(raw).map((item: any) => ({
+        Racial: normalizeRacial(item?.Racial),
+        Dg: toNumber(item?.Dg),
+    }));
 }
 
 function normalizePrerrequisitosFlags(raw: any): PlantillaPrerrequisitosFlags {
@@ -203,6 +213,7 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
             Entrenada: toBoolean(h?.Entrenada),
             Id_extra: toNumber(h?.Id_extra),
             Extra: toText(h?.Extra),
+            Extra_comodin: leerComodin(h?.Extra_comodin),
             Rangos: toNumber(h?.Rangos),
             Varios: toText(h?.Varios),
         })),
@@ -212,6 +223,8 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
             Usos_diarios: toText(s?.Usos_diarios),
             Dg: toNumber(s?.Dg),
         })),
+        Raciales: normalizeRacialesContextuales(raw?.Raciales),
+        Ataques_especiales: normalizeRacialesContextuales(raw?.Ataques_especiales),
         Prerrequisitos_flags: normalizePrerrequisitosFlags(raw?.Prerrequisitos_flags),
         Prerrequisitos: partes.Prerrequisitos,
         Compatibilidad_tipos: partes.Compatibilidad_tipos,

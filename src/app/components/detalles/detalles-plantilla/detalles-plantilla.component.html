@@ -25,7 +25,11 @@
         <app-ficha-seccion titulo="Combate y defensas" *ngIf="combate.length > 0">
             <app-ficha-datos [datos]="combate" [columnas]="3" [tarjeta]="false" titulo="Combate y defensas"></app-ficha-datos>
         </app-ficha-seccion>
-        <app-ficha-seccion titulo="Movimiento" *ngIf="movimiento.length > 0">
+        <app-ficha-seccion titulo="Ataques" [texto]="plantillaData.Ataques"></app-ficha-seccion>
+        <app-ficha-seccion titulo="Ataque completo" [texto]="plantillaData.Ataque_completo"></app-ficha-seccion>
+        <app-ficha-seccion titulo="Movimiento" *ngIf="hayMovimiento">
+            <!-- Las velocidades que da, como las escribe el manual («Posee alas…»), y los movimientos con número. -->
+            <app-texto-manual class="ficha-texto" *ngIf="tieneTextoVisible(plantillaData.Velocidades)" [texto]="plantillaData.Velocidades"></app-texto-manual>
             <app-ficha-datos [datos]="movimiento" [columnas]="3" [tarjeta]="false" titulo="Movimiento"></app-ficha-datos>
         </app-ficha-seccion>
         <app-ficha-seccion titulo="Dados de golpe adicionales" *ngIf="dadosGolpeAnimal.length > 0">
@@ -35,6 +39,28 @@
         <app-ficha-lateral titulo="Prerrequisitos">
             <!-- Cada condición es la frase que escribe la API («Criatura de tipo humanoide (conserva su tipo)»). -->
             <app-ficha-prerrequisitos [grupos]="prerrequisitosAgrupados" textoVacio="Sin prerrequisitos."></app-ficha-prerrequisitos>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Habilidades" *ngIf="habilidades.length > 0">
+            <table class="ficha-pares">
+                <tbody>
+                    <tr *ngFor="let habilidad of habilidades">
+                        <td>
+                            {{habilidad.nombre}}
+                            <div class="ficha-nota" *ngIf="habilidad.nota">{{habilidad.nota}}</div>
+                        </td>
+                        <td>{{habilidad.valor}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Aptitudes raciales" *ngIf="raciales.length > 0">
+            <ng-container *ngTemplateOutlet="listaRaciales; context: { $implicit: raciales }"></ng-container>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Ataques especiales" *ngIf="ataquesEspeciales.length > 0">
+            <ng-container *ngTemplateOutlet="listaRaciales; context: { $implicit: ataquesEspeciales }"></ng-container>
         </app-ficha-lateral>
 
         <app-ficha-lateral titulo="Compatibilidad de tipo" *ngIf="compatibilidades.length > 0">
@@ -77,3 +103,15 @@
         </app-ficha-lateral>
     </app-ficha-cuerpo>
 </app-ficha-detalle>
+
+<!-- Las aptitudes raciales o los ataques especiales: cada uno abre su detalle, con los DG desde los que lo da. -->
+<ng-template #listaRaciales let-raciales>
+    <ul class="ficha-lista">
+        <li class="ficha-lista__item" *ngFor="let item of raciales">
+            <span>
+                <button type="button" class="ficha-enlace" (click)="abrirDetallesRacial(item.racial)">{{item.racial.Nombre}}</button>
+                <span class="ficha-nota" *ngIf="item.desde"> · {{item.desde}}</span>
+            </span>
+        </li>
+    </ul>
+</ng-template>

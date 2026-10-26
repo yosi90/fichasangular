@@ -51,6 +51,8 @@ function crearPlantilla(partial: Partial<Plantilla> = {}): Plantilla {
         Subtipos: [],
         Habilidades: [],
         Sortilegas: [],
+        Raciales: [],
+        Ataques_especiales: [],
         Prerrequisitos_flags: {},
         Prerrequisitos: {
             actitud_requerido: [],
@@ -69,7 +71,7 @@ describe('DetallesPlantillaComponent', () => {
     let fixture: ComponentFixture<DetallesPlantillaComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, titulos, datos, seccion, enlace, filasPares } = lectorFicha(elemento);
+    const { texto, titulos, datos, seccion, lateral, enlace, filasPares } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
@@ -93,7 +95,7 @@ describe('DetallesPlantillaComponent', () => {
         expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => limpio(e))).toEqual(['Heredada', 'Oficial']);
 
         const datosClave = elemento().querySelector('.ficha-datos-contenedor--tarjeta');
-        expect(datos(datosClave)).toEqual([['Ajuste de nivel', '+3'], ['Dado de golpe', 'd12']]);
+        expect(datos(datosClave)).toEqual([['Ajuste de nivel', '+3'], ['Dado de golpe', 'd12 también los DG de clase']]);
 
         expect(titulos()).toEqual(['Descripción', 'Características', 'Combate y defensas', 'Movimiento', 'Prerrequisitos']);
         expect(datos(seccion('Características'))).toEqual([
@@ -146,6 +148,77 @@ describe('DetallesPlantillaComponent', () => {
         expect(datos(seccion('Características'))).toContain(['Inteligencia', '3']);
         expect(datos(seccion('Dados de golpe adicionales'))).toEqual([['DG otorgados', '2'], ['Dado', 'd8'], ['Suma de PG', '+4']]);
         expect(filasPares()).toEqual([['Humanoide', 'Cambiaformas'], ['Gigante', 'Gigante']]);
+    });
+
+    it('enseña lo que define la plantilla: pasos de DG y tamaño, puntos de habilidad, alineamiento, ataques, CD y velocidades', () => {
+        component.plantilla = crearPlantilla({
+            Tipo_dado_comodin: 'elegir',
+            Modificacion_dg: { Id_paso_modificacion: 1, Nombre: '+1 paso' },
+            Modificacion_tamano: { Id_paso_modificacion: 2, Nombre: '+1 paso' },
+            Puntos_habilidad: { Suma: 6, Suma_fija: 0 },
+            Alineamiento: {
+                Id: 32,
+                Basico: null,
+                Ley: { Id_ley: 10, Nombre: 'Ninguna preferencia' },
+                Moral: { Id_moral: 6, Nombre: 'Siempre Maligno' },
+                Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
+                Descripcion: 'Se debe respetar a raja tabla.',
+            } as any,
+            Ataques: 'Dos ataques de garra y uno de mordisco.',
+            Ataque_completo: 'Ambas garras y el mordisco.',
+            Cd: 15,
+            Velocidades: 'Posee alas con las que puede volar al doble de su velocidad.',
+            Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+            Maniobrabilidad: null as any,
+        });
+        fixture.detectChanges();
+
+        expect(datos(elemento().querySelector('.ficha-datos-contenedor--tarjeta'))).toEqual([
+            ['Ajuste de nivel', '+3'],
+            ['Cambio de tamaño', '+1 paso'],
+            ['Cambio del dado de golpe', '+1 paso'],
+            ['Puntos de habilidad por DG', '6 + mod. de Int'],
+            ['Alineamiento', 'Siempre maligno'],
+        ]);
+        expect(titulos()).toEqual([
+            'Descripción', 'Características', 'Combate y defensas', 'Ataques', 'Ataque completo', 'Movimiento', 'Prerrequisitos',
+        ]);
+        expect(limpio(seccion('Ataques'))).toContain('Dos ataques de garra y uno de mordisco.');
+        expect(limpio(seccion('Ataque completo'))).toContain('Ambas garras y el mordisco.');
+        expect(datos(seccion('Combate y defensas'))).toContain(['CD', '15']);
+        expect(limpio(seccion('Movimiento')?.querySelector('app-texto-manual'))).toBe('Posee alas con las que puede volar al doble de su velocidad.');
+        expect(datos(seccion('Movimiento'))).toEqual([]);
+    });
+
+    it('enseña las habilidades, los puntos de habilidad del animal y las aptitudes raciales y ataques especiales, enlazados', () => {
+        const racialSpy = spyOn(component.racialDetalles, 'emit');
+        const resistencia = { Id: 21, Nombre: 'Resistencia al frío' } as any;
+        const aura = { Id: 22, Nombre: 'Aura de miedo' } as any;
+        component.plantilla = crearPlantilla({
+            Licantronia_dg: { Id_dado: 2, Dado: 'd8', Multiplicador: 2, Suma: 4 },
+            Puntos_habilidad: { Suma: 0, Suma_fija: 8 },
+            Habilidades: [
+                { Habilidad: 'Esconderse', Extra: null, Extra_comodin: null, Rangos: 8, Varios: null } as any,
+                { Habilidad: 'Avistar', Extra: null, Extra_comodin: null, Rangos: 0, Varios: 'De clase' } as any,
+                { Habilidad: 'Saber', Extra: null, Extra_comodin: 'elegir', Rangos: 2, Varios: null } as any,
+            ],
+            Raciales: [{ Racial: resistencia, Dg: 4 }, { Racial: { Id: 0, Nombre: null } as any, Dg: 0 }],
+            Ataques_especiales: [{ Racial: aura, Dg: 0 }],
+            Sortilegas: [{ Conjuro: { Id: 11, Nombre: 'Aura sagrada' } as any, Nivel_lanzador: 0, Usos_diarios: '3/día', Dg: 13 }],
+        });
+        fixture.detectChanges();
+
+        expect(datos(seccion('Dados de golpe adicionales'))).toEqual([
+            ['DG otorgados', '2'], ['Dado', 'd8'], ['Suma de PG', '+4'], ['Puntos de habilidad', '8'],
+        ]);
+        expect(filasPares(lateral('Habilidades'))).toEqual([['Avistar De clase', ''], ['Esconderse', '+8'], ['Saber (Elegir)', '+2']]);
+        expect(limpio(lateral('Aptitudes raciales')?.querySelector('ul'))).toBe('Resistencia al frío · desde 4 DG');
+        expect(limpio(lateral('Ataques especiales')?.querySelector('ul'))).toBe('Aura de miedo');
+        expect(texto()).toContain('NL 0 · 3/día · desde 13 DG');
+        enlace('Resistencia al frío').click();
+        enlace('Aura de miedo').click();
+        expect(racialSpy).toHaveBeenCalledWith(resistencia);
+        expect(racialSpy).toHaveBeenCalledWith(aura);
     });
 
     it('enlaza dotes, sortílegas, subtipos y el manual con su detalle', () => {
