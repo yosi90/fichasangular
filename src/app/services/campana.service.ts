@@ -1119,6 +1119,14 @@ export class CampanaService {
         return null;
     }
 
+    /** El precio máximo de una pieza: po enteros, 0 o más; `null` (o vacío), sin tope. */
+    private normalizeNullablePriceLimit(value: any): number | null {
+        if (value === null || value === undefined || `${value}`.trim() === '')
+            return null;
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+    }
+
     private normalizeCampaignCreationPolicy(raw: any): CampaignCreationPolicy {
         const permitirHomebrewGeneral = toBoolean(raw?.permitirHomebrewGeneral, true);
         return {
@@ -1131,6 +1139,9 @@ export class CampanaService {
             maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral
                 ? null
                 : this.normalizeNullableHomebrewSourceLimit(raw?.maxFuentesHomebrewGeneralesPorPersonaje),
+            permitirObjetosMagicos: toBoolean(raw?.permitirObjetosMagicos, true),
+            permitirObjetosAMedida: toBoolean(raw?.permitirObjetosAMedida, true),
+            precioMaximoPorObjeto: this.normalizeNullablePriceLimit(raw?.precioMaximoPorObjeto),
         };
     }
 
@@ -1242,6 +1253,12 @@ export class CampanaService {
         } else if ('maxFuentesHomebrewGeneralesPorPersonaje' in raw) {
             payload.maxFuentesHomebrewGeneralesPorPersonaje = this.normalizeNullableHomebrewSourceLimit(raw.maxFuentesHomebrewGeneralesPorPersonaje);
         }
+        if ('permitirObjetosMagicos' in raw)
+            payload.permitirObjetosMagicos = toBoolean(raw.permitirObjetosMagicos, true);
+        if ('permitirObjetosAMedida' in raw)
+            payload.permitirObjetosAMedida = toBoolean(raw.permitirObjetosAMedida, true);
+        if ('precioMaximoPorObjeto' in raw)
+            payload.precioMaximoPorObjeto = this.normalizeNullablePriceLimit(raw.precioMaximoPorObjeto);
 
         return payload;
     }

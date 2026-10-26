@@ -1528,6 +1528,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirVentajasDesventajas: false,
             permitirIgnorarRestriccionesAlineamiento: false,
             maxFuentesHomebrewGeneralesPorPersonaje: 0,
+            permitirObjetosMagicos: true,
+            permitirObjetosAMedida: true,
+            precioMaximoPorObjeto: null,
         };
     }
 
@@ -1552,7 +1555,22 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirIgnorarRestriccionesAlineamiento: homebrewMode !== 'none'
                 && this.campaignCreatePolicyDraft.permitirIgnorarRestriccionesAlineamiento === true,
             maxFuentesHomebrewGeneralesPorPersonaje: maxFuentesHomebrew,
+            permitirObjetosMagicos: this.campaignCreatePolicyDraft.permitirObjetosMagicos !== false,
+            permitirObjetosAMedida: this.campaignCreatePolicyDraft.permitirObjetosAMedida !== false,
+            precioMaximoPorObjeto: this.normalizeCampaignMaxItemPrice(this.campaignCreatePolicyDraft.precioMaximoPorObjeto),
         };
+    }
+
+    /** El precio máximo de una sola pieza en la tienda: po enteros; vacío o negativo, sin tope. */
+    private normalizeCampaignMaxItemPrice(value: number | string | null | undefined): number | null {
+        if (value === null || value === undefined || `${value}`.trim() === '')
+            return null;
+        const parsed = Math.trunc(Number(value));
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+    }
+
+    onCampaignMaxItemPriceBlur(): void {
+        this.campaignCreatePolicyDraft.precioMaximoPorObjeto = this.normalizeCampaignMaxItemPrice(this.campaignCreatePolicyDraft.precioMaximoPorObjeto);
     }
 
     private normalizeCampaignMinimumRoll(value: number | null | undefined): number {
@@ -1965,6 +1983,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirVentajasDesventajas: source?.permitirVentajasDesventajas === true,
             permitirIgnorarRestriccionesAlineamiento: source?.permitirIgnorarRestriccionesAlineamiento === true,
             maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral ? null : maxFuentes,
+            permitirObjetosMagicos: source?.permitirObjetosMagicos !== false,
+            permitirObjetosAMedida: source?.permitirObjetosAMedida !== false,
+            precioMaximoPorObjeto: this.normalizeCampaignMaxItemPrice(source?.precioMaximoPorObjeto),
         };
     }
 
