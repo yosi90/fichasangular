@@ -144,6 +144,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     readonly campaignNepMax = 20;
     readonly campaignMaxTablesMin = 1;
     readonly campaignMaxTablesMax = 5;
+    /** Tiradas de PG de la campaña: 1 es el Manual del jugador y 3, lo que deja la web sin campaña. */
+    readonly campaignHpRollsMin = 1;
+    readonly campaignHpRollsMax = 3;
     readonly campaignHomebrewSourcesMin = 1;
     readonly campaignHomebrewSourcesMax = 20;
     readonly generadorMinimoOpciones = Array.from({ length: 11 }, (_, index) => index + 3);
@@ -885,6 +888,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         );
     }
 
+    onCampaignHpRollsBlur(): void {
+        this.campaignCreatePolicyDraft.maxTiradasPuntosGolpe = this.normalizeCampaignHpRolls(
+            this.campaignCreatePolicyDraft.maxTiradasPuntosGolpe
+        );
+    }
+
     abrirInfoCampaignHomebrew(event?: Event): void {
         event?.preventDefault();
         event?.stopPropagation();
@@ -1528,6 +1537,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirVentajasDesventajas: false,
             permitirIgnorarRestriccionesAlineamiento: false,
             maxFuentesHomebrewGeneralesPorPersonaje: 0,
+            maxTiradasPuntosGolpe: this.campaignHpRollsMax,
         };
     }
 
@@ -1552,6 +1562,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirIgnorarRestriccionesAlineamiento: homebrewMode !== 'none'
                 && this.campaignCreatePolicyDraft.permitirIgnorarRestriccionesAlineamiento === true,
             maxFuentesHomebrewGeneralesPorPersonaje: maxFuentesHomebrew,
+            maxTiradasPuntosGolpe: this.normalizeCampaignHpRolls(this.campaignCreatePolicyDraft.maxTiradasPuntosGolpe),
         };
     }
 
@@ -1576,6 +1587,14 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         if (!Number.isFinite(parsed))
             return this.campaignMaxTablesMin;
         return Math.min(this.campaignMaxTablesMax, Math.max(this.campaignMaxTablesMin, parsed));
+    }
+
+    /** Las tiradas de PG de la campaña: 1 (Manual del jugador) a 3; sin dato, 3, como sin campaña. */
+    private normalizeCampaignHpRolls(value: number | null | undefined): number {
+        const parsed = Math.trunc(Number(value));
+        if (value === null || value === undefined || !Number.isFinite(parsed))
+            return this.campaignHpRollsMax;
+        return Math.min(this.campaignHpRollsMax, Math.max(this.campaignHpRollsMin, parsed));
     }
 
     private normalizeCampaignHomebrewLimit(value: number | null | undefined, fallback: number): number {
@@ -1965,6 +1984,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirVentajasDesventajas: source?.permitirVentajasDesventajas === true,
             permitirIgnorarRestriccionesAlineamiento: source?.permitirIgnorarRestriccionesAlineamiento === true,
             maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral ? null : maxFuentes,
+            maxTiradasPuntosGolpe: this.normalizeCampaignHpRolls(source?.maxTiradasPuntosGolpe),
         };
     }
 

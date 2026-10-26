@@ -67,6 +67,8 @@ export interface CampaignCreationPolicy {
     permitirVentajasDesventajas: boolean;
     permitirIgnorarRestriccionesAlineamiento: boolean;
     maxFuentesHomebrewGeneralesPorPersonaje: number | null;
+    /** Cuántas veces se pueden tirar los PG al crear (1 = Manual del jugador, hasta 3); `null` o sin dato, 3. */
+    maxTiradasPuntosGolpe?: number | null;
 }
 
 export interface CreateCampaignInput {

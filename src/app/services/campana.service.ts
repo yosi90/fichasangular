@@ -1131,7 +1131,14 @@ export class CampanaService {
             maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral
                 ? null
                 : this.normalizeNullableHomebrewSourceLimit(raw?.maxFuentesHomebrewGeneralesPorPersonaje),
+            maxTiradasPuntosGolpe: this.normalizeNullableTiradasPuntosGolpe(raw?.maxTiradasPuntosGolpe),
         };
+    }
+
+    /** Las tiradas de PG de la política (1 a 3); `null` si no las limita. */
+    private normalizeNullableTiradasPuntosGolpe(value: any): number | null {
+        const parsed = this.toNullableNumber(value);
+        return parsed === null ? null : Math.min(3, Math.max(1, Math.trunc(parsed)));
     }
 
     private normalizeCreateCampaignInput(input: string | CreateCampaignInput): CreateCampaignInput {
@@ -1242,6 +1249,8 @@ export class CampanaService {
         } else if ('maxFuentesHomebrewGeneralesPorPersonaje' in raw) {
             payload.maxFuentesHomebrewGeneralesPorPersonaje = this.normalizeNullableHomebrewSourceLimit(raw.maxFuentesHomebrewGeneralesPorPersonaje);
         }
+        if ('maxTiradasPuntosGolpe' in raw)
+            payload.maxTiradasPuntosGolpe = this.normalizeNullableTiradasPuntosGolpe(raw.maxTiradasPuntosGolpe);
 
         return payload;
     }

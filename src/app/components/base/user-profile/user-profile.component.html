@@ -380,6 +380,17 @@
                                                     (blur)="onCampaignMaxTablesBlur()" />
                                             </label>
                                             <label class="campaign-policy-field">
+                                                <span>Tiradas de PG (1 = Manual del jugador)</span>
+                                                <input
+                                                    class="campaign-text-input"
+                                                    type="number"
+                                                    [min]="campaignHpRollsMin"
+                                                    [max]="campaignHpRollsMax"
+                                                    [(ngModel)]="campaignCreatePolicyDraft.maxTiradasPuntosGolpe"
+                                                    [disabled]="campaignEditorFormDisabled"
+                                                    (blur)="onCampaignHpRollsBlur()" />
+                                            </label>
+                                            <label class="campaign-policy-field">
                                                 <span>NEP máximo personaje nuevo</span>
                                                 <input
                                                     class="campaign-text-input"
