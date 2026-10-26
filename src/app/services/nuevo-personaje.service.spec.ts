@@ -1648,6 +1648,25 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.Dotes.find((item) => item.Nombre === 'Alerta')?.Origen).toBe('Linaje celestial');
     });
 
+    it('una aptitud de clase que llega sin id toma el de otra clase del catálogo que la conoce, para poder guardarse', () => {
+        const nivel1 = claseBase.Desglose_niveles[0];
+        const especialNivel = (especial: Record<string, any>) => ({
+            Especial: especial, Nivel: 1, Id_extra: 0, Extra: '', Opcional: 0, Id_interno: 1, Id_especial_requerido: 0, Id_dote_requerida: 0,
+        });
+        const sinId = crearClaseBase({
+            Id: 6, Nombre: 'Explorador',
+            Desglose_niveles: [{ ...nivel1, Especiales: [especialNivel({ Nombre: 'Empatía salvaje' })] as any }],
+        });
+        const conId = crearClaseBase({
+            Id: 5, Nombre: 'Druida',
+            Desglose_niveles: [{ ...nivel1, Especiales: [especialNivel({ Id: 30, Nombre: 'Empatía salvaje' })] as any }],
+        });
+        service.setCatalogoClases([sinId, conId]);
+
+        expect(service.aplicarSiguienteNivelClase(sinId).aplicado).toBeTrue();
+        expect(service.PersonajeCreacion.Claseas.find((item) => item.Nombre === 'Empatía salvaje')?.Id).toBe(30);
+    });
+
     it('al elegir la raza (la primera vez o cambiándola) el personaje se queda con sus raciales', () => {
         const nuevo = new NuevoPersonajeService();
         nuevo.resetearCreacionNuevoPersonaje();

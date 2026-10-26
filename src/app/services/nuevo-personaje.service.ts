@@ -6607,7 +6607,7 @@ export class NuevoPersonajeService {
             );
             if (!duplicado) {
                 const especialRaw = (especialNivel?.Especial as Record<string, any>) ?? {};
-                const idEspecial = toNumber(especialRaw?.['Id'] ?? especialRaw?.['id']);
+                const idEspecial = toNumber(especialRaw?.['Id'] ?? especialRaw?.['id']) || this.resolverIdEspecialPorNombre(nombre);
                 this.personajeCreacion.Claseas.push({
                     Id: idEspecial > 0 ? idEspecial : undefined,
                     Id_extra: toNumber(especialNivel?.Id_extra),
@@ -6617,6 +6617,26 @@ export class NuevoPersonajeService {
             }
             this.registrarIdInternoEspecial(toNumber(especialNivel?.Id_interno));
         });
+    }
+
+    /**
+     * El id de una aptitud especial por su nombre, en las tablas de nivel del catálogo de clases. La API y la caché siempre
+     * dan `Especial.Id`; esto es para una clase de una caché antigua que no lo traiga, para que la aptitud se guarde
+     * (`colecciones.especiales` necesita el id). 0 si ninguna clase la conoce con id.
+     */
+    private resolverIdEspecialPorNombre(nombre: string): number {
+        const buscado = normalizarTexto(nombre);
+        for (const clase of this.catalogoClases ?? []) {
+            for (const nivel of clase?.Desglose_niveles ?? []) {
+                for (const especialNivel of nivel?.Especiales ?? []) {
+                    const especial = (especialNivel?.Especial as Record<string, any>) ?? {};
+                    const id = toNumber(especial?.['Id']);
+                    if (id > 0 && normalizarTexto(especial?.['Nombre'] ?? '') === buscado)
+                        return id;
+                }
+            }
+        }
+        return 0;
     }
 
     private resolverAumentosClaseLanzadora(
