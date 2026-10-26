@@ -155,11 +155,17 @@ function normalizeIdiomasApi(raw: any): IdiomaDetalle[] {
         .filter((item) => item.Nombre.trim().length > 0);
 }
 
+/** Los campos de la raza que usan las reglas de la creación, leídos igual en la API y en la caché. */
+type CamposCreacionRaza = 'Dotes_adicionales' | 'Puntos_habilidad_extra_primer_nivel' | 'Puntos_habilidad_extra_por_nivel'
+    | 'Cuadrupedo' | 'Competencias' | 'Idiomas_adicionales' | 'Idiomas_adicionales_cualquiera';
+
 /**
- * Lo que la raza aporta a las reglas de la creación (desde la auditoría del 2026-10-26): sus competencias y sus idiomas
- * adicionales. Lo usan la lectura de la API y la de la caché (`Razas/{id}`), que guardan los campos con el mismo nombre.
+ * Lo que la raza aporta a las reglas de la creación: su dote adicional y sus puntos de habilidad extra, si carga como un
+ * cuadrúpedo, sus competencias y sus idiomas adicionales. Lo usan la lectura de la API y la de la caché (`Razas/{id}`),
+ * que guardan estos campos con el mismo nombre: un campo nuevo de este tipo se añade solo aquí (y en `raza-mutacion.ts`
+ * si la raza mutada lo cambia).
  */
-export function normalizarCompetenciasEIdiomasRaza(raw: any): Pick<Raza, 'Competencias' | 'Idiomas_adicionales' | 'Idiomas_adicionales_cualquiera'> {
+export function normalizarCamposCreacionRaza(raw: any): Pick<Raza, CamposCreacionRaza> {
     const refs = (valor: any) => (Array.isArray(valor) ? valor : (valor && typeof valor === 'object' ? Object.values(valor) : []))
         .map((item: any) => ({ Id: toNumber(item?.Id), Nombre: toText(item?.Nombre) }))
         .filter((item) => item.Id > 0 || item.Nombre.trim().length > 0);
@@ -170,6 +176,10 @@ export function normalizarCompetenciasEIdiomasRaza(raw: any): Pick<Raza, 'Compet
         Grupos_armadura: refs(raw?.Competencias?.Grupos_armadura),
     };
     return {
+        Dotes_adicionales: toNumber(raw?.Dotes_adicionales),
+        Puntos_habilidad_extra_primer_nivel: toNumber(raw?.Puntos_habilidad_extra_primer_nivel),
+        Puntos_habilidad_extra_por_nivel: toNumber(raw?.Puntos_habilidad_extra_por_nivel),
+        Cuadrupedo: toBoolean(raw?.Cuadrupedo),
         Competencias: competencias,
         Idiomas_adicionales: normalizeIdiomasApi(Array.isArray(raw?.Idiomas_adicionales) ? raw.Idiomas_adicionales : Object.values(raw?.Idiomas_adicionales ?? {})),
         Idiomas_adicionales_cualquiera: toBoolean(raw?.Idiomas_adicionales_cualquiera ?? true),
@@ -300,11 +310,7 @@ export function normalizeRazaApi(raw: any): Raza {
         Ataques_naturales: toText(raw?.an),
         Tamano: raw?.t ?? {} as any,
         Dgs_adicionales: normalizeDgsAdicionalesApi(raw?.dg),
-        Dotes_adicionales: toNumber(raw?.Dotes_adicionales),
-        Puntos_habilidad_extra_primer_nivel: toNumber(raw?.Puntos_habilidad_extra_primer_nivel),
-        Puntos_habilidad_extra_por_nivel: toNumber(raw?.Puntos_habilidad_extra_por_nivel),
-        Cuadrupedo: toBoolean(raw?.Cuadrupedo),
-        ...normalizarCompetenciasEIdiomasRaza(raw),
+        ...normalizarCamposCreacionRaza(raw),
         Reduccion_dano: toText(raw?.rd),
         Resistencia_magica: toText(raw?.rc),
         Resistencia_energia: toText(raw?.re),
