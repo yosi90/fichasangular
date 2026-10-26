@@ -1850,16 +1850,24 @@ export class NuevoPersonajeService {
         return costeRangoHabilidad(!!habilidad && this.esHabilidadClaseaParaSesion(habilidad));
     }
 
+    /**
+     * Se le puede subir un rango a la habilidad en esta sesión: no es entrenada transclásea, no ha llegado a su límite y
+     * los puntos que quedan pagan su coste.
+     */
+    puedeSubirRangoHabilidad(idHabilidad: number): boolean {
+        const id = toNumber(idHabilidad);
+        if (id <= 0)
+            return false;
+        const habilidad = this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === id);
+        if (!habilidad || this.esHabilidadEntrenadaNoClaseaParaSesion(habilidad))
+            return false;
+        return toNumber(habilidad?.Rangos) < this.obtenerLimiteRangoHabilidad(id)
+            && toNumber(this.estadoFlujo.habilidades.puntosRestantes) >= this.obtenerCosteRangoHabilidad(id);
+    }
+
     /** Queda alguna habilidad a la que subir un rango con los puntos que quedan. */
     private puedeComprarAlgunRangoHabilidad(): boolean {
-        const restantes = toNumber(this.estadoFlujo.habilidades.puntosRestantes);
-        return (this.personajeCreacion.Habilidades ?? []).some((habilidad) => {
-            const id = toNumber(habilidad?.Id);
-            if (id <= 0 || this.esHabilidadEntrenadaNoClaseaParaSesion(habilidad))
-                return false;
-            return toNumber(habilidad?.Rangos) < this.obtenerLimiteRangoHabilidad(id)
-                && restantes >= this.obtenerCosteRangoHabilidad(id);
-        });
+        return (this.personajeCreacion.Habilidades ?? []).some((habilidad) => this.puedeSubirRangoHabilidad(toNumber(habilidad?.Id)));
     }
 
     setExtraHabilidad(idHabilidad: number, extra: string): boolean {

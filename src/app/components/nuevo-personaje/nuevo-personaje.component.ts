@@ -3600,20 +3600,9 @@ export class NuevoPersonajeComponent {
         resolver?.(resultado);
     }
 
-    private esHabilidadEntrenadaNoClasea(habilidad: Personaje['Habilidades'][number]): boolean {
-        if (!this.esHabilidadEntrenada(habilidad))
-            return false;
-        return !this.esHabilidadClaseaEfectiva(Number(habilidad?.Id));
-    }
-
+    /** Sirve para el botón de un rango y para el de subir al máximo: los dos necesitan poder pagar al menos un rango. */
     puedeSubirRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
-        if (!habilidad)
-            return false;
-        if (this.esHabilidadEntrenadaNoClasea(habilidad))
-            return false;
-        const actual = Number(habilidad?.Rangos ?? 0);
-        const limite = this.getLimiteRangoHabilidad(Number(habilidad?.Id));
-        return this.flujoHabilidades.puntosRestantes >= this.getCosteRangoHabilidad(Number(habilidad?.Id)) && actual < limite;
+        return !!habilidad && this.nuevoPSvc.puedeSubirRangoHabilidad(Number(habilidad?.Id));
     }
 
     puedeBajarRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
@@ -3623,16 +3612,6 @@ export class NuevoPersonajeComponent {
         const actuales = Math.max(0, Math.trunc(Number(habilidad?.Rangos ?? 0)));
         const iniciales = this.getRangosInicialesSesionHabilidad(idHabilidad);
         return actuales > iniciales;
-    }
-
-    puedeMaxearRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
-        if (!habilidad)
-            return false;
-        if (this.esHabilidadEntrenadaNoClasea(habilidad))
-            return false;
-        const actual = Number(habilidad?.Rangos ?? 0);
-        const limite = this.getLimiteRangoHabilidad(Number(habilidad?.Id));
-        return this.flujoHabilidades.puntosRestantes >= this.getCosteRangoHabilidad(Number(habilidad?.Id)) && actual < limite;
     }
 
     ajustarRangoHabilidad(idHabilidad: number, delta: number): void {
