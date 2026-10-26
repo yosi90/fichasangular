@@ -140,6 +140,15 @@ describe('DetallesRazaComponent', () => {
         expect(valor('CA varios')).toBe('-1');
     });
 
+    it('enseña la dote adicional y los puntos de habilidad extra de la raza (el humano)', () => {
+        pintar({ Dotes_adicionales: 1, Puntos_habilidad_extra_primer_nivel: 4, Puntos_habilidad_extra_por_nivel: 1 });
+        expect(valor('Dotes adicionales')).toBe('1');
+        expect(valor('Puntos de habilidad extra')).toBe('4 en el primer nivel y 1 por nivel');
+
+        pintar({ Dotes_adicionales: 1, Puntos_habilidad_extra_primer_nivel: 0, Puntos_habilidad_extra_por_nivel: 0 });
+        expect(etiquetasDatos()).not.toContain('Puntos de habilidad extra');
+    });
+
     it('enseña los modificadores distintos de 0 y las edades en listas siempre a la vista', () => {
         pintar({ Modificadores: { Fuerza: 0, Destreza: 2, Constitucion: -2, Inteligencia: 0, Sabiduria: 0, Carisma: 0 } });
         expect(titulos()).toEqual(['Modificadores de característica', 'Edades']);

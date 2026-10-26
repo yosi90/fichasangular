@@ -266,6 +266,12 @@ export class DetallesRazaComponent {
         return [
             { etiqueta: 'Ajuste de nivel', valor: tieneNumeroVisible(r?.Ajuste_nivel) ? `+${r.Ajuste_nivel}` : null },
             { etiqueta: 'Clase predilecta', valor: mayusculaInicial(r?.Clase_predilecta) },
+            {
+                etiqueta: 'Dotes adicionales',
+                valor: Number(r?.Dotes_adicionales ?? 0) > 0 ? Number(r.Dotes_adicionales) : null,
+                ayuda: 'Dotes que da la raza en el primer nivel del personaje, además de la de nivel',
+            },
+            { etiqueta: 'Puntos de habilidad extra', valor: this.textoPuntosHabilidadExtra(), ancho: 2 },
             datoAlineamiento(r?.Alineamiento),
             { etiqueta: 'Altura', valor: this.textoRango(r?.Altura_rango_inf, r?.Altura_rango_sup, 'm') },
             { etiqueta: 'Peso', valor: this.textoRango(r?.Peso_rango_inf, r?.Peso_rango_sup, 'kg') },
@@ -288,6 +294,17 @@ export class DetallesRazaComponent {
             { etiqueta: 'Resistencia a conjuros', valor: r?.Resistencia_magica },
             { etiqueta: 'Resistencia elemental', valor: r?.Resistencia_energia },
         ];
+    }
+
+    /** «4 en el primer nivel y 1 por nivel» (el humano), o la parte que tenga la raza. */
+    private textoPuntosHabilidadExtra(): string | null {
+        const primerNivel = Number(this.raza?.Puntos_habilidad_extra_primer_nivel ?? 0);
+        const porNivel = Number(this.raza?.Puntos_habilidad_extra_por_nivel ?? 0);
+        const partes = [
+            primerNivel > 0 ? `${primerNivel} en el primer nivel` : '',
+            porNivel > 0 ? `${porNivel} por nivel` : '',
+        ].filter((parte) => parte.length > 0);
+        return partes.length > 0 ? partes.join(' y ') : null;
     }
 
     private construirDatosDgs(): DatoFicha[] {

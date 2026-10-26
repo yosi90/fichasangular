@@ -5,7 +5,7 @@
                 <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
                 <p class="tw-m-0 selector-subtitle" *ngIf="pendiente as actual">
                     {{getFuenteTexto(actual)}}
-                    <span *ngIf="actual.fuente !== 'raza_dg' && actual.origen">. Origen: {{actual.origen}}</span>
+                    <span *ngIf="actual.fuente !== 'raza_dg' && actual.fuente !== 'raza' && actual.origen">. Origen: {{actual.origen}}</span>
                     <span *ngIf="actual.tipoPermitido"> · Tipo permitido: {{actual.tipoPermitido}}</span>
                 </p>
             </div>

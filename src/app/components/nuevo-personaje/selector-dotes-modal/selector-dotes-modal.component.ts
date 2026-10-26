@@ -60,6 +60,8 @@ export class SelectorDotesModalComponent implements OnChanges {
             return 'Fuente: dote por nivel';
         if (pendiente.fuente === 'raza_dg')
             return `Fuente: DGs de raza: ${pendiente.origen || 'Raza'}`;
+        if (pendiente.fuente === 'raza')
+            return `Fuente: dote adicional de raza: ${pendiente.origen || 'Raza'}`;
         return 'Fuente: dote adicional';
     }
 

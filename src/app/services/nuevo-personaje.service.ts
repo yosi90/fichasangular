@@ -678,7 +678,8 @@ export interface AsignacionAumentoCaracteristica {
     caracteristica: Caracteristica;
 }
 
-export type DoteFuentePendiente = 'nivel' | 'adicional' | 'raza_dg';
+/** `raza`: la dote adicional de la raza (`Dotes_adicionales`, el humano); `raza_dg`: la de sus DG raciales. */
+export type DoteFuentePendiente = 'nivel' | 'adicional' | 'raza' | 'raza_dg';
 export type DoteEstadoPendiente = 'pendiente' | 'resuelta' | 'omitida';
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
@@ -894,6 +895,7 @@ interface NuevoPersonajeDraftV1 {
     secuenciaDotePendiente: number;
     dotesProgresionConcedidas: number;
     dotesExtraRazaConcedidas: number;
+    dotesAdicionalesRazaConcedidas?: number;
     aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[];
     aumentosProgresionConcedidos: number;
     secuenciaAumentoPendiente: number;
@@ -947,6 +949,7 @@ export class NuevoPersonajeService {
     private secuenciaDotePendiente = 1;
     private dotesProgresionConcedidas = 0;
     private dotesExtraRazaConcedidas = 0;
+    private dotesAdicionalesRazaConcedidas = 0;
     private firmasDotesPlantillaAplicadas = new Set<string>();
     private aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[] = [];
     private aumentosProgresionConcedidos = 0;
@@ -1198,6 +1201,7 @@ export class NuevoPersonajeService {
         this.secuenciaDotePendiente = 1;
         this.dotesProgresionConcedidas = 0;
         this.dotesExtraRazaConcedidas = 0;
+        this.dotesAdicionalesRazaConcedidas = 0;
         this.aumentosPendientesCaracteristica = [];
         this.aumentosProgresionConcedidos = 0;
         this.secuenciaAumentoPendiente = 1;
@@ -1303,6 +1307,7 @@ export class NuevoPersonajeService {
         this.secuenciaDotePendiente = 1;
         this.dotesProgresionConcedidas = 0;
         this.dotesExtraRazaConcedidas = 0;
+        this.dotesAdicionalesRazaConcedidas = 0;
         this.firmasDotesPlantillaAplicadas.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
@@ -1782,6 +1787,8 @@ export class NuevoPersonajeService {
             puntosClase: toNumber(clase?.Puntos_habilidad?.Valor),
             modInteligencia: toNumber(this.personajeCreacion?.ModInteligencia),
             primerNivelPersonaje: this.esPrimerNivelDelPersonaje(),
+            extraPrimerNivel: toNumber(this.razaSeleccionada?.Puntos_habilidad_extra_primer_nivel),
+            extraPorNivel: toNumber(this.razaSeleccionada?.Puntos_habilidad_extra_por_nivel),
         });
 
         const returnStep: StepNuevoPersonaje = this.estadoFlujo.conjuros.activa ? 'conjuros' : 'dotes';
@@ -2248,20 +2255,29 @@ export class NuevoPersonajeService {
         return creadas.map((item) => ({ ...item }));
     }
 
+    /**
+     * Las dotes que da la raza al aplicar un nivel de clase: las de sus DG raciales (`Dgs_adicionales.Dotes_extra`) y su
+     * dote adicional (`Dotes_adicionales`, la del humano), que se concede una vez, en el primer nivel del personaje. Las
+     * dos salen de los datos de la raza, también de una homebrew.
+     */
     registrarDotesPendientesPorRazaExtras(origen: string): DotePendienteState[] {
-        const totalRaza = Math.max(0, toNumber(this.razaSeleccionada?.Dgs_adicionales?.Dotes_extra));
-        const nuevas = Math.max(0, totalRaza - this.dotesExtraRazaConcedidas);
-        if (nuevas < 1)
-            return [];
         const origenNormalizado = `${origen ?? ''}`.trim() || `${this.razaSeleccionada?.Nombre ?? 'Raza'}`;
-        const creadas = Array.from({ length: nuevas }, () =>
-            this.crearDotePendiente('raza_dg', origenNormalizado, null)
-        );
+        const totalDgs = Math.max(0, toNumber(this.razaSeleccionada?.Dgs_adicionales?.Dotes_extra));
+        const nuevasDgs = Math.max(0, totalDgs - this.dotesExtraRazaConcedidas);
+        const totalAdicionales = Math.max(0, toNumber(this.razaSeleccionada?.Dotes_adicionales));
+        const nuevasAdicionales = Math.max(0, totalAdicionales - this.dotesAdicionalesRazaConcedidas);
+        if (nuevasDgs + nuevasAdicionales < 1)
+            return [];
+        const creadas = [
+            ...Array.from({ length: nuevasAdicionales }, () => this.crearDotePendiente('raza', origenNormalizado, null)),
+            ...Array.from({ length: nuevasDgs }, () => this.crearDotePendiente('raza_dg', origenNormalizado, null)),
+        ];
         this.dotesPendientes = [
             ...this.dotesPendientes,
             ...creadas,
         ];
-        this.dotesExtraRazaConcedidas += nuevas;
+        this.dotesExtraRazaConcedidas += nuevasDgs;
+        this.dotesAdicionalesRazaConcedidas += nuevasAdicionales;
         return creadas.map((item) => ({ ...item }));
     }
 
@@ -3857,9 +3873,13 @@ export class NuevoPersonajeService {
                 return `Dote adicional por nivel ${nivelProgresion}`;
         }
 
-        const prefijo = pendiente.fuente === 'nivel'
-            ? 'Dote por nivel'
-            : (pendiente.fuente === 'raza_dg' ? 'DGs de raza' : 'Dote adicional');
+        const prefijos: Record<DoteFuentePendiente, string> = {
+            nivel: 'Dote por nivel',
+            adicional: 'Dote adicional',
+            raza: 'Dote adicional de raza',
+            raza_dg: 'DGs de raza',
+        };
+        const prefijo = prefijos[pendiente.fuente] ?? 'Dote adicional';
         const origen = `${pendiente?.origen ?? ''}`.trim();
         return origen.length > 0 ? `${prefijo}: ${origen}` : prefijo;
     }
@@ -8231,6 +8251,7 @@ export class NuevoPersonajeService {
             secuenciaDotePendiente: Math.max(1, toInt(this.secuenciaDotePendiente)),
             dotesProgresionConcedidas: Math.max(0, toInt(this.dotesProgresionConcedidas)),
             dotesExtraRazaConcedidas: Math.max(0, toInt(this.dotesExtraRazaConcedidas)),
+            dotesAdicionalesRazaConcedidas: Math.max(0, toInt(this.dotesAdicionalesRazaConcedidas)),
             aumentosPendientesCaracteristica: this.clonarProfundo(this.aumentosPendientesCaracteristica),
             aumentosProgresionConcedidos: Math.max(0, toInt(this.aumentosProgresionConcedidos)),
             secuenciaAumentoPendiente: Math.max(1, toInt(this.secuenciaAumentoPendiente)),
@@ -8305,6 +8326,7 @@ export class NuevoPersonajeService {
         this.secuenciaDotePendiente = Math.max(1, toInt(borrador.secuenciaDotePendiente));
         this.dotesProgresionConcedidas = Math.max(0, toInt(borrador.dotesProgresionConcedidas));
         this.dotesExtraRazaConcedidas = Math.max(0, toInt(borrador.dotesExtraRazaConcedidas));
+        this.dotesAdicionalesRazaConcedidas = Math.max(0, toInt(borrador.dotesAdicionalesRazaConcedidas));
         this.aumentosPendientesCaracteristica = this.clonarProfundo(borrador.aumentosPendientesCaracteristica ?? []);
         this.aumentosProgresionConcedidos = Math.max(0, toInt(borrador.aumentosProgresionConcedidos));
         this.secuenciaAumentoPendiente = Math.max(1, toInt(borrador.secuenciaAumentoPendiente));

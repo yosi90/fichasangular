@@ -5224,6 +5224,42 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(puntosDelNivel(svc, guerrero, [{ Nombre: 'Guerrero', Nivel: 2 }])).toBe(1);
     });
 
+    it('raza con puntos extra (humano): guerrero 1 con Int 10 tiene 4×(2+0)+4 = 12 puntos y 2+1 en el nivel 2', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs({
+            ...sinDgs(),
+            Nombre: 'Humano',
+            Puntos_habilidad_extra_primer_nivel: 4,
+            Puntos_habilidad_extra_por_nivel: 1,
+        }));
+        svc.PersonajeCreacion.ModInteligencia = 0;
+        const guerrero = crearClaseBase({ Id: 80, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 2 } });
+
+        expect(puntosDelNivel(svc, guerrero, [{ Nombre: 'Guerrero', Nivel: 1 }])).toBe(12);
+        expect(puntosDelNivel(svc, guerrero, [{ Nombre: 'Guerrero', Nivel: 2 }])).toBe(3);
+    });
+
+    it('raza con dote adicional: una dote pendiente de raza en el primer nivel, una sola vez y con su origen', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs({ ...sinDgs(), Nombre: 'Humano', Dotes_adicionales: 1 }));
+        svc.setCatalogoDotes([{
+            Id: 501, Nombre: 'Alerta', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Modificadores: {},
+        } as any]);
+
+        const creadas = svc.registrarDotesPendientesPorRazaExtras('Humano');
+        expect(creadas.map((pendiente) => pendiente.fuente)).toEqual(['raza']);
+        expect(svc.registrarDotesPendientesPorRazaExtras('Humano')).toEqual([]);
+
+        expect(svc.aplicarDotePendiente(creadas[0].id, { idDote: 501, idExtra: 0, extra: 'No aplica' })).toBeTrue();
+        expect(svc.PersonajeCreacion.Dotes.find((dote) => dote.Nombre === 'Alerta')?.Origen).toBe('Dote adicional de raza: Humano');
+    });
+
+    it('raza sin dote adicional ni DG raciales: no crea dotes de raza', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
+        expect(svc.registrarDotesPendientesPorRazaExtras('Elfo')).toEqual([]);
+    });
+
     it('clase sin lanzamiento: habilidades vuelve a dotes', () => {
         const svc = new NuevoPersonajeService();
         svc.seleccionarRaza(crearRazaConDgs());

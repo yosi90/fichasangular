@@ -233,6 +233,21 @@ describe('RazaService helpers', () => {
         expect(raza.Raciales[0].Nombre).toBe('Vision en la penumbra');
     });
 
+    it('lee la dote adicional y los puntos de habilidad extra de la raza, por HTTP y desde la caché', () => {
+        const extras = { Dotes_adicionales: 1, Puntos_habilidad_extra_primer_nivel: 4, Puntos_habilidad_extra_por_nivel: 1 };
+        const http = normalizeRazaApi(createRazaApiRaw(extras));
+        const cache = normalizeRazaLegacy({ Id: 25, Nombre: 'Humano', ...extras });
+        const sinExtras = normalizeRazaApi(createRazaApiRaw({}));
+
+        [http, cache].forEach((raza) => {
+            expect(raza.Dotes_adicionales).toBe(1);
+            expect(raza.Puntos_habilidad_extra_primer_nivel).toBe(4);
+            expect(raza.Puntos_habilidad_extra_por_nivel).toBe(1);
+        });
+        expect(sinExtras.Dotes_adicionales).toBe(0);
+        expect(sinExtras.Puntos_habilidad_extra_por_nivel).toBe(0);
+    });
+
     it('el conjuro de las sortílegas de la API usa normalizeConjuroApi (Niveles_clase, alma, Nombre_esp)', () => {
         const raza = normalizeRazaApi(createRazaApiRaw({
             sor: [{

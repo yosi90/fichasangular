@@ -115,6 +115,12 @@ export interface Raza {
         Reflejos: number;
         Voluntad: number;
     }
+    /** Dotes adicionales de la raza en el primer nivel del personaje (el humano: 1). No son las de sus DG raciales. */
+    Dotes_adicionales?: number;
+    /** Puntos de habilidad extra de la raza en el primer nivel del personaje (el humano: 4). */
+    Puntos_habilidad_extra_primer_nivel?: number;
+    /** Puntos de habilidad extra de la raza en cada nivel siguiente (el humano: 1). */
+    Puntos_habilidad_extra_por_nivel?: number;
     Reduccion_dano: string;
     Resistencia_magica: string;
     Resistencia_energia: string;

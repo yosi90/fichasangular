@@ -705,6 +705,9 @@ export function aplicarMutacion(base: Raza, mutada: Raza): Raza {
     assignNumberIfSignificant(resultado as any, "Edad_mediana", mutadaClone?.Edad_mediana);
     assignNumberIfSignificant(resultado as any, "Edad_viejo", mutadaClone?.Edad_viejo);
     assignNumberIfSignificant(resultado as any, "Edad_venerable", mutadaClone?.Edad_venerable);
+    assignNumberIfSignificant(resultado as any, "Dotes_adicionales", mutadaClone?.Dotes_adicionales);
+    assignNumberIfSignificant(resultado as any, "Puntos_habilidad_extra_primer_nivel", mutadaClone?.Puntos_habilidad_extra_primer_nivel);
+    assignNumberIfSignificant(resultado as any, "Puntos_habilidad_extra_por_nivel", mutadaClone?.Puntos_habilidad_extra_por_nivel);
 
     if (mutadaClone?.Maniobrabilidad && hasMeaningfulText(mutadaClone.Maniobrabilidad?.Nombre))
         resultado.Maniobrabilidad = deepClone(mutadaClone.Maniobrabilidad);
