@@ -5141,23 +5141,87 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(3);
     });
 
-    it('clase: aplica x4 en nivel 1 y no en nivel > 1', () => {
-        const svc = new NuevoPersonajeService();
-        svc.seleccionarRaza(crearRazaConDgs());
+    function sinDgs(): Partial<Raza> {
+        return {
+            Dgs_adicionales: {
+                Cantidad: 0, Dado: '', Tipo_criatura: '', Ataque_base: 0, Dotes_extra: 0,
+                Puntos_habilidad: 0, Multiplicador_puntos_habilidad: 0, Fortaleza: 0, Reflejos: 0, Voluntad: 0,
+            },
+        } as Partial<Raza>;
+    }
 
-        const clase = crearClaseBase({
-            Id: 80,
-            Nombre: 'Explorador',
-            Puntos_habilidad: { Id: 1, Valor: 2 },
-        });
-        svc.setCatalogoClases([clase]);
-
-        svc.iniciarDistribucionHabilidadesPorClase(clase, 1);
-        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(8);
-
+    /** Puntos que da el último nivel de `desglose` (ya aplicado), como tras `aplicarSiguienteNivelClase`. */
+    function puntosDelNivel(svc: NuevoPersonajeService, clase: Clase, desglose: { Nombre: string; Nivel: number; }[]): number {
+        svc.PersonajeCreacion.desgloseClases = desglose.map((item) => ({ ...item })) as any;
+        svc.iniciarDistribucionHabilidadesPorClase(clase);
+        const total = svc.EstadoFlujo.habilidades.puntosTotales;
+        svc.EstadoFlujo.habilidades.puntosRestantes = 0;
         svc.cerrarDistribucionHabilidades();
-        svc.iniciarDistribucionHabilidadesPorClase(clase, 2);
-        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(2);
+        return total;
+    }
+
+    it('clase: ×4 solo en el primer nivel del personaje (guerrero 1 con Int 10: 8 puntos; nivel 2: 2)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
+        svc.PersonajeCreacion.ModInteligencia = 0;
+        const guerrero = crearClaseBase({ Id: 80, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 2 } });
+
+        expect(puntosDelNivel(svc, guerrero, [{ Nombre: 'Guerrero', Nivel: 1 }])).toBe(8);
+        expect(puntosDelNivel(svc, guerrero, [{ Nombre: 'Guerrero', Nivel: 2 }])).toBe(2);
+    });
+
+    it('clase: el primer nivel de una segunda clase no lleva ×4 (explorador 4 / mago 1 con Int 18: 76 puntos)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
+        svc.PersonajeCreacion.ModInteligencia = 4;
+        const explorador = crearClaseBase({ Id: 6, Nombre: 'Explorador', Puntos_habilidad: { Id: 1, Valor: 6 } });
+        const mago = crearClaseBase({ Id: 9, Nombre: 'Mago', Puntos_habilidad: { Id: 1, Valor: 2 } });
+
+        const niveles = [
+            puntosDelNivel(svc, explorador, [{ Nombre: 'Explorador', Nivel: 1 }]),
+            puntosDelNivel(svc, explorador, [{ Nombre: 'Explorador', Nivel: 2 }]),
+            puntosDelNivel(svc, explorador, [{ Nombre: 'Explorador', Nivel: 3 }]),
+            puntosDelNivel(svc, explorador, [{ Nombre: 'Explorador', Nivel: 4 }]),
+            puntosDelNivel(svc, mago, [{ Nombre: 'Explorador', Nivel: 4 }, { Nombre: 'Mago', Nivel: 1 }]),
+        ];
+
+        expect(niveles).toEqual([40, 10, 10, 10, 6]);
+        expect(niveles.reduce((a, b) => a + b, 0)).toBe(76);
+    });
+
+    it('clase: con DG raciales el primer nivel de clase no lleva ×4 (centauro)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs({ Nombre: 'Centauro' }));
+        svc.PersonajeCreacion.ModInteligencia = 0;
+        const explorador = crearClaseBase({ Id: 6, Nombre: 'Explorador', Puntos_habilidad: { Id: 1, Valor: 6 } });
+
+        expect(puntosDelNivel(svc, explorador, [{ Nombre: 'Explorador', Nivel: 1 }])).toBe(6);
+    });
+
+    it('clase: con DG de una plantilla el primer nivel de clase no lleva ×4', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
+        svc.agregarPlantillaSeleccion({
+            Id: 100,
+            Nombre: 'Licántropo',
+            Licantronia_dg: { Id_dado: 3, Dado: 'd8', Multiplicador: 2, Suma: 0 },
+            Puntos_habilidad: { Suma: 0, Suma_fija: 2 },
+            Habilidades: [],
+        } as any);
+        svc.PersonajeCreacion.ModInteligencia = 0;
+        const guerrero = crearClaseBase({ Id: 80, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 2 } });
+
+        expect(puntosDelNivel(svc, guerrero, [{ Nombre: 'Guerrero', Nivel: 1 }])).toBe(2);
+    });
+
+    it('clase: al menos 1 punto por nivel aunque la Inteligencia reste (×4 en el primero)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
+        svc.PersonajeCreacion.ModInteligencia = -3;
+        const guerrero = crearClaseBase({ Id: 80, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 2 } });
+
+        expect(puntosDelNivel(svc, guerrero, [{ Nombre: 'Guerrero', Nivel: 1 }])).toBe(4);
+        expect(puntosDelNivel(svc, guerrero, [{ Nombre: 'Guerrero', Nivel: 2 }])).toBe(1);
     });
 
     it('clase sin lanzamiento: habilidades vuelve a dotes', () => {
@@ -5167,7 +5231,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.setCatalogoClases([clase]);
 
         svc.aplicarSiguienteNivelClase(clase);
-        svc.iniciarDistribucionHabilidadesPorClase(clase, 1);
+        svc.iniciarDistribucionHabilidadesPorClase(clase);
 
         expect(svc.EstadoFlujo.habilidades.returnStep).toBe('dotes');
     });
@@ -5214,7 +5278,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         } as any]);
 
         svc.aplicarSiguienteNivelClase(clase);
-        svc.iniciarDistribucionHabilidadesPorClase(clase, 1);
+        svc.iniciarDistribucionHabilidadesPorClase(clase);
 
         expect(svc.EstadoFlujo.habilidades.returnStep).toBe('conjuros');
     });

@@ -54,6 +54,7 @@ import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from './utils/personaje-totales';
 import { resumenClases } from './utils/resumen-clases';
+import { puntosHabilidadNivelClase } from './utils/puntos-habilidad';
 import { tieneTextoVisible } from './utils/texto-visible';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
@@ -1775,14 +1776,13 @@ export class NuevoPersonajeService {
         return true;
     }
 
-    iniciarDistribucionHabilidadesPorClase(clase: Clase, nivelAplicado: number): boolean {
-        const nivel = Math.max(1, toInt(nivelAplicado));
-        const puntosBase = toNumber(clase?.Puntos_habilidad?.Valor);
-        const modInt = Math.max(0, toNumber(this.personajeCreacion?.ModInteligencia));
-        const puntos = nivel === 1
-            ? 4 * (puntosBase + modInt)
-            : puntosBase + modInt;
-        const total = Math.max(0, Math.trunc(puntos));
+    /** Llamar con el nivel de clase ya aplicado (`aplicarSiguienteNivelClase`). */
+    iniciarDistribucionHabilidadesPorClase(clase: Clase): boolean {
+        const total = puntosHabilidadNivelClase({
+            puntosClase: toNumber(clase?.Puntos_habilidad?.Valor),
+            modInteligencia: toNumber(this.personajeCreacion?.ModInteligencia),
+            primerNivelPersonaje: this.esPrimerNivelDelPersonaje(),
+        });
 
         const returnStep: StepNuevoPersonaje = this.estadoFlujo.conjuros.activa ? 'conjuros' : 'dotes';
         this.iniciarDistribucionHabilidadesInterna('clase_nivel', returnStep, total, []);
@@ -9410,6 +9410,18 @@ export class NuevoPersonajeService {
         const dgsRaza = toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
         const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
         return Math.max(0, nivelClases + dgsRaza + dgsPlantillas);
+    }
+
+    /**
+     * El nivel de clase recién aplicado es el primero del personaje: no hay otros niveles de clase ni DG de la raza o
+     * de las plantillas (esos DG ya fueron su primer nivel).
+     */
+    private esPrimerNivelDelPersonaje(): boolean {
+        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
+            .reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
+        const dgsRaza = toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
+        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
+        return nivelClases <= 1 && dgsRaza <= 0 && dgsPlantillas <= 0;
     }
 
     private getNivelEfectivoParaDotesProgresion(): number {

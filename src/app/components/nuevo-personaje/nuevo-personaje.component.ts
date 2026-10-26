@@ -3186,10 +3186,7 @@ export class NuevoPersonajeComponent {
         this.nuevoPSvc.registrarDotesPendientesPorEspeciales(resultado.especialesAplicados ?? [], contextoAumentos);
         this.nuevoPSvc.registrarDotesPendientesPorProgresion(contextoAumentos);
 
-        this.nuevoPSvc.iniciarDistribucionHabilidadesPorClase(
-            seleccion.clase,
-            Number(resultado.nivelAplicado ?? 0)
-        );
+        this.nuevoPSvc.iniciarDistribucionHabilidadesPorClase(seleccion.clase);
         this.filtroConjurosTexto = '';
         this.filtroConjurosNivel = null;
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
