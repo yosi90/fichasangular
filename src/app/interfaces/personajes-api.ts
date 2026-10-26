@@ -97,7 +97,8 @@ export interface PersonajeCreateColeccionesDto {
     idiomas?: Array<{ idIdioma: number; origen?: string; }>;
     dotes?: Array<{ idDote: number; idExtra?: number; origen?: string; }>;
     dominios?: Array<{ idDominio: number; origen?: string; }>;
-    conjurosConocidos?: Array<{ idConjuro: number; }>;
+    /** `origen`: de dónde sale; `copiado`: se copió al libro (comprado), no se eligió al subir de nivel. */
+    conjurosConocidos?: Array<{ idConjuro: number; origen?: string; copiado?: boolean; }>;
     sortilegas?: Array<{ idConjuro: number; nivelLanz?: string; usos?: string; dgs?: number; origen?: string; }>;
     raciales?: Array<{ idRacial: number; origen?: string; }>;
 }
@@ -256,6 +257,31 @@ export interface PersonajeClaseDto extends PersonajeNombreIdDto {
     lanzaConjuros: boolean;
     caracteristicaLanzamiento: string | null;
     modificadorLanzamiento: number | null;
+    /** Su nivel de lanzador o de manifestador; `null` si no lanza (desde 2026-10-26). */
+    nivelLanzador?: number | null;
+    /** Los conjuros al día de cada nivel con acceso; `null` si no usa conjuros diarios. */
+    conjurosDiarios?: PersonajeConjurosDiariosNivelDto[] | null;
+    /** Su reserva de puntos de poder; `null` si no es psiónica. */
+    puntosPoder?: PersonajePuntosPoderDto | null;
+}
+
+/** Los conjuros al día de un nivel de conjuro (MJ tabla 1-1 y cap. 3): los de la tabla y los adicionales. */
+export interface PersonajeConjurosDiariosNivelDto {
+    nivel: number;
+    base: number;
+    adicionales: number;
+    especialista: number;
+    dominio: number;
+    total: number;
+    puedeLanzar: boolean;
+}
+
+/** Los puntos de poder (Manual de psiónica expandido, tabla 2-1). */
+export interface PersonajePuntosPoderDto {
+    base: number;
+    adicionales: number;
+    total: number;
+    puedeManifestar: boolean;
 }
 
 export interface PersonajeEspecialDto extends PersonajeNombreIdDto {

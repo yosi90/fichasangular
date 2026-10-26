@@ -289,6 +289,22 @@ describe('PersonajeService', () => {
         expect(personaje.Clases).toBe('Explorador (8)');
     });
 
+    it('mapApiDetalleToPersonaje guarda el nivel de lanzador, los conjuros al día y los puntos de poder de la API', () => {
+        const service = crearServicio({} as any);
+        const diarios = [{ nivel: 0, base: 3, adicionales: 0, especialista: 0, dominio: 0, total: 3, puedeLanzar: true }];
+        const personaje = (service as any).mapApiDetalleToPersonaje(crearDetalleApi({
+            clases: [
+                { id: 4, nombre: 'Clérigo', nivel: 1, lanzaConjuros: true, caracteristicaLanzamiento: 'Sabiduría', modificadorLanzamiento: 3,
+                    nivelLanzador: 1, conjurosDiarios: diarios, puntosPoder: null },
+                { id: 22, nombre: 'Psiónico', nivel: 1, lanzaConjuros: true, caracteristicaLanzamiento: 'Inteligencia', modificadorLanzamiento: 3,
+                    nivelLanzador: 1, conjurosDiarios: null, puntosPoder: { base: 2, adicionales: 1, total: 3, puedeManifestar: true } },
+            ],
+        })) as Personaje;
+
+        expect(personaje.desgloseClases.map((c) => [c.Nivel_lanzador, c.Conjuros_diarios, c.Puntos_poder?.total ?? null]))
+            .toEqual([[1, diarios, null], [1, null, 3]]);
+    });
+
     it('mapApiDetalleToPersonaje lee las listas de objetos de la ficha nueva', () => {
         const service = crearServicio({} as any);
         const personaje = (service as any).mapApiDetalleToPersonaje(crearDetalleApi({
@@ -301,7 +317,7 @@ describe('PersonajeService', () => {
         })) as Personaje;
 
         expect(personaje.desgloseClases).toEqual([
-            { Id: 6, Nombre: 'Explorador', Nivel: 8, Caracteristica_lanzamiento: 'Sabiduría' },
+            { Id: 6, Nombre: 'Explorador', Nivel: 8, Caracteristica_lanzamiento: 'Sabiduría', Nivel_lanzador: null, Conjuros_diarios: null, Puntos_poder: null },
         ]);
         expect(personaje.NEP).toBe(14);
         expect(personaje.Dominios).toEqual([{ Id: 31, Nombre: 'Sol' }]);
@@ -888,8 +904,8 @@ describe('PersonajeService', () => {
         } as any) as Personaje;
 
         expect(personaje.desgloseClases).toEqual([
-            { Id: 186, Nombre: 'Mago', Nivel: 10, Caracteristica_lanzamiento: 'Inteligencia' },
-            { Id: 187, Nombre: 'Archimago', Nivel: 2, Caracteristica_lanzamiento: null },
+            { Id: 186, Nombre: 'Mago', Nivel: 10, Caracteristica_lanzamiento: 'Inteligencia', Nivel_lanzador: null, Conjuros_diarios: null, Puntos_poder: null },
+            { Id: 187, Nombre: 'Archimago', Nivel: 2, Caracteristica_lanzamiento: null, Nivel_lanzador: null, Conjuros_diarios: null, Puntos_poder: null },
         ]);
         expect(personaje.ProgresionLanzador).toEqual({
             selecciones: [

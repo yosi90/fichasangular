@@ -709,14 +709,16 @@ export class PersonajeService {
         if (dominios.length > 0)
             colecciones.dominios = dominios;
 
+        // Con su origen y si se copió al libro (comprado), para que los copiados no cuenten en los que da cada nivel.
         const conjurosConocidos = toArray<any>(personaje?.Conjuros)
             .map((entrada) => {
                 const idConjuro = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idConjuro ?? entrada?.id_conjuro);
                 if (idConjuro <= 0)
                     return null;
-                return { idConjuro };
+                const origen = `${entrada?.Origen ?? ''}`.trim().slice(0, 150);
+                return { idConjuro, ...(origen.length > 0 ? { origen } : {}), copiado: entrada?.Copiado === true };
             })
-            .filter((entrada): entrada is { idConjuro: number; } => !!entrada);
+            .filter((entrada): entrada is { idConjuro: number; origen?: string; copiado: boolean; } => !!entrada);
         if (conjurosConocidos.length > 0)
             colecciones.conjurosConocidos = conjurosConocidos;
 
@@ -993,6 +995,10 @@ export class PersonajeService {
                 Nombre: toText(clase?.nombre).trim(),
                 Nivel: toNumber(clase?.nivel),
                 Caracteristica_lanzamiento: toNullableText(clase?.caracteristicaLanzamiento),
+                // Las cifras de su magia, hechas por la API (desde 2026-10-26).
+                Nivel_lanzador: clase?.nivelLanzador ?? null,
+                Conjuros_diarios: Array.isArray(clase?.conjurosDiarios) ? clase.conjurosDiarios : null,
+                Puntos_poder: clase?.puntosPoder ?? null,
             }))
             .filter((clase) => clase.Nombre.length > 0);
         const plantillas = toArray<any>(element?.pla);

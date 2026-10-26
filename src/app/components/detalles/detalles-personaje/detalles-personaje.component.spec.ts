@@ -599,6 +599,29 @@ describe('DetallesPersonajeComponent', () => {
             expect(clase).toHaveBeenCalledWith('Mago');
         });
 
+        it('enseña el nivel de lanzador, los conjuros al día y los puntos de poder que da la API (MJ tabla 1-1, MPE tabla 2-1)', () => {
+            component.pj.desgloseClases = [
+                {
+                    Nombre: 'Clérigo', Nivel: 1, Caracteristica_lanzamiento: 'Sabiduría', Nivel_lanzador: 1,
+                    Conjuros_diarios: [
+                        { nivel: 0, base: 3, adicionales: 0, especialista: 0, dominio: 0, total: 3, puedeLanzar: true },
+                        { nivel: 1, base: 1, adicionales: 1, especialista: 0, dominio: 1, total: 3, puedeLanzar: true },
+                    ],
+                    Puntos_poder: null,
+                },
+                { Nombre: 'Paladín', Nivel: 4, Caracteristica_lanzamiento: 'Sabiduría', Nivel_lanzador: 2, Conjuros_diarios: [], Puntos_poder: null },
+            ];
+            component.clasesCatalogo = [
+                claseLanzadora(1, 'Clérigo', 1, { Conjuros: { Arcanos: false, Divinos: true } }),
+                claseLanzadora(2, 'Paladín', 4, { Conjuros: { Arcanos: false, Divinos: true } }),
+            ];
+            verPagina();
+
+            const magia = limpio(lateral('Magia'));
+            expect(magia).toContain('Conjuros al día 0: 3 · 1: 1+2');
+            expect(magia).toContain('Nivel de lanzador 2');
+        });
+
         it('enseña el nivel de lanzador efectivo por clase con los aumentos guardados', () => {
             component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 10 }, { Nombre: 'Archimago', Nivel: 2 }];
             component.pj.ProgresionLanzador = {

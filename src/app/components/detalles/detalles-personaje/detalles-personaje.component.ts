@@ -795,7 +795,11 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
         if (conjuros.Alma)
             chips.push('Lanzador de alma');
         const resumenLanzador = this.getNivelLanzadorResumenClase(nombreClase);
-        if (resumenLanzador)
+        // El nivel de lanzador lo da la API en la ficha (con el divisor del paladín y el explorador); si no, el calculado.
+        const nivelLanzadorApi = claseDesglose?.Nivel_lanzador;
+        if (typeof nivelLanzadorApi === 'number' && nivelLanzadorApi > 0)
+            chips.push(`Nivel de lanzador ${nivelLanzadorApi}`);
+        else if (resumenLanzador)
             chips.push(`Nivel de lanzador ${resumenLanzador.nivelLanzador}`);
         if (conjuros.Lanzamiento_espontaneo)
             chips.push('Lanzamiento espontáneo');
@@ -808,17 +812,23 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
         const nivelClase = Math.max(0, toNumber(claseDesglose?.Nivel));
         const nivelDetalleObjetivo = resumenLanzador?.nivelDesgloseLanzador ?? nivelClase;
         const detalleNivel = this.obtenerDetalleNivelClase(claseCatalogo, nivelDetalleObjetivo);
+        const puntosPoder = claseDesglose?.Puntos_poder;
+        if (puntosPoder)
+            chips.push(puntosPoder.puedeManifestar ? `Puntos de poder ${puntosPoder.total}` : 'Sin poderes: característica de 9 o menos');
+        const diarios = this.formatearConjurosDiarios(claseDesglose?.Conjuros_diarios);
+        if (diarios.length > 0)
+            chips.push(`Conjuros al día ${diarios}`);
         if (detalleNivel) {
             if (conjuros.Psionicos) {
                 const reserva = toNumber(detalleNivel?.Reserva_psionica);
-                if (reserva > 0)
+                if (reserva > 0 && !puntosPoder)
                     chips.push(`Reserva ${reserva}`);
                 const poderMax = toNumber(detalleNivel?.Nivel_max_poder_accesible_nivel_lanzadorPsionico);
                 if (poderMax >= 0)
                     chips.push(`Poder máximo ${poderMax}`);
             }
 
-            if (conjuros.Arcanos || conjuros.Divinos || conjuros.Alma) {
+            if ((conjuros.Arcanos || conjuros.Divinos || conjuros.Alma) && diarios.length < 1) {
                 const nivelesDiarios = this.formatearNivelesDiariosAccesibles(detalleNivel?.Conjuros_diarios);
                 if (nivelesDiarios.length > 0)
                     chips.push(`Niveles diarios ${nivelesDiarios}`);
@@ -858,6 +868,20 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
         const nivelObjetivo = Math.max(1, toInt(nivelClase));
         const desglose = Array.isArray(clase?.Desglose_niveles) ? clase.Desglose_niveles : [];
         return desglose.find((nivel) => toInt(nivel?.Nivel) === nivelObjetivo) ?? null;
+    }
+
+    /**
+     * Los conjuros al día que da la API, por nivel («0: 4 · 1: 2+1»): el total y, si los hay, cuántos son adicionales
+     * (por característica, del especialista o de dominio). Un nivel que la característica no deja lanzar no sale.
+     */
+    private formatearConjurosDiarios(niveles: Personaje['desgloseClases'][number]['Conjuros_diarios']): string {
+        return (niveles ?? [])
+            .filter((nivel) => nivel?.puedeLanzar && toNumber(nivel?.total) > 0)
+            .map((nivel) => {
+                const extra = toNumber(nivel.adicionales) + toNumber(nivel.especialista) + toNumber(nivel.dominio);
+                return `${nivel.nivel}: ${extra > 0 ? `${toNumber(nivel.base)}+${extra}` : toNumber(nivel.total)}`;
+            })
+            .join(' · ');
     }
 
     private formatearNivelesDiariosAccesibles(mapa: Record<string, number> | null | undefined): string {

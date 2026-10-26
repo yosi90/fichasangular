@@ -8,12 +8,14 @@ import { PersonajeSimple } from "./simplificaciones/personaje-simple";
 import { SubtipoRef } from "./subtipo";
 import { TipoCriatura } from "./tipo_criatura";
 import {
+    PersonajeConjurosDiariosNivelDto,
     PersonajeDefensaTotalesDto,
     PersonajeDineroDto,
     PersonajeEquipoPiezaDto,
     PersonajeExtraComodinDto,
     PersonajeModificadorEquipoDto,
     PersonajeProgresionLanzadorDto,
+    PersonajePuntosPoderDto,
     PersonajeSalvacionesDto,
     PersonajeTotalDto
 } from "./personajes-api";
@@ -107,6 +109,10 @@ export interface Personaje extends PersonajeSimple {
         Nivel: number;
         /** La característica de la CD de sus conjuros; `null` o sin dato si no lanza. */
         Caracteristica_lanzamiento?: string | null;
+        /** Solo en la ficha de la API (desde 2026-10-26): su nivel de lanzador, sus conjuros al día y sus puntos de poder. */
+        Nivel_lanzador?: number | null;
+        Conjuros_diarios?: PersonajeConjurosDiariosNivelDto[] | null;
+        Puntos_poder?: PersonajePuntosPoderDto | null;
     }[],
     Ataque_base: string;
     /** Solo en la ficha que llega de la API; el borrador de la creación los calcula (`totalesPersonaje`). */
