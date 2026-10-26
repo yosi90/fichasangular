@@ -2296,15 +2296,19 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Las dotes que da la raza al aplicar un nivel de clase: las de sus DG raciales (`Dgs_adicionales.Dotes_extra`) y su
-     * dote adicional (`Dotes_adicionales`, la del humano), que se concede una vez, en el primer nivel del personaje. Las
-     * dos salen de los datos de la raza, también de una homebrew.
+     * Las dotes que da la raza: las de sus DG raciales (`Dgs_adicionales.Dotes_extra`) y su dote adicional
+     * (`Dotes_adicionales`, la del humano), que se concede una vez, en el primer DG o nivel del personaje: con DG
+     * raciales, al repartir los de la raza (antes de cualquier clase); sin ellos, con el primer nivel de clase. Las dos
+     * salen de los datos de la raza, también de una homebrew.
      */
     registrarDotesPendientesPorRazaExtras(origen: string): DotePendienteState[] {
         const origenNormalizado = `${origen ?? ''}`.trim() || `${this.razaSeleccionada?.Nombre ?? 'Raza'}`;
         const totalDgs = Math.max(0, toNumber(this.razaSeleccionada?.Dgs_adicionales?.Dotes_extra));
         const nuevasDgs = Math.max(0, totalDgs - this.dotesExtraRazaConcedidas);
-        const totalAdicionales = Math.max(0, toNumber(this.razaSeleccionada?.Dotes_adicionales));
+        // Sin ningún DG ni nivel todavía (un humano al terminar las características), aún no es su primer nivel.
+        const totalAdicionales = this.getNivelEfectivoParaAumentos() >= 1
+            ? Math.max(0, toNumber(this.razaSeleccionada?.Dotes_adicionales))
+            : 0;
         const nuevasAdicionales = Math.max(0, totalAdicionales - this.dotesAdicionalesRazaConcedidas);
         if (nuevasDgs + nuevasAdicionales < 1)
             return [];

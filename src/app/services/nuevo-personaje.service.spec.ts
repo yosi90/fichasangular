@@ -5409,6 +5409,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.setCatalogoDotes([{
             Id: 501, Nombre: 'Alerta', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Modificadores: {},
         } as any]);
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 1 }] as any;
 
         const creadas = svc.registrarDotesPendientesPorRazaExtras('Humano');
         expect(creadas.map((pendiente) => pendiente.fuente)).toEqual(['raza']);
@@ -5416,6 +5417,31 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
 
         expect(svc.aplicarDotePendiente(creadas[0].id, { idDote: 501, idExtra: 0, extra: 'No aplica' })).toBeTrue();
         expect(svc.PersonajeCreacion.Dotes.find((dote) => dote.Nombre === 'Alerta')?.Origen).toBe('Dote adicional de raza: Humano');
+    });
+
+    it('raza con DG raciales y dote adicional (thri-kreen): la dote se concede con los DG de la raza, antes de la clase', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs({
+            Nombre: 'Thri-kreen',
+            Dotes_adicionales: 1,
+            Dgs_adicionales: {
+                Cantidad: 2, Dado: 'd8', Tipo_criatura: 'Humanoide monstruoso', Ataque_base: 2, Dotes_extra: 1,
+                Puntos_habilidad: 5, Multiplicador_puntos_habilidad: 2, Fortaleza: 0, Reflejos: 3, Voluntad: 3,
+            },
+        } as any));
+
+        expect(svc.PersonajeCreacion.desgloseClases.length).toBe(0);
+        const creadas = svc.registrarDotesPendientesPorRazaExtras('Thri-kreen');
+        expect(creadas.map((pendiente) => pendiente.fuente)).toEqual(['raza', 'raza_dg']);
+    });
+
+    it('raza sin DG raciales (humano): la dote adicional espera al primer nivel de clase, no a las características', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs({ ...sinDgs(), Nombre: 'Humano', Dotes_adicionales: 1 }));
+
+        expect(svc.registrarDotesPendientesPorRazaExtras('Humano')).toEqual([]);
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 1 }] as any;
+        expect(svc.registrarDotesPendientesPorRazaExtras('Humano').map((pendiente) => pendiente.fuente)).toEqual(['raza']);
     });
 
     it('raza sin dote adicional ni DG raciales: no crea dotes de raza', () => {
