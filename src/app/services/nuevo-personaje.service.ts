@@ -10068,17 +10068,8 @@ export class NuevoPersonajeService {
     }
 
     private resolverCaracteristicaPorIdOTexto(id: number, texto: string): CaracteristicaKey {
-        const map: Record<number, CaracteristicaKey> = {
-            1: 'Fuerza',
-            2: 'Destreza',
-            3: 'Constitucion',
-            4: 'Inteligencia',
-            5: 'Sabiduria',
-            6: 'Carisma',
-        };
-        if (map[id])
-            return map[id];
-        return this.resolverCaracteristicaPorTexto(texto);
+        // `Id_caracteristica`: del 1 al 6, en el orden de `CARACTERISTICAS`.
+        return CARACTERISTICAS[id - 1] ?? this.resolverCaracteristicaPorTexto(texto);
     }
 
     private resolverCaracteristicaPorTexto(texto: string): CaracteristicaKey {
