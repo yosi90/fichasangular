@@ -1,4 +1,4 @@
-import { Caracteristica } from 'src/app/interfaces/caracteristica';
+import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { MonstruoCaracteristicas } from 'src/app/interfaces/monstruo';
 
 // El modificador de una característica lo calcula la API (`utils/caracteristicas.py` del backend) para las fichas y los
@@ -8,6 +8,15 @@ import { MonstruoCaracteristicas } from 'src/app/interfaces/monstruo';
 /** El modificador de una puntuación de característica: `(valor − 10) / 2`, hacia abajo. Solo para el borrador. */
 export function modificadorCaracteristica(valor: number): number {
     return Math.floor((Number(valor) - 10) / 2);
+}
+
+/**
+ * El valor de una característica por su id (`Id_caracteristica` de los prerrequisitos, del 1 al 6 en el orden de
+ * `CARACTERISTICAS`); `NaN` si el id no es de ninguna. Para los evaluadores de prerrequisitos de clase, dote y plantilla.
+ */
+export function valorCaracteristicaPorId(caracteristicas: Readonly<Record<Caracteristica, number>>, idCaracteristica: number): number {
+    const clave = CARACTERISTICAS[Number(idCaracteristica) - 1];
+    return clave ? Number(caracteristicas?.[clave] ?? Number.NaN) : Number.NaN;
 }
 
 /** Sin valor, una característica se enseña con «—», como en el manual. */

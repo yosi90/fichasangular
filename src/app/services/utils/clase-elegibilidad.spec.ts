@@ -137,8 +137,9 @@ describe('clase-elegibilidad', () => {
                 raza: [{ Id_raza: 10, opcional: 0 }],
                 caracteristica: [{ Id_caracteristica: 1, Cantidad: 13, opcional: 0 }],
                 ataque_base: [{ Cantidad: 5, opcional: 0 }],
-                alineamiento_requerido: [{ Id_alineamiento: 1, opcional: 0 }],
-                genero: [{ Genero: 'Macho', opcional: 0 }],
+                // Como los da la API: `Id_alineamiento` es la combinación (el LB «siempre», la 3) y el básico va aparte.
+                alineamiento_requerido: [{ Id_alineamiento: 3, Id_alineamiento_basico: 1, Alineamiento_basico: 'Legal bueno', opcional: 0 }],
+                genero: [{ Genero: 1, Genero_nombre: 'Macho', opcional: 0 }],
                 dote_elegida: [{ Id_dote_prerrequisito: 100, Id_extra: -1, Extra_comodin: null, Opcional: 0 }],
                 idioma: [{ Id_idioma: 200, opcional: 0 }],
                 subtipo: [{ Id_subtipo: 20, opcional: 0 }],
@@ -147,6 +148,34 @@ describe('clase-elegibilidad', () => {
 
         const res = evaluarElegibilidadClase(clase, crearContextoBase());
         expect(res.estado).toBe('eligible');
+    });
+
+    it('el alineamiento de una clase de prestigio se compara con el básico, no con la combinación (Caballero protector: LB o LN)', () => {
+        const caballeroProtector = crearClaseBase({
+            Prerrequisitos_flags: { alineamiento_requerido: true },
+            Prerrequisitos: {
+                ...crearClaseBase().Prerrequisitos,
+                alineamiento_requerido: [
+                    { Id_alineamiento: 3, Id_alineamiento_basico: 1, Alineamiento_basico: 'Legal bueno', Opcional: 1, Frase: 'Legal bueno' },
+                    { Id_alineamiento: 73, Id_alineamiento_basico: 2, Alineamiento_basico: 'Legal neutral', Opcional: 1, Frase: 'Legal neutral' },
+                ],
+            },
+        });
+
+        expect(evaluarElegibilidadClase(caballeroProtector, { ...crearContextoBase(), alineamiento: 'Legal bueno' }).estado).toBe('eligible');
+        expect(evaluarElegibilidadClase(caballeroProtector, { ...crearContextoBase(), alineamiento: 'Legal neutral' }).estado).toBe('eligible');
+        // Antes, el 3 de la combinación se leía como el básico 3 y la clase se abría al legal maligno.
+        expect(evaluarElegibilidadClase(caballeroProtector, { ...crearContextoBase(), alineamiento: 'Legal maligno' }).estado).toBe('blocked_failed');
+    });
+
+    it('el género que pide una clase se compara por el nombre que da la API (`Genero_nombre`)', () => {
+        const clase = crearClaseBase({
+            Prerrequisitos_flags: { genero: true },
+            Prerrequisitos: { ...crearClaseBase().Prerrequisitos, genero: [{ Genero: 2, Genero_nombre: 'Hembra', Opcional: 0, Frase: 'Género hembra' }] },
+        });
+
+        expect(evaluarElegibilidadClase(clase, { ...crearContextoBase(), genero: 'Hembra' }).estado).toBe('eligible');
+        expect(evaluarElegibilidadClase(clase, { ...crearContextoBase(), genero: 'Macho' }).estado).toBe('blocked_failed');
     });
 
     it('retorna blocked_failed cuando falla un prerrequisito soportado', () => {
@@ -188,7 +217,7 @@ describe('clase-elegibilidad', () => {
             Prerrequisitos: {
                 ...crearClaseBase().Prerrequisitos,
                 no_raza: [{ Id_raza: 99, opcional: 0 }],
-                alineamiento_prohibido: [{ Id_alineamiento: 9, opcional: 0 }],
+                alineamiento_prohibido: [{ Id_alineamiento: 25, Id_alineamiento_basico: 9, Alineamiento_basico: 'Caótico maligno', opcional: 0 }],
                 actitud_requerido: [{ Id_actitud: 1, opcional: 0 }],
                 actitud_prohibido: [{ Id_actitud: 3, opcional: 0 }],
             },
@@ -450,7 +479,7 @@ describe('clase-elegibilidad', () => {
         it('un alineamiento requerido con la frase corta («No cumple: Neutral bueno») cuenta como solo por alineamiento', () => {
             const res = evaluarElegibilidadClase(clase(
                 { alineamiento_requerido: true },
-                { alineamiento_requerido: [{ Alineamiento: 'Neutral bueno', Opcional: 0, Frase: 'Neutral bueno' }] },
+                { alineamiento_requerido: [{ Id_alineamiento: 23, Id_alineamiento_basico: 4, Alineamiento_basico: 'Neutral bueno', Opcional: 0, Frase: 'Neutral bueno' }] },
             ), crearContextoBase());
             expect(res.estado).toBe('blocked_failed');
             expect(res.razones).toEqual(['No cumple: Neutral bueno']);
@@ -471,8 +500,8 @@ describe('clase-elegibilidad', () => {
                 { alineamiento_requerido: true },
                 {
                     alineamiento_requerido: [
-                        { Alineamiento: 'Neutral bueno', Opcional: 1, Frase: 'Neutral bueno' },
-                        { Alineamiento: 'Caótico bueno', Opcional: 1, Frase: 'Caótico bueno' },
+                        { Id_alineamiento: 23, Id_alineamiento_basico: 4, Alineamiento_basico: 'Neutral bueno', Opcional: 1, Frase: 'Neutral bueno' },
+                        { Id_alineamiento: 22, Id_alineamiento_basico: 7, Alineamiento_basico: 'Caótico bueno', Opcional: 1, Frase: 'Caótico bueno' },
                     ],
                 },
             ), crearContextoBase());
@@ -484,7 +513,7 @@ describe('clase-elegibilidad', () => {
             const res = evaluarElegibilidadClase(clase(
                 { alineamiento_prohibido: true, ataque_base: true },
                 {
-                    alineamiento_prohibido: [{ Alineamiento: 'Legal bueno', Opcional: 0, Frase: 'No legal bueno' }],
+                    alineamiento_prohibido: [{ Id_alineamiento: 3, Id_alineamiento_basico: 1, Alineamiento_basico: 'Legal bueno', Opcional: 0, Frase: 'No legal bueno' }],
                     ataque_base: [{ Cantidad: 10, Opcional: 0, Frase: 'Ataque base +10' }],
                 },
             ), crearContextoBase());

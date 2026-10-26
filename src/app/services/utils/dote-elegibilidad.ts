@@ -1,10 +1,11 @@
 import { Dote } from 'src/app/interfaces/dote';
+import { valorCaracteristicaPorId } from './caracteristicas';
 import {
     ClaveEntidadPrerrequisito,
     IdentidadPrerrequisitos,
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
-import { getAlineamientoBasicoIdPorNombre } from './alineamiento-contrato';
+import { cumpleActitud, getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from './alineamiento-contrato';
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { frasePrerrequisito } from './prerrequisito-frase';
@@ -134,72 +135,6 @@ function normalizarClavePrerrequisito(key: string): string {
     return normalizarTexto(`${key ?? ''}`).replace(/\s+/g, '_');
 }
 
-function getCaracteristicaById(
-    caracteristicas: DoteEvaluacionContexto['caracteristicas'],
-    idCaracteristica: number
-): number {
-    if (idCaracteristica === 1)
-        return toNumber(caracteristicas.Fuerza);
-    if (idCaracteristica === 2)
-        return toNumber(caracteristicas.Destreza);
-    if (idCaracteristica === 3)
-        return toNumber(caracteristicas.Constitucion);
-    if (idCaracteristica === 4)
-        return toNumber(caracteristicas.Inteligencia);
-    if (idCaracteristica === 5)
-        return toNumber(caracteristicas.Sabiduria);
-    if (idCaracteristica === 6)
-        return toNumber(caracteristicas.Carisma);
-    return Number.NaN;
-}
-
-function parseAlineamientoId(alineamiento: string): number {
-    const porNombre = getAlineamientoBasicoIdPorNombre(alineamiento);
-    if (porNombre > 0)
-        return porNombre;
-
-    const normalizado = normalizarTexto(alineamiento);
-    if (normalizado.includes('legal') && normalizado.includes('bueno'))
-        return 1;
-    if (normalizado.includes('legal') && normalizado.includes('neutral'))
-        return 2;
-    if (normalizado.includes('legal') && normalizado.includes('maligno'))
-        return 3;
-    if (normalizado.includes('neutral') && normalizado.includes('bueno'))
-        return 4;
-    if (normalizado.includes('neutral') && normalizado.includes('autentico'))
-        return 5;
-    if (normalizado.includes('neutral') && normalizado.includes('maligno'))
-        return 6;
-    if (normalizado.includes('caotico') && normalizado.includes('bueno'))
-        return 7;
-    if (normalizado.includes('caotico') && normalizado.includes('neutral'))
-        return 8;
-    if (normalizado.includes('caotico') && normalizado.includes('maligno'))
-        return 9;
-    return 0;
-}
-
-function cumpleActitud(idActitud: number, idAlineamientoBasico: number): boolean {
-    const esLegal = [1, 2, 3].includes(idAlineamientoBasico);
-    const esNeutralLey = [2, 4, 5, 6, 8].includes(idAlineamientoBasico);
-    const esCaotico = [7, 8, 9].includes(idAlineamientoBasico);
-    const esBueno = [1, 4, 7].includes(idAlineamientoBasico);
-    const esMaligno = [3, 6, 9].includes(idAlineamientoBasico);
-
-    if (idActitud === 1)
-        return esLegal;
-    if (idActitud === 2)
-        return esNeutralLey;
-    if (idActitud === 3)
-        return esCaotico;
-    if (idActitud === 4)
-        return esBueno;
-    if (idActitud === 5)
-        return esMaligno;
-    return false;
-}
-
 function buildEvaluacionAtaqueBase(entry: Record<string, any>, ataqueBase: number): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
     const requerido = toNumber(pick(entry, ['Ataque_base', 'ataque_base', 'Cantidad', 'cantidad', 'Valor', 'valor']));
@@ -216,7 +151,7 @@ function buildEvaluacionCaracteristica(entry: Record<string, any>, ctx: DoteEval
     const grupoOpcional = parseOpcional(entry);
     const idCaracteristica = parseId(entry, ['Id_caracteristica', 'id_caracteristica', 'Id', 'id']);
     const minimo = toNumber(pick(entry, ['Cantidad', 'cantidad', 'Valor', 'valor']));
-    const actual = getCaracteristicaById(ctx.caracteristicas, idCaracteristica);
+    const actual = valorCaracteristicaPorId(ctx.caracteristicas, idCaracteristica);
     const evaluable = idCaracteristica > 0 && minimo > 0 && Number.isFinite(actual);
     return {
         grupoOpcional,
@@ -312,9 +247,8 @@ function buildEvaluacionAlineamiento(
     prohibido: boolean
 ): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
-    const idAlineamiento = parseId(entry, ['Id_alineamiento', 'id_alineamiento', 'Id', 'id', 'i']);
-    const nombreAlineamiento = parseText(entry, ['Alineamiento', 'alineamiento', 'Nombre', 'nombre']);
-    const requerido = idAlineamiento > 0 ? idAlineamiento : getAlineamientoBasicoIdPorNombre(nombreAlineamiento);
+    // El básico (1-9), no `Id_alineamiento` (la combinación de la tabla `alineamientos`).
+    const requerido = idBasicoDePrerrequisitoAlineamiento(entry);
     const evaluable = requerido > 0 && idAlineamientoActual > 0;
     const coincide = evaluable ? idAlineamientoActual === requerido : false;
     return {
@@ -885,7 +819,7 @@ export function evaluarElegibilidadDote(input: DoteEvaluacionInput): DoteEvaluac
     const prerrequisitos = (dote?.Prerrequisitos ?? {}) as Record<string, any>;
     const idExtraSeleccionado = Math.max(0, toInt(input?.idExtraSeleccionado));
     const extraSeleccionado = `${input?.extraSeleccionado ?? ''}`.trim();
-    const idAlineamiento = parseAlineamientoId(ctx.alineamiento);
+    const idAlineamiento = getAlineamientoBasicoIdPorNombre(ctx.alineamiento);
 
     Object.keys(prerrequisitos).forEach((key) => {
         const entries = toArray<Record<string, any>>(prerrequisitos[key]);
