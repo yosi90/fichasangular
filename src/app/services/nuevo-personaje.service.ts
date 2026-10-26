@@ -278,7 +278,7 @@ const CARGA_MULTIPLICADOR_BIPEDO_POR_MOD_PRESA: Record<number, number> = {
 const EXTRA_IDIOMAS_INICIALES = 0;
 const GENERADOR_AUTO_Q4_THRESHOLD = 1;
 const DOTE_FAMILIAR_ID = 17;
-const ESPECIAL_FAMILIAR_CONVOCAR_ID = 47;
+
 const ESPECIALES_BONUS_FAMILIAR_FIJOS = [81, 82];
 const ESPECIAL_BONUS_FAMILIAR_MENSAJERO = 83;
 const ESPECIAL_BONUS_FAMILIAR_HECHIZO = 87;
@@ -7791,69 +7791,6 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Conjuros.push(conjuro);
     }
 
-    private aplicarConjurosNivelClase(
-        clase: Clase,
-        nivel: number,
-        detalleSiguiente: ClaseNivelDetalle,
-        detalleAnterior: ClaseNivelDetalle | null
-    ): void {
-        const refsDisponibles = this.obtenerConjurosDisponiblesNivelClase(clase, detalleSiguiente);
-        if (refsDisponibles.length < 1)
-            return;
-
-        if (clase?.Conjuros?.Conocidos_total) {
-            const objetivoActual = Math.max(0, toNumber(detalleSiguiente?.Conjuros_conocidos_total));
-            const objetivoAnterior = detalleAnterior
-                ? Math.max(0, toNumber(detalleAnterior?.Conjuros_conocidos_total))
-                : 0;
-            const delta = objetivoActual - objetivoAnterior;
-            if (delta <= 0)
-                return;
-
-            const candidatos = refsDisponibles
-                .filter((ref) => !this.esConjuroYaConocidoPorClase(clase.Nombre, toNumber(ref?.Id)));
-            candidatos.slice(0, delta).forEach((ref) => this.agregarConjuroConocidoClase(clase, ref, nivel));
-            return;
-        }
-
-        if (clase?.Conjuros?.Conocidos_nivel_a_nivel) {
-            const actuales = this.normalizarMapaConjurosPorNivel(detalleSiguiente?.Conjuros_conocidos_nivel_a_nivel);
-            const previos = this.normalizarMapaConjurosPorNivel(detalleAnterior?.Conjuros_conocidos_nivel_a_nivel);
-            Object.keys(actuales)
-                .map((key) => toNumber(key))
-                .filter((nivelConjuro) => Number.isFinite(nivelConjuro) && nivelConjuro >= 0)
-                .sort((a, b) => a - b)
-                .forEach((nivelConjuro) => {
-                    const actual = toNumber(actuales[nivelConjuro]);
-                    const previo = toNumber(previos[nivelConjuro]);
-                    const delta = actual - previo;
-                    if (delta <= 0)
-                        return;
-
-                    const candidatosNivel = refsDisponibles
-                        .filter((ref) => toNumber(ref?.Nivel) === nivelConjuro)
-                        .filter((ref) => !this.esConjuroYaConocidoPorClase(clase.Nombre, toNumber(ref?.Id)));
-                    candidatosNivel.slice(0, delta).forEach((ref) => this.agregarConjuroConocidoClase(clase, ref, nivel));
-                });
-            return;
-        }
-
-        refsDisponibles
-            .filter((ref) => !this.esConjuroYaConocidoPorClase(clase.Nombre, toNumber(ref?.Id)))
-            .forEach((ref) => this.agregarConjuroConocidoClase(clase, ref, nivel));
-    }
-
-    private obtenerConjurosDisponiblesNivelClase(clase: Clase, detalleNivel: ClaseNivelDetalle): ClaseConjuroRef[] {
-        const acceso = this.resolverAccesoConjurosPorTipo(clase, detalleNivel, null);
-        if (acceso.errores.length > 0)
-            return [];
-        return (clase?.Conjuros?.Listado ?? [])
-            .filter((ref) => toNumber(ref?.Id) > 0 && `${ref?.Nombre ?? ''}`.trim().length > 0)
-            .filter((ref) => !acceso.nivelesAccesibles || acceso.nivelesAccesibles.has(toNumber(ref?.Nivel)))
-            .sort((a, b) => toNumber(a?.Nivel) - toNumber(b?.Nivel)
-                || compararTexto(a?.Nombre, b?.Nombre));
-    }
-
     private normalizarMapaConjurosPorNivel(mapa: Record<string, number> | undefined | null): Record<number, number> {
         const resultado: Record<number, number> = {};
         if (!mapa)
@@ -7900,15 +7837,6 @@ export class NuevoPersonajeService {
                 return true;
             return origenClase === claseNorm;
         });
-    }
-
-    private agregarConjuroConocidoClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): void {
-        const idConjuro = toInt(ref?.Id);
-        if (idConjuro <= 0 || this.esConjuroYaConocidoPorClase(clase.Nombre, idConjuro))
-            return;
-
-        const conjuro = this.crearConjuroPlaceholderDesdeClase(clase, ref, nivelClase);
-        this.personajeCreacion.Conjuros.push(conjuro);
     }
 
     private crearConjuroPlaceholderDesdeClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): Conjuro {
