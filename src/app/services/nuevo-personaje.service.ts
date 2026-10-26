@@ -54,7 +54,7 @@ import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from './utils/personaje-totales';
 import { resumenClases } from './utils/resumen-clases';
-import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadNivelClase } from './utils/puntos-habilidad';
+import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadDgRaciales, puntosHabilidadNivelClase } from './utils/puntos-habilidad';
 import { tieneTextoVisible } from './utils/texto-visible';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
@@ -1742,14 +1742,11 @@ export class NuevoPersonajeService {
         if (dgsExtra < 1)
             return false;
 
-        const puntosBase = toNumber(raza?.Dgs_adicionales?.Puntos_habilidad);
-        const multiplicador = toNumber(raza?.Dgs_adicionales?.Multiplicador_puntos_habilidad);
-        const modInt = toNumber(this.personajeCreacion?.ModInteligencia);
-        const puntos = modInt >= 0
-            ? puntosBase * (multiplicador + modInt)
-            : puntosBase * multiplicador;
-
-        const total = Math.max(0, Math.trunc(puntos));
+        const total = puntosHabilidadDgRaciales({
+            puntosPorDg: toNumber(raza?.Dgs_adicionales?.Multiplicador_puntos_habilidad),
+            multiplicador: toNumber(raza?.Dgs_adicionales?.Puntos_habilidad),
+            modInteligencia: toNumber(this.personajeCreacion?.ModInteligencia),
+        });
         if (total < 1)
             return false;
 

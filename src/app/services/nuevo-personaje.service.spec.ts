@@ -5262,6 +5262,27 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(2);
     });
 
+    it('raza con DG: la Inteligencia negativa resta y cada DG da al menos 1 punto (centauro, 4 DG)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs({
+            Nombre: 'Centauro',
+            Dgs_adicionales: {
+                Cantidad: 4, Dado: 'd8', Tipo_criatura: 'Humanoide monstruoso', Ataque_base: 4, Dotes_extra: 2,
+                Puntos_habilidad: 7, Multiplicador_puntos_habilidad: 2, Fortaleza: 1, Reflejos: 4, Voluntad: 4,
+            },
+        } as any));
+
+        svc.PersonajeCreacion.ModInteligencia = -1;
+        expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
+        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(7);
+
+        svc.EstadoFlujo.habilidades.puntosRestantes = 0;
+        svc.cerrarDistribucionHabilidades();
+        svc.PersonajeCreacion.ModInteligencia = -4;
+        expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
+        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(7);
+    });
+
     it('plantillas: usa Suma_fija con mínimo 1 por plantilla con DG extra', () => {
         const svc = new NuevoPersonajeService();
         svc.seleccionarRaza(crearRazaConDgs());
