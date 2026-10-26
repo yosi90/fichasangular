@@ -127,13 +127,10 @@ describe('El marco de la creación', () => {
         expect(lados[0].querySelector('.secundaria')).not.toBeNull();
         expect(lados[1].querySelector('.principal')).not.toBeNull();
         (ventana.querySelector('[aria-label="Cerrar"]') as HTMLButtonElement).click();
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-        expect(host.vecesCerrar).toBe(2);
+        expect(host.vecesCerrar).toBe(1);
         host.cerrable = false;
         fixture.detectChanges();
         expect(ventana.querySelector('[aria-label="Cerrar"]')).toBeNull();
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
-        expect(host.vecesCerrar).toBe(2);
     });
 });
 

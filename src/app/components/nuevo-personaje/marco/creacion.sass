@@ -28,8 +28,9 @@ app-ficha-detalle.creacion > .ficha
     padding: 14px 18px 12px
     overflow: auto
 
-    // La franja de cifras del paso: un poco más baja que la de una ficha.
-    > .ficha-franja
+    // La franja de cifras del paso: un poco más baja que la de una ficha. (Sin `>`: la de la tienda va dentro de su
+    // componente, que no ocupa caja, y el selector de hijos mira el árbol del DOM.)
+    .ficha-franja
         flex-shrink: 0
 
         .ficha-franja__dato
@@ -73,7 +74,7 @@ app-ficha-detalle.creacion > .ficha
     text-transform: uppercase
     color: $accent
 
-.creacion-cabecera__nombre
+.creacion-cabecera .creacion-cabecera__nombre
     margin: 0
     font-size: 24px
     font-weight: 500
@@ -81,7 +82,7 @@ app-ficha-detalle.creacion > .ficha
     color: $ficha-blanco
     overflow-wrap: anywhere
 
-.creacion-cabecera__nombre--vacio
+.creacion-cabecera .creacion-cabecera__nombre--vacio
     font-style: italic
     color: $font-base
 

@@ -49,14 +49,14 @@ app-creacion-ventana
 .creacion-ventana__textos
     min-width: 0
 
-.creacion-ventana__titulo
+.creacion-ventana .creacion-ventana__titulo
     margin: 0
     font-size: 22px
     font-weight: 500
     line-height: 1.3
     color: $ficha-blanco
 
-.creacion-ventana__subtitulo
+.creacion-ventana .creacion-ventana__subtitulo
     margin: 4px 0 0
     font-size: 14px
     color: $ficha-texto-suave
@@ -129,7 +129,7 @@ app-creacion-ventana
     p
         margin: 0
 
-.creacion-ventana__detalle-tipo
+.creacion-ventana .creacion-ventana__detalle-tipo
     margin: 0
     font-size: 12px
     font-weight: 700
@@ -137,13 +137,13 @@ app-creacion-ventana
     text-transform: uppercase
     color: $accent
 
-.creacion-ventana__detalle-nombre
+.creacion-ventana .creacion-ventana__detalle-nombre
     margin: 2px 0 0
     font-size: 22px
     font-weight: 500
     color: $ficha-blanco
 
-.creacion-ventana__prosa
+.creacion-ventana .creacion-ventana__prosa
     font-size: 15px
     line-height: 1.65
     color: $ficha-blanco
@@ -154,6 +154,51 @@ app-creacion-ventana
     display: flex
     flex-direction: column
     gap: 8px
+
+.creacion-ventana__filtros
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))
+    gap: 8px
+
+.creacion-ventana__campo
+    width: 100%
+
+.creacion-ventana__filtros, .creacion-ventana__campo
+    .mat-mdc-form-field-subscript-wrapper
+        display: none
+
+.creacion-ventana__interruptores
+    display: flex
+    flex-direction: column
+    gap: 4px
+
+// Por qué no se puede elegir algo (y los avisos), bajo su detalle
+.creacion-motivos
+    display: flex
+    flex-direction: column
+    gap: 4px
+    margin: 0
+    padding-left: 18px
+    font-size: 14px
+    color: #ffccbc
+
+.creacion-motivos__aviso
+    color: #ffe39a
+
+// Cómo queda tras confirmar: nombre y valor a dos lados
+.creacion-resultado
+    margin: 0
+    padding: 0
+    list-style: none
+
+    li
+        display: flex
+        justify-content: space-between
+        gap: 10px
+        padding: 6px 0
+        border-bottom: 1px solid $ficha-separador
+        font-size: 15px
+        color: $ficha-blanco
 
 @media (max-width: 760px)
     .creacion-ventana__columnas

@@ -1,136 +1,85 @@
-<div class="selector-overlay">
-    <div class="selector-dialog" (click)="$event.stopPropagation()">
-        <div class="selector-header">
-            <div class="selector-header-main">
-                <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
-                <p class="tw-m-0 selector-subtitle" *ngIf="pendiente as actual">
-                    {{getFuenteTexto(actual)}}
-                    <span *ngIf="actual.fuente !== 'raza_dg' && actual.fuente !== 'raza' && actual.origen">. Origen: {{actual.origen}}</span>
-                    <span *ngIf="actual.tipoPermitido"> · Tipo permitido: {{actual.tipoPermitido}}</span>
-                </p>
+<app-creacion-ventana [titulo]="titulo" [subtitulo]="(pendiente
+        ? getFuenteTexto(pendiente)
+            + (pendiente.fuente !== 'raza_dg' && pendiente.fuente !== 'raza' && pendiente.origen ? ' · ' + pendiente.origen : '')
+            + (pendiente.tipoPermitido ? ' · tipo ' + pendiente.tipoPermitido : '') + ' · '
+        : '') + textoPendientes" [cerrable]="false" ancho="ancha" [relleno]="false">
+    <div class="creacion-ventana__columnas">
+        <div class="creacion-ventana__lista">
+            <label class="creacion-buscador">
+                <mat-icon aria-hidden="true">search</mat-icon>
+                <input type="search" [(ngModel)]="filtroTexto" (ngModelChange)="onFiltrosChange()"
+                    placeholder="Buscar dote" aria-label="Buscar dote">
+            </label>
+            <div class="creacion-ventana__filtros">
+                <app-manual-autocomplete [manuales]="manualesDisponibles" [includeAny]="false" [(value)]="filtroManual"
+                    (selectionChange)="onFiltrosChange()">
+                </app-manual-autocomplete>
+                <mat-form-field appearance="fill" class="dotes-filtro">
+                    <mat-label>Tipo</mat-label>
+                    <mat-select [(ngModel)]="filtroTipo" (ngModelChange)="onFiltrosChange()">
+                        <mat-option *ngFor="let tipo of tiposDisponibles" [value]="tipo">{{tipo}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
             </div>
-            <mat-chip class="chip-pendientes">{{textoPendientes}}</mat-chip>
+            <mat-slide-toggle color="primary" [checked]="mostrarSoloElegibles" (change)="onAlternarSoloElegibles()">
+                Solo las que cumples
+            </mat-slide-toggle>
+            <p class="creacion-texto-suave">{{cantidadElegibles > 0 ? (cantidadElegibles + ' dotes que cumples') : 'No cumples ninguna'}}</p>
+
+            <ul class="creacion-opciones" *ngIf="candidatosFiltrados.length > 0; else sinDotesTpl">
+                <li *ngFor="let candidato of candidatosFiltrados; trackBy: trackByDoteId">
+                    <button type="button" class="creacion-opcion" [class.creacion-opcion--activa]="esSeleccionada(candidato)"
+                        [class.creacion-opcion--bloqueada]="!esCandidatoElegible(candidato)" [attr.aria-pressed]="esSeleccionada(candidato)"
+                        (click)="seleccionarCandidato(candidato)">
+                        <span class="creacion-opcion__texto">
+                            {{candidato.dote.Nombre}}
+                            <span class="creacion-opcion__nota">{{getTiposTexto(candidato)}}</span>
+                        </span>
+                        <span class="creacion-opcion__estado" *ngIf="!esCandidatoElegible(candidato) || getEtiquetaEstado(candidato) !== 'Elegible'">{{getEtiquetaEstado(candidato)}}</span>
+                    </button>
+                </li>
+            </ul>
+            <ng-template #sinDotesTpl>
+                <p class="creacion-vacio">No hay dotes que encajen con los filtros actuales.</p>
+            </ng-template>
         </div>
 
-        <div class="selector-filtros">
-            <mat-form-field appearance="fill" class="tw-w-full">
-                <mat-label>Buscar dote</mat-label>
-                <input matInput [(ngModel)]="filtroTexto" (ngModelChange)="onFiltrosChange()" placeholder="Nombre, descripción o beneficio">
-            </mat-form-field>
-            <app-manual-autocomplete
-                class="tw-w-full"
-                [manuales]="manualesDisponibles"
-                [includeAny]="false"
-                [(value)]="filtroManual"
-                (selectionChange)="onFiltrosChange()">
-            </app-manual-autocomplete>
-            <mat-form-field appearance="fill" class="tw-w-full">
-                <mat-label>Tipo</mat-label>
-                <mat-select [(ngModel)]="filtroTipo" (ngModelChange)="onFiltrosChange()">
-                    <mat-option *ngFor="let tipo of tiposDisponibles" [value]="tipo">{{tipo}}</mat-option>
-                </mat-select>
-            </mat-form-field>
-            <mat-chip-option color="accent" class="filtro-chip" [selected]="mostrarSoloElegibles" (click)="onAlternarSoloElegibles()">
-                {{mostrarSoloElegibles ? 'Solo elegibles' : 'Mostrar bloqueadas'}}
-            </mat-chip-option>
-        </div>
-
-        <mat-chip class="tw-w-full chip-estado" [ngClass]="cantidadElegibles > 0 ? 'ok' : 'warm'">
-            {{cantidadElegibles > 0 ? (cantidadElegibles + ' dotes elegibles') : 'No hay dotes elegibles'}}
-        </mat-chip>
-
-        <div class="dotes-listado" *ngIf="candidatosFiltrados.length > 0; else sinDotesTpl">
-            <div class="dotes-columna">
-                <div class="dote-item"
-                    *ngFor="let candidato of candidatosColumnaA; trackBy: trackByDoteId"
-                    [class.seleccionada]="esSeleccionada(candidato)"
-                    [class.elegible]="esCandidatoElegible(candidato)"
-                    [class.bloqueada]="!esCandidatoElegible(candidato)"
-                    (click)="seleccionarCandidato(candidato)">
-                    <div class="dote-item-head">
-                        <div>
-                            <p class="tw-m-0 dote-nombre">{{candidato.dote.Nombre}}</p>
-                            <p class="tw-m-0 dote-meta">
-                                {{candidato.dote.Manual.Nombre}} (p. {{candidato.dote.Manual.Pagina}})
-                                · {{getTiposTexto(candidato)}}
-                            </p>
-                        </div>
-                        <div class="dote-head-actions">
-                            <button mat-icon-button class="dote-detalle-btn"
-                                (click)="onVerDetalle(candidato); $event.stopPropagation()"
-                                aria-label="Ver detalle de dote"
-                                matTooltip="Ver detalles">
-                                <mat-icon>open_in_new</mat-icon>
-                            </button>
-                            <mat-chip class="dote-chip-estado" [ngClass]="esCandidatoElegible(candidato) ? 'ok' : 'warm'">
-                                {{getEtiquetaEstado(candidato)}}
-                            </mat-chip>
-                        </div>
-                    </div>
-                    <p class="tw-m-0 dote-beneficio" *ngIf="(candidato.dote.Beneficio || candidato.dote.Descripcion) as resumen">{{resumen}}</p>
-                    <div class="dote-motivos" *ngIf="getMotivosBloqueo(candidato).length > 0 || getAvisos(candidato).length > 0">
-                        <p class="tw-m-0" *ngFor="let motivo of getMotivosBloqueo(candidato)">• {{motivo}}</p>
-                        <p class="tw-m-0 dote-aviso" *ngFor="let aviso of getAvisos(candidato)">• {{aviso}}</p>
-                    </div>
+        <div class="creacion-ventana__detalle">
+            <ng-container *ngIf="candidatoSeleccionado as candidato; else sinSeleccion">
+                <div>
+                    <p class="creacion-ventana__detalle-tipo">Dote · {{getTiposTexto(candidato)}}</p>
+                    <h3 class="creacion-ventana__detalle-nombre">{{candidato.dote.Nombre}}</h3>
+                    <button type="button" class="creacion-enlace" (click)="onVerDetalle(candidato)">
+                        {{candidato.dote.Manual.Nombre}}<ng-container *ngIf="candidato.dote.Manual.Pagina"> (p. {{candidato.dote.Manual.Pagina}})</ng-container>
+                    </button>
                 </div>
-            </div>
-            <div class="dotes-columna">
-                <div class="dote-item"
-                    *ngFor="let candidato of candidatosColumnaB; trackBy: trackByDoteId"
-                    [class.seleccionada]="esSeleccionada(candidato)"
-                    [class.elegible]="esCandidatoElegible(candidato)"
-                    [class.bloqueada]="!esCandidatoElegible(candidato)"
-                    (click)="seleccionarCandidato(candidato)">
-                    <div class="dote-item-head">
-                        <div>
-                            <p class="tw-m-0 dote-nombre">{{candidato.dote.Nombre}}</p>
-                            <p class="tw-m-0 dote-meta">
-                                {{candidato.dote.Manual.Nombre}} (p. {{candidato.dote.Manual.Pagina}})
-                                · {{getTiposTexto(candidato)}}
-                            </p>
-                        </div>
-                        <div class="dote-head-actions">
-                            <button mat-icon-button class="dote-detalle-btn"
-                                (click)="onVerDetalle(candidato); $event.stopPropagation()"
-                                aria-label="Ver detalle de dote"
-                                matTooltip="Ver detalles">
-                                <mat-icon>open_in_new</mat-icon>
-                            </button>
-                            <mat-chip class="dote-chip-estado" [ngClass]="esCandidatoElegible(candidato) ? 'ok' : 'warm'">
-                                {{getEtiquetaEstado(candidato)}}
-                            </mat-chip>
-                        </div>
-                    </div>
-                    <p class="tw-m-0 dote-beneficio" *ngIf="(candidato.dote.Beneficio || candidato.dote.Descripcion) as resumen">{{resumen}}</p>
-                    <div class="dote-motivos" *ngIf="getMotivosBloqueo(candidato).length > 0 || getAvisos(candidato).length > 0">
-                        <p class="tw-m-0" *ngFor="let motivo of getMotivosBloqueo(candidato)">• {{motivo}}</p>
-                        <p class="tw-m-0 dote-aviso" *ngFor="let aviso of getAvisos(candidato)">• {{aviso}}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <ng-template #sinDotesTpl>
-            <p class="tw-m-0 detalle">No hay dotes que encajen con los filtros actuales.</p>
-        </ng-template>
-
-        <div class="selector-extra" *ngIf="candidatoSeleccionado && requiereExtraSeleccionado">
-            <mat-form-field appearance="fill" class="tw-w-full">
-                <mat-label>Extra</mat-label>
-                <mat-select [(ngModel)]="idExtraSeleccionado" (ngModelChange)="onExtraSeleccionChange()">
-                    <mat-option [value]="0">Elegir</mat-option>
-                    <mat-option *ngFor="let extra of extrasCandidatoSeleccionado" [value]="extra.Id">
-                        {{extra.Nombre}}
-                    </mat-option>
-                </mat-select>
-            </mat-form-field>
-        </div>
-
-        <div class="selector-actions">
-            <button mat-stroked-button type="button" (click)="onOmitir()">Omitir dote</button>
-            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
-                Confirmar dote
-            </button>
+                <section class="creacion-ventana__seccion" *ngIf="(candidato.dote.Beneficio || candidato.dote.Descripcion) as resumen">
+                    <h4 class="creacion-titulo">Beneficio</h4>
+                    <p class="creacion-ventana__prosa">{{resumen}}</p>
+                </section>
+                <section class="creacion-ventana__seccion" *ngIf="getMotivosBloqueo(candidato).length > 0 || getAvisos(candidato).length > 0">
+                    <h4 class="creacion-titulo">Por qué {{esCandidatoElegible(candidato) ? 'ojo' : 'no la cumples'}}</h4>
+                    <ul class="creacion-motivos">
+                        <li *ngFor="let motivo of getMotivosBloqueo(candidato)">{{motivo}}</li>
+                        <li class="creacion-motivos__aviso" *ngFor="let aviso of getAvisos(candidato)">{{aviso}}</li>
+                    </ul>
+                </section>
+                <mat-form-field appearance="fill" class="dotes-extra" *ngIf="requiereExtraSeleccionado">
+                    <mat-label>Extra</mat-label>
+                    <mat-select [(ngModel)]="idExtraSeleccionado" (ngModelChange)="onExtraSeleccionChange()">
+                        <mat-option [value]="0">Elegir</mat-option>
+                        <mat-option *ngFor="let extra of extrasCandidatoSeleccionado" [value]="extra.Id">{{extra.Nombre}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </ng-container>
+            <ng-template #sinSeleccion>
+                <p class="creacion-vacio">Elige una dote de la lista para ver su beneficio y si la cumples.</p>
+            </ng-template>
         </div>
     </div>
-</div>
+
+    <button ventanaSecundaria mat-stroked-button type="button" (click)="onOmitir()">Omitir esta dote</button>
+    <button ventanaPrincipal mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+        {{candidatoSeleccionado && !puedeConfirmar && !esCandidatoElegible(candidatoSeleccionado) ? 'No cumples los prerrequisitos' : 'Confirmar dote'}}
+    </button>
+</app-creacion-ventana>

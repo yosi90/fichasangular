@@ -1,4 +1,4 @@
-import { Component, EventEmitter, HostListener, Input, Output, ViewEncapsulation } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ViewEncapsulation } from '@angular/core';
 
 let siguienteId = 0;
 
@@ -7,13 +7,13 @@ let siguienteId = 0;
  * con título y subtítulo (y la ✕ solo si se puede cerrar), cuerpo y pie con la acción secundaria a la izquierda y la
  * principal a la derecha. Lo de dentro lo pone cada ventana; para la lista a la izquierda y el detalle de lo
  * seleccionado a la derecha tiene las clases `creacion-ventana__columnas`, `__lista` y `__detalle`, y para cada opción,
- * `creacion-opcion`. Sus estilos son globales (prefijo `creacion-`). No se cierra al pulsar fuera; con Escape, solo si
- * se puede cerrar.
+ * `creacion-opcion`. Sus estilos son globales (prefijo `creacion-`). Pulsar fuera solo avisa (`pulsarFondo`) y cada
+ * ventana decide si se cierra, como antes del marco.
  */
 @Component({
     selector: 'app-creacion-ventana',
     template: `
-        <div class="creacion-ventana-fondo">
+        <div class="creacion-ventana-fondo" (click)="alPulsarFondo($event)">
             <div class="creacion-ventana" role="dialog" aria-modal="true" [attr.aria-labelledby]="idTitulo"
                 [ngClass]="'creacion-ventana--' + ancho" (click)="$event.stopPropagation()">
                 <header class="creacion-ventana__cabecera">
@@ -45,7 +45,7 @@ let siguienteId = 0;
 export class CreacionVentanaComponent {
     @Input() titulo = '';
     @Input() subtitulo: string | null | undefined = '';
-    /** Si lleva la ✕ (y Escape la cierra). Las elecciones obligatorias no se pueden cerrar. */
+    /** Si lleva la ✕. Las elecciones obligatorias no se pueden cerrar. */
     @Input() cerrable = true;
     /** La ✕ se ve, pero aún no se puede cerrar (por ejemplo, mientras se guarda). */
     @Input() cierreBloqueado = false;
@@ -54,12 +54,13 @@ export class CreacionVentanaComponent {
     /** El cuerpo con su margen interior; sin él, lo pone lo de dentro (las columnas de lista y detalle). */
     @Input() relleno = true;
     @Output() cerrar = new EventEmitter<void>();
+    /** Al pulsar fuera de la ventana (las que ya se cerraban así lo siguen haciendo; las demás no lo escuchan). */
+    @Output() pulsarFondo = new EventEmitter<void>();
 
     readonly idTitulo = `creacion-ventana-titulo-${++siguienteId}`;
 
-    @HostListener('document:keydown.escape')
-    alPulsarEscape(): void {
-        if (this.cerrable && !this.cierreBloqueado)
-            this.cerrar.emit();
+    alPulsarFondo(evento: MouseEvent): void {
+        if (evento.target === evento.currentTarget)
+            this.pulsarFondo.emit();
     }
 }

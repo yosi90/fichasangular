@@ -113,6 +113,16 @@ textarea
     ::ng-deep #container-lista
         background: transparent !important
 
+    // El listado centra su tabla y fija el botón de filtros a la ventana; dentro de la tarea, la tabla empieza a la
+    // izquierda (si no, al desbordar se corta su principio) y el botón va en su esquina.
+    ::ng-deep .lista-row
+        justify-content: flex-start !important
+
+    ::ng-deep #filtros
+        position: absolute
+        top: 4px
+        right: 4px
+
 // Básicos
 .basicos-form
     display: grid

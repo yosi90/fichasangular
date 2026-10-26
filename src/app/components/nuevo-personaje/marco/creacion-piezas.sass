@@ -14,7 +14,7 @@
     clip: rect(0 0 0 0)
     white-space: nowrap
 
-.creacion-titulo
+.ficha .creacion-titulo, .creacion-ventana .creacion-titulo
     margin: 0
     font-size: 12px
     font-weight: 700
@@ -23,7 +23,27 @@
     text-transform: uppercase
     color: $accent
 
-.creacion-texto-suave
+.creacion-enlace
+    padding: 0
+    border: 0
+    background: none
+    font: inherit
+    font-size: 13px
+    text-align: left
+    color: $ficha-texto-suave
+    text-decoration: underline
+    text-decoration-color: $active
+    text-underline-offset: 3px
+    cursor: pointer
+
+    &:hover
+        color: $ficha-blanco
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+.ficha .creacion-texto-suave, .creacion-ventana .creacion-texto-suave
     margin: 0
     font-size: 13px
     color: $font-base
@@ -180,14 +200,24 @@
     color: $ficha-texto-suave
     font-variant-numeric: tabular-nums
 
-.creacion-vacio
+.creacion-opcion__marca.mat-icon
+    flex-shrink: 0
+    width: 20px
+    height: 20px
+    font-size: 20px
+    color: $accent
+
+.creacion-opcion--activa .creacion-opcion__marca.mat-icon
+    color: $active
+
+.ficha .creacion-vacio, .creacion-ventana .creacion-vacio
     margin: 0
     padding: 12px
     font-size: 14px
     color: $font-base
     text-align: center
 
-.creacion-aviso
+.ficha .creacion-aviso, .creacion-ventana .creacion-aviso
     margin: 0
     padding: 10px 12px
     border: 1px solid #ffab91
