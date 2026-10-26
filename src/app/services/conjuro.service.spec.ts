@@ -125,6 +125,14 @@ describe('ConjuroService', () => {
         expect(conjuro.Componentes).toEqual([{ Id_componente: 1, Componente: 'Verbal' }]);
     });
 
+    it('lee las subdisciplinas por su nombre, como las da la API', () => {
+        const conjuro = normalizeConjuroApi(createConjuroApiSummaryRaw({
+            di: { Id: '2', Nombre: 'Metacreatividad', Nombre_esp: 'Formador', Subdisciplinas: ['Creación'] },
+        }));
+
+        expect(conjuro.Disciplina.Subdisciplinas).toEqual([{ Id: 1, Nombre: 'Creación' }]);
+    });
+
     it('descarta aliases legacy en el mapper HTTP de conjuro', () => {
         const conjuro = normalizeConjuroApi(createConjuroApiSummaryRaw({
             Id: 9,

@@ -11,7 +11,7 @@ describe('DetallesConjuroComponent', () => {
     let fixture: ComponentFixture<DetallesConjuroComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, titulos, datos } = lectorFicha(elemento);
+    const { texto, titulos, datos, tipoCabecera } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
@@ -95,6 +95,17 @@ describe('DetallesConjuroComponent', () => {
             Oficial: true,
         };
     }
+
+    it('el tipo de un poder lleva su subdisciplina entre paréntesis', () => {
+        component.conjuro = {
+            ...empujeMental(),
+            Disciplina: { Id: 2, Nombre: 'Metacreatividad', Nombre_especial: 'Formador', Subdisciplinas: [{ Id: 1, Nombre: 'Creación' }] },
+            Descriptores: [],
+        };
+        fixture.detectChanges();
+
+        expect(tipoCabecera()).toBe('Poder psiónico · Metacreatividad (Creación)');
+    });
 
     it('oculta descriptores y bloques vacíos en un conjuro base', () => {
         component.conjuro = desvioDeRayos();

@@ -1,4 +1,5 @@
 import { Conjuro } from 'src/app/interfaces/conjuro';
+import { Subdisciplinas } from 'src/app/interfaces/disciplina-conjuros';
 import { toArray, toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
 
 function toStrictArray<T = any>(value: any): T[] {
@@ -17,6 +18,27 @@ function normalizeEscuelaApi(raw: any): Conjuro['Escuela'] {
     };
 }
 
+/**
+ * Las subdisciplinas de una disciplina. La API las da por su nombre (`DisciplinaConjuro.Subdisciplinas`, en el conjuro
+ * solo la suya); como el modelo las guarda con un id, a los nombres sueltos les da su posición.
+ */
+export function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
+    return toArray(raw)
+        .map((item: any, index: number) => {
+            if (typeof item === 'string') {
+                return {
+                    Id: index + 1,
+                    Nombre: toText(item).trim(),
+                };
+            }
+            return {
+                Id: toInt(item?.Id ?? item?.i, 0),
+                Nombre: toText(item?.Nombre ?? item?.n).trim(),
+            };
+        })
+        .filter((item) => item.Nombre.length > 0);
+}
+
 function normalizeDisciplinaApi(raw: any): Conjuro['Disciplina'] {
     if (!raw || typeof raw !== 'object')
         return { Id: 0, Nombre: '', Nombre_especial: '', Subdisciplinas: [] };
@@ -25,12 +47,7 @@ function normalizeDisciplinaApi(raw: any): Conjuro['Disciplina'] {
         Id: toInt(raw?.Id ?? raw?.i),
         Nombre: toText(raw?.Nombre ?? raw?.n),
         Nombre_especial: toText(raw?.Nombre_esp ?? raw?.ne),
-        Subdisciplinas: toStrictArray(raw?.Subdisciplinas ?? raw?.sd)
-            .map((item: any) => ({
-                Id: toInt(item?.Id ?? item?.i),
-                Nombre: toText(item?.Nombre ?? item?.n),
-            }))
-            .filter((item) => item.Id > 0 || item.Nombre.trim().length > 0),
+        Subdisciplinas: normalizeSubdisciplinas(toStrictArray(raw?.Subdisciplinas ?? raw?.sd)),
     };
 }
 
@@ -54,10 +71,7 @@ function normalizeDisciplinaLegacy(raw: any): Conjuro['Disciplina'] {
         Id: toInt(raw?.Id ?? raw?.i),
         Nombre: toText(raw?.Nombre ?? raw?.n),
         Nombre_especial: toText(raw?.Nombre_especial ?? raw?.Nombre_esp ?? raw?.ne),
-        Subdisciplinas: toArray(raw?.Subdisciplinas ?? raw?.sd).map((item: any) => ({
-            Id: toInt(item?.Id ?? item?.i),
-            Nombre: toText(item?.Nombre ?? item?.n),
-        })),
+        Subdisciplinas: normalizeSubdisciplinas(raw?.Subdisciplinas ?? raw?.sd),
     };
 }
 

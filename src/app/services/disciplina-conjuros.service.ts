@@ -2,27 +2,11 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database } from '@angular/fire/database';
 import { Observable } from "rxjs";
-import { DisciplinaConjuros, Subdisciplinas } from "../interfaces/disciplina-conjuros";
+import { DisciplinaConjuros } from "../interfaces/disciplina-conjuros";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toInt, toText } from 'src/app/services/utils/normalizacion';
+import { toInt, toText } from 'src/app/services/utils/normalizacion';
 import { escucharRtdbConAlternativa, listaRtdb } from './catalogo-api';
-
-function normalizeSubdisciplinas(raw: any): Subdisciplinas[] {
-    return toArray(raw)
-        .map((item: any, index: number) => {
-            if (typeof item === 'string') {
-                return {
-                    Id: index + 1,
-                    Nombre: toText(item).trim(),
-                };
-            }
-            return {
-                Id: toInt(item?.Id, 0),
-                Nombre: toText(item?.Nombre).trim(),
-            };
-        })
-        .filter((item) => item.Nombre.length > 0);
-}
+import { normalizeSubdisciplinas } from './utils/conjuro-mapper';
 
 function normalizeDisciplina(raw: any, fallbackId: number = 0): DisciplinaConjuros {
     return {

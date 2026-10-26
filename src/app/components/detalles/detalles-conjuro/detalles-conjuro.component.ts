@@ -99,7 +99,7 @@ export class DetallesConjuroComponent {
     }
 
     /**
-     * La línea del tipo: «Conjuro arcano · Transmutación [Fuego]» o «Poder psiónico · Psicoquinesis», con
+     * La línea del tipo: «Conjuro arcano · Transmutación [Fuego]» o «Poder psiónico · Metacreatividad (Creación)», con
      * «Aptitud sortílega» delante si se ve como la de una criatura o un personaje.
      */
     private construirTipo(): string {
@@ -107,7 +107,11 @@ export class DetallesConjuroComponent {
         const clase = c?.Psionico
             ? 'Poder psiónico'
             : `Conjuro${c?.Arcano && c?.Divino ? ' arcano y divino' : c?.Arcano ? ' arcano' : c?.Divino ? ' divino' : ''}`;
-        const rama = c?.Psionico ? c?.Disciplina?.Nombre : c?.Escuela?.Nombre;
+        // La disciplina lleva su subdisciplina entre paréntesis («Metacreatividad (Creación)»).
+        const subdisciplinas = (c?.Disciplina?.Subdisciplinas ?? []).map((sub) => `${sub?.Nombre ?? ''}`.trim()).filter((nombre) => this.hasText(nombre));
+        const disciplina = [c?.Disciplina?.Nombre, subdisciplinas.length > 0 ? `(${subdisciplinas.join(', ')})` : '']
+            .filter((parte) => this.hasText(parte)).join(' ');
+        const rama = c?.Psionico ? disciplina : c?.Escuela?.Nombre;
         const descriptores = this.tieneDescriptores ? `[${this.getDescriptores(this.descriptoresVisibles)}]` : '';
         const ramaConDescriptores = [this.hasText(rama) ? `${rama}`.trim() : '', descriptores].filter(Boolean).join(' ');
         return unirTipo([this.esSortilega ? 'Aptitud sortílega' : null, clase, ramaConDescriptores]);
