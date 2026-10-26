@@ -145,8 +145,24 @@ describe('DoteService', () => {
             { Id_habilidad: 6, Habilidad: 'Avistar', Id_extra: null, Extra: null, Extra_comodin: null, Rangos: 2, Custom: false },
             { Id_habilidad: 3, Habilidad: 'Saber', Id_extra: 4, Extra: 'Fuego', Extra_comodin: null, Rangos: 1, Custom: true },
         ]);
-        // La caché de la RTDB aún no las guarda: lista vacía.
-        expect(normalizeDoteLegacy({ Id: 9, Nombre: 'Alerta' }).Habilidades_otorgadas).toEqual([]);
+        // Una dote que no otorga ninguna: en la RTDB, la lista vacía no está.
+        expect(normalizeDoteLegacy({ Id: 9, Nombre: 'Soltura con un arma' }).Habilidades_otorgadas).toEqual([]);
+    });
+
+    it('lee de la caché de la RTDB las habilidades otorgadas (Dotes 8), sin las claves a null', () => {
+        const dote = normalizeDoteLegacy({
+            Id: 17,
+            Nombre: 'Alerta',
+            Habilidades_otorgadas: [
+                { Id_habilidad: 6, Habilidad: 'Avistar', Rangos: 2, Custom: false },
+                { Id_habilidad: 3, Habilidad: 'Saber', Id_extra: 0, Extra: 'Elegir', Extra_comodin: 'elegir', Rangos: 2, Custom: true },
+            ],
+        });
+
+        expect(dote.Habilidades_otorgadas).toEqual([
+            { Id_habilidad: 6, Habilidad: 'Avistar', Id_extra: null, Extra: null, Extra_comodin: null, Rangos: 2, Custom: false },
+            { Id_habilidad: 3, Habilidad: 'Saber', Id_extra: 0, Extra: 'Elegir', Extra_comodin: 'elegir', Rangos: 2, Custom: true },
+        ]);
     });
 
     it('descarta aliases legacy en el mapper HTTP de dote', () => {

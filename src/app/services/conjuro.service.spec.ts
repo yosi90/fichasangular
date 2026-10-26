@@ -133,6 +133,20 @@ describe('ConjuroService', () => {
         expect(conjuro.Disciplina.Subdisciplinas).toEqual([{ Id: 1, Nombre: 'Creación' }]);
     });
 
+    it('lee de la caché de la RTDB las subdisciplinas con su posición como id (Conjuros 3)', () => {
+        const conjuro = normalizeConjuroLegacy({
+            Id: 48,
+            Nombre: 'Forjar',
+            Disciplina: {
+                Id: 4, Nombre: 'Psicometabolismo', Nombre_especial: 'Egoísta',
+                Subdisciplinas: [{ Id: 1, Nombre: 'Creación' }, { Id: 2, Nombre: 'Curación' }],
+            },
+        });
+
+        expect(conjuro.Disciplina.Nombre_especial).toBe('Egoísta');
+        expect(conjuro.Disciplina.Subdisciplinas).toEqual([{ Id: 1, Nombre: 'Creación' }, { Id: 2, Nombre: 'Curación' }]);
+    });
+
     it('descarta aliases legacy en el mapper HTTP de conjuro', () => {
         const conjuro = normalizeConjuroApi(createConjuroApiSummaryRaw({
             Id: 9,
