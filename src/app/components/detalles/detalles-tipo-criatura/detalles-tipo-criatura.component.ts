@@ -3,6 +3,7 @@ import { DatoFicha } from 'src/app/components/detalles/ficha';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
@@ -17,7 +18,7 @@ export class DetallesTipoCriaturaComponent {
     private tipoData!: TipoCriatura;
 
     // Lo que pinta la ficha, calculado una vez al recibir el tipo.
-    /** Dados de golpe, progresiones de ataque base y salvaciones, y puntos de habilidad. */
+    /** Dados de golpe, progresiones de ataque base y salvaciones, puntos de habilidad, tesoro e Inteligencia máxima. */
     datos: DatoFicha[] = [];
     /** Lo que necesita la criatura y cómo le afecta el combate (comer, respirar, críticos…). */
     naturaleza: DatoFicha[] = [];
@@ -34,6 +35,12 @@ export class DetallesTipoCriaturaComponent {
             { etiqueta: 'Reflejos', valor: value ? this.progresionSalvacion(value.Id_reflejos) : null },
             { etiqueta: 'Voluntad', valor: value ? this.progresionSalvacion(value.Id_voluntad) : null },
             { etiqueta: 'Puntos de habilidad por DG', valor: value ? puntos : null, detalle: '+ mod. de Int' },
+            { etiqueta: 'Tesoro', valor: mayusculaInicial(value?.Tesoro) },
+            // -1: sin límite. Los demás, la Inteligencia más alta que puede tener (2 los animales, 0 los cienos).
+            {
+                etiqueta: 'Inteligencia máxima',
+                valor: value && toNumber(value.Limite_inteligencia) >= 0 ? toNumber(value.Limite_inteligencia) : null,
+            },
         ];
         this.naturaleza = value ? [
             { etiqueta: 'Necesita comer', valor: !!value.Come },

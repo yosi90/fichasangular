@@ -26,7 +26,7 @@ function crearTipo(partial: Partial<TipoCriatura> = {}): TipoCriatura {
         Recibe_criticos: false,
         Puede_ser_flanqueado: true,
         Pierde_constitucion: true,
-        Limite_inteligencia: 0,
+        Limite_inteligencia: -1,
         Tesoro: '',
         Id_alineamiento: 0,
         Rasgos: [],
@@ -40,7 +40,7 @@ describe('DetallesTipoCriaturaComponent', () => {
     let fixture: ComponentFixture<DetallesTipoCriaturaComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, titulos, datos } = lectorFicha(elemento);
+    const { texto, titulos, datos, valor } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
@@ -80,6 +80,23 @@ describe('DetallesTipoCriaturaComponent', () => {
             ['Puede ser flanqueado', 'Sí'],
             ['Pierde la Constitución', 'Sí'],
         ]);
+    });
+
+    it('enseña el tesoro y la Inteligencia máxima (también la 0) y no el «sin límite» (-1)', () => {
+        component.tipo = crearTipo({ Tesoro: 'ninguno', Limite_inteligencia: 2 });
+        fixture.detectChanges();
+
+        expect(valor('Tesoro')).toBe('Ninguno');
+        expect(valor('Inteligencia máxima')).toBe('2');
+
+        component.tipo = crearTipo({ Limite_inteligencia: 0 });
+        fixture.detectChanges();
+        expect(valor('Inteligencia máxima')).toBe('0');
+        expect(valor('Tesoro')).toBeNull();
+
+        component.tipo = crearTipo();
+        fixture.detectChanges();
+        expect(valor('Inteligencia máxima')).toBeNull();
     });
 
     it('no enseña lo que la API da vacío o null', () => {
