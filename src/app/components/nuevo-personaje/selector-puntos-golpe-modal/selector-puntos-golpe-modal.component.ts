@@ -1,6 +1,7 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { ResultadoCalculoVidaFinal } from 'src/app/services/nuevo-personaje.service';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
+import { MAX_TIRADAS_PUNTOS_GOLPE } from 'src/app/services/utils/puntos-golpe';
 
 @Component({
     selector: 'app-selector-puntos-golpe-modal',
@@ -11,7 +12,7 @@ import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 export class SelectorPuntosGolpeModalComponent {
     @Input() resultado: ResultadoCalculoVidaFinal | null = null;
     @Input() tiradasRestantes = 0;
-    @Input() tiradasTotales = 3;
+    @Input() tiradasTotales = MAX_TIRADAS_PUNTOS_GOLPE;
 
     @Output() recalcular = new EventEmitter<void>();
     @Output() siguiente = new EventEmitter<void>();

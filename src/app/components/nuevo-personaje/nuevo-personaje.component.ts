@@ -125,7 +125,7 @@ import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineam
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { esEspecializable } from 'src/app/services/utils/reglas-magia';
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
-import { tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
+import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
@@ -532,7 +532,7 @@ export class NuevoPersonajeComponent {
     };
     private basicosDerivedSignature = '';
     resultadoVidaActual: ResultadoCalculoVidaFinal | null = null;
-    tiradasVidaTotales = 3;
+    tiradasVidaTotales = MAX_TIRADAS_PUNTOS_GOLPE;
     tiradasVidaRestantes = 0;
     selectorVisibilidadValorInicial: boolean | null = null;
     /** La tienda del final de la creación: se abre con el personaje ya guardado (decisión del propietario, 2026-10-25). */
