@@ -7,6 +7,7 @@ import {
     SubtipoResumen,
     SubtipoSortilega,
 } from "src/app/interfaces/subtipo";
+import { leerComodin } from "./comodin";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualApi } from './manual-mapper';
@@ -44,6 +45,7 @@ function normalizeHabilidadBase(raw: any): SubtipoHabilidadBase {
         Entrenada: toBoolean(raw?.Entrenada),
         Id_extra: toNumber(raw?.Id_extra),
         Extra: toText(raw?.Extra),
+        Extra_comodin: leerComodin(raw?.Extra_comodin),
         Cantidad: toNumber(raw?.Cantidad),
         Varios: toText(raw?.Varios),
     };

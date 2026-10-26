@@ -5,6 +5,8 @@ import {
     HabilidadFicha,
     SortilegaFicha,
     datoAlineamiento,
+    datosMinimosCaracteristicas,
+    datosModificadoresCaracteristicas,
     datosMovimiento,
     datosVisibles,
     dotesVisibles,
@@ -13,13 +15,11 @@ import {
     textoDesdeDg,
 } from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
-import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { Plantilla, PlantillaRacialContextual } from 'src/app/interfaces/plantilla';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
-import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { GrupoPrerrequisitos, agruparPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
@@ -75,8 +75,8 @@ export class DetallesPlantillaComponent {
             { etiqueta: 'Puntos de habilidad por DG', valor: puntosHabilidad > 0 ? puntosHabilidad : null, detalle: '+ mod. de Int' },
             datoAlineamiento(value?.Alineamiento),
         ]);
-        this.modificadoresCaracteristicas = this.caracteristicas(value?.Modificadores_caracteristicas, (n) => n !== 0 ? textoConSigno(n) : null);
-        this.minimosCaracteristicas = this.caracteristicas(value?.Minimos_caracteristicas, (n) => n > 0 ? n : null);
+        this.modificadoresCaracteristicas = datosModificadoresCaracteristicas(value?.Modificadores_caracteristicas);
+        this.minimosCaracteristicas = datosMinimosCaracteristicas(value?.Minimos_caracteristicas);
         this.combate = this.calcularCombate();
         this.movimiento = datosMovimiento(value?.Movimientos, value?.Maniobrabilidad?.Nombre);
         this.dadosGolpeAnimal = this.calcularDadosGolpeAnimal();
@@ -146,18 +146,6 @@ export class DetallesPlantillaComponent {
         // modifica el dado de golpe.
         return tieneTextoVisible(this.plantillaData?.Tipo_dado?.Nombre)
             && this.plantillaData?.Tipo_dado_comodin !== 'elegir';
-    }
-
-    private caracteristicas(
-        valores: Plantilla['Modificadores_caracteristicas'] | null | undefined,
-        valor: (numero: number) => string | number | null,
-    ): DatoFicha[] {
-        if (!valores)
-            return [];
-        return datosVisibles(CARACTERISTICAS.map((clave) => ({
-            etiqueta: NOMBRES_CARACTERISTICAS[clave],
-            valor: valor(toNumber(valores[clave])),
-        })));
     }
 
     private calcularCombate(): DatoFicha[] {

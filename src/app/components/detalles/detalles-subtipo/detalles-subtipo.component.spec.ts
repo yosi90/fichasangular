@@ -7,8 +7,8 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { DetallesSubtipoComponent } from './detalles-subtipo.component';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
-function caracteristicas(): SubtipoDetalle['Modificadores_caracteristicas'] {
-    return { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 };
+function caracteristicas(valores: Partial<SubtipoDetalle['Modificadores_caracteristicas']> = {}): SubtipoDetalle['Modificadores_caracteristicas'] {
+    return { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0, ...valores };
 }
 
 function crearSubtipo(partial: Partial<SubtipoDetalle> = {}): SubtipoDetalle {
@@ -52,7 +52,7 @@ describe('DetallesSubtipoComponent', () => {
     let fixture: ComponentFixture<DetallesSubtipoComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, titulos, datos, seccion, enlace } = lectorFicha(elemento);
+    const { texto, titulos, datos, seccion, lateral, enlace, filasPares } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
@@ -103,6 +103,30 @@ describe('DetallesSubtipoComponent', () => {
         expect(texto()).not.toContain('undefined');
     });
 
+    it('enseña los modificadores y mínimos de característica y las habilidades base y custom', () => {
+        component.subtipo = crearSubtipo({
+            Modificadores_caracteristicas: caracteristicas({ Fuerza: 2, Carisma: -2 }),
+            Minimos_caracteristicas: caracteristicas({ Inteligencia: 3 }),
+            Habilidades: {
+                Base: [
+                    { Habilidad: 'Saltar', Extra: null, Extra_comodin: null, Cantidad: 4, Varios: 'Solo al correr' } as any,
+                    { Habilidad: 'Artesanía', Extra: null, Extra_comodin: 'elegir', Cantidad: 2, Varios: null } as any,
+                ],
+                Custom: [{ Id_habilidad: 3, Habilidad: 'Volar', Id_caracteristica: 2, Caracteristica: 'Destreza', Cantidad: 8 }],
+            },
+        });
+        fixture.detectChanges();
+
+        expect(titulos()).toEqual(['Descripción', 'Características', 'Combate y defensas', 'Habilidades']);
+        expect(Array.from(seccion('Características')!.querySelectorAll('.ficha-subtitulo')).map((t) => limpio(t)))
+            .toEqual(['Modificadores', 'Mínimos']);
+        expect(datos(seccion('Características'))).toEqual([['Fuerza', '+2'], ['Carisma', '-2'], ['Inteligencia', '3']]);
+        expect(Array.from(lateral('Habilidades')!.querySelectorAll('.ficha-subtitulo')).map((t) => limpio(t))).toEqual(['Base', 'Custom']);
+        expect(filasPares(lateral('Habilidades'))).toEqual([
+            ['Artesanía (Elegir)', '+2'], ['Saltar Solo al correr', '+4'], ['Volar', '+8'],
+        ]);
+    });
+
     it('enlaza rasgos, dotes, sortílegas, plantillas y el manual, y lista los idiomas', () => {
         const rasgoSpy = spyOn(component.rasgoDetalles, 'emit');
         const doteSpy = spyOn(component.doteDetalles, 'emit');
@@ -114,7 +138,7 @@ describe('DetallesSubtipoComponent', () => {
             Dotes: [{ Dote: { Id: 9, Nombre: 'Soltura' }, Contexto: { Extra: 'Espada larga' } } as any],
             Sortilegas: [{ Conjuro: { Id: 11, Nombre: 'Manos ardientes' } as any, Nivel_lanzador: 1, Usos_diarios: '' }],
             Idiomas: [{ Id: 1, Nombre: 'Ígneo', Descripcion: 'Lengua del fuego', Secreto: false, Oficial: true }],
-            Plantillas: [{ Id: 3, Nombre: 'Elemental', Descripcion: '' }],
+            Plantillas: [{ Id: 3, Nombre: 'Elemental', Descripcion: 'Criaturas de los planos elementales.' }],
         });
         fixture.detectChanges();
 
@@ -129,6 +153,8 @@ describe('DetallesSubtipoComponent', () => {
         enlace('Elemental').click();
         (elemento().querySelector('button.ficha-cabecera__manual') as HTMLButtonElement).click();
 
+        // La descripción de la plantilla va en el tooltip de su enlace.
+        expect(component.plantillas[0].Descripcion).toBe('Criaturas de los planos elementales.');
         expect(rasgoSpy).toHaveBeenCalledWith(rasgo);
         expect(doteSpy).toHaveBeenCalledWith(9);
         expect(conjuroSpy).toHaveBeenCalledWith(11);

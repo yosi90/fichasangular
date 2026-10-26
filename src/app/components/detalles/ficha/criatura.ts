@@ -1,6 +1,8 @@
+import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
@@ -124,4 +126,29 @@ export function datosMovimiento(movimientos: MovimientosCriatura | null | undefi
         { etiqueta: 'Escalar', valor: textoPies(movimientos?.Escalar) },
         { etiqueta: 'Maniobrabilidad', valor: maniobrabilidad },
     ]);
+}
+
+/** Las seis características de lo que cambia a una criatura (plantilla, subtipo): un número por cada una. */
+type CaracteristicasCriatura = Record<Caracteristica, number>;
+
+function datosCaracteristicas(
+    valores: CaracteristicasCriatura | null | undefined,
+    valor: (numero: number) => string | number | null,
+): DatoFicha[] {
+    if (!valores)
+        return [];
+    return datosVisibles(CARACTERISTICAS.map((clave) => ({
+        etiqueta: NOMBRES_CARACTERISTICAS[clave],
+        valor: valor(toNumber(valores[clave])),
+    })));
+}
+
+/** Los modificadores de característica distintos de 0, con signo («Fuerza +8»). */
+export function datosModificadoresCaracteristicas(valores: CaracteristicasCriatura | null | undefined): DatoFicha[] {
+    return datosCaracteristicas(valores, (numero) => numero !== 0 ? textoConSigno(numero) : null);
+}
+
+/** Las características mínimas que pide, las mayores que 0 («Inteligencia 3»). */
+export function datosMinimosCaracteristicas(valores: CaracteristicasCriatura | null | undefined): DatoFicha[] {
+    return datosCaracteristicas(valores, (numero) => numero > 0 ? numero : null);
 }

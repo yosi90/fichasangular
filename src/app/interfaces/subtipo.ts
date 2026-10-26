@@ -1,4 +1,5 @@
 import { Alineamiento } from "./alineamiento";
+import { Comodin } from "./comodin";
 import { Conjuro } from "./conjuro";
 import { DoteContextual } from "./dote-contextual";
 import { Rasgo } from "./rasgo";
@@ -36,6 +37,8 @@ export interface SubtipoHabilidadBase {
     Entrenada: boolean;
     Id_extra: number;
     Extra: string;
+    /** «elegir» si el extra está por escoger, «cualquiera» si vale cualquiera. */
+    Extra_comodin?: Comodin | null;
     Cantidad: number;
     Varios: string;
 }

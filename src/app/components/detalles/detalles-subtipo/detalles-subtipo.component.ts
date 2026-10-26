@@ -1,5 +1,18 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, DoteFicha, SortilegaFicha, datosMovimiento, datoAlineamiento, datosVisibles, dotesVisibles, sortilegasVisibles } from 'src/app/components/detalles/ficha';
+import {
+    DatoFicha,
+    DoteFicha,
+    HabilidadFicha,
+    SortilegaFicha,
+    datoAlineamiento,
+    datosMinimosCaracteristicas,
+    datosModificadoresCaracteristicas,
+    datosMovimiento,
+    datosVisibles,
+    dotesVisibles,
+    habilidadesVisibles,
+    sortilegasVisibles,
+} from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
@@ -21,13 +34,17 @@ export class DetallesSubtipoComponent {
     // Lo que pinta la ficha, calculado una vez al recibir el subtipo.
     etiquetas: string[] = [];
     datos: DatoFicha[] = [];
+    modificadoresCaracteristicas: DatoFicha[] = [];
+    minimosCaracteristicas: DatoFicha[] = [];
     combate: DatoFicha[] = [];
     movimiento: DatoFicha[] = [];
+    habilidadesBase: HabilidadFicha[] = [];
+    habilidadesCustom: HabilidadFicha[] = [];
     dotes: DoteFicha[] = [];
     sortilegas: SortilegaFicha[] = [];
     rasgos: Rasgo[] = [];
     idiomas: { Nombre: string; Descripcion: string; }[] = [];
-    plantillas: { Id: number; Nombre: string; }[] = [];
+    plantillas: { Id: number; Nombre: string; Descripcion: string; }[] = [];
 
     @Input()
     set subtipo(value: SubtipoDetalle) {
@@ -39,6 +56,8 @@ export class DetallesSubtipoComponent {
             datoAlineamiento(value?.Alineamiento),
             { etiqueta: 'Tesoro', valor: value?.Tesoro },
         ]);
+        this.modificadoresCaracteristicas = datosModificadoresCaracteristicas(value?.Modificadores_caracteristicas);
+        this.minimosCaracteristicas = datosMinimosCaracteristicas(value?.Minimos_caracteristicas);
         this.combate = datosVisibles([
             { etiqueta: 'Ataque base', valor: cambio(value?.Ataque_base) },
             { etiqueta: 'Presa', valor: cambio(value?.Presa) },
@@ -55,9 +74,16 @@ export class DetallesSubtipoComponent {
         this.movimiento = datosMovimiento(value?.Movimientos, `${value?.Maniobrabilidad?.['Nombre'] ?? ''}`);
         this.dotes = dotesVisibles(value?.Dotes);
         this.sortilegas = sortilegasVisibles(value?.Sortilegas);
+        this.habilidadesBase = habilidadesVisibles(value?.Habilidades?.Base, (habilidad) => habilidad.Cantidad);
+        this.habilidadesCustom = habilidadesVisibles(value?.Habilidades?.Custom, (habilidad) => habilidad.Cantidad);
         this.rasgos = (value?.Rasgos ?? []).filter((rasgo) => tieneTextoVisible(rasgo?.Nombre));
         this.idiomas = idiomasVisibles(value?.Idiomas);
-        this.plantillas = (value?.Plantillas ?? []).filter((plantilla) => tieneTextoVisible(plantilla?.Nombre));
+        this.plantillas = (value?.Plantillas ?? []).filter((plantilla) => tieneTextoVisible(plantilla?.Nombre))
+            .map((plantilla) => ({ ...plantilla, Descripcion: tieneTextoVisible(plantilla.Descripcion) ? `${plantilla.Descripcion}`.trim() : '' }));
+    }
+
+    get hayCaracteristicas(): boolean {
+        return this.modificadoresCaracteristicas.length > 0 || this.minimosCaracteristicas.length > 0;
     }
 
     get subtipo(): SubtipoDetalle {

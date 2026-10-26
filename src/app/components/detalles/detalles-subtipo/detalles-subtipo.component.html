@@ -12,6 +12,16 @@
 
     <app-ficha-cuerpo>
         <app-ficha-seccion titulo="Descripción" [texto]="subtipo.Descripcion"></app-ficha-seccion>
+        <app-ficha-seccion titulo="Características" *ngIf="hayCaracteristicas">
+            <div class="ficha-grupo" *ngIf="modificadoresCaracteristicas.length > 0">
+                <h3 class="ficha-subtitulo">Modificadores</h3>
+                <app-ficha-datos [datos]="modificadoresCaracteristicas" [columnas]="3" [tarjeta]="false" titulo="Modificadores de característica"></app-ficha-datos>
+            </div>
+            <div class="ficha-grupo" *ngIf="minimosCaracteristicas.length > 0">
+                <h3 class="ficha-subtitulo">Mínimos</h3>
+                <app-ficha-datos [datos]="minimosCaracteristicas" [columnas]="3" [tarjeta]="false" titulo="Características mínimas"></app-ficha-datos>
+            </div>
+        </app-ficha-seccion>
         <app-ficha-seccion titulo="Combate y defensas" *ngIf="combate.length > 0">
             <app-ficha-datos [datos]="combate" [columnas]="3" [tarjeta]="false" titulo="Combate y defensas"></app-ficha-datos>
         </app-ficha-seccion>
@@ -25,6 +35,17 @@
                     <button type="button" class="ficha-enlace" (click)="abrirDetallesRasgo(rasgo)">{{rasgo.Nombre}}</button>
                 </li>
             </ul>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Habilidades" *ngIf="habilidadesBase.length > 0 || habilidadesCustom.length > 0">
+            <div class="ficha-grupo" *ngIf="habilidadesBase.length > 0">
+                <h3 class="ficha-subtitulo" *ngIf="habilidadesCustom.length > 0">Base</h3>
+                <ng-container *ngTemplateOutlet="habilidades; context: { $implicit: habilidadesBase }"></ng-container>
+            </div>
+            <div class="ficha-grupo" *ngIf="habilidadesCustom.length > 0">
+                <h3 class="ficha-subtitulo">Custom</h3>
+                <ng-container *ngTemplateOutlet="habilidades; context: { $implicit: habilidadesCustom }"></ng-container>
+            </div>
         </app-ficha-lateral>
 
         <app-ficha-lateral titulo="Dotes" *ngIf="dotes.length > 0">
@@ -58,9 +79,26 @@
         <app-ficha-lateral titulo="Plantillas relacionadas" *ngIf="plantillas.length > 0">
             <ul class="ficha-lista">
                 <li class="ficha-lista__item" *ngFor="let plantilla of plantillas">
-                    <button type="button" class="ficha-enlace" (click)="abrirDetallesPlantilla(plantilla.Id)">{{plantilla.Nombre}}</button>
+                    <button type="button" class="ficha-enlace" (click)="abrirDetallesPlantilla(plantilla.Id)"
+                        [matTooltip]="plantilla.Descripcion" [matTooltipDisabled]="!plantilla.Descripcion" matTooltipClass="tt-accent tt-multiline"
+                        [matTooltipShowDelay]="250">{{plantilla.Nombre}}</button>
                 </li>
             </ul>
         </app-ficha-lateral>
     </app-ficha-cuerpo>
 </app-ficha-detalle>
+
+<!-- «Avistar … +2», con lo que añade el subtipo («Varios») debajo. -->
+<ng-template #habilidades let-filas>
+    <table class="ficha-pares">
+        <tbody>
+            <tr *ngFor="let habilidad of filas">
+                <td>
+                    {{habilidad.nombre}}
+                    <div class="ficha-nota" *ngIf="habilidad.nota">{{habilidad.nota}}</div>
+                </td>
+                <td>{{habilidad.valor}}</td>
+            </tr>
+        </tbody>
+    </table>
+</ng-template>
