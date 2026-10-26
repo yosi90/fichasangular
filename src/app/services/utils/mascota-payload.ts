@@ -5,7 +5,8 @@ import {
     PersonajeCreateHabilidadMascotaDto,
 } from 'src/app/interfaces/personajes-api';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
-import { primerEntero, toInt, toNumber } from './normalizacion';
+import { toInt, toNumber } from './normalizacion';
+import { carasDado } from './puntos-golpe';
 import { dadosGolpeCompanero } from './companero-reglas';
 
 /**
@@ -168,7 +169,7 @@ export function construirCompaneroParaGuardar(
     const caracteristicas = (companero?.Caracteristicas ?? {}) as Record<string, number | null>;
     const dgAdi = Math.max(0, toInt(companero?.Dg_adi));
     const dados = dadosGolpeCompanero(companero);
-    const caras = primerEntero(companero?.Dados_golpe?.Tipo_dado?.Nombre) ?? 0;
+    const caras = carasDado(companero?.Dados_golpe?.Tipo_dado?.Nombre);
     return {
         nombre: nombreMascota(companero?.Nombre, 'Compañero'),
         idMonstruo: idMonstruo(companero),
