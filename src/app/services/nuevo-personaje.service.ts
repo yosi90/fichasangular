@@ -285,7 +285,7 @@ const ESPECIALES_BONUS_COMPANERO_PERSONAJE = [157, 158];
 const ESPECIAL_BONUS_COMPANERO_AVANZADO = 159;
 const ESPECIAL_BONUS_COMPANERO_MAESTRO = 57;
 
-interface EscalaCompanero {
+export interface EscalaCompanero {
     dgAdi: number;
     trucosAdi: number;
     bonoFueDes: number;
@@ -763,12 +763,7 @@ export interface RegistroCompaneroResultado {
     companeroAgregado?: CompaneroMonstruoDetalle;
     dote49Agregada: boolean;
     especialesAgregadosIds: number[];
-    bonosAplicados: {
-        dgAdi: number;
-        trucosAdi: number;
-        bonoFueDes: number;
-        bonoArmaduraNatural: number;
-    };
+    bonosAplicados: EscalaCompanero;
 }
 
 export interface DoteSeleccionConfirmada {
@@ -3693,14 +3688,18 @@ export class NuevoPersonajeService {
 
     private calcularEscalaCompanero(nivelEfectivoCompanero: number): EscalaCompanero {
         const nivel = Math.max(0, toInt(nivelEfectivoCompanero));
-        const fila = ESCALA_COMPANERO.find((item) => nivel >= item.desdeNivel) ?? ESCALA_COMPANERO[ESCALA_COMPANERO.length - 1];
-        return { dgAdi: fila.dgAdi, trucosAdi: fila.trucosAdi, bonoFueDes: fila.bonoFueDes, bonoArmaduraNatural: fila.bonoArmaduraNatural };
+        return this.escalaCompaneroDeFila(ESCALA_COMPANERO.find((item) => nivel >= item.desdeNivel));
     }
 
     /** La fila de la tabla que ya lleva un compañero, por sus DG adicionales (distintos en cada fila). */
     private escalaAplicadaCompanero(companero: CompaneroMonstruoDetalle): EscalaCompanero {
-        const fila = ESCALA_COMPANERO.find((item) => item.dgAdi === toInt(companero?.Dg_adi)) ?? ESCALA_COMPANERO[ESCALA_COMPANERO.length - 1];
-        return { dgAdi: fila.dgAdi, trucosAdi: fila.trucosAdi, bonoFueDes: fila.bonoFueDes, bonoArmaduraNatural: fila.bonoArmaduraNatural };
+        return this.escalaCompaneroDeFila(ESCALA_COMPANERO.find((item) => item.dgAdi === toInt(companero?.Dg_adi)));
+    }
+
+    /** Los bonos de una fila de `ESCALA_COMPANERO` (sin fila, los de nivel 0). */
+    private escalaCompaneroDeFila(fila: (typeof ESCALA_COMPANERO)[number] | undefined): EscalaCompanero {
+        const { dgAdi, trucosAdi, bonoFueDes, bonoArmaduraNatural } = fila ?? ESCALA_COMPANERO[ESCALA_COMPANERO.length - 1];
+        return { dgAdi, trucosAdi, bonoFueDes, bonoArmaduraNatural };
     }
 
     /**
@@ -3795,12 +3794,7 @@ export class NuevoPersonajeService {
         companero: CompaneroMonstruoDetalle,
         plantillaSeleccionada: CompaneroPlantillaSelector,
         nombrePersonalizado: string = '',
-        escala: {
-            dgAdi: number;
-            trucosAdi: number;
-            bonoFueDes: number;
-            bonoArmaduraNatural: number;
-        }
+        escala: EscalaCompanero
     ): CompaneroMonstruoDetalle {
         const nombreVisible = `${nombrePersonalizado ?? ''}`.trim();
         const idPlantilla = getPlantillaIdCompanero(plantillaSeleccionada);
