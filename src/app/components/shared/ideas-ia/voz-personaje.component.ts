@@ -5,6 +5,7 @@ import { datosIdeaDePersonaje, DisponibilidadIa, IdeasIaError, IdeasIaService, M
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { elegirVozAutomatica, ordenarVoces } from 'src/app/services/utils/voz-personaje';
 import { VozGuardada, VozPersonajeService } from 'src/app/services/voz-personaje.service';
+import { clavePorCuenta, guardarPreferenciaLocal, leerPreferenciaLocal } from 'src/app/services/utils/preferencia-local';
 
 /** Una voz de la lista, con su proveedor. */
 interface VozElegible {
@@ -219,29 +220,15 @@ export class VozPersonajeComponent implements OnInit, OnChanges, OnDestroy {
 
     // La última voz elegida a mano, por cuenta (ecosistema-kit/CAMBIO_DE_CUENTA.md): con «Automática» se olvida.
     private claveUltimaVoz(): string | null {
-        const cuenta = `${this.platformSessionSvc.cuenta?.id ?? ''}`.trim();
-        return cuenta ? `rol.voz.ultima.${cuenta}` : null;
+        return clavePorCuenta('rol.voz.ultima', this.platformSessionSvc.cuenta?.id);
     }
 
     private leerUltimaVoz(): string | null {
-        const clave = this.claveUltimaVoz();
-        try {
-            return clave ? localStorage.getItem(clave) : null;
-        } catch {
-            return null;
-        }
+        return leerPreferenciaLocal(this.claveUltimaVoz());
     }
 
     private guardarUltimaVoz(voz: VozElegible | null): void {
-        const clave = this.claveUltimaVoz();
-        try {
-            if (clave && voz)
-                localStorage.setItem(clave, `${voz.proveedor}:${voz.voz.id}`);
-            else if (clave)
-                localStorage.removeItem(clave);
-        } catch {
-            // Sin almacenamiento, la próxima vez vuelve a «Automática».
-        }
+        guardarPreferenciaLocal(this.claveUltimaVoz(), voz ? `${voz.proveedor}:${voz.voz.id}` : null);
     }
 
     async descartar(voz: VozGuardada): Promise<void> {
