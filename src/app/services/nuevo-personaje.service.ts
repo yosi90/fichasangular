@@ -1318,10 +1318,13 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Salvaciones.fortaleza.modsClaseos = [];
         this.personajeCreacion.Salvaciones.reflejos.modsClaseos = [];
         this.personajeCreacion.Salvaciones.voluntad.modsClaseos = [];
+        this.agregarDotesDeRaza(razaEfectiva);
         this.recalcularTipoYSubtiposDerivados();
-        this.limpiarVentajasDesventajas();
+        // La base de las ventajas se toma de la raza nueva antes de recalcularlas: con la base de antes (la raza anterior
+        // o ninguna), el recálculo de `limpiarVentajasDesventajas` dejaba el personaje sin los raciales de su raza.
         this.estadoFlujo.ventajas.baseCaracteristicas = null;
         this.sincronizarBaseVentajasDesdePersonaje();
+        this.limpiarVentajasDesventajas();
         this.inicializarHabilidadesBase(true);
         this.recalcularEfectosVentajas();
         this.programarPersistenciaBorradorLocal();
@@ -5434,6 +5437,22 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Pgs_lic = Math.max(0, pgsLicantronia);
 
         this.recalcularDerivadasEconomiaYProgresion(seleccionadas);
+    }
+
+    /**
+     * Las dotes que tienen todos los de la raza (`raza_dotes`, como la Resistencia al calor del asherati), con la raza
+     * como origen: se guardan con el personaje y cuentan para los prerrequisitos. Sus modificadores no se aplican aquí:
+     * lo que dan a las habilidades ya viene en las habilidades de la raza.
+     */
+    private agregarDotesDeRaza(raza: Raza): void {
+        const origen = `${raza?.Nombre ?? ''}`.trim() || 'Raza';
+        (raza?.DotesContextuales ?? []).forEach((entrada) => {
+            if (toNumber(entrada?.Dote?.Id) <= 0)
+                return;
+            const idExtra = toNumber(entrada?.Contexto?.Id_extra);
+            const extra = `${entrada?.Contexto?.Extra ?? ''}`.trim() || 'No aplica';
+            this.agregarDoteAlPersonaje(entrada.Dote, origen, idExtra, extra);
+        });
     }
 
     private aplicarDotesPlantilla(plantilla: Plantilla, origen: string): void {

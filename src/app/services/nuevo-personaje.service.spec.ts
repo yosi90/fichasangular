@@ -11,6 +11,7 @@ import { Raza } from '../interfaces/raza';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { createDefaultUserSettings } from '../interfaces/user-settings';
 import { UserSettingsService } from './user-settings.service';
+import { PersonajeService } from './personaje.service';
 
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 
@@ -1573,6 +1574,59 @@ describe('NuevoPersonajeService (clases)', () => {
             } as DeidadDetalle,
         ]);
         service.PersonajeCreacion.Deidad = 'Heironeous';
+    });
+
+    it('lo que se guarda al crear: los raciales, las aptitudes de clase con su extra y las dotes de la raza', () => {
+        const tipo = crearTipoBase();
+        const raza = crearRazaBase(tipo);
+        raza.Nombre = 'Asherati';
+        raza.Dgs_adicionales.Cantidad = 0;
+        raza.Raciales = [createRacialPlaceholder('Visión en la oscuridad', 176), createRacialPlaceholder('Nadar en la arena', 177)];
+        raza.DotesContextuales = [{
+            Dote: { Id: 63, Nombre: 'Resistencia al calor', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Modificadores: {} } as any,
+            Contexto: { Entidad: 'raza', Id_raza: 27, Id_extra: 0, Extra: '' },
+        }];
+        service.seleccionarRaza(raza);
+        service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+        const nivel1 = claseBase.Desglose_niveles[0];
+        const explorador = crearClaseBase({
+            Id: 6,
+            Nombre: 'Explorador',
+            Desglose_niveles: [{
+                ...nivel1,
+                Especiales: [
+                    { Especial: { Id: 12, Nombre: 'Enemigo predilecto' }, Nivel: 1, Id_extra: 40, Extra: 'Humanoide (orco)', Opcional: 0, Id_interno: 1, Id_especial_requerido: 0, Id_dote_requerida: 0 },
+                    { Especial: { Id: 30, Nombre: 'Empatía salvaje' }, Nivel: 1, Id_extra: -1, Extra: '', Opcional: 0, Id_interno: 2, Id_especial_requerido: 0, Id_dote_requerida: 0 },
+                ] as any,
+            }],
+        });
+        service.setCatalogoClases([explorador]);
+        expect(service.aplicarSiguienteNivelClase(explorador).aplicado).toBeTrue();
+        service.recalcularEfectosVentajas();
+        service.PersonajeCreacion.Nombre = 'Sandalyo';
+        service.PersonajeCreacion.Campana = 'Sin campaña';
+
+        const payload = new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+            service.PersonajeCreacion,
+            { idAlineamiento: 1, idGenero: 1, idCarga: 1, idDeidad: 1 } as any,
+        );
+
+        expect(payload.colecciones?.raciales).toEqual([{ idRacial: 176, origen: 'Asherati' }, { idRacial: 177, origen: 'Asherati' }]);
+        expect(payload.colecciones?.especiales).toEqual([{ idEspecial: 12, idExtra: 40 }, { idEspecial: 30, idExtra: 0 }]);
+        expect(payload.colecciones?.dotes).toContain(jasmine.objectContaining({ idDote: 63, origen: 'Asherati' }));
+    });
+
+    it('al elegir la raza (la primera vez o cambiándola) el personaje se queda con sus raciales', () => {
+        const nuevo = new NuevoPersonajeService();
+        nuevo.resetearCreacionNuevoPersonaje();
+        const raza = crearRazaBase(crearTipoBase());
+        raza.Raciales = [createRacialPlaceholder('Visión en la oscuridad', 8)];
+
+        nuevo.seleccionarRaza(raza);
+        expect(nuevo.PersonajeCreacion.Raciales.map((racial) => racial.Id)).toEqual([8]);
+
+        service.seleccionarRaza(raza);
+        expect(service.PersonajeCreacion.Raciales.map((racial) => racial.Id)).toEqual([8]);
     });
 
     it('aplicarSiguienteNivelClase crea entrada de clase a nivel 1', () => {

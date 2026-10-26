@@ -626,6 +626,18 @@ export class PersonajeService {
                 colecciones.habilidades.custom = habilidadesCustom;
         }
 
+        // Las aptitudes especiales de las clases (en la creación, `Claseas`), con su extra; 0 es «Nada».
+        const especiales = toArray<any>((personaje as any)?.Claseas)
+            .map((entrada) => {
+                const idEspecial = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idEspecial);
+                if (idEspecial <= 0)
+                    return null;
+                return { idEspecial, idExtra: Math.max(0, toInt(entrada?.Id_extra ?? entrada?.idExtra)) };
+            })
+            .filter((entrada): entrada is { idEspecial: number; idExtra: number; } => !!entrada);
+        if (especiales.length > 0)
+            colecciones.especiales = especiales;
+
         const ventajas = toArray<any>(personaje?.Ventajas)
             .map((entrada) => {
                 const idDirecto = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idVentaja ?? entrada?.id_ventaja);
