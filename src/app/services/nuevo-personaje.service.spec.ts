@@ -12,6 +12,7 @@ import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { createDefaultUserSettings } from '../interfaces/user-settings';
 import { UserSettingsService } from './user-settings.service';
 import { PersonajeService } from './personaje.service';
+import { totalesPersonaje, totalHabilidad } from './utils/personaje-totales';
 
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 
@@ -1562,8 +1563,27 @@ describe('NuevoPersonajeService (clases)', () => {
         } as unknown as Raza;
     }
 
+    /** Filas de la tabla 9-1 (`GET /capacidades-carga`) y tamaños con sus multiplicadores (`GET /tamanos`). */
+    const TABLA_CARGA = [
+        { Fuerza: 14, Ligera: 58, Media: 116, Pesada: 175 },
+        { Fuerza: 16, Ligera: 76, Media: 153, Pesada: 230 },
+        { Fuerza: 18, Ligera: 100, Media: 200, Pesada: 300 },
+        { Fuerza: 20, Ligera: 133, Media: 266, Pesada: 400 },
+        { Fuerza: 29, Ligera: 466, Media: 933, Pesada: 1400 },
+    ];
+    const TAMANOS_CARGA = [
+        { Id: 1, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0, Multiplicador_carga: 1, Multiplicador_carga_cuadrupedo: 1.5 },
+        { Id: 4, Nombre: 'Pequeño', Modificador: 1, Modificador_presa: -4, Multiplicador_carga: 0.75, Multiplicador_carga_cuadrupedo: 1 },
+        { Id: 6, Nombre: 'Grande', Modificador: -1, Modificador_presa: 4, Multiplicador_carga: 2, Multiplicador_carga_cuadrupedo: 3 },
+    ];
+    function conCatalogosCarga(svc: NuevoPersonajeService): NuevoPersonajeService {
+        svc.setTablaCarga(TABLA_CARGA);
+        svc.setCatalogoTamanos(TAMANOS_CARGA);
+        return svc;
+    }
+
     beforeEach(() => {
-        service = new NuevoPersonajeService();
+        service = conCatalogosCarga(new NuevoPersonajeService());
         const tipo = crearTipoBase();
         service.setCatalogoTiposCriatura([tipo]);
         service.seleccionarRaza(crearRazaBase(tipo));
@@ -1631,7 +1651,7 @@ describe('NuevoPersonajeService (clases)', () => {
 
         const payload = new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
             service.PersonajeCreacion,
-            { idAlineamiento: 1, idGenero: 1, idCarga: 1, idDeidad: 1 } as any,
+            { idAlineamiento: 1, idGenero: 1, idDeidad: 1 } as any,
         );
 
         expect(payload.colecciones?.raciales).toEqual([{ idRacial: 176, origen: 'Asherati' }, { idRacial: 177, origen: 'Asherati' }]);
@@ -1735,7 +1755,7 @@ describe('NuevoPersonajeService (clases)', () => {
 
         const payload = new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
             service.PersonajeCreacion,
-            { idAlineamiento: 1, idGenero: 1, idCarga: 1, idDeidad: 1 } as any,
+            { idAlineamiento: 1, idGenero: 1, idDeidad: 1 } as any,
         );
 
         expect((payload.colecciones?.habilidades?.base ?? []).map((h) => h.idHabilidad).sort((a, b) => a - b)).toEqual([6, 7, 32]);
@@ -1776,7 +1796,7 @@ describe('NuevoPersonajeService (clases)', () => {
         service.PersonajeCreacion.Campana = 'Sin campaña';
         return new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
             service.PersonajeCreacion,
-            { idAlineamiento: 1, idGenero: 1, idCarga: 1, idDeidad: 1 } as any,
+            { idAlineamiento: 1, idGenero: 1, idDeidad: 1 } as any,
             null,
             null,
             service.construirMascotasParaGuardar(),
@@ -1901,7 +1921,7 @@ describe('NuevoPersonajeService (clases)', () => {
     it('aplicarSiguienteNivelClase crea entrada de clase a nivel 1', () => {
         const res = service.aplicarSiguienteNivelClase(claseBase);
         expect(res.aplicado).toBeTrue();
-        expect(service.PersonajeCreacion.desgloseClases).toEqual([{ Nombre: 'Guerrero', Nivel: 1, Caracteristica_lanzamiento: null }]);
+        expect(service.PersonajeCreacion.desgloseClases).toEqual([{ Id: 1, Nombre: 'Guerrero', Nivel: 1, Caracteristica_lanzamiento: null }]);
         expect(service.PersonajeCreacion.Clases).toContain('Guerrero (1)');
     });
 
@@ -1951,11 +1971,11 @@ describe('NuevoPersonajeService (clases)', () => {
 
     it('aplica delta de ataque base y salvaciones por nivel', () => {
         service.aplicarSiguienteNivelClase(claseBase);
-        expect(service.PersonajeCreacion.Ataque_base).toBe('1');
+        expect(service.PersonajeCreacion.Ataque_base).toBe('+1');
         expect(service.PersonajeCreacion.Salvaciones.fortaleza.modsClaseos[0].valor).toBe(2);
 
         service.aplicarSiguienteNivelClase(claseBase);
-        expect(service.PersonajeCreacion.Ataque_base).toBe('2');
+        expect(service.PersonajeCreacion.Ataque_base).toBe('+2');
         expect(service.PersonajeCreacion.Salvaciones.fortaleza.modsClaseos[1].valor).toBe(1);
     });
 
@@ -1976,9 +1996,9 @@ describe('NuevoPersonajeService (clases)', () => {
                 Habilidades: { Base: [], Custom: [] },
                 Caracteristicas: [],
                 Salvaciones: [
-                    { Salvacion: 'Fortaleza', Valor: 2 },
-                    { salvacion: 'Reflejos', cantidad: 1 },
-                    { Nombre: 'Voluntad', modificador: '-2' },
+                    { Id_salvacion: 1, Salvacion: 'Fortaleza', Cantidad: 2, Condicion: null },
+                    { Id_salvacion: 2, Salvacion: 'Reflejos', Cantidad: 1, Condicion: null },
+                    { Id_salvacion: 3, Salvacion: 'Voluntad', Cantidad: -2, Condicion: null },
                 ],
                 Sortilegas: [],
                 Ataques: [],
@@ -2024,9 +2044,9 @@ describe('NuevoPersonajeService (clases)', () => {
                 Habilidades: { Base: [], Custom: [] },
                 Caracteristicas: [],
                 Salvaciones: [
-                    { Salvacion: 'Fortaleza', Valor: 'abc' },
-                    { Salvacion: 'Desconocida', Valor: 2 },
-                    { Nombre: 'Voluntad', Valor: '+2' },
+                    { Id_salvacion: 1, Salvacion: 'Fortaleza', Cantidad: 'abc', Condicion: null },
+                    { Id_salvacion: 9, Salvacion: 'Desconocida', Cantidad: 2, Condicion: null },
+                    { Id_salvacion: 3, Salvacion: 'Voluntad', Cantidad: 2, Condicion: null },
                 ],
                 Sortilegas: [],
                 Ataques: [],
@@ -2051,17 +2071,133 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.Salvaciones.voluntad.modsVarios[0].valor).toBe(2);
     });
 
-    it('recalcula NEP y experiencia tras aplicar clase', () => {
-        service.aplicarSiguienteNivelClase(claseBase);
-        expect(service.PersonajeCreacion.NEP).toBe(3);
-        expect(service.PersonajeCreacion.Experiencia).toBe(1000);
+    it('las salvaciones raciales condicionales se guardan con su condición y no suman (enano contra veneno; MJ cap. 2)', () => {
+        const tipo = crearTipoBase();
+        const enano = crearRazaBase(tipo);
+        enano.Nombre = 'Enano';
+        enano.Dgs_adicionales.Fortaleza = 0;
+        enano.Dgs_adicionales.Reflejos = 0;
+        enano.Dgs_adicionales.Voluntad = 0;
+        const racial = (id: number, nombre: string, cantidad: number, condicion: string | null) => ({
+            Id: id, Nombre: nombre, Descripcion: '', Origen: '', Opcional: 0, Dotes: [], Habilidades: { Base: [], Custom: [] },
+            Caracteristicas: [], Sortilegas: [], Ataques: [],
+            Salvaciones: [1, 2, 3].map((idSalvacion) => ({ Id_salvacion: idSalvacion, Salvacion: '', Cantidad: cantidad, Condicion: condicion })),
+            Prerrequisitos_flags: { raza: false, caracteristica_minima: false }, Prerrequisitos: { raza: [], caracteristica: [] },
+        });
+        enano.Raciales = [
+            racial(12, '+2 en las TS contra veneno', 2, 'Contra veneno'),
+            racial(28, '+1 racial a todos los TS', 1, null),
+        ] as any;
+
+        service.seleccionarRaza(enano);
+        service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 10, Inteligencia: 10, Sabiduria: 10, Carisma: 9 });
+
+        const fortaleza = totalesPersonaje(service.PersonajeCreacion).salvaciones.fortaleza;
+        expect(fortaleza.total).toBe(1);
+        expect(fortaleza.condicionales).toEqual([
+            { tipo: 'varios', origen: 'Enano - +2 en las TS contra veneno', valor: 2, condicion: 'Contra veneno' },
+        ]);
+        expect(service.PersonajeCreacion.Salvaciones.fortaleza.modsVarios)
+            .toContain(jasmine.objectContaining({ valor: 2, condicion: 'Contra veneno' }));
     });
 
-    it('recalcula capacidad de carga base con fuerza 14 en tamaño mediano', () => {
+    it('los bonos de habilidad de una dote (Habilidades_otorgadas: Alerta, +2 a Avistar y a Escuchar; MJ cap. 5)', () => {
+        const alerta = {
+            Id: 17,
+            Nombre: 'Alerta',
+            Descripcion: '',
+            Beneficio: '',
+            Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+            Modificadores: {},
+            Habilidades_otorgadas: [
+                { Id_habilidad: 6, Habilidad: 'Avistar', Id_extra: -1, Extra: null, Rangos: 2, Custom: false },
+                { Id_habilidad: 17, Habilidad: 'Escuchar', Id_extra: -1, Extra: null, Rangos: 2, Custom: false },
+            ],
+        } as any;
+        service.PersonajeCreacion.Habilidades = [
+            { Id: 6, Nombre: 'Avistar', Rangos: 0, Rangos_varios: 0, Custom: false } as any,
+            { Id: 17, Nombre: 'Escuchar', Rangos: 0, Rangos_varios: 0, Custom: false } as any,
+            { Id: 7, Nombre: 'Buscar', Rangos: 0, Rangos_varios: 0, Custom: false } as any,
+        ];
+
+        (service as any).aplicarModificadoresDote(alerta, 'Alerta', 0, '');
+
+        expect(service.PersonajeCreacion.Habilidades.map((h) => h.Rangos_varios)).toEqual([2, 2, 0]);
+    });
+
+    it('sinergias en el borrador: con 5 rangos en Saltar, Piruetas suma +2 (MJ tabla 4-5)', () => {
+        service.setCatalogoHabilidades([
+            {
+                Id_habilidad: 37, Nombre: 'Saltar', Id_caracteristica: 1, Caracteristica: 'Fuerza', Descripcion: '', Soporta_extra: false,
+                Entrenada: false, Extras: [], Penalizador_armadura: 1,
+                Sinergias: [{
+                    Id_habilidad_origen: 37, Habilidad_origen: 'Saltar', Id_extra_origen: -1, Id_habilidad_destino: 30,
+                    Habilidad_destino: 'Piruetas', Id_extra_destino: -1, Rangos_minimos: 5, Bonificador: 2, Condicion: null,
+                }],
+            },
+        ]);
+        service.PersonajeCreacion.Habilidades = [
+            { Id: 37, Nombre: 'Saltar', Rangos: 5, Rangos_varios: 0, Mod_car: 0, Custom: false, Extra: '' } as any,
+            { Id: 30, Nombre: 'Piruetas', Rangos: 0, Rangos_varios: 0, Mod_car: 1, Custom: false, Extra: '' } as any,
+        ];
+
+        service.recalcularSinergiasHabilidades();
+
+        const piruetas = service.PersonajeCreacion.Habilidades[1];
+        expect(piruetas.Bonos).toEqual([{ tipo: 'sinergia', origen: 'Sinergia (Saltar)', valor: 2 }]);
+        expect(totalHabilidad(piruetas)).toBe(3);
+    });
+
+    it('los prerrequisitos de DG y de tamaño cuentan los DG y los pasos de tamaño de las plantillas', () => {
+        const tipo = crearTipoBase();
+        const raza = crearRazaBase(tipo);
+        raza.Dgs_adicionales.Cantidad = 0;
+        service.seleccionarRaza(raza);
+        service.agregarPlantillaSeleccion({
+            Id: 9,
+            Nombre: 'Licántropo (lobo)',
+            Licantronia_dg: { Id_dado: 3, Dado: 'd8', Multiplicador: 2, Suma: 4 },
+            Modificacion_tamano: { Id_paso_modificacion: 1, Nombre: '+1 paso' },
+        } as any);
+        service.aplicarSiguienteNivelClase(claseBase);
+
+        expect((service as any).resolverDgTotalActual()).toBe(3);
+        expect((service as any).resolverTamanoActualId()).toBe(6);
+    });
+
+    it('recalcula NEP y experiencia tras aplicar clase: la experiencia es la del NEP, con los DG raciales (GDM cap. 6)', () => {
+        service.aplicarSiguienteNivelClase(claseBase);
+        // Raza con 1 DG racial y ajuste +1, guerrero 1: NEP 3, 3000 PX (antes 1000, sin los DG raciales).
+        expect(service.PersonajeCreacion.NEP).toBe(3);
+        expect(service.PersonajeCreacion.Experiencia).toBe(3000);
+    });
+
+    it('un centauro (4 DG, ajuste +2) explorador 1 tiene NEP 7 y 21.000 PX, como la ficha guardada', () => {
+        const tipo = crearTipoBase();
+        const centauro = crearRazaBase(tipo);
+        centauro.Ajuste_nivel = 2;
+        centauro.Dgs_adicionales.Cantidad = 4;
+        service.seleccionarRaza(centauro);
+        service.aplicarSiguienteNivelClase(claseBase);
+
+        expect(service.PersonajeCreacion.NEP).toBe(7);
+        expect(service.PersonajeCreacion.Experiencia).toBe(21000);
+    });
+
+    it('el NEP suma el ajuste de nivel de los subtipos, como la API', () => {
+        service.setCatalogoSubtipos([{ Id: 40, Nombre: 'Subtipo con ajuste', Ajuste_nivel: 1 } as any]);
+        service.PersonajeCreacion.Subtipos = [{ Id: 40, Nombre: 'Subtipo con ajuste' }];
+        service.aplicarSiguienteNivelClase(claseBase);
+
+        expect(service.PersonajeCreacion.NEP).toBe(4);
+        expect(service.PersonajeCreacion.Experiencia).toBe(6000);
+    });
+
+    it('recalcula capacidad de carga base con fuerza 14 en tamaño mediano: 58/116/175 lb (MJ tabla 9-1)', () => {
         expect(service.PersonajeCreacion.Capacidad_carga).toEqual({
-            Ligera: 19,
-            Media: 38,
-            Pesada: 58,
+            Ligera: 58,
+            Media: 116,
+            Pesada: 175,
         });
     });
 
@@ -2070,7 +2206,7 @@ describe('NuevoPersonajeService (clases)', () => {
 
         service.aplicarSiguienteNivelClase(claseBase);
 
-        expect(service.PersonajeCreacion.Ataque_base).toBe('1');
+        expect(service.PersonajeCreacion.Ataque_base).toBe('+1');
         expect(service.PersonajeCreacion.Presa).toBe(3);
     });
 
@@ -2105,21 +2241,21 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.ModFuerza).toBe(3);
         expect(service.PersonajeCreacion.Presa).toBe(3);
         expect(service.PersonajeCreacion.Capacidad_carga).toEqual({
-            Ligera: 25,
-            Media: 50,
-            Pesada: 76,
+            Ligera: 76,
+            Media: 153,
+            Pesada: 230,
         });
     });
 
     it('aplica multiplicador de carga por tamaño pequeño y grande', () => {
         const tipo = crearTipoBase();
 
-        const svcSmall = new NuevoPersonajeService();
+        const svcSmall = conCatalogosCarga(new NuevoPersonajeService());
         svcSmall.setCatalogoTiposCriatura([tipo]);
         const razaSmall = crearRazaBase(tipo);
         razaSmall.Ajuste_nivel = 0;
         razaSmall.Dgs_adicionales.Cantidad = 0;
-        razaSmall.Tamano = { Id: 0, Nombre: 'Pequeno', Modificador: 1, Modificador_presa: -4 } as any;
+        razaSmall.Tamano = { Id: 4, Nombre: 'Pequeño', Modificador: 1, Modificador_presa: -4 } as any;
         svcSmall.seleccionarRaza(razaSmall);
         svcSmall.aplicarCaracteristicasGeneradas({
             Fuerza: 14,
@@ -2130,17 +2266,17 @@ describe('NuevoPersonajeService (clases)', () => {
             Carisma: 9,
         });
         expect(svcSmall.PersonajeCreacion.Capacidad_carga).toEqual({
-            Ligera: 14,
-            Media: 28,
-            Pesada: 43,
+            Ligera: 43,
+            Media: 87,
+            Pesada: 131,
         });
 
-        const svcLarge = new NuevoPersonajeService();
+        const svcLarge = conCatalogosCarga(new NuevoPersonajeService());
         svcLarge.setCatalogoTiposCriatura([tipo]);
         const razaLarge = crearRazaBase(tipo);
         razaLarge.Ajuste_nivel = 0;
         razaLarge.Dgs_adicionales.Cantidad = 0;
-        razaLarge.Tamano = { Id: 0, Nombre: 'Grande', Modificador: -1, Modificador_presa: 4 } as any;
+        razaLarge.Tamano = { Id: 6, Nombre: 'Grande', Modificador: -1, Modificador_presa: 4 } as any;
         svcLarge.seleccionarRaza(razaLarge);
         svcLarge.aplicarCaracteristicasGeneradas({
             Fuerza: 14,
@@ -2151,15 +2287,36 @@ describe('NuevoPersonajeService (clases)', () => {
             Carisma: 9,
         });
         expect(svcLarge.PersonajeCreacion.Capacidad_carga).toEqual({
-            Ligera: 38,
-            Media: 77,
-            Pesada: 116,
+            Ligera: 116,
+            Media: 232,
+            Pesada: 350,
         });
     });
 
-    it('calcula carga oficial para fuerza alta (30)', () => {
+    it('un centauro (Grande, cuadrúpedo) de Fuerza 18 lleva 900 lb de carga pesada (MJ tabla 9-1)', () => {
         const tipo = crearTipoBase();
-        const svc = new NuevoPersonajeService();
+        const svc = conCatalogosCarga(new NuevoPersonajeService());
+        svc.setCatalogoTiposCriatura([tipo]);
+        const centauro = crearRazaBase(tipo);
+        centauro.Dgs_adicionales.Cantidad = 0;
+        centauro.Cuadrupedo = true;
+        centauro.Tamano = { Id: 6, Nombre: 'Grande', Modificador: -1, Modificador_presa: 4 } as any;
+        svc.seleccionarRaza(centauro);
+        svc.aplicarCaracteristicasGeneradas({
+            Fuerza: 18,
+            Destreza: 12,
+            Constitucion: 13,
+            Inteligencia: 10,
+            Sabiduria: 11,
+            Carisma: 9,
+        });
+
+        expect(svc.PersonajeCreacion.Capacidad_carga).toEqual({ Ligera: 300, Media: 600, Pesada: 900 });
+    });
+
+    it('calcula carga oficial para fuerza alta (30): la fila de Fuerza 20 × 4 (MJ tabla 9-1)', () => {
+        const tipo = crearTipoBase();
+        const svc = conCatalogosCarga(new NuevoPersonajeService());
         const raza = crearRazaBase(tipo);
         raza.Ajuste_nivel = 0;
         raza.Dgs_adicionales.Cantidad = 0;
@@ -2175,9 +2332,9 @@ describe('NuevoPersonajeService (clases)', () => {
         });
 
         expect(svc.PersonajeCreacion.Capacidad_carga).toEqual({
-            Ligera: 177,
-            Media: 355,
-            Pesada: 533,
+            Ligera: 532,
+            Media: 1064,
+            Pesada: 1600,
         });
     });
 
@@ -2237,7 +2394,7 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(dotesProgresion[0].fuente).toBe('nivel');
     });
 
-    it('etiqueta la dote de progresión con el nivel efectivo visible del personaje', () => {
+    it('un humano licántropo (lince, 1 DG de animal) con 2 niveles de clase: 3 DG, dotes de nivel 1 y 3 (sin contar el ajuste)', () => {
         const tipo = crearTipoBase();
         const raza = crearRazaBase(tipo);
         raza.Ajuste_nivel = 0;
@@ -2305,18 +2462,19 @@ describe('NuevoPersonajeService (clases)', () => {
         } as any;
         service.setCatalogoDotes([dote]);
 
-        const [pendiente] = service.registrarDotesPendientesPorProgresion('Explorador nivel 2');
-        expect(pendiente.nivelProgresion).toBe(6);
+        const pendientes = service.registrarDotesPendientesPorProgresion('Explorador nivel 2');
+        // La dote del primer DG (antes se perdía con DG de plantilla) y la de los 3 DG.
+        expect(pendientes.map((item) => item.nivelProgresion)).toEqual([1, 3]);
         expect(service.PersonajeCreacion.NEP).toBe(6);
 
-        expect(service.aplicarDotePendiente(pendiente.id, {
+        expect(service.aplicarDotePendiente(pendientes[1].id, {
             idDote: 501,
             idExtra: 0,
             extra: 'No aplica',
         })).toBeTrue();
 
         expect(service.PersonajeCreacion.Dotes.find((item) => item.Nombre === 'Ataque poderoso')?.Origen)
-            .toBe('Dote adicional por nivel 6');
+            .toBe('Dote adicional por nivel 3');
     });
 
     it('la progresion de dotes sigue funcionando por niveles de clase aunque haya DGs raciales', () => {
@@ -5466,26 +5624,35 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(7);
     });
 
-    it('plantillas: usa Suma_fija con mínimo 1 por plantilla con DG extra', () => {
+    it('plantillas: un licántropo lobo (2 DG de animal) tiene (2 + Int, mínimo 1) por DG: 4 con Int 10 y 10 con Int 16 (MM)', () => {
         const svc = new NuevoPersonajeService();
         svc.seleccionarRaza(crearRazaConDgs());
         svc.agregarPlantillaSeleccion({
-            Id: 100,
-            Nombre: 'Plantilla A',
-            Licantronia_dg: { Id_dado: 3, Dado: 'd8', Multiplicador: 1, Suma: 0 },
-            Puntos_habilidad: { Suma: 0, Suma_fija: 0 },
-            Habilidades: [],
-        } as any);
-        svc.agregarPlantillaSeleccion({
-            Id: 101,
-            Nombre: 'Plantilla B',
-            Licantronia_dg: { Id_dado: 3, Dado: 'd8', Multiplicador: 2, Suma: 0 },
-            Puntos_habilidad: { Suma: 0, Suma_fija: 2 },
+            Id: 9,
+            Nombre: 'Licántropo (lobo)',
+            Licantronia_dg: {
+                Id_dado: 3, Dado: 'd8', Multiplicador: 2, Suma: 4,
+                Tipo_criatura: { Id: 3, Nombre: 'Animal', Puntos_habilidad: 2 },
+            },
+            Puntos_habilidad: { Suma: 0, Suma_fija: 8 },
             Habilidades: [],
         } as any);
 
+        svc.PersonajeCreacion.ModInteligencia = 0;
         expect(svc.iniciarDistribucionHabilidadesPorPlantillasDG()).toBeTrue();
-        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(3);
+        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(4);
+
+        svc.EstadoFlujo.habilidades.puntosRestantes = 0;
+        svc.cerrarDistribucionHabilidades();
+        svc.PersonajeCreacion.ModInteligencia = 3;
+        expect(svc.iniciarDistribucionHabilidadesPorPlantillasDG()).toBeTrue();
+        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(10);
+
+        svc.EstadoFlujo.habilidades.puntosRestantes = 0;
+        svc.cerrarDistribucionHabilidades();
+        svc.PersonajeCreacion.ModInteligencia = -4;
+        expect(svc.iniciarDistribucionHabilidadesPorPlantillasDG()).toBeTrue();
+        expect(svc.EstadoFlujo.habilidades.puntosTotales).toBe(2);
     });
 
     function sinDgs(): Partial<Raza> {
@@ -5545,7 +5712,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(puntosDelNivel(svc, explorador, [{ Nombre: 'Explorador', Nivel: 1 }])).toBe(6);
     });
 
-    it('clase: con DG de una plantilla el primer nivel de clase no lleva ×4', () => {
+    it('clase: con DG de una plantilla (licántropo) el primer nivel de clase sí lleva ×4: el animal nunca es su primer DG (MM)', () => {
         const svc = new NuevoPersonajeService();
         svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
         svc.agregarPlantillaSeleccion({
@@ -5558,7 +5725,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.PersonajeCreacion.ModInteligencia = 0;
         const guerrero = crearClaseBase({ Id: 80, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 2 } });
 
-        expect(puntosDelNivel(svc, guerrero, [{ Nombre: 'Guerrero', Nivel: 1 }])).toBe(2);
+        expect(puntosDelNivel(svc, guerrero, [{ Nombre: 'Guerrero', Nivel: 1 }])).toBe(8);
     });
 
     it('clase: al menos 1 punto por nivel aunque la Inteligencia reste (×4 en el primero)', () => {
@@ -6936,7 +7103,7 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         expect(svc.PersonajeCreacion.ModFuerza).toBe(4);
         expect(svc.PersonajeCreacion.Armadura_natural).toBe(6);
         expect(svc.PersonajeCreacion.Ca).toBe(17);
-        expect(svc.PersonajeCreacion.Ataque_base).toBe('1');
+        expect(svc.PersonajeCreacion.Ataque_base).toBe('+1');
         expect(svc.PersonajeCreacion.Rds.length).toBe(2);
         expect(svc.PersonajeCreacion.Rcs.length).toBe(1);
         expect(svc.PersonajeCreacion.Res.length).toBe(1);
@@ -7226,7 +7393,7 @@ describe('NuevoPersonajeService (vida final)', () => {
         };
     }
 
-    it('calcula vida con DG racial, clases y bonos de dote Pg_a/Pg_a_n', () => {
+    it('calcula vida con DG racial, clases y bonos de dote Pg_a/Pg_a_n: el primer DG fue racial y ningún nivel de clase va al máximo', () => {
         const svc = new NuevoPersonajeService();
         const tipo = crearTipoVida(false);
         const raza = crearRazaVida(tipo, 1);
@@ -7235,12 +7402,12 @@ describe('NuevoPersonajeService (vida final)', () => {
             Nombre: 'Guerrero',
             Tipo_dado: { Id: 4, Nombre: 'd10' },
         });
-        const randomSpy = spyOn<any>(svc, 'randomInt').and.returnValues(5, 7);
+        const randomSpy = spyOn<any>(svc, 'randomInt').and.returnValues(5, 7, 4);
 
         svc.setCatalogoClases([clase]);
         svc.seleccionarRaza(raza);
         svc.PersonajeCreacion.ModConstitucion = 2;
-        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 2 } as any];
+        svc.PersonajeCreacion.desgloseClases = [{ Id: 10, Nombre: 'Guerrero', Nivel: 2 } as any];
         svc.PersonajeCreacion.DotesContextuales = [{
             Dote: { Modificadores: { Pg_a: 3, Pg_a_n: 1 } } as any,
             Contexto: { Entidad: 'personaje', Id_personaje: 1, Id_extra: 0, Extra: 'No aplica', Origen: 'test' } as any,
@@ -7248,11 +7415,101 @@ describe('NuevoPersonajeService (vida final)', () => {
 
         const resultado = svc.calcularVidaFinalAleatoria();
 
-        expect(randomSpy).toHaveBeenCalledTimes(2);
-        expect(resultado.total).toBe(45);
-        expect(resultado.maximo).toBe(73);
+        // DG racial d8: 5 + 2 + 1; guerrero d10: 7 + 2 + 1 y 4 + 2 + 1; Dureza +3.
+        expect(randomSpy).toHaveBeenCalledTimes(3);
+        expect(resultado.total).toBe(8 + 10 + 7 + 3);
+        expect(resultado.maximo).toBe(11 + 13 + 13 + 3);
         expect(resultado.detalle.bonoPlanoDotes).toBe(3);
         expect(resultado.detalle.bonoPorDadoClaseDotes).toBe(1);
+    });
+
+    it('guerrero 1 con Con 10: 10 PG, el máximo de su d10 (MJ cap. 3), no caras × 2 + 2', () => {
+        const svc = new NuevoPersonajeService();
+        const raza = crearRazaVida(crearTipoVida(false), 0);
+        svc.setCatalogoClases([crearClaseBase({ Id: 10, Nombre: 'Guerrero', Tipo_dado: { Id: 4, Nombre: 'd10' } })]);
+        svc.seleccionarRaza(raza);
+        svc.PersonajeCreacion.ModConstitucion = 0;
+        svc.PersonajeCreacion.desgloseClases = [{ Id: 10, Nombre: 'Guerrero', Nivel: 1 } as any];
+
+        const resultado = svc.calcularVidaFinalAleatoria();
+
+        expect(resultado.total).toBe(10);
+        expect(resultado.maximo).toBe(10);
+        expect(resultado.detalle.tiradasAleatorias).toBe(0);
+    });
+
+    it('guerrero 1 / mago 1 con Con 10: el máximo solo en el primer nivel del personaje (10 + 1d4)', () => {
+        const svc = new NuevoPersonajeService();
+        const raza = crearRazaVida(crearTipoVida(false), 0);
+        svc.setCatalogoClases([
+            crearClaseBase({ Id: 10, Nombre: 'Guerrero', Tipo_dado: { Id: 4, Nombre: 'd10' } }),
+            crearClaseBase({ Id: 12, Nombre: 'Mago', Tipo_dado: { Id: 1, Nombre: 'd4' } }),
+        ]);
+        const randomSpy = spyOn<any>(svc, 'randomInt').and.returnValue(3);
+        svc.seleccionarRaza(raza);
+        svc.PersonajeCreacion.ModConstitucion = 0;
+        svc.PersonajeCreacion.desgloseClases = [
+            { Id: 10, Nombre: 'Guerrero', Nivel: 1 } as any,
+            { Id: 12, Nombre: 'Mago', Nivel: 1 } as any,
+        ];
+
+        const resultado = svc.calcularVidaFinalAleatoria();
+
+        expect(randomSpy).toHaveBeenCalledOnceWith(1, 4);
+        expect(resultado.total).toBe(13);
+        expect(resultado.maximo).toBe(14);
+    });
+
+    it('mínimo 1 PG por DG: un mago 2 con Con 3 (−4) que saca 1 en el nivel 2 gana 1, no pierde 3', () => {
+        const svc = new NuevoPersonajeService();
+        const raza = crearRazaVida(crearTipoVida(false), 0);
+        svc.setCatalogoClases([crearClaseBase({ Id: 12, Nombre: 'Mago', Tipo_dado: { Id: 1, Nombre: 'd4' } })]);
+        spyOn<any>(svc, 'randomInt').and.returnValue(1);
+        svc.seleccionarRaza(raza);
+        svc.PersonajeCreacion.ModConstitucion = -4;
+        svc.PersonajeCreacion.desgloseClases = [{ Id: 12, Nombre: 'Mago', Nivel: 2 } as any];
+
+        const resultado = svc.calcularVidaFinalAleatoria();
+
+        expect(resultado.total).toBe(2);
+    });
+
+    it('humano licántropo (lobo, 2 DG d8) guerrero 1: el nivel de guerrero va al máximo y los DG del lobo suman a los PG', () => {
+        const svc = new NuevoPersonajeService();
+        const raza = crearRazaVida(crearTipoVida(false), 0);
+        svc.setCatalogoClases([crearClaseBase({ Id: 10, Nombre: 'Guerrero', Tipo_dado: { Id: 4, Nombre: 'd10' } })]);
+        const randomSpy = spyOn<any>(svc, 'randomInt').and.returnValues(3, 6);
+        svc.seleccionarRaza(raza);
+        svc.agregarPlantillaSeleccion({
+            Id: 9,
+            Nombre: 'Licántropo (lobo)',
+            Licantronia_dg: { Id_dado: 3, Dado: 'd8', Multiplicador: 2, Suma: 4 },
+        } as any);
+        svc.PersonajeCreacion.ModConstitucion = 0;
+        svc.PersonajeCreacion.desgloseClases = [{ Id: 10, Nombre: 'Guerrero', Nivel: 1 } as any];
+
+        const resultado = svc.calcularVidaFinalAleatoria();
+
+        expect(randomSpy.calls.allArgs()).toEqual([[1, 8], [1, 8]]);
+        expect(resultado.total).toBe(10 + 3 + 6);
+        expect(resultado.maximo).toBe(10 + 8 + 8);
+    });
+
+    it('una dote de +1 PG por DG cuenta también los DG raciales: centauro (4 DG) guerrero 1, +5', () => {
+        const svc = new NuevoPersonajeService();
+        const raza = crearRazaVida(crearTipoVida(false), 4);
+        svc.setCatalogoClases([crearClaseBase({ Id: 10, Nombre: 'Guerrero', Tipo_dado: { Id: 4, Nombre: 'd10' } })]);
+        spyOn<any>(svc, 'randomInt').and.returnValue(1);
+        svc.seleccionarRaza(raza);
+        svc.PersonajeCreacion.ModConstitucion = 0;
+        svc.PersonajeCreacion.desgloseClases = [{ Id: 10, Nombre: 'Guerrero', Nivel: 1 } as any];
+        const sinDote = svc.calcularVidaFinalAleatoria().total;
+        svc.PersonajeCreacion.DotesContextuales = [{
+            Dote: { Modificadores: { Pg_a_n: 1 } } as any,
+            Contexto: { Entidad: 'personaje', Id_personaje: 1, Id_extra: 0, Extra: 'No aplica', Origen: 'test' } as any,
+        }];
+
+        expect(svc.calcularVidaFinalAleatoria().total).toBe(sinDote + 5);
     });
 
     it('no aplica CON cuando el tipo pierde constitucion', () => {
@@ -7272,8 +7529,9 @@ describe('NuevoPersonajeService (vida final)', () => {
 
         const resultado = svc.calcularVidaFinalAleatoria();
 
-        expect(resultado.total).toBe(18);
-        expect(resultado.maximo).toBe(18);
+        // Monje 1 (d8): 8 PG, el máximo de su dado, sin Constitución (antes la prueba esperaba 18, caras × 2 + 2).
+        expect(resultado.total).toBe(8);
+        expect(resultado.maximo).toBe(8);
         expect(resultado.detalle.constitucionAplicada).toBeFalse();
         expect(resultado.detalle.modificadorConstitucion).toBe(0);
     });

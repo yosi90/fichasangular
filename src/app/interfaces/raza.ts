@@ -121,6 +121,8 @@ export interface Raza {
     Puntos_habilidad_extra_primer_nivel?: number;
     /** Puntos de habilidad extra de la raza en cada nivel siguiente (el humano: 1). */
     Puntos_habilidad_extra_por_nivel?: number;
+    /** Carga como un cuadrúpedo (Manual del jugador, tabla 9-1; el centauro). */
+    Cuadrupedo?: boolean;
     Reduccion_dano: string;
     Resistencia_magica: string;
     Resistencia_energia: string;

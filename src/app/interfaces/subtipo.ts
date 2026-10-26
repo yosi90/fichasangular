@@ -69,6 +69,8 @@ export interface SubtipoResumen {
     Manual: ManualReferencia;
     Heredada: boolean;
     Oficial: boolean;
+    /** El ajuste de nivel del subtipo (el NEP de la creación lo suma); 0 si la caché aún no lo trae. */
+    Ajuste_nivel?: number;
 }
 
 export interface SubtipoReferenciaCorta {

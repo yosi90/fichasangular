@@ -1,3 +1,4 @@
+import { ReglaSinergia } from '../interfaces/habilidad';
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
@@ -54,6 +55,22 @@ export function normalizeHabilidadBasica(raw: any): HabilidadBasicaDetalle {
         Soporta_extra: toBoolean(raw?.Soporta_extra),
         Entrenada: toBoolean(raw?.Entrenada),
         Extras: toArray(raw?.Extras).map(normalizeExtra),
+        Penalizador_armadura: toNumber(raw?.Penalizador_armadura),
+        Sinergias: toArray(raw?.Sinergias).map(normalizeSinergia),
+    };
+}
+
+function normalizeSinergia(raw: any): ReglaSinergia {
+    return {
+        Id_habilidad_origen: toNumber(raw?.Id_habilidad_origen),
+        Habilidad_origen: toText(raw?.Habilidad_origen),
+        Id_extra_origen: toNumber(raw?.Id_extra_origen, -1),
+        Id_habilidad_destino: toNumber(raw?.Id_habilidad_destino),
+        Habilidad_destino: toText(raw?.Habilidad_destino),
+        Id_extra_destino: toNumber(raw?.Id_extra_destino, -1),
+        Rangos_minimos: toNumber(raw?.Rangos_minimos),
+        Bonificador: toNumber(raw?.Bonificador),
+        Condicion: `${raw?.Condicion ?? ''}`.trim() || null,
     };
 }
 

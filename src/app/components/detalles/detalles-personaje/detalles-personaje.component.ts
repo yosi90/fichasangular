@@ -53,6 +53,7 @@ import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import {
     origenesDePartes,
     sumarPartes,
+    textoBonosHabilidad,
     textoDesglose,
     TipoSalvacion,
     totalesPersonaje,
@@ -1340,7 +1341,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
                 car: `${h.Car ?? ''}`.trim().slice(0, 3),
                 rangos: toNumber(h.Rangos) + toNumber(h.Rangos_varios),
                 total: textoConSigno(totalHabilidad(h)),
-                nota: [h.Clasea ? 'de clase' : '', this.texto(h.Varios)].filter(Boolean).join(' · '),
+                nota: [h.Clasea ? 'de clase' : '', this.texto(h.Varios), textoBonosHabilidad(h)].filter(Boolean).join(' · '),
             };
         };
         const habilidades = todas.map(fila);

@@ -20,7 +20,7 @@ import { RegionDetalle } from '../interfaces/region';
 import { RacialDetalle } from '../interfaces/racial';
 import { Raza, RazaPlantillaReferencia } from '../interfaces/raza';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
-import { SubtipoRef } from '../interfaces/subtipo';
+import { SubtipoRef, SubtipoResumen } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeCreateMascotasDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
@@ -56,8 +56,14 @@ import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from './utils/personaje-totales';
 import { resumenClases } from './utils/resumen-clases';
 import { construirCompaneroParaGuardar, construirFamiliarParaGuardar } from './utils/mascota-payload';
-import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadDgRaciales, puntosHabilidadNivelClase } from './utils/puntos-habilidad';
+import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadDgPlantilla, puntosHabilidadDgRaciales, puntosHabilidadNivelClase } from './utils/puntos-habilidad';
 import { tieneTextoVisible } from './utils/texto-visible';
+import { ajusteDePlantillas, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
+import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
+import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
+import { bonosSinergia, SIN_EXTRA_SINERGIA } from './utils/habilidades-bonos';
+import { textoAtaqueBase } from './utils/ataque-base';
+import { Tamano } from '../interfaces/tamaño';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -206,73 +212,9 @@ const TIRADAS_POR_TABLA = 6;
 const FILAS_TIRADAS = MAX_TIRADA - MIN_TIRADA + 1;
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 const MAX_VENTAJAS_SELECCIONABLES = 3;
-const DADOS_PROGRESION = [4, 6, 8, 10, 12];
 const NUEVO_PERSONAJE_DRAFT_TTL_MS = 24 * 60 * 60 * 1000;
-const CLAVES_MOD_DOTE_PGS_PLANO = new Set<string>([
-    'pga',
-    'pgaadicional',
-    'puntosgolpe',
-    'puntosdegolpe',
-]);
-const CLAVES_MOD_DOTE_PGS_POR_DADO = new Set<string>([
-    'pgan',
-    'pgpornivel',
-    'pgpordg',
-    'pgadicionalpornivel',
-    'pgadicionalpordg',
-]);
-const CARGA_PESADA_BASE_POR_FUERZA: Record<number, number> = {
-    1: 3,
-    2: 6,
-    3: 10,
-    4: 13,
-    5: 16,
-    6: 20,
-    7: 23,
-    8: 26,
-    9: 30,
-    10: 33,
-    11: 38,
-    12: 43,
-    13: 50,
-    14: 58,
-    15: 66,
-    16: 76,
-    17: 86,
-    18: 100,
-    19: 116,
-    20: 133,
-    21: 153,
-    22: 173,
-    23: 200,
-    24: 233,
-    25: 266,
-    26: 306,
-    27: 346,
-    28: 400,
-    29: 466,
-    30: 533,
-    31: 613,
-    32: 693,
-    33: 800,
-    34: 933,
-    35: 1066,
-    36: 1233,
-    37: 1400,
-    38: 1600,
-    39: 1866,
-};
-const CARGA_MULTIPLICADOR_BIPEDO_POR_MOD_PRESA: Record<number, number> = {
-    [-16]: 0.125,
-    [-12]: 0.25,
-    [-8]: 0.5,
-    [-4]: 0.75,
-    [0]: 1,
-    [4]: 2,
-    [8]: 4,
-    [12]: 8,
-    [16]: 16,
-};
+/** `tipos_salvacion` de los scripts canónicos: el tipo de una salvación racial sale de su `Id_salvacion`. */
+const SALVACION_POR_ID: Record<number, SalvacionKey> = { 1: 'fortaleza', 2: 'reflejos', 3: 'voluntad' };
 const EXTRA_IDIOMAS_INICIALES = 0;
 const GENERADOR_AUTO_Q4_THRESHOLD = 1;
 const DOTE_FAMILIAR_ID = 17;
@@ -966,6 +908,13 @@ export class NuevoPersonajeService {
     private razaSeleccionada: Raza | null = null;
     private razaBaseSeleccionadaCompleta: Raza | null = null;
     private catalogoTiposCriatura: TipoCriatura[] = [];
+    /** Los subtipos con su ajuste de nivel (el NEP lo suma). */
+    private catalogoSubtipos: SubtipoResumen[] = [];
+    /** Las caras de los tipos de dado del catálogo: la escalera de los cambios de dado de las plantillas. */
+    private escaleraDados: number[] = [];
+    /** La tabla 9-1 de la carga por Fuerza y los tamaños con sus multiplicadores (`GET /capacidades-carga`, `/tamanos`). */
+    private tablaCarga: FilaCapacidadCarga[] = [];
+    private catalogoTamanos: Tamano[] = [];
     private catalogoClases: Clase[] = [];
     private catalogoDotes: Dote[] = [];
     private catalogoArmasDotes: { Id: number; Nombre: string; }[] = [];
@@ -1482,6 +1431,26 @@ export class NuevoPersonajeService {
         this.recalcularTipoYSubtiposDerivados();
     }
 
+    setCatalogoSubtipos(subtipos: SubtipoResumen[]): void {
+        this.catalogoSubtipos = [...(subtipos ?? [])];
+        this.recalcularNepExperienciaOro();
+    }
+
+    setTablaCarga(filas: FilaCapacidadCarga[]): void {
+        this.tablaCarga = [...(filas ?? [])];
+        this.recalcularCapacidadCarga();
+    }
+
+    setCatalogoTamanos(tamanos: Tamano[]): void {
+        this.catalogoTamanos = [...(tamanos ?? [])];
+        this.recalcularCapacidadCarga();
+    }
+
+    /** El catálogo de tipos de dado (`GET /tipos-dado`): de sus nombres sale la escalera de dados. */
+    setCatalogoTiposDado(tipos: { Nombre?: string | null; }[]): void {
+        this.escaleraDados = (tipos ?? []).map((tipo) => carasDado(tipo?.Nombre)).filter((caras) => caras > 0);
+    }
+
     setCatalogoClases(clases: Clase[]): void {
         this.catalogoClases = [...clases];
     }
@@ -1786,15 +1755,16 @@ export class NuevoPersonajeService {
         if (seleccionadas.length < 1)
             return false;
 
-        const plantillasConDg = seleccionadas
-            .filter((plantilla) => toNumber(plantilla?.Licantronia_dg?.Multiplicador) > 0);
+        const plantillasConDg = seleccionadas.filter((plantilla) => dgsDePlantillas([plantilla]) > 0);
         if (plantillasConDg.length < 1)
             return false;
 
-        const total = plantillasConDg.reduce((acc, plantilla) => {
-            const sumaFija = Math.max(1, toInt(plantilla?.Puntos_habilidad?.Suma_fija));
-            return acc + sumaFija;
-        }, 0);
+        // Cada DG del animal: (puntos de su tipo + mod. de Int, mínimo 1), sin ×4 (Manual de monstruos, «Licántropo»).
+        const total = plantillasConDg.reduce((acc, plantilla) => acc + puntosHabilidadDgPlantilla({
+            puntosPorDg: toNumber(plantilla?.Licantronia_dg?.Tipo_criatura?.Puntos_habilidad),
+            dgs: dgsDePlantillas([plantilla]),
+            modInteligencia: toNumber(this.personajeCreacion?.ModInteligencia),
+        }), 0);
 
         if (total < 1)
             return false;
@@ -2030,7 +2000,35 @@ export class NuevoPersonajeService {
         if (this.estadoFlujo.habilidades.origen === 'companero_dg')
             this.guardarHabilidadesCompaneroDeLaSesion();
         this.estadoFlujo.habilidades = this.crearHabilidadesFlujoBase();
+        this.recalcularSinergiasHabilidades();
         return returnStep;
+    }
+
+    /**
+     * Las sinergias de cada habilidad del borrador (`services/utils/habilidades-bonos.ts`, MJ tabla 4-5), con las reglas
+     * del catálogo de habilidades: las que suman van a `Bonos` y las condicionales, a `Bonos_condicionales`. La ficha
+     * guardada las calcula la API.
+     */
+    recalcularSinergiasHabilidades(): void {
+        const reglas = (this.estadoFlujo.ventajas.catalogoHabilidades ?? []).flatMap((habilidad) => habilidad?.Sinergias ?? []);
+        const habilidades = (this.personajeCreacion.Habilidades ?? []).filter((habilidad) => !habilidad?.Custom);
+        const refs = habilidades.map((habilidad) => ({
+            id: toNumber(habilidad.Id),
+            idExtra: this.idExtraDeHabilidad(habilidad),
+            rangos: toNumber(habilidad.Rangos),
+        }));
+        habilidades.forEach((habilidad, indice) => {
+            const bonos = bonosSinergia(refs[indice], refs, reglas);
+            habilidad.Bonos = bonos.filter((bono) => !bono.condicion);
+            habilidad.Bonos_condicionales = bonos.filter((bono) => !!bono.condicion);
+        });
+    }
+
+    /** El id del extra elegido de una habilidad del borrador (por su nombre en sus `Extras`), o -1 si no tiene. */
+    private idExtraDeHabilidad(habilidad: Personaje['Habilidades'][number]): number {
+        const extra = normalizarTexto(habilidad?.Extra ?? '');
+        const encontrado = (habilidad?.Extras ?? []).find((item) => normalizarTexto(item?.Extra ?? '') === extra);
+        return extra.length > 0 && encontrado ? toNumber(encontrado.Id_extra) : SIN_EXTRA_SINERGIA;
     }
 
     getConjurosSesionActual(): ConjurosFlujoState {
@@ -3520,15 +3518,14 @@ export class NuevoPersonajeService {
         return Math.max(0, total);
     }
 
+    /** Los DG del prerrequisito `dg`: los totales, también los de las plantillas (los del animal de un licántropo). */
     private resolverDgTotalActual(): number {
-        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
-            .reduce((acc, clase) => acc + Math.max(0, toNumber(clase?.Nivel)), 0);
-        const dgsRaza = toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad ?? this.personajeCreacion?.Raza?.Dgs_adicionales?.Cantidad);
-        return Math.max(0, Math.trunc(nivelClases + Math.max(0, dgsRaza)));
+        return dgsTotales(this.getPartesNivelPersonaje());
     }
 
+    /** El tamaño de los prerrequisitos: el del personaje, con los pasos de tamaño de sus plantillas. */
     private resolverTamanoActualId(): number | null {
-        const id = toInt(this.personajeCreacion?.Raza?.Tamano?.Id);
+        const id = toInt(this.resolverTamanoActual()?.Id);
         return id > 0 ? id : null;
     }
 
@@ -4266,6 +4263,36 @@ export class NuevoPersonajeService {
         const bonusHabilidad = get('Habilidad');
         if (bonusHabilidad !== 0)
             this.aplicarModificadorHabilidadDesdeDote(dote, bonusHabilidad, origen, idExtra, extraTexto, destino?.bonosHabilidades);
+
+        // Las habilidades que mejora la dote (`Habilidades_otorgadas`: Alerta, +2 a Avistar y a Escuchar; MJ cap. 5).
+        (dote?.Habilidades_otorgadas ?? []).forEach((otorgada) => {
+            const valor = toInt(otorgada?.Rangos);
+            const objetivo = (this.personajeCreacion.Habilidades ?? [])
+                .find((habilidad) => !habilidad?.Custom === !otorgada?.Custom && toNumber(habilidad?.Id) === toNumber(otorgada?.Id_habilidad));
+            if (!objetivo || valor === 0)
+                return;
+            this.sumarBonoHabilidad(objetivo, valor, origen, destino?.bonosHabilidades);
+        });
+    }
+
+    /** Un bono a una habilidad: al destino del recálculo de las ventajas, si lo hay, o directo a la habilidad. */
+    private sumarBonoHabilidad(
+        objetivo: Personaje['Habilidades'][number],
+        valor: number,
+        origen: string,
+        bonosHabilidades?: Record<number, HabilidadBonoVario[]>,
+    ): void {
+        if (bonosHabilidades) {
+            this.agregarBonoHabilidad(bonosHabilidades, toNumber(objetivo.Id), valor, origen);
+            return;
+        }
+        const bonos = Array.isArray(objetivo.Bonos_varios) ? [...objetivo.Bonos_varios] : [];
+        bonos.push({ valor, origen });
+        objetivo.Bonos_varios = bonos;
+        objetivo.Rangos_varios = bonos.reduce((acc, bono) => acc + toNumber(bono?.valor), 0);
+        objetivo.Varios = bonos
+            .map((bono) => `${bono?.origen ?? ''} ${toNumber(bono?.valor) >= 0 ? '+' : ''}${toNumber(bono?.valor)}`.trim())
+            .join(', ');
     }
 
     private aplicarModificadorHabilidadDesdeDote(
@@ -4289,21 +4316,7 @@ export class NuevoPersonajeService {
         });
         if (!objetivo)
             return;
-        if (bonosHabilidades) {
-            this.agregarBonoHabilidad(bonosHabilidades, toNumber(objetivo.Id), valor, origen);
-            return;
-        }
-
-        const bonos = Array.isArray(objetivo.Bonos_varios) ? [...objetivo.Bonos_varios] : [];
-        bonos.push({
-            valor,
-            origen,
-        });
-        objetivo.Bonos_varios = bonos;
-        objetivo.Rangos_varios = bonos.reduce((acc, bono) => acc + toNumber(bono?.valor), 0);
-        objetivo.Varios = bonos
-            .map((bono) => `${bono?.origen ?? ''} ${toNumber(bono?.valor) >= 0 ? '+' : ''}${toNumber(bono?.valor)}`.trim())
-            .join(', ');
+        this.sumarBonoHabilidad(objetivo, valor, origen, bonosHabilidades);
     }
 
     aplicarIdiomasAutomaticos(origen: string, idiomas: IdiomaDetalle[]): void {
@@ -5291,14 +5304,20 @@ export class NuevoPersonajeService {
             registrar('voluntad');
     }
 
+    /**
+     * Las salvaciones de la raza: las de sus DG raciales y las de sus raciales (`Salvaciones`: `Id_salvacion`, `Cantidad`
+     * y `Condicion`). Las de un racial con condición («Contra veneno», Manual del jugador cap. 2) se guardan con ella y no
+     * se suman al total; las que no la tienen (el +1 del mediano), sí.
+     */
     private aplicarSalvacionesRaza(raza: Raza | null): void {
         const nombreRaza = `${raza?.Nombre ?? 'Raza'}`.trim() || 'Raza';
-        const registrar = (tipo: SalvacionKey, valor: number, origen: string) => {
+        const registrar = (tipo: SalvacionKey, valor: number, origen: string, condicion: string | null = null) => {
             if (!Number.isFinite(valor) || valor === 0)
                 return;
             this.personajeCreacion.Salvaciones[tipo].modsVarios.push({
                 valor,
                 origen,
+                ...(condicion ? { condicion } : {}),
             });
         };
 
@@ -5320,54 +5339,13 @@ export class NuevoPersonajeService {
                     : []);
 
             salvaciones.forEach((item: any) => {
-                const tipo = this.resolverTipoSalvacionRacial(item);
-                const valor = this.resolverValorSalvacionRacial(item);
-                if (!tipo || valor === null || valor === 0)
+                const tipo = SALVACION_POR_ID[toInt(item?.Id_salvacion)];
+                const valor = toInt(item?.Cantidad);
+                if (!tipo || valor === 0)
                     return;
-                registrar(tipo, valor, origen);
+                registrar(tipo, valor, origen, `${item?.Condicion ?? ''}`.trim() || null);
             });
         });
-    }
-
-    private resolverTipoSalvacionRacial(item: any): SalvacionKey | null {
-        const raw = `${item?.Salvacion ?? item?.salvacion ?? item?.Nombre ?? item?.nombre ?? item?.Tipo ?? item?.tipo ?? ''}`.trim();
-        const normalizado = normalizarTexto(raw);
-        if (normalizado.length < 1)
-            return null;
-        if (normalizado.includes('fort') || normalizado.includes('fortitude'))
-            return 'fortaleza';
-        if (normalizado.includes('ref') || normalizado.includes('reflex'))
-            return 'reflejos';
-        if (normalizado.includes('vol') || normalizado.includes('will'))
-            return 'voluntad';
-        return null;
-    }
-
-    private resolverValorSalvacionRacial(item: any): number | null {
-        const candidatos = [
-            item?.Valor,
-            item?.valor,
-            item?.Cantidad,
-            item?.cantidad,
-            item?.Modificador,
-            item?.modificador,
-            item?.Mejora,
-            item?.mejora,
-        ];
-
-        for (const candidato of candidatos) {
-            const directo = Number(candidato);
-            if (Number.isFinite(directo))
-                return directo;
-
-            if (typeof candidato === 'string') {
-                const entero = primerEntero(candidato);
-                if (entero !== null)
-                    return entero;
-            }
-        }
-
-        return null;
     }
 
     private aplicarModificadorIniciativa(detalle: VentajaDetalle, origen: string): void {
@@ -5675,7 +5653,7 @@ export class NuevoPersonajeService {
             pgsLicantronia += toNumber(plantilla?.Licantronia_dg?.Suma);
         });
 
-        this.personajeCreacion.Ataque_base = `${ataqueBase}`;
+        this.personajeCreacion.Ataque_base = textoAtaqueBase(ataqueBase);
         this.personajeCreacion.Armadura_natural = armaduraNatural;
         this.personajeCreacion.Ca_varios = caVarios;
         this.personajeCreacion.Dados_golpe = dadoGolpe;
@@ -6361,14 +6339,17 @@ export class NuevoPersonajeService {
         const desglose = [...(this.personajeCreacion.desgloseClases ?? [])];
         const index = desglose.findIndex((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
 
+        const idClase = toInt(clase?.Id) > 0 ? toInt(clase.Id) : undefined;
         if (index >= 0) {
             desglose[index] = {
+                Id: idClase ?? desglose[index].Id,
                 Nombre: desglose[index].Nombre,
                 Nivel: nivelNormalizado,
                 Caracteristica_lanzamiento: caracteristicaLanzamiento,
             };
         } else {
             desglose.push({
+                Id: idClase,
                 Nombre: nombre,
                 Nivel: nivelNormalizado,
                 Caracteristica_lanzamiento: caracteristicaLanzamiento,
@@ -6398,7 +6379,7 @@ export class NuevoPersonajeService {
             return;
 
         const ataqueActual = primerEntero(this.personajeCreacion.Ataque_base) ?? 0;
-        this.personajeCreacion.Ataque_base = `${ataqueActual + delta}`;
+        this.personajeCreacion.Ataque_base = textoAtaqueBase(ataqueActual + delta);
     }
 
     private aplicarDeltaSalvacionesClase(
@@ -7959,8 +7940,7 @@ export class NuevoPersonajeService {
             if (nivel <= 0)
                 return acumulado;
 
-            const claseCatalogo = this.catalogoClases
-                .find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(nombre));
+            const claseCatalogo = this.obtenerClaseDelDesglose(claseDesglose);
             if (!claseCatalogo)
                 return acumulado;
 
@@ -7972,19 +7952,14 @@ export class NuevoPersonajeService {
         }, 0);
     }
 
+    /**
+     * El NEP y la experiencia mínima de ese NEP (Guía del DM, cap. 6; Manual de monstruos): los dos con el mismo NEP que
+     * la ficha guardada, que cuenta los DG raciales, los de plantilla y los ajustes de nivel (`utils/nivel-personaje.ts`).
+     */
     private recalcularNepExperienciaOro(plantillasSeleccionadas?: Plantilla[]): void {
-        const raza = this.razaSeleccionada;
-        const seleccionadas = plantillasSeleccionadas ?? this.estadoFlujo.plantillas.seleccionadas;
-        const ajusteRaza = toNumber(raza?.Ajuste_nivel);
-        const ajustePlantillas = (seleccionadas ?? [])
-            .reduce((acc, plantilla) => acc + toNumber(plantilla?.Ajuste_nivel), 0);
-        const nivelClases = this.getNivelClasesActual();
-        const dgsRaza = toNumber(raza?.Dgs_adicionales?.Cantidad);
-        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(seleccionadas);
-        const nivelEfectivo = nivelClases + ajusteRaza + ajustePlantillas + dgsRaza + dgsPlantillas;
-
-        this.personajeCreacion.NEP = nivelEfectivo;
-        this.personajeCreacion.Experiencia = experienciaParaNivel(nivelClases + ajusteRaza + ajustePlantillas);
+        const nep = nivelEfectivoPersonaje(this.getPartesNivelPersonaje(plantillasSeleccionadas));
+        this.personajeCreacion.NEP = nep;
+        this.personajeCreacion.Experiencia = experienciaParaNivel(nep);
     }
 
     private recalcularDerivadasPorCaracteristicas(): void {
@@ -8006,103 +7981,48 @@ export class NuevoPersonajeService {
         return normalizarTexto(valor).length > 0;
     }
 
+    /** Las caras del dado de golpe del tipo de criatura, por el nombre de su dado («d8»); 0 si no lo dice. */
     private resolverDadoGolpeTipoActual(): number {
-        const tipoActual = this.personajeCreacion.Tipo_criatura;
-        const dadoPorTipo = toNumber(tipoActual?.Tipo_dado);
-        if (dadoPorTipo > 0)
-            return dadoPorTipo;
-
-        const idTipo = toNumber(tipoActual?.Id_tipo_dado);
-        if (idTipo <= 0)
-            return 0;
-
-        const idx = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idTipo - 1));
-        return DADOS_PROGRESION[idx];
+        return carasDado(this.personajeCreacion.Tipo_criatura?.Tipo_dado);
     }
 
+    /** Las caras del dado de golpe que fija una plantilla (`Tipo_dado.Nombre`); 0 si no fija ninguno («Elegir»). */
     private resolverDadoDesdePlantilla(plantilla: Plantilla): number {
-        const dadoPorNombre = `${plantilla?.Tipo_dado?.Nombre ?? ''}`.match(/d\s*(\d+)/i);
-        if (dadoPorNombre && dadoPorNombre[1]) {
-            const dado = toNumber(dadoPorNombre[1]);
-            if (DADOS_PROGRESION.includes(dado))
-                return dado;
-        }
-
-        const idTipoDado = toNumber(plantilla?.Tipo_dado?.Id_tipo_dado);
-        if (idTipoDado <= 0)
-            return 0;
-
-        const idx = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idTipoDado - 1));
-        return DADOS_PROGRESION[idx];
+        return carasDado(plantilla?.Tipo_dado?.Nombre);
     }
 
+    /** Sube o baja el dado por la escalera de los tipos de dado del catálogo (`setCatalogoTiposDado`). */
     private aplicarPasoDado(actual: number, pasos: number): number {
-        if (actual <= 0 || pasos === 0)
-            return actual;
-
-        let idxActual = DADOS_PROGRESION.indexOf(actual);
-        if (idxActual < 0)
-            idxActual = 0;
-        const idxFinal = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idxActual + pasos));
-        return DADOS_PROGRESION[idxFinal];
+        return dadoTrasPasos(actual, pasos, this.escaleraDados);
     }
 
+    /**
+     * La carga del borrador (`services/utils/capacidad-carga.ts`, Manual del jugador tabla 9-1): la fila de su Fuerza por
+     * el multiplicador de su tamaño, de bípedo o de cuadrúpedo según la raza, como la ficha de la API.
+     */
     private recalcularCapacidadCarga(): void {
-        const fuerza = Math.max(0, toInt(this.personajeCreacion?.Fuerza));
-        const pesadaBase = this.calcularCargaPesadaPorFuerza(fuerza);
-        const multiplicadorTamano = this.obtenerMultiplicadorCargaBipedoPorTamano();
-        const pesada = Math.max(0, Math.floor(pesadaBase * multiplicadorTamano));
-        const media = Math.max(0, Math.floor((pesada * 2) / 3));
-        const ligera = Math.max(0, Math.floor(pesada / 3));
-
-        this.personajeCreacion.Capacidad_carga = {
-            Ligera: ligera,
-            Media: media,
-            Pesada: pesada,
-        };
+        const tamano = this.resolverTamanoActual();
+        const multiplicador = this.razaSeleccionada?.Cuadrupedo
+            ? tamano?.Multiplicador_carga_cuadrupedo
+            : tamano?.Multiplicador_carga;
+        this.personajeCreacion.Capacidad_carga = capacidadCarga(toInt(this.personajeCreacion?.Fuerza), this.tablaCarga, multiplicador);
     }
 
-    private calcularCargaPesadaPorFuerza(fuerza: number): number {
-        const valorFuerza = Math.max(0, toInt(fuerza));
-        if (valorFuerza <= 0)
-            return 0;
-
-        if (valorFuerza <= 39)
-            return CARGA_PESADA_BASE_POR_FUERZA[valorFuerza] ?? 0;
-
-        let fuerzaBase = valorFuerza;
-        let factor = 1;
-        while (fuerzaBase > 39) {
-            fuerzaBase -= 10;
-            factor *= 4;
-        }
-        const cargaBase = CARGA_PESADA_BASE_POR_FUERZA[fuerzaBase] ?? 0;
-        return Math.floor(cargaBase * factor);
-    }
-
-    private obtenerMultiplicadorCargaBipedoPorTamano(): number {
-        const modPresa = toNumber(this.personajeCreacion?.Raza?.Tamano?.Modificador_presa);
-        if (Object.prototype.hasOwnProperty.call(CARGA_MULTIPLICADOR_BIPEDO_POR_MOD_PRESA, modPresa))
-            return CARGA_MULTIPLICADOR_BIPEDO_POR_MOD_PRESA[modPresa];
-
-        const nombreTamano = normalizarTexto(this.personajeCreacion?.Raza?.Tamano?.Nombre ?? '');
-        if (nombreTamano.includes('colosal'))
-            return 16;
-        if (nombreTamano.includes('gargantuesc'))
-            return 8;
-        if (nombreTamano.includes('enorme') || nombreTamano.includes('huge'))
-            return 4;
-        if (nombreTamano.includes('grande') || nombreTamano.includes('large'))
-            return 2;
-        if (nombreTamano.includes('pequeno') || nombreTamano.includes('small'))
-            return 0.75;
-        if (nombreTamano.includes('diminuto') || nombreTamano.includes('diminutive'))
-            return 0.25;
-        if (nombreTamano.includes('minusculo') || nombreTamano.includes('tiny'))
-            return 0.5;
-        if (nombreTamano.includes('menudo') || nombreTamano.includes('fine'))
-            return 0.125;
-        return 1;
+    /**
+     * El tamaño del personaje: el de su raza, movido por los pasos de tamaño de sus plantillas (`Modificacion_tamano`),
+     * por el orden de los tamaños del catálogo. El `Tamano` fijo de un licántropo es el de su forma animal, no el suyo.
+     */
+    private resolverTamanoActual(): Tamano | null {
+        const idRaza = toInt(this.personajeCreacion?.Raza?.Tamano?.Id);
+        const ordenados = [...this.catalogoTamanos]
+            .filter((tamano) => toInt(tamano?.Id) > 0)
+            .sort((a, b) => toNumber(a.Modificador_presa) - toNumber(b.Modificador_presa));
+        const indice = ordenados.findIndex((tamano) => toInt(tamano.Id) === idRaza);
+        if (indice < 0)
+            return idRaza > 0 ? (this.personajeCreacion.Raza.Tamano as Tamano) : null;
+        const pasos = (this.estadoFlujo.plantillas.seleccionadas ?? [])
+            .reduce((acc, plantilla) => acc + toInt(plantilla?.Modificacion_tamano?.Id_paso_modificacion), 0);
+        return ordenados[Math.max(0, Math.min(ordenados.length - 1, indice + pasos))];
     }
 
     private obtenerMinimoCaracteristicaPorPlantillas(key: CaracteristicaKey): number {
@@ -9048,9 +8968,24 @@ export class NuevoPersonajeService {
         );
     }
 
-    private getDgsAdicionalesDesdePlantillas(plantillas: Plantilla[] | null | undefined): number {
-        return (plantillas ?? [])
-            .reduce((acc, plantilla) => acc + toNumber(plantilla?.Licantronia_dg?.Multiplicador), 0);
+    /** Los niveles de clase, DG y ajustes de nivel del personaje en creación (`services/utils/nivel-personaje.ts`). */
+    private getPartesNivelPersonaje(plantillas?: Plantilla[] | null): PartesNivelPersonaje {
+        const seleccionadas = plantillas ?? this.estadoFlujo.plantillas.seleccionadas;
+        return {
+            nivelesClase: this.getNivelClasesActual(),
+            dgsRaza: Math.max(0, toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad)),
+            dgsPlantillas: dgsDePlantillas(seleccionadas),
+            ajusteRaza: toNumber(this.razaSeleccionada?.Ajuste_nivel),
+            ajustePlantillas: ajusteDePlantillas(seleccionadas),
+            ajusteSubtipos: this.getAjusteSubtiposActual(),
+        };
+    }
+
+    /** El ajuste de nivel de los subtipos del personaje, del catálogo de subtipos (como la API). */
+    private getAjusteSubtiposActual(): number {
+        const ajustes = new Map(this.catalogoSubtipos.map((subtipo) => [toNumber(subtipo?.Id), toNumber(subtipo?.Ajuste_nivel)]));
+        return (this.personajeCreacion?.Subtipos ?? [])
+            .reduce((acc, subtipo) => acc + (ajustes.get(toNumber(subtipo?.Id)) ?? 0), 0);
     }
 
     private crearVentajasFlujoBase(): VentajasFlujoState {
@@ -9535,10 +9470,16 @@ export class NuevoPersonajeService {
         };
     }
 
+    /**
+     * Los PG del personaje (`services/utils/puntos-golpe.ts`, Manual del jugador cap. 3): cada DG, lo que sale en su dado
+     * + Constitución (mínimo 1 por DG); el máximo solo en el primer DG del personaje si es de clase; los DG de plantilla
+     * también suman; y los bonos de las dotes (`Modificadores.Pg_a_n` por DG, todos los DG, y `Modificadores.Pg_a`).
+     */
     calcularVidaFinalAleatoria(): ResultadoCalculoVidaFinal {
         const raza = this.razaSeleccionada;
         const plantillas = this.estadoFlujo.plantillas.seleccionadas ?? [];
-        const dgsRaciales = Math.max(0, toInt(raza?.Dgs_adicionales?.Cantidad));
+        const partes = this.getPartesNivelPersonaje(plantillas);
+        const dgsRaciales = Math.max(0, toInt(partes.dgsRaza));
         const bonoDotes = this.resolverBonosPgsDesdeDotes();
         const reglaConstitucion = this.resolverModConstitucionParaVida();
 
@@ -9551,94 +9492,59 @@ export class NuevoPersonajeService {
             dotesSumaAdicionalDgs: bonoDotes.bonoPlano !== 0 || bonoDotes.bonoPorDadoClase !== 0,
         };
 
-        let vida = 0;
-        let vidaMax = 0;
-        let tiradasAleatorias = 0;
         let dadoRacial = this.resolverCarasDadoRacialParaVida(raza);
-        let overrideDadoClase: number | null = null;
-
+        let dadoComun: number | null = null;
         plantillas.forEach((plantilla) => {
             const dadoDirecto = this.resolverDadoDesdePlantilla(plantilla);
             const pasoDado = toInt(plantilla?.Modificacion_dg?.Id_paso_modificacion);
             const actualizaDg = toBoolean(plantilla?.Actualiza_dg);
-            const multiplicadorLic = Math.max(0, toInt(plantilla?.Licantronia_dg?.Multiplicador));
-            const sumaLic = toNumber(plantilla?.Licantronia_dg?.Suma);
 
-            if (dadoDirecto > 0 && dadoDirecto > dadoRacial) {
+            if (dadoDirecto > 0 && dadoDirecto > dadoRacial)
                 dadoRacial = dadoDirecto;
-            } else if (pasoDado !== 0) {
-                // Paridad C#: tanto + como - terminan moviendo el dado hacia arriba.
-                dadoRacial = this.aplicarPasoDado(dadoRacial, Math.abs(pasoDado));
-            }
+            else if (pasoDado !== 0)
+                dadoRacial = this.aplicarPasoDado(dadoRacial, pasoDado);
 
+            // Una plantilla que actualiza los DG (liche, vampiro, fantasma) cambia el dado de todos, también los de clase.
             if (actualizaDg && dadoDirecto > 0)
-                overrideDadoClase = dadoDirecto;
+                dadoComun = dadoDirecto;
 
             flags.plantillasAumentoReduccionDgs = flags.plantillasAumentoReduccionDgs || pasoDado !== 0;
             flags.plantillasActualizacionDgsRazaClase = flags.plantillasActualizacionDgsRazaClase || actualizaDg;
-            flags.plantillasDgsAdicionales = flags.plantillasDgsAdicionales || multiplicadorLic > 0 || sumaLic !== 0;
+            flags.plantillasDgsAdicionales = flags.plantillasDgsAdicionales || dgsDePlantillas([plantilla]) > 0;
         });
 
-        const dadoRacialCalculado = Math.max(1, Math.trunc(dadoRacial));
-        const maximoRacialPorDg = dadoRacialCalculado * 2 + 2 + reglaConstitucion.modificador;
-        for (let i = 0; i < dgsRaciales; i++) {
-            const tirada = this.randomInt(1, dadoRacialCalculado * 2 + 2);
-            vida += tirada + reglaConstitucion.modificador;
-            vidaMax += maximoRacialPorDg;
-            tiradasAleatorias++;
-        }
+        const nivelesClase: GrupoDadosGolpe[] = (this.personajeCreacion.desgloseClases ?? [])
+            .filter((entrada) => toInt(entrada?.Nivel) > 0)
+            .map((entrada) => ({
+                cantidad: toInt(entrada.Nivel),
+                caras: dadoComun ?? (carasDado(this.obtenerClaseDelDesglose(entrada)?.Tipo_dado?.Nombre) || dadoRacial),
+            }));
+        flags.dadosGolpe = nivelesClase.length > 0;
 
-        let nivelesClase = 0;
-        (this.personajeCreacion.desgloseClases ?? []).forEach((claseDesglose) => {
-            const nivel = Math.max(0, toInt(claseDesglose?.Nivel));
-            if (nivel < 1)
-                return;
-
-            const nombreClase = `${claseDesglose?.Nombre ?? ''}`.trim();
-            const dadoClase = overrideDadoClase && overrideDadoClase > 0
-                ? overrideDadoClase
-                : this.resolverCarasDadoClaseParaVida(nombreClase, dadoRacialCalculado);
-            const dadoClaseCalculado = Math.max(1, Math.trunc(dadoClase));
-            const maximoClasePorDg = dadoClaseCalculado * 2 + 2 + reglaConstitucion.modificador + bonoDotes.bonoPorDadoClase;
-
-            vida += maximoClasePorDg;
-            vidaMax += maximoClasePorDg;
-            for (let i = 1; i < nivel; i++) {
-                const tirada = this.randomInt(1, dadoClaseCalculado * 2 + 2);
-                vida += tirada + reglaConstitucion.modificador + bonoDotes.bonoPorDadoClase;
-                vidaMax += maximoClasePorDg;
-                tiradasAleatorias++;
-            }
-
-            nivelesClase += nivel;
-            flags.dadosGolpe = true;
+        const resultado = calcularPuntosGolpe({
+            dgsRaciales: { cantidad: dgsRaciales, caras: dadoComun ?? dadoRacial },
+            nivelesClase,
+            dgsPlantillas: plantillas
+                .filter((plantilla) => dgsDePlantillas([plantilla]) > 0)
+                .map((plantilla) => ({
+                    cantidad: dgsDePlantillas([plantilla]),
+                    caras: carasDado(plantilla?.Licantronia_dg?.Dado) || dadoRacial,
+                })),
+            modConstitucion: reglaConstitucion.modificador,
+            bonoPorDg: bonoDotes.bonoPorDadoClase,
+            bonoPlano: bonoDotes.bonoPlano,
+            tirar: (caras) => this.randomInt(1, caras),
         });
-
-        plantillas.forEach((plantilla) => {
-            const cantidadDgLic = Math.max(0, toInt(plantilla?.Licantronia_dg?.Multiplicador));
-            const sumaDgLic = toNumber(plantilla?.Licantronia_dg?.Suma);
-            const dadoLic = this.resolverCarasDadoLicantronia(plantilla, dadoRacialCalculado);
-            const dadoLicCalculado = Math.max(1, Math.trunc(dadoLic));
-            const maximoLicPorDg = dadoLicCalculado * 2 + 2 + reglaConstitucion.modificador;
-
-            for (let i = 1; i < cantidadDgLic; i++)
-                vidaMax += maximoLicPorDg;
-
-            vidaMax += sumaDgLic;
-        });
-
-        vida += bonoDotes.bonoPlano;
-        vidaMax += bonoDotes.bonoPlano;
 
         return {
-            total: Math.max(1, Math.trunc(vida)),
-            maximo: Math.max(1, Math.trunc(vidaMax)),
+            total: resultado.total,
+            maximo: resultado.maximo,
             detalle: {
                 constitucionAplicada: reglaConstitucion.aplica,
                 modificadorConstitucion: reglaConstitucion.modificador,
-                tiradasAleatorias,
+                tiradasAleatorias: resultado.tiradas,
                 dgsRaciales,
-                nivelesClase,
+                nivelesClase: nivelesClase.reduce((acc, grupo) => acc + grupo.cantidad, 0),
                 bonoPlanoDotes: bonoDotes.bonoPlano,
                 bonoPorDadoClaseDotes: bonoDotes.bonoPorDadoClase,
                 flags,
@@ -9661,123 +9567,47 @@ export class NuevoPersonajeService {
         };
     }
 
+    /** Las caras de los DG raciales: el dado de la raza, el del personaje en curso o el de su tipo de criatura. */
     private resolverCarasDadoRacialParaVida(raza: Raza | null): number {
-        const dadoRaza = this.resolverCarasDadoDesdeTexto(`${raza?.Dgs_adicionales?.Dado ?? ''}`);
-        if (dadoRaza > 0)
-            return dadoRaza;
-
-        const dadoPreview = toInt(this.personajeCreacion?.Dados_golpe);
-        if (dadoPreview > 0)
-            return dadoPreview;
-
-        const dadoTipo = this.resolverDadoGolpeTipoActual();
-        if (dadoTipo > 0)
-            return dadoTipo;
-
-        return 8;
+        return carasDado(raza?.Dgs_adicionales?.Dado)
+            || Math.max(0, toInt(this.personajeCreacion?.Dados_golpe))
+            || this.resolverDadoGolpeTipoActual();
     }
 
-    private resolverCarasDadoClaseParaVida(nombreClase: string, fallback: number): number {
-        const nombreNorm = normalizarTexto(nombreClase);
-        const clase = (this.catalogoClases ?? [])
-            .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm) ?? null;
-        const dadoClase = this.resolverCarasDadoClase(clase);
-        if (dadoClase > 0)
-            return dadoClase;
-        return Math.max(1, toInt(fallback));
+    /**
+     * La clase del catálogo de una entrada del desglose: por su id y, si la entrada no lo trae (un borrador de antes),
+     * por su nombre.
+     */
+    private obtenerClaseDelDesglose(entrada: { Id?: number; Nombre?: string; } | null | undefined): Clase | null {
+        const id = toInt(entrada?.Id);
+        const porId = id > 0 ? this.catalogoClases.find((clase) => toInt(clase?.Id) === id) : undefined;
+        return porId ?? this.obtenerClaseCatalogoPorNombre(`${entrada?.Nombre ?? ''}`);
     }
 
-    private resolverCarasDadoClase(clase: Clase | null): number {
-        if (!clase)
-            return 0;
-
-        const carasPorNombre = this.resolverCarasDadoDesdeTexto(`${clase?.Tipo_dado?.Nombre ?? ''}`);
-        if (carasPorNombre > 0)
-            return carasPorNombre;
-
-        const idTipo = toInt(clase?.Tipo_dado?.Id);
-        if (idTipo > 0) {
-            const idx = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idTipo - 1));
-            return DADOS_PROGRESION[idx];
-        }
-
-        return 0;
-    }
-
-    private resolverCarasDadoLicantronia(plantilla: Plantilla, fallback: number): number {
-        const carasPorNombre = this.resolverCarasDadoDesdeTexto(`${plantilla?.Licantronia_dg?.Dado ?? ''}`);
-        if (carasPorNombre > 0)
-            return carasPorNombre;
-
-        const idDado = toInt(plantilla?.Licantronia_dg?.Id_dado);
-        if (idDado > 0) {
-            const idx = Math.max(0, Math.min(DADOS_PROGRESION.length - 1, idDado - 1));
-            return DADOS_PROGRESION[idx];
-        }
-
-        const porPlantilla = this.resolverDadoDesdePlantilla(plantilla);
-        if (porPlantilla > 0)
-            return porPlantilla;
-
-        return Math.max(1, toInt(fallback));
-    }
-
-    private resolverCarasDadoDesdeTexto(valor: string): number {
-        const match = `${valor ?? ''}`.match(/d\s*(\d+)/i);
-        if (!match || !match[1])
-            return 0;
-        const caras = toInt(match[1]);
-        if (caras <= 0)
-            return 0;
-        return caras;
-    }
-
+    /** Los PG que dan las dotes del personaje: `Modificadores.Pg_a` (Dureza, +3) y `Modificadores.Pg_a_n` (+N por DG). */
     private resolverBonosPgsDesdeDotes(): { bonoPlano: number; bonoPorDadoClase: number; } {
-        let bonoPlano = 0;
-        let bonoPorDadoClase = 0;
-
-        (this.personajeCreacion.DotesContextuales ?? []).forEach((entrada) => {
-            const mods = (entrada?.Dote?.Modificadores ?? {}) as Record<string, any>;
-            bonoPlano += this.sumarModificadorDotePorClaves(mods, CLAVES_MOD_DOTE_PGS_PLANO);
-            bonoPorDadoClase += this.sumarModificadorDotePorClaves(mods, CLAVES_MOD_DOTE_PGS_POR_DADO);
-        });
-
-        return {
-            bonoPlano: Math.trunc(bonoPlano),
-            bonoPorDadoClase: Math.trunc(bonoPorDadoClase),
-        };
-    }
-
-    private sumarModificadorDotePorClaves(mods: Record<string, any>, claves: Set<string>): number {
-        return Object.entries(mods ?? {}).reduce((acumulado, [clave, valor]) => {
-            const claveNormalizada = this.normalizarClaveModificadorDote(clave);
-            if (!claves.has(claveNormalizada))
-                return acumulado;
-            return acumulado + toNumber(valor);
-        }, 0);
-    }
-
-    private normalizarClaveModificadorDote(clave: string): string {
-        return normalizarTexto(`${clave ?? ''}`).replace(/[^a-z0-9]/g, '');
+        return (this.personajeCreacion.DotesContextuales ?? []).reduce((acc, entrada) => ({
+            bonoPlano: acc.bonoPlano + toInt(entrada?.Dote?.Modificadores?.['Pg_a']),
+            bonoPorDadoClase: acc.bonoPorDadoClase + toInt(entrada?.Dote?.Modificadores?.['Pg_a_n']),
+        }), { bonoPlano: 0, bonoPorDadoClase: 0 });
     }
 
     private esCaracteristicaAumentoValida(value: string): value is CaracteristicaKey {
         return (CARACTERISTICAS as string[]).includes(`${value ?? ''}`.trim());
     }
 
+    /** Los DG totales: niveles de clase + DG raciales + DG de plantilla (`dgsTotales`). */
     private getNivelEfectivoParaAumentos(): number {
-        const nivelClases = this.getNivelClasesActual();
-        const dgsRaza = toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
-        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
-        return Math.max(0, nivelClases + dgsRaza + dgsPlantillas);
+        return dgsTotales(this.getPartesNivelPersonaje());
     }
 
     /**
-     * El nivel de clase recién aplicado es el primero del personaje: no hay otros niveles de clase ni DG de la raza o
-     * de las plantillas (esos DG ya fueron su primer nivel).
+     * El nivel de clase recién aplicado es el primero del personaje: no hay otros niveles de clase ni DG raciales (esos
+     * fueron su primer DG). Los DG de una plantilla no cuentan: el animal de un licántropo nunca es su primer DG (Manual
+     * de monstruos), así que su primer nivel de clase sí lleva el ×4.
      */
     private esPrimerNivelDelPersonaje(): boolean {
-        return this.getNivelClasesActual() <= 1 && !this.tieneDgsDeRazaOPlantillas();
+        return this.getNivelClasesActual() <= 1 && !primerDgEsRacial(this.getPartesNivelPersonaje());
     }
 
     /** La suma de los niveles de clase del personaje (`desgloseClases`), sin DG ni ajuste de nivel. */
@@ -9786,31 +9616,26 @@ export class NuevoPersonajeService {
             .reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
     }
 
-    private getNivelEfectivoParaDotesProgresion(): number {
-        const nivelClases = this.getNivelClasesActual();
-        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
-        return Math.max(0, nivelClases + dgsPlantillas);
-    }
-
+    /**
+     * Las dotes por DG totales (1 en el primer DG y otra cada 3: 3, 6, 9…; Manual del jugador, cap. 3), sin las de los
+     * DG raciales, que da la raza (`Dgs_adicionales.Dotes_extra`). Si el primer DG no fue racial, su dote es de esta
+     * progresión, también con DG de plantilla (un humano licántropo lobo guerrero 1: 3 DG, 2 dotes).
+     */
     private getHitosDotesProgresion(): number[] {
-        const nivelEfectivoDotes = this.getNivelEfectivoParaDotesProgresion();
-        const dgsRaciales = this.getDgsRacialesAdicionalesParaDotesProgresion();
-        const dotesBasePorDgsRaciales = Math.max(0, Math.floor(dgsRaciales / 3));
-        const doteInicialNivel = nivelEfectivoDotes > 0 && !this.tieneDgsDeRazaOPlantillas() ? 1 : 0;
-        const totalPorProgresion = Math.max(
-            0,
-            doteInicialNivel + Math.floor((nivelEfectivoDotes + dgsRaciales) / 3) - dotesBasePorDgsRaciales
-        );
+        const partes = this.getPartesNivelPersonaje();
+        const dgs = dgsTotales(partes);
+        const dgsRaciales = Math.max(0, toInt(partes.dgsRaza));
+        const primerDgRacial = primerDgEsRacial(partes);
+        const dotesDeLaRaza = primerDgRacial ? 1 + Math.floor(dgsRaciales / 3) : 0;
+        const totalPorProgresion = dgs > dgsRaciales
+            ? Math.max(0, 1 + Math.floor(dgs / 3) - dotesDeLaRaza)
+            : 0;
         if (totalPorProgresion < 1)
             return [];
 
-        const nivelVisible = Math.max(
-            0,
-            toNumber(this.personajeCreacion?.NEP),
-            this.getNivelEfectivoPersonajeActual()
-        );
+        const nivelVisible = dgs;
         const hitosVisibles: number[] = [];
-        if (!this.tieneDgsDeRazaOPlantillas())
+        if (!primerDgRacial)
             hitosVisibles.push(1);
 
         for (let nivel = 3; nivel <= nivelVisible; nivel += 3)
@@ -9820,26 +9645,6 @@ export class NuevoPersonajeService {
         return hitosVisibles.slice(inicio);
     }
 
-    private getDgsRacialesAdicionalesParaDotesProgresion(): number {
-        return Math.max(0, toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad));
-    }
-
-    private getNivelEfectivoPersonajeActual(): number {
-        const nivelClases = this.getNivelClasesActual();
-        const dgsRaza = toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
-        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
-        const ajusteRaza = toNumber(this.razaSeleccionada?.Ajuste_nivel);
-        const ajustePlantillas = (this.estadoFlujo.plantillas.seleccionadas ?? [])
-            .reduce((acc, plantilla) => acc + toNumber(plantilla?.Ajuste_nivel), 0);
-        return Math.max(0, nivelClases + dgsRaza + dgsPlantillas + ajusteRaza + ajustePlantillas);
-    }
-
-    /** La raza o alguna plantilla da DG raciales: el primer nivel del personaje fue el de esos DG, no uno de clase. */
-    private tieneDgsDeRazaOPlantillas(): boolean {
-        const dgsRaza = toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
-        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
-        return dgsRaza > 0 || dgsPlantillas > 0;
-    }
 
     private crearPendienteAumento(valor: number, origen: string, descripcion: string): AumentoCaracteristicaPendiente {
         return {

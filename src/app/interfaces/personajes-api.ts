@@ -8,7 +8,6 @@ export interface PersonajeContextoIdsDto {
     idAlineamiento?: number | null;
     idDeidad?: number | null;
     idGenero?: number | null;
-    idCarga?: number | null;
     idManiobrabilidad?: number | null;
     idEspArcana?: number | null;
     idEspPsionica?: number | null;
@@ -40,6 +39,11 @@ export interface PersonajeCreateModificadorValorDto {
     origen?: string;
 }
 
+/** Un modificador `{ valor, origen }`; en los varios de las salvaciones, con `condicion` si es condicional. */
+export interface PersonajeCreateModificadorSalvacionDto extends PersonajeCreateModificadorValorDto {
+    condicion?: string;
+}
+
 export interface PersonajeCreateModificadoresDto {
     ca?: PersonajeCreateModificadorValorDto[];
     iniciativa?: PersonajeCreateModificadorValorDto[];
@@ -47,15 +51,15 @@ export interface PersonajeCreateModificadoresDto {
     salvaciones?: {
         fortaleza?: {
             claseos?: PersonajeCreateModificadorValorDto[];
-            varios?: PersonajeCreateModificadorValorDto[];
+            varios?: PersonajeCreateModificadorSalvacionDto[];
         };
         reflejos?: {
             claseos?: PersonajeCreateModificadorValorDto[];
-            varios?: PersonajeCreateModificadorValorDto[];
+            varios?: PersonajeCreateModificadorSalvacionDto[];
         };
         voluntad?: {
             claseos?: PersonajeCreateModificadorValorDto[];
-            varios?: PersonajeCreateModificadorValorDto[];
+            varios?: PersonajeCreateModificadorSalvacionDto[];
         };
     };
 }
@@ -141,7 +145,6 @@ export interface PersonajeCreateRequestDto {
         deidad?: number;
         idAlineamiento?: number;
         idGenero?: number;
-        idCarga?: number;
         puntosGolpe?: number;
         pgsLic?: number;
         correr?: number;
@@ -269,7 +272,7 @@ export interface PersonajeEspecialDto extends PersonajeNombreIdDto {
  * base 10 y los bonificadores de armadura, escudo, armadura natural, desvío, esquiva…).
  */
 export type PersonajeTipoParteDto = 'caracteristica' | 'ataqueBase' | 'tamano' | 'clase' | 'varios' | 'rangos' | 'rangosVarios'
-    | 'equipo' | 'base' | 'bonificador';
+    | 'sinergia' | 'armadura' | 'equipo' | 'base' | 'bonificador';
 
 /** Una parte de un total: de dónde sale y cuánto suma. `origen` es `null` si la base no lo dice. */
 export interface PersonajeParteDto {
@@ -278,12 +281,19 @@ export interface PersonajeParteDto {
     valor: number;
     /** En las partes `equipo` y `bonificador`: el tipo de bonificador («Resistencia», «Armadura», «Desvío»…). */
     bonificador?: string | null;
+    /** En las condicionales: cuándo cuenta («Contra veneno»); esas no se suman al total. */
+    condicion?: string | null;
 }
 
 /** Un total hecho por la API, con su desglose (el total es la suma del desglose). */
 export interface PersonajeTotalDto {
     total: number;
     desglose: PersonajeParteDto[];
+    /**
+     * Lo que solo cuenta en unas tiradas y no se suma (`condicionales` de las salvaciones, `sinergiasCondicionales` de las
+     * habilidades), con su `condicion`.
+     */
+    condicionales?: PersonajeParteDto[];
 }
 
 export interface PersonajeSalvacionesDto {
@@ -303,6 +313,8 @@ export interface PersonajeHabilidadDto extends PersonajeNombreIdDto, PersonajeTo
     rangos: number;
     rangosVarios: number;
     varios: string | null;
+    /** Las sinergias que solo cuentan en unas pruebas (MJ tabla 4-5): se enseñan y no se suman. */
+    sinergiasCondicionales?: PersonajeParteDto[];
 }
 
 export interface PersonajeDefensaDto {

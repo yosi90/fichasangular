@@ -1,7 +1,7 @@
 import { Component, EventEmitter, HostListener, Output, ViewChild } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { MatTabGroup } from '@angular/material/tabs';
-import { Subscription, firstValueFrom, take } from 'rxjs';
+import { Observable, Subscription, firstValueFrom, take } from 'rxjs';
 import { Caracteristica } from 'src/app/interfaces/caracteristica';
 import { Campana, Super } from 'src/app/interfaces/campaña';
 import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
@@ -96,6 +96,9 @@ import { InformacionBasicosModalSection } from './informacion-basicos-modal/info
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
+import { TamanoService } from 'src/app/services/tamano.service';
+import { SubtipoService } from 'src/app/services/subtipo.service';
+import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
@@ -311,7 +314,11 @@ const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
     permitirVentajasDesventajas: true,
     permitirIgnorarRestriccionesAlineamiento: true,
     maxFuentesHomebrewGeneralesPorPersonaje: null,
+    maxTiradasPuntosGolpe: null,
 };
+
+/** Las tiradas de PG sin campaña o con una campaña que no las limita (decisión del propietario del 2026-10-26). */
+const TIRADAS_PUNTOS_GOLPE_SIN_LIMITE = 3;
 
 @Component({
     selector: 'app-nuevo-personaje',
@@ -567,6 +574,7 @@ export class NuevoPersonajeComponent {
     private deidadesSub?: Subscription;
     private tiposCriaturaSub?: Subscription;
     private alineamientosBasicosSub?: Subscription;
+    private catalogosCifrasSubs: Subscription[] = [];
     @ViewChild(MatTabGroup) TabGroup?: MatTabGroup;
     @Output() personajeFinalizado = new EventEmitter<number>();
 
@@ -602,6 +610,9 @@ export class NuevoPersonajeComponent {
         private userProfileNavigationSvc: UserProfileNavigationService,
         private listaPersonajesSvc?: ListaPersonajesService,
         private equipoSvc?: EquipoService,
+        private tamanoSvc?: TamanoService,
+        private subtipoSvc?: SubtipoService,
+        private razaCatalogosSvc?: RazaCatalogosService,
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -633,6 +644,7 @@ export class NuevoPersonajeComponent {
         this.deidadesSub?.unsubscribe();
         this.tiposCriaturaSub?.unsubscribe();
         this.alineamientosBasicosSub?.unsubscribe();
+        this.catalogosCifrasSubs.forEach((sub) => sub.unsubscribe());
         this.restaurarChatTrasModalCaracteristicas();
     }
 
@@ -678,6 +690,7 @@ export class NuevoPersonajeComponent {
         this.cargarClases();
         this.cargarDotes();
         this.cargarTiposCriatura();
+        this.cargarCatalogosCifras();
         this.cargarAlineamientosBasicos();
         if (uid.length > 0)
             this.nuevoPSvc.activarPersistenciaBorradorLocal(uid);
@@ -4121,9 +4134,20 @@ export class NuevoPersonajeComponent {
         this.selectorVisibilidadValorInicial = null;
     }
 
+    /**
+     * Las tiradas de PG que deja la campaña (`politicaCreacion.maxTiradasPuntosGolpe`: 1 es el Manual del jugador, como
+     * mucho 3); sin campaña o sin límite, 3.
+     */
+    private resolverTiradasPuntosGolpe(): number {
+        const maximo = this.selectedCampaignPolicy?.maxTiradasPuntosGolpe;
+        if (maximo === null || maximo === undefined || !Number.isFinite(Number(maximo)))
+            return TIRADAS_PUNTOS_GOLPE_SIN_LIMITE;
+        return Math.min(TIRADAS_PUNTOS_GOLPE_SIN_LIMITE, Math.max(1, Math.trunc(Number(maximo))));
+    }
+
     private abrirSelectorPuntosGolpe(): void {
         this.resetearEstadoFinalizacion();
-        this.tiradasVidaTotales = 3;
+        this.tiradasVidaTotales = this.resolverTiradasPuntosGolpe();
         this.tiradasVidaRestantes = Math.max(0, this.tiradasVidaTotales - 1);
         this.resultadoVidaActual = this.nuevoPSvc.calcularVidaFinalAleatoria();
         this.modalSelectorVisibilidadAbierto = false;
@@ -4367,7 +4391,6 @@ export class NuevoPersonajeComponent {
             idAlineamiento: this.resolverIdAlineamientoCreacion(),
             idDeidad: this.resolverIdDeidadCreacion(),
             idGenero: this.resolverIdGeneroCreacion(),
-            idCarga: this.resolverIdCargaCreacion(),
             idManiobrabilidad: this.toPositiveInt((this.Personaje as any)?.Raza?.Maniobrabilidad?.Id) ?? 0,
             idEspArcana: this.resolverIdEscuelaEspecialistaCreacion(),
             idEspPsionica: this.resolverIdDisciplinaEspecialistaCreacion(),
@@ -4483,15 +4506,6 @@ export class NuevoPersonajeComponent {
         if (genero === 'sin genero')
             return 4;
         return null;
-    }
-
-    private resolverIdCargaCreacion(): number {
-        const fuerza = Math.trunc(Number(this.Personaje?.Fuerza ?? 0));
-        if (!Number.isFinite(fuerza))
-            return 1;
-        if (fuerza >= 10)
-            return Math.min(fuerza - 9, 20);
-        return 1;
     }
 
     private resolverIdEscuelaEspecialistaCreacion(): number {
@@ -6372,6 +6386,23 @@ export class NuevoPersonajeComponent {
                 this.refreshBasicosDerivedState();
             },
         });
+    }
+
+    /**
+     * Los catálogos de las cifras de la creación: la tabla de carga y los tamaños con sus multiplicadores (la carga), los
+     * subtipos con su ajuste de nivel (el NEP) y los tipos de dado (la escalera de dados de las plantillas).
+     */
+    private cargarCatalogosCifras(): void {
+        this.catalogosCifrasSubs.forEach((sub) => sub.unsubscribe());
+        this.catalogosCifrasSubs = [];
+        const escuchar = <T>(origen: Observable<T[]> | undefined, aplicar: (items: T[]) => void) => {
+            if (origen)
+                this.catalogosCifrasSubs.push(origen.subscribe({ next: (items) => aplicar(items ?? []), error: () => aplicar([]) }));
+        };
+        escuchar(this.tamanoSvc?.getCapacidadesCarga(), (filas) => this.nuevoPSvc.setTablaCarga(filas));
+        escuchar(this.tamanoSvc?.getTamanos(), (tamanos) => this.nuevoPSvc.setCatalogoTamanos(tamanos));
+        escuchar(this.subtipoSvc?.getSubtipos(), (subtipos) => this.nuevoPSvc.setCatalogoSubtipos(subtipos));
+        escuchar(this.razaCatalogosSvc?.getTiposDado(), (tipos) => this.nuevoPSvc.setCatalogoTiposDado(tipos));
     }
 
     private cargarTiposCriatura(): void {
