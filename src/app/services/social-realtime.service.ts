@@ -152,14 +152,21 @@ export class SocialRealtimeService implements OnDestroy {
 
     private closeSocket(): void {
         this.stopPingLoop();
-        if (!this.socket)
+        const socket = this.socket;
+        if (!socket)
             return;
+        // Se suelta antes de cerrarlo: su onclose (síncrono en algunos entornos, tardío en otros) no debe volver a
+        // cerrarlo ni cerrar el socket nuevo de la reconexión.
+        this.socket = null;
+        socket.onopen = null;
+        socket.onmessage = null;
+        socket.onerror = null;
+        socket.onclose = null;
         try {
-            this.socket.close();
+            socket.close();
         } catch {
             // noop
         }
-        this.socket = null;
     }
 
     private shouldRetryRealtimeBootstrap(error: unknown): boolean {
