@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { CARACTERISTICAS, Caracteristica } from '../interfaces/caracteristica';
-import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseEspecialNivel, ClaseNivelDetalle } from '../interfaces/clase';
+import { Clase, ClaseAumentoLanzador, ClaseConjuroRef, ClaseDoteNivel, ClaseEspecialNivel, ClaseNivelDetalle } from '../interfaces/clase';
 import { Conjuro } from '../interfaces/conjuro';
 import { DisciplinaConjuros } from '../interfaces/disciplina-conjuros';
 import { Dote, DoteExtraItem } from '../interfaces/dote';
@@ -58,6 +58,15 @@ import { resumenClases } from './utils/resumen-clases';
 import { construirCompaneroParaGuardar, construirFamiliarParaGuardar } from './utils/mascota-payload';
 import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadDgRaciales, puntosHabilidadNivelClase } from './utils/puntos-habilidad';
 import { tieneTextoVisible } from './utils/texto-visible';
+import {
+    conjurosAdicionales,
+    modificadorDePuntuacion,
+    nivelLanzadorDeClase,
+    puedeLanzarNivelConjuro,
+    puntosPoderAdicionales,
+    puntuacionLanzamiento,
+} from './utils/reglas-magia';
+import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './utils/alineamiento-contrato';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -686,6 +695,12 @@ export interface EspecialidadArcanaSeleccion {
 export interface EspecialidadPsionicaSeleccion {
     disciplinaEspecialistaId: number | null;
     disciplinaProhibidaId: number | null;
+}
+
+/** Un conjuro que el personaje puede añadir al libro de una clase, con su nivel para ella. */
+export interface ConjuroAniadibleLibro {
+    conjuro: Conjuro;
+    nivel: number;
 }
 
 export interface EspecialidadMagicaSeleccion {
@@ -3417,105 +3432,125 @@ export class NuevoPersonajeService {
         return Array.from(resultado.values());
     }
 
+    /**
+     * El nivel de lanzador más alto de ese tipo para los prerrequisitos: el de verdad (la mitad en el paladín y el
+     * explorador, MJ cap. 3), y solo de las clases que pueden lanzar algún conjuro con su característica (MJ cap. 1).
+     */
     private resolverNivelLanzadorMaximoPorTipo(tipo: 'arcano' | 'divino' | 'psionico'): number {
         let maximo = 0;
         (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
             const nombre = `${entrada?.Nombre ?? ''}`.trim();
-            if (nombre.length < 1)
-                return;
-            const clase = this.obtenerClaseCatalogoPorNombre(nombre);
+            const clase = this.obtenerClaseDeDesglose(entrada);
             if (!clase || !this.tieneLanzamientoPropio(clase))
                 return;
 
             const tipoClase = this.resolverTipoLanzamientoClase(clase);
             const coincide = tipoClase === tipo || (tipoClase === 'mixto' && (tipo === 'arcano' || tipo === 'divino'));
-            if (!coincide)
+            if (!coincide || this.nivelesConjuroLanzablesClase(clase, nombre).length < 1)
                 return;
-            maximo = Math.max(maximo, this.getNivelLanzadorEfectivoClase(nombre));
+            maximo = Math.max(maximo, this.getNivelLanzadorRealClase(clase, nombre));
         });
         return Math.max(0, maximo);
     }
 
+    /** El nivel de lanzador de verdad de la clase: su progresión o, si la divide (paladín, explorador), la mitad. */
+    private getNivelLanzadorRealClase(clase: Clase | null, nombreClase: string): number {
+        return nivelLanzadorDeClase(
+            clase,
+            this.getNivelLanzadorEfectivoClase(nombreClase),
+            this.obtenerNivelActualClase(nombreClase),
+            this.obtenerBonusNivelLanzadorClase(nombreClase)
+        );
+    }
+
+    /**
+     * Los niveles de conjuro (o de poder) que la clase puede lanzar ahora: los de su tabla en su nivel de lanzador con
+     * algún espacio (de la tabla o adicional por característica, MJ tabla 1-1) y con la característica de lanzamiento a
+     * 10 + el nivel (MJ cap. 1; Manual de psiónica expandido). Un paladín 4 con Sab 11 no lanza ninguno (0 de la tabla y
+     * ninguno adicional).
+     */
+    private nivelesConjuroLanzablesClase(clase: Clase, nombreClase: string): number[] {
+        const progresion = this.getNivelLanzadorEfectivoClase(nombreClase);
+        if (progresion < 1)
+            return [];
+        const detalle = this.obtenerDetallePorNivelLanzadorClase(clase, progresion);
+        if (!detalle)
+            return [];
+        const puntuacion = puntuacionLanzamiento(this.personajeCreacion, clase);
+        if (clase?.Conjuros?.Psionicos) {
+            const maximo = toInt(detalle?.Nivel_max_poder_accesible_nivel_lanzadorPsionico, -1);
+            return Array.from({ length: Math.max(0, maximo + 1) }, (_valor, nivel) => nivel)
+                .filter((nivel) => puedeLanzarNivelConjuro(puntuacion, nivel));
+        }
+        const modificador = modificadorDePuntuacion(puntuacion);
+        const diarios = this.normalizarMapaConjurosDiarios(detalle?.Conjuros_diarios);
+        return Object.keys(diarios)
+            .map((nivel) => toNumber(nivel))
+            .filter((nivel) => toNumber(diarios[nivel]) >= 0 && puedeLanzarNivelConjuro(puntuacion, nivel))
+            // Sin característica de lanzamiento en el catálogo no se puede saber si tiene adicionales: no se filtra.
+            .filter((nivel) => puntuacion === null || toNumber(diarios[nivel]) > 0 || conjurosAdicionales(modificador, nivel) > 0)
+            .sort((a, b) => a - b);
+    }
+
+    /** La clase del catálogo de una entrada del desglose: por su id y, si no lo tiene, por su nombre. */
+    private obtenerClaseDeDesglose(entrada: { Id?: number; Nombre?: string; } | null | undefined): Clase | null {
+        const id = toInt(entrada?.Id);
+        if (id > 0) {
+            const porId = this.catalogoClases.find((clase) => toInt(clase?.Id) === id);
+            if (porId)
+                return porId;
+        }
+        return this.obtenerClaseCatalogoPorNombre(`${entrada?.Nombre ?? ''}`);
+    }
+
+    /** El nivel de conjuro más alto de ese tipo que el personaje puede lanzar (con la característica a 10 + nivel). */
     private resolverNivelConjuroMaximoPorTipo(tipo: 'arcano' | 'divino'): number {
         let maximo = -1;
         (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
             const nombre = `${entrada?.Nombre ?? ''}`.trim();
-            if (nombre.length < 1)
-                return;
-
-            const clase = this.obtenerClaseCatalogoPorNombre(nombre);
+            const clase = this.obtenerClaseDeDesglose(entrada);
             if (!clase)
                 return;
             if (tipo === 'arcano' && !clase?.Conjuros?.Arcanos)
                 return;
             if (tipo === 'divino' && !clase?.Conjuros?.Divinos)
                 return;
-
-            const nivelLanzadorActual = this.getNivelLanzadorEfectivoClase(nombre);
-            if (nivelLanzadorActual < 1)
-                return;
-
-            const detalleActual = this.obtenerDetallePorNivelLanzadorClase(clase, nivelLanzadorActual);
-            if (!detalleActual)
-                return;
-            const detallePrevio = nivelLanzadorActual > 1
-                ? this.obtenerDetallePorNivelLanzadorClase(clase, nivelLanzadorActual - 1)
-                : null;
-            const acceso = this.resolverAccesoConjurosPorTipo(clase, detalleActual, detallePrevio);
-            const niveles = acceso.nivelesAccesibles;
-            if (!niveles || niveles.size < 1)
-                return;
-
-            const maxClase = Array.from(niveles.values()).reduce((acc, nivel) => Math.max(acc, toNumber(nivel)), -1);
-            maximo = Math.max(maximo, maxClase);
+            maximo = Math.max(maximo, ...this.nivelesConjuroLanzablesClase(clase, nombre));
         });
         return Math.max(0, maximo);
     }
 
+    /** El nivel de poder más alto que el personaje puede manifestar (con la característica a 10 + nivel). */
     private resolverNivelPoderPsionicoMaximo(): number {
         let maximo = -1;
         (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
-            const nombre = `${entrada?.Nombre ?? ''}`.trim();
-            if (nombre.length < 1)
-                return;
-
-            const clase = this.obtenerClaseCatalogoPorNombre(nombre);
+            const clase = this.obtenerClaseDeDesglose(entrada);
             if (!clase?.Conjuros?.Psionicos)
                 return;
-
-            const nivelLanzadorActual = this.getNivelLanzadorEfectivoClase(nombre);
-            if (nivelLanzadorActual < 1)
-                return;
-
-            const detalleActual = this.obtenerDetallePorNivelLanzadorClase(clase, nivelLanzadorActual);
-            if (!detalleActual)
-                return;
-            maximo = Math.max(
-                maximo,
-                toInt(detalleActual?.Nivel_max_poder_accesible_nivel_lanzadorPsionico)
-            );
+            maximo = Math.max(maximo, ...this.nivelesConjuroLanzablesClase(clase, `${entrada?.Nombre ?? ''}`.trim()));
         });
         return Math.max(0, maximo);
     }
 
+    /**
+     * La reserva de puntos de poder para los prerrequisitos: la de la tabla en el nivel de manifestador (con los aumentos
+     * de prestigio) más los adicionales por característica (MPE tabla 2-1). Con la característica en 9 o menos, esa clase
+     * no manifiesta ni aporta puntos.
+     */
     private resolverReservaPsionicaActual(): number {
         let total = 0;
         (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) => {
             const nombre = `${entrada?.Nombre ?? ''}`.trim();
-            const nivelActual = Math.max(0, toNumber(entrada?.Nivel));
-            if (nombre.length < 1 || nivelActual < 1)
-                return;
-
-            const clase = this.catalogoClases.find((item) =>
-                normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombre)
-            );
+            const clase = this.obtenerClaseDeDesglose(entrada);
             if (!clase?.Conjuros?.Psionicos)
                 return;
-
-            const detalleActual = this.obtenerDetalleNivelClase(clase, nivelActual);
-            if (!detalleActual)
+            const progresion = this.getNivelLanzadorEfectivoClase(nombre);
+            const detalle = progresion > 0 ? this.obtenerDetallePorNivelLanzadorClase(clase, progresion) : null;
+            const puntuacion = puntuacionLanzamiento(this.personajeCreacion, clase);
+            if (!detalle || !puedeLanzarNivelConjuro(puntuacion, 0))
                 return;
-            total += Math.max(0, toInt(detalleActual?.Reserva_psionica));
+            total += Math.max(0, toInt(detalle?.Reserva_psionica))
+                + puntosPoderAdicionales(modificadorDePuntuacion(puntuacion), this.getNivelLanzadorRealClase(clase, nombre));
         });
         return Math.max(0, total);
     }
@@ -4396,13 +4431,14 @@ export class NuevoPersonajeService {
                 ));
                 const prohibidasSeleccionadas = escuelasProhibibles
                     .filter((escuela) => idsProhibidas.includes(toNumber(escuela?.Id)));
-                const prohibidasRequeridas = this.esNombreAdivinacion(escuelaEspecialista?.Nombre ?? '') ? 1 : 2;
+                // Cuántas prohíbe sale de la escuela (2; la adivinación, 1; MJ cap. 3), no de su nombre.
+                const prohibidasRequeridas = Math.max(0, toInt(escuelaEspecialista?.Prohibidas_al_especializarse));
                 if (prohibidasSeleccionadas.length !== prohibidasRequeridas) {
                     return {
                         aplicado: false,
                         razon: prohibidasRequeridas === 1
                             ? 'Debes seleccionar exactamente 1 escuela prohibida.'
-                            : 'Debes seleccionar exactamente 2 escuelas prohibidas.',
+                            : `Debes seleccionar exactamente ${prohibidasRequeridas} escuelas prohibidas.`,
                     };
                 }
 
@@ -4431,18 +4467,16 @@ export class NuevoPersonajeService {
                     razon: 'Debes seleccionar una disciplina válida para especializarte.',
                 };
             }
-            if (idProhibida <= 0 || idProhibida === idEspecialista) {
+            // El Manual de psiónica expandido no prohíbe ninguna disciplina: lo dice el dato de la disciplina elegida.
+            const requiereProhibida = toInt(disciplinaEspecialista?.Prohibidas_al_especializarse) > 0;
+            const disciplinaProhibida = requiereProhibida
+                ? disciplinasEspecializables.find((disciplina) =>
+                    toNumber(disciplina?.Id) === idProhibida && idProhibida !== idEspecialista) ?? null
+                : null;
+            if (requiereProhibida && !disciplinaProhibida) {
                 return {
                     aplicado: false,
                     razon: 'Debes seleccionar una disciplina prohibida distinta a la especialista.',
-                };
-            }
-            const disciplinaProhibida = disciplinasEspecializables
-                .find((disciplina) => toNumber(disciplina?.Id) === idProhibida);
-            if (!disciplinaProhibida) {
-                return {
-                    aplicado: false,
-                    razon: 'La disciplina prohibida seleccionada no es válida.',
                 };
             }
 
@@ -6361,14 +6395,18 @@ export class NuevoPersonajeService {
         const desglose = [...(this.personajeCreacion.desgloseClases ?? [])];
         const index = desglose.findIndex((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
 
+        // Con el id de la clase, para encontrarla en el catálogo sin depender de su nombre.
+        const idClase = toInt(clase?.Id) > 0 ? { Id: toInt(clase.Id) } : {};
         if (index >= 0) {
             desglose[index] = {
+                ...idClase,
                 Nombre: desglose[index].Nombre,
                 Nivel: nivelNormalizado,
                 Caracteristica_lanzamiento: caracteristicaLanzamiento,
             };
         } else {
             desglose.push({
+                ...idClase,
                 Nombre: nombre,
                 Nivel: nivelNormalizado,
                 Caracteristica_lanzamiento: caracteristicaLanzamiento,
@@ -6465,48 +6503,28 @@ export class NuevoPersonajeService {
         this.aplicarIdiomasAutomaticos(`${clase.Nombre} nivel 1`, clase?.Idiomas ?? []);
     }
 
+    /** Los dominios que elige la clase en su primer nivel: el dato de la clase (el clérigo, 2; MJ cap. 3). */
     private resolverCantidadDominiosNivelClase(
         clase: Clase,
-        detalleSiguiente: ClaseNivelDetalle,
+        _detalleSiguiente: ClaseNivelDetalle,
         siguienteNivel: number
     ): number {
-        const detalleRaw = detalleSiguiente as Record<string, any>;
-        const claseRaw = clase as Record<string, any>;
-        const conjurosRaw = (clase?.Conjuros ?? {}) as Record<string, any>;
-        const candidatos = [
-            detalleRaw?.['Dominio'],
-            detalleRaw?.['Dominio_cantidad'],
-            detalleRaw?.['Cantidad_dominio'],
-            detalleRaw?.['Dominios'],
-            detalleRaw?.['Cantidad_dominios'],
-            conjurosRaw?.['Dominio_cantidad'],
-            conjurosRaw?.['Cantidad_dominio'],
-            conjurosRaw?.['Dominios'],
-            conjurosRaw?.['Cantidad_dominios'],
-            claseRaw?.['Dominio'],
-            claseRaw?.['Dominios'],
-            claseRaw?.['Dominio_cantidad'],
-            claseRaw?.['Cantidad_dominio'],
-            claseRaw?.['Cantidad_dominios'],
-        ];
-
-        for (const candidato of candidatos) {
-            const valor = toInt(candidato);
-            if (valor > 0)
-                return valor;
-        }
-
-        if (siguienteNivel === 1 && !!clase?.Conjuros?.Dominio)
-            return 1;
-        return 0;
+        if (siguienteNivel !== 1)
+            return 0;
+        return Math.max(0, toInt(clase?.Conjuros?.Dominio_cantidad));
     }
 
+    /**
+     * Los dominios que puede elegir: los de su deidad (sin deidad, todos) y, de los de alineamiento, solo los que
+     * coinciden con el suyo (MJ cap. 3, Clérigo: un clérigo neutral maligno no puede elegir Bien).
+     */
     private resolverDominiosDisponiblesClase(_clase: Clase): ClaseDominioPendiente[] {
         const dominiosPropiosDeidad = this.obtenerDominiosDeidadSeleccionada();
         const fuente = dominiosPropiosDeidad.length > 0
             ? dominiosPropiosDeidad
             : this.catalogoDominios;
         const excluirHomebrew = this.personajeCreacion.Oficial !== false;
+        const idAlineamiento = getAlineamientoBasicoIdPorNombre(`${this.personajeCreacion.Alineamiento ?? ''}`);
         const dominiosActuales = new Set(
             (this.personajeCreacion.Dominios ?? [])
                 .map((dominio) => normalizarTexto(dominio?.Nombre ?? ''))
@@ -6516,6 +6534,7 @@ export class NuevoPersonajeService {
         return fuente
             .filter((dominio) => toNumber(dominio?.Id) > 0 && `${dominio?.Nombre ?? ''}`.trim().length > 0)
             .filter((dominio) => !excluirHomebrew || dominio?.Oficial !== false)
+            .filter((dominio) => this.dominioPermiteAlineamiento(dominio, idAlineamiento))
             .filter((dominio) => !dominiosActuales.has(normalizarTexto(dominio?.Nombre ?? '')))
             .map((dominio) => ({
                 id: toNumber(dominio.Id),
@@ -6585,7 +6604,72 @@ export class NuevoPersonajeService {
                 return;
             this.personajeCreacion.Dominios.push({ Nombre: nombre });
             nombresActuales.add(nombreNorm);
+            this.aplicarPoderConcedidoDominio(this.dominioDelCatalogo(dominio.id) ?? null, nombre);
         });
+    }
+
+    /**
+     * El poder concedido del dominio, desde sus datos (MJ cap. 3): sus dotes (la de Guerra, con el arma predilecta de la
+     * deidad; la competencia, solo si no la tiene ya), sus habilidades de clase y sus aptitudes. Lo que no es dote,
+     * habilidad ni aptitud queda en su texto (`Poder`), que la ficha enseña con el dominio.
+     */
+    private aplicarPoderConcedidoDominio(dominio: DominioDetalle | null, nombreDominio: string): void {
+        if (!dominio)
+            return;
+        const origen = `Dominio: ${nombreDominio}`;
+        const armaDeidad = this.obtenerDeidadSeleccionada()?.Arma ?? null;
+        (dominio.Dotes ?? []).forEach((doteDominio) => {
+            const conArmaDeidad = !!doteDominio?.Extra_arma_deidad;
+            if (conArmaDeidad && !(toInt(armaDeidad?.Id) > 0))
+                return;
+            const idExtra = conArmaDeidad ? toInt(armaDeidad?.Id) : Math.max(0, toInt(doteDominio?.Id_extra));
+            const extra = conArmaDeidad ? `${armaDeidad?.Nombre ?? ''}`.trim() : `${doteDominio?.Extra ?? ''}`.trim();
+            if (doteDominio?.Solo_sin_competencia && this.esCompetenteConArma(idExtra, extra))
+                return;
+            const dote = this.doteDelCatalogo(toInt(doteDominio?.Id))
+                ?? this.crearDotePlaceholder(toInt(doteDominio?.Id), `${doteDominio?.Nombre ?? ''}`.trim());
+            const textoExtra = extra || 'No aplica';
+            if (this.agregarDoteAlPersonaje(dote, origen, idExtra, textoExtra))
+                this.aplicarModificadoresDote(dote, origen, idExtra, textoExtra);
+        });
+        (dominio.Habilidades_claseas ?? []).forEach((habilidad) => {
+            this.asegurarHabilidadDesdeReferencia({
+                Id_habilidad: habilidad.Id_habilidad,
+                Habilidad: habilidad.Habilidad,
+                Id_extra: habilidad.Id_extra,
+                Extra: habilidad.Extra ?? '',
+            }, { marcarClasea: true });
+        });
+        (dominio.Especiales ?? []).forEach((especial) => {
+            const nombre = `${especial?.Nombre ?? ''}`.trim();
+            const yaLaTiene = (this.personajeCreacion.Claseas ?? [])
+                .some((actual) => normalizarTexto(actual?.Nombre ?? '') === normalizarTexto(nombre));
+            if (nombre.length > 0 && !yaLaTiene)
+                this.personajeCreacion.Claseas.push({ Id: toInt(especial?.Id) || undefined, Id_extra: 0, Nombre: nombre, Extra: '' });
+        });
+    }
+
+    /** Si el personaje ya es competente con esa arma (por su id o, sin él, por su nombre). */
+    private esCompetenteConArma(idArma: number, nombreArma: string): boolean {
+        const nombre = normalizarTexto(nombreArma);
+        return this.resolverCompetenciasArmasActuales().some((arma) =>
+            (idArma > 0 && toInt(arma?.id) === idArma) || (nombre.length > 0 && normalizarTexto(arma?.nombre ?? '') === nombre));
+    }
+
+    private dominioDelCatalogo(idDominio: number): DominioDetalle | null {
+        const id = toInt(idDominio);
+        return id > 0 ? (this.catalogoDominios ?? []).find((dominio) => toInt(dominio?.Id) === id) ?? null : null;
+    }
+
+    /**
+     * Si el alineamiento del personaje puede elegir el dominio: los de alineamiento (Bien, Caos, Ley y Mal, y los
+     * planarios) traen en sus datos los alineamientos que lo pueden elegir; los demás, ninguno (cualquiera). Los dominios
+     * de una deidad no lo traen: se mira el del catálogo.
+     */
+    private dominioPermiteAlineamiento(dominio: DominioDetalle, idAlineamientoBasico: number): boolean {
+        const datos = this.dominioDelCatalogo(toInt(dominio?.Id)) ?? dominio;
+        const permitidos = (datos?.Alineamientos ?? []).map((alineamiento) => toInt(alineamiento?.Id)).filter((id) => id > 0);
+        return permitidos.length < 1 || permitidos.includes(idAlineamientoBasico);
     }
 
     private obtenerDominiosDeidadSeleccionada(): DominioDetalle[] {
@@ -6593,11 +6677,13 @@ export class NuevoPersonajeService {
         return deidadActual?.Dominios ?? [];
     }
 
+    /** La deidad elegida del catálogo; sin deidad (la fila de relleno no está en el catálogo), `null`. */
     private obtenerDeidadSeleccionada(): DeidadDetalle | null {
         const deidadNorm = normalizarTexto(this.personajeCreacion.Deidad ?? '');
-        if (deidadNorm.length < 1 || deidadNorm === normalizarTexto('No tener deidad'))
+        if (deidadNorm.length < 1)
             return null;
-        return this.catalogoDeidades.find((deidad) => normalizarTexto(deidad?.Nombre ?? '') === deidadNorm) ?? null;
+        return this.catalogoDeidades.find((deidad) =>
+            toInt(deidad?.Id) > 0 && normalizarTexto(deidad?.Nombre ?? '') === deidadNorm) ?? null;
     }
 
     private agregarIdiomaABaseVentajas(idioma: {
@@ -6916,54 +7002,26 @@ export class NuevoPersonajeService {
 
     private listarOpcionesAumentoClaseLanzadora(
         claseAplicada: Clase,
-        aumento: {
-            Id: number;
-            Nombre: string;
-        }
+        aumento: ClaseAumentoLanzador
     ): ClaseAumentoLanzadorOpcion[] {
-        const nombreClaseAplicada = normalizarTexto(claseAplicada?.Nombre ?? '');
+        const idClaseAplicada = toInt(claseAplicada?.Id);
         const previas = (this.personajeCreacion.desgloseClases ?? [])
             .filter((item) => toNumber(item?.Nivel) > 0)
-            .filter((item) => normalizarTexto(item?.Nombre ?? '') !== nombreClaseAplicada)
-            .map((item) => this.catalogoClases
-                .find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(item?.Nombre ?? '')))
+            .map((item) => this.obtenerClaseDeDesglose(item))
             .filter((item): item is Clase =>
                 !!item
+                && toInt(item.Id) !== idClaseAplicada
                 && this.tieneLanzamientoPropio(item)
                 && this.getNivelLanzadorEfectivoClase(item.Nombre) > 0
             );
 
-        if (previas.length < 1)
-            return [];
-
-        const hintId = toNumber(aumento?.Id);
-        const hintNombre = normalizarTexto(`${aumento?.Nombre ?? ''}`);
-        let candidatas = [...previas];
-
-        if (hintId > 0) {
-            const porId = candidatas.filter((clase) => toNumber(clase?.Id) === hintId);
-            if (porId.length > 0)
-                candidatas = porId;
-        } else if (hintNombre.length > 0) {
-            const clasesPorNombre = candidatas.filter((clase) => normalizarTexto(clase?.Nombre ?? '') === hintNombre);
-            if (clasesPorNombre.length > 0) {
-                candidatas = clasesPorNombre;
-            } else {
-                const porTipo = candidatas.filter((clase) => {
-                    if (hintNombre.includes('arc'))
-                        return !!clase?.Conjuros?.Arcanos;
-                    if (hintNombre.includes('div'))
-                        return !!clase?.Conjuros?.Divinos;
-                    if (hintNombre.includes('psi'))
-                        return !!clase?.Conjuros?.Psionicos;
-                    if (hintNombre.includes('alma') || hintNombre.includes('soul'))
-                        return !!clase?.Conjuros?.Alma;
-                    return false;
-                });
-                if (porTipo.length > 0)
-                    candidatas = porTipo;
-            }
-        }
+        // El tipo de magia que sube el aumento sale de sus datos (GDM cap. 6): «cualquier clase lanzadora» sube una
+        // arcana o una divina; el arcano, solo una arcana; el de manifestador, una psiónica.
+        const candidatas = previas.filter((clase) =>
+            (!!aumento?.Arcanos && !!clase?.Conjuros?.Arcanos)
+            || (!!aumento?.Divinos && !!clase?.Conjuros?.Divinos)
+            || (!!aumento?.Psionicos && !!clase?.Conjuros?.Psionicos)
+            || (!!aumento?.Alma && !!clase?.Conjuros?.Alma));
 
         const usadas = new Set<number>();
         return candidatas
@@ -7144,14 +7202,18 @@ export class NuevoPersonajeService {
         );
         avisos.push(...elegibles.avisos);
 
-        const cupoTotal = claseObjetivo?.Conjuros?.Conocidos_total
-            ? Math.max(
-                0,
-                toNumber(detalleActual?.Conjuros_conocidos_total)
-                - toNumber(detallePrevio?.Conjuros_conocidos_total)
-            )
-            : 0;
-        const usaConocidosTotal = !!claseObjetivo?.Conjuros?.Conocidos_total;
+        const libro = claseObjetivo?.Conjuros?.Libro ?? null;
+        const cupoLibro = libro ? this.calcularCupoLibro(claseObjetivo, libro, nivelLanzadorPrevio, elegibles) : null;
+        const cupoTotal = cupoLibro
+            ? cupoLibro.total
+            : claseObjetivo?.Conjuros?.Conocidos_total
+                ? Math.max(
+                    0,
+                    toNumber(detalleActual?.Conjuros_conocidos_total)
+                    - toNumber(detallePrevio?.Conjuros_conocidos_total)
+                )
+                : 0;
+        const usaConocidosTotal = !!claseObjetivo?.Conjuros?.Conocidos_total || !!libro;
         const usaConocidosPorNivel = !!claseObjetivo?.Conjuros?.Conocidos_nivel_a_nivel;
         const cupoPorNivel = usaConocidosPorNivel
             ? this.calcularDeltaConocidosPorNivel(detalleActual, detallePrevio)
@@ -7166,7 +7228,9 @@ export class NuevoPersonajeService {
 
         const autoadicion = !usaConocidosTotal && !usaConocidosPorNivel && !almaPendiente;
         const sinElegibles = elegibles.conjuros.length < 1;
-        const idsAutoadicionados = autoadicion
+        const idsAutoadicionados = cupoLibro
+            ? cupoLibro.autoadicionadosIds
+            : autoadicion
             ? elegibles.conjuros
                 .filter((conjuro) => {
                     const id = toNumber(conjuro?.Id);
@@ -7178,7 +7242,7 @@ export class NuevoPersonajeService {
                 .map((conjuro) => toNumber(conjuro?.Id))
                 .filter((id) => id > 0)
             : [];
-        const autoadicionActiva = autoadicion && !sinElegibles && idsAutoadicionados.length > 0;
+        const autoadicionActiva = (autoadicion || !!cupoLibro) && !sinElegibles && idsAutoadicionados.length > 0;
 
         const entrada: ConjurosSesionStateEntrada = {
             id: `${normalizarTexto(claseObjetivo.Nombre)}:${origen}:${nivelLanzadorActual}`,
@@ -7210,6 +7274,51 @@ export class NuevoPersonajeService {
             avisos,
         };
         return { entrada, avisos: [] };
+    }
+
+    /**
+     * Lo que entra en el libro de conjuros en este nivel de lanzador (MJ cap. 3, Mago), desde los datos del libro de la
+     * clase: al empezar, todos los de nivel 0 que puede añadir (sin los de escuelas prohibidas) y `Iniciales` (más el
+     * modificador de su característica, si suman) a elegir; en cada nivel nuevo, `Por_nivel` de los que puede lanzar. Los
+     * copiados después (comprados) no cuentan aquí: el cupo es el de cada nivel, no el total del libro.
+     */
+    private calcularCupoLibro(
+        claseObjetivo: Clase,
+        libro: NonNullable<Clase['Conjuros']['Libro']>,
+        nivelLanzadorPrevio: number,
+        elegibles: { conjuros: Conjuro[]; nivelesPorConjuro: Record<number, number>; }
+    ): { total: number; autoadicionadosIds: number[]; } {
+        const ids = elegibles.conjuros.map((conjuro) => toNumber(conjuro?.Id)).filter((id) => id > 0);
+        const empieza = Math.max(0, toNumber(nivelLanzadorPrevio)) < 1;
+        const autoadicionadosIds = empieza && libro.Nivel_cero_completo
+            ? ids.filter((id) => toNumber(elegibles.nivelesPorConjuro[id]) === 0)
+            : [];
+        const modificador = Math.max(0, modificadorDePuntuacion(puntuacionLanzamiento(this.personajeCreacion, claseObjetivo)));
+        const cupo = empieza
+            ? Math.max(0, toInt(libro.Iniciales)) + (libro.Iniciales_suman_caracteristica ? modificador : 0)
+            : Math.max(0, toInt(libro.Por_nivel));
+        const elegiblesARepartir = ids.filter((id) => !autoadicionadosIds.includes(id)
+            && (!empieza || toNumber(elegibles.nivelesPorConjuro[id]) > 0)).length;
+        return { total: Math.min(cupo, elegiblesARepartir), autoadicionadosIds };
+    }
+
+    /**
+     * Los conjuros que el personaje puede añadir al libro de esa clase en su nivel de lanzador: los de su lista que puede
+     * lanzar (nivel accesible y característica a 10 + nivel), sin los de escuelas prohibidas ni los que ya tiene. Es la
+     * misma regla para los que gana al subir de nivel y para los que copie pagando en la tienda.
+     */
+    conjurosAniadiblesAlLibro(claseObjetivo: Clase, nivelLanzador?: number): ConjuroAniadibleLibro[] {
+        if (!claseObjetivo?.Conjuros?.Libro)
+            return [];
+        const progresion = nivelLanzador ?? this.getNivelLanzadorEfectivoClase(claseObjetivo.Nombre);
+        const detalle = progresion > 0 ? this.obtenerDetallePorNivelLanzadorClase(claseObjetivo, progresion) : null;
+        if (!detalle)
+            return [];
+        const elegibles = this.obtenerConjurosElegiblesParaClase(claseObjetivo, detalle, progresion);
+        return elegibles.conjuros.map((conjuro) => ({
+            conjuro,
+            nivel: toNumber(elegibles.nivelesPorConjuro[toNumber(conjuro?.Id)]),
+        }));
     }
 
     private calcularDeltaConocidosPorNivel(
@@ -7392,7 +7501,7 @@ export class NuevoPersonajeService {
                 .map((escuela) => normalizarTexto(this.extraerNombreEscuelaProhibida(escuela)))
                 .filter((nombre) => nombre.length > 0)
         );
-        const disciplinaProhibida = normalizarTexto(this.personajeCreacion?.Disciplina_prohibida ?? '');
+        const puntuacion = puntuacionLanzamiento(this.personajeCreacion, claseObjetivo);
 
         const puedeAgregar = (conjuro: Conjuro, nivelConjuro: number): boolean => {
             const id = toNumber(conjuro?.Id);
@@ -7402,15 +7511,15 @@ export class NuevoPersonajeService {
                 return false;
             if (acceso.nivelesAccesibles && !acceso.nivelesAccesibles.has(nivelConjuro))
                 return false;
+            // Para lanzar o aprender un conjuro hace falta la característica a 10 + su nivel (MJ cap. 1).
+            if (!puedeLanzarNivelConjuro(puntuacion, nivelConjuro))
+                return false;
             if (incluirSoloOficiales && conjuro?.Oficial === false)
                 return false;
             if (claseObjetivo?.Conjuros?.Dependientes_alineamiento && this.esConjuroOpuestoAAlineamientoActual(conjuro))
                 return false;
             const escuela = normalizarTexto(conjuro?.Escuela?.Nombre ?? '');
             if (escuela.length > 0 && escuelasProhibidas.has(escuela))
-                return false;
-            const disciplina = normalizarTexto(conjuro?.Disciplina?.Nombre ?? '');
-            if (disciplinaProhibida.length > 0 && disciplina === disciplinaProhibida)
                 return false;
             if (!incluirConjurosYaConocidos && this.esConjuroYaConocidoPorClase(claseObjetivo?.Nombre ?? '', id))
                 return false;
@@ -7473,6 +7582,16 @@ export class NuevoPersonajeService {
         if (nivelClase && nivelClase.nivel >= 0)
             return nivelClase.nivel;
 
+        // El psiónico aprende también los poderes de la disciplina que eligió (Manual de psiónica expandido); los de las
+        // demás disciplinas no están en su lista.
+        const disciplinaElegida = normalizarTexto(this.personajeCreacion?.Disciplina_especialista?.Nombre ?? '');
+        if (claseObjetivo?.Conjuros?.Psionicos && toBoolean(claseObjetivo?.Conjuros?.puede_elegir_especialidad) && disciplinaElegida.length > 0) {
+            const nivelDisciplina = (Array.isArray(conjuro?.Nivel_disciplinas) ? conjuro.Nivel_disciplinas : [])
+                .find((nivel) => normalizarTexto(nivel?.Disciplina ?? '') === disciplinaElegida);
+            if (nivelDisciplina && toNumber(nivelDisciplina.Nivel) >= 0)
+                return toNumber(nivelDisciplina.Nivel);
+        }
+
         if (claseObjetivo?.Conjuros?.Dominio && dominiosSeleccionados.size > 0) {
             const nivelesDominio = Array.isArray(conjuro?.Nivel_dominio)
                 ? conjuro.Nivel_dominio
@@ -7509,20 +7628,26 @@ export class NuevoPersonajeService {
             || (requiereAlma && !!conjuro?.Alma);
     }
 
+    /**
+     * Si el conjuro es de un alineamiento opuesto al del personaje o al de su deidad (MJ cap. 3, Clérigo: un clérigo
+     * neutral de una deidad buena tampoco lanza conjuros malignos).
+     */
     private esConjuroOpuestoAAlineamientoActual(conjuro: Conjuro): boolean {
-        const alineamiento = normalizarTexto(this.personajeCreacion?.Alineamiento ?? '');
-        if (alineamiento.length < 1)
-            return false;
-
+        const deidad = this.obtenerDeidadSeleccionada();
         const opuestos = new Set<string>();
-        if (alineamiento.includes('legal'))
-            opuestos.add('caotico');
-        if (alineamiento.includes('caotico'))
-            opuestos.add('legal');
-        if (alineamiento.includes('bueno'))
-            opuestos.add('maligno');
-        if (alineamiento.includes('maligno'))
-            opuestos.add('bueno');
+        [`${this.personajeCreacion?.Alineamiento ?? ''}`, `${deidad?.Alineamiento?.Nombre ?? ''}`].forEach((alineamiento) => {
+            const vector = getVectorDesdeNombreBasico(alineamiento);
+            if (!vector)
+                return;
+            if (vector.ley > 0)
+                opuestos.add('caotico');
+            if (vector.ley < 0)
+                opuestos.add('legal');
+            if (vector.moral > 0)
+                opuestos.add('maligno');
+            if (vector.moral < 0)
+                opuestos.add('bueno');
+        });
         if (opuestos.size < 1)
             return false;
 
@@ -7536,10 +7661,11 @@ export class NuevoPersonajeService {
         return descriptores.some((descriptor) => opuestos.has(descriptor));
     }
 
+    /** Las escuelas en que se puede especializar un mago: las que lo dicen sus datos (Universal no; MJ cap. 3). */
     private obtenerCatalogoEscuelasEspecializables(escuelasCatalogo: EscuelaConjuros[]): EscuelaConjuros[] {
         const usadas = new Set<number>();
         return (escuelasCatalogo ?? [])
-            .filter((escuela) => toNumber(escuela?.Id) > 0)
+            .filter((escuela) => toNumber(escuela?.Id) > 0 && toBoolean(escuela?.Especializable))
             .filter((escuela) => {
                 const id = toNumber(escuela?.Id);
                 if (usadas.has(id))
@@ -7554,14 +7680,13 @@ export class NuevoPersonajeService {
         const idEspecialistaNum = toNumber(idEspecialista);
         return this.obtenerCatalogoEscuelasEspecializables(escuelasCatalogo)
             .filter((escuela) => toNumber(escuela?.Id) !== idEspecialistaNum)
-            .filter((escuela) => toBoolean(escuela?.Prohibible))
-            .filter((escuela) => !this.esNombreAdivinacion(`${escuela?.Nombre ?? ''}`));
+            .filter((escuela) => toBoolean(escuela?.Prohibible));
     }
 
     private obtenerCatalogoDisciplinasEspecializables(disciplinasCatalogo: DisciplinaConjuros[]): DisciplinaConjuros[] {
         const usadas = new Set<number>();
         return (disciplinasCatalogo ?? [])
-            .filter((disciplina) => toNumber(disciplina?.Id) > 0)
+            .filter((disciplina) => toNumber(disciplina?.Id) > 0 && toBoolean(disciplina?.Especializable))
             .filter((disciplina) => {
                 const id = toNumber(disciplina?.Id);
                 if (usadas.has(id))
@@ -7570,10 +7695,6 @@ export class NuevoPersonajeService {
                 return true;
             })
             .sort(porNombre);
-    }
-
-    private esNombreAdivinacion(value: string): boolean {
-        return normalizarTexto(value ?? '') === 'adivinacion';
     }
 
     private extraerNombreEscuelaProhibida(value: string | { Nombre?: string; } | null | undefined): string {

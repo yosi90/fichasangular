@@ -54,7 +54,7 @@
                 </mat-select>
             </mat-form-field>
 
-            <mat-form-field appearance="fill" class="tw-w-full">
+            <mat-form-field appearance="fill" class="tw-w-full" *ngIf="disciplinaProhibidaRequerida">
                 <mat-label>Disciplina prohibida</mat-label>
                 <mat-select [value]="psionicoDisciplinaProhibidaId" (selectionChange)="onChangeDisciplinaProhibida($event.value)">
                     <mat-option *ngFor="let disciplina of disciplinasProhibibles" [value]="toPositiveId(disciplina.Id)">
@@ -64,7 +64,7 @@
             </mat-form-field>
 
             <mat-chip class="chip-estado" [ngClass]="psionicoValido ? 'ok' : 'warm'">
-                {{psionicoValido ? 'Selección psiónica completa' : 'Debes elegir disciplina especialista y una prohibida distinta'}}
+                {{psionicoValido ? 'Selección psiónica completa' : (disciplinaProhibidaRequerida ? 'Debes elegir disciplina especialista y una prohibida distinta' : 'Debes elegir tu disciplina')}}
             </mat-chip>
         </section>
 

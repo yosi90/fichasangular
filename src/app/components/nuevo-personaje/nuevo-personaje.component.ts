@@ -3206,15 +3206,14 @@ export class NuevoPersonajeComponent {
         await this.asegurarCatalogoDisciplinas();
 
         if (pendiente.requierePsionico) {
-            const disciplinasValidas = (this.catalogoDisciplinas ?? [])
-                .map((disciplina) => Number(disciplina?.Id ?? 0))
-                .filter((id) => Number.isFinite(id) && id > 0);
-            const distintas = Array.from(new Set(disciplinasValidas));
-            if (distintas.length < 2) {
+            // Basta con una disciplina que se pueda elegir: el psiónico no prohíbe ninguna (Manual de psiónica expandido).
+            const hayDisciplinas = (this.catalogoDisciplinas ?? [])
+                .some((disciplina) => Number(disciplina?.Id ?? 0) > 0 && !!disciplina?.Especializable);
+            if (!hayDisciplinas) {
                 await Swal.fire({
                     icon: 'warning',
                     title: 'No se puede resolver especialización psiónica',
-                    text: 'No hay suficientes disciplinas válidas para seleccionar especialista y disciplina prohibida.',
+                    text: 'No hay disciplinas válidas para elegir.',
                     showConfirmButton: true,
                 });
                 return false;

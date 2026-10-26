@@ -1,7 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { DisciplinaConjuros } from 'src/app/interfaces/disciplina-conjuros';
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -44,9 +43,10 @@ export class SelectorEspecialidadMagicaModalComponent {
     psionicoDisciplinaEspecialistaId: number | null = null;
     psionicoDisciplinaProhibidaId: number | null = null;
 
+    /** Las escuelas en que se puede especializar: lo dicen sus datos (Universal no; MJ cap. 3). */
     get escuelasEspecializables(): EscuelaConjuros[] {
         return (this.escuelas ?? [])
-            .filter((escuela) => Number(escuela?.Id ?? 0) > 0)
+            .filter((escuela) => Number(escuela?.Id ?? 0) > 0 && !!escuela?.Especializable)
             .sort(porNombre);
     }
 
@@ -61,14 +61,20 @@ export class SelectorEspecialidadMagicaModalComponent {
         const idEspecialista = Number(this.arcanoEscuelaEspecialistaId ?? 0);
         return this.escuelasEspecializables
             .filter((escuela) => Number(escuela?.Id ?? 0) !== idEspecialista)
-            .filter((escuela) => !!escuela?.Prohibible)
-            .filter((escuela) => normalizarTexto(escuela?.Nombre ?? '') !== 'adivinacion');
+            .filter((escuela) => !!escuela?.Prohibible);
     }
 
     get disciplinasEspecializables(): DisciplinaConjuros[] {
         return (this.disciplinas ?? [])
-            .filter((disciplina) => Number(disciplina?.Id ?? 0) > 0)
+            .filter((disciplina) => Number(disciplina?.Id ?? 0) > 0 && !!disciplina?.Especializable)
             .sort(porNombre);
+    }
+
+    /** Si la disciplina elegida obliga a prohibir otra: ninguna en el Manual de psiónica expandido; lo dice su dato. */
+    get disciplinaProhibidaRequerida(): boolean {
+        const id = Number(this.psionicoDisciplinaEspecialistaId ?? 0);
+        const disciplina = this.disciplinasEspecializables.find((item) => Number(item?.Id ?? 0) === id);
+        return Number(disciplina?.Prohibidas_al_especializarse ?? 0) > 0;
     }
 
     get disciplinasProhibibles(): DisciplinaConjuros[] {
@@ -82,7 +88,8 @@ export class SelectorEspecialidadMagicaModalComponent {
         const escuela = this.escuelaEspecialistaSeleccionada;
         if (!escuela)
             return 0;
-        return normalizarTexto(escuela.Nombre) === 'adivinacion' ? 1 : 2;
+        // Cuántas prohíbe sale de la escuela (2; la adivinación, 1), no de su nombre.
+        return Math.max(0, Number(escuela.Prohibidas_al_especializarse ?? 0));
     }
 
     get arcanoValido(): boolean {
@@ -111,13 +118,12 @@ export class SelectorEspecialidadMagicaModalComponent {
         const idProhibida = Number(this.psionicoDisciplinaProhibidaId ?? 0);
         if (!Number.isFinite(idEspecialista) || idEspecialista <= 0)
             return false;
-        if (!Number.isFinite(idProhibida) || idProhibida <= 0)
-            return false;
-        if (idEspecialista === idProhibida)
-            return false;
-
         const idsValidos = new Set(this.disciplinasEspecializables.map((disciplina) => Number(disciplina?.Id ?? 0)));
-        return idsValidos.has(idEspecialista) && idsValidos.has(idProhibida);
+        if (!idsValidos.has(idEspecialista))
+            return false;
+        if (!this.disciplinaProhibidaRequerida)
+            return true;
+        return Number.isFinite(idProhibida) && idProhibida > 0 && idProhibida !== idEspecialista && idsValidos.has(idProhibida);
     }
 
     get puedeConfirmar(): boolean {
@@ -228,7 +234,7 @@ export class SelectorEspecialidadMagicaModalComponent {
             psionica: this.mostrarPsionico
                 ? {
                     disciplinaEspecialistaId: this.psionicoDisciplinaEspecialistaId,
-                    disciplinaProhibidaId: this.psionicoDisciplinaProhibidaId,
+                    disciplinaProhibidaId: this.disciplinaProhibidaRequerida ? this.psionicoDisciplinaProhibidaId : null,
                 }
                 : undefined,
         };

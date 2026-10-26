@@ -1901,7 +1901,8 @@ describe('NuevoPersonajeService (clases)', () => {
     it('aplicarSiguienteNivelClase crea entrada de clase a nivel 1', () => {
         const res = service.aplicarSiguienteNivelClase(claseBase);
         expect(res.aplicado).toBeTrue();
-        expect(service.PersonajeCreacion.desgloseClases).toEqual([{ Nombre: 'Guerrero', Nivel: 1, Caracteristica_lanzamiento: null }]);
+        // Con el id de la clase, para encontrarla en el catálogo sin depender de su nombre.
+        expect(service.PersonajeCreacion.desgloseClases).toEqual([{ Id: 1, Nombre: 'Guerrero', Nivel: 1, Caracteristica_lanzamiento: null }]);
         expect(service.PersonajeCreacion.Clases).toContain('Guerrero (1)');
     });
 
@@ -3715,7 +3716,7 @@ describe('NuevoPersonajeService (clases)', () => {
                 Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
                 Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
-                Aumentos_clase_lanzadora: [{ Id: 0, Nombre: '' }],
+                Aumentos_clase_lanzadora: [{ Id: 1, Nombre: 'Aumenta una clase lanzadora', Arcanos: true, Divinos: true, Psionicos: false, Alma: false }],
                 Conjuros_diarios: crearConjurosDiariosMock([0]),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
@@ -3800,7 +3801,7 @@ describe('NuevoPersonajeService (clases)', () => {
                     Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
                     Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                     Reserva_psionica: 0,
-                    Aumentos_clase_lanzadora: [{ Id: 186, Nombre: 'Mago veterano' }],
+                    Aumentos_clase_lanzadora: [{ Id: 2, Nombre: 'Aumenta clase lanzadora de conjuros arcanos', Arcanos: true, Divinos: false, Psionicos: false, Alma: false }],
                     Conjuros_diarios: crearConjurosDiariosMock([0]),
                     Conjuros_conocidos_nivel_a_nivel: {},
                     Conjuros_conocidos_total: 0,
@@ -3813,7 +3814,7 @@ describe('NuevoPersonajeService (clases)', () => {
                     Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+3' },
                     Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                     Reserva_psionica: 0,
-                    Aumentos_clase_lanzadora: [{ Id: 186, Nombre: 'Mago veterano' }],
+                    Aumentos_clase_lanzadora: [{ Id: 2, Nombre: 'Aumenta clase lanzadora de conjuros arcanos', Arcanos: true, Divinos: false, Psionicos: false, Alma: false }],
                     Conjuros_diarios: crearConjurosDiariosMock([0]),
                     Conjuros_conocidos_nivel_a_nivel: {},
                     Conjuros_conocidos_total: 0,
@@ -3911,7 +3912,7 @@ describe('NuevoPersonajeService (clases)', () => {
                 Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
                 Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
-                Aumentos_clase_lanzadora: [{ Id: 0, Nombre: '' }],
+                Aumentos_clase_lanzadora: [{ Id: 1, Nombre: 'Aumenta una clase lanzadora', Arcanos: true, Divinos: true, Psionicos: false, Alma: false }],
                 Conjuros_diarios: crearConjurosDiariosMock([0]),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
@@ -3993,7 +3994,7 @@ describe('NuevoPersonajeService (clases)', () => {
                 Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
                 Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
-                Aumentos_clase_lanzadora: [{ Id: 0, Nombre: '' }],
+                Aumentos_clase_lanzadora: [{ Id: 1, Nombre: 'Aumenta una clase lanzadora', Arcanos: true, Divinos: true, Psionicos: false, Alma: false }],
                 Conjuros_diarios: crearConjurosDiariosMock([0]),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
@@ -4007,7 +4008,7 @@ describe('NuevoPersonajeService (clases)', () => {
         const res = service.aplicarSiguienteNivelClase(prestigio);
 
         expect(res.aplicado).toBeTrue();
-        expect(res.advertencias).toContain('No hay clases lanzadoras previas válidas para Aumento 1.');
+        expect(res.advertencias).toContain('No hay clases lanzadoras previas válidas para Aumenta una clase lanzadora.');
         expect(service.getProgresionLanzadorPersistible()).toBeNull();
         expect((service as any).getNivelLanzadorEfectivoClase('Explorador sin magia')).toBe(0);
     });
@@ -4339,7 +4340,7 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.Conjuros.map((c) => c.Id)).toEqual([1597, 1598]);
     });
 
-    it('filtros de conjuros aplican oficialidad, alineamiento, escuela y disciplina prohibida', () => {
+    it('filtros de conjuros aplican oficialidad, alineamiento y escuela; la disciplina del conjuro no lo excluye (MPE)', () => {
         service.PersonajeCreacion.Oficial = true;
         service.PersonajeCreacion.Alineamiento = 'Legal bueno';
         service.PersonajeCreacion.Escuelas_prohibidas = [{ Nombre: 'Evocacion' }];
@@ -4441,7 +4442,8 @@ describe('NuevoPersonajeService (clases)', () => {
 
         service.aplicarSiguienteNivelClase(claseFiltrada);
         const disponibles = service.filtrarConjurosDisponibles();
-        expect(disponibles.map((c) => c.Nombre)).toEqual(['Valido']);
+        // El Manual de psiónica expandido no tiene disciplina prohibida: la disciplina del conjuro ya no lo quita.
+        expect(disponibles.map((c) => c.Nombre)).toEqual(['Disciplina prohibida', 'Valido']);
     });
 
     it('getEspecialidadMagicaPendiente solo dispara con flag, tipo válido y nivel 1', () => {
@@ -4519,12 +4521,13 @@ describe('NuevoPersonajeService (clases)', () => {
             },
         });
         const escuelasCatalogo = [
-            { Id: -1, Nombre: 'Universal', Nombre_especial: '', Prohibible: false },
-            { Id: 0, Nombre: 'Placeholder', Nombre_especial: '', Prohibible: false },
-            { Id: 1, Nombre: 'Adivinacion', Nombre_especial: 'Adivino', Prohibible: false },
-            { Id: 2, Nombre: 'Abjuracion', Nombre_especial: 'Abjurador', Prohibible: true },
-            { Id: 3, Nombre: 'Evocacion', Nombre_especial: 'Evocador', Prohibible: true },
-            { Id: 4, Nombre: 'Nigromancia', Nombre_especial: 'Nigromante', Prohibible: true },
+            { Id: -1, Nombre: 'Universal', Nombre_especial: '', Prohibible: false, Especializable: false, Prohibidas_al_especializarse: 0 },
+            { Id: 0, Nombre: 'Placeholder', Nombre_especial: '', Prohibible: false, Especializable: false, Prohibidas_al_especializarse: 0 },
+            { Id: 1, Nombre: 'Adivinacion', Nombre_especial: 'Adivino', Prohibible: false, Especializable: true, Prohibidas_al_especializarse: 1 },
+            { Id: 2, Nombre: 'Abjuracion', Nombre_especial: 'Abjurador', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 3, Nombre: 'Evocacion', Nombre_especial: 'Evocador', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 4, Nombre: 'Nigromancia', Nombre_especial: 'Nigromante', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 9, Nombre: 'Universal', Nombre_especial: '', Prohibible: false, Especializable: false, Prohibidas_al_especializarse: 0 },
         ] as any;
 
         const invalida = service.aplicarEspecialidadMagicaClase(
@@ -4590,9 +4593,19 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(adivinacionEspecialistaOk.aplicado).toBeTrue();
         expect(service.PersonajeCreacion.Escuela_especialista.Nombre).toBe('Adivinacion');
         expect(service.PersonajeCreacion.Escuelas_prohibidas).toEqual([{ Nombre: 'Abjuracion' }]);
+
+        // Universal no es una especialidad (MJ cap. 3): lo dice su dato.
+        const universal = service.aplicarEspecialidadMagicaClase(
+            claseArcana,
+            1,
+            { arcana: { especializar: true, escuelaEspecialistaId: 9, escuelasProhibidasIds: [3, 4] } },
+            escuelasCatalogo,
+            []
+        );
+        expect(universal.aplicado).toBeFalse();
     });
 
-    it('psiónico exige disciplina especialista y una prohibida distinta', () => {
+    it('psiónico elige una disciplina y no prohíbe ninguna (Manual de psiónica expandido)', () => {
         const clasePsionica = crearClaseBase({
             Conjuros: {
                 ...crearClaseBase().Conjuros,
@@ -4601,39 +4614,29 @@ describe('NuevoPersonajeService (clases)', () => {
             },
         });
         const disciplinasCatalogo = [
-            { Id: 1, Nombre: 'Metacreatividad', Nombre_especial: 'Metacreador', Subdisciplinas: [] },
-            { Id: 2, Nombre: 'Psicoquinesis', Nombre_especial: 'Psicoquineta', Subdisciplinas: [] },
+            { Id: 1, Nombre: 'Metacreatividad', Nombre_especial: 'Metacreador', Subdisciplinas: [], Especializable: true, Prohibidas_al_especializarse: 0 },
+            { Id: 2, Nombre: 'Psicoquinesis', Nombre_especial: 'Psicoquineta', Subdisciplinas: [], Especializable: true, Prohibidas_al_especializarse: 0 },
         ] as any;
 
-        const invalida = service.aplicarEspecialidadMagicaClase(
+        const sinDisciplina = service.aplicarEspecialidadMagicaClase(
             clasePsionica,
             1,
-            {
-                psionica: {
-                    disciplinaEspecialistaId: 1,
-                    disciplinaProhibidaId: 1,
-                },
-            },
+            { psionica: { disciplinaEspecialistaId: null, disciplinaProhibidaId: null } },
             [],
             disciplinasCatalogo
         );
-        expect(invalida.aplicado).toBeFalse();
+        expect(sinDisciplina.aplicado).toBeFalse();
 
         const valida = service.aplicarEspecialidadMagicaClase(
             clasePsionica,
             1,
-            {
-                psionica: {
-                    disciplinaEspecialistaId: 1,
-                    disciplinaProhibidaId: 2,
-                },
-            },
+            { psionica: { disciplinaEspecialistaId: 1, disciplinaProhibidaId: null } },
             [],
             disciplinasCatalogo
         );
         expect(valida.aplicado).toBeTrue();
         expect(service.PersonajeCreacion.Disciplina_especialista.Nombre).toBe('Metacreatividad');
-        expect(service.PersonajeCreacion.Disciplina_prohibida).toBe('Psicoquinesis');
+        expect(service.PersonajeCreacion.Disciplina_prohibida).toBe('Ninguna');
     });
 
     it('mixto requiere completar bloque arcano y psiónico', () => {
@@ -4646,14 +4649,14 @@ describe('NuevoPersonajeService (clases)', () => {
             },
         });
         const escuelasCatalogo = [
-            { Id: 1, Nombre: 'Adivinacion', Nombre_especial: 'Adivino', Prohibible: false },
-            { Id: 2, Nombre: 'Abjuracion', Nombre_especial: 'Abjurador', Prohibible: true },
-            { Id: 3, Nombre: 'Evocacion', Nombre_especial: 'Evocador', Prohibible: true },
-            { Id: 4, Nombre: 'Nigromancia', Nombre_especial: 'Nigromante', Prohibible: true },
+            { Id: 1, Nombre: 'Adivinacion', Nombre_especial: 'Adivino', Prohibible: false, Especializable: true, Prohibidas_al_especializarse: 1 },
+            { Id: 2, Nombre: 'Abjuracion', Nombre_especial: 'Abjurador', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 3, Nombre: 'Evocacion', Nombre_especial: 'Evocador', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 4, Nombre: 'Nigromancia', Nombre_especial: 'Nigromante', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
         ] as any;
         const disciplinasCatalogo = [
-            { Id: 1, Nombre: 'Metacreatividad', Nombre_especial: 'Metacreador', Subdisciplinas: [] },
-            { Id: 2, Nombre: 'Psicoquinesis', Nombre_especial: 'Psicoquineta', Subdisciplinas: [] },
+            { Id: 1, Nombre: 'Metacreatividad', Nombre_especial: 'Metacreador', Subdisciplinas: [], Especializable: true, Prohibidas_al_especializarse: 0 },
+            { Id: 2, Nombre: 'Psicoquinesis', Nombre_especial: 'Psicoquineta', Subdisciplinas: [], Especializable: true, Prohibidas_al_especializarse: 0 },
         ] as any;
 
         const incompleta = service.aplicarEspecialidadMagicaClase(
@@ -4759,10 +4762,10 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.filtrarConjurosDisponibles().map((c) => c.Nombre).sort()).toEqual(['Escudo', 'Proyectil mágico']);
 
         const escuelasCatalogo = [
-            { Id: 1, Nombre: 'Adivinacion', Nombre_especial: 'Adivino', Prohibible: false },
-            { Id: 2, Nombre: 'Abjuracion', Nombre_especial: 'Abjurador', Prohibible: true },
-            { Id: 3, Nombre: 'Evocacion', Nombre_especial: 'Evocador', Prohibible: true },
-            { Id: 4, Nombre: 'Nigromancia', Nombre_especial: 'Nigromante', Prohibible: true },
+            { Id: 1, Nombre: 'Adivinacion', Nombre_especial: 'Adivino', Prohibible: false, Especializable: true, Prohibidas_al_especializarse: 1 },
+            { Id: 2, Nombre: 'Abjuracion', Nombre_especial: 'Abjurador', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 3, Nombre: 'Evocacion', Nombre_especial: 'Evocador', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 4, Nombre: 'Nigromancia', Nombre_especial: 'Nigromante', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
         ] as any;
 
         const aplicadoEspecialidad = service.aplicarEspecialidadMagicaClase(

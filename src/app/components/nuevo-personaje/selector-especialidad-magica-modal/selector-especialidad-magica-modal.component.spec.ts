@@ -5,18 +5,20 @@ describe('SelectorEspecialidadMagicaModalComponent', () => {
 
     beforeEach(() => {
         component = new SelectorEspecialidadMagicaModalComponent();
+        // Como `/escuelas` y `/disciplinas`: si se puede elegir y cuántas prohíbe quien la elige (MJ cap. 3; MPE).
         component.escuelas = [
-            { Id: -1, Nombre: 'Universal', Nombre_especial: '', Prohibible: false },
-            { Id: 0, Nombre: 'Placeholder', Nombre_especial: '', Prohibible: false },
-            { Id: 1, Nombre: 'Adivinacion', Nombre_especial: 'Adivino', Prohibible: false },
-            { Id: 2, Nombre: 'Abjuracion', Nombre_especial: 'Abjurador', Prohibible: true },
-            { Id: 3, Nombre: 'Evocacion', Nombre_especial: 'Evocador', Prohibible: true },
-            { Id: 4, Nombre: 'Conjuracion', Nombre_especial: 'Conjurador', Prohibible: true },
+            { Id: -1, Nombre: 'Universal', Nombre_especial: '', Prohibible: false, Especializable: false, Prohibidas_al_especializarse: 0 },
+            { Id: 0, Nombre: 'Placeholder', Nombre_especial: '', Prohibible: false, Especializable: false, Prohibidas_al_especializarse: 0 },
+            { Id: 1, Nombre: 'Adivinacion', Nombre_especial: 'Adivino', Prohibible: false, Especializable: true, Prohibidas_al_especializarse: 1 },
+            { Id: 2, Nombre: 'Abjuracion', Nombre_especial: 'Abjurador', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 3, Nombre: 'Evocacion', Nombre_especial: 'Evocador', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 4, Nombre: 'Conjuracion', Nombre_especial: 'Conjurador', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 9, Nombre: 'Universal', Nombre_especial: '', Prohibible: false, Especializable: false, Prohibidas_al_especializarse: 0 },
         ];
         component.disciplinas = [
-            { Id: 1, Nombre: 'Metacreatividad', Nombre_especial: 'Metacreador', Subdisciplinas: [] },
-            { Id: 2, Nombre: 'Psicoquinesis', Nombre_especial: 'Psicoquineta', Subdisciplinas: [] },
-            { Id: 3, Nombre: 'Telepatia', Nombre_especial: 'Telepata', Subdisciplinas: [] },
+            { Id: 1, Nombre: 'Metacreatividad', Nombre_especial: 'Metacreador', Subdisciplinas: [], Especializable: true, Prohibidas_al_especializarse: 0 },
+            { Id: 2, Nombre: 'Psicoquinesis', Nombre_especial: 'Psicoquineta', Subdisciplinas: [], Especializable: true, Prohibidas_al_especializarse: 0 },
+            { Id: 3, Nombre: 'Telepatia', Nombre_especial: 'Telepata', Subdisciplinas: [], Especializable: true, Prohibidas_al_especializarse: 0 },
         ];
     });
 
@@ -45,6 +47,13 @@ describe('SelectorEspecialidadMagicaModalComponent', () => {
         expect(component.arcanoValido).toBeTrue();
     });
 
+    it('Universal no se ofrece como especialidad, por su dato (MJ cap. 3)', () => {
+        component.mostrarArcano = true;
+        component.onToggleArcanoEspecializar(true);
+
+        expect(component.escuelasEspecializables.map((escuela) => escuela.Id)).toEqual([2, 1, 4, 3]);
+    });
+
     it('arcano nunca ofrece adivinacion como prohibida', () => {
         component.mostrarArcano = true;
         component.onToggleArcanoEspecializar(true);
@@ -54,14 +63,22 @@ describe('SelectorEspecialidadMagicaModalComponent', () => {
         expect(nombresProhibibles).not.toContain('Adivinacion');
     });
 
-    it('psionico requiere especialista y prohibida distinta', () => {
+    it('psionico elige una disciplina y no prohíbe ninguna (Manual de psiónica expandido)', () => {
         component.mostrarPsionico = true;
 
         expect(component.psionicoValido).toBeFalse();
         component.onChangeDisciplinaEspecialista(1);
+        expect(component.disciplinaProhibidaRequerida).toBeFalse();
+        expect(component.psionicoValido).toBeTrue();
+    });
+
+    it('psionico con una disciplina homebrew que prohíbe otra: la pide distinta', () => {
+        component.mostrarPsionico = true;
+        component.disciplinas = component.disciplinas.map((d) => ({ ...d, Prohibidas_al_especializarse: 1 }));
+
+        component.onChangeDisciplinaEspecialista(1);
         component.onChangeDisciplinaProhibida(1);
         expect(component.psionicoValido).toBeFalse();
-
         component.onChangeDisciplinaProhibida(2);
         expect(component.psionicoValido).toBeTrue();
     });
@@ -72,7 +89,6 @@ describe('SelectorEspecialidadMagicaModalComponent', () => {
 
         component.arcanoEspecializar = false;
         component.onChangeDisciplinaEspecialista(1);
-        component.onChangeDisciplinaProhibida(2);
         expect(component.puedeConfirmar).toBeTrue();
 
         component.onToggleArcanoEspecializar(true);

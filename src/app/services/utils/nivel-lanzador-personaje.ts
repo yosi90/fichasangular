@@ -9,6 +9,7 @@ import {
     PersonajeProgresionLanzadorSeleccionDto
 } from 'src/app/interfaces/personajes-api';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { nivelLanzadorDeClase } from 'src/app/services/utils/reglas-magia';
 
 function tieneLanzamientoPropio(clase: Clase | null | undefined): boolean {
     const conjuros = clase?.Conjuros;
@@ -119,11 +120,13 @@ export function calcularNivelesLanzadorPersonaje(
             const nivelesDesgloseLanzador = obtenerNivelesDesgloseLanzador(clase);
             const nivelLanzadorBase = nivelesDesgloseLanzador.filter((nivel) => nivel <= nivelClase).length;
             const bonusNivelLanzador = Math.max(0, bonusPorIdClase.get(idClase) ?? 0);
-            const nivelLanzador = Math.max(0, nivelLanzadorBase + bonusNivelLanzador);
-            if (nivelLanzador < 1)
+            // La progresión elige la fila de la tabla; el nivel de lanzador puede ser la mitad (paladín, explorador).
+            const progresion = Math.max(0, nivelLanzadorBase + bonusNivelLanzador);
+            if (progresion < 1)
                 return null;
+            const nivelLanzador = nivelLanzadorDeClase(clase, progresion, nivelClase, bonusNivelLanzador);
 
-            const nivelDesgloseLanzador = nivelesDesgloseLanzador[nivelLanzador - 1]
+            const nivelDesgloseLanzador = nivelesDesgloseLanzador[progresion - 1]
                 ?? nivelesDesgloseLanzador[nivelesDesgloseLanzador.length - 1]
                 ?? nivelClase;
 

@@ -4105,6 +4105,8 @@ describe('NuevoPersonajeComponent', () => {
             Conjuros: {
                 ...crearClaseMock().Conjuros,
                 Dominio: true,
+                // Cuántos dominios elige: un dato de la clase (el clérigo, 2).
+                Dominio_cantidad: 1,
             },
         });
         nuevoPSvc.setCatalogoDominios([{ Id: 1, Nombre: 'Guerra', Oficial: true } as any]);
