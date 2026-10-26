@@ -502,7 +502,7 @@ export class DetallesClaseComponent {
         ].filter(Boolean);
         const puntos = c?.Puntos_habilidad?.Valor;
         return [
-            { etiqueta: 'Dado de golpe', valor: c?.Tipo_dado?.Nombre },
+            { etiqueta: 'Dado de golpe', valor: `${c?.Tipo_dado?.Nombre ?? ''}`.toLowerCase() },
             { etiqueta: 'Puntos de habilidad por nivel', valor: puntos, detalle: puntos !== null && puntos !== undefined ? '+ mod. de Int' : null },
             datoAlineamiento(c?.Alineamiento),
             { etiqueta: 'Niveles', valor: c?.Nivel_max_claseo > 0 ? `1 a ${c.Nivel_max_claseo}` : null },
@@ -620,10 +620,18 @@ export class DetallesClaseComponent {
         if (this.tieneTextoVisible(extraVisible) && !extras.valores.some((extra) => normalizarTexto(extra) === normalizarTexto(extraVisible)))
             extras.valores.unshift(extraVisible);
         const detalle = this.detectarDetalle(entradas, nombre.origen, extras.clavesOrigen);
+        // En las habilidades, «Artesanía 1» es solo la casilla del catálogo y el comodín repite el extra:
+        // se enseña «Artesanía (a elegir)».
+        const nombreVisible = esHabilidad ? `${nombre.valor ?? ''}`.replace(/\s+\d+$/, '') : nombre.valor;
+        const extrasVisibles = esHabilidad
+            ? Array.from(new Map(extras.valores
+                .map((extra) => normalizarTexto(extra) === 'elegir' ? 'a elegir' : extra)
+                .map((extra) => [normalizarTexto(extra), extra] as [string, string])).values())
+            : extras.valores;
 
         return {
-            nombre: nombre.valor || 'Elemento',
-            extras: extras.valores,
+            nombre: nombreVisible || 'Elemento',
+            extras: extrasVisibles,
             detalle,
             idEntidad: this.detectarIdEntidad(item),
         };

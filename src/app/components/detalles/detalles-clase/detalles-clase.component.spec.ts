@@ -465,6 +465,7 @@ describe('DetallesClaseComponent', () => {
             Habilidades: {
                 Base: [
                     { Id_habilidad: 5, Habilidad: 'Artesanía', Id_extra: 0, Extra: null, Varios: null },
+                    { Id_habilidad: 28, Habilidad: 'Oficio 1', Id_extra: 0, Extra: 'Elegir', Extra_comodin: 'elegir', Varios: null },
                     { Id_habilidad: 9, Habilidad: 'Escuchar', Id_extra: -1, Extra: null, Varios: null },
                 ],
                 Custom: [],
@@ -474,7 +475,10 @@ describe('DetallesClaseComponent', () => {
 
         expect(titulos()).toEqual(['Descripción', 'Competencias', 'Habilidades de clase', 'Progresión por nivel']);
         expect(texto()).toContain('Armas sencillas');
-        expect(texto()).toContain('Artesanía (Elegir)');
+        expect(texto()).toContain('Artesanía (a elegir)');
+        expect(texto()).toContain('Oficio (a elegir)');
+        expect(texto()).not.toContain('Oficio 1');
+        expect(texto()).not.toContain('Elegir, elegir');
         expect(texto()).toContain('Escuchar');
         expect(texto()).not.toContain('Custom');
 
