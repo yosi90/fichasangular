@@ -1,4 +1,5 @@
-import { esVisibleEnPersonaje } from 'src/app/components/detalles/ficha/personaje';
+import { unirTipo } from 'src/app/components/detalles/ficha/ficha';
+import { esVisibleEnPersonaje, textoClasePersonaje } from 'src/app/components/detalles/ficha/personaje';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 
@@ -79,10 +80,10 @@ export function lineaPersonajeCreacion(pj: Personaje | null | undefined): string
         return 'Elige la raza';
     const clases = (pj?.desgloseClases ?? [])
         .filter((clase) => esVisibleEnPersonaje(clase?.Nombre) && toNumber(clase?.Nivel) > 0)
-        .map((clase) => `${clase.Nombre.trim()} ${toNumber(clase.Nivel)}`)
+        .map((clase) => textoClasePersonaje(clase))
         .join(' / ');
     const alineamiento = esVisibleEnPersonaje(pj?.Alineamiento) ? `${pj?.Alineamiento}`.trim() : '';
-    return [raza, clases, alineamiento].filter((parte) => parte.length > 0).join(' · ');
+    return unirTipo([raza, clases, alineamiento]);
 }
 
 /**

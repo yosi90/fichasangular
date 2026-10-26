@@ -18,6 +18,7 @@ import {
     aptitudSeAplica,
     indicePiezaDelCampo,
     motivoPiezaNoValida,
+    normalizarPrecioMaximoPorPieza,
     pestanasTienda,
     politicaTienda,
     textoCarga,
@@ -221,6 +222,13 @@ describe('tienda-equipo', () => {
             const estricta = politicaTienda({ permitirObjetosMagicos: false, permitirObjetosAMedida: false, precioMaximoPorObjeto: 500 });
             expect(estricta).toEqual({ objetosMagicos: false, aMedida: false, precioMaximo: 500 });
             expect(pestanasTienda({ politica: estricta }).map((p) => p.id)).not.toContain('especifica');
+        });
+
+        it('el precio máximo por pieza de la campaña: po enteros, 0 o más; si no, sin tope', () => {
+            expect(normalizarPrecioMaximoPorPieza(500)).toBe(500);
+            expect(normalizarPrecioMaximoPorPieza('250.9')).toBe(250);
+            expect(normalizarPrecioMaximoPorPieza(0)).toBe(0);
+            [null, undefined, '', '  ', -1, 'mucho'].forEach((valor) => expect(normalizarPrecioMaximoPorPieza(valor)).toBeNull());
         });
 
         it('la carga según su capacidad', () => {

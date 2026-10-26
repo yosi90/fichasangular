@@ -34,6 +34,7 @@ import { cabeceraApiConFirebase } from './platform-session.service';
 import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from './platform-spaces.service';
 import { toBoolean, toNullableText } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
 
 @Injectable({
     providedIn: 'root'
@@ -1119,14 +1120,6 @@ export class CampanaService {
         return null;
     }
 
-    /** El precio máximo de una pieza: po enteros, 0 o más; `null` (o vacío), sin tope. */
-    private normalizeNullablePriceLimit(value: any): number | null {
-        if (value === null || value === undefined || `${value}`.trim() === '')
-            return null;
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-    }
-
     private normalizeCampaignCreationPolicy(raw: any): CampaignCreationPolicy {
         const permitirHomebrewGeneral = toBoolean(raw?.permitirHomebrewGeneral, true);
         return {
@@ -1141,7 +1134,7 @@ export class CampanaService {
                 : this.normalizeNullableHomebrewSourceLimit(raw?.maxFuentesHomebrewGeneralesPorPersonaje),
             permitirObjetosMagicos: toBoolean(raw?.permitirObjetosMagicos, true),
             permitirObjetosAMedida: toBoolean(raw?.permitirObjetosAMedida, true),
-            precioMaximoPorObjeto: this.normalizeNullablePriceLimit(raw?.precioMaximoPorObjeto),
+            precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(raw?.precioMaximoPorObjeto),
         };
     }
 
@@ -1258,7 +1251,7 @@ export class CampanaService {
         if ('permitirObjetosAMedida' in raw)
             payload.permitirObjetosAMedida = toBoolean(raw.permitirObjetosAMedida, true);
         if ('precioMaximoPorObjeto' in raw)
-            payload.precioMaximoPorObjeto = this.normalizeNullablePriceLimit(raw.precioMaximoPorObjeto);
+            payload.precioMaximoPorObjeto = normalizarPrecioMaximoPorPieza(raw.precioMaximoPorObjeto);
 
         return payload;
     }

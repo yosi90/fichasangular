@@ -13,6 +13,7 @@ import {
     tieneCaracteristicasGeneradas,
     datosVisibles,
     sortilegasVisibles,
+    textoClasePersonaje,
     unirTipo,
 } from 'src/app/components/detalles/ficha';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
@@ -1078,7 +1079,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
         const preview = this.esPreviewNuevoPersonaje;
         const raza = this.texto(pj.Raza?.Nombre);
         const clases = (pj.desgloseClases ?? []).filter((c) => this.esVisible(c?.Nombre));
-        const textoClases = clases.map((c) => `${c.Nombre.trim()} ${toNumber(c.Nivel)}`).join(' / ');
+        const textoClases = clases.map((c) => textoClasePersonaje(c)).join(' / ');
         const alineamiento = this.texto(pj.Alineamiento);
 
         const modelo: ModeloFicha = {
@@ -1127,7 +1128,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             })),
             magia: this.calcularMagia(),
             lanzadores: clases
-                .map((c) => ({ clase: c.Nombre.trim(), texto: `${c.Nombre.trim()} ${toNumber(c.Nivel)}`, detalle: this.getSubchipsLanzadorClase(c).join(' · ') }))
+                .map((c) => ({ clase: c.Nombre.trim(), texto: textoClasePersonaje(c), detalle: this.getSubchipsLanzadorClase(c).join(' · ') }))
                 .filter((l) => l.detalle.length > 0),
             conjuros: (pj.Conjuros ?? []).filter((c) => this.esVisible(c?.Nombre)).map((c) => ({ texto: c.Nombre.trim(), clave: `${c.Id ?? ''}`, ref: c })),
             sortilegas: this.calcularSortilegas(),
@@ -1194,8 +1195,8 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             { etiqueta: 'Raza base', valor: this.texto(pj.RazaBase?.Nombre) || null },
             {
                 etiqueta: clases.length > 1 ? 'Clases' : 'Clase',
-                valor: clases.map((c) => `${c.Nombre.trim()} ${toNumber(c.Nivel)}`).join(', ') || null,
-                enlaces: clases.map((c) => ({ texto: `${c.Nombre.trim()} ${toNumber(c.Nivel)}`, alPulsar: () => this.verDetallesClase(c.Nombre) })),
+                valor: clases.map((c) => textoClasePersonaje(c)).join(', ') || null,
+                enlaces: clases.map((c) => ({ texto: textoClasePersonaje(c), alPulsar: () => this.verDetallesClase(c.Nombre) })),
             },
             { etiqueta: 'Nivel', valor: this.positivo(this.nivelPersonaje) ? this.nivelPersonaje : null, ayuda: this.nivelDisclaimer },
             {

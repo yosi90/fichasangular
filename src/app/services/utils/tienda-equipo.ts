@@ -14,7 +14,7 @@ import {
 } from 'src/app/interfaces/equipo';
 import { PersonajeCompraPiezaDto, PersonajeCompraRequestDto, PersonajeTipoPiezaDto } from 'src/app/interfaces/personajes-api';
 import { formatoNumero, textoConSigno, textoDestrezaMaxima, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumberOrNull } from 'src/app/services/utils/normalizacion';
 
 /*
  * La tienda del final de la creación (decisión del propietario del 2026-10-25; `docs/publica/OBJETOS_FRONT.md`, «Las
@@ -428,15 +428,24 @@ export function textoCarga(peso: number, capacidad: { Ligera: number; Media: num
     return `pasa de su carga pesada (${textoPeso(pesada)})`;
 }
 
+/**
+ * El precio máximo de una pieza de la política de la campaña (`precioMaximoPorObjeto`): po enteros, 0 o más; vacío,
+ * negativo o algo que no es un número, sin tope (`null`). Lo usan el mapper de la API, el editor de la campaña y la tienda.
+ */
+export function normalizarPrecioMaximoPorPieza(value: unknown): number | null {
+    const valor = toNumberOrNull(value);
+    const entero = valor === null ? null : Math.trunc(valor);
+    return entero !== null && entero >= 0 ? entero : null;
+}
+
 /** Lo que la tienda deja comprar según la política de la campaña (sin campaña, todo). */
 export function politicaTienda(politica: Partial<CampaignCreationPolicy> | null | undefined): PoliticaTienda {
     if (!politica)
         return POLITICA_TIENDA_LIBRE;
-    const maximo = politica.precioMaximoPorObjeto;
     return {
         objetosMagicos: politica.permitirObjetosMagicos !== false,
         aMedida: politica.permitirObjetosAMedida !== false,
-        precioMaximo: maximo === null || maximo === undefined || !Number.isFinite(Number(maximo)) ? null : Math.max(0, Number(maximo)),
+        precioMaximo: normalizarPrecioMaximoPorPieza(politica.precioMaximoPorObjeto),
     };
 }
 

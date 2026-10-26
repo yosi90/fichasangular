@@ -37,6 +37,7 @@ import { PlatformSessionService } from 'src/app/services/platform-session.servic
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
 
 type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
 type CampaignWorkspaceTab = 'usuarios' | 'historias';
@@ -1557,20 +1558,12 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             maxFuentesHomebrewGeneralesPorPersonaje: maxFuentesHomebrew,
             permitirObjetosMagicos: this.campaignCreatePolicyDraft.permitirObjetosMagicos !== false,
             permitirObjetosAMedida: this.campaignCreatePolicyDraft.permitirObjetosAMedida !== false,
-            precioMaximoPorObjeto: this.normalizeCampaignMaxItemPrice(this.campaignCreatePolicyDraft.precioMaximoPorObjeto),
+            precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(this.campaignCreatePolicyDraft.precioMaximoPorObjeto),
         };
     }
 
-    /** El precio máximo de una sola pieza en la tienda: po enteros; vacío o negativo, sin tope. */
-    private normalizeCampaignMaxItemPrice(value: number | string | null | undefined): number | null {
-        if (value === null || value === undefined || `${value}`.trim() === '')
-            return null;
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
-    }
-
     onCampaignMaxItemPriceBlur(): void {
-        this.campaignCreatePolicyDraft.precioMaximoPorObjeto = this.normalizeCampaignMaxItemPrice(this.campaignCreatePolicyDraft.precioMaximoPorObjeto);
+        this.campaignCreatePolicyDraft.precioMaximoPorObjeto = normalizarPrecioMaximoPorPieza(this.campaignCreatePolicyDraft.precioMaximoPorObjeto);
     }
 
     private normalizeCampaignMinimumRoll(value: number | null | undefined): number {
@@ -1985,7 +1978,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral ? null : maxFuentes,
             permitirObjetosMagicos: source?.permitirObjetosMagicos !== false,
             permitirObjetosAMedida: source?.permitirObjetosAMedida !== false,
-            precioMaximoPorObjeto: this.normalizeCampaignMaxItemPrice(source?.precioMaximoPorObjeto),
+            precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(source?.precioMaximoPorObjeto),
         };
     }
 

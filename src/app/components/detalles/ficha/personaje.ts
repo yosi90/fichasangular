@@ -8,8 +8,8 @@ import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { CasillaFicha } from './ficha';
 
 /*
- * Lo que enseñan igual la ficha del personaje (`detalles-personaje`) y el panel «Tu personaje» de la creación: las
- * casillas de las características y el nombre de una dote con su extra.
+ * Lo que enseñan igual la ficha del personaje (`detalles-personaje`) y la creación (su cabecera y el panel «Tu
+ * personaje»): las casillas de las características, cada clase con su nivel y el nombre de una dote con su extra.
  */
 
 /** En la ficha de un personaje, «Cualquiera» tampoco es una elección real y se oculta. */
@@ -45,6 +45,11 @@ export function casillasCaracteristicasPersonaje(pj: Personaje | null | undefine
         const modificador = textoConSigno(toNumber((pj as any)[`Mod${clave}`]));
         return { abreviatura: abreviaturaCaracteristica(clave), nombre, valor: `${valor}`, modificador, texto: `${nombre} ${valor} (${modificador})` };
     });
+}
+
+/** Una clase con su nivel: «Guerrero 5». */
+export function textoClasePersonaje(clase: { Nombre: string; Nivel: number; }): string {
+    return `${clase.Nombre.trim()} ${toNumber(clase.Nivel)}`;
 }
 
 /** Las dotes que se ven, con su extra: «Soltura con un arma (espada larga)». */

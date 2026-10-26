@@ -344,75 +344,55 @@
                             </button>
                         </div>
                         <p class="creacion-vacio" *ngIf="cargandoVentajas">Cargando desventajas…</p>
-                        <table class="ficha-tabla tabla-ventajas" *ngIf="!cargandoVentajas">
-                            <thead>
-                                <tr>
-                                    <th><span class="creacion-oculto">Elegida</span></th>
-                                    <th>Nombre</th>
-                                    <th>Coste</th>
-                                    <th>Descripción</th>
-                                    <th>Materia</th>
-                                    <th>Mejora</th>
-                                    <th>Disipable</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr *ngFor="let item of desventajasVisibles" class="fila-elegible"
-                                    [class.fila-elegida]="isDesventajaSeleccionada(item.Id)"
-                                    (click)="toggleDesventajaSeleccion(item)">
-                                    <td>
-                                        <mat-checkbox [checked]="isDesventajaSeleccionada(item.Id)"
-                                            (click)="$event.stopPropagation()" (change)="toggleDesventajaSeleccion(item)"
-                                            [attr.aria-label]="item.Nombre">
-                                        </mat-checkbox>
-                                    </td>
-                                    <td>{{item.Nombre}}</td>
-                                    <td class="ficha-num">{{item.Coste > 0 ? '+' : ''}}{{item.Coste}}</td>
-                                    <td>{{item.Descripcion}}</td>
-                                    <td>{{getMateriaVisible(item)}}</td>
-                                    <td>{{getMejoraVisible(item)}}</td>
-                                    <td>{{getDisipableVisible(item)}}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <ng-container *ngIf="!cargandoVentajas"
+                            [ngTemplateOutlet]="tablaVentajas" [ngTemplateOutletContext]="{ $implicit: desventajasVisibles, desventajas: true }">
+                        </ng-container>
 
                         <h2 class="creacion-titulo">Ventajas</h2>
                         <p class="creacion-vacio" *ngIf="cargandoVentajas">Cargando ventajas…</p>
-                        <table class="ficha-tabla tabla-ventajas" *ngIf="!cargandoVentajas">
-                            <thead>
-                                <tr>
-                                    <th><span class="creacion-oculto">Elegida</span></th>
-                                    <th>Nombre</th>
-                                    <th>Coste</th>
-                                    <th>Descripción</th>
-                                    <th>Materia</th>
-                                    <th>Mejora</th>
-                                    <th>Disipable</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr *ngFor="let item of ventajasVisibles" class="fila-elegible"
-                                    [class.fila-elegida]="isVentajaSeleccionada(item.Id)"
-                                    [class.fila-pendiente]="tieneIdiomaPendiente(item)"
-                                    (click)="toggleVentajaSeleccion(item)">
-                                    <td>
-                                        <mat-checkbox [checked]="isVentajaSeleccionada(item.Id)"
-                                            (click)="$event.stopPropagation()" (change)="toggleVentajaSeleccion(item)"
-                                            [attr.aria-label]="item.Nombre">
-                                        </mat-checkbox>
-                                    </td>
-                                    <td>
-                                        {{item.Nombre}}
-                                        <span class="texto-pendiente" *ngIf="tieneIdiomaPendiente(item)">Selecciona idioma</span>
-                                    </td>
-                                    <td class="ficha-num">{{item.Coste > 0 ? '+' : ''}}{{item.Coste}}</td>
-                                    <td>{{item.Descripcion}}</td>
-                                    <td>{{getMateriaVisible(item)}}</td>
-                                    <td>{{getMejoraVisible(item)}}</td>
-                                    <td>{{getDisipableVisible(item)}}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <ng-container *ngIf="!cargandoVentajas"
+                            [ngTemplateOutlet]="tablaVentajas" [ngTemplateOutletContext]="{ $implicit: ventajasVisibles, desventajas: false }">
+                        </ng-container>
+
+                        <!-- La misma tabla para las desventajas y las ventajas (solo las ventajas pueden pedir un idioma). -->
+                        <ng-template #tablaVentajas let-items let-desventajas="desventajas">
+                            <table class="ficha-tabla tabla-ventajas">
+                                <thead>
+                                    <tr>
+                                        <th><span class="creacion-oculto">Elegida</span></th>
+                                        <th>Nombre</th>
+                                        <th>Coste</th>
+                                        <th>Descripción</th>
+                                        <th>Materia</th>
+                                        <th>Mejora</th>
+                                        <th>Disipable</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let item of items" class="fila-elegible"
+                                        [class.fila-elegida]="desventajas ? isDesventajaSeleccionada(item.Id) : isVentajaSeleccionada(item.Id)"
+                                        [class.fila-pendiente]="!desventajas && tieneIdiomaPendiente(item)"
+                                        (click)="desventajas ? toggleDesventajaSeleccion(item) : toggleVentajaSeleccion(item)">
+                                        <td>
+                                            <mat-checkbox [checked]="desventajas ? isDesventajaSeleccionada(item.Id) : isVentajaSeleccionada(item.Id)"
+                                                (click)="$event.stopPropagation()"
+                                                (change)="desventajas ? toggleDesventajaSeleccion(item) : toggleVentajaSeleccion(item)"
+                                                [attr.aria-label]="item.Nombre">
+                                            </mat-checkbox>
+                                        </td>
+                                        <td>
+                                            {{item.Nombre}}
+                                            <span class="texto-pendiente" *ngIf="!desventajas && tieneIdiomaPendiente(item)">Selecciona idioma</span>
+                                        </td>
+                                        <td class="ficha-num">{{item.Coste > 0 ? '+' : ''}}{{item.Coste}}</td>
+                                        <td>{{item.Descripcion}}</td>
+                                        <td>{{getMateriaVisible(item)}}</td>
+                                        <td>{{getMejoraVisible(item)}}</td>
+                                        <td>{{getDisipableVisible(item)}}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </ng-template>
                     </div>
                     <div creacionLateral class="paso-lateral">
                         <app-creacion-personaje [personaje]="Personaje"></app-creacion-personaje>

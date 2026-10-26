@@ -1,3 +1,5 @@
+@use '../../../../assets/css/variables' as *
+
 // Tonos y medidas del lienzo de la ficha común que no están en `_variables.sass` (que no se toca): superficies y textos
 // sobre el fondo $contrast. Los usan `ficha.sass` y las piezas que una pantalla aún tenga en su propia hoja (el monstruo).
 $ficha-tarjeta: #424242
@@ -11,3 +13,13 @@ $ficha-radio: 6px
 $ficha-hueco: 18px
 // La misma sombra que `.sombra`, la de lo que flota sobre el fondo.
 $ficha-sombra: 3px 3px 10px black
+
+// Los títulos en versalitas de la ficha y de la creación de personaje.
+@mixin ficha-versalitas
+    margin: 0
+    font-size: 12px
+    font-weight: 700
+    line-height: 1.4
+    letter-spacing: .14em
+    text-transform: uppercase
+    color: $accent

@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { EncantamientoDetalle } from 'src/app/interfaces/equipo';
 import { formatoNumero, textoConSigno, textoPrecio } from 'src/app/services/utils/equipo-texto';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import {
     BONIFICADOR_TOTAL_MAXIMO,
     LineaPrecio,
@@ -131,9 +131,9 @@ export class ConfigurarPiezaComponent implements OnChanges {
         this.actualizar({ ...this.borrador, ...cambios });
     }
 
+    /** Lo escrito en un campo numérico, entero y como poco `minimo`. */
     numero(valor: unknown, minimo: number): number {
-        const numero = Math.trunc(Number(valor));
-        return Number.isFinite(numero) ? Math.max(minimo, numero) : minimo;
+        return Math.max(minimo, toInt(valor, minimo));
     }
 
     /** Los conjuros que encajan con lo escrito en el campo del conjuro de un genérico. */
