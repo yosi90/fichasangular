@@ -31,8 +31,13 @@ export interface PuntosHabilidadNivelClase {
     extraPorNivel?: number;
 }
 
+/** Los puntos de un nivel o un DG: los suyos más el modificador de Inteligencia, con un mínimo de 1. */
+function puntosPorNivel(puntos: number, modInteligencia: number): number {
+    return Math.max(1, toInt(puntos) + toInt(modInteligencia));
+}
+
 export function puntosHabilidadNivelClase(entrada: PuntosHabilidadNivelClase): number {
-    const porNivel = Math.max(1, toInt(entrada.puntosClase) + toInt(entrada.modInteligencia));
+    const porNivel = puntosPorNivel(entrada.puntosClase, entrada.modInteligencia);
     const extra = Math.max(0, toInt(entrada.primerNivelPersonaje ? entrada.extraPrimerNivel : entrada.extraPorNivel));
     return (entrada.primerNivelPersonaje ? porNivel * MULTIPLICADOR_PRIMER_NIVEL : porNivel) + extra;
 }
@@ -47,7 +52,7 @@ export interface PuntosHabilidadDgRaciales {
 
 export function puntosHabilidadDgRaciales(entrada: PuntosHabilidadDgRaciales): number {
     const multiplicador = Math.max(0, toInt(entrada.multiplicador));
-    return multiplicador * Math.max(1, toInt(entrada.puntosPorDg) + toInt(entrada.modInteligencia));
+    return multiplicador * puntosPorNivel(entrada.puntosPorDg, entrada.modInteligencia);
 }
 
 export function costeRangoHabilidad(clasea: boolean): number {
