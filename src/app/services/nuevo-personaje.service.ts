@@ -939,6 +939,7 @@ interface NuevoPersonajeDraftV1 {
     aumentosProgresionConcedidos: number;
     secuenciaAumentoPendiente: number;
     bonusNivelLanzadorPorClase: Record<string, number>;
+    clasesCerradasPorMulticlase?: string[];
     progresionLanzadorSelecciones?: PersonajeProgresionLanzadorSeleccionDto[];
     idsEspecialesInternosActivos: number[];
     idsDotesInternosActivos: number[];
@@ -984,6 +985,11 @@ export class NuevoPersonajeService {
     private catalogoRegiones: RegionDetalle[] = [];
     private catalogoDeidades: DeidadDetalle[] = [];
     private bonusNivelLanzadorPorClase: Record<string, number> = {};
+    /**
+     * Las clases con `Multiclase_restringida` (monje y paladín, MJ cap. 3) en las que ya no puede subir: el personaje ganó
+     * un nivel de otra clase después de tenerlas. Por su nombre normalizado, como `desgloseClases`.
+     */
+    private clasesCerradasPorMulticlase = new Set<string>();
     private progresionLanzadorSelecciones: PersonajeProgresionLanzadorSeleccionDto[] = [];
     private idsEspecialesInternosActivos = new Set<number>();
     private idsDotesInternosActivos = new Set<number>();
@@ -1240,6 +1246,7 @@ export class NuevoPersonajeService {
         this.idsDotesInternosActivos.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
+        this.clasesCerradasPorMulticlase.clear();
         this.progresionLanzadorSelecciones = [];
         this.dotesPendientes = [];
         this.secuenciaDotePendiente = 1;
@@ -1357,6 +1364,7 @@ export class NuevoPersonajeService {
         this.firmasDotesPlantillaAplicadas.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
+        this.clasesCerradasPorMulticlase.clear();
         this.progresionLanzadorSelecciones = [];
         this.aumentosPendientesCaracteristica = [];
         this.aumentosProgresionConcedidos = 0;
@@ -1541,6 +1549,13 @@ export class NuevoPersonajeService {
             return {
                 estado: 'blocked_failed',
                 razones: ['Nivel máximo alcanzado para esta clase'],
+                advertencias: [],
+            };
+        }
+        if (this.clasesCerradasPorMulticlase.has(normalizarTexto(clase?.Nombre ?? ''))) {
+            return {
+                estado: 'blocked_failed',
+                razones: [`Tras ganar un nivel de otra clase ya no puede volver a subir de ${`${clase?.Nombre ?? ''}`.trim().toLowerCase()}`],
                 advertencias: [],
             };
         }
@@ -4605,6 +4620,7 @@ export class NuevoPersonajeService {
             };
         }
 
+        this.cerrarClasesPorMulticlase(clase);
         this.actualizarDesgloseClase(clase, siguienteNivel);
         this.aplicarDeltaAtaqueBaseClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
         this.recalcularDerivadasPorCombate();
@@ -6374,6 +6390,21 @@ export class NuevoPersonajeService {
         if (!Number.isFinite(nivelClase) || nivelClase < 1)
             return null;
         return this.obtenerDetalleNivelClase(clase, nivelClase);
+    }
+
+    /**
+     * MJ cap. 3, monje y paladín: quien gana un nivel de otra clase ya no puede volver a subir la suya. Antes de aplicar
+     * un nivel de `clase`, cierra las que ya tiene con `Multiclase_restringida` (un dato de la clase, no su nombre).
+     */
+    private cerrarClasesPorMulticlase(clase: Clase): void {
+        const nombreNuevo = normalizarTexto(clase?.Nombre ?? '');
+        (this.personajeCreacion.desgloseClases ?? []).forEach((entrada) => {
+            const nombre = normalizarTexto(entrada?.Nombre ?? '');
+            if (nombre.length < 1 || nombre === nombreNuevo || toNumber(entrada?.Nivel) < 1)
+                return;
+            if (this.obtenerClaseCatalogoPorNombre(entrada.Nombre)?.Multiclase_restringida === true)
+                this.clasesCerradasPorMulticlase.add(nombre);
+        });
     }
 
     private actualizarDesgloseClase(clase: Clase, nivel: number): void {
@@ -8621,6 +8652,7 @@ export class NuevoPersonajeService {
             aumentosProgresionConcedidos: Math.max(0, toInt(this.aumentosProgresionConcedidos)),
             secuenciaAumentoPendiente: Math.max(1, toInt(this.secuenciaAumentoPendiente)),
             bonusNivelLanzadorPorClase: this.clonarProfundo(this.bonusNivelLanzadorPorClase),
+            clasesCerradasPorMulticlase: Array.from(this.clasesCerradasPorMulticlase.values()),
             progresionLanzadorSelecciones: this.getProgresionLanzadorPersistible()?.selecciones ?? [],
             idsEspecialesInternosActivos: Array.from(this.idsEspecialesInternosActivos.values()),
             idsDotesInternosActivos: Array.from(this.idsDotesInternosActivos.values()),
@@ -8697,6 +8729,7 @@ export class NuevoPersonajeService {
         this.aumentosProgresionConcedidos = Math.max(0, toInt(borrador.aumentosProgresionConcedidos));
         this.secuenciaAumentoPendiente = Math.max(1, toInt(borrador.secuenciaAumentoPendiente));
         this.bonusNivelLanzadorPorClase = this.clonarProfundo(borrador.bonusNivelLanzadorPorClase ?? {});
+        this.clasesCerradasPorMulticlase = new Set((borrador.clasesCerradasPorMulticlase ?? []).map((nombre) => normalizarTexto(nombre)));
         this.progresionLanzadorSelecciones = this.normalizarSeleccionesProgresionLanzadorBorrador(
             borrador.progresionLanzadorSelecciones
         );
