@@ -4078,8 +4078,7 @@ export class NuevoPersonajeService {
         if (!objetivo)
             return;
         if (bonosHabilidades) {
-            const idObjetivoHabilidad = toNumber(objetivo.Id);
-            bonosHabilidades[idObjetivoHabilidad] = [...(bonosHabilidades[idObjetivoHabilidad] ?? []), { valor, origen }];
+            this.agregarBonoHabilidad(bonosHabilidades, toNumber(objetivo.Id), valor, origen);
             return;
         }
 
@@ -5185,14 +5184,12 @@ export class NuevoPersonajeService {
         if (!habilidadObjetivo)
             return;
 
-        const id = toNumber(habilidadObjetivo.Id);
-        if (!bonosHabilidades[id])
-            bonosHabilidades[id] = [];
+        this.agregarBonoHabilidad(bonosHabilidades, toNumber(habilidadObjetivo.Id), valor, origen);
+    }
 
-        bonosHabilidades[id].push({
-            valor,
-            origen,
-        });
+    /** Un bono a la habilidad en lo que monta el recálculo de las ventajas (`estadoFlujo.ventajas.bonosHabilidades`). */
+    private agregarBonoHabilidad(bonosHabilidades: Record<number, HabilidadBonoVario[]>, idHabilidad: number, valor: number, origen: string): void {
+        (bonosHabilidades[idHabilidad] ??= []).push({ valor, origen });
     }
 
     private buscarHabilidadEnPersonaje(detalle: VentajaDetalle): Personaje['Habilidades'][number] | null {
@@ -5449,12 +5446,7 @@ export class NuevoPersonajeService {
                 if (idHabilidad <= 0)
                     return;
 
-                if (!bonosHabilidades[idHabilidad])
-                    bonosHabilidades[idHabilidad] = [];
-                bonosHabilidades[idHabilidad].push({
-                    valor: rangos,
-                    origen,
-                });
+                this.agregarBonoHabilidad(bonosHabilidades, idHabilidad, rangos, origen);
             });
 
             this.aplicarDotesPlantilla(plantilla, origen);
@@ -6025,12 +6017,7 @@ export class NuevoPersonajeService {
             const idHabilidad = toNumber(habilidad.Id);
             if (idHabilidad <= 0)
                 return;
-            if (!bonosHabilidades[idHabilidad])
-                bonosHabilidades[idHabilidad] = [];
-            bonosHabilidades[idHabilidad].push({
-                valor: cantidad,
-                origen,
-            });
+            this.agregarBonoHabilidad(bonosHabilidades, idHabilidad, cantidad, origen);
         });
     }
 
