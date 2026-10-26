@@ -2393,7 +2393,7 @@ export class NuevoPersonajeService {
         const idDote = toNumber(seleccion?.idDote);
         if (idDote <= 0)
             return false;
-        const dote = (this.catalogoDotes ?? []).find((item) => toNumber(item?.Id) === idDote);
+        const dote = this.doteDelCatalogo(idDote);
         if (!dote)
             return false;
 
@@ -3741,6 +3741,11 @@ export class NuevoPersonajeService {
         };
     }
 
+    /** La dote del catálogo con ese id, si está cargada. */
+    private doteDelCatalogo(idDote: number): Dote | undefined {
+        return (this.catalogoDotes ?? []).find((item) => toNumber(item?.Id) === idDote);
+    }
+
     private crearDotePlaceholder(idDote: number, nombre: string): Dote {
         return {
             Id: idDote,
@@ -3791,7 +3796,7 @@ export class NuevoPersonajeService {
         if (yaExiste)
             return false;
 
-        const dote = (this.catalogoDotes ?? []).find((item) => toNumber(item?.Id) === DOTE_FAMILIAR_ID)
+        const dote = this.doteDelCatalogo(DOTE_FAMILIAR_ID)
             ?? this.crearDotePlaceholder(DOTE_FAMILIAR_ID, 'Alerta');
         const origen = 'Familiar';
         const agregado = this.agregarDoteAlPersonaje(dote, origen, 0, 'No aplica');
@@ -3874,7 +3879,7 @@ export class NuevoPersonajeService {
     }
 
     private asegurarDoteCompanero(companero: CompaneroMonstruoDetalle, idDote: number): boolean {
-        const dote = (this.catalogoDotes ?? []).find((item) => toNumber(item?.Id) === idDote)
+        const dote = this.doteDelCatalogo(idDote)
             ?? this.crearDotePlaceholder(idDote, `Dote ${idDote} (Compañero)`);
         const dotes = Array.isArray(companero?.Dotes) ? [...companero.Dotes] : [];
         const duplicado = dotes.some((item) => toNumber(item?.Dote?.Id) === idDote);
@@ -5480,12 +5485,11 @@ export class NuevoPersonajeService {
      * catálogo si está (con sus modificadores); si no, la que trae la raza o, de un racial, su id y su nombre.
      */
     private resolverDotesDeRaza(raza: Raza | null): DoteDeRaza[] {
-        const delCatalogo = (id: number): Dote | undefined => this.catalogoDotes.find((item) => toNumber(item?.Id) === id);
         const origenRaza = `${raza?.Nombre ?? ''}`.trim() || 'Raza';
         const deLaRaza = (raza?.DotesContextuales ?? [])
             .filter((entrada) => toNumber(entrada?.Dote?.Id) > 0)
             .map((entrada) => ({
-                dote: delCatalogo(toNumber(entrada.Dote.Id)) ?? entrada.Dote,
+                dote: this.doteDelCatalogo(toNumber(entrada.Dote.Id)) ?? entrada.Dote,
                 idExtra: toNumber(entrada?.Contexto?.Id_extra),
                 extra: `${entrada?.Contexto?.Extra ?? ''}`.trim() || 'No aplica',
                 origen: origenRaza,
@@ -5493,7 +5497,8 @@ export class NuevoPersonajeService {
         const deSusRaciales = (raza?.Raciales ?? []).flatMap((racial) => (racial?.Dotes ?? [])
             .filter((entrada) => toNumber(entrada?.Id_dote) > 0)
             .map((entrada) => ({
-                dote: delCatalogo(toNumber(entrada.Id_dote)) ?? ({ Id: toNumber(entrada.Id_dote), Nombre: `${entrada?.Dote ?? ''}`.trim() } as Dote),
+                dote: this.doteDelCatalogo(toNumber(entrada.Id_dote))
+                    ?? this.crearDotePlaceholder(toNumber(entrada.Id_dote), `${entrada?.Dote ?? ''}`.trim()),
                 idExtra: toNumber(entrada?.Id_extra),
                 extra: `${entrada?.Extra ?? ''}`.trim() || 'No aplica',
                 origen: `${racial?.Nombre ?? ''}`.trim() || origenRaza,
