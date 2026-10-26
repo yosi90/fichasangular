@@ -2499,7 +2499,7 @@ export class NuevoPersonajeService {
             };
         }
 
-        const plantillaId = Math.max(1, Math.min(5, toNumber(plantillaSeleccionada))) as FamiliarPlantillaId;
+        const plantillaId = this.plantillaFamiliar(plantillaSeleccionada);
         const yaExiste = (this.personajeCreacion.Familiares ?? []).some((item) =>
             toNumber(item?.Id_familiar) === idFamiliar
             && toNumber(item?.Plantilla?.Id) === plantillaId
@@ -2526,15 +2526,8 @@ export class NuevoPersonajeService {
                 especialesAgregadosIds.push(idEspecial);
         });
 
-        const nivelLanzador = Math.max(0, toNumber(estado.nivelLanzadorFamiliar));
-        if (this.debeAgregarEspecialFamiliar83(plantillaId, nivelLanzador)
-            && this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_MENSAJERO, nombresEspecialesPorId)) {
-            especialesAgregadosIds.push(ESPECIAL_BONUS_FAMILIAR_MENSAJERO);
-        }
-        if (this.debeAgregarEspecialFamiliar87(plantillaId, nivelLanzador)
-            && this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_HECHIZO, nombresEspecialesPorId)) {
-            especialesAgregadosIds.push(ESPECIAL_BONUS_FAMILIAR_HECHIZO);
-        }
+        especialesAgregadosIds.push(...this.asegurarBonosFamiliarPorNivel(
+            plantillaId, Math.max(0, toNumber(estado.nivelLanzadorFamiliar)), nombresEspecialesPorId));
 
         this.recalcularDerivadasPorCaracteristicas();
         this.recalcularDerivadasPorCombate();
@@ -2648,15 +2641,10 @@ export class NuevoPersonajeService {
                 especialesAgregadosIds.push(idEspecial);
         });
 
-        const nivelEfectivo = Math.max(0, toNumber(estado?.nivelEfectivoCompanero));
-        if (nivelEfectivo >= 6 && this.asegurarEspecialCompanero(companeroGuardar, ESPECIAL_BONUS_COMPANERO_AVANZADO, nombresEspecialesPorId))
-            especialesAgregadosIds.push(ESPECIAL_BONUS_COMPANERO_AVANZADO);
-        if (nivelEfectivo >= 15 && this.asegurarEspecialCompanero(companeroGuardar, ESPECIAL_BONUS_COMPANERO_MAESTRO, nombresEspecialesPorId))
-            especialesAgregadosIds.push(ESPECIAL_BONUS_COMPANERO_MAESTRO);
-
-        const dote49Agregada = nivelEfectivo >= 9
-            ? this.asegurarDoteCompanero(companeroGuardar, DOTE_COMPANERO_BONUS_ID)
-            : false;
+        const bonosNivel = this.asegurarBonosCompaneroPorNivel(
+            companeroGuardar, Math.max(0, toNumber(estado?.nivelEfectivoCompanero)), nombresEspecialesPorId);
+        especialesAgregadosIds.push(...bonosNivel.especialesAgregadosIds);
+        const dote49Agregada = bonosNivel.doteAgregada;
 
         this.recalcularDerivadasPorCaracteristicas();
         this.recalcularDerivadasPorCombate();
@@ -3722,22 +3710,48 @@ export class NuevoPersonajeService {
                 companero.Defensa.Armadura_natural = toNumber(companero.Defensa.Armadura_natural) + nueva.bonoArmaduraNatural - anterior.bonoArmaduraNatural;
             companero.Dg_adi = nueva.dgAdi;
             companero.Trucos_adi = nueva.trucosAdi;
-            if (nivelCompanero >= 6)
-                this.asegurarEspecialCompanero(companero, ESPECIAL_BONUS_COMPANERO_AVANZADO, nombresEspeciales);
-            if (nivelCompanero >= 15)
-                this.asegurarEspecialCompanero(companero, ESPECIAL_BONUS_COMPANERO_MAESTRO, nombresEspeciales);
-            if (nivelCompanero >= 9)
-                this.asegurarDoteCompanero(companero, DOTE_COMPANERO_BONUS_ID);
+            this.asegurarBonosCompaneroPorNivel(companero, nivelCompanero, nombresEspeciales);
         });
 
         const nivelFamiliar = Math.max(0, toNumber(this.getEstadoCuposFamiliarEspecial47()?.nivelLanzadorFamiliar));
-        (this.personajeCreacion.Familiares ?? []).forEach((familiar) => {
-            const plantilla = Math.max(1, Math.min(5, toNumber(familiar?.Plantilla?.Id))) as FamiliarPlantillaId;
-            if (this.debeAgregarEspecialFamiliar83(plantilla, nivelFamiliar))
-                this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_MENSAJERO, nombresEspeciales);
-            if (this.debeAgregarEspecialFamiliar87(plantilla, nivelFamiliar))
-                this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_HECHIZO, nombresEspeciales);
-        });
+        (this.personajeCreacion.Familiares ?? []).forEach((familiar) =>
+            this.asegurarBonosFamiliarPorNivel(this.plantillaFamiliar(familiar?.Plantilla?.Id), nivelFamiliar, nombresEspeciales));
+    }
+
+    /** Las aptitudes (6 y 15) y la dote (9) que el compañero gana por el nivel de su amo; las que faltaban, las añade. */
+    private asegurarBonosCompaneroPorNivel(
+        companero: CompaneroMonstruoDetalle,
+        nivelEfectivo: number,
+        nombresEspecialesPorId: Record<number, string>
+    ): { especialesAgregadosIds: number[]; doteAgregada: boolean; } {
+        const especialesAgregadosIds: number[] = [];
+        if (nivelEfectivo >= 6 && this.asegurarEspecialCompanero(companero, ESPECIAL_BONUS_COMPANERO_AVANZADO, nombresEspecialesPorId))
+            especialesAgregadosIds.push(ESPECIAL_BONUS_COMPANERO_AVANZADO);
+        if (nivelEfectivo >= 15 && this.asegurarEspecialCompanero(companero, ESPECIAL_BONUS_COMPANERO_MAESTRO, nombresEspecialesPorId))
+            especialesAgregadosIds.push(ESPECIAL_BONUS_COMPANERO_MAESTRO);
+        const doteAgregada = nivelEfectivo >= 9 && this.asegurarDoteCompanero(companero, DOTE_COMPANERO_BONUS_ID);
+        return { especialesAgregadosIds, doteAgregada };
+    }
+
+    /** Las aptitudes que el personaje gana con su familiar por el nivel de lanzador; devuelve las que añade. */
+    private asegurarBonosFamiliarPorNivel(
+        plantilla: FamiliarPlantillaId,
+        nivelLanzador: number,
+        nombresEspecialesPorId: Record<number, string>
+    ): number[] {
+        const agregados: number[] = [];
+        if (this.debeAgregarEspecialFamiliar83(plantilla, nivelLanzador)
+            && this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_MENSAJERO, nombresEspecialesPorId))
+            agregados.push(ESPECIAL_BONUS_FAMILIAR_MENSAJERO);
+        if (this.debeAgregarEspecialFamiliar87(plantilla, nivelLanzador)
+            && this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_HECHIZO, nombresEspecialesPorId))
+            agregados.push(ESPECIAL_BONUS_FAMILIAR_HECHIZO);
+        return agregados;
+    }
+
+    /** La plantilla de un familiar (1 a 5), de la elegida o de la que ya lleva. */
+    private plantillaFamiliar(valor: unknown): FamiliarPlantillaId {
+        return Math.max(1, Math.min(5, toNumber(valor))) as FamiliarPlantillaId;
     }
 
     /** Los nombres de las aptitudes especiales que ya conoce la creación (las del catálogo de clases y las del personaje). */
