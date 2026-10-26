@@ -66,7 +66,7 @@ function crearPersonajeMock(partial?: Partial<Personaje>): Personaje {
 }
 
 describe('companero-reglas', () => {
-    it('calcula fuentes por especial 29 y cupos por fuente', () => {
+    it('calcula fuentes por especial 29 y un solo cupo', () => {
         const personaje = crearPersonajeMock({
             desgloseClases: [
                 { Nombre: 'Druida', Nivel: 4 },
@@ -115,6 +115,8 @@ describe('companero-reglas', () => {
         const estado = resolverEstadoCuposCompaneroEspecial29(personaje, clases);
         expect(estado.fuentesClaseIds.sort((a, b) => a - b)).toEqual([5, 6, 30]);
         expect(estado.nivelEfectivoCompanero).toBe(9); // 5 + floor(5/2) + 2
+        // Tres clases que dan compañero dan uno solo, con sus niveles sumados (MJ, cap. 3).
+        expect(estado.cuposDisponibles).toBe(1);
     });
 
     it('filtra companeros por plantilla, dote, nivel, alineamiento y homebrew', () => {

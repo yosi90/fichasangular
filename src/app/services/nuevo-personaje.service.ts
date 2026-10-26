@@ -3770,8 +3770,8 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * El familiar y el compañero animal para `POST /personajes/add` (el contrato guarda uno de cada; si hay más, el
-     * primero). El familiar se monta con los datos de su amo. Las aptitudes de su vínculo, que el personaje lleva con el
+     * El familiar y el compañero animal para `POST /personajes/add` (uno de cada, como el manual y el contrato: los
+     * cupos no dejan elegir más). El familiar se monta con los datos de su amo. Las aptitudes de su vínculo, que el personaje lleva con el
      * extra «Familiar» o «Compañero animal», van también con la mascota.
      */
     construirMascotasParaGuardar(): PersonajeCreateMascotasDto {

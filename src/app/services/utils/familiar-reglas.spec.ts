@@ -114,6 +114,9 @@ describe('familiar-reglas', () => {
         expect(estado.fuentesClaseIds.sort((a, b) => a - b)).toEqual([10, 12]);
         expect(estado.fuentesTotales).toBe(2);
         expect(estado.nivelLanzadorFamiliar).toBe(7);
+        // Un solo familiar por personaje (MJ, cap. 3), aunque lo den dos clases.
+        expect(estado.cuposDisponibles).toBe(1);
+        expect(resolverEstadoCuposFamiliarEspecial47({ ...personaje, Familiares: [{} as any] } as any, clases).cuposDisponibles).toBe(0);
     });
 
     it('filtra familiares por plantilla, nivel, alineamiento y homebrew', () => {

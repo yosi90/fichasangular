@@ -229,7 +229,8 @@ export function resolverEstadoCuposFamiliarEspecial47(
         .filter((id) => id > 0);
     const fuentesTotales = fuentesClaseIds.length;
     const cuposConsumidos = (personaje?.Familiares ?? []).length;
-    const cuposDisponibles = Math.max(0, fuentesTotales - cuposConsumidos);
+    // Un solo familiar por personaje (MJ, cap. 3): los niveles de las clases que lo dan se suman para sus aptitudes.
+    const cuposDisponibles = Math.max(0, (fuentesTotales > 0 ? 1 : 0) - cuposConsumidos);
     const nivelLanzadorFamiliar = fuentes.reduce((acc, fuente) => acc + Math.max(0, toNumber(fuente?.nivelActual)), 0);
 
     return {

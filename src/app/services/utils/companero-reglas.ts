@@ -172,7 +172,8 @@ export function resolverEstadoCuposCompaneroEspecial29(
         .filter((id) => id > 0);
     const fuentesTotales = fuentesClaseIds.length;
     const cuposConsumidos = (personaje?.Companeros ?? []).length;
-    const cuposDisponibles = Math.max(0, fuentesTotales - cuposConsumidos);
+    // Un solo compañero animal: los niveles de druida y de explorador se suman para él (MJ, cap. 3), no dan dos.
+    const cuposDisponibles = Math.max(0, (fuentesTotales > 0 ? 1 : 0) - cuposConsumidos);
     const nivelEfectivoCompanero = fuentes.reduce((acc, fuente) =>
         acc + resolveNivelEfectivoCompaneroByClase(toNumber(fuente?.idClase), toNumber(fuente?.nivelActual))
     , 0);

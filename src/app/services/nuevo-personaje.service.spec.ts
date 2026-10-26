@@ -5024,7 +5024,7 @@ describe('NuevoPersonajeService (familiar)', () => {
         expect(resultado.especialesAgregadosIds).not.toContain(87);
     });
 
-    it('registrarFamiliarSeleccionado rechaza duplicados y falta de cupo', () => {
+    it('registrarFamiliarSeleccionado: un solo familiar aunque lo den dos clases, y sin fuente no hay cupo', () => {
         const svc = new NuevoPersonajeService();
         const claseMago = crearClaseBase({
             Id: 10,
@@ -5074,7 +5074,8 @@ describe('NuevoPersonajeService (familiar)', () => {
 
         expect(primera.registrado).toBeTrue();
         expect(segunda.registrado).toBeFalse();
-        expect((segunda.razon ?? '').toLowerCase()).toContain('misma plantilla');
+        // Mago y brujo dan un solo familiar (MJ, cap. 3): el segundo ya no tiene cupo.
+        expect((segunda.razon ?? '').toLowerCase()).toContain('cupos');
 
         const svcSinFuente = new NuevoPersonajeService();
         const sinCupo = svcSinFuente.registrarFamiliarSeleccionado(
@@ -5160,11 +5161,12 @@ describe('NuevoPersonajeService (familiar)', () => {
         const estado = svc.getEstadoCuposCompaneroEspecial29();
         expect(estado.fuentesClaseIds.sort((a, b) => a - b)).toEqual([5, 6]);
         expect(estado.fuentesTotales).toBe(2);
-        expect(estado.cuposDisponibles).toBe(2);
+        // Druida y explorador dan un solo compañero, con sus niveles sumados (MJ, cap. 3).
+        expect(estado.cuposDisponibles).toBe(1);
         expect(estado.nivelEfectivoCompanero).toBe(6); // 4 + floor(5/2)
     });
 
-    it('registrarCompaneroSeleccionado aplica beneficios y rechaza duplicados', () => {
+    it('registrarCompaneroSeleccionado aplica beneficios y no deja un segundo compañero', () => {
         const svc = new NuevoPersonajeService();
         const druida = crearClaseBase({
             Id: 5,
@@ -5258,7 +5260,8 @@ describe('NuevoPersonajeService (familiar)', () => {
         expect(svc.PersonajeCreacion.Companeros.length).toBe(1);
         expect(svc.PersonajeCreacion.Companeros[0].Nombre).toBe('Compañero de Aldric');
         expect(segundo.registrado).toBeFalse();
-        expect((segundo.razon ?? '').toLowerCase()).toContain('misma plantilla');
+        // Druida y bestiario dan un solo compañero: el segundo ya no tiene cupo.
+        expect((segundo.razon ?? '').toLowerCase()).toContain('cupos');
     });
 });
 
