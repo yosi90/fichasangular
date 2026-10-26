@@ -1,0 +1,342 @@
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Subject, Subscription, catchError, defer, forkJoin, of, switchMap, take, timer } from 'rxjs';
+import { DatoFranja } from 'src/app/components/detalles/ficha';
+import { AplicacionMaterial, EncantamientoDetalle, FiltrosObjetos, MaterialDetalle } from 'src/app/interfaces/equipo';
+import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
+import { EquipoService } from 'src/app/services/equipo.service';
+import { textoPeso, textoPrecio, textoPrecioGenerico } from 'src/app/services/utils/equipo-texto';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import {
+    ArticuloTienda,
+    MaterialAplicable,
+    OrigenPestanaTienda,
+    POLITICA_TIENDA_LIBRE,
+    PestanaTienda,
+    PiezaTienda,
+    PoliticaTienda,
+    ReglaDineroInicial,
+    ResumenCompra,
+    aptitudesAplicables,
+    articuloDeObjeto,
+    construirCompra,
+    materialesAplicables,
+    motivoPiezaNoValida,
+    notaPoliticaTienda,
+    nuevaPieza,
+    pestanasTienda,
+    pesoEstimado,
+    precioEstimado,
+    resumenCompra,
+    seConfiguraAMedida,
+    sePuedeComprar,
+    textoCarga,
+    tirarOroInicial,
+} from 'src/app/services/utils/tienda-equipo';
+
+const MAXIMO_OPCIONES = 60;
+
+/** La pieza que se está configurando: una del carro (`indice`) o una nueva del catálogo (`null`). */
+interface PiezaEnConfiguracion {
+    indice: number | null;
+    pieza: PiezaTienda;
+    materiales: MaterialAplicable[];
+    aptitudes: EncantamientoDetalle[];
+    disponible: number;
+}
+
+/**
+ * La tienda, último paso de la creación («Equipo»), con el personaje ya guardado (puntos de golpe y experiencia
+ * hechos). Lienzo aprobado el 2026-10-26: franja con el dinero, catálogo por pestañas con buscador a la izquierda, «Lo
+ * que compra» a la derecha y, al configurar una pieza, una ventana con material, mejora y aptitudes. Los precios son una
+ * estimación con las reglas de la API, que es la que manda al guardar (`docs/publica/OBJETOS_FRONT.md`, «Las compras»).
+ */
+@Component({
+    selector: 'app-tienda-equipo',
+    templateUrl: './tienda-equipo.component.html',
+    styleUrls: ['./tienda-equipo.component.sass'],
+    standalone: false
+})
+export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
+    @Input() regla!: ReglaDineroInicial;
+    /** Armas, armaduras y munición; los objetos se buscan en la API (catálogo grande). */
+    @Input() articulos: ArticuloTienda[] = [];
+    /** Para el conjuro de las pociones, pergaminos y varitas. */
+    @Input() conjuros: { Id: number; Nombre: string; }[] = [];
+    @Input() guardando = false;
+    @Input() error = '';
+    /** La pieza que señala el error de la API (`field: piezas[i]`), o `null`. */
+    @Input() piezaConError: number | null = null;
+    /** En una campaña que no admite homebrew: solo lo oficial (también en los objetos que se buscan en la API). */
+    @Input() soloOficial = false;
+    /** Lo que deja comprar la campaña (objetos mágicos, a medida y el precio por pieza); sin campaña, todo. */
+    @Input() politica: PoliticaTienda = POLITICA_TIENDA_LIBRE;
+    /** La capacidad de carga del personaje, para decir qué carga lleva. */
+    @Input() capacidadCarga: { Ligera: number; Media: number; Pesada: number; } | null = null;
+    /** Cifras de más para la franja que dependen de otra pestaña (las páginas del libro de conjuros). */
+    @Input() cifrasExtra: DatoFranja[] = [];
+    @Output() confirmar = new EventEmitter<PersonajeCompraRequestDto>();
+    @Output() omitir = new EventEmitter<void>();
+
+    readonly textoPrecio = textoPrecio;
+    readonly textoPrecioGenerico = textoPrecioGenerico;
+    readonly textoPeso = textoPeso;
+    readonly precioEstimado = precioEstimado;
+    readonly pesoEstimado = pesoEstimado;
+    readonly seConfiguraAMedida = seConfiguraAMedida;
+
+    pestanas: PestanaTienda[] = pestanasTienda({ politica: POLITICA_TIENDA_LIBRE });
+    seccion: OrigenPestanaTienda = 'arma';
+    /** La pieza que señaló la API; deja de señalarse en cuanto cambia la compra. */
+    piezaSenalada: number | null = null;
+    busqueda = '';
+    dineroInicial = 0;
+    piezas: PiezaTienda[] = [];
+    objetos: ArticuloTienda[] = [];
+    cargandoObjetos = false;
+    errorObjetos = '';
+    configurando: PiezaEnConfiguracion | null = null;
+    materiales: MaterialDetalle[] = [];
+    aptitudes: EncantamientoDetalle[] = [];
+    aplicaciones: AplicacionMaterial[] = [];
+
+    private readonly busquedaObjetos$ = new Subject<{ q: string; espera: number; especificas: boolean; }>();
+    private suscripciones: Subscription[] = [];
+
+    constructor(private equipoSvc: EquipoService) { }
+
+    ngOnInit(): void {
+        this.suscripciones.push(this.busquedaObjetos$.pipe(
+            switchMap(({ q, espera, especificas }) => {
+                this.cargandoObjetos = true;
+                this.errorObjetos = '';
+                const filtros: FiltrosObjetos = { q: q || null, limit: 100, offset: 0, especificas };
+                if (!this.politica.objetosMagicos)
+                    filtros.categoria = 'mundano';
+                const pedir = defer(() => this.equipoSvc.getObjetos(filtros)).pipe(
+                    catchError(() => {
+                        this.errorObjetos = 'No se pudieron cargar los objetos.';
+                        return of({ items: [], total: 0, hayMas: false });
+                    }),
+                );
+                return espera > 0 ? timer(espera).pipe(switchMap(() => pedir)) : pedir;
+            }),
+        ).subscribe((pagina) => {
+            this.objetos = pagina.items.map((objeto) => articuloDeObjeto(objeto));
+            this.cargandoObjetos = false;
+        }));
+        // Lo que hace falta para configurar una pieza a medida: los materiales con sus costes, las aptitudes y a qué
+        // piezas se aplica cada coste. Sin ellos, solo se puede elegir la mejora.
+        this.suscripciones.push(forkJoin({
+            materiales: this.equipoSvc.getMateriales().pipe(take(1), catchError(() => of([] as MaterialDetalle[]))),
+            aptitudes: this.equipoSvc.getEncantamientos().pipe(take(1), catchError(() => of([] as EncantamientoDetalle[]))),
+            aplicaciones: this.equipoSvc.getCatalogos().pipe(take(1), catchError(() => of(null))),
+        }).subscribe(({ materiales, aptitudes, aplicaciones }) => {
+            this.materiales = materiales;
+            this.aptitudes = aptitudes;
+            this.aplicaciones = aplicaciones?.Aplicaciones_material ?? [];
+        }));
+    }
+
+    ngOnChanges(changes: SimpleChanges): void {
+        if (changes['regla'] && this.regla)
+            this.dineroInicial = this.regla.sugerido;
+        if (changes['piezaConError'])
+            this.piezaSenalada = this.piezaConError;
+        if (changes['politica']) {
+            this.pestanas = pestanasTienda({ politica: this.politica ?? POLITICA_TIENDA_LIBRE });
+            if (!this.pestanas.some((pestana) => pestana.id === this.seccion))
+                this.cambiarSeccion('arma');
+        }
+    }
+
+    ngOnDestroy(): void {
+        this.suscripciones.forEach((suscripcion) => suscripcion.unsubscribe());
+    }
+
+    get resumen(): ResumenCompra {
+        return resumenCompra(this.dineroInicial, this.piezas, this.regla);
+    }
+
+    get pestanaActual(): PestanaTienda {
+        return this.pestanas.find((pestana) => pestana.id === this.seccion) ?? this.pestanas[0];
+    }
+
+    /** Lo que se ofrece en la pestaña elegida: lo que se puede comprar y encaja con la búsqueda. */
+    get opciones(): ArticuloTienda[] {
+        const texto = normalizarTexto(this.busqueda, true);
+        const desdeApi = this.seccion === 'objeto' || this.seccion === 'especifica';
+        const fuente = desdeApi ? this.objetos : this.articulos.filter((articulo) => articulo.tipo === this.seccion);
+        return fuente
+            .filter((articulo) => sePuedeComprar(articulo) && (!this.soloOficial || articulo.oficial))
+            .filter((articulo) => this.politica.objetosMagicos || !articulo.magico)
+            .filter((articulo) => desdeApi || texto.length < 1
+                || normalizarTexto(articulo.nombre, true).includes(texto)
+                || normalizarTexto(articulo.categoria, true).includes(texto))
+            .slice(0, MAXIMO_OPCIONES);
+    }
+
+    /** Las cifras del paso: el dinero, lo gastado, lo que queda, el peso y su carga (y las de otras pestañas). */
+    get franja(): DatoFranja[] {
+        const resumen = this.resumen;
+        return [
+            {
+                etiqueta: 'Dinero inicial', valor: textoPrecio(this.dineroInicial),
+                detalle: this.regla?.modo === 'riqueza' ? 'riqueza de su NEP' : this.regla?.modo === 'dados' ? `oro de ${this.regla.dados}` : null,
+            },
+            { etiqueta: 'Gastado', valor: textoPrecio(resumen.gastado) },
+            { etiqueta: 'Te queda', valor: textoPrecio(resumen.queda) },
+            { etiqueta: 'Peso', valor: textoPeso(resumen.peso), detalle: textoCarga(resumen.peso, this.capacidadCarga) || null },
+            ...(this.cifrasExtra ?? []),
+        ];
+    }
+
+    get hayHomebrew(): boolean {
+        return this.piezas.some((pieza) => !pieza.articulo.oficial);
+    }
+
+    /** Por qué no vale cada pieza (o `null`), en su orden. */
+    get motivosPiezas(): (string | null)[] {
+        return this.piezas.map((pieza) => motivoPiezaNoValida(pieza, this.politica));
+    }
+
+    /** Por qué no se puede comprar aún, o `null` si se puede. */
+    get motivoNoComprar(): string | null {
+        const resumen = this.resumen;
+        if (!(this.dineroInicial >= 0))
+            return 'Pon el dinero inicial.';
+        if (!resumen.dentroDelTope)
+            return `El dinero inicial no puede pasar de ${textoPrecio(this.regla.maximo)}.`;
+        if (!resumen.alcanza)
+            return 'No te llega el dinero para todo.';
+        if (this.motivosPiezas.some((motivo) => motivo !== null))
+            return 'Completa las piezas marcadas.';
+        return null;
+    }
+
+    /** La nota del pie: lo que no se puede comprar o, si no, lo que la campaña limita y el homebrew. */
+    get notaPie(): string {
+        if (this.error)
+            return this.error;
+        return [
+            this.motivoNoComprar && this.piezas.length > 0 ? this.motivoNoComprar : '',
+            notaPoliticaTienda(this.politica),
+            this.hayHomebrew ? 'Comprar algo homebrew hace homebrew al personaje.' : '',
+        ].filter(Boolean).join(' ') || 'Comprar algo homebrew hace homebrew al personaje. La API comprueba los precios al guardar.';
+    }
+
+    get puedeTirar(): boolean {
+        return this.regla?.modo === 'dados' && !this.guardando;
+    }
+
+    cambiarSeccion(seccion: OrigenPestanaTienda): void {
+        this.seccion = seccion;
+        this.busqueda = '';
+        if (seccion === 'objeto' || seccion === 'especifica')
+            this.busquedaObjetos$.next({ q: '', espera: 0, especificas: seccion === 'especifica' });
+    }
+
+    /** Flechas, Inicio y Fin entre las pestañas (patrón `tablist`). */
+    moverPestana(evento: KeyboardEvent): void {
+        const indice = this.pestanas.findIndex((pestana) => pestana.id === this.seccion);
+        const destino = evento.key === 'ArrowRight' ? indice + 1 : evento.key === 'ArrowLeft' ? indice - 1
+            : evento.key === 'Home' ? 0 : evento.key === 'End' ? this.pestanas.length - 1 : null;
+        if (destino === null)
+            return;
+        evento.preventDefault();
+        const pestana = this.pestanas[(destino + this.pestanas.length) % this.pestanas.length];
+        this.cambiarSeccion(pestana.id);
+        const boton = (evento.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>(`[data-pestana="${pestana.id}"]`);
+        boton?.focus();
+    }
+
+    buscar(texto: string): void {
+        this.busqueda = texto;
+        if (this.seccion === 'objeto' || this.seccion === 'especifica')
+            this.busquedaObjetos$.next({ q: texto.trim(), espera: 300, especificas: this.seccion === 'especifica' });
+    }
+
+    tirarDados(): void {
+        if (this.puedeTirar)
+            this.dineroInicial = tirarOroInicial(this.regla);
+    }
+
+    cambiarDinero(valor: unknown): void {
+        const numero = Number(valor);
+        this.dineroInicial = Number.isFinite(numero) && numero >= 0 ? numero : 0;
+    }
+
+    /** Añade una unidad tal cual; un genérico (poción, varita…) abre antes su configuración para elegir el conjuro. */
+    anadir(articulo: ArticuloTienda): void {
+        if (articulo.generico) {
+            this.abrirConfiguracion(null, nuevaPieza(articulo));
+            return;
+        }
+        this.piezaSenalada = null;
+        this.piezas = [...this.piezas, nuevaPieza(articulo)];
+    }
+
+    /** Configura una pieza nueva del catálogo antes de añadirla. */
+    configurarNueva(articulo: ArticuloTienda): void {
+        this.abrirConfiguracion(null, nuevaPieza(articulo));
+    }
+
+    editarPieza(indice: number): void {
+        const pieza = this.piezas[indice];
+        if (pieza)
+            this.abrirConfiguracion(indice, pieza);
+    }
+
+    quitar(indice: number): void {
+        this.piezaSenalada = null;
+        this.piezas = this.piezas.filter((_, i) => i !== indice);
+    }
+
+    /** Cambia un dato de una pieza (la cantidad, la mejora, el conjuro…). */
+    cambiarPieza(indice: number, cambios: Partial<PiezaTienda>): void {
+        this.piezaSenalada = null;
+        this.piezas = this.piezas.map((pieza, i) => i === indice ? { ...pieza, ...cambios } : pieza);
+    }
+
+    guardarConfiguracion(pieza: PiezaTienda): void {
+        const configurando = this.configurando;
+        if (!configurando)
+            return;
+        this.piezaSenalada = null;
+        this.piezas = configurando.indice === null
+            ? [...this.piezas, pieza]
+            : this.piezas.map((actual, i) => i === configurando.indice ? pieza : actual);
+        this.configurando = null;
+    }
+
+    cancelarConfiguracion(): void {
+        this.configurando = null;
+    }
+
+    onConfirmar(): void {
+        if (this.guardando || this.motivoNoComprar !== null)
+            return;
+        this.confirmar.emit(construirCompra(this.dineroInicial, this.piezas));
+    }
+
+    onOmitir(): void {
+        if (!this.guardando)
+            this.omitir.emit();
+    }
+
+    trackPestana(_indice: number, pestana: PestanaTienda): string {
+        return pestana.id;
+    }
+
+    private abrirConfiguracion(indice: number | null, pieza: PiezaTienda): void {
+        const yaCostaba = indice === null ? 0 : precioEstimado(this.piezas[indice]);
+        this.configurando = {
+            indice,
+            pieza,
+            materiales: materialesAplicables(pieza.articulo, this.materiales, this.aplicaciones)
+                .filter((item) => !this.soloOficial || item.material.Oficial),
+            aptitudes: aptitudesAplicables(pieza.articulo, this.aptitudes).filter((aptitud) => !this.soloOficial || aptitud.Oficial),
+            // Lo que le queda más lo que ya costaba esta pieza.
+            disponible: this.resumen.queda + yaCostaba,
+        };
+    }
+}

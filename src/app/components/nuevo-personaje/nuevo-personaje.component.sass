@@ -1,125 +1,143 @@
 @use '../../../assets/css/_variables' as *
-@use '../../../assets/css/_animations' as *
-@use '../../../assets/css/_loaders' as *
-@use '../../../assets/css/_sombras' as *
-@use '../../../assets/css/preformas/_detalles' as *
+@use '../detalles/ficha/ficha-tonos' as *
+
+// Lo propio de cada paso de la creación. El marco común (cabecera, fila de pasos, franja, cuerpo en dos columnas y pie)
+// está en `marco/creacion.sass`; las tablas son las de la ficha común (`ficha-tabla`).
+
 :host
     display: flex
     height: 100%
     min-height: 0
-    padding: 5px
     position: relative
 
 .nuevo-personaje-shell
     position: relative
     display: flex
     flex: 1 1 auto
+    min-width: 0
     min-height: 0
-
-    mat-tab-group
-        display: flex
-        flex-direction: column
-        flex: 1 1 auto
-        height: 100%
-        min-height: 0
-
-        ::ng-deep mat-tab-header
-            background-color: #353538
-            pointer-events: none
-
-        ::ng-deep .mat-mdc-tab-body-wrapper
-            flex: 1 1 auto
-            min-height: 0
-            overflow: hidden
-
-        ::ng-deep .mat-mdc-tab-body
-            height: 100%
-
-        ::ng-deep .mat-mdc-tab-body-content
-            height: 100%
-            min-height: 0
-            overflow: hidden
-
-        ::ng-deep .mdc-tab__text-label
-            font-size: 15px
-            font-weight: 300
 
     app-generador-caracteristicas-modal
         position: absolute
         inset: 0
         z-index: 50
 
-    .col-md-4 div, .col-12 div
-        border: 0
+textarea
+    resize: vertical
 
-.tab-frame
+// Piezas de los pasos
+.paso-tarea
     display: flex
     flex-direction: column
-    height: 100%
-    min-height: 0
+    gap: 10px
+    min-width: 0
 
-.tab-head
-    flex: 0 0 auto
+.paso-lateral
+    display: flex
+    flex-direction: column
+    gap: 12px
+    min-width: 0
 
-.tab-scroll
-    flex: 1 1 auto
-    min-height: 0
-    overflow: auto
+.paso-tarjeta, .paso-aviso
+    display: flex
+    flex-direction: column
+    gap: 10px
+    padding: 14px 18px
 
-.tab-footer
-    position: sticky
-    bottom: 0
-    z-index: 6
-    flex: 0 0 auto
+.paso-tarjeta__cabecera
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    justify-content: space-between
+    gap: 8px
+
+.paso-tarjeta__acciones
     display: flex
     justify-content: flex-end
-    align-items: center
-    gap: 8px
-    background: #353538
-    border-top: 1px solid rgba(255, 255, 255, 0.1)
 
-.tab-footer--dual-actions
+.paso-filtros
+    display: flex
     flex-wrap: wrap
+    align-items: center
+    gap: 10px
 
-.basicos-view
-    position: relative
-    min-height: 0
+    mat-form-field, app-manual-autocomplete
+        flex: 1 1 180px
+        min-width: 160px
 
-.basicos-content
-    margin: 0
-
-.basicos-col
-    min-height: min-content
-
-.basicos-action-bar
-    padding: 12px 16px
+.paso-titulo-ayuda
+    display: flex
+    align-items: center
     justify-content: space-between
-    align-items: flex-start
+    gap: 8px
 
-    button
-        display: inline-flex
-        align-items: center
-        gap: 6px
-        margin-left: auto
+.filtro-chip
+    flex: 0 0 auto
 
-    button[disabled]
-        opacity: 0.55
+.fila-elegible
+    cursor: pointer
 
-.basicos-bloqueos
-    flex: 1 1 auto
-    max-width: min(760px, 100%)
-    padding: 10px 12px
-    border: 1px solid rgba(255, 151, 151, 0.35)
-    border-radius: 8px
-    background: rgba(112, 34, 34, 0.2)
-    color: #ffe6e6
+    &:hover td
+        background: rgba(255, 255, 255, .05)
 
-.basicos-bloqueos__titulo
-    font-weight: 700
+.fila-elegida td
+    background: #4a3a42
 
-.basicos-bloqueos__lista
-    margin: 6px 0 0 18px
-    padding: 0
+.fila-elegida td:first-child
+    box-shadow: inset 3px 0 0 $active
+
+.fila-pendiente td
+    background: rgba(175, 125, 0, .15)
+
+.texto-pendiente
+    margin-left: 6px
+    font-size: 12px
+    color: $ficha-aviso
+
+.good
+    background-color: rgb(78, 87, 66)
+
+.bad
+    background-color: rgb(87, 66, 66)
+
+.aviso
+    background-color: rgb(92, 80, 52)
+
+// Raza: el listado de siempre, sobre la tarjeta de la tarea
+.paso-raza
+    display: flex
+    flex-direction: column
+    min-height: 0
+    height: 100%
+
+    ::ng-deep #container-lista
+        background: transparent !important
+
+    // El listado centra su tabla y fija el botón de filtros a la ventana; dentro de la tarea, la tabla empieza a la
+    // izquierda (si no, al desbordar se corta su principio) y el botón va en su esquina.
+    ::ng-deep .lista-row
+        justify-content: flex-start !important
+
+    ::ng-deep #filtros
+        position: absolute
+        top: 4px
+        right: 4px
+
+// Básicos
+.basicos-form
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 18px 22px
+    align-content: start
+
+.basicos-seccion
+    display: flex
+    flex-direction: column
+    gap: 8px
+    min-width: 0
+
+.basicos-seccion--ancha
+    grid-column: 1 / -1
 
 .field-grid
     display: grid
@@ -132,132 +150,19 @@
 .full-span
     grid-column: 1 / -1
 
-.campaign-selector-row
-    display: flex
-    align-items: flex-start
-    gap: 10px
-
 .field-help-row
     display: flex
     align-items: flex-start
-    gap: 10px
-
-.deidad-selector-row
-    display: flex
-    align-items: flex-start
-    gap: 10px
-
-.campaign-selector-field
-    flex: 1 1 auto
+    gap: 6px
 
 .field-help-main
     flex: 1 1 auto
-
-.deidad-selector-field
-    flex: 1 1 auto
-
-.campaign-manage-btn
-    flex: 0 0 auto
-    width: 56px
-    height: 56px
-    display: inline-flex
-    align-items: center
-    justify-content: center
-    border: 1px solid rgba(255, 255, 255, 0.28)
-    border-radius: 8px
-    background: rgba(255, 255, 255, 0.04)
-    color: rgba(255, 255, 255, 0.92)
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08)
-
-    &:hover
-        background: rgba(255, 255, 255, 0.08)
-        border-color: rgba(255, 255, 255, 0.4)
-
-    &:focus-visible
-        outline: 2px solid rgba(255, 255, 255, 0.3)
-        outline-offset: 2px
+    min-width: 0
 
 .field-help-btn
     flex: 0 0 auto
     margin-top: 8px
-    display: inline-flex
-    align-items: center
-    justify-content: center
-    width: 40px
-    height: 40px
-    border: 1px solid rgba(255, 255, 255, 0.28)
-    border-radius: 999px
-    background: rgba(0, 0, 0, 0.16)
-    color: rgba(255, 255, 255, 0.92)
-    cursor: pointer
-    padding: 0
-
-    mat-icon
-        font-size: 18px
-        width: 18px
-        height: 18px
-
-    &:hover
-        background: rgba(0, 0, 0, 0.24)
-        border-color: rgba(255, 255, 255, 0.4)
-
-    &:focus-visible
-        outline: 2px solid rgba(255, 255, 255, 0.3)
-        outline-offset: 2px
-
-.deidad-detalle-btn
-    flex: 0 0 auto
-    width: 56px
-    height: 56px
-    display: inline-flex
-    align-items: center
-    justify-content: center
-    border: 1px solid rgba(255, 255, 255, 0.28)
-    border-radius: 8px
-    background: rgba(255, 255, 255, 0.04)
-    color: rgba(255, 255, 255, 0.92)
-    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08)
-
-    &:hover
-        background: rgba(255, 255, 255, 0.08)
-        border-color: rgba(255, 255, 255, 0.4)
-
-    &:focus-visible
-        outline: 2px solid rgba(255, 255, 255, 0.3)
-        outline-offset: 2px
-
-.nombre-hero__field
-    width: 100%
-
-    ::ng-deep .mdc-text-field
-        min-height: 72px
-
-    input
-        font-size: 1.2rem
-        font-weight: 600
-        letter-spacing: 0.02rem
-
-.nombre-hero__hint
-    color: #bfbfbf
-    font-size: 0.92rem
-
-.seccion-form
-    .seccion-titulo-chip
-        display: block
-        width: auto
-        margin: 4px 4px 12px 4px
-        box-sizing: border-box
-
-    .field-grid
-        ::ng-deep .mdc-text-field
-            border: none !important
-            box-shadow: none !important
-
-        ::ng-deep .mdc-line-ripple::before, ::ng-deep .mdc-line-ripple::after
-            border-bottom-color: transparent !important
-
-        ::ng-deep .mat-mdc-form-field-subscript-wrapper
-            display: block
+    color: $accent
 
 .form-field-no-subscript
     ::ng-deep .mat-mdc-form-field-subscript-wrapper
@@ -271,153 +176,51 @@
 .alineamiento-bloque, .deidad-bloque
     display: flex
     flex-direction: column
-    gap: 0
-
-    ::ng-deep .mat-mdc-form-field-subscript-wrapper
-        height: 0 !important
-        min-height: 0 !important
-        padding: 0 !important
-
-    ::ng-deep .mat-mdc-form-field-bottom-align::before
-        display: none !important
-
-    ::ng-deep .mat-mdc-form-field-infix
-        padding-bottom: 0 !important
-
-.edad-bloque
-    display: flex
-    flex-direction: column
-    gap: 4px
-
-    ::ng-deep .mat-mdc-form-field-subscript-wrapper
-        padding-top: 2px
-        white-space: normal
+    gap: 6px
 
 .alineamiento-feedback
-    background-color: rgba(255, 183, 0, 0.12)
-    border: 1px solid rgba(255, 183, 0, 0.35)
-    border-radius: 6px
     padding: 8px
-    font-size: 0.9rem
+    border: 1px solid rgba(255, 183, 0, .35)
+    border-radius: 6px
+    background-color: rgba(255, 183, 0, .12)
+    font-size: 14px
     line-height: 1.4
+    color: $ficha-texto
 
-.plantillas-skeleton
-    background-color: rgba(255, 255, 255, 0.03)
-
-.plantillas-layout
-    flex: 1 1 0
-    height: 0
-    min-height: 0
-    overflow: hidden
-
-.plantillas-panel
-    background: rgba(255, 255, 255, 0.03)
-    border: 1px solid rgba(255, 255, 255, 0.12)
-    min-height: 0
-
-.plantillas-panel--scroll
-    flex: 1 1 auto
-    max-height: 100%
-    overflow-x: hidden
-    overflow-y: auto
-    scrollbar-gutter: stable
-
-.plantillas-panel__titulo
-    font-weight: 600
-
-.plantillas-filtros
-    display: grid
-    grid-template-columns: minmax(220px, 1.2fr) minmax(220px, 1.2fr) auto
-    gap: 10px
-    align-items: center
-
-.filtro-chip
-    align-self: center
-    display: inline-flex
-    align-items: center
-    margin-top: -22px
-    box-shadow: rgba(0, 0, 0, 0.09) 0px 1px .5px, rgba(0, 0, 0, 0.09) 0px 2px 1px, rgba(0, 0, 0, 0.09) 0px 4px 2px, rgba(0, 0, 0, 0.09) 0px 8px 4px, rgba(0, 0, 0, 0.09) 0px 16px 8px
-
-.plantillas-zonas
-    flex: 1 1 0
-    align-items: stretch
-    flex-wrap: nowrap
-    height: 100%
-    max-height: 100%
-    overflow: hidden
-    min-height: 0
-
-    > [class*='col-'], > .tw-w-full
-        display: flex
-        flex-direction: column
-        height: 100%
-        max-height: 100%
-        min-height: 0
-        min-width: 0
-        overflow: hidden
-
-    .plantillas-zona
-        align-self: stretch
-        min-height: 0
-
-    ::ng-deep .mat-mdc-chip .mat-mdc-chip-action-label
-        display: inline-flex !important
-        align-items: center
-        flex-wrap: wrap
-        gap: .25rem
-
-    ::ng-deep .mat-mdc-chip .mdc-evolution-chip__action
-        overflow: visible
-
+// Plantillas
 .plantillas-lista
     display: flex
     flex-direction: column
     gap: 8px
-    margin: 4px
-
-.plantillas-lista--seleccion
-    margin-top: 0
 
 .plantilla-card
-    width: 100%
-    box-sizing: border-box
-    border-radius: 8px
-    border: 1px solid rgba(255, 255, 255, 0.18)
-    background: rgba(255, 255, 255, 0.05)
-    color: #eef2ff
-    padding: 10px 12px
     display: flex
     flex-direction: column
     gap: 8px
-    transition: background .15s ease, border-color .15s ease
+    box-sizing: border-box
+    width: 100%
+    padding: 10px 12px
+    border-radius: $ficha-radio
+    border: 1px solid rgba(255, 255, 255, .12)
+    background: $primary
+    color: $ficha-texto
 
 .plantilla-card--elegible
     cursor: pointer
-    border-color: rgba(104, 199, 104, 0.3)
-    background: rgba(62, 146, 62, 0.08)
 
     &:hover
-        background: rgba(62, 146, 62, 0.14)
-        border-color: rgba(104, 199, 104, 0.5)
+        background: $primary-hover
 
     &:focus-visible
-        outline: 2px solid rgba(104, 199, 104, 0.45)
+        outline: 2px solid $active
         outline-offset: 2px
 
 .plantilla-card--bloqueada
-    border-color: rgba(255, 173, 111, 0.42)
-    background: rgba(160, 95, 45, 0.12)
-
-.plantilla-card--seleccion
-    background: rgba(255, 255, 255, 0.05)
+    border-color: rgba(255, 173, 111, .42)
 
 .plantilla-card--seleccion-actual
-    border-color: rgba(159, 179, 255, 0.52)
-    background: rgba(122, 154, 255, 0.14)
-
-.plantilla-card--seleccion-confirmada
-    border-color: rgba(185, 196, 220, 0.32)
-    background: rgba(255, 255, 255, 0.04)
+    box-shadow: inset 3px 0 0 $active
+    background: #4a3a42
 
 .plantilla-card__head
     display: flex
@@ -426,769 +229,151 @@
     gap: 10px
 
 .plantilla-card__texto
-    min-width: 0
     display: flex
     flex-direction: column
     gap: 3px
+    min-width: 0
 
 .plantilla-card__nombre
-    color: #f6f8ff
-    font-weight: 600
-    font-size: 1rem
+    font-size: 15px
+    font-weight: 500
+    color: $ficha-blanco
 
 .plantilla-card__meta
-    color: #d4dcef
-    font-size: .84rem
+    font-size: 13px
+    color: $font-base
 
 .plantilla-card__acciones
     display: flex
-    align-items: center
-    gap: 6px
     flex: 0 0 auto
+    align-items: center
+    gap: 2px
 
-.plantilla-card__chips
+.plantilla-card__etiquetas
     display: flex
     flex-wrap: wrap
     gap: 6px
 
+    &:empty
+        display: none
+
 .plantilla-card__motivos
-    border-top: 1px solid rgba(255, 255, 255, 0.14)
-    padding-top: 6px
-    font-size: .82rem
-    color: #ffd3c2
     display: flex
     flex-direction: column
     gap: 3px
+    padding-top: 6px
+    border-top: 1px solid rgba(255, 255, 255, .14)
+    font-size: 13px
+    color: #ffd3c2
 
 .plantilla-card__advertencia
     color: #ffe39a
 
 .plantilla-chip-estado
-    border-radius: 8px
-    font-size: .74rem
-    font-weight: 600
-    min-height: 28px
+    border-radius: 6px
+    font-size: 12px
+    min-height: 26px
 
 .plantilla-chip-estado.ok
-    background: rgba(62, 146, 62, 0.25)
-    border: 1px solid rgba(104, 199, 104, 0.55)
-    color: #d2f3d2
+    background: rgba(62, 146, 62, .25)
+    border: 1px solid rgba(104, 199, 104, .55)
 
 .plantilla-chip-estado.warm
-    background: rgba(160, 95, 45, 0.26)
-    border: 1px solid rgba(255, 173, 111, 0.62)
-    color: #ffe2ce
+    background: rgba(160, 95, 45, .26)
+    border: 1px solid rgba(255, 173, 111, .62)
 
 .plantilla-chip-estado.info
-    background: rgba(122, 154, 255, 0.2)
-    border: 1px solid rgba(159, 179, 255, 0.5)
-    color: #d9e4ff
+    background: rgba(122, 154, 255, .2)
+    border: 1px solid rgba(159, 179, 255, .5)
 
 .plantilla-chip-estado.fixed
-    background: rgba(134, 146, 172, 0.2)
-    border: 1px solid rgba(185, 196, 220, 0.38)
-    color: #eef2ff
+    background: rgba(134, 146, 172, .2)
+    border: 1px solid rgba(185, 196, 220, .38)
 
-.plantillas-resumen-linea
-    display: flex
-    flex-wrap: wrap
-    gap: 8px
-
-.resumen-chip-seleccion
-    flex: 1 1 220px
-
-.resumen-chip-tipo
-    flex: 0 1 auto
-
-.plantilla-detalle-btn
-    width: 30px
-    height: 30px
-    line-height: 30px
-    color: #d6e3ff
-    border: 1px solid rgba(203, 216, 255, 0.4)
-    border-radius: 7px
-    background: rgba(255, 255, 255, 0.05)
-    padding: 2px
-
-.plantilla-remove-btn
-    width: 30px
-    height: 30px
-    line-height: 30px
-    color: #ffd7d7
-    border: 1px solid rgba(255, 173, 173, 0.35)
-    border-radius: 7px
-    background: rgba(120, 42, 42, 0.16)
-    padding: 2px
-
-.plantilla-remove-btn:hover
-    background: rgba(120, 42, 42, 0.28)
-    border-color: rgba(255, 173, 173, 0.55)
-
-.chip-alerta
-    height: auto
-    white-space: normal
-    line-height: 1.3
-    overflow-wrap: anywhere
-
-@media (max-width: 900px)
-    .plantilla-card__head
-        flex-direction: column
-    .plantilla-card__acciones
-        width: 100%
-        justify-content: flex-start
-
-@media (max-width: 767px)
-    .plantillas-layout
-        height: auto
-        overflow-y: auto
-
-    .plantillas-zonas
-        flex: 0 0 auto
-        flex-wrap: wrap
-        height: auto
-        max-height: none
-        overflow: visible
-
-    .plantillas-zona
-        height: min(420px, 70vh)
-        max-height: min(420px, 70vh)
-        min-height: 0
-
-textarea
-    resize: vertical
-
-.d-initial
-    display: initial
-
-.good
-    background-color: rgb(78, 87, 66)
-
-.bad
-    background-color: rgb(87, 66, 66)
-
-.aviso
-    background-color: rgb(92, 80, 52)
-
-.ventajas-view
-    min-height: 0
-
-    .mat-mdc-card
-        min-height: 0
-
-.homebrew-banner
-    height: auto
-    min-height: 40px
-    white-space: normal
-    line-height: 1.3
-
-    ::ng-deep .mdc-evolution-chip__action,
-    ::ng-deep .mdc-evolution-chip__action--primary
-        height: auto !important
-        width: 100% !important
-
-    ::ng-deep .mat-mdc-chip-action-label
-        display: flex !important
-        align-items: center
-        justify-content: space-between
-        gap: 8px
-        width: 100%
-        white-space: normal !important
-
-.homebrew-banner--info
-    background: linear-gradient(135deg, rgba(49, 114, 196, 0.92), rgba(38, 153, 214, 0.92)) !important
-    color: #eff8ff !important
-    border: 1px solid rgba(147, 197, 253, 0.35)
-
-.homebrew-banner-text
-    flex: 1 1 auto
-    min-width: 0
-
-.homebrew-help-chip
-    flex: 0 0 auto
-    margin-left: auto
-    display: inline-flex
-    align-items: center
-    justify-content: center
-    width: 34px
-    height: 34px
-    border: 1px solid rgba(255, 255, 255, 0.28)
-    border-radius: 999px
-    background: rgba(0, 0, 0, 0.16)
-    color: inherit
-    cursor: pointer
-    padding: 0
-
-    mat-icon
-        font-size: 18px
-        width: 18px
-        height: 18px
-
-    &:hover
-        background: rgba(0, 0, 0, 0.24)
-
-.ventajas-resumen-barra
-    display: flex
-    flex-wrap: wrap
-    gap: 8px
-    align-items: center
-
-.ventajas-listados
-    display: flex
-    align-items: stretch
-    flex: 1 1 auto
-    min-height: 0
-    height: 100%
-    overflow: hidden
-
-    > [class*='col-'], > .tw-w-full
-        display: flex
-        flex-direction: column
-        flex: 1 1 0
-        min-height: 0
-        min-width: 0
-        max-height: 100%
-
-    .sombra-caja-sm
-        display: flex
-        flex-direction: column
-        flex: 1 1 auto
-        min-height: 0
-
-    .tabla-scroll
-        flex: 1 1 auto
-
-.ventajas-view
-    .tab-scroll
-        overflow: hidden
-        display: flex
-        flex-direction: column
-
-.ventajas-panel
-    display: flex
-    flex-direction: column
-    flex: 1 1 auto
-    gap: 10px
-    overflow: hidden
-    background: linear-gradient(180deg, rgba(61, 62, 67, 0.96), rgba(49, 50, 55, 0.96))
-    border: 1px solid rgba(255, 255, 255, 0.08)
-
-.ventajas-panel__title
-    flex: 0 0 auto
-    display: inline-flex
-    align-items: center
-    justify-content: center
-    gap: 8px
-    min-height: 38px
-    padding: 8px 14px
-    border-radius: 999px
-    font-weight: 700
-    letter-spacing: 0.01em
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), 0 4px 12px rgba(0, 0, 0, 0.18)
-
-    mat-icon
-        width: 18px
-        height: 18px
-        font-size: 18px
-
-.ventajas-panel__title--ventaja
-    background: linear-gradient(135deg, rgba(42, 93, 64, 0.92), rgba(62, 135, 86, 0.92))
-    color: #f0fff4
-
-.ventajas-panel__title--desventaja
-    background: linear-gradient(135deg, rgba(108, 76, 30, 0.92), rgba(154, 106, 38, 0.92))
-    color: #fff8e6
-
-.ventajas-panel__body
-    flex: 1 1 auto
-    min-height: 0
-    display: flex
-    flex-direction: column
-    overflow: hidden
-
-.tabla-scroll--ventajas
-    border: 1px solid rgba(255, 255, 255, 0.12)
-    border-radius: 0 0 10px 10px
-    background: rgba(34, 36, 41, 0.82)
-    overflow-x: hidden
-    overflow-y: auto
-    flex: 1 1 0
-    min-height: 0
-
-.tabla-ventajas--seleccion
-    table-layout: fixed
-
-    th, td
-        box-sizing: border-box
-
-    th
-        top: 0
-        z-index: 3
-        background: #2b2d33
-        text-align: center
-        white-space: normal
-        overflow-wrap: anywhere
-        line-height: 1.2
-
-    td
-        background: rgba(46, 48, 54, 0.92)
-
-    tbody tr:nth-child(even) td
-        background: rgba(42, 44, 50, 0.92)
-
-    tbody tr:hover td
-        background: rgba(60, 68, 82, 0.94)
-
-    th:nth-child(1), td:nth-child(1)
-        width: 7%
-        text-align: center
-
-    th:nth-child(2), td:nth-child(2)
-        width: 19%
-
-    th:nth-child(3), td:nth-child(3)
-        width: 10%
-        text-align: center
-
-    th:nth-child(4), td:nth-child(4)
-        width: 34%
-
-    th:nth-child(5), td:nth-child(5)
-        width: 12%
-
-    th:nth-child(6), td:nth-child(6)
-        width: 9%
-        text-align: center
-
-    th:nth-child(7), td:nth-child(7)
-        width: 9%
-        text-align: center
-
-.clases-view
-    min-height: 0
-
-    .mat-mdc-card
-        min-height: 0
-
-.clases-filtros
-    display: grid
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr))
-    gap: 12px 16px
-    align-items: center
-    justify-content: space-between
-
-.clase-homebrew-chip
-    justify-self: end
-    margin-top: -22px
-
-.clases-resultados
-    flex: 1 1 auto
-    height: 100%
-    min-height: 0
-    display: flex
-    flex-direction: column
-
-.clases-placeholder
-    margin: auto 0
-
-.clases-acciones
-    margin-top: 0
-    padding: 8px
-    display: flex
-    align-items: center
-    justify-content: flex-end
-    gap: 10px
-
-.clases-recomendaciones-btn
-    margin-right: auto
-    display: inline-flex
-    align-items: center
-    gap: 6px
-    border: 1px solid rgba(255, 255, 255, 0.45)
-    border-radius: 999px
-    background: linear-gradient(135deg, #e91e63, #ff4f9a)
-    color: #ffffff
-    font-weight: 700
-    min-height: 38px
-    padding: 0 14px
-    cursor: pointer
-    box-shadow: 0 8px 18px rgba(233, 30, 99, 0.35), 0 0 0 1px rgba(255, 120, 180, 0.35) inset
-    transition: transform 120ms ease, filter 120ms ease, box-shadow 120ms ease
-
-    mat-icon
-        width: 18px
-        height: 18px
-        font-size: 18px
-        color: #ffffff
-
-    &:hover
-        filter: brightness(1.08)
-        transform: translateY(-1px)
-        box-shadow: 0 10px 22px rgba(233, 30, 99, 0.45), 0 0 0 1px rgba(255, 120, 180, 0.45) inset
-
-    &:active
-        transform: translateY(0)
-
-    &:focus-visible
-        outline: 2px solid rgba(255, 180, 215, 0.95)
-        outline-offset: 2px
-
-.habilidades-view
-    min-height: 0
-
-    .mat-mdc-card
-        min-height: 0
-
-.habilidades-resumen
-    display: flex
-    flex-wrap: wrap
-    gap: 8px
-    align-items: center
-
-.habilidades-resumen-principal
-    display: flex
-    flex-wrap: wrap
-    gap: 8px
-    align-items: center
-
-.habilidad-entrenada-info-chip
-    margin-left: auto
-    white-space: normal
-
-.habilidades-tabla-scroll
-    border: 1px solid rgba(255, 255, 255, 0.16)
-    border-radius: 8px
-    background: #2e3035
-    flex: 1 1 auto
-    min-height: 0
-    height: 100%
-    max-height: none
-
-.tabla-habilidades
-    th
-        background: #25272d
-        color: #eef2ff
-        font-weight: 600
-        text-align: center
-
-    td
-        color: #e5e7eb
-        background: #2c2f36
-        vertical-align: middle
-        text-align: left
-
-    tbody tr:nth-child(even) td
-        background: #2a2d33
-
-    tbody tr:hover td
-        background: #323744
-
-    th:nth-child(1), td:nth-child(1)
-        width: 7%
-    th:nth-child(2), td:nth-child(2)
-        width: 21%
-    th:nth-child(3), td:nth-child(3)
-        width: 7%
-    th:nth-child(4), td:nth-child(4)
-        width: 16%
-    th:nth-child(5), td:nth-child(5)
-        width: 7%
-    th:nth-child(6), td:nth-child(6)
-        width: 10%
-    th:nth-child(7), td:nth-child(7)
-        width: 17%
-    th:nth-child(8), td:nth-child(8)
-        width: 7%
-    th:nth-child(9), td:nth-child(9)
-        width: 8%
-
-    td:nth-child(7)
-        max-width: 0
-        white-space: nowrap
-        overflow: hidden
-        text-overflow: ellipsis
-
-    th:nth-child(1), td:nth-child(1),
-    th:nth-child(9), td:nth-child(9)
-        text-align: center
-        vertical-align: middle
-
-.habilidad-rango-chip
-    min-width: 36px
-    font-weight: 600
-    line-height: 1.1
-    display: inline-flex
-    align-items: center
-    justify-content: center
-    text-align: center
-
-.habilidad-rangos-wrap
-    display: inline-flex
-    align-items: center
-    justify-content: flex-start
-
-.habilidad-extra-col
-    min-width: 130px
-
-.habilidad-extra-inline
-    display: inline-flex
-    align-items: center
-    gap: 4px
-    width: 100%
-    justify-content: space-between
-
-.habilidad-extra-valor
-    min-width: 0
-    white-space: nowrap
-    overflow: hidden
-    text-overflow: ellipsis
-
-.habilidad-extra-pendiente
-    background: rgba(220, 38, 38, 0.2) !important
-
-.habilidad-acciones
-    display: inline-flex
-    align-items: center
-    gap: 2px
-    justify-content: center
-    width: 100%
-
-.habilidades-acciones
-    padding: 8px
-
-.habilidad-clasea-check
-    pointer-events: none
-    display: inline-flex
-    align-items: center
-    justify-content: center
-    line-height: 0
-
-    ::ng-deep .mdc-checkbox
-        padding: 0
-        width: 40px
-        height: 40px
-
-    ::ng-deep .mdc-form-field
-        display: inline-flex
-        align-items: center
-        justify-content: center
-
-    &.mat-mdc-checkbox-disabled
-        ::ng-deep .mdc-checkbox__background
-            border-color: #94a3b8 !important
-            background-color: rgba(148, 163, 184, 0.18) !important
-
-        &.mat-mdc-checkbox-checked
-            ::ng-deep .mdc-checkbox__background
-                border-color: #22c55e !important
-                background-color: rgba(34, 197, 94, 0.32) !important
-
-            ::ng-deep .mdc-checkbox__checkmark-path
-                stroke: #dcfce7 !important
-
-.habilidad-clasea-col
-    padding-top: 0 !important
-    padding-bottom: 0 !important
-    vertical-align: middle !important
-
-.habilidad-clasea-wrap
-    min-height: 44px
-    height: 100%
-    display: flex
-    align-items: center
-    justify-content: center
-    line-height: 0
-
-.clases-tabla-scroll
-    border: 1px solid rgba(255, 255, 255, 0.16)
-    border-radius: 8px
-    background: #2e3035
-    flex: 1 1 auto
-    min-height: 0
-    height: 100%
-    max-height: none
-
-.tabla-scroll
-    height: 100%
-    max-height: none
-    min-height: 0
-    overflow: auto
-
+// Ventajas
 .tabla-ventajas
-    color: #ccc
-    border-collapse: collapse
-    font-size: .92rem
+    td:nth-child(4)
+        min-width: 220px
 
-    th, td
-        border-bottom: 1px solid rgba(255, 255, 255, 0.12)
-        padding: 6px
-        vertical-align: middle
-
-    th
-        position: sticky
-        top: 0
-        background: #323234
-        z-index: 2
-        white-space: nowrap
-
+// Clases
 .tabla-clases
-    table-layout: fixed
-
-    th
-        background: #25272d
-        color: #f3f4f6
-        font-weight: 600
-
     td
-        color: #f6f7f9
-        white-space: normal
-        overflow-wrap: anywhere
         vertical-align: middle
+        overflow-wrap: anywhere
 
-    tbody td
-        vertical-align: middle !important
-
-    th:nth-child(1), td:nth-child(1)
-        width: 20%
-
-    th:nth-child(2), td:nth-child(2)
-        width: 7%
-        text-align: center
-
-    th:nth-child(3), td:nth-child(3)
-        width: 42%
-
-    th:nth-child(4), td:nth-child(4)
-        width: 11%
-
-    th:nth-child(5), td:nth-child(5)
-        width: 10%
-
-    th:nth-child(6), td:nth-child(6)
-        width: 10%
-
-    .fila-clase:nth-child(odd)
-        background: rgba(255, 255, 255, 0.035)
-
-    .fila-clase:nth-child(even)
-        background: rgba(255, 255, 255, 0.02)
-
-    .fila-clase:hover
-        background: rgba(255, 255, 255, 0.12)
+    .fila-clase
         cursor: pointer
 
-    .fila-clase--seleccionada
-        outline: 2px solid rgba(255, 235, 59, 0.9)
-        outline-offset: -2px
-        background: rgba(255, 235, 59, 0.1) !important
+        &:hover td
+            background: rgba(255, 255, 255, .05)
+
+    .fila-clase--seleccionada td
+        background: #4a3a42
 
     .fila-clase--alineamiento-compatible td:first-child
-        border-left: 4px solid #24c26f
+        box-shadow: inset 3px 0 0 #24c26f
 
     .fila-clase--alineamiento-incompatible td:first-child
-        border-left: 4px solid #ff6b6b
+        box-shadow: inset 3px 0 0 #ff6b6b
+
+    .fila-clase--seleccionada td:first-child
+        box-shadow: inset 3px 0 0 $active
 
 .clase-celda
     display: flex
     flex-direction: column
     gap: 6px
 
+.clase-nombre
+    font-size: 15px
+    color: $ficha-blanco
+
 .clase-celda-chipline
     display: flex
     flex-wrap: wrap
     gap: 4px
 
+    &:empty
+        display: none
+
 .clase-estado-chip
-    font-weight: 400
-    line-height: 1.15
     display: inline-flex
     align-items: center
     justify-content: center
+    margin: 0
+    padding: 3px 6px
+    border-radius: 4px
+    font-size: 13px
+    line-height: 1.15
+    white-space: nowrap
 
 .clase-estado-chip--neutral:not(.good):not(.bad)
     background-color: rgb(68, 73, 82)
 
-.clase-estado-chip--nivel
-    min-width: 34px
-
-.clase-estado-chip--salvacion
-    min-width: 72px
-
-.clase-detalle-btn
-    min-height: 36px
-
-    .mat-icon
-        margin-right: 4px
-
-.beneficios-clase-chips,
-.roles-clase-chips,
-.salvaciones-clase-chips
-    display: inline-flex
+.salvaciones-clase-chips, .beneficios-clase-chips
+    display: flex
     flex-wrap: wrap
     gap: 4px
-    align-items: center
-    align-content: center
 
-.salvaciones-clase-chips
-    min-width: 0
-
-.beneficios-clase-chips
-    display: flex
-    width: 100%
-
-    ::ng-deep .mdc-evolution-chip__text-label
-        white-space: normal !important
-
-.tabla-clases--homebrew
-    th:nth-child(1), td:nth-child(1)
-        width: 20%
-
-    th:nth-child(2), td:nth-child(2)
-        width: 7%
-
-    th:nth-child(3), td:nth-child(3)
-        width: 38%
-
-    th:nth-child(4), td:nth-child(4)
-        width: 11%
-
-    th:nth-child(5), td:nth-child(5)
-        width: 9%
-
-    th:nth-child(6), td:nth-child(6)
-        width: 5%
-
-    th:nth-child(7), td:nth-child(7)
-        width: 10%
-
-    ::ng-deep .mdc-evolution-chip__action,
-    ::ng-deep .mdc-evolution-chip__action--primary
-        height: auto !important
-        min-height: 32px
-
-    ::ng-deep .mat-mdc-chip-action-label
-        display: inline-flex !important
-        align-items: center
-        flex-wrap: wrap
-        gap: 4px
-        white-space: normal !important
+.beneficios-clase-chips ::ng-deep .mdc-evolution-chip__text-label
+    white-space: normal !important
 
 .chip-opcional-grupo
     height: auto
     min-height: 36px
     cursor: default
 
-    ::ng-deep .mdc-evolution-chip__action,
-    ::ng-deep .mdc-evolution-chip__action--primary
+    ::ng-deep .mdc-evolution-chip__action, ::ng-deep .mdc-evolution-chip__action--primary
         height: auto !important
 
     ::ng-deep .mat-mdc-chip-action-label
         display: inline-flex !important
-        align-items: center
         flex-wrap: wrap
+        align-items: center
         gap: 6px
         white-space: normal !important
 
-.chip-opcional-grupo-label
+.chip-opcional-grupo-label, .chip-opcional-separador
     font-weight: 600
 
 .chip-opcional-grupo-opciones
@@ -1200,147 +385,89 @@ textarea
 .chip-opcional-subchip
     height: auto
 
-.chip-opcional-separador
-    font-weight: 600
-    opacity: 0.9
-    padding: 0 2px
-
-.fila-pendiente
-    background: rgba(175, 125, 0, 0.15)
-
-.conjuros-resumen
-    display: flex
-    flex-wrap: wrap
-    gap: 8px
-
-.conjuros-chip
-    border: 1px solid rgba(255, 255, 255, 0.22)
-    background: rgba(255, 255, 255, 0.14)
-    color: #f4f7ff
-
-    ::ng-deep .mdc-evolution-chip__text-label
-        color: #f4f7ff !important
-
-.conjuros-avisos
-    display: flex
-    flex-wrap: wrap
-    gap: 8px
-    margin-top: 8px
-
-.conjuros-filtros
-    display: grid
-    grid-template-columns: 1fr 220px
-    gap: 12px
-    margin-bottom: 12px
-
-.conjuros-tablas
-    display: grid
-    grid-template-columns: 1fr 1fr
-    gap: 12px
-
-.conjuros-tablas--single
-    grid-template-columns: 1fr
-
-    .tabla-scroll
-        width: 100%
-
-.conjuros-view
-    .tab-scroll
-        color: #eef2ff
-
-    .conjuros-tablas .tabla-scroll
-        border: 1px solid rgba(255, 255, 255, 0.16)
-        border-radius: 8px
-        background: #2c313b
-
-.tabla-conjuros th,
-.tabla-conjuros td
-    vertical-align: middle
-
-.tabla-conjuros
-    width: 100%
-    th
-        background: #20242c
-        color: #f2f6ff
-        font-weight: 700
-
+// Habilidades
+.tabla-habilidades
     td
-        background: #2b313b
-        color: #e7edf9
+        vertical-align: middle
 
-    tbody tr:nth-child(even) td
-        background: #29303a
-
-    tbody tr:hover td
-        background: #323a47
-
-.conjuro-auto-tag
-    display: inline-block
-    font-size: 0.75rem
-    padding: 1px 6px
+.habilidad-marca
     margin-left: 6px
-    border-radius: 10px
-    border: 1px solid rgba(187, 247, 208, 0.38)
-    background: rgba(34, 197, 94, 0.22)
-    color: #d4ffe0
+    font-size: 12px
+    color: $font-base
 
-.conjuro-detalle-btn
-    margin-left: .25rem
-    vertical-align: middle
+.habilidad-extra-inline
+    display: inline-flex
+    align-items: center
+    gap: 2px
 
-.conjuros-resumen-auto
-    margin: 0
-    padding: 6px 8px
-    border: 1px solid rgba(255, 255, 255, 0.14)
-    border-radius: 8px
-    background: rgba(255, 255, 255, 0.06)
-    color: #dbe4f4
+.habilidad-extra-pendiente
+    color: $ficha-aviso
 
-.tabla-conjuros-vacia__mensaje
-    text-align: center
-    padding: 1rem .75rem
+.habilidad-rango--nuevo
+    color: #9ee6a8
+    font-weight: 700
 
-::ng-deep .mat-mdc-form-field-subscript-wrapper
-    padding: 0 2px
+.habilidad-varios
+    max-width: 180px
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+    color: $ficha-texto-suave
 
-@media (max-width: 768px)
-    .campaign-selector-row
-        flex-direction: column
+.habilidad-acciones
+    text-align: right
+    white-space: nowrap
+
+.habilidad-boton
+    width: 28px
+    height: 28px
+    margin-left: 4px
+    border: 1px solid #6b7279
+    border-radius: 4px
+    background: transparent
+    color: $ficha-blanco
+    font: inherit
+    cursor: pointer
+
+    &:disabled
+        opacity: .35
+        cursor: not-allowed
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 1px
+
+.habilidad-maximo
+    height: 28px
+    padding: 0 8px
+    border: 0
+    background: transparent
+    color: $accent
+    font-size: 12px
+    text-decoration: underline
+    cursor: pointer
+
+    &:disabled
+        opacity: .35
+        text-decoration: none
+        cursor: not-allowed
+
+// Conjuros
+.tabla-conjuros__accion
+    text-align: right
+
+.conjuros-obtenidos .ficha-lista__item
+    display: flex
+    align-items: center
+    gap: 8px
+
+    .ficha-nota
+        margin-left: auto
+        font-size: 13px
+
+@container ficha (max-width: 900px)
+    .basicos-form
+        grid-template-columns: minmax(0, 1fr)
 
     .field-help-row
-        flex-direction: column
-
-    .deidad-selector-row
-        flex-direction: column
-
-    .campaign-manage-btn
-        width: 56px
-
-    .field-help-btn
-        margin-top: 0
-
-    .deidad-detalle-btn
-        width: 56px
-
-    .nombre-hero__field
-        ::ng-deep .mdc-text-field
-            min-height: 60px
-
-        input
-            font-size: 1.05rem
-
-    .plantillas-filtros
-        grid-template-columns: 1fr
-
-    .clases-filtros
-        grid-template-columns: 1fr
-
-    .conjuros-filtros
-        grid-template-columns: 1fr
-
-    .conjuros-tablas
-        grid-template-columns: 1fr
-
-    .clase-homebrew-chip
-        justify-self: start
-        margin-top: 0
+        flex-wrap: wrap

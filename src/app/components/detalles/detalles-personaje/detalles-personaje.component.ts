@@ -5,13 +5,18 @@ import {
     DatoFicha,
     DatoFranja,
     EtiquetaFicha,
+    caracteristicaPerdida,
+    casillasCaracteristicasPersonaje,
     datoFranjaVelocidad,
+    dotesVisiblesPersonaje,
+    esVisibleEnPersonaje,
+    tieneCaracteristicasGeneradas,
     datosVisibles,
     sortilegasVisibles,
+    textoClasePersonaje,
     unirTipo,
 } from 'src/app/components/detalles/ficha';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
-import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
@@ -32,7 +37,6 @@ import { PersonajeService } from 'src/app/services/personaje.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { RegionService } from 'src/app/services/region.service';
 import { UserService } from 'src/app/services/user.service';
-import { NOMBRES_CARACTERISTICAS, abreviaturaCaracteristica } from 'src/app/services/utils/caracteristicas';
 import { esNombreComodin } from 'src/app/services/utils/comodin';
 import {
     detallesPiezaEquipo,
@@ -576,7 +580,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
 
     /** En la ficha de un personaje, «Cualquiera» tampoco es una elección real y se oculta. */
     private esVisible(texto: string | null | undefined): boolean {
-        return tieneTextoVisible(texto, { cualquieraEsRelleno: true });
+        return esVisibleEnPersonaje(texto);
     }
 
     private texto(texto: string | null | undefined): string {
@@ -634,18 +638,11 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
 
     /** Sin generar (todas a 10 y sus modificadores a 0), las características no se enseñan. */
     private tieneCaracteristicasVisibles(): boolean {
-        const pj = this.pj;
-        const base = [pj?.Fuerza, pj?.Destreza, pj?.Constitucion, pj?.Inteligencia, pj?.Sabiduria, pj?.Carisma];
-        const mods = [pj?.ModFuerza, pj?.ModDestreza, pj?.ModConstitucion, pj?.ModInteligencia, pj?.ModSabiduria, pj?.ModCarisma];
-        return !(base.every((v) => Number(v) === 10) && mods.every((v) => Number(v) === 0));
+        return tieneCaracteristicasGeneradas(this.pj);
     }
 
     tieneCaracteristicaPerdida(key: CaracteristicaPerdidaKey): boolean {
-        const perdidas = this.pj?.Caracteristicas_perdidas ?? {};
-        const perdidaPorMapa = toBoolean((perdidas as Record<string, any>)?.[key]);
-        if (key === 'Constitucion')
-            return perdidaPorMapa || toBoolean(this.pj?.Constitucion_perdida);
-        return perdidaPorMapa;
+        return caracteristicaPerdida(this.pj, key);
     }
 
     tienePresaVisible(): boolean {
@@ -1106,7 +1103,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
         const preview = this.esPreviewNuevoPersonaje;
         const raza = this.texto(pj.Raza?.Nombre);
         const clases = (pj.desgloseClases ?? []).filter((c) => this.esVisible(c?.Nombre));
-        const textoClases = clases.map((c) => `${c.Nombre.trim()} ${toNumber(c.Nivel)}`).join(' / ');
+        const textoClases = clases.map((c) => textoClasePersonaje(c)).join(' / ');
         const alineamiento = this.texto(pj.Alineamiento);
 
         const modelo: ModeloFicha = {
@@ -1134,11 +1131,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
                 valor: textoConSigno(e.bono),
                 nota: e.veces > 1 ? `${e.veces} veces` : '',
             })),
-            dotes: (pj.Dotes ?? []).filter((d) => this.esVisible(d?.Nombre)).map((d) => ({
-                texto: d.Nombre.trim() + (this.esVisible(d.Extra) ? ` (${d.Extra.trim()})` : ''),
-                nota: this.texto(d.Origen),
-                ref: d,
-            })),
+            dotes: dotesVisiblesPersonaje(pj).map((d) => ({ texto: d.texto, nota: this.texto(d.ref.Origen), ref: d.ref })),
             aptitudes: (pj.Claseas ?? []).filter((c) => this.esVisible(c?.Nombre)).map((c) => {
                 const extra = this.getExtraVisibleEspecial(c);
                 return { texto: c.Nombre.trim() + (extra ? ` (${extra})` : ''), ref: c.Nombre.trim() };
@@ -1159,7 +1152,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             })),
             magia: this.calcularMagia(),
             lanzadores: clases
-                .map((c) => ({ clase: c.Nombre.trim(), texto: `${c.Nombre.trim()} ${toNumber(c.Nivel)}`, detalle: this.getSubchipsLanzadorClase(c).join(' · ') }))
+                .map((c) => ({ clase: c.Nombre.trim(), texto: textoClasePersonaje(c), detalle: this.getSubchipsLanzadorClase(c).join(' · ') }))
                 .filter((l) => l.detalle.length > 0),
             conjuros: (pj.Conjuros ?? []).filter((c) => this.esVisible(c?.Nombre)).map((c) => ({ texto: c.Nombre.trim(), clave: `${c.Id ?? ''}`, ref: c })),
             sortilegas: this.calcularSortilegas(),
@@ -1226,8 +1219,8 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             { etiqueta: 'Raza base', valor: this.texto(pj.RazaBase?.Nombre) || null },
             {
                 etiqueta: clases.length > 1 ? 'Clases' : 'Clase',
-                valor: clases.map((c) => `${c.Nombre.trim()} ${toNumber(c.Nivel)}`).join(', ') || null,
-                enlaces: clases.map((c) => ({ texto: `${c.Nombre.trim()} ${toNumber(c.Nivel)}`, alPulsar: () => this.verDetallesClase(c.Nombre) })),
+                valor: clases.map((c) => textoClasePersonaje(c)).join(', ') || null,
+                enlaces: clases.map((c) => ({ texto: textoClasePersonaje(c), alPulsar: () => this.verDetallesClase(c.Nombre) })),
             },
             { etiqueta: 'Nivel', valor: this.positivo(this.nivelPersonaje) ? this.nivelPersonaje : null, ayuda: this.nivelDisclaimer },
             {
@@ -1293,16 +1286,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
     }
 
     private calcularCaracteristicas(): CasillaFicha[] {
-        if (!this.tieneCaracteristicasVisibles())
-            return [];
-        return CARACTERISTICAS.map((clave: Caracteristica) => {
-            const nombre = NOMBRES_CARACTERISTICAS[clave];
-            if (this.tieneCaracteristicaPerdida(clave))
-                return { abreviatura: abreviaturaCaracteristica(clave), nombre, valor: '—', detalle: 'Perdida', aviso: true, texto: `${nombre} perdida` };
-            const valor = toNumber((this.pj as any)[clave]);
-            const modificador = textoConSigno(toNumber((this.pj as any)[`Mod${clave}`]));
-            return { abreviatura: abreviaturaCaracteristica(clave), nombre, valor: `${valor}`, modificador, texto: `${nombre} ${valor} (${modificador})` };
-        });
+        return casillasCaracteristicasPersonaje(this.pj);
     }
 
     private calcularCasillasSalvaciones(): CasillaFicha[] {

@@ -1,0 +1,125 @@
+<app-creacion-ventana [titulo]="(nueva ? 'Añadir: ' : 'Configurar: ') + borrador.articulo.nombre" [subtitulo]="subtitulo"
+    ancho="ancha" [relleno]="false" (cerrar)="cancelar.emit()">
+    <div class="creacion-ventana__columnas configurar">
+        <div class="creacion-ventana__lista configurar__opciones">
+            <section class="creacion-ventana__seccion">
+                <h3 class="creacion-titulo">La pieza</h3>
+                <div class="configurar__fila">
+                    <mat-form-field appearance="fill" class="configurar__corto">
+                        <mat-label>{{borrador.articulo.tipo === 'municion' ? 'Piezas' : 'Cantidad'}}</mat-label>
+                        <input matInput type="number" min="1" [value]="borrador.cantidad"
+                            (input)="cambiar({ cantidad: numero($any($event.target).value, 1) })">
+                    </mat-form-field>
+                    <mat-checkbox [checked]="borrador.equipado" (change)="cambiar({ equipado: $event.checked })">Lo lleva puesto</mat-checkbox>
+                </div>
+            </section>
+
+            <section class="creacion-ventana__seccion" *ngIf="borrador.articulo.generico as generico">
+                <h3 class="creacion-titulo">El conjuro</h3>
+                <mat-form-field appearance="fill" class="tw-w-full">
+                    <mat-label>Conjuro</mat-label>
+                    <input matInput [value]="borrador.nombreConjuro" [matAutocomplete]="autoConjuro"
+                        (input)="escribirConjuro($any($event.target).value)">
+                    <mat-autocomplete #autoConjuro="matAutocomplete" (optionSelected)="elegirConjuro($event.option.value)">
+                        <mat-option *ngFor="let conjuro of conjurosPara(borrador.nombreConjuro)" [value]="conjuro.Nombre">{{conjuro.Nombre}}</mat-option>
+                    </mat-autocomplete>
+                </mat-form-field>
+                <div class="configurar__fila">
+                    <mat-form-field appearance="fill" class="configurar__corto">
+                        <mat-label>Nivel del conjuro</mat-label>
+                        <input matInput type="number" min="0" [attr.max]="generico.Nivel_maximo" [value]="borrador.nivelConjuro"
+                            (input)="cambiar({ nivelConjuro: numero($any($event.target).value, 0) })">
+                    </mat-form-field>
+                    <mat-form-field appearance="fill" class="configurar__corto">
+                        <mat-label>Nivel de lanzador</mat-label>
+                        <input matInput type="number" min="1" [value]="borrador.nivelLanzador"
+                            (input)="cambiar({ nivelLanzador: numero($any($event.target).value, 1) })">
+                    </mat-form-field>
+                </div>
+            </section>
+
+            <ng-container *ngIf="aMedida">
+                <ng-container *ngIf="politica.aMedida; else sinAMedida">
+                    <section class="creacion-ventana__seccion">
+                        <h3 class="creacion-titulo">Material</h3>
+                        <p class="creacion-texto-suave">Solo salen los materiales con los que se puede hacer esta pieza.</p>
+                        <div class="creacion-opciones creacion-opciones--rejilla" role="radiogroup" aria-label="Material">
+                            <button type="button" role="radio" class="creacion-opcion creacion-opcion--caja"
+                                [class.creacion-opcion--activa]="esMaterial(null)" [attr.aria-checked]="esMaterial(null)"
+                                (click)="elegirMaterial(null)">
+                                <span class="creacion-opcion__texto">Ninguno especial<span class="creacion-opcion__nota">el de siempre</span></span>
+                                <span class="creacion-opcion__coste">—</span>
+                            </button>
+                            <button type="button" role="radio" class="creacion-opcion creacion-opcion--caja" *ngFor="let item of materiales"
+                                [class.creacion-opcion--activa]="esMaterial(item)" [attr.aria-checked]="esMaterial(item)"
+                                (click)="elegirMaterial(item)">
+                                <span class="creacion-opcion__texto">{{item.material.Nombre}}<span class="creacion-opcion__nota">{{notaMaterial(item)}}</span></span>
+                                <span class="creacion-opcion__coste">{{textoCosteMaterial(item)}}</span>
+                            </button>
+                        </div>
+                    </section>
+
+                    <section class="creacion-ventana__seccion">
+                        <h3 class="creacion-titulo">Mejora</h3>
+                        <div class="creacion-conmutador" role="radiogroup" aria-label="Mejora">
+                            <button type="button" role="radio" *ngFor="let mejora of mejoras" [attr.aria-checked]="borrador.bonificadorMejora === mejora"
+                                (click)="elegirMejora(mejora)">{{mejora > 0 ? '+' + mejora : 'Sin'}}</button>
+                        </div>
+                        <mat-checkbox *ngIf="borrador.bonificadorMejora < 1" [checked]="borrador.granCalidad"
+                            (change)="cambiar({ granCalidad: $event.checked })">Gran calidad</mat-checkbox>
+                        <p class="creacion-texto-suave" *ngIf="borrador.bonificadorMejora > 0">Con mejora, la pieza es de gran calidad.</p>
+                    </section>
+
+                    <section class="creacion-ventana__seccion">
+                        <div class="configurar__cabecera">
+                            <h3 class="creacion-titulo">Aptitudes especiales</h3>
+                            <span class="creacion-texto-suave">Bonificador total {{textoConSigno(total)}} de {{textoConSigno(maximoTotal)}}</span>
+                        </div>
+                        <p class="creacion-texto-suave">
+                            {{borrador.bonificadorMejora > 0 ? 'Solo salen las que se aplican a esta pieza.' : 'Para añadir aptitudes, la pieza necesita al menos un +1.'}}
+                        </p>
+                        <p class="creacion-vacio" *ngIf="aptitudes.length < 1">No hay aptitudes que se apliquen a esta pieza.</p>
+                        <ul class="creacion-opciones creacion-opciones--rejilla" *ngIf="aptitudes.length > 0">
+                            <li *ngFor="let aptitud of aptitudes">
+                                <button type="button" role="checkbox" class="creacion-opcion creacion-opcion--caja"
+                                    [class.creacion-opcion--activa]="tieneAptitud(aptitud)"
+                                    [class.creacion-opcion--bloqueada]="borrador.bonificadorMejora < 1"
+                                    [attr.aria-checked]="tieneAptitud(aptitud)" [attr.aria-disabled]="borrador.bonificadorMejora < 1"
+                                    (click)="alternarAptitud(aptitud)">
+                                    <span class="creacion-opcion__texto">{{aptitud.Nombre}}<span class="creacion-opcion__nota"
+                                            *ngIf="aptitud.Manual?.Nombre as manual">{{manual}}</span></span>
+                                    <span class="creacion-opcion__coste">{{textoCosteAptitud(aptitud)}}</span>
+                                </button>
+                            </li>
+                        </ul>
+                    </section>
+                </ng-container>
+                <ng-template #sinAMedida>
+                    <section class="creacion-ventana__seccion">
+                        <mat-checkbox [checked]="borrador.granCalidad" (change)="cambiar({ granCalidad: $event.checked })">Gran calidad</mat-checkbox>
+                        <p class="creacion-texto-suave">Esta campaña no permite objetos a medida: ni mejora, ni aptitudes, ni material especial.</p>
+                    </section>
+                </ng-template>
+            </ng-container>
+        </div>
+
+        <div class="creacion-ventana__detalle configurar__precio">
+            <h3 class="creacion-titulo">Precio</h3>
+            <div class="configurar__lineas">
+                <div class="configurar__linea" *ngFor="let linea of desglose">
+                    <span>{{linea.etiqueta}}</span><span class="configurar__po">{{textoPrecio(linea.po)}}</span>
+                </div>
+            </div>
+            <div class="configurar__total"><span>Total</span><b>{{textoPrecio(precio)}}</b></div>
+            <p class="creacion-texto-suave">Para esta pieza tienes {{textoPrecio(disponible)}} (lo que te queda más lo que ya costaba).</p>
+            <p class="creacion-aviso" role="status" *ngIf="motivo || falta > 0">
+                {{motivo || ('No te llega: te faltan ' + textoPrecio(falta) + '. Quita algo de lo que compra o baja la mejora.')}}
+            </p>
+        </div>
+    </div>
+
+    <button ventanaSecundaria type="button" mat-stroked-button (click)="cancelar.emit()">Cancelar</button>
+    <button ventanaPrincipal type="button" mat-raised-button color="primary" [disabled]="!puedeGuardar" (click)="onGuardar()">
+        {{textoBoton}}
+    </button>
+</app-creacion-ventana>

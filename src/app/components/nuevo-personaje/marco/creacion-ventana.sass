@@ -1,0 +1,214 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// Las ventanas de elección de la creación (`CreacionVentanaComponent`). Globales, con el prefijo `creacion-ventana`.
+
+app-creacion-ventana
+    display: contents
+
+// Como el resto de la creación, tapa solo la zona de la pestaña (no el menú ni la barra): la ventana es de la creación.
+.creacion-ventana-fondo
+    position: absolute
+    inset: 0
+    z-index: 65
+    display: flex
+    align-items: center
+    justify-content: center
+    padding: 16px
+    background: rgba(0, 0, 0, .6)
+
+.creacion-ventana
+    display: flex
+    flex-direction: column
+    width: min(760px, 100%)
+    max-height: 100%
+    background: $primary
+    border: 1px solid rgba(255, 255, 255, .12)
+    border-radius: 8px
+    box-shadow: 0 10px 40px black
+    overflow: hidden
+    color: $accent
+    font-family: Roboto, "Segoe UI", system-ui, sans-serif
+
+.creacion-ventana--estrecha
+    width: min(520px, 100%)
+
+.creacion-ventana--ancha
+    width: min(1080px, 100%)
+    height: min(720px, 100%)
+
+.creacion-ventana__cabecera
+    display: flex
+    align-items: flex-start
+    justify-content: space-between
+    gap: 16px
+    flex-shrink: 0
+    padding: 16px 22px 12px
+    border-bottom: 3px solid $active
+
+.creacion-ventana__textos
+    min-width: 0
+
+.creacion-ventana .creacion-ventana__titulo
+    margin: 0
+    font-size: 22px
+    font-weight: 500
+    line-height: 1.3
+    color: $ficha-blanco
+
+.creacion-ventana .creacion-ventana__subtitulo
+    margin: 4px 0 0
+    font-size: 14px
+    color: $ficha-texto-suave
+
+.creacion-ventana__cabecera-acciones
+    display: flex
+    flex-shrink: 0
+    align-items: center
+    gap: 6px
+
+.creacion-ventana__cerrar.mat-mdc-icon-button
+    color: $accent
+
+.creacion-ventana__cuerpo
+    display: flex
+    flex-direction: column
+    flex: 1 1 auto
+    gap: 14px
+    min-height: 0
+    overflow: auto
+
+.creacion-ventana__cuerpo--relleno
+    padding: 16px 22px
+
+.creacion-ventana__pie
+    display: flex
+    flex-shrink: 0
+    align-items: center
+    justify-content: space-between
+    gap: 16px
+    padding: 12px 22px
+    background: #2f3337
+
+.creacion-ventana__pie-lado
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 10px
+
+    &:empty
+        display: none
+
+    &:last-child
+        margin-left: auto
+
+// Lista a la izquierda y detalle de lo seleccionado a la derecha
+.creacion-ventana__columnas
+    display: grid
+    grid-template-columns: minmax(260px, 380px) minmax(0, 1fr)
+    flex: 1 1 auto
+    min-height: 0
+
+.creacion-ventana__lista
+    display: flex
+    flex-direction: column
+    gap: 10px
+    min-height: 0
+    padding: 14px 16px
+    border-right: 1px solid #4b5157
+    overflow: auto
+
+.creacion-ventana__detalle
+    display: flex
+    flex-direction: column
+    gap: 16px
+    min-height: 0
+    padding: 16px 22px
+    overflow: auto
+
+    p
+        margin: 0
+
+.creacion-ventana .creacion-ventana__detalle-tipo
+    margin: 0
+    font-size: 12px
+    font-weight: 700
+    letter-spacing: .14em
+    text-transform: uppercase
+    color: $accent
+
+.creacion-ventana .creacion-ventana__detalle-nombre
+    margin: 2px 0 0
+    font-size: 22px
+    font-weight: 500
+    color: $ficha-blanco
+
+.creacion-ventana .creacion-ventana__prosa
+    font-size: 15px
+    line-height: 1.65
+    color: $ficha-blanco
+    max-width: 60ch
+    white-space: pre-line
+
+.creacion-ventana__seccion
+    display: flex
+    flex-direction: column
+    gap: 8px
+
+.creacion-ventana__filtros
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr))
+    gap: 8px
+
+.creacion-ventana__campo
+    width: 100%
+
+.creacion-ventana__filtros, .creacion-ventana__campo
+    .mat-mdc-form-field-subscript-wrapper
+        display: none
+
+.creacion-ventana__interruptores
+    display: flex
+    flex-direction: column
+    gap: 4px
+
+// Por qué no se puede elegir algo (y los avisos), bajo su detalle
+.creacion-motivos
+    display: flex
+    flex-direction: column
+    gap: 4px
+    margin: 0
+    padding-left: 18px
+    font-size: 14px
+    color: #ffccbc
+
+.creacion-motivos__aviso
+    color: #ffe39a
+
+// Cómo queda tras confirmar: nombre y valor a dos lados
+.creacion-resultado
+    margin: 0
+    padding: 0
+    list-style: none
+
+    li
+        display: flex
+        justify-content: space-between
+        gap: 10px
+        padding: 6px 0
+        border-bottom: 1px solid $ficha-separador
+        font-size: 15px
+        color: $ficha-blanco
+
+@media (max-width: 760px)
+    .creacion-ventana__columnas
+        grid-template-columns: minmax(0, 1fr)
+        overflow: auto
+
+    .creacion-ventana__lista
+        border-right: 0
+        border-bottom: 1px solid #4b5157
+        overflow: visible
+
+    .creacion-ventana__detalle
+        overflow: visible

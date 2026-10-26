@@ -1,157 +1,58 @@
-:host
-    position: absolute
-    inset: 0
-    z-index: 65
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
 
-.selector-overlay
-    position: absolute
-    inset: 0
+// La forma es la común de las ventanas de la creación (`app-creacion-ventana`); aquí, el resultado y sus factores.
+
+.pg-resultado
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 10px
+
+.pg-casilla
     display: flex
-    justify-content: center
+    flex-direction: column
     align-items: center
-    background: rgba(0, 0, 0, 0.6)
     padding: 12px
+    border-radius: 6px
+    background: $ficha-tarjeta
 
-.selector-dialog
-    width: min(720px, 96vw)
-    max-height: 92vh
-    overflow: auto
-    background: linear-gradient(180deg, #2f3137 0%, #272a30 100%)
-    border: 1px solid #6f7683
-    border-radius: 10px
-    padding: 14px
-    display: flex
-    flex-direction: column
-    gap: 12px
-    color: #f3f6ff
+.pg-casilla--total
+    box-shadow: inset 0 -3px 0 $active
 
-.selector-title
-    font-size: 1.45rem
+.pg-casilla__nombre
+    font-size: 12px
     font-weight: 700
+    letter-spacing: .1em
+    text-transform: uppercase
+    color: $accent
 
-.selector-header
-    display: flex
-    flex-direction: column
-    gap: 8px
+.pg-casilla__valor
+    font-size: 30px
+    font-weight: 500
+    color: $ficha-blanco
 
-.chip-estado
-    width: 100%
-    min-height: 40px
-    white-space: normal
-    line-height: 1.25
-    padding: 8px 12px
-    box-sizing: border-box
-    display: flex
-    align-items: center
-
-.chip-estado.ok
-    background: rgba(62, 146, 62, 0.25)
-    border: 1px solid rgba(104, 199, 104, 0.55)
-    color: #d2f3d2
-
-.chip-estado.warm
-    background: rgba(255, 152, 102, 0.2)
-    border: 1px solid rgba(255, 177, 132, 0.55)
-    color: #ffe5d8
-
-.contenido
-    display: flex
-    flex-direction: column
-    gap: 10px
-
-.subtitulo
+.pg-factores
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))
+    gap: 6px
     margin: 0
-    font-weight: 600
-    opacity: 0.95
+    padding: 0
+    list-style: none
 
-.subtitulo-final
-    margin-bottom: 2px
-    opacity: 0.9
+    li
+        display: flex
+        align-items: center
+        gap: 8px
+        font-size: 14px
+        color: #8a949b
 
-.factores-grid
-    display: grid
-    grid-template-columns: 1fr 1fr
-    gap: 8px
+    .mat-icon
+        width: 18px
+        height: 18px
+        font-size: 18px
 
-.factor-item
-    display: flex
-    align-items: center
-    gap: 8px
-    border: 1px solid rgba(255, 255, 255, 0.15)
-    border-radius: 8px
-    background: rgba(255, 255, 255, 0.05)
-    padding: 8px 10px
-    font-size: 0.9rem
-    opacity: 0.82
+    .pg-factor--activo
+        color: $ficha-blanco
 
-.factor-item mat-icon
-    font-size: 18px
-    width: 18px
-    height: 18px
-    color: rgba(255, 255, 255, 0.55)
-
-.factor-item.activo
-    opacity: 1
-    border-color: rgba(122, 154, 255, 0.55)
-    background: rgba(122, 154, 255, 0.18)
-
-.factor-item.activo mat-icon
-    color: #b8c8ff
-
-.resultado-section
-    margin-top: 6px
-    padding-top: 12px
-    border-top: 1px solid rgba(255, 255, 255, 0.18)
-    display: flex
-    flex-direction: column
-    gap: 8px
-
-.resultado-grid
-    display: grid
-    grid-template-columns: 1fr 1fr
-    gap: 10px
-
-.resultado-box
-    border: 1px solid rgba(255, 255, 255, 0.15)
-    border-radius: 10px
-    background: rgba(255, 255, 255, 0.04)
-    padding: 10px
-    display: flex
-    flex-direction: column
-    gap: 4px
-
-.resultado-box.total
-    border-color: rgba(122, 154, 255, 0.55)
-    background: rgba(122, 154, 255, 0.22)
-
-.resultado-label
-    font-size: 0.82rem
-    opacity: 0.82
-
-.resultado-valor
-    font-size: 1.7rem
-    line-height: 1
-    font-weight: 800
-
-.selector-actions
-    display: flex
-    justify-content: flex-end
-    flex-wrap: wrap
-    gap: 8px
-
-@media (max-width: 640px)
-    .selector-title
-        font-size: 1.25rem
-
-    .chip-estado
-        min-height: 36px
-        padding: 6px 10px
-
-    .factores-grid
-        grid-template-columns: 1fr
-
-    .resultado-grid
-        grid-template-columns: 1fr
-
-    .resultado-valor
-        font-size: 1.45rem
+        .mat-icon
+            color: $active

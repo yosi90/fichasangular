@@ -37,6 +37,7 @@ import { PlatformSessionService } from 'src/app/services/platform-session.servic
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
 
 type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
 type CampaignWorkspaceTab = 'usuarios' | 'historias';
@@ -1528,6 +1529,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirVentajasDesventajas: false,
             permitirIgnorarRestriccionesAlineamiento: false,
             maxFuentesHomebrewGeneralesPorPersonaje: 0,
+            permitirObjetosMagicos: true,
+            permitirObjetosAMedida: true,
+            precioMaximoPorObjeto: null,
         };
     }
 
@@ -1552,7 +1556,14 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirIgnorarRestriccionesAlineamiento: homebrewMode !== 'none'
                 && this.campaignCreatePolicyDraft.permitirIgnorarRestriccionesAlineamiento === true,
             maxFuentesHomebrewGeneralesPorPersonaje: maxFuentesHomebrew,
+            permitirObjetosMagicos: this.campaignCreatePolicyDraft.permitirObjetosMagicos !== false,
+            permitirObjetosAMedida: this.campaignCreatePolicyDraft.permitirObjetosAMedida !== false,
+            precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(this.campaignCreatePolicyDraft.precioMaximoPorObjeto),
         };
+    }
+
+    onCampaignMaxItemPriceBlur(): void {
+        this.campaignCreatePolicyDraft.precioMaximoPorObjeto = normalizarPrecioMaximoPorPieza(this.campaignCreatePolicyDraft.precioMaximoPorObjeto);
     }
 
     private normalizeCampaignMinimumRoll(value: number | null | undefined): number {
@@ -1965,6 +1976,9 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirVentajasDesventajas: source?.permitirVentajasDesventajas === true,
             permitirIgnorarRestriccionesAlineamiento: source?.permitirIgnorarRestriccionesAlineamiento === true,
             maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral ? null : maxFuentes,
+            permitirObjetosMagicos: source?.permitirObjetosMagicos !== false,
+            permitirObjetosAMedida: source?.permitirObjetosAMedida !== false,
+            precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(source?.precioMaximoPorObjeto),
         };
     }
 

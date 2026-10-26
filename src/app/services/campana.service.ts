@@ -34,6 +34,7 @@ import { cabeceraApiConFirebase } from './platform-session.service';
 import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from './platform-spaces.service';
 import { toBoolean, toNullableText } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
 
 @Injectable({
     providedIn: 'root'
@@ -1131,6 +1132,9 @@ export class CampanaService {
             maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral
                 ? null
                 : this.normalizeNullableHomebrewSourceLimit(raw?.maxFuentesHomebrewGeneralesPorPersonaje),
+            permitirObjetosMagicos: toBoolean(raw?.permitirObjetosMagicos, true),
+            permitirObjetosAMedida: toBoolean(raw?.permitirObjetosAMedida, true),
+            precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(raw?.precioMaximoPorObjeto),
         };
     }
 
@@ -1242,6 +1246,12 @@ export class CampanaService {
         } else if ('maxFuentesHomebrewGeneralesPorPersonaje' in raw) {
             payload.maxFuentesHomebrewGeneralesPorPersonaje = this.normalizeNullableHomebrewSourceLimit(raw.maxFuentesHomebrewGeneralesPorPersonaje);
         }
+        if ('permitirObjetosMagicos' in raw)
+            payload.permitirObjetosMagicos = toBoolean(raw.permitirObjetosMagicos, true);
+        if ('permitirObjetosAMedida' in raw)
+            payload.permitirObjetosAMedida = toBoolean(raw.permitirObjetosAMedida, true);
+        if ('precioMaximoPorObjeto' in raw)
+            payload.precioMaximoPorObjeto = normalizarPrecioMaximoPorPieza(raw.precioMaximoPorObjeto);
 
         return payload;
     }

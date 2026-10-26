@@ -49,8 +49,14 @@ export class FichaFranjaComponent implements OnChanges {
 
     pintados: DatoFranjaPintado[] = [];
 
+    private firma = '';
+
+    /**
+     * Si llegan los mismos datos en otra lista (los pasos de la creación la calculan en cada revisión), se conserva la
+     * pintada para no volver a pintar la franja.
+     */
     ngOnChanges(): void {
-        this.pintados = (datosVisibles(this.datos) as DatoFranja[]).map((dato) => ({
+        const pintados: DatoFranjaPintado[] = (datosVisibles(this.datos) as DatoFranja[]).map((dato) => ({
             etiqueta: this.compacta && dato.etiquetaCorta ? dato.etiquetaCorta : dato.etiqueta,
             nombre: this.compacta && dato.etiquetaCorta ? dato.etiqueta : null,
             valor: textoDato(dato.valor) ?? '',
@@ -58,5 +64,10 @@ export class FichaFranjaComponent implements OnChanges {
             ayuda: textoVisible(dato.ayuda) || null,
             ayudaBoton: dato.ayudaBoton ?? null,
         }));
+        const firma = JSON.stringify(pintados);
+        if (firma === this.firma)
+            return;
+        this.firma = firma;
+        this.pintados = pintados;
     }
 }

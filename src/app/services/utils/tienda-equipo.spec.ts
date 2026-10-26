@@ -1,10 +1,12 @@
 import { normalizeArma } from 'src/app/services/arma.service';
 import { normalizeArmadura } from 'src/app/services/armadura.service';
-import { normalizeEquipoCatalogos, normalizeMunicion, normalizeObjeto } from './equipo-mapper';
+import { normalizeEncantamiento, normalizeEquipoCatalogos, normalizeMaterial, normalizeMunicion, normalizeObjeto } from './equipo-mapper';
 import {
     crearArmaApi,
     crearArmaduraApi,
+    crearEncantamientoApi,
     crearEquipoCatalogosApi,
+    crearMaterialApi,
     crearMunicionApi,
     crearObjetoApi,
     crearObjetoGenericoApi,
@@ -12,7 +14,14 @@ import {
 } from 'src/testing/equipo-api';
 import { crearArmaEspecificaApi } from 'src/testing/equipo-api';
 import {
+    aplicacionesDeArticulo,
+    aptitudSeAplica,
     indicePiezaDelCampo,
+    motivoPiezaNoValida,
+    normalizarPrecioMaximoPorPieza,
+    pestanasTienda,
+    politicaTienda,
+    textoCarga,
     articuloDeArma,
     articuloDeArmadura,
     articuloDeMunicion,
@@ -168,6 +177,66 @@ describe('tienda-equipo', () => {
                 { tipo: 'objeto', id: 120, cantidad: 1, equipado: true },
             ]);
             expect(nuevaPieza(capa).equipado).toBeFalse();
+        });
+    });
+
+    describe('material, aptitudes y la política de la campaña (2026-10-26)', () => {
+        const larga = articuloDeArma(normalizeArma(crearArmaApi({ Id: 30, Nombre: 'Espada larga', Precio: 15, Peso: 4, Manejo: { Id: 3, Nombre: 'A una mano' }, Tipo_dano: { Id: 3, Nombre: 'Cortante' } })));
+        const maza = articuloDeArma(normalizeArma(crearArmaApi({ Id: 31, Nombre: 'Maza', Tipo_dano: { Id: 1, Nombre: 'Contundente' } })));
+
+        it('las aplicaciones de material, de la más concreta a la más general, según los datos', () => {
+            expect(aplicacionesDeArticulo(larga, catalogos.Aplicaciones_material)).toEqual([3, 1, 10]);
+            expect(aplicacionesDeArticulo(flechas, catalogos.Aplicaciones_material)).toEqual([5, 1, 10]);
+            expect(aplicacionesDeArticulo(rodela, catalogos.Aplicaciones_material)).toEqual([9, 10]);
+            expect(aplicacionesDeArticulo(capa, catalogos.Aplicaciones_material)).toEqual([]);
+        });
+
+        it('las aptitudes que piden un tipo de daño', () => {
+            const afilada = normalizeEncantamiento(crearEncantamientoApi());
+            expect(aptitudSeAplica(afilada, larga)).toBeTrue();
+            expect(aptitudSeAplica(afilada, maza)).toBeFalse();
+            expect(aptitudSeAplica(afilada, cota)).toBeFalse();
+        });
+
+        it('la compra lleva el material y las aptitudes', () => {
+            const material = normalizeMaterial(crearMaterialApi({ Id: 7, Nombre: 'Adamantina' }));
+            const afilada = normalizeEncantamiento(crearEncantamientoApi());
+            const pieza = { ...nuevaPieza(larga), bonificadorMejora: 1, material, costeMaterial: null, aptitudes: [afilada] };
+            expect(construirCompra(10000, [pieza]).piezas).toEqual([
+                { tipo: 'arma', id: 30, cantidad: 1, equipado: true, bonificadorMejora: 1, idMaterial: 7, encantamientos: [{ id: 1, cabeza: 1 }] },
+            ]);
+        });
+
+        it('las reglas de la pieza y lo que no deja la campaña', () => {
+            const afilada = normalizeEncantamiento(crearEncantamientoApi());
+            expect(motivoPiezaNoValida({ ...nuevaPieza(larga), aptitudes: [afilada] })).toContain('al menos un +1');
+            expect(motivoPiezaNoValida({ ...nuevaPieza(larga), bonificadorMejora: 1 }, { objetosMagicos: true, aMedida: false, precioMaximo: null }))
+                .toBe('Esta campaña no permite objetos a medida.');
+            expect(motivoPiezaNoValida(nuevaPieza(capa), { objetosMagicos: false, aMedida: true, precioMaximo: null }))
+                .toBe('Esta campaña no permite comprar objetos mágicos.');
+            expect(motivoPiezaNoValida({ ...nuevaPieza(flechas), cantidad: 200 }, { objetosMagicos: true, aMedida: true, precioMaximo: 1 })).toBeNull();
+        });
+
+        it('la política: sin campaña, todo; con campaña, la suya; y las pestañas que salen', () => {
+            expect(politicaTienda(null)).toEqual({ objetosMagicos: true, aMedida: true, precioMaximo: null });
+            const estricta = politicaTienda({ permitirObjetosMagicos: false, permitirObjetosAMedida: false, precioMaximoPorObjeto: 500 });
+            expect(estricta).toEqual({ objetosMagicos: false, aMedida: false, precioMaximo: 500 });
+            expect(pestanasTienda({ politica: estricta }).map((p) => p.id)).not.toContain('especifica');
+        });
+
+        it('el precio máximo por pieza de la campaña: po enteros, 0 o más; si no, sin tope', () => {
+            expect(normalizarPrecioMaximoPorPieza(500)).toBe(500);
+            expect(normalizarPrecioMaximoPorPieza('250.9')).toBe(250);
+            expect(normalizarPrecioMaximoPorPieza(0)).toBe(0);
+            [null, undefined, '', '  ', -1, 'mucho'].forEach((valor) => expect(normalizarPrecioMaximoPorPieza(valor)).toBeNull());
+        });
+
+        it('la carga según su capacidad', () => {
+            const capacidad = { Ligera: 76, Media: 153, Pesada: 230 };
+            expect(textoCarga(61, capacidad)).toBe('carga ligera, hasta 76 lb');
+            expect(textoCarga(100, capacidad)).toBe('carga media, hasta 153 lb');
+            expect(textoCarga(300, capacidad)).toContain('pasa de su carga pesada');
+            expect(textoCarga(10, null)).toBe('');
         });
     });
 });

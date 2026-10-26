@@ -1,0 +1,154 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// La tienda, último paso de la creación (lienzo del 2026-10-26). El marco (franja, cuerpo en dos columnas y pie) es el
+// común de `marco/creacion.sass`; aquí solo lo propio: las pestañas del catálogo y la lista de lo que compra.
+
+:host
+    display: contents
+
+.tienda-catalogo
+    display: flex
+    flex-direction: column
+    gap: 10px
+    min-height: 0
+    height: 100%
+
+.tienda-pestanas
+    display: flex
+    flex-wrap: wrap
+    gap: 4px
+    border-bottom: 1px solid #6b7279
+
+.tienda-pestana
+    height: 36px
+    padding: 0 14px
+    border: 0
+    border-bottom: 2px solid transparent
+    background: transparent
+    color: $accent
+    font: inherit
+    font-size: 14px
+    font-weight: 500
+    cursor: pointer
+
+    &[aria-selected="true"]
+        border-bottom-color: $active
+        color: $ficha-blanco
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: -2px
+
+.tienda-tabla
+    flex: 1 1 auto
+    min-height: 0
+    overflow: auto
+
+.tienda-num
+    text-align: right
+    white-space: nowrap
+    font-variant-numeric: tabular-nums
+
+.tienda-suave
+    color: $ficha-texto-suave
+
+.tienda-acciones
+    text-align: right
+    white-space: nowrap
+
+.tienda-enlace
+    height: 30px
+    padding: 0 8px
+    border: 0
+    background: transparent
+    color: $accent
+    font: inherit
+    font-size: 13px
+    text-decoration: underline
+    cursor: pointer
+
+    &:disabled
+        opacity: .4
+        cursor: not-allowed
+
+.tienda-lateral
+    display: flex
+    flex-direction: column
+    gap: 12px
+    min-height: 0
+
+.tienda-tarjeta
+    display: flex
+    flex-direction: column
+    gap: 8px
+    padding: 14px 18px
+
+.tienda-compra
+    flex: 1 1 auto
+    min-height: 0
+
+.tienda-dinero
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 10px
+
+.tienda-dinero__campo
+    flex: 1 1 180px
+
+.tienda-piezas
+    flex: 1 1 auto
+    min-height: 0
+    margin: 0
+    padding: 0
+    list-style: none
+    overflow: auto
+
+.tienda-pieza
+    display: grid
+    grid-template-columns: minmax(0, 1fr) auto auto
+    gap: 10px
+    align-items: center
+    padding: 7px 0
+    border-bottom: 1px solid $ficha-separador
+
+.tienda-pieza--marcada
+    box-shadow: inset 3px 0 0 $ficha-aviso
+    padding-left: 8px
+
+.tienda-pieza__texto
+    display: flex
+    flex-direction: column
+    min-width: 0
+
+.tienda-pieza__nombre
+    font-size: 15px
+    color: $ficha-blanco
+
+.tienda-pieza__nota
+    font-size: 12px
+    color: $font-base
+
+.tienda-pieza__aviso
+    font-size: 12px
+    color: #ffccbc
+
+.tienda-pieza__cifras
+    display: flex
+    flex-direction: column
+    align-items: flex-end
+    font-size: 14px
+    color: $ficha-blanco
+    font-variant-numeric: tabular-nums
+
+.tienda-pieza__acciones
+    display: flex
+
+.tienda-total
+    display: flex
+    justify-content: space-between
+    padding-top: 8px
+    border-top: 2px solid $primary
+    font-size: 15px
+    color: $ficha-blanco

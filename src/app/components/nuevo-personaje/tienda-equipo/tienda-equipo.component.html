@@ -1,0 +1,135 @@
+<app-ficha-franja [datos]="franja" titulo="El dinero de la compra"></app-ficha-franja>
+
+<app-creacion-cuerpo tituloTarea="Catálogo" tituloLateral="Lo que compra">
+    <div creacionTarea class="tienda-catalogo">
+        <div class="tienda-pestanas" role="tablist" aria-label="Qué comprar" (keydown)="moverPestana($event)">
+            <button type="button" role="tab" class="tienda-pestana" *ngFor="let pestana of pestanas; trackBy: trackPestana"
+                [attr.data-pestana]="pestana.id" [attr.aria-selected]="pestana.id === seccion"
+                [attr.tabindex]="pestana.id === seccion ? 0 : -1" (click)="cambiarSeccion(pestana.id)">
+                {{pestana.nombre}}
+            </button>
+        </div>
+        <div class="creacion-herramientas">
+            <label class="creacion-buscador">
+                <mat-icon aria-hidden="true">search</mat-icon>
+                <input type="search" [value]="busqueda" (input)="buscar($any($event.target).value)"
+                    placeholder="Buscar en el catálogo" aria-label="Buscar en el catálogo">
+            </label>
+            <span class="creacion-texto-suave">{{opciones.length}} {{opciones.length === 1 ? 'resultado' : 'resultados'}}</span>
+        </div>
+        <div class="tienda-tabla">
+            <table class="ficha-tabla">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>{{pestanaActual.columnas[0]}}</th>
+                        <th>{{pestanaActual.columnas[1]}}</th>
+                        <th class="tienda-num">Precio</th>
+                        <th class="tienda-num">Peso</th>
+                        <th><span class="creacion-oculto">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let articulo of opciones">
+                        <td>
+                            {{articulo.nombre}}
+                            <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="!articulo.oficial">Homebrew</span>
+                        </td>
+                        <td class="tienda-suave">{{articulo.cifras[0]}}</td>
+                        <td class="tienda-suave">{{articulo.cifras[1]}}</td>
+                        <td class="tienda-num">
+                            <ng-container *ngIf="articulo.generico; else precioFijo">{{textoPrecioGenerico(articulo.generico)}}</ng-container>
+                            <ng-template #precioFijo>{{textoPrecio(articulo.precio)}}</ng-template>
+                        </td>
+                        <td class="tienda-num tienda-suave">{{textoPeso(articulo.peso)}}</td>
+                        <td class="tienda-acciones">
+                            <button type="button" mat-stroked-button [disabled]="guardando" (click)="anadir(articulo)"
+                                [attr.aria-label]="'Añadir ' + articulo.nombre">Añadir</button>
+                            <button type="button" class="tienda-enlace" *ngIf="politica.aMedida && seConfiguraAMedida(articulo)"
+                                [disabled]="guardando" (click)="configurarNueva(articulo)"
+                                [attr.aria-label]="'Configurar ' + articulo.nombre">Configurar</button>
+                        </td>
+                    </tr>
+                    <tr *ngIf="opciones.length < 1 && !cargandoObjetos">
+                        <td colspan="6" class="creacion-vacio">{{errorObjetos || 'Nada que comprar con esta búsqueda.'}}</td>
+                    </tr>
+                    <tr *ngIf="cargandoObjetos && (seccion === 'objeto' || seccion === 'especifica')">
+                        <td colspan="6" class="creacion-vacio">Buscando objetos…</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div creacionLateral class="tienda-lateral">
+        <section class="ficha-tarjeta tienda-tarjeta" aria-labelledby="tienda-dinero">
+            <h2 class="ficha-titulo" id="tienda-dinero">Dinero inicial</h2>
+            <p class="ficha-nota">{{regla.descripcion}}</p>
+            <div class="tienda-dinero">
+                <mat-form-field appearance="fill" class="tienda-dinero__campo">
+                    <mat-label>Dinero inicial (po)</mat-label>
+                    <input matInput type="number" min="0" [attr.max]="regla.maximo" [value]="dineroInicial"
+                        [disabled]="guardando" (input)="cambiarDinero($any($event.target).value)">
+                    <mat-hint *ngIf="regla.maximo !== null">Como mucho, {{textoPrecio(regla.maximo)}}</mat-hint>
+                </mat-form-field>
+                <button mat-stroked-button type="button" *ngIf="regla.modo === 'dados'" [disabled]="!puedeTirar"
+                    (click)="tirarDados()" matTooltip="Tira {{regla.dados}} y multiplica por {{regla.multiplicador}}">
+                    <mat-icon>casino</mat-icon>
+                    Tirar {{regla.dados}}
+                </button>
+            </div>
+        </section>
+
+        <section class="ficha-tarjeta tienda-tarjeta tienda-compra" aria-labelledby="tienda-compra">
+            <h2 class="ficha-titulo" id="tienda-compra">Lo que compra ({{piezas.length}})</h2>
+            <p class="ficha-nota" *ngIf="piezas.length < 1">Todavía nada. Puedes terminar sin comprar y quedarte con todo el dinero.</p>
+            <ul class="tienda-piezas" *ngIf="piezas.length > 0">
+                <li class="tienda-pieza" *ngFor="let pieza of piezas; let i = index"
+                    [class.tienda-pieza--marcada]="motivosPiezas[i] || i === piezaSenalada">
+                    <div class="tienda-pieza__texto">
+                        <span class="tienda-pieza__nombre">
+                            {{pieza.articulo.nombre}}<ng-container *ngIf="pieza.bonificadorMejora > 0"> +{{pieza.bonificadorMejora}}</ng-container><ng-container
+                                *ngIf="pieza.cantidad > 1"> × {{pieza.cantidad}}</ng-container>
+                        </span>
+                        <span class="tienda-pieza__nota">
+                            <ng-container *ngIf="pieza.material">{{pieza.material.Nombre}} · </ng-container>
+                            <ng-container *ngFor="let aptitud of pieza.aptitudes">{{aptitud.Nombre}} · </ng-container>
+                            <ng-container *ngIf="pieza.granCalidad && pieza.bonificadorMejora < 1">Gran calidad · </ng-container>
+                            <ng-container *ngIf="pieza.nombreConjuro">{{pieza.nombreConjuro}} · </ng-container>
+                            {{pieza.equipado ? 'Lo lleva puesto' : 'En la mochila'}}
+                        </span>
+                        <span class="tienda-pieza__aviso" *ngIf="motivosPiezas[i] as motivo">{{motivo}}</span>
+                        <span class="tienda-pieza__aviso" *ngIf="i === piezaSenalada && error">{{error}}</span>
+                    </div>
+                    <div class="tienda-pieza__cifras">
+                        {{textoPrecio(precioEstimado(pieza))}}
+                        <span class="tienda-pieza__nota">{{textoPeso(pesoEstimado(pieza))}}</span>
+                    </div>
+                    <div class="tienda-pieza__acciones">
+                        <button type="button" mat-icon-button [disabled]="guardando" (click)="editarPieza(i)"
+                            [attr.aria-label]="'Configurar ' + pieza.articulo.nombre" matTooltip="Configurar">
+                            <mat-icon>edit</mat-icon>
+                        </button>
+                        <button type="button" mat-icon-button [disabled]="guardando" (click)="quitar(i)"
+                            [attr.aria-label]="'Quitar ' + pieza.articulo.nombre" matTooltip="Quitar">
+                            <mat-icon>close</mat-icon>
+                        </button>
+                    </div>
+                </li>
+            </ul>
+            <div class="tienda-total"><span>Total</span><b>{{textoPrecio(resumen.gastado)}}</b></div>
+        </section>
+    </div>
+</app-creacion-cuerpo>
+
+<app-creacion-pie [nota]="notaPie" [aviso]="!!error || (!!motivoNoComprar && piezas.length > 0)">
+    <button mat-stroked-button type="button" [disabled]="guardando" (click)="onOmitir()">Terminar sin comprar</button>
+    <button mat-raised-button color="primary" type="button" [disabled]="guardando || motivoNoComprar !== null" (click)="onConfirmar()">
+        {{guardando ? 'Guardando…' : 'Comprar y terminar'}}
+    </button>
+</app-creacion-pie>
+
+<app-configurar-pieza *ngIf="configurando as c" [pieza]="c.pieza" [nueva]="c.indice === null" [materiales]="c.materiales"
+    [aptitudes]="c.aptitudes" [disponible]="c.disponible" [politica]="politica" [conjuros]="conjuros"
+    (guardar)="guardarConfiguracion($event)" (cancelar)="cancelarConfiguracion()">
+</app-configurar-pieza>

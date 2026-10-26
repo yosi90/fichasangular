@@ -298,7 +298,14 @@ export function crearEquipoCatalogosApi(cambios: Record<string, any> = {}): Reco
         Tipos_bonificador: [{ Id: 2, Nombre: 'Armadura', Apila: false }, { Id: 7, Nombre: 'Esquiva', Apila: true }],
         Objetivos_modificador: [{ Id: 1, Nombre: 'CA' }],
         Empunaduras: [{ Id: 1, Nombre: 'Mano principal' }, { Id: 2, Nombre: 'Mano torpe' }, { Id: 3, Nombre: 'Dos manos' }],
-        Aplicaciones_material: [{ Id: 1, Nombre: 'Arma' }],
+        Aplicaciones_material: [
+            { Id: 1, Nombre: 'Arma', Piezas: ['arma', 'municion'], Manejo: null, Peso_armadura: null },
+            { Id: 3, Nombre: 'Arma a una mano', Piezas: ['arma'], Manejo: { Id: 3, Nombre: 'A una mano' }, Peso_armadura: null },
+            { Id: 5, Nombre: 'Munición (por pieza)', Piezas: ['municion'], Manejo: null, Peso_armadura: null },
+            { Id: 7, Nombre: 'Armadura intermedia', Piezas: ['armadura'], Manejo: null, Peso_armadura: { Id: 2, Nombre: 'Intermedia' } },
+            { Id: 9, Nombre: 'Escudo', Piezas: ['escudo'], Manejo: null, Peso_armadura: null },
+            { Id: 10, Nombre: 'Cualquier objeto', Piezas: ['arma', 'municion', 'armadura', 'escudo'], Manejo: null, Peso_armadura: null },
+        ],
         Danos_por_tamano: [{ Dano_mediano: '1d4', Danos: [{ Id_tamano: 4, Tamano: 'Pequeño', Dano: '1d3' }, { Id_tamano: 5, Tamano: 'Mediano', Dano: '1d4' }] }],
         Riqueza_por_nivel: [{ Nivel: 1, Po: 0 }, { Nivel: 2, Po: 900 }, { Nivel: 3, Po: 2700 }],
         Oro_inicial_por_clase: [

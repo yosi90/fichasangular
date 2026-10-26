@@ -1,70 +1,46 @@
-<div class="selector-overlay" (click)="onCerrar()">
-    <div class="selector-dialog" (click)="$event.stopPropagation()">
-        <div class="selector-header">
-            <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
-            <div class="selector-header-actions">
-                <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Información" (click)="onInfo()">
-                    <mat-icon>info</mat-icon>
-                </button>
-                <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" (click)="onCerrar()">
-                    <mat-icon>close</mat-icon>
-                </button>
-            </div>
-        </div>
-        <p class="selector-contexto tw-m-0" *ngIf="razaContextoNombre.trim().length > 0">
-            Opciones disponibles para <strong>{{razaContextoNombre}}</strong>.
-        </p>
+<app-creacion-ventana [titulo]="titulo"
+    [subtitulo]="razaContextoNombre.trim().length > 0 ? 'Opciones disponibles para ' + razaContextoNombre + '.' : ''"
+    (cerrar)="onCerrar()" (pulsarFondo)="onCerrar()">
+    <button ventanaCabecera mat-icon-button type="button" aria-label="Información" matTooltip="Qué son los raciales opcionales" (click)="onInfo()">
+        <mat-icon>info</mat-icon>
+    </button>
 
-        <div class="grupos-listado" *ngIf="requiereSeleccion; else sinOpcionalesTpl">
-            <section class="grupo-card" *ngFor="let grupo of grupos; trackBy: trackByGrupo">
-                <p class="grupo-titulo">Grupo de opciones {{grupo.grupo}}</p>
-                <p class="grupo-ayuda tw-m-0" *ngIf="grupoSinOpcionesHabilitadas(grupo)">
-                    Este grupo no tiene opciones habilitadas con la identidad actual.
-                </p>
-                <div class="grupo-opciones">
-                    <div
-                        class="opcion-chip"
-                        *ngFor="let opcion of grupo.opciones; trackBy: trackByOpcion"
-                        [class.seleccionada]="esSeleccionada(grupo.grupo, opcion.clave)"
-                        [class.bloqueada]="!esOpcionHabilitada(opcion)"
-                        [class.con-warning]="opcion.estado === 'eligible_with_warning'">
-                        <button
-                            type="button"
-                            class="opcion-select-btn"
-                            [disabled]="!esOpcionHabilitada(opcion)"
-                            (click)="onSeleccionar(grupo.grupo, opcion.clave, esOpcionHabilitada(opcion))">
-                            <span class="opcion-nombre">{{opcion.racial.Nombre}}</span>
-                            <span class="opcion-bloqueo" *ngIf="!esOpcionHabilitada(opcion)">
-                                {{getTextoBloqueo(opcion)}}
-                            </span>
-                            <span class="opcion-warning" *ngIf="opcion.estado === 'eligible_with_warning' && getTextoAdvertencia(opcion).length > 0">
-                                {{getTextoAdvertencia(opcion)}}
-                            </span>
-                        </button>
-                        <button
-                            mat-icon-button
-                            type="button"
-                            class="opcion-detalle-btn"
-                            [disabled]="!tieneDetalleRacial(opcion.racial)"
-                            (click)="onVerDetalleRacial(opcion.racial, $event)"
-                            aria-label="Ver detalle de racial"
-                            matTooltip="Ver detalle completo">
-                            <mat-icon>open_in_new</mat-icon>
-                        </button>
-                    </div>
+    <ng-container *ngIf="requiereSeleccion; else sinOpcionalesTpl">
+        <section class="creacion-ventana__seccion" *ngFor="let grupo of grupos; trackBy: trackByGrupo">
+            <h3 class="creacion-titulo">Grupo de opciones {{grupo.grupo}}</h3>
+            <p class="creacion-texto-suave" *ngIf="grupoSinOpcionesHabilitadas(grupo)">
+                Este grupo no tiene opciones habilitadas con la identidad actual.
+            </p>
+            <div class="creacion-opciones creacion-opciones--rejilla" role="radiogroup" [attr.aria-label]="'Grupo de opciones ' + grupo.grupo">
+                <div class="racial-opcion" *ngFor="let opcion of grupo.opciones; trackBy: trackByOpcion">
+                    <button type="button" role="radio" class="creacion-opcion creacion-opcion--caja"
+                        [class.creacion-opcion--activa]="esSeleccionada(grupo.grupo, opcion.clave)"
+                        [class.creacion-opcion--bloqueada]="!esOpcionHabilitada(opcion)"
+                        [attr.aria-checked]="esSeleccionada(grupo.grupo, opcion.clave)"
+                        [disabled]="!esOpcionHabilitada(opcion)"
+                        (click)="onSeleccionar(grupo.grupo, opcion.clave, esOpcionHabilitada(opcion))">
+                        <span class="creacion-opcion__texto">
+                            {{opcion.racial.Nombre}}
+                            <span class="creacion-opcion__nota racial-bloqueo" *ngIf="!esOpcionHabilitada(opcion)">{{getTextoBloqueo(opcion)}}</span>
+                            <span class="creacion-opcion__nota racial-aviso"
+                                *ngIf="opcion.estado === 'eligible_with_warning' && getTextoAdvertencia(opcion).length > 0">{{getTextoAdvertencia(opcion)}}</span>
+                        </span>
+                    </button>
+                    <button mat-icon-button type="button" [disabled]="!tieneDetalleRacial(opcion.racial)"
+                        (click)="onVerDetalleRacial(opcion.racial, $event)" aria-label="Ver detalle de racial" matTooltip="Ver detalle completo">
+                        <mat-icon>open_in_new</mat-icon>
+                    </button>
                 </div>
-            </section>
-        </div>
+            </div>
+        </section>
+    </ng-container>
 
-        <ng-template #sinOpcionalesTpl>
-            <p class="tw-m-0 detalle">Esta raza no tiene raciales opcionales que resolver.</p>
-        </ng-template>
+    <ng-template #sinOpcionalesTpl>
+        <p class="creacion-vacio">Esta raza no tiene raciales opcionales que resolver.</p>
+    </ng-template>
 
-        <div class="selector-actions">
-            <button mat-stroked-button type="button" (click)="onCerrar()">Cancelar</button>
-            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
-                Confirmar selección
-            </button>
-        </div>
-    </div>
-</div>
+    <button ventanaSecundaria mat-stroked-button type="button" (click)="onCerrar()">Cancelar</button>
+    <button ventanaPrincipal mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+        Confirmar selección
+    </button>
+</app-creacion-ventana>

@@ -1,32 +1,19 @@
-<div class="selector-overlay" (click)="onCerrar()">
-    <div class="selector-dialog" (click)="$event.stopPropagation()">
-        <h2 class="tw-m-0 selector-title">Visibilidad del personaje</h2>
-        <p class="descripcion">Decide si este personaje sera visible solo para su creador o para todo el mundo.</p>
-
-        <div class="opciones">
-            <button
-                type="button"
-                class="opcion"
-                [class.activa]="seleccion === false"
-                [disabled]="bloqueado"
-                (click)="onSeleccionar(false)">
-                Solo para mi
-            </button>
-            <button
-                type="button"
-                class="opcion"
-                [class.activa]="seleccion === true"
-                [disabled]="bloqueado"
-                (click)="onSeleccionar(true)">
-                Todo el mundo
-            </button>
-        </div>
-
-        <div class="selector-actions">
-            <button mat-stroked-button type="button" [disabled]="bloqueado" (click)="onCerrar()">Cancelar</button>
-            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
-                Confirmar
-            </button>
-        </div>
+<app-creacion-ventana titulo="Visibilidad del personaje"
+    subtitulo="Decide si este personaje será visible solo para su creador o para todo el mundo." ancho="estrecha"
+    [cierreBloqueado]="bloqueado" (cerrar)="onCerrar()" (pulsarFondo)="onCerrar()">
+    <div class="creacion-opciones" role="radiogroup" aria-label="Visibilidad del personaje">
+        <button type="button" role="radio" class="creacion-opcion creacion-opcion--caja" [class.creacion-opcion--activa]="seleccion === false"
+            [attr.aria-checked]="seleccion === false" [disabled]="bloqueado" (click)="onSeleccionar(false)">
+            <span class="creacion-opcion__texto">Solo para mí</span>
+        </button>
+        <button type="button" role="radio" class="creacion-opcion creacion-opcion--caja" [class.creacion-opcion--activa]="seleccion === true"
+            [attr.aria-checked]="seleccion === true" [disabled]="bloqueado" (click)="onSeleccionar(true)">
+            <span class="creacion-opcion__texto">Todo el mundo</span>
+        </button>
     </div>
-</div>
+
+    <button ventanaSecundaria mat-stroked-button type="button" [disabled]="bloqueado" (click)="onCerrar()">Cancelar</button>
+    <button ventanaPrincipal mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+        Confirmar
+    </button>
+</app-creacion-ventana>

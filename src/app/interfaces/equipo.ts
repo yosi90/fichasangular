@@ -60,6 +60,19 @@ export interface EquipoOroInicialClase {
     Maximo: number;
 }
 
+/** Las piezas a las que se aplica el coste de un material. */
+export type PiezaMaterial = 'arma' | 'municion' | 'armadura' | 'escudo';
+
+/**
+ * A qué se aplica cada coste de un material (`MaterialDetalle.Costes`): sus piezas y el manejo o el peso que pide. Una
+ * pieza usa el coste de la primera que tenga el material, de la más concreta a la más general.
+ */
+export interface AplicacionMaterial extends EquipoRef {
+    Piezas: PiezaMaterial[];
+    Manejo: EquipoRef | null;
+    Peso_armadura: EquipoRef | null;
+}
+
 /** `GET /equipo/catalogos`: los catálogos pequeños del equipo (caché de la RTDB `EquipoCatalogos`). */
 export interface EquipoCatalogos {
     Manejos_armas: EquipoRef[];
@@ -76,7 +89,7 @@ export interface EquipoCatalogos {
     Tipos_bonificador: EquipoTipoBonificador[];
     Objetivos_modificador: EquipoRef[];
     Empunaduras: EquipoRef[];
-    Aplicaciones_material: EquipoRef[];
+    Aplicaciones_material: AplicacionMaterial[];
     Danos_por_tamano: EquipoDanoPorTamano[];
     Riqueza_por_nivel: EquipoRiquezaNivel[];
     Oro_inicial_por_clase: EquipoOroInicialClase[];
@@ -240,6 +253,8 @@ export interface FiltrosObjetos {
     ranura?: number | null;
     manual?: number | null;
     q?: string | null;
+    /** `true`: solo las armas y armaduras mágicas específicas; `false`: solo los demás objetos. */
+    especificas?: boolean | null;
     limit?: number;
     offset?: number;
 }

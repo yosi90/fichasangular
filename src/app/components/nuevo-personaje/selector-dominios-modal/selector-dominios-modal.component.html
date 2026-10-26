@@ -1,49 +1,34 @@
-<div class="selector-overlay" (click)="onCerrar()">
-    <div class="selector-dialog" (click)="$event.stopPropagation()">
-        <div class="selector-header">
-            <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
-            <div class="selector-header-actions">
-                <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" [disabled]="!puedeCerrar" (click)="onCerrar()">
-                    <mat-icon>close</mat-icon>
-                </button>
-            </div>
-        </div>
+<app-creacion-ventana [titulo]="titulo" [subtitulo]="textoPendiente" [cierreBloqueado]="!puedeCerrar"
+    (cerrar)="onCerrar()" (pulsarFondo)="onCerrar()">
+    <span ventanaCabecera class="creacion-etiqueta" [class.creacion-etiqueta--aviso]="cantidadPendiente > 0">
+        {{cantidadPendiente > 0 ? 'Faltan ' + cantidadPendiente : 'Completo'}}
+    </span>
 
-        <mat-chip class="tw-w-full chip-pendiente" [ngClass]="cantidadPendiente > 0 ? 'warm' : 'ok'">
-            {{textoPendiente}}
-        </mat-chip>
-
-        <div class="dominios-listado" *ngIf="opciones.length > 0; else sinDominiosTpl">
-            <div class="dominio-row"
-                *ngFor="let dominio of opciones; trackBy: trackByDominioId"
-                [class.seleccionada]="isSeleccionado(dominio.id)"
-                [class.bloqueada]="isBloqueadoPorLimite(dominio.id)"
-                tabindex="0"
-                role="checkbox"
-                [attr.aria-checked]="isSeleccionado(dominio.id)"
-                [attr.aria-disabled]="isBloqueadoPorLimite(dominio.id)"
-                (click)="onToggleDominioRow(dominio.id)"
-                (keydown.enter)="onToggleDominioRowTeclado(dominio.id, $event)"
-                (keydown.space)="onToggleDominioRowTeclado(dominio.id, $event)">
-                <mat-checkbox
-                    [checked]="isSeleccionado(dominio.id)"
-                    (change)="onToggleDominio(dominio.id, $event.checked)"
-                    (click)="$event.stopPropagation()"
-                    [disabled]="isBloqueadoPorLimite(dominio.id)">
-                    {{dominio.nombre}} {{dominio.oficial ? '' : '(Homebrew)'}}
-                </mat-checkbox>
-            </div>
-        </div>
-
-        <ng-template #sinDominiosTpl>
-            <p class="tw-m-0 detalle">No hay dominios disponibles para esta selección.</p>
-        </ng-template>
-
-        <div class="selector-actions">
-            <button mat-stroked-button type="button" [disabled]="!puedeCerrar" (click)="onCerrar()">Cancelar</button>
-            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
-                Confirmar dominios
-            </button>
+    <div class="creacion-opciones creacion-opciones--rejilla" role="group" [attr.aria-label]="titulo"
+        *ngIf="opciones.length > 0; else sinDominiosTpl">
+        <div class="creacion-opcion creacion-opcion--caja"
+            *ngFor="let dominio of opciones; trackBy: trackByDominioId"
+            [class.creacion-opcion--activa]="isSeleccionado(dominio.id)"
+            [class.creacion-opcion--bloqueada]="isBloqueadoPorLimite(dominio.id)"
+            tabindex="0"
+            role="checkbox"
+            [attr.aria-checked]="isSeleccionado(dominio.id)"
+            [attr.aria-disabled]="isBloqueadoPorLimite(dominio.id)"
+            (click)="onToggleDominioRow(dominio.id)"
+            (keydown.enter)="onToggleDominioRowTeclado(dominio.id, $event)"
+            (keydown.space)="onToggleDominioRowTeclado(dominio.id, $event)">
+            <span class="creacion-opcion__texto">{{dominio.nombre}}</span>
+            <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="!dominio.oficial">Homebrew</span>
+            <mat-icon class="creacion-opcion__marca" aria-hidden="true">{{isSeleccionado(dominio.id) ? 'check_box' : 'check_box_outline_blank'}}</mat-icon>
         </div>
     </div>
-</div>
+
+    <ng-template #sinDominiosTpl>
+        <p class="creacion-vacio">No hay dominios disponibles para esta selección.</p>
+    </ng-template>
+
+    <button ventanaSecundaria mat-stroked-button type="button" [disabled]="!puedeCerrar" (click)="onCerrar()">Cancelar</button>
+    <button ventanaPrincipal mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+        Confirmar dominios
+    </button>
+</app-creacion-ventana>

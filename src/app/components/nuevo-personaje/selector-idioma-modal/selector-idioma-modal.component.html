@@ -1,56 +1,41 @@
-<div class="selector-overlay" (click)="onCerrar()">
-    <div class="selector-dialog" (click)="$event.stopPropagation()">
-        <div class="selector-header">
-            <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
-            <div class="selector-header-actions">
-                <button mat-icon-button type="button" class="selector-icon-btn" aria-label="Cerrar" [disabled]="!puedeCerrar" (click)="onCerrar()">
-                    <mat-icon>close</mat-icon>
-                </button>
-            </div>
-        </div>
+<app-creacion-ventana [titulo]="titulo" [subtitulo]="textoPendiente" [cierreBloqueado]="!puedeCerrar"
+    (cerrar)="onCerrar()" (pulsarFondo)="onCerrar()">
+    <span ventanaCabecera class="creacion-etiqueta" [class.creacion-etiqueta--aviso]="cantidadPendiente > 0">
+        {{cantidadPendiente > 0 ? 'Faltan ' + cantidadPendiente : 'Completo'}}
+    </span>
+    <div class="creacion-herramientas">
+        <mat-slide-toggle color="primary" [checked]="incluirHomebrewEfectivo" [disabled]="!personajeOficial" (change)="onToggleHomebrew()">
+            Incluir homebrew
+        </mat-slide-toggle>
+    </div>
 
-        <div class="selector-top-row">
-            <mat-chip class="chip-pendiente" [ngClass]="cantidadPendiente > 0 ? 'warm' : 'ok'">
-                {{textoPendiente}}
-            </mat-chip>
-            <mat-chip-option class="filtro-chip filtro-chip--expand" color="warn" [selected]="incluirHomebrewEfectivo"
-                [disabled]="!personajeOficial" (click)="onToggleHomebrew()">
-                {{incluirHomebrewEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
-            </mat-chip-option>
-        </div>
-
-        <div class="idiomas-listado" *ngIf="idiomasDisponibles.length > 0; else sinIdiomasTpl">
-            <div class="idioma-row"
-                *ngFor="let idioma of idiomasDisponibles; trackBy: trackByIdiomaId"
-                [class.seleccionada]="isIdiomaSeleccionado(idioma.Id)"
-                [class.bloqueada]="isIdiomaBloqueadoPorLimite(idioma.Id)"
-                tabindex="0"
-                role="checkbox"
-                [attr.aria-checked]="isIdiomaSeleccionado(idioma.Id)"
-                [attr.aria-disabled]="isIdiomaBloqueadoPorLimite(idioma.Id)"
-                (click)="onToggleIdiomaRow(idioma.Id)"
-                (keydown.enter)="onToggleIdiomaRowTeclado(idioma.Id, $event)"
-                (keydown.space)="onToggleIdiomaRowTeclado(idioma.Id, $event)">
-                <mat-checkbox
-                    [checked]="isIdiomaSeleccionado(idioma.Id)"
-                    [disabled]="isIdiomaBloqueadoPorLimite(idioma.Id)">
-                    <span class="idioma-row-content">
-                        <span class="idioma-row-nombre">{{idioma.Nombre}} {{idioma.Oficial ? '' : '(Homebrew)'}}</span>
-                        <span class="idioma-row-descripcion" *ngIf="idioma.Descripcion?.trim()?.length">{{idioma.Descripcion}}</span>
-                    </span>
-                </mat-checkbox>
-            </div>
-        </div>
-
-        <ng-template #sinIdiomasTpl>
-            <p class="tw-m-0 detalle-idioma">No hay idiomas disponibles con el filtro actual.</p>
-        </ng-template>
-
-        <div class="selector-actions">
-            <button mat-stroked-button type="button" [disabled]="!puedeCerrar" (click)="onCerrar()">Cancelar</button>
-            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
-                Continuar
-            </button>
+    <div class="creacion-opciones" role="group" [attr.aria-label]="titulo" *ngIf="idiomasDisponibles.length > 0; else sinIdiomasTpl">
+        <div class="creacion-opcion"
+            *ngFor="let idioma of idiomasDisponibles; trackBy: trackByIdiomaId"
+            [class.creacion-opcion--activa]="isIdiomaSeleccionado(idioma.Id)"
+            [class.creacion-opcion--bloqueada]="isIdiomaBloqueadoPorLimite(idioma.Id)"
+            tabindex="0"
+            role="checkbox"
+            [attr.aria-checked]="isIdiomaSeleccionado(idioma.Id)"
+            [attr.aria-disabled]="isIdiomaBloqueadoPorLimite(idioma.Id)"
+            (click)="onToggleIdiomaRow(idioma.Id)"
+            (keydown.enter)="onToggleIdiomaRowTeclado(idioma.Id, $event)"
+            (keydown.space)="onToggleIdiomaRowTeclado(idioma.Id, $event)">
+            <span class="creacion-opcion__texto">
+                {{idioma.Nombre}}
+                <span class="creacion-opcion__nota" *ngIf="idioma.Descripcion?.trim()?.length">{{idioma.Descripcion}}</span>
+            </span>
+            <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="!idioma.Oficial">Homebrew</span>
+            <mat-icon class="creacion-opcion__marca" aria-hidden="true">{{isIdiomaSeleccionado(idioma.Id) ? 'check_box' : 'check_box_outline_blank'}}</mat-icon>
         </div>
     </div>
-</div>
+
+    <ng-template #sinIdiomasTpl>
+        <p class="creacion-vacio">No hay idiomas disponibles con el filtro actual.</p>
+    </ng-template>
+
+    <button ventanaSecundaria mat-stroked-button type="button" [disabled]="!puedeCerrar" (click)="onCerrar()">Cancelar</button>
+    <button ventanaPrincipal mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+        Continuar
+    </button>
+</app-creacion-ventana>

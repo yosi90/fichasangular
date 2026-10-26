@@ -6,16 +6,9 @@
 // valen también en lo que cada pantalla proyecta (listas, enlaces, pares y tablas). Guía: «Pantallas de detalle» en
 // `docs/guias-estilo/GUIA_ESTILO_WEB_GENERAL.md`.
 
-// Los títulos son h1, h2 y h3, a los que `.mat-typography` (en el body) pone fuente, interlineado y margen: aquí se
-// fijan todos, y los estilos van dentro de `.ficha` para ganarle.
-@mixin ficha-versalitas
-    margin: 0
-    font-size: 12px
-    font-weight: 700
-    line-height: 1.4
-    letter-spacing: .14em
-    text-transform: uppercase
-    color: $accent
+// Los títulos son h1, h2 y h3, a los que `.mat-typography` (en el body) pone fuente, interlineado y margen: la mezcla
+// `ficha-versalitas` (en `_ficha-tonos.sass`, para que la use también la creación) los fija todos, y los estilos van
+// dentro de `.ficha` para ganarle.
 
 // Los componentes de la ficha no ocupan sitio propio: solo cuenta lo que pintan (así, uno vacío no deja hueco).
 app-ficha-cabecera, app-ficha-datos, app-ficha-cuerpo, app-ficha-seccion, app-ficha-lateral, app-ficha-bloque, app-ficha-prerrequisitos, app-ficha-franja, app-ficha-casillas

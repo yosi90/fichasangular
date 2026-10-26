@@ -476,6 +476,36 @@
                                                     </button>
                                                 </div>
                                             </div>
+                                            <div class="campaign-policy-field campaign-policy-field--full">
+                                                <div class="campaign-policy-heading">
+                                                    <span>Tienda del final de la creación</span>
+                                                </div>
+                                                <div class="campaign-toggle-list">
+                                                    <mat-slide-toggle
+                                                        color="primary"
+                                                        [(ngModel)]="campaignCreatePolicyDraft.permitirObjetosMagicos"
+                                                        [disabled]="campaignEditorFormDisabled">
+                                                        Permitir comprar objetos mágicos
+                                                    </mat-slide-toggle>
+                                                    <mat-slide-toggle
+                                                        color="primary"
+                                                        [(ngModel)]="campaignCreatePolicyDraft.permitirObjetosAMedida"
+                                                        [disabled]="campaignEditorFormDisabled">
+                                                        Permitir armas y armaduras a medida (mejora, aptitudes y material)
+                                                    </mat-slide-toggle>
+                                                </div>
+                                            </div>
+                                            <label class="campaign-policy-field">
+                                                <span>Precio máximo por objeto (po)</span>
+                                                <input
+                                                    class="campaign-text-input"
+                                                    type="number"
+                                                    min="0"
+                                                    placeholder="Sin tope"
+                                                    [(ngModel)]="campaignCreatePolicyDraft.precioMaximoPorObjeto"
+                                                    [disabled]="campaignEditorFormDisabled"
+                                                    (blur)="onCampaignMaxItemPriceBlur()" />
+                                            </label>
                                         </div>
                                         <div class="campaign-editor-actions" *ngIf="campaignEditorCanSave">
                                             <button

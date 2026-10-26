@@ -109,6 +109,7 @@ export class EquipoService {
         poner('ranura', filtros.ranura);
         poner('manual', filtros.manual);
         poner('q', filtros.q);
+        poner('especificas', filtros.especificas === undefined || filtros.especificas === null ? null : `${filtros.especificas}`);
         poner('limit', filtros.limit);
         poner('offset', filtros.offset);
         return this.http.get<any[]>(`${environment.apiUrl}objetos`, { params, observe: 'response' }).pipe(

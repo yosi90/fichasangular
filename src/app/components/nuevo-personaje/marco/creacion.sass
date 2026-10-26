@@ -1,0 +1,276 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// El marco común de los pasos de la creación (lienzo aprobado por el propietario el 2026-10-26): cabecera, fila de pasos,
+// franja, cuerpo en dos columnas (3fr / 2fr) y pie. Lo carga `CreacionMarcoComponent` sin encapsular, así que todas las
+// clases llevan el prefijo `creacion-`. Va dentro de la ficha común (`app-ficha-detalle`), de la que usa la franja, las
+// casillas, los pares, las listas y las tablas. Guía: «La creación de personaje» en `GUIA_ESTILO_WEB_GENERAL.md`.
+
+app-creacion-marco
+    display: flex
+    flex: 1 1 auto
+    min-width: 0
+    min-height: 0
+
+app-creacion-marco > app-ficha-detalle.creacion
+    flex: 1 1 auto
+    min-width: 0
+    min-height: 0
+
+app-creacion-cabecera, app-creacion-cuerpo, app-creacion-pie
+    display: contents
+
+app-ficha-detalle.creacion > .ficha
+    gap: 12px
+    height: 100%
+    min-height: 0
+    box-sizing: border-box
+    padding: 14px 18px 12px
+    overflow: auto
+
+    // La franja de cifras del paso: un poco más baja que la de una ficha. (Sin `>`: la de la tienda va dentro de su
+    // componente, que no ocupa caja, y el selector de hijos mira el árbol del DOM.)
+    .ficha-franja
+        flex-shrink: 0
+
+        .ficha-franja__dato
+            padding: 10px 18px
+
+        .ficha-franja__valor
+            font-size: 22px
+
+    // Las tablas de los pasos, con la cabecera fija al desplazar la tarea.
+    .creacion-cuerpo__tarea .ficha-tabla thead th
+        position: sticky
+        top: 0
+        z-index: 1
+        background: $primary
+
+// Cabecera
+.creacion-cabecera
+    display: flex
+    flex-shrink: 0
+    flex-wrap: wrap
+    align-items: center
+    justify-content: space-between
+    gap: 12px 24px
+    padding: 10px 20px
+    background: $primary
+    border-radius: $ficha-radio
+    border-bottom: 3px solid $active
+    box-shadow: $ficha-sombra
+
+.creacion-cabecera__identidad
+    display: flex
+    flex-wrap: wrap
+    align-items: baseline
+    gap: 4px 16px
+    min-width: 0
+
+.creacion-cabecera__paso
+    font-size: 12px
+    font-weight: 700
+    letter-spacing: .14em
+    text-transform: uppercase
+    color: $accent
+
+.creacion-cabecera .creacion-cabecera__nombre
+    margin: 0
+    font-size: 24px
+    font-weight: 500
+    line-height: 1.3
+    color: $ficha-blanco
+    overflow-wrap: anywhere
+
+.creacion-cabecera .creacion-cabecera__nombre--vacio
+    font-style: italic
+    color: $font-base
+
+.creacion-cabecera__linea
+    font-size: 14px
+    color: $ficha-texto-suave
+
+.creacion-cabecera__acciones
+    display: flex
+    align-items: center
+    gap: 10px
+
+// Fila de pasos
+.creacion-pasos
+    display: flex
+    flex-shrink: 0
+    align-items: center
+    gap: 10px
+    margin: 0
+    padding: 10px 20px
+    list-style: none
+    background: $ficha-tarjeta
+    border-radius: $ficha-radio
+    box-shadow: $ficha-sombra
+    overflow-x: auto
+
+.creacion-paso
+    display: flex
+    flex-shrink: 0
+    align-items: center
+    gap: 8px
+    font-size: 14px
+
+.creacion-paso__circulo
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    width: 24px
+    height: 24px
+    box-sizing: border-box
+    border-radius: 50%
+    font-size: 13px
+
+    .mat-icon
+        width: 14px
+        height: 14px
+        font-size: 14px
+
+.creacion-paso--hecho
+    .creacion-paso__circulo
+        background: $primary
+        color: $accent
+        border: 1px solid #6b7279
+
+    .creacion-paso__nombre
+        color: $ficha-texto-suave
+
+.creacion-paso--actual
+    .creacion-paso__circulo
+        background: $active
+        color: $ficha-blanco
+        font-weight: 700
+        box-shadow: 0 0 0 3px rgba(194, 24, 91, .25)
+
+    .creacion-paso__nombre
+        font-weight: 700
+        color: $ficha-blanco
+
+.creacion-paso--falta
+    .creacion-paso__circulo
+        border: 1px solid #6b7279
+        color: #8a949b
+
+    .creacion-paso__nombre
+        color: #8a949b
+
+.creacion-paso__linea
+    flex: 1 1 auto
+    min-width: 16px
+    height: 1px
+    background: #5d6368
+
+.creacion-paso__linea--hecha
+    background: $accent
+
+// Cuerpo en dos columnas: la tarea (3fr) y lo que se mira (2fr)
+.creacion-cuerpo
+    display: grid
+    flex: 1 1 auto
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr)
+    gap: 16px
+    min-height: 0
+
+.creacion-cuerpo--sin-lateral
+    grid-template-columns: minmax(0, 1fr)
+
+.creacion-cuerpo__tarea
+    display: flex
+    flex-direction: column
+    gap: 10px
+    min-height: 0
+    padding: 14px 18px
+    background: $ficha-tarjeta
+    border-radius: $ficha-radio
+    box-shadow: $ficha-sombra
+    overflow: auto
+
+.creacion-cuerpo__lateral
+    display: flex
+    flex-direction: column
+    gap: 12px
+    min-height: 0
+    overflow: auto
+
+    // Una ficha de detalle dentro de la lateral (la raza que se mira) no lleva su margen.
+    app-ficha-detalle > .ficha
+        padding: 0
+        gap: 12px
+
+// «Tu personaje»
+.creacion-personaje
+    display: flex
+    flex-direction: column
+    gap: 10px
+    padding: 14px 18px
+
+.creacion-personaje__pares
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    column-gap: 18px
+
+.creacion-personaje__par
+    display: flex
+    justify-content: space-between
+    gap: 8px
+    padding: 5px 0
+    border-bottom: 1px solid $ficha-separador
+
+.creacion-personaje__par-nombre
+    font-size: 13px
+    color: $font-base
+
+.creacion-personaje__par-valor
+    font-size: 14px
+    color: $ficha-blanco
+    font-variant-numeric: tabular-nums
+
+// Pie
+.creacion-pie
+    display: flex
+    flex-shrink: 0
+    flex-wrap: wrap
+    align-items: center
+    justify-content: space-between
+    gap: 10px 16px
+
+.creacion-pie__nota
+    display: flex
+    flex: 1 1 320px
+    align-items: center
+    gap: 8px
+    margin: 0
+    font-size: 13px
+    color: $font-base
+
+    .mat-icon
+        flex-shrink: 0
+        width: 16px
+        height: 16px
+        font-size: 16px
+
+.creacion-pie__nota--aviso
+    color: #ffccbc
+
+.creacion-pie__acciones
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 10px
+    margin-left: auto
+
+// Con la creación estrecha (se mide la ficha, no la ventana), las columnas se apilan y todo se desplaza junto.
+@container ficha (max-width: 900px)
+    .creacion-cuerpo
+        grid-template-columns: minmax(0, 1fr)
+
+    .creacion-cuerpo__tarea, .creacion-cuerpo__lateral
+        overflow: visible
+
+    .creacion-personaje__pares
+        grid-template-columns: minmax(0, 1fr)

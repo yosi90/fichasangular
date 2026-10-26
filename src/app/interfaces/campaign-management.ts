@@ -67,6 +67,15 @@ export interface CampaignCreationPolicy {
     permitirVentajasDesventajas: boolean;
     permitirIgnorarRestriccionesAlineamiento: boolean;
     maxFuentesHomebrewGeneralesPorPersonaje: number | null;
+    /**
+     * La tienda del final de la creación (2026-10-26): comprar objetos mágicos del catálogo. Los tres son opcionales en la
+     * web (sin ellos, todo permitido, como la política permisiva); el mapper de la API los rellena siempre.
+     */
+    permitirObjetosMagicos?: boolean;
+    /** Configurar mejora, aptitudes especiales y material especial de armas, armaduras y munición. */
+    permitirObjetosAMedida?: boolean;
+    /** Lo que puede costar una sola pieza, en po; `null`, sin tope. */
+    precioMaximoPorObjeto?: number | null;
 }
 
 export interface CreateCampaignInput {

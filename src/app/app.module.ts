@@ -57,6 +57,7 @@ import { ListadoDotesComponent } from './components/shared/listado-dotes/listado
 import { DetallesDoteComponent } from './components/detalles/detalles-dote/detalles-dote.component';
 import { TextoManualComponent } from './components/shared/texto-manual/texto-manual.component';
 import { FICHA_DETALLE_COMPONENTES } from './components/detalles/ficha';
+import { CREACION_MARCO_COMPONENTES } from './components/nuevo-personaje/marco';
 import { DescripcionEquipoComponent } from './components/shared/descripcion-equipo/descripcion-equipo.component';
 import { IdeasIaComponent } from './components/shared/ideas-ia/ideas-ia.component';
 import { ModeloIaMenuComponent } from './components/shared/ideas-ia/modelo-ia-menu.component';
@@ -118,7 +119,8 @@ import { ListadoArmadurasComponent } from './components/shared/listado-armaduras
 import { ListadoEquipoComponent } from './components/shared/listado-equipo/listado-equipo.component';
 import { ListadoObjetosComponent } from './components/shared/listado-objetos/listado-objetos.component';
 import { DetallesEquipoComponent } from './components/detalles/detalles-equipo/detalles-equipo.component';
-import { TiendaEquipoModalComponent } from './components/nuevo-personaje/tienda-equipo-modal/tienda-equipo-modal.component';
+import { TiendaEquipoComponent } from './components/nuevo-personaje/tienda-equipo/tienda-equipo.component';
+import { ConfigurarPiezaComponent } from './components/nuevo-personaje/configurar-pieza/configurar-pieza.component';
 import { DetallesDeidadComponent } from './components/detalles/detalles-deidad/detalles-deidad.component';
 import { ListadoDeidadesComponent } from './components/shared/listado-deidades/listado-deidades.component';
 import { ListadoIdiomasComponent } from './components/shared/listado-idiomas/listado-idiomas.component';
@@ -171,6 +173,7 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         DetallesDoteComponent,
         TextoManualComponent,
         ...FICHA_DETALLE_COMPONENTES,
+        ...CREACION_MARCO_COMPONENTES,
         DescripcionEquipoComponent,
         IdeasIaComponent,
         ModeloIaMenuComponent,
@@ -215,7 +218,8 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         ListadoEquipoComponent,
         ListadoObjetosComponent,
         DetallesEquipoComponent,
-        TiendaEquipoModalComponent,
+        TiendaEquipoComponent,
+        ConfigurarPiezaComponent,
         DetallesDeidadComponent,
         ListadoDeidadesComponent,
         ListadoIdiomasComponent,

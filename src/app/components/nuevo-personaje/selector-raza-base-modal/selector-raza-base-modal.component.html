@@ -1,88 +1,65 @@
-<div class="selector-overlay" (click)="onCerrar()">
-    <div class="selector-dialog" (click)="$event.stopPropagation()">
-        <div class="selector-header">
-            <h2 class="tw-m-0 selector-title">{{titulo}}</h2>
-            <div class="selector-header-actions">
-                <button
-                    mat-icon-button
-                    type="button"
-                    class="selector-icon-btn"
-                    aria-label="Información sobre raza mutada"
-                    (click)="onInfo()">
-                    <mat-icon>info</mat-icon>
-                </button>
-                <button
-                    mat-icon-button
-                    type="button"
-                    class="selector-icon-btn"
-                    aria-label="Cerrar"
-                    (click)="onCerrar()">
-                    <mat-icon>close</mat-icon>
-                </button>
+<app-creacion-ventana [titulo]="titulo" subtitulo="La raza mutada se aplica sobre una raza base" ancho="ancha" [relleno]="false"
+    (cerrar)="onCerrar()" (pulsarFondo)="onCerrar()">
+    <button ventanaCabecera mat-icon-button type="button" aria-label="Información sobre raza mutada" matTooltip="Qué es una raza mutada"
+        (click)="onInfo()">
+        <mat-icon>info</mat-icon>
+    </button>
+    <div class="creacion-ventana__columnas">
+        <div class="creacion-ventana__lista">
+            <label class="creacion-buscador">
+                <mat-icon aria-hidden="true">search</mat-icon>
+                <input type="search" [value]="filtroTexto" (input)="onFiltroChange(($any($event.target).value ?? '').toString())"
+                    placeholder="Filtrar raza base" aria-label="Filtrar raza base">
+            </label>
+            <mat-slide-toggle color="primary" [checked]="incluirHomebrew" (change)="onToggleHomebrew()">Incluir homebrew</mat-slide-toggle>
+            <div class="creacion-opciones" role="listbox" aria-label="Razas base" *ngIf="candidatasVisibles.length > 0; else sinRazas">
+                <div class="creacion-opcion"
+                    *ngFor="let item of candidatasVisibles; trackBy: trackByRazaId"
+                    [class.creacion-opcion--activa]="esSeleccionada(item)"
+                    tabindex="0"
+                    role="option"
+                    [attr.aria-selected]="esSeleccionada(item)"
+                    (click)="onSeleccionar(item)"
+                    (keydown.enter)="onSeleccionarTeclado(item, $event)"
+                    (keydown.space)="onSeleccionarTeclado(item, $event)">
+                    <span class="creacion-opcion__texto">
+                        {{item.raza.Nombre}}
+                        <span class="creacion-opcion__nota">{{item.raza.Manual || 'Manual no especificado'}}</span>
+                    </span>
+                    <span class="creacion-opcion__estado" *ngIf="item.estado === 'eligible_with_warning'">Validación parcial</span>
+                </div>
             </div>
+            <ng-template #sinRazas>
+                <p class="creacion-vacio">No hay razas base visibles con el filtro actual.</p>
+            </ng-template>
         </div>
 
-        <mat-chip-option class="filtro-chip" color="warn" [selected]="incluirHomebrew" (click)="onToggleHomebrew()">
-            {{incluirHomebrew ? 'Homebrew incluido' : 'Incluir homebrew'}}
-        </mat-chip-option>
-
-        <mat-form-field appearance="fill" class="tw-w-full">
-            <mat-label>Filtrar raza base</mat-label>
-            <input
-                matInput
-                [value]="filtroTexto"
-                (input)="onFiltroChange(($any($event.target).value ?? '').toString())"
-                placeholder="Nombre o manual">
-        </mat-form-field>
-
-        <div class="razas-listado" *ngIf="candidatasVisibles.length > 0">
-            <div
-                class="raza-row"
-                *ngFor="let item of candidatasVisibles; trackBy: trackByRazaId"
-                [class.seleccionada]="esSeleccionada(item)"
-                tabindex="0"
-                role="button"
-                (click)="onSeleccionar(item)"
-                (keydown.enter)="onSeleccionarTeclado(item, $event)"
-                (keydown.space)="onSeleccionarTeclado(item, $event)">
-                <div class="raza-row-main">
-                    <span class="raza-row-nombre">
-                        {{item.raza.Nombre}}
-                    </span>
-                    <span class="raza-row-tags">
-                        <span *ngIf="!item.raza.Oficial" class="chip-homebrew">Homebrew</span>
-                        <span *ngIf="getAjusteNivel(item.raza) > 0" class="chip-ajuste">Ajuste +{{getAjusteNivel(item.raza)}}</span>
-                        <span *ngIf="getDgsExtra(item.raza) > 0" class="chip-dgs">+{{getDgsExtra(item.raza)}} DGs</span>
-                        <span *ngIf="item.estado === 'eligible_with_warning'" class="chip-warning">Validación parcial</span>
-                    </span>
-                </div>
-                <div class="raza-row-meta">
-                    <button type="button" class="raza-manual-link"
-                        (click)="abrirDetalleManual(item, $event)"
-                        (keydown.enter)="$event.stopPropagation()"
-                        (keydown.space)="$event.stopPropagation()">
-                        {{item.raza.Manual || 'Manual no especificado'}}
+        <div class="creacion-ventana__detalle">
+            <ng-container *ngIf="seleccionActual as seleccion; else sinSeleccion">
+                <div>
+                    <p class="creacion-ventana__detalle-tipo">Raza base</p>
+                    <h3 class="creacion-ventana__detalle-nombre">{{seleccion.raza.Nombre}}</h3>
+                    <button type="button" class="creacion-enlace" (click)="abrirDetalleManual(seleccion, $event)">
+                        {{seleccion.raza.Manual || 'Manual no especificado'}}
                     </button>
                 </div>
-            </div>
+                <div class="raza-base-etiquetas">
+                    <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="!seleccion.raza.Oficial">Homebrew</span>
+                    <span class="creacion-etiqueta" *ngIf="getAjusteNivel(seleccion.raza) > 0">Ajuste +{{getAjusteNivel(seleccion.raza)}}</span>
+                    <span class="creacion-etiqueta" *ngIf="getDgsExtra(seleccion.raza) > 0">+{{getDgsExtra(seleccion.raza)}} DG</span>
+                </div>
+                <p class="creacion-aviso" *ngIf="seleccion.estado === 'eligible_with_warning'">
+                    Algunos prerrequisitos no se pudieron validar automáticamente.
+                </p>
+            </ng-container>
+            <ng-template #sinSeleccion>
+                <p class="creacion-vacio">Elige la raza base de la lista.</p>
+            </ng-template>
         </div>
-
-        <p class="tw-m-0 detalle-raza" *ngIf="seleccionActual as seleccion">
-            {{seleccion.raza.Manual}}
-        </p>
-        <p class="tw-m-0 detalle-raza advertencia" *ngIf="seleccionActual?.estado === 'eligible_with_warning'">
-            Algunos prerrequisitos no se pudieron validar automáticamente.
-        </p>
-
-        <div class="selector-actions">
-            <button mat-stroked-button type="button" (click)="onCerrar()">Cancelar</button>
-            <button mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
-                Confirmar base
-            </button>
-        </div>
-
-        <p class="tw-m-0 detalle-raza" *ngIf="candidatasVisibles.length < 1">
-            No hay razas base visibles con el filtro actual.
-        </p>
     </div>
-</div>
+
+    <button ventanaSecundaria mat-stroked-button type="button" (click)="onCerrar()">Cancelar</button>
+    <button ventanaPrincipal mat-raised-button color="primary" type="button" [disabled]="!puedeConfirmar" (click)="onConfirmar()">
+        Confirmar base
+    </button>
+</app-creacion-ventana>
