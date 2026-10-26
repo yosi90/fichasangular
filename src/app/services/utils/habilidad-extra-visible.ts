@@ -46,7 +46,7 @@ export function resolverExtraHabilidadVisible(options: ResolverExtraHabilidadOpt
     if (extraRaw.length > 0 && extraRaw !== '-1')
         return extraRaw;
 
-    const idExtraEsCero = Number.isFinite(idExtra) && idExtra === 0;
+    const idExtraEsCero = Number.isFinite(idExtra) && idExtra === ID_EXTRA_HABILIDAD_ELEGIR;
     const soportaExtra = toBoolean(options?.soportaExtra);
     const soportaDeclarado = options != null
         && Object.prototype.hasOwnProperty.call(options, 'soportaExtra')
