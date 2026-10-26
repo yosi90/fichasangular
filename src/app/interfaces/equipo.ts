@@ -60,7 +60,6 @@ export interface EquipoOroInicialClase {
     Maximo: number;
 }
 
-/** `GET /equipo/catalogos`: los catálogos pequeños del equipo (caché de la RTDB `EquipoCatalogos`). */
 /** Las piezas a las que se aplica el coste de un material. */
 export type PiezaMaterial = 'arma' | 'municion' | 'armadura' | 'escudo';
 
@@ -74,6 +73,7 @@ export interface AplicacionMaterial extends EquipoRef {
     Peso_armadura: EquipoRef | null;
 }
 
+/** `GET /equipo/catalogos`: los catálogos pequeños del equipo (caché de la RTDB `EquipoCatalogos`). */
 export interface EquipoCatalogos {
     Manejos_armas: EquipoRef[];
     Propiedades_armas: EquipoPropiedadArma[];
