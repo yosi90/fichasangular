@@ -25,7 +25,7 @@ export interface AmoDelFamiliar {
     /** Ataque base del amo (el primero, «+6/+1» → 6). */
     ataqueBase: number;
     /** Las salvaciones base del amo por sus clases. */
-    salvacionesBase: { Fortaleza: number; Reflejos: number; Voluntad: number; };
+    salvacionesBase: { fortaleza: number; reflejos: number; voluntad: number; };
     /** Nivel de las clases que le dan el familiar. */
     nivelFamiliar: number;
     /** Las habilidades del amo, ya en la forma del contrato. */
@@ -119,7 +119,8 @@ export function construirFamiliarParaGuardar(
     const salvacion = (clave: 'Fortaleza' | 'Reflejos' | 'Voluntad', caracteristica: string): number => {
         const total = toNumber(familiar?.Salvaciones?.[clave]);
         const modificador = toNumber(caracteristicas[`${caracteristica}_modificador`]);
-        return Math.max(total, toNumber(amo.salvacionesBase[clave]) + modificador);
+        const base = amo.salvacionesBase[clave.toLowerCase() as keyof AmoDelFamiliar['salvacionesBase']];
+        return Math.max(total, toNumber(base) + modificador);
     };
     const dto: PersonajeCreateFamiliarDto = {
         nombre: nombreMascota(familiar?.Nombre, 'Familiar'),

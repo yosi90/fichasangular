@@ -3774,16 +3774,10 @@ export class NuevoPersonajeService {
 
         const familiar = (this.personajeCreacion.Familiares ?? [])[0];
         if (familiar) {
-            const salvacionBase = (tipo: SalvacionKey) => (this.personajeCreacion.Salvaciones?.[tipo]?.modsClaseos ?? [])
-                .reduce((acc, mod) => acc + toNumber(mod?.valor), 0);
             mascotas.familiar = construirFamiliarParaGuardar(familiar, {
                 vida: toNumber(this.personajeCreacion.Vida),
                 ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
-                salvacionesBase: {
-                    Fortaleza: salvacionBase('fortaleza'),
-                    Reflejos: salvacionBase('reflejos'),
-                    Voluntad: salvacionBase('voluntad'),
-                },
+                salvacionesBase: this.resolverSalvacionesBaseClase(),
                 nivelFamiliar: toNumber(this.getEstadoCuposFamiliarEspecial47()?.nivelLanzadorFamiliar),
                 habilidades: (this.personajeCreacion.Habilidades ?? [])
                     .filter((habilidad) => !habilidad?.Custom && toNumber(habilidad?.Id) > 0 && toNumber(habilidad?.Rangos) > 0)
