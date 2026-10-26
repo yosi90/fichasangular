@@ -30,7 +30,7 @@ describe('DetallesEquipoComponent', () => {
     let component: DetallesEquipoComponent;
     let manualNav: jasmine.SpyObj<ManualDetalleNavigationService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, tipoCabecera, etiquetasDatos, valor, titulos, enlace, bloque } = lectorFicha(elemento);
+    const { texto, tipoCabecera, etiquetasDatos, valor, titulos, enlace, bloque, lateral } = lectorFicha(elemento);
     /** Las filas de la tabla de un bloque, con sus celdas separadas por « · ». */
     const filas = (titulo: string): string[] => Array.from(bloque(titulo)?.querySelectorAll('tr') ?? [])
         .map((tr) => Array.from(tr.querySelectorAll('th, td')).map((celda) => limpio(celda)).join(' · '));
@@ -111,6 +111,9 @@ describe('DetallesEquipoComponent', () => {
         mostrar({ tipo: 'objeto', item: normalizeObjeto(crearObjetoGenericoApi()) });
         expect(valor('Precio')).toBe('50 po × nivel del conjuro × nivel de lanzador');
         expect(valor('Conjuros hasta el nivel')).toBe('3');
+        // Las veces que suma el componente caro (`Usos_componente_caro`), en el tooltip del precio.
+        expect(component.datos.find((dato) => dato.etiqueta === 'Precio')?.ayuda)
+            .toBe('El conjuro de nivel 0 cuenta como ½. El conjuro se elige al comprarlo. Si el conjuro tiene un componente caro, se suma su precio.');
     });
 
     it('un material enseña sus efectos, sus propiedades y sus costes en una tabla', () => {
@@ -187,6 +190,8 @@ describe('DetallesEquipoComponent', () => {
         expect(valor('Arma base')).toBe('Espada bastarda');
         expect(valor('Mejora')).toBe('+2/+1');
         expect(titulos()).toContain('Aptitudes especiales');
+        expect(limpio(lateral('Aptitudes especiales')?.querySelector('ul'))).toBe('Afilada +1');
+        expect(component.aptitudesObjeto[0].descripcion).toBe('Dobla el rango de amenaza.');
         enlace('Espada bastarda').click();
         enlace('Afilada').click();
         expect(arma).toHaveBeenCalledWith(33);

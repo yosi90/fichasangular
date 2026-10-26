@@ -17,11 +17,13 @@
             </app-descripcion-equipo>
         </app-ficha-seccion>
 
-        <app-ficha-lateral titulo="Aptitudes especiales" *ngIf="(objeto?.Encantamientos?.length ?? 0) > 0">
+        <app-ficha-lateral titulo="Aptitudes especiales" *ngIf="aptitudesObjeto.length > 0">
             <ul class="ficha-lista">
-                <li class="ficha-lista__item" *ngFor="let aptitud of objeto?.Encantamientos">
-                    <button type="button" class="ficha-enlace" (click)="abrirEquipo('encantamiento', aptitud.Id)">{{aptitud.Nombre}}</button>
-                    <span class="ficha-nota" *ngIf="aptitud.Cabeza > 1">(segunda cabeza)</span>
+                <li class="ficha-lista__item" *ngFor="let aptitud of aptitudesObjeto">
+                    <button type="button" class="ficha-enlace" (click)="abrirEquipo('encantamiento', aptitud.id)"
+                        [matTooltip]="aptitud.descripcion" [matTooltipDisabled]="!aptitud.descripcion" matTooltipClass="tt-accent tt-multiline"
+                        [matTooltipShowDelay]="250">{{aptitud.nombre}}</button>
+                    <span class="ficha-nota" *ngIf="aptitud.nota"> {{aptitud.nota}}</span>
                 </li>
             </ul>
         </app-ficha-lateral>

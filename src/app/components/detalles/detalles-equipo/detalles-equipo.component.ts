@@ -34,6 +34,15 @@ interface ModificadorVisible {
     condicional: boolean;
 }
 
+/** Una aptitud especial de un arma o armadura específica: su bonificador equivalente o su precio, y su descripción. */
+interface AptitudObjetoVisible {
+    id: number;
+    nombre: string;
+    /** «+1», «+3.000 po», con «(segunda cabeza)» en la de un arma doble. */
+    nota: string;
+    descripcion: string;
+}
+
 /** Un conjuro de un objeto, con lo que se sepa de él. */
 interface ConjuroObjetoVisible {
     id: number;
@@ -97,6 +106,7 @@ export class DetallesEquipoComponent {
     datos: DatoFicha[] = [];
     conDescripcion = false;
     modificadores: ModificadorVisible[] = [];
+    aptitudesObjeto: AptitudObjetoVisible[] = [];
     /** Lo que da un material además de sus efectos: cuenta como de gran calidad, supera la RD… */
     propiedadesMaterial: string[] = [];
     danosEncantamiento: string[] = [];
@@ -153,6 +163,15 @@ export class DetallesEquipoComponent {
         this.conDescripcion = descripcionEquipoVisible(entrada?.item);
         this.modificadores = (this.objeto?.Modificadores ?? this.encantamiento?.Modificadores ?? [])
             .map((modificador: ModificadorEstructurado) => ({ texto: textoModificador(modificador), condicional: !!modificador.Condicion }));
+        this.aptitudesObjeto = (this.objeto?.Encantamientos ?? []).map((aptitud) => ({
+            id: aptitud.Id,
+            nombre: aptitud.Nombre,
+            nota: [
+                aptitud.Modificador > 0 ? textoConSigno(aptitud.Modificador) : aptitud.Coste > 0 ? `+${textoPrecio(aptitud.Coste)}` : '',
+                aptitud.Cabeza > 1 ? '(segunda cabeza)' : '',
+            ].filter((parte) => parte.length > 0).join(' '),
+            descripcion: tieneTextoVisible(aptitud.Descripcion) ? aptitud.Descripcion.trim() : '',
+        }));
         this.propiedadesMaterial = this.construirPropiedadesMaterial();
         this.danosEncantamiento = (this.encantamiento?.Danos ?? []).map((dano) =>
             [dano.Dados, dano.Tipo_dano?.Nombre?.toLowerCase() ?? '', dano.Condicion ?? ''].filter((p) => p.length > 0).join(' '));
@@ -262,7 +281,10 @@ export class DetallesEquipoComponent {
                 {
                     etiqueta: 'Precio',
                     valor: `${textoPrecio(objeto.Generico_conjuro.Precio_por_nivel)} × nivel del conjuro × nivel de lanzador`,
-                    ayuda: 'El conjuro de nivel 0 cuenta como ½. El conjuro se elige al comprarlo.',
+                    ayuda: [
+                        'El conjuro de nivel 0 cuenta como ½. El conjuro se elige al comprarlo.',
+                        textoComponenteCaro(objeto.Generico_conjuro.Usos_componente_caro),
+                    ].filter((parte) => parte.length > 0).join(' '),
                 },
                 { etiqueta: 'Conjuros hasta el nivel', valor: this.numero(objeto.Generico_conjuro.Nivel_maximo) },
             );
@@ -316,6 +338,15 @@ export class DetallesEquipoComponent {
         const escuelas = (aura?.Escuelas ?? []).map((escuela) => escuela.Nombre.toLowerCase()).join(', ');
         return [intensidad, escuelas].filter((parte) => parte.length > 0).join(', ');
     }
+}
+
+/** Lo que suma al precio el componente caro del conjuro (`Usos_componente_caro`: cuántas veces), o vacío. */
+function textoComponenteCaro(usos: number): string {
+    if (!(usos > 0))
+        return '';
+    return usos === 1
+        ? 'Si el conjuro tiene un componente caro, se suma su precio.'
+        : `Si el conjuro tiene un componente caro, se suma ${formatoNumero(usos)} veces su precio.`;
 }
 
 /** Las columnas que tienen algún valor en alguna fila. */
