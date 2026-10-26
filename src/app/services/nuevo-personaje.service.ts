@@ -69,7 +69,7 @@ import {
     puntuacionLanzamiento,
 } from './utils/reglas-magia';
 import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './utils/alineamiento-contrato';
-import { ajusteDePlantillas, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
+import { ajusteDePlantillas, dgsDePlantilla, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
 import { bonosSinergia } from './utils/habilidades-bonos';
@@ -1773,14 +1773,14 @@ export class NuevoPersonajeService {
         if (seleccionadas.length < 1)
             return false;
 
-        const plantillasConDg = seleccionadas.filter((plantilla) => dgsDePlantillas([plantilla]) > 0);
+        const plantillasConDg = seleccionadas.filter((plantilla) => dgsDePlantilla(plantilla) > 0);
         if (plantillasConDg.length < 1)
             return false;
 
         // Cada DG del animal: (puntos de su tipo + mod. de Int, mínimo 1), sin ×4 (Manual de monstruos, «Licántropo»).
         const total = plantillasConDg.reduce((acc, plantilla) => acc + puntosHabilidadDgPlantilla({
             puntosPorDg: toNumber(plantilla?.Licantronia_dg?.Tipo_criatura?.Puntos_habilidad),
-            dgs: dgsDePlantillas([plantilla]),
+            dgs: dgsDePlantilla(plantilla),
             modInteligencia: toNumber(this.personajeCreacion?.ModInteligencia),
         }), 0);
 
@@ -9625,7 +9625,7 @@ export class NuevoPersonajeService {
 
             flags.plantillasAumentoReduccionDgs = flags.plantillasAumentoReduccionDgs || pasoDado !== 0;
             flags.plantillasActualizacionDgsRazaClase = flags.plantillasActualizacionDgsRazaClase || actualizaDg;
-            flags.plantillasDgsAdicionales = flags.plantillasDgsAdicionales || dgsDePlantillas([plantilla]) > 0;
+            flags.plantillasDgsAdicionales = flags.plantillasDgsAdicionales || dgsDePlantilla(plantilla) > 0;
         });
 
         const nivelesClase: GrupoDadosGolpe[] = (this.personajeCreacion.desgloseClases ?? [])
@@ -9640,9 +9640,9 @@ export class NuevoPersonajeService {
             dgsRaciales: { cantidad: dgsRaciales, caras: dadoComun ?? dadoRacial },
             nivelesClase,
             dgsPlantillas: plantillas
-                .filter((plantilla) => dgsDePlantillas([plantilla]) > 0)
+                .filter((plantilla) => dgsDePlantilla(plantilla) > 0)
                 .map((plantilla) => ({
-                    cantidad: dgsDePlantillas([plantilla]),
+                    cantidad: dgsDePlantilla(plantilla),
                     caras: carasDado(plantilla?.Licantronia_dg?.Dado) || dadoRacial,
                 })),
             modConstitucion: reglaConstitucion.modificador,
