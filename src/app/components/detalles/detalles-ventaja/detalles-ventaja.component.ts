@@ -36,10 +36,10 @@ export class DetallesVentajaComponent {
             // Un coste 0 se enseña sin signo («0»); el resto, con él.
             { etiqueta: 'Coste', valor: value ? (coste === 0 ? 0 : textoConSigno(coste)) : null },
             { etiqueta: 'Mejora', valor: mejora !== 0 ? textoConSigno(mejora) : null },
-            { etiqueta: 'Rasgo', valor: this.referencia(value?.Rasgo) },
-            { etiqueta: 'Idioma', valor: this.referencia(value?.Idioma) },
+            { etiqueta: 'Rasgo', valor: this.referencia(value?.Rasgo), ayuda: this.descripcion(value?.Rasgo) },
+            { etiqueta: 'Idioma', valor: this.referencia(value?.Idioma), ayuda: this.descripcion(value?.Idioma) },
             // Sin habilidad, la API da `null` (antes, la habilidad 0 «No»). Ninguna ventaja tiene una habilidad comodín.
-            { etiqueta: 'Habilidad', valor: this.referencia(value?.Habilidad) },
+            { etiqueta: 'Habilidad', valor: this.referencia(value?.Habilidad), ayuda: this.descripcion(value?.Habilidad) },
         ];
         this.afectaA = [
             ...CARACTERISTICAS.map((clave) => value?.[clave] ? NOMBRES_CARACTERISTICAS[clave] : ''),
@@ -66,6 +66,11 @@ export class DetallesVentajaComponent {
             id: this.ventaja?.Manual?.Id,
             nombre: this.ventaja?.Manual?.Nombre,
         });
+    }
+
+    /** La descripción de un rasgo, idioma o habilidad, para el tooltip de su nombre. */
+    private descripcion(ref: ReferenciaCorta | null | undefined): string | null {
+        return tieneTextoVisible(ref?.Descripcion) ? `${ref?.Descripcion}`.trim() : null;
     }
 
     /** El nombre de un rasgo, idioma o habilidad, si viene con id y nombre. */

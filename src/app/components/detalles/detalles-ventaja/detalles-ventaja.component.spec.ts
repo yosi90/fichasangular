@@ -89,6 +89,18 @@ describe('DetallesVentajaComponent', () => {
         ]);
     });
 
+    it('la descripción del rasgo, el idioma o la habilidad va en el tooltip de su nombre', () => {
+        component.ventaja = crearVentaja({
+            Rasgo: { Id: 2, Nombre: 'Cojera', Descripcion: 'Tu velocidad baja 5 pies.' },
+            Habilidad: { Id: 4, Nombre: 'Saltar', Descripcion: '' },
+        });
+        fixture.detectChanges();
+
+        const ayuda = (etiqueta: string) => component.datos.find((dato) => dato.etiqueta === etiqueta)?.ayuda;
+        expect(ayuda('Rasgo')).toBe('Tu velocidad baja 5 pies.');
+        expect(ayuda('Habilidad')).toBeNull();
+    });
+
     it('no enseña lo que la API da vacío o null', () => {
         component.ventaja = crearVentaja({
             Descripcion: null as any,
