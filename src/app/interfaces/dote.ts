@@ -1,4 +1,5 @@
 import { PrerrequisitoItem } from './prerrequisito';
+import { Comodin } from './comodin';
 import { ManualReferencia } from './manual';
 
 export interface DoteTipo {
@@ -40,6 +41,17 @@ export interface DoteExtrasDeTodoElCatalogo {
     Habilidades: boolean;
 }
 
+/** Una habilidad en la que da rangos la dote («Avistar +2»). `Custom`: de `habilidades_custom`. */
+export interface DoteHabilidadOtorgada {
+    Id_habilidad: number;
+    Habilidad: string;
+    Id_extra: number | null;
+    Extra: string | null;
+    Extra_comodin?: Comodin | null;
+    Rangos: number;
+    Custom: boolean;
+}
+
 export interface DoteModificadores {
     [key: string]: number;
 }
@@ -66,5 +78,7 @@ export interface Dote {
     Extras_disponibles: DoteExtrasDisponibles;
     Extras_de_todo_el_catalogo: DoteExtrasDeTodoElCatalogo;
     Modificadores: DoteModificadores;
+    /** La API siempre la da; los borradores de dotes que monta la propia web (creación, ficha) no la llevan. */
+    Habilidades_otorgadas?: DoteHabilidadOtorgada[];
     Prerrequisitos: DotePrerrequisitos;
 }

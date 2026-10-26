@@ -35,13 +35,25 @@
                     {{extra.nombre}}
                     <span class="ficha-subtitulo__ayuda" *ngIf="bloqueExtraRequiereCompetencia(extra.nombre)">Requiere competencia</span>
                 </h3>
-                <ul class="ficha-lista ficha-lista--columnas">
+                <p class="ficha-nota" *ngIf="extra.todoElCatalogo">Cualquiera del catálogo.</p>
+                <ul class="ficha-lista ficha-lista--columnas" *ngIf="extra.items.length > 0">
                     <li class="ficha-lista__item" *ngFor="let item of extra.items">
                         <button type="button" class="ficha-enlace" *ngIf="esExtraNavegable(extra.nombre); else extraSinEnlace"
                             (click)="abrirDetalleExtra(extra.nombre, item)">{{item.Nombre}}</button>
                         <ng-template #extraSinEnlace><span>{{item.Nombre}}</span></ng-template>
                     </li>
                 </ul>
+            </div>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Habilidades otorgadas" *ngIf="habilidadesBase.length > 0 || habilidadesCustom.length > 0">
+            <div class="ficha-grupo" *ngIf="habilidadesBase.length > 0">
+                <h3 class="ficha-subtitulo" *ngIf="habilidadesCustom.length > 0">Base</h3>
+                <ng-container *ngTemplateOutlet="habilidades; context: { $implicit: habilidadesBase }"></ng-container>
+            </div>
+            <div class="ficha-grupo" *ngIf="habilidadesCustom.length > 0">
+                <h3 class="ficha-subtitulo">Custom</h3>
+                <ng-container *ngTemplateOutlet="habilidades; context: { $implicit: habilidadesCustom }"></ng-container>
             </div>
         </app-ficha-lateral>
 
@@ -54,3 +66,15 @@
         </app-ficha-lateral>
     </app-ficha-cuerpo>
 </app-ficha-detalle>
+
+<!-- «Avistar … +2»: la habilidad, con su extra, y los rangos que da. -->
+<ng-template #habilidades let-filas>
+    <table class="ficha-pares">
+        <tbody>
+            <tr *ngFor="let habilidad of filas">
+                <td>{{habilidad.nombre}}</td>
+                <td>{{habilidad.valor}}</td>
+            </tr>
+        </tbody>
+    </table>
+</ng-template>

@@ -1,6 +1,7 @@
-import { Dote, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteTipo } from "src/app/interfaces/dote";
+import { Dote, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteHabilidadOtorgada, DoteTipo } from "src/app/interfaces/dote";
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
 import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { leerComodin } from './comodin';
 import { normalizeManualApi, normalizeManualLegacy } from './manual-mapper';
 
 function asArray(raw: any): any[] {
@@ -97,6 +98,19 @@ function normalizePrerrequisitosLegacy(raw: any): { [key: string]: any[] } {
     return output;
 }
 
+/** Las habilidades en las que da rangos la dote (`Habilidades_otorgadas`). */
+function normalizeHabilidadesOtorgadas(items: any[]): DoteHabilidadOtorgada[] {
+    return items.map((item: any) => ({
+        Id_habilidad: toNumber(item?.Id_habilidad, 0),
+        Habilidad: toText(item?.Habilidad, ""),
+        Id_extra: item?.Id_extra === null || item?.Id_extra === undefined ? null : toNumber(item.Id_extra, 0),
+        Extra: item?.Extra === null || item?.Extra === undefined ? null : toText(item.Extra, ""),
+        Extra_comodin: leerComodin(item?.Extra_comodin),
+        Rangos: toNumber(item?.Rangos, 0),
+        Custom: toBoolean(item?.Custom),
+    }));
+}
+
 export function normalizeDoteApi(raw: any): Dote {
     const extraArmaduraArmaduras = toNumber(raw?.Extras_soportados?.Extra_armadura_armaduras, 0);
     const extraArmaduraEscudos = toNumber(raw?.Extras_soportados?.Extra_armadura_escudos, 0);
@@ -135,6 +149,7 @@ export function normalizeDoteApi(raw: any): Dote {
         },
         Extras_de_todo_el_catalogo: normalizeExtrasDeTodoElCatalogo(raw?.Extras_de_todo_el_catalogo),
         Modificadores: normalizeModificadores(raw?.Modificadores),
+        Habilidades_otorgadas: normalizeHabilidadesOtorgadas(asStrictArray(raw?.Habilidades_otorgadas)),
         Prerrequisitos: normalizePrerrequisitosApi(raw?.Prerrequisitos),
     };
 }
@@ -179,6 +194,7 @@ export function normalizeDoteLegacy(raw: any): Dote {
         },
         Extras_de_todo_el_catalogo: normalizeExtrasDeTodoElCatalogo(raw?.Extras_de_todo_el_catalogo),
         Modificadores: normalizeModificadores(raw?.Modificadores),
+        Habilidades_otorgadas: normalizeHabilidadesOtorgadas(asArray(raw?.Habilidades_otorgadas)),
         Prerrequisitos: normalizePrerrequisitosLegacy(raw?.Prerrequisitos),
     };
 }

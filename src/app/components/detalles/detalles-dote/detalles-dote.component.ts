@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, esTextoCorto, unirTipo } from 'src/app/components/detalles/ficha';
-import { Dote } from 'src/app/interfaces/dote';
+import { DatoFicha, HabilidadFicha, esTextoCorto, habilidadesVisibles, unirTipo } from 'src/app/components/detalles/ficha';
+import { Dote, DoteExtrasDeTodoElCatalogo } from 'src/app/interfaces/dote';
 import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import {
@@ -35,7 +35,14 @@ export class DetallesDoteComponent {
         this.prerrequisitosAgrupados = agruparPrerrequisitos(this.doteData?.Prerrequisitos);
         this.resumen = this.construirResumen();
         this.descripcionEnCabecera = esTextoCorto(this.doteData?.Descripcion);
+        const otorgadas = this.doteData?.Habilidades_otorgadas ?? [];
+        this.habilidadesBase = habilidadesVisibles(otorgadas.filter((h) => !h.Custom), (h) => h.Rangos);
+        this.habilidadesCustom = habilidadesVisibles(otorgadas.filter((h) => h.Custom), (h) => h.Rangos);
     }
+
+    /** Las habilidades en las que da rangos («Avistar +2»), las base y las custom. */
+    habilidadesBase: HabilidadFicha[] = [];
+    habilidadesCustom: HabilidadFicha[] = [];
 
     /** «En resumen», en la columna derecha (como en el lienzo aprobado). */
     resumen: DatoFicha[] = [];
@@ -88,18 +95,25 @@ export class DetallesDoteComponent {
             .map(([clave, valor]) => ({ clave, valor }));
     }
 
-    getExtrasDisponibles(): { nombre: string, items: { Id: number, Nombre: string }[] }[] {
+    /**
+     * Los extras que admite, por tipo. Si se elige de todo su catálogo (`Extras_de_todo_el_catalogo`), el bloque no lista
+     * nada (la API solo trae el comodín «Elegir» o «Cualquiera») y lo dice con una nota.
+     */
+    getExtrasDisponibles(): { nombre: string, items: { Id: number, Nombre: string }[], todoElCatalogo: boolean }[] {
         if (!this.doteData?.Extras_disponibles)
             return [];
         const activas = new Set(this.getExtrasSoportadosActivos().map(extra => extra.nombre));
         const armaduras = this.doteData.Extras_disponibles.Armaduras ?? [];
+        const todo = this.doteData.Extras_de_todo_el_catalogo;
+        const bloque = (nombre: string, items: { Id: number, Nombre: string }[], clave: keyof DoteExtrasDeTodoElCatalogo) =>
+            ({ nombre, items: todo?.[clave] ? [] : items, todoElCatalogo: !!todo?.[clave] });
         return [
-            { nombre: 'Armas', items: this.doteData.Extras_disponibles.Armas ?? [] },
-            { nombre: 'Armaduras', items: armaduras.filter((item: any) => !item?.Es_escudo) },
-            { nombre: 'Escudos', items: armaduras.filter((item: any) => !!item?.Es_escudo) },
-            { nombre: 'Escuelas', items: this.doteData.Extras_disponibles.Escuelas ?? [] },
-            { nombre: 'Habilidades', items: this.doteData.Extras_disponibles.Habilidades ?? [] },
-        ].filter(bloque => activas.has(bloque.nombre) && bloque.items.length > 0);
+            bloque('Armas', this.doteData.Extras_disponibles.Armas ?? [], 'Armas'),
+            bloque('Armaduras', armaduras.filter((item: any) => !item?.Es_escudo), 'Armaduras'),
+            bloque('Escudos', armaduras.filter((item: any) => !!item?.Es_escudo), 'Armaduras'),
+            bloque('Escuelas', this.doteData.Extras_disponibles.Escuelas ?? [], 'Escuelas'),
+            bloque('Habilidades', this.doteData.Extras_disponibles.Habilidades ?? [], 'Habilidades'),
+        ].filter(item => activas.has(item.nombre) && (item.items.length > 0 || item.todoElCatalogo));
     }
 
     bloqueExtraRequiereCompetencia(nombreBloque: string): boolean {

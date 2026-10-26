@@ -4,14 +4,14 @@ import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesDoteComponent } from './detalles-dote.component';
-import { lectorFicha } from 'src/testing/ficha-detalle';
+import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
 describe('DetallesDoteComponent', () => {
     let component: DetallesDoteComponent;
     let fixture: ComponentFixture<DetallesDoteComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, titulos } = lectorFicha(elemento);
+    const { texto, titulos, lateral, filasPares } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
@@ -163,6 +163,33 @@ describe('DetallesDoteComponent', () => {
         expect(texto()).not.toContain('Modificadores');
         expect(texto()).not.toContain('Origen');
         expect((elemento().querySelector('.ficha-principal') as HTMLElement).classList).toContain('ficha-oculta');
+    });
+
+    it('enseña las habilidades en las que da rangos, las base y las custom', () => {
+        component.dote = ataquePoderoso({
+            Habilidades_otorgadas: [
+                { Id_habilidad: 17, Habilidad: 'Escuchar', Id_extra: null, Extra: null, Extra_comodin: null, Rangos: 2, Custom: false },
+                { Id_habilidad: 6, Habilidad: 'Avistar', Id_extra: null, Extra: null, Extra_comodin: null, Rangos: 2, Custom: false },
+                { Id_habilidad: 3, Habilidad: 'Volar', Id_extra: null, Extra: null, Extra_comodin: null, Rangos: 4, Custom: true },
+            ],
+        });
+        fixture.detectChanges();
+
+        const habilidades = lateral('Habilidades otorgadas');
+        expect(Array.from(habilidades!.querySelectorAll('.ficha-subtitulo')).map((t) => limpio(t))).toEqual(['Base', 'Custom']);
+        expect(filasPares(habilidades)).toEqual([['Avistar', '+2'], ['Escuchar', '+2'], ['Volar', '+4']]);
+    });
+
+    it('un extra que se elige de todo el catálogo lo dice, en vez de listar el comodín', () => {
+        component.dote = ataquePoderoso({
+            Extras_soportados: { Extra_arma: 1, Extra_armadura: 0, Extra_armadura_armaduras: 0, Extra_armadura_escudos: 0, Extra_escuela: 0, Extra_habilidad: 0 },
+            Extras_disponibles: { Armas: [{ Id: 0, Nombre: 'Elegir' }], Armaduras: [], Escuelas: [], Habilidades: [] },
+            Extras_de_todo_el_catalogo: { Armas: true, Armaduras: false, Escuelas: false, Habilidades: false },
+        });
+        fixture.detectChanges();
+
+        expect(limpio(lateral('Extras')?.querySelector('.ficha-grupo .ficha-nota'))).toBe('Cualquiera del catálogo.');
+        expect(limpio(lateral('Extras'))).not.toContain('Elegir');
     });
 
     it('«En resumen» dice cómo se elige y, en un personaje, su origen', () => {

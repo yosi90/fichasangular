@@ -133,6 +133,22 @@ describe('DoteService', () => {
             .toEqual({ Armas: true, Armaduras: false, Escuelas: false, Habilidades: false });
     });
 
+    it('lee las habilidades otorgadas de la API', () => {
+        const dote = normalizeDoteApi(createDoteApiRaw({
+            Habilidades_otorgadas: [
+                { Custom: false, Extra: null, Extra_comodin: null, Habilidad: 'Avistar', Id_extra: null, Id_habilidad: 6, Rangos: 2 },
+                { Custom: true, Extra: 'Fuego', Extra_comodin: null, Habilidad: 'Saber', Id_extra: 4, Id_habilidad: 3, Rangos: 1 },
+            ],
+        }));
+
+        expect(dote.Habilidades_otorgadas).toEqual([
+            { Id_habilidad: 6, Habilidad: 'Avistar', Id_extra: null, Extra: null, Extra_comodin: null, Rangos: 2, Custom: false },
+            { Id_habilidad: 3, Habilidad: 'Saber', Id_extra: 4, Extra: 'Fuego', Extra_comodin: null, Rangos: 1, Custom: true },
+        ]);
+        // La caché de la RTDB aún no las guarda: lista vacía.
+        expect(normalizeDoteLegacy({ Id: 9, Nombre: 'Alerta' }).Habilidades_otorgadas).toEqual([]);
+    });
+
     it('descarta aliases legacy en el mapper HTTP de dote', () => {
         const dote = normalizeDoteApi(createDoteApiRaw({
             Manual: 'PHB p.10',
