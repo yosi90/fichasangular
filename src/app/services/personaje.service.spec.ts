@@ -727,6 +727,26 @@ describe('PersonajeService', () => {
         expect(payload.colecciones?.competencia_grupo_armadura).toEqual([{ idGrupoArmadura: 9 }]);
     });
 
+    it('guarda las habilidades sin opción con el extra -1 y el 0 («Elegir») solo en las que admiten extra', () => {
+        const service = crearServicio({ post: jasmine.createSpy('post') } as any);
+        const pj = crearPersonajeMock();
+        const habilidad = (Id: number, Nombre: string, extra: Partial<Personaje['Habilidades'][number]>) => ({
+            Id, Nombre, Clasea: true, Car: 'Sabiduria', Mod_car: 0, Rangos: 1, Rangos_varios: 0, Extra: '', Varios: '', Custom: false,
+            ...extra,
+        });
+        pj.Habilidades = [
+            habilidad(6, 'Avistar', { Soporta_extra: false }),
+            habilidad(32, 'Saber', { Soporta_extra: true, Extra: 'Elegir', Extras: [{ Id_extra: 12, Extra: 'Religión', Descripcion: '' }] }),
+            habilidad(33, 'Saber', { Soporta_extra: true, Extra: 'Religión', Extras: [{ Id_extra: 12, Extra: 'Religión', Descripcion: '' }] }),
+            habilidad(40, 'Escuchar', {}),
+        ];
+
+        const payload = service.construirPayloadCreacionDesdePersonaje(pj, { idCampana: 1, idTrama: 1, idSubtrama: 1 });
+        const extras = (payload.colecciones?.habilidades?.base ?? []).map((h) => [h.idHabilidad, h.idExtra]);
+
+        expect(extras).toEqual([[6, -1], [32, 0], [33, 12], [40, -1]]);
+    });
+
     it('crearPersonajeApiDesdeCreacion usa POST y normaliza respuesta', async () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({

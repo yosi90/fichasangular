@@ -1,5 +1,9 @@
 import { Comodin } from 'src/app/interfaces/comodin';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
+
+/** Ids de `extras_habilidades` al guardar una habilidad: -1 («-») si no lleva extra; 0 («Elegir») si lo admite y falta. */
+export const ID_EXTRA_HABILIDAD_SIN_EXTRA = -1;
+export const ID_EXTRA_HABILIDAD_ELEGIR = 0;
 export interface ResolverExtraHabilidadOptions {
     extra?: any;
     idExtra?: any;

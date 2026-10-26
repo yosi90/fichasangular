@@ -45,6 +45,7 @@ import { modificadoresDePartes, normalizarTotal, totalVacio } from './utils/pers
 import { normalizarDefensa, normalizarDinero, normalizarModificadoresEquipo, normalizarPiezasEquipo } from './utils/personaje-equipo-mapper';
 import { resumenClases } from './utils/resumen-clases';
 import { leerComodin } from './utils/comodin';
+import { ID_EXTRA_HABILIDAD_ELEGIR, ID_EXTRA_HABILIDAD_SIN_EXTRA } from './utils/habilidad-extra-visible';
 import { errorDePerfil, mensajeDeError } from './utils/error-api';
 
 interface PersonajeVisibilityUpdateResponse {
@@ -606,7 +607,7 @@ export class PersonajeService {
             const idExtra = this.resolverIdExtraHabilidad(entrada);
             const payload = {
                 idHabilidad,
-                idExtra: idExtra > 0 ? idExtra : 0,
+                idExtra: idExtra > 0 ? idExtra : (toBoolean(entrada?.Soporta_extra) ? ID_EXTRA_HABILIDAD_ELEGIR : ID_EXTRA_HABILIDAD_SIN_EXTRA),
                 clasea: !!entrada?.Clasea,
                 rangos: Math.max(0, toInt(entrada?.Rangos)),
                 rangosVarios: Math.max(0, toInt(entrada?.Rangos_varios)),
