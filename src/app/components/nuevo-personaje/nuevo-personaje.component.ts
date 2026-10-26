@@ -3457,39 +3457,16 @@ export class NuevoPersonajeComponent {
         if (opciones.length < 1)
             return [];
 
-        const claveGrupo = this.getClaveGrupoExtraHabilidad(habilidad);
+        // Las que ya tiene otra habilidad del grupo no se ofrecen: el servicio no las aceptaría.
         const extraActualNorm = normalizarTexto(`${habilidad?.Extra ?? ''}`);
-        const usados = new Set(
-            (this.Personaje?.Habilidades ?? [])
-                .filter((otra) => Number(otra?.Id) !== idHabilidad)
-                .filter((otra) => !!otra?.Soporta_extra)
-                .filter((otra) => this.nuevoPSvc.esExtraElegibleHabilidad(Number(otra?.Id)))
-                .filter((otra) => this.getClaveGrupoExtraHabilidad(otra) === claveGrupo)
-                .map((otra) => normalizarTexto(`${otra?.Extra ?? ''}`))
-                .filter((extraNorm) => !this.esExtraPendienteValor(extraNorm))
-        );
-
         return opciones.filter((opcion) => {
             const extraNorm = normalizarTexto(opcion.Extra);
-            return !usados.has(extraNorm) || extraNorm === extraActualNorm;
+            return extraNorm === extraActualNorm || !this.nuevoPSvc.existeExtraDuplicadoEnGrupoParaSesion(habilidad, extraNorm);
         });
     }
 
-    esExtraObligatorioHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
-        if (!habilidad)
-            return false;
-        return this.nuevoPSvc.esExtraElegibleHabilidad(Number(habilidad?.Id)) && !!habilidad?.Soporta_extra;
-    }
-
     esExtraPendienteHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
-        if (!this.esExtraObligatorioHabilidad(habilidad))
-            return false;
-
-        // Un extra vacío o «Elegir» está por escoger. Los textos de relleno («-», «No aplica»…) ya no llegan de la API.
-        const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
-        if (extraNormalizado.length < 1)
-            return true;
-        return esTextoExtraPorElegir(extraNormalizado);
+        return !!habilidad && this.nuevoPSvc.esExtraHabilidadPendienteParaSesion(habilidad);
     }
 
     getTextoExtraHabilidad(habilidad: Personaje['Habilidades'][number]): string {
@@ -3542,23 +3519,6 @@ export class NuevoPersonajeComponent {
         if (Boolean(habilidad?.Extra_bloqueado))
             return false;
         return this.getOpcionesExtraHabilidad(habilidad).length > 0;
-    }
-
-    private esExtraPendienteValor(extraNormalizado: string): boolean {
-        return extraNormalizado.length < 1 || esTextoExtraPorElegir(extraNormalizado);
-    }
-
-    private getClaveGrupoExtraHabilidad(habilidad: Personaje['Habilidades'][number]): string {
-        const nombre = normalizarTexto(`${habilidad?.Nombre ?? ''}`);
-        if (nombre.startsWith('artesania'))
-            return 'familia:artesania';
-        if (nombre.startsWith('saber'))
-            return 'familia:saberes';
-        const base = nombre.replace(/\s+\d+$/, '').trim();
-        if (base.length > 0)
-            return `nombre:${base}`;
-        const id = Number(habilidad?.Id ?? 0);
-        return Number.isFinite(id) && id > 0 ? `id:${id}` : '';
     }
 
     onConfirmarSelectorExtraHabilidad(valor: string): void {

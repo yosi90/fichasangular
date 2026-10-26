@@ -5616,7 +5616,8 @@ export class NuevoPersonajeService {
         return Math.max(0, Math.trunc(valor));
     }
 
-    private esExtraHabilidadPendienteParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
+    /** La habilidad pide su extra (qué Saber) y aún no lo tiene. */
+    esExtraHabilidadPendienteParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
         if (!this.esExtraElegibleParaSesion(habilidad))
             return false;
         if (!toBoolean(habilidad?.Soporta_extra))
@@ -5645,7 +5646,8 @@ export class NuevoPersonajeService {
         return '';
     }
 
-    private existeExtraDuplicadoEnGrupoParaSesion(
+    /** Otra habilidad del mismo grupo (las Artesanías, los Saberes…) ya tiene ese extra. */
+    existeExtraDuplicadoEnGrupoParaSesion(
         habilidadObjetivo: Personaje['Habilidades'][number],
         extraNormalizadoObjetivo: string
     ): boolean {
