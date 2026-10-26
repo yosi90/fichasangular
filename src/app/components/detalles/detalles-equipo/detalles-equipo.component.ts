@@ -15,7 +15,7 @@ import {
 } from 'src/app/interfaces/equipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { formatoNumero, textoAplicaA, textoConSigno, textoMejora, textoModificador, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 const CATEGORIA_OBJETO: Readonly<Record<string, string>> = { mundano: 'Mundano', magico: 'Mágico', psionico: 'Psiónico' };
 
@@ -170,7 +170,7 @@ export class DetallesEquipoComponent {
                 aptitud.Modificador > 0 ? textoConSigno(aptitud.Modificador) : aptitud.Coste > 0 ? `+${textoPrecio(aptitud.Coste)}` : '',
                 aptitud.Cabeza > 1 ? '(segunda cabeza)' : '',
             ].filter((parte) => parte.length > 0).join(' '),
-            descripcion: tieneTextoVisible(aptitud.Descripcion) ? aptitud.Descripcion.trim() : '',
+            descripcion: textoVisible(aptitud.Descripcion),
         }));
         this.propiedadesMaterial = this.construirPropiedadesMaterial();
         this.danosEncantamiento = (this.encantamiento?.Danos ?? []).map((dano) =>

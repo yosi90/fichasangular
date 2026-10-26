@@ -4,12 +4,12 @@ import { descripcionEquipoVisible } from 'src/app/components/shared/descripcion-
 import { ArmaDetalle, ArmaPropiedad } from 'src/app/interfaces/arma';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { textoConSigno, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
-import { tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { textoVisible, tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 /** Una propiedad del arma con su explicación, siempre a la vista: «Desarmar +2». */
 interface PropiedadVisible {
     texto: string;
-    descripcion: string | null;
+    descripcion: string;
 }
 
 @Component({
@@ -30,7 +30,7 @@ export class DetallesArmaComponent {
             .filter((propiedad) => tieneTextoVisible(propiedad?.Nombre))
             .map((propiedad) => ({
                 texto: this.textoPropiedad(propiedad),
-                descripcion: tieneTextoVisible(propiedad.Descripcion) ? propiedad.Descripcion.trim() : null,
+                descripcion: textoVisible(propiedad.Descripcion),
             }));
         this.conDescripcion = descripcionEquipoVisible(valor);
     }

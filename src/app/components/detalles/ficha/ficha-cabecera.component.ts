@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { ManualReferencia } from 'src/app/interfaces/manual';
-import { tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { textoVisible, tieneNumeroVisible } from 'src/app/services/utils/texto-visible';
 import { EtiquetaFicha, esTextoCorto, etiquetasVisibles } from './ficha';
 
 /**
@@ -33,7 +33,7 @@ export class FichaCabeceraComponent implements OnChanges {
 
     get nombreManual(): string {
         const nombre = typeof this.manual === 'string' ? this.manual : this.manual?.Nombre;
-        return tieneTextoVisible(nombre) ? `${nombre}`.trim() : '';
+        return textoVisible(nombre);
     }
 
     get paginaManual(): number | null {

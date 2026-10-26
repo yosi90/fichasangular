@@ -31,6 +31,11 @@ export function tieneTextoVisible(texto: string | null | undefined, { cualquiera
     return limpio.length > 0 && !TEXTOS_DE_RELLENO.has(limpio) && !(cualquieraEsRelleno && limpio === 'cualquiera');
 }
 
+/** El texto recortado, o vacío si no tiene nada que enseñar (`tieneTextoVisible`). */
+export function textoVisible(texto: string | null | undefined): string {
+    return tieneTextoVisible(texto) ? `${texto}`.trim() : '';
+}
+
 /** Si un dato numérico del catálogo tiene algo que enseñar: viene (no es `null`) y es mayor que 0. */
 export function tieneNumeroVisible(valor: unknown): boolean {
     const numero = Number(valor);

@@ -98,7 +98,7 @@ describe('DetallesVentajaComponent', () => {
 
         const ayuda = (etiqueta: string) => component.datos.find((dato) => dato.etiqueta === etiqueta)?.ayuda;
         expect(ayuda('Rasgo')).toBe('Tu velocidad baja 5 pies.');
-        expect(ayuda('Habilidad')).toBeNull();
+        expect(ayuda('Habilidad')).toBe('');
     });
 
     it('no enseña lo que la API da vacío o null', () => {

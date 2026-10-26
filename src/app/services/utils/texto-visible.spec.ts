@@ -1,4 +1,4 @@
-import { idiomasVisibles, nombreDoteConExtra, tieneNumeroVisible, tieneTextoVisible } from './texto-visible';
+import { idiomasVisibles, nombreDoteConExtra, textoVisible, tieneNumeroVisible, tieneTextoVisible } from './texto-visible';
 import { extraerValorSimple, formatearValor } from './formato-registros';
 
 describe('tieneTextoVisible', () => {
@@ -23,6 +23,16 @@ describe('tieneTextoVisible', () => {
     it('enseña lo demás', () => {
         for (const texto of ['Elfo', 'No muerto', '+2 a Fuerza', 'Nada en particular'])
             expect(tieneTextoVisible(texto)).withContext(texto).toBeTrue();
+    });
+});
+
+describe('textoVisible', () => {
+    it('da el texto recortado, o vacío si es null, vacío o de relleno', () => {
+        expect(textoVisible('  Resiste 5.  ')).toBe('Resiste 5.');
+        expect(textoVisible(null)).toBe('');
+        expect(textoVisible(undefined)).toBe('');
+        expect(textoVisible('No aplica')).toBe('');
+        expect(textoVisible('Ninguno')).toBe('Ninguno');
     });
 });
 

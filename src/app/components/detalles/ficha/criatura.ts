@@ -6,7 +6,7 @@ import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas'
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
-import { nombreDoteConExtra, tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { nombreDoteConExtra, textoVisible, tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { DatoFicha, datosVisibles } from './ficha';
 
 /**
@@ -55,7 +55,7 @@ export function sortilegasVisibles(sortilegas: SortilegaCriatura[] | null | unde
         .map((s) => ({
             id: toNumber(s.Conjuro.Id),
             nombre: `${s.Conjuro.Nombre}`.trim(),
-            detalle: [`NL ${toNumber(s.Nivel_lanzador)}`, tieneTextoVisible(s.Usos_diarios) ? `${s.Usos_diarios}`.trim() : '', textoDesdeDg(s.Dg)]
+            detalle: [`NL ${toNumber(s.Nivel_lanzador)}`, textoVisible(s.Usos_diarios), textoDesdeDg(s.Dg)]
                 .filter(Boolean).join(' · '),
         }));
 }
@@ -96,7 +96,7 @@ export function habilidadesVisibles<T extends HabilidadCriatura>(
             return {
                 nombre: tieneTextoVisible(extra) ? `${nombre} (${extra})` : nombre,
                 valor: valor !== 0 ? textoConSigno(valor) : '',
-                nota: tieneTextoVisible(h.Varios) ? `${h.Varios}`.trim() : '',
+                nota: textoVisible(h.Varios),
             };
         })
         .sort((a, b) => compararTexto(a.nombre, b.nombre));

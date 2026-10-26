@@ -5,7 +5,7 @@ import { ReferenciaCorta, VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-ventaja',
@@ -69,8 +69,8 @@ export class DetallesVentajaComponent {
     }
 
     /** La descripción de un rasgo, idioma o habilidad, para el tooltip de su nombre. */
-    private descripcion(ref: ReferenciaCorta | null | undefined): string | null {
-        return tieneTextoVisible(ref?.Descripcion) ? `${ref?.Descripcion}`.trim() : null;
+    private descripcion(ref: ReferenciaCorta | null | undefined): string {
+        return textoVisible(ref?.Descripcion);
     }
 
     /** El nombre de un rasgo, idioma o habilidad, si viene con id y nombre. */

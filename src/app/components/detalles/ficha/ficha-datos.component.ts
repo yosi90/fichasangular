@@ -1,5 +1,5 @@
 import { Component, Input, OnChanges } from '@angular/core';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { textoVisible } from 'src/app/services/utils/texto-visible';
 import { DatoFicha, LARGO_DATO_ANCHO, datosVisibles, textoDato } from './ficha';
 
 interface DatoPintado {
@@ -53,9 +53,9 @@ export class FichaDatosComponent implements OnChanges {
             return {
                 etiqueta: dato.etiqueta,
                 valor,
-                detalle: tieneTextoVisible(dato.detalle) ? `${dato.detalle}`.trim() : null,
+                detalle: textoVisible(dato.detalle) || null,
                 ancho: Math.min(Math.max(1, ancho), maximo),
-                ayuda: tieneTextoVisible(dato.ayuda) ? `${dato.ayuda}`.trim() : null,
+                ayuda: textoVisible(dato.ayuda) || null,
                 alPulsar: dato.alPulsar,
             };
         });

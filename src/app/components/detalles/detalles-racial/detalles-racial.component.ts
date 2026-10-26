@@ -3,7 +3,7 @@ import { RacialDetalle } from 'src/app/interfaces/racial';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { toBoolean } from 'src/app/services/utils/normalizacion';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import {
     CondicionPrerrequisito,
     GrupoPrerrequisitos,
@@ -60,7 +60,7 @@ export class DetallesRacialComponent {
             .map((dote) => ({
                 id: Number(dote.Id_dote),
                 nombre: `${dote.Dote}`.trim(),
-                extra: tieneTextoVisible(dote.Extra) ? `${dote.Extra}`.trim() : '',
+                extra: textoVisible(dote.Extra),
             }));
         this.habilidadesBase = this.construirHabilidades(value?.Habilidades?.Base);
         this.habilidadesCustom = this.construirHabilidades(value?.Habilidades?.Custom);
@@ -147,7 +147,7 @@ export class DetallesRacialComponent {
                     nombre: tieneTextoVisible(extra) ? `${nombre} (${extra})` : nombre,
                     valor: this.textoBonificador(item['Rangos']),
                     notas: [
-                        tieneTextoVisible(item['Condicion']) ? `${item['Condicion']}`.trim() : '',
+                        textoVisible(item['Condicion']),
                         toBoolean(item['Se_considera_clasea']) ? 'Se considera de clase' : '',
                     ].filter(Boolean),
                 };

@@ -8,7 +8,7 @@ import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag
 import { ManualReferenciaNavigationService } from 'src/app/services/manual-referencia-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { textoVisible } from 'src/app/services/utils/texto-visible';
 
 type SeccionManualKey = keyof ManualAsociados;
 type SeccionManual = { key: SeccionManualKey, label: string, icono: string };
@@ -195,7 +195,7 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
     }
 
     private construirFila(referencia: ReferenciaCorta): FilaManual {
-        const descripcion = tieneTextoVisible(referencia?.Descripcion) ? `${referencia.Descripcion}`.trim() : '';
+        const descripcion = textoVisible(referencia?.Descripcion);
         return {
             referencia,
             descripcion: recortar(descripcion, LARGO_DESCRIPCION),

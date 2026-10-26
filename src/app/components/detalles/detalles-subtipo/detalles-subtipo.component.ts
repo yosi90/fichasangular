@@ -19,7 +19,7 @@ import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { toNumber } from 'src/app/services/utils/normalizacion';
-import { idiomasVisibles, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { idiomasVisibles, textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
     selector: 'app-detalles-subtipo',
@@ -79,7 +79,7 @@ export class DetallesSubtipoComponent {
         this.rasgos = (value?.Rasgos ?? []).filter((rasgo) => tieneTextoVisible(rasgo?.Nombre));
         this.idiomas = idiomasVisibles(value?.Idiomas);
         this.plantillas = (value?.Plantillas ?? []).filter((plantilla) => tieneTextoVisible(plantilla?.Nombre))
-            .map((plantilla) => ({ ...plantilla, Descripcion: tieneTextoVisible(plantilla.Descripcion) ? `${plantilla.Descripcion}`.trim() : '' }));
+            .map((plantilla) => ({ ...plantilla, Descripcion: textoVisible(plantilla.Descripcion) }));
     }
 
     get hayCaracteristicas(): boolean {

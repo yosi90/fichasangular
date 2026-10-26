@@ -1,7 +1,7 @@
 import { analizarTextoManual } from 'src/app/components/shared/texto-manual/texto-manual';
 import { Alineamiento } from 'src/app/interfaces/alineamiento';
 import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 /**
  * La ficha común de las pantallas de detalle (lienzo aprobado por el propietario el 2026-10-25). Tipos y reglas que
@@ -81,11 +81,7 @@ export function esTextoCorto(texto: string | null | undefined, maximo = 240): bo
  */
 export function datoAlineamiento(alineamiento: Alineamiento | null | undefined): DatoFicha {
     const valor = textoAlineamiento(alineamiento);
-    const prioridad = `${alineamiento?.Prioridad?.Nombre ?? ''}`.trim();
-    const descripcion = `${alineamiento?.Descripcion ?? ''}`.trim();
-    const ayuda = [
-        tieneTextoVisible(prioridad) ? `Prioridad: ${prioridad}.` : '',
-        tieneTextoVisible(descripcion) ? descripcion : '',
-    ].filter(Boolean).join(' ');
+    const prioridad = textoVisible(alineamiento?.Prioridad?.Nombre);
+    const ayuda = [prioridad ? `Prioridad: ${prioridad}.` : '', textoVisible(alineamiento?.Descripcion)].filter(Boolean).join(' ');
     return { etiqueta: 'Alineamiento', valor, ayuda: valor ? ayuda : null };
 }

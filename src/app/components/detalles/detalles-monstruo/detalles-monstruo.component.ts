@@ -9,7 +9,7 @@ import { textoEjesAlineamiento } from 'src/app/services/utils/alineamiento-contr
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 import {
     NOMBRES_CARACTERISTICAS,
@@ -422,7 +422,7 @@ export class DetallesMonstruoComponent {
         return datosVisibles(datos).map((dato) => ({
             etiqueta: dato.etiqueta,
             valor: textoDato(dato.valor) ?? '',
-            detalle: tieneTextoVisible(dato.detalle) ? `${dato.detalle}`.trim() : null,
+            detalle: textoVisible(dato.detalle),
         }));
     }
 
