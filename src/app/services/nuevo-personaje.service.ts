@@ -78,6 +78,7 @@ import { textoConSigno } from './utils/equipo-texto';
 import { Tamano } from '../interfaces/tamaño';
 import { ElementoConTipoArma, armasDeGrupos, competenciasDeDotes } from './utils/competencias-armas';
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from './utils/deidad-seleccion';
+import { vectorAlineamientoDeidad } from './utils/alineamiento-deidad';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -7700,8 +7701,7 @@ export class NuevoPersonajeService {
     private esConjuroOpuestoAAlineamientoActual(conjuro: Conjuro): boolean {
         const deidad = this.obtenerDeidadSeleccionada();
         const opuestos = new Set<string>();
-        [`${this.personajeCreacion?.Alineamiento ?? ''}`, `${deidad?.Alineamiento?.Nombre ?? ''}`].forEach((alineamiento) => {
-            const vector = getVectorDesdeNombreBasico(alineamiento);
+        [getVectorDesdeNombreBasico(`${this.personajeCreacion?.Alineamiento ?? ''}`), vectorAlineamientoDeidad(deidad)].forEach((vector) => {
             if (!vector)
                 return;
             if (vector.ley > 0)

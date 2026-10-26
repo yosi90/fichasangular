@@ -104,6 +104,11 @@ export function getVectorDesdeIdBasico(idBasico: number): AlineamientoVector | n
     return nombre ? getVectorDesdeNombreBasico(nombre) : null;
 }
 
+/** Los pasos entre dos alineamientos, sumando los dos ejes (legal bueno → neutral bueno, 1; → caótico maligno, 4). */
+export function distanciaEntreAlineamientos(a: AlineamientoVector, b: AlineamientoVector): number {
+    return Math.abs(a.ley - b.ley) + Math.abs(a.moral - b.moral);
+}
+
 /**
  * Si un alineamiento básico cumple una actitud (`actitudes`: 1 legal, 2 neutral en algún eje, 3 caótico, 4 bueno,
  * 5 maligno). Un solo sitio para las clases, las dotes, las plantillas y las razas.

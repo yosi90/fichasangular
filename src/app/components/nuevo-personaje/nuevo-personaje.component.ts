@@ -110,6 +110,7 @@ import { RacialEvaluacionResultado, evaluarRacialParaSeleccion } from 'src/app/s
 import { ClaseEvaluacionResultado } from 'src/app/services/utils/clase-elegibilidad';
 import { EvaluacionElegibilidadRazaBase, aplicarMutacion, esRazaMutada, evaluarElegibilidadRazaBase } from 'src/app/services/utils/raza-mutacion';
 import {
+    distanciaEntreAlineamientos,
     extraerEjesAlineamientoDesdeContrato,
     getVectorDesdeNombreBasico,
     nombreBasicoDesdeVector,
@@ -1590,7 +1591,7 @@ export class NuevoPersonajeComponent {
         if (!a1 || !b1) {
             return null;
         }
-        return Math.abs(a1.ley - b1.ley) + Math.abs(a1.moral - b1.moral);
+        return distanciaEntreAlineamientos(a1, b1);
     }
 
     private getEvaluacionConflictoRaza(): EvaluacionConflictoRaza | null {

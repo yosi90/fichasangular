@@ -1,5 +1,22 @@
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
-import { getAlineamientoBasicoIdPorNombre, getVectorDesdeIdBasico, getVectorDesdeNombreBasico } from './alineamiento-contrato';
+import {
+    AlineamientoVector,
+    distanciaEntreAlineamientos,
+    getAlineamientoBasicoIdPorNombre,
+    getVectorDesdeIdBasico,
+    getVectorDesdeNombreBasico,
+} from './alineamiento-contrato';
+
+/**
+ * El alineamiento de una deidad como vector (ley, moral): por su básico (`Alineamiento.Id_basico`) o, sin él, por su
+ * nombre; `null` sin deidad o sin alineamiento interpretable. Lo usan la regla del clérigo y los conjuros opuestos.
+ */
+export function vectorAlineamientoDeidad(deidad: Pick<DeidadDetalle, 'Alineamiento'> | null | undefined): AlineamientoVector | null {
+    if (!deidad)
+        return null;
+    return getVectorDesdeIdBasico(Number(deidad.Alineamiento?.Id_basico))
+        ?? getVectorDesdeNombreBasico(`${deidad.Alineamiento?.Nombre ?? ''}`);
+}
 
 /**
  * La regla del alineamiento de la deidad de las clases con `Alineamiento_deidad` (MJ cap. 3, clérigo): a un paso del
@@ -11,8 +28,7 @@ export function incumpleAlineamientoDeidad(alineamiento: string, deidad: DeidadD
     if (!deidad)
         return null;
     const personaje = getVectorDesdeNombreBasico(alineamiento);
-    const vectorDeidad = getVectorDesdeIdBasico(Number(deidad.Alineamiento?.Id_basico))
-        ?? getVectorDesdeNombreBasico(`${deidad.Alineamiento?.Nombre ?? ''}`);
+    const vectorDeidad = vectorAlineamientoDeidad(deidad);
     if (!personaje || !vectorDeidad)
         return null;
 
@@ -24,10 +40,9 @@ export function incumpleAlineamientoDeidad(alineamiento: string, deidad: DeidadD
             : `Los devotos de ${deidad.Nombre} solo pueden ser ${permitidos.map((item) => item.Nombre.toLowerCase()).join(' o ')}`;
     }
 
-    const distancia = Math.abs(personaje.ley - vectorDeidad.ley) + Math.abs(personaje.moral - vectorDeidad.moral);
-    if (distancia > 1)
+    if (distanciaEntreAlineamientos(personaje, vectorDeidad) > 1)
         return `Debe estar a un paso del alineamiento de ${deidad.Nombre} (${`${deidad.Alineamiento?.Nombre ?? ''}`.toLowerCase()})`;
-    const esNeutral = (vector: { ley: number; moral: number; }) => vector.ley === 0 && vector.moral === 0;
+    const esNeutral = (vector: AlineamientoVector) => vector.ley === 0 && vector.moral === 0;
     if (esNeutral(personaje) && !esNeutral(vectorDeidad))
         return `Solo puede ser neutral si ${deidad.Nombre} también lo es`;
     return null;
