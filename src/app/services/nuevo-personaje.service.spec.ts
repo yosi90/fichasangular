@@ -1633,6 +1633,26 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(fuerza.map((mod) => mod.valor)).toEqual([2]);
     });
 
+    it('los modificadores de características de una dote de plantilla sobreviven al recálculo de las ventajas', () => {
+        service.agregarPlantillaSeleccion({
+            Id: 100,
+            Nombre: 'Plantilla con dote',
+            Licantronia_dg: { Id_dado: 0, Dado: '', Multiplicador: 0, Suma: 0 },
+            Puntos_habilidad: { Suma: 0, Suma_fija: 0 },
+            Habilidades: [],
+            Dotes: [{
+                Dote: { Id: 70, Nombre: 'Dureza de plantilla', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Modificadores: { Constitucion: 2 } },
+                Contexto: { Entidad: 'plantilla', Id_plantilla: 100, Id_extra: 0, Extra: '' },
+            }],
+        } as any);
+        service.recalcularEfectosVentajas();
+        service.recalcularEfectosVentajas();
+
+        const constitucion = service.PersonajeCreacion.CaracteristicasVarios.Constitucion
+            .filter((mod) => mod.origen === 'Dote: Dureza de plantilla');
+        expect(constitucion.map((mod) => mod.valor)).toEqual([2]);
+    });
+
     it('las dotes que da un racial pasan al personaje con el racial como origen', () => {
         const raza = crearRazaBase(crearTipoBase());
         const racial = createRacialPlaceholder('Linaje celestial', 90);

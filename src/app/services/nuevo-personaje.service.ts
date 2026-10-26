@@ -5455,7 +5455,7 @@ export class NuevoPersonajeService {
                 this.agregarBonoHabilidad(bonosHabilidades, idHabilidad, rangos, origen);
             });
 
-            this.aplicarDotesPlantilla(plantilla, origen);
+            this.aplicarDotesPlantilla(plantilla, origen, { caracteristicasVarios, bonosHabilidades });
 
             const dadoDirecto = this.resolverDadoDesdePlantilla(plantilla);
             if (dadoDirecto > 0)
@@ -5520,7 +5520,11 @@ export class NuevoPersonajeService {
             this.aplicarModificadoresDote(dote, origen, idExtra, extra, destino));
     }
 
-    private aplicarDotesPlantilla(plantilla: Plantilla, origen: string): void {
+    /**
+     * Se llama dentro del recálculo de las ventajas: sus modificadores de características y habilidades van al `destino`
+     * que monta ese recálculo, porque lo que se escribiera directo en el personaje lo sobrescribe al terminar.
+     */
+    private aplicarDotesPlantilla(plantilla: Plantilla, origen: string, destino: DestinoModificadoresDote): void {
         (plantilla?.Dotes ?? []).forEach((entrada) => {
             const dote = entrada?.Dote;
             const nombre = `${dote?.Nombre ?? ''}`.trim();
@@ -5530,7 +5534,7 @@ export class NuevoPersonajeService {
             const idExtra = toNumber((entrada?.Contexto as any)?.Id_extra);
             const extra = `${(entrada?.Contexto as any)?.Extra ?? ''}`.trim() || 'No aplica';
             this.agregarDoteAlPersonaje(dote, origen, idExtra, extra);
-            this.aplicarModificadoresDote(dote, origen, idExtra, extra);
+            this.aplicarModificadoresDote(dote, origen, idExtra, extra, destino);
             this.registrarFirmaDotePlantilla(dote, origen, idExtra, extra);
         });
     }
