@@ -92,8 +92,33 @@ describe('Plantilla mappers', () => {
             .toEqual([[21, 'Resistencia al frío', 'Resiste 5.', 4]]);
         expect(plantilla.Ataques_especiales.map((item) => [item.Racial.Nombre, item.Dg])).toEqual([['Aura de miedo', 0]]);
         expect(plantilla.Habilidades[0].Extra_comodin).toBe('elegir');
-        // Sin ellas (la caché de la RTDB aún no las guarda), listas vacías.
+        // Sin ellas, listas vacías.
         expect(normalizePlantilla(createPlantillaRaw()).Raciales).toEqual([]);
+    });
+
+    it('lee de la caché de la RTDB los raciales, los ataques especiales y el comodín de las habilidades (Plantillas 8)', () => {
+        // Como lo escribe el backend: el racial normalizado, sin las listas vacías ni las claves a null (la RTDB no las guarda).
+        const plantilla = normalizePlantilla(createPlantillaRaw({
+            Raciales: [{
+                Racial: {
+                    Id: 8, Nombre: "Visión en la oscuridad 60'", Descripcion: 'En blanco y negro.', Oficial: true, Origen: '',
+                    Opcional: 0, Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
+                },
+                Dg: 0,
+            }],
+            Ataques_especiales: [{ Racial: { Id: 128, Nombre: 'Castigar al mal (celestial)', Oficial: true }, Dg: 4 }],
+            Habilidades: [
+                { Id_habilidad: 32, Habilidad: 'Saber', Id_extra: 0, Extra: 'Elegir', Extra_comodin: 'elegir', Rangos: 4 },
+                { Id_habilidad: 6, Habilidad: 'Avistar', Id_extra: 0, Extra: '', Rangos: 8 },
+            ],
+        }));
+
+        expect(plantilla.Raciales.map((item) => [item.Racial.Id, item.Racial.Nombre, item.Racial.Descripcion, item.Dg]))
+            .toEqual([[8, "Visión en la oscuridad 60'", 'En blanco y negro.', 0]]);
+        expect(plantilla.Raciales[0].Racial.Dotes).toEqual([]);
+        expect(plantilla.Ataques_especiales.map((item) => [item.Racial.Id, item.Racial.Nombre, item.Dg]))
+            .toEqual([[128, 'Castigar al mal (celestial)', 4]]);
+        expect(plantilla.Habilidades.map((h) => h.Extra_comodin)).toEqual(['elegir', null]);
     });
 
     it('descarta aliases legacy en el mapper HTTP de plantilla', () => {
