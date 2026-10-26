@@ -6138,6 +6138,7 @@ export class NuevoPersonajeComponent {
                     this.catalogoArmas.map((arma) => ({
                         Id: Number(arma?.Id ?? 0),
                         Nombre: `${arma?.Nombre ?? ''}`.trim(),
+                        Id_tipo_arma: arma?.Tipo_arma?.Id ?? null,
                     }))
                 );
                 this.recalcularClasesVisibles();
@@ -6180,6 +6181,7 @@ export class NuevoPersonajeComponent {
                     this.catalogoGruposArmas.map((grupo) => ({
                         Id: Number(grupo?.Id ?? 0),
                         Nombre: `${grupo?.Nombre ?? ''}`.trim(),
+                        Id_tipo_arma: grupo?.Tipo_arma?.Id ?? null,
                     }))
                 );
                 this.recalcularClasesVisibles();

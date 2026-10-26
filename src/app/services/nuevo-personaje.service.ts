@@ -58,6 +58,8 @@ import { resumenClases } from './utils/resumen-clases';
 import { construirCompaneroParaGuardar, construirFamiliarParaGuardar } from './utils/mascota-payload';
 import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadDgRaciales, puntosHabilidadNivelClase } from './utils/puntos-habilidad';
 import { tieneTextoVisible } from './utils/texto-visible';
+import { ElementoConTipoArma, armasDeGrupos, competenciasDeCatalogo, competenciasDeDotes } from './utils/competencias-armas';
+import { DEIDAD_SIN_SELECCION, esSinDeidad } from './utils/deidad-seleccion';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -971,6 +973,9 @@ export class NuevoPersonajeService {
     private catalogoArmasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoArmadurasDotes: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }> = [];
     private catalogoGruposArmasDotes: { Id: number; Nombre: string; }[] = [];
+    /** Las armas con su tipo y los grupos con el tipo que cubren: para expandir la competencia con un grupo (MJ cap. 5). */
+    private catalogoArmasConTipo: ElementoConTipoArma[] = [];
+    private catalogoGruposArmasConTipo: ElementoConTipoArma[] = [];
     private catalogoGruposArmadurasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoEscuelasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoConjuros: Conjuro[] = [];
@@ -1490,16 +1495,18 @@ export class NuevoPersonajeService {
         this.catalogoDotes = [...(dotes ?? [])];
     }
 
-    setCatalogoArmasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
+    setCatalogoArmasDotes(catalogo: Array<{ Id: number; Nombre: string; Id_tipo_arma?: number | null; }>): void {
         this.catalogoArmasDotes = this.normalizarCatalogoExtras(catalogo);
+        this.catalogoArmasConTipo = [...(catalogo ?? [])];
     }
 
     setCatalogoArmadurasDotes(catalogo: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }>): void {
         this.catalogoArmadurasDotes = this.normalizarCatalogoExtras(catalogo);
     }
 
-    setCatalogoGruposArmasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
+    setCatalogoGruposArmasDotes(catalogo: Array<{ Id: number; Nombre: string; Id_tipo_arma?: number | null; }>): void {
         this.catalogoGruposArmasDotes = this.normalizarCatalogoExtras(catalogo);
+        this.catalogoGruposArmasConTipo = [...(catalogo ?? [])];
     }
 
     setCatalogoGruposArmadurasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
@@ -3643,6 +3650,11 @@ export class NuevoPersonajeService {
         return resultado;
     }
 
+    /**
+     * Las armas con las que es competente el personaje: las de sus clases, su raza y sus dotes (Competencia con arma
+     * marcial: la elegida) y todas las del tipo de cada grupo con el que es competente (MJ cap. 5: «todas las armas
+     * marciales» da competencia con cada arma marcial). Lo comparan los prerrequisitos `competencia_arma`.
+     */
     private resolverCompetenciasArmasActuales(): Array<{ id: number | null; nombre: string; }> {
         return this.fusionarCompetenciasActuales(
             this.resolverCompetenciasClaseActuales(
@@ -3650,11 +3662,16 @@ export class NuevoPersonajeService {
                 ['Id', 'id', 'Id_arma', 'id_arma'],
                 ['Nombre', 'nombre', 'Arma', 'arma']
             ),
-            this.resolverCompetenciasDirectasPersonajeActuales(
-                this.personajeCreacion?.competencia_arma,
-                ['Id', 'id', 'Id_arma', 'id_arma'],
-                ['Nombre', 'nombre', 'Arma', 'arma']
-            )
+            [
+                ...this.resolverCompetenciasDirectasPersonajeActuales(
+                    this.personajeCreacion?.competencia_arma,
+                    ['Id', 'id', 'Id_arma', 'id_arma'],
+                    ['Nombre', 'nombre', 'Arma', 'arma']
+                ),
+                ...competenciasDeCatalogo(this.razaSeleccionada?.Competencias?.Armas),
+                ...competenciasDeDotes(this.personajeCreacion?.DotesContextuales).armas,
+                ...armasDeGrupos(this.resolverCompetenciasGrupoArmasActuales(), this.catalogoGruposArmasConTipo, this.catalogoArmasConTipo),
+            ]
         );
     }
 
@@ -3665,11 +3682,14 @@ export class NuevoPersonajeService {
                 ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
                 ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma']
             ),
-            this.resolverCompetenciasDirectasPersonajeActuales(
-                this.personajeCreacion?.competencia_armadura,
-                ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
-                ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma']
-            )
+            [
+                ...this.resolverCompetenciasDirectasPersonajeActuales(
+                    this.personajeCreacion?.competencia_armadura,
+                    ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
+                    ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma']
+                ),
+                ...competenciasDeCatalogo(this.razaSeleccionada?.Competencias?.Armaduras),
+            ]
         );
     }
 
@@ -3680,11 +3700,15 @@ export class NuevoPersonajeService {
                 ['Id', 'id', 'Id_grupo', 'id_grupo'],
                 ['Nombre', 'nombre', 'Grupo', 'grupo']
             ),
-            this.resolverCompetenciasDirectasPersonajeActuales(
-                this.personajeCreacion?.competencia_grupo_arma,
-                ['Id', 'id', 'Id_grupo', 'id_grupo'],
-                ['Nombre', 'nombre', 'Grupo', 'grupo']
-            )
+            [
+                ...this.resolverCompetenciasDirectasPersonajeActuales(
+                    this.personajeCreacion?.competencia_grupo_arma,
+                    ['Id', 'id', 'Id_grupo', 'id_grupo'],
+                    ['Nombre', 'nombre', 'Grupo', 'grupo']
+                ),
+                ...competenciasDeCatalogo(this.razaSeleccionada?.Competencias?.Grupos_arma),
+                ...competenciasDeDotes(this.personajeCreacion?.DotesContextuales).grupos,
+            ]
         );
     }
 
@@ -3695,11 +3719,14 @@ export class NuevoPersonajeService {
                 ['Id', 'id', 'Id_grupo', 'id_grupo'],
                 ['Nombre', 'nombre', 'Grupo', 'grupo']
             ),
-            this.resolverCompetenciasDirectasPersonajeActuales(
-                this.personajeCreacion?.competencia_grupo_armadura,
-                ['Id', 'id', 'Id_grupo', 'id_grupo'],
-                ['Nombre', 'nombre', 'Grupo', 'grupo']
-            )
+            [
+                ...this.resolverCompetenciasDirectasPersonajeActuales(
+                    this.personajeCreacion?.competencia_grupo_armadura,
+                    ['Id', 'id', 'Id_grupo', 'id_grupo'],
+                    ['Nombre', 'nombre', 'Grupo', 'grupo']
+                ),
+                ...competenciasDeCatalogo(this.razaSeleccionada?.Competencias?.Grupos_armadura),
+            ]
         );
     }
 
