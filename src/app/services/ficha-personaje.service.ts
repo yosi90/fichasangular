@@ -3,7 +3,7 @@ import { Auth } from '@angular/fire/auth';
 import { PDFDocument } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Personaje, PersonajeNivelLanzadorResumen, PersonajeTipoLanzamiento } from '../interfaces/personaje';
-import { CARACTERISTICAS, Caracteristica } from '../interfaces/caracteristica';
+import { Caracteristica } from '../interfaces/caracteristica';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from '../interfaces/monstruo';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
@@ -12,6 +12,7 @@ import { sumarPartes, totalesPersonaje } from 'src/app/services/utils/personaje-
 import { esTextoExtraPorElegir, habilidadConExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { esNombreComodin } from 'src/app/services/utils/comodin';
 import {
+    caracteristicaPorId,
     modificadorParaSumar,
     textoModificadorCaracteristica,
     textoValorCaracteristica,
@@ -633,7 +634,7 @@ export class FichaPersonajeService {
 
     /** El modificador de la característica de una habilidad del monstruo, el de la API (sin valor, +0). */
     private calcularModHabilidadMonstruo(monstruo: MonstruoDetalle, habilidad: any): number {
-        const clave = CARACTERISTICAS[toNumber(habilidad?.Id_caracteristica) - 1];
+        const clave = caracteristicaPorId(toNumber(habilidad?.Id_caracteristica));
         return clave ? modificadorParaSumar(monstruo?.Caracteristicas, clave) : 0;
     }
 

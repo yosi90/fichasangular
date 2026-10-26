@@ -50,7 +50,7 @@ import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { esTextoExtraPorElegir, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
-import { modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
+import { caracteristicaPorId, caracteristicaPorTexto, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from './utils/personaje-totales';
@@ -9978,25 +9978,12 @@ export class NuevoPersonajeService {
     }
 
     private resolverCaracteristicaPorIdOTexto(id: number, texto: string): CaracteristicaKey {
-        // `Id_caracteristica`: del 1 al 6, en el orden de `CARACTERISTICAS`.
-        return CARACTERISTICAS[id - 1] ?? this.resolverCaracteristicaPorTexto(texto);
+        return caracteristicaPorId(id) ?? this.resolverCaracteristicaPorTexto(texto);
     }
 
+    /** La característica del texto; si no se reconoce ninguna, Destreza. */
     private resolverCaracteristicaPorTexto(texto: string): CaracteristicaKey {
-        const normalizado = normalizarTexto(texto);
-        if (normalizado.startsWith('fue') || normalizado.includes('fuerza'))
-            return 'Fuerza';
-        if (normalizado.startsWith('des') || normalizado.includes('destreza'))
-            return 'Destreza';
-        if (normalizado.startsWith('con') || normalizado.includes('constitucion'))
-            return 'Constitucion';
-        if (normalizado.startsWith('int') || normalizado.includes('inteligencia'))
-            return 'Inteligencia';
-        if (normalizado.startsWith('sab') || normalizado.includes('sabiduria'))
-            return 'Sabiduria';
-        if (normalizado.startsWith('car') || normalizado.includes('carisma'))
-            return 'Carisma';
-        return 'Destreza';
+        return caracteristicaPorTexto(texto) ?? 'Destreza';
     }
 
     private etiquetaCaracteristica(key: CaracteristicaKey, fallback: string): string {

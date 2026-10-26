@@ -1,5 +1,6 @@
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { MonstruoCaracteristicas } from 'src/app/interfaces/monstruo';
+import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 // El modificador de una característica lo calcula la API (`utils/caracteristicas.py` del backend) para las fichas y los
 // monstruos, familiares y compañeros (`docs/publica/MODIFICADORES_MONSTRUOS_FRONT.md`). La web solo lo calcula para el
@@ -10,12 +11,38 @@ export function modificadorCaracteristica(valor: number): number {
     return Math.floor((Number(valor) - 10) / 2);
 }
 
+/** La característica de un `Id_caracteristica` (del 1 al 6, en el orden de `CARACTERISTICAS`), o `null` si no es de ninguna. */
+export function caracteristicaPorId(idCaracteristica: number): Caracteristica | null {
+    return CARACTERISTICAS[Number(idCaracteristica) - 1] ?? null;
+}
+
+/**
+ * La característica de un texto de los datos («Fuerza», «Fue», «Constitución»…), por su principio o su nombre; `null` si
+ * no es ninguna.
+ */
+export function caracteristicaPorTexto(texto: string): Caracteristica | null {
+    const normalizado = normalizarTexto(texto);
+    if (normalizado.startsWith('fue') || normalizado.includes('fuerza'))
+        return 'Fuerza';
+    if (normalizado.startsWith('des') || normalizado.includes('destreza'))
+        return 'Destreza';
+    if (normalizado.startsWith('con') || normalizado.includes('constitucion'))
+        return 'Constitucion';
+    if (normalizado.startsWith('int') || normalizado.includes('inteligencia'))
+        return 'Inteligencia';
+    if (normalizado.startsWith('sab') || normalizado.includes('sabiduria'))
+        return 'Sabiduria';
+    if (normalizado.startsWith('car') || normalizado.includes('carisma'))
+        return 'Carisma';
+    return null;
+}
+
 /**
  * El valor de una característica por su id (`Id_caracteristica` de los prerrequisitos, del 1 al 6 en el orden de
  * `CARACTERISTICAS`); `NaN` si el id no es de ninguna. Para los evaluadores de prerrequisitos de clase, dote y plantilla.
  */
 export function valorCaracteristicaPorId(caracteristicas: Readonly<Record<Caracteristica, number>>, idCaracteristica: number): number {
-    const clave = CARACTERISTICAS[Number(idCaracteristica) - 1];
+    const clave = caracteristicaPorId(idCaracteristica);
     return clave ? Number(caracteristicas?.[clave] ?? Number.NaN) : Number.NaN;
 }
 

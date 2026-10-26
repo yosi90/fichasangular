@@ -1,10 +1,10 @@
-import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
+import { caracteristicaPorId, caracteristicaPorTexto } from 'src/app/services/utils/caracteristicas';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import {
     IdentidadPrerrequisitos,
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
-import { normalizarTexto, textosUnicos, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { textosUnicos, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type EstadoEvaluacionRacial = 'eligible' | 'blocked' | 'eligible_with_warning';
 
@@ -98,28 +98,6 @@ function parseCaracteristicaMinima(entry: Record<string, any>): number {
     return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
-/** La característica de un `Id_caracteristica` (del 1 al 6, en el orden de `CARACTERISTICAS`), o vacío. */
-function caracteristicaNombreDesdeId(id: number): string {
-    return CARACTERISTICAS[id - 1] ?? '';
-}
-
-function normalizarCaracteristicaNombre(name: string): string {
-    const normalized = normalizarTexto(name);
-    if (normalized.startsWith('fue') || normalized.includes('fuerza'))
-        return 'Fuerza';
-    if (normalized.startsWith('des') || normalized.includes('destreza'))
-        return 'Destreza';
-    if (normalized.startsWith('con') || normalized.includes('constitucion'))
-        return 'Constitucion';
-    if (normalized.startsWith('int') || normalized.includes('inteligencia'))
-        return 'Inteligencia';
-    if (normalized.startsWith('sab') || normalized.includes('sabiduria'))
-        return 'Sabiduria';
-    if (normalized.startsWith('car') || normalized.includes('carisma'))
-        return 'Carisma';
-    return '';
-}
-
 function resolverValorCaracteristica(
     contextoCaracteristicas: Partial<RacialEvaluacionCaracteristicas> | null | undefined,
     idCaracteristica: number,
@@ -128,9 +106,7 @@ function resolverValorCaracteristica(
     if (!contextoCaracteristicas)
         return Number.NaN;
 
-    const porId = caracteristicaNombreDesdeId(idCaracteristica);
-    const porNombre = normalizarCaracteristicaNombre(nombreCaracteristica);
-    const key = (porId || porNombre) as keyof RacialEvaluacionCaracteristicas | '';
+    const key = caracteristicaPorId(idCaracteristica) ?? caracteristicaPorTexto(nombreCaracteristica);
     if (!key)
         return Number.NaN;
 
@@ -199,10 +175,10 @@ function evaluarPrerequisitoCaracteristica(
     const nombreCaracteristica = parseCaracteristicaNombre(entry);
     const valorMinimo = parseCaracteristicaMinima(entry);
     const valorActual = resolverValorCaracteristica(contextoCaracteristicas, idCaracteristica, nombreCaracteristica);
-    const nombreVisible = caracteristicaNombreDesdeId(idCaracteristica) || nombreCaracteristica || `#${idCaracteristica}`;
+    const nombreVisible = caracteristicaPorId(idCaracteristica) || nombreCaracteristica || `#${idCaracteristica}`;
 
     const evaluable = Number.isFinite(valorMinimo) && Number.isFinite(valorActual)
-        && (idCaracteristica > 0 || normalizarCaracteristicaNombre(nombreCaracteristica).length > 0);
+        && (idCaracteristica > 0 || caracteristicaPorTexto(nombreCaracteristica) !== null);
     const cumple = evaluable ? valorActual >= valorMinimo : false;
 
     return {
