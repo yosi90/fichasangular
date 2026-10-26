@@ -4915,7 +4915,7 @@ export class NuevoPersonajeService {
         const bonosHabilidades: Record<number, HabilidadBonoVario[]> = {};
         const pendientesOro: PendienteOroState[] = [];
         this.aplicarEfectosPlantillasFase2(caracteristicasVarios, nuevosRaciales, bonosHabilidades);
-        this.aplicarModificadoresDotesDeRaza({ caracteristicasVarios, bonosHabilidades });
+        this.aplicarModificadoresDotesDelPersonaje({ caracteristicasVarios, bonosHabilidades });
 
         const todasLasSelecciones: Array<{ detalle: VentajaDetalle; seleccion: SeleccionVentajaState; claseOrigen: 'Ventaja' | 'Desventaja'; }> = [
             ...this.estadoFlujo.ventajas.seleccionDesventajas
@@ -5455,7 +5455,7 @@ export class NuevoPersonajeService {
                 this.agregarBonoHabilidad(bonosHabilidades, idHabilidad, rangos, origen);
             });
 
-            this.aplicarDotesPlantilla(plantilla, origen, { caracteristicasVarios, bonosHabilidades });
+            this.aplicarDotesPlantilla(plantilla, origen);
 
             const dadoDirecto = this.resolverDadoDesdePlantilla(plantilla);
             if (dadoDirecto > 0)
@@ -5511,20 +5511,25 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Los modificadores de las dotes de la raza, una sola vez: se aplican aquí, dentro del recálculo de las ventajas,
-     * que parte de cero (`resetearAplicacionesVentajas`), como las habilidades y salvaciones de la raza. Aplicados al
-     * elegir la raza, el recálculo los borraba; aplicados en los dos sitios, se contarían dos veces.
+     * Los modificadores de todas las dotes del personaje (de raza, de sus raciales, de plantilla, de nivel, de familiar),
+     * una vez cada una: el recálculo de las ventajas parte de cero (`resetearAplicacionesVentajas`), así que aquí vuelven
+     * a ponerse. Al elegir una dote de nivel se aplica directa al personaje; si después se recalcula (al restaurar un
+     * borrador, al tocar las ventajas), esto la repone una sola vez en vez de perderla.
      */
-    private aplicarModificadoresDotesDeRaza(destino: DestinoModificadoresDote): void {
-        this.resolverDotesDeRaza(this.razaSeleccionada).forEach(({ dote, idExtra, extra, origen }) =>
-            this.aplicarModificadoresDote(dote, origen, idExtra, extra, destino));
+    private aplicarModificadoresDotesDelPersonaje(destino: DestinoModificadoresDote): void {
+        (this.personajeCreacion.DotesContextuales ?? []).forEach((entrada) => {
+            const idDote = toNumber(entrada?.Dote?.Id);
+            if (idDote <= 0)
+                return;
+            const dote = this.doteDelCatalogo(idDote) ?? entrada.Dote;
+            const idExtra = toNumber(entrada?.Contexto?.Id_extra);
+            const extra = `${entrada?.Contexto?.Extra ?? ''}`.trim() || 'No aplica';
+            this.aplicarModificadoresDote(dote, `${(entrada?.Contexto as any)?.Origen ?? ''}`, idExtra, extra, destino);
+        });
     }
 
-    /**
-     * Se llama dentro del recálculo de las ventajas: sus modificadores de características y habilidades van al `destino`
-     * que monta ese recálculo, porque lo que se escribiera directo en el personaje lo sobrescribe al terminar.
-     */
-    private aplicarDotesPlantilla(plantilla: Plantilla, origen: string, destino: DestinoModificadoresDote): void {
+    /** Las dotes de la plantilla pasan al personaje; sus modificadores los aplica después el recálculo, con las demás. */
+    private aplicarDotesPlantilla(plantilla: Plantilla, origen: string): void {
         (plantilla?.Dotes ?? []).forEach((entrada) => {
             const dote = entrada?.Dote;
             const nombre = `${dote?.Nombre ?? ''}`.trim();
@@ -5534,7 +5539,6 @@ export class NuevoPersonajeService {
             const idExtra = toNumber((entrada?.Contexto as any)?.Id_extra);
             const extra = `${(entrada?.Contexto as any)?.Extra ?? ''}`.trim() || 'No aplica';
             this.agregarDoteAlPersonaje(dote, origen, idExtra, extra);
-            this.aplicarModificadoresDote(dote, origen, idExtra, extra, destino);
             this.registrarFirmaDotePlantilla(dote, origen, idExtra, extra);
         });
     }

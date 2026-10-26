@@ -903,6 +903,29 @@ describe('NuevoPersonajeService (borrador local)', () => {
         expect(restaurado.EstadoFlujo.pasoActual).toBe('basicos');
     });
 
+    it('al restaurar el borrador tras los niveles, los modificadores de las dotes elegidas siguen, una sola vez', () => {
+        const service = new NuevoPersonajeService();
+        const dote = {
+            Id: 501, Nombre: 'Gran fortaleza', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+            Modificadores: { Fortaleza: 2, Iniciativa: 1 },
+        } as any;
+        service.seleccionarRaza({ ...crearRazaDraft(), Dotes_adicionales: 1 } as Raza);
+        service.setCatalogoDotes([dote]);
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 1 }] as any;
+        const [pendiente] = service.registrarDotesPendientesPorRazaExtras('Humano');
+        expect(service.aplicarDotePendiente(pendiente.id, { idDote: 501, idExtra: 0, extra: 'No aplica' })).toBeTrue();
+        service.activarPersistenciaBorradorLocal(uid);
+        service.persistirBorradorLocalAhora();
+
+        const restaurado = new NuevoPersonajeService();
+        expect(restaurado.restaurarBorradorLocal(uid)).toBeTrue();
+        restaurado.recalcularEfectosVentajas();
+
+        const deLaDote = (mods: any[], clave: string) => mods.filter((mod) => mod[clave] === 'Dote: Gran fortaleza');
+        expect(deLaDote(restaurado.PersonajeCreacion.Salvaciones.fortaleza.modsVarios, 'origen').map((mod) => mod.valor)).toEqual([2]);
+        expect(deLaDote(restaurado.PersonajeCreacion.Iniciativa_varios as any[], 'Origen').map((mod) => mod.Valor)).toEqual([1]);
+    });
+
     it('ignora borradores corruptos o de otro uid', () => {
         localStorage.setItem(storageKey, '{mal json');
         const service = new NuevoPersonajeService();
