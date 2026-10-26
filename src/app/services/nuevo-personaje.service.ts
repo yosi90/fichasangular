@@ -3744,14 +3744,10 @@ export class NuevoPersonajeService {
     /** Los nombres de las aptitudes especiales que ya conoce la creación (las del catálogo de clases y las del personaje). */
     private nombresEspecialesConocidos(): Record<number, string> {
         const nombres: Record<number, string> = {};
-        (this.catalogoClases ?? []).forEach((clase) => (clase?.Desglose_niveles ?? []).forEach((nivel) =>
-            (nivel?.Especiales ?? []).forEach((especialNivel) => {
-                const especial = (especialNivel?.Especial as Record<string, any>) ?? {};
-                const id = toNumber(especial?.['Id']);
-                const nombre = `${especial?.['Nombre'] ?? ''}`.trim();
-                if (id > 0 && nombre.length > 0)
-                    nombres[id] = nombre;
-            })));
+        this.especialesDeLasTablasDeClases().forEach(({ id, nombre }) => {
+            if (nombre.length > 0)
+                nombres[id] = nombre;
+        });
         (this.personajeCreacion.Claseas ?? []).forEach((especial) => {
             const id = toNumber(especial?.Id);
             if (id > 0 && !nombres[id])
@@ -6741,17 +6737,17 @@ export class NuevoPersonajeService {
      */
     private resolverIdEspecialPorNombre(nombre: string): number {
         const buscado = normalizarTexto(nombre);
-        for (const clase of this.catalogoClases ?? []) {
-            for (const nivel of clase?.Desglose_niveles ?? []) {
-                for (const especialNivel of nivel?.Especiales ?? []) {
-                    const especial = (especialNivel?.Especial as Record<string, any>) ?? {};
-                    const id = toNumber(especial?.['Id']);
-                    if (id > 0 && normalizarTexto(especial?.['Nombre'] ?? '') === buscado)
-                        return id;
-                }
-            }
-        }
-        return 0;
+        return this.especialesDeLasTablasDeClases().find((especial) => normalizarTexto(especial.nombre) === buscado)?.id ?? 0;
+    }
+
+    /** Las aptitudes especiales con id de las tablas de nivel del catálogo de clases, en su orden. */
+    private especialesDeLasTablasDeClases(): Array<{ id: number; nombre: string; }> {
+        return (this.catalogoClases ?? []).flatMap((clase) => (clase?.Desglose_niveles ?? []).flatMap((nivel) =>
+            (nivel?.Especiales ?? []).map((especialNivel) => {
+                const especial = (especialNivel?.Especial as Record<string, any>) ?? {};
+                return { id: toNumber(especial?.['Id']), nombre: `${especial?.['Nombre'] ?? ''}`.trim() };
+            })))
+            .filter((especial) => especial.id > 0);
     }
 
     private resolverAumentosClaseLanzadora(
