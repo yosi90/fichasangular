@@ -16,7 +16,8 @@ import {
 } from "../interfaces/habilidad";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toInt, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { porNombre } from "src/app/services/utils/orden-texto";
 
@@ -64,13 +65,13 @@ function normalizeSinergia(raw: any): ReglaSinergia {
     return {
         Id_habilidad_origen: toNumber(raw?.Id_habilidad_origen),
         Habilidad_origen: toText(raw?.Habilidad_origen),
-        Id_extra_origen: toNumber(raw?.Id_extra_origen, -1),
+        Id_extra_origen: toNumber(raw?.Id_extra_origen, ID_EXTRA_HABILIDAD_SIN_EXTRA),
         Id_habilidad_destino: toNumber(raw?.Id_habilidad_destino),
         Habilidad_destino: toText(raw?.Habilidad_destino),
-        Id_extra_destino: toNumber(raw?.Id_extra_destino, -1),
+        Id_extra_destino: toNumber(raw?.Id_extra_destino, ID_EXTRA_HABILIDAD_SIN_EXTRA),
         Rangos_minimos: toNumber(raw?.Rangos_minimos),
         Bonificador: toNumber(raw?.Bonificador),
-        Condicion: `${raw?.Condicion ?? ''}`.trim() || null,
+        Condicion: toNullableText(raw?.Condicion),
     };
 }
 

@@ -153,14 +153,14 @@ function salvacionDelBorrador(
     mods: { modsClaseos?: unknown; modsVarios?: unknown; } | undefined,
 ): PersonajeTotalDto {
     const varios = toArray<any>(mods?.modsVarios);
-    const esCondicional = (mod: any) => `${mod?.condicion ?? ''}`.trim().length > 0;
+    const esCondicional = (mod: any) => toNullableText(mod?.condicion) !== null;
     const total = sumar([
         parte('caracteristica', caracteristica, modificador),
         ...partesVarias('clase', mods?.modsClaseos),
         ...partesVarias('varios', varios.filter((mod) => !esCondicional(mod))),
     ]);
     const condicionales = varios.filter(esCondicional)
-        .map((mod) => ({ ...partesVarias('varios', [mod])[0], condicion: `${mod.condicion}`.trim() }))
+        .map((mod) => ({ ...partesVarias('varios', [mod])[0], condicion: toNullableText(mod.condicion) }))
         .filter((item) => item.valor !== undefined);
     if (condicionales.length > 0)
         total.condicionales = condicionales;

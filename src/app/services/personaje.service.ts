@@ -806,11 +806,11 @@ export class PersonajeService {
                 const valor = toInt(entrada?.valor ?? entrada?.Valor);
                 if (valor === 0)
                     return null;
-                const condicion = `${entrada?.condicion ?? ''}`.trim();
+                const condicion = toNullableText(entrada?.condicion);
                 return {
                     valor,
                     origen: `${entrada?.origen ?? entrada?.Origen ?? 'Varios'}`.trim() || 'Varios',
-                    ...(condicion.length > 0 ? { condicion } : {}),
+                    ...(condicion !== null ? { condicion } : {}),
                 };
             })
             .filter((entrada) => !!entrada) as { valor: number; origen?: string; condicion?: string; }[];

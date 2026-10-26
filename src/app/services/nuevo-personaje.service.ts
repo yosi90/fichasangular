@@ -48,7 +48,7 @@ import {
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
-import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, primerEntero, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { esTextoExtraPorElegir, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
 import { modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
@@ -61,7 +61,7 @@ import { tieneTextoVisible } from './utils/texto-visible';
 import { ajusteDePlantillas, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
-import { bonosSinergia, SIN_EXTRA_SINERGIA } from './utils/habilidades-bonos';
+import { bonosSinergia } from './utils/habilidades-bonos';
 import { textoAtaqueBase } from './utils/ataque-base';
 import { Tamano } from '../interfaces/tamaño';
 
@@ -2014,7 +2014,7 @@ export class NuevoPersonajeService {
         const habilidades = (this.personajeCreacion.Habilidades ?? []).filter((habilidad) => !habilidad?.Custom);
         const refs = habilidades.map((habilidad) => ({
             id: toNumber(habilidad.Id),
-            idExtra: this.idExtraDeHabilidad(habilidad),
+            idExtra: idExtraHabilidadParaGuardar(habilidad),
             rangos: toNumber(habilidad.Rangos),
         }));
         habilidades.forEach((habilidad, indice) => {
@@ -2024,12 +2024,6 @@ export class NuevoPersonajeService {
         });
     }
 
-    /** El id del extra elegido de una habilidad del borrador (por su nombre en sus `Extras`), o -1 si no tiene. */
-    private idExtraDeHabilidad(habilidad: Personaje['Habilidades'][number]): number {
-        const extra = normalizarTexto(habilidad?.Extra ?? '');
-        const encontrado = (habilidad?.Extras ?? []).find((item) => normalizarTexto(item?.Extra ?? '') === extra);
-        return extra.length > 0 && encontrado ? toNumber(encontrado.Id_extra) : SIN_EXTRA_SINERGIA;
-    }
 
     getConjurosSesionActual(): ConjurosFlujoState {
         if (this.estadoFlujo.conjuros.activa)
@@ -5343,7 +5337,7 @@ export class NuevoPersonajeService {
                 const valor = toInt(item?.Cantidad);
                 if (!tipo || valor === 0)
                     return;
-                registrar(tipo, valor, origen, `${item?.Condicion ?? ''}`.trim() || null);
+                registrar(tipo, valor, origen, toNullableText(item?.Condicion));
             });
         });
     }

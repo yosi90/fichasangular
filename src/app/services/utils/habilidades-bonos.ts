@@ -1,6 +1,7 @@
 import { ReglaSinergia } from 'src/app/interfaces/habilidad';
 import { PersonajeParteDto } from 'src/app/interfaces/personajes-api';
-import { toInt } from 'src/app/services/utils/normalizacion';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
+import { toInt, toNullableText } from 'src/app/services/utils/normalizacion';
 
 /**
  * Sinergias entre habilidades (Manual del jugador, tabla 4-5), la misma regla que la ficha de la API
@@ -11,8 +12,6 @@ import { toInt } from 'src/app/services/utils/normalizacion';
  * en cualquier hueco de Saber); con -1, por su id. Las sinergias se suman entre sí.
  */
 
-export const SIN_EXTRA_SINERGIA = -1;
-
 /** Una habilidad del personaje: su id, el id de su extra (-1 si no tiene) y sus rangos. */
 export interface HabilidadSinergiaRef {
     id: number;
@@ -21,8 +20,8 @@ export interface HabilidadSinergiaRef {
 }
 
 export function esLaHabilidadDeLaSinergia(id: number, idExtra: number, reglaId: number, reglaExtra: number): boolean {
-    if (toInt(reglaExtra, SIN_EXTRA_SINERGIA) !== SIN_EXTRA_SINERGIA)
-        return toInt(idExtra, SIN_EXTRA_SINERGIA) === toInt(reglaExtra);
+    if (toInt(reglaExtra, ID_EXTRA_HABILIDAD_SIN_EXTRA) !== ID_EXTRA_HABILIDAD_SIN_EXTRA)
+        return toInt(idExtra, ID_EXTRA_HABILIDAD_SIN_EXTRA) === toInt(reglaExtra);
     return toInt(id) === toInt(reglaId);
 }
 
@@ -36,10 +35,13 @@ export function bonosSinergia(
         .filter((regla) => esLaHabilidadDeLaSinergia(destino.id, destino.idExtra, regla.Id_habilidad_destino, regla.Id_extra_destino)
             && habilidades.some((habilidad) => toInt(habilidad.rangos) >= toInt(regla.Rangos_minimos)
                 && esLaHabilidadDeLaSinergia(habilidad.id, habilidad.idExtra, regla.Id_habilidad_origen, regla.Id_extra_origen)))
-        .map((regla) => ({
-            tipo: 'sinergia',
-            origen: `Sinergia (${regla.Habilidad_origen})`,
-            valor: toInt(regla.Bonificador),
-            ...(`${regla.Condicion ?? ''}`.trim().length > 0 ? { condicion: `${regla.Condicion}`.trim() } : {}),
-        } as PersonajeParteDto));
+        .map((regla) => {
+            const condicion = toNullableText(regla.Condicion);
+            return {
+                tipo: 'sinergia',
+                origen: `Sinergia (${regla.Habilidad_origen})`,
+                valor: toInt(regla.Bonificador),
+                ...(condicion !== null ? { condicion } : {}),
+            } as PersonajeParteDto;
+        });
 }
