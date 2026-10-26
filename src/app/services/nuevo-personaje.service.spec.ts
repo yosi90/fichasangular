@@ -14,6 +14,12 @@ import { UserSettingsService } from './user-settings.service';
 import { PersonajeService } from './personaje.service';
 import { totalesPersonaje, totalHabilidad } from './utils/personaje-totales';
 
+/** Las banderas con las que la API marca los especiales que dan familiar o compañero (`Otorga_*`). */
+const BANDERAS_ESPECIAL_MASCOTA: Record<string, Record<string, boolean>> = {
+    'Convocar a un familiar': { Otorga_familiar: true },
+    'Compañero animal': { Otorga_companero: true },
+};
+
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 
 function crearVentajaBase(partial: Partial<VentajaDetalle>): VentajaDetalle {
@@ -1785,7 +1791,7 @@ describe('NuevoPersonajeService (clases)', () => {
         return {
             ...claseBase.Desglose_niveles[0],
             Especiales: [{
-                Especial: { Id: idEspecial, Nombre: nombre }, Nivel: 1, Id_extra: -1, Extra: '', Opcional: 0,
+                Especial: { Id: idEspecial, Nombre: nombre, ...BANDERAS_ESPECIAL_MASCOTA[nombre] }, Nivel: 1, Id_extra: -1, Extra: '', Opcional: 0,
                 Id_interno: idEspecial, Id_especial_requerido: 0, Id_dote_requerida: 0,
             }] as any,
         };
@@ -5055,7 +5061,7 @@ describe('NuevoPersonajeService (clases)', () => {
 describe('NuevoPersonajeService (familiar)', () => {
     function crearEspecialNivel(idEspecial: number, nombre: string) {
         return {
-            Especial: { Id: idEspecial, Nombre: nombre },
+            Especial: { Id: idEspecial, Nombre: nombre, ...BANDERAS_ESPECIAL_MASCOTA[nombre] },
             Nivel: 1,
             Id_extra: -1,
             Extra: '',
@@ -7664,5 +7670,195 @@ describe('NuevoPersonajeService (avisos de la elegibilidad de clases)', () => {
             soloPorAlineamiento: false,
         })).toBeFalse();
         expect(service.esBloqueoSoloPorAlineamiento({ estado: 'eligible', razones: [], advertencias: [], soloPorAlineamiento: true })).toBeFalse();
+    });
+});
+
+describe('NuevoPersonajeService (reglas de la auditoría de la matriz, 2026-10-26)', () => {
+    const espadaLarga = { Id: 30, Nombre: 'Espada larga', Id_tipo_arma: 2 };
+    const espadaBastarda = { Id: 70, Nombre: 'Espada bastarda', Id_tipo_arma: 3 };
+
+    function claseQuePide(competenciaArma: number): Clase {
+        return crearClaseBase({
+            Id: 99,
+            Nombre: 'Maestro de armas',
+            Prerrequisitos_flags: { competencia_arma: true },
+            Prerrequisitos: {
+                ...crearClaseBase().Prerrequisitos,
+                competencia_arma: [{ Id_arma: competenciaArma, Opcional: 0, Frase: 'Competencia con el arma' }],
+            },
+        });
+    }
+
+    function servicioConArmas(): NuevoPersonajeService {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoArmasDotes([espadaLarga, espadaBastarda]);
+        svc.setCatalogoGruposArmasDotes([
+            { Id: 1, Nombre: 'Todas las armas sencillas', Id_tipo_arma: 1 },
+            { Id: 2, Nombre: 'Todas las armas marciales', Id_tipo_arma: 2 },
+        ]);
+        return svc;
+    }
+
+    function doteBase(partial: Record<string, any>): any {
+        return {
+            Id: 0, Nombre: '', Descripcion: '', Beneficio: '', Normal: '', Especial: '',
+            Manual: { Id: 54, Nombre: 'Manual del jugador 1', Pagina: 90 },
+            Tipos: [{ Id: 1, Nombre: 'General', Usado: 1 }],
+            Repetible: 0, Repetible_distinto_extra: 0, Repetible_comb: 0, Comp_arma: 0, Oficial: true,
+            Extras_soportados: { Extra_arma: 0, Extra_armadura_armaduras: 0, Extra_armadura_escudos: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0 },
+            Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] },
+            Extras_de_todo_el_catalogo: { Armas: false, Armaduras: false, Escuelas: false, Habilidades: false },
+            Modificadores: {},
+            Prerrequisitos: {},
+            ...partial,
+        };
+    }
+
+    function conDotePendiente(svc: NuevoPersonajeService, dotes: any[]): void {
+        svc.setCatalogoDotes(dotes);
+        (svc as any).dotesPendientes = [{ id: 1, fuente: 'nivel', origen: 'Nivel 1', tipoPermitido: null, estado: 'pendiente' }];
+    }
+
+    it('un guerrero (todas las armas marciales) es competente con la espada larga, no con la bastarda (MJ cap. 5)', () => {
+        const svc = servicioConArmas();
+        const guerrero = crearClaseBase({
+            Id: 7, Nombre: 'Guerrero',
+            Competencias: { Armas: [], Armaduras: [], Grupos_arma: [{ Id: 2, Nombre: 'Todas las armas marciales' }], Grupos_armadura: [] },
+        });
+        svc.setCatalogoClases([guerrero, claseQuePide(30), claseQuePide(70)]);
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 1 }];
+
+        expect(svc.evaluarClaseParaSeleccion(claseQuePide(30)).estado).toBe('eligible');
+        expect(svc.evaluarClaseParaSeleccion(claseQuePide(70)).estado).toBe('blocked_failed');
+    });
+
+    it('un guerrero puede elegir Soltura con un arma con la espada larga como dote', () => {
+        const svc = servicioConArmas();
+        svc.setCatalogoClases([crearClaseBase({
+            Id: 7, Nombre: 'Guerrero',
+            Competencias: { Armas: [], Armaduras: [], Grupos_arma: [{ Id: 2, Nombre: 'Todas las armas marciales' }], Grupos_armadura: [] },
+        })]);
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 1 }];
+        const soltura = doteBase({
+            Id: 4, Nombre: 'Soltura con un arma', Comp_arma: 1,
+            Extras_soportados: { Extra_arma: 1, Extra_armadura_armaduras: 0, Extra_armadura_escudos: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0 },
+            Extras_de_todo_el_catalogo: { Armas: true, Armaduras: false, Escuelas: false, Habilidades: false },
+            Prerrequisitos: { competencia_arma: [{ Id_arma: 0, Arma: 'Elegir', Arma_comodin: 'elegir', Opcional: 0 }] },
+        });
+        conDotePendiente(svc, [soltura]);
+
+        expect(svc.aplicarDotePendiente(1, { idDote: 4, idExtra: 70, extra: 'Espada bastarda' })).toBeFalse();
+        expect(svc.aplicarDotePendiente(1, { idDote: 4, idExtra: 30, extra: 'Espada larga' })).toBeTrue();
+    });
+
+    it('cuentan las competencias de la raza (el elfo, con la espada larga) y las de las dotes (Competencia con arma exótica)', () => {
+        const svc = servicioConArmas();
+        svc.setCatalogoClases([claseQuePide(30), claseQuePide(70)]);
+        (svc as any).razaSeleccionada = { Competencias: { Armas: [{ Id: 30, Nombre: 'Espada larga' }], Armaduras: [], Grupos_arma: [], Grupos_armadura: [] } };
+        expect(svc.evaluarClaseParaSeleccion(claseQuePide(30)).estado).toBe('eligible');
+        expect(svc.evaluarClaseParaSeleccion(claseQuePide(70)).estado).toBe('blocked_failed');
+
+        svc.PersonajeCreacion.DotesContextuales = [{
+            Dote: doteBase({ Id: 301, Nombre: 'Competencia con arma exótica', Competencias_otorgadas: { Armas: [{ Id: 0, Nombre: 'Elegir', Arma_comodin: 'elegir' }], Grupos_arma: [] } }),
+            Contexto: { Entidad: 'personaje', Id_personaje: 0, Id_extra: 70, Extra: 'Espada bastarda' } as any,
+        }];
+        expect(svc.evaluarClaseParaSeleccion(claseQuePide(70)).estado).toBe('eligible');
+    });
+
+    it('el nivel de personaje de Liderazgo cuenta los DG raciales (centauro de 4 DG con guerrero 2: nivel 6)', () => {
+        const svc = new NuevoPersonajeService();
+        (svc as any).razaSeleccionada = { Dgs_adicionales: { Cantidad: 4 }, Ajuste_nivel: 2 };
+        const liderazgo = doteBase({ Id: 343, Nombre: 'Liderazgo', Prerrequisitos: { nivel: [{ Nivel: 6, Opcional: 0, Frase: 'Personaje de nivel 6' }] } });
+
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 1 }];
+        conDotePendiente(svc, [liderazgo]);
+        expect(svc.aplicarDotePendiente(1, { idDote: 343, idExtra: 0, extra: '' })).toBeFalse();
+
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 2 }];
+        expect(svc.aplicarDotePendiente(1, { idDote: 343, idExtra: 0, extra: '' })).toBeTrue();
+    });
+
+    it('Maestría en conjuros se repite (Repetible_comb); Ataque de torbellino, no', () => {
+        const svc = new NuevoPersonajeService();
+        const maestria = doteBase({ Id: 31, Nombre: 'Maestría en conjuros', Repetible_comb: 1 });
+        const torbellino = doteBase({ Id: 292, Nombre: 'Ataque de torbellino' });
+        conDotePendiente(svc, [maestria, torbellino]);
+        svc.PersonajeCreacion.DotesContextuales = [maestria, torbellino].map((dote) => ({
+            Dote: dote,
+            Contexto: { Entidad: 'personaje', Id_personaje: 0, Id_extra: 0, Extra: '' } as any,
+        }));
+
+        expect(svc.aplicarDotePendiente(1, { idDote: 292, idExtra: 0, extra: '' })).toBeFalse();
+        expect(svc.aplicarDotePendiente(1, { idDote: 31, idExtra: 0, extra: '' })).toBeTrue();
+    });
+
+    it('un paladín que gana un nivel de guerrero ya no puede volver a subir de paladín (MJ cap. 3)', () => {
+        const svc = new NuevoPersonajeService();
+        const paladin = crearClaseBase({ Id: 11, Nombre: 'Paladín', Multiclase_restringida: true });
+        const guerrero = crearClaseBase({ Id: 7, Nombre: 'Guerrero' });
+        svc.setCatalogoClases([paladin, guerrero]);
+
+        expect(svc.aplicarSiguienteNivelClase(paladin).aplicado).toBeTrue();
+        expect(svc.evaluarClaseParaSeleccion(paladin).estado).toBe('eligible');
+        expect(svc.aplicarSiguienteNivelClase(guerrero).aplicado).toBeTrue();
+
+        const evaluacion = svc.evaluarClaseParaSeleccion(paladin);
+        expect(evaluacion.estado).toBe('blocked_failed');
+        expect(evaluacion.razones[0]).toContain('paladín');
+        expect(svc.evaluarClaseParaSeleccion(guerrero).estado).toBe('eligible');
+    });
+
+    it('un guerrero que gana un nivel de paladín sí puede seguir subiendo de paladín, y de guerrero', () => {
+        const svc = new NuevoPersonajeService();
+        const paladin = crearClaseBase({ Id: 11, Nombre: 'Paladín', Multiclase_restringida: true });
+        const guerrero = crearClaseBase({ Id: 7, Nombre: 'Guerrero' });
+        svc.setCatalogoClases([paladin, guerrero]);
+
+        expect(svc.aplicarSiguienteNivelClase(guerrero).aplicado).toBeTrue();
+        expect(svc.aplicarSiguienteNivelClase(paladin).aplicado).toBeTrue();
+
+        expect(svc.evaluarClaseParaSeleccion(paladin).estado).toBe('eligible');
+        expect(svc.evaluarClaseParaSeleccion(guerrero).estado).toBe('eligible');
+    });
+
+    it('los idiomas adicionales salen de la lista de la raza y de la clase (MJ cap. 2: un enano no puede elegir élfico)', () => {
+        const svc = new NuevoPersonajeService();
+        const catalogo = [
+            { Id: 8, Nombre: 'Élfico' }, { Id: 13, Nombre: 'Gigante' }, { Id: 3, Nombre: 'Abisal' }, { Id: 28, Nombre: 'Vrykul' },
+        ] as any[];
+        (svc as any).razaSeleccionada = { Idiomas_adicionales_cualquiera: false, Idiomas_adicionales: [{ Id: 13, Nombre: 'Gigante' }] };
+        expect(svc.filtrarIdiomasAdicionalesPermitidos(catalogo).map((idioma) => idioma.Nombre)).toEqual(['Gigante']);
+
+        svc.setCatalogoClases([crearClaseBase({ Id: 4, Nombre: 'Clérigo', Idiomas_adicionales: [{ Id: 3, Nombre: 'Abisal', Secreto: false, Oficial: true }] })]);
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Clérigo', Nivel: 1 }];
+        expect(svc.filtrarIdiomasAdicionalesPermitidos(catalogo).map((idioma) => idioma.Nombre)).toEqual(['Gigante', 'Abisal']);
+
+        (svc as any).razaSeleccionada = { Idiomas_adicionales_cualquiera: true, Idiomas_adicionales: [] };
+        expect(svc.filtrarIdiomasAdicionalesPermitidos(catalogo).length).toBe(4);
+    });
+
+    it('la dote adicional de una clase sale del especial que la otorga (Otorga_dote), no de su nombre', () => {
+        const svc = new NuevoPersonajeService();
+        const especial = (datos: Record<string, any>) => ({ Especial: datos, Nivel: 1, Id_extra: -1, Extra: 'Guerrero', Opcional: 0, Id_interno: 1, Id_especial_requerido: 0, Id_dote_requerida: 0 }) as any;
+
+        expect(svc.registrarDotesPendientesPorEspeciales([especial({ Id: 9, Nombre: 'Dote adicional' })], 'Guerrero nivel 1')).toEqual([]);
+        const creadas = svc.registrarDotesPendientesPorEspeciales([especial({ Id: 5, Nombre: 'Bonificación de combate', Otorga_dote: true })], 'Guerrero nivel 1');
+        expect(creadas.length).toBe(1);
+        expect(creadas[0].tipoPermitido).toBe('Guerrero');
+    });
+
+    it('lo que piden los requisitos de las plantillas: niveles de clase, nivel de lanzador y dotes', () => {
+        const svc = new NuevoPersonajeService();
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 3 }];
+        svc.PersonajeCreacion.DotesContextuales = [{
+            Dote: doteBase({ Id: 335, Nombre: 'Fabricar objeto maravilloso' }),
+            Contexto: { Entidad: 'personaje', Id_personaje: 0, Id_extra: 0, Extra: '' } as any,
+        }];
+
+        const contexto = svc.getContextoRequisitosPlantillas();
+
+        expect(contexto.nivelesClase).toBe(3);
+        expect(contexto.nivelLanzador).toBe(0);
+        expect(contexto.dotes).toEqual([{ id: 335, nombre: 'Fabricar objeto maravilloso' }]);
     });
 });

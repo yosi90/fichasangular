@@ -40,6 +40,7 @@ import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
 import { modificadoresDePartes, normalizarTotal, totalVacio } from './utils/personaje-totales';
@@ -246,13 +247,12 @@ export class PersonajeService {
         const idDisProhibida = toInt(contextoIds?.idDisProhibida)
             || this.resolverIdPorNombre(personaje?.Disciplina_prohibida, mapasCatalogo.disciplinas);
         const idRegion = this.resolverIdRegionParaPayload(personaje, contextoIds, mapasCatalogo.regiones);
-        const deidadSeleccionada = normalizarTexto(personaje?.Deidad, true);
 
         if (idAlineamiento <= 0)
             throw new Error('No se pudo resolver el id de alineamiento para el payload de creación.');
         if (idGenero <= 0)
             throw new Error('No se pudo resolver el id de género para el payload de creación.');
-        if (deidadSeleccionada.length > 0 && deidadSeleccionada !== 'no tener deidad' && idDeidad <= 0)
+        if (!esSinDeidad(personaje?.Deidad) && idDeidad <= 0)
             throw new Error('No se pudo resolver el id de deidad para el payload de creación.');
 
         const caracteristicasPerdidas = {

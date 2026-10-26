@@ -52,6 +52,15 @@ export interface DoteHabilidadOtorgada {
     Custom: boolean;
 }
 
+/**
+ * Las armas y grupos de armas con los que la dote da competencia (MJ cap. 5). El arma «Elegir» (`Arma_comodin`
+ * «elegir») es la que se elige como extra de la dote (Competencia con arma marcial o exótica).
+ */
+export interface DoteCompetenciasOtorgadas {
+    Armas: { Id: number; Nombre: string; Arma_comodin?: Comodin | null; }[];
+    Grupos_arma: { Id: number; Nombre: string; }[];
+}
+
 export interface DoteModificadores {
     [key: string]: number;
 }
@@ -80,5 +89,7 @@ export interface Dote {
     Modificadores: DoteModificadores;
     /** La API siempre la da; los borradores de dotes que monta la propia web (creación, ficha) no la llevan. */
     Habilidades_otorgadas?: DoteHabilidadOtorgada[];
+    /** La API siempre la da (desde la auditoría de las reglas del 2026-10-26); los borradores de la web, no. */
+    Competencias_otorgadas?: DoteCompetenciasOtorgadas;
     Prerrequisitos: DotePrerrequisitos;
 }

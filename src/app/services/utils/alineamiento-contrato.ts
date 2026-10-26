@@ -64,9 +64,17 @@ export function getVectorDesdeNombreBasico(nombre: string): AlineamientoVector |
     return vector ? { ...vector } : null;
 }
 
+/**
+ * Una preferencia que prohíbe un valor («Nunca legal», «Casi nunca neutral», «Tendencia a no ser caótico») no exige
+ * ninguno: el eje que pide queda sin valor.
+ */
+function esPreferenciaProhibitiva(normalizado: string): boolean {
+    return normalizado.includes("nunca") || normalizado.includes("tendencia a no");
+}
+
 export function parseLeyDesdePreferencia(nombre: string): number | null {
     const n = normalizarTexto(nombre);
-    if (esAlineamientoSinPreferencia(n))
+    if (esAlineamientoSinPreferencia(n) || esPreferenciaProhibitiva(n))
         return null;
     if (n.includes("legal"))
         return 1;
@@ -79,7 +87,7 @@ export function parseLeyDesdePreferencia(nombre: string): number | null {
 
 export function parseMoralDesdePreferencia(nombre: string): number | null {
     const n = normalizarTexto(nombre);
-    if (esAlineamientoSinPreferencia(n))
+    if (esAlineamientoSinPreferencia(n) || esPreferenciaProhibitiva(n))
         return null;
     if (n.includes("malign"))
         return -1;
@@ -88,6 +96,45 @@ export function parseMoralDesdePreferencia(nombre: string): number | null {
     if (n.includes("neutral"))
         return 0;
     return null;
+}
+
+/** El vector (ley, moral) de un alineamiento básico por su id (`alineamientos_basicos`: 1 legal bueno … 9 caótico maligno). */
+export function getVectorDesdeIdBasico(idBasico: number): AlineamientoVector | null {
+    const nombre = Object.keys(BASICO_ID_POR_NOMBRE).find((clave) => BASICO_ID_POR_NOMBRE[clave] === idBasico);
+    return nombre ? getVectorDesdeNombreBasico(nombre) : null;
+}
+
+/**
+ * Si un alineamiento básico cumple una actitud (`actitudes`: 1 legal, 2 neutral en algún eje, 3 caótico, 4 bueno,
+ * 5 maligno). Un solo sitio para las clases, las dotes, las plantillas y las razas.
+ */
+export function cumpleActitud(idActitud: number, idBasico: number): boolean {
+    const vector = getVectorDesdeIdBasico(idBasico);
+    if (!vector)
+        return false;
+    if (idActitud === 1)
+        return vector.ley === 1;
+    if (idActitud === 2)
+        return vector.ley === 0 || vector.moral === 0;
+    if (idActitud === 3)
+        return vector.ley === -1;
+    if (idActitud === 4)
+        return vector.moral === 1;
+    if (idActitud === 5)
+        return vector.moral === -1;
+    return false;
+}
+
+/**
+ * El alineamiento básico (1-9) que pide un prerrequisito de alineamiento de una clase, una dote o una plantilla:
+ * `Id_alineamiento_basico` o, sin él, su nombre (`Alineamiento_basico`). Nunca `Id_alineamiento`, que es la combinación
+ * de la tabla `alineamientos` (el legal bueno «siempre» es la 3, que como básico sería el legal maligno).
+ */
+export function idBasicoDePrerrequisitoAlineamiento(entry: Record<string, any>): number {
+    const id = Number(entry?.["Id_alineamiento_basico"] ?? entry?.["id_alineamiento_basico"]);
+    if (Number.isFinite(id) && id > 0)
+        return id;
+    return getAlineamientoBasicoIdPorNombre(`${entry?.["Alineamiento_basico"] ?? entry?.["alineamiento_basico"] ?? ""}`);
 }
 
 export function nombreBasicoDesdeVector(ley: number, moral: number): string {

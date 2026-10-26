@@ -434,11 +434,12 @@ describe('dote-elegibilidad', () => {
         expect(fallo.estado).toBe('blocked_failed');
     });
 
-    it('soporta alineamiento_requerido y alineamiento_prohibido', () => {
+    it('soporta alineamiento_requerido y alineamiento_prohibido, con el básico y no la combinación', () => {
+        // Como los da la API: `Id_alineamiento` es la combinación de `alineamientos` (el LB «siempre», la 3).
         const dote = crearDoteBase({
             Prerrequisitos: {
-                alineamiento_requerido: [{ Id_alineamiento: 1, Opcional: 0 }],
-                alineamiento_prohibido: [{ Id_alineamiento: 9, Opcional: 0 }],
+                alineamiento_requerido: [{ Id_alineamiento: 3, Id_alineamiento_basico: 1, Alineamiento_basico: 'Legal bueno', Opcional: 0 }],
+                alineamiento_prohibido: [{ Id_alineamiento: 25, Id_alineamiento_basico: 9, Alineamiento_basico: 'Caótico maligno', Opcional: 0 }],
             },
         });
         const resultado = evaluarElegibilidadDote({
@@ -446,6 +447,7 @@ describe('dote-elegibilidad', () => {
             contexto: crearContextoBase({ alineamiento: 'Legal bueno' }),
         });
         expect(resultado.estado).toBe('eligible');
+        expect(evaluarElegibilidadDote({ dote, contexto: crearContextoBase({ alineamiento: 'Legal maligno' }) }).estado).toBe('blocked_failed');
     });
 
     it('soporta competencia_armadura y competencia_grupo_arma', () => {

@@ -58,6 +58,8 @@ function normalizePrerrequisitosFlags(raw: any): PlantillaPrerrequisitosFlags {
         alineamiento_requerido: toBoolean(raw?.alineamiento_requerido),
         caracteristica: toBoolean(raw?.caracteristica),
         criaturas_compatibles: toBoolean(raw?.criaturas_compatibles),
+        nivel_lanzador: toBoolean(raw?.nivel_lanzador),
+        dote: toBoolean(raw?.dote),
     };
 }
 
@@ -68,6 +70,8 @@ function normalizePrerrequisitosApi(raw: any): PlantillaPrerrequisitos {
         alineamiento_requerido: toStrictArray(raw?.alineamiento_requerido),
         caracteristica: toStrictArray(raw?.caracteristica),
         criaturas_compatibles: toStrictArray(raw?.criaturas_compatibles),
+        nivel_lanzador: toStrictArray(raw?.nivel_lanzador),
+        dote: toStrictArray(raw?.dote),
     };
 }
 
@@ -252,6 +256,8 @@ function normalizePrerrequisitos(raw: any): PlantillaPrerrequisitos {
         alineamiento_requerido: toArray(raw?.alineamiento_requerido),
         caracteristica: toArray(raw?.caracteristica),
         criaturas_compatibles: toArray(raw?.criaturas_compatibles),
+        nivel_lanzador: toArray(raw?.nivel_lanzador),
+        dote: toArray(raw?.dote),
     };
 }
 

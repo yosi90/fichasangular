@@ -95,11 +95,84 @@ function crearContextoBase(): PlantillaEvaluacionContexto {
         },
         tamanoRazaId: 0,
         tiposCriaturaMiembroIds: [1],
-        razaHeredada: false,
         incluirHomebrew: true,
         seleccionadas: [],
     };
 }
+
+describe("plantilla-elegibilidad: reglas de la auditoría del 2026-10-26", () => {
+    it("una plantilla de nacimiento solo se elige antes del primer nivel de clase (decisión del 2026-10-18)", () => {
+        const semicelestial = crearPlantillaMock({ Id: 5, Nombre: "Semicelestial", Nacimiento: true });
+
+        expect(evaluarElegibilidadPlantilla(semicelestial, { ...crearContextoBase(), nivelesClase: 0 }).estado).toBe("eligible");
+        const conNivel = evaluarElegibilidadPlantilla(semicelestial, { ...crearContextoBase(), nivelesClase: 3 });
+        expect(conNivel.estado).toBe("blocked_failed");
+        expect(conNivel.razones).toContain("Una plantilla de nacimiento solo se elige antes del primer nivel de clase");
+    });
+
+    it("el Manual de monstruos no limita las plantillas heredadas: se puede añadir otra", () => {
+        const semidragon = crearPlantillaMock({ Id: 6, Nombre: "Semidragón", Nacimiento: true });
+        const ctx = { ...crearContextoBase(), seleccionadas: [{ Id: 1, Nombre: "Celestial", Nacimiento: true }] };
+
+        expect(evaluarElegibilidadPlantilla(semidragon, ctx).estado).toBe("eligible");
+    });
+
+    it("el liche pide nivel de lanzador 11 y Fabricar objeto maravilloso (MM 1, pág. 182)", () => {
+        const liche = crearPlantillaMock({
+            Id: 4,
+            Nombre: "Liche",
+            Prerrequisitos_flags: { nivel_lanzador: true, dote: true },
+            Prerrequisitos: {
+                ...crearPlantillaMock().Prerrequisitos,
+                nivel_lanzador: [{ Nivel: 11, Opcional: 0, Frase: "Lanzador de conjuros de nivel 11" }],
+                dote: [{ Id_dote_prerrequisito: 335, Dote_prerrequisito: "Fabricar objeto maravilloso", Opcional: 0, Frase: "Fabricar objeto maravilloso" }],
+            },
+        });
+        const fabricar = [{ id: 335, nombre: "Fabricar objeto maravilloso" }];
+
+        expect(evaluarElegibilidadPlantilla(liche, { ...crearContextoBase(), nivelLanzador: 11, dotes: fabricar }).estado).toBe("eligible");
+        expect(evaluarElegibilidadPlantilla(liche, { ...crearContextoBase(), nivelLanzador: 10, dotes: fabricar }).estado).toBe("blocked_failed");
+        expect(evaluarElegibilidadPlantilla(liche, { ...crearContextoBase(), nivelLanzador: 11, dotes: [] }).estado).toBe("blocked_failed");
+    });
+
+    it("semicelestial: alineamiento no maligno (actitud prohibida, MM 1, pág. 237)", () => {
+        const semicelestial = crearPlantillaMock({
+            Id: 5,
+            Nombre: "Semicelestial",
+            Prerrequisitos_flags: { actitud_prohibido: true },
+            Prerrequisitos: {
+                ...crearPlantillaMock().Prerrequisitos,
+                actitud_prohibido: [{ Id_actitud: 5, Actitud: "Maligno", Opcional: 0, Frase: "Cualquier alineamiento no maligno" }],
+            },
+        });
+
+        expect(evaluarElegibilidadPlantilla(semicelestial, { ...crearContextoBase(), alineamiento: "Neutral autentico" }).estado).toBe("eligible");
+        expect(evaluarElegibilidadPlantilla(semicelestial, { ...crearContextoBase(), alineamiento: "Neutral maligno" }).estado).toBe("blocked_failed");
+    });
+
+    it("una segunda plantilla de licántropo se reconoce por sus DG de animal (`Licantronia_dg`), no por el nombre", () => {
+        const hombreLobo = crearPlantillaMock({ Id: 10, Nombre: "Hombre lobo", Licantronia_dg: { Id_dado: 3, Dado: "d8", Multiplicador: 2, Suma: 0 } });
+        const ctx = { ...crearContextoBase(), seleccionadas: [{ Id: 12, Nombre: "Licántropo (camello) [Nacido]", Nacimiento: true, Licantropia: true }] };
+
+        const res = evaluarElegibilidadPlantilla(hombreLobo, ctx);
+        expect(res.estado).toBe("blocked_failed");
+        expect(res.razones).toContain("Ya hay una plantilla licantropa seleccionada");
+        expect(simularEstadoPlantillas({ Id: 11, Nombre: "Humanoide" } as any, [hombreLobo]).licantropiaActiva).toBeTrue();
+    });
+
+    it("el alineamiento requerido de una plantilla se compara con el básico, no con la combinación", () => {
+        const plantilla = crearPlantillaMock({
+            Prerrequisitos_flags: { alineamiento_requerido: true },
+            Prerrequisitos: {
+                ...crearPlantillaMock().Prerrequisitos,
+                alineamiento_requerido: [{ Id_alineamiento: 3, Id_alineamiento_basico: 1, Alineamiento_basico: "Legal bueno", Opcional: 0 }],
+            },
+        });
+
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), alineamiento: "Legal bueno" }).estado).toBe("eligible");
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), alineamiento: "Legal maligno" }).estado).toBe("blocked_failed");
+    });
+});
 
 describe("plantilla-elegibilidad", () => {
     it("marca blocked_failed si falla un prerequisito obligatorio (opcional 0)", () => {

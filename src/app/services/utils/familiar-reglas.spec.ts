@@ -76,7 +76,7 @@ describe('familiar-reglas', () => {
 
         const clases: Clase[] = [
             crearClaseConEspeciales(10, 'Mago', {
-                1: [{ Especial: { Id: 47, Nombre: 'Convocar a un familiar' } }],
+                1: [{ Especial: { Id: 47, Nombre: 'Convocar a un familiar', Otorga_familiar: true } }],
                 2: [{ Especial: { Id: 999, Nombre: 'Otro especial' } }],
             }),
             crearClaseConEspeciales(11, 'Guerrero', {
@@ -102,10 +102,10 @@ describe('familiar-reglas', () => {
         });
         const clases: Clase[] = [
             crearClaseConEspeciales(10, 'Mago', {
-                1: [{ Especial: { Id: 47, Nombre: 'Convocar a un familiar' } }],
+                1: [{ Especial: { Id: 47, Nombre: 'Convocar a un familiar', Otorga_familiar: true } }],
             }),
             crearClaseConEspeciales(12, 'Brujo', {
-                2: [{ Especial: { Nombre: 'Convocar a un familiar' } }],
+                2: [{ Especial: { Nombre: 'Convocar a un familiar', Otorga_familiar: true } }],
             }),
         ];
 
@@ -121,7 +121,6 @@ describe('familiar-reglas', () => {
 
     it('filtra familiares por plantilla, nivel, alineamiento y homebrew', () => {
         const estado: EstadoCuposFamiliar = {
-            especialId: 47,
             fuentes: [{ idClase: 10, nombreClase: 'Mago', nivelActual: 5 }],
             fuentesClaseIds: [10],
             fuentesTotales: 1,
@@ -190,7 +189,6 @@ describe('familiar-reglas', () => {
 
     it('considera elegible nivel 0 en familiar basico (paridad escritorio)', () => {
         const estado: EstadoCuposFamiliar = {
-            especialId: 47,
             fuentes: [{ idClase: 10, nombreClase: 'Mago', nivelActual: 1 }],
             fuentesClaseIds: [10],
             fuentesTotales: 1,
@@ -221,7 +219,6 @@ describe('familiar-reglas', () => {
 
     it('bloquea una plantilla de familiar si falta la dote indicada en Niveles_clase', () => {
         const estado: EstadoCuposFamiliar = {
-            especialId: 47,
             fuentes: [{ idClase: 10, nombreClase: 'Mago', nivelActual: 3 }],
             fuentesClaseIds: [10],
             fuentesTotales: 1,
@@ -254,7 +251,6 @@ describe('familiar-reglas', () => {
 
     it('permite una plantilla de familiar cuando el personaje ya tiene su dote habilitadora', () => {
         const estado: EstadoCuposFamiliar = {
-            especialId: 47,
             fuentes: [{ idClase: 10, nombreClase: 'Mago', nivelActual: 3 }],
             fuentesClaseIds: [10],
             fuentesTotales: 1,
@@ -286,7 +282,6 @@ describe('familiar-reglas', () => {
 
     it('deduplica por Id_familiar + Plantilla.Id', () => {
         const estado: EstadoCuposFamiliar = {
-            especialId: 47,
             fuentes: [{ idClase: 10, nombreClase: 'Mago', nivelActual: 3 }],
             fuentesClaseIds: [10],
             fuentesTotales: 1,
@@ -349,7 +344,6 @@ describe('familiar-reglas', () => {
 
     it('muestra motivo de alineamiento explícito aunque no haya fuentes de clase actuales', () => {
         const estado: EstadoCuposFamiliar = {
-            especialId: 47,
             fuentes: [],
             fuentesClaseIds: [],
             fuentesTotales: 0,
@@ -383,7 +377,6 @@ describe('familiar-reglas', () => {
 
     it('detalla exigencias de alineamiento cuando viene por preferencias de clase', () => {
         const estado: EstadoCuposFamiliar = {
-            especialId: 47,
             fuentes: [{ idClase: 9, nombreClase: 'Mago', nivelActual: 3 }],
             fuentesClaseIds: [9],
             fuentesTotales: 1,

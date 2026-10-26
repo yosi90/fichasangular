@@ -52,6 +52,7 @@ import { NuevaEspecialComponent } from '../../shared/nueva-especial/nueva-especi
 import { NuevaClaseComponent } from '../../shared/nueva-clase/nueva-clase.component';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
+import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { EntradaEquipo, TipoCatalogoEquipo } from 'src/app/interfaces/equipo';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { claveEntradaEquipo, claveEquipo, etiquetaEntradaEquipo, tipoDeListaEquipo } from '../../shared/listado-equipo/listas-equipo';
@@ -2050,7 +2051,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     abrirDetallesDeidadPorNombre(nombreDeidad: string) {
         const nombre = `${nombreDeidad ?? ''}`.trim();
         const nombreNormalizado = normalizarTexto(nombre);
-        if (nombreNormalizado.length < 1 || nombreNormalizado === 'no tener deidad')
+        if (esSinDeidad(nombreNormalizado))
             return;
 
         const abierta = this.detallesDeidadAbiertos.find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNormalizado);

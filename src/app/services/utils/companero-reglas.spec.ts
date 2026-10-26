@@ -77,7 +77,7 @@ describe('companero-reglas', () => {
 
         const clases: Clase[] = [
             crearClaseConEspeciales(5, 'Druida', {
-                1: [{ Especial: { Id: 29, Nombre: 'Compañero animal' } }],
+                1: [{ Especial: { Id: 29, Nombre: 'Compañero animal', Otorga_companero: true } }],
             }),
             crearClaseConEspeciales(11, 'Guerrero', {
                 1: [{ Especial: { Id: 5, Nombre: 'Dote adicional' } }],
@@ -102,13 +102,13 @@ describe('companero-reglas', () => {
         });
         const clases: Clase[] = [
             crearClaseConEspeciales(5, 'Druida', {
-                1: [{ Especial: { Id: 29, Nombre: 'Compañero animal' } }],
+                1: [{ Especial: { Id: 29, Nombre: 'Compañero animal', Otorga_companero: true } }],
             }),
             crearClaseConEspeciales(6, 'Ranger', {
-                1: [{ Especial: { Nombre: 'Compañero animal' } }],
+                1: [{ Especial: { Nombre: 'Compañero animal', Otorga_companero: true } }],
             }),
             crearClaseConEspeciales(30, 'Bestiario', {
-                1: [{ Especial: { Id: 29, Nombre: 'Compañero animal' } }],
+                1: [{ Especial: { Id: 29, Nombre: 'Compañero animal', Otorga_companero: true } }],
             }),
         ];
 
@@ -121,7 +121,6 @@ describe('companero-reglas', () => {
 
     it('filtra companeros por plantilla, dote, nivel, alineamiento y homebrew', () => {
         const estado: EstadoCuposCompanero = {
-            especialId: 29,
             fuentes: [{ idClase: 5, nombreClase: 'Druida', nivelActual: 6 }],
             fuentesClaseIds: [5],
             fuentesTotales: 1,
@@ -206,7 +205,6 @@ describe('companero-reglas', () => {
 
     it('expone niveles disponibles para la plantilla seleccionada', () => {
         const estado: EstadoCuposCompanero = {
-            especialId: 29,
             fuentes: [{ idClase: 5, nombreClase: 'Druida', nivelActual: 6 }],
             fuentesClaseIds: [5],
             fuentesTotales: 1,
@@ -273,7 +271,6 @@ describe('companero-reglas', () => {
 
     it('deduplica por Id_companero + Plantilla.Id', () => {
         const estado: EstadoCuposCompanero = {
-            especialId: 29,
             fuentes: [{ idClase: 5, nombreClase: 'Druida', nivelActual: 6 }],
             fuentesClaseIds: [5],
             fuentesTotales: 1,
@@ -311,7 +308,6 @@ describe('companero-reglas', () => {
 
     it('muestra motivo de alineamiento explícito aunque no haya fuentes de clase actuales', () => {
         const estado: EstadoCuposCompanero = {
-            especialId: 29,
             fuentes: [],
             fuentesClaseIds: [],
             fuentesTotales: 0,
@@ -348,7 +344,6 @@ describe('companero-reglas', () => {
 
     it('detalla exigencias de alineamiento cuando viene por preferencias de clase', () => {
         const estado: EstadoCuposCompanero = {
-            especialId: 29,
             fuentes: [{ idClase: 5, nombreClase: 'Druida', nivelActual: 4 }],
             fuentesClaseIds: [5],
             fuentesTotales: 1,

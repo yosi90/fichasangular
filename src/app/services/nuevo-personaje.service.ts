@@ -26,7 +26,7 @@ import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeCreateMascotasDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
-import { buildIdentidadPrerrequisitos, clavesDeEntidades } from './utils/identidad-prerrequisitos';
+import { ClaveEntidadPrerrequisito, buildIdentidadPrerrequisitos, clavesDeEntidades } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
 import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
@@ -76,6 +76,8 @@ import { bonosSinergia } from './utils/habilidades-bonos';
 import { textoAtaqueBase } from './utils/ataque-base';
 import { textoConSigno } from './utils/equipo-texto';
 import { Tamano } from '../interfaces/tamaño';
+import { ElementoConTipoArma, armasDeGrupos, competenciasDeDotes } from './utils/competencias-armas';
+import { DEIDAD_SIN_SELECCION, esSinDeidad } from './utils/deidad-seleccion';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -230,7 +232,7 @@ const SALVACION_POR_ID: Record<number, SalvacionKey> = { 1: 'fortaleza', 2: 'ref
 const EXTRA_IDIOMAS_INICIALES = 0;
 const GENERADOR_AUTO_Q4_THRESHOLD = 1;
 const DOTE_FAMILIAR_ID = 17;
-const ESPECIAL_FAMILIAR_CONVOCAR_ID = 47;
+
 const ESPECIALES_BONUS_FAMILIAR_FIJOS = [81, 82];
 const ESPECIAL_BONUS_FAMILIAR_MENSAJERO = 83;
 const ESPECIAL_BONUS_FAMILIAR_HECHIZO = 87;
@@ -897,6 +899,7 @@ interface NuevoPersonajeDraftV1 {
     aumentosProgresionConcedidos: number;
     secuenciaAumentoPendiente: number;
     bonusNivelLanzadorPorClase: Record<string, number>;
+    clasesCerradasPorMulticlase?: string[];
     progresionLanzadorSelecciones?: PersonajeProgresionLanzadorSeleccionDto[];
     idsEspecialesInternosActivos: number[];
     idsDotesInternosActivos: number[];
@@ -938,6 +941,9 @@ export class NuevoPersonajeService {
     private catalogoArmasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoArmadurasDotes: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }> = [];
     private catalogoGruposArmasDotes: { Id: number; Nombre: string; }[] = [];
+    /** Las armas con su tipo y los grupos con el tipo que cubren: para expandir la competencia con un grupo (MJ cap. 5). */
+    private catalogoArmasConTipo: ElementoConTipoArma[] = [];
+    private catalogoGruposArmasConTipo: ElementoConTipoArma[] = [];
     private catalogoGruposArmadurasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoEscuelasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoConjuros: Conjuro[] = [];
@@ -946,6 +952,11 @@ export class NuevoPersonajeService {
     private catalogoRegiones: RegionDetalle[] = [];
     private catalogoDeidades: DeidadDetalle[] = [];
     private bonusNivelLanzadorPorClase: Record<string, number> = {};
+    /**
+     * Las clases con `Multiclase_restringida` (monje y paladín, MJ cap. 3) en las que ya no puede subir: el personaje ganó
+     * un nivel de otra clase después de tenerlas. Por su nombre normalizado, como `desgloseClases`.
+     */
+    private clasesCerradasPorMulticlase = new Set<string>();
     private progresionLanzadorSelecciones: PersonajeProgresionLanzadorSeleccionDto[] = [];
     private idsEspecialesInternosActivos = new Set<number>();
     private idsDotesInternosActivos = new Set<number>();
@@ -1022,6 +1033,38 @@ export class NuevoPersonajeService {
         if (selecciones.length < 1)
             return null;
         return { selecciones };
+    }
+
+    /**
+     * Lo que piden los requisitos de las plantillas además de las características y el tipo: los niveles de clase que ya
+     * tiene (las de nacimiento, solo antes del primero), su nivel de lanzador arcano o divino más alto y sus dotes (el
+     * liche, MM 1: lanzador de nivel 11 con Fabricar objeto maravilloso).
+     */
+    getContextoRequisitosPlantillas(): { nivelesClase: number; nivelLanzador: number; dotes: ClaveEntidadPrerrequisito[]; } {
+        return {
+            nivelesClase: Math.max(0, this.getNivelClasesActual()),
+            nivelLanzador: Math.max(this.resolverNivelLanzadorMaximoPorTipo('arcano'), this.resolverNivelLanzadorMaximoPorTipo('divino')),
+            dotes: clavesDeEntidades([
+                ...(this.personajeCreacion?.DotesContextuales ?? []).map((item) => item?.Dote),
+                ...(this.personajeCreacion?.Dotes ?? []),
+            ]),
+        };
+    }
+
+    /**
+     * Los idiomas adicionales por Inteligencia que puede elegir (MJ cap. 2): cualquiera no secreto si su raza lo permite
+     * (`Idiomas_adicionales_cualquiera`, el humano); si no, los de la lista de su raza más los que añaden sus clases
+     * (clérigo: abisal, celestial e infernal; druida: silvano; mago: dracónico).
+     */
+    filtrarIdiomasAdicionalesPermitidos(catalogo: IdiomaDetalle[]): IdiomaDetalle[] {
+        const raza = this.razaSeleccionada;
+        if (!raza || raza.Idiomas_adicionales_cualquiera !== false)
+            return catalogo;
+        const permitidos = new Set<number>((raza.Idiomas_adicionales ?? []).map((idioma) => toNumber(idioma?.Id)));
+        (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) =>
+            (this.obtenerClaseCatalogoPorNombre(entrada?.Nombre ?? '')?.Idiomas_adicionales ?? [])
+                .forEach((idioma) => permitidos.add(toNumber(idioma?.Id))));
+        return (catalogo ?? []).filter((idioma) => permitidos.has(toNumber(idioma?.Id)));
     }
 
     getNivelesLanzadorPersistibles(): PersonajeNivelLanzadorResumen[] {
@@ -1202,6 +1245,7 @@ export class NuevoPersonajeService {
         this.idsDotesInternosActivos.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
+        this.clasesCerradasPorMulticlase.clear();
         this.progresionLanzadorSelecciones = [];
         this.dotesPendientes = [];
         this.secuenciaDotePendiente = 1;
@@ -1319,6 +1363,7 @@ export class NuevoPersonajeService {
         this.firmasDotesPlantillaAplicadas.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
+        this.clasesCerradasPorMulticlase.clear();
         this.progresionLanzadorSelecciones = [];
         this.aumentosPendientesCaracteristica = [];
         this.aumentosProgresionConcedidos = 0;
@@ -1477,16 +1522,18 @@ export class NuevoPersonajeService {
         this.catalogoDotes = [...(dotes ?? [])];
     }
 
-    setCatalogoArmasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
+    setCatalogoArmasDotes(catalogo: Array<{ Id: number; Nombre: string; Id_tipo_arma?: number | null; }>): void {
         this.catalogoArmasDotes = this.normalizarCatalogoExtras(catalogo);
+        this.catalogoArmasConTipo = [...(catalogo ?? [])];
     }
 
     setCatalogoArmadurasDotes(catalogo: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }>): void {
         this.catalogoArmadurasDotes = this.normalizarCatalogoExtras(catalogo);
     }
 
-    setCatalogoGruposArmasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
+    setCatalogoGruposArmasDotes(catalogo: Array<{ Id: number; Nombre: string; Id_tipo_arma?: number | null; }>): void {
         this.catalogoGruposArmasDotes = this.normalizarCatalogoExtras(catalogo);
+        this.catalogoGruposArmasConTipo = [...(catalogo ?? [])];
     }
 
     setCatalogoGruposArmadurasDotes(catalogo: Array<{ Id: number; Nombre: string; }>): void {
@@ -1521,6 +1568,13 @@ export class NuevoPersonajeService {
             return {
                 estado: 'blocked_failed',
                 razones: ['Nivel máximo alcanzado para esta clase'],
+                advertencias: [],
+            };
+        }
+        if (this.clasesCerradasPorMulticlase.has(normalizarTexto(clase?.Nombre ?? ''))) {
+            return {
+                estado: 'blocked_failed',
+                razones: [`Tras ganar un nivel de otra clase ya no puede volver a subir de ${`${clase?.Nombre ?? ''}`.trim().toLowerCase()}`],
                 advertencias: [],
             };
         }
@@ -2463,16 +2517,12 @@ export class NuevoPersonajeService {
 
         listaEspeciales.forEach((especialNivel) => {
             const especial = (especialNivel?.Especial ?? {}) as Record<string, any>;
-            const nombreEspecial = normalizarTexto(`${especial?.['Nombre'] ?? especial?.['nombre'] ?? ''}`);
-            if (nombreEspecial !== normalizarTexto('Dote adicional'))
+            // El especial que da una dote adicional lo dice la API (`Otorga_dote`); el tipo de dote va en el extra.
+            if (!toBoolean(especial?.['Otorga_dote']))
                 return;
 
             const extra = `${especialNivel?.Extra ?? ''}`.trim();
-            const tipoPermitido = normalizarTexto(extra) === normalizarTexto('No aplica')
-                || extra.length < 1
-                ? null
-                : extra;
-            creadas.push(this.crearDotePendiente('adicional', origenNormalizado, tipoPermitido));
+            creadas.push(this.crearDotePendiente('adicional', origenNormalizado, extra.length > 0 ? extra : null));
         });
 
         if (creadas.length < 1)
@@ -3129,7 +3179,9 @@ export class NuevoPersonajeService {
             return !repetidaContextual && !repetidaLegacy;
         }
 
-        if (toBoolean(dote?.Repetible))
+        // `Repetible_comb`: se repite con una combinación nueva que no es un extra del catálogo (Maestría en conjuros,
+        // MJ cap. 5: otros conjuros cada vez).
+        if (toBoolean(dote?.Repetible) || toBoolean(dote?.Repetible_comb))
             return true;
 
         return false;
@@ -3293,7 +3345,9 @@ export class NuevoPersonajeService {
             ? regionNombreRaw
             : (regionIdContexto === 0 ? 'Sin región' : this.resolverNombreRegionPorId(regionIdResuelto));
         const nombreEscuelaEspecialista = `${this.personajeCreacion?.Escuela_especialista?.Nombre ?? ''}`.trim();
-        const nivelTotal = nivelesClase.reduce((acc, clase) => acc + Math.max(0, toNumber(clase?.nivel)), 0);
+        // El nivel de personaje de `nivel` y `nivel_max` (Liderazgo): niveles de clase más DG raciales y de plantilla, sin
+        // el ajuste de nivel (decisión del propietario del 2026-10-26, GDM págs. 106-107 y MM pág. 290).
+        const nivelTotal = this.getNivelEfectivoParaAumentos();
         const nivelLanzadorArcano = this.resolverNivelLanzadorMaximoPorTipo('arcano');
         const nivelLanzadorDivino = this.resolverNivelLanzadorMaximoPorTipo('divino');
         const nivelLanzadorPsionico = this.resolverNivelLanzadorMaximoPorTipo('psionico');
@@ -3675,6 +3729,11 @@ export class NuevoPersonajeService {
         return resultado;
     }
 
+    /**
+     * Las armas con las que es competente el personaje: las de sus clases, su raza y sus dotes (Competencia con arma
+     * marcial: la elegida) y todas las del tipo de cada grupo con el que es competente (MJ cap. 5: «todas las armas
+     * marciales» da competencia con cada arma marcial). Lo comparan los prerrequisitos `competencia_arma`.
+     */
     private resolverCompetenciasArmasActuales(): Array<{ id: number | null; nombre: string; }> {
         return this.fusionarCompetenciasActuales(
             this.resolverCompetenciasClaseActuales(
@@ -3682,11 +3741,16 @@ export class NuevoPersonajeService {
                 ['Id', 'id', 'Id_arma', 'id_arma'],
                 ['Nombre', 'nombre', 'Arma', 'arma']
             ),
-            this.resolverCompetenciasDirectasPersonajeActuales(
-                this.personajeCreacion?.competencia_arma,
-                ['Id', 'id', 'Id_arma', 'id_arma'],
-                ['Nombre', 'nombre', 'Arma', 'arma']
-            )
+            [
+                ...this.resolverCompetenciasDirectasPersonajeActuales(
+                    this.personajeCreacion?.competencia_arma,
+                    ['Id', 'id', 'Id_arma', 'id_arma'],
+                    ['Nombre', 'nombre', 'Arma', 'arma']
+                ),
+                ...clavesDeEntidades(this.razaSeleccionada?.Competencias?.Armas),
+                ...competenciasDeDotes(this.personajeCreacion?.DotesContextuales).armas,
+                ...armasDeGrupos(this.resolverCompetenciasGrupoArmasActuales(), this.catalogoGruposArmasConTipo, this.catalogoArmasConTipo),
+            ]
         );
     }
 
@@ -3697,11 +3761,14 @@ export class NuevoPersonajeService {
                 ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
                 ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma']
             ),
-            this.resolverCompetenciasDirectasPersonajeActuales(
-                this.personajeCreacion?.competencia_armadura,
-                ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
-                ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma']
-            )
+            [
+                ...this.resolverCompetenciasDirectasPersonajeActuales(
+                    this.personajeCreacion?.competencia_armadura,
+                    ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
+                    ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma']
+                ),
+                ...clavesDeEntidades(this.razaSeleccionada?.Competencias?.Armaduras),
+            ]
         );
     }
 
@@ -3712,11 +3779,15 @@ export class NuevoPersonajeService {
                 ['Id', 'id', 'Id_grupo', 'id_grupo'],
                 ['Nombre', 'nombre', 'Grupo', 'grupo']
             ),
-            this.resolverCompetenciasDirectasPersonajeActuales(
-                this.personajeCreacion?.competencia_grupo_arma,
-                ['Id', 'id', 'Id_grupo', 'id_grupo'],
-                ['Nombre', 'nombre', 'Grupo', 'grupo']
-            )
+            [
+                ...this.resolverCompetenciasDirectasPersonajeActuales(
+                    this.personajeCreacion?.competencia_grupo_arma,
+                    ['Id', 'id', 'Id_grupo', 'id_grupo'],
+                    ['Nombre', 'nombre', 'Grupo', 'grupo']
+                ),
+                ...clavesDeEntidades(this.razaSeleccionada?.Competencias?.Grupos_arma),
+                ...competenciasDeDotes(this.personajeCreacion?.DotesContextuales).grupos,
+            ]
         );
     }
 
@@ -3727,11 +3798,14 @@ export class NuevoPersonajeService {
                 ['Id', 'id', 'Id_grupo', 'id_grupo'],
                 ['Nombre', 'nombre', 'Grupo', 'grupo']
             ),
-            this.resolverCompetenciasDirectasPersonajeActuales(
-                this.personajeCreacion?.competencia_grupo_armadura,
-                ['Id', 'id', 'Id_grupo', 'id_grupo'],
-                ['Nombre', 'nombre', 'Grupo', 'grupo']
-            )
+            [
+                ...this.resolverCompetenciasDirectasPersonajeActuales(
+                    this.personajeCreacion?.competencia_grupo_armadura,
+                    ['Id', 'id', 'Id_grupo', 'id_grupo'],
+                    ['Nombre', 'nombre', 'Grupo', 'grupo']
+                ),
+                ...clavesDeEntidades(this.razaSeleccionada?.Competencias?.Grupos_armadura),
+            ]
         );
     }
 
@@ -4623,6 +4697,7 @@ export class NuevoPersonajeService {
             };
         }
 
+        this.cerrarClasesPorMulticlase(clase);
         this.actualizarDesgloseClase(clase, siguienteNivel);
         this.aplicarDeltaAtaqueBaseClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
         this.recalcularDerivadasPorCombate();
@@ -6359,6 +6434,21 @@ export class NuevoPersonajeService {
         return this.obtenerDetalleNivelClase(clase, nivelClase);
     }
 
+    /**
+     * MJ cap. 3, monje y paladín: quien gana un nivel de otra clase ya no puede volver a subir la suya. Antes de aplicar
+     * un nivel de `clase`, cierra las que ya tiene con `Multiclase_restringida` (un dato de la clase, no su nombre).
+     */
+    private cerrarClasesPorMulticlase(clase: Clase): void {
+        const nombreNuevo = normalizarTexto(clase?.Nombre ?? '');
+        (this.personajeCreacion.desgloseClases ?? []).forEach((entrada) => {
+            const nombre = normalizarTexto(entrada?.Nombre ?? '');
+            if (nombre.length < 1 || nombre === nombreNuevo || toNumber(entrada?.Nivel) < 1)
+                return;
+            if (this.obtenerClaseCatalogoPorNombre(entrada.Nombre)?.Multiclase_restringida === true)
+                this.clasesCerradasPorMulticlase.add(nombre);
+        });
+    }
+
     private actualizarDesgloseClase(clase: Clase, nivel: number): void {
         const nombre = `${clase?.Nombre ?? ''}`.trim();
         if (nombre.length < 1)
@@ -6654,6 +6744,8 @@ export class NuevoPersonajeService {
 
     /** La deidad elegida del catálogo; sin deidad (la fila de relleno no está en el catálogo), `null`. */
     private obtenerDeidadSeleccionada(): DeidadDetalle | null {
+        if (esSinDeidad(this.personajeCreacion.Deidad))
+            return null;
         const deidadNorm = normalizarTexto(this.personajeCreacion.Deidad ?? '');
         if (deidadNorm.length < 1)
             return null;
@@ -7829,69 +7921,6 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Conjuros.push(conjuro);
     }
 
-    private aplicarConjurosNivelClase(
-        clase: Clase,
-        nivel: number,
-        detalleSiguiente: ClaseNivelDetalle,
-        detalleAnterior: ClaseNivelDetalle | null
-    ): void {
-        const refsDisponibles = this.obtenerConjurosDisponiblesNivelClase(clase, detalleSiguiente);
-        if (refsDisponibles.length < 1)
-            return;
-
-        if (clase?.Conjuros?.Conocidos_total) {
-            const objetivoActual = Math.max(0, toNumber(detalleSiguiente?.Conjuros_conocidos_total));
-            const objetivoAnterior = detalleAnterior
-                ? Math.max(0, toNumber(detalleAnterior?.Conjuros_conocidos_total))
-                : 0;
-            const delta = objetivoActual - objetivoAnterior;
-            if (delta <= 0)
-                return;
-
-            const candidatos = refsDisponibles
-                .filter((ref) => !this.esConjuroYaConocidoPorClase(clase.Nombre, toNumber(ref?.Id)));
-            candidatos.slice(0, delta).forEach((ref) => this.agregarConjuroConocidoClase(clase, ref, nivel));
-            return;
-        }
-
-        if (clase?.Conjuros?.Conocidos_nivel_a_nivel) {
-            const actuales = this.normalizarMapaConjurosPorNivel(detalleSiguiente?.Conjuros_conocidos_nivel_a_nivel);
-            const previos = this.normalizarMapaConjurosPorNivel(detalleAnterior?.Conjuros_conocidos_nivel_a_nivel);
-            Object.keys(actuales)
-                .map((key) => toNumber(key))
-                .filter((nivelConjuro) => Number.isFinite(nivelConjuro) && nivelConjuro >= 0)
-                .sort((a, b) => a - b)
-                .forEach((nivelConjuro) => {
-                    const actual = toNumber(actuales[nivelConjuro]);
-                    const previo = toNumber(previos[nivelConjuro]);
-                    const delta = actual - previo;
-                    if (delta <= 0)
-                        return;
-
-                    const candidatosNivel = refsDisponibles
-                        .filter((ref) => toNumber(ref?.Nivel) === nivelConjuro)
-                        .filter((ref) => !this.esConjuroYaConocidoPorClase(clase.Nombre, toNumber(ref?.Id)));
-                    candidatosNivel.slice(0, delta).forEach((ref) => this.agregarConjuroConocidoClase(clase, ref, nivel));
-                });
-            return;
-        }
-
-        refsDisponibles
-            .filter((ref) => !this.esConjuroYaConocidoPorClase(clase.Nombre, toNumber(ref?.Id)))
-            .forEach((ref) => this.agregarConjuroConocidoClase(clase, ref, nivel));
-    }
-
-    private obtenerConjurosDisponiblesNivelClase(clase: Clase, detalleNivel: ClaseNivelDetalle): ClaseConjuroRef[] {
-        const acceso = this.resolverAccesoConjurosPorTipo(clase, detalleNivel, null);
-        if (acceso.errores.length > 0)
-            return [];
-        return (clase?.Conjuros?.Listado ?? [])
-            .filter((ref) => toNumber(ref?.Id) > 0 && `${ref?.Nombre ?? ''}`.trim().length > 0)
-            .filter((ref) => !acceso.nivelesAccesibles || acceso.nivelesAccesibles.has(toNumber(ref?.Nivel)))
-            .sort((a, b) => toNumber(a?.Nivel) - toNumber(b?.Nivel)
-                || compararTexto(a?.Nombre, b?.Nombre));
-    }
-
     private normalizarMapaConjurosPorNivel(mapa: Record<string, number> | undefined | null): Record<number, number> {
         const resultado: Record<number, number> = {};
         if (!mapa)
@@ -7938,15 +7967,6 @@ export class NuevoPersonajeService {
                 return true;
             return origenClase === claseNorm;
         });
-    }
-
-    private agregarConjuroConocidoClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): void {
-        const idConjuro = toInt(ref?.Id);
-        if (idConjuro <= 0 || this.esConjuroYaConocidoPorClase(clase.Nombre, idConjuro))
-            return;
-
-        const conjuro = this.crearConjuroPlaceholderDesdeClase(clase, ref, nivelClase);
-        this.personajeCreacion.Conjuros.push(conjuro);
     }
 
     private crearConjuroPlaceholderDesdeClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): Conjuro {
@@ -8629,6 +8649,7 @@ export class NuevoPersonajeService {
             aumentosProgresionConcedidos: Math.max(0, toInt(this.aumentosProgresionConcedidos)),
             secuenciaAumentoPendiente: Math.max(1, toInt(this.secuenciaAumentoPendiente)),
             bonusNivelLanzadorPorClase: this.clonarProfundo(this.bonusNivelLanzadorPorClase),
+            clasesCerradasPorMulticlase: Array.from(this.clasesCerradasPorMulticlase.values()),
             progresionLanzadorSelecciones: this.getProgresionLanzadorPersistible()?.selecciones ?? [],
             idsEspecialesInternosActivos: Array.from(this.idsEspecialesInternosActivos.values()),
             idsDotesInternosActivos: Array.from(this.idsDotesInternosActivos.values()),
@@ -8705,6 +8726,7 @@ export class NuevoPersonajeService {
         this.aumentosProgresionConcedidos = Math.max(0, toInt(borrador.aumentosProgresionConcedidos));
         this.secuenciaAumentoPendiente = Math.max(1, toInt(borrador.secuenciaAumentoPendiente));
         this.bonusNivelLanzadorPorClase = this.clonarProfundo(borrador.bonusNivelLanzadorPorClase ?? {});
+        this.clasesCerradasPorMulticlase = new Set((borrador.clasesCerradasPorMulticlase ?? []).map((nombre) => normalizarTexto(nombre)));
         this.progresionLanzadorSelecciones = this.normalizarSeleccionesProgresionLanzadorBorrador(
             borrador.progresionLanzadorSelecciones
         );
@@ -9958,17 +9980,8 @@ export class NuevoPersonajeService {
     }
 
     private resolverCaracteristicaPorIdOTexto(id: number, texto: string): CaracteristicaKey {
-        const map: Record<number, CaracteristicaKey> = {
-            1: 'Fuerza',
-            2: 'Destreza',
-            3: 'Constitucion',
-            4: 'Inteligencia',
-            5: 'Sabiduria',
-            6: 'Carisma',
-        };
-        if (map[id])
-            return map[id];
-        return this.resolverCaracteristicaPorTexto(texto);
+        // `Id_caracteristica`: del 1 al 6, en el orden de `CARACTERISTICAS`.
+        return CARACTERISTICAS[id - 1] ?? this.resolverCaracteristicaPorTexto(texto);
     }
 
     private resolverCaracteristicaPorTexto(texto: string): CaracteristicaKey {
@@ -10162,7 +10175,7 @@ export class NuevoPersonajeService {
             CaracteristicasVarios: this.crearCaracteristicasVariosVacias(),
             NEP: 0,
             Experiencia: 0,
-            Deidad: 'No tener deidad',
+            Deidad: DEIDAD_SIN_SELECCION,
             Alineamiento: 'Neutral autentico',
             Genero: 'Sin genero',
             Vida: 0,

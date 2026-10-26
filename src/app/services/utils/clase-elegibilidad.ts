@@ -1,6 +1,7 @@
 import { Clase } from "src/app/interfaces/clase";
+import { valorCaracteristicaPorId } from './caracteristicas';
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from "./identidad-prerrequisitos";
-import { getAlineamientoBasicoIdPorNombre } from "./alineamiento-contrato";
+import { cumpleActitud, getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from "./alineamiento-contrato";
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito } from './prerrequisito-frase';
 import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
@@ -137,45 +138,6 @@ function parseIdOpcional(entry: Record<string, any>, keys: string[]): number {
     return toInt(raw, Number.NaN);
 }
 
-function getStatById(
-    caracteristicas: ClaseEvaluacionContexto["caracteristicas"],
-    idCaracteristica: number
-): number {
-    if (idCaracteristica === 1)
-        return toNumber(caracteristicas.Fuerza);
-    if (idCaracteristica === 2)
-        return toNumber(caracteristicas.Destreza);
-    if (idCaracteristica === 3)
-        return toNumber(caracteristicas.Constitucion);
-    if (idCaracteristica === 4)
-        return toNumber(caracteristicas.Inteligencia);
-    if (idCaracteristica === 5)
-        return toNumber(caracteristicas.Sabiduria);
-    if (idCaracteristica === 6)
-        return toNumber(caracteristicas.Carisma);
-    return Number.NaN;
-}
-
-function cumpleActitud(actitudId: number, alineamientoBasicoId: number): boolean {
-    const esLegal = [1, 2, 3].includes(alineamientoBasicoId);
-    const esNeutralEje = [2, 4, 5, 6, 8].includes(alineamientoBasicoId);
-    const esCaotico = [7, 8, 9].includes(alineamientoBasicoId);
-    const esBueno = [1, 4, 7].includes(alineamientoBasicoId);
-    const esMaligno = [3, 6, 9].includes(alineamientoBasicoId);
-
-    if (actitudId === 1)
-        return esLegal;
-    if (actitudId === 2)
-        return esNeutralEje;
-    if (actitudId === 3)
-        return esCaotico;
-    if (actitudId === 4)
-        return esBueno;
-    if (actitudId === 5)
-        return esMaligno;
-    return false;
-}
-
 type EvaluacionItem = Omit<EvaluacionPrerrequisito, 'frase'>;
 
 function buildEvaluacionRaza(entry: Record<string, any>, ctx: ClaseEvaluacionContexto): EvaluacionItem {
@@ -245,7 +207,7 @@ function buildEvaluacionCaracteristica(entry: Record<string, any>, ctx: ClaseEva
     const grupoOpcional = parseOpcional(entry);
     const idCaracteristica = parseId(entry, ["Id_caracteristica", "id_caracteristica", "c", "Id", "id"]);
     const cantidad = toNumber(pick(entry, ["Cantidad", "cantidad", "Valor", "valor", "d"]), Number.NaN);
-    const actual = getStatById(ctx.caracteristicas, idCaracteristica);
+    const actual = valorCaracteristicaPorId(ctx.caracteristicas, idCaracteristica);
     const evaluable = idCaracteristica > 0 && Number.isFinite(cantidad) && Number.isFinite(actual);
     const cumple = evaluable ? actual >= cantidad : false;
     return {
@@ -275,9 +237,8 @@ function buildEvaluacionAlineamiento(
     prohibido: boolean
 ): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
-    const idAlineamiento = parseId(entry, ["Id_alineamiento", "id_alineamiento", "i", "Id", "id"]);
-    const nombreAlineamiento = parseNombre(entry, ["Alineamiento", "alineamiento", "Nombre", "nombre"]);
-    const requerido = idAlineamiento > 0 ? idAlineamiento : getAlineamientoBasicoIdPorNombre(nombreAlineamiento);
+    // El básico (1-9), no `Id_alineamiento` (la combinación): el legal bueno «siempre» es la combinación 3.
+    const requerido = idBasicoDePrerrequisitoAlineamiento(entry);
     const evaluable = requerido > 0 && alineamientoActualId > 0;
     const coincide = evaluable ? alineamientoActualId === requerido : false;
     const cumple = prohibido ? !coincide : coincide;
@@ -309,17 +270,8 @@ function buildEvaluacionActitud(
 
 function buildEvaluacionGenero(entry: Record<string, any>, generoActual: string): EvaluacionItem {
     const grupoOpcional = parseOpcional(entry);
-    const nombreGenero = parseNombre(entry, ["Genero", "genero", "Nombre", "nombre"]);
-    const idGenero = parseId(entry, ["Id_genero", "id_genero", "Id", "id"]);
-    const mapaGeneroPorId: Record<number, string> = {
-        1: "Macho",
-        2: "Hembra",
-        3: "Hermafrodita",
-        4: "Sin genero",
-    };
-    const requerido = normalizarTexto(
-        nombreGenero.length > 0 ? nombreGenero : (mapaGeneroPorId[idGenero] ?? "")
-    );
+    // El nombre del género lo da la API (`Genero_nombre`, de la tabla `genero`); `Genero` es su id.
+    const requerido = normalizarTexto(parseNombre(entry, ["Genero_nombre", "genero_nombre"]));
     const actual = normalizarTexto(generoActual);
     const evaluable = requerido.length > 0 && actual.length > 0;
     const cumple = evaluable ? actual === requerido : false;

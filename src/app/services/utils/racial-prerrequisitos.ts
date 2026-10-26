@@ -1,3 +1,4 @@
+import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import {
     IdentidadPrerrequisitos,
@@ -97,20 +98,9 @@ function parseCaracteristicaMinima(entry: Record<string, any>): number {
     return Number.isFinite(parsed) ? parsed : Number.NaN;
 }
 
+/** La característica de un `Id_caracteristica` (del 1 al 6, en el orden de `CARACTERISTICAS`), o vacío. */
 function caracteristicaNombreDesdeId(id: number): string {
-    if (id === 1)
-        return 'Fuerza';
-    if (id === 2)
-        return 'Destreza';
-    if (id === 3)
-        return 'Constitucion';
-    if (id === 4)
-        return 'Inteligencia';
-    if (id === 5)
-        return 'Sabiduria';
-    if (id === 6)
-        return 'Carisma';
-    return '';
+    return CARACTERISTICAS[id - 1] ?? '';
 }
 
 function normalizarCaracteristicaNombre(name: string): string {
