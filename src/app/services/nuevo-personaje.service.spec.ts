@@ -1616,6 +1616,23 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(payload.colecciones?.dotes).toContain(jasmine.objectContaining({ idDote: 63, origen: 'Asherati' }));
     });
 
+    it('los modificadores de las dotes de la raza se aplican una sola vez, aunque se recalculen las ventajas', () => {
+        const raza = crearRazaBase(crearTipoBase());
+        raza.Nombre = 'Ogro aplastacráneos';
+        raza.DotesContextuales = [{
+            Dote: { Id: 32, Nombre: 'Presa mejorada', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Modificadores: { Presa: 4, Fuerza: 2 } } as any,
+            Contexto: { Entidad: 'raza', Id_raza: 44, Id_extra: 0, Extra: '' },
+        }];
+        service.seleccionarRaza(raza);
+        service.recalcularEfectosVentajas();
+        service.recalcularEfectosVentajas();
+
+        const presa = service.PersonajeCreacion.Presa_varios.filter((mod: any) => mod.Origen === 'Dote: Presa mejorada');
+        const fuerza = service.PersonajeCreacion.CaracteristicasVarios.Fuerza.filter((mod) => mod.origen === 'Dote: Presa mejorada');
+        expect(presa.map((mod: any) => mod.Valor)).toEqual([4]);
+        expect(fuerza.map((mod) => mod.valor)).toEqual([2]);
+    });
+
     it('al elegir la raza (la primera vez o cambiándola) el personaje se queda con sus raciales', () => {
         const nuevo = new NuevoPersonajeService();
         nuevo.resetearCreacionNuevoPersonaje();

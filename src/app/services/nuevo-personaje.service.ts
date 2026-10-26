@@ -679,6 +679,20 @@ export interface AsignacionAumentoCaracteristica {
 }
 
 /** `raza`: la dote adicional de la raza (`Dotes_adicionales`, el humano); `raza_dg`: la de sus DG raciales. */
+/** Una dote que tienen todos los de la raza, con lo que se guarda de ella. */
+interface DoteDeRaza {
+    dote: Dote;
+    idExtra: number;
+    extra: string;
+    origen: string;
+}
+
+/** Dónde deja `aplicarModificadoresDote` lo que monta el recálculo de las ventajas. */
+interface DestinoModificadoresDote {
+    caracteristicasVarios: Record<CaracteristicaKey, { valor: number; origen: string; }[]>;
+    bonosHabilidades: Record<number, HabilidadBonoVario[]>;
+}
+
 export type DoteFuentePendiente = 'nivel' | 'adicional' | 'raza' | 'raza_dg';
 export type DoteEstadoPendiente = 'pendiente' | 'resuelta' | 'omitida';
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
@@ -3982,16 +3996,21 @@ export class NuevoPersonajeService {
         return agregadoLegacy || agregadoContextual;
     }
 
-    private aplicarModificadoresDote(dote: Dote, _origen: string, idExtra: number, extraTexto: string): void {
+    /**
+     * Sin `destino`, los modificadores van directos al personaje (dotes de nivel y de plantilla). Con él, las
+     * características y las habilidades van a lo que está montando el recálculo de las ventajas.
+     */
+    private aplicarModificadoresDote(dote: Dote, _origen: string, idExtra: number, extraTexto: string, destino?: DestinoModificadoresDote): void {
         const origen = `Dote: ${`${dote?.Nombre ?? ''}`.trim() || 'Sin nombre'}`;
         const mods = (dote?.Modificadores ?? {}) as Record<string, any>;
         const get = (clave: string): number => toNumber(mods?.[clave]);
+        const caracteristicasVarios = destino?.caracteristicasVarios ?? this.personajeCreacion.CaracteristicasVarios;
 
         CARACTERISTICAS.forEach((key) => {
             const valor = get(key);
             if (valor === 0)
                 return;
-            (this.personajeCreacion.CaracteristicasVarios[key] ?? []).push({
+            (caracteristicasVarios[key] ?? []).push({
                 valor,
                 origen,
             });
@@ -4028,7 +4047,7 @@ export class NuevoPersonajeService {
 
         const bonusHabilidad = get('Habilidad');
         if (bonusHabilidad !== 0)
-            this.aplicarModificadorHabilidadDesdeDote(dote, bonusHabilidad, origen, idExtra, extraTexto);
+            this.aplicarModificadorHabilidadDesdeDote(dote, bonusHabilidad, origen, idExtra, extraTexto, destino?.bonosHabilidades);
     }
 
     private aplicarModificadorHabilidadDesdeDote(
@@ -4036,7 +4055,8 @@ export class NuevoPersonajeService {
         valor: number,
         origen: string,
         idExtra: number,
-        extraTexto: string
+        extraTexto: string,
+        bonosHabilidades?: Record<number, HabilidadBonoVario[]>
     ): void {
         const requiereExtraHabilidad = toBoolean(dote?.Extras_soportados?.Extra_habilidad);
         const idObjetivo = requiereExtraHabilidad ? Math.max(0, toNumber(idExtra)) : 0;
@@ -4051,6 +4071,11 @@ export class NuevoPersonajeService {
         });
         if (!objetivo)
             return;
+        if (bonosHabilidades) {
+            const idObjetivoHabilidad = toNumber(objetivo.Id);
+            bonosHabilidades[idObjetivoHabilidad] = [...(bonosHabilidades[idObjetivoHabilidad] ?? []), { valor, origen }];
+            return;
+        }
 
         const bonos = Array.isArray(objetivo.Bonos_varios) ? [...objetivo.Bonos_varios] : [];
         bonos.push({
@@ -4879,6 +4904,7 @@ export class NuevoPersonajeService {
         const bonosHabilidades: Record<number, HabilidadBonoVario[]> = {};
         const pendientesOro: PendienteOroState[] = [];
         this.aplicarEfectosPlantillasFase2(caracteristicasVarios, nuevosRaciales, bonosHabilidades);
+        this.aplicarModificadoresDotesDeRaza({ caracteristicasVarios, bonosHabilidades });
 
         const todasLasSelecciones: Array<{ detalle: VentajaDetalle; seleccion: SeleccionVentajaState; claseOrigen: 'Ventaja' | 'Desventaja'; }> = [
             ...this.estadoFlujo.ventajas.seleccionDesventajas
@@ -5449,18 +5475,34 @@ export class NuevoPersonajeService {
 
     /**
      * Las dotes que tienen todos los de la raza (`raza_dotes`, como la Resistencia al calor del asherati), con la raza
-     * como origen: se guardan con el personaje y cuentan para los prerrequisitos. Sus modificadores no se aplican aquí:
-     * lo que dan a las habilidades ya viene en las habilidades de la raza.
+     * como origen. La dote es la del catálogo si está (con sus modificadores) y si no, la que trae la raza.
      */
-    private agregarDotesDeRaza(raza: Raza): void {
+    private resolverDotesDeRaza(raza: Raza | null): DoteDeRaza[] {
         const origen = `${raza?.Nombre ?? ''}`.trim() || 'Raza';
-        (raza?.DotesContextuales ?? []).forEach((entrada) => {
-            if (toNumber(entrada?.Dote?.Id) <= 0)
-                return;
-            const idExtra = toNumber(entrada?.Contexto?.Id_extra);
-            const extra = `${entrada?.Contexto?.Extra ?? ''}`.trim() || 'No aplica';
-            this.agregarDoteAlPersonaje(entrada.Dote, origen, idExtra, extra);
-        });
+        return (raza?.DotesContextuales ?? [])
+            .filter((entrada) => toNumber(entrada?.Dote?.Id) > 0)
+            .map((entrada) => ({
+                dote: this.catalogoDotes.find((item) => toNumber(item?.Id) === toNumber(entrada.Dote.Id)) ?? entrada.Dote,
+                idExtra: toNumber(entrada?.Contexto?.Id_extra),
+                extra: `${entrada?.Contexto?.Extra ?? ''}`.trim() || 'No aplica',
+                origen,
+            }));
+    }
+
+    /** Las dotes de la raza pasan al personaje: se guardan con él y cuentan para los prerrequisitos. */
+    private agregarDotesDeRaza(raza: Raza): void {
+        this.resolverDotesDeRaza(raza).forEach(({ dote, idExtra, extra, origen }) =>
+            this.agregarDoteAlPersonaje(dote, origen, idExtra, extra));
+    }
+
+    /**
+     * Los modificadores de las dotes de la raza, una sola vez: se aplican aquí, dentro del recálculo de las ventajas,
+     * que parte de cero (`resetearAplicacionesVentajas`), como las habilidades y salvaciones de la raza. Aplicados al
+     * elegir la raza, el recálculo los borraba; aplicados en los dos sitios, se contarían dos veces.
+     */
+    private aplicarModificadoresDotesDeRaza(destino: DestinoModificadoresDote): void {
+        this.resolverDotesDeRaza(this.razaSeleccionada).forEach(({ dote, idExtra, extra, origen }) =>
+            this.aplicarModificadoresDote(dote, origen, idExtra, extra, destino));
     }
 
     private aplicarDotesPlantilla(plantilla: Plantilla, origen: string): void {
