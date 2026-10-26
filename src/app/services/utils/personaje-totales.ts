@@ -1,5 +1,6 @@
 import { Personaje, PersonajeTotales } from 'src/app/interfaces/personaje';
 import { PersonajeParteDto, PersonajeTipoParteDto, PersonajeTotalDto } from 'src/app/interfaces/personajes-api';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { primerEntero, toArray, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 
 export type TipoSalvacion = 'fortaleza' | 'reflejos' | 'voluntad';
@@ -92,8 +93,7 @@ export function modificadoresDePartes(
 export function textoDesglose(total: PersonajeTotalDto | null | undefined, separador = '\n'): string {
     const linea = (parte: PersonajeParteDto, entreParentesis: string) => {
         const origen = `${parte?.origen ?? ''}`.trim() || ETIQUETA_TIPO[parte?.tipo] || 'Varios';
-        const valor = toNumber(parte?.valor);
-        return `${origen} ${valor >= 0 ? '+' : ''}${valor}${entreParentesis.length > 0 ? ` (${entreParentesis})` : ''}`;
+        return `${origen} ${textoConSigno(toNumber(parte?.valor))}${entreParentesis.length > 0 ? ` (${entreParentesis})` : ''}`;
     };
     // Lo condicional va detrás, con su condición, y no cuenta en el total.
     return [

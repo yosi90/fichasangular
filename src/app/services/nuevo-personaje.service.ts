@@ -63,6 +63,7 @@ import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from '
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
 import { bonosSinergia } from './utils/habilidades-bonos';
 import { textoAtaqueBase } from './utils/ataque-base';
+import { textoConSigno } from './utils/equipo-texto';
 import { Tamano } from '../interfaces/tamaño';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
@@ -4285,7 +4286,7 @@ export class NuevoPersonajeService {
         objetivo.Bonos_varios = bonos;
         objetivo.Rangos_varios = bonos.reduce((acc, bono) => acc + toNumber(bono?.valor), 0);
         objetivo.Varios = bonos
-            .map((bono) => `${bono?.origen ?? ''} ${toNumber(bono?.valor) >= 0 ? '+' : ''}${toNumber(bono?.valor)}`.trim())
+            .map((bono) => `${bono?.origen ?? ''} ${textoConSigno(toNumber(bono?.valor))}`.trim())
             .join(', ');
     }
 

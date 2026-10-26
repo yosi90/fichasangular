@@ -1,3 +1,4 @@
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { toInt } from 'src/app/services/utils/normalizacion';
 
 /**
@@ -14,5 +15,5 @@ export function textoAtaqueBase(ataqueBase: number): string {
     const ataques = [base];
     while (ataques.length < MAXIMO_ATAQUES_POR_ATAQUE_BASE && ataques[ataques.length - 1] - PASO_ATAQUE_ADICIONAL >= 1)
         ataques.push(ataques[ataques.length - 1] - PASO_ATAQUE_ADICIONAL);
-    return ataques.map((valor) => `${valor >= 0 ? '+' : ''}${valor}`).join('/');
+    return ataques.map(textoConSigno).join('/');
 }
