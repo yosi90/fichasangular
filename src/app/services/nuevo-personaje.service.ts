@@ -2475,16 +2475,12 @@ export class NuevoPersonajeService {
 
         listaEspeciales.forEach((especialNivel) => {
             const especial = (especialNivel?.Especial ?? {}) as Record<string, any>;
-            const nombreEspecial = normalizarTexto(`${especial?.['Nombre'] ?? especial?.['nombre'] ?? ''}`);
-            if (nombreEspecial !== normalizarTexto('Dote adicional'))
+            // El especial que da una dote adicional lo dice la API (`Otorga_dote`); el tipo de dote va en el extra.
+            if (!toBoolean(especial?.['Otorga_dote']))
                 return;
 
             const extra = `${especialNivel?.Extra ?? ''}`.trim();
-            const tipoPermitido = normalizarTexto(extra) === normalizarTexto('No aplica')
-                || extra.length < 1
-                ? null
-                : extra;
-            creadas.push(this.crearDotePendiente('adicional', origenNormalizado, tipoPermitido));
+            creadas.push(this.crearDotePendiente('adicional', origenNormalizado, extra.length > 0 ? extra : null));
         });
 
         if (creadas.length < 1)
@@ -3141,7 +3137,9 @@ export class NuevoPersonajeService {
             return !repetidaContextual && !repetidaLegacy;
         }
 
-        if (toBoolean(dote?.Repetible))
+        // `Repetible_comb`: se repite con una combinación nueva que no es un extra del catálogo (Maestría en conjuros,
+        // MJ cap. 5: otros conjuros cada vez).
+        if (toBoolean(dote?.Repetible) || toBoolean(dote?.Repetible_comb))
             return true;
 
         return false;
@@ -3305,7 +3303,9 @@ export class NuevoPersonajeService {
             ? regionNombreRaw
             : (regionIdContexto === 0 ? 'Sin región' : this.resolverNombreRegionPorId(regionIdResuelto));
         const nombreEscuelaEspecialista = `${this.personajeCreacion?.Escuela_especialista?.Nombre ?? ''}`.trim();
-        const nivelTotal = nivelesClase.reduce((acc, clase) => acc + Math.max(0, toNumber(clase?.nivel)), 0);
+        // El nivel de personaje de `nivel` y `nivel_max` (Liderazgo): niveles de clase más DG raciales y de plantilla, sin
+        // el ajuste de nivel (decisión del propietario del 2026-10-26, GDM págs. 106-107 y MM pág. 290).
+        const nivelTotal = this.getNivelEfectivoParaAumentos();
         const nivelLanzadorArcano = this.resolverNivelLanzadorMaximoPorTipo('arcano');
         const nivelLanzadorDivino = this.resolverNivelLanzadorMaximoPorTipo('divino');
         const nivelLanzadorPsionico = this.resolverNivelLanzadorMaximoPorTipo('psionico');
