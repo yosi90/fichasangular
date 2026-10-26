@@ -7,6 +7,7 @@ import { ManualReferenciaTipo } from 'src/app/interfaces/manual-referencia-naveg
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualReferenciaNavigationService } from 'src/app/services/manual-referencia-navigation.service';
 import { UserService } from 'src/app/services/user.service';
+import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 type SeccionManualKey = keyof ManualAsociados;
@@ -169,16 +170,17 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
         }
 
         const manual = this.manual;
-        // Las secciones y sus entradas, en un orden al azar cada vez que se abre (como antes, para descubrir).
-        const conDatos = this.seccionesBase.filter((seccion) => this.seccionIncluidaEnManual(manual, seccion.key));
-        this.seccionesRender = this.shuffle([...conDatos]);
+        // Las secciones y sus entradas, por orden alfabético (propietario, 2026-10-25; antes, al azar).
+        this.seccionesRender = this.seccionesBase
+            .filter((seccion) => this.seccionIncluidaEnManual(manual, seccion.key))
+            .sort((a, b) => compararTexto(a.label, b.label));
         this.seccionesRender.forEach((seccion) => {
             this.seccionesActivas[seccion.key] = true;
         });
         this.bloquesRender = this.seccionesRender
             .map((seccion) => ({
                 seccion,
-                filas: this.shuffle([...this.getReferenciasValidas(manual, seccion.key)]).map((referencia) => this.construirFila(referencia)),
+                filas: [...this.getReferenciasValidas(manual, seccion.key)].sort(porNombre).map((referencia) => this.construirFila(referencia)),
             }))
             .filter((bloque) => bloque.filas.length > 0);
         this.hayAsociados = this.tieneAsociados(manual);
@@ -207,16 +209,6 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
 
     private seccionIncluidaEnManual(manual: ManualAsociadoDetalle, key: SeccionManualKey): boolean {
         return isManualSeccionIncluida(manual, key);
-    }
-
-    private shuffle<T>(items: T[]): T[] {
-        for (let i = items.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            const aux = items[i];
-            items[i] = items[j];
-            items[j] = aux;
-        }
-        return items;
     }
 
     private notificarDesajusteSiProcede(): void {

@@ -9,7 +9,7 @@ import { DetallesManualComponent } from './detalles-manual.component';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualReferenciaNavigationService } from 'src/app/services/manual-referencia-navigation.service';
 import { UserService } from 'src/app/services/user.service';
-import { lectorFicha } from 'src/testing/ficha-detalle';
+import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
 describe('DetallesManualComponent', () => {
     let component: DetallesManualComponent;
@@ -17,7 +17,7 @@ describe('DetallesManualComponent', () => {
     let permisos$: BehaviorSubject<number>;
     let navegacion: jasmine.SpyObj<ManualReferenciaNavigationService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, valor, titulos } = lectorFicha(elemento);
+    const { texto, valor, titulos, bloque, filasPares } = lectorFicha(elemento);
 
     function manual(cambios: Partial<ManualAsociadoDetalle> = {}): ManualAsociadoDetalle {
         return {
@@ -97,7 +97,7 @@ describe('DetallesManualComponent', () => {
             },
         });
         fixture.detectChanges();
-        expect(titulos('.ficha-bloque').sort()).toEqual(['Dotes (1)', 'Razas (1)']);
+        expect(titulos('.ficha-bloque')).toEqual(['Dotes (1)', 'Razas (1)']);
         expect(texto()).toContain('Ganas puntos de poder.');
 
         component.toggleSeccion('Dotes');
@@ -106,7 +106,30 @@ describe('DetallesManualComponent', () => {
 
         component.toggleSeccion('Dotes');
         fixture.detectChanges();
-        expect(titulos('.ficha-bloque').sort()).toEqual(['Dotes (1)', 'Razas (1)']);
+        expect(titulos('.ficha-bloque')).toEqual(['Dotes (1)', 'Razas (1)']);
+    });
+
+    it('las secciones y sus entradas van por orden alfabético, sin distinguir tildes ni mayúsculas', () => {
+        component.manual = manual({
+            Asociados: {
+                ...manual().Asociados,
+                Razas: [
+                    { Id: 11, Nombre: 'Thri-kreen', Descripcion: '' },
+                    { Id: 12, Nombre: 'elan', Descripcion: '' },
+                    { Id: 13, Nombre: 'Ápice', Descripcion: '' },
+                ],
+                Clases: [{ Id: 4, Nombre: 'Psiónico', Descripcion: '' }],
+                Dotes: [{ Id: 3, Nombre: 'Mente abierta', Descripcion: '' }],
+                Monstruos: [{ Id: 8, Nombre: 'Astral', Descripcion: '' }],
+            },
+        });
+        fixture.detectChanges();
+
+        expect(titulos('.ficha-bloque')).toEqual(['Clases (1)', 'Dotes (1)', 'Monstruos (1)', 'Razas (3)']);
+        expect(Array.from(bloque('Razas (3)')!.querySelectorAll('tbody tr td:first-child')).map((celda) => limpio(celda)))
+            .toEqual(['Ápice', 'elan', 'Thri-kreen']);
+        // El resumen por sección, en el mismo orden.
+        expect(filasPares().map(([seccion]) => seccion)).toEqual(['Clases', 'Dotes', 'Monstruos', 'Razas']);
     });
 
     it('recorta las descripciones largas', () => {
