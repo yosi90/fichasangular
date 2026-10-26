@@ -1253,7 +1253,7 @@ export class NuevoPersonajeComponent {
     }
 
     get mostrarPanelDeidad(): boolean {
-        return !this.esDeidadVaciaONeutra();
+        return !esSinDeidad(this.Personaje.Deidad);
     }
 
     get puedeAbrirDetalleDeidadSeleccionada(): boolean {
@@ -1376,12 +1376,8 @@ export class NuevoPersonajeComponent {
         return !(width <= 1250 || height <= 700 || height >= width);
     }
 
-    private esDeidadVaciaONeutra(): boolean {
-        return esSinDeidad(this.Personaje.Deidad);
-    }
-
     private esDeidadOficial(): boolean {
-        if (this.esDeidadVaciaONeutra())
+        if (esSinDeidad(this.Personaje.Deidad))
             return true;
         if (this.catalogoDeidades.length < 1)
             return true;
