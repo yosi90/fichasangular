@@ -122,6 +122,7 @@ import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-vi
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
+import { tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
 import { EquipoCatalogos, MunicionDetalle } from 'src/app/interfaces/equipo';
@@ -316,9 +317,6 @@ const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
     maxFuentesHomebrewGeneralesPorPersonaje: null,
     maxTiradasPuntosGolpe: null,
 };
-
-/** Las tiradas de PG sin campaña o con una campaña que no las limita (decisión del propietario del 2026-10-26). */
-const TIRADAS_PUNTOS_GOLPE_SIN_LIMITE = 3;
 
 @Component({
     selector: 'app-nuevo-personaje',
@@ -4134,20 +4132,10 @@ export class NuevoPersonajeComponent {
         this.selectorVisibilidadValorInicial = null;
     }
 
-    /**
-     * Las tiradas de PG que deja la campaña (`politicaCreacion.maxTiradasPuntosGolpe`: 1 es el Manual del jugador, como
-     * mucho 3); sin campaña o sin límite, 3.
-     */
-    private resolverTiradasPuntosGolpe(): number {
-        const maximo = this.selectedCampaignPolicy?.maxTiradasPuntosGolpe;
-        if (maximo === null || maximo === undefined || !Number.isFinite(Number(maximo)))
-            return TIRADAS_PUNTOS_GOLPE_SIN_LIMITE;
-        return Math.min(TIRADAS_PUNTOS_GOLPE_SIN_LIMITE, Math.max(1, Math.trunc(Number(maximo))));
-    }
-
     private abrirSelectorPuntosGolpe(): void {
         this.resetearEstadoFinalizacion();
-        this.tiradasVidaTotales = this.resolverTiradasPuntosGolpe();
+        // Las tiradas que deja la campaña (`tiradasPuntosGolpe`); sin campaña o sin límite, el máximo.
+        this.tiradasVidaTotales = tiradasPuntosGolpe(this.selectedCampaignPolicy?.maxTiradasPuntosGolpe);
         this.tiradasVidaRestantes = Math.max(0, this.tiradasVidaTotales - 1);
         this.resultadoVidaActual = this.nuevoPSvc.calcularVidaFinalAleatoria();
         this.modalSelectorVisibilidadAbierto = false;

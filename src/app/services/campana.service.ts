@@ -34,6 +34,7 @@ import { cabeceraApiConFirebase } from './platform-session.service';
 import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from './platform-spaces.service';
 import { toBoolean, toNullableText } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 
 @Injectable({
     providedIn: 'root'
@@ -1135,10 +1136,10 @@ export class CampanaService {
         };
     }
 
-    /** Las tiradas de PG de la política (1 a 3); `null` si no las limita. */
+    /** Las tiradas de PG de la política (`tiradasPuntosGolpe`); `null` si no las limita. */
     private normalizeNullableTiradasPuntosGolpe(value: any): number | null {
         const parsed = this.toNullableNumber(value);
-        return parsed === null ? null : Math.min(3, Math.max(1, Math.trunc(parsed)));
+        return parsed === null ? null : tiradasPuntosGolpe(parsed);
     }
 
     private normalizeCreateCampaignInput(input: string | CreateCampaignInput): CreateCampaignInput {

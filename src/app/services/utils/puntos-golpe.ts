@@ -13,6 +13,21 @@ import { toInt } from 'src/app/services/utils/normalizacion';
  *   plantillas (+1 paso…), del catálogo de tipos de dado ordenado por caras.
  */
 
+/**
+ * Las tiradas de PG al crear (`politicaCreacion.maxTiradasPuntosGolpe`): 1 es el Manual del jugador y 3, el máximo, que
+ * es también lo que se deja sin campaña o con una campaña que no las limita (propietario, 2026-10-26).
+ */
+export const MIN_TIRADAS_PUNTOS_GOLPE = 1;
+export const MAX_TIRADAS_PUNTOS_GOLPE = 3;
+
+/** Las tiradas de PG de una política, entre el mínimo y el máximo; sin dato (`null` o no numérico), el máximo. */
+export function tiradasPuntosGolpe(valor: unknown): number {
+    const parsed = Math.trunc(Number(valor));
+    if (valor === null || valor === undefined || !Number.isFinite(parsed))
+        return MAX_TIRADAS_PUNTOS_GOLPE;
+    return Math.min(MAX_TIRADAS_PUNTOS_GOLPE, Math.max(MIN_TIRADAS_PUNTOS_GOLPE, parsed));
+}
+
 export interface GrupoDadosGolpe {
     cantidad: number;
     caras: number;
