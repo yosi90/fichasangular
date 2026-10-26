@@ -1,9 +1,10 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, textoPies, unirTipo } from 'src/app/components/detalles/ficha';
+import { DatoFicha, DoteFicha, datoAlineamiento, dotesVisibles, textoPies, unirTipo } from 'src/app/components/detalles/ficha';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
-import { Raza, RazaHabilidadBase, RazaHabilidadCustom } from 'src/app/interfaces/raza';
+import { Raza, RazaHabilidadBase, RazaHabilidadCustom, RazaPlantillaReferencia } from 'src/app/interfaces/raza';
+import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
@@ -15,6 +16,7 @@ import { getGrupoOpcionalRacial } from 'src/app/services/utils/racial-opcionales
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { GrupoPrerrequisitos, agruparPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { leerComodin } from 'src/app/services/utils/comodin';
 
@@ -56,6 +58,8 @@ export class DetallesRazaComponent {
 
     /** «Raza · Mediano · Humanoide». */
     tipoCabecera = '';
+    /** «Mutada» y si su tamaño depende de la mutación. */
+    etiquetas: string[] = [];
     /** Los datos clave, en el orden del manual. Lo que la API da `null` o 0 no sale. */
     datos: DatoFicha[] = [];
     /** Los dados de golpe raciales y lo que dan, si la raza los tiene. */
@@ -67,6 +71,11 @@ export class DetallesRazaComponent {
     habilidadesCustom: HabilidadRazaVisible[] = [];
     idiomas: IdiomaDetalle[] = [];
     gruposRaciales: GrupoRacialesDetalle[] = [];
+    /** Los prerrequisitos de una raza mutada, con la frase de la API, agrupados por `Opcional`. */
+    prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];
+    dotes: DoteFicha[] = [];
+    /** Las plantillas que incorpora por cada subtipo. */
+    plantillasPorSubtipo: { subtipo: string; plantillas: RazaPlantillaReferencia[]; }[] = [];
     /** Si alguna sortílega tiene dados de golpe mínimos o descripción (si no, la tabla no lleva esas columnas). */
     sortilegasConDgs = false;
     sortilegasConDescripcion = false;
@@ -75,6 +84,18 @@ export class DetallesRazaComponent {
     set raza(value: Raza) {
         this.razaActual = value;
         this.tipoCabecera = unirTipo(['Raza', value?.Tamano?.Nombre, value?.Tipo_criatura?.Nombre]);
+        this.etiquetas = [
+            value?.Mutada ? 'Mutada' : '',
+            value?.Tamano_mutacion_dependiente ? 'Tamaño según la mutación' : '',
+        ].filter(Boolean);
+        this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos);
+        this.dotes = dotesVisibles(value?.DotesContextuales);
+        this.plantillasPorSubtipo = (value?.Plantillas_por_subtipo ?? [])
+            .map((grupo) => ({
+                subtipo: `${grupo?.Subtipo?.Nombre ?? ''}`.trim(),
+                plantillas: (grupo?.Plantillas ?? []).filter((plantilla) => tieneTextoVisible(plantilla?.Nombre)),
+            }))
+            .filter((grupo) => grupo.plantillas.length > 0);
         this.datos = this.construirDatos();
         this.datosDgs = this.construirDatosDgs();
         this.modificadores = this.construirModificadores();
@@ -93,6 +114,20 @@ export class DetallesRazaComponent {
 
     @Output() racialDetallesPorNombre: EventEmitter<RacialReferencia> = new EventEmitter<RacialReferencia>();
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
+    @Output() doteDetalles: EventEmitter<number> = new EventEmitter<number>();
+    @Output() plantillaDetalles: EventEmitter<number> = new EventEmitter<number>();
+
+    abrirDetallesDote(doteCtx: DoteContextual) {
+        const id = Number(doteCtx?.Dote?.Id);
+        if (Number.isFinite(id) && id > 0)
+            this.doteDetalles.emit(id);
+    }
+
+    abrirDetallesPlantilla(plantilla: RazaPlantillaReferencia) {
+        const id = Number(plantilla?.Id);
+        if (Number.isFinite(id) && id > 0)
+            this.plantillaDetalles.emit(id);
+    }
 
     abrirDetalleManual() {
         this.manualDetalleNavSvc.abrirDetalleManual(this.raza?.Manual);
@@ -173,31 +208,6 @@ export class DetallesRazaComponent {
         });
     }
 
-    getAlineamientoResumen(): string {
-        const alineamiento = this.raza?.Alineamiento;
-        if (!alineamiento)
-            return '';
-
-        const basico = `${alineamiento?.Basico?.Nombre ?? ''}`.trim();
-        const ley = `${alineamiento?.Ley?.Nombre ?? ''}`.trim();
-        const moral = `${alineamiento?.Moral?.Nombre ?? ''}`.trim();
-
-        const partesEje: string[] = [];
-        if (this.tieneTextoVisible(ley))
-            partesEje.push(ley);
-        if (this.tieneTextoVisible(moral))
-            partesEje.push(moral);
-        const resumenEjes = partesEje.join('/');
-
-        if (this.tieneTextoVisible(basico) && resumenEjes.length > 0)
-            return `${basico} (${resumenEjes})`;
-        if (this.tieneTextoVisible(basico))
-            return basico;
-        if (resumenEjes.length > 0)
-            return resumenEjes;
-        return '';
-    }
-
     mostrarManiobrabilidad(): boolean {
         return this.tieneNumeroNoCero(this.raza?.Volar)
             && tieneManiobrabilidadVisible(this.raza?.Maniobrabilidad);
@@ -242,7 +252,7 @@ export class DetallesRazaComponent {
         return [
             { etiqueta: 'Ajuste de nivel', valor: tieneNumeroVisible(r?.Ajuste_nivel) ? `+${r.Ajuste_nivel}` : null },
             { etiqueta: 'Clase predilecta', valor: mayusculaInicial(r?.Clase_predilecta) },
-            { etiqueta: 'Alineamiento', valor: this.getAlineamientoResumen() },
+            datoAlineamiento(r?.Alineamiento),
             { etiqueta: 'Altura', valor: this.textoRango(r?.Altura_rango_inf, r?.Altura_rango_sup, 'm') },
             { etiqueta: 'Peso', valor: this.textoRango(r?.Peso_rango_inf, r?.Peso_rango_sup, 'kg') },
             { etiqueta: 'Espacio', valor: textoPies(r?.Espacio) },
@@ -260,6 +270,9 @@ export class DetallesRazaComponent {
             { etiqueta: 'Escalar', valor: textoPies(r?.Escalar) },
             { etiqueta: 'Armadura natural', valor: this.tieneNumeroNoCero(r?.Armadura_natural) ? textoConSigno(Number(r.Armadura_natural)) : null },
             { etiqueta: 'CA varios', valor: this.tieneNumeroNoCero(r?.Varios_armadura) ? textoConSigno(Number(r.Varios_armadura)) : null },
+            { etiqueta: 'Reducción de daño', valor: r?.Reduccion_dano },
+            { etiqueta: 'Resistencia a conjuros', valor: r?.Resistencia_magica },
+            { etiqueta: 'Resistencia elemental', valor: r?.Resistencia_energia },
         ];
     }
 

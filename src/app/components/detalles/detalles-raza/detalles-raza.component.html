@@ -4,16 +4,45 @@
         [nombre]="raza.Nombre"
         [manual]="raza.Manual"
         [oficial]="raza.Oficial"
+        [etiquetas]="etiquetas"
         (abrirManual)="abrirDetalleManual()">
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" titulo="Datos de la raza"></app-ficha-datos>
 
     <app-ficha-cuerpo>
+        <app-ficha-seccion titulo="Ataques naturales" [texto]="raza.Ataques_naturales"></app-ficha-seccion>
+
+        <app-ficha-lateral titulo="Prerrequisitos" *ngIf="prerrequisitosAgrupados.length > 0">
+            <!-- Cada condición es la frase que escribe la API («Criatura de tipo dragón»). -->
+            <app-ficha-prerrequisitos [grupos]="prerrequisitosAgrupados"></app-ficha-prerrequisitos>
+        </app-ficha-lateral>
+
         <app-ficha-lateral titulo="Subtipos" *ngIf="subtipos.length > 0">
             <ul class="ficha-lista">
                 <li class="ficha-lista__item" *ngFor="let subtipo of subtipos">
                     <button type="button" class="ficha-enlace" (click)="abrirDetalleSubtipo(subtipo)">{{subtipo.Nombre}}</button>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Plantillas por subtipo" *ngIf="plantillasPorSubtipo.length > 0">
+            <div class="ficha-grupo" *ngFor="let grupo of plantillasPorSubtipo">
+                <h3 class="ficha-subtitulo" *ngIf="grupo.subtipo">{{grupo.subtipo}}</h3>
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let plantilla of grupo.plantillas">
+                        <button type="button" class="ficha-enlace" (click)="abrirDetallesPlantilla(plantilla)"
+                            [matTooltip]="plantilla.Descripcion ?? ''" [matTooltipDisabled]="!tieneTextoVisible(plantilla.Descripcion)"
+                            matTooltipClass="tt-accent tt-multiline" [matTooltipShowDelay]="250">{{plantilla.Nombre}}</button>
+                    </li>
+                </ul>
+            </div>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Dotes" *ngIf="dotes.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let dote of dotes">
+                    <button type="button" class="ficha-enlace" (click)="abrirDetallesDote(dote.contexto)">{{dote.nombre}}</button>
                 </li>
             </ul>
         </app-ficha-lateral>

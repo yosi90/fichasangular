@@ -216,7 +216,9 @@
         <app-detalles-raza
             [raza]="detallesRazaAbiertos[index]"
             (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event)"
-            (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)">
+            (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)"
+            (doteDetalles)="abrirDetallesDotePorId($event)"
+            (plantillaDetalles)="abrirDetallesPlantillaPorId($event)">
         </app-detalles-raza>
     </mat-tab>
     <mat-tab *ngFor="let tab of detallesConjuroAbiertos; let index = index" [label]="tab.Nombre">

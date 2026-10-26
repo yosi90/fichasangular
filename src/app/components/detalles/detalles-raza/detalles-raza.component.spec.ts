@@ -6,7 +6,7 @@ import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { createRacialPlaceholder } from 'src/app/services/utils/racial-mapper';
 import { DetallesRazaComponent } from './detalles-raza.component';
-import { lectorFicha } from 'src/testing/ficha-detalle';
+import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
 function crearRazaMock(extra: Partial<Raza> = {}): Raza {
     return {
@@ -89,7 +89,7 @@ describe('DetallesRazaComponent', () => {
     let fixture: ComponentFixture<DetallesRazaComponent>;
     let manualNav: jasmine.SpyObj<ManualDetalleNavigationService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, titulos, etiquetasDatos, valor, filasPares, enlace } = lectorFicha(elemento);
+    const { texto, titulos, etiquetasDatos, valor, filasPares, enlace, lateral, seccion, etiquetasCabecera } = lectorFicha(elemento);
 
     function pintar(extra: Partial<Raza> = {}): void {
         component.raza = crearRazaMock(extra);
@@ -126,7 +126,7 @@ describe('DetallesRazaComponent', () => {
     it('enseña los datos clave y no los que valen 0 o no vienen', () => {
         expect(etiquetasDatos()).toEqual(['Clase predilecta', 'Alineamiento', 'Altura', 'Peso', 'Espacio', 'Alcance', 'Correr']);
         expect(valor('Clase predilecta')).toBe('Mago');
-        expect(valor('Alineamiento')).toBe('Neutral bueno (Tendencia legal/Tendencia buena)');
+        expect(valor('Alineamiento')).toBe('Neutral bueno');
         expect(valor('Altura')).toBe('1.4 - 1.9 m');
         expect(valor('Peso')).toBe('45 - 90 kg');
         expect(valor('Correr')).toBe("30'");
@@ -262,7 +262,7 @@ describe('DetallesRazaComponent', () => {
                 Moral: { Nombre: 'Casi siempre maligno' },
             } as any,
         });
-        expect(valor('Alineamiento')).toBe('Siempre legal/Casi siempre maligno');
+        expect(valor('Alineamiento')).toBe('Siempre legal, casi siempre maligno');
     });
 
     it('oculta el alineamiento cuando no hay datos visibles', () => {
@@ -274,6 +274,50 @@ describe('DetallesRazaComponent', () => {
             } as any,
         });
         expect(etiquetasDatos()).not.toContain('Alineamiento');
+    });
+
+    it('enseña los ataques naturales, las defensas y si es mutada', () => {
+        pintar({
+            Ataques_naturales: 'Mordisco (1d8) y golpetazo (1d4).',
+            Reduccion_dano: '10/maligna',
+            Resistencia_magica: '16 + niveles de clase',
+            Resistencia_energia: '',
+            Mutada: true,
+            Tamano_mutacion_dependiente: true,
+        });
+
+        expect(etiquetasCabecera()).toEqual(['Mutada', 'Tamaño según la mutación', 'Oficial']);
+        expect(limpio(seccion('Ataques naturales')?.querySelector('app-texto-manual'))).toBe('Mordisco (1d8) y golpetazo (1d4).');
+        expect(valor('Reducción de daño')).toBe('10/maligna');
+        expect(valor('Resistencia a conjuros')).toBe('16 + niveles de clase');
+        expect(valor('Resistencia elemental')).toBeNull();
+    });
+
+    it('enseña los prerrequisitos con su frase, las dotes y las plantillas por subtipo, enlazadas', () => {
+        const doteSpy = spyOn(component.doteDetalles, 'emit');
+        const plantillaSpy = spyOn(component.plantillaDetalles, 'emit');
+        pintar({
+            Prerrequisitos: {
+                actitud_prohibido: [],
+                actitud_requerido: [],
+                alineamiento_prohibido: [],
+                alineamiento_requerido: [],
+                tipo_criatura: [{ id_tipo_criatura: 7, tipo_criatura: 'Dragón', opcional: 0, Frase: 'Criatura de tipo dragón' } as any],
+            },
+            DotesContextuales: [{ Dote: { Id: 9, Nombre: 'Alerta' }, Contexto: { Extra: '' } } as any],
+            Plantillas_por_subtipo: [
+                { Subtipo: { Id: 2, Nombre: 'Arconte' }, Plantillas: [{ Id: 1, Nombre: 'Celestial', Descripcion: 'Criaturas de los planos superiores.' }] },
+                { Subtipo: { Id: 3, Nombre: 'Fuego' }, Plantillas: [] },
+            ],
+        });
+
+        expect(titulos()).toContain('Prerrequisitos');
+        expect(limpio(lateral('Prerrequisitos'))).toContain('Criatura de tipo dragón');
+        expect(Array.from(lateral('Plantillas por subtipo')!.querySelectorAll('.ficha-subtitulo')).map((t) => limpio(t))).toEqual(['Arconte']);
+        enlace('Celestial').click();
+        enlace('Alerta').click();
+        expect(plantillaSpy).toHaveBeenCalledWith(1);
+        expect(doteSpy).toHaveBeenCalledWith(9);
     });
 
     it('la maniobrabilidad abre sus reglas cuando la raza vuela', () => {
