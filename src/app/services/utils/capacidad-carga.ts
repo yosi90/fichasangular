@@ -1,3 +1,4 @@
+import { Personaje } from 'src/app/interfaces/personaje';
 import { toInt, toNumber } from 'src/app/services/utils/normalizacion';
 
 /**
@@ -16,13 +17,7 @@ export interface FilaCapacidadCarga {
     Pesada: number;
 }
 
-export interface CapacidadCarga {
-    Ligera: number;
-    Media: number;
-    Pesada: number;
-}
-
-export function capacidadCarga(fuerza: number, tabla: readonly FilaCapacidadCarga[], multiplicador: number | null | undefined): CapacidadCarga {
+export function capacidadCarga(fuerza: number, tabla: readonly FilaCapacidadCarga[], multiplicador: number | null | undefined): Personaje['Capacidad_carga'] {
     let valor = toInt(fuerza);
     const porFuerza = new Map(tabla.map((fila) => [toInt(fila.Fuerza), fila]));
     const maxima = Math.max(0, ...porFuerza.keys());
