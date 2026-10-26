@@ -36,6 +36,16 @@ export function esEspecializable(escuelaODisciplina: { Id?: number; Especializab
     return toNumber(escuelaODisciplina?.Id) > 0 && toBoolean(escuelaODisciplina?.Especializable);
 }
 
+/**
+ * Cuántas escuelas prohíbe el mago que se especializa en esa escuela, o cuántas disciplinas el psiónico de esa disciplina:
+ * lo dicen sus datos, no su nombre (2; la adivinación, 1, MJ cap. 3; ninguna en el Manual de psiónica expandido).
+ */
+export function prohibidasAlEspecializarse(
+    escuelaODisciplina: { Prohibidas_al_especializarse?: number; } | null | undefined
+): number {
+    return Math.max(0, toInt(escuelaODisciplina?.Prohibidas_al_especializarse));
+}
+
 /** Si la característica de lanzamiento llega a 10 + el nivel del conjuro. Sin característica (`null`) no limita. */
 export function puedeLanzarNivelConjuro(puntuacion: number | null, nivelConjuro: number): boolean {
     return puntuacion === null || puntuacion >= 10 + nivelConjuro;

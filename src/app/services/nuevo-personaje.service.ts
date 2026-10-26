@@ -63,6 +63,7 @@ import {
     esEspecializable,
     modificadorDePuntuacion,
     nivelLanzadorDeClase,
+    prohibidasAlEspecializarse,
     puedeLanzarNivelConjuro,
     puntosPoderAdicionales,
     puntuacionLanzamiento,
@@ -4443,8 +4444,7 @@ export class NuevoPersonajeService {
                 ));
                 const prohibidasSeleccionadas = escuelasProhibibles
                     .filter((escuela) => idsProhibidas.includes(toNumber(escuela?.Id)));
-                // Cuántas prohíbe sale de la escuela (2; la adivinación, 1; MJ cap. 3), no de su nombre.
-                const prohibidasRequeridas = Math.max(0, toInt(escuelaEspecialista?.Prohibidas_al_especializarse));
+                const prohibidasRequeridas = prohibidasAlEspecializarse(escuelaEspecialista);
                 if (prohibidasSeleccionadas.length !== prohibidasRequeridas) {
                     return {
                         aplicado: false,
@@ -4479,8 +4479,7 @@ export class NuevoPersonajeService {
                     razon: 'Debes seleccionar una disciplina válida para especializarte.',
                 };
             }
-            // El Manual de psiónica expandido no prohíbe ninguna disciplina: lo dice el dato de la disciplina elegida.
-            const requiereProhibida = toInt(disciplinaEspecialista?.Prohibidas_al_especializarse) > 0;
+            const requiereProhibida = prohibidasAlEspecializarse(disciplinaEspecialista) > 0;
             const disciplinaProhibida = requiereProhibida
                 ? disciplinasEspecializables.find((disciplina) =>
                     toNumber(disciplina?.Id) === idProhibida && idProhibida !== idEspecialista) ?? null

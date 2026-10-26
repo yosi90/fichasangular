@@ -2,6 +2,7 @@ import { normalizeClase } from '../clase.service';
 import {
     conjurosAdicionales,
     nivelLanzadorDeClase,
+    prohibidasAlEspecializarse,
     puedeLanzarNivelConjuro,
     puntosPoderAdicionales,
     puntuacionLanzamiento,
@@ -40,5 +41,12 @@ describe('reglas-magia', () => {
         expect(nivelLanzadorDeClase(paladin, 0, 3, 0)).toBe(0);
         expect(nivelLanzadorDeClase(paladin, 17, 20, 0)).toBe(10);
         expect(nivelLanzadorDeClase(mago, 7, 5, 2)).toBe(7);
+    });
+
+    it('las escuelas que prohíbe el especialista salen del dato de la escuela (la adivinación, 1), nunca negativas', () => {
+        expect(prohibidasAlEspecializarse({ Prohibidas_al_especializarse: 2 })).toBe(2);
+        expect(prohibidasAlEspecializarse({ Prohibidas_al_especializarse: 1 })).toBe(1);
+        expect(prohibidasAlEspecializarse({ Prohibidas_al_especializarse: -1 })).toBe(0);
+        expect(prohibidasAlEspecializarse(null)).toBe(0);
     });
 });

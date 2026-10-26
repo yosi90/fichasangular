@@ -3,7 +3,7 @@ import { DisciplinaConjuros } from 'src/app/interfaces/disciplina-conjuros';
 import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 import { porNombre } from 'src/app/services/utils/orden-texto';
-import { esEspecializable } from 'src/app/services/utils/reglas-magia';
+import { esEspecializable, prohibidasAlEspecializarse } from 'src/app/services/utils/reglas-magia';
 
 export interface SelectorEspecialidadArcanaConfirmacion {
     especializar: boolean;
@@ -75,7 +75,7 @@ export class SelectorEspecialidadMagicaModalComponent {
     get disciplinaProhibidaRequerida(): boolean {
         const id = Number(this.psionicoDisciplinaEspecialistaId ?? 0);
         const disciplina = this.disciplinasEspecializables.find((item) => Number(item?.Id ?? 0) === id);
-        return Number(disciplina?.Prohibidas_al_especializarse ?? 0) > 0;
+        return prohibidasAlEspecializarse(disciplina) > 0;
     }
 
     get disciplinasProhibibles(): DisciplinaConjuros[] {
@@ -89,8 +89,7 @@ export class SelectorEspecialidadMagicaModalComponent {
         const escuela = this.escuelaEspecialistaSeleccionada;
         if (!escuela)
             return 0;
-        // Cuántas prohíbe sale de la escuela (2; la adivinación, 1), no de su nombre.
-        return Math.max(0, Number(escuela.Prohibidas_al_especializarse ?? 0));
+        return prohibidasAlEspecializarse(escuela);
     }
 
     get arcanoValido(): boolean {
