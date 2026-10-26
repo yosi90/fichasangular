@@ -22,14 +22,6 @@ const ALINEAMIENTO_BASICO_POR_ID: Record<number, string> = {
     9: 'Caótico maligno',
 };
 
-export function resolveEspecialId(especialRaw: any): number {
-    return toNumber(
-        especialRaw?.Id
-        ?? especialRaw?.id
-        ?? especialRaw?.Id_especial
-        ?? especialRaw?.id_especial
-    );
-}
 
 export function resolveDoteIdFromNivelClase(nivelClase: MonstruoNivelClase | null | undefined): number {
     return toNumber(

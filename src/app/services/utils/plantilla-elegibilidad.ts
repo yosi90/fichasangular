@@ -1,9 +1,12 @@
 import { Plantilla, PlantillaCompatibilidadTipo } from "src/app/interfaces/plantilla";
 import { TipoCriatura } from "src/app/interfaces/tipo_criatura";
+import { valorCaracteristicaPorId } from './caracteristicas';
 import {
+    cumpleActitud,
     extraerEjesAlineamientoDesdeContrato,
     getAlineamientoBasicoIdPorNombre,
     getVectorDesdeNombreBasico,
+    idBasicoDePrerrequisitoAlineamiento,
     nombreBasicoDesdeVector,
 } from "./alineamiento-contrato";
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
@@ -29,9 +32,14 @@ export interface PlantillaEvaluacionContexto {
     tiposCriaturaMiembroIds: number[];
     // Compatibilidad temporal con contexto legacy.
     tipoCriaturaActualId?: number;
-    razaHeredada: boolean;
     incluirHomebrew: boolean;
-    seleccionadas: { Id: number; Nombre: string; Nacimiento: boolean }[];
+    seleccionadas: { Id: number; Nombre: string; Nacimiento: boolean; Licantropia?: boolean; }[];
+    /** Los niveles de clase que ya tiene: una plantilla de nacimiento solo se elige antes del primero (decisión del 2026-10-18). */
+    nivelesClase?: number;
+    /** El nivel de lanzador arcano o divino más alto, para `nivel_lanzador` (el liche). */
+    nivelLanzador?: number;
+    /** Las dotes del personaje, para `dote` (el liche: Fabricar objeto maravilloso). */
+    dotes?: { id: number | null; nombre: string; }[];
 }
 
 export interface PlantillaEvaluacionResultado {
@@ -160,26 +168,6 @@ export function resolverAlineamientoPlantillas(
     };
 }
 
-function cumpleActitud(actitudId: number, alineamientoBasicoId: number): boolean {
-    const esLegal = [1, 2, 3].includes(alineamientoBasicoId);
-    const esNeutralEje = [2, 4, 5, 6, 8].includes(alineamientoBasicoId);
-    const esCaotico = [7, 8, 9].includes(alineamientoBasicoId);
-    const esBueno = [1, 4, 7].includes(alineamientoBasicoId);
-    const esMaligno = [3, 6, 9].includes(alineamientoBasicoId);
-
-    if (actitudId === 1)
-        return esLegal;
-    if (actitudId === 2)
-        return esNeutralEje;
-    if (actitudId === 3)
-        return esCaotico;
-    if (actitudId === 4)
-        return esBueno;
-    if (actitudId === 5)
-        return esMaligno;
-
-    return false;
-}
 
 function parseOpcional(entry: Record<string, any>): { value: number; unknown: boolean } {
     if (entry === null || typeof entry !== "object")
@@ -271,23 +259,6 @@ function parseActitudId(entry: Record<string, any>): number {
     return 0;
 }
 
-function parseAlineamientoId(entry: Record<string, any>): number {
-    const candidates = [
-        entry?.["Id_alineamiento"],
-        entry?.["id_alineamiento"],
-        entry?.["i"],
-        entry?.["Id"],
-        entry?.["id"],
-    ];
-
-    for (const value of candidates) {
-        const n = toNumber(value);
-        if (n > 0)
-            return n;
-    }
-
-    return 0;
-}
 
 function parseTipoCompId(entry: Record<string, any>): number {
     const candidates = [
@@ -330,24 +301,13 @@ function parseTipoNuevoId(entry: Record<string, any>): number {
     return 0;
 }
 
-function getStatById(caracteristicas: CaracteristicasEvaluacion, id: number): number {
-    if (id === 1)
-        return toNumber(caracteristicas.Fuerza);
-    if (id === 2)
-        return toNumber(caracteristicas.Destreza);
-    if (id === 3)
-        return toNumber(caracteristicas.Constitucion);
-    if (id === 4)
-        return toNumber(caracteristicas.Inteligencia);
-    if (id === 5)
-        return toNumber(caracteristicas.Sabiduria);
-    if (id === 6)
-        return toNumber(caracteristicas.Carisma);
-    return Number.NaN;
-}
-
-export function esNombreLicantropo(nombre: string): boolean {
-    return normalizarTexto(nombre).includes("licantropo");
+/**
+ * Si la plantilla es de licántropo: la que añade los DG del animal (`Licantronia_dg`, que solo tienen los licántropos;
+ * decisión del 2026-10-24 sobre el Manual de monstruos 1). Sale de los datos, no del nombre.
+ */
+export function esPlantillaLicantropa(plantilla: Pick<Plantilla, 'Licantronia_dg'> | null | undefined): boolean {
+    const dg = plantilla?.Licantronia_dg;
+    return !!dg && (toNumber(dg.Multiplicador) > 0 || toNumber(dg.Suma) !== 0);
 }
 
 export function obtenerCompatibilidadTipo(plantilla: Plantilla, tipoActualId: number): PlantillaCompatibilidadTipo | null {
@@ -377,7 +337,7 @@ export function simularEstadoPlantillas(
     let heredadaActiva = false;
 
     seleccionadas.forEach(plantilla => {
-        licantropiaActiva = licantropiaActiva || esNombreLicantropo(plantilla.Nombre);
+        licantropiaActiva = licantropiaActiva || esPlantillaLicantropa(plantilla);
         heredadaActiva = heredadaActiva || !!plantilla.Nacimiento;
 
         const compat = obtenerCompatibilidadTipo(plantilla, tipoCriaturaActualId);
@@ -420,13 +380,14 @@ export function evaluarElegibilidadPlantilla(
     if (ctx.seleccionadas.some(s => s.Id === plantilla.Id || normalizarTexto(s.Nombre) === nombreNormalizado))
         fail.push("Ya seleccionada");
 
-    const licantropiaActiva = ctx.seleccionadas.some(s => esNombreLicantropo(s.Nombre));
-    if (esNombreLicantropo(plantilla.Nombre) && licantropiaActiva)
+    const licantropiaActiva = ctx.seleccionadas.some(s => !!s.Licantropia);
+    if (esPlantillaLicantropa(plantilla) && licantropiaActiva)
         fail.push("Ya hay una plantilla licantropa seleccionada");
 
-    const heredadaActiva = ctx.razaHeredada || ctx.seleccionadas.some(s => !!s.Nacimiento);
-    if (plantilla.Nacimiento && heredadaActiva)
-        fail.push("No se puede seleccionar mas de una plantilla heredada");
+    // Una plantilla de nacimiento (heredada) se elige a nivel 0, antes del primer nivel de clase (decisión del
+    // propietario del 2026-10-18). El Manual de monstruos no limita cuántas heredadas se pueden añadir.
+    if (plantilla.Nacimiento && toNumber(ctx.nivelesClase) > 0)
+        fail.push("Una plantilla de nacimiento solo se elige antes del primer nivel de clase");
 
     const tamanoRaza = toNumber(ctx.tamanoRazaId);
     const tamanoPlantilla = toNumber(plantilla?.Tamano?.Id);
@@ -476,7 +437,8 @@ export function evaluarElegibilidadPlantilla(
 
     if (flags.alineamiento_requerido) {
         (prer.alineamiento_requerido ?? []).forEach((entry) => {
-            const requiredId = parseAlineamientoId(entry);
+            // El básico (1-9), no `Id_alineamiento` (la combinación de la tabla `alineamientos`).
+            const requiredId = idBasicoDePrerrequisitoAlineamiento(entry);
             const evaluable = requiredId > 0 && alineamientoId > 0;
             const cumple = evaluable ? requiredId === alineamientoId : false;
             registrarPrerrequisito(motivos, "alineamiento_requerido", entry, evaluable, cumple, "Alineamiento requerido con formato no reconocido");
@@ -487,7 +449,7 @@ export function evaluarElegibilidadPlantilla(
         (prer.caracteristica ?? []).forEach((entry) => {
             const carId = parseCaracteristicaId(entry);
             const valorMin = parseCantidad(entry);
-            const valorActual = getStatById(ctx.caracteristicas, carId);
+            const valorActual = valorCaracteristicaPorId(ctx.caracteristicas, carId);
             const evaluable = carId > 0 && Number.isFinite(valorMin) && Number.isFinite(valorActual);
             const cumple = evaluable ? valorActual >= valorMin : false;
             registrarPrerrequisito(motivos, "caracteristica", entry, evaluable, cumple, "Caracteristica requerida con formato no reconocido");
@@ -500,6 +462,26 @@ export function evaluarElegibilidadPlantilla(
             const evaluable = tipoCompId > 0 && tiposCriaturaMiembroIds.length > 0;
             const cumple = evaluable ? tiposCriaturaMiembroIds.includes(tipoCompId) : false;
             registrarPrerrequisito(motivos, "criaturas_compatibles", entry, evaluable, cumple, "Compatibilidad de criatura con formato no reconocido");
+        });
+    }
+
+    if (flags.nivel_lanzador) {
+        (prer.nivel_lanzador ?? []).forEach((entry) => {
+            const nivel = toNumber(entry?.["Nivel"] ?? entry?.["nivel"]);
+            const evaluable = nivel > 0;
+            const cumple = evaluable ? toNumber(ctx.nivelLanzador) >= nivel : false;
+            registrarPrerrequisito(motivos, "nivel_lanzador", entry, evaluable, cumple, "Nivel de lanzador con formato no reconocido");
+        });
+    }
+
+    if (flags.dote) {
+        (prer.dote ?? []).forEach((entry) => {
+            const idDote = toNumber(entry?.["Id_dote_prerrequisito"] ?? entry?.["Id_dote"]);
+            const nombreDote = normalizarTexto(`${entry?.["Dote_prerrequisito"] ?? entry?.["Dote"] ?? ""}`);
+            const evaluable = idDote > 0 || nombreDote.length > 0;
+            const cumple = evaluable && (ctx.dotes ?? []).some((dote) =>
+                (idDote > 0 && toNumber(dote.id) === idDote) || (nombreDote.length > 0 && normalizarTexto(dote.nombre) === nombreDote));
+            registrarPrerrequisito(motivos, "dote", entry, evaluable, cumple, "Dote de prerrequisito con formato no reconocido");
         });
     }
 

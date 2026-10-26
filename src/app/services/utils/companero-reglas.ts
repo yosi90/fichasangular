@@ -1,10 +1,9 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { CompaneroMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { normalizarTexto, primerEntero, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import {
-    resolveEspecialId,
     resolveDoteIdFromNivelClase,
     normalizeAlineamientosRequeridos,
     getAlineamientosRequeridosLabel,
@@ -17,7 +16,6 @@ import { CupoMascota, resolverCupoMascota } from 'src/app/services/utils/mascota
 export type CompaneroPlantillaSelector = 'base' | 'elevado' | 'sabandija';
 
 export interface EstadoCuposCompanero extends CupoMascota {
-    especialId: number;
     nivelEfectivoCompanero: number;
 }
 
@@ -39,7 +37,6 @@ export interface CompaneroElegibilidadEvaluadaItem {
     nivelMinimoRequerido: number | null;
 }
 
-const ESPECIAL_COMPANERO_ID = 29;
 const DOTE_PLANTILLA_BASE = 0;
 const DOTE_PLANTILLA_ELEVADO = 53;
 const DOTE_PLANTILLA_SABANDIJA = 56;
@@ -56,12 +53,9 @@ const PLANTILLA_SELECTOR_TO_DOTE: Record<CompaneroPlantillaSelector, number> = {
     sabandija: DOTE_PLANTILLA_SABANDIJA,
 };
 
+/** El especial que da un compañero animal lo dice la API (`Otorga_companero`: el del druida y el del explorador). */
 function isEspecialCompanero(especialRaw: any): boolean {
-    const id = resolveEspecialId(especialRaw);
-    if (id === ESPECIAL_COMPANERO_ID)
-        return true;
-    const nombre = normalizarTexto(`${especialRaw?.Nombre ?? especialRaw?.nombre ?? ''}`);
-    return nombre.includes('companero animal');
+    return toBoolean(especialRaw?.Otorga_companero);
 }
 
 function getPlantillaNombreBySelector(selector: CompaneroPlantillaSelector): string {
@@ -123,7 +117,6 @@ export function resolverEstadoCuposCompaneroEspecial29(
     , 0);
 
     return {
-        especialId: ESPECIAL_COMPANERO_ID,
         ...cupo,
         nivelEfectivoCompanero,
     };

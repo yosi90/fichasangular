@@ -4690,7 +4690,6 @@ describe('NuevoPersonajeComponent', () => {
     it('returnStep dotes en habilidades ejecuta pipeline post-dotes y vuelve a clases', async () => {
         spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
         spyOn(nuevoPSvc, 'getEstadoCuposFamiliarEspecial47').and.returnValue({
-            especialId: 47,
             fuentes: [],
             fuentesClaseIds: [],
             fuentesTotales: 0,
@@ -4740,7 +4739,6 @@ describe('NuevoPersonajeComponent', () => {
 
     it('resolverCompaneroPendienteFinNivel persiste selección al confirmar', async () => {
         const estadoMock = {
-            especialId: 29,
             fuentes: [{ idClase: 5, nombreClase: 'Druida', nivelActual: 6 }],
             fuentesClaseIds: [5],
             fuentesTotales: 1,
@@ -4782,7 +4780,6 @@ describe('NuevoPersonajeComponent', () => {
 
     it('resolverCompaneroPendienteFinNivel permite omitir y continuar', async () => {
         const estadoMock = {
-            especialId: 29,
             fuentes: [{ idClase: 5, nombreClase: 'Druida', nivelActual: 6 }],
             fuentesClaseIds: [5],
             fuentesTotales: 1,

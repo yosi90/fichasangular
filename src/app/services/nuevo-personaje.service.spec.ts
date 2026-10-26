@@ -13,6 +13,12 @@ import { createDefaultUserSettings } from '../interfaces/user-settings';
 import { UserSettingsService } from './user-settings.service';
 import { PersonajeService } from './personaje.service';
 
+/** Las banderas con las que la API marca los especiales que dan familiar o compañero (`Otorga_*`). */
+const BANDERAS_ESPECIAL_MASCOTA: Record<string, Record<string, boolean>> = {
+    'Convocar a un familiar': { Otorga_familiar: true },
+    'Compañero animal': { Otorga_companero: true },
+};
+
 const GENERADOR_CONFIG_STORAGE_KEY = 'fichas35.nuevoPersonaje.generador.config.v1';
 
 function crearVentajaBase(partial: Partial<VentajaDetalle>): VentajaDetalle {
@@ -1765,7 +1771,7 @@ describe('NuevoPersonajeService (clases)', () => {
         return {
             ...claseBase.Desglose_niveles[0],
             Especiales: [{
-                Especial: { Id: idEspecial, Nombre: nombre }, Nivel: 1, Id_extra: -1, Extra: '', Opcional: 0,
+                Especial: { Id: idEspecial, Nombre: nombre, ...BANDERAS_ESPECIAL_MASCOTA[nombre] }, Nivel: 1, Id_extra: -1, Extra: '', Opcional: 0,
                 Id_interno: idEspecial, Id_especial_requerido: 0, Id_dote_requerida: 0,
             }] as any,
         };
@@ -4894,7 +4900,7 @@ describe('NuevoPersonajeService (clases)', () => {
 describe('NuevoPersonajeService (familiar)', () => {
     function crearEspecialNivel(idEspecial: number, nombre: string) {
         return {
-            Especial: { Id: idEspecial, Nombre: nombre },
+            Especial: { Id: idEspecial, Nombre: nombre, ...BANDERAS_ESPECIAL_MASCOTA[nombre] },
             Nivel: 1,
             Id_extra: -1,
             Extra: '',

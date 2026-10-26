@@ -1,10 +1,9 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { FamiliarMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import {
-    resolveEspecialId,
     resolveDoteIdFromNivelClase,
     normalizeAlineamientosRequeridos,
     getAlineamientosRequeridosLabel,
@@ -17,7 +16,6 @@ import { CupoMascota, resolverCupoMascota } from 'src/app/services/utils/mascota
 export type FamiliarPlantillaId = 1 | 2 | 3 | 4 | 5;
 
 export interface EstadoCuposFamiliar extends CupoMascota {
-    especialId: number;
     nivelLanzadorFamiliar: number;
 }
 
@@ -106,15 +104,9 @@ export function construirCatalogoFamiliaresDesdeMonstruos(monstruos: MonstruoDet
     return resultado.sort(porNombre);
 }
 
-const ESPECIAL_CONVOCAR_FAMILIAR_ID = 47;
+/** El especial que da un familiar lo dice la API (`Otorga_familiar`: «Convocar a un familiar» del hechicero y del mago). */
 function isEspecialConvocarFamiliar(especialRaw: any): boolean {
-    const id = resolveEspecialId(especialRaw);
-    if (id === ESPECIAL_CONVOCAR_FAMILIAR_ID)
-        return true;
-    const nombre = normalizarTexto(
-        `${especialRaw?.Nombre ?? especialRaw?.nombre ?? ''}`
-    );
-    return nombre.includes('convocar a un familiar');
+    return toBoolean(especialRaw?.Otorga_familiar);
 }
 
 function claseOtorgaFuenteFamiliar(clase: Clase | null | undefined, nivelActual: number): boolean {
@@ -131,10 +123,10 @@ function claseOtorgaFuenteFamiliar(clase: Clase | null | undefined, nivelActual:
         if (!detalle)
             continue;
         const especiales = Array.isArray(detalle.Especiales) ? detalle.Especiales : [];
-        const tieneEspecial47 = especiales.some((especialNivel) =>
+        const daFamiliar = especiales.some((especialNivel) =>
             isEspecialConvocarFamiliar(especialNivel?.Especial)
         );
-        if (tieneEspecial47)
+        if (daFamiliar)
             return true;
     }
 
@@ -178,7 +170,6 @@ export function resolverEstadoCuposFamiliarEspecial47(
     const nivelLanzadorFamiliar = cupo.fuentes.reduce((acc, fuente) => acc + Math.max(0, toNumber(fuente?.nivelActual)), 0);
 
     return {
-        especialId: ESPECIAL_CONVOCAR_FAMILIAR_ID,
         ...cupo,
         nivelLanzadorFamiliar,
     };
