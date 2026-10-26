@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { ManualReferencia } from 'src/app/interfaces/manual';
 import { textoVisible, tieneNumeroVisible } from 'src/app/services/utils/texto-visible';
-import { EtiquetaFicha, esTextoCorto, etiquetasVisibles } from './ficha';
+import { EtiquetaFicha, esTextoCorto, etiquetasVisibles, separarManualTexto } from './ficha';
 
 /**
  * La cabecera de la ficha: el tipo en versalitas, el nombre, una línea opcional en cursiva y, a la derecha, el manual
@@ -32,12 +32,15 @@ export class FichaCabeceraComponent implements OnChanges {
     }
 
     get nombreManual(): string {
-        const nombre = typeof this.manual === 'string' ? this.manual : this.manual?.Nombre;
-        return textoVisible(nombre);
+        if (typeof this.manual === 'string')
+            return separarManualTexto(this.manual).nombre;
+        return textoVisible(this.manual?.Nombre);
     }
 
     get paginaManual(): number | null {
-        const pagina = typeof this.manual === 'string' ? null : this.manual?.Pagina;
+        if (typeof this.manual === 'string')
+            return separarManualTexto(this.manual).pagina;
+        const pagina = this.manual?.Pagina;
         return tieneNumeroVisible(pagina) ? Number(pagina) : null;
     }
 

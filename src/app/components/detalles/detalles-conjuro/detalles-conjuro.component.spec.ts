@@ -133,7 +133,7 @@ describe('DetallesConjuroComponent', () => {
         const cabecera = elemento().querySelector('.ficha-cabecera') as HTMLElement;
         expect(cabecera.querySelector('.ficha-cabecera__tipo')?.textContent?.trim()).toBe('Conjuro arcano · Abjuración [Fuerza]');
         expect(cabecera.querySelector('h1')?.textContent?.trim()).toBe('Desvío de rayos');
-        expect(cabecera.querySelector('.ficha-cabecera__manual')?.textContent).toContain('Compendio de conjuros, página: 79');
+        expect(cabecera.querySelector('.ficha-cabecera__manual')?.textContent).toContain('Compendio de conjuros · pág. 79');
         expect(Array.from(cabecera.querySelectorAll('.ficha-etiqueta')).map((e) => e.textContent?.trim()))
             .toEqual(['Puede hacerse permanente', 'Oficial']);
 

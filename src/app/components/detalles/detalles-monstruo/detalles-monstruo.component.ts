@@ -298,7 +298,7 @@ export class DetallesMonstruoComponent {
         if (!tieneTextoVisible(cantidad))
             return '';
         const suma = toNumber(dg?.Suma);
-        return `${cantidad}${`${dg?.Tipo_dado?.Nombre ?? ''}`.trim()}${suma !== 0 ? textoConSigno(suma) : ''}`;
+        return `${cantidad}${`${dg?.Tipo_dado?.Nombre ?? ''}`.trim().toLowerCase()}${suma !== 0 ? textoConSigno(suma) : ''}`;
     }
 
     /** «40'», «nadar 30'», «volar 80' (buena)»: el primero es la velocidad base y el resto, sus otros movimientos. */

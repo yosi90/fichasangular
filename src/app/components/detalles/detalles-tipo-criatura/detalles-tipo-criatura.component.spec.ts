@@ -60,7 +60,7 @@ describe('DetallesTipoCriaturaComponent', () => {
 
         expect(limpio(elemento().querySelector('.ficha-cabecera__tipo'))).toBe('Tipo de criatura');
         expect(limpio(elemento().querySelector('.ficha-cabecera__nombre'))).toBe('Muerto viviente');
-        expect(limpio(elemento().querySelector('.ficha-cabecera__manual'))).toContain('Manual de monstruos, página: 317');
+        expect(limpio(elemento().querySelector('.ficha-cabecera__manual'))).toContain('Manual de monstruos · pág. 317');
         expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => limpio(e))).toEqual(['Oficial']);
         expect(datos(elemento().querySelector('.ficha-datos-contenedor--tarjeta'))).toEqual([
             ['Dados de golpe', 'd12'],

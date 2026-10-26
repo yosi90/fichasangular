@@ -10,6 +10,7 @@ import {
     datosMovimiento,
     datosVisibles,
     esTextoCorto,
+    separarManualTexto,
     etiquetasVisibles,
     sortilegasVisibles,
     textoDato,
@@ -193,12 +194,12 @@ describe('Ficha de detalle: componentes', () => {
         expect(etiquetas[1].classList).toContain('ficha-etiqueta--aviso');
     });
 
-    it('un manual en texto (con su página dentro) sale tal cual, sin página aparte', () => {
+    it('un manual en texto (con su página dentro) sale con el mismo formato que la referencia de la API', () => {
         host.manual = 'Compendio de conjuros, página: 79';
         fixture.detectChanges();
         const manual = elemento().querySelector('.ficha-cabecera__manual') as HTMLElement;
-        expect(manual.textContent).toContain('Compendio de conjuros, página: 79');
-        expect(manual.textContent).not.toContain('pág.');
+        expect(manual.textContent).toContain('Compendio de conjuros · pág. 79');
+        expect(manual.textContent).not.toContain('página:');
     });
 
     it('pulsar el manual emite abrirManual', () => {
@@ -293,3 +294,14 @@ describe('Ficha de detalle: componentes', () => {
         expect(bloque.querySelector('table.ficha-tabla')).not.toBeNull();
     });
 });
+
+describe('separarManualTexto', () => {
+    it('separa el nombre y la página de los formatos de texto de la API', () => {
+        expect(separarManualTexto('Manual del jugador 1, Página: 15')).toEqual({ nombre: 'Manual del jugador 1', pagina: 15 });
+        expect(separarManualTexto('El combatiente completo (p. 96)')).toEqual({ nombre: 'El combatiente completo', pagina: 96 });
+        expect(separarManualTexto('Compendio de conjuros, Página: 6')).toEqual({ nombre: 'Compendio de conjuros', pagina: 6 });
+        expect(separarManualTexto('Rol mapa mundi')).toEqual({ nombre: 'Rol mapa mundi', pagina: null });
+        expect(separarManualTexto(null)).toEqual({ nombre: '', pagina: null });
+    });
+});
+

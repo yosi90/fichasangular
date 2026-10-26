@@ -85,3 +85,15 @@ export function datoAlineamiento(alineamiento: Alineamiento | null | undefined):
     const ayuda = [prioridad ? `Prioridad: ${prioridad}.` : '', textoVisible(alineamiento?.Descripcion)].filter(Boolean).join(' ');
     return { etiqueta: 'Alineamiento', valor, ayuda: valor ? ayuda : null };
 }
+
+/**
+ * El manual que llega como texto con la página dentro («Manual del jugador 1, Página: 15», «El combatiente completo (p. 96)»),
+ * separado en nombre y página para que la cabecera lo escriba igual que la referencia de la API («… · pág. 15»).
+ */
+export function separarManualTexto(texto: string | null | undefined): { nombre: string; pagina: number | null } {
+    const limpio = textoVisible(texto);
+    const conPagina = /^(.*?)[\s,]*(?:\(\s*)?(?:p[aá]gina|p[aá]g\.?|p\.)\s*:?\s*(\d+)\s*\)?\s*$/i.exec(limpio);
+    if (conPagina && conPagina[1].trim())
+        return { nombre: conPagina[1].trim(), pagina: Number(conPagina[2]) };
+    return { nombre: limpio, pagina: null };
+}
