@@ -933,7 +933,7 @@
                                 Transcláseas: 2 puntos por rango y la mitad de límite.
                             </mat-chip>
                             <mat-chip class="habilidad-entrenada-info-chip">
-                                * Las habilidades entrenadas no cláseas no pueden subir rangos.
+                                * Solo entrenada: sin rangos no se puede usar.
                             </mat-chip>
                             <mat-chip class="habilidad-entrenada-info-chip"
                                 *ngIf="flujoHabilidades.puntosRestantes > 0 && puedeContinuarHabilidades">
@@ -971,7 +971,7 @@
                                             <td>{{getCaracteristicaAbreviada(habilidad.Car)}}</td>
                                             <td class="habilidad-extra-col"
                                                 [class.habilidad-extra-pendiente]="esExtraPendienteHabilidad(habilidad)"
-                                                [matTooltip]="esExtraPendienteHabilidad(habilidad) ? 'Debes elegir un extra para esta habilidad clásea.' : ''"
+                                                [matTooltip]="esExtraPendienteHabilidad(habilidad) ? 'Debes elegir un extra para esta habilidad.' : ''"
                                                 matTooltipClass="tt-accent">
                                                 <ng-container
                                                     *ngIf="esExtraEditableHabilidad(habilidad); else extraSoloTexto">

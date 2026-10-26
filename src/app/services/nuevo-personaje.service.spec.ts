@@ -5474,29 +5474,47 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeFalse();
     });
 
-    it('habilidades entrenadas no cláseas no permiten subir rangos, pero sí si son cláseas', () => {
+    it('una «solo entrenada» transclásea se compra a 2 puntos por rango (MJ cap. 4); clásea, a 1', () => {
+        const catalogo = [
+            { Id_habilidad: 6, Nombre: 'Descifrar escritura', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: true, Extras: [] },
+        ];
         const svcNoClasea = new NuevoPersonajeService();
-        svcNoClasea.setCatalogoHabilidades([
-            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: true, Extras: [] },
-        ]);
+        svcNoClasea.setCatalogoHabilidades(catalogo);
         svcNoClasea.seleccionarRaza(crearRazaConDgs());
         svcNoClasea.iniciarDistribucionHabilidadesPorRazaDG();
+        svcNoClasea.EstadoFlujo.habilidades.puntosRestantes = 2;
 
-        expect(svcNoClasea.ajustarRangoHabilidad(6, 1)).toBeFalse();
+        expect(svcNoClasea.puedeSubirRangoHabilidad(6)).toBeTrue();
+        expect(svcNoClasea.ajustarRangoHabilidad(6, 1)).toBeTrue();
+        expect(svcNoClasea.EstadoFlujo.habilidades.puntosRestantes).toBe(0);
 
         const svcClasea = new NuevoPersonajeService();
-        svcClasea.setCatalogoHabilidades([
-            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: true, Extras: [] },
-        ]);
+        svcClasea.setCatalogoHabilidades(catalogo);
         svcClasea.seleccionarRaza(crearRazaConDgs({
-            Habilidades: {
-                Base: [{ Id_habilidad: 6, Habilidad: 'Avistar', Cantidad: 1 }],
-                Custom: [],
-            },
+            Habilidades: { Base: [{ Id_habilidad: 6, Habilidad: 'Descifrar escritura', Cantidad: 1 }], Custom: [] },
         } as any));
         svcClasea.iniciarDistribucionHabilidadesPorRazaDG();
+        svcClasea.EstadoFlujo.habilidades.puntosRestantes = 2;
 
         expect(svcClasea.ajustarRangoHabilidad(6, 1)).toBeTrue();
+        expect(svcClasea.EstadoFlujo.habilidades.puntosRestantes).toBe(1);
+    });
+
+    it('una habilidad con extra comprada como transclásea pide elegir su extra (qué Saber)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 32, Nombre: 'Saber', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: true, Extras: [{ Id_extra: 12, Extra: 'Religión', Descripcion: '' }] },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs());
+        svc.iniciarDistribucionHabilidadesPorRazaDG();
+        svc.EstadoFlujo.habilidades.puntosRestantes = 2;
+
+        expect(svc.esExtraElegibleHabilidad(32)).toBeFalse();
+        expect(svc.ajustarRangoHabilidad(32, 1)).toBeTrue();
+        expect(svc.esExtraElegibleHabilidad(32)).toBeTrue();
+        expect(svc.puedeCerrarDistribucionHabilidades()).toBeFalse();
+        expect(svc.setExtraHabilidad(32, 'Religión')).toBeTrue();
+        expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
     });
 
     it('no permite cerrar distribución si quedan puntos', () => {
@@ -5538,7 +5556,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
     });
 
-    it('no bloquea cierre por extra pendiente en habilidades no cláseas', () => {
+    it('no bloquea cierre por extra pendiente en habilidades no cláseas sin rangos', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
             {
@@ -5559,7 +5577,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
     });
 
-    it('no permite seleccionar extra en habilidades no cláseas', () => {
+    it('no permite seleccionar extra en habilidades no cláseas sin rangos', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
             {

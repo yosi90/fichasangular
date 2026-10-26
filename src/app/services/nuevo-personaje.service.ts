@@ -1814,9 +1814,6 @@ export class NuevoPersonajeService {
         const coste = costeRangoHabilidad(this.esHabilidadClaseaParaSesion(habilidad));
 
         if (cambio > 0) {
-            if (this.esHabilidadEntrenadaNoClaseaParaSesion(habilidad))
-                return false;
-
             const limite = this.obtenerLimiteRangoHabilidad(id);
             const maxSubida = limite - actual;
             const subida = Math.min(cambio, maxSubida);
@@ -1851,15 +1848,15 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Se le puede subir un rango a la habilidad en esta sesión: no es entrenada transclásea, no ha llegado a su límite y
-     * los puntos que quedan pagan su coste.
+     * Se le puede subir un rango a la habilidad en esta sesión: no ha llegado a su límite y los puntos que quedan pagan
+     * su coste. Una «solo entrenada» transclásea también se compra, a 2 puntos por rango (MJ cap. 4).
      */
     puedeSubirRangoHabilidad(idHabilidad: number): boolean {
         const id = toNumber(idHabilidad);
         if (id <= 0)
             return false;
         const habilidad = this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === id);
-        if (!habilidad || this.esHabilidadEntrenadaNoClaseaParaSesion(habilidad))
+        if (!habilidad)
             return false;
         return toNumber(habilidad?.Rangos) < this.obtenerLimiteRangoHabilidad(id)
             && toNumber(this.estadoFlujo.habilidades.puntosRestantes) >= this.obtenerCosteRangoHabilidad(id);
@@ -1881,7 +1878,7 @@ export class NuevoPersonajeService {
 
         if (!toBoolean(habilidad?.Soporta_extra))
             return false;
-        if (!this.esHabilidadClaseaParaSesion(habilidad))
+        if (!this.esExtraElegibleParaSesion(habilidad))
             return false;
         if (toBoolean(habilidad?.Extra_bloqueado))
             return false;
@@ -2089,6 +2086,11 @@ export class NuevoPersonajeService {
             return false;
 
         return this.esHabilidadClaseaParaSesion(habilidad);
+    }
+
+    esExtraElegibleHabilidad(idHabilidad: number): boolean {
+        const habilidad = this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === toNumber(idHabilidad));
+        return !!habilidad && this.esExtraElegibleParaSesion(habilidad);
     }
 
     obtenerLimiteRangoHabilidad(idHabilidad: number): number {
@@ -5542,8 +5544,12 @@ export class NuevoPersonajeService {
         return this.estadoFlujo.habilidades.classSkillTemporales.includes(id);
     }
 
-    private esHabilidadEntrenadaNoClaseaParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
-        return !!habilidad?.Entrenada && !this.esHabilidadClaseaParaSesion(habilidad);
+    /**
+     * Se elige el extra de la habilidad (qué Saber, qué Artesanía): si es clásea o si ya tiene rangos, comprados como
+     * transclásea.
+     */
+    private esExtraElegibleParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
+        return this.esHabilidadClaseaParaSesion(habilidad) || toNumber(habilidad?.Rangos) > 0;
     }
 
     private obtenerRangoInicialHabilidadSesion(idHabilidad: number): number {
@@ -5560,7 +5566,7 @@ export class NuevoPersonajeService {
     }
 
     private esExtraHabilidadPendienteParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
-        if (!this.esHabilidadClaseaParaSesion(habilidad))
+        if (!this.esExtraElegibleParaSesion(habilidad))
             return false;
         if (!toBoolean(habilidad?.Soporta_extra))
             return false;
@@ -5603,7 +5609,7 @@ export class NuevoPersonajeService {
         return this.personajeCreacion.Habilidades.some((habilidad) => {
             if (toNumber(habilidad?.Id) === idObjetivo)
                 return false;
-            if (!this.esHabilidadClaseaParaSesion(habilidad))
+            if (!this.esExtraElegibleParaSesion(habilidad))
                 return false;
             if (!toBoolean(habilidad?.Soporta_extra))
                 return false;
@@ -5620,7 +5626,7 @@ export class NuevoPersonajeService {
         const vistos = new Set<string>();
 
         for (const habilidad of (this.personajeCreacion.Habilidades ?? [])) {
-            if (!this.esHabilidadClaseaParaSesion(habilidad))
+            if (!this.esExtraElegibleParaSesion(habilidad))
                 continue;
             if (!toBoolean(habilidad?.Soporta_extra))
                 continue;

@@ -3442,7 +3442,7 @@ export class NuevoPersonajeComponent {
 
     getOpcionesExtraHabilidad(habilidad: Personaje['Habilidades'][number]): Array<{ Id_extra: number; Extra: string; Descripcion: string; }> {
         const idHabilidad = Number(habilidad?.Id ?? 0);
-        if (!this.esHabilidadClaseaEfectiva(idHabilidad))
+        if (!this.nuevoPSvc.esExtraElegibleHabilidad(idHabilidad))
             return [];
         if (Boolean(habilidad?.Extra_bloqueado))
             return [];
@@ -3463,7 +3463,7 @@ export class NuevoPersonajeComponent {
             (this.Personaje?.Habilidades ?? [])
                 .filter((otra) => Number(otra?.Id) !== idHabilidad)
                 .filter((otra) => !!otra?.Soporta_extra)
-                .filter((otra) => this.esHabilidadClaseaEfectiva(Number(otra?.Id)))
+                .filter((otra) => this.nuevoPSvc.esExtraElegibleHabilidad(Number(otra?.Id)))
                 .filter((otra) => this.getClaveGrupoExtraHabilidad(otra) === claveGrupo)
                 .map((otra) => normalizarTexto(`${otra?.Extra ?? ''}`))
                 .filter((extraNorm) => !this.esExtraPendienteValor(extraNorm))
@@ -3478,7 +3478,7 @@ export class NuevoPersonajeComponent {
     esExtraObligatorioHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
         if (!habilidad)
             return false;
-        return this.esHabilidadClaseaEfectiva(Number(habilidad?.Id)) && !!habilidad?.Soporta_extra;
+        return this.nuevoPSvc.esExtraElegibleHabilidad(Number(habilidad?.Id)) && !!habilidad?.Soporta_extra;
     }
 
     esExtraPendienteHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
@@ -3509,7 +3509,7 @@ export class NuevoPersonajeComponent {
     }
 
     async abrirSelectorExtraHabilidad(habilidad: Personaje['Habilidades'][number]): Promise<void> {
-        if (!habilidad?.Soporta_extra || !this.esHabilidadClaseaEfectiva(Number(habilidad?.Id)))
+        if (!habilidad?.Soporta_extra || !this.nuevoPSvc.esExtraElegibleHabilidad(Number(habilidad?.Id)))
             return;
         if (Boolean(habilidad?.Extra_bloqueado))
             return;
@@ -3537,7 +3537,7 @@ export class NuevoPersonajeComponent {
     esExtraEditableHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
         if (!habilidad?.Soporta_extra)
             return false;
-        if (!this.esHabilidadClaseaEfectiva(Number(habilidad?.Id)))
+        if (!this.nuevoPSvc.esExtraElegibleHabilidad(Number(habilidad?.Id)))
             return false;
         if (Boolean(habilidad?.Extra_bloqueado))
             return false;
