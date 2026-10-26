@@ -114,6 +114,8 @@ import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { DatosIdeaIa, datosIdeaDePersonaje, TipoIdeaIa } from 'src/app/services/ideas-ia.service';
 import { UsoIdeaIa } from '../shared/ideas-ia/ideas-ia.component';
+import { DatoFranja } from '../detalles/ficha';
+import { PasoCreacionId, lineaPersonajeCreacion, pasoCreacionDeLaPestana, textoContinuarCreacion } from './marco';
 import { normalizarTexto, primerEntero } from 'src/app/services/utils/normalizacion';
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
@@ -124,11 +126,14 @@ import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
 import { EquipoCatalogos, MunicionDetalle } from 'src/app/interfaces/equipo';
 import {
     ArticuloTienda,
+    POLITICA_TIENDA_LIBRE,
+    PoliticaTienda,
     ReglaDineroInicial,
     articuloDeArma,
     articuloDeArmadura,
     articuloDeMunicion,
     indicePiezaDelCampo,
+    politicaTienda,
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
 
@@ -533,6 +538,8 @@ export class NuevoPersonajeComponent {
     tiendaPiezaConError: number | null = null;
     /** En una campaña que no admite homebrew, la tienda solo ofrece lo oficial (la API lo comprueba igualmente). */
     tiendaSoloOficial = false;
+    /** Lo que la campaña deja comprar en la tienda (objetos mágicos, a medida y precio por pieza); sin campaña, todo. */
+    tiendaPolitica: PoliticaTienda = POLITICA_TIENDA_LIBRE;
     private tiendaPersonaje: Personaje | null = null;
     finalizacionEnCurso = false;
     finalizacionState: {
@@ -569,6 +576,89 @@ export class NuevoPersonajeComponent {
     private alineamientosBasicosSub?: Subscription;
     @ViewChild(MatTabGroup) TabGroup?: MatTabGroup;
     @Output() personajeFinalizado = new EventEmitter<number>();
+
+    // El marco de la creación (lienzo del 2026-10-26): qué paso se ve, qué pasos salen y lo que se mira a la derecha.
+    /** La raza que se mira en el paso de Raza, a la derecha, antes de elegirla. */
+    razaMirada: Raza | null = null;
+
+    get pasoCreacion(): PasoCreacionId {
+        return pasoCreacionDeLaPestana(this.selectedInternalTabIndex, {
+            enTienda: this.modalTiendaAbierto,
+            eligiendoDotesSinConjuros: this.flujo.pasoActual === 'dotes' && !this.entradaConjurosActual,
+        });
+    }
+
+    /** El paso de Conjuros sale cuando tiene conjuros que elegir o ya tiene alguno (un guerrero no lo ve). */
+    get pasoConConjuros(): boolean {
+        return this.pasoCreacion === 'conjuros' || this.flujoConjuros.activa || (this.Personaje?.Conjuros ?? []).length > 0;
+    }
+
+    get lineaCabeceraCreacion(): string {
+        return lineaPersonajeCreacion(this.Personaje);
+    }
+
+    get textoContinuarPaso(): string {
+        return textoContinuarCreacion(this.pasoCreacion, { conVentajas: !this.campaignForbidsAdvantages, conConjuros: this.pasoConConjuros });
+    }
+
+    /** «Ver la ficha» abre la vista previa que ya existe; en pantallas pequeñas no cabe. */
+    get puedeVerFichaEnCreacion(): boolean {
+        return this.razaElegida && this.isVentanaDetalleHabilitada();
+    }
+
+    /** Las cifras del paso, para su franja (un paso sin cifras no la pinta). */
+    get franjaPasoCreacion(): DatoFranja[] {
+        switch (this.pasoCreacion) {
+            case 'plantillas':
+                return [
+                    { etiqueta: 'Plantillas elegidas', valor: this.plantillasSeleccionadas.length },
+                    { etiqueta: 'Tipo de criatura', valor: this.tipoCriaturaSimuladaTexto },
+                ];
+            case 'ventajas':
+                return [
+                    { etiqueta: 'Puntos disponibles', valor: this.flujoVentajas.puntosDisponibles },
+                    { etiqueta: 'Gastados', valor: this.flujoVentajas.puntosGastados },
+                    { etiqueta: 'Te quedan', valor: this.flujoVentajas.puntosRestantes },
+                    { etiqueta: 'Ventajas', valor: this.ventajasSeleccionadasCount, detalle: 'de 3' },
+                ];
+            case 'clases':
+                return [
+                    { etiqueta: 'Niveles de clase', valor: this.totalNivelesClaseActual },
+                    { etiqueta: 'La que eliges', valor: this.claseSeleccionadaActual?.clase?.Nombre ?? null,
+                        detalle: this.claseSeleccionadaActual ? `nivel ${this.claseSeleccionadaActual.siguienteNivel}` : null },
+                    { etiqueta: 'Puntos de golpe', valor: Number(this.Personaje?.Vida) > 0 ? Number(this.Personaje.Vida) : null },
+                ];
+            case 'habilidades':
+                return [
+                    { etiqueta: 'Puntos por repartir', valor: this.flujoHabilidades.puntosRestantes, detalle: `de ${this.flujoHabilidades.puntosTotales}` },
+                    { etiqueta: 'De dónde salen', valor: this.origenHabilidadesTexto },
+                    { etiqueta: 'Nivel de referencia', valor: this.flujoHabilidades.nivelPersonajeReferencia },
+                ];
+            case 'conjuros': {
+                const entrada = this.entradaConjurosActual;
+                if (!entrada)
+                    return [];
+                return [
+                    { etiqueta: 'Clase', valor: entrada.claseObjetivo?.nombre },
+                    { etiqueta: 'Nivel de lanzador', valor: `${entrada.nivelLanzadorPrevio} → ${entrada.nivelLanzadorActual}` },
+                    { etiqueta: 'Poder máximo', valor: entrada.tipoLanzamiento === 'psionico' && entrada.nivelMaxPoderAccesiblePsionico >= 0 ? entrada.nivelMaxPoderAccesiblePsionico : null },
+                ];
+            }
+            default:
+                return [];
+        }
+    }
+
+    mirarRaza(raza: Raza): void {
+        this.razaMirada = raza;
+    }
+
+    verFichaEnCreacion(): void {
+        if (!this.puedeVerFichaEnCreacion)
+            return;
+        this.nuevoPSvc.refrescarDerivadasPreviewNuevoPersonaje();
+        this.ventanaDetalleAbierta = true;
+    }
 
     constructor(
         private auth: Auth,
@@ -4261,6 +4351,7 @@ export class NuevoPersonajeComponent {
         // Sin campaña, todo (también lo homebrew); en una campaña, su política: si no admite homebrew, solo lo oficial.
         // Con un límite de fuentes homebrew se ofrece todo y la API dice si la compra se pasa.
         this.tiendaSoloOficial = this.getCurrentCampaignHomebrewMode(this.effectiveSelectedCampaignPolicy) === 'forbidden';
+        this.tiendaPolitica = politicaTienda(this.effectiveSelectedCampaignPolicy);
         this.tiendaArticulos = [
             ...(this.catalogoArmas ?? []).map((arma) => articuloDeArma(arma)),
             ...(this.catalogoArmaduras ?? []).map((armadura) => articuloDeArmadura(armadura)),

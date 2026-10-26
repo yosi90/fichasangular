@@ -1,4 +1,5 @@
 import {
+    AplicacionMaterial,
     CategoriaObjeto,
     ConjuntoObjetosDetalle,
     EncantamientoDetalle,
@@ -12,6 +13,7 @@ import {
     MunicionDetalle,
     ObjetoDetalle,
     OrigenDescripcion,
+    PiezaMaterial,
     TextoEquipo,
 } from 'src/app/interfaces/equipo';
 import { ManualReferencia } from 'src/app/interfaces/manual';
@@ -90,6 +92,8 @@ function normalizeAura(raw: any): EquipoAura {
     };
 }
 
+const PIEZAS_MATERIAL: readonly PiezaMaterial[] = ['arma', 'municion', 'armadura', 'escudo'];
+
 export function normalizeEquipoCatalogos(raw: any): EquipoCatalogos {
     const refs = (clave: string) => normalizeEquipoRefs(raw?.[clave]);
     return {
@@ -119,7 +123,17 @@ export function normalizeEquipoCatalogos(raw: any): EquipoCatalogos {
             .filter((item): item is EquipoTipoBonificador => item !== null),
         Objetivos_modificador: refs('Objetivos_modificador'),
         Empunaduras: refs('Empunaduras'),
-        Aplicaciones_material: refs('Aplicaciones_material'),
+        Aplicaciones_material: toArray<any>(raw?.Aplicaciones_material)
+            .map((item) => {
+                const ref = normalizeEquipoRef(item);
+                return ref ? {
+                    ...ref,
+                    Piezas: toArray<any>(item?.Piezas).filter((pieza): pieza is PiezaMaterial => PIEZAS_MATERIAL.includes(pieza)),
+                    Manejo: normalizeEquipoRef(item?.Manejo),
+                    Peso_armadura: normalizeEquipoRef(item?.Peso_armadura),
+                } : null;
+            })
+            .filter((item): item is AplicacionMaterial => item !== null),
         Danos_por_tamano: toArray(raw?.Danos_por_tamano).map((item: any) => ({
             Dano_mediano: toText(item?.Dano_mediano),
             Danos: toArray(item?.Danos).map((dano: any) => ({

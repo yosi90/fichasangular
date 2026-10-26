@@ -1,0 +1,196 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// Piezas que comparten los pasos de la creación y sus ventanas de elección (lienzo aprobado el 2026-10-26): el título en
+// versalitas, la etiqueta con borde, el buscador, las opciones que se eligen (lista de una ventana, material de una
+// pieza…) y los conmutadores. Globales, con el prefijo `creacion-`; las cargan `CreacionMarcoComponent` y
+// `CreacionVentanaComponent` (Angular las pone una sola vez).
+
+.creacion-oculto
+    position: absolute !important
+    width: 1px
+    height: 1px
+    overflow: hidden
+    clip: rect(0 0 0 0)
+    white-space: nowrap
+
+.creacion-titulo
+    margin: 0
+    font-size: 12px
+    font-weight: 700
+    line-height: 1.4
+    letter-spacing: .14em
+    text-transform: uppercase
+    color: $accent
+
+.creacion-texto-suave
+    margin: 0
+    font-size: 13px
+    color: $font-base
+
+.creacion-etiqueta
+    display: inline-flex
+    align-items: center
+    height: 22px
+    padding: 0 8px
+    border: 1px solid $accent
+    border-radius: 4px
+    font-size: 12px
+    color: $ficha-texto-suave
+    white-space: nowrap
+
+.creacion-etiqueta--aviso
+    border-color: $ficha-aviso
+    color: $ficha-aviso
+
+// El buscador: una lupa y el campo, sobre $primary.
+.creacion-buscador
+    display: flex
+    flex: 1 1 auto
+    align-items: center
+    gap: 8px
+    min-width: 0
+    height: 36px
+    padding: 0 12px
+    border-radius: 4px
+    background: $primary
+
+    .mat-icon
+        flex-shrink: 0
+        width: 18px
+        height: 18px
+        font-size: 18px
+        color: $accent
+
+    input
+        flex: 1 1 auto
+        min-width: 0
+        border: 0
+        outline: none
+        background: transparent
+        color: $ficha-blanco
+        font: inherit
+        font-size: 14px
+
+    &:focus-within
+        outline: 2px solid $active
+        outline-offset: 1px
+
+.creacion-herramientas
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 10px
+
+// Un conmutador de pocas opciones («Oficiales / También homebrew», «Sin, +1…+5»).
+.creacion-conmutador
+    display: inline-flex
+    gap: 1px
+    border-radius: 4px
+    overflow: hidden
+
+    button
+        min-width: 44px
+        height: 36px
+        padding: 0 12px
+        border: 0
+        background: $primary
+        color: $ficha-blanco
+        font: inherit
+        font-size: 13px
+        cursor: pointer
+
+        &[aria-pressed="true"], &[aria-checked="true"]
+            background: $active
+
+        &:disabled
+            opacity: .45
+            cursor: not-allowed
+
+        &:focus-visible
+            outline: 2px solid $ficha-blanco
+            outline-offset: -2px
+
+// Una opción que se elige de una lista: el nombre, una nota debajo y, a la derecha, su estado o su coste. La elegida, con
+// el fondo rosado y la raya rosa a la izquierda; la que no se puede elegir, atenuada (con su motivo en la nota).
+.creacion-opciones
+    display: flex
+    flex-direction: column
+    gap: 2px
+    margin: 0
+    padding: 0
+    list-style: none
+
+.creacion-opciones--rejilla
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr))
+    gap: 6px
+
+.creacion-opcion
+    display: flex
+    justify-content: space-between
+    align-items: center
+    gap: 10px
+    width: 100%
+    padding: 8px 12px
+    border: 0
+    border-radius: 4px
+    background: transparent
+    color: $ficha-blanco
+    font: inherit
+    font-size: 14px
+    text-align: left
+    cursor: pointer
+
+    &:hover
+        background: rgba(255, 255, 255, .05)
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: -2px
+
+.creacion-opcion--caja
+    background: $ficha-tarjeta
+
+.creacion-opcion--activa, .creacion-opcion--activa:hover
+    background: #4a3a42
+    box-shadow: inset 3px 0 0 $active
+
+.creacion-opcion--bloqueada
+    color: #8a949b
+    cursor: not-allowed
+
+.creacion-opcion__texto
+    display: flex
+    flex-direction: column
+    min-width: 0
+
+.creacion-opcion__nota
+    font-size: 12px
+    color: $font-base
+
+.creacion-opcion__estado
+    flex-shrink: 0
+    font-size: 12px
+    color: #ffab91
+
+.creacion-opcion__coste
+    flex-shrink: 0
+    font-size: 13px
+    color: $ficha-texto-suave
+    font-variant-numeric: tabular-nums
+
+.creacion-vacio
+    margin: 0
+    padding: 12px
+    font-size: 14px
+    color: $font-base
+    text-align: center
+
+.creacion-aviso
+    margin: 0
+    padding: 10px 12px
+    border: 1px solid #ffab91
+    border-radius: 6px
+    color: #ffccbc
+    font-size: 14px

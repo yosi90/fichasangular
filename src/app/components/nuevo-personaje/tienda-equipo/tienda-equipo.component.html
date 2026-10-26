@@ -1,132 +1,135 @@
-<div class="selector-overlay">
-    <div class="selector-dialog" role="dialog" aria-labelledby="titulo-tienda" (click)="$event.stopPropagation()">
-        <div class="selector-header">
-            <h2 id="titulo-tienda" class="tw-m-0 selector-title">Equipo inicial</h2>
-            <mat-chip class="chip-estado" [ngClass]="motivoNoComprar ? 'warm' : 'ok'">
-                Gastado {{textoPrecio(resumen.gastado)}} · Queda {{textoPrecio(resumen.queda)}} · {{textoPeso(resumen.peso)}}
-            </mat-chip>
-        </div>
+<app-ficha-franja [datos]="franja" titulo="El dinero de la compra"></app-ficha-franja>
 
-        <div class="contenido">
-            <section class="bloque">
-                <p class="subtitulo">Dinero inicial</p>
-                <p class="ayuda">{{regla.descripcion}}</p>
-                <div class="fila-dinero">
-                    <mat-form-field appearance="fill" class="campo-dinero">
-                        <mat-label>Dinero inicial (po)</mat-label>
-                        <input matInput type="number" min="0" [attr.max]="regla.maximo" [value]="dineroInicial"
-                            [disabled]="guardando" (input)="cambiarDinero($any($event.target).value)">
-                        <mat-hint *ngIf="regla.maximo !== null">Como mucho, {{textoPrecio(regla.maximo)}}</mat-hint>
-                    </mat-form-field>
-                    <button mat-stroked-button color="accent" type="button" *ngIf="regla.modo === 'dados'" [disabled]="!puedeTirar"
-                        (click)="tirarDados()" matTooltip="Tira {{regla.dados}} y multiplica por {{regla.multiplicador}}">
-                        <mat-icon>casino</mat-icon>
-                        Tirar {{regla.dados}}
-                    </button>
-                </div>
-            </section>
-
-            <section class="bloque">
-                <p class="subtitulo">Catálogo</p>
-                <div class="fila-catalogo">
-                    <mat-form-field appearance="fill">
-                        <mat-label>Qué comprar</mat-label>
-                        <mat-select [value]="seccion" (selectionChange)="cambiarSeccion($event.value)">
-                            <mat-option *ngFor="let opcion of secciones" [value]="opcion.valor">{{opcion.etiqueta}}</mat-option>
-                        </mat-select>
-                    </mat-form-field>
-                    <mat-form-field appearance="fill" class="campo-busqueda">
-                        <mat-label>Buscar</mat-label>
-                        <input matInput [value]="busqueda" (input)="buscar($any($event.target).value)">
-                    </mat-form-field>
-                </div>
-                <div class="lista-opciones">
-                    <div class="opcion" *ngFor="let articulo of opciones">
-                        <span class="opcion-nombre">{{articulo.nombre}}</span>
-                        <mat-chip class="chip-homebrew" *ngIf="!articulo.oficial">Homebrew</mat-chip>
-                        <span class="opcion-dato">{{articulo.categoria}}</span>
-                        <span class="opcion-dato">
-                            <ng-container *ngIf="articulo.generico; else precioFijo">{{textoPrecioGenerico(articulo.generico)}}</ng-container>
-                            <ng-template #precioFijo>{{textoPrecio(articulo.precio)}}<ng-container *ngIf="articulo.lote > 1"> ({{articulo.lote}})</ng-container></ng-template>
-                        </span>
-                        <button mat-icon-button type="button" color="accent" [disabled]="guardando" (click)="anadir(articulo)"
-                            aria-label="Añadir a la compra" matTooltip="Añadir">
-                            <mat-icon>add_shopping_cart</mat-icon>
-                        </button>
-                    </div>
-                    <p class="vacio" *ngIf="opciones.length < 1 && !cargandoObjetos">{{errorObjetos || 'Nada que comprar con esta búsqueda.'}}</p>
-                    <p class="vacio" *ngIf="cargandoObjetos && seccion === 'objeto'">Buscando objetos…</p>
-                </div>
-            </section>
-
-            <section class="bloque">
-                <p class="subtitulo">Lo que compra</p>
-                <p class="vacio" *ngIf="piezas.length < 1">Todavía nada. Puedes terminar sin comprar y quedarte con todo el dinero.</p>
-                <div class="pieza" *ngFor="let pieza of piezas; let i = index" [class.incompleta]="faltaEnPieza(pieza) || i === piezaSenalada">
-                    <div class="pieza-cabecera">
-                        <span class="opcion-nombre">{{pieza.articulo.nombre}}</span>
-                        <span class="opcion-dato">{{textoPrecio(precioEstimado(pieza))}}</span>
-                        <button mat-icon-button type="button" [disabled]="guardando" (click)="quitar(i)"
-                            aria-label="Quitar de la compra" matTooltip="Quitar">
-                            <mat-icon>delete</mat-icon>
-                        </button>
-                    </div>
-                    <div class="pieza-opciones">
-                        <mat-form-field appearance="fill" class="campo-corto">
-                            <mat-label>{{pieza.articulo.tipo === 'municion' ? 'Piezas' : 'Cantidad'}}</mat-label>
-                            <input matInput type="number" min="1" [value]="pieza.cantidad" [disabled]="guardando"
-                                (input)="cambiarPieza(i, { cantidad: numero($any($event.target).value, 1) })">
-                        </mat-form-field>
-                        <mat-checkbox [checked]="pieza.equipado" [disabled]="guardando"
-                            (change)="cambiarPieza(i, { equipado: $event.checked })">Lo lleva puesto</mat-checkbox>
-                        <ng-container *ngIf="pieza.articulo.tipo !== 'objeto'">
-                            <mat-checkbox [checked]="pieza.granCalidad || pieza.bonificadorMejora > 0"
-                                [disabled]="guardando || pieza.bonificadorMejora > 0"
-                                (change)="cambiarPieza(i, { granCalidad: $event.checked })">Gran calidad</mat-checkbox>
-                            <mat-form-field appearance="fill" class="campo-corto">
-                                <mat-label>Mejora</mat-label>
-                                <mat-select [value]="pieza.bonificadorMejora" [disabled]="guardando"
-                                    (selectionChange)="cambiarPieza(i, { bonificadorMejora: $event.value })">
-                                    <mat-option *ngFor="let mejora of mejoras" [value]="mejora">{{mejora > 0 ? '+' + mejora : 'Sin mejora'}}</mat-option>
-                                </mat-select>
-                            </mat-form-field>
-                        </ng-container>
-                        <ng-container *ngIf="pieza.articulo.generico">
-                            <mat-form-field appearance="fill" class="campo-conjuro">
-                                <mat-label>Conjuro</mat-label>
-                                <input matInput [value]="pieza.nombreConjuro" [matAutocomplete]="autoConjuro" [disabled]="guardando"
-                                    (input)="escribirConjuro(i, $any($event.target).value)">
-                                <mat-autocomplete #autoConjuro="matAutocomplete" (optionSelected)="elegirConjuro(i, $event.option.value)">
-                                    <mat-option *ngFor="let conjuro of conjurosPara(pieza.nombreConjuro)" [value]="conjuro.Nombre">{{conjuro.Nombre}}</mat-option>
-                                </mat-autocomplete>
-                            </mat-form-field>
-                            <mat-form-field appearance="fill" class="campo-corto">
-                                <mat-label>Nivel del conjuro</mat-label>
-                                <input matInput type="number" min="0" [attr.max]="pieza.articulo.generico.Nivel_maximo" [value]="pieza.nivelConjuro"
-                                    [disabled]="guardando" (input)="cambiarPieza(i, { nivelConjuro: numero($any($event.target).value, 0) })">
-                            </mat-form-field>
-                            <mat-form-field appearance="fill" class="campo-corto">
-                                <mat-label>Nivel de lanzador</mat-label>
-                                <input matInput type="number" min="1" [value]="pieza.nivelLanzador" [disabled]="guardando"
-                                    (input)="cambiarPieza(i, { nivelLanzador: numero($any($event.target).value, 1) })">
-                            </mat-form-field>
-                        </ng-container>
-                    </div>
-                    <p class="falta" *ngIf="faltaEnPieza(pieza) as falta">{{falta}}</p>
-                    <p class="falta" *ngIf="i === piezaSenalada && error">{{error}}</p>
-                </div>
-                <mat-chip class="chip-estado warm" *ngIf="hayHomebrew">Comprar algo homebrew hace homebrew al personaje.</mat-chip>
-            </section>
-        </div>
-
-        <p class="bloque-error" *ngIf="error">{{error}}</p>
-        <p class="ayuda" *ngIf="!error && motivoNoComprar">{{motivoNoComprar}}</p>
-
-        <div class="selector-actions">
-            <button mat-stroked-button type="button" [disabled]="guardando" (click)="onOmitir()">Terminar sin comprar</button>
-            <button mat-raised-button color="primary" type="button" [disabled]="guardando || motivoNoComprar !== null" (click)="onConfirmar()">
-                {{guardando ? 'Guardando…' : 'Comprar y terminar'}}
+<app-creacion-cuerpo tituloTarea="Catálogo" tituloLateral="Lo que compra">
+    <div creacionTarea class="tienda-catalogo">
+        <div class="tienda-pestanas" role="tablist" aria-label="Qué comprar" (keydown)="moverPestana($event)">
+            <button type="button" role="tab" class="tienda-pestana" *ngFor="let pestana of pestanas; trackBy: trackPestana"
+                [attr.data-pestana]="pestana.id" [attr.aria-selected]="pestana.id === seccion"
+                [attr.tabindex]="pestana.id === seccion ? 0 : -1" (click)="cambiarSeccion(pestana.id)">
+                {{pestana.nombre}}
             </button>
         </div>
+        <div class="creacion-herramientas">
+            <label class="creacion-buscador">
+                <mat-icon aria-hidden="true">search</mat-icon>
+                <input type="search" [value]="busqueda" (input)="buscar($any($event.target).value)"
+                    placeholder="Buscar en el catálogo" aria-label="Buscar en el catálogo">
+            </label>
+            <span class="creacion-texto-suave">{{opciones.length}} {{opciones.length === 1 ? 'resultado' : 'resultados'}}</span>
+        </div>
+        <div class="tienda-tabla">
+            <table class="ficha-tabla">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>{{pestanaActual.columnas[0]}}</th>
+                        <th>{{pestanaActual.columnas[1]}}</th>
+                        <th class="tienda-num">Precio</th>
+                        <th class="tienda-num">Peso</th>
+                        <th><span class="creacion-oculto">Acciones</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let articulo of opciones">
+                        <td>
+                            {{articulo.nombre}}
+                            <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="!articulo.oficial">Homebrew</span>
+                        </td>
+                        <td class="tienda-suave">{{articulo.cifras[0]}}</td>
+                        <td class="tienda-suave">{{articulo.cifras[1]}}</td>
+                        <td class="tienda-num">
+                            <ng-container *ngIf="articulo.generico; else precioFijo">{{textoPrecioGenerico(articulo.generico)}}</ng-container>
+                            <ng-template #precioFijo>{{textoPrecio(articulo.precio)}}</ng-template>
+                        </td>
+                        <td class="tienda-num tienda-suave">{{textoPeso(articulo.peso)}}</td>
+                        <td class="tienda-acciones">
+                            <button type="button" mat-stroked-button [disabled]="guardando" (click)="anadir(articulo)"
+                                [attr.aria-label]="'Añadir ' + articulo.nombre">Añadir</button>
+                            <button type="button" class="tienda-enlace" *ngIf="politica.aMedida && seConfiguraAMedida(articulo)"
+                                [disabled]="guardando" (click)="configurarNueva(articulo)"
+                                [attr.aria-label]="'Configurar ' + articulo.nombre">Configurar</button>
+                        </td>
+                    </tr>
+                    <tr *ngIf="opciones.length < 1 && !cargandoObjetos">
+                        <td colspan="6" class="creacion-vacio">{{errorObjetos || 'Nada que comprar con esta búsqueda.'}}</td>
+                    </tr>
+                    <tr *ngIf="cargandoObjetos && (seccion === 'objeto' || seccion === 'especifica')">
+                        <td colspan="6" class="creacion-vacio">Buscando objetos…</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
+
+    <div creacionLateral class="tienda-lateral">
+        <section class="ficha-tarjeta tienda-tarjeta" aria-labelledby="tienda-dinero">
+            <h2 class="ficha-titulo" id="tienda-dinero">Dinero inicial</h2>
+            <p class="ficha-nota">{{regla.descripcion}}</p>
+            <div class="tienda-dinero">
+                <mat-form-field appearance="fill" class="tienda-dinero__campo">
+                    <mat-label>Dinero inicial (po)</mat-label>
+                    <input matInput type="number" min="0" [attr.max]="regla.maximo" [value]="dineroInicial"
+                        [disabled]="guardando" (input)="cambiarDinero($any($event.target).value)">
+                    <mat-hint *ngIf="regla.maximo !== null">Como mucho, {{textoPrecio(regla.maximo)}}</mat-hint>
+                </mat-form-field>
+                <button mat-stroked-button type="button" *ngIf="regla.modo === 'dados'" [disabled]="!puedeTirar"
+                    (click)="tirarDados()" matTooltip="Tira {{regla.dados}} y multiplica por {{regla.multiplicador}}">
+                    <mat-icon>casino</mat-icon>
+                    Tirar {{regla.dados}}
+                </button>
+            </div>
+        </section>
+
+        <section class="ficha-tarjeta tienda-tarjeta tienda-compra" aria-labelledby="tienda-compra">
+            <h2 class="ficha-titulo" id="tienda-compra">Lo que compra ({{piezas.length}})</h2>
+            <p class="ficha-nota" *ngIf="piezas.length < 1">Todavía nada. Puedes terminar sin comprar y quedarte con todo el dinero.</p>
+            <ul class="tienda-piezas" *ngIf="piezas.length > 0">
+                <li class="tienda-pieza" *ngFor="let pieza of piezas; let i = index"
+                    [class.tienda-pieza--marcada]="motivosPiezas[i] || i === piezaSenalada">
+                    <div class="tienda-pieza__texto">
+                        <span class="tienda-pieza__nombre">
+                            {{pieza.articulo.nombre}}<ng-container *ngIf="pieza.bonificadorMejora > 0"> +{{pieza.bonificadorMejora}}</ng-container><ng-container
+                                *ngIf="pieza.cantidad > 1"> × {{pieza.cantidad}}</ng-container>
+                        </span>
+                        <span class="tienda-pieza__nota">
+                            <ng-container *ngIf="pieza.material">{{pieza.material.Nombre}} · </ng-container>
+                            <ng-container *ngFor="let aptitud of pieza.aptitudes">{{aptitud.Nombre}} · </ng-container>
+                            <ng-container *ngIf="pieza.granCalidad && pieza.bonificadorMejora < 1">Gran calidad · </ng-container>
+                            <ng-container *ngIf="pieza.nombreConjuro">{{pieza.nombreConjuro}} · </ng-container>
+                            {{pieza.equipado ? 'Lo lleva puesto' : 'En la mochila'}}
+                        </span>
+                        <span class="tienda-pieza__aviso" *ngIf="motivosPiezas[i] as motivo">{{motivo}}</span>
+                        <span class="tienda-pieza__aviso" *ngIf="i === piezaSenalada && error">{{error}}</span>
+                    </div>
+                    <div class="tienda-pieza__cifras">
+                        {{textoPrecio(precioEstimado(pieza))}}
+                        <span class="tienda-pieza__nota">{{textoPeso(pesoEstimado(pieza))}}</span>
+                    </div>
+                    <div class="tienda-pieza__acciones">
+                        <button type="button" mat-icon-button [disabled]="guardando" (click)="editarPieza(i)"
+                            [attr.aria-label]="'Configurar ' + pieza.articulo.nombre" matTooltip="Configurar">
+                            <mat-icon>edit</mat-icon>
+                        </button>
+                        <button type="button" mat-icon-button [disabled]="guardando" (click)="quitar(i)"
+                            [attr.aria-label]="'Quitar ' + pieza.articulo.nombre" matTooltip="Quitar">
+                            <mat-icon>close</mat-icon>
+                        </button>
+                    </div>
+                </li>
+            </ul>
+            <div class="tienda-total"><span>Total</span><b>{{textoPrecio(resumen.gastado)}}</b></div>
+        </section>
+    </div>
+</app-creacion-cuerpo>
+
+<app-creacion-pie [nota]="notaPie" [aviso]="!!error || (!!motivoNoComprar && piezas.length > 0)">
+    <button mat-stroked-button type="button" [disabled]="guardando" (click)="onOmitir()">Terminar sin comprar</button>
+    <button mat-raised-button color="primary" type="button" [disabled]="guardando || motivoNoComprar !== null" (click)="onConfirmar()">
+        {{guardando ? 'Guardando…' : 'Comprar y terminar'}}
+    </button>
+</app-creacion-pie>
+
+<app-configurar-pieza *ngIf="configurando as c" [pieza]="c.pieza" [nueva]="c.indice === null" [materiales]="c.materiales"
+    [aptitudes]="c.aptitudes" [disponible]="c.disponible" [politica]="politica" [conjuros]="conjuros"
+    (guardar)="guardarConfiguracion($event)" (cancelar)="cancelarConfiguracion()">
+</app-configurar-pieza>

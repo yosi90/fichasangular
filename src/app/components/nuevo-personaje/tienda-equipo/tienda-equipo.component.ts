@@ -1,49 +1,62 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
-import { Subject, Subscription, catchError, defer, of, switchMap, timer } from 'rxjs';
+import { Subject, Subscription, catchError, defer, forkJoin, of, switchMap, take, timer } from 'rxjs';
+import { DatoFranja } from 'src/app/components/detalles/ficha';
+import { AplicacionMaterial, EncantamientoDetalle, FiltrosObjetos, MaterialDetalle } from 'src/app/interfaces/equipo';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { textoPeso, textoPrecio, textoPrecioGenerico } from 'src/app/services/utils/equipo-texto';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import {
     ArticuloTienda,
-    MEJORA_MAXIMA,
+    MaterialAplicable,
+    OrigenPestanaTienda,
+    POLITICA_TIENDA_LIBRE,
+    PestanaTienda,
     PiezaTienda,
+    PoliticaTienda,
     ReglaDineroInicial,
     ResumenCompra,
+    aptitudesAplicables,
     articuloDeObjeto,
     construirCompra,
-    faltaEnPieza,
+    materialesAplicables,
+    motivoPiezaNoValida,
+    notaPoliticaTienda,
     nuevaPieza,
+    pestanasTienda,
+    pesoEstimado,
     precioEstimado,
     resumenCompra,
+    seConfiguraAMedida,
     sePuedeComprar,
+    textoCarga,
     tirarOroInicial,
 } from 'src/app/services/utils/tienda-equipo';
 
-export type SeccionTienda = 'arma' | 'armadura' | 'municion' | 'objeto';
-
-const SECCIONES: { valor: SeccionTienda; etiqueta: string; }[] = [
-    { valor: 'arma', etiqueta: 'Armas' },
-    { valor: 'armadura', etiqueta: 'Armaduras y escudos' },
-    { valor: 'municion', etiqueta: 'Munición' },
-    { valor: 'objeto', etiqueta: 'Objetos' },
-];
-
 const MAXIMO_OPCIONES = 60;
 
+/** La pieza que se está configurando: una del carro (`indice`) o una nueva del catálogo (`null`). */
+interface PiezaEnConfiguracion {
+    indice: number | null;
+    pieza: PiezaTienda;
+    materiales: MaterialAplicable[];
+    aptitudes: EncantamientoDetalle[];
+    disponible: number;
+}
+
 /**
- * La tienda del final de la creación: el último paso, con el personaje ya guardado (puntos de golpe y experiencia
- * hechos). Versión funcional sencilla con el patrón `selector-dialog` de la creación; el diseño definitivo se aprueba en
- * un lienzo (`docs/publica/OBJETOS_FRONT.md`, «Las compras»). Los precios son una estimación con las reglas de la API,
- * que es la que manda al guardar.
+ * La tienda, último paso de la creación («Equipo»), con el personaje ya guardado (puntos de golpe y experiencia
+ * hechos). Lienzo aprobado el 2026-10-26: franja con el dinero, catálogo por pestañas con buscador a la izquierda, «Lo
+ * que compra» a la derecha y, al configurar una pieza, una ventana con material, mejora y aptitudes. Los precios son una
+ * estimación con las reglas de la API, que es la que manda al guardar (`docs/publica/OBJETOS_FRONT.md`, «Las compras»).
  */
 @Component({
-    selector: 'app-tienda-equipo-modal',
-    templateUrl: './tienda-equipo-modal.component.html',
-    styleUrls: ['./tienda-equipo-modal.component.sass'],
+    selector: 'app-tienda-equipo',
+    templateUrl: './tienda-equipo.component.html',
+    styleUrls: ['./tienda-equipo.component.sass'],
     standalone: false
 })
-export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy {
+export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     @Input() regla!: ReglaDineroInicial;
     /** Armas, armaduras y munición; los objetos se buscan en la API (catálogo grande). */
     @Input() articulos: ArticuloTienda[] = [];
@@ -55,18 +68,24 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
     @Input() piezaConError: number | null = null;
     /** En una campaña que no admite homebrew: solo lo oficial (también en los objetos que se buscan en la API). */
     @Input() soloOficial = false;
+    /** Lo que deja comprar la campaña (objetos mágicos, a medida y el precio por pieza); sin campaña, todo. */
+    @Input() politica: PoliticaTienda = POLITICA_TIENDA_LIBRE;
+    /** La capacidad de carga del personaje, para decir qué carga lleva. */
+    @Input() capacidadCarga: { Ligera: number; Media: number; Pesada: number; } | null = null;
+    /** Cifras de más para la franja que dependen de otra pestaña (las páginas del libro de conjuros). */
+    @Input() cifrasExtra: DatoFranja[] = [];
     @Output() confirmar = new EventEmitter<PersonajeCompraRequestDto>();
     @Output() omitir = new EventEmitter<void>();
 
-    readonly secciones = SECCIONES;
-    readonly mejoras = Array.from({ length: MEJORA_MAXIMA + 1 }, (_, i) => i);
     readonly textoPrecio = textoPrecio;
     readonly textoPrecioGenerico = textoPrecioGenerico;
     readonly textoPeso = textoPeso;
     readonly precioEstimado = precioEstimado;
-    readonly faltaEnPieza = faltaEnPieza;
+    readonly pesoEstimado = pesoEstimado;
+    readonly seConfiguraAMedida = seConfiguraAMedida;
 
-    seccion: SeccionTienda = 'arma';
+    pestanas: PestanaTienda[] = pestanasTienda({ politica: POLITICA_TIENDA_LIBRE });
+    seccion: OrigenPestanaTienda = 'arma';
     /** La pieza que señaló la API; deja de señalarse en cuanto cambia la compra. */
     piezaSenalada: number | null = null;
     busqueda = '';
@@ -75,18 +94,25 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
     objetos: ArticuloTienda[] = [];
     cargandoObjetos = false;
     errorObjetos = '';
+    configurando: PiezaEnConfiguracion | null = null;
+    materiales: MaterialDetalle[] = [];
+    aptitudes: EncantamientoDetalle[] = [];
+    aplicaciones: AplicacionMaterial[] = [];
 
-    private readonly busquedaObjetos$ = new Subject<{ q: string; espera: number; }>();
-    private suscripcion: Subscription | null = null;
+    private readonly busquedaObjetos$ = new Subject<{ q: string; espera: number; especificas: boolean; }>();
+    private suscripciones: Subscription[] = [];
 
     constructor(private equipoSvc: EquipoService) { }
 
     ngOnInit(): void {
-        this.suscripcion = this.busquedaObjetos$.pipe(
-            switchMap(({ q, espera }) => {
+        this.suscripciones.push(this.busquedaObjetos$.pipe(
+            switchMap(({ q, espera, especificas }) => {
                 this.cargandoObjetos = true;
                 this.errorObjetos = '';
-                const pedir = defer(() => this.equipoSvc.getObjetos({ q: q || null, limit: 100, offset: 0 })).pipe(
+                const filtros: FiltrosObjetos = { q: q || null, limit: 100, offset: 0, especificas };
+                if (!this.politica.objetosMagicos)
+                    filtros.categoria = 'mundano';
+                const pedir = defer(() => this.equipoSvc.getObjetos(filtros)).pipe(
                     catchError(() => {
                         this.errorObjetos = 'No se pudieron cargar los objetos.';
                         return of({ items: [], total: 0, hayMas: false });
@@ -97,8 +123,18 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
         ).subscribe((pagina) => {
             this.objetos = pagina.items.map((objeto) => articuloDeObjeto(objeto));
             this.cargandoObjetos = false;
-        });
-        this.busquedaObjetos$.next({ q: '', espera: 0 });
+        }));
+        // Lo que hace falta para configurar una pieza a medida: los materiales con sus costes, las aptitudes y a qué
+        // piezas se aplica cada coste. Sin ellos, solo se puede elegir la mejora.
+        this.suscripciones.push(forkJoin({
+            materiales: this.equipoSvc.getMateriales().pipe(take(1), catchError(() => of([] as MaterialDetalle[]))),
+            aptitudes: this.equipoSvc.getEncantamientos().pipe(take(1), catchError(() => of([] as EncantamientoDetalle[]))),
+            aplicaciones: this.equipoSvc.getCatalogos().pipe(take(1), catchError(() => of(null))),
+        }).subscribe(({ materiales, aptitudes, aplicaciones }) => {
+            this.materiales = materiales;
+            this.aptitudes = aptitudes;
+            this.aplicaciones = aplicaciones?.Aplicaciones_material ?? [];
+        }));
     }
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -106,34 +142,61 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
             this.dineroInicial = this.regla.sugerido;
         if (changes['piezaConError'])
             this.piezaSenalada = this.piezaConError;
+        if (changes['politica']) {
+            this.pestanas = pestanasTienda({ politica: this.politica ?? POLITICA_TIENDA_LIBRE });
+            if (!this.pestanas.some((pestana) => pestana.id === this.seccion))
+                this.cambiarSeccion('arma');
+        }
     }
 
     ngOnDestroy(): void {
-        this.suscripcion?.unsubscribe();
+        this.suscripciones.forEach((suscripcion) => suscripcion.unsubscribe());
     }
 
     get resumen(): ResumenCompra {
         return resumenCompra(this.dineroInicial, this.piezas, this.regla);
     }
 
-    /** Lo que se ofrece en la sección elegida: lo que se puede comprar y encaja con la búsqueda. */
+    get pestanaActual(): PestanaTienda {
+        return this.pestanas.find((pestana) => pestana.id === this.seccion) ?? this.pestanas[0];
+    }
+
+    /** Lo que se ofrece en la pestaña elegida: lo que se puede comprar y encaja con la búsqueda. */
     get opciones(): ArticuloTienda[] {
         const texto = normalizarTexto(this.busqueda, true);
-        const fuente = this.seccion === 'objeto' ? this.objetos : this.articulos.filter((articulo) => articulo.tipo === this.seccion);
+        const desdeApi = this.seccion === 'objeto' || this.seccion === 'especifica';
+        const fuente = desdeApi ? this.objetos : this.articulos.filter((articulo) => articulo.tipo === this.seccion);
         return fuente
             .filter((articulo) => sePuedeComprar(articulo) && (!this.soloOficial || articulo.oficial))
-            .filter((articulo) => this.seccion === 'objeto' || texto.length < 1
+            .filter((articulo) => this.politica.objetosMagicos || !articulo.magico)
+            .filter((articulo) => desdeApi || texto.length < 1
                 || normalizarTexto(articulo.nombre, true).includes(texto)
                 || normalizarTexto(articulo.categoria, true).includes(texto))
             .slice(0, MAXIMO_OPCIONES);
+    }
+
+    /** Las cifras del paso: el dinero, lo gastado, lo que queda, el peso y su carga (y las de otras pestañas). */
+    get franja(): DatoFranja[] {
+        const resumen = this.resumen;
+        return [
+            {
+                etiqueta: 'Dinero inicial', valor: textoPrecio(this.dineroInicial),
+                detalle: this.regla?.modo === 'riqueza' ? 'riqueza de su NEP' : this.regla?.modo === 'dados' ? `oro de ${this.regla.dados}` : null,
+            },
+            { etiqueta: 'Gastado', valor: textoPrecio(resumen.gastado) },
+            { etiqueta: 'Te queda', valor: textoPrecio(resumen.queda) },
+            { etiqueta: 'Peso', valor: textoPeso(resumen.peso), detalle: textoCarga(resumen.peso, this.capacidadCarga) || null },
+            ...(this.cifrasExtra ?? []),
+        ];
     }
 
     get hayHomebrew(): boolean {
         return this.piezas.some((pieza) => !pieza.articulo.oficial);
     }
 
-    get piezasIncompletas(): boolean {
-        return this.piezas.some((pieza) => faltaEnPieza(pieza) !== null);
+    /** Por qué no vale cada pieza (o `null`), en su orden. */
+    get motivosPiezas(): (string | null)[] {
+        return this.piezas.map((pieza) => motivoPiezaNoValida(pieza, this.politica));
     }
 
     /** Por qué no se puede comprar aún, o `null` si se puede. */
@@ -145,26 +208,51 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
             return `El dinero inicial no puede pasar de ${textoPrecio(this.regla.maximo)}.`;
         if (!resumen.alcanza)
             return 'No te llega el dinero para todo.';
-        if (this.piezasIncompletas)
+        if (this.motivosPiezas.some((motivo) => motivo !== null))
             return 'Completa las piezas marcadas.';
         return null;
+    }
+
+    /** La nota del pie: lo que no se puede comprar o, si no, lo que la campaña limita y el homebrew. */
+    get notaPie(): string {
+        if (this.error)
+            return this.error;
+        return [
+            this.motivoNoComprar && this.piezas.length > 0 ? this.motivoNoComprar : '',
+            notaPoliticaTienda(this.politica),
+            this.hayHomebrew ? 'Comprar algo homebrew hace homebrew al personaje.' : '',
+        ].filter(Boolean).join(' ') || 'Comprar algo homebrew hace homebrew al personaje. La API comprueba los precios al guardar.';
     }
 
     get puedeTirar(): boolean {
         return this.regla?.modo === 'dados' && !this.guardando;
     }
 
-    cambiarSeccion(seccion: SeccionTienda): void {
+    cambiarSeccion(seccion: OrigenPestanaTienda): void {
         this.seccion = seccion;
         this.busqueda = '';
-        if (seccion === 'objeto')
-            this.busquedaObjetos$.next({ q: '', espera: 0 });
+        if (seccion === 'objeto' || seccion === 'especifica')
+            this.busquedaObjetos$.next({ q: '', espera: 0, especificas: seccion === 'especifica' });
+    }
+
+    /** Flechas, Inicio y Fin entre las pestañas (patrón `tablist`). */
+    moverPestana(evento: KeyboardEvent): void {
+        const indice = this.pestanas.findIndex((pestana) => pestana.id === this.seccion);
+        const destino = evento.key === 'ArrowRight' ? indice + 1 : evento.key === 'ArrowLeft' ? indice - 1
+            : evento.key === 'Home' ? 0 : evento.key === 'End' ? this.pestanas.length - 1 : null;
+        if (destino === null)
+            return;
+        evento.preventDefault();
+        const pestana = this.pestanas[(destino + this.pestanas.length) % this.pestanas.length];
+        this.cambiarSeccion(pestana.id);
+        const boton = (evento.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>(`[data-pestana="${pestana.id}"]`);
+        boton?.focus();
     }
 
     buscar(texto: string): void {
         this.busqueda = texto;
-        if (this.seccion === 'objeto')
-            this.busquedaObjetos$.next({ q: texto.trim(), espera: 300 });
+        if (this.seccion === 'objeto' || this.seccion === 'especifica')
+            this.busquedaObjetos$.next({ q: texto.trim(), espera: 300, especificas: this.seccion === 'especifica' });
     }
 
     tirarDados(): void {
@@ -177,9 +265,25 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
         this.dineroInicial = Number.isFinite(numero) && numero >= 0 ? numero : 0;
     }
 
+    /** Añade una unidad tal cual; un genérico (poción, varita…) abre antes su configuración para elegir el conjuro. */
     anadir(articulo: ArticuloTienda): void {
+        if (articulo.generico) {
+            this.abrirConfiguracion(null, nuevaPieza(articulo));
+            return;
+        }
         this.piezaSenalada = null;
         this.piezas = [...this.piezas, nuevaPieza(articulo)];
+    }
+
+    /** Configura una pieza nueva del catálogo antes de añadirla. */
+    configurarNueva(articulo: ArticuloTienda): void {
+        this.abrirConfiguracion(null, nuevaPieza(articulo));
+    }
+
+    editarPieza(indice: number): void {
+        const pieza = this.piezas[indice];
+        if (pieza)
+            this.abrirConfiguracion(indice, pieza);
     }
 
     quitar(indice: number): void {
@@ -193,27 +297,19 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
         this.piezas = this.piezas.map((pieza, i) => i === indice ? { ...pieza, ...cambios } : pieza);
     }
 
-    numero(valor: unknown, minimo: number): number {
-        const numero = Math.trunc(Number(valor));
-        return Number.isFinite(numero) ? Math.max(minimo, numero) : minimo;
+    guardarConfiguracion(pieza: PiezaTienda): void {
+        const configurando = this.configurando;
+        if (!configurando)
+            return;
+        this.piezaSenalada = null;
+        this.piezas = configurando.indice === null
+            ? [...this.piezas, pieza]
+            : this.piezas.map((actual, i) => i === configurando.indice ? pieza : actual);
+        this.configurando = null;
     }
 
-    /** Los conjuros que encajan con lo escrito en el campo del conjuro de un genérico. */
-    conjurosPara(texto: string): { Id: number; Nombre: string; }[] {
-        const buscado = normalizarTexto(texto, true);
-        if (buscado.length < 2)
-            return [];
-        return this.conjuros.filter((conjuro) => normalizarTexto(conjuro.Nombre, true).includes(buscado)).slice(0, 30);
-    }
-
-    elegirConjuro(indice: number, nombre: string): void {
-        const conjuro = this.conjuros.find((c) => c.Nombre === nombre);
-        this.cambiarPieza(indice, { idConjuro: conjuro?.Id ?? null, nombreConjuro: nombre });
-    }
-
-    escribirConjuro(indice: number, texto: string): void {
-        const conjuro = this.conjuros.find((c) => normalizarTexto(c.Nombre) === normalizarTexto(texto));
-        this.cambiarPieza(indice, { idConjuro: conjuro?.Id ?? null, nombreConjuro: texto });
+    cancelarConfiguracion(): void {
+        this.configurando = null;
     }
 
     onConfirmar(): void {
@@ -225,5 +321,22 @@ export class TiendaEquipoModalComponent implements OnInit, OnChanges, OnDestroy 
     onOmitir(): void {
         if (!this.guardando)
             this.omitir.emit();
+    }
+
+    trackPestana(_indice: number, pestana: PestanaTienda): string {
+        return pestana.id;
+    }
+
+    private abrirConfiguracion(indice: number | null, pieza: PiezaTienda): void {
+        const yaCostaba = indice === null ? 0 : precioEstimado(this.piezas[indice]);
+        this.configurando = {
+            indice,
+            pieza,
+            materiales: materialesAplicables(pieza.articulo, this.materiales, this.aplicaciones)
+                .filter((item) => !this.soloOficial || item.material.Oficial),
+            aptitudes: aptitudesAplicables(pieza.articulo, this.aptitudes).filter((aptitud) => !this.soloOficial || aptitud.Oficial),
+            // Lo que le queda más lo que ya costaba esta pieza.
+            disponible: this.resumen.queda + yaCostaba,
+        };
     }
 }

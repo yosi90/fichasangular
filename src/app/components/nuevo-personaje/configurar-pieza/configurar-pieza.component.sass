@@ -1,0 +1,54 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// Configurar una pieza de la tienda: la forma es la de las ventanas de la creación (`app-creacion-ventana`); aquí solo
+// la columna del precio, más ancha que la lista, y sus líneas.
+
+.configurar
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px)
+
+.configurar__opciones
+    gap: 18px
+
+.configurar__precio
+    background: #33373b
+
+.configurar__fila
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 12px
+
+.configurar__corto
+    flex: 0 1 160px
+
+.configurar__cabecera
+    display: flex
+    flex-wrap: wrap
+    justify-content: space-between
+    align-items: baseline
+    gap: 8px
+
+.configurar__lineas
+    display: flex
+    flex-direction: column
+
+.configurar__linea
+    display: flex
+    justify-content: space-between
+    gap: 10px
+    padding: 6px 0
+    border-bottom: 1px solid #4b5157
+    font-size: 14px
+    color: $ficha-texto-suave
+
+.configurar__po
+    color: $ficha-blanco
+    font-variant-numeric: tabular-nums
+    white-space: nowrap
+
+.configurar__total
+    display: flex
+    justify-content: space-between
+    font-size: 18px
+    color: $ficha-blanco
