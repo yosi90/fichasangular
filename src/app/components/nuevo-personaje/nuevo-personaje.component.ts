@@ -123,6 +123,7 @@ import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineam
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
+import { dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
 import { EquipoCatalogos, MunicionDetalle } from 'src/app/interfaces/equipo';
@@ -781,7 +782,7 @@ export class NuevoPersonajeComponent {
 
         if (origen === 'plantilla_dg') {
             const plantillasConDg = this.plantillasSeleccionadas
-                .filter((plantilla) => this.aportaDgPlantilla(plantilla));
+                .filter((plantilla) => dgsDePlantilla(plantilla) > 0);
             if (plantillasConDg.length === 1) {
                 const nombrePlantilla = `${plantillasConDg[0]?.Nombre ?? ''}`.trim();
                 return nombrePlantilla.length > 0 ? nombrePlantilla : 'Plantilla';
@@ -2292,11 +2293,6 @@ export class NuevoPersonajeComponent {
         // pero evitamos interferir en controles donde Enter tiene semántica propia.
         const selectorBloqueado = 'textarea, button, a, [role="button"], [role="option"], [role="listbox"], [role="menuitem"], .cdk-overlay-pane';
         return !!target.closest(selectorBloqueado);
-    }
-
-    private aportaDgPlantilla(plantilla: Plantilla | null | undefined): boolean {
-        const multiplicador = Number(plantilla?.Licantronia_dg?.Multiplicador ?? 0);
-        return Number.isFinite(multiplicador) && Math.trunc(multiplicador) > 0;
     }
 
     private async cargarCampanas() {
