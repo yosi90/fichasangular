@@ -4,7 +4,7 @@ import { Database } from '@angular/fire/database';
 import { Observable } from "rxjs";
 import { DisciplinaConjuros } from "../interfaces/disciplina-conjuros";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toInt, toText } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
 import { escucharRtdbConAlternativa, listaRtdb } from './catalogo-api';
 import { normalizeSubdisciplinas } from './utils/conjuro-mapper';
 
@@ -14,6 +14,8 @@ function normalizeDisciplina(raw: any, fallbackId: number = 0): DisciplinaConjur
         Nombre: toText(raw?.Nombre).trim(),
         Nombre_especial: toText(raw?.Nombre_esp).trim(),
         Subdisciplinas: normalizeSubdisciplinas(raw?.Subdisciplinas),
+        Especializable: toBoolean(raw?.Especializable),
+        Prohibidas_al_especializarse: Math.max(0, toInt(raw?.Prohibidas_al_especializarse)),
     };
 }
 

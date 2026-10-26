@@ -8,6 +8,7 @@ import { Alineamiento } from "../interfaces/alineamiento";
 import {
     Clase,
     ClaseConjurosConfig,
+    ClaseLibroConjuros,
     ClaseMutationApiResponse,
     ClaseMutationRequest,
     ClaseMutationResponse,
@@ -109,16 +110,18 @@ function hasVisiblePrerrequisitos(prerrequisitos: ClasePrerrequisitos): boolean 
     });
 }
 
-function normalizeConjuros(raw: any): ClaseConjurosConfig {
-    const dominioRaw = raw?.Dominio;
-    const dominioCantidad = Number.isFinite(Number(dominioRaw))
-        ? Math.max(0, Math.trunc(Number(dominioRaw)))
-        : Number.isFinite(Number(raw?.Dominio_cantidad))
-            ? Math.max(0, Math.trunc(Number(raw?.Dominio_cantidad)))
-            : Number.isFinite(Number(raw?.Cantidad_dominios))
-                ? Math.max(0, Math.trunc(Number(raw?.Cantidad_dominios)))
-                : undefined;
+function normalizeLibro(raw: any): ClaseLibroConjuros | null {
+    if (!raw || typeof raw !== 'object')
+        return null;
+    return {
+        Nivel_cero_completo: toBoolean(raw?.Nivel_cero_completo),
+        Iniciales: Math.max(0, toInt(raw?.Iniciales)),
+        Iniciales_suman_caracteristica: toBoolean(raw?.Iniciales_suman_caracteristica),
+        Por_nivel: Math.max(0, toInt(raw?.Por_nivel)),
+    };
+}
 
+function normalizeConjuros(raw: any): ClaseConjurosConfig {
     return {
         Dependientes_alineamiento: toBoolean(raw?.Dependientes_alineamiento),
         Divinos: toBoolean(raw?.Divinos),
@@ -128,7 +131,7 @@ function normalizeConjuros(raw: any): ClaseConjurosConfig {
         Conocidos_total: toBoolean(raw?.Conocidos_total),
         Conocidos_nivel_a_nivel: toBoolean(raw?.Conocidos_nivel_a_nivel),
         Dominio: toBoolean(raw?.Dominio),
-        Dominio_cantidad: dominioCantidad,
+        Dominio_cantidad: Math.max(0, toInt(raw?.Dominio_cantidad)),
         puede_elegir_especialidad: toBoolean(
             raw?.puede_elegir_especialidad
             ?? raw?.Puede_elegir_especialidad
@@ -136,6 +139,8 @@ function normalizeConjuros(raw: any): ClaseConjurosConfig {
             ?? raw?.escuela
         ),
         Lanzamiento_espontaneo: toBoolean(raw?.Lanzamiento_espontaneo),
+        Libro: normalizeLibro(raw?.Libro),
+        Nivel_lanzador_divisor: Math.max(1, toInt(raw?.Nivel_lanzador_divisor, 1)),
         Clase_origen: {
             Id: toNumber(raw?.Clase_origen?.Id),
             Nombre: toText(raw?.Clase_origen?.Nombre),
@@ -213,6 +218,10 @@ function normalizeNivel(raw: any): ClaseNivelDetalle {
         Aumentos_clase_lanzadora: toArray(raw?.Aumentos_clase_lanzadora).map((item: any) => ({
             Id: toNumber(item?.Id),
             Nombre: toText(item?.Nombre),
+            Arcanos: toBoolean(item?.Arcanos),
+            Divinos: toBoolean(item?.Divinos),
+            Psionicos: toBoolean(item?.Psionicos),
+            Alma: toBoolean(item?.Alma),
         })),
         Conjuros_diarios: Object.keys(diariosRaw).reduce((acc: Record<string, number>, key) => {
             acc[key] = toNumber(diariosRaw[key], -1);

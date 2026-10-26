@@ -13,6 +13,8 @@ function normalizeEscuela(raw: any, fallbackId: number = 0): EscuelaConjuros {
         Nombre: toText(raw?.Nombre).trim(),
         Nombre_especial: toText(raw?.Nombre_esp ?? raw?.Nombre_especial).trim(),
         Prohibible: toBoolean(raw?.Prohibible),
+        Especializable: toBoolean(raw?.Especializable),
+        Prohibidas_al_especializarse: Math.max(0, toInt(raw?.Prohibidas_al_especializarse)),
     };
 }
 

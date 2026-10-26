@@ -21,6 +21,24 @@ export interface ClaseConjuroRef {
     Espontaneo: boolean;
 }
 
+/** El libro de conjuros de la clase (MJ cap. 3, Mago): con cuántos empieza y cuántos gana por nivel de lanzador. */
+export interface ClaseLibroConjuros {
+    Nivel_cero_completo: boolean;
+    Iniciales: number;
+    Iniciales_suman_caracteristica: boolean;
+    Por_nivel: number;
+}
+
+/** Un aumento de lanzador de una clase de prestigio, con los tipos de magia de la clase que puede subir (GDM cap. 6). */
+export interface ClaseAumentoLanzador {
+    Id: number;
+    Nombre: string;
+    Arcanos?: boolean;
+    Divinos?: boolean;
+    Psionicos?: boolean;
+    Alma?: boolean;
+}
+
 export interface ClaseConjurosConfig {
     Dependientes_alineamiento: boolean;
     Divinos: boolean;
@@ -30,9 +48,14 @@ export interface ClaseConjurosConfig {
     Conocidos_total: boolean;
     Conocidos_nivel_a_nivel: boolean;
     Dominio: boolean;
+    /** Cuántos dominios elige en su primer nivel (el clérigo, 2). */
     Dominio_cantidad?: number;
     puede_elegir_especialidad: boolean;
     Lanzamiento_espontaneo: boolean;
+    /** `null` si la clase no tiene libro de conjuros. */
+    Libro?: ClaseLibroConjuros | null;
+    /** 1: su nivel de lanzador son sus niveles con conjuros; 2: la mitad de su nivel (paladín, explorador). */
+    Nivel_lanzador_divisor?: number;
     Clase_origen: {
         Id: number;
         Nombre: string;
@@ -114,10 +137,7 @@ export interface ClaseNivelDetalle {
     };
     Nivel_max_poder_accesible_nivel_lanzadorPsionico: number;
     Reserva_psionica: number;
-    Aumentos_clase_lanzadora: {
-        Id: number;
-        Nombre: string;
-    }[];
+    Aumentos_clase_lanzadora: ClaseAumentoLanzador[];
     Conjuros_diarios: Record<string, number>;
     Conjuros_conocidos_nivel_a_nivel: Record<string, number>;
     Conjuros_conocidos_total: number;
