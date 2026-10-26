@@ -5,8 +5,9 @@ import {
     DatoFicha,
     DatoFranja,
     EtiquetaFicha,
+    datoFranjaVelocidad,
+    datosVisibles,
     sortilegasVisibles,
-    textosMovimiento,
     unirTipo,
 } from 'src/app/components/detalles/ficha';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
@@ -189,6 +190,11 @@ interface ModeloFicha {
     pestanas: { id: PestanaFicha; nombre: string; }[];
 }
 
+/** Un desglose de varias líneas (los tooltips) en una sola, para la nota de una fila: «Destreza +2 · Varios +1». */
+function enLinea(texto: string): string {
+    return texto.replace(/\n/g, ' · ');
+}
+
 /** Al comparar dos cálculos (en la vista previa de la creación) no cuentan las referencias, solo lo que se ve. */
 function sinReferencias(clave: string, valor: unknown): unknown {
     return clave === 'ref' ? undefined : valor;
@@ -345,9 +351,9 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
         return this.verTodasHabilidades ? this.m.habilidades : this.m.habilidadesConRangos;
     }
 
-    /** Si alguno de los datos tiene algo que enseñar (para no pintar una tarjeta vacía). */
+    /** Si `<app-ficha-datos>` pintaría alguno de los datos (`datosVisibles`), para no pintar una tarjeta vacía. */
     tieneDatos(datos: DatoFicha[]): boolean {
-        return datos.some((dato) => dato.valor !== null && dato.valor !== undefined);
+        return datosVisibles(datos).length > 0;
     }
 
     // Lo que abre cada lista al pulsar una entrada (su `ref`).
@@ -582,20 +588,27 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
         return Number.isFinite(numero) && numero > 0;
     }
 
+    /**
+     * Las partes del NEP: los DG raciales (los de la raza y los que dan las plantillas), los niveles de clase y los
+     * ajustes de nivel (raza y plantillas). El NEP lo da la API; esto solo explica de dónde sale.
+     */
+    private partesNep(): { dg: number; clase: number; ajuste: number; } {
+        const plantillas = this.pj?.Plantillas ?? [];
+        return {
+            dg: toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad) + plantillas.reduce((c, p) => c + toNumber(p?.Multiplicador_dgs_lic), 0),
+            clase: (this.pj?.desgloseClases ?? []).reduce((c, d) => c + toNumber(d?.Nivel), 0),
+            ajuste: toNumber(this.pj?.Raza?.Ajuste_nivel) + plantillas.reduce((c, p) => c + toNumber(p?.Ajuste_nivel), 0),
+        };
+    }
+
     private getNivelPersonaje(): number {
-        const nivelesClase = (this.pj?.desgloseClases ?? []).reduce((c, clase) => c + toNumber(clase?.Nivel), 0);
-        const ajusteRaza = toNumber(this.pj?.Raza?.Ajuste_nivel);
-        const ajustesPlantillas = (this.pj?.Plantillas ?? []).reduce((c, p) => c + toNumber(p?.Ajuste_nivel), 0);
-        return nivelesClase + ajusteRaza + ajustesPlantillas;
+        const { clase, ajuste } = this.partesNep();
+        return clase + ajuste;
     }
 
     /** «4 DG raciales + 8 de clase + 2 de ajuste»: de dónde sale el NEP. */
     private textoDesgloseNep(): string {
-        const dg = toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad)
-            + (this.pj?.Plantillas ?? []).reduce((c, p) => c + toNumber(p?.Multiplicador_dgs_lic), 0);
-        const clase = (this.pj?.desgloseClases ?? []).reduce((c, d) => c + toNumber(d?.Nivel), 0);
-        const ajuste = toNumber(this.pj?.Raza?.Ajuste_nivel)
-            + (this.pj?.Plantillas ?? []).reduce((c, p) => c + toNumber(p?.Ajuste_nivel), 0);
+        const { dg, clase, ajuste } = this.partesNep();
         return [
             dg > 0 ? `${dg} DG raciales` : '',
             clase > 0 ? `${clase} de clase` : '',
@@ -610,12 +623,8 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
     }
 
     private tieneContextoNepParaPreview(): boolean {
-        const nivelClases = (this.pj?.desgloseClases ?? []).reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
-        const ajusteRaza = toNumber(this.pj?.Raza?.Ajuste_nivel);
-        const ajustePlantillas = (this.pj?.Plantillas ?? []).reduce((acc, plantilla) => acc + toNumber(plantilla?.Ajuste_nivel), 0);
-        const dgsRaza = toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad);
-        const dgsPlantillas = (this.pj?.Plantillas ?? []).reduce((acc, plantilla) => acc + toNumber(plantilla?.Multiplicador_dgs_lic), 0);
-        return nivelClases > 0 || ajusteRaza > 0 || ajustePlantillas > 0 || dgsRaza > 0 || dgsPlantillas > 0;
+        const { dg, clase, ajuste } = this.partesNep();
+        return dg > 0 || clase > 0 || ajuste > 0;
     }
 
     /** En la vista previa, las características ya generadas: entonces se enseñan la iniciativa y la carga aunque valgan 0. */
@@ -1088,7 +1097,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             datos: this.calcularDatos(clases),
             franja: this.calcularFranja(),
             caracteristicas: this.calcularCaracteristicas(),
-            salvaciones: this.salvacionesVisibles.map((s) => ({ nombre: s.nombre, valor: textoConSigno(s.total), nota: s.desglose.replace(/\n/g, ' · ') })),
+            salvaciones: this.salvacionesVisibles.map((s) => ({ nombre: s.nombre, valor: textoConSigno(s.total), nota: enLinea(s.desglose) })),
             defensa: this.calcularDefensa(),
             presaIniciativa: this.calcularPresaIniciativa(),
             defensasEspeciales: [
@@ -1233,8 +1242,6 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
     private calcularFranja(): DatoFranja[] {
         const pj = this.pj;
         const defensa = pj.Defensa;
-        const movimientos = textosMovimiento(pj, this.mostrarManiobrabilidad() ? this.getManiobrabilidadNombre() : null);
-        const iniciativaVisible = !this.esPreviewNuevoPersonaje || this.tieneCaracteristicasParaPreview() || this.iniciativa !== '+0';
         return [
             { etiqueta: 'Puntos de golpe', etiquetaCorta: 'PG', valor: this.positivo(pj.Vida) ? toNumber(pj.Vida) : null },
             {
@@ -1244,19 +1251,21 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
                 detalle: defensa ? `toque ${defensa.toque.total} · desprev. ${defensa.desprevenido.total}` : null,
                 ayuda: this.caDisclaimer,
             },
-            { etiqueta: 'Iniciativa', valor: iniciativaVisible ? this.iniciativa : null, ayuda: this.iniciativaDesglose },
+            { etiqueta: 'Iniciativa', valor: this.iniciativaVisible() ? this.iniciativa : null, ayuda: this.iniciativaDesglose },
             { etiqueta: 'Ataque base', valor: this.texto(pj.Ataque_base) || null },
             { etiqueta: 'Presa', valor: this.presaDisponible ? this.presa : null, ayuda: this.presaDesglose },
             {
-                etiqueta: 'Velocidad',
-                valor: movimientos[0] ?? null,
-                detalle: movimientos.slice(1).join(', '),
+                ...datoFranjaVelocidad(pj, this.mostrarManiobrabilidad()
+                    ? { maniobrabilidad: this.getManiobrabilidadNombre(), abrirReglas: (evento: Event) => this.abrirInfoManiobrabilidad(evento) }
+                    : null),
                 ayuda: this.velDisclaimer,
-                ayudaBoton: this.mostrarManiobrabilidad()
-                    ? { texto: 'Reglas de maniobrabilidad', alPulsar: (evento: Event) => this.abrirInfoManiobrabilidad(evento) }
-                    : null,
             },
         ];
+    }
+
+    /** La iniciativa se enseña siempre en la ficha; en la vista previa, con las características ya generadas o si no es +0. */
+    private iniciativaVisible(): boolean {
+        return !this.esPreviewNuevoPersonaje || this.tieneCaracteristicasParaPreview() || this.iniciativa !== '+0';
     }
 
     private calcularCaracteristicas(): CasillaFicha[] {
@@ -1294,7 +1303,6 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
     private calcularDefensa(): FilaPares[] {
         const pj = this.pj;
         const defensa = pj.Defensa;
-        const enLinea = (texto: string) => texto.replace(/\n/g, ' · ');
         const filas: FilaPares[] = [];
         if (this.positivo(pj.Ca))
             filas.push({ nombre: 'Clase de armadura', valor: `${toNumber(pj.Ca)}`, nota: enLinea(this.caDisclaimer) });
@@ -1316,11 +1324,10 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
 
     private calcularPresaIniciativa(): FilaPares[] {
         const filas: FilaPares[] = [];
-        const franjaIniciativa = !this.esPreviewNuevoPersonaje || this.tieneCaracteristicasParaPreview() || this.iniciativa !== '+0';
-        if (franjaIniciativa)
-            filas.push({ nombre: 'Iniciativa', valor: this.iniciativa, nota: this.iniciativaDesglose.replace(/\n/g, ' · ') });
+        if (this.iniciativaVisible())
+            filas.push({ nombre: 'Iniciativa', valor: this.iniciativa, nota: enLinea(this.iniciativaDesglose) });
         if (this.presaDisponible)
-            filas.push({ nombre: 'Presa', valor: this.presa, nota: this.presaDesglose.replace(/\n/g, ' · ') });
+            filas.push({ nombre: 'Presa', valor: this.presa, nota: enLinea(this.presaDesglose) });
         return filas;
     }
 
@@ -1442,8 +1449,8 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             combate: true,
             habilidades: m.verHabilidades,
             capacidades: hay(m.dotes, m.aptitudes, m.raciales, m.rasgosTipo, m.plantillas, m.ventajas, m.idiomas, m.familiares, m.companeros),
-            magia: hay(m.magia.filter((dato) => dato.valor !== null), m.lanzadores, m.conjuros, m.sortilegas),
-            equipo: hay(m.piezas, m.equipo.filter((dato) => dato.valor !== null), m.carga.filter((dato) => dato.valor !== null), m.modificadoresEquipo) || m.sinEquipo,
+            magia: this.tieneDatos(m.magia) || hay(m.lanzadores, m.conjuros, m.sortilegas),
+            equipo: this.tieneDatos(m.equipo) || this.tieneDatos(m.carga) || hay(m.piezas, m.modificadoresEquipo) || m.sinEquipo,
             historia: true,
         };
         return (Object.keys(NOMBRES_PESTANAS) as PestanaFicha[])

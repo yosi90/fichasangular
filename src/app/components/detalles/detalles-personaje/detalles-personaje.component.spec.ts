@@ -63,7 +63,7 @@ describe('DetallesPersonajeComponent', () => {
     let userSvcMock: any;
     let sesion: { cuenta: { id: string; } | null; estado$: BehaviorSubject<unknown>; };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, titulos, valor, enlace, lateral, filasPares, franja, casillas, etiquetasCabecera, tipoCabecera } = lectorFicha(elemento);
+    const { texto, textos, titulos, valor, enlace, lateral, filasPares, franja, casillas, etiquetasCabecera, tipoCabecera } = lectorFicha(elemento);
 
     const crear = (): void => {
         fixture = TestBed.createComponent(DetallesPersonajeComponent);
@@ -77,9 +77,7 @@ describe('DetallesPersonajeComponent', () => {
         component.cambiarVista('pagina');
         fixture.detectChanges();
     };
-    const elementos = (dentro: Element | null, selector: string): string[] =>
-        Array.from(dentro?.querySelectorAll(selector) ?? []).map((nodo) => limpio(nodo));
-    const pestanas = (): string[] => Array.from(elemento().querySelectorAll('[role="tab"]')).map((p) => limpio(p));
+    const pestanas = (): string[] => textos('[role="tab"]');
     const abrirPestana = (nombre: string): void => {
         (Array.from(elemento().querySelectorAll<HTMLButtonElement>('[role="tab"]')).find((p) => limpio(p) === nombre)!).click();
         fixture.detectChanges();
@@ -476,8 +474,7 @@ describe('DetallesPersonajeComponent', () => {
             component.pj = fichaDeLaApi();
             verPagina();
 
-            const filas = () => Array.from(lateral('Habilidades')!.querySelectorAll('tbody tr'))
-                .map((fila) => Array.from(fila.querySelectorAll('td')).map((celda) => limpio(celda)));
+            const filas = () => Array.from(lateral('Habilidades')!.querySelectorAll('tbody tr')).map((fila) => textos('td', fila));
             expect(filas()).toEqual([['Avistar de clase', 'Sab', '14', '+18']]);
 
             enlace('Ver las 2').click();
@@ -490,7 +487,7 @@ describe('DetallesPersonajeComponent', () => {
             component.pj.Habilidades = [{ Nombre: 'Trepar', Car: 'Fuerza', Rangos: 1, Rangos_varios: 0, Mod_car: -5, Extra: '', Varios: '' } as any];
             verPagina();
 
-            const fila = Array.from(lateral('Habilidades')!.querySelectorAll('tbody td')).map((celda) => limpio(celda));
+            const fila = textos('tbody td', lateral('Habilidades'));
             expect(fila).toEqual(['Trepar', 'Fue', '1', '-4']);
         });
     });
@@ -534,7 +531,7 @@ describe('DetallesPersonajeComponent', () => {
             component.pj.Dotes = [{ Nombre: 'Alerta', Descripcion: '', Beneficio: '', Pagina: 1, Extra: '', Origen: '' }];
             verPagina();
 
-            const notas = Array.from(elemento().querySelectorAll('.personaje-nota')).map((nota) => limpio(nota));
+            const notas = textos('.personaje-nota');
             expect(notas).toEqual(['Humanoide']);
         });
 
@@ -551,7 +548,7 @@ describe('DetallesPersonajeComponent', () => {
             const plantilla = spyOn(component.plantillaDetalles, 'emit');
             verPagina();
 
-            expect(elementos(lateral('Plantillas'), 'li')).toEqual(['Liche ajuste de nivel +4 · adquirida']);
+            expect(textos('li', lateral('Plantillas'))).toEqual(['Liche ajuste de nivel +4 · adquirida']);
             enlace('Liche').click();
             expect(plantilla).toHaveBeenCalledWith({ id: 1, nombre: 'Liche' });
         });
@@ -562,7 +559,7 @@ describe('DetallesPersonajeComponent', () => {
             const monstruo = spyOn(component.monstruoDetalles, 'emit');
             verPagina();
 
-            expect(elementos(lateral('Familiares y compañeros'), '.ficha-subtitulo, li'))
+            expect(textos('.ficha-subtitulo, li', lateral('Familiares y compañeros')))
                 .toEqual(['Familiares', 'Cuervo sabio', 'Compañeros animales', 'Lobo fiel']);
             enlace('Lobo fiel').click();
             expect(monstruo).toHaveBeenCalledWith(jasmine.objectContaining({ Id: 202 }));
@@ -580,7 +577,7 @@ describe('DetallesPersonajeComponent', () => {
             const especial = spyOn(component.especialDetallesPorNombre, 'emit');
             verPagina();
 
-            expect(elementos(lateral('Aptitudes de clase'), 'li')).toEqual(['Enemigo predilecto (Primero)', 'Saber bárdico', 'Esquiva asombrosa (Elegir)', 'Empatía salvaje']);
+            expect(textos('li', lateral('Aptitudes de clase'))).toEqual(['Enemigo predilecto (Primero)', 'Saber bárdico', 'Esquiva asombrosa (Elegir)', 'Empatía salvaje']);
             enlace('Saber bárdico').click();
             expect(especial).toHaveBeenCalledWith('Saber bárdico');
         });
@@ -644,7 +641,7 @@ describe('DetallesPersonajeComponent', () => {
             const sortilega = spyOn(component.sortilegaDetalles, 'emit');
             verPagina();
 
-            expect(elementos(lateral('Aptitudes sortílegas'), 'li')).toEqual(['Levitar NL 9 · A voluntad · desde 4 DG · Innato']);
+            expect(textos('li', lateral('Aptitudes sortílegas'))).toEqual(['Levitar NL 9 · A voluntad · desde 4 DG · Innato']);
             enlace('Luz').click();
             enlace('Levitar').click();
             expect(conjuro).toHaveBeenCalledWith(luz);

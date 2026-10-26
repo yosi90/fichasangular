@@ -7,7 +7,7 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { nombreDoteConExtra, textoVisible, tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
-import { DatoFicha, datosVisibles } from './ficha';
+import { DatoFicha, DatoFranja, datosVisibles } from './ficha';
 
 /**
  * Lo que enseñan igual las fichas de criaturas y de lo que las cambia (monstruo, plantilla, subtipo, raza): las dotes,
@@ -131,6 +131,24 @@ export function textosMovimiento(movimientos: MovimientosCriatura | null | undef
     ]
         .filter((movimiento) => movimiento.valor > 0)
         .map((movimiento) => `${movimiento.nombre}${movimiento.valor}'${movimiento.extra ?? ''}`);
+}
+
+/**
+ * La «Velocidad» de la franja de una criatura (`textosMovimiento`): la base de valor y el resto de movimientos de
+ * detalle. Si vuela con una maniobrabilidad que enseñar (`vuelo`), esta va con el vuelo y el dato lleva el botón con sus
+ * reglas.
+ */
+export function datoFranjaVelocidad(
+    movimientos: MovimientosCriatura | null | undefined,
+    vuelo: { maniobrabilidad: string | null | undefined; abrirReglas: (evento: Event) => void; } | null,
+): DatoFranja {
+    const textos = textosMovimiento(movimientos, vuelo?.maniobrabilidad);
+    return {
+        etiqueta: 'Velocidad',
+        valor: textos[0] ?? null,
+        detalle: textos.slice(1).join(', '),
+        ayudaBoton: vuelo ? { texto: 'Reglas de maniobrabilidad', alPulsar: vuelo.abrirReglas } : null,
+    };
 }
 
 /**

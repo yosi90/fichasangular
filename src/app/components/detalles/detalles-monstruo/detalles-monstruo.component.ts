@@ -6,11 +6,11 @@ import {
     DoteFicha,
     SortilegaFicha,
     datoAlineamiento,
+    datoFranjaVelocidad,
     datosVisibles,
     dotesVisibles,
     sortilegasVisibles,
     textoDato,
-    textosMovimiento,
     unirTipo,
 } from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
@@ -276,7 +276,6 @@ export class DetallesMonstruoComponent {
     private calcularPrincipales(): DatoFranja[] {
         const m = this.monstruoData;
         const defensa = m?.Defensa;
-        const movimientos = textosMovimiento(m?.Movimientos, this.mostrarManiobrabilidad() ? m.Maniobrabilidad.Nombre : null);
         return [
             { etiqueta: 'Valor de desafío', valor: m?.Valor_desafio },
             { etiqueta: 'Dados de golpe', valor: this.textoDadosGolpe() },
@@ -286,15 +285,9 @@ export class DetallesMonstruoComponent {
                 detalle: defensa ? `toque ${defensa.Toque}, desprevenido ${defensa.Desprevenido}` : null,
             },
             { etiqueta: 'Iniciativa', valor: m ? textoConSigno(toNumber(m.Iniciativa)) : null },
-            {
-                etiqueta: 'Velocidad',
-                valor: movimientos[0] ?? null,
-                detalle: movimientos.slice(1).join(', '),
-                // Cuando vuela, la velocidad lleva el botón con las reglas de maniobrabilidad.
-                ayudaBoton: this.mostrarManiobrabilidad()
-                    ? { texto: 'Reglas de maniobrabilidad', alPulsar: (evento: Event) => this.abrirInfoManiobrabilidad(evento) }
-                    : null,
-            },
+            datoFranjaVelocidad(m?.Movimientos, this.mostrarManiobrabilidad()
+                ? { maniobrabilidad: m.Maniobrabilidad.Nombre, abrirReglas: (evento: Event) => this.abrirInfoManiobrabilidad(evento) }
+                : null),
         ];
     }
 

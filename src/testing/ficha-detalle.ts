@@ -20,6 +20,8 @@ export function lectorFicha(raiz: () => HTMLElement) {
     return {
         /** Todo el texto de la pantalla. */
         texto: (): string => limpio(raiz()),
+        /** El texto de cada nodo de `selector` dentro de `dentro` (toda la pantalla, sin darlo), en su orden. */
+        textos: (selector: string, dentro: Element | null = raiz()): string[] => todos(selector, dentro).map((nodo) => limpio(nodo)),
         /** Los títulos de las tarjetas y secciones, en su orden; con `dentro`, solo los de ese selector. */
         titulos: (dentro = ''): string[] => todos(`${dentro} .ficha-titulo`.trim()).map((titulo) => limpio(titulo)),
         /** El tipo de la cabecera («Dote · General»). */
