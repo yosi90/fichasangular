@@ -1704,8 +1704,7 @@ export class NuevoPersonajeService {
     }
 
     getIdiomasPendientesPostClase(): IdiomasPendientesPostClase {
-        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
-            .reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
+        const nivelClases = this.getNivelClasesActual();
         if (nivelClases !== 1) {
             return {
                 cantidad: 0,
@@ -1772,8 +1771,7 @@ export class NuevoPersonajeService {
             });
         });
 
-        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
-            .reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
+        const nivelClases = this.getNivelClasesActual();
         const returnStep: StepNuevoPersonaje = nivelClases > 0 ? 'clases' : 'ventajas';
         this.iniciarDistribucionHabilidadesInterna(
             'plantilla_dg',
@@ -7677,8 +7675,7 @@ export class NuevoPersonajeService {
         const ajusteRaza = toNumber(raza?.Ajuste_nivel);
         const ajustePlantillas = (seleccionadas ?? [])
             .reduce((acc, plantilla) => acc + toNumber(plantilla?.Ajuste_nivel), 0);
-        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
-            .reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
+        const nivelClases = this.getNivelClasesActual();
         const dgsRaza = toNumber(raza?.Dgs_adicionales?.Cantidad);
         const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(seleccionadas);
         const nivelEfectivo = nivelClases + ajusteRaza + ajustePlantillas + dgsRaza + dgsPlantillas;
@@ -9464,8 +9461,7 @@ export class NuevoPersonajeService {
     }
 
     private getNivelEfectivoParaAumentos(): number {
-        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
-            .reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
+        const nivelClases = this.getNivelClasesActual();
         const dgsRaza = toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
         const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
         return Math.max(0, nivelClases + dgsRaza + dgsPlantillas);
@@ -9476,16 +9472,17 @@ export class NuevoPersonajeService {
      * de las plantillas (esos DG ya fueron su primer nivel).
      */
     private esPrimerNivelDelPersonaje(): boolean {
-        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
+        return this.getNivelClasesActual() <= 1 && !this.tieneDgsDeRazaOPlantillas();
+    }
+
+    /** La suma de los niveles de clase del personaje (`desgloseClases`), sin DG ni ajuste de nivel. */
+    private getNivelClasesActual(): number {
+        return (this.personajeCreacion?.desgloseClases ?? [])
             .reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
-        const dgsRaza = toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
-        const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
-        return nivelClases <= 1 && dgsRaza <= 0 && dgsPlantillas <= 0;
     }
 
     private getNivelEfectivoParaDotesProgresion(): number {
-        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
-            .reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
+        const nivelClases = this.getNivelClasesActual();
         const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
         return Math.max(0, nivelClases + dgsPlantillas);
     }
@@ -9494,7 +9491,7 @@ export class NuevoPersonajeService {
         const nivelEfectivoDotes = this.getNivelEfectivoParaDotesProgresion();
         const dgsRaciales = this.getDgsRacialesAdicionalesParaDotesProgresion();
         const dotesBasePorDgsRaciales = Math.max(0, Math.floor(dgsRaciales / 3));
-        const doteInicialNivel = nivelEfectivoDotes > 0 && !this.tieneDgsAdicionalesParaDoteInicial() ? 1 : 0;
+        const doteInicialNivel = nivelEfectivoDotes > 0 && !this.tieneDgsDeRazaOPlantillas() ? 1 : 0;
         const totalPorProgresion = Math.max(
             0,
             doteInicialNivel + Math.floor((nivelEfectivoDotes + dgsRaciales) / 3) - dotesBasePorDgsRaciales
@@ -9508,7 +9505,7 @@ export class NuevoPersonajeService {
             this.getNivelEfectivoPersonajeActual()
         );
         const hitosVisibles: number[] = [];
-        if (!this.tieneDgsAdicionalesParaDoteInicial())
+        if (!this.tieneDgsDeRazaOPlantillas())
             hitosVisibles.push(1);
 
         for (let nivel = 3; nivel <= nivelVisible; nivel += 3)
@@ -9523,8 +9520,7 @@ export class NuevoPersonajeService {
     }
 
     private getNivelEfectivoPersonajeActual(): number {
-        const nivelClases = (this.personajeCreacion?.desgloseClases ?? [])
-            .reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
+        const nivelClases = this.getNivelClasesActual();
         const dgsRaza = toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
         const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
         const ajusteRaza = toNumber(this.razaSeleccionada?.Ajuste_nivel);
@@ -9533,7 +9529,8 @@ export class NuevoPersonajeService {
         return Math.max(0, nivelClases + dgsRaza + dgsPlantillas + ajusteRaza + ajustePlantillas);
     }
 
-    private tieneDgsAdicionalesParaDoteInicial(): boolean {
+    /** La raza o alguna plantilla da DG raciales: el primer nivel del personaje fue el de esos DG, no uno de clase. */
+    private tieneDgsDeRazaOPlantillas(): boolean {
         const dgsRaza = toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad);
         const dgsPlantillas = this.getDgsAdicionalesDesdePlantillas(this.estadoFlujo.plantillas.seleccionadas);
         return dgsRaza > 0 || dgsPlantillas > 0;
