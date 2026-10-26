@@ -1,5 +1,7 @@
+import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { Clase } from 'src/app/interfaces/clase';
-import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { modificadorCaracteristica } from 'src/app/services/utils/caracteristicas';
+import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 
 // Las reglas de la magia que la creación aplica antes de guardar (la ficha guardada trae sus cifras de la API, que
 // calcula lo mismo en `utils/conjuros_diarios.py`):
@@ -8,37 +10,30 @@ import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 //   expandido, tabla 2-1).
 // - El nivel de lanzador de una clase que lo divide (paladín y explorador: la mitad de su nivel; MJ cap. 3).
 
-/** Las seis características del borrador de la creación, por su nombre sin tildes. */
-export interface PuntuacionesCaracteristicas {
-    Fuerza?: number;
-    Destreza?: number;
-    Constitucion?: number;
-    Inteligencia?: number;
-    Sabiduria?: number;
-    Carisma?: number;
-}
-
-const CLAVES: Record<string, keyof PuntuacionesCaracteristicas> = {
-    fuerza: 'Fuerza',
-    destreza: 'Destreza',
-    constitucion: 'Constitucion',
-    inteligencia: 'Inteligencia',
-    sabiduria: 'Sabiduria',
-    carisma: 'Carisma',
-};
-
 /** La puntuación de la característica de lanzamiento de la clase (`Mod_salv_conjuros`), o `null` si no tiene. */
-export function puntuacionLanzamiento(personaje: PuntuacionesCaracteristicas | null | undefined, clase: Clase | null | undefined): number | null {
-    const clave = CLAVES[normalizarTexto(clase?.Mod_salv_conjuros ?? '')];
+export function puntuacionLanzamiento(
+    personaje: Partial<Record<Caracteristica, number>> | null | undefined,
+    clase: Clase | null | undefined
+): number | null {
+    const nombre = normalizarTexto(clase?.Mod_salv_conjuros ?? '');
+    const clave = CARACTERISTICAS.find((caracteristica) => normalizarTexto(caracteristica) === nombre);
     if (!clave)
         return null;
     const valor = Number(personaje?.[clave]);
     return Number.isFinite(valor) && valor > 0 ? Math.trunc(valor) : null;
 }
 
-/** El modificador de una puntuación: (valor − 10) / 2, hacia abajo. */
+/** El modificador de una puntuación (`modificadorCaracteristica`); sin característica (`null`), +0. */
 export function modificadorDePuntuacion(puntuacion: number | null): number {
-    return puntuacion === null ? 0 : Math.floor((puntuacion - 10) / 2);
+    return puntuacion === null ? 0 : modificadorCaracteristica(puntuacion);
+}
+
+/**
+ * Si un mago puede especializarse en la escuela, o un psiónico elegir la disciplina: lo dicen sus datos (Universal no;
+ * MJ cap. 3).
+ */
+export function esEspecializable(escuelaODisciplina: { Id?: number; Especializable?: boolean; } | null | undefined): boolean {
+    return toNumber(escuelaODisciplina?.Id) > 0 && toBoolean(escuelaODisciplina?.Especializable);
 }
 
 /** Si la característica de lanzamiento llega a 10 + el nivel del conjuro. Sin característica (`null`) no limita. */

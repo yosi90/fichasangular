@@ -118,6 +118,7 @@ import { normalizarTexto, primerEntero } from 'src/app/services/utils/normalizac
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { esEspecializable } from 'src/app/services/utils/reglas-magia';
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
@@ -3208,7 +3209,7 @@ export class NuevoPersonajeComponent {
         if (pendiente.requierePsionico) {
             // Basta con una disciplina que se pueda elegir: el psiónico no prohíbe ninguna (Manual de psiónica expandido).
             const hayDisciplinas = (this.catalogoDisciplinas ?? [])
-                .some((disciplina) => Number(disciplina?.Id ?? 0) > 0 && !!disciplina?.Especializable);
+                .some(esEspecializable);
             if (!hayDisciplinas) {
                 await Swal.fire({
                     icon: 'warning',

@@ -60,6 +60,7 @@ import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadDgRaciales, 
 import { tieneTextoVisible } from './utils/texto-visible';
 import {
     conjurosAdicionales,
+    esEspecializable,
     modificadorDePuntuacion,
     nivelLanzadorDeClase,
     puedeLanzarNivelConjuro,
@@ -7665,7 +7666,7 @@ export class NuevoPersonajeService {
     private obtenerCatalogoEscuelasEspecializables(escuelasCatalogo: EscuelaConjuros[]): EscuelaConjuros[] {
         const usadas = new Set<number>();
         return (escuelasCatalogo ?? [])
-            .filter((escuela) => toNumber(escuela?.Id) > 0 && toBoolean(escuela?.Especializable))
+            .filter(esEspecializable)
             .filter((escuela) => {
                 const id = toNumber(escuela?.Id);
                 if (usadas.has(id))
@@ -7686,7 +7687,7 @@ export class NuevoPersonajeService {
     private obtenerCatalogoDisciplinasEspecializables(disciplinasCatalogo: DisciplinaConjuros[]): DisciplinaConjuros[] {
         const usadas = new Set<number>();
         return (disciplinasCatalogo ?? [])
-            .filter((disciplina) => toNumber(disciplina?.Id) > 0 && toBoolean(disciplina?.Especializable))
+            .filter(esEspecializable)
             .filter((disciplina) => {
                 const id = toNumber(disciplina?.Id);
                 if (usadas.has(id))
