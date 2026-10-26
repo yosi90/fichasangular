@@ -75,9 +75,9 @@ export function modificadoresDePartes(
 
 /**
  * El desglose en una línea por parte («Destreza +1», «Cota de mallas +5 (armadura)»); si la parte no dice su origen, se
- * nombra por su tipo.
+ * nombra por su tipo. Con otro `separador` (« · »), todo en una línea.
  */
-export function textoDesglose(total: PersonajeTotalDto | null | undefined): string {
+export function textoDesglose(total: PersonajeTotalDto | null | undefined, separador = '\n'): string {
     return toArray<PersonajeParteDto>(total?.desglose)
         .map((parte) => {
             const origen = `${parte?.origen ?? ''}`.trim() || ETIQUETA_TIPO[parte?.tipo] || 'Varios';
@@ -85,7 +85,7 @@ export function textoDesglose(total: PersonajeTotalDto | null | undefined): stri
             const bonificador = `${parte?.bonificador ?? ''}`.trim();
             return `${origen} ${valor >= 0 ? '+' : ''}${valor}${bonificador.length > 0 ? ` (${bonificador.toLowerCase()})` : ''}`;
         })
-        .join('\n');
+        .join(separador);
 }
 
 /** El total de una habilidad: el de la API o, en el borrador, rangos + rangos varios + modificador de su característica. */

@@ -1,18 +1,20 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { By } from '@angular/platform-browser';
-import { of } from 'rxjs';
-import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import { BehaviorSubject, of } from 'rxjs';
+import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
+import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
+import { Personaje } from 'src/app/interfaces/personaje';
 import { ClaseService } from 'src/app/services/clase.service';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
+import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
+import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { RegionService } from 'src/app/services/region.service';
-import { UserProfileApiService } from 'src/app/services/user-profile-api.service';
 import { UserService } from 'src/app/services/user.service';
-import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
 import { crearEquipoFichaApi } from 'src/testing/equipo-api';
-import { Personaje } from 'src/app/interfaces/personaje';
+import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
+import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
 import { DetallesPersonajeComponent } from './detalles-personaje.component';
 
 /** La ficha de la API tal como la deja `PersonajeService` (el mapper real, sin HTTP). */
@@ -21,1115 +23,801 @@ function fichaDeLaApi(cambios: Record<string, any> = {}): Personaje {
     return (servicio as any).mapApiDetalleToPersonaje(crearDetalleApi(cambios));
 }
 
+/** Una clase lanzadora del catálogo, con su progresión por nivel. */
+function claseLanzadora(id: number, nombre: string, niveles: number, cambios: Record<string, any> = {}): any {
+    return {
+        Id: id,
+        Nombre: nombre,
+        Conjuros: {
+            Arcanos: true, Divinos: false, Psionicos: false, Alma: false, Dependientes_alineamiento: false,
+            Lanzamiento_espontaneo: false, Conocidos_total: false, Conocidos_nivel_a_nivel: false, Dominio: false,
+            puede_elegir_especialidad: true, Clase_origen: { Id: 0, Nombre: '' }, Listado: [],
+            ...(cambios['Conjuros'] ?? {}),
+        },
+        Mod_salv_conjuros: 'Inteligencia',
+        Desglose_niveles: Array.from({ length: niveles }, (_item, index) => ({
+            Nivel: index + 1,
+            Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+            Reserva_psionica: 0,
+            Conjuros_diarios: { Nivel_0: 0, Nivel_1: 1, Nivel_2: -1 },
+            Conjuros_conocidos_nivel_a_nivel: {},
+            Conjuros_conocidos_total: 3,
+            Ataque_base: '+0',
+            Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+            Aumentos_clase_lanzadora: [],
+            Dotes: [],
+            Especiales: [],
+        })),
+    };
+}
+
+const CLAVE_VISTA_A = 'rol.ficha.vista.cuenta-a';
+const CLAVE_VISTA_SIN_CUENTA = 'rol.ficha.vista.sin-cuenta';
+
 describe('DetallesPersonajeComponent', () => {
     let component: DetallesPersonajeComponent;
     let fixture: ComponentFixture<DetallesPersonajeComponent>;
     let fichasDescargaBgSvcMock: any;
     let regionSvcMock: any;
     let listaPersonajesSvcMock: any;
+    let userSvcMock: any;
+    let sesion: { cuenta: { id: string; } | null; estado$: BehaviorSubject<unknown>; };
+    const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
+    const { texto, titulos, valor, enlace, lateral, filasPares, franja, casillas, etiquetasCabecera, tipoCabecera } = lectorFicha(elemento);
 
-    beforeEach(async () => {
-        fichasDescargaBgSvcMock = {
-            descargarFichas: jasmine.createSpy('descargarFichas').and.callFake(() => undefined),
-        };
-        listaPersonajesSvcMock = {
-            actualizarVisibilidadEnCache: jasmine.createSpy('actualizarVisibilidadEnCache'),
-            actualizarArchivadoEnCache: jasmine.createSpy('actualizarArchivadoEnCache'),
-        };
-        regionSvcMock = {
-            getRegiones: () => of([]),
-        };
-        await TestBed.configureTestingModule({
-            declarations: [DetallesPersonajeComponent],
-            providers: [
-                {
-                    provide: FichasDescargaBackgroundService,
-                    useValue: fichasDescargaBgSvcMock,
-                },
-                {
-                    provide: ClaseService,
-                    useValue: {
-                        getClases: () => of([]),
-                    },
-                },
-                {
-                    provide: PersonajeService,
-                    useValue: {
-                        actualizarVisibilidadPersonaje: async () => ({
-                            idPersonaje: 1,
-                            visible_otros_usuarios: false,
-                        }),
-                        actualizarArchivadoPersonaje: async () => ({
-                            idPersonaje: 1,
-                            archivado: true,
-                        }),
-                    },
-                },
-                {
-                    provide: ListaPersonajesService,
-                    useValue: listaPersonajesSvcMock,
-                },
-                {
-                    provide: UserService,
-                    useValue: {
-                        CurrentUserUid: 'test-uid',
-                    },
-                },
-                {
-                    provide: RegionService,
-                    useValue: regionSvcMock,
-                },
-                {
-                    provide: UserProfileApiService,
-                    useValue: {
-                        hasPublicProfile: async () => false,
-                    },
-                },
-            ],
-            schemas: [NO_ERRORS_SCHEMA],
-        }).compileComponents();
-
+    const crear = (): void => {
         fixture = TestBed.createComponent(DetallesPersonajeComponent);
         component = fixture.componentInstance;
         component.pj = new NuevoPersonajeService().PersonajeCreacion;
         component.pj.Id = 1;
         component.pj.ownerUid = 'test-uid';
-    });
-
-    it('actualiza la cache del listado al cambiar la visibilidad', async () => {
-        await component.actualizarVisibilidad(true);
-
-        expect(component.pj.visible_otros_usuarios).toBeTrue();
-        expect(listaPersonajesSvcMock.actualizarVisibilidadEnCache).toHaveBeenCalledOnceWith(1, true);
-    });
-
-    it('actualiza la cache del listado al cambiar el archivado', async () => {
-        await component.actualizarArchivado(true);
-
-        expect(component.pj.Archivado).toBeTrue();
-        expect(listaPersonajesSvcMock.actualizarArchivadoEnCache).toHaveBeenCalledOnceWith(1, true);
-    });
-
-    it('muestra los switches de visibilidad y archivado solo al propietario', () => {
+    };
+    const verPagina = (): void => {
         fixture.detectChanges();
-
-        const toggles = fixture.debugElement.queryAll(By.css('mat-slide-toggle'));
-        expect(component.mostrarControlVisibilidad).toBeTrue();
-        expect(toggles.length).toBe(2);
-    });
-
-    it('oculta los switches de visibilidad y archivado en personajes ajenos', () => {
-        component.pj.ownerUid = 'otro-uid';
+        component.cambiarVista('pagina');
         fixture.detectChanges();
-
-        const toggles = fixture.debugElement.queryAll(By.css('mat-slide-toggle'));
-        expect(component.mostrarControlVisibilidad).toBeFalse();
-        expect(toggles.length).toBe(0);
-    });
-
-    it('oculta los switches de visibilidad y archivado sin sesión activa', () => {
-        const userSvc = TestBed.inject(UserService) as any;
-        userSvc.CurrentUserUid = '';
+    };
+    const elementos = (dentro: Element | null, selector: string): string[] =>
+        Array.from(dentro?.querySelectorAll(selector) ?? []).map((nodo) => limpio(nodo));
+    const pestanas = (): string[] => Array.from(elemento().querySelectorAll('[role="tab"]')).map((p) => limpio(p));
+    const abrirPestana = (nombre: string): void => {
+        (Array.from(elemento().querySelectorAll<HTMLButtonElement>('[role="tab"]')).find((p) => limpio(p) === nombre)!).click();
         fixture.detectChanges();
-
-        const toggles = fixture.debugElement.queryAll(By.css('mat-slide-toggle'));
-        expect(component.mostrarControlVisibilidad).toBeFalse();
-        expect(toggles.length).toBe(0);
-    });
-
-    it('muestra botón Generar pdf por defecto', () => {
-        fixture.detectChanges();
-
-        const botones = fixture.debugElement.queryAll(By.css('button'));
-        const existeBoton = botones.some((btn) => `${btn.nativeElement.textContent ?? ''}`.includes('Generar pdf'));
-        expect(existeBoton).toBeTrue();
-    });
-
-    it('generarFicha delega en descarga background con alcance de detalles', () => {
-        component.pj.Nombre = 'Druida de prueba';
-        component.pj.Conjuros = [{ Id: 1, Nombre: 'Luz' } as any];
-        component.pj.Sortilegas = [];
-
-        component.generarFicha();
-
-        expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledTimes(1);
-        expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledWith(jasmine.objectContaining({
-            Nombre: 'Druida de prueba',
-        }), {
-            incluirConjuros: true,
-            incluirFamiliares: false,
-            incluirCompaneros: false,
-        });
-    });
-
-    it('muestra "Creador: Tú" cuando el ownerUid coincide con la sesión activa', () => {
-        component.pj.ownerUid = 'test-uid';
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Creador: Tú');
-    });
-
-    it('usa ownerDisplayName cuando el personaje es de otro usuario', async () => {
-        component.pj.ownerUid = 'otro-uid';
-        component.pj.ownerDisplayName = 'Aramil';
-
-        fixture.detectChanges();
-        await fixture.whenStable();
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Creador: Aramil');
-    });
-
-    it('oculta botón Generar pdf cuando mostrarBotonGenerarPdf es false', () => {
-        component.mostrarBotonGenerarPdf = false;
-        fixture.detectChanges();
-
-        const botones = fixture.debugElement.queryAll(By.css('button'));
-        const existeBoton = botones.some((btn) => `${btn.nativeElement.textContent ?? ''}`.includes('Generar pdf'));
-        expect(existeBoton).toBeFalse();
-    });
-
-    it('oculta datos básicos faltantes por defecto', () => {
-        component.pj.Genero = 'Sin genero';
-        component.pj.Deidad = 'No tener deidad';
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).not.toContain('Sin genero');
-        expect(html).not.toContain('Deidad No tener deidad');
-    });
-
-    it('muestra la región cuando Id_region es mayor que 0', () => {
-        regionSvcMock.getRegiones = () => of([{ Id: 2, Nombre: 'Costa de la espada', Oficial: true }]);
-        component.pj.Id_region = 2;
-        component.pj.Region = { Id: 2, Nombre: '' } as any;
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Región Costa de la espada');
-    });
-
-    it('no muestra región cuando Id_region es 0', () => {
-        component.pj.Id_region = 0;
-        component.pj.Region = { Id: 0, Nombre: 'Sin región' } as any;
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).not.toContain('Región');
-    });
-
-    it('no renderiza el bloque "No tiene clase"', () => {
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).not.toContain('No tiene clase');
-    });
-
-    it('muestra el total negativo de habilidades sin prefijo positivo redundante', () => {
-        component.pj.Habilidades = [{
-            Nombre: 'Trepar',
-            Rangos: 1,
-            Rangos_varios: 0,
-            Mod_car: -5,
-            Extra: '',
-            Varios: '',
-        } as any];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Trepar -4');
-        expect(html).not.toContain('Trepar +-4');
-    });
-
-    it('oculta contexto y personalidad de fallback semántico', () => {
-        component.pj.Contexto = 'Eres totalmente antirol hijo mio.';
-        component.pj.Personalidad = 'Rellena un fisco puto vago.';
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).not.toContain('Contexto');
-        expect(html).not.toContain('Personalidad');
-    });
-
-    it('activa modo compacto cuando el ancho del host es estrecho', () => {
-        spyOn(component['hostElement'].nativeElement, 'querySelector').and.returnValue({
-            getBoundingClientRect: () => ({
-                width: 900,
-                height: 500,
-                top: 0,
-                left: 0,
-                right: 900,
-                bottom: 500,
-                x: 0,
-                y: 0,
-                toJSON: () => ({}),
-            }),
-        } as any);
-
-        component['actualizarModoCompacto']();
-        expect(component.modoCompactoLayout).toBeTrue();
-    });
-
-    it('desactiva modo compacto cuando el ancho disponible es amplio', () => {
-        spyOn(component['hostElement'].nativeElement, 'querySelector').and.returnValue({
-            getBoundingClientRect: () => ({
-                width: 1100,
-                height: 500,
-                top: 0,
-                left: 0,
-                right: 1100,
-                bottom: 500,
-                x: 0,
-                y: 0,
-                toJSON: () => ({}),
-            }),
-        } as any);
-
-        component['actualizarModoCompacto']();
-        expect(component.modoCompactoLayout).toBeFalse();
-    });
-
-    it('muestra edad, altura, peso y madurez en la sección de raza', () => {
-        component.pj.Raza.Nombre = 'Elfo';
-        component.pj.Raza.Edad_adulto = 110;
-        component.pj.Raza.Edad_mediana = 175;
-        component.pj.Raza.Edad_viejo = 263;
-        component.pj.Raza.Edad_venerable = 350;
-        component.pj.Edad = 180;
-        component.pj.Altura = 1.84;
-        component.pj.Peso = 73;
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Edad 180 años');
-        expect(html).toContain('Altura 1.84 m');
-        expect(html).toContain('Peso 73 kg');
-        expect(html).toContain('Madurez Mediana edad');
-        expect(html).toContain('Fue/Des/Con -1');
-        expect(html).toContain('Int/Sab/Car +1');
-    });
-
-    it('convierte altura a metros cuando llega en centímetros', () => {
-        component.pj.Raza.Nombre = 'Azotamentes';
-        component.pj.Altura = 170;
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Altura 1.70 m');
-        expect(html).not.toContain('Altura 170 m');
-    });
-
-    it('muestra subtipos válidos y oculta los textos que no se enseñan', () => {
-        // «Placeholder» ya no llega de la API (sale null); «No aplica» es de los que pone la propia web.
-        component.pj.Raza.Nombre = 'Aasimar';
-        component.pj.Subtipos = [
-            { Id: 1, Nombre: 'Angelical' },
-            { Id: 2, Nombre: 'No aplica' },
-        ];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Subtipos');
-        expect(html).toContain('Angelical');
-        expect(html).not.toContain('No aplica');
-    });
-
-    it('muestra raza base cuando existe', () => {
-        component.pj.Raza.Nombre = 'Prole de Bahamut';
-        component.pj.RazaBase = {
-            Id: 10,
-            Nombre: 'Humano',
-        } as any;
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Base: Humano');
-    });
-
-    it('no muestra raza base cuando es null', () => {
-        component.pj.Raza.Nombre = 'Elfo';
-        component.pj.RazaBase = null;
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).not.toContain('Base:');
-    });
-
-    it('las subchips de plantilla no llevan estilo warm', () => {
-        component.pj.Raza.Nombre = 'Humano';
-        component.pj.Plantillas = [{
-            Id: 1,
-            Nombre: 'Liche',
-            Multiplicador_dgs_lic: 0,
-            Tipo_dgs_lic: 'd12',
-            Suma_dgs_lic: 0,
-            Ajuste_nivel: 4,
-            Heredada: false,
-        } as any];
-
-        fixture.detectChanges();
-
-        const chips = Array.from(fixture.nativeElement.querySelectorAll('mat-chip.chip-plantilla-subinfo')) as HTMLElement[];
-        const subchip = chips.find((chip) => `${chip.textContent ?? ''}`.includes('Ajuste de nivel +4'));
-        expect(subchip).withContext(fixture.nativeElement.innerHTML).toBeDefined();
-        expect(subchip?.classList.contains('warm')).toBeFalse();
-    });
-
-    it('calcula madurez venerable y modificadores de edad como en C#', () => {
-        component.pj.Edad = 95;
-        component.pj.Raza.Edad_mediana = 40;
-        component.pj.Raza.Edad_viejo = 60;
-        component.pj.Raza.Edad_venerable = 80;
-
-        const madurez = component.madurezEdad;
-        expect(madurez.id).toBe(3);
-        expect(madurez.nombre).toBe('Venerable');
-        expect(madurez.modFisico).toBe(-6);
-        expect(madurez.modMental).toBe(3);
-    });
-
-    it('emite referencia estructurada al abrir detalle racial', () => {
-        const emitSpy = spyOn(component.racialDetallesPorNombre, 'emit');
-        component.verDetallesRacialPorNombre({ id: 15, nombre: 'Sangre antigua' });
-        expect(emitSpy).toHaveBeenCalledWith({ id: 15, nombre: 'Sangre antigua' });
-    });
-
-    it('emite referencia estructurada al abrir detalle de ventaja', () => {
-        const emitSpy = spyOn(component.ventajaDetallesPorNombre, 'emit');
-        component.verDetallesVentajaPorNombre({ nombre: 'Voluntad de hierro', origen: 'Ventaja' });
-        expect(emitSpy).toHaveBeenCalledWith({ nombre: 'Voluntad de hierro', origen: 'Ventaja' });
-    });
-
-    it('normaliza referencia de ventaja con prefijo en el nombre al emitir detalle', () => {
-        const emitSpy = spyOn(component.ventajaDetallesPorNombre, 'emit');
-        component.verDetallesVentajaPorNombre({ nombre: 'Desventaja: Miopia' });
-        expect(emitSpy).toHaveBeenCalledWith({ nombre: 'Miopia', origen: 'Desventaja' });
-    });
-
-    it('no emite detalle de ventaja cuando el nombre no es válido', () => {
-        const emitSpy = spyOn(component.ventajaDetallesPorNombre, 'emit');
-        component.verDetallesVentajaPorNombre({ nombre: '   ' });
-        expect(emitSpy).not.toHaveBeenCalled();
-    });
-
-    it('emite detalle de deidad cuando el nombre es válido', () => {
-        const emitSpy = spyOn(component.deidadDetallesPorNombre, 'emit');
-        component.verDetallesDeidadPorNombre('Heironeous');
-        expect(emitSpy).toHaveBeenCalledWith('Heironeous');
-    });
-
-    it('no emite detalle de deidad cuando el nombre es no aplicable', () => {
-        const emitSpy = spyOn(component.deidadDetallesPorNombre, 'emit');
-        component.verDetallesDeidadPorNombre('No tener deidad');
-        expect(emitSpy).not.toHaveBeenCalled();
-    });
-
-    it('emite detalle de raza aunque el id llegue como string numerico', () => {
-        const emitSpy = spyOn(component.razaDetalles, 'emit');
-        component.verDetallesRaza('7' as any);
-        expect(emitSpy).toHaveBeenCalledWith(7);
-    });
-
-    it('muestra subchips de origen en rasgos/raciales/dotes/idiomas/ventajas', () => {
-        component.pj.Tipo_criatura.Nombre = 'Muerto viviente';
-        component.pj.Tipo_criatura.Rasgos = [
-            { Id: 1, Nombre: 'Inmunidad al veneno', Descripcion: '', Oficial: true },
-        ];
-        component.pj.Raciales = [
-            {
-                Id: 10,
-                Nombre: 'Sangre antigua',
-                Descripcion: '',
-                Origen: 'Elfo',
-                Dotes: [],
-                Habilidades: { Base: [], Custom: [] },
-                Caracteristicas: [],
-                Salvaciones: [],
-                Sortilegas: [],
-                Ataques: [],
-                Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
-                Prerrequisitos: { raza: [], caracteristica: [] },
-            } as any,
-        ];
-        component.pj.Dotes = [{
-            Nombre: 'Alerta',
-            Descripcion: '',
-            Beneficio: '',
-            Pagina: 1,
-            Extra: '',
-            Origen: 'Nivel',
-        }];
-        component.pj.Idiomas = [{
-            Nombre: 'Abisal',
-            Descripcion: '',
-            Secreto: false,
-            Oficial: true,
-            Origen: 'Ventaja',
-        }];
-        component.pj.Ventajas = [{
-            Nombre: 'Voluntad de hierro',
-            Origen: 'Ventaja',
-        }];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Muerto viviente');
-        expect(html).toContain('Elfo');
-        expect(html).toContain('Nivel');
-        expect(html).toContain('Ventaja');
-    });
-
-    it('muestra el origen corregido para dotes de plantilla y progresión en la preview', () => {
-        component.esPreviewNuevoPersonaje = true;
-        component.pj.Dotes = [
-            {
-                Nombre: 'Alerta',
-                Descripcion: '',
-                Beneficio: '',
-                Pagina: 1,
-                Extra: '',
-                Origen: 'Licántropo (lince) [nacido]',
-            },
-            {
-                Nombre: 'Ataque poderoso',
-                Descripcion: '',
-                Beneficio: '',
-                Pagina: 1,
-                Extra: '',
-                Origen: 'Dote adicional por nivel 6',
-            },
-        ] as any;
-
-        fixture.detectChanges();
-
-        const origenes = fixture.debugElement.queryAll(By.css('.chip-origen'))
-            .map((el) => `${el.nativeElement.textContent ?? ''}`.trim())
-            .filter(Boolean);
-
-        expect(origenes).toContain('Licántropo (lince) [nacido]');
-        expect(origenes).toContain('Dote adicional por nivel 6');
-    });
-
-    it('aplica warm solo a chips de ventajas y mantiene click en preview', () => {
-        component.pj.Ventajas = [
-            { Nombre: 'Voluntad de hierro', Origen: 'Ventaja' } as any,
-            { Nombre: 'Miopia', Origen: 'Desventaja' } as any,
-        ];
-        const emitSpy = spyOn(component.ventajaDetallesPorNombre, 'emit');
-        fixture.detectChanges();
-
-        const chips = fixture.debugElement.queryAll(By.css('mat-chip.chip-clic.sombra3d-sm'));
-        const chipVentaja = chips.find((chip) => `${chip.nativeElement.textContent ?? ''}`.includes('Voluntad de hierro'));
-        const chipDesventaja = chips.find((chip) => `${chip.nativeElement.textContent ?? ''}`.includes('Miopia'));
-
-        expect(chipVentaja).toBeDefined();
-        expect(chipDesventaja).toBeDefined();
-        expect(chipVentaja!.nativeElement.classList.contains('warm')).toBeTrue();
-        expect(chipDesventaja!.nativeElement.classList.contains('warm')).toBeFalse();
-
-        chipVentaja!.triggerEventHandler('click', new MouseEvent('click'));
-        expect(emitSpy).toHaveBeenCalledWith({ nombre: 'Voluntad de hierro', origen: 'Ventaja' });
-    });
-
-    it('actualiza raciales visibles cuando cambian tras inicializar el componente', () => {
-        fixture.detectChanges();
-        component.pj.Raciales = [
-            {
-                Id: 20,
-                Nombre: 'Telepatia',
-                Descripcion: '',
-                Origen: 'Azotamentes',
-                Dotes: [],
-                Habilidades: { Base: [], Custom: [] },
-                Caracteristicas: [],
-                Salvaciones: [],
-                Sortilegas: [],
-                Ataques: [],
-                Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
-                Prerrequisitos: { raza: [], caracteristica: [] },
-            } as any,
-        ];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Habilidades raciales');
-        expect(html).toContain('Telepatia');
-        expect(html).toContain('Azotamentes');
-    });
-
-    it('renderiza raciales con claves legacy y fallback desde raza', () => {
-        fixture.detectChanges();
-
-        component.pj.Raciales = [] as any;
-        (component.pj as any).Raza = {
-            ...(component.pj as any).Raza,
-            Raciales: [{
-                i: 31,
-                n: 'Olfato',
-                o: 'Licantropo',
-            }],
+    };
+    const botonVista = (nombre: string): HTMLButtonElement =>
+        Array.from(elemento().querySelectorAll<HTMLButtonElement>('.personaje-vista__boton')).find((b) => limpio(b.querySelector('span')) === nombre)!;
+
+    beforeEach(async () => {
+        localStorage.removeItem(CLAVE_VISTA_A);
+        localStorage.removeItem(CLAVE_VISTA_SIN_CUENTA);
+        fichasDescargaBgSvcMock = { descargarFichas: jasmine.createSpy('descargarFichas') };
+        listaPersonajesSvcMock = {
+            actualizarVisibilidadEnCache: jasmine.createSpy('actualizarVisibilidadEnCache'),
+            actualizarArchivadoEnCache: jasmine.createSpy('actualizarArchivadoEnCache'),
         };
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Habilidades raciales');
-        expect(html).toContain('Olfato');
-        expect(html).toContain('Licantropo');
-    });
-
-    it('muestra metadatos de sortilegas en la preview del personaje', () => {
-        component.pj.Sortilegas = [
-            {
-                Conjuro: { Id: 1, Nombre: 'Levitar' },
-                Nivel_lanzador: 9,
-                Usos_diarios: 'A voluntad',
-                Dgs_necesarios: 4,
-                Descripcion: 'Innato',
-                Origen: 'Azotamentes',
-            } as any,
-        ];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Habilidades sortílegas');
-        expect(html).toContain('Levitar');
-        expect(html).toContain('Nivel de lanzador 9');
-        expect(html).toContain('Usos A voluntad');
-        expect(html).toContain('DGs min 4');
-        expect(html).toContain('Innato');
-    });
-
-    it('muestra subchips de lanzador en el chip de clase cuando hay catálogo', () => {
-        component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 1, Caracteristica_lanzamiento: 'Inteligencia' }];
-        component.clasesCatalogo = [{
-            Id: 1,
-            Nombre: 'Mago',
-            Conjuros: {
-                Arcanos: true,
-                Divinos: false,
-                Psionicos: false,
-                Alma: false,
-                Dependientes_alineamiento: true,
-                Lanzamiento_espontaneo: false,
-                Conocidos_total: true,
-                Conocidos_nivel_a_nivel: false,
-                Dominio: false,
-                puede_elegir_especialidad: true,
-                Clase_origen: { Id: 0, Nombre: '' },
-                Listado: [],
-            },
-            Mod_salv_conjuros: 'Carisma',
-            Desglose_niveles: [{
-                Nivel: 1,
-                Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
-                Reserva_psionica: 0,
-                Conjuros_diarios: {
-                    Nivel_0: 0,
-                    Nivel_1: 1,
-                    Nivel_2: -1,
-                },
-                Conjuros_conocidos_nivel_a_nivel: {},
-                Conjuros_conocidos_total: 3,
-                Ataque_base: '+0',
-                Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
-                Aumentos_clase_lanzadora: [],
-                Dotes: [],
-                Especiales: [],
-            }],
-        } as any];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Mago 1');
-        expect(html).toContain('Lanzador arcano');
-        expect(html).toContain('Nivel de lanzador 1');
-        expect(html).toContain('Salvación (Inteligencia)');
-        expect(html).not.toContain('Salvación (Carisma)');
-        expect(html).toContain('Niveles diarios 0, 1');
-        expect(html).toContain('Conocidos 3');
-        expect(html).toContain('Dependiente de alineamiento');
-    });
-
-    it('muestra el nivel de lanzador efectivo por clase con aumentos persistidos', () => {
-        component.pj.desgloseClases = [
-            { Nombre: 'Mago', Nivel: 10 },
-            { Nombre: 'Archimago', Nivel: 2 },
-        ];
-        component.pj.ProgresionLanzador = {
-            selecciones: [
-                { idClaseAplicada: 187, nivelClaseAplicado: 1, indiceAumento: 1, idClaseObjetivo: 186 },
-                { idClaseAplicada: 187, nivelClaseAplicado: 2, indiceAumento: 1, idClaseObjetivo: 186 },
-            ],
-        };
-        component.clasesCatalogo = [
-            {
-                Id: 186,
-                Nombre: 'Mago',
-                Conjuros: {
-                    Arcanos: true,
-                    Divinos: false,
-                    Psionicos: false,
-                    Alma: false,
-                    Dependientes_alineamiento: false,
-                    Lanzamiento_espontaneo: false,
-                    Conocidos_total: false,
-                    Conocidos_nivel_a_nivel: false,
-                    Dominio: false,
-                    puede_elegir_especialidad: true,
-                    Clase_origen: { Id: 0, Nombre: '' },
-                    Listado: [],
-                },
-                Mod_salv_conjuros: 'Inteligencia',
-                Desglose_niveles: Array.from({ length: 20 }, (_item, index) => ({
-                    Nivel: index + 1,
-                    Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
-                    Reserva_psionica: 0,
-                    Conjuros_diarios: {
-                        Nivel_0: 0,
-                        Nivel_1: 1,
+        regionSvcMock = { getRegiones: () => of([]) };
+        userSvcMock = { CurrentUserUid: 'test-uid', IsLoggedIn: true };
+        sesion = { cuenta: { id: 'cuenta-a' }, estado$: new BehaviorSubject<unknown>({ tipo: 'con_sesion' }) };
+        await TestBed.configureTestingModule({
+            declarations: [DetallesPersonajeComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
+            providers: [
+                { provide: FichasDescargaBackgroundService, useValue: fichasDescargaBgSvcMock },
+                { provide: ClaseService, useValue: { getClases: () => of([]) } },
+                {
+                    provide: PersonajeService,
+                    useValue: {
+                        actualizarVisibilidadPersonaje: async () => ({ idPersonaje: 1, visible_otros_usuarios: false }),
+                        actualizarArchivadoPersonaje: async () => ({ idPersonaje: 1, archivado: true }),
                     },
-                    Conjuros_conocidos_nivel_a_nivel: {},
-                    Conjuros_conocidos_total: 0,
-                    Ataque_base: '+0',
-                    Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
-                    Aumentos_clase_lanzadora: [],
-                    Dotes: [],
-                    Especiales: [],
-                })),
-            } as any,
-            {
-                Id: 187,
-                Nombre: 'Archimago',
-                Conjuros: {
-                    Arcanos: false,
-                    Divinos: false,
-                    Psionicos: false,
-                    Alma: false,
                 },
-                Aumenta_clase_lanzadora: true,
-                Desglose_niveles: [],
-            } as any,
-        ];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Mago 10');
-        expect(html).toContain('Nivel de lanzador 12');
-        expect(component.getSubchipsLanzadorClase({ Nombre: 'Archimago', Nivel: 2 })).toEqual([]);
-        expect(component.pj.Niveles_lanzador?.[0]?.nivelLanzador).toBe(12);
-    });
-
-    it('emite claseDetalles al solicitar detalle de clase desde preview', () => {
-        const emitSpy = spyOn(component.claseDetalles, 'emit');
-        component.verDetallesClase('Mago');
-        expect(emitSpy).toHaveBeenCalledWith('Mago');
-    });
-
-    it('renderiza familiares y compañeros animales cuando existen en el personaje', () => {
-        component.pj.Familiares = [
-            { Id: 101, Nombre: 'Cuervo sabio' } as any,
-        ];
-        component.pj.Companeros = [
-            { Id: 202, Nombre: 'Lobo fiel' } as any,
-        ];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Familiares y compañeros animales');
-        expect(html).toContain('Cuervo sabio');
-        expect(html).toContain('Lobo fiel');
-    });
-
-    it('emite detalle de monstruo al abrir un familiar o compañero', () => {
-        const emitSpy = spyOn(component.monstruoDetalles, 'emit');
-        const monstruo = { Id: 77, Nombre: 'Gato infernal' } as any;
-
-        component.verDetallesMonstruo(monstruo);
-
-        expect(emitSpy).toHaveBeenCalledWith(monstruo);
-    });
-
-    it('no muestra origen en legacy sin origen, salvo fallback del rasgo de tipo', () => {
-        component.pj.Tipo_criatura.Nombre = 'Humanoide';
-        component.pj.Tipo_criatura.Rasgos = [
-            { Id: 1, Nombre: 'Rasgo base', Descripcion: '', Oficial: true },
-        ];
-        component.pj.Raciales = [
-            {
-                Id: 10,
-                Nombre: 'Sangre antigua',
-                Descripcion: '',
-                Dotes: [],
-                Habilidades: { Base: [], Custom: [] },
-                Caracteristicas: [],
-                Salvaciones: [],
-                Sortilegas: [],
-                Ataques: [],
-                Prerrequisitos_flags: { raza: false, caracteristica_minima: false },
-                Prerrequisitos: { raza: [], caracteristica: [] },
-            } as any,
-        ];
-        component.pj.Dotes = [{
-            Nombre: 'Alerta',
-            Descripcion: '',
-            Beneficio: '',
-            Pagina: 1,
-            Extra: '',
-            Origen: '',
-        }];
-        component.pj.Idiomas = [{
-            Nombre: 'Común',
-            Descripcion: '',
-            Secreto: false,
-            Oficial: true,
-        }];
-        component.pj.Ventajas = ['Voluntad de hierro'];
-
-        fixture.detectChanges();
-
-        const origenes = fixture.debugElement.queryAll(By.css('.chip-origen'))
-            .map((el) => `${el.nativeElement.textContent ?? ''}`.trim())
-            .filter(Boolean);
-        expect(origenes).toContain('Humanoide');
-        expect(origenes).not.toContain('Elfo');
-        expect(origenes).not.toContain('Nivel');
-    });
-
-    it('muestra el estado perdida por clave y oculta chips numéricas', () => {
-        component.pj.Fuerza = 0;
-        component.pj.ModFuerza = 0;
-        component.pj.Constitucion = 13;
-        component.pj.ModConstitucion = 1;
-        component.pj.Caracteristicas_perdidas = {
-            Fuerza: true,
-        };
-
-        fixture.detectChanges();
-
-        const chipPerdida = fixture.debugElement.query(By.css('.chip-caracteristica-perdida'));
-        expect(chipPerdida).not.toBeNull();
-        expect(`${chipPerdida.nativeElement.textContent ?? ''}`).toContain('Perdida');
-        expect(`${fixture.nativeElement.textContent ?? ''}`).toContain('Constitución');
-        expect(`${fixture.nativeElement.textContent ?? ''}`).toContain('13');
-    });
-
-    it('normaliza escuelas prohibidas cuando llegan como string y objeto', () => {
-        component.pj.Escuelas_prohibidas = [
-            'Evocación',
-            { Nombre: 'Ilusión' },
-            { Nombre: '  ' } as any,
-        ];
-
-        expect(component.getEscuelasProhibidasVisibles()).toEqual(['Evocación', 'Ilusión']);
-        expect(component.tieneEscuelasProhibidasVisibles()).toBeTrue();
-    });
-
-    it('normaliza dominios cuando llegan como objetos y evita [object Object]', () => {
-        (component.pj as any).Dominios = [
-            { Nombre: 'Guerra' },
-            { nombre: 'Bien' },
-            'Magia',
-        ];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(component.getDominiosVisibles()).toEqual(['Guerra', 'Bien', 'Magia']);
-        expect(html).toContain('Dominios');
-        expect(html).toContain('Guerra');
-        expect(html).toContain('Bien');
-        expect(html).toContain('Magia');
-        expect(html).not.toContain('[object Object]');
-    });
-
-    it('preview nuevo personaje muestra iniciativa y carga aunque valgan 0 al confirmar características', () => {
-        component.esPreviewNuevoPersonaje = true;
-        component.caracteristicasConfirmadas = true;
-        component.pj.Raza.Nombre = 'Humano';
-        component.pj.ModDestreza = 0;
-        component.pj.Iniciativa_varios = [];
-        component.pj.Capacidad_carga = {
-            Ligera: 0,
-            Media: 0,
-            Pesada: 0,
-        };
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Iniciativa 0');
-        expect(html).toContain('Capacidad de carga');
-        expect(html).toContain('Ligera 0');
-        expect(html).toContain('Media 0');
-        expect(html).toContain('Pesada 0');
-    });
-
-    it('preview nuevo personaje muestra la experiencia en 0 cuando ya aplica NEP, y nada de oro (lo da la tienda)', () => {
-        component.esPreviewNuevoPersonaje = true;
-        component.pj.Raza.Ajuste_nivel = 1;
-        component.pj.Experiencia = 0;
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Exp 0');
-        expect(html).not.toContain('Oro inicial');
-        expect(html).not.toContain('Dinero');
-    });
-
-    it('reordena bloques en la preview de nuevo personaje sin tocar el layout compacto', () => {
-        component.esPreviewNuevoPersonaje = true;
-        component.caracteristicasConfirmadas = true;
-        component.pj.Destreza = 12;
-        component.pj.ModDestreza = 1;
-        component.pj.Raza.Nombre = 'Elfo';
-        component.pj.Raza.Tamano.Nombre = 'Mediano';
-        component.pj.Tipo_criatura.Nombre = 'Humanoide';
-        component.pj.desgloseClases = [{ Nombre: 'Explorador', Nivel: 2 }] as any;
-
-        fixture.detectChanges();
-
-        const columnas = fixture.debugElement.queryAll(By.css('.detalle-col'));
-        expect(columnas.length).toBeGreaterThanOrEqual(2);
-        expect(columnas[0].query(By.css('.detalle-bloque--principal'))).not.toBeNull();
-        expect(columnas[0].query(By.css('.detalle-bloque--caracteristicas'))).not.toBeNull();
-        expect(columnas[0].query(By.css('.detalle-bloque--raza'))).toBeNull();
-        expect(columnas[1].query(By.css('.detalle-bloque--raza'))).not.toBeNull();
-        expect(columnas[1].query(By.css('.detalle-bloque--clases'))).not.toBeNull();
-    });
-
-    it('muestra ayuda de maniobrabilidad cuando el personaje vuela', () => {
-        component.pj.Volar = 40;
-        (component.pj as any).Raza = {
-            ...(component.pj as any).Raza,
-            Maniobrabilidad: {
-                Nombre: 'Perfecta',
-                Velocidad_avance: 'Normal',
-                Flotar: 1,
-                Volar_atras: 1,
-                Contramarcha: 1,
-                Giro: 'Cualquiera',
-                Rotacion: 'Cualquiera',
-                Giro_max: 'Cualquiera',
-                Angulo_ascenso: 'Cualquiera',
-                Velocidad_ascenso: 'Normal',
-                Angulo_descenso: 'Cualquiera',
-                Descenso_ascenso: 1,
-            },
-        };
-
-        expect(component.mostrarManiobrabilidad()).toBeTrue();
-        component.abrirInfoManiobrabilidad();
-
-        const texto = JSON.stringify(component.getManiobrabilidadInfoSecciones());
-        expect(component.mostrarInfoManiobrabilidad).toBeTrue();
-        expect(component.getManiobrabilidadNombre()).toBe('Perfecta');
-        expect(texto).toContain('Perfecta');
-        expect(texto).toContain('Flotar: Sí.');
-    });
-
-    it('calcula iniciativa como ModDestreza + bonos varios', () => {
-        component.pj.Raza.Nombre = 'Humano';
-        component.pj.ModDestreza = 2;
-        component.pj.Iniciativa_varios = [
-            { Valor: 3, Origen: 'Ventaja' },
-        ];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Iniciativa +5');
-    });
-
-    it('muestra bloque de salvaciones en preview aunque estén a 0', () => {
-        component.esPreviewNuevoPersonaje = true;
-        component.pj.Salvaciones.fortaleza.modsClaseos = [];
-        component.pj.Salvaciones.reflejos.modsClaseos = [];
-        component.pj.Salvaciones.voluntad.modsClaseos = [];
-        component.pj.Salvaciones.fortaleza.modsVarios = [];
-        component.pj.Salvaciones.reflejos.modsVarios = [];
-        component.pj.Salvaciones.voluntad.modsVarios = [];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(component.tieneBloqueSalvacionesVisible()).toBeTrue();
-        expect(component.salvacionesVisibles.map((salvacion) => salvacion.clase)).toEqual([0, 0, 0]);
-        expect(component.salvacionesVisibles.map((salvacion) => salvacion.varios)).toEqual([0, 0, 0]);
-        expect(html).toContain('Salvaciones');
-    });
-
-    it('muestra bloque de salvaciones en detalle normal aunque estén a 0', () => {
-        component.esPreviewNuevoPersonaje = false;
-        component.pj.Salvaciones.fortaleza.modsClaseos = [];
-        component.pj.Salvaciones.reflejos.modsClaseos = [];
-        component.pj.Salvaciones.voluntad.modsClaseos = [];
-        component.pj.Salvaciones.fortaleza.modsVarios = [];
-        component.pj.Salvaciones.reflejos.modsVarios = [];
-        component.pj.Salvaciones.voluntad.modsVarios = [];
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(component.tieneBloqueSalvacionesVisible()).toBeTrue();
-        expect(html).toContain('Salvaciones');
-    });
-
-    it('actualiza resumen de salvaciones cuando cambian mods tras inicializar', () => {
-        component.pj.ModConstitucion = 1;
-        component.pj.Salvaciones.fortaleza.modsClaseos = [];
-        component.pj.Salvaciones.fortaleza.modsVarios = [];
-
-        fixture.detectChanges();
-        expect(component.salvacionesVisibles[0]).toEqual(jasmine.objectContaining({ total: 1, clase: 0, varios: 0 }));
-
-        component.pj.Salvaciones.fortaleza.modsClaseos = [{ valor: 2, origen: 'Clase test' }];
-        component.pj.Salvaciones.fortaleza.modsVarios = [{ valor: -1, origen: 'Plantilla test' }];
-        fixture.detectChanges();
-
-        // En el borrador de la creación se suma como en la API: característica + clase + varios.
-        expect(component.salvacionesVisibles[0]).toEqual(jasmine.objectContaining({
-            nombre: 'Fortaleza',
-            total: 2,
-            clase: 2,
-            claseOrigenes: 'Clase test',
-            varios: -1,
-            variosOrigenes: 'Plantilla test',
-        }));
-    });
-
-    it('enseña las salvaciones de la ficha de la API con su total, que incluye la característica', () => {
-        component.pj = fichaDeLaApi();
-
-        fixture.detectChanges();
-
-        expect(component.salvacionesVisibles.map((salvacion) => salvacion.total)).toEqual([11, 14, 6]);
-        expect(component.salvacionesVisibles[0]).toEqual(jasmine.objectContaining({
-            clase: 6,
-            claseOrigenes: 'Explorador',
-            varios: 1,
-            variosOrigenes: 'Centauro',
-            desglose: 'Constitución +4\nExplorador +6\nCentauro +1',
-        }));
-        // La parte de clase sin origen (el «Placeholder» de las fichas antiguas) cuenta y se nombra por su tipo.
-        expect(component.salvacionesVisibles[1].claseOrigenes).toBe('');
-        expect(component.salvacionesVisibles[1].desglose).toContain('Clase +6');
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Fortaleza: +11');
-        expect(html).toContain('clase +6');
-        expect(html).toContain('varios +1');
-    });
-
-    it('enseña la defensa, lo que suma el equipo a las salvaciones, el equipo y el dinero', () => {
-        component.pj = fichaDeLaApi(crearEquipoFichaApi());
-
-        fixture.detectChanges();
-
-        expect(component.salvacionesVisibles[0]).toEqual(jasmine.objectContaining({ equipo: 1, equipoOrigenes: 'Capa de resistencia +1' }));
-        expect(component.caDisclaimer).toContain('Cota de mallas +5 (armadura)');
-        expect(component.llevaArmaduraPuesta).toBeTrue();
-        expect(component.piezasEquipo.length).toBe(6);
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Ca 18');
-        expect(html).toContain('Toque 11');
-        expect(html).toContain('Desprevenido 16');
-        expect(html).toContain('Destreza máxima +2');
-        expect(html).toContain('Penalizador de armadura -5');
-        expect(html).toContain('Fallo de conjuro arcano 35%');
-        expect(html).toContain('equipo +1');
-        expect(html).toContain('Dinero');
-        expect(html).toContain('12,5 po');
-        expect(html).toContain('Flechas ×20');
-        expect(html).toContain('Equipado (hombros)');
-        expect(html).toContain('Peso total 96 lb');
-        expect(html).toContain('Salvaciones +2 (competencia) contra encantamientos');
-    });
-
-    it('sin armadura puesta no enseña la Destreza máxima ni el penalizador', () => {
-        component.pj = fichaDeLaApi(crearEquipoFichaApi({ equipo: [], defensa: { ...crearEquipoFichaApi()['defensa'], destrezaMaxima: null, penalizadorArmadura: 0, falloConjuroArcano: 0 } }));
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Toque 11');
-        expect(html).not.toContain('Destreza máxima');
-        expect(html).not.toContain('Penalizador de armadura');
-    });
-
-    it('enseña la iniciativa, la presa y las habilidades con los totales de la API', () => {
-        component.pj = fichaDeLaApi({
-            md: 0,
-            habilidades: [{
-                id: 6, nombre: 'Avistar', custom: false, deClase: true, idExtra: null, extra: null, extraComodin: null,
-                caracteristica: 'Sabiduría', modificadorCaracteristica: 4, rangos: 14, rangosVarios: 0, varios: null, total: 18,
-                desglose: [],
-            }],
-        });
-
-        fixture.detectChanges();
-
-        const html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Iniciativa +8');
-        expect(component.iniciativaDesglose).toBe('Destreza +4\nIniciativa mejorada +4');
-        expect(html).toContain('Presa +20');
-        expect(html).toContain('Avistar +18');
-    });
-
-    it('no enseña la presa cuando la API no la da', () => {
-        component.pj = fichaDeLaApi({ a: '-', presa: null });
-
-        fixture.detectChanges();
-
-        expect(component.tienePresaVisible()).toBeFalse();
-        expect(`${fixture.nativeElement.textContent ?? ''}`).not.toContain('Presa');
-    });
-
-    it('usa el comodín de la API para los extras de los especiales', () => {
-        component.pj = fichaDeLaApi({
-            especiales: [
-                { id: 38, nombre: 'Enemigo predilecto', idExtra: 40, extra: 'Primero', extraComodin: null },
-                { id: 50, nombre: 'Saber bárdico', idExtra: 13, extra: 'Cualquiera', extraComodin: 'cualquiera' },
-                { id: 51, nombre: 'Esquiva asombrosa', idExtra: 110, extra: 'Elegir', extraComodin: 'elegir' },
-                { id: 30, nombre: 'Empatía salvaje', idExtra: null, extra: null, extraComodin: null },
+                { provide: ListaPersonajesService, useValue: listaPersonajesSvcMock },
+                { provide: UserService, useValue: userSvcMock },
+                { provide: RegionService, useValue: regionSvcMock },
+                { provide: PlatformSessionService, useValue: sesion },
             ],
-        });
-
-        expect(component.pj.Claseas.map((especial) => component.getExtraVisibleEspecial(especial)))
-            .toEqual(['Primero', '', 'Elegir', '']);
+            schemas: [NO_ERRORS_SCHEMA],
+        }).compileComponents();
+        crear();
     });
 
-    it('enseña la campaña, la trama y la subtrama que da la API y nada cuando son null', () => {
-        component.pj = fichaDeLaApi({ ncam: 'Costa de la Espada', ntr: 'Torre eclipsada', nst: null });
+    afterEach(() => {
+        localStorage.removeItem(CLAVE_VISTA_A);
+        localStorage.removeItem(CLAVE_VISTA_SIN_CUENTA);
+    });
 
+    describe('interruptor de vista', () => {
+        it('por defecto enseña la vista por pestañas, con la cabecera compacta', () => {
+            fixture.detectChanges();
+
+            expect(component.vista).toBe('pestanas');
+            expect(elemento().querySelector('[role="tablist"]')).not.toBeNull();
+            expect(elemento().querySelector('.ficha-cabecera--compacta')).not.toBeNull();
+            expect(botonVista('Pestañas').getAttribute('aria-pressed')).toBe('true');
+            expect(botonVista('Página').getAttribute('aria-pressed')).toBe('false');
+            expect(elemento().querySelector('.personaje-vista')?.getAttribute('aria-label')).toBe('Cómo se ve la ficha');
+        });
+
+        it('cambia a la página continua y lo recuerda por cuenta en este navegador', () => {
+            fixture.detectChanges();
+            botonVista('Página').click();
+            fixture.detectChanges();
+
+            expect(component.vista).toBe('pagina');
+            expect(elemento().querySelector('[role="tablist"]')).toBeNull();
+            expect(elemento().querySelector('.ficha-cabecera--compacta')).toBeNull();
+            expect(botonVista('Página').getAttribute('aria-pressed')).toBe('true');
+            expect(localStorage.getItem(CLAVE_VISTA_A)).toBe('pagina');
+
+            // Otra ficha que se abre después sale ya con la página continua.
+            fixture.destroy();
+            crear();
+            fixture.detectChanges();
+            expect(component.vista).toBe('pagina');
+
+            botonVista('Pestañas').click();
+            expect(localStorage.getItem(CLAVE_VISTA_A)).toBe('pestanas');
+        });
+
+        it('cada cuenta tiene su preferencia; sin cuenta, la de este navegador sin sesión', () => {
+            localStorage.setItem(CLAVE_VISTA_A, 'pagina');
+            sesion.cuenta = null;
+            fixture.detectChanges();
+            expect(component.vista).toBe('pestanas');
+
+            component.cambiarVista('pagina');
+            expect(localStorage.getItem(CLAVE_VISTA_SIN_CUENTA)).toBe('pagina');
+            localStorage.setItem(CLAVE_VISTA_A, 'pestanas');
+
+            // La cuenta se confirma con la ficha ya abierta: entonces manda su preferencia.
+            sesion.cuenta = { id: 'cuenta-a' };
+            sesion.estado$.next({ tipo: 'con_sesion' });
+            expect(component.vista).toBe('pestanas');
+        });
+
+        it('una preferencia que no se entiende vuelve a la vista por defecto', () => {
+            localStorage.setItem(CLAVE_VISTA_A, 'tabla');
+            fixture.detectChanges();
+            expect(component.vista).toBe('pestanas');
+        });
+    });
+
+    describe('vista por pestañas', () => {
+        beforeEach(() => {
+            component.pj = fichaDeLaApi({ dotes: [{ Dote: { Id: 7, Nombre: 'Rastrear' }, Contexto: { Entidad: 'personaje', Extra: '', Id_extra: -1, Origen: 'Explorador' } }] });
+            fixture.detectChanges();
+        });
+
+        it('enseña arriba la franja y las características, y las pestañas que tienen algo', () => {
+            const resumen = elemento().querySelector('.personaje-resumen') as HTMLElement;
+            // En la franja compacta, «PG» y «CA», con el nombre entero como nombre accesible.
+            expect(franja(resumen).map(([etiqueta]) => etiqueta)).toEqual(['PG', 'CA', 'Iniciativa', 'Ataque base', 'Presa', 'Velocidad']);
+            expect(resumen.querySelector('.ficha-franja__etiqueta')?.getAttribute('aria-label')).toBe('Puntos de golpe');
+            expect(casillas(resumen).map(([abreviatura]) => abreviatura)).toEqual(['FUE', 'DES', 'CON', 'INT', 'SAB', 'CAR']);
+            expect(pestanas()).toEqual(['Combate', 'Habilidades', 'Capacidades', 'Equipo', 'Historia']);
+            expect(tipoCabecera()).toBe('Centauro · Explorador 8 · NEP 14');
+        });
+
+        it('empieza en Combate, con el desglose de las salvaciones, la CA, la presa y la iniciativa', () => {
+            const panel = elemento().querySelector('[role="tabpanel"]') as HTMLElement;
+            expect(panel.getAttribute('aria-labelledby')).toBe(component.idPestana('combate'));
+            expect(titulos('[role="tabpanel"]')).toEqual(['Salvaciones', 'Clase de armadura', 'Presa e iniciativa']);
+            expect(filasPares(lateral('Salvaciones'))[0]).toEqual(['Fortaleza Constitución +4 · Explorador +6 · Centauro +1', '+11']);
+            expect(filasPares(lateral('Presa e iniciativa'))).toEqual([
+                ['Iniciativa Destreza +4 · Iniciativa mejorada +4', '+8'],
+                ['Presa Ataque base +8 · Fuerza +8 · Tamaño (Grande) +4', '+20'],
+            ]);
+        });
+
+        it('cada pestaña enseña su parte, y las flechas cambian de pestaña', () => {
+            abrirPestana('Capacidades');
+            expect(titulos('[role="tabpanel"]')).toEqual(['Dotes', 'Aptitudes de clase']);
+            expect(enlace('Rastrear')).toBeTruthy();
+
+            abrirPestana('Historia');
+            expect(valor('Raza')).toBe('Centauro · Grande');
+
+            const tablist = elemento().querySelector('[role="tablist"]') as HTMLElement;
+            tablist.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+            fixture.detectChanges();
+            expect(component.pestanaActiva).toBe('combate');
+            tablist.dispatchEvent(new KeyboardEvent('keydown', { key: 'End' }));
+            fixture.detectChanges();
+            expect(component.pestanaActiva).toBe('historia');
+            expect(elemento().querySelector(`#${component.idPestana('historia')}`)?.getAttribute('aria-selected')).toBe('true');
+            expect(elemento().querySelector(`#${component.idPestana('historia')}`)?.getAttribute('tabindex')).toBe('0');
+        });
+    });
+
+    it('las dos vistas enseñan lo mismo; solo cambia la colocación', () => {
+        component.pj = fichaDeLaApi({
+            ...crearEquipoFichaApi(),
+            dotes: [{ Dote: { Id: 7, Nombre: 'Rastrear' }, Contexto: { Entidad: 'personaje', Extra: '', Id_extra: -1, Origen: 'Explorador' } }],
+            idi: [{ Nombre: 'Silvano', Descripcion: '', Secreto: false, Oficial: true }],
+            con: [{ Id: 4, Nombre: 'Luz' }],
+            ventajas: [{ id: 3, nombre: 'Voluntad de hierro' }],
+            familiares: [{ Id: 101, Id_familiar: 5, Nombre: 'Cuervo sabio' }],
+            reduccionesDano: [{ valor: '5/plata', origen: 'Licántropo' }],
+        });
+        component.pj.Personalidad = 'Curiosa y aventurera.';
+        component.pj.Contexto = 'Nació en un bosque templado.';
         fixture.detectChanges();
 
-        let html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).toContain('Campaña Costa de la Espada');
-        expect(html).toContain('Trama Torre eclipsada');
-        expect(html).not.toContain('Subtrama');
+        const enPestanas = new Set<string>();
+        const textosPestanas: string[] = [];
+        for (const pestana of pestanas()) {
+            abrirPestana(pestana);
+            titulos('[role="tabpanel"]').forEach((titulo) => enPestanas.add(titulo));
+            textosPestanas.push(limpio(elemento().querySelector('[role="tabpanel"]')));
+        }
 
-        component.pj = fichaDeLaApi();
+        component.cambiarVista('pagina');
         fixture.detectChanges();
+        // En la página, las salvaciones van en sus casillas, junto a las características.
+        const enPagina = new Set([...titulos(), 'Salvaciones']);
+        expect([...enPagina].sort()).toEqual([...enPestanas].sort());
+        expect(casillas().map(([abreviatura]) => abreviatura)).toContain('FORTALEZA');
+        for (const fragmento of ['Luz', 'Silvano', 'Cuervo sabio', '5/plata', 'Voluntad de hierro', 'Flechas ×20', 'Curiosa y aventurera.'])
+            expect(textosPestanas.join(' ')).withContext(fragmento).toContain(fragmento);
+        for (const fragmento of ['Luz', 'Silvano', 'Cuervo sabio', '5/plata', 'Voluntad de hierro', 'Flechas ×20', 'Curiosa y aventurera.'])
+            expect(texto()).withContext(fragmento).toContain(fragmento);
+    });
 
-        html = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(html).not.toContain('Campaña');
-        expect(html).not.toContain('Deidad');
+    describe('página continua', () => {
+        it('enseña la cabecera, los datos, la franja grande y las casillas con las salvaciones', () => {
+            component.pj = fichaDeLaApi();
+            verPagina();
+
+            expect(tipoCabecera()).toBe('Personaje · Centauro · Explorador 8');
+            expect(etiquetasCabecera()).toEqual(['Público', 'Oficial']);
+            expect(valor('Raza')).toBe('Centauro · Grande');
+            expect(valor('Clase')).toBe('Explorador 8');
+            expect(valor('Nivel efectivo (NEP)')).toBe('14 · 4 DG raciales + 8 de clase + 2 de ajuste');
+            expect(valor('Tipo de criatura')).toBe('Humanoide monstruoso');
+            expect(franja()).toEqual([
+                ['Puntos de golpe', '80'],
+                ['Clase de armadura', '17'],
+                ['Iniciativa', '+8'],
+                ['Ataque base', '+8/+3'],
+                ['Presa', '+20'],
+                ['Velocidad', "50'"],
+            ]);
+            expect(casillas()[0]).toEqual(['FUE', '26', '+8']);
+            expect(casillas()[6]).toEqual(['FORTALEZA', '+11', 'clase +6 · varios +1']);
+            expect(casillas()[8]).toEqual(['VOLUNTAD', '+6', 'clase +2']);
+        });
+
+        it('no enseña lo que la API da null ni lo que es de relleno', () => {
+            component.pj = fichaDeLaApi();
+            verPagina();
+
+            for (const etiqueta of ['Deidad', 'Alineamiento', 'Campaña', 'Trama', 'Subtrama', 'Región', 'Raza base', 'Subtipos'])
+                expect(valor(etiqueta)).withContext(etiqueta).toBeNull();
+            expect(texto()).not.toContain('null');
+            expect(texto()).not.toContain('undefined');
+            expect(titulos()).not.toContain('Magia');
+            expect(titulos()).not.toContain('Defensas especiales');
+
+            component.pj = fichaDeLaApi({ g: 'Sin genero', de: 'No tener deidad' });
+            fixture.detectChanges();
+            expect(valor('Género')).toBeNull();
+            expect(valor('Deidad')).toBeNull();
+        });
+
+        it('las clases, la raza, el tipo y la deidad son enlaces a su detalle', () => {
+            component.pj = fichaDeLaApi({ de: 'Ehlonna' });
+            const clase = spyOn(component.claseDetalles, 'emit');
+            const raza = spyOn(component.razaDetalles, 'emit');
+            const tipo = spyOn(component.tipoDetalles, 'emit');
+            const deidad = spyOn(component.deidadDetallesPorNombre, 'emit');
+            verPagina();
+
+            enlace('Explorador 8').click();
+            enlace('Centauro').click();
+            enlace('Humanoide monstruoso').click();
+            enlace('Ehlonna').click();
+            expect(clase).toHaveBeenCalledWith('Explorador');
+            expect(raza).toHaveBeenCalledWith(30);
+            expect(tipo).toHaveBeenCalledWith(jasmine.objectContaining({ Nombre: 'Humanoide monstruoso' }));
+            expect(deidad).toHaveBeenCalledWith('Ehlonna');
+        });
+
+        it('enseña la campaña, la trama y la subtrama que da la API y nada cuando son null', () => {
+            component.pj = fichaDeLaApi({ ncam: 'Costa de la Espada', ntr: 'Torre eclipsada', nst: null });
+            verPagina();
+
+            expect(valor('Campaña')).toBe('Costa de la Espada');
+            expect(valor('Trama')).toBe('Torre eclipsada');
+            expect(valor('Subtrama')).toBeNull();
+        });
+    });
+
+    describe('cabecera', () => {
+        it('enseña «Creado por ti» bajo el nombre cuando el personaje es de la sesión', () => {
+            fixture.detectChanges();
+
+            const pie = elemento().querySelector('.ficha-cabecera__identidad .ficha-cabecera__pie');
+            expect(limpio(pie)).toBe('Creado por ti');
+            expect(pie?.querySelector('button')).toBeNull();
+        });
+
+        it('el creador de otro personaje es un enlace a su perfil público', () => {
+            component.pj.ownerUid = 'otro-uid';
+            component.pj.ownerDisplayName = 'Aramil';
+            const perfil = spyOn(component.perfilPublicoDetalles, 'emit');
+            fixture.detectChanges();
+
+            expect(limpio(elemento().querySelector('.ficha-cabecera__pie'))).toBe('Creado por Aramil');
+            enlace('Aramil').click();
+            expect(perfil).toHaveBeenCalledWith({ uid: 'otro-uid', initialDisplayName: 'Aramil' });
+        });
+
+        it('el PDF sale por defecto, se oculta con la entrada y delega en la descarga en segundo plano', () => {
+            fixture.detectChanges();
+            expect(texto()).toContain('Generar PDF');
+
+            component.pj.Nombre = 'Druida de prueba';
+            component.generarFicha();
+            expect(fichasDescargaBgSvcMock.descargarFichas).toHaveBeenCalledOnceWith(
+                jasmine.objectContaining({ Nombre: 'Druida de prueba' }),
+                { incluirConjuros: true, incluirFamiliares: false, incluirCompaneros: false });
+
+            fixture.destroy();
+            crear();
+            component.mostrarBotonGenerarPdf = false;
+            fixture.detectChanges();
+            expect(texto()).not.toContain('Generar PDF');
+        });
+
+        it('los interruptores de visibilidad y archivado solo los ve el dueño con sesión', () => {
+            fixture.detectChanges();
+            expect(elemento().querySelectorAll('mat-slide-toggle').length).toBe(2);
+
+            fixture.destroy();
+            crear();
+            component.pj.ownerUid = 'otro-uid';
+            fixture.detectChanges();
+            expect(elemento().querySelectorAll('mat-slide-toggle').length).toBe(0);
+
+            fixture.destroy();
+            crear();
+            userSvcMock.CurrentUserUid = '';
+            fixture.detectChanges();
+            expect(component.mostrarControlVisibilidad).toBeFalse();
+            expect(elemento().querySelectorAll('mat-slide-toggle').length).toBe(0);
+        });
+
+        it('cambiar la visibilidad o el archivado actualiza la caché del listado y las etiquetas', async () => {
+            component.pj.visible_otros_usuarios = false;
+            fixture.detectChanges();
+            expect(etiquetasCabecera()).toContain('Privado');
+
+            await component.actualizarVisibilidad(true);
+            await component.actualizarArchivado(true);
+            fixture.detectChanges();
+
+            expect(component.pj.visible_otros_usuarios).toBeTrue();
+            expect(component.pj.Archivado).toBeTrue();
+            expect(listaPersonajesSvcMock.actualizarVisibilidadEnCache).toHaveBeenCalledOnceWith(1, true);
+            expect(listaPersonajesSvcMock.actualizarArchivadoEnCache).toHaveBeenCalledOnceWith(1, true);
+            expect(etiquetasCabecera()).toEqual(jasmine.arrayContaining(['Público', 'Archivado']));
+        });
+    });
+
+    describe('datos del personaje', () => {
+        it('enseña la región del catálogo cuando tiene una, y nada con 0', () => {
+            regionSvcMock.getRegiones = () => of([{ Id: 2, Nombre: 'Costa de la espada', Oficial: true }]);
+            component.pj.Id_region = 2;
+            component.pj.Region = { Id: 2, Nombre: '' };
+            verPagina();
+            expect(valor('Región')).toBe('Costa de la espada');
+
+            component.pj = { ...component.pj, Id_region: 0, Region: { Id: 0, Nombre: 'Sin región' } };
+            fixture.detectChanges();
+            expect(valor('Región')).toBeNull();
+        });
+
+        it('enseña la edad, la altura, el peso y la madurez', () => {
+            component.pj.Raza.Nombre = 'Elfo';
+            component.pj.Raza.Edad_adulto = 110;
+            component.pj.Raza.Edad_mediana = 175;
+            component.pj.Raza.Edad_viejo = 263;
+            component.pj.Raza.Edad_venerable = 350;
+            component.pj.Edad = 180;
+            component.pj.Altura = 1.84;
+            component.pj.Peso = 73;
+            verPagina();
+
+            expect(valor('Edad')).toBe('180 años');
+            expect(valor('Altura')).toBe('1,84 m');
+            expect(valor('Peso')).toBe('73 kg');
+            expect(valor('Madurez')).toBe('Mediana edad · Fue/Des/Con -1 · Int/Sab/Car +1');
+        });
+
+        it('pasa a metros la altura que llega en centímetros', () => {
+            component.pj.Altura = 170;
+            verPagina();
+            expect(valor('Altura')).toBe('1,70 m');
+        });
+
+        it('calcula la madurez venerable y sus modificadores como en C#', () => {
+            component.pj.Edad = 95;
+            component.pj.Raza.Edad_mediana = 40;
+            component.pj.Raza.Edad_viejo = 60;
+            component.pj.Raza.Edad_venerable = 80;
+
+            expect(component.madurezEdad).toEqual({ id: 3, nombre: 'Venerable', modFisico: -6, modMental: 3 });
+        });
+
+        it('los subtipos son enlaces, sin los textos que no se enseñan; la raza base sale si la hay', () => {
+            component.pj.Raza.Nombre = 'Aasimar';
+            component.pj.Subtipos = [{ Id: 1, Nombre: 'Angelical' }, { Id: 2, Nombre: 'No aplica' }];
+            component.pj.RazaBase = { Id: 10, Nombre: 'Humano' } as any;
+            const subtipo = spyOn(component.subtipoDetalles, 'emit');
+            verPagina();
+
+            expect(valor('Subtipos')).toBe('Angelical');
+            expect(valor('Raza base')).toBe('Humano');
+            enlace('Angelical').click();
+            expect(subtipo).toHaveBeenCalledWith({ Id: 1, Nombre: 'Angelical' });
+        });
+
+        it('oculta la personalidad y el contexto de relleno', () => {
+            component.pj.Contexto = 'Eres totalmente antirol hijo mio.';
+            component.pj.Personalidad = 'Rellena un fisco puto vago.';
+            verPagina();
+
+            expect(lateral('Personalidad')).toBeNull();
+            expect(lateral('Contexto')).toBeNull();
+        });
+    });
+
+    describe('habilidades', () => {
+        it('enseña las que tienen rangos o varios y, con «Ver las N», todas', () => {
+            component.pj = fichaDeLaApi();
+            verPagina();
+
+            const filas = () => Array.from(lateral('Habilidades')!.querySelectorAll('tbody tr'))
+                .map((fila) => Array.from(fila.querySelectorAll('td')).map((celda) => limpio(celda)));
+            expect(filas()).toEqual([['Avistar de clase', 'Sab', '14', '+18']]);
+
+            enlace('Ver las 2').click();
+            fixture.detectChanges();
+            expect(filas()).toEqual([['Avistar de clase', 'Sab', '14', '+18'], ['Artesanía (Elegir)', 'Int', '0', '+4']]);
+            expect(enlace('Ver solo las que tienen rangos')).toBeTruthy();
+        });
+
+        it('el total negativo sale sin el más', () => {
+            component.pj.Habilidades = [{ Nombre: 'Trepar', Car: 'Fuerza', Rangos: 1, Rangos_varios: 0, Mod_car: -5, Extra: '', Varios: '' } as any];
+            verPagina();
+
+            const fila = Array.from(lateral('Habilidades')!.querySelectorAll('tbody td')).map((celda) => limpio(celda));
+            expect(fila).toEqual(['Trepar', 'Fue', '1', '-4']);
+        });
+    });
+
+    describe('capacidades', () => {
+        it('enseña el origen de rasgos, raciales, dotes, idiomas y ventajas, y los abre', () => {
+            component.pj.Tipo_criatura.Nombre = 'Muerto viviente';
+            component.pj.Tipo_criatura.Rasgos = [{ Id: 1, Nombre: 'Inmunidad al veneno', Descripcion: '', Oficial: true } as any];
+            component.pj.Raciales = [{ Id: 10, Nombre: 'Sangre antigua', Origen: 'Elfo' } as any];
+            component.pj.Dotes = [{ Nombre: 'Alerta', Descripcion: '', Beneficio: '', Pagina: 1, Extra: '', Origen: 'Nivel' }];
+            component.pj.Idiomas = [{ Nombre: 'Abisal', Descripcion: 'De los demonios', Secreto: false, Oficial: true, Origen: 'Ventaja' }];
+            component.pj.Ventajas = [{ Nombre: 'Voluntad de hierro', Origen: 'Ventaja' }, 'Desventaja: Miopia'];
+            const racial = spyOn(component.racialDetallesPorNombre, 'emit');
+            const ventaja = spyOn(component.ventajaDetallesPorNombre, 'emit');
+            const rasgo = spyOn(component.rasgoDetalles, 'emit');
+            const dote = spyOn(component.doteDetalles, 'emit');
+            verPagina();
+
+            expect(limpio(lateral('Rasgos del tipo de criatura'))).toContain('Inmunidad al veneno Muerto viviente');
+            expect(limpio(lateral('Rasgos raciales'))).toContain('Sangre antigua Elfo');
+            expect(limpio(lateral('Dotes'))).toContain('Alerta Nivel');
+            expect(limpio(lateral('Idiomas'))).toContain('Abisal Ventaja');
+            expect(limpio(lateral('Ventajas y desventajas'))).toContain('Voluntad de hierro Ventaja');
+            expect(limpio(lateral('Ventajas y desventajas'))).toContain('Miopia Desventaja');
+
+            enlace('Sangre antigua').click();
+            enlace('Voluntad de hierro').click();
+            enlace('Miopia').click();
+            enlace('Inmunidad al veneno').click();
+            enlace('Alerta').click();
+            expect(racial).toHaveBeenCalledWith({ id: 10, nombre: 'Sangre antigua' });
+            expect(ventaja).toHaveBeenCalledWith({ nombre: 'Voluntad de hierro', origen: 'Ventaja' });
+            expect(ventaja).toHaveBeenCalledWith({ nombre: 'Miopia', origen: 'Desventaja' });
+            expect(rasgo).toHaveBeenCalledWith(jasmine.objectContaining({ Nombre: 'Inmunidad al veneno' }));
+            expect(dote).toHaveBeenCalledWith(jasmine.objectContaining({ Dote: jasmine.objectContaining({ Nombre: 'Alerta' }) }));
+        });
+
+        it('sin origen no enseña nota, salvo el tipo de criatura en sus rasgos', () => {
+            component.pj.Tipo_criatura.Nombre = 'Humanoide';
+            component.pj.Tipo_criatura.Rasgos = [{ Id: 1, Nombre: 'Rasgo base', Descripcion: '', Oficial: true } as any];
+            component.pj.Dotes = [{ Nombre: 'Alerta', Descripcion: '', Beneficio: '', Pagina: 1, Extra: '', Origen: '' }];
+            verPagina();
+
+            const notas = Array.from(elemento().querySelectorAll('.personaje-nota')).map((nota) => limpio(nota));
+            expect(notas).toEqual(['Humanoide']);
+        });
+
+        it('lee las raciales con claves antiguas y, si no tiene, las de la raza', () => {
+            (component.pj as any).Raciales = [];
+            (component.pj as any).Raza = { ...component.pj.Raza, Raciales: [{ i: 31, n: 'Olfato', o: 'Licantropo' }] };
+            verPagina();
+
+            expect(limpio(lateral('Rasgos raciales'))).toContain('Olfato Licantropo');
+        });
+
+        it('enseña las plantillas con lo que dan y las abre', () => {
+            component.pj.Plantillas = [{ Id: 1, Nombre: 'Liche', Multiplicador_dgs_lic: 0, Tipo_dgs_lic: 'd12', Suma_dgs_lic: 0, Ajuste_nivel: 4, Heredada: false } as any];
+            const plantilla = spyOn(component.plantillaDetalles, 'emit');
+            verPagina();
+
+            expect(elementos(lateral('Plantillas'), 'li')).toEqual(['Liche ajuste de nivel +4 · adquirida']);
+            enlace('Liche').click();
+            expect(plantilla).toHaveBeenCalledWith({ id: 1, nombre: 'Liche' });
+        });
+
+        it('enseña los familiares y compañeros y abre su detalle', () => {
+            component.pj.Familiares = [{ Id: 101, Nombre: 'Cuervo sabio' } as any];
+            component.pj.Companeros = [{ Id: 202, Nombre: 'Lobo fiel' } as any];
+            const monstruo = spyOn(component.monstruoDetalles, 'emit');
+            verPagina();
+
+            expect(elementos(lateral('Familiares y compañeros'), '.ficha-subtitulo, li'))
+                .toEqual(['Familiares', 'Cuervo sabio', 'Compañeros animales', 'Lobo fiel']);
+            enlace('Lobo fiel').click();
+            expect(monstruo).toHaveBeenCalledWith(jasmine.objectContaining({ Id: 202 }));
+        });
+
+        it('usa el comodín de la API para los extras de los especiales', () => {
+            component.pj = fichaDeLaApi({
+                especiales: [
+                    { id: 38, nombre: 'Enemigo predilecto', idExtra: 40, extra: 'Primero', extraComodin: null },
+                    { id: 50, nombre: 'Saber bárdico', idExtra: 13, extra: 'Cualquiera', extraComodin: 'cualquiera' },
+                    { id: 51, nombre: 'Esquiva asombrosa', idExtra: 110, extra: 'Elegir', extraComodin: 'elegir' },
+                    { id: 30, nombre: 'Empatía salvaje', idExtra: null, extra: null, extraComodin: null },
+                ],
+            });
+            const especial = spyOn(component.especialDetallesPorNombre, 'emit');
+            verPagina();
+
+            expect(elementos(lateral('Aptitudes de clase'), 'li')).toEqual(['Enemigo predilecto (Primero)', 'Saber bárdico', 'Esquiva asombrosa (Elegir)', 'Empatía salvaje']);
+            enlace('Saber bárdico').click();
+            expect(especial).toHaveBeenCalledWith('Saber bárdico');
+        });
+    });
+
+    describe('magia', () => {
+        it('enseña la progresión de cada clase lanzadora con el catálogo', () => {
+            component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 1, Caracteristica_lanzamiento: 'Inteligencia' }];
+            component.clasesCatalogo = [claseLanzadora(1, 'Mago', 1, { Conjuros: { Dependientes_alineamiento: true, Conocidos_total: true } })];
+            const clase = spyOn(component.claseDetalles, 'emit');
+            verPagina();
+
+            const magia = limpio(lateral('Magia'));
+            expect(magia).toContain('Mago 1');
+            expect(magia).toContain('Lanzador arcano · Nivel de lanzador 1 · Dependiente de alineamiento · Salvación (Inteligencia)');
+            expect(magia).toContain('Niveles diarios 0, 1');
+            expect(magia).toContain('Conocidos 3');
+            lateral('Magia')!.querySelector<HTMLButtonElement>('button.ficha-enlace')!.click();
+            expect(clase).toHaveBeenCalledWith('Mago');
+        });
+
+        it('enseña el nivel de lanzador efectivo por clase con los aumentos guardados', () => {
+            component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 10 }, { Nombre: 'Archimago', Nivel: 2 }];
+            component.pj.ProgresionLanzador = {
+                selecciones: [
+                    { idClaseAplicada: 187, nivelClaseAplicado: 1, indiceAumento: 1, idClaseObjetivo: 186 },
+                    { idClaseAplicada: 187, nivelClaseAplicado: 2, indiceAumento: 1, idClaseObjetivo: 186 },
+                ],
+            };
+            component.clasesCatalogo = [
+                claseLanzadora(186, 'Mago', 20),
+                { Id: 187, Nombre: 'Archimago', Conjuros: { Arcanos: false, Divinos: false, Psionicos: false, Alma: false }, Aumenta_clase_lanzadora: true, Desglose_niveles: [] } as any,
+            ];
+            verPagina();
+
+            expect(limpio(lateral('Magia'))).toContain('Nivel de lanzador 12');
+            expect(component.getSubchipsLanzadorClase({ Nombre: 'Archimago', Nivel: 2 })).toEqual([]);
+            expect(component.pj.Niveles_lanzador?.[0]?.nivelLanzador).toBe(12);
+        });
+
+        it('enseña escuelas prohibidas y dominios aunque lleguen como texto u objeto', () => {
+            component.pj.Escuelas_prohibidas = ['Evocación', { Nombre: 'Ilusión' }, { Nombre: '  ' } as any];
+            (component.pj as any).Dominios = [{ Nombre: 'Guerra' }, { nombre: 'Bien' }, 'Magia'];
+            verPagina();
+
+            expect(component.getEscuelasProhibidasVisibles()).toEqual(['Evocación', 'Ilusión']);
+            expect(component.getDominiosVisibles()).toEqual(['Guerra', 'Bien', 'Magia']);
+            expect(valor('Escuelas prohibidas')).toBe('Evocación, Ilusión');
+            expect(valor('Dominios')).toBe('Guerra, Bien, Magia');
+            expect(texto()).not.toContain('[object Object]');
+        });
+
+        it('enseña los conjuros conocidos y las sortílegas con sus datos, y los abre', () => {
+            const luz = { Id: 1, Nombre: 'Luz' } as any;
+            component.pj.Conjuros = [luz];
+            component.pj.Sortilegas = [{
+                Conjuro: { Id: 2, Nombre: 'Levitar' }, Nivel_lanzador: 9, Usos_diarios: 'A voluntad', Dgs_necesarios: 4,
+                Descripcion: 'Innato', Origen: 'Azotamentes',
+            } as any];
+            const conjuro = spyOn(component.conjuroDetalles, 'emit');
+            const sortilega = spyOn(component.sortilegaDetalles, 'emit');
+            verPagina();
+
+            expect(elementos(lateral('Aptitudes sortílegas'), 'li')).toEqual(['Levitar NL 9 · A voluntad · desde 4 DG · Innato']);
+            enlace('Luz').click();
+            enlace('Levitar').click();
+            expect(conjuro).toHaveBeenCalledWith(luz);
+            expect(sortilega).toHaveBeenCalledWith(jasmine.objectContaining({ Nivel_lanzador: 9 }));
+        });
+    });
+
+    describe('combate y equipo', () => {
+        it('enseña las salvaciones de la API con su total, que incluye la característica', () => {
+            component.pj = fichaDeLaApi();
+            fixture.detectChanges();
+
+            expect(component.salvacionesVisibles.map((salvacion) => salvacion.total)).toEqual([11, 14, 6]);
+            expect(component.salvacionesVisibles[0]).toEqual(jasmine.objectContaining({
+                clase: 6, claseOrigenes: 'Explorador', varios: 1, variosOrigenes: 'Centauro',
+                desglose: 'Constitución +4\nExplorador +6\nCentauro +1',
+            }));
+            // La parte de clase sin origen (el «Placeholder» de las fichas antiguas) cuenta y se nombra por su tipo.
+            expect(component.salvacionesVisibles[1].claseOrigenes).toBe('');
+            expect(filasPares(lateral('Salvaciones'))[1]).toEqual(['Reflejos Destreza +4 · Clase +6 · Centauro +4', '+14']);
+        });
+
+        it('enseña la defensa, lo que suma el equipo a las salvaciones, el equipo y el dinero', () => {
+            component.pj = fichaDeLaApi(crearEquipoFichaApi());
+            verPagina();
+
+            expect(component.caDisclaimer).toContain('Cota de mallas +5 (armadura)');
+            expect(franja()[1][1]).toBe('18 toque 11 · desprev. 16');
+            expect(filasPares(lateral('Clase de armadura')).map(([nombre, numero]) => [nombre.split(' ')[0], numero])).toEqual([
+                ['Clase', '18'], ['Toque', '11'], ['Desprevenido', '16'], ['Destreza', '+2'], ['Penalizador', '-5'], ['Fallo', '35%'],
+            ]);
+            expect(casillas()[6][2]).toContain('equipo +1');
+            const equipo = limpio(lateral('Equipo y carga'));
+            expect(valor('Dinero')).toBe('12,5 po');
+            expect(valor('Peso total')).toBe('96 lb');
+            expect(equipo).toContain('Flechas ×20');
+            expect(equipo).toContain('Equipado (hombros)');
+            expect(equipo).toContain('Salvaciones +2 (competencia) contra encantamientos');
+            expect(equipo).not.toContain('Todavía no tiene equipo comprado.');
+        });
+
+        it('sin armadura puesta no enseña la Destreza máxima ni el penalizador', () => {
+            component.pj = fichaDeLaApi(crearEquipoFichaApi({
+                equipo: [],
+                defensa: { ...crearEquipoFichaApi()['defensa'], destrezaMaxima: null, penalizadorArmadura: 0, falloConjuroArcano: 0 },
+            }));
+            verPagina();
+
+            const defensa = limpio(lateral('Clase de armadura'));
+            expect(defensa).toContain('Toque');
+            expect(defensa).not.toContain('Destreza máxima');
+            expect(defensa).not.toContain('Penalizador de armadura');
+            expect(limpio(lateral('Equipo y carga'))).toContain('Todavía no tiene equipo comprado.');
+        });
+
+        it('no enseña la presa cuando la API no la da, ni el ataque base de relleno', () => {
+            component.pj = fichaDeLaApi({ a: '-', presa: null });
+            verPagina();
+
+            expect(component.tienePresaVisible()).toBeFalse();
+            expect(franja().map(([etiqueta]) => etiqueta)).not.toContain('Presa');
+            expect(franja().map(([etiqueta]) => etiqueta)).not.toContain('Ataque base');
+            expect(texto()).not.toContain('Presa');
+        });
+
+        it('enseña la reducción de daño, las resistencias y los enemigos predilectos con su origen', () => {
+            component.pj.Rds = [{ Modificador: '5/plata', Origen: 'Licántropo' }];
+            component.pj.Rcs = [{ Modificador: '12', Origen: 'Drow' }];
+            component.pj.Res = [{ Modificador: 'Fuego 10', Origen: 'Tiflin' }];
+            component.pj.enemigosPredilectos = [{ id: 3, nombre: 'Orcos', bono: 4, veces: 2 }];
+            verPagina();
+
+            expect(filasPares(lateral('Defensas especiales'))).toEqual([
+                ['Reducción de daño Licántropo', '5/plata'],
+                ['Resistencia a conjuros Drow', '12'],
+                ['Resistencia a la energía Tiflin', 'Fuego 10'],
+            ]);
+            expect(filasPares(lateral('Enemigos predilectos'))).toEqual([['Orcos 2 veces', '+4']]);
+        });
+
+        it('una característica perdida sale con «—» y «Perdida»', () => {
+            component.pj.Fuerza = 0;
+            component.pj.ModFuerza = 0;
+            component.pj.Constitucion = 13;
+            component.pj.ModConstitucion = 1;
+            component.pj.Caracteristicas_perdidas = { Fuerza: true };
+            verPagina();
+
+            expect(casillas()[0]).toEqual(['FUE', '—', 'Perdida']);
+            expect(elemento().querySelector('.ficha-casilla')?.getAttribute('aria-label')).toBe('Fuerza perdida');
+            expect(casillas()[2]).toEqual(['CON', '13', '+1']);
+        });
+
+        it('cuando vuela, la velocidad lleva sus otros movimientos y la ayuda de maniobrabilidad', () => {
+            component.pj.Correr = 30;
+            component.pj.Volar = 40;
+            (component.pj as any).Raza = {
+                ...(component.pj as any).Raza,
+                Maniobrabilidad: {
+                    Nombre: 'Perfecta', Velocidad_avance: 'Normal', Flotar: 1, Volar_atras: 1, Contramarcha: 1, Giro: 'Cualquiera',
+                    Rotacion: 'Cualquiera', Giro_max: 'Cualquiera', Angulo_ascenso: 'Cualquiera', Velocidad_ascenso: 'Normal',
+                    Angulo_descenso: 'Cualquiera', Descenso_ascenso: 1,
+                },
+            };
+            verPagina();
+
+            expect(franja().find(([etiqueta]) => etiqueta === 'Velocidad')?.[1]).toContain("30' volar 40' (perfecta)");
+            elemento().querySelector<HTMLButtonElement>('.ficha-ayuda')!.click();
+            expect(component.mostrarInfoManiobrabilidad).toBeTrue();
+            const secciones = JSON.stringify(component.getManiobrabilidadInfoSecciones());
+            expect(secciones).toContain('Perfecta');
+            expect(secciones).toContain('Flotar: Sí.');
+        });
+    });
+
+    describe('vista previa de la creación', () => {
+        beforeEach(() => {
+            component.esPreviewNuevoPersonaje = true;
+        });
+
+        it('se recalcula cuando el borrador cambia por dentro, y no repinta si no cambia nada', () => {
+            component.pj.ModConstitucion = 1;
+            verPagina();
+            expect(component.salvacionesVisibles[0]).toEqual(jasmine.objectContaining({ total: 1, clase: 0, varios: 0 }));
+            const antes = component.m;
+            fixture.detectChanges();
+            expect(component.m).toBe(antes);
+
+            component.pj.Salvaciones.fortaleza.modsClaseos = [{ valor: 2, origen: 'Clase test' }];
+            component.pj.Salvaciones.fortaleza.modsVarios = [{ valor: -1, origen: 'Plantilla test' }];
+            component.pj.Raciales = [{ Id: 20, Nombre: 'Telepatia', Origen: 'Azotamentes' } as any];
+            fixture.detectChanges();
+
+            // En el borrador se suma como en la API: característica + clase + varios.
+            expect(component.salvacionesVisibles[0]).toEqual(jasmine.objectContaining({
+                nombre: 'Fortaleza', total: 2, clase: 2, claseOrigenes: 'Clase test', varios: -1, variosOrigenes: 'Plantilla test',
+            }));
+            expect(limpio(lateral('Rasgos raciales'))).toContain('Telepatia Azotamentes');
+        });
+
+        it('enseña la iniciativa y la carga aunque valgan 0 al confirmar las características', () => {
+            component.caracteristicasConfirmadas = true;
+            component.pj.ModDestreza = 0;
+            component.pj.Iniciativa_varios = [];
+            component.pj.Capacidad_carga = { Ligera: 0, Media: 0, Pesada: 0 };
+            verPagina();
+
+            expect(franja().find(([etiqueta]) => etiqueta === 'Iniciativa')?.[1]).toBe('+0');
+            expect(valor('Carga ligera')).toBe('0 lb');
+            expect(valor('Carga pesada')).toBe('0 lb');
+        });
+
+        it('enseña la experiencia a 0 cuando ya aplica el NEP, y nada de dinero, creador, campaña ni etiquetas', () => {
+            component.pj.Raza.Ajuste_nivel = 1;
+            component.pj.Experiencia = 0;
+            component.pj.Campana = 'Costa de la Espada';
+            verPagina();
+
+            expect(valor('Experiencia')).toBe('0 PX');
+            expect(valor('Dinero')).toBeNull();
+            expect(valor('Campaña')).toBeNull();
+            expect(elemento().querySelector('.ficha-cabecera__pie')).toBeNull();
+            expect(etiquetasCabecera()).not.toContain('Público');
+            expect(texto()).not.toContain('Todavía no tiene equipo comprado.');
+        });
+
+        it('calcula la iniciativa como el modificador de Destreza más los bonos varios', () => {
+            component.pj.ModDestreza = 2;
+            component.pj.Iniciativa_varios = [{ Valor: 3, Origen: 'Ventaja' }];
+            component.pj.Destreza = 14;
+            verPagina();
+
+            expect(franja().find(([etiqueta]) => etiqueta === 'Iniciativa')?.[1]).toBe('+5');
+        });
     });
 });

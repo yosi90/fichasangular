@@ -1,31 +1,53 @@
-import { AfterViewInit, Component, DoCheck, ElementRef, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Component, DoCheck, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { Subscription } from 'rxjs';
+import {
+    CasillaFicha,
+    DatoFicha,
+    DatoFranja,
+    EtiquetaFicha,
+    sortilegasVisibles,
+    textosMovimiento,
+    unirTipo,
+} from 'src/app/components/detalles/ficha';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
+import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteContextual, DoteLegacy } from 'src/app/interfaces/dote-contextual';
 import { EnemigoPredilectoSeleccion } from 'src/app/interfaces/enemigo-predilecto-seleccion';
-import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { CaracteristicaPerdidaKey, Personaje, PersonajeNivelLanzadorResumen } from 'src/app/interfaces/personaje';
+import { PersonajeEquipoPiezaDto, PersonajeModificadorEquipoDto } from 'src/app/interfaces/personajes-api';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
-import { RegionDetalle } from 'src/app/interfaces/region';
 import { Rasgo } from 'src/app/interfaces/rasgo';
+import { RegionDetalle } from 'src/app/interfaces/region';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
-import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { ClaseService } from 'src/app/services/clase.service';
+import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
+import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { RegionService } from 'src/app/services/region.service';
 import { UserService } from 'src/app/services/user.service';
-import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { NOMBRES_CARACTERISTICAS, abreviaturaCaracteristica } from 'src/app/services/utils/caracteristicas';
 import { esNombreComodin } from 'src/app/services/utils/comodin';
+import {
+    detallesPiezaEquipo,
+    formatoNumero,
+    nombreConCantidad,
+    textoConSigno,
+    textoDestrezaMaxima,
+    textoEquipadoPieza,
+    textoModificadorEquipo,
+    textoPeso,
+    textoPrecio,
+} from 'src/app/services/utils/equipo-texto';
+import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
-import Swal from 'sweetalert2';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
-import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import {
     origenesDePartes,
@@ -33,18 +55,29 @@ import {
     textoDesglose,
     TipoSalvacion,
     totalesPersonaje,
-    totalHabilidad
+    totalHabilidad,
 } from 'src/app/services/utils/personaje-totales';
-import { PersonajeEquipoPiezaDto, PersonajeModificadorEquipoDto } from 'src/app/interfaces/personajes-api';
-import {
-    detallesPiezaEquipo,
-    nombreConCantidad,
-    textoDestrezaMaxima,
-    textoEquipadoPieza,
-    textoModificadorEquipo,
-    textoPeso,
-    textoPrecio,
-} from 'src/app/services/utils/equipo-texto';
+import { clavePorCuenta, guardarPreferenciaLocal, leerPreferenciaLocal } from 'src/app/services/utils/preferencia-local';
+import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import Swal from 'sweetalert2';
+
+/** Cómo se enseña la ficha: toda en una página o con pestañas internas (las dos propuestas aprobadas del lienzo). */
+export type VistaFicha = 'pagina' | 'pestanas';
+export type PestanaFicha = 'combate' | 'habilidades' | 'capacidades' | 'magia' | 'equipo' | 'historia';
+
+/** La vista que se recuerda en este navegador, por cuenta (`clavePorCuenta`); sin cuenta, con este sufijo. */
+export const PREFIJO_PREFERENCIA_VISTA = 'rol.ficha.vista';
+const SUFIJO_SIN_CUENTA = 'sin-cuenta';
+export const VISTA_POR_DEFECTO: VistaFicha = 'pestanas';
+
+const NOMBRES_PESTANAS: Record<PestanaFicha, string> = {
+    combate: 'Combate',
+    habilidades: 'Habilidades',
+    capacidades: 'Capacidades',
+    magia: 'Magia',
+    equipo: 'Equipo',
+    historia: 'Historia',
+};
 
 interface MadurezEdadResumen {
     id: number;
@@ -53,7 +86,7 @@ interface MadurezEdadResumen {
     modMental: number;
 }
 
-/** Una salvación como se enseña: el total y, por separado, la parte de clase y la de varios con sus orígenes. */
+/** Una salvación como se enseña: el total y, por separado, la parte de clase, la de varios y la del equipo con sus orígenes. */
 interface SalvacionVisible {
     nombre: string;
     total: number;
@@ -62,7 +95,6 @@ interface SalvacionVisible {
     claseOrigenes: string;
     varios: number;
     variosOrigenes: string;
-    /** Lo que suma el equipo (capa de resistencia…), con sus orígenes. */
     equipo: number;
     equipoOrigenes: string;
 }
@@ -78,10 +110,91 @@ interface VentajaVisible {
     origen?: string;
 }
 
-interface VentajaReferenciaNormalizada {
+/** Una fila de una tabla de pares (`ficha-pares`): el nombre con su nota debajo y el valor a la derecha. */
+interface FilaPares {
     nombre: string;
-    origen?: string;
+    valor: string;
+    nota?: string;
+    ayuda?: string;
 }
+
+/**
+ * Una entrada de una lista: el texto, una nota pequeña detrás y un tooltip. `ref` es lo que se abre al pulsarla y
+ * `clave`, su id (no se ve; cuenta al comparar dos cálculos).
+ */
+interface EntradaLista<T = unknown> {
+    texto: string;
+    nota?: string;
+    ayuda?: string;
+    clave?: string;
+    ref?: T;
+}
+
+interface HabilidadFila {
+    nombre: string;
+    car: string;
+    rangos: number;
+    total: string;
+    nota: string;
+}
+
+interface LanzadorFila {
+    clase: string;
+    texto: string;
+    detalle: string;
+}
+
+/**
+ * Todo lo que pinta la ficha, calculado una vez al recibir el personaje. Las dos vistas leen lo mismo; solo cambia la
+ * colocación. Las referencias que se abren al pulsar van en `ref`, que no cuenta al comparar dos cálculos.
+ */
+interface ModeloFicha {
+    tipoPagina: string;
+    tipoPestanas: string;
+    etiquetas: EtiquetaFicha[];
+    creador: { nombre: string; enlace: boolean; } | null;
+    datos: DatoFicha[];
+    franja: DatoFranja[];
+    caracteristicas: CasillaFicha[];
+    casillasPagina: CasillaFicha[];
+    salvaciones: FilaPares[];
+    defensa: FilaPares[];
+    presaIniciativa: FilaPares[];
+    defensasEspeciales: FilaPares[];
+    enemigos: FilaPares[];
+    habilidades: HabilidadFila[];
+    habilidadesConRangos: HabilidadFila[];
+    verHabilidades: boolean;
+    dotes: EntradaLista<DoteLegacy>[];
+    aptitudes: EntradaLista<string>[];
+    raciales: EntradaLista<RacialReferencia>[];
+    rasgosTipo: EntradaLista<Rasgo>[];
+    plantillas: EntradaLista<any>[];
+    ventajas: EntradaLista<VentajaVisible>[];
+    idiomas: EntradaLista[];
+    magia: DatoFicha[];
+    lanzadores: LanzadorFila[];
+    conjuros: EntradaLista<Conjuro>[];
+    sortilegas: EntradaLista<AptitudSortilega>[];
+    piezas: EntradaLista[];
+    equipo: DatoFicha[];
+    carga: DatoFicha[];
+    modificadoresEquipo: EntradaLista[];
+    sinEquipo: boolean;
+    familiares: EntradaLista<MonstruoDetalle>[];
+    companeros: EntradaLista<MonstruoDetalle>[];
+    personalidad: string;
+    contexto: string;
+    multimedia: boolean;
+    pestanas: { id: PestanaFicha; nombre: string; }[];
+}
+
+/** Al comparar dos cálculos (en la vista previa de la creación) no cuentan las referencias, solo lo que se ve. */
+function sinReferencias(clave: string, valor: unknown): unknown {
+    return clave === 'ref' ? undefined : valor;
+}
+
+let siguienteId = 0;
 
 @Component({
     selector: 'app-detalles-personaje',
@@ -89,51 +202,58 @@ interface VentajaReferenciaNormalizada {
     styleUrls: ['./detalles-personaje.component.sass'],
     standalone: false
 })
-export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewInit, OnDestroy, DoCheck {
-    @Input() pj!: Personaje;
+export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, OnDestroy {
+    private pjData!: Personaje;
+
+    @Input()
+    set pj(value: Personaje) {
+        this.pjData = value;
+        if (this.iniciado)
+            this.calcular();
+    }
+
+    get pj(): Personaje {
+        return this.pjData;
+    }
+
     @Input() clasesCatalogo: Clase[] = [];
     @Input() mostrarBotonGenerarPdf = true;
-    @Input() modoOcultarFaltantes = true;
     @Input() esPreviewNuevoPersonaje = false;
     @Input() caracteristicasConfirmadas = false;
-    modoCompactoLayout = false;
-    private resizeObserver: ResizeObserver | null = null;
+
+    /** Lo que pinta la ficha (ver `ModeloFicha`). */
+    m: ModeloFicha = this.modeloVacio();
+    vista: VistaFicha = VISTA_POR_DEFECTO;
+    pestana: PestanaFicha = 'combate';
+    verTodasHabilidades = false;
+    readonly idFicha = `ficha-personaje-${++siguienteId}`;
+
     nivelPersonaje = 0;
-    nivelDisclaimer: string = `
-    Nivel de personaje
-    Suma de niveles de clase + ajustes de nivel (raza y plantillas)
-
-    No incluye DGs raciales adicionales`;
-    nepDisclaimer: string = `
-    NEP (Nivel efectivo de personaje)
-    Suma del nivel de sus clases + DGs extra + Ajustes de nivel
-
-    Este es el valor usado para determinar cosas como el oro inicial o el nivel de encuentro`;
-    caDisclaimer: string = "Error";
-    iniciativa: string = "0";
+    readonly nivelDisclaimer = 'Nivel de personaje: suma de niveles de clase y ajustes de nivel (raza y plantillas). No incluye los DG raciales adicionales.';
+    readonly nepDisclaimer = 'Nivel efectivo de personaje: suma del nivel de sus clases, los DG extra y los ajustes de nivel. Es el que fija el oro inicial o el nivel de encuentro.';
+    readonly velDisclaimer = 'Medido en pies: 5 pies equivalen a una casilla.';
+    caDisclaimer = '';
+    iniciativa = '+0';
     iniciativaDesglose = '';
-    presa: string = "0";
+    presa = '+0';
     presaDesglose = '';
     presaDisponible = false;
     salvacionesVisibles: SalvacionVisible[] = [];
-    cLigera: string = "0 Kilogramos";
-    cMedia: string = "0 Kilogramos";
-    cPesada: string = "0 Kilogramos";
     actualizandoVisibilidad = false;
     actualizandoArchivado = false;
     mostrarInfoManiobrabilidad = false;
     etiquetaCreador = 'Desconocido';
     perfilPublicoDisponible = false;
-    private ownerUidCargado = '';
+    nivelesLanzador: PersonajeNivelLanzadorResumen[] = [];
+
+    private iniciado = false;
+    private firma = '';
+    private cuentaPreferencia: string | null | undefined = undefined;
     private regionesSub?: Subscription;
     private clasesSub?: Subscription;
+    private sesionSub?: Subscription;
     private catalogoRegiones: RegionDetalle[] = [];
     private clasesCatalogoInterno: Clase[] = [];
-    nivelesLanzador: PersonajeNivelLanzadorResumen[] = [];
-    velDisclaimer: string = `
-    Medido en pies
-    5 pies equivalen a una casilla`;
-    Habilidades: Personaje['Habilidades'] = [];
 
     constructor(
         private fichasDescargaBgSvc: FichasDescargaBackgroundService,
@@ -142,77 +262,126 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         private listaPersonajesSvc: ListaPersonajesService,
         private regionSvc: RegionService,
         private userSvc: UserService,
-        private hostElement: ElementRef<HTMLElement>
+        private platformSessionSvc: PlatformSessionService,
+        private hostElement: ElementRef<HTMLElement>,
     ) { }
 
     ngOnInit(): void {
-        if(this.pj.Habilidades)
-            this.Habilidades = this.pj.Habilidades.filter(h => h.Rangos + h.Rangos_varios > 0 || h.Varios != "");
-        this.nivelPersonaje = this.getNivelPersonaje();
-        this.actualizarValoresDerivadosVisuales();
-        this.actualizarResumenSalvaciones();
-        this.caDisclaimer = this.pj.Defensa
-            ? textoDesglose(this.pj.Defensa.ca)
-            : `
-        Armadura natural: ${this.pj.Armadura_natural > 0 ? this.pj.Armadura_natural : '0'}
-        Desvio: ${this.pj.Ca_desvio > 0 ? this.pj.Ca_desvio : '0'}
-        Varios: ${this.pj.Ca_varios > 0 ? this.pj.Ca_varios : '0'}
-        `;
+        this.iniciado = true;
+        this.leerVistaGuardada();
+        // La cuenta puede confirmarse después de abrir la ficha: entonces se lee su preferencia.
+        this.sesionSub = this.platformSessionSvc.estado$?.subscribe(() => this.leerVistaGuardada());
         this.cargarCatalogoRegiones();
         this.cargarCatalogoClasesSiNecesario();
-        this.actualizarNivelesLanzadorDerivados();
-        void this.actualizarEtiquetaCreador();
+        this.calcular();
     }
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes['pj'])
-            void this.actualizarEtiquetaCreador();
-        if (changes['pj'] || changes['clasesCatalogo']) {
+        if (!this.iniciado)
+            return;
+        if (changes['clasesCatalogo'])
             this.cargarCatalogoClasesSiNecesario();
-            this.actualizarNivelesLanzadorDerivados();
-        }
+        if (changes['clasesCatalogo'] || changes['esPreviewNuevoPersonaje'] || changes['caracteristicasConfirmadas'])
+            this.calcular();
     }
 
+    /**
+     * La vista previa de la creación cambia el personaje sin sustituirlo: allí se recalcula en cada revisión y la ficha
+     * solo se vuelve a pintar si cambia algo de lo que se ve. La ficha de la API no cambia por dentro.
+     */
     ngDoCheck(): void {
-        this.actualizarValoresDerivadosVisuales();
-        this.actualizarResumenSalvaciones();
-        this.actualizarNivelesLanzadorDerivados();
-    }
-
-    ngAfterViewInit(): void {
-        Promise.resolve().then(() => this.actualizarModoCompacto());
-        if (typeof ResizeObserver !== 'undefined') {
-            this.resizeObserver = new ResizeObserver(() => this.actualizarModoCompacto());
-            this.resizeObserver.observe(this.hostElement.nativeElement);
-        }
+        if (this.iniciado && this.esPreviewNuevoPersonaje)
+            this.calcular();
     }
 
     ngOnDestroy(): void {
-        this.resizeObserver?.disconnect();
-        this.resizeObserver = null;
         this.regionesSub?.unsubscribe();
         this.clasesSub?.unsubscribe();
+        this.sesionSub?.unsubscribe();
     }
 
-    getTotalVisibleHabilidad(
-        habilidad: { Total?: number; Mod_car: number; Rangos: number; Rangos_varios: number; }
-    ): string {
-        const total = totalHabilidad(habilidad);
-        return total >= 0 ? `+${total}` : `${total}`;
+    // Vista y pestañas
+
+    cambiarVista(vista: VistaFicha): void {
+        if (this.vista === vista)
+            return;
+        this.vista = vista;
+        guardarPreferenciaLocal(this.claveVista(), vista);
     }
 
-    @HostListener('window:resize')
-    onWindowResize(): void {
-        this.actualizarModoCompacto();
+    get pestanaActiva(): PestanaFicha {
+        return this.m.pestanas.some((p) => p.id === this.pestana) ? this.pestana : (this.m.pestanas[0]?.id ?? 'combate');
     }
+
+    elegirPestana(pestana: PestanaFicha): void {
+        this.pestana = pestana;
+    }
+
+    idPestana(pestana: PestanaFicha): string {
+        return `${this.idFicha}-pestana-${pestana}`;
+    }
+
+    get idPanel(): string {
+        return `${this.idFicha}-panel`;
+    }
+
+    /** Las flechas, Inicio y Fin mueven la pestaña elegida, como en un tablist del navegador. */
+    moverPestana(evento: KeyboardEvent): void {
+        const ids = this.m.pestanas.map((p) => p.id);
+        const actual = ids.indexOf(this.pestanaActiva);
+        const destino = evento.key === 'ArrowRight' ? (actual + 1) % ids.length
+            : evento.key === 'ArrowLeft' ? (actual - 1 + ids.length) % ids.length
+                : evento.key === 'Home' ? 0
+                    : evento.key === 'End' ? ids.length - 1
+                        : -1;
+        if (destino < 0 || ids.length < 1)
+            return;
+        evento.preventDefault();
+        this.pestana = ids[destino];
+        Promise.resolve().then(() => this.hostElement.nativeElement.querySelector<HTMLElement>(`#${this.idPestana(this.pestana)}`)?.focus());
+    }
+
+    get habilidadesVistas(): HabilidadFila[] {
+        return this.verTodasHabilidades ? this.m.habilidades : this.m.habilidadesConRangos;
+    }
+
+    /** Si alguno de los datos tiene algo que enseñar (para no pintar una tarjeta vacía). */
+    tieneDatos(datos: DatoFicha[]): boolean {
+        return datos.some((dato) => dato.valor !== null && dato.valor !== undefined);
+    }
+
+    // Lo que abre cada lista al pulsar una entrada (su `ref`).
+    readonly abrirDote = (dote: DoteLegacy) => this.verDetallesDote(dote);
+    readonly abrirEspecial = (nombre: string) => this.verDetallesEspecialPorNombre(nombre);
+    readonly abrirVentaja = (ventaja: VentajaVisible) => this.verDetallesVentajaPorNombre(ventaja);
+    readonly abrirConjuro = (conjuro: Conjuro) => this.verDetallesConjuro(conjuro);
+    readonly abrirSortilega = (sortilega: AptitudSortilega) => this.verDetallesSortilega(sortilega);
+    readonly abrirMonstruo = (monstruo: MonstruoDetalle) => this.verDetallesMonstruo(monstruo);
+    readonly abrirRacial = (racial: RacialReferencia) => this.verDetallesRacialPorNombre(racial);
+    readonly abrirRasgo = (rasgo: Rasgo) => this.verDetallesRasgo(rasgo);
+    readonly abrirPlantilla = (plantilla: unknown) => this.verDetallesPlantilla(plantilla);
+
+    private claveVista(): string {
+        return clavePorCuenta(PREFIJO_PREFERENCIA_VISTA, this.platformSessionSvc.cuenta?.id)
+            ?? `${PREFIJO_PREFERENCIA_VISTA}.${SUFIJO_SIN_CUENTA}`;
+    }
+
+    private leerVistaGuardada(): void {
+        const cuenta = this.platformSessionSvc.cuenta?.id ?? null;
+        if (cuenta === this.cuentaPreferencia)
+            return;
+        this.cuentaPreferencia = cuenta;
+        const guardada = leerPreferenciaLocal(this.claveVista());
+        this.vista = guardada === 'pagina' || guardada === 'pestanas' ? guardada : VISTA_POR_DEFECTO;
+    }
+
+    // PDF, visibilidad y archivado
 
     generarFicha() {
-        const jugadorFicha = this.resolverNombreJugadorFicha();
-        const nivelesLanzador = this.getNivelesLanzadorVisibles();
         const pjFicha: Personaje = {
             ...this.pj,
-            Jugador: jugadorFicha,
-            Niveles_lanzador: nivelesLanzador,
+            Jugador: this.resolverNombreJugadorFicha(),
+            Niveles_lanzador: this.getNivelesLanzadorVisibles(),
         };
         this.fichasDescargaBgSvc.descargarFichas(pjFicha, {
             incluirConjuros: true,
@@ -239,67 +408,25 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         return this.actualizandoVisibilidad || this.actualizandoArchivado;
     }
 
-    get mostrarChipCreador(): boolean {
-        return !this.esPreviewNuevoPersonaje;
-    }
-
     get chipCreadorClickable(): boolean {
         // La ficha de comunidad necesita sesión; si la persona no la enseña, la pestaña lo dice.
         return this.perfilPublicoDisponible && this.userSvc.IsLoggedIn;
     }
 
-    get nombreRegionPrincipal(): string {
-        const nombreDirecto = `${(this.pj as any)?.Region?.Nombre
-            ?? (this.pj as any)?.Region?.nombre
-            ?? (this.pj as any)?.region?.Nombre
-            ?? (this.pj as any)?.region?.nombre
-            ?? ''}`.trim();
-        if (nombreDirecto.length > 0)
-            return nombreDirecto;
-
-        const idRegion = this.obtenerIdRegionPersonaje();
-        if (idRegion <= 0)
-            return '';
-
-        const catalogo = (this.catalogoRegiones ?? [])
-            .find((item) => toNumber(item?.Id) === idRegion);
-        const nombreCatalogo = `${catalogo?.Nombre ?? ''}`.trim();
-        return nombreCatalogo.length > 0 ? nombreCatalogo : `#${idRegion}`;
-    }
-
     async actualizarVisibilidad(visible: boolean): Promise<void> {
         if (!this.mostrarControlVisibilidad || this.actualizandoEstadoPersonaje)
             return;
-
-        const actorUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
-        if (actorUid.length < 1) {
-            await Swal.fire({
-                icon: 'warning',
-                title: 'No hay sesión activa',
-                text: 'Inicia sesión para poder cambiar la visibilidad del personaje.',
-                showConfirmButton: true,
-                target: document.body,
-                heightAuto: false,
-                scrollbarPadding: false,
-            });
+        if (!await this.haySesion('Inicia sesión para poder cambiar la visibilidad del personaje.'))
             return;
-        }
 
         this.actualizandoVisibilidad = true;
         try {
             await this.pSvc.actualizarVisibilidadPersonaje(this.pj.Id, visible);
             this.pj.visible_otros_usuarios = visible;
             this.listaPersonajesSvc.actualizarVisibilidadEnCache(this.pj.Id, visible);
+            this.calcular();
         } catch (error: any) {
-            await Swal.fire({
-                icon: 'warning',
-                title: 'No se pudo actualizar la visibilidad',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true,
-                target: document.body,
-                heightAuto: false,
-                scrollbarPadding: false,
-            });
+            await this.avisar('No se pudo actualizar la visibilidad', error);
         } finally {
             this.actualizandoVisibilidad = false;
         }
@@ -308,50 +435,57 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     async actualizarArchivado(archivado: boolean): Promise<void> {
         if (!this.mostrarControlVisibilidad || this.actualizandoEstadoPersonaje)
             return;
-
-        const actorUid = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
-        if (actorUid.length < 1) {
-            await Swal.fire({
-                icon: 'warning',
-                title: 'No hay sesión activa',
-                text: 'Inicia sesión para poder cambiar el archivado del personaje.',
-                showConfirmButton: true,
-                target: document.body,
-                heightAuto: false,
-                scrollbarPadding: false,
-            });
+        if (!await this.haySesion('Inicia sesión para poder cambiar el archivado del personaje.'))
             return;
-        }
 
         this.actualizandoArchivado = true;
         try {
             await this.pSvc.actualizarArchivadoPersonaje(this.pj.Id, archivado);
             this.pj.Archivado = archivado;
             this.listaPersonajesSvc.actualizarArchivadoEnCache(this.pj.Id, archivado);
+            this.calcular();
         } catch (error: any) {
-            await Swal.fire({
-                icon: 'warning',
-                title: 'No se pudo actualizar el archivado',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true,
-                target: document.body,
-                heightAuto: false,
-                scrollbarPadding: false,
-            });
+            await this.avisar('No se pudo actualizar el archivado', error);
         } finally {
             this.actualizandoArchivado = false;
         }
     }
 
-    getTooltip_simples(titular: string, texto: string): string {
-        return `${titular} ${texto}`;
+    private async haySesion(texto: string): Promise<boolean> {
+        if (`${this.userSvc.CurrentUserUid ?? ''}`.trim().length > 0)
+            return true;
+        await Swal.fire({
+            icon: 'warning',
+            title: 'No hay sesión activa',
+            text: texto,
+            showConfirmButton: true,
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+        return false;
     }
+
+    private async avisar(titulo: string, error: any): Promise<void> {
+        await Swal.fire({
+            icon: 'warning',
+            title: titulo,
+            text: error?.message ?? 'Error no identificado',
+            showConfirmButton: true,
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+    }
+
+    // Catálogos
 
     private cargarCatalogoRegiones(): void {
         this.regionesSub?.unsubscribe();
         this.regionesSub = this.regionSvc.getRegiones().subscribe({
             next: (regiones) => {
                 this.catalogoRegiones = regiones ?? [];
+                this.calcular();
             },
             error: () => {
                 this.catalogoRegiones = [];
@@ -366,11 +500,10 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         this.clasesSub = this.claseSvc.getClases().subscribe({
             next: (clases) => {
                 this.clasesCatalogoInterno = clases ?? [];
-                this.actualizarNivelesLanzadorDerivados();
+                this.calcular();
             },
             error: () => {
                 this.clasesCatalogoInterno = [];
-                this.actualizarNivelesLanzadorDerivados();
             },
         });
     }
@@ -381,9 +514,8 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
 
     private actualizarNivelesLanzadorDerivados(): void {
         const catalogo = this.getCatalogoClasesEfectivo();
-        const calculados = calcularNivelesLanzadorPersonaje(this.pj, catalogo);
         this.nivelesLanzador = catalogo.length > 0
-            ? calculados
+            ? calcularNivelesLanzadorPersonaje(this.pj, catalogo)
             : (this.pj?.Niveles_lanzador ?? []);
         if (this.pj)
             this.pj.Niveles_lanzador = this.nivelesLanzador;
@@ -392,6 +524,8 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
     getNivelesLanzadorVisibles(): PersonajeNivelLanzadorResumen[] {
         return (this.nivelesLanzador ?? []).filter((nivel) => toNumber(nivel?.nivelLanzador) > 0);
     }
+
+    // Creador
 
     private ownerUidNormalizado(): string {
         return `${this.pj?.ownerUid ?? ''}`.trim();
@@ -419,27 +553,33 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         return '';
     }
 
-    private async actualizarEtiquetaCreador(): Promise<void> {
+    private actualizarEtiquetaCreador(): void {
         const ownerUid = this.ownerUidNormalizado();
         const ownerDisplayName = `${this.pj?.ownerDisplayName ?? ''}`.trim();
-        if (ownerUid.length < 1) {
-            this.etiquetaCreador = ownerDisplayName.length > 0 ? ownerDisplayName : 'Desconocido';
-            this.ownerUidCargado = '';
-            this.perfilPublicoDisponible = false;
-            return;
-        }
-
         const uidActual = `${this.userSvc.CurrentUserUid ?? ''}`.trim();
-        if (uidActual.length > 0 && ownerUid === uidActual) {
+        if (ownerUid.length > 0 && uidActual.length > 0 && ownerUid === uidActual) {
             this.etiquetaCreador = 'Tú';
-            this.ownerUidCargado = ownerUid;
             this.perfilPublicoDisponible = false;
             return;
         }
-
-        this.ownerUidCargado = ownerUid;
         this.etiquetaCreador = ownerDisplayName.length > 0 ? ownerDisplayName : 'Desconocido';
-        this.perfilPublicoDisponible = true;
+        this.perfilPublicoDisponible = ownerUid.length > 0;
+    }
+
+    // Reglas de lo que se ve
+
+    /** En la ficha de un personaje, «Cualquiera» tampoco es una elección real y se oculta. */
+    private esVisible(texto: string | null | undefined): boolean {
+        return tieneTextoVisible(texto, { cualquieraEsRelleno: true });
+    }
+
+    private texto(texto: string | null | undefined): string {
+        return this.esVisible(texto) ? `${texto}`.trim() : '';
+    }
+
+    private positivo(valor: unknown): boolean {
+        const numero = Number(valor);
+        return Number.isFinite(numero) && numero > 0;
     }
 
     private getNivelPersonaje(): number {
@@ -449,89 +589,58 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         return nivelesClase + ajusteRaza + ajustesPlantillas;
     }
 
-    tieneTextoVisible(texto: string | undefined | null): boolean {
-        // Sin ocultar faltantes se enseña todo lo que no esté vacío; si no, la regla común (fuera de la clase), que en
-        // la ficha oculta también «Cualquiera», como hacía este detalle antes de unificar las listas.
-        if (!this.modoOcultarFaltantes)
-            return `${texto ?? ''}`.trim().length > 0;
-        return tieneTextoVisible(texto, { cualquieraEsRelleno: true });
+    /** «4 DG raciales + 8 de clase + 2 de ajuste»: de dónde sale el NEP. */
+    private textoDesgloseNep(): string {
+        const dg = toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad)
+            + (this.pj?.Plantillas ?? []).reduce((c, p) => c + toNumber(p?.Multiplicador_dgs_lic), 0);
+        const clase = (this.pj?.desgloseClases ?? []).reduce((c, d) => c + toNumber(d?.Nivel), 0);
+        const ajuste = toNumber(this.pj?.Raza?.Ajuste_nivel)
+            + (this.pj?.Plantillas ?? []).reduce((c, p) => c + toNumber(p?.Ajuste_nivel), 0);
+        return [
+            dg > 0 ? `${dg} DG raciales` : '',
+            clase > 0 ? `${clase} de clase` : '',
+            ajuste > 0 ? `${ajuste} de ajuste` : '',
+        ].filter(Boolean).join(' + ');
     }
 
-    tieneNumeroVisible(value: number | string | null | undefined): boolean {
-        const parsed = Number(value);
-        if (!Number.isFinite(parsed))
-            return false;
-        if (!this.modoOcultarFaltantes)
-            return true;
-        return parsed > 0;
-    }
-
-    tieneNumeroNoCero(value: number | string | null | undefined): boolean {
-        const parsed = Number(value);
-        if (!Number.isFinite(parsed))
-            return false;
-        if (!this.modoOcultarFaltantes)
-            return true;
-        return Math.abs(parsed) > 0.0001;
-    }
-
-    tieneArrayVisible<T>(arr: T[] | undefined | null): boolean {
-        return Array.isArray(arr) && arr.length > 0;
-    }
-
-    tienePersonajeNombreVisible(): boolean {
-        return this.tieneTextoVisible(this.pj?.Nombre);
-    }
-
-    tieneGeneroVisible(): boolean {
-        return this.tieneTextoVisible(this.pj?.Genero);
-    }
-
-    tieneAlineamientoVisible(): boolean {
-        return this.tieneTextoVisible(this.pj?.Alineamiento);
-    }
-
-    tieneDeidadVisible(): boolean {
-        return this.tieneTextoVisible(this.pj?.Deidad);
-    }
-
-    tieneRegionVisible(): boolean {
-        return this.obtenerIdRegionPersonaje() > 0;
-    }
-
-    tieneExpVisible(): boolean {
+    private tieneExpVisible(): boolean {
         if (this.esPreviewNuevoPersonaje && this.tieneContextoNepParaPreview())
             return true;
-        return this.tieneNumeroVisible(this.pj?.Experiencia);
+        return this.positivo(this.pj?.Experiencia);
     }
 
-    tieneNivelVisible(): boolean {
-        return this.tieneNumeroVisible(this.nivelPersonaje);
+    private tieneContextoNepParaPreview(): boolean {
+        const nivelClases = (this.pj?.desgloseClases ?? []).reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
+        const ajusteRaza = toNumber(this.pj?.Raza?.Ajuste_nivel);
+        const ajustePlantillas = (this.pj?.Plantillas ?? []).reduce((acc, plantilla) => acc + toNumber(plantilla?.Ajuste_nivel), 0);
+        const dgsRaza = toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad);
+        const dgsPlantillas = (this.pj?.Plantillas ?? []).reduce((acc, plantilla) => acc + toNumber(plantilla?.Multiplicador_dgs_lic), 0);
+        return nivelClases > 0 || ajusteRaza > 0 || ajustePlantillas > 0 || dgsRaza > 0 || dgsPlantillas > 0;
     }
 
-    tieneNepVisible(): boolean {
-        return this.tieneNumeroVisible(this.pj?.NEP);
+    /** En la vista previa, las características ya generadas: entonces se enseñan la iniciativa y la carga aunque valgan 0. */
+    private tieneCaracteristicasParaPreview(): boolean {
+        return this.esPreviewNuevoPersonaje && (this.caracteristicasConfirmadas || this.tieneCaracteristicasVisibles());
     }
 
-    tieneAtaqueBaseVisible(): boolean {
-        return this.tieneNumeroVisible(this.pj?.Ataque_base as any);
+    /** Sin generar (todas a 10 y sus modificadores a 0), las características no se enseñan. */
+    private tieneCaracteristicasVisibles(): boolean {
+        const pj = this.pj;
+        const base = [pj?.Fuerza, pj?.Destreza, pj?.Constitucion, pj?.Inteligencia, pj?.Sabiduria, pj?.Carisma];
+        const mods = [pj?.ModFuerza, pj?.ModDestreza, pj?.ModConstitucion, pj?.ModInteligencia, pj?.ModSabiduria, pj?.ModCarisma];
+        return !(base.every((v) => Number(v) === 10) && mods.every((v) => Number(v) === 0));
     }
 
-    tienePgVisible(): boolean {
-        return this.tieneNumeroVisible(this.pj?.Vida);
+    tieneCaracteristicaPerdida(key: CaracteristicaPerdidaKey): boolean {
+        const perdidas = this.pj?.Caracteristicas_perdidas ?? {};
+        const perdidaPorMapa = toBoolean((perdidas as Record<string, any>)?.[key]);
+        if (key === 'Constitucion')
+            return perdidaPorMapa || toBoolean(this.pj?.Constitucion_perdida);
+        return perdidaPorMapa;
     }
 
-    tieneCaVisible(): boolean {
-        return this.tieneNumeroVisible(this.pj?.Ca);
-    }
-
-    /** Las piezas del equipo que compró al final de la creación (vacío en las fichas sin compra y en la creación). */
-    get piezasEquipo(): PersonajeEquipoPiezaDto[] {
-        return this.pj?.Equipo ?? [];
-    }
-
-    get modificadoresEquipo(): PersonajeModificadorEquipoDto[] {
-        return this.pj?.ModificadoresEquipo ?? [];
+    tienePresaVisible(): boolean {
+        return this.presaDisponible;
     }
 
     /** Si lleva puesta armadura o escudo: entonces se enseñan la Destreza máxima, el penalizador y el fallo arcano. */
@@ -539,80 +648,42 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         return this.piezasEquipo.some((pieza) => pieza.equipado && !!pieza.armadura);
     }
 
-    get pesoEquipoVisible(): string {
-        return textoPeso(this.pj?.PesoEquipo ?? 0);
+    /** Las piezas del equipo que compró al final de la creación (vacío en las fichas sin compra y en la creación). */
+    get piezasEquipo(): PersonajeEquipoPiezaDto[] {
+        return this.pj?.Equipo ?? [];
     }
 
-    get dineroVisible(): string {
-        return textoPrecio(this.pj?.Dinero?.po ?? 0);
+    private get modificadoresEquipo(): PersonajeModificadorEquipoDto[] {
+        return this.pj?.ModificadoresEquipo ?? [];
     }
 
-    get dineroInicialVisible(): string {
-        return `Dinero inicial: ${textoPrecio(this.pj?.Dinero?.dineroInicial ?? 0)}`;
-    }
-
-    readonly textoDesglose = textoDesglose;
-    readonly textoDestrezaMaxima = textoDestrezaMaxima;
-    readonly detallesPiezaEquipo = detallesPiezaEquipo;
-    readonly nombreConCantidad = nombreConCantidad;
-    readonly textoEquipadoPieza = textoEquipadoPieza;
-    readonly textoModificadorEquipo = textoModificadorEquipo;
-
-    tieneRazaVisible(): boolean {
-        return this.tieneTextoVisible(this.pj?.Raza?.Nombre);
-    }
-
-    tieneRazaBaseVisible(): boolean {
-        return this.tieneTextoVisible(this.pj?.RazaBase?.Nombre);
-    }
-
-    tieneTamanoVisible(): boolean {
-        return this.tieneTextoVisible(this.pj?.Raza?.Tamano?.Nombre);
-    }
-
-    tieneTipoCriaturaVisible(): boolean {
-        return this.tieneTextoVisible(this.pj?.Tipo_criatura?.Nombre);
+    private nombreRegionPrincipal(): string {
+        const directo = this.texto(this.pj?.Region?.Nombre);
+        if (directo)
+            return directo;
+        const idRegion = this.obtenerIdRegionPersonaje();
+        if (idRegion <= 0)
+            return '';
+        const catalogo = this.catalogoRegiones.find((item) => toNumber(item?.Id) === idRegion);
+        return `${catalogo?.Nombre ?? ''}`.trim() || `#${idRegion}`;
     }
 
     private obtenerIdRegionPersonaje(): number {
-        const raw = (this.pj as any)?.Id_region
-            ?? (this.pj as any)?.id_region
-            ?? (this.pj as any)?.idRegion
-            ?? (this.pj as any)?.Region?.Id
-            ?? (this.pj as any)?.Region?.id
-            ?? (this.pj as any)?.region?.Id
-            ?? (this.pj as any)?.region?.id;
-        const parsed = Math.trunc(Number(raw));
-        if (!Number.isFinite(parsed) || parsed <= 0)
-            return 0;
-        return parsed;
+        const parsed = Math.trunc(Number(this.pj?.Id_region ?? this.pj?.Region?.Id));
+        return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
     }
 
-    tieneAjusteNivelRazaVisible(): boolean {
-        return this.tieneNumeroVisible(this.pj?.Raza?.Ajuste_nivel);
-    }
-
-    tieneDgsRazaVisible(): boolean {
-        return this.tieneNumeroVisible(this.pj?.Raza?.Dgs_adicionales?.Cantidad);
-    }
-
-    tieneIniciativaVisible(): boolean {
-        if (this.esPreviewNuevoPersonaje && this.tieneCaracteristicasParaPreview())
-            return true;
-        return this.tieneNumeroNoCero(this.iniciativa);
-    }
-
-    tienePresaVisible(): boolean {
-        return this.presaDisponible && this.tieneNumeroNoCero(this.presa);
-    }
-
-    tieneVelocidadVisible(valor: number): boolean {
-        return this.tieneNumeroVisible(valor);
+    private textoAltura(): string | null {
+        const altura = Number(this.pj?.Altura);
+        if (!this.positivo(altura))
+            return null;
+        // Las fichas antiguas la guardan en centímetros.
+        const metros = altura >= 10 ? altura / 100 : altura;
+        return `${metros.toFixed(2).replace('.', ',')} m`;
     }
 
     mostrarManiobrabilidad(): boolean {
-        return this.tieneNumeroVisible(this.pj?.Volar)
-            && tieneManiobrabilidadVisible(this.getManiobrabilidadPersonaje());
+        return this.positivo(this.pj?.Volar) && tieneManiobrabilidadVisible(this.getManiobrabilidadPersonaje());
     }
 
     getManiobrabilidadPersonaje(): ManiobrabilidadLike | null {
@@ -648,57 +719,10 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         return buildManiobrabilidadInfoSecciones(this.getManiobrabilidadPersonaje());
     }
 
-    tieneCapacidadCargaVisible(): boolean {
-        if (this.esPreviewNuevoPersonaje && this.tieneCaracteristicasParaPreview())
-            return true;
-        return this.tieneNumeroVisible(this.pj?.Capacidad_carga?.Ligera)
-            || this.tieneNumeroVisible(this.pj?.Capacidad_carga?.Media)
-            || this.tieneNumeroVisible(this.pj?.Capacidad_carga?.Pesada);
-    }
-
-    tieneValorCargaVisible(valor: number | string | null | undefined): boolean {
-        if (this.esPreviewNuevoPersonaje && this.tieneCaracteristicasParaPreview()) {
-            const parsed = Number(valor);
-            return Number.isFinite(parsed);
-        }
-        return this.tieneNumeroVisible(valor);
-    }
-
-    tieneEdadVisible(): boolean {
-        return this.tieneNumeroVisible(this.pj?.Edad);
-    }
-
-    tieneAlturaVisible(): boolean {
-        return this.tieneNumeroVisible(this.pj?.Altura);
-    }
-
-    get alturaVisible(): string {
-        const altura = Number(this.pj?.Altura);
-        if (!Number.isFinite(altura))
-            return '';
-        if (Math.abs(altura) >= 10)
-            return (altura / 100).toFixed(2);
-        return `${altura}`;
-    }
-
-    tienePesoVisible(): boolean {
-        return this.tieneNumeroVisible(this.pj?.Peso);
-    }
-
-    tieneBloqueBiometriaVisible(): boolean {
-        return this.tieneEdadVisible() || this.tieneAlturaVisible() || this.tienePesoVisible();
-    }
-
-    tieneRangosEdadRazaVisibles(): boolean {
+    private tieneMadurezEdadVisible(): boolean {
         const raza = this.pj?.Raza;
-        return this.tieneNumeroVisible(raza?.Edad_adulto)
-            || this.tieneNumeroVisible(raza?.Edad_mediana)
-            || this.tieneNumeroVisible(raza?.Edad_viejo)
-            || this.tieneNumeroVisible(raza?.Edad_venerable);
-    }
-
-    tieneMadurezEdadVisible(): boolean {
-        return this.tieneEdadVisible() && this.tieneRangosEdadRazaVisibles();
+        return this.positivo(this.pj?.Edad)
+            && [raza?.Edad_adulto, raza?.Edad_mediana, raza?.Edad_viejo, raza?.Edad_venerable].some((edad) => this.positivo(edad));
     }
 
     get madurezEdad(): MadurezEdadResumen {
@@ -727,28 +751,20 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, AfterViewI
         const raza = this.pj?.Raza;
         const madurez = this.madurezEdad;
         return `Adulto: ${raza?.Edad_adulto ?? 0} | Mediana: ${raza?.Edad_mediana ?? 0} | Viejo: ${raza?.Edad_viejo ?? 0} | Venerable: ${raza?.Edad_venerable ?? 0}
-Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.formatSigned(madurez.modMental)}`;
-    }
-
-    formatSigned(value: number): string {
-        return value > 0 ? `+${value}` : `${value}`;
+Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(madurez.modMental)}`;
     }
 
     getSubtiposVisibles(): SubtipoRef[] {
-        return (this.pj?.Subtipos ?? []).filter((s) => this.tieneTextoVisible(s?.Nombre));
-    }
-
-    tieneSubtiposVisibles(): boolean {
-        return this.getSubtiposVisibles().length > 0;
+        return (this.pj?.Subtipos ?? []).filter((s) => this.esVisible(s?.Nombre));
     }
 
     getPlantillasVisibles() {
-        return (this.pj?.Plantillas ?? []).filter((p: any) => this.tieneTextoVisible(p?.Nombre));
+        return (this.pj?.Plantillas ?? []).filter((p: any) => this.esVisible(p?.Nombre));
     }
 
     getSubchipsLanzadorClase(claseDesglose: Personaje['desgloseClases'][number]): string[] {
         const nombreClase = `${claseDesglose?.Nombre ?? ''}`.trim();
-        if (!this.tieneTextoVisible(nombreClase))
+        if (!this.esVisible(nombreClase))
             return [];
 
         const claseCatalogo = this.obtenerClaseCatalogoPorNombre(nombreClase);
@@ -819,25 +835,18 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         const nombreNormalizado = normalizarTexto(nombreClase);
         if (nombreNormalizado.length < 1)
             return null;
-        return this.getCatalogoClasesEfectivo().find((clase) =>
-            normalizarTexto(clase?.Nombre ?? '') === nombreNormalizado
-        ) ?? null;
+        return this.getCatalogoClasesEfectivo().find((clase) => normalizarTexto(clase?.Nombre ?? '') === nombreNormalizado) ?? null;
     }
 
     private getNivelLanzadorResumenClase(nombreClase: string): PersonajeNivelLanzadorResumen | null {
         const nombreNormalizado = normalizarTexto(nombreClase);
         if (nombreNormalizado.length < 1)
             return null;
-        return (this.nivelesLanzador ?? []).find((resumen) =>
-            normalizarTexto(resumen?.nombreClase ?? '') === nombreNormalizado
-        ) ?? null;
+        return (this.nivelesLanzador ?? []).find((resumen) => normalizarTexto(resumen?.nombreClase ?? '') === nombreNormalizado) ?? null;
     }
 
     private obtenerDetalleNivelClase(clase: Clase, nivelClase: number): any | null {
         const nivelObjetivo = Math.max(1, toInt(nivelClase));
-        if (nivelObjetivo <= 0)
-            return null;
-
         const desglose = Array.isArray(clase?.Desglose_niveles) ? clase.Desglose_niveles : [];
         return desglose.find((nivel) => toInt(nivel?.Nivel) === nivelObjetivo) ?? null;
     }
@@ -845,89 +854,45 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     private formatearNivelesDiariosAccesibles(mapa: Record<string, number> | null | undefined): string {
         if (!mapa)
             return '';
-        const niveles = Object.keys(mapa)
-            .map((key) => ({
-                nivel: this.parseNivelConjuroKey(key),
-                valor: toNumber((mapa as Record<string, any>)[key]),
-            }))
-            .filter((item) => Number.isFinite(item.nivel) && item.nivel >= 0)
-            .filter((item) => item.valor >= 0)
+        return Object.keys(mapa)
+            .map((key) => ({ nivel: this.parseNivelConjuroKey(key), valor: toNumber((mapa as Record<string, any>)[key]) }))
+            .filter((item) => Number.isFinite(item.nivel) && item.nivel >= 0 && item.valor >= 0)
             .map((item) => item.nivel)
             .filter((nivel, indice, lista) => lista.indexOf(nivel) === indice)
-            .sort((a, b) => a - b);
-        return niveles.join(', ');
+            .sort((a, b) => a - b)
+            .join(', ');
     }
 
     private formatearConocidosPorNivel(mapa: Record<string, number> | null | undefined): string {
         if (!mapa)
             return '';
-        const entradas = Object.keys(mapa)
-            .map((key) => {
-                const nivel = this.parseNivelConjuroKey(key);
-                const valor = toNumber((mapa as Record<string, any>)[key]);
-                return { nivel, valor };
-            })
+        return Object.keys(mapa)
+            .map((key) => ({ nivel: this.parseNivelConjuroKey(key), valor: toNumber((mapa as Record<string, any>)[key]) }))
             .filter((item) => Number.isFinite(item.nivel) && item.nivel >= 0 && item.valor > 0)
             .sort((a, b) => a.nivel - b.nivel)
-            .map((item) => `${item.nivel}:${item.valor}`);
-        return entradas.join(' ');
+            .map((item) => `${item.nivel}:${item.valor}`)
+            .join(' ');
     }
 
     private parseNivelConjuroKey(key: string): number {
         const raw = `${key ?? ''}`.trim();
         if (raw.length < 1)
             return -1;
-
         const directo = Number(raw);
         if (Number.isFinite(directo))
             return Math.trunc(directo);
-
         const match = raw.match(/nivel[_\s-]*(\d+)/i);
-        if (match && match[1])
-            return Math.trunc(Number(match[1]));
-
-        return -1;
+        return match && match[1] ? Math.trunc(Number(match[1])) : -1;
     }
 
-    tieneBloqueSalvacionesVisible(): boolean {
-        return true;
-    }
-
-    tieneCaracteristicasVisibles(): boolean {
-        if (!this.modoOcultarFaltantes)
-            return true;
-
-        const base = [this.pj.Fuerza, this.pj.Destreza, this.pj.Constitucion, this.pj.Inteligencia, this.pj.Sabiduria, this.pj.Carisma];
-        const mods = [this.pj.ModFuerza, this.pj.ModDestreza, this.pj.ModConstitucion, this.pj.ModInteligencia, this.pj.ModSabiduria, this.pj.ModCarisma];
-        const esBaseDefault = base.every(v => Number(v) === 10);
-        const esModDefault = mods.every(v => Number(v) === 0);
-        return !(esBaseDefault && esModDefault);
-    }
-
-    tieneCaracteristicaPerdida(key: CaracteristicaPerdidaKey): boolean {
-        const perdidas = this.pj?.Caracteristicas_perdidas ?? {};
-        const perdidaPorMapa = toBoolean((perdidas as Record<string, any>)?.[key]);
-        if (key === 'Constitucion')
-            return perdidaPorMapa || toBoolean(this.pj?.Constitucion_perdida);
-        return perdidaPorMapa;
-    }
-
-    tienePersonalidadVisible(): boolean {
+    private tienePersonalidadVisible(): boolean {
         const value = normalizarTexto(this.pj?.Personalidad ?? '');
-        if (!this.tieneTextoVisible(value))
-            return false;
-        return value !== normalizarTexto('Rellena un fisco puto vago.');
+        return this.esVisible(value) && value !== normalizarTexto('Rellena un fisco puto vago.');
     }
 
-    tieneContextoVisible(): boolean {
+    private tieneContextoVisible(): boolean {
         const value = normalizarTexto(this.pj?.Contexto ?? '');
-        if (!this.tieneTextoVisible(value))
-            return false;
-        return value !== normalizarTexto('Eres totalmente antirol hijo mio.');
-    }
-
-    getClaseasVisibles() {
-        return (this.pj?.Claseas ?? []).filter(c => this.tieneTextoVisible(c?.Nombre));
+        return this.esVisible(value) && value !== normalizarTexto('Eres totalmente antirol hijo mio.');
     }
 
     getExtraVisibleEspecial(especial: Personaje['Claseas'][number]): string {
@@ -935,7 +900,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         // creación aún trae el texto de relleno.
         if (especial?.Extra_comodin !== undefined)
             return especial.Extra_comodin === 'cualquiera' ? '' : `${especial?.Extra ?? ''}`.trim();
-        return this.tieneTextoVisible(especial?.Extra) ? `${especial.Extra}`.trim() : '';
+        return this.texto(especial?.Extra);
     }
 
     getExtraVisibleHabilidad(habilidad: Record<string, any> | null | undefined): string {
@@ -943,10 +908,7 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         // La ficha de la API ya da el extra visible («Elegir» si está por escoger) y `null` sin extra.
         if (item['Extra_comodin'] !== undefined)
             return `${item['Extra'] ?? ''}`.trim();
-        const hasIdExtra = Object.prototype.hasOwnProperty.call(item, 'Id_extra')
-            || Object.prototype.hasOwnProperty.call(item, 'id_extra')
-            || Object.prototype.hasOwnProperty.call(item, 'i_ex')
-            || Object.prototype.hasOwnProperty.call(item, 'ie');
+        const hasIdExtra = ['Id_extra', 'id_extra', 'i_ex', 'ie'].some((clave) => Object.prototype.hasOwnProperty.call(item, clave));
 
         return resolverExtraHabilidadVisible({
             extra: item['Extra'] ?? item['extra'] ?? '',
@@ -973,95 +935,125 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
         return racialesFuente
             .map((racial: RacialDetalle | string | Record<string, any>) => {
-                if (typeof racial === 'string') {
-                    return {
-                        id: null,
-                        nombre: racial.trim(),
-                    };
-                }
+                if (typeof racial === 'string')
+                    return { id: null, nombre: racial.trim() };
 
                 const raw = racial as Record<string, any>;
                 const origen = `${raw?.['Origen'] ?? raw?.['origen'] ?? raw?.['o'] ?? ''}`.trim();
-
                 return {
                     id: this.toPositiveNumberOrNull(raw?.['Id'], raw?.['id'], raw?.['i']),
                     nombre: `${raw?.['Nombre'] ?? raw?.['nombre'] ?? raw?.['n'] ?? ''}`.trim(),
                     origen: origen.length > 0 ? origen : undefined,
                 };
             })
-            .filter(racial => this.tieneTextoVisible(racial.nombre));
-    }
-
-    trackByRacial = (_index: number, racial: RacialReferencia): string => {
-        const id = Number(racial?.id);
-        const nombre = normalizarTexto(racial?.nombre);
-        return `${Number.isFinite(id) && id > 0 ? id : 0}|${nombre}`;
-    }
-
-    getDotesVisibles() {
-        return (this.pj?.Dotes ?? []).filter(d => this.tieneTextoVisible(d?.Nombre));
-    }
-
-    getIdiomasVisibles() {
-        return (this.pj?.Idiomas ?? []).filter(i => this.tieneTextoVisible(i?.Nombre));
+            .filter((racial) => this.esVisible(racial.nombre));
     }
 
     getDominiosVisibles(): string[] {
-        const fuente = toArray((this.pj as any)?.Dominios);
-        return fuente
-            .map((dominio: string | Record<string, any>) => {
-                if (typeof dominio === 'string')
-                    return dominio.trim();
-
-                return `${dominio?.['Nombre'] ?? dominio?.['nombre'] ?? dominio?.['N'] ?? dominio?.['n'] ?? ''}`.trim();
-            })
-            .filter((nombre) => this.tieneTextoVisible(nombre));
+        return toArray((this.pj as any)?.Dominios)
+            .map((dominio: string | Record<string, any>) => typeof dominio === 'string'
+                ? dominio.trim()
+                : `${dominio?.['Nombre'] ?? dominio?.['nombre'] ?? dominio?.['N'] ?? dominio?.['n'] ?? ''}`.trim())
+            .filter((nombre) => this.esVisible(nombre));
     }
 
     getEnemigosPredilectosVisibles(): EnemigoPredilectoSeleccion[] {
-        const fuente = toArray((this.pj as any)?.enemigosPredilectos);
-        return fuente
+        return toArray((this.pj as any)?.enemigosPredilectos)
             .map((item: Record<string, any>) => ({
                 id: toNumber(item?.['id'] ?? item?.['Id']),
                 nombre: `${item?.['nombre'] ?? item?.['Nombre'] ?? ''}`.trim(),
                 bono: Math.max(0, toNumber(item?.['bono'] ?? item?.['Bono'])),
                 veces: Math.max(0, toNumber(item?.['veces'] ?? item?.['Veces'])),
             }))
-            .filter((item) => item.id > 0 && this.tieneTextoVisible(item.nombre) && item.bono > 0)
+            .filter((item) => item.id > 0 && this.esVisible(item.nombre) && item.bono > 0)
             .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
-    getTextoBonoEnemigoPredilecto(item: EnemigoPredilectoSeleccion): string {
-        return `+${Math.max(0, toNumber(item?.bono))}`;
+    getEscuelasProhibidasVisibles(): string[] {
+        const crudas = Array.isArray(this.pj?.Escuelas_prohibidas) ? this.pj.Escuelas_prohibidas : [];
+        return crudas
+            .map((item: string | { Nombre?: string; }) => typeof item === 'string' ? item.trim() : `${item?.Nombre ?? ''}`.trim())
+            .filter((nombre) => this.esVisible(nombre));
     }
 
-    private actualizarValoresDerivadosVisuales(): void {
+    tieneEscuelasProhibidasVisibles(): boolean {
+        return this.getEscuelasProhibidasVisibles().length > 0;
+    }
+
+    /** La escuela especialista, si la hay: «Cualquiera» (`espaComodin` en la ficha) es que no se especializa. */
+    private tieneEscuelaEspecialista(): boolean {
+        const escuela = this.pj?.Escuela_especialista;
+        return `${escuela?.Nombre ?? ''}`.trim().length > 0 && !esNombreComodin(escuela, 'cualquiera');
+    }
+
+    getVentajasVisibles(): VentajaVisible[] {
+        return (this.pj?.Ventajas ?? [])
+            .map((ventaja) => typeof ventaja === 'string'
+                ? this.normalizarVentajaReferencia({ nombre: ventaja.trim() })
+                : this.normalizarVentajaReferencia({ nombre: `${ventaja?.Nombre ?? ''}`.trim(), origen: `${ventaja?.Origen ?? ''}`.trim() || undefined }))
+            .filter((v) => this.esVisible(v.nombre));
+    }
+
+    private getOrigenRasgoTipo(rasgo: Rasgo): string {
+        return this.texto(rasgo?.Origen) || this.texto(this.pj?.Tipo_criatura?.Nombre);
+    }
+
+    /** «Ventaja: Voluntad de hierro» o el origen «ventaja» pasan a nombre y origen («Ventaja» o «Desventaja»). */
+    private normalizarVentajaReferencia(ventaja: VentajaVisible): VentajaVisible {
+        const origenRaw = `${ventaja?.origen ?? ''}`.trim();
+        const nombreRaw = `${ventaja?.nombre ?? ''}`.trim();
+        const origenVisible = this.esVisible(origenRaw) ? origenRaw : undefined;
+        if (nombreRaw.length < 1)
+            return { nombre: '', origen: origenVisible };
+
+        const origenExplicito = normalizarTexto(origenRaw);
+        if (origenExplicito === 'ventaja' || origenExplicito === 'desventaja')
+            return { nombre: nombreRaw, origen: origenExplicito === 'ventaja' ? 'Ventaja' : 'Desventaja' };
+
+        const prefijo = nombreRaw.match(/^\s*(ventaja|desventaja)\s*[:\-]\s*(.+)$/i);
+        if (prefijo)
+            return { nombre: `${prefijo[2] ?? ''}`.trim(), origen: normalizarTexto(prefijo[1]) === 'ventaja' ? 'Ventaja' : 'Desventaja' };
+
+        return { nombre: nombreRaw, origen: origenVisible };
+    }
+
+    // El cálculo
+
+    /**
+     * Calcula todo lo que pinta la ficha. Si no cambia nada de lo que se ve (la vista previa recalcula en cada
+     * revisión), conserva el cálculo anterior para no volver a pintar la ficha entera.
+     */
+    private calcular(): void {
+        if (!this.pj)
+            return;
+        this.actualizarEtiquetaCreador();
+        this.actualizarNivelesLanzadorDerivados();
+        this.nivelPersonaje = this.getNivelPersonaje();
+        this.actualizarTotales();
+        const modelo = this.construirModelo();
+        const firma = JSON.stringify(modelo, sinReferencias);
+        if (firma === this.firma)
+            return;
+        this.firma = firma;
+        this.m = modelo;
+    }
+
+    private actualizarTotales(): void {
         const totales = totalesPersonaje(this.pj);
-        this.iniciativa = this.formatSigned(toNumber(totales.iniciativa.total));
+        this.iniciativa = textoConSigno(toNumber(totales.iniciativa.total));
         this.iniciativaDesglose = textoDesglose(totales.iniciativa);
-
         this.presaDisponible = !!totales.presa;
-        this.presa = this.formatSigned(toNumber(totales.presa?.total));
+        this.presa = textoConSigno(toNumber(totales.presa?.total));
         this.presaDesglose = textoDesglose(totales.presa);
-
-        const ligera = toNumber(this.pj?.Capacidad_carga?.Ligera);
-        const media = toNumber(this.pj?.Capacidad_carga?.Media);
-        const pesada = toNumber(this.pj?.Capacidad_carga?.Pesada);
-        this.cLigera = `${parseFloat((ligera * 0.453592).toFixed(2))} Kilogramos`;
-        this.cMedia = `${parseFloat((media * 0.453592).toFixed(2))} Kilogramos`;
-        const cargaPesadaKg = parseFloat((pesada * 0.453592).toFixed(2));
-        this.cPesada = `
-        ${cargaPesadaKg} Kilogramos
-        Levantar sobre la cabeza: ${pesada} (${cargaPesadaKg}KG)
-        Levantar del suelo: ${pesada * 2} (${(cargaPesadaKg * 2).toFixed(2)}KG)
-        Empujar/Arrastrar: ${pesada * 5} (${(cargaPesadaKg * 5).toFixed(2)}KG)
-        `;
-    }
-
-    private actualizarResumenSalvaciones(): void {
-        const salvaciones = totalesPersonaje(this.pj).salvaciones;
+        this.caDisclaimer = this.pj.Defensa
+            ? textoDesglose(this.pj.Defensa.ca)
+            : [
+                ['Armadura natural', this.pj.Armadura_natural],
+                ['Desvío', this.pj.Ca_desvio],
+                ['Varios', this.pj.Ca_varios],
+            ].filter(([, valor]) => toNumber(valor) !== 0).map(([nombre, valor]) => `${nombre} ${textoConSigno(toNumber(valor))}`).join('\n');
         this.salvacionesVisibles = SALVACIONES.map(({ tipo, nombre }) => {
-            const salvacion = salvaciones[tipo];
+            const salvacion = totales.salvaciones[tipo];
             return {
                 nombre,
                 total: toNumber(salvacion?.total),
@@ -1076,184 +1068,405 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         });
     }
 
-    private tieneContextoNepParaPreview(): boolean {
-        if (!this.esPreviewNuevoPersonaje)
-            return false;
+    private construirModelo(): ModeloFicha {
+        const pj = this.pj;
+        const preview = this.esPreviewNuevoPersonaje;
+        const raza = this.texto(pj.Raza?.Nombre);
+        const clases = (pj.desgloseClases ?? []).filter((c) => this.esVisible(c?.Nombre));
+        const textoClases = clases.map((c) => `${c.Nombre.trim()} ${toNumber(c.Nivel)}`).join(' / ');
+        const alineamiento = this.texto(pj.Alineamiento);
 
-        const nivelClases = (this.pj?.desgloseClases ?? []).reduce((acc, clase) => acc + toNumber(clase?.Nivel), 0);
-        const ajusteRaza = toNumber(this.pj?.Raza?.Ajuste_nivel);
-        const ajustePlantillas = (this.pj?.Plantillas ?? [])
-            .reduce((acc, plantilla) => acc + toNumber(plantilla?.Ajuste_nivel), 0);
-        const dgsRaza = toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad);
-        const dgsPlantillas = (this.pj?.Plantillas ?? [])
-            .reduce((acc, plantilla) => acc + toNumber(plantilla?.Multiplicador_dgs_lic), 0);
-        return nivelClases > 0 || ajusteRaza > 0 || ajustePlantillas > 0 || dgsRaza > 0 || dgsPlantillas > 0;
+        const modelo: ModeloFicha = {
+            ...this.modeloVacio(),
+            tipoPagina: unirTipo(['Personaje', raza, textoClases]),
+            tipoPestanas: unirTipo([raza, textoClases, this.positivo(pj.NEP) ? `NEP ${pj.NEP}` : '', alineamiento]),
+            etiquetas: this.calcularEtiquetas(),
+            creador: preview ? null : {
+                nombre: this.etiquetaCreador === 'Tú' ? 'ti' : this.etiquetaCreador,
+                enlace: this.chipCreadorClickable,
+            },
+            datos: this.calcularDatos(clases),
+            franja: this.calcularFranja(),
+            caracteristicas: this.calcularCaracteristicas(),
+            salvaciones: this.salvacionesVisibles.map((s) => ({ nombre: s.nombre, valor: textoConSigno(s.total), nota: s.desglose.replace(/\n/g, ' · ') })),
+            defensa: this.calcularDefensa(),
+            presaIniciativa: this.calcularPresaIniciativa(),
+            defensasEspeciales: [
+                ...(pj.Rds ?? []).map((r) => ({ nombre: 'Reducción de daño', valor: `${r?.Modificador ?? ''}`.trim(), nota: this.texto(r?.Origen) })),
+                ...(pj.Rcs ?? []).map((r) => ({ nombre: 'Resistencia a conjuros', valor: `${r?.Modificador ?? ''}`.trim(), nota: this.texto(r?.Origen) })),
+                ...(pj.Res ?? []).map((r) => ({ nombre: 'Resistencia a la energía', valor: `${r?.Modificador ?? ''}`.trim(), nota: this.texto(r?.Origen) })),
+            ].filter((fila) => fila.valor.length > 0),
+            enemigos: this.getEnemigosPredilectosVisibles().map((e) => ({
+                nombre: e.nombre,
+                valor: textoConSigno(e.bono),
+                nota: e.veces > 1 ? `${e.veces} veces` : '',
+            })),
+            dotes: (pj.Dotes ?? []).filter((d) => this.esVisible(d?.Nombre)).map((d) => ({
+                texto: d.Nombre.trim() + (this.esVisible(d.Extra) ? ` (${d.Extra.trim()})` : ''),
+                nota: this.texto(d.Origen),
+                ref: d,
+            })),
+            aptitudes: (pj.Claseas ?? []).filter((c) => this.esVisible(c?.Nombre)).map((c) => {
+                const extra = this.getExtraVisibleEspecial(c);
+                return { texto: c.Nombre.trim() + (extra ? ` (${extra})` : ''), ref: c.Nombre.trim() };
+            }),
+            raciales: this.getRacialesVisibles().map((r) => ({ texto: r.nombre, nota: this.texto(r.origen), clave: `${r.id ?? ''}`, ref: r })),
+            rasgosTipo: (pj.Tipo_criatura?.Rasgos ?? []).filter((r) => this.esVisible(r?.Nombre)).map((r) => ({
+                texto: r.Nombre.trim(),
+                nota: this.getOrigenRasgoTipo(r),
+                clave: `${r.Id ?? ''}`,
+                ref: r,
+            })),
+            plantillas: this.getPlantillasVisibles().map((p: any) => ({ texto: `${p.Nombre}`.trim(), nota: this.detallePlantilla(p), clave: `${p.Id ?? ''}`, ref: p })),
+            ventajas: this.getVentajasVisibles().map((v) => ({ texto: v.nombre, nota: v.origen ?? '', ref: v })),
+            idiomas: (pj.Idiomas ?? []).filter((i) => this.esVisible(i?.Nombre)).map((i) => ({
+                texto: i.Nombre.trim(),
+                nota: this.texto(i.Origen),
+                ayuda: this.texto(i.Descripcion),
+            })),
+            magia: this.calcularMagia(),
+            lanzadores: clases
+                .map((c) => ({ clase: c.Nombre.trim(), texto: `${c.Nombre.trim()} ${toNumber(c.Nivel)}`, detalle: this.getSubchipsLanzadorClase(c).join(' · ') }))
+                .filter((l) => l.detalle.length > 0),
+            conjuros: (pj.Conjuros ?? []).filter((c) => this.esVisible(c?.Nombre)).map((c) => ({ texto: c.Nombre.trim(), clave: `${c.Id ?? ''}`, ref: c })),
+            sortilegas: this.calcularSortilegas(),
+            ...this.calcularEquipo(),
+            familiares: this.monstruosVisibles((pj as any).Familiares),
+            companeros: this.monstruosVisibles((pj as any).Companeros),
+            personalidad: this.tienePersonalidadVisible() ? `${pj.Personalidad}`.trim() : '',
+            contexto: this.tieneContextoVisible() ? `${pj.Contexto}`.trim() : '',
+            multimedia: !preview,
+        };
+        modelo.casillasPagina = [...modelo.caracteristicas, ...this.calcularCasillasSalvaciones()];
+        Object.assign(modelo, this.calcularHabilidades());
+        modelo.pestanas = this.calcularPestanas(modelo);
+        return modelo;
     }
 
-    private tieneCaracteristicasParaPreview(): boolean {
-        return this.caracteristicasConfirmadas || this.tieneCaracteristicasVisibles();
+    private modeloVacio(): ModeloFicha {
+        return {
+            tipoPagina: '', tipoPestanas: '', etiquetas: [], creador: null, datos: [], franja: [], caracteristicas: [], casillasPagina: [],
+            salvaciones: [], defensa: [], presaIniciativa: [], defensasEspeciales: [], enemigos: [], habilidades: [],
+            habilidadesConRangos: [], verHabilidades: false, dotes: [], aptitudes: [], raciales: [], rasgosTipo: [], plantillas: [],
+            ventajas: [], idiomas: [], magia: [], lanzadores: [], conjuros: [], sortilegas: [], piezas: [], equipo: [], carga: [],
+            modificadoresEquipo: [], sinEquipo: false, familiares: [], companeros: [], personalidad: '', contexto: '',
+            multimedia: false, pestanas: [],
+        };
     }
 
-    getEscuelasProhibidasVisibles(): string[] {
-        const crudas = Array.isArray(this.pj?.Escuelas_prohibidas) ? this.pj.Escuelas_prohibidas : [];
-        return crudas
-            .map((item: string | { Nombre?: string; }) => {
-                if (typeof item === 'string')
-                    return item.trim();
-                return `${item?.Nombre ?? ''}`.trim();
-            })
-            .filter((nombre) => this.tieneTextoVisible(nombre));
+    private calcularEtiquetas(): EtiquetaFicha[] {
+        if (this.esPreviewNuevoPersonaje || toNumber(this.pj?.Id) <= 0)
+            return [];
+        return [
+            this.personajeVisiblePublicamente
+                ? { texto: 'Público', ayuda: 'Lo puede ver cualquiera' }
+                : { texto: 'Privado', ayuda: 'Solo lo ven quien lo creó y su campaña' },
+            ...(this.personajeArchivado ? [{ texto: 'Archivado' }] : []),
+        ];
     }
 
-    /** La escuela especialista, si la hay: «Cualquiera» (`espaComodin` en la ficha) es que no se especializa. */
-    tieneEscuelaEspecialista(): boolean {
-        const escuela = this.pj?.Escuela_especialista;
-        return `${escuela?.Nombre ?? ''}`.trim().length > 0 && !esNombreComodin(escuela, 'cualquiera');
+    private calcularDatos(clases: Personaje['desgloseClases']): DatoFicha[] {
+        const pj = this.pj;
+        const preview = this.esPreviewNuevoPersonaje;
+        const idRaza = toNumber(pj.Raza?.Id);
+        const subtipos = this.getSubtiposVisibles();
+        const dgsRaza = pj.Raza?.Dgs_adicionales;
+        const madurez = this.tieneMadurezEdadVisible() ? this.madurezEdad : null;
+        const deidad = this.texto(pj.Deidad);
+        return [
+            {
+                etiqueta: 'Raza',
+                valor: this.texto(pj.Raza?.Nombre) || null,
+                detalle: this.texto(pj.Raza?.Tamano?.Nombre) ? `· ${pj.Raza.Tamano.Nombre.trim()}` : null,
+                alPulsar: idRaza > 0 ? () => this.verDetallesRaza(this.pj.Raza.Id) : undefined,
+            },
+            {
+                etiqueta: 'Tipo de criatura',
+                valor: this.texto(pj.Tipo_criatura?.Nombre) || null,
+                alPulsar: () => this.verDetallesTipoCriatura(this.pj.Tipo_criatura),
+            },
+            {
+                etiqueta: 'Subtipos',
+                valor: subtipos.map((s) => s.Nombre.trim()).join(', ') || null,
+                enlaces: subtipos.map((s) => ({ texto: s.Nombre.trim(), alPulsar: () => this.verDetallesSubtipo(s) })),
+            },
+            { etiqueta: 'Raza base', valor: this.texto(pj.RazaBase?.Nombre) || null },
+            {
+                etiqueta: clases.length > 1 ? 'Clases' : 'Clase',
+                valor: clases.map((c) => `${c.Nombre.trim()} ${toNumber(c.Nivel)}`).join(', ') || null,
+                enlaces: clases.map((c) => ({ texto: `${c.Nombre.trim()} ${toNumber(c.Nivel)}`, alPulsar: () => this.verDetallesClase(c.Nombre) })),
+            },
+            { etiqueta: 'Nivel', valor: this.positivo(this.nivelPersonaje) ? this.nivelPersonaje : null, ayuda: this.nivelDisclaimer },
+            {
+                etiqueta: 'Nivel efectivo (NEP)',
+                valor: this.positivo(pj.NEP) ? toNumber(pj.NEP) : null,
+                detalle: this.textoDesgloseNep() ? `· ${this.textoDesgloseNep()}` : null,
+                ayuda: this.nepDisclaimer,
+            },
+            { etiqueta: 'Experiencia', valor: this.tieneExpVisible() ? `${formatoNumero(toNumber(pj.Experiencia))} PX` : null },
+            {
+                etiqueta: 'DG raciales',
+                valor: this.positivo(dgsRaza?.Cantidad)
+                    ? `+${dgsRaza.Cantidad}${`${dgsRaza.Dado ?? ''}`.trim().toLowerCase()}${this.texto(dgsRaza.Tipo_criatura) ? ` de ${dgsRaza.Tipo_criatura.trim()}` : ''}`
+                    : null,
+            },
+            { etiqueta: 'Ajuste de nivel', valor: this.positivo(pj.Raza?.Ajuste_nivel) ? `+${toNumber(pj.Raza.Ajuste_nivel)}` : null },
+            { etiqueta: 'Alineamiento', valor: this.texto(pj.Alineamiento) || null },
+            { etiqueta: 'Deidad', valor: deidad || null, alPulsar: deidad ? () => this.verDetallesDeidadPorNombre(this.pj.Deidad) : undefined },
+            { etiqueta: 'Región', valor: this.obtenerIdRegionPersonaje() > 0 ? this.nombreRegionPrincipal() : null },
+            { etiqueta: 'Género', valor: this.texto(pj.Genero) || null },
+            { etiqueta: 'Edad', valor: this.positivo(pj.Edad) ? `${toNumber(pj.Edad)} años` : null },
+            {
+                etiqueta: 'Madurez',
+                valor: madurez?.nombre ?? null,
+                detalle: madurez ? `· Fue/Des/Con ${textoConSigno(madurez.modFisico)} · Int/Sab/Car ${textoConSigno(madurez.modMental)}` : null,
+                ayuda: madurez ? this.getTooltipMadurezEdad() : null,
+            },
+            { etiqueta: 'Altura', valor: this.textoAltura() },
+            { etiqueta: 'Peso', valor: this.positivo(pj.Peso) ? `${formatoNumero(toNumber(pj.Peso))} kg` : null },
+            { etiqueta: 'Campaña', valor: preview ? null : this.texto(pj.Campana) || null },
+            { etiqueta: 'Trama', valor: preview ? null : this.texto(pj.Trama) || null },
+            { etiqueta: 'Subtrama', valor: preview ? null : this.texto(pj.Subtrama) || null },
+        ];
     }
 
-    tieneEscuelasProhibidasVisibles(): boolean {
-        return this.getEscuelasProhibidasVisibles().length > 0;
+    private calcularFranja(): DatoFranja[] {
+        const pj = this.pj;
+        const defensa = pj.Defensa;
+        const movimientos = textosMovimiento(pj, this.mostrarManiobrabilidad() ? this.getManiobrabilidadNombre() : null);
+        const iniciativaVisible = !this.esPreviewNuevoPersonaje || this.tieneCaracteristicasParaPreview() || this.iniciativa !== '+0';
+        return [
+            { etiqueta: 'Puntos de golpe', etiquetaCorta: 'PG', valor: this.positivo(pj.Vida) ? toNumber(pj.Vida) : null },
+            {
+                etiqueta: 'Clase de armadura',
+                etiquetaCorta: 'CA',
+                valor: this.positivo(pj.Ca) ? toNumber(pj.Ca) : null,
+                detalle: defensa ? `toque ${defensa.toque.total} · desprev. ${defensa.desprevenido.total}` : null,
+                ayuda: this.caDisclaimer,
+            },
+            { etiqueta: 'Iniciativa', valor: iniciativaVisible ? this.iniciativa : null, ayuda: this.iniciativaDesglose },
+            { etiqueta: 'Ataque base', valor: this.texto(pj.Ataque_base) || null },
+            { etiqueta: 'Presa', valor: this.presaDisponible ? this.presa : null, ayuda: this.presaDesglose },
+            {
+                etiqueta: 'Velocidad',
+                valor: movimientos[0] ?? null,
+                detalle: movimientos.slice(1).join(', '),
+                ayuda: this.velDisclaimer,
+                ayudaBoton: this.mostrarManiobrabilidad()
+                    ? { texto: 'Reglas de maniobrabilidad', alPulsar: (evento: Event) => this.abrirInfoManiobrabilidad(evento) }
+                    : null,
+            },
+        ];
     }
 
-    getConjurosVisibles() {
-        return (this.pj?.Conjuros ?? []).filter(c => this.tieneTextoVisible(c?.Nombre));
+    private calcularCaracteristicas(): CasillaFicha[] {
+        if (!this.tieneCaracteristicasVisibles())
+            return [];
+        return CARACTERISTICAS.map((clave: Caracteristica) => {
+            const nombre = NOMBRES_CARACTERISTICAS[clave];
+            if (this.tieneCaracteristicaPerdida(clave))
+                return { abreviatura: abreviaturaCaracteristica(clave), nombre, valor: '—', detalle: 'Perdida', aviso: true, texto: `${nombre} perdida` };
+            const valor = toNumber((this.pj as any)[clave]);
+            const modificador = textoConSigno(toNumber((this.pj as any)[`Mod${clave}`]));
+            return { abreviatura: abreviaturaCaracteristica(clave), nombre, valor: `${valor}`, modificador, texto: `${nombre} ${valor} (${modificador})` };
+        });
     }
 
-    getSortilegasVisibles() {
-        return (this.pj?.Sortilegas ?? []).filter(s => this.tieneTextoVisible(s?.Conjuro?.Nombre));
+    private calcularCasillasSalvaciones(): CasillaFicha[] {
+        return this.salvacionesVisibles.map((s) => {
+            const detalle = [
+                `clase ${textoConSigno(s.clase)}`,
+                s.varios !== 0 ? `varios ${textoConSigno(s.varios)}` : '',
+                s.equipo !== 0 ? `equipo ${textoConSigno(s.equipo)}` : '',
+            ].filter(Boolean).join(' · ');
+            return {
+                abreviatura: s.nombre.toUpperCase(),
+                nombre: s.nombre,
+                valor: textoConSigno(s.total),
+                detalle,
+                ayuda: s.desglose,
+                texto: `${s.nombre} ${textoConSigno(s.total)}`,
+                secundaria: true,
+            };
+        });
     }
 
-    getFamiliaresVisibles(): FamiliarMonstruoDetalle[] {
-        return toArray((this.pj as any)?.Familiares)
-            .map((item) => item as FamiliarMonstruoDetalle)
-            .filter((familiar) => toNumber((familiar as any)?.Id) > 0 && this.tieneTextoVisible(familiar?.Nombre))
-            .sort(porNombre);
+    private calcularDefensa(): FilaPares[] {
+        const pj = this.pj;
+        const defensa = pj.Defensa;
+        const enLinea = (texto: string) => texto.replace(/\n/g, ' · ');
+        const filas: FilaPares[] = [];
+        if (this.positivo(pj.Ca))
+            filas.push({ nombre: 'Clase de armadura', valor: `${toNumber(pj.Ca)}`, nota: enLinea(this.caDisclaimer) });
+        if (!defensa)
+            return filas;
+        filas.push(
+            { nombre: 'Toque', valor: `${defensa.toque.total}`, nota: textoDesglose(defensa.toque, ' · ') },
+            { nombre: 'Desprevenido', valor: `${defensa.desprevenido.total}`, nota: textoDesglose(defensa.desprevenido, ' · ') },
+        );
+        if (this.llevaArmaduraPuesta) {
+            filas.push({ nombre: 'Destreza máxima', valor: textoDestrezaMaxima(defensa.destrezaMaxima), nota: 'La menor de la armadura y el escudo que lleva puestos' });
+            if (toNumber(defensa.penalizadorArmadura) !== 0)
+                filas.push({ nombre: 'Penalizador de armadura', valor: `${defensa.penalizadorArmadura}` });
+            if (toNumber(defensa.falloConjuroArcano) !== 0)
+                filas.push({ nombre: 'Fallo de conjuro arcano', valor: `${defensa.falloConjuroArcano}%` });
+        }
+        return filas;
     }
 
-    getCompanerosVisibles(): CompaneroMonstruoDetalle[] {
-        return toArray((this.pj as any)?.Companeros)
-            .map((item) => item as CompaneroMonstruoDetalle)
-            .filter((companero) => toNumber((companero as any)?.Id) > 0 && this.tieneTextoVisible(companero?.Nombre))
-            .sort(porNombre);
+    private calcularPresaIniciativa(): FilaPares[] {
+        const filas: FilaPares[] = [];
+        const franjaIniciativa = !this.esPreviewNuevoPersonaje || this.tieneCaracteristicasParaPreview() || this.iniciativa !== '+0';
+        if (franjaIniciativa)
+            filas.push({ nombre: 'Iniciativa', valor: this.iniciativa, nota: this.iniciativaDesglose.replace(/\n/g, ' · ') });
+        if (this.presaDisponible)
+            filas.push({ nombre: 'Presa', valor: this.presa, nota: this.presaDesglose.replace(/\n/g, ' · ') });
+        return filas;
     }
 
-    tieneCompaniaMonstruoVisible(): boolean {
-        return this.getFamiliaresVisibles().length > 0 || this.getCompanerosVisibles().length > 0;
+    private calcularHabilidades(): Pick<ModeloFicha, 'habilidades' | 'habilidadesConRangos' | 'verHabilidades'> {
+        const todas = (this.pj.Habilidades ?? []).filter((h) => this.esVisible(h?.Nombre));
+        const fila = (h: Personaje['Habilidades'][number]): HabilidadFila => {
+            const extra = this.getExtraVisibleHabilidad(h);
+            return {
+                nombre: h.Nombre.trim() + (tieneTextoVisible(extra) ? ` (${extra})` : ''),
+                car: `${h.Car ?? ''}`.trim().slice(0, 3),
+                rangos: toNumber(h.Rangos) + toNumber(h.Rangos_varios),
+                total: textoConSigno(totalHabilidad(h)),
+                nota: [h.Clasea ? 'de clase' : '', this.texto(h.Varios)].filter(Boolean).join(' · '),
+            };
+        };
+        const habilidades = todas.map(fila);
+        const habilidadesConRangos = todas
+            .filter((h) => toNumber(h.Rangos) + toNumber(h.Rangos_varios) > 0 || this.esVisible(h.Varios))
+            .map(fila);
+        return {
+            habilidades,
+            habilidadesConRangos,
+            // En la vista previa solo se enseñan si ya tiene rangos en alguna; en la ficha, también para ver todas.
+            verHabilidades: habilidadesConRangos.length > 0 || (!this.esPreviewNuevoPersonaje && habilidades.length > 0),
+        };
     }
 
-    getRasgosTipoVisibles() {
-        return (this.pj?.Tipo_criatura?.Rasgos ?? []).filter(r => this.tieneTextoVisible(r?.Nombre));
+    private detallePlantilla(p: any): string {
+        return [
+            toNumber(p?.Multiplicador_dgs_lic) > 0 ? `${toNumber(p.Multiplicador_dgs_lic)}${`${p?.Tipo_dgs_lic ?? ''}`.trim()} DG adicionales` : '',
+            toNumber(p?.Suma_dgs_lic) > 0 ? `+${toNumber(p.Suma_dgs_lic)} PG` : '',
+            toNumber(p?.Ajuste_nivel) > 0 ? `ajuste de nivel +${toNumber(p.Ajuste_nivel)}` : '',
+            p?.Heredada ? 'heredada' : 'adquirida',
+        ].filter(Boolean).join(' · ');
     }
 
-    getVentajasVisibles(): VentajaVisible[] {
-        return (this.pj?.Ventajas ?? [])
-            .map((ventaja) => {
-                if (typeof ventaja === 'string') {
-                    return {
-                        nombre: ventaja.trim(),
-                    };
-                }
-
-                return {
-                    nombre: `${ventaja?.Nombre ?? ''}`.trim(),
-                    origen: `${ventaja?.Origen ?? ''}`.trim() || undefined,
-                };
-            })
-            .filter((v) => this.tieneTextoVisible(v.nombre));
+    private calcularMagia(): DatoFicha[] {
+        const pj = this.pj;
+        const prohibidas = this.getEscuelasProhibidasVisibles();
+        return [
+            { etiqueta: 'Escuela especialista', valor: this.tieneEscuelaEspecialista() ? this.texto(pj.Escuela_especialista?.Nombre) || null : null },
+            { etiqueta: 'Escuelas prohibidas', valor: prohibidas.join(', ') || null },
+            {
+                etiqueta: 'Disciplina especialista',
+                valor: this.esVisible(pj.Disciplina_especialista?.Nombre)
+                    ? this.texto(pj.Disciplina_especialista.Calificativo) || this.texto(pj.Disciplina_especialista.Nombre)
+                    : null,
+            },
+            { etiqueta: 'Disciplina prohibida', valor: this.texto(pj.Disciplina_prohibida) || null },
+            { etiqueta: 'Dominios', valor: this.getDominiosVisibles().join(', ') || null },
+        ];
     }
 
-    getOrigenRasgoTipo(rasgo: Rasgo): string | null {
-        const origen = `${rasgo?.Origen ?? ''}`.trim();
-        if (this.tieneTextoVisible(origen))
-            return origen;
-
-        const origenTipo = `${this.pj?.Tipo_criatura?.Nombre ?? ''}`.trim();
-        if (this.tieneTextoVisible(origenTipo))
-            return origenTipo;
-
-        return null;
+    private calcularSortilegas(): EntradaLista<AptitudSortilega>[] {
+        const fuente = (this.pj.Sortilegas ?? []).filter((s) => this.esVisible(s?.Conjuro?.Nombre));
+        const lineas = sortilegasVisibles(fuente.map((s) => ({ ...s, Dg: s.Dgs_necesarios })));
+        return fuente.map((s, i) => ({
+            texto: lineas[i]?.nombre ?? `${s.Conjuro.Nombre}`.trim(),
+            nota: [lineas[i]?.detalle ?? '', this.texto(s.Descripcion)].filter(Boolean).join(' · '),
+            ayuda: this.texto(s.Origen) ? `Origen: ${s.Origen.trim()}` : '',
+            clave: `${s.Conjuro.Id ?? ''}`,
+            ref: s,
+        }));
     }
 
-    getOrigenRacial(racial: RacialReferencia): string | null {
-        const origen = `${racial?.origen ?? ''}`.trim();
-        return this.tieneTextoVisible(origen) ? origen : null;
+    private calcularEquipo(): Pick<ModeloFicha, 'piezas' | 'equipo' | 'carga' | 'modificadoresEquipo' | 'sinEquipo'> {
+        const pj = this.pj;
+        const piezas = this.piezasEquipo;
+        const cargaVisible = (valor: unknown) => this.tieneCaracteristicasParaPreview()
+            ? Number.isFinite(Number(valor))
+            : this.positivo(valor);
+        const kg = (lb: number) => formatoNumero(Math.round(lb * 0.453592 * 100) / 100);
+        const ligera = toNumber(pj.Capacidad_carga?.Ligera);
+        const media = toNumber(pj.Capacidad_carga?.Media);
+        const pesada = toNumber(pj.Capacidad_carga?.Pesada);
+        return {
+            piezas: piezas.map((pieza) => ({
+                texto: nombreConCantidad(pieza),
+                nota: [textoEquipadoPieza(pieza), ...detallesPiezaEquipo(pieza)].filter(Boolean).join(' · '),
+                ayuda: this.texto(pieza.notas),
+            })),
+            equipo: [
+                { etiqueta: 'Peso total', valor: piezas.length > 0 ? textoPeso(pj.PesoEquipo ?? 0) : null, ayuda: 'El peso de todo lo que lleva' },
+                {
+                    etiqueta: 'Dinero',
+                    valor: pj.Dinero ? textoPrecio(pj.Dinero.po ?? 0) : null,
+                    ayuda: pj.Dinero ? `Dinero inicial: ${textoPrecio(pj.Dinero.dineroInicial ?? 0)}` : null,
+                },
+            ],
+            carga: [
+                { etiqueta: 'Carga ligera', valor: cargaVisible(pj.Capacidad_carga?.Ligera) ? textoPeso(ligera) : null, ayuda: `${kg(ligera)} kg` },
+                { etiqueta: 'Carga media', valor: cargaVisible(pj.Capacidad_carga?.Media) ? textoPeso(media) : null, ayuda: `${kg(media)} kg` },
+                {
+                    etiqueta: 'Carga pesada',
+                    valor: cargaVisible(pj.Capacidad_carga?.Pesada) ? textoPeso(pesada) : null,
+                    ayuda: `${kg(pesada)} kg\nLevantar sobre la cabeza: ${textoPeso(pesada)}\nLevantar del suelo: ${textoPeso(pesada * 2)}\nEmpujar o arrastrar: ${textoPeso(pesada * 5)}`,
+                },
+            ],
+            modificadoresEquipo: this.modificadoresEquipo.map((modificador) => ({
+                texto: textoModificadorEquipo(modificador),
+                nota: this.texto(modificador.origen),
+                ayuda: modificador.sumado ? 'Ya está sumado en la ficha' : 'Se enseña, pero la ficha aún no lo suma',
+            })),
+            sinEquipo: !this.esPreviewNuevoPersonaje && piezas.length < 1,
+        };
     }
 
-    getOrigenDote(dote: DoteLegacy): string | null {
-        const origen = `${dote?.Origen ?? ''}`.trim();
-        return this.tieneTextoVisible(origen) ? origen : null;
+    private monstruosVisibles(lista: unknown): EntradaLista<MonstruoDetalle>[] {
+        return toArray(lista)
+            .map((item) => item as MonstruoDetalle)
+            .filter((monstruo) => toNumber(monstruo?.Id) > 0 && this.esVisible(monstruo?.Nombre))
+            .sort(porNombre)
+            .map((monstruo) => ({ texto: `${monstruo.Nombre}`.trim(), clave: `${monstruo.Id}`, ref: monstruo }));
     }
 
-    usaLayoutPreviewReordenado(): boolean {
-        return this.esPreviewNuevoPersonaje && !this.modoCompactoLayout;
+    private calcularPestanas(m: ModeloFicha): ModeloFicha['pestanas'] {
+        const hay = (...listas: unknown[][]) => listas.some((lista) => lista.length > 0);
+        const visibles: Record<PestanaFicha, boolean> = {
+            combate: true,
+            habilidades: m.verHabilidades,
+            capacidades: hay(m.dotes, m.aptitudes, m.raciales, m.rasgosTipo, m.plantillas, m.ventajas, m.idiomas, m.familiares, m.companeros),
+            magia: hay(m.magia.filter((dato) => dato.valor !== null), m.lanzadores, m.conjuros, m.sortilegas),
+            equipo: hay(m.piezas, m.equipo.filter((dato) => dato.valor !== null), m.carga.filter((dato) => dato.valor !== null), m.modificadoresEquipo) || m.sinEquipo,
+            historia: true,
+        };
+        return (Object.keys(NOMBRES_PESTANAS) as PestanaFicha[])
+            .filter((id) => visibles[id])
+            .map((id) => ({ id, nombre: NOMBRES_PESTANAS[id] }));
     }
 
-    getOrigenIdioma(idioma: { Origen?: string; }): string | null {
-        const origen = `${idioma?.Origen ?? ''}`.trim();
-        return this.tieneTextoVisible(origen) ? origen : null;
-    }
-
-    getOrigenVentaja(ventaja: VentajaVisible): string | null {
-        const origen = `${this.normalizarVentajaReferencia(ventaja).origen ?? ''}`.trim();
-        return this.tieneTextoVisible(origen) ? origen : null;
-    }
-
-    esVentajaConEstiloWarm(ventaja: VentajaVisible): boolean {
-        const origen = normalizarTexto(`${this.normalizarVentajaReferencia(ventaja).origen ?? ''}`);
-        return origen === 'ventaja';
-    }
+    // Salidas: los enlaces a otros detalles
 
     @Output() ventajaDetallesPorNombre: EventEmitter<{ nombre: string; origen?: string; }> = new EventEmitter<{ nombre: string; origen?: string; }>();
     verDetallesVentajaPorNombre(ventaja: VentajaVisible): void {
         const referencia = this.normalizarVentajaReferencia(ventaja);
         const nombre = `${referencia.nombre ?? ''}`.trim();
-        if (!this.tieneTextoVisible(nombre))
+        if (!this.esVisible(nombre))
             return;
-
-        const origen = `${referencia.origen ?? ''}`.trim();
-        this.ventajaDetallesPorNombre.emit({
-            nombre,
-            origen: this.tieneTextoVisible(origen) ? origen : undefined,
-        });
+        this.ventajaDetallesPorNombre.emit({ nombre, origen: referencia.origen });
     }
 
     @Output() deidadDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
     verDetallesDeidadPorNombre(nombreDeidad: string): void {
         const nombre = `${nombreDeidad ?? ''}`.trim();
-        if (!this.tieneTextoVisible(nombre))
-            return;
-        this.deidadDetallesPorNombre.emit(nombre);
-    }
-
-    private normalizarVentajaReferencia(ventaja: VentajaVisible): VentajaReferenciaNormalizada {
-        const origenRaw = `${ventaja?.origen ?? ''}`.trim();
-        const nombreRaw = `${ventaja?.nombre ?? ''}`.trim();
-        if (nombreRaw.length < 1) {
-            return {
-                nombre: '',
-                origen: this.tieneTextoVisible(origenRaw) ? origenRaw : undefined,
-            };
-        }
-
-        const origenExplicitoNormalizado = normalizarTexto(origenRaw);
-        if (origenExplicitoNormalizado === 'ventaja' || origenExplicitoNormalizado === 'desventaja') {
-            return {
-                nombre: nombreRaw,
-                origen: origenExplicitoNormalizado === 'ventaja' ? 'Ventaja' : 'Desventaja',
-            };
-        }
-
-        const prefijo = nombreRaw.match(/^\s*(ventaja|desventaja)\s*[:\-]\s*(.+)$/i);
-        if (prefijo) {
-            const origen = normalizarTexto(prefijo[1]) === 'ventaja' ? 'Ventaja' : 'Desventaja';
-            const nombre = `${prefijo[2] ?? ''}`.trim();
-            return { nombre, origen };
-        }
-
-        return {
-            nombre: nombreRaw,
-            origen: this.tieneTextoVisible(origenRaw) ? origenRaw : undefined,
-        };
+        if (this.esVisible(nombre))
+            this.deidadDetallesPorNombre.emit(nombre);
     }
 
     toDoteContextualFallback(dote: DoteLegacy): DoteContextual {
@@ -1262,13 +1475,9 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
             Nombre: dote.Nombre,
             Descripcion: dote.Descripcion,
             Beneficio: dote.Beneficio,
-            Normal: "",
-            Especial: "",
-            Manual: {
-                Id: 0,
-                Nombre: "Desconocido",
-                Pagina: dote.Pagina ?? 0,
-            },
+            Normal: '',
+            Especial: '',
+            Manual: { Id: 0, Nombre: 'Desconocido', Pagina: dote.Pagina ?? 0 },
             Tipos: [],
             Repetible: 0,
             Repetible_distinto_extra: 0,
@@ -1283,18 +1492,8 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
                 Extra_escuela: 0,
                 Extra_habilidad: 0,
             },
-            Extras_disponibles: {
-                Armas: [],
-                Armaduras: [],
-                Escuelas: [],
-                Habilidades: [],
-            },
-            Extras_de_todo_el_catalogo: {
-                Armas: false,
-                Armaduras: false,
-                Escuelas: false,
-                Habilidades: false,
-            },
+            Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] },
+            Extras_de_todo_el_catalogo: { Armas: false, Armaduras: false, Escuelas: false, Habilidades: false },
             Modificadores: {},
             Prerrequisitos: {},
         };
@@ -1313,27 +1512,19 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
     @Output() doteDetalles: EventEmitter<DoteContextual> = new EventEmitter<DoteContextual>();
     verDetallesDote(dote: DoteLegacy) {
-        if (this.pj.DotesContextuales && this.pj.DotesContextuales.length > 0) {
-            const contextual = this.pj.DotesContextuales.find(dc =>
-                dc.Dote.Nombre === dote.Nombre &&
-                (dc.Contexto.Extra ?? '') === (dote.Extra ?? '')
-            );
-            if (contextual) {
-                this.doteDetalles.emit(contextual);
-                return;
-            }
-        }
-        this.doteDetalles.emit(this.toDoteContextualFallback(dote));
+        const contextual = (this.pj.DotesContextuales ?? []).find((dc) =>
+            dc.Dote.Nombre === dote.Nombre && (dc.Contexto.Extra ?? '') === (dote.Extra ?? ''));
+        this.doteDetalles.emit(contextual ?? this.toDoteContextualFallback(dote));
     }
-    
+
     @Output() conjuroDetalles: EventEmitter<Conjuro> = new EventEmitter<Conjuro>();
     verDetallesConjuro(value: Conjuro) {
         this.conjuroDetalles.emit(value);
     }
-    
+
     @Output() sortilegaDetalles: EventEmitter<AptitudSortilega> = new EventEmitter<AptitudSortilega>();
     verDetallesSortilega(value: AptitudSortilega) {
-        if(this.pj.Sortilegas)
+        if (this.pj.Sortilegas)
             this.sortilegaDetalles.emit(value);
     }
 
@@ -1366,7 +1557,6 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
         const ownerUid = this.ownerUidNormalizado();
         if (ownerUid.length < 1 || !this.chipCreadorClickable)
             return;
-
         this.perfilPublicoDetalles.emit({
             uid: ownerUid,
             initialDisplayName: `${this.pj?.ownerDisplayName ?? ''}`.trim() || null,
@@ -1375,17 +1565,15 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
 
     @Output() especialDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
     verDetallesEspecialPorNombre(nombreEspecial: string) {
-        if (!this.tieneTextoVisible(nombreEspecial))
-            return;
-        this.especialDetallesPorNombre.emit(nombreEspecial.trim());
+        if (this.esVisible(nombreEspecial))
+            this.especialDetallesPorNombre.emit(nombreEspecial.trim());
     }
 
     @Output() racialDetallesPorNombre: EventEmitter<RacialReferencia> = new EventEmitter<RacialReferencia>();
     verDetallesRacialPorNombre(racial: RacialReferencia) {
         const nombreRacial = `${racial?.nombre ?? ''}`.trim();
-        if (!this.tieneTextoVisible(nombreRacial))
+        if (!this.esVisible(nombreRacial))
             return;
-
         this.racialDetallesPorNombre.emit({
             id: Number.isFinite(Number(racial?.id)) && Number(racial.id) > 0 ? Number(racial.id) : null,
             nombre: nombreRacial,
@@ -1395,38 +1583,25 @@ Fue/Des/Con: ${this.formatSigned(madurez.modFisico)} | Int/Sab/Car: ${this.forma
     @Output() plantillaDetalles: EventEmitter<{ id?: number | null; nombre: string; }> = new EventEmitter<{ id?: number | null; nombre: string; }>();
     verDetallesPlantilla(plantilla: any) {
         const nombre = `${plantilla?.Nombre ?? ''}`.trim();
-        if (!this.tieneTextoVisible(nombre))
+        if (!this.esVisible(nombre))
             return;
         const id = Number(plantilla?.Id);
-        this.plantillaDetalles.emit({
-            id: Number.isFinite(id) && id > 0 ? id : null,
-            nombre,
-        });
+        this.plantillaDetalles.emit({ id: Number.isFinite(id) && id > 0 ? id : null, nombre });
     }
 
     @Output() monstruoDetalles: EventEmitter<MonstruoDetalle> = new EventEmitter<MonstruoDetalle>();
     verDetallesMonstruo(monstruo: MonstruoDetalle): void {
         const id = toNumber(monstruo?.Id);
-        if (!Number.isFinite(id) || id <= 0)
-            return;
-        this.monstruoDetalles.emit(monstruo);
+        if (Number.isFinite(id) && id > 0)
+            this.monstruoDetalles.emit(monstruo);
     }
 
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
     verDetallesSubtipo(subtipo: SubtipoRef) {
         const nombre = `${subtipo?.Nombre ?? ''}`.trim();
-        if (!this.tieneTextoVisible(nombre))
+        if (!this.esVisible(nombre))
             return;
         const id = Number(subtipo?.Id);
-        this.subtipoDetalles.emit({
-            Id: Number.isFinite(id) && id > 0 ? id : null,
-            Nombre: nombre,
-        });
-    }
-
-    private actualizarModoCompacto(): void {
-        const contenedor = this.hostElement.nativeElement.querySelector('.detalle-view') as HTMLElement | null;
-        const width = (contenedor ?? this.hostElement.nativeElement).getBoundingClientRect().width;
-        this.modoCompactoLayout = width > 0 && width <= 900;
+        this.subtipoDetalles.emit({ Id: Number.isFinite(id) && id > 0 ? id : null, Nombre: nombre });
     }
 }

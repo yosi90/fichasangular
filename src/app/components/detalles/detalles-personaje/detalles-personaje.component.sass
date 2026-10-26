@@ -1,121 +1,165 @@
-@use '../../../../assets/css/preformas/_detalles' as *
+@use '../../../../assets/css/variables' as *
+@use '../ficha/ficha-tonos' as *
+
+// Lo propio de la ficha del personaje (lienzo aprobado: página continua y pestañas internas) que la ficha común
+// (`ficha/ficha.sass`) no tiene: el interruptor de vista, la colocación de cada vista y las pestañas internas. Usa los
+// tonos de la ficha (`ficha/_ficha-tonos.sass`).
+
+// El modal de la maniobrabilidad se coloca sobre la pantalla (position: absolute).
 :host
     display: block
     width: 100%
     position: relative
 
-#caracteristicas
-    display: grid
-    grid-template: repeat(6, 1fr) / repeat(3, 1fr)
+// Acciones de la cabecera: el interruptor, el PDF y, para el dueño, la visibilidad y el archivado.
+.personaje-acciones
+    display: flex
+    flex-wrap: wrap
     align-items: center
-    gap: 4px
+    justify-content: flex-end
+    gap: 10px
 
-    width: 100%
+.personaje-vista
+    display: inline-flex
+    border: 1px solid $accent
+    border-radius: 4px
+    overflow: hidden
 
-    mat-chip:first-child
-        display: flex
-        justify-content: center
-        grid-column: 1 / 4
-
-        width: 100%
-
-    mat-chip
-        justify-self: center
-        width: fit-content
-
-    p
-        text-align: center
-        margin: 0
-
-    .chip-caracteristica-perdida
-        grid-column: 2 / 4
-        width: 83%
-        margin: 0 23px
-        justify-self: stretch
-        text-align: center
-
-        ::ng-deep .mdc-evolution-chip__cell.mdc-evolution-chip__cell--primary
-            justify-content: center
-
-        ::ng-deep .mdc-evolution-chip__action
-            justify-content: center
-
-.detalle-view--compact
-    .detalle-col
-        flex: 0 0 100%
-        max-width: 100%
-
-    .mat-accordion
-        width: 100%
-
-.chip-origen
-    white-space: nowrap
-
-.chip-origen-pill
+.personaje-vista__boton, .personaje-boton
     display: inline-flex
     align-items: center
-    padding: 2px 10px
-    border-radius: 16px
-    background: rgba(35, 39, 47, 0.38)
-    border: 1px solid rgba(255, 255, 255, 0.2)
-    box-shadow: rgba(0, 0, 0, 0.12) 0px 1px .5px, rgba(0, 0, 0, 0.12) 0px 2px 1px
-    line-height: 1.25
-    font-size: 0.92em
+    gap: 6px
+    height: 34px
+    padding: 0 12px
+    border: 0
+    background: transparent
+    font: inherit
+    font-size: 14px
+    font-weight: 500
+    color: $accent
+    cursor: pointer
 
-.chip-habilidad-resumen
-    min-height: 32px
+    .mat-icon
+        width: 18px
+        height: 18px
+        font-size: 18px
+        line-height: 18px
 
-    ::ng-deep .mdc-evolution-chip__action
-        min-height: 32px
-        height: auto
+    &:hover
+        color: $ficha-blanco
 
-    ::ng-deep .mat-mdc-chip-action-label
-        display: inline-flex
-        align-items: center
-        flex-wrap: wrap
-        gap: 2px
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: -2px
 
-.chip-habilidad-varios
-    white-space: nowrap
+.personaje-vista__boton + .personaje-vista__boton
+    border-left: 1px solid $accent
 
-.chip-clase-resumen
-    min-height: 34px
+.personaje-vista__boton--activa
+    background: $active
+    color: $ficha-blanco
 
-    ::ng-deep .mdc-evolution-chip__action
-        min-height: 34px
-        height: auto
+.personaje-boton
+    border: 1px solid $accent
+    border-radius: 4px
+    color: $ficha-blanco
 
-    ::ng-deep .mat-mdc-chip-action-label
-        display: inline-flex
-        align-items: center
-        flex-wrap: wrap
-        gap: 4px
+.personaje-interruptor
+    font-size: 14px
 
-.chip-clase-titulo
-    font-weight: 400
+// Vista A: el cuerpo en dos columnas (2fr y 1fr) y las parejas de tarjetas.
+.personaje-cuerpo
+    display: grid
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr)
+    gap: $ficha-hueco
+    align-items: start
 
-.chip-clase-subinfo
-    background: rgba(255, 255, 255, 0.14)
-    border: 1px solid rgba(255, 255, 255, 0.22)
+.personaje-columna
+    display: flex
+    flex-direction: column
+    gap: $ficha-hueco
+    min-width: 0
 
-.chip-plantilla-subinfo
-    background-color: #505050
-    box-shadow: none
+.personaje-rejilla
+    display: grid
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr))
+    gap: $ficha-hueco
+    align-items: start
 
-.maniobrabilidad-chip
-    ::ng-deep .mat-mdc-chip-action-label
-        display: inline-flex
-        align-items: center
-        gap: 0.25rem
+    &:empty
+        display: none
 
-.maniobrabilidad-help-btn
-    width: 24px
-    height: 24px
-    padding: 0
-    margin-left: 0.15rem
-    color: inherit
+// Vista B: la franja y las características en una fila, las pestañas y su panel.
+.personaje-resumen
+    display: grid
+    grid-template-columns: minmax(0, 6fr) minmax(0, 4fr)
+    gap: 12px
+    align-items: stretch
 
-    mat-icon
-        width: 17px
-        height: 17px
-        font-size: 17px
+.personaje-pestanas
+    display: flex
+    flex-wrap: wrap
+    gap: 4px
+    border-bottom: 1px solid $ficha-separador
+
+.personaje-pestanas__pestana
+    height: 40px
+    padding: 0 18px
+    border: 0
+    border-bottom: 2px solid transparent
+    background: transparent
+    font: inherit
+    font-size: 15px
+    font-weight: 500
+    letter-spacing: .03em
+    color: $accent
+    cursor: pointer
+
+    &:hover
+        color: $ficha-blanco
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: -2px
+
+.personaje-pestanas__pestana--activa
+    border-bottom-color: $active
+    color: $ficha-blanco
+
+.personaje-panel
+    display: flex
+    flex-direction: column
+    gap: $ficha-hueco
+    min-width: 0
+
+// Piezas de los bloques
+.personaje-nota
+    margin-left: 6px
+    font-size: 12px
+    color: $font-base
+
+.personaje-total
+    font-weight: 700
+
+.personaje-ver-todas
+    align-self: flex-start
+    font-size: 14px
+
+.personaje-prosa
+    margin: 0
+    white-space: pre-line
+
+@container ficha (max-width: 1100px)
+    .personaje-resumen
+        grid-template-columns: minmax(0, 1fr)
+
+@container ficha (max-width: 900px)
+    .personaje-cuerpo
+        grid-template-columns: minmax(0, 1fr)
+
+@container ficha (max-width: 640px)
+    .personaje-acciones
+        justify-content: flex-start
+
+    .personaje-pestanas__pestana
+        padding: 0 12px
