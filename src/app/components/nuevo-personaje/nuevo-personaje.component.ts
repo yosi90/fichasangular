@@ -97,7 +97,10 @@ import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
-import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
+import { PlantillaEvaluacionResultado, esPlantillaLicantropa, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
+import { DEIDAD_SIN_SELECCION, esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
+import { incumpleAlineamientoDeidad } from 'src/app/services/utils/alineamiento-deidad';
+import { motivosHomebrewPersonaje } from 'src/app/services/utils/personaje-oficialidad';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
 import { GrupoRacialesOpcionales, SeleccionRacialesOpcionales, agruparRacialesPorOpcional, getClaveSeleccionRacial } from 'src/app/services/utils/racial-opcionales';
 import { RacialEvaluacionResultado, evaluarRacialParaSeleccion } from 'src/app/services/utils/racial-prerrequisitos';
@@ -351,7 +354,7 @@ export class NuevoPersonajeComponent {
         'Hermafrodita',
         'Sin genero',
     ];
-    readonly deidadSinSeleccion = 'No tener deidad';
+    readonly deidadSinSeleccion = DEIDAD_SIN_SELECCION;
     readonly tramaSinSeleccionCampana = 'Sin trama';
     readonly subtramaSinSeleccionCampana = 'Sin subtrama';
 
@@ -375,7 +378,21 @@ export class NuevoPersonajeComponent {
     private hardAlignmentOverrideConfirmed: boolean = false;
     catalogoVentajas: VentajaDetalle[] = [];
     catalogoDesventajas: VentajaDetalle[] = [];
-    catalogoIdiomas: IdiomaDetalle[] = [];
+    private catalogoIdiomasCompleto: IdiomaDetalle[] = [];
+
+    /**
+     * El catálogo de idiomas; al elegir los idiomas adicionales por Inteligencia, solo los que permiten la raza y las
+     * clases del personaje (MJ cap. 2). Las ventajas que dan un idioma siguen eligiendo de todo el catálogo.
+     */
+    get catalogoIdiomas(): IdiomaDetalle[] {
+        return this.contextoSelectorIdioma === 'idiomasIniciales'
+            ? this.nuevoPSvc.filtrarIdiomasAdicionalesPermitidos(this.catalogoIdiomasCompleto)
+            : this.catalogoIdiomasCompleto;
+    }
+
+    set catalogoIdiomas(idiomas: IdiomaDetalle[]) {
+        this.catalogoIdiomasCompleto = idiomas ?? [];
+    }
     catalogoArmas: ArmaDetalle[] = [];
     catalogoArmaduras: ArmaduraDetalle[] = [];
     catalogoGruposArmas: GrupoCompetencia[] = [];
@@ -1245,7 +1262,7 @@ export class NuevoPersonajeComponent {
 
     get deidadSeleccionadaDetalle(): DeidadDetalle | null {
         const nombreNorm = normalizarTexto(this.Personaje.Deidad ?? '');
-        if (nombreNorm.length < 1 || nombreNorm === normalizarTexto(this.deidadSinSeleccion))
+        if (esSinDeidad(nombreNorm))
             return null;
         return this.catalogoDeidades.find((deidad) => normalizarTexto(deidad?.Nombre ?? '') === nombreNorm) ?? null;
     }
@@ -1360,8 +1377,7 @@ export class NuevoPersonajeComponent {
     }
 
     private esDeidadVaciaONeutra(): boolean {
-        const deidad = normalizarTexto(this.Personaje.Deidad ?? '');
-        return deidad.length < 1 || deidad === normalizarTexto(this.deidadSinSeleccion);
+        return esSinDeidad(this.Personaje.Deidad);
     }
 
     private esDeidadOficial(): boolean {
@@ -1550,24 +1566,6 @@ export class NuevoPersonajeComponent {
         return `Has elegido ${this.Personaje.Alineamiento}, mientras que tu raza suele exigir ${evaluacion.requerido}. Con esta combinación estarías creando un caso extremadamente inusual (aprox. 1 entre un millón).`;
     }
 
-    private getConflictoDuroDeidad(): ConflictoDuroAlineamiento | null {
-        if (this.esDeidadVaciaONeutra()) {
-            return null;
-        }
-        const alineamientoDeidad = this.getAlineamientoDeidad();
-        if (!alineamientoDeidad) {
-            return null;
-        }
-        const distancia = this.distanciaAlineamiento(this.Personaje.Alineamiento, alineamientoDeidad);
-        if (distancia === null || distancia < 2) {
-            return null;
-        }
-        return {
-            origen: 'deidad',
-            elegido: this.Personaje.Alineamiento,
-            requerido: alineamientoDeidad,
-        };
-    }
 
     private evaluarInconsistenciasBasicos(): EvaluacionInconsistenciasBasicos {
         const previewWarnings: string[] = [];
@@ -1599,10 +1597,8 @@ export class NuevoPersonajeComponent {
             previewWarnings.push(advertenciaRaza);
         }
 
-        const conflictoDeidad = this.getConflictoDuroDeidad();
-        if (conflictoDeidad) {
-            hardConflicts.push(conflictoDeidad);
-        }
+        // La deidad solo limita el alineamiento de las clases que tienen esa regla (`Alineamiento_deidad`, el clérigo):
+        // se comprueba al elegir la clase (`evaluarCompatibilidadAlineamientoClase`), no aquí para todos.
 
         return {
             previewWarnings,
@@ -1622,25 +1618,31 @@ export class NuevoPersonajeComponent {
         return [...evaluacion.previewWarnings, ...hard, ...evaluacion.otherOfficialBlockers];
     }
 
+    /**
+     * Si el personaje es oficial (decisión del propietario del 2026-10-17): ningún elemento homebrew (raza, raza base,
+     * clases, plantillas, dotes, raciales, idiomas, familiar, compañero, ventajas; `motivosHomebrewPersonaje`) y ninguna
+     * restricción saltada (alineamiento, edad, peso, altura, deidad). Se recalcula entero cada vez, así que todo lo que lo
+     * vuelve homebrew tiene que estar aquí (antes, una dote o una plantilla homebrew no contaba y el recálculo lo volvía
+     * oficial).
+     */
     recalcularOficialidad(): void {
-        const razaEsOficial = !this.razaSeleccionada || this.razaSeleccionada.Oficial === true;
         const evaluacion = this.evaluarInconsistenciasBasicos();
         const tieneConflictoDuroConfirmado = evaluacion.hardConflicts.length > 0 && this.hardAlignmentOverrideConfirmed;
-        const tieneClaseHomebrew = (this.Personaje?.desgloseClases ?? []).some((entrada) => {
-            const nombre = `${entrada?.Nombre ?? ''}`.trim();
-            if (nombre.length < 1)
-                return false;
-            const claseCatalogo = this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(nombre));
-            return claseCatalogo?.Oficial === false;
-        }) || this.homebrewPorClaseAplicada;
-        const tieneVentajasODesventajas = this.flujoVentajas.seleccionVentajas.length > 0
-            || this.flujoVentajas.seleccionDesventajas.length > 0;
-        this.Personaje.Oficial = razaEsOficial
+        const clases = (this.Personaje?.desgloseClases ?? [])
+            .map((entrada) => this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(entrada?.Nombre ?? '')))
+            .filter((clase): clase is Clase => !!clase);
+        const motivosHomebrew = motivosHomebrewPersonaje(this.Personaje, {
+            raza: this.razaSeleccionada,
+            razaBase: this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
+            clases,
+            plantillas: this.plantillasSeleccionadas,
+            tieneVentajas: this.flujoVentajas.seleccionVentajas.length > 0 || this.flujoVentajas.seleccionDesventajas.length > 0,
+        });
+        this.Personaje.Oficial = motivosHomebrew.length === 0
             && evaluacion.otherOfficialBlockers.length === 0
             && !tieneConflictoDuroConfirmado
             && !this.hardAlignmentClassOverrideConfirmed
-            && !tieneClaseHomebrew
-            && !tieneVentajasODesventajas;
+            && !this.homebrewPorClaseAplicada;
         this.refreshBasicosDerivedState(evaluacion);
     }
 
@@ -4165,6 +4167,8 @@ export class NuevoPersonajeComponent {
 
             if (!this.finalizacionState.sqlOk) {
                 etapa = 'sql';
+                // Con todo ya elegido (dotes, idiomas, familiar…), la oficialidad final antes de guardar.
+                this.recalcularOficialidad();
                 const contextoIds = this.resolverContextoIdsCreacion();
                 const contextoCreacionCampana = this.buildCampaignCreationContextForApi();
                 const payload = this.personajeSvc.construirPayloadCreacionDesdePersonaje(
@@ -4442,7 +4446,7 @@ export class NuevoPersonajeComponent {
 
     private resolverIdDeidadCreacion(): number {
         const deidadNorm = normalizarTexto(this.Personaje?.Deidad ?? '');
-        if (deidadNorm.length < 1 || deidadNorm === normalizarTexto(this.deidadSinSeleccion))
+        if (esSinDeidad(deidadNorm))
             return 0;
         const encontrada = (this.catalogoDeidades ?? [])
             .find((item) => normalizarTexto(item?.Nombre ?? '') === deidadNorm);
@@ -6895,7 +6899,11 @@ export class NuevoPersonajeComponent {
         else if (this.esTextoAlineamientoConContenido(moral))
             advertenciasParser.push(`No se interpretó la restricción moral: "${moral}"`);
 
-        if (reglas.length < 1) {
+        // MJ cap. 3: el clérigo (las clases con `Alineamiento_deidad`), a un paso de su deidad y neutral solo si ella lo es.
+        const motivoDeidad = clase?.Alineamiento_deidad === true
+            ? incumpleAlineamientoDeidad(this.Personaje.Alineamiento ?? '', this.deidadSeleccionadaDetalle)
+            : null;
+        if (reglas.length < 1 && !motivoDeidad) {
             const tooltip = advertenciasParser.length > 0
                 ? advertenciasParser.join(' | ')
                 : 'La clase no impone una restricción interpretable de alineamiento.';
@@ -6910,6 +6918,8 @@ export class NuevoPersonajeComponent {
         }
 
         const incompatibilidades: string[] = [];
+        if (motivoDeidad)
+            incompatibilidades.push(motivoDeidad);
         reglas.forEach((regla) => {
             if (regla.eje === 'basico') {
                 const valor = regla.valor as { ley: number; moral: number; };
@@ -6930,18 +6940,26 @@ export class NuevoPersonajeComponent {
                 incompatibilidades.push(`Prohíbe ${regla.texto}`);
         });
 
-        const prioridad = Number(alineamientoClase?.Prioridad?.Id_prioridad ?? 0) || 0;
+        // La regla de la deidad no se puede saltar sin volver homebrew el personaje (prioridad «siempre»), ni una
+        // preferencia «Siempre …» o «Nunca …» aunque la clase no traiga la prioridad.
+        const preferenciaDura = [basico, ley, moral].some((texto) => {
+            const normalizado = normalizarTexto(texto);
+            return (normalizado.includes('siempre') || normalizado.includes('nunca')) && !normalizado.includes('casi');
+        });
+        const prioridad = motivoDeidad || preferenciaDura ? 3 : (Number(alineamientoClase?.Prioridad?.Id_prioridad ?? 0) || 0);
         if (incompatibilidades.length > 0) {
             const mensajes = [
                 ...incompatibilidades,
                 ...advertenciasParser,
             ];
+            // Solo una restricción «siempre» obliga a confirmar y vuelve homebrew el personaje; una preferencia («casi
+            // siempre», prioridad menor) se avisa en el tooltip sin más (auditoría de la matriz, 2026-10-26).
             return {
                 estado: 'incompatible',
                 etiqueta: 'Incompatible',
                 tooltip: mensajes.join(' | '),
                 prioridad,
-                requiereConfirmacion: true,
+                requiereConfirmacion: prioridad >= 3,
                 marcaHomebrew: prioridad >= 3,
             };
         }
@@ -7183,13 +7201,14 @@ export class NuevoPersonajeComponent {
             tamanoRazaId: Number(raza.Tamano?.Id ?? 0),
             tiposCriaturaMiembroIds: identidadCriaturaActualIds,
             tipoCriaturaActualId,
-            razaHeredada: this.flujo.plantillas.heredadaActiva === true,
             incluirHomebrew,
             seleccionadas: this.plantillasSeleccionadas.map((plantilla) => ({
                 Id: Number(plantilla.Id),
                 Nombre: plantilla.Nombre,
                 Nacimiento: !!plantilla.Nacimiento,
+                Licantropia: esPlantillaLicantropa(plantilla),
             })),
+            ...this.nuevoPSvc.getContextoRequisitosPlantillas(),
         };
     }
 }

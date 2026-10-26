@@ -1755,19 +1755,32 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalCaracteristicasAbierto).toBeFalse();
     });
 
-    it('continuarDesdeBasicos con deidad incompatible marca homebrew al confirmar', async () => {
+    it('continuarDesdeBasicos no exige el alineamiento de la deidad a todos (MJ cap. 3: un guerrero LB de Gruumsh sigue siendo oficial)', async () => {
         component.Personaje.Alineamiento = 'Legal bueno';
         component.Personaje.Deidad = 'Gruumsh';
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
         await component.continuarDesdeBasicos();
 
-        expect(swalSpy).toHaveBeenCalledTimes(1);
-        const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
-        expect(`${swalConfig.html ?? ''}`).toContain('Regla dura de alineamiento');
-        expect(`${swalConfig.html ?? ''}`).toContain('tu deidad exige');
-        expect(component.Personaje.Oficial).toBeFalse();
+        expect(swalSpy).not.toHaveBeenCalled();
+        expect(component.Personaje.Oficial).toBeTrue();
         expect(component.modalCaracteristicasAbierto).toBeTrue();
+    });
+
+    it('la regla de la deidad solo la tienen las clases con Alineamiento_deidad (el clérigo): LB de Gruumsh, incompatible y homebrew', () => {
+        component.Personaje.Alineamiento = 'Legal bueno';
+        component.Personaje.Deidad = 'Gruumsh';
+        const guerrero = crearClaseMock({ Id: 7, Nombre: 'Guerrero' });
+        const clerigo = crearClaseMock({ Id: 4, Nombre: 'Clérigo', Alineamiento_deidad: true });
+
+        const compatGuerrero = (component as any).evaluarCompatibilidadAlineamientoClase(guerrero);
+        const compatClerigo = (component as any).evaluarCompatibilidadAlineamientoClase(clerigo);
+
+        expect(compatGuerrero.estado).toBe('compatible');
+        expect(compatClerigo.estado).toBe('incompatible');
+        expect(compatClerigo.requiereConfirmacion).toBeTrue();
+        expect(compatClerigo.marcaHomebrew).toBeTrue();
+        expect(compatClerigo.tooltip).toContain('Gruumsh');
     });
 
     it('continuarDesdeBasicos bloquea si la campaña prohíbe todo el homebrew y la raza ya es homebrew', async () => {
@@ -1902,7 +1915,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalCaracteristicasAbierto).toBeTrue();
     });
 
-    it('continuarDesdeBasicos usa swal combinado cuando coinciden advertencia de raza e impacto de deidad', async () => {
+    it('continuarDesdeBasicos avisa de la raza y no de la deidad (la deidad se comprueba con la clase que tenga esa regla)', async () => {
         component.seleccionarRaza(crearRazaConPrioridadNoDura());
         component.Personaje.Alineamiento = 'Caotico maligno';
         component.Personaje.Deidad = 'Heironeous';
@@ -1912,9 +1925,8 @@ describe('NuevoPersonajeComponent', () => {
 
         expect(swalSpy).toHaveBeenCalledTimes(1);
         const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
-        expect(`${swalConfig.html ?? ''}`).toContain('Regla dura de alineamiento');
         expect(`${swalConfig.html ?? ''}`).toContain('tu raza suele exigir');
-        expect(`${swalConfig.html ?? ''}`).toContain('tu deidad exige');
+        expect(`${swalConfig.html ?? ''}`).not.toContain('tu deidad exige');
         expect(`${swalConfig.html ?? ''}`).toContain('1 entre un millón');
     });
 

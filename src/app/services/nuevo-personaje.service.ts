@@ -1068,6 +1068,42 @@ export class NuevoPersonajeService {
         return { selecciones };
     }
 
+    /**
+     * Lo que piden los requisitos de las plantillas además de las características y el tipo: los niveles de clase que ya
+     * tiene (las de nacimiento, solo antes del primero), su nivel de lanzador arcano o divino más alto y sus dotes (el
+     * liche, MM 1: lanzador de nivel 11 con Fabricar objeto maravilloso).
+     */
+    getContextoRequisitosPlantillas(): { nivelesClase: number; nivelLanzador: number; dotes: { id: number | null; nombre: string; }[]; } {
+        const dotes = [
+            ...(this.personajeCreacion?.DotesContextuales ?? []).map((item) => ({
+                id: toNumber(item?.Dote?.Id) > 0 ? toNumber(item?.Dote?.Id) : null,
+                nombre: `${item?.Dote?.Nombre ?? ''}`.trim(),
+            })),
+            ...(this.personajeCreacion?.Dotes ?? []).map((item) => ({ id: null, nombre: `${item?.Nombre ?? ''}`.trim() })),
+        ].filter((dote) => dote.id !== null || dote.nombre.length > 0);
+        return {
+            nivelesClase: Math.max(0, this.getNivelClasesActual()),
+            nivelLanzador: Math.max(this.resolverNivelLanzadorMaximoPorTipo('arcano'), this.resolverNivelLanzadorMaximoPorTipo('divino')),
+            dotes,
+        };
+    }
+
+    /**
+     * Los idiomas adicionales por Inteligencia que puede elegir (MJ cap. 2): cualquiera no secreto si su raza lo permite
+     * (`Idiomas_adicionales_cualquiera`, el humano); si no, los de la lista de su raza más los que añaden sus clases
+     * (clérigo: abisal, celestial e infernal; druida: silvano; mago: dracónico).
+     */
+    filtrarIdiomasAdicionalesPermitidos(catalogo: IdiomaDetalle[]): IdiomaDetalle[] {
+        const raza = this.razaSeleccionada;
+        if (!raza || raza.Idiomas_adicionales_cualquiera !== false)
+            return catalogo;
+        const permitidos = new Set<number>((raza.Idiomas_adicionales ?? []).map((idioma) => toNumber(idioma?.Id)));
+        (this.personajeCreacion?.desgloseClases ?? []).forEach((entrada) =>
+            (this.obtenerClaseCatalogoPorNombre(entrada?.Nombre ?? '')?.Idiomas_adicionales ?? [])
+                .forEach((idioma) => permitidos.add(toNumber(idioma?.Id))));
+        return (catalogo ?? []).filter((idioma) => permitidos.has(toNumber(idioma?.Id)));
+    }
+
     getNivelesLanzadorPersistibles(): PersonajeNivelLanzadorResumen[] {
         return calcularNivelesLanzadorPersonaje(
             {
@@ -6652,9 +6688,9 @@ export class NuevoPersonajeService {
     }
 
     private obtenerDeidadSeleccionada(): DeidadDetalle | null {
-        const deidadNorm = normalizarTexto(this.personajeCreacion.Deidad ?? '');
-        if (deidadNorm.length < 1 || deidadNorm === normalizarTexto('No tener deidad'))
+        if (esSinDeidad(this.personajeCreacion.Deidad))
             return null;
+        const deidadNorm = normalizarTexto(this.personajeCreacion.Deidad ?? '');
         return this.catalogoDeidades.find((deidad) => normalizarTexto(deidad?.Nombre ?? '') === deidadNorm) ?? null;
     }
 
@@ -10240,7 +10276,7 @@ export class NuevoPersonajeService {
             CaracteristicasVarios: this.crearCaracteristicasVariosVacias(),
             NEP: 0,
             Experiencia: 0,
-            Deidad: 'No tener deidad',
+            Deidad: DEIDAD_SIN_SELECCION,
             Alineamiento: 'Neutral autentico',
             Genero: 'Sin genero',
             Vida: 0,
