@@ -9,9 +9,11 @@ import { toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 export function normalizeGrupoArma(raw: any): GrupoCompetencia {
+    const tipo = raw?.Tipo_arma;
     return {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
+        Tipo_arma: tipo && toNumber(tipo?.Id) > 0 ? { Id: toNumber(tipo.Id), Nombre: toText(tipo?.Nombre) } : null,
     };
 }
 

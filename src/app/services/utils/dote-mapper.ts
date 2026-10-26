@@ -1,4 +1,4 @@
-import { Dote, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteHabilidadOtorgada, DoteTipo } from "src/app/interfaces/dote";
+import { Dote, DoteCompetenciasOtorgadas, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteHabilidadOtorgada, DoteTipo } from "src/app/interfaces/dote";
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
 import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
@@ -98,6 +98,15 @@ function normalizePrerrequisitosLegacy(raw: any): { [key: string]: any[] } {
     return output;
 }
 
+/** Las armas y grupos de armas con los que da competencia la dote (`Competencias_otorgadas`). */
+function normalizeCompetenciasOtorgadas(raw: any): DoteCompetenciasOtorgadas {
+    const item = (valor: any) => ({ Id: toNumber(valor?.Id, 0), Nombre: toText(valor?.Nombre, "") });
+    return {
+        Armas: asArray(raw?.Armas).map((arma: any) => ({ ...item(arma), Arma_comodin: leerComodin(arma?.Arma_comodin) })),
+        Grupos_arma: asArray(raw?.Grupos_arma).map(item),
+    };
+}
+
 /** Las habilidades en las que da rangos la dote (`Habilidades_otorgadas`). */
 function normalizeHabilidadesOtorgadas(items: any[]): DoteHabilidadOtorgada[] {
     return items.map((item: any) => ({
@@ -150,6 +159,7 @@ export function normalizeDoteApi(raw: any): Dote {
         Extras_de_todo_el_catalogo: normalizeExtrasDeTodoElCatalogo(raw?.Extras_de_todo_el_catalogo),
         Modificadores: normalizeModificadores(raw?.Modificadores),
         Habilidades_otorgadas: normalizeHabilidadesOtorgadas(asStrictArray(raw?.Habilidades_otorgadas)),
+        Competencias_otorgadas: normalizeCompetenciasOtorgadas(raw?.Competencias_otorgadas),
         Prerrequisitos: normalizePrerrequisitosApi(raw?.Prerrequisitos),
     };
 }
@@ -195,6 +205,7 @@ export function normalizeDoteLegacy(raw: any): Dote {
         Extras_de_todo_el_catalogo: normalizeExtrasDeTodoElCatalogo(raw?.Extras_de_todo_el_catalogo),
         Modificadores: normalizeModificadores(raw?.Modificadores),
         Habilidades_otorgadas: normalizeHabilidadesOtorgadas(asArray(raw?.Habilidades_otorgadas)),
+        Competencias_otorgadas: normalizeCompetenciasOtorgadas(raw?.Competencias_otorgadas),
         Prerrequisitos: normalizePrerrequisitosLegacy(raw?.Prerrequisitos),
     };
 }

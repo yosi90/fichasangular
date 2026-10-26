@@ -48,6 +48,9 @@ export function normalizeDeidad(raw: any): DeidadDetalle {
         },
         Ambitos: normalizeAmbitos(raw?.Ambitos),
         Dominios: normalizeDominios(raw?.Dominios),
+        Alineamientos_devotos: toArray(raw?.Alineamientos_devotos)
+            .map((item: any) => ({ Id: toNumber(item?.Id), Nombre: toText(item?.Nombre) }))
+            .filter((item) => item.Id > 0),
         Oficial: toBoolean(raw?.Oficial),
     };
 }

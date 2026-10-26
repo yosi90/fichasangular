@@ -10,6 +10,14 @@ import { SubtipoRef } from "./subtipo";
 import { Tamano } from "./tamaño";
 import { TipoCriatura } from "./tipo_criatura";
 
+/** Las competencias de la raza, con la forma de las de la clase: cada elemento `{ Id, Nombre }`. */
+export interface RazaCompetencias {
+    Armas: { Id: number; Nombre: string; }[];
+    Armaduras: { Id: number; Nombre: string; }[];
+    Grupos_arma: { Id: number; Nombre: string; }[];
+    Grupos_armadura: { Id: number; Nombre: string; }[];
+}
+
 export interface RazaPrerrequisitosFlags {
     actitud_prohibido?: boolean;
     actitud_requerido?: boolean;
@@ -121,6 +129,15 @@ export interface Raza {
     Puntos_habilidad_extra_primer_nivel?: number;
     /** Puntos de habilidad extra de la raza en cada nivel siguiente (el humano: 1). */
     Puntos_habilidad_extra_por_nivel?: number;
+    /**
+     * Si los idiomas adicionales por Inteligencia pueden ser cualquiera no secreto (MJ cap. 2: humano y semielfo). Con
+     * `false`, solo los de `Idiomas_adicionales` más los de la clase. Sin dato (borradores antiguos), cualquiera.
+     */
+    Idiomas_adicionales_cualquiera?: boolean;
+    /** La lista de idiomas adicionales de la raza (el enano: gigante, gnomo, infracomún, orco, térraro y trasgo). */
+    Idiomas_adicionales?: IdiomaDetalle[];
+    /** Las armas, armaduras y grupos con los que la raza da competencia (como `Clase.Competencias`). */
+    Competencias?: RazaCompetencias;
     Reduccion_dano: string;
     Resistencia_magica: string;
     Resistencia_energia: string;

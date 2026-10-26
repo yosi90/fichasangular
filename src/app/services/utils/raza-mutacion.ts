@@ -4,6 +4,7 @@ import { Raza, RazaPrerrequisitos, RazaPrerrequisitosFlags } from "src/app/inter
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { AptitudSortilega } from "../../interfaces/aptitud-sortilega";
 import {
+    cumpleActitud,
     getAlineamientoBasicoIdPorNombre,
     getVectorDesdeNombreBasico,
     parseLeyDesdePreferencia,
@@ -163,26 +164,6 @@ function resolverGruposOpcionales(
     });
 }
 
-function cumpleActitud(actitudId: number, alineamientoBasicoId: number): boolean {
-    const esLegal = [1, 2, 3].includes(alineamientoBasicoId);
-    const esNeutralEje = [2, 4, 5, 6, 8].includes(alineamientoBasicoId);
-    const esCaotico = [7, 8, 9].includes(alineamientoBasicoId);
-    const esBueno = [1, 4, 7].includes(alineamientoBasicoId);
-    const esMaligno = [3, 6, 9].includes(alineamientoBasicoId);
-
-    if (actitudId === 1)
-        return esLegal;
-    if (actitudId === 2)
-        return esNeutralEje;
-    if (actitudId === 3)
-        return esCaotico;
-    if (actitudId === 4)
-        return esBueno;
-    if (actitudId === 5)
-        return esMaligno;
-
-    return false;
-}
 
 function parseActitudId(entry: Record<string, any>): number {
     const values = [
@@ -773,6 +754,18 @@ export function aplicarMutacion(base: Raza, mutada: Raza): Raza {
         toArray(mutadaClone?.Subtipos),
         normalizeSubtipoKey
     );
+    // Las competencias de las dos razas se suman; los idiomas adicionales, los de la mutada si tiene lista propia.
+    const claveRef = (item: any) => `${toNumber(item?.Id)}|${`${item?.Nombre ?? ''}`.trim().toLowerCase()}`;
+    resultado.Competencias = {
+        Armas: mergeByKey(toArray(baseClone?.Competencias?.Armas), toArray(mutadaClone?.Competencias?.Armas), claveRef),
+        Armaduras: mergeByKey(toArray(baseClone?.Competencias?.Armaduras), toArray(mutadaClone?.Competencias?.Armaduras), claveRef),
+        Grupos_arma: mergeByKey(toArray(baseClone?.Competencias?.Grupos_arma), toArray(mutadaClone?.Competencias?.Grupos_arma), claveRef),
+        Grupos_armadura: mergeByKey(toArray(baseClone?.Competencias?.Grupos_armadura), toArray(mutadaClone?.Competencias?.Grupos_armadura), claveRef),
+    };
+    if (mutadaClone?.Idiomas_adicionales_cualquiera === false) {
+        resultado.Idiomas_adicionales_cualquiera = false;
+        resultado.Idiomas_adicionales = toArray(mutadaClone?.Idiomas_adicionales);
+    }
 
     return resultado;
 }

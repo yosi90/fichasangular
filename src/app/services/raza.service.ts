@@ -9,7 +9,7 @@ import { environment } from 'src/environments/environment';
 import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { normalizeRazaApi } from './utils/raza-mapper';
+import { normalizarCompetenciasEIdiomasRaza, normalizeRazaApi } from './utils/raza-mapper';
 import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
@@ -273,6 +273,7 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
         Dotes_adicionales: toNumber(raw?.Dotes_adicionales),
         Puntos_habilidad_extra_primer_nivel: toNumber(raw?.Puntos_habilidad_extra_primer_nivel),
         Puntos_habilidad_extra_por_nivel: toNumber(raw?.Puntos_habilidad_extra_por_nivel),
+        ...normalizarCompetenciasEIdiomasRaza(raw),
         Reduccion_dano: `${raw?.Reduccion_dano ?? raw?.rd ?? ''}`,
         Resistencia_magica: `${raw?.Resistencia_magica ?? raw?.Resistencia_magia ?? raw?.rc ?? ''}`,
         Resistencia_energia: `${raw?.Resistencia_energia ?? raw?.re ?? ''}`,

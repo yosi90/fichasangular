@@ -218,11 +218,17 @@ export interface Clase {
     Es_predilecta: boolean;
     Prestigio: boolean;
     Tiene_prerrequisitos: boolean;
+    /** MJ cap. 3, monje y paladín: tras ganar un nivel de otra clase no puede volver a subir esta. */
+    Multiclase_restringida?: boolean;
+    /** MJ cap. 3, clérigo: su alineamiento, a un paso del de su deidad, y neutral solo si ella lo es. */
+    Alineamiento_deidad?: boolean;
     Alineamiento: Alineamiento;
     Oficial: boolean;
     Competencias: ClaseCompetencias;
     Habilidades: ClaseHabilidades;
     Idiomas: ClaseIdioma[];
+    /** Los que la clase añade a la lista de idiomas adicionales de la raza (MJ cap. 2: clérigo, druida y mago). */
+    Idiomas_adicionales?: Omit<ClaseIdioma, 'Descripcion'>[];
     Desglose_niveles: ClaseNivelDetalle[];
     Prerrequisitos_flags: ClasePrerrequisitosFlags;
     Prerrequisitos: ClasePrerrequisitos;

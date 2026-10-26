@@ -3,7 +3,7 @@ import { AptitudSortilega } from "src/app/interfaces/aptitud-sortilega";
 import { DoteContextual } from "src/app/interfaces/dote-contextual";
 import { IdiomaDetalle } from "src/app/interfaces/idioma";
 import { RacialDetalle } from "src/app/interfaces/racial";
-import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from "src/app/interfaces/raza";
+import { MutacionRaza, Raza, RazaCompetencias, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from "src/app/interfaces/raza";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizarTexto, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
@@ -155,6 +155,27 @@ function normalizeIdiomasApi(raw: any): IdiomaDetalle[] {
         .filter((item) => item.Nombre.trim().length > 0);
 }
 
+/**
+ * Lo que la raza aporta a las reglas de la creación (desde la auditoría del 2026-10-26): sus competencias y sus idiomas
+ * adicionales. Lo usan la lectura de la API y la de la caché (`Razas/{id}`), que guardan los campos con el mismo nombre.
+ */
+export function normalizarCompetenciasEIdiomasRaza(raw: any): Pick<Raza, 'Competencias' | 'Idiomas_adicionales' | 'Idiomas_adicionales_cualquiera'> {
+    const refs = (valor: any) => (Array.isArray(valor) ? valor : (valor && typeof valor === 'object' ? Object.values(valor) : []))
+        .map((item: any) => ({ Id: toNumber(item?.Id), Nombre: toText(item?.Nombre) }))
+        .filter((item) => item.Id > 0 || item.Nombre.trim().length > 0);
+    const competencias: RazaCompetencias = {
+        Armas: refs(raw?.Competencias?.Armas),
+        Armaduras: refs(raw?.Competencias?.Armaduras),
+        Grupos_arma: refs(raw?.Competencias?.Grupos_arma),
+        Grupos_armadura: refs(raw?.Competencias?.Grupos_armadura),
+    };
+    return {
+        Competencias: competencias,
+        Idiomas_adicionales: normalizeIdiomasApi(Array.isArray(raw?.Idiomas_adicionales) ? raw.Idiomas_adicionales : Object.values(raw?.Idiomas_adicionales ?? {})),
+        Idiomas_adicionales_cualquiera: toBoolean(raw?.Idiomas_adicionales_cualquiera ?? true),
+    };
+}
+
 function normalizeHabilidadesApi(raw: any): RazaHabilidades {
     const base = toStrictArray(raw?.Base)
         .map((item: any) => ({
@@ -282,6 +303,7 @@ export function normalizeRazaApi(raw: any): Raza {
         Dotes_adicionales: toNumber(raw?.Dotes_adicionales),
         Puntos_habilidad_extra_primer_nivel: toNumber(raw?.Puntos_habilidad_extra_primer_nivel),
         Puntos_habilidad_extra_por_nivel: toNumber(raw?.Puntos_habilidad_extra_por_nivel),
+        ...normalizarCompetenciasEIdiomasRaza(raw),
         Reduccion_dano: toText(raw?.rd),
         Resistencia_magica: toText(raw?.rc),
         Resistencia_energia: toText(raw?.re),

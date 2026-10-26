@@ -83,6 +83,10 @@ export interface PlantillaPrerrequisitosFlags {
     alineamiento_requerido?: boolean;
     caracteristica?: boolean;
     criaturas_compatibles?: boolean;
+    /** Nivel de lanzador mínimo, arcano o divino (el liche: 11). Desde la auditoría de las reglas del 2026-10-26. */
+    nivel_lanzador?: boolean;
+    /** Una dote que debe tener la criatura base (el liche: Fabricar objeto maravilloso). */
+    dote?: boolean;
 }
 
 export type PlantillaPrerrequisitoItem = PrerrequisitoItem;
@@ -93,6 +97,8 @@ export interface PlantillaPrerrequisitos {
     alineamiento_requerido: PlantillaPrerrequisitoItem[];
     caracteristica: PlantillaPrerrequisitoItem[];
     criaturas_compatibles: PlantillaPrerrequisitoItem[];
+    nivel_lanzador?: PlantillaPrerrequisitoItem[];
+    dote?: PlantillaPrerrequisitoItem[];
 }
 
 export interface PlantillaCompatibilidadTipo {

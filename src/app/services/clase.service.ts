@@ -296,6 +296,8 @@ export function normalizeClase(raw: any): Clase {
         Es_predilecta: toBoolean(raw?.Es_predilecta),
         Prestigio: toBoolean(raw?.Prestigio),
         Tiene_prerrequisitos: tienePrerrequisitos,
+        Multiclase_restringida: toBoolean(raw?.Multiclase_restringida),
+        Alineamiento_deidad: toBoolean(raw?.Alineamiento_deidad),
         Alineamiento: normalizeAlineamiento(raw?.Alineamiento),
         Oficial: toBoolean(raw?.Oficial),
         Competencias: {
@@ -312,6 +314,12 @@ export function normalizeClase(raw: any): Clase {
             Id: toNumber(item?.Id),
             Nombre: toText(item?.Nombre),
             Descripcion: toText(item?.Descripcion),
+            Secreto: toBoolean(item?.Secreto),
+            Oficial: toBoolean(item?.Oficial),
+        })),
+        Idiomas_adicionales: toArray(raw?.Idiomas_adicionales).map((item: any) => ({
+            Id: toNumber(item?.Id),
+            Nombre: toText(item?.Nombre),
             Secreto: toBoolean(item?.Secreto),
             Oficial: toBoolean(item?.Oficial),
         })),
