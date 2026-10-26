@@ -27,7 +27,8 @@ export class DetallesTipoCriaturaComponent {
     @Input()
     set tipo(value: TipoCriatura) {
         this.tipoData = value;
-        const puntos = toNumber(value?.Id_puntos_habilidad) * 2;
+        // Los puntos por DG del tipo, de la API; una caché anterior a la versión 3 solo trae su id (1 → 2, 2 → 4…).
+        const puntos = toNumber(value?.Puntos_habilidad) || toNumber(value?.Id_puntos_habilidad) * 2;
         this.datos = [
             { etiqueta: 'Dados de golpe', valor: this.textoDado(value?.Tipo_dado) },
             { etiqueta: 'Ataque base', valor: value ? this.progresionAtaque(value.Id_ataque) : null },

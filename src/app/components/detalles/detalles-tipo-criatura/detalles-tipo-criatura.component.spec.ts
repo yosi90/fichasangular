@@ -54,6 +54,12 @@ describe('DetallesTipoCriaturaComponent', () => {
         component = fixture.componentInstance;
     });
 
+    it('los puntos de habilidad por DG salen del tipo de la API (Puntos_habilidad)', () => {
+        component.tipo = { ...crearTipo(), Id_puntos_habilidad: 4, Puntos_habilidad: 8 };
+        fixture.detectChanges();
+        expect(datos(elemento().querySelector('.ficha-datos-contenedor--tarjeta'))).toContain(['Puntos de habilidad por DG', '8 + mod. de Int']);
+    });
+
     it('pinta la cabecera, las progresiones en los datos clave y la naturaleza en la lateral', () => {
         component.tipo = crearTipo();
         fixture.detectChanges();
