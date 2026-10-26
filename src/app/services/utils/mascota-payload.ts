@@ -6,6 +6,7 @@ import {
 } from 'src/app/interfaces/personajes-api';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
 import { primerEntero, toInt, toNumber } from './normalizacion';
+import { dadosGolpeCompanero } from './companero-reglas';
 
 /**
  * El familiar y el compañero animal de la creación, en la forma de `POST /personajes/add` (bloques `familiar` y
@@ -166,7 +167,7 @@ export function construirCompaneroParaGuardar(
 ): PersonajeCreateCompaneroDto {
     const caracteristicas = (companero?.Caracteristicas ?? {}) as Record<string, number | null>;
     const dgAdi = Math.max(0, toInt(companero?.Dg_adi));
-    const dados = (primerEntero(companero?.Dados_golpe?.Cantidad) ?? 0) + dgAdi;
+    const dados = dadosGolpeCompanero(companero);
     const caras = primerEntero(companero?.Dados_golpe?.Tipo_dado?.Nombre) ?? 0;
     return {
         nombre: nombreMascota(companero?.Nombre, 'Compañero'),

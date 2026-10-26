@@ -40,6 +40,7 @@ import {
 } from './utils/familiar-reglas';
 import {
     CompaneroPlantillaSelector as CompaneroPlantillaSelectorUtil,
+    dadosGolpeCompanero,
     EstadoCuposCompanero as EstadoCuposCompaneroUtil,
     getPlantillaIdCompanero,
     resolverEstadoCuposCompaneroEspecial29
@@ -49,7 +50,7 @@ import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { esTextoExtraPorElegir, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
-import { modificadorCaracteristica } from './utils/caracteristicas';
+import { modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from './utils/personaje-totales';
@@ -1953,44 +1954,31 @@ export class NuevoPersonajeService {
 
         const caracteristicas = (companero.Caracteristicas ?? {}) as Record<string, number | null>;
         const modInteligencia = caracteristicas['Inteligencia_modificador'] ?? modificadorCaracteristica(toNumber(caracteristicas['Inteligencia']));
-        const tipo = (this.catalogoTiposCriatura ?? []).find((item) => toNumber(item?.Id) === toNumber(companero?.Tipo?.Id));
+        const tipo = this.buscarTipoCriaturaPorId(toNumber(companero?.Tipo?.Id));
         const total = puntosHabilidadDgRaciales({
             puntosPorDg: toNumber(tipo?.Puntos_habilidad),
             multiplicador: pendientes,
             modInteligencia: toNumber(modInteligencia),
         });
-        const dados = (primerEntero(companero?.Dados_golpe?.Cantidad) ?? 0) + toInt(companero.Dg_adi);
         this.iniciarDistribucionHabilidadesInterna('companero_dg', returnStep, total, [], {
             habilidades: this.habilidadesCompaneroParaSesion(companero),
-            dados,
+            dados: dadosGolpeCompanero(companero),
         });
         return true;
     }
 
     /** Las habilidades del compañero con la forma de las del personaje: todas las del catálogo, con los rangos que tiene. */
     private habilidadesCompaneroParaSesion(companero: CompaneroMonstruoDetalle): Personaje['Habilidades'] {
-        const caracteristicas = (companero.Caracteristicas ?? {}) as Record<string, number | null>;
         const propias = new Map((companero.Habilidades ?? []).map((habilidad) => [toNumber(habilidad?.Id_habilidad), habilidad]));
         return (this.estadoFlujo.ventajas.catalogoHabilidades ?? [])
             .filter((habilidad) => toNumber(habilidad?.Id_habilidad) > 0)
             .map((habilidad) => {
-                const id = toNumber(habilidad.Id_habilidad);
-                const propia = propias.get(id);
-                const car = `${habilidad?.Caracteristica ?? ''}`.trim();
+                const propia = propias.get(toNumber(habilidad.Id_habilidad));
                 return {
-                    Id: id,
-                    Nombre: `${habilidad?.Nombre ?? ''}`.trim(),
+                    ...this.habilidadSesionDesdeCatalogo(habilidad, (clave) => modificadorParaSumar(companero.Caracteristicas, clave)),
                     Clasea: !!propia,
-                    Entrenada: !!habilidad?.Entrenada,
-                    Car: car,
-                    Mod_car: toNumber(caracteristicas[`${normalizarTexto(car).charAt(0).toUpperCase()}${normalizarTexto(car).slice(1)}_modificador`]),
                     Rangos: Math.max(0, toNumber(propia?.Rangos)),
-                    Rangos_varios: 0,
                     Extra: `${propia?.Extra ?? ''}`.trim(),
-                    Varios: '',
-                    Custom: false,
-                    Soporta_extra: !!habilidad?.Soporta_extra,
-                    Extras: (habilidad?.Extras ?? []).map((extra) => ({ ...extra })),
                 };
             });
     }
@@ -9990,31 +9978,40 @@ export class NuevoPersonajeService {
             return;
 
         this.personajeCreacion.Habilidades = this.estadoFlujo.ventajas.catalogoHabilidades
-            .map((h) => {
-                const carKey = this.resolverCaracteristicaPorIdOTexto(h.Id_caracteristica, h.Caracteristica);
-                return {
-                    Id: toNumber(h.Id_habilidad),
-                    Nombre: `${h.Nombre ?? ''}`,
-                    Clasea: false,
-                    Entrenada: !!h.Entrenada,
-                    Car: this.etiquetaCaracteristica(carKey, h.Caracteristica),
-                    Mod_car: this.modificadorPorCaracteristica(carKey),
-                    Rangos: 0,
-                    Rangos_varios: 0,
-                    Extra: '',
-                    Extra_bloqueado: false,
-                    Varios: '',
-                    Custom: false,
-                    Soporta_extra: !!h.Soporta_extra,
-                    Extras: (h.Extras ?? []).map((extra) => ({
-                        Id_extra: toNumber(extra?.Id_extra),
-                        Extra: `${extra?.Extra ?? ''}`,
-                        Descripcion: `${extra?.Descripcion ?? ''}`,
-                    })),
-                    Bonos_varios: [],
-                };
-            })
+            .map((h) => this.habilidadSesionDesdeCatalogo(h, (clave) => this.modificadorPorCaracteristica(clave)))
             .sort(porNombre);
+    }
+
+    /**
+     * Una habilidad del catálogo con la forma de las del personaje, sin rangos ni extra elegido. `modificador` da el de
+     * su característica (el del personaje o el de su compañero animal).
+     */
+    private habilidadSesionDesdeCatalogo(
+        h: HabilidadBasicaDetalle,
+        modificador: (clave: CaracteristicaKey) => number
+    ): Personaje['Habilidades'][number] {
+        const carKey = this.resolverCaracteristicaPorIdOTexto(h.Id_caracteristica, h.Caracteristica);
+        return {
+            Id: toNumber(h.Id_habilidad),
+            Nombre: `${h.Nombre ?? ''}`,
+            Clasea: false,
+            Entrenada: !!h.Entrenada,
+            Car: this.etiquetaCaracteristica(carKey, h.Caracteristica),
+            Mod_car: modificador(carKey),
+            Rangos: 0,
+            Rangos_varios: 0,
+            Extra: '',
+            Extra_bloqueado: false,
+            Varios: '',
+            Custom: false,
+            Soporta_extra: !!h.Soporta_extra,
+            Extras: (h.Extras ?? []).map((extra) => ({
+                Id_extra: toNumber(extra?.Id_extra),
+                Extra: `${extra?.Extra ?? ''}`,
+                Descripcion: `${extra?.Descripcion ?? ''}`,
+            })),
+            Bonos_varios: [],
+        };
     }
 
     private actualizarModsHabilidadesPorCaracteristica(): void {

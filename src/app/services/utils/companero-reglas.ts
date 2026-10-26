@@ -1,7 +1,7 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { CompaneroMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, primerEntero, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import {
     resolveEspecialId,
@@ -127,6 +127,11 @@ export function resolverEstadoCuposCompaneroEspecial29(
         ...cupo,
         nivelEfectivoCompanero,
     };
+}
+
+/** Los DG del compañero animal: los de su monstruo y los adicionales que le da el nivel de su amo (MJ, cap. 3). */
+export function dadosGolpeCompanero(companero: CompaneroMonstruoDetalle | null | undefined): number {
+    return (primerEntero(companero?.Dados_golpe?.Cantidad) ?? 0) + Math.max(0, toInt(companero?.Dg_adi));
 }
 
 export function filtrarCompanerosElegibles(input: FiltroCompanerosElegiblesInput): CompaneroMonstruoDetalle[] {
