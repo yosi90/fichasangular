@@ -1814,6 +1814,53 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(companero.dotes).toEqual([]);
     });
 
+    it('los DG adicionales del compañero dan puntos de habilidad por su tipo y su Int, y se reparten en la pestaña de habilidades', () => {
+        const druida = crearClaseBase({ Id: 5, Nombre: 'Druida', Desglose_niveles: [nivelConEspecial(29, 'Compañero animal')] });
+        service.setCatalogoClases([druida]);
+        service.setCatalogoTiposCriatura([{ ...crearTipoBase(), Id: 3, Nombre: 'Animal', Puntos_habilidad: 2 }]);
+        service.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+            { Id_habilidad: 7, Nombre: 'Nadar', Id_caracteristica: 1, Caracteristica: 'Fuerza', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        ]);
+        const rangosDelPersonaje = service.PersonajeCreacion.Habilidades.map((habilidad) => habilidad.Rangos);
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 3 }] as any;
+        const lobo = {
+            Id: 55, Id_companero: 55, Nombre: 'Lobo', Monstruo_origen: { Id: 55, Nombre: 'Lobo' }, Tipo: { Id: 3, Nombre: 'Animal' },
+            Plantilla: { Id: 1, Nombre: 'Base' }, Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Niveles_clase: [],
+            Alineamientos_requeridos: { Familiar: [], Companero: [] }, Oficial: true,
+            Dados_golpe: { Cantidad: '2', Tipo_dado: { Id: 3, Nombre: 'd8' }, Suma: 4 },
+            Caracteristicas: { Fuerza: 13, Destreza: 15, Constitucion: 15, Constitucion_modificador: 2, Inteligencia: 2, Inteligencia_modificador: -4, Sabiduria: 12, Sabiduria_modificador: 1, Carisma: 6 },
+            Defensa: { Ca: 14, Toque: 12, Desprevenido: 12, Armadura_natural: 2, Reduccion_dano: '', Resistencia_conjuros: '', Resistencia_elemental: '' },
+            Habilidades: [{ Id_habilidad: 6, Habilidad: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Descripcion: '', Soporta_extra: false, Entrenada: false, Id_extra: -1, Extra: '', Rangos: 3 }],
+            Dotes: [], Especiales: [],
+        } as any;
+        expect(service.registrarCompaneroSeleccionado(lobo, 'base', {}, 'Colmillo').registrado).toBeTrue();
+
+        // 2 DG adicionales (druida 3) × máx(1, 2 del animal − 4 de Int) = 2 puntos; tope de rangos con 4 DG en total.
+        expect(service.iniciarDistribucionHabilidadesCompanero('clases')).toBeTrue();
+        expect(service.EstadoFlujo.habilidades.origen).toBe('companero_dg');
+        expect(service.EstadoFlujo.habilidades.puntosTotales).toBe(2);
+        expect(service.getHabilidadesSesion().find((habilidad) => habilidad.Id === 6)?.Rangos).toBe(3);
+        expect(service.obtenerLimiteRangoHabilidad(6)).toBe(7);
+        expect(service.ajustarRangoHabilidad(6, 1)).toBeTrue();
+        expect(service.ajustarRangoHabilidad(7, 1)).toBeFalse(); // transclásea: 2 puntos, solo queda 1
+        expect(service.ajustarRangoHabilidad(6, 1)).toBeTrue();
+        expect(service.cerrarDistribucionHabilidades()).toBe('clases');
+
+        const companero = service.PersonajeCreacion.Companeros[0];
+        expect(companero.Habilidades.map((habilidad) => [habilidad.Id_habilidad, habilidad.Rangos])).toEqual([[6, 5]]);
+        expect(service.PersonajeCreacion.Habilidades.map((habilidad) => habilidad.Rangos)).toEqual(rangosDelPersonaje);
+        expect(service.iniciarDistribucionHabilidadesCompanero('clases')).toBeFalse();
+        expect(payloadDeLaCreacion().companero!.habilidades).toEqual([{ idHabilidad: 6, idExtra: -1, rangos: 5 }]);
+
+        // Al subir a druida 6 llegan 2 DG adicionales más: otra vez hay puntos por repartir.
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 6 }] as any;
+        (service as any).actualizarMascotasPorNivel();
+        expect(service.iniciarDistribucionHabilidadesCompanero('clases')).toBeTrue();
+        expect(service.EstadoFlujo.habilidades.puntosTotales).toBe(2);
+        expect(service.obtenerLimiteRangoHabilidad(6)).toBe(9);
+    });
+
     it('un mago guarda su familiar con los datos de su amo y la tabla del familiar por nivel (MJ cap. 3)', () => {
         const mago = crearClaseBase({ Id: 10, Nombre: 'Mago', Desglose_niveles: [nivelConEspecial(47, 'Convocar a un familiar')] });
         service.setCatalogoClases([mago]);

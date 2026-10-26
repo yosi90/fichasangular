@@ -15,6 +15,8 @@ export interface TipoCriatura {
     Id_reflejos: number;
     Id_voluntad: number;
     Id_puntos_habilidad: number;
+    /** Puntos de habilidad por DG del tipo (2, 4, 6 u 8). */
+    Puntos_habilidad?: number;
     Come: boolean;
     Respira: boolean;
     Duerme: boolean;

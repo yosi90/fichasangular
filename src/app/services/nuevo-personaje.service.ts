@@ -59,7 +59,8 @@ import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadDgRaciales, 
 import { tieneTextoVisible } from './utils/texto-visible';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
-export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel';
+/** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
+export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel' | 'companero_dg';
 export type TipoLanzamientoConjuros = 'arcano' | 'divino' | 'psionico' | 'alma' | 'mixto';
 export type FamiliarPlantillaId = FamiliarPlantillaIdUtil;
 export type EstadoCuposFamiliar = EstadoCuposFamiliarUtil;
@@ -601,6 +602,8 @@ export interface HabilidadesFlujoState {
     nivelPersonajeReferencia: number;
     classSkillTemporales: number[];
     rangosIniciales?: Record<number, number>;
+    /** En `companero_dg`, las habilidades del compañero que se reparten (con la forma de las del personaje). */
+    habilidadesCompanero?: Personaje['Habilidades'] | null;
 }
 
 export interface ConjurosCupoPendiente {
@@ -928,6 +931,7 @@ interface NuevoPersonajeDraftV1 {
     dotesProgresionConcedidas: number;
     dotesExtraRazaConcedidas: number;
     dotesAdicionalesRazaConcedidas?: number;
+    dgsCompaneroRepartidos?: number;
     aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[];
     aumentosProgresionConcedidos: number;
     secuenciaAumentoPendiente: number;
@@ -982,6 +986,8 @@ export class NuevoPersonajeService {
     private dotesProgresionConcedidas = 0;
     private dotesExtraRazaConcedidas = 0;
     private dotesAdicionalesRazaConcedidas = 0;
+    /** DG adicionales del compañero cuyos puntos de habilidad ya se repartieron. */
+    private dgsCompaneroRepartidos = 0;
     private firmasDotesPlantillaAplicadas = new Set<string>();
     private aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[] = [];
     private aumentosProgresionConcedidos = 0;
@@ -1234,6 +1240,7 @@ export class NuevoPersonajeService {
         this.dotesProgresionConcedidas = 0;
         this.dotesExtraRazaConcedidas = 0;
         this.dotesAdicionalesRazaConcedidas = 0;
+        this.dgsCompaneroRepartidos = 0;
         this.aumentosPendientesCaracteristica = [];
         this.aumentosProgresionConcedidos = 0;
         this.secuenciaAumentoPendiente = 1;
@@ -1340,6 +1347,7 @@ export class NuevoPersonajeService {
         this.dotesProgresionConcedidas = 0;
         this.dotesExtraRazaConcedidas = 0;
         this.dotesAdicionalesRazaConcedidas = 0;
+        this.dgsCompaneroRepartidos = 0;
         this.firmasDotesPlantillaAplicadas.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
@@ -1893,7 +1901,7 @@ export class NuevoPersonajeService {
 
     /** Queda alguna habilidad a la que subir un rango con los puntos que quedan. */
     private puedeComprarAlgunRangoHabilidad(): boolean {
-        return (this.personajeCreacion.Habilidades ?? []).some((habilidad) => this.puedeSubirRangoHabilidad(toNumber(habilidad?.Id)));
+        return this.getHabilidadesSesion().some((habilidad) => this.puedeSubirRangoHabilidad(toNumber(habilidad?.Id)));
     }
 
     setExtraHabilidad(idHabilidad: number, extra: string): boolean {
@@ -1929,13 +1937,99 @@ export class NuevoPersonajeService {
         return true;
     }
 
+    /**
+     * Los puntos de habilidad de los DG adicionales del compañero animal (MJ, cap. 3: sus DG adicionales le dan puntos de
+     * habilidad como cualquier DG de su tipo): (puntos por DG de su tipo + mod. de Int, mínimo 1) por cada DG adicional
+     * que aún no se haya repartido. Se reparten en la misma pestaña de habilidades, con sus habilidades: las de su
+     * monstruo son cláseas (las que da su entrada) y el tope de rangos es el de sus DG totales. Devuelve si abrió la sesión.
+     */
+    iniciarDistribucionHabilidadesCompanero(returnStep: StepNuevoPersonaje): boolean {
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        if (!companero)
+            return false;
+        const pendientes = Math.max(0, toInt(companero.Dg_adi) - this.dgsCompaneroRepartidos);
+        if (pendientes < 1)
+            return false;
+
+        const caracteristicas = (companero.Caracteristicas ?? {}) as Record<string, number | null>;
+        const modInteligencia = caracteristicas['Inteligencia_modificador'] ?? modificadorCaracteristica(toNumber(caracteristicas['Inteligencia']));
+        const tipo = (this.catalogoTiposCriatura ?? []).find((item) => toNumber(item?.Id) === toNumber(companero?.Tipo?.Id));
+        const total = puntosHabilidadDgRaciales({
+            puntosPorDg: toNumber(tipo?.Puntos_habilidad),
+            multiplicador: pendientes,
+            modInteligencia: toNumber(modInteligencia),
+        });
+        const dados = (primerEntero(companero?.Dados_golpe?.Cantidad) ?? 0) + toInt(companero.Dg_adi);
+        this.iniciarDistribucionHabilidadesInterna('companero_dg', returnStep, total, [], {
+            habilidades: this.habilidadesCompaneroParaSesion(companero),
+            dados,
+        });
+        return true;
+    }
+
+    /** Las habilidades del compañero con la forma de las del personaje: todas las del catálogo, con los rangos que tiene. */
+    private habilidadesCompaneroParaSesion(companero: CompaneroMonstruoDetalle): Personaje['Habilidades'] {
+        const caracteristicas = (companero.Caracteristicas ?? {}) as Record<string, number | null>;
+        const propias = new Map((companero.Habilidades ?? []).map((habilidad) => [toNumber(habilidad?.Id_habilidad), habilidad]));
+        return (this.estadoFlujo.ventajas.catalogoHabilidades ?? [])
+            .filter((habilidad) => toNumber(habilidad?.Id_habilidad) > 0)
+            .map((habilidad) => {
+                const id = toNumber(habilidad.Id_habilidad);
+                const propia = propias.get(id);
+                const car = `${habilidad?.Caracteristica ?? ''}`.trim();
+                return {
+                    Id: id,
+                    Nombre: `${habilidad?.Nombre ?? ''}`.trim(),
+                    Clasea: !!propia,
+                    Entrenada: !!habilidad?.Entrenada,
+                    Car: car,
+                    Mod_car: toNumber(caracteristicas[`${normalizarTexto(car).charAt(0).toUpperCase()}${normalizarTexto(car).slice(1)}_modificador`]),
+                    Rangos: Math.max(0, toNumber(propia?.Rangos)),
+                    Rangos_varios: 0,
+                    Extra: `${propia?.Extra ?? ''}`.trim(),
+                    Varios: '',
+                    Custom: false,
+                    Soporta_extra: !!habilidad?.Soporta_extra,
+                    Extras: (habilidad?.Extras ?? []).map((extra) => ({ ...extra })),
+                };
+            });
+    }
+
+    /** Lo repartido vuelve a las habilidades del compañero: las que tienen rangos y las que ya daba su monstruo. */
+    private guardarHabilidadesCompaneroDeLaSesion(): void {
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        const lista = this.estadoFlujo.habilidades.habilidadesCompanero;
+        if (!companero || !Array.isArray(lista))
+            return;
+        const catalogo = new Map((this.estadoFlujo.ventajas.catalogoHabilidades ?? []).map((habilidad) => [toNumber(habilidad?.Id_habilidad), habilidad]));
+        companero.Habilidades = lista
+            .filter((habilidad) => habilidad.Clasea || toNumber(habilidad.Rangos) > 0)
+            .map((habilidad) => {
+                const delCatalogo = catalogo.get(toNumber(habilidad.Id));
+                const idExtra = idExtraHabilidadParaGuardar(habilidad);
+                return {
+                    Id_habilidad: toNumber(habilidad.Id),
+                    Habilidad: habilidad.Nombre,
+                    Id_caracteristica: toNumber(delCatalogo?.Id_caracteristica),
+                    Caracteristica: habilidad.Car,
+                    Descripcion: `${delCatalogo?.Descripcion ?? ''}`,
+                    Soporta_extra: !!habilidad.Soporta_extra,
+                    Entrenada: !!habilidad.Entrenada,
+                    Id_extra: idExtra,
+                    Extra: idExtra > 0 ? `${habilidad.Extra ?? ''}`.trim() : '',
+                    Rangos: toNumber(habilidad.Rangos),
+                };
+            });
+        this.dgsCompaneroRepartidos = Math.max(0, toInt(companero.Dg_adi));
+    }
+
     puedeCerrarDistribucionHabilidades(): boolean {
         if (!this.estadoFlujo.habilidades.activa)
             return true;
         // Los puntos que no alcanzan para ningún rango (1 punto y solo quedan transcláseas) no bloquean el cierre.
         if (toNumber(this.estadoFlujo.habilidades.puntosRestantes) !== 0 && this.puedeComprarAlgunRangoHabilidad())
             return false;
-        if (this.personajeCreacion.Habilidades.some((habilidad) => this.esExtraHabilidadPendienteParaSesion(habilidad)))
+        if (this.getHabilidadesSesion().some((habilidad) => this.esExtraHabilidadPendienteParaSesion(habilidad)))
             return false;
         return !this.hayExtrasDuplicadosClaseosParaSesion();
     }
@@ -1945,6 +2039,8 @@ export class NuevoPersonajeService {
             return null;
 
         const returnStep = this.estadoFlujo.habilidades.returnStep;
+        if (this.estadoFlujo.habilidades.origen === 'companero_dg')
+            this.guardarHabilidadesCompaneroDeLaSesion();
         this.estadoFlujo.habilidades = this.crearHabilidadesFlujoBase();
         return returnStep;
     }
@@ -2122,10 +2218,21 @@ export class NuevoPersonajeService {
         return !!habilidad && this.esExtraElegibleParaSesion(habilidad);
     }
 
-    /** La habilidad del personaje en creación con ese id. */
+    /**
+     * Las habilidades que reparte la sesión: las del compañero en `companero_dg` y, si no, las del personaje. La pestaña
+     * de habilidades es la misma para las dos.
+     */
+    getHabilidadesSesion(): Personaje['Habilidades'] {
+        const flujo = this.estadoFlujo.habilidades;
+        if (flujo.activa && flujo.origen === 'companero_dg' && Array.isArray(flujo.habilidadesCompanero))
+            return flujo.habilidadesCompanero;
+        return this.personajeCreacion.Habilidades ?? [];
+    }
+
+    /** La habilidad de la sesión con ese id. */
     private habilidadDelPersonaje(idHabilidad: number): Personaje['Habilidades'][number] | undefined {
         const id = toNumber(idHabilidad);
-        return this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === id);
+        return this.getHabilidadesSesion().find((item) => toNumber(item?.Id) === id);
     }
 
     obtenerLimiteRangoHabilidad(idHabilidad: number): number {
@@ -2148,17 +2255,18 @@ export class NuevoPersonajeService {
         origen: HabilidadesFlujoOrigen,
         returnStep: StepNuevoPersonaje,
         puntosTotales: number,
-        classSkillTemporales: number[]
+        classSkillTemporales: number[],
+        companero: { habilidades: Personaje['Habilidades']; dados: number; } | null = null
     ): void {
         const total = Math.max(0, toInt(puntosTotales));
-        const nivelReferencia = this.getNivelEfectivoParaAumentos();
+        const nivelReferencia = companero ? Math.max(0, toInt(companero.dados)) : this.getNivelEfectivoParaAumentos();
         const temporales = Array.from(new Set(
             (classSkillTemporales ?? [])
                 .map((id) => toNumber(id))
                 .filter((id) => id > 0)
         ));
         const rangosIniciales: Record<number, number> = {};
-        (this.personajeCreacion?.Habilidades ?? []).forEach((habilidad) => {
+        (companero?.habilidades ?? this.personajeCreacion?.Habilidades ?? []).forEach((habilidad) => {
             const id = toNumber(habilidad?.Id);
             if (id <= 0)
                 return;
@@ -2174,6 +2282,7 @@ export class NuevoPersonajeService {
             nivelPersonajeReferencia: nivelReferencia,
             classSkillTemporales: temporales,
             rangosIniciales,
+            habilidadesCompanero: companero?.habilidades ?? null,
         };
         this.estadoFlujo.pasoActual = 'habilidades';
     }
@@ -5783,7 +5892,7 @@ export class NuevoPersonajeService {
             return false;
         const idObjetivo = toNumber(habilidadObjetivo?.Id);
 
-        return this.personajeCreacion.Habilidades.some((habilidad) => {
+        return this.getHabilidadesSesion().some((habilidad) => {
             if (toNumber(habilidad?.Id) === idObjetivo)
                 return false;
             if (!this.esExtraElegibleParaSesion(habilidad))
@@ -5802,7 +5911,7 @@ export class NuevoPersonajeService {
     private hayExtrasDuplicadosClaseosParaSesion(): boolean {
         const vistos = new Set<string>();
 
-        for (const habilidad of (this.personajeCreacion.Habilidades ?? [])) {
+        for (const habilidad of this.getHabilidadesSesion()) {
             if (!this.esExtraElegibleParaSesion(habilidad))
                 continue;
             if (!toBoolean(habilidad?.Soporta_extra))
@@ -8492,6 +8601,7 @@ export class NuevoPersonajeService {
             dotesProgresionConcedidas: Math.max(0, toInt(this.dotesProgresionConcedidas)),
             dotesExtraRazaConcedidas: Math.max(0, toInt(this.dotesExtraRazaConcedidas)),
             dotesAdicionalesRazaConcedidas: Math.max(0, toInt(this.dotesAdicionalesRazaConcedidas)),
+            dgsCompaneroRepartidos: Math.max(0, toInt(this.dgsCompaneroRepartidos)),
             aumentosPendientesCaracteristica: this.clonarProfundo(this.aumentosPendientesCaracteristica),
             aumentosProgresionConcedidos: Math.max(0, toInt(this.aumentosProgresionConcedidos)),
             secuenciaAumentoPendiente: Math.max(1, toInt(this.secuenciaAumentoPendiente)),
@@ -8567,6 +8677,7 @@ export class NuevoPersonajeService {
         this.dotesProgresionConcedidas = Math.max(0, toInt(borrador.dotesProgresionConcedidas));
         this.dotesExtraRazaConcedidas = Math.max(0, toInt(borrador.dotesExtraRazaConcedidas));
         this.dotesAdicionalesRazaConcedidas = Math.max(0, toInt(borrador.dotesAdicionalesRazaConcedidas));
+        this.dgsCompaneroRepartidos = Math.max(0, toInt(borrador.dgsCompaneroRepartidos));
         this.aumentosPendientesCaracteristica = this.clonarProfundo(borrador.aumentosPendientesCaracteristica ?? []);
         this.aumentosProgresionConcedidos = Math.max(0, toInt(borrador.aumentosProgresionConcedidos));
         this.secuenciaAumentoPendiente = Math.max(1, toInt(borrador.secuenciaAumentoPendiente));

@@ -781,11 +781,14 @@ export class NuevoPersonajeComponent {
         if (origen === 'clase_nivel')
             return 'Nivel';
 
+        if (origen === 'companero_dg')
+            return `Compañero: ${`${this.nuevoPSvc.PersonajeCreacion.Companeros?.[0]?.Nombre ?? ''}`.trim() || 'compañero animal'}`;
+
         return `${origen}`;
     }
 
     get habilidadesOrdenadas(): Personaje['Habilidades'] {
-        const visibles = [...(this.Personaje?.Habilidades ?? [])]
+        const visibles = [...this.nuevoPSvc.getHabilidadesSesion()]
             .filter((habilidad) => !this.esNombreHabilidadOcultaEnTabla(`${habilidad?.Nombre ?? ''}`));
         return visibles.sort((a, b) => {
             const customA = !!a?.Custom;
@@ -3645,7 +3648,8 @@ export class NuevoPersonajeComponent {
                 return;
             this.Personaje = this.nuevoPSvc.PersonajeCreacion;
             const siguientePaso = this.resolverPasoPostDotesFinNivel();
-            this.nuevoPSvc.actualizarPasoActual(siguientePaso);
+            if (!this.nuevoPSvc.iniciarDistribucionHabilidadesCompanero(siguientePaso))
+                this.nuevoPSvc.actualizarPasoActual(siguientePaso);
             this.sincronizarTabConPaso();
             return;
         }
@@ -3723,7 +3727,8 @@ export class NuevoPersonajeComponent {
         this.nuevoPSvc.cerrarSesionConjuros();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         const siguientePaso = this.resolverPasoPostDotesFinNivel();
-        this.nuevoPSvc.actualizarPasoActual(siguientePaso);
+        if (!this.nuevoPSvc.iniciarDistribucionHabilidadesCompanero(siguientePaso))
+            this.nuevoPSvc.actualizarPasoActual(siguientePaso);
         this.sincronizarTabConPaso();
     }
 
