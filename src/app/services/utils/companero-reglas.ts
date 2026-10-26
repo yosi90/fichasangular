@@ -12,22 +12,12 @@ import {
     getDetallePreferenciasAlineamiento,
 } from 'src/app/services/utils/nivel-clase-monstruo';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { CupoMascota, resolverCupoMascota } from 'src/app/services/utils/mascota-cupos';
 
 export type CompaneroPlantillaSelector = 'base' | 'elevado' | 'sabandija';
 
-export interface CompaneroFuenteClase {
-    idClase: number;
-    nombreClase: string;
-    nivelActual: number;
-}
-
-export interface EstadoCuposCompanero {
+export interface EstadoCuposCompanero extends CupoMascota {
     especialId: number;
-    fuentes: CompaneroFuenteClase[];
-    fuentesClaseIds: number[];
-    fuentesTotales: number;
-    cuposConsumidos: number;
-    cuposDisponibles: number;
     nivelEfectivoCompanero: number;
 }
 
@@ -106,27 +96,6 @@ function claseOtorgaFuenteCompanero(clase: Clase | null | undefined, nivelActual
     return false;
 }
 
-function dedupeFuentes(fuentes: CompaneroFuenteClase[]): CompaneroFuenteClase[] {
-    const byClassId = new Map<number, CompaneroFuenteClase>();
-    fuentes.forEach((fuente) => {
-        const idClase = toNumber(fuente?.idClase);
-        if (idClase <= 0)
-            return;
-        if (!byClassId.has(idClase)) {
-            byClassId.set(idClase, {
-                idClase,
-                nombreClase: `${fuente?.nombreClase ?? ''}`.trim(),
-                nivelActual: Math.max(0, toNumber(fuente?.nivelActual)),
-            });
-            return;
-        }
-        const previa = byClassId.get(idClase)!;
-        if (toNumber(fuente?.nivelActual) > toNumber(previa?.nivelActual))
-            byClassId.set(idClase, { ...previa, nivelActual: Math.max(0, toNumber(fuente?.nivelActual)) });
-    });
-    return Array.from(byClassId.values());
-}
-
 function resolveNivelEfectivoCompaneroByClase(idClase: number, nivelActual: number): number {
     const nivel = Math.max(0, toInt(nivelActual));
     if (idClase === 5)
@@ -148,43 +117,14 @@ export function resolverEstadoCuposCompaneroEspecial29(
     personaje: Personaje,
     catalogoClases: Clase[]
 ): EstadoCuposCompanero {
-    const desglose = Array.isArray(personaje?.desgloseClases) ? personaje.desgloseClases : [];
-    const clases = Array.isArray(catalogoClases) ? catalogoClases : [];
-
-    const fuentesRaw: CompaneroFuenteClase[] = desglose.map((entrada) => {
-        const nombreClase = `${entrada?.Nombre ?? ''}`.trim();
-        const nivelActual = Math.max(0, toInt(entrada?.Nivel));
-        const clase = clases.find((item) =>
-            normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombreClase)
-        );
-        if (!claseOtorgaFuenteCompanero(clase, nivelActual))
-            return null;
-        return {
-            idClase: toNumber(clase?.Id),
-            nombreClase: `${clase?.Nombre ?? nombreClase}`.trim(),
-            nivelActual,
-        };
-    }).filter((item): item is CompaneroFuenteClase => !!item);
-
-    const fuentes = dedupeFuentes(fuentesRaw);
-    const fuentesClaseIds = fuentes
-        .map((fuente) => toNumber(fuente?.idClase))
-        .filter((id) => id > 0);
-    const fuentesTotales = fuentesClaseIds.length;
-    const cuposConsumidos = (personaje?.Companeros ?? []).length;
-    // Un solo compañero animal: los niveles de druida y de explorador se suman para él (MJ, cap. 3), no dan dos.
-    const cuposDisponibles = Math.max(0, (fuentesTotales > 0 ? 1 : 0) - cuposConsumidos);
-    const nivelEfectivoCompanero = fuentes.reduce((acc, fuente) =>
+    const cupo = resolverCupoMascota(personaje, catalogoClases, claseOtorgaFuenteCompanero, personaje?.Companeros);
+    const nivelEfectivoCompanero = cupo.fuentes.reduce((acc, fuente) =>
         acc + resolveNivelEfectivoCompaneroByClase(toNumber(fuente?.idClase), toNumber(fuente?.nivelActual))
     , 0);
 
     return {
         especialId: ESPECIAL_COMPANERO_ID,
-        fuentes,
-        fuentesClaseIds,
-        fuentesTotales,
-        cuposConsumidos,
-        cuposDisponibles,
+        ...cupo,
         nivelEfectivoCompanero,
     };
 }

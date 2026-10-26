@@ -12,22 +12,12 @@ import {
     getDetallePreferenciasAlineamiento,
 } from 'src/app/services/utils/nivel-clase-monstruo';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { CupoMascota, resolverCupoMascota } from 'src/app/services/utils/mascota-cupos';
 
 export type FamiliarPlantillaId = 1 | 2 | 3 | 4 | 5;
 
-export interface FamiliarFuenteClase {
-    idClase: number;
-    nombreClase: string;
-    nivelActual: number;
-}
-
-export interface EstadoCuposFamiliar {
+export interface EstadoCuposFamiliar extends CupoMascota {
     especialId: number;
-    fuentes: FamiliarFuenteClase[];
-    fuentesClaseIds: number[];
-    fuentesTotales: number;
-    cuposConsumidos: number;
-    cuposDisponibles: number;
     nivelLanzadorFamiliar: number;
 }
 
@@ -180,66 +170,16 @@ function tieneDoteActual(dotesActuales: Array<{ id: number | null; nombre: strin
     });
 }
 
-function dedupeFuentes(fuentes: FamiliarFuenteClase[]): FamiliarFuenteClase[] {
-    const byClassId = new Map<number, FamiliarFuenteClase>();
-    fuentes.forEach((fuente) => {
-        const idClase = toNumber(fuente?.idClase);
-        if (idClase <= 0)
-            return;
-        if (!byClassId.has(idClase)) {
-            byClassId.set(idClase, {
-                idClase,
-                nombreClase: `${fuente?.nombreClase ?? ''}`.trim(),
-                nivelActual: Math.max(0, toNumber(fuente?.nivelActual)),
-            });
-            return;
-        }
-        const previa = byClassId.get(idClase)!;
-        if (toNumber(fuente?.nivelActual) > toNumber(previa?.nivelActual))
-            byClassId.set(idClase, { ...previa, nivelActual: Math.max(0, toNumber(fuente?.nivelActual)) });
-    });
-    return Array.from(byClassId.values());
-}
-
 export function resolverEstadoCuposFamiliarEspecial47(
     personaje: Personaje,
     catalogoClases: Clase[]
 ): EstadoCuposFamiliar {
-    const desglose = Array.isArray(personaje?.desgloseClases) ? personaje.desgloseClases : [];
-    const clases = Array.isArray(catalogoClases) ? catalogoClases : [];
-
-    const fuentesRaw: FamiliarFuenteClase[] = desglose.map((entrada) => {
-        const nombreClase = `${entrada?.Nombre ?? ''}`.trim();
-        const nivelActual = Math.max(0, toInt(entrada?.Nivel));
-        const clase = clases.find((item) =>
-            normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombreClase)
-        );
-        if (!claseOtorgaFuenteFamiliar(clase, nivelActual))
-            return null;
-        return {
-            idClase: toNumber(clase?.Id),
-            nombreClase: `${clase?.Nombre ?? nombreClase}`.trim(),
-            nivelActual,
-        };
-    }).filter((item): item is FamiliarFuenteClase => !!item);
-
-    const fuentes = dedupeFuentes(fuentesRaw);
-    const fuentesClaseIds = fuentes
-        .map((fuente) => toNumber(fuente?.idClase))
-        .filter((id) => id > 0);
-    const fuentesTotales = fuentesClaseIds.length;
-    const cuposConsumidos = (personaje?.Familiares ?? []).length;
-    // Un solo familiar por personaje (MJ, cap. 3): los niveles de las clases que lo dan se suman para sus aptitudes.
-    const cuposDisponibles = Math.max(0, (fuentesTotales > 0 ? 1 : 0) - cuposConsumidos);
-    const nivelLanzadorFamiliar = fuentes.reduce((acc, fuente) => acc + Math.max(0, toNumber(fuente?.nivelActual)), 0);
+    const cupo = resolverCupoMascota(personaje, catalogoClases, claseOtorgaFuenteFamiliar, personaje?.Familiares);
+    const nivelLanzadorFamiliar = cupo.fuentes.reduce((acc, fuente) => acc + Math.max(0, toNumber(fuente?.nivelActual)), 0);
 
     return {
         especialId: ESPECIAL_CONVOCAR_FAMILIAR_ID,
-        fuentes,
-        fuentesClaseIds,
-        fuentesTotales,
-        cuposConsumidos,
-        cuposDisponibles,
+        ...cupo,
         nivelLanzadorFamiliar,
     };
 }
