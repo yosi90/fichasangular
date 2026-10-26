@@ -304,4 +304,3 @@ describe('separarManualTexto', () => {
         expect(separarManualTexto(null)).toEqual({ nombre: '', pagina: null });
     });
 });
-
