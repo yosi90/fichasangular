@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, S
 import { Subject, Subscription, catchError, defer, forkJoin, of, switchMap, take, timer } from 'rxjs';
 import { DatoFranja } from 'src/app/components/detalles/ficha';
 import { AplicacionMaterial, EncantamientoDetalle, FiltrosObjetos, MaterialDetalle } from 'src/app/interfaces/equipo';
+import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { textoPeso, textoPrecio, textoPrecioGenerico } from 'src/app/services/utils/equipo-texto';
@@ -71,7 +72,7 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     /** Lo que deja comprar la campaña (objetos mágicos, a medida y el precio por pieza); sin campaña, todo. */
     @Input() politica: PoliticaTienda = POLITICA_TIENDA_LIBRE;
     /** La capacidad de carga del personaje, para decir qué carga lleva. */
-    @Input() capacidadCarga: { Ligera: number; Media: number; Pesada: number; } | null = null;
+    @Input() capacidadCarga: Personaje['Capacidad_carga'] | null = null;
     /** Cifras de más para la franja que dependen de otra pestaña (las páginas del libro de conjuros). */
     @Input() cifrasExtra: DatoFranja[] = [];
     @Output() confirmar = new EventEmitter<PersonajeCompraRequestDto>();

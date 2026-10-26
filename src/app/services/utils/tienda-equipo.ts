@@ -12,6 +12,7 @@ import {
     ObjetoDetalle,
     PiezaMaterial,
 } from 'src/app/interfaces/equipo';
+import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCompraPiezaDto, PersonajeCompraRequestDto, PersonajeTipoPiezaDto } from 'src/app/interfaces/personajes-api';
 import { formatoNumero, textoConSigno, textoDestrezaMaxima, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { normalizarTexto, toNumberOrNull } from 'src/app/services/utils/normalizacion';
@@ -413,7 +414,7 @@ export function resumenCompra(dineroInicial: number, piezas: PiezaTienda[], regl
 }
 
 /** La carga que lleva con ese peso, según su capacidad de carga: «carga ligera, hasta 76 lb»; vacío sin capacidad. */
-export function textoCarga(peso: number, capacidad: { Ligera: number; Media: number; Pesada: number; } | null | undefined): string {
+export function textoCarga(peso: number, capacidad: Personaje['Capacidad_carga'] | null | undefined): string {
     const ligera = Number(capacidad?.Ligera) || 0;
     const media = Number(capacidad?.Media) || 0;
     const pesada = Number(capacidad?.Pesada) || 0;
