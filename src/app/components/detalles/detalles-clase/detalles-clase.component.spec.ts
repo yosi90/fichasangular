@@ -105,7 +105,7 @@ describe('DetallesClaseComponent', () => {
     let fixture: ComponentFixture<DetallesClaseComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, titulos, valor, enlace } = lectorFicha(elemento);
+    const { texto, titulos, valor, enlace, lateral, etiquetasDatos } = lectorFicha(elemento);
     /** Las celdas de la tabla de progresión (`tabla` 0) o del listado de conjuros (1). */
     const celdas = (tabla: number, selector: string): string[][] =>
         Array.from(elemento().querySelectorAll('table.ficha-tabla')[tabla]?.querySelectorAll(`${selector} tr`) ?? [])
@@ -403,12 +403,45 @@ describe('DetallesClaseComponent', () => {
         expect(valor('Puntos de habilidad por nivel')).toBe('6 + mod. de Int');
         expect(valor('Niveles')).toBe('1 a 20');
         expect(valor('Roles')).toBe('DPS, Utilidad');
+        // El alineamiento «No aplica» de la base es relleno y no sale.
+        expect(valor('Alineamiento')).toBeNull();
         expect(titulos()).toContain('Descripción');
         expect(elemento().querySelector('mat-chip')).toBeNull();
         expect(elemento().querySelector('mat-expansion-panel')).toBeNull();
 
         (elemento().querySelector('.ficha-cabecera__manual') as HTMLButtonElement).click();
         expect(manualNav.abrirDetalleManual).toHaveBeenCalledWith({ id: 1, nombre: 'Manual del jugador 1' });
+    });
+
+    it('enseña el alineamiento, las progresiones de ataque base y salvaciones y si puede ser predilecta', () => {
+        component.clase = crearClaseMock({
+            Es_predilecta: true,
+            Alineamiento: {
+                Id: 9,
+                Basico: null as any,
+                Ley: { Id_ley: 3, Nombre: 'Nunca Legal' },
+                Moral: { Id_moral: 10, Nombre: 'Ninguna preferencia' },
+                Prioridad: { Id_prioridad: 3, Nombre: 'Siempre' },
+                Descripcion: 'Se debe respetar a raja tabla.',
+            },
+            Ataque_base: { Id: 1, Nombre: 'Bueno', Valores: ['+1'] },
+            Salvaciones: {
+                Fortaleza: { Id: 1, Nombre: 'Buena', Valores: ['+2'] },
+                Reflejos: { Id: 2, Nombre: 'Mala', Valores: ['+0'] },
+                Voluntad: { Id: 2, Nombre: 'Mala', Valores: ['+0'] },
+            },
+        });
+        fixture.detectChanges();
+
+        expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => e.textContent?.trim()))
+            .toEqual(['Puede ser predilecta', 'Oficial']);
+        expect(etiquetasDatos('.ficha-datos-contenedor--tarjeta')).toEqual([
+            'Dado de golpe', 'Puntos de habilidad por nivel', 'Alineamiento', 'Niveles', 'Ataque base', 'Fortaleza', 'Reflejos', 'Voluntad',
+        ]);
+        expect(valor('Alineamiento')).toBe('Nunca legal');
+        expect(valor('Ataque base')).toBe('Bueno');
+        expect(valor('Fortaleza')).toBe('Buena');
+        expect(valor('Reflejos')).toBe('Mala');
     });
 
     it('la clase de prestigio lo dice en la cabecera y no enseña los datos ni las listas vacías', () => {
@@ -520,6 +553,7 @@ describe('DetallesClaseComponent', () => {
         expect(titulos()).toContain('Lanzamiento de conjuros');
         expect(texto()).toContain('Arcanos');
         expect(valor('Salvación de conjuros')).toBe('Inteligencia');
+        expect(valor('Lista de conjuros de')).toBeNull();
         expect(celdas(1, 'tbody')).toEqual([
             ['Truco', 'Luz'],
             ['1', 'Proyectil mágico (espontáneo), Escudo'],
@@ -528,6 +562,29 @@ describe('DetallesClaseComponent', () => {
         const spy = spyOn(component.conjuroDetalles, 'emit');
         enlace('Proyectil mágico').click();
         expect(spy).toHaveBeenCalledWith(12);
+    });
+
+    it('enseña todas las marcas de lanzamiento de conjuros y la clase de la que toma la lista', () => {
+        component.clase = crearClaseMock({
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Divinos: true,
+                Psionicos: true,
+                Alma: true,
+                Conocidos_total: true,
+                Dependientes_alineamiento: true,
+                Dominio: true,
+                puede_elegir_especialidad: true,
+                Clase_origen: { Id: 4, Nombre: 'Clérigo' },
+            },
+        });
+        fixture.detectChanges();
+
+        expect(Array.from(lateral('Lanzamiento de conjuros')!.querySelectorAll('.ficha-lista__item span')).map((i) => limpio(i))).toEqual([
+            'Divinos', 'Poderes psiónicos', 'Magia de alma', 'Conocidos en total',
+            'Dependen del alineamiento', 'Dominios', 'Puede elegir especialidad',
+        ]);
+        expect(valor('Lista de conjuros de')).toBe('Clérigo');
     });
 
     it('enseña el prerrequisito «flag» detrás de los grupos y las competencias pedidas como enlaces', () => {

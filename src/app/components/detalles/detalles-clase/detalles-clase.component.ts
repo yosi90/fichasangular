@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, EtiquetaFicha, datosVisibles, unirTipo } from 'src/app/components/detalles/ficha';
+import { DatoFicha, EtiquetaFicha, datoAlineamiento, datosVisibles, unirTipo } from 'src/app/components/detalles/ficha';
 import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseNivelDetalle } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
@@ -88,7 +88,7 @@ export class DetallesClaseComponent {
     /** «Clase básica» o «Clase de prestigio». */
     tipoCabecera = '';
     etiquetas: EtiquetaFicha[] = [];
-    /** Los datos clave: dado de golpe, puntos de habilidad, niveles y roles. */
+    /** Los datos clave: dado de golpe, puntos de habilidad, alineamiento, niveles, progresiones y roles. */
     datos: DatoFicha[] = [];
     flagsConjuros: string[] = [];
     datosConjuros: DatoFicha[] = [];
@@ -138,10 +138,16 @@ export class DetallesClaseComponent {
         this.claseData = value;
         this.nombreClase = mayusculaInicial(value?.Nombre);
         this.tipoCabecera = unirTipo([value?.Prestigio ? 'Clase de prestigio' : 'Clase básica']);
-        this.etiquetas = value?.Aumenta_clase_lanzadora ? [{ texto: 'Aumenta clase lanzadora' }] : [];
+        this.etiquetas = [
+            value?.Aumenta_clase_lanzadora ? { texto: 'Aumenta clase lanzadora' } : null,
+            value?.Es_predilecta ? { texto: 'Puede ser predilecta' } : null,
+        ].filter((etiqueta): etiqueta is EtiquetaFicha => etiqueta !== null);
         this.datos = this.construirDatos();
         this.flagsConjuros = this.construirFlagsConjuros();
-        this.datosConjuros = datosVisibles([{ etiqueta: 'Salvación de conjuros', valor: value?.Mod_salv_conjuros }]);
+        this.datosConjuros = datosVisibles([
+            { etiqueta: 'Salvación de conjuros', valor: value?.Mod_salv_conjuros },
+            { etiqueta: 'Lista de conjuros de', valor: value?.Conjuros?.Clase_origen?.Nombre },
+        ]);
         this.listadoConjuros = this.construirListadoConjuros();
         this.idiomas = idiomasVisibles(value?.Idiomas);
         this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos);
@@ -498,7 +504,13 @@ export class DetallesClaseComponent {
         return [
             { etiqueta: 'Dado de golpe', valor: c?.Tipo_dado?.Nombre },
             { etiqueta: 'Puntos de habilidad por nivel', valor: puntos, detalle: puntos !== null && puntos !== undefined ? '+ mod. de Int' : null },
+            datoAlineamiento(c?.Alineamiento),
             { etiqueta: 'Niveles', valor: c?.Nivel_max_claseo > 0 ? `1 a ${c.Nivel_max_claseo}` : null },
+            // Las progresiones («Medio», «Buena»); sus valores, nivel a nivel, en la tabla.
+            { etiqueta: 'Ataque base', valor: c?.Ataque_base?.Nombre },
+            { etiqueta: 'Fortaleza', valor: c?.Salvaciones?.Fortaleza?.Nombre },
+            { etiqueta: 'Reflejos', valor: c?.Salvaciones?.Reflejos?.Nombre },
+            { etiqueta: 'Voluntad', valor: c?.Salvaciones?.Voluntad?.Nombre },
             { etiqueta: 'Roles', valor: roles.join(', ') },
         ];
     }
@@ -507,8 +519,15 @@ export class DetallesClaseComponent {
         const conjuros = this.claseData?.Conjuros;
         return [
             conjuros?.Arcanos === true ? 'Arcanos' : '',
+            conjuros?.Divinos === true ? 'Divinos' : '',
+            conjuros?.Psionicos === true ? 'Poderes psiónicos' : '',
+            conjuros?.Alma === true ? 'Magia de alma' : '',
             conjuros?.Conocidos_nivel_a_nivel === true ? 'Conocidos nivel a nivel' : '',
+            conjuros?.Conocidos_total === true ? 'Conocidos en total' : '',
             conjuros?.Lanzamiento_espontaneo === true ? 'Lanzamiento espontáneo' : '',
+            conjuros?.Dependientes_alineamiento === true ? 'Dependen del alineamiento' : '',
+            conjuros?.Dominio === true ? 'Dominios' : '',
+            conjuros?.puede_elegir_especialidad === true ? 'Puede elegir especialidad' : '',
         ].filter(Boolean);
     }
 
