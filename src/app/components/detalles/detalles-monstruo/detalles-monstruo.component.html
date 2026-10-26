@@ -8,32 +8,8 @@
         (abrirManual)="abrirDetalleManual()">
     </app-ficha-cabecera>
 
-    <!-- La franja grande y las casillas de características son propias del monstruo (lienzo aprobado); sus estilos,
-         en la hoja de la pantalla hasta que la ficha común los tenga. -->
-    <section class="ficha-tarjeta monstruo-franja" aria-label="Datos principales" *ngIf="principales.length > 0">
-        <dl class="monstruo-franja__datos">
-            <div class="monstruo-franja__dato" *ngFor="let dato of principales">
-                <dt class="monstruo-franja__etiqueta">{{dato.etiqueta}}</dt>
-                <dd class="monstruo-franja__valor">
-                    {{dato.valor}}
-                    <span class="monstruo-franja__detalle" *ngIf="dato.detalle">{{dato.detalle}}</span>
-                    <button type="button" class="monstruo-ayuda" *ngIf="dato.ayudaManiobrabilidad"
-                        matTooltip="Reglas de maniobrabilidad" matTooltipClass="tt-accent" aria-label="Reglas de maniobrabilidad"
-                        (click)="abrirInfoManiobrabilidad($event)">
-                        <mat-icon class="ficha-icono" aria-hidden="true">help_outline</mat-icon>
-                    </button>
-                </dd>
-            </div>
-        </dl>
-    </section>
-
-    <section class="monstruo-caracteristicas" aria-label="Características">
-        <div class="ficha-tarjeta monstruo-caracteristica" *ngFor="let casilla of casillas" role="group" [attr.aria-label]="casilla.texto">
-            <span class="monstruo-caracteristica__nombre" [matTooltip]="casilla.nombre" matTooltipClass="tt-accent" aria-hidden="true">{{casilla.abreviatura}}</span>
-            <span class="monstruo-caracteristica__valor" aria-hidden="true">{{casilla.valor}}</span>
-            <span class="monstruo-caracteristica__modificador" *ngIf="casilla.modificador" aria-hidden="true">{{casilla.modificador}}</span>
-        </div>
-    </section>
+    <app-ficha-franja [datos]="principales"></app-ficha-franja>
+    <app-ficha-casillas [casillas]="casillas"></app-ficha-casillas>
 
     <app-ficha-cuerpo>
         <app-ficha-seccion titulo="Combate" *ngIf="combate.length > 0">

@@ -39,6 +39,12 @@ export function lectorFicha(raiz: () => HTMLElement) {
         /** El enlace a otra entrada con ese texto. */
         enlace: (nombre: string): HTMLButtonElement =>
             todos('button.ficha-enlace').find((boton) => limpio(boton) === nombre) as HTMLButtonElement,
+        /** Los pares etiqueta y valor (con su detalle) de la franja grande de `dentro` (toda la pantalla, sin darlo). */
+        franja: (dentro: Element | null = raiz()): string[][] => todos('.ficha-franja__dato', dentro)
+            .map((dato) => [limpio(dato.querySelector('dt')), limpio(dato.querySelector('dd'))]),
+        /** Las casillas de características y salvaciones de `dentro`: cada parte que se ve («FUE», «16», «+3»). */
+        casillas: (dentro: Element | null = raiz()): string[][] => todos('.ficha-casilla', dentro)
+            .map((casilla) => Array.from(casilla.children).map((parte) => limpio(parte))),
         seccion: (titulo: string): Element | null => porTitulo('.ficha-seccion', titulo),
         lateral: (titulo: string): Element | null => porTitulo('.ficha-lateral-tarjeta', titulo),
         bloque: (titulo: string): Element | null => porTitulo('.ficha-bloque', titulo),

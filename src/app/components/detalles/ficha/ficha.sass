@@ -18,7 +18,7 @@
     color: $accent
 
 // Los componentes de la ficha no ocupan sitio propio: solo cuenta lo que pintan (así, uno vacío no deja hueco).
-app-ficha-cabecera, app-ficha-datos, app-ficha-cuerpo, app-ficha-seccion, app-ficha-lateral, app-ficha-bloque, app-ficha-prerrequisitos
+app-ficha-cabecera, app-ficha-datos, app-ficha-cuerpo, app-ficha-seccion, app-ficha-lateral, app-ficha-bloque, app-ficha-prerrequisitos, app-ficha-franja, app-ficha-casillas
     display: contents
 
 app-ficha-detalle
@@ -134,6 +134,39 @@ app-ficha-detalle
         border-color: $ficha-aviso
         color: $ficha-aviso
 
+    .ficha-cabecera__pie
+        font-size: 14px
+        color: $ficha-texto-suave
+
+    // Cabecera compacta: una fila con el nombre y el tipo al lado, y las etiquetas y acciones a la derecha.
+    .ficha-cabecera--compacta
+        align-items: center
+        padding: 12px 22px
+
+        .ficha-cabecera__identidad
+            flex-direction: row
+            flex-wrap: wrap
+            align-items: baseline
+            gap: 4px 16px
+
+        .ficha-cabecera__tipo
+            order: 2
+            font-size: 14px
+            font-weight: 400
+            letter-spacing: normal
+            text-transform: none
+            color: $ficha-texto-suave
+
+        .ficha-cabecera__nombre
+            font-size: 28px
+
+        .ficha-cabecera__referencias
+            flex-direction: row
+            flex-wrap: wrap
+            align-items: center
+            justify-content: flex-end
+            gap: 10px
+
     // Datos clave
     .ficha-datos-contenedor--tarjeta
         padding: 18px 24px
@@ -160,6 +193,125 @@ app-ficha-detalle
     .ficha-dato__detalle
         font-size: 14px
         color: $ficha-texto-suave
+
+    // Franja grande de datos principales (CA, iniciativa, velocidad…)
+    .ficha-franja
+        overflow: hidden
+
+    .ficha-franja__datos
+        display: grid
+        grid-template-columns: repeat(var(--ficha-franja-columnas, 5), minmax(0, 1fr))
+        gap: 1px
+        margin: 0
+        background: $primary
+
+    .ficha-franja__dato
+        min-width: 0
+        padding: 14px 18px
+        background: $ficha-tarjeta
+
+    .ficha-franja__etiqueta
+        font-size: 12px
+        color: $font-base
+
+    .ficha-franja__valor
+        display: flex
+        flex-wrap: wrap
+        align-items: baseline
+        gap: 4px 8px
+        margin: 3px 0 0
+        font-size: 24px
+        font-weight: 500
+        line-height: 1.25
+        color: $ficha-blanco
+        overflow-wrap: anywhere
+
+    .ficha-franja__detalle
+        font-size: 14px
+        font-weight: 400
+        color: $ficha-texto-suave
+
+    .ficha-franja--compacta
+        .ficha-franja__dato
+            padding: 10px 14px
+
+        .ficha-franja__valor
+            margin: 0
+            font-size: 20px
+
+        .ficha-franja__detalle
+            font-size: 12px
+
+    // Botón de ayuda tras un valor (las reglas de la maniobrabilidad)
+    .ficha-ayuda
+        display: inline-flex
+        align-self: center
+        padding: 0
+        border: 0
+        background: none
+        cursor: pointer
+
+        &:focus-visible
+            outline: 2px solid $active
+            outline-offset: 2px
+            border-radius: 2px
+
+    // Casillas de características y salvaciones
+    .ficha-casillas
+        display: grid
+        grid-template-columns: repeat(var(--ficha-casillas-columnas, 6), minmax(0, 1fr))
+        gap: 12px
+
+    .ficha-casilla
+        display: flex
+        flex-direction: column
+        align-items: center
+        min-width: 0
+        padding: 12px
+        text-align: center
+
+    .ficha-casilla--secundaria
+        background: $primary
+
+    .ficha-casilla__nombre
+        font-size: 12px
+        font-weight: 700
+        letter-spacing: .12em
+        color: $accent
+        overflow-wrap: anywhere
+
+    .ficha-casilla__valor
+        font-size: 26px
+        font-weight: 500
+        line-height: 1.3
+        color: $ficha-blanco
+
+    .ficha-casilla__modificador
+        font-size: 14px
+        color: $ficha-texto-suave
+
+    .ficha-casilla__detalle
+        font-size: 12px
+        color: $ficha-texto-suave
+
+    .ficha-casilla__detalle--aviso
+        color: $ficha-aviso
+
+    .ficha-casillas--compacta
+        gap: 8px
+
+        .ficha-casilla
+            padding: 8px 6px
+
+        .ficha-casilla__nombre
+            font-size: 11px
+            letter-spacing: .1em
+
+        .ficha-casilla__valor
+            font-size: 18px
+
+        .ficha-casilla__modificador
+            font-size: 13px
 
     // Cuerpo: texto a la izquierda (2fr) y listas siempre a la vista a la derecha (1fr)
     .ficha-cuerpo
@@ -367,6 +519,9 @@ app-ficha-detalle
         .ficha-datos
             grid-template-columns: repeat(2, minmax(0, 1fr))
 
+        .ficha-franja__datos, .ficha-casillas
+            grid-template-columns: repeat(3, minmax(0, 1fr))
+
 @container ficha (max-width: 640px)
     .ficha
         padding: 12px
@@ -381,6 +536,7 @@ app-ficha-detalle
 
         .ficha-cabecera__referencias
             align-items: flex-start
+            justify-content: flex-start
             max-width: none
 
         .ficha-etiquetas
@@ -394,3 +550,6 @@ app-ficha-detalle
 
         .ficha-dato
             grid-column: auto !important
+
+        .ficha-franja__datos
+            grid-template-columns: repeat(2, minmax(0, 1fr))

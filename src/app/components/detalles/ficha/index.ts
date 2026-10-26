@@ -1,9 +1,11 @@
 import { FichaBloqueComponent } from './ficha-bloque.component';
 import { FichaCabeceraComponent } from './ficha-cabecera.component';
+import { FichaCasillasComponent } from './ficha-casillas.component';
 import { FichaCaracteristicasComponent } from './ficha-caracteristicas.component';
 import { FichaCuerpoComponent } from './ficha-cuerpo.component';
 import { FichaDatosComponent } from './ficha-datos.component';
 import { FichaDetalleComponent } from './ficha-detalle.component';
+import { FichaFranjaComponent } from './ficha-franja.component';
 import { FichaHabilidadesComponent } from './ficha-habilidades.component';
 import { FichaLateralComponent } from './ficha-lateral.component';
 import { FichaPrerrequisitosComponent } from './ficha-prerrequisitos.component';
@@ -27,4 +29,6 @@ export const FICHA_DETALLE_COMPONENTES = [
     FichaPrerrequisitosComponent,
     FichaHabilidadesComponent,
     FichaCaracteristicasComponent,
+    FichaFranjaComponent,
+    FichaCasillasComponent,
 ];

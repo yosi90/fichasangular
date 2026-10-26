@@ -24,6 +24,48 @@ export interface DatoFicha {
     ayuda?: string | null;
     /** Si se da, el valor es un enlace que abre otra entrada (su detalle). */
     alPulsar?: () => void;
+    /**
+     * Si se da, el valor son varias entradas, separadas por comas y cada una con su enlace si lo tiene («Guerrero 2,
+     * Mago 3»). `valor` sigue decidiendo si el dato se ve.
+     */
+    enlaces?: EnlaceFicha[];
+}
+
+/** Una de las entradas de un dato con varias (`DatoFicha.enlaces`). */
+export interface EnlaceFicha {
+    texto: string;
+    alPulsar?: () => void;
+}
+
+/**
+ * Un dato de la franja grande (`<app-ficha-franja>`): como los de la rejilla y, si hace falta, un botón de ayuda tras el
+ * valor (las reglas de la maniobrabilidad, junto a la velocidad).
+ */
+export interface DatoFranja extends DatoFicha {
+    /** La etiqueta en la franja compacta («PG», «CA»), con la entera en el tooltip. */
+    etiquetaCorta?: string;
+    ayudaBoton?: { texto: string; alPulsar: (evento: Event) => void; } | null;
+}
+
+/** Una casilla de `<app-ficha-casillas>`: una característica («FUE 16 +3») o una salvación. */
+export interface CasillaFicha {
+    /** «FUE», «FORTALEZA». */
+    abreviatura: string;
+    /** El nombre entero, en el tooltip de la abreviatura. */
+    nombre: string;
+    valor: string;
+    /** Debajo del valor, con signo («+3»). */
+    modificador?: string | null;
+    /** Texto pequeño debajo («clase +6 · varios +1», «Perdida»). */
+    detalle?: string | null;
+    /** Tooltip del valor (el desglose). */
+    ayuda?: string | null;
+    /** El nombre accesible de la casilla («Fuerza 16 (+3)»). */
+    texto: string;
+    /** Pinta el detalle en ámbar (una característica perdida). */
+    aviso?: boolean;
+    /** Fondo `$primary`, para separar otro grupo (las salvaciones tras las características). */
+    secundaria?: boolean;
 }
 
 /** Una etiqueta de la cabecera, con borde fino. `aviso` la pinta en ámbar (homebrew, conflicto blando). */

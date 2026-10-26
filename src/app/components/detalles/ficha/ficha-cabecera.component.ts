@@ -6,7 +6,7 @@ import { EtiquetaFicha, esTextoCorto, etiquetasVisibles, separarManualTexto } fr
 /**
  * La cabecera de la ficha: el tipo en versalitas, el nombre, una línea opcional en cursiva y, a la derecha, el manual
  * con su página y las etiquetas (Oficial u Homebrew y las propias del tipo). Lo que se proyecte (botones, acciones)
- * va a la derecha, bajo las etiquetas.
+ * va a la derecha, bajo las etiquetas; lo que lleve el atributo `fichaCabeceraPie` («Creado por…»), bajo el nombre.
  */
 @Component({
     selector: 'app-ficha-cabecera',
@@ -24,6 +24,8 @@ export class FichaCabeceraComponent implements OnChanges {
     /** `true` enseña «Oficial»; `false`, «Homebrew» en ámbar; sin dar, nada. */
     @Input() oficial: boolean | null | undefined = undefined;
     @Input() etiquetas: (string | EtiquetaFicha)[] | null | undefined = [];
+    /** Más baja, en una fila: el nombre con el tipo al lado y las etiquetas y acciones a la derecha. */
+    @Input() compacta = false;
     /** Pulsar el manual abre su detalle. Si nadie escucha, el manual es solo texto. */
     @Output() abrirManual = new EventEmitter<void>();
 

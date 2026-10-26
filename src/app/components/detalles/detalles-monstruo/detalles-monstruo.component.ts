@@ -1,5 +1,18 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, DoteFicha, SortilegaFicha, datoAlineamiento, datosVisibles, dotesVisibles, sortilegasVisibles, textoDato, unirTipo } from 'src/app/components/detalles/ficha';
+import {
+    CasillaFicha,
+    DatoFicha,
+    DatoFranja,
+    DoteFicha,
+    SortilegaFicha,
+    datoAlineamiento,
+    datosVisibles,
+    dotesVisibles,
+    sortilegasVisibles,
+    textoDato,
+    textosMovimiento,
+    unirTipo,
+} from 'src/app/components/detalles/ficha';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
@@ -14,6 +27,7 @@ import { porNombre } from 'src/app/services/utils/orden-texto';
 import {
     NOMBRES_CARACTERISTICAS,
     SIN_CARACTERISTICA,
+    abreviaturaCaracteristica,
     textoCaracteristicaMonstruo,
     textoModificadorCaracteristica,
     textoValorCaracteristica,
@@ -24,18 +38,6 @@ interface ParPintado {
     etiqueta: string;
     valor: string;
     detalle: string | null;
-    /** La velocidad lleva el botón con las reglas de maniobrabilidad cuando el monstruo vuela. */
-    ayudaManiobrabilidad?: boolean;
-}
-
-/** Una casilla de característica: «FUE», «15», «+2» (sin valor, «—» y sin modificador). */
-interface CasillaCaracteristica {
-    abreviatura: string;
-    nombre: string;
-    valor: string;
-    modificador: string | null;
-    /** «Fuerza 15 (+2)»: el nombre accesible de la casilla. */
-    texto: string;
 }
 
 interface NivelClaseRequerido {
@@ -92,8 +94,9 @@ export class DetallesMonstruoComponent {
     tipoCabecera = '';
     etiquetas: string[] = [];
     /** La franja grande: valor de desafío, dados de golpe, CA, iniciativa y velocidad. */
-    principales: ParPintado[] = [];
-    casillas: CasillaCaracteristica[] = [];
+    principales: DatoFranja[] = [];
+    /** Las casillas de características: «FUE», «15», «+2» (sin valor, «—» y sin modificador). */
+    casillas: CasillaFicha[] = [];
     combate: ParPintado[] = [];
     resumen: DatoFicha[] = [];
     sortilegas: SortilegaFicha[] = [];
@@ -270,11 +273,11 @@ export class DetallesMonstruoComponent {
             .map((item) => ({ id: item?.Id_personaje, nombre: item?.Nombre, extra: `C#${toNumber(item?.Id_companero)}` })));
     }
 
-    private calcularPrincipales(): ParPintado[] {
+    private calcularPrincipales(): DatoFranja[] {
         const m = this.monstruoData;
         const defensa = m?.Defensa;
-        const movimientos = this.textosMovimiento();
-        const pares = this.pintar([
+        const movimientos = textosMovimiento(m?.Movimientos, this.mostrarManiobrabilidad() ? m.Maniobrabilidad.Nombre : null);
+        return [
             { etiqueta: 'Valor de desafío', valor: m?.Valor_desafio },
             { etiqueta: 'Dados de golpe', valor: this.textoDadosGolpe() },
             {
@@ -283,12 +286,16 @@ export class DetallesMonstruoComponent {
                 detalle: defensa ? `toque ${defensa.Toque}, desprevenido ${defensa.Desprevenido}` : null,
             },
             { etiqueta: 'Iniciativa', valor: m ? textoConSigno(toNumber(m.Iniciativa)) : null },
-            { etiqueta: 'Velocidad', valor: movimientos[0] ?? null, detalle: movimientos.slice(1).join(', ') },
-        ]);
-        const velocidad = pares.find((par) => par.etiqueta === 'Velocidad');
-        if (velocidad)
-            velocidad.ayudaManiobrabilidad = this.mostrarManiobrabilidad();
-        return pares;
+            {
+                etiqueta: 'Velocidad',
+                valor: movimientos[0] ?? null,
+                detalle: movimientos.slice(1).join(', '),
+                // Cuando vuela, la velocidad lleva el botón con las reglas de maniobrabilidad.
+                ayudaBoton: this.mostrarManiobrabilidad()
+                    ? { texto: 'Reglas de maniobrabilidad', alPulsar: (evento: Event) => this.abrirInfoManiobrabilidad(evento) }
+                    : null,
+            },
+        ];
     }
 
     /** «1d8+1»: los dados de golpe con su suma. */
@@ -299,21 +306,6 @@ export class DetallesMonstruoComponent {
             return '';
         const suma = toNumber(dg?.Suma);
         return `${cantidad}${`${dg?.Tipo_dado?.Nombre ?? ''}`.trim().toLowerCase()}${suma !== 0 ? textoConSigno(suma) : ''}`;
-    }
-
-    /** «40'», «nadar 30'», «volar 80' (buena)»: el primero es la velocidad base y el resto, sus otros movimientos. */
-    private textosMovimiento(): string[] {
-        const mov = this.monstruoData?.Movimientos;
-        const maniobrabilidad = this.mostrarManiobrabilidad() ? ` (${`${this.monstruoData.Maniobrabilidad.Nombre}`.trim().toLowerCase()})` : '';
-        return [
-            { nombre: '', valor: toNumber(mov?.Correr) },
-            { nombre: 'nadar ', valor: toNumber(mov?.Nadar) },
-            { nombre: 'volar ', valor: toNumber(mov?.Volar), extra: maniobrabilidad },
-            { nombre: 'trepar ', valor: toNumber(mov?.Trepar) },
-            { nombre: 'escalar ', valor: toNumber(mov?.Escalar) },
-        ]
-            .filter((movimiento) => movimiento.valor > 0)
-            .map((movimiento) => `${movimiento.nombre}${movimiento.valor}'${movimiento.extra ?? ''}`);
     }
 
     private calcularCombate(): ParPintado[] {
@@ -389,13 +381,13 @@ export class DetallesMonstruoComponent {
         ];
     }
 
-    private casilla(clave: Caracteristica): CasillaCaracteristica {
+    private casilla(clave: Caracteristica): CasillaFicha {
         const caracteristicas = this.monstruoData?.Caracteristicas;
         const valor = textoValorCaracteristica(caracteristicas, clave);
         const modificador = textoModificadorCaracteristica(caracteristicas, clave);
         const nombre = NOMBRES_CARACTERISTICAS[clave];
         return {
-            abreviatura: nombre.slice(0, 3).toUpperCase(),
+            abreviatura: abreviaturaCaracteristica(clave),
             nombre,
             valor,
             modificador: valor === SIN_CARACTERISTICA || modificador === SIN_CARACTERISTICA ? null : modificador,

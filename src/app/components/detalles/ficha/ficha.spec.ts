@@ -4,7 +4,9 @@ import { TextoManualComponent } from 'src/app/components/shared/texto-manual/tex
 import { ManualReferencia } from 'src/app/interfaces/manual';
 import { CondicionPrerrequisito, GrupoPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
 import {
+    CasillaFicha,
     DatoFicha,
+    DatoFranja,
     FICHA_DETALLE_COMPONENTES,
     datoAlineamiento,
     datosMovimiento,
@@ -15,6 +17,7 @@ import {
     sortilegasVisibles,
     textoDato,
     textoPies,
+    textosMovimiento,
     unirTipo,
 } from './index';
 import { lectorFicha } from 'src/testing/ficha-detalle';
@@ -69,6 +72,11 @@ describe('Ficha de detalle: reglas', () => {
         expect(textoPies(null)).toBeNull();
     });
 
+    it('textosMovimiento pone primero la velocidad base y la maniobrabilidad con el vuelo', () => {
+        expect(textosMovimiento({ Correr: 40, Nadar: 20, Volar: 60, Trepar: 0, Escalar: 0 }, 'Buena')).toEqual(["40'", "nadar 20'", "volar 60' (buena)"]);
+        expect(textosMovimiento({ Correr: 0, Nadar: 30, Volar: 0, Trepar: 0, Escalar: 0 }, null)).toEqual(["nadar 30'"]);
+    });
+
     it('datosMovimiento enseña los movimientos que tiene, en pies, y la maniobrabilidad', () => {
         const datos = datosMovimiento({ Correr: 20, Nadar: 0, Volar: 60, Trepar: 0, Escalar: 0 }, 'Buena');
         expect(datos.map((dato) => `${dato.etiqueta} ${dato.valor}`)).toEqual(["Correr 20'", "Volar 60'", 'Maniobrabilidad Buena']);
@@ -115,8 +123,11 @@ describe('Ficha de detalle: reglas', () => {
         <app-ficha-detalle>
             <app-ficha-cabecera [tipo]="tipo" [nombre]="nombre" [subtitulo]="subtitulo" [manual]="manual" [oficial]="oficial"
                 [etiquetas]="etiquetas" (abrirManual)="manualesAbiertos = manualesAbiertos + 1">
+                <span fichaCabeceraPie class="ficha-cabecera__pie">Creado por ti</span>
             </app-ficha-cabecera>
             <app-ficha-datos [datos]="datos" titulo="Datos de prueba"></app-ficha-datos>
+            <app-ficha-franja [datos]="franjaDatos" [compacta]="compacta"></app-ficha-franja>
+            <app-ficha-casillas [casillas]="casillasDatos"></app-ficha-casillas>
             <app-ficha-cuerpo>
                 <app-ficha-seccion titulo="Beneficio" [texto]="beneficio"></app-ficha-seccion>
                 <app-ficha-seccion titulo="Normal" [texto]="normal"></app-ficha-seccion>
@@ -153,13 +164,24 @@ class FichaPruebaComponent {
     grupos: GrupoPrerrequisitos[] = [];
     abiertas: CondicionPrerrequisito[] = [];
     esNavegable = (condicion: CondicionPrerrequisito) => condicion.clave === 'competencia_arma';
+    compacta = false;
+    ayudas = 0;
+    franjaDatos: DatoFranja[] = [
+        { etiqueta: 'Clase de armadura', etiquetaCorta: 'CA', valor: 16, detalle: 'toque 13', ayuda: 'Base +10' },
+        { etiqueta: 'Presa', valor: null },
+        { etiqueta: 'Velocidad', valor: "40'", ayudaBoton: { texto: 'Reglas de maniobrabilidad', alPulsar: () => this.ayudas++ } },
+    ];
+    casillasDatos: CasillaFicha[] = [
+        { abreviatura: 'FUE', nombre: 'Fuerza', valor: '16', modificador: '+3', texto: 'Fuerza 16 (+3)' },
+        { abreviatura: 'FORTALEZA', nombre: 'Fortaleza', valor: '+5', detalle: 'clase +2', texto: 'Fortaleza +5', secundaria: true },
+    ];
 }
 
 describe('Ficha de detalle: componentes', () => {
     let fixture: ComponentFixture<FichaPruebaComponent>;
     let host: FichaPruebaComponent;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto } = lectorFicha(elemento);
+    const { texto, franja, casillas, valor, enlace } = lectorFicha(elemento);
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
@@ -283,6 +305,47 @@ describe('Ficha de detalle: componentes', () => {
         const subtitulo = elemento().querySelector('.ficha-subtitulo') as HTMLElement;
         expect(subtitulo.textContent).toContain('Elección A');
         expect(subtitulo.textContent).toContain('Basta con una de estas opciones');
+    });
+
+    it('lo que lleva fichaCabeceraPie va bajo el nombre', () => {
+        expect(elemento().querySelector('.ficha-cabecera__identidad .ficha-cabecera__pie')?.textContent?.trim()).toBe('Creado por ti');
+    });
+
+    it('un dato con varias entradas enseña cada una con su enlace', () => {
+        const abiertas: string[] = [];
+        host.datos = [{
+            etiqueta: 'Clases',
+            valor: 'Guerrero 2, Mago 3',
+            enlaces: [{ texto: 'Guerrero 2', alPulsar: () => abiertas.push('Guerrero') }, { texto: 'Mago 3', alPulsar: () => abiertas.push('Mago') }],
+        }];
+        fixture.detectChanges();
+        expect(valor('Clases')).toBe('Guerrero 2, Mago 3');
+        enlace('Mago 3').click();
+        expect(abiertas).toEqual(['Mago']);
+    });
+
+    it('la franja enseña los datos visibles con su detalle y su botón de ayuda; compacta, con la etiqueta corta', () => {
+        expect(franja().map(([etiqueta]) => etiqueta)).toEqual(['Clase de armadura', 'Velocidad']);
+        expect(franja()[0][1]).toBe('16 toque 13');
+        (elemento().querySelector('.ficha-franja .ficha-ayuda') as HTMLButtonElement).click();
+        expect(host.ayudas).toBe(1);
+
+        host.compacta = true;
+        fixture.detectChanges();
+        expect(franja()[0][0]).toBe('CA');
+        expect(elemento().querySelector('.ficha-franja__etiqueta')?.getAttribute('aria-label')).toBe('Clase de armadura');
+        expect(elemento().querySelector('.ficha-franja--compacta')).not.toBeNull();
+    });
+
+    it('las casillas enseñan abreviatura, valor y modificador o detalle, con su nombre accesible', () => {
+        expect(casillas()).toEqual([['FUE', '16', '+3'], ['FORTALEZA', '+5', 'clase +2']]);
+        const grupos = Array.from(elemento().querySelectorAll('.ficha-casilla'));
+        expect(grupos.map((g) => g.getAttribute('aria-label'))).toEqual(['Fuerza 16 (+3)', 'Fortaleza +5']);
+        expect(grupos[1].classList).toContain('ficha-casilla--secundaria');
+
+        host.casillasDatos = [];
+        fixture.detectChanges();
+        expect(elemento().querySelector('.ficha-casillas')).toBeNull();
     });
 
     it('el bloque a todo lo ancho va fuera del cuerpo', () => {

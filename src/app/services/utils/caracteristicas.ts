@@ -23,6 +23,11 @@ export const NOMBRES_CARACTERISTICAS: Readonly<Record<Caracteristica, string>> =
     Carisma: 'Carisma',
 };
 
+/** La abreviatura de una característica en las casillas de la ficha («FUE», «CON»). */
+export function abreviaturaCaracteristica(clave: Caracteristica): string {
+    return NOMBRES_CARACTERISTICAS[clave].slice(0, 3).toUpperCase();
+}
+
 /** El valor de una característica de un monstruo («16»), o «—» si no tiene. */
 export function textoValorCaracteristica(caracteristicas: MonstruoCaracteristicas | null | undefined, clave: Caracteristica): string {
     const valor = caracteristicas?.[clave];

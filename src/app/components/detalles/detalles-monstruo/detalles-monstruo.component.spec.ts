@@ -91,9 +91,7 @@ describe('DetallesMonstruoComponent', () => {
     let fixture: ComponentFixture<DetallesMonstruoComponent>;
     let manualNavSpy: jasmine.SpyObj<ManualDetalleNavigationService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, titulos, datos, enlace, valor } = lectorFicha(elemento);
-    const franja = (): string[][] => Array.from(elemento().querySelectorAll('.monstruo-franja__dato'))
-        .map((d) => [limpio(d.querySelector('dt')), limpio(d.querySelector('dd'))]);
+    const { texto, titulos, datos, enlace, valor, franja, casillas } = lectorFicha(elemento);
     const combate = (): string[][] => {
         const dts = Array.from(elemento().querySelectorAll('.monstruo-pares dt')).map((d) => limpio(d));
         const dds = Array.from(elemento().querySelectorAll('.monstruo-pares dd')).map((d) => limpio(d));
@@ -195,14 +193,12 @@ describe('DetallesMonstruoComponent', () => {
         });
         fixture.detectChanges();
 
-        const casillas = Array.from(elemento().querySelectorAll('.monstruo-caracteristica'));
-        expect(casillas.map((c) => c.getAttribute('aria-label'))).toEqual([
+        expect(Array.from(elemento().querySelectorAll('.ficha-casilla')).map((c) => c.getAttribute('aria-label'))).toEqual([
             'Fuerza 15 (+2)', 'Destreza 13 (+1)', 'Constitución —', 'Inteligencia 2 (-4)', 'Sabiduría 12 (+1)', 'Carisma 10 (+0)',
         ]);
-        const partes = (casilla: Element) => Array.from(casilla.children).map((parte) => limpio(parte));
-        expect(partes(casillas[0])).toEqual(['FUE', '15', '+2']);
-        expect(partes(casillas[2])).toEqual(['CON', '—']);
-        expect(partes(casillas[5])).toEqual(['CAR', '10', '+0']);
+        expect(casillas()[0]).toEqual(['FUE', '15', '+2']);
+        expect(casillas()[2]).toEqual(['CON', '—']);
+        expect(casillas()[5]).toEqual(['CAR', '10', '+0']);
         expect(texto()).not.toContain('null');
     });
 
@@ -450,10 +446,10 @@ describe('DetallesMonstruoComponent', () => {
         fixture.detectChanges();
 
         expect(component.mostrarManiobrabilidad()).toBeTrue();
-        const velocidad = elemento().querySelectorAll('.monstruo-franja__dato')[4];
+        const velocidad = elemento().querySelectorAll('.ficha-franja__dato')[4];
         expect(limpio(velocidad.querySelector('dt'))).toBe('Velocidad');
-        expect(limpio(velocidad.querySelector('.monstruo-franja__detalle'))).toBe("volar 60' (buena)");
-        elemento().querySelector<HTMLButtonElement>('.monstruo-ayuda')!.click();
+        expect(limpio(velocidad.querySelector('.ficha-franja__detalle'))).toBe("volar 60' (buena)");
+        elemento().querySelector<HTMLButtonElement>('.ficha-ayuda')!.click();
 
         const texto = JSON.stringify(component.getManiobrabilidadInfoSecciones());
         expect(component.mostrarInfoManiobrabilidad).toBeTrue();

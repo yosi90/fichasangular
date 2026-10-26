@@ -117,6 +117,23 @@ interface MovimientosCriatura {
 }
 
 /**
+ * Los movimientos como en la franja de una criatura: «40'», «nadar 30'», «volar 80' (buena)». El primero es la velocidad
+ * base y el resto, sus otros movimientos. La maniobrabilidad (su nombre, o nada si no se enseña) va con el vuelo.
+ */
+export function textosMovimiento(movimientos: MovimientosCriatura | null | undefined, maniobrabilidad: string | null | undefined): string[] {
+    const vuelo = tieneTextoVisible(maniobrabilidad) ? ` (${`${maniobrabilidad}`.trim().toLowerCase()})` : '';
+    return [
+        { nombre: '', valor: toNumber(movimientos?.Correr) },
+        { nombre: 'nadar ', valor: toNumber(movimientos?.Nadar) },
+        { nombre: 'volar ', valor: toNumber(movimientos?.Volar), extra: vuelo },
+        { nombre: 'trepar ', valor: toNumber(movimientos?.Trepar) },
+        { nombre: 'escalar ', valor: toNumber(movimientos?.Escalar) },
+    ]
+        .filter((movimiento) => movimiento.valor > 0)
+        .map((movimiento) => `${movimiento.nombre}${movimiento.valor}'${movimiento.extra ?? ''}`);
+}
+
+/**
  * Los datos de la sección «Movimiento»: cada movimiento que tiene (en pies) y la maniobrabilidad, que la API da a
  * `null` sin vuelo.
  */

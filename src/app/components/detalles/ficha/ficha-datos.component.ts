@@ -1,6 +1,6 @@
 import { Component, Input, OnChanges } from '@angular/core';
 import { textoVisible } from 'src/app/services/utils/texto-visible';
-import { DatoFicha, LARGO_DATO_ANCHO, datosVisibles, textoDato } from './ficha';
+import { DatoFicha, EnlaceFicha, LARGO_DATO_ANCHO, datosVisibles, textoDato } from './ficha';
 
 interface DatoPintado {
     etiqueta: string;
@@ -9,6 +9,7 @@ interface DatoPintado {
     ancho: number;
     ayuda: string | null;
     alPulsar?: () => void;
+    enlaces: EnlaceFicha[];
 }
 
 /**
@@ -26,8 +27,16 @@ interface DatoPintado {
                 <div class="ficha-dato" *ngFor="let dato of pintados" [style.grid-column]="dato.ancho > 1 ? 'span ' + dato.ancho : null">
                     <dt class="ficha-dato__etiqueta">{{dato.etiqueta}}</dt>
                     <dd class="ficha-dato__valor" [matTooltip]="dato.ayuda ?? ''" [matTooltipDisabled]="!dato.ayuda" matTooltipClass="tt-accent tt-multiline">
-                        <button type="button" class="ficha-enlace" *ngIf="dato.alPulsar; else valorTexto" (click)="dato.alPulsar()">{{dato.valor}}</button>
-                        <ng-template #valorTexto>{{dato.valor}}</ng-template>
+                        <ng-container *ngIf="dato.enlaces.length > 0; else valorUnico">
+                            <ng-container *ngFor="let enlace of dato.enlaces; let ultimo = last">
+                                <button type="button" class="ficha-enlace" *ngIf="enlace.alPulsar; else enlaceTexto" (click)="enlace.alPulsar()">{{enlace.texto}}</button>
+                                <ng-template #enlaceTexto>{{enlace.texto}}</ng-template><ng-container *ngIf="!ultimo">, </ng-container>
+                            </ng-container>
+                        </ng-container>
+                        <ng-template #valorUnico>
+                            <button type="button" class="ficha-enlace" *ngIf="dato.alPulsar; else valorTexto" (click)="dato.alPulsar()">{{dato.valor}}</button>
+                            <ng-template #valorTexto>{{dato.valor}}</ng-template>
+                        </ng-template>
                         <span class="ficha-dato__detalle" *ngIf="dato.detalle"> {{dato.detalle}}</span>
                     </dd>
                 </div>
@@ -57,6 +66,7 @@ export class FichaDatosComponent implements OnChanges {
                 ancho: Math.min(Math.max(1, ancho), maximo),
                 ayuda: textoVisible(dato.ayuda) || null,
                 alPulsar: dato.alPulsar,
+                enlaces: (dato.enlaces ?? []).filter((enlace) => textoVisible(enlace?.texto)),
             };
         });
     }
