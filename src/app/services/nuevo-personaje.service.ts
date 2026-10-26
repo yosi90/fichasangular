@@ -3486,7 +3486,10 @@ export class NuevoPersonajeService {
             .sort((a, b) => a - b);
     }
 
-    /** La clase del catálogo de una entrada del desglose: por su id y, si no lo tiene, por su nombre. */
+    /**
+     * La clase del catálogo de una entrada del desglose: por su id y, si la entrada no lo trae (un borrador de antes),
+     * por su nombre.
+     */
     private obtenerClaseDeDesglose(entrada: { Id?: number; Nombre?: string; } | null | undefined): Clase | null {
         const id = toInt(entrada?.Id);
         if (id > 0) {
@@ -8053,7 +8056,7 @@ export class NuevoPersonajeService {
             if (nivel <= 0)
                 return acumulado;
 
-            const claseCatalogo = this.obtenerClaseDelDesglose(claseDesglose);
+            const claseCatalogo = this.obtenerClaseDeDesglose(claseDesglose);
             if (!claseCatalogo)
                 return acumulado;
 
@@ -9630,7 +9633,7 @@ export class NuevoPersonajeService {
             .filter((entrada) => toInt(entrada?.Nivel) > 0)
             .map((entrada) => ({
                 cantidad: toInt(entrada.Nivel),
-                caras: dadoComun ?? (carasDado(this.obtenerClaseDelDesglose(entrada)?.Tipo_dado?.Nombre) || dadoRacial),
+                caras: dadoComun ?? (carasDado(this.obtenerClaseDeDesglose(entrada)?.Tipo_dado?.Nombre) || dadoRacial),
             }));
         flags.dadosGolpe = nivelesClase.length > 0;
 
@@ -9685,16 +9688,6 @@ export class NuevoPersonajeService {
         return carasDado(raza?.Dgs_adicionales?.Dado)
             || Math.max(0, toInt(this.personajeCreacion?.Dados_golpe))
             || this.resolverDadoGolpeTipoActual();
-    }
-
-    /**
-     * La clase del catálogo de una entrada del desglose: por su id y, si la entrada no lo trae (un borrador de antes),
-     * por su nombre.
-     */
-    private obtenerClaseDelDesglose(entrada: { Id?: number; Nombre?: string; } | null | undefined): Clase | null {
-        const id = toInt(entrada?.Id);
-        const porId = id > 0 ? this.catalogoClases.find((clase) => toInt(clase?.Id) === id) : undefined;
-        return porId ?? this.obtenerClaseCatalogoPorNombre(`${entrada?.Nombre ?? ''}`);
     }
 
     /** Los PG que dan las dotes del personaje: `Modificadores.Pg_a` (Dureza, +3) y `Modificadores.Pg_a_n` (+N por DG). */
