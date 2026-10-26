@@ -3381,6 +3381,16 @@ export class NuevoPersonajeComponent {
         return this.nuevoPSvc.obtenerLimiteRangoHabilidad(idHabilidad);
     }
 
+    getCosteRangoHabilidad(idHabilidad: number): number {
+        return this.nuevoPSvc.obtenerCosteRangoHabilidad(idHabilidad);
+    }
+
+    getTooltipLimiteRangoHabilidad(idHabilidad: number): string {
+        return this.getCosteRangoHabilidad(idHabilidad) > 1
+            ? 'Transclásea: cada rango cuesta 2 puntos y el límite es la mitad (nivel + 3) / 2'
+            : 'Clásea: cada rango cuesta 1 punto y el límite es nivel + 3';
+    }
+
     esHabilidadEntrenada(habilidad: Personaje['Habilidades'][number]): boolean {
         return !!habilidad?.Entrenada;
     }
@@ -3603,7 +3613,7 @@ export class NuevoPersonajeComponent {
             return false;
         const actual = Number(habilidad?.Rangos ?? 0);
         const limite = this.getLimiteRangoHabilidad(Number(habilidad?.Id));
-        return this.flujoHabilidades.puntosRestantes > 0 && actual < limite;
+        return this.flujoHabilidades.puntosRestantes >= this.getCosteRangoHabilidad(Number(habilidad?.Id)) && actual < limite;
     }
 
     puedeBajarRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
@@ -3622,7 +3632,7 @@ export class NuevoPersonajeComponent {
             return false;
         const actual = Number(habilidad?.Rangos ?? 0);
         const limite = this.getLimiteRangoHabilidad(Number(habilidad?.Id));
-        return this.flujoHabilidades.puntosRestantes > 0 && actual < limite;
+        return this.flujoHabilidades.puntosRestantes >= this.getCosteRangoHabilidad(Number(habilidad?.Id)) && actual < limite;
     }
 
     ajustarRangoHabilidad(idHabilidad: number, delta: number): void {
@@ -3640,7 +3650,8 @@ export class NuevoPersonajeComponent {
         const actual = Number(habilidad?.Rangos ?? 0);
         const limite = this.getLimiteRangoHabilidad(idHabilidad);
         const margenLimite = Math.max(0, limite - actual);
-        const delta = Math.min(margenLimite, Math.max(0, Number(this.flujoHabilidades.puntosRestantes ?? 0)));
+        const rangosPagables = Math.floor(Math.max(0, Number(this.flujoHabilidades.puntosRestantes ?? 0)) / this.getCosteRangoHabilidad(idHabilidad));
+        const delta = Math.min(margenLimite, rangosPagables);
         if (idHabilidad <= 0 || delta < 1)
             return;
 

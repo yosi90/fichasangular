@@ -930,7 +930,14 @@
                                 </mat-chip>
                             </div>
                             <mat-chip class="habilidad-entrenada-info-chip">
+                                Transcláseas: 2 puntos por rango y la mitad de límite.
+                            </mat-chip>
+                            <mat-chip class="habilidad-entrenada-info-chip">
                                 * Las habilidades entrenadas no cláseas no pueden subir rangos.
+                            </mat-chip>
+                            <mat-chip class="habilidad-entrenada-info-chip"
+                                *ngIf="flujoHabilidades.puntosRestantes > 0 && puedeContinuarHabilidades">
+                                Los puntos que quedan no llegan para otro rango: se pierden al continuar.
                             </mat-chip>
                         </div>
 
@@ -1001,7 +1008,8 @@
                                                 matTooltipClass="tt-accent tt-multiline">
                                                 {{getTextoVariosHabilidad(habilidad)}}
                                             </td>
-                                            <td>{{getLimiteRangoHabilidad(habilidad.Id)}}</td>
+                                            <td [matTooltip]="getTooltipLimiteRangoHabilidad(habilidad.Id)"
+                                                matTooltipClass="tt-accent">{{getLimiteRangoHabilidad(habilidad.Id)}}</td>
                                             <td class="habilidad-acciones-col">
                                                 <div class="habilidad-acciones">
                                                     <button mat-icon-button color="warn"

@@ -6,9 +6,13 @@
  *   raciales, el primer nivel ya fue el de esos DG (sus puntos llevan su propio multiplicador) y el primer nivel de
  *   clase no lleva ×4.
  * - Los puntos extra de la raza (el humano: 4 en el primer nivel y 1 en cada nivel siguiente) se suman aparte.
+ * - Un rango de habilidad clásea cuesta 1 punto y su tope es nivel + 3; uno transcláseo cuesta 2 puntos y su tope es la
+ *   mitad, ⌊(nivel + 3) / 2⌋. Los rangos son siempre enteros (no hay medios rangos).
  */
 
 export const MULTIPLICADOR_PRIMER_NIVEL = 4;
+export const COSTE_RANGO_CLASEA = 1;
+export const COSTE_RANGO_TRANSCLASEA = 2;
 
 export interface PuntosHabilidadNivelClase {
     /** Puntos de habilidad por nivel de la clase («2 + mod. de Int» → 2). */
@@ -31,4 +35,13 @@ export function puntosHabilidadNivelClase(entrada: PuntosHabilidadNivelClase): n
     const porNivel = Math.max(1, entero(entrada.puntosClase) + entero(entrada.modInteligencia));
     const extra = Math.max(0, entero(entrada.primerNivelPersonaje ? entrada.extraPrimerNivel : entrada.extraPorNivel));
     return (entrada.primerNivelPersonaje ? porNivel * MULTIPLICADOR_PRIMER_NIVEL : porNivel) + extra;
+}
+
+export function costeRangoHabilidad(clasea: boolean): number {
+    return clasea ? COSTE_RANGO_CLASEA : COSTE_RANGO_TRANSCLASEA;
+}
+
+export function limiteRangosHabilidad(nivelPersonaje: number, clasea: boolean): number {
+    const tope = Math.max(0, entero(nivelPersonaje)) + 3;
+    return clasea ? tope : Math.floor(tope / 2);
 }

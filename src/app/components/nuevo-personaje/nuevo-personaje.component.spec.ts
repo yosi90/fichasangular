@@ -2966,6 +2966,9 @@ describe('NuevoPersonajeComponent', () => {
             Nombre: 'Rastreador',
             Puntos_habilidad: { Id: 1, Valor: 2 },
         });
+        nuevoPSvc.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        ]);
         component.Personaje.ModInteligencia = 0;
         component.catalogoClases = [clase];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);

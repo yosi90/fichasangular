@@ -5319,7 +5319,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.EstadoFlujo.habilidades.returnStep).toBe('conjuros');
     });
 
-    it('límites de rangos: class skill = 3+nivelRef y no class = nivelRef+1', () => {
+    it('límites de rangos: clásea = nivelRef + 3 y transclásea = la mitad, ⌊(nivelRef + 3) / 2⌋', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
             { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
@@ -5335,7 +5335,51 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
 
         expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
         expect(svc.obtenerLimiteRangoHabilidad(6)).toBe(5);
-        expect(svc.obtenerLimiteRangoHabilidad(7)).toBe(3);
+        expect(svc.obtenerLimiteRangoHabilidad(7)).toBe(2);
+    });
+
+    it('transclásea de nivel 1: 2 puntos por rango, llega a 2 rangos con 4 puntos y al bajar devuelve 2', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+            { Id_habilidad: 7, Nombre: 'Nadar', Id_caracteristica: 1, Caracteristica: 'Fuerza', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs({
+            ...sinDgs(),
+            Habilidades: { Base: [{ Id_habilidad: 6, Habilidad: 'Avistar', Cantidad: 1 }], Custom: [] },
+        } as any));
+        svc.PersonajeCreacion.ModInteligencia = 0;
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 1 }] as any;
+        svc.iniciarDistribucionHabilidadesPorClase(crearClaseBase({ Puntos_habilidad: { Id: 1, Valor: 2 } }));
+        svc.EstadoFlujo.habilidades.puntosRestantes = 4;
+
+        expect(svc.obtenerCosteRangoHabilidad(7)).toBe(2);
+        expect(svc.obtenerCosteRangoHabilidad(6)).toBe(1);
+        expect(svc.obtenerLimiteRangoHabilidad(7)).toBe(2);
+        expect(svc.ajustarRangoHabilidad(7, 1)).toBeTrue();
+        expect(svc.ajustarRangoHabilidad(7, 1)).toBeTrue();
+        expect(svc.ajustarRangoHabilidad(7, 1)).toBeFalse();
+        expect(svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 7)?.Rangos).toBe(2);
+        expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(0);
+
+        expect(svc.ajustarRangoHabilidad(7, -1)).toBeTrue();
+        expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(2);
+    });
+
+    it('un punto que no llega para ningún rango (solo quedan transcláseas) no bloquea el cierre', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 7, Nombre: 'Nadar', Id_caracteristica: 1, Caracteristica: 'Fuerza', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
+        svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 1 }] as any;
+        svc.iniciarDistribucionHabilidadesPorClase(crearClaseBase({ Puntos_habilidad: { Id: 1, Valor: 2 } }));
+
+        svc.EstadoFlujo.habilidades.puntosRestantes = 1;
+        expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
+
+        svc.EstadoFlujo.habilidades.puntosRestantes = 2;
+        expect(svc.puedeCerrarDistribucionHabilidades()).toBeFalse();
     });
 
     it('habilidades entrenadas no cláseas no permiten subir rangos, pero sí si son cláseas', () => {
@@ -5365,6 +5409,9 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
 
     it('no permite cerrar distribución si quedan puntos', () => {
         const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        ]);
         svc.seleccionarRaza(crearRazaConDgs());
         svc.iniciarDistribucionHabilidadesPorRazaDG();
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeFalse();
@@ -5581,7 +5628,9 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.setCatalogoHabilidades([
             { Id_habilidad: 6, Nombre: 'Buscar', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
         ]);
-        svc.seleccionarRaza(crearRazaConDgs());
+        svc.seleccionarRaza(crearRazaConDgs({
+            Habilidades: { Base: [{ Id_habilidad: 6, Habilidad: 'Buscar', Cantidad: 1 }], Custom: [] },
+        } as any));
 
         svc.iniciarDistribucionHabilidadesPorRazaDG();
         expect(svc.ajustarRangoHabilidad(6, 2)).toBeTrue();
@@ -5602,7 +5651,9 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.setCatalogoHabilidades([
             { Id_habilidad: 6, Nombre: 'Buscar', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
         ]);
-        svc.seleccionarRaza(crearRazaConDgs());
+        svc.seleccionarRaza(crearRazaConDgs({
+            Habilidades: { Base: [{ Id_habilidad: 6, Habilidad: 'Buscar', Cantidad: 1 }], Custom: [] },
+        } as any));
 
         svc.iniciarDistribucionHabilidadesPorRazaDG();
         expect(svc.ajustarRangoHabilidad(6, 2)).toBeTrue();
@@ -5613,8 +5664,8 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.ajustarRangoHabilidad(6, 2)).toBeTrue();
 
         const buscar = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6);
-        expect(buscar?.Rangos).toBe(3);
-        expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(1);
+        expect(buscar?.Rangos).toBe(4);
+        expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(0);
 
         expect(svc.ajustarRangoHabilidad(6, -3)).toBeTrue();
         expect(buscar?.Rangos).toBe(2);

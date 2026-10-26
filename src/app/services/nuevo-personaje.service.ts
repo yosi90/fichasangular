@@ -54,7 +54,7 @@ import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from './utils/personaje-totales';
 import { resumenClases } from './utils/resumen-clases';
-import { puntosHabilidadNivelClase } from './utils/puntos-habilidad';
+import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadNivelClase } from './utils/puntos-habilidad';
 import { tieneTextoVisible } from './utils/texto-visible';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
@@ -1810,6 +1810,7 @@ export class NuevoPersonajeService {
             return false;
 
         const actual = Math.max(0, toNumber(habilidad.Rangos));
+        const coste = costeRangoHabilidad(this.esHabilidadClaseaParaSesion(habilidad));
 
         if (cambio > 0) {
             if (this.esHabilidadEntrenadaNoClaseaParaSesion(habilidad))
@@ -1820,11 +1821,11 @@ export class NuevoPersonajeService {
             const subida = Math.min(cambio, maxSubida);
             if (subida < 1)
                 return false;
-            if (this.estadoFlujo.habilidades.puntosRestantes < subida)
+            if (this.estadoFlujo.habilidades.puntosRestantes < subida * coste)
                 return false;
 
             habilidad.Rangos = actual + subida;
-            this.estadoFlujo.habilidades.puntosRestantes -= subida;
+            this.estadoFlujo.habilidades.puntosRestantes -= subida * coste;
             return true;
         }
 
@@ -1837,9 +1838,27 @@ export class NuevoPersonajeService {
         habilidad.Rangos = actual - bajada;
         this.estadoFlujo.habilidades.puntosRestantes = Math.min(
             this.estadoFlujo.habilidades.puntosTotales,
-            this.estadoFlujo.habilidades.puntosRestantes + bajada
+            this.estadoFlujo.habilidades.puntosRestantes + bajada * coste
         );
         return true;
+    }
+
+    /** Puntos que cuesta un rango de la habilidad en esta sesión: 1 si es clásea y 2 si es transclásea. */
+    obtenerCosteRangoHabilidad(idHabilidad: number): number {
+        const habilidad = this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === toNumber(idHabilidad));
+        return costeRangoHabilidad(!!habilidad && this.esHabilidadClaseaParaSesion(habilidad));
+    }
+
+    /** Queda alguna habilidad a la que subir un rango con los puntos que quedan. */
+    private puedeComprarAlgunRangoHabilidad(): boolean {
+        const restantes = toNumber(this.estadoFlujo.habilidades.puntosRestantes);
+        return (this.personajeCreacion.Habilidades ?? []).some((habilidad) => {
+            const id = toNumber(habilidad?.Id);
+            if (id <= 0 || this.esHabilidadEntrenadaNoClaseaParaSesion(habilidad))
+                return false;
+            return toNumber(habilidad?.Rangos) < this.obtenerLimiteRangoHabilidad(id)
+                && restantes >= this.obtenerCosteRangoHabilidad(id);
+        });
     }
 
     setExtraHabilidad(idHabilidad: number, extra: string): boolean {
@@ -1878,7 +1897,8 @@ export class NuevoPersonajeService {
     puedeCerrarDistribucionHabilidades(): boolean {
         if (!this.estadoFlujo.habilidades.activa)
             return true;
-        if (toNumber(this.estadoFlujo.habilidades.puntosRestantes) !== 0)
+        // Los puntos que no alcanzan para ningún rango (1 punto y solo quedan transcláseas) no bloquean el cierre.
+        if (toNumber(this.estadoFlujo.habilidades.puntosRestantes) !== 0 && this.puedeComprarAlgunRangoHabilidad())
             return false;
         if (this.personajeCreacion.Habilidades.some((habilidad) => this.esExtraHabilidadPendienteParaSesion(habilidad)))
             return false;
@@ -2075,9 +2095,7 @@ export class NuevoPersonajeService {
             0,
             toNumber(this.estadoFlujo.habilidades.nivelPersonajeReferencia) || this.getNivelEfectivoParaAumentos()
         );
-        return this.esHabilidadClaseaParaSesion(habilidad)
-            ? 3 + nivelReferencia
-            : 1 + nivelReferencia;
+        return limiteRangosHabilidad(nivelReferencia, this.esHabilidadClaseaParaSesion(habilidad));
     }
 
     private iniciarDistribucionHabilidadesInterna(
