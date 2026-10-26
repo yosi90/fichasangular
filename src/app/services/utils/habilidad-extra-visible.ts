@@ -1,9 +1,28 @@
 import { Comodin } from 'src/app/interfaces/comodin';
-import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt } from 'src/app/services/utils/normalizacion';
 
 /** Ids de `extras_habilidades` al guardar una habilidad: -1 («-») si no lleva extra; 0 («Elegir») si lo admite y falta. */
 export const ID_EXTRA_HABILIDAD_SIN_EXTRA = -1;
 export const ID_EXTRA_HABILIDAD_ELEGIR = 0;
+
+/**
+ * El `idExtra` con el que se guarda una habilidad de la creación (`POST /personajes/add`): el id del extra elegido (por
+ * su id o por su nombre entre los `Extras`), y si no hay, 0 («Elegir») si la habilidad admite extra o -1 si no.
+ */
+export function idExtraHabilidadParaGuardar(entrada: any): number {
+    const idDirecto = toInt(entrada?.Id_extra ?? entrada?.id_extra ?? entrada?.idExtra);
+    if (idDirecto > 0)
+        return idDirecto;
+    const extra = normalizarTexto(`${entrada?.Extra ?? entrada?.extra ?? ''}`, true);
+    if (extra.length > 0) {
+        const opcion = toArray<any>(entrada?.Extras)
+            .find((item) => normalizarTexto(`${item?.Extra ?? item?.extra ?? item?.Nombre ?? item?.nombre ?? ''}`, true) === extra);
+        const idOpcion = toInt(opcion?.Id_extra ?? opcion?.id_extra ?? opcion?.idExtra ?? opcion?.Id);
+        if (idOpcion > 0)
+            return idOpcion;
+    }
+    return toBoolean(entrada?.Soporta_extra) ? ID_EXTRA_HABILIDAD_ELEGIR : ID_EXTRA_HABILIDAD_SIN_EXTRA;
+}
 export interface ResolverExtraHabilidadOptions {
     extra?: any;
     idExtra?: any;

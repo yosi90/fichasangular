@@ -5184,7 +5184,8 @@ describe('NuevoPersonajeComponent', () => {
             component.Personaje,
             jasmine.any(Object),
             null,
-            progresionLanzador
+            progresionLanzador,
+            {}
         );
     });
 
@@ -5300,7 +5301,8 @@ describe('NuevoPersonajeComponent', () => {
                 tablasDadosUsadas: 2,
                 overrideReglasCampana: true,
             }),
-            null
+            null,
+            {}
         );
     });
 
@@ -5339,7 +5341,8 @@ describe('NuevoPersonajeComponent', () => {
                 tablasDadosUsadas: 1,
                 overrideReglasCampana: false,
             }),
-            null
+            null,
+            {}
         );
     });
 

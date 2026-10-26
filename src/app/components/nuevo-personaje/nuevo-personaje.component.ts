@@ -4166,7 +4166,8 @@ export class NuevoPersonajeComponent {
                     this.Personaje,
                     contextoIds,
                     contextoCreacionCampana,
-                    progresionLanzador
+                    progresionLanzador,
+                    this.nuevoPSvc.construirMascotasParaGuardar()
                 );
                 const response = await this.personajeSvc.crearPersonajeApiDesdeCreacion(payload);
                 idPersonaje = Math.trunc(Number(response?.idPersonaje ?? 0));

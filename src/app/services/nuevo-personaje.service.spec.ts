@@ -1761,6 +1761,96 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(base).toBe(4);
     });
 
+    function nivelConEspecial(idEspecial: number, nombre: string) {
+        return {
+            ...claseBase.Desglose_niveles[0],
+            Especiales: [{
+                Especial: { Id: idEspecial, Nombre: nombre }, Nivel: 1, Id_extra: -1, Extra: '', Opcional: 0,
+                Id_interno: idEspecial, Id_especial_requerido: 0, Id_dote_requerida: 0,
+            }] as any,
+        };
+    }
+
+    function payloadDeLaCreacion() {
+        service.PersonajeCreacion.Nombre = 'Con mascota';
+        service.PersonajeCreacion.Campana = 'Sin campaña';
+        return new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+            service.PersonajeCreacion,
+            { idAlineamiento: 1, idGenero: 1, idCarga: 1, idDeidad: 1 } as any,
+            null,
+            null,
+            service.construirMascotasParaGuardar(),
+        );
+    }
+
+    it('un druida guarda su compañero animal con su plantilla, sus bonos por nivel, sus habilidades, dotes y especiales', () => {
+        const druida = crearClaseBase({ Id: 5, Nombre: 'Druida', Desglose_niveles: [nivelConEspecial(29, 'Compañero animal')] });
+        service.setCatalogoClases([druida]);
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 3 }] as any;
+        const lobo = {
+            Id: 55, Id_companero: 55, Nombre: 'Lobo', Monstruo_origen: { Id: 55, Nombre: 'Lobo' },
+            Plantilla: { Id: 1, Nombre: 'Base' }, Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Niveles_clase: [],
+            Alineamientos_requeridos: { Familiar: [], Companero: [] }, Oficial: true,
+            Dados_golpe: { Cantidad: '2', Tipo_dado: { Id: 3, Nombre: 'd8' }, Suma: 4 },
+            Caracteristicas: { Fuerza: 13, Destreza: 15, Constitucion: 15, Constitucion_modificador: 2, Inteligencia: 2, Sabiduria: 12, Carisma: 6 },
+            Defensa: { Ca: 14, Toque: 12, Desprevenido: 12, Armadura_natural: 2, Reduccion_dano: '', Resistencia_conjuros: '', Resistencia_elemental: '' },
+            Habilidades: [{ Id_habilidad: 6, Habilidad: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Descripcion: '', Soporta_extra: false, Entrenada: false, Id_extra: -1, Extra: '', Rangos: 3 }],
+            Dotes: [], Especiales: [],
+        } as any;
+
+        expect(service.registrarCompaneroSeleccionado(lobo, 'base', { 157: 'Vínculo', 158: 'Compartir conjuros' }, 'Colmillo').registrado).toBeTrue();
+        // El druida sube al nivel 6: el compañero pasa a la fila de ese nivel.
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Druida', Nivel: 6 }] as any;
+        (service as any).actualizarMascotasPorNivel();
+
+        const companero = payloadDeLaCreacion().companero!;
+        expect(companero.nombre).toBe('Colmillo');
+        expect(companero.idMonstruo).toBe(55);
+        expect(companero.idPlantilla).toBe(1);
+        expect([companero.dgAdi, companero.trucosAdi, companero.armaduraNatural, companero.fuerza, companero.destreza]).toEqual([4, 3, 6, 15, 17]);
+        expect(companero.vida).toBe(39);
+        expect(companero.habilidades).toEqual([{ idHabilidad: 6, idExtra: -1, rangos: 3 }]);
+        expect(companero.especiales.map((especial) => especial.idEspecial).sort((a, b) => a - b)).toEqual([157, 158, 159]);
+        expect(companero.dotes).toEqual([]);
+    });
+
+    it('un mago guarda su familiar con los datos de su amo y la tabla del familiar por nivel (MJ cap. 3)', () => {
+        const mago = crearClaseBase({ Id: 10, Nombre: 'Mago', Desglose_niveles: [nivelConEspecial(47, 'Convocar a un familiar')] });
+        service.setCatalogoClases([mago]);
+        service.setCatalogoHabilidades([
+            { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        ]);
+        service.PersonajeCreacion.desgloseClases = [{ Nombre: 'Mago', Nivel: 5 }] as any;
+        const gato = {
+            Id: 20, Id_familiar: 20, Nombre: 'Gato', Monstruo_origen: { Id: 20, Nombre: 'Gato' },
+            Plantilla: { Id: 1, Nombre: 'Básica' }, Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 }, Niveles_clase: [],
+            Alineamientos_requeridos: { Familiar: [], Companero: [] }, Oficial: true,
+            Salvaciones: { Fortaleza: 2, Reflejos: 4, Voluntad: 1 },
+            Caracteristicas: { Fuerza: 3, Destreza: 15, Destreza_modificador: 2, Constitucion: 10, Constitucion_modificador: 0, Inteligencia: 2, Sabiduria: 12, Sabiduria_modificador: 1, Carisma: 7 },
+            Defensa: { Ca: 14, Toque: 14, Desprevenido: 12, Armadura_natural: 0, Reduccion_dano: '', Resistencia_conjuros: '', Resistencia_elemental: '' },
+            Habilidades: [{ Id_habilidad: 6, Habilidad: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Descripcion: '', Soporta_extra: false, Entrenada: false, Id_extra: -1, Extra: '', Rangos: 1 }],
+            Dotes: [], Especiales: [],
+        } as any;
+
+        expect(service.registrarFamiliarSeleccionado(gato, 1, { 81: 'Empatía', 82: 'Alerta', 83: 'Mensajero' }, 'Bigotes').registrado).toBeTrue();
+        service.PersonajeCreacion.Vida = 21;
+        service.PersonajeCreacion.Ataque_base = '+2';
+        service.PersonajeCreacion.Salvaciones.fortaleza.modsClaseos = [{ valor: 1, origen: 'Mago' }];
+        service.PersonajeCreacion.Salvaciones.reflejos.modsClaseos = [{ valor: 1, origen: 'Mago' }];
+        service.PersonajeCreacion.Salvaciones.voluntad.modsClaseos = [{ valor: 4, origen: 'Mago' }];
+        service.PersonajeCreacion.Habilidades.find((habilidad) => habilidad.Id === 6)!.Rangos = 4;
+
+        const familiar = payloadDeLaCreacion().familiar!;
+        expect(familiar.nombre).toBe('Bigotes');
+        expect([familiar.idMonstruo, familiar.idPlantilla]).toEqual([20, 1]);
+        expect([familiar.vida, familiar.ataqueBase]).toEqual([10, 2]);
+        expect([familiar.fortaleza, familiar.reflejos, familiar.voluntad]).toEqual([2, 4, 5]);
+        expect([familiar.armaduraNatural, familiar.inteligencia]).toEqual([3, 8]);
+        expect(familiar.rc).toBeUndefined();
+        expect(familiar.habilidades).toEqual([{ idHabilidad: 6, idExtra: -1, rangos: 4 }]);
+        expect(familiar.especiales.map((especial) => especial.idEspecial).sort((a, b) => a - b)).toEqual([81, 82, 83]);
+    });
+
     it('aplicarSiguienteNivelClase crea entrada de clase a nivel 1', () => {
         const res = service.aplicarSiguienteNivelClase(claseBase);
         expect(res.aplicado).toBeTrue();

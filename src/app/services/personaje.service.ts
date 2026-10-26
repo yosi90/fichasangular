@@ -14,6 +14,7 @@ import {
     CatalogoNombreIdDto,
     PersonajeClaseDto,
     PersonajeContextoCreacionCampanaDto,
+    PersonajeCreateMascotasDto,
     PersonajeContextoIdsDto,
     PersonajeCreateApiResponseDto,
     PersonajeCreateColeccionesDto,
@@ -45,7 +46,7 @@ import { modificadoresDePartes, normalizarTotal, totalVacio } from './utils/pers
 import { normalizarDefensa, normalizarDinero, normalizarModificadoresEquipo, normalizarPiezasEquipo } from './utils/personaje-equipo-mapper';
 import { resumenClases } from './utils/resumen-clases';
 import { leerComodin } from './utils/comodin';
-import { ID_EXTRA_HABILIDAD_ELEGIR, ID_EXTRA_HABILIDAD_SIN_EXTRA } from './utils/habilidad-extra-visible';
+import { idExtraHabilidadParaGuardar } from './utils/habilidad-extra-visible';
 import { errorDePerfil, mensajeDeError } from './utils/error-api';
 
 interface PersonajeVisibilityUpdateResponse {
@@ -193,7 +194,8 @@ export class PersonajeService {
         personaje: Personaje,
         contextoIds: PersonajeContextoIdsDto,
         contextoCreacionCampana?: PersonajeContextoCreacionCampanaDto | null,
-        progresionLanzador?: PersonajeProgresionLanzadorDto | null
+        progresionLanzador?: PersonajeProgresionLanzadorDto | null,
+        mascotas?: PersonajeCreateMascotasDto | null
     ): PersonajeCreateRequestDto {
         const nombre = `${personaje?.Nombre ?? ''}`.trim();
         const idRaza = toInt(personaje?.Raza?.Id);
@@ -356,6 +358,10 @@ export class PersonajeService {
             payload.colecciones = colecciones;
         if (progresionLanzadorNormalizada)
             payload.progresionLanzador = progresionLanzadorNormalizada;
+        if (mascotas?.familiar)
+            payload.familiar = mascotas.familiar;
+        if (mascotas?.companero)
+            payload.companero = mascotas.companero;
         if (tieneCampana) {
             payload.contextoCreacionCampana = {
                 tiradaMinimaDeclarada: this.toNonNegativeIntOrNull(contextoCreacionCampana?.tiradaMinimaDeclarada),
@@ -604,10 +610,9 @@ export class PersonajeService {
             const idHabilidad = toInt(entrada?.Id ?? entrada?.id ?? entrada?.Id_habilidad ?? entrada?.id_habilidad);
             if (idHabilidad <= 0)
                 return;
-            const idExtra = this.resolverIdExtraHabilidad(entrada);
             const payload = {
                 idHabilidad,
-                idExtra: idExtra > 0 ? idExtra : (toBoolean(entrada?.Soporta_extra) ? ID_EXTRA_HABILIDAD_ELEGIR : ID_EXTRA_HABILIDAD_SIN_EXTRA),
+                idExtra: idExtraHabilidadParaGuardar(entrada),
                 clasea: !!entrada?.Clasea,
                 rangos: Math.max(0, toInt(entrada?.Rangos)),
                 rangosVarios: Math.max(0, toInt(entrada?.Rangos_varios)),
@@ -811,20 +816,6 @@ export class PersonajeService {
                 };
             })
             .filter((entrada) => !!entrada) as { valor: number; origen?: string; }[];
-    }
-
-    private resolverIdExtraHabilidad(entrada: any): number {
-        const idExtraDirecto = toInt(entrada?.Id_extra ?? entrada?.id_extra ?? entrada?.idExtra);
-        if (idExtraDirecto > 0)
-            return idExtraDirecto;
-        const extraSeleccionado = `${entrada?.Extra ?? entrada?.extra ?? ''}`.trim();
-        if (extraSeleccionado.length < 1)
-            return 0;
-        const extraNorm = normalizarTexto(extraSeleccionado, true);
-        const match = toArray<any>(entrada?.Extras)
-            .find((item) => normalizarTexto(`${item?.Extra ?? item?.extra ?? item?.Nombre ?? item?.nombre ?? ''}`, true) === extraNorm);
-        const idExtra = toInt(match?.Id_extra ?? match?.id_extra ?? match?.idExtra ?? match?.Id);
-        return idExtra > 0 ? idExtra : 0;
     }
 
     private construirMapaNombreId(items?: CatalogoNombreIdDto[]): Map<string, number> {

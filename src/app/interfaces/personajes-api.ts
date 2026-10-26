@@ -174,8 +174,56 @@ export interface PersonajeCreateRequestDto {
     colecciones?: PersonajeCreateColeccionesDto;
     progresionLanzador?: PersonajeProgresionLanzadorDto;
     contextoCreacionCampana?: PersonajeContextoCreacionCampanaDto;
-    familiar?: Record<string, any>;
-    companero?: Record<string, any>;
+    familiar?: PersonajeCreateFamiliarDto;
+    companero?: PersonajeCreateCompaneroDto;
+}
+
+/** Una habilidad de un familiar o un compañero (`familiar.habilidades[]`, `companero.habilidades[]`). */
+export interface PersonajeCreateHabilidadMascotaDto {
+    idHabilidad: number;
+    /** -1 sin extra; 0 «Elegir»; si no, el id en `extras_habilidades`. */
+    idExtra: number;
+    rangos: number;
+}
+
+/** El familiar del personaje (`POST /personajes/add`, bloque `familiar`): se guarda como un familiar propio. */
+export interface PersonajeCreateFamiliarDto {
+    nombre: string;
+    idMonstruo: number;
+    idPlantilla: number;
+    vida: number;
+    ataqueBase: number;
+    fortaleza: number;
+    reflejos: number;
+    voluntad: number;
+    armaduraNatural: number;
+    inteligencia: number;
+    rc?: string;
+    habilidades: PersonajeCreateHabilidadMascotaDto[];
+    especiales: Array<{ idEspecial: number; }>;
+    dotes: Array<{ idDote: number; idExtra: number; }>;
+}
+
+/** El compañero animal del personaje (`POST /personajes/add`, bloque `companero`). */
+export interface PersonajeCreateCompaneroDto {
+    nombre: string;
+    idMonstruo: number;
+    idPlantilla: number;
+    vida: number;
+    dgAdi: number;
+    armaduraNatural: number;
+    fuerza: number;
+    destreza: number;
+    inteligencia: number;
+    trucosAdi: number;
+    habilidades: PersonajeCreateHabilidadMascotaDto[];
+    especiales: Array<{ idEspecial: number; idExtra: number; }>;
+    dotes: Array<{ idDote: number; idExtra: number; }>;
+}
+
+export interface PersonajeCreateMascotasDto {
+    familiar?: PersonajeCreateFamiliarDto;
+    companero?: PersonajeCreateCompaneroDto;
 }
 
 export interface PersonajeCreateApiResponseDto {

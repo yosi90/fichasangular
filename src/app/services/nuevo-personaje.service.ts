@@ -23,7 +23,7 @@ import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import { SubtipoRef } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
-import { PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
+import { PersonajeCreateMascotasDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
 import { buildIdentidadPrerrequisitos, clavesDeEntidades } from './utils/identidad-prerrequisitos';
@@ -48,12 +48,13 @@ import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-persona
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
-import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
+import { esTextoExtraPorElegir, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
 import { modificadorCaracteristica } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from './utils/personaje-totales';
 import { resumenClases } from './utils/resumen-clases';
+import { construirCompaneroParaGuardar, construirFamiliarParaGuardar } from './utils/mascota-payload';
 import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadDgRaciales, puntosHabilidadNivelClase } from './utils/puntos-habilidad';
 import { tieneTextoVisible } from './utils/texto-visible';
 
@@ -283,6 +284,28 @@ const DOTE_COMPANERO_BONUS_ID = 49;
 const ESPECIALES_BONUS_COMPANERO_PERSONAJE = [157, 158];
 const ESPECIAL_BONUS_COMPANERO_AVANZADO = 159;
 const ESPECIAL_BONUS_COMPANERO_MAESTRO = 57;
+
+interface EscalaCompanero {
+    dgAdi: number;
+    trucosAdi: number;
+    bonoFueDes: number;
+    bonoArmaduraNatural: number;
+}
+
+/** Los bonos del compañero animal por el nivel del druida (MJ, cap. 3), de mayor a menor nivel. */
+const ESCALA_COMPANERO: Array<EscalaCompanero & { desdeNivel: number; }> = [
+    { desdeNivel: 18, dgAdi: 12, trucosAdi: 7, bonoFueDes: 6, bonoArmaduraNatural: 12 },
+    { desdeNivel: 15, dgAdi: 10, trucosAdi: 6, bonoFueDes: 5, bonoArmaduraNatural: 10 },
+    { desdeNivel: 12, dgAdi: 8, trucosAdi: 5, bonoFueDes: 4, bonoArmaduraNatural: 8 },
+    { desdeNivel: 9, dgAdi: 6, trucosAdi: 4, bonoFueDes: 3, bonoArmaduraNatural: 6 },
+    { desdeNivel: 6, dgAdi: 4, trucosAdi: 3, bonoFueDes: 2, bonoArmaduraNatural: 4 },
+    { desdeNivel: 3, dgAdi: 2, trucosAdi: 2, bonoFueDes: 1, bonoArmaduraNatural: 2 },
+    { desdeNivel: 0, dgAdi: 0, trucosAdi: 1, bonoFueDes: 0, bonoArmaduraNatural: 0 },
+];
+
+/** El extra con el que el personaje lleva las aptitudes de su vínculo con el familiar o el compañero. */
+const EXTRA_ESPECIAL_FAMILIAR = 'Familiar';
+const EXTRA_ESPECIAL_COMPANERO = 'Compañero animal';
 const GENERADOR_AUTO_CON_FLOOR = 1;
 const GENERADOR_AUTO_RECOMENDACION_UMBRAL_TOP3 = 1;
 const HABILIDAD_FAMILIAS_REPETIBLES = {
@@ -3668,26 +3691,114 @@ export class NuevoPersonajeService {
         return 'Base';
     }
 
-    private calcularEscalaCompanero(nivelEfectivoCompanero: number): {
-        dgAdi: number;
-        trucosAdi: number;
-        bonoFueDes: number;
-        bonoArmaduraNatural: number;
-    } {
+    private calcularEscalaCompanero(nivelEfectivoCompanero: number): EscalaCompanero {
         const nivel = Math.max(0, toInt(nivelEfectivoCompanero));
-        if (nivel >= 18)
-            return { dgAdi: 12, trucosAdi: 7, bonoFueDes: 6, bonoArmaduraNatural: 12 };
-        if (nivel >= 15)
-            return { dgAdi: 10, trucosAdi: 6, bonoFueDes: 5, bonoArmaduraNatural: 10 };
-        if (nivel >= 12)
-            return { dgAdi: 8, trucosAdi: 5, bonoFueDes: 4, bonoArmaduraNatural: 8 };
-        if (nivel >= 9)
-            return { dgAdi: 6, trucosAdi: 4, bonoFueDes: 3, bonoArmaduraNatural: 6 };
-        if (nivel >= 6)
-            return { dgAdi: 4, trucosAdi: 3, bonoFueDes: 2, bonoArmaduraNatural: 4 };
-        if (nivel >= 3)
-            return { dgAdi: 2, trucosAdi: 2, bonoFueDes: 1, bonoArmaduraNatural: 2 };
-        return { dgAdi: 0, trucosAdi: 1, bonoFueDes: 0, bonoArmaduraNatural: 0 };
+        const fila = ESCALA_COMPANERO.find((item) => nivel >= item.desdeNivel) ?? ESCALA_COMPANERO[ESCALA_COMPANERO.length - 1];
+        return { dgAdi: fila.dgAdi, trucosAdi: fila.trucosAdi, bonoFueDes: fila.bonoFueDes, bonoArmaduraNatural: fila.bonoArmaduraNatural };
+    }
+
+    /** La fila de la tabla que ya lleva un compañero, por sus DG adicionales (distintos en cada fila). */
+    private escalaAplicadaCompanero(companero: CompaneroMonstruoDetalle): EscalaCompanero {
+        const fila = ESCALA_COMPANERO.find((item) => item.dgAdi === toInt(companero?.Dg_adi)) ?? ESCALA_COMPANERO[ESCALA_COMPANERO.length - 1];
+        return { dgAdi: fila.dgAdi, trucosAdi: fila.trucosAdi, bonoFueDes: fila.bonoFueDes, bonoArmaduraNatural: fila.bonoArmaduraNatural };
+    }
+
+    /**
+     * Los bonos por nivel del compañero y del familiar siguen al nivel del amo: al aplicar un nivel de clase, el compañero
+     * pasa a la fila de su nivel (cambia la diferencia de Fuerza, Destreza y armadura natural, sus DG adicionales y sus
+     * trucos) y los dos ganan las aptitudes y la dote que tocan a ese nivel.
+     */
+    private actualizarMascotasPorNivel(): void {
+        const nombresEspeciales = this.nombresEspecialesConocidos();
+        const nivelCompanero = Math.max(0, toNumber(this.getEstadoCuposCompaneroEspecial29()?.nivelEfectivoCompanero));
+        const nueva = this.calcularEscalaCompanero(nivelCompanero);
+        (this.personajeCreacion.Companeros ?? []).forEach((companero) => {
+            const anterior = this.escalaAplicadaCompanero(companero);
+            const caracteristicas = companero.Caracteristicas as Record<string, any>;
+            if (caracteristicas) {
+                caracteristicas['Fuerza'] = toNumber(caracteristicas['Fuerza']) + nueva.bonoFueDes - anterior.bonoFueDes;
+                caracteristicas['Destreza'] = toNumber(caracteristicas['Destreza']) + nueva.bonoFueDes - anterior.bonoFueDes;
+            }
+            if (companero.Defensa)
+                companero.Defensa.Armadura_natural = toNumber(companero.Defensa.Armadura_natural) + nueva.bonoArmaduraNatural - anterior.bonoArmaduraNatural;
+            companero.Dg_adi = nueva.dgAdi;
+            companero.Trucos_adi = nueva.trucosAdi;
+            if (nivelCompanero >= 6)
+                this.asegurarEspecialCompanero(companero, ESPECIAL_BONUS_COMPANERO_AVANZADO, nombresEspeciales);
+            if (nivelCompanero >= 15)
+                this.asegurarEspecialCompanero(companero, ESPECIAL_BONUS_COMPANERO_MAESTRO, nombresEspeciales);
+            if (nivelCompanero >= 9)
+                this.asegurarDoteCompanero(companero, DOTE_COMPANERO_BONUS_ID);
+        });
+
+        const nivelFamiliar = Math.max(0, toNumber(this.getEstadoCuposFamiliarEspecial47()?.nivelLanzadorFamiliar));
+        (this.personajeCreacion.Familiares ?? []).forEach((familiar) => {
+            const plantilla = Math.max(1, Math.min(5, toNumber(familiar?.Plantilla?.Id))) as FamiliarPlantillaId;
+            if (this.debeAgregarEspecialFamiliar83(plantilla, nivelFamiliar))
+                this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_MENSAJERO, nombresEspeciales);
+            if (this.debeAgregarEspecialFamiliar87(plantilla, nivelFamiliar))
+                this.asegurarEspecialFamiliar(ESPECIAL_BONUS_FAMILIAR_HECHIZO, nombresEspeciales);
+        });
+    }
+
+    /** Los nombres de las aptitudes especiales que ya conoce la creación (las del catálogo de clases y las del personaje). */
+    private nombresEspecialesConocidos(): Record<number, string> {
+        const nombres: Record<number, string> = {};
+        (this.catalogoClases ?? []).forEach((clase) => (clase?.Desglose_niveles ?? []).forEach((nivel) =>
+            (nivel?.Especiales ?? []).forEach((especialNivel) => {
+                const especial = (especialNivel?.Especial as Record<string, any>) ?? {};
+                const id = toNumber(especial?.['Id']);
+                const nombre = `${especial?.['Nombre'] ?? ''}`.trim();
+                if (id > 0 && nombre.length > 0)
+                    nombres[id] = nombre;
+            })));
+        (this.personajeCreacion.Claseas ?? []).forEach((especial) => {
+            const id = toNumber(especial?.Id);
+            if (id > 0 && !nombres[id])
+                nombres[id] = `${especial?.Nombre ?? ''}`.trim();
+        });
+        return nombres;
+    }
+
+    /**
+     * El familiar y el compañero animal para `POST /personajes/add` (el contrato guarda uno de cada; si hay más, el
+     * primero). El familiar se monta con los datos de su amo. Las aptitudes de su vínculo, que el personaje lleva con el
+     * extra «Familiar» o «Compañero animal», van también con la mascota.
+     */
+    construirMascotasParaGuardar(): PersonajeCreateMascotasDto {
+        const mascotas: PersonajeCreateMascotasDto = {};
+        const idsDelVinculo = (extra: string) => (this.personajeCreacion.Claseas ?? [])
+            .filter((especial) => normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra))
+            .map((especial) => toNumber(especial?.Id))
+            .filter((id) => id > 0);
+
+        const familiar = (this.personajeCreacion.Familiares ?? [])[0];
+        if (familiar) {
+            const salvacionBase = (tipo: SalvacionKey) => (this.personajeCreacion.Salvaciones?.[tipo]?.modsClaseos ?? [])
+                .reduce((acc, mod) => acc + toNumber(mod?.valor), 0);
+            mascotas.familiar = construirFamiliarParaGuardar(familiar, {
+                vida: toNumber(this.personajeCreacion.Vida),
+                ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
+                salvacionesBase: {
+                    Fortaleza: salvacionBase('fortaleza'),
+                    Reflejos: salvacionBase('reflejos'),
+                    Voluntad: salvacionBase('voluntad'),
+                },
+                nivelFamiliar: toNumber(this.getEstadoCuposFamiliarEspecial47()?.nivelLanzadorFamiliar),
+                habilidades: (this.personajeCreacion.Habilidades ?? [])
+                    .filter((habilidad) => !habilidad?.Custom && toNumber(habilidad?.Id) > 0 && toNumber(habilidad?.Rangos) > 0)
+                    .map((habilidad) => ({
+                        idHabilidad: toNumber(habilidad.Id),
+                        idExtra: idExtraHabilidadParaGuardar(habilidad),
+                        rangos: toNumber(habilidad.Rangos),
+                    })),
+            }, idsDelVinculo(EXTRA_ESPECIAL_FAMILIAR));
+        }
+
+        const companero = (this.personajeCreacion.Companeros ?? [])[0];
+        if (companero)
+            mascotas.companero = construirCompaneroParaGuardar(companero, idsDelVinculo(EXTRA_ESPECIAL_COMPANERO));
+        return mascotas;
     }
 
     private clonarCompaneroParaPersonaje(
@@ -3815,7 +3926,7 @@ export class NuevoPersonajeService {
     private asegurarEspecialFamiliar(idEspecial: number, nombresEspecialesPorId: Record<number, string>): boolean {
         const nombreFallback = `Especial ${idEspecial} (Familiar)`;
         const nombreEspecial = `${nombresEspecialesPorId?.[idEspecial] ?? nombreFallback}`.trim() || nombreFallback;
-        const extra = 'Familiar';
+        const extra = EXTRA_ESPECIAL_FAMILIAR;
         const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
             normalizarTexto(especial?.Nombre ?? '') === normalizarTexto(nombreEspecial)
             && normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra)
@@ -3834,7 +3945,7 @@ export class NuevoPersonajeService {
     private asegurarEspecialPersonajeCompanero(idEspecial: number, nombresEspecialesPorId: Record<number, string>): boolean {
         const nombreFallback = `Especial ${idEspecial} (Compañero animal)`;
         const nombreEspecial = `${nombresEspecialesPorId?.[idEspecial] ?? nombreFallback}`.trim() || nombreFallback;
-        const extra = 'Compañero animal';
+        const extra = EXTRA_ESPECIAL_COMPANERO;
         const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
             normalizarTexto(especial?.Nombre ?? '') === normalizarTexto(nombreEspecial)
             && normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra)
@@ -4412,6 +4523,7 @@ export class NuevoPersonajeService {
             resolucionAumentosClaseLanzadora.selecciones,
             resolucionAumentosClaseLanzadora.advertencias
         );
+        this.actualizarMascotasPorNivel();
         this.recalcularDerivadasEconomiaYProgresion();
 
         return {
