@@ -26,7 +26,7 @@ import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeCreateMascotasDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
-import { buildIdentidadPrerrequisitos, clavesDeEntidades } from './utils/identidad-prerrequisitos';
+import { ClaveEntidadPrerrequisito, buildIdentidadPrerrequisitos, clavesDeEntidades } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
 import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
@@ -58,7 +58,7 @@ import { resumenClases } from './utils/resumen-clases';
 import { construirCompaneroParaGuardar, construirFamiliarParaGuardar } from './utils/mascota-payload';
 import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadDgRaciales, puntosHabilidadNivelClase } from './utils/puntos-habilidad';
 import { tieneTextoVisible } from './utils/texto-visible';
-import { ElementoConTipoArma, armasDeGrupos, competenciasDeCatalogo, competenciasDeDotes } from './utils/competencias-armas';
+import { ElementoConTipoArma, armasDeGrupos, competenciasDeDotes } from './utils/competencias-armas';
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from './utils/deidad-seleccion';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
@@ -1073,18 +1073,14 @@ export class NuevoPersonajeService {
      * tiene (las de nacimiento, solo antes del primero), su nivel de lanzador arcano o divino más alto y sus dotes (el
      * liche, MM 1: lanzador de nivel 11 con Fabricar objeto maravilloso).
      */
-    getContextoRequisitosPlantillas(): { nivelesClase: number; nivelLanzador: number; dotes: { id: number | null; nombre: string; }[]; } {
-        const dotes = [
-            ...(this.personajeCreacion?.DotesContextuales ?? []).map((item) => ({
-                id: toNumber(item?.Dote?.Id) > 0 ? toNumber(item?.Dote?.Id) : null,
-                nombre: `${item?.Dote?.Nombre ?? ''}`.trim(),
-            })),
-            ...(this.personajeCreacion?.Dotes ?? []).map((item) => ({ id: null, nombre: `${item?.Nombre ?? ''}`.trim() })),
-        ].filter((dote) => dote.id !== null || dote.nombre.length > 0);
+    getContextoRequisitosPlantillas(): { nivelesClase: number; nivelLanzador: number; dotes: ClaveEntidadPrerrequisito[]; } {
         return {
             nivelesClase: Math.max(0, this.getNivelClasesActual()),
             nivelLanzador: Math.max(this.resolverNivelLanzadorMaximoPorTipo('arcano'), this.resolverNivelLanzadorMaximoPorTipo('divino')),
-            dotes,
+            dotes: clavesDeEntidades([
+                ...(this.personajeCreacion?.DotesContextuales ?? []).map((item) => item?.Dote),
+                ...(this.personajeCreacion?.Dotes ?? []),
+            ]),
         };
     }
 
@@ -3719,7 +3715,7 @@ export class NuevoPersonajeService {
                     ['Id', 'id', 'Id_arma', 'id_arma'],
                     ['Nombre', 'nombre', 'Arma', 'arma']
                 ),
-                ...competenciasDeCatalogo(this.razaSeleccionada?.Competencias?.Armas),
+                ...clavesDeEntidades(this.razaSeleccionada?.Competencias?.Armas),
                 ...competenciasDeDotes(this.personajeCreacion?.DotesContextuales).armas,
                 ...armasDeGrupos(this.resolverCompetenciasGrupoArmasActuales(), this.catalogoGruposArmasConTipo, this.catalogoArmasConTipo),
             ]
@@ -3739,7 +3735,7 @@ export class NuevoPersonajeService {
                     ['Id', 'id', 'Id_armadura', 'id_armadura', 'Id_arma', 'id_arma'],
                     ['Nombre', 'nombre', 'Armadura', 'armadura', 'Arma', 'arma']
                 ),
-                ...competenciasDeCatalogo(this.razaSeleccionada?.Competencias?.Armaduras),
+                ...clavesDeEntidades(this.razaSeleccionada?.Competencias?.Armaduras),
             ]
         );
     }
@@ -3757,7 +3753,7 @@ export class NuevoPersonajeService {
                     ['Id', 'id', 'Id_grupo', 'id_grupo'],
                     ['Nombre', 'nombre', 'Grupo', 'grupo']
                 ),
-                ...competenciasDeCatalogo(this.razaSeleccionada?.Competencias?.Grupos_arma),
+                ...clavesDeEntidades(this.razaSeleccionada?.Competencias?.Grupos_arma),
                 ...competenciasDeDotes(this.personajeCreacion?.DotesContextuales).grupos,
             ]
         );
@@ -3776,7 +3772,7 @@ export class NuevoPersonajeService {
                     ['Id', 'id', 'Id_grupo', 'id_grupo'],
                     ['Nombre', 'nombre', 'Grupo', 'grupo']
                 ),
-                ...competenciasDeCatalogo(this.razaSeleccionada?.Competencias?.Grupos_armadura),
+                ...clavesDeEntidades(this.razaSeleccionada?.Competencias?.Grupos_armadura),
             ]
         );
     }

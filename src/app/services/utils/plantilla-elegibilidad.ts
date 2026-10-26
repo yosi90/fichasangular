@@ -11,6 +11,7 @@ import {
 } from "./alineamiento-contrato";
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
+import { ClaveEntidadPrerrequisito, existeCoincidenciaClaveEntidad } from './identidad-prerrequisitos';
 import { frasePrerrequisito } from './prerrequisito-frase';
 import { MotivosPrerrequisitos } from './prerrequisitos-evaluacion';
 
@@ -39,7 +40,7 @@ export interface PlantillaEvaluacionContexto {
     /** El nivel de lanzador arcano o divino más alto, para `nivel_lanzador` (el liche). */
     nivelLanzador?: number;
     /** Las dotes del personaje, para `dote` (el liche: Fabricar objeto maravilloso). */
-    dotes?: { id: number | null; nombre: string; }[];
+    dotes?: ClaveEntidadPrerrequisito[];
 }
 
 export interface PlantillaEvaluacionResultado {
@@ -477,10 +478,9 @@ export function evaluarElegibilidadPlantilla(
     if (flags.dote) {
         (prer.dote ?? []).forEach((entry) => {
             const idDote = toNumber(entry?.["Id_dote_prerrequisito"] ?? entry?.["Id_dote"]);
-            const nombreDote = normalizarTexto(`${entry?.["Dote_prerrequisito"] ?? entry?.["Dote"] ?? ""}`);
-            const evaluable = idDote > 0 || nombreDote.length > 0;
-            const cumple = evaluable && (ctx.dotes ?? []).some((dote) =>
-                (idDote > 0 && toNumber(dote.id) === idDote) || (nombreDote.length > 0 && normalizarTexto(dote.nombre) === nombreDote));
+            const nombreDote = `${entry?.["Dote_prerrequisito"] ?? entry?.["Dote"] ?? ""}`;
+            const evaluable = idDote > 0 || normalizarTexto(nombreDote).length > 0;
+            const cumple = evaluable && existeCoincidenciaClaveEntidad(ctx.dotes ?? [], idDote, nombreDote);
             registrarPrerrequisito(motivos, "dote", entry, evaluable, cumple, "Dote de prerrequisito con formato no reconocido");
         });
     }

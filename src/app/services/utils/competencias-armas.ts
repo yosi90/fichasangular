@@ -1,12 +1,10 @@
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { leerComodin } from './comodin';
+import { ClaveEntidadPrerrequisito, clavesDeEntidades } from './identidad-prerrequisitos';
 import { normalizarTexto, toNumber } from './normalizacion';
 
-/** Una competencia (con un arma o con un grupo de armas) como la comparan los prerrequisitos: su id y su nombre. */
-export interface CompetenciaArmaRef {
-    id: number | null;
-    nombre: string;
-}
+// Una competencia (con un arma o con un grupo de armas) se compara como cualquier entidad de los prerrequisitos: por su
+// clave `{ id, nombre }` (`ClaveEntidadPrerrequisito`).
 
 /** Un arma del catálogo con su tipo (sencilla, marcial, exótica), o un grupo con el tipo de arma que cubre. */
 export interface ElementoConTipoArma {
@@ -15,23 +13,13 @@ export interface ElementoConTipoArma {
     Id_tipo_arma?: number | null;
 }
 
-/** Las competencias que da un catálogo (`Competencias` de la clase o de la raza): `{ Id, Nombre }` → `{ id, nombre }`. */
-export function competenciasDeCatalogo(referencias: any[] | null | undefined): CompetenciaArmaRef[] {
-    return (Array.isArray(referencias) ? referencias : [])
-        .map((ref: any) => {
-            const id = toNumber(ref?.Id ?? ref?.id);
-            return { id: id > 0 ? id : null, nombre: `${ref?.Nombre ?? ref?.nombre ?? ''}`.trim() };
-        })
-        .filter((ref) => ref.id !== null || ref.nombre.length > 0);
-}
-
 /**
  * Las competencias que dan las dotes del personaje (`Competencias_otorgadas`, MJ cap. 5): con Competencia con arma
  * marcial o exótica, el arma elegida como extra (el arma «Elegir» de la dote); con Competencia con arma sencilla, el grupo.
  */
-export function competenciasDeDotes(dotes: DoteContextual[] | null | undefined): { armas: CompetenciaArmaRef[]; grupos: CompetenciaArmaRef[]; } {
-    const armas: CompetenciaArmaRef[] = [];
-    const grupos: CompetenciaArmaRef[] = [];
+export function competenciasDeDotes(dotes: DoteContextual[] | null | undefined): { armas: ClaveEntidadPrerrequisito[]; grupos: ClaveEntidadPrerrequisito[]; } {
+    const armas: ClaveEntidadPrerrequisito[] = [];
+    const grupos: ClaveEntidadPrerrequisito[] = [];
     (dotes ?? []).forEach((item) => {
         const otorgadas = item?.Dote?.Competencias_otorgadas;
         (otorgadas?.Armas ?? []).forEach((arma) => {
@@ -42,9 +30,9 @@ export function competenciasDeDotes(dotes: DoteContextual[] | null | undefined):
                     armas.push({ id: idExtra > 0 ? idExtra : null, nombre: extra });
                 return;
             }
-            armas.push(...competenciasDeCatalogo([arma]));
+            armas.push(...clavesDeEntidades([arma]));
         });
-        grupos.push(...competenciasDeCatalogo(otorgadas?.Grupos_arma ?? []));
+        grupos.push(...clavesDeEntidades(otorgadas?.Grupos_arma));
     });
     return { armas, grupos };
 }
@@ -55,10 +43,10 @@ export function competenciasDeDotes(dotes: DoteContextual[] | null | undefined):
  * naturales propias) no da ninguna arma del catálogo.
  */
 export function armasDeGrupos(
-    grupos: CompetenciaArmaRef[],
+    grupos: ClaveEntidadPrerrequisito[],
     catalogoGrupos: ElementoConTipoArma[],
     catalogoArmas: ElementoConTipoArma[]
-): CompetenciaArmaRef[] {
+): ClaveEntidadPrerrequisito[] {
     const tipos = new Set<number>();
     grupos.forEach((grupo) => {
         const id = toNumber(grupo?.id);

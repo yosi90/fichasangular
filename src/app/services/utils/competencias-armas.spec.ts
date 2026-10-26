@@ -1,4 +1,5 @@
-import { armasDeGrupos, competenciasDeCatalogo, competenciasDeDotes } from './competencias-armas';
+import { armasDeGrupos, competenciasDeDotes } from './competencias-armas';
+import { clavesDeEntidades } from './identidad-prerrequisitos';
 
 const ARMAS = [
     { Id: 30, Nombre: 'Espada larga', Id_tipo_arma: 2 },
@@ -39,7 +40,7 @@ describe('competencias-armas (MJ cap. 5)', () => {
         expect(resultado.grupos).toEqual([{ id: 1, nombre: 'Todas las armas sencillas' }]);
     });
 
-    it('las competencias de la raza o de la clase pasan de { Id, Nombre } a { id, nombre }', () => {
-        expect(competenciasDeCatalogo([{ Id: 30, Nombre: 'Espada larga' }, { Id: 0, Nombre: '' }])).toEqual([{ id: 30, nombre: 'Espada larga' }]);
+    it('las competencias de la raza se comparan por su clave: { Id, Nombre } pasa a { id, nombre }', () => {
+        expect(clavesDeEntidades([{ Id: 30, Nombre: 'Espada larga' }, { Id: 0, Nombre: '' }])).toEqual([{ id: 30, nombre: 'Espada larga' }]);
     });
 });
