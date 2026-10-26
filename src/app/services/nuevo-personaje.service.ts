@@ -26,7 +26,7 @@ import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeCreateMascotasDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
-import { ClaveEntidadPrerrequisito, buildIdentidadPrerrequisitos, clavesDeEntidades } from './utils/identidad-prerrequisitos';
+import { ClaveEntidadPrerrequisito, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
 import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
@@ -6716,9 +6716,7 @@ export class NuevoPersonajeService {
 
     /** Si el personaje ya es competente con esa arma (por su id o, sin él, por su nombre). */
     private esCompetenteConArma(idArma: number, nombreArma: string): boolean {
-        const nombre = normalizarTexto(nombreArma);
-        return this.resolverCompetenciasArmasActuales().some((arma) =>
-            (idArma > 0 && toInt(arma?.id) === idArma) || (nombre.length > 0 && normalizarTexto(arma?.nombre ?? '') === nombre));
+        return existeCoincidenciaClaveEntidad(this.resolverCompetenciasArmasActuales(), idArma, nombreArma);
     }
 
     private dominioDelCatalogo(idDominio: number): DominioDetalle | null {
