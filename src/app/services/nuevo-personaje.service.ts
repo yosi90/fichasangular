@@ -1817,7 +1817,7 @@ export class NuevoPersonajeService {
         if (id <= 0 || cambio === 0)
             return false;
 
-        const habilidad = this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === id);
+        const habilidad = this.habilidadDelPersonaje(id);
         if (!habilidad)
             return false;
 
@@ -1854,7 +1854,7 @@ export class NuevoPersonajeService {
 
     /** Puntos que cuesta un rango de la habilidad en esta sesión: 1 si es clásea y 2 si es transclásea. */
     obtenerCosteRangoHabilidad(idHabilidad: number): number {
-        const habilidad = this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === toNumber(idHabilidad));
+        const habilidad = this.habilidadDelPersonaje(idHabilidad);
         return costeRangoHabilidad(!!habilidad && this.esHabilidadClaseaParaSesion(habilidad));
     }
 
@@ -1866,7 +1866,7 @@ export class NuevoPersonajeService {
         const id = toNumber(idHabilidad);
         if (id <= 0)
             return false;
-        const habilidad = this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === id);
+        const habilidad = this.habilidadDelPersonaje(id);
         if (!habilidad)
             return false;
         return toNumber(habilidad?.Rangos) < this.obtenerLimiteRangoHabilidad(id)
@@ -1883,7 +1883,7 @@ export class NuevoPersonajeService {
         if (id <= 0)
             return false;
 
-        const habilidad = this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === id);
+        const habilidad = this.habilidadDelPersonaje(id);
         if (!habilidad)
             return false;
 
@@ -2092,7 +2092,7 @@ export class NuevoPersonajeService {
         if (id <= 0)
             return false;
 
-        const habilidad = this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === id);
+        const habilidad = this.habilidadDelPersonaje(id);
         if (!habilidad)
             return false;
 
@@ -2100,8 +2100,14 @@ export class NuevoPersonajeService {
     }
 
     esExtraElegibleHabilidad(idHabilidad: number): boolean {
-        const habilidad = this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === toNumber(idHabilidad));
+        const habilidad = this.habilidadDelPersonaje(idHabilidad);
         return !!habilidad && this.esExtraElegibleParaSesion(habilidad);
+    }
+
+    /** La habilidad del personaje en creación con ese id. */
+    private habilidadDelPersonaje(idHabilidad: number): Personaje['Habilidades'][number] | undefined {
+        const id = toNumber(idHabilidad);
+        return this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === id);
     }
 
     obtenerLimiteRangoHabilidad(idHabilidad: number): number {
@@ -2109,7 +2115,7 @@ export class NuevoPersonajeService {
         if (id <= 0)
             return 0;
 
-        const habilidad = this.personajeCreacion.Habilidades.find((item) => toNumber(item?.Id) === id);
+        const habilidad = this.habilidadDelPersonaje(id);
         if (!habilidad)
             return 0;
 
