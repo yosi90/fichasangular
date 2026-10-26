@@ -1,6 +1,16 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, DoteFicha, datoAlineamiento, dotesVisibles, textoPies, unirTipo } from 'src/app/components/detalles/ficha';
-import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
+import {
+    DatoFicha,
+    DoteFicha,
+    HabilidadFicha,
+    datoAlineamiento,
+    datosModificadoresCaracteristicas,
+    dotesVisibles,
+    habilidadesVisibles,
+    textoDato,
+    textoPies,
+    unirTipo,
+} from 'src/app/components/detalles/ficha';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
 import { Raza, RazaHabilidadBase, RazaHabilidadCustom, RazaPlantillaReferencia } from 'src/app/interfaces/raza';
@@ -8,7 +18,6 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
-import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
@@ -69,6 +78,9 @@ export class DetallesRazaComponent {
     subtipos: SubtipoRef[] = [];
     habilidadesBase: HabilidadRazaVisible[] = [];
     habilidadesCustom: HabilidadRazaVisible[] = [];
+    /** Las mismas, como las pinta `<app-ficha-habilidades>`. */
+    filasHabilidadesBase: HabilidadFicha[] = [];
+    filasHabilidadesCustom: HabilidadFicha[] = [];
     idiomas: IdiomaDetalle[] = [];
     gruposRaciales: GrupoRacialesDetalle[] = [];
     /** Los prerrequisitos de una raza mutada, con la frase de la API, agrupados por `Opcional`. */
@@ -103,6 +115,8 @@ export class DetallesRazaComponent {
         this.subtipos = this.getSubtiposActivos();
         this.habilidadesBase = this.getHabilidadesBaseOtorgadas();
         this.habilidadesCustom = this.getHabilidadesCustomOtorgadas();
+        this.filasHabilidadesBase = this.filasHabilidades(this.habilidadesBase);
+        this.filasHabilidadesCustom = this.filasHabilidades(this.habilidadesCustom);
         this.idiomas = this.getIdiomasOtorgados();
         this.gruposRaciales = this.getRacialesAgrupados();
         this.sortilegasConDgs = (value?.Sortilegas ?? []).some((s) => tieneNumeroVisible(s?.Dgs_necesarios));
@@ -292,12 +306,14 @@ export class DetallesRazaComponent {
         ];
     }
 
+    private filasHabilidades(habilidades: HabilidadRazaVisible[]): HabilidadFicha[] {
+        return habilidadesVisibles(habilidades, (habilidad) => habilidad.Cantidad, (habilidad) => this.getExtraVisibleHabilidad(habilidad));
+    }
+
     /** Los modificadores de característica distintos de 0, con signo. */
     private construirModificadores(): ParRaza[] {
-        const m = this.raza?.Modificadores;
-        return CARACTERISTICAS.map((clave) => ({ nombre: NOMBRES_CARACTERISTICAS[clave], valor: m?.[clave] }))
-            .filter((item) => this.tieneNumeroNoCero(item.valor))
-            .map((item) => ({ nombre: item.nombre, valor: textoConSigno(Number(item.valor)) }));
+        return datosModificadoresCaracteristicas(this.raza?.Modificadores)
+            .map((dato) => ({ nombre: dato.etiqueta, valor: textoDato(dato.valor) ?? '' }));
     }
 
     private construirEdades(): ParRaza[] {

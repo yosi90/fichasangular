@@ -78,16 +78,19 @@ interface HabilidadCriatura {
 
 /**
  * Las habilidades con nombre, por orden alfabético: el nombre con su extra («Elegir» si está por escoger), la cantidad
- * (`Rangos` o `Cantidad`, según el tipo) con signo y «Varios» como nota. Se pintan en una tabla `ficha-pares`.
+ * (`Rangos` o `Cantidad`, según el tipo) con signo y «Varios» como nota. Se pintan con `<app-ficha-habilidades>`. El
+ * extra sale de `Extra` y su `Extra_comodin`; si el tipo lo lee de otra forma (la raza, también por su id), lo da
+ * `extraVisible`.
  */
 export function habilidadesVisibles<T extends HabilidadCriatura>(
     habilidades: T[] | null | undefined,
     cantidad: (habilidad: T) => unknown,
+    extraVisible: (habilidad: T) => string = (h) => resolverExtraHabilidadVisible({ extra: h.Extra, extraComodin: h.Extra_comodin }),
 ): HabilidadFicha[] {
     return (habilidades ?? [])
         .filter((h) => tieneTextoVisible(h?.Habilidad))
         .map((h) => {
-            const extra = resolverExtraHabilidadVisible({ extra: h.Extra, extraComodin: h.Extra_comodin });
+            const extra = extraVisible(h);
             const nombre = `${h.Habilidad}`.trim();
             const valor = toNumber(cantidad(h));
             return {

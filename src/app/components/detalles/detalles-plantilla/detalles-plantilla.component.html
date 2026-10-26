@@ -13,14 +13,7 @@
     <app-ficha-cuerpo>
         <app-ficha-seccion titulo="Descripción" [texto]="plantillaData.Descripcion"></app-ficha-seccion>
         <app-ficha-seccion titulo="Características" *ngIf="hayCaracteristicas">
-            <div class="ficha-grupo" *ngIf="modificadoresCaracteristicas.length > 0">
-                <h3 class="ficha-subtitulo">Modificadores</h3>
-                <app-ficha-datos [datos]="modificadoresCaracteristicas" [columnas]="3" [tarjeta]="false" titulo="Modificadores de característica"></app-ficha-datos>
-            </div>
-            <div class="ficha-grupo" *ngIf="minimosCaracteristicas.length > 0">
-                <h3 class="ficha-subtitulo">Mínimos</h3>
-                <app-ficha-datos [datos]="minimosCaracteristicas" [columnas]="3" [tarjeta]="false" titulo="Características mínimas"></app-ficha-datos>
-            </div>
+            <app-ficha-caracteristicas [modificadores]="modificadoresCaracteristicas" [minimos]="minimosCaracteristicas"></app-ficha-caracteristicas>
         </app-ficha-seccion>
         <app-ficha-seccion titulo="Combate y defensas" *ngIf="combate.length > 0">
             <app-ficha-datos [datos]="combate" [columnas]="3" [tarjeta]="false" titulo="Combate y defensas"></app-ficha-datos>
@@ -42,17 +35,7 @@
         </app-ficha-lateral>
 
         <app-ficha-lateral titulo="Habilidades" *ngIf="habilidades.length > 0">
-            <table class="ficha-pares">
-                <tbody>
-                    <tr *ngFor="let habilidad of habilidades">
-                        <td>
-                            {{habilidad.nombre}}
-                            <div class="ficha-nota" *ngIf="habilidad.nota">{{habilidad.nota}}</div>
-                        </td>
-                        <td>{{habilidad.valor}}</td>
-                    </tr>
-                </tbody>
-            </table>
+            <app-ficha-habilidades [base]="habilidades"></app-ficha-habilidades>
         </app-ficha-lateral>
 
         <app-ficha-lateral titulo="Aptitudes raciales" *ngIf="raciales.length > 0">

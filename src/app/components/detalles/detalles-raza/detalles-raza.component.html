@@ -69,15 +69,8 @@
             </div>
         </app-ficha-lateral>
 
-        <app-ficha-lateral titulo="Habilidades otorgadas" *ngIf="habilidadesBase.length > 0 || habilidadesCustom.length > 0">
-            <div class="ficha-grupo" *ngIf="habilidadesBase.length > 0">
-                <h3 class="ficha-subtitulo" *ngIf="habilidadesCustom.length > 0">Base</h3>
-                <ng-container *ngTemplateOutlet="habilidades; context: { $implicit: habilidadesBase }"></ng-container>
-            </div>
-            <div class="ficha-grupo" *ngIf="habilidadesCustom.length > 0">
-                <h3 class="ficha-subtitulo">Custom</h3>
-                <ng-container *ngTemplateOutlet="habilidades; context: { $implicit: habilidadesCustom }"></ng-container>
-            </div>
+        <app-ficha-lateral titulo="Habilidades otorgadas" *ngIf="filasHabilidadesBase.length > 0 || filasHabilidadesCustom.length > 0">
+            <app-ficha-habilidades [base]="filasHabilidadesBase" [custom]="filasHabilidadesCustom"></app-ficha-habilidades>
         </app-ficha-lateral>
 
         <app-ficha-lateral titulo="Idiomas otorgados" *ngIf="idiomas.length > 0">
@@ -137,21 +130,6 @@
             <tr *ngFor="let fila of filas">
                 <td>{{fila.nombre}}</td>
                 <td>{{fila.valor}}</td>
-            </tr>
-        </tbody>
-    </table>
-</ng-template>
-
-<!-- «Avistar (Elegir) … +2», con lo que añade la raza («Varios») debajo. -->
-<ng-template #habilidades let-filas>
-    <table class="ficha-pares">
-        <tbody>
-            <tr *ngFor="let habilidad of filas">
-                <td>
-                    {{habilidad.Habilidad}}<ng-container *ngIf="tieneTextoVisible(getExtraVisibleHabilidad(habilidad))"> ({{getExtraVisibleHabilidad(habilidad)}})</ng-container>
-                    <div class="ficha-nota" *ngIf="tieneTextoVisible(habilidad.Varios)">{{habilidad.Varios}}</div>
-                </td>
-                <td>{{habilidad.Cantidad !== 0 ? (habilidad.Cantidad > 0 ? '+' : '') + habilidad.Cantidad : ''}}</td>
             </tr>
         </tbody>
     </table>
