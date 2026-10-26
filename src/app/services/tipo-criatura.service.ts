@@ -7,6 +7,36 @@ import { TipoCriatura } from "../interfaces/tipo_criatura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { leerComodin } from "./utils/comodin";
 
+/** Un tipo de criatura de la caché de la RTDB (`TiposCriatura/{id}`). */
+function tipoCriaturaDesdeRtdb(nodo: any, id: number): TipoCriatura {
+    return {
+        Id: id,
+        Nombre: nodo.child('Nombre').val(),
+        Comodin: leerComodin(nodo.child('Comodin').val()),
+        Descripcion: nodo.child('Descripcion').val(),
+        Manual: nodo.child('Manual').val(),
+        Id_tipo_dado: nodo.child('Id_tipo_dado').val(),
+        Tipo_dado: nodo.child('Tipo_dado').val(),
+        Id_ataque: nodo.child('Id_ataque').val(),
+        Id_fortaleza: nodo.child('Id_fortaleza').val(),
+        Id_reflejos: nodo.child('Id_reflejos').val(),
+        Id_voluntad: nodo.child('Id_voluntad').val(),
+        Id_puntos_habilidad: nodo.child('Id_puntos_habilidad').val(),
+        Puntos_habilidad: nodo.child('Puntos_habilidad').val() ?? 0,
+        Come: nodo.child('Come').val(),
+        Respira: nodo.child('Respira').val(),
+        Duerme: nodo.child('Duerme').val(),
+        Recibe_criticos: nodo.child('Recibe_críticos').val(),
+        Puede_ser_flanqueado: nodo.child('Puede_ser_flanqueado').val(),
+        Pierde_constitucion: nodo.child('Pierde_constitucion').val(),
+        Limite_inteligencia: nodo.child('Limite_inteligencia').val(),
+        Tesoro: nodo.child('Tesoro').val(),
+        Id_alineamiento: nodo.child('Id_alineamiento').val(),
+        Rasgos: nodo.child('Rasgos').val(),
+        Oficial: nodo.child('Oficial').val(),
+    };
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -23,33 +53,7 @@ export class TipoCriaturaService {
             let unsubscribe: Unsubscribe;
 
             const onNext = (snapshot: any) => {
-                let tipoCriatura: TipoCriatura = {
-                    Id: id,
-                    Nombre: snapshot.child('Nombre').val(),
-                    Comodin: leerComodin(snapshot.child('Comodin').val()),
-                    Descripcion: snapshot.child('Descripcion').val(),
-                    Manual: snapshot.child('Manual').val(),
-                    Id_tipo_dado: snapshot.child('Id_tipo_dado').val(),
-                    Tipo_dado: snapshot.child('Tipo_dado').val(),
-                    Id_ataque: snapshot.child('Id_ataque').val(),
-                    Id_fortaleza: snapshot.child('Id_fortaleza').val(),
-                    Id_reflejos: snapshot.child('Id_reflejos').val(),
-                    Id_voluntad: snapshot.child('Id_voluntad').val(),
-                    Id_puntos_habilidad: snapshot.child('Id_puntos_habilidad').val(),
-                    Puntos_habilidad: snapshot.child('Puntos_habilidad').val() ?? 0,
-                    Come: snapshot.child('Come').val(),
-                    Respira: snapshot.child('Respira').val(),
-                    Duerme: snapshot.child('Duerme').val(),
-                    Recibe_criticos: snapshot.child('Recibe_críticos').val(),
-                    Puede_ser_flanqueado: snapshot.child('Puede_ser_flanqueado').val(),
-                    Pierde_constitucion: snapshot.child('Pierde_constitucion').val(),
-                    Limite_inteligencia: snapshot.child('Limite_inteligencia').val(),
-                    Tesoro: snapshot.child('Tesoro').val(),
-                    Id_alineamiento: snapshot.child('Id_alineamiento').val(),
-                    Rasgos: snapshot.child('Rasgos').val(),
-                    Oficial: snapshot.child('Oficial').val(),
-                };
-                observador.next(tipoCriatura);
+                observador.next(tipoCriaturaDesdeRtdb(snapshot, id));
             };
 
             const onError = (error: any) => {
@@ -73,33 +77,7 @@ export class TipoCriaturaService {
             const onNext = (snapshot: any) => {
                 const TiposCriatura: TipoCriatura[] = [];
                 snapshot.forEach((obj: any) => {
-                    const tipoCriatura: TipoCriatura = {
-                        Id: obj.child('Id').val(),
-                        Nombre: obj.child('Nombre').val(),
-                        Comodin: leerComodin(obj.child('Comodin').val()),
-                        Descripcion: obj.child('Descripcion').val(),
-                        Manual: obj.child('Manual').val(),
-                        Id_tipo_dado: obj.child('Id_tipo_dado').val(),
-                        Tipo_dado: obj.child('Tipo_dado').val(),
-                        Id_ataque: obj.child('Id_ataque').val(),
-                        Id_fortaleza: obj.child('Id_fortaleza').val(),
-                        Id_reflejos: obj.child('Id_reflejos').val(),
-                        Id_voluntad: obj.child('Id_voluntad').val(),
-                        Id_puntos_habilidad: obj.child('Id_puntos_habilidad').val(),
-                        Puntos_habilidad: obj.child('Puntos_habilidad').val() ?? 0,
-                        Come: obj.child('Come').val(),
-                        Respira: obj.child('Respira').val(),
-                        Duerme: obj.child('Duerme').val(),
-                        Recibe_criticos: obj.child('Recibe_críticos').val(),
-                        Puede_ser_flanqueado: obj.child('Puede_ser_flanqueado').val(),
-                        Pierde_constitucion: obj.child('Pierde_constitucion').val(),
-                        Limite_inteligencia: obj.child('Limite_inteligencia').val(),
-                        Tesoro: obj.child('Tesoro').val(),
-                        Id_alineamiento: obj.child('Id_alineamiento').val(),
-                        Rasgos: obj.child('Rasgos').val(),
-                        Oficial: obj.child('Oficial').val(),
-                    };
-                    TiposCriatura.push(tipoCriatura);
+                    TiposCriatura.push(tipoCriaturaDesdeRtdb(obj, obj.child('Id').val()));
                 });
                 observador.next(TiposCriatura);
             };
