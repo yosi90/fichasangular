@@ -46,6 +46,11 @@ export interface FilaLibro {
     item: ConjuroParaElLibro;
 }
 
+/** Si la copia es la de ese conjuro en ese libro. */
+function esLaCopia(copia: CopiaLibro, libro: LibroTienda, item: ConjuroParaElLibro): boolean {
+    return copia.idClase === libro.idClase && copia.conjuro.Id === item.conjuro.Id;
+}
+
 /** La pieza que se está configurando: una del carro (`indice`) o una nueva del catálogo (`null`). */
 interface PiezaEnConfiguracion {
     indice: number | null;
@@ -197,13 +202,10 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
 
     /** Todo lo que se puede copiar que encaja con la búsqueda y el nivel (sin el tope de filas). */
     get filasLibroFiltradas(): FilaLibro[] {
-        const texto = normalizarTexto(this.busqueda, true);
         return (this.libros ?? [])
             .flatMap((libro) => libro.conjuros.map((item) => ({ libro, item })))
             .filter(({ item }) => this.nivelLibro === null || item.nivel === this.nivelLibro)
-            .filter(({ item }) => texto.length < 1
-                || normalizarTexto(item.conjuro?.Nombre ?? '', true).includes(texto)
-                || normalizarTexto(item.conjuro?.Escuela?.Nombre ?? '', true).includes(texto));
+            .filter(({ item }) => this.encajaConLaBusqueda(item.conjuro?.Nombre, item.conjuro?.Escuela?.Nombre));
     }
 
     /** Lo que se enseña en «Conjuros para el libro». */
@@ -219,14 +221,14 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     estaCopiado(libro: LibroTienda, item: ConjuroParaElLibro): boolean {
-        return this.copias.some((copia) => copia.idClase === libro.idClase && copia.conjuro.Id === item.conjuro.Id);
+        return this.copias.some((copia) => esLaCopia(copia, libro, item));
     }
 
     /** Añade el conjuro a la compra o, si ya está, lo quita. */
     alternarCopia(fila: FilaLibro): void {
         this.copiaSenalada = null;
         if (this.estaCopiado(fila.libro, fila.item)) {
-            this.copias = this.copias.filter((copia) => !(copia.idClase === fila.libro.idClase && copia.conjuro.Id === fila.item.conjuro.Id));
+            this.copias = this.copias.filter((copia) => !esLaCopia(copia, fila.libro, fila.item));
             return;
         }
         this.copias = [...this.copias, { ...fila.item, idClase: fila.libro.idClase, clase: fila.libro.clase }];
@@ -247,16 +249,19 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
 
     /** Lo que se ofrece en la pestaña elegida: lo que se puede comprar y encaja con la búsqueda. */
     get opciones(): ArticuloTienda[] {
-        const texto = normalizarTexto(this.busqueda, true);
         const desdeApi = this.seccion === 'objeto' || this.seccion === 'especifica';
         const fuente = desdeApi ? this.objetos : this.articulos.filter((articulo) => articulo.tipo === this.seccion);
         return fuente
             .filter((articulo) => sePuedeComprar(articulo) && (!this.soloOficial || articulo.oficial))
             .filter((articulo) => this.politica.objetosMagicos || !articulo.magico)
-            .filter((articulo) => desdeApi || texto.length < 1
-                || normalizarTexto(articulo.nombre, true).includes(texto)
-                || normalizarTexto(articulo.categoria, true).includes(texto))
+            .filter((articulo) => desdeApi || this.encajaConLaBusqueda(articulo.nombre, articulo.categoria))
             .slice(0, MAXIMO_OPCIONES);
+    }
+
+    /** Si alguno de los textos contiene la búsqueda (sin tildes ni mayúsculas); sin búsqueda, todo encaja. */
+    private encajaConLaBusqueda(...textos: (string | null | undefined)[]): boolean {
+        const busqueda = normalizarTexto(this.busqueda, true);
+        return busqueda.length < 1 || textos.some((texto) => normalizarTexto(texto ?? '', true).includes(busqueda));
     }
 
     /** Las cifras del paso: el dinero, lo gastado, lo que queda, el peso y su carga (y las de otras pestañas). */
