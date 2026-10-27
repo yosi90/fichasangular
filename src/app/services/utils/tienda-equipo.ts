@@ -15,6 +15,7 @@ import {
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCompraPiezaDto, PersonajeCompraRequestDto, PersonajeTipoPiezaDto } from 'src/app/interfaces/personajes-api';
 import { formatoNumero, textoConSigno, textoDestrezaMaxima, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
+import { ConjuroParaElLibro } from 'src/app/services/utils/libro-conjuros';
 import { normalizarTexto, toNumberOrNull } from 'src/app/services/utils/normalizacion';
 
 /*
@@ -105,9 +106,17 @@ export interface PoliticaTienda {
     aMedida: boolean;
     /** Lo que puede costar una pieza (una unidad), en po; `null` sin tope. */
     precioMaximo: number | null;
+    /** Copiar conjuros al libro, pagándolos (`permitirCopiarConjuros`, 2026-10-27). */
+    copiarConjuros: boolean;
 }
 
-export const POLITICA_TIENDA_LIBRE: PoliticaTienda = { objetosMagicos: true, aMedida: true, precioMaximo: null };
+export const POLITICA_TIENDA_LIBRE: PoliticaTienda = { objetosMagicos: true, aMedida: true, precioMaximo: null, copiarConjuros: true };
+
+/** Un conjuro que se copia al libro de una clase en la compra (`conjurosLibro`), con su precio estimado. */
+export interface CopiaLibro extends ConjuroParaElLibro {
+    idClase: number;
+    clase: string;
+}
 
 const GRAN_CALIDAD: Readonly<Record<Exclude<PersonajeTipoPiezaDto, 'objeto'>, number>> = { arma: 300, armadura: 150, municion: 6 };
 const MAGIA_POR_PUNTO: Readonly<Record<Exclude<PersonajeTipoPiezaDto, 'objeto'>, number>> = { arma: 2000, armadura: 1000, municion: 2000 };
@@ -401,8 +410,9 @@ export interface ResumenCompra {
     dentroDelTope: boolean;
 }
 
-export function resumenCompra(dineroInicial: number, piezas: PiezaTienda[], regla: ReglaDineroInicial): ResumenCompra {
-    const gastado = redondear(piezas.reduce((acc, pieza) => acc + precioEstimado(pieza), 0));
+export function resumenCompra(dineroInicial: number, piezas: PiezaTienda[], regla: ReglaDineroInicial, copias: CopiaLibro[] = []): ResumenCompra {
+    const gastado = redondear(piezas.reduce((acc, pieza) => acc + precioEstimado(pieza), 0)
+        + copias.reduce((acc, copia) => acc + copia.precio.total, 0));
     const dinero = Math.max(0, dineroInicial || 0);
     return {
         gastado,
@@ -447,6 +457,7 @@ export function politicaTienda(politica: Partial<CampaignCreationPolicy> | null 
         objetosMagicos: politica.permitirObjetosMagicos !== false,
         aMedida: politica.permitirObjetosAMedida !== false,
         precioMaximo: normalizarPrecioMaximoPorPieza(politica.precioMaximoPorObjeto),
+        copiarConjuros: politica.permitirCopiarConjuros !== false,
     };
 }
 
@@ -462,16 +473,18 @@ export function notaPoliticaTienda(politica: PoliticaTienda): string {
 // Las pestañas del catálogo ---------------------------------------------------------------------------------------
 
 /** De dónde salen las filas de una pestaña: un catálogo de la web o una búsqueda de objetos en la API. */
-export type OrigenPestanaTienda = 'arma' | 'armadura' | 'municion' | 'objeto' | 'especifica';
+export type OrigenPestanaTienda = 'arma' | 'armadura' | 'municion' | 'objeto' | 'especifica' | 'libro';
 
 export interface ContextoPestanasTienda {
     politica: PoliticaTienda;
+    /** Si alguna de sus clases tiene libro de conjuros (`Conjuros.Libro` de la clase, no su nombre). */
+    libro?: boolean;
 }
 
 /**
  * Una pestaña del catálogo de la tienda. Son una lista con condición: cada una dice si sale para este personaje y su
- * campaña (por ejemplo, las específicas solo si la campaña deja comprar objetos mágicos). Una pestaña nueva («Conjuros
- * para el libro») se añade aquí con su condición.
+ * campaña (por ejemplo, las específicas solo si la campaña deja comprar objetos mágicos, y «Conjuros para el libro» si
+ * alguna de sus clases tiene libro y la campaña deja copiarlos). Una pestaña nueva se añade aquí con su condición.
  */
 export interface PestanaTienda {
     id: OrigenPestanaTienda;
@@ -487,6 +500,7 @@ export const PESTANAS_TIENDA: readonly PestanaTienda[] = [
     { id: 'municion', nombre: 'Munición', columnas: ['Para', 'Lote'], sale: () => true },
     { id: 'objeto', nombre: 'Objetos', columnas: ['Tipo', 'Ranura'], sale: () => true },
     { id: 'especifica', nombre: 'Armas y armaduras específicas', columnas: ['Base', 'Mejora'], sale: (c) => c.politica.objetosMagicos },
+    { id: 'libro', nombre: 'Conjuros para el libro', columnas: ['Nivel', 'Escuela'], sale: (c) => !!c.libro && c.politica.copiarConjuros },
 ];
 
 export function pestanasTienda(contexto: ContextoPestanasTienda): PestanaTienda[] {
@@ -538,7 +552,16 @@ function oroDeSusClases(clases: ContextoDineroInicial['clases'], tabla: EquipoCa
 
 /** La pieza que nombra el `field` de un error de la compra («piezas[2].cantidad» → 2), o `null` si no nombra ninguna. */
 export function indicePiezaDelCampo(campo: unknown): number | null {
-    const encontrado = `${campo ?? ''}`.match(/^piezas\[(\d+)\]/);
+    return indiceDelCampo(campo, 'piezas');
+}
+
+/** El conjuro copiado que nombra el `field` de un error de la compra («conjurosLibro[1].idConjuro» → 1), o `null`. */
+export function indiceConjuroLibroDelCampo(campo: unknown): number | null {
+    return indiceDelCampo(campo, 'conjurosLibro');
+}
+
+function indiceDelCampo(campo: unknown, lista: string): number | null {
+    const encontrado = `${campo ?? ''}`.match(new RegExp(`^${lista}\\[(\\d+)\\]`));
     return encontrado ? Number(encontrado[1]) : null;
 }
 
@@ -554,10 +577,11 @@ export function tirarOroInicial(regla: ReglaDineroInicial, aleatorio: () => numb
     return suma * regla.multiplicador;
 }
 
-/** El cuerpo de `PUT /personajes/{id}/equipo`. */
-export function construirCompra(dineroInicial: number, piezas: PiezaTienda[]): PersonajeCompraRequestDto {
+/** El cuerpo de `PUT /personajes/{id}/equipo`, con los conjuros que copia al libro si los hay. */
+export function construirCompra(dineroInicial: number, piezas: PiezaTienda[], copias: CopiaLibro[] = []): PersonajeCompraRequestDto {
     return {
         dineroInicial: redondear(Math.max(0, dineroInicial || 0)),
+        ...(copias.length > 0 ? { conjurosLibro: copias.map((copia) => ({ idConjuro: copia.conjuro.Id, idClase: copia.idClase })) } : {}),
         piezas: piezas.map((pieza) => {
             const dto: PersonajeCompraPiezaDto = {
                 tipo: pieza.articulo.tipo,

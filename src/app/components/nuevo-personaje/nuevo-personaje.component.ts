@@ -138,6 +138,7 @@ import {
     ArticuloTienda,
     POLITICA_TIENDA_LIBRE,
     PoliticaTienda,
+    indiceConjuroLibroDelCampo,
     ReglaDineroInicial,
     articuloDeArma,
     articuloDeArmadura,
@@ -146,6 +147,7 @@ import {
     politicaTienda,
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
+import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
 
 interface VectorAlineamiento {
     ley: number;
@@ -561,6 +563,10 @@ export class NuevoPersonajeComponent {
     tiendaError = '';
     /** La pieza que señala el error de la API (`field: piezas[i]…`), o `null`. */
     tiendaPiezaConError: number | null = null;
+    /** El conjuro copiado al libro que señala el error de la API (`field: conjurosLibro[i]`). */
+    tiendaCopiaConError: number | null = null;
+    /** Los libros de conjuros de sus clases para la pestaña «Conjuros para el libro» (vacío si ninguna tiene libro). */
+    tiendaLibros: LibroTienda[] = [];
     /** En una campaña que no admite homebrew, la tienda solo ofrece lo oficial (la API lo comprueba igualmente). */
     tiendaSoloOficial = false;
     /** Lo que la campaña deja comprar en la tienda (objetos mágicos, a medida y precio por pieza); sin campaña, todo. */
@@ -4372,12 +4378,26 @@ export class NuevoPersonajeComponent {
             duplicaOro: ventajas.some((ventaja) => !!ventaja.Duplica_oro),
             aumentaOro: ventajas.some((ventaja) => !!ventaja.Aumenta_oro),
         }, catalogos);
+        this.tiendaLibros = this.librosParaLaTienda();
         this.tiendaPersonaje = pj;
         this.tiendaError = '';
         this.tiendaPiezaConError = null;
+        this.tiendaCopiaConError = null;
         this.tiendaGuardando = false;
         this.modalTiendaAbierto = true;
         return true;
+    }
+
+    /**
+     * Los libros de sus clases con libro de conjuros (`Conjuros.Libro`, un dato de la clase): lo que puede copiar a cada uno
+     * es lo que da la regla única, `conjurosAniadiblesAlLibro`, y las páginas usadas, las de los que ya tiene.
+     */
+    private librosParaLaTienda(): LibroTienda[] {
+        return (this.Personaje?.desgloseClases ?? [])
+            .map((entrada) => this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(entrada?.Nombre ?? '')))
+            .filter((clase): clase is Clase => !!clase?.Conjuros?.Libro)
+            .filter((clase, indice, todas) => todas.findIndex((otra) => otra.Id === clase.Id) === indice)
+            .map((clase) => libroTienda(clase, this.nuevoPSvc.conjurosAniadiblesAlLibro(clase), this.nuevoPSvc.conjurosEnElLibro(clase)));
     }
 
     /** Guarda la compra (`PUT /personajes/{id}/equipo`); la API calcula los precios y comprueba el dinero. */
@@ -4388,6 +4408,7 @@ export class NuevoPersonajeComponent {
         this.tiendaGuardando = true;
         this.tiendaError = '';
         this.tiendaPiezaConError = null;
+        this.tiendaCopiaConError = null;
         try {
             const respuesta = await this.personajeSvc.comprarEquipoPersonaje(pj.Id, compra);
             pj.Oficial = respuesta.oficial;
@@ -4397,6 +4418,7 @@ export class NuevoPersonajeComponent {
             // `field` nombra una pieza, esa pieza señalada.
             this.tiendaError = `${error?.message ?? ''}`.trim() || 'No se ha podido guardar el equipo.';
             this.tiendaPiezaConError = indicePiezaDelCampo(error?.field);
+            this.tiendaCopiaConError = indiceConjuroLibroDelCampo(error?.field);
             this.tiendaGuardando = false;
             return;
         }
@@ -4417,6 +4439,8 @@ export class NuevoPersonajeComponent {
         this.tiendaGuardando = false;
         this.tiendaError = '';
         this.tiendaPiezaConError = null;
+        this.tiendaCopiaConError = null;
+        this.tiendaLibros = [];
         this.tiendaPersonaje = null;
     }
 

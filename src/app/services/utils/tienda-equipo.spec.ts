@@ -17,6 +17,7 @@ import {
     aplicacionesDeArticulo,
     aptitudSeAplica,
     indicePiezaDelCampo,
+    indiceConjuroLibroDelCampo,
     motivoPiezaNoValida,
     normalizarPrecioMaximoPorPieza,
     pestanasTienda,
@@ -165,6 +166,10 @@ describe('tienda-equipo', () => {
             expect(indicePiezaDelCampo('piezas')).toBeNull();
             expect(indicePiezaDelCampo(null)).toBeNull();
             expect(indicePiezaDelCampo('dineroInicial')).toBeNull();
+            expect(indicePiezaDelCampo('conjurosLibro[0]')).toBeNull();
+            expect(indiceConjuroLibroDelCampo('conjurosLibro[3].idConjuro')).toBe(3);
+            expect(indiceConjuroLibroDelCampo('conjurosLibro')).toBeNull();
+            expect(indiceConjuroLibroDelCampo('piezas[1]')).toBeNull();
         });
 
         it('un arma mágica específica se compra como objeto, a su precio, y se lleva puesta', () => {
@@ -210,18 +215,24 @@ describe('tienda-equipo', () => {
         it('las reglas de la pieza y lo que no deja la campaña', () => {
             const afilada = normalizeEncantamiento(crearEncantamientoApi());
             expect(motivoPiezaNoValida({ ...nuevaPieza(larga), aptitudes: [afilada] })).toContain('al menos un +1');
-            expect(motivoPiezaNoValida({ ...nuevaPieza(larga), bonificadorMejora: 1 }, { objetosMagicos: true, aMedida: false, precioMaximo: null }))
+            expect(motivoPiezaNoValida({ ...nuevaPieza(larga), bonificadorMejora: 1 }, { objetosMagicos: true, aMedida: false, precioMaximo: null, copiarConjuros: true }))
                 .toBe('Esta campaña no permite objetos a medida.');
-            expect(motivoPiezaNoValida(nuevaPieza(capa), { objetosMagicos: false, aMedida: true, precioMaximo: null }))
+            expect(motivoPiezaNoValida(nuevaPieza(capa), { objetosMagicos: false, aMedida: true, precioMaximo: null, copiarConjuros: true }))
                 .toBe('Esta campaña no permite comprar objetos mágicos.');
-            expect(motivoPiezaNoValida({ ...nuevaPieza(flechas), cantidad: 200 }, { objetosMagicos: true, aMedida: true, precioMaximo: 1 })).toBeNull();
+            expect(motivoPiezaNoValida({ ...nuevaPieza(flechas), cantidad: 200 }, { objetosMagicos: true, aMedida: true, precioMaximo: 1, copiarConjuros: true })).toBeNull();
         });
 
         it('la política: sin campaña, todo; con campaña, la suya; y las pestañas que salen', () => {
-            expect(politicaTienda(null)).toEqual({ objetosMagicos: true, aMedida: true, precioMaximo: null });
+            expect(politicaTienda(null)).toEqual({ objetosMagicos: true, aMedida: true, precioMaximo: null, copiarConjuros: true });
             const estricta = politicaTienda({ permitirObjetosMagicos: false, permitirObjetosAMedida: false, precioMaximoPorObjeto: 500 });
-            expect(estricta).toEqual({ objetosMagicos: false, aMedida: false, precioMaximo: 500 });
+            expect(estricta).toEqual({ objetosMagicos: false, aMedida: false, precioMaximo: 500, copiarConjuros: true });
             expect(pestanasTienda({ politica: estricta }).map((p) => p.id)).not.toContain('especifica');
+            // «Conjuros para el libro»: si alguna clase tiene libro y la campaña deja copiarlos.
+            expect(pestanasTienda({ politica: estricta }).map((p) => p.id)).not.toContain('libro');
+            expect(pestanasTienda({ politica: estricta, libro: true }).map((p) => p.id)).toContain('libro');
+            const sinCopiar = politicaTienda({ permitirCopiarConjuros: false });
+            expect(sinCopiar.copiarConjuros).toBeFalse();
+            expect(pestanasTienda({ politica: sinCopiar, libro: true }).map((p) => p.id)).not.toContain('libro');
         });
 
         it('el precio máximo por pieza de la campaña: po enteros, 0 o más; si no, sin tope', () => {

@@ -8,6 +8,7 @@ import { DeidadDetalle } from '../interfaces/deidad';
 import { Raza } from '../interfaces/raza';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
+import { libroTienda } from './utils/libro-conjuros';
 
 // Reglas de la magia de la creación (auditoría de la matriz del 2026-10-26, fallos 3, 6, 7, 12, 13, 15, 17, 18, 30 y
 // 31): cada una con el caso del manual y desde los datos de la clase, la escuela, la disciplina o el dominio.
@@ -162,6 +163,23 @@ describe('Reglas de la magia: el libro del mago (MJ cap. 3)', () => {
         expect(service.conjurosAniadiblesAlLibro(mago).map(({ conjuro: c, nivel: n }) => [c.Id, n]))
             .toEqual([[117, 1], [118, 1]]);
         expect(service.conjurosAniadiblesAlLibro(clase({ Id: 7, Nombre: 'Guerrero' }))).toEqual([]);
+    });
+
+    it('los que ya están en el libro, con su nivel, para contar sus páginas en la tienda', () => {
+        const service = preparar(16);
+        service.aplicarSiguienteNivelClase(mago);
+        [111, 112, 113, 114, 115, 116].forEach((id) => service.seleccionarConjuroSesion(id));
+        service.cerrarSesionConjuros();
+
+        const enElLibro = service.conjurosEnElLibro(mago);
+        expect(enElLibro.length).toBe(service.PersonajeCreacion.Conjuros.length);
+        expect(enElLibro.filter((item) => item.nivel === 1).map((item) => item.conjuro.Id).sort()).toEqual([111, 112, 113, 114, 115, 116]);
+        expect(enElLibro.every((item) => item.nivel === 0 || item.nivel === 1)).toBeTrue();
+        // Los de nivel 0 y 1 ocupan una página cada uno.
+        const libro = libroTienda(mago, service.conjurosAniadiblesAlLibro(mago), enElLibro);
+        expect(libro.paginasUsadas).toBe(enElLibro.length);
+        expect(libro.conjuros.map((item) => item.conjuro.Id)).toEqual([117, 118]);
+        expect(service.conjurosEnElLibro(clase({ Id: 7, Nombre: 'Guerrero' }))).toEqual([]);
     });
 
     it('los conjuros del libro se guardan con su origen y sin marcar como copiados', () => {

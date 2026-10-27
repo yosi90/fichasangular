@@ -155,6 +155,7 @@ export class PersonajeService {
             dineroInicial: toNumber(response?.dineroInicial),
             dinero: toNumber(response?.dinero),
             costes: toArray(response?.costes).map((coste) => toNumber(coste)),
+            costesConjuros: toArray(response?.costesConjuros).map((coste) => toNumber(coste)),
             oficial: toBoolean(response?.oficial),
         };
     }

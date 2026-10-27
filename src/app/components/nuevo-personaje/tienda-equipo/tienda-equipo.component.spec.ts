@@ -6,6 +6,8 @@ import { normalizeArma } from 'src/app/services/arma.service';
 import { normalizeArmadura } from 'src/app/services/armadura.service';
 import { normalizeEncantamiento, normalizeEquipoCatalogos, normalizeMaterial, normalizeMunicion, normalizeObjeto } from 'src/app/services/utils/equipo-mapper';
 import { articuloDeArma, articuloDeArmadura, articuloDeMunicion, reglaDineroInicial } from 'src/app/services/utils/tienda-equipo';
+import { LibroTienda, precioCopiaLibro } from 'src/app/services/utils/libro-conjuros';
+import { Conjuro } from 'src/app/interfaces/conjuro';
 import {
     crearArmaApi,
     crearArmaduraApi,
@@ -94,7 +96,7 @@ describe('TiendaEquipoComponent', () => {
         abrir();
         expect(component.pestanas.map((p) => p.id)).toEqual(['arma', 'armadura', 'municion', 'objeto', 'especifica']);
         component.cambiarSeccion('especifica');
-        component.politica = { objetosMagicos: false, aMedida: true, precioMaximo: null };
+        component.politica = { objetosMagicos: false, aMedida: true, precioMaximo: null, copiarConjuros: true };
         component.ngOnChanges({ politica: new SimpleChange(null, component.politica, false) });
         expect(component.pestanas.map((p) => p.id)).toEqual(['arma', 'armadura', 'municion', 'objeto']);
         expect(component.seccion).toBe('arma');
@@ -105,15 +107,92 @@ describe('TiendaEquipoComponent', () => {
         expect(component.notaPie).toContain('Esta campaña no permite objetos mágicos.');
     });
 
-    it('la franja trae el dinero, lo gastado, lo que queda y el peso con su carga, y admite cifras de más', () => {
+    it('la franja trae el dinero, lo gastado, lo que queda y el peso con su carga', () => {
         abrir(3);
         component.capacidadCarga = { Ligera: 76, Media: 153, Pesada: 230 };
         component.anadir(espada);
-        component.cifrasExtra = [{ etiqueta: 'Páginas del libro', valor: 12 }];
         const franja = component.franja;
-        expect(franja.map((d) => d.etiqueta)).toEqual(['Dinero inicial', 'Gastado', 'Te queda', 'Peso', 'Páginas del libro']);
+        expect(franja.map((d) => d.etiqueta)).toEqual(['Dinero inicial', 'Gastado', 'Te queda', 'Peso']);
         expect(franja[0].detalle).toBe('riqueza de su NEP');
         expect(franja[3].detalle).toContain('carga ligera');
+    });
+
+    describe('conjuros para el libro', () => {
+        const conjuro = (Id: number, Nombre: string, Escuela: string, Oficial = true) =>
+            ({ Id, Nombre, Escuela: { Id: 0, Nombre: Escuela, Nombre_especial: '', Prohibible: true }, Oficial } as Conjuro);
+        const escudo = conjuro(51, 'Escudo', 'Abjuración');
+        const bola = conjuro(50, 'Bola de fuego', 'Evocación');
+        const libro: LibroTienda = {
+            idClase: 9,
+            clase: 'Mago',
+            paginasUsadas: 47,
+            conjuros: [
+                { conjuro: escudo, nivel: 1, precio: precioCopiaLibro(1, 1) },
+                { conjuro: bola, nivel: 3, precio: precioCopiaLibro(3, 5) },
+            ],
+        };
+
+        function conLibro(politica = { objetosMagicos: true, aMedida: true, precioMaximo: null, copiarConjuros: true }): void {
+            abrir(3);
+            component.libros = [libro];
+            component.politica = politica;
+            component.ngOnChanges({ libros: new SimpleChange([], component.libros, false), politica: new SimpleChange(null, politica, false) });
+        }
+
+        it('la pestaña sale si alguna clase tiene libro y la campaña lo deja', () => {
+            abrir();
+            expect(component.pestanas.map((p) => p.id)).not.toContain('libro');
+            conLibro();
+            expect(component.pestanas.map((p) => p.id)).toContain('libro');
+            conLibro({ objetosMagicos: true, aMedida: true, precioMaximo: null, copiarConjuros: false });
+            expect(component.pestanas.map((p) => p.id)).not.toContain('libro');
+            expect(component.franja.map((d) => d.etiqueta)).not.toContain('Páginas del libro');
+        });
+
+        it('ofrece lo que se puede copiar, filtra por nivel y busca', () => {
+            conLibro();
+            component.cambiarSeccion('libro');
+            expect(component.filasLibro.map((f) => f.item.conjuro.Nombre)).toEqual(['Escudo', 'Bola de fuego']);
+            expect(component.nivelesLibro).toEqual([1, 3]);
+            component.filtrarNivelLibro(3);
+            expect(component.filasLibro.map((f) => f.item.conjuro.Nombre)).toEqual(['Bola de fuego']);
+            component.filtrarNivelLibro(null);
+            component.buscar('ABJURACION');
+            expect(component.filasLibro.map((f) => f.item.conjuro.Nombre)).toEqual(['Escudo']);
+            expect(component.notaPie).toContain('Solo salen los conjuros que puedes lanzar');
+        });
+
+        it('copia, cuenta las páginas, cobra y manda conjurosLibro', () => {
+            conLibro();
+            component.cambiarSeccion('libro');
+            const confirmar = spyOn(component.confirmar, 'emit');
+            const [filaEscudo, filaBola] = component.filasLibro;
+            component.alternarCopia(filaBola);
+            expect(component.estaCopiado(libro, filaBola.item)).toBeTrue();
+            // Una bola de fuego para una maga de nivel 5: 375 de pergamino + 300 de escribirla.
+            expect(component.resumen.gastado).toBe(675);
+            const paginas = component.franja.find((d) => d.etiqueta === 'Páginas del libro');
+            expect(paginas).toEqual(jasmine.objectContaining({ valor: 50, detalle: 'de 100' }));
+            expect(component.cuantasCompras).toBe(1);
+            component.alternarCopia(filaEscudo);
+            component.alternarCopia(filaEscudo);
+            expect(component.copias.length).toBe(1);
+            component.onConfirmar();
+            expect(confirmar).toHaveBeenCalledWith({ dineroInicial: 2700, conjurosLibro: [{ idConjuro: 50, idClase: 9 }], piezas: [] });
+            component.quitarCopia(0);
+            expect(component.resumen.gastado).toBe(0);
+        });
+
+        it('señala el conjuro del error de la API y un conjuro homebrew avisa', () => {
+            conLibro();
+            component.alternarCopia({ libro, item: { conjuro: conjuro(53, 'Casero', 'Evocación', false), nivel: 1, precio: precioCopiaLibro(1, 1) } });
+            expect(component.hayHomebrew).toBeTrue();
+            component.copiaConError = 0;
+            component.ngOnChanges({ copiaConError: new SimpleChange(null, 0, false) });
+            expect(component.copiaSenalada).toBe(0);
+            component.quitarCopia(0);
+            expect(component.copiaSenalada).toBeNull();
+        });
     });
 
     it('lleva la cuenta de lo gastado y no deja comprar si no llega', () => {
@@ -169,7 +248,7 @@ describe('TiendaEquipoComponent', () => {
 
     it('sin objetos a medida no se configura y una pieza a medida se marca', () => {
         abrir(3);
-        component.politica = { objetosMagicos: true, aMedida: false, precioMaximo: null };
+        component.politica = { objetosMagicos: true, aMedida: false, precioMaximo: null, copiarConjuros: true };
         component.anadir(espada);
         component.cambiarPieza(0, { bonificadorMejora: 1 });
         expect(component.motivosPiezas[0]).toBe('Esta campaña no permite objetos a medida.');
@@ -178,7 +257,7 @@ describe('TiendaEquipoComponent', () => {
 
     it('el precio máximo por pieza de la campaña', () => {
         abrir(3);
-        component.politica = { objetosMagicos: true, aMedida: true, precioMaximo: 1000 };
+        component.politica = { objetosMagicos: true, aMedida: true, precioMaximo: 1000, copiarConjuros: true };
         component.anadir(espada);
         expect(component.motivoNoComprar).toBeNull();
         component.cambiarPieza(0, { bonificadorMejora: 1 });

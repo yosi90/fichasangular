@@ -6,9 +6,11 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { textoPeso, textoPrecio, textoPrecioGenerico } from 'src/app/services/utils/equipo-texto';
+import { ConjuroParaElLibro, LibroTienda, PAGINAS_POR_LIBRO } from 'src/app/services/utils/libro-conjuros';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import {
     ArticuloTienda,
+    CopiaLibro,
     MaterialAplicable,
     OrigenPestanaTienda,
     POLITICA_TIENDA_LIBRE,
@@ -35,6 +37,14 @@ import {
 } from 'src/app/services/utils/tienda-equipo';
 
 const MAXIMO_OPCIONES = 60;
+/** Los conjuros que se enseñan a la vez en «Conjuros para el libro» (el mago puede tener cientos): se busca o se filtra por nivel. */
+const MAXIMO_CONJUROS = 150;
+
+/** Una fila de «Conjuros para el libro»: el conjuro con su precio y el libro (la clase) al que va. */
+export interface FilaLibro {
+    libro: LibroTienda;
+    item: ConjuroParaElLibro;
+}
 
 /** La pieza que se está configurando: una del carro (`indice`) o una nueva del catálogo (`null`). */
 interface PiezaEnConfiguracion {
@@ -50,6 +60,8 @@ interface PiezaEnConfiguracion {
  * hechos). Lienzo aprobado el 2026-10-26: franja con el dinero, catálogo por pestañas con buscador a la izquierda, «Lo
  * que compra» a la derecha y, al configurar una pieza, una ventana con material, mejora y aptitudes. Los precios son una
  * estimación con las reglas de la API, que es la que manda al guardar (`docs/publica/OBJETOS_FRONT.md`, «Las compras»).
+ * Si alguna de sus clases tiene libro y la campaña lo deja, la pestaña «Conjuros para el libro» (pantalla 6 del lienzo,
+ * aprobada el 2026-10-26) copia conjuros al libro con el mismo dinero (`docs/publica/REGLAS_DE_CREACION.md`).
  */
 @Component({
     selector: 'app-tienda-equipo',
@@ -73,8 +85,13 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     @Input() politica: PoliticaTienda = POLITICA_TIENDA_LIBRE;
     /** La capacidad de carga del personaje, para decir qué carga lleva. */
     @Input() capacidadCarga: Personaje['Capacidad_carga'] | null = null;
-    /** Cifras de más para la franja que dependen de otra pestaña (las páginas del libro de conjuros). */
-    @Input() cifrasExtra: DatoFranja[] = [];
+    /**
+     * Los libros de conjuros de sus clases (las que tienen `Conjuros.Libro`), con lo que se puede copiar a cada uno
+     * (`conjurosAniadiblesAlLibro`) y su precio; vacío si ninguna tiene libro.
+     */
+    @Input() libros: LibroTienda[] = [];
+    /** El conjuro copiado que señala el error de la API (`field: conjurosLibro[i]`), o `null`. */
+    @Input() copiaConError: number | null = null;
     @Output() confirmar = new EventEmitter<PersonajeCompraRequestDto>();
     @Output() omitir = new EventEmitter<void>();
 
@@ -89,9 +106,16 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     seccion: OrigenPestanaTienda = 'arma';
     /** La pieza que señaló la API; deja de señalarse en cuanto cambia la compra. */
     piezaSenalada: number | null = null;
+    /** El conjuro copiado que señaló la API; igual. */
+    copiaSenalada: number | null = null;
     busqueda = '';
     dineroInicial = 0;
     piezas: PiezaTienda[] = [];
+    /** Los conjuros que copia al libro en esta compra. */
+    copias: CopiaLibro[] = [];
+    /** El nivel de conjuro por el que se filtra «Conjuros para el libro»; `null`, todos. */
+    nivelLibro: number | null = null;
+    readonly paginasPorLibro = PAGINAS_POR_LIBRO;
     objetos: ArticuloTienda[] = [];
     cargandoObjetos = false;
     errorObjetos = '';
@@ -143,10 +167,14 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
             this.dineroInicial = this.regla.sugerido;
         if (changes['piezaConError'])
             this.piezaSenalada = this.piezaConError;
-        if (changes['politica']) {
-            this.pestanas = pestanasTienda({ politica: this.politica ?? POLITICA_TIENDA_LIBRE });
+        if (changes['copiaConError'])
+            this.copiaSenalada = this.copiaConError;
+        if (changes['politica'] || changes['libros']) {
+            this.pestanas = pestanasTienda({ politica: this.politica ?? POLITICA_TIENDA_LIBRE, libro: (this.libros ?? []).length > 0 });
             if (!this.pestanas.some((pestana) => pestana.id === this.seccion))
                 this.cambiarSeccion('arma');
+            if (!this.hayPestanaLibro)
+                this.copias = [];
         }
     }
 
@@ -155,7 +183,62 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get resumen(): ResumenCompra {
-        return resumenCompra(this.dineroInicial, this.piezas, this.regla);
+        return resumenCompra(this.dineroInicial, this.piezas, this.regla, this.copias);
+    }
+
+    get hayPestanaLibro(): boolean {
+        return this.pestanas.some((pestana) => pestana.id === 'libro');
+    }
+
+    /** Los niveles de conjuro que hay para copiar (los botones del filtro). */
+    get nivelesLibro(): number[] {
+        return [...new Set((this.libros ?? []).flatMap((libro) => libro.conjuros.map((item) => item.nivel)))].sort((a, b) => a - b);
+    }
+
+    /** Todo lo que se puede copiar que encaja con la búsqueda y el nivel (sin el tope de filas). */
+    get filasLibroFiltradas(): FilaLibro[] {
+        const texto = normalizarTexto(this.busqueda, true);
+        return (this.libros ?? [])
+            .flatMap((libro) => libro.conjuros.map((item) => ({ libro, item })))
+            .filter(({ item }) => this.nivelLibro === null || item.nivel === this.nivelLibro)
+            .filter(({ item }) => texto.length < 1
+                || normalizarTexto(item.conjuro?.Nombre ?? '', true).includes(texto)
+                || normalizarTexto(item.conjuro?.Escuela?.Nombre ?? '', true).includes(texto));
+    }
+
+    /** Lo que se enseña en «Conjuros para el libro». */
+    get filasLibro(): FilaLibro[] {
+        return this.filasLibroFiltradas.slice(0, MAXIMO_CONJUROS);
+    }
+
+    /** Las páginas usadas de cada libro: las de los conjuros que ya tiene más las de los que copia. */
+    paginasDe(libro: LibroTienda): number {
+        return libro.paginasUsadas + this.copias
+            .filter((copia) => copia.idClase === libro.idClase)
+            .reduce((total, copia) => total + copia.precio.paginas, 0);
+    }
+
+    estaCopiado(libro: LibroTienda, item: ConjuroParaElLibro): boolean {
+        return this.copias.some((copia) => copia.idClase === libro.idClase && copia.conjuro.Id === item.conjuro.Id);
+    }
+
+    /** Añade el conjuro a la compra o, si ya está, lo quita. */
+    alternarCopia(fila: FilaLibro): void {
+        this.copiaSenalada = null;
+        if (this.estaCopiado(fila.libro, fila.item)) {
+            this.copias = this.copias.filter((copia) => !(copia.idClase === fila.libro.idClase && copia.conjuro.Id === fila.item.conjuro.Id));
+            return;
+        }
+        this.copias = [...this.copias, { ...fila.item, idClase: fila.libro.idClase, clase: fila.libro.clase }];
+    }
+
+    quitarCopia(indice: number): void {
+        this.copiaSenalada = null;
+        this.copias = this.copias.filter((_, i) => i !== indice);
+    }
+
+    filtrarNivelLibro(nivel: number | null): void {
+        this.nivelLibro = nivel;
     }
 
     get pestanaActual(): PestanaTienda {
@@ -187,12 +270,21 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
             { etiqueta: 'Gastado', valor: textoPrecio(resumen.gastado) },
             { etiqueta: 'Te queda', valor: textoPrecio(resumen.queda) },
             { etiqueta: 'Peso', valor: textoPeso(resumen.peso), detalle: textoCarga(resumen.peso, this.capacidadCarga) || null },
-            ...(this.cifrasExtra ?? []),
+            ...(this.hayPestanaLibro ? this.libros.map((libro) => ({
+                etiqueta: this.libros.length > 1 ? `Páginas del libro (${libro.clase})` : 'Páginas del libro',
+                valor: this.paginasDe(libro),
+                detalle: `de ${PAGINAS_POR_LIBRO}`,
+            })) : []),
         ];
     }
 
     get hayHomebrew(): boolean {
-        return this.piezas.some((pieza) => !pieza.articulo.oficial);
+        return this.piezas.some((pieza) => !pieza.articulo.oficial) || this.copias.some((copia) => copia.conjuro?.Oficial === false);
+    }
+
+    /** Lo que lleva en la compra: piezas y conjuros copiados. */
+    get cuantasCompras(): number {
+        return this.piezas.length + this.copias.length;
     }
 
     /** Por qué no vale cada pieza (o `null`), en su orden. */
@@ -219,7 +311,8 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
         if (this.error)
             return this.error;
         return [
-            this.motivoNoComprar && this.piezas.length > 0 ? this.motivoNoComprar : '',
+            this.motivoNoComprar && this.cuantasCompras > 0 ? this.motivoNoComprar : '',
+            this.seccion === 'libro' ? 'Solo salen los conjuros que puedes lanzar y que no son de tus escuelas prohibidas ni están ya en tu libro.' : '',
             notaPoliticaTienda(this.politica),
             this.hayHomebrew ? 'Comprar algo homebrew hace homebrew al personaje.' : '',
         ].filter(Boolean).join(' ') || 'Comprar algo homebrew hace homebrew al personaje. La API comprueba los precios al guardar.';
@@ -232,6 +325,7 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     cambiarSeccion(seccion: OrigenPestanaTienda): void {
         this.seccion = seccion;
         this.busqueda = '';
+        this.nivelLibro = null;
         if (seccion === 'objeto' || seccion === 'especifica')
             this.busquedaObjetos$.next({ q: '', espera: 0, especificas: seccion === 'especifica' });
     }
@@ -316,7 +410,7 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     onConfirmar(): void {
         if (this.guardando || this.motivoNoComprar !== null)
             return;
-        this.confirmar.emit(construirCompra(this.dineroInicial, this.piezas));
+        this.confirmar.emit(construirCompra(this.dineroInicial, this.piezas, this.copias));
     }
 
     onOmitir(): void {

@@ -5112,7 +5112,7 @@ describe('NuevoPersonajeComponent', () => {
             // La ficha recién guardada, con el NEP que da la API (`nivelEfectivo`).
             personajeSvcMock.getDetallesPersonaje.and.resolveTo(of({ Id: 123, Nombre: 'Aldric', NEP: 1, desgloseClases: [{ Id: 9, Nombre: 'Guerrero', Nivel: 1 }] } as any));
             personajeSvcMock.comprarEquipoPersonaje = jasmine.createSpy('comprarEquipoPersonaje').and.resolveTo({
-                idPersonaje: 123, coste: 2, dineroInicial: 60, dinero: 58, costes: [2], oficial: true,
+                idPersonaje: 123, coste: 2, dineroInicial: 60, dinero: 58, costes: [2], costesConjuros: [], oficial: true,
             });
         });
 

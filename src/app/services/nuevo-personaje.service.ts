@@ -7387,6 +7387,29 @@ export class NuevoPersonajeService {
         }));
     }
 
+    /**
+     * Los conjuros que ya están en el libro de esa clase, con su nivel en ella: los que sabe por esa clase (los de la
+     * sesión de nivel). Con ellos la tienda cuenta las páginas usadas del libro (MJ cap. 10: una por nivel; los de nivel 0,
+     * una).
+     */
+    conjurosEnElLibro(claseObjetivo: Clase): ConjuroAniadibleLibro[] {
+        if (!claseObjetivo?.Conjuros?.Libro)
+            return [];
+        const claseNorm = normalizarTexto(claseObjetivo.Nombre ?? '');
+        const sinDominios = new Set<string>();
+        return (this.personajeCreacion.Conjuros ?? [])
+            .filter((conjuro) => toNumber(conjuro?.Id) > 0 && this.esConjuroDeLaClase(conjuro, claseNorm))
+            .map((conjuro) => ({
+                conjuro,
+                nivel: this.resolverNivelConjuroParaClase(
+                    claseObjetivo,
+                    this.obtenerConjuroCatalogoPorId(toNumber(conjuro?.Id)) ?? conjuro,
+                    sinDominios
+                ),
+            }))
+            .filter((item): item is ConjuroAniadibleLibro => item.nivel !== null);
+    }
+
     private calcularDeltaConocidosPorNivel(
         detalleActual: ClaseNivelDetalle,
         detallePrevio: ClaseNivelDetalle | null
@@ -7955,16 +7978,16 @@ export class NuevoPersonajeService {
             return false;
 
         const claseNorm = normalizarTexto(nombreClase);
-        return (this.personajeCreacion.Conjuros ?? []).some((conjuro) => {
-            if (toNumber(conjuro?.Id) !== id)
-                return false;
-            const origenClase = normalizarTexto(
-                `${(conjuro as Record<string, any>)?.['Clase_origen'] ?? (conjuro as Record<string, any>)?.['Origen_clase'] ?? ''}`
-            );
-            if (origenClase.length < 1)
-                return true;
-            return origenClase === claseNorm;
-        });
+        return (this.personajeCreacion.Conjuros ?? [])
+            .some((conjuro) => toNumber(conjuro?.Id) === id && this.esConjuroDeLaClase(conjuro, claseNorm));
+    }
+
+    /** Si un conjuro conocido es de esa clase (su origen); sin origen, cuenta para todas. */
+    private esConjuroDeLaClase(conjuro: Conjuro, claseNorm: string): boolean {
+        const origenClase = normalizarTexto(
+            `${(conjuro as Record<string, any>)?.['Clase_origen'] ?? (conjuro as Record<string, any>)?.['Origen_clase'] ?? ''}`
+        );
+        return origenClase.length < 1 || origenClase === claseNorm;
     }
 
     private crearConjuroPlaceholderDesdeClase(clase: Clase, ref: ClaseConjuroRef, nivelClase: number): Conjuro {

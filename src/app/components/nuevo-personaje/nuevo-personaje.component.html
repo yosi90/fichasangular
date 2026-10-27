@@ -749,6 +749,7 @@
                 <app-tienda-equipo *ngIf="tiendaRegla" [regla]="tiendaRegla" [articulos]="tiendaArticulos"
                     [conjuros]="catalogoConjuros" [politica]="tiendaPolitica" [capacidadCarga]="Personaje.Capacidad_carga" [guardando]="tiendaGuardando" [error]="tiendaError"
                     [piezaConError]="tiendaPiezaConError" [soloOficial]="tiendaSoloOficial"
+                    [libros]="tiendaLibros" [copiaConError]="tiendaCopiaConError"
                     (confirmar)="onConfirmarTienda($event)" (omitir)="onOmitirTienda()">
                 </app-tienda-equipo>
             </ng-container>

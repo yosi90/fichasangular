@@ -474,7 +474,7 @@ describe('PersonajeService', () => {
         expect(url).toMatch(/personajes\/15\/equipo$/);
         expect(cuerpo).toEqual(compra);
         expect(opciones.headers.get('Authorization')).toBe('Bearer token');
-        expect(respuesta).toEqual({ idPersonaje: 15, coste: 17, dineroInicial: 60, dinero: 43, costes: [15, 2], oficial: true });
+        expect(respuesta).toEqual({ idPersonaje: 15, coste: 17, dineroInicial: 60, dinero: 43, costes: [15, 2], costesConjuros: [], oficial: true });
     });
 
     it('comprarEquipoPersonaje da el error de la API (qué pieza no cuadra)', async () => {

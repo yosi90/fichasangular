@@ -45,6 +45,34 @@
     min-height: 0
     overflow: auto
 
+// «Conjuros para el libro»: el filtro por nivel (botones pegados, el elegido en rosa) y la nota del precio.
+.tienda-niveles
+    display: flex
+    flex-wrap: wrap
+    gap: 1px
+    border-radius: 4px
+    overflow: hidden
+
+.tienda-nivel
+    height: 36px
+    padding: 0 12px
+    border: 0
+    background: $primary
+    color: $ficha-blanco
+    font: inherit
+    font-size: 13px
+    cursor: pointer
+
+    &[aria-pressed="true"]
+        background: $active
+
+    &:focus-visible
+        outline: 2px solid $ficha-blanco
+        outline-offset: -2px
+
+.tienda-nota-libro
+    margin: 0
+
 .tienda-num
     text-align: right
     white-space: nowrap

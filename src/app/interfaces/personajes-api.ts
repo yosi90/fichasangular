@@ -442,10 +442,18 @@ export interface PersonajeCompraPiezaDto {
     notas?: string;
 }
 
+/** Un conjuro que se copia al libro de una clase con libro en la misma compra (`conjurosLibro`, 2026-10-27). */
+export interface PersonajeCompraConjuroLibroDto {
+    idConjuro: number;
+    idClase: number;
+}
+
 export interface PersonajeCompraRequestDto {
     /** En po: el oro inicial de su clase (nivel 1) o la riqueza de su nivel. */
     dineroInicial: number;
     piezas: PersonajeCompraPiezaDto[];
+    /** Los conjuros que copia al libro, pagados con el mismo dinero; la API comprueba y pone el precio. */
+    conjurosLibro?: PersonajeCompraConjuroLibroDto[];
 }
 
 export interface PersonajeCompraResponseDto {
@@ -457,6 +465,8 @@ export interface PersonajeCompraResponseDto {
     dinero: number;
     /** El precio de cada pieza, en su orden. */
     costes: number[];
+    /** El precio de cada conjuro copiado al libro, en su orden (`coste` los incluye). */
+    costesConjuros: number[];
     /** Si sigue siendo oficial (comprar algo homebrew lo pasa a homebrew). */
     oficial: boolean;
 }

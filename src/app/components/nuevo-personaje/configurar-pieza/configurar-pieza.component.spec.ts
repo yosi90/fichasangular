@@ -127,7 +127,7 @@ describe('ConfigurarPiezaComponent', () => {
     });
 
     it('sin objetos a medida solo deja la gran calidad', () => {
-        component.politica = { objetosMagicos: true, aMedida: false, precioMaximo: null };
+        component.politica = { objetosMagicos: true, aMedida: false, precioMaximo: null, copiarConjuros: true };
         abrir();
         expect(fixture.nativeElement.textContent).toContain('Esta campaña no permite objetos a medida');
         expect(fixture.nativeElement.querySelector('[aria-label="Material"]')).toBeNull();

@@ -13,10 +13,66 @@
             <label class="creacion-buscador">
                 <mat-icon aria-hidden="true">search</mat-icon>
                 <input type="search" [value]="busqueda" (input)="buscar($any($event.target).value)"
-                    placeholder="Buscar en el catálogo" aria-label="Buscar en el catálogo">
+                    [placeholder]="seccion === 'libro' ? 'Buscar conjuro' : 'Buscar en el catálogo'"
+                    [attr.aria-label]="seccion === 'libro' ? 'Buscar conjuro' : 'Buscar en el catálogo'">
             </label>
-            <span class="creacion-texto-suave">{{opciones.length}} {{opciones.length === 1 ? 'resultado' : 'resultados'}}</span>
+            <div class="tienda-niveles" role="group" aria-label="Nivel del conjuro" *ngIf="seccion === 'libro'">
+                <button type="button" class="tienda-nivel" [attr.aria-pressed]="nivelLibro === null" (click)="filtrarNivelLibro(null)">Todos</button>
+                <button type="button" class="tienda-nivel" *ngFor="let nivel of nivelesLibro" [attr.aria-pressed]="nivelLibro === nivel"
+                    (click)="filtrarNivelLibro(nivel)">Nivel {{nivel}}</button>
+            </div>
+            <span class="creacion-texto-suave" *ngIf="seccion !== 'libro'">{{opciones.length}} {{opciones.length === 1 ? 'resultado' : 'resultados'}}</span>
+            <span class="creacion-texto-suave" *ngIf="seccion === 'libro'">{{filasLibroFiltradas.length}} {{filasLibroFiltradas.length === 1 ? 'conjuro' : 'conjuros'}}</span>
         </div>
+        <ng-container *ngIf="seccion === 'libro'; else catalogoNormal">
+            <p class="ficha-nota tienda-nota-libro">
+                Cada conjuro cuesta el pergamino del que lo copias (nivel del conjuro × nivel de lanzador × 25 po, más su
+                componente material caro o sus PX) más 100 po por página escrita (una por nivel; los de nivel 0, una).
+            </p>
+            <div class="tienda-tabla">
+                <table class="ficha-tabla">
+                    <thead>
+                        <tr>
+                            <th>Conjuro</th>
+                            <th class="tienda-num">Nivel</th>
+                            <th>Escuela</th>
+                            <th class="tienda-num">Pergamino</th>
+                            <th class="tienda-num">Copiarlo</th>
+                            <th class="tienda-num">Total</th>
+                            <th><span class="creacion-oculto">Acciones</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let fila of filasLibro">
+                            <td>
+                                {{fila.item.conjuro.Nombre}}
+                                <span class="creacion-etiqueta" *ngIf="libros.length > 1">{{fila.libro.clase}}</span>
+                                <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="fila.item.conjuro.Oficial === false">Homebrew</span>
+                            </td>
+                            <td class="tienda-num">{{fila.item.nivel}}</td>
+                            <td class="tienda-suave">{{fila.item.conjuro.Escuela.Nombre}}</td>
+                            <td class="tienda-num tienda-suave">{{textoPrecio(fila.item.precio.pergamino)}}</td>
+                            <td class="tienda-num tienda-suave">{{textoPrecio(fila.item.precio.escritura)}}</td>
+                            <td class="tienda-num"><b>{{textoPrecio(fila.item.precio.total)}}</b></td>
+                            <td class="tienda-acciones">
+                                <button type="button" mat-stroked-button [disabled]="guardando" (click)="alternarCopia(fila)"
+                                    [attr.aria-pressed]="estaCopiado(fila.libro, fila.item)"
+                                    [attr.aria-label]="(estaCopiado(fila.libro, fila.item) ? 'Quitar de la compra ' : 'Copiar al libro ') + fila.item.conjuro.Nombre">
+                                    {{estaCopiado(fila.libro, fila.item) ? 'En la compra' : 'Copiar'}}
+                                </button>
+                            </td>
+                        </tr>
+                        <tr *ngIf="filasLibro.length < 1">
+                            <td colspan="7" class="creacion-vacio">No hay conjuros que copiar con esta búsqueda.</td>
+                        </tr>
+                        <tr *ngIf="filasLibroFiltradas.length > filasLibro.length">
+                            <td colspan="7" class="creacion-vacio">Hay más: busca un conjuro o filtra por nivel.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </ng-container>
+        <ng-template #catalogoNormal>
         <div class="tienda-tabla">
             <table class="ficha-tabla">
                 <thead>
@@ -59,6 +115,7 @@
                 </tbody>
             </table>
         </div>
+        </ng-template>
     </div>
 
     <div creacionLateral class="tienda-lateral">
@@ -81,9 +138,26 @@
         </section>
 
         <section class="ficha-tarjeta tienda-tarjeta tienda-compra" aria-labelledby="tienda-compra">
-            <h2 class="ficha-titulo" id="tienda-compra">Lo que compra ({{piezas.length}})</h2>
-            <p class="ficha-nota" *ngIf="piezas.length < 1">Todavía nada. Puedes terminar sin comprar y quedarte con todo el dinero.</p>
-            <ul class="tienda-piezas" *ngIf="piezas.length > 0">
+            <h2 class="ficha-titulo" id="tienda-compra">Lo que compra ({{cuantasCompras}})</h2>
+            <p class="ficha-nota" *ngIf="cuantasCompras < 1">Todavía nada. Puedes terminar sin comprar y quedarte con todo el dinero.</p>
+            <ul class="tienda-piezas" *ngIf="cuantasCompras > 0">
+                <li class="tienda-pieza" *ngFor="let copia of copias; let i = index" [class.tienda-pieza--marcada]="i === copiaSenalada">
+                    <div class="tienda-pieza__texto">
+                        <span class="tienda-pieza__nombre">{{copia.conjuro.Nombre}} (al libro)</span>
+                        <span class="tienda-pieza__nota">
+                            Conjuro de nivel {{copia.nivel}} · {{copia.precio.paginas}} {{copia.precio.paginas === 1 ? 'página' : 'páginas'}}<ng-container
+                                *ngIf="libros.length > 1"> · libro de {{copia.clase}}</ng-container>
+                        </span>
+                        <span class="tienda-pieza__aviso" *ngIf="i === copiaSenalada && error">{{error}}</span>
+                    </div>
+                    <div class="tienda-pieza__cifras">{{textoPrecio(copia.precio.total)}}</div>
+                    <div class="tienda-pieza__acciones">
+                        <button type="button" mat-icon-button [disabled]="guardando" (click)="quitarCopia(i)"
+                            [attr.aria-label]="'Quitar ' + copia.conjuro.Nombre" matTooltip="Quitar">
+                            <mat-icon>close</mat-icon>
+                        </button>
+                    </div>
+                </li>
                 <li class="tienda-pieza" *ngFor="let pieza of piezas; let i = index"
                     [class.tienda-pieza--marcada]="motivosPiezas[i] || i === piezaSenalada">
                     <div class="tienda-pieza__texto">
@@ -122,7 +196,7 @@
     </div>
 </app-creacion-cuerpo>
 
-<app-creacion-pie [nota]="notaPie" [aviso]="!!error || (!!motivoNoComprar && piezas.length > 0)">
+<app-creacion-pie [nota]="notaPie" [aviso]="!!error || (!!motivoNoComprar && cuantasCompras > 0)">
     <button mat-stroked-button type="button" [disabled]="guardando" (click)="onOmitir()">Terminar sin comprar</button>
     <button mat-raised-button color="primary" type="button" [disabled]="guardando || motivoNoComprar !== null" (click)="onConfirmar()">
         {{guardando ? 'Guardando…' : 'Comprar y terminar'}}
