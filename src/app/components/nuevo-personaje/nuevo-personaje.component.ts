@@ -1734,9 +1734,7 @@ export class NuevoPersonajeComponent {
     recalcularOficialidad(): void {
         const evaluacion = this.evaluarInconsistenciasBasicos();
         const tieneConflictoDuroConfirmado = evaluacion.hardConflicts.length > 0 && this.hardAlignmentOverrideConfirmed;
-        const clases = (this.Personaje?.desgloseClases ?? [])
-            .map((entrada) => this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(entrada?.Nombre ?? '')))
-            .filter((clase): clase is Clase => !!clase);
+        const clases = this.clasesDelPersonajeEnElCatalogo();
         const motivosHomebrew = motivosHomebrewPersonaje(this.Personaje, {
             raza: this.razaSeleccionada,
             razaBase: this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
@@ -4393,11 +4391,17 @@ export class NuevoPersonajeComponent {
      * es lo que da la regla única, `conjurosAniadiblesAlLibro`, y las páginas usadas, las de los que ya tiene.
      */
     private librosParaLaTienda(): LibroTienda[] {
-        return (this.Personaje?.desgloseClases ?? [])
-            .map((entrada) => this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(entrada?.Nombre ?? '')))
-            .filter((clase): clase is Clase => !!clase?.Conjuros?.Libro)
+        return this.clasesDelPersonajeEnElCatalogo()
+            .filter((clase) => !!clase.Conjuros?.Libro)
             .filter((clase, indice, todas) => todas.findIndex((otra) => otra.Id === clase.Id) === indice)
             .map((clase) => libroTienda(clase, this.nuevoPSvc.conjurosAniadiblesAlLibro(clase), this.nuevoPSvc.conjurosEnElLibro(clase)));
+    }
+
+    /** Las clases de su desglose, del catálogo (por nombre); las que no están en el catálogo no salen. */
+    private clasesDelPersonajeEnElCatalogo(): Clase[] {
+        return (this.Personaje?.desgloseClases ?? [])
+            .map((entrada) => this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(entrada?.Nombre ?? '')))
+            .filter((clase): clase is Clase => !!clase);
     }
 
     /** Guarda la compra (`PUT /personajes/{id}/equipo`); la API calcula los precios y comprueba el dinero. */
