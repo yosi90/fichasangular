@@ -22,6 +22,11 @@ export function toInt(value: any, fallback: number = 0): number {
     return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
 }
 
+/** `value` redondeado a centésimas (los precios en po y los pesos en lb); lo que no es un número finito, 0. */
+export function redondearCentesimas(value: number): number {
+    return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
+}
+
 /** El primer entero con signo que aparece en `value` («+6/+1» → 6, «-2 a Reflejos» → -2); `null` si no hay ninguno. */
 export function primerEntero(value: unknown): number | null {
     const encontrado = `${value ?? ''}`.match(/[+-]?\d+/);

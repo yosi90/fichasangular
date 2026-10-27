@@ -1,4 +1,4 @@
-import { normalizarTexto, textosUnicos, toBoolean, toInt } from './normalizacion';
+import { normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt } from './normalizacion';
 
 describe('toBoolean', () => {
     it('es sí con true, 1 y los textos de sí, sin distinguir mayúsculas ni espacios alrededor', () => {
@@ -44,5 +44,14 @@ describe('toInt', () => {
 describe('textosUnicos', () => {
     it('quita los vacíos y los repetidos sin mirar tildes ni mayúsculas, y conserva la primera forma', () => {
         expect(textosUnicos(['Elfo', '', 'elfo ', 'Semiélfo', 'semielfo', '  '])).toEqual(['Elfo', 'Semiélfo']);
+    });
+});
+
+describe('redondearCentesimas', () => {
+    it('redondea a centésimas y lee como 0 lo que no es un número finito', () => {
+        expect(redondearCentesimas(10 / 3)).toBe(3.33);
+        expect(redondearCentesimas(0.125)).toBe(0.13);
+        expect(redondearCentesimas(Number.NaN)).toBe(0);
+        expect(redondearCentesimas(Number.POSITIVE_INFINITY)).toBe(0);
     });
 });

@@ -16,7 +16,7 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCompraPiezaDto, PersonajeCompraRequestDto, PersonajeTipoPiezaDto } from 'src/app/interfaces/personajes-api';
 import { formatoNumero, textoConSigno, textoDestrezaMaxima, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { ConjuroParaElLibro } from 'src/app/services/utils/libro-conjuros';
-import { normalizarTexto, toNumberOrNull } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, redondearCentesimas, toNumberOrNull } from 'src/app/services/utils/normalizacion';
 
 /*
  * La tienda del final de la creación (decisión del propietario del 2026-10-25; `docs/publica/OBJETOS_FRONT.md`, «Las
@@ -334,9 +334,9 @@ export function desglosePrecio(pieza: PiezaTienda): LineaPrecio[] {
         if (articulo.generico) {
             const nivel = pieza.nivelConjuro === 0 ? 0.5 : Math.max(0, pieza.nivelConjuro ?? 0);
             return [{ etiqueta: `${articulo.nombre} (conjuro de nivel ${pieza.nivelConjuro ?? 0}, NL ${pieza.nivelLanzador ?? 0})`,
-                po: redondear(articulo.generico.Precio_por_nivel * nivel * Math.max(0, pieza.nivelLanzador ?? 0) * cantidad) }];
+                po: redondearCentesimas(articulo.generico.Precio_por_nivel * nivel * Math.max(0, pieza.nivelLanzador ?? 0) * cantidad) }];
         }
-        return [{ etiqueta: articulo.nombre, po: redondear((articulo.precio ?? 0) * cantidad) }];
+        return [{ etiqueta: articulo.nombre, po: redondearCentesimas((articulo.precio ?? 0) * cantidad) }];
     }
     const tipo = articulo.tipo;
     const porLote = tipo === 'municion' ? Math.max(1, articulo.lote) : 1;
@@ -346,7 +346,7 @@ export function desglosePrecio(pieza: PiezaTienda): LineaPrecio[] {
     const lineas: LineaPrecio[] = [];
     const sumar = (etiqueta: string, porUnidad: number) => {
         if (porUnidad !== 0)
-            lineas.push({ etiqueta, po: redondear(porUnidad * cantidad) });
+            lineas.push({ etiqueta, po: redondearCentesimas(porUnidad * cantidad) });
     };
     sumar(`${articulo.nombre}${multiplicador !== 1 ? ` (×${formatoNumero(multiplicador)})` : ''}`, ((articulo.precio ?? 0) / porLote) * multiplicador);
     if (pieza.material && coste)
@@ -369,19 +369,19 @@ export function desglosePrecio(pieza: PiezaTienda): LineaPrecio[] {
 
 /** El precio estimado de una pieza (todas sus unidades), en po (la suma de `desglosePrecio`). */
 export function precioEstimado(pieza: PiezaTienda): number {
-    return redondear(desglosePrecio(pieza).reduce((total, linea) => total + linea.po, 0));
+    return redondearCentesimas(desglosePrecio(pieza).reduce((total, linea) => total + linea.po, 0));
 }
 
 /** Lo que cuesta una unidad (para el precio máximo por pieza de la campaña). */
 export function precioPorUnidad(pieza: PiezaTienda): number {
-    return redondear(precioEstimado(pieza) / Math.max(1, Math.trunc(pieza.cantidad || 1)));
+    return redondearCentesimas(precioEstimado(pieza) / Math.max(1, Math.trunc(pieza.cantidad || 1)));
 }
 
 /** El peso de una pieza (todas sus unidades), en libras; la munición pesa por lote. */
 export function pesoEstimado(pieza: PiezaTienda): number {
     const peso = pieza.articulo.peso ?? 0;
     const porUnidad = pieza.articulo.tipo === 'municion' ? peso / Math.max(1, pieza.articulo.lote) : peso;
-    return redondear(porUnidad * Math.max(1, Math.trunc(pieza.cantidad || 1)));
+    return redondearCentesimas(porUnidad * Math.max(1, Math.trunc(pieza.cantidad || 1)));
 }
 
 /** Por qué no vale la pieza tal como está configurada (reglas de la Guía del DM y política de la campaña), o `null`. */
@@ -411,13 +411,13 @@ export interface ResumenCompra {
 }
 
 export function resumenCompra(dineroInicial: number, piezas: PiezaTienda[], regla: ReglaDineroInicial, copias: CopiaLibro[] = []): ResumenCompra {
-    const gastado = redondear(piezas.reduce((acc, pieza) => acc + precioEstimado(pieza), 0)
+    const gastado = redondearCentesimas(piezas.reduce((acc, pieza) => acc + precioEstimado(pieza), 0)
         + copias.reduce((acc, copia) => acc + copia.precio.total, 0));
     const dinero = Math.max(0, dineroInicial || 0);
     return {
         gastado,
-        queda: redondear(dinero - gastado),
-        peso: redondear(piezas.reduce((acc, pieza) => acc + pesoEstimado(pieza), 0)),
+        queda: redondearCentesimas(dinero - gastado),
+        peso: redondearCentesimas(piezas.reduce((acc, pieza) => acc + pesoEstimado(pieza), 0)),
         alcanza: gastado <= dinero,
         dentroDelTope: regla.maximo === null || dinero <= regla.maximo,
     };
@@ -580,7 +580,7 @@ export function tirarOroInicial(regla: ReglaDineroInicial, aleatorio: () => numb
 /** El cuerpo de `PUT /personajes/{id}/equipo`, con los conjuros que copia al libro si los hay. */
 export function construirCompra(dineroInicial: number, piezas: PiezaTienda[], copias: CopiaLibro[] = []): PersonajeCompraRequestDto {
     return {
-        dineroInicial: redondear(Math.max(0, dineroInicial || 0)),
+        dineroInicial: redondearCentesimas(Math.max(0, dineroInicial || 0)),
         ...(copias.length > 0 ? { conjurosLibro: copias.map((copia) => ({ idConjuro: copia.conjuro.Id, idClase: copia.idClase })) } : {}),
         piezas: piezas.map((pieza) => {
             const dto: PersonajeCompraPiezaDto = {
@@ -607,8 +607,4 @@ export function construirCompra(dineroInicial: number, piezas: PiezaTienda[], co
             return dto;
         }),
     };
-}
-
-function redondear(valor: number): number {
-    return Math.round((Number.isFinite(valor) ? valor : 0) * 100) / 100;
 }

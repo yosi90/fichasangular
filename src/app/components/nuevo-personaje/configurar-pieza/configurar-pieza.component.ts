@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { EncantamientoDetalle } from 'src/app/interfaces/equipo';
 import { formatoNumero, textoConSigno, textoPrecio } from 'src/app/services/utils/equipo-texto';
-import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, redondearCentesimas, toInt } from 'src/app/services/utils/normalizacion';
 import {
     BONIFICADOR_TOTAL_MAXIMO,
     LineaPrecio,
@@ -165,6 +165,6 @@ export class ConfigurarPiezaComponent implements OnChanges {
         this.precio = precioEstimado(borrador);
         this.total = bonificadorTotal(borrador);
         this.motivo = motivoPiezaNoValida(borrador, this.politica);
-        this.falta = Math.max(0, Math.round((this.precio - this.disponible) * 100) / 100);
+        this.falta = Math.max(0, redondearCentesimas(this.precio - this.disponible));
     }
 }

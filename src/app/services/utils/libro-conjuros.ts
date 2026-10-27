@@ -1,6 +1,6 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
-import { toInt, toNumber, toNumberOrNull } from 'src/app/services/utils/normalizacion';
+import { redondearCentesimas, toInt, toNumber, toNumberOrNull } from 'src/app/services/utils/normalizacion';
 
 /*
  * El precio de copiar un conjuro al libro (pestaña «Conjuros para el libro» de la tienda, aprobada por el propietario el
@@ -44,10 +44,6 @@ export function paginasConjuro(nivel: number): number {
     return Math.max(1, Math.trunc(toNumber(nivel)));
 }
 
-function redondear(valor: number): number {
-    return Math.round(valor * 100) / 100;
-}
-
 /** El precio de copiar un conjuro: una bola de fuego (nivel 3) de una maga (nivel de lanzador mínimo 5), 375 + 300 = 675 po. */
 export function precioCopiaLibro(
     nivel: number,
@@ -60,7 +56,7 @@ export function precioCopiaLibro(
         + (toNumberOrNull(costeMaterial) ?? 0) + PO_POR_PX * (toNumberOrNull(costePx) ?? 0);
     const paginas = paginasConjuro(nivel);
     const escritura = paginas * PO_POR_PAGINA;
-    return { pergamino: redondear(pergamino), escritura, paginas, total: redondear(pergamino + escritura) };
+    return { pergamino: redondearCentesimas(pergamino), escritura, paginas, total: redondearCentesimas(pergamino + escritura) };
 }
 
 /** El nivel de conjuro de una clave de `Conjuros_diarios` («Nivel_3» o «3»), o -1. */
