@@ -16,9 +16,9 @@
                     [placeholder]="seccion === 'libro' ? 'Buscar conjuro' : 'Buscar en el catálogo'"
                     [attr.aria-label]="seccion === 'libro' ? 'Buscar conjuro' : 'Buscar en el catálogo'">
             </label>
-            <div class="tienda-niveles" role="group" aria-label="Nivel del conjuro" *ngIf="seccion === 'libro'">
-                <button type="button" class="tienda-nivel" [attr.aria-pressed]="nivelLibro === null" (click)="filtrarNivelLibro(null)">Todos</button>
-                <button type="button" class="tienda-nivel" *ngFor="let nivel of nivelesLibro" [attr.aria-pressed]="nivelLibro === nivel"
+            <div class="creacion-conmutador tienda-niveles" role="group" aria-label="Nivel del conjuro" *ngIf="seccion === 'libro'">
+                <button type="button" [attr.aria-pressed]="nivelLibro === null" (click)="filtrarNivelLibro(null)">Todos</button>
+                <button type="button" *ngFor="let nivel of nivelesLibro" [attr.aria-pressed]="nivelLibro === nivel"
                     (click)="filtrarNivelLibro(nivel)">Nivel {{nivel}}</button>
             </div>
             <span class="creacion-texto-suave" *ngIf="seccion !== 'libro'">{{opciones.length}} {{opciones.length === 1 ? 'resultado' : 'resultados'}}</span>
