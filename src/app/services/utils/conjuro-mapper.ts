@@ -1,6 +1,6 @@
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Subdisciplinas } from 'src/app/interfaces/disciplina-conjuros';
-import { toArray, toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toInt, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 
 function toStrictArray<T = any>(value: any): T[] {
     return Array.isArray(value) ? value : [];
@@ -105,6 +105,8 @@ function createBaseConjuro(): Conjuro {
         Nivel_dominio: [],
         Nivel_disciplinas: [],
         Componentes: [],
+        Coste_material: null,
+        Coste_px: null,
         Oficial: false,
     };
 }
@@ -173,6 +175,8 @@ export function normalizeConjuroApi(raw: any): Conjuro {
                 Id_componente: toInt(item?.Id_componente),
             }))
             .filter((item) => item.Id_componente > 0 || item.Componente.trim().length > 0),
+        Coste_material: toNumberOrNull(raw?.Coste_material ?? raw?.cmat),
+        Coste_px: toNumberOrNull(raw?.Coste_px ?? raw?.cpx),
         Oficial: toBoolean(raw?.Oficial ?? raw?.o),
     };
 }
@@ -231,6 +235,8 @@ export function normalizeConjuroLegacy(raw: any): Conjuro {
             Componente: toText(item?.Componente ?? item?.n),
             Id_componente: toInt(item?.Id_componente ?? item?.i),
         })),
+        Coste_material: toNumberOrNull(raw?.Coste_material ?? raw?.cmat),
+        Coste_px: toNumberOrNull(raw?.Coste_px ?? raw?.cpx),
         Oficial: toBoolean(raw?.Oficial ?? raw?.o),
     };
 }

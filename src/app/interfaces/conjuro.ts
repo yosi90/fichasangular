@@ -49,5 +49,9 @@ export interface Conjuro {
         Componente: string;
         Id_componente: number;
     }[];
+    /** Po del componente material caro (`null` si no tiene): lo suma el pergamino del que se copia al libro. */
+    Coste_material?: number | null;
+    /** PX que cuesta lanzarlo (`null` si no cuesta): el pergamino suma 5 po por PX. */
+    Coste_px?: number | null;
     Oficial: boolean;
 }

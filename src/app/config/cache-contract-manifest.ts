@@ -67,7 +67,7 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "tipos_criatura", label: "Tipos de criatura", schemaVersion: 3 },
     { key: "subtipos", label: "Subtipos", schemaVersion: 1 },
     { key: "rasgos", label: "Rasgos", schemaVersion: 1 },
-    { key: "conjuros", label: "Conjuros", schemaVersion: 3 },
+    { key: "conjuros", label: "Conjuros", schemaVersion: 4 },
     { key: "extras", label: "Extras", schemaVersion: 1 },
     { key: "dotes", label: "Dotes", schemaVersion: 9 },
     { key: "clases", label: "Clases", schemaVersion: 10 },
