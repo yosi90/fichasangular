@@ -76,6 +76,8 @@ export interface CampaignCreationPolicy {
     permitirObjetosAMedida?: boolean;
     /** Lo que puede costar una sola pieza, en po; `null`, sin tope. */
     precioMaximoPorObjeto?: number | null;
+    /** Copiar conjuros al libro en la tienda, pagándolos (2026-10-27); sin dato, sí. */
+    permitirCopiarConjuros?: boolean;
     /** Cuántas veces se pueden tirar los PG al crear (1 = Manual del jugador, hasta 3); `null` o sin dato, 3. */
     maxTiradasPuntosGolpe?: number | null;
 }

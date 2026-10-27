@@ -1542,6 +1542,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirObjetosMagicos: true,
             permitirObjetosAMedida: true,
             precioMaximoPorObjeto: null,
+            permitirCopiarConjuros: true,
             maxTiradasPuntosGolpe: this.campaignHpRollsMax,
         };
     }
@@ -1570,6 +1571,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirObjetosMagicos: this.campaignCreatePolicyDraft.permitirObjetosMagicos !== false,
             permitirObjetosAMedida: this.campaignCreatePolicyDraft.permitirObjetosAMedida !== false,
             precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(this.campaignCreatePolicyDraft.precioMaximoPorObjeto),
+            permitirCopiarConjuros: this.campaignCreatePolicyDraft.permitirCopiarConjuros !== false,
             maxTiradasPuntosGolpe: tiradasPuntosGolpe(this.campaignCreatePolicyDraft.maxTiradasPuntosGolpe),
         };
     }
@@ -1991,6 +1993,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             permitirObjetosMagicos: source?.permitirObjetosMagicos !== false,
             permitirObjetosAMedida: source?.permitirObjetosAMedida !== false,
             precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(source?.precioMaximoPorObjeto),
+            permitirCopiarConjuros: source?.permitirCopiarConjuros !== false,
             maxTiradasPuntosGolpe: tiradasPuntosGolpe(source?.maxTiradasPuntosGolpe),
         };
     }

@@ -1136,6 +1136,7 @@ export class CampanaService {
             permitirObjetosMagicos: toBoolean(raw?.permitirObjetosMagicos, true),
             permitirObjetosAMedida: toBoolean(raw?.permitirObjetosAMedida, true),
             precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(raw?.precioMaximoPorObjeto),
+            permitirCopiarConjuros: toBoolean(raw?.permitirCopiarConjuros, true),
             maxTiradasPuntosGolpe: this.normalizeNullableTiradasPuntosGolpe(raw?.maxTiradasPuntosGolpe),
         };
     }
@@ -1260,6 +1261,8 @@ export class CampanaService {
             payload.permitirObjetosAMedida = toBoolean(raw.permitirObjetosAMedida, true);
         if ('precioMaximoPorObjeto' in raw)
             payload.precioMaximoPorObjeto = normalizarPrecioMaximoPorPieza(raw.precioMaximoPorObjeto);
+        if ('permitirCopiarConjuros' in raw)
+            payload.permitirCopiarConjuros = toBoolean(raw.permitirCopiarConjuros, true);
         if ('maxTiradasPuntosGolpe' in raw)
             payload.maxTiradasPuntosGolpe = this.normalizeNullableTiradasPuntosGolpe(raw.maxTiradasPuntosGolpe);
 

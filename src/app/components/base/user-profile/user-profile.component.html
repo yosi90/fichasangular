@@ -504,6 +504,12 @@
                                                         [disabled]="campaignEditorFormDisabled">
                                                         Permitir armas y armaduras a medida (mejora, aptitudes y material)
                                                     </mat-slide-toggle>
+                                                    <mat-slide-toggle
+                                                        color="primary"
+                                                        [(ngModel)]="campaignCreatePolicyDraft.permitirCopiarConjuros"
+                                                        [disabled]="campaignEditorFormDisabled">
+                                                        Permitir copiar conjuros al libro (pagándolos)
+                                                    </mat-slide-toggle>
                                                 </div>
                                             </div>
                                             <label class="campaign-policy-field">
