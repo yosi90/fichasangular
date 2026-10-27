@@ -60,8 +60,10 @@ import { costeRangoHabilidad, limiteRangosHabilidad, puntosHabilidadDgPlantilla,
 import { tieneTextoVisible } from './utils/texto-visible';
 import {
     conjurosAdicionales,
+    conjurosDiariosPorNivel,
     esEspecializable,
     modificadorDePuntuacion,
+    nivelDeClaveConjuro,
     nivelLanzadorDeClase,
     prohibidasAlEspecializarse,
     puedeLanzarNivelConjuro,
@@ -3533,7 +3535,7 @@ export class NuevoPersonajeService {
                 .filter((nivel) => puedeLanzarNivelConjuro(puntuacion, nivel));
         }
         const modificador = modificadorDePuntuacion(puntuacion);
-        const diarios = this.normalizarMapaConjurosDiarios(detalle?.Conjuros_diarios);
+        const diarios = conjurosDiariosPorNivel(detalle?.Conjuros_diarios);
         return Object.keys(diarios)
             .map((nivel) => toNumber(nivel))
             .filter((nivel) => toNumber(diarios[nivel]) >= 0 && puedeLanzarNivelConjuro(puntuacion, nivel))
@@ -7431,21 +7433,6 @@ export class NuevoPersonajeService {
         return delta;
     }
 
-    private normalizarMapaConjurosDiarios(mapa: Record<string, number> | undefined | null): Record<number, number> {
-        const resultado: Record<number, number> = {};
-        if (!mapa)
-            return resultado;
-
-        Object.keys(mapa).forEach((key) => {
-            const nivel = this.parseNivelConjuroKey(key);
-            if (!Number.isFinite(nivel) || nivel < 0)
-                return;
-            const valor = Number((mapa as Record<string, any>)[key]);
-            resultado[nivel] = Number.isFinite(valor) ? Math.trunc(valor) : -1;
-        });
-        return resultado;
-    }
-
     private construirNivelesAccesiblesDesdeDiarios(mapaDiarios: Record<number, number>): Set<number> {
         const resultado = new Set<number>();
         Object.keys(mapaDiarios)
@@ -7474,7 +7461,7 @@ export class NuevoPersonajeService {
     }
 
     private tieneAccesoRealConjurosDiarios(detalleNivel: ClaseNivelDetalle | null | undefined): boolean {
-        const diarios = this.normalizarMapaConjurosDiarios(detalleNivel?.Conjuros_diarios);
+        const diarios = conjurosDiariosPorNivel(detalleNivel?.Conjuros_diarios);
         return Object.values(diarios).some((valor) => toNumber(valor) >= 0);
     }
 
@@ -7490,8 +7477,8 @@ export class NuevoPersonajeService {
         const usaConjurosDiarios = requiereArcano || requiereDivino || requiereAlma;
         const errores: string[] = [];
 
-        const diariosActual = this.normalizarMapaConjurosDiarios(detalleActual?.Conjuros_diarios);
-        const diariosPrevio = this.normalizarMapaConjurosDiarios(detallePrevio?.Conjuros_diarios);
+        const diariosActual = conjurosDiariosPorNivel(detalleActual?.Conjuros_diarios);
+        const diariosPrevio = conjurosDiariosPorNivel(detallePrevio?.Conjuros_diarios);
         const diariosInformados = Object.keys(diariosActual).length > 0;
         const diariosInformadosPrevio = Object.keys(diariosPrevio).length > 0;
 
@@ -7948,28 +7935,12 @@ export class NuevoPersonajeService {
             return resultado;
 
         Object.keys(mapa).forEach((key) => {
-            const nivel = this.parseNivelConjuroKey(key);
-            if (!Number.isFinite(nivel) || nivel < 0)
+            const nivel = nivelDeClaveConjuro(key);
+            if (nivel < 0)
                 return;
             resultado[nivel] = Math.max(0, toNumber((mapa as Record<string, any>)[key]));
         });
         return resultado;
-    }
-
-    private parseNivelConjuroKey(key: string): number {
-        const raw = `${key ?? ''}`.trim();
-        if (raw.length < 1)
-            return -1;
-
-        const directo = Number(raw);
-        if (Number.isFinite(directo))
-            return Math.trunc(directo);
-
-        const match = raw.match(/nivel[_\s-]*(\d+)/i);
-        if (match && match[1])
-            return Math.trunc(Number(match[1]));
-
-        return -1;
     }
 
     private esConjuroYaConocidoPorClase(nombreClase: string, idConjuro: number): boolean {

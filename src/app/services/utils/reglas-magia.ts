@@ -78,3 +78,32 @@ export function nivelLanzadorDeClase(clase: Clase | null | undefined, progresion
         return progresion;
     return Math.floor((Math.max(0, nivelClase) + Math.max(0, aumentos)) / divisor);
 }
+
+/**
+ * El nivel de conjuro de una clave de las tablas de la clase (`Conjuros_diarios`, `Conjuros_conocidos_nivel_a_nivel`):
+ * «Nivel_3» o «3» dan 3; lo que no nombra un nivel, -1.
+ */
+export function nivelDeClaveConjuro(clave: string): number {
+    const texto = `${clave ?? ''}`.trim();
+    if (texto.length < 1)
+        return -1;
+    const directo = Number(texto);
+    if (Number.isFinite(directo))
+        return Math.trunc(directo);
+    const encontrado = texto.match(/nivel[_\s-]*(\d+)/i);
+    return encontrado ? Math.trunc(Number(encontrado[1])) : -1;
+}
+
+/**
+ * Los conjuros al día de una fila de la tabla de la clase (`Conjuros_diarios`) por nivel de conjuro; -1 (o lo que no es
+ * un número) es sin acceso. Las claves que no nombran un nivel se descartan.
+ */
+export function conjurosDiariosPorNivel(mapa: Record<string, unknown> | null | undefined): Record<number, number> {
+    const resultado: Record<number, number> = {};
+    Object.entries(mapa ?? {}).forEach(([clave, valor]) => {
+        const nivel = nivelDeClaveConjuro(clave);
+        if (nivel >= 0)
+            resultado[nivel] = toInt(valor, -1);
+    });
+    return resultado;
+}

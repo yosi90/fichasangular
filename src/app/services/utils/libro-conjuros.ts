@@ -1,6 +1,7 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { redondearCentesimas, toInt, toNumber, toNumberOrNull } from 'src/app/services/utils/normalizacion';
+import { conjurosDiariosPorNivel } from 'src/app/services/utils/reglas-magia';
 
 /*
  * El precio de copiar un conjuro al libro (pestaña «Conjuros para el libro» de la tienda, aprobada por el propietario el
@@ -59,12 +60,6 @@ export function precioCopiaLibro(
     return { pergamino: redondearCentesimas(pergamino), escritura, paginas, total: redondearCentesimas(pergamino + escritura) };
 }
 
-/** El nivel de conjuro de una clave de `Conjuros_diarios` («Nivel_3» o «3»), o -1. */
-function nivelDeLaClave(clave: string): number {
-    const encontrado = `${clave ?? ''}`.match(/(\d+)\s*$/);
-    return encontrado ? Number(encontrado[1]) : -1;
-}
-
 /**
  * El nivel de lanzador más bajo con el que la clase lanza conjuros de ese nivel, desde su tabla (`Desglose_niveles`,
  * `Conjuros_diarios`; -1 es sin acceso): el mago lanza los de nivel 3 en su nivel 5. Con `Nivel_lanzador_divisor`, el
@@ -73,16 +68,11 @@ function nivelDeLaClave(clave: string): number {
  */
 export function nivelLanzadorMinimo(clase: Clase | null | undefined, nivelConjuro: number): number | null {
     const filas = (Array.isArray(clase?.Desglose_niveles) ? clase!.Desglose_niveles : [])
-        .map((detalle) => {
-            const diarios = new Map<number, number>();
-            Object.entries(detalle?.Conjuros_diarios ?? {})
-                .forEach(([clave, valor]) => diarios.set(nivelDeLaClave(clave), toInt(valor, -1)));
-            return { nivel: toInt(detalle?.Nivel), diarios };
-        })
+        .map((detalle) => ({ nivel: toInt(detalle?.Nivel), diarios: conjurosDiariosPorNivel(detalle?.Conjuros_diarios) }))
         .filter((fila) => fila.nivel > 0)
         .sort((a, b) => a.nivel - b.nivel);
-    const conAcceso = filas.filter((fila) => [...fila.diarios.values()].some((valor) => valor >= 0));
-    const primera = filas.find((fila) => (fila.diarios.get(nivelConjuro) ?? -1) >= 0);
+    const conAcceso = filas.filter((fila) => Object.values(fila.diarios).some((valor) => valor >= 0));
+    const primera = filas.find((fila) => (fila.diarios[nivelConjuro] ?? -1) >= 0);
     if (!primera || conAcceso.length < 1)
         return null;
     const divisor = Math.max(1, toInt(clase?.Conjuros?.Nivel_lanzador_divisor, 1));

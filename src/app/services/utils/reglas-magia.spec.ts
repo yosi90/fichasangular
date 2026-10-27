@@ -1,6 +1,8 @@
 import { normalizeClase } from '../clase.service';
 import {
     conjurosAdicionales,
+    conjurosDiariosPorNivel,
+    nivelDeClaveConjuro,
     nivelLanzadorDeClase,
     prohibidasAlEspecializarse,
     puedeLanzarNivelConjuro,
@@ -48,5 +50,14 @@ describe('reglas-magia', () => {
         expect(prohibidasAlEspecializarse({ Prohibidas_al_especializarse: 1 })).toBe(1);
         expect(prohibidasAlEspecializarse({ Prohibidas_al_especializarse: -1 })).toBe(0);
         expect(prohibidasAlEspecializarse(null)).toBe(0);
+    });
+
+    it('lee el nivel de las claves de la tabla de la clase («Nivel_3» o «3») y descarta las que no nombran uno', () => {
+        expect(nivelDeClaveConjuro('Nivel_3')).toBe(3);
+        expect(nivelDeClaveConjuro('0')).toBe(0);
+        expect(nivelDeClaveConjuro('Total')).toBe(-1);
+        expect(conjurosDiariosPorNivel({ Nivel_0: 3, Nivel_1: '1', Nivel_2: -1, Nivel_3: 'x', Total: 4 }))
+            .toEqual({ 0: 3, 1: 1, 2: -1, 3: -1 });
+        expect(conjurosDiariosPorNivel(null)).toEqual({});
     });
 });
