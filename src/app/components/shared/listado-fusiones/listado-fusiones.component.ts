@@ -4,7 +4,7 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Subject, combineLatest, takeUntil } from 'rxjs';
 import { chakrasConVinculo, chakrasDondeSeMoldea, unirConO } from 'src/app/components/detalles/ficha';
-import { ChakraDetalle, Fusion } from 'src/app/interfaces/incarnum';
+import { Chakra, Fusion } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
@@ -101,7 +101,7 @@ export class ListadoFusionesComponent implements OnDestroy {
         this.destroy$.complete();
     }
 
-    private cargar(fusiones: Fusion[], chakras: ChakraDetalle[]): void {
+    private cargar(fusiones: Fusion[], chakras: Chakra[]): void {
         const ordenChakras = new Map(chakras.map((chakra) => [chakra.Id, chakra.Orden]));
         this.fusiones = fusiones;
         this.filas = fusiones.map((fusion) => filaFusion(fusion, ordenChakras));

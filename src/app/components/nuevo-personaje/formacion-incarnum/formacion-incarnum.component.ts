@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core
 import { DatoFranja } from 'src/app/components/detalles/ficha';
 import { unirConO } from 'src/app/components/detalles/ficha/incarnum';
 import {
-    ChakraDetalle,
+    Chakra,
     FormacionIncarnumDto,
     FormacionIncarnumFusionDto,
     Fusion,
@@ -78,7 +78,7 @@ export class FormacionIncarnumComponent implements OnChanges {
     @Input() bloque: PersonajeIncarnum | null = null;
     @Input() fusiones: Fusion[] = [];
     /** El catálogo de chakras, para su orden y sus nombres. */
-    @Input() chakras: ChakraDetalle[] = [];
+    @Input() chakras: Chakra[] = [];
     @Input() alineamiento: AlineamientoParaFusiones = { actitudes: [], descriptoresSinAlineamiento: [] };
     /** La formación que ya tenía (al volver tras un error de la API). */
     @Input() inicial: FormacionIncarnumDto | null = null;

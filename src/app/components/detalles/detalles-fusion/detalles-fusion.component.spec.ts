@@ -23,7 +23,7 @@ describe('DetallesFusionComponent', () => {
             declarations: [DetallesFusionComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
             providers: [
                 { provide: ManualDetalleNavigationService, useValue: manualNavSpy },
-                { provide: IncarnumService, useValue: { getChakras: () => of([normalizarChakraDetalle(chakraApi())]) } },
+                { provide: IncarnumService, useValue: { getChakra: () => of(normalizarChakraDetalle(chakraApi())) } },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();

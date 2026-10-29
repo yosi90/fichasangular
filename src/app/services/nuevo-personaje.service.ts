@@ -33,7 +33,7 @@ import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
-import { CapacidadEsencia, ChakraDetalle, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from '../interfaces/incarnum';
+import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from '../interfaces/incarnum';
 import { EntradaIncarnumBorrador, calcularIncarnumBorrador, incarnumParaPrerrequisitos } from './utils/incarnum';
 import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
 import {
@@ -944,7 +944,7 @@ export class NuevoPersonajeService {
     private catalogoClases: Clase[] = [];
     private capacidadEsencia: CapacidadEsencia[] = [];
     private catalogoFusiones: Fusion[] = [];
-    private catalogoChakras: ChakraDetalle[] = [];
+    private catalogoChakras: Chakra[] = [];
     private catalogoDotes: Dote[] = [];
     private catalogoArmasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoArmadurasDotes: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }> = [];
@@ -1531,7 +1531,7 @@ export class NuevoPersonajeService {
     }
 
     /** Magic of Incarnum: la tabla de capacidad de esencia y el catálogo de fusiones (para el bloque del borrador). */
-    setCatalogosIncarnum(capacidad: CapacidadEsencia[], fusiones: Fusion[], chakras: ChakraDetalle[] = []): void {
+    setCatalogosIncarnum(capacidad: CapacidadEsencia[], fusiones: Fusion[], chakras: Chakra[] = []): void {
         this.capacidadEsencia = [...(capacidad ?? [])];
         this.catalogoFusiones = [...(fusiones ?? [])];
         this.catalogoChakras = [...(chakras ?? [])];

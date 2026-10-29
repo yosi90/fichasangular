@@ -123,7 +123,7 @@ import { DatosIdeaIa, datosIdeaDePersonaje, TipoIdeaIa } from 'src/app/services/
 import { UsoIdeaIa } from '../shared/ideas-ia/ideas-ia.component';
 import { ClaseConMoldeado, DatoFranja, FilaMoldeado, IncarnumTuPersonaje, filasMoldeado, franjaIncarnum, incarnumTuPersonaje } from '../detalles/ficha';
 import { IncarnumService } from 'src/app/services/incarnum.service';
-import { CapacidadEsencia, ChakraDetalle, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from 'src/app/interfaces/incarnum';
+import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from 'src/app/interfaces/incarnum';
 import { AlineamientoParaFusiones, CODIGOS_FALLO_FORMACION, FalloFormacion } from 'src/app/services/utils/incarnum';
 import { PasoCreacionId, lineaPersonajeCreacion, pasoCreacionDeLaPestana, textoContinuarCreacion } from './marco';
 import { normalizarTexto, primerEntero } from 'src/app/services/utils/normalizacion';
@@ -631,7 +631,7 @@ export class NuevoPersonajeComponent {
     formacionErrorApi: FalloFormacion | null = null;
     formacionBloque: PersonajeIncarnum | null = null;
     formacionAlineamiento: AlineamientoParaFusiones = { actitudes: [], descriptoresSinAlineamiento: [] };
-    incarnumChakras: ChakraDetalle[] = [];
+    incarnumChakras: Chakra[] = [];
     incarnumFusiones: Fusion[] = [];
     /** Tras un error de la API con la formación, continuar vuelve a guardar sin repetir los PG ni la visibilidad. */
     private formacionReintento = false;

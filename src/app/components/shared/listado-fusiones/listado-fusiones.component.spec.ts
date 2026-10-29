@@ -1,4 +1,4 @@
-import { normalizarChakraDetalle, normalizarFusion } from 'src/app/services/utils/incarnum-mapper';
+import { normalizarChakra, normalizarFusion } from 'src/app/services/utils/incarnum-mapper';
 import { chakraApi, fusionApi } from 'src/testing/incarnum';
 import { filaChakra } from '../listado-chakras/listado-chakras.component';
 import { filaFusion } from './listado-fusiones.component';
@@ -21,11 +21,10 @@ describe('Listados de Magic of Incarnum', () => {
         expect(fila.Manual).toContain('Magia del incarnum');
     });
 
-    it('la fila de un chakra: categoría, ranura y las clases que lo abren por nivel', () => {
-        const fila = filaChakra(normalizarChakraDetalle(chakraApi()));
+    it('la fila de un chakra: categoría, ranura que cierra y el original del libro', () => {
+        const fila = filaChakra(normalizarChakra(chakraApi()));
         expect(fila.Categoria).toBe('Mínimo');
         expect(fila.Ranura).toBe('Cabeza');
-        expect(fila.Clases).toBe('Encarnado 2, Totemista 5');
-        expect(fila.Fusiones).toBe(2);
+        expect(fila.Original).toBe('Crown');
     });
 });

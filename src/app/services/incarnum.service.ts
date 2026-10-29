@@ -3,15 +3,15 @@ import { Injectable } from '@angular/core';
 import { Database } from '@angular/fire/database';
 import { Observable, map, shareReplay } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { CapacidadEsencia, ChakraDetalle, Fusion } from '../interfaces/incarnum';
+import { CapacidadEsencia, Chakra, ChakraDetalle, Fusion } from '../interfaces/incarnum';
 import { EscuchaRtdb, cacheRtdbOApi, catalogosDesdeApi, escucharRtdb, sinCache } from './catalogo-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { normalizarCapacidadEsencia, normalizarChakraDetalle, normalizarFusion } from './utils/incarnum-mapper';
+import { normalizarCapacidadEsencia, normalizarChakra, normalizarChakraDetalle, normalizarFusion } from './utils/incarnum-mapper';
 import { toArray } from './utils/normalizacion';
 import { porNombre } from './utils/orden-texto';
 
 /** Los chakras van en su orden (corona, pies… tótem), no por nombre. */
-function porOrden(a: ChakraDetalle, b: ChakraDetalle): number {
+function porOrden(a: Chakra, b: Chakra): number {
     return a.Orden - b.Orden || porNombre(a, b);
 }
 
@@ -71,20 +71,23 @@ export class IncarnumService {
         });
     }
 
-    /** Los chakras con su detalle (la caché guarda cada uno con sus fusiones y sus clases); por la API, sin ellos. */
-    getChakras(): Observable<ChakraDetalle[]> {
+    /**
+     * Los chakras, en su orden (`GET /incarnum/chakras`). La caché guarda cada uno con su detalle, pero el listado solo da
+     * lo de la ruta del listado: sus fusiones y sus clases, con `getChakra`.
+     */
+    getChakras(): Observable<Chakra[]> {
         return cacheRtdbOApi({
             escuchar: this.escuchar('Chakras'),
             desdeCache: (snapshot) => {
-                const chakras: ChakraDetalle[] = [];
+                const chakras: Chakra[] = [];
                 snapshot.forEach((hijo: any) => {
-                    chakras.push(normalizarChakraDetalle(hijo.val()));
+                    chakras.push(normalizarChakra(hijo.val()));
                 });
                 return chakras.filter((chakra) => chakra.Id > 0).sort(porOrden);
             },
             cacheIncompleta: (chakras) => chakras.length < 1,
             pedir: () => this.http.get(`${environment.apiUrl}incarnum/chakras`),
-            desdeApi: (raw) => toArray(raw).map(normalizarChakraDetalle).filter((chakra) => chakra.Id > 0).sort(porOrden),
+            desdeApi: (raw) => toArray(raw).map(normalizarChakra).filter((chakra) => chakra.Id > 0).sort(porOrden),
             unaPeticionALaVez: true,
             avisos: {
                 noEncontrado: { titulo: 'Chakras no disponibles', texto: 'No se encontró /incarnum/chakras en la API' },

@@ -821,7 +821,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         } else if (value.tipo === 'fusiones del alma') {
             this.abrirDetallesFusion(value.item);
         } else if (value.tipo === 'chakras') {
-            this.abrirDetallesChakra(value.item);
+            this.abrirDetallesChakraPorId(Number(value.item?.Id));
         } else if (tipoDeListaEquipo(value.tipo)) {
             this.abrirDetallesEquipo(value.item);
         }

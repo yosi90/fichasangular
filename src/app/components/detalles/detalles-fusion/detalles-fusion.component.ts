@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
-import { Subscription } from 'rxjs';
+import { Subscription, forkJoin, of, take } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import {
     DatoFicha,
     EtiquetaFicha,
@@ -44,6 +45,7 @@ export class DetallesFusionComponent implements OnInit, OnDestroy {
     private fusionActual!: Fusion;
     private chakrasCatalogo: ChakraDetalle[] = [];
     private suscripcion?: Subscription;
+    private iniciado = false;
 
     tipoCabecera = '';
     etiquetas: EtiquetaFicha[] = [];
@@ -57,6 +59,8 @@ export class DetallesFusionComponent implements OnInit, OnDestroy {
     set fusion(valor: Fusion) {
         this.fusionActual = valor;
         this.recalcular();
+        if (this.iniciado)
+            this.cargarChakras();
     }
     get fusion(): Fusion {
         return this.fusionActual;
@@ -70,15 +74,22 @@ export class DetallesFusionComponent implements OnInit, OnDestroy {
         private incarnumSvc: IncarnumService,
     ) { }
 
-    /** Los chakras del catálogo dan la ranura que cierra el vínculo y las clases que abren cada chakra. */
     ngOnInit(): void {
-        this.suscripcion = this.incarnumSvc.getChakras().subscribe({
-            next: (chakras) => {
-                this.chakrasCatalogo = chakras ?? [];
+        this.iniciado = true;
+        this.cargarChakras();
+    }
+
+    /** El detalle de cada chakra de la fusión da la ranura que cierra el vínculo, su categoría y las clases que lo abren. */
+    private cargarChakras(): void {
+        this.suscripcion?.unsubscribe();
+        const ids = (this.fusionActual?.Chakras ?? []).map((chakra) => chakra.Id);
+        if (ids.length < 1)
+            return;
+        this.suscripcion = forkJoin(ids.map((id) => this.incarnumSvc.getChakra(id).pipe(take(1), catchError(() => of(null)))))
+            .subscribe((chakras) => {
+                this.chakrasCatalogo = chakras.filter((chakra): chakra is ChakraDetalle => !!chakra);
                 this.recalcular();
-            },
-            error: () => undefined,
-        });
+            });
     }
 
     ngOnDestroy(): void {
