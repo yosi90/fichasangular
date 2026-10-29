@@ -53,10 +53,12 @@ function textoNivelEntre(nivel: 'su nivel de clase' | 'tu nivel de personaje', d
     return `${mayusculaInicial(nivel)} entre ${d}`;
 }
 
-/** «10 + mod. de Sabiduría + esencia invertida»: la CD de las fusiones de la clase; `null` si no tiene característica. */
-export function textoCdFusiones(moldeado: ClaseMoldeado | null | undefined): string | null {
-    const caracteristica = moldeado?.Caracteristica_cd?.Nombre;
-    return caracteristica ? `10 + mod. de ${caracteristica} + esencia invertida` : null;
+/**
+ * «10 + mod. de Sabiduría + esencia invertida»: la CD de las fusiones con esa característica (la de una clase o la de la
+ * fusión de una dote); `null` si no la tiene.
+ */
+export function textoCdFusiones(caracteristica: { Nombre: string; } | null | undefined): string | null {
+    return caracteristica?.Nombre ? `10 + mod. de ${caracteristica.Nombre} + esencia invertida` : null;
 }
 
 /** Los datos del moldeado de una clase, para su lateral «Moldeado de fusiones». */
@@ -66,7 +68,7 @@ export function datosMoldeadoClase(moldeado: ClaseMoldeado | null | undefined): 
     const fusiones = moldeado.Caracteristica_fusiones?.Nombre;
     return [
         { etiqueta: 'Nivel de moldeador', valor: textoNivelEntre('su nivel de clase', moldeado.Divisor_nivel_moldeador) },
-        { etiqueta: 'CD de sus fusiones', valor: textoCdFusiones(moldeado) },
+        { etiqueta: 'CD de sus fusiones', valor: textoCdFusiones(moldeado.Caracteristica_cd) },
         {
             etiqueta: 'Fusiones a la vez',
             valor: fusiones ? `Las de la tabla, como mucho ${fusiones} − 10` : null,
@@ -138,7 +140,7 @@ export function datosIncarnumDote(incarnum: DoteIncarnum | null | undefined): Da
         },
         {
             etiqueta: 'CD de su fusión',
-            valor: incarnum.Caracteristica_cd_fusion ? `10 + mod. de ${incarnum.Caracteristica_cd_fusion.Nombre} + esencia invertida` : null,
+            valor: textoCdFusiones(incarnum.Caracteristica_cd_fusion),
         },
         {
             etiqueta: 'Moldea con otra característica',

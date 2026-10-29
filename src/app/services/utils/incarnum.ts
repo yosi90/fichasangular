@@ -7,6 +7,7 @@ import {
     FormacionIncarnumDto,
     Fusion,
     PersonajeIncarnum,
+    PersonajeIncarnumCd,
     PersonajeIncarnumClase,
     PersonajeIncarnumFormacion,
     PersonajeIncarnumParte,
@@ -60,6 +61,22 @@ export function capacidadConTope(base: number, bono: number, tope: number | null
 function bonoCapacidad(filas: ClaseMoldeado['Capacidad'], nivelClase: number): number {
     const alcanzadas = filas.filter((fila) => fila.Nivel <= nivelClase);
     return alcanzadas.length > 0 ? alcanzadas.reduce((a, b) => (b.Nivel > a.Nivel ? b : a)).Bonificador : 0;
+}
+
+/**
+ * Por chakra, la fila de nivel más alto que alcanza ese nivel de clase (son totales, no se suman): la capacidad de un
+ * chakra y el nivel de moldeador de la fusión vinculada a él. Las filas sin chakra no cuentan.
+ */
+function filasPorChakra<T extends { Nivel: number; Chakra: { Id: number; } | null; }>(filas: T[], nivelClase: number): T[] {
+    const porChakra = new Map<number, T>();
+    filas.forEach((f) => {
+        if (!f.Chakra || f.Nivel > nivelClase)
+            return;
+        const actual = porChakra.get(f.Chakra.Id);
+        if (!actual || f.Nivel > actual.Nivel)
+            porChakra.set(f.Chakra.Id, f);
+    });
+    return Array.from(porChakra.values());
 }
 
 const refDe = (item: { Id: number; Nombre: string; Nombre_original?: string | null; Traducido?: boolean; }): PersonajeIncarnumRef => ({
@@ -121,7 +138,7 @@ export interface EntradaIncarnumBorrador {
 }
 
 /** La CD de una fusión con esa característica: `base` + la esencia invertida. */
-function cdFusion(nombre: string, puntuaciones: Record<string, number>): PersonajeIncarnumClase['cd'] {
+function cdFusion(nombre: string, puntuaciones: Record<string, number>): PersonajeIncarnumCd {
     const modificador = modificadorCaracteristica(puntuaciones[normalizarTexto(nombre)] ?? 10);
     return { base: 10 + modificador, caracteristica: nombre, modificador };
 }
@@ -146,30 +163,14 @@ function claseIncarnum(
     const puntuacion = caracteristica ? puntuaciones[normalizarTexto(caracteristica)] : undefined;
     const maximas = puntuacion === undefined || puntuacion === null ? 0 : Math.max(0, Math.min(fila.Fusiones, puntuacion - 10));
     const bonoGeneral = bonoCapacidad(m.Capacidad.filter((f) => !f.Chakra), nivel);
-    const porChakra = new Map<number, ClaseMoldeado['Capacidad'][number]>();
-    m.Capacidad.forEach((f) => {
-        if (!f.Chakra || f.Nivel > nivel)
-            return;
-        const actual = porChakra.get(f.Chakra.Id);
-        if (!actual || f.Nivel > actual.Nivel)
-            porChakra.set(f.Chakra.Id, f);
-    });
     const nombreCd = m.Caracteristica_cd?.Nombre ? sustituida(m.Caracteristica_cd.Nombre, sustituciones) : null;
     const moldeador = nivelMoldeador(nivel, m.Divisor_nivel_moldeador);
-    const porChakraNivel = new Map<number, ClaseMoldeado['Nivel_moldeador_chakras'][number]>();
-    (m.Nivel_moldeador_chakras ?? []).forEach((f) => {
-        if (f.Nivel > nivel)
-            return;
-        const actual = porChakraNivel.get(f.Chakra.Id);
-        if (!actual || f.Nivel > actual.Nivel)
-            porChakraNivel.set(f.Chakra.Id, f);
-    });
     return {
         id: clase.Id,
         nombre,
         nivel,
         nivelMoldeador: moldeador,
-        nivelMoldeadorChakras: Array.from(porChakraNivel.values()).map((f) => ({ chakra: refDe(f.Chakra), nivelMoldeador: moldeador + f.Bonificador })),
+        nivelMoldeadorChakras: filasPorChakra(m.Nivel_moldeador_chakras ?? [], nivel).map((f) => ({ chakra: refDe(f.Chakra), nivelMoldeador: moldeador + f.Bonificador })),
         fusionesTabla: fila.Fusiones,
         fusionesMaximas: maximas,
         caracteristicaFusiones: caracteristica,
@@ -177,7 +178,7 @@ function claseIncarnum(
         vinculos: fila.Vinculos,
         chakrasAbiertos: m.Chakras.filter((chakra) => chakra.Nivel <= nivel).map((chakra) => ({ ...refDe(chakra), nivel: chakra.Nivel })),
         capacidadFusiones: basica + bonoGeneral,
-        capacidadChakras: Array.from(porChakra.values()).map((f) => ({
+        capacidadChakras: filasPorChakra(m.Capacidad, nivel).map((f) => ({
             chakra: refDe(f.Chakra!), capacidad: basica + bonoGeneral + f.Bonificador,
         })),
         cd: nombreCd ? cdFusion(nombreCd, puntuaciones) : null,

@@ -4,11 +4,13 @@ import {
     ChakraDetalle,
     ClaseHabilidadPorAlineamiento,
     ClaseMoldeado,
+    ClaseMoldeadoCapacidad,
     DoteIncarnum,
     EsenciaRasgo,
     Fusion,
     NombreTraducible,
     PersonajeIncarnum,
+    PersonajeIncarnumCd,
     PersonajeIncarnumRef,
 } from 'src/app/interfaces/incarnum';
 import { normalizeManualApi } from './manual-mapper';
@@ -103,6 +105,15 @@ export function normalizarCapacidadEsencia(raw: any): CapacidadEsencia {
     };
 }
 
+/** Filas «desde el nivel N, +B (en un chakra)» del moldeado (`Capacidad`, `Nivel_moldeador_chakras`), por nivel. */
+function filasBonificadorChakra(raw: any): ClaseMoldeadoCapacidad[] {
+    return toArray(raw).map((fila: any) => ({
+        Nivel: toInt(fila?.Nivel),
+        Bonificador: toInt(fila?.Bonificador),
+        Chakra: nombreTraducibleONulo(fila?.Chakra),
+    })).sort((a, b) => a.Nivel - b.Nivel);
+}
+
 /** `Moldeado` de una clase, o `null` si no moldea fusiones. */
 export function normalizarClaseMoldeado(raw: any): ClaseMoldeado | null {
     if (!raw || typeof raw !== 'object')
@@ -120,16 +131,9 @@ export function normalizarClaseMoldeado(raw: any): ClaseMoldeado | null {
         })).filter((nivel) => nivel.Nivel > 0).sort((a, b) => a.Nivel - b.Nivel),
         Chakras: toArray(raw?.Chakras).map((chakra: any) => ({ ...normalizarNombreTraducible(chakra), Nivel: toInt(chakra?.Nivel) }))
             .filter((chakra) => chakra.Id > 0),
-        Capacidad: toArray(raw?.Capacidad).map((fila: any) => ({
-            Nivel: toInt(fila?.Nivel),
-            Bonificador: toInt(fila?.Bonificador),
-            Chakra: nombreTraducibleONulo(fila?.Chakra),
-        })).sort((a, b) => a.Nivel - b.Nivel),
-        Nivel_moldeador_chakras: toArray(raw?.Nivel_moldeador_chakras).map((fila: any) => ({
-            Nivel: toInt(fila?.Nivel),
-            Bonificador: toInt(fila?.Bonificador),
-            Chakra: nombreTraducibleONulo(fila?.Chakra),
-        })).filter((fila): fila is ClaseMoldeado['Nivel_moldeador_chakras'][number] => !!fila.Chakra).sort((a, b) => a.Nivel - b.Nivel),
+        Capacidad: filasBonificadorChakra(raw?.Capacidad),
+        Nivel_moldeador_chakras: filasBonificadorChakra(raw?.Nivel_moldeador_chakras)
+            .filter((fila): fila is ClaseMoldeado['Nivel_moldeador_chakras'][number] => !!fila.Chakra),
         Fusiones: toArray(raw?.Fusiones).map(normalizarNombreTraducible).filter((fusion) => fusion.Id > 0),
     };
 }
@@ -204,7 +208,7 @@ function refFichaONula(raw: any): PersonajeIncarnumRef | null {
     return raw && typeof raw === 'object' && toInt(raw?.id) > 0 ? refFicha(raw) : null;
 }
 
-function cdFicha(raw: any): { base: number; caracteristica: string; modificador: number; } | null {
+function cdFicha(raw: any): PersonajeIncarnumCd | null {
     return raw && typeof raw === 'object'
         ? { base: toInt(raw.base), caracteristica: toText(raw.caracteristica).trim(), modificador: toInt(raw.modificador) }
         : null;

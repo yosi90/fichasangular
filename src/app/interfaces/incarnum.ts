@@ -185,6 +185,13 @@ export interface PersonajeIncarnumParte {
     valor: number;
 }
 
+/** Una CD de fusión de la ficha: `base` (10 + `modificador` de `caracteristica`) + la esencia invertida. */
+export interface PersonajeIncarnumCd {
+    base: number;
+    caracteristica: string;
+    modificador: number;
+}
+
 export interface PersonajeIncarnumClase {
     id: number;
     nombre: string;
@@ -200,7 +207,7 @@ export interface PersonajeIncarnumClase {
     chakrasAbiertos: (PersonajeIncarnumRef & { nivel: number; })[];
     capacidadFusiones: number;
     capacidadChakras: { chakra: PersonajeIncarnumRef; capacidad: number; }[];
-    cd: { base: number; caracteristica: string; modificador: number; } | null;
+    cd: PersonajeIncarnumCd | null;
     limitadoPorAlineamiento: boolean;
 }
 
@@ -245,7 +252,7 @@ export interface PersonajeIncarnum {
         dote: { id: number; nombre: string; };
         nivelMoldeador: number | null;
         /** La CD de su fusión: `base` + la esencia invertida (`null` si la dote no la da). */
-        cd: { base: number; caracteristica: string; modificador: number; } | null;
+        cd: PersonajeIncarnumCd | null;
     }[];
     receptaculos: PersonajeIncarnumReceptaculo[];
     /** Los PG que dan sus dotes por la reserva o por cada dote de un tipo (ya van en sus PG: es su desglose). */
