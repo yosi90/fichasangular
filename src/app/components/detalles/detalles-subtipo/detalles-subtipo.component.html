@@ -25,7 +25,9 @@
         <app-ficha-lateral titulo="Rasgos" *ngIf="rasgos.length > 0">
             <ul class="ficha-lista">
                 <li class="ficha-lista__item" *ngFor="let rasgo of rasgos">
-                    <button type="button" class="ficha-enlace" (click)="abrirDetallesRasgo(rasgo)">{{rasgo.Nombre}}</button>
+                    <button type="button" class="ficha-enlace" (click)="abrirDetallesRasgo(rasgo)"
+                        [matTooltip]="rasgo.Descripcion" [matTooltipDisabled]="!tieneTextoVisible(rasgo.Descripcion)" matTooltipClass="tt-accent tt-multiline"
+                        [matTooltipShowDelay]="250">{{rasgo.Nombre}}</button>
                 </li>
             </ul>
         </app-ficha-lateral>

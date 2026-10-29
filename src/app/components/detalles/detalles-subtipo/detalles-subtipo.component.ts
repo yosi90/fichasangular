@@ -76,11 +76,14 @@ export class DetallesSubtipoComponent {
         this.sortilegas = sortilegasVisibles(value?.Sortilegas);
         this.habilidadesBase = habilidadesVisibles(value?.Habilidades?.Base, (habilidad) => habilidad.Cantidad);
         this.habilidadesCustom = habilidadesVisibles(value?.Habilidades?.Custom, (habilidad) => habilidad.Cantidad);
+        // Lo que da el subtipo (inmunidades, vulnerabilidades, resistencias…), con su descripción en el tooltip.
         this.rasgos = (value?.Rasgos ?? []).filter((rasgo) => tieneTextoVisible(rasgo?.Nombre));
         this.idiomas = idiomasVisibles(value?.Idiomas);
         this.plantillas = (value?.Plantillas ?? []).filter((plantilla) => tieneTextoVisible(plantilla?.Nombre))
             .map((plantilla) => ({ ...plantilla, Descripcion: textoVisible(plantilla.Descripcion) }));
     }
+
+    readonly tieneTextoVisible = tieneTextoVisible;
 
     get hayCaracteristicas(): boolean {
         return this.modificadoresCaracteristicas.length > 0 || this.minimosCaracteristicas.length > 0;
