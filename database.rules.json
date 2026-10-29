@@ -12,31 +12,19 @@
         }
       }
     },
-    "CacheSyncReports": {
-      ".read": "false",
-      ".write": "false",
-      "CatalogMisses": {
-        "$cacheKey": {
-          "$uid": {
-            ".write": "auth != null && auth.uid === $uid",
-            ".validate": "newData.val() === null || (($cacheKey === 'actitudes' || $cacheKey === 'maniobrabilidades' || $cacheKey === 'tipos_dado' || $cacheKey === 'componentes_conjuros' || $cacheKey === 'tiempos_lanzamiento' || $cacheKey === 'alcances_conjuros' || $cacheKey === 'descriptores_conjuros') && newData.hasChildren(['cacheKey', 'uid', 'reportedAt', 'reportedAtIso', 'reason']) && newData.child('cacheKey').val() === $cacheKey && newData.child('uid').val() === $uid && newData.child('reportedAt').isNumber() && newData.child('reportedAtIso').isString() && newData.child('reason').val() === 'rtdb_empty_fallback_rest')"
-          }
-        }
-      }
+    "Actitudes": {
+      ".read": "true",
+      ".write": "false"
+    },
+    "AlcancesConjuros": {
+      ".read": "true",
+      ".write": "false"
     },
     "Alineamientos": {
       ".read": "true",
       ".write": "false"
     },
     "AlineamientosCatalogo": {
-      ".read": "true",
-      ".write": "false"
-    },
-    "Actitudes": {
-      ".read": "true",
-      ".write": "false"
-    },
-    "AlcancesConjuros": {
       ".read": "true",
       ".write": "false"
     },
@@ -52,15 +40,35 @@
       ".read": "true",
       ".write": "false"
     },
+    "CacheSyncReports": {
+      ".read": "false",
+      ".write": "false",
+      "CatalogMisses": {
+        "$cacheKey": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.val() === null || (($cacheKey === 'actitudes' || $cacheKey === 'maniobrabilidades' || $cacheKey === 'tipos_dado' || $cacheKey === 'componentes_conjuros' || $cacheKey === 'tiempos_lanzamiento' || $cacheKey === 'alcances_conjuros' || $cacheKey === 'descriptores_conjuros') && newData.hasChildren(['cacheKey', 'uid', 'reportedAt', 'reportedAtIso', 'reason']) && newData.child('cacheKey').val() === $cacheKey && newData.child('uid').val() === $uid && newData.child('reportedAt').isNumber() && newData.child('reportedAtIso').isString() && newData.child('reason').val() === 'rtdb_empty_fallback_rest')"
+          }
+        }
+      }
+    },
+    "CapacidadesCarga": {
+      ".read": "true",
+      ".write": "false"
+    },
+    "Chakras": {
+      ".read": "true",
+      ".write": "false"
+    },
     "Clases": {
       ".read": "true",
       ".write": "false"
     },
-    "ComponentesConjuros": {
+    "Companeros": {
       ".read": "true",
       ".write": "false"
     },
-    "Companeros": {
+    "ComponentesConjuros": {
       ".read": "true",
       ".write": "false"
     },
@@ -96,7 +104,15 @@
       ".read": "true",
       ".write": "false"
     },
+    "Encantamientos": {
+      ".read": "true",
+      ".write": "false"
+    },
     "EnemigosPredilectos": {
+      ".read": "true",
+      ".write": "false"
+    },
+    "EquipoCatalogos": {
       ".read": "true",
       ".write": "false"
     },
@@ -113,6 +129,10 @@
       ".write": "false"
     },
     "Familiares": {
+      ".read": "true",
+      ".write": "false"
+    },
+    "Fusiones": {
       ".read": "true",
       ".write": "false"
     },
@@ -136,6 +156,10 @@
       ".read": "true",
       ".write": "false"
     },
+    "listado-personajes": {
+      ".read": "true",
+      ".write": "false"
+    },
     "Maniobrabilidades": {
       ".read": "true",
       ".write": "false"
@@ -148,7 +172,15 @@
       ".read": "true",
       ".write": "false"
     },
+    "Materiales": {
+      ".read": "true",
+      ".write": "false"
+    },
     "Monstruos": {
+      ".read": "true",
+      ".write": "false"
+    },
+    "Municiones": {
       ".read": "true",
       ".write": "false"
     },
@@ -204,19 +236,15 @@
       ".read": "true",
       ".write": "false"
     },
-    "TiposDado": {
-      ".read": "true",
-      ".write": "false"
-    },
     "TiposCriatura": {
       ".read": "true",
       ".write": "false"
     },
-    "Ventajas": {
+    "TiposDado": {
       ".read": "true",
       ".write": "false"
     },
-    "listado-personajes": {
+    "Ventajas": {
       ".read": "true",
       ".write": "false"
     },
