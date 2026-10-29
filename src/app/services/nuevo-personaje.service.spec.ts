@@ -2109,6 +2109,21 @@ describe('NuevoPersonajeService (clases)', () => {
             .toContain(jasmine.objectContaining({ valor: 2, condicion: 'Contra veneno' }));
     });
 
+    it('las salvaciones condicionales de una dote se guardan con su condición y no suman (Cuerpo fortalecido por el incarnum)', () => {
+        const dote = {
+            Id: 1120, Nombre: 'Cuerpo fortalecido por el incarnum', Modificadores: {}, Habilidades_otorgadas: [],
+            Salvaciones_condicionales: [{ Id_salvacion: 1, Salvacion: 'Fortaleza', Cantidad: 4, Condicion: 'Contra el daño masivo' }],
+        } as any;
+
+        (service as any).aplicarModificadoresDote(dote, dote.Nombre, 0, '');
+
+        expect(service.PersonajeCreacion.Salvaciones.fortaleza.modsVarios).toContain(
+            { valor: 4, origen: 'Dote: Cuerpo fortalecido por el incarnum', condicion: 'Contra el daño masivo' });
+        expect(service.PersonajeCreacion.Salvaciones.reflejos.modsVarios).toEqual([]);
+        expect(totalesPersonaje(service.PersonajeCreacion).salvaciones.fortaleza.condicionales)
+            .toEqual([jasmine.objectContaining({ valor: 4, condicion: 'Contra el daño masivo' })]);
+    });
+
     it('los bonos de habilidad de una dote (Habilidades_otorgadas: Alerta, +2 a Avistar y a Escuchar; MJ cap. 5)', () => {
         const alerta = {
             Id: 17,

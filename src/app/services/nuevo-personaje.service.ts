@@ -4423,11 +4423,8 @@ export class NuevoPersonajeService {
         aplicarSalvacion('voluntad', 'Voluntad');
         // Las que solo cuentan en un caso (Cuerpo fortalecido por el incarnum: +4 a Fortaleza contra el daño masivo): se
         // guardan con su condición y no se suman, como las de los raciales.
-        (dote?.Salvaciones_condicionales ?? []).forEach((item) => {
-            const tipo = SALVACION_POR_ID[toInt(item?.Id_salvacion)];
-            if (tipo && toInt(item?.Cantidad) !== 0)
-                this.personajeCreacion.Salvaciones[tipo].modsVarios.push({ valor: toInt(item.Cantidad), origen, condicion: item.Condicion });
-        });
+        (dote?.Salvaciones_condicionales ?? []).forEach((item) =>
+            this.registrarSalvacionPorId(item?.Id_salvacion, item?.Cantidad, origen, toNullableText(item?.Condicion)));
 
         const iniciativa = get('Iniciativa');
         if (iniciativa !== 0) {
@@ -5494,14 +5491,10 @@ export class NuevoPersonajeService {
      */
     private aplicarSalvacionesRaza(raza: Raza | null): void {
         const nombreRaza = `${raza?.Nombre ?? 'Raza'}`.trim() || 'Raza';
-        const registrar = (tipo: SalvacionKey, valor: number, origen: string, condicion: string | null = null) => {
+        const registrar = (tipo: SalvacionKey, valor: number, origen: string) => {
             if (!Number.isFinite(valor) || valor === 0)
                 return;
-            this.personajeCreacion.Salvaciones[tipo].modsVarios.push({
-                valor,
-                origen,
-                ...(condicion ? { condicion } : {}),
-            });
+            this.personajeCreacion.Salvaciones[tipo].modsVarios.push({ valor, origen });
         };
 
         registrar('fortaleza', toNumber(raza?.Dgs_adicionales?.Fortaleza), `${nombreRaza} DG racial`);
@@ -5521,13 +5514,24 @@ export class NuevoPersonajeService {
                     ? Object.values(racial.Salvaciones as any)
                     : []);
 
-            salvaciones.forEach((item: any) => {
-                const tipo = SALVACION_POR_ID[toInt(item?.Id_salvacion)];
-                const valor = toInt(item?.Cantidad);
-                if (!tipo || valor === 0)
-                    return;
-                registrar(tipo, valor, origen, toNullableText(item?.Condicion));
-            });
+            salvaciones.forEach((item: any) =>
+                this.registrarSalvacionPorId(item?.Id_salvacion, item?.Cantidad, origen, toNullableText(item?.Condicion)));
+        });
+    }
+
+    /**
+     * Un bonificador a la salvación de `Id_salvacion` (`SALVACION_POR_ID`), de un racial o de una dote. Con `condicion`
+     * («Contra veneno») se guarda con ella y no se suma al total; sin ella, sí.
+     */
+    private registrarSalvacionPorId(idSalvacion: unknown, cantidad: unknown, origen: string, condicion: string | null): void {
+        const tipo = SALVACION_POR_ID[toInt(idSalvacion)];
+        const valor = toInt(cantidad);
+        if (!tipo || valor === 0)
+            return;
+        this.personajeCreacion.Salvaciones[tipo].modsVarios.push({
+            valor,
+            origen,
+            ...(condicion ? { condicion } : {}),
         });
     }
 
