@@ -149,6 +149,47 @@
     margin: 0
     white-space: pre-line
 
+// La rejilla de chakras de la pestaña Incarnum (lienzo, opción B): cada chakra con su fusión de partida y su estado.
+.personaje-chakras
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr))
+    gap: 8px
+    margin: 8px 0
+    padding: 0
+    list-style: none
+
+.personaje-chakra
+    display: flex
+    flex-direction: column
+    gap: 4px
+    min-height: 84px
+    padding: 10px
+    border-radius: 6px
+    background: $primary
+
+.personaje-chakra--formada
+    background: rgba($active, .18)
+
+.personaje-chakra--vinculada
+    box-shadow: inset 0 0 0 1px $active
+
+.personaje-chakra__nombre
+    font-size: 12px
+    font-weight: 700
+    letter-spacing: .08em
+    text-transform: uppercase
+
+.personaje-chakra__fusion
+    font-size: 14px
+    color: $ficha-blanco
+
+.personaje-chakra__fusion--vacia
+    color: $font-base
+
+.personaje-chakra__estado
+    font-size: 12px
+    color: $font-base
+
 @container ficha (max-width: 1100px)
     .personaje-resumen
         grid-template-columns: minmax(0, 1fr)

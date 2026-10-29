@@ -65,6 +65,7 @@
             </div>
             <div class="personaje-columna">
                 <ng-container *ngTemplateOutlet="magiaTpl"></ng-container>
+                <ng-container *ngTemplateOutlet="incarnumTpl"></ng-container>
                 <ng-container *ngTemplateOutlet="equipoTpl"></ng-container>
                 <ng-container *ngTemplateOutlet="companiaTpl"></ng-container>
                 <ng-container *ngTemplateOutlet="razaTpl"></ng-container>
@@ -109,6 +110,9 @@
             <div class="personaje-rejilla" *ngSwitchCase="'magia'">
                 <ng-container *ngTemplateOutlet="magiaTpl"></ng-container>
             </div>
+            <ng-container *ngSwitchCase="'incarnum'">
+                <ng-container *ngTemplateOutlet="incarnumTpl"></ng-container>
+            </ng-container>
             <div class="personaje-rejilla" *ngSwitchCase="'equipo'">
                 <ng-container *ngTemplateOutlet="equipoTpl"></ng-container>
             </div>
@@ -234,6 +238,38 @@
     <app-ficha-lateral titulo="Aptitudes sortílegas" *ngIf="m.sortilegas.length > 0">
         <ng-container *ngTemplateOutlet="listaTpl; context: { $implicit: m.sortilegas, abrir: abrirSortilega }"></ng-container>
     </app-ficha-lateral>
+</ng-template>
+
+<!-- Magic of Incarnum: lo que calcula la API y, si la tiene, la formación de partida (lienzo, opción B) -->
+<ng-template #incarnumTpl>
+    <ng-container *ngIf="m.incarnum as inc">
+        <app-ficha-lateral titulo="Incarnum">
+            <app-ficha-datos [datos]="inc.datos" [columnas]="2" [tarjeta]="false" titulo="Datos del incarnum"></app-ficha-datos>
+        </app-ficha-lateral>
+        <div class="personaje-rejilla">
+        <app-ficha-lateral [titulo]="inc.tituloChakras" *ngIf="inc.chakras.length > 0">
+            <p class="ficha-nota">{{inc.notaChakras}}</p>
+            <ul class="personaje-chakras">
+                <li class="personaje-chakra" *ngFor="let chakra of inc.chakras"
+                    [class.personaje-chakra--formada]="chakra.formada" [class.personaje-chakra--vinculada]="chakra.vinculada"
+                    [matTooltip]="chakra.ayuda" [matTooltipDisabled]="!chakra.ayuda" matTooltipClass="tt-accent">
+                    <button type="button" class="ficha-enlace personaje-chakra__nombre" (click)="verDetallesChakra(chakra.id)">{{chakra.nombre}}</button>
+                    <button type="button" class="ficha-enlace personaje-chakra__fusion" *ngIf="chakra.idFusion; else chakraSinFusion"
+                        (click)="verDetallesFusion(chakra.idFusion)">{{chakra.texto}}</button>
+                    <ng-template #chakraSinFusion><span class="personaje-chakra__fusion personaje-chakra__fusion--vacia">{{chakra.texto}}</span></ng-template>
+                    <span class="personaje-chakra__estado" *ngIf="chakra.estado">{{chakra.estado}}</span>
+                </li>
+            </ul>
+            <p class="ficha-nota">{{inc.pie}}</p>
+        </app-ficha-lateral>
+        <app-ficha-lateral titulo="Receptáculos de esencia" *ngIf="inc.receptaculos.length > 0">
+            <ng-container *ngTemplateOutlet="listaTpl; context: { $implicit: inc.receptaculos }"></ng-container>
+        </app-ficha-lateral>
+        <app-ficha-lateral titulo="Dotes del incarnum" *ngIf="inc.dotes.length > 0">
+            <ng-container *ngTemplateOutlet="listaTpl; context: { $implicit: inc.dotes }"></ng-container>
+        </app-ficha-lateral>
+        </div>
+    </ng-container>
 </ng-template>
 
 <ng-template #equipoTpl>

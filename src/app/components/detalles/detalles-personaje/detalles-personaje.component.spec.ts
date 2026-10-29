@@ -15,6 +15,7 @@ import { UserService } from 'src/app/services/user.service';
 import { crearEquipoFichaApi } from 'src/testing/equipo-api';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
+import { personajeIncarnumApi } from 'src/testing/incarnum';
 import { DetallesPersonajeComponent } from './detalles-personaje.component';
 
 /** La ficha de la API tal como la deja `PersonajeService` (el mapper real, sin HTTP). */
@@ -29,7 +30,7 @@ function claseLanzadora(id: number, nombre: string, niveles: number, cambios: Re
         Id: id,
         Nombre: nombre,
         Conjuros: {
-            Arcanos: true, Divinos: false, Psionicos: false, Alma: false, Dependientes_alineamiento: false,
+            Arcanos: true, Divinos: false, Psionicos: false, Dependientes_alineamiento: false,
             Lanzamiento_espontaneo: false, Conocidos_total: false, Conocidos_nivel_a_nivel: false, Dominio: false,
             puede_elegir_especialidad: true, Clase_origen: { Id: 0, Nombre: '' }, Listado: [],
             ...(cambios['Conjuros'] ?? {}),
@@ -223,6 +224,33 @@ describe('DetallesPersonajeComponent', () => {
             expect(component.pestanaActiva).toBe('historia');
             expect(elemento().querySelector(`#${component.idPestana('historia')}`)?.getAttribute('aria-selected')).toBe('true');
             expect(elemento().querySelector(`#${component.idPestana('historia')}`)?.getAttribute('tabindex')).toBe('0');
+        });
+    });
+
+    describe('la pestaña Incarnum (Magic of Incarnum, opción B)', () => {
+        it('sale con lo que calcula la API y la formación de partida, en las dos vistas', () => {
+            component.pj = fichaDeLaApi({ incarnum: personajeIncarnumApi() });
+            fixture.detectChanges();
+
+            expect(pestanas()).toContain('Incarnum');
+            abrirPestana('Incarnum');
+            expect(titulos('[role="tabpanel"]')).toEqual(['Incarnum', 'Chakras y formación de partida', 'Receptáculos de esencia']);
+            expect(valor('Reserva de esencia')).toBe('7 Encarnado 5, Esencia del azurín 1, Dureza azur 1');
+            expect(valor('Fusiones a la vez · vínculos')).toBe('4 · 1');
+            expect(texto()).toContain('Vinculada · 2 de esencia');
+            const fusion = spyOn(component.fusionDetallesId, 'emit');
+            enlace('Yelmo de cristal').click();
+            expect(fusion).toHaveBeenCalledWith(284);
+
+            component.cambiarVista('pagina');
+            fixture.detectChanges();
+            expect(titulos()).toContain('Chakras y formación de partida');
+        });
+
+        it('sin nada de incarnum no sale la pestaña', () => {
+            component.pj = fichaDeLaApi({ incarnum: null });
+            fixture.detectChanges();
+            expect(pestanas()).not.toContain('Incarnum');
         });
     });
 
@@ -632,7 +660,7 @@ describe('DetallesPersonajeComponent', () => {
             };
             component.clasesCatalogo = [
                 claseLanzadora(186, 'Mago', 20),
-                { Id: 187, Nombre: 'Archimago', Conjuros: { Arcanos: false, Divinos: false, Psionicos: false, Alma: false }, Aumenta_clase_lanzadora: true, Desglose_niveles: [] } as any,
+                { Id: 187, Nombre: 'Archimago', Conjuros: { Arcanos: false, Divinos: false, Psionicos: false }, Aumenta_clase_lanzadora: true, Desglose_niveles: [] } as any,
             ];
             verPagina();
 
