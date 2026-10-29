@@ -37,11 +37,12 @@
         position: static !important
         min-height: 0
 
+        // Por encima de la cabecera fija de la tabla (mat-table le pone z-index 100).
         app-menu-filtros
             position: absolute
             top: 8px
             right: 14px
-            z-index: 3
+            z-index: 101
 
         table
             align-self: flex-start

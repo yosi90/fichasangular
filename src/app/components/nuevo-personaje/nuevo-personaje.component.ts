@@ -3286,7 +3286,7 @@ export class NuevoPersonajeComponent {
         if (!this.plantillaMirada)
             return 'Pulsa una plantilla para verla a la derecha. Las heredadas o de la raza ya vienen puestas. Un paso hecho no se puede deshacer.';
         if (this.bloqueoPlantillaMirada)
-            return `No cumple lo que pide: ${this.bloqueoPlantillaMirada.evaluacion.razones.join(' · ')}`;
+            return this.bloqueoPlantillaMirada.evaluacion.razones.join(' · ');
         if (this.plantillaMiradaElegible)
             return 'Elígela con su botón; puedes tomar varias antes de continuar.';
         return 'Ya la tienes elegida.';
