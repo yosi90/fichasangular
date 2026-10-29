@@ -63,6 +63,7 @@
                         <span>
                             <button type="button" class="ficha-enlace" (click)="abrirDetalleRacial(racial)">{{racial.Nombre}}</button>
                             <span class="ficha-nota" *ngIf="tieneTextoVisible(racial.Descripcion)"> · {{racial.Descripcion}}</span>
+                            <span class="ficha-nota" *ngIf="textoEsencia(racial) as esencia"> · {{esencia}}</span>
                         </span>
                     </li>
                 </ul>

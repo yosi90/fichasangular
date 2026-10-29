@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { DatoFicha, datosEsenciaRasgo, datosVisibles } from 'src/app/components/detalles/ficha';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
@@ -49,6 +50,8 @@ export class DetallesRacialComponent {
     salvaciones: BonificadorRacial[] = [];
     sortilegas: SortilegaRacial[] = [];
     ataques: string[] = [];
+    /** Magic of Incarnum: la esencia que da y si es receptáculo. */
+    datosEsencia: DatoFicha[] = [];
 
     @Input()
     set racial(value: RacialDetalle) {
@@ -77,6 +80,7 @@ export class DetallesRacialComponent {
         this.ataques = (value?.Ataques ?? [])
             .map((ataque) => `${ataque?.Descripcion ?? ''}`.trim())
             .filter((descripcion) => tieneTextoVisible(descripcion));
+        this.datosEsencia = datosVisibles(datosEsenciaRasgo(value?.Esencia));
     }
 
     get racial(): RacialDetalle {

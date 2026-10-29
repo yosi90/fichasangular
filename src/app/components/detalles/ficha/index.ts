@@ -14,6 +14,7 @@ import { FichaSeccionComponent } from './ficha-seccion.component';
 export * from './ficha';
 export * from './criatura';
 export * from './personaje';
+export * from './incarnum';
 
 /**
  * Los componentes de la ficha común de los detalles. Se declaran juntos en `AppModule` y en las pruebas de cada

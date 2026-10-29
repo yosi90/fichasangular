@@ -28,6 +28,19 @@
             <app-ficha-datos [datos]="resumen" [columnas]="2" [tarjeta]="false"></app-ficha-datos>
         </app-ficha-lateral>
 
+        <app-ficha-lateral titulo="Incarnum" *ngIf="datosIncarnum.length > 0">
+            <app-ficha-datos [datos]="datosIncarnum" [columnas]="2" [tarjeta]="false" titulo="Incarnum"></app-ficha-datos>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Cuenta como" *ngIf="cuentaComo.length > 0">
+            <p class="ficha-nota">Sustituye a estas dotes en los prerrequisitos.</p>
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let dote of cuentaComo">
+                    <button type="button" class="ficha-enlace" (click)="abrirDetallesDote(dote.Id)">{{dote.Nombre}}</button>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+
         <app-ficha-lateral titulo="Extras" *ngIf="tieneExtras()">
             <p class="ficha-nota">Admite: {{getTextoExtrasSoportados()}}</p>
             <div class="ficha-grupo" *ngFor="let extra of getExtrasDisponibles()">

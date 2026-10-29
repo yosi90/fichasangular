@@ -1,0 +1,49 @@
+<app-ficha-detalle *ngIf="chakra">
+    <app-ficha-cabecera
+        [tipo]="tipoCabecera"
+        [nombre]="chakra.Nombre"
+        [subtitulo]="descripcionEnCabecera ? chakra.Descripcion : null"
+        [etiquetas]="etiquetas">
+    </app-ficha-cabecera>
+
+    <app-ficha-datos [datos]="datos" titulo="Datos del chakra"></app-ficha-datos>
+
+    <app-ficha-cuerpo>
+        <app-ficha-seccion titulo="Descripción" [texto]="descripcionEnCabecera ? null : chakra.Descripcion"></app-ficha-seccion>
+
+        <app-ficha-lateral titulo="Lo abren para vincular" *ngIf="clases.length > 0">
+            <table class="ficha-pares">
+                <tbody>
+                    <tr *ngFor="let clase of clases">
+                        <td><button type="button" class="ficha-enlace" (click)="abrirDetallesClase(clase.Id)">{{clase.Nombre}}</button></td>
+                        <td>desde el nivel {{clase.Nivel}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </app-ficha-lateral>
+    </app-ficha-cuerpo>
+
+    <app-ficha-bloque [titulo]="'Fusiones (' + fusiones.length + ')'" *ngIf="fusiones.length > 0">
+        <table class="ficha-tabla">
+            <thead>
+                <tr>
+                    <th scope="col">Fusión</th>
+                    <th scope="col" class="ficha-num">Se moldea aquí</th>
+                    <th scope="col" class="ficha-num">Se vincula aquí</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let fusion of fusiones">
+                    <td><button type="button" class="ficha-enlace" (click)="abrirDetallesFusion(fusion.Id)">{{fusion.Nombre}}</button></td>
+                    <td class="ficha-num"><ng-container *ngTemplateOutlet="marca; context: { $implicit: fusion.Ocupa }"></ng-container></td>
+                    <td class="ficha-num"><ng-container *ngTemplateOutlet="marca; context: { $implicit: fusion.Vinculo }"></ng-container></td>
+                </tr>
+            </tbody>
+        </table>
+    </app-ficha-bloque>
+</app-ficha-detalle>
+
+<ng-template #marca let-si>
+    <mat-icon class="ficha-icono" *ngIf="si; else no" aria-label="Sí">check</mat-icon>
+    <ng-template #no><span aria-label="No">—</span></ng-template>
+</ng-template>

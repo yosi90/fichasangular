@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha } from 'src/app/components/detalles/ficha';
+import { DatoFicha, datosEsenciaRasgo } from 'src/app/components/detalles/ficha';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { EspecialClaseDetalle, EspecialExtraRef, EspecialHabilidadRef } from 'src/app/interfaces/especial';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
@@ -139,6 +139,7 @@ export class DetallesEspecialComponent {
                 valor: (especial.Subtipo?.Id ?? 0) > 0 ? especial.Subtipo.Nombre : null,
                 alPulsar: () => this.abrirDetalleSubtipo(),
             },
+            ...datosEsenciaRasgo(especial.Esencia),
         ];
     }
 }

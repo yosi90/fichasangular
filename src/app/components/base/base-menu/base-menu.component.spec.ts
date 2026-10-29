@@ -147,6 +147,18 @@ describe('BaseMenuComponent', () => {
         ]);
     });
 
+    it('las fusiones del alma y los chakras van en «Rasgos y aptitudes» de los tres menús (Magic of Incarnum)', () => {
+        for (const seccion of ['insertar', 'modificar', 'detalles'] as const) {
+            const rasgos = component.gruposOtros[seccion].find((grupo) => grupo.id === 'rasgos')!;
+            expect(rasgos.opciones.map((opcion) => opcion.etiqueta)).toEqual(jasmine.arrayContaining(['Fusiones del alma', 'Chakras']));
+            expect(rasgos.opciones.length).toBeLessThanOrEqual(8);
+        }
+        const emitSpy = spyOn(component.ListadoTab, 'emit');
+        component.gruposOtros.detalles.find((grupo) => grupo.id === 'rasgos')!.opciones
+            .find((opcion) => opcion.etiqueta === 'Fusiones del alma')!.abrir();
+        expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'fusiones del alma', operacion: 'detalles' });
+    });
+
     it('abre el listado de un grupo de Detalles y cierra el menú', () => {
         const emitSpy = spyOn(component.ListadoTab, 'emit');
         component.otrosAbierto = 'detalles:equipo';

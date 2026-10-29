@@ -1,0 +1,45 @@
+<app-ficha-detalle *ngIf="fusion">
+    <app-ficha-cabecera
+        [tipo]="tipoCabecera"
+        [nombre]="fusion.Nombre"
+        [subtitulo]="descripcionEnCabecera ? fusion.Descripcion : null"
+        [manual]="fusion.Manual"
+        [oficial]="fusion.Oficial"
+        [etiquetas]="etiquetas"
+        (abrirManual)="abrirDetalleManual()">
+    </app-ficha-cabecera>
+
+    <app-ficha-datos [datos]="datos" titulo="Datos de la fusión"></app-ficha-datos>
+
+    <app-ficha-cuerpo>
+        <app-ficha-seccion titulo="Descripción" [texto]="descripcionEnCabecera ? null : fusion.Descripcion"></app-ficha-seccion>
+        <app-ficha-seccion titulo="Efecto" [texto]="fusion.Efecto_basico"></app-ficha-seccion>
+        <app-ficha-seccion titulo="Esencia" [texto]="fusion.Efecto_esencia"></app-ficha-seccion>
+        <app-ficha-seccion *ngFor="let vinculo of vinculos" [titulo]="vinculo.titulo" [texto]="vinculo.texto"></app-ficha-seccion>
+        <app-ficha-seccion *ngIf="notaOrigen">
+            <p class="ficha-nota">{{notaOrigen}}</p>
+        </app-ficha-seccion>
+
+        <app-ficha-lateral titulo="Chakras" *ngIf="chakras.length > 0">
+            <table class="ficha-pares">
+                <tbody>
+                    <tr *ngFor="let chakra of chakras">
+                        <td>
+                            <button type="button" class="ficha-enlace" (click)="abrirDetallesChakra(chakra.id)">{{chakra.nombre}}</button>
+                            <div class="ficha-nota" *ngIf="chakra.nota">{{chakra.nota}}</div>
+                        </td>
+                        <td>{{chakra.uso}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="La moldean" *ngIf="fusion.Clases.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let clase of fusion.Clases">
+                    <button type="button" class="ficha-enlace" (click)="abrirDetallesClase(clase.Id)">{{clase.Nombre}}</button>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+    </app-ficha-cuerpo>
+</app-ficha-detalle>

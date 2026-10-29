@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, EtiquetaFicha, datoAlineamiento, datosVisibles, unirTipo } from 'src/app/components/detalles/ficha';
+import { DatoFicha, EtiquetaFicha, FilaMoldeado, datoAlineamiento, datosMoldeadoClase, datosVisibles, filasMoldeado, textoBonoCapacidad, unirTipo } from 'src/app/components/detalles/ficha';
+import { NombreTraducible } from 'src/app/interfaces/incarnum';
 import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseNivelDetalle } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
@@ -125,10 +126,18 @@ export class DetallesClaseComponent {
         Grupos_arma: [],
         Grupos_armadura: [],
     };
-    habilidadesVisibles: Record<keyof Clase['Habilidades'], ElementoVisual[]> = {
+    habilidadesVisibles: Record<'Base' | 'Custom', ElementoVisual[]> = {
         Base: [],
         Custom: [],
     };
+    /** Las que son de clase solo con un alineamiento básico («Diplomacia», «Legal bueno»; el nacido del alma). */
+    habilidadesPorAlineamiento: { habilidad: string; alineamiento: string; }[] = [];
+    /** Magic of Incarnum: lo que dice su `Moldeado` (nada si la clase no moldea fusiones). */
+    datosMoldeado: DatoFicha[] = [];
+    filasMoldeado: FilaMoldeado[] = [];
+    chakrasMoldeado: { id: number; texto: string; }[] = [];
+    capacidadMoldeado: string[] = [];
+    fusionesClase: NombreTraducible[] = [];
 
     /** Los prerrequisitos con la frase de la API, agrupados por `Opcional`. */
     prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];
@@ -154,6 +163,7 @@ export class DetallesClaseComponent {
         this.flagsPrerrequisito = value?.Prerrequisitos_flags?.habilidad_clase ? ['Habilidad de clase'] : [];
         this.recalcularBloquesVisuales();
         this.recalcularTablaProgresion();
+        this.recalcularMoldeado();
     }
 
     @Output() conjuroDetalles: EventEmitter<number> = new EventEmitter<number>();
@@ -163,6 +173,8 @@ export class DetallesClaseComponent {
     @Output() doteDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
     @Output() armaDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() armaduraDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    @Output() fusionDetalles: EventEmitter<number> = new EventEmitter<number>();
+    @Output() chakraDetalles: EventEmitter<number> = new EventEmitter<number>();
 
     abrirDetalleManual() {
         this.manualDetalleNavSvc.abrirDetalleManual({
@@ -225,7 +237,7 @@ export class DetallesClaseComponent {
             this.armaduraDetallesId.emit(id);
     }
 
-    getHabilidadesVisibles(grupo: keyof Clase['Habilidades']): ElementoVisual[] {
+    getHabilidadesVisibles(grupo: 'Base' | 'Custom'): ElementoVisual[] {
         return this.habilidadesVisibles[grupo] ?? [];
     }
 
@@ -521,7 +533,6 @@ export class DetallesClaseComponent {
             conjuros?.Arcanos === true ? 'Arcanos' : '',
             conjuros?.Divinos === true ? 'Divinos' : '',
             conjuros?.Psionicos === true ? 'Poderes psiónicos' : '',
-            conjuros?.Alma === true ? 'Magia de alma' : '',
             conjuros?.Conocidos_nivel_a_nivel === true ? 'Conocidos nivel a nivel' : '',
             conjuros?.Conocidos_total === true ? 'Conocidos en total' : '',
             conjuros?.Lanzamiento_espontaneo === true ? 'Lanzamiento espontáneo' : '',
@@ -593,8 +604,37 @@ export class DetallesClaseComponent {
             Base: this.toVisualItems(this.claseData?.Habilidades?.Base ?? []),
             Custom: this.toVisualItems(this.claseData?.Habilidades?.Custom ?? []),
         };
+        this.habilidadesPorAlineamiento = (this.claseData?.Habilidades?.Por_alineamiento ?? [])
+            .filter((item) => this.tieneTextoVisible(item.Habilidad))
+            .map((item) => ({
+                habilidad: this.tieneTextoVisible(item.Extra) ? `${item.Habilidad} (${item.Extra})` : item.Habilidad,
+                alineamiento: item.Alineamiento.Nombre,
+            }));
         this.hayCompetencias = Object.values(this.competenciasVisibles).some(items => items.length > 0);
-        this.hayHabilidades = Object.values(this.habilidadesVisibles).some(items => items.length > 0);
+        this.hayHabilidades = Object.values(this.habilidadesVisibles).some(items => items.length > 0)
+            || this.habilidadesPorAlineamiento.length > 0;
+    }
+
+    /** El moldeado de fusiones de Magic of Incarnum: sus datos, su tabla, los chakras que abre, su capacidad y su lista. */
+    private recalcularMoldeado(): void {
+        const moldeado = this.claseData?.Moldeado ?? null;
+        this.datosMoldeado = datosMoldeadoClase(moldeado);
+        this.filasMoldeado = filasMoldeado(moldeado);
+        this.chakrasMoldeado = (moldeado?.Chakras ?? [])
+            .map((chakra) => ({ id: chakra.Id, texto: `${chakra.Nombre}, desde el nivel ${chakra.Nivel}` }));
+        this.capacidadMoldeado = (moldeado?.Capacidad ?? [])
+            .map((fila) => `${textoBonoCapacidad(fila.Bonificador, fila.Chakra)} desde el nivel ${fila.Nivel}`);
+        this.fusionesClase = [...(moldeado?.Fusiones ?? [])];
+    }
+
+    abrirDetallesFusion(id: number): void {
+        if (Number(id) > 0)
+            this.fusionDetalles.emit(Number(id));
+    }
+
+    abrirDetallesChakra(id: number): void {
+        if (Number(id) > 0)
+            this.chakraDetalles.emit(Number(id));
     }
 
     private toVisualItems(items: Record<string, any>[]): ElementoVisual[] {

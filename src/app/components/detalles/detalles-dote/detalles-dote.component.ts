@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, HabilidadFicha, esTextoCorto, habilidadesVisibles, unirTipo } from 'src/app/components/detalles/ficha';
+import { DatoFicha, HabilidadFicha, datosIncarnumDote, datosVisibles, esTextoCorto, habilidadesVisibles, unirTipo } from 'src/app/components/detalles/ficha';
 import { Dote, DoteExtrasDeTodoElCatalogo } from 'src/app/interfaces/dote';
 import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
@@ -38,7 +38,14 @@ export class DetallesDoteComponent {
         const otorgadas = this.doteData?.Habilidades_otorgadas ?? [];
         this.habilidadesBase = habilidadesVisibles(otorgadas.filter((h) => !h.Custom), (h) => h.Rangos);
         this.habilidadesCustom = habilidadesVisibles(otorgadas.filter((h) => h.Custom), (h) => h.Rangos);
+        this.datosIncarnum = datosVisibles(datosIncarnumDote(this.doteData?.Incarnum));
+        this.cuentaComo = (this.doteData?.Cuenta_como ?? []).filter((dote) => dote.Id > 0 && `${dote.Nombre ?? ''}`.trim().length > 0);
     }
+
+    /** Magic of Incarnum: lo que da a la reserva, si es receptáculo, la capacidad, el chakra que abre… */
+    datosIncarnum: DatoFicha[] = [];
+    /** Las dotes a las que sustituye en los prerrequisitos (Dureza azur cuenta como Dureza). */
+    cuentaComo: { Id: number; Nombre: string; }[] = [];
 
     /** Las habilidades en las que da rangos («Avistar +2»), las base y las custom. */
     habilidadesBase: HabilidadFicha[] = [];
@@ -86,6 +93,14 @@ export class DetallesDoteComponent {
 
     @Output() armaDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() armaduraDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    @Output() doteDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    @Output() chakraDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    @Output() fusionDetallesId: EventEmitter<number> = new EventEmitter<number>();
+
+    abrirDetallesDote(id: number): void {
+        if (Number(id) > 0)
+            this.doteDetallesId.emit(Number(id));
+    }
 
     getModificadoresActivos(): { clave: string, valor: number }[] {
         if (!this.doteData?.Modificadores)
@@ -113,6 +128,8 @@ export class DetallesDoteComponent {
             bloque('Escudos', armaduras.filter((item: any) => !!item?.Es_escudo), 'Armaduras'),
             bloque('Escuelas', this.doteData.Extras_disponibles.Escuelas ?? [], 'Escuelas'),
             bloque('Habilidades', this.doteData.Extras_disponibles.Habilidades ?? [], 'Habilidades'),
+            bloque('Chakras', this.doteData.Extras_disponibles.Chakras ?? [], 'Chakras'),
+            bloque('Fusiones', this.doteData.Extras_disponibles.Fusiones ?? [], 'Fusiones'),
         ].filter(item => activas.has(item.nombre) && (item.items.length > 0 || item.todoElCatalogo));
     }
 
@@ -123,7 +140,7 @@ export class DetallesDoteComponent {
     }
 
     esExtraNavegable(nombreBloque: string): boolean {
-        return nombreBloque === 'Armas' || nombreBloque === 'Armaduras' || nombreBloque === 'Escudos';
+        return ['Armas', 'Armaduras', 'Escudos', 'Chakras', 'Fusiones'].includes(nombreBloque);
     }
 
     abrirDetalleExtra(nombreBloque: string, item: { Id: number, Nombre: string }): void {
@@ -132,6 +149,14 @@ export class DetallesDoteComponent {
             return;
         if (nombreBloque === 'Armas') {
             this.armaDetallesId.emit(id);
+            return;
+        }
+        if (nombreBloque === 'Chakras') {
+            this.chakraDetallesId.emit(id);
+            return;
+        }
+        if (nombreBloque === 'Fusiones') {
+            this.fusionDetallesId.emit(id);
             return;
         }
         this.armaduraDetallesId.emit(id);
@@ -152,6 +177,8 @@ export class DetallesDoteComponent {
             },
             { nombre: 'Escuelas', activo: !!this.doteData.Extras_soportados.Extra_escuela },
             { nombre: 'Habilidades', activo: !!this.doteData.Extras_soportados.Extra_habilidad },
+            { nombre: 'Chakras', activo: !!this.doteData.Extras_soportados.Extra_chakra },
+            { nombre: 'Fusiones', activo: !!this.doteData.Extras_soportados.Extra_fusion },
         ].filter(extra => extra.activo);
     }
 

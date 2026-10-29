@@ -56,6 +56,8 @@ import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { EntradaEquipo, TipoCatalogoEquipo } from 'src/app/interfaces/equipo';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { claveEntradaEquipo, claveEquipo, etiquetaEntradaEquipo, tipoDeListaEquipo } from '../../shared/listado-equipo/listas-equipo';
+import { ChakraDetalle, Fusion } from 'src/app/interfaces/incarnum';
+import { IncarnumService } from 'src/app/services/incarnum.service';
 
 interface ListadoTabAbierto {
     key: string;
@@ -129,6 +131,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public detallesEquipoAbiertos: EntradaEquipo[] = [];
     public detallesDeidadAbiertos: DeidadDetalle[] = [];
     public detallesIdiomaAbiertos: IdiomaDetalle[] = [];
+    /** Magic of Incarnum: las fusiones del alma y los chakras. */
+    public detallesFusionAbiertos: Fusion[] = [];
+    public detallesChakraAbiertos: ChakraDetalle[] = [];
     public listadoTabsAbiertos: ListadoTabAbierto[] = [];
     public edicionRacialesAbiertos: EdicionRacialTabAbierto[] = [];
     public edicionIdiomasAbiertos: EdicionIdiomaTabAbierto[] = [];
@@ -169,6 +174,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private ngZone: NgZone,
         private userProfileNavSvc?: UserProfileNavigationService,
         private equipoSvc?: EquipoService,
+        private incarnumSvc?: IncarnumService,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
@@ -379,6 +385,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         else if (this.detallesManualAbiertos.map(m => this.getEtiquetaManual(m)).includes(tabLabel) && this.quitarDetallesManual(tabLabel))
             return;
+        else if (this.detallesFusionAbiertos.map(f => this.getEtiquetaFusion(f)).includes(tabLabel) && this.quitarDetallesFusion(tabLabel))
+            return;
+        else if (this.detallesChakraAbiertos.map(c => this.getEtiquetaChakra(c)).includes(tabLabel) && this.quitarDetallesChakra(tabLabel))
+            return;
     }
 
     private buildOrderedTabKeys(): string[] {
@@ -422,6 +432,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         keys.push(...this.detallesEquipoAbiertos.map((entrada) => claveEntradaEquipo(entrada)));
         keys.push(...this.detallesDeidadAbiertos.map((deidad) => this.getDeidadTabKey(deidad)));
         keys.push(...this.detallesIdiomaAbiertos.map((idioma) => this.getIdiomaTabKey(idioma)));
+        keys.push(...this.detallesFusionAbiertos.map((fusion) => this.getFusionTabKey(fusion)));
+        keys.push(...this.detallesChakraAbiertos.map((chakra) => this.getChakraTabKey(chakra)));
         return keys;
     }
 
@@ -632,6 +644,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.detallesEquipoAbiertos = [];
         this.detallesDeidadAbiertos = [];
         this.detallesIdiomaAbiertos = [];
+        this.detallesFusionAbiertos = [];
+        this.detallesChakraAbiertos = [];
         this.listadoTabsAbiertos = [];
         this.edicionRacialesAbiertos = [];
         this.edicionIdiomasAbiertos = [];
@@ -804,6 +818,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDetallesDeidad(value.item);
         } else if (value.tipo === 'idiomas') {
             this.abrirDetallesIdioma(value.item);
+        } else if (value.tipo === 'fusiones del alma') {
+            this.abrirDetallesFusion(value.item);
+        } else if (value.tipo === 'chakras') {
+            this.abrirDetallesChakra(value.item);
         } else if (tipoDeListaEquipo(value.tipo)) {
             this.abrirDetallesEquipo(value.item);
         }
@@ -1062,6 +1080,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return `${idioma.Nombre} (Idioma)`;
     }
 
+    getEtiquetaFusion(fusion: Fusion): string {
+        return `${fusion.Nombre} (Fusión)`;
+    }
+
+    getEtiquetaChakra(chakra: ChakraDetalle): string {
+        return `${chakra.Nombre} (Chakra)`;
+    }
+
     getEtiquetaListadoTab(tab: ListadoTabAbierto): string {
         const tipo = `${tab?.tipo ?? ''}`.trim();
         const operacion = normalizarTexto(tab?.operacion ?? '');
@@ -1171,6 +1197,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private getIdiomaTabKey(idioma: IdiomaDetalle): string {
         return `idioma:${Number(idioma?.Id ?? 0)}`;
+    }
+
+    private getFusionTabKey(fusion: Fusion): string {
+        return `fusion:${Number(fusion?.Id ?? 0)}`;
+    }
+
+    private getChakraTabKey(chakra: ChakraDetalle): string {
+        return `chakra:${Number(chakra?.Id ?? 0)}`;
     }
 
     private getListadoTabKey(tipo: string, operacion: string): string {
@@ -2116,6 +2150,94 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.detallesIdiomaAbiertos.push(idioma);
         this.registerOpenContext(targetKey, this.getSafeOpenerKey());
         this.focusOpenedTab(targetKey);
+    }
+
+    abrirDetallesFusion(fusion: Fusion): void {
+        if (!fusion || Number(fusion?.Id) <= 0)
+            return;
+        const abierta = this.detallesFusionAbiertos.find((item) => Number(item.Id) === Number(fusion.Id));
+        if (abierta) {
+            this.selectTabByKey(this.getFusionTabKey(abierta));
+            return;
+        }
+        const targetKey = this.getFusionTabKey(fusion);
+        this.detallesFusionAbiertos.push(fusion);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
+    }
+
+    abrirDetallesFusionPorId(idFusion: number): void {
+        const id = Number(idFusion);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+        const abierta = this.detallesFusionAbiertos.find((item) => Number(item.Id) === id);
+        if (abierta) {
+            this.selectTabByKey(this.getFusionTabKey(abierta));
+            return;
+        }
+        this.incarnumSvc?.getFusion(id).pipe(take(1)).subscribe({
+            next: (fusion) => this.abrirDetallesFusion(fusion),
+            error: () => undefined,
+        });
+    }
+
+    quitarDetallesFusion(value: string | Fusion): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesFusionAbiertos.find((item) => this.getEtiquetaFusion(item) === value)
+            : this.detallesFusionAbiertos.find((item) => Number(item.Id) === Number(value.Id));
+        if (!tab)
+            return false;
+        return this.closeTabWithNavigation(this.getFusionTabKey(tab), () => {
+            const indexTab = this.detallesFusionAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesFusionAbiertos.splice(indexTab, 1);
+            return true;
+        });
+    }
+
+    abrirDetallesChakra(chakra: ChakraDetalle): void {
+        if (!chakra || Number(chakra?.Id) <= 0)
+            return;
+        const abierto = this.detallesChakraAbiertos.find((item) => Number(item.Id) === Number(chakra.Id));
+        if (abierto) {
+            this.selectTabByKey(this.getChakraTabKey(abierto));
+            return;
+        }
+        const targetKey = this.getChakraTabKey(chakra);
+        this.detallesChakraAbiertos.push(chakra);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
+    }
+
+    abrirDetallesChakraPorId(idChakra: number): void {
+        const id = Number(idChakra);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+        const abierto = this.detallesChakraAbiertos.find((item) => Number(item.Id) === id);
+        if (abierto) {
+            this.selectTabByKey(this.getChakraTabKey(abierto));
+            return;
+        }
+        this.incarnumSvc?.getChakra(id).pipe(take(1)).subscribe({
+            next: (chakra) => this.abrirDetallesChakra(chakra),
+            error: () => undefined,
+        });
+    }
+
+    quitarDetallesChakra(value: string | ChakraDetalle): boolean {
+        const tab = typeof value === 'string'
+            ? this.detallesChakraAbiertos.find((item) => this.getEtiquetaChakra(item) === value)
+            : this.detallesChakraAbiertos.find((item) => Number(item.Id) === Number(value.Id));
+        if (!tab)
+            return false;
+        return this.closeTabWithNavigation(this.getChakraTabKey(tab), () => {
+            const indexTab = this.detallesChakraAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.detallesChakraAbiertos.splice(indexTab, 1);
+            return true;
+        });
     }
 
     quitarDetallesIdioma(value: string | IdiomaDetalle): boolean {

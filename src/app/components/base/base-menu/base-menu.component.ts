@@ -49,6 +49,8 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
                 this.opcion('Rasgos', () => this.canGestionar('rasgos', 'create')),
                 this.opcion('Idiomas', () => this.canGestionarIdiomas(), () => this.onInsertarIdioma()),
                 this.opcion('Ventajas y desventajas', () => this.canGestionar('ventajas', 'create')),
+                this.opcion('Fusiones del alma', () => this.canGestionar('clases', 'create')),
+                this.opcion('Chakras', () => this.canGestionar('clases', 'create')),
             ]),
             this.grupo('mundo', 'Criaturas y mundo', [
                 this.opcion('Tipos de criatura', () => this.canGestionar('tipos_criatura', 'create')),
@@ -67,6 +69,8 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
                 this.opcion('Rasgos', () => this.canGestionar('rasgos', 'update')),
                 this.opcion('Idiomas', () => this.canGestionarIdiomas(), () => this.onModificarIdioma()),
                 this.opcion('Ventajas y desventajas', () => this.canGestionar('ventajas', 'update')),
+                this.opcion('Fusiones del alma', () => this.canGestionar('clases', 'update')),
+                this.opcion('Chakras', () => this.canGestionar('clases', 'update')),
             ]),
             this.grupo('mundo', 'Criaturas y mundo', [
                 this.opcion('Tipos de criatura', () => this.canGestionar('tipos_criatura', 'update')),
@@ -90,6 +94,8 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
                 this.detalle('Rasgos', 'rasgos'),
                 this.detalle('Idiomas', 'idiomas'),
                 this.detalle('Ventajas y desventajas', 'ventajas'),
+                this.detalle('Fusiones del alma', 'fusiones del alma'),
+                this.detalle('Chakras', 'chakras'),
             ]),
             this.grupo('mundo', 'Criaturas y mundo', [
                 this.detalle('Tipos de criatura', 'tipos de criatura'),

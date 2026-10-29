@@ -72,7 +72,9 @@
             (monstruoDetalles)="abrirDetallesMonstruo($event);"
             (deidadDetallesPorNombre)="abrirDetallesDeidadPorNombre($event);"
             (perfilPublicoDetalles)="abrirPerfilPublico($event);"
-            (doteDetalles)="abrirDetallesDote($event);">
+            (doteDetalles)="abrirDetallesDote($event);"
+            (fusionDetallesId)="abrirDetallesFusionPorId($event);"
+            (chakraDetallesId)="abrirDetallesChakraPorId($event);">
         </app-detalles-personaje>
     </mat-tab>
     <mat-tab *ngFor="let publicProfileTab of publicProfileTabs" [label]="getEtiquetaPerfilPublico(publicProfileTab)">
@@ -270,7 +272,9 @@
             (doteDetalles)="abrirDetallesDotePorId($event)"
             (doteDetallesPorNombre)="abrirDetallesDotePorNombre($event)"
             (armaDetallesId)="abrirDetallesArmaPorId($event)"
-            (armaduraDetallesId)="abrirDetallesArmaduraPorId($event)">
+            (armaduraDetallesId)="abrirDetallesArmaduraPorId($event)"
+            (fusionDetalles)="abrirDetallesFusionPorId($event)"
+            (chakraDetalles)="abrirDetallesChakraPorId($event)">
         </app-detalles-clase>
     </mat-tab>
     <mat-tab *ngFor="let especial of detallesEspecialAbiertos; let index = index" [label]="getEtiquetaEspecial(especial)">
@@ -306,7 +310,10 @@
         <app-detalles-dote
             [dote]="detallesDoteAbiertos[index]"
             (armaDetallesId)="abrirDetallesArmaPorId($event)"
-            (armaduraDetallesId)="abrirDetallesArmaduraPorId($event)">
+            (armaduraDetallesId)="abrirDetallesArmaduraPorId($event)"
+            (doteDetallesId)="abrirDetallesDotePorId($event)"
+            (chakraDetallesId)="abrirDetallesChakraPorId($event)"
+            (fusionDetallesId)="abrirDetallesFusionPorId($event)">
         </app-detalles-dote>
     </mat-tab>
     <mat-tab *ngFor="let ventaja of detallesVentajaAbiertos; let index = index" [label]="getEtiquetaVentaja(ventaja)">
@@ -412,6 +419,30 @@
             <button (click)="quitarDetallesIdioma(idioma)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-idioma [idioma]="detallesIdiomaAbiertos[index]"></app-detalles-idioma>
+    </mat-tab>
+    <mat-tab *ngFor="let fusion of detallesFusionAbiertos; let index = index" [label]="getEtiquetaFusion(fusion)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">auto_awesome</mat-icon>
+            {{getEtiquetaFusion(fusion)}}
+            <button (click)="quitarDetallesFusion(fusion)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-fusion
+            [fusion]="detallesFusionAbiertos[index]"
+            (claseDetallesId)="abrirDetallesClasePorId($event)"
+            (chakraDetallesId)="abrirDetallesChakraPorId($event)">
+        </app-detalles-fusion>
+    </mat-tab>
+    <mat-tab *ngFor="let chakra of detallesChakraAbiertos; let index = index" [label]="getEtiquetaChakra(chakra)">
+        <ng-template mat-tab-label>
+            <mat-icon class="tw-me-2">blur_circular</mat-icon>
+            {{getEtiquetaChakra(chakra)}}
+            <button (click)="quitarDetallesChakra(chakra)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-detalles-chakra
+            [chakra]="detallesChakraAbiertos[index]"
+            (claseDetallesId)="abrirDetallesClasePorId($event)"
+            (fusionDetallesId)="abrirDetallesFusionPorId($event)">
+        </app-detalles-chakra>
     </mat-tab>
 </mat-tab-group>
 

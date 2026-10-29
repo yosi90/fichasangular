@@ -8,6 +8,7 @@ import {
     dotesVisibles,
     habilidadesVisibles,
     textoDato,
+    textoEsenciaRasgo,
     textoPies,
     unirTipo,
 } from 'src/app/components/detalles/ficha';
@@ -255,6 +256,11 @@ export class DetallesRazaComponent {
     tieneNumeroNoCero(valor: number | string | null | undefined): boolean {
         const parsed = Number(valor);
         return Number.isFinite(parsed) && Math.abs(parsed) > 0.0001;
+    }
+
+    /** Magic of Incarnum: «+1 de esencia, receptáculo de esencia» del racial; vacío si no tiene. */
+    textoEsencia(racial: RacialDetalle): string {
+        return textoEsenciaRasgo(racial?.Esencia);
     }
 
     trackByGrupoRacial(_index: number, grupo: GrupoRacialesDetalle): number {
