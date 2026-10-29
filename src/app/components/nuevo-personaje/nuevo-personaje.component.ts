@@ -117,7 +117,6 @@ import {
 } from 'src/app/services/utils/alineamiento-contrato';
 import { CatalogoNombreIdDto, PersonajeContextoCreacionCampanaDto, PersonajeContextoIdsDto } from 'src/app/interfaces/personajes-api';
 import { CampaignCreationPolicy } from 'src/app/interfaces/campaign-management';
-import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { DatosIdeaIa, datosIdeaDePersonaje, TipoIdeaIa } from 'src/app/services/ideas-ia.service';
 import { UsoIdeaIa } from '../shared/ideas-ia/ideas-ia.component';
@@ -387,7 +386,6 @@ export class NuevoPersonajeComponent {
     plantillasBloqueadasCampana: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
     plantillasBloqueadasUnknown: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
     plantillasBloqueadasFailed: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
-    readonly mostrarDiagnosticoPlantillas = !environment.production;
     filtroPlantillasTexto: string = '';
     filtroPlantillasManual: string = 'Cualquiera';
     incluirHomebrewPlantillas: boolean = false;
@@ -436,6 +434,8 @@ export class NuevoPersonajeComponent {
     incluirHomebrewClases: boolean = false;
     private hardAlignmentClassOverrideConfirmed: boolean = false;
     private homebrewPorClaseAplicada: boolean = false;
+    /** Las plantillas elegidas saltándose sus prerrequisitos: mientras alguna siga elegida, el personaje es homebrew. */
+    private plantillasConRequisitosSaltados = new Set<number>();
     selectedCampaignPolicy: CampaignCreationPolicy | null = null;
     private selectedCampaignActiveMasterUid: string | null = null;
     private selectedCampaignPolicyLoading = false;
@@ -1937,7 +1937,8 @@ export class NuevoPersonajeComponent {
             && evaluacion.otherOfficialBlockers.length === 0
             && !tieneConflictoDuroConfirmado
             && !this.hardAlignmentClassOverrideConfirmed
-            && !this.homebrewPorClaseAplicada;
+            && !this.homebrewPorClaseAplicada
+            && !this.haySaltoRequisitosPlantilla;
         this.refreshBasicosDerivedState(evaluacion);
     }
 
@@ -3166,6 +3167,7 @@ export class NuevoPersonajeComponent {
         this.resetHardAlignmentOverride();
         this.hardAlignmentClassOverrideConfirmed = false;
         this.homebrewPorClaseAplicada = false;
+        this.plantillasConRequisitosSaltados.clear();
         this.normalizarAlineamientoSeleccionado();
         this.recalcularOficialidad();
         this.recalcularPlantillasVisibles();
@@ -3205,6 +3207,46 @@ export class NuevoPersonajeComponent {
             return;
         this.recalcularPlantillasVisibles();
         this.recalcularClasesVisibles();
+        this.recalcularOficialidad();
+    }
+
+    /**
+     * Si la campaña deja saltarse los prerrequisitos de una plantilla: solo si admite homebrew sin límite, porque el
+     * personaje pasa a serlo (sin campaña, siempre).
+     */
+    get puedeSaltarRequisitosPlantilla(): boolean {
+        return this.getCurrentCampaignHomebrewMode(this.effectiveSelectedCampaignPolicy) === 'unrestricted';
+    }
+
+    /**
+     * Elige una plantilla que no cumple sus prerrequisitos (y solo eso: `saltable`), con el aviso de homebrew de siempre.
+     * La API no los comprueba al guardar; el personaje queda como homebrew mientras la plantilla siga elegida
+     * (`docs/publica/REGLAS_DE_CREACION.md`).
+     */
+    async elegirPlantillaSaltandoRequisitos(item: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }): Promise<void> {
+        if (!item?.evaluacion?.saltable || !this.puedeSaltarRequisitosPlantilla)
+            return;
+        const motivos = item.evaluacion.razones.map((razon) => `<li>${razon}</li>`).join('');
+        const confirmacion = await Swal.fire({
+            icon: 'warning',
+            title: `Elegir ${item.plantilla.Nombre} sin cumplir sus requisitos`,
+            html: `<ul style="text-align:left; margin-top: 4px;">${motivos}</ul>${AVISO_HOMEBREW_REGLA_SALTADA}`,
+            showCancelButton: true,
+            confirmButtonText: 'Aceptar y elegirla',
+            cancelButtonText: 'Cancelar',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+        if (!confirmacion.isConfirmed)
+            return;
+        this.plantillasConRequisitosSaltados.add(Number(item.plantilla.Id));
+        this.seleccionarPlantilla(item.plantilla);
+    }
+
+    /** Si sigue elegida alguna plantilla con los prerrequisitos saltados. */
+    private get haySaltoRequisitosPlantilla(): boolean {
+        return this.plantillasSeleccionadas.some((plantilla) => this.plantillasConRequisitosSaltados.has(Number(plantilla?.Id)));
     }
 
     getEtiquetaDgsAdicionalesPlantilla(plantilla: Plantilla): string {
@@ -3246,12 +3288,14 @@ export class NuevoPersonajeComponent {
         this.nuevoPSvc.quitarPlantillaSeleccion(idPlantilla);
         this.recalcularPlantillasVisibles();
         this.recalcularClasesVisibles();
+        this.recalcularOficialidad();
     }
 
     limpiarSeleccionPlantillas(): void {
         this.nuevoPSvc.limpiarPlantillasSeleccion();
         this.recalcularPlantillasVisibles();
         this.recalcularClasesVisibles();
+        this.recalcularOficialidad();
     }
 
     async continuarDesdePlantillas(): Promise<void> {
@@ -3355,11 +3399,10 @@ export class NuevoPersonajeComponent {
                 });
                 return;
             }
-            const avisoHomebrew = '<br><br><strong>Esta elección está saltándose una regla importante del sistema. El personaje quedará marcado como Homebrew y será una rareza excepcional en el mundo.</strong>';
             const confirmacion = await Swal.fire({
                 icon: 'warning',
                 title: 'Aviso de alineamiento de clase',
-                html: `${detalleAlineamiento}${avisoHomebrew}`,
+                html: `${detalleAlineamiento}<br><br>${AVISO_HOMEBREW_REGLA_SALTADA}`,
                 showCancelButton: true,
                 confirmButtonText: 'Aceptar y continuar',
                 cancelButtonText: 'Cancelar',
@@ -7554,6 +7597,9 @@ export class NuevoPersonajeComponent {
         };
     }
 }
+
+/** El aviso de siempre cuando una elección se salta una regla del sistema y vuelve homebrew el personaje. */
+const AVISO_HOMEBREW_REGLA_SALTADA = '<strong>Esta elección está saltándose una regla importante del sistema. El personaje quedará marcado como Homebrew y será una rareza excepcional en el mundo.</strong>';
 
 /** La progresión de moldeado del paso de clases: las filas de su tabla con los especiales y el nivel que toma. */
 interface ProgresionMoldeado {

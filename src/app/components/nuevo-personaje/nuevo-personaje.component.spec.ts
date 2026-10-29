@@ -2257,6 +2257,47 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.esPlantillaConfirmada(plantillaFijada)).toBeTrue();
     });
 
+    it('una plantilla que solo falla por sus prerrequisitos se ofrece y se elige igualmente con el aviso de homebrew', async () => {
+        component.seleccionarRaza(crearRazaMock());
+        const simulacro = crearPlantillaMock({
+            Id: 805,
+            Nombre: 'Simulacro de sombra',
+            Prerrequisitos_flags: { dg: true },
+            Prerrequisitos: { ...crearPlantillaMock().Prerrequisitos, dg: [{ Cantidad: 10, Opcional: 0, Frase: '10 dados de golpe' }] },
+        });
+        component.plantillasCatalogo = [simulacro];
+        (component as any).recalcularPlantillasVisibles();
+
+        const bloqueada = component.plantillasBloqueadasFailed.find((item) => item.plantilla.Id === 805);
+        expect(bloqueada?.evaluacion.razones).toEqual(['No cumple: 10 dados de golpe']);
+        expect(bloqueada?.evaluacion.saltable).toBeTrue();
+        expect(component.puedeSaltarRequisitosPlantilla).toBeTrue();
+
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        await component.elegirPlantillaSaltandoRequisitos(bloqueada!);
+
+        expect(`${(swalSpy.calls.mostRecent().args[0] as any).html}`).toContain('El personaje quedará marcado como Homebrew');
+        expect(component.plantillasSeleccionadas.some((p) => p.Id === 805)).toBeTrue();
+        expect(component.Personaje.Oficial).toBeFalse();
+
+        component.quitarPlantillaSeleccion(805);
+        expect(component.Personaje.Oficial).toBeTrue();
+    });
+
+    it('no elige la plantilla si se cancela el aviso de homebrew', async () => {
+        component.seleccionarRaza(crearRazaMock());
+        const plantilla = crearPlantillaMock({ Id: 806, Nombre: 'Gigantesca' });
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        await component.elegirPlantillaSaltandoRequisitos({
+            plantilla,
+            evaluacion: { estado: 'blocked_failed', razones: ['No cumple: Tamaño grande o mayor'], advertencias: [], saltable: true },
+        });
+
+        expect(component.plantillasSeleccionadas.some((p) => p.Id === 806)).toBeFalse();
+        expect(component.Personaje.Oficial).toBeTrue();
+    });
+
     it('solo permite quitar desde la UI plantillas no confirmadas', async () => {
         await component.finalizarGeneracionCaracteristicas({
             Fuerza: 14,

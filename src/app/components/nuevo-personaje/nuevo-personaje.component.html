@@ -279,9 +279,7 @@
 
                             <ng-container *ngTemplateOutlet="plantillasBloqueadas; context: { titulo: 'Bloqueadas por política de campaña', items: plantillasBloqueadasCampana, estado: 'Campaña' }"></ng-container>
                             <ng-container *ngTemplateOutlet="plantillasBloqueadas; context: { titulo: 'Bloqueadas por formato de prerrequisito no soportado', items: plantillasBloqueadasUnknown, estado: 'Bloqueada' }"></ng-container>
-                            <ng-container *ngIf="mostrarDiagnosticoPlantillas">
-                                <ng-container *ngTemplateOutlet="plantillasBloqueadas; context: { titulo: 'Diagnóstico temporal: bloqueadas por prerrequisitos no cumplidos', items: plantillasBloqueadasFailed, estado: 'No cumple' }"></ng-container>
-                            </ng-container>
+                            <ng-container *ngTemplateOutlet="plantillasBloqueadas; context: { titulo: 'No cumplen los requisitos', items: plantillasBloqueadasFailed, estado: 'No cumple', saltar: true }"></ng-container>
                         </ng-container>
                         <ng-template #bloqueoPlantillas>
                             <p class="creacion-vacio">Genera características para desbloquear este paso.</p>
@@ -822,7 +820,7 @@
         </ng-container>
     </ng-template>
 
-    <ng-template #plantillasBloqueadas let-titulo="titulo" let-items="items" let-estado="estado">
+    <ng-template #plantillasBloqueadas let-titulo="titulo" let-items="items" let-estado="estado" let-saltar="saltar">
         <ng-container *ngIf="items.length > 0">
             <h2 class="creacion-titulo">{{titulo}}</h2>
             <div class="plantillas-lista">
@@ -833,6 +831,14 @@
                         *ngIf="item.evaluacion.razones.length > 0 || item.evaluacion.advertencias.length > 0">
                         <p class="tw-m-0" *ngFor="let razon of item.evaluacion.razones">• {{razon}}</p>
                         <p class="tw-m-0 plantilla-card__advertencia" *ngFor="let advertencia of item.evaluacion.advertencias">• {{advertencia}}</p>
+                    </div>
+                    <!-- Si lo único que falla son sus prerrequisitos, se puede elegir igualmente y el personaje pasa a ser homebrew. -->
+                    <div class="plantilla-card__saltar" *ngIf="saltar && item.evaluacion.saltable">
+                        <span class="ficha-nota">{{puedeSaltarRequisitosPlantilla
+                            ? 'Puedes elegirla igualmente: el personaje pasará a ser homebrew.'
+                            : 'La campaña no admite homebrew: no se pueden saltar sus requisitos.'}}</span>
+                        <button type="button" mat-stroked-button color="warn" *ngIf="puedeSaltarRequisitosPlantilla"
+                            (click)="elegirPlantillaSaltandoRequisitos(item)">Elegir igualmente</button>
                     </div>
                 </div>
             </div>
