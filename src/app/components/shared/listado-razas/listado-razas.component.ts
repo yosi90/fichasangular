@@ -103,10 +103,13 @@ export class ListadoRazasComponent implements OnDestroy {
 
     private homebrewInterno = false;
 
+    /** Si el homebrew lo decide el propio listado (con su chip) y no quien lo usa (`homebrewSeleccionado`). */
+    private get homebrewPropio(): boolean {
+        return this.homebrewSeleccionado === undefined || this.homebrewSeleccionado === null;
+    }
+
     private isHomebrewActivo(): boolean {
-        if (this.homebrewSeleccionado === undefined || this.homebrewSeleccionado === null)
-            return this.homebrewInterno;
-        return this.homebrewSeleccionado;
+        return this.homebrewPropio ? this.homebrewInterno : this.homebrewSeleccionado === true;
     }
 
     private sincronizarColumnaHomebrew(): void {
@@ -131,19 +134,19 @@ export class ListadoRazasComponent implements OnDestroy {
     /** Si algún filtro no está como al abrir el listado (el homebrew que impone la creación no cuenta). */
     get hayFiltros(): boolean {
         return textoDelFiltro(this.nombreText) !== '' || this.defaultManual !== 'Cualquiera'
-            || ((this.homebrewSeleccionado === undefined || this.homebrewSeleccionado === null) && this.homebrewInterno);
+            || (this.homebrewPropio && this.homebrewInterno);
     }
 
     limpiarFiltros(): void {
         vaciarTextoDelFiltro(this.nombreText);
         this.defaultManual = 'Cualquiera';
-        if (this.homebrewSeleccionado === undefined || this.homebrewSeleccionado === null)
+        if (this.homebrewPropio)
             this.homebrewInterno = false;
         this.filtroRazas();
     }
 
     AlternarRazasHombrew() {
-        if (this.homebrewSeleccionado !== undefined && this.homebrewSeleccionado !== null) {
+        if (!this.homebrewPropio) {
             this.filtroRazas();
             return;
         }
