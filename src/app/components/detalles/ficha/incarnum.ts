@@ -76,7 +76,7 @@ export function datosMoldeadoClase(moldeado: ClaseMoldeado | null | undefined): 
             etiqueta: 'Lista según el alineamiento',
             valor: moldeado.Limitado_por_alineamiento,
             ayuda: moldeado.Limitado_por_alineamiento
-                ? 'Solo moldea las fusiones cuyos descriptores de alineamiento comparten algún componente con el suyo.'
+                ? 'No moldea las fusiones con un descriptor de alineamiento que no sea componente del suyo (un encarnado bueno no moldea las legales, caóticas ni malignas).'
                 : null,
         },
     ];
@@ -233,7 +233,7 @@ export function modeloIncarnumFicha(
                 ...incarnum.clases.flatMap((clase) => clase.capacidadChakras
                     .map((chakra) => `${chakra.capacidad} en la fusión vinculada a ${chakra.chakra.nombre}`)),
                 ...incarnum.capacidad.modificadores.map((m) =>
-                    `${textoConSigno(m.bono)} ${m.ambito === 'dotes' ? 'en dotes' : 'en una fusión'} (${m.origen})`),
+                    `${textoConSigno(m.bono)} ${m.ambito === 'dotes' ? 'en dotes' : 'en una fusión'}${m.tope !== null ? `, hasta ${m.tope}` : ''} (${m.origen})`),
             ].join(', '),
         },
         ...incarnum.clases.flatMap((clase): DatoFicha[] => [

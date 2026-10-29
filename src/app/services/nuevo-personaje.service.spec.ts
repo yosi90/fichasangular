@@ -7885,7 +7885,7 @@ describe('NuevoPersonajeService (Magic of Incarnum)', () => {
     it('una dote que elige un chakra ofrece los de la dote como extras', () => {
         const service = new NuevoPersonajeService();
         const dote = {
-            Id: 1116, Nombre: 'Abrir chakra menor', Tipos: [],
+            Id: 1116, Nombre: 'Chakra menor abierto', Tipos: [],
             Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0, Extra_chakra: 1, Extra_fusion: 0 },
             Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [], Chakras: [{ Id: 37, Nombre: 'Brazos' }, { Id: 38, Nombre: 'Frente' }], Fusiones: [] },
             Extras_de_todo_el_catalogo: { Armas: false, Armaduras: false, Escuelas: false, Habilidades: false, Chakras: false, Fusiones: false },

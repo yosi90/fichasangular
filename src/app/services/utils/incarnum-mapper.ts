@@ -219,6 +219,7 @@ export function normalizarPersonajeIncarnum(raw: any): PersonajeIncarnum | null 
                 origen: toText(m?.origen).trim(),
                 ambito: (toText(m?.ambito) === 'dotes' ? 'dotes' : 'fusiones') as 'fusiones' | 'dotes',
                 bono: toInt(m?.bono),
+                tope: toNumberOrNull(m?.tope),
             })),
         },
         puedeMoldear: toBoolean(raw?.puedeMoldear),

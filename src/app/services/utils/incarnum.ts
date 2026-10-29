@@ -45,6 +45,17 @@ export function nivelMoldeador(nivel: number, divisor: number | null | undefined
     return Math.floor(Math.max(0, toInt(nivel)) / Math.max(1, toInt(divisor, 1)));
 }
 
+/**
+ * La capacidad con el bono de una dote de capacidad: la base más el bono, sin pasar del tope si la dote lo tiene (el
+ * modificador de Constitución, Magic of Incarnum p. 38, «up to a maximum of your Constitution bonus»), y nunca por debajo
+ * de la base. Como `capacidad_con_tope` de la API.
+ */
+export function capacidadConTope(base: number, bono: number, tope: number | null | undefined): number {
+    if (tope === null || tope === undefined)
+        return base + bono;
+    return Math.max(base, Math.min(base + bono, tope));
+}
+
 /** El bono de capacidad de una clase a su nivel: el de la fila de nivel más alto que alcanza (es total, no se suma). */
 function bonoCapacidad(filas: ClaseMoldeado['Capacidad'], nivelClase: number): number {
     const alcanzadas = filas.filter((fila) => fila.Nivel <= nivelClase);
@@ -193,21 +204,22 @@ export function calcularIncarnumBorrador(e: EntradaIncarnumBorrador): PersonajeI
     });
     const modCon = modificadorCaracteristica(e.puntuaciones[normalizarTexto('Constitución')] ?? 10);
     const modificadoresCapacidad: PersonajeIncarnum['capacidad']['modificadores'] = [];
-    let bonoDotes = 0;
     dotes.forEach(({ dote }) => {
         const capacidad = dote.Incarnum?.Capacidad;
         if (!capacidad)
             return;
-        const bono = capacidad.Tope_constitucion ? Math.min(capacidad.Bono, Math.max(0, modCon)) : capacidad.Bono;
-        modificadoresCapacidad.push({ origen: dote.Nombre, ambito: capacidad.Ambito, bono });
-        if (capacidad.Ambito === 'dotes')
-            bonoDotes += bono;
+        modificadoresCapacidad.push({
+            origen: dote.Nombre, ambito: capacidad.Ambito, bono: capacidad.Bono,
+            tope: capacidad.Tope_constitucion ? Math.max(0, modCon) : null,
+        });
     });
+    const capacidadDotes = modificadoresCapacidad.filter((m) => m.ambito === 'dotes')
+        .reduce((capacidad, m) => capacidadConTope(capacidad, m.bono, m.tope), basica);
     const formacion = e.formacion ?? { fusiones: [], receptaculos: [] };
     const esenciaDe = new Map(formacion.receptaculos.map((r) => [`${r.tipo}:${r.id}`, r.esencia]));
     const receptaculos: PersonajeIncarnumReceptaculo[] = [
         ...dotes.filter(({ dote }) => !!dote.Incarnum?.Receptaculo)
-            .map(({ dote }) => ({ tipo: 'dote' as const, id: dote.Id, nombre: dote.Nombre, capacidad: basica + bonoDotes, esencia: 0 })),
+            .map(({ dote }) => ({ tipo: 'dote' as const, id: dote.Id, nombre: dote.Nombre, capacidad: capacidadDotes, esencia: 0 })),
         ...otros.filter(([, r]) => !!r.esencia?.Receptaculo)
             .map(([tipo, r]) => ({ tipo, id: r.id, nombre: r.nombre, capacidad: basica, esencia: 0 })),
     ];
@@ -251,19 +263,32 @@ function capacidadDeFusion(clase: PersonajeIncarnumClase | undefined, idChakraVi
 }
 
 /**
- * Reparte las dotes que suben la capacidad de una sola fusión entre las que pasan de la suya: la que más pasa se lleva la
- * dote que más da. `null` si no hay forma de cubrirlas todas.
+ * Reparte las dotes que suben la capacidad de una sola fusión entre las que pasan de la suya (una fusión por dote, cada una
+ * con su tope). Devuelve lo que suma a cada fusión, o `null` si no hay forma de cubrirlas todas. Prueba los repartos
+ * posibles, como `asignar_capacidad_extra` de la API: son pocas fusiones y pocas dotes.
  */
-function asignarCapacidadExtra(excesos: number[], bonos: number[]): number[] | null {
-    const asignado = excesos.map(() => 0);
-    const disponibles = bonos.filter((b) => b > 0).sort((a, b) => b - a);
-    const orden = excesos.map((exceso, i) => ({ exceso, i })).filter((x) => x.exceso > 0).sort((a, b) => b.exceso - a.exceso);
-    for (const { exceso, i } of orden) {
-        if (disponibles.length < 1 || disponibles[0] < exceso)
-            return null;
-        asignado[i] = disponibles.shift()!;
-    }
-    return asignado;
+function asignarCapacidadExtra(bases: number[], esencias: number[], modificadores: { bono: number; tope: number | null; }[]): number[] | null {
+    const necesitan = bases.map((base, i) => i).filter((i) => esencias[i] > bases[i]).sort((a, b) => (bases[a] - esencias[a]) - (bases[b] - esencias[b]));
+    const asignado = bases.map(() => 0);
+    const usadas = modificadores.map(() => false);
+    const cubrir = (k: number): boolean => {
+        if (k === necesitan.length)
+            return true;
+        const i = necesitan[k];
+        for (let j = 0; j < modificadores.length; j++) {
+            const extra = capacidadConTope(bases[i], modificadores[j].bono, modificadores[j].tope) - bases[i];
+            if (usadas[j] || bases[i] + extra < esencias[i])
+                continue;
+            usadas[j] = true;
+            asignado[i] = extra;
+            if (cubrir(k + 1))
+                return true;
+            usadas[j] = false;
+            asignado[i] = 0;
+        }
+        return false;
+    };
+    return cubrir(0) ? asignado : null;
 }
 
 /** La capacidad de cada fusión de la formación: la de su clase y lo que le suman las dotes de una sola fusión. */
@@ -273,9 +298,8 @@ export function capacidadesDeFormacion(
 ): { bases: number[]; extra: number[] | null; } {
     const clases = new Map(bloque.clases.map((c) => [c.id, c]));
     const bases = fusiones.map((f) => capacidadDeFusion(f.idClase ? clases.get(f.idClase) : undefined, f.idChakraVinculo, bloque.capacidad.basica));
-    const excesos = fusiones.map((f, i) => Math.max(0, f.esencia - bases[i]));
-    const bonos = bloque.capacidad.modificadores.filter((m) => m.ambito === 'fusiones').map((m) => m.bono);
-    return { bases, extra: asignarCapacidadExtra(excesos, bonos) };
+    const modificadores = bloque.capacidad.modificadores.filter((m) => m.ambito === 'fusiones');
+    return { bases, extra: asignarCapacidadExtra(bases, fusiones.map((f) => f.esencia), modificadores) };
 }
 
 /** La esencia que reparte una formación entre sus fusiones y sus receptáculos. */
@@ -404,6 +428,36 @@ export interface FalloFormacion {
     mensaje: string;
 }
 
+/** Las clases del personaje que tienen ese chakra abierto para vincular a su nivel. */
+function clasesConChakra(clases: PersonajeIncarnumClase[], idChakra: number): number[] {
+    return clases.filter((c) => c.chakrasAbiertos.some((ch) => ch.id === idChakra)).map((c) => c.id);
+}
+
+/**
+ * Reparte las fusiones de dotes vinculadas (nombre y clases que abren su chakra) entre los vínculos que les quedan a esas
+ * clases: el nombre de la primera que ya no cabe en ningún reparto, o `null` si caben todas (`_sin_vinculo_libre` de la API).
+ */
+function sinVinculoLibre(pendientes: { nombre: string; candidatas: number[]; }[], libres: Map<number, number>): string | null {
+    const cabe = (lista: typeof pendientes, quedan: Map<number, number>): boolean => {
+        if (lista.length < 1)
+            return true;
+        for (const idClase of lista[0].candidatas) {
+            if ((quedan.get(idClase) ?? 0) > 0) {
+                quedan.set(idClase, quedan.get(idClase)! - 1);
+                if (cabe(lista.slice(1), quedan))
+                    return true;
+                quedan.set(idClase, quedan.get(idClase)! + 1);
+            }
+        }
+        return false;
+    };
+    for (let k = pendientes.length; k >= 0; k--) {
+        if (cabe(pendientes.slice(0, k), new Map(libres)))
+            return k === pendientes.length ? null : pendientes[k].nombre;
+    }
+    return null;
+}
+
 /**
  * Comprueba la formación de partida como la API (`incarnum_formacion.validar_formacion`): devuelve el primer fallo, con el
  * mismo `code` y `field`, o `null` si cumple. `fusiones`: el catálogo; `nombresChakras`: los nombres por id.
@@ -430,6 +484,7 @@ export function validarFormacionIncarnum(
     const vinculados = new Set<number>();
     const porClase = new Map<number, number>();
     const vinculosPorClase = new Map<number, number>();
+    const pendientes: { nombre: string; candidatas: number[]; }[] = [];
     for (let i = 0; i < formacion.fusiones.length; i++) {
         const f = formacion.fusiones[i];
         const ruta = `incarnum.fusiones[${i}]`;
@@ -468,10 +523,15 @@ export function validarFormacionIncarnum(
         if (vinculados.has(vinculo))
             return fallo('vinculo_repetido', campo, `El chakra ${nombreChakra(vinculo, destino.Nombre)} ya tiene una fusión vinculada.`);
         vinculados.add(vinculo);
-        if (clase && clase.chakrasAbiertos.some((ch) => ch.id === vinculo))
-            vinculosPorClase.set(clase.id, (vinculosPorClase.get(clase.id) ?? 0) + 1);
-        else if ((aperturas.get(vinculo) ?? 0) > 0)
+        const candidatas = clase ? [] : clasesConChakra(b.clases, vinculo);
+        // Una dote Chakra … abierto da un vínculo propio en su chakra: se usa antes que los de la clase.
+        if ((aperturas.get(vinculo) ?? 0) > 0)
             aperturas.set(vinculo, (aperturas.get(vinculo) ?? 0) - 1);
+        else if (clase && clase.chakrasAbiertos.some((ch) => ch.id === vinculo))
+            vinculosPorClase.set(clase.id, (vinculosPorClase.get(clase.id) ?? 0) + 1);
+        else if (!clase && candidatas.length > 0)
+            // Moldear fusión: a cualquier chakra abierto de sus clases, con un vínculo de alguna (se reparten al final).
+            pendientes.push({ nombre, candidatas });
         else
             return fallo('chakra_cerrado', campo, `${nombre}: el chakra ${nombreChakra(vinculo, destino.Nombre)} aún no está abierto para vincular.`);
     }
@@ -485,6 +545,10 @@ export function validarFormacionIncarnum(
         if (cantidad > c.vinculos)
             return fallo('demasiados_vinculos', 'incarnum.fusiones', `Con ${c.nombre} puede vincular como mucho ${c.vinculos} fusiones a la vez.`);
     }
+    const libres = new Map(b.clases.map((c) => [c.id, c.vinculos - (vinculosPorClase.get(c.id) ?? 0)]));
+    const sinVinculo = sinVinculoLibre(pendientes, libres);
+    if (sinVinculo !== null)
+        return fallo('demasiados_vinculos', 'incarnum.fusiones', `${sinVinculo}: sus clases ya no tienen vínculos libres en ese chakra.`);
     const { bases, extra } = capacidadesDeFormacion(b, formacion.fusiones);
     if (extra === null) {
         let peor = 0;

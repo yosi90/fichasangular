@@ -210,7 +210,11 @@ export interface PersonajeIncarnumFormacion {
 export interface PersonajeIncarnum {
     nivelPersonaje: number;
     reserva: { total: number; desglose: PersonajeIncarnumParte[]; };
-    capacidad: { basica: number; modificadores: { origen: string; ambito: 'fusiones' | 'dotes'; bono: number; }[]; };
+    /**
+     * `bono`: el de la dote (+1); `tope`: el modificador de Constitución si la dote lo tiene, la capacidad que no pasa con
+     * ella (nunca baja la que ya tenía), o `null`.
+     */
+    capacidad: { basica: number; modificadores: { origen: string; ambito: 'fusiones' | 'dotes'; bono: number; tope: number | null; }[]; };
     puedeMoldear: boolean;
     clases: PersonajeIncarnumClase[];
     chakrasDeDotes: { chakra: PersonajeIncarnumRef; dote: { id: number; nombre: string; }; }[];

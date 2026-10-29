@@ -24,7 +24,7 @@ describe('FormacionIncarnumComponent', () => {
         { Id: 35, Nombre: 'Pies', Ocupa: true, Vinculo: true },
     ] }));
     const maligna = normalizarFusion(fusionApi({
-        Id: 290, Nombre: 'Guanteletes de la guerra de sangre',
+        Id: 290, Nombre: 'Guanteletes de la Guerra de la Sangre',
         Descriptores: [{ Id: 9, Nombre: 'Maligno', Actitud: { Id: 5, Nombre: 'Maligno' } }],
         Chakras: [{ Id: 36, Nombre: 'Manos', Ocupa: true, Vinculo: true }],
     }));
@@ -63,7 +63,7 @@ describe('FormacionIncarnumComponent', () => {
 
     it('enseña la lista de su clase, sin las que su alineamiento no deja, y sus chakras con los receptáculos', () => {
         expect(limpio(elemento().querySelector('.formacion-lista .ficha-titulo'))).toBe('Lista de Encarnado (2)');
-        expect(limpio(elemento().querySelector('.formacion-lista'))).not.toContain('Guanteletes de la guerra de sangre');
+        expect(limpio(elemento().querySelector('.formacion-lista'))).not.toContain('Guanteletes de la Guerra de la Sangre');
         expect(Array.from(elemento().querySelectorAll('.formacion-chakras tbody tr')).map((tr) => limpio((tr as HTMLTableRowElement).cells[0])))
             .toEqual(['Corona', 'Pies', 'Dote']);
         expect(component.franja.map((d) => [d.etiqueta, d.valor, d.detalle])).toEqual([

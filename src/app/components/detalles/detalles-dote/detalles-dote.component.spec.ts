@@ -292,7 +292,7 @@ describe('DetallesDoteComponent', () => {
     });
     it('una dote de incarnum enseña lo que da, a qué dotes sustituye y el chakra que se elige (Magic of Incarnum)', () => {
         component.dote = ataquePoderoso({
-            Nombre: 'Abrir chakra menor',
+            Nombre: 'Chakra menor abierto',
             Incarnum: {
                 Esencia_reserva: 0, Esencia_reserva_moldeador: null, Receptaculo: false, Capacidad: null, Abre_chakra: true,
                 Divisor_nivel_moldeador: null, Descriptores_sin_alineamiento: [],

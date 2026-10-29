@@ -5,6 +5,7 @@ import { fusionApi, moldeadoEncarnadoApi } from 'src/testing/incarnum';
 import {
     calcularIncarnumBorrador,
     capacidadBasica,
+    capacidadConTope,
     capacidadesDeFormacion,
     cumplePrerrequisitoIncarnum,
     EntradaIncarnumBorrador,
@@ -33,7 +34,7 @@ function dote(id: number, nombre: string, incarnum: Record<string, unknown> | nu
 const DUREZA_AZUR = dote(1087, 'Dureza azur', { Esencia_reserva: 1, Receptaculo: true });
 const ESENCIA_ADICIONAL = dote(1090, 'Esencia adicional', { Esencia_reserva: 1, Esencia_reserva_moldeador: 2 });
 const CAPACIDAD_FUSION = dote(1102, 'Capacidad de fusión ampliada', { Capacidad: { Bono: 1, Ambito: 'fusiones', Tope_constitucion: true } });
-const ABRIR_CHAKRA = dote(1116, 'Abrir chakra menor', { Abre_chakra: true }, {
+const ABRIR_CHAKRA = dote(1116, 'Chakra menor abierto', { Abre_chakra: true }, {
     Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0, Extra_chakra: 1 },
     Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [], Chakras: [{ Id: 37, Nombre: 'Brazos' }] },
 } as Partial<Dote>);
@@ -91,12 +92,22 @@ describe('incarnum (reglas de la creación)', () => {
     it('Esencia adicional suma más si ya moldea; las dotes de capacidad llevan el tope de la Constitución', () => {
         const bloque = calcularIncarnumBorrador(entrada({ dotes: [{ dote: ESENCIA_ADICIONAL, idExtra: 0 }, { dote: CAPACIDAD_FUSION, idExtra: 0 }] }))!;
         expect(bloque.reserva.desglose.find((p) => p.origen === 'Esencia adicional')?.valor).toBe(2);
-        expect(bloque.capacidad.modificadores).toEqual([{ origen: 'Capacidad de fusión ampliada', ambito: 'fusiones', bono: 1 }]);
+        expect(bloque.capacidad.modificadores).toEqual([{ origen: 'Capacidad de fusión ampliada', ambito: 'fusiones', bono: 1, tope: 2 }]);
         const sinMoldear = calcularIncarnumBorrador(entrada({ clases: [], dotes: [{ dote: ESENCIA_ADICIONAL, idExtra: 0 }] }))!;
         expect(sinMoldear.reserva.desglose.find((p) => p.origen === 'Esencia adicional')?.valor).toBe(1);
     });
 
-    it('Abrir chakra y Moldear fusión: el chakra y la fusión elegidos, con el nivel de moldeador de la dote', () => {
+    it('las dotes de capacidad suben 1 sin pasar del modificador de Constitución (Magic of Incarnum, p. 38)', () => {
+        expect([capacidadConTope(1, 1, 2), capacidadConTope(2, 1, 2), capacidadConTope(3, 1, null), capacidadConTope(4, 1, 2)]).toEqual([2, 2, 4, 4]);
+        const mejorada = dote(1103, 'Capacidad de esencia mejorada', { Capacidad: { Bono: 1, Ambito: 'dotes', Tope_constitucion: true } });
+        const conDotes = (constitucion: number) => calcularIncarnumBorrador(entrada({
+            nivelPersonaje: 6, puntuaciones: { constitucion, sabiduria: 15 }, dotes: [{ dote: DUREZA_AZUR, idExtra: 0 }, { dote: mejorada, idExtra: 0 }],
+        }))!.receptaculos[0].capacidad;
+        expect(conDotes(16)).toBe(3);
+        expect(conDotes(14)).toBe(2);
+    });
+
+    it('Chakra … abierto y Moldear fusión: el chakra y la fusión elegidos, con el nivel de moldeador de la dote', () => {
         const bloque = calcularIncarnumBorrador(entrada({
             clases: [],
             nivelPersonaje: 7,
@@ -126,7 +137,7 @@ describe('incarnum (reglas de la creación)', () => {
     describe('las fusiones que puede moldear y la formación de partida', () => {
         const yelmo = normalizarFusion(fusionApi());
         const maligna = normalizarFusion(fusionApi({
-            Id: 290, Nombre: 'Guanteletes de la guerra de sangre',
+            Id: 290, Nombre: 'Guanteletes de la Guerra de la Sangre',
             Descriptores: [{ Id: 9, Nombre: 'Maligno', Actitud: { Id: 5, Nombre: 'Maligno' } }],
             Chakras: [{ Id: 36, Nombre: 'Manos', Ocupa: true, Vinculo: true }],
         }));
@@ -194,10 +205,32 @@ describe('incarnum (reglas de la creación)', () => {
         });
 
         it('la dote de capacidad de una sola fusión sube la de una fusión, no la de todas', () => {
-            const conDote = calcularIncarnumBorrador(entrada({ fusiones, dotes: [{ dote: CAPACIDAD_FUSION, idExtra: 0 }] }))!;
+            const conDote = calcularIncarnumBorrador(entrada({ fusiones, puntuaciones: { constitucion: 16, sabiduria: 15 }, dotes: [{ dote: CAPACIDAD_FUSION, idExtra: 0 }] }))!;
             const dos = [{ idClase: 405, esencia: 3 }, { idClase: 405, esencia: 3 }];
             expect(capacidadesDeFormacion(conDote, [{ idClase: 405, esencia: 3 }]).extra).toEqual([1]);
             expect(capacidadesDeFormacion(conDote, dos).extra).toBeNull();
+            // Con Constitución 14 (+2), la dote no sube de 2 la capacidad del encarnado 5, que ya es 2.
+            const con14 = calcularIncarnumBorrador(entrada({ fusiones, dotes: [{ dote: CAPACIDAD_FUSION, idExtra: 0 }] }))!;
+            expect(capacidadesDeFormacion(con14, [{ idClase: 405, esencia: 3 }]).extra).toBeNull();
+        });
+
+        it('el vínculo de Chakra … abierto se usa antes que el de la clase, y la fusión de Moldear fusión usa los de la clase', () => {
+            // Encarnado 5: un vínculo (corona, pies y manos). Con Chakra mínimo abierto en los pies caben pies y corona.
+            const piesAbiertos = calcularIncarnumBorrador(entrada({ fusiones, dotes: [{ dote: dote(1115, 'Chakra mínimo abierto', { Abre_chakra: true }, {
+                Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0, Extra_chakra: 1 },
+                Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [], Chakras: [{ Id: 35, Nombre: 'Pies' }] },
+            } as Partial<Dote>), idExtra: 35 }] }))!;
+            expect(validarFormacionIncarnum(formacion([
+                { idFusion: 283, idClase: 405, idChakra: 35, idChakraVinculo: 35, esencia: 0 },
+                { idFusion: 284, idClase: 405, idChakra: 34, idChakraVinculo: 34, esencia: 0 },
+            ]), piesAbiertos, fusiones, neutralBueno)).toBeNull();
+            // Moldear fusión (Yelmo de cristal): se vincula a la corona con el vínculo del encarnado, si lo tiene libre.
+            const conMoldear = calcularIncarnumBorrador(entrada({ fusiones, dotes: [{ dote: MOLDEAR_FUSION, idExtra: 284 }] }))!;
+            expect(validarFormacionIncarnum(formacion([{ idFusion: 284, idChakra: 34, idChakraVinculo: 34, esencia: 0 }]), conMoldear, fusiones, neutralBueno)).toBeNull();
+            expect(validarFormacionIncarnum(formacion([
+                { idFusion: 283, idClase: 405, idChakra: 35, idChakraVinculo: 35, esencia: 0 },
+                { idFusion: 284, idChakra: 34, idChakraVinculo: 34, esencia: 0 },
+            ]), conMoldear, fusiones, neutralBueno)?.code).toBe('demasiados_vinculos');
         });
     });
 });
