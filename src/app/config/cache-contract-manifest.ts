@@ -49,7 +49,9 @@ export type CacheEntityKey =
     | "pabellones"
     | "deidades"
     | "plantillas"
-    | "ventajas_desventajas";
+    | "ventajas_desventajas"
+    | "fusiones"
+    | "chakras";
 
 export interface CacheContractEntry {
     key: CacheEntityKey;
@@ -58,25 +60,25 @@ export interface CacheContractEntry {
 }
 
 export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
-    { key: "monstruos", label: "Monstruos", schemaVersion: 1 },
-    { key: "familiares", label: "Familiares", schemaVersion: 1 },
-    { key: "companeros", label: "Compañeros animales", schemaVersion: 1 },
-    { key: "razas", label: "Razas", schemaVersion: 12 },
+    { key: "monstruos", label: "Monstruos", schemaVersion: 7 },
+    { key: "familiares", label: "Familiares", schemaVersion: 7 },
+    { key: "companeros", label: "Compañeros animales", schemaVersion: 7 },
+    { key: "razas", label: "Razas", schemaVersion: 13 },
     { key: "manuales", label: "Manuales", schemaVersion: 1 },
     { key: "manuales_asociados", label: "Manuales asociados", schemaVersion: 2 },
     { key: "tipos_criatura", label: "Tipos de criatura", schemaVersion: 3 },
     { key: "subtipos", label: "Subtipos", schemaVersion: 1 },
     { key: "rasgos", label: "Rasgos", schemaVersion: 1 },
-    { key: "conjuros", label: "Conjuros", schemaVersion: 4 },
+    { key: "conjuros", label: "Conjuros", schemaVersion: 5 },
     { key: "extras", label: "Extras", schemaVersion: 1 },
-    { key: "dotes", label: "Dotes", schemaVersion: 9 },
-    { key: "clases", label: "Clases", schemaVersion: 10 },
-    { key: "especiales", label: "Especiales", schemaVersion: 4 },
+    { key: "dotes", label: "Dotes", schemaVersion: 10 },
+    { key: "clases", label: "Clases", schemaVersion: 11 },
+    { key: "especiales", label: "Especiales", schemaVersion: 5 },
     { key: "escuelas_conjuros", label: "Escuelas de conjuros", schemaVersion: 1 },
     { key: "disciplinas_conjuros", label: "Disciplinas de conjuros", schemaVersion: 1 },
     { key: "subdisciplinas_conjuros", label: "Subdisciplinas de conjuros", schemaVersion: 1 },
     { key: "alineamientos", label: "Alineamientos", schemaVersion: 1 },
-    { key: "alineamientos_basicos", label: "Alineamientos básicos", schemaVersion: 1 },
+    { key: "alineamientos_basicos", label: "Alineamientos básicos", schemaVersion: 3 },
     { key: "alineamientos_combinaciones", label: "Combinaciones de alineamiento", schemaVersion: 1 },
     { key: "alineamientos_prioridades", label: "Prioridades de alineamiento", schemaVersion: 1 },
     { key: "alineamientos_preferencia_ley", label: "Preferencia legal de alineamiento", schemaVersion: 1 },
@@ -107,6 +109,9 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "ambitos", label: "Ambitos", schemaVersion: 1 },
     { key: "pabellones", label: "Pabellones", schemaVersion: 1 },
     { key: "deidades", label: "Deidades", schemaVersion: 3 },
-    { key: "plantillas", label: "Plantillas", schemaVersion: 9 },
+    { key: "plantillas", label: "Plantillas", schemaVersion: 10 },
     { key: "ventajas_desventajas", label: "Ventajas y desventajas", schemaVersion: 1 },
+    // Magic of Incarnum (docs/publica/INCARNUM.md, «Cachés de la RTDB»): las dos cachés nuevas.
+    { key: "fusiones", label: "Fusiones del incarnum", schemaVersion: 1 },
+    { key: "chakras", label: "Chakras del incarnum", schemaVersion: 1 },
 ];

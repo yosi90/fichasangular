@@ -119,7 +119,6 @@ export class DetallesConjuroComponent {
 
     private construirEtiquetas(): EtiquetaFicha[] {
         return [
-            this.conjuro?.Alma ? { texto: 'Alma' } : null,
             this.conjuro?.Permanente ? { texto: 'Puede hacerse permanente' } : null,
         ].filter((etiqueta): etiqueta is EtiquetaFicha => etiqueta !== null);
     }

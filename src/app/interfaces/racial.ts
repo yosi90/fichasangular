@@ -1,5 +1,6 @@
 import { PrerrequisitoItem } from "./prerrequisito";
 import { Conjuro } from "./conjuro";
+import { EsenciaRasgo } from "./incarnum";
 
 export interface RacialReferencia {
     id?: number | null;
@@ -52,6 +53,8 @@ export interface RacialDetalle {
     Salvaciones: Record<string, any>[];
     Sortilegas: RacialSortilega[];
     Ataques: RacialAtaque[];
+    /** Magic of Incarnum: la esencia que da a la reserva y si es receptáculo (`null` si nada). */
+    Esencia?: EsenciaRasgo | null;
     Prerrequisitos_flags: RacialPrerrequisitosFlags;
     Prerrequisitos: RacialPrerrequisitos;
 }

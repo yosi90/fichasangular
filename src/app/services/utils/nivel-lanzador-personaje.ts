@@ -13,7 +13,7 @@ import { nivelLanzadorDeClase } from 'src/app/services/utils/reglas-magia';
 
 function tieneLanzamientoPropio(clase: Clase | null | undefined): boolean {
     const conjuros = clase?.Conjuros;
-    return !!conjuros?.Arcanos || !!conjuros?.Divinos || !!conjuros?.Psionicos || !!conjuros?.Alma;
+    return !!conjuros?.Arcanos || !!conjuros?.Divinos || !!conjuros?.Psionicos;
 }
 
 function resolverTipoLanzamientoClase(clase: Clase): PersonajeTipoLanzamiento {
@@ -24,8 +24,6 @@ function resolverTipoLanzamientoClase(clase: Clase): PersonajeTipoLanzamiento {
         tipos.push('divino');
     if (clase?.Conjuros?.Psionicos)
         tipos.push('psionico');
-    if (clase?.Conjuros?.Alma)
-        tipos.push('alma');
     if (tipos.length > 1)
         return 'mixto';
     return tipos[0] ?? 'mixto';
@@ -41,7 +39,7 @@ function tieneAccesoRealConjurosDiarios(detalle: ClaseNivelDetalle | null | unde
 function tieneEscalonLanzador(clase: Clase, detalle: ClaseNivelDetalle): boolean {
     if (clase?.Conjuros?.Psionicos && toNumber(detalle?.Nivel_max_poder_accesible_nivel_lanzadorPsionico) >= 0)
         return true;
-    if ((clase?.Conjuros?.Arcanos || clase?.Conjuros?.Divinos || clase?.Conjuros?.Alma) && tieneAccesoRealConjurosDiarios(detalle))
+    if ((clase?.Conjuros?.Arcanos || clase?.Conjuros?.Divinos) && tieneAccesoRealConjurosDiarios(detalle))
         return true;
     return false;
 }

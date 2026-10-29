@@ -1,4 +1,5 @@
 import { Comodin } from "./comodin";
+import { EsenciaRasgo } from "./incarnum";
 
 export interface EspecialRefSimple {
     Id: number;
@@ -120,4 +121,6 @@ export interface EspecialClaseDetalle {
     Subtipo: EspecialRefSimple;
     Extras: EspecialExtraRef[];
     Habilidades: EspecialHabilidadRef[];
+    /** Magic of Incarnum: la esencia que da a la reserva y si es receptáculo (`null` si nada). */
+    Esencia?: EsenciaRasgo | null;
 }

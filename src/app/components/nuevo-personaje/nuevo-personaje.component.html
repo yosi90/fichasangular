@@ -432,7 +432,6 @@
                                     <mat-option value="arcano">Arcano</mat-option>
                                     <mat-option value="divino">Divino</mat-option>
                                     <mat-option value="psionico">Psiónico</mat-option>
-                                    <mat-option value="alma">Alma</mat-option>
                                 </mat-select>
                             </mat-form-field>
                             <mat-form-field appearance="fill" class="form-field-no-subscript">
@@ -665,10 +664,8 @@
                             <p class="creacion-aviso" *ngFor="let aviso of entrada.avisos ?? []">{{aviso}}</p>
                             <p class="ficha-nota" *ngIf="entrada.autoadicion">Este avance no requiere selección manual. Los
                                 conjuros elegibles se añadirán automáticamente al continuar.</p>
-                            <p class="ficha-nota" *ngIf="entrada.almaPendiente">La selección para conjuros de alma aún no
-                                está implementada y no bloquea el flujo.</p>
 
-                            <ng-container *ngIf="entrada.seleccionManual && !entrada.almaPendiente && !entrada.sinElegibles">
+                            <ng-container *ngIf="entrada.seleccionManual && !entrada.sinElegibles">
                                 <div class="paso-filtros">
                                     <mat-form-field appearance="fill" class="form-field-no-subscript">
                                         <mat-label>Buscar conjuro</mat-label>
@@ -735,7 +732,7 @@
                     </div>
                 </app-creacion-cuerpo>
                 <app-creacion-pie [nota]="mensajeProgresoConjuros"
-                    [aviso]="!!entradaConjurosActual && (entradaConjurosActual.sinElegibles || entradaConjurosActual.almaPendiente)">
+                    [aviso]="!!entradaConjurosActual && entradaConjurosActual.sinElegibles">
                     <button type="button" mat-raised-button color="primary" [disabled]="!puedeContinuarConjuros"
                         (click)="continuarDesdeConjuros()">
                         {{textoContinuarPaso}}

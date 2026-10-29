@@ -3,6 +3,7 @@ import { Alineamiento } from "./alineamiento";
 import { Comodin } from "./comodin";
 import { Dote } from "./dote";
 import { ManualReferencia } from "./manual";
+import { ClaseHabilidadPorAlineamiento, ClaseMoldeado } from "./incarnum";
 
 export interface ClaseTipoDado {
     Id: number;
@@ -36,7 +37,6 @@ export interface ClaseAumentoLanzador {
     Arcanos?: boolean;
     Divinos?: boolean;
     Psionicos?: boolean;
-    Alma?: boolean;
 }
 
 export interface ClaseConjurosConfig {
@@ -44,7 +44,6 @@ export interface ClaseConjurosConfig {
     Divinos: boolean;
     Arcanos: boolean;
     Psionicos: boolean;
-    Alma: boolean;
     Conocidos_total: boolean;
     Conocidos_nivel_a_nivel: boolean;
     Dominio: boolean;
@@ -80,6 +79,8 @@ export interface ClaseCompetencias {
 export interface ClaseHabilidades {
     Base: Record<string, any>[];
     Custom: Record<string, any>[];
+    /** Las que son de clase solo con ese alineamiento básico (el nacido del alma; Magic of Incarnum). */
+    Por_alineamiento?: ClaseHabilidadPorAlineamiento[];
 }
 
 export interface ClaseHabilidadMutationRef {
@@ -178,6 +179,13 @@ export interface ClasePrerrequisitosFlags {
     subtipo?: boolean;
     tamano_maximo?: boolean;
     tamano_minimo?: boolean;
+    esencia_minima?: boolean;
+    sin_esencia?: boolean;
+    nivel_moldeador?: boolean;
+    fusiones_minimas?: boolean;
+    vinculo_chakra?: boolean;
+    vinculos_minimos?: boolean;
+    sin_lanzador_arcano?: boolean;
 }
 
 export interface ClasePrerrequisitos {
@@ -213,6 +221,14 @@ export interface ClasePrerrequisitos {
     tamano_minimo: PrerrequisitoItem[];
     raza: PrerrequisitoItem[];
     no_raza: PrerrequisitoItem[];
+    /** Magic of Incarnum (el mapper de la clase siempre los pone; los borradores de la web pueden no traerlos). */
+    esencia_minima?: PrerrequisitoItem[];
+    sin_esencia?: PrerrequisitoItem[];
+    nivel_moldeador?: PrerrequisitoItem[];
+    fusiones_minimas?: PrerrequisitoItem[];
+    vinculo_chakra?: PrerrequisitoItem[];
+    vinculos_minimos?: PrerrequisitoItem[];
+    sin_lanzador_arcano?: PrerrequisitoItem[];
 }
 
 export interface Clase {
@@ -250,6 +266,8 @@ export interface Clase {
     /** Los que la clase añade a la lista de idiomas adicionales de la raza (MJ cap. 2: clérigo, druida y mago). */
     Idiomas_adicionales?: Omit<ClaseIdioma, 'Descripcion'>[];
     Desglose_niveles: ClaseNivelDetalle[];
+    /** Magic of Incarnum: lo que dice que la clase moldea fusiones; `null` si no (la API siempre lo da). */
+    Moldeado?: ClaseMoldeado | null;
     Prerrequisitos_flags: ClasePrerrequisitosFlags;
     Prerrequisitos: ClasePrerrequisitos;
 }

@@ -16,7 +16,6 @@ function crearClaseBase(partial?: Partial<Clase>): Clase {
             Divinos: false,
             Arcanos: false,
             Psionicos: false,
-            Alma: false,
             Conocidos_total: false,
             Conocidos_nivel_a_nivel: false,
             Dominio: false,

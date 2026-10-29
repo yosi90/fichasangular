@@ -206,7 +206,7 @@ interface GrupoRacialOpcionalModal {
     opciones: OpcionRacialOpcionalModal[];
 }
 
-type FiltroTipoLanzadorClase = 'todas' | 'no lanzador' | 'arcano' | 'divino' | 'psionico' | 'alma';
+type FiltroTipoLanzadorClase = 'todas' | 'no lanzador' | 'arcano' | 'divino' | 'psionico';
 type FiltroRolClase = 'todas' | 'dps' | 'tanque' | 'support' | 'utilidad';
 type FiltroPrestigioClase = 'todas' | 'basica' | 'prestigio';
 
@@ -986,8 +986,6 @@ export class NuevoPersonajeComponent {
         if (!entrada)
             return '';
 
-        if (entrada.almaPendiente)
-            return 'La selección de conjuros de alma se añadirá en una fase posterior.';
         if (entrada.autoadicion)
             return `Se añadirán automáticamente ${entrada.autoadicionadosIds.length} conjuros.`;
         if (entrada.sinElegibles)
@@ -6615,16 +6613,13 @@ export class NuevoPersonajeComponent {
         if (this.filtroClasesTipoLanzador === 'no lanzador') {
             return !clase?.Conjuros?.Arcanos
                 && !clase?.Conjuros?.Divinos
-                && !clase?.Conjuros?.Psionicos
-                && !clase?.Conjuros?.Alma;
+                && !clase?.Conjuros?.Psionicos;
         }
         if (this.filtroClasesTipoLanzador === 'arcano')
             return !!clase?.Conjuros?.Arcanos;
         if (this.filtroClasesTipoLanzador === 'divino')
             return !!clase?.Conjuros?.Divinos;
-        if (this.filtroClasesTipoLanzador === 'psionico')
-            return !!clase?.Conjuros?.Psionicos;
-        return !!clase?.Conjuros?.Alma;
+        return !!clase?.Conjuros?.Psionicos;
     }
 
     private cumpleFiltroRolClase(clase: Clase): boolean {

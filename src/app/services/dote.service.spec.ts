@@ -126,11 +126,27 @@ describe('DoteService', () => {
         expect(normalizeContexto({ Entidad: 'raza', Extra: null, Id_extra: null }).Extra).toBe('');
     });
 
+    it('lee lo de Magic of Incarnum: `Incarnum`, `Cuenta_como` y los extras de chakra y de fusión, de la API y de la caché', () => {
+        const raw = createDoteApiRaw({
+            Incarnum: { Esencia_reserva: 1, Esencia_reserva_moldeador: null, Receptaculo: true, Capacidad: null, Abre_chakra: false, Divisor_nivel_moldeador: null, Descriptores_sin_alineamiento: [] },
+            Cuenta_como: [{ Id: 43, Nombre: 'Dureza' }],
+            Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0, Extra_chakra: 1, Extra_fusion: 0 },
+            Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [], Chakras: [{ Id: 37, Nombre: 'Brazos', Nombre_original: 'Arms', Traducido: true }], Fusiones: [] },
+        });
+        for (const dote of [normalizeDoteApi(raw), normalizeDoteLegacy(raw)]) {
+            expect(dote.Incarnum).toEqual(jasmine.objectContaining({ Esencia_reserva: 1, Receptaculo: true }));
+            expect(dote.Cuenta_como).toEqual([{ Id: 43, Nombre: 'Dureza' }]);
+            expect(dote.Extras_soportados.Extra_chakra).toBe(1);
+            expect(dote.Extras_disponibles.Chakras).toEqual([{ Id: 37, Nombre: 'Brazos', Nombre_original: 'Arms', Traducido: true }]);
+        }
+        expect(normalizeDoteLegacy({ Id: 9, Nombre: 'Alerta' }).Incarnum).toBeNull();
+    });
+
     it('lee Extras_de_todo_el_catalogo de la API y de la caché (en la RTDB, lo que falta es false)', () => {
-        const todo = { Armas: true, Armaduras: false, Escuelas: true, Habilidades: false };
+        const todo = { Armas: true, Armaduras: false, Escuelas: true, Habilidades: false, Chakras: false, Fusiones: true };
         expect(normalizeDoteApi(createDoteApiRaw({ Extras_de_todo_el_catalogo: todo })).Extras_de_todo_el_catalogo).toEqual(todo);
         expect(normalizeDoteLegacy({ Id: 9, Extras_de_todo_el_catalogo: { Armas: true } }).Extras_de_todo_el_catalogo)
-            .toEqual({ Armas: true, Armaduras: false, Escuelas: false, Habilidades: false });
+            .toEqual({ Armas: true, Armaduras: false, Escuelas: false, Habilidades: false, Chakras: false, Fusiones: false });
     });
 
     it('lee las habilidades otorgadas de la API', () => {

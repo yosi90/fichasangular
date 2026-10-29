@@ -37,6 +37,7 @@ import {
 } from './utils/monstruo-mapper';
 import { normalizarProgresionLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { normalizeRaciales } from './utils/racial-mapper';
+import { normalizarPersonajeIncarnum } from './utils/incarnum-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
@@ -1131,6 +1132,7 @@ export class PersonajeService {
             Ventajas: nombresConId(element?.ventajas),
             Idiomas: normalizeIdiomasPersonaje(element?.idi),
             Sortilegas: toArray(element?.sor),
+            Incarnum: normalizarPersonajeIncarnum(element?.incarnum),
             Salvaciones: {
                 fortaleza: salvacionComoModificadores(totales.salvaciones.fortaleza),
                 reflejos: salvacionComoModificadores(totales.salvaciones.reflejos),

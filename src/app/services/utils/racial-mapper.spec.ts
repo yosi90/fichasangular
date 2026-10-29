@@ -129,7 +129,6 @@ describe('racial-mapper', () => {
                     Nombre: 'Luz',
                     Escuela: { Id: 2, Nombre: 'Evocación', Nombre_esp: 'Evocador', Prohibible: 1 },
                     Niveles_clase: [{ Id_clase: 3, Clase: 'Mago', Nivel: 0, Espontaneo: 0 }],
-                    alma: 1,
                 },
                 Nivel_lanzador: 1,
                 Usos_diarios: '1/día',
@@ -139,6 +138,5 @@ describe('racial-mapper', () => {
         const conjuro = racial.Sortilegas[0].Conjuro;
         expect(conjuro.Escuela).toEqual({ Id: 2, Nombre: 'Evocación', Nombre_especial: 'Evocador', Prohibible: true });
         expect(conjuro.Nivel_clase).toEqual([{ Id_clase: 3, Clase: 'Mago', Nivel: 0, Espontaneo: false }]);
-        expect(conjuro.Alma).toBeTrue();
     });
 });

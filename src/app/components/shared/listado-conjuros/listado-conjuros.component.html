@@ -35,7 +35,7 @@
                         <mat-icon>read_more</mat-icon>
                         {{element[column]}}
                     </button>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Arcano' || column == 'Divino'|| column == 'Psionico'|| column == 'Alma'">
+                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Arcano' || column == 'Divino'|| column == 'Psionico'">
                         <p class="tw-inline good sombra3d-sm tw-rounded-md tw-mb-0" *ngIf="element[column]">
                             <mat-checkbox [checked]="true" [disableRipple]="true" (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                         </p>

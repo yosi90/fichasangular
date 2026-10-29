@@ -85,7 +85,7 @@ import { vectorAlineamientoDeidad } from './utils/alineamiento-deidad';
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
 export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel' | 'companero_dg';
-export type TipoLanzamientoConjuros = 'arcano' | 'divino' | 'psionico' | 'alma' | 'mixto';
+export type TipoLanzamientoConjuros = 'arcano' | 'divino' | 'psionico' | 'mixto';
 export type FamiliarPlantillaId = FamiliarPlantillaIdUtil;
 export type EstadoCuposFamiliar = EstadoCuposFamiliarUtil;
 export type CompaneroPlantillaSelector = CompaneroPlantillaSelectorUtil;
@@ -586,7 +586,6 @@ export interface ConjurosSesionStateEntrada {
     nivelMaxPoderAccesiblePsionico: number;
     seleccionManual: boolean;
     autoadicion: boolean;
-    almaPendiente: boolean;
     sinElegibles: boolean;
     cupoPendiente: ConjurosCupoPendiente;
     cupoInicial: ConjurosCupoPendiente;
@@ -2227,7 +2226,7 @@ export class NuevoPersonajeService {
         return this.estadoFlujo.conjuros.entradas.every((entrada) => {
             if (!entrada.seleccionManual)
                 return true;
-            if (entrada.almaPendiente || entrada.sinElegibles)
+            if (entrada.sinElegibles)
                 return true;
             if (toNumber(entrada.cupoPendiente?.total) > 0)
                 return false;
@@ -6373,8 +6372,7 @@ export class NuevoPersonajeService {
 
     private usaConjurosDiariosParaNivelLanzador(clase: Clase | null | undefined): boolean {
         return !!clase?.Conjuros?.Arcanos
-            || !!clase?.Conjuros?.Divinos
-            || !!clase?.Conjuros?.Alma;
+            || !!clase?.Conjuros?.Divinos;
     }
 
     private tieneLanzamientoPropio(clase: Clase | null | undefined): boolean {
@@ -7088,8 +7086,7 @@ export class NuevoPersonajeService {
         const candidatas = previas.filter((clase) =>
             (!!aumento?.Arcanos && !!clase?.Conjuros?.Arcanos)
             || (!!aumento?.Divinos && !!clase?.Conjuros?.Divinos)
-            || (!!aumento?.Psionicos && !!clase?.Conjuros?.Psionicos)
-            || (!!aumento?.Alma && !!clase?.Conjuros?.Alma));
+            || (!!aumento?.Psionicos && !!clase?.Conjuros?.Psionicos));
 
         const usadas = new Set<number>();
         return candidatas
@@ -7289,12 +7286,7 @@ export class NuevoPersonajeService {
         const totalPorNivel = Object.values(cupoPorNivel).reduce((acc, value) => acc + Math.max(0, toNumber(value)), 0);
         const requiereSeleccionManual = cupoTotal > 0 || totalPorNivel > 0;
         const tipoLanzamiento = this.resolverTipoLanzamientoClase(claseObjetivo);
-        const almaPendiente = tipoLanzamiento === 'alma';
-        if (almaPendiente) {
-            avisos.push(`La selección manual para conjuros de alma de ${claseObjetivo.Nombre} queda pendiente para una fase posterior.`);
-        }
-
-        const autoadicion = !usaConocidosTotal && !usaConocidosPorNivel && !almaPendiente;
+        const autoadicion = !usaConocidosTotal && !usaConocidosPorNivel;
         const sinElegibles = elegibles.conjuros.length < 1;
         const idsAutoadicionados = cupoLibro
             ? cupoLibro.autoadicionadosIds
@@ -7323,9 +7315,8 @@ export class NuevoPersonajeService {
             nivelLanzadorPrevio: Math.max(0, toNumber(nivelLanzadorPrevio)),
             nivelLanzadorActual: Math.max(0, toNumber(nivelLanzadorActual)),
             nivelMaxPoderAccesiblePsionico: Math.max(-1, toNumber(elegibles.acceso.nivelMaxPoderAccesiblePsionico)),
-            seleccionManual: requiereSeleccionManual && !almaPendiente,
+            seleccionManual: requiereSeleccionManual,
             autoadicion: autoadicionActiva,
-            almaPendiente,
             sinElegibles,
             cupoPendiente: {
                 total: cupoTotal,
@@ -7473,8 +7464,7 @@ export class NuevoPersonajeService {
         const requiereArcano = !!claseObjetivo?.Conjuros?.Arcanos;
         const requiereDivino = !!claseObjetivo?.Conjuros?.Divinos;
         const requierePsionico = !!claseObjetivo?.Conjuros?.Psionicos;
-        const requiereAlma = !!claseObjetivo?.Conjuros?.Alma;
-        const usaConjurosDiarios = requiereArcano || requiereDivino || requiereAlma;
+        const usaConjurosDiarios = requiereArcano || requiereDivino;
         const errores: string[] = [];
 
         const diariosActual = conjurosDiariosPorNivel(detalleActual?.Conjuros_diarios);
@@ -7502,10 +7492,7 @@ export class NuevoPersonajeService {
 
         if (usaConjurosDiarios) {
             if (!diariosInformados) {
-                const tipoContrato = requiereAlma && !requiereArcano && !requiereDivino
-                    ? 'lanzador de alma'
-                    : 'lanzador arcano/divino';
-                errores.push(`Contrato de conjuros inválido en ${claseObjetivo?.Nombre ?? 'clase desconocida'}: ${tipoContrato} sin Conjuros_diarios.`);
+                errores.push(`Contrato de conjuros inválido en ${claseObjetivo?.Nombre ?? 'clase desconocida'}: lanzador arcano/divino sin Conjuros_diarios.`);
             }
             if (nivelMaxPoderPsionico >= 0) {
                 errores.push(
@@ -7697,11 +7684,9 @@ export class NuevoPersonajeService {
         const requiereArcano = !!claseObjetivo?.Conjuros?.Arcanos;
         const requiereDivino = !!claseObjetivo?.Conjuros?.Divinos;
         const requierePsionico = !!claseObjetivo?.Conjuros?.Psionicos;
-        const requiereAlma = !!claseObjetivo?.Conjuros?.Alma;
         return (requiereArcano && !!conjuro?.Arcano)
             || (requiereDivino && !!conjuro?.Divino)
-            || (requierePsionico && !!conjuro?.Psionico)
-            || (requiereAlma && !!conjuro?.Alma);
+            || (requierePsionico && !!conjuro?.Psionico);
     }
 
     /**
@@ -7788,8 +7773,6 @@ export class NuevoPersonajeService {
             tipos.push('divino');
         if (clase?.Conjuros?.Psionicos)
             tipos.push('psionico');
-        if (clase?.Conjuros?.Alma)
-            tipos.push('alma');
         if (tipos.length < 1)
             return 'arcano';
         if (tipos.length === 1)
@@ -7855,7 +7838,7 @@ export class NuevoPersonajeService {
         if (!this.estadoFlujo.conjuros.activa)
             return null;
         const preferida = this.estadoFlujo.conjuros.entradas.findIndex((entrada) => {
-            if (!entrada.seleccionManual || entrada.almaPendiente || entrada.sinElegibles)
+            if (!entrada.seleccionManual || entrada.sinElegibles)
                 return false;
             if (toNumber(entrada.cupoPendiente?.total) > 0)
                 return true;
@@ -7990,7 +7973,6 @@ export class NuevoPersonajeService {
             Arcano: !!clase?.Conjuros?.Arcanos,
             Divino: !!clase?.Conjuros?.Divinos,
             Psionico: !!clase?.Conjuros?.Psionicos,
-            Alma: !!clase?.Conjuros?.Alma,
             Duracion: '',
             Tipo_salvacion: '',
             Resistencia_conjuros: false,

@@ -23,7 +23,6 @@ function createRawConjuro() {
         Arcano: 1,
         Divino: 0,
         Psionico: 0,
-        Alma: 0,
         Duracion: "1 min",
         Tipo_salvacion: "Ninguna",
         Resistencia_conjuros: 0,

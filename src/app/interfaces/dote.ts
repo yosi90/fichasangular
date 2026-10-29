@@ -1,6 +1,7 @@
 import { PrerrequisitoItem } from './prerrequisito';
 import { Comodin } from './comodin';
 import { ManualReferencia } from './manual';
+import { DoteIncarnum } from './incarnum';
 
 export interface DoteTipo {
     Id: number;
@@ -12,6 +13,9 @@ export interface DoteExtraItem {
     Id: number;
     Nombre: string;
     Es_escudo?: boolean;
+    /** Los chakras y las fusiones (Magic of Incarnum) traen el nombre del libro. */
+    Nombre_original?: string | null;
+    Traducido?: boolean;
 }
 
 export interface DoteExtrasSoportados {
@@ -21,6 +25,10 @@ export interface DoteExtrasSoportados {
     Extra_armadura: number;
     Extra_escuela: number;
     Extra_habilidad: number;
+    /** Se elige un chakra (Magic of Incarnum). */
+    Extra_chakra?: number;
+    /** Se elige una fusión (Magic of Incarnum). */
+    Extra_fusion?: number;
 }
 
 export interface DoteExtrasDisponibles {
@@ -28,6 +36,8 @@ export interface DoteExtrasDisponibles {
     Armaduras: DoteExtraItem[];
     Escuelas: DoteExtraItem[];
     Habilidades: DoteExtraItem[];
+    Chakras?: DoteExtraItem[];
+    Fusiones?: DoteExtraItem[];
 }
 
 /**
@@ -39,6 +49,8 @@ export interface DoteExtrasDeTodoElCatalogo {
     Armaduras: boolean;
     Escuelas: boolean;
     Habilidades: boolean;
+    Chakras?: boolean;
+    Fusiones?: boolean;
 }
 
 /** Una habilidad en la que da rangos la dote («Avistar +2»). `Custom`: de `habilidades_custom`. */
@@ -91,5 +103,9 @@ export interface Dote {
     Habilidades_otorgadas?: DoteHabilidadOtorgada[];
     /** La API siempre la da (desde la auditoría de las reglas del 2026-10-26); los borradores de la web, no. */
     Competencias_otorgadas?: DoteCompetenciasOtorgadas;
+    /** Magic of Incarnum: la esencia, el receptáculo, la capacidad, el chakra que abre… (`null` si no tiene). */
+    Incarnum?: DoteIncarnum | null;
+    /** Las dotes a las que sustituye en los prerrequisitos (Dureza azur cuenta como Dureza). */
+    Cuenta_como?: { Id: number; Nombre: string; }[];
     Prerrequisitos: DotePrerrequisitos;
 }
