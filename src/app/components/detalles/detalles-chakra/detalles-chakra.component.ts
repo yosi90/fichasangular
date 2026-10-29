@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, EtiquetaFicha, esTextoCorto, unirTipo } from 'src/app/components/detalles/ficha';
+import { DatoFicha, EtiquetaFicha, esTextoCorto, etiquetaTraducido, nombreOriginalVisible, unirTipo } from 'src/app/components/detalles/ficha';
 import { ChakraClase, ChakraDetalle, ChakraFusion } from 'src/app/interfaces/incarnum';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -28,16 +28,14 @@ export class DetallesChakraComponent {
         if (!valor)
             return;
         this.tipoCabecera = unirTipo(['Chakra', valor.Categoria?.Nombre]);
-        this.etiquetas = valor.Traducido && valor.Nombre_original
-            ? [{ texto: 'Traducido', ayuda: `Nombre original: ${valor.Nombre_original}` }]
-            : [];
+        this.etiquetas = [etiquetaTraducido(valor)].filter((etiqueta): etiqueta is EtiquetaFicha => etiqueta !== null);
         this.descripcionEnCabecera = esTextoCorto(valor.Descripcion);
         this.datos = [
             { etiqueta: 'Categoría', valor: valor.Categoria?.Nombre },
             { etiqueta: 'Ranura que cierra al vincular', valor: valor.Ranura?.Nombre ?? null },
             { etiqueta: 'Fusiones que se moldean aquí', valor: valor.Fusiones.filter((f) => f.Ocupa).length },
             { etiqueta: 'Fusiones que se vinculan aquí', valor: valor.Fusiones.filter((f) => f.Vinculo).length },
-            { etiqueta: 'Nombre original', valor: valor.Traducido ? valor.Nombre_original : null },
+            { etiqueta: 'Nombre original', valor: nombreOriginalVisible(valor) },
         ];
         this.clases = [...valor.Clases].sort((a, b) => a.Nivel - b.Nivel || porNombre(a, b));
         this.fusiones = [...valor.Fusiones].sort(porNombre);

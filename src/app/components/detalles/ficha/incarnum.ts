@@ -1,7 +1,8 @@
 import { ClaseMoldeado, DoteIncarnum, EsenciaRasgo, Fusion, FusionChakra, NombreTraducible, PersonajeIncarnum } from 'src/app/interfaces/incarnum';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { chakrasAbiertos, fusionesALaVez, vinculosALaVez } from 'src/app/services/utils/incarnum';
-import { DatoFicha, DatoFranja } from './ficha';
+import { DatoFicha, DatoFranja, unirLista } from './ficha';
 
 /*
  * Lo que enseñan igual el detalle de una clase, el paso de clases de la creación, el catálogo de fusiones y la ficha del
@@ -42,14 +43,14 @@ export function textoBonoCapacidad(bonificador: number, chakra: NombreTraducible
     return chakra ? `${textoConSigno(bonificador)} en ${chakra.Nombre}` : textoConSigno(bonificador);
 }
 
-/** «Su nivel de clase» o «La mitad de su nivel de clase»: cómo sale el nivel de moldeador de la clase. */
-export function textoNivelMoldeador(divisor: number | null | undefined): string {
+/** «Su nivel de clase», «La mitad de su nivel de clase» o «Su nivel de clase entre 3»: un nivel entre su divisor. */
+function textoNivelEntre(nivel: 'su nivel de clase' | 'tu nivel de personaje', divisor: number | null | undefined): string {
     const d = Math.max(1, Math.trunc(Number(divisor) || 1));
     if (d === 1)
-        return 'Su nivel de clase';
+        return mayusculaInicial(nivel);
     if (d === 2)
-        return 'La mitad de su nivel de clase';
-    return `Su nivel de clase entre ${d}`;
+        return `La mitad de ${nivel}`;
+    return `${mayusculaInicial(nivel)} entre ${d}`;
 }
 
 /** «10 + mod. de Sabiduría + esencia invertida»: la CD de las fusiones de la clase; `null` si no tiene característica. */
@@ -64,7 +65,7 @@ export function datosMoldeadoClase(moldeado: ClaseMoldeado | null | undefined): 
         return [];
     const fusiones = moldeado.Caracteristica_fusiones?.Nombre;
     return [
-        { etiqueta: 'Nivel de moldeador', valor: textoNivelMoldeador(moldeado.Divisor_nivel_moldeador) },
+        { etiqueta: 'Nivel de moldeador', valor: textoNivelEntre('su nivel de clase', moldeado.Divisor_nivel_moldeador) },
         { etiqueta: 'CD de sus fusiones', valor: textoCdFusiones(moldeado) },
         {
             etiqueta: 'Fusiones a la vez',
@@ -89,13 +90,6 @@ export function chakrasDondeSeMoldea(fusion: Pick<Fusion, 'Chakras'> | null | un
 /** Los chakras de una fusión en los que tiene efecto al vincularla (el tótem solo se vincula). */
 export function chakrasConVinculo(fusion: Pick<Fusion, 'Chakras'> | null | undefined): FusionChakra[] {
     return (fusion?.Chakras ?? []).filter((chakra) => chakra.Vinculo);
-}
-
-/** «Corona o Pies»: nombres unidos con «o» (dónde se puede moldear una fusión). */
-export function unirConO(nombres: string[]): string {
-    if (nombres.length < 2)
-        return nombres.join('');
-    return `${nombres.slice(0, -1).join(', ')} o ${nombres[nombres.length - 1]}`;
 }
 
 /** «Fortaleza niega»: la salvación de una fusión, o `null` si no tiene. */
@@ -131,7 +125,7 @@ export function datosIncarnumDote(incarnum: DoteIncarnum | null | undefined): Da
         { etiqueta: 'Chakra elegido', valor: incarnum.Abre_chakra ? 'Queda abierto para un vínculo' : null },
         {
             etiqueta: 'Nivel de moldeador de su fusión',
-            valor: incarnum.Divisor_nivel_moldeador ? textoNivelPersonajeEntre(incarnum.Divisor_nivel_moldeador) : null,
+            valor: incarnum.Divisor_nivel_moldeador ? textoNivelEntre('tu nivel de personaje', incarnum.Divisor_nivel_moldeador) : null,
         },
         {
             etiqueta: 'Moldea sin mirar el alineamiento',
@@ -139,16 +133,6 @@ export function datosIncarnumDote(incarnum: DoteIncarnum | null | undefined): Da
             ayuda: 'Las fusiones con estos descriptores, aunque su clase limite la lista por alineamiento.',
         },
     ];
-}
-
-/** «La mitad de tu nivel de personaje»: el nivel de moldeador de la fusión que da una dote. */
-export function textoNivelPersonajeEntre(divisor: number): string {
-    const d = Math.max(1, Math.trunc(Number(divisor) || 1));
-    if (d === 1)
-        return 'Tu nivel de personaje';
-    if (d === 2)
-        return 'La mitad de tu nivel de personaje';
-    return `Tu nivel de personaje entre ${d}`;
 }
 
 /** La `Esencia` de un racial o un especial de clase, en datos (nada si no da ni recibe esencia). */
@@ -379,7 +363,7 @@ export function franjaIncarnum(bloque: PersonajeIncarnum | null | undefined): Da
         {
             etiqueta: 'Vínculos',
             valor: vinculosALaVez(bloque),
-            detalle: unirConO(abiertos.map((nombre) => nombre.toLowerCase())),
+            detalle: unirLista(abiertos.map((nombre) => nombre.toLowerCase()), 'o'),
         },
         {
             etiqueta: 'Capacidad de esencia',
@@ -421,8 +405,7 @@ export function incarnumTuPersonaje(
             return '';
         const nivel = Math.min(...futuros.map((ch) => ch.Nivel));
         const nombres = futuros.filter((ch) => ch.Nivel === nivel).map((ch) => ch.Nombre.toLowerCase());
-        const texto = nombres.length > 1 ? `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}` : nombres[0];
-        return `${texto.charAt(0).toUpperCase()}${texto.slice(1)} a nivel ${nivel}${clases.filter((x) => x.moldeado).length > 1 ? ` de ${c.nombre}` : ''}`;
+        return `${mayusculaInicial(unirLista(nombres, 'y'))} a nivel ${nivel}${clases.filter((x) => x.moldeado).length > 1 ? ` de ${c.nombre}` : ''}`;
     }).filter(Boolean).join(' · ');
     return { pares, chakras, proximos };
 }

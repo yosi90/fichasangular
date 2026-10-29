@@ -7,8 +7,10 @@ import {
     chakrasConVinculo,
     chakrasDondeSeMoldea,
     esTextoCorto,
+    etiquetaTraducido,
+    nombreOriginalVisible,
     textoSalvacionFusion,
-    unirConO,
+    unirLista,
     unirTipo,
 } from 'src/app/components/detalles/ficha';
 import { ChakraDetalle, Fusion } from 'src/app/interfaces/incarnum';
@@ -116,9 +118,7 @@ export class DetallesFusionComponent implements OnInit, OnDestroy {
             return;
         this.tipoCabecera = unirTipo(['Fusión del alma', ...fusion.Clases.map((clase) => clase.Nombre)]);
         this.etiquetas = [
-            fusion.Traducido && fusion.Nombre_original
-                ? { texto: 'Traducido', ayuda: `Nombre original: ${fusion.Nombre_original}` }
-                : null,
+            etiquetaTraducido(fusion),
             ...fusion.Descriptores.map((descriptor) => ({ texto: descriptor.Nombre })),
         ].filter((etiqueta): etiqueta is EtiquetaFicha => etiqueta !== null);
         this.descripcionEnCabecera = esTextoCorto(fusion.Descripcion);
@@ -126,7 +126,7 @@ export class DetallesFusionComponent implements OnInit, OnDestroy {
             .map((chakra) => this.chakrasCatalogo.find((c) => c.Id === chakra.Id)?.Ranura?.Nombre)
             .filter((ranura): ranura is string => tieneTextoVisible(ranura));
         this.datos = [
-            { etiqueta: 'Se moldea en', valor: unirConO(chakrasDondeSeMoldea(fusion).map((chakra) => chakra.Nombre)) },
+            { etiqueta: 'Se moldea en', valor: unirLista(chakrasDondeSeMoldea(fusion).map((chakra) => chakra.Nombre), 'o') },
             { etiqueta: 'Vínculos', valor: chakrasConVinculo(fusion).map((chakra) => chakra.Nombre).join(', ') },
             { etiqueta: 'Salvación', valor: textoSalvacionFusion(fusion) },
             { etiqueta: 'Descriptores', valor: fusion.Descriptores.map((descriptor) => descriptor.Nombre).join(', ') },
@@ -141,7 +141,7 @@ export class DetallesFusionComponent implements OnInit, OnDestroy {
                 ayuda: 'Toma el alineamiento de quien la moldea: el alineamiento no la limita.',
             },
             { etiqueta: 'Ranura que cierra al vincular', valor: Array.from(new Set(ranuras)).join(', ') },
-            { etiqueta: 'Nombre original', valor: fusion.Traducido ? fusion.Nombre_original : null },
+            { etiqueta: 'Nombre original', valor: nombreOriginalVisible(fusion) },
         ];
         this.vinculos = chakrasConVinculo(fusion)
             .filter((chakra) => tieneTextoVisible(chakra.Efecto_vinculo))

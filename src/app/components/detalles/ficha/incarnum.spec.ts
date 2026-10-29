@@ -8,9 +8,8 @@ import {
     modeloIncarnumFicha,
     textoEsenciaRasgo,
     textoSalvacionFusion,
-    unirConO,
 } from './incarnum';
-import { datosVisibles } from './ficha';
+import { datosVisibles, unirLista } from './ficha';
 
 describe('ficha/incarnum', () => {
     const moldeado = normalizarClaseMoldeado(moldeadoEncarnadoApi())!;
@@ -50,9 +49,10 @@ describe('ficha/incarnum', () => {
         expect(textoEsenciaRasgo(null)).toBe('');
     });
 
-    it('une con «o» y escribe la salvación', () => {
-        expect(unirConO(['Corona'])).toBe('Corona');
-        expect(unirConO(['Brazos', 'Manos', 'Pies'])).toBe('Brazos, Manos o Pies');
+    it('une con «o» o con «y» y escribe la salvación', () => {
+        expect(unirLista(['Corona'], 'o')).toBe('Corona');
+        expect(unirLista(['Brazos', 'Manos', 'Pies'], 'o')).toBe('Brazos, Manos o Pies');
+        expect(unirLista(['brazos', 'pies'], 'y')).toBe('brazos y pies');
         expect(textoSalvacionFusion({ Salvacion: { Tipo: 'Reflejos', Efecto: 'Mitad' } })).toBe('Reflejos mitad');
         expect(textoSalvacionFusion({ Salvacion: null })).toBeNull();
     });

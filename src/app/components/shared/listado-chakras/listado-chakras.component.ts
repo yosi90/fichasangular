@@ -1,6 +1,7 @@
 import { ChangeDetectorRef, Component, ElementRef, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatTableDataSource } from '@angular/material/table';
 import { Subject, takeUntil } from 'rxjs';
+import { nombreOriginalVisible } from 'src/app/components/detalles/ficha';
 import { Chakra } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
@@ -20,7 +21,7 @@ export function filaChakra(chakra: Chakra): FilaChakra {
     return {
         chakra,
         Nombre: chakra.Nombre,
-        Original: chakra.Traducido && chakra.Nombre_original && chakra.Nombre_original !== chakra.Nombre ? chakra.Nombre_original : '',
+        Original: nombreOriginalVisible(chakra),
         Categoria: chakra.Categoria?.Nombre ?? '',
         Ranura: chakra.Ranura?.Nombre ?? '',
     };

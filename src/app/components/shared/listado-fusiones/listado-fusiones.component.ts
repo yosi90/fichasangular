@@ -3,7 +3,7 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Subject, combineLatest, takeUntil } from 'rxjs';
-import { chakrasConVinculo, chakrasDondeSeMoldea, unirConO } from 'src/app/components/detalles/ficha';
+import { chakrasConVinculo, chakrasDondeSeMoldea, nombreOriginalVisible, unirLista } from 'src/app/components/detalles/ficha';
 import { Chakra, Fusion } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
@@ -32,9 +32,9 @@ export function filaFusion(fusion: Fusion, ordenChakras: Map<number, number> = n
     return {
         fusion,
         Nombre: fusion.Nombre,
-        Original: fusion.Traducido && fusion.Nombre_original && fusion.Nombre_original !== fusion.Nombre ? fusion.Nombre_original : '',
+        Original: nombreOriginalVisible(fusion),
         Clases: fusion.Clases.map((clase) => clase.Nombre).join(', '),
-        Se_moldea: unirConO([...chakrasDondeSeMoldea(fusion)].sort(orden).map((chakra) => chakra.Nombre)),
+        Se_moldea: unirLista([...chakrasDondeSeMoldea(fusion)].sort(orden).map((chakra) => chakra.Nombre), 'o'),
         Vinculos: [...chakrasConVinculo(fusion)].sort(orden).map((chakra) => chakra.Nombre).join(', '),
         Descriptores: fusion.Descriptores.map((descriptor) => descriptor.Nombre).join(', '),
         Manual: etiquetaManual(fusion.Manual),

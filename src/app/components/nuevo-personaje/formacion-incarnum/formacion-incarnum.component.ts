@@ -1,6 +1,5 @@
 import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
-import { DatoFranja } from 'src/app/components/detalles/ficha';
-import { unirConO } from 'src/app/components/detalles/ficha/incarnum';
+import { DatoFranja, chakrasDondeSeMoldea, unirLista } from 'src/app/components/detalles/ficha';
 import {
     Chakra,
     FormacionIncarnumDto,
@@ -232,7 +231,7 @@ export class FormacionIncarnumComponent implements OnChanges {
         }
         return {
             fusion,
-            chakras: unirConO(fusion.Chakras.filter((c) => c.Ocupa).map((c) => c.Nombre)),
+            chakras: unirLista(chakrasDondeSeMoldea(fusion).map((c) => c.Nombre), 'o'),
             moldeada,
             opciones: motivo ? [] : opciones,
             motivo,
@@ -295,7 +294,7 @@ export class FormacionIncarnumComponent implements OnChanges {
             {
                 etiqueta: 'Vínculos',
                 valor: this.formacion.fusiones.filter((f) => !!f.idChakraVinculo).length,
-                detalle: [`de ${vinculos}`, unirConO(abiertos)].filter(Boolean).join(' · '),
+                detalle: [`de ${vinculos}`, unirLista(abiertos, 'o')].filter(Boolean).join(' · '),
             },
             { etiqueta: 'Esencia repartida', valor: esenciaInvertida(this.formacion), detalle: `de ${bloque.reserva.total}` },
             {
