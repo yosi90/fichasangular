@@ -15,7 +15,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { RazaService } from 'src/app/services/raza.service';
 import { Clase } from 'src/app/interfaces/clase';
 import { ClaseService } from 'src/app/services/clase.service';
-import { Subject, filter, take, takeUntil } from 'rxjs';
+import { Observable, Subject, filter, take, takeUntil } from 'rxjs';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
@@ -2153,89 +2153,86 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     abrirDetallesFusion(fusion: Fusion): void {
-        if (!fusion || Number(fusion?.Id) <= 0)
-            return;
-        const abierta = this.detallesFusionAbiertos.find((item) => Number(item.Id) === Number(fusion.Id));
-        if (abierta) {
-            this.selectTabByKey(this.getFusionTabKey(abierta));
-            return;
-        }
-        const targetKey = this.getFusionTabKey(fusion);
-        this.detallesFusionAbiertos.push(fusion);
-        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
-        this.focusOpenedTab(targetKey);
+        this.abrirDetalleEnLista(this.detallesFusionAbiertos, fusion, (item) => this.getFusionTabKey(item));
     }
 
     abrirDetallesFusionPorId(idFusion: number): void {
-        const id = Number(idFusion);
-        if (!Number.isFinite(id) || id <= 0)
-            return;
-        const abierta = this.detallesFusionAbiertos.find((item) => Number(item.Id) === id);
-        if (abierta) {
-            this.selectTabByKey(this.getFusionTabKey(abierta));
-            return;
-        }
-        this.incarnumSvc?.getFusion(id).pipe(take(1)).subscribe({
-            next: (fusion) => this.abrirDetallesFusion(fusion),
-            error: () => undefined,
-        });
+        this.abrirDetallePorIdEnLista(idFusion, this.detallesFusionAbiertos, (item) => this.getFusionTabKey(item),
+            (id) => this.incarnumSvc?.getFusion(id), (fusion) => this.abrirDetallesFusion(fusion));
     }
 
     quitarDetallesFusion(value: string | Fusion): boolean {
-        const tab = typeof value === 'string'
-            ? this.detallesFusionAbiertos.find((item) => this.getEtiquetaFusion(item) === value)
-            : this.detallesFusionAbiertos.find((item) => Number(item.Id) === Number(value.Id));
-        if (!tab)
-            return false;
-        return this.closeTabWithNavigation(this.getFusionTabKey(tab), () => {
-            const indexTab = this.detallesFusionAbiertos.indexOf(tab);
-            if (indexTab < 0)
-                return false;
-            this.detallesFusionAbiertos.splice(indexTab, 1);
-            return true;
-        });
+        return this.quitarDetalleDeLista(this.detallesFusionAbiertos, value,
+            (item) => this.getEtiquetaFusion(item), (item) => this.getFusionTabKey(item));
     }
 
     abrirDetallesChakra(chakra: ChakraDetalle): void {
-        if (!chakra || Number(chakra?.Id) <= 0)
+        this.abrirDetalleEnLista(this.detallesChakraAbiertos, chakra, (item) => this.getChakraTabKey(item));
+    }
+
+    abrirDetallesChakraPorId(idChakra: number): void {
+        this.abrirDetallePorIdEnLista(idChakra, this.detallesChakraAbiertos, (item) => this.getChakraTabKey(item),
+            (id) => this.incarnumSvc?.getChakra(id), (chakra) => this.abrirDetallesChakra(chakra));
+    }
+
+    quitarDetallesChakra(value: string | ChakraDetalle): boolean {
+        return this.quitarDetalleDeLista(this.detallesChakraAbiertos, value,
+            (item) => this.getEtiquetaChakra(item), (item) => this.getChakraTabKey(item));
+    }
+
+    /** Abre el detalle en su pestaña de una lista de detalles abiertos (por `Id`), o enfoca la que ya estaba. */
+    private abrirDetalleEnLista<T extends { Id: number }>(lista: T[], item: T, clave: (item: T) => string): void {
+        if (!item || Number(item?.Id) <= 0)
             return;
-        const abierto = this.detallesChakraAbiertos.find((item) => Number(item.Id) === Number(chakra.Id));
-        if (abierto) {
-            this.selectTabByKey(this.getChakraTabKey(abierto));
+        if (this.enfocarDetalleAbierto(lista, Number(item.Id), clave))
             return;
-        }
-        const targetKey = this.getChakraTabKey(chakra);
-        this.detallesChakraAbiertos.push(chakra);
+        const targetKey = clave(item);
+        lista.push(item);
         this.registerOpenContext(targetKey, this.getSafeOpenerKey());
         this.focusOpenedTab(targetKey);
     }
 
-    abrirDetallesChakraPorId(idChakra: number): void {
-        const id = Number(idChakra);
+    /** Abre el detalle por su id: enfoca el que ya estaba o pide el que da `pedir` y lo abre con `abrir`. */
+    private abrirDetallePorIdEnLista<T extends { Id: number }>(
+        idItem: number,
+        lista: T[],
+        clave: (item: T) => string,
+        pedir: (id: number) => Observable<T> | undefined,
+        abrir: (item: T) => void,
+    ): void {
+        const id = Number(idItem);
         if (!Number.isFinite(id) || id <= 0)
             return;
-        const abierto = this.detallesChakraAbiertos.find((item) => Number(item.Id) === id);
-        if (abierto) {
-            this.selectTabByKey(this.getChakraTabKey(abierto));
+        if (this.enfocarDetalleAbierto(lista, id, clave))
             return;
-        }
-        this.incarnumSvc?.getChakra(id).pipe(take(1)).subscribe({
-            next: (chakra) => this.abrirDetallesChakra(chakra),
-            error: () => undefined,
-        });
+        pedir(id)?.pipe(take(1)).subscribe({ next: abrir, error: () => undefined });
     }
 
-    quitarDetallesChakra(value: string | ChakraDetalle): boolean {
+    /** Si el detalle con ese `Id` ya está abierto, enfoca su pestaña y devuelve `true`. */
+    private enfocarDetalleAbierto<T extends { Id: number }>(lista: T[], id: number, clave: (item: T) => string): boolean {
+        const abierto = lista.find((item) => Number(item.Id) === id);
+        if (abierto)
+            this.selectTabByKey(clave(abierto));
+        return !!abierto;
+    }
+
+    /** Cierra la pestaña del detalle (por su etiqueta o por el elemento) y lo quita de su lista. */
+    private quitarDetalleDeLista<T extends { Id: number }>(
+        lista: T[],
+        value: string | T,
+        etiqueta: (item: T) => string,
+        clave: (item: T) => string,
+    ): boolean {
         const tab = typeof value === 'string'
-            ? this.detallesChakraAbiertos.find((item) => this.getEtiquetaChakra(item) === value)
-            : this.detallesChakraAbiertos.find((item) => Number(item.Id) === Number(value.Id));
+            ? lista.find((item) => etiqueta(item) === value)
+            : lista.find((item) => Number(item.Id) === Number(value.Id));
         if (!tab)
             return false;
-        return this.closeTabWithNavigation(this.getChakraTabKey(tab), () => {
-            const indexTab = this.detallesChakraAbiertos.indexOf(tab);
+        return this.closeTabWithNavigation(clave(tab), () => {
+            const indexTab = lista.indexOf(tab);
             if (indexTab < 0)
                 return false;
-            this.detallesChakraAbiertos.splice(indexTab, 1);
+            lista.splice(indexTab, 1);
             return true;
         });
     }
