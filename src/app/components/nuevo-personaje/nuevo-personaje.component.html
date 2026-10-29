@@ -10,37 +10,34 @@
         <app-ficha-franja [datos]="franjaPasoCreacion" titulo="En este paso"></app-ficha-franja>
 
         <ng-container [ngSwitch]="pasoCreacion">
-            <!-- Raza: el catálogo a la izquierda y, a la derecha, la raza que se mira -->
+            <!-- Raza: el catálogo a todo lo ancho; al pulsar una fila, su vista previa a la derecha -->
             <ng-container *ngSwitchCase="'raza'">
-                <app-creacion-cuerpo tituloTarea="Razas" tituloLateral="La raza que miras">
+                <app-creacion-cuerpo tituloTarea="Razas" tituloLateral="La raza que miras" [lateral]="!!razaMirada">
                     <div creacionTarea class="paso-raza">
                         <app-listado-razas [homebrewSeleccionado]="homebrewForzado ? true : undefined"
-                            [homebrewBloqueado]="homebrewForzado" (razaDetalles)="mirarRaza($event)"
-                            (razaSeleccionada)="seleccionarRaza($event)">
+                            [homebrewBloqueado]="homebrewForzado" [vistaPrevia]="true" [razaAbiertaId]="razaMirada?.Id ?? null"
+                            (razaDetalles)="mirarRaza($event)">
                         </app-listado-razas>
                     </div>
                     <div creacionLateral class="paso-lateral">
-                        <app-detalles-raza *ngIf="razaMirada as raza; else sinRazaMirada" [raza]="raza"
-                            (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"
-                            (subtipoDetalles)="subtipoDetalles.emit($event)"
-                            (doteDetalles)="doteDetallesId.emit($event)"
-                            (plantillaDetalles)="plantillaDetallesId.emit($event)">
-                        </app-detalles-raza>
-                        <ng-template #sinRazaMirada>
-                            <section class="ficha-tarjeta paso-aviso">
-                                <h2 class="ficha-titulo">La raza que miras</h2>
-                                <p class="ficha-nota">Pulsa el nombre de una raza para verla aquí antes de elegirla.</p>
-                            </section>
-                        </ng-template>
+                        <app-creacion-vista-previa *ngIf="razaMirada as raza" titulo="La raza que miras" [clave]="raza.Id"
+                            (cerrar)="razaMirada = null">
+                            <app-detalles-raza [raza]="raza"
+                                (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"
+                                (subtipoDetalles)="subtipoDetalles.emit($event)"
+                                (doteDetalles)="doteDetallesId.emit($event)"
+                                (plantillaDetalles)="plantillaDetallesId.emit($event)">
+                            </app-detalles-raza>
+                        </app-creacion-vista-previa>
                     </div>
                 </app-creacion-cuerpo>
-                <app-creacion-pie nota="Pulsa una fila para elegir esa raza, o su nombre para mirarla aquí al lado. Un paso hecho no se puede deshacer.">
+                <app-creacion-pie [nota]="razaMirada ? 'Elígela con «Elegir y continuar». Un paso hecho no se puede deshacer.' : 'Pulsa una raza para verla a la derecha antes de elegirla.'">
                     <button type="button" mat-stroked-button *ngIf="razaMirada" (click)="verDetallesRaza(razaMirada)">
                         Abrir su ficha completa
                     </button>
                     <button type="button" mat-raised-button color="primary" [disabled]="!razaMirada"
                         (click)="razaMirada && seleccionarRaza(razaMirada)">
-                        {{razaMirada ? 'Elegir ' + razaMirada.Nombre + ' y continuar' : 'Elige una raza'}}
+                        {{razaMirada ? 'Elegir ' + razaMirada.Nombre + ' y continuar' : 'Elegir y continuar'}}
                         <mat-icon iconPositionEnd>arrow_forward</mat-icon>
                     </button>
                 </app-creacion-pie>
@@ -245,7 +242,7 @@
 
             <!-- Plantillas: las que puede tomar a la izquierda; la selección y su personaje a la derecha -->
             <ng-container *ngSwitchCase="'plantillas'">
-                <app-creacion-cuerpo tituloTarea="Plantillas" tituloLateral="Tu selección y tu personaje">
+                <app-creacion-cuerpo tituloTarea="Plantillas" tituloLateral="La plantilla que miras" [lateral]="!!plantillaMirada">
                     <div creacionTarea class="paso-tarea">
                         <ng-container *ngIf="mostrarBloquePlantillas; else bloqueoPlantillas">
                             <div class="paso-filtros">
@@ -265,14 +262,46 @@
                                 </mat-chip-option>
                             </div>
 
+                            <!-- Tu selección, arriba de la lista (la columna derecha es solo para la vista previa) -->
+                            <section class="plantillas-seleccion" aria-label="Tu selección">
+                                <div class="paso-tarjeta__cabecera">
+                                    <h2 class="creacion-titulo">Tu selección</h2>
+                                    <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="mostrarTipoCriaturaResultante">
+                                        Tipo resultante: {{tipoCriaturaSimuladaTexto}}</span>
+                                    <button type="button" mat-stroked-button color="warn" class="plantillas-seleccion__limpiar"
+                                        *ngIf="puedeLimpiarSeleccionPlantillas" (click)="limpiarSeleccionPlantillas()">
+                                        Limpiar selección
+                                    </button>
+                                </div>
+                                <p class="ficha-nota" *ngIf="plantillasSeleccionadas.length < 1">Sin plantillas seleccionadas.</p>
+                                <p class="creacion-aviso" *ngIf="plantillasOtorgadasRazaPendientes.length > 0">
+                                    Hay plantillas de raza pendientes de resolver contra el catálogo.</p>
+                                <div class="plantillas-lista" *ngIf="plantillasSeleccionadas.length > 0">
+                                    <div *ngFor="let plantilla of plantillasSeleccionadas"
+                                        class="plantilla-card plantilla-card--seleccion creacion-fila-abrible"
+                                        [class.plantilla-card--seleccion-confirmada]="esPlantillaConfirmada(plantilla)"
+                                        [class.plantilla-card--seleccion-actual]="puedeQuitarPlantillaSeleccion(plantilla)"
+                                        [class.creacion-fila-abierta]="plantillaMirada?.Id === plantilla.Id"
+                                        (click)="abrirPlantilla(plantilla)">
+                                        <ng-container *ngTemplateOutlet="cabeceraPlantilla; context: {
+                                            $implicit: plantilla,
+                                            estado: getEtiquetaEstadoPlantillaSeleccionada(plantilla),
+                                            clase: getClaseEstadoPlantillaSeleccionada(plantilla),
+                                            quitar: puedeQuitarPlantillaSeleccion(plantilla)
+                                        }"></ng-container>
+                                    </div>
+                                </div>
+                            </section>
+
                             <h2 class="creacion-titulo">Plantillas que puedes tomar</h2>
                             <p class="creacion-vacio" *ngIf="cargandoPlantillas">Cargando plantillas…</p>
                             <p class="creacion-vacio" *ngIf="!cargandoPlantillas && plantillasElegibles.length < 1">
                                 No hay plantillas elegibles con los filtros actuales.</p>
                             <div class="plantillas-lista" *ngIf="plantillasElegibles.length > 0">
                                 <div *ngFor="let plantilla of plantillasElegibles"
-                                    class="plantilla-card plantilla-card--elegible" role="button" tabindex="0"
-                                    (click)="seleccionarPlantilla(plantilla)" (keyup.enter)="seleccionarPlantilla(plantilla)">
+                                    class="plantilla-card plantilla-card--elegible creacion-fila-abrible"
+                                    [class.creacion-fila-abierta]="plantillaMirada?.Id === plantilla.Id"
+                                    (click)="abrirPlantilla(plantilla)">
                                     <ng-container *ngTemplateOutlet="cabeceraPlantilla; context: { $implicit: plantilla, estado: 'Elegible', clase: 'ok' }"></ng-container>
                                 </div>
                             </div>
@@ -286,48 +315,53 @@
                         </ng-template>
                     </div>
                     <div creacionLateral class="paso-lateral">
-                        <section class="ficha-tarjeta paso-tarjeta" *ngIf="mostrarBloquePlantillas">
-                            <div class="paso-tarjeta__cabecera">
-                                <h2 class="ficha-titulo">Tu selección</h2>
-                                <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="mostrarTipoCriaturaResultante">
-                                    Tipo resultante: {{tipoCriaturaSimuladaTexto}}</span>
+                        <app-creacion-vista-previa *ngIf="plantillaMirada as plantilla" titulo="La plantilla que miras"
+                            [clave]="plantilla.Id" (cerrar)="plantillaMirada = null">
+                            <div class="creacion-aviso" *ngIf="bloqueoPlantillaMirada as bloqueo">
+                                <p class="tw-m-0" *ngFor="let razon of bloqueo.evaluacion.razones">{{razon}}</p>
+                                <p class="tw-m-0" *ngIf="bloqueo.evaluacion.saltable">{{puedeSaltarRequisitosPlantilla
+                                    ? 'Puedes elegirla igualmente: el personaje pasará a ser homebrew.'
+                                    : 'La campaña no admite homebrew: no se pueden saltar sus requisitos.'}}</p>
                             </div>
-                            <p class="ficha-nota" *ngIf="plantillasSeleccionadas.length < 1">Sin plantillas seleccionadas.</p>
-                            <p class="creacion-aviso" *ngIf="plantillasOtorgadasRazaPendientes.length > 0">
-                                Hay plantillas de raza pendientes de resolver contra el catálogo.</p>
-                            <div class="plantillas-lista" *ngIf="plantillasSeleccionadas.length > 0">
-                                <div *ngFor="let plantilla of plantillasSeleccionadas"
-                                    class="plantilla-card plantilla-card--seleccion"
-                                    [class.plantilla-card--seleccion-confirmada]="esPlantillaConfirmada(plantilla)"
-                                    [class.plantilla-card--seleccion-actual]="puedeQuitarPlantillaSeleccion(plantilla)">
-                                    <ng-container *ngTemplateOutlet="cabeceraPlantilla; context: {
-                                        $implicit: plantilla,
-                                        estado: getEtiquetaEstadoPlantillaSeleccionada(plantilla),
-                                        clase: getClaseEstadoPlantillaSeleccionada(plantilla),
-                                        quitar: puedeQuitarPlantillaSeleccion(plantilla)
-                                    }"></ng-container>
-                                </div>
-                            </div>
-                            <div class="paso-tarjeta__acciones">
-                                <button type="button" mat-stroked-button color="warn" (click)="limpiarSeleccionPlantillas()"
-                                    [disabled]="!puedeLimpiarSeleccionPlantillas">
-                                    Limpiar selección
-                                </button>
-                            </div>
-                        </section>
-                        <app-creacion-personaje [personaje]="Personaje"></app-creacion-personaje>
+                            <app-detalles-plantilla [plantilla]="plantilla"
+                                (conjuroDetalles)="conjuroDetallesId.emit($event)"
+                                (doteDetalles)="doteDetallesId.emit($event)"
+                                (subtipoDetalles)="subtipoDetalles.emit($event)"
+                                (racialDetalles)="verDetallesRacialDesdeReferencia({ id: $event.Id, nombre: $event.Nombre })">
+                            </app-detalles-plantilla>
+                            <app-creacion-personaje [personaje]="Personaje"></app-creacion-personaje>
+                        </app-creacion-vista-previa>
                     </div>
                 </app-creacion-cuerpo>
-                <app-creacion-pie nota="Las plantillas heredadas o de la raza ya vienen puestas. Un paso hecho no se puede deshacer.">
+                <app-creacion-pie [nota]="notaPasoPlantillas" [aviso]="!!bloqueoPlantillaMirada">
                     <button type="button" mat-stroked-button *ngIf="mostrarBotonFinalizarCreacion"
                         (click)="onFinalizarCreacionTemporal()">
                         Finalizar aquí
                         <mat-icon iconPositionEnd>task_alt</mat-icon>
                     </button>
-                    <button type="button" mat-raised-button color="primary" [disabled]="!mostrarBloquePlantillas"
-                        (click)="continuarDesdePlantillas()">
+                    <button type="button" mat-stroked-button *ngIf="plantillaMirada as plantilla" (click)="verDetallesPlantilla(plantilla)">
+                        Abrir su ficha completa
+                    </button>
+                    <!-- Varias plantillas: elegir una no avanza; «Continuar» cierra el paso. -->
+                    <button type="button" mat-stroked-button [disabled]="!mostrarBloquePlantillas"
+                        *ngIf="plantillaMirada; else continuarPlantillasPrincipal" (click)="continuarDesdePlantillas()">
                         {{textoContinuarPaso}}
-                        <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+                    </button>
+                    <ng-template #continuarPlantillasPrincipal>
+                        <button type="button" mat-raised-button color="primary" [disabled]="!mostrarBloquePlantillas"
+                            (click)="continuarDesdePlantillas()">
+                            {{textoContinuarPaso}}
+                            <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+                        </button>
+                    </ng-template>
+                    <button type="button" mat-raised-button color="primary" *ngIf="plantillaMirada && plantillaMiradaElegible"
+                        (click)="elegirPlantillaMirada()">
+                        Elegir {{plantillaMirada.Nombre}}
+                    </button>
+                    <button type="button" mat-raised-button color="warn"
+                        *ngIf="bloqueoPlantillaMirada?.evaluacion?.saltable && puedeSaltarRequisitosPlantilla"
+                        (click)="elegirPlantillaSaltandoRequisitos(bloqueoPlantillaMirada!)">
+                        Elegir {{plantillaMirada?.Nombre}} igualmente
                     </button>
                 </app-creacion-pie>
             </ng-container>
@@ -413,7 +447,7 @@
 
             <!-- Clases: el siguiente nivel -->
             <ng-container *ngSwitchCase="'clases'">
-                <app-creacion-cuerpo tituloTarea="Clases" tituloLateral="Tu personaje">
+                <app-creacion-cuerpo tituloTarea="Clases" tituloLateral="La clase que miras" [lateral]="!!claseSeleccionadaActual">
                     <div creacionTarea class="paso-tarea">
                         <div class="paso-filtros">
                             <mat-form-field appearance="fill" class="form-field-no-subscript">
@@ -479,13 +513,12 @@
                             </thead>
                             <tbody>
                                 <tr *ngFor="let item of clasesListadoFiltrado" [ngClass]="getClaseFilaCss(item)"
-                                    [attr.aria-selected]="claseSeleccionadaId === item.clase.Id"
-                                    (click)="seleccionarClaseParaAplicar(item.clase)">
+                                    (click)="abrirClase(item.clase)">
                                     <td>
                                         <div class="clase-celda">
-                                            <button type="button" class="ficha-enlace clase-nombre"
-                                                (click)="verDetallesClase(item.clase); $event.stopPropagation()"
-                                                matTooltip="Ver detalles">{{item.clase.Nombre}}</button>
+                                            <button type="button" class="creacion-fila-boton clase-nombre"
+                                                [attr.aria-expanded]="claseSeleccionadaId === item.clase.Id" aria-controls="creacion-vista-previa"
+                                                (click)="abrirClase(item.clase); $event.stopPropagation()">{{item.clase.Nombre}}</button>
                                             <div class="clase-celda-chipline">
                                                 <span class="creacion-etiqueta" *ngIf="item.clase.Prestigio">Prestigio</span>
                                                 <mat-chip class="bad" *ngIf="item.campaignBlockedReason">{{item.campaignBlockedReason}}</mat-chip>
@@ -592,12 +625,28 @@
                         </section>
                     </div>
                     <div creacionLateral class="paso-lateral">
-                        <app-creacion-personaje [personaje]="Personaje">
-                            <ng-container *ngTemplateOutlet="incarnumTuPersonaje"></ng-container>
-                        </app-creacion-personaje>
+                        <app-creacion-vista-previa *ngIf="claseSeleccionadaActual as item" titulo="La clase que miras"
+                            [clave]="item.clase.Id" (cerrar)="claseSeleccionadaId = null">
+                            <p class="creacion-aviso" *ngIf="!item.puedeAplicarse && item.evaluacion.razones.length > 0">
+                                No puedes elegirla: {{item.evaluacion.razones.join(' · ')}}</p>
+                            <app-detalles-clase [clase]="item.clase"
+                                (conjuroDetalles)="conjuroDetallesId.emit($event)"
+                                (especialDetalles)="especialDetallesId.emit($event)"
+                                (especialDetallesPorNombre)="especialDetallesPorNombre.emit($event)"
+                                (doteDetalles)="doteDetallesId.emit($event)"
+                                (doteDetallesPorNombre)="doteDetallesPorNombre.emit($event)"
+                                (armaDetallesId)="armaDetallesId.emit($event)"
+                                (armaduraDetallesId)="armaduraDetallesId.emit($event)"
+                                (fusionDetalles)="fusionDetallesId.emit($event)"
+                                (chakraDetalles)="chakraDetallesId.emit($event)">
+                            </app-detalles-clase>
+                            <app-creacion-personaje [personaje]="Personaje">
+                                <ng-container *ngTemplateOutlet="incarnumTuPersonaje"></ng-container>
+                            </app-creacion-personaje>
+                        </app-creacion-vista-previa>
                     </div>
                 </app-creacion-cuerpo>
-                <app-creacion-pie nota="Pulsa una clase para elegir su siguiente nivel; con su nombre ves su detalle. Un paso hecho no se puede deshacer.">
+                <app-creacion-pie [nota]="notaPasoClases" [aviso]="!!claseSeleccionadaActual && !puedeAplicarClaseSeleccionada">
                     <button type="button" mat-stroked-button *ngIf="mostrarInfoRecomendacionesClase"
                         (click)="abrirInfoRecomendacionesClase($event)" matTooltip="Recordar recomendación de auto-reparto">
                         <mat-icon>info</mat-icon>
@@ -608,9 +657,12 @@
                         Finalizar aquí
                         <mat-icon iconPositionEnd>task_alt</mat-icon>
                     </button>
+                    <button type="button" mat-stroked-button *ngIf="claseSeleccionadaActual as item" (click)="verDetallesClase(item.clase)">
+                        Abrir su ficha completa
+                    </button>
                     <button type="button" mat-raised-button color="primary" [disabled]="!puedeAplicarClaseSeleccionada"
                         (click)="continuarDesdeClases()">
-                        {{textoContinuarPaso}}
+                        {{claseSeleccionadaActual ? 'Elegir ' + claseSeleccionadaActual.clase.Nombre + ' ' + claseSeleccionadaActual.siguienteNivel + ' y continuar' : 'Elegir y continuar'}}
                         <mat-icon iconPositionEnd>arrow_forward</mat-icon>
                     </button>
                 </app-creacion-pie>
@@ -824,22 +876,18 @@
         <ng-container *ngIf="items.length > 0">
             <h2 class="creacion-titulo">{{titulo}}</h2>
             <div class="plantillas-lista">
-                <div *ngFor="let item of items" class="plantilla-card plantilla-card--bloqueada"
-                    [matTooltip]="getTooltipBloqueoUnknown(item)" matTooltipClass="tt-accent tt-multiline">
+                <div *ngFor="let item of items" class="plantilla-card plantilla-card--bloqueada creacion-fila-abrible"
+                    [class.creacion-fila-abierta]="plantillaMirada?.Id === item.plantilla.Id" (click)="abrirPlantilla(item.plantilla)">
                     <ng-container *ngTemplateOutlet="cabeceraPlantilla; context: { $implicit: item.plantilla, estado: estado, clase: 'warm' }"></ng-container>
                     <div class="plantilla-card__motivos"
                         *ngIf="item.evaluacion.razones.length > 0 || item.evaluacion.advertencias.length > 0">
                         <p class="tw-m-0" *ngFor="let razon of item.evaluacion.razones">• {{razon}}</p>
                         <p class="tw-m-0 plantilla-card__advertencia" *ngFor="let advertencia of item.evaluacion.advertencias">• {{advertencia}}</p>
                     </div>
-                    <!-- Si lo único que falla son sus prerrequisitos, se puede elegir igualmente y el personaje pasa a ser homebrew. -->
-                    <div class="plantilla-card__saltar" *ngIf="saltar && item.evaluacion.saltable">
-                        <span class="ficha-nota">{{puedeSaltarRequisitosPlantilla
-                            ? 'Puedes elegirla igualmente: el personaje pasará a ser homebrew.'
-                            : 'La campaña no admite homebrew: no se pueden saltar sus requisitos.'}}</span>
-                        <button type="button" mat-stroked-button color="warn" *ngIf="puedeSaltarRequisitosPlantilla"
-                            (click)="elegirPlantillaSaltandoRequisitos(item)">Elegir igualmente</button>
-                    </div>
+                    <!-- Si lo único que falla son sus prerrequisitos, se puede elegir igualmente (desde su vista previa) y el
+                         personaje pasa a ser homebrew. -->
+                    <p class="ficha-nota tw-m-0" *ngIf="saltar && item.evaluacion.saltable && puedeSaltarRequisitosPlantilla">
+                        Se puede elegir igualmente, como homebrew.</p>
                 </div>
             </div>
         </ng-container>
@@ -848,18 +896,16 @@
     <ng-template #cabeceraPlantilla let-plantilla let-estado="estado" let-clase="clase" let-quitar="quitar">
         <div class="plantilla-card__head">
             <div class="plantilla-card__texto">
-                <p class="tw-m-0 plantilla-card__nombre">{{plantilla.Nombre}}</p>
+                <button type="button" class="creacion-fila-boton plantilla-card__nombre" aria-controls="creacion-vista-previa"
+                    [attr.aria-expanded]="plantillaMirada?.Id === plantilla.Id"
+                    (click)="abrirPlantilla(plantilla); $event.stopPropagation()">{{plantilla.Nombre}}</button>
                 <p class="tw-m-0 plantilla-card__meta" *ngIf="plantilla.Manual.Nombre">
                     {{plantilla.Manual.Nombre}}<span *ngIf="plantilla.Manual.Pagina"> (p. {{plantilla.Manual.Pagina}})</span>
                 </p>
             </div>
             <div class="plantilla-card__acciones">
                 <mat-chip class="plantilla-chip-estado" [ngClass]="clase">{{estado}}</mat-chip>
-                <button type="button" mat-icon-button (click)="verDetallesPlantilla(plantilla); $event.stopPropagation()"
-                    aria-label="Ver detalle de plantilla" matTooltip="Ver detalles">
-                    <mat-icon>open_in_new</mat-icon>
-                </button>
-                <button type="button" *ngIf="quitar" mat-icon-button (click)="quitarPlantillaSeleccion(plantilla.Id)"
+                <button type="button" *ngIf="quitar" mat-icon-button (click)="quitarPlantillaSeleccion(plantilla.Id); $event.stopPropagation()"
                     aria-label="Quitar plantilla" matTooltip="Quitar">
                     <mat-icon>close</mat-icon>
                 </button>

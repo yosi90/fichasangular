@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
@@ -179,4 +179,59 @@ describe('Las reglas del marco de la creación', () => {
         expect(generado.pares.map((p) => p.nombre)).toEqual(['Puntos de golpe', 'Clase de armadura', 'Iniciativa', 'Ataque base', 'Fortaleza', 'Reflejos', 'Voluntad', 'Velocidad']);
         expect(generado.dotes.map((d) => d.texto)).toEqual(['Soltura con un arma (Espada larga)']);
     });
+});
+
+@Component({
+    template: `
+        <app-creacion-cuerpo [lateral]="!!mirada">
+            <div creacionTarea class="tarea"><button type="button" class="fila" (click)="mirada = 'Elfo'">Elfo</button></div>
+            <div creacionLateral>
+                <app-creacion-vista-previa *ngIf="mirada" titulo="La raza que miras" [clave]="mirada" (cerrar)="mirada = null">
+                    <p class="detalle">{{mirada}}</p>
+                </app-creacion-vista-previa>
+            </div>
+        </app-creacion-cuerpo>`,
+    standalone: false
+})
+class VistaPreviaDePruebaComponent {
+    mirada: string | null = null;
+}
+
+describe('La vista previa de la creación', () => {
+    let fixture: ComponentFixture<VistaPreviaDePruebaComponent>;
+    const el = (): HTMLElement => fixture.nativeElement;
+
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            declarations: [VistaPreviaDePruebaComponent, ...CREACION_MARCO_COMPONENTES, ...FICHA_DETALLE_COMPONENTES, TextoManualComponent],
+            imports: [MatIconModule, MatTooltipModule],
+        }).compileComponents();
+        fixture = TestBed.createComponent(VistaPreviaDePruebaComponent);
+        document.body.appendChild(fixture.nativeElement);
+        fixture.detectChanges();
+    });
+
+    afterEach(() => fixture.nativeElement.remove());
+
+    it('sin nada abierto no hay columna derecha: la lista ocupa todo el ancho', () => {
+        expect(el().querySelector('.creacion-cuerpo')?.classList).toContain('creacion-cuerpo--sin-lateral');
+        expect(el().querySelector('app-creacion-vista-previa')).toBeNull();
+    });
+
+    it('al pulsar una fila se abre, recibe el foco y se cierra con su ✕', fakeAsync(() => {
+        (el().querySelector('.fila') as HTMLButtonElement).click();
+        fixture.detectChanges();
+        tick();
+
+        const vista = el().querySelector('#creacion-vista-previa') as HTMLElement;
+        expect(el().querySelector('.creacion-cuerpo')?.classList).not.toContain('creacion-cuerpo--sin-lateral');
+        expect(vista.getAttribute('aria-label')).toBe('La raza que miras');
+        expect(el().querySelector('.detalle')?.textContent).toBe('Elfo');
+        expect(document.activeElement).toBe(vista);
+
+        (el().querySelector('.creacion-vista-previa__cerrar') as HTMLButtonElement).click();
+        fixture.detectChanges();
+        expect(el().querySelector('app-creacion-vista-previa')).toBeNull();
+        expect(el().querySelector('.creacion-cuerpo')?.classList).toContain('creacion-cuerpo--sin-lateral');
+    }));
 });

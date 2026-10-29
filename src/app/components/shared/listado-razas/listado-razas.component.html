@@ -45,7 +45,10 @@
                             {{getDgsCantidad(element[column]) > 0 ? '+' + getDgsCantidad(element[column]) : ''}}{{getDgsDado(element[column])}}
                         </p>
                     </div>
-                    <button mat-stroked-button matTooltip="Click para ver esta raza" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent" class="tw-flex tw-justify-start sombra3d tw-w-full"
+                    <button type="button" class="creacion-fila-boton" *ngIf="column == 'Nombre' && vistaPrevia"
+                        [attr.aria-expanded]="razaAbiertaId === element.Id" aria-controls="creacion-vista-previa"
+                        (click)="verDetallesRaza(element.Id); $event.stopPropagation();">{{element[column]}}</button>
+                    <button mat-stroked-button matTooltip="Click para ver esta raza" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre' && !vistaPrevia" color="accent" class="tw-flex tw-justify-start sombra3d tw-w-full"
                         (click)="verDetallesRaza(element.Id); $event.stopPropagation();">
                         <mat-icon>read_more</mat-icon>
                         {{element[column]}}
@@ -83,7 +86,8 @@
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="razaColumns; sticky: true"></tr>
             <tr mat-row *matRowDef="let element; columns: razaColumns;" class="element-row elegir"
-                (click)="seleccionarRaza(element.Id)"></tr>
+                [class.creacion-fila-abrible]="vistaPrevia" [class.creacion-fila-abierta]="vistaPrevia && razaAbiertaId === element.Id"
+                (click)="pulsarFila(element.Id)"></tr>
             <tr class="mat-row" *matNoDataRow>
                 <td class="mat-cell tw-text-center tw-text-white tw-p-3" colspan="6">
                     Ninguna raza encaja con los filtros

@@ -25,6 +25,13 @@ export class ListadoRazasComponent implements OnDestroy {
     razaColumns = ['Nombre', 'Modificadores', 'Clase_predilecta', 'Manual', 'Ajuste_nivel', 'Dgs_adicionales'];
     @Input() homebrewSeleccionado?: boolean;
     @Input() homebrewBloqueado = false;
+    /**
+     * En la creación: pulsar una fila (o su nombre, que es un botón) abre la vista previa de la raza (`razaDetalles`) y no
+     * la elige; se elige con «Elegir y continuar». Fuera de la creación, la fila la elige y el nombre abre su detalle.
+     */
+    @Input() vistaPrevia = false;
+    /** La raza cuya vista previa está abierta: su fila se marca. */
+    @Input() razaAbiertaId: number | null = null;
     private vistaInicializada = false;
     private catalogosSub?: Subscription;
 
@@ -152,6 +159,13 @@ export class ListadoRazasComponent implements OnDestroy {
     }
 
     @Output() razaSeleccionada: EventEmitter<Raza> = new EventEmitter<Raza>();
+    pulsarFila(value: number) {
+        if (this.vistaPrevia)
+            this.verDetallesRaza(value);
+        else
+            this.seleccionarRaza(value);
+    }
+
     seleccionarRaza(value: number) {
         const raza = this.razas.find(r => r.Id === value);
         if (raza)

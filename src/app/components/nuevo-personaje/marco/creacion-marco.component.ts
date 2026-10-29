@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnChanges, Output, ViewEncapsulation } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnChanges, Output, ViewChild, ViewEncapsulation } from '@angular/core';
 import { OpcionesPasosCreacion, PasoCreacionId, PasoCreacionPintado, pintarPasosCreacion } from './creacion';
 
 /**
@@ -113,4 +113,48 @@ export class CreacionPieComponent {
     @Input() nota: string | null | undefined = '';
     /** La nota explica por qué aún no se puede seguir. */
     @Input() aviso = false;
+}
+
+/**
+ * La vista previa de lo que se pulsa en la lista de un paso (una raza, una clase, una plantilla): la columna derecha
+ * solo existe mientras hay una abierta (`app-creacion-cuerpo [lateral]`). Al abrirse recibe el foco (para el teclado y
+ * los lectores de pantalla) y se cierra con su ✕. Lo de dentro es el detalle de siempre, con la ficha común.
+ */
+@Component({
+    selector: 'app-creacion-vista-previa',
+    template: `
+        <section class="creacion-vista-previa" id="creacion-vista-previa" #raiz tabindex="-1" [attr.aria-label]="titulo">
+            <div class="creacion-vista-previa__cabecera">
+                <h2 class="creacion-titulo">{{titulo}}</h2>
+                <button type="button" mat-icon-button class="creacion-vista-previa__cerrar" (click)="cerrar.emit()"
+                    aria-label="Cerrar la vista previa" matTooltip="Cerrar la vista previa">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+            <ng-content></ng-content>
+        </section>`,
+    standalone: false
+})
+export class CreacionVistaPreviaComponent implements AfterViewInit, OnChanges {
+    @Input() titulo = 'Lo que miras';
+    /** Lo que se mira (su id): cada vez que cambia, el foco vuelve a la vista previa. */
+    @Input() clave: unknown = null;
+    @Output() cerrar = new EventEmitter<void>();
+    @ViewChild('raiz', { static: true }) raiz!: ElementRef<HTMLElement>;
+
+    ngAfterViewInit(): void {
+        this.enfocar();
+    }
+
+    ngOnChanges(): void {
+        if (this.raiz)
+            this.enfocar();
+    }
+
+    private enfocar(): void {
+        setTimeout(() => {
+            this.raiz.nativeElement.scrollTop = 0;
+            this.raiz.nativeElement.focus({ preventScroll: false });
+        });
+    }
 }

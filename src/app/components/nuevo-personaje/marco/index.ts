@@ -1,4 +1,4 @@
-import { CreacionCabeceraComponent, CreacionCuerpoComponent, CreacionMarcoComponent, CreacionPieComponent } from './creacion-marco.component';
+import { CreacionCabeceraComponent, CreacionCuerpoComponent, CreacionMarcoComponent, CreacionPieComponent, CreacionVistaPreviaComponent } from './creacion-marco.component';
 import { CreacionPersonajeComponent } from './creacion-personaje.component';
 import { CreacionVentanaComponent } from './creacion-ventana.component';
 
@@ -16,4 +16,5 @@ export const CREACION_MARCO_COMPONENTES = [
     CreacionPieComponent,
     CreacionPersonajeComponent,
     CreacionVentanaComponent,
+    CreacionVistaPreviaComponent,
 ];

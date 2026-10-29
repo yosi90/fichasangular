@@ -2816,6 +2816,12 @@ export class NuevoPersonajeComponent {
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
     @Output() doteDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() plantillaDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    /** Los enlaces de las vistas previas de clase y plantilla, por id o por nombre, como en Detalles. */
+    @Output() conjuroDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    @Output() especialDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    @Output() doteDetallesPorNombre: EventEmitter<string> = new EventEmitter<string>();
+    @Output() armaDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    @Output() armaduraDetallesId: EventEmitter<number> = new EventEmitter<number>();
     verDetallesRacialDesdeReferencia(referencia: RacialReferencia): void {
         const id = Number(referencia?.id);
         const nombre = `${referencia?.nombre ?? ''}`.trim();
@@ -3241,7 +3247,49 @@ export class NuevoPersonajeComponent {
         if (!confirmacion.isConfirmed)
             return;
         this.plantillasConRequisitosSaltados.add(Number(item.plantilla.Id));
+        this.plantillaMirada = null;
         this.seleccionarPlantilla(item.plantilla);
+    }
+
+    /** La plantilla cuya vista previa está abierta (pulsar su tarjeta); se elige con su botón del pie. */
+    plantillaMirada: Plantilla | null = null;
+
+    abrirPlantilla(plantilla: Plantilla): void {
+        this.plantillaMirada = plantilla;
+    }
+
+    /** Si la plantilla que se mira está entre las que puede tomar. */
+    get plantillaMiradaElegible(): boolean {
+        const id = Number(this.plantillaMirada?.Id);
+        return this.plantillasElegibles.some((plantilla) => Number(plantilla.Id) === id);
+    }
+
+    /** Por qué no puede tomar la plantilla que se mira (campaña, formato o requisitos), o `null`. */
+    get bloqueoPlantillaMirada(): { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; } | null {
+        const id = Number(this.plantillaMirada?.Id);
+        if (!this.plantillaMirada)
+            return null;
+        return [...this.plantillasBloqueadasCampana, ...this.plantillasBloqueadasUnknown, ...this.plantillasBloqueadasFailed]
+            .find((item) => Number(item.plantilla.Id) === id) ?? null;
+    }
+
+    elegirPlantillaMirada(): void {
+        if (!this.plantillaMirada || !this.plantillaMiradaElegible)
+            return;
+        const plantilla = this.plantillaMirada;
+        this.plantillaMirada = null;
+        this.seleccionarPlantilla(plantilla);
+    }
+
+    /** La nota del pie del paso de plantillas. */
+    get notaPasoPlantillas(): string {
+        if (!this.plantillaMirada)
+            return 'Pulsa una plantilla para verla a la derecha. Las heredadas o de la raza ya vienen puestas. Un paso hecho no se puede deshacer.';
+        if (this.bloqueoPlantillaMirada)
+            return `No cumple lo que pide: ${this.bloqueoPlantillaMirada.evaluacion.razones.join(' · ')}`;
+        if (this.plantillaMiradaElegible)
+            return 'Elígela con su botón; puedes tomar varias antes de continuar.';
+        return 'Ya la tienes elegida.';
     }
 
     /** Si sigue elegida alguna plantilla con los prerrequisitos saltados. */
@@ -3337,8 +3385,21 @@ export class NuevoPersonajeComponent {
         this.sincronizarTabConPaso();
     }
 
-    seleccionarClaseParaAplicar(clase: Clase): void {
+    /** Abre la vista previa de una clase (pulsar su fila); se elige con «Elegir y continuar». */
+    abrirClase(clase: Clase): void {
         this.claseSeleccionadaId = Number(clase?.Id);
+    }
+
+    /** La nota del pie del paso de clases: qué hacer, o por qué no se puede elegir la que se mira. */
+    get notaPasoClases(): string {
+        const item = this.claseSeleccionadaActual;
+        if (!item)
+            return 'Pulsa una clase para ver a la derecha su siguiente nivel antes de elegirla.';
+        if (!item.puedeAplicarse)
+            return item.campaignBlockedReason
+                ? `No puedes elegirla: ${item.campaignBlockedReason}.`
+                : 'No puedes elegirla: no cumple sus requisitos.';
+        return 'Elígela con «Elegir y continuar». Un paso hecho no se puede deshacer.';
     }
 
     onFiltroClasesTextoChange(value: string): void {
@@ -5580,9 +5641,9 @@ export class NuevoPersonajeComponent {
     }
 
     getClaseFilaCss(item: ClaseListadoItem): string {
-        const clases = ['fila-clase'];
+        const clases = ['fila-clase', 'creacion-fila-abrible'];
         if (Number(this.claseSeleccionadaId) === Number(item.clase.Id))
-            clases.push('fila-clase--seleccionada');
+            clases.push('creacion-fila-abierta');
         if (item.campaignBlockedReason)
             clases.push('fila-clase--campana-bloqueada');
         if (item.compatAlineamiento.estado === 'incompatible')

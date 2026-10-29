@@ -218,3 +218,58 @@
     border-radius: 6px
     color: #ffccbc
     font-size: 14px
+
+// La vista previa de lo que se pulsa en una lista (raza, clase, plantilla), en la columna derecha.
+.creacion-vista-previa
+    display: flex
+    flex-direction: column
+    gap: 10px
+    outline: none
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+        border-radius: $ficha-radio
+
+.creacion-vista-previa__cabecera
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 8px
+
+    .creacion-titulo
+        margin: 0
+
+// Una fila de una lista que abre su vista previa: el nombre es un botón de verdad (teclado), sin aspecto de enlace, y
+// toda la fila responde al clic. La abierta lleva fondo azulado y raya gris azulada; la elegida, la rosa de siempre.
+.creacion-fila-abrible
+    cursor: pointer
+
+    &:hover td, &:hover
+        background: rgba(255, 255, 255, .05)
+
+.creacion-fila-boton
+    display: inline
+    padding: 0
+    border: 0
+    background: none
+    color: inherit
+    font: inherit
+    font-weight: 500
+    text-align: left
+    cursor: pointer
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+        border-radius: 2px
+
+tr.creacion-fila-abierta td, tr.creacion-fila-abierta:hover td
+    background: rgba(173, 189, 196, .16)
+
+tr.creacion-fila-abierta td:first-child
+    box-shadow: inset 3px 0 0 $accent
+
+.creacion-fila-abierta:not(tr)
+    background: rgba(173, 189, 196, .16)
+    box-shadow: inset 3px 0 0 $accent

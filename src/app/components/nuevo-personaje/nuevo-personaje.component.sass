@@ -264,13 +264,16 @@ textarea
 .plantilla-card__advertencia
     color: #ffe39a
 
-.plantilla-card__saltar
+// Tu selección de plantillas, arriba de la lista del paso.
+.plantillas-seleccion
     display: flex
-    flex-wrap: wrap
-    align-items: center
-    justify-content: space-between
-    gap: 6px 10px
-    padding-top: 6px
+    flex-direction: column
+    gap: 8px
+    padding-bottom: 12px
+    border-bottom: 1px solid rgba(255, 255, 255, .12)
+
+.plantillas-seleccion__limpiar
+    margin-left: auto
 
 .plantilla-chip-estado
     border-radius: 6px
@@ -304,23 +307,11 @@ textarea
         vertical-align: middle
         overflow-wrap: anywhere
 
-    .fila-clase
-        cursor: pointer
-
-        &:hover td
-            background: rgba(255, 255, 255, .05)
-
-    .fila-clase--seleccionada td
-        background: #4a3a42
-
     .fila-clase--alineamiento-compatible td:first-child
         box-shadow: inset 3px 0 0 #24c26f
 
     .fila-clase--alineamiento-incompatible td:first-child
         box-shadow: inset 3px 0 0 #ff6b6b
-
-    .fila-clase--seleccionada td:first-child
-        box-shadow: inset 3px 0 0 $active
 
 .clase-celda
     display: flex

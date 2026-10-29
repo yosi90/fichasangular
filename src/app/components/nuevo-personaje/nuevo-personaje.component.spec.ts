@@ -2284,6 +2284,42 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Oficial).toBeTrue();
     });
 
+    it('pulsar una plantilla abre su vista previa sin elegirla; se elige con su botón y la vista previa se cierra', () => {
+        component.seleccionarRaza(crearRazaMock());
+        const plantilla = crearPlantillaMock({ Id: 807, Nombre: 'Celestial' });
+        component.plantillasCatalogo = [plantilla];
+        (component as any).recalcularPlantillasVisibles();
+
+        component.abrirPlantilla(plantilla);
+        expect(component.plantillaMirada?.Id).toBe(807);
+        expect(component.plantillasSeleccionadas.some((p) => p.Id === 807)).toBeFalse();
+        expect(component.plantillaMiradaElegible).toBeTrue();
+        expect(component.bloqueoPlantillaMirada).toBeNull();
+
+        component.elegirPlantillaMirada();
+        expect(component.plantillasSeleccionadas.some((p) => p.Id === 807)).toBeTrue();
+        expect(component.plantillaMirada).toBeNull();
+    });
+
+    it('la vista previa de una plantilla que no cumple dice por qué y no deja elegirla con el botón normal', () => {
+        component.seleccionarRaza(crearRazaMock());
+        const simulacro = crearPlantillaMock({
+            Id: 808,
+            Nombre: 'Simulacro de sombra',
+            Prerrequisitos_flags: { dg: true },
+            Prerrequisitos: { ...crearPlantillaMock().Prerrequisitos, dg: [{ Cantidad: 10, Opcional: 0, Frase: '10 dados de golpe' }] },
+        });
+        component.plantillasCatalogo = [simulacro];
+        (component as any).recalcularPlantillasVisibles();
+
+        component.abrirPlantilla(simulacro);
+        expect(component.plantillaMiradaElegible).toBeFalse();
+        expect(component.bloqueoPlantillaMirada?.evaluacion.saltable).toBeTrue();
+        expect(component.notaPasoPlantillas).toContain('10 dados de golpe');
+        component.elegirPlantillaMirada();
+        expect(component.plantillasSeleccionadas.some((p) => p.Id === 808)).toBeFalse();
+    });
+
     it('no elige la plantilla si se cancela el aviso de homebrew', async () => {
         component.seleccionarRaza(crearRazaMock());
         const plantilla = crearPlantillaMock({ Id: 806, Nombre: 'Gigantesca' });
@@ -2697,10 +2733,10 @@ describe('NuevoPersonajeComponent', () => {
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
 
-        component.seleccionarClaseParaAplicar(bloqueada);
+        component.abrirClase(bloqueada);
         expect(component.puedeAplicarClaseSeleccionada).toBeFalse();
 
-        component.seleccionarClaseParaAplicar(elegible);
+        component.abrirClase(elegible);
         expect(component.puedeAplicarClaseSeleccionada).toBeTrue();
     });
 
@@ -2854,7 +2890,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [barbaro];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(barbaro);
+        component.abrirClase(barbaro);
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
         await component.continuarDesdeClases();
@@ -2880,7 +2916,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [claseP2];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(claseP2);
+        component.abrirClase(claseP2);
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
         await component.continuarDesdeClases();
@@ -2947,15 +2983,15 @@ describe('NuevoPersonajeComponent', () => {
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(barbaro);
+        component.abrirClase(barbaro);
         await component.continuarDesdeClases();
         (component as any).recalcularClasesVisibles();
 
-        component.seleccionarClaseParaAplicar(barbaro);
+        component.abrirClase(barbaro);
         await component.continuarDesdeClases();
         (component as any).recalcularClasesVisibles();
 
-        component.seleccionarClaseParaAplicar(monje);
+        component.abrirClase(monje);
         await component.continuarDesdeClases();
 
         const avisosAlineamiento = swalSpy.calls.allArgs()
@@ -2976,7 +3012,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [claseHomebrew];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(claseHomebrew);
+        component.abrirClase(claseHomebrew);
 
         await component.continuarDesdeClases();
 
@@ -3014,7 +3050,7 @@ describe('NuevoPersonajeComponent', () => {
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(monje);
+        component.abrirClase(monje);
         await component.continuarDesdeClases();
 
         const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
@@ -3028,7 +3064,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [clase];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(clase);
+        component.abrirClase(clase);
 
         await component.continuarDesdeClases();
 
@@ -3049,7 +3085,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [clase];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(clase);
+        component.abrirClase(clase);
 
         await component.continuarDesdeClases();
 
@@ -3314,7 +3350,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [clase];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(clase);
+        component.abrirClase(clase);
 
         await component.continuarDesdeClases();
         await component.continuarDesdeHabilidades();
@@ -3333,7 +3369,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [clase];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(clase);
+        component.abrirClase(clase);
 
         spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
         const resolverDotesSpy = spyOn<any>(component, 'resolverDotesPendientes').and.resolveTo(true);
@@ -3433,7 +3469,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [claseConConjuros];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(claseConConjuros);
+        component.abrirClase(claseConConjuros);
 
         await component.continuarDesdeClases();
         expect((nuevoPSvc.EstadoFlujo.habilidades as any).returnStep).toBe('conjuros');
@@ -3474,7 +3510,7 @@ describe('NuevoPersonajeComponent', () => {
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         nuevoPSvc.setCatalogoConjuros(component.catalogoConjuros);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(explorador);
+        component.abrirClase(explorador);
         spyOn<any>(component, 'resolverFlujoPostDotesFinNivel').and.resolveTo(true);
         spyOn<any>(component, 'resolverPasoPostDotesFinNivel').and.returnValue('clases');
 
@@ -3551,7 +3587,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [claseConConjuros];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(claseConConjuros);
+        component.abrirClase(claseConConjuros);
 
         await component.continuarDesdeClases();
         (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
@@ -3626,7 +3662,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [claseSinDelta];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(claseSinDelta);
+        component.abrirClase(claseSinDelta);
 
         await component.continuarDesdeClases();
         (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
@@ -3667,7 +3703,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [claseSinObtencion];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(claseSinObtencion);
+        component.abrirClase(claseSinObtencion);
 
         await component.continuarDesdeClases();
         (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
@@ -3706,7 +3742,7 @@ describe('NuevoPersonajeComponent', () => {
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         nuevoPSvc.setCatalogoConjuros(component.catalogoConjuros);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(claseSinElegibles);
+        component.abrirClase(claseSinElegibles);
 
         await component.continuarDesdeClases();
         expect((nuevoPSvc.EstadoFlujo.habilidades as any).returnStep).toBe('conjuros');
@@ -3784,7 +3820,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [clasePsionica];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(clasePsionica);
+        component.abrirClase(clasePsionica);
 
         await component.continuarDesdeClases();
         (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
@@ -3854,7 +3890,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [claseArcana];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(claseArcana);
+        component.abrirClase(claseArcana);
 
         await component.continuarDesdeClases();
         (nuevoPSvc.EstadoFlujo.habilidades as any).returnStep = 'conjuros';
@@ -3878,7 +3914,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [clase];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(clase);
+        component.abrirClase(clase);
 
         const orden: string[] = [];
         spyOn<any>(component, 'solicitarEspecialidadMagicaClase').and.callFake(async () => {
@@ -3915,7 +3951,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [clase];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(clase);
+        component.abrirClase(clase);
 
         let resolverEspecialidad: ((value: any) => void) | null = null;
         spyOn<any>(component, 'solicitarEspecialidadMagicaClase').and.returnValue(
@@ -4002,7 +4038,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [clase];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(clase);
+        component.abrirClase(clase);
         spyOn<any>(component, 'solicitarEspecialidadMagicaClase').and.resolveTo({
             arcana: {
                 especializar: false,
@@ -4036,7 +4072,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [clase];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(clase);
+        component.abrirClase(clase);
 
         spyOn<any>(component, 'solicitarEspecialidadMagicaClase').and.resolveTo({
             psionica: {
@@ -4060,7 +4096,7 @@ describe('NuevoPersonajeComponent', () => {
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         const abrirIdiomasSpy = spyOn(component, 'abrirSelectorIdiomasIniciales').and.resolveTo(true);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(clase);
+        component.abrirClase(clase);
 
         await component.continuarDesdeClases();
 
@@ -4097,7 +4133,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [clase];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(clase);
+        component.abrirClase(clase);
 
         const ordenLlamadas: string[] = [];
         const abrirIdiomasSpy = spyOn(component, 'abrirSelectorIdiomasIniciales').and.callFake(async (_cantidad: number) => {
@@ -4155,7 +4191,7 @@ describe('NuevoPersonajeComponent', () => {
         component.catalogoClases = [claseConEspecialAumento];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(claseConEspecialAumento);
+        component.abrirClase(claseConEspecialAumento);
 
         const abrirAumentosSpy = spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
         const registrarEspecialesSpy = spyOn(nuevoPSvc, 'registrarAumentosPendientesPorEspeciales').and.callThrough();
@@ -4187,7 +4223,7 @@ describe('NuevoPersonajeComponent', () => {
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         const dominiosSpy = spyOn<any>(component, 'solicitarSeleccionesDominiosClase').and.resolveTo([1]);
         (component as any).recalcularClasesVisibles();
-        component.seleccionarClaseParaAplicar(claseConDominio);
+        component.abrirClase(claseConDominio);
 
         await component.continuarDesdeClases();
 
