@@ -4,7 +4,7 @@ import { Database } from '@angular/fire/database';
 import { Observable, map, shareReplay } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { CapacidadEsencia, Chakra, ChakraDetalle, Fusion } from '../interfaces/incarnum';
-import { EscuchaRtdb, cacheRtdbOApi, catalogosDesdeApi, escucharRtdb, sinCache } from './catalogo-api';
+import { EscuchaRtdb, cacheRtdbOApi, escucharCatalogo } from './catalogo-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { normalizarCapacidadEsencia, normalizarChakra, normalizarChakraDetalle, normalizarFusion } from './utils/incarnum-mapper';
 import { toArray } from './utils/normalizacion';
@@ -30,11 +30,8 @@ export class IncarnumService {
         private firebaseContextSvc: FirebaseInjectionContextService,
     ) { }
 
-    /** En desarrollo (`catalogosDesdeApi`), la caché es la de producción: se lee la API. */
     private escuchar(ruta: string): EscuchaRtdb {
-        if (catalogosDesdeApi())
-            return (onNext) => sinCache(onNext);
-        return escucharRtdb(this.db, this.firebaseContextSvc, ruta);
+        return escucharCatalogo(this.db, this.firebaseContextSvc, ruta);
     }
 
     getFusiones(): Observable<Fusion[]> {

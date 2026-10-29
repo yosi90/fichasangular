@@ -47,6 +47,16 @@ export function escucharRtdb(db: Database, contexto: FirebaseInjectionContextSer
 }
 
 /**
+ * Escucha `ruta` de la caché de catálogos; en desarrollo (`catalogosDesdeApi`), como si no existiera, para que se lea la
+ * API de desarrollo.
+ */
+export function escucharCatalogo(db: Database, contexto: FirebaseInjectionContextService, ruta: string): EscuchaRtdb {
+    if (catalogosDesdeApi())
+        return (onNext) => sinCache(onNext);
+    return escucharRtdb(db, contexto, ruta);
+}
+
+/**
  * Escucha dos rutas de la RTDB que guardan lo mismo con otro nombre (`disciplinas` y `Disciplinas`): da el snapshot
  * de la preferida si existe, si no el de la otra, y si no hay ninguno, un snapshot vacío.
  */

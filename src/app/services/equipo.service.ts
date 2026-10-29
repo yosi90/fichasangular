@@ -15,7 +15,7 @@ import {
     PaginaObjetos,
     TipoCatalogoEquipo,
 } from '../interfaces/equipo';
-import { AvisosFalloApi, EscuchaRtdb, cacheRtdbOApi, catalogosDesdeApi, escucharRtdb, sinCache } from './catalogo-api';
+import { AvisosFalloApi, EscuchaRtdb, cacheRtdbOApi, escucharCatalogo } from './catalogo-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { esFilaComodin } from './utils/comodin';
 import {
@@ -73,9 +73,7 @@ export class EquipoService {
 
     /** Escucha una ruta de la caché; en desarrollo (`catalogosDesdeApi`), como si no existiera. */
     protected escuchar(ruta: string): EscuchaRtdb {
-        if (catalogosDesdeApi())
-            return (onNext) => sinCache(onNext);
-        return escucharRtdb(this.db, this.firebaseContextSvc, ruta);
+        return escucharCatalogo(this.db, this.firebaseContextSvc, ruta);
     }
 
     getCatalogos(): Observable<EquipoCatalogos> {
