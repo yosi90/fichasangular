@@ -3,7 +3,7 @@ import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dot
 import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { normalizeManualApi, normalizeManualLegacy } from './manual-mapper';
-import { normalizarDoteIncarnum } from './incarnum-mapper';
+import { normalizarDoteIncarnum, normalizarNombreTraducible } from './incarnum-mapper';
 
 function asArray(raw: any): any[] {
     if (Array.isArray(raw))
@@ -39,14 +39,7 @@ function normalizeExtraItemsLegacy(raw: any): DoteExtraItem[] {
 
 /** Los chakras y las fusiones elegibles (Magic of Incarnum), con su nombre del libro. */
 function normalizeExtraItemsTraducibles(raw: any): DoteExtraItem[] {
-    return asArray(raw)
-        .map((item: any) => ({
-            Id: toNumber(item?.Id, 0),
-            Nombre: toText(item?.Nombre, ""),
-            Nombre_original: item?.Nombre_original === null || item?.Nombre_original === undefined ? null : toText(item.Nombre_original),
-            Traducido: toBoolean(item?.Traducido),
-        }))
-        .filter(item => item.Id > 0);
+    return asArray(raw).map(normalizarNombreTraducible).filter(item => item.Id > 0);
 }
 
 /** Las dotes a las que sustituye en los prerrequisitos (`Cuenta_como`). */

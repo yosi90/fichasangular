@@ -26,6 +26,7 @@ import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { leerComodin } from "src/app/services/utils/comodin";
 import { normalizarClaseMoldeado, normalizarHabilidadesPorAlineamiento } from "src/app/services/utils/incarnum-mapper";
+import { CLAVES_PRERREQUISITOS_INCARNUM } from "src/app/services/utils/incarnum";
 
 const CLASE: ElementoDeCatalogo = { singular: "clase", plural: "clases", femenino: true };
 
@@ -63,13 +64,7 @@ export const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "tamano_minimo",
     "raza",
     "no_raza",
-    "esencia_minima",
-    "sin_esencia",
-    "nivel_moldeador",
-    "fusiones_minimas",
-    "vinculo_chakra",
-    "vinculos_minimos",
-    "sin_lanzador_arcano",
+    ...(CLAVES_PRERREQUISITOS_INCARNUM as (keyof ClasePrerrequisitos)[]),
 ];
 
 const ALIAS_PRERREQUISITOS: Record<keyof ClasePrerrequisitos, string[]> = {
