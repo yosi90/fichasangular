@@ -443,8 +443,8 @@ describe("plantilla-elegibilidad: los prerrequisitos de las plantillas de los ma
             Prerrequisitos: { ...sinPrerrequisitos(), dg: [{ Cantidad: 10, Opcional: 0, Frase: "10 dados de golpe" }] },
         });
 
-        expect(evaluarElegibilidadPlantilla(simulacro, { ...crearContextoBase(), dgTotales: 10 }).estado).toBe("eligible");
-        const corto = evaluarElegibilidadPlantilla(simulacro, { ...crearContextoBase(), dgTotales: 9 });
+        expect(evaluarElegibilidadPlantilla(simulacro, { ...crearContextoBase(), dgTotal: 10 }).estado).toBe("eligible");
+        const corto = evaluarElegibilidadPlantilla(simulacro, { ...crearContextoBase(), dgTotal: 9 });
         expect(corto.estado).toBe("blocked_failed");
         expect(corto.razones).toEqual(["No cumple: 10 dados de golpe"]);
     });
@@ -491,8 +491,8 @@ describe("plantilla-elegibilidad: los prerrequisitos de las plantillas de los ma
             },
         });
 
-        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [], dgTotales: 4 }).estado).toBe("eligible");
-        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [], dgTotales: 3 }).razones)
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [], dgTotal: 4 }).estado).toBe("eligible");
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [], dgTotal: 3 }).razones)
             .toEqual(["No cumple: Criatura de subtipo reptiliano o 4 dados de golpe"]);
     });
 
@@ -501,7 +501,7 @@ describe("plantilla-elegibilidad: los prerrequisitos de las plantillas de los ma
             Prerrequisitos: { ...sinPrerrequisitos(), dg: [{ Cantidad: 10, Opcional: 0, Frase: "10 dados de golpe" }] },
         });
 
-        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), dgTotales: 1 }).estado).toBe("eligible");
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), dgTotal: 1 }).estado).toBe("eligible");
     });
 
     it("solo se puede saltar si lo único que falla son sus prerrequisitos", () => {
@@ -511,7 +511,7 @@ describe("plantilla-elegibilidad: los prerrequisitos de las plantillas de los ma
             Prerrequisitos: { ...sinPrerrequisitos(), dg: [{ Cantidad: 10, Opcional: 0, Frase: "10 dados de golpe" }] },
         });
 
-        expect(evaluarElegibilidadPlantilla(heredada, { ...crearContextoBase(), dgTotales: 1 }).saltable).toBeTrue();
-        expect(evaluarElegibilidadPlantilla(heredada, { ...crearContextoBase(), dgTotales: 1, nivelesClase: 1 }).saltable).toBeFalse();
+        expect(evaluarElegibilidadPlantilla(heredada, { ...crearContextoBase(), dgTotal: 1 }).saltable).toBeTrue();
+        expect(evaluarElegibilidadPlantilla(heredada, { ...crearContextoBase(), dgTotal: 1, nivelesClase: 1 }).saltable).toBeFalse();
     });
 });

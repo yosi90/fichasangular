@@ -1063,12 +1063,12 @@ export class NuevoPersonajeService {
         nivelLanzador: number;
         dotes: ClaveEntidadPrerrequisito[];
         tamanoId: number | null;
-        dgTotales: number;
+        dgTotal: number;
         subtipos: ClaveEntidadPrerrequisito[];
     } {
         return {
             tamanoId: this.resolverTamanoActualId(),
-            dgTotales: this.resolverDgTotalActual(),
+            dgTotal: this.resolverDgTotalActual(),
             subtipos: this.identidadPrerrequisitosActual().subtipos,
             nivelesClase: Math.max(0, this.getNivelClasesActual()),
             nivelLanzador: Math.max(this.resolverNivelLanzadorMaximoPorTipo('arcano'), this.resolverNivelLanzadorMaximoPorTipo('divino')),

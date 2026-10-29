@@ -47,7 +47,7 @@ export interface PlantillaEvaluacionContexto {
      */
     tamanoId?: number | null;
     /** Los DG totales (raciales, de clase y de plantilla) para `dg`: un «personaje de nivel 6» cuenta sus DG totales. */
-    dgTotales?: number;
+    dgTotal?: number;
     /** Los subtipos de la raza (y su raza base) y de las plantillas ya elegidas, para `subtipo` y `subtipo_prohibido`. */
     subtipos?: ClaveEntidadPrerrequisito[];
 }
@@ -514,7 +514,7 @@ export function evaluarElegibilidadPlantilla(
         (prer.dg ?? []).forEach((entry) => {
             const cantidad = parseCantidad(entry);
             const evaluable = Number.isFinite(cantidad) && cantidad > 0;
-            const cumple = evaluable && toNumber(ctx.dgTotales) >= cantidad;
+            const cumple = evaluable && toNumber(ctx.dgTotal) >= cantidad;
             registrarPrerrequisito(motivos, "dg", entry, evaluable, cumple, "Dados de golpe mínimos con formato no reconocido");
         });
     }

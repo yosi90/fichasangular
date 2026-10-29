@@ -6791,7 +6791,7 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
 
         expect(ctx.tamanoId).toBe(6);
         expect(ctx.subtipos).toEqual([{ id: 11, nombre: 'Humano' }, { id: 21, nombre: 'Fuego' }]);
-        expect(ctx.dgTotales).toBe(0);
+        expect(ctx.dgTotal).toBe(0);
     });
 
     it('plantillas confirmadas no se pueden quitar', () => {
