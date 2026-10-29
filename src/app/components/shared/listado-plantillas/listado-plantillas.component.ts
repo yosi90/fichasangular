@@ -7,6 +7,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/menu-filtros/menu-filtros.component';
 
 @Component({
     selector: 'app-listado-plantillas',
@@ -73,6 +74,17 @@ export class ListadoPlantillasComponent {
 
     alternarHomebrew() {
         this.incluirHomebrew = !this.incluirHomebrew;
+        this.filtroPlantillas();
+    }
+
+    get hayFiltros(): boolean {
+        return textoDelFiltro(this.plantillaTextInc) !== '' || this.defaultManual !== 'Cualquiera' || this.incluirHomebrew;
+    }
+
+    limpiarFiltros(): void {
+        vaciarTextoDelFiltro(this.plantillaTextInc);
+        this.defaultManual = 'Cualquiera';
+        this.incluirHomebrew = false;
         this.filtroPlantillas();
     }
 

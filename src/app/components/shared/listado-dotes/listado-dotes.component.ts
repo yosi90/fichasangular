@@ -7,6 +7,7 @@ import { DoteService } from 'src/app/services/dote.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/menu-filtros/menu-filtros.component';
 
 @Component({
     selector: 'app-listado-dotes',
@@ -89,6 +90,20 @@ export class ListadoDotesComponent {
 
     alternarSinPrerrequisitos() {
         this.soloSinPrerrequisitos = !this.soloSinPrerrequisitos;
+        this.filtroDotes();
+    }
+
+    get hayFiltros(): boolean {
+        return textoDelFiltro(this.nombreText) !== '' || this.defaultManual !== 'Cualquiera'
+            || this.mostrarHomebrew || this.soloSinPrerrequisitos;
+    }
+
+    limpiarFiltros(): void {
+        vaciarTextoDelFiltro(this.nombreText);
+        this.defaultManual = 'Cualquiera';
+        if (this.mostrarHomebrew)
+            this.alternarDotesHomebrew();
+        this.soloSinPrerrequisitos = false;
         this.filtroDotes();
     }
 

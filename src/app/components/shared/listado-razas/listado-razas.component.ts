@@ -9,6 +9,7 @@ import { RazaService } from 'src/app/services/raza.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/menu-filtros/menu-filtros.component';
 
 @Component({
     selector: 'app-listado-razas',
@@ -118,6 +119,20 @@ export class ListadoRazasComponent implements OnDestroy {
 
     get homebrewActivo(): boolean {
         return this.isHomebrewActivo();
+    }
+
+    /** Si algún filtro no está como al abrir el listado (el homebrew que impone la creación no cuenta). */
+    get hayFiltros(): boolean {
+        return textoDelFiltro(this.nombreText) !== '' || this.defaultManual !== 'Cualquiera'
+            || ((this.homebrewSeleccionado === undefined || this.homebrewSeleccionado === null) && this.homebrewInterno);
+    }
+
+    limpiarFiltros(): void {
+        vaciarTextoDelFiltro(this.nombreText);
+        this.defaultManual = 'Cualquiera';
+        if (this.homebrewSeleccionado === undefined || this.homebrewSeleccionado === null)
+            this.homebrewInterno = false;
+        this.filtroRazas();
     }
 
     AlternarRazasHombrew() {

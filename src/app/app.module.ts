@@ -141,7 +141,7 @@ import { SocialLfgSectionComponent } from './components/base/social-hub/social-l
 import { HelpRoadmapComponent } from './components/base/help-roadmap/help-roadmap.component';
 import { HelpLegalComponent } from './components/base/help-legal/help-legal.component';
 import { HelpUsageAboutComponent } from './components/base/help-usage-about/help-usage-about.component';
-import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-menu-on-mouseleave.directive';
+import { MENU_FILTROS_COMPONENTES } from './components/shared/menu-filtros/menu-filtros.component';
 
 @NgModule({
     declarations: [
@@ -162,7 +162,7 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         HelpRoadmapComponent,
         HelpLegalComponent,
         HelpUsageAboutComponent,
-        CloseFilterMenuOnMouseleaveDirective,
+        ...MENU_FILTROS_COMPONENTES,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
         DetallesRazaComponent,

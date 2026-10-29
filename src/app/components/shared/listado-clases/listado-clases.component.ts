@@ -8,6 +8,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { esFilaComodin } from 'src/app/services/utils/comodin';
+import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/menu-filtros/menu-filtros.component';
 
 @Component({
     selector: 'app-listado-clases',
@@ -79,6 +80,20 @@ export class ListadoClasesComponent {
 
     alternarHomebrew() {
         this.incluirHomebrew = !this.incluirHomebrew;
+        this.filtroClases();
+    }
+
+    get hayFiltros(): boolean {
+        return textoDelFiltro(this.claseTextInc) !== '' || this.defaultManual !== 'Cualquiera'
+            || this.incluirHomebrew || this.soloPrestigio || this.ocultarConPrerrequisitos;
+    }
+
+    limpiarFiltros(): void {
+        vaciarTextoDelFiltro(this.claseTextInc);
+        this.defaultManual = 'Cualquiera';
+        this.incluirHomebrew = false;
+        this.soloPrestigio = false;
+        this.ocultarConPrerrequisitos = false;
         this.filtroClases();
     }
 

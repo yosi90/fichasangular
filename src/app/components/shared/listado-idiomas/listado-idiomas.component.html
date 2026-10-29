@@ -1,17 +1,13 @@
 <div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
     <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
-        <button id="filtros" matTooltip="Filtros de idiomas" #filtros mat-icon-button
-            [matMenuTriggerFor]="menuIdiomas" class="filtros">
-            <mat-icon>filter_alt</mat-icon>
-        </button>
-        <mat-menu id="containerMenu" #menuIdiomas="matMenu" class="tw-me-1 menu-filtros-estandar">
-            <div id="menu">
-                <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroIdiomas();">
+        <app-menu-filtros titulo="Filtros de idiomas">
+            <app-menu-filtros-grupo titulo="Buscar">
+                <mat-form-field (keyup)="filtroIdiomas();">
                     <mat-label>Incluye texto</mat-label>
                     <input #idiomaTextInc matInput placeholder="Texto a buscar">
                 </mat-form-field>
-            </div>
-        </mat-menu>
+            </app-menu-filtros-grupo>
+        </app-menu-filtros>
 
         <table id="idiomas" #tablaIdiomas mat-table [dataSource]="idiomasDS" matSort *ngIf="idiomas.length > 0; else cargando">
             <ng-container matColumnDef="{{column}}" *ngFor="let column of idiomaColumns">

@@ -1,28 +1,25 @@
 <div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
     <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
-        <button matTooltip="Filtros de objetos" mat-icon-button aria-label="Filtros de objetos" [matMenuTriggerFor]="menuObjetos" class="filtros">
-            <mat-icon>filter_alt</mat-icon>
-        </button>
-        <mat-menu #menuObjetos="matMenu" class="tw-me-1 menu-filtros-estandar">
-            <div id="menu">
-                <mat-form-field appearance="fill" (click)="$event.stopPropagation();">
+        <app-menu-filtros titulo="Filtros de objetos">
+            <app-menu-filtros-grupo titulo="Buscar">
+                <mat-form-field appearance="fill">
                     <mat-label>Incluye texto</mat-label>
                     <input matInput placeholder="Nombre a buscar" [value]="texto" (input)="alCambiarTexto($any($event.target).value)">
                 </mat-form-field>
-                <mat-form-field appearance="fill" (click)="$event.stopPropagation();">
+                <mat-form-field appearance="fill">
                     <mat-label>Categoría</mat-label>
                     <mat-select [(value)]="categoria" (selectionChange)="alCambiarFiltro()">
                         <mat-option *ngFor="let opcion of categorias" [value]="opcion.valor">{{opcion.etiqueta}}</mat-option>
                     </mat-select>
                 </mat-form-field>
-                <mat-form-field appearance="fill" (click)="$event.stopPropagation();">
+                <mat-form-field appearance="fill">
                     <mat-label>Tipo de objeto</mat-label>
                     <mat-select [(value)]="idTipo" (selectionChange)="alCambiarFiltro()">
                         <mat-option [value]="null">Cualquiera</mat-option>
                         <mat-option *ngFor="let tipo of tiposVisibles" [value]="tipo.Id">{{tipo.Nombre}}</mat-option>
                     </mat-select>
                 </mat-form-field>
-                <mat-form-field appearance="fill" (click)="$event.stopPropagation();">
+                <mat-form-field appearance="fill">
                     <mat-label>Ranura</mat-label>
                     <mat-select [(value)]="idRanura" (selectionChange)="alCambiarFiltro()">
                         <mat-option [value]="null">Cualquiera</mat-option>
@@ -35,8 +32,8 @@
                     [(value)]="manual"
                     (selectionChange)="alCambiarFiltro()">
                 </app-manual-autocomplete>
-            </div>
-        </mat-menu>
+            </app-menu-filtros-grupo>
+        </app-menu-filtros>
 
         <div class="tw-w-full tw-p-3 tw-text-center bloque-error" *ngIf="error">{{error}}</div>
         <table mat-table [dataSource]="objetos" *ngIf="!cargando || objetos.length > 0; else cargandoTpl">

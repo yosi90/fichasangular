@@ -1,17 +1,13 @@
 <div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
     <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
-        <button id="filtros" matTooltip="Filtros de especiales" #filtros mat-icon-button
-            [matMenuTriggerFor]="menuEspeciales" class="filtros">
-            <mat-icon>filter_alt</mat-icon>
-        </button>
-        <mat-menu id="containerMenu" #menuEspeciales="matMenu" class="tw-me-1 menu-filtros-estandar">
-            <div id="menu">
-                <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroEspeciales();">
+        <app-menu-filtros titulo="Filtros de especiales">
+            <app-menu-filtros-grupo titulo="Buscar">
+                <mat-form-field (keyup)="filtroEspeciales();">
                     <mat-label>Incluye texto</mat-label>
                     <input #especialTextInc matInput placeholder="Texto a buscar">
                 </mat-form-field>
-            </div>
-        </mat-menu>
+            </app-menu-filtros-grupo>
+        </app-menu-filtros>
 
         <table id="especiales" #tablaEspeciales mat-table [dataSource]="especialesDS" matSort *ngIf="especiales.length > 0; else cargando">
             <ng-container matColumnDef="{{column}}" *ngFor="let column of especialColumns">

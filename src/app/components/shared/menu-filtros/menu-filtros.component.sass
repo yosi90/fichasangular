@@ -1,0 +1,118 @@
+@use '../../../../assets/css/variables' as *
+
+// Sin encapsular: el panel del menú se pinta en el overlay de Material, fuera del componente. Todo va bajo
+// `app-menu-filtros` (el botón) o `.menu-filtros-estandar` (el panel), así que no toca nada más.
+
+app-menu-filtros
+    display: inline-flex
+
+    .filtros
+        width: 38px
+        height: 38px
+        padding: 7px
+        color: #414141
+        background-color: $accent
+        box-shadow: 4px 4px 6px rgb(51, 51, 51)
+
+        &:hover
+            box-shadow: 0 0 6px inset rgb(51, 51, 51)
+
+        &:active, &[aria-expanded="true"]
+            box-shadow: 4px 4px 6px inset rgb(51, 51, 51)
+
+        &:focus-visible
+            outline: 2px solid $active
+            outline-offset: 2px
+
+.mat-mdc-menu-panel.menu-filtros-estandar
+    width: 340px
+    // Ancho razonable y, en el móvil, nunca más ancho que la pantalla (con 12px de margen a cada lado).
+    max-width: min(340px, calc(100vw - 24px)) !important
+    max-height: calc(100vh - 24px)
+    background: linear-gradient(180deg, rgba(65, 69, 74, .98) 0%, rgba(49, 52, 57, .98) 100%) !important
+    border: 1px solid rgba(255, 255, 255, .08)
+    border-radius: 10px !important
+    box-shadow: 0 20px 40px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .05)
+
+    .mat-mdc-menu-content
+        padding: 0 !important
+
+    // Un menú que aún no usa <app-menu-filtros> (la lista de personajes): al menos, con aire.
+    .mat-mdc-menu-content:not(:has(> .menu-filtros))
+        display: flex
+        flex-direction: column
+        gap: 10px
+        padding: 12px 14px !important
+
+    .menu-filtros
+        display: flex
+        flex-direction: column
+        gap: 12px
+        padding: 12px 14px 14px
+        color: #f0f2f5
+
+    .menu-filtros__cabecera
+        display: flex
+        align-items: center
+        justify-content: space-between
+        gap: 8px
+        padding-bottom: 8px
+        border-bottom: 1px solid rgba(255, 255, 255, .12)
+
+    .menu-filtros__titulo
+        margin: 0
+        font-size: 15px
+        font-weight: 500
+        color: #fff
+
+    .menu-filtros__limpiar
+        flex-shrink: 0
+        color: $accent
+
+    .menu-filtros__grupo
+        display: flex
+        flex-direction: column
+        gap: 8px
+
+    .menu-filtros__grupo-titulo
+        margin: 0
+        font-size: 11px
+        font-weight: 500
+        letter-spacing: .08em
+        text-transform: uppercase
+        color: $font-base
+
+    .menu-filtros__grupo-cuerpo
+        display: flex
+        flex-direction: column
+        gap: 8px
+
+        mat-form-field, app-manual-autocomplete
+            display: block
+            width: 100%
+
+        .mat-mdc-form-field-subscript-wrapper
+            display: none
+
+        .mdc-text-field--filled
+            background: rgba(46, 50, 56, .92) !important
+            border-radius: 8px 8px 0 0
+
+        .mat-mdc-select-value, .mat-mdc-input-element, .mdc-floating-label
+            color: #f0f2f5 !important
+
+        .mat-mdc-form-field-icon-suffix, .mat-mdc-select-arrow
+            color: rgba(240, 242, 245, .74) !important
+
+    // Chips y casillas en filas alineadas, con salto de línea.
+    .menu-filtros__grupo-cuerpo--chips
+        flex-direction: row
+        flex-wrap: wrap
+        align-items: center
+        gap: 8px
+
+        mat-chip-option, .mat-mdc-chip
+            margin: 0 !important
+
+        mat-checkbox
+            flex: 1 1 100%

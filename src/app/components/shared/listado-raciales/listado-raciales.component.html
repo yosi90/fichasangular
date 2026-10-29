@@ -1,17 +1,13 @@
 <div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
     <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
-        <button id="filtros" matTooltip="Filtros de raciales" #filtros mat-icon-button
-            [matMenuTriggerFor]="menuRaciales" class="filtros">
-            <mat-icon>filter_alt</mat-icon>
-        </button>
-        <mat-menu id="containerMenu" #menuRaciales="matMenu" class="tw-me-1 menu-filtros-estandar">
-            <div id="menu">
-                <mat-form-field (click)="$event.stopPropagation();" (keyup)="filtroRaciales();">
+        <app-menu-filtros titulo="Filtros de raciales">
+            <app-menu-filtros-grupo titulo="Buscar">
+                <mat-form-field (keyup)="filtroRaciales();">
                     <mat-label>Incluye texto</mat-label>
                     <input #racialTextInc matInput placeholder="Texto a buscar">
                 </mat-form-field>
-            </div>
-        </mat-menu>
+            </app-menu-filtros-grupo>
+        </app-menu-filtros>
 
         <table id="raciales" #tablaRaciales mat-table [dataSource]="racialesDS" matSort *ngIf="raciales.length > 0; else cargando">
             <ng-container matColumnDef="{{column}}" *ngFor="let column of racialColumns">
