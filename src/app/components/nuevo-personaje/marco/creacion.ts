@@ -10,14 +10,17 @@ import { toNumber } from 'src/app/services/utils/normalizacion';
  * informa, no deja volver atrás ni saltar.
  */
 
-export type PasoCreacionId = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'equipo';
+export type PasoCreacionId = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'formacion' | 'equipo';
 
 export interface PasoCreacion {
     id: PasoCreacionId;
     nombre: string;
 }
 
-/** Todos los pasos, en su orden. La tienda es el último, «Equipo». */
+/**
+ * Todos los pasos, en su orden. La tienda es el último, «Equipo». «Formación» (Magic of Incarnum, opcional) va justo
+ * antes, al terminar los niveles, y solo sale si el personaje puede moldear fusiones.
+ */
 export const PASOS_CREACION: readonly PasoCreacion[] = [
     { id: 'raza', nombre: 'Raza' },
     { id: 'basicos', nombre: 'Básicos' },
@@ -26,6 +29,7 @@ export const PASOS_CREACION: readonly PasoCreacion[] = [
     { id: 'clases', nombre: 'Clases' },
     { id: 'habilidades', nombre: 'Habilidades' },
     { id: 'conjuros', nombre: 'Conjuros' },
+    { id: 'formacion', nombre: 'Formación' },
     { id: 'equipo', nombre: 'Equipo' },
 ];
 
@@ -35,6 +39,8 @@ export interface OpcionesPasosCreacion {
     conVentajas: boolean;
     /** Solo si tiene conjuros que elegir (un guerrero no los tiene). */
     conConjuros: boolean;
+    /** Solo si puede moldear fusiones (Magic of Incarnum): la formación de partida, opcional. */
+    conFormacion?: boolean;
 }
 
 export type EstadoPasoCreacion = 'hecho' | 'actual' | 'falta';
@@ -47,7 +53,10 @@ export interface PasoCreacionPintado extends PasoCreacion {
 /** Los pasos que salen para este personaje; el actual sale siempre. */
 export function pasosCreacionVisibles(opciones: OpcionesPasosCreacion, actual?: PasoCreacionId | null): PasoCreacion[] {
     return PASOS_CREACION.filter((paso) => paso.id === actual
-        || (paso.id === 'ventajas' ? opciones.conVentajas : paso.id === 'conjuros' ? opciones.conConjuros : true));
+        || (paso.id === 'ventajas' ? opciones.conVentajas
+            : paso.id === 'conjuros' ? opciones.conConjuros
+                : paso.id === 'formacion' ? !!opciones.conFormacion
+                    : true));
 }
 
 /** Los pasos que salen, numerados y con su estado: los de antes del actual, hechos; los de después, por hacer. */
@@ -63,11 +72,17 @@ export function pintarPasosCreacion(opciones: OpcionesPasosCreacion, actual: Pas
 
 /**
  * El paso que se ve, según la pestaña interna de la creación (`selectedInternalTabIndex`: 0 raza … 6 conjuros) y si
- * está abierta la tienda. Mientras se eligen las dotes de un nivel sin conjuros (`dotes`), sigue siendo el de Clases.
+ * está abierta la formación de partida o la tienda. Mientras se eligen las dotes de un nivel sin conjuros (`dotes`),
+ * sigue siendo el de Clases.
  */
-export function pasoCreacionDeLaPestana(indice: number, opciones: { enTienda: boolean; eligiendoDotesSinConjuros: boolean; }): PasoCreacionId {
+export function pasoCreacionDeLaPestana(
+    indice: number,
+    opciones: { enTienda: boolean; eligiendoDotesSinConjuros: boolean; enFormacion?: boolean; },
+): PasoCreacionId {
     if (opciones.enTienda)
         return 'equipo';
+    if (opciones.enFormacion)
+        return 'formacion';
     const ids: PasoCreacionId[] = ['raza', 'basicos', 'plantillas', 'ventajas', 'clases', 'habilidades', 'conjuros'];
     const paso = ids[indice] ?? 'raza';
     return paso === 'conjuros' && opciones.eligiendoDotesSinConjuros ? 'clases' : paso;

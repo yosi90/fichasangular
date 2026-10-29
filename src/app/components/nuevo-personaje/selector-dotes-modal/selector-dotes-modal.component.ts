@@ -37,6 +37,8 @@ export class SelectorDotesModalComponent implements OnChanges {
     candidatoSeleccionado: DoteSelectorCandidato | null = null;
     extrasCandidatoSeleccionado: Array<{ Id: number; Nombre: string; }> = [];
     requiereExtraSeleccionado = false;
+    /** «Chakra» o «Fusión» si la dote pide uno (Magic of Incarnum); si no, «Extra». */
+    etiquetaExtra = 'Extra';
     puedeConfirmar = false;
 
     ngOnChanges(changes: SimpleChanges): void {
@@ -229,6 +231,8 @@ export class SelectorDotesModalComponent implements OnChanges {
             ? (this.candidatos ?? []).find((candidato) => toNumber(candidato?.dote?.Id) === id) ?? null
             : null;
         this.requiereExtraSeleccionado = !!this.candidatoSeleccionado?.requiereExtra;
+        const soportados = this.candidatoSeleccionado?.dote?.Extras_soportados;
+        this.etiquetaExtra = soportados?.Extra_chakra ? 'Chakra' : soportados?.Extra_fusion ? 'Fusión' : 'Extra';
         this.extrasCandidatoSeleccionado = (this.candidatoSeleccionado?.extrasDisponibles ?? [])
             .map((extra) => ({
                 Id: toNumber(extra?.Id),

@@ -32,7 +32,10 @@ import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/ra
 import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
-import { DoteEvaluacionContexto, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
+import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
+import { CapacidadEsencia, ChakraDetalle, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from '../interfaces/incarnum';
+import { EntradaIncarnumBorrador, calcularIncarnumBorrador, incarnumParaPrerrequisitos } from './utils/incarnum';
+import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
 import {
     EstadoCuposFamiliar as EstadoCuposFamiliarUtil,
     FamiliarPlantillaId as FamiliarPlantillaIdUtil,
@@ -939,6 +942,9 @@ export class NuevoPersonajeService {
     private tablaCarga: FilaCapacidadCarga[] = [];
     private catalogoTamanos: Tamano[] = [];
     private catalogoClases: Clase[] = [];
+    private capacidadEsencia: CapacidadEsencia[] = [];
+    private catalogoFusiones: Fusion[] = [];
+    private catalogoChakras: ChakraDetalle[] = [];
     private catalogoDotes: Dote[] = [];
     private catalogoArmasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoArmadurasDotes: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }> = [];
@@ -1524,6 +1530,68 @@ export class NuevoPersonajeService {
         this.catalogoDotes = [...(dotes ?? [])];
     }
 
+    /** Magic of Incarnum: la tabla de capacidad de esencia y el catálogo de fusiones (para el bloque del borrador). */
+    setCatalogosIncarnum(capacidad: CapacidadEsencia[], fusiones: Fusion[], chakras: ChakraDetalle[] = []): void {
+        this.capacidadEsencia = [...(capacidad ?? [])];
+        this.catalogoFusiones = [...(fusiones ?? [])];
+        this.catalogoChakras = [...(chakras ?? [])];
+    }
+
+    getCatalogoFusiones(): Fusion[] {
+        return this.catalogoFusiones;
+    }
+
+    /**
+     * Magic of Incarnum: el bloque `incarnum` del personaje que se está creando, con el mismo cálculo que la ficha de la
+     * API (`calcularIncarnumBorrador`), y la formación de partida si se da. `null` si no tiene nada de incarnum.
+     */
+    getIncarnumBorrador(formacion: FormacionIncarnumDto | null = null): PersonajeIncarnum | null {
+        return calcularIncarnumBorrador(this.entradaIncarnumBorrador(formacion));
+    }
+
+    private entradaIncarnumBorrador(formacion: FormacionIncarnumDto | null): EntradaIncarnumBorrador {
+        const pj = this.personajeCreacion;
+        const clases = (pj.desgloseClases ?? [])
+            .filter((entrada) => `${entrada?.Nombre ?? ''}`.trim().length > 0)
+            .map((entrada) => ({
+                clase: this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(entrada.Nombre)) ?? null,
+                nombre: `${entrada.Nombre}`.trim(),
+                nivel: Math.max(0, toInt(entrada?.Nivel)),
+            }));
+        // La esencia de las aptitudes de clase sale de su clase del catálogo; cuenta la de las que tiene el personaje.
+        const idsEspeciales = new Set((pj.Claseas ?? []).map((especial) => toInt((especial as any)?.Id)).filter((id) => id > 0));
+        const especiales = new Map<number, { id: number; nombre: string; esencia: ReturnType<typeof normalizarEsenciaRasgo>; }>();
+        clases.forEach(({ clase, nivel }) => (clase?.Desglose_niveles ?? [])
+            .filter((fila) => toInt(fila?.Nivel) <= nivel)
+            .forEach((fila) => (fila?.Especiales ?? []).forEach((item) => {
+                const id = toInt(item?.Especial?.['Id']);
+                const esencia = normalizarEsenciaRasgo(item?.Especial?.['Esencia']);
+                if (id > 0 && esencia && idsEspeciales.has(id) && !especiales.has(id))
+                    especiales.set(id, { id, nombre: `${item?.Especial?.['Nombre'] ?? ''}`.trim(), esencia });
+            })));
+        return {
+            clases,
+            dotes: (pj.DotesContextuales ?? []).map((item) => ({
+                dote: this.doteDelCatalogo(toNumber(item?.Dote?.Id)) ?? item?.Dote,
+                idExtra: toInt(item?.Contexto?.Id_extra),
+            })),
+            raciales: (pj.Raciales ?? []).map((racial) => ({ id: toInt(racial?.Id), nombre: `${racial?.Nombre ?? ''}`.trim(), esencia: racial?.Esencia })),
+            especiales: Array.from(especiales.values()),
+            puntuaciones: {
+                fuerza: toNumber(pj.Fuerza),
+                destreza: toNumber(pj.Destreza),
+                constitucion: toNumber(pj.Constitucion),
+                inteligencia: toNumber(pj.Inteligencia),
+                sabiduria: toNumber(pj.Sabiduria),
+                carisma: toNumber(pj.Carisma),
+            },
+            nivelPersonaje: dgsTotales(this.getPartesNivelPersonaje()),
+            capacidad: this.capacidadEsencia,
+            formacion,
+            fusiones: this.catalogoFusiones,
+        };
+    }
+
     setCatalogoArmasDotes(catalogo: Array<{ Id: number; Nombre: string; Id_tipo_arma?: number | null; }>): void {
         this.catalogoArmasDotes = this.normalizarCatalogoExtras(catalogo);
         this.catalogoArmasConTipo = [...(catalogo ?? [])];
@@ -1720,7 +1788,7 @@ export class NuevoPersonajeService {
             ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
             alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`,
             genero: `${this.personajeCreacion.Genero ?? ''}`,
-            dotes: [...dotesDesdeContexto, ...dotesLegacy],
+            dotes: dotesConCuentaComo([...dotesDesdeContexto, ...dotesLegacy], (id) => this.doteDelCatalogo(id)),
             claseas,
             raciales: clavesDeEntidades(this.personajeCreacion.Raciales),
             plantillas: clavesDeEntidades(this.personajeCreacion.Plantillas),
@@ -1744,6 +1812,7 @@ export class NuevoPersonajeService {
             },
             dgTotal: this.resolverDgTotalActual(),
             reservaPsionica: this.resolverReservaPsionicaActual(),
+            incarnum: incarnumParaPrerrequisitos(this.getIncarnumBorrador()),
             escuelaEspecialista: {
                 id: this.resolverIdEscuelaPorNombre(nombreEscuelaEspecialista),
                 nombre: nombreEscuelaEspecialista,
@@ -2947,6 +3016,8 @@ export class NuevoPersonajeService {
             || this.doteSoportaEscudos(dote)
             || toBoolean(dote?.Extras_soportados?.Extra_escuela)
             || toBoolean(dote?.Extras_soportados?.Extra_habilidad)
+            || toBoolean(dote?.Extras_soportados?.Extra_chakra)
+            || toBoolean(dote?.Extras_soportados?.Extra_fusion)
         );
     }
 
@@ -3102,6 +3173,17 @@ export class NuevoPersonajeService {
             const directos = normalizar(dote?.Extras_disponibles?.Habilidades ?? []);
             const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Habilidades === true;
             extras.push(...(usarCatalogo ? fuenteHabilidades : directos));
+        }
+        // Magic of Incarnum: «elige un chakra» (Abrir chakra) o «elige una fusión» (Moldear fusión).
+        if (toBoolean(dote?.Extras_soportados?.Extra_chakra)) {
+            const directos = normalizar(dote?.Extras_disponibles?.Chakras ?? []);
+            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Chakras === true;
+            extras.push(...(usarCatalogo ? this.catalogoChakras.map((c) => ({ Id: c.Id, Nombre: c.Nombre })) : directos));
+        }
+        if (toBoolean(dote?.Extras_soportados?.Extra_fusion)) {
+            const directos = normalizar(dote?.Extras_disponibles?.Fusiones ?? []);
+            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Fusiones === true;
+            extras.push(...(usarCatalogo ? this.catalogoFusiones.map((f) => ({ Id: f.Id, Nombre: f.Nombre })) : directos));
         }
 
         return this.normalizarCatalogoExtras(extras);
@@ -3368,7 +3450,7 @@ export class NuevoPersonajeService {
             },
             ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
             nivelesClase,
-            dotes: [...dotes, ...legacySinContexto],
+            dotes: dotesConCuentaComo([...dotes, ...legacySinContexto], (id) => this.doteDelCatalogo(id)),
             claseas,
             raciales: clavesDeEntidades(this.personajeCreacion.Raciales),
             plantillas: clavesDeEntidades(this.personajeCreacion.Plantillas),
@@ -3412,6 +3494,9 @@ export class NuevoPersonajeService {
             puedeSeleccionarCompanero: estadoCuposCompanero.cuposDisponibles > 0,
             puedeSeleccionarFamiliar: estadoCuposFamiliar.cuposDisponibles > 0,
             catalogoRegiones,
+            incarnum: incarnumParaPrerrequisitos(this.getIncarnumBorrador()),
+            reservaPsionica: this.resolverReservaPsionicaActual(),
+            nivelPoderPsionicoMaximo: this.resolverNivelPoderPsionicoMaximo(),
         };
 
         const evaluacion = evaluarElegibilidadDote({
@@ -6555,9 +6640,24 @@ export class NuevoPersonajeService {
             });
         });
 
+        // Las que son de clase solo con un alineamiento básico (`Habilidades.Por_alineamiento`: el nacido del alma).
+        this.habilidadesPorAlineamientoDeClase(clase).forEach((ref) => {
+            this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: true, customPreferido: false });
+        });
+
         this.personajeCreacion.Habilidades = this.personajeCreacion.Habilidades
             .slice()
             .sort(porNombre);
+    }
+
+    /** Las habilidades de `Habilidades.Por_alineamiento` de la clase que coinciden con el alineamiento básico del personaje. */
+    private habilidadesPorAlineamientoDeClase(clase: Clase): Record<string, any>[] {
+        const alineamiento = `${this.personajeCreacion.Alineamiento ?? ''}`.trim();
+        const idBasico = getAlineamientoBasicoIdPorNombre(alineamiento);
+        return (clase?.Habilidades?.Por_alineamiento ?? [])
+            .filter((item) => normalizarTexto(item.Alineamiento?.Nombre ?? '') === normalizarTexto(alineamiento)
+                || (idBasico > 0 && toInt(item.Alineamiento?.Id) === idBasico))
+            .map((item) => ({ Id_habilidad: item.Id_habilidad, Habilidad: item.Habilidad, Id_extra: item.Id_extra, Extra: item.Extra }));
     }
 
     private getNuevoIdHabilidad(): number {

@@ -1,6 +1,6 @@
 import { Dote } from 'src/app/interfaces/dote';
 import { buildIdentidadPrerrequisitos } from './identidad-prerrequisitos';
-import { DoteEvaluacionContexto, evaluarElegibilidadDote } from './dote-elegibilidad';
+import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './dote-elegibilidad';
 
 function crearDoteBase(partial?: Partial<Dote>): Dote {
     return {
@@ -749,6 +749,50 @@ describe('dote-elegibilidad', () => {
                 contexto: crearContextoBase({ plantillas: [{ id: 6, nombre: 'Semidragón' }] }),
             });
             expect(resultado.estado).toBe('eligible');
+        });
+    });
+
+    describe('Magic of Incarnum', () => {
+        const incarnum = { reserva: 2, nivelMoldeador: 4, fusiones: 3, vinculos: 1, chakrasVinculables: [34] };
+
+        it('evalúa los prerrequisitos nuevos con la frase de la API', () => {
+            const dote = crearDoteBase({
+                Prerrequisitos: {
+                    esencia_minima: [{ Cantidad: 1, Opcional: 0, Frase: 'Tener reserva de esencia' }],
+                    vinculo_chakra: [{ Id_chakra: 42, Chakra: 'Corazón', Opcional: 0, Frase: 'Poder vincular fusiones al chakra Corazón' }],
+                },
+            });
+            const resultado = evaluarElegibilidadDote({ dote, contexto: crearContextoBase({ incarnum }) });
+            expect(resultado.estado).toBe('blocked_failed');
+            expect(resultado.razones).toEqual(['No cumple: Poder vincular fusiones al chakra Corazón']);
+            expect(evaluarElegibilidadDote({
+                dote,
+                contexto: crearContextoBase({ incarnum: { ...incarnum, chakrasVinculables: [34, 42] } }),
+            }).estado).toBe('eligible');
+        });
+
+        it('sin incarnum no se cumplen los que piden moldear, y sí `sin_esencia`', () => {
+            const pide = crearDoteBase({ Prerrequisitos: { fusiones_minimas: [{ Cantidad: 1, Opcional: 0, Frase: 'Poder moldear fusiones' }] } });
+            const prohibe = crearDoteBase({ Prerrequisitos: { sin_esencia: [{ Opcional: 0, Frase: 'No tener reserva de esencia' }] } });
+            expect(evaluarElegibilidadDote({ dote: pide, contexto: crearContextoBase() }).estado).toBe('blocked_failed');
+            expect(evaluarElegibilidadDote({ dote: prohibe, contexto: crearContextoBase() }).estado).toBe('eligible');
+        });
+
+        it('la reserva psiónica y el nivel de poder psiónico también en las dotes', () => {
+            const dote = crearDoteBase({ Prerrequisitos: {
+                reserva_psionica: [{ Cantidad: 3, Opcional: 0, Frase: 'Reserva psiónica de 3 o más' }],
+                lanzar_poder_psionico_nivel: [{ Nivel: 1, Opcional: 0, Frase: 'Manifestar poderes de nivel 1' }],
+            } });
+            expect(evaluarElegibilidadDote({ dote, contexto: crearContextoBase({ reservaPsionica: 3, nivelPoderPsionicoMaximo: 1 }) }).estado).toBe('eligible');
+            expect(evaluarElegibilidadDote({ dote, contexto: crearContextoBase({ reservaPsionica: 2, nivelPoderPsionicoMaximo: 1 }) }).estado).toBe('blocked_failed');
+        });
+
+        it('una dote que «cuenta como» otra la sustituye en los prerrequisitos', () => {
+            const catalogo: Record<number, Dote> = { 1087: crearDoteBase({ Id: 1087, Nombre: 'Dureza azur', Cuenta_como: [{ Id: 43, Nombre: 'Dureza' }] }) };
+            const dotes = dotesConCuentaComo([{ id: 1087, nombre: 'Dureza azur', idExtra: 0, extra: '' }], (id) => catalogo[id]);
+            expect(dotes.map((d) => d.nombre)).toEqual(['Dureza azur', 'Dureza']);
+            const pideDureza = crearDoteBase({ Prerrequisitos: { dote: [{ Id_dote_prerrequisito: 43, Dote_prerrequisito: 'Dureza', Opcional: 0, Frase: 'Dureza' }] } });
+            expect(evaluarElegibilidadDote({ dote: pideDureza, contexto: crearContextoBase({ dotes }) }).estado).toBe('eligible');
         });
     });
 });

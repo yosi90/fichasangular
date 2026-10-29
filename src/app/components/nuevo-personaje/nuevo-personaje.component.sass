@@ -471,3 +471,39 @@ textarea
 
     .field-help-row
         flex-wrap: wrap
+
+// Magic of Incarnum: la progresión de moldeado del paso de clases (el nivel que toma, en rosa; los de después,
+// atenuados) y los chakras que puede vincular en «Tu personaje».
+.progresion-moldeado
+    display: flex
+    flex-direction: column
+    gap: 8px
+    margin-top: 16px
+
+.progresion-moldeado__actual td
+    background: #4a3a42
+    color: $ficha-blanco
+    font-weight: 500
+
+.progresion-moldeado__actual td:first-child
+    box-shadow: inset 3px 0 0 $active
+
+.progresion-moldeado__futura td
+    color: #8a949b
+
+.incarnum-chakras
+    display: flex
+    flex-direction: column
+    gap: 6px
+    margin-top: 8px
+
+.incarnum-chakras__lista
+    display: flex
+    flex-wrap: wrap
+    gap: 6px
+
+.incarnum-chakra
+    border-color: $active
+
+.incarnum-chakra--futuro
+    color: #8a949b

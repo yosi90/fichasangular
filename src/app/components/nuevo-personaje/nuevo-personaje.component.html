@@ -2,7 +2,7 @@
     <!-- El marco común de todos los pasos (lienzo aprobado el 2026-10-26): cabecera, fila de pasos, franja, cuerpo en dos
          columnas y pie. La creación es estrictamente paso a paso: la fila de pasos no deja volver atrás ni saltar. -->
     <app-creacion-marco>
-        <app-creacion-cabecera [paso]="pasoCreacion" [conVentajas]="!campaignForbidsAdvantages" [conConjuros]="pasoConConjuros"
+        <app-creacion-cabecera [paso]="pasoCreacion" [conVentajas]="!campaignForbidsAdvantages" [conConjuros]="pasoConConjuros" [conFormacion]="pasoConFormacion"
             [nombre]="Personaje.Nombre" [linea]="lineaCabeceraCreacion" [oficial]="razaElegida ? Personaje.Oficial !== false : null"
             [puedeVerFicha]="puedeVerFichaEnCreacion" (verFicha)="verFichaEnCreacion()">
         </app-creacion-cabecera>
@@ -554,9 +554,46 @@
                                 </tr>
                             </tbody>
                         </table>
+
+                        <!-- Magic of Incarnum: la progresión de moldeado de la clase que se mira (lienzo `Clases.dc.html`) -->
+                        <section class="progresion-moldeado" *ngIf="progresionMoldeado as progresion" aria-label="Progresión de moldeado">
+                            <h2 class="creacion-titulo">
+                                Progresión de moldeado ·
+                                <button type="button" class="ficha-enlace" (click)="verDetallesClase(progresion.clase)">{{progresion.clase.Nombre}}</button>
+                            </h2>
+                            <table class="ficha-tabla">
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Nivel</th>
+                                        <th scope="col">Especial</th>
+                                        <th scope="col" class="ficha-num">Fusiones</th>
+                                        <th scope="col" class="ficha-num">Esencia</th>
+                                        <th scope="col" class="ficha-num">Vínculos</th>
+                                        <th scope="col">Chakras que abre</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let fila of progresion.filas" [class.progresion-moldeado__actual]="fila.estado === 'actual'"
+                                        [class.progresion-moldeado__futura]="fila.estado === 'futuro'"
+                                        [attr.aria-current]="fila.estado === 'actual' ? 'true' : null">
+                                        <td>{{fila.nivel}}</td>
+                                        <td>{{fila.especial || '—'}}</td>
+                                        <td class="ficha-num">{{fila.fusiones}}</td>
+                                        <td class="ficha-num">{{fila.esencia}}</td>
+                                        <td class="ficha-num">{{fila.vinculos}}</td>
+                                        <td>{{fila.chakras || '—'}}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <p class="ficha-nota">Las fusiones no se aprenden: quien moldea conoce toda la lista de su clase y
+                                elige cada mañana. Aquí solo se ve lo que podrá moldear; la formación de partida, si se guarda, va en
+                                el paso «Formación».</p>
+                        </section>
                     </div>
                     <div creacionLateral class="paso-lateral">
-                        <app-creacion-personaje [personaje]="Personaje"></app-creacion-personaje>
+                        <app-creacion-personaje [personaje]="Personaje">
+                            <ng-container *ngTemplateOutlet="incarnumTuPersonaje"></ng-container>
+                        </app-creacion-personaje>
                     </div>
                 </app-creacion-cuerpo>
                 <app-creacion-pie nota="Pulsa una clase para elegir su siguiente nivel; con su nombre ves su detalle. Un paso hecho no se puede deshacer.">
@@ -741,6 +778,15 @@
                 </app-creacion-pie>
             </ng-container>
 
+            <!-- Formación de partida (Magic of Incarnum, opcional): antes de guardar, si puede moldear fusiones -->
+            <ng-container *ngSwitchCase="'formacion'">
+                <app-formacion-incarnum [bloque]="formacionBloque" [fusiones]="incarnumFusiones" [chakras]="incarnumChakras"
+                    [alineamiento]="formacionAlineamiento" [inicial]="formacionIncarnum" [errorApi]="formacionErrorApi"
+                    [guardando]="finalizacionEnCurso" (confirmar)="onConfirmarFormacion($event)" (saltar)="onSaltarFormacion()"
+                    (fusionDetalles)="verDetallesFusion($event)">
+                </app-formacion-incarnum>
+            </ng-container>
+
             <!-- Equipo: la tienda, el último paso, con el personaje ya guardado -->
             <ng-container *ngSwitchCase="'equipo'">
                 <app-tienda-equipo *ngIf="tiendaRegla" [regla]="tiendaRegla" [articulos]="tiendaArticulos"
@@ -752,6 +798,26 @@
             </ng-container>
         </ng-container>
     </app-creacion-marco>
+
+    <!-- El incarnum de «Tu personaje» en el paso de clases: moldeado, CD, reserva, capacidad y chakras que puede vincular -->
+    <ng-template #incarnumTuPersonaje>
+        <ng-container *ngIf="incarnumTuPersonajeModelo as inc">
+            <h3 class="ficha-titulo">Incarnum</h3>
+            <div class="creacion-personaje__pares">
+                <div class="creacion-personaje__par" *ngFor="let par of inc.pares">
+                    <span class="creacion-personaje__par-nombre">{{par.nombre}}</span>
+                    <span class="creacion-personaje__par-valor">{{par.valor}}</span>
+                </div>
+            </div>
+            <div class="incarnum-chakras" *ngIf="inc.chakras.length > 0 || inc.proximos">
+                <span class="ficha-nota">Chakras que puede vincular</span>
+                <div class="incarnum-chakras__lista">
+                    <span class="creacion-etiqueta incarnum-chakra" *ngFor="let chakra of inc.chakras">{{chakra}}</span>
+                    <span class="creacion-etiqueta incarnum-chakra--futuro" *ngIf="inc.proximos">{{inc.proximos}}</span>
+                </div>
+            </div>
+        </ng-container>
+    </ng-template>
 
     <ng-template #plantillasBloqueadas let-titulo="titulo" let-items="items" let-estado="estado">
         <ng-container *ngIf="items.length > 0">
@@ -809,7 +875,8 @@
                 (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"
                 (monstruoDetalles)="verDetallesMonstruoDesdeFicha($event)"
                 (deidadDetallesPorNombre)="verDetallesDeidadDesdeReferencia($event)"
-                (ventajaDetallesPorNombre)="verDetallesVentajaDesdeReferencia($event)">
+                (ventajaDetallesPorNombre)="verDetallesVentajaDesdeReferencia($event)"
+                (fusionDetallesId)="verDetallesFusion($event)" (chakraDetallesId)="verDetallesChakra($event)">
             </app-detalles-personaje>
         </app-ventana-detalle-flotante>
     </ng-container>

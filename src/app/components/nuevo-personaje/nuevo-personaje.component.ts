@@ -1,7 +1,7 @@
 import { Component, EventEmitter, HostListener, Output, ViewChild } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { MatTabGroup } from '@angular/material/tabs';
-import { Observable, Subscription, firstValueFrom, take } from 'rxjs';
+import { Observable, Subscription, combineLatest, firstValueFrom, take } from 'rxjs';
 import { Caracteristica } from 'src/app/interfaces/caracteristica';
 import { Campana, Super } from 'src/app/interfaces/campaña';
 import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
@@ -121,7 +121,10 @@ import { environment } from 'src/environments/environment';
 import Swal from 'sweetalert2';
 import { DatosIdeaIa, datosIdeaDePersonaje, TipoIdeaIa } from 'src/app/services/ideas-ia.service';
 import { UsoIdeaIa } from '../shared/ideas-ia/ideas-ia.component';
-import { DatoFranja } from '../detalles/ficha';
+import { ClaseConMoldeado, DatoFranja, FilaMoldeado, IncarnumTuPersonaje, filasMoldeado, franjaIncarnum, incarnumTuPersonaje } from '../detalles/ficha';
+import { IncarnumService } from 'src/app/services/incarnum.service';
+import { CapacidadEsencia, ChakraDetalle, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from 'src/app/interfaces/incarnum';
+import { AlineamientoParaFusiones, CODIGOS_FALLO_FORMACION, FalloFormacion } from 'src/app/services/utils/incarnum';
 import { PasoCreacionId, lineaPersonajeCreacion, pasoCreacionDeLaPestana, textoContinuarCreacion } from './marco';
 import { normalizarTexto, primerEntero } from 'src/app/services/utils/normalizacion';
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
@@ -616,8 +619,186 @@ export class NuevoPersonajeComponent {
     get pasoCreacion(): PasoCreacionId {
         return pasoCreacionDeLaPestana(this.selectedInternalTabIndex, {
             enTienda: this.modalTiendaAbierto,
+            enFormacion: this.formacionAbierta,
             eligiendoDotesSinConjuros: this.flujo.pasoActual === 'dotes' && !this.entradaConjurosActual,
         });
+    }
+
+    // Magic of Incarnum (roadmap `ACTIVO_incarnum`, fase 3): el bloque del incarnum que calcula la web como la API y la
+    // formación de partida, un paso opcional al terminar los niveles (decisión 4 de la fase 0, opción B).
+    formacionAbierta = false;
+    formacionIncarnum: FormacionIncarnumDto | null = null;
+    formacionErrorApi: FalloFormacion | null = null;
+    formacionBloque: PersonajeIncarnum | null = null;
+    formacionAlineamiento: AlineamientoParaFusiones = { actitudes: [], descriptoresSinAlineamiento: [] };
+    incarnumChakras: ChakraDetalle[] = [];
+    incarnumFusiones: Fusion[] = [];
+    /** Tras un error de la API con la formación, continuar vuelve a guardar sin repetir los PG ni la visibilidad. */
+    private formacionReintento = false;
+    private incarnumCapacidad: CapacidadEsencia[] = [];
+    private incarnumCache: { firma: string; bloque: PersonajeIncarnum | null; tuPersonaje: IncarnumTuPersonaje | null; } =
+        { firma: '', bloque: null, tuPersonaje: null };
+    private progresionCache: { firma: string; valor: ProgresionMoldeado | null; } = { firma: '', valor: null };
+
+    /** El paso «Formación» sale si el personaje puede moldear fusiones. */
+    get pasoConFormacion(): boolean {
+        return this.pasoCreacion === 'formacion' || !!this.incarnumBorrador?.puedeMoldear;
+    }
+
+    /**
+     * El bloque `incarnum` del personaje que se está creando (con la formación, si ya la eligió): solo se recalcula si
+     * cambia algo de lo que lo decide. Se deja también en el personaje para la vista previa de la ficha.
+     */
+    get incarnumBorrador(): PersonajeIncarnum | null {
+        this.actualizarIncarnumCache();
+        return this.incarnumCache.bloque;
+    }
+
+    /** El incarnum de «Tu personaje» en el paso de clases. */
+    get incarnumTuPersonajeModelo(): IncarnumTuPersonaje | null {
+        this.actualizarIncarnumCache();
+        return this.incarnumCache.tuPersonaje;
+    }
+
+    private actualizarIncarnumCache(): void {
+        const pj = this.Personaje;
+        const firma = JSON.stringify([
+            (pj?.desgloseClases ?? []).map((c) => [c?.Nombre, c?.Nivel]),
+            (pj?.DotesContextuales ?? []).map((d) => [d?.Dote?.Id, d?.Contexto?.Id_extra]),
+            (pj?.Raciales ?? []).map((r) => r?.Id),
+            (pj?.Claseas ?? []).map((c) => (c as any)?.Id),
+            (pj?.Plantillas ?? []).map((p) => p?.Id),
+            pj?.Raza?.Id,
+            [pj?.Fuerza, pj?.Destreza, pj?.Constitucion, pj?.Inteligencia, pj?.Sabiduria, pj?.Carisma],
+            this.formacionIncarnum,
+            this.incarnumCapacidad.length,
+            this.catalogoClases.length,
+            this.catalogoDotes.length,
+        ]);
+        if (firma === this.incarnumCache.firma)
+            return;
+        const bloque = this.nuevoPSvc.getIncarnumBorrador(this.formacionIncarnum);
+        this.incarnumCache = { firma, bloque, tuPersonaje: incarnumTuPersonaje(bloque, this.clasesConMoldeado()) };
+        if (this.Personaje)
+            this.Personaje.Incarnum = bloque;
+    }
+
+    /** Las clases del personaje con su `Moldeado` del catálogo (por nombre). */
+    private clasesConMoldeado(): ClaseConMoldeado[] {
+        return (this.Personaje?.desgloseClases ?? []).map((entrada) => ({
+            nombre: `${entrada?.Nombre ?? ''}`.trim(),
+            nivel: Number(entrada?.Nivel) || 0,
+            moldeado: this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(entrada?.Nombre ?? ''))?.Moldeado ?? null,
+        }));
+    }
+
+    /**
+     * La progresión de moldeado del paso de clases (lienzo `Clases.dc.html`): la de la clase que se mira si moldea o, si
+     * no, la de la primera moldeadora que ya tiene; hasta el nivel que va a tomar y uno más, con los especiales de cada nivel.
+     */
+    get progresionMoldeado(): ProgresionMoldeado | null {
+        const seleccion = this.claseSeleccionadaActual;
+        const propia = seleccion?.clase?.Moldeado
+            ? { clase: seleccion.clase, siguiente: seleccion.siguienteNivel }
+            : (() => {
+                const entrada = this.clasesConMoldeado().find((c) => !!c.moldeado);
+                const clase = entrada ? this.catalogoClases.find((c) => normalizarTexto(c.Nombre) === normalizarTexto(entrada.nombre)) : undefined;
+                return clase && entrada ? { clase, siguiente: entrada.nivel + 1 } : null;
+            })();
+        const firma = propia ? `${propia.clase.Id}:${propia.siguiente}` : '';
+        if (firma !== this.progresionCache.firma) {
+            this.progresionCache = {
+                firma,
+                valor: propia ? {
+                    clase: propia.clase,
+                    filas: filasMoldeado(propia.clase.Moldeado)
+                        .filter((fila) => fila.nivel <= propia.siguiente + 1)
+                        .map((fila) => ({
+                            ...fila,
+                            especial: (propia.clase.Desglose_niveles ?? []).find((n) => n.Nivel === fila.nivel)?.Especiales
+                                ?.map((e) => `${e?.Especial?.['Nombre'] ?? ''}`.trim()).filter(Boolean).join(', ') ?? '',
+                            estado: fila.nivel < propia.siguiente ? 'hecho' : fila.nivel === propia.siguiente ? 'actual' : 'futuro',
+                        })),
+                } : null,
+            };
+        }
+        return this.progresionCache.valor;
+    }
+
+    /** La tabla de capacidad y los chakras del incarnum (pequeños): para el bloque del borrador y los extras de las dotes. */
+    private cargarCatalogosIncarnum(): void {
+        if (!this.incarnumSvc)
+            return;
+        combineLatest([this.incarnumSvc.getCapacidadEsencia(), this.incarnumSvc.getChakras()]).pipe(take(1)).subscribe({
+            next: ([capacidad, chakras]) => {
+                this.incarnumCapacidad = capacidad ?? [];
+                this.incarnumChakras = chakras ?? [];
+                this.nuevoPSvc.setCatalogosIncarnum(capacidad ?? [], this.incarnumFusiones, chakras ?? []);
+            },
+            error: () => undefined,
+        });
+    }
+
+    /** Las actitudes del alineamiento básico del personaje (del catálogo) y los descriptores que sus dotes liberan. */
+    private alineamientoParaFusiones(): AlineamientoParaFusiones {
+        const nombre = normalizarTexto(this.Personaje?.Alineamiento ?? '');
+        const basico = (this.catalogoAlineamientosBasicos ?? []).find((item) => normalizarTexto(item?.Nombre ?? '') === nombre);
+        const descriptores = (this.Personaje?.DotesContextuales ?? [])
+            .map((d) => (this.catalogoDotes ?? []).find((dote) => Number(dote?.Id) === Number(d?.Dote?.Id)) ?? d?.Dote)
+            .flatMap((dote) => dote?.Incarnum?.Descriptores_sin_alineamiento ?? [])
+            .map((descriptor) => descriptor.Id);
+        return {
+            actitudes: (basico?.Actitudes ?? []).map((actitud) => Number(actitud?.Id)).filter((id) => id > 0),
+            descriptoresSinAlineamiento: Array.from(new Set(descriptores)),
+        };
+    }
+
+    /** Abre el paso «Formación» con el bloque del personaje sin formación y el catálogo de fusiones. */
+    private async abrirFormacionIncarnum(): Promise<void> {
+        if (this.incarnumSvc && this.incarnumFusiones.length < 1) {
+            try {
+                this.incarnumFusiones = await firstValueFrom(this.incarnumSvc.getFusiones().pipe(take(1)));
+                this.nuevoPSvc.setCatalogosIncarnum(this.incarnumCapacidad, this.incarnumFusiones, this.incarnumChakras);
+            } catch {
+                this.incarnumFusiones = [];
+            }
+        }
+        this.formacionBloque = this.nuevoPSvc.getIncarnumBorrador(null);
+        this.formacionAlineamiento = this.alineamientoParaFusiones();
+        this.formacionAbierta = true;
+    }
+
+    onConfirmarFormacion(formacion: FormacionIncarnumDto): void {
+        const vacia = formacion.fusiones.length < 1 && formacion.receptaculos.length < 1;
+        this.formacionIncarnum = vacia ? null : formacion;
+        this.continuarTrasFormacion();
+    }
+
+    onSaltarFormacion(): void {
+        this.formacionIncarnum = null;
+        this.continuarTrasFormacion();
+    }
+
+    /** Tras la formación: los PG y la visibilidad, o, si la API la rechazó, volver a guardar con lo ya elegido. */
+    private continuarTrasFormacion(): void {
+        this.formacionErrorApi = null;
+        if (this.formacionReintento) {
+            void this.finalizarPersonajeCompleto();
+            return;
+        }
+        this.abrirSelectorPuntosGolpe();
+    }
+
+    @Output() fusionDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    verDetallesFusion(id: number): void {
+        if (Number(id) > 0)
+            this.fusionDetallesId.emit(Number(id));
+    }
+
+    @Output() chakraDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    verDetallesChakra(id: number): void {
+        if (Number(id) > 0)
+            this.chakraDetallesId.emit(Number(id));
     }
 
     /** El paso de Conjuros sale cuando tiene conjuros que elegir o ya tiene alguno (un guerrero no lo ve). */
@@ -630,7 +811,11 @@ export class NuevoPersonajeComponent {
     }
 
     get textoContinuarPaso(): string {
-        return textoContinuarCreacion(this.pasoCreacion, { conVentajas: !this.campaignForbidsAdvantages, conConjuros: this.pasoConConjuros });
+        return textoContinuarCreacion(this.pasoCreacion, {
+            conVentajas: !this.campaignForbidsAdvantages,
+            conConjuros: this.pasoConConjuros,
+            conFormacion: this.pasoConFormacion,
+        });
     }
 
     /** «Ver la ficha» abre la vista previa que ya existe; en pantallas pequeñas no cabe. */
@@ -659,6 +844,7 @@ export class NuevoPersonajeComponent {
                     { etiqueta: 'La que eliges', valor: this.claseSeleccionadaActual?.clase?.Nombre ?? null,
                         detalle: this.claseSeleccionadaActual ? `nivel ${this.claseSeleccionadaActual.siguienteNivel}` : null },
                     { etiqueta: 'Puntos de golpe', valor: Number(this.Personaje?.Vida) > 0 ? Number(this.Personaje.Vida) : null },
+                    ...franjaIncarnum(this.incarnumBorrador),
                 ];
             case 'habilidades':
                 return [
@@ -727,6 +913,7 @@ export class NuevoPersonajeComponent {
         private tamanoSvc?: TamanoService,
         private subtipoSvc?: SubtipoService,
         private razaCatalogosSvc?: RazaCatalogosService,
+        private incarnumSvc?: IncarnumService,
     ) {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
@@ -806,6 +993,7 @@ export class NuevoPersonajeComponent {
         this.cargarTiposCriatura();
         this.cargarCatalogosCifras();
         this.cargarAlineamientosBasicos();
+        this.cargarCatalogosIncarnum();
         if (uid.length > 0)
             this.nuevoPSvc.activarPersistenciaBorradorLocal(uid);
     }
@@ -4167,6 +4355,11 @@ export class NuevoPersonajeComponent {
     async onFinalizarCreacionTemporal(): Promise<void> {
         if (!this.mostrarBotonFinalizarCreacion)
             return;
+        // Magic of Incarnum: quien puede moldear pasa antes por la formación de partida (opcional).
+        if (!this.formacionAbierta && this.incarnumBorrador?.puedeMoldear) {
+            await this.abrirFormacionIncarnum();
+            return;
+        }
         this.abrirSelectorPuntosGolpe();
     }
 
@@ -4275,6 +4468,8 @@ export class NuevoPersonajeComponent {
                     progresionLanzador,
                     this.nuevoPSvc.construirMascotasParaGuardar()
                 );
+                if (this.formacionIncarnum)
+                    payload.incarnum = this.formacionIncarnum;
                 const response = await this.personajeSvc.crearPersonajeApiDesdeCreacion(payload);
                 idPersonaje = Math.trunc(Number(response?.idPersonaje ?? 0));
                 if (!Number.isFinite(idPersonaje) || idPersonaje <= 0)
@@ -4296,11 +4491,21 @@ export class NuevoPersonajeComponent {
             etapa = 'navegacion';
             this.modalSelectorVisibilidadAbierto = false;
             this.selectorVisibilidadValorInicial = null;
+            this.formacionAbierta = false;
+            this.formacionReintento = false;
             // El último paso: las compras, con el personaje ya guardado. Si la tienda no puede abrirse, se termina sin ella.
             if (await this.abrirTiendaEquipo(pjNormalizado))
                 return;
             this.completarFinalizacion(pjNormalizado);
         } catch (error: any) {
+            // La API no acepta la formación de partida: se vuelve a ella con su error, sin repetir los PG ni la visibilidad.
+            if (etapa === 'sql' && CODIGOS_FALLO_FORMACION.includes(`${error?.code ?? ''}`)) {
+                this.formacionErrorApi = { code: `${error.code}`, field: `${error?.field ?? ''}`, mensaje: `${error?.message ?? ''}`.trim() };
+                this.formacionReintento = true;
+                this.modalSelectorVisibilidadAbierto = false;
+                await this.abrirFormacionIncarnum();
+                return;
+            }
             const complianceMessage = this.userSvc.getComplianceErrorMessage(error, 'creation');
             const texto = `${complianceMessage || error?.message || 'Error no identificado'}`.trim();
             const titulo = etapa === 'sql'
@@ -7339,4 +7544,10 @@ export class NuevoPersonajeComponent {
             ...this.nuevoPSvc.getContextoRequisitosPlantillas(),
         };
     }
+}
+
+/** La progresión de moldeado del paso de clases: las filas de su tabla con los especiales y el nivel que toma. */
+interface ProgresionMoldeado {
+    clase: Clase;
+    filas: (FilaMoldeado & { especial: string; estado: 'hecho' | 'actual' | 'futuro'; })[];
 }

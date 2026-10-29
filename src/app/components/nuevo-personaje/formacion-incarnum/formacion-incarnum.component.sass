@@ -1,0 +1,110 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// La formación de partida (Magic of Incarnum; lienzo `Formacion.dc.html`). El marco (franja, cuerpo y pie) es el común de
+// `marco/creacion.sass`; aquí solo lo propio: la lista a la izquierda (2fr) y los chakras a la derecha (3fr), como en el
+// lienzo, y los botones de vincular y de esencia.
+
+:host
+    display: contents
+
+.formacion
+    display: flex
+    flex-direction: column
+    gap: 12px
+    min-height: 0
+
+.formacion-error
+    margin: 0
+    padding: 10px 12px
+
+.formacion-columnas
+    display: grid
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr)
+    gap: $ficha-hueco
+    align-items: start
+
+.formacion-lista__cabecera
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    justify-content: space-between
+    gap: 8px
+    margin-bottom: 8px
+
+.formacion-opciones
+    max-height: 60vh
+    overflow-y: auto
+
+.formacion-motivo
+    flex-shrink: 0
+    font-size: 12px
+    color: #8a949b
+
+.formacion-libre
+    color: #8a949b
+
+.formacion-vinculos
+    display: inline-flex
+    flex-wrap: wrap
+    gap: 4px
+
+.formacion-vinculo
+    height: 28px
+    padding: 0 10px
+    border: 1px solid #6b7279
+    border-radius: 4px
+    background: transparent
+    color: $ficha-blanco
+    font: inherit
+    font-size: 12px
+    cursor: pointer
+
+    &:disabled
+        color: #8a949b
+        cursor: not-allowed
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 1px
+
+.formacion-vinculo--activo
+    border-color: $active
+    background: $active
+
+.formacion-esencia
+    white-space: nowrap
+
+.formacion-boton
+    width: 26px
+    height: 26px
+    border: 1px solid #6b7279
+    border-radius: 4px
+    background: transparent
+    color: $ficha-blanco
+    font: inherit
+    cursor: pointer
+
+    &:disabled
+        opacity: .45
+        cursor: not-allowed
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 1px
+
+.formacion-cifra
+    display: inline-block
+    width: 22px
+    text-align: center
+
+.formacion-fila--receptaculo
+    background: rgba($active, .06)
+
+.formacion-fila--error td
+    box-shadow: inset 0 -1px 0 #ef9a9a
+    color: #ffcdd2
+
+@container ficha (max-width: 900px)
+    .formacion-columnas
+        grid-template-columns: minmax(0, 1fr)

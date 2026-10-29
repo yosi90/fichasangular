@@ -1,6 +1,6 @@
 import { ClaseMoldeado, DoteIncarnum, EsenciaRasgo, Fusion, FusionChakra, NombreTraducible, PersonajeIncarnum } from 'src/app/interfaces/incarnum';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
-import { DatoFicha } from './ficha';
+import { DatoFicha, DatoFranja } from './ficha';
 
 /*
  * Lo que enseñan igual el detalle de una clase, el paso de clases de la creación, el catálogo de fusiones y la ficha del
@@ -355,4 +355,78 @@ function celdasChakras(incarnum: PersonajeIncarnum, clases: ClaseConMoldeado[], 
         }
         return celda;
     });
+}
+
+// --- La creación de personaje: el paso de clases de una moldeadora (lienzo `Clases.dc.html`) --------------------------
+
+/**
+ * Las cifras del incarnum para la franja de un paso de la creación: la reserva con su desglose, las fusiones a la vez,
+ * los vínculos (con los chakras abiertos) y la capacidad. Nada si el personaje no moldea fusiones.
+ */
+export function franjaIncarnum(bloque: PersonajeIncarnum | null | undefined): DatoFranja[] {
+    if (!bloque?.puedeMoldear)
+        return [];
+    const abiertos = Array.from(new Set(bloque.clases.flatMap((c) => c.chakrasAbiertos.map((ch) => ch.nombre))
+        .concat(bloque.chakrasDeDotes.map((d) => d.chakra.nombre))));
+    return [
+        {
+            etiqueta: 'Reserva de esencia',
+            valor: bloque.reserva.total,
+            detalle: bloque.reserva.desglose.map((p) => `${p.valor} de ${p.origen}`).join(', '),
+        },
+        {
+            etiqueta: 'Fusiones a la vez',
+            valor: bloque.clases.reduce((s, c) => s + c.fusionesMaximas, 0) + bloque.fusionesDeDotes.length,
+            detalle: bloque.clases.map((c) => c.caracteristicaFusiones ? `tabla ${c.fusionesTabla} · con ${c.caracteristicaFusiones} deja ${c.fusionesMaximas}` : '').filter(Boolean).join(' · '),
+        },
+        {
+            etiqueta: 'Vínculos',
+            valor: bloque.clases.reduce((s, c) => s + c.vinculos, 0) + bloque.chakrasDeDotes.length,
+            detalle: unirConO(abiertos.map((nombre) => nombre.toLowerCase())),
+        },
+        {
+            etiqueta: 'Capacidad de esencia',
+            valor: bloque.capacidad.basica,
+            detalle: bloque.clases.filter((c) => c.capacidadFusiones !== bloque.capacidad.basica)
+                .map((c) => `${c.capacidadFusiones} en fusiones de ${c.nombre}`).join(', '),
+        },
+    ];
+}
+
+/** Lo que enseña «Tu personaje» del incarnum: pares de nombre y valor y los chakras que puede vincular (y los próximos). */
+export interface IncarnumTuPersonaje {
+    pares: { nombre: string; valor: string; }[];
+    chakras: string[];
+    proximos: string;
+}
+
+/** «Tu personaje» en la creación: nivel de moldeador, CD, reserva y capacidad; los chakras abiertos y los que vienen. */
+export function incarnumTuPersonaje(
+    bloque: PersonajeIncarnum | null | undefined,
+    clases: ClaseConMoldeado[] = [],
+): IncarnumTuPersonaje | null {
+    if (!bloque || (!bloque.puedeMoldear && bloque.reserva.total <= 0))
+        return null;
+    const variasClases = bloque.clases.length > 1;
+    const pares = [
+        ...bloque.clases.flatMap((c) => [
+            { nombre: variasClases ? `Moldeador (${c.nombre})` : 'Nivel de moldeador', valor: `${c.nivelMoldeador}` },
+            ...(c.cd ? [{ nombre: variasClases ? `CD (${c.nombre})` : 'CD', valor: `${c.cd.base} + esencia` }] : []),
+        ]),
+        { nombre: 'Reserva de esencia', valor: `${bloque.reserva.total}` },
+        { nombre: 'Capacidad', valor: `${bloque.capacidad.basica}` },
+    ];
+    const chakras = Array.from(new Set(bloque.clases.flatMap((c) => c.chakrasAbiertos.map((ch) => ch.nombre))
+        .concat(bloque.chakrasDeDotes.map((d) => d.chakra.nombre))));
+    // Los siguientes chakras que abrirá: los del nivel más bajo que aún no tiene, de cada clase.
+    const proximos = clases.filter((c) => c.moldeado).map((c) => {
+        const futuros = c.moldeado!.Chakras.filter((ch) => ch.Nivel > c.nivel && !chakras.includes(ch.Nombre));
+        if (futuros.length < 1)
+            return '';
+        const nivel = Math.min(...futuros.map((ch) => ch.Nivel));
+        const nombres = futuros.filter((ch) => ch.Nivel === nivel).map((ch) => ch.Nombre.toLowerCase());
+        const texto = nombres.length > 1 ? `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}` : nombres[0];
+        return `${texto.charAt(0).toUpperCase()}${texto.slice(1)} a nivel ${nivel}${clases.filter((x) => x.moldeado).length > 1 ? ` de ${c.nombre}` : ''}`;
+    }).filter(Boolean).join(' · ');
+    return { pares, chakras, proximos };
 }

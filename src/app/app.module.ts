@@ -127,6 +127,7 @@ import { DetallesFusionComponent } from './components/detalles/detalles-fusion/d
 import { DetallesChakraComponent } from './components/detalles/detalles-chakra/detalles-chakra.component';
 import { ListadoFusionesComponent } from './components/shared/listado-fusiones/listado-fusiones.component';
 import { ListadoChakrasComponent } from './components/shared/listado-chakras/listado-chakras.component';
+import { FormacionIncarnumComponent } from './components/nuevo-personaje/formacion-incarnum/formacion-incarnum.component';
 import { ListadoIdiomasComponent } from './components/shared/listado-idiomas/listado-idiomas.component';
 import { DetallesIdiomaComponent } from './components/detalles/detalles-idioma/detalles-idioma.component';
 import { UserProfileComponent } from './components/base/user-profile/user-profile.component';
@@ -230,6 +231,7 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         DetallesChakraComponent,
         ListadoFusionesComponent,
         ListadoChakrasComponent,
+        FormacionIncarnumComponent,
         ListadoIdiomasComponent,
         DetallesIdiomaComponent,
         AppToastHostComponent,

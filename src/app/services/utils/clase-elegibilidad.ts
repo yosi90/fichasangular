@@ -5,6 +5,7 @@ import { cumpleActitud, getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisit
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito } from './prerrequisito-frase';
 import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -41,6 +42,8 @@ export interface ClaseEvaluacionContexto {
     reservaPsionica?: number;
     escuelaEspecialista?: { id: number | null; nombre: string; nivelArcano: number; };
     tamanoId?: number | null;
+    /** Magic of Incarnum: reserva, nivel de moldeador, fusiones, vínculos y chakras que puede vincular. */
+    incarnum?: IncarnumPrerrequisitos;
 }
 
 export interface ClaseEvaluacionResultado {
@@ -92,6 +95,7 @@ const FLAGS_SOPORTADAS: (keyof Clase["Prerrequisitos_flags"])[] = [
     "dominio",
     "tamano_maximo",
     "tamano_minimo",
+    ...(CLAVES_PRERREQUISITOS_INCARNUM as (keyof Clase["Prerrequisitos_flags"])[]),
 ];
 
 function pick(entry: Record<string, any>, keys: string[]): any {
@@ -635,6 +639,20 @@ export function evaluarElegibilidadClase(clase: Clase, ctx: ClaseEvaluacionConte
     evaluarFamilia(motivos, "clase_especial", (flags as any)?.clase_especial, toArray(prer?.clase_especial), (entry) => buildEvaluacionClaseEspecial(entry, ctx), { permitirSinDatos: true });
     evaluarFamilia(motivos, "tamano_maximo", flags?.tamano_maximo, toArray(prer?.tamano_maximo), (entry) => buildEvaluacionTamano(entry, ctx, true));
     evaluarFamilia(motivos, "tamano_minimo", flags?.tamano_minimo, toArray(prer?.tamano_minimo), (entry) => buildEvaluacionTamano(entry, ctx, false));
+    const incarnum = ctx.incarnum ?? incarnumParaPrerrequisitos(null);
+    CLAVES_PRERREQUISITOS_INCARNUM.forEach((clave) => evaluarFamilia(
+        motivos,
+        clave,
+        (flags as Record<string, boolean | undefined>)?.[clave],
+        toArray(prer?.[clave as keyof Clase["Prerrequisitos"]]),
+        (entry) => ({
+            grupoOpcional: parseOpcional(entry),
+            evaluable: true,
+            cumple: !!cumplePrerrequisitoIncarnum(clave, entry, incarnum, toNumber(ctx.lanzador?.arcano)),
+            razonUnknown: '',
+        }),
+        { permitirSinDatos: clave === 'sin_esencia' || clave === 'sin_lanzador_arcano' },
+    ));
     motivos.cerrarGrupos();
     advertencias.push(...textosUnicos(motivos.avisos));
 

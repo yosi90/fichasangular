@@ -13,6 +13,8 @@ import { createDefaultUserSettings } from '../interfaces/user-settings';
 import { UserSettingsService } from './user-settings.service';
 import { PersonajeService } from './personaje.service';
 import { totalesPersonaje, totalHabilidad } from './utils/personaje-totales';
+import { normalizarClaseMoldeado } from './utils/incarnum-mapper';
+import { moldeadoEncarnadoApi } from 'src/testing/incarnum';
 
 /** Las banderas con las que la API marca los especiales que dan familiar o compañero (`Otorga_*`). */
 const BANDERAS_ESPECIAL_MASCOTA: Record<string, Record<string, boolean>> = {
@@ -7837,5 +7839,58 @@ describe('NuevoPersonajeService (reglas de la auditoría de la matriz, 2026-10-2
         expect(contexto.nivelesClase).toBe(3);
         expect(contexto.nivelLanzador).toBe(0);
         expect(contexto.dotes).toEqual([{ id: 335, nombre: 'Fabricar objeto maravilloso' }]);
+    });
+});
+
+describe('NuevoPersonajeService (Magic of Incarnum)', () => {
+    function claseMoldeadora(): Clase {
+        return {
+            Id: 406,
+            Nombre: 'Nacido del alma',
+            Moldeado: normalizarClaseMoldeado(moldeadoEncarnadoApi({ Divisor_nivel_moldeador: 2, Caracteristica_cd: { Id: 3, Nombre: 'Constitución' } })),
+            Habilidades: {
+                Base: [],
+                Custom: [],
+                Por_alineamiento: [
+                    { Id_habilidad: 11, Habilidad: 'Diplomacia', Id_extra: null, Extra: null, Alineamiento: { Id: 1, Nombre: 'Legal bueno' } },
+                    { Id_habilidad: 22, Habilidad: 'Intimidar', Id_extra: null, Extra: null, Alineamiento: { Id: 9, Nombre: 'Caótico maligno' } },
+                ],
+            },
+            Desglose_niveles: [],
+        } as unknown as Clase;
+    }
+
+    it('el bloque del borrador sale del catálogo de la clase y de las puntuaciones del personaje', () => {
+        const service = new NuevoPersonajeService();
+        service.setCatalogoClases([claseMoldeadora()]);
+        const pj = service.PersonajeCreacion;
+        pj.desgloseClases = [{ Nombre: 'Nacido del alma', Nivel: 4 }];
+        pj.Constitucion = 14;
+        const bloque = service.getIncarnumBorrador()!;
+        expect(bloque.clases[0]).toEqual(jasmine.objectContaining({ nivelMoldeador: 2, fusionesMaximas: 4, esencia: 4 }));
+        expect(bloque.clases[0].cd).toEqual({ base: 12, caracteristica: 'Constitución', modificador: 2 });
+        pj.desgloseClases = [];
+        expect(service.getIncarnumBorrador()).toBeNull();
+    });
+
+    it('las habilidades de clase según el alineamiento: solo las de su alineamiento básico', () => {
+        const service = new NuevoPersonajeService();
+        service.PersonajeCreacion.Alineamiento = 'Legal bueno';
+        expect((service as any).habilidadesPorAlineamientoDeClase(claseMoldeadora()))
+            .toEqual([{ Id_habilidad: 11, Habilidad: 'Diplomacia', Id_extra: null, Extra: null }]);
+        service.PersonajeCreacion.Alineamiento = 'Neutral auténtico';
+        expect((service as any).habilidadesPorAlineamientoDeClase(claseMoldeadora())).toEqual([]);
+    });
+
+    it('una dote que elige un chakra ofrece los de la dote como extras', () => {
+        const service = new NuevoPersonajeService();
+        const dote = {
+            Id: 1116, Nombre: 'Abrir chakra menor', Tipos: [],
+            Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0, Extra_chakra: 1, Extra_fusion: 0 },
+            Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [], Chakras: [{ Id: 37, Nombre: 'Brazos' }, { Id: 38, Nombre: 'Frente' }], Fusiones: [] },
+            Extras_de_todo_el_catalogo: { Armas: false, Armaduras: false, Escuelas: false, Habilidades: false, Chakras: false, Fusiones: false },
+        } as any;
+        expect((service as any).doteTieneExtrasSoportados(dote)).toBeTrue();
+        expect((service as any).resolverExtrasDisponiblesDote(dote).map((e: any) => e.Nombre)).toEqual(['Brazos', 'Frente']);
     });
 });

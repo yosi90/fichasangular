@@ -55,6 +55,7 @@ export class CreacionCabeceraComponent implements OnChanges {
     @Input() paso: PasoCreacionId = 'raza';
     @Input() conVentajas = true;
     @Input() conConjuros = false;
+    @Input() conFormacion = false;
     @Input() nombre: string | null | undefined = '';
     /** «Humano · Guerrero 5 · Neutral bueno». */
     @Input() linea = '';
@@ -68,7 +69,7 @@ export class CreacionCabeceraComponent implements OnChanges {
     nombreVisible = '';
 
     ngOnChanges(): void {
-        const opciones: OpcionesPasosCreacion = { conVentajas: this.conVentajas, conConjuros: this.conConjuros };
+        const opciones: OpcionesPasosCreacion = { conVentajas: this.conVentajas, conConjuros: this.conConjuros, conFormacion: this.conFormacion };
         this.pasos = pintarPasosCreacion(opciones, this.paso);
         this.numeroActual = this.pasos.find((paso) => paso.estado === 'actual')?.numero ?? 1;
         this.nombreVisible = `${this.nombre ?? ''}`.trim();

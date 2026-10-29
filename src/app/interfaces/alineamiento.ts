@@ -22,6 +22,8 @@ export interface Alineamiento {
 export interface AlineamientoBasicoCatalogItem {
     Id: number;
     Nombre: string;
+    /** Sus dos componentes, el de ley y el moral (Magic of Incarnum: qué fusiones puede moldear). Vacío en «No aplica». */
+    Actitudes?: { Id: number; Nombre: string; }[];
 }
 
 export interface PrioridadAlineamientoCatalogItem {

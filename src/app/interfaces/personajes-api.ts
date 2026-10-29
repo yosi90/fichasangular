@@ -1,4 +1,5 @@
 import { Comodin } from './comodin';
+import { FormacionIncarnumDto } from './incarnum';
 
 export interface PersonajeContextoIdsDto {
     idCampana?: number | null;
@@ -180,6 +181,8 @@ export interface PersonajeCreateRequestDto {
     contextoCreacionCampana?: PersonajeContextoCreacionCampanaDto;
     familiar?: PersonajeCreateFamiliarDto;
     companero?: PersonajeCreateCompaneroDto;
+    /** Magic of Incarnum: la formación de partida de un moldeador (opcional; `docs/publica/INCARNUM.md`). */
+    incarnum?: FormacionIncarnumDto;
 }
 
 /** Una habilidad de un familiar o un compañero (`familiar.habilidades[]`, `companero.habilidades[]`). */
