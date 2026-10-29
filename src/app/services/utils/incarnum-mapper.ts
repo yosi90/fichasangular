@@ -169,13 +169,6 @@ export function normalizarEsenciaRasgo(raw: any): EsenciaRasgo | null {
     return esencia.Reserva > 0 || esencia.Receptaculo ? esencia : null;
 }
 
-/** «Corona (Crown)»: el nombre con el original del libro si es una traducción nuestra. */
-export function nombreConOriginal(item: { Nombre?: string | null; Nombre_original?: string | null; Traducido?: boolean; } | null | undefined): string {
-    const nombre = toText(item?.Nombre).trim();
-    const original = toText(item?.Nombre_original).trim();
-    return item?.Traducido && original && original !== nombre ? `${nombre} (${original})` : nombre;
-}
-
 function refFicha(raw: any): PersonajeIncarnumRef {
     return {
         id: toInt(raw?.id),

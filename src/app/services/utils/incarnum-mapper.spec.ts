@@ -1,6 +1,5 @@
 import { chakraApi, fusionApi, moldeadoEncarnadoApi, personajeIncarnumApi } from 'src/testing/incarnum';
 import {
-    nombreConOriginal,
     normalizarChakraDetalle,
     normalizarClaseMoldeado,
     normalizarDoteIncarnum,
@@ -72,10 +71,5 @@ describe('incarnum-mapper', () => {
         expect(bloque.formacion?.fusiones[0].vinculo?.id).toBe(34);
         expect(normalizarPersonajeIncarnum(null)).toBeNull();
         expect(normalizarPersonajeIncarnum(personajeIncarnumApi({ formacion: null }))!.formacion).toBeNull();
-    });
-
-    it('el nombre con el original solo si es una traducción nuestra', () => {
-        expect(nombreConOriginal({ Nombre: 'Corona', Nombre_original: 'Crown', Traducido: true })).toBe('Corona (Crown)');
-        expect(nombreConOriginal({ Nombre: 'Corona', Nombre_original: 'Crown', Traducido: false })).toBe('Corona');
     });
 });
