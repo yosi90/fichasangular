@@ -132,20 +132,15 @@ export interface LecturaCacheOApi<T> {
 
 /**
  * Lee de la caché de la RTDB y, si no está, de la API. Cada vez que cambia la ruta, emite lo de la caché si sirve o,
- * si no, pide la API y emite su respuesta. Si la API falla, enseña los avisos y termina con el error.
+ * si no, pide la API y emite su respuesta. Si la lectura de la RTDB falla (por ejemplo, un permiso denegado por las
+ * reglas), también va a la API: la caché es un atajo, no la fuente. Si la API falla, enseña los avisos y termina con el
+ * error.
  */
 export function cacheRtdbOApi<T>(lectura: LecturaCacheOApi<T>): Observable<T> {
     const sirve = lectura.sirveLaCache ?? ((snapshot: any) => snapshot.exists());
     return new Observable<T>((observador) => {
         let peticionEnCurso = false;
-        const dejarDeEscuchar = lectura.escuchar((snapshot) => {
-            if (sirve(snapshot)) {
-                const valor = lectura.desdeCache(snapshot);
-                if (!lectura.cacheIncompleta?.(valor)) {
-                    observador.next(valor);
-                    return;
-                }
-            }
+        const irALaApi = () => {
             if (lectura.unaPeticionALaVez) {
                 if (peticionEnCurso)
                     return;
@@ -161,7 +156,17 @@ export function cacheRtdbOApi<T>(lectura: LecturaCacheOApi<T>): Observable<T> {
                 },
                 complete: () => peticionEnCurso = false,
             });
-        }, (error) => observador.error(error));
+        };
+        const dejarDeEscuchar = lectura.escuchar((snapshot) => {
+            if (sirve(snapshot)) {
+                const valor = lectura.desdeCache(snapshot);
+                if (!lectura.cacheIncompleta?.(valor)) {
+                    observador.next(valor);
+                    return;
+                }
+            }
+            irALaApi();
+        }, () => irALaApi());
         return () => dejarDeEscuchar();
     });
 }

@@ -144,13 +144,31 @@ describe('cacheRtdbOApi', () => {
         expect(valores).toEqual(['api:uno']);
     });
 
-    it('un error de la RTDB termina con ese error', () => {
+    it('si la lectura de la RTDB falla (un permiso denegado), pide la API y emite su respuesta', () => {
+        const valores: string[] = [];
         const errores: any[] = [];
-        cacheRtdbOApi(lectura()).subscribe({ error: (e) => errores.push(e) });
+        const pedir = jasmine.createSpy('pedir').and.returnValue(of('api'));
+        cacheRtdbOApi(lectura({ pedir })).subscribe({ next: (v) => valores.push(v), error: (e) => errores.push(e) });
+
+        fallarRtdb(new Error('permission_denied at /Chakras: Client does not have permission to access the desired data.'));
+
+        expect(pedir).toHaveBeenCalledTimes(1);
+        expect(valores).toEqual(['api:api']);
+        expect(errores).toEqual([]);
+    });
+
+    it('si falla la RTDB y también la API, termina con el error de la API y sus avisos', () => {
+        const error = new HttpErrorResponse({ status: 500, statusText: 'Server Error' });
+        const errores: any[] = [];
+        cacheRtdbOApi(lectura({
+            pedir: () => throwError(() => error),
+            avisos: { noEncontrado: { titulo: 'No', texto: 'No' }, error: 'Error al obtener los chakras' },
+        })).subscribe({ error: (e) => errores.push(e) });
 
         fallarRtdb('sin permiso');
 
-        expect(errores).toEqual(['sin permiso']);
+        expect(errores).toEqual([error]);
+        expect(Swal.fire).toHaveBeenCalled();
     });
 });
 
