@@ -683,12 +683,17 @@ export class NuevoPersonajeComponent {
             this.Personaje.Incarnum = bloque;
     }
 
+    /** Una clase del catálogo por su nombre (el del desglose del personaje). */
+    private claseDelCatalogo(nombre: string | null | undefined): Clase | undefined {
+        return this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(nombre ?? ''));
+    }
+
     /** Las clases del personaje con su `Moldeado` del catálogo (por nombre). */
     private clasesConMoldeado(): ClaseConMoldeado[] {
         return (this.Personaje?.desgloseClases ?? []).map((entrada) => ({
             nombre: `${entrada?.Nombre ?? ''}`.trim(),
             nivel: Number(entrada?.Nivel) || 0,
-            moldeado: this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(entrada?.Nombre ?? ''))?.Moldeado ?? null,
+            moldeado: this.claseDelCatalogo(entrada?.Nombre)?.Moldeado ?? null,
         }));
     }
 
@@ -702,7 +707,7 @@ export class NuevoPersonajeComponent {
             ? { clase: seleccion.clase, siguiente: seleccion.siguienteNivel }
             : (() => {
                 const entrada = this.clasesConMoldeado().find((c) => !!c.moldeado);
-                const clase = entrada ? this.catalogoClases.find((c) => normalizarTexto(c.Nombre) === normalizarTexto(entrada.nombre)) : undefined;
+                const clase = entrada ? this.claseDelCatalogo(entrada.nombre) : undefined;
                 return clase && entrada ? { clase, siguiente: entrada.nivel + 1 } : null;
             })();
         const firma = propia ? `${propia.clase.Id}:${propia.siguiente}` : '';
@@ -4603,7 +4608,7 @@ export class NuevoPersonajeComponent {
     /** Las clases de su desglose, del catálogo (por nombre); las que no están en el catálogo no salen. */
     private clasesDelPersonajeEnElCatalogo(): Clase[] {
         return (this.Personaje?.desgloseClases ?? [])
-            .map((entrada) => this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(entrada?.Nombre ?? '')))
+            .map((entrada) => this.claseDelCatalogo(entrada?.Nombre))
             .filter((clase): clase is Clase => !!clase);
     }
 

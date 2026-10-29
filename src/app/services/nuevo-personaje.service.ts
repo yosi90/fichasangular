@@ -1554,7 +1554,7 @@ export class NuevoPersonajeService {
         const clases = (pj.desgloseClases ?? [])
             .filter((entrada) => `${entrada?.Nombre ?? ''}`.trim().length > 0)
             .map((entrada) => ({
-                clase: this.catalogoClases.find((clase) => normalizarTexto(clase?.Nombre ?? '') === normalizarTexto(entrada.Nombre)) ?? null,
+                clase: this.obtenerClaseCatalogoPorNombre(entrada.Nombre),
                 nombre: `${entrada.Nombre}`.trim(),
                 nivel: Math.max(0, toInt(entrada?.Nivel)),
             }));
@@ -3146,38 +3146,27 @@ export class NuevoPersonajeService {
         const deTodoElCatalogo = dote?.Extras_de_todo_el_catalogo;
 
         const extras: DoteExtraOpcion[] = [];
-        if (toBoolean(dote?.Extras_soportados?.Extra_arma)) {
-            const directos = normalizar(dote?.Extras_disponibles?.Armas ?? []);
-            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Armas === true;
-            extras.push(...(usarCatalogo ? this.catalogoArmasDotes : directos));
-        }
-        if (this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote)) {
-            const directos = this.filtrarExtrasArmaduraPorSoporte(dote, normalizar(dote?.Extras_disponibles?.Armaduras ?? []));
-            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Armaduras === true;
-            const catalogo = this.filtrarExtrasArmaduraPorSoporte(dote, this.catalogoArmadurasDotes);
-            extras.push(...(usarCatalogo ? catalogo : directos));
-        }
-        if (toBoolean(dote?.Extras_soportados?.Extra_escuela)) {
-            const directos = normalizar(dote?.Extras_disponibles?.Escuelas ?? []);
-            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Escuelas === true;
-            extras.push(...(usarCatalogo ? this.catalogoEscuelasDotes : directos));
-        }
-        if (toBoolean(dote?.Extras_soportados?.Extra_habilidad)) {
-            const directos = normalizar(dote?.Extras_disponibles?.Habilidades ?? []);
-            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Habilidades === true;
-            extras.push(...(usarCatalogo ? fuenteHabilidades : directos));
-        }
+        // Los que lista la dote o, si no lista ninguno o es de todo el catálogo, los del catálogo.
+        const anadir = (soporta: boolean, directos: DoteExtraOpcion[], todoElCatalogo: boolean | undefined, catalogo: () => DoteExtraOpcion[]) => {
+            if (soporta)
+                extras.push(...(directos.length < 1 || todoElCatalogo === true ? catalogo() : directos));
+        };
+        const soportados = dote?.Extras_soportados;
+        const disponibles = dote?.Extras_disponibles;
+        anadir(toBoolean(soportados?.Extra_arma), normalizar(disponibles?.Armas), deTodoElCatalogo?.Armas, () => this.catalogoArmasDotes);
+        anadir(
+            this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote),
+            this.filtrarExtrasArmaduraPorSoporte(dote, normalizar(disponibles?.Armaduras)),
+            deTodoElCatalogo?.Armaduras,
+            () => this.filtrarExtrasArmaduraPorSoporte(dote, this.catalogoArmadurasDotes),
+        );
+        anadir(toBoolean(soportados?.Extra_escuela), normalizar(disponibles?.Escuelas), deTodoElCatalogo?.Escuelas, () => this.catalogoEscuelasDotes);
+        anadir(toBoolean(soportados?.Extra_habilidad), normalizar(disponibles?.Habilidades), deTodoElCatalogo?.Habilidades, () => fuenteHabilidades);
         // Magic of Incarnum: «elige un chakra» (Abrir chakra) o «elige una fusión» (Moldear fusión).
-        if (toBoolean(dote?.Extras_soportados?.Extra_chakra)) {
-            const directos = normalizar(dote?.Extras_disponibles?.Chakras ?? []);
-            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Chakras === true;
-            extras.push(...(usarCatalogo ? this.catalogoChakras.map((c) => ({ Id: c.Id, Nombre: c.Nombre })) : directos));
-        }
-        if (toBoolean(dote?.Extras_soportados?.Extra_fusion)) {
-            const directos = normalizar(dote?.Extras_disponibles?.Fusiones ?? []);
-            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Fusiones === true;
-            extras.push(...(usarCatalogo ? this.catalogoFusiones.map((f) => ({ Id: f.Id, Nombre: f.Nombre })) : directos));
-        }
+        anadir(toBoolean(soportados?.Extra_chakra), normalizar(disponibles?.Chakras), deTodoElCatalogo?.Chakras,
+            () => this.catalogoChakras.map((c) => ({ Id: c.Id, Nombre: c.Nombre })));
+        anadir(toBoolean(soportados?.Extra_fusion), normalizar(disponibles?.Fusiones), deTodoElCatalogo?.Fusiones,
+            () => this.catalogoFusiones.map((f) => ({ Id: f.Id, Nombre: f.Nombre })));
 
         return this.normalizarCatalogoExtras(extras);
     }
