@@ -89,6 +89,14 @@ export interface PlantillaPrerrequisitosFlags {
     nivel_lanzador?: boolean;
     /** Una dote que debe tener la criatura base (el liche: Fabricar objeto maravilloso). */
     dote?: boolean;
+    /** El tamaño mínimo y máximo de la criatura base (las plantillas de los manuales, desde el 2026-10-29). */
+    tamano_minimo?: boolean;
+    tamano_maximo?: boolean;
+    /** Los DG totales mínimos de la criatura base. */
+    dg?: boolean;
+    /** Un subtipo que tiene que tener y uno que no puede tener. */
+    subtipo?: boolean;
+    subtipo_prohibido?: boolean;
 }
 
 export type PlantillaPrerrequisitoItem = PrerrequisitoItem;
@@ -101,6 +109,14 @@ export interface PlantillaPrerrequisitos {
     criaturas_compatibles: PlantillaPrerrequisitoItem[];
     nivel_lanzador?: PlantillaPrerrequisitoItem[];
     dote?: PlantillaPrerrequisitoItem[];
+    /** `{ Id_tamano, Tamano, Opcional, Frase }`: el tamaño de la criatura base, con los pasos de las plantillas ya elegidas. */
+    tamano_minimo?: PlantillaPrerrequisitoItem[];
+    tamano_maximo?: PlantillaPrerrequisitoItem[];
+    /** `{ Cantidad, Opcional, Frase }`: los DG totales (raciales, de clase y de plantilla). */
+    dg?: PlantillaPrerrequisitoItem[];
+    /** `{ Id_subtipo, Subtipo, Opcional, Frase }`: los subtipos de la raza y de las plantillas ya elegidas. */
+    subtipo?: PlantillaPrerrequisitoItem[];
+    subtipo_prohibido?: PlantillaPrerrequisitoItem[];
 }
 
 export interface PlantillaCompatibilidadTipo {
@@ -149,6 +165,16 @@ export interface Plantilla {
     Movimientos: PlantillaMovimientos;
     Maniobrabilidad: Maniobrabilidad;
     Alineamiento: Alineamiento;
+    /** Lo que dice el manual de la criatura con la plantilla; `null` si no lo da (desde el 2026-10-29). */
+    Entorno: string | null;
+    Organizacion: string | null;
+    /** Valor de desafío: el ajuste («igual que la criatura base +2») o la tabla por DG resumida. */
+    Vd: string | null;
+    Tesoro: string | null;
+    Avance: string | null;
+    /** El nombre en inglés de una plantilla de un libro en inglés, traducida por nosotros; `null` si no. */
+    Nombre_original: string | null;
+    Traducido: boolean;
     Oficial: boolean;
     Dotes: DoteContextual[];
     Subtipos: SubtipoRef[];

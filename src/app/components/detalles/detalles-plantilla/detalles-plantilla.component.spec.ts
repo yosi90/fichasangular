@@ -46,6 +46,13 @@ function crearPlantilla(partial: Partial<Plantilla> = {}): Plantilla {
         Movimientos: { Correr: 0, Nadar: 0, Volar: 60, Trepar: 0, Escalar: 0 },
         Maniobrabilidad: { Id: 2, Nombre: 'Media' } as any,
         Alineamiento: null as any,
+        Entorno: null,
+        Organizacion: null,
+        Vd: null,
+        Tesoro: null,
+        Avance: null,
+        Nombre_original: null,
+        Traducido: false,
         Oficial: true,
         Dotes: [],
         Subtipos: [],
@@ -130,6 +137,40 @@ describe('DetallesPlantillaComponent', () => {
         expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => limpio(e))).toEqual(['Oficial']);
         expect(texto()).not.toContain('null');
         expect(texto()).not.toContain('undefined');
+    });
+
+    it('enseña la ecología del manual, el nombre original y la marca de traducida', () => {
+        component.plantilla = crearPlantilla({
+            Nombre: 'Liche seco',
+            Nacimiento: false,
+            Entorno: 'Cualquier desierto',
+            Organizacion: 'Solitario',
+            Vd: 'Igual que la criatura base +2',
+            Tesoro: 'Estándar',
+            Avance: 'Según la clase del personaje',
+            Nombre_original: 'Dry Lich',
+            Traducido: true,
+        });
+        fixture.detectChanges();
+
+        expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => limpio(e))).toEqual(['Traducido', 'Oficial']);
+        expect(datos(elemento().querySelector('.ficha-datos-contenedor--tarjeta'))).toContain(['Nombre original', 'Dry Lich']);
+        expect(datos(seccion('Ecología'))).toEqual([
+            ['Entorno', 'Cualquier desierto'],
+            ['Organización', 'Solitario'],
+            ['Valor de desafío', 'Igual que la criatura base +2'],
+            ['Tesoro', 'Estándar'],
+            ['Avance', 'Según la clase del personaje'],
+        ]);
+    });
+
+    it('sin ecología ni traducción no pinta la sección ni la etiqueta', () => {
+        component.plantilla = crearPlantilla({ Nacimiento: false, Nombre_original: 'Half-Dragon', Traducido: false });
+        fixture.detectChanges();
+
+        expect(titulos()).not.toContain('Ecología');
+        expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => limpio(e))).toEqual(['Oficial']);
+        expect(texto()).not.toContain('Half-Dragon');
     });
 
     it('enseña los mínimos, los DG de animal y la compatibilidad de tipo', () => {

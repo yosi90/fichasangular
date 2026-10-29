@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import {
     DatoFicha,
     DoteFicha,
+    EtiquetaFicha,
     HabilidadFicha,
     SortilegaFicha,
     datoAlineamiento,
@@ -10,7 +11,9 @@ import {
     datosMovimiento,
     datosVisibles,
     dotesVisibles,
+    etiquetaTraducido,
     habilidadesVisibles,
+    nombreOriginalVisible,
     sortilegasVisibles,
     textoDesdeDg,
 } from 'src/app/components/detalles/ficha';
@@ -40,8 +43,10 @@ export class DetallesPlantillaComponent {
 
     // Lo que pinta la ficha, calculado una vez al recibir la plantilla. Los modificadores se agrupan: lo que define la
     // plantilla en los datos clave y, en el cuerpo, características, combate y defensas, movimiento y DG de animal.
-    etiquetas: string[] = [];
+    etiquetas: (string | EtiquetaFicha)[] = [];
     datos: DatoFicha[] = [];
+    /** Lo que dice el manual de la criatura con la plantilla: entorno, organización, valor de desafío, tesoro y avance. */
+    ecologia: DatoFicha[] = [];
     modificadoresCaracteristicas: DatoFicha[] = [];
     minimosCaracteristicas: DatoFicha[] = [];
     combate: DatoFicha[] = [];
@@ -59,7 +64,8 @@ export class DetallesPlantillaComponent {
     set plantilla(value: Plantilla) {
         this.plantillaData = value;
         this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos);
-        this.etiquetas = value?.Nacimiento ? ['Heredada'] : [];
+        this.etiquetas = [value?.Nacimiento ? 'Heredada' : null, etiquetaTraducido(value)]
+            .filter((etiqueta): etiqueta is string | EtiquetaFicha => etiqueta !== null);
         const puntosHabilidad = toNumber(value?.Puntos_habilidad?.Suma);
         this.datos = datosVisibles([
             { etiqueta: 'Ajuste de nivel', valor: toNumber(value?.Ajuste_nivel) > 0 ? `+${toNumber(value?.Ajuste_nivel)}` : null },
@@ -74,6 +80,14 @@ export class DetallesPlantillaComponent {
             { etiqueta: 'Cambio del dado de golpe', valor: value?.Modificacion_dg?.Nombre },
             { etiqueta: 'Puntos de habilidad por DG', valor: puntosHabilidad > 0 ? puntosHabilidad : null, detalle: '+ mod. de Int' },
             datoAlineamiento(value?.Alineamiento),
+            { etiqueta: 'Nombre original', valor: nombreOriginalVisible(value) },
+        ]);
+        this.ecologia = datosVisibles([
+            { etiqueta: 'Entorno', valor: value?.Entorno },
+            { etiqueta: 'Organización', valor: value?.Organizacion },
+            { etiqueta: 'Valor de desafío', valor: value?.Vd },
+            { etiqueta: 'Tesoro', valor: value?.Tesoro },
+            { etiqueta: 'Avance', valor: value?.Avance },
         ]);
         this.modificadoresCaracteristicas = datosModificadoresCaracteristicas(value?.Modificadores_caracteristicas);
         this.minimosCaracteristicas = datosMinimosCaracteristicas(value?.Minimos_caracteristicas);

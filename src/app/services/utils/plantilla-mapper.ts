@@ -11,7 +11,7 @@ import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeSubtipoRefArray } from "./subtipo-mapper";
 import { leerComodin } from "./comodin";
-import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualLegacy } from './manual-mapper';
 import { normalizeRacial } from './racial-mapper';
 
@@ -60,6 +60,11 @@ function normalizePrerrequisitosFlags(raw: any): PlantillaPrerrequisitosFlags {
         criaturas_compatibles: toBoolean(raw?.criaturas_compatibles),
         nivel_lanzador: toBoolean(raw?.nivel_lanzador),
         dote: toBoolean(raw?.dote),
+        tamano_minimo: toBoolean(raw?.tamano_minimo),
+        tamano_maximo: toBoolean(raw?.tamano_maximo),
+        dg: toBoolean(raw?.dg),
+        subtipo: toBoolean(raw?.subtipo),
+        subtipo_prohibido: toBoolean(raw?.subtipo_prohibido),
     };
 }
 
@@ -72,6 +77,11 @@ function normalizePrerrequisitosApi(raw: any): PlantillaPrerrequisitos {
         criaturas_compatibles: toStrictArray(raw?.criaturas_compatibles),
         nivel_lanzador: toStrictArray(raw?.nivel_lanzador),
         dote: toStrictArray(raw?.dote),
+        tamano_minimo: toStrictArray(raw?.tamano_minimo),
+        tamano_maximo: toStrictArray(raw?.tamano_maximo),
+        dg: toStrictArray(raw?.dg),
+        subtipo: toStrictArray(raw?.subtipo),
+        subtipo_prohibido: toStrictArray(raw?.subtipo_prohibido),
     };
 }
 
@@ -209,6 +219,14 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
             },
             Descripcion: toText(raw?.Alineamiento?.Descripcion),
         },
+        // En la RTDB, una clave a `null` no está: lo que falta es `null`, como en la API.
+        Entorno: toNullableText(raw?.Entorno),
+        Organizacion: toNullableText(raw?.Organizacion),
+        Vd: toNullableText(raw?.Vd),
+        Tesoro: toNullableText(raw?.Tesoro),
+        Avance: toNullableText(raw?.Avance),
+        Nombre_original: toNullableText(raw?.Nombre_original),
+        Traducido: toBoolean(raw?.Traducido),
         Oficial: toBoolean(raw?.Oficial),
         Dotes: partes.Dotes,
         Subtipos: partes.Subtipos,
@@ -258,6 +276,11 @@ function normalizePrerrequisitos(raw: any): PlantillaPrerrequisitos {
         criaturas_compatibles: toArray(raw?.criaturas_compatibles),
         nivel_lanzador: toArray(raw?.nivel_lanzador),
         dote: toArray(raw?.dote),
+        tamano_minimo: toArray(raw?.tamano_minimo),
+        tamano_maximo: toArray(raw?.tamano_maximo),
+        dg: toArray(raw?.dg),
+        subtipo: toArray(raw?.subtipo),
+        subtipo_prohibido: toArray(raw?.subtipo_prohibido),
     };
 }
 

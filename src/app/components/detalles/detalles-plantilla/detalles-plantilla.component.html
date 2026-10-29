@@ -28,6 +28,9 @@
         <app-ficha-seccion titulo="Dados de golpe adicionales" *ngIf="dadosGolpeAnimal.length > 0">
             <app-ficha-datos [datos]="dadosGolpeAnimal" [columnas]="3" [tarjeta]="false" titulo="Dados de golpe adicionales"></app-ficha-datos>
         </app-ficha-seccion>
+        <app-ficha-seccion titulo="Ecología" *ngIf="ecologia.length > 0">
+            <app-ficha-datos [datos]="ecologia" [columnas]="2" [tarjeta]="false" titulo="Ecología"></app-ficha-datos>
+        </app-ficha-seccion>
 
         <app-ficha-lateral titulo="Prerrequisitos">
             <!-- Cada condición es la frase que escribe la API («Criatura de tipo humanoide (conserva su tipo)»). -->
