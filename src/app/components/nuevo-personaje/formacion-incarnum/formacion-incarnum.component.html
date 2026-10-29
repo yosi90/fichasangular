@@ -6,7 +6,7 @@
             La API no ha aceptado la formación: {{errorApi.mensaje}}
         </p>
         <div class="formacion-columnas">
-            <section class="ficha-tarjeta formacion-lista" [attr.aria-label]="listaActual?.titulo ?? 'Fusiones'">
+            <section class="formacion-lista" [attr.aria-label]="listaActual?.titulo ?? 'Fusiones'">
                 <div class="formacion-lista__cabecera">
                     <h2 class="ficha-titulo">{{listaActual?.titulo ?? 'Fusiones'}} ({{filasLista.length}})</h2>
                     <div class="creacion-conmutador" role="group" aria-label="Qué lista" *ngIf="listas.length > 1">
@@ -42,7 +42,7 @@
                 </ul>
             </section>
 
-            <section class="ficha-tarjeta formacion-chakras" aria-label="Tus chakras y tu esencia">
+            <section class="formacion-chakras" aria-label="Tus chakras y tu esencia">
                 <h2 class="ficha-titulo">Tus chakras y tu esencia</h2>
                 <table class="ficha-tabla">
                     <thead>
