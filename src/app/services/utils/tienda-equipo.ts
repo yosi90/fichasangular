@@ -15,7 +15,7 @@ import {
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCompraPiezaDto, PersonajeCompraRequestDto, PersonajeTipoPiezaDto } from 'src/app/interfaces/personajes-api';
 import { formatoNumero, textoConSigno, textoDestrezaMaxima, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
-import { ConjuroParaElLibro } from 'src/app/services/utils/libro-conjuros';
+import { ConjuroParaElLibro, valorPorNivelDeConjuro } from 'src/app/services/utils/libro-conjuros';
 import { normalizarTexto, redondearCentesimas, toNumberOrNull } from 'src/app/services/utils/normalizacion';
 
 /*
@@ -332,9 +332,8 @@ export function desglosePrecio(pieza: PiezaTienda): LineaPrecio[] {
     const cantidad = Math.max(1, Math.trunc(pieza.cantidad || 1));
     if (articulo.tipo === 'objeto') {
         if (articulo.generico) {
-            const nivel = pieza.nivelConjuro === 0 ? 0.5 : Math.max(0, pieza.nivelConjuro ?? 0);
             return [{ etiqueta: `${articulo.nombre} (conjuro de nivel ${pieza.nivelConjuro ?? 0}, NL ${pieza.nivelLanzador ?? 0})`,
-                po: redondearCentesimas(articulo.generico.Precio_por_nivel * nivel * Math.max(0, pieza.nivelLanzador ?? 0) * cantidad) }];
+                po: redondearCentesimas(valorPorNivelDeConjuro(articulo.generico.Precio_por_nivel, pieza.nivelConjuro, pieza.nivelLanzador ?? 0) * cantidad) }];
         }
         return [{ etiqueta: articulo.nombre, po: redondearCentesimas((articulo.precio ?? 0) * cantidad) }];
     }

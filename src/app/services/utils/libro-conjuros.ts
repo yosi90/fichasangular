@@ -45,6 +45,17 @@ export function paginasConjuro(nivel: number): number {
     return Math.max(1, Math.trunc(toNumber(nivel)));
 }
 
+/**
+ * La tabla 7-33 de la Guía del DM: precio por nivel × nivel del conjuro (½ el de nivel 0) × nivel de lanzador, sin
+ * componentes caros. Es el de los objetos genéricos de un conjuro de la tienda (poción, pergamino, varita…, con el precio
+ * por nivel del catálogo) y el del pergamino del que se copia al libro; la API hace lo mismo
+ * (`valor_por_nivel_de_conjuro` de `utils/libro_conjuros.py`). Sin nivel de conjuro, 0.
+ */
+export function valorPorNivelDeConjuro(precioPorNivel: number, nivelConjuro: number | null | undefined, nivelLanzador: number): number {
+    const factor = nivelConjuro === 0 ? 0.5 : Math.max(0, Math.trunc(nivelConjuro ?? 0));
+    return precioPorNivel * factor * Math.max(0, nivelLanzador);
+}
+
 /** El precio de copiar un conjuro: una bola de fuego (nivel 3) de una maga (nivel de lanzador mínimo 5), 375 + 300 = 675 po. */
 export function precioCopiaLibro(
     nivel: number,
@@ -52,8 +63,7 @@ export function precioCopiaLibro(
     costeMaterial?: number | null,
     costePx?: number | null
 ): PrecioCopiaLibro {
-    const factor = Math.trunc(nivel) === 0 ? 0.5 : Math.trunc(nivel);
-    const pergamino = factor * Math.max(1, Math.trunc(nivelLanzadorMinimo)) * PO_POR_NIVEL_DE_PERGAMINO
+    const pergamino = valorPorNivelDeConjuro(PO_POR_NIVEL_DE_PERGAMINO, Math.trunc(nivel), Math.max(1, Math.trunc(nivelLanzadorMinimo)))
         + (toNumberOrNull(costeMaterial) ?? 0) + PO_POR_PX * (toNumberOrNull(costePx) ?? 0);
     const paginas = paginasConjuro(nivel);
     const escritura = paginas * PO_POR_PAGINA;
