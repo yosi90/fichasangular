@@ -493,7 +493,7 @@ describe("plantilla-elegibilidad: los prerrequisitos de las plantillas de los ma
 
         expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [], dgTotal: 4 }).estado).toBe("eligible");
         expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [], dgTotal: 3 }).razones)
-            .toEqual(["No cumple: Criatura de subtipo reptiliano o 4 dados de golpe"]);
+            .toEqual(["No cumple: 4 dados de golpe o Criatura de subtipo reptiliano"]);
     });
 
     it("sin la marca de su familia en Prerrequisitos_flags no se evalúan", () => {
