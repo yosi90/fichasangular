@@ -13,6 +13,7 @@ import {
     PersonajeIncarnumReceptaculo,
     PersonajeIncarnumRef,
 } from 'src/app/interfaces/incarnum';
+import { modificadorCaracteristica } from './caracteristicas';
 import { normalizarTexto, toInt } from './normalizacion';
 
 /*
@@ -22,11 +23,6 @@ import { normalizarTexto, toInt } from './normalizacion';
  * comprobación de la formación de partida (`api/controllers/incarnum_formacion.py`), con los mismos códigos. Quien decide
  * es la API al guardar; la web solo adelanta los límites. Todo sale de los datos: ningún nombre ni id fijo.
  */
-
-/** El modificador de una puntuación de característica (MJ, tabla 1-1). */
-function modificador(puntuacion: number): number {
-    return Math.floor((toInt(puntuacion) - 10) / 2);
-}
 
 /** La capacidad de esencia de la tabla para ese nivel de personaje; en el último tramo, +1 cada `Incremento_cada` niveles. */
 export function capacidadBasica(nivelPersonaje: number, tabla: CapacidadEsencia[]): number {
@@ -111,7 +107,7 @@ function claseIncarnum(
             porChakra.set(f.Chakra.Id, f);
     });
     const nombreCd = m.Caracteristica_cd?.Nombre ?? null;
-    const modCd = nombreCd ? modificador(puntuaciones[normalizarTexto(nombreCd)] ?? 10) : 0;
+    const modCd = nombreCd ? modificadorCaracteristica(puntuaciones[normalizarTexto(nombreCd)] ?? 10) : 0;
     return {
         id: clase.Id,
         nombre,
@@ -174,7 +170,7 @@ export function calcularIncarnumBorrador(e: EntradaIncarnumBorrador): PersonajeI
         if (r.esencia?.Reserva)
             reserva.push({ tipo, origen: r.nombre, valor: r.esencia.Reserva });
     });
-    const modCon = modificador(e.puntuaciones[normalizarTexto('Constitución')] ?? 10);
+    const modCon = modificadorCaracteristica(e.puntuaciones[normalizarTexto('Constitución')] ?? 10);
     const modificadoresCapacidad: PersonajeIncarnum['capacidad']['modificadores'] = [];
     let bonoDotes = 0;
     dotes.forEach(({ dote }) => {
