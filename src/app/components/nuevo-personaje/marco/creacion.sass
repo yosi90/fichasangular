@@ -6,6 +6,8 @@
 // clases llevan el prefijo `creacion-`. Va dentro de la ficha común (`app-ficha-detalle`), de la que usa la franja, las
 // casillas, los pares, las listas y las tablas. Guía: «La creación de personaje» en `GUIA_ESTILO_WEB_GENERAL.md`.
 
+$creacion-tarea-relleno-vertical: 14px
+
 app-creacion-marco
     display: flex
     flex: 1 1 auto
@@ -39,10 +41,11 @@ app-ficha-detalle.creacion > .ficha
         .ficha-franja__valor
             font-size: 22px
 
-    // Las tablas de los pasos, con la cabecera fija al desplazar la tarea.
+    // Las tablas de los pasos, con la cabecera fija al desplazar la tarea. Se pega al borde de la tarea, no al de su
+    // relleno: con `top: 0` las filas se veían pasar por encima de la cabecera, en el hueco del relleno.
     .creacion-cuerpo__tarea .ficha-tabla thead th
         position: sticky
-        top: 0
+        top: -$creacion-tarea-relleno-vertical
         z-index: 1
         background: $primary
 
@@ -184,7 +187,7 @@ app-ficha-detalle.creacion > .ficha
     flex-direction: column
     gap: 10px
     min-height: 0
-    padding: 14px 18px
+    padding: $creacion-tarea-relleno-vertical 18px
     background: $ficha-tarjeta
     border-radius: $ficha-radio
     box-shadow: $ficha-sombra
