@@ -211,7 +211,10 @@ export function compararSubtipo(
     const id = ['Id_subtipo', 'id_subtipo', 'IdSubtipo', 'idSubtipo', 'Id', 'id']
         .map((clave) => toNumber(pedido?.[clave]))
         .find((valor) => valor > 0) ?? 0;
-    const nombre = `${pedido?.['Subtipo'] ?? pedido?.['subtipo'] ?? pedido?.['Nombre'] ?? pedido?.['nombre'] ?? ''}`.trim();
+    // Como el `parseNombre` de antes de unificarla: una clave vacía no tapa a la siguiente.
+    const nombre = ['Subtipo', 'subtipo', 'Nombre', 'nombre']
+        .map((clave) => `${pedido?.[clave] ?? ''}`.trim())
+        .find((texto) => texto.length > 0) ?? '';
     const razonUnknown = prohibido
         ? 'Prerrequisito de subtipo prohibido con formato no reconocido'
         : 'Prerrequisito de subtipo con formato no reconocido';

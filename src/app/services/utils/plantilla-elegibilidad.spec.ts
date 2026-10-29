@@ -459,6 +459,13 @@ describe("plantilla-elegibilidad: los prerrequisitos de las plantillas de los ma
         expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [{ id: null, nombre: "Reptiliano" }] }).estado).toBe("eligible");
         const sinSubtipo = evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [{ id: 3, nombre: "Fuego" }] });
         expect(sinSubtipo.razones).toEqual(["No cumple: Criatura de subtipo reptiliano"]);
+
+        // Una clave vacía no tapa a la siguiente: sin id y con `Subtipo` vacío, cuenta el `Nombre`.
+        const porNombre = crearPlantillaMock({
+            Prerrequisitos_flags: { subtipo: true },
+            Prerrequisitos: { ...sinPrerrequisitos(), subtipo: [{ Subtipo: "", Nombre: "reptiliano", Opcional: 0, Frase: "Criatura de subtipo reptiliano" }] },
+        });
+        expect(evaluarElegibilidadPlantilla(porNombre, { ...crearContextoBase(), subtipos: [{ id: null, nombre: "Reptiliano" }] }).estado).toBe("eligible");
     });
 
     it("subtipo_prohibido falla si lo tiene y se cumple sin subtipos (cualquier criatura corpórea)", () => {
