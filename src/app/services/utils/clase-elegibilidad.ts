@@ -4,7 +4,7 @@ import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, existeCoincidenciaC
 import { cumpleActitud, getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from "./alineamiento-contrato";
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { EvaluacionPrerrequisito, MotivosPrerrequisitos, compararSubtipo, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
@@ -187,24 +187,7 @@ function buildEvaluacionNoRaza(entry: Record<string, any>, ctx: ClaseEvaluacionC
 }
 
 function buildEvaluacionSubtipo(entry: Record<string, any>, ctx: ClaseEvaluacionContexto): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
-    const subtipoId = parseId(entry, ["Id_subtipo", "id_subtipo", "IdSubtipo", "idSubtipo", "Id", "id"]);
-    const subtipoNombre = parseNombre(entry, ["Subtipo", "subtipo", "Nombre", "nombre"]);
-    if (subtipoId <= 0 && normalizarTexto(subtipoNombre).length < 1) {
-        return {
-            grupoOpcional,
-            evaluable: false,
-            cumple: false,
-            razonUnknown: "Prerrequisito de subtipo con formato no reconocido",
-        };
-    }
-    const cumple = existeCoincidenciaClaveEntidad(ctx.identidad.subtipos, subtipoId, subtipoNombre);
-    return {
-        grupoOpcional,
-        evaluable: true,
-        cumple,
-        razonUnknown: "Prerrequisito de subtipo con formato no reconocido",
-    };
+    return { grupoOpcional: parseOpcional(entry), ...compararSubtipo(entry, ctx.identidad.subtipos, false) };
 }
 
 function buildEvaluacionCaracteristica(entry: Record<string, any>, ctx: ClaseEvaluacionContexto): EvaluacionItem {
@@ -510,19 +493,8 @@ function buildEvaluacionNumeroMinimo(
 }
 
 function buildEvaluacionTamano(entry: Record<string, any>, ctx: ClaseEvaluacionContexto, maximo: boolean): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
     const requerido = parseId(entry, ["Id_tamano", "id_tamano", "IdTamano", "idTamano", "Cantidad", "cantidad", "Valor", "valor", "c"]);
-    const actual = toInt(ctx.tamanoId);
-    const evaluable = requerido > 0 && actual > 0;
-    const cumple = evaluable ? (maximo ? actual <= requerido : actual >= requerido) : false;
-    return {
-        grupoOpcional,
-        evaluable,
-        cumple,
-        razonUnknown: maximo
-            ? "Prerrequisito de tamaño máximo con formato no reconocido"
-            : "Prerrequisito de tamaño mínimo con formato no reconocido",
-    };
+    return { grupoOpcional: parseOpcional(entry), ...compararTamano(requerido, ctx.tamanoId, maximo) };
 }
 
 function evaluarFamilia(

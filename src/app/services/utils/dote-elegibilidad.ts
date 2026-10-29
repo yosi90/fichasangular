@@ -9,7 +9,7 @@ import { cumpleActitud, getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisit
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { EvaluacionPrerrequisito, MotivosPrerrequisitos, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
@@ -417,18 +417,8 @@ function buildEvaluacionNumeroMaximo(
 }
 
 function buildEvaluacionTamano(entry: Record<string, any>, ctx: DoteEvaluacionContexto, maximo: boolean): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
     const requerido = parseId(entry, ['Id_tamano', 'id_tamano', 'IdTamano', 'idTamano', 'Cantidad', 'cantidad', 'Valor', 'valor', 'c']);
-    const actual = toInt(ctx.tamanoId);
-    const evaluable = requerido > 0 && actual > 0;
-    return {
-        grupoOpcional,
-        evaluable,
-        cumple: evaluable ? (maximo ? actual <= requerido : actual >= requerido) : false,
-        razonUnknown: maximo
-            ? 'Prerrequisito de tamaño máximo con formato no reconocido'
-            : 'Prerrequisito de tamaño mínimo con formato no reconocido',
-    };
+    return { grupoOpcional: parseOpcional(entry), ...compararTamano(requerido, ctx.tamanoId, maximo) };
 }
 
 function buildEvaluacionTipoCriatura(entry: Record<string, any>, ctx: DoteEvaluacionContexto): EvaluacionItem {

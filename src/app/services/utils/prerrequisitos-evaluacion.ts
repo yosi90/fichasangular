@@ -176,3 +176,47 @@ export function cumpleExtraPedido(
         return toNumber(actual.idExtra) <= 0;
     return true;
 }
+
+/** Lo que dice la comparación de un prerrequisito, sin su grupo ni su frase (cada evaluador lee el `Opcional` a su manera). */
+export type ComparacionPrerrequisito = Pick<EvaluacionPrerrequisito, 'evaluable' | 'cumple' | 'razonUnknown'>;
+
+/**
+ * `tamano_minimo` y `tamano_maximo` (dotes, clases y plantillas): el tamaño del personaje contra el pedido. Los ids de
+ * `GET /tamanos` van de menor a mayor (Minúsculo 1 … Colosal 9), así que se comparan los ids. Quien llama da el tamaño
+ * que cuenta: el de la raza con los pasos de tamaño de las plantillas.
+ */
+export function compararTamano(requeridoId: number, actualId: number | null | undefined, maximo: boolean): ComparacionPrerrequisito {
+    const requerido = toInt(requeridoId, 0);
+    const actual = toInt(actualId, 0);
+    const evaluable = requerido > 0 && actual > 0;
+    return {
+        evaluable,
+        cumple: evaluable && (maximo ? actual <= requerido : actual >= requerido),
+        razonUnknown: maximo
+            ? 'Prerrequisito de tamaño máximo con formato no reconocido'
+            : 'Prerrequisito de tamaño mínimo con formato no reconocido',
+    };
+}
+
+/**
+ * `subtipo` (clases y plantillas) y `subtipo_prohibido` (plantillas): si el personaje tiene el subtipo pedido, por su
+ * `Id_subtipo` o, sin él, por su nombre. Los subtipos del personaje son los de su raza (y su raza base) y los que le dan
+ * las plantillas ya elegidas. Una raza sin subtipos cumple todos los `subtipo_prohibido`.
+ */
+export function compararSubtipo(
+    pedido: Record<string, any>,
+    subtipos: ClaveEntidadPrerrequisito[],
+    prohibido: boolean,
+): ComparacionPrerrequisito {
+    const id = ['Id_subtipo', 'id_subtipo', 'IdSubtipo', 'idSubtipo', 'Id', 'id']
+        .map((clave) => toNumber(pedido?.[clave]))
+        .find((valor) => valor > 0) ?? 0;
+    const nombre = `${pedido?.['Subtipo'] ?? pedido?.['subtipo'] ?? pedido?.['Nombre'] ?? pedido?.['nombre'] ?? ''}`.trim();
+    const razonUnknown = prohibido
+        ? 'Prerrequisito de subtipo prohibido con formato no reconocido'
+        : 'Prerrequisito de subtipo con formato no reconocido';
+    if (id <= 0 && normalizarTexto(nombre).length < 1)
+        return { evaluable: false, cumple: false, razonUnknown };
+    const tiene = existeCoincidenciaClaveEntidad(subtipos ?? [], id, nombre);
+    return { evaluable: true, cumple: prohibido ? !tiene : tiene, razonUnknown };
+}

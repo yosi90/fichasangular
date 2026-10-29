@@ -406,3 +406,105 @@ describe("plantilla-elegibilidad", () => {
         expect(res.estado).toBe("blocked_failed");
     });
 });
+
+describe("plantilla-elegibilidad: los prerrequisitos de las plantillas de los manuales (2026-10-29)", () => {
+    const sinPrerrequisitos = () => crearPlantillaMock().Prerrequisitos;
+
+    it("tamano_minimo se compara con el tamaño que llega (la raza con los pasos de las plantillas ya elegidas)", () => {
+        const bestiaDeGuerra = crearPlantillaMock({
+            Nombre: "Bestia de guerra",
+            Prerrequisitos_flags: { tamano_minimo: true },
+            Prerrequisitos: { ...sinPrerrequisitos(), tamano_minimo: [{ Id_tamano: 5, Tamano: "Mediano", Opcional: 0, Frase: "Tamaño mediano o mayor" }] },
+        });
+
+        expect(evaluarElegibilidadPlantilla(bestiaDeGuerra, { ...crearContextoBase(), tamanoId: 5 }).estado).toBe("eligible");
+        expect(evaluarElegibilidadPlantilla(bestiaDeGuerra, { ...crearContextoBase(), tamanoId: 6 }).estado).toBe("eligible");
+        const pequena = evaluarElegibilidadPlantilla(bestiaDeGuerra, { ...crearContextoBase(), tamanoId: 4 });
+        expect(pequena.estado).toBe("blocked_failed");
+        expect(pequena.razones).toEqual(["No cumple: Tamaño mediano o mayor"]);
+        expect(pequena.saltable).toBeTrue();
+    });
+
+    it("tamano_maximo falla con un tamaño mayor y, sin tamaño conocido, no se puede comprobar", () => {
+        const plantilla = crearPlantillaMock({
+            Prerrequisitos_flags: { tamano_maximo: true },
+            Prerrequisitos: { ...sinPrerrequisitos(), tamano_maximo: [{ Id_tamano: 7, Tamano: "Enorme", Opcional: 0, Frase: "Tamaño enorme o menor" }] },
+        });
+
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), tamanoId: 7 }).estado).toBe("eligible");
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), tamanoId: 8 }).razones).toEqual(["No cumple: Tamaño enorme o menor"]);
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), tamanoId: null }).estado).toBe("blocked_unknown");
+    });
+
+    it("dg cuenta los DG totales (raciales, de clase y de plantilla)", () => {
+        const simulacro = crearPlantillaMock({
+            Nombre: "Simulacro de sombra",
+            Prerrequisitos_flags: { dg: true },
+            Prerrequisitos: { ...sinPrerrequisitos(), dg: [{ Cantidad: 10, Opcional: 0, Frase: "10 dados de golpe" }] },
+        });
+
+        expect(evaluarElegibilidadPlantilla(simulacro, { ...crearContextoBase(), dgTotales: 10 }).estado).toBe("eligible");
+        const corto = evaluarElegibilidadPlantilla(simulacro, { ...crearContextoBase(), dgTotales: 9 });
+        expect(corto.estado).toBe("blocked_failed");
+        expect(corto.razones).toEqual(["No cumple: 10 dados de golpe"]);
+    });
+
+    it("subtipo se cumple con los subtipos de la raza o de las plantillas, por id o por nombre", () => {
+        const plantilla = crearPlantillaMock({
+            Prerrequisitos_flags: { subtipo: true },
+            Prerrequisitos: { ...sinPrerrequisitos(), subtipo: [{ Id_subtipo: 21, Subtipo: "reptiliano", Opcional: 0, Frase: "Criatura de subtipo reptiliano" }] },
+        });
+
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [{ id: 21, nombre: "Reptiliano" }] }).estado).toBe("eligible");
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [{ id: null, nombre: "Reptiliano" }] }).estado).toBe("eligible");
+        const sinSubtipo = evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [{ id: 3, nombre: "Fuego" }] });
+        expect(sinSubtipo.razones).toEqual(["No cumple: Criatura de subtipo reptiliano"]);
+    });
+
+    it("subtipo_prohibido falla si lo tiene y se cumple sin subtipos (cualquier criatura corpórea)", () => {
+        const corporea = crearPlantillaMock({
+            Prerrequisitos_flags: { subtipo_prohibido: true },
+            Prerrequisitos: { ...sinPrerrequisitos(), subtipo_prohibido: [{ Id_subtipo: 16, Subtipo: "incorporal", Opcional: 0, Frase: "Sin el subtipo incorporal" }] },
+        });
+
+        expect(evaluarElegibilidadPlantilla(corporea, { ...crearContextoBase(), subtipos: [] }).estado).toBe("eligible");
+        expect(evaluarElegibilidadPlantilla(corporea, crearContextoBase()).estado).toBe("eligible");
+        const incorporal = evaluarElegibilidadPlantilla(corporea, { ...crearContextoBase(), subtipos: [{ id: 16, nombre: "Incorporal" }] });
+        expect(incorporal.estado).toBe("blocked_failed");
+        expect(incorporal.razones).toEqual(["No cumple: Sin el subtipo incorporal"]);
+    });
+
+    it("las alternativas de un mismo grupo valen con una sola", () => {
+        const plantilla = crearPlantillaMock({
+            Prerrequisitos_flags: { subtipo: true, dg: true },
+            Prerrequisitos: {
+                ...sinPrerrequisitos(),
+                subtipo: [{ Id_subtipo: 21, Subtipo: "reptiliano", Opcional: 1, Frase: "Criatura de subtipo reptiliano" }],
+                dg: [{ Cantidad: 4, Opcional: 1, Frase: "4 dados de golpe" }],
+            },
+        });
+
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [], dgTotales: 4 }).estado).toBe("eligible");
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), subtipos: [], dgTotales: 3 }).razones)
+            .toEqual(["No cumple: Criatura de subtipo reptiliano o 4 dados de golpe"]);
+    });
+
+    it("sin la marca de su familia en Prerrequisitos_flags no se evalúan", () => {
+        const plantilla = crearPlantillaMock({
+            Prerrequisitos: { ...sinPrerrequisitos(), dg: [{ Cantidad: 10, Opcional: 0, Frase: "10 dados de golpe" }] },
+        });
+
+        expect(evaluarElegibilidadPlantilla(plantilla, { ...crearContextoBase(), dgTotales: 1 }).estado).toBe("eligible");
+    });
+
+    it("solo se puede saltar si lo único que falla son sus prerrequisitos", () => {
+        const heredada = crearPlantillaMock({
+            Nacimiento: true,
+            Prerrequisitos_flags: { dg: true },
+            Prerrequisitos: { ...sinPrerrequisitos(), dg: [{ Cantidad: 10, Opcional: 0, Frase: "10 dados de golpe" }] },
+        });
+
+        expect(evaluarElegibilidadPlantilla(heredada, { ...crearContextoBase(), dgTotales: 1 }).saltable).toBeTrue();
+        expect(evaluarElegibilidadPlantilla(heredada, { ...crearContextoBase(), dgTotales: 1, nivelesClase: 1 }).saltable).toBeFalse();
+    });
+});

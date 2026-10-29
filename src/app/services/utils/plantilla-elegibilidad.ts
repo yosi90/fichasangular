@@ -13,7 +13,7 @@ import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion'
 import { leerComodin } from './comodin';
 import { ClaveEntidadPrerrequisito, existeCoincidenciaClaveEntidad } from './identidad-prerrequisitos';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { MotivosPrerrequisitos } from './prerrequisitos-evaluacion';
+import { MotivosPrerrequisitos, compararSubtipo, compararTamano } from './prerrequisitos-evaluacion';
 
 export type EstadoElegibilidadPlantilla = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -41,12 +41,27 @@ export interface PlantillaEvaluacionContexto {
     nivelLanzador?: number;
     /** Las dotes del personaje, para `dote` (el liche: Fabricar objeto maravilloso). */
     dotes?: ClaveEntidadPrerrequisito[];
+    /**
+     * El tamaño de la criatura base para `tamano_minimo` y `tamano_maximo`: el de la raza con los pasos de tamaño de las
+     * plantillas ya elegidas (`null` si no se conoce).
+     */
+    tamanoId?: number | null;
+    /** Los DG totales (raciales, de clase y de plantilla) para `dg`: un «personaje de nivel 6» cuenta sus DG totales. */
+    dgTotales?: number;
+    /** Los subtipos de la raza (y su raza base) y de las plantillas ya elegidas, para `subtipo` y `subtipo_prohibido`. */
+    subtipos?: ClaveEntidadPrerrequisito[];
 }
 
 export interface PlantillaEvaluacionResultado {
     estado: EstadoElegibilidadPlantilla;
     razones: string[];
     advertencias: string[];
+    /**
+     * Si lo único que falla son sus prerrequisitos (`Prerrequisitos`): la creación deja elegirla saltándoselos, y el
+     * personaje pasa a ser homebrew (`docs/publica/REGLAS_DE_CREACION.md`). No lo es si falla otra regla (ya elegida,
+     * otra licántropa, una de nacimiento con niveles de clase, el tamaño, homebrew sin incluir).
+     */
+    saltable?: boolean;
 }
 
 export interface SimulacionPlantillasResultado {
@@ -485,7 +500,36 @@ export function evaluarElegibilidadPlantilla(
         });
     }
 
+    // Las plantillas de los manuales (desde el 2026-10-29): lo que piden a la criatura base.
+    ([["tamano_minimo", false], ["tamano_maximo", true]] as const).forEach(([clave, maximo]) => {
+        if (!flags[clave])
+            return;
+        (prer[clave] ?? []).forEach((entry) => {
+            const comparacion = compararTamano(toNumber(entry?.["Id_tamano"] ?? entry?.["id_tamano"]), ctx.tamanoId, maximo);
+            registrarPrerrequisito(motivos, clave, entry, comparacion.evaluable, comparacion.cumple, comparacion.razonUnknown);
+        });
+    });
+
+    if (flags.dg) {
+        (prer.dg ?? []).forEach((entry) => {
+            const cantidad = parseCantidad(entry);
+            const evaluable = Number.isFinite(cantidad) && cantidad > 0;
+            const cumple = evaluable && toNumber(ctx.dgTotales) >= cantidad;
+            registrarPrerrequisito(motivos, "dg", entry, evaluable, cumple, "Dados de golpe mínimos con formato no reconocido");
+        });
+    }
+
+    ([["subtipo", false], ["subtipo_prohibido", true]] as const).forEach(([clave, prohibido]) => {
+        if (!flags[clave])
+            return;
+        (prer[clave] ?? []).forEach((entry) => {
+            const comparacion = compararSubtipo(entry, ctx.subtipos ?? [], prohibido);
+            registrarPrerrequisito(motivos, clave, entry, comparacion.evaluable, comparacion.cumple, comparacion.razonUnknown);
+        });
+    });
+
     motivos.cerrarGrupos();
+    const otrasReglasFallidas = fail.length;
     fail.push(...motivos.fail);
     unknown.push(...motivos.unknown);
 
@@ -502,6 +546,7 @@ export function evaluarElegibilidadPlantilla(
             estado: "blocked_failed",
             razones: Array.from(new Set(fail)),
             advertencias: [],
+            saltable: otrasReglasFallidas === 0,
         };
     }
 

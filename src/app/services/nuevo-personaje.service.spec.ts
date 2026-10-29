@@ -6765,6 +6765,35 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         ]);
     });
 
+    it('el contexto de las plantillas da el tamaño con los pasos de las ya elegidas, los DG totales y los subtipos de raza y plantillas', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(1, 'Humanoide');
+        svc.setCatalogoTiposCriatura([tipoHumanoide]);
+        svc.setCatalogoTamanos([
+            { Id: 4, Nombre: 'Pequeño', Modificador: 1, Modificador_presa: -4 },
+            { Id: 5, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0 },
+            { Id: 6, Nombre: 'Grande', Modificador: -1, Modificador_presa: 4 },
+        ] as any);
+        const raza = crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]);
+        (raza as any).Tamano = { Id: 5, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0 };
+        svc.seleccionarRaza(raza);
+
+        expect(svc.getContextoRequisitosPlantillas().tamanoId).toBe(5);
+        expect(svc.getContextoRequisitosPlantillas().subtipos).toEqual([{ id: 11, nombre: 'Humano' }]);
+
+        svc.agregarPlantillaSeleccion(crearPlantillaMock({
+            Id: 303,
+            Nombre: 'Gigante de fuego',
+            Modificacion_tamano: { Id_paso_modificacion: 1, Nombre: '+1' },
+            Subtipos: [{ Id: 21, Nombre: 'Fuego' }],
+        }));
+        const ctx = svc.getContextoRequisitosPlantillas();
+
+        expect(ctx.tamanoId).toBe(6);
+        expect(ctx.subtipos).toEqual([{ id: 11, nombre: 'Humano' }, { id: 21, nombre: 'Fuego' }]);
+        expect(ctx.dgTotales).toBe(0);
+    });
+
     it('plantillas confirmadas no se pueden quitar', () => {
         const svc = new NuevoPersonajeService();
         const tipoHumanoide = crearTipo(1, 'Humanoide');

@@ -1046,10 +1046,26 @@ export class NuevoPersonajeService {
     /**
      * Lo que piden los requisitos de las plantillas además de las características y el tipo: los niveles de clase que ya
      * tiene (las de nacimiento, solo antes del primero), su nivel de lanzador arcano o divino más alto y sus dotes (el
-     * liche, MM 1: lanzador de nivel 11 con Fabricar objeto maravilloso).
+     * liche, MM 1: lanzador de nivel 11 con Fabricar objeto maravilloso). Y, para las plantillas de los manuales, el
+     * tamaño de la raza con los pasos de las plantillas ya elegidas, los DG totales y los subtipos de la raza y de esas
+     * plantillas (`docs/publica/endpoints/catalogos.md`, prerrequisitos de las plantillas).
      */
-    getContextoRequisitosPlantillas(): { nivelesClase: number; nivelLanzador: number; dotes: ClaveEntidadPrerrequisito[]; } {
+    getContextoRequisitosPlantillas(): {
+        nivelesClase: number;
+        nivelLanzador: number;
+        dotes: ClaveEntidadPrerrequisito[];
+        tamanoId: number | null;
+        dgTotales: number;
+        subtipos: ClaveEntidadPrerrequisito[];
+    } {
         return {
+            tamanoId: this.resolverTamanoActualId(),
+            dgTotales: this.resolverDgTotalActual(),
+            subtipos: buildIdentidadPrerrequisitos(
+                this.razaSeleccionada,
+                this.razaBaseSeleccionadaCompleta,
+                this.personajeCreacion?.Subtipos
+            ).subtipos,
             nivelesClase: Math.max(0, this.getNivelClasesActual()),
             nivelLanzador: Math.max(this.resolverNivelLanzadorMaximoPorTipo('arcano'), this.resolverNivelLanzadorMaximoPorTipo('divino')),
             dotes: clavesDeEntidades([
