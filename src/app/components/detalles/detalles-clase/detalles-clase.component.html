@@ -40,6 +40,33 @@
                 <h3 class="ficha-subtitulo">Custom</h3>
                 <ng-container *ngTemplateOutlet="habilidades; context: { $implicit: getHabilidadesVisibles('Custom') }"></ng-container>
             </div>
+            <div class="ficha-grupo" *ngIf="habilidadesPorAlineamiento.length > 0">
+                <h3 class="ficha-subtitulo">Según el alineamiento</h3>
+                <table class="ficha-pares">
+                    <tr *ngFor="let item of habilidadesPorAlineamiento">
+                        <td>{{item.habilidad}}</td>
+                        <td>{{item.alineamiento}}</td>
+                    </tr>
+                </table>
+            </div>
+        </app-ficha-lateral>
+
+        <app-ficha-lateral titulo="Moldeado de fusiones" *ngIf="datosMoldeado.length > 0">
+            <app-ficha-datos [datos]="datosMoldeado" [columnas]="2" [tarjeta]="false" titulo="Moldeado de fusiones"></app-ficha-datos>
+            <div class="ficha-grupo" *ngIf="chakrasMoldeado.length > 0">
+                <h3 class="ficha-subtitulo">Chakras que abre para vincular</h3>
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let chakra of chakrasMoldeado">
+                        <button type="button" class="ficha-enlace" (click)="abrirDetallesChakra(chakra.id)">{{chakra.texto}}</button>
+                    </li>
+                </ul>
+            </div>
+            <div class="ficha-grupo" *ngIf="capacidadMoldeado.length > 0">
+                <h3 class="ficha-subtitulo">Capacidad de esencia</h3>
+                <ul class="ficha-lista">
+                    <li class="ficha-lista__item" *ngFor="let texto of capacidadMoldeado">{{texto}}</li>
+                </ul>
+            </div>
         </app-ficha-lateral>
 
         <app-ficha-lateral titulo="Prerrequisitos" *ngIf="prerrequisitosAgrupados.length > 0 || flagsPrerrequisito.length > 0">
@@ -133,6 +160,39 @@
                 </tr>
             </tbody>
         </table>
+    </app-ficha-bloque>
+
+    <app-ficha-bloque titulo="Moldeado por nivel" *ngIf="filasMoldeado.length > 0">
+        <table class="ficha-tabla">
+            <thead>
+                <tr>
+                    <th scope="col">Nivel</th>
+                    <th scope="col" class="ficha-num">Fusiones</th>
+                    <th scope="col" class="ficha-num">Esencia</th>
+                    <th scope="col" class="ficha-num">Vínculos</th>
+                    <th scope="col">Chakras que abre</th>
+                    <th scope="col">Capacidad</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let fila of filasMoldeado">
+                    <td>{{fila.nivel}}.º</td>
+                    <td class="ficha-num">{{fila.fusiones}}</td>
+                    <td class="ficha-num">{{fila.esencia}}</td>
+                    <td class="ficha-num">{{fila.vinculos}}</td>
+                    <td>{{fila.chakras || '—'}}</td>
+                    <td>{{fila.capacidad || '—'}}</td>
+                </tr>
+            </tbody>
+        </table>
+    </app-ficha-bloque>
+
+    <app-ficha-bloque [titulo]="'Lista de fusiones (' + fusionesClase.length + ')'" *ngIf="fusionesClase.length > 0">
+        <ul class="ficha-lista ficha-lista--columnas">
+            <li class="ficha-lista__item" *ngFor="let fusion of fusionesClase">
+                <button type="button" class="ficha-enlace" (click)="abrirDetallesFusion(fusion.Id)">{{fusion.Nombre}}</button>
+            </li>
+        </ul>
     </app-ficha-bloque>
 
     <app-ficha-bloque titulo="Listado de conjuros" *ngIf="listadoConjuros.length > 0">

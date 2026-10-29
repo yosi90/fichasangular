@@ -25,6 +25,8 @@ import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { leerComodin } from "src/app/services/utils/comodin";
+import { normalizarClaseMoldeado, normalizarHabilidadesPorAlineamiento } from "src/app/services/utils/incarnum-mapper";
+import { CLAVES_PRERREQUISITOS_INCARNUM } from "src/app/services/utils/incarnum";
 
 const CLASE: ElementoDeCatalogo = { singular: "clase", plural: "clases", femenino: true };
 
@@ -62,6 +64,7 @@ export const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "tamano_minimo",
     "raza",
     "no_raza",
+    ...(CLAVES_PRERREQUISITOS_INCARNUM as (keyof ClasePrerrequisitos)[]),
 ];
 
 const ALIAS_PRERREQUISITOS: Record<keyof ClasePrerrequisitos, string[]> = {
@@ -97,6 +100,13 @@ const ALIAS_PRERREQUISITOS: Record<keyof ClasePrerrequisitos, string[]> = {
     tamano_minimo: ["tamano_minimo"],
     raza: ["raza"],
     no_raza: ["no_raza"],
+    esencia_minima: ["esencia_minima"],
+    sin_esencia: ["sin_esencia"],
+    nivel_moldeador: ["nivel_moldeador"],
+    fusiones_minimas: ["fusiones_minimas"],
+    vinculo_chakra: ["vinculo_chakra"],
+    vinculos_minimos: ["vinculos_minimos"],
+    sin_lanzador_arcano: ["sin_lanzador_arcano"],
 };
 
 function hasVisiblePrerrequisitos(prerrequisitos: ClasePrerrequisitos): boolean {
@@ -127,7 +137,6 @@ function normalizeConjuros(raw: any): ClaseConjurosConfig {
         Divinos: toBoolean(raw?.Divinos),
         Arcanos: toBoolean(raw?.Arcanos),
         Psionicos: toBoolean(raw?.Psionicos),
-        Alma: toBoolean(raw?.Alma),
         Conocidos_total: toBoolean(raw?.Conocidos_total),
         Conocidos_nivel_a_nivel: toBoolean(raw?.Conocidos_nivel_a_nivel),
         Dominio: toBoolean(raw?.Dominio),
@@ -221,7 +230,6 @@ function normalizeNivel(raw: any): ClaseNivelDetalle {
             Arcanos: toBoolean(item?.Arcanos),
             Divinos: toBoolean(item?.Divinos),
             Psionicos: toBoolean(item?.Psionicos),
-            Alma: toBoolean(item?.Alma),
         })),
         Conjuros_diarios: Object.keys(diariosRaw).reduce((acc: Record<string, number>, key) => {
             acc[key] = toNumber(diariosRaw[key], -1);
@@ -318,6 +326,7 @@ export function normalizeClase(raw: any): Clase {
         Habilidades: {
             Base: toArray(raw?.Habilidades?.Base),
             Custom: toArray(raw?.Habilidades?.Custom),
+            Por_alineamiento: normalizarHabilidadesPorAlineamiento(raw?.Habilidades?.Por_alineamiento),
         },
         Idiomas: toArray(raw?.Idiomas).map((item: any) => ({
             Id: toNumber(item?.Id),
@@ -333,6 +342,7 @@ export function normalizeClase(raw: any): Clase {
             Oficial: toBoolean(item?.Oficial),
         })),
         Desglose_niveles: toArray(raw?.Desglose_niveles).map(normalizeNivel),
+        Moldeado: normalizarClaseMoldeado(raw?.Moldeado),
         Prerrequisitos_flags: prerrequisitosFlags,
         Prerrequisitos: prerrequisitos,
     };

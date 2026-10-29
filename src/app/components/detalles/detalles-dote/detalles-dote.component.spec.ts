@@ -290,4 +290,34 @@ describe('DetallesDoteComponent', () => {
 
         expect(component.prerrequisitosAgrupados[0].condiciones[0].frase).toBe('Poder seleccionar familiar');
     });
+    it('una dote de incarnum enseña lo que da, a qué dotes sustituye y el chakra que se elige (Magic of Incarnum)', () => {
+        component.dote = ataquePoderoso({
+            Nombre: 'Chakra menor abierto',
+            Incarnum: {
+                Esencia_reserva: 0, Esencia_reserva_moldeador: null, Receptaculo: false, Capacidad: null, Abre_chakra: true,
+                Divisor_nivel_moldeador: null, Descriptores_sin_alineamiento: [],
+            },
+            Cuenta_como: [{ Id: 43, Nombre: 'Dureza' }],
+            Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0, Extra_chakra: 1, Extra_fusion: 0 },
+            Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [], Chakras: [{ Id: 37, Nombre: 'Brazos' }], Fusiones: [] },
+        });
+        fixture.detectChanges();
+
+        expect(titulos()).toEqual(jasmine.arrayContaining(['Incarnum', 'Cuenta como', 'Extras']));
+        expect(limpio(lateral('Incarnum'))).toContain('Queda abierto para vincular');
+        expect(limpio(lateral('Extras'))).toContain('Admite: Chakras');
+        const chakra = spyOn(component.chakraDetallesId, 'emit');
+        const dote = spyOn(component.doteDetallesId, 'emit');
+        (Array.from(elemento().querySelectorAll('button.ficha-enlace')).find((b) => limpio(b) === 'Brazos') as HTMLButtonElement).click();
+        (Array.from(elemento().querySelectorAll('button.ficha-enlace')).find((b) => limpio(b) === 'Dureza') as HTMLButtonElement).click();
+        expect(chakra).toHaveBeenCalledWith(37);
+        expect(dote).toHaveBeenCalledWith(43);
+    });
+
+    it('sin incarnum ni «cuenta como», no salen sus laterales', () => {
+        component.dote = ataquePoderoso({ Incarnum: null, Cuenta_como: [] });
+        fixture.detectChanges();
+        expect(titulos()).not.toContain('Incarnum');
+        expect(titulos()).not.toContain('Cuenta como');
+    });
 });

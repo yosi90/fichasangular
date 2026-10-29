@@ -1,8 +1,9 @@
-import { Dote, DoteCompetenciasOtorgadas, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteHabilidadOtorgada, DoteTipo } from "src/app/interfaces/dote";
+import { Dote, DoteCompetenciasOtorgadas, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteHabilidadOtorgada, DoteSalvacionCondicional, DoteTipo } from "src/app/interfaces/dote";
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
 import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { normalizeManualApi, normalizeManualLegacy } from './manual-mapper';
+import { normalizarDoteIncarnum, normalizarNombreTraducible } from './incarnum-mapper';
 
 function asArray(raw: any): any[] {
     if (Array.isArray(raw))
@@ -16,24 +17,48 @@ function asStrictArray(raw: any): any[] {
     return Array.isArray(raw) ? raw : [];
 }
 
+function normalizeExtraItem(item: any): DoteExtraItem {
+    return {
+        Id: toNumber(item?.Id, 0),
+        Nombre: toText(item?.Nombre, ""),
+        Es_escudo: toBoolean(item?.Es_escudo),
+    };
+}
+
 function normalizeExtraItemsApi(raw: any): DoteExtraItem[] {
     return asStrictArray(raw)
-        .map(item => ({
-            Id: toNumber(item?.Id, 0),
-            Nombre: toText(item?.Nombre, ""),
-            Es_escudo: toBoolean(item?.Es_escudo),
-        }))
+        .map(normalizeExtraItem)
         .filter(item => item.Id > 0 || item.Nombre.trim().length > 0);
 }
 
 function normalizeExtraItemsLegacy(raw: any): DoteExtraItem[] {
     return asArray(raw)
-        .map(item => ({
-            Id: toNumber(item?.Id, 0),
-            Nombre: toText(item?.Nombre, ""),
-            Es_escudo: toBoolean(item?.Es_escudo),
-        }))
+        .map(normalizeExtraItem)
         .filter(item => item.Id > 0 || item.Nombre.trim().length > 0);
+}
+
+/** Los chakras y las fusiones elegibles (Magic of Incarnum), con su nombre del libro. */
+function normalizeExtraItemsTraducibles(raw: any): DoteExtraItem[] {
+    return asArray(raw).map(normalizarNombreTraducible).filter(item => item.Id > 0);
+}
+
+/** Los bonificadores a una salvación que solo cuentan en un caso (`Salvaciones_condicionales`). */
+function normalizeSalvacionesCondicionales(raw: any): DoteSalvacionCondicional[] {
+    return asArray(raw)
+        .map((item: any) => ({
+            Id_salvacion: toNumber(item?.Id_salvacion, 0),
+            Salvacion: toText(item?.Salvacion, ""),
+            Cantidad: toNumber(item?.Cantidad, 0),
+            Condicion: toText(item?.Condicion, "").trim(),
+        }))
+        .filter(item => item.Id_salvacion > 0 && item.Cantidad !== 0);
+}
+
+/** Las dotes a las que sustituye en los prerrequisitos (`Cuenta_como`). */
+function normalizeCuentaComo(raw: any): { Id: number; Nombre: string; }[] {
+    return asArray(raw)
+        .map((item: any) => ({ Id: toNumber(item?.Id, 0), Nombre: toText(item?.Nombre, "") }))
+        .filter(item => item.Id > 0);
 }
 
 function normalizeTiposApi(raw: any): DoteTipo[] {
@@ -62,6 +87,8 @@ function normalizeExtrasDeTodoElCatalogo(raw: any): DoteExtrasDeTodoElCatalogo {
         Armaduras: toBoolean(raw?.Armaduras),
         Escuelas: toBoolean(raw?.Escuelas),
         Habilidades: toBoolean(raw?.Habilidades),
+        Chakras: toBoolean(raw?.Chakras),
+        Fusiones: toBoolean(raw?.Fusiones),
     };
 }
 
@@ -149,17 +176,24 @@ export function normalizeDoteApi(raw: any): Dote {
             Extra_armadura: extraArmadura,
             Extra_escuela: toNumber(raw?.Extras_soportados?.Extra_escuela, 0),
             Extra_habilidad: toNumber(raw?.Extras_soportados?.Extra_habilidad, 0),
+            Extra_chakra: toNumber(raw?.Extras_soportados?.Extra_chakra, 0),
+            Extra_fusion: toNumber(raw?.Extras_soportados?.Extra_fusion, 0),
         },
         Extras_disponibles: {
             Armas: normalizeExtraItemsApi(raw?.Extras_disponibles?.Armas),
             Armaduras: normalizeExtraItemsApi(raw?.Extras_disponibles?.Armaduras),
             Escuelas: normalizeExtraItemsApi(raw?.Extras_disponibles?.Escuelas),
             Habilidades: normalizeExtraItemsApi(raw?.Extras_disponibles?.Habilidades),
+            Chakras: normalizeExtraItemsTraducibles(raw?.Extras_disponibles?.Chakras),
+            Fusiones: normalizeExtraItemsTraducibles(raw?.Extras_disponibles?.Fusiones),
         },
         Extras_de_todo_el_catalogo: normalizeExtrasDeTodoElCatalogo(raw?.Extras_de_todo_el_catalogo),
         Modificadores: normalizeModificadores(raw?.Modificadores),
         Habilidades_otorgadas: normalizeHabilidadesOtorgadas(asStrictArray(raw?.Habilidades_otorgadas)),
         Competencias_otorgadas: normalizeCompetenciasOtorgadas(raw?.Competencias_otorgadas),
+        Incarnum: normalizarDoteIncarnum(raw?.Incarnum),
+        Cuenta_como: normalizeCuentaComo(raw?.Cuenta_como),
+        Salvaciones_condicionales: normalizeSalvacionesCondicionales(raw?.Salvaciones_condicionales),
         Prerrequisitos: normalizePrerrequisitosApi(raw?.Prerrequisitos),
     };
 }
@@ -195,17 +229,24 @@ export function normalizeDoteLegacy(raw: any): Dote {
             Extra_armadura: Math.max(extraArmaduraArmaduras, extraArmaduraEscudos),
             Extra_escuela: toNumber(raw?.Extras_soportados?.Extra_escuela, 0),
             Extra_habilidad: toNumber(raw?.Extras_soportados?.Extra_habilidad, 0),
+            Extra_chakra: toNumber(raw?.Extras_soportados?.Extra_chakra, 0),
+            Extra_fusion: toNumber(raw?.Extras_soportados?.Extra_fusion, 0),
         },
         Extras_disponibles: {
             Armas: normalizeExtraItemsLegacy(raw?.Extras_disponibles?.Armas),
             Armaduras: normalizeExtraItemsLegacy(raw?.Extras_disponibles?.Armaduras),
             Escuelas: normalizeExtraItemsLegacy(raw?.Extras_disponibles?.Escuelas),
             Habilidades: normalizeExtraItemsLegacy(raw?.Extras_disponibles?.Habilidades),
+            Chakras: normalizeExtraItemsTraducibles(raw?.Extras_disponibles?.Chakras),
+            Fusiones: normalizeExtraItemsTraducibles(raw?.Extras_disponibles?.Fusiones),
         },
         Extras_de_todo_el_catalogo: normalizeExtrasDeTodoElCatalogo(raw?.Extras_de_todo_el_catalogo),
         Modificadores: normalizeModificadores(raw?.Modificadores),
         Habilidades_otorgadas: normalizeHabilidadesOtorgadas(asArray(raw?.Habilidades_otorgadas)),
         Competencias_otorgadas: normalizeCompetenciasOtorgadas(raw?.Competencias_otorgadas),
+        Incarnum: normalizarDoteIncarnum(raw?.Incarnum),
+        Cuenta_como: normalizeCuentaComo(raw?.Cuenta_como),
+        Salvaciones_condicionales: normalizeSalvacionesCondicionales(raw?.Salvaciones_condicionales),
         Prerrequisitos: normalizePrerrequisitosLegacy(raw?.Prerrequisitos),
     };
 }

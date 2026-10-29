@@ -20,7 +20,7 @@ export class ListadoConjurosComponent {
     Manuales: string[] = [];
     defaultManual: string = 'Cualquiera';
     conjurosDS = new MatTableDataSource(this.conjuros);
-    conjuroColumns = ['Nombre', 'Manual', 'Arcano', 'Divino', 'Psionico', 'Alma'];
+    conjuroColumns = ['Nombre', 'Manual', 'Arcano', 'Divino', 'Psionico'];
 
     constructor(
         private cdr: ChangeDetectorRef,

@@ -30,6 +30,10 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     const equipoSvc = {
         getEntrada: jasmine.createSpy('getEntrada').and.callFake((tipo: string, id: number) => of({ tipo, item: { Id: id, Nombre: 'Flechas' } })),
     } as any;
+    const incarnumSvc = {
+        getFusion: jasmine.createSpy('getFusion').and.callFake((id: number) => of({ Id: id, Nombre: 'Yelmo de cristal' })),
+        getChakra: jasmine.createSpy('getChakra').and.callFake((id: number) => of({ Id: id, Nombre: 'Corona' })),
+    } as any;
     const pSvc = overrides?.pSvc ?? {} as any;
     const manualRefNavSvc = { aperturas$: new Subject<any>() } as any;
     const manualVistaNavSvc = { aperturas$: new Subject<any>() } as any;
@@ -65,6 +69,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         ngZone,
         userProfileNavSvc,
         equipoSvc,
+        incarnumSvc,
     );
 
     const buildTabs = () => {
@@ -104,6 +109,8 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         (component.detallesArmaduraAbiertos ?? []).forEach((armadura: any) => tabs.push({ textLabel: component.getEtiquetaArmadura(armadura) }));
         (component.detallesEquipoAbiertos ?? []).forEach((entrada: any) => tabs.push({ textLabel: component.getEtiquetaEquipo(entrada) }));
         (component.detallesDeidadAbiertos ?? []).forEach((deidad: any) => tabs.push({ textLabel: component.getEtiquetaDeidad(deidad) }));
+        (component.detallesFusionAbiertos ?? []).forEach((fusion: any) => tabs.push({ textLabel: component.getEtiquetaFusion(fusion) }));
+        (component.detallesChakraAbiertos ?? []).forEach((chakra: any) => tabs.push({ textLabel: component.getEtiquetaChakra(chakra) }));
         return tabs;
     };
 
@@ -114,6 +121,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     (component as any).activeTabKey = 'base:personajes';
     (component as any).__monstruoSvc = monstruoSvc;
     (component as any).__equipoSvc = equipoSvc;
+    (component as any).__incarnumSvc = incarnumSvc;
     (component as any).__userSvc = userSvc;
     (component as any).__isLoggedIn$ = isLoggedIn$;
     (component as any).__permisos$ = permisos$;
@@ -391,6 +399,27 @@ describe('TabControlComponent navegación por origen', () => {
 
         expect(component.detallesArmaduraAbiertos.length).toBe(1);
     });
+
+    it('abre fusiones y chakras por id una sola vez y los cierra por su etiqueta', fakeAsync(() => {
+        const component = crearComponente();
+
+        component.abrirDetallesFusionPorId(12);
+        component.abrirDetallesFusionPorId(12);
+        component.abrirDetallesChakraPorId(34);
+        tick(120);
+
+        expect((component as any).__incarnumSvc.getFusion).toHaveBeenCalledTimes(1);
+        expect(component.detallesFusionAbiertos.map((f) => f.Id)).toEqual([12]);
+        expect(component.detallesChakraAbiertos.map((c) => c.Id)).toEqual([34]);
+        expect((component as any).activeTabKey).toBe('chakra:34');
+
+        expect(component.quitarDetallesFusion('Yelmo de cristal (Fusión)')).toBeTrue();
+        tick(120);
+        expect(component.detallesFusionAbiertos.length).toBe(0);
+        expect(component.quitarDetallesChakra(component.detallesChakraAbiertos[0])).toBeTrue();
+        tick(120);
+        expect(component.detallesChakraAbiertos.length).toBe(0);
+    }));
 
     it('abre detalle de deidad por id', () => {
         const component = crearComponente();

@@ -62,7 +62,7 @@ function nivel(n: number, extra: Record<string, any> = {}): Record<string, any> 
 
 function conjuro(id: number, nombre: string, escuela: string, niveles: Record<string, any>): Conjuro {
     return {
-        Id: id, Nombre: nombre, Arcano: true, Divino: true, Psionico: true, Alma: false,
+        Id: id, Nombre: nombre, Arcano: true, Divino: true, Psionico: true,
         Escuela: { Id: 0, Nombre: escuela }, Disciplina: { Id: 0, Nombre: '' }, Descriptores: [],
         Nivel_clase: [], Nivel_dominio: [], Nivel_disciplinas: [], Oficial: true, ...niveles,
     } as unknown as Conjuro;

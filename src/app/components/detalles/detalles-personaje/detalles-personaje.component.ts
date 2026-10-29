@@ -12,6 +12,8 @@ import {
     esVisibleEnPersonaje,
     tieneCaracteristicasGeneradas,
     datosVisibles,
+    modeloIncarnumFicha,
+    ModeloIncarnumFicha,
     sortilegasVisibles,
     textoClasePersonaje,
     unirTipo,
@@ -69,7 +71,7 @@ import Swal from 'sweetalert2';
 
 /** Cómo se enseña la ficha: toda en una página o con pestañas internas (las dos propuestas aprobadas del lienzo). */
 export type VistaFicha = 'pagina' | 'pestanas';
-export type PestanaFicha = 'combate' | 'habilidades' | 'capacidades' | 'magia' | 'equipo' | 'historia';
+export type PestanaFicha = 'combate' | 'habilidades' | 'capacidades' | 'magia' | 'incarnum' | 'equipo' | 'historia';
 
 /** La vista que se recuerda en este navegador, por cuenta (`clavePorCuenta`); sin cuenta, con este sufijo. */
 export const PREFIJO_PREFERENCIA_VISTA = 'rol.ficha.vista';
@@ -81,6 +83,7 @@ const NOMBRES_PESTANAS: Record<PestanaFicha, string> = {
     habilidades: 'Habilidades',
     capacidades: 'Capacidades',
     magia: 'Magia',
+    incarnum: 'Incarnum',
     equipo: 'Equipo',
     historia: 'Historia',
 };
@@ -182,6 +185,8 @@ interface ModeloFicha {
     lanzadores: LanzadorFila[];
     conjuros: EntradaLista<Conjuro>[];
     sortilegas: EntradaLista<AptitudSortilega>[];
+    /** Magic of Incarnum: lo que calcula la API (`incarnum`) y la formación de partida; `null` si no tiene nada. */
+    incarnum: ModeloIncarnumFicha | null;
     piezas: EntradaLista[];
     equipo: DatoFicha[];
     carga: DatoFicha[];
@@ -779,7 +784,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             return [];
 
         const conjuros = claseCatalogo.Conjuros;
-        const esLanzador = !!conjuros.Arcanos || !!conjuros.Divinos || !!conjuros.Psionicos || !!conjuros.Alma;
+        const esLanzador = !!conjuros.Arcanos || !!conjuros.Divinos || !!conjuros.Psionicos;
         if (!esLanzador)
             return [];
 
@@ -790,8 +795,6 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             chips.push('Lanzador divino');
         if (conjuros.Psionicos)
             chips.push('Lanzador psiónico');
-        if (conjuros.Alma)
-            chips.push('Lanzador de alma');
         const resumenLanzador = this.getNivelLanzadorResumenClase(nombreClase);
         // El nivel de lanzador lo da la API en la ficha (con el divisor del paladín y el explorador); si no, el calculado.
         const nivelLanzadorApi = claseDesglose?.Nivel_lanzador;
@@ -826,7 +829,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
                     chips.push(`Poder máximo ${poderMax}`);
             }
 
-            if ((conjuros.Arcanos || conjuros.Divinos || conjuros.Alma) && diarios.length < 1) {
+            if ((conjuros.Arcanos || conjuros.Divinos) && diarios.length < 1) {
                 const nivelesDiarios = this.formatearNivelesDiariosAccesibles(detalleNivel?.Conjuros_diarios);
                 if (nivelesDiarios.length > 0)
                     chips.push(`Niveles diarios ${nivelesDiarios}`);
@@ -846,6 +849,15 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
         }
 
         return Array.from(new Set(chips));
+    }
+
+    /** La pestaña Incarnum: el bloque de la API y, del catálogo, desde qué nivel abre cada chakra cada clase. */
+    private calcularIncarnum(clases: Personaje['desgloseClases']): ModeloIncarnumFicha | null {
+        return modeloIncarnumFicha(this.pj?.Incarnum, clases.map((clase) => ({
+            nombre: clase.Nombre.trim(),
+            nivel: toNumber(clase.Nivel),
+            moldeado: this.obtenerClaseCatalogoPorNombre(clase.Nombre)?.Moldeado ?? null,
+        })));
     }
 
     private obtenerClaseCatalogoPorNombre(nombreClase: string): Clase | null {
@@ -1157,6 +1169,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
                 .filter((l) => l.detalle.length > 0),
             conjuros: (pj.Conjuros ?? []).filter((c) => this.esVisible(c?.Nombre)).map((c) => ({ texto: c.Nombre.trim(), clave: `${c.Id ?? ''}`, ref: c })),
             sortilegas: this.calcularSortilegas(),
+            incarnum: this.calcularIncarnum(clases),
             ...this.calcularEquipo(),
             familiares: this.monstruosVisibles((pj as any).Familiares),
             companeros: this.monstruosVisibles((pj as any).Companeros),
@@ -1175,7 +1188,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             tipoPagina: '', tipoPestanas: '', etiquetas: [], creador: null, datos: [], franja: [], caracteristicas: [], casillasPagina: [],
             salvaciones: [], defensa: [], presaIniciativa: [], defensasEspeciales: [], enemigos: [], habilidades: [],
             habilidadesConRangos: [], verHabilidades: false, dotes: [], aptitudes: [], raciales: [], rasgosTipo: [], plantillas: [],
-            ventajas: [], idiomas: [], magia: [], lanzadores: [], conjuros: [], sortilegas: [], piezas: [], equipo: [], carga: [],
+            ventajas: [], idiomas: [], magia: [], lanzadores: [], conjuros: [], sortilegas: [], incarnum: null, piezas: [], equipo: [], carga: [],
             modificadoresEquipo: [], sinEquipo: false, familiares: [], companeros: [], personalidad: '', contexto: '',
             multimedia: false, pestanas: [],
         };
@@ -1459,6 +1472,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             habilidades: m.verHabilidades,
             capacidades: hay(m.dotes, m.aptitudes, m.raciales, m.rasgosTipo, m.plantillas, m.ventajas, m.idiomas, m.familiares, m.companeros),
             magia: this.tieneDatos(m.magia) || hay(m.lanzadores, m.conjuros, m.sortilegas),
+            incarnum: !!m.incarnum,
             equipo: this.tieneDatos(m.equipo) || this.tieneDatos(m.carga) || hay(m.piezas, m.modificadoresEquipo) || m.sinEquipo,
             historia: true,
         };
@@ -1559,6 +1573,18 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
     @Output() rasgoDetalles: EventEmitter<Rasgo> = new EventEmitter<Rasgo>();
     verDetallesRasgo(value: Rasgo) {
         this.rasgoDetalles.emit(value);
+    }
+
+    @Output() fusionDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    verDetallesFusion(id: number | null): void {
+        if (Number(id) > 0)
+            this.fusionDetallesId.emit(Number(id));
+    }
+
+    @Output() chakraDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    verDetallesChakra(id: number): void {
+        if (Number(id) > 0)
+            this.chakraDetallesId.emit(Number(id));
     }
 
     @Output() claseDetalles: EventEmitter<string> = new EventEmitter<string>();

@@ -13,6 +13,8 @@ import { createDefaultUserSettings } from '../interfaces/user-settings';
 import { UserSettingsService } from './user-settings.service';
 import { PersonajeService } from './personaje.service';
 import { totalesPersonaje, totalHabilidad } from './utils/personaje-totales';
+import { normalizarClaseMoldeado } from './utils/incarnum-mapper';
+import { moldeadoEncarnadoApi } from 'src/testing/incarnum';
 
 /** Las banderas con las que la API marca los especiales que dan familiar o compañero (`Otorga_*`). */
 const BANDERAS_ESPECIAL_MASCOTA: Record<string, Record<string, boolean>> = {
@@ -68,7 +70,6 @@ function crearClaseBase(partial?: Partial<Clase>): Clase {
             Divinos: false,
             Arcanos: false,
             Psionicos: false,
-            Alma: false,
             Conocidos_total: false,
             Conocidos_nivel_a_nivel: false,
             Dominio: false,
@@ -2108,6 +2109,21 @@ describe('NuevoPersonajeService (clases)', () => {
             .toContain(jasmine.objectContaining({ valor: 2, condicion: 'Contra veneno' }));
     });
 
+    it('las salvaciones condicionales de una dote se guardan con su condición y no suman (Cuerpo fortalecido por el incarnum)', () => {
+        const dote = {
+            Id: 1120, Nombre: 'Cuerpo fortalecido por el incarnum', Modificadores: {}, Habilidades_otorgadas: [],
+            Salvaciones_condicionales: [{ Id_salvacion: 1, Salvacion: 'Fortaleza', Cantidad: 4, Condicion: 'Contra el daño masivo' }],
+        } as any;
+
+        (service as any).aplicarModificadoresDote(dote, dote.Nombre, 0, '');
+
+        expect(service.PersonajeCreacion.Salvaciones.fortaleza.modsVarios).toContain(
+            { valor: 4, origen: 'Dote: Cuerpo fortalecido por el incarnum', condicion: 'Contra el daño masivo' });
+        expect(service.PersonajeCreacion.Salvaciones.reflejos.modsVarios).toEqual([]);
+        expect(totalesPersonaje(service.PersonajeCreacion).salvaciones.fortaleza.condicionales)
+            .toEqual([jasmine.objectContaining({ valor: 4, condicion: 'Contra el daño masivo' })]);
+    });
+
     it('los bonos de habilidad de una dote (Habilidades_otorgadas: Alerta, +2 a Avistar y a Escuchar; MJ cap. 5)', () => {
         const alerta = {
             Id: 17,
@@ -2992,7 +3008,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -3007,7 +3022,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Abjuracion' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -3022,7 +3036,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -3108,7 +3121,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Adivinacion' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -3123,7 +3135,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Transmutacion' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -3138,7 +3149,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Abjuracion' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -3200,7 +3210,6 @@ describe('NuevoPersonajeService (clases)', () => {
             Arcano: true,
             Divino: false,
             Psionico: false,
-            Alma: false,
             Escuela: { Id: 1, Nombre: 'Adivinacion' } as any,
             Disciplina: { Id: 0, Nombre: '' } as any,
             Descriptores: [],
@@ -3252,7 +3261,6 @@ describe('NuevoPersonajeService (clases)', () => {
             Arcano: true,
             Divino: false,
             Psionico: false,
-            Alma: false,
             Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
             Disciplina: { Id: 0, Nombre: '' } as any,
             Descriptores: [],
@@ -3378,7 +3386,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcanos: false,
                 Divinos: false,
                 Psionicos: false,
-                Alma: false,
                 Conocidos_total: true,
                 Listado: [{ Id: 1830, Nombre: 'Luz falsa', Nivel: 0, Espontaneo: true }],
             },
@@ -3445,7 +3452,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Universal' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -3460,7 +3466,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -3475,7 +3480,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Transmutacion' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -3490,7 +3494,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Transmutacion' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -3617,7 +3620,6 @@ describe('NuevoPersonajeService (clases)', () => {
             Arcano: false,
             Divino: true,
             Psionico: false,
-            Alma: false,
             Escuela: { Id: 1, Nombre: 'Adivinacion' } as any,
             Disciplina: { Id: 0, Nombre: '' } as any,
             Descriptores: [],
@@ -3728,7 +3730,6 @@ describe('NuevoPersonajeService (clases)', () => {
             Arcano: false,
             Divino: true,
             Psionico: false,
-            Alma: false,
             Escuela: { Id: 1, Nombre: 'Adivinacion' } as any,
             Disciplina: { Id: 0, Nombre: '' } as any,
             Descriptores: [],
@@ -3872,7 +3873,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcanos: false,
                 Divinos: false,
                 Psionicos: false,
-                Alma: false,
             },
             Desglose_niveles: [{
                 Nivel: 1,
@@ -3880,7 +3880,7 @@ describe('NuevoPersonajeService (clases)', () => {
                 Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
                 Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
-                Aumentos_clase_lanzadora: [{ Id: 1, Nombre: 'Aumenta una clase lanzadora', Arcanos: true, Divinos: true, Psionicos: false, Alma: false }],
+                Aumentos_clase_lanzadora: [{ Id: 1, Nombre: 'Aumenta una clase lanzadora', Arcanos: true, Divinos: true, Psionicos: false }],
                 Conjuros_diarios: crearConjurosDiariosMock([0]),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
@@ -3965,7 +3965,7 @@ describe('NuevoPersonajeService (clases)', () => {
                     Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
                     Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                     Reserva_psionica: 0,
-                    Aumentos_clase_lanzadora: [{ Id: 2, Nombre: 'Aumenta clase lanzadora de conjuros arcanos', Arcanos: true, Divinos: false, Psionicos: false, Alma: false }],
+                    Aumentos_clase_lanzadora: [{ Id: 2, Nombre: 'Aumenta clase lanzadora de conjuros arcanos', Arcanos: true, Divinos: false, Psionicos: false }],
                     Conjuros_diarios: crearConjurosDiariosMock([0]),
                     Conjuros_conocidos_nivel_a_nivel: {},
                     Conjuros_conocidos_total: 0,
@@ -3978,7 +3978,7 @@ describe('NuevoPersonajeService (clases)', () => {
                     Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+3' },
                     Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                     Reserva_psionica: 0,
-                    Aumentos_clase_lanzadora: [{ Id: 2, Nombre: 'Aumenta clase lanzadora de conjuros arcanos', Arcanos: true, Divinos: false, Psionicos: false, Alma: false }],
+                    Aumentos_clase_lanzadora: [{ Id: 2, Nombre: 'Aumenta clase lanzadora de conjuros arcanos', Arcanos: true, Divinos: false, Psionicos: false }],
                     Conjuros_diarios: crearConjurosDiariosMock([0]),
                     Conjuros_conocidos_nivel_a_nivel: {},
                     Conjuros_conocidos_total: 0,
@@ -4076,7 +4076,7 @@ describe('NuevoPersonajeService (clases)', () => {
                 Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
                 Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
-                Aumentos_clase_lanzadora: [{ Id: 1, Nombre: 'Aumenta una clase lanzadora', Arcanos: true, Divinos: true, Psionicos: false, Alma: false }],
+                Aumentos_clase_lanzadora: [{ Id: 1, Nombre: 'Aumenta una clase lanzadora', Arcanos: true, Divinos: true, Psionicos: false }],
                 Conjuros_diarios: crearConjurosDiariosMock([0]),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
@@ -4158,7 +4158,7 @@ describe('NuevoPersonajeService (clases)', () => {
                 Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
                 Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
                 Reserva_psionica: 0,
-                Aumentos_clase_lanzadora: [{ Id: 1, Nombre: 'Aumenta una clase lanzadora', Arcanos: true, Divinos: true, Psionicos: false, Alma: false }],
+                Aumentos_clase_lanzadora: [{ Id: 1, Nombre: 'Aumenta una clase lanzadora', Arcanos: true, Divinos: true, Psionicos: false }],
                 Conjuros_diarios: crearConjurosDiariosMock([0]),
                 Conjuros_conocidos_nivel_a_nivel: {},
                 Conjuros_conocidos_total: 0,
@@ -4209,7 +4209,6 @@ describe('NuevoPersonajeService (clases)', () => {
             Arcano: true,
             Divino: false,
             Psionico: false,
-            Alma: false,
             Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
             Disciplina: { Id: 0, Nombre: '' } as any,
             Descriptores: [],
@@ -4323,7 +4322,6 @@ describe('NuevoPersonajeService (clases)', () => {
             Arcano: false,
             Divino: false,
             Psionico: true,
-            Alma: false,
             Escuela: { Id: 1, Nombre: 'Psionica' } as any,
             Disciplina: { Id: 1, Nombre: 'Telepatia' } as any,
             Descriptores: [],
@@ -4463,7 +4461,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: false,
                 Divino: false,
                 Psionico: true,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Psionica' } as any,
                 Disciplina: { Id: 1, Nombre: 'Psicometabolismo' } as any,
                 Descriptores: [],
@@ -4478,7 +4475,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: false,
                 Divino: false,
                 Psionico: true,
-                Alma: false,
                 Escuela: { Id: 1, Nombre: 'Psionica' } as any,
                 Disciplina: { Id: 1, Nombre: 'Psicoquinesis' } as any,
                 Descriptores: [],
@@ -4894,7 +4890,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 2, Nombre: 'Abjuracion' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -4909,7 +4904,6 @@ describe('NuevoPersonajeService (clases)', () => {
                 Arcano: true,
                 Divino: false,
                 Psionico: false,
-                Alma: false,
                 Escuela: { Id: 3, Nombre: 'Evocacion' } as any,
                 Disciplina: { Id: 0, Nombre: '' } as any,
                 Descriptores: [],
@@ -7860,5 +7854,58 @@ describe('NuevoPersonajeService (reglas de la auditoría de la matriz, 2026-10-2
         expect(contexto.nivelesClase).toBe(3);
         expect(contexto.nivelLanzador).toBe(0);
         expect(contexto.dotes).toEqual([{ id: 335, nombre: 'Fabricar objeto maravilloso' }]);
+    });
+});
+
+describe('NuevoPersonajeService (Magic of Incarnum)', () => {
+    function claseMoldeadora(): Clase {
+        return {
+            Id: 406,
+            Nombre: 'Nacido del alma',
+            Moldeado: normalizarClaseMoldeado(moldeadoEncarnadoApi({ Divisor_nivel_moldeador: 2, Caracteristica_cd: { Id: 3, Nombre: 'Constitución' } })),
+            Habilidades: {
+                Base: [],
+                Custom: [],
+                Por_alineamiento: [
+                    { Id_habilidad: 11, Habilidad: 'Diplomacia', Id_extra: null, Extra: null, Alineamiento: { Id: 1, Nombre: 'Legal bueno' } },
+                    { Id_habilidad: 22, Habilidad: 'Intimidar', Id_extra: null, Extra: null, Alineamiento: { Id: 9, Nombre: 'Caótico maligno' } },
+                ],
+            },
+            Desglose_niveles: [],
+        } as unknown as Clase;
+    }
+
+    it('el bloque del borrador sale del catálogo de la clase y de las puntuaciones del personaje', () => {
+        const service = new NuevoPersonajeService();
+        service.setCatalogoClases([claseMoldeadora()]);
+        const pj = service.PersonajeCreacion;
+        pj.desgloseClases = [{ Nombre: 'Nacido del alma', Nivel: 4 }];
+        pj.Constitucion = 14;
+        const bloque = service.getIncarnumBorrador()!;
+        expect(bloque.clases[0]).toEqual(jasmine.objectContaining({ nivelMoldeador: 2, fusionesMaximas: 4, esencia: 4 }));
+        expect(bloque.clases[0].cd).toEqual({ base: 12, caracteristica: 'Constitución', modificador: 2 });
+        pj.desgloseClases = [];
+        expect(service.getIncarnumBorrador()).toBeNull();
+    });
+
+    it('las habilidades de clase según el alineamiento: solo las de su alineamiento básico', () => {
+        const service = new NuevoPersonajeService();
+        service.PersonajeCreacion.Alineamiento = 'Legal bueno';
+        expect((service as any).habilidadesPorAlineamientoDeClase(claseMoldeadora()))
+            .toEqual([{ Id_habilidad: 11, Habilidad: 'Diplomacia', Id_extra: null, Extra: null }]);
+        service.PersonajeCreacion.Alineamiento = 'Neutral auténtico';
+        expect((service as any).habilidadesPorAlineamientoDeClase(claseMoldeadora())).toEqual([]);
+    });
+
+    it('una dote que elige un chakra ofrece los de la dote como extras', () => {
+        const service = new NuevoPersonajeService();
+        const dote = {
+            Id: 1116, Nombre: 'Chakra menor abierto', Tipos: [],
+            Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0, Extra_chakra: 1, Extra_fusion: 0 },
+            Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [], Chakras: [{ Id: 37, Nombre: 'Brazos' }, { Id: 38, Nombre: 'Frente' }], Fusiones: [] },
+            Extras_de_todo_el_catalogo: { Armas: false, Armaduras: false, Escuelas: false, Habilidades: false, Chakras: false, Fusiones: false },
+        } as any;
+        expect((service as any).doteTieneExtrasSoportados(dote)).toBeTrue();
+        expect((service as any).resolverExtrasDisponiblesDote(dote).map((e: any) => e.Nombre)).toEqual(['Brazos', 'Frente']);
     });
 });

@@ -16,7 +16,6 @@ function crearClaseBase(partial?: Partial<Clase>): Clase {
             Divinos: false,
             Arcanos: false,
             Psionicos: false,
-            Alma: false,
             Conocidos_total: false,
             Conocidos_nivel_a_nivel: false,
             Dominio: false,
@@ -520,5 +519,25 @@ describe('clase-elegibilidad', () => {
             expect(res.estado).toBe('blocked_failed');
             expect(res.soloPorAlineamiento).toBeFalse();
         });
+    });
+
+    it('evalúa los prerrequisitos de Magic of Incarnum con su bandera (nivel de moldeador, sin lanzador arcano)', () => {
+        const clase = crearClaseBase({
+            Prerrequisitos_flags: { nivel_moldeador: true, sin_lanzador_arcano: true },
+            Prerrequisitos: {
+                ...crearClaseBase().Prerrequisitos,
+                nivel_moldeador: [{ Nivel: 5, Opcional: 0, Frase: 'Moldeador de nivel 5' }],
+                sin_lanzador_arcano: [{ Opcional: 0, Frase: 'No tener niveles de lanzador arcano' }],
+            },
+        });
+        const contexto = crearContextoBase();
+        const sinIncarnum = evaluarElegibilidadClase(clase, { ...contexto, lanzador: { arcano: 0, divino: 0, psionico: 0 } });
+        expect(sinIncarnum.estado).toBe('blocked_failed');
+        expect(sinIncarnum.razones).toEqual(['No cumple: Moldeador de nivel 5']);
+        const moldeador = { reserva: 5, nivelMoldeador: 5, fusiones: 4, vinculos: 1, chakrasVinculables: [34] };
+        expect(evaluarElegibilidadClase(clase, { ...contexto, incarnum: moldeador, lanzador: { arcano: 0, divino: 0, psionico: 0 } }).estado)
+            .toBe('eligible');
+        expect(evaluarElegibilidadClase(clase, { ...contexto, incarnum: moldeador, lanzador: { arcano: 1, divino: 0, psionico: 0 } }).razones)
+            .toEqual(['No cumple: No tener niveles de lanzador arcano']);
     });
 });

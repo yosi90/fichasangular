@@ -65,7 +65,7 @@
                     </ul>
                 </section>
                 <mat-form-field appearance="fill" class="dotes-extra" *ngIf="requiereExtraSeleccionado">
-                    <mat-label>Extra</mat-label>
+                    <mat-label>{{etiquetaExtra}}</mat-label>
                     <mat-select [(ngModel)]="idExtraSeleccionado" (ngModelChange)="onExtraSeleccionChange()">
                         <mat-option [value]="0">Elegir</mat-option>
                         <mat-option *ngFor="let extra of extrasCandidatoSeleccionado" [value]="extra.Id">{{extra.Nombre}}</mat-option>

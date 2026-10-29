@@ -13,6 +13,8 @@ import {
     datosMovimiento,
     datosVisibles,
     esTextoCorto,
+    etiquetaTraducido,
+    nombreOriginalVisible,
     separarManualTexto,
     etiquetasVisibles,
     sortilegasVisibles,
@@ -53,6 +55,15 @@ describe('Ficha de detalle: reglas', () => {
     it('etiquetasVisibles acepta textos sueltos y quita los vacíos', () => {
         expect(etiquetasVisibles(['Alma', '', { texto: 'Aviso', aviso: true }, { texto: ' ' }]))
             .toEqual([{ texto: 'Alma' }, { texto: 'Aviso', aviso: true }]);
+    });
+
+    it('el nombre original y la etiqueta «Traducido», solo de lo que hemos traducido', () => {
+        const yelmo = { Nombre: 'Yelmo de cristal', Nombre_original: 'Crystal Helm', Traducido: true };
+        expect(nombreOriginalVisible(yelmo)).toBe('Crystal Helm');
+        expect(nombreOriginalVisible({ ...yelmo, Nombre_original: 'Yelmo de cristal' })).toBe('');
+        expect(nombreOriginalVisible({ ...yelmo, Traducido: false })).toBe('');
+        expect(etiquetaTraducido(yelmo)).toEqual({ texto: 'Traducido', ayuda: 'Nombre original: Crystal Helm' });
+        expect(etiquetaTraducido({ ...yelmo, Traducido: false })).toBeNull();
     });
 
     it('unirTipo une con « · » las partes visibles', () => {

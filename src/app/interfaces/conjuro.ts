@@ -17,7 +17,6 @@ export interface Conjuro {
     Arcano: boolean;
     Divino: boolean;
     Psionico: boolean;
-    Alma: boolean;
     Duracion: string;
     Tipo_salvacion: string;
     Resistencia_conjuros: boolean;

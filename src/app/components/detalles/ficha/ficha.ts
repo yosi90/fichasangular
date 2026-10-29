@@ -106,6 +106,30 @@ export function unirTipo(partes: (string | null | undefined)[]): string {
     return partes.filter((parte) => tieneTextoVisible(parte)).map((parte) => `${parte}`.trim()).join(' · ');
 }
 
+/** Lo que trae el nombre del libro traducido: las fusiones y los chakras de Magic of Incarnum, el equipo… */
+interface ConNombreOriginal {
+    Nombre: string;
+    Nombre_original?: string | null;
+    Traducido?: boolean | null;
+}
+
+/** El nombre original del libro de lo que hemos traducido, si no es el mismo que el nuestro; vacío si no. */
+export function nombreOriginalVisible(item: ConNombreOriginal | null | undefined): string {
+    return item?.Traducido && item.Nombre_original && item.Nombre_original !== item.Nombre ? item.Nombre_original : '';
+}
+
+/** La etiqueta «Traducido» de la cabecera, con el nombre original en el tooltip; `null` si no lo hemos traducido. */
+export function etiquetaTraducido(item: ConNombreOriginal | null | undefined): EtiquetaFicha | null {
+    return item?.Traducido && item.Nombre_original ? { texto: 'Traducido', ayuda: `Nombre original: ${item.Nombre_original}` } : null;
+}
+
+/** Los nombres unidos con comas y la conjunción antes del último: «Corona o Pies», «brazos, manos y pies». */
+export function unirLista(nombres: string[], conjuncion: 'o' | 'y'): string {
+    if (nombres.length < 2)
+        return nombres.join('');
+    return `${nombres.slice(0, -1).join(', ')} ${conjuncion} ${nombres[nombres.length - 1]}`;
+}
+
 /**
  * Si un texto cabe como línea en cursiva bajo el nombre: es visible, es un solo párrafo (sin listas, tablas ni
  * títulos) y no pasa de `maximo` caracteres. Si no, va como sección del cuerpo.

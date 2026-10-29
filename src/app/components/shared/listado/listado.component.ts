@@ -35,6 +35,9 @@ import { EntradaEquipo } from 'src/app/interfaces/equipo';
 import { ListadoEquipoComponent, TipoListadoEquipo } from '../listado-equipo/listado-equipo.component';
 import { ListadoObjetosComponent } from '../listado-objetos/listado-objetos.component';
 import { tipoDeListaEquipo } from '../listado-equipo/listas-equipo';
+import { ListadoFusionesComponent } from '../listado-fusiones/listado-fusiones.component';
+import { ListadoChakrasComponent } from '../listado-chakras/listado-chakras.component';
+import { Chakra, Fusion } from 'src/app/interfaces/incarnum';
 
 @Component({
     selector: 'app-listado',
@@ -70,6 +73,8 @@ export class ListadoComponent {
         'munición': ListadoEquipoComponent,
         'aptitudes de armas y armaduras': ListadoEquipoComponent,
         'conjuntos de objetos': ListadoEquipoComponent,
+        'fusiones del alma': ListadoFusionesComponent,
+        'chakras': ListadoChakrasComponent,
     };
 
     constructor(private cdr: ChangeDetectorRef) { }
@@ -203,6 +208,20 @@ export class ListadoComponent {
                 this.handleItemDetalles(item);
             });
             componentRef.instance.entradaSeleccionada.subscribe((item: EntradaEquipo) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoFusionesComponent) {
+            componentRef.instance.fusionDetalles.subscribe((item: Fusion) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.fusionSeleccionada.subscribe((item: Fusion) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoChakrasComponent) {
+            componentRef.instance.chakraDetalles.subscribe((item: Chakra) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.chakraSeleccionado.subscribe((item: Chakra) => {
                 this.handleItemSeleccionado(item);
             });
         } else if (componentRef.instance instanceof ListadoIdiomasComponent) {

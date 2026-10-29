@@ -123,6 +123,11 @@ import { TiendaEquipoComponent } from './components/nuevo-personaje/tienda-equip
 import { ConfigurarPiezaComponent } from './components/nuevo-personaje/configurar-pieza/configurar-pieza.component';
 import { DetallesDeidadComponent } from './components/detalles/detalles-deidad/detalles-deidad.component';
 import { ListadoDeidadesComponent } from './components/shared/listado-deidades/listado-deidades.component';
+import { DetallesFusionComponent } from './components/detalles/detalles-fusion/detalles-fusion.component';
+import { DetallesChakraComponent } from './components/detalles/detalles-chakra/detalles-chakra.component';
+import { ListadoFusionesComponent } from './components/shared/listado-fusiones/listado-fusiones.component';
+import { ListadoChakrasComponent } from './components/shared/listado-chakras/listado-chakras.component';
+import { FormacionIncarnumComponent } from './components/nuevo-personaje/formacion-incarnum/formacion-incarnum.component';
 import { ListadoIdiomasComponent } from './components/shared/listado-idiomas/listado-idiomas.component';
 import { DetallesIdiomaComponent } from './components/detalles/detalles-idioma/detalles-idioma.component';
 import { UserProfileComponent } from './components/base/user-profile/user-profile.component';
@@ -222,6 +227,11 @@ import { CloseFilterMenuOnMouseleaveDirective } from './directives/close-filter-
         ConfigurarPiezaComponent,
         DetallesDeidadComponent,
         ListadoDeidadesComponent,
+        DetallesFusionComponent,
+        DetallesChakraComponent,
+        ListadoFusionesComponent,
+        ListadoChakrasComponent,
+        FormacionIncarnumComponent,
         ListadoIdiomasComponent,
         DetallesIdiomaComponent,
         AppToastHostComponent,

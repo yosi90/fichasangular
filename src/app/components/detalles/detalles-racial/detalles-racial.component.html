@@ -64,6 +64,10 @@
             </ul>
         </app-ficha-lateral>
 
+        <app-ficha-lateral titulo="Incarnum" *ngIf="datosEsencia.length > 0">
+            <app-ficha-datos [datos]="datosEsencia" [columnas]="2" [tarjeta]="false" titulo="Incarnum"></app-ficha-datos>
+        </app-ficha-lateral>
+
         <app-ficha-lateral titulo="Ataques" *ngIf="ataques.length > 0">
             <ul class="ficha-lista">
                 <li class="ficha-lista__item" *ngFor="let ataque of ataques">{{ataque}}</li>

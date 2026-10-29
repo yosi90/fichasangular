@@ -10,6 +10,7 @@ import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } fr
 import { leerComodin } from './comodin';
 import { frasePrerrequisito } from './prerrequisito-frase';
 import { EvaluacionPrerrequisito, MotivosPrerrequisitos, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
@@ -77,6 +78,26 @@ export interface DoteEvaluacionContexto {
     puedeSeleccionarCompanero: boolean;
     puedeSeleccionarFamiliar: boolean;
     catalogoRegiones?: Array<{ id: number | null; nombre: string; }>;
+    /** Magic of Incarnum: reserva, nivel de moldeador, fusiones, vínculos y chakras que puede vincular. */
+    incarnum?: IncarnumPrerrequisitos;
+    /** La reserva psiónica (`reserva_psionica`, también en las dotes desde Magic of Incarnum). */
+    reservaPsionica?: number;
+    /** El nivel de poder psiónico más alto que manifiesta (`lanzar_poder_psionico_nivel`). */
+    nivelPoderPsionicoMaximo?: number;
+}
+
+/**
+ * Las dotes del personaje y, detrás de cada una, las dotes a las que sustituye en los prerrequisitos (`Cuenta_como`:
+ * Dureza azur cuenta como Dureza), con el mismo extra. `doteDelCatalogo` da la ficha completa de una dote por su id.
+ */
+export function dotesConCuentaComo<T extends { id: number | null; nombre: string; }>(
+    dotes: T[],
+    doteDelCatalogo: (id: number) => Dote | null | undefined,
+): T[] {
+    const sustituidas = dotes.flatMap((dote) => (dote.id ? doteDelCatalogo(dote.id)?.Cuenta_como ?? [] : [])
+        .filter((otra) => otra.Id > 0)
+        .map((otra) => ({ ...dote, id: otra.Id, nombre: otra.Nombre })));
+    return [...dotes, ...sustituidas];
 }
 
 export interface DoteEvaluacionInput {
@@ -784,6 +805,19 @@ function evaluateFamily(
             evaluable: true,
             cumple: !!ctx.puedeSeleccionarCompanero,
             razonUnknown: 'Prerrequisito de poder elegir compañero no interpretable',
+        }));
+    }
+    if (keyNorm === 'reserva_psionica')
+        return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.reservaPsionica), 'Prerrequisito reserva_psionica con formato no reconocido'));
+    if (keyNorm === 'lanzar_poder_psionico_nivel')
+        return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.nivelPoderPsionicoMaximo), 'Prerrequisito lanzar_poder_psionico_nivel con formato no reconocido'));
+    if (CLAVES_PRERREQUISITOS_INCARNUM.includes(keyNorm)) {
+        const incarnum = ctx.incarnum ?? incarnumParaPrerrequisitos(null);
+        return entries.map((entry) => ({
+            grupoOpcional: parseOpcional(entry),
+            evaluable: true,
+            cumple: !!cumplePrerrequisitoIncarnum(keyNorm, entry, incarnum, toNumber(ctx.lanzador?.arcano)),
+            razonUnknown: '',
         }));
     }
     if (keyNorm === 'poder_seleccionar_familiar') {

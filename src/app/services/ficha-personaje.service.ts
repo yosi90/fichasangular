@@ -687,8 +687,6 @@ export class FichaPersonajeService {
             return 'divino';
         if (tipo === 'psionico')
             return 'psionico';
-        if (tipo === 'alma')
-            return 'alma';
         return '';
     }
 

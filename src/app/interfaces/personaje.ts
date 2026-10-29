@@ -2,6 +2,7 @@ import { AptitudSortilega } from "./aptitud-sortilega";
 import { Conjuro } from "./conjuro";
 import { DoteContextual, DoteLegacy } from "./dote-contextual";
 import { EnemigoPredilectoSeleccion } from "./enemigo-predilecto-seleccion";
+import { PersonajeIncarnum } from "./incarnum";
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from "./monstruo";
 import { RacialDetalle } from "./racial";
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
@@ -22,7 +23,7 @@ import {
 } from "./personajes-api";
 
 export type CaracteristicaPerdidaKey = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
-export type PersonajeTipoLanzamiento = 'arcano' | 'divino' | 'psionico' | 'alma' | 'mixto';
+export type PersonajeTipoLanzamiento = 'arcano' | 'divino' | 'psionico' | 'mixto';
 
 export interface PersonajeNivelLanzadorResumen {
     idClase: number;
@@ -375,6 +376,11 @@ export interface Personaje extends PersonajeSimple {
         Origen?: string;
     }[];
     Sortilegas: AptitudSortilega[];
+    /**
+     * Magic of Incarnum: el bloque que calcula la API (`incarnum` de la ficha; `null` si no tiene nada de incarnum). En la
+     * creación, el borrador que calcula la web con los mismos datos (`calcularIncarnumBorrador`).
+     */
+    Incarnum?: PersonajeIncarnum | null;
     Escuelas_prohibidas: Array<string | {
         Id?: number;
         Nombre: string;

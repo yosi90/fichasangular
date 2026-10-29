@@ -15,7 +15,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { RazaService } from 'src/app/services/raza.service';
 import { Clase } from 'src/app/interfaces/clase';
 import { ClaseService } from 'src/app/services/clase.service';
-import { Subject, filter, take, takeUntil } from 'rxjs';
+import { Observable, Subject, filter, take, takeUntil } from 'rxjs';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
@@ -56,6 +56,8 @@ import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { EntradaEquipo, TipoCatalogoEquipo } from 'src/app/interfaces/equipo';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { claveEntradaEquipo, claveEquipo, etiquetaEntradaEquipo, tipoDeListaEquipo } from '../../shared/listado-equipo/listas-equipo';
+import { ChakraDetalle, Fusion } from 'src/app/interfaces/incarnum';
+import { IncarnumService } from 'src/app/services/incarnum.service';
 
 interface ListadoTabAbierto {
     key: string;
@@ -129,6 +131,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public detallesEquipoAbiertos: EntradaEquipo[] = [];
     public detallesDeidadAbiertos: DeidadDetalle[] = [];
     public detallesIdiomaAbiertos: IdiomaDetalle[] = [];
+    /** Magic of Incarnum: las fusiones del alma y los chakras. */
+    public detallesFusionAbiertos: Fusion[] = [];
+    public detallesChakraAbiertos: ChakraDetalle[] = [];
     public listadoTabsAbiertos: ListadoTabAbierto[] = [];
     public edicionRacialesAbiertos: EdicionRacialTabAbierto[] = [];
     public edicionIdiomasAbiertos: EdicionIdiomaTabAbierto[] = [];
@@ -169,6 +174,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private ngZone: NgZone,
         private userProfileNavSvc?: UserProfileNavigationService,
         private equipoSvc?: EquipoService,
+        private incarnumSvc?: IncarnumService,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
@@ -379,6 +385,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             return;
         else if (this.detallesManualAbiertos.map(m => this.getEtiquetaManual(m)).includes(tabLabel) && this.quitarDetallesManual(tabLabel))
             return;
+        else if (this.detallesFusionAbiertos.map(f => this.getEtiquetaFusion(f)).includes(tabLabel) && this.quitarDetallesFusion(tabLabel))
+            return;
+        else if (this.detallesChakraAbiertos.map(c => this.getEtiquetaChakra(c)).includes(tabLabel) && this.quitarDetallesChakra(tabLabel))
+            return;
     }
 
     private buildOrderedTabKeys(): string[] {
@@ -422,6 +432,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         keys.push(...this.detallesEquipoAbiertos.map((entrada) => claveEntradaEquipo(entrada)));
         keys.push(...this.detallesDeidadAbiertos.map((deidad) => this.getDeidadTabKey(deidad)));
         keys.push(...this.detallesIdiomaAbiertos.map((idioma) => this.getIdiomaTabKey(idioma)));
+        keys.push(...this.detallesFusionAbiertos.map((fusion) => this.getFusionTabKey(fusion)));
+        keys.push(...this.detallesChakraAbiertos.map((chakra) => this.getChakraTabKey(chakra)));
         return keys;
     }
 
@@ -632,6 +644,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.detallesEquipoAbiertos = [];
         this.detallesDeidadAbiertos = [];
         this.detallesIdiomaAbiertos = [];
+        this.detallesFusionAbiertos = [];
+        this.detallesChakraAbiertos = [];
         this.listadoTabsAbiertos = [];
         this.edicionRacialesAbiertos = [];
         this.edicionIdiomasAbiertos = [];
@@ -804,6 +818,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDetallesDeidad(value.item);
         } else if (value.tipo === 'idiomas') {
             this.abrirDetallesIdioma(value.item);
+        } else if (value.tipo === 'fusiones del alma') {
+            this.abrirDetallesFusion(value.item);
+        } else if (value.tipo === 'chakras') {
+            this.abrirDetallesChakraPorId(Number(value.item?.Id));
         } else if (tipoDeListaEquipo(value.tipo)) {
             this.abrirDetallesEquipo(value.item);
         }
@@ -1062,6 +1080,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
         return `${idioma.Nombre} (Idioma)`;
     }
 
+    getEtiquetaFusion(fusion: Fusion): string {
+        return `${fusion.Nombre} (Fusión)`;
+    }
+
+    getEtiquetaChakra(chakra: ChakraDetalle): string {
+        return `${chakra.Nombre} (Chakra)`;
+    }
+
     getEtiquetaListadoTab(tab: ListadoTabAbierto): string {
         const tipo = `${tab?.tipo ?? ''}`.trim();
         const operacion = normalizarTexto(tab?.operacion ?? '');
@@ -1171,6 +1197,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private getIdiomaTabKey(idioma: IdiomaDetalle): string {
         return `idioma:${Number(idioma?.Id ?? 0)}`;
+    }
+
+    private getFusionTabKey(fusion: Fusion): string {
+        return `fusion:${Number(fusion?.Id ?? 0)}`;
+    }
+
+    private getChakraTabKey(chakra: ChakraDetalle): string {
+        return `chakra:${Number(chakra?.Id ?? 0)}`;
     }
 
     private getListadoTabKey(tipo: string, operacion: string): string {
@@ -2116,6 +2150,91 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.detallesIdiomaAbiertos.push(idioma);
         this.registerOpenContext(targetKey, this.getSafeOpenerKey());
         this.focusOpenedTab(targetKey);
+    }
+
+    abrirDetallesFusion(fusion: Fusion): void {
+        this.abrirDetalleEnLista(this.detallesFusionAbiertos, fusion, (item) => this.getFusionTabKey(item));
+    }
+
+    abrirDetallesFusionPorId(idFusion: number): void {
+        this.abrirDetallePorIdEnLista(idFusion, this.detallesFusionAbiertos, (item) => this.getFusionTabKey(item),
+            (id) => this.incarnumSvc?.getFusion(id), (fusion) => this.abrirDetallesFusion(fusion));
+    }
+
+    quitarDetallesFusion(value: string | Fusion): boolean {
+        return this.quitarDetalleDeLista(this.detallesFusionAbiertos, value,
+            (item) => this.getEtiquetaFusion(item), (item) => this.getFusionTabKey(item));
+    }
+
+    abrirDetallesChakra(chakra: ChakraDetalle): void {
+        this.abrirDetalleEnLista(this.detallesChakraAbiertos, chakra, (item) => this.getChakraTabKey(item));
+    }
+
+    abrirDetallesChakraPorId(idChakra: number): void {
+        this.abrirDetallePorIdEnLista(idChakra, this.detallesChakraAbiertos, (item) => this.getChakraTabKey(item),
+            (id) => this.incarnumSvc?.getChakra(id), (chakra) => this.abrirDetallesChakra(chakra));
+    }
+
+    quitarDetallesChakra(value: string | ChakraDetalle): boolean {
+        return this.quitarDetalleDeLista(this.detallesChakraAbiertos, value,
+            (item) => this.getEtiquetaChakra(item), (item) => this.getChakraTabKey(item));
+    }
+
+    /** Abre el detalle en su pestaña de una lista de detalles abiertos (por `Id`), o enfoca la que ya estaba. */
+    private abrirDetalleEnLista<T extends { Id: number }>(lista: T[], item: T, clave: (item: T) => string): void {
+        if (!item || Number(item?.Id) <= 0)
+            return;
+        if (this.enfocarDetalleAbierto(lista, Number(item.Id), clave))
+            return;
+        const targetKey = clave(item);
+        lista.push(item);
+        this.registerOpenContext(targetKey, this.getSafeOpenerKey());
+        this.focusOpenedTab(targetKey);
+    }
+
+    /** Abre el detalle por su id: enfoca el que ya estaba o pide el que da `pedir` y lo abre con `abrir`. */
+    private abrirDetallePorIdEnLista<T extends { Id: number }>(
+        idItem: number,
+        lista: T[],
+        clave: (item: T) => string,
+        pedir: (id: number) => Observable<T> | undefined,
+        abrir: (item: T) => void,
+    ): void {
+        const id = Number(idItem);
+        if (!Number.isFinite(id) || id <= 0)
+            return;
+        if (this.enfocarDetalleAbierto(lista, id, clave))
+            return;
+        pedir(id)?.pipe(take(1)).subscribe({ next: abrir, error: () => undefined });
+    }
+
+    /** Si el detalle con ese `Id` ya está abierto, enfoca su pestaña y devuelve `true`. */
+    private enfocarDetalleAbierto<T extends { Id: number }>(lista: T[], id: number, clave: (item: T) => string): boolean {
+        const abierto = lista.find((item) => Number(item.Id) === id);
+        if (abierto)
+            this.selectTabByKey(clave(abierto));
+        return !!abierto;
+    }
+
+    /** Cierra la pestaña del detalle (por su etiqueta o por el elemento) y lo quita de su lista. */
+    private quitarDetalleDeLista<T extends { Id: number }>(
+        lista: T[],
+        value: string | T,
+        etiqueta: (item: T) => string,
+        clave: (item: T) => string,
+    ): boolean {
+        const tab = typeof value === 'string'
+            ? lista.find((item) => etiqueta(item) === value)
+            : lista.find((item) => Number(item.Id) === Number(value.Id));
+        if (!tab)
+            return false;
+        return this.closeTabWithNavigation(clave(tab), () => {
+            const indexTab = lista.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            lista.splice(indexTab, 1);
+            return true;
+        });
     }
 
     quitarDetallesIdioma(value: string | IdiomaDetalle): boolean {

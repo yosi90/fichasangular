@@ -5,7 +5,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { CREACION_MARCO_COMPONENTES, PasoCreacionId, lineaPersonajeCreacion, modeloTuPersonaje, pasoCreacionDeLaPestana, textoContinuarCreacion } from '.';
+import { CREACION_MARCO_COMPONENTES, PasoCreacionId, lineaPersonajeCreacion, modeloTuPersonaje, pasoCreacionDeLaPestana, pasosCreacionVisibles, textoContinuarCreacion } from '.';
 
 @Component({
     template: `
@@ -149,6 +149,15 @@ describe('Las reglas del marco de la creación', () => {
         expect(textoContinuarCreacion('plantillas', todos)).toBe('Continuar: Ventajas');
         expect(textoContinuarCreacion('plantillas', { ...todos, conVentajas: false })).toBe('Continuar: Clases');
         expect(textoContinuarCreacion('habilidades', todos)).toBe('Continuar');
+    });
+
+    it('«Formación» (Magic of Incarnum) sale antes de «Equipo» solo si puede moldear, y lleva a la tienda', () => {
+        const opciones = { conVentajas: true, conConjuros: false };
+        expect(pasosCreacionVisibles(opciones).map((p) => p.id)).not.toContain('formacion');
+        expect(pasosCreacionVisibles({ ...opciones, conFormacion: true }).map((p) => p.id).slice(-2)).toEqual(['formacion', 'equipo']);
+        expect(pasoCreacionDeLaPestana(4, { enTienda: false, enFormacion: true, eligiendoDotesSinConjuros: false })).toBe('formacion');
+        expect(pasoCreacionDeLaPestana(4, { enTienda: true, enFormacion: true, eligiendoDotesSinConjuros: false })).toBe('equipo');
+        expect(textoContinuarCreacion('formacion', { ...opciones, conFormacion: true })).toBe('Continuar: Equipo');
     });
 
     it('la línea de la cabecera', () => {

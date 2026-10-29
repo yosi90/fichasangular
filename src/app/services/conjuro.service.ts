@@ -1,4 +1,4 @@
-import { cacheRtdbOApi, catalogosDesdeApi, escucharRtdb, leerListadoCompleto, sinCache } from './catalogo-api';
+import { cacheRtdbOApi, escucharCatalogo, leerListadoCompleto } from './catalogo-api';
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
@@ -27,15 +27,11 @@ export class ConjuroService {
     ) { }
 
     protected watchConjuroPath(id: number, onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        if (catalogosDesdeApi())
-            return sinCache(onNext);
-        return escucharRtdb(this.db, this.firebaseContextSvc, `Conjuros/${id}`)(onNext, onError);
+        return escucharCatalogo(this.db, this.firebaseContextSvc, `Conjuros/${id}`)(onNext, onError);
     }
 
     protected watchConjurosPath(onNext: (snapshot: any) => void, onError: (error: any) => void): Unsubscribe {
-        if (catalogosDesdeApi())
-            return sinCache(onNext);
-        return escucharRtdb(this.db, this.firebaseContextSvc, 'Conjuros')(onNext, onError);
+        return escucharCatalogo(this.db, this.firebaseContextSvc, 'Conjuros')(onNext, onError);
     }
 
     getConjuro(id: number): Observable<Conjuro> {

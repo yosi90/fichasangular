@@ -2,6 +2,7 @@ import { Conjuro } from "src/app/interfaces/conjuro";
 import { RacialDetalle } from "src/app/interfaces/racial";
 import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
+import { normalizarEsenciaRasgo } from './incarnum-mapper';
 
 function toOptionalNumber(value: any): number {
     const n = Number(value);
@@ -59,6 +60,7 @@ export function normalizeRacial(raw: any): RacialDetalle {
         Ataques: toArray(ataquesRaw).map((item: any) => ({
             Descripcion: toText(pick(item, "Descripcion", "descripcion", "d")),
         })),
+        Esencia: normalizarEsenciaRasgo(pick(raw, "Esencia")),
         Prerrequisitos_flags: {
             raza: toBoolean(pick(flagsRaw, "raza", "r")),
             caracteristica_minima: toBoolean(pick(flagsRaw, "caracteristica_minima", "caracteristica", "c")),

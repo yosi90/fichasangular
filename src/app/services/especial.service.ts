@@ -23,6 +23,7 @@ import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { leerComodin } from "src/app/services/utils/comodin";
 import { mensajeDeError } from './utils/error-api';
+import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
 
 const ESPECIAL: ElementoDeCatalogo = { singular: "especial", plural: "especiales", femenino: false };
 
@@ -94,6 +95,7 @@ export function normalizeEspecial(raw: any): EspecialClaseDetalle {
         Subtipo: normalizeRefSimple(raw?.Subtipo),
         Extras: toArray(raw?.Extras).map(normalizeExtra),
         Habilidades: toArray(raw?.Habilidades).map(normalizeHabilidad),
+        Esencia: normalizarEsenciaRasgo(raw?.Esencia),
     };
 }
 

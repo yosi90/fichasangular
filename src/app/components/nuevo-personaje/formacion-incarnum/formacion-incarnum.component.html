@@ -1,0 +1,120 @@
+<app-ficha-franja [datos]="franja" titulo="En este paso"></app-ficha-franja>
+
+<app-creacion-cuerpo [lateral]="false" tituloTarea="Formación de partida">
+    <div creacionTarea class="formacion">
+        <p class="bloque-error formacion-error" role="alert" *ngIf="errorApi">
+            La API no ha aceptado la formación: {{errorApi.mensaje}}
+        </p>
+        <div class="formacion-columnas">
+            <section class="formacion-lista" [attr.aria-label]="listaActual?.titulo ?? 'Fusiones'">
+                <div class="formacion-lista__cabecera">
+                    <h2 class="ficha-titulo">{{listaActual?.titulo ?? 'Fusiones'}} ({{filasLista.length}})</h2>
+                    <div class="creacion-conmutador" role="group" aria-label="Qué lista" *ngIf="listas.length > 1">
+                        <button type="button" *ngFor="let lista of listas" [attr.aria-pressed]="lista.clave === listaActiva"
+                            (click)="elegirLista(lista.clave)">{{lista.titulo}}</button>
+                    </div>
+                </div>
+                <p class="creacion-vacio" *ngIf="filasLista.length < 1">No hay fusiones que pueda moldear con esta lista.</p>
+                <ul class="creacion-opciones formacion-opciones" *ngIf="filasLista.length > 0">
+                    <li *ngFor="let fila of filasLista" class="creacion-opcion creacion-opcion--caja"
+                        [class.creacion-opcion--activa]="fila.moldeada" [class.creacion-opcion--bloqueada]="!fila.moldeada && !!fila.motivo">
+                        <span class="creacion-opcion__texto">
+                            <button type="button" class="ficha-enlace" (click)="verFusion(fila.fusion.Id)">{{fila.fusion.Nombre}}</button>
+                            <span class="creacion-opcion__nota">{{fila.chakras}}</span>
+                        </span>
+                        <button type="button" mat-stroked-button *ngIf="fila.moldeada" (click)="quitar(fila.fusion.Id)"
+                            [attr.aria-label]="'Quitar ' + fila.fusion.Nombre" matTooltip="Quitarla de la formación">Moldeada</button>
+                        <ng-container *ngIf="!fila.moldeada">
+                            <span class="formacion-motivo" *ngIf="fila.motivo" [matTooltip]="fila.motivo" matTooltipClass="tt-accent">Sin hueco</span>
+                            <button type="button" mat-stroked-button *ngIf="!fila.motivo && fila.opciones.length === 1"
+                                (click)="moldear(fila, fila.opciones[0].idChakra)"
+                                [attr.aria-label]="'Moldear ' + fila.fusion.Nombre + ' en ' + fila.opciones[0].nombre">Moldear</button>
+                            <ng-container *ngIf="!fila.motivo && fila.opciones.length > 1">
+                                <button type="button" mat-stroked-button [matMenuTriggerFor]="menuChakra"
+                                    [attr.aria-label]="'Moldear ' + fila.fusion.Nombre">Moldear</button>
+                                <mat-menu #menuChakra="matMenu">
+                                    <button type="button" mat-menu-item *ngFor="let opcion of fila.opciones"
+                                        (click)="moldear(fila, opcion.idChakra)">En {{opcion.nombre}}</button>
+                                </mat-menu>
+                            </ng-container>
+                        </ng-container>
+                    </li>
+                </ul>
+            </section>
+
+            <section class="formacion-chakras" aria-label="Tus chakras y tu esencia">
+                <h2 class="ficha-titulo">Tus chakras y tu esencia</h2>
+                <table class="ficha-tabla">
+                    <thead>
+                        <tr>
+                            <th scope="col">Chakra</th>
+                            <th scope="col">Fusión</th>
+                            <th scope="col">Vínculo</th>
+                            <th scope="col" class="ficha-num">Esencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let fila of filasChakras" [class.formacion-fila--error]="fila.conError">
+                            <td>{{fila.nombre}}</td>
+                            <td>
+                                <button type="button" class="ficha-enlace" *ngIf="fila.fusion; else libre"
+                                    (click)="verFusion(fila.fusion.Id)">{{fila.fusion.Nombre}}</button>
+                                <ng-template #libre><span class="formacion-libre">Libre</span></ng-template>
+                            </td>
+                            <td>
+                                <ng-container *ngIf="fila.fusion">
+                                    <span class="formacion-vinculos">
+                                        <button type="button" *ngFor="let vinculo of fila.vinculos" class="formacion-vinculo"
+                                            [class.formacion-vinculo--activo]="vinculo.activo" [attr.aria-pressed]="vinculo.activo"
+                                            [disabled]="!vinculo.activo && !!vinculo.motivo"
+                                            [matTooltip]="vinculo.motivo" [matTooltipDisabled]="!vinculo.motivo" matTooltipClass="tt-accent"
+                                            (click)="vincular(fila.fusion.Id, vinculo.activo ? null : vinculo.idChakra)">{{vinculo.texto}}</button>
+                                    </span>
+                                    <span class="ficha-nota" *ngIf="fila.nota">{{fila.nota}}</span>
+                                </ng-container>
+                            </td>
+                            <td class="ficha-num formacion-esencia">
+                                <span *ngIf="fila.fusion" [matTooltip]="'Admite como mucho ' + capacidadDe(fila.fusion.Id) + ' de esencia'"
+                                    matTooltipClass="tt-accent">
+                                    <button type="button" class="formacion-boton" [disabled]="!!fila.motivoMenos"
+                                        (click)="cambiarEsenciaFusion(fila.fusion.Id, -1)"
+                                        [attr.aria-label]="'Quitar esencia de ' + fila.fusion.Nombre">−</button>
+                                    <b class="formacion-cifra">{{fila.esencia}}</b>
+                                    <button type="button" class="formacion-boton" [disabled]="!!fila.motivoMas"
+                                        [matTooltip]="fila.motivoMas" [matTooltipDisabled]="!fila.motivoMas" matTooltipClass="tt-accent"
+                                        (click)="cambiarEsenciaFusion(fila.fusion.Id, 1)"
+                                        [attr.aria-label]="'Añadir esencia a ' + fila.fusion.Nombre">+</button>
+                                </span>
+                            </td>
+                        </tr>
+                        <tr *ngFor="let fila of filasReceptaculos" class="formacion-fila--receptaculo" [class.formacion-fila--error]="fila.conError">
+                            <td>{{fila.etiqueta}}</td>
+                            <td>{{fila.receptaculo.nombre}}</td>
+                            <td><span class="ficha-nota">fija todo el día</span></td>
+                            <td class="ficha-num formacion-esencia">
+                                <span [matTooltip]="'Admite como mucho ' + fila.receptaculo.capacidad + ' de esencia'" matTooltipClass="tt-accent">
+                                    <button type="button" class="formacion-boton" [disabled]="!!fila.motivoMenos"
+                                        (click)="cambiarEsenciaReceptaculo(fila.receptaculo, -1)"
+                                        [attr.aria-label]="'Quitar esencia de ' + fila.receptaculo.nombre">−</button>
+                                    <b class="formacion-cifra">{{fila.esencia}}</b>
+                                    <button type="button" class="formacion-boton" [disabled]="!!fila.motivoMas"
+                                        [matTooltip]="fila.motivoMas" [matTooltipDisabled]="!fila.motivoMas" matTooltipClass="tt-accent"
+                                        (click)="cambiarEsenciaReceptaculo(fila.receptaculo, 1)"
+                                        [attr.aria-label]="'Añadir esencia a ' + fila.receptaculo.nombre">+</button>
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </div>
+    </div>
+</app-creacion-cuerpo>
+
+<app-creacion-pie [nota]="nota" [aviso]="!!fallo">
+    <button type="button" mat-stroked-button (click)="saltar.emit()" [disabled]="guardando">Saltar este paso</button>
+    <button type="button" mat-raised-button color="primary" [disabled]="!!fallo || guardando" (click)="continuar()">
+        Continuar: Equipo
+        <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+    </button>
+</app-creacion-pie>

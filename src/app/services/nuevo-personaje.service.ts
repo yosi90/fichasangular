@@ -32,7 +32,10 @@ import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/ra
 import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
-import { DoteEvaluacionContexto, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
+import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
+import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from '../interfaces/incarnum';
+import { EntradaIncarnumBorrador, calcularIncarnumBorrador, incarnumParaPrerrequisitos } from './utils/incarnum';
+import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
 import {
     EstadoCuposFamiliar as EstadoCuposFamiliarUtil,
     FamiliarPlantillaId as FamiliarPlantillaIdUtil,
@@ -85,7 +88,7 @@ import { vectorAlineamientoDeidad } from './utils/alineamiento-deidad';
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
 export type HabilidadesFlujoOrigen = 'raza_dg' | 'plantilla_dg' | 'clase_nivel' | 'companero_dg';
-export type TipoLanzamientoConjuros = 'arcano' | 'divino' | 'psionico' | 'alma' | 'mixto';
+export type TipoLanzamientoConjuros = 'arcano' | 'divino' | 'psionico' | 'mixto';
 export type FamiliarPlantillaId = FamiliarPlantillaIdUtil;
 export type EstadoCuposFamiliar = EstadoCuposFamiliarUtil;
 export type CompaneroPlantillaSelector = CompaneroPlantillaSelectorUtil;
@@ -586,7 +589,6 @@ export interface ConjurosSesionStateEntrada {
     nivelMaxPoderAccesiblePsionico: number;
     seleccionManual: boolean;
     autoadicion: boolean;
-    almaPendiente: boolean;
     sinElegibles: boolean;
     cupoPendiente: ConjurosCupoPendiente;
     cupoInicial: ConjurosCupoPendiente;
@@ -940,6 +942,9 @@ export class NuevoPersonajeService {
     private tablaCarga: FilaCapacidadCarga[] = [];
     private catalogoTamanos: Tamano[] = [];
     private catalogoClases: Clase[] = [];
+    private capacidadEsencia: CapacidadEsencia[] = [];
+    private catalogoFusiones: Fusion[] = [];
+    private catalogoChakras: Chakra[] = [];
     private catalogoDotes: Dote[] = [];
     private catalogoArmasDotes: { Id: number; Nombre: string; }[] = [];
     private catalogoArmadurasDotes: Array<{ Id: number; Nombre: string; Es_escudo?: boolean; }> = [];
@@ -1525,6 +1530,61 @@ export class NuevoPersonajeService {
         this.catalogoDotes = [...(dotes ?? [])];
     }
 
+    /** Magic of Incarnum: la tabla de capacidad de esencia y el catálogo de fusiones (para el bloque del borrador). */
+    setCatalogosIncarnum(capacidad: CapacidadEsencia[], fusiones: Fusion[], chakras: Chakra[] = []): void {
+        this.capacidadEsencia = [...(capacidad ?? [])];
+        this.catalogoFusiones = [...(fusiones ?? [])];
+        this.catalogoChakras = [...(chakras ?? [])];
+    }
+
+    getCatalogoFusiones(): Fusion[] {
+        return this.catalogoFusiones;
+    }
+
+    /**
+     * Magic of Incarnum: el bloque `incarnum` del personaje que se está creando, con el mismo cálculo que la ficha de la
+     * API (`calcularIncarnumBorrador`), y la formación de partida si se da. `null` si no tiene nada de incarnum.
+     */
+    getIncarnumBorrador(formacion: FormacionIncarnumDto | null = null): PersonajeIncarnum | null {
+        return calcularIncarnumBorrador(this.entradaIncarnumBorrador(formacion));
+    }
+
+    private entradaIncarnumBorrador(formacion: FormacionIncarnumDto | null): EntradaIncarnumBorrador {
+        const pj = this.personajeCreacion;
+        const clases = (pj.desgloseClases ?? [])
+            .filter((entrada) => `${entrada?.Nombre ?? ''}`.trim().length > 0)
+            .map((entrada) => ({
+                clase: this.obtenerClaseCatalogoPorNombre(entrada.Nombre),
+                nombre: `${entrada.Nombre}`.trim(),
+                nivel: Math.max(0, toInt(entrada?.Nivel)),
+            }));
+        // La esencia de las aptitudes de clase sale de su clase del catálogo; cuenta la de las que tiene el personaje.
+        const idsEspeciales = new Set((pj.Claseas ?? []).map((especial) => toInt((especial as any)?.Id)).filter((id) => id > 0));
+        const especiales = new Map<number, { id: number; nombre: string; esencia: ReturnType<typeof normalizarEsenciaRasgo>; }>();
+        clases.forEach(({ clase, nivel }) => (clase?.Desglose_niveles ?? [])
+            .filter((fila) => toInt(fila?.Nivel) <= nivel)
+            .forEach((fila) => (fila?.Especiales ?? []).forEach((item) => {
+                const id = toInt(item?.Especial?.['Id']);
+                const esencia = normalizarEsenciaRasgo(item?.Especial?.['Esencia']);
+                if (id > 0 && esencia && idsEspeciales.has(id) && !especiales.has(id))
+                    especiales.set(id, { id, nombre: `${item?.Especial?.['Nombre'] ?? ''}`.trim(), esencia });
+            })));
+        return {
+            clases,
+            dotes: (pj.DotesContextuales ?? []).map((item) => ({
+                dote: this.doteDelCatalogo(toNumber(item?.Dote?.Id)) ?? item?.Dote,
+                idExtra: toInt(item?.Contexto?.Id_extra),
+            })),
+            raciales: (pj.Raciales ?? []).map((racial) => ({ id: toInt(racial?.Id), nombre: `${racial?.Nombre ?? ''}`.trim(), esencia: racial?.Esencia })),
+            especiales: Array.from(especiales.values()),
+            puntuaciones: Object.fromEntries(CARACTERISTICAS.map((caracteristica) => [normalizarTexto(caracteristica), toNumber(pj[caracteristica])])),
+            nivelPersonaje: dgsTotales(this.getPartesNivelPersonaje()),
+            capacidad: this.capacidadEsencia,
+            formacion,
+            fusiones: this.catalogoFusiones,
+        };
+    }
+
     setCatalogoArmasDotes(catalogo: Array<{ Id: number; Nombre: string; Id_tipo_arma?: number | null; }>): void {
         this.catalogoArmasDotes = this.normalizarCatalogoExtras(catalogo);
         this.catalogoArmasConTipo = [...(catalogo ?? [])];
@@ -1721,7 +1781,7 @@ export class NuevoPersonajeService {
             ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
             alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`,
             genero: `${this.personajeCreacion.Genero ?? ''}`,
-            dotes: [...dotesDesdeContexto, ...dotesLegacy],
+            dotes: dotesConCuentaComo([...dotesDesdeContexto, ...dotesLegacy], (id) => this.doteDelCatalogo(id)),
             claseas,
             raciales: clavesDeEntidades(this.personajeCreacion.Raciales),
             plantillas: clavesDeEntidades(this.personajeCreacion.Plantillas),
@@ -1745,6 +1805,7 @@ export class NuevoPersonajeService {
             },
             dgTotal: this.resolverDgTotalActual(),
             reservaPsionica: this.resolverReservaPsionicaActual(),
+            incarnum: incarnumParaPrerrequisitos(this.getIncarnumBorrador()),
             escuelaEspecialista: {
                 id: this.resolverIdEscuelaPorNombre(nombreEscuelaEspecialista),
                 nombre: nombreEscuelaEspecialista,
@@ -2227,7 +2288,7 @@ export class NuevoPersonajeService {
         return this.estadoFlujo.conjuros.entradas.every((entrada) => {
             if (!entrada.seleccionManual)
                 return true;
-            if (entrada.almaPendiente || entrada.sinElegibles)
+            if (entrada.sinElegibles)
                 return true;
             if (toNumber(entrada.cupoPendiente?.total) > 0)
                 return false;
@@ -2948,6 +3009,8 @@ export class NuevoPersonajeService {
             || this.doteSoportaEscudos(dote)
             || toBoolean(dote?.Extras_soportados?.Extra_escuela)
             || toBoolean(dote?.Extras_soportados?.Extra_habilidad)
+            || toBoolean(dote?.Extras_soportados?.Extra_chakra)
+            || toBoolean(dote?.Extras_soportados?.Extra_fusion)
         );
     }
 
@@ -3083,27 +3146,27 @@ export class NuevoPersonajeService {
         const deTodoElCatalogo = dote?.Extras_de_todo_el_catalogo;
 
         const extras: DoteExtraOpcion[] = [];
-        if (toBoolean(dote?.Extras_soportados?.Extra_arma)) {
-            const directos = normalizar(dote?.Extras_disponibles?.Armas ?? []);
-            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Armas === true;
-            extras.push(...(usarCatalogo ? this.catalogoArmasDotes : directos));
-        }
-        if (this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote)) {
-            const directos = this.filtrarExtrasArmaduraPorSoporte(dote, normalizar(dote?.Extras_disponibles?.Armaduras ?? []));
-            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Armaduras === true;
-            const catalogo = this.filtrarExtrasArmaduraPorSoporte(dote, this.catalogoArmadurasDotes);
-            extras.push(...(usarCatalogo ? catalogo : directos));
-        }
-        if (toBoolean(dote?.Extras_soportados?.Extra_escuela)) {
-            const directos = normalizar(dote?.Extras_disponibles?.Escuelas ?? []);
-            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Escuelas === true;
-            extras.push(...(usarCatalogo ? this.catalogoEscuelasDotes : directos));
-        }
-        if (toBoolean(dote?.Extras_soportados?.Extra_habilidad)) {
-            const directos = normalizar(dote?.Extras_disponibles?.Habilidades ?? []);
-            const usarCatalogo = directos.length < 1 || deTodoElCatalogo?.Habilidades === true;
-            extras.push(...(usarCatalogo ? fuenteHabilidades : directos));
-        }
+        // Los que lista la dote o, si no lista ninguno o es de todo el catálogo, los del catálogo.
+        const anadir = (soporta: boolean, directos: DoteExtraOpcion[], todoElCatalogo: boolean | undefined, catalogo: () => DoteExtraOpcion[]) => {
+            if (soporta)
+                extras.push(...(directos.length < 1 || todoElCatalogo === true ? catalogo() : directos));
+        };
+        const soportados = dote?.Extras_soportados;
+        const disponibles = dote?.Extras_disponibles;
+        anadir(toBoolean(soportados?.Extra_arma), normalizar(disponibles?.Armas), deTodoElCatalogo?.Armas, () => this.catalogoArmasDotes);
+        anadir(
+            this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote),
+            this.filtrarExtrasArmaduraPorSoporte(dote, normalizar(disponibles?.Armaduras)),
+            deTodoElCatalogo?.Armaduras,
+            () => this.filtrarExtrasArmaduraPorSoporte(dote, this.catalogoArmadurasDotes),
+        );
+        anadir(toBoolean(soportados?.Extra_escuela), normalizar(disponibles?.Escuelas), deTodoElCatalogo?.Escuelas, () => this.catalogoEscuelasDotes);
+        anadir(toBoolean(soportados?.Extra_habilidad), normalizar(disponibles?.Habilidades), deTodoElCatalogo?.Habilidades, () => fuenteHabilidades);
+        // Magic of Incarnum: «elige un chakra» (Abrir chakra) o «elige una fusión» (Moldear fusión).
+        anadir(toBoolean(soportados?.Extra_chakra), normalizar(disponibles?.Chakras), deTodoElCatalogo?.Chakras,
+            () => this.catalogoChakras.map((c) => ({ Id: c.Id, Nombre: c.Nombre })));
+        anadir(toBoolean(soportados?.Extra_fusion), normalizar(disponibles?.Fusiones), deTodoElCatalogo?.Fusiones,
+            () => this.catalogoFusiones.map((f) => ({ Id: f.Id, Nombre: f.Nombre })));
 
         return this.normalizarCatalogoExtras(extras);
     }
@@ -3369,7 +3432,7 @@ export class NuevoPersonajeService {
             },
             ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
             nivelesClase,
-            dotes: [...dotes, ...legacySinContexto],
+            dotes: dotesConCuentaComo([...dotes, ...legacySinContexto], (id) => this.doteDelCatalogo(id)),
             claseas,
             raciales: clavesDeEntidades(this.personajeCreacion.Raciales),
             plantillas: clavesDeEntidades(this.personajeCreacion.Plantillas),
@@ -3413,6 +3476,9 @@ export class NuevoPersonajeService {
             puedeSeleccionarCompanero: estadoCuposCompanero.cuposDisponibles > 0,
             puedeSeleccionarFamiliar: estadoCuposFamiliar.cuposDisponibles > 0,
             catalogoRegiones,
+            incarnum: incarnumParaPrerrequisitos(this.getIncarnumBorrador()),
+            reservaPsionica: this.resolverReservaPsionicaActual(),
+            nivelPoderPsionicoMaximo: this.resolverNivelPoderPsionicoMaximo(),
         };
 
         const evaluacion = evaluarElegibilidadDote({
@@ -4355,6 +4421,10 @@ export class NuevoPersonajeService {
         aplicarSalvacion('fortaleza', 'Fortaleza');
         aplicarSalvacion('reflejos', 'Reflejos');
         aplicarSalvacion('voluntad', 'Voluntad');
+        // Las que solo cuentan en un caso (Cuerpo fortalecido por el incarnum: +4 a Fortaleza contra el daño masivo): se
+        // guardan con su condición y no se suman, como las de los raciales.
+        (dote?.Salvaciones_condicionales ?? []).forEach((item) =>
+            this.registrarSalvacionPorId(item?.Id_salvacion, item?.Cantidad, origen, toNullableText(item?.Condicion)));
 
         const iniciativa = get('Iniciativa');
         if (iniciativa !== 0) {
@@ -5421,14 +5491,10 @@ export class NuevoPersonajeService {
      */
     private aplicarSalvacionesRaza(raza: Raza | null): void {
         const nombreRaza = `${raza?.Nombre ?? 'Raza'}`.trim() || 'Raza';
-        const registrar = (tipo: SalvacionKey, valor: number, origen: string, condicion: string | null = null) => {
+        const registrar = (tipo: SalvacionKey, valor: number, origen: string) => {
             if (!Number.isFinite(valor) || valor === 0)
                 return;
-            this.personajeCreacion.Salvaciones[tipo].modsVarios.push({
-                valor,
-                origen,
-                ...(condicion ? { condicion } : {}),
-            });
+            this.personajeCreacion.Salvaciones[tipo].modsVarios.push({ valor, origen });
         };
 
         registrar('fortaleza', toNumber(raza?.Dgs_adicionales?.Fortaleza), `${nombreRaza} DG racial`);
@@ -5448,13 +5514,24 @@ export class NuevoPersonajeService {
                     ? Object.values(racial.Salvaciones as any)
                     : []);
 
-            salvaciones.forEach((item: any) => {
-                const tipo = SALVACION_POR_ID[toInt(item?.Id_salvacion)];
-                const valor = toInt(item?.Cantidad);
-                if (!tipo || valor === 0)
-                    return;
-                registrar(tipo, valor, origen, toNullableText(item?.Condicion));
-            });
+            salvaciones.forEach((item: any) =>
+                this.registrarSalvacionPorId(item?.Id_salvacion, item?.Cantidad, origen, toNullableText(item?.Condicion)));
+        });
+    }
+
+    /**
+     * Un bonificador a la salvación de `Id_salvacion` (`SALVACION_POR_ID`), de un racial o de una dote. Con `condicion`
+     * («Contra veneno») se guarda con ella y no se suma al total; sin ella, sí.
+     */
+    private registrarSalvacionPorId(idSalvacion: unknown, cantidad: unknown, origen: string, condicion: string | null): void {
+        const tipo = SALVACION_POR_ID[toInt(idSalvacion)];
+        const valor = toInt(cantidad);
+        if (!tipo || valor === 0)
+            return;
+        this.personajeCreacion.Salvaciones[tipo].modsVarios.push({
+            valor,
+            origen,
+            ...(condicion ? { condicion } : {}),
         });
     }
 
@@ -6373,8 +6450,7 @@ export class NuevoPersonajeService {
 
     private usaConjurosDiariosParaNivelLanzador(clase: Clase | null | undefined): boolean {
         return !!clase?.Conjuros?.Arcanos
-            || !!clase?.Conjuros?.Divinos
-            || !!clase?.Conjuros?.Alma;
+            || !!clase?.Conjuros?.Divinos;
     }
 
     private tieneLanzamientoPropio(clase: Clase | null | undefined): boolean {
@@ -6557,9 +6633,24 @@ export class NuevoPersonajeService {
             });
         });
 
+        // Las que son de clase solo con un alineamiento básico (`Habilidades.Por_alineamiento`: el nacido del alma).
+        this.habilidadesPorAlineamientoDeClase(clase).forEach((ref) => {
+            this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: true, customPreferido: false });
+        });
+
         this.personajeCreacion.Habilidades = this.personajeCreacion.Habilidades
             .slice()
             .sort(porNombre);
+    }
+
+    /** Las habilidades de `Habilidades.Por_alineamiento` de la clase que coinciden con el alineamiento básico del personaje. */
+    private habilidadesPorAlineamientoDeClase(clase: Clase): Record<string, any>[] {
+        const alineamiento = `${this.personajeCreacion.Alineamiento ?? ''}`.trim();
+        const idBasico = getAlineamientoBasicoIdPorNombre(alineamiento);
+        return (clase?.Habilidades?.Por_alineamiento ?? [])
+            .filter((item) => normalizarTexto(item.Alineamiento?.Nombre ?? '') === normalizarTexto(alineamiento)
+                || (idBasico > 0 && toInt(item.Alineamiento?.Id) === idBasico))
+            .map((item) => ({ Id_habilidad: item.Id_habilidad, Habilidad: item.Habilidad, Id_extra: item.Id_extra, Extra: item.Extra }));
     }
 
     private getNuevoIdHabilidad(): number {
@@ -7088,8 +7179,7 @@ export class NuevoPersonajeService {
         const candidatas = previas.filter((clase) =>
             (!!aumento?.Arcanos && !!clase?.Conjuros?.Arcanos)
             || (!!aumento?.Divinos && !!clase?.Conjuros?.Divinos)
-            || (!!aumento?.Psionicos && !!clase?.Conjuros?.Psionicos)
-            || (!!aumento?.Alma && !!clase?.Conjuros?.Alma));
+            || (!!aumento?.Psionicos && !!clase?.Conjuros?.Psionicos));
 
         const usadas = new Set<number>();
         return candidatas
@@ -7289,12 +7379,7 @@ export class NuevoPersonajeService {
         const totalPorNivel = Object.values(cupoPorNivel).reduce((acc, value) => acc + Math.max(0, toNumber(value)), 0);
         const requiereSeleccionManual = cupoTotal > 0 || totalPorNivel > 0;
         const tipoLanzamiento = this.resolverTipoLanzamientoClase(claseObjetivo);
-        const almaPendiente = tipoLanzamiento === 'alma';
-        if (almaPendiente) {
-            avisos.push(`La selección manual para conjuros de alma de ${claseObjetivo.Nombre} queda pendiente para una fase posterior.`);
-        }
-
-        const autoadicion = !usaConocidosTotal && !usaConocidosPorNivel && !almaPendiente;
+        const autoadicion = !usaConocidosTotal && !usaConocidosPorNivel;
         const sinElegibles = elegibles.conjuros.length < 1;
         const idsAutoadicionados = cupoLibro
             ? cupoLibro.autoadicionadosIds
@@ -7323,9 +7408,8 @@ export class NuevoPersonajeService {
             nivelLanzadorPrevio: Math.max(0, toNumber(nivelLanzadorPrevio)),
             nivelLanzadorActual: Math.max(0, toNumber(nivelLanzadorActual)),
             nivelMaxPoderAccesiblePsionico: Math.max(-1, toNumber(elegibles.acceso.nivelMaxPoderAccesiblePsionico)),
-            seleccionManual: requiereSeleccionManual && !almaPendiente,
+            seleccionManual: requiereSeleccionManual,
             autoadicion: autoadicionActiva,
-            almaPendiente,
             sinElegibles,
             cupoPendiente: {
                 total: cupoTotal,
@@ -7473,8 +7557,7 @@ export class NuevoPersonajeService {
         const requiereArcano = !!claseObjetivo?.Conjuros?.Arcanos;
         const requiereDivino = !!claseObjetivo?.Conjuros?.Divinos;
         const requierePsionico = !!claseObjetivo?.Conjuros?.Psionicos;
-        const requiereAlma = !!claseObjetivo?.Conjuros?.Alma;
-        const usaConjurosDiarios = requiereArcano || requiereDivino || requiereAlma;
+        const usaConjurosDiarios = requiereArcano || requiereDivino;
         const errores: string[] = [];
 
         const diariosActual = conjurosDiariosPorNivel(detalleActual?.Conjuros_diarios);
@@ -7502,10 +7585,7 @@ export class NuevoPersonajeService {
 
         if (usaConjurosDiarios) {
             if (!diariosInformados) {
-                const tipoContrato = requiereAlma && !requiereArcano && !requiereDivino
-                    ? 'lanzador de alma'
-                    : 'lanzador arcano/divino';
-                errores.push(`Contrato de conjuros inválido en ${claseObjetivo?.Nombre ?? 'clase desconocida'}: ${tipoContrato} sin Conjuros_diarios.`);
+                errores.push(`Contrato de conjuros inválido en ${claseObjetivo?.Nombre ?? 'clase desconocida'}: lanzador arcano/divino sin Conjuros_diarios.`);
             }
             if (nivelMaxPoderPsionico >= 0) {
                 errores.push(
@@ -7697,11 +7777,9 @@ export class NuevoPersonajeService {
         const requiereArcano = !!claseObjetivo?.Conjuros?.Arcanos;
         const requiereDivino = !!claseObjetivo?.Conjuros?.Divinos;
         const requierePsionico = !!claseObjetivo?.Conjuros?.Psionicos;
-        const requiereAlma = !!claseObjetivo?.Conjuros?.Alma;
         return (requiereArcano && !!conjuro?.Arcano)
             || (requiereDivino && !!conjuro?.Divino)
-            || (requierePsionico && !!conjuro?.Psionico)
-            || (requiereAlma && !!conjuro?.Alma);
+            || (requierePsionico && !!conjuro?.Psionico);
     }
 
     /**
@@ -7788,8 +7866,6 @@ export class NuevoPersonajeService {
             tipos.push('divino');
         if (clase?.Conjuros?.Psionicos)
             tipos.push('psionico');
-        if (clase?.Conjuros?.Alma)
-            tipos.push('alma');
         if (tipos.length < 1)
             return 'arcano';
         if (tipos.length === 1)
@@ -7855,7 +7931,7 @@ export class NuevoPersonajeService {
         if (!this.estadoFlujo.conjuros.activa)
             return null;
         const preferida = this.estadoFlujo.conjuros.entradas.findIndex((entrada) => {
-            if (!entrada.seleccionManual || entrada.almaPendiente || entrada.sinElegibles)
+            if (!entrada.seleccionManual || entrada.sinElegibles)
                 return false;
             if (toNumber(entrada.cupoPendiente?.total) > 0)
                 return true;
@@ -7990,7 +8066,6 @@ export class NuevoPersonajeService {
             Arcano: !!clase?.Conjuros?.Arcanos,
             Divino: !!clase?.Conjuros?.Divinos,
             Psionico: !!clase?.Conjuros?.Psionicos,
-            Alma: !!clase?.Conjuros?.Alma,
             Duracion: '',
             Tipo_salvacion: '',
             Resistencia_conjuros: false,
@@ -9703,12 +9778,18 @@ export class NuevoPersonajeService {
             || this.resolverDadoGolpeTipoActual();
     }
 
-    /** Los PG que dan las dotes del personaje: `Modificadores.Pg_a` (Dureza, +3) y `Modificadores.Pg_a_n` (+N por DG). */
+    /**
+     * Los PG que dan las dotes del personaje: `Modificadores.Pg_a` (Dureza, +3), `Modificadores.Pg_a_n` (+N por DG) y los
+     * del incarnum (Corazón de incarnum, la reserva; Cuerpo fortalecido por el incarnum, 2 por dote de incarnum), que
+     * calcula el bloque `incarnum` del borrador como la API (`puntosGolpe`).
+     */
     private resolverBonosPgsDesdeDotes(): { bonoPlano: number; bonoPorDadoClase: number; } {
-        return (this.personajeCreacion.DotesContextuales ?? []).reduce((acc, entrada) => ({
+        const deDotes = (this.personajeCreacion.DotesContextuales ?? []).reduce((acc, entrada) => ({
             bonoPlano: acc.bonoPlano + toInt(entrada?.Dote?.Modificadores?.['Pg_a']),
             bonoPorDadoClase: acc.bonoPorDadoClase + toInt(entrada?.Dote?.Modificadores?.['Pg_a_n']),
         }), { bonoPlano: 0, bonoPorDadoClase: 0 });
+        const incarnum = (this.getIncarnumBorrador()?.puntosGolpe ?? []).reduce((suma, parte) => suma + toInt(parte.valor), 0);
+        return { ...deDotes, bonoPlano: deDotes.bonoPlano + incarnum };
     }
 
     private esCaracteristicaAumentoValida(value: string): value is CaracteristicaKey {

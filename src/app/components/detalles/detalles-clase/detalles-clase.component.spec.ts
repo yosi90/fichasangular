@@ -6,6 +6,8 @@ import { Clase, ClaseNivelDetalle } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { DetallesClaseComponent } from './detalles-clase.component';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
+import { normalizarClaseMoldeado } from 'src/app/services/utils/incarnum-mapper';
+import { moldeadoEncarnadoApi } from 'src/testing/incarnum';
 
 function crearClaseMock(partial?: Partial<Clase>): Clase {
     return {
@@ -22,7 +24,6 @@ function crearClaseMock(partial?: Partial<Clase>): Clase {
             Divinos: false,
             Arcanos: false,
             Psionicos: false,
-            Alma: false,
             Conocidos_total: false,
             Conocidos_nivel_a_nivel: false,
             Dominio: false,
@@ -574,7 +575,6 @@ describe('DetallesClaseComponent', () => {
                 ...crearClaseMock().Conjuros,
                 Divinos: true,
                 Psionicos: true,
-                Alma: true,
                 Conocidos_total: true,
                 Dependientes_alineamiento: true,
                 Dominio: true,
@@ -585,7 +585,7 @@ describe('DetallesClaseComponent', () => {
         fixture.detectChanges();
 
         expect(Array.from(lateral('Lanzamiento de conjuros')!.querySelectorAll('.ficha-lista__item span')).map((i) => limpio(i))).toEqual([
-            'Divinos', 'Poderes psiónicos', 'Magia de alma', 'Conocidos en total',
+            'Divinos', 'Poderes psiónicos', 'Conocidos en total',
             'Dependen del alineamiento', 'Dominios', 'Puede elegir especialidad',
         ]);
         expect(valor('Lista de conjuros de')).toBe('Clérigo');
@@ -606,5 +606,39 @@ describe('DetallesClaseComponent', () => {
         const spy = spyOn(component.armaduraDetallesId, 'emit');
         enlace('Competencia con escudo pesado').click();
         expect(spy).toHaveBeenCalledWith(5);
+    });
+    it('una clase de moldeador enseña su moldeado, su tabla por nivel, los chakras y su lista de fusiones (Magic of Incarnum)', () => {
+        component.clase = crearClaseMock({ Moldeado: normalizarClaseMoldeado(moldeadoEncarnadoApi()) });
+        fixture.detectChanges();
+
+        expect(titulos()).toEqual(jasmine.arrayContaining(['Moldeado de fusiones', 'Moldeado por nivel', 'Lista de fusiones (2)']));
+        expect(valor('Nivel de moldeador')).toBe('Su nivel de clase');
+        expect(valor('CD de sus fusiones')).toBe('10 + mod. de Sabiduría + esencia invertida');
+        expect(texto()).toContain('Corona, desde el nivel 2');
+        expect(texto()).toContain('+1 desde el nivel 3');
+        const fusion = spyOn(component.fusionDetalles, 'emit');
+        const chakra = spyOn(component.chakraDetalles, 'emit');
+        enlace('Yelmo de cristal').click();
+        enlace('Pies, desde el nivel 4').click();
+        expect(fusion).toHaveBeenCalledWith(284);
+        expect(chakra).toHaveBeenCalledWith(35);
+    });
+
+    it('sin moldeado no hay nada de incarnum; las habilidades por alineamiento salen con su alineamiento', () => {
+        component.clase = crearClaseMock({
+            Moldeado: null,
+            Habilidades: {
+                Base: [],
+                Custom: [],
+                Por_alineamiento: [{ Id_habilidad: 11, Habilidad: 'Diplomacia', Id_extra: null, Extra: null, Alineamiento: { Id: 1, Nombre: 'Legal bueno' } }],
+            },
+        });
+        fixture.detectChanges();
+
+        expect(titulos()).not.toContain('Moldeado de fusiones');
+        expect(titulos()).not.toContain('Moldeado por nivel');
+        expect(lateral('Habilidades de clase')?.textContent).toContain('Según el alineamiento');
+        expect(lateral('Habilidades de clase')?.textContent).toContain('Diplomacia');
+        expect(lateral('Habilidades de clase')?.textContent).toContain('Legal bueno');
     });
 });

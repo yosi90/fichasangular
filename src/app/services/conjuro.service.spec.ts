@@ -61,7 +61,6 @@ describe('ConjuroService', () => {
             arc: 1,
             div: 0,
             psi: 0,
-            alm: 0,
             dur: '10 min/nivel',
             t_s: 'Ninguna',
             r_c: 0,
@@ -163,8 +162,6 @@ describe('ConjuroService', () => {
                 Nombre_especial: 'Legacy alias',
                 Subdisciplinas: [{ foo: 3, bar: 'Vision' }],
             },
-            alm: undefined,
-            Alma: 1,
             des: [{ i: 5, n: 'Luz' }],
             ncl: undefined,
             Nivel_clase: [{ id_clase: 4, Clase: 'Mago', nivel: 0, espontaneo: true }],
@@ -176,7 +173,6 @@ describe('ConjuroService', () => {
         expect(conjuro.Escuela.Nombre_especial).toBe('');
         expect(conjuro.Disciplina.Nombre_especial).toBe('');
         expect(conjuro.Disciplina.Subdisciplinas).toEqual([]);
-        expect(conjuro.Alma).toBeFalse();
         expect(conjuro.Descriptores).toEqual([]);
         expect(conjuro.Nivel_clase).toEqual([]);
         expect(conjuro.Componentes).toEqual([]);
@@ -203,7 +199,6 @@ describe('ConjuroService', () => {
             },
             Manual: 'PHB p.249',
             Efecto: 'Globo de luz',
-            Alma: 1,
             Descriptores: [{ i: 5, n: 'Luz' }],
             Nivel_clase: [{ id_clase: 4, Clase: 'Mago', nivel: 0, espontaneo: true }],
             Componentes: [{ i: 1, n: 'Verbal' }],
@@ -215,7 +210,6 @@ describe('ConjuroService', () => {
         expect(conjuro.Escuela.Nombre_especial).toBe('Legacy alias');
         expect(conjuro.Disciplina.Nombre_especial).toBe('Legacy alias');
         expect(conjuro.Disciplina.Subdisciplinas).toEqual([{ Id: 3, Nombre: 'Vision' }]);
-        expect(conjuro.Alma).toBeTrue();
         expect(conjuro.Descriptores).toEqual([{ Id: 5, Nombre: 'Luz' }]);
         expect(conjuro.Nivel_clase).toEqual([{
             Id_clase: 4,
