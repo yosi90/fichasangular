@@ -264,12 +264,9 @@
         outline-offset: 2px
         border-radius: 2px
 
-tr.creacion-fila-abierta td, tr.creacion-fila-abierta:hover td
+// En una tabla, el fondo va en las celdas y la raya en la primera; en otra lista (las tarjetas de plantilla), en la fila.
+tr.creacion-fila-abierta td, tr.creacion-fila-abierta:hover td, .creacion-fila-abierta:not(tr)
     background: rgba(173, 189, 196, .16)
 
-tr.creacion-fila-abierta td:first-child
-    box-shadow: inset 3px 0 0 $accent
-
-.creacion-fila-abierta:not(tr)
-    background: rgba(173, 189, 196, .16)
+tr.creacion-fila-abierta td:first-child, .creacion-fila-abierta:not(tr)
     box-shadow: inset 3px 0 0 $accent
