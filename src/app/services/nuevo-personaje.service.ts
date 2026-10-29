@@ -26,7 +26,7 @@ import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeCreateMascotasDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
-import { ClaveEntidadPrerrequisito, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
+import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
 import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
@@ -1044,6 +1044,14 @@ export class NuevoPersonajeService {
     }
 
     /**
+     * La identidad del personaje para los prerrequisitos (dotes, clases y plantillas): su raza, su raza base y los
+     * subtipos que tiene ahora, los de la raza y los de las plantillas ya elegidas.
+     */
+    private identidadPrerrequisitosActual(): IdentidadPrerrequisitos {
+        return buildIdentidadPrerrequisitos(this.razaSeleccionada, this.razaBaseSeleccionadaCompleta, this.personajeCreacion?.Subtipos);
+    }
+
+    /**
      * Lo que piden los requisitos de las plantillas además de las características y el tipo: los niveles de clase que ya
      * tiene (las de nacimiento, solo antes del primero), su nivel de lanzador arcano o divino más alto y sus dotes (el
      * liche, MM 1: lanzador de nivel 11 con Fabricar objeto maravilloso). Y, para las plantillas de los manuales, el
@@ -1061,11 +1069,7 @@ export class NuevoPersonajeService {
         return {
             tamanoId: this.resolverTamanoActualId(),
             dgTotales: this.resolverDgTotalActual(),
-            subtipos: buildIdentidadPrerrequisitos(
-                this.razaSeleccionada,
-                this.razaBaseSeleccionadaCompleta,
-                this.personajeCreacion?.Subtipos
-            ).subtipos,
+            subtipos: this.identidadPrerrequisitosActual().subtipos,
             nivelesClase: Math.max(0, this.getNivelClasesActual()),
             nivelLanzador: Math.max(this.resolverNivelLanzadorMaximoPorTipo('arcano'), this.resolverNivelLanzadorMaximoPorTipo('divino')),
             dotes: clavesDeEntidades([
@@ -1658,11 +1662,7 @@ export class NuevoPersonajeService {
             };
         }
 
-        const identidad = buildIdentidadPrerrequisitos(
-            this.razaSeleccionada,
-            this.razaBaseSeleccionadaCompleta,
-            this.personajeCreacion.Subtipos
-        );
+        const identidad = this.identidadPrerrequisitosActual();
 
         const idiomas = (this.personajeCreacion.Idiomas ?? [])
             .map((idioma) => {
@@ -3270,11 +3270,7 @@ export class NuevoPersonajeService {
     }
 
     private evaluarPrerrequisitosDote(dote: Dote, idExtra: number, extraTexto: string): DoteEvaluacionResultado {
-        const identidad = buildIdentidadPrerrequisitos(
-            this.razaSeleccionada,
-            this.razaBaseSeleccionadaCompleta,
-            this.personajeCreacion.Subtipos
-        );
+        const identidad = this.identidadPrerrequisitosActual();
 
         const nivelesClase = (this.personajeCreacion.desgloseClases ?? []).map((clase) => {
             const nombre = `${clase?.Nombre ?? ''}`.trim();
