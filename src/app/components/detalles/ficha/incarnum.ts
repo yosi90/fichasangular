@@ -1,4 +1,4 @@
-import { ClaseMoldeado, DoteIncarnum, EsenciaRasgo, Fusion, FusionChakra, NombreTraducible, PersonajeIncarnum } from 'src/app/interfaces/incarnum';
+import { ClaseMoldeado, DoteIncarnum, EsenciaRasgo, Fusion, FusionChakra, HabilidadPorFusiones, NombreTraducible, PersonajeIncarnum } from 'src/app/interfaces/incarnum';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { chakrasAbiertos, fusionesALaVez, vinculosALaVez } from 'src/app/services/utils/incarnum';
@@ -73,6 +73,11 @@ export function datosMoldeadoClase(moldeado: ClaseMoldeado | null | undefined): 
             ayuda: fusiones ? `El menor entre la tabla y la puntuación de ${fusiones} − 10.` : null,
         },
         {
+            etiqueta: 'Nivel de moldeador por chakra',
+            valor: (moldeado.Nivel_moldeador_chakras ?? [])
+                .map((f) => `${textoConSigno(f.Bonificador)} en la fusión vinculada a ${f.Chakra.Nombre} desde el nivel ${f.Nivel}`).join(', ') || null,
+        },
+        {
             etiqueta: 'Lista según el alineamiento',
             valor: moldeado.Limitado_por_alineamiento,
             ayuda: moldeado.Limitado_por_alineamiento
@@ -122,10 +127,32 @@ export function datosIncarnumDote(incarnum: DoteIncarnum | null | undefined): Da
                 : null,
             detalle: capacidad?.Tope_constitucion ? 'como mucho, tu mod. de Constitución' : null,
         },
-        { etiqueta: 'Chakra elegido', valor: incarnum.Abre_chakra ? 'Queda abierto para un vínculo' : null },
+        {
+            etiqueta: 'Chakra elegido',
+            valor: incarnum.Abre_chakra ? 'Queda abierto para vincular' : null,
+            ayuda: incarnum.Abre_chakra ? 'Con los vínculos de tus clases; si no tienes ninguno, puedes vincular ahí una fusión.' : null,
+        },
         {
             etiqueta: 'Nivel de moldeador de su fusión',
             valor: incarnum.Divisor_nivel_moldeador ? textoNivelEntre('tu nivel de personaje', incarnum.Divisor_nivel_moldeador) : null,
+        },
+        {
+            etiqueta: 'CD de su fusión',
+            valor: incarnum.Caracteristica_cd_fusion ? `10 + mod. de ${incarnum.Caracteristica_cd_fusion.Nombre} + esencia invertida` : null,
+        },
+        {
+            etiqueta: 'Moldea con otra característica',
+            valor: incarnum.Sustituye_caracteristica
+                ? `${incarnum.Sustituye_caracteristica.Por.Nombre} en vez de ${incarnum.Sustituye_caracteristica.De.Nombre}`
+                : null,
+            ayuda: incarnum.Sustituye_caracteristica ? 'Para las fusiones a la vez y la CD de sus fusiones.' : null,
+        },
+        {
+            etiqueta: 'Puntos de golpe',
+            valor: [
+                incarnum.Pg_por_esencia ? `${textoConSigno(incarnum.Pg_por_esencia)} por punto de tu reserva de esencia` : '',
+                incarnum.Pg_por_dote ? `${textoConSigno(incarnum.Pg_por_dote.Valor)} por cada dote de ${incarnum.Pg_por_dote.Tipo.Nombre.toLowerCase()}` : '',
+            ].filter(Boolean).join(', ') || null,
         },
         {
             etiqueta: 'Moldea sin mirar el alineamiento',
@@ -142,7 +169,17 @@ export function datosEsenciaRasgo(esencia: EsenciaRasgo | null | undefined): Dat
     return [
         { etiqueta: 'Esencia en la reserva', valor: esencia.Reserva > 0 ? textoConSigno(esencia.Reserva) : null },
         { etiqueta: 'Receptáculo de esencia', valor: esencia.Receptaculo ? 'Sí' : null },
+        ...(esencia.Habilidades_por_fusiones ?? []).map((h): DatoFicha => ({
+            etiqueta: h.Habilidad,
+            valor: textoHabilidadPorFusiones(h),
+            ayuda: 'A todas sus pruebas; cuentan las fusiones moldeadas en cada momento.',
+        })),
     ];
+}
+
+/** «+1, y +1 más por cada 2 fusiones moldeadas». */
+export function textoHabilidadPorFusiones(h: HabilidadPorFusiones): string {
+    return `${textoConSigno(h.Bono)}, y +1 más por cada ${h.Fusiones_por_punto} ${h.Fusiones_por_punto === 1 ? 'fusión moldeada' : 'fusiones moldeadas'}`;
 }
 
 /** «+1 de esencia, receptáculo»: la `Esencia` de un rasgo en una línea; vacío si no da ni recibe esencia. */
@@ -152,6 +189,7 @@ export function textoEsenciaRasgo(esencia: EsenciaRasgo | null | undefined): str
     return [
         esencia.Reserva > 0 ? `${textoConSigno(esencia.Reserva)} de esencia` : '',
         esencia.Receptaculo ? 'receptáculo de esencia' : '',
+        ...(esencia.Habilidades_por_fusiones ?? []).map((h) => `${h.Habilidad} ${textoHabilidadPorFusiones(h)}`),
     ].filter(Boolean).join(', ');
 }
 
@@ -247,9 +285,23 @@ export function modeloIncarnumFicha(
             {
                 etiqueta: `${prefijo(clase.nombre)}Nivel de moldeador · CD`,
                 valor: `${clase.nivelMoldeador} · ${clase.cd ? `${clase.cd.base} + esencia invertida` : '—'}`,
+                detalle: clase.nivelMoldeadorChakras
+                    .map((n) => `${n.nivelMoldeador} en la fusión vinculada a ${n.chakra.nombre}`).join(', ') || null,
                 ayuda: clase.cd ? `10 + ${clase.cd.caracteristica} (${textoConSigno(clase.cd.modificador)}) + la esencia de la fusión.` : null,
             },
         ]),
+        ...(incarnum.puntosGolpe.length > 0 ? [{
+            etiqueta: 'Puntos de golpe del incarnum',
+            valor: incarnum.puntosGolpe.reduce((suma, p) => suma + p.valor, 0),
+            detalle: incarnum.puntosGolpe.map((p) => `${p.origen} ${p.valor}`).join(', '),
+            ayuda: 'Ya van en sus puntos de golpe.',
+        }] : []),
+        ...incarnum.bonosHabilidad.map((b): DatoFicha => ({
+            etiqueta: b.habilidad,
+            valor: textoConSigno(b.bono),
+            detalle: `${b.origen}, con ${b.fusiones} ${b.fusiones === 1 ? 'fusión' : 'fusiones'} de la formación de partida`,
+            ayuda: 'Ya va sumado en sus habilidades; con otras fusiones moldeadas, cambia.',
+        })),
     ];
     const receptaculos = incarnum.receptaculos.map((r) => ({
         texto: r.nombre,
@@ -258,9 +310,10 @@ export function modeloIncarnumFicha(
     const dotes = [
         ...incarnum.fusionesDeDotes.map((d) => ({
             texto: `${d.dote.nombre}: ${d.fusion.nombre}`,
-            nota: d.nivelMoldeador !== null ? `nivel de moldeador ${d.nivelMoldeador}` : '',
+            nota: [d.nivelMoldeador !== null ? `nivel de moldeador ${d.nivelMoldeador}` : '', d.cd ? `CD ${d.cd.base} + esencia` : '']
+                .filter(Boolean).join(' · '),
         })),
-        ...incarnum.chakrasDeDotes.map((d) => ({ texto: `${d.dote.nombre}: ${d.chakra.nombre}`, nota: 'abierto para un vínculo' })),
+        ...incarnum.chakrasDeDotes.map((d) => ({ texto: `${d.dote.nombre}: ${d.chakra.nombre}`, nota: 'abierto para vincular' })),
     ];
     const chakras = incarnum.puedeMoldear ? celdasChakras(incarnum, clases, !!formacion) : [];
     const totalFusiones = fusionesALaVez(incarnum);

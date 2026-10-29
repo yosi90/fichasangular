@@ -75,9 +75,13 @@ export function fusionesALaVez(bloque: PersonajeIncarnum): number {
     return bloque.clases.reduce((suma, c) => suma + c.fusionesMaximas, 0) + bloque.fusionesDeDotes.length;
 }
 
-/** Los vínculos que puede tener a la vez: los de sus clases y uno por cada chakra que abre una dote. */
+/**
+ * Los vínculos que puede tener a la vez: los de sus clases. Las dotes Chakra … abierto solo abren su chakra; quien no
+ * tiene vínculos de clase puede vincular una fusión en cada uno (decisión del 2026-10-29).
+ */
 export function vinculosALaVez(bloque: PersonajeIncarnum): number {
-    return bloque.clases.reduce((suma, c) => suma + c.vinculos, 0) + bloque.chakrasDeDotes.length;
+    const deClases = bloque.clases.reduce((suma, c) => suma + c.vinculos, 0);
+    return deClases > 0 ? deClases : new Set(bloque.chakrasDeDotes.map((d) => d.chakra.id)).size;
 }
 
 /** Los chakras abiertos para vincular, sin repetir: los de sus clases y después los de sus dotes. */
@@ -116,8 +120,20 @@ export interface EntradaIncarnumBorrador {
     fusiones?: Fusion[];
 }
 
+/** La CD de una fusión con esa característica: `base` + la esencia invertida. */
+function cdFusion(nombre: string, puntuaciones: Record<string, number>): PersonajeIncarnumClase['cd'] {
+    const modificador = modificadorCaracteristica(puntuaciones[normalizarTexto(nombre)] ?? 10);
+    return { base: 10 + modificador, caracteristica: nombre, modificador };
+}
+
+/** La característica del moldeado que usa: la de la clase o la de una dote que la cambia (Moldeador muerto viviente). */
+function sustituida(nombre: string, sustituciones: Map<string, string>): string {
+    return sustituciones.get(normalizarTexto(nombre)) ?? nombre;
+}
+
 function claseIncarnum(
     nombre: string, nivel: number, clase: Clase, basica: number, puntuaciones: Record<string, number>,
+    sustituciones: Map<string, string> = new Map(),
 ): PersonajeIncarnumClase | null {
     const m = clase.Moldeado;
     if (!m)
@@ -126,7 +142,7 @@ function claseIncarnum(
     if (filas.length < 1)
         return null;
     const fila = filas.reduce((a, b) => (b.Nivel > a.Nivel ? b : a));
-    const caracteristica = m.Caracteristica_fusiones?.Nombre ?? null;
+    const caracteristica = m.Caracteristica_fusiones?.Nombre ? sustituida(m.Caracteristica_fusiones.Nombre, sustituciones) : null;
     const puntuacion = caracteristica ? puntuaciones[normalizarTexto(caracteristica)] : undefined;
     const maximas = puntuacion === undefined || puntuacion === null ? 0 : Math.max(0, Math.min(fila.Fusiones, puntuacion - 10));
     const bonoGeneral = bonoCapacidad(m.Capacidad.filter((f) => !f.Chakra), nivel);
@@ -138,13 +154,22 @@ function claseIncarnum(
         if (!actual || f.Nivel > actual.Nivel)
             porChakra.set(f.Chakra.Id, f);
     });
-    const nombreCd = m.Caracteristica_cd?.Nombre ?? null;
-    const modCd = nombreCd ? modificadorCaracteristica(puntuaciones[normalizarTexto(nombreCd)] ?? 10) : 0;
+    const nombreCd = m.Caracteristica_cd?.Nombre ? sustituida(m.Caracteristica_cd.Nombre, sustituciones) : null;
+    const moldeador = nivelMoldeador(nivel, m.Divisor_nivel_moldeador);
+    const porChakraNivel = new Map<number, ClaseMoldeado['Nivel_moldeador_chakras'][number]>();
+    (m.Nivel_moldeador_chakras ?? []).forEach((f) => {
+        if (f.Nivel > nivel)
+            return;
+        const actual = porChakraNivel.get(f.Chakra.Id);
+        if (!actual || f.Nivel > actual.Nivel)
+            porChakraNivel.set(f.Chakra.Id, f);
+    });
     return {
         id: clase.Id,
         nombre,
         nivel,
-        nivelMoldeador: nivelMoldeador(nivel, m.Divisor_nivel_moldeador),
+        nivelMoldeador: moldeador,
+        nivelMoldeadorChakras: Array.from(porChakraNivel.values()).map((f) => ({ chakra: refDe(f.Chakra), nivelMoldeador: moldeador + f.Bonificador })),
         fusionesTabla: fila.Fusiones,
         fusionesMaximas: maximas,
         caracteristicaFusiones: caracteristica,
@@ -155,7 +180,7 @@ function claseIncarnum(
         capacidadChakras: Array.from(porChakra.values()).map((f) => ({
             chakra: refDe(f.Chakra!), capacidad: basica + bonoGeneral + f.Bonificador,
         })),
-        cd: nombreCd ? { base: 10 + modCd, caracteristica: nombreCd, modificador: modCd } : null,
+        cd: nombreCd ? cdFusion(nombreCd, puntuaciones) : null,
         limitadoPorAlineamiento: m.Limitado_por_alineamiento,
     };
 }
@@ -177,13 +202,17 @@ function extraDe(dote: Dote, idExtra: number, tipo: 'Chakras' | 'Fusiones'): Per
 export function calcularIncarnumBorrador(e: EntradaIncarnumBorrador): PersonajeIncarnum | null {
     const basica = capacidadBasica(e.nivelPersonaje, e.capacidad);
     const nivel = Math.max(1, toInt(e.nivelPersonaje));
+    const dotes = e.dotes.filter((d): d is { dote: Dote; idExtra: number; } => !!d.dote);
+    const sustituciones = new Map(dotes
+        .map(({ dote }) => dote.Incarnum?.Sustituye_caracteristica)
+        .filter((s): s is NonNullable<typeof s> => !!s)
+        .map((s) => [normalizarTexto(s.De.Nombre), s.Por.Nombre] as [string, string]));
     const clases = e.clases
         .filter((c) => !!c.clase?.Moldeado)
-        .map((c) => claseIncarnum(c.nombre, c.nivel, c.clase!, basica, e.puntuaciones))
+        .map((c) => claseIncarnum(c.nombre, c.nivel, c.clase!, basica, e.puntuaciones, sustituciones))
         .filter((c): c is PersonajeIncarnumClase => !!c);
     const reserva: PersonajeIncarnumParte[] = clases.filter((c) => c.esencia > 0)
         .map((c) => ({ tipo: 'clase', origen: c.nombre, valor: c.esencia }));
-    const dotes = e.dotes.filter((d): d is { dote: Dote; idExtra: number; } => !!d.dote);
     const fusionDeDote = (d: { dote: Dote; idExtra: number; }) => extraDe(d.dote, d.idExtra, 'Fusiones');
     const puedeMoldear = clases.some((c) => c.fusionesMaximas > 0) || dotes.some((d) => !!fusionDeDote(d));
     dotes.forEach(({ dote }) => {
@@ -235,9 +264,27 @@ export function calcularIncarnumBorrador(e: EntradaIncarnumBorrador): PersonajeI
             fusion: fusion!,
             dote: { id: d.dote.Id, nombre: d.dote.Nombre },
             nivelMoldeador: d.dote.Incarnum?.Divisor_nivel_moldeador ? nivelMoldeador(nivel, d.dote.Incarnum.Divisor_nivel_moldeador) : null,
+            cd: d.dote.Incarnum?.Caracteristica_cd_fusion
+                ? cdFusion(sustituida(d.dote.Incarnum.Caracteristica_cd_fusion.Nombre, sustituciones), e.puntuaciones)
+                : null,
         }));
     const total = reserva.reduce((suma, p) => suma + p.valor, 0);
-    if (clases.length < 1 && !total && receptaculos.length < 1 && chakrasDeDotes.length < 1 && fusionesDeDotes.length < 1)
+    const puntosGolpe: PersonajeIncarnumParte[] = dotes.map(({ dote }) => {
+        const inc = dote.Incarnum;
+        const tipo = inc?.Pg_por_dote?.Tipo.Id;
+        const delTipo = tipo ? dotes.filter((d) => (d.dote.Tipos ?? []).some((t) => toInt(t?.Id) === tipo)).length : 0;
+        return { tipo: 'dote', origen: dote.Nombre, valor: toInt(inc?.Pg_por_esencia) * total + toInt(inc?.Pg_por_dote?.Valor) * delTipo };
+    }).filter((p) => p.valor !== 0);
+    const fusionesMoldeadas = formacion.fusiones.length;
+    const bonosHabilidad = e.raciales.flatMap((r) => (r.esencia?.Habilidades_por_fusiones ?? []).map((h) => ({
+        origen: r.nombre,
+        habilidad: h.Habilidad,
+        idsHabilidad: [...h.Ids_habilidad],
+        bono: h.Bono + Math.floor(fusionesMoldeadas / Math.max(1, h.Fusiones_por_punto)),
+        fusiones: fusionesMoldeadas,
+    })));
+    if (clases.length < 1 && !total && receptaculos.length < 1 && chakrasDeDotes.length < 1 && fusionesDeDotes.length < 1
+        && puntosGolpe.length < 1 && bonosHabilidad.length < 1)
         return null;
     const bloque: PersonajeIncarnum = {
         nivelPersonaje: nivel,
@@ -248,6 +295,8 @@ export function calcularIncarnumBorrador(e: EntradaIncarnumBorrador): PersonajeI
         chakrasDeDotes,
         fusionesDeDotes,
         receptaculos,
+        puntosGolpe,
+        bonosHabilidad,
         formacion: null,
     };
     bloque.formacion = formacionDelBorrador(formacion, bloque, e.fusiones ?? []);
@@ -312,7 +361,7 @@ function formacionDelBorrador(formacion: FormacionIncarnumDto, bloque: Personaje
     if (formacion.fusiones.length < 1 && formacion.receptaculos.length < 1)
         return null;
     const clases = new Map(bloque.clases.map((c) => [c.id, c]));
-    const nivelDote = new Map(bloque.fusionesDeDotes.map((d) => [d.fusion.id, d.nivelMoldeador]));
+    const deDote = new Map(bloque.fusionesDeDotes.map((d) => [d.fusion.id, d]));
     const { bases, extra } = capacidadesDeFormacion(bloque, formacion.fusiones);
     const chakraRef = (fusion: Fusion | undefined, id: number | null | undefined): PersonajeIncarnumRef | null =>
         id ? refODesconocido(fusion?.Chakras.find((c) => c.Id === id), id) : null;
@@ -320,6 +369,11 @@ function formacionDelBorrador(formacion: FormacionIncarnumDto, bloque: Personaje
         fusiones: formacion.fusiones.map((f, i) => {
             const fusion = catalogo.find((item) => item.Id === f.idFusion);
             const clase = f.idClase ? clases.get(f.idClase) : undefined;
+            const dote = clase ? undefined : deDote.get(f.idFusion);
+            const cd = clase ? clase.cd : dote?.cd ?? null;
+            const moldeador = clase
+                ? (clase.nivelMoldeadorChakras.find((n) => n.chakra.id === f.idChakraVinculo)?.nivelMoldeador ?? clase.nivelMoldeador)
+                : (dote?.nivelMoldeador ?? null);
             return {
                 fusion: refODesconocido(fusion, f.idFusion),
                 clase: clase ? { id: clase.id, nombre: clase.nombre } : null,
@@ -327,8 +381,8 @@ function formacionDelBorrador(formacion: FormacionIncarnumDto, bloque: Personaje
                 vinculo: chakraRef(fusion, f.idChakraVinculo),
                 esencia: f.esencia,
                 capacidad: bases[i] + (extra?.[i] ?? 0),
-                nivelMoldeador: clase ? clase.nivelMoldeador : (nivelDote.get(f.idFusion) ?? null),
-                cd: clase?.cd ? clase.cd.base + f.esencia : null,
+                nivelMoldeador: moldeador,
+                cd: cd ? cd.base + f.esencia : null,
             };
         }),
         esenciaInvertida: esenciaInvertida(formacion),
@@ -428,9 +482,12 @@ export interface FalloFormacion {
     mensaje: string;
 }
 
-/** Las clases del personaje que tienen ese chakra abierto para vincular a su nivel. */
-function clasesConChakra(clases: PersonajeIncarnumClase[], idChakra: number): number[] {
-    return clases.filter((c) => c.chakrasAbiertos.some((ch) => ch.id === idChakra)).map((c) => c.id);
+/**
+ * Las clases cuyos vínculos sirven para vincular a ese chakra la fusión de una dote: las que lo tienen abierto a su nivel
+ * o, si lo abre una dote Chakra … abierto, cualquiera que tenga vínculos (`_clases_para_vinculo` de la API).
+ */
+function clasesParaVinculo(clases: PersonajeIncarnumClase[], idChakra: number, abiertoPorDote: boolean): number[] {
+    return clases.filter((c) => (abiertoPorDote && c.vinculos > 0) || c.chakrasAbiertos.some((ch) => ch.id === idChakra)).map((c) => c.id);
 }
 
 /**
@@ -471,13 +528,14 @@ export function validarFormacionIncarnum(
 ): FalloFormacion | null {
     const b: PersonajeIncarnum = bloque ?? {
         nivelPersonaje: 1, reserva: { total: 0, desglose: [] }, capacidad: { basica: 0, modificadores: [] }, puedeMoldear: false,
-        clases: [], chakrasDeDotes: [], fusionesDeDotes: [], receptaculos: [], formacion: null,
+        clases: [], chakrasDeDotes: [], fusionesDeDotes: [], receptaculos: [], puntosGolpe: [], bonosHabilidad: [], formacion: null,
     };
     const fallo = (code: string, field: string, mensaje: string): FalloFormacion => ({ code, field, mensaje });
     const clases = new Map(b.clases.map((c) => [c.id, c]));
     const deDotes = new Set(b.fusionesDeDotes.map((d) => d.fusion.id));
-    const aperturas = new Map<number, number>();
-    b.chakrasDeDotes.forEach((d) => aperturas.set(d.chakra.id, (aperturas.get(d.chakra.id) ?? 0) + 1));
+    // Las dotes Chakra … abierto abren su chakra: se vincula con los vínculos de la clase y, sin ninguno, con el de la dote.
+    const abiertosPorDotes = new Set(b.chakrasDeDotes.map((d) => d.chakra.id));
+    const sinVinculosDeClase = b.clases.reduce((suma, c) => suma + c.vinculos, 0) <= 0;
     const nombreChakra = (id: number | null | undefined, porDefecto = '') => nombresChakras.get(toInt(id)) ?? porDefecto;
     const vistas = new Set<number>();
     const ocupados = new Set<number>();
@@ -523,11 +581,11 @@ export function validarFormacionIncarnum(
         if (vinculados.has(vinculo))
             return fallo('vinculo_repetido', campo, `El chakra ${nombreChakra(vinculo, destino.Nombre)} ya tiene una fusión vinculada.`);
         vinculados.add(vinculo);
-        const candidatas = clase ? [] : clasesConChakra(b.clases, vinculo);
-        // Una dote Chakra … abierto da un vínculo propio en su chakra: se usa antes que los de la clase.
-        if ((aperturas.get(vinculo) ?? 0) > 0)
-            aperturas.set(vinculo, (aperturas.get(vinculo) ?? 0) - 1);
-        else if (clase && clase.chakrasAbiertos.some((ch) => ch.id === vinculo))
+        const porDote = abiertosPorDotes.has(vinculo);
+        if (porDote && sinVinculosDeClase)
+            continue;
+        const candidatas = clase ? [] : clasesParaVinculo(b.clases, vinculo, porDote);
+        if (clase && (porDote || clase.chakrasAbiertos.some((ch) => ch.id === vinculo)))
             vinculosPorClase.set(clase.id, (vinculosPorClase.get(clase.id) ?? 0) + 1);
         else if (!clase && candidatas.length > 0)
             // Moldear fusión: a cualquier chakra abierto de sus clases, con un vínculo de alguna (se reparten al final).

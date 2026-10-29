@@ -125,6 +125,11 @@ export function normalizarClaseMoldeado(raw: any): ClaseMoldeado | null {
             Bonificador: toInt(fila?.Bonificador),
             Chakra: nombreTraducibleONulo(fila?.Chakra),
         })).sort((a, b) => a.Nivel - b.Nivel),
+        Nivel_moldeador_chakras: toArray(raw?.Nivel_moldeador_chakras).map((fila: any) => ({
+            Nivel: toInt(fila?.Nivel),
+            Bonificador: toInt(fila?.Bonificador),
+            Chakra: nombreTraducibleONulo(fila?.Chakra),
+        })).filter((fila): fila is ClaseMoldeado['Nivel_moldeador_chakras'][number] => !!fila.Chakra).sort((a, b) => a.Nivel - b.Nivel),
         Fusiones: toArray(raw?.Fusiones).map(normalizarNombreTraducible).filter((fusion) => fusion.Id > 0),
     };
 }
@@ -157,16 +162,33 @@ export function normalizarDoteIncarnum(raw: any): DoteIncarnum | null {
         Capacidad: capacidad,
         Abre_chakra: toBoolean(raw?.Abre_chakra),
         Divisor_nivel_moldeador: toNumberOrNull(raw?.Divisor_nivel_moldeador),
+        Caracteristica_cd_fusion: idNombreONulo(raw?.Caracteristica_cd_fusion),
+        Sustituye_caracteristica: idNombreONulo(raw?.Sustituye_caracteristica?.De) && idNombreONulo(raw?.Sustituye_caracteristica?.Por)
+            ? { De: idNombre(raw.Sustituye_caracteristica.De), Por: idNombre(raw.Sustituye_caracteristica.Por) }
+            : null,
+        Pg_por_esencia: toInt(raw?.Pg_por_esencia),
+        Pg_por_dote: toInt(raw?.Pg_por_dote?.Valor) !== 0 && idNombreONulo(raw?.Pg_por_dote?.Tipo)
+            ? { Valor: toInt(raw.Pg_por_dote.Valor), Tipo: idNombre(raw.Pg_por_dote.Tipo) }
+            : null,
         Descriptores_sin_alineamiento: toArray(raw?.Descriptores_sin_alineamiento).map(idNombre).filter((d) => d.Id > 0),
     };
 }
 
-/** `Esencia` de un racial o un especial; sin ella (o a cero y sin receptáculo), `null`. */
+/** `Esencia` de un racial o un especial; sin ella (o a cero, sin receptáculo y sin bonos por fusiones), `null`. */
 export function normalizarEsenciaRasgo(raw: any): EsenciaRasgo | null {
     if (!raw || typeof raw !== 'object')
         return null;
-    const esencia = { Reserva: toInt(raw?.Reserva), Receptaculo: toBoolean(raw?.Receptaculo) };
-    return esencia.Reserva > 0 || esencia.Receptaculo ? esencia : null;
+    const esencia: EsenciaRasgo = {
+        Reserva: toInt(raw?.Reserva),
+        Receptaculo: toBoolean(raw?.Receptaculo),
+        Habilidades_por_fusiones: toArray(raw?.Habilidades_por_fusiones).map((h: any) => ({
+            Habilidad: toText(h?.Habilidad).trim(),
+            Ids_habilidad: toArray(h?.Ids_habilidad).map((id: any) => toInt(id)).filter((id: number) => id > 0),
+            Bono: toInt(h?.Bono),
+            Fusiones_por_punto: Math.max(1, toInt(h?.Fusiones_por_punto, 1)),
+        })).filter((h) => h.Ids_habilidad.length > 0),
+    };
+    return esencia.Reserva > 0 || esencia.Receptaculo || esencia.Habilidades_por_fusiones.length > 0 ? esencia : null;
 }
 
 function refFicha(raw: any): PersonajeIncarnumRef {
@@ -180,6 +202,12 @@ function refFicha(raw: any): PersonajeIncarnumRef {
 
 function refFichaONula(raw: any): PersonajeIncarnumRef | null {
     return raw && typeof raw === 'object' && toInt(raw?.id) > 0 ? refFicha(raw) : null;
+}
+
+function cdFicha(raw: any): { base: number; caracteristica: string; modificador: number; } | null {
+    return raw && typeof raw === 'object'
+        ? { base: toInt(raw.base), caracteristica: toText(raw.caracteristica).trim(), modificador: toInt(raw.modificador) }
+        : null;
 }
 
 function idNombreFicha(raw: any): { id: number; nombre: string; } {
@@ -228,6 +256,8 @@ export function normalizarPersonajeIncarnum(raw: any): PersonajeIncarnum | null 
             nombre: toText(c?.nombre).trim(),
             nivel: toInt(c?.nivel),
             nivelMoldeador: toInt(c?.nivelMoldeador),
+            nivelMoldeadorChakras: toArray(c?.nivelMoldeadorChakras)
+                .map((n: any) => ({ chakra: refFicha(n?.chakra), nivelMoldeador: toInt(n?.nivelMoldeador) })),
             fusionesTabla: toInt(c?.fusionesTabla),
             fusionesMaximas: toInt(c?.fusionesMaximas),
             caracteristicaFusiones: toNullableText(c?.caracteristicaFusiones),
@@ -236,14 +266,22 @@ export function normalizarPersonajeIncarnum(raw: any): PersonajeIncarnum | null 
             chakrasAbiertos: toArray(c?.chakrasAbiertos).map((ch: any) => ({ ...refFicha(ch), nivel: toInt(ch?.nivel) })),
             capacidadFusiones: toInt(c?.capacidadFusiones),
             capacidadChakras: toArray(c?.capacidadChakras).map((ch: any) => ({ chakra: refFicha(ch?.chakra), capacidad: toInt(ch?.capacidad) })),
-            cd: c?.cd && typeof c.cd === 'object'
-                ? { base: toInt(c.cd.base), caracteristica: toText(c.cd.caracteristica).trim(), modificador: toInt(c.cd.modificador) }
-                : null,
+            cd: cdFicha(c?.cd),
             limitadoPorAlineamiento: toBoolean(c?.limitadoPorAlineamiento),
         })),
         chakrasDeDotes: toArray(raw?.chakrasDeDotes).map((d: any) => ({ chakra: refFicha(d?.chakra), dote: idNombreFicha(d?.dote) })),
         fusionesDeDotes: toArray(raw?.fusionesDeDotes).map((d: any) => ({
-            fusion: refFicha(d?.fusion), dote: idNombreFicha(d?.dote), nivelMoldeador: toNumberOrNull(d?.nivelMoldeador),
+            fusion: refFicha(d?.fusion), dote: idNombreFicha(d?.dote), nivelMoldeador: toNumberOrNull(d?.nivelMoldeador), cd: cdFicha(d?.cd),
+        })),
+        puntosGolpe: toArray(raw?.puntosGolpe).map((p: any) => ({
+            tipo: toText(p?.tipo), origen: toText(p?.origen).trim(), valor: toInt(p?.valor),
+        })),
+        bonosHabilidad: toArray(raw?.bonosHabilidad).map((b: any) => ({
+            origen: toText(b?.origen).trim(),
+            habilidad: toText(b?.habilidad).trim(),
+            idsHabilidad: toArray(b?.idsHabilidad).map((id: any) => toInt(id)),
+            bono: toInt(b?.bono),
+            fusiones: toInt(b?.fusiones),
         })),
         receptaculos: toArray(raw?.receptaculos).map((r: any) => ({
             tipo: (['dote', 'racial', 'especial'].includes(toText(r?.tipo)) ? toText(r?.tipo) : 'dote') as 'dote' | 'racial' | 'especial',

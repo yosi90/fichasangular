@@ -60,7 +60,7 @@ describe('incarnum-mapper', () => {
         expect(normalizarDoteIncarnum({ Esencia_reserva: 1, Esencia_reserva_moldeador: 2, Capacidad: { Bono: 1, Ambito: 'dotes', Tope_constitucion: 1 } }))
             .toEqual(jasmine.objectContaining({ Esencia_reserva: 1, Esencia_reserva_moldeador: 2, Capacidad: { Bono: 1, Ambito: 'dotes', Tope_constitucion: true } }));
         expect(normalizarEsenciaRasgo({ Reserva: 0, Receptaculo: false })).toBeNull();
-        expect(normalizarEsenciaRasgo({ Reserva: 1, Receptaculo: false })).toEqual({ Reserva: 1, Receptaculo: false });
+        expect(normalizarEsenciaRasgo({ Reserva: 1, Receptaculo: false })).toEqual({ Reserva: 1, Receptaculo: false, Habilidades_por_fusiones: [] });
     });
 
     it('el bloque `incarnum` de la ficha, con su formación de partida', () => {

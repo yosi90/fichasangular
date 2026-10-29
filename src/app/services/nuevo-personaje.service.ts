@@ -4421,6 +4421,13 @@ export class NuevoPersonajeService {
         aplicarSalvacion('fortaleza', 'Fortaleza');
         aplicarSalvacion('reflejos', 'Reflejos');
         aplicarSalvacion('voluntad', 'Voluntad');
+        // Las que solo cuentan en un caso (Cuerpo fortalecido por el incarnum: +4 a Fortaleza contra el daño masivo): se
+        // guardan con su condición y no se suman, como las de los raciales.
+        (dote?.Salvaciones_condicionales ?? []).forEach((item) => {
+            const tipo = SALVACION_POR_ID[toInt(item?.Id_salvacion)];
+            if (tipo && toInt(item?.Cantidad) !== 0)
+                this.personajeCreacion.Salvaciones[tipo].modsVarios.push({ valor: toInt(item.Cantidad), origen, condicion: item.Condicion });
+        });
 
         const iniciativa = get('Iniciativa');
         if (iniciativa !== 0) {
@@ -9767,12 +9774,18 @@ export class NuevoPersonajeService {
             || this.resolverDadoGolpeTipoActual();
     }
 
-    /** Los PG que dan las dotes del personaje: `Modificadores.Pg_a` (Dureza, +3) y `Modificadores.Pg_a_n` (+N por DG). */
+    /**
+     * Los PG que dan las dotes del personaje: `Modificadores.Pg_a` (Dureza, +3), `Modificadores.Pg_a_n` (+N por DG) y los
+     * del incarnum (Corazón de incarnum, la reserva; Cuerpo fortalecido por el incarnum, 2 por dote de incarnum), que
+     * calcula el bloque `incarnum` del borrador como la API (`puntosGolpe`).
+     */
     private resolverBonosPgsDesdeDotes(): { bonoPlano: number; bonoPorDadoClase: number; } {
-        return (this.personajeCreacion.DotesContextuales ?? []).reduce((acc, entrada) => ({
+        const deDotes = (this.personajeCreacion.DotesContextuales ?? []).reduce((acc, entrada) => ({
             bonoPlano: acc.bonoPlano + toInt(entrada?.Dote?.Modificadores?.['Pg_a']),
             bonoPorDadoClase: acc.bonoPorDadoClase + toInt(entrada?.Dote?.Modificadores?.['Pg_a_n']),
         }), { bonoPlano: 0, bonoPorDadoClase: 0 });
+        const incarnum = (this.getIncarnumBorrador()?.puntosGolpe ?? []).reduce((suma, parte) => suma + toInt(parte.valor), 0);
+        return { ...deDotes, bonoPlano: deDotes.bonoPlano + incarnum };
     }
 
     private esCaracteristicaAumentoValida(value: string): value is CaracteristicaKey {

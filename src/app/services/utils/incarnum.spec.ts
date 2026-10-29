@@ -8,12 +8,13 @@ import {
     capacidadConTope,
     capacidadesDeFormacion,
     cumplePrerrequisitoIncarnum,
+    vinculosALaVez,
     EntradaIncarnumBorrador,
     fusionesMoldeables,
     incarnumParaPrerrequisitos,
     validarFormacionIncarnum,
 } from './incarnum';
-import { normalizarCapacidadEsencia, normalizarClaseMoldeado, normalizarDoteIncarnum, normalizarFusion } from './incarnum-mapper';
+import { normalizarCapacidadEsencia, normalizarClaseMoldeado, normalizarDoteIncarnum, normalizarEsenciaRasgo, normalizarFusion } from './incarnum-mapper';
 
 const TABLA = [
     { Capacidad: 1, Incremento_cada: null, Nivel_maximo: 5, Nivel_minimo: 1 },
@@ -47,7 +48,7 @@ function entrada(cambios: Partial<EntradaIncarnumBorrador> = {}): EntradaIncarnu
     return {
         clases: [{ clase: encarnado(), nombre: 'Encarnado', nivel: 5 }],
         dotes: [{ dote: DUREZA_AZUR, idExtra: 0 }],
-        raciales: [{ id: 224, nombre: 'Esencia (azurín)', esencia: { Reserva: 1, Receptaculo: false } }],
+        raciales: [{ id: 224, nombre: 'Esencia (azurín)', esencia: { Reserva: 1, Receptaculo: false, Habilidades_por_fusiones: [] } }],
         especiales: [],
         puntuaciones: { fuerza: 10, destreza: 12, constitucion: 14, inteligencia: 10, sabiduria: 15, carisma: 13 },
         nivelPersonaje: 5,
@@ -105,6 +106,42 @@ describe('incarnum (reglas de la creación)', () => {
         }))!.receptaculos[0].capacidad;
         expect(conDotes(16)).toBe(3);
         expect(conDotes(14)).toBe(2);
+    });
+
+    it('las reglas del máster (2026-10-29): CD de Moldear fusión, Moldeador muerto viviente, PG de las dotes, tótem y rilkan', () => {
+        const moldear = dote(1123, 'Moldear fusión', { Divisor_nivel_moldeador: 2, Caracteristica_cd_fusion: { Id: 3, Nombre: 'Constitución' } }, {
+            Extras_soportados: MOLDEAR_FUSION.Extras_soportados, Extras_disponibles: MOLDEAR_FUSION.Extras_disponibles,
+        } as Partial<Dote>);
+        const conMoldear = calcularIncarnumBorrador(entrada({ clases: [], nivelPersonaje: 6, dotes: [{ dote: moldear, idExtra: 284 }] }))!;
+        expect(conMoldear.fusionesDeDotes[0].cd).toEqual({ base: 12, caracteristica: 'Constitución', modificador: 2 });
+        // Moldeador muerto viviente: la Sabiduría (15) en lugar de la Constitución para las fusiones a la vez.
+        const muerto = dote(1130, 'Moldeador muerto viviente', {
+            Sustituye_caracteristica: { De: { Id: 3, Nombre: 'Constitución' }, Por: { Id: 5, Nombre: 'Sabiduría' } },
+        });
+        const sinCon = calcularIncarnumBorrador(entrada({ puntuaciones: { constitucion: 0, sabiduria: 15 }, dotes: [{ dote: muerto, idExtra: 0 }] }))!;
+        expect([sinCon.clases[0].fusionesMaximas, sinCon.clases[0].caracteristicaFusiones]).toEqual([4, 'Sabiduría']);
+        // Corazón de incarnum (PG = reserva, 7) y Cuerpo fortalecido por el incarnum (2 por cada dote de incarnum: 2).
+        const tipoIncarnum = [{ Id: 37, Nombre: 'Incarnum', Usado: 1 }];
+        const corazon = dote(1104, 'Corazón de incarnum', { Pg_por_esencia: 1 });
+        const cuerpo = dote(1106, 'Cuerpo fortalecido por el incarnum', { Pg_por_dote: { Valor: 2, Tipo: { Id: 37, Nombre: 'Incarnum' } } });
+        const dureza = { ...DUREZA_AZUR, Tipos: tipoIncarnum } as Dote;
+        const pg = calcularIncarnumBorrador(entrada({ dotes: [{ dote: dureza, idExtra: 0 }, { dote: corazon, idExtra: 0 }, { dote: cuerpo, idExtra: 0 }] }))!;
+        expect(pg.puntosGolpe).toEqual([
+            { tipo: 'dote', origen: 'Corazón de incarnum', valor: 7 },
+            { tipo: 'dote', origen: 'Cuerpo fortalecido por el incarnum', valor: 2 },
+        ]);
+        // El totemista de nivel 6: +1 al nivel de moldeador de la fusión vinculada al tótem.
+        const totemista = { Id: 407, Nombre: 'Totemista', Moldeado: normalizarClaseMoldeado({
+            ...moldeadoEncarnadoApi(), Nivel_moldeador_chakras: [{ Nivel: 6, Bonificador: 1, Chakra: { Id: 44, Nombre: 'Tótem' } }],
+        }) } as Clase;
+        const conTotem = calcularIncarnumBorrador(entrada({ clases: [{ clase: totemista, nombre: 'Totemista', nivel: 6 }], nivelPersonaje: 6 }))!;
+        expect(conTotem.clases[0].nivelMoldeadorChakras).toEqual([jasmine.objectContaining({ nivelMoldeador: 7 })]);
+        // El Saber racial del rilkan: +1 y +1 por cada 2 fusiones de la formación.
+        const rilkan = { id: 228, nombre: 'Saber racial (rilkan)', esencia: normalizarEsenciaRasgo({
+            Reserva: 0, Receptaculo: false, Habilidades_por_fusiones: [{ Habilidad: 'Saber', Ids_habilidad: [32, 33], Bono: 1, Fusiones_por_punto: 2 }],
+        }) };
+        const sinFormacion = calcularIncarnumBorrador(entrada({ clases: [], dotes: [], raciales: [rilkan] }))!;
+        expect(sinFormacion.bonosHabilidad).toEqual([{ origen: 'Saber racial (rilkan)', habilidad: 'Saber', idsHabilidad: [32, 33], bono: 1, fusiones: 0 }]);
     });
 
     it('Chakra … abierto y Moldear fusión: el chakra y la fusión elegidos, con el nivel de moldeador de la dote', () => {
@@ -214,16 +251,20 @@ describe('incarnum (reglas de la creación)', () => {
             expect(capacidadesDeFormacion(con14, [{ idClase: 405, esencia: 3 }]).extra).toBeNull();
         });
 
-        it('el vínculo de Chakra … abierto se usa antes que el de la clase, y la fusión de Moldear fusión usa los de la clase', () => {
-            // Encarnado 5: un vínculo (corona, pies y manos). Con Chakra mínimo abierto en los pies caben pies y corona.
-            const piesAbiertos = calcularIncarnumBorrador(entrada({ fusiones, dotes: [{ dote: dote(1115, 'Chakra mínimo abierto', { Abre_chakra: true }, {
-                Extras_soportados: { Extra_arma: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0, Extra_chakra: 1 },
-                Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [], Chakras: [{ Id: 35, Nombre: 'Pies' }] },
-            } as Partial<Dote>), idExtra: 35 }] }))!;
+        it('Chakra … abierto abre el chakra para los vínculos de la clase, y la fusión de Moldear fusión usa los de la clase', () => {
+            // Decisión del 2026-10-29: la dote no da un vínculo más. Encarnado 5 (un vínculo) con Chakra menor abierto en los
+            // brazos: vincula los brazos con el de la clase, pero entonces ya no la corona.
+            const brazosAbiertos = calcularIncarnumBorrador(entrada({ fusiones, dotes: [{ dote: ABRIR_CHAKRA, idExtra: 37 }] }))!;
+            expect(vinculosALaVez(brazosAbiertos)).toBe(1);
+            expect(validarFormacionIncarnum(formacion([{ idFusion: 270, idClase: 405, idChakra: 37, idChakraVinculo: 37, esencia: 0 }]),
+                brazosAbiertos, fusiones, neutralBueno)).toBeNull();
             expect(validarFormacionIncarnum(formacion([
-                { idFusion: 283, idClase: 405, idChakra: 35, idChakraVinculo: 35, esencia: 0 },
+                { idFusion: 270, idClase: 405, idChakra: 37, idChakraVinculo: 37, esencia: 0 },
                 { idFusion: 284, idClase: 405, idChakra: 34, idChakraVinculo: 34, esencia: 0 },
-            ]), piesAbiertos, fusiones, neutralBueno)).toBeNull();
+            ]), brazosAbiertos, fusiones, neutralBueno)?.code).toBe('demasiados_vinculos');
+            // Sin vínculos de clase, la dote deja vincular una fusión en su chakra.
+            const guerrero = calcularIncarnumBorrador(entrada({ clases: [], fusiones, dotes: [{ dote: ABRIR_CHAKRA, idExtra: 37 }, { dote: MOLDEAR_FUSION, idExtra: 284 }] }))!;
+            expect(vinculosALaVez(guerrero)).toBe(1);
             // Moldear fusión (Yelmo de cristal): se vincula a la corona con el vínculo del encarnado, si lo tiene libre.
             const conMoldear = calcularIncarnumBorrador(entrada({ fusiones, dotes: [{ dote: MOLDEAR_FUSION, idExtra: 284 }] }))!;
             expect(validarFormacionIncarnum(formacion([{ idFusion: 284, idChakra: 34, idChakraVinculo: 34, esencia: 0 }]), conMoldear, fusiones, neutralBueno)).toBeNull();

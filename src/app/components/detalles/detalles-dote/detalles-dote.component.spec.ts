@@ -304,7 +304,7 @@ describe('DetallesDoteComponent', () => {
         fixture.detectChanges();
 
         expect(titulos()).toEqual(jasmine.arrayContaining(['Incarnum', 'Cuenta como', 'Extras']));
-        expect(limpio(lateral('Incarnum'))).toContain('Queda abierto para un vínculo');
+        expect(limpio(lateral('Incarnum'))).toContain('Queda abierto para vincular');
         expect(limpio(lateral('Extras'))).toContain('Admite: Chakras');
         const chakra = spyOn(component.chakraDetallesId, 'emit');
         const dote = spyOn(component.doteDetallesId, 'emit');

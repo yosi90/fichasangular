@@ -107,5 +107,16 @@ export interface Dote {
     Incarnum?: DoteIncarnum | null;
     /** Las dotes a las que sustituye en los prerrequisitos (Dureza azur cuenta como Dureza). */
     Cuenta_como?: { Id: number; Nombre: string; }[];
+    /** Bonificadores a una salvación que solo cuentan en un caso (no se suman al total; la API siempre los da). */
+    Salvaciones_condicionales?: DoteSalvacionCondicional[];
     Prerrequisitos: DotePrerrequisitos;
+}
+
+/** Un bonificador a una salvación con su condición (Cuerpo fortalecido por el incarnum: +4 a Fortaleza contra el daño masivo). */
+export interface DoteSalvacionCondicional {
+    /** 1 Fortaleza, 2 Reflejos, 3 Voluntad. */
+    Id_salvacion: number;
+    Salvacion: string;
+    Cantidad: number;
+    Condicion: string;
 }

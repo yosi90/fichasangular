@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DatoFicha, HabilidadFicha, datosIncarnumDote, datosVisibles, esTextoCorto, habilidadesVisibles, unirTipo } from 'src/app/components/detalles/ficha';
-import { Dote, DoteExtrasDeTodoElCatalogo } from 'src/app/interfaces/dote';
+import { Dote, DoteExtrasDeTodoElCatalogo, DoteSalvacionCondicional } from 'src/app/interfaces/dote';
 import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import {
@@ -40,7 +40,11 @@ export class DetallesDoteComponent {
         this.habilidadesCustom = habilidadesVisibles(otorgadas.filter((h) => h.Custom), (h) => h.Rangos);
         this.datosIncarnum = datosVisibles(datosIncarnumDote(this.doteData?.Incarnum));
         this.cuentaComo = (this.doteData?.Cuenta_como ?? []).filter((dote) => dote.Id > 0 && `${dote.Nombre ?? ''}`.trim().length > 0);
+        this.salvacionesCondicionales = this.doteData?.Salvaciones_condicionales ?? [];
     }
+
+    /** Los bonificadores a una salvación que solo cuentan en un caso, con su condición (no se suman al total). */
+    salvacionesCondicionales: DoteSalvacionCondicional[] = [];
 
     /** Magic of Incarnum: lo que da a la reserva, si es receptáculo, la capacidad, el chakra que abre… */
     datosIncarnum: DatoFicha[] = [];

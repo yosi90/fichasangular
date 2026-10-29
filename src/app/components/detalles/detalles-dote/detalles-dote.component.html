@@ -63,10 +63,13 @@
             <app-ficha-habilidades [base]="habilidadesBase" [custom]="habilidadesCustom"></app-ficha-habilidades>
         </app-ficha-lateral>
 
-        <app-ficha-lateral titulo="Modificadores" *ngIf="getModificadoresActivos().length > 0">
+        <app-ficha-lateral titulo="Modificadores" *ngIf="getModificadoresActivos().length > 0 || salvacionesCondicionales.length > 0">
             <ul class="ficha-lista">
                 <li class="ficha-lista__item" *ngFor="let mod of getModificadoresActivos()">
                     {{mod.clave}} {{mod.valor > 0 ? '+' : ''}}{{mod.valor}}
+                </li>
+                <li class="ficha-lista__item" *ngFor="let salvacion of salvacionesCondicionales">
+                    {{salvacion.Salvacion}} {{salvacion.Cantidad > 0 ? '+' : ''}}{{salvacion.Cantidad}}{{salvacion.Condicion ? ' (' + (salvacion.Condicion | lowercase) + ')' : ''}}
                 </li>
             </ul>
         </app-ficha-lateral>

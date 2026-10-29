@@ -116,6 +116,8 @@ export interface ClaseMoldeado {
     Niveles: ClaseMoldeadoNivel[];
     Chakras: ClaseMoldeadoChakra[];
     Capacidad: ClaseMoldeadoCapacidad[];
+    /** Desde un nivel, la fusión vinculada a ese chakra suma al nivel de moldeador (total; el tótem del totemista, +1 a nivel 6). */
+    Nivel_moldeador_chakras: { Nivel: number; Bonificador: number; Chakra: NombreTraducible; }[];
     Fusiones: NombreTraducible[];
 }
 
@@ -135,18 +137,36 @@ export interface DoteIncarnum {
     Esencia_reserva_moldeador: number | null;
     Receptaculo: boolean;
     Capacidad: { Bono: number; Ambito: 'fusiones' | 'dotes'; Tope_constitucion: boolean; } | null;
-    /** El chakra elegido como extra queda abierto para un vínculo. */
+    /** El chakra elegido como extra queda abierto: se le vincula con los vínculos de sus clases (sin ninguno, uno de la dote). */
     Abre_chakra: boolean;
     /** Si la dote da una fusión, su nivel de moldeador es el nivel de personaje entre esto. */
     Divisor_nivel_moldeador: number | null;
+    /** Si la dote da una fusión, la característica de su CD (Moldear fusión: Constitución). */
+    Caracteristica_cd_fusion: { Id: number; Nombre: string; } | null;
+    /** La característica del moldeado que cambia por otra (Moldeador muerto viviente: Constitución por Sabiduría). */
+    Sustituye_caracteristica: { De: { Id: number; Nombre: string; }; Por: { Id: number; Nombre: string; }; } | null;
+    /** PG por cada punto de la reserva de esencia (Corazón de incarnum). */
+    Pg_por_esencia: number;
+    /** PG por cada dote de `Tipo` (Cuerpo fortalecido por el incarnum: 2 por dote de incarnum). */
+    Pg_por_dote: { Valor: number; Tipo: { Id: number; Nombre: string; }; } | null;
     /** Deja moldear las fusiones con estos descriptores aunque el alineamiento no lo permita. */
     Descriptores_sin_alineamiento: { Id: number; Nombre: string; }[];
+}
+
+/** Un bono a todas las pruebas de una habilidad y 1 más por cada `Fusiones_por_punto` fusiones moldeadas. */
+export interface HabilidadPorFusiones {
+    Habilidad: string;
+    Ids_habilidad: number[];
+    Bono: number;
+    Fusiones_por_punto: number;
 }
 
 /** `Esencia` de un racial o un especial de clase. */
 export interface EsenciaRasgo {
     Reserva: number;
     Receptaculo: boolean;
+    /** El Saber racial del rilkan (vacío en los especiales). */
+    Habilidades_por_fusiones: HabilidadPorFusiones[];
 }
 
 // --- El bloque `incarnum` de la ficha (calculado por la API) ---------------------------------------------------------
@@ -170,6 +190,8 @@ export interface PersonajeIncarnumClase {
     nombre: string;
     nivel: number;
     nivelMoldeador: number;
+    /** El nivel de moldeador de la fusión vinculada a un chakra que lo sube (el tótem). */
+    nivelMoldeadorChakras: { chakra: PersonajeIncarnumRef; nivelMoldeador: number; }[];
     fusionesTabla: number;
     fusionesMaximas: number;
     caracteristicaFusiones: string | null;
@@ -218,8 +240,18 @@ export interface PersonajeIncarnum {
     puedeMoldear: boolean;
     clases: PersonajeIncarnumClase[];
     chakrasDeDotes: { chakra: PersonajeIncarnumRef; dote: { id: number; nombre: string; }; }[];
-    fusionesDeDotes: { fusion: PersonajeIncarnumRef; dote: { id: number; nombre: string; }; nivelMoldeador: number | null; }[];
+    fusionesDeDotes: {
+        fusion: PersonajeIncarnumRef;
+        dote: { id: number; nombre: string; };
+        nivelMoldeador: number | null;
+        /** La CD de su fusión: `base` + la esencia invertida (`null` si la dote no la da). */
+        cd: { base: number; caracteristica: string; modificador: number; } | null;
+    }[];
     receptaculos: PersonajeIncarnumReceptaculo[];
+    /** Los PG que dan sus dotes por la reserva o por cada dote de un tipo (ya van en sus PG: es su desglose). */
+    puntosGolpe: PersonajeIncarnumParte[];
+    /** Lo que suman sus raciales a una habilidad según las fusiones de la formación (el Saber racial del rilkan). */
+    bonosHabilidad: { origen: string; habilidad: string; idsHabilidad: number[]; bono: number; fusiones: number; }[];
     formacion: PersonajeIncarnumFormacion | null;
 }
 

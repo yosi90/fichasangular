@@ -39,13 +39,26 @@ describe('ficha/incarnum', () => {
         const capacidad = datosVisibles(datosIncarnumDote(normalizarDoteIncarnum({ Capacidad: { Bono: 1, Ambito: 'fusiones', Tope_constitucion: true } })));
         expect(capacidad[0]).toEqual(jasmine.objectContaining({ valor: '+1 en una fusión', detalle: 'como mucho, tu mod. de Constitución' }));
         const moldear = datosVisibles(datosIncarnumDote(normalizarDoteIncarnum({ Divisor_nivel_moldeador: 2, Abre_chakra: true })));
-        expect(moldear.map((d) => d.valor)).toEqual(['Queda abierto para un vínculo', 'La mitad de tu nivel de personaje']);
+        expect(moldear.map((d) => d.valor)).toEqual(['Queda abierto para vincular', 'La mitad de tu nivel de personaje']);
+        // Lo que añadió el máster (2026-10-29): la CD de su fusión, la característica que cambia y los PG.
+        const nuevos = datosVisibles(datosIncarnumDote(normalizarDoteIncarnum({
+            Caracteristica_cd_fusion: { Id: 3, Nombre: 'Constitución' },
+            Sustituye_caracteristica: { De: { Id: 3, Nombre: 'Constitución' }, Por: { Id: 5, Nombre: 'Sabiduría' } },
+            Pg_por_esencia: 1, Pg_por_dote: { Valor: 2, Tipo: { Id: 37, Nombre: 'Incarnum' } },
+        })));
+        expect(nuevos.map((d) => d.valor)).toEqual([
+            '10 + mod. de Constitución + esencia invertida', 'Sabiduría en vez de Constitución',
+            '+1 por punto de tu reserva de esencia, +2 por cada dote de incarnum',
+        ]);
+        expect(datosVisibles(datosEsenciaRasgo({ Reserva: 0, Receptaculo: false, Habilidades_por_fusiones: [
+            { Habilidad: 'Saber', Ids_habilidad: [32], Bono: 1, Fusiones_por_punto: 2 }] })).map((d) => d.valor))
+            .toEqual(['+1, y +1 más por cada 2 fusiones moldeadas']);
         expect(datosIncarnumDote(null)).toEqual([]);
     });
 
     it('la esencia de un racial o un especial', () => {
-        expect(datosVisibles(datosEsenciaRasgo({ Reserva: 1, Receptaculo: true })).map((d) => d.valor)).toEqual(['+1', 'Sí']);
-        expect(textoEsenciaRasgo({ Reserva: 0, Receptaculo: true })).toBe('receptáculo de esencia');
+        expect(datosVisibles(datosEsenciaRasgo({ Reserva: 1, Receptaculo: true, Habilidades_por_fusiones: [] })).map((d) => d.valor)).toEqual(['+1', 'Sí']);
+        expect(textoEsenciaRasgo({ Reserva: 0, Receptaculo: true, Habilidades_por_fusiones: [] })).toBe('receptáculo de esencia');
         expect(textoEsenciaRasgo(null)).toBe('');
     });
 
@@ -93,6 +106,16 @@ describe('ficha/incarnum', () => {
             expect(m.chakras).toEqual([]);
             expect(m.datos.length).toBe(2);
             expect(modeloIncarnumFicha(null)).toBeNull();
+        });
+
+        it('enseña los PG de las dotes de incarnum y lo que suma el Saber racial del rilkan', () => {
+            const m = modeloIncarnumFicha(normalizarPersonajeIncarnum(personajeIncarnumApi({
+                puntosGolpe: [{ tipo: 'dote', origen: 'Corazón de incarnum', valor: 7 }],
+                bonosHabilidad: [{ origen: 'Saber racial (rilkan)', habilidad: 'Saber', idsHabilidad: [32], bono: 3, fusiones: 4 }],
+            })), [])!;
+            const datos = datosVisibles(m.datos);
+            expect(datos.find((d) => d.etiqueta === 'Puntos de golpe del incarnum')).toEqual(jasmine.objectContaining({ valor: 7, detalle: 'Corazón de incarnum 7' }));
+            expect(datos.find((d) => d.etiqueta === 'Saber')).toEqual(jasmine.objectContaining({ valor: '+3' }));
         });
     });
 });

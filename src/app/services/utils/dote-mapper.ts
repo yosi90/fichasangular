@@ -1,4 +1,4 @@
-import { Dote, DoteCompetenciasOtorgadas, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteHabilidadOtorgada, DoteTipo } from "src/app/interfaces/dote";
+import { Dote, DoteCompetenciasOtorgadas, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteHabilidadOtorgada, DoteSalvacionCondicional, DoteTipo } from "src/app/interfaces/dote";
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
 import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
@@ -40,6 +40,18 @@ function normalizeExtraItemsLegacy(raw: any): DoteExtraItem[] {
 /** Los chakras y las fusiones elegibles (Magic of Incarnum), con su nombre del libro. */
 function normalizeExtraItemsTraducibles(raw: any): DoteExtraItem[] {
     return asArray(raw).map(normalizarNombreTraducible).filter(item => item.Id > 0);
+}
+
+/** Los bonificadores a una salvación que solo cuentan en un caso (`Salvaciones_condicionales`). */
+function normalizeSalvacionesCondicionales(raw: any): DoteSalvacionCondicional[] {
+    return asArray(raw)
+        .map((item: any) => ({
+            Id_salvacion: toNumber(item?.Id_salvacion, 0),
+            Salvacion: toText(item?.Salvacion, ""),
+            Cantidad: toNumber(item?.Cantidad, 0),
+            Condicion: toText(item?.Condicion, "").trim(),
+        }))
+        .filter(item => item.Id_salvacion > 0 && item.Cantidad !== 0);
 }
 
 /** Las dotes a las que sustituye en los prerrequisitos (`Cuenta_como`). */
@@ -181,6 +193,7 @@ export function normalizeDoteApi(raw: any): Dote {
         Competencias_otorgadas: normalizeCompetenciasOtorgadas(raw?.Competencias_otorgadas),
         Incarnum: normalizarDoteIncarnum(raw?.Incarnum),
         Cuenta_como: normalizeCuentaComo(raw?.Cuenta_como),
+        Salvaciones_condicionales: normalizeSalvacionesCondicionales(raw?.Salvaciones_condicionales),
         Prerrequisitos: normalizePrerrequisitosApi(raw?.Prerrequisitos),
     };
 }
@@ -233,6 +246,7 @@ export function normalizeDoteLegacy(raw: any): Dote {
         Competencias_otorgadas: normalizeCompetenciasOtorgadas(raw?.Competencias_otorgadas),
         Incarnum: normalizarDoteIncarnum(raw?.Incarnum),
         Cuenta_como: normalizeCuentaComo(raw?.Cuenta_como),
+        Salvaciones_condicionales: normalizeSalvacionesCondicionales(raw?.Salvaciones_condicionales),
         Prerrequisitos: normalizePrerrequisitosLegacy(raw?.Prerrequisitos),
     };
 }
