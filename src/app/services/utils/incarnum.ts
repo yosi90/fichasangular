@@ -55,6 +55,27 @@ const refDe = (item: { Id: number; Nombre: string; Nombre_original?: string | nu
     id: item.Id, nombre: item.Nombre, nombreOriginal: item.Nombre_original ?? null, traducido: !!item.Traducido,
 });
 
+/** La referencia del elemento del catálogo o, si no está, la de su id con el nombre «#id». */
+const refODesconocido = (item: Parameters<typeof refDe>[0] | null | undefined, id: number): PersonajeIncarnumRef =>
+    item ? refDe(item) : { id, nombre: `#${id}`, nombreOriginal: null, traducido: false };
+
+/** Las fusiones que puede moldear a la vez: las de sus clases y una por cada fusión que da una dote. */
+export function fusionesALaVez(bloque: PersonajeIncarnum): number {
+    return bloque.clases.reduce((suma, c) => suma + c.fusionesMaximas, 0) + bloque.fusionesDeDotes.length;
+}
+
+/** Los vínculos que puede tener a la vez: los de sus clases y uno por cada chakra que abre una dote. */
+export function vinculosALaVez(bloque: PersonajeIncarnum): number {
+    return bloque.clases.reduce((suma, c) => suma + c.vinculos, 0) + bloque.chakrasDeDotes.length;
+}
+
+/** Los chakras abiertos para vincular, sin repetir: los de sus clases y después los de sus dotes. */
+export function chakrasAbiertos(bloque: PersonajeIncarnum): PersonajeIncarnumRef[] {
+    const vistos = new Set<number>();
+    return [...bloque.clases.flatMap((c) => c.chakrasAbiertos), ...bloque.chakrasDeDotes.map((d) => d.chakra)]
+        .filter((chakra) => !vistos.has(chakra.id) && !!vistos.add(chakra.id));
+}
+
 /** Una dote del personaje con su ficha del catálogo y el extra elegido (el id del chakra o de la fusión). */
 export interface DoteIncarnumEntrada {
     dote: Dote | null | undefined;
@@ -134,7 +155,7 @@ function extraDe(dote: Dote, idExtra: number, tipo: 'Chakras' | 'Fusiones'): Per
     if (!soporta || idExtra <= 0)
         return null;
     const item = (dote.Extras_disponibles?.[tipo] ?? []).find((extra) => extra.Id === idExtra);
-    return { id: idExtra, nombre: item?.Nombre ?? `#${idExtra}`, nombreOriginal: item?.Nombre_original ?? null, traducido: !!item?.Traducido };
+    return refODesconocido(item, idExtra);
 }
 
 /**
@@ -269,18 +290,14 @@ function formacionDelBorrador(formacion: FormacionIncarnumDto, bloque: Personaje
     const clases = new Map(bloque.clases.map((c) => [c.id, c]));
     const nivelDote = new Map(bloque.fusionesDeDotes.map((d) => [d.fusion.id, d.nivelMoldeador]));
     const { bases, extra } = capacidadesDeFormacion(bloque, formacion.fusiones);
-    const chakraRef = (fusion: Fusion | undefined, id: number | null | undefined): PersonajeIncarnumRef | null => {
-        if (!id)
-            return null;
-        const chakra = fusion?.Chakras.find((c) => c.Id === id);
-        return chakra ? refDe(chakra) : { id, nombre: `#${id}`, nombreOriginal: null, traducido: false };
-    };
+    const chakraRef = (fusion: Fusion | undefined, id: number | null | undefined): PersonajeIncarnumRef | null =>
+        id ? refODesconocido(fusion?.Chakras.find((c) => c.Id === id), id) : null;
     return {
         fusiones: formacion.fusiones.map((f, i) => {
             const fusion = catalogo.find((item) => item.Id === f.idFusion);
             const clase = f.idClase ? clases.get(f.idClase) : undefined;
             return {
-                fusion: fusion ? refDe(fusion) : { id: f.idFusion, nombre: `#${f.idFusion}`, nombreOriginal: null, traducido: false },
+                fusion: refODesconocido(fusion, f.idFusion),
                 clase: clase ? { id: clase.id, nombre: clase.nombre } : null,
                 chakra: chakraRef(fusion, f.idChakra)!,
                 vinculo: chakraRef(fusion, f.idChakraVinculo),
@@ -312,12 +329,9 @@ export function incarnumParaPrerrequisitos(bloque: PersonajeIncarnum | null | un
     return {
         reserva: bloque.reserva.total,
         nivelMoldeador: Math.max(0, ...bloque.clases.map((c) => c.nivelMoldeador), ...bloque.fusionesDeDotes.map((d) => d.nivelMoldeador ?? 0)),
-        fusiones: bloque.clases.reduce((s, c) => s + c.fusionesMaximas, 0) + bloque.fusionesDeDotes.length,
-        vinculos: bloque.clases.reduce((s, c) => s + c.vinculos, 0) + bloque.chakrasDeDotes.length,
-        chakrasVinculables: Array.from(new Set([
-            ...bloque.clases.flatMap((c) => c.chakrasAbiertos.map((ch) => ch.id)),
-            ...bloque.chakrasDeDotes.map((d) => d.chakra.id),
-        ])),
+        fusiones: fusionesALaVez(bloque),
+        vinculos: vinculosALaVez(bloque),
+        chakrasVinculables: chakrasAbiertos(bloque).map((chakra) => chakra.id),
     };
 }
 

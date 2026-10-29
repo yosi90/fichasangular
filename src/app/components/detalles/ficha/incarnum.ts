@@ -1,5 +1,6 @@
 import { ClaseMoldeado, DoteIncarnum, EsenciaRasgo, Fusion, FusionChakra, NombreTraducible, PersonajeIncarnum } from 'src/app/interfaces/incarnum';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { chakrasAbiertos, fusionesALaVez, vinculosALaVez } from 'src/app/services/utils/incarnum';
 import { DatoFicha, DatoFranja } from './ficha';
 
 /*
@@ -278,8 +279,8 @@ export function modeloIncarnumFicha(
         ...incarnum.chakrasDeDotes.map((d) => ({ texto: `${d.dote.nombre}: ${d.chakra.nombre}`, nota: 'abierto para un vínculo' })),
     ];
     const chakras = incarnum.puedeMoldear ? celdasChakras(incarnum, clases, !!formacion) : [];
-    const totalFusiones = incarnum.clases.reduce((suma, c) => suma + c.fusionesMaximas, 0) + incarnum.fusionesDeDotes.length;
-    const totalVinculos = incarnum.clases.reduce((suma, c) => suma + c.vinculos, 0) + incarnum.chakrasDeDotes.length;
+    const totalFusiones = fusionesALaVez(incarnum);
+    const totalVinculos = vinculosALaVez(incarnum);
     const vinculadas = formacion ? formacion.fusiones.filter((f) => f.vinculo).length : 0;
     return {
         datos,
@@ -304,10 +305,7 @@ function celdasChakras(incarnum: PersonajeIncarnum, clases: ClaseConMoldeado[], 
         if (ref && ref.id > 0 && !orden.some((r) => r.id === ref.id))
             orden.push({ id: ref.id, nombre: ref.nombre });
     };
-    const abiertos = new Set<number>([
-        ...incarnum.clases.flatMap((clase) => clase.chakrasAbiertos.map((chakra) => chakra.id)),
-        ...incarnum.chakrasDeDotes.map((d) => d.chakra.id),
-    ]);
+    const abiertos = new Set(chakrasAbiertos(incarnum).map((chakra) => chakra.id));
     // Desde qué nivel de clase se abre cada chakra que aún no está abierto (el primero que llegue).
     const porAbrir = new Map<number, string>();
     const variasMoldeadoras = clases.filter((c) => c.moldeado).length > 1;
@@ -366,8 +364,7 @@ function celdasChakras(incarnum: PersonajeIncarnum, clases: ClaseConMoldeado[], 
 export function franjaIncarnum(bloque: PersonajeIncarnum | null | undefined): DatoFranja[] {
     if (!bloque?.puedeMoldear)
         return [];
-    const abiertos = Array.from(new Set(bloque.clases.flatMap((c) => c.chakrasAbiertos.map((ch) => ch.nombre))
-        .concat(bloque.chakrasDeDotes.map((d) => d.chakra.nombre))));
+    const abiertos = chakrasAbiertos(bloque).map((chakra) => chakra.nombre);
     return [
         {
             etiqueta: 'Reserva de esencia',
@@ -376,12 +373,12 @@ export function franjaIncarnum(bloque: PersonajeIncarnum | null | undefined): Da
         },
         {
             etiqueta: 'Fusiones a la vez',
-            valor: bloque.clases.reduce((s, c) => s + c.fusionesMaximas, 0) + bloque.fusionesDeDotes.length,
+            valor: fusionesALaVez(bloque),
             detalle: bloque.clases.map((c) => c.caracteristicaFusiones ? `tabla ${c.fusionesTabla} · con ${c.caracteristicaFusiones} deja ${c.fusionesMaximas}` : '').filter(Boolean).join(' · '),
         },
         {
             etiqueta: 'Vínculos',
-            valor: bloque.clases.reduce((s, c) => s + c.vinculos, 0) + bloque.chakrasDeDotes.length,
+            valor: vinculosALaVez(bloque),
             detalle: unirConO(abiertos.map((nombre) => nombre.toLowerCase())),
         },
         {
@@ -416,8 +413,7 @@ export function incarnumTuPersonaje(
         { nombre: 'Reserva de esencia', valor: `${bloque.reserva.total}` },
         { nombre: 'Capacidad', valor: `${bloque.capacidad.basica}` },
     ];
-    const chakras = Array.from(new Set(bloque.clases.flatMap((c) => c.chakrasAbiertos.map((ch) => ch.nombre))
-        .concat(bloque.chakrasDeDotes.map((d) => d.chakra.nombre))));
+    const chakras = chakrasAbiertos(bloque).map((chakra) => chakra.nombre);
     // Los siguientes chakras que abrirá: los del nivel más bajo que aún no tiene, de cada clase.
     const proximos = clases.filter((c) => c.moldeado).map((c) => {
         const futuros = c.moldeado!.Chakras.filter((ch) => ch.Nivel > c.nivel && !chakras.includes(ch.Nombre));

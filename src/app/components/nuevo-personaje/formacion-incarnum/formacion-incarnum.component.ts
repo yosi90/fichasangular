@@ -13,9 +13,12 @@ import {
     AlineamientoParaFusiones,
     FalloFormacion,
     capacidadesDeFormacion,
+    chakrasAbiertos,
     esenciaInvertida,
+    fusionesALaVez,
     fusionesMoldeables,
     validarFormacionIncarnum,
+    vinculosALaVez,
 } from 'src/app/services/utils/incarnum';
 
 /** Una lista de fusiones que puede moldear: la de una de sus clases o las que eligió con una dote. */
@@ -281,9 +284,10 @@ export class FormacionIncarnumComponent implements OnChanges {
         const bloque = this.bloque;
         if (!bloque)
             return [];
-        const maximo = bloque.clases.reduce((s, c) => s + c.fusionesMaximas, 0) + bloque.fusionesDeDotes.length;
-        const vinculos = bloque.clases.reduce((s, c) => s + c.vinculos, 0) + bloque.chakrasDeDotes.length;
-        const abiertos = this.chakras.filter((c) => this.chakrasAbiertos().has(c.Id)).map((c) => c.Nombre.toLowerCase());
+        const maximo = fusionesALaVez(bloque);
+        const vinculos = vinculosALaVez(bloque);
+        const idsAbiertos = new Set(chakrasAbiertos(bloque).map((chakra) => chakra.id));
+        const abiertos = this.chakras.filter((c) => idsAbiertos.has(c.Id)).map((c) => c.Nombre.toLowerCase());
         const capacidades = bloque.clases.map((c) => `${c.capacidadFusiones} en fusiones de ${c.nombre}`);
         const receptaculoDote = bloque.receptaculos.find((r) => r.tipo === 'dote');
         return [
@@ -344,13 +348,6 @@ export class FormacionIncarnumComponent implements OnChanges {
         if (!fallo || (this.fallo && fallo.code === this.fallo.code && fallo.field === this.fallo.field))
             return null;
         return fallo;
-    }
-
-    private chakrasAbiertos(): Set<number> {
-        return new Set([
-            ...(this.bloque?.clases ?? []).flatMap((c) => c.chakrasAbiertos.map((ch) => ch.id)),
-            ...(this.bloque?.chakrasDeDotes ?? []).map((d) => d.chakra.id),
-        ]);
     }
 
     private nombresChakras(): Map<number, string> {
