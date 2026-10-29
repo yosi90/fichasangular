@@ -2811,6 +2811,10 @@ export class NuevoPersonajeComponent {
     }
 
     @Output() racialDetallesPorNombre: EventEmitter<RacialReferencia> = new EventEmitter<RacialReferencia>();
+    /** Los enlaces del detalle de la raza que se mira en el primer paso: sus subtipos, sus dotes y sus plantillas. */
+    @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
+    @Output() doteDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    @Output() plantillaDetallesId: EventEmitter<number> = new EventEmitter<number>();
     verDetallesRacialDesdeReferencia(referencia: RacialReferencia): void {
         const id = Number(referencia?.id);
         const nombre = `${referencia?.nombre ?? ''}`.trim();

@@ -21,7 +21,10 @@
                     </div>
                     <div creacionLateral class="paso-lateral">
                         <app-detalles-raza *ngIf="razaMirada as raza; else sinRazaMirada" [raza]="raza"
-                            (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)">
+                            (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"
+                            (subtipoDetalles)="subtipoDetalles.emit($event)"
+                            (doteDetalles)="doteDetallesId.emit($event)"
+                            (plantillaDetalles)="plantillaDetallesId.emit($event)">
                         </app-detalles-raza>
                         <ng-template #sinRazaMirada>
                             <section class="ficha-tarjeta paso-aviso">
