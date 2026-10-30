@@ -1320,7 +1320,7 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
         expect(svc.PersonajeCreacion.Sortilegas.length).toBe(0);
     });
 
-    it('seleccionarRaza aplica habilidades otorgadas como Rangos_varios y las marca claseas', () => {
+    it('seleccionarRaza aplica habilidades otorgadas como Rangos_varios sin hacerlas claseas (bonificador racial)', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([{
             Id_habilidad: 1,
@@ -1357,12 +1357,12 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
         svc.seleccionarRaza(razaConHabilidades);
 
         const avistar = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 1);
-        expect(avistar?.Clasea).toBeTrue();
+        expect(avistar?.Clasea).toBeFalse();
         expect(avistar?.Rangos_varios).toBe(2);
         expect(`${avistar?.Varios ?? ''}`).toContain('Elfo');
     });
 
-    it('seleccionarRaza suma duplicados de habilidades y custom prevalece en flag', () => {
+    it('seleccionarRaza suma duplicados de habilidades y custom prevalece en flag, sin hacerla clásea', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([]);
         const razaConDuplicadas = {
@@ -1391,7 +1391,7 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
 
         const habilidad = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 90);
         expect(svc.PersonajeCreacion.Habilidades.filter((h) => h.Id === 90).length).toBe(1);
-        expect(habilidad?.Clasea).toBeTrue();
+        expect(habilidad?.Clasea).toBeFalse();
         expect(habilidad?.Custom).toBeTrue();
         expect(habilidad?.Rangos_varios).toBe(3);
     });
@@ -5887,10 +5887,9 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
             { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
             { Id_habilidad: 7, Nombre: 'Nadar', Id_caracteristica: 1, Caracteristica: 'Fuerza', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
         ]);
-        svc.seleccionarRaza(crearRazaConDgs({
-            ...sinDgs(),
-            Habilidades: { Base: [{ Id_habilidad: 6, Habilidad: 'Avistar', Cantidad: 1 }], Custom: [] },
-        } as any));
+        svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
+        // Avistar, de clase por su clase (como la marca `aplicarSiguienteNivelClase`).
+        svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6)!.Clasea = true;
         svc.PersonajeCreacion.ModInteligencia = 0;
         svc.PersonajeCreacion.desgloseClases = [{ Nombre: 'Guerrero', Nivel: 1 }] as any;
         svc.iniciarDistribucionHabilidadesPorClase(crearClaseBase({ Puntos_habilidad: { Id: 1, Valor: 2 } }));
@@ -6327,11 +6326,157 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
             },
         } as any));
 
-        const saberesClaseos = svc.PersonajeCreacion.Habilidades
-            .filter((h) => [32, 33, 34, 35, 36].includes(Number(h.Id)) && h.Clasea);
-        expect(saberesClaseos.length).toBe(1);
-        expect(saberesClaseos[0].Id).toBe(32);
-        expect(saberesClaseos[0].Rangos_varios).toBe(3);
+        const saberesConBono = svc.PersonajeCreacion.Habilidades
+            .filter((h) => [32, 33, 34, 35, 36].includes(Number(h.Id)) && Number(h.Rangos_varios) !== 0);
+        expect(saberesConBono.length).toBe(1);
+        expect(saberesConBono[0].Id).toBe(32);
+        expect(saberesConBono[0].Rangos_varios).toBe(3);
+        expect(saberesConBono[0].Clasea).toBeFalse();
+    });
+
+    const catalogoElfo = [
+        { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        { Id_habilidad: 7, Nombre: 'Buscar', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+        { Id_habilidad: 17, Nombre: 'Escuchar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+    ];
+
+    it('elfo: el +2 racial a Avistar, Buscar y Escuchar va a los rangos varios y no las hace de clase (MJ cap. 2)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades(catalogoElfo);
+        svc.seleccionarRaza(crearRazaConDgs({
+            ...sinDgs(),
+            Nombre: 'Elfo',
+            Habilidades: {
+                Base: [
+                    { Id_habilidad: 6, Habilidad: 'Avistar', Cantidad: 2 },
+                    { Id_habilidad: 7, Habilidad: 'Buscar', Cantidad: 2 },
+                    { Id_habilidad: 17, Habilidad: 'Escuchar', Cantidad: 2 },
+                ],
+                Custom: [],
+            },
+        } as any));
+        svc.recalcularEfectosVentajas();
+
+        [6, 7, 17].forEach((id) => {
+            const habilidad = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === id);
+            expect(habilidad?.Rangos_varios).withContext(`${id}`).toBe(2);
+            expect(habilidad?.Clasea).withContext(`${id}`).toBeFalse();
+        });
+
+        // Un guerrero (sin Avistar entre sus habilidades de clase) la compra como transclásea.
+        svc.PersonajeCreacion.ModInteligencia = 0;
+        svc.iniciarDistribucionHabilidadesPorClase(crearClaseBase({ Id: 80, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 2 } }));
+        expect(svc.esHabilidadClaseaEfectiva(6)).toBeFalse();
+        expect(svc.obtenerCosteRangoHabilidad(6)).toBe(2);
+    });
+
+    it('raza con DG raciales (centauro): las habilidades de su entrada son de clase solo al repartir los puntos de esos DG (MM, «Monstruos como razas»)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades(catalogoElfo);
+        svc.seleccionarRaza(crearRazaConDgs({
+            Nombre: 'Centauro',
+            Habilidades: {
+                Base: [
+                    { Id_habilidad: 6, Habilidad: 'Avistar', Cantidad: 0 },
+                    { Id_habilidad: 17, Habilidad: 'Escuchar', Cantidad: 2 },
+                ],
+                Custom: [],
+            },
+        } as any));
+        svc.PersonajeCreacion.ModInteligencia = 0;
+
+        expect(svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6)?.Clasea).toBeFalse();
+        expect(svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 17)?.Clasea).toBeFalse();
+
+        expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
+        expect(svc.esHabilidadClaseaEfectiva(6)).toBeTrue();
+        expect(svc.esHabilidadClaseaEfectiva(17)).toBeTrue();
+        expect(svc.esHabilidadClaseaEfectiva(7)).toBeFalse();
+        expect(svc.obtenerCosteRangoHabilidad(6)).toBe(1);
+        expect(svc.obtenerCosteRangoHabilidad(7)).toBe(2);
+        // 2 DG: tope de clase 2 + 3; Buscar, transclásea, ⌊5 / 2⌋.
+        expect(svc.obtenerLimiteRangoHabilidad(6)).toBe(5);
+        expect(svc.obtenerLimiteRangoHabilidad(7)).toBe(2);
+        svc.EstadoFlujo.habilidades.puntosRestantes = 0;
+        svc.cerrarDistribucionHabilidades();
+
+        // En los niveles de clase ya no lo son.
+        svc.iniciarDistribucionHabilidadesPorClase(crearClaseBase({ Id: 80, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 2 } }));
+        expect(svc.esHabilidadClaseaEfectiva(6)).toBeFalse();
+        expect(svc.esHabilidadClaseaEfectiva(17)).toBeFalse();
+        expect(svc.obtenerCosteRangoHabilidad(17)).toBe(2);
+        expect(svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 17)?.Rangos_varios).toBe(2);
+    });
+
+    it('una habilidad de la raza con Cantidad 0 no da bonificador ni la hace de clase fuera de los DG raciales', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades(catalogoElfo);
+        svc.seleccionarRaza(crearRazaConDgs({
+            Habilidades: { Base: [{ Id_habilidad: 6, Habilidad: 'Avistar', Cantidad: 0 }], Custom: [] },
+        } as any));
+        svc.recalcularEfectosVentajas();
+
+        const avistar = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6);
+        expect(avistar?.Rangos_varios).toBe(0);
+        expect(`${avistar?.Varios ?? ''}`).toBe('');
+        expect(avistar?.Clasea).toBeFalse();
+    });
+
+    it('el bonificador racial a una Artesanía se queda en su hueco en cada recálculo, y una clase con Artesanía la hace de clase (kobold)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 2, Nombre: 'Artesania 1', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [{ Id_extra: 13, Extra: 'Fabricación de trampas', Descripcion: '' }] },
+            { Id_habilidad: 3, Nombre: 'Artesania 2', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 4, Nombre: 'Artesania 3', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs({
+            ...sinDgs(),
+            Nombre: 'Kobold',
+            Habilidades: {
+                Base: [{ Id_habilidad: 2, Habilidad: 'Artesania 1', Cantidad: 2, Id_extra: 13, Extra: 'Fabricación de trampas' }],
+                Custom: [],
+            },
+        } as any));
+        svc.recalcularEfectosVentajas();
+        svc.recalcularEfectosVentajas();
+
+        const artesanias = () => svc.PersonajeCreacion.Habilidades.filter((h) => [2, 3, 4].includes(Number(h.Id)));
+        const primera = artesanias().find((h) => h.Id === 2);
+        expect(primera?.Rangos_varios).toBe(2);
+        expect(primera?.Extra).toBe('Fabricación de trampas');
+        expect(primera?.Clasea).toBeFalse();
+        expect(artesanias().filter((h) => h.Id !== 2).every((h) => Number(h.Rangos_varios) === 0 && `${h.Extra ?? ''}` === '')).toBeTrue();
+
+        const clase = crearClaseBase({
+            Id: 83,
+            Nombre: 'Artesano',
+            Habilidades: { Base: [{ Id_habilidad: 2, Habilidad: 'Artesania 1' }], Custom: [] },
+        });
+        svc.setCatalogoClases([clase]);
+        svc.aplicarSiguienteNivelClase(clase);
+        expect(artesanias().find((h) => h.Id === 2)?.Clasea).toBeTrue();
+        expect(artesanias().filter((h) => h.Clasea).length).toBe(1);
+    });
+
+    it('el bonificador racial a una Artesanía de su elección deja elegir cuál, aunque no sea de clase (duérgar)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([
+            { Id_habilidad: 2, Nombre: 'Artesania 1', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [{ Id_extra: 7, Extra: 'Herrería', Descripcion: '' }] },
+        ]);
+        svc.seleccionarRaza(crearRazaConDgs({
+            ...sinDgs(),
+            Nombre: 'Duérgar',
+            Habilidades: { Base: [{ Id_habilidad: 2, Habilidad: 'Artesania 1', Cantidad: 2, Id_extra: 0, Extra: 'Elegir' }], Custom: [] },
+        } as any));
+        svc.PersonajeCreacion.ModInteligencia = 0;
+        svc.iniciarDistribucionHabilidadesPorClase(crearClaseBase({ Id: 80, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 2 } }));
+
+        const artesania = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 2)!;
+        expect(artesania.Clasea).toBeFalse();
+        expect(svc.esExtraElegibleHabilidad(2)).toBeTrue();
+        expect(svc.esExtraHabilidadPendienteParaSesion(artesania)).toBeTrue();
+        expect(svc.setExtraHabilidad(2, 'Herrería')).toBeTrue();
+        expect(artesania.Extra).toBe('Herrería');
     });
 });
 

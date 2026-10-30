@@ -1898,7 +1898,13 @@ export class NuevoPersonajeService {
         if (total < 1)
             return false;
 
-        this.iniciarDistribucionHabilidadesInterna('raza_dg', 'plantillas', total, []);
+        // Las habilidades de la entrada de la raza son de clase para los puntos de sus DG raciales, y solo para ellos
+        // (Manual de monstruos, «Monstruos como razas»), como las del animal en los DG de una plantilla.
+        const classSkillTemporales = this.referenciasHabilidadesRaza(raza)
+            .map(({ raw, custom }) => toNumber(this.asegurarHabilidadDesdeRaza(raw, custom)?.Id))
+            .filter((id) => id > 0);
+
+        this.iniciarDistribucionHabilidadesInterna('raza_dg', 'plantillas', total, classSkillTemporales);
         return true;
     }
 
@@ -5994,11 +6000,13 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Se elige el extra de la habilidad (qué Saber, qué Artesanía): si es clásea o si ya tiene rangos, comprados como
-     * transclásea.
+     * Se elige el extra de la habilidad (qué Saber, qué Artesanía): si es clásea, si ya tiene rangos, comprados como
+     * transclásea, o si tiene un bonificador que se aplica a una sola (el +2 del duérgar a una Artesanía de su elección).
      */
     private esExtraElegibleParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
-        return this.esHabilidadClaseaParaSesion(habilidad) || toNumber(habilidad?.Rangos) > 0;
+        return this.esHabilidadClaseaParaSesion(habilidad)
+            || toNumber(habilidad?.Rangos) > 0
+            || toNumber(habilidad?.Rangos_varios) !== 0;
     }
 
     private obtenerRangoInicialHabilidadSesion(idHabilidad: number): number {
@@ -6139,9 +6147,16 @@ export class NuevoPersonajeService {
         }).slice(0, config.maxSlots);
     }
 
-    private esSlotHabilidadOcupado(habilidad: Personaje['Habilidades'][number] | null | undefined): boolean {
+    /**
+     * El hueco de la familia (Artesanía 1, 2, 3…) ya está tomado para lo que se otorga: si se otorga como habilidad de
+     * clase, si ya es de clase; si no, si ya se usa (rangos, un bonificador o de clase). Así una clase hace de clase la
+     * Artesanía en la que la raza da su bonificador, en vez de saltársela.
+     */
+    private esSlotHabilidadOcupado(habilidad: Personaje['Habilidades'][number] | null | undefined, paraClasea = false): boolean {
         if (!habilidad)
             return true;
+        if (paraClasea)
+            return !!habilidad?.Clasea;
         return toNumber(habilidad?.Rangos) > 0
             || toNumber(habilidad?.Rangos_varios) > 0
             || !!habilidad?.Clasea;
@@ -6149,17 +6164,18 @@ export class NuevoPersonajeService {
 
     private resolverSlotFamiliaParaOtorgamiento(
         familia: HabilidadFamiliaRepetibleKey,
-        preferida: Personaje['Habilidades'][number] | null
+        preferida: Personaje['Habilidades'][number] | null,
+        paraClasea: boolean
     ): Personaje['Habilidades'][number] | null {
         const slots = this.obtenerSlotsFamiliaRepetible(familia);
         if (slots.length < 1)
             return preferida;
 
         const preferidaId = toNumber(preferida?.Id);
-        if (preferida && slots.some((item) => toNumber(item?.Id) === preferidaId) && !this.esSlotHabilidadOcupado(preferida))
+        if (preferida && slots.some((item) => toNumber(item?.Id) === preferidaId) && !this.esSlotHabilidadOcupado(preferida, paraClasea))
             return preferida;
 
-        const libre = slots.find((slot) => !this.esSlotHabilidadOcupado(slot));
+        const libre = slots.find((slot) => !this.esSlotHabilidadOcupado(slot, paraClasea));
         return libre ?? null;
     }
 
@@ -6213,9 +6229,10 @@ export class NuevoPersonajeService {
 
         const familia = this.resolverFamiliaRepetiblePorReferencia(idObjetivo, nombreObjetivo);
         if (familia) {
-            if (!expandirFamiliaConDuplicados && existente && toBoolean(existente?.Clasea))
-                return existente;
-            const slotFamilia = this.resolverSlotFamiliaParaOtorgamiento(familia, existente);
+            // Sin expandir (la raza), la referencia apunta a su hueco (Artesanía 1) y se queda en él en cada recálculo.
+            const slotFamilia = !expandirFamiliaConDuplicados && existente
+                ? existente
+                : this.resolverSlotFamiliaParaOtorgamiento(familia, existente, marcarClasea);
             if (slotFamilia) {
                 if (marcarClasea)
                     slotFamilia.Clasea = true;
@@ -6236,7 +6253,7 @@ export class NuevoPersonajeService {
                 }
                 return slotFamilia;
             }
-            if (existente && this.esSlotHabilidadOcupado(existente))
+            if (existente && this.esSlotHabilidadOcupado(existente, marcarClasea))
                 return null;
         }
 
@@ -6386,18 +6403,28 @@ export class NuevoPersonajeService {
         return { bloqueado: false, valor: '' };
     }
 
+    /** Las habilidades de la entrada de la raza (`Habilidades.Base` y `Habilidades.Custom`). */
+    private referenciasHabilidadesRaza(raza: Raza | null): Array<{ raw: Record<string, any>; custom: boolean; }> {
+        const habilidadesRaza = raza?.Habilidades;
+        const baseRefs = (habilidadesRaza?.Base ?? []) as Record<string, any>[];
+        const customRefs = (habilidadesRaza?.Custom ?? []) as Record<string, any>[];
+        return [
+            ...baseRefs.map((ref) => ({ raw: ref, custom: false })),
+            ...customRefs.map((ref) => ({ raw: ref, custom: true })),
+        ];
+    }
+
+    /**
+     * Las habilidades de la raza: su bonificador racial (`Cantidad`, el +2 del elfo a Avistar) va a los rangos varios y no
+     * las hace de clase (MJ cap. 2). Con DG raciales son de clase solo al repartir los puntos de esos DG
+     * (`iniciarDistribucionHabilidadesPorRazaDG`); las de `Cantidad` 0 están solo para eso.
+     */
     private aplicarHabilidadesOtorgadasPorRaza(
         raza: Raza | null,
         bonosHabilidades: Record<number, HabilidadBonoVario[]>
     ): void {
         const origen = `${raza?.Nombre ?? 'Raza'}`.trim() || 'Raza';
-        const habilidadesRaza = raza?.Habilidades;
-        const baseRefs = (habilidadesRaza?.Base ?? []) as Record<string, any>[];
-        const customRefs = (habilidadesRaza?.Custom ?? []) as Record<string, any>[];
-        const refs = [
-            ...baseRefs.map((ref) => ({ raw: ref, custom: false })),
-            ...customRefs.map((ref) => ({ raw: ref, custom: true })),
-        ];
+        const refs = this.referenciasHabilidadesRaza(raza);
         if (refs.length < 1)
             return;
 
@@ -6406,7 +6433,6 @@ export class NuevoPersonajeService {
             if (!habilidad)
                 return;
 
-            habilidad.Clasea = true;
             if (custom)
                 habilidad.Custom = true;
 
@@ -6427,7 +6453,7 @@ export class NuevoPersonajeService {
     ): Personaje['Habilidades'][number] | null {
         return this.asegurarHabilidadDesdeReferencia(habilidadRef, {
             customPreferido,
-            marcarClasea: true,
+            marcarClasea: false,
             expandirFamiliaConDuplicados: false,
         });
     }
