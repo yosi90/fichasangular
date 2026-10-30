@@ -1,0 +1,25 @@
+Iconos de los elementos de rol de la web de Rol (src/assets/iconos/game-icons/*.svg)
+
+Son de game-icons.net (https://game-icons.net), obra de sus autores, con licencia Creative Commons
+Atribución 3.0 Unported (CC BY 3.0): https://creativecommons.org/licenses/by/3.0/
+Texto de la licencia del proyecto: https://github.com/game-icons/icons/blob/master/license.txt
+
+Se tomaron de @iconify-json/game-icons 1.2.4 el 2026-10-30, los mismos que la biblioteca de 3.5 Companion
+(companion/licencias/GameIcons-CC-BY-3.0.txt). Cambios: solo el formato (un SVG por icono, con el mismo trazado) y el
+color, que pone la web. La web lo dice en «Ayuda → Créditos».
+
+Autores y sus iconos (la página de cada uno es https://game-icons.net/1x1/<autor>/<icono>.html):
+
+Lorc (https://lorcblog.blogspot.com)
+  arrow-cluster, beast-eye, book-cover, breastplate, conversation, crossed-swords, crystal-growth, dna1,
+  dragon-head, duality-mask, knapsack, laurel-crown, laurels, meditation, psychic-waves, rune-stone,
+  star-swirl, swap-bag, visored-helm
+
+Delapouite (https://delapouite.com)
+  claws, elf-ear, spell-book, sun-priest, sword-brandish, tabletop-players, thumb-down, thumb-up
+
+Skoll
+  fangs
+
+Faithtoken
+  ore

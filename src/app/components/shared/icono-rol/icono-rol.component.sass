@@ -1,0 +1,28 @@
+@use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/iconos' as *
+
+:host
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    flex-shrink: 0
+    vertical-align: middle
+    @include iconos-rol-grupos('.icono-rol')
+
+:host(.icono-rol--recuadro)
+    border-radius: 6px
+    background: var(--icono-rol-fondo)
+
+:host(.icono-rol--oscuro)
+    border-radius: 5px
+    background: $primary
+
+.icono-rol__dibujo
+    display: block
+    background-color: var(--icono-rol-color)
+    -webkit-mask-repeat: no-repeat
+    mask-repeat: no-repeat
+    -webkit-mask-position: center
+    mask-position: center
+    -webkit-mask-size: contain
+    mask-size: contain

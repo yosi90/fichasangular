@@ -1,0 +1,28 @@
+@use 'sass:color'
+@use 'sass:map'
+
+// Los colores de grupo de los iconos de rol (lienzo «Rol: las vistas que faltan», vista 1): los de 3.5 Companion
+// (`companion/…/ui/tema/Tema.kt`, `ColoresDeGrupo`). No se tocan los de `_variables.sass`: estos solo pintan iconos.
+$icono-personaje: #E04585
+$icono-magia: #8FA8FF
+$icono-incarnum: #4FC3D9
+$icono-criaturas: #66BB6A
+$icono-equipo: #E2B85C
+$icono-mundo: #C792EA
+$icono-neutro: #ADBDC4
+
+$iconos-grupos: (personaje: $icono-personaje, magia: $icono-magia, incarnum: $icono-incarnum, criaturas: $icono-criaturas, equipo: $icono-equipo, mundo: $icono-mundo, neutro: $icono-neutro)
+
+// El recuadro de un icono: el color del grupo al 16 % (el neutro, al 14 %), como en Companion.
+@function icono-fondo($grupo)
+    $color: map.get($iconos-grupos, $grupo)
+    @if $grupo == neutro
+        @return color.change($color, $alpha: .14)
+    @return color.change($color, $alpha: .16)
+
+// Las variables `--icono-rol-color` y `--icono-rol-fondo` de cada grupo, en las clases `<prefijo>--<grupo>`.
+@mixin iconos-rol-grupos($prefijo)
+    @each $grupo, $color in $iconos-grupos
+        &#{$prefijo}--#{$grupo}
+            --icono-rol-color: #{$color}
+            --icono-rol-fondo: #{icono-fondo($grupo)}

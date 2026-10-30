@@ -142,6 +142,7 @@ import { HelpRoadmapComponent } from './components/base/help-roadmap/help-roadma
 import { HelpLegalComponent } from './components/base/help-legal/help-legal.component';
 import { HelpUsageAboutComponent } from './components/base/help-usage-about/help-usage-about.component';
 import { MENU_FILTROS_COMPONENTES } from './components/shared/menu-filtros/menu-filtros.component';
+import { IconoRolComponent } from './components/shared/icono-rol/icono-rol.component';
 
 @NgModule({
     declarations: [
@@ -163,6 +164,7 @@ import { MENU_FILTROS_COMPONENTES } from './components/shared/menu-filtros/menu-
         HelpLegalComponent,
         HelpUsageAboutComponent,
         ...MENU_FILTROS_COMPONENTES,
+        IconoRolComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
         DetallesRazaComponent,
