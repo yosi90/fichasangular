@@ -9,6 +9,10 @@ import { Raza } from '../interfaces/raza';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { libroTienda } from './utils/libro-conjuros';
+import { normalizeEscuela } from './escuela-conjuros.service';
+import { normalizeTamano } from './tamano.service';
+import { conjurosDeAptitudes, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, textoRequisitoNivelConjuro } from './utils/aptitudes-clase';
+import { CONVOCADOR_DIVINO_API, ESCUELAS_API, GUARDAESPALDAS_API, MAGIINGENIERO_API, MAGO_RECORTADO_API, TAMANOS_API } from 'src/testing/clases-propias-api';
 
 // Reglas de la magia de la creación (auditoría de la matriz del 2026-10-26, fallos 3, 6, 7, 12, 13, 15, 17, 18, 30 y
 // 31): cada una con el caso del manual y desde los datos de la clase, la escuela, la disciplina o el dominio.
@@ -616,6 +620,144 @@ describe('Clases propias: lo que dicen los datos de la clase y de sus aptitudes'
             service.aplicarSiguienteNivelClase(normal);
             expect(service.PersonajeCreacion.Tamano_efectivo?.nombre).toBe('Mediano');
             expect(service.PersonajeCreacion.Presa).toBe(0);
+        });
+    });
+});
+
+// Las mismas reglas con las respuestas reales de la API de desarrollo (`src/testing/clases-propias-api.ts`): el
+// magiingeniero, el convocador divino y el guardaespaldas tal como los devuelve `GET /clases/<id>`.
+describe('Clases propias con las respuestas reales de la API', () => {
+    const magiingeniero = normalizeClase(MAGIINGENIERO_API);
+    const convocador = normalizeClase(CONVOCADOR_DIVINO_API);
+    const guardaespaldas = normalizeClase(GUARDAESPALDAS_API);
+    const escuelas = (ESCUELAS_API as any[]).map((raw) => normalizeEscuela(raw));
+    const tamanos = (TAMANOS_API as any[]).map((raw) => normalizeTamano(raw));
+    const MEDIANO = tamanos.find((tamano) => tamano.Nombre === 'Mediano')!;
+
+    describe('el magiingeniero: escuela fija y el 7.º ligado a una dote', () => {
+        it('la especialidad viene fija (la de la clase, homebrew) aunque la clase diga también que puede elegirla', () => {
+            const service = crearServicio({ Inteligencia: 16 });
+            const pendiente = service.getEspecialidadMagicaPendiente(magiingeniero, 1)!;
+            expect(pendiente.escuelaFija).toEqual(magiingeniero.Conjuros.Escuela_especialista!);
+            expect(pendiente.requierePsionico).toBeFalse();
+            const fija = service.escuelaFijaEnCatalogo(pendiente, escuelas)!;
+            expect([fija.Nombre, fija.Oficial, fija.Prohibidas_al_especializarse]).toEqual([pendiente.escuelaFija!.Nombre, false, 2]);
+        });
+
+        it('solo se eligen las prohibidas que pide la escuela, nunca una que no se puede prohibir', () => {
+            const idFija = magiingeniero.Conjuros.Escuela_especialista!.Id;
+            const prohibibles = escuelas.filter((escuela) => escuela.Id > 0 && escuela.Prohibible && escuela.Especializable && escuela.Id !== idFija);
+            const noProhibible = escuelas.find((escuela) => escuela.Id > 0 && escuela.Especializable && !escuela.Prohibible)!;
+            const aplicar = (ids: number[]) => {
+                const service = crearServicio({ Inteligencia: 16 });
+                const resultado = service.aplicarEspecialidadMagicaClase(magiingeniero, 1, {
+                    arcana: { especializar: false, escuelaEspecialistaId: null, escuelasProhibidasIds: ids },
+                }, escuelas, []);
+                return { resultado, pj: service.PersonajeCreacion };
+            };
+
+            const bien = aplicar([prohibibles[0].Id, prohibibles[1].Id]);
+            expect(bien.resultado.aplicado).toBeTrue();
+            expect(bien.pj.Escuela_especialista.Nombre).toBe(magiingeniero.Conjuros.Escuela_especialista!.Nombre);
+            expect(bien.pj.Escuela_especialista.Calificativo).toBe(magiingeniero.Conjuros.Escuela_especialista!.Nombre_esp);
+            expect(aplicar([prohibibles[0].Id, noProhibible.Id]).resultado.aplicado).toBeFalse();
+        });
+
+        it('sin la dote del implante no tiene el 7.º; con ella, sí', () => {
+            const requisito = magiingeniero.Conjuros.Niveles_con_requisito![0];
+            expect(requisito.Especial).toBeNull();
+            expect(Array.from(nivelesConjuroSinRequisito(magiingeniero, [], []))).toEqual([requisito.Nivel]);
+            expect(nivelesConjuroSinRequisito(magiingeniero, [], [requisito.Dote!.Id]).size).toBe(0);
+            expect(textoRequisitoNivelConjuro(magiingeniero, requisito.Nivel)).toBe(requisito.Dote!.Nombre);
+        });
+
+        it('su lista suma la de su clase de origen (el mago) a la suya', () => {
+            const mago = normalizeClase(MAGO_RECORTADO_API);
+            expect(magiingeniero.Conjuros.Clase_origen.Id).toBe(mago.Id);
+            const lista = listadoConjurosClase(magiingeniero, [], mago).map((ref) => ref.Id);
+            expect(lista).toEqual([...magiingeniero.Conjuros.Listado, ...mago.Conjuros.Listado].map((ref) => ref.Id));
+        });
+    });
+
+    describe('el convocador divino: sendas según el alineamiento y sus listas', () => {
+        function sendasPara(alineamiento: string): Array<[string, boolean]> {
+            const service = crearServicio({ Carisma: 16 });
+            service.setCatalogoClases([convocador]);
+            service.PersonajeCreacion.Alineamiento = alineamiento;
+            const grupo = service.obtenerOpcionalesSiguienteNivelClase(convocador)
+                .find((item) => item.opciones.some((opcion) => opcion.nombre.startsWith('Senda')))!;
+            return grupo.opciones.map((opcion) => [opcion.nombre, !opcion.bloqueada]);
+        }
+
+        it('cada alineamiento solo puede elegir su senda', () => {
+            expect(sendasPara('Legal bueno')).toEqual([['Senda del esandy', true], ['Senda del uzurna', false], ['Senda del asenda', false]]);
+            expect(sendasPara('Caotico maligno')).toEqual([['Senda del esandy', false], ['Senda del uzurna', true], ['Senda del asenda', false]]);
+            expect(sendasPara('Neutral autentico')).toEqual([['Senda del esandy', false], ['Senda del uzurna', false], ['Senda del asenda', true]]);
+        });
+
+        it('la senda elegida da su lista (y la del asenda, la de su elemento)', () => {
+            const especiales = convocador.Desglose_niveles[0].Especiales.map((item) => item.Especial as Record<string, any>);
+            const id = (nombre: string) => Number(especiales.find((especial) => especial['Nombre'] === nombre)?.['Id']);
+            const porSenda = (aptitud: { id: number; idExtra?: number; }) => conjurosDeAptitudes(convocador, [aptitud]).length;
+            const delListado = (filtro: (ref: any) => boolean) => convocador.Conjuros.Listado_por_especial!.filter(filtro).length;
+
+            expect(convocador.Conjuros.Listado).toEqual([]);
+            expect(porSenda({ id: id('Senda del esandy') })).toBe(delListado((ref) => ref.Especial.Id === id('Senda del esandy')));
+            const comunesAsenda = delListado((ref) => ref.Especial.Id === id('Senda del asenda') && ref.Extra === null);
+            const elemento = convocador.Conjuros.Listado_por_especial!.find((ref) => ref.Extra !== null)!.Extra!.Id;
+            expect(porSenda({ id: id('Senda del asenda') })).toBe(comunesAsenda);
+            expect(porSenda({ id: id('Senda del asenda'), idExtra: elemento }))
+                .toBe(comunesAsenda + delListado((ref) => ref.Extra?.Id === elemento));
+        });
+
+        it('al aplicar el nivel con la senda, el personaje la tiene y su lista cuenta como de la clase', () => {
+            const service = crearServicio({ Carisma: 16 });
+            service.setCatalogoClases([convocador]);
+            service.PersonajeCreacion.Alineamiento = 'Legal bueno';
+            const grupo = service.obtenerOpcionalesSiguienteNivelClase(convocador)
+                .find((item) => item.opciones.some((opcion) => opcion.nombre === 'Senda del esandy'))!;
+            const clave = grupo.opciones.find((opcion) => opcion.nombre === 'Senda del esandy')!.clave;
+            const otros = Object.fromEntries(service.obtenerOpcionalesSiguienteNivelClase(convocador)
+                .filter((item) => item.grupo !== grupo.grupo)
+                .map((item) => [item.grupo, item.opciones.find((opcion) => !opcion.bloqueada)!.clave]));
+            expect(service.aplicarSiguienteNivelClase(convocador, { ...otros, [grupo.grupo]: clave }).aplicado).toBeTrue();
+
+            const aptitudes = (service as any).aptitudesDelPersonaje();
+            expect(service.PersonajeCreacion.Claseas.map((especial) => especial.Nombre)).toContain('Senda del esandy');
+            expect(listadoConjurosClase(convocador, aptitudes).length).toBe(conjurosDeAptitudes(convocador, aptitudes).length);
+            expect(listadoConjurosClase(convocador, aptitudes).length).toBeGreaterThan(0);
+        });
+    });
+
+    describe('el guardaespaldas: Tamaño imponente', () => {
+        const entrada = guardaespaldas.Desglose_niveles
+            .flatMap((nivelClase) => nivelClase.Especiales)
+            .find((item) => pasosTamanoEspecialNivel(item) !== 0)!;
+
+        it('la aptitud trae +1 de tamaño y Fue +2, Des −2 en sus columnas', () => {
+            expect(pasosTamanoEspecialNivel(entrada)).toBe(1);
+            expect(modificadoresCaracteristicaEspecialNivel(entrada)).toEqual(jasmine.objectContaining({ Fuerza: 2, Destreza: -2 }));
+        });
+
+        it('un Mediano que la tiene pasa a Grande: CA −1, presa +4, espacio y alcance de 10 y Fue +2, Des −2', () => {
+            const service = new NuevoPersonajeService();
+            service.setCatalogoTiposCriatura([TIPO]);
+            service.seleccionarRaza({ ...crearRaza(), Tamano: MEDIANO } as Raza);
+            service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 10, Inteligencia: 10, Sabiduria: 10, Carisma: 10 });
+            service.setCatalogoTamanos(tamanos);
+            // Una clase de prueba que da en su nivel 1 el especial real del guardaespaldas (en la suya llega en el 8.º).
+            const conAptitud = clase({ Id: 81, Nombre: 'Clase de prueba', Desglose_niveles: [nivel(1, { Especiales: [{ ...entrada, Nivel: 1, Opcional: 0 }] })] });
+            service.setCatalogoClases([conAptitud]);
+            const caAntes = service.PersonajeCreacion.Ca;
+            expect(service.aplicarSiguienteNivelClase(conAptitud).aplicado).toBeTrue();
+
+            const pj = service.PersonajeCreacion;
+            expect(pj.Tamano_efectivo).toEqual(jasmine.objectContaining({ nombre: 'Grande', pasos: 1, espacio: 10, alcance: 10 }));
+            expect([pj.Espacio, pj.Alcance]).toEqual([10, 10]);
+            expect([pj.Fuerza, pj.Destreza]).toEqual([16, 10]);
+            // −1 por el tamaño y −1 por la Destreza que pierde (12 → 10).
+            expect(pj.Ca).toBe(caAntes - 2);
+            expect(pj.Presa).toBe(4 + 3);
         });
     });
 });

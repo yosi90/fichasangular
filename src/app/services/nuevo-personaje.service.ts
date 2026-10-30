@@ -6600,7 +6600,7 @@ export class NuevoPersonajeService {
     private requierePrimerEscalonLanzadorEnNivelUno(clase: Clase | null | undefined): boolean {
         if (!this.tieneLanzamientoPropio(clase))
             return false;
-        return listadoConjurosClase(clase, this.aptitudesDelPersonaje()).some((ref) => Math.max(0, toNumber(ref?.Nivel)) === 0);
+        return listadoConjurosClase(clase, this.aptitudesDelPersonaje(), this.claseOrigenDe(clase)).some((ref) => Math.max(0, toNumber(ref?.Nivel)) === 0);
     }
 
     private obtenerNivelesClaseQueAumentanNivelLanzador(clase: Clase | null | undefined): number[] {
@@ -7684,6 +7684,14 @@ export class NuevoPersonajeService {
             .filter((aptitud) => aptitud.id > 0);
     }
 
+    /** La clase de la que toma la lista de conjuros (`Conjuros.Clase_origen`), del catálogo; `null` si no toma ninguna. */
+    private claseOrigenDe(clase: Clase | null | undefined): Clase | null {
+        const id = toNumber(clase?.Conjuros?.Clase_origen?.Id);
+        if (id <= 0 || id === toNumber(clase?.Id))
+            return null;
+        return this.catalogoClases.find((item) => toNumber(item?.Id) === id) ?? null;
+    }
+
     /** Los niveles de conjuro de la clase que piden una aptitud o una dote que el personaje no tiene. */
     private nivelesConjuroBloqueadosClase(clase: Clase | null | undefined): Set<number> {
         return nivelesConjuroSinRequisito(
@@ -7860,7 +7868,7 @@ export class NuevoPersonajeService {
             resultado.push(conjuro);
         });
 
-        listadoConjurosClase(claseObjetivo, this.aptitudesDelPersonaje()).forEach((ref) => {
+        listadoConjurosClase(claseObjetivo, this.aptitudesDelPersonaje(), this.claseOrigenDe(claseObjetivo)).forEach((ref) => {
             const id = toNumber(ref?.Id);
             const nivel = toNumber(ref?.Nivel);
             if (id <= 0)
@@ -7894,13 +7902,17 @@ export class NuevoPersonajeService {
             : (conjuro?.Nivel_clase && typeof conjuro.Nivel_clase === 'object'
                 ? Object.values(conjuro.Nivel_clase as any)
                 : []);
-        const nivelClase = nivelesClase
+        const niveles = nivelesClase
             .map((nivel) => ({
                 id: toNumber((nivel as Record<string, any>)?.['Id_clase'] ?? (nivel as Record<string, any>)?.['id_clase']),
                 nombre: normalizarTexto((nivel as Record<string, any>)?.['Clase'] ?? (nivel as Record<string, any>)?.['clase'] ?? ''),
                 nivel: toNumber((nivel as Record<string, any>)?.['Nivel'] ?? (nivel as Record<string, any>)?.['nivel']),
-            }))
-            .find((item) => (idClase > 0 && item.id === idClase) || (nombreClaseNorm.length > 0 && item.nombre === nombreClaseNorm));
+            }));
+        // La lista de la clase de origen (`Conjuros.Clase_origen`: el magiingeniero toma la del mago) cuenta como suya.
+        const idOrigen = toNumber(this.claseOrigenDe(claseObjetivo)?.Id);
+        const nivelClase = niveles
+            .find((item) => (idClase > 0 && item.id === idClase) || (nombreClaseNorm.length > 0 && item.nombre === nombreClaseNorm))
+            ?? (idOrigen > 0 ? niveles.find((item) => item.id === idOrigen) : undefined);
         if (nivelClase && nivelClase.nivel >= 0)
             return nivelClase.nivel;
 
@@ -7931,7 +7943,7 @@ export class NuevoPersonajeService {
                 return compatibles[0].nivel;
         }
 
-        const refListado = listadoConjurosClase(claseObjetivo, this.aptitudesDelPersonaje())
+        const refListado = listadoConjurosClase(claseObjetivo, this.aptitudesDelPersonaje(), this.claseOrigenDe(claseObjetivo))
             .find((ref) => toNumber(ref?.Id) === toNumber(conjuro?.Id));
         if (refListado)
             return toNumber(refListado?.Nivel);

@@ -8,7 +8,7 @@ import { toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
 import { escucharRtdb, listaRtdb } from './catalogo-api';
 import { oficialDeEscuela } from './utils/conjuro-mapper';
 
-function normalizeEscuela(raw: any, fallbackId: number = 0): EscuelaConjuros {
+export function normalizeEscuela(raw: any, fallbackId: number = 0): EscuelaConjuros {
     return {
         Id: toInt(raw?.Id, fallbackId),
         Nombre: toText(raw?.Nombre).trim(),

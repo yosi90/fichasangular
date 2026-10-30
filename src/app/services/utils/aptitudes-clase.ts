@@ -99,11 +99,24 @@ export function conjurosDeAptitudes(clase: Clase | null | undefined, aptitudes: 
         .map(({ Id, Nombre, Nivel, Espontaneo }) => ({ Id, Nombre, Nivel, Espontaneo }));
 }
 
-/** La lista de conjuros de la clase para el personaje: la suya (`Listado`) más la de sus aptitudes, sin repetir conjuros. */
-export function listadoConjurosClase(clase: Clase | null | undefined, aptitudes: AptitudDelPersonaje[]): ClaseConjuroRef[] {
-    const propios = toArray(clase?.Conjuros?.Listado);
-    const ids = new Set(propios.map((ref) => toInt(ref?.Id)));
-    return [...propios, ...conjurosDeAptitudes(clase, aptitudes).filter((ref) => !ids.has(toInt(ref.Id)))];
+/**
+ * La lista de conjuros de la clase para el personaje, sin repetir conjuros y por este orden (el de la API al comprar en
+ * la tienda del libro): la suya (`Listado`), la de sus aptitudes y la de su clase de origen (`Clase_origen`), si la da.
+ */
+export function listadoConjurosClase(
+    clase: Clase | null | undefined,
+    aptitudes: AptitudDelPersonaje[],
+    claseOrigen: Clase | null = null
+): ClaseConjuroRef[] {
+    const ids = new Set<number>();
+    return [...toArray(clase?.Conjuros?.Listado), ...conjurosDeAptitudes(clase, aptitudes), ...toArray(claseOrigen?.Conjuros?.Listado)]
+        .filter((ref) => {
+            const id = toInt(ref?.Id);
+            if (ids.has(id))
+                return false;
+            ids.add(id);
+            return true;
+        });
 }
 
 /**
