@@ -2171,6 +2171,50 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(totalHabilidad(piruetas)).toBe(3);
     });
 
+    it('el tamaño de la raza modifica Esconderse en el borrador (MJ: Pequeño +4, Grande −4) y no se guarda', () => {
+        const habilidadCatalogo = (id: number, nombre: string, modificadorTamano: boolean) => ({
+            Id_habilidad: id, Nombre: nombre, Id_caracteristica: 2, Caracteristica: 'Destreza', Descripcion: '', Soporta_extra: false,
+            Entrenada: false, Extras: [], Penalizador_armadura: 1, Modificador_tamano: modificadorTamano, Sinergias: [],
+        });
+        service.setCatalogoHabilidades([habilidadCatalogo(16, 'Esconderse', true), habilidadCatalogo(26, 'Moverse sigilosamente', false)]);
+        service.PersonajeCreacion.Habilidades = [
+            { Id: 16, Nombre: 'Esconderse', Rangos: 1, Rangos_varios: 0, Mod_car: 2, Custom: false, Extra: '' } as any,
+            { Id: 26, Nombre: 'Moverse sigilosamente', Rangos: 1, Rangos_varios: 0, Mod_car: 2, Custom: false, Extra: '' } as any,
+        ];
+        const conTamano = (tamano: any) => {
+            service.PersonajeCreacion.Raza = { ...service.PersonajeCreacion.Raza, Tamano: tamano } as any;
+            service.recalcularSinergiasHabilidades();
+            return service.PersonajeCreacion.Habilidades;
+        };
+
+        const [esconderse, sigilo] = conTamano({ Id: 4, Nombre: 'Pequeño', Modificador: 1, Modificador_presa: -4, Modificador_esconderse: 4 });
+        expect(esconderse.Bonos).toEqual([{ tipo: 'tamano', origen: 'Tamaño (Pequeño)', valor: 4 }]);
+        expect(totalHabilidad(esconderse)).toBe(1 + 2 + 4);
+        expect(sigilo.Bonos).toEqual([]);
+        expect(totalHabilidad(sigilo)).toBe(1 + 2);
+        expect(esconderse.Rangos_varios).toBe(0);
+
+        expect(totalHabilidad(conTamano({ Id: 6, Nombre: 'Grande', Modificador: -1, Modificador_presa: 4, Modificador_esconderse: -4 })[0]))
+            .toBe(1 + 2 - 4);
+        // Un Mediano o una caché de razas aún sin el campo: sin parte de tamaño.
+        expect(conTamano({ Id: 5, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0, Modificador_esconderse: 0 })[0].Bonos).toEqual([]);
+        expect(conTamano({ Id: 4, Nombre: 'Pequeño', Modificador: 1, Modificador_presa: -4 })[0].Bonos).toEqual([]);
+    });
+
+    it('al elegir una raza Pequeña, Esconderse suma su tamaño sin esperar al reparto de habilidades', () => {
+        service.setCatalogoHabilidades([{
+            Id_habilidad: 16, Nombre: 'Esconderse', Id_caracteristica: 2, Caracteristica: 'Destreza', Descripcion: '', Soporta_extra: false,
+            Entrenada: false, Extras: [], Penalizador_armadura: 1, Modificador_tamano: true, Sinergias: [],
+        }]);
+        const raza = crearRazaBase(crearTipoBase());
+        raza.Tamano = { Id: 4, Nombre: 'Pequeño', Modificador: 1, Modificador_presa: -4, Modificador_esconderse: 4 };
+
+        service.seleccionarRaza(raza);
+
+        const esconderse = service.PersonajeCreacion.Habilidades.find((habilidad) => habilidad.Id === 16);
+        expect(esconderse?.Bonos).toEqual([{ tipo: 'tamano', origen: 'Tamaño (Pequeño)', valor: 4 }]);
+    });
+
     it('los prerrequisitos de DG y de tamaño cuentan los DG y los pasos de tamaño de las plantillas', () => {
         const tipo = crearTipoBase();
         const raza = crearRazaBase(tipo);

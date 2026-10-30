@@ -344,7 +344,10 @@ export interface Personaje extends PersonajeSimple {
             valor: number;
             origen: string;
         }[];
-        /** Sinergias y penalizador de armadura que suman (en la ficha, las partes de la API; en la creación, las sinergias). */
+        /**
+         * El tamaño (Esconderse), las sinergias y el penalizador de armadura que suman (en la ficha, las partes de la API; en
+         * la creación, el tamaño y las sinergias).
+         */
         Bonos?: PersonajeParteDto[];
         /** Sinergias que solo cuentan en unas pruebas: se enseñan y no se suman. */
         Bonos_condicionales?: PersonajeParteDto[];

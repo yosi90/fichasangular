@@ -1124,7 +1124,8 @@ export class PersonajeService {
                 Custom: toBoolean(habilidad?.custom),
                 Total: toNumber(habilidad?.total),
                 Extra_comodin: habilidad?.extraComodin ?? null,
-                Bonos: (normalizarTotal(habilidad)?.desglose ?? []).filter((parte) => parte.tipo === 'sinergia' || parte.tipo === 'armadura'),
+                Bonos: (normalizarTotal(habilidad)?.desglose ?? [])
+                    .filter((parte) => parte.tipo === 'tamano' || parte.tipo === 'sinergia' || parte.tipo === 'armadura'),
                 Bonos_condicionales: normalizarTotal(habilidad)?.condicionales ?? [],
             })),
             Dotes: toDoteLegacyArray(dotesContextuales),

@@ -25,6 +25,19 @@ export function esLaHabilidadDeLaSinergia(id: number, idExtra: number, reglaId: 
     return toInt(id) === toInt(reglaId);
 }
 
+/**
+ * La parte del tamaño de una habilidad que lo suma (`Modificador_tamano` de `GET /habilidades`: Esconderse), con el
+ * `Modificador_esconderse` del tamaño de la raza (Manual del jugador, Esconderse: Pequeño +4, Grande −4…), como la ficha
+ * de la API (`parte_tamano`): ninguna si vale 0.
+ */
+export function bonoTamano(tamano: { Nombre?: string | null; Modificador_esconderse?: number | null; } | null | undefined): PersonajeParteDto[] {
+    const valor = toInt(tamano?.Modificador_esconderse);
+    if (valor === 0)
+        return [];
+    const nombre = toNullableText(tamano?.Nombre);
+    return [{ tipo: 'tamano', origen: nombre !== null ? `Tamaño (${nombre})` : 'Tamaño', valor }];
+}
+
 /** Las partes de sinergia de una habilidad: las condicionales llevan su `condicion` (no se suman). */
 export function bonosSinergia(
     destino: { id: number; idExtra: number; },

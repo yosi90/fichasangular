@@ -57,6 +57,7 @@ export function normalizeHabilidadBasica(raw: any): HabilidadBasicaDetalle {
         Entrenada: toBoolean(raw?.Entrenada),
         Extras: toArray(raw?.Extras).map(normalizeExtra),
         Penalizador_armadura: toNumber(raw?.Penalizador_armadura),
+        Modificador_tamano: toBoolean(raw?.Modificador_tamano),
         Sinergias: toArray(raw?.Sinergias).map(normalizeSinergia),
     };
 }
