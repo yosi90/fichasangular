@@ -1,5 +1,6 @@
 @use '../../../../assets/css/variables' as *
 @use '../../detalles/ficha/ficha-tonos' as *
+@use '../../../../assets/css/preformas/inserciones' as inserciones
 
 // El marco común de las inserciones y modificaciones de catálogo (lienzo «Rol: las vistas que faltan», vista 7). Lo
 // carga `InsercionMarcoComponent` sin encapsular, así que todas las clases llevan el prefijo `insercion-` y valen en lo
@@ -192,15 +193,10 @@ app-insercion-marco
         display: none !important
 
 .insercion-tarjeta
+    @include inserciones.insercion-tarjeta
     display: flex
     flex-direction: column
     gap: 12px
-    min-width: 0
-    padding: 14px 18px
-    background: $ficha-tarjeta
-    border-radius: $ficha-radio
-    box-shadow: $ficha-sombra
-    color: $ficha-texto
 
 .insercion-tarjeta__cabeza
     display: flex
