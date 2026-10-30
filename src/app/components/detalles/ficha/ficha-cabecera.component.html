@@ -1,4 +1,5 @@
-<header class="ficha-cabecera" [class.ficha-cabecera--compacta]="compacta">
+<header class="ficha-cabecera" [class.ficha-cabecera--compacta]="compacta" [class.ficha-cabecera--con-icono]="!!icono">
+    <app-icono-rol class="ficha-cabecera__icono" *ngIf="icono" [tipo]="icono" [tamano]="compacta ? 28 : 38" [recuadro]="true"></app-icono-rol>
     <div class="ficha-cabecera__identidad">
         <span class="ficha-cabecera__tipo" *ngIf="tipo">{{tipo}}</span>
         <h1 class="ficha-cabecera__nombre">{{nombre}}</h1>

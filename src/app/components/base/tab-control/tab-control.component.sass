@@ -45,7 +45,30 @@
                 padding-left: 15px
 
         ::ng-deep .mdc-tab__text-label
-            font-size: 20px
+            gap: 8px
+            font-size: 15px
+            font-weight: 500
+
+// La etiqueta de cada pestaña (lienzo, vista 3): el icono de su catálogo (18 px, sin recuadro), el nombre con elipsis a
+// partir de 200 px (el entero, en el tooltip) y la × (36 px; 44 en el móvil).
+.pestana-icono
+    flex-shrink: 0
+
+mat-icon.pestana-icono
+    width: 18px
+    height: 18px
+    font-size: 18px
+
+.pestana-etiqueta
+    display: inline-block
+    max-width: 200px
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+.pestana-cerrar
+    flex-shrink: 0
+    margin-right: -8px
 
 .mh-90
     max-height: 88%

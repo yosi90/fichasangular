@@ -64,6 +64,16 @@ app-ficha-detalle
         gap: 6px
         min-width: 0
 
+    // Con icono: el recuadro a la izquierda, centrado en vertical, y la identidad ocupa lo que queda.
+    .ficha-cabecera--con-icono
+        align-items: center
+
+        .ficha-cabecera__identidad
+            flex: 1 1 auto
+
+    .ficha-cabecera__icono
+        margin-right: -6px
+
     .ficha-cabecera__tipo
         @include ficha-versalitas
 
@@ -523,6 +533,18 @@ app-ficha-detalle
             flex-direction: column
             align-items: flex-start
             padding: 16px 18px
+
+        // Estrecha: el icono, al lado del nombre (no encima); las referencias, debajo de los dos.
+        .ficha-cabecera--con-icono
+            display: grid
+            grid-template-columns: auto minmax(0, 1fr)
+            column-gap: 14px
+
+            .ficha-cabecera__icono
+                align-self: center
+
+            .ficha-cabecera__referencias
+                grid-column: 1 / -1
 
         .ficha-cabecera__nombre
             font-size: 26px

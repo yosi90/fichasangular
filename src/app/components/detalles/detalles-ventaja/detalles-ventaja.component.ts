@@ -1,4 +1,5 @@
 import { Component, Input } from '@angular/core';
+import { ICONOS_ROL, TipoRol, tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
 import { DatoFicha } from 'src/app/components/detalles/ficha';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { ReferenciaCorta, VentajaDetalle } from 'src/app/interfaces/ventaja';
@@ -21,6 +22,8 @@ export class DetallesVentajaComponent {
     // del propietario (decisión del 2026-10-25), así que la cabecera siempre dice Homebrew.
     /** «Ventaja» o «Desventaja», según el coste. */
     tipoCabecera = '';
+    /** El icono de la cabecera: el de su catálogo y variante (`ICONOS_ROL`). */
+    iconoCabecera: TipoRol = 'ventaja';
     datos: DatoFicha[] = [];
     /** Las características y salvaciones a las que afecta. */
     afectaA: string[] = [];
@@ -31,7 +34,8 @@ export class DetallesVentajaComponent {
         this.ventajaData = value;
         const coste = Number(value?.Coste ?? 0);
         const mejora = Number(value?.Mejora ?? 0);
-        this.tipoCabecera = coste > 0 ? 'Desventaja' : 'Ventaja';
+        this.iconoCabecera = tipoRolDeVentaja(value);
+        this.tipoCabecera = ICONOS_ROL[this.iconoCabecera].etiqueta;
         this.datos = [
             // Un coste 0 se enseña sin signo («0»); el resto, con él.
             { etiqueta: 'Coste', valor: value ? (coste === 0 ? 0 : textoConSigno(coste)) : null },

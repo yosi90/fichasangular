@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { TipoRol, tipoRolDeEquipo } from 'src/app/services/utils/iconos-rol';
 import { DatoFicha, EtiquetaFicha, unirTipo } from 'src/app/components/detalles/ficha';
 import { descripcionEquipoVisible } from 'src/app/components/shared/descripcion-equipo/descripcion-equipo.component';
 import {
@@ -101,6 +102,8 @@ export class DetallesEquipoComponent {
 
     /** «Objeto maravilloso · Mágico», «Material especial»… */
     tipoCabecera = '';
+    /** El icono de la cabecera: el de su catálogo y variante (`ICONOS_ROL`). */
+    iconoCabecera: TipoRol = 'objeto';
     /** Lo que es la entrada además de sus datos: maldito, inteligente, reliquia, plantilla. */
     etiquetas: EtiquetaFicha[] = [];
     datos: DatoFicha[] = [];
@@ -158,6 +161,7 @@ export class DetallesEquipoComponent {
         this.conjunto = entrada?.tipo === 'conjunto' ? entrada.item : null;
 
         this.tipoCabecera = this.construirTipo();
+        this.iconoCabecera = entrada ? tipoRolDeEquipo(entrada.tipo) : 'objeto';
         this.etiquetas = this.construirEtiquetas();
         this.datos = this.construirDatos();
         this.conDescripcion = descripcionEquipoVisible(entrada?.item);

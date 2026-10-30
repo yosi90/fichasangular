@@ -1,10 +1,11 @@
 import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { ManualReferencia } from 'src/app/interfaces/manual';
+import { TipoRol } from 'src/app/services/utils/iconos-rol';
 import { textoVisible, tieneNumeroVisible } from 'src/app/services/utils/texto-visible';
 import { EtiquetaFicha, esTextoCorto, etiquetasVisibles, separarManualTexto } from './ficha';
 
 /**
- * La cabecera de la ficha: el tipo en versalitas, el nombre, una línea opcional en cursiva y, a la derecha, el manual
+ * La cabecera de la ficha: el icono de su catálogo (si se da), el tipo en versalitas, el nombre, una línea opcional en cursiva y, a la derecha, el manual
  * con su página y las etiquetas (Oficial u Homebrew y las propias del tipo). Lo que se proyecte (botones, acciones)
  * va a la derecha, bajo las etiquetas; lo que lleve el atributo `fichaCabeceraPie` («Creado por…»), bajo el nombre.
  */
@@ -24,6 +25,8 @@ export class FichaCabeceraComponent implements OnChanges {
     /** `true` enseña «Oficial»; `false`, «Homebrew» en ámbar; sin dar, nada. */
     @Input() oficial: boolean | null | undefined = undefined;
     @Input() etiquetas: (string | EtiquetaFicha)[] | null | undefined = [];
+    /** El icono de su catálogo (`ICONOS_ROL`), en su recuadro a la izquierda del tipo y el nombre (56/38; compacta, 40/28). Sin él, la cabecera queda como antes. */
+    @Input() icono: TipoRol | null = null;
     /** Más baja, en una fila: el nombre con el tipo al lado y las etiquetas y acciones a la derecha. */
     @Input() compacta = false;
     /** Pulsar el manual abre su detalle. Si nadie escucha, el manual es solo texto. */

@@ -58,6 +58,7 @@ import { EquipoService } from 'src/app/services/equipo.service';
 import { claveEntradaEquipo, claveEquipo, etiquetaEntradaEquipo, tipoDeListaEquipo } from '../../shared/listado-equipo/listas-equipo';
 import { ChakraDetalle, Fusion } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
+import { tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
 
 interface ListadoTabAbierto {
     key: string;
@@ -89,6 +90,17 @@ interface EdicionClaseTabAbierto {
     nombre: string;
 }
 
+/** La pestaña de una inserción: «Nueva raza», «Nuevo conjuro»… (por el listado con el que se abre). */
+const ETIQUETA_INSERCION: Readonly<Record<string, string>> = {
+    'razas': 'Nueva raza',
+    'clases': 'Nueva clase',
+    'dotes': 'Nueva dote',
+    'conjuros': 'Nuevo conjuro',
+    'raciales': 'Nuevo racial',
+    'idiomas': 'Nuevo idioma',
+    'especiales': 'Nuevo especial',
+};
+
 @Component({
     selector: 'app-tab-control',
     templateUrl: './tab-control.component.html',
@@ -106,6 +118,13 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public privateProfileOpenRequest: UserPrivateProfileOpenRequest | null = null;
     public socialTabOpen = false;
     public socialOpenRequest: SocialHubOpenRequest | null = null;
+    // El icono de cada pestaña (lienzo «Rol: las vistas que faltan», vista 3): el de su catálogo, el mismo en el listado,
+    // el detalle, la inserción y la edición.
+    readonly tipoRolDeListado = tipoRolDeListado;
+    readonly tipoRolDeClase = tipoRolDeClase;
+    readonly tipoRolDeConjuro = tipoRolDeConjuro;
+    readonly tipoRolDeVentaja = tipoRolDeVentaja;
+    readonly tipoRolDeEquipo = tipoRolDeEquipo;
     public roadmapTabOpen = false;
     public legalPrivacyTabOpen = false;
     public usageAboutTabOpen = false;
@@ -1092,26 +1111,26 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const tipo = `${tab?.tipo ?? ''}`.trim();
         const operacion = normalizarTexto(tab?.operacion ?? '');
         if (operacion === 'insertar')
-            return `Insertar ${tipo}`;
+            return ETIQUETA_INSERCION[tipo] ?? `Insertar ${tipo}`;
         if (operacion === 'modificar')
             return `Modificar ${tipo}`;
         return `Lista de ${tipo}`;
     }
 
     getEtiquetaEdicionRacialTab(tab: EdicionRacialTabAbierto): string {
-        return `Modificar racial: ${tab.nombre}`;
+        return `Editar racial: ${tab.nombre}`;
     }
 
     getEtiquetaEdicionIdiomaTab(tab: EdicionIdiomaTabAbierto): string {
-        return `Modificar idioma: ${tab.nombre}`;
+        return `Editar idioma: ${tab.nombre}`;
     }
 
     getEtiquetaEdicionEspecialTab(tab: EdicionEspecialTabAbierto): string {
-        return `Modificar especial: ${tab.nombre}`;
+        return `Editar especial: ${tab.nombre}`;
     }
 
     getEtiquetaEdicionClaseTab(tab: EdicionClaseTabAbierto): string {
-        return `Modificar clase: ${tab.nombre}`;
+        return `Editar clase: ${tab.nombre}`;
     }
 
     private getPersonajeTabKey(personaje: Personaje): string {
@@ -1254,7 +1273,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     private esDesventaja(ventaja: VentajaDetalle): boolean {
-        return Number(ventaja?.Coste) > 0;
+        return tipoRolDeVentaja(ventaja) === 'desventaja';
     }
 
     async abrirDetallesClase(clase: Clase) {
@@ -2382,6 +2401,12 @@ export class TabControlComponent implements OnInit, OnDestroy {
     getEtiquetaDote(doteCtx: DoteContextual): string {
         const extra = doteCtx.Contexto.Extra && doteCtx.Contexto.Extra !== 'No aplica' ? `: ${doteCtx.Contexto.Extra}` : '';
         return `${doteCtx.Dote.Nombre} (Dote - ${doteCtx.Contexto.Entidad}${extra})`;
+    }
+
+    /** Lo que se ve en la pestaña de una dote: su nombre y, si la tiene, la elección («Soltura con un arma: Espada larga»). */
+    getNombreDoteTab(doteCtx: DoteContextual): string {
+        const extra = doteCtx.Contexto.Extra && doteCtx.Contexto.Extra !== 'No aplica' ? `: ${doteCtx.Contexto.Extra}` : '';
+        return `${doteCtx.Dote.Nombre}${extra}`;
     }
 
     getClaveDoteTab(doteCtx: DoteContextual): string {

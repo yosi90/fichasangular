@@ -612,4 +612,26 @@ describe('TabControlComponent navegación por origen', () => {
         expect((component as any).activeTabKey).toBe('clase:17');
     }));
 
+    it('las pestañas de inserción dicen «Nueva …» y las de edición «Editar …»', () => {
+        const component = crearComponente();
+        expect(component.getEtiquetaListadoTab({ key: 'listado:razas:insertar', tipo: 'razas', operacion: 'insertar' } as any)).toBe('Nueva raza');
+        expect(component.getEtiquetaListadoTab({ key: 'listado:conjuros:insertar', tipo: 'conjuros', operacion: 'insertar' } as any)).toBe('Nuevo conjuro');
+        expect(component.getEtiquetaListadoTab({ key: 'listado:razas:detalles', tipo: 'razas', operacion: 'detalles' } as any)).toBe('Lista de razas');
+        expect(component.getEtiquetaEdicionRacialTab({ key: 'r', idRacial: 1, nombre: 'Visión en la oscuridad' })).toBe('Editar racial: Visión en la oscuridad');
+    });
+
+    it('la pestaña de una dote enseña su nombre con la elección; el tooltip, también de dónde viene', () => {
+        const component = crearComponente();
+        const dote = { Dote: { Id: 3, Nombre: 'Soltura con un arma' }, Contexto: { Entidad: 'personaje', Id_extra: 4, Extra: 'Espada larga' } } as any;
+        expect(component.getNombreDoteTab(dote)).toBe('Soltura con un arma: Espada larga');
+        expect(component.getEtiquetaDote(dote)).toBe('Soltura con un arma (Dote - personaje: Espada larga)');
+    });
+
+    it('cada pestaña lleva el icono de su catálogo y variante', () => {
+        const component = crearComponente();
+        expect(component.tipoRolDeListado('fusiones del alma')).toBe('fusion');
+        expect(component.tipoRolDeClase({ Prestigio: true } as any)).toBe('clase-prestigio');
+        expect(component.tipoRolDeVentaja({ Coste: 1 } as any)).toBe('desventaja');
+        expect(component.tipoRolDeEquipo('conjunto')).toBe('conjunto');
+    });
 });

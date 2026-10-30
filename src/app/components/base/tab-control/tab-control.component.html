@@ -1,8 +1,8 @@
 <mat-tab-group #TabControl mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
     <mat-tab label="Personajes">
-        <ng-template mat-tab-label="">
-            <mat-icon class="tw-me-2">people_alt</mat-icon>
-            Personajes
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'personaje'"></app-icono-rol>
+            <span class="pestana-etiqueta">Personajes</span>
         </ng-template>
         <app-lista-personajes
             (NewDetallesTab)="abrirDetallesPersonaje($event)"
@@ -12,49 +12,49 @@
     </mat-tab>
     <mat-tab label="Mi perfil" *ngIf="usrLoggedIn && privateProfileTabOpen">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">account_circle</mat-icon>
-            Mi perfil
-            <button (click)="quitarPerfilPrivado()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <mat-icon class="pestana-icono">account_circle</mat-icon>
+            <span class="pestana-etiqueta">Mi perfil</span>
+            <button (click)="quitarPerfilPrivado()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-user-profile [openRequest]="privateProfileOpenRequest"></app-user-profile>
     </mat-tab>
     <mat-tab label="Social" *ngIf="socialTabOpen">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">hub</mat-icon>
-            Social
-            <button (click)="quitarSocial()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <mat-icon class="pestana-icono">hub</mat-icon>
+            <span class="pestana-etiqueta">Social</span>
+            <button (click)="quitarSocial()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-social-hub [openRequest]="socialOpenRequest"></app-social-hub>
     </mat-tab>
     <mat-tab label="Roadmap" *ngIf="roadmapTabOpen">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">map</mat-icon>
-            Roadmap
-            <button (click)="quitarRoadmap()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <mat-icon class="pestana-icono">map</mat-icon>
+            <span class="pestana-etiqueta">Roadmap</span>
+            <button (click)="quitarRoadmap()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-help-roadmap></app-help-roadmap>
     </mat-tab>
     <mat-tab label="Legal y privacidad" *ngIf="legalPrivacyTabOpen">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">gavel</mat-icon>
-            Legal y privacidad
-            <button (click)="quitarLegalPrivacidad()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <mat-icon class="pestana-icono">gavel</mat-icon>
+            <span class="pestana-etiqueta">Legal y privacidad</span>
+            <button (click)="quitarLegalPrivacidad()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-help-legal></app-help-legal>
     </mat-tab>
     <mat-tab label="Uso y acerca" *ngIf="usageAboutTabOpen">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">help_center</mat-icon>
-            Uso y acerca
-            <button (click)="quitarUsoYAcerca()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <mat-icon class="pestana-icono">help_center</mat-icon>
+            <span class="pestana-etiqueta">Uso y acerca</span>
+            <button (click)="quitarUsoYAcerca()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-help-usage-about></app-help-usage-about>
     </mat-tab>
     <mat-tab *ngFor="let pj of detallesPersonajeAbiertos; let index = index" [label]="pj.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">person_search</mat-icon>
-            {{pj.Nombre}}
-            <button (click)="quitarDetallesPersonaje(pj)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'personaje'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="pj.Nombre" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{pj.Nombre}}</span>
+            <button (click)="quitarDetallesPersonaje(pj)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-personaje 
             [pj]="detallesPersonajeAbiertos[index]" 
@@ -79,9 +79,9 @@
     </mat-tab>
     <mat-tab *ngFor="let publicProfileTab of publicProfileTabs" [label]="getEtiquetaPerfilPublico(publicProfileTab)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">badge</mat-icon>
-            {{getEtiquetaPerfilPublico(publicProfileTab)}}
-            <button (click)="quitarPerfilPublico(publicProfileTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <mat-icon class="pestana-icono">badge</mat-icon>
+            <span class="pestana-etiqueta">{{getEtiquetaPerfilPublico(publicProfileTab)}}</span>
+            <button (click)="quitarPerfilPublico(publicProfileTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-public-user-profile
             [uid]="publicProfileTab.uid"
@@ -90,10 +90,10 @@
         </app-public-user-profile>
     </mat-tab>
     <mat-tab label="Nuevo personaje" *ngIf="AbrirNuevoPersonajeTab">
-        <ng-template mat-tab-label="">
-            <mat-icon class="tw-me-2">person_add</mat-icon>
-            Nuevo personaje
-            <button (click)="quitarNuevoPersonaje()" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'personaje'"></app-icono-rol>
+            <span class="pestana-etiqueta">Nuevo personaje</span>
+            <button (click)="quitarNuevoPersonaje()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-nuevo-personaje
             (razaDetalles)="abrirDetallesRaza($event)"
@@ -122,10 +122,10 @@
         </app-nuevo-personaje>
     </mat-tab>
     <mat-tab *ngFor="let listadoTab of listadoTabsAbiertos" [label]="getEtiquetaListadoTab(listadoTab)">
-        <ng-template mat-tab-label="">
-            <mat-icon class="tw-me-2">view_list</mat-icon>
-            {{getEtiquetaListadoTab(listadoTab)}}
-            <button (click)="quitarListado(listadoTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="tipoRolDeListado(listadoTab.tipo)!"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaListadoTab(listadoTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{getEtiquetaListadoTab(listadoTab)}}</span>
+            <button (click)="quitarListado(listadoTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <ng-container *ngIf="listadoTab.operacion === 'insertar' && (listadoTab.tipo === 'dotes' || listadoTab.tipo === 'conjuros' || listadoTab.tipo === 'razas' || listadoTab.tipo === 'raciales' || listadoTab.tipo === 'idiomas' || listadoTab.tipo === 'especiales' || listadoTab.tipo === 'clases'); else listadoGenerico">
             <div class="insercion-dotes-shell">
@@ -149,9 +149,9 @@
     </mat-tab>
     <mat-tab *ngFor="let racialTab of edicionRacialesAbiertos" [label]="getEtiquetaEdicionRacialTab(racialTab)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">edit_square</mat-icon>
-            {{getEtiquetaEdicionRacialTab(racialTab)}}
-            <button (click)="quitarEdicionRacial(racialTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'racial'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEdicionRacialTab(racialTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{'Editar ' + racialTab.nombre}}</span>
+            <button (click)="quitarEdicionRacial(racialTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <div class="insercion-dotes-shell">
             <app-nueva-racial
@@ -165,9 +165,9 @@
     </mat-tab>
     <mat-tab *ngFor="let idiomaTab of edicionIdiomasAbiertos" [label]="getEtiquetaEdicionIdiomaTab(idiomaTab)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">edit_square</mat-icon>
-            {{getEtiquetaEdicionIdiomaTab(idiomaTab)}}
-            <button (click)="quitarEdicionIdioma(idiomaTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'idioma'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEdicionIdiomaTab(idiomaTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{'Editar ' + idiomaTab.nombre}}</span>
+            <button (click)="quitarEdicionIdioma(idiomaTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <div class="insercion-dotes-shell">
             <app-nueva-idioma
@@ -181,9 +181,9 @@
     </mat-tab>
     <mat-tab *ngFor="let especialTab of edicionEspecialesAbiertos" [label]="getEtiquetaEdicionEspecialTab(especialTab)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">edit_square</mat-icon>
-            {{getEtiquetaEdicionEspecialTab(especialTab)}}
-            <button (click)="quitarEdicionEspecial(especialTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'especial'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEdicionEspecialTab(especialTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{'Editar ' + especialTab.nombre}}</span>
+            <button (click)="quitarEdicionEspecial(especialTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <div class="insercion-dotes-shell">
             <app-nueva-especial
@@ -197,9 +197,9 @@
     </mat-tab>
     <mat-tab *ngFor="let claseTab of edicionClasesAbiertos" [label]="getEtiquetaEdicionClaseTab(claseTab)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">edit_square</mat-icon>
-            {{getEtiquetaEdicionClaseTab(claseTab)}}
-            <button (click)="quitarEdicionClase(claseTab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'clase'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEdicionClaseTab(claseTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{'Editar ' + claseTab.nombre}}</span>
+            <button (click)="quitarEdicionClase(claseTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <div class="insercion-dotes-shell">
             <app-nueva-clase
@@ -213,17 +213,17 @@
     </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{getEtiquetaManual(manual)}}
-            <button (click)="quitarDetallesManual(manual)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'manual'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaManual(manual)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{manual.Nombre}}</span>
+            <button (click)="quitarDetallesManual(manual)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-manual [manual]="detallesManualAbiertos[index]"></app-detalles-manual>
     </mat-tab>
     <mat-tab *ngFor="let tab of detallesRazaAbiertos; let index = index" [label]="tab.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{tab.Nombre}} (Raza)
-            <button (click)="quitarDetallesRaza(tab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'raza'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="tab.Nombre + ' (Raza)'" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{tab.Nombre}}</span>
+            <button (click)="quitarDetallesRaza(tab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-raza
             [raza]="detallesRazaAbiertos[index]"
@@ -235,25 +235,25 @@
     </mat-tab>
     <mat-tab *ngFor="let tab of detallesConjuroAbiertos; let index = index" [label]="tab.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{tab.Nombre}} (Conjuro)
-            <button (click)="quitarDetallesConjuro(tab)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="tipoRolDeConjuro(tab)"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="tab.Nombre + ' (Conjuro)'" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{tab.Nombre}}</span>
+            <button (click)="quitarDetallesConjuro(tab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-conjuro [conjuro]="detallesConjuroAbiertos[index]"></app-detalles-conjuro>
     </mat-tab>
     <mat-tab *ngFor="let tupla of detallesSortilegaAbiertos; let index = index" [label]="tupla.ap.Conjuro.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{tupla.ap.Conjuro.Nombre}} (Sortílega)
-            <button (click)="quitarDetallesSortilega(tupla)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="tipoRolDeConjuro(tupla.ap.Conjuro)"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="tupla.ap.Conjuro.Nombre + ' (Sortílega)'" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{tupla.ap.Conjuro.Nombre}}</span>
+            <button (click)="quitarDetallesSortilega(tupla)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-conjuro [sortilega]="detallesSortilegaAbiertos[index]"></app-detalles-conjuro>
     </mat-tab>
     <mat-tab *ngFor="let tipo of detallesTipoCriaturaAbiertos; let index = index" [label]="tipo.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{tipo.Nombre}} (Tipo)
-            <button (click)="quitarDetallesTipoCriatura(tipo)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'tipo-criatura'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="tipo.Nombre + ' (Tipo)'" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{tipo.Nombre}}</span>
+            <button (click)="quitarDetallesTipoCriatura(tipo)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-tipo-criatura 
             [tipo]="detallesTipoCriaturaAbiertos[index]"
@@ -262,17 +262,17 @@
     </mat-tab>
     <mat-tab *ngFor="let rasgo of detallesRasgoAbiertos; let index = index" [label]="rasgo.Nombre">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{rasgo.Nombre}} (Rasgo)
-            <button (click)="quitarDetallesRasgo(rasgo)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'rasgo'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="rasgo.Nombre + ' (Rasgo)'" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{rasgo.Nombre}}</span>
+            <button (click)="quitarDetallesRasgo(rasgo)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-rasgo [rasgo]="detallesRasgoAbiertos[index]"></app-detalles-rasgo>
     </mat-tab>
     <mat-tab *ngFor="let clase of detallesClaseAbiertos; let index = index" [label]="getEtiquetaClase(clase)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{getEtiquetaClase(clase)}}
-            <button (click)="quitarDetallesClase(clase)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="tipoRolDeClase(clase)"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaClase(clase)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{clase.Nombre}}</span>
+            <button (click)="quitarDetallesClase(clase)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-clase
             [clase]="detallesClaseAbiertos[index]"
@@ -289,9 +289,9 @@
     </mat-tab>
     <mat-tab *ngFor="let especial of detallesEspecialAbiertos; let index = index" [label]="getEtiquetaEspecial(especial)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{getEtiquetaEspecial(especial)}}
-            <button (click)="quitarDetallesEspecial(especial)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'especial'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEspecial(especial)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{especial.Nombre}}</span>
+            <button (click)="quitarDetallesEspecial(especial)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-especial
             [especial]="detallesEspecialAbiertos[index]"
@@ -300,9 +300,9 @@
     </mat-tab>
     <mat-tab *ngFor="let racial of detallesRacialAbiertos; let index = index" [label]="getEtiquetaRacial(racial)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{getEtiquetaRacial(racial)}}
-            <button (click)="quitarDetallesRacial(racial)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'racial'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaRacial(racial)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{racial.Nombre}}</span>
+            <button (click)="quitarDetallesRacial(racial)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-racial
             [racial]="detallesRacialAbiertos[index]"
@@ -313,9 +313,9 @@
     </mat-tab>
     <mat-tab *ngFor="let doteCtx of detallesDoteAbiertos; let index = index" [label]="getEtiquetaDote(doteCtx)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{getEtiquetaDote(doteCtx)}}
-            <button (click)="quitarDetallesDote(doteCtx)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'dote'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaDote(doteCtx)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{getNombreDoteTab(doteCtx)}}</span>
+            <button (click)="quitarDetallesDote(doteCtx)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-dote
             [dote]="detallesDoteAbiertos[index]"
@@ -328,17 +328,17 @@
     </mat-tab>
     <mat-tab *ngFor="let ventaja of detallesVentajaAbiertos; let index = index" [label]="getEtiquetaVentaja(ventaja)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{getEtiquetaVentaja(ventaja)}}
-            <button (click)="quitarDetallesVentaja(ventaja)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="tipoRolDeVentaja(ventaja)"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaVentaja(ventaja)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{ventaja.Nombre}}</span>
+            <button (click)="quitarDetallesVentaja(ventaja)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-ventaja [ventaja]="detallesVentajaAbiertos[index]"></app-detalles-ventaja>
     </mat-tab>
     <mat-tab *ngFor="let plantilla of detallesPlantillaAbiertos; let index = index" [label]="getEtiquetaPlantilla(plantilla)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{getEtiquetaPlantilla(plantilla)}}
-            <button (click)="quitarDetallesPlantilla(plantilla)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'plantilla'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaPlantilla(plantilla)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{plantilla.Nombre}}</span>
+            <button (click)="quitarDetallesPlantilla(plantilla)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-plantilla
             [plantilla]="detallesPlantillaAbiertos[index]"
@@ -350,9 +350,9 @@
     </mat-tab>
     <mat-tab *ngFor="let subtipo of detallesSubtipoAbiertos; let index = index" [label]="getEtiquetaSubtipo(subtipo)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{getEtiquetaSubtipo(subtipo)}}
-            <button (click)="quitarDetallesSubtipo(subtipo)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'subtipo'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaSubtipo(subtipo)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{subtipo.Nombre}}</span>
+            <button (click)="quitarDetallesSubtipo(subtipo)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-subtipo
             [subtipo]="detallesSubtipoAbiertos[index]"
@@ -364,9 +364,9 @@
     </mat-tab>
     <mat-tab *ngFor="let monstruo of detallesMonstruoAbiertos; let index = index" [label]="getEtiquetaMonstruo(monstruo)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">find_in_page</mat-icon>
-            {{getEtiquetaMonstruo(monstruo)}}
-            <button (click)="quitarDetallesMonstruo(monstruo)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'monstruo'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaMonstruo(monstruo)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{monstruo.Nombre}}</span>
+            <button (click)="quitarDetallesMonstruo(monstruo)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-monstruo
             [monstruo]="detallesMonstruoAbiertos[index]"
@@ -381,26 +381,26 @@
     </mat-tab>
     <mat-tab *ngFor="let arma of detallesArmaAbiertos; let index = index" [label]="getEtiquetaArma(arma)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">gavel</mat-icon>
-            {{getEtiquetaArma(arma)}}
-            <button (click)="quitarDetallesArma(arma)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'arma'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaArma(arma)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{arma.Nombre}}</span>
+            <button (click)="quitarDetallesArma(arma)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-arma [arma]="detallesArmaAbiertos[index]"
             (municionDetallesId)="abrirDetallesEquipoPorId({ tipo: 'municion', id: $event })"></app-detalles-arma>
     </mat-tab>
     <mat-tab *ngFor="let armadura of detallesArmaduraAbiertos; let index = index" [label]="getEtiquetaArmadura(armadura)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">shield</mat-icon>
-            {{getEtiquetaArmadura(armadura)}}
-            <button (click)="quitarDetallesArmadura(armadura)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'armadura'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaArmadura(armadura)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{armadura.Nombre}}</span>
+            <button (click)="quitarDetallesArmadura(armadura)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-armadura [armadura]="detallesArmaduraAbiertos[index]"></app-detalles-armadura>
     </mat-tab>
     <mat-tab *ngFor="let entrada of detallesEquipoAbiertos" [label]="getEtiquetaEquipo(entrada)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">backpack</mat-icon>
-            {{getEtiquetaEquipo(entrada)}}
-            <button (click)="quitarDetallesEquipo(entrada)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="tipoRolDeEquipo(entrada.tipo)"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEquipo(entrada)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{entrada.item.Nombre}}</span>
+            <button (click)="quitarDetallesEquipo(entrada)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-equipo
             [entrada]="entrada"
@@ -413,9 +413,9 @@
     </mat-tab>
     <mat-tab *ngFor="let deidad of detallesDeidadAbiertos; let index = index" [label]="getEtiquetaDeidad(deidad)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">church</mat-icon>
-            {{getEtiquetaDeidad(deidad)}}
-            <button (click)="quitarDetallesDeidad(deidad)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'deidad'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaDeidad(deidad)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{deidad.Nombre}}</span>
+            <button (click)="quitarDetallesDeidad(deidad)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-deidad
             [deidad]="detallesDeidadAbiertos[index]"
@@ -424,17 +424,17 @@
     </mat-tab>
     <mat-tab *ngFor="let idioma of detallesIdiomaAbiertos; let index = index" [label]="getEtiquetaIdioma(idioma)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">translate</mat-icon>
-            {{getEtiquetaIdioma(idioma)}}
-            <button (click)="quitarDetallesIdioma(idioma)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'idioma'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaIdioma(idioma)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{idioma.Nombre}}</span>
+            <button (click)="quitarDetallesIdioma(idioma)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-idioma [idioma]="detallesIdiomaAbiertos[index]"></app-detalles-idioma>
     </mat-tab>
     <mat-tab *ngFor="let fusion of detallesFusionAbiertos; let index = index" [label]="getEtiquetaFusion(fusion)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">auto_awesome</mat-icon>
-            {{getEtiquetaFusion(fusion)}}
-            <button (click)="quitarDetallesFusion(fusion)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'fusion'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaFusion(fusion)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{fusion.Nombre}}</span>
+            <button (click)="quitarDetallesFusion(fusion)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-fusion
             [fusion]="detallesFusionAbiertos[index]"
@@ -444,9 +444,9 @@
     </mat-tab>
     <mat-tab *ngFor="let chakra of detallesChakraAbiertos; let index = index" [label]="getEtiquetaChakra(chakra)">
         <ng-template mat-tab-label>
-            <mat-icon class="tw-me-2">blur_circular</mat-icon>
-            {{getEtiquetaChakra(chakra)}}
-            <button (click)="quitarDetallesChakra(chakra)" mat-icon-button class="tw-ms-2"><mat-icon>close</mat-icon></button>
+            <app-icono-rol class="pestana-icono" [tipo]="'chakra'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaChakra(chakra)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{chakra.Nombre}}</span>
+            <button (click)="quitarDetallesChakra(chakra)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-chakra
             [chakra]="detallesChakraAbiertos[index]"

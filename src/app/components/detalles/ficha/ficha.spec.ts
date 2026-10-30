@@ -1,4 +1,6 @@
 import { Component, NO_ERRORS_SCHEMA } from '@angular/core';
+import { IconoRolComponent } from 'src/app/components/shared/icono-rol/icono-rol.component';
+import { TipoRol } from 'src/app/services/utils/iconos-rol';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { ManualReferencia } from 'src/app/interfaces/manual';
@@ -146,7 +148,7 @@ describe('Ficha de detalle: reglas', () => {
 @Component({
     template: `
         <app-ficha-detalle>
-            <app-ficha-cabecera [tipo]="tipo" [nombre]="nombre" [subtitulo]="subtitulo" [manual]="manual" [oficial]="oficial"
+            <app-ficha-cabecera [icono]="icono" [tipo]="tipo" [nombre]="nombre" [subtitulo]="subtitulo" [manual]="manual" [oficial]="oficial"
                 [etiquetas]="etiquetas" (abrirManual)="manualesAbiertos = manualesAbiertos + 1">
                 <span fichaCabeceraPie class="ficha-cabecera__pie">Creado por ti</span>
             </app-ficha-cabecera>
@@ -169,6 +171,7 @@ describe('Ficha de detalle: reglas', () => {
     standalone: false,
 })
 class FichaPruebaComponent {
+    icono: TipoRol | null = null;
     tipo = 'Dote · General';
     nombre = 'Ataque poderoso';
     subtitulo: string | null = 'Puedes atacar con más fuerza.';
@@ -210,7 +213,7 @@ describe('Ficha de detalle: componentes', () => {
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
-            declarations: [FichaPruebaComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
+            declarations: [FichaPruebaComponent, TextoManualComponent, IconoRolComponent, ...FICHA_DETALLE_COMPONENTES],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
         fixture = TestBed.createComponent(FichaPruebaComponent);
@@ -330,6 +333,18 @@ describe('Ficha de detalle: componentes', () => {
         const subtitulo = elemento().querySelector('.ficha-subtitulo') as HTMLElement;
         expect(subtitulo.textContent).toContain('Elección A');
         expect(subtitulo.textContent).toContain('Basta con una de estas opciones');
+    });
+
+    it('sin icono la cabecera queda como antes; con él, su recuadro de 56 px va antes del nombre', () => {
+        expect(elemento().querySelector('.ficha-cabecera app-icono-rol')).toBeNull();
+        host.icono = 'dote';
+        fixture.detectChanges();
+        const icono = elemento().querySelector('.ficha-cabecera > app-icono-rol') as HTMLElement;
+        expect(icono).not.toBeNull();
+        expect(icono.classList).toContain('icono-rol--recuadro');
+        expect(icono.style.width).toBe('56px');
+        expect(icono.getAttribute('aria-hidden')).toBe('true');
+        expect(elemento().querySelector('.ficha-cabecera')?.classList).toContain('ficha-cabecera--con-icono');
     });
 
     it('lo que lleva fichaCabeceraPie va bajo el nombre', () => {

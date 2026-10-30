@@ -1,5 +1,5 @@
 <app-ficha-detalle *ngIf="entrada">
-    <app-ficha-cabecera
+    <app-ficha-cabecera [icono]="iconoCabecera"
         [tipo]="tipoCabecera"
         [nombre]="entrada.item.Nombre"
         [manual]="entrada.item.Manual"

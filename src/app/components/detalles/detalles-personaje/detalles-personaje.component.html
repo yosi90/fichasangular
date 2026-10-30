@@ -1,7 +1,7 @@
 <!-- La ficha del personaje: las dos propuestas aprobadas del lienzo (página continua y pestañas internas), con un
      interruptor en la cabecera. Las dos leen el mismo cálculo (`m`) y pintan cada bloque con las mismas plantillas. -->
 <app-ficha-detalle *ngIf="pj">
-    <app-ficha-cabecera
+    <app-ficha-cabecera icono="personaje"
         [tipo]="vista === 'pagina' ? m.tipoPagina : m.tipoPestanas"
         [nombre]="pj.Nombre"
         [oficial]="pj.Oficial"

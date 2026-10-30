@@ -1,4 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { ICONOS_ROL, TipoRol, tipoRolDeClase } from 'src/app/services/utils/iconos-rol';
 import { DatoFicha, EtiquetaFicha, FilaMoldeado, datoAlineamiento, datosMoldeadoClase, datosVisibles, filasMoldeado, textoBonoCapacidad, unirTipo } from 'src/app/components/detalles/ficha';
 import { NombreTraducible } from 'src/app/interfaces/incarnum';
 import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseNivelDetalle } from 'src/app/interfaces/clase';
@@ -88,6 +89,8 @@ export class DetallesClaseComponent {
     nombreClase = '';
     /** «Clase básica» o «Clase de prestigio». */
     tipoCabecera = '';
+    /** El icono de la cabecera: el de su catálogo y variante (`ICONOS_ROL`). */
+    iconoCabecera: TipoRol = 'clase';
     etiquetas: EtiquetaFicha[] = [];
     /** Los datos clave: dado de golpe, puntos de habilidad, alineamiento, niveles, progresiones y roles. */
     datos: DatoFicha[] = [];
@@ -146,7 +149,8 @@ export class DetallesClaseComponent {
     set clase(value: Clase) {
         this.claseData = value;
         this.nombreClase = mayusculaInicial(value?.Nombre);
-        this.tipoCabecera = unirTipo([value?.Prestigio ? 'Clase de prestigio' : 'Clase básica']);
+        this.iconoCabecera = tipoRolDeClase(value);
+        this.tipoCabecera = unirTipo([ICONOS_ROL[this.iconoCabecera].etiqueta]);
         this.etiquetas = [
             value?.Aumenta_clase_lanzadora ? { texto: 'Aumenta clase lanzadora' } : null,
             value?.Es_predilecta ? { texto: 'Puede ser predilecta' } : null,

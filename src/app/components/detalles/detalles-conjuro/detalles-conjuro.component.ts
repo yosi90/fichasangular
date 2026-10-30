@@ -1,4 +1,5 @@
 import { Component, Input } from '@angular/core';
+import { TipoRol, tipoRolDeConjuro } from 'src/app/services/utils/iconos-rol';
 import { DatoFicha, EtiquetaFicha, unirTipo } from 'src/app/components/detalles/ficha';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Conjuro } from 'src/app/interfaces/conjuro';
@@ -25,6 +26,7 @@ export class DetallesConjuroComponent {
     set conjuro(value: Conjuro) {
         this.conjuroData = value;
         this.tipoCabecera = this.construirTipo();
+        this.iconoCabecera = tipoRolDeConjuro(value);
         this.etiquetas = this.construirEtiquetas();
         this.datos = this.construirDatos();
         this.datosSortilega = this.construirDatosSortilega();
@@ -39,6 +41,8 @@ export class DetallesConjuroComponent {
 
     /** La línea del tipo de la cabecera. */
     tipoCabecera = '';
+    /** El icono de la cabecera: el de su catálogo y variante (`ICONOS_ROL`). */
+    iconoCabecera: TipoRol = 'conjuro';
     etiquetas: EtiquetaFicha[] = [];
     /** Los datos clave, en el orden del manual. Lo que la API da `null` no sale. */
     datos: DatoFicha[] = [];

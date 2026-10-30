@@ -1,5 +1,5 @@
 <app-ficha-detalle *ngIf="idioma">
-    <app-ficha-cabecera tipo="Idioma" [nombre]="idioma.Nombre" [oficial]="idioma.Oficial"
+    <app-ficha-cabecera icono="idioma" tipo="Idioma" [nombre]="idioma.Nombre" [oficial]="idioma.Oficial"
         [etiquetas]="idioma.Secreto ? etiquetasSecreto : []"></app-ficha-cabecera>
 
     <app-ficha-cuerpo>
