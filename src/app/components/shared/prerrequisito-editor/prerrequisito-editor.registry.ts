@@ -225,7 +225,7 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         toPayload: (row) => buildValuePayload(row),
     }),
     definition('caracteristica', 'catalog-plus-value', {
-        catalogLabel: 'Caracteristica',
+        catalogLabel: 'Característica',
         valueLabel: 'Puntuacion minima',
         isComplete: isCatalogValueComplete,
         toPayload: buildCatalogPayload,
