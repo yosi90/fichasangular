@@ -132,6 +132,7 @@ import { FormacionIncarnumComponent } from './components/nuevo-personaje/formaci
 import { ListadoIdiomasComponent } from './components/shared/listado-idiomas/listado-idiomas.component';
 import { DetallesIdiomaComponent } from './components/detalles/detalles-idioma/detalles-idioma.component';
 import { UserProfileComponent } from './components/base/user-profile/user-profile.component';
+import { CampanasGestionComponent } from './components/base/campanas-gestion/campanas-gestion.component';
 import { PublicUserProfileComponent } from './components/base/public-user-profile/public-user-profile.component';
 import { ChatFloatingConversationWindowComponent } from './components/chat-floating/chat-floating-conversation-window.component';
 import { ChatFloatingHostComponent } from './components/chat-floating/chat-floating-host.component';
@@ -153,6 +154,7 @@ import { MENU_FILTROS_COMPONENTES } from './components/shared/menu-filtros/menu-
         TabControlComponent,
         BaseMenuComponent,
         UserProfileComponent,
+        CampanasGestionComponent,
         PublicUserProfileComponent,
         ChatFloatingHostComponent,
         ChatFloatingListWindowComponent,

@@ -1,0 +1,502 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// La gestión de campañas de «Mi perfil» (lienzo «Rol: las vistas que faltan», vista 8): lista de tarjetas a la
+// izquierda y espacio de trabajo con la cabecera de ficha y tres pestañas. Las piezas son las de la ficha común y la
+// creación (tarjetas #424242, cabecera $primary con raya rosa, la elegida con fondo rosado y raya rosa). Se pliega por el
+// ancho del propio componente.
+
+:host
+    display: block
+    height: 100%
+    min-height: 0
+    container-name: campanas
+    container-type: inline-size
+
+.campanas
+    display: grid
+    grid-template-columns: 300px minmax(0, 1fr)
+    gap: 14px
+    height: 100%
+    min-height: 0
+    color: $ficha-texto
+
+// Lista
+.campanas-lista
+    display: flex
+    flex-direction: column
+    gap: 8px
+    min-height: 0
+    overflow: auto
+    padding: 2px 8px 8px 2px
+
+.campanas-nueva
+    display: inline-flex
+    flex-shrink: 0
+    align-items: center
+    justify-content: center
+    gap: 6px
+    height: 40px
+    border: 0
+    border-radius: 4px
+    background: $active
+    color: $ficha-blanco
+    font: inherit
+    font-size: 14px
+    font-weight: 700
+    box-shadow: $ficha-sombra
+    cursor: pointer
+
+    &:disabled
+        background: $primary
+        color: $font-base
+        box-shadow: none
+        cursor: default
+
+    &:focus-visible
+        outline: 2px solid $ficha-blanco
+        outline-offset: 2px
+
+.campanas-nueva--activa
+    outline: 2px solid rgba($ficha-blanco, .6)
+    outline-offset: 2px
+
+.campanas-tarjeta
+    display: flex
+    flex-shrink: 0
+    align-items: center
+    gap: 12px
+    min-height: 60px
+    padding: 8px 12px
+    border: 0
+    border-radius: $ficha-radio
+    background: $ficha-tarjeta
+    box-shadow: $ficha-sombra
+    color: $ficha-blanco
+    font: inherit
+    text-align: left
+    cursor: pointer
+
+    &:hover
+        background: #4a4a4a
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+.campanas-tarjeta--elegida, .campanas-tarjeta--elegida:hover
+    background: rgba($active, .18)
+    box-shadow: inset 3px 0 0 $active, $ficha-sombra
+
+.campanas-tarjeta__texto
+    display: flex
+    flex-direction: column
+    gap: 2px
+    min-width: 0
+
+.campanas-tarjeta__nombre
+    font-size: 15px
+    font-weight: 500
+    overflow-wrap: anywhere
+
+.campanas-tarjeta__rol
+    font-size: 12.5px
+    color: $accent
+
+.campanas-nota, .campanas-vacia, .campanas-texto-ayuda
+    margin: 0
+    font-size: 13px
+    color: $ficha-texto-suave
+
+.campanas-vacia
+    padding: 12px
+    border-radius: $ficha-radio
+    background: rgba(255, 255, 255, .04)
+
+.campanas-error
+    margin: 0
+    padding: 10px 12px
+    font-size: 13px
+
+// Espacio de trabajo
+.campanas-trabajo
+    display: flex
+    flex-direction: column
+    gap: 12px
+    min-width: 0
+    min-height: 0
+    overflow: auto
+    padding: 2px 8px 8px 2px
+
+.campanas-cabecera
+    display: flex
+    flex-shrink: 0
+    flex-wrap: wrap
+    align-items: center
+    gap: 12px 16px
+    padding: 14px 20px
+    background: $primary
+    border-radius: $ficha-radio
+    border-bottom: 3px solid $active
+    box-shadow: $ficha-sombra
+
+.campanas-cabecera__identidad
+    display: flex
+    flex: 1 1 260px
+    flex-direction: column
+    gap: 2px
+    min-width: 0
+
+.campanas-cabecera__tipo
+    @include ficha-versalitas
+
+.campanas-cabecera .campanas-cabecera__nombre
+    margin: 0
+    font-size: 26px
+    font-weight: 500
+    color: $ficha-blanco
+    overflow-wrap: anywhere
+
+.campanas-cabecera__acciones
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+
+.campanas-pestanas
+    display: flex
+    flex-shrink: 0
+    gap: 4px
+    border-bottom: 1px solid rgba(255, 255, 255, .12)
+    overflow-x: auto
+
+.campanas-pestana
+    flex-shrink: 0
+    padding: 10px 16px
+    border: 0
+    border-bottom: 2px solid transparent
+    background: none
+    color: $ficha-texto-suave
+    font: inherit
+    font-size: 14px
+    cursor: pointer
+
+    &:hover
+        color: $ficha-blanco
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: -2px
+
+.campanas-pestana--activa
+    border-bottom-color: $active
+    color: $ficha-blanco
+    font-weight: 500
+
+.campanas-panel
+    display: flex
+    flex-direction: column
+    gap: 12px
+
+// Tarjetas por tema, de dos en dos, con pares etiqueta / valor
+.campanas-bloques
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 12px
+    align-items: start
+
+.campanas-bloque
+    display: flex
+    flex-direction: column
+    gap: 4px
+    min-width: 0
+    padding: 14px 18px
+    background: $ficha-tarjeta
+    border-radius: $ficha-radio
+    box-shadow: $ficha-sombra
+
+.campanas-bloque--entero
+    grid-column: 1 / -1
+
+.campanas-bloque__cabeza
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    justify-content: space-between
+    gap: 8px
+
+.campanas-bloque .campanas-bloque__titulo
+    @include ficha-versalitas
+    margin-bottom: 6px
+
+.campanas-bloque__cabeza .campanas-bloque__titulo
+    margin-bottom: 0
+
+.campanas-fila
+    display: flex
+    align-items: center
+    gap: 12px
+    min-height: 40px
+    border-bottom: 1px solid rgba(255, 255, 255, .06)
+
+    &:last-child
+        border-bottom: 0
+
+.campanas-fila--campo
+    border-bottom: 0
+
+.campanas-fila--compacta
+    min-height: 0
+    border-bottom: 0
+
+.campanas-fila__etiqueta
+    display: inline-flex
+    flex: 1 1 auto
+    align-items: center
+    gap: 2px
+    min-width: 0
+    font-size: 14px
+    color: $ficha-texto
+
+.campanas-valor, .campanas-texto
+    box-sizing: border-box
+    padding: 6px 10px
+    border: 0
+    border-bottom: 1px solid $accent
+    border-radius: 4px 4px 0 0
+    background: $primary
+    color: $ficha-blanco
+    font: inherit
+    font-size: 14px
+
+    &:focus
+        outline: none
+        border-bottom: 2px solid $active
+
+    &:disabled
+        color: $font-base
+
+.campanas-valor
+    flex: 0 0 96px
+    width: 96px
+    text-align: right
+
+.campanas-texto
+    flex: 1 1 auto
+    width: 100%
+    min-width: 0
+
+.campanas-contador
+    flex-shrink: 0
+    font-size: 12px
+    color: $font-base
+
+.campanas-ayuda
+    flex-shrink: 0
+    color: $ficha-texto-suave
+
+.campanas-opciones
+    display: flex
+    flex-wrap: wrap
+    gap: 6px
+    padding: 6px 0
+
+.campanas-opcion
+    display: inline-flex
+    align-items: center
+    gap: 6px
+    padding: 6px 12px
+    border: 1px solid rgba(255, 255, 255, .25)
+    border-radius: 999px
+    font-size: 13px
+    cursor: pointer
+
+    input
+        accent-color: $active
+        margin: 0
+
+.campanas-opcion--activa
+    border-color: rgba($active, .75)
+    background: rgba($active, .22)
+    color: $ficha-blanco
+
+.campanas-pie, .campanas-acciones
+    display: flex
+    flex-wrap: wrap
+    justify-content: flex-end
+    gap: 10px
+
+.campanas-pie
+    padding-top: 4px
+
+.campanas-accion
+    --mat-button-filled-container-color: #{$active}
+    --mat-button-filled-label-text-color: #{$ficha-blanco}
+    font-weight: 700
+
+// Jugadores
+.campanas-subtitulo
+    margin-top: 8px
+    font-size: 12px
+    font-weight: 700
+    letter-spacing: .08em
+    text-transform: uppercase
+    color: $ficha-texto-suave
+
+.campanas-grupo
+    display: flex
+    flex-direction: column
+    gap: 6px
+
+.campanas-invitar, .campanas-crear
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 8px
+    padding: 6px 0
+
+.campanas-campo
+    display: flex
+    flex: 1 1 220px
+    align-items: center
+    gap: 6px
+    min-width: 0
+
+    .mat-icon
+        color: $ficha-texto-suave
+
+.campanas-casilla
+    display: inline-flex
+    align-items: center
+    gap: 6px
+    font-size: 13px
+
+    input
+        accent-color: $active
+
+.campanas-elegible
+    display: flex
+    flex-wrap: wrap
+    align-items: baseline
+    justify-content: space-between
+    gap: 4px 12px
+    padding: 10px 12px
+    border: 1px solid $ficha-separador
+    border-radius: $ficha-radio
+    background: rgba(255, 255, 255, .03)
+    color: $ficha-texto
+    font: inherit
+    text-align: left
+    cursor: pointer
+
+    span
+        font-size: 13px
+        color: $accent
+
+    &:hover
+        background: rgba(255, 255, 255, .07)
+
+    &:disabled
+        cursor: default
+        opacity: .6
+
+.campanas-persona
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    justify-content: space-between
+    gap: 8px 12px
+    min-height: 48px
+    padding: 6px 0
+    border-bottom: 1px solid rgba(255, 255, 255, .06)
+
+    &:last-child
+        border-bottom: 0
+
+.campanas-persona__texto, .campanas-nodo__texto
+    display: flex
+    flex: 1 1 200px
+    flex-direction: column
+    gap: 2px
+    min-width: 0
+
+    span, small
+        font-size: 12.5px
+        color: $ficha-texto-suave
+
+// Historias: árbol de tramas y subtramas, con el candado de las ocultas
+.campanas-arbol, .campanas-subtramas
+    display: flex
+    flex-direction: column
+    gap: 6px
+    margin: 0
+    padding: 0
+    list-style: none
+
+.campanas-trama
+    display: flex
+    flex-direction: column
+    gap: 4px
+    padding: 10px 12px
+    border: 1px solid $ficha-separador
+    border-radius: $ficha-radio
+    background: rgba(255, 255, 255, .03)
+
+.campanas-subtramas
+    padding-left: 26px
+
+.campanas-nodo
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 8px 10px
+
+.campanas-nodo__icono
+    flex-shrink: 0
+    width: 20px
+    height: 20px
+    font-size: 20px
+    color: $ficha-texto-suave
+
+.campanas-crear--sub
+    padding-left: 26px
+
+.campanas-vacio
+    display: flex
+    flex-direction: column
+    align-items: center
+    justify-content: center
+    gap: 10px
+    min-height: 240px
+    padding: 24px
+    border-radius: $ficha-radio
+    background: $ficha-tarjeta
+    box-shadow: $ficha-sombra
+    text-align: center
+
+    p
+        margin: 0
+
+    .mat-icon
+        width: 40px
+        height: 40px
+        font-size: 40px
+        color: $accent
+
+.campanas-oculto
+    position: absolute
+    width: 1px
+    height: 1px
+    overflow: hidden
+    clip: rect(0 0 0 0)
+    white-space: nowrap
+
+@container campanas (max-width: 900px)
+    .campanas
+        grid-template-columns: minmax(0, 1fr)
+        height: auto
+
+    .campanas-lista, .campanas-trabajo
+        overflow: visible
+
+    .campanas-bloques
+        grid-template-columns: minmax(0, 1fr)

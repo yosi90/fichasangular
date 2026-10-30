@@ -1,10 +1,12 @@
 import { NO_ERRORS_SCHEMA, SimpleChange } from '@angular/core';
 import { fakeAsync, ComponentFixture, TestBed, tick } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { BehaviorSubject, Subject } from 'rxjs';
 import Swal from 'sweetalert2';
 
 import { UserProfileComponent } from './user-profile.component';
+import { CampanasGestionComponent } from '../campanas-gestion/campanas-gestion.component';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
@@ -161,8 +163,8 @@ describe('UserProfileComponent', () => {
         chatFloatingSvc.abrir.and.resolveTo(true);
 
         await TestBed.configureTestingModule({
-            declarations: [UserProfileComponent],
-            imports: [FormsModule],
+            declarations: [UserProfileComponent, CampanasGestionComponent],
+            imports: [FormsModule, MatSlideToggleModule],
             providers: [
                 { provide: UserService, useValue: userSvc },
                 {
@@ -322,9 +324,9 @@ describe('UserProfileComponent', () => {
         fixture.detectChanges();
         tick();
 
-        component.seleccionarNuevaCampana();
-        component.campaignCreateDraft = 'Campaña nueva';
-        void component.crearCampana();
+        component.gestion.seleccionarNuevaCampana();
+        component.gestion.campaignCreateDraft = 'Campaña nueva';
+        void component.gestion.crearCampana();
         tick();
 
         expect(campanaSvc.createCampaign).not.toHaveBeenCalled();
@@ -636,7 +638,7 @@ describe('UserProfileComponent', () => {
         tick();
 
         expect(campanaSvc.listProfileCampaigns.calls.count()).toBe(3);
-        expect(component.campaigns.map((item) => item.id)).toEqual([7]);
+        expect(component.gestion.campaigns.map((item) => item.id)).toEqual([7]);
     }));
 
     it('también refresca campañas ante invalidaciones locales mientras la sección está abierta', fakeAsync(() => {
@@ -694,7 +696,7 @@ describe('UserProfileComponent', () => {
         tick(300);
 
         expect(campanaSvc.listProfileCampaigns.calls.count()).toBe(3);
-        expect(component.campaigns.some((item) => item.id === 9)).toBeFalse();
+        expect(component.gestion.campaigns.some((item) => item.id === 9)).toBeFalse();
     }));
 
     it('oculta el formulario de crear campaña a jugadores aunque el ACL diga campanas.create=true', fakeAsync(() => {
@@ -714,8 +716,8 @@ describe('UserProfileComponent', () => {
         fixture.detectChanges();
 
         const text = `${fixture.nativeElement.textContent ?? ''}`;
-        expect(component.canCreateCampaignByRole).toBeFalse();
-        expect(component.canCreateCampaign).toBeFalse();
+        expect(component.gestion.canCreateCampaignByRole).toBeFalse();
+        expect(component.gestion.canCreateCampaign).toBeFalse();
         expect(text).toContain('Solo los Masters y Colaboradores pueden crear campañas.');
         expect(text).not.toContain('Crear campaña');
     }));
@@ -735,8 +737,8 @@ describe('UserProfileComponent', () => {
         });
         tick();
 
-        expect(component.canCreateCampaignByRole).toBeTrue();
-        expect(component.canCreateCampaign).toBeTrue();
+        expect(component.gestion.canCreateCampaignByRole).toBeTrue();
+        expect(component.gestion.canCreateCampaign).toBeTrue();
     }));
 
     it('oculta el panel de solicitar master cuando el rol efectivo ya es admin', fakeAsync(() => {
@@ -778,14 +780,14 @@ describe('UserProfileComponent', () => {
         tick();
 
         component.currentSection = 'campanas';
-        component.campaigns = [{
+        component.gestion.campaigns = [{
             id: 7,
             nombre: 'Caballeros',
             campaignRole: 'master',
             membershipStatus: 'activo',
         }];
-        component.selectedCampaignId = 7;
-        component.selectedCampaignDetail = buildCampaignDetail({
+        component.gestion.selectedCampaignId = 7;
+        component.gestion.selectedCampaignDetail = buildCampaignDetail({
             campaign: {
                 id: 7,
                 nombre: 'Caballeros',
@@ -804,19 +806,19 @@ describe('UserProfileComponent', () => {
                 addedByUserId: null,
             }],
         });
-        component.memberSearchResults = [{
+        component.gestion.memberSearchResults = [{
             uid: 'firebase-visible-2',
             displayName: 'Yosi',
             photoThumbUrl: null,
         }];
-        component.campaignWorkspaceMode = 'peopleStories';
-        component.campaignWorkspaceTab = 'usuarios';
+        component.gestion.campaignWorkspaceMode = 'peopleStories';
+        component.gestion.campaignWorkspaceTab = 'usuarios';
 
         fixture.detectChanges();
 
         const text = `${fixture.nativeElement.textContent ?? ''}`;
         expect(text).toContain('Resultados de búsqueda');
-        expect(text).toContain('Seleccionar para invitar a la campaña');
+        expect(text).toContain('Invitar a la campaña');
         expect(text).not.toContain('firebase-visible-1');
         expect(text).not.toContain('firebase-visible-2');
     }));
@@ -824,7 +826,7 @@ describe('UserProfileComponent', () => {
     it('filtra del buscador de jugadores a miembros, invitados pendientes y al propio actor', fakeAsync(() => {
         const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
         component.profile = buildProfile('correo') as any;
-        component.selectedCampaignDetail = buildCampaignDetail({
+        component.gestion.selectedCampaignDetail = buildCampaignDetail({
             campaign: {
                 id: 7,
                 nombre: 'Caballeros',
@@ -858,11 +860,11 @@ describe('UserProfileComponent', () => {
             { uid: 'uid-new', displayName: 'Yosi', photoThumbUrl: null },
         ]);
 
-        component.memberSearchQuery = 'yosi';
-        void (component as any).runUserSearch('member', 'yosi');
+        component.gestion.memberSearchQuery = 'yosi';
+        void (component.gestion as any).runUserSearch('member', 'yosi');
         tick();
 
-        expect(component.memberSearchResults).toEqual([
+        expect(component.gestion.memberSearchResults).toEqual([
             { uid: 'uid-new', displayName: 'Yosi', photoThumbUrl: null },
         ]);
     }));
@@ -933,7 +935,7 @@ describe('UserProfileComponent', () => {
         tick(300);
 
         expect(campanaSvc.listProfileCampaigns.calls.count()).toBe(3);
-        expect(component.selectedCampaignSummary?.id).toBe(7);
+        expect(component.gestion.selectedCampaignSummary?.id).toBe(7);
         expect(toastSvc.showInfo).not.toHaveBeenCalled();
     }));
 
@@ -941,15 +943,15 @@ describe('UserProfileComponent', () => {
         const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
         const spacesSvc = TestBed.inject(PlatformSpacesService) as jasmine.SpyObj<PlatformSpacesService>;
         const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
-        component.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
-        component.selectedCampaignId = 7;
-        component.selectedCampaignDetail = buildCampaignDetail({
+        component.gestion.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
+        component.gestion.selectedCampaignId = 7;
+        component.gestion.selectedCampaignDetail = buildCampaignDetail({
             pendingInvitations: [{ id: 18, cuenta: 'uid-pending', alias: 'Pendiente', correo: null, creada: null, caduca: null }],
         });
         spacesSvc.retirarInvitacion.and.resolveTo();
         campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail());
 
-        void component.cancelarInvitacionCampana(component.selectedCampaignDetail!.pendingInvitations[0]);
+        void component.gestion.cancelarInvitacionCampana(component.gestion.selectedCampaignDetail!.pendingInvitations[0]);
         tick();
 
         expect(spacesSvc.retirarInvitacion).toHaveBeenCalledWith(41, 18);
@@ -960,38 +962,38 @@ describe('UserProfileComponent', () => {
         const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
         const spacesSvc = TestBed.inject(PlatformSpacesService) as jasmine.SpyObj<PlatformSpacesService>;
         const toastSvc = TestBed.inject(AppToastService) as jasmine.SpyObj<AppToastService>;
-        component.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
-        component.selectedCampaignId = 7;
-        component.selectedCampaignDetail = buildCampaignDetail();
+        component.gestion.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
+        component.gestion.selectedCampaignId = 7;
+        component.gestion.selectedCampaignDetail = buildCampaignDetail();
         spacesSvc.invitarCorreo.and.resolveTo();
         campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail());
 
-        component.memberInviteEmailDraft = 'no-es-un-correo';
-        void component.invitarPorCorreo();
+        component.gestion.memberInviteEmailDraft = 'no-es-un-correo';
+        void component.gestion.invitarPorCorreo();
         tick();
         expect(spacesSvc.invitarCorreo).not.toHaveBeenCalled();
         expect(toastSvc.showError).toHaveBeenCalledWith('Escribe un correo válido.');
 
-        component.memberInviteEmailDraft = 'ana@ejemplo.es';
-        void component.invitarPorCorreo();
+        component.gestion.memberInviteEmailDraft = 'ana@ejemplo.es';
+        void component.gestion.invitarPorCorreo();
         tick();
         expect(spacesSvc.invitarCorreo).toHaveBeenCalledWith(41, 'ana@ejemplo.es');
-        expect(component.memberInviteEmailDraft).toBe('');
+        expect(component.gestion.memberInviteEmailDraft).toBe('');
     }));
 
     it('aprobar una solicitud la resuelve en la plataforma y pone al día la campaña', fakeAsync(() => {
         const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
         const spacesSvc = TestBed.inject(PlatformSpacesService) as jasmine.SpyObj<PlatformSpacesService>;
-        component.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
-        component.selectedCampaignId = 7;
-        component.selectedCampaignDetail = buildCampaignDetail({
+        component.gestion.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
+        component.gestion.selectedCampaignId = 7;
+        component.gestion.selectedCampaignDetail = buildCampaignDetail({
             espacio: { id: 41, entrada: 'solicitud' },
             joinRequests: [{ id: 5, cuenta: 'uid-x', alias: 'x', nombre: 'Ana', mensaje: 'Hola', creada: null }],
         });
         spacesSvc.resolverSolicitud.and.resolveTo();
         campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail());
 
-        void component.resolverSolicitud(component.selectedCampaignJoinRequests[0], 'aprobar');
+        void component.gestion.resolverSolicitud(component.gestion.selectedCampaignJoinRequests[0], 'aprobar');
         tick();
 
         expect(spacesSvc.resolverSolicitud).toHaveBeenCalledWith(41, 5, 'aprobar');
@@ -1001,19 +1003,19 @@ describe('UserProfileComponent', () => {
     it('abrir la campaña a solicitudes cambia la entrada del espacio y sincroniza', fakeAsync(() => {
         const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
         const spacesSvc = TestBed.inject(PlatformSpacesService) as jasmine.SpyObj<PlatformSpacesService>;
-        component.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
-        component.selectedCampaignId = 7;
-        component.selectedCampaignDetail = buildCampaignDetail();
+        component.gestion.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
+        component.gestion.selectedCampaignId = 7;
+        component.gestion.selectedCampaignDetail = buildCampaignDetail();
         spacesSvc.cambiarEntrada.and.resolveTo();
         campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail({ espacio: { id: 41, entrada: 'solicitud' } }));
 
-        void component.cambiarEntradaCampana(true);
+        void component.gestion.cambiarEntradaCampana(true);
         tick();
 
         expect(spacesSvc.cambiarEntrada).toHaveBeenCalledWith(41, 'solicitud');
         expect(campanaSvc.syncMembership).toHaveBeenCalledWith(7);
-        expect(component.selectedCampaignAcceptsRequests).toBeTrue();
-        expect(component.selectedCampaignEntryLink).toContain('?vista=campanas&campana=7');
+        expect(component.gestion.selectedCampaignAcceptsRequests).toBeTrue();
+        expect(component.gestion.selectedCampaignEntryLink).toContain('?vista=campanas&campana=7');
     }));
 
     it('ofrece el traspaso del máster en la plataforma y no deja sacar al máster', fakeAsync(() => {
@@ -1021,23 +1023,23 @@ describe('UserProfileComponent', () => {
         const spacesSvc = TestBed.inject(PlatformSpacesService) as jasmine.SpyObj<PlatformSpacesService>;
         const master = { userId: 'u-1', uid: 'uid-1', displayName: 'Yosi', email: null, campaignRole: 'master' as const, membershipStatus: 'activo' as const, isActive: true, addedAtUtc: null, addedByUserId: null };
         const player = { ...master, userId: 'u-2', uid: 'uid-2', displayName: 'Lia', campaignRole: 'jugador' as const };
-        component.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
-        component.selectedCampaignId = 7;
-        component.selectedCampaignDetail = buildCampaignDetail({ members: [master, player] });
+        component.gestion.campaigns = [{ id: 7, nombre: 'Campaña de prueba', campaignRole: 'master', membershipStatus: 'activo' }];
+        component.gestion.selectedCampaignId = 7;
+        component.gestion.selectedCampaignDetail = buildCampaignDetail({ members: [master, player] });
         spacesSvc.ofrecerTraspaso.and.resolveTo();
         campanaSvc.getCampaignDetail.and.resolveTo(buildCampaignDetail({
             members: [master, player],
             pendingTransfer: { cuenta: 'uid-2', rolSaliente: 'jugador', caduca: null },
         }));
 
-        component.seleccionarNuevoMaster(player);
-        void component.transferirMaster();
+        component.gestion.seleccionarNuevoMaster(player);
+        void component.gestion.transferirMaster();
         tick();
 
         expect(spacesSvc.ofrecerTraspaso).toHaveBeenCalledWith(41, 'uid-2');
-        expect(component.selectedCampaignPendingTransferLabel).toBe('Lia');
+        expect(component.gestion.selectedCampaignPendingTransferLabel).toBe('Lia');
 
-        void component.retirarJugador(master);
+        void component.gestion.retirarJugador(master);
         tick();
         expect(spacesSvc.sacar).not.toHaveBeenCalled();
     }));
@@ -1077,8 +1079,8 @@ describe('UserProfileComponent', () => {
         });
         tick();
 
-        expect(component.selectedCampaignCanManage).toBeTrue();
-        expect(component.selectedCampaignCanTransferMaster).toBeFalse();
+        expect(component.gestion.selectedCampaignCanManage).toBeTrue();
+        expect(component.gestion.selectedCampaignCanTransferMaster).toBeFalse();
     }));
 
     it('no permite gestión convencional si el actor no es master aunque sea admin', fakeAsync(() => {
@@ -1123,9 +1125,9 @@ describe('UserProfileComponent', () => {
         });
         tick();
 
-        expect(component.selectedCampaignSummary).toBeNull();
-        expect(component.selectedCampaignCanManage).toBeFalse();
-        expect(component.selectedCampaignCanTransferMaster).toBeFalse();
+        expect(component.gestion.selectedCampaignSummary).toBeNull();
+        expect(component.gestion.selectedCampaignCanManage).toBeFalse();
+        expect(component.gestion.selectedCampaignCanTransferMaster).toBeFalse();
     }));
 
     it('expone solo jugadores activos como candidatos a transferir master', fakeAsync(() => {
@@ -1175,8 +1177,8 @@ describe('UserProfileComponent', () => {
         });
         tick();
 
-        expect(component.selectedCampaignTransferCandidates.map((member) => member.uid)).toEqual(['uid-2']);
-        expect(component.selectedCampaignCanTransferMaster).toBeTrue();
+        expect(component.gestion.selectedCampaignTransferCandidates.map((member) => member.uid)).toEqual(['uid-2']);
+        expect(component.gestion.selectedCampaignCanTransferMaster).toBeTrue();
     }));
 
     it('hace visible gestión de campañas en caliente cuando una campaña pasa a master', fakeAsync(() => {
@@ -1190,7 +1192,7 @@ describe('UserProfileComponent', () => {
         fixture.detectChanges();
         tick();
 
-        component.campaigns = [];
+        component.gestion.campaigns = [];
         expect(component.canAccessCampaignManagementSection).toBeFalse();
         watchedCampaignSummariesNext?.([]);
         tick();
@@ -1205,7 +1207,7 @@ describe('UserProfileComponent', () => {
         tick();
 
         expect(component.canAccessCampaignManagementSection).toBeTrue();
-        expect(component.manageableCampaigns.map((campaign) => campaign.id)).toEqual([9]);
+        expect(component.gestion.manageableCampaigns.map((campaign) => campaign.id)).toEqual([9]);
         expect(toastSvc.showInfo).toHaveBeenCalledWith('Ahora eres Master de la campaña Caballeros de Cormyr.', {
             category: 'campanas',
         });
@@ -1228,8 +1230,8 @@ describe('UserProfileComponent', () => {
         });
         tick();
 
-        expect(component.selectedCampaignId).toBe(7);
-        expect(component.campaignWorkspaceMode).toBe('idle');
+        expect(component.gestion.selectedCampaignId).toBe(7);
+        expect(component.gestion.campaignWorkspaceMode).toBe('idle');
     }));
 
     it('abre la configuración desde la navegación interna sin cambiar a modo creación', fakeAsync(() => {
@@ -1249,12 +1251,12 @@ describe('UserProfileComponent', () => {
         });
         tick();
 
-        void component.abrirConfiguracionCampana(7);
+        void component.gestion.abrirConfiguracionCampana(7);
         tick();
 
-        expect(component.selectedCampaignId).toBe(7);
-        expect(component.campaignWorkspaceMode).toBe('config');
-        expect(component.isCreatingCampaign).toBeFalse();
+        expect(component.gestion.selectedCampaignId).toBe(7);
+        expect(component.gestion.campaignWorkspaceMode).toBe('config');
+        expect(component.gestion.isCreatingCampaign).toBeFalse();
     }));
 
     it('abre historias directamente desde la navegación interna', fakeAsync(() => {
@@ -1274,22 +1276,21 @@ describe('UserProfileComponent', () => {
         });
         tick();
 
-        void component.abrirHistoriasCampana(7);
+        void component.gestion.abrirHistoriasCampana(7);
         tick();
 
-        expect(component.campaignWorkspaceMode).toBe('peopleStories');
-        expect(component.campaignWorkspaceTab).toBe('historias');
-        expect(component.isCampaignWorkspaceStoriesTab).toBeTrue();
-        expect(component.campaignWorkspaceTitle).toBe('Historias de campaña');
+        expect(component.gestion.campaignWorkspaceMode).toBe('peopleStories');
+        expect(component.gestion.campaignWorkspaceTab).toBe('historias');
+        expect(component.gestion.isCampaignWorkspaceStoriesTab).toBeTrue();
     }));
 
     it('usa una política mínima y conservadora al abrir nueva campaña', fakeAsync(() => {
         fixture.detectChanges();
         tick();
 
-        component.seleccionarNuevaCampana();
+        component.gestion.seleccionarNuevaCampana();
 
-        expect(component.campaignCreatePolicyDraft).toEqual(jasmine.objectContaining({
+        expect(component.gestion.campaignCreatePolicyDraft).toEqual(jasmine.objectContaining({
             tiradaMinimaCaracteristica: 3,
             maxTablasDadosCaracteristicas: 1,
             permitirHomebrewGeneral: false,
@@ -1297,8 +1298,8 @@ describe('UserProfileComponent', () => {
             permitirIgnorarRestriccionesAlineamiento: false,
             maxFuentesHomebrewGeneralesPorPersonaje: 0,
         }));
-        expect(component.campaignWorkspaceMode).toBe('create');
-        expect(component.campaignHomebrewMode).toBe('none');
+        expect(component.gestion.campaignWorkspaceMode).toBe('create');
+        expect(component.gestion.campaignHomebrewMode).toBe('none');
     }));
 
     it('normaliza el modo homebrew limitado antes de crear campaña', fakeAsync(() => {
@@ -1318,11 +1319,11 @@ describe('UserProfileComponent', () => {
         fixture.detectChanges();
         tick();
 
-        component.seleccionarNuevaCampana();
-        component.campaignCreateDraft = 'Nueva';
-        component.setCampaignHomebrewMode('limitado');
-        component.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = -2 as any;
-        void component.crearCampana();
+        component.gestion.seleccionarNuevaCampana();
+        component.gestion.campaignCreateDraft = 'Nueva';
+        component.gestion.setCampaignHomebrewMode('limitado');
+        component.gestion.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = -2 as any;
+        void component.gestion.crearCampana();
         tick();
 
         expect(campanaSvc.createCampaign).toHaveBeenCalledWith(jasmine.objectContaining({
@@ -1348,9 +1349,9 @@ describe('UserProfileComponent', () => {
         fixture.detectChanges();
         tick();
 
-        component.seleccionarNuevaCampana();
-        component.campaignCreateDraft = 'Mini';
-        void component.crearCampana();
+        component.gestion.seleccionarNuevaCampana();
+        component.gestion.campaignCreateDraft = 'Mini';
+        void component.gestion.crearCampana();
         tick();
 
         expect(campanaSvc.createCampaign).not.toHaveBeenCalled();
@@ -1369,9 +1370,9 @@ describe('UserProfileComponent', () => {
         fixture.detectChanges();
         tick();
 
-        component.seleccionarNuevaCampana();
-        component.campaignCreateDraft = '12345';
-        void component.crearCampana();
+        component.gestion.seleccionarNuevaCampana();
+        component.gestion.campaignCreateDraft = '12345';
+        void component.gestion.crearCampana();
         tick();
 
         expect(campanaSvc.createCampaign).not.toHaveBeenCalled();
@@ -1382,30 +1383,30 @@ describe('UserProfileComponent', () => {
         fixture.detectChanges();
         tick();
 
-        component.seleccionarNuevaCampana();
-        component.campaignCreatePolicyDraft.tiradaMinimaCaracteristica = null as any;
-        component.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo = null as any;
-        component.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas = null as any;
-        component.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = 99 as any;
+        component.gestion.seleccionarNuevaCampana();
+        component.gestion.campaignCreatePolicyDraft.tiradaMinimaCaracteristica = null as any;
+        component.gestion.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo = null as any;
+        component.gestion.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas = null as any;
+        component.gestion.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = 99 as any;
 
-        expect(component.campaignCreatePolicyDraft.tiradaMinimaCaracteristica).toBeNull();
-        expect(component.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo).toBeNull();
-        expect(component.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas).toBeNull();
+        expect(component.gestion.campaignCreatePolicyDraft.tiradaMinimaCaracteristica).toBeNull();
+        expect(component.gestion.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo).toBeNull();
+        expect(component.gestion.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas).toBeNull();
 
-        component.campaignCreatePolicyDraft.tiradaMinimaCaracteristica = 99 as any;
-        component.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo = -4 as any;
-        component.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas = 99 as any;
+        component.gestion.campaignCreatePolicyDraft.tiradaMinimaCaracteristica = 99 as any;
+        component.gestion.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo = -4 as any;
+        component.gestion.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas = 99 as any;
 
-        component.onCampaignMinimumRollBlur();
-        component.onCampaignMaxNepBlur();
-        component.onCampaignMaxTablesBlur();
-        component.setCampaignHomebrewMode('limitado');
-        component.onCampaignHomebrewLimitBlur();
+        component.gestion.onCampaignMinimumRollBlur();
+        component.gestion.onCampaignMaxNepBlur();
+        component.gestion.onCampaignMaxTablesBlur();
+        component.gestion.setCampaignHomebrewMode('limitado');
+        component.gestion.onCampaignHomebrewLimitBlur();
 
-        expect(component.campaignCreatePolicyDraft.tiradaMinimaCaracteristica).toBe(13);
-        expect(component.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo).toBe(1);
-        expect(component.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas).toBe(5);
-        expect(component.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje).toBe(20);
+        expect(component.gestion.campaignCreatePolicyDraft.tiradaMinimaCaracteristica).toBe(13);
+        expect(component.gestion.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo).toBe(1);
+        expect(component.gestion.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas).toBe(5);
+        expect(component.gestion.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje).toBe(20);
     }));
 
     it('autocompleta campañas legacy con mínimos 3/1 y persiste el autofix al cargar el detalle', fakeAsync(() => {
@@ -1436,8 +1437,8 @@ describe('UserProfileComponent', () => {
         });
         tick();
 
-        expect(component.campaignCreatePolicyDraft.tiradaMinimaCaracteristica).toBe(3);
-        expect(component.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas).toBe(1);
+        expect(component.gestion.campaignCreatePolicyDraft.tiradaMinimaCaracteristica).toBe(3);
+        expect(component.gestion.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas).toBe(1);
         expect(campanaSvc.updateCampaign).toHaveBeenCalledWith(7, {
             politicaCreacion: jasmine.objectContaining({
                 tiradaMinimaCaracteristica: 3,
