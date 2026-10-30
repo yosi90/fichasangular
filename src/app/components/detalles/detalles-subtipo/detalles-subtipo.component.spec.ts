@@ -34,7 +34,7 @@ function crearSubtipo(partial: Partial<SubtipoDetalle> = {}): SubtipoDetalle {
         Re: 'Inmunidad al fuego',
         Cd: '',
         Tesoro: null as any,
-        Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+        Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Excavar: 0 },
         Maniobrabilidad: null as any,
         Alineamiento: null as any,
         Idiomas: [],
@@ -72,7 +72,7 @@ describe('DetallesSubtipoComponent', () => {
             Iniciativa: 4,
             Tesoro: 'Estándar',
             Alineamiento: { Basico: { Nombre: 'Caótico neutral' } } as any,
-            Movimientos: { Correr: 0, Nadar: 0, Volar: 50, Trepar: 0, Escalar: 0 },
+            Movimientos: { Correr: 0, Nadar: 0, Volar: 50, Trepar: 0, Excavar: 0 },
             Maniobrabilidad: { Nombre: 'Perfecta' },
         });
         fixture.detectChanges();

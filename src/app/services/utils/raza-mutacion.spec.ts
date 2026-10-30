@@ -87,7 +87,7 @@ function crearRazaMock(partial?: Partial<Raza>): Raza {
             Descenso_ascenso: 0,
         },
         Trepar: 0,
-        Escalar: 0,
+        Excavar: 0,
         Altura_rango_inf: 1.5,
         Altura_rango_sup: 1.9,
         Peso_rango_inf: 55,

@@ -156,7 +156,7 @@ function crearPersonajeMock(): Personaje {
         Nadar: 0,
         Volar: 0,
         Trepar: 0,
-        Escalar: 0,
+        Excavar: 0,
         Oficial: true,
         Dados_golpe: 8,
         Pgs_lic: 0,

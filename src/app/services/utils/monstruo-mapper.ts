@@ -14,7 +14,6 @@ import {
     MonstruoDefensa,
     MonstruoDetalle,
     MonstruoHabilidad,
-    MonstruoMovimientos,
     MonstruoNivelClase,
     MonstruoPersonajesRelacionados,
     MonstruoSalvaciones,
@@ -30,6 +29,7 @@ import { Tamano } from "src/app/interfaces/tamaño";
 import { normalizeEspecial } from "../especial.service";
 import { normalizeIdioma } from "../idioma.service";
 import { toDoteContextualArray } from "./dote-mapper";
+import { normalizeMovimientos } from "./movimientos-mapper";
 import { normalizeRacial } from "./racial-mapper";
 import { toArray, toBoolean, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
@@ -109,16 +109,6 @@ function normalizeDadosGolpe(raw: any): MonstruoDadosGolpe {
         Cantidad: toText(raw?.Cantidad),
         Tipo_dado: normalizeMonstruoTipoDado(raw?.Tipo_dado),
         Suma: toNumber(raw?.Suma),
-    };
-}
-
-function normalizeMovimientos(raw: any): MonstruoMovimientos {
-    return {
-        Correr: toNumber(raw?.Correr),
-        Nadar: toNumber(raw?.Nadar),
-        Volar: toNumber(raw?.Volar),
-        Trepar: toNumber(raw?.Trepar),
-        Escalar: toNumber(raw?.Escalar),
     };
 }
 

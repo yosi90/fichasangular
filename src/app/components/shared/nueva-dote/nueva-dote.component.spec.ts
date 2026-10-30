@@ -360,4 +360,12 @@ describe('NuevaDoteComponent', () => {
         expect(trackBy(0, { Id: 12, Nombre: 'Manual base' } as any)).toBe(12);
         expect(trackBy(1, { Id: 'x', Nombre: 'Manual invalido' } as any)).toBe(0);
     });
+
+    it('los modificadores usan las claves del alta de la API (`modificadores` de POST /dotes/add)', () => {
+        expect(component.modificadoresCatalogo.map((item) => item.key)).toEqual([
+            'pg_a_n', 'pg_a', 'caracteristica', 'habilidad', 'fuerza', 'destreza', 'constitucion', 'inteligencia', 'sabiduria',
+            'carisma', 'ca', 'toque', 'desprevenido', 'arm_nat', 'ata_base', 'presa', 'iniciativa', 'fortaleza', 'reflejos',
+            'voluntad', 'espacio', 'alcance', 'correr', 'nadar', 'volar', 'trepar', 'excavar',
+        ]);
+    });
 });

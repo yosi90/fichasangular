@@ -18,7 +18,7 @@ function crearMonstruoMock(partial?: Partial<MonstruoDetalle>): MonstruoDetalle 
         Tipo: { Id: 2, Nombre: 'Bestia', Descripcion: '', Oficial: true },
         Tamano: { Id: 3, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0 },
         Dados_golpe: { Cantidad: '2', Tipo_dado: { Id: 1, Nombre: 'd8' }, Suma: 2 },
-        Movimientos: { Correr: 40, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+        Movimientos: { Correr: 40, Nadar: 0, Volar: 0, Trepar: 0, Excavar: 0 },
         Maniobrabilidad: {
             Id: 0,
             Nombre: '',
@@ -204,7 +204,7 @@ describe('DetallesMonstruoComponent', () => {
 
     it('pinta la cabecera, la franja de datos principales, el combate y el resumen', () => {
         component.monstruo = crearMonstruoMock({
-            Movimientos: { Correr: 40, Nadar: 20, Volar: 0, Trepar: 0, Escalar: 0 },
+            Movimientos: { Correr: 40, Nadar: 20, Volar: 0, Trepar: 0, Excavar: 0 },
             Idiomas: [{ Id: 1, Nombre: 'Común' } as any],
             Defensa: { ...crearMonstruoMock().Defensa, Reduccion_dano: '5/plata' },
         });
@@ -426,7 +426,7 @@ describe('DetallesMonstruoComponent', () => {
 
     it('muestra ayuda de maniobrabilidad cuando el monstruo vuela', () => {
         component.monstruo = crearMonstruoMock({
-            Movimientos: { Correr: 40, Nadar: 0, Volar: 60, Trepar: 0, Escalar: 0 },
+            Movimientos: { Correr: 40, Nadar: 0, Volar: 60, Trepar: 0, Excavar: 0 },
             Maniobrabilidad: {
                 Id: 3,
                 Nombre: 'Buena',

@@ -672,7 +672,7 @@ export function aplicarMutacion(base: Raza, mutada: Raza): Raza {
     assignNumberIfSignificant(resultado as any, "Nadar", mutadaClone?.Nadar);
     assignNumberIfSignificant(resultado as any, "Volar", mutadaClone?.Volar);
     assignNumberIfSignificant(resultado as any, "Trepar", mutadaClone?.Trepar);
-    assignNumberIfSignificant(resultado as any, "Escalar", mutadaClone?.Escalar);
+    assignNumberIfSignificant(resultado as any, "Excavar", mutadaClone?.Excavar);
     assignNumberIfSignificant(resultado as any, "Espacio", mutadaClone?.Espacio);
     assignNumberIfSignificant(resultado as any, "Alcance", mutadaClone?.Alcance);
     assignNumberIfSignificant(resultado as any, "Ajuste_nivel", mutadaClone?.Ajuste_nivel);

@@ -61,7 +61,7 @@ function crearMonstruoBase(nombre: string): FamiliarMonstruoDetalle {
             Nadar: 0,
             Volar: 0,
             Trepar: 0,
-            Escalar: 0,
+            Excavar: 0,
         },
         Caracteristicas: {
             Fuerza: 10, Fuerza_modificador: 0,

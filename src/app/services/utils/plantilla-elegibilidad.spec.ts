@@ -32,7 +32,7 @@ function crearPlantillaMock(overrides?: Partial<Plantilla>): Plantilla {
         Cd: 0,
         Puntos_habilidad: { Suma: 0, Suma_fija: 0 },
         Nacimiento: false,
-        Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+        Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Excavar: 0 },
         Maniobrabilidad: {
             Id: 0,
             Nombre: "",

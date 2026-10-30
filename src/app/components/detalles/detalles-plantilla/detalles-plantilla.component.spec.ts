@@ -43,7 +43,7 @@ function crearPlantilla(partial: Partial<Plantilla> = {}): Plantilla {
         Cd: 0,
         Puntos_habilidad: { Suma: 0, Suma_fija: 0 },
         Nacimiento: true,
-        Movimientos: { Correr: 0, Nadar: 0, Volar: 60, Trepar: 0, Escalar: 0 },
+        Movimientos: { Correr: 0, Nadar: 0, Volar: 60, Trepar: 0, Excavar: 0 },
         Maniobrabilidad: { Id: 2, Nombre: 'Media' } as any,
         Alineamiento: null as any,
         Entorno: null,
@@ -124,7 +124,7 @@ describe('DetallesPlantillaComponent', () => {
             Ca: null as any,
             Resistencia_elemental: '',
             Modificadores_caracteristicas: caracteristicas(),
-            Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+            Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Excavar: 0 },
             Maniobrabilidad: null as any,
             Prerrequisitos: null as any,
             Nacimiento: false,
@@ -209,7 +209,7 @@ describe('DetallesPlantillaComponent', () => {
             Ataque_completo: 'Ambas garras y el mordisco.',
             Cd: 15,
             Velocidades: 'Posee alas con las que puede volar al doble de su velocidad.',
-            Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+            Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Excavar: 0 },
             Maniobrabilidad: null as any,
         });
         fixture.detectChanges();

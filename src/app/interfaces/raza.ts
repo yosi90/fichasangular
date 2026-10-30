@@ -162,7 +162,7 @@ export interface Raza {
     Volar: number;
     Maniobrabilidad: Maniobrabilidad;
     Trepar: number;
-    Escalar: number;
+    Excavar: number;
     Altura_rango_inf: number; 
     Altura_rango_sup: number; 
     Peso_rango_inf: number; 

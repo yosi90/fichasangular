@@ -9,6 +9,7 @@ import {
 } from "src/app/interfaces/subtipo";
 import { leerComodin } from "./comodin";
 import { toDoteContextualArray } from "./dote-mapper";
+import { normalizeMovimientos } from "./movimientos-mapper";
 import { normalizarTexto, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualApi } from './manual-mapper';
 
@@ -135,13 +136,7 @@ export function normalizeSubtipoDetalle(raw: any): SubtipoDetalle {
         Re: toText(raw?.Re),
         Cd: toText(raw?.Cd),
         Tesoro: toText(raw?.Tesoro),
-        Movimientos: {
-            Correr: toNumber(raw?.Movimientos?.Correr),
-            Nadar: toNumber(raw?.Movimientos?.Nadar),
-            Volar: toNumber(raw?.Movimientos?.Volar),
-            Trepar: toNumber(raw?.Movimientos?.Trepar),
-            Escalar: toNumber(raw?.Movimientos?.Escalar),
-        },
+        Movimientos: normalizeMovimientos(raw?.Movimientos),
         Maniobrabilidad: raw?.Maniobrabilidad ?? {},
         Alineamiento: raw?.Alineamiento ?? {
             Id: 0,

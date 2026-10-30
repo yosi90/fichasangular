@@ -22,7 +22,7 @@ export interface RazaCreateCore {
     volar: number;
     id_maniobrabilidad: number;
     trepar: number;
-    escalar: number;
+    excavar: number;
     dotes_extra: number;
     puntos_extra_1: number;
     puntos_extra: number;

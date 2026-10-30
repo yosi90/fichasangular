@@ -2,13 +2,13 @@ import {
     Plantilla,
     PlantillaCaracteristicas,
     PlantillaCompatibilidadTipo,
-    PlantillaMovimientos,
     PlantillaPrerrequisitos,
     PlantillaPrerrequisitosFlags,
     PlantillaRacialContextual,
 } from "src/app/interfaces/plantilla";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
+import { normalizeMovimientos } from "./movimientos-mapper";
 import { normalizeSubtipoRefArray } from "./subtipo-mapper";
 import { leerComodin } from "./comodin";
 import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
@@ -27,16 +27,6 @@ function normalizeCaracteristicas(raw: any): PlantillaCaracteristicas {
         Inteligencia: toNumber(raw?.Inteligencia),
         Sabiduria: toNumber(raw?.Sabiduria),
         Carisma: toNumber(raw?.Carisma),
-    };
-}
-
-function normalizeMovimientos(raw: any): PlantillaMovimientos {
-    return {
-        Correr: toNumber(raw?.Correr),
-        Nadar: toNumber(raw?.Nadar),
-        Volar: toNumber(raw?.Volar),
-        Trepar: toNumber(raw?.Trepar),
-        Escalar: toNumber(raw?.Escalar),
     };
 }
 

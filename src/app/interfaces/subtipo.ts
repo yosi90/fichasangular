@@ -1,5 +1,6 @@
 import { Alineamiento } from "./alineamiento";
 import { Comodin } from "./comodin";
+import { Movimientos } from "./movimientos";
 import { Conjuro } from "./conjuro";
 import { DoteContextual } from "./dote-contextual";
 import { Rasgo } from "./rasgo";
@@ -17,14 +18,6 @@ export interface SubtipoCaracteristicas {
     Inteligencia: number;
     Sabiduria: number;
     Carisma: number;
-}
-
-export interface SubtipoMovimientos {
-    Correr: number;
-    Nadar: number;
-    Volar: number;
-    Trepar: number;
-    Escalar: number;
 }
 
 export interface SubtipoHabilidadBase {
@@ -101,7 +94,7 @@ export interface SubtipoDetalle {
     Re: string;
     Cd: string;
     Tesoro: string;
-    Movimientos: SubtipoMovimientos;
+    Movimientos: Movimientos;
     Maniobrabilidad: Record<string, any>;
     Alineamiento: Alineamiento;
     Idiomas: {

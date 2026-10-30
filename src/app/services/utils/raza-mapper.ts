@@ -343,7 +343,7 @@ export function normalizeRazaApi(raw: any): Raza {
         Volar: toNumber(raw?.vo),
         Maniobrabilidad: raw?.man ?? {} as any,
         Trepar: toNumber(raw?.tr),
-        Escalar: toNumber(raw?.es),
+        Excavar: toNumber(raw?.ex),
         Altura_rango_inf: toNumber(raw?.ari),
         Altura_rango_sup: toNumber(raw?.ars),
         Peso_rango_inf: toNumber(raw?.pri),
