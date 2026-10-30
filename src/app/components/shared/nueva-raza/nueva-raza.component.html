@@ -68,7 +68,7 @@
                                 <section class="form-panel alignment-builder span-2">
                                     <h3 class="form-panel-title">Alineamiento</h3>
                                     <div class="panel-title-row">
-                                        <mat-chip-listbox class="mode-chips" aria-label="Tipo de alineamiento">
+                                        <mat-chip-listbox class="boolean-chips" aria-label="Tipo de alineamiento">
                                             <mat-chip-option [selected]="form.controls.alineamiento_modo.value === 'basico'" (click)="setAlineamientoModo('basico')">Básico</mat-chip-option>
                                             <mat-chip-option [selected]="form.controls.alineamiento_modo.value === 'preferencia'" (click)="setAlineamientoModo('preferencia')">Preferencias</mat-chip-option>
                                         </mat-chip-listbox>
