@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
@@ -14,10 +14,13 @@ import {
 import { EquipoService } from 'src/app/services/equipo.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { formatoNumero, textoAplicaA, textoConSigno, textoPrecio } from 'src/app/services/utils/equipo-texto';
-import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { TipoRol, tipoRolDeEquipo, tituloListado } from 'src/app/services/utils/iconos-rol';
+import { nombreOriginalVisible } from 'src/app/components/detalles/ficha/ficha';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
+import { LISTAS_EQUIPO } from './listas-equipo';
 
 /** Los catálogos pequeños del equipo que se listan con este componente (los objetos van paginados aparte). */
 export type TipoListadoEquipo = 'material' | 'municion' | 'encantamiento' | 'conjunto';
@@ -79,7 +82,8 @@ const CONFIGURACION: Readonly<Record<TipoListadoEquipo, ConfiguracionListado>> =
 
 /**
  * El listado de un catálogo pequeño del equipo (materiales, munición, aptitudes especiales de armas y armaduras,
- * conjuntos de objetos): búsqueda por texto, manual y homebrew, como los demás listados de consulta.
+ * conjuntos de objetos): búsqueda por texto, manual y homebrew, como los demás listados de consulta (lienzo «Rol: las
+ * vistas que faltan», vista 4). El icono y el título salen del registro por el tipo.
  */
 @Component({
     selector: 'app-listado-equipo',
@@ -87,17 +91,19 @@ const CONFIGURACION: Readonly<Record<TipoListadoEquipo, ConfiguracionListado>> =
     styleUrls: ['./listado-equipo.component.sass'],
     standalone: false
 })
-export class ListadoEquipoComponent implements AfterViewInit, OnDestroy {
+export class ListadoEquipoComponent implements AfterViewInit, OnDestroy, ListadoBuscable {
     @Input() tipo: TipoListadoEquipo = 'material';
     @Output() entradaDetalles = new EventEmitter<EntradaEquipo>();
     @Output() entradaSeleccionada = new EventEmitter<EntradaEquipo>();
 
     @ViewChild(MatSort) sort!: MatSort;
     @ViewChild(MatPaginator) paginator!: MatPaginator;
-    @ViewChild('textoInc', { read: ElementRef }) textoInc!: ElementRef;
 
     items: ItemListadoEquipo[] = [];
+    /** El buscador rápido de la cabecera (nombre, nombre original y descripción). */
+    textoBusqueda = '';
     cargado = false;
+    errorCarga = false;
     manuales: string[] = [];
     defaultManual = 'Cualquiera';
     dataSource = new MatTableDataSource<ItemListadoEquipo>([]);
@@ -115,6 +121,18 @@ export class ListadoEquipoComponent implements AfterViewInit, OnDestroy {
         return CONFIGURACION[this.tipo] ?? CONFIGURACION.material;
     }
 
+    /** El icono del catálogo (`ICONOS_ROL`), por el tipo de entrada. */
+    get icono(): TipoRol {
+        return tipoRolDeEquipo(this.tipo);
+    }
+
+    /** El título del listado en el registro («Munición», «Materiales especiales»…). */
+    get titulo(): string {
+        const lista = Object.keys(LISTAS_EQUIPO).find((clave) => LISTAS_EQUIPO[clave] === this.tipo) ?? '';
+        const titulo = lista ? tituloListado(lista) : this.configuracion.plural;
+        return titulo.charAt(0).toUpperCase() + titulo.slice(1);
+    }
+
     get columnas(): string[] {
         return ['Nombre', 'Manual', ...this.configuracion.columnas.map((columna) => columna.clave)];
     }
@@ -127,9 +145,17 @@ export class ListadoEquipoComponent implements AfterViewInit, OnDestroy {
 
     ngAfterViewInit(): void {
         ordenarEnEspanol(this.dataSource);
+        this.cargar();
+    }
+
+    /** Lee el catálogo (otra vez, con «Reintentar»). */
+    cargar(): void {
+        this.cargado = false;
+        this.errorCarga = false;
+        this.suscripcion?.unsubscribe();
         this.suscripcion = this.configuracion.cargar(this.equipoSvc).subscribe({
             next: (items) => {
-                this.items = [...items];
+                this.items = [...(items ?? [])];
                 this.manuales = Array.from(new Set(this.items
                     .map((item) => `${item.Manual?.Nombre ?? ''}`.trim())
                     .filter((nombre) => nombre.length > 0))).sort(compararTexto);
@@ -139,9 +165,27 @@ export class ListadoEquipoComponent implements AfterViewInit, OnDestroy {
             },
             error: () => {
                 this.cargado = true;
+                this.errorCarga = true;
                 this.cdr.detectChanges();
             },
         });
+    }
+
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
+        this.filtrar();
+    }
+
+    /** Si algún filtro no está como al abrir el listado. */
+    get hayFiltros(): boolean {
+        return this.textoBusqueda.trim() !== '' || this.defaultManual !== 'Cualquiera' || this.mostrarHomebrew;
+    }
+
+    limpiarFiltros(): void {
+        this.textoBusqueda = '';
+        this.defaultManual = 'Cualquiera';
+        this.mostrarHomebrew = false;
+        this.filtrar();
     }
 
     ngOnDestroy(): void {
@@ -154,7 +198,7 @@ export class ListadoEquipoComponent implements AfterViewInit, OnDestroy {
     }
 
     filtrar(): void {
-        const texto = normalizarTexto(this.textoInc?.nativeElement?.value ?? '', true);
+        const texto = normalizarTexto(this.textoBusqueda, true);
         const manual = normalizarTexto(this.defaultManual);
         const filtrados = this.items.filter((item) =>
             (texto.length < 1
@@ -169,18 +213,12 @@ export class ListadoEquipoComponent implements AfterViewInit, OnDestroy {
         this.dataSource.sortingDataAccessor = (item, propiedad) => this.valorOrden(item, propiedad);
     }
 
-    etiquetaColumna(clave: string): string {
-        if (clave === 'Nombre' || clave === 'Manual')
-            return clave;
-        return this.configuracion.columnas.find((columna) => columna.clave === clave)?.etiqueta ?? clave;
-    }
-
     valorColumna(item: ItemListadoEquipo, clave: string): string {
         return this.configuracion.columnas.find((columna) => columna.clave === clave)?.valor(item) ?? '';
     }
 
-    manualVisible(item: ItemListadoEquipo): string {
-        return etiquetaManual(item.Manual);
+    nombreOriginal(item: ItemListadoEquipo): string {
+        return nombreOriginalVisible(item);
     }
 
     abrirDetalleManual(item: ItemListadoEquipo, event?: Event): void {

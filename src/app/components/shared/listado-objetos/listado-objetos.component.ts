@@ -7,8 +7,10 @@ import { EquipoService } from 'src/app/services/equipo.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ManualService } from 'src/app/services/manual.service';
 import { textoPrecio, textoPrecioGenerico } from 'src/app/services/utils/equipo-texto';
-import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
+import { TAMANO_PAGINA_POR_DEFECTO } from 'src/app/services/utils/paginador-es';
+import { nombreOriginalVisible } from 'src/app/components/detalles/ficha/ficha';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 const CATEGORIAS: { valor: CategoriaObjeto | null; etiqueta: string; }[] = [
     { valor: null, etiqueta: 'Cualquiera' },
@@ -21,7 +23,8 @@ const SIN_MANUAL = 'Cualquiera';
 
 /**
  * El listado de objetos: un catálogo grande, así que la búsqueda y la paginación van en el servidor (`GET /objetos`, con
- * `q`, `tipo`, `categoria`, `ranura` y `manual`).
+ * `q`, `tipo`, `categoria`, `ranura` y `manual`). El buscador rápido de la cabecera es su `q`; los tamaños de página, los
+ * comunes (`PROVEEDORES_PAGINADOR`), que la API admite.
  */
 @Component({
     selector: 'app-listado-objetos',
@@ -29,25 +32,27 @@ const SIN_MANUAL = 'Cualquiera';
     styleUrls: ['./listado-objetos.component.sass'],
     standalone: false
 })
-export class ListadoObjetosComponent implements OnInit, OnDestroy {
+export class ListadoObjetosComponent implements OnInit, OnDestroy, ListadoBuscable {
     @Output() entradaDetalles = new EventEmitter<EntradaEquipo>();
     @Output() entradaSeleccionada = new EventEmitter<EntradaEquipo>();
 
     readonly columnas = ['Nombre', 'Manual', 'Tipo', 'Ranura', 'Precio'];
     readonly categorias = CATEGORIAS;
-    readonly opcionesPorPagina = [10, 25, 50, 100];
 
     objetos: ObjetoDetalle[] = [];
     total = 0;
     cargando = true;
+    /** Ya llegó alguna respuesta de la API: hasta entonces, el esqueleto; después, la tabla aunque se pida otra página. */
+    cargado = false;
     error = '';
 
-    texto = '';
+    /** El buscador rápido de la cabecera: el `q` de la API. */
+    textoBusqueda = '';
     categoria: CategoriaObjeto | null = null;
     idTipo: number | null = null;
     idRanura: number | null = null;
     manual: string | number = SIN_MANUAL;
-    porPagina = 25;
+    porPagina = TAMANO_PAGINA_POR_DEFECTO;
     pagina = 0;
 
     tipos: EquipoTipoObjeto[] = [];
@@ -85,6 +90,7 @@ export class ListadoObjetosComponent implements OnInit, OnDestroy {
             this.objetos = pagina.items;
             this.total = pagina.total;
             this.cargando = false;
+            this.cargado = true;
             this.cdr.detectChanges();
         });
         this.suscripciones.push(
@@ -100,7 +106,7 @@ export class ListadoObjetosComponent implements OnInit, OnDestroy {
                 error: () => undefined,
             }),
         );
-        this.buscar(0);
+        this.pedir(0);
     }
 
     ngOnDestroy(): void {
@@ -115,29 +121,50 @@ export class ListadoObjetosComponent implements OnInit, OnDestroy {
     }
 
     /** Al escribir, espera un poco antes de pedir; los desplegables piden al momento. Vuelve a la primera página. */
-    alCambiarTexto(texto: string): void {
-        this.texto = texto;
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
         this.pagina = 0;
-        this.buscar(300);
+        this.pedir(300);
+    }
+
+    /** Si algún filtro no está como al abrir el listado. */
+    get hayFiltros(): boolean {
+        return this.textoBusqueda.trim() !== '' || this.categoria !== null || this.idTipo !== null || this.idRanura !== null
+            || this.manual !== SIN_MANUAL;
+    }
+
+    limpiarFiltros(): void {
+        this.textoBusqueda = '';
+        this.categoria = null;
+        this.idTipo = null;
+        this.idRanura = null;
+        this.manual = SIN_MANUAL;
+        this.pagina = 0;
+        this.pedir(0);
+    }
+
+    /** «Reintentar»: la misma página otra vez. */
+    reintentar(): void {
+        this.pedir(0);
     }
 
     alCambiarFiltro(): void {
         if (this.idTipo !== null && !this.tiposVisibles.some((tipo) => tipo.Id === this.idTipo))
             this.idTipo = null;
         this.pagina = 0;
-        this.buscar(0);
+        this.pedir(0);
     }
 
     alCambiarPagina(evento: PageEvent): void {
         this.pagina = evento.pageIndex;
         this.porPagina = evento.pageSize;
-        this.buscar(0);
+        this.pedir(0);
     }
 
     filtros(): FiltrosObjetos {
         const manual = Number(this.manual);
         return {
-            q: this.texto.trim() || null,
+            q: this.textoBusqueda.trim() || null,
             categoria: this.categoria,
             tipo: this.idTipo,
             ranura: this.idRanura,
@@ -147,8 +174,8 @@ export class ListadoObjetosComponent implements OnInit, OnDestroy {
         };
     }
 
-    manualVisible(objeto: ObjetoDetalle): string {
-        return etiquetaManual(objeto.Manual);
+    nombreOriginal(objeto: ObjetoDetalle): string {
+        return nombreOriginalVisible(objeto);
     }
 
     precioVisible(objeto: ObjetoDetalle): string {
@@ -171,7 +198,7 @@ export class ListadoObjetosComponent implements OnInit, OnDestroy {
         this.entradaSeleccionada.emit({ tipo: 'objeto', item: objeto });
     }
 
-    private buscar(espera: number): void {
+    private pedir(espera: number): void {
         this.peticiones$.next({ filtros: this.filtros(), espera });
     }
 }

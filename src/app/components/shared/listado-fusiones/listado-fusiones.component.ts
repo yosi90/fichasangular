@@ -1,16 +1,16 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { Subject, combineLatest, takeUntil } from 'rxjs';
-import { chakrasConVinculo, chakrasDondeSeMoldea, nombreOriginalVisible, unirLista } from 'src/app/components/detalles/ficha';
+import { Subscription, combineLatest } from 'rxjs';
+import { chakrasConVinculo, chakrasDondeSeMoldea, nombreOriginalVisible, textoManualListado, unirLista } from 'src/app/components/detalles/ficha';
 import { Chakra, Fusion } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 /** Una fila del catálogo de fusiones, con lo que enseña cada columna. */
 export interface FilaFusion {
@@ -37,7 +37,7 @@ export function filaFusion(fusion: Fusion, ordenChakras: Map<number, number> = n
         Se_moldea: unirLista([...chakrasDondeSeMoldea(fusion)].sort(orden).map((chakra) => chakra.Nombre), 'o'),
         Vinculos: [...chakrasConVinculo(fusion)].sort(orden).map((chakra) => chakra.Nombre).join(', '),
         Descriptores: fusion.Descriptores.map((descriptor) => descriptor.Nombre).join(', '),
-        Manual: etiquetaManual(fusion.Manual),
+        Manual: textoManualListado(fusion.Manual),
     };
 }
 
@@ -52,7 +52,7 @@ export function filaFusion(fusion: Fusion, ordenChakras: Map<number, number> = n
     styleUrls: ['./listado-fusiones.component.sass'],
     standalone: false
 })
-export class ListadoFusionesComponent implements OnDestroy {
+export class ListadoFusionesComponent implements OnDestroy, ListadoBuscable {
     fusiones: Fusion[] = [];
     filas: FilaFusion[] = [];
     clases: string[] = [CUALQUIERA];
@@ -65,17 +65,13 @@ export class ListadoFusionesComponent implements OnDestroy {
     defaultManual = CUALQUIERA;
     fusionesDS = new MatTableDataSource<FilaFusion>([]);
     readonly fusionColumns = ['Nombre', 'Clases', 'Se_moldea', 'Vinculos', 'Descriptores', 'Manual'];
-    readonly titulosColumnas: Record<string, string> = {
-        Nombre: 'Fusión',
-        Clases: 'Clases',
-        Se_moldea: 'Se moldea en',
-        Vinculos: 'Vínculos',
-        Descriptores: 'Descriptores',
-        Manual: 'Manual',
-    };
+    /** El buscador rápido de la cabecera, en español o en inglés. */
+    textoBusqueda = '';
+    cargado = false;
+    errorCarga = false;
 
     private mostrarHomebrew = false;
-    private readonly destroy$ = new Subject<void>();
+    private catalogoSub?: Subscription;
 
     constructor(
         private cdr: ChangeDetectorRef,
@@ -85,23 +81,40 @@ export class ListadoFusionesComponent implements OnDestroy {
 
     @ViewChild(MatSort) fusionSort!: MatSort;
     @ViewChild(MatPaginator) fusionPaginator!: MatPaginator;
-    @ViewChild('fusionTextInc', { read: ElementRef }) nombreText!: ElementRef;
 
     ngAfterViewInit(): void {
-        combineLatest([this.incarnumSvc.getFusiones(), this.incarnumSvc.getChakras()])
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(([fusiones, chakras]) => {
-                this.cargar(fusiones ?? [], chakras ?? []);
-                this.cdr.detectChanges();
-            });
+        this.cargar();
     }
 
     ngOnDestroy(): void {
-        this.destroy$.next();
-        this.destroy$.complete();
+        this.catalogoSub?.unsubscribe();
     }
 
-    private cargar(fusiones: Fusion[], chakras: Chakra[]): void {
+    /** Lee las fusiones y los chakras (otra vez, con «Reintentar»). */
+    cargar(): void {
+        this.cargado = false;
+        this.errorCarga = false;
+        this.catalogoSub?.unsubscribe();
+        this.catalogoSub = combineLatest([this.incarnumSvc.getFusiones(), this.incarnumSvc.getChakras()]).subscribe({
+            next: ([fusiones, chakras]) => {
+                this.montar(fusiones ?? [], chakras ?? []);
+                this.cargado = true;
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.cargado = true;
+                this.errorCarga = true;
+                this.cdr.detectChanges();
+            },
+        });
+    }
+
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
+        this.filtroFusiones();
+    }
+
+    private montar(fusiones: Fusion[], chakras: Chakra[]): void {
         const ordenChakras = new Map(chakras.map((chakra) => [chakra.Id, chakra.Orden]));
         this.fusiones = fusiones;
         this.filas = fusiones.map((fusion) => filaFusion(fusion, ordenChakras));
@@ -127,8 +140,24 @@ export class ListadoFusionesComponent implements OnDestroy {
         this.filtroFusiones();
     }
 
+    /** Si algún filtro no está como al abrir el listado. */
+    get hayFiltros(): boolean {
+        return this.textoBusqueda.trim() !== '' || this.defaultClase !== CUALQUIERA || this.defaultChakra !== CUALQUIERA
+            || this.defaultDescriptor !== CUALQUIERA || this.defaultManual !== CUALQUIERA || this.mostrarHomebrew;
+    }
+
+    limpiarFiltros(): void {
+        this.textoBusqueda = '';
+        this.defaultClase = CUALQUIERA;
+        this.defaultChakra = CUALQUIERA;
+        this.defaultDescriptor = CUALQUIERA;
+        this.defaultManual = CUALQUIERA;
+        this.mostrarHomebrew = false;
+        this.filtroFusiones();
+    }
+
     filtroFusiones(): void {
-        const texto = normalizarTexto(this.nombreText?.nativeElement?.value ?? '', true);
+        const texto = normalizarTexto(this.textoBusqueda, true);
         const clase = normalizarTexto(this.defaultClase);
         const chakra = normalizarTexto(this.defaultChakra);
         const descriptor = normalizarTexto(this.defaultDescriptor);

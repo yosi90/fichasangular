@@ -12,7 +12,7 @@
 // paginador» en `GUIA_ESTILO_WEB_GENERAL.md`.
 
 // Las columnas de datos cortos (cifras, casillas y los datos con `sombra3d-sm`), centradas con su cabecera.
-$listado-columnas-centradas: Ajuste_nivel, Dgs_adicionales, Arcano, Divino, Psionico, Homebrew, Oficial, Secreto, Repetible, Activa_extra, Prestigio, Nacimiento, Heredada, Familiar, Companero, Se_moldea, Valor_desafio, Puntos_habilidad, Nivel_max_claseo, Tipo_dado, Bon_des, Coste, Precio, Prerrequisitos
+$listado-columnas-centradas: Ajuste_nivel, Dgs_adicionales, Arcano, Divino, Psionico, Homebrew, Oficial, Secreto, Repetible, Activa_extra, Prestigio, Nacimiento, Heredada, Familiar, Companero, Se_moldea, Valor_desafio, Puntos_habilidad, Nivel_max_claseo, Tipo_dado, Bon_des, Coste, Precio, Prerrequisitos, Extra, Dureza, Piezas
 
 :host
     display: flex
@@ -59,8 +59,9 @@ $listado-columnas-centradas: Ajuste_nivel, Dgs_adicionales, Arcano, Divino, Psio
         border-bottom: 0
 
         // El texto de las cabeceras que ordenan, con las mismas versalitas que las demás.
-        ::ng-deep .mat-sort-header-content
+        ::ng-deep .mat-sort-header-container, ::ng-deep .mat-sort-header-content
             letter-spacing: inherit
+            font: inherit
 
     td.mat-mdc-cell
         padding-top: 6px
@@ -161,12 +162,6 @@ $listado-columnas-centradas: Ajuste_nivel, Dgs_adicionales, Arcano, Divino, Psio
     font-size: 12px
     font-weight: 500
     white-space: nowrap
-
-// El nombre original del libro junto al nombre traducido, en las columnas que no son el nombre.
-.nombre-original
-    margin-left: .5rem
-    font-size: .8rem
-    color: $accent
 
 // Móvil: cada fila es una tarjeta de una columna, con el nombre arriba y los datos en una o dos líneas debajo.
 @include movil

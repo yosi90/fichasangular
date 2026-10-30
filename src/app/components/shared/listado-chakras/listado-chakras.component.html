@@ -1,11 +1,8 @@
-<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
-    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
-        <app-menu-filtros titulo="Filtros de chakras">
+<div id="container-lista">
+    <app-listado-cabecera icono="chakra" titulo="Chakras" [total]="cargado && !errorCarga ? chakrasDS.data.length : null"
+        [texto]="textoBusqueda" (textoChange)="buscar($event)" etiquetaBuscar="Buscar chakras" placeholder="En español o en inglés">
+        <app-menu-filtros titulo="Filtros de chakras" [hayFiltros]="hayFiltros" (limpiar)="limpiarFiltros()">
             <app-menu-filtros-grupo titulo="Buscar">
-                <mat-form-field (keyup)="filtroChakras();">
-                    <mat-label>Buscar chakra</mat-label>
-                    <input #chakraTextInc matInput placeholder="En español o en inglés">
-                </mat-form-field>
                 <mat-form-field>
                     <mat-label>Categoría</mat-label>
                     <mat-select appearance="fill" [(value)]="defaultCategoria" (selectionChange)="filtroChakras();">
@@ -14,37 +11,36 @@
                 </mat-form-field>
             </app-menu-filtros-grupo>
         </app-menu-filtros>
+    </app-listado-cabecera>
 
-        <table id="chakras" mat-table [dataSource]="chakrasDS" *ngIf="chakras.length > 0; else cargando">
-            <ng-container matColumnDef="{{column}}" *ngFor="let column of chakraColumns">
-                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef>
-                    {{titulosColumnas[column]}}
-                </th>
+    <!-- Sin paginador: los chakras son pocos y van en su orden (corona, pies…), no por nombre. -->
+    <div class="listado__tabla" [class.listado-oculto]="!cargado || errorCarga">
+        <table id="chakras" mat-table [dataSource]="chakrasDS" aria-label="Chakras">
+            <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef>Chakra</th>
                 <td mat-cell *matCellDef="let fila">
-                    <button mat-stroked-button matTooltip="Clic para ver este chakra" [matTooltipShowDelay]="200"
-                        *ngIf="column == 'Nombre'" color="accent" class="tw-flex tw-justify-start sombra3d tw-w-full"
-                        (click)="verDetallesChakra(fila); $event.stopPropagation();">
-                        <mat-icon>read_more</mat-icon>
-                        {{fila.Nombre}}
-                        <span class="nombre-original" *ngIf="fila.Original">{{fila.Original}}</span>
-                    </button>
-                    <span *ngIf="column != 'Nombre'">{{fila[column] === '' ? '—' : fila[column]}}</span>
+                    <app-listado-nombre tipo="chakra" [nombre]="fila.Nombre" [original]="fila.Original" (abrir)="verDetallesChakra(fila)"></app-listado-nombre>
                 </td>
             </ng-container>
+            <ng-container matColumnDef="Categoria">
+                <th mat-header-cell *matHeaderCellDef>Categoría</th>
+                <td mat-cell *matCellDef="let fila">{{fila.Categoria || '—'}}</td>
+            </ng-container>
+            <ng-container matColumnDef="Ranura">
+                <th mat-header-cell *matHeaderCellDef>Ranura que cierra</th>
+                <td mat-cell *matCellDef="let fila">{{fila.Ranura || '—'}}</td>
+            </ng-container>
             <tr mat-header-row *matHeaderRowDef="chakraColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let fila; columns: chakraColumns;" class="element-row elegir"
-                (click)="seleccionarChakra(fila)"></tr>
+            <tr mat-row *matRowDef="let fila; columns: chakraColumns;" class="elegir" (click)="seleccionarChakra(fila)"></tr>
             <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell tw-text-center tw-text-white tw-p-3" [attr.colspan]="chakraColumns.length">
-                    Ningún chakra encaja con los filtros
+                <td class="mat-cell" [attr.colspan]="chakraColumns.length">
+                    <app-listado-estado tipo="vacio" [mensaje]="hayFiltros ? 'Ningún chakra cumple los filtros.' : 'Aún no hay chakras.'"
+                        [textoAccion]="hayFiltros ? 'Limpiar filtros' : ''" (accion)="limpiarFiltros()"></app-listado-estado>
                 </td>
             </tr>
         </table>
-        <ng-template #cargando>
-            <div class="superballs">
-                <div class="superballs__dot"></div>
-                <div class="superballs__dot"></div>
-            </div>
-        </ng-template>
     </div>
+
+    <app-listado-estado *ngIf="!cargado" tipo="cargando" etiqueta="Cargando chakras"></app-listado-estado>
+    <app-listado-estado *ngIf="cargado && errorCarga" tipo="error" mensaje="No se pudieron cargar los chakras." (accion)="cargar()"></app-listado-estado>
 </div>

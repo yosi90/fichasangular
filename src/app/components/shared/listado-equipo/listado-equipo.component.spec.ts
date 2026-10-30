@@ -5,11 +5,12 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSortModule } from '@angular/material/sort';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { MatMenuModule } from '@angular/material/menu';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { normalizeEncantamiento, normalizeMunicion } from 'src/app/services/utils/equipo-mapper';
 import { crearEncantamientoApi, crearMunicionApi } from 'src/testing/equipo-api';
+import { ManualListadoPipe } from '../listado-nombre/manual-listado.pipe';
 import { ListadoEquipoComponent } from './listado-equipo.component';
 import { claveEntradaEquipo, etiquetaEntradaEquipo, tipoDeListaEquipo } from './listas-equipo';
 
@@ -29,7 +30,7 @@ describe('ListadoEquipoComponent', () => {
         equipoSvc.getEncantamientos.and.returnValue(of([afilada]));
         manualNav = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
         await TestBed.configureTestingModule({
-            declarations: [ListadoEquipoComponent],
+            declarations: [ListadoEquipoComponent, ManualListadoPipe],
             imports: [NoopAnimationsModule, MatTableModule, MatSortModule, MatPaginatorModule, MatMenuModule],
             providers: [
                 { provide: EquipoService, useValue: equipoSvc },
@@ -62,9 +63,46 @@ describe('ListadoEquipoComponent', () => {
         component.tipo = 'municion';
         fixture.detectChanges();
         component.alternarHomebrew();
-        component.textoInc = { nativeElement: { value: 'ballestas' } } as any;
-        component.filtrar();
+        component.buscar('ballestas');
         expect(component.dataSource.data.map((m) => m.Nombre)).toEqual(['Virotes']);
+    });
+
+    it('«Limpiar filtros» vacía el buscador, vuelve a «Cualquiera» y quita lo homebrew', () => {
+        component.tipo = 'municion';
+        fixture.detectChanges();
+        expect(component.hayFiltros).toBeFalse();
+        component.alternarHomebrew();
+        component.buscar('ballestas');
+        component.defaultManual = 'Manual del jugador 1';
+        expect(component.hayFiltros).toBeTrue();
+
+        component.limpiarFiltros();
+
+        expect(component.textoBusqueda).toBe('');
+        expect(component.defaultManual).toBe('Cualquiera');
+        expect(component.mostrarHomebrew).toBeFalse();
+        expect(component.hayFiltros).toBeFalse();
+        expect(component.dataSource.data.map((m) => m.Nombre)).toEqual(['Flechas']);
+    });
+
+    it('el icono y el título salen del registro por el tipo', () => {
+        component.tipo = 'encantamiento';
+        expect(component.icono).toBe('aptitud-equipo');
+        expect(component.titulo).toBe('Aptitudes de armas y armaduras');
+        component.tipo = 'municion';
+        expect(component.titulo).toBe('Munición');
+    });
+
+    it('si la lectura falla enseña el error y «Reintentar» vuelve a leer', () => {
+        component.tipo = 'municion';
+        equipoSvc.getMuniciones.and.returnValues(throwError(() => new Error('caída')), of([flechas]));
+        fixture.detectChanges();
+        expect(component.cargado).toBeTrue();
+        expect(component.errorCarga).toBeTrue();
+
+        component.cargar();
+        expect(component.errorCarga).toBeFalse();
+        expect(component.dataSource.data.map((m) => m.Nombre)).toEqual(['Flechas']);
     });
 
     it('las aptitudes enseñan su bonificador equivalente y a qué se aplican', () => {

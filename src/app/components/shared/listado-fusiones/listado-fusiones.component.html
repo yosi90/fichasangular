@@ -1,11 +1,8 @@
-<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
-    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
-        <app-menu-filtros titulo="Filtros de fusiones">
+<div id="container-lista">
+    <app-listado-cabecera icono="fusion" titulo="Fusiones del alma" [total]="cargado && !errorCarga ? fusionesDS.data.length : null"
+        [texto]="textoBusqueda" (textoChange)="buscar($event)" etiquetaBuscar="Buscar fusiones" placeholder="En español o en inglés">
+        <app-menu-filtros titulo="Filtros de fusiones" [hayFiltros]="hayFiltros" (limpiar)="limpiarFiltros()">
             <app-menu-filtros-grupo titulo="Buscar">
-                <mat-form-field (keyup)="filtroFusiones();">
-                    <mat-label>Buscar fusión</mat-label>
-                    <input #fusionTextInc matInput placeholder="En español o en inglés">
-                </mat-form-field>
                 <mat-form-field>
                     <mat-label>Clase</mat-label>
                     <mat-select appearance="fill" [(value)]="defaultClase" (selectionChange)="filtroFusiones();">
@@ -35,45 +32,51 @@
                     (click)="alternarHomebrew();">{{anuncioHomebrew}}</mat-chip-option>
             </app-menu-filtros-grupo>
         </app-menu-filtros>
+    </app-listado-cabecera>
 
-        <table id="fusiones" mat-table [dataSource]="fusionesDS" matSort *ngIf="fusiones.length > 0; else cargando">
-            <ng-container matColumnDef="{{column}}" *ngFor="let column of fusionColumns">
-                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header
-                    sortActionDescription="Ordenar por {{titulosColumnas[column]}}">
-                    {{titulosColumnas[column]}}
-                </th>
+    <div class="listado__tabla" [class.listado-oculto]="!cargado || errorCarga">
+        <table id="fusiones" mat-table [dataSource]="fusionesDS" matSort aria-label="Fusiones del alma">
+            <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por fusión">Fusión</th>
                 <td mat-cell *matCellDef="let fila">
-                    <button mat-stroked-button matTooltip="Clic para ver esta fusión" [matTooltipShowDelay]="200"
-                        *ngIf="column == 'Nombre'" color="accent" class="tw-flex tw-justify-start sombra3d tw-w-full"
-                        (click)="verDetallesFusion(fila); $event.stopPropagation();">
-                        <mat-icon>read_more</mat-icon>
-                        {{fila.Nombre}}
-                        <span class="nombre-original" *ngIf="fila.Original">{{fila.Original}}</span>
-                    </button>
-                    <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
-                        (click)="abrirDetalleManual(fila, $event)">{{fila.Manual}}</button>
-                    <span *ngIf="column != 'Nombre' && column != 'Manual'">{{fila[column] || '—'}}</span>
+                    <app-listado-nombre tipo="fusion" [nombre]="fila.Nombre" [original]="fila.Original" (abrir)="verDetallesFusion(fila)"></app-listado-nombre>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Clases">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por clases">Clases</th>
+                <td mat-cell *matCellDef="let fila">{{fila.Clases || '—'}}</td>
+            </ng-container>
+            <ng-container matColumnDef="Se_moldea">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por dónde se moldea">Se moldea en</th>
+                <td mat-cell *matCellDef="let fila">{{fila.Se_moldea || '—'}}</td>
+            </ng-container>
+            <ng-container matColumnDef="Vinculos">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por vínculos">Vínculos</th>
+                <td mat-cell *matCellDef="let fila">{{fila.Vinculos || '—'}}</td>
+            </ng-container>
+            <ng-container matColumnDef="Descriptores">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por descriptores">Descriptores</th>
+                <td mat-cell *matCellDef="let fila">{{fila.Descriptores || '—'}}</td>
+            </ng-container>
+            <ng-container matColumnDef="Manual">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por manual">Manual</th>
+                <td mat-cell *matCellDef="let fila">
+                    <button type="button" class="listado-manual" (click)="abrirDetalleManual(fila, $event)">{{fila.Manual}}</button>
                 </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="fusionColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let fila; columns: fusionColumns;" class="element-row elegir"
-                (click)="seleccionarFusion(fila)"></tr>
+            <tr mat-row *matRowDef="let fila; columns: fusionColumns;" class="elegir" (click)="seleccionarFusion(fila)"></tr>
             <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell tw-text-center tw-text-white tw-p-3" [attr.colspan]="fusionColumns.length">
-                    Ninguna fusión encaja con los filtros
+                <td class="mat-cell" [attr.colspan]="fusionColumns.length">
+                    <app-listado-estado tipo="vacio" [mensaje]="hayFiltros ? 'Ninguna fusión cumple los filtros.' : 'Aún no hay fusiones.'"
+                        [textoAccion]="hayFiltros ? 'Limpiar filtros' : ''" (accion)="limpiarFiltros()"></app-listado-estado>
                 </td>
             </tr>
         </table>
-        <ng-template #cargando>
-            <div class="superballs">
-                <div class="superballs__dot"></div>
-                <div class="superballs__dot"></div>
-            </div>
-        </ng-template>
     </div>
-    <div class="lista-row tw-w-full tw-flex tw-items-center">
-        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons
-            aria-label="Selecciona una página de fusiones">
-        </mat-paginator>
-    </div>
+
+    <app-listado-estado *ngIf="!cargado" tipo="cargando" etiqueta="Cargando fusiones"></app-listado-estado>
+    <app-listado-estado *ngIf="cargado && errorCarga" tipo="error" mensaje="No se pudieron cargar las fusiones." (accion)="cargar()"></app-listado-estado>
+
+    <mat-paginator class="listado-paginador" [class.listado-oculto]="!cargado || errorCarga" aria-label="Páginas de fusiones"></mat-paginator>
 </div>

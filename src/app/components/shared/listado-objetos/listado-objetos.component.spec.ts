@@ -36,8 +36,8 @@ describe('ListadoObjetosComponent', () => {
         component.ngOnInit();
         component.alCambiarPagina({ pageIndex: 2, pageSize: 25, length: 30 });
         expect(equipoSvc.getObjetos.calls.mostRecent().args[0]?.offset).toBe(50);
-        component.alCambiarTexto('capa');
-        component.alCambiarTexto('capa de');
+        component.buscar('capa');
+        component.buscar('capa de');
         expect(equipoSvc.getObjetos).toHaveBeenCalledTimes(2);
         tick(300);
         expect(equipoSvc.getObjetos).toHaveBeenCalledTimes(3);
@@ -71,6 +71,40 @@ describe('ListadoObjetosComponent', () => {
         component.ngOnInit();
         expect(component.objetos).toEqual([]);
         expect(component.error).toContain('Algo falló');
+    });
+
+    it('el texto que llega antes de empezar («Ver los N») va en la primera petición', () => {
+        component.textoBusqueda = 'capa';
+        component.ngOnInit();
+        expect(equipoSvc.getObjetos).toHaveBeenCalledWith(jasmine.objectContaining({ q: 'capa', offset: 0 }));
+    });
+
+    it('«Limpiar filtros» vuelve todo a como se abre el listado y pide la primera página', () => {
+        component.ngOnInit();
+        expect(component.hayFiltros).toBeFalse();
+        component.categoria = 'magico';
+        component.idRanura = 3;
+        component.manual = 24;
+        component.alCambiarFiltro();
+        component.alCambiarPagina({ pageIndex: 1, pageSize: 25, length: 30 });
+        expect(component.hayFiltros).toBeTrue();
+
+        component.limpiarFiltros();
+
+        expect(component.hayFiltros).toBeFalse();
+        expect(equipoSvc.getObjetos.calls.mostRecent().args[0]).toEqual({ q: null, categoria: null, tipo: null, ranura: null, manual: null, limit: 25, offset: 0 });
+    });
+
+    it('«Reintentar» vuelve a pedir la misma página tras un error', () => {
+        equipoSvc.getObjetos.and.returnValues(throwError(() => new HttpErrorResponse({ status: 500 })), of({ items: [capa], total: 1, hayMas: false }));
+        component.ngOnInit();
+        expect(component.error).not.toBe('');
+
+        component.reintentar();
+
+        expect(component.error).toBe('');
+        expect(component.objetos).toEqual([capa]);
+        expect(component.cargado).toBeTrue();
     });
 
     it('emite el objeto con su tipo', () => {

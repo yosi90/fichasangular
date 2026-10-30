@@ -45,14 +45,3 @@ export class MenuFiltrosGrupoComponent {
 }
 
 export const MENU_FILTROS_COMPONENTES = [MenuFiltrosComponent, MenuFiltrosGrupoComponent];
-
-/** El texto escrito en el campo de búsqueda de un menú de filtros (el `ElementRef` de su `input`), sin espacios de sobra. */
-export function textoDelFiltro(campo: { nativeElement?: { value?: string } } | null | undefined): string {
-    return `${campo?.nativeElement?.value ?? ''}`.trim();
-}
-
-/** Vacía el campo de búsqueda de un menú de filtros («Limpiar filtros»). */
-export function vaciarTextoDelFiltro(campo: { nativeElement?: { value?: string } } | null | undefined): void {
-    if (campo?.nativeElement)
-        campo.nativeElement.value = '';
-}

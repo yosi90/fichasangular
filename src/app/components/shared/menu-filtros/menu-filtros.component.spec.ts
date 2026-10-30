@@ -6,7 +6,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { MENU_FILTROS_COMPONENTES, textoDelFiltro, vaciarTextoDelFiltro } from './menu-filtros.component';
+import { MENU_FILTROS_COMPONENTES } from './menu-filtros.component';
 
 @Component({
     template: `
@@ -104,12 +104,4 @@ describe('MenuFiltrosComponent', () => {
 
         expect(overlay.querySelector('.menu-filtros__limpiar')).toBeNull();
     }));
-
-    it('lee y vacía el campo de búsqueda', () => {
-        const campo = { nativeElement: { value: '  elfo ' } };
-        expect(textoDelFiltro(campo)).toBe('elfo');
-        vaciarTextoDelFiltro(campo);
-        expect(textoDelFiltro(campo)).toBe('');
-        expect(textoDelFiltro(undefined)).toBe('');
-    });
 });
