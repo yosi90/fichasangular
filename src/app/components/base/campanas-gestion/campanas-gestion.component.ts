@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { destinoEnTablist } from 'src/app/services/utils/teclado';
 import { CampanasGestionEstado } from './campanas-gestion.estado';
 
 export type PestanaCampana = 'politica' | 'jugadores' | 'historias';
@@ -60,16 +61,8 @@ export class CampanasGestionComponent {
     /** Flechas, Inicio y Fin en la fila de pestañas (patrón `tablist`). */
     moverPestana(event: KeyboardEvent): void {
         const actual = this.pestanas.findIndex((p) => p.id === this.pestana);
-        let destino = actual;
-        if (event.key === 'ArrowRight')
-            destino = (actual + 1) % this.pestanas.length;
-        else if (event.key === 'ArrowLeft')
-            destino = (actual - 1 + this.pestanas.length) % this.pestanas.length;
-        else if (event.key === 'Home')
-            destino = 0;
-        else if (event.key === 'End')
-            destino = this.pestanas.length - 1;
-        else
+        const destino = destinoEnTablist(event.key, actual, this.pestanas.length);
+        if (destino === null)
             return;
         event.preventDefault();
         const id = this.pestanas[destino].id;
