@@ -11,6 +11,7 @@ import { CampanaService } from 'src/app/services/campana.service';
 import { UserService } from 'src/app/services/user.service';
 import { Subscription } from 'rxjs';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 type FiltroVisibilidadPersonajes = 'todos' | 'publicos' | 'privados';
@@ -163,11 +164,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
 
     AlternarArchivados() {
         this.mostrarArchivados = !this.mostrarArchivados;
-        const hasArchivadoColumn = this.columnsToDisplay.includes('Archivado');
-        if (this.mostrarArchivados && !hasArchivadoColumn)
-            this.columnsToDisplay = [...this.columnsToDisplay, 'Archivado'];
-        if (!this.mostrarArchivados && hasArchivadoColumn)
-            this.columnsToDisplay = this.columnsToDisplay.filter((column) => column !== 'Archivado');
+        this.columnsToDisplay = conColumnaOpcional(this.columnsToDisplay, 'Archivado', this.mostrarArchivados);
         this.columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
         this.filtroPersonajes();
     }

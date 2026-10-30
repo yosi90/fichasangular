@@ -5,6 +5,7 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { RasgoService } from 'src/app/services/rasgo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { Subscription } from 'rxjs';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
@@ -92,9 +93,7 @@ export class ListadoRasgoRacialComponent implements OnDestroy, ListadoBuscable {
 
     alternarRasgosHomebrew(): void {
         this.mostrarHomebrew = !this.mostrarHomebrew;
-        this.rasgoColumns = this.mostrarHomebrew
-            ? [...this.rasgoColumns.filter((c) => c !== 'Homebrew'), 'Homebrew']
-            : this.rasgoColumns.filter((c) => c !== 'Homebrew');
+        this.rasgoColumns = conColumnaOpcional(this.rasgoColumns, 'Homebrew', this.mostrarHomebrew);
         this.filtroRasgos();
     }
 

@@ -7,6 +7,7 @@ import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { MonstruoService } from 'src/app/services/monstruo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
 import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { porNombre, textosDistintos } from 'src/app/services/utils/orden-texto';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
@@ -167,11 +168,7 @@ export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
     }
 
     private sincronizarColumnaHomebrew(): void {
-        const existe = this.monstruoColumns.includes('Homebrew');
-        if (this.mostrarHomebrew && !existe)
-            this.monstruoColumns.push('Homebrew');
-        if (!this.mostrarHomebrew && existe)
-            this.monstruoColumns = this.monstruoColumns.filter(c => c !== 'Homebrew');
+        this.monstruoColumns = conColumnaOpcional(this.monstruoColumns, 'Homebrew', this.mostrarHomebrew);
     }
 
     private sortingAccessor(item: MonstruoDetalle, property: string): string | number {

@@ -6,6 +6,7 @@ import { SubtipoResumen } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { textosDistintos } from 'src/app/services/utils/orden-texto';
 import { Subscription } from 'rxjs';
@@ -105,9 +106,7 @@ export class ListadoSubtiposComponent implements OnDestroy, ListadoBuscable {
 
     alternarSubtiposHomebrew(): void {
         this.mostrarHomebrew = !this.mostrarHomebrew;
-        this.subtipoColumns = this.mostrarHomebrew
-            ? [...this.subtipoColumns.filter((c) => c !== 'Homebrew'), 'Homebrew']
-            : this.subtipoColumns.filter((c) => c !== 'Homebrew');
+        this.subtipoColumns = conColumnaOpcional(this.subtipoColumns, 'Homebrew', this.mostrarHomebrew);
         this.filtroSubtipos();
     }
 

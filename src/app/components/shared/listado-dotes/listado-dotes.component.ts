@@ -6,6 +6,7 @@ import { Dote } from 'src/app/interfaces/dote';
 import { DoteService } from 'src/app/services/dote.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { Subscription } from 'rxjs';
 import { nombreOriginalVisible } from 'src/app/components/detalles/ficha/ficha';
@@ -110,10 +111,7 @@ export class ListadoDotesComponent implements OnDestroy, ListadoBuscable {
 
     alternarDotesHomebrew() {
         this.mostrarHomebrew = !this.mostrarHomebrew;
-        if (this.mostrarHomebrew && !this.doteColumns.includes('Homebrew'))
-            this.doteColumns.push('Homebrew');
-        else if (!this.mostrarHomebrew && this.doteColumns.includes('Homebrew'))
-            this.doteColumns = this.doteColumns.filter(c => c !== 'Homebrew');
+        this.doteColumns = conColumnaOpcional(this.doteColumns, 'Homebrew', this.mostrarHomebrew);
         this.filtroDotes();
     }
 

@@ -6,6 +6,7 @@ import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { textosDistintos } from 'src/app/services/utils/orden-texto';
 import { esFilaComodin } from 'src/app/services/utils/comodin';
@@ -105,9 +106,7 @@ export class ListadoTiposCriaturaComponent implements OnDestroy, ListadoBuscable
 
     alternarTiposHomebrew(): void {
         this.mostrarHomebrew = !this.mostrarHomebrew;
-        this.tipoColumns = this.mostrarHomebrew
-            ? [...this.tipoColumns.filter((c) => c !== 'Homebrew'), 'Homebrew']
-            : this.tipoColumns.filter((c) => c !== 'Homebrew');
+        this.tipoColumns = conColumnaOpcional(this.tipoColumns, 'Homebrew', this.mostrarHomebrew);
         this.filtroTipos();
     }
 

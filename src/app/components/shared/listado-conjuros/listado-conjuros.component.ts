@@ -7,6 +7,7 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { textosDistintos } from 'src/app/services/utils/orden-texto';
 import { TipoRol, tipoRolDeConjuro } from 'src/app/services/utils/iconos-rol';
@@ -110,9 +111,7 @@ export class ListadoConjurosComponent implements OnDestroy, ListadoBuscable {
 
     alternarConjurosHomebrew(): void {
         this.mostrarHomebrew = !this.mostrarHomebrew;
-        this.conjuroColumns = this.mostrarHomebrew
-            ? [...this.conjuroColumns.filter((c) => c !== 'Homebrew'), 'Homebrew']
-            : this.conjuroColumns.filter((c) => c !== 'Homebrew');
+        this.conjuroColumns = conColumnaOpcional(this.conjuroColumns, 'Homebrew', this.mostrarHomebrew);
         this.filtroConjuros();
     }
 

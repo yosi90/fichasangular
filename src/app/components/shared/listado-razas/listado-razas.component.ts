@@ -7,6 +7,7 @@ import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
+import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
 import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { compararTexto, textosDistintos } from 'src/app/services/utils/orden-texto';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
@@ -138,14 +139,7 @@ export class ListadoRazasComponent implements OnDestroy, ListadoBuscable {
     }
 
     private sincronizarColumnaHomebrew(): void {
-        const activa = this.isHomebrewActivo();
-        const existe = this.razaColumns.includes('Homebrew');
-        if (activa && !existe) {
-            this.razaColumns.push('Homebrew');
-        }
-        if (!activa && existe) {
-            this.razaColumns = this.razaColumns.filter(c => c !== 'Homebrew');
-        }
+        this.razaColumns = conColumnaOpcional(this.razaColumns, 'Homebrew', this.isHomebrewActivo());
     }
 
     get anuncioHomebrew(): string {
