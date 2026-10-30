@@ -286,10 +286,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         this.razaCatalogosSvc.getActitudes()
             .pipe(takeUntil(this.destroy$))
             .subscribe({
-                next: (actitudes) => this.actitudesCatalogo = (actitudes ?? [])
-                    .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-                    .filter((item) => item.id > 0 && item.nombre.length > 0)
-                    .sort((a, b) => compararTexto(a.nombre, b.nombre)),
+                next: (actitudes) => this.actitudesCatalogo = this.aItemsSelector(actitudes),
                 error: () => this.actitudesCatalogo = [],
             });
 
@@ -1254,11 +1251,16 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         return '';
     }
 
-    private actualizarCatalogoDotesPrerrequisito(dotes: Dote[]): void {
-        this.dotesCatalogoPrerrequisito = (Array.isArray(dotes) ? dotes : [])
-            .map((dote) => ({ id: toInt(dote?.Id, 0), nombre: `${dote?.Nombre ?? ''}`.trim() }))
+    /** Un catálogo `{ Id, Nombre }` como opciones de los selectores: solo los que tienen id y nombre, por nombre. */
+    private aItemsSelector(items: ReadonlyArray<{ Id?: unknown; Nombre?: unknown; }> | null | undefined): ExtraSelectorItem[] {
+        return (Array.isArray(items) ? items : [])
+            .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
             .filter((item) => item.id > 0 && item.nombre.length > 0)
             .sort((a, b) => compararTexto(a.nombre, b.nombre));
+    }
+
+    private actualizarCatalogoDotesPrerrequisito(dotes: Dote[]): void {
+        this.dotesCatalogoPrerrequisito = this.aItemsSelector(dotes);
     }
 
     private actualizarCatalogoHabilidadesPrerrequisito(habilidades: HabilidadBasicaDetalle[]): void {
@@ -1279,17 +1281,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
     private actualizarCatalogoEspecialesPrerrequisito(especiales: EspecialClaseDetalle[]): void {
         this.especialesDetalleCatalogo = Array.isArray(especiales) ? [...especiales] : [];
-        this.especialesCatalogo = this.especialesDetalleCatalogo
-            .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-            .filter((item) => item.id > 0 && item.nombre.length > 0)
-            .sort((a, b) => compararTexto(a.nombre, b.nombre));
+        this.especialesCatalogo = this.aItemsSelector(this.especialesDetalleCatalogo);
     }
 
     private actualizarCatalogoExtrasPrerrequisito(extras: Array<{ Id: number; Nombre: string; }>): void {
-        this.extrasCatalogo = (Array.isArray(extras) ? extras : [])
-            .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-            .filter((item) => item.id > 0 && item.nombre.length > 0)
-            .sort((a, b) => compararTexto(a.nombre, b.nombre));
+        this.extrasCatalogo = this.aItemsSelector(extras);
     }
 
     private actualizarOpcionesExtraDote(dotes: Dote[]): void {
@@ -1356,10 +1352,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     private async cargarCatalogo(clave: PrerequisiteCatalogKey): Promise<void> {
         if (clave === 'alineamientos') {
             const alineamientos = await firstValueFrom(this.alineamientoSvc.getAlineamientosBasicosCatalogo());
-            this.alineamientosCatalogo = (Array.isArray(alineamientos) ? alineamientos : [])
-                .map((item: any) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.alineamientosCatalogo = this.aItemsSelector(alineamientos);
             return;
         }
 
@@ -1388,29 +1381,20 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
         if (clave === 'armas') {
             const armas = await firstValueFrom(this.armaSvc.getArmas());
-            this.armasCatalogo = (Array.isArray(armas) ? armas : [])
-                .map((arma) => ({ id: toInt(arma?.Id, 0), nombre: `${arma?.Nombre ?? ''}`.trim() }))
-                .filter((arma) => arma.id > 0 && arma.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.armasCatalogo = this.aItemsSelector(armas);
             this.actualizarOpcionesExtraDote(this.dotesExistentes);
             return;
         }
 
         if (clave === 'clases') {
             const clases = await firstValueFrom(this.claseSvc.getClases());
-            this.clasesCatalogo = (Array.isArray(clases) ? clases : [])
-                .map((item) => ({ id: toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.clasesCatalogo = this.aItemsSelector(clases);
             return;
         }
 
         if (clave === 'conjuros') {
             const conjuros = await firstValueFrom(this.conjuroSvc.getConjuros());
-            this.conjurosCatalogo = (Array.isArray(conjuros) ? conjuros : [])
-                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.conjurosCatalogo = this.aItemsSelector(conjuros);
             return;
         }
 
@@ -1425,19 +1409,13 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
         if (clave === 'dominios') {
             const dominios = await firstValueFrom(this.dominioSvc.getDominios());
-            this.dominiosCatalogo = (Array.isArray(dominios) ? dominios : [])
-                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.dominiosCatalogo = this.aItemsSelector(dominios);
             return;
         }
 
         if (clave === 'escuelas') {
             const escuelas = await firstValueFrom(this.escuelaSvc.getEscuelas());
-            this.escuelasCatalogo = (Array.isArray(escuelas) ? escuelas : [])
-                .map((escuela) => ({ id: toInt(escuela?.Id, 0), nombre: `${escuela?.Nombre ?? ''}`.trim() }))
-                .filter((escuela) => escuela.id > 0 && escuela.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.escuelasCatalogo = this.aItemsSelector(escuelas);
             this.actualizarOpcionesExtraDote(this.dotesExistentes);
             return;
         }
@@ -1456,19 +1434,13 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
         if (clave === 'grupos_arma') {
             const grupos = await firstValueFrom(this.grupoArmaSvc.getGruposArmas());
-            this.gruposArmasCatalogo = (Array.isArray(grupos) ? grupos : [])
-                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.gruposArmasCatalogo = this.aItemsSelector(grupos);
             return;
         }
 
         if (clave === 'grupos_armadura') {
             const grupos = await firstValueFrom(this.grupoArmaduraSvc.getGruposArmaduras());
-            this.gruposArmadurasCatalogo = (Array.isArray(grupos) ? grupos : [])
-                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.gruposArmadurasCatalogo = this.aItemsSelector(grupos);
             return;
         }
 
@@ -1483,47 +1455,31 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
         if (clave === 'idiomas') {
             const idiomas = await firstValueFrom(this.idiomaSvc.getIdiomas());
-            this.idiomasCatalogo = (Array.isArray(idiomas) ? idiomas : [])
-                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.idiomasCatalogo = this.aItemsSelector(idiomas);
             return;
         }
 
         if (clave === 'razas') {
             const razas = await firstValueFrom(this.razaSvc.getRazas());
-            const lista = (Array.isArray(razas) ? razas : [])
-                .map((item) => ({ id: toInt((item as any)?.Id, 0), nombre: `${(item as any)?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
-            this.razasCatalogo = lista;
+            this.razasCatalogo = this.aItemsSelector(razas);
             return;
         }
 
         if (clave === 'tamanos') {
             const tamanos = await firstValueFrom(this.tamanoSvc.getTamanos());
-            this.tamanosCatalogo = (Array.isArray(tamanos) ? tamanos : [])
-                .map((tamano) => ({ id: toInt(tamano?.Id, 0), nombre: `${tamano?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.tamanosCatalogo = this.aItemsSelector(tamanos);
             return;
         }
 
         if (clave === 'regiones') {
             const regiones = await firstValueFrom(this.regionSvc.getRegiones());
-            this.regionesCatalogo = (Array.isArray(regiones) ? regiones : [])
-                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.regionesCatalogo = this.aItemsSelector(regiones);
             return;
         }
 
         if (clave === 'tipos_criatura') {
             const tipos = await firstValueFrom(this.tipoCriaturaSvc.getTiposCriatura());
-            this.tiposCriaturaCatalogo = (Array.isArray(tipos) ? tipos : [])
-                .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.tiposCriaturaCatalogo = this.aItemsSelector(tipos);
             return;
         }
 
