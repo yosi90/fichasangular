@@ -26,6 +26,7 @@ import { UserProfileNavigationService } from './user-profile-navigation.service'
 import { ElementoBusqueda, FuenteBusqueda, LETRAS_MINIMAS_BUSQUEDA, RESULTADOS_POR_GRUPO, textoBuscable } from './utils/busqueda-global';
 import { ICONOS_ROL, LISTADOS_ROL, TipoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from './utils/iconos-rol';
 import { mayusculaInicial } from './utils/formato-registros';
+import { esFilaComodin } from './utils/comodin';
 import { normalizarTexto } from './utils/normalizacion';
 import { textoVisible } from './utils/texto-visible';
 import { TipoCatalogoEquipo } from '../interfaces/equipo';
@@ -164,9 +165,9 @@ export class BuscadorGlobalService {
         };
     }
 
-    /** Las filas con nombre y un id positivo (fuera los comodines y las vacías). */
+    /** Las filas con nombre y un id positivo, sin los comodines que tampoco enseñan los listados (`esFilaComodin`). */
     private filas<T>(lista: T[] | null | undefined): T[] {
-        return (lista ?? []).filter((item: any) => Number(item?.Id) > 0 && textoVisible(item?.Nombre).length > 0);
+        return (lista ?? []).filter((item: any) => Number(item?.Id) > 0 && textoVisible(item?.Nombre).length > 0 && !esFilaComodin(item));
     }
 
     private catalogo<T>(datos: Observable<T[]>, crear: (item: T) => ElementoBusqueda): Observable<ElementoBusqueda[]> {
