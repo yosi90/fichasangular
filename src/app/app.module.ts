@@ -145,6 +145,7 @@ import { HelpRoadmapComponent } from './components/base/help-roadmap/help-roadma
 import { HelpLegalComponent } from './components/base/help-legal/help-legal.component';
 import { HelpUsageAboutComponent } from './components/base/help-usage-about/help-usage-about.component';
 import { AyudaComponent } from './components/base/ayuda/ayuda.component';
+import { DadosComponent } from './components/base/dados/dados.component';
 import { MENU_FILTROS_COMPONENTES } from './components/shared/menu-filtros/menu-filtros.component';
 import { IconoRolComponent } from './components/shared/icono-rol/icono-rol.component';
 import { BuscadorGlobalComponent } from './components/shared/buscador-global/buscador-global.component';
@@ -176,6 +177,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         HelpLegalComponent,
         HelpUsageAboutComponent,
         AyudaComponent,
+        DadosComponent,
         ...MENU_FILTROS_COMPONENTES,
         IconoRolComponent,
         BuscadorGlobalComponent,

@@ -35,6 +35,14 @@
         </ng-template>
         <app-ayuda [solicitud]="ayudaSolicitud"></app-ayuda>
     </mat-tab>
+    <mat-tab label="Dados" *ngIf="dadosTabOpen">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'dado-d20'"></app-icono-rol>
+            <span class="pestana-etiqueta">Dados</span>
+            <button (click)="quitarDados()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-dados></app-dados>
+    </mat-tab>
     <mat-tab *ngFor="let pj of detallesPersonajeAbiertos; let index = index" [label]="pj.Nombre">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'personaje'"></app-icono-rol>
