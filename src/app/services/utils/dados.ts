@@ -8,6 +8,9 @@ import { enteroEntre } from './normalizacion';
  * Dados de 3.5 Companion.
  */
 
+/** La línea gris de la pantalla «Dados»: la de su cabecera y la de su resultado en la búsqueda global. */
+export const SUBTITULO_DADOS = 'Tiradas sueltas para la mesa';
+
 /** Los dados de la fila, en su orden: d4, d6, d8, d10, d12, d20 y d100. */
 export const CARAS_DADOS = [4, 6, 8, 10, 12, 20, 100] as const;
 export type CarasDado = typeof CARAS_DADOS[number];

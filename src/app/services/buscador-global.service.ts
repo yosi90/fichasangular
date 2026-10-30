@@ -28,6 +28,7 @@ import { mayusculaInicial } from './utils/formato-registros';
 import { esFilaComodin } from './utils/comodin';
 import { normalizarTexto } from './utils/normalizacion';
 import { textoVisible } from './utils/texto-visible';
+import { SUBTITULO_DADOS } from './utils/dados';
 import { TipoCatalogoEquipo } from '../interfaces/equipo';
 import { nombreDeManual } from '../components/detalles/ficha/ficha';
 
@@ -249,7 +250,7 @@ export class BuscadorGlobalService {
                 abrir: () => this.perfilNav.openAyuda(),
             },
             {
-                clave: 'pantalla:dados', tipo: 'dado-d20', nombre: 'Dados', subtitulo: 'Tiradas sueltas para la mesa',
+                clave: 'pantalla:dados', tipo: 'dado-d20', nombre: 'Dados', subtitulo: SUBTITULO_DADOS,
                 buscable: textoBuscable('Dados', 'tirada tirar d4 d6 d8 d10 d12 d20 d100'),
                 abrir: () => this.navegacion.abrir({ clase: 'dados' }),
             },

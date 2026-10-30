@@ -1,5 +1,5 @@
 <div class="dados" [class.dados--compacto]="compacto" #raiz tabindex="-1" (keydown)="alPulsarTecla($event)">
-    <app-listado-cabecera icono="dado-d20" titulo="Dados" subtitulo="Tiradas sueltas para la mesa" [buscador]="false"></app-listado-cabecera>
+    <app-listado-cabecera icono="dado-d20" titulo="Dados" [subtitulo]="subtitulo" [buscador]="false"></app-listado-cabecera>
 
     <div class="dados__cuerpo">
         <section class="dados-tarjeta dados-tirada" aria-labelledby="dados-tirada-titulo">

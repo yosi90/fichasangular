@@ -7,6 +7,7 @@ import {
     DadoFila,
     MAXIMO_BONIFICADOR,
     ResultadoTirada,
+    SUBTITULO_DADOS,
     desgloseTirada,
     etiquetaDado,
     expresionTirada,
@@ -56,6 +57,7 @@ export class DadosComponent implements OnInit, AfterViewInit, OnDestroy {
 
     readonly dados = DADOS_FILA;
     readonly maximoBonificador = MAXIMO_BONIFICADOR;
+    readonly subtitulo = SUBTITULO_DADOS;
 
     estado: EstadoDados;
     expresion = '';
