@@ -1,15 +1,10 @@
 @use '../../../../assets/css/variables' as *
-@use '../../../../assets/css/marco' as *
 @use '../../detalles/ficha/ficha-tonos' as *
 
 // Piezas que comparten los pasos de la creación y sus ventanas de elección (lienzo aprobado el 2026-10-26): el título en
 // versalitas, la etiqueta con borde, el buscador, las opciones que se eligen (lista de una ventana, material de una
 // pieza…) y los conmutadores. Globales, con el prefijo `creacion-`; las cargan `CreacionMarcoComponent` y
 // `CreacionVentanaComponent` (Angular las pone una sola vez).
-
-.creacion-oculto
-    @include solo-lectores
-    position: absolute !important
 
 .ficha .creacion-titulo, .creacion-ventana .creacion-titulo
     @include ficha-versalitas
@@ -40,19 +35,10 @@
     color: $font-base
 
 .creacion-etiqueta
-    display: inline-flex
-    align-items: center
-    height: 22px
-    padding: 0 8px
-    border: 1px solid $accent
-    border-radius: 4px
-    font-size: 12px
-    color: $ficha-texto-suave
-    white-space: nowrap
+    @include ficha-etiqueta-borde
 
 .creacion-etiqueta--aviso
-    border-color: $ficha-aviso
-    color: $ficha-aviso
+    @include ficha-etiqueta-aviso
 
 // El buscador: una lupa y el campo, sobre $primary.
 .creacion-buscador

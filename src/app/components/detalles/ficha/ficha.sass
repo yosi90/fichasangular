@@ -31,9 +31,7 @@ app-ficha-detalle
         display: none !important
 
     .ficha-tarjeta
-        background: $ficha-tarjeta
-        border-radius: $ficha-radio
-        box-shadow: $ficha-sombra
+        @include ficha-tarjeta
 
     .ficha-titulo
         @include ficha-versalitas
@@ -53,10 +51,7 @@ app-ficha-detalle
         justify-content: space-between
         gap: 24px
         padding: 18px 24px
-        background: $primary
-        border-radius: $ficha-radio
-        border-bottom: 3px solid $active
-        box-shadow: $ficha-sombra
+        @include ficha-cabecera
 
     .ficha-cabecera__identidad
         display: flex

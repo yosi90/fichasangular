@@ -23,3 +23,35 @@ $ficha-sombra: 3px 3px 10px black
     letter-spacing: .14em
     text-transform: uppercase
     color: $accent
+
+// La tarjeta #424242 de la ficha, la creación, las inserciones, las campañas, la ayuda y el inicio: el fondo, el radio y
+// la sombra. Cada pieza pone su relleno y su disposición.
+@mixin ficha-tarjeta
+    background: $ficha-tarjeta
+    border-radius: $ficha-radio
+    box-shadow: $ficha-sombra
+
+// La cabecera de la ficha y de los marcos que la copian (creación, inserciones, campañas, ayuda): tarjeta $primary con la
+// raya inferior rosa de 3px. Cada una pone su disposición, su relleno y el tamaño del nombre.
+@mixin ficha-cabecera
+    background: $primary
+    border-radius: $ficha-radio
+    border-bottom: 3px solid $active
+    box-shadow: $ficha-sombra
+
+// La etiqueta con borde fino de la creación y de las inserciones (Oficial, Homebrew, Prestigio…); con `ficha-etiqueta-aviso`,
+// en ámbar. La creación la usa a 22px y la cabecera de las inserciones, a 24px.
+@mixin ficha-etiqueta-borde($alto: 22px, $relleno: 8px)
+    display: inline-flex
+    align-items: center
+    height: $alto
+    padding: 0 $relleno
+    border: 1px solid $accent
+    border-radius: 4px
+    font-size: 12px
+    color: $ficha-texto-suave
+    white-space: nowrap
+
+@mixin ficha-etiqueta-aviso
+    border-color: $ficha-aviso
+    color: $ficha-aviso

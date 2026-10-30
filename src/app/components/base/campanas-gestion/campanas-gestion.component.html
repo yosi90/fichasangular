@@ -62,7 +62,7 @@
                         <section class="campanas-bloque campanas-bloque--entero">
                             <h3 class="campanas-bloque__titulo">Nombre</h3>
                             <label class="campanas-fila campanas-fila--campo">
-                                <span class="campanas-oculto">Nombre de la campaña</span>
+                                <span class="solo-lectores">Nombre de la campaña</span>
                                 <input class="campanas-texto" type="text" [placeholder]="g.campaignEditorNamePlaceholder"
                                     [attr.maxlength]="g.campaignNameMaxLength" [(ngModel)]="g.campaignCreateDraft" [disabled]="g.campaignEditorFormDisabled" />
                                 <span class="campanas-contador">{{g.campaignNameLength}}/{{g.campaignNameMaxLength}}</span>
@@ -257,13 +257,13 @@
 
                             <div class="campanas-invitar" *ngIf="g.selectedCampaignCanManage && g.selectedCampaignSpace">
                                 <label class="campanas-campo">
-                                    <span class="campanas-oculto">Buscar usuario para invitar</span>
+                                    <span class="solo-lectores">Buscar usuario para invitar</span>
                                     <mat-icon aria-hidden="true">search</mat-icon>
                                     <input class="campanas-texto" type="text" placeholder="Buscar usuario para invitar"
                                         [(ngModel)]="g.memberSearchQuery" (ngModelChange)="g.onMemberSearchQueryChange()" />
                                 </label>
                                 <label class="campanas-campo">
-                                    <span class="campanas-oculto">Invitar por correo</span>
+                                    <span class="solo-lectores">Invitar por correo</span>
                                     <mat-icon aria-hidden="true">mail_outline</mat-icon>
                                     <input class="campanas-texto" type="email" placeholder="O invitar por correo"
                                         [(ngModel)]="g.memberInviteEmailDraft" [disabled]="g.memberInviteEmailSending" (keyup.enter)="g.invitarPorCorreo()" />
@@ -340,7 +340,7 @@
 
                         <div class="campanas-crear" *ngIf="g.selectedCampaignCanManage">
                             <label class="campanas-campo">
-                                <span class="campanas-oculto">Nueva trama</span>
+                                <span class="solo-lectores">Nueva trama</span>
                                 <input class="campanas-texto" type="text" placeholder="Nueva trama" [(ngModel)]="g.tramaCreateDraft" [disabled]="g.tramaCreateSaving" />
                             </label>
                             <label class="campanas-casilla">
@@ -368,7 +368,7 @@
                                     <ng-template #editarTrama>
                                         <div class="campanas-crear">
                                             <label class="campanas-campo">
-                                                <span class="campanas-oculto">Nombre de la trama</span>
+                                                <span class="solo-lectores">Nombre de la trama</span>
                                                 <input class="campanas-texto" type="text" [(ngModel)]="g.editingTramaDraft" [disabled]="g.isSavingTrama(trama.id)" />
                                             </label>
                                             <label class="campanas-casilla">
@@ -398,7 +398,7 @@
                                         <ng-template #editarSubtrama>
                                             <div class="campanas-crear">
                                                 <label class="campanas-campo">
-                                                    <span class="campanas-oculto">Nombre de la subtrama</span>
+                                                    <span class="solo-lectores">Nombre de la subtrama</span>
                                                     <input class="campanas-texto" type="text" [(ngModel)]="g.editingSubtramaDraft" [disabled]="g.isSavingSubtrama(subtrama.id)" />
                                                 </label>
                                                 <label class="campanas-casilla">
@@ -416,7 +416,7 @@
 
                                 <div class="campanas-crear campanas-crear--sub" *ngIf="g.selectedCampaignCanManage">
                                     <label class="campanas-campo">
-                                        <span class="campanas-oculto">Nueva subtrama de {{trama.nombre}}</span>
+                                        <span class="solo-lectores">Nueva subtrama de {{trama.nombre}}</span>
                                         <input class="campanas-texto" type="text" placeholder="Nueva subtrama"
                                             [ngModel]="g.subtramaCreateDraftByTrama[trama.id] || ''" (ngModelChange)="g.actualizarNuevaSubtrama(trama.id, $event)"
                                             [disabled]="g.subtramaCreateSavingTramaId === trama.id" />

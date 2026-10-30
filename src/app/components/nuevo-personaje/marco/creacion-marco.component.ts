@@ -48,8 +48,8 @@ export class CreacionMarcoComponent { }
                         <ng-template #numero>{{paso.numero}}</ng-template>
                     </span>
                     <span class="creacion-paso__nombre">{{paso.nombre}}</span>
-                    <span class="creacion-oculto" *ngIf="paso.estado === 'hecho'">(hecho)</span>
-                    <span class="creacion-oculto" *ngIf="paso.estado === 'falta'">(por hacer)</span>
+                    <span class="solo-lectores" *ngIf="paso.estado === 'hecho'">(hecho)</span>
+                    <span class="solo-lectores" *ngIf="paso.estado === 'falta'">(por hacer)</span>
                 </li>
                 <li class="creacion-paso__linea" *ngIf="!ultimo" [class.creacion-paso__linea--hecha]="paso.estado === 'hecho'" aria-hidden="true"></li>
             </ng-container>

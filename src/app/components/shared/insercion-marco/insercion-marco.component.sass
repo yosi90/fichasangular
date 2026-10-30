@@ -31,10 +31,7 @@ app-insercion-marco
     flex-direction: column
     gap: 12px
     padding: 16px 22px 14px
-    background: $primary
-    border-radius: $ficha-radio
-    border-bottom: 3px solid $active
-    box-shadow: $ficha-sombra
+    @include ficha-cabecera
 
 .insercion-cabecera__fila
     display: flex
@@ -64,20 +61,11 @@ app-insercion-marco
     color: $font-base
 
 .insercion-etiqueta
-    display: inline-flex
+    @include ficha-etiqueta-borde(24px, 10px)
     flex-shrink: 0
-    align-items: center
-    height: 24px
-    padding: 0 10px
-    border: 1px solid $accent
-    border-radius: 4px
-    font-size: 12px
-    color: $ficha-texto-suave
-    white-space: nowrap
 
 .insercion-etiqueta--aviso
-    border-color: $ficha-aviso
-    color: $ficha-aviso
+    @include ficha-etiqueta-aviso
 
 .insercion-cabecera__cerrar
     flex-shrink: 0

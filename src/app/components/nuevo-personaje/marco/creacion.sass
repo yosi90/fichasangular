@@ -59,10 +59,7 @@ app-ficha-detalle.creacion > .ficha
     justify-content: space-between
     gap: 12px 24px
     padding: 10px 20px
-    background: $primary
-    border-radius: $ficha-radio
-    border-bottom: 3px solid $active
-    box-shadow: $ficha-sombra
+    @include ficha-cabecera
 
 .creacion-cabecera__identidad
     display: flex
@@ -108,9 +105,7 @@ app-ficha-detalle.creacion > .ficha
     margin: 0
     padding: 10px 20px
     list-style: none
-    background: $ficha-tarjeta
-    border-radius: $ficha-radio
-    box-shadow: $ficha-sombra
+    @include ficha-tarjeta
     overflow-x: auto
 
 .creacion-paso
@@ -189,9 +184,7 @@ app-ficha-detalle.creacion > .ficha
     gap: 10px
     min-height: 0
     padding: $creacion-tarea-relleno-vertical 18px
-    background: $ficha-tarjeta
-    border-radius: $ficha-radio
-    box-shadow: $ficha-sombra
+    @include ficha-tarjeta
     overflow: auto
 
 .creacion-cuerpo__lateral

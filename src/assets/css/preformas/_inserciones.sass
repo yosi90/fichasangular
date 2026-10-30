@@ -24,10 +24,8 @@
 @mixin insercion-tarjeta
     min-width: 0
     padding: 14px 18px
-    background: $ficha-tarjeta
+    @include ficha-tarjeta
     border: 0
-    border-radius: $ficha-radio
-    box-shadow: $ficha-sombra
     color: $ficha-texto
 
 @mixin insercion-form-base

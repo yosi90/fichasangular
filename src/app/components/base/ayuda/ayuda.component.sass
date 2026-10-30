@@ -30,9 +30,7 @@ app-ayuda
     width: 220px
     box-sizing: border-box
     padding: 10px
-    background: $ficha-tarjeta
-    border-radius: 6px
-    box-shadow: $ficha-sombra
+    @include ficha-tarjeta
 
 .ayuda-nav__boton
     padding: 10px 12px
@@ -72,10 +70,7 @@ app-ayuda
     flex-shrink: 0
     gap: 4px
     padding: 16px 22px
-    background: $primary
-    border-radius: 6px
-    border-bottom: 3px solid $active
-    box-shadow: $ficha-sombra
+    @include ficha-cabecera
 
 .ayuda .ayuda-cabecera__nombre
     margin: 0
@@ -94,9 +89,7 @@ app-ayuda
     align-items: flex-start
     gap: 16px
     padding: 18px 24px
-    background: $ficha-tarjeta
-    border-radius: 6px
-    box-shadow: $ficha-sombra
+    @include ficha-tarjeta
 
 .ayuda-prosa
     display: flex
@@ -289,9 +282,7 @@ app-ayuda
     width: 240px
     box-sizing: border-box
     padding: 14px 16px
-    background: $ficha-tarjeta
-    border-radius: 6px
-    box-shadow: $ficha-sombra
+    @include ficha-tarjeta
 
 .ayuda-indice__enlace
     padding: 0

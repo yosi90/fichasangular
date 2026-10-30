@@ -11,7 +11,7 @@
         (mouseenter)="onRibbonTriggerEnter(archivoTrigger)"
         (mouseleave)="onRibbonTriggerLeave(archivoTrigger)">
         <mat-icon>folder</mat-icon>
-        <span class="ribbon-trigger__sr-only">Archivo</span>
+        <span class="solo-lectores">Archivo</span>
     </button>
     <button type="button" class="ribbon-trigger ribbon-trigger--icon" #menuTrigger="matMenuTrigger" [matMenuTriggerFor]="menuManuales"
         matTooltip="Manuales" aria-label="Manuales"
@@ -21,7 +21,7 @@
         (mouseenter)="onRibbonTriggerEnter(menuTrigger)"
         (mouseleave)="onRibbonTriggerLeave(menuTrigger)">
         <mat-icon>menu_book</mat-icon>
-        <span class="ribbon-trigger__sr-only">Manuales</span>
+        <span class="solo-lectores">Manuales</span>
     </button>
     <button type="button" class="ribbon-trigger ribbon-trigger--icon" #opcionesTrigger="matMenuTrigger" [matMenuTriggerFor]="menuOpciones"
         matTooltip="Opciones" aria-label="Opciones"
@@ -31,7 +31,7 @@
         (mouseenter)="onRibbonTriggerEnter(opcionesTrigger)"
         (mouseleave)="onRibbonTriggerLeave(opcionesTrigger)">
         <mat-icon>tune</mat-icon>
-        <span class="ribbon-trigger__sr-only">Opciones</span>
+        <span class="solo-lectores">Opciones</span>
     </button>
     <button type="button" class="ribbon-trigger ribbon-trigger--icon" #ayudaTrigger="matMenuTrigger" [matMenuTriggerFor]="menuAyuda"
         matTooltip="Ayuda" aria-label="Ayuda"
@@ -41,7 +41,7 @@
         (mouseenter)="onRibbonTriggerEnter(ayudaTrigger)"
         (mouseleave)="onRibbonTriggerLeave(ayudaTrigger)">
         <mat-icon>help_center</mat-icon>
-        <span class="ribbon-trigger__sr-only">Ayuda</span>
+        <span class="solo-lectores">Ayuda</span>
     </button>
     <!-- La búsqueda global (lienzo, vista 5): también con Ctrl+K o ⌘K desde cualquier pantalla. -->
     <button type="button" class="ribbon-buscar" (click)="abrirBuscador()" [attr.aria-keyshortcuts]="atajoBuscar === '⌘K' ? 'Meta+K' : 'Control+K'"

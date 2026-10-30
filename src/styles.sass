@@ -2,6 +2,7 @@
 // @import '~@angular/material/prebuilt-themes/deeppurple-amber.css'
 
 @use 'assets/css/variables' as *
+@use 'assets/css/marco' as marco
 
 *, *::before, *::after
     box-sizing: border-box
@@ -112,6 +113,12 @@ body.rol-ocultar-chat app-chat-floating-host
 // cambiar el orden de los diálogos y los avisos, que van en la misma capa.
 .cdk-overlay-container:has(.mat-mdc-menu-panel)
     z-index: 1700
+
+// Lo que no se ve pero lee el lector de pantalla («(hecho)», la etiqueta de un campo con solo icono, la cabecera de una
+// columna de acciones…). `absolute` gana a la posición de una celda fija (`sticky`) de las tablas de la creación.
+.solo-lectores
+    @include marco.solo-lectores
+    position: absolute !important
 
 // Un error en un bloque rojo sobrio (guía de estilo general); cada vista pone su margen y su relleno.
 .bloque-error
