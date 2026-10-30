@@ -4,7 +4,6 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Subject, Subscription, takeUntil } from 'rxjs';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { MonstruoService } from 'src/app/services/monstruo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
@@ -35,8 +34,7 @@ export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private monstruoSvc: MonstruoService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private monstruoSvc: MonstruoService
     ) { }
 
     @ViewChild(MatSort) monstruoSort!: MatSort;
@@ -152,15 +150,6 @@ export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
         const monstruo = this.monstruos.find(m => Number(m.Id) === Number(idMonstruo));
         if (monstruo)
             this.monstruoSeleccionado.emit(monstruo);
-    }
-
-    abrirDetalleManual(monstruo: MonstruoDetalle, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual({
-            id: monstruo?.Manual?.Id,
-            nombre: monstruo?.Manual?.Nombre,
-        });
     }
 
     isFlagActiva(value: any): boolean {

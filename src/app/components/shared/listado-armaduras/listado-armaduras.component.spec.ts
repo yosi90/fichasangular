@@ -1,6 +1,5 @@
 import { ChangeDetectorRef } from '@angular/core';
 import { of } from 'rxjs';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ListadoArmadurasComponent } from './listado-armaduras.component';
 import { normalizeArmadura } from 'src/app/services/armadura.service';
 import { crearArmaduraApi, crearRodelaApi } from 'src/testing/equipo-api';
@@ -8,18 +7,15 @@ import { crearArmaduraApi, crearRodelaApi } from 'src/testing/equipo-api';
 describe('ListadoArmadurasComponent', () => {
     let component: ListadoArmadurasComponent;
     let cdrMock: jasmine.SpyObj<ChangeDetectorRef>;
-    let manualDetalleNavSvcMock: jasmine.SpyObj<ManualDetalleNavigationService>;
     let armaduraSvcMock: any;
 
     beforeEach(() => {
         cdrMock = jasmine.createSpyObj<ChangeDetectorRef>('ChangeDetectorRef', ['detectChanges']);
-        manualDetalleNavSvcMock = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
         armaduraSvcMock = { getArmaduras: jasmine.createSpy('getArmaduras').and.returnValue(of([])) };
 
         component = new ListadoArmadurasComponent(
             cdrMock,
-            armaduraSvcMock,
-            manualDetalleNavSvcMock
+            armaduraSvcMock
         );
         component.armaduraSort = { active: '', direction: '', sortChange: of({}), initialized: of({}) } as any;
         component.armaduraPaginator = { page: of({}), initialized: of({}) } as any;
@@ -39,14 +35,6 @@ describe('ListadoArmadurasComponent', () => {
         component.soloEscudos = true;
         component.filtroArmaduras();
         expect(component.armadurasDS.data.length).toBe(1);
-    });
-
-    it('abre el manual y evita propagación del click de fila', () => {
-        const event = jasmine.createSpyObj<MouseEvent>('MouseEvent', ['preventDefault', 'stopPropagation']);
-        component.abrirDetalleManual(component.armaduras[0], event);
-        expect(event.preventDefault).toHaveBeenCalled();
-        expect(event.stopPropagation).toHaveBeenCalled();
-        expect(manualDetalleNavSvcMock.abrirDetalleManual).toHaveBeenCalledWith({ id: 1, nombre: 'Manual base' });
     });
 
     it('enseña la categoría (peso o tipo de escudo) y la Destreza máxima en lugar del tipo de armadura', () => {

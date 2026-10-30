@@ -152,6 +152,7 @@ import { ListadoCabeceraComponent } from './components/shared/listado-cabecera/l
 import { ListadoEstadoComponent } from './components/shared/listado-estado/listado-estado.component';
 import { ListadoNombreComponent } from './components/shared/listado-nombre/listado-nombre.component';
 import { ManualListadoPipe } from './components/shared/listado-nombre/manual-listado.pipe';
+import { ListadoManualComponent } from './components/shared/listado-manual/listado-manual.component';
 import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
 
 @NgModule({
@@ -182,6 +183,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         ListadoEstadoComponent,
         ListadoNombreComponent,
         ManualListadoPipe,
+        ListadoManualComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
         DetallesRazaComponent,

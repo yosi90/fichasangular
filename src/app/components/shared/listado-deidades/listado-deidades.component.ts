@@ -5,7 +5,6 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Subject, Subscription, takeUntil } from 'rxjs';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { DeidadService } from 'src/app/services/deidad.service';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { porNombre, textosDistintos } from 'src/app/services/utils/orden-texto';
@@ -36,8 +35,7 @@ export class ListadoDeidadesComponent implements OnDestroy, ListadoBuscable {
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private deidadSvc: DeidadService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private deidadSvc: DeidadService
     ) { }
 
     @ViewChild(MatSort) deidadSort!: MatSort;
@@ -170,15 +168,6 @@ export class ListadoDeidadesComponent implements OnDestroy, ListadoBuscable {
         const deidad = this.deidades.find((item) => Number(item.Id) === Number(idDeidad));
         if (deidad)
             this.deidadSeleccionada.emit(deidad);
-    }
-
-    abrirDetalleManual(deidad: DeidadDetalle, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual({
-            id: deidad?.Manual?.Id,
-            nombre: deidad?.Manual?.Nombre,
-        });
     }
 
     private sortingAccessor(item: DeidadDetalle, property: string): string | number {

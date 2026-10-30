@@ -27,7 +27,7 @@
             <ng-container matColumnDef="Manual">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por manual">Manual</th>
                 <td mat-cell *matCellDef="let conjuro">
-                    <button type="button" class="listado-manual" (click)="abrirDetalleManual(conjuro, $event)">{{conjuro.Manual | manualListado}}</button>
+                    <app-listado-manual [manual]="conjuro.Manual"></app-listado-manual>
                 </td>
             </ng-container>
             <ng-container *ngFor="let disciplina of disciplinas" [matColumnDef]="disciplina.columna">

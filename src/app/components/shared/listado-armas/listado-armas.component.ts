@@ -5,7 +5,6 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Subject, Subscription, takeUntil } from 'rxjs';
 import { ArmaDetalle } from 'src/app/interfaces/arma';
 import { ArmaService } from 'src/app/services/arma.service';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { porNombre, textosDistintos } from 'src/app/services/utils/orden-texto';
@@ -35,8 +34,7 @@ export class ListadoArmasComponent implements OnDestroy, ListadoBuscable {
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private armaSvc: ArmaService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private armaSvc: ArmaService
     ) { }
 
     @ViewChild(MatSort) armaSort!: MatSort;
@@ -159,15 +157,6 @@ export class ListadoArmasComponent implements OnDestroy, ListadoBuscable {
         const arma = this.armas.find(item => Number(item.Id) === Number(idArma));
         if (arma)
             this.armaSeleccionada.emit(arma);
-    }
-
-    abrirDetalleManual(arma: ArmaDetalle, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual({
-            id: arma?.Manual?.Id,
-            nombre: arma?.Manual?.Nombre,
-        });
     }
 
     private sortingAccessor(item: ArmaDetalle, property: string): string | number {

@@ -35,7 +35,7 @@
             <ng-container matColumnDef="Manual">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por manual">Manual</th>
                 <td mat-cell *matCellDef="let armadura">
-                    <button type="button" class="listado-manual" *ngIf="armadura.Manual?.Nombre" (click)="abrirDetalleManual(armadura, $event)">{{armadura.Manual | manualListado}}</button>
+                    <app-listado-manual *ngIf="armadura.Manual?.Nombre" [manual]="armadura.Manual"></app-listado-manual>
                 </td>
             </ng-container>
             <ng-container matColumnDef="Categoria">

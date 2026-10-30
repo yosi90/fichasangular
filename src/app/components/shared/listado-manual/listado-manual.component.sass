@@ -1,0 +1,31 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// Sin caja propia: el botón queda en la celda como si estuviera escrito en ella (en el móvil, la celda es flex).
+:host
+    display: contents
+
+// El manual: «Razas de Faerûn · p. 131», enlace gris con raya rosa que abre su detalle.
+.listado-manual
+    display: inline
+    padding: 0
+    margin: 0
+    border: 0
+    background: transparent
+    font: inherit
+    font-size: 13.5px
+    line-height: inherit
+    color: $ficha-texto-suave
+    text-align: left
+    text-decoration: underline
+    text-decoration-color: $active
+    text-decoration-thickness: 1px
+    text-underline-offset: 3px
+    cursor: pointer
+
+    &:hover
+        color: $ficha-blanco
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px

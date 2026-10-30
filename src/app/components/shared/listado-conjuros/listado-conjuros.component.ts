@@ -5,7 +5,6 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Subscription } from 'rxjs';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { ConjuroService } from 'src/app/services/conjuro.service';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
@@ -40,8 +39,7 @@ export class ListadoConjurosComponent implements OnDestroy, ListadoBuscable {
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private cSvc: ConjuroService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private cSvc: ConjuroService
     ) { }
 
     @ViewChild(MatSort) conjuroSort!: MatSort;
@@ -142,11 +140,5 @@ export class ListadoConjurosComponent implements OnDestroy, ListadoBuscable {
     @Output() conjuroSeleccionado: EventEmitter<Conjuro> = new EventEmitter<Conjuro>();
     seleccionarConjuro(value: number) {
         this.conjuroSeleccionado.emit(this.conjuros.find(c => c.Id === value));
-    }
-
-    abrirDetalleManual(conjuro: Conjuro, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual(conjuro?.Manual);
     }
 }

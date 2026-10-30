@@ -4,7 +4,6 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Clase } from 'src/app/interfaces/clase';
 import { ClaseService } from 'src/app/services/clase.service';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { esFilaComodin } from 'src/app/services/utils/comodin';
@@ -35,8 +34,7 @@ export class ListadoClasesComponent implements OnDestroy, ListadoBuscable {
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private claseSvc: ClaseService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private claseSvc: ClaseService
     ) { }
 
     @ViewChild(MatSort) claseSort!: MatSort;
@@ -187,14 +185,5 @@ export class ListadoClasesComponent implements OnDestroy, ListadoBuscable {
         const clase = this.clases.find(c => c.Id === id);
         if (clase)
             this.claseSeleccionada.emit(clase);
-    }
-
-    abrirDetalleManual(clase: Clase, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual({
-            id: clase?.Manual?.Id,
-            nombre: clase?.Manual?.Nombre,
-        });
     }
 }

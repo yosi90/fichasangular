@@ -4,7 +4,6 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { combineLatest, Subject, Subscription, takeUntil } from 'rxjs';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
@@ -38,8 +37,7 @@ export class ListadoVentajasComponent implements OnDestroy, ListadoBuscable {
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private ventajaSvc: VentajaService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private ventajaSvc: VentajaService
     ) { }
 
     @ViewChild(MatSort) ventajaSort!: MatSort;
@@ -141,15 +139,6 @@ export class ListadoVentajasComponent implements OnDestroy, ListadoBuscable {
     @Output() ventajaSeleccionada: EventEmitter<VentajaDetalle> = new EventEmitter<VentajaDetalle>();
     seleccionarVentaja(item: VentajaListadoItem) {
         this.ventajaSeleccionada.emit(item);
-    }
-
-    abrirDetalleManual(item: VentajaListadoItem, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual({
-            id: item?.Manual?.Id,
-            nombre: item?.Manual?.Nombre,
-        });
     }
 
 }

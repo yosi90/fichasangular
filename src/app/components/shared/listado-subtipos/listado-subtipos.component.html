@@ -27,7 +27,7 @@
             <ng-container matColumnDef="Manual">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por manual">Manual</th>
                 <td mat-cell *matCellDef="let subtipo">
-                    <button type="button" class="listado-manual" (click)="abrirDetalleManual(subtipo, $event)">{{subtipo.Manual | manualListado}}</button>
+                    <app-listado-manual [manual]="subtipo.Manual"></app-listado-manual>
                 </td>
             </ng-container>
             <ng-container matColumnDef="Heredada">

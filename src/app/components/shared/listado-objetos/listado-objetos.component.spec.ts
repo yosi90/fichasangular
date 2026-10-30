@@ -18,7 +18,7 @@ describe('ListadoObjetosComponent', () => {
         equipoSvc.getObjetos.and.returnValue(of({ items: [capa, pocion], total: 30, hayMas: true }));
         equipoSvc.getCatalogos.and.returnValue(of(normalizeEquipoCatalogos(crearEquipoCatalogosApi())));
         const manualSvc = { getManuales: () => of([]) } as any;
-        component = new ListadoObjetosComponent({ detectChanges: () => undefined } as any, equipoSvc, manualSvc, { abrirDetalleManual: jasmine.createSpy() } as any);
+        component = new ListadoObjetosComponent({ detectChanges: () => undefined } as any, equipoSvc, manualSvc);
     });
 
     afterEach(() => component.ngOnDestroy());

@@ -1,7 +1,6 @@
 import { ChangeDetectorRef } from '@angular/core';
 import { of } from 'rxjs';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { ListadoVentajasComponent } from './listado-ventajas.component';
 
@@ -9,7 +8,6 @@ describe('ListadoVentajasComponent', () => {
     let component: ListadoVentajasComponent;
     let cdrMock: jasmine.SpyObj<ChangeDetectorRef>;
     let ventajaSvcMock: jasmine.SpyObj<VentajaService>;
-    let manualDetalleNavSvcMock: jasmine.SpyObj<ManualDetalleNavigationService>;
 
     const ventajaBase: VentajaDetalle = {
         Id: 1,
@@ -42,12 +40,11 @@ describe('ListadoVentajasComponent', () => {
     beforeEach(() => {
         cdrMock = jasmine.createSpyObj<ChangeDetectorRef>('ChangeDetectorRef', ['detectChanges']);
         ventajaSvcMock = jasmine.createSpyObj<VentajaService>('VentajaService', ['getVentajas', 'getDesventajas']);
-        manualDetalleNavSvcMock = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
 
         ventajaSvcMock.getVentajas.and.returnValue(of([ventajaBase]));
         ventajaSvcMock.getDesventajas.and.returnValue(of([]));
 
-        component = new ListadoVentajasComponent(cdrMock, ventajaSvcMock, manualDetalleNavSvcMock);
+        component = new ListadoVentajasComponent(cdrMock, ventajaSvcMock);
         component.ventajaSort = { active: '', direction: '', sortChange: of({}), initialized: of({}) } as any;
         component.ventajaPaginator = { page: of({}), initialized: of({}) } as any;
     });
@@ -60,15 +57,6 @@ describe('ListadoVentajasComponent', () => {
         const emitSpy = spyOn(component.ventajaDetalles, 'emit');
         component.verDetallesVentaja({ ...ventajaBase, Tipo: 'Ventaja' } as any);
         expect(emitSpy).toHaveBeenCalled();
-    });
-
-    it('abre el manual y evita propagacion del click de fila', () => {
-        const event = jasmine.createSpyObj<MouseEvent>('MouseEvent', ['preventDefault', 'stopPropagation']);
-        component.abrirDetalleManual({ ...ventajaBase, Tipo: 'Ventaja' } as any, event);
-
-        expect(event.preventDefault).toHaveBeenCalled();
-        expect(event.stopPropagation).toHaveBeenCalled();
-        expect(manualDetalleNavSvcMock.abrirDetalleManual).toHaveBeenCalledWith({ id: 1, nombre: 'Manual base' });
     });
 
     it('carga ventajas y desventajas, y el buscador rápido filtra por nombre', () => {

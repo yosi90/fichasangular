@@ -11,6 +11,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { normalizeEncantamiento, normalizeMunicion } from 'src/app/services/utils/equipo-mapper';
 import { crearEncantamientoApi, crearMunicionApi } from 'src/testing/equipo-api';
 import { ManualListadoPipe } from '../listado-nombre/manual-listado.pipe';
+import { ListadoManualComponent } from '../listado-manual/listado-manual.component';
 import { ListadoEquipoComponent } from './listado-equipo.component';
 import { claveEntradaEquipo, etiquetaEntradaEquipo, tipoDeListaEquipo } from './listas-equipo';
 
@@ -30,7 +31,7 @@ describe('ListadoEquipoComponent', () => {
         equipoSvc.getEncantamientos.and.returnValue(of([afilada]));
         manualNav = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
         await TestBed.configureTestingModule({
-            declarations: [ListadoEquipoComponent, ManualListadoPipe],
+            declarations: [ListadoEquipoComponent, ListadoManualComponent, ManualListadoPipe],
             imports: [NoopAnimationsModule, MatTableModule, MatSortModule, MatPaginatorModule, MatMenuModule],
             providers: [
                 { provide: EquipoService, useValue: equipoSvc },
@@ -123,12 +124,16 @@ describe('ListadoEquipoComponent', () => {
         expect(seleccion).toHaveBeenCalledWith({ tipo: 'municion', item: flechas });
     });
 
-    it('abre el manual sin seleccionar la fila', () => {
+    it('el manual de la fila abre su detalle sin seleccionar la fila', () => {
         component.tipo = 'municion';
-        const event = jasmine.createSpyObj<MouseEvent>('MouseEvent', ['preventDefault', 'stopPropagation']);
-        component.abrirDetalleManual(flechas, event);
-        expect(event.stopPropagation).toHaveBeenCalled();
+        fixture.detectChanges();
+        fixture.detectChanges();
+        const seleccion = spyOn(component.entradaSeleccionada, 'emit');
+        const enlace = (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('app-listado-manual .listado-manual');
+        expect(enlace?.textContent?.trim()).toBe('Manual del jugador 1');
+        enlace!.click();
         expect(manualNav.abrirDetalleManual).toHaveBeenCalledWith({ id: 54, nombre: 'Manual del jugador 1' });
+        expect(seleccion).not.toHaveBeenCalled();
     });
 });
 

@@ -4,7 +4,6 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Subscription } from 'rxjs';
 import { Raza } from 'src/app/interfaces/raza';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { RazaService } from 'src/app/services/raza.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
@@ -45,8 +44,7 @@ export class ListadoRazasComponent implements OnDestroy, ListadoBuscable {
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private rSvc: RazaService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private rSvc: RazaService
     ) { }
 
     @ViewChild(MatSort) razaSort!: MatSort;
@@ -249,11 +247,5 @@ export class ListadoRazasComponent implements OnDestroy, ListadoBuscable {
 
     private esOficialParaFiltro(raza: Raza): boolean {
         return toBoolean((raza as any)?.Oficial, true);
-    }
-
-    abrirDetalleManual(raza: Raza, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual(raza?.Manual);
     }
 }

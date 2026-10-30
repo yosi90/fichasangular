@@ -3,7 +3,6 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
@@ -34,8 +33,7 @@ export class ListadoTiposCriaturaComponent implements OnDestroy, ListadoBuscable
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private tSvc: TipoCriaturaService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private tSvc: TipoCriaturaService
     ) { }
 
     @ViewChild(MatSort) tipoSort!: MatSort;
@@ -132,11 +130,5 @@ export class ListadoTiposCriaturaComponent implements OnDestroy, ListadoBuscable
     @Output() tipoCriaturaSeleccionado: EventEmitter<TipoCriatura> = new EventEmitter<TipoCriatura>();
     seleccionarTipo(value: number) {
         this.tipoCriaturaSeleccionado.emit(this.tipos.find(c => c.Id === value));
-    }
-
-    abrirDetalleManual(tipo: TipoCriatura, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual(tipo?.Manual);
     }
 }

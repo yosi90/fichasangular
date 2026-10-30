@@ -3,7 +3,7 @@ import { ListadoRazasComponent } from './listado-razas.component';
 
 describe('ListadoRazasComponent', () => {
     function crear(): ListadoRazasComponent {
-        const componente = new ListadoRazasComponent({ detectChanges: () => undefined } as any, {} as any, {} as any);
+        const componente = new ListadoRazasComponent({ detectChanges: () => undefined } as any, {} as any);
         componente.razas = [{ Id: 3, Nombre: 'Elfo' } as any];
         return componente;
     }
@@ -64,7 +64,7 @@ describe('ListadoRazasComponent', () => {
 
     it('cargar pasa a error si la lectura falla y vuelve a leer con «Reintentar»', () => {
         const getRazas = jasmine.createSpy('getRazas').and.returnValues(throwError(() => new Error('caída')), of([{ Id: 1, Nombre: 'Elfo', Oficial: true }]));
-        const componente = new ListadoRazasComponent({ detectChanges: () => undefined } as any, { getRazas } as any, {} as any);
+        const componente = new ListadoRazasComponent({ detectChanges: () => undefined } as any, { getRazas } as any);
 
         componente.cargar();
         expect(componente.cargado).toBeTrue();

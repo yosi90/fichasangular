@@ -12,7 +12,6 @@ import {
     TextoEquipo,
 } from 'src/app/interfaces/equipo';
 import { EquipoService } from 'src/app/services/equipo.service';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { formatoNumero, textoAplicaA, textoConSigno, textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
@@ -114,7 +113,6 @@ export class ListadoEquipoComponent implements AfterViewInit, OnDestroy, Listado
     constructor(
         private cdr: ChangeDetectorRef,
         private equipoSvc: EquipoService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService,
     ) { }
 
     get configuracion(): ConfiguracionListado {
@@ -217,12 +215,6 @@ export class ListadoEquipoComponent implements AfterViewInit, OnDestroy, Listado
 
     nombreOriginal(item: ItemListadoEquipo): string {
         return nombreOriginalVisible(item);
-    }
-
-    abrirDetalleManual(item: ItemListadoEquipo, event?: Event): void {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual({ id: item.Manual?.Id, nombre: item.Manual?.Nombre });
     }
 
     verDetalles(item: ItemListadoEquipo): void {

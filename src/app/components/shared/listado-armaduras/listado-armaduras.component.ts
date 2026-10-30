@@ -5,7 +5,6 @@ import { MatTableDataSource } from '@angular/material/table';
 import { Subject, Subscription, takeUntil } from 'rxjs';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { ArmaduraService } from 'src/app/services/armadura.service';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { categoriaArmadura, textoDestrezaMaxima } from 'src/app/services/utils/equipo-texto';
@@ -37,8 +36,7 @@ export class ListadoArmadurasComponent implements OnDestroy, ListadoBuscable {
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private armaduraSvc: ArmaduraService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private armaduraSvc: ArmaduraService
     ) { }
 
     @ViewChild(MatSort) armaduraSort!: MatSort;
@@ -168,15 +166,6 @@ export class ListadoArmadurasComponent implements OnDestroy, ListadoBuscable {
         const armadura = this.armaduras.find(item => Number(item.Id) === Number(idArmadura));
         if (armadura)
             this.armaduraSeleccionada.emit(armadura);
-    }
-
-    abrirDetalleManual(armadura: ArmaduraDetalle, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual({
-            id: armadura?.Manual?.Id,
-            nombre: armadura?.Manual?.Nombre,
-        });
     }
 
     getCategoria(armadura: ArmaduraDetalle): string {

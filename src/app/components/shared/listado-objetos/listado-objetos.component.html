@@ -44,7 +44,7 @@
             <ng-container matColumnDef="Manual">
                 <th mat-header-cell *matHeaderCellDef>Manual</th>
                 <td mat-cell *matCellDef="let objeto">
-                    <button type="button" class="listado-manual" (click)="abrirDetalleManual(objeto, $event)">{{objeto.Manual | manualListado}}</button>
+                    <app-listado-manual [manual]="objeto.Manual"></app-listado-manual>
                 </td>
             </ng-container>
             <ng-container matColumnDef="Tipo">

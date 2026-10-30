@@ -34,7 +34,7 @@ describe('Listados de Magic of Incarnum', () => {
         const casco = normalizarFusion(fusionApi());
         const otra = normalizarFusion(fusionApi({ Id: 99, Nombre: 'Botas de pasos rápidos', Nombre_original: 'Fleetstep Boots' }));
         const chakra = normalizarChakra(chakraApi());
-        const crear = (incarnum: any) => new ListadoFusionesComponent({ detectChanges: () => undefined } as any, incarnum, {} as any);
+        const crear = (incarnum: any) => new ListadoFusionesComponent({ detectChanges: () => undefined } as any, incarnum);
 
         it('el buscador rápido busca en español o en inglés y «Limpiar filtros» lo vacía todo', () => {
             const listado = crear({ getFusiones: () => of([casco, otra]), getChakras: () => of([chakra]) });

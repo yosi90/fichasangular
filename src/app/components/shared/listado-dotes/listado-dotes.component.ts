@@ -4,7 +4,6 @@ import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteService } from 'src/app/services/dote.service';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
@@ -34,8 +33,7 @@ export class ListadoDotesComponent implements OnDestroy, ListadoBuscable {
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private dSvc: DoteService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private dSvc: DoteService
     ) { }
 
     @ViewChild(MatSort) doteSort!: MatSort;
@@ -169,14 +167,5 @@ export class ListadoDotesComponent implements OnDestroy, ListadoBuscable {
         const dote = this.dotes.find(d => d.Id === id);
         if (dote)
             this.doteSeleccionada.emit(dote);
-    }
-
-    abrirDetalleManual(dote: Dote, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual({
-            id: dote?.Manual?.Id,
-            nombre: dote?.Manual?.Nombre,
-        });
     }
 }

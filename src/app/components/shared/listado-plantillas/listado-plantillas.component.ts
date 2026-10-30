@@ -3,7 +3,6 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { Plantilla } from 'src/app/interfaces/plantilla';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
@@ -32,8 +31,7 @@ export class ListadoPlantillasComponent implements OnDestroy, ListadoBuscable {
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private plantillaSvc: PlantillaService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private plantillaSvc: PlantillaService
     ) { }
 
     @ViewChild(MatSort) plantillaSort!: MatSort;
@@ -145,14 +143,5 @@ export class ListadoPlantillasComponent implements OnDestroy, ListadoBuscable {
         const plantilla = this.plantillas.find(p => p.Id === id);
         if (plantilla)
             this.plantillaSeleccionada.emit(plantilla);
-    }
-
-    abrirDetalleManual(plantilla: Plantilla, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual({
-            id: plantilla?.Manual?.Id,
-            nombre: plantilla?.Manual?.Nombre,
-        });
     }
 }

@@ -3,7 +3,6 @@ import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
 import { SubtipoResumen } from 'src/app/interfaces/subtipo';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
@@ -33,8 +32,7 @@ export class ListadoSubtiposComponent implements OnDestroy, ListadoBuscable {
 
     constructor(
         private cdr: ChangeDetectorRef,
-        private subtipoSvc: SubtipoService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService
+        private subtipoSvc: SubtipoService
     ) { }
 
     @ViewChild(MatSort) subtipoSort!: MatSort;
@@ -136,15 +134,6 @@ export class ListadoSubtiposComponent implements OnDestroy, ListadoBuscable {
         const subtipo = this.subtipos.find(s => s.Id === idSubtipo);
         if (subtipo)
             this.subtipoSeleccionado.emit(subtipo);
-    }
-
-    abrirDetalleManual(subtipo: SubtipoResumen, event?: Event) {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual({
-            id: subtipo?.Manual?.Id,
-            nombre: subtipo?.Manual?.Nombre,
-        });
     }
 
 }

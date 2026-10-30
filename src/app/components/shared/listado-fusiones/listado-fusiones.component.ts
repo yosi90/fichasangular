@@ -6,7 +6,6 @@ import { Subscription, combineLatest } from 'rxjs';
 import { chakrasConVinculo, chakrasDondeSeMoldea, nombreOriginalVisible, textoManualListado, unirLista } from 'src/app/components/detalles/ficha';
 import { Chakra, Fusion } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
-import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { textosDistintos } from 'src/app/services/utils/orden-texto';
@@ -76,7 +75,6 @@ export class ListadoFusionesComponent implements OnDestroy, ListadoBuscable {
     constructor(
         private cdr: ChangeDetectorRef,
         private incarnumSvc: IncarnumService,
-        private manualDetalleNavSvc: ManualDetalleNavigationService,
     ) { }
 
     @ViewChild(MatSort) fusionSort!: MatSort;
@@ -190,11 +188,5 @@ export class ListadoFusionesComponent implements OnDestroy, ListadoBuscable {
     @Output() fusionSeleccionada = new EventEmitter<Fusion>();
     seleccionarFusion(fila: FilaFusion): void {
         this.fusionSeleccionada.emit(fila.fusion);
-    }
-
-    abrirDetalleManual(fila: FilaFusion, event?: Event): void {
-        event?.preventDefault();
-        event?.stopPropagation();
-        this.manualDetalleNavSvc.abrirDetalleManual({ id: fila.fusion.Manual?.Id, nombre: fila.fusion.Manual?.Nombre });
     }
 }

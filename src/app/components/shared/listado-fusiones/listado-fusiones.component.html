@@ -61,7 +61,7 @@
             <ng-container matColumnDef="Manual">
                 <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por manual">Manual</th>
                 <td mat-cell *matCellDef="let fila">
-                    <button type="button" class="listado-manual" (click)="abrirDetalleManual(fila, $event)">{{fila.Manual}}</button>
+                    <app-listado-manual [manual]="fila.fusion.Manual"></app-listado-manual>
                 </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="fusionColumns; sticky: true"></tr>
