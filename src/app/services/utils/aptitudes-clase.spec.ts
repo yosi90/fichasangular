@@ -3,6 +3,7 @@ import { normalizeClase } from 'src/app/services/clase.service';
 import {
     conjurosDeAptitudes,
     evaluarActitudEspecial,
+    extrasElegiblesEspecial,
     listadoConjurosClase,
     modificadoresCaracteristicaEspecialNivel,
     nivelesConjuroSinRequisito,
@@ -10,9 +11,11 @@ import {
     prerrequisitosEspecialNivel,
     textoRequisitoNivelConjuro,
 } from 'src/app/services/utils/aptitudes-clase';
+import { normalizeEspecial } from 'src/app/services/especial.service';
+import { GRAN_ARCANO_API, SENDA_ASENDA_API } from 'src/testing/clases-propias-api';
 
 // Lo que las aptitudes de una clase cambian en la creación (guía `docs/publica/CLASES_PROPIAS_FRONT.md`), con datos
-// inventados: ningún nombre ni id es de una clase real.
+// inventados: ningún nombre ni id es de una clase real (salvo los extras de una aptitud, con las respuestas de la API).
 
 const LEGAL_BUENO = 1;
 const NEUTRAL_AUTENTICO = 5;
@@ -128,6 +131,26 @@ describe('aptitudes-clase', () => {
         it('dice qué pide cada nivel', () => {
             expect(textoRequisitoNivelConjuro(conRequisitos, 7)).toBe('Implante o Dote del implante');
             expect(textoRequisitoNivelConjuro(conRequisitos, 3)).toBe('');
+        });
+    });
+
+    describe('extrasElegiblesEspecial (el extra «Elegir» de una aptitud, con las respuestas reales de la API)', () => {
+        it('ofrece los extras del especial en su orden', () => {
+            expect(extrasElegiblesEspecial(normalizeEspecial(SENDA_ASENDA_API))).toEqual([
+                { id: 137, nombre: 'Fuego' }, { id: 138, nombre: 'Aire' }, { id: 139, nombre: 'Agua' }, { id: 140, nombre: 'Tierra' },
+            ]);
+        });
+
+        it('no ofrece el comodín «Elegir» ni los que el personaje ya tiene en esa aptitud', () => {
+            const ofrecidos = extrasElegiblesEspecial(normalizeEspecial(GRAN_ARCANO_API), [105]);
+            expect(ofrecidos.some((extra) => extra.nombre === 'Elegir')).toBeFalse();
+            expect(ofrecidos.some((extra) => extra.id === 105)).toBeFalse();
+            expect(ofrecidos.length).toBe(6);
+        });
+
+        it('sin extras, nada que elegir', () => {
+            expect(extrasElegiblesEspecial(null)).toEqual([]);
+            expect(extrasElegiblesEspecial({ Extras: [] })).toEqual([]);
         });
     });
 });

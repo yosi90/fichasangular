@@ -1,6 +1,6 @@
 import { Clase, ClaseConjuroRef, ClaseEspecialNivel, ClaseNivelConjuroRequisito } from 'src/app/interfaces/clase';
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
-import { EspecialPrerrequisitos } from 'src/app/interfaces/especial';
+import { EspecialClaseDetalle, EspecialPrerrequisitos } from 'src/app/interfaces/especial';
 import { toArray, toInt } from 'src/app/services/utils/normalizacion';
 import { MotivosPrerrequisitos, compararActitud } from 'src/app/services/utils/prerrequisitos-evaluacion';
 import { frasePrerrequisito, grupoOpcionalPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
@@ -10,7 +10,8 @@ import { frasePrerrequisito, grupoOpcionalPrerrequisito } from 'src/app/services
  * los datos, nunca por el nombre ni el id de una clase, una aptitud o una dote:
  * - una aptitud puede pedir una actitud (`Prerrequisitos.actitud_requerido` / `actitud_prohibido`): la senda esandy del
  *   convocador divino, un alineamiento bueno;
- * - una aptitud puede sumar conjuros a la lista de la clase (`Conjuros.Listado_por_especial`);
+ * - una aptitud puede sumar conjuros a la lista de la clase (`Conjuros.Listado_por_especial`), algunos solo con un extra
+ *   que se elige al tomarla (el elemento de la senda del asenda: `extrasElegiblesEspecial`);
  * - un nivel de conjuro de la clase puede pedir una aptitud o una dote (`Conjuros.Niveles_con_requisito`);
  * - una aptitud puede cambiar el tamaño (`Tamano_pasos`; ver `tamano-efectivo.ts`).
  */
@@ -77,6 +78,35 @@ export function evaluarActitudEspecial(
     motivos.cerrarGrupos();
     const todos = [...motivos.fail, ...motivos.unknown];
     return { cumple: todos.length < 1, motivos: Array.from(new Set(todos)) };
+}
+
+/** Un extra que se puede elegir para una aptitud especial: su id y su nombre. */
+export interface ExtraElegibleEspecial {
+    id: number;
+    nombre: string;
+}
+
+/**
+ * Los extras que se pueden elegir para una aptitud cuyo extra se elige al tomarla (`Extra_comodin` «elegir» en la tabla
+ * de la clase), en el orden del especial (`Orden`): los `Extras` de `GET /clases/habilidades/<id>` sin los comodines
+ * («Elegir», «Cualquiera») ni los que ya tiene el personaje en esa aptitud.
+ */
+export function extrasElegiblesEspecial(
+    especial: Pick<EspecialClaseDetalle, 'Extras'> | null | undefined,
+    idsYaTomados: Iterable<number> = []
+): ExtraElegibleEspecial[] {
+    const tomados = new Set(Array.from(idsYaTomados, (id) => toInt(id)));
+    const elegibles: Array<ExtraElegibleEspecial & { orden: number; }> = [];
+    toArray(especial?.Extras).forEach((extra) => {
+        const id = toInt(extra?.Id_extra);
+        const nombre = `${extra?.Extra ?? ''}`.trim();
+        if (extra?.Extra_comodin || id <= 0 || nombre.length < 1 || tomados.has(id) || elegibles.some((item) => item.id === id))
+            return;
+        elegibles.push({ id, nombre, orden: toInt(extra?.Orden) });
+    });
+    return elegibles
+        .sort((a, b) => a.orden - b.orden)
+        .map(({ id, nombre }) => ({ id, nombre }));
 }
 
 function tieneAptitud(aptitudes: AptitudDelPersonaje[], idEspecial: number, idExtra: number | null): boolean {

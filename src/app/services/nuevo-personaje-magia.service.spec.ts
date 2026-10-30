@@ -727,6 +727,70 @@ describe('Clases propias con las respuestas reales de la API', () => {
             expect(listadoConjurosClase(convocador, aptitudes).length).toBe(conjurosDeAptitudes(convocador, aptitudes).length);
             expect(listadoConjurosClase(convocador, aptitudes).length).toBeGreaterThan(0);
         });
+
+        describe('el elemento de la senda del asenda (el extra «Elegir» de la aptitud)', () => {
+            function neutralConAsenda(): { service: NuevoPersonajeService; selecciones: Record<number, string>; } {
+                const service = crearServicio({ Carisma: 16 });
+                service.setCatalogoClases([convocador]);
+                service.PersonajeCreacion.Alineamiento = 'Neutral autentico';
+                const selecciones = Object.fromEntries(service.obtenerOpcionalesSiguienteNivelClase(convocador)
+                    .map((item) => [item.grupo, item.opciones.find((opcion) => !opcion.bloqueada)!.clave]));
+                return { service, selecciones };
+            }
+
+            it('la senda elegida pide su extra; las otras no', () => {
+                const { service, selecciones } = neutralConAsenda();
+                expect(service.obtenerEspecialesExtraPendientesSiguienteNivelClase(convocador, selecciones))
+                    .toEqual([jasmine.objectContaining({ idEspecial: 2595, nombre: 'Senda del asenda' })]);
+
+                const bueno = crearServicio({ Carisma: 16 });
+                bueno.setCatalogoClases([convocador]);
+                bueno.PersonajeCreacion.Alineamiento = 'Legal bueno';
+                const conEsandy = Object.fromEntries(bueno.obtenerOpcionalesSiguienteNivelClase(convocador)
+                    .map((item) => [item.grupo, item.opciones.find((opcion) => !opcion.bloqueada)!.clave]));
+                expect(bueno.obtenerEspecialesExtraPendientesSiguienteNivelClase(convocador, conEsandy)).toEqual([]);
+            });
+
+            it('sin el elemento no aplica el nivel ni cambia nada', () => {
+                const { service, selecciones } = neutralConAsenda();
+                const resultado = service.aplicarSiguienteNivelClase(convocador, selecciones);
+
+                expect(resultado.aplicado).toBeFalse();
+                expect(resultado.razon).toBe('Falta elegir el extra de Senda del asenda');
+                expect(resultado.especialesExtraPendientes?.map((pendiente) => pendiente.nombre)).toEqual(['Senda del asenda']);
+                expect(service.PersonajeCreacion.Claseas).toEqual([]);
+                expect(service.PersonajeCreacion.desgloseClases ?? []).toEqual([]);
+            });
+
+            it('con el elemento, el personaje guarda la senda con su extra y su lista suma los conjuros de ese elemento', () => {
+                const { service, selecciones } = neutralConAsenda();
+                const [pendiente] = service.obtenerEspecialesExtraPendientesSiguienteNivelClase(convocador, selecciones);
+
+                const resultado = service.aplicarSiguienteNivelClase(convocador, selecciones, null, false, null,
+                    { [pendiente.clave]: { idExtra: 137, extra: 'Fuego' } });
+
+                expect(resultado.aplicado).toBeTrue();
+                expect(service.PersonajeCreacion.Claseas).toContain(jasmine.objectContaining({ Id: 2595, Id_extra: 137, Nombre: 'Senda del asenda', Extra: 'Fuego' }));
+                expect(service.idsExtraDeAptitud(2595)).toEqual([137]);
+                const lista = listadoConjurosClase(convocador, (service as any).aptitudesDelPersonaje()).map((ref) => ref.Nombre);
+                const delElemento = (elemento: string) => convocador.Conjuros.Listado_por_especial!
+                    .filter((ref) => ref.Extra?.Nombre === elemento).map((ref) => ref.Nombre);
+                expect(delElemento('Fuego').length).toBeGreaterThan(0);
+                delElemento('Fuego').forEach((nombre) => expect(lista).toContain(nombre));
+                delElemento('Agua').filter((nombre) => !delElemento('Fuego').includes(nombre))
+                    .forEach((nombre) => expect(lista).not.toContain(nombre));
+
+                service.cerrarSesionConjuros();
+                service.PersonajeCreacion.Nombre = 'Ileas';
+                service.PersonajeCreacion.Campana = 'Sin campaña';
+
+                const payload = new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+                    service.PersonajeCreacion,
+                    { idAlineamiento: 5, idGenero: 1, idDeidad: 1 } as any,
+                );
+                expect(payload.colecciones?.especiales).toContain({ idEspecial: 2595, idExtra: 137 });
+            });
+        });
     });
 
     describe('el guardaespaldas: Tamaño imponente', () => {

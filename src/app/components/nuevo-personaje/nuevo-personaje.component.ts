@@ -45,6 +45,7 @@ import { DoteService } from 'src/app/services/dote.service';
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { EspecialService } from 'src/app/services/especial.service';
+import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { MonstruoService } from 'src/app/services/monstruo.service';
 import { RegionService } from 'src/app/services/region.service';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
@@ -61,6 +62,7 @@ import {
     EstadoCuposCompanero,
     ClaseAumentoLanzadorPendiente,
     ClaseDominiosPendientes,
+    ClaseEspecialExtraPendiente,
     ClaseGrupoOpcionalPendiente,
     ConjurosSesionStateEntrada,
     DotePendienteState,
@@ -73,9 +75,11 @@ import {
     ResultadoCalculoVidaFinal,
     SeleccionAumentosClaseLanzadora,
     SeleccionDominiosClase,
+    SeleccionExtrasEspecialesClase,
     SeleccionOpcionalesClase,
     StepNuevoPersonaje,
 } from 'src/app/services/nuevo-personaje.service';
+import { extrasElegiblesEspecial } from 'src/app/services/utils/aptitudes-clase';
 import {
     construirCatalogoFamiliaresDesdeMonstruos,
     evaluarFamiliaresElegibilidad,
@@ -3486,6 +3490,17 @@ export class NuevoPersonajeComponent {
                 return;
         }
 
+        let seleccionesExtrasEspeciales: SeleccionExtrasEspecialesClase | null = null;
+        const especialesExtraPendientes = this.nuevoPSvc.obtenerEspecialesExtraPendientesSiguienteNivelClase(
+            seleccion.clase,
+            seleccionesOpcionales
+        );
+        if (especialesExtraPendientes.length > 0) {
+            seleccionesExtrasEspeciales = await this.solicitarExtrasEspecialesClase(especialesExtraPendientes);
+            if (!seleccionesExtrasEspeciales)
+                return;
+        }
+
         const dominiosPendientes = this.nuevoPSvc.obtenerDominiosPendientesSiguienteNivelClase(seleccion.clase);
         if (dominiosPendientes && dominiosPendientes.cantidad > 0) {
             seleccionesDominios = await this.solicitarSeleccionesDominiosClase(dominiosPendientes, seleccion.clase?.Nombre);
@@ -3501,7 +3516,8 @@ export class NuevoPersonajeComponent {
             seleccionesOpcionales,
             seleccionesDominios,
             seleccion.bloqueoSoloAlineamiento,
-            seleccionesAumentosClaseLanzadora
+            seleccionesAumentosClaseLanzadora,
+            seleccionesExtrasEspeciales
         );
         if (!resultado.aplicado && (resultado.aumentosClaseLanzadoraPendientes ?? []).length > 0) {
             seleccionesAumentosClaseLanzadora = await this.solicitarSeleccionesAumentosClaseLanzadora(
@@ -3515,7 +3531,8 @@ export class NuevoPersonajeComponent {
                 seleccionesOpcionales,
                 seleccionesDominios,
                 seleccion.bloqueoSoloAlineamiento,
-                seleccionesAumentosClaseLanzadora
+                seleccionesAumentosClaseLanzadora,
+                seleccionesExtrasEspeciales
             );
         }
         if (!resultado.aplicado) {
@@ -3910,7 +3927,7 @@ export class NuevoPersonajeComponent {
         if (opciones.length < 1)
             return;
 
-        const seleccionado = await this.abrirSelectorModalExtraHabilidad(habilidad, opciones);
+        const seleccionado = await this.abrirSelectorModalExtra(`${habilidad?.Nombre ?? ''}`.trim() || 'Habilidad', `${habilidad?.Extra ?? ''}`, opciones);
         if (!seleccionado)
             return;
 
@@ -3942,15 +3959,17 @@ export class NuevoPersonajeComponent {
         this.cerrarSelectorExtraHabilidadContexto(null);
     }
 
-    private abrirSelectorModalExtraHabilidad(
-        habilidad: Personaje['Habilidades'][number],
+    /** El selector de extras de la creación: el de una habilidad («Saber: extra») y el de una aptitud de clase. */
+    private abrirSelectorModalExtra(
+        nombre: string,
+        valorInicial: string,
         opciones: ExtraHabilidadSelectorOpcion[]
     ): Promise<string | null> {
         this.limpiarFocoActivoAntesDeModal();
-        this.selectorExtraHabilidadTitulo = `${habilidad?.Nombre ?? 'Habilidad'}: extra`;
-        this.selectorExtraHabilidadNombre = `${habilidad?.Nombre ?? ''}`.trim();
+        this.selectorExtraHabilidadTitulo = `${nombre}: extra`;
+        this.selectorExtraHabilidadNombre = `${nombre ?? ''}`.trim();
         this.selectorExtraHabilidadOpciones = [...(opciones ?? [])];
-        this.selectorExtraHabilidadValorInicial = `${habilidad?.Extra ?? ''}`.trim();
+        this.selectorExtraHabilidadValorInicial = `${valorInicial ?? ''}`.trim();
         this.modalSelectorExtraHabilidadAbierto = true;
 
         return new Promise<string | null>((resolve) => {
@@ -5564,6 +5583,46 @@ export class NuevoPersonajeComponent {
         }
 
         return selecciones;
+    }
+
+    /**
+     * El extra de cada aptitud del nivel que lo pide («Elegir»: el elemento de la senda del asenda), con el selector de
+     * extras. Las opciones son los extras del especial sin los que el personaje ya tiene en esa aptitud. `null` si se
+     * cancela o si una aptitud no tiene ningún extra que elegir.
+     */
+    private async solicitarExtrasEspecialesClase(pendientes: ClaseEspecialExtraPendiente[]): Promise<SeleccionExtrasEspecialesClase | null> {
+        const selecciones: SeleccionExtrasEspecialesClase = {};
+        for (const pendiente of pendientes) {
+            const elegidosEnEsteNivel = Object.entries(selecciones)
+                .filter(([clave]) => pendientes.find((item) => item.clave === clave)?.idEspecial === pendiente.idEspecial)
+                .map(([, elegido]) => elegido.idExtra);
+            const especial = await this.cargarEspecialDelNivel(pendiente.idEspecial);
+            const extras = extrasElegiblesEspecial(especial, [...this.nuevoPSvc.idsExtraDeAptitud(pendiente.idEspecial), ...elegidosEnEsteNivel]);
+            if (extras.length < 1) {
+                await Swal.fire({
+                    icon: 'warning',
+                    title: 'No se puede aplicar la clase',
+                    text: `No hay ningún extra que elegir para ${pendiente.nombre}.`,
+                    showConfirmButton: true,
+                });
+                return null;
+            }
+
+            const valor = await this.abrirSelectorModalExtra(pendiente.nombre, '', extras.map((extra) => ({ valor: extra.nombre, descripcion: '' })));
+            const elegido = extras.find((extra) => normalizarTexto(extra.nombre) === normalizarTexto(valor ?? ''));
+            if (!elegido)
+                return null;
+            selecciones[pendiente.clave] = { idExtra: elegido.id, extra: elegido.nombre };
+        }
+        return selecciones;
+    }
+
+    private async cargarEspecialDelNivel(idEspecial: number): Promise<EspecialClaseDetalle | null> {
+        try {
+            return await firstValueFrom(this.especialSvc.getEspecial(idEspecial).pipe(take(1)));
+        } catch {
+            return null;
+        }
     }
 
     private abrirSelectorClaseOpcional(grupo: ClaseGrupoOpcionalPendiente): Promise<string | null> {

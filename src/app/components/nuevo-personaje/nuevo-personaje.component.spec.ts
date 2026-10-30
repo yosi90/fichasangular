@@ -13,6 +13,9 @@ import { normalizeArma } from 'src/app/services/arma.service';
 import { normalizeArmadura } from 'src/app/services/armadura.service';
 import { normalizeEquipoCatalogos, normalizeMunicion } from 'src/app/services/utils/equipo-mapper';
 import { crearArmaApi, crearArmaduraApi, crearEquipoCatalogosApi, crearMunicionApi } from 'src/testing/equipo-api';
+import { normalizeClase } from 'src/app/services/clase.service';
+import { normalizeEspecial } from 'src/app/services/especial.service';
+import { CONVOCADOR_DIVINO_API, GRAN_ARCANO_API, SENDA_ASENDA_API } from 'src/testing/clases-propias-api';
 
 function crearRazaMock(oficial = true): Raza {
     return {
@@ -4022,6 +4025,83 @@ describe('NuevoPersonajeComponent', () => {
         await expectAsync(promise).toBeResolvedTo(null);
         expect(component.modalSelectorClaseOpcionalAbierto).toBeFalse();
         expect(component.selectorClaseOpcionalTitulo).toBe('Grupo opcional');
+    });
+
+    describe('el extra «Elegir» de una aptitud de la clase (el elemento de la senda del asenda)', () => {
+        const pendienteAsenda = { clave: 'especial:2', idEspecial: 2595, nombre: 'Senda del asenda' };
+
+        it('abre el selector de extras con los del especial y devuelve el elegido con su id', async () => {
+            especialSvcMock.getEspecial = jasmine.createSpy('getEspecial').and.returnValue(of(normalizeEspecial(SENDA_ASENDA_API)));
+            const promise = (component as any).solicitarExtrasEspecialesClase([pendienteAsenda]);
+            await new Promise((resolve) => setTimeout(resolve));
+
+            expect(especialSvcMock.getEspecial).toHaveBeenCalledWith(2595);
+            expect(component.modalSelectorExtraHabilidadAbierto).toBeTrue();
+            expect(component.selectorExtraHabilidadTitulo).toBe('Senda del asenda: extra');
+            expect(component.selectorExtraHabilidadOpciones.map((opcion) => opcion.valor)).toEqual(['Fuego', 'Aire', 'Agua', 'Tierra']);
+
+            component.onConfirmarSelectorExtraHabilidad('Fuego');
+
+            await expectAsync(promise).toBeResolvedTo({ 'especial:2': { idExtra: 137, extra: 'Fuego' } });
+            expect(component.modalSelectorExtraHabilidadAbierto).toBeFalse();
+        });
+
+        it('no ofrece los extras que el personaje ya tiene en esa aptitud', async () => {
+            especialSvcMock.getEspecial = () => of(normalizeEspecial(GRAN_ARCANO_API));
+            component.Personaje.Claseas = [{ Id: 107, Id_extra: 105, Nombre: 'Gran arcano', Extra: 'Fuego arcano' }];
+            const promise = (component as any).solicitarExtrasEspecialesClase([{ clave: 'especial:0', idEspecial: 107, nombre: 'Gran arcano' }]);
+            await new Promise((resolve) => setTimeout(resolve));
+
+            const ofrecidos = component.selectorExtraHabilidadOpciones.map((opcion) => opcion.valor);
+            expect(ofrecidos).not.toContain('Fuego arcano');
+            expect(ofrecidos).not.toContain('Elegir');
+            component.onCerrarSelectorExtraHabilidad();
+            await expectAsync(promise).toBeResolvedTo(null);
+        });
+
+        it('cancelar el selector no aplica el nivel', async () => {
+            especialSvcMock.getEspecial = () => of(normalizeEspecial(SENDA_ASENDA_API));
+            const promise = (component as any).solicitarExtrasEspecialesClase([pendienteAsenda]);
+            await new Promise((resolve) => setTimeout(resolve));
+
+            component.onCerrarSelectorExtraHabilidad();
+
+            await expectAsync(promise).toBeResolvedTo(null);
+        });
+
+        it('sin extras que elegir avisa y no sigue', async () => {
+            especialSvcMock.getEspecial = () => of(normalizeEspecial({ ...SENDA_ASENDA_API, Extras: [] }));
+            const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+            await expectAsync((component as any).solicitarExtrasEspecialesClase([pendienteAsenda])).toBeResolvedTo(null);
+            expect(swalSpy).toHaveBeenCalled();
+            expect(component.modalSelectorExtraHabilidadAbierto).toBeFalse();
+        });
+
+        it('continuarDesdeClases pide el elemento antes de aplicar el nivel y el personaje lo guarda', async () => {
+            const convocador = normalizeClase(CONVOCADOR_DIVINO_API);
+            component.Personaje.Alineamiento = 'Neutral autentico';
+            component.Personaje.Carisma = 16;
+            component.catalogoClases = [convocador];
+            component.incluirHomebrewClases = true;
+            nuevoPSvc.setCatalogoClases(component.catalogoClases);
+            (component as any).recalcularClasesVisibles();
+            component.abrirClase(convocador);
+            expect(component.puedeAplicarClaseSeleccionada).toBeTrue();
+            const grupos = nuevoPSvc.obtenerOpcionalesSiguienteNivelClase(convocador);
+            const selecciones = Object.fromEntries(grupos.map((item) => [item.grupo, item.opciones.find((opcion) => !opcion.bloqueada)!.clave]));
+            spyOn<any>(component, 'solicitarSeleccionesOpcionalesClase').and.resolveTo(selecciones);
+            const extrasSpy = spyOn<any>(component, 'solicitarExtrasEspecialesClase').and.callFake(
+                async (pendientes: Array<{ clave: string; }>) => ({ [pendientes[0].clave]: { idExtra: 139, extra: 'Agua' } }));
+            spyOn(component, 'abrirSelectorIdiomasIniciales').and.resolveTo(true);
+            spyOn<any>(component, 'abrirSelectorAumentosCaracteristica').and.resolveTo(true);
+            spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+            await component.continuarDesdeClases();
+
+            expect(extrasSpy).toHaveBeenCalledWith([jasmine.objectContaining({ idEspecial: 2595, nombre: 'Senda del asenda' })]);
+            expect(nuevoPSvc.PersonajeCreacion.Claseas).toContain(jasmine.objectContaining({ Id: 2595, Id_extra: 139, Extra: 'Agua' }));
+        });
     });
 
     it('mago puede confirmar no especializarse y continuar el flujo', async () => {

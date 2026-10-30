@@ -632,6 +632,8 @@ export interface AplicacionClaseResultado {
     gruposOpcionalesPendientes?: ClaseGrupoOpcionalPendiente[];
     dominiosPendientes?: ClaseDominiosPendientes;
     aumentosClaseLanzadoraPendientes?: ClaseAumentoLanzadorPendiente[];
+    /** Las aptitudes del nivel cuyo extra falta por elegir: el nivel no se aplica hasta que se elijan. */
+    especialesExtraPendientes?: ClaseEspecialExtraPendiente[];
     especialesAplicados?: ClaseEspecialNivel[];
 }
 
@@ -772,6 +774,26 @@ export interface ClaseGrupoOpcionalPendiente {
 
 export type SeleccionOpcionalesClase = Record<number, string>;
 export type SeleccionDominiosClase = Array<number | string>;
+
+/**
+ * Una aptitud del siguiente nivel de la clase cuyo extra se elige al tomarla: su fila de la tabla de la clase lleva el
+ * extra comodín «Elegir» (`Extra_comodin: "elegir"`; el elemento de la senda del asenda, el gran arcano del archimago).
+ * Las opciones son los `Extras` del especial (`GET /clases/habilidades/<id>`, ver `extrasElegiblesEspecial`).
+ */
+export interface ClaseEspecialExtraPendiente {
+    /** La fila de la tabla del nivel; con ella se manda la elección (`SeleccionExtrasEspecialesClase`). */
+    clave: string;
+    idEspecial: number;
+    nombre: string;
+}
+
+export interface SeleccionExtraEspecial {
+    idExtra: number;
+    extra: string;
+}
+
+/** El extra elegido para cada aptitud de `ClaseEspecialExtraPendiente`, por su `clave`. */
+export type SeleccionExtrasEspecialesClase = Record<string, SeleccionExtraEspecial>;
 
 export interface ClaseDominioPendiente {
     id: number;
@@ -1856,6 +1878,50 @@ export class NuevoPersonajeService {
 
         const resolucion = this.resolverOpcionalesNivelClase(detalleSiguiente, null);
         return resolucion.gruposPendientes;
+    }
+
+    /**
+     * Las aptitudes que tomará el siguiente nivel de la clase (las obligatorias y las elegidas de cada grupo opcional)
+     * cuyo extra se elige al tomarlas. `aplicarSiguienteNivelClase` no aplica el nivel sin el extra de cada una.
+     */
+    obtenerEspecialesExtraPendientesSiguienteNivelClase(
+        clase: Clase,
+        seleccionesOpcionales: SeleccionOpcionalesClase | null = null
+    ): ClaseEspecialExtraPendiente[] {
+        const detalleSiguiente = this.obtenerDetalleNivelClase(clase, this.obtenerNivelActualClase(clase.Nombre) + 1);
+        return detalleSiguiente ? this.especialesExtraPendientesNivel(detalleSiguiente, seleccionesOpcionales) : [];
+    }
+
+    /** Los extras que ya tiene el personaje en una aptitud especial (para no ofrecerlos otra vez). */
+    idsExtraDeAptitud(idEspecial: number): number[] {
+        const id = toInt(idEspecial);
+        return this.aptitudesDelPersonaje()
+            .filter((aptitud) => aptitud.id === id && toInt(aptitud.idExtra) > 0)
+            .map((aptitud) => toInt(aptitud.idExtra));
+    }
+
+    private especialesExtraPendientesNivel(
+        detalleNivel: ClaseNivelDetalle,
+        seleccionesOpcionales: SeleccionOpcionalesClase | null
+    ): ClaseEspecialExtraPendiente[] {
+        const resolucion = this.resolverOpcionalesNivelClase(detalleNivel, seleccionesOpcionales);
+        return [...resolucion.obligatoriasEspecial, ...resolucion.seleccionadasEspecial]
+            .filter((especialNivel) => especialNivel?.Extra_comodin === 'elegir')
+            .map((especialNivel) => {
+                const especial = (especialNivel?.Especial as Record<string, any>) ?? {};
+                return {
+                    clave: this.claveEspecialNivel(detalleNivel, especialNivel),
+                    idEspecial: toInt(especial?.['Id']),
+                    nombre: `${especial?.['Nombre'] ?? ''}`.trim(),
+                };
+            })
+            // Sin el id del especial no se pueden leer sus extras: se queda con el comodín, como antes.
+            .filter((pendiente) => pendiente.idEspecial > 0 && pendiente.nombre.length > 0);
+    }
+
+    /** La fila de un especial en la tabla del nivel (su posición: `Id_interno` se repite entre filas de un mismo nivel). */
+    private claveEspecialNivel(detalleNivel: ClaseNivelDetalle, especialNivel: ClaseEspecialNivel): string {
+        return `especial:${(detalleNivel?.Especiales ?? []).indexOf(especialNivel)}`;
     }
 
     obtenerDominiosPendientesSiguienteNivelClase(clase: Clase): ClaseDominiosPendientes | null {
@@ -4794,7 +4860,8 @@ export class NuevoPersonajeService {
         seleccionesOpcionales: SeleccionOpcionalesClase | null = null,
         seleccionesDominios: SeleccionDominiosClase | null = null,
         permitirBloqueoSoloAlineamiento: boolean = false,
-        seleccionesAumentosClaseLanzadora: SeleccionAumentosClaseLanzadora | null = null
+        seleccionesAumentosClaseLanzadora: SeleccionAumentosClaseLanzadora | null = null,
+        seleccionesExtrasEspeciales: SeleccionExtrasEspecialesClase | null = null
     ): AplicacionClaseResultado {
         const evaluacion = this.evaluarClaseParaSeleccion(clase);
         const bloqueoSoloAlineamiento = this.esBloqueoSoloPorAlineamiento(evaluacion);
@@ -4859,6 +4926,18 @@ export class NuevoPersonajeService {
             };
         }
 
+        const especialesExtraPendientes = this.especialesExtraPendientesNivel(detalleSiguiente, seleccionesOpcionales)
+            .filter((pendiente) => toInt(seleccionesExtrasEspeciales?.[pendiente.clave]?.idExtra) <= 0
+                || `${seleccionesExtrasEspeciales?.[pendiente.clave]?.extra ?? ''}`.trim().length < 1);
+        if (especialesExtraPendientes.length > 0) {
+            return {
+                aplicado: false,
+                razon: `Falta elegir el extra de ${especialesExtraPendientes.map((pendiente) => pendiente.nombre).join(', ')}`,
+                evaluacion,
+                especialesExtraPendientes,
+            };
+        }
+
         this.cerrarClasesPorMulticlase(clase);
         this.actualizarDesgloseClase(clase, siguienteNivel);
         this.aplicarDeltaAtaqueBaseClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
@@ -4890,7 +4969,7 @@ export class NuevoPersonajeService {
             ...resolucionOpcionales.seleccionadasEspecial,
         ];
         this.aplicarDotesNivelClase(clase, siguienteNivel, dotesAplicar);
-        this.aplicarEspecialesNivelClase(especialesAplicar);
+        this.aplicarEspecialesNivelClase(especialesAplicar, detalleSiguiente, seleccionesExtrasEspeciales);
         const cambiaCaracteristicas = especialesAplicar.some((especialNivel) =>
             Object.values(modificadoresCaracteristicaEspecialNivel(especialNivel)).some((valor) => toInt(valor) !== 0));
         if (cambiaCaracteristicas) {
@@ -7202,12 +7281,21 @@ export class NuevoPersonajeService {
         });
     }
 
-    private aplicarEspecialesNivelClase(especialesNivel: ClaseEspecialNivel[]): void {
+    private aplicarEspecialesNivelClase(
+        especialesNivel: ClaseEspecialNivel[],
+        detalleNivel: ClaseNivelDetalle,
+        seleccionesExtras: SeleccionExtrasEspecialesClase | null
+    ): void {
         especialesNivel.forEach((especialNivel) => {
             const nombre = `${(especialNivel?.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim();
             if (nombre.length < 1)
                 return;
-            const extra = `${especialNivel?.Extra ?? ''}`.trim();
+            // El extra «Elegir» de la tabla se cambia por el que se ha elegido (el elemento del asenda).
+            const elegido = especialNivel?.Extra_comodin === 'elegir'
+                ? seleccionesExtras?.[this.claveEspecialNivel(detalleNivel, especialNivel)] ?? null
+                : null;
+            const idExtra = elegido ? toInt(elegido.idExtra) : toNumber(especialNivel?.Id_extra);
+            const extra = elegido ? `${elegido.extra ?? ''}`.trim() : `${especialNivel?.Extra ?? ''}`.trim();
             const duplicado = (this.personajeCreacion.Claseas ?? []).some((especial) =>
                 normalizarTexto(especial?.Nombre ?? '') === normalizarTexto(nombre)
                 && normalizarTexto(especial?.Extra ?? '') === normalizarTexto(extra)
@@ -7217,7 +7305,7 @@ export class NuevoPersonajeService {
                 const idEspecial = toNumber(especialRaw?.['Id'] ?? especialRaw?.['id']) || this.resolverIdEspecialPorNombre(nombre);
                 this.personajeCreacion.Claseas.push({
                     Id: idEspecial > 0 ? idEspecial : undefined,
-                    Id_extra: toNumber(especialNivel?.Id_extra),
+                    Id_extra: idExtra,
                     Nombre: nombre,
                     Extra: extra,
                 });
