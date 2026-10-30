@@ -1,17 +1,14 @@
 @use '../../../../assets/css/preformas/_inserciones' as inserciones
+@use '../../detalles/ficha/ficha-tonos' as *
 
+// La raza dentro del marco común de las inserciones (cinco pasos, tarjetas). Las rejillas se pliegan según el ancho del
+// marco, no el de la ventana.
 .nueva-raza-shell
     @include inserciones.insercion-shell
 
 .nueva-raza-form
     @include inserciones.insercion-form-base
-
-.permiso-msg
-    margin: 0
-    padding: 0.75rem 1rem
-    border-radius: 0.5rem
-    background: rgba(244, 67, 54, 0.08)
-    color: #8b1f16
+    min-height: 100%
 
 .grid-base,
 .grid-content,
@@ -27,18 +24,12 @@
     align-items: start
 
 .form-panel
-    min-width: 0
-    padding: 0.75rem 0.85rem 0.25rem
-    border: 1px solid rgba(255, 255, 255, 0.1)
-    border-radius: 8px
-    background: rgba(255, 255, 255, 0.035)
+    @include inserciones.insercion-tarjeta
+    padding-bottom: 6px
 
 .form-panel-title
-    margin: 0 0 0.65rem
-    color: #f3f4f6
-    font-size: 0.92rem
-    font-weight: 700
-    letter-spacing: 0
+    @include ficha-versalitas
+    margin-bottom: 12px
 
     &--with-note
         display: flex
@@ -206,7 +197,9 @@
         margin-top: 0.55rem
 
 .editors-accordion
-    display: block
+    display: flex
+    flex-direction: column
+    gap: 14px
 
     h4
         margin: 1rem 0 0.5rem
@@ -226,64 +219,14 @@
     &--skill
         grid-template-columns: minmax(220px, 2fr) minmax(120px, 1fr) minmax(170px, 1.4fr) minmax(160px, 1.2fr) 48px
 
-.raza-stepper
-    background: transparent
-    color: #e5e7eb
-
-    ::ng-deep .mat-horizontal-stepper-header-container
-        overflow-x: auto
-        padding-bottom: 0.25rem
-
-    ::ng-deep .mat-horizontal-content-container
-        padding: 0.75rem 0 0
-
-    ::ng-deep .mat-step-label,
-    ::ng-deep .mat-step-optional
-        color: rgba(229, 231, 235, 0.74)
-
-    ::ng-deep .mat-step-label-active
-        color: #f3f4f6
-
-    ::ng-deep .mat-step-icon
-        background: rgba(255, 255, 255, 0.18)
-
-    ::ng-deep .mat-step-icon-selected,
-    ::ng-deep .mat-step-icon-state-edit
-        background: #3f51b5
-
-.step-layout
-    display: flex
-    flex-direction: column
-    height: calc(100vh - 235px)
-    min-height: 0
-    max-height: calc(100vh - 235px)
-    overflow: hidden
-
-@supports (height: 100dvh)
-    .step-layout
-        height: calc(100dvh - 235px)
-        max-height: calc(100dvh - 235px)
-
 .step-main
     display: flex
-    flex: 1 1 auto
     flex-direction: column
-    gap: 1.35rem
-    min-height: 0
-    overflow: auto
-    padding-right: 0.35rem
-    scrollbar-gutter: stable
+    gap: 14px
+    min-width: 0
 
 .step-section
     min-width: 0
-
-.step-actions
-    flex: 0 0 auto
-    display: flex
-    justify-content: flex-end
-    gap: 0.6rem
-    margin-top: 0
-    padding: 0.75rem 0.1rem 0
 
 .mode-chips,
 .boolean-chips
@@ -519,7 +462,7 @@
 .selector-dialog--wide
     width: min(1180px, calc(100vw - 48px))
     max-height: min(90vh, 920px)
-    overflow: hidden
+    overflow: auto
 
     app-nueva-racial
         display: block
@@ -549,7 +492,7 @@
     background: linear-gradient(135deg, #d61a73 0%, #b8105f 100%)
     color: #fff
 
-@media (max-width: 720px)
+@container insercion (max-width: 720px)
     .span-2,
     .span-3
         grid-column: span 1
@@ -595,7 +538,12 @@
     .source-status
         transform: none
 
-    .subpanel-head,
+    .subpanel-head
+        align-items: stretch
+        flex-direction: column
+
+// Las ventanas de selección van fuera del marco (en el overlay): se pliegan por el ancho de la ventana.
+@media (max-width: 720px)
     .selector-tools,
     .selector-actions
         align-items: stretch

@@ -1,18 +1,24 @@
 <div class="nueva-raza-shell">
     <form class="nueva-raza-form" [formGroup]="form" (ngSubmit)="crearRaza()">
-        <p class="permiso-msg" *ngIf="!puedeCrear">
-            {{mensajePermisosInsuficientes}}
-        </p>
-
-        <mat-horizontal-stepper class="raza-stepper" [linear]="false" [selectedIndex]="pasoActivoIndex" (selectionChange)="onStepSelectionChange($event)">
-            <mat-step>
-                <ng-template matStepLabel>Base y cuerpo</ng-template>
-
+        <app-insercion-marco
+            tipo="Raza"
+            iconoTipo="raza"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="form.controls.oficial.value"
+            [pasos]="pasos"
+            [pasoActual]="pasoActivoIndex"
+            (pasoActualChange)="onStepSelectionChange({ selectedIndex: $event })"
+            [avisoPermisos]="!puedeCrear ? mensajePermisosInsuficientes : ''"
+            [guardando]="guardando"
+            textoAccion="Crear raza"
+            textoGuardando="Creando raza…">
+            <div class="insercion-paso" [hidden]="pasoActivoIndex !== 0">
                 <div class="step-layout">
                     <div class="step-main">
                         <section class="step-section">
                             <div class="base-body-grid">
                                 <section class="form-panel source-panel span-4">
+                                    <h3 class="form-panel-title">Identidad</h3>
                                     <div class="source-grid">
                                         <mat-form-field appearance="fill" class="name-field">
                                             <mat-label>Nombre</mat-label>
@@ -60,6 +66,7 @@
                                 </mat-form-field>
 
                                 <section class="form-panel alignment-builder span-2">
+                                    <h3 class="form-panel-title">Alineamiento</h3>
                                     <div class="panel-title-row">
                                         <mat-chip-listbox class="mode-chips" aria-label="Tipo de alineamiento">
                                             <mat-chip-option [selected]="form.controls.alineamiento_modo.value === 'basico'" (click)="setAlineamientoModo('basico')">Básico</mat-chip-option>
@@ -115,6 +122,7 @@
                                 </mat-form-field>
 
                                 <section class="form-panel physical-panel span-2">
+                                    <h3 class="form-panel-title">Cuerpo</h3>
                                     <div class="physical-grid">
                                         <div class="field-with-help">
                                             <mat-form-field appearance="fill">
@@ -168,6 +176,7 @@
                                 </section>
 
                                 <section class="form-panel speed-panel span-4">
+                                    <h3 class="form-panel-title">Movimiento</h3>
                                     <div class="speed-grid">
                                         <mat-form-field appearance="fill">
                                             <mat-label>Correr</mat-label>
@@ -215,20 +224,10 @@
                             </div>
                         </section>
                     </div>
-
-                    <div class="step-actions">
-                        <button mat-flat-button color="primary" type="submit" [disabled]="guardando">
-                            <mat-icon>{{guardando ? 'hourglass_top' : 'save'}}</mat-icon>
-                            Guardar raza
-                        </button>
-                        <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
-                    </div>
                 </div>
-            </mat-step>
+            </div>
 
-            <mat-step>
-                <ng-template matStepLabel>Valores</ng-template>
-
+            <div class="insercion-paso" [hidden]="pasoActivoIndex !== 1">
                 <div class="step-layout">
                     <div class="step-main">
                         <section class="step-section">
@@ -316,24 +315,14 @@
                             </div>
                         </section>
                     </div>
-
-                    <div class="step-actions">
-                        <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
-                        <button mat-flat-button color="primary" type="submit" [disabled]="guardando">
-                            <mat-icon>{{guardando ? 'hourglass_top' : 'save'}}</mat-icon>
-                            Guardar raza
-                        </button>
-                        <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
-                    </div>
                 </div>
-            </mat-step>
+            </div>
 
-            <mat-step>
-                <ng-template matStepLabel>Relaciones</ng-template>
-
+            <div class="insercion-paso" [hidden]="pasoActivoIndex !== 2">
                 <div class="step-layout">
                     <div class="step-main">
-                        <section class="step-section">
+                        <section class="step-section form-panel">
+                            <h3 class="form-panel-title">Idiomas y competencias</h3>
                             <div class="lookup-grid">
                                 <div class="lookup-block">
                                     <div class="lookup-with-action">
@@ -422,28 +411,15 @@
                             </div>
                         </section>
                     </div>
-
-                    <div class="step-actions">
-                        <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
-                        <button mat-flat-button color="primary" type="submit" [disabled]="guardando">
-                            <mat-icon>{{guardando ? 'hourglass_top' : 'save'}}</mat-icon>
-                            Guardar raza
-                        </button>
-                        <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
-                    </div>
                 </div>
-            </mat-step>
+            </div>
 
-            <mat-step>
-                <ng-template matStepLabel>Rasgos</ng-template>
-
+            <div class="insercion-paso" [hidden]="pasoActivoIndex !== 3">
                 <div class="step-layout">
                     <div class="step-main">
-                        <mat-accordion class="editors-accordion" multi>
-                            <mat-expansion-panel expanded>
-                                <mat-expansion-panel-header>
-                                    <mat-panel-title>Habilidades base</mat-panel-title>
-                                </mat-expansion-panel-header>
+                        <div class="editors-accordion">
+                            <section class="form-panel">
+                                <h3 class="form-panel-title">Habilidades base</h3>
                                 <div class="row-editor row-editor--skill" *ngFor="let row of habilidadesBaseRows; let i = index; trackBy: trackByUid">
                                     <mat-form-field appearance="fill">
                                         <mat-label>Buscar habilidad</mat-label>
@@ -465,12 +441,10 @@
                                     <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarHabilidadBase(i)"><mat-icon>delete</mat-icon></button>
                                 </div>
                                 <button mat-stroked-button type="button" (click)="agregarHabilidadBase()"><mat-icon>add</mat-icon> Añadir habilidad base</button>
-                            </mat-expansion-panel>
+                            </section>
 
-                            <mat-expansion-panel>
-                                <mat-expansion-panel-header>
-                                    <mat-panel-title>Habilidades personalizadas</mat-panel-title>
-                                </mat-expansion-panel-header>
+                            <section class="form-panel">
+                                <h3 class="form-panel-title">Habilidades personalizadas</h3>
                                 <div class="row-editor row-editor--compact" *ngFor="let row of habilidadesCustomRows; let i = index; trackBy: trackByUid">
                                     <mat-form-field appearance="fill">
                                         <mat-label>Buscar habilidad</mat-label>
@@ -488,12 +462,10 @@
                                     <button mat-stroked-button type="button" (click)="agregarHabilidadCustom()"><mat-icon>add</mat-icon> Añadir habilidad personalizada</button>
                                     <button mat-stroked-button type="button" (click)="abrirCrearCustom()"><mat-icon>add_circle</mat-icon> Nueva custom</button>
                                 </div>
-                            </mat-expansion-panel>
+                            </section>
 
-                            <mat-expansion-panel>
-                                <mat-expansion-panel-header>
-                                    <mat-panel-title>Dotes, raciales y sortilegios</mat-panel-title>
-                                </mat-expansion-panel-header>
+                            <section class="form-panel">
+                                <h3 class="form-panel-title">Dotes, raciales y sortilegios</h3>
 
                                 <h4>Dotes</h4>
                                 <div class="row-editor row-editor--compact" *ngFor="let row of dotesRows; let i = index; trackBy: trackByUid">
@@ -552,27 +524,17 @@
                                     <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarSortilegio(i)"><mat-icon>delete</mat-icon></button>
                                 </div>
                                 <button mat-stroked-button type="button" (click)="agregarSortilegio()"><mat-icon>add</mat-icon> Añadir sortilegio</button>
-                            </mat-expansion-panel>
-                        </mat-accordion>
-                    </div>
-
-                    <div class="step-actions">
-                        <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
-                        <button mat-flat-button color="primary" type="submit" [disabled]="guardando">
-                            <mat-icon>{{guardando ? 'hourglass_top' : 'save'}}</mat-icon>
-                            Guardar raza
-                        </button>
-                        <button mat-raised-button color="primary" type="button" matStepperNext>Siguiente</button>
+                            </section>
+                        </div>
                     </div>
                 </div>
-            </mat-step>
+            </div>
 
-            <mat-step>
-                <ng-template matStepLabel>Mutación</ng-template>
-
+            <div class="insercion-paso" [hidden]="pasoActivoIndex !== 4">
                 <div class="step-layout">
                     <div class="step-main">
-                        <section class="step-section">
+                        <section class="step-section form-panel">
+                            <h3 class="form-panel-title">Mutación</h3>
                             <div class="estado-row">
                                 <mat-chip-listbox class="boolean-chips" aria-label="Mutación de raza">
                                     <mat-chip-option [selected]="form.controls.mutada.value === true" (click)="toggleBooleanControl('mutada')">
@@ -613,17 +575,9 @@
                             </div>
                         </section>
                     </div>
-
-                    <div class="step-actions">
-                        <button mat-stroked-button type="button" matStepperPrevious>Anterior</button>
-                        <button mat-flat-button color="primary" type="submit" [disabled]="guardando">
-                            <mat-icon>{{guardando ? 'hourglass_top' : 'save'}}</mat-icon>
-                            Guardar raza
-                        </button>
-                    </div>
                 </div>
-            </mat-step>
-        </mat-horizontal-stepper>
+            </div>
+        </app-insercion-marco>
     </form>
 
     <section class="selector-overlay" *ngIf="selectorPrerrequisitosMutacionVisible" (click)="cerrarSelectorPrerrequisitosMutacion()">
