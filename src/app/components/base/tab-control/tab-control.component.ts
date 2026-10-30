@@ -25,9 +25,7 @@ import { RacialService } from 'src/app/services/racial.service';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { ManualReferenciaNavegacion } from 'src/app/interfaces/manual-referencia-navegacion';
-import { ManualReferenciaNavigationService } from 'src/app/services/manual-referencia-navigation.service';
 import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
-import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { RasgoService } from 'src/app/services/rasgo.service';
@@ -66,6 +64,8 @@ interface ListadoTabAbierto {
     key: string;
     tipo: string;
     operacion: string;
+    /** Lo que se pone en el buscador del listado al abrirlo («Ver los N en el listado» de la búsqueda global). */
+    texto?: string;
 }
 
 interface EdicionRacialTabAbierto {
@@ -188,13 +188,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private armaduraSvc: ArmaduraService,
         private deidadSvc: DeidadService,
         private nuevoPSvc: NuevoPersonajeService,
-        private manualRefNavSvc: ManualReferenciaNavigationService,
-        private manualVistaNavSvc: ManualVistaNavigationService,
+        private navegacionRolSvc: NavegacionRolService,
         private ngZone: NgZone,
         private userProfileNavSvc?: UserProfileNavigationService,
         private equipoSvc?: EquipoService,
         private incarnumSvc?: IncarnumService,
-        private navegacionRolSvc?: NavegacionRolService,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
@@ -218,13 +216,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             .subscribe((permisos) => {
                 this.usrPerm = Number(permisos) === 1 ? 1 : 0;
             });
-        this.manualRefNavSvc.aperturas$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe((payload) => this.abrirDesdeManual(payload));
-        this.manualVistaNavSvc.aperturas$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe((manual) => this.abrirDetallesManual(manual));
-        this.navegacionRolSvc?.aperturas$
+        this.navegacionRolSvc.aperturas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((apertura) => this.abrirDesdeNavegacion(apertura));
         this.userProfileNavSvc?.privateProfileOpen$
@@ -2492,7 +2484,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     @Output() CerrarListadoTab: EventEmitter<void> = new EventEmitter();
-    abrirListadoTab(tipo: string, operacion: string): void {
+    abrirListadoTab(tipo: string, operacion: string, texto?: string): void {
         const tipoNormalizado = `${tipo ?? ''}`.trim();
         const operacionNormalizada = `${operacion ?? ''}`.trim();
         if (tipoNormalizado.length < 1 || operacionNormalizada.length < 1)
@@ -2501,6 +2493,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const key = this.getListadoTabKey(tipoNormalizado, operacionNormalizada);
         const abierto = this.getListadoTabByKey(key);
         if (abierto) {
+            if (texto !== undefined)
+                abierto.texto = texto;
             this.selectTabByKey(abierto.key);
             return;
         }
@@ -2509,6 +2503,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
             key,
             tipo: tipoNormalizado,
             operacion: operacionNormalizada,
+            ...(texto !== undefined ? { texto } : {}),
         };
         this.listadoTabsAbiertos.push(tab);
         this.registerOpenContext(key, this.getSafeOpenerKey());
@@ -2648,14 +2643,18 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    /** Lo que se abre desde fuera de las pestañas (la búsqueda global): como si viniera de su listado. */
+    /** Lo que se abre desde fuera de las pestañas (la búsqueda global, los manuales): como si viniera de su listado. */
     abrirDesdeNavegacion(apertura: AperturaRol): void {
         if (apertura.clase === 'detalle')
             this.recibirObjetoListado({ item: apertura.item, tipo: apertura.lista }, 'detalles');
         else if (apertura.clase === 'personaje')
             void this.abrirDetallesPersonaje(apertura.id);
+        else if (apertura.clase === 'manual')
+            this.abrirDetallesManual(apertura.manual);
+        else if (apertura.clase === 'referencia-manual')
+            this.abrirDesdeManual(apertura.referencia);
         else
-            this.abrirListadoTab(apertura.lista, 'detalles');
+            this.abrirListadoTab(apertura.lista, 'detalles', apertura.texto);
     }
 
     private abrirDesdeManual(payload: ManualReferenciaNavegacion): void {

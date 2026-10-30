@@ -88,7 +88,7 @@ describe('BuscadorGlobalComponent', () => {
         expect(elemento().querySelectorAll('[role="option"]')[6].getAttribute('aria-selected')).toBe('true');
         tecla('Enter');
         expect(ventana.cerrar).toHaveBeenCalled();
-        expect(buscador.abrirListado).toHaveBeenCalledWith('dotes');
+        expect(buscador.abrirListado).toHaveBeenCalledWith('dotes', 'azur');
     });
 
     it('Intro sobre un resultado abre su detalle', () => {

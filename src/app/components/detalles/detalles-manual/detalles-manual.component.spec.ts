@@ -7,7 +7,7 @@ import { TextoManualComponent } from 'src/app/components/shared/texto-manual/tex
 import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
 import { DetallesManualComponent } from './detalles-manual.component';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
-import { ManualReferenciaNavigationService } from 'src/app/services/manual-referencia-navigation.service';
+import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { UserService } from 'src/app/services/user.service';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
@@ -15,7 +15,7 @@ describe('DetallesManualComponent', () => {
     let component: DetallesManualComponent;
     let fixture: ComponentFixture<DetallesManualComponent>;
     let permisos$: BehaviorSubject<number>;
-    let navegacion: jasmine.SpyObj<ManualReferenciaNavigationService>;
+    let navegacion: jasmine.SpyObj<NavegacionRolService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
     const { texto, valor, titulos, bloque, filasPares } = lectorFicha(elemento);
 
@@ -48,13 +48,13 @@ describe('DetallesManualComponent', () => {
 
     beforeEach(async () => {
         permisos$ = new BehaviorSubject<number>(0);
-        navegacion = jasmine.createSpyObj<ManualReferenciaNavigationService>('ManualReferenciaNavigationService', ['emitirApertura']);
+        navegacion = jasmine.createSpyObj<NavegacionRolService>('NavegacionRolService', ['abrir']);
 
         await TestBed.configureTestingModule({
             declarations: [DetallesManualComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
             imports: [CommonModule],
             providers: [
-                { provide: ManualReferenciaNavigationService, useValue: navegacion },
+                { provide: NavegacionRolService, useValue: navegacion },
                 { provide: UserService, useValue: { permisos$ } },
                 {
                     provide: ManualFlagConsistencyNoticeService,
@@ -86,7 +86,7 @@ describe('DetallesManualComponent', () => {
         component.manual = manual();
         fixture.detectChanges();
         (elemento().querySelector('.ficha-tabla button.ficha-enlace') as HTMLButtonElement).click();
-        expect(navegacion.emitirApertura).toHaveBeenCalledWith({ tipo: 'raza', id: 11, nombre: 'Thri-kreen', manualId: 7 });
+        expect(navegacion.abrir).toHaveBeenCalledWith({ clase: 'referencia-manual', referencia: { tipo: 'raza', id: 11, nombre: 'Thri-kreen', manualId: 7 } });
     });
 
     it('el resumen por sección esconde y vuelve a enseñar una sección', () => {

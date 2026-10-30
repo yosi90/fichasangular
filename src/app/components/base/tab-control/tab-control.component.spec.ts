@@ -35,8 +35,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         getChakra: jasmine.createSpy('getChakra').and.callFake((id: number) => of({ Id: id, Nombre: 'Corona' })),
     } as any;
     const pSvc = overrides?.pSvc ?? {} as any;
-    const manualRefNavSvc = { aperturas$: new Subject<any>() } as any;
-    const manualVistaNavSvc = { aperturas$: new Subject<any>() } as any;
+    const navegacionRolSvc = { aperturas$: new Subject<any>() } as any;
     const userProfileNavSvc = {
         privateProfileOpen$: new Subject<any>(),
         publicProfileOpen$: new Subject<any>(),
@@ -62,8 +61,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         armaduraSvc,
         deidadSvc,
         { resetearCreacionNuevoPersonaje: jasmine.createSpy('resetearCreacionNuevoPersonaje') } as any,
-        manualRefNavSvc,
-        manualVistaNavSvc,
+        navegacionRolSvc,
         ngZone,
         userProfileNavSvc,
         equipoSvc,

@@ -3,12 +3,12 @@ import { of, throwError } from 'rxjs';
 import { ManualAsociadoDetalle } from '../interfaces/manual-asociado';
 import { ManualDetalleNavigationService } from './manual-detalle-navigation.service';
 import { ManualesAsociadosService } from './manuales-asociados.service';
-import { ManualVistaNavigationService } from './manual-vista-navigation.service';
+import { NavegacionRolService } from './navegacion-rol.service';
 
 describe('ManualDetalleNavigationService', () => {
     let service: ManualDetalleNavigationService;
     let manualesAsociadosSvcMock: jasmine.SpyObj<ManualesAsociadosService>;
-    let manualVistaNavSvcMock: jasmine.SpyObj<ManualVistaNavigationService>;
+    let navegacionRolMock: jasmine.SpyObj<NavegacionRolService>;
 
     const manuales: ManualAsociadoDetalle[] = [
         {
@@ -61,11 +61,11 @@ describe('ManualDetalleNavigationService', () => {
 
     beforeEach(() => {
         manualesAsociadosSvcMock = jasmine.createSpyObj<ManualesAsociadosService>('ManualesAsociadosService', ['getManualesAsociados']);
-        manualVistaNavSvcMock = jasmine.createSpyObj<ManualVistaNavigationService>('ManualVistaNavigationService', ['emitirApertura']);
+        navegacionRolMock = jasmine.createSpyObj<NavegacionRolService>('NavegacionRolService', ['abrir']);
 
         service = new ManualDetalleNavigationService(
             manualesAsociadosSvcMock,
-            manualVistaNavSvcMock,
+            navegacionRolMock,
         );
     });
 
@@ -74,7 +74,7 @@ describe('ManualDetalleNavigationService', () => {
 
         service.abrirDetalleManual({ id: 2, nombre: 'x' });
 
-        expect(manualVistaNavSvcMock.emitirApertura).toHaveBeenCalledWith(manuales[1]);
+        expect(navegacionRolMock.abrir).toHaveBeenCalledWith({ clase: 'manual', manual: manuales[1] });
     });
 
     it('resuelve por nombre exacto normalizado', () => {
@@ -82,7 +82,7 @@ describe('ManualDetalleNavigationService', () => {
 
         service.abrirDetalleManual('MANUAL DEL JUGADOR');
 
-        expect(manualVistaNavSvcMock.emitirApertura).toHaveBeenCalledWith(manuales[0]);
+        expect(navegacionRolMock.abrir).toHaveBeenCalledWith({ clase: 'manual', manual: manuales[0] });
     });
 
     it('resuelve por inclusión priorizando manual más largo', () => {
@@ -90,7 +90,7 @@ describe('ManualDetalleNavigationService', () => {
 
         service.abrirDetalleManual('Guía de monstruos avanzada, capítulo I');
 
-        expect(manualVistaNavSvcMock.emitirApertura).toHaveBeenCalledWith(manuales[1]);
+        expect(navegacionRolMock.abrir).toHaveBeenCalledWith({ clase: 'manual', manual: manuales[1] });
     });
 
     it('no intenta abrir cuando referencia no válida', () => {
@@ -99,7 +99,7 @@ describe('ManualDetalleNavigationService', () => {
         service.abrirDetalleManual('No aplica');
 
         expect(manualesAsociadosSvcMock.getManualesAsociados).not.toHaveBeenCalled();
-        expect(manualVistaNavSvcMock.emitirApertura).not.toHaveBeenCalled();
+        expect(navegacionRolMock.abrir).not.toHaveBeenCalled();
     });
 
     it('muestra aviso cuando no encuentra manual', () => {
@@ -108,7 +108,7 @@ describe('ManualDetalleNavigationService', () => {
 
         service.abrirDetalleManual('Manual inventado');
 
-        expect(manualVistaNavSvcMock.emitirApertura).not.toHaveBeenCalled();
+        expect(navegacionRolMock.abrir).not.toHaveBeenCalled();
         expect(swalSpy).toHaveBeenCalled();
     });
 
@@ -118,7 +118,7 @@ describe('ManualDetalleNavigationService', () => {
 
         service.abrirDetalleManual({ id: 1 });
 
-        expect(manualVistaNavSvcMock.emitirApertura).not.toHaveBeenCalled();
+        expect(navegacionRolMock.abrir).not.toHaveBeenCalled();
         expect(swalSpy).toHaveBeenCalled();
     });
 });

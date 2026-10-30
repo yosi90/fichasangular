@@ -5,7 +5,7 @@ import { ICONOS_ENTIDAD, getManualCategorias, getManualReferenciasValidas, getMa
 import { ManualAsociadoDetalle, ManualAsociados, ReferenciaCorta } from 'src/app/interfaces/manual-asociado';
 import { ManualReferenciaTipo } from 'src/app/interfaces/manual-referencia-navegacion';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
-import { ManualReferenciaNavigationService } from 'src/app/services/manual-referencia-navigation.service';
+import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { UserService } from 'src/app/services/user.service';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { textoVisible } from 'src/app/services/utils/texto-visible';
@@ -51,7 +51,7 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
     hayAsociados = false;
 
     constructor(
-        private manualRefNavSvc: ManualReferenciaNavigationService,
+        private navegacionRol: NavegacionRolService,
         private userSvc: UserService,
         private manualFlagNoticeSvc: ManualFlagConsistencyNoticeService,
     ) { }
@@ -91,11 +91,9 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
         if (!tipo || !Number.isFinite(id) || id <= 0)
             return;
 
-        this.manualRefNavSvc.emitirApertura({
-            tipo,
-            id,
-            nombre: referencia.Nombre,
-            manualId: this.manual?.Id ?? 0,
+        this.navegacionRol.abrir({
+            clase: 'referencia-manual',
+            referencia: { tipo, id, nombre: referencia.Nombre, manualId: this.manual?.Id ?? 0 },
         });
     }
 

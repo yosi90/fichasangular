@@ -3,7 +3,7 @@ import { take } from 'rxjs';
 import Swal from 'sweetalert2';
 import { ManualAsociadoDetalle } from '../interfaces/manual-asociado';
 import { ManualesAsociadosService } from './manuales-asociados.service';
-import { ManualVistaNavigationService } from './manual-vista-navigation.service';
+import { NavegacionRolService } from './navegacion-rol.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 export interface ManualDetalleReferencia {
@@ -17,7 +17,7 @@ export interface ManualDetalleReferencia {
 export class ManualDetalleNavigationService {
     constructor(
         private manualesAsociadosSvc: ManualesAsociadosService,
-        private manualVistaNavSvc: ManualVistaNavigationService,
+        private navegacionRol: NavegacionRolService,
     ) { }
 
     abrirDetalleManual(referencia: string | ManualDetalleReferencia | null | undefined): void {
@@ -29,7 +29,7 @@ export class ManualDetalleNavigationService {
             next: (manuales) => {
                 const manual = this.resolverManual(manuales ?? [], ref);
                 if (manual) {
-                    this.manualVistaNavSvc.emitirApertura(manual);
+                    this.navegacionRol.abrir({ clase: 'manual', manual });
                     return;
                 }
 

@@ -11,7 +11,6 @@ import { EspecialService } from './especial.service';
 import { IdiomaService } from './idioma.service';
 import { IncarnumService } from './incarnum.service';
 import { ListaPersonajesService } from './listas/lista-personajes.service';
-import { ManualVistaNavigationService } from './manual-vista-navigation.service';
 import { ManualesAsociadosService } from './manuales-asociados.service';
 import { MonstruoService } from './monstruo.service';
 import { NavegacionRolService } from './navegacion-rol.service';
@@ -68,7 +67,6 @@ export class BuscadorGlobalService {
     constructor(
         private navegacion: NavegacionRolService,
         private perfilNav: UserProfileNavigationService,
-        private manualVistaNav: ManualVistaNavigationService,
         private listaPersonajes: ListaPersonajesService,
         private razas: RazaService,
         private clases: ClaseService,
@@ -100,9 +98,9 @@ export class BuscadorGlobalService {
         this.textoObjetos$.next(texto);
     }
 
-    /** Ver todo un listado («Ver los 23 en el listado»). */
-    abrirListado(lista: string): void {
-        this.navegacion.abrir({ clase: 'listado', lista });
+    /** Ver todo un listado («Ver los 23 en el listado»), con lo escrito ya puesto en su buscador. */
+    abrirListado(lista: string, texto?: string): void {
+        this.navegacion.abrir(texto ? { clase: 'listado', lista, texto } : { clase: 'listado', lista });
     }
 
     /** Las fuentes, en el orden de los grupos; cada una se carga una vez por sesión (al abrir el buscador). */
@@ -224,7 +222,7 @@ export class BuscadorGlobalService {
                 id: 'manuales', titulo: 'Manuales', tipo: 'manual',
                 cargar: () => this.catalogo(this.manuales.getManualesAsociados(), (manual): ElementoBusqueda => ({
                     ...this.elemento('manuales', 'manual', manual, ''),
-                    abrir: () => this.manualVistaNav.emitirApertura(manual),
+                    abrir: () => this.navegacion.abrir({ clase: 'manual', manual }),
                 })),
             },
             {

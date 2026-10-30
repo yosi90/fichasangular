@@ -7,7 +7,7 @@ import { SeccionAyuda } from 'src/app/interfaces/ayuda';
 import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualesAsociadosService } from 'src/app/services/manuales-asociados.service';
-import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
+import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
@@ -41,7 +41,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
     constructor(
         private manualesAsociadosSvc: ManualesAsociadosService,
-        private manualVistaNavSvc: ManualVistaNavigationService,
+        private navegacionRol: NavegacionRolService,
         private manualFlagNoticeSvc: ManualFlagConsistencyNoticeService,
         private platformSessionSvc: PlatformSessionService,
         private usrService: UserService,
@@ -122,7 +122,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
         event.stopPropagation();
         if (!manual || Number(manual.Id) <= 0)
             return;
-        this.manualVistaNavSvc.emitirApertura(manual);
+        this.navegacionRol.abrir({ clase: 'manual', manual });
         trigger?.closeMenu();
     }
 

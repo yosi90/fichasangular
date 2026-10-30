@@ -128,7 +128,8 @@
                 (abrirDetalles)="recibirObjetoListado($event, 'detalles')"
                 (itemSeleccionado)="recibirObjetoListado($event, listadoTab.operacion)"
                 [tipoLista]="listadoTab.tipo"
-                [tipoOperacion]="listadoTab.operacion">
+                [tipoOperacion]="listadoTab.operacion"
+                [texto]="listadoTab.texto ?? ''">
             </app-listado>
         </ng-template>
     </mat-tab>

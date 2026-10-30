@@ -173,7 +173,7 @@ export class BuscadorGlobalComponent implements OnInit, AfterViewInit, OnDestroy
 
     private verTodos(lista: string): void {
         this.ventana.cerrar();
-        this.buscador.abrirListado(lista);
+        this.buscador.abrirListado(lista, this.texto.trim());
     }
 }
 

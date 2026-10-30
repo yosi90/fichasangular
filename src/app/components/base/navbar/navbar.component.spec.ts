@@ -10,7 +10,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { NavbarComponent } from './navbar.component';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualesAsociadosService } from 'src/app/services/manuales-asociados.service';
-import { ManualVistaNavigationService } from 'src/app/services/manual-vista-navigation.service';
+import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
@@ -25,7 +25,7 @@ describe('NavbarComponent', () => {
     let isLoggedIn$: BehaviorSubject<boolean>;
     let permisos$: BehaviorSubject<number>;
     let currentPrivateProfile$: BehaviorSubject<any>;
-    let manualVistaNavSvc: jasmine.SpyObj<ManualVistaNavigationService>;
+    let navegacionRol: jasmine.SpyObj<NavegacionRolService>;
     let userProfileNavSvc: jasmine.SpyObj<UserProfileNavigationService>;
     let platformSessionSvc: jasmine.SpyObj<PlatformSessionService>;
     let manualFlagNoticeSvc: jasmine.SpyObj<ManualFlagConsistencyNoticeService>;
@@ -37,7 +37,7 @@ describe('NavbarComponent', () => {
         isLoggedIn$ = new BehaviorSubject<boolean>(false);
         permisos$ = new BehaviorSubject<number>(0);
         currentPrivateProfile$ = new BehaviorSubject<any>(null);
-        manualVistaNavSvc = jasmine.createSpyObj<ManualVistaNavigationService>('ManualVistaNavigationService', ['emitirApertura']);
+        navegacionRol = jasmine.createSpyObj<NavegacionRolService>('NavegacionRolService', ['abrir']);
         userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>(
             'UserProfileNavigationService',
             ['openPrivateProfile', 'openSocial', 'openAyuda', 'openFeedbackBug', 'openFeedbackFeature', 'abrirVista']
@@ -66,7 +66,7 @@ describe('NavbarComponent', () => {
 
         const instance = new NavbarComponent(
             manualesAsociadosSvc,
-            manualVistaNavSvc,
+            navegacionRol,
             manualFlagNoticeSvc,
             platformSessionSvc,
             userSvc,
@@ -172,7 +172,7 @@ describe('NavbarComponent', () => {
 
         component.abrirManual(manual, event, trigger as any);
 
-        expect(manualVistaNavSvc.emitirApertura).toHaveBeenCalledWith(manual);
+        expect(navegacionRol.abrir).toHaveBeenCalledWith({ clase: 'manual', manual });
         expect(trigger.closeMenu).toHaveBeenCalled();
     });
 
@@ -309,8 +309,8 @@ describe('NavbarComponent template', () => {
                     useValue: jasmine.createSpyObj<ManualFlagConsistencyNoticeService>('ManualFlagConsistencyNoticeService', ['notifyAdminIfNeeded']),
                 },
                 {
-                    provide: ManualVistaNavigationService,
-                    useValue: jasmine.createSpyObj<ManualVistaNavigationService>('ManualVistaNavigationService', ['emitirApertura']),
+                    provide: NavegacionRolService,
+                    useValue: jasmine.createSpyObj<NavegacionRolService>('NavegacionRolService', ['abrir']),
                 },
                 {
                     provide: UserService,
