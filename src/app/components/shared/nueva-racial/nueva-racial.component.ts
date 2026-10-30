@@ -42,6 +42,7 @@ import {
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
 
 type RacialPrerequisiteType = Extract<PrerequisiteType, 'raza' | 'caracteristica'>;
@@ -164,14 +165,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     customModalRowUid = '';
     customModalHabilidad: HabilidadBasicaDetalle | null = null;
 
-    readonly caracteristicasCatalogo: PrerequisiteCatalogItem[] = [
-        { id: 1, nombre: 'Fuerza' },
-        { id: 2, nombre: 'Destreza' },
-        { id: 3, nombre: 'Constitución' },
-        { id: 4, nombre: 'Inteligencia' },
-        { id: 5, nombre: 'Sabiduría' },
-        { id: 6, nombre: 'Carisma' },
-    ];
+    readonly caracteristicasCatalogo: PrerequisiteCatalogItem[] = [...CATALOGO_CARACTERISTICAS];
     readonly salvacionesCatalogo: NombreIdItem[] = [
         { Id: 1, Nombre: 'Completa (+2 a +12)' },
         { Id: 2, Nombre: 'Corta (+0 a +6)' },

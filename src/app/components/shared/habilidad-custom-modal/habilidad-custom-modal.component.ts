@@ -3,6 +3,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { HabilidadService } from 'src/app/services/habilidad.service';
+import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 
 @Component({
     selector: 'app-habilidad-custom-modal',
@@ -19,14 +20,7 @@ export class HabilidadCustomModalComponent implements OnChanges {
 
     guardando = false;
 
-    readonly caracteristicas = [
-        { Id: 1, Nombre: 'Fuerza' },
-        { Id: 2, Nombre: 'Destreza' },
-        { Id: 3, Nombre: 'Constitución' },
-        { Id: 4, Nombre: 'Inteligencia' },
-        { Id: 5, Nombre: 'Sabiduría' },
-        { Id: 6, Nombre: 'Carisma' },
-    ];
+    readonly caracteristicas = CATALOGO_CARACTERISTICAS;
 
     readonly form = this.fb.group({
         nombre: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(80)]],

@@ -3,6 +3,7 @@ import { getPrerequisiteDefinition } from 'src/app/components/shared/prerrequisi
 import { normalizePlantillaApi } from './plantilla-mapper';
 import {
     CAMPOS_PLANTILLA,
+    CARACTERISTICAS_PLANTILLA,
     PASOS_PLANTILLA,
     TEXTO_SIN_CAMBIO,
     TIPOS_PRERREQUISITO_PLANTILLA,
@@ -187,5 +188,13 @@ describe('plantilla-formulario', () => {
         expect(campoDeErrorApi(null)).toBeNull();
         expect(CAMPOS_PLANTILLA[campoDeErrorApi('dotes[0].dg')!].paso).toBe(2);
         expect(PASOS_PLANTILLA.length).toBe(5);
+    });
+});
+
+describe('CARACTERISTICAS_PLANTILLA', () => {
+    it('sale de las características comunes: campos del alta, nombre con tildes y abreviatura', () => {
+        expect(CARACTERISTICAS_PLANTILLA[2]).toEqual({ modificador: 'constitucion', minimo: 'min_constitucion', nombre: 'Constitución', corto: 'Con' });
+        expect(CARACTERISTICAS_PLANTILLA.map((c) => c.corto)).toEqual(['Fue', 'Des', 'Con', 'Int', 'Sab', 'Car']);
+        expect(CARACTERISTICAS_PLANTILLA.map((c) => c.minimo)).toEqual(['min_fuerza', 'min_destreza', 'min_constitucion', 'min_inteligencia', 'min_sabiduria', 'min_carisma']);
     });
 });

@@ -25,6 +25,7 @@ import { Dote } from 'src/app/interfaces/dote';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
+import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { Manual } from 'src/app/interfaces/manual';
 import { DoteService } from 'src/app/services/dote.service';
 import { ExtraService } from 'src/app/services/extra.service';
@@ -135,14 +136,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     readonly prerrequisitoOpciones: PrerrequisitoOption[] = getPrerequisiteTypeOptions(
         (type) => !this.prerrequisitosSoloClase.has(type) && !TIPOS_PRERREQUISITO_SOLO_PLANTILLA.has(type)
     );
-    readonly caracteristicasCatalogo: ExtraSelectorItem[] = [
-        { id: 1, nombre: 'Fuerza' },
-        { id: 2, nombre: 'Destreza' },
-        { id: 3, nombre: 'Constitución' },
-        { id: 4, nombre: 'Inteligencia' },
-        { id: 5, nombre: 'Sabiduría' },
-        { id: 6, nombre: 'Carisma' },
-    ];
+    readonly caracteristicasCatalogo: ExtraSelectorItem[] = [...CATALOGO_CARACTERISTICAS];
     readonly actitudesCatalogo: ExtraSelectorItem[] = [
         { id: 1, nombre: 'Legal' },
         { id: 2, nombre: 'Neutral' },

@@ -59,6 +59,13 @@ export const NOMBRES_CARACTERISTICAS: Readonly<Record<Caracteristica, string>> =
     Carisma: 'Carisma',
 };
 
+/**
+ * Las seis como opciones de un catálogo: su `Id_caracteristica` (del 1 al 6, en el orden de `CARACTERISTICAS`) y su
+ * nombre con tildes. Los selectores de característica de las inserciones (prerrequisitos, extras, habilidades).
+ */
+export const CATALOGO_CARACTERISTICAS: readonly { id: number; nombre: string; }[] = CARACTERISTICAS
+    .map((clave, indice) => ({ id: indice + 1, nombre: NOMBRES_CARACTERISTICAS[clave] }));
+
 /** La abreviatura de una característica en las casillas de la ficha («FUE», «CON»). */
 export function abreviaturaCaracteristica(clave: Caracteristica): string {
     return NOMBRES_CARACTERISTICAS[clave].slice(0, 3).toUpperCase();

@@ -15,8 +15,8 @@
             <mat-form-field appearance="fill">
                 <mat-label>Característica</mat-label>
                 <mat-select formControlName="id_caracteristica">
-                    <mat-option *ngFor="let caracteristica of caracteristicas" [value]="caracteristica.Id">
-                        {{caracteristica.Nombre}}
+                    <mat-option *ngFor="let caracteristica of caracteristicas" [value]="caracteristica.id">
+                        {{caracteristica.nombre}}
                     </mat-option>
                 </mat-select>
             </mat-form-field>

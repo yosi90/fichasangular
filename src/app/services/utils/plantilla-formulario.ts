@@ -8,7 +8,10 @@ import {
 import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { PrerequisiteRowModel, PrerequisiteType } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.models';
 import { getPrerequisiteDefinition } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.registry';
-import { toInt, toText } from './normalizacion';
+import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
+import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
+import { toInt, toNullableText, toText } from './normalizacion';
 
 // El formulario de las plantillas (lienzo «Plantillas: crear y modificar», aprobado el 2026-10-30): los pasos, los
 // campos con su etiqueta y su paso, el cuerpo de `POST /plantillas/add` (contrato: «Endpoint: GET /plantillas» y
@@ -36,15 +39,15 @@ const CAMPOS_NO_NUMERICOS: ReadonlySet<string> = new Set<string>([
     'nombre', 'descripcion', ...TEXTOS_CON_RELLENO, ...TEXTOS_OPCIONALES, 'oficial', 'traducido', 'nacimiento', 'act_dg',
 ]);
 
-/** Las características en el orden del manual, con su campo de modificador y de mínimo en el alta. */
-export const CARACTERISTICAS_PLANTILLA = [
-    { modificador: 'fuerza', minimo: 'min_fuerza', nombre: 'Fuerza', corto: 'Fue' },
-    { modificador: 'destreza', minimo: 'min_destreza', nombre: 'Destreza', corto: 'Des' },
-    { modificador: 'constitucion', minimo: 'min_constitucion', nombre: 'Constitución', corto: 'Con' },
-    { modificador: 'inteligencia', minimo: 'min_inteligencia', nombre: 'Inteligencia', corto: 'Int' },
-    { modificador: 'sabiduria', minimo: 'min_sabiduria', nombre: 'Sabiduría', corto: 'Sab' },
-    { modificador: 'carisma', minimo: 'min_carisma', nombre: 'Carisma', corto: 'Car' },
-] as const;
+/**
+ * Las características en el orden del manual (`CARACTERISTICAS`), con su campo de modificador y de mínimo en el alta
+ * («constitucion», «min_constitucion»), su nombre con tildes y su abreviatura («Con»).
+ */
+export const CARACTERISTICAS_PLANTILLA = CARACTERISTICAS.map((clave) => {
+    const campo = clave.toLowerCase() as Lowercase<typeof clave>;
+    const nombre = NOMBRES_CARACTERISTICAS[clave];
+    return { modificador: campo, minimo: `min_${campo}` as const, nombre, corto: nombre.slice(0, 3) };
+});
 
 /** Los tipos de prerrequisito de las plantillas, los de `Prerrequisitos` del contrato, en su orden. */
 export const TIPOS_PRERREQUISITO_PLANTILLA: readonly PrerequisiteType[] = [
@@ -174,7 +177,7 @@ export interface FilaHabilidadPlantilla {
     nombre: string;
     /** El bono que da (`rangos` en el alta). */
     rangos: number;
-    /** -1 sin extra; > 0, un extra de la habilidad. */
+    /** `ID_EXTRA_HABILIDAD_SIN_EXTRA` (-1) sin extra; > 0, un extra de la habilidad. */
     id_extra: number;
     varios: string;
 }
@@ -347,7 +350,7 @@ export function listasDesdePlantilla(plantilla: Plantilla, uid: () => string): L
             id: toInt(item?.Id_habilidad),
             nombre: toText(item?.Habilidad),
             rangos: toInt(item?.Rangos),
-            id_extra: toInt(item?.Id_extra) > 0 ? toInt(item?.Id_extra) : -1,
+            id_extra: toInt(item?.Id_extra) > 0 ? toInt(item?.Id_extra) : ID_EXTRA_HABILIDAD_SIN_EXTRA,
             varios: toText(item?.Varios),
         })).filter((fila) => fila.id > 0),
         subtipos: (plantilla.Subtipos ?? []).map((item) => ({ uid: uid(), id: toInt(item?.Id), nombre: toText(item?.Nombre) }))
@@ -437,11 +440,6 @@ function textoConRelleno(valor: string): string {
     return texto.length > 0 ? texto : TEXTO_SIN_CAMBIO;
 }
 
-function textoONulo(valor: string): string | null {
-    const texto = `${valor ?? ''}`.trim();
-    return texto.length > 0 ? texto : null;
-}
-
 /** El cuerpo de `POST /plantillas/add` (y del `PUT` de la modificación, que lleva el mismo). */
 export function construirPlantillaRequest(valor: PlantillaFormularioValor, listas: ListasPlantilla): PlantillaCreateRequest {
     const { con_dg_lic, ...escalares } = valor;
@@ -460,7 +458,7 @@ export function construirPlantillaRequest(valor: PlantillaFormularioValor, lista
         suma_dg_lic: con_dg_lic ? toInt(valor.suma_dg_lic) : 0,
         id_tipo_criatura_dg_lic: con_dg_lic ? toInt(valor.id_tipo_criatura_dg_lic) : 0,
         ...Object.fromEntries(TEXTOS_CON_RELLENO.map((campo) => [campo, textoConRelleno(valor[campo])])),
-        ...Object.fromEntries(TEXTOS_OPCIONALES.map((campo) => [campo, textoONulo(valor[campo])])),
+        ...Object.fromEntries(TEXTOS_OPCIONALES.map((campo) => [campo, toNullableText(valor[campo])])),
     } as PlantillaEscalaresRequest;
     // Los números, enteros (un campo numérico vacío del formulario llega como `null`).
     const escritura = plantilla as unknown as Record<string, unknown>;

@@ -326,7 +326,7 @@
                             <mat-form-field appearance="fill" subscriptSizing="dynamic" *ngIf="extrasHabilidad(fila).length > 0">
                                 <mat-label>Extra</mat-label>
                                 <mat-select [(ngModel)]="fila.id_extra" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
-                                    <mat-option [value]="-1">Sin extra</mat-option>
+                                    <mat-option [value]="sinExtraHabilidad">Sin extra</mat-option>
                                     <mat-option *ngFor="let extra of extrasHabilidad(fila)" [value]="extra.id">{{extra.nombre}}</mat-option>
                                 </mat-select>
                             </mat-form-field>

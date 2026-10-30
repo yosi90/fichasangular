@@ -1,5 +1,6 @@
 import { MonstruoCaracteristicas } from 'src/app/interfaces/monstruo';
 import {
+    CATALOGO_CARACTERISTICAS,
     modificadorCaracteristica,
     modificadorParaSumar,
     textoCaracteristicaMonstruo,
@@ -44,5 +45,18 @@ describe('caracteristicas', () => {
     it('para sumar a un total, una característica sin valor cuenta +0', () => {
         expect(modificadorParaSumar(constructo, 'Sabiduria')).toBe(5);
         expect(modificadorParaSumar(constructo, 'Constitucion')).toBe(0);
+    });
+});
+
+describe('CATALOGO_CARACTERISTICAS', () => {
+    it('da las seis por su Id_caracteristica, con sus tildes', () => {
+        expect(CATALOGO_CARACTERISTICAS).toEqual([
+            { id: 1, nombre: 'Fuerza' },
+            { id: 2, nombre: 'Destreza' },
+            { id: 3, nombre: 'Constitución' },
+            { id: 4, nombre: 'Inteligencia' },
+            { id: 5, nombre: 'Sabiduría' },
+            { id: 6, nombre: 'Carisma' },
+        ]);
     });
 });

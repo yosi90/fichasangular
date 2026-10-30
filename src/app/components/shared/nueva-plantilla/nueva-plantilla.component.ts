@@ -20,8 +20,10 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
+import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import {
@@ -107,6 +109,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
     readonly pasos = PASOS_PLANTILLA;
     pasoActual = 0;
     readonly caracteristicas = CARACTERISTICAS_PLANTILLA;
+    readonly sinExtraHabilidad = ID_EXTRA_HABILIDAD_SIN_EXTRA;
     readonly tiposPrerrequisito = getPrerequisiteTypeOptions((tipo) => TIPOS_PRERREQUISITO_PLANTILLA.includes(tipo));
 
     readonly form: FormGroup<Record<keyof PlantillaFormularioValor, FormControl>>;
@@ -341,7 +344,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
         if (lista === 'subtipos')
             this.listas.subtipos = [...this.listas.subtipos, base];
         else if (lista === 'habilidades')
-            this.listas.habilidades = [...this.listas.habilidades, { ...base, rangos: 0, id_extra: -1, varios: '' }];
+            this.listas.habilidades = [...this.listas.habilidades, { ...base, rangos: 0, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, varios: '' }];
         else if (lista === 'sortilegas')
             this.listas.sortilegas = [...this.listas.sortilegas, { ...base, dg: 1, nivel_lanzador: 1, usos_diarios: '' }];
         else if (lista === 'dotes')
@@ -559,7 +562,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
             case 'alineamiento_requerido':
                 return this.alineamientos;
             case 'caracteristica':
-                return CARACTERISTICAS_PLANTILLA.map((c, indice) => ({ id: indice + 1, nombre: c.nombre }));
+                return [...CATALOGO_CARACTERISTICAS];
             case 'criaturas_compatibles':
                 return this.tiposCriatura;
             case 'tamano_minimo':
