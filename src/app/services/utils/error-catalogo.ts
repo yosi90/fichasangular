@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { leerErrorDeApi, textoParaMostrar } from './error-api';
+import { ErrorDeApi, leerErrorDeApi, textoParaMostrar } from './error-api';
 import { normalizarTexto } from './normalizacion';
 
 /** Lo que se intentaba hacer con el elemento del catálogo. */
@@ -26,7 +26,25 @@ export function errorDeCatalogo(error: unknown, accion: AccionDeCatalogo, elemen
     const frase = fraseDeCatalogo(error.status, accion, elemento);
     const leido = leerErrorDeApi(error, frase);
     const repetido = !leido.deLaApi || normalizarTexto(leido.mensaje) === normalizarTexto(frase);
-    return new Error(textoParaMostrar({ ...leido, mensaje: repetido ? frase : `${frase} ${leido.mensaje}` }));
+    return new ErrorDeCatalogo(textoParaMostrar({ ...leido, mensaje: repetido ? frase : `${frase} ${leido.mensaje}` }), leido);
+}
+
+/**
+ * El error de un alta o una edición de catálogo que respondió la API: su frase (`message`) y el `code`, el `field` y el
+ * estado de la respuesta, para que el formulario marque el campo que falla (`docs/publica/ERRORES.md`).
+ */
+export class ErrorDeCatalogo extends Error {
+    readonly codigo: string;
+    readonly campo: string | null;
+    readonly estado: number;
+
+    constructor(mensaje: string, leido: Pick<ErrorDeApi, 'codigo' | 'campo' | 'estado'>) {
+        super(mensaje);
+        this.name = 'ErrorDeCatalogo';
+        this.codigo = leido.codigo;
+        this.campo = leido.campo;
+        this.estado = leido.estado;
+    }
 }
 
 function fraseDeCatalogo(status: number, accion: AccionDeCatalogo, { singular, plural, femenino }: ElementoDeCatalogo): string {
