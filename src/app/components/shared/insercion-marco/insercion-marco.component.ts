@@ -1,4 +1,5 @@
 import { Component, ElementRef, EventEmitter, Input, Output, ViewChild, ViewEncapsulation } from '@angular/core';
+import { TipoRol } from 'src/app/services/utils/iconos-rol';
 
 /** Lo que dice la cabecera según se cree o se modifique. */
 export type ModoInsercion = 'crear' | 'editar';
@@ -26,11 +27,8 @@ export class InsercionMarcoComponent {
     @Input() modo: ModoInsercion = 'crear';
     /** El tipo de lo que se inserta, con mayúscula: «Raza», «Clase», «Dote»… */
     @Input() tipo = '';
-    /**
-     * La clave del catálogo para su icono («raza», «clase»…). Hoy no pinta nada: el icono de catálogo
-     * (`<app-icono-rol>`) llega con la rama de los iconos y se añade en la plantilla, en el hueco marcado.
-     */
-    @Input() iconoTipo: string | null = null;
+    /** El icono del catálogo (`ICONOS_ROL`): recuadro 56/38 a la izquierda; en ventana, 40/28. Sin él, la cabecera queda igual. */
+    @Input() iconoTipo: TipoRol | null = null;
     /** El nombre que se va escribiendo (o el real, al modificar). Sin nombre, «Sin nombre todavía». */
     @Input() nombre: string | null | undefined = '';
     /** `true` «Oficial», `false` «Homebrew»; `null`, nada. */

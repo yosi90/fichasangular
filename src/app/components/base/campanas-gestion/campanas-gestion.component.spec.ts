@@ -103,6 +103,8 @@ describe('CampanasGestionComponent', () => {
         const elegidas = raiz().querySelectorAll('.campanas-tarjeta--elegida');
         expect(elegidas.length).toBe(1);
         expect(elegidas[0].getAttribute('aria-pressed')).toBe('true');
+        expect(Array.from(raiz().querySelectorAll('.campanas-tarjeta app-icono-rol')).map((i) => i.getAttribute('tipo'))).toEqual(['campana', 'campana']);
+        expect(raiz().querySelector('.campanas-cabecera app-icono-rol')?.getAttribute('tipo')).toBe('campana');
     });
 
     it('lleva la cabecera de ficha con la campaña y las tres pestañas, con la política abierta al elegirla', async () => {

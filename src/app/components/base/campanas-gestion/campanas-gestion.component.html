@@ -16,10 +16,7 @@
         <button type="button" class="campanas-tarjeta" *ngFor="let campaign of g.manageableCampaigns; trackBy: g.trackByCampaignId"
             [class.campanas-tarjeta--elegida]="g.isCampaignSelected(campaign.id)" [attr.aria-pressed]="g.isCampaignSelected(campaign.id)"
             (click)="g.seleccionarCampana(campaign.id)">
-            <!--
-                ICONO DE CAMPAÑA (lienzo, vistas 1 y 8): al unir con la rama de los iconos, aquí va
-                <app-icono-rol tipo="campana" [tamano]="24" [recuadro]="true"></app-icono-rol> (tabletop-players, recuadro 36/24).
-            -->
+            <app-icono-rol tipo="campana" [tamano]="24" [recuadro]="true"></app-icono-rol>
             <span class="campanas-tarjeta__texto">
                 <span class="campanas-tarjeta__nombre">{{campaign.nombre}}</span>
                 <span class="campanas-tarjeta__rol">{{g.getCampaignRoleLabel(campaign.campaignRole, campaign.isOwner === true)}} · {{g.getMembershipStatusLabel(campaign.membershipStatus)}}</span>
@@ -30,7 +27,7 @@
     <section class="campanas-trabajo" aria-label="Espacio de trabajo de la campaña">
         <ng-container *ngIf="g.isCreatingCampaign || g.selectedCampaignSummary; else sinCampana">
             <header class="campanas-cabecera">
-                <!-- ICONO DE CAMPAÑA: <app-icono-rol tipo="campana" [tamano]="32" [recuadro]="true"></app-icono-rol> (recuadro 48/32). -->
+                <app-icono-rol tipo="campana" [tamano]="32" [recuadro]="true"></app-icono-rol>
                 <div class="campanas-cabecera__identidad">
                     <span class="campanas-cabecera__tipo">{{lineaTipo}}</span>
                     <h2 class="campanas-cabecera__nombre">{{g.isCreatingCampaign ? 'Nueva campaña' : g.selectedCampaignSummary?.nombre}}</h2>

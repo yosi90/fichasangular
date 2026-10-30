@@ -2,7 +2,7 @@
     <form class="nueva-conjuro-form" [formGroup]="form" (ngSubmit)="crearConjuro()">
         <app-insercion-marco
             tipo="Conjuro"
-            [iconoTipo]="varianteActualEsBase ? 'conjuro' : 'poder'"
+            [iconoTipo]="varianteActualEsBase ? 'conjuro' : 'poder-psionico'"
             [nombre]="form.controls.nombre.value"
             [oficial]="form.controls.oficial.value"
             [avisoPermisos]="!puedeCrear ? mensajePermisosInsuficientes : ''"

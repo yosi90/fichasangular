@@ -5,12 +5,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { TipoRol } from 'src/app/services/utils/iconos-rol';
+import { IconoRolComponent } from '../icono-rol/icono-rol.component';
 import { InsercionMarcoComponent, ModoInsercion } from './insercion-marco.component';
 
 @Component({
     template: `
         <form (ngSubmit)="envios = envios + 1">
-            <app-insercion-marco [modo]="modo" tipo="Raza" [nombre]="nombre" [oficial]="oficial" [pasos]="pasos"
+            <app-insercion-marco [modo]="modo" tipo="Raza" [iconoTipo]="iconoTipo" [enVentana]="enVentana" [nombre]="nombre" [oficial]="oficial" [pasos]="pasos"
                 [(pasoActual)]="paso" [avisoPermisos]="avisoPermisos" [guardando]="guardando" [nota]="nota"
                 textoAccion="Crear raza">
                 <div class="insercion-paso contenido-uno" [hidden]="paso !== 0">Uno</div>
@@ -22,6 +24,8 @@ import { InsercionMarcoComponent, ModoInsercion } from './insercion-marco.compon
 })
 class AnfitrionComponent {
     modo: ModoInsercion = 'crear';
+    iconoTipo: TipoRol | null = 'raza';
+    enVentana = false;
     nombre = '';
     oficial: boolean | null = true;
     pasos = ['Base y cuerpo', 'Valores', 'Relaciones'];
@@ -38,7 +42,7 @@ describe('InsercionMarcoComponent', () => {
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
-            declarations: [AnfitrionComponent, InsercionMarcoComponent],
+            declarations: [AnfitrionComponent, InsercionMarcoComponent, IconoRolComponent],
             imports: [FormsModule, ReactiveFormsModule, MatButtonModule, MatIconModule, MatTooltipModule, NoopAnimationsModule],
         }).compileComponents();
         fixture = TestBed.createComponent(AnfitrionComponent);
@@ -67,6 +71,22 @@ describe('InsercionMarcoComponent', () => {
         expect(texto('.insercion-cabecera__nombre')).toBe('Goliat de las cumbres');
         expect(texto('.insercion-etiqueta')).toBe('Homebrew');
         expect(raiz().querySelector('.insercion-etiqueta--aviso')).not.toBeNull();
+    });
+
+    it('lleva el icono del catálogo en su recuadro (56/38; en ventana, 40/28) y, sin tipo, no pinta ninguno', () => {
+        const icono = () => raiz().querySelector<HTMLElement>('.insercion-cabecera app-icono-rol');
+        expect(icono()).not.toBeNull();
+        expect(icono()!.classList).toContain('icono-rol--recuadro');
+        expect(icono()!.getAttribute('aria-hidden')).toBe('true');
+        expect(icono()!.style.width).toBe('56px');
+
+        anfitrion.enVentana = true;
+        fixture.detectChanges();
+        expect(icono()!.style.width).toBe('40px');
+
+        anfitrion.iconoTipo = null;
+        fixture.detectChanges();
+        expect(icono()).toBeNull();
     });
 
     it('deja saltar a cualquier paso desde la fila y marca el actual con aria-current', () => {

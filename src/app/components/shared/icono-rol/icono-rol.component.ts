@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, HostBinding, Input, OnChanges } fro
 import { ICONOS_ROL, IconoRol, TipoRol, rutaIconoRol } from 'src/app/services/utils/iconos-rol';
 
 /** El icono a 16 px va en el recuadro oscuro del menú (24 px); los demás, en el del color del grupo. */
-const RECUADRO_POR_TAMANO: Readonly<Record<number, number>> = { 16: 24, 18: 28, 20: 30, 28: 40, 38: 56 };
+const RECUADRO_POR_TAMANO: Readonly<Record<number, number>> = { 16: 24, 18: 28, 20: 30, 24: 36, 28: 40, 32: 48, 38: 56 };
 
 /**
  * El icono de un elemento de rol (`ICONOS_ROL`), con el color de su grupo (`_iconos.sass`). Se pinta con el SVG como
@@ -19,7 +19,7 @@ const RECUADRO_POR_TAMANO: Readonly<Record<number, number>> = { 16: 24, 18: 28, 
 })
 export class IconoRolComponent implements OnChanges {
     @Input({ required: true }) tipo!: TipoRol;
-    /** El tamaño del dibujo, en px: 16 (menú), 18 (pestañas y filas), 20, 28 o 38 (cabecera de la ficha). */
+    /** El tamaño del dibujo, en px: 16 (menú), 18 (pestañas y filas), 20, 24 (tarjeta de campaña), 28, 32 (cabecera de campaña) o 38 (cabecera de la ficha). */
     @Input() tamano = 18;
     @Input() recuadro: boolean | 'oscuro' = false;
     /** Sin texto al lado: el icono se anuncia con su etiqueta (o con `etiqueta`, si se da). */

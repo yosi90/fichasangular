@@ -1,12 +1,7 @@
 <section class="insercion-marco" [class.insercion-marco--ventana]="enVentana">
     <header class="insercion-cabecera" #cabecera>
         <div class="insercion-cabecera__fila">
-            <!--
-                ICONO DE CATÁLOGO (lienzo, vistas 1 y 7): al unir con la rama de los iconos, aquí va
-                <app-icono-rol *ngIf="iconoTipo" [tipo]="iconoTipo" [tamano]="enVentana ? 28 : 38" [recuadro]="true"></app-icono-rol>
-                (recuadro 56/38; en ventana, 40/28), con aria-hidden porque el tipo ya va escrito al lado.
-                Sin icono, la cabecera queda igual.
-            -->
+            <app-icono-rol *ngIf="iconoTipo" [tipo]="iconoTipo" [tamano]="enVentana ? 28 : 38" [recuadro]="true"></app-icono-rol>
             <div class="insercion-cabecera__identidad">
                 <span class="insercion-cabecera__tipo">{{lineaTipo}}</span>
                 <h2 class="insercion-cabecera__nombre" [class.insercion-cabecera__nombre--vacio]="!nombreVisible">{{nombreVisible || 'Sin nombre todavía'}}</h2>
