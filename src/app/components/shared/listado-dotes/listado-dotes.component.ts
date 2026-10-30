@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
@@ -7,7 +7,9 @@ import { DoteService } from 'src/app/services/dote.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
-import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/menu-filtros/menu-filtros.component';
+import { Subscription } from 'rxjs';
+import { nombreOriginalVisible } from 'src/app/components/detalles/ficha/ficha';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
     selector: 'app-listado-dotes',
@@ -15,7 +17,7 @@ import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/
     styleUrls: ['./listado-dotes.component.sass'],
     standalone: false
 })
-export class ListadoDotesComponent {
+export class ListadoDotesComponent implements OnDestroy, ListadoBuscable {
     dotes: Dote[] = [];
     dotesDS = new MatTableDataSource(this.dotes);
     doteColumns = ['Nombre', 'Manual', 'Tipos', 'Prerrequisitos'];
@@ -23,6 +25,11 @@ export class ListadoDotesComponent {
     defaultManual: string = 'Cualquiera';
     mostrarHomebrew: boolean = false;
     soloSinPrerrequisitos: boolean = false;
+    /** El buscador rápido de la cabecera (nombre, descripción y beneficio). */
+    textoBusqueda = '';
+    cargado = false;
+    errorCarga = false;
+    private catalogoSub?: Subscription;
 
     constructor(
         private cdr: ChangeDetectorRef,
@@ -32,24 +39,48 @@ export class ListadoDotesComponent {
 
     @ViewChild(MatSort) doteSort!: MatSort;
     @ViewChild(MatPaginator) dotePaginator!: MatPaginator;
-    @ViewChild('doteTextInc', { read: ElementRef }) nombreText!: ElementRef;
 
     ngAfterViewInit() {
         this.dotesDS.paginator = this.dotePaginator;
         this.dotesDS.sort = this.doteSort;
         ordenarEnEspanol(this.dotesDS);
-        this.dSvc.getDotes().subscribe(dotes => {
-            this.dotes = dotes;
-            this.manuales = ['Cualquiera', ...Array.from(new Set(dotes.map(d => d.Manual?.Nombre).filter(Boolean)))];
-            this.defaultManual = this.manuales[0];
-            this.cdr.detectChanges();
-            this.filtroDotes();
-            this.cdr.detectChanges();
+        this.cargar();
+    }
+
+    ngOnDestroy(): void {
+        this.catalogoSub?.unsubscribe();
+    }
+
+    /** Lee las dotes (otra vez, con «Reintentar»). */
+    cargar(): void {
+        this.cargado = false;
+        this.errorCarga = false;
+        this.catalogoSub?.unsubscribe();
+        this.catalogoSub = this.dSvc.getDotes().subscribe({
+            next: (dotes) => {
+                this.dotes = dotes ?? [];
+                this.manuales = ['Cualquiera', ...Array.from(new Set(this.dotes.map(d => d.Manual?.Nombre).filter(Boolean)))];
+                this.defaultManual = this.manuales[0];
+                this.cargado = true;
+                this.cdr.detectChanges();
+                this.filtroDotes();
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.cargado = true;
+                this.errorCarga = true;
+                this.cdr.detectChanges();
+            },
         });
     }
 
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
+        this.filtroDotes();
+    }
+
     filtroDotes() {
-        const texto = normalizarTexto(this.nombreText?.nativeElement.value, true);
+        const texto = normalizarTexto(this.textoBusqueda, true);
 
         const dotesFiltradas = this.dotes.filter(dote =>
             (texto === '' ||
@@ -67,8 +98,10 @@ export class ListadoDotesComponent {
             ordenarEnEspanol(this.dotesDS);
         }, 200);
         this.dotesDS.paginator = this.dotePaginator;
-        this.doteSort.active = 'Nombre';
-        this.doteSort.direction = 'asc';
+        if (this.doteSort) {
+            this.doteSort.active = 'Nombre';
+            this.doteSort.direction = 'asc';
+        }
     }
 
     get anuncioDotesHomebrew(): string {
@@ -94,17 +127,21 @@ export class ListadoDotesComponent {
     }
 
     get hayFiltros(): boolean {
-        return textoDelFiltro(this.nombreText) !== '' || this.defaultManual !== 'Cualquiera'
+        return this.textoBusqueda.trim() !== '' || this.defaultManual !== 'Cualquiera'
             || this.mostrarHomebrew || this.soloSinPrerrequisitos;
     }
 
     limpiarFiltros(): void {
-        vaciarTextoDelFiltro(this.nombreText);
+        this.textoBusqueda = '';
         this.defaultManual = 'Cualquiera';
         if (this.mostrarHomebrew)
             this.alternarDotesHomebrew();
         this.soloSinPrerrequisitos = false;
         this.filtroDotes();
+    }
+
+    nombreOriginal(dote: Dote): string {
+        return nombreOriginalVisible(dote);
     }
 
     getTipos(dote: Dote): string {

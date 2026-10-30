@@ -52,4 +52,23 @@ describe('ListadoComponent', () => {
         expect(detallesSpy).toHaveBeenCalledWith({ item: monstruo, tipo: 'monstruos' });
         expect(seleccionadoSpy).toHaveBeenCalledWith({ item: monstruo, tipo: 'monstruos' });
     });
+
+    it('pone el texto de «Ver los N» en el buscador del listado al crearlo y se lo cambia después', () => {
+        component.tipoLista = 'monstruos';
+        component.texto = 'lobo';
+        const instancia = Object.create(ListadoMonstruosComponent.prototype) as any;
+        instancia.monstruoDetalles = new EventEmitter<any>();
+        instancia.monstruoSeleccionado = new EventEmitter<any>();
+        instancia.textoBusqueda = '';
+        instancia.buscar = jasmine.createSpy('buscar');
+        (component as any).viewContainerRef = { clear: () => undefined, createComponent: () => ({ instance: instancia }) };
+
+        component.cargarComponente();
+        expect(instancia.textoBusqueda).toBe('lobo');
+
+        component.texto = 'oso';
+        component.ngOnChanges({ texto: { currentValue: 'oso', previousValue: 'lobo', firstChange: false, isFirstChange: () => false } });
+        expect(instancia.buscar).toHaveBeenCalledWith('oso');
+    });
 });
+

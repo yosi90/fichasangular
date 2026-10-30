@@ -19,6 +19,7 @@ import {
     nombreDeManual,
     nombreOriginalVisible,
     separarManualTexto,
+    textoManualListado,
     etiquetasVisibles,
     sortilegasVisibles,
     textoDato,
@@ -415,5 +416,15 @@ describe('nombreDeManual', () => {
         expect(nombreDeManual('El combatiente completo (p. 96)')).toBe('El combatiente completo');
         expect(nombreDeManual({ Nombre: ' Manual de monstruos ' })).toBe('Manual de monstruos');
         expect(nombreDeManual(null)).toBe('');
+    });
+});
+
+describe('textoManualListado', () => {
+    it('escribe el manual de una fila como «Libro · p. N», venga como texto, como referencia o con la página aparte', () => {
+        expect(textoManualListado('Razas de Faerûn, Página: 131')).toBe('Razas de Faerûn · p. 131');
+        expect(textoManualListado({ Nombre: 'Manual del jugador 1', Pagina: 89 })).toBe('Manual del jugador 1 · p. 89');
+        expect(textoManualListado('Arsenal', 12)).toBe('Arsenal · p. 12');
+        expect(textoManualListado({ Nombre: 'Rol mapa mundi', Pagina: 0 })).toBe('Rol mapa mundi');
+        expect(textoManualListado(null)).toBe('');
     });
 });

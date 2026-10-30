@@ -1,11 +1,8 @@
-<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
-    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
+<div id="container-lista">
+    <app-listado-cabecera icono="raza" titulo="Razas" [total]="cargado && !errorCarga ? razasDS.data.length : null"
+        [texto]="textoBusqueda" (textoChange)="buscar($event)" etiquetaBuscar="Buscar razas" placeholder="Buscar razas">
         <app-menu-filtros titulo="Filtros de razas" [hayFiltros]="hayFiltros" (limpiar)="limpiarFiltros()">
             <app-menu-filtros-grupo titulo="Buscar">
-                <mat-form-field (keyup)="filtroRazas();">
-                    <mat-label>Incluye texto</mat-label>
-                    <input #razaTextInc matInput placeholder="Texto a buscar">
-                </mat-form-field>
                 <app-manual-autocomplete
                     [manuales]="Manuales"
                     [(value)]="defaultManual"
@@ -19,90 +16,71 @@
                     (click)="AlternarRazasHombrew();">{{anuncioHomebrew}}</mat-chip-option>
             </app-menu-filtros-grupo>
         </app-menu-filtros>
+    </app-listado-cabecera>
 
-        <table id="razas" #tablaRazas mat-table [dataSource]="razasDS" matSort
-            *ngIf="razas.length > 0; else cargando">
-            <ng-container matColumnDef="{{column}}" *ngFor="let column of razaColumns">
-                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header
-                    sortActionDescription="Ordenar por {{column}}">
-                    {{column.replace('_', ' ')}}
-                </th>
-                <td mat-cell *matCellDef="let element">
-                    <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
-                        (click)="abrirDetalleManual(element, $event)">
-                        {{element[column]}}
-                    </button>
-                    <p class="tw-mb-0" *ngIf="column == 'Clase_predilecta'">
-                        {{element[column]}}
-                    </p>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Ajuste_nivel'">
-                        <p class="tw-text-center tw-mb-0" [ngClass]="element[column] > 0 ? 'tw-inline sombra3d-sm tw-rounded-md tw-px-2 tw-py-1 bad chip' : ''">
-                            {{element[column] > 0 ? '+' + element[column] : ''}}
-                        </p>
-                    </div>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Dgs_adicionales'">
-                        <p class="tw-text-center tw-mb-0" [ngClass]="getDgsCantidad(element[column]) > 0 ? 'tw-inline sombra3d-sm tw-rounded-md tw-px-2 tw-py-1 bad chip' : ''">
-                            {{getDgsCantidad(element[column]) > 0 ? '+' + getDgsCantidad(element[column]) : ''}}{{getDgsDado(element[column])}}
-                        </p>
-                    </div>
-                    <button type="button" class="creacion-fila-boton" *ngIf="column == 'Nombre' && vistaPrevia"
-                        [attr.aria-expanded]="razaAbiertaId === element.Id" aria-controls="creacion-vista-previa"
-                        (click)="verDetallesRaza(element.Id); $event.stopPropagation();">{{element[column]}}</button>
-                    <button mat-stroked-button matTooltip="Click para ver esta raza" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre' && !vistaPrevia" color="accent" class="tw-flex tw-justify-start sombra3d tw-w-full"
-                        (click)="verDetallesRaza(element.Id); $event.stopPropagation();">
-                        <mat-icon>read_more</mat-icon>
-                        {{element[column]}}
-                    </button>
-                    <div class="tw-flex tw-justify-center tw-items-center modificadores-cell" *ngIf="column == 'Modificadores'">
-                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Fuerza') != 0" [ngClass]="getModificador(element[column], 'Fuerza') > 0 ? 'good' : 'bad'">
-                            {{getModificador(element[column], 'Fuerza') > 0 ? 'FUE +' + getModificador(element[column], 'Fuerza') : 'FUE ' + getModificador(element[column], 'Fuerza')}}
-                        </p>
-                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Destreza') != 0" [ngClass]="getModificador(element[column], 'Destreza') > 0 ? 'good' : 'bad'">
-                            {{getModificador(element[column], 'Destreza') > 0 ? 'DES +' + getModificador(element[column], 'Destreza') : 'DES ' + getModificador(element[column], 'Destreza')}}
-                        </p>
-                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Constitucion') != 0" [ngClass]="getModificador(element[column], 'Constitucion') > 0 ? 'good' : 'bad'">
-                            {{getModificador(element[column], 'Constitucion') > 0 ? 'CON +' + getModificador(element[column], 'Constitucion') : 'CON ' + getModificador(element[column], 'Constitucion')}}
-                        </p>
-                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Inteligencia') != 0" [ngClass]="getModificador(element[column], 'Inteligencia') > 0 ? 'good' : 'bad'">
-                            {{getModificador(element[column], 'Inteligencia') > 0 ? 'INT +' + getModificador(element[column], 'Inteligencia') : 'INT ' + getModificador(element[column], 'Inteligencia')}}
-                        </p>
-                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Sabiduria') != 0" [ngClass]="getModificador(element[column], 'Sabiduria') > 0 ? 'good' : 'bad'">
-                            {{getModificador(element[column], 'Sabiduria') > 0 ? 'SAB +' + getModificador(element[column], 'Sabiduria') : 'SAB ' + getModificador(element[column], 'Sabiduria')}}
-                        </p>
-                        <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-mb-0 chip" *ngIf="getModificador(element[column], 'Carisma') != 0" [ngClass]="getModificador(element[column], 'Carisma') > 0 ? 'good' : 'bad'">
-                            {{getModificador(element[column], 'Carisma') > 0 ? 'CAR +' + getModificador(element[column], 'Carisma') : 'CAR ' + getModificador(element[column], 'Carisma')}}
-                        </p>
-                        <!-- <p class="tw-inline sombra3d-sm tw-rounded-md tw-p-1 tw-me-1 tw-mb-0"
-                            *ngIf="element[column].Fuerza == 0 && element[column].Destreza == 0 && element[column].Constitucion == 0 
-                            && element[column].Inteligencia == 0 && element[column].Sabiduria == 0 && element[column].Carisma == 0">
-                            No modifica características
-                        </p> -->
-                    </div>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Homebrew'">
-                        <mat-checkbox #isHombrew [checked]="!element.Oficial" [disableRipple]="true"
-                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
-                    </div>
+    <div class="listado__tabla" [class.listado-oculto]="!cargado || errorCarga">
+        <table id="razas" mat-table [dataSource]="razasDS" matSort aria-label="Razas">
+            <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por nombre">Nombre</th>
+                <td mat-cell *matCellDef="let raza">
+                    <app-listado-nombre tipo="raza" [nombre]="raza.Nombre" [original]="nombreOriginal(raza)"
+                        [expandido]="vistaPrevia ? razaAbiertaId === raza.Id : null" [controla]="vistaPrevia ? 'creacion-vista-previa' : null"
+                        (abrir)="verDetallesRaza(raza.Id)"></app-listado-nombre>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Modificadores">
+                <th mat-header-cell *matHeaderCellDef>Modificadores</th>
+                <td mat-cell *matCellDef="let raza">
+                    <span class="modificadores-celda">
+                        <span class="dato-chip sombra3d-sm" *ngFor="let mod of modificadoresVisibles(raza.Modificadores)"
+                            [ngClass]="mod.valor > 0 ? 'good' : 'bad'">{{mod.texto}}</span>
+                    </span>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Clase_predilecta">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por clase predilecta">Clase predilecta</th>
+                <td mat-cell *matCellDef="let raza">{{raza.Clase_predilecta}}</td>
+            </ng-container>
+            <ng-container matColumnDef="Manual">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por manual">Manual</th>
+                <td mat-cell *matCellDef="let raza">
+                    <button type="button" class="listado-manual" (click)="abrirDetalleManual(raza, $event)">{{raza.Manual | manualListado}}</button>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Ajuste_nivel">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por ajuste de nivel">Ajuste</th>
+                <td mat-cell *matCellDef="let raza">
+                    <span *ngIf="raza.Ajuste_nivel > 0"><span class="solo-lectores">Ajuste de nivel </span>+{{raza.Ajuste_nivel}}</span>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Dgs_adicionales">
+                <th mat-header-cell *matHeaderCellDef>DG raciales</th>
+                <td mat-cell *matCellDef="let raza">
+                    <span *ngIf="getDgsCantidad(raza.Dgs_adicionales) > 0">{{getDgsCantidad(raza.Dgs_adicionales)}}{{getDgsDado(raza.Dgs_adicionales)}}<span class="solo-lectores"> raciales</span></span>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Homebrew">
+                <th mat-header-cell *matHeaderCellDef>Homebrew</th>
+                <td mat-cell *matCellDef="let raza">
+                    <mat-checkbox [checked]="!raza.Oficial" [disableRipple]="true" [attr.aria-label]="raza.Oficial ? 'Oficial' : 'Homebrew'"
+                        (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                 </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="razaColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let element; columns: razaColumns;" class="element-row elegir"
-                [class.creacion-fila-abrible]="vistaPrevia" [class.creacion-fila-abierta]="vistaPrevia && razaAbiertaId === element.Id"
-                (click)="pulsarFila(element.Id)"></tr>
+            <tr mat-row *matRowDef="let raza; columns: razaColumns;" class="elegir"
+                [class.creacion-fila-abrible]="vistaPrevia" [class.creacion-fila-abierta]="vistaPrevia && razaAbiertaId === raza.Id"
+                (click)="pulsarFila(raza.Id)"></tr>
             <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell tw-text-center tw-text-white tw-p-3" colspan="6">
-                    Ninguna raza encaja con los filtros
+                <td class="mat-cell" [attr.colspan]="razaColumns.length">
+                    <app-listado-estado tipo="vacio" [mensaje]="hayFiltros ? 'Ninguna raza cumple los filtros.' : 'Aún no hay razas.'"
+                        [textoAccion]="hayFiltros ? 'Limpiar filtros' : ''" (accion)="limpiarFiltros()"></app-listado-estado>
                 </td>
             </tr>
         </table>
-        <ng-template #cargando>
-            <div class="superballs">
-                <div class="superballs__dot"></div>
-                <div class="superballs__dot"></div>
-            </div>
-        </ng-template>
     </div>
-    <div class="lista-row tw-w-full tw-flex tw-items-center">
-        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una página de razas">
-        </mat-paginator>
-    </div>
+
+    <app-listado-estado *ngIf="!cargado" tipo="cargando" etiqueta="Cargando razas"></app-listado-estado>
+    <app-listado-estado *ngIf="cargado && errorCarga" tipo="error" mensaje="No se pudieron cargar las razas." (accion)="cargar()"></app-listado-estado>
+
+    <mat-paginator class="listado-paginador" [class.listado-oculto]="!cargado || errorCarga" aria-label="Páginas de razas"></mat-paginator>
 </div>

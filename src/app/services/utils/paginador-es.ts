@@ -1,5 +1,5 @@
 import { Injectable, Provider } from '@angular/core';
-import { MatPaginatorIntl } from '@angular/material/paginator';
+import { MAT_PAGINATOR_DEFAULT_OPTIONS, MatPaginatorDefaultOptions, MatPaginatorIntl } from '@angular/material/paginator';
 
 /**
  * El paginador de Material en español para toda la web (lienzo «Rol: las vistas que faltan», vista 4: hoy salía en
@@ -26,4 +26,18 @@ export class PaginadorEs extends MatPaginatorIntl {
 export const TAMANOS_PAGINA = [10, 25, 50, 100];
 export const TAMANO_PAGINA_POR_DEFECTO = 25;
 
-export const PROVEEDOR_PAGINADOR_ES: Provider = { provide: MatPaginatorIntl, useClass: PaginadorEs };
+/**
+ * Lo que tienen todos los paginadores de la web sin escribirlo en cada plantilla: los tamaños, 25 por página y los
+ * botones de primera y última página. Un `mat-paginator` solo pone lo suyo (su `aria-label`).
+ */
+export const OPCIONES_PAGINADOR: MatPaginatorDefaultOptions = {
+    pageSize: TAMANO_PAGINA_POR_DEFECTO,
+    pageSizeOptions: TAMANOS_PAGINA,
+    showFirstLastButtons: true,
+};
+
+/** En `AppModule`: el paginador en español y sus opciones comunes. */
+export const PROVEEDORES_PAGINADOR: Provider[] = [
+    { provide: MatPaginatorIntl, useClass: PaginadorEs },
+    { provide: MAT_PAGINATOR_DEFAULT_OPTIONS, useValue: OPCIONES_PAGINADOR },
+];

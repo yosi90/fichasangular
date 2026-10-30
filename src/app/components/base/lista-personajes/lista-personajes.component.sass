@@ -24,9 +24,7 @@
     flex: 1 1 auto
     min-height: 0
     overflow: auto
-    border-radius: 6px
-    box-shadow: $ficha-sombra
-    background: $ficha-tarjeta
+    @include ficha-tarjeta
 
 .lista-personajes__tabla--oculta
     display: none
@@ -149,9 +147,6 @@ table
 .pj-centro
     text-align: center
 
-.pj-oculto
-    @include solo-lectores
-
 .details
     overflow: hidden
 
@@ -177,85 +172,6 @@ table
         font-size: 14px
         line-height: 1.5
         color: $ficha-texto
-
-.pj-vacio
-    display: flex
-    flex-direction: column
-    align-items: center
-    gap: 12px
-    padding: 32px 16px
-    color: $ficha-texto
-
-    p
-        margin: 0
-
-.pj-vacio--total
-    flex: 1 1 auto
-    justify-content: center
-    border-radius: 6px
-    background: $ficha-tarjeta
-    box-shadow: $ficha-sombra
-
-.lista-personajes__error
-    display: flex
-    align-items: center
-    justify-content: space-between
-    gap: 12px
-    padding: 12px 16px
-
-// Cargando: seis filas de esqueleto, con un brillo que se mueve (quieto con prefers-reduced-motion).
-.lista-personajes__esqueleto
-    display: flex
-    flex: 1 1 auto
-    flex-direction: column
-    border-radius: 6px
-    overflow: hidden
-    box-shadow: $ficha-sombra
-
-.pj-esqueleto
-    display: flex
-    align-items: center
-    gap: 12px
-    height: 60px
-    padding: 0 16px
-    background: $ficha-tarjeta
-
-    &:nth-child(even)
-        background: $ficha-fila-alterna
-
-.pj-esqueleto__icono, .pj-esqueleto__lineas span
-    background: linear-gradient(90deg, #555 0%, #606060 50%, #555 100%)
-    background-size: 200% 100%
-    animation: pj-brillo 1.4s linear infinite
-
-.pj-esqueleto__icono
-    width: 40px
-    height: 40px
-    border-radius: 6px
-
-.pj-esqueleto__lineas
-    display: flex
-    flex-direction: column
-    gap: 8px
-
-    span
-        display: block
-        width: 180px
-        height: 10px
-        border-radius: 3px
-
-        &:last-child
-            width: 260px
-
-@keyframes pj-brillo
-    from
-        background-position: 100% 0
-    to
-        background-position: -100% 0
-
-@media (prefers-reduced-motion: reduce)
-    .pj-esqueleto__icono, .pj-esqueleto__lineas span
-        animation: none
 
 .lista-personajes__paginador
     flex-shrink: 0

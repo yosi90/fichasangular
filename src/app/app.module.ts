@@ -149,7 +149,10 @@ import { MENU_FILTROS_COMPONENTES } from './components/shared/menu-filtros/menu-
 import { IconoRolComponent } from './components/shared/icono-rol/icono-rol.component';
 import { BuscadorGlobalComponent } from './components/shared/buscador-global/buscador-global.component';
 import { ListadoCabeceraComponent } from './components/shared/listado-cabecera/listado-cabecera.component';
-import { PROVEEDOR_PAGINADOR_ES } from './services/utils/paginador-es';
+import { ListadoEstadoComponent } from './components/shared/listado-estado/listado-estado.component';
+import { ListadoNombreComponent } from './components/shared/listado-nombre/listado-nombre.component';
+import { ManualListadoPipe } from './components/shared/listado-nombre/manual-listado.pipe';
+import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
 
 @NgModule({
     declarations: [
@@ -176,6 +179,9 @@ import { PROVEEDOR_PAGINADOR_ES } from './services/utils/paginador-es';
         IconoRolComponent,
         BuscadorGlobalComponent,
         ListadoCabeceraComponent,
+        ListadoEstadoComponent,
+        ListadoNombreComponent,
+        ManualListadoPipe,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
         DetallesRazaComponent,
@@ -296,7 +302,7 @@ import { PROVEEDOR_PAGINADOR_ES } from './services/utils/paginador-es';
     ],
     providers: [
         DataServices,
-        PROVEEDOR_PAGINADOR_ES,
+        ...PROVEEDORES_PAGINADOR,
         provideHttpClient(withInterceptorsFromDi()),
         provideFirebaseApp(() => initializeApp(environment.firebase)),
         // La sesión de Firebase sale del token propio que da la API con la sesión de la plataforma: solo en

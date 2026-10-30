@@ -1,0 +1,91 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// Los estados de un listado (vistas 4 y 6): esqueleto, error y vacío. Guía: «Cabecera de los listados y paginador».
+:host
+    display: flex
+    flex-direction: column
+    min-height: 0
+
+// Cargando: seis filas de esqueleto, con un brillo que se mueve (quieto con prefers-reduced-motion).
+.listado-estado__esqueleto
+    display: flex
+    flex: 1 1 auto
+    flex-direction: column
+    border-radius: $ficha-radio
+    overflow: hidden
+    box-shadow: $ficha-sombra
+
+.listado-estado__fila
+    display: flex
+    align-items: center
+    gap: 12px
+    height: 52px
+    padding: 0 16px
+    background: $ficha-tarjeta
+
+    &:nth-child(even)
+        background: $ficha-fila-alterna
+
+.listado-estado__fila--alta
+    height: 60px
+
+.listado-estado__icono, .listado-estado__lineas span
+    background: linear-gradient(90deg, #555 0%, #606060 50%, #555 100%)
+    background-size: 200% 100%
+    animation: listado-estado-brillo 1.4s linear infinite
+
+.listado-estado__icono
+    flex-shrink: 0
+    border-radius: $ficha-radio
+
+.listado-estado__lineas
+    display: flex
+    flex-direction: column
+    gap: 8px
+
+    span
+        display: block
+        width: 180px
+        max-width: 40vw
+        height: 10px
+        border-radius: 3px
+
+        &:last-child
+            width: 260px
+            max-width: 55vw
+
+@keyframes listado-estado-brillo
+    from
+        background-position: 100% 0
+    to
+        background-position: -100% 0
+
+@media (prefers-reduced-motion: reduce)
+    .listado-estado__icono, .listado-estado__lineas span
+        animation: none
+
+.listado-estado__error
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    justify-content: space-between
+    gap: 12px
+    padding: 12px 16px
+
+.listado-estado__vacio
+    display: flex
+    flex-direction: column
+    align-items: center
+    gap: 12px
+    padding: 32px 16px
+    color: $ficha-texto
+    text-align: center
+
+    p
+        margin: 0
+
+.listado-estado__vacio--tarjeta
+    flex: 1 1 auto
+    justify-content: center
+    @include ficha-tarjeta

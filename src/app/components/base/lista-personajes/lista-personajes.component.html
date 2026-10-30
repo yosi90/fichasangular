@@ -86,7 +86,7 @@
         </td>
       </ng-container>
       <ng-container matColumnDef="Homebrew">
-        <th mat-header-cell *matHeaderCellDef><span class="pj-oculto">Homebrew</span></th>
+        <th mat-header-cell *matHeaderCellDef><span class="solo-lectores">Homebrew</span></th>
         <td mat-cell *matCellDef="let pj">
           <span class="pj-etiqueta" *ngIf="pj.oficial === false">Homebrew</span>
         </td>
@@ -99,7 +99,7 @@
         </td>
       </ng-container>
       <ng-container matColumnDef="expand">
-        <th mat-header-cell *matHeaderCellDef><span class="pj-oculto">Más datos</span></th>
+        <th mat-header-cell *matHeaderCellDef><span class="solo-lectores">Más datos</span></th>
         <td mat-cell *matCellDef="let pj">
           <button mat-icon-button type="button" [attr.aria-label]="'Más datos de ' + pj.Nombre" [attr.aria-expanded]="expandedElement === pj"
             (click)="expandedElement = expandedElement === pj ? null : pj; $event.stopPropagation()">
@@ -135,34 +135,19 @@
       <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="pj-detalle"></tr>
       <tr class="mat-row" *matNoDataRow>
         <td class="mat-cell" [attr.colspan]="columnsToDisplayWithExpand.length">
-          <div class="pj-vacio">
-            <p>Ningún personaje cumple los filtros.</p>
-            <button type="button" mat-stroked-button (click)="limpiarFiltros()">Limpiar filtros</button>
-          </div>
+          <app-listado-estado tipo="vacio" mensaje="Ningún personaje cumple los filtros." textoAccion="Limpiar filtros"
+            (accion)="limpiarFiltros()"></app-listado-estado>
         </td>
       </tr>
     </table>
   </div>
 
-  <!-- Cargando: seis filas de esqueleto. -->
-  <div class="lista-personajes__esqueleto" *ngIf="!personajesCargados" role="status" aria-label="Cargando personajes">
-    <div class="pj-esqueleto" *ngFor="let fila of [1, 2, 3, 4, 5, 6]" aria-hidden="true">
-      <span class="pj-esqueleto__icono"></span>
-      <span class="pj-esqueleto__lineas"><span></span><span></span></span>
-    </div>
-  </div>
+  <app-listado-estado *ngIf="!personajesCargados" tipo="cargando" etiqueta="Cargando personajes" [icono]="40"></app-listado-estado>
+  <app-listado-estado *ngIf="personajesCargados && errorCarga" tipo="error" mensaje="No se pudieron cargar los personajes."
+    (accion)="reintentar()"></app-listado-estado>
+  <app-listado-estado *ngIf="personajesCargados && !errorCarga && Personajes.length < 1" tipo="vacio" [tarjeta]="true" [principal]="true"
+    mensaje="Aún no hay personajes que puedas ver" textoAccion="Nuevo personaje" (accion)="nuevoPersonaje.emit()"></app-listado-estado>
 
-  <div class="bloque-error lista-personajes__error" *ngIf="personajesCargados && errorCarga" role="alert">
-    <span>No se pudieron cargar los personajes.</span>
-    <button type="button" mat-stroked-button (click)="reintentar()">Reintentar</button>
-  </div>
-
-  <div class="pj-vacio pj-vacio--total" *ngIf="personajesCargados && !errorCarga && Personajes.length < 1">
-    <p>Aún no hay personajes que puedas ver</p>
-    <button type="button" mat-raised-button color="primary" (click)="nuevoPersonaje.emit()">Nuevo personaje</button>
-  </div>
-
-  <mat-paginator class="lista-personajes__paginador" [pageSizeOptions]="tamanosPagina" [pageSize]="tamanoPagina" showFirstLastButtons
-    aria-label="Páginas de personajes" [class.lista-personajes__tabla--oculta]="!personajesCargados || errorCarga || Personajes.length < 1">
+  <mat-paginator class="lista-personajes__paginador" aria-label="Páginas de personajes" [class.lista-personajes__tabla--oculta]="!personajesCargados || errorCarga || Personajes.length < 1">
   </mat-paginator>
 </div>

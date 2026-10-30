@@ -1,11 +1,8 @@
-<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
-    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
+<div id="container-lista">
+    <app-listado-cabecera icono="dote" titulo="Dotes" [total]="cargado && !errorCarga ? dotesDS.data.length : null"
+        [texto]="textoBusqueda" (textoChange)="buscar($event)" etiquetaBuscar="Buscar dotes" placeholder="Buscar en el nombre o el texto">
         <app-menu-filtros titulo="Filtros de dotes" [hayFiltros]="hayFiltros" (limpiar)="limpiarFiltros()">
             <app-menu-filtros-grupo titulo="Buscar">
-                <mat-form-field (keyup)="filtroDotes();">
-                    <mat-label>Incluye texto</mat-label>
-                    <input #doteTextInc matInput placeholder="Texto a buscar">
-                </mat-form-field>
                 <app-manual-autocomplete
                     [manuales]="manuales"
                     [includeAny]="false"
@@ -20,53 +17,54 @@
                     (click)="alternarSinPrerrequisitos();">{{anuncioSinPrerrequisitos}}</mat-chip-option>
             </app-menu-filtros-grupo>
         </app-menu-filtros>
+    </app-listado-cabecera>
 
-        <table id="dotes" #tablaDotes mat-table [dataSource]="dotesDS" matSort *ngIf="dotes.length > 0; else cargando">
-            <ng-container matColumnDef="{{column}}" *ngFor="let column of doteColumns">
-                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
-                    {{column.replace('_', ' ')}}
-                </th>
-                <td mat-cell *matCellDef="let element">
-                    <button mat-stroked-button matTooltip="Clic para ver esta dote" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent"
-                        class="tw-flex tw-justify-start sombra3d tw-w-full" (click)="verDetallesDote(element.Id); $event.stopPropagation();">
-                        <mat-icon>read_more</mat-icon>
-                        {{element[column]}}
-                    </button>
-                    <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
-                        (click)="abrirDetalleManual(element, $event)">
-                        {{element.Manual?.Nombre}} (p. {{element.Manual?.Pagina}})
-                    </button>
-                    <p class="tw-mb-0" *ngIf="column == 'Tipos'">
-                        {{getTipos(element)}}
-                    </p>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Prerrequisitos'">
-                        <mat-checkbox [checked]="tienePrerrequisitos(element)" [disableRipple]="true"
-                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
-                    </div>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Homebrew'">
-                        <mat-checkbox [checked]="!element.Oficial" [disableRipple]="true"
-                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
-                    </div>
+    <div class="listado__tabla" [class.listado-oculto]="!cargado || errorCarga">
+        <table id="dotes" mat-table [dataSource]="dotesDS" matSort aria-label="Dotes">
+            <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por nombre">Nombre</th>
+                <td mat-cell *matCellDef="let dote">
+                    <app-listado-nombre tipo="dote" [nombre]="dote.Nombre" [original]="nombreOriginal(dote)" (abrir)="verDetallesDote(dote.Id)"></app-listado-nombre>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Manual">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por manual">Manual</th>
+                <td mat-cell *matCellDef="let dote">
+                    <button type="button" class="listado-manual" (click)="abrirDetalleManual(dote, $event)">{{dote.Manual | manualListado}}</button>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Tipos">
+                <th mat-header-cell *matHeaderCellDef>Tipos</th>
+                <td mat-cell *matCellDef="let dote">{{getTipos(dote)}}</td>
+            </ng-container>
+            <ng-container matColumnDef="Prerrequisitos">
+                <th mat-header-cell *matHeaderCellDef>Prerrequisitos</th>
+                <td mat-cell *matCellDef="let dote">
+                    <mat-checkbox [checked]="tienePrerrequisitos(dote)" [disableRipple]="true"
+                        [attr.aria-label]="tienePrerrequisitos(dote) ? 'Con prerrequisitos' : 'Sin prerrequisitos'"
+                        (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Homebrew">
+                <th mat-header-cell *matHeaderCellDef>Homebrew</th>
+                <td mat-cell *matCellDef="let dote">
+                    <mat-checkbox [checked]="!dote.Oficial" [disableRipple]="true" [attr.aria-label]="dote.Oficial ? 'Oficial' : 'Homebrew'"
+                        (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                 </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="doteColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let element; columns: doteColumns;" class="element-row elegir"
-                (click)="seleccionarDote(element.Id)"></tr>
+            <tr mat-row *matRowDef="let dote; columns: doteColumns;" class="elegir" (click)="seleccionarDote(dote.Id)"></tr>
             <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell tw-text-center tw-text-white tw-p-3" [attr.colspan]="doteColumns.length">
-                    Ninguna dote encaja con los filtros
+                <td class="mat-cell" [attr.colspan]="doteColumns.length">
+                    <app-listado-estado tipo="vacio" [mensaje]="hayFiltros ? 'Ninguna dote cumple los filtros.' : 'Aún no hay dotes.'"
+                        [textoAccion]="hayFiltros ? 'Limpiar filtros' : ''" (accion)="limpiarFiltros()"></app-listado-estado>
                 </td>
             </tr>
         </table>
-        <ng-template #cargando>
-            <div class="superballs">
-                <div class="superballs__dot"></div>
-                <div class="superballs__dot"></div>
-            </div>
-        </ng-template>
     </div>
-    <div class="lista-row tw-w-full tw-flex tw-items-center">
-        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una página de dotes">
-        </mat-paginator>
-    </div>
+
+    <app-listado-estado *ngIf="!cargado" tipo="cargando" etiqueta="Cargando dotes"></app-listado-estado>
+    <app-listado-estado *ngIf="cargado && errorCarga" tipo="error" mensaje="No se pudieron cargar las dotes." (accion)="cargar()"></app-listado-estado>
+
+    <mat-paginator class="listado-paginador" [class.listado-oculto]="!cargado || errorCarga" aria-label="Páginas de dotes"></mat-paginator>
 </div>

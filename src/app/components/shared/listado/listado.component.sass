@@ -1,21 +1,13 @@
+// El anfitrión de los listados de catálogo: cada `listado-*` pinta su propia tarjeta, su cabecera y su tabla. En
+// Modificar, `listado-host--modificar` enseña el lápiz al final de cada fila (`preformas/_listado.sass`).
 :host
     display: flex
-    justify-content: center
-    align-items: center
-
     height: 100%
-
+    min-height: 0
     overflow: hidden
 
-    padding: 4px
-
-    mat-card
-        height: 100%
-        width: 100%
-
-        overflow: hidden
-
-        mat-card-content
-            height: 100%
-            min-height: 0
-            overflow: hidden
+.listado-host
+    display: flex
+    flex: 1 1 auto
+    min-width: 0
+    min-height: 0

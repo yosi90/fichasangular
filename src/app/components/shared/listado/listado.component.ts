@@ -38,6 +38,7 @@ import { tipoDeListaEquipo } from '../listado-equipo/listas-equipo';
 import { ListadoFusionesComponent } from '../listado-fusiones/listado-fusiones.component';
 import { ListadoChakrasComponent } from '../listado-chakras/listado-chakras.component';
 import { Chakra, Fusion } from 'src/app/interfaces/incarnum';
+import { esListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
     selector: 'app-listado',
@@ -50,6 +51,9 @@ export class ListadoComponent {
 
     @Input() tipoLista!: string;
     @Input() tipoOperacion!: string;
+    /** Lo que se pone en el buscador del listado («Ver los N en el listado» de la búsqueda global). */
+    @Input() texto = '';
+    private instancia: unknown = null;
 
     componentes: any = {
         'razas': ListadoRazasComponent,
@@ -89,12 +93,18 @@ export class ListadoComponent {
             return;
         if (changes['tipoLista']) {
             this.cargarComponente();
+        } else if (changes['texto'] && esListadoBuscable(this.instancia)) {
+            this.instancia.buscar(this.texto ?? '');
         }
     }
 
     cargarComponente() {
         this.viewContainerRef.clear();
         const componentRef = this.viewContainerRef.createComponent(this.componentes[this.tipoLista]);
+        this.instancia = componentRef.instance;
+        // Antes de que lleguen los datos: el listado filtra con este texto en cuanto los tiene.
+        if (this.texto && esListadoBuscable(componentRef.instance))
+            componentRef.instance.textoBusqueda = this.texto;
 
         if (componentRef.instance instanceof ListadoRazasComponent) {
             componentRef.instance.razaDetalles.subscribe((item: Raza) => {

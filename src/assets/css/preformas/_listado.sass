@@ -2,6 +2,18 @@
 @use '../_animations' as *
 @use '../_loaders' as *
 @use '../_sombras' as *
+@use '../marco' as *
+@use '../../../app/components/detalles/ficha/ficha-tonos' as *
+
+// Los listados de catálogo (lienzo «Rol: las vistas que faltan», vista 4): la cabecera común (`<app-listado-cabecera>`,
+// con el buscador rápido y el botón de `<app-menu-filtros>`), la tabla sin pastillas (cabecera de 44 px en versalitas,
+// filas de 52 px alternas #424242 / #4a4a4a con el hover #505050), los estados (`<app-listado-estado>`) y el paginador
+// en español. En el móvil, cada fila es una tarjeta. Lo usan los 20 `listado-*`; guía: «Cabecera de los listados y
+// paginador» en `GUIA_ESTILO_WEB_GENERAL.md`.
+
+// Las columnas de datos cortos (cifras, casillas y los datos con `sombra3d-sm`), centradas con su cabecera.
+$listado-columnas-centradas: Ajuste_nivel, Dgs_adicionales, Arcano, Divino, Psionico, Homebrew, Oficial, Secreto, Repetible, Activa_extra, Prestigio, Nacimiento, Heredada, Familiar, Companero, Se_moldea, Valor_desafio, Puntos_habilidad, Nivel_max_claseo, Tipo_dado, Bon_des, Coste, Precio, Prerrequisitos
+
 :host
     display: flex
     width: 100%
@@ -9,62 +21,130 @@
     min-height: 0
 
 #container-lista
-    // El botón de filtros (`app-menu-filtros`) va en la esquina del listado, anclado a él: no se desplaza con la tabla
-    // ni sale de la vista (antes era `position: fixed` a 100px de la ventana y su menú acababa encima de la cabecera).
-    position: relative
-    display: grid
-    grid-template: minmax(0, 1fr) auto / 1fr
+    display: flex
+    flex: 1 1 auto
+    flex-direction: column
+    gap: 12px
     width: 100%
-    height: 100%
+    min-width: 0
     min-height: 0
-
+    box-sizing: border-box
+    padding: 16px 18px 12px
+    background: $contrast
+    color: $ficha-texto
     overflow: hidden
 
-    .row:first-of-type,
-    .lista-row:first-of-type
-        align-self: flex-start
+.listado__tabla
+    flex: 1 1 auto
+    min-height: 0
+    overflow: auto
+    @include ficha-tarjeta
 
-        height: 100%
-        max-height: 100%
-        min-height: 0
+.listado-oculto
+    display: none !important
 
-        overflow: auto
+.listado__tabla table
+    width: 100%
+    background: transparent
 
-    .row,
-    .lista-row
-        // Sin posición propia (los listados llevan `tw-relative`): así el botón de filtros se coloca respecto a
-        // `#container-lista`, que no se desplaza.
-        position: static !important
-        min-height: 0
+    th.mat-mdc-header-cell
+        height: 44px
+        background: $primary
+        font-size: 12px
+        font-weight: 700
+        letter-spacing: .14em
+        text-transform: uppercase
+        white-space: nowrap
+        color: $accent
+        border-bottom: 0
 
-        // Por encima de la cabecera fija de la tabla (mat-table le pone z-index 100).
-        app-menu-filtros
-            position: absolute
-            top: 8px
-            right: 14px
-            z-index: 101
+        // El texto de las cabeceras que ordenan, con las mismas versalitas que las demás.
+        ::ng-deep .mat-sort-header-content
+            letter-spacing: inherit
 
-        table
-            align-self: flex-start
-            width: 100%
+    td.mat-mdc-cell
+        padding-top: 6px
+        padding-bottom: 6px
+        border-bottom: 0
+        color: $ficha-texto
+        font-size: 14px
+        vertical-align: middle
 
-        ::ng-deep .mat-sort-header-container
-            justify-content: center
+    @each $columna in $listado-columnas-centradas
+        th.mat-column-#{$columna}
+            text-align: center
 
-        mat-paginator
-            align-self: flex-end
+            ::ng-deep .mat-sort-header-container
+                justify-content: center
 
-        .elegir
+        td.mat-column-#{$columna}
+            text-align: center
 
-            transition: .3s
-            cursor: pointer
+    tr.mat-mdc-row
+        height: 52px
+        background: $ficha-tarjeta
 
-            &:hover
-                background-color: rgba(255, 255, 255, 0.04)
+        &:nth-of-type(even)
+            background: $ficha-fila-alterna
 
-.d-initial
-    display: initial
+    tr.elegir
+        cursor: pointer
+        transition: background-color .15s
 
+        &:hover
+            background: $contrast
+
+    p
+        margin: 0
+
+// Modificar: la fila abre la edición, con el lápiz al final al pasar (el nombre sigue abriendo el detalle).
+:host-context(.listado-host--modificar) .listado__tabla tr.elegir
+    td:last-child
+        position: relative
+        padding-right: 40px
+
+    &:hover td:last-child::after
+        content: 'edit'
+        position: absolute
+        top: 50%
+        right: 12px
+        transform: translateY(-50%)
+        font-family: 'Material Icons'
+        font-size: 18px
+        line-height: 1
+        color: $accent
+
+// El manual: «Razas de Faerûn · p. 131», enlace gris con raya rosa que abre su detalle.
+.listado-manual
+    display: inline
+    padding: 0
+    margin: 0
+    border: 0
+    background: transparent
+    font: inherit
+    font-size: 13.5px
+    line-height: inherit
+    color: $ficha-texto-suave
+    text-align: left
+    text-decoration: underline
+    text-decoration-color: $active
+    text-decoration-thickness: 1px
+    text-underline-offset: 3px
+    cursor: pointer
+
+    &:hover
+        color: $ficha-blanco
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+.listado-paginador
+    flex-shrink: 0
+    background: transparent
+    color: $ficha-texto-suave
+
+// Los datos pequeños con color funcional (guía: `sombra3d-sm` con good, bad o neutral).
 .good
     background-color: rgb(78, 87, 66)
 
@@ -74,33 +154,66 @@
 .neutral
     background-color: rgb(68, 73, 82)
 
-.manual-clickable
-    display: inline-flex
-    align-items: center
-    gap: 4px
-    border: 0
-    background: transparent
-    color: #9fd4ff
-    text-decoration: underline
-    text-underline-offset: 2px
-    cursor: pointer
-    padding: 0
-    margin: 0
-    font: inherit
-    line-height: inherit
-    text-align: left
+.dato-chip
+    display: inline-block
+    padding: 2px 6px
+    border-radius: 4px
+    font-size: 12px
+    font-weight: 500
+    white-space: nowrap
 
-    &:hover
-        color: #c4e7ff
-
-    &:focus-visible
-        outline: 1px solid rgba(159, 212, 255, 0.9)
-        outline-offset: 2px
-
-
-
-// El nombre original del libro junto al nombre traducido (fusiones y chakras de Magic of Incarnum).
+// El nombre original del libro junto al nombre traducido, en las columnas que no son el nombre.
 .nombre-original
     margin-left: .5rem
     font-size: .8rem
-    color: #90a4ae
+    color: $accent
+
+// Móvil: cada fila es una tarjeta de una columna, con el nombre arriba y los datos en una o dos líneas debajo.
+@include movil
+    #container-lista
+        padding: 10px
+        gap: 8px
+
+    .listado__tabla
+        background: transparent
+        box-shadow: none
+
+        table, tbody
+            display: block
+            width: 100%
+
+        table
+            tr.mat-mdc-header-row
+                display: none
+
+            tr.mat-mdc-row
+                display: flex
+                flex-wrap: wrap
+                align-items: center
+                gap: 4px 12px
+                width: 100%
+                height: auto
+                min-height: 64px
+                box-sizing: border-box
+                margin-bottom: 6px
+                padding: 8px 12px
+                border-radius: $ficha-radio
+                background: $ficha-tarjeta
+
+            tr.mat-mdc-no-data-row
+                display: block
+
+            td.mat-mdc-cell
+                display: inline-flex
+                align-items: center
+                min-height: 0
+                padding: 0
+                font-size: 13px
+                color: $ficha-texto-suave
+                text-align: left
+
+                &:empty
+                    display: none
+
+            td.mat-column-Nombre
+                flex: 1 0 100%

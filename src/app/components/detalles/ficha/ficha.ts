@@ -170,3 +170,21 @@ export function nombreDeManual(manual: string | { Nombre?: string | null } | nul
         return separarManualTexto(manual).nombre;
     return textoVisible(manual?.Nombre);
 }
+
+/**
+ * El manual en una fila de listado (lienzo «Rol: las vistas que faltan», vista 4): «Razas de Faerûn · p. 131», o solo
+ * el nombre si no hay página. Acepta el texto con la página dentro, la referencia de la API (`Nombre` y `Pagina`) o el
+ * nombre y una página aparte.
+ */
+export function textoManualListado(
+    manual: string | { Nombre?: string | null; Pagina?: number | string | null } | null | undefined,
+    pagina?: number | string | null,
+): string {
+    const nombre = nombreDeManual(manual);
+    const dePagina = (valor: unknown): number => {
+        const numero = Number(valor);
+        return Number.isInteger(numero) && numero > 0 ? numero : 0;
+    };
+    const numero = dePagina(pagina) || (typeof manual === 'string' ? dePagina(separarManualTexto(manual).pagina) : dePagina(manual?.Pagina));
+    return nombre && numero ? `${nombre} · p. ${numero}` : nombre;
+}

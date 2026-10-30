@@ -4,6 +4,19 @@ import { TipoRol } from 'src/app/services/utils/iconos-rol';
 let siguienteId = 0;
 
 /**
+ * Un listado cuyo buscador rápido se puede poner desde fuera (`ListadoComponent`, con el texto de «Ver los N en el
+ * listado» de la búsqueda global): `textoBusqueda` antes de que lleguen los datos y `buscar` cuando ya está pintado.
+ */
+export interface ListadoBuscable {
+    textoBusqueda: string;
+    buscar(texto: string): void;
+}
+
+export function esListadoBuscable(valor: unknown): valor is ListadoBuscable {
+    return !!valor && typeof (valor as ListadoBuscable).buscar === 'function' && 'textoBusqueda' in (valor as object);
+}
+
+/**
  * La cabecera común de un listado (lienzo «Rol: las vistas que faltan», vistas 4 y 6): el icono del catálogo en su
  * recuadro (40/28), el título, el total en gris, el buscador rápido (280 px; es el mismo campo «Buscar» del listado,
  * no otro filtro) y, proyectado a la derecha, el botón de `<app-menu-filtros>`. En el móvil, el buscador baja a su
@@ -16,11 +29,11 @@ let siguienteId = 0;
             <app-icono-rol [tipo]="icono" [tamano]="28" [recuadro]="true"></app-icono-rol>
             <h2 class="listado-cabecera__titulo">{{titulo}}</h2>
             <span class="listado-cabecera__total" *ngIf="total !== null">
-                {{total}}<span class="listado-cabecera__oculto"> en total</span>
+                {{total}}<span class="solo-lectores"> en total</span>
             </span>
             <div class="listado-cabecera__buscar" role="search">
                 <mat-icon aria-hidden="true">search</mat-icon>
-                <label class="listado-cabecera__oculto" [attr.for]="idCampo">{{etiquetaBuscar}}</label>
+                <label class="solo-lectores" [attr.for]="idCampo">{{etiquetaBuscar}}</label>
                 <input type="search" [id]="idCampo" [placeholder]="placeholder" [value]="texto" autocomplete="off"
                     (input)="alEscribir($any($event.target).value)">
             </div>

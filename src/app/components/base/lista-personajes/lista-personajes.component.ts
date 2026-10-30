@@ -12,7 +12,6 @@ import { UserService } from 'src/app/services/user.service';
 import { Subscription } from 'rxjs';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
-import { TAMANO_PAGINA_POR_DEFECTO, TAMANOS_PAGINA } from 'src/app/services/utils/paginador-es';
 
 type FiltroVisibilidadPersonajes = 'todos' | 'publicos' | 'privados';
 
@@ -48,8 +47,6 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     errorCarga = false;
     /** El buscador rápido de la cabecera (el «Incluye texto» de antes). */
     textoBusqueda = '';
-    readonly tamanosPagina = TAMANOS_PAGINA;
-    readonly tamanoPagina = TAMANO_PAGINA_POR_DEFECTO;
     mostrarArchivados = false;
     mostrarSoloMios = false;
     filtroVisibilidad: FiltroVisibilidadPersonajes = 'todos';

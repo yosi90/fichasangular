@@ -1,0 +1,41 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+:host
+    display: flex
+    align-items: center
+    gap: 10px
+    min-width: 0
+
+.listado-nombre__texto
+    display: flex
+    flex-direction: column
+    min-width: 0
+
+.listado-nombre__boton
+    align-self: flex-start
+    padding: 0
+    border: 0
+    background: none
+    font: inherit
+    font-size: 15px
+    font-weight: 500
+    line-height: 1.35
+    color: $ficha-blanco
+    text-align: left
+    overflow-wrap: anywhere
+    cursor: pointer
+
+    &:hover
+        text-decoration: underline
+        text-decoration-color: $active
+        text-underline-offset: 3px
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+        border-radius: 2px
+
+.listado-nombre__original
+    font-size: 12px
+    color: $accent

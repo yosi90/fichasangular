@@ -630,9 +630,37 @@ describe('TabControlComponent navegación por origen', () => {
         component.abrirDesdeNavegacion({ clase: 'detalle', lista: 'razas', item: raza });
         component.abrirDesdeNavegacion({ clase: 'personaje', id: 9 });
         component.abrirDesdeNavegacion({ clase: 'listado', lista: 'dotes' });
+        component.abrirDesdeNavegacion({ clase: 'listado', lista: 'dotes', texto: 'azur' });
 
         expect(recibir).toHaveBeenCalledWith({ item: raza, tipo: 'razas' }, 'detalles');
         expect(personaje).toHaveBeenCalledWith(9);
-        expect(listado).toHaveBeenCalledWith('dotes', 'detalles');
+        expect(listado).toHaveBeenCalledWith('dotes', 'detalles', undefined);
+        expect(listado).toHaveBeenCalledWith('dotes', 'detalles', 'azur');
+    });
+
+    it('los manuales abren su detalle y sus entradas por el mismo bus', () => {
+        const component = crearComponente();
+        const manual = spyOn(component, 'abrirDetallesManual');
+        const dote = spyOn(component, 'abrirDetallesDotePorId');
+        const libro = { Id: 7, Nombre: 'Manual del jugador' } as any;
+
+        component.abrirDesdeNavegacion({ clase: 'manual', manual: libro });
+        component.abrirDesdeNavegacion({ clase: 'referencia-manual', referencia: { tipo: 'dote', id: 4, nombre: 'Soltura', manualId: 7 } });
+
+        expect(manual).toHaveBeenCalledWith(libro);
+        expect(dote).toHaveBeenCalledWith(4);
+    });
+
+    it('«Ver los N» pone el texto en el listado nuevo o en el que ya estaba abierto', () => {
+        const component = crearComponente();
+        (component as any).focusOpenedTab = () => undefined;
+        (component as any).selectTabByKey = () => undefined;
+
+        component.abrirListadoTab('dotes', 'detalles', 'azur');
+        expect(component.listadoTabsAbiertos[0].texto).toBe('azur');
+
+        component.abrirListadoTab('dotes', 'detalles', 'toque');
+        expect(component.listadoTabsAbiertos.length).toBe(1);
+        expect(component.listadoTabsAbiertos[0].texto).toBe('toque');
     });
 });

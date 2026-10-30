@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
@@ -9,7 +9,10 @@ import { RazaService } from 'src/app/services/raza.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
-import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/menu-filtros/menu-filtros.component';
+import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
+import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
+import { nombreOriginalVisible } from 'src/app/components/detalles/ficha/ficha';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
     selector: 'app-listado-razas',
@@ -17,8 +20,12 @@ import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/
     styleUrls: ['./listado-razas.component.sass'],
     standalone: false
 })
-export class ListadoRazasComponent implements OnDestroy {
+export class ListadoRazasComponent implements OnDestroy, ListadoBuscable {
     razas: Raza[] = [];
+    /** El buscador rápido de la cabecera. */
+    textoBusqueda = '';
+    cargado = false;
+    errorCarga = false;
     Manuales: string[] = [];
     defaultManual: string = 'Cualquiera';
     razasDS = new MatTableDataSource(this.razas);
@@ -43,19 +50,37 @@ export class ListadoRazasComponent implements OnDestroy {
 
     @ViewChild(MatSort) razaSort!: MatSort;
     @ViewChild(MatPaginator) razaPaginator!: MatPaginator;
-    @ViewChild('razaTextInc', { read: ElementRef }) nombreText!: ElementRef;
-
     ngAfterViewInit() {
         this.vistaInicializada = true;
+        this.cargar();
+    }
+
+    /** Lee las razas (otra vez, con «Reintentar»). */
+    cargar(): void {
+        this.cargado = false;
+        this.errorCarga = false;
         this.catalogosSub?.unsubscribe();
-        this.catalogosSub = this.rSvc.getRazas().subscribe((razas) => {
-            this.razas = (razas ?? []).map((raza) => this.normalizarRaza(raza));
-            this.Manuales = this.buildManualesDisponibles(this.razas);
-            this.defaultManual = 'Cualquiera';
-            this.sincronizarColumnaHomebrew();
-            this.filtroRazas();
-            this.cdr.detectChanges();
+        this.catalogosSub = this.rSvc.getRazas().subscribe({
+            next: (razas) => {
+                this.razas = (razas ?? []).map((raza) => this.normalizarRaza(raza));
+                this.Manuales = this.buildManualesDisponibles(this.razas);
+                this.defaultManual = 'Cualquiera';
+                this.cargado = true;
+                this.sincronizarColumnaHomebrew();
+                this.filtroRazas();
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.cargado = true;
+                this.errorCarga = true;
+                this.cdr.detectChanges();
+            },
         });
+    }
+
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
+        this.filtroRazas();
     }
 
     ngOnChanges() {
@@ -70,7 +95,7 @@ export class ListadoRazasComponent implements OnDestroy {
 
     filtroRazas() {
         this.sincronizarColumnaHomebrew();
-        const texto = normalizarTexto(this.nombreText?.nativeElement?.value ?? '', true);
+        const texto = normalizarTexto(this.textoBusqueda, true);
         const homebrew = this.isHomebrewActivo();
         const razasFiltradas = this.razas
             .filter(raza =>
@@ -133,12 +158,12 @@ export class ListadoRazasComponent implements OnDestroy {
 
     /** Si algún filtro no está como al abrir el listado (el homebrew que impone la creación no cuenta). */
     get hayFiltros(): boolean {
-        return textoDelFiltro(this.nombreText) !== '' || this.defaultManual !== 'Cualquiera'
+        return this.textoBusqueda.trim() !== '' || this.defaultManual !== 'Cualquiera'
             || (this.homebrewPropio && this.homebrewInterno);
     }
 
     limpiarFiltros(): void {
-        vaciarTextoDelFiltro(this.nombreText);
+        this.textoBusqueda = '';
         this.defaultManual = 'Cualquiera';
         if (this.homebrewPropio)
             this.homebrewInterno = false;
@@ -208,8 +233,16 @@ export class ListadoRazasComponent implements OnDestroy {
         };
     }
 
-    getModificador(mods: any, key: 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma'): number {
-        return toNumber(mods?.[key]);
+    /** Los modificadores distintos de cero, en el orden de las características: «Fue +2», «Car −2». */
+    modificadoresVisibles(mods: any): { texto: string; valor: number }[] {
+        return CARACTERISTICAS
+            .map((clave) => ({ clave, valor: toNumber(mods?.[clave]) }))
+            .filter(({ valor }) => valor !== 0)
+            .map(({ clave, valor }) => ({ valor, texto: `${NOMBRES_CARACTERISTICAS[clave].slice(0, 3)} ${valor > 0 ? '+' : '−'}${Math.abs(valor)}` }));
+    }
+
+    nombreOriginal(raza: Raza): string {
+        return nombreOriginalVisible(raza);
     }
 
     getDgsCantidad(dgs: any): number {
