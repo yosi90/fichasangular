@@ -71,7 +71,8 @@ describe('InsercionMarcoComponent', () => {
 
     it('deja saltar a cualquier paso desde la fila y marca el actual con aria-current', () => {
         const pasos = Array.from(raiz().querySelectorAll<HTMLButtonElement>('.insercion-paso-boton'));
-        expect(pasos.map((p) => p.textContent?.replace(/\s+/g, ' ').trim())).toEqual(['1 Base y cuerpo', '2 Valores', '3 Relaciones']);
+        expect(pasos.map((p) => p.querySelector('.insercion-paso-boton__nombre')?.textContent?.trim())).toEqual(['Base y cuerpo', 'Valores', 'Relaciones']);
+        expect(pasos.map((p) => p.querySelector('.insercion-paso-boton__numero')?.textContent?.trim())).toEqual(['1', '2', '3']);
         expect(pasos[0].getAttribute('aria-current')).toBe('step');
 
         pasos[2].click();
