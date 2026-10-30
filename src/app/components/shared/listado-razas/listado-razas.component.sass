@@ -1,7 +1,13 @@
 @use '../../../../assets/css/preformas/_listado' as *
+@use '../../../../assets/css/marco' as *
 
 .modificadores-celda
     display: flex
     flex-wrap: wrap
     gap: 4px
     padding: 2px 0
+
+// En la tarjeta del móvil, sin hueco para los datos que la raza no tiene.
+@include movil
+    .listado__tabla table td.mat-column-Modificadores:has(.modificadores-celda:empty), .listado__tabla table td.mat-column-Ajuste_nivel:not(:has(span)), .listado__tabla table td.mat-column-Dgs_adicionales:not(:has(span))
+        display: none
