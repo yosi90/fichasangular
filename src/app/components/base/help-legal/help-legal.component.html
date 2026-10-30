@@ -1,40 +1,33 @@
-<div class="help-shell tw-p-4">
-    <mat-card class="help-card">
-        <mat-card-header>
-            <mat-card-title class="tw-text-white">
-                <mat-icon class="tw-me-2">gavel</mat-icon>
-                Legal y privacidad
-            </mat-card-title>
-            <mat-card-subtitle>Aclaraciones básicas del proyecto y del tratamiento de datos.</mat-card-subtitle>
-        </mat-card-header>
-
-        <mat-card-content class="tw-text-white tw-p-12">
-            <section class="help-section">
-                <h3>Proyecto no oficial</h3>
+<div class="ayuda-legal">
+    <section class="ayuda-tarjeta" aria-label="Legal y privacidad">
+        <div class="ayuda-prosa">
+            <p>Aclaraciones básicas del proyecto y del tratamiento de datos.</p>
+            <section class="ayuda-apartado" id="legal-no-oficial" aria-labelledby="legal-no-oficial-titulo">
+                <h3 class="ayuda-titulo" id="legal-no-oficial-titulo">Proyecto no oficial</h3>
                 <p>
                     Esta web es un fan project no oficial. No está afiliada, aprobada ni patrocinada por Wizards of the Coast
                     ni por otros titulares de derechos relacionados con Dungeons &amp; Dragons 3.5.
                 </p>
             </section>
 
-            <section class="help-section">
-                <h3>Propiedad intelectual</h3>
+            <section class="ayuda-apartado" id="legal-propiedad" aria-labelledby="legal-propiedad-titulo">
+                <h3 class="ayuda-titulo" id="legal-propiedad-titulo">Propiedad intelectual</h3>
                 <p>
                     Los derechos, nombres comerciales, marcas, ambientaciones y materiales asociados a D&amp;D 3.5 pertenecen
                     a Wizards of the Coast y/o a sus respectivos titulares. Este proyecto no reclama propiedad sobre ese material.
                 </p>
             </section>
 
-            <section class="help-section">
-                <h3>Uso de la web</h3>
+            <section class="ayuda-apartado" id="legal-uso" aria-labelledby="legal-uso-titulo">
+                <h3 class="ayuda-titulo" id="legal-uso-titulo">Uso de la web</h3>
                 <p>
                     El uso de esta web es gratuito. No hay venta de acceso, monetización del contenido del usuario ni comercio
                     derivado de la información que introduces en la aplicación.
                 </p>
             </section>
 
-            <section class="help-section">
-                <h3>Datos de usuario</h3>
+            <section class="ayuda-apartado" id="legal-datos" aria-labelledby="legal-datos-titulo">
+                <h3 class="ayuda-titulo" id="legal-datos-titulo">Datos de usuario</h3>
                 <p>
                     No se trafica en modo alguno con los datos de los usuarios. Los datos que se usan en la aplicación tienen
                     como finalidad operar sus funciones de cuenta, permisos, perfiles y contenido asociado.
@@ -49,9 +42,9 @@
                 </p>
             </section>
 
-            <section class="help-section">
+            <section class="ayuda-apartado" id="legal-medicion" aria-labelledby="legal-medicion-titulo">
                 <!-- Texto de estadisticas-kit/POLITICA_DE_COOKIES.md, versión 1 (2026-10-11), copiado tal cual. -->
-                <h3>Medición de audiencia</h3>
+                <h3 class="ayuda-titulo" id="legal-medicion-titulo">Medición de audiencia</h3>
                 <p>
                     Para saber si esta web se usa, Yosiftware mide su audiencia con Yosiftadísticas, una herramienta propia que funciona en sus
                     servidores. Solo obtiene estadísticas anónimas de esta web: cuántos navegadores la visitan cada día, semana y mes, cuántas
@@ -59,7 +52,7 @@
                     cuenta ni los datos de tu dispositivo. No te sigue entre webs y no comparte nada con terceros.
                 </p>
                 <p>Para contarte una sola vez sin identificarte, guarda en tu navegador, solo para esta web:</p>
-                <div class="help-table">
+                <div class="ayuda-tabla">
                     <table>
                         <thead>
                             <tr><th scope="col">Nombre</th><th scope="col">Dónde</th><th scope="col">Para qué</th><th scope="col">Duración</th></tr>
@@ -105,12 +98,16 @@
                 </p>
             </section>
 
-            <section class="help-section">
-                <h3>Alcance del texto</h3>
+            <section class="ayuda-apartado" id="legal-alcance" aria-labelledby="legal-alcance-titulo">
+                <h3 class="ayuda-titulo" id="legal-alcance-titulo">Alcance del texto</h3>
                 <p>
                     Este texto es informativo y de producto. No constituye una política legal formal ni sustituye asesoramiento jurídico.
                 </p>
             </section>
-        </mat-card-content>
-    </mat-card>
+        </div>
+    </section>
+    <nav class="ayuda-indice" aria-label="En esta página">
+        <h2 class="ayuda-titulo">En esta página</h2>
+        <button type="button" class="ayuda-indice__enlace" *ngFor="let apartado of apartados" (click)="ir(apartado.id)">{{apartado.titulo}}</button>
+    </nav>
 </div>

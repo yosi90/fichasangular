@@ -7,6 +7,7 @@ import {
     UserPrivateProfileSectionId,
     UserPublicProfileTab
 } from '../interfaces/user-account';
+import { AyudaSolicitud, SeccionAyuda } from '../interfaces/ayuda';
 import { PlatformSessionService } from './platform-session.service';
 
 @Injectable({
@@ -16,16 +17,12 @@ export class UserProfileNavigationService {
     private readonly privateProfileSubject = new Subject<UserPrivateProfileOpenRequest>();
     private readonly publicProfileSubject = new Subject<UserPublicProfileTab>();
     private readonly socialSubject = new Subject<SocialHubOpenRequest>();
-    private readonly roadmapSubject = new Subject<void>();
-    private readonly legalPrivacySubject = new Subject<void>();
-    private readonly usageAboutSubject = new Subject<void>();
+    private readonly ayudaSubject = new Subject<AyudaSolicitud>();
 
     readonly privateProfileOpen$: Observable<UserPrivateProfileOpenRequest> = this.privateProfileSubject.asObservable();
     readonly publicProfileOpen$: Observable<UserPublicProfileTab> = this.publicProfileSubject.asObservable();
     readonly socialOpen$: Observable<SocialHubOpenRequest> = this.socialSubject.asObservable();
-    readonly roadmapOpen$: Observable<void> = this.roadmapSubject.asObservable();
-    readonly legalPrivacyOpen$: Observable<void> = this.legalPrivacySubject.asObservable();
-    readonly usageAboutOpen$: Observable<void> = this.usageAboutSubject.asObservable();
+    readonly ayudaOpen$: Observable<AyudaSolicitud> = this.ayudaSubject.asObservable();
 
     constructor(private platformSessionSvc: PlatformSessionService) { }
 
@@ -70,16 +67,9 @@ export class UserProfileNavigationService {
         window.open(this.platformSessionSvc.urlSocial('moderacion'), '_blank', 'noopener');
     }
 
-    openRoadmap(): void {
-        this.roadmapSubject.next();
-    }
-
-    openLegalPrivacy(): void {
-        this.legalPrivacySubject.next();
-    }
-
-    openUsageAbout(): void {
-        this.usageAboutSubject.next();
+    /** La Ayuda, una sola pestaña, abierta en una sección (Primeros pasos, si no se dice). */
+    openAyuda(seccion: SeccionAyuda = 'primeros-pasos'): void {
+        this.ayudaSubject.next({ seccion, id: Date.now() });
     }
 
     /** Errores y propuestas: el formulario de la plataforma, sobre la web (ecosistema-kit/ACCESO.md). */

@@ -27,29 +27,13 @@
         </ng-template>
         <app-social-hub [openRequest]="socialOpenRequest"></app-social-hub>
     </mat-tab>
-    <mat-tab label="Roadmap" *ngIf="roadmapTabOpen">
-        <ng-template mat-tab-label>
-            <mat-icon class="pestana-icono">map</mat-icon>
-            <span class="pestana-etiqueta">Roadmap</span>
-            <button (click)="quitarRoadmap()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
-        </ng-template>
-        <app-help-roadmap></app-help-roadmap>
-    </mat-tab>
-    <mat-tab label="Legal y privacidad" *ngIf="legalPrivacyTabOpen">
-        <ng-template mat-tab-label>
-            <mat-icon class="pestana-icono">gavel</mat-icon>
-            <span class="pestana-etiqueta">Legal y privacidad</span>
-            <button (click)="quitarLegalPrivacidad()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
-        </ng-template>
-        <app-help-legal></app-help-legal>
-    </mat-tab>
-    <mat-tab label="Uso y acerca" *ngIf="usageAboutTabOpen">
+    <mat-tab label="Ayuda" *ngIf="ayudaTabOpen">
         <ng-template mat-tab-label>
             <mat-icon class="pestana-icono">help_center</mat-icon>
-            <span class="pestana-etiqueta">Uso y acerca</span>
-            <button (click)="quitarUsoYAcerca()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+            <span class="pestana-etiqueta">Ayuda</span>
+            <button (click)="quitarAyuda()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-help-usage-about></app-help-usage-about>
+        <app-ayuda [solicitud]="ayudaSolicitud"></app-ayuda>
     </mat-tab>
     <mat-tab *ngFor="let pj of detallesPersonajeAbiertos; let index = index" [label]="pj.Nombre">
         <ng-template mat-tab-label>

@@ -171,17 +171,17 @@
     <div class="ribbon-menu-shell"
         (mouseenter)="cancelarCierreRibbonMenu()"
         (mouseleave)="programarCierreRibbonMenu(ayudaTrigger)">
-        <button mat-menu-item (click)="abrirRoadmap()">
-            <mat-icon>map</mat-icon>
-            <span>Roadmap</span>
+        <button mat-menu-item (click)="abrirAyuda('primeros-pasos')">
+            <mat-icon>help_center</mat-icon>
+            <span>Primeros pasos</span>
         </button>
-        <button mat-menu-item (click)="abrirLegalPrivacidad()">
+        <button mat-menu-item (click)="abrirAyuda('novedades')">
+            <mat-icon>map</mat-icon>
+            <span>Novedades</span>
+        </button>
+        <button mat-menu-item (click)="abrirAyuda('legal')">
             <mat-icon>gavel</mat-icon>
             <span>Legal y privacidad</span>
-        </button>
-        <button mat-menu-item (click)="abrirUsoYAcerca()">
-            <mat-icon>help_center</mat-icon>
-            <span>Uso y acerca</span>
         </button>
         <a mat-menu-item [href]="urlCompanion" target="_blank" rel="noopener">
             <mat-icon>phone_android</mat-icon>

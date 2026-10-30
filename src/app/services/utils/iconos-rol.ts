@@ -133,3 +133,29 @@ const TIPO_ROL_DE_LISTADO: Readonly<Record<string, TipoRol>> = {
 export function tipoRolDeListado(lista: string | null | undefined): TipoRol | null {
     return TIPO_ROL_DE_LISTADO[`${lista ?? ''}`.trim()] ?? null;
 }
+
+export interface AutorIconos {
+    readonly nombre: string;
+    /** Su página, si la tiene. */
+    readonly web: string | null;
+    readonly iconos: readonly string[];
+}
+
+/**
+ * Quién dibujó cada icono (game-icons.net, CC BY 3.0): la atribución de «Ayuda → Créditos», la misma que
+ * `src/assets/iconos/game-icons/LICENCIA.txt`. Cada icono de `ICONOS_ROL` tiene aquí a su autor.
+ */
+export const AUTORES_ICONOS_ROL: readonly AutorIconos[] = [
+    {
+        nombre: 'Lorc', web: 'https://lorcblog.blogspot.com',
+        iconos: ['arrow-cluster', 'beast-eye', 'book-cover', 'breastplate', 'conversation', 'crossed-swords', 'crystal-growth', 'dna1',
+            'dragon-head', 'duality-mask', 'knapsack', 'laurel-crown', 'laurels', 'meditation', 'psychic-waves', 'rune-stone',
+            'star-swirl', 'swap-bag', 'visored-helm'],
+    },
+    {
+        nombre: 'Delapouite', web: 'https://delapouite.com',
+        iconos: ['claws', 'elf-ear', 'spell-book', 'sun-priest', 'sword-brandish', 'tabletop-players', 'thumb-down', 'thumb-up'],
+    },
+    { nombre: 'Skoll', web: null, iconos: ['fangs'] },
+    { nombre: 'Faithtoken', web: null, iconos: ['ore'] },
+];

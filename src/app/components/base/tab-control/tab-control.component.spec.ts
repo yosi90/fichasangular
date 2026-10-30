@@ -41,9 +41,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         privateProfileOpen$: new Subject<any>(),
         publicProfileOpen$: new Subject<any>(),
         socialOpen$: new Subject<any>(),
-        roadmapOpen$: new Subject<void>(),
-        legalPrivacyOpen$: new Subject<void>(),
-        usageAboutOpen$: new Subject<void>(),
+        ayudaOpen$: new Subject<any>(),
     } as any;
     const component = new TabControlComponent(
         userSvc,
@@ -79,12 +77,8 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
             tabs.push({ textLabel: 'Mi perfil' });
         if (component.socialTabOpen)
             tabs.push({ textLabel: 'Social' });
-        if (component.roadmapTabOpen)
-            tabs.push({ textLabel: 'Roadmap' });
-        if (component.legalPrivacyTabOpen)
-            tabs.push({ textLabel: 'Legal y privacidad' });
-        if (component.usageAboutTabOpen)
-            tabs.push({ textLabel: 'Uso y acerca' });
+        if (component.ayudaTabOpen)
+            tabs.push({ textLabel: 'Ayuda' });
         (component.detallesPersonajeAbiertos ?? []).forEach((pj: any) => tabs.push({ textLabel: pj.Nombre }));
         (component.publicProfileTabs ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaPerfilPublico(tab) }));
         if (component.AbrirNuevoPersonajeTab)
@@ -570,45 +564,37 @@ describe('TabControlComponent navegación por origen', () => {
         expect((component as any).activeTabKey).toBe('base:personajes');
     }));
 
-    it('abre roadmap como tab dinámica y la cierra con ESC', fakeAsync(() => {
+    it('la Ayuda es una sola pestaña: se abre en su sección, cambia de sección sin abrir otra y se cierra con ESC', fakeAsync(() => {
         const component = crearComponente();
 
-        component.abrirRoadmap();
+        component.abrirAyuda({ seccion: 'novedades', id: 1 });
         tick(120);
+        expect(component.ayudaTabOpen).toBeTrue();
+        expect(component.ayudaSolicitud?.seccion).toBe('novedades');
+        expect((component as any).activeTabKey).toBe('base:ayuda');
 
-        expect(component.roadmapTabOpen).toBeTrue();
-        expect((component as any).activeTabKey).toBe('base:roadmap');
+        component.abrirAyuda({ seccion: 'legal', id: 2 });
+        tick(120);
+        expect(component.ayudaSolicitud?.seccion).toBe('legal');
+        expect((component as any).buildOrderedTabKeys().filter((k: string) => k === 'base:ayuda').length).toBe(1);
 
         component.onEscPressed();
-
-        expect(component.roadmapTabOpen).toBeFalse();
+        expect(component.ayudaTabOpen).toBeFalse();
         expect((component as any).activeTabKey).toBe('base:personajes');
     }));
 
-    it('abre legal y privacidad una sola vez', fakeAsync(() => {
-        const component = crearComponente();
-
-        component.abrirLegalPrivacidad();
-        tick(120);
-        component.abrirLegalPrivacidad();
-        tick(120);
-
-        expect(component.legalPrivacyTabOpen).toBeTrue();
-        expect((component as any).activeTabKey).toBe('base:legal');
-    }));
-
-    it('cerrar uso y acerca vuelve al origen', fakeAsync(() => {
+    it('cerrar la Ayuda vuelve al origen', fakeAsync(() => {
         const component = crearComponente();
         const clase = crearClase(17, 'Paladín');
 
         component.abrirDetallesClase(clase);
         tick(120);
-        component.abrirUsoYAcerca();
+        component.abrirAyuda();
         tick(120);
 
-        component.quitarUsoYAcerca();
+        component.quitarAyuda();
 
-        expect(component.usageAboutTabOpen).toBeFalse();
+        expect(component.ayudaTabOpen).toBeFalse();
         expect((component as any).activeTabKey).toBe('clase:17');
     }));
 

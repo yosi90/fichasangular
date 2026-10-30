@@ -40,7 +40,7 @@ describe('NavbarComponent', () => {
         manualVistaNavSvc = jasmine.createSpyObj<ManualVistaNavigationService>('ManualVistaNavigationService', ['emitirApertura']);
         userProfileNavSvc = jasmine.createSpyObj<UserProfileNavigationService>(
             'UserProfileNavigationService',
-            ['openPrivateProfile', 'openSocial', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout', 'openFeedbackBug', 'openFeedbackFeature', 'abrirVista']
+            ['openPrivateProfile', 'openSocial', 'openAyuda', 'openFeedbackBug', 'openFeedbackFeature', 'abrirVista']
         );
         platformSessionSvc = jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['editarPerfil', 'privacidad']);
         platformSessionSvc.editarPerfil.and.resolveTo(false);
@@ -204,22 +204,12 @@ describe('NavbarComponent', () => {
         expect(categorias.map((item) => item.label)).toEqual(['Razas']);
     });
 
-    it('abre roadmap desde Ayuda', () => {
-        component.abrirRoadmap();
+    it('los elementos del menú Ayuda abren la única Ayuda en su sección', () => {
+        component.abrirAyuda('novedades');
+        component.abrirAyuda('legal');
+        component.abrirAyuda('primeros-pasos');
 
-        expect(userProfileNavSvc.openRoadmap).toHaveBeenCalled();
-    });
-
-    it('abre legal y privacidad desde Ayuda', () => {
-        component.abrirLegalPrivacidad();
-
-        expect(userProfileNavSvc.openLegalPrivacy).toHaveBeenCalled();
-    });
-
-    it('abre uso y acerca desde Ayuda', () => {
-        component.abrirUsoYAcerca();
-
-        expect(userProfileNavSvc.openUsageAbout).toHaveBeenCalled();
+        expect(userProfileNavSvc.openAyuda.calls.allArgs()).toEqual([['novedades'], ['legal'], ['primeros-pasos']]);
     });
 
     it('abre reportar bug desde Ayuda si hay sesión', () => {
@@ -339,7 +329,7 @@ describe('NavbarComponent template', () => {
                     provide: UserProfileNavigationService,
                     useValue: jasmine.createSpyObj<UserProfileNavigationService>(
                         'UserProfileNavigationService',
-                        ['openPrivateProfile', 'openSocial', 'openRoadmap', 'openLegalPrivacy', 'openUsageAbout', 'openFeedbackBug', 'openFeedbackFeature']
+                        ['openPrivateProfile', 'openSocial', 'openAyuda', 'openFeedbackBug', 'openFeedbackFeature']
                     ),
                 },
                 { provide: PlatformSessionService, useValue: jasmine.createSpyObj<PlatformSessionService>('PlatformSessionService', ['editarPerfil', 'privacidad']) },

@@ -259,7 +259,7 @@ export class BuscadorGlobalService {
             {
                 clave: 'pantalla:ayuda', tipo: null, iconoMaterial: 'help_center', nombre: 'Ayuda', subtitulo: 'Primeros pasos, novedades, legal y créditos',
                 buscable: textoBuscable('Ayuda', 'Primeros pasos novedades legal privacidad cookies créditos companion'),
-                abrir: () => this.perfilNav.openUsageAbout(),
+                abrir: () => this.perfilNav.openAyuda(),
             },
         ];
     }

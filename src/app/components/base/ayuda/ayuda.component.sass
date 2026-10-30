@@ -1,0 +1,338 @@
+@use '../../../../assets/css/variables' as *
+
+// La Ayuda (lienzo, vista 9): sin encapsular y con el prefijo `ayuda-`, porque lo usan también sus secciones
+// (`app-help-usage-about`, `app-help-roadmap`, `app-help-legal`). Tarjetas como las de la ficha: título en versalitas,
+// prosa de 15 px con interlineado 1.65 y como mucho 74 caracteres de ancho. Sin degradados.
+app-ayuda
+    display: block
+    height: 100%
+    min-height: 0
+
+.ayuda
+    display: flex
+    gap: 14px
+    height: 100%
+    min-height: 0
+    box-sizing: border-box
+    padding: 16px
+    background: $contrast
+    color: #e6e9eb
+    font-family: Roboto, "Segoe UI", system-ui, sans-serif
+
+.ayuda-nav
+    display: flex
+    flex-direction: column
+    flex-shrink: 0
+    align-self: flex-start
+    gap: 4px
+    width: 220px
+    box-sizing: border-box
+    padding: 10px
+    background: #424242
+    border-radius: 6px
+    box-shadow: 3px 3px 10px black
+
+.ayuda-nav__boton
+    padding: 10px 12px
+    border: 0
+    border-radius: 4px
+    background: transparent
+    color: #cfd8dc
+    font: inherit
+    font-size: 14px
+    text-align: left
+    cursor: pointer
+
+    &:hover
+        background: rgba(255, 255, 255, .05)
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: -2px
+
+.ayuda-nav__boton--actual
+    background: rgba(194, 24, 91, .18)
+    box-shadow: inset 3px 0 0 $active
+    color: #ffffff
+
+.ayuda-contenido
+    display: flex
+    flex: 1 1 auto
+    flex-direction: column
+    gap: 14px
+    min-width: 0
+    min-height: 0
+    overflow-y: auto
+
+.ayuda-cabecera
+    display: flex
+    flex-direction: column
+    flex-shrink: 0
+    gap: 4px
+    padding: 16px 22px
+    background: $primary
+    border-radius: 6px
+    border-bottom: 3px solid $active
+    box-shadow: 3px 3px 10px black
+
+.ayuda .ayuda-cabecera__nombre
+    margin: 0
+    font-size: 28px
+    font-weight: 500
+    line-height: 1.25
+    color: #ffffff
+
+.ayuda .ayuda-titulo
+    display: block
+    margin: 0
+    font-size: 12px
+    font-weight: 700
+    line-height: 1.4
+    letter-spacing: .14em
+    text-transform: uppercase
+    color: $accent
+
+.ayuda-tarjeta
+    display: flex
+    flex-direction: column
+    align-items: flex-start
+    gap: 16px
+    padding: 18px 24px
+    background: #424242
+    border-radius: 6px
+    box-shadow: 3px 3px 10px black
+
+.ayuda-prosa
+    display: flex
+    flex-direction: column
+    gap: 10px
+    max-width: 74ch
+    font-size: 15px
+    line-height: 1.65
+    color: #e6e9eb
+
+    p, ul, ol
+        margin: 0
+
+    ul, ol
+        padding-left: 1.2em
+
+    li + li
+        margin-top: 4px
+
+    a
+        color: #f48fb1
+        text-decoration-color: $active
+
+        &:hover
+            color: #ffffff
+
+    code
+        font-size: .9em
+        overflow-wrap: anywhere
+
+    h2.ayuda-titulo, h3.ayuda-titulo
+        margin-top: 8px
+
+        &:first-child
+            margin-top: 0
+
+.ayuda-boton.mat-mdc-raised-button
+    display: inline-flex
+    align-items: center
+    gap: 8px
+
+.ayuda-tabla
+    width: 100%
+    overflow-x: auto
+
+    table
+        width: 100%
+        border-collapse: collapse
+        font-size: 14px
+        line-height: 1.5
+
+    th
+        padding: 8px 10px
+        background: $primary
+        color: $accent
+        font-size: 12px
+        font-weight: 700
+        letter-spacing: .08em
+        text-align: left
+        text-transform: uppercase
+
+    td
+        padding: 8px 10px
+        vertical-align: top
+
+    tbody tr:nth-child(odd)
+        background: #4a4a4a
+
+.ayuda-creditos
+    display: grid
+    grid-template-columns: max-content minmax(0, 1fr)
+    gap: 6px 16px
+    margin: 0
+
+    dt
+        font-weight: 500
+        color: #ffffff
+
+    dd
+        margin: 0
+        color: #cfd8dc
+
+// Móvil: la navegación pasa a una fila que se desplaza en horizontal, encima del contenido.
+@media (max-width: 699.98px)
+    .ayuda
+        flex-direction: column
+        padding: 10px
+
+    .ayuda-nav
+        flex-direction: row
+        align-self: stretch
+        width: auto
+        overflow-x: auto
+
+    .ayuda-nav__boton
+        flex-shrink: 0
+        min-height: 44px
+        white-space: nowrap
+
+    .ayuda-tarjeta
+        padding: 14px 16px
+
+    .ayuda-creditos
+        grid-template-columns: minmax(0, 1fr)
+
+// Novedades: cada versión plegable (la que está en curso, abierta y con la raya rosa).
+.ayuda-oculto
+    position: absolute
+    width: 1px
+    height: 1px
+    overflow: hidden
+    clip: rect(0 0 0 0)
+    white-space: nowrap
+
+.ayuda-version
+    border-radius: 6px
+    background: #4a4a4a
+
+    summary
+        display: flex
+        align-items: center
+        gap: 10px
+        min-height: 44px
+        padding: 0 14px
+        cursor: pointer
+        list-style: none
+
+        &::-webkit-details-marker
+            display: none
+
+        &:focus-visible
+            outline: 2px solid $active
+            outline-offset: -2px
+
+.ayuda-version--actual
+    box-shadow: inset 3px 0 0 $active
+
+.ayuda-version__marca mat-icon
+    display: block
+    width: 20px
+    height: 20px
+    font-size: 20px
+    color: $accent
+
+.ayuda-version--actual .ayuda-version__marca mat-icon
+    color: $active
+
+.ayuda-version__nombre
+    flex: 1 1 auto
+    font-weight: 500
+    color: #ffffff
+
+.ayuda-version__estado
+    font-size: 12px
+    color: $accent
+
+.ayuda-prosa ul.ayuda-hitos
+    margin: 0
+    padding: 0 14px 12px 44px
+    list-style: none
+
+    li
+        display: flex
+        align-items: flex-start
+        gap: 8px
+
+    mat-icon
+        flex-shrink: 0
+        width: 18px
+        height: 18px
+        margin-top: 4px
+        font-size: 18px
+        color: #8a949b
+
+    .ayuda-hito--hecho mat-icon
+        color: #81c784
+
+// Legal y privacidad: el texto y, a la derecha, el índice de sus apartados.
+.ayuda-legal
+    display: flex
+    align-items: flex-start
+    gap: 14px
+
+    > .ayuda-tarjeta
+        flex: 1 1 auto
+        min-width: 0
+
+.ayuda-indice
+    position: sticky
+    top: 0
+    display: flex
+    flex-direction: column
+    flex-shrink: 0
+    gap: 8px
+    width: 240px
+    box-sizing: border-box
+    padding: 14px 16px
+    background: #424242
+    border-radius: 6px
+    box-shadow: 3px 3px 10px black
+
+.ayuda-indice__enlace
+    padding: 0
+    border: 0
+    background: none
+    font: inherit
+    font-size: 14px
+    text-align: left
+    color: #cfd8dc
+    text-decoration: underline
+    text-decoration-color: $active
+    cursor: pointer
+
+    &:hover
+        color: #ffffff
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+.ayuda-apartado
+    scroll-margin-top: 8px
+
+@media (max-width: 1100px)
+    .ayuda-legal
+        flex-direction: column-reverse
+
+    .ayuda-indice
+        position: static
+        width: 100%
+
+.ayuda-apartado
+    display: flex
+    flex-direction: column
+    gap: 10px

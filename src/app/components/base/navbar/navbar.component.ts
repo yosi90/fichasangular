@@ -3,6 +3,7 @@ import { MatMenuTrigger } from '@angular/material/menu';
 import { Subscription } from 'rxjs';
 import { getManualCategorias, ManualCategoriaConIcono } from 'src/app/config/manual-secciones.config';
 import { UserPrivateProfileSectionId } from 'src/app/interfaces/user-account';
+import { SeccionAyuda } from 'src/app/interfaces/ayuda';
 import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { ManualesAsociadosService } from 'src/app/services/manuales-asociados.service';
@@ -158,16 +159,9 @@ export class NavbarComponent implements OnInit, OnDestroy {
             evento.preventDefault();
     }
 
-    abrirRoadmap(): void {
-        this.userProfileNavSvc.openRoadmap();
-    }
-
-    abrirLegalPrivacidad(): void {
-        this.userProfileNavSvc.openLegalPrivacy();
-    }
-
-    abrirUsoYAcerca(): void {
-        this.userProfileNavSvc.openUsageAbout();
+    /** Los elementos del menú Ayuda abren la única pestaña de Ayuda en su sección. */
+    abrirAyuda(seccion: SeccionAyuda): void {
+        this.userProfileNavSvc.openAyuda(seccion);
     }
 
     get urlCompanion(): string {

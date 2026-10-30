@@ -1,0 +1,56 @@
+<div class="ayuda">
+    <nav class="ayuda-nav" aria-label="Secciones de la ayuda">
+        <button type="button" class="ayuda-nav__boton" *ngFor="let s of secciones" [class.ayuda-nav__boton--actual]="s.id === seccion"
+            [attr.aria-current]="s.id === seccion ? 'page' : null" (click)="ir(s.id)">{{s.titulo}}</button>
+    </nav>
+    <article class="ayuda-contenido" [attr.aria-label]="tituloSeccion">
+        <header class="ayuda-cabecera">
+            <span class="ayuda-titulo">Ayuda</span>
+            <h1 class="ayuda-cabecera__nombre">{{tituloSeccion}}</h1>
+        </header>
+
+        <ng-container [ngSwitch]="seccion">
+            <app-help-usage-about *ngSwitchCase="'primeros-pasos'"></app-help-usage-about>
+            <app-help-roadmap *ngSwitchCase="'novedades'"></app-help-roadmap>
+            <app-help-legal *ngSwitchCase="'legal'"></app-help-legal>
+
+            <section class="ayuda-tarjeta" *ngSwitchCase="'companion'" aria-label="3.5 Companion">
+                <div class="ayuda-prosa">
+                    <p>
+                        3.5 Companion es la app de Rol para Android. Lleva en el móvil tus personajes y tus campañas, la biblioteca
+                        entera (razas, clases, dotes, conjuros, monstruos, equipo…) con su búsqueda y sus filtros, y las tiradas
+                        desde la ficha. Funciona también sin conexión.
+                    </p>
+                    <p>
+                        No crea ni modifica personajes: eso se hace aquí, en la web. Entras con tu misma cuenta de Yosiftware.
+                    </p>
+                </div>
+                <a class="ayuda-boton" mat-raised-button color="primary" [href]="urlCompanion" target="_blank" rel="noopener">
+                    <mat-icon aria-hidden="true">phone_android</mat-icon>
+                    Descargar 3.5 Companion
+                </a>
+            </section>
+
+            <section class="ayuda-tarjeta" *ngSwitchCase="'creditos'" aria-label="Créditos">
+                <div class="ayuda-prosa">
+                    <h2 class="ayuda-titulo">Iconos</h2>
+                    <p>
+                        Los iconos de los elementos de rol (razas, clases, dotes, conjuros, monstruos, equipo…) son de
+                        <a href="https://game-icons.net" target="_blank" rel="noopener">game-icons.net</a>, obra de sus autores, con
+                        licencia <a href="https://creativecommons.org/licenses/by/3.0/deed.es" target="_blank" rel="noopener">Creative Commons
+                        Atribución 3.0</a>. Solo se les ha cambiado el formato y el color. Son los mismos que los de 3.5 Companion.
+                    </p>
+                    <dl class="ayuda-creditos">
+                        <ng-container *ngFor="let autor of autores">
+                            <dt>
+                                <a *ngIf="autor.web; else sinWeb" [href]="autor.web" target="_blank" rel="noopener">{{autor.nombre}}</a>
+                                <ng-template #sinWeb>{{autor.nombre}}</ng-template>
+                            </dt>
+                            <dd>{{autor.iconos.join(', ')}}</dd>
+                        </ng-container>
+                    </dl>
+                </div>
+            </section>
+        </ng-container>
+    </article>
+</div>

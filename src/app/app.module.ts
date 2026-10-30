@@ -141,6 +141,7 @@ import { SocialLfgSectionComponent } from './components/base/social-hub/social-l
 import { HelpRoadmapComponent } from './components/base/help-roadmap/help-roadmap.component';
 import { HelpLegalComponent } from './components/base/help-legal/help-legal.component';
 import { HelpUsageAboutComponent } from './components/base/help-usage-about/help-usage-about.component';
+import { AyudaComponent } from './components/base/ayuda/ayuda.component';
 import { MENU_FILTROS_COMPONENTES } from './components/shared/menu-filtros/menu-filtros.component';
 import { IconoRolComponent } from './components/shared/icono-rol/icono-rol.component';
 import { BuscadorGlobalComponent } from './components/shared/buscador-global/buscador-global.component';
@@ -166,6 +167,7 @@ import { PROVEEDOR_PAGINADOR_ES } from './services/utils/paginador-es';
         HelpRoadmapComponent,
         HelpLegalComponent,
         HelpUsageAboutComponent,
+        AyudaComponent,
         ...MENU_FILTROS_COMPONENTES,
         IconoRolComponent,
         BuscadorGlobalComponent,

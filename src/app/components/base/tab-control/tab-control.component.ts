@@ -58,6 +58,7 @@ import { EquipoService } from 'src/app/services/equipo.service';
 import { claveEntradaEquipo, claveEquipo, etiquetaEntradaEquipo, tipoDeListaEquipo } from '../../shared/listado-equipo/listas-equipo';
 import { ChakraDetalle, Fusion } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
+import { AyudaSolicitud } from 'src/app/interfaces/ayuda';
 import { AperturaRol, NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
 
@@ -126,9 +127,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
     readonly tipoRolDeConjuro = tipoRolDeConjuro;
     readonly tipoRolDeVentaja = tipoRolDeVentaja;
     readonly tipoRolDeEquipo = tipoRolDeEquipo;
-    public roadmapTabOpen = false;
-    public legalPrivacyTabOpen = false;
-    public usageAboutTabOpen = false;
+    /** La Ayuda: una sola pestaña, abierta en la sección que se pida (lienzo, vista 9). */
+    public ayudaTabOpen = false;
+    public ayudaSolicitud: AyudaSolicitud | null = null;
     public publicProfileTabs: UserPublicProfileTab[] = [];
     public detallesPersonajeAbiertos: Personaje[] = [];
     public detallesRazaAbiertos: Raza[] = [];
@@ -162,9 +163,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_PROFILE = 'base:perfil';
     private readonly TAB_SOCIAL = 'base:social';
-    private readonly TAB_ROADMAP = 'base:roadmap';
-    private readonly TAB_LEGAL = 'base:legal';
-    private readonly TAB_USAGE = 'base:usage';
+    private readonly TAB_AYUDA = 'base:ayuda';
     private readonly TAB_NUEVO = 'base:nuevo';
     private activeTabKey: string = this.TAB_PERSONAJES;
     private openerByTab = new Map<string, string>();
@@ -234,15 +233,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc?.socialOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirSocial(request));
-        this.userProfileNavSvc?.roadmapOpen$
+        this.userProfileNavSvc?.ayudaOpen$
             .pipe(takeUntil(this.destroy$))
-            .subscribe(() => this.abrirRoadmap());
-        this.userProfileNavSvc?.legalPrivacyOpen$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(() => this.abrirLegalPrivacidad());
-        this.userProfileNavSvc?.usageAboutOpen$
-            .pipe(takeUntil(this.destroy$))
-            .subscribe(() => this.abrirUsoYAcerca());
+            .subscribe((solicitud) => this.abrirAyuda(solicitud));
         this.userProfileNavSvc?.publicProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((payload) => this.abrirPerfilPublico(payload));
@@ -329,16 +322,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.quitarSocial();
             return;
         }
-        if (activeKey === this.TAB_ROADMAP) {
-            this.quitarRoadmap();
-            return;
-        }
-        if (activeKey === this.TAB_LEGAL) {
-            this.quitarLegalPrivacidad();
-            return;
-        }
-        if (activeKey === this.TAB_USAGE) {
-            this.quitarUsoYAcerca();
+        if (activeKey === this.TAB_AYUDA) {
+            this.quitarAyuda();
             return;
         }
         if (activeKey?.startsWith('perfil-publico:')) {
@@ -422,12 +407,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             keys.push(this.TAB_PROFILE);
         if (this.socialTabOpen)
             keys.push(this.TAB_SOCIAL);
-        if (this.roadmapTabOpen)
-            keys.push(this.TAB_ROADMAP);
-        if (this.legalPrivacyTabOpen)
-            keys.push(this.TAB_LEGAL);
-        if (this.usageAboutTabOpen)
-            keys.push(this.TAB_USAGE);
+        if (this.ayudaTabOpen)
+            keys.push(this.TAB_AYUDA);
         keys.push(...this.detallesPersonajeAbiertos.map((pj) => this.getPersonajeTabKey(pj)));
         keys.push(...this.publicProfileTabs.map((tab) => this.getPublicProfileTabKey(tab)));
         if (this.AbrirNuevoPersonajeTab)
@@ -604,28 +585,26 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    public abrirRoadmap(): void {
-        this.openHelpTab(this.TAB_ROADMAP, 'roadmapTabOpen');
+    /** Abre la Ayuda (una sola pestaña) en su sección; si ya está abierta, va a ella y cambia de sección. */
+    public abrirAyuda(solicitud: AyudaSolicitud = { seccion: 'primeros-pasos', id: Date.now() }): void {
+        this.ayudaSolicitud = solicitud;
+        if (this.ayudaTabOpen) {
+            this.selectTabByKey(this.TAB_AYUDA, true);
+            return;
+        }
+        this.ayudaTabOpen = true;
+        this.registerOpenContext(this.TAB_AYUDA, this.getSafeOpenerKey());
+        this.focusOpenedTab(this.TAB_AYUDA);
     }
 
-    public quitarRoadmap(): boolean {
-        return this.closeHelpTab(this.TAB_ROADMAP, 'roadmapTabOpen');
-    }
-
-    public abrirLegalPrivacidad(): void {
-        this.openHelpTab(this.TAB_LEGAL, 'legalPrivacyTabOpen');
-    }
-
-    public quitarLegalPrivacidad(): boolean {
-        return this.closeHelpTab(this.TAB_LEGAL, 'legalPrivacyTabOpen');
-    }
-
-    public abrirUsoYAcerca(): void {
-        this.openHelpTab(this.TAB_USAGE, 'usageAboutTabOpen');
-    }
-
-    public quitarUsoYAcerca(): boolean {
-        return this.closeHelpTab(this.TAB_USAGE, 'usageAboutTabOpen');
+    public quitarAyuda(): boolean {
+        if (!this.ayudaTabOpen)
+            return false;
+        return this.closeTabWithNavigation(this.TAB_AYUDA, () => {
+            this.ayudaTabOpen = false;
+            this.ayudaSolicitud = null;
+            return true;
+        });
     }
 
     private buildSocialOpenRequest(request?: SocialHubOpenRequest | null): SocialHubOpenRequest {
@@ -644,9 +623,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.privateProfileOpenRequest = null;
         this.socialTabOpen = false;
         this.socialOpenRequest = null;
-        this.roadmapTabOpen = false;
-        this.legalPrivacyTabOpen = false;
-        this.usageAboutTabOpen = false;
+        this.ayudaTabOpen = false;
+        this.ayudaSolicitud = null;
         this.publicProfileTabs = [];
         this.detallesPersonajeAbiertos = [];
         this.detallesRazaAbiertos = [];
@@ -686,59 +664,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.CerrarListadoTab.emit();
         if (this.TabGroup)
             this.selectTabByKey(this.TAB_PERSONAJES, true);
-    }
-
-    private openHelpTab(
-        key: string,
-        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'
-    ): void {
-        if (this.getHelpTabFlag(flag)) {
-            this.selectTabByKey(key, true);
-            return;
-        }
-        this.setHelpTabFlag(flag, true);
-        this.registerOpenContext(key, this.getSafeOpenerKey());
-        this.focusOpenedTab(key);
-    }
-
-    private closeHelpTab(
-        key: string,
-        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'
-    ): boolean {
-        if (!this.getHelpTabFlag(flag))
-            return false;
-
-        return this.closeTabWithNavigation(key, () => {
-            this.setHelpTabFlag(flag, false);
-            return true;
-        });
-    }
-
-    private getHelpTabFlag(
-        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen'
-    ): boolean {
-        if (flag === 'roadmapTabOpen')
-            return this.roadmapTabOpen;
-        if (flag === 'legalPrivacyTabOpen')
-            return this.legalPrivacyTabOpen;
-        if (flag === 'usageAboutTabOpen')
-            return this.usageAboutTabOpen;
-        return this.usageAboutTabOpen;
-    }
-
-    private setHelpTabFlag(
-        flag: 'roadmapTabOpen' | 'legalPrivacyTabOpen' | 'usageAboutTabOpen',
-        value: boolean
-    ): void {
-        if (flag === 'roadmapTabOpen') {
-            this.roadmapTabOpen = value;
-            return;
-        }
-        if (flag === 'legalPrivacyTabOpen') {
-            this.legalPrivacyTabOpen = value;
-            return;
-        }
-        this.usageAboutTabOpen = value;
     }
 
     public abrirPerfilPublico(payload: UserPublicProfileTab): void {
