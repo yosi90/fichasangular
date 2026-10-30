@@ -16,7 +16,8 @@ export type TipoRol =
     | 'fusion' | 'chakra'
     | 'monstruo' | 'tipo-criatura' | 'subtipo' | 'rasgo'
     | 'arma' | 'armadura' | 'municion' | 'material' | 'aptitud-equipo' | 'objeto' | 'conjunto'
-    | 'deidad' | 'manual' | 'campana';
+    | 'deidad' | 'manual' | 'campana'
+    | 'dado-d4' | 'dado-d6' | 'dado-d8' | 'dado-d10' | 'dado-d12' | 'dado-d20';
 
 export interface IconoRol {
     /** El nombre del icono de game-icons.net (el archivo `<icono>.svg`). */
@@ -59,6 +60,14 @@ export const ICONOS_ROL: Readonly<Record<TipoRol, IconoRol>> = {
     'deidad': icono('sun-priest', 'mundo', 'Deidad'),
     'manual': icono('book-cover', 'mundo', 'Manual'),
     'campana': icono('tabletop-players', 'mundo', 'Campaña'),
+    // Los dados de la pestaña «Dados» (lienzo «Dados: Companion y web»), en el dorado del equipo. El d20 es también el de
+    // la entrada del menú, la pestaña y la cabecera; el d100 es el d10 con un «%» (lo pone la pestaña). El d4 es propio.
+    'dado-d4': icono('dado-d4', 'equipo', 'd4'),
+    'dado-d6': icono('perspective-dice-six-faces-six', 'equipo', 'd6'),
+    'dado-d8': icono('dice-eight-faces-eight', 'equipo', 'd8'),
+    'dado-d10': icono('d10', 'equipo', 'd10'),
+    'dado-d12': icono('d12', 'equipo', 'd12'),
+    'dado-d20': icono('dice-twenty-faces-twenty', 'equipo', 'd20'),
 };
 
 export function iconoRol(tipo: TipoRol): IconoRol {
@@ -152,7 +161,8 @@ export interface AutorIconos {
 
 /**
  * Quién dibujó cada icono (game-icons.net, CC BY 3.0): la atribución de «Ayuda → Créditos», la misma que
- * `src/assets/iconos/game-icons/LICENCIA.txt`. Cada icono de `ICONOS_ROL` tiene aquí a su autor.
+ * `src/assets/iconos/game-icons/LICENCIA.txt`. Cada icono de `ICONOS_ROL` tiene aquí a su autor, salvo los propios
+ * (`ICONOS_PROPIOS_ROL`).
  */
 export const AUTORES_ICONOS_ROL: readonly AutorIconos[] = [
     {
@@ -163,11 +173,15 @@ export const AUTORES_ICONOS_ROL: readonly AutorIconos[] = [
     },
     {
         nombre: 'Delapouite', web: 'https://delapouite.com',
-        iconos: ['claws', 'elf-ear', 'spell-book', 'sun-priest', 'sword-brandish', 'tabletop-players', 'thumb-down', 'thumb-up'],
+        iconos: ['claws', 'dice-eight-faces-eight', 'dice-twenty-faces-twenty', 'elf-ear', 'perspective-dice-six-faces-six', 'spell-book',
+            'sun-priest', 'sword-brandish', 'tabletop-players', 'thumb-down', 'thumb-up'],
     },
-    { nombre: 'Skoll', web: null, iconos: ['fangs'] },
+    { nombre: 'Skoll', web: null, iconos: ['d10', 'd12', 'fangs'] },
     { nombre: 'Faithtoken', web: null, iconos: ['ore'] },
 ];
+
+/** Los iconos dibujados para Rol en el mismo estilo (no son de game-icons.net ni llevan su licencia): el d4. */
+export const ICONOS_PROPIOS_ROL: readonly string[] = ['dado-d4'];
 
 /** El título de un listado para el menú y las pestañas («Armaduras y escudos»); sin registro, la clave tal cual. */
 export function tituloListado(lista: string): string {

@@ -1,4 +1,4 @@
-import { AUTORES_ICONOS_ROL, ICONOS_ROL, LISTADOS_ROL, rutaIconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from './iconos-rol';
+import { AUTORES_ICONOS_ROL, ICONOS_PROPIOS_ROL, ICONOS_ROL, LISTADOS_ROL, rutaIconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from './iconos-rol';
 
 describe('iconos-rol', () => {
     it('cada catálogo tiene su icono y su etiqueta, sin repetir dibujo', () => {
@@ -37,9 +37,21 @@ describe('iconos-rol', () => {
         expect(Object.values(LISTADOS_ROL).every(l => l.titulo.length > 0)).toBeTrue();
     });
 
-    it('cada icono tiene un solo autor en los créditos, y no hay autores de iconos que no se usen', () => {
+    it('cada icono tiene un solo autor en los créditos (o es propio), y no hay autores de iconos que no se usen', () => {
         const usados = Object.values(ICONOS_ROL).map(i => i.icono).sort();
-        const acreditados = AUTORES_ICONOS_ROL.flatMap(a => a.iconos).sort();
+        const acreditados = [...AUTORES_ICONOS_ROL.flatMap(a => a.iconos), ...ICONOS_PROPIOS_ROL].sort();
         expect(acreditados).toEqual(usados);
+    });
+
+    it('los dados de la pestaña Dados: el d6, el d8 y el d20 de Delapouite, el d10 y el d12 de Skoll y el d4 propio', () => {
+        expect(ICONOS_ROL['dado-d20']).toEqual({ icono: 'dice-twenty-faces-twenty', grupo: 'equipo', etiqueta: 'd20' });
+        const autor = (icono: string) => AUTORES_ICONOS_ROL.find(a => a.iconos.includes(icono))?.nombre ?? null;
+        expect(autor(ICONOS_ROL['dado-d6'].icono)).toBe('Delapouite');
+        expect(autor(ICONOS_ROL['dado-d8'].icono)).toBe('Delapouite');
+        expect(autor(ICONOS_ROL['dado-d20'].icono)).toBe('Delapouite');
+        expect(autor(ICONOS_ROL['dado-d10'].icono)).toBe('Skoll');
+        expect(autor(ICONOS_ROL['dado-d12'].icono)).toBe('Skoll');
+        expect(autor(ICONOS_ROL['dado-d4'].icono)).toBeNull();
+        expect(ICONOS_PROPIOS_ROL).toEqual(['dado-d4']);
     });
 });

@@ -61,5 +61,6 @@ describe('AyudaComponent', () => {
         expect(autores).toEqual(['Lorc', 'Delapouite', 'Skoll', 'Faithtoken']);
         expect(elemento().textContent).toContain('Creative Commons');
         expect(elemento().textContent).toContain('visored-helm');
+        expect(elemento().textContent).toContain('dado-d4');
     });
 });
