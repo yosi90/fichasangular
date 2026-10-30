@@ -19,7 +19,7 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
-import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
+import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
@@ -649,7 +649,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
         suscribir(this.razaCatalogosSvc.getActitudes(), (items) => this.actitudes = opciones(items));
         suscribir(this.tipoCriaturaSvc.getTiposCriatura(), (items) => this.tiposCriatura = opciones(items));
         suscribir(this.alineamientoSvc.getAlineamientosCombinacionesCatalogo(), (items) => this.alineamientos = (items ?? [])
-            .map((item) => ({ id: toInt(item?.Id), nombre: this.nombreAlineamiento(item) }))
+            .map((item) => ({ id: toInt(item?.Id), nombre: nombreCombinacionAlineamiento(item) }))
             .filter((item) => item.nombre.length > 0)
             .sort((a, b) => compararTexto(a.nombre, b.nombre)));
         suscribir(this.racialSvc.getRaciales(), (items) => this.raciales = opciones(items));
@@ -678,16 +678,6 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
             }));
             this.pasosModificacion = Array.from(pasos.entries()).map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.id - b.id);
         });
-    }
-
-    private nombreAlineamiento(item: { Basico?: { Nombre?: string; }; Ley?: { Nombre?: string; }; Moral?: { Nombre?: string; }; Prioridad?: { Nombre?: string; }; }): string {
-        const texto = textoAlineamiento({
-            Basico: { Nombre: toText(item?.Basico?.Nombre) },
-            Ley: { Nombre: toText(item?.Ley?.Nombre) },
-            Moral: { Nombre: toText(item?.Moral?.Nombre) },
-        } as never);
-        const prioridad = toText(item?.Prioridad?.Nombre).trim();
-        return texto && prioridad ? `${texto} · ${prioridad}` : texto;
     }
 
     private uid(): string {

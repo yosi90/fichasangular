@@ -1,4 +1,5 @@
 import {
+    nombreCombinacionAlineamiento,
     cumpleActitud,
     idBasicoDePrerrequisitoAlineamiento,
     parseLeyDesdePreferencia,
@@ -29,5 +30,11 @@ describe('alineamiento-contrato', () => {
         expect(idBasicoDePrerrequisitoAlineamiento({ Id_alineamiento: 3, Id_alineamiento_basico: 1, Alineamiento_basico: 'Legal bueno' })).toBe(1);
         expect(idBasicoDePrerrequisitoAlineamiento({ Id_alineamiento: 73, Alineamiento_basico: 'Legal neutral' })).toBe(2);
         expect(idBasicoDePrerrequisitoAlineamiento({ Id_alineamiento: 3 })).toBe(0);
+    });
+
+    it('nombra una combinación del catálogo (que no trae Nombre) con su texto y su prioridad', () => {
+        expect(nombreCombinacionAlineamiento({ Basico: { Nombre: 'Legal maligno' }, Ley: {}, Moral: {}, Prioridad: { Nombre: 'Siempre' } })).toBe('Legal maligno · Siempre');
+        expect(nombreCombinacionAlineamiento({ Basico: { Nombre: 'Neutral bueno' }, Prioridad: null })).toBe('Neutral bueno');
+        expect(nombreCombinacionAlineamiento(null)).toBe('');
     });
 });

@@ -177,6 +177,26 @@ export function textoAlineamiento(alineamiento: Alineamiento | null | undefined)
     return tieneTextoVisible(ley) || tieneTextoVisible(moral) ? 'Sin preferencia' : '';
 }
 
+/**
+ * El nombre de una combinación de alineamiento del catálogo (`GET /alineamientos/combinaciones`, que no trae `Nombre`):
+ * el texto de los detalles (`textoAlineamiento`) y su prioridad detrás («Legal maligno · Siempre»). Vacío si no hay
+ * alineamiento.
+ */
+export function nombreCombinacionAlineamiento(combinacion: {
+    Basico?: { Nombre?: string | null; } | null;
+    Ley?: { Nombre?: string | null; } | null;
+    Moral?: { Nombre?: string | null; } | null;
+    Prioridad?: { Nombre?: string | null; } | null;
+} | null | undefined): string {
+    const texto = textoAlineamiento({
+        Basico: { Nombre: `${combinacion?.Basico?.Nombre ?? ''}` },
+        Ley: { Nombre: `${combinacion?.Ley?.Nombre ?? ''}` },
+        Moral: { Nombre: `${combinacion?.Moral?.Nombre ?? ''}` },
+    } as Alineamiento);
+    const prioridad = `${combinacion?.Prioridad?.Nombre ?? ''}`.trim();
+    return texto && tieneTextoVisible(prioridad) ? `${texto} · ${prioridad}` : texto;
+}
+
 export function extraerEjesAlineamientoDesdeContrato(alineamiento: any): AlineamientoEjes {
     const vectorBasico = getVectorDesdeNombreBasico(`${alineamiento?.Basico?.Nombre ?? ""}`);
     const leyPreferida = parseLeyDesdePreferencia(`${alineamiento?.Ley?.Nombre ?? ""}`);

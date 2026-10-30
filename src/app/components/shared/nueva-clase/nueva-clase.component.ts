@@ -57,6 +57,7 @@ import { UserService } from 'src/app/services/user.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
+import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 
 interface NombreIdItem {
@@ -1291,7 +1292,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
                 resolve();
             };
             if (key === 'alineamientos') {
-                this.alineamientoSvc.getAlineamientosCombinacionesCatalogo().pipe(take(1)).subscribe({ next: (items: any[]) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
+                // Las combinaciones no traen `Nombre`: se nombran como en la plantilla («Legal maligno · Siempre»).
+                this.alineamientoSvc.getAlineamientosCombinacionesCatalogo().pipe(take(1)).subscribe({ next: (items: any[]) => done(this.toCatalog((items ?? []).map((item) => ({ Id: item?.Id, Nombre: nombreCombinacionAlineamiento(item) })), 'Id', 'Nombre')), error: () => done([]) });
             } else if (key === 'aptitudes_especiales') {
                 this.aptitudEspecialSvc.getAptitudesEspeciales().pipe(take(1)).subscribe({ next: (items) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
             } else if (key === 'dominios') {
