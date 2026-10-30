@@ -2,7 +2,7 @@ import { FormBuilder } from '@angular/forms';
 import { BehaviorSubject, of } from 'rxjs';
 import Swal from 'sweetalert2';
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
-import { ErrorDeCatalogo } from 'src/app/services/utils/error-catalogo';
+import { ProfileApiError } from 'src/app/interfaces/user-account';
 import { normalizePlantillaApi } from 'src/app/services/utils/plantilla-mapper';
 import { TEXTO_SIN_CAMBIO } from 'src/app/services/utils/plantilla-formulario';
 import { NuevaPlantillaComponent } from './nueva-plantilla.component';
@@ -15,7 +15,7 @@ describe('NuevaPlantillaComponent', () => {
 
     const plantilla = () => normalizePlantillaApi(plantillaApiDeEjemplo());
     const errorDeApi = (campo: string, mensaje: string) =>
-        new ErrorDeCatalogo(`Los datos de la plantilla no son válidos. ${mensaje}`, { codigo: 'peticion_no_valida', campo, estado: 400 });
+        new ProfileApiError(`Los datos de la plantilla no son válidos. ${mensaje}`, 'peticion_no_valida', 400, campo);
 
     function crear(modo: 'crear' | 'editar' = 'crear'): NuevaPlantillaComponent {
         const nuevo = new NuevaPlantillaComponent(
@@ -277,7 +277,7 @@ describe('NuevaPlantillaComponent', () => {
         });
 
         it('un 409 de nombre repetido vuelve al nombre', async () => {
-            plantillaSvc.actualizarPlantilla.and.rejectWith(new ErrorDeCatalogo('Ya existe una plantilla con ese nombre.', { codigo: 'nombre_duplicado', campo: 'plantilla.nombre', estado: 409 }));
+            plantillaSvc.actualizarPlantilla.and.rejectWith(new ProfileApiError('Ya existe una plantilla con ese nombre.', 'nombre_duplicado', 409, 'plantilla.nombre'));
             component.form.controls.nombre.setValue('Celestial');
             component.pasoActual = 4;
             await component.guardar();

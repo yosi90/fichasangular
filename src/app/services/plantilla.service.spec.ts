@@ -3,7 +3,7 @@ import { of, throwError } from 'rxjs';
 import { simularTokenApi } from 'src/testing/simular-token-api';
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { PlantillaService } from './plantilla.service';
-import { ErrorDeCatalogo } from './utils/error-catalogo';
+import { ProfileApiError } from '../interfaces/user-account';
 import { construirPlantillaRequest, listasPlantillaVacias, valorPlantillaNueva } from './utils/plantilla-formulario';
 import { normalizePlantilla } from './utils/plantilla-mapper';
 import { normalizePlantillaApi } from './utils/plantilla-mapper';
@@ -231,10 +231,10 @@ describe('PlantillaService, alta y modificación', () => {
 
         const error = await servicio(http).actualizarPlantilla(21, cuerpo()).catch((e) => e);
 
-        expect(error instanceof ErrorDeCatalogo).toBeTrue();
-        expect(error.campo).toBe('dotes[0].dg');
-        expect(error.codigo).toBe('peticion_no_valida');
-        expect(error.estado).toBe(400);
+        expect(error instanceof ProfileApiError).toBeTrue();
+        expect(error.field).toBe('dotes[0].dg');
+        expect(error.code).toBe('peticion_no_valida');
+        expect(error.status).toBe(400);
         expect(error.message).toContain('Los datos de la plantilla no son válidos.');
     });
 

@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ErrorDeApi, leerErrorDeApi, textoParaMostrar } from './error-api';
+import { ProfileApiError } from 'src/app/interfaces/user-account';
+import { leerErrorDeApi, textoParaMostrar } from './error-api';
 import { normalizarTexto } from './normalizacion';
 
 /** Lo que se intentaba hacer con el elemento del catálogo. */
@@ -15,8 +16,9 @@ export interface ElementoDeCatalogo {
 /**
  * El error de un alta o una edición de catálogo, con una sola frase por caso, igual en todos (propietario, 2026-10-24)
  * y el mensaje de la API (su `error`) detrás, si lo trae y no repite la frase; en un fallo del servidor, con el código de
- * la incidencia. Lo que no es una respuesta HTTP (la sesión, una respuesta sin id) se
- * devuelve tal cual.
+ * la incidencia, como `ProfileApiError` con el `code`, el `field` y el estado de la respuesta, para que el formulario
+ * marque el campo que falla (`docs/publica/ERRORES.md`). Lo que no es una respuesta HTTP (la sesión, una respuesta sin
+ * id) se devuelve tal cual.
  */
 export function errorDeCatalogo(error: unknown, accion: AccionDeCatalogo, elemento: ElementoDeCatalogo): Error {
     const { singular, plural, femenino } = elemento;
@@ -26,25 +28,8 @@ export function errorDeCatalogo(error: unknown, accion: AccionDeCatalogo, elemen
     const frase = fraseDeCatalogo(error.status, accion, elemento);
     const leido = leerErrorDeApi(error, frase);
     const repetido = !leido.deLaApi || normalizarTexto(leido.mensaje) === normalizarTexto(frase);
-    return new ErrorDeCatalogo(textoParaMostrar({ ...leido, mensaje: repetido ? frase : `${frase} ${leido.mensaje}` }), leido);
-}
-
-/**
- * El error de un alta o una edición de catálogo que respondió la API: su frase (`message`) y el `code`, el `field` y el
- * estado de la respuesta, para que el formulario marque el campo que falla (`docs/publica/ERRORES.md`).
- */
-export class ErrorDeCatalogo extends Error {
-    readonly codigo: string;
-    readonly campo: string | null;
-    readonly estado: number;
-
-    constructor(mensaje: string, leido: Pick<ErrorDeApi, 'codigo' | 'campo' | 'estado'>) {
-        super(mensaje);
-        this.name = 'ErrorDeCatalogo';
-        this.codigo = leido.codigo;
-        this.campo = leido.campo;
-        this.estado = leido.estado;
-    }
+    const texto = textoParaMostrar({ ...leido, mensaje: repetido ? frase : `${frase} ${leido.mensaje}` });
+    return new ProfileApiError(texto, leido.codigo, leido.estado, leido.campo);
 }
 
 function fraseDeCatalogo(status: number, accion: AccionDeCatalogo, { singular, plural, femenino }: ElementoDeCatalogo): string {

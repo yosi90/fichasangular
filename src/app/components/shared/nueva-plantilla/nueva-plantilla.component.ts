@@ -5,6 +5,7 @@ import Swal from 'sweetalert2';
 import { Dote } from 'src/app/interfaces/dote';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { Plantilla, PlantillaCreateRequest } from 'src/app/interfaces/plantilla';
+import { ProfileApiError } from 'src/app/interfaces/user-account';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DoteService } from 'src/app/services/dote.service';
@@ -19,7 +20,6 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
-import { ErrorDeCatalogo } from 'src/app/services/utils/error-catalogo';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
@@ -491,7 +491,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     private mostrarError(error: unknown): void {
-        const campo = error instanceof ErrorDeCatalogo ? campoDeErrorApi(error.campo) : null;
+        const campo = error instanceof ProfileApiError ? campoDeErrorApi(error.field) : null;
         const mensaje = mensajeDeError(error, this.esEdicion ? 'No se ha podido actualizar la plantilla.' : 'No se ha podido crear la plantilla.');
         this.errorGlobal = mensaje;
         if (!campo)
