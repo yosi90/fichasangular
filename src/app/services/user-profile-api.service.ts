@@ -20,7 +20,7 @@ import {
 } from '../interfaces/user-moderation';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { errorDePerfil } from './utils/error-api';
-import { toNullableText } from 'src/app/services/utils/normalizacion';
+import { toNullableText, toPositiveInt } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -311,7 +311,7 @@ export class UserProfileApiService {
         if (!raw || typeof raw !== 'object')
             return null;
 
-        const sanctionId = this.toPositiveIntOrNull(raw?.sanctionId ?? raw?.id);
+        const sanctionId = toPositiveInt(raw?.sanctionId ?? raw?.id);
         const kind = toNullableText(raw?.kind ?? raw?.sanctionKind ?? raw?.type);
         const code = toNullableText(raw?.code ?? raw?.sanctionCode);
         const name = toNullableText(raw?.name ?? raw?.title ?? raw?.label);
@@ -343,7 +343,7 @@ export class UserProfileApiService {
             requestedRole: raw?.requestedRole ?? null,
             status: raw?.status ?? 'none',
             blockedUntilUtc: toNullableText(raw?.blockedUntilUtc),
-            requestId: this.toPositiveIntOrNull(raw?.requestId),
+            requestId: toPositiveInt(raw?.requestId),
             requestedAtUtc: toNullableText(raw?.requestedAtUtc),
             resolvedAtUtc: toNullableText(raw?.resolvedAtUtc),
             eligible: raw?.eligible === true,
@@ -352,11 +352,6 @@ export class UserProfileApiService {
             requestComment: this.normalizeMultilineText(raw?.requestComment),
             adminComment: toNullableText(raw?.adminComment),
         };
-    }
-
-    private toPositiveIntOrNull(value: any): number | null {
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
     private toNonNegativeInt(value: any): number {

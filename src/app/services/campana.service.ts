@@ -32,7 +32,7 @@ import { toUserFacingErrorMessage } from './utils/user-facing-error.util';
 import { codigoDeError } from './utils/error-api';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from './platform-spaces.service';
-import { toBoolean, toNullableText } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toNullableText, toPositiveInt } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
 import { tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
@@ -123,7 +123,7 @@ export class CampanaService {
     }
 
     async getCampaignDetail(idCampana: number, includeInactive: boolean = false): Promise<CampaignDetailViewModel> {
-        const id = this.toPositiveInt(idCampana);
+        const id = toPositiveInt(idCampana);
         if (!id)
             throw new Error('Campaña inválida.');
 
@@ -172,7 +172,7 @@ export class CampanaService {
                 )
             );
             const created: CampaignListItem = {
-                id: this.toPositiveInt(response?.idCampana) ?? 0,
+                id: toPositiveInt(response?.idCampana) ?? 0,
                 nombre: `${response?.nombre ?? payload.nombre}`.trim() || payload.nombre,
                 campaignRole: 'master',
                 membershipStatus: 'activo',
@@ -192,7 +192,7 @@ export class CampanaService {
     }
 
     async updateCampaign(idCampana: number, input: string | UpdateCampaignInput): Promise<void> {
-        const id = this.toPositiveInt(idCampana);
+        const id = toPositiveInt(idCampana);
         if (!id)
             throw new Error('Campaña inválida.');
 
@@ -215,7 +215,7 @@ export class CampanaService {
     }
 
     async listCampaignMembers(idCampana: number, includeInactive: boolean = false): Promise<CampaignMemberItem[]> {
-        const id = this.toPositiveInt(idCampana);
+        const id = toPositiveInt(idCampana);
         if (!id)
             throw new Error('Campaña inválida.');
 
@@ -239,12 +239,12 @@ export class CampanaService {
         } catch {
             // La lectura periódica del feed lo pondrá al día.
         }
-        this.notifyCampaignListChange(this.toPositiveInt(idCampana) ?? undefined);
+        this.notifyCampaignListChange(toPositiveInt(idCampana) ?? undefined);
     }
 
     /** Lo justo para pedir entrar en una campaña que admite solicitudes (`GET /campanas/{id}/entrada`); null si no. */
     async getCampaignEntry(idCampana: number): Promise<CampaignEntryInfo | null> {
-        const id = this.toPositiveInt(idCampana);
+        const id = toPositiveInt(idCampana);
         if (!id)
             return null;
         try {
@@ -252,7 +252,7 @@ export class CampanaService {
                 this.http.get<any>(`${this.campanasBaseUrl}/${id}/entrada`, { headers: await this.buildAuthHeaders() })
             );
             return {
-                idCampana: this.toPositiveInt(response?.idCampana) ?? id,
+                idCampana: toPositiveInt(response?.idCampana) ?? id,
                 nombre: `${response?.nombre ?? ''}`.trim() || CampanaService.CAMPAIGN_UNNAMED_LABEL,
                 masterDisplayName: toNullableText(response?.masterDisplayName),
                 esMiembro: response?.esMiembro === true,
@@ -336,7 +336,7 @@ export class CampanaService {
     }
 
     async createTrama(idCampana: number, input: string | CreateCampaignTramaInput): Promise<void> {
-        const id = this.toPositiveInt(idCampana);
+        const id = toPositiveInt(idCampana);
         if (!id)
             throw new Error('Campaña inválida.');
 
@@ -355,7 +355,7 @@ export class CampanaService {
     }
 
     async updateTrama(idTrama: number, input: string | UpdateCampaignTramaInput): Promise<void> {
-        const id = this.toPositiveInt(idTrama);
+        const id = toPositiveInt(idTrama);
         if (!id)
             throw new Error('Trama inválida.');
 
@@ -374,7 +374,7 @@ export class CampanaService {
     }
 
     async createSubtrama(idTrama: number, input: string | CreateCampaignSubtramaInput): Promise<void> {
-        const id = this.toPositiveInt(idTrama);
+        const id = toPositiveInt(idTrama);
         if (!id)
             throw new Error('Trama inválida.');
 
@@ -393,7 +393,7 @@ export class CampanaService {
     }
 
     async updateSubtrama(idSubtrama: number, input: string | UpdateCampaignSubtramaInput): Promise<void> {
-        const id = this.toPositiveInt(idSubtrama);
+        const id = toPositiveInt(idSubtrama);
         if (!id)
             throw new Error('Subtrama inválida.');
 
@@ -799,14 +799,14 @@ export class CampanaService {
     }
 
     private normalizeCampaignSpace(raw: any): CampaignSpace | null {
-        const id = this.toPositiveInt(raw?.id);
+        const id = toPositiveInt(raw?.id);
         if (!id)
             return null;
         return { id, entrada: raw?.entrada === 'solicitud' ? 'solicitud' : 'invitacion' };
     }
 
     private normalizeCampaignSummary(raw: any): CampaignListItem | null {
-        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id ?? raw?.idCampana ?? raw?.IdCampana);
+        const id = toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id ?? raw?.idCampana ?? raw?.IdCampana);
         if (!id)
             return null;
 
@@ -874,7 +874,7 @@ export class CampanaService {
     }
 
     private normalizeCampaignTrama(raw: any): CampaignTramaItem | null {
-        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id ?? raw?.idTrama ?? raw?.IdTrama);
+        const id = toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id ?? raw?.idTrama ?? raw?.IdTrama);
         if (!id)
             return null;
 
@@ -890,7 +890,7 @@ export class CampanaService {
     }
 
     private normalizeCampaignSubtrama(raw: any): CampaignSubtramaItem | null {
-        const id = this.toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id ?? raw?.idSubtrama ?? raw?.IdSubtrama);
+        const id = toPositiveInt(raw?.i ?? raw?.Id ?? raw?.id ?? raw?.idSubtrama ?? raw?.IdSubtrama);
         if (!id)
             return null;
 
@@ -920,7 +920,7 @@ export class CampanaService {
         campaignId: number,
         partial: Partial<Pick<CampaignListItem, 'nombre' | 'campaignRole' | 'membershipStatus' | 'isOwner'>>
     ): void {
-        const id = this.toPositiveInt(campaignId);
+        const id = toPositiveInt(campaignId);
         if (!id)
             return;
 
@@ -1006,7 +1006,7 @@ export class CampanaService {
     }
 
     private rememberCanonicalCampaignSummary(campana: CampaignListItem): void {
-        const id = this.toPositiveInt(campana?.id);
+        const id = toPositiveInt(campana?.id);
         if (!id)
             return;
 
@@ -1070,7 +1070,7 @@ export class CampanaService {
 
     private isSyntheticCampaignName(name: string | null | undefined, campaignId: number | null | undefined): boolean {
         const normalizedName = `${name ?? ''}`.trim();
-        const id = this.toPositiveInt(campaignId);
+        const id = toPositiveInt(campaignId);
         if (normalizedName.length < 1)
             return true;
         if (compararTexto(normalizedName, CampanaService.CAMPAIGN_UNNAMED_LABEL) === 0)
@@ -1310,11 +1310,6 @@ export class CampanaService {
         if (/^\d+$/.test(nombre.replace(/\s+/g, '')))
             throw new Error('El nombre de campaña no puede estar formado solo por números.');
         return nombre;
-    }
-
-    private toPositiveInt(value: any): number | null {
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
     private toNullableNumber(value: any): number | null {

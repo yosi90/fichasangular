@@ -25,7 +25,7 @@ import {
 } from '../interfaces/social-v3';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { errorDePerfil } from './utils/error-api';
-import { toNullableText } from 'src/app/services/utils/normalizacion';
+import { toNullableText, toPositiveInt } from 'src/app/services/utils/normalizacion';
 
 @Injectable({
     providedIn: 'root'
@@ -147,7 +147,7 @@ export class SocialV3ApiService {
     }
 
     async getLfgPost(postId: number): Promise<SocialLfgPost> {
-        const normalizedPostId = this.toPositiveInt(postId);
+        const normalizedPostId = toPositiveInt(postId);
         if (!normalizedPostId)
             throw new ProfileApiError('Convocatoria inválida.', 'SOCIAL_LFG_POST_INVALID', 400);
 
@@ -180,7 +180,7 @@ export class SocialV3ApiService {
     }
 
     async updateLfgPost(postId: number, input: Partial<SocialLfgPostUpsertInput>): Promise<SocialLfgPost> {
-        const normalizedPostId = this.toPositiveInt(postId);
+        const normalizedPostId = toPositiveInt(postId);
         if (!normalizedPostId)
             throw new ProfileApiError('Convocatoria inválida.', 'SOCIAL_LFG_POST_INVALID', 400);
         this.assertValidLfgPostInput(input, true);
@@ -204,7 +204,7 @@ export class SocialV3ApiService {
         limit?: number;
         offset?: number;
     } = {}): Promise<SocialEnvelope<SocialLfgApplication>> {
-        const normalizedPostId = this.toPositiveInt(postId);
+        const normalizedPostId = toPositiveInt(postId);
         if (!normalizedPostId)
             throw new ProfileApiError('Convocatoria inválida.', 'SOCIAL_LFG_POST_INVALID', 400);
 
@@ -226,7 +226,7 @@ export class SocialV3ApiService {
     }
 
     async createLfgApplication(postId: number, message: string): Promise<SocialLfgApplication> {
-        const normalizedPostId = this.toPositiveInt(postId);
+        const normalizedPostId = toPositiveInt(postId);
         const normalizedMessage = `${message ?? ''}`.trim();
         if (!normalizedPostId)
             throw new ProfileApiError('Convocatoria inválida.', 'SOCIAL_LFG_POST_INVALID', 400);
@@ -248,8 +248,8 @@ export class SocialV3ApiService {
     }
 
     async updateLfgApplication(postId: number, applicationId: number, status: SocialLfgApplicationStatus): Promise<SocialLfgApplication> {
-        const normalizedPostId = this.toPositiveInt(postId);
-        const normalizedApplicationId = this.toPositiveInt(applicationId);
+        const normalizedPostId = toPositiveInt(postId);
+        const normalizedApplicationId = toPositiveInt(applicationId);
         const normalizedStatus = this.normalizeApplicationStatus(status);
         if (!normalizedPostId || !normalizedApplicationId)
             throw new ProfileApiError('Aplicación inválida.', 'SOCIAL_LFG_APPLICATION_INVALID', 400);
@@ -269,7 +269,7 @@ export class SocialV3ApiService {
     }
 
     async openLfgContactConversation(postId: number): Promise<SocialContactConversationResponse> {
-        const normalizedPostId = this.toPositiveInt(postId);
+        const normalizedPostId = toPositiveInt(postId);
         if (!normalizedPostId)
             throw new ProfileApiError('Convocatoria inválida.', 'SOCIAL_LFG_POST_INVALID', 400);
 
@@ -426,7 +426,7 @@ export class SocialV3ApiService {
 
     private normalizeLfgPost(raw: any): SocialLfgPost {
         return {
-            id: this.toPositiveInt(raw?.id) ?? 0,
+            id: toPositiveInt(raw?.id) ?? 0,
             title: `${raw?.title ?? ''}`.trim(),
             summary: `${raw?.summary ?? ''}`.trim(),
             gameSystem: `${raw?.gameSystem ?? ''}`.trim(),
@@ -449,8 +449,8 @@ export class SocialV3ApiService {
 
     private normalizeLfgApplication(raw: any): SocialLfgApplication {
         return {
-            applicationId: this.toPositiveInt(raw?.applicationId) ?? 0,
-            postId: this.toPositiveInt(raw?.postId) ?? 0,
+            applicationId: toPositiveInt(raw?.applicationId) ?? 0,
+            postId: toPositiveInt(raw?.postId) ?? 0,
             status: this.normalizeApplicationStatus(raw?.status),
             message: `${raw?.message ?? ''}`.trim(),
             applicant: {
@@ -486,7 +486,7 @@ export class SocialV3ApiService {
         if (Object.prototype.hasOwnProperty.call(input, 'status'))
             normalized.status = this.normalizeLfgStatus(input.status);
         if (Object.prototype.hasOwnProperty.call(input, 'slotsTotal'))
-            normalized.slotsTotal = this.toPositiveInt(input.slotsTotal) ?? 1;
+            normalized.slotsTotal = toPositiveInt(input.slotsTotal) ?? 1;
 
         if (allowPartial)
             return normalized;
@@ -496,7 +496,7 @@ export class SocialV3ApiService {
             summary: `${normalized.summary ?? ''}`.trim(),
             gameSystem: `${normalized.gameSystem ?? ''}`.trim(),
             campaignStyle: `${normalized.campaignStyle ?? ''}`.trim(),
-            slotsTotal: this.toPositiveInt(normalized.slotsTotal) ?? 1,
+            slotsTotal: toPositiveInt(normalized.slotsTotal) ?? 1,
             scheduleText: `${normalized.scheduleText ?? ''}`.trim(),
             language: `${normalized.language ?? ''}`.trim(),
             visibility: 'global',
@@ -584,11 +584,6 @@ export class SocialV3ApiService {
     private normalizeOffset(value: number | null | undefined): number {
         const parsed = Math.trunc(Number(value));
         return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
-    }
-
-    private toPositiveInt(value: any): number | null {
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
     private toNonNegativeInt(value: any): number {

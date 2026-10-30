@@ -24,6 +24,7 @@ import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
 import { MAX_TIRADAS_PUNTOS_GOLPE, MIN_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { mensajeErrorDeAccion, permitirAccionGuardada, textoFechaHora, textoRol } from '../user-profile/perfil-acciones';
+import { toPositiveInt } from 'src/app/services/utils/normalizacion';
 
 export type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
 export type CampaignWorkspaceTab = 'usuarios' | 'historias';
@@ -169,7 +170,7 @@ export class CampanasGestionEstado implements OnDestroy {
 
     /** Abre la sección: recarga la lista y elige la campaña pedida (o la que ya estaba). */
     async abrirSeccion(preferredCampaignId?: number | null): Promise<void> {
-        if (this.toPositiveInt(preferredCampaignId)) {
+        if (toPositiveInt(preferredCampaignId)) {
             this.campaignWorkspaceMode = 'idle';
             this.campaignWorkspaceTab = 'usuarios';
         }
@@ -178,11 +179,6 @@ export class CampanasGestionEstado implements OnDestroy {
 
     private puedeLanzar(actionKey: string): boolean {
         return permitirAccionGuardada(this.userSvc, this.apiActionGuardSvc, this.appToastSvc, actionKey);
-    }
-
-    private toPositiveInt(value: any): number | null {
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
     get campaignNameLength(): number {

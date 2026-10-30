@@ -1,4 +1,4 @@
-import { normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt } from './normalizacion';
+import { normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toPositiveInt } from './normalizacion';
 
 describe('toBoolean', () => {
     it('es sí con true, 1 y los textos de sí, sin distinguir mayúsculas ni espacios alrededor', () => {
@@ -38,6 +38,19 @@ describe('toInt', () => {
         expect(toInt(-2.5)).toBe(-2);
         expect(toInt('x', 7)).toBe(7);
         expect(toInt(Infinity)).toBe(0);
+    });
+});
+
+describe('toPositiveInt', () => {
+    it('trunca y se queda con los enteros mayores que 0', () => {
+        expect(toPositiveInt(7)).toBe(7);
+        expect(toPositiveInt('12')).toBe(12);
+        expect(toPositiveInt(3.9)).toBe(3);
+    });
+
+    it('da null con 0, negativos, vacíos y lo que no es un número', () => {
+        for (const valor of [0, 0.5, -1, '', ' ', null, undefined, 'abc', NaN, Infinity])
+            expect(toPositiveInt(valor)).withContext(JSON.stringify(valor)).toBeNull();
     });
 });
 

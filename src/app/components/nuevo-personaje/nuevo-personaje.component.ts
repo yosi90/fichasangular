@@ -125,7 +125,7 @@ import { IncarnumService } from 'src/app/services/incarnum.service';
 import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from 'src/app/interfaces/incarnum';
 import { AlineamientoParaFusiones, CODIGOS_FALLO_FORMACION, FalloFormacion } from 'src/app/services/utils/incarnum';
 import { PasoCreacionId, lineaPersonajeCreacion, pasoCreacionDeLaPestana, textoContinuarCreacion } from './marco';
-import { normalizarTexto, primerEntero } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, primerEntero, toPositiveInt } from 'src/app/services/utils/normalizacion';
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
@@ -2612,13 +2612,13 @@ export class NuevoPersonajeComponent {
         if (currentStillExists)
             return;
 
-        const previousCampaignId = this.toPositiveInt(
+        const previousCampaignId = toPositiveInt(
             this.Campanas.find((campana) => normalizarTexto(campana?.Nombre ?? '') === normalizarTexto(currentName))?.Id
         );
         if (!previousCampaignId)
             return;
 
-        const renamedCampaign = (campanas ?? []).find((campana) => this.toPositiveInt(campana?.Id) === previousCampaignId);
+        const renamedCampaign = (campanas ?? []).find((campana) => toPositiveInt(campana?.Id) === previousCampaignId);
         if (renamedCampaign?.Nombre)
             this.Personaje.Campana = renamedCampaign.Nombre;
     }
@@ -4796,9 +4796,9 @@ export class NuevoPersonajeComponent {
         const esSinCampana = campanaNorm.length < 1 || campanaNorm === normalizarTexto('Sin campaña');
         const esSinHistoriaCampana = this.esTramaCampanaSinEspecificar(this.Personaje?.Trama);
         const esSubtramaBase = this.esSubtramaCampanaSinEspecificar(this.Personaje?.Subtrama);
-        const idCampana = esSinCampana ? null : (this.toPositiveInt(campana?.Id) ?? null);
-        const idTrama = esSinCampana || esSinHistoriaCampana ? null : (this.toPositiveInt(trama?.Id) ?? null);
-        const idSubtrama = esSinCampana || esSinHistoriaCampana || esSubtramaBase ? null : (this.toPositiveInt(subtrama?.Id) ?? null);
+        const idCampana = esSinCampana ? null : (toPositiveInt(campana?.Id) ?? null);
+        const idTrama = esSinCampana || esSinHistoriaCampana ? null : (toPositiveInt(trama?.Id) ?? null);
+        const idSubtrama = esSinCampana || esSinHistoriaCampana || esSubtramaBase ? null : (toPositiveInt(subtrama?.Id) ?? null);
         const ventajasCatalogo = [
             ...(this.catalogoVentajas ?? []),
             ...(this.catalogoDesventajas ?? []),
@@ -4811,7 +4811,7 @@ export class NuevoPersonajeComponent {
             idAlineamiento: this.resolverIdAlineamientoCreacion(),
             idDeidad: this.resolverIdDeidadCreacion(),
             idGenero: this.resolverIdGeneroCreacion(),
-            idManiobrabilidad: this.toPositiveInt((this.Personaje as any)?.Raza?.Maniobrabilidad?.Id) ?? 0,
+            idManiobrabilidad: toPositiveInt((this.Personaje as any)?.Raza?.Maniobrabilidad?.Id) ?? 0,
             idEspArcana: this.resolverIdEscuelaEspecialistaCreacion(),
             idEspPsionica: this.resolverIdDisciplinaEspecialistaCreacion(),
             idDisProhibida: this.resolverIdDisciplinaProhibidaCreacion(),
@@ -4863,7 +4863,7 @@ export class NuevoPersonajeComponent {
     ): CatalogoNombreIdDto[] {
         const salida: CatalogoNombreIdDto[] = [];
         (items ?? []).forEach((item) => {
-            const id = this.toPositiveInt(getId(item));
+            const id = toPositiveInt(getId(item));
             const nombre = `${getNombre(item) ?? ''}`.trim();
             if (!id || nombre.length < 1)
                 return;
@@ -4876,11 +4876,11 @@ export class NuevoPersonajeComponent {
         const nombreNorm = normalizarTexto(this.Personaje?.Alineamiento ?? '');
         const desdeCatalogo = (this.catalogoAlineamientosBasicos ?? [])
             .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
-        const idCatalogo = this.toPositiveInt(desdeCatalogo?.Id);
+        const idCatalogo = toPositiveInt(desdeCatalogo?.Id);
         if (idCatalogo)
             return idCatalogo;
 
-        return this.toPositiveInt(getAlineamientoBasicoIdPorNombre(nombreNorm));
+        return toPositiveInt(getAlineamientoBasicoIdPorNombre(nombreNorm));
     }
 
     private resolverIdDeidadCreacion(): number {
@@ -4889,7 +4889,7 @@ export class NuevoPersonajeComponent {
             return 0;
         const encontrada = (this.catalogoDeidades ?? [])
             .find((item) => normalizarTexto(item?.Nombre ?? '') === deidadNorm);
-        return this.toPositiveInt(encontrada?.Id) ?? 0;
+        return toPositiveInt(encontrada?.Id) ?? 0;
     }
 
     private resolverIdRegionCreacion(): number {
@@ -4934,7 +4934,7 @@ export class NuevoPersonajeComponent {
             return 0;
         const escuela = (this.catalogoEscuelas ?? [])
             .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
-        return this.toPositiveInt((escuela as any)?.Id) ?? 0;
+        return toPositiveInt((escuela as any)?.Id) ?? 0;
     }
 
     private resolverIdDisciplinaEspecialistaCreacion(): number {
@@ -4943,7 +4943,7 @@ export class NuevoPersonajeComponent {
             return 0;
         const disciplina = (this.catalogoDisciplinas ?? [])
             .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
-        return this.toPositiveInt((disciplina as any)?.Id) ?? 0;
+        return toPositiveInt((disciplina as any)?.Id) ?? 0;
     }
 
     private resolverIdDisciplinaProhibidaCreacion(): number {
@@ -4952,14 +4952,7 @@ export class NuevoPersonajeComponent {
             return 0;
         const disciplina = (this.catalogoDisciplinas ?? [])
             .find((item) => normalizarTexto(item?.Nombre ?? '') === nombreNorm);
-        return this.toPositiveInt((disciplina as any)?.Id) ?? 0;
-    }
-
-    private toPositiveInt(value: any): number | null {
-        const parsed = Math.trunc(Number(value));
-        if (!Number.isFinite(parsed) || parsed <= 0)
-            return null;
-        return parsed;
+        return toPositiveInt((disciplina as any)?.Id) ?? 0;
     }
 
     private toNonNegativeIntegerOrNull(value: any): number | null {

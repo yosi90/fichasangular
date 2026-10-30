@@ -19,6 +19,7 @@ import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { CampanasGestionEstado } from '../campanas-gestion/campanas-gestion.estado';
 import { mensajeErrorDeAccion, permitirAccionGuardada, textoFechaHora, textoRol } from './perfil-acciones';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
+import { toPositiveInt } from 'src/app/services/utils/normalizacion';
 
 type IdentityFieldKey = 'displayName' | 'bio' | 'genderIdentity' | 'pronouns';
 type GenderIdentityPreset = 'male' | 'female' | 'hidden' | 'custom';
@@ -501,7 +502,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.pendingRequestedSection = target;
         this.pendingRequestedCampaignId = typeof request === 'string'
             ? null
-            : this.toPositiveInt(request?.campaignId);
+            : toPositiveInt(request?.campaignId);
         this.resolvePendingRequestedSection();
     }
 
@@ -558,10 +559,5 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         } finally {
             this.roleRequestLoading = false;
         }
-    }
-
-    private toPositiveInt(value: any): number | null {
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 }
