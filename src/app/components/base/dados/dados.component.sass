@@ -1,3 +1,4 @@
+@use 'sass:color'
 @use '../../../../assets/css/variables' as *
 @use '../../../../assets/css/iconos' as *
 @use '../../detalles/ficha/ficha-tonos' as *
@@ -5,8 +6,8 @@
 // La pestaña «Dados» (lienzo «Dados: Companion y web»). El dorado es el de los iconos del equipo: solo para lo que se
 // tira. El rojo del 1 natural, el de los errores de la plataforma en Rol (`--yosi-color-error`).
 $dados-dorado: $icono-equipo
-$dados-dorado-suave: rgba(226, 184, 92, .14)
-$dados-rojo: #ef5350
+$dados-dorado-suave: color.change($dados-dorado, $alpha: .14)
+$dados-rojo: var(--yosi-color-error)
 
 :host
     display: block
