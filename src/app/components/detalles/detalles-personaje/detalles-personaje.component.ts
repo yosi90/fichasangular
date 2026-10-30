@@ -68,6 +68,7 @@ import {
 import { clavePorCuenta, guardarPreferenciaLocal, leerPreferenciaLocal } from 'src/app/services/utils/preferencia-local';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import Swal from 'sweetalert2';
+import { destinoEnTablist } from 'src/app/services/utils/teclado';
 
 /** Cómo se enseña la ficha: toda en una página o con pestañas internas (las dos propuestas aprobadas del lienzo). */
 export type VistaFicha = 'pagina' | 'pestanas';
@@ -345,12 +346,8 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
     moverPestana(evento: KeyboardEvent): void {
         const ids = this.m.pestanas.map((p) => p.id);
         const actual = ids.indexOf(this.pestanaActiva);
-        const destino = evento.key === 'ArrowRight' ? (actual + 1) % ids.length
-            : evento.key === 'ArrowLeft' ? (actual - 1 + ids.length) % ids.length
-                : evento.key === 'Home' ? 0
-                    : evento.key === 'End' ? ids.length - 1
-                        : -1;
-        if (destino < 0 || ids.length < 1)
+        const destino = destinoEnTablist(evento.key, actual, ids.length);
+        if (destino === null)
             return;
         evento.preventDefault();
         this.pestana = ids[destino];
