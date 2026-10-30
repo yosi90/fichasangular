@@ -1,114 +1,13 @@
 @use 'src/assets/css/preformas/inserciones' as inserciones
 
+// La clase dentro del marco común de las inserciones (siete pasos, tarjetas). Las tarjetas, sus títulos y los chips
+// salen de `preformas/_inserciones`; aquí solo lo propio de la clase. Se pliega según el ancho del marco.
 .nueva-clase-shell
     @include inserciones.insercion-shell
-    display: flex
-    min-height: 0
 
 .nueva-clase-form
     @include inserciones.insercion-form-base
-    flex: 1 1 auto
-    min-height: 0
-
-.clase-stepper
-    flex: 1 1 auto
-    min-width: 0
-    width: 100%
-    background: transparent
-    color: #e5e7eb
-
-    ::ng-deep .mat-horizontal-stepper-header-container
-        overflow-x: auto
-        padding-bottom: 0.25rem
-
-    ::ng-deep .mat-horizontal-content-container
-        padding: 0.75rem 0 0
-
-    ::ng-deep .mat-horizontal-stepper-content[aria-expanded='true']
-        display: flex
-        flex-direction: column
-        height: calc(100vh - 235px)
-        min-height: 0
-        max-height: calc(100vh - 235px)
-
-    ::ng-deep .mat-step-label,
-    ::ng-deep .mat-step-optional
-        color: rgba(229, 231, 235, 0.74)
-
-    ::ng-deep .mat-step-label-active
-        color: #f3f4f6
-
-    ::ng-deep .mat-step-icon
-        background: rgba(255, 255, 255, 0.18)
-
-    ::ng-deep .mat-step-icon-selected,
-    ::ng-deep .mat-step-icon-state-edit
-        background: #3f51b5
-
-.step-body
-    flex: 1 1 auto
-    min-height: 0
-    height: calc(100vh - 330px)
-    max-height: calc(100vh - 260px)
-    overflow: auto
-    padding: 0 0.35rem 0 0
-    scrollbar-gutter: stable
-
-@supports (height: 100dvh)
-    .clase-stepper
-        ::ng-deep .mat-horizontal-stepper-content[aria-expanded='true']
-            height: calc(100dvh - 235px)
-            max-height: calc(100dvh - 235px)
-
-    .step-body
-        height: calc(100dvh - 330px)
-        max-height: calc(100dvh - 260px)
-
-.panel-card
-    border: 1px solid rgba(255, 255, 255, 0.12)
-    border-radius: 8px
-    padding: 0.65rem
-    background: rgba(0, 0, 0, 0.1)
-    box-shadow: 1px 1px 3.5px rgba(0, 0, 0, 0.45), 1px 1px 3px inset rgba(0, 0, 0, 0.22)
-    color: #e5e7eb
-
-.panel-title
-    display: inline-flex
-    align-items: center
-    gap: 0.35rem
-    min-height: 36px
-    margin-bottom: 0.5rem
-    padding: 0 0.9rem
-    font-weight: 600
-    border: 1px solid rgba(255, 255, 255, 0.14)
-    background: rgba(255, 255, 255, 0.08)
-    color: #f3f4f6
-
-.subpanel-head
-    display: flex
-    align-items: center
-    justify-content: space-between
-    gap: 8px
-    margin-bottom: 0.45rem
-    flex-wrap: wrap
-
-.actions-row
-    display: flex
-    justify-content: flex-end
-    gap: 0.5rem
-    padding: 0.25rem 0.1rem 0.1rem
-
-.clase-stepper
-    .actions-row
-        margin-top: auto
-
-.permiso-msg
-    margin: 0
-    padding: 0.6rem 0.8rem
-    color: #fecaca
-    border: 1px solid rgba(248, 113, 113, 0.4)
-    border-radius: 8px
-    background: rgba(127, 29, 29, 0.25)
+    min-height: 100%
 
 .base-grid,
 .progression-controls
@@ -189,10 +88,11 @@
     flex-wrap: wrap
     gap: 8px
 
-.two-column
+.clase-competencias
     display: grid
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr))
-    gap: 16px
+    gap: 14px
+    align-items: start
 
 .chips-checkbox-grid
     display: grid
@@ -360,7 +260,7 @@
 .selector-list__item--active
     background: rgba(194, 24, 91, .28)
 
-@media (max-width: 980px)
+@container insercion (max-width: 980px)
     .toggle-toolbar
         align-items: flex-start
         flex-direction: column

@@ -1,5 +1,7 @@
 @use '../../../../assets/css/preformas/_inserciones' as inserciones
 
+// La racial dentro del marco común de las inserciones (pasos Base y Rasgos, tarjetas). Aquí solo van las rejillas de
+// sus filas repetibles; se pliegan a una columna según el ancho del marco, no el de la ventana.
 :host
     display: block
     min-height: 0
@@ -8,104 +10,15 @@
     @include inserciones.insercion-shell
 
 .nueva-racial-shell--modal
-    display: flex
     min-height: 0
-    overflow: hidden
 
 .nueva-racial-form
     @include inserciones.insercion-form-base
-    min-height: 0
-
-    .modal-head
-        display: flex
-        align-items: center
-        justify-content: space-between
-        gap: 1rem
-
-        h3
-            margin: 0
-            color: #f3f4f6
-
-    .base-grid
-        display: grid
-        grid-template-columns: repeat(2, minmax(220px, 1fr))
-        gap: 0.75rem
-
-    .plain-section
-        display: flex
-        flex-direction: column
-        gap: 0.65rem
-
-    .full-span
-        grid-column: 1 / -1
+    min-height: 100%
 
     .racial-status-row
         align-items: center
         min-height: 56px
-
-    .editors-accordion
-        display: block
-
-        h4
-            margin: 1rem 0 0.5rem
-            font-size: 0.95rem
-            font-weight: 700
-
-    .racial-stepper
-        background: transparent
-        color: #e5e7eb
-
-        ::ng-deep .mat-horizontal-stepper-header-container
-            overflow-x: auto
-            padding-bottom: 0.25rem
-
-        ::ng-deep .mat-horizontal-content-container
-            padding: 0.75rem 0 0
-
-        ::ng-deep .mat-step-label,
-        ::ng-deep .mat-step-optional
-            color: rgba(229, 231, 235, 0.74)
-
-        ::ng-deep .mat-step-label-active
-            color: #f3f4f6
-
-        ::ng-deep .mat-step-icon
-            background: rgba(255, 255, 255, 0.18)
-
-        ::ng-deep .mat-step-icon-selected,
-        ::ng-deep .mat-step-icon-state-edit
-            background: #3f51b5
-
-    .step-layout
-        display: flex
-        flex-direction: column
-        height: calc(100vh - 235px)
-        min-height: 0
-        max-height: calc(100vh - 235px)
-        overflow: hidden
-
-    @supports (height: 100dvh)
-        .step-layout
-            height: calc(100dvh - 235px)
-            max-height: calc(100dvh - 235px)
-
-    .step-main
-        display: flex
-        flex: 1 1 auto
-        flex-direction: column
-        gap: 1.35rem
-        min-height: 0
-        overflow: auto
-        padding-right: 0.35rem
-        scrollbar-gutter: stable
-
-    .step-actions
-        flex: 0 0 auto
-        display: flex
-        justify-content: flex-end
-        gap: 0.6rem
-        margin-top: 0
-        padding: 0.75rem 0.1rem 0
 
     .row-editor
         display: grid
@@ -126,10 +39,10 @@
         grid-template-columns: minmax(220px, 1.5fr) minmax(90px, 0.5fr) minmax(180px, 1fr) minmax(110px, 0.5fr) 42px
 
     .row-editor--small
-        grid-template-columns: minmax(180px, 1fr) minmax(90px, 0.4fr) 42px
+        grid-template-columns: minmax(160px, 1fr) minmax(90px, 0.4fr) 42px
 
     .row-editor--save
-        grid-template-columns: minmax(190px, 1fr) minmax(90px, 0.35fr) minmax(180px, 1fr) 42px
+        grid-template-columns: minmax(150px, 1fr) minmax(90px, 0.35fr) minmax(150px, 1fr) 42px
 
     .row-editor--spell
         grid-template-columns: minmax(220px, 1.2fr) minmax(120px, 0.45fr) minmax(150px, 0.65fr) 42px
@@ -137,24 +50,15 @@
     .row-editor--attack
         grid-template-columns: minmax(260px, 1fr) 42px
 
-    .subgrid
-        display: grid
-        grid-template-columns: repeat(2, minmax(0, 1fr))
-        gap: 0.75rem
-
     .prerrequisito-toggles
         display: flex
         flex-wrap: wrap
         gap: 0.75rem
-        margin-bottom: 0.65rem
-
-    .prerrequisitos-section
-        margin-top: 0.1rem
 
     mat-checkbox
         color: #e5e7eb
 
-@media (max-width: 1100px)
+@container insercion (max-width: 1000px)
     .nueva-racial-form
         .row-editor,
         .row-editor--dote,
@@ -163,10 +67,8 @@
         .row-editor--small,
         .row-editor--save,
         .row-editor--spell,
-        .row-editor--attack,
-        .base-grid,
-        .subgrid
+        .row-editor--attack
             grid-template-columns: 1fr
 
-        .full-span
+        .row-editor--dote > mat-form-field:first-child:last-of-type
             grid-column: auto

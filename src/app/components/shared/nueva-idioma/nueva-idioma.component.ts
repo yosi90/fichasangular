@@ -84,14 +84,10 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
         return this.guardando || this.cargandoEdicion || !this.puedeGuardar;
     }
 
-    get tituloFormulario(): string {
-        return this.esModoEdicion ? 'Modificar idioma' : 'Crear idioma';
-    }
-
     get etiquetaAccionPrincipal(): string {
         if (this.guardando)
             return this.esModoEdicion ? 'Guardando cambios...' : 'Creando idioma...';
-        return this.esModoEdicion ? 'Actualizar idioma' : 'Crear idioma';
+        return this.esModoEdicion ? 'Guardar cambios' : 'Crear idioma';
     }
 
     get mensajePermisoInsuficiente(): string {
