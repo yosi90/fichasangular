@@ -20,8 +20,8 @@ import { porNombre } from 'src/app/services/utils/orden-texto';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
 import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { PrerequisiteCatalogContext, PrerequisiteCatalogItem, PrerequisiteRowModel, PrerequisiteType } from '../prerrequisito-editor/prerrequisito-editor.models';
-import { getPrerequisiteDefinition, getPrerequisiteTypeOptions } from '../prerrequisito-editor/prerrequisito-editor.registry';
-import { filasDesdePrerrequisitos, prerrequisitosDesdeFilas } from 'src/app/services/utils/plantilla-formulario';
+import { getPrerequisiteTypeOptions } from '../prerrequisito-editor/prerrequisito-editor.registry';
+import { filaNuevaDePrerrequisito, filasDesdePrerrequisitos, prerrequisitosDesdeFilas, tiposConFilas } from 'src/app/services/utils/plantilla-formulario';
 
 /** Los prerrequisitos que admite un especial: con qué actitud se puede elegir (la senda de una clase, por su alineamiento). */
 const TIPOS_PRERREQUISITO_ESPECIAL: readonly PrerequisiteType[] = ['actitud_requerido', 'actitud_prohibido'];
@@ -476,10 +476,8 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     anadirPrerrequisito(tipo: PrerequisiteType): void {
-        const fila = getPrerequisiteDefinition(tipo).createDefaultRow();
-        fila.uid = this.uid();
-        if (!this.prerrequisitosTipos.includes(tipo))
-            this.prerrequisitosTipos = TIPOS_PRERREQUISITO_ESPECIAL.filter((t) => t === tipo || this.prerrequisitosTipos.includes(t));
+        const { fila, tipos } = filaNuevaDePrerrequisito(tipo, TIPOS_PRERREQUISITO_ESPECIAL, this.prerrequisitosTipos, () => this.uid());
+        this.prerrequisitosTipos = tipos;
         this.prerrequisitosFilas = [...this.prerrequisitosFilas, fila];
     }
 
@@ -494,7 +492,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
     private hidratarPrerrequisitos(especial: EspecialClaseDetalle | null): void {
         const { filas } = filasDesdePrerrequisitos(especial?.Prerrequisitos, TIPOS_PRERREQUISITO_ESPECIAL, () => this.uid());
         this.prerrequisitosFilas = filas;
-        this.prerrequisitosTipos = TIPOS_PRERREQUISITO_ESPECIAL.filter((tipo) => filas.some((fila) => fila.tipo === tipo));
+        this.prerrequisitosTipos = tiposConFilas(TIPOS_PRERREQUISITO_ESPECIAL, filas);
     }
 
     private construirHabilidadesPayload(): EspecialClaseMutationHabilidad[] {

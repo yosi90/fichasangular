@@ -41,10 +41,12 @@ import {
     camposCambiados,
     campoDeErrorApi,
     construirPlantillaRequest,
+    filaNuevaDePrerrequisito,
     filasDesdePrerrequisitosPlantilla,
     firmaFilaPrerrequisito,
     listasDesdePlantilla,
     listasPlantillaVacias,
+    tiposConFilas,
     valorDesdePlantilla,
     valorPlantillaNueva,
 } from 'src/app/services/utils/plantilla-formulario';
@@ -389,10 +391,8 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
     // Requisitos (paso 4)
 
     anadirRequisito(tipo: PrerequisiteType): void {
-        const fila = getPrerequisiteDefinition(tipo).createDefaultRow();
-        fila.uid = this.uid();
-        if (!this.prerrequisitosTipos.includes(tipo))
-            this.prerrequisitosTipos = TIPOS_PRERREQUISITO_PLANTILLA.filter((t) => t === tipo || this.prerrequisitosTipos.includes(t));
+        const { fila, tipos } = filaNuevaDePrerrequisito(tipo, TIPOS_PRERREQUISITO_PLANTILLA, this.prerrequisitosTipos, () => this.uid());
+        this.prerrequisitosTipos = tipos;
         this.listas.prerrequisitos = [...this.listas.prerrequisitos, fila];
         this.alCambiar();
     }
@@ -605,7 +605,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
         listas.prerrequisitos = filas;
         this.listas = listas;
         this.frasesApi = frases;
-        this.prerrequisitosTipos = TIPOS_PRERREQUISITO_PLANTILLA.filter((tipo) => filas.some((fila) => fila.tipo === tipo));
+        this.prerrequisitosTipos = tiposConFilas(TIPOS_PRERREQUISITO_PLANTILLA, filas);
         this.errorCampo = null;
         this.errorGlobal = '';
         this.cuerpoInicial = this.cuerpoActual();

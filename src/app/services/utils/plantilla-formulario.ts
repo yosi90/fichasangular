@@ -430,6 +430,26 @@ export function filasDesdePrerrequisitos(
     return { filas, frases };
 }
 
+/** Los tipos de `tipos` que tienen alguna fila: los que el editor compartido enseña al cargar. */
+export function tiposConFilas(tipos: readonly PrerequisiteType[], filas: PrerequisiteRowModel[]): PrerequisiteType[] {
+    return tipos.filter((tipo) => filas.some((fila) => fila.tipo === tipo));
+}
+
+/**
+ * Una fila nueva de ese tipo para el editor compartido, con su `uid`, y los tipos que el editor enseña con ella (los que
+ * ya enseñaba más ese, en el orden de `tipos`). La usan la plantilla y los especiales.
+ */
+export function filaNuevaDePrerrequisito(
+    tipo: PrerequisiteType,
+    tipos: readonly PrerequisiteType[],
+    ensenados: PrerequisiteType[],
+    uid: () => string,
+): { fila: PrerequisiteRowModel; tipos: PrerequisiteType[]; } {
+    const fila = getPrerequisiteDefinition(tipo).createDefaultRow();
+    fila.uid = uid();
+    return { fila, tipos: ensenados.includes(tipo) ? ensenados : tipos.filter((t) => t === tipo || ensenados.includes(t)) };
+}
+
 /** Lo que define una fila para la API: si cambia, la frase de la API ya no vale. */
 export function firmaFilaPrerrequisito(fila: PrerequisiteRowModel): string {
     return JSON.stringify([fila.tipo, PRERREQUISITOS_PLANTILLA[fila.tipo]?.escribir(fila) ?? null, Math.max(0, toInt(fila.opcional))]);
