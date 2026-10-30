@@ -77,6 +77,8 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
             tabs.push({ textLabel: 'Social' });
         if (component.ayudaTabOpen)
             tabs.push({ textLabel: 'Ayuda' });
+        if (component.dadosTabOpen)
+            tabs.push({ textLabel: 'Dados' });
         (component.detallesPersonajeAbiertos ?? []).forEach((pj: any) => tabs.push({ textLabel: pj.Nombre }));
         (component.publicProfileTabs ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaPerfilPublico(tab) }));
         if (component.AbrirNuevoPersonajeTab)
@@ -119,6 +121,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
     (component as any).__permisos$ = permisos$;
     (component as any).__banStatus$ = banStatus$;
     (component as any).__userProfileNavSvc = userProfileNavSvc;
+    (component as any).__navegacionRolSvc = navegacionRolSvc;
 
     return component;
 }
@@ -579,6 +582,39 @@ describe('TabControlComponent navegación por origen', () => {
         component.onEscPressed();
         expect(component.ayudaTabOpen).toBeFalse();
         expect((component as any).activeTabKey).toBe('base:personajes');
+    }));
+
+    it('los Dados son una sola pestaña: el menú la abre por el bus, si ya está abierta va a ella y se cierra con ESC', fakeAsync(() => {
+        const component = crearComponente();
+        component.ngOnInit();
+        const navegacion = (component as any).__navegacionRolSvc;
+
+        navegacion.aperturas$.next({ clase: 'dados' });
+        tick(120);
+        expect(component.dadosTabOpen).toBeTrue();
+        expect((component as any).activeTabKey).toBe('base:dados');
+
+        component.abrirAyuda();
+        tick(120);
+        navegacion.aperturas$.next({ clase: 'dados' });
+        tick(120);
+        expect((component as any).activeTabKey).toBe('base:dados');
+        expect((component as any).buildOrderedTabKeys().filter((k: string) => k === 'base:dados').length).toBe(1);
+
+        component.onEscPressed();
+        expect(component.dadosTabOpen).toBeFalse();
+        component.ngOnDestroy();
+    }));
+
+    it('al cerrar sesión se cierra la pestaña de los Dados', fakeAsync(() => {
+        const component = crearComponente();
+        component.ngOnInit();
+        (component as any).__isLoggedIn$.next(true);
+        component.abrirDados();
+        tick(120);
+        (component as any).__isLoggedIn$.next(false);
+        expect(component.dadosTabOpen).toBeFalse();
+        component.ngOnDestroy();
     }));
 
     it('cerrar la Ayuda vuelve al origen', fakeAsync(() => {

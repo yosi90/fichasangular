@@ -138,6 +138,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     /** La Ayuda: una sola pestaña, abierta en la sección que se pida (lienzo, vista 9). */
     public ayudaTabOpen = false;
     public ayudaSolicitud: AyudaSolicitud | null = null;
+    /** Los dados (lienzo «Dados: Companion y web»): una sola pestaña, como la Ayuda. */
+    public dadosTabOpen = false;
     public publicProfileTabs: UserPublicProfileTab[] = [];
     public detallesPersonajeAbiertos: Personaje[] = [];
     public detallesRazaAbiertos: Raza[] = [];
@@ -173,6 +175,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     private readonly TAB_PROFILE = 'base:perfil';
     private readonly TAB_SOCIAL = 'base:social';
     private readonly TAB_AYUDA = 'base:ayuda';
+    private readonly TAB_DADOS = 'base:dados';
     private readonly TAB_NUEVO = 'base:nuevo';
     private activeTabKey: string = this.TAB_PERSONAJES;
     private openerByTab = new Map<string, string>();
@@ -328,6 +331,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.quitarAyuda();
             return;
         }
+        if (activeKey === this.TAB_DADOS) {
+            this.quitarDados();
+            return;
+        }
         if (activeKey?.startsWith('perfil-publico:')) {
             this.quitarPerfilPublico(activeKey);
             return;
@@ -415,6 +422,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             keys.push(this.TAB_SOCIAL);
         if (this.ayudaTabOpen)
             keys.push(this.TAB_AYUDA);
+        if (this.dadosTabOpen)
+            keys.push(this.TAB_DADOS);
         keys.push(...this.detallesPersonajeAbiertos.map((pj) => this.getPersonajeTabKey(pj)));
         keys.push(...this.publicProfileTabs.map((tab) => this.getPublicProfileTabKey(tab)));
         if (this.AbrirNuevoPersonajeTab)
@@ -614,6 +623,26 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
+    /** Abre la pestaña «Dados»; si ya está abierta, va a ella. */
+    public abrirDados(): void {
+        if (this.dadosTabOpen) {
+            this.selectTabByKey(this.TAB_DADOS, true);
+            return;
+        }
+        this.dadosTabOpen = true;
+        this.registerOpenContext(this.TAB_DADOS, this.getSafeOpenerKey());
+        this.focusOpenedTab(this.TAB_DADOS);
+    }
+
+    public quitarDados(): boolean {
+        if (!this.dadosTabOpen)
+            return false;
+        return this.closeTabWithNavigation(this.TAB_DADOS, () => {
+            this.dadosTabOpen = false;
+            return true;
+        });
+    }
+
     private buildSocialOpenRequest(request?: SocialHubOpenRequest | null): SocialHubOpenRequest {
         return {
             section: request?.section ?? 'resumen',
@@ -632,6 +661,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.socialOpenRequest = null;
         this.ayudaTabOpen = false;
         this.ayudaSolicitud = null;
+        this.dadosTabOpen = false;
         this.publicProfileTabs = [];
         this.detallesPersonajeAbiertos = [];
         this.detallesRazaAbiertos = [];
@@ -2727,6 +2757,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDetallesManual(apertura.manual);
         else if (apertura.clase === 'referencia-manual')
             this.abrirDesdeManual(apertura.referencia);
+        else if (apertura.clase === 'dados')
+            this.abrirDados();
         else
             this.abrirListadoTab(apertura.lista, 'detalles', apertura.texto);
     }

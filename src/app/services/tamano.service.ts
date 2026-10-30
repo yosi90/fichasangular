@@ -15,6 +15,7 @@ export function normalizeTamano(raw: any): Tamano {
         Nombre: toText(raw?.Nombre),
         Modificador: toNumber(raw?.Modificador),
         Modificador_presa: toNumber(raw?.Modificador_presa),
+        Modificador_esconderse: toNumberOrNull(raw?.Modificador_esconderse),
         Multiplicador_carga: toNumberOrNull(raw?.Multiplicador_carga),
         Multiplicador_carga_cuadrupedo: toNumberOrNull(raw?.Multiplicador_carga_cuadrupedo),
     };

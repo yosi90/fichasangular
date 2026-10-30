@@ -136,6 +136,36 @@
         // Cada opción de catálogo: su icono en el recuadro oscuro y el texto a su lado (lienzo, vista 2).
         @include menu-opcion
 
+        // «Dados», debajo de las de catálogo (lienzo «Dados: Companion y web»): una fila suelta de 48 px como las
+        // cabeceras de los acordeones, con el d20 dorado a 22 px.
+        .menu-dados
+            display: flex
+            align-items: center
+            gap: 10px
+            width: 100%
+            height: 48px
+            margin-top: 12px
+            padding: 0 14px
+            border: 0
+            border-radius: 6px
+            background-color: $primary
+            box-shadow: 3px 3px 10px black
+            color: #ffffff
+            font: inherit
+            font-size: 14px
+            font-weight: 500
+            letter-spacing: .02em
+            text-align: left
+            cursor: pointer
+            transition: background-color .2s ease
+
+            &:hover
+                background-color: $primary-hover
+
+            &:focus-visible
+                outline: 2px solid $active
+                outline-offset: 2px
+
         mat-expansion-panel:last-child
             display: flex !important
             flex-direction: column

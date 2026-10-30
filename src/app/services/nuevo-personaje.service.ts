@@ -77,7 +77,7 @@ import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './
 import { ajusteDePlantillas, dgsDePlantilla, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
-import { bonosSinergia } from './utils/habilidades-bonos';
+import { bonoTamano, bonosSinergia } from './utils/habilidades-bonos';
 import { textoAtaqueBase } from './utils/ataque-base';
 import { textoConSigno } from './utils/equipo-texto';
 import { Tamano } from '../interfaces/tamaño';
@@ -2164,11 +2164,16 @@ export class NuevoPersonajeService {
 
     /**
      * Las sinergias de cada habilidad del borrador (`services/utils/habilidades-bonos.ts`, MJ tabla 4-5), con las reglas
-     * del catálogo de habilidades: las que suman van a `Bonos` y las condicionales, a `Bonos_condicionales`. La ficha
-     * guardada las calcula la API.
+     * del catálogo de habilidades: las que suman van a `Bonos` y las condicionales, a `Bonos_condicionales`. También el
+     * modificador de tamaño a Esconderse de las habilidades que lo suman (`Modificador_tamano`), con el tamaño de la
+     * raza, como la ficha. La ficha guardada los calcula la API: no se guardan.
      */
     recalcularSinergiasHabilidades(): void {
-        const reglas = (this.estadoFlujo.ventajas.catalogoHabilidades ?? []).flatMap((habilidad) => habilidad?.Sinergias ?? []);
+        const catalogo = this.estadoFlujo.ventajas.catalogoHabilidades ?? [];
+        const reglas = catalogo.flatMap((habilidad) => habilidad?.Sinergias ?? []);
+        const sumanTamano = new Set(catalogo.filter((habilidad) => habilidad?.Modificador_tamano === true)
+            .map((habilidad) => toNumber(habilidad.Id_habilidad)));
+        const parteTamano = bonoTamano(this.personajeCreacion?.Raza?.Tamano);
         const habilidades = (this.personajeCreacion.Habilidades ?? []).filter((habilidad) => !habilidad?.Custom);
         const refs = habilidades.map((habilidad) => ({
             id: toNumber(habilidad.Id),
@@ -2177,7 +2182,10 @@ export class NuevoPersonajeService {
         }));
         habilidades.forEach((habilidad, indice) => {
             const bonos = bonosSinergia(refs[indice], refs, reglas);
-            habilidad.Bonos = bonos.filter((bono) => !bono.condicion);
+            habilidad.Bonos = [
+                ...(sumanTamano.has(toNumber(habilidad.Id)) ? parteTamano : []),
+                ...bonos.filter((bono) => !bono.condicion),
+            ];
             habilidad.Bonos_condicionales = bonos.filter((bono) => !!bono.condicion);
         });
     }
@@ -5865,6 +5873,8 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Pgs_lic = Math.max(0, pgsLicantronia);
 
         this.recalcularDerivadasEconomiaYProgresion(seleccionadas);
+        // Con la raza nueva cambia la parte de su tamaño a Esconderse.
+        this.recalcularSinergiasHabilidades();
     }
 
     /**
@@ -8346,6 +8356,7 @@ export class NuevoPersonajeService {
                 Nombre: `${raza?.Tamano?.Nombre ?? '-'}`,
                 Modificador: toNumber(raza?.Tamano?.Modificador),
                 Modificador_presa: toNumber(raza?.Tamano?.Modificador_presa),
+                Modificador_esconderse: toNumber(raza?.Tamano?.Modificador_esconderse),
             },
             Dgs_adicionales: {
                 Cantidad: toNumber(raza?.Dgs_adicionales?.Cantidad),

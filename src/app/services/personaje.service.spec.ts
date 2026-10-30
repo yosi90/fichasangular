@@ -5,6 +5,7 @@ import { ProfileApiError } from '../interfaces/user-account';
 import { PersonajeService } from './personaje.service';
 import { simularTokenApi } from 'src/testing/simular-token-api';
 import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
+import { textoBonosHabilidad, totalHabilidad } from './utils/personaje-totales';
 
 function crearServicio(httpMock: any): PersonajeService {
     return new PersonajeService(
@@ -337,6 +338,24 @@ describe('PersonajeService', () => {
             }),
             jasmine.objectContaining({ Id: 3, Nombre: 'Artesanía', Extra: 'Elegir', Extra_comodin: 'elegir', Total: 4 }),
         ]);
+    });
+
+    it('mapApiDetalleToPersonaje lleva la parte del tamaño de Esconderse a los Bonos de la habilidad, sin volver a sumarla', () => {
+        const service = crearServicio({} as any);
+        const esconderse = {
+            id: 16, nombre: 'Esconderse', custom: false, deClase: false, idExtra: null, extra: null, extraComodin: null,
+            caracteristica: 'Destreza', modificadorCaracteristica: 3, rangos: 0, rangosVarios: 0, varios: null, total: 7,
+            desglose: [
+                { tipo: 'caracteristica', origen: 'Destreza', valor: 3 },
+                { tipo: 'tamano', origen: 'Tamaño (Pequeño)', valor: 4 },
+            ],
+        };
+        const personaje = (service as any).mapApiDetalleToPersonaje(crearDetalleApi({ habilidades: [esconderse] })) as Personaje;
+
+        const habilidad = personaje.Habilidades[0];
+        expect(habilidad.Bonos).toEqual([{ tipo: 'tamano', origen: 'Tamaño (Pequeño)', valor: 4 }]);
+        expect(totalHabilidad(habilidad)).toBe(7);
+        expect(textoBonosHabilidad(habilidad)).toBe('Tamaño (Pequeño) +4');
     });
 
     it('mapApiDetalleToPersonaje toma los totales de la API sin volver a sumarlos', () => {

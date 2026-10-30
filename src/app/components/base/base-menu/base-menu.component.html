@@ -112,6 +112,10 @@
                 <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('plantillas', 'detalles'); closeAcordion();"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Plantilla</span></button>
                 <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'detalles' }"></ng-container>
             </mat-expansion-panel>
+            <!-- Debajo de las de catálogo (lienzo «Dados: Companion y web»): abre la pestaña «Dados». -->
+            <button type="button" class="menu-dados" (click)="abrirDados()">
+                <app-icono-rol tipo="dado-d20" [tamano]="22"></app-icono-rol><span>Dados</span>
+            </button>
             <mat-expansion-panel hideToggle="true" #cuarto>
                 <mat-expansion-panel-header>
                     <button mat-stroked-button color="accent">

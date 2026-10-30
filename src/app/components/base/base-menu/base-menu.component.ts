@@ -6,6 +6,7 @@ import { ConnectedPosition } from '@angular/cdk/overlay';
 import { TipoRol, tipoRolDeListado, tituloListado } from 'src/app/services/utils/iconos-rol';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { MarcoMovilService } from 'src/app/services/marco-movil.service';
+import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
 type GrupoOtros = 'equipo' | 'rasgos' | 'mundo';
@@ -119,6 +120,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         private usrService: UserService,
         private userProfileNavSvc: UserProfileNavigationService,
         private marco?: MarcoMovilService,
+        private navegacion?: NavegacionRolService,
     ) { }
 
     ngOnInit(): void {
@@ -403,6 +405,13 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         if (this.esInvitado)
             return;
         this.userProfileNavSvc.openPrivateProfile();
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    /** La entrada «Dados», debajo de las de catálogo: abre su pestaña (una sola) y, en el móvil, cierra el cajón. */
+    abrirDados(): void {
+        this.navegacion?.abrir({ clase: 'dados' });
         this.closeAcordion();
         this.cerrarOtros();
     }

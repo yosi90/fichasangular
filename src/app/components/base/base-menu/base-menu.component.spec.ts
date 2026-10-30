@@ -43,6 +43,19 @@ describe('BaseMenuComponent', () => {
         expect(component.primero.close).toHaveBeenCalled();
     });
 
+    it('la entrada «Dados» abre su pestaña por el bus de pestañas y cierra el cajón', () => {
+        const navegacion = { abrir: jasmine.createSpy('abrir') };
+        const marco = { cerrarMenu: jasmine.createSpy('cerrarMenu') };
+        const conDados = new BaseMenuComponent(userSvc as any, {} as any, marco as any, navegacion as any);
+        for (const panel of ['primero', 'segundo', 'tercero', 'cuarto'] as const)
+            conDados[panel] = { expanded: false, close: jasmine.createSpy() } as any;
+
+        conDados.abrirDados();
+
+        expect(navegacion.abrir).toHaveBeenCalledOnceWith({ clase: 'dados' });
+        expect(marco.cerrarMenu).toHaveBeenCalled();
+    });
+
     it('no abre la insercion de razas sin permiso create', () => {
         canCreateRazas = false;
         const emitSpy = spyOn(component.ListadoTab, 'emit');

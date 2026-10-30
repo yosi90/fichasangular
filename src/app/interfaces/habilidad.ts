@@ -30,6 +30,8 @@ export interface HabilidadBasicaDetalle {
     Extras: HabilidadExtraRef[];
     /** Cuántas veces sufre el penalizador de armadura (MJ tabla 4-2): 0, 1 o 2 (Nadar). */
     Penalizador_armadura?: number;
+    /** Suma a sus pruebas el modificador de tamaño a Esconderse (`Modificador_esconderse` del tamaño): Esconderse. */
+    Modificador_tamano?: boolean;
     /** Las sinergias que da esta habilidad (MJ tabla 4-5). */
     Sinergias?: ReglaSinergia[];
 }

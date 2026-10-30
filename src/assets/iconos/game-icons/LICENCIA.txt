@@ -16,10 +16,14 @@ Lorc (https://lorcblog.blogspot.com)
   star-swirl, swap-bag, visored-helm
 
 Delapouite (https://delapouite.com)
-  claws, elf-ear, spell-book, sun-priest, sword-brandish, tabletop-players, thumb-down, thumb-up
+  claws, dice-eight-faces-eight, dice-twenty-faces-twenty, elf-ear, perspective-dice-six-faces-six, spell-book,
+  sun-priest, sword-brandish, tabletop-players, thumb-down, thumb-up
 
 Skoll
-  fangs
+  d10, d12, fangs
 
 Faithtoken
   ore
+
+Propios de Rol (no son de game-icons.net ni van con su licencia; dibujados para Rol en el mismo estilo)
+  dado-d4 (el d4 de la pestaña «Dados», añadido el 2026-10-30 con los demás dados)

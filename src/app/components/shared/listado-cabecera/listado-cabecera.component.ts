@@ -20,7 +20,7 @@ export function esListadoBuscable(valor: unknown): valor is ListadoBuscable {
  * La cabecera común de un listado (lienzo «Rol: las vistas que faltan», vistas 4 y 6): el icono del catálogo en su
  * recuadro (40/28), el título, el total en gris, el buscador rápido (280 px; es el mismo campo «Buscar» del listado,
  * no otro filtro) y, proyectado a la derecha, el botón de `<app-menu-filtros>`. En el móvil, el buscador baja a su
- * propia línea.
+ * propia línea. Una pantalla que no es un listado (los dados) la usa con `subtitulo` y sin buscador.
  */
 @Component({
     selector: 'app-listado-cabecera',
@@ -31,7 +31,8 @@ export function esListadoBuscable(valor: unknown): valor is ListadoBuscable {
             <span class="listado-cabecera__total" *ngIf="total !== null">
                 {{total}}<span class="solo-lectores"> en total</span>
             </span>
-            <div class="listado-cabecera__buscar" role="search">
+            <span class="listado-cabecera__subtitulo" *ngIf="subtitulo">{{subtitulo}}</span>
+            <div class="listado-cabecera__buscar" role="search" *ngIf="buscador">
                 <mat-icon aria-hidden="true">search</mat-icon>
                 <label class="solo-lectores" [attr.for]="idCampo">{{etiquetaBuscar}}</label>
                 <input type="search" [id]="idCampo" [placeholder]="placeholder" [value]="texto" autocomplete="off"
@@ -47,6 +48,10 @@ export class ListadoCabeceraComponent {
     @Input() titulo = '';
     /** Cuántos hay con los filtros puestos; sin él, no se enseña. */
     @Input() total: number | null = null;
+    /** Una línea gris tras el título, en las pantallas que no son listados («Tiradas sueltas para la mesa»). */
+    @Input() subtitulo = '';
+    /** Sin buscador rápido: la pestaña «Dados», que usa la cabecera sin ser un listado. */
+    @Input() buscador = true;
     @Input() texto = '';
     @Input() placeholder = 'Buscar';
     /** El nombre accesible del buscador («Buscar personajes»). */
