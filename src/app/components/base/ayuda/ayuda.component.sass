@@ -1,5 +1,6 @@
 @use '../../../../assets/css/variables' as *
 @use '../../../../assets/css/marco' as *
+@use '../../detalles/ficha/ficha-tonos' as *
 
 // La Ayuda (lienzo, vista 9): sin encapsular y con el prefijo `ayuda-`, porque lo usan también sus secciones
 // (`app-help-usage-about`, `app-help-roadmap`, `app-help-legal`). Tarjetas como las de la ficha: título en versalitas,
@@ -17,7 +18,7 @@ app-ayuda
     box-sizing: border-box
     padding: 16px
     background: $contrast
-    color: #e6e9eb
+    color: $ficha-texto
     font-family: Roboto, "Segoe UI", system-ui, sans-serif
 
 .ayuda-nav
@@ -29,16 +30,16 @@ app-ayuda
     width: 220px
     box-sizing: border-box
     padding: 10px
-    background: #424242
+    background: $ficha-tarjeta
     border-radius: 6px
-    box-shadow: 3px 3px 10px black
+    box-shadow: $ficha-sombra
 
 .ayuda-nav__boton
     padding: 10px 12px
     border: 0
     border-radius: 4px
     background: transparent
-    color: #cfd8dc
+    color: $ficha-texto-suave
     font: inherit
     font-size: 14px
     text-align: left
@@ -74,7 +75,7 @@ app-ayuda
     background: $primary
     border-radius: 6px
     border-bottom: 3px solid $active
-    box-shadow: 3px 3px 10px black
+    box-shadow: $ficha-sombra
 
 .ayuda .ayuda-cabecera__nombre
     margin: 0
@@ -85,13 +86,7 @@ app-ayuda
 
 .ayuda .ayuda-titulo
     display: block
-    margin: 0
-    font-size: 12px
-    font-weight: 700
-    line-height: 1.4
-    letter-spacing: .14em
-    text-transform: uppercase
-    color: $accent
+    @include ficha-versalitas
 
 .ayuda-tarjeta
     display: flex
@@ -99,9 +94,9 @@ app-ayuda
     align-items: flex-start
     gap: 16px
     padding: 18px 24px
-    background: #424242
+    background: $ficha-tarjeta
     border-radius: 6px
-    box-shadow: 3px 3px 10px black
+    box-shadow: $ficha-sombra
 
 .ayuda-prosa
     display: flex
@@ -110,7 +105,7 @@ app-ayuda
     max-width: 74ch
     font-size: 15px
     line-height: 1.65
-    color: #e6e9eb
+    color: $ficha-texto
 
     p, ul, ol
         margin: 0
@@ -168,7 +163,7 @@ app-ayuda
         vertical-align: top
 
     tbody tr:nth-child(odd)
-        background: #4a4a4a
+        background: $ficha-fila-alterna
 
 .ayuda-creditos
     display: grid
@@ -182,7 +177,7 @@ app-ayuda
 
     dd
         margin: 0
-        color: #cfd8dc
+        color: $ficha-texto-suave
 
 // Móvil: la navegación pasa a una fila que se desplaza en horizontal, encima del contenido.
 @include movil
@@ -213,7 +208,7 @@ app-ayuda
 
 .ayuda-version
     border-radius: 6px
-    background: #4a4a4a
+    background: $ficha-fila-alterna
 
     summary
         display: flex
@@ -294,9 +289,9 @@ app-ayuda
     width: 240px
     box-sizing: border-box
     padding: 14px 16px
-    background: #424242
+    background: $ficha-tarjeta
     border-radius: 6px
-    box-shadow: 3px 3px 10px black
+    box-shadow: $ficha-sombra
 
 .ayuda-indice__enlace
     padding: 0
@@ -305,7 +300,7 @@ app-ayuda
     font: inherit
     font-size: 14px
     text-align: left
-    color: #cfd8dc
+    color: $ficha-texto-suave
     text-decoration: underline
     text-decoration-color: $active
     cursor: pointer

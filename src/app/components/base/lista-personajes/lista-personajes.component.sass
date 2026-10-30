@@ -1,5 +1,6 @@
 @use '../../../../assets/css/_variables' as *
 @use '../../../../assets/css/marco' as *
+@use '../../detalles/ficha/ficha-tonos' as *
 
 // El inicio (lienzo «Rol: las vistas que faltan», vista 6): la cabecera común de los listados, la tabla sin
 // pastillas (filas de 60 px, cabecera de 44 px en versalitas, filas alternas) y el paginador en español.
@@ -24,8 +25,8 @@
     min-height: 0
     overflow: auto
     border-radius: 6px
-    box-shadow: 3px 3px 10px black
-    background: #424242
+    box-shadow: $ficha-sombra
+    background: $ficha-tarjeta
 
 .lista-personajes__tabla--oculta
     display: none
@@ -46,7 +47,7 @@ table
 
     td.mat-mdc-cell
         border-bottom: 0
-        color: #e6e9eb
+        color: $ficha-texto
         font-size: 14px
 
     tr.pj-fila
@@ -54,10 +55,10 @@ table
         cursor: pointer
 
     tr.pj-fila:nth-of-type(4n+1)
-        background: #424242
+        background: $ficha-tarjeta
 
     tr.pj-fila:nth-of-type(4n+3)
-        background: #4a4a4a
+        background: $ficha-fila-alterna
 
     tr.pj-fila:hover, tr.pj-fila--abierta
         background: #505050
@@ -99,7 +100,7 @@ table
 
 .pj-linea
     font-size: 13px
-    color: #cfd8dc
+    color: $ficha-texto-suave
     white-space: nowrap
     overflow: hidden
     text-overflow: ellipsis
@@ -140,10 +141,10 @@ table
 
 .pj-etiqueta
     padding: 2px 8px
-    border: 1px solid #f0b45a
+    border: 1px solid $ficha-aviso
     border-radius: 4px
     font-size: 12px
-    color: #f0b45a
+    color: $ficha-aviso
 
 .pj-centro
     text-align: center
@@ -175,7 +176,7 @@ table
         margin: 0
         font-size: 14px
         line-height: 1.5
-        color: #e6e9eb
+        color: $ficha-texto
 
 .pj-vacio
     display: flex
@@ -183,7 +184,7 @@ table
     align-items: center
     gap: 12px
     padding: 32px 16px
-    color: #e6e9eb
+    color: $ficha-texto
 
     p
         margin: 0
@@ -192,8 +193,8 @@ table
     flex: 1 1 auto
     justify-content: center
     border-radius: 6px
-    background: #424242
-    box-shadow: 3px 3px 10px black
+    background: $ficha-tarjeta
+    box-shadow: $ficha-sombra
 
 .lista-personajes__error
     display: flex
@@ -209,7 +210,7 @@ table
     flex-direction: column
     border-radius: 6px
     overflow: hidden
-    box-shadow: 3px 3px 10px black
+    box-shadow: $ficha-sombra
 
 .pj-esqueleto
     display: flex
@@ -217,10 +218,10 @@ table
     gap: 12px
     height: 60px
     padding: 0 16px
-    background: #424242
+    background: $ficha-tarjeta
 
     &:nth-child(even)
-        background: #4a4a4a
+        background: $ficha-fila-alterna
 
 .pj-esqueleto__icono, .pj-esqueleto__lineas span
     background: linear-gradient(90deg, #555 0%, #606060 50%, #555 100%)
@@ -259,7 +260,7 @@ table
 .lista-personajes__paginador
     flex-shrink: 0
     background: transparent
-    color: #cfd8dc
+    color: $ficha-texto-suave
 
 // Móvil (vista 10): cada personaje es una tarjeta de una columna (icono, nombre y su línea); el resto de columnas,
 // en el desplegable.
@@ -286,7 +287,7 @@ table
             min-height: 64px
             margin-bottom: 6px
             border-radius: 6px
-            background: #424242 !important
+            background: $ficha-tarjeta !important
 
         td.mat-column-Campana, td.mat-column-Visibilidad, td.mat-column-Archivado
             display: none

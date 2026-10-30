@@ -1,4 +1,5 @@
 @use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
 
 // El marco (menú y pestañas) ocupa lo que deja la cinta. En el escritorio, el menú va fijo a la izquierda (250 px y
 // su margen) y la zona principal, hundida, a su lado; en el móvil (< 700 px), el menú es un cajón sobre todo lo demás.
@@ -40,7 +41,7 @@
         width: min(320px, 86vw)
         box-sizing: border-box
         padding: 10px
-        background: #424242
+        background: $ficha-tarjeta
         box-shadow: 3px 0 10px black
 
         ::ng-deep .mat-drawer-inner-container

@@ -1,6 +1,7 @@
 @use '../../../../assets/css/variables' as *
 @use '../../../../assets/css/marco' as *
 @use '../../../../assets/css/iconos' as *
+@use '../../detalles/ficha/ficha-tonos' as *
 
 // La ventana de la búsqueda global (lienzo, vista 5): 640 px, campo de 52 px con lupa, grupos con su icono y su
 // número, filas de 44 px (recuadro 28/18, nombre y subtítulo gris a la derecha) y la ayuda del teclado al pie.
@@ -15,9 +16,9 @@
     max-height: 76vh
     background: $primary
     border-radius: 8px
-    box-shadow: 3px 3px 10px black
+    box-shadow: $ficha-sombra
     overflow: hidden
-    color: #e6e9eb
+    color: $ficha-texto
     font-family: Roboto, "Segoe UI", system-ui, sans-serif
 
 .buscador-global__oculto
@@ -153,7 +154,7 @@
     min-height: 32px
     padding: 0 18px 0 58px
     font-size: 13px
-    color: #cfd8dc
+    color: $ficha-texto-suave
     text-decoration: underline
     text-decoration-color: $active
     cursor: pointer
