@@ -5,7 +5,10 @@ import Swal from 'sweetalert2';
 import { confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
 import {
     Clase,
+    ClaseConjuroEspecialRef,
+    ClaseEscuelaEspecialista,
     ClaseMutationRequest,
+    ClaseNivelConjuroRequisito,
     ClaseNivelDetalle,
     ClasePrerrequisitos,
     ClaseAumentoClaseLanzadoraCatalogItem,
@@ -13,6 +16,7 @@ import {
     ClasePuntosHabilidadCatalogItem,
 } from 'src/app/interfaces/clase';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
+import { EscuelaConjuros } from 'src/app/interfaces/escuela-conjuros';
 import { ExtraDetalle } from 'src/app/interfaces/extra';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { Manual } from 'src/app/interfaces/manual';
@@ -89,6 +93,29 @@ interface ClaseRelacionNivelRow {
     extraBusqueda: string;
 }
 
+/** Un conjuro de la lista de la clase que solo da una de sus aptitudes (`Conjuros.Listado_por_especial`). */
+interface ClaseConjuroPorEspecialRow {
+    uid: string;
+    id_conjuro: number;
+    conjuroBusqueda: string;
+    nivel: number;
+    espontaneo: boolean;
+    id_especial: number;
+    especialBusqueda: string;
+    /** 0: con cualquier extra de la aptitud. */
+    id_extra: number;
+    extraBusqueda: string;
+}
+
+/** Un nivel de conjuro que pide una aptitud o una dote (`Conjuros.Niveles_con_requisito`). */
+interface ClaseNivelRequisitoRow {
+    uid: string;
+    nivel: number;
+    tipo: 'especial' | 'dote';
+    id: number;
+    busqueda: string;
+}
+
 interface ClaseNivelEditor {
     nivel: number;
     reserva_psionica: number;
@@ -141,6 +168,15 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     conjuros: any[] = [];
     habilidadesRows: ClaseHabilidadRow[] = [];
     relacionesRows: ClaseRelacionNivelRow[] = [];
+    conjurosPorEspecialRows: ClaseConjuroPorEspecialRow[] = [];
+    nivelesRequisitoRows: ClaseNivelRequisitoRow[] = [];
+    escuelas: EscuelaConjuros[] = [];
+    readonly nivelesConjuroRequisito = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
+    /**
+     * La clase tal como llegó al editarla: el `PUT /clases` deja vacío lo que no viene, así que lo que este editor no
+     * edita (la lista de conjuros, el libro y el divisor del nivel de lanzador) se reenvía tal cual.
+     */
+    private claseCargada: Clase | null = null;
     niveles: ClaseNivelEditor[] = [];
     manualBusqueda = '';
     claseOrigenBusqueda = '';
@@ -281,6 +317,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         lanzamiento_espontaneo: [false],
         clase_origen_id: [0],
         clase_origen_nombre: [''],
+        escuela_especialista_id: [0],
     });
 
     constructor(
@@ -794,7 +831,12 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
                 puede_elegir_especialidad: raw.puede_elegir_especialidad === true,
                 Lanzamiento_espontaneo: raw.lanzamiento_espontaneo === true,
                 Clase_origen: { Id: claseOrigen?.Id ?? 0, Nombre: claseOrigen?.Nombre ?? this.texto(raw.clase_origen_nombre) },
-                Listado: [],
+                Libro: this.claseCargada?.Conjuros?.Libro ?? null,
+                Nivel_lanzador_divisor: this.claseCargada?.Conjuros?.Nivel_lanzador_divisor ?? 1,
+                Listado: [...(this.claseCargada?.Conjuros?.Listado ?? [])],
+                Escuela_especialista: this.construirEscuelaEspecialista(this.entero(raw.escuela_especialista_id)),
+                Listado_por_especial: this.construirListadoPorEspecial(),
+                Niveles_con_requisito: this.construirNivelesConRequisito(),
             },
             Roles: {
                 Dps: raw.rol_dps === true,
@@ -825,6 +867,136 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
             },
         };
         return payload;
+    }
+
+    private construirEscuelaEspecialista(idEscuela: number): ClaseEscuelaEspecialista | null {
+        if (idEscuela <= 0)
+            return null;
+        const escuela = this.escuelas.find((item) => item.Id === idEscuela);
+        return { Id: idEscuela, Nombre: escuela?.Nombre ?? '', Nombre_esp: escuela?.Nombre_especial ?? '' };
+    }
+
+    private construirListadoPorEspecial(): ClaseConjuroEspecialRef[] {
+        return this.conjurosPorEspecialRows
+            .filter((row) => this.entero(row.id_conjuro) > 0 && this.entero(row.id_especial) > 0)
+            .map((row) => ({
+                Id: this.entero(row.id_conjuro),
+                Nombre: this.texto(row.conjuroBusqueda),
+                Nivel: Math.min(9, Math.max(0, this.entero(row.nivel))),
+                Espontaneo: row.espontaneo === true,
+                Especial: { Id: this.entero(row.id_especial), Nombre: this.texto(row.especialBusqueda) },
+                Extra: this.entero(row.id_extra) > 0 ? { Id: this.entero(row.id_extra), Nombre: this.texto(row.extraBusqueda) } : null,
+            }));
+    }
+
+    private construirNivelesConRequisito(): ClaseNivelConjuroRequisito[] {
+        return this.nivelesRequisitoRows
+            .filter((row) => this.entero(row.id) > 0)
+            .map((row) => {
+                const ref = { Id: this.entero(row.id), Nombre: this.texto(row.busqueda) };
+                return {
+                    Nivel: Math.min(9, Math.max(0, this.entero(row.nivel))),
+                    Especial: row.tipo === 'especial' ? ref : null,
+                    Dote: row.tipo === 'dote' ? ref : null,
+                };
+            });
+    }
+
+    agregarConjuroPorEspecial(): void {
+        this.conjurosPorEspecialRows = [...this.conjurosPorEspecialRows, {
+            uid: this.uid(), id_conjuro: 0, conjuroBusqueda: '', nivel: 1, espontaneo: false,
+            id_especial: 0, especialBusqueda: '', id_extra: 0, extraBusqueda: '',
+        }];
+    }
+
+    quitarConjuroPorEspecial(index: number): void {
+        this.conjurosPorEspecialRows = this.conjurosPorEspecialRows.filter((_, rowIndex) => rowIndex !== index);
+    }
+
+    getConjurosFiltrados(row: ClaseConjuroPorEspecialRow): any[] {
+        return this.filtrarPorNombre(this.conjuros, row.conjuroBusqueda);
+    }
+
+    seleccionarConjuroPorEspecial(row: ClaseConjuroPorEspecialRow, id: number): void {
+        const conjuro = this.conjuros.find((item) => this.getId(item) === this.entero(id));
+        this.conjurosPorEspecialRows = this.conjurosPorEspecialRows.map((actual) => actual.uid === row.uid
+            ? { ...actual, id_conjuro: conjuro ? this.getId(conjuro) : 0, conjuroBusqueda: conjuro?.Nombre ?? '' }
+            : actual);
+    }
+
+    /** Las aptitudes que da la clase en sus niveles (las del paso «Dotes y especiales»); sin ninguna, todas. */
+    getEspecialesDeLaClase(busqueda: string): EspecialClaseDetalle[] {
+        const ids = new Set(this.relacionesRows.filter((row) => row.tipo === 'especial').map((row) => this.entero(row.id)));
+        const propias = this.especiales.filter((item) => ids.has(item.Id));
+        return this.filtrarPorNombre(propias.length > 0 ? propias : this.especiales, busqueda);
+    }
+
+    seleccionarEspecialConjuro(row: ClaseConjuroPorEspecialRow, id: number): void {
+        const especial = this.especiales.find((item) => item.Id === this.entero(id));
+        this.conjurosPorEspecialRows = this.conjurosPorEspecialRows.map((actual) => actual.uid === row.uid
+            ? { ...actual, id_especial: especial?.Id ?? 0, especialBusqueda: especial?.Nombre ?? '', id_extra: 0, extraBusqueda: '' }
+            : actual);
+    }
+
+    getExtrasConjuroPorEspecial(row: ClaseConjuroPorEspecialRow): Array<{ Id_extra: number; Extra: string; }> {
+        const especial = this.especiales.find((item) => item.Id === this.entero(row.id_especial));
+        return this.filtrarExtras((especial?.Extras ?? []).map((item) => ({ Id_extra: item.Id_extra, Extra: item.Extra })), row.extraBusqueda);
+    }
+
+    seleccionarExtraConjuroPorEspecial(row: ClaseConjuroPorEspecialRow, id: number): void {
+        const extra = this.getExtrasConjuroPorEspecial({ ...row, extraBusqueda: '' }).find((item) => item.Id_extra === this.entero(id));
+        this.conjurosPorEspecialRows = this.conjurosPorEspecialRows.map((actual) => actual.uid === row.uid
+            ? { ...actual, id_extra: extra?.Id_extra ?? 0, extraBusqueda: extra?.Extra ?? '' }
+            : actual);
+    }
+
+    agregarNivelRequisito(): void {
+        this.nivelesRequisitoRows = [...this.nivelesRequisitoRows, { uid: this.uid(), nivel: 1, tipo: 'especial', id: 0, busqueda: '' }];
+    }
+
+    quitarNivelRequisito(index: number): void {
+        this.nivelesRequisitoRows = this.nivelesRequisitoRows.filter((_, rowIndex) => rowIndex !== index);
+    }
+
+    cambiarTipoNivelRequisito(row: ClaseNivelRequisitoRow, tipo: 'especial' | 'dote'): void {
+        this.nivelesRequisitoRows = this.nivelesRequisitoRows.map((actual) => actual.uid === row.uid
+            ? { ...actual, tipo, id: 0, busqueda: '' }
+            : actual);
+    }
+
+    getRequisitosFiltrados(row: ClaseNivelRequisitoRow): any[] {
+        return row.tipo === 'dote' ? this.filtrarPorNombre(this.dotes, row.busqueda) : this.getEspecialesDeLaClase(row.busqueda);
+    }
+
+    seleccionarRequisitoNivel(row: ClaseNivelRequisitoRow, id: number): void {
+        const item = (row.tipo === 'dote' ? this.dotes : this.especiales).find((actual: any) => this.getId(actual) === this.entero(id));
+        this.nivelesRequisitoRows = this.nivelesRequisitoRows.map((actual) => actual.uid === row.uid
+            ? { ...actual, id: item ? this.getId(item) : 0, busqueda: item?.Nombre ?? '' }
+            : actual);
+    }
+
+    private hidratarConjurosPorEspecial(clase: Clase): ClaseConjuroPorEspecialRow[] {
+        return (clase.Conjuros?.Listado_por_especial ?? []).map((ref) => ({
+            uid: this.uid(),
+            id_conjuro: this.entero(ref.Id),
+            conjuroBusqueda: ref.Nombre ?? '',
+            nivel: this.entero(ref.Nivel),
+            espontaneo: ref.Espontaneo === true,
+            id_especial: this.entero(ref.Especial?.Id),
+            especialBusqueda: ref.Especial?.Nombre ?? '',
+            id_extra: this.entero(ref.Extra?.Id),
+            extraBusqueda: ref.Extra?.Nombre ?? '',
+        }));
+    }
+
+    private hidratarNivelesRequisito(clase: Clase): ClaseNivelRequisitoRow[] {
+        return (clase.Conjuros?.Niveles_con_requisito ?? []).map((fila) => ({
+            uid: this.uid(),
+            nivel: this.entero(fila.Nivel),
+            tipo: fila.Dote ? 'dote' as const : 'especial' as const,
+            id: this.entero(fila.Dote?.Id ?? fila.Especial?.Id),
+            busqueda: fila.Dote?.Nombre ?? fila.Especial?.Nombre ?? '',
+        }));
     }
 
     private construirAlineamiento(raw: any): any {
@@ -1014,6 +1186,9 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
             this.extras = this.ordenar(items ?? []);
             this.catalogosPrerrequisito['extras'] = this.toCatalog(items, 'Id', 'Nombre');
         });
+        this.escuelaSvc.getEscuelas().pipe(takeUntil(this.destroy$)).subscribe((items) => {
+            this.escuelas = (items ?? []).filter((escuela) => escuela.Id > 0).sort(porNombre);
+        });
         this.conjuroSvc.getConjuros().pipe(takeUntil(this.destroy$)).subscribe((items) => {
             this.conjuros = this.ordenar(items ?? []);
             this.catalogosPrerrequisito['conjuros'] = this.toCatalog(items, 'Id', 'Nombre');
@@ -1041,6 +1216,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private hidratarDesdeClase(clase: Clase): void {
+        this.claseCargada = clase;
         this.manualBusqueda = clase.Manual?.Nombre ?? '';
         this.claseOrigenBusqueda = clase.Conjuros?.Clase_origen?.Nombre ?? '';
         this.form.reset({
@@ -1078,10 +1254,13 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
             lanzamiento_espontaneo: clase.Conjuros?.Lanzamiento_espontaneo === true,
             clase_origen_id: this.entero(clase.Conjuros?.Clase_origen?.Id),
             clase_origen_nombre: clase.Conjuros?.Clase_origen?.Nombre ?? '',
+            escuela_especialista_id: this.entero(clase.Conjuros?.Escuela_especialista?.Id),
         });
         this.habilidadesRows = this.hidratarHabilidades(clase);
         this.niveles = this.hidratarNiveles(clase);
         this.relacionesRows = this.hidratarRelaciones(clase);
+        this.conjurosPorEspecialRows = this.hidratarConjurosPorEspecial(clase);
+        this.nivelesRequisitoRows = this.hidratarNivelesRequisito(clase);
         this.prerrequisitosSeleccionados = this.hidratarPrerrequisitosSeleccionados(clase);
         this.prerrequisitosEditor = [];
         this.hidratarSelecciones(clase);
@@ -1181,6 +1360,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     private reiniciarFilas(): void {
         this.habilidadesRows = [this.crearHabilidadRow('base')];
         this.relacionesRows = [];
+        this.conjurosPorEspecialRows = [];
+        this.nivelesRequisitoRows = [];
         this.sincronizarNiveles();
     }
 
@@ -1228,7 +1409,9 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
             lanzamiento_espontaneo: false,
             clase_origen_id: 0,
             clase_origen_nombre: '',
+            escuela_especialista_id: 0,
         });
+        this.claseCargada = null;
         this.manualBusqueda = '';
         this.claseOrigenBusqueda = '';
         this.prerrequisitosEditor = [];

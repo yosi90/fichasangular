@@ -18,6 +18,13 @@ import { UserService } from 'src/app/services/user.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
+import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
+import { PrerequisiteCatalogContext, PrerequisiteCatalogItem, PrerequisiteRowModel, PrerequisiteType } from '../prerrequisito-editor/prerrequisito-editor.models';
+import { getPrerequisiteDefinition, getPrerequisiteTypeOptions } from '../prerrequisito-editor/prerrequisito-editor.registry';
+import { filasDesdePrerrequisitos, prerrequisitosDesdeFilas } from 'src/app/services/utils/plantilla-formulario';
+
+/** Los prerrequisitos que admite un especial: con qué actitud se puede elegir (la senda de una clase, por su alineamiento). */
+const TIPOS_PRERREQUISITO_ESPECIAL: readonly PrerequisiteType[] = ['actitud_requerido', 'actitud_prohibido'];
 
 interface NombreIdItem {
     Id: number;
@@ -80,6 +87,20 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
     customModalRowUid = '';
     customModalHabilidad: HabilidadBasicaDetalle | null = null;
     customModalGuardando = false;
+    /** Los prerrequisitos de actitud, con el editor compartido. */
+    readonly tiposPrerrequisito = getPrerequisiteTypeOptions((tipo) => TIPOS_PRERREQUISITO_ESPECIAL.includes(tipo));
+    prerrequisitosTipos: PrerequisiteType[] = [];
+    prerrequisitosFilas: PrerequisiteRowModel[] = [];
+    actitudes: PrerequisiteCatalogItem[] = [];
+    readonly catalogContext: PrerequisiteCatalogContext = {
+        getCatalog: (tipo) => TIPOS_PRERREQUISITO_ESPECIAL.includes(tipo) ? this.actitudes : [],
+        getCatalogName: (tipo, id) => (TIPOS_PRERREQUISITO_ESPECIAL.includes(tipo) ? this.actitudes : []).find((item) => item.id === this.entero(id))?.nombre ?? '',
+        getDoteExtraOptions: () => [],
+        dotePermiteExtra: () => false,
+        getGlobalExtraOptions: () => [],
+        habilidadPermiteExtra: () => false,
+        especialPermiteExtra: () => false,
+    };
 
     readonly caracteristicas: NombreIdItem[] = [
         { Id: 0, Nombre: 'No aplica' },
@@ -113,6 +134,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
         ca: [0],
         arm_nat: [0],
         rd: [0],
+        tamano_pasos: [0],
         no_aplica: [true],
         da_ca: [false],
         da_armadura_natural: [false],
@@ -132,6 +154,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
         private habilidadSvc: HabilidadService,
         private extraSvc: ExtraService,
         private subtipoSvc: SubtipoService,
+        private razaCatalogosSvc: RazaCatalogosService,
     ) { }
 
     ngOnInit(): void {
@@ -431,6 +454,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
                     ca: this.entero(raw.ca),
                     arm_nat: this.entero(raw.arm_nat),
                     rd: this.entero(raw.rd),
+                    tamano_pasos: this.entero(raw.tamano_pasos),
                 },
                 flags_extra: {
                     no_aplica: raw.no_aplica === true,
@@ -446,8 +470,31 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
                 .filter((row) => this.entero(row.id_extra) > 0)
                 .map((row) => ({ id_extra: this.entero(row.id_extra), orden: Math.max(1, this.entero(row.orden, 1)) })),
             habilidades: this.construirHabilidadesPayload(),
+            prerrequisitos: prerrequisitosDesdeFilas(this.prerrequisitosFilas, TIPOS_PRERREQUISITO_ESPECIAL) as unknown as EspecialClaseMutationRequest['prerrequisitos'],
         };
         return payload;
+    }
+
+    anadirPrerrequisito(tipo: PrerequisiteType): void {
+        const fila = getPrerequisiteDefinition(tipo).createDefaultRow();
+        fila.uid = this.uid();
+        if (!this.prerrequisitosTipos.includes(tipo))
+            this.prerrequisitosTipos = TIPOS_PRERREQUISITO_ESPECIAL.filter((t) => t === tipo || this.prerrequisitosTipos.includes(t));
+        this.prerrequisitosFilas = [...this.prerrequisitosFilas, fila];
+    }
+
+    alCambiarTiposPrerrequisito(tipos: PrerequisiteType[]): void {
+        this.prerrequisitosTipos = tipos;
+    }
+
+    alCambiarPrerrequisitos(filas: PrerequisiteRowModel[]): void {
+        this.prerrequisitosFilas = filas;
+    }
+
+    private hidratarPrerrequisitos(especial: EspecialClaseDetalle | null): void {
+        const { filas } = filasDesdePrerrequisitos(especial?.Prerrequisitos, TIPOS_PRERREQUISITO_ESPECIAL, () => this.uid());
+        this.prerrequisitosFilas = filas;
+        this.prerrequisitosTipos = TIPOS_PRERREQUISITO_ESPECIAL.filter((tipo) => filas.some((fila) => fila.tipo === tipo));
     }
 
     private construirHabilidadesPayload(): EspecialClaseMutationHabilidad[] {
@@ -468,6 +515,11 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
             this.reclasificarHabilidadesCustom();
         });
         this.subtipoSvc.getSubtipos().pipe(takeUntil(this.destroy$)).subscribe((items) => this.subtipos = this.ordenar(items));
+        this.razaCatalogosSvc.getActitudes().pipe(takeUntil(this.destroy$)).subscribe((items) => {
+            this.actitudes = (items ?? [])
+                .map((item) => ({ id: this.entero(item?.Id), nombre: this.texto(item?.Nombre) }))
+                .filter((item) => item.id > 0 && item.nombre.length > 0);
+        });
         this.habilidadSvc.habilidadesCustomMutadas$.pipe(takeUntil(this.destroy$)).subscribe((habilidad) => this.upsertHabilidadCustom(habilidad));
     }
 
@@ -522,6 +574,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
             ca: this.entero(especial.Bonificadores?.CA),
             arm_nat: this.entero(especial.Bonificadores?.Armadura_natural),
             rd: this.entero(especial.Bonificadores?.RD),
+            tamano_pasos: this.entero(especial.Bonificadores?.Tamano_pasos),
             no_aplica: especial.Flags_extra?.No_aplica === true,
             da_ca: especial.Flags_extra?.Da_CA === true,
             da_armadura_natural: especial.Flags_extra?.Da_armadura_natural === true,
@@ -530,6 +583,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
         });
         this.extraRows = this.hidratarExtras(especial);
         this.habilidadRows = this.hidratarHabilidades(especial);
+        this.hidratarPrerrequisitos(especial);
         this.initialEditSnapshot = this.buildEditSnapshot();
     }
 
@@ -595,6 +649,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
             ca: 0,
             arm_nat: 0,
             rd: 0,
+            tamano_pasos: 0,
             no_aplica: true,
             da_ca: false,
             da_armadura_natural: false,
@@ -609,6 +664,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
     private resetFilas(): void {
         this.extraRows = [this.crearExtraRow()];
         this.habilidadRows = [this.crearHabilidadRow('base')];
+        this.hidratarPrerrequisitos(null);
     }
 
     private seleccionarCustomEnFila(habilidad: HabilidadBasicaDetalle): void {

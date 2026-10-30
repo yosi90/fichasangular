@@ -76,6 +76,24 @@ describe('DetallesEspecialComponent', () => {
         expect(elemento().querySelector('mat-chip')).toBeNull();
     });
 
+    it('enseña el cambio de tamaño entre los bonificadores y los prerrequisitos de actitud con su frase', () => {
+        component.especial = furia({
+            Bonificadores: { Fuerza: 2, Destreza: -2, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0, CA: 0, Armadura_natural: 0, RD: 0, Tamano_pasos: 1 },
+            Prerrequisitos: {
+                actitud_requerido: [],
+                actitud_prohibido: [
+                    { Id_actitud: 4, Actitud: 'Bueno', Opcional: 0, Frase: 'Cualquier alineamiento no bueno' },
+                    { Id_actitud: 5, Actitud: 'Maligno', Opcional: 0, Frase: 'Cualquier alineamiento no maligno' },
+                ],
+            },
+        });
+        fixture.detectChanges();
+
+        expect(filas('Bonificadores')).toEqual(['Fuerza · +2', 'Destreza · -2', 'Categorías de tamaño · +1']);
+        expect(lateral('Prerrequisitos')?.textContent).toContain('Cualquier alineamiento no bueno');
+        expect(lateral('Prerrequisitos')?.textContent).toContain('Cualquier alineamiento no maligno');
+    });
+
     it('no enseña lo que viene vacío', () => {
         component.especial = furia({
             Descripcion: '',

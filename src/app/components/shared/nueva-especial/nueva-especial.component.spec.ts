@@ -72,6 +72,7 @@ describe('NuevaEspecialComponent', () => {
             habilidadSvc as any,
             { getExtras: () => of([{ Id: 4, Nombre: 'Fuego' }]) } as any,
             { getSubtipos: () => of([{ Id: 9, Nombre: 'Fuego' }]) } as any,
+            { getActitudes: () => of([{ Id: 4, Nombre: 'Bueno' }, { Id: 5, Nombre: 'Maligno' }]) } as any,
         );
         spyOn(Swal, 'fire').and.returnValue(Promise.resolve({ isConfirmed: true } as any));
         component.ngOnInit();
@@ -138,6 +139,42 @@ describe('NuevaEspecialComponent', () => {
 
         component.form.patchValue({ nombre: 'Aura superior' });
         expect(component.isDirty).toBeTrue();
+    });
+
+    it('manda el cambio de tamaño y los prerrequisitos de actitud, y los recupera al editar', () => {
+        especialSvc.getEspecialFresco.and.returnValue(of(buildEspecial({
+            Bonificadores: { ...buildEspecial().Bonificadores, Tamano_pasos: 1 },
+            Prerrequisitos: {
+                actitud_requerido: [{ Id_actitud: 4, Actitud: 'Bueno', Opcional: 0, Frase: 'Cualquier alineamiento bueno' }],
+                actitud_prohibido: [],
+            },
+        })));
+        component.modo = 'editar';
+        component.idEspecial = 77;
+        component.ngOnChanges({
+            modo: { currentValue: 'editar', previousValue: 'crear', firstChange: false, isFirstChange: () => false },
+            idEspecial: { currentValue: 77, previousValue: null, firstChange: false, isFirstChange: () => false },
+        });
+
+        expect(component.form.value.tamano_pasos).toBe(1);
+        expect(component.prerrequisitosTipos).toEqual(['actitud_requerido']);
+        expect(component.isDirty).toBeFalse();
+        let payload = (component as any).construirPayload();
+        expect(payload.especial.bonificadores.tamano_pasos).toBe(1);
+        expect(payload.prerrequisitos).toEqual({ actitud_requerido: [{ id_actitud: 4, opcional: 0 }], actitud_prohibido: [] });
+
+        component.anadirPrerrequisito('actitud_prohibido');
+        component.alCambiarPrerrequisitos(component.prerrequisitosFilas.map((fila) => fila.tipo === 'actitud_prohibido' ? { ...fila, id: 5 } : fila));
+        expect(component.isDirty).toBeTrue();
+        payload = (component as any).construirPayload();
+        expect(payload.prerrequisitos.actitud_prohibido).toEqual([{ id_actitud: 5, opcional: 0 }]);
+    });
+
+    it('un especial nuevo no cambia el tamaño ni pide actitud', () => {
+        const payload = (component as any).construirPayload();
+        expect(payload.especial.bonificadores.tamano_pasos).toBe(0);
+        expect(payload.prerrequisitos).toEqual({ actitud_requerido: [], actitud_prohibido: [] });
+        expect(component.catalogContext.getCatalog('actitud_requerido')).toEqual([{ id: 4, nombre: 'Bueno' }, { id: 5, nombre: 'Maligno' }]);
     });
 
     it('crea habilidad custom desde el modal y la selecciona', async () => {

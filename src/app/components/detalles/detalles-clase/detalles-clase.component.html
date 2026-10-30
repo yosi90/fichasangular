@@ -217,6 +217,34 @@
             </tbody>
         </table>
     </app-ficha-bloque>
+
+    <app-ficha-bloque titulo="Conjuros que da una aptitud" *ngIf="listadoConjurosAptitud.length > 0">
+        <table class="ficha-tabla">
+            <thead>
+                <tr>
+                    <th scope="col">Aptitud</th>
+                    <th scope="col">Nivel</th>
+                    <th scope="col">Conjuros</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let grupo of listadoConjurosAptitud">
+                    <td>
+                        <button type="button" class="ficha-enlace" (click)="abrirDetalleEspecialPorId(grupo.especial.Id)">{{grupo.especial.Nombre}}</button>
+                        <span class="ficha-nota" *ngIf="grupo.extra"> ({{grupo.extra}})</span>
+                    </td>
+                    <td>{{grupo.etiqueta}}</td>
+                    <td>
+                        <ng-container *ngFor="let conjuro of grupo.conjuros; let ultimo = last">
+                            <button type="button" class="ficha-enlace" (click)="abrirDetallesConjuro(conjuro.Id)">{{conjuro.Nombre}}</button>
+                            <span class="ficha-nota" *ngIf="conjuro.Espontaneo"> (espontáneo)</span>
+                            <ng-container *ngIf="!ultimo">, </ng-container>
+                        </ng-container>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </app-ficha-bloque>
 </app-ficha-detalle>
 
 <!-- Un especial o una dote de la progresión: enlace a su detalle, con su extra entre paréntesis. -->

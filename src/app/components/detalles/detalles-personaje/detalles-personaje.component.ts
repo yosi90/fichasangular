@@ -1217,6 +1217,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
                 detalle: this.texto(pj.Raza?.Tamano?.Nombre) ? `· ${pj.Raza.Tamano.Nombre.trim()}` : null,
                 alPulsar: idRaza > 0 ? () => this.verDetallesRaza(this.pj.Raza.Id) : undefined,
             },
+            this.datoTamano(),
             {
                 etiqueta: 'Tipo de criatura',
                 valor: this.texto(pj.Tipo_criatura?.Nombre) || null,
@@ -1265,6 +1266,28 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             { etiqueta: 'Trama', valor: preview ? null : this.texto(pj.Trama) || null },
             { etiqueta: 'Subtrama', valor: preview ? null : this.texto(pj.Subtrama) || null },
         ];
+    }
+
+    /**
+     * El tamaño que cuenta (`tamano` de la ficha): el de la raza movido por las aptitudes que lo cambian, con su espacio y
+     * su alcance. Si no es el de la raza, la ayuda dice por qué («Mediano por su raza; Tamaño imponente +1»).
+     */
+    private datoTamano(): DatoFicha {
+        const tamano = this.pj?.Tamano_efectivo;
+        const pies = (valor: number | null | undefined) => valor === null || valor === undefined ? null : `${formatoNumero(Number(valor))}'`;
+        const medidas = [
+            pies(tamano?.espacio) ? `espacio ${pies(tamano?.espacio)}` : null,
+            pies(tamano?.alcance) ? `alcance ${pies(tamano?.alcance)}` : null,
+        ].filter((parte): parte is string => !!parte);
+        const cambia = !!tamano && tamano.pasos !== 0;
+        return {
+            etiqueta: 'Tamaño',
+            valor: this.texto(tamano?.nombre) || null,
+            detalle: medidas.length > 0 ? `· ${medidas.join(' · ')}` : null,
+            ayuda: cambia
+                ? [`${this.texto(tamano?.base?.Nombre)} por su raza`, ...(tamano?.origenes ?? []).map((origen) => `${origen.origen} ${textoConSigno(origen.pasos)}`)].join('; ')
+                : null,
+        };
     }
 
     private calcularFranja(): DatoFranja[] {

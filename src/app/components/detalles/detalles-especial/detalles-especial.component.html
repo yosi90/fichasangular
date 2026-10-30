@@ -11,6 +11,10 @@
     <app-ficha-cuerpo>
         <app-ficha-seccion titulo="Descripción" [texto]="especial.Descripcion"></app-ficha-seccion>
 
+        <app-ficha-lateral titulo="Prerrequisitos" *ngIf="prerrequisitosAgrupados.length > 0">
+            <app-ficha-prerrequisitos [grupos]="prerrequisitosAgrupados"></app-ficha-prerrequisitos>
+        </app-ficha-lateral>
+
         <app-ficha-lateral titulo="Bonificadores" *ngIf="bonificadores.length > 0">
             <table class="ficha-pares">
                 <tbody>

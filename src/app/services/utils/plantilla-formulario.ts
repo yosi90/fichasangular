@@ -397,9 +397,21 @@ export function filasDesdePrerrequisitosPlantilla(
     prerrequisitos: PlantillaPrerrequisitos | null | undefined,
     uid: () => string,
 ): { filas: PrerequisiteRowModel[]; frases: Map<string, string>; } {
+    return filasDesdePrerrequisitos(prerrequisitos, TIPOS_PRERREQUISITO_PLANTILLA, uid);
+}
+
+/**
+ * Las familias de `Prerrequisitos` (la forma de lectura) de esos tipos como filas del editor compartido, con la `Frase`
+ * de la API de cada una (por `uid`). La usan la plantilla y los prerrequisitos de actitud de los especiales.
+ */
+export function filasDesdePrerrequisitos(
+    prerrequisitos: object | null | undefined,
+    tipos: readonly PrerequisiteType[],
+    uid: () => string,
+): { filas: PrerequisiteRowModel[]; frases: Map<string, string>; } {
     const filas: PrerequisiteRowModel[] = [];
     const frases = new Map<string, string>();
-    TIPOS_PRERREQUISITO_PLANTILLA.forEach((tipo) => {
+    tipos.forEach((tipo) => {
         const items = ((prerrequisitos as Record<string, PrerrequisitoItem[] | undefined> | null | undefined)?.[tipo] ?? []);
         items.forEach((item) => {
             const fila: PrerequisiteRowModel = {
@@ -425,14 +437,22 @@ export function firmaFilaPrerrequisito(fila: PrerequisiteRowModel): string {
 
 /** Los requisitos en el formato del alta (`prerrequisitos`), sin las filas incompletas. */
 export function prerrequisitosPlantillaDesdeFilas(filas: PrerequisiteRowModel[]): PlantillaPrerrequisitosRequest {
-    const salida = Object.fromEntries(TIPOS_PRERREQUISITO_PLANTILLA.map((tipo) => [tipo, [] as Record<string, number>[]])) as Record<string, Record<string, number>[]>;
+    return prerrequisitosDesdeFilas(filas, TIPOS_PRERREQUISITO_PLANTILLA) as unknown as PlantillaPrerrequisitosRequest;
+}
+
+/** Las filas de esos tipos en el formato de escritura (`{ <tipo>: [{ id_…, opcional }] }`), sin las incompletas. */
+export function prerrequisitosDesdeFilas(
+    filas: PrerequisiteRowModel[],
+    tipos: readonly PrerequisiteType[],
+): Record<string, Record<string, number>[]> {
+    const salida = Object.fromEntries(tipos.map((tipo) => [tipo, [] as Record<string, number>[]])) as Record<string, Record<string, number>[]>;
     filas.forEach((fila) => {
         const familia = PRERREQUISITOS_PLANTILLA[fila.tipo];
-        if (!familia || !getPrerequisiteDefinition(fila.tipo).isComplete(fila))
+        if (!familia || !salida[fila.tipo] || !getPrerequisiteDefinition(fila.tipo).isComplete(fila))
             return;
         salida[fila.tipo].push({ ...familia.escribir(fila), opcional: Math.max(0, toInt(fila.opcional)) });
     });
-    return salida as unknown as PlantillaPrerrequisitosRequest;
+    return salida;
 }
 
 function textoConRelleno(valor: string): string {

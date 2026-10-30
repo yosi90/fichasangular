@@ -591,6 +591,43 @@ describe('DetallesClaseComponent', () => {
         expect(valor('Lista de conjuros de')).toBe('Clérigo');
     });
 
+    it('enseña la escuela fija, los niveles con requisito y los conjuros que da cada aptitud (clases propias)', () => {
+        component.clase = crearClaseMock({
+            Conjuros: {
+                ...crearClaseMock().Conjuros,
+                Arcanos: true,
+                Escuela_especialista: { Id: 9, Nombre: 'Escuela propia', Nombre_esp: 'Especialista propio' },
+                Listado_por_especial: [
+                    { Id: 21, Nombre: 'Conjuro de la senda', Nivel: 1, Espontaneo: false, Especial: { Id: 50, Nombre: 'Senda' }, Extra: null },
+                    { Id: 22, Nombre: 'Conjuro del fuego', Nivel: 2, Espontaneo: true, Especial: { Id: 51, Nombre: 'Otra senda' }, Extra: { Id: 7, Nombre: 'Fuego' } },
+                ],
+                Niveles_con_requisito: [
+                    { Nivel: 7, Especial: { Id: 60, Nombre: 'Implante' }, Dote: null },
+                    { Nivel: 7, Especial: null, Dote: { Id: 70, Nombre: 'Dote del implante' } },
+                ],
+            },
+        });
+        fixture.detectChanges();
+
+        expect(valor('Siempre especialista en')).toBe('Escuela propia · Especialista propio');
+        expect(valor('Conjuros de nivel 7')).toBe('Con Implante o Dote del implante');
+        expect(texto()).toContain('Conjuros que da una aptitud');
+        expect(texto()).toContain('Otra senda (Fuego)');
+        expect(texto()).toContain('Conjuro del fuego (espontáneo)');
+
+        const spy = spyOn(component.especialDetalles, 'emit');
+        enlace('Senda').click();
+        expect(spy).toHaveBeenCalledWith(50);
+    });
+
+    it('sin escuela fija, requisitos ni listas por aptitud no enseña nada de eso', () => {
+        component.clase = crearClaseMock({ Conjuros: { ...crearClaseMock().Conjuros, Arcanos: true } });
+        fixture.detectChanges();
+
+        expect(valor('Siempre especialista en')).toBeNull();
+        expect(texto()).not.toContain('Conjuros que da una aptitud');
+    });
+
     it('enseña el prerrequisito «flag» detrás de los grupos y las competencias pedidas como enlaces', () => {
         component.clase = crearClaseMock({
             Prerrequisitos_flags: { habilidad_clase: true },

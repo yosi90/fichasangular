@@ -122,9 +122,13 @@ export class DetallesConjuroComponent {
     }
 
     private construirEtiquetas(): EtiquetaFicha[] {
-        return [
+        return ([
             this.conjuro?.Permanente ? { texto: 'Puede hacerse permanente' } : null,
-        ].filter((etiqueta): etiqueta is EtiquetaFicha => etiqueta !== null);
+            // Una escuela propia: homebrew aunque el conjuro no lo diga.
+            !this.conjuro?.Psionico && this.conjuro?.Escuela?.Oficial === false
+                ? { texto: 'Escuela homebrew', ayuda: `${this.conjuro.Escuela.Nombre} no es una escuela de los manuales oficiales`, aviso: true }
+                : null,
+        ] as (EtiquetaFicha | null)[]).filter((etiqueta): etiqueta is EtiquetaFicha => etiqueta !== null);
     }
 
     private construirDatos(): DatoFicha[] {

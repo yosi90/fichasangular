@@ -6,11 +6,13 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { GrupoPrerrequisitos, agruparPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
 
 /** Cómo se enseñan las claves de `Bonificadores` que no se leen bien tal cual. */
 const NOMBRE_BONIFICADOR: Readonly<Record<string, string>> = {
     ...NOMBRES_CARACTERISTICAS,
     Armadura_natural: 'Armadura natural',
+    Tamano_pasos: 'Categorías de tamaño',
 };
 
 /** Una habilidad del especial, ya lista para enseñar: «Saber (arcano)» con sus rangos. */
@@ -36,6 +38,7 @@ export class DetallesEspecialComponent {
         this.bonificadores = this.getBonificadoresActivos();
         this.flagsExtra = this.getFlagsExtraActivos();
         this.extras = this.getExtrasOrdenados();
+        this.prerrequisitosAgrupados = agruparPrerrequisitos(valor?.Prerrequisitos);
         this.habilidades = this.getHabilidadesOrdenadas().map((habilidad) => ({
             nombre: habilidad.Habilidad,
             extra: this.getExtraVisibleHabilidad(habilidad),
@@ -55,6 +58,8 @@ export class DetallesEspecialComponent {
     flagsExtra: string[] = [];
     extras: EspecialExtraRef[] = [];
     habilidades: HabilidadVisible[] = [];
+    /** Con qué actitud se puede elegir (`Prerrequisitos`), con la frase de la API. */
+    prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];
 
     readonly tieneTextoVisible = tieneTextoVisible;
 

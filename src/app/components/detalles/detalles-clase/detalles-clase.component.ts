@@ -7,6 +7,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { textoRequisitoNivelConjuro } from 'src/app/services/utils/aptitudes-clase';
 import { idiomasVisibles, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { esCampoId, extraerValorSimple, formatearClave, formatearValor, mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import {
@@ -77,6 +78,12 @@ type NivelListadoConjuros = {
     conjuros: ClaseConjuroRef[];
 };
 
+/** Los conjuros de un nivel que da una aptitud de la clase (y su extra), para «Conjuros que da una aptitud». */
+type ListadoConjurosAptitud = NivelListadoConjuros & {
+    especial: { Id: number; Nombre: string; };
+    extra: string;
+};
+
 @Component({
     selector: 'app-detalles-clase',
     templateUrl: './detalles-clase.component.html',
@@ -98,6 +105,7 @@ export class DetallesClaseComponent {
     flagsConjuros: string[] = [];
     datosConjuros: DatoFicha[] = [];
     listadoConjuros: NivelListadoConjuros[] = [];
+    listadoConjurosAptitud: ListadoConjurosAptitud[] = [];
     idiomas: { Nombre: string; Descripcion: string; }[] = [];
     flagsPrerrequisito: string[] = [];
     hayCompetencias = false;
@@ -161,8 +169,16 @@ export class DetallesClaseComponent {
         this.datosConjuros = datosVisibles([
             { etiqueta: 'Salvación de conjuros', valor: value?.Mod_salv_conjuros },
             { etiqueta: 'Lista de conjuros de', valor: value?.Conjuros?.Clase_origen?.Nombre },
+            {
+                etiqueta: 'Siempre especialista en',
+                valor: value?.Conjuros?.Escuela_especialista?.Nombre,
+                detalle: this.tieneTextoVisible(value?.Conjuros?.Escuela_especialista?.Nombre_esp)
+                    ? `· ${value.Conjuros.Escuela_especialista!.Nombre_esp}` : null,
+            },
+            ...this.construirDatosNivelesConRequisito(),
         ]);
         this.listadoConjuros = this.construirListadoConjuros();
+        this.listadoConjurosAptitud = this.construirListadoConjurosAptitud();
         this.idiomas = idiomasVisibles(value?.Idiomas);
         this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos);
         this.flagsPrerrequisito = value?.Prerrequisitos_flags?.habilidad_clase ? ['Habilidad de clase'] : [];
@@ -559,6 +575,43 @@ export class DetallesClaseComponent {
         return Array.from(porNivel.entries())
             .sort(([a], [b]) => a - b)
             .map(([nivel, conjuros]) => ({ nivel, etiqueta: this.getEtiquetaNivelConjuro(nivel), conjuros }));
+    }
+
+    /** Los niveles de conjuro que piden una aptitud o una dote: «Conjuros de nivel 7 · Con Implante craneal». */
+    private construirDatosNivelesConRequisito(): DatoFicha[] {
+        const niveles = Array.from(new Set((this.claseData?.Conjuros?.Niveles_con_requisito ?? []).map((fila) => Number(fila.Nivel))))
+            .sort((a, b) => a - b);
+        return niveles.map((nivel) => ({
+            etiqueta: nivel === 0 ? 'Trucos' : `Conjuros de nivel ${nivel}`,
+            valor: `Con ${textoRequisitoNivelConjuro(this.claseData, nivel)}`,
+            ayuda: 'Solo tiene sus espacios y sus conjuros quien tiene esa aptitud o esa dote.',
+        }));
+    }
+
+    /** Los conjuros que da cada aptitud de la clase (`Listado_por_especial`), por aptitud, extra y nivel. */
+    private construirListadoConjurosAptitud(): ListadoConjurosAptitud[] {
+        const grupos = new Map<string, ListadoConjurosAptitud>();
+        (this.claseData?.Conjuros?.Listado_por_especial ?? [])
+            .filter((conjuro) => this.tieneTextoVisible(conjuro?.Nombre))
+            .forEach((conjuro) => {
+                const nivel = Number(conjuro.Nivel) || 0;
+                const clave = `${conjuro.Especial.Id}|${conjuro.Extra?.Id ?? 0}|${nivel}`;
+                const grupo = grupos.get(clave) ?? {
+                    especial: conjuro.Especial,
+                    extra: `${conjuro.Extra?.Nombre ?? ''}`.trim(),
+                    nivel,
+                    etiqueta: this.getEtiquetaNivelConjuro(nivel),
+                    conjuros: [],
+                };
+                grupo.conjuros.push(conjuro);
+                grupos.set(clave, grupo);
+            });
+        return Array.from(grupos.values());
+    }
+
+    abrirDetalleEspecialPorId(idEspecial: number) {
+        if (Number.isFinite(Number(idEspecial)) && Number(idEspecial) > 0)
+            this.especialDetalles.emit(Number(idEspecial));
     }
 
     private getColumnasDinamicas(

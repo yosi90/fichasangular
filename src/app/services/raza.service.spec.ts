@@ -288,7 +288,7 @@ describe('RazaService helpers', () => {
         }));
 
         const conjuro = raza.Sortilegas[0].Conjuro;
-        expect(conjuro.Escuela).toEqual({ Id: 4, Nombre: 'Evocación', Nombre_especial: 'Evocador', Prohibible: true });
+        expect(conjuro.Escuela).toEqual({ Id: 4, Nombre: 'Evocación', Nombre_especial: 'Evocador', Prohibible: true, Oficial: true });
         expect(conjuro.Nivel_clase).toEqual([{ Id_clase: 2, Clase: 'Hechicero', Nivel: 2, Espontaneo: true }]);
     });
 

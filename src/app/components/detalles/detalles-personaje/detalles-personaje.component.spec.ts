@@ -312,6 +312,30 @@ describe('DetallesPersonajeComponent', () => {
             expect(casillas()[8]).toEqual(['VOLUNTAD', '+6', 'clase +2']);
         });
 
+        it('enseña el tamaño que cuenta con su espacio y su alcance, y por qué no es el de la raza', () => {
+            component.pj = fichaDeLaApi({
+                tamano: {
+                    id: 6, nombre: 'Grande', modificador: -1, modificadorPresa: 4, modificadorEsconderse: -4, espacio: 10, alcance: 10,
+                    base: { Id: 5, Nombre: 'Mediano' }, pasos: 1, origenes: [{ origen: 'Aptitud grande', pasos: 1 }],
+                },
+            });
+            verPagina();
+
+            expect(valor('Tamaño')).toBe("Grande · espacio 10' · alcance 10'");
+            const dato = (component as any).m.datos.find((d: any) => d.etiqueta === 'Tamaño');
+            expect(dato.ayuda).toBe('Mediano por su raza; Aptitud grande +1');
+
+            component.pj = fichaDeLaApi({
+                tamano: {
+                    id: 5, nombre: 'Mediano', modificador: 0, modificadorPresa: 0, modificadorEsconderse: 0, espacio: 5, alcance: 5,
+                    base: { Id: 5, Nombre: 'Mediano' }, pasos: 0, origenes: [],
+                },
+            });
+            fixture.detectChanges();
+            expect(valor('Tamaño')).toBe("Mediano · espacio 5' · alcance 5'");
+            expect((component as any).m.datos.find((d: any) => d.etiqueta === 'Tamaño').ayuda).toBeNull();
+        });
+
         it('no enseña lo que la API da null ni lo que es de relleno', () => {
             component.pj = fichaDeLaApi();
             verPagina();

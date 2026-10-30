@@ -5574,8 +5574,7 @@ export class NuevoPersonajeComponent {
             tipo: opcion?.tipo === 'especial' ? 'especial' : 'dote',
             nombre: `${opcion?.nombre ?? ''}`.trim(),
             extra: `${opcion?.extra ?? ''}`.trim(),
-            bloqueada: !!opcion?.bloqueada,
-            motivo: `${opcion?.motivo ?? ''}`.trim(),
+            ...(opcion?.bloqueada ? { bloqueada: true, motivo: `${opcion?.motivo ?? ''}`.trim() } : {}),
         }));
         this.modalSelectorClaseOpcionalAbierto = true;
 

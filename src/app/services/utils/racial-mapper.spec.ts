@@ -136,7 +136,7 @@ describe('racial-mapper', () => {
         });
 
         const conjuro = racial.Sortilegas[0].Conjuro;
-        expect(conjuro.Escuela).toEqual({ Id: 2, Nombre: 'Evocación', Nombre_especial: 'Evocador', Prohibible: true });
+        expect(conjuro.Escuela).toEqual({ Id: 2, Nombre: 'Evocación', Nombre_especial: 'Evocador', Prohibible: true, Oficial: true });
         expect(conjuro.Nivel_clase).toEqual([{ Id_clase: 3, Clase: 'Mago', Nivel: 0, Espontaneo: false }]);
     });
 });

@@ -75,7 +75,7 @@ import {
 } from './utils/reglas-magia';
 import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './utils/alineamiento-contrato';
 import { AptitudDelPersonaje, evaluarActitudEspecial, listadoConjurosClase, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
-import { OrigenTamano, tamanoEfectivo } from './utils/tamano-efectivo';
+import { OrigenTamano, TamanoEfectivo, tamanoEfectivo } from './utils/tamano-efectivo';
 import { ajusteDePlantillas, dgsDePlantilla, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
@@ -2184,6 +2184,7 @@ export class NuevoPersonajeService {
         const reglas = catalogo.flatMap((habilidad) => habilidad?.Sinergias ?? []);
         const sumanTamano = new Set(catalogo.filter((habilidad) => habilidad?.Modificador_tamano === true)
             .map((habilidad) => toNumber(habilidad.Id_habilidad)));
+        this.recalcularTamanoEfectivo();
         const efectivo = this.personajeCreacion?.Tamano_efectivo;
         const parteTamano = bonoTamano(efectivo
             ? { Nombre: efectivo.nombre, Modificador_esconderse: efectivo.modificadorEsconderse }
@@ -8357,7 +8358,7 @@ export class NuevoPersonajeService {
      * de un licántropo es el de su forma animal, no el suyo.
      */
     private resolverTamanoActual(): Tamano | null {
-        const idRaza = toInt(this.personajeCreacion?.Tamano_efectivo?.id ?? this.personajeCreacion?.Raza?.Tamano?.Id);
+        const idRaza = toInt(this.calcularTamanoEfectivo()?.ficha.id ?? this.personajeCreacion?.Raza?.Tamano?.Id);
         const ordenados = [...this.catalogoTamanos]
             .filter((tamano) => toInt(tamano?.Id) > 0)
             .sort((a, b) => toNumber(a.Modificador_presa) - toNumber(b.Modificador_presa));
@@ -8383,14 +8384,18 @@ export class NuevoPersonajeService {
      * aptitudes del personaje que lo cambian (`Tamano_pasos`), con el espacio y el alcance que se guardan.
      */
     private recalcularTamanoEfectivo(): void {
+        const efectivo = this.calcularTamanoEfectivo();
+        this.personajeCreacion.Tamano_efectivo = efectivo?.ficha ?? null;
+        this.personajeCreacion.Espacio = efectivo?.ficha.espacio ?? null;
+        this.personajeCreacion.Alcance = efectivo?.ficha.alcance ?? null;
+    }
+
+    private calcularTamanoEfectivo(): TamanoEfectivo | null {
         const raza = this.razaSeleccionada;
         const tamanoRaza = this.personajeCreacion?.Raza?.Tamano;
         const base = this.catalogoTamanos.find((tamano) => toInt(tamano?.Id) === toInt(tamanoRaza?.Id))
             ?? (tamanoRaza ? (tamanoRaza as Tamano) : null);
-        const efectivo = tamanoEfectivo(base, this.catalogoTamanos, this.origenesTamano(), raza?.Espacio, raza?.Alcance);
-        this.personajeCreacion.Tamano_efectivo = efectivo?.ficha ?? null;
-        this.personajeCreacion.Espacio = efectivo?.ficha.espacio ?? null;
-        this.personajeCreacion.Alcance = efectivo?.ficha.alcance ?? null;
+        return tamanoEfectivo(base, this.catalogoTamanos, this.origenesTamano(), raza?.Espacio, raza?.Alcance);
     }
 
     /** Las aptitudes del personaje que cambian el tamaño, con las categorías que suma cada una (las de las tablas de clase). */

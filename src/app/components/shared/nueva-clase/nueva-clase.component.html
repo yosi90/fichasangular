@@ -317,6 +317,86 @@
                                 <mat-option *ngFor="let clase of getClasesFiltradas()" [value]="clase.Id">{{clase.Nombre}}</mat-option>
                             </mat-autocomplete>
                         </mat-form-field>
+                        <mat-form-field appearance="fill" *ngIf="esLanzadorConjuros">
+                            <mat-label>Siempre especialista en</mat-label>
+                            <mat-select formControlName="escuela_especialista_id">
+                                <mat-option [value]="0">Ninguna escuela fija</mat-option>
+                                <mat-option *ngFor="let escuela of escuelas" [value]="escuela.Id">
+                                    {{escuela.Nombre}}{{escuela.Oficial === false ? ' (homebrew)' : ''}}
+                                </mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                    </div>
+
+                    <div class="subpanel" *ngIf="esLanzadorConjuros">
+                        <div class="subpanel-head">
+                            <span class="subpanel-title">Conjuros que da una aptitud</span>
+                            <button mat-stroked-button type="button" (click)="agregarConjuroPorEspecial()"><mat-icon>add</mat-icon>Añadir fila</button>
+                        </div>
+                        <div class="repeat-row conjuro-especial-row" *ngFor="let row of conjurosPorEspecialRows; let i = index">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Conjuro</mat-label>
+                                <input matInput [(ngModel)]="row.conjuroBusqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="conjuroEspecialAuto">
+                                <mat-autocomplete #conjuroEspecialAuto="matAutocomplete" (optionSelected)="seleccionarConjuroPorEspecial(row, $event.option.value)">
+                                    <mat-option *ngFor="let conjuro of getConjurosFiltrados(row)" [value]="conjuro.Id">{{conjuro.Nombre}}</mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Nivel</mat-label>
+                                <input matInput type="number" min="0" max="9" [(ngModel)]="row.nivel" [ngModelOptions]="{standalone: true}">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Aptitud</mat-label>
+                                <input matInput [(ngModel)]="row.especialBusqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="especialConjuroAuto">
+                                <mat-autocomplete #especialConjuroAuto="matAutocomplete" (optionSelected)="seleccionarEspecialConjuro(row, $event.option.value)">
+                                    <mat-option *ngFor="let especial of getEspecialesDeLaClase(row.especialBusqueda)" [value]="especial.Id">{{especial.Nombre}}</mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Extra</mat-label>
+                                <input matInput [(ngModel)]="row.extraBusqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="extraConjuroAuto" placeholder="Cualquiera">
+                                <mat-autocomplete #extraConjuroAuto="matAutocomplete" (optionSelected)="seleccionarExtraConjuroPorEspecial(row, $event.option.value)">
+                                    <mat-option [value]="0">Cualquiera</mat-option>
+                                    <mat-option *ngFor="let extra of getExtrasConjuroPorEspecial(row)" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+                            <mat-checkbox [(ngModel)]="row.espontaneo" [ngModelOptions]="{standalone: true}">Espontáneo</mat-checkbox>
+                            <button mat-icon-button type="button" class="row-action-btn" aria-label="Borrar fila" matTooltip="Borrar fila" (click)="quitarConjuroPorEspecial(i)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="subpanel" *ngIf="esLanzadorConjuros">
+                        <div class="subpanel-head">
+                            <span class="subpanel-title">Niveles de conjuro con requisito</span>
+                            <button mat-stroked-button type="button" (click)="agregarNivelRequisito()"><mat-icon>add</mat-icon>Añadir fila</button>
+                        </div>
+                        <div class="repeat-row nivel-requisito-row" *ngFor="let row of nivelesRequisitoRows; let i = index">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Nivel de conjuro</mat-label>
+                                <mat-select [(ngModel)]="row.nivel" [ngModelOptions]="{standalone: true}">
+                                    <mat-option *ngFor="let nivelConjuro of nivelesConjuroRequisito" [value]="nivelConjuro">{{nivelConjuro}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Lo abre</mat-label>
+                                <mat-select [ngModel]="row.tipo" [ngModelOptions]="{standalone: true}" (ngModelChange)="cambiarTipoNivelRequisito(row, $event)">
+                                    <mat-option value="especial">Una aptitud</mat-option>
+                                    <mat-option value="dote">Una dote</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>{{row.tipo === 'dote' ? 'Dote' : 'Aptitud'}}</mat-label>
+                                <input matInput [(ngModel)]="row.busqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="requisitoNivelAuto">
+                                <mat-autocomplete #requisitoNivelAuto="matAutocomplete" (optionSelected)="seleccionarRequisitoNivel(row, $event.option.value)">
+                                    <mat-option *ngFor="let item of getRequisitosFiltrados(row)" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+                            <button mat-icon-button type="button" class="row-action-btn" aria-label="Borrar fila" matTooltip="Borrar fila" (click)="quitarNivelRequisito(i)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="spell-known-table" *ngIf="muestraConjurosConocidosTotal || muestraConjurosConocidosPorNivel">
