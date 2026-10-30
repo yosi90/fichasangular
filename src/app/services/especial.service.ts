@@ -24,6 +24,7 @@ import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/erro
 import { leerComodin } from "src/app/services/utils/comodin";
 import { mensajeDeError } from './utils/error-api';
 import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
+import { normalizarPrerrequisitosEspecial } from './utils/aptitudes-clase';
 
 const ESPECIAL: ElementoDeCatalogo = { singular: "especial", plural: "especiales", femenino: false };
 
@@ -45,6 +46,7 @@ function normalizeBonificadores(raw: any): EspecialBonificadores {
         CA: toNumber(raw?.CA),
         Armadura_natural: toNumber(raw?.Armadura_natural),
         RD: toNumber(raw?.RD),
+        Tamano_pasos: toInt(raw?.Tamano_pasos),
     };
 }
 
@@ -95,6 +97,7 @@ export function normalizeEspecial(raw: any): EspecialClaseDetalle {
         Subtipo: normalizeRefSimple(raw?.Subtipo),
         Extras: toArray(raw?.Extras).map(normalizeExtra),
         Habilidades: toArray(raw?.Habilidades).map(normalizeHabilidad),
+        Prerrequisitos: normalizarPrerrequisitosEspecial(raw?.Prerrequisitos),
         Esencia: normalizarEsenciaRasgo(raw?.Esencia),
     };
 }
@@ -251,6 +254,7 @@ export class EspecialService {
                     CA: payload.especial.bonificadores.ca,
                     Armadura_natural: payload.especial.bonificadores.arm_nat,
                     RD: payload.especial.bonificadores.rd,
+                    Tamano_pasos: payload.especial.bonificadores.tamano_pasos ?? 0,
                 },
                 Flags_extra: {
                     No_aplica: payload.especial.flags_extra.no_aplica,

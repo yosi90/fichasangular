@@ -3,15 +3,18 @@
         <div class="creacion-opcion creacion-opcion--caja"
             *ngFor="let opcion of opciones; trackBy: trackByClave"
             [class.creacion-opcion--activa]="esOpcionSeleccionada(opcion.clave)"
+            [class.creacion-opcion--bloqueada]="opcion.bloqueada"
             tabindex="0"
             role="option"
             [attr.aria-selected]="esOpcionSeleccionada(opcion.clave)"
+            [attr.aria-disabled]="opcion.bloqueada ? true : null"
             (click)="seleccionarOpcion(opcion.clave)"
             (keydown.enter)="seleccionarOpcion(opcion.clave); $event.preventDefault()"
             (keydown.space)="seleccionarOpcion(opcion.clave); $event.preventDefault()">
             <span class="creacion-opcion__texto">
                 {{opcion.nombre}}
                 <span class="creacion-opcion__nota" *ngIf="opcion.extra.length > 0">{{opcion.extra}}</span>
+                <span class="creacion-opcion__nota" *ngIf="opcion.bloqueada && opcion.motivo">{{opcion.motivo}}</span>
             </span>
             <span class="creacion-etiqueta">{{getEtiquetaTipo(opcion.tipo)}}</span>
         </div>

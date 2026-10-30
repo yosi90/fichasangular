@@ -4677,6 +4677,7 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.getEspecialidadMagicaPendiente(claseArcana, 1)).toEqual({
             requiereArcano: true,
             requierePsionico: false,
+            escuelaFija: null,
         });
         expect(service.getEspecialidadMagicaPendiente(claseArcana, 2)).toBeNull();
         expect(service.getEspecialidadMagicaPendiente(claseSinFlag, 1)).toBeNull();

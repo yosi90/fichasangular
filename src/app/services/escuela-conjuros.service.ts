@@ -6,6 +6,7 @@ import { EscuelaConjuros } from "../interfaces/escuela-conjuros";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
 import { escucharRtdb, listaRtdb } from './catalogo-api';
+import { oficialDeEscuela } from './utils/conjuro-mapper';
 
 function normalizeEscuela(raw: any, fallbackId: number = 0): EscuelaConjuros {
     return {
@@ -15,6 +16,7 @@ function normalizeEscuela(raw: any, fallbackId: number = 0): EscuelaConjuros {
         Prohibible: toBoolean(raw?.Prohibible),
         Especializable: toBoolean(raw?.Especializable),
         Prohibidas_al_especializarse: Math.max(0, toInt(raw?.Prohibidas_al_especializarse)),
+        Oficial: oficialDeEscuela(raw),
     };
 }
 

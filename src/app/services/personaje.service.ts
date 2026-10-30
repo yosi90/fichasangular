@@ -50,6 +50,7 @@ import { resumenClases } from './utils/resumen-clases';
 import { leerComodin } from './utils/comodin';
 import { idExtraHabilidadParaGuardar } from './utils/habilidad-extra-visible';
 import { errorDePerfil, mensajeDeError } from './utils/error-api';
+import { normalizarTamanoFicha } from './utils/tamano-efectivo';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -1023,7 +1024,8 @@ export class PersonajeService {
             Contexto: toText(element?.dh),
             Ataque_base: toText(element?.a, '0'),
             Totales: totales,
-            Tamano: raza?.Tamano?.Nombre,
+            Tamano: element?.tamano?.nombre ?? raza?.Tamano?.Nombre,
+            Tamano_efectivo: normalizarTamanoFicha(element?.tamano),
             Ca: element?.ca,
             Equipo: normalizarPiezasEquipo(element?.equipo),
             ModificadoresEquipo: normalizarModificadoresEquipo(element?.modificadoresEquipo),

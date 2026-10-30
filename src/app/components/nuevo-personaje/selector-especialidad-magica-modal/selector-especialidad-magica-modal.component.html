@@ -1,16 +1,22 @@
 <app-creacion-ventana [titulo]="titulo" [subtitulo]="nombreClase.trim().length > 0 ? 'Clase: ' + nombreClase : ''" [cerrable]="false">
     <section class="creacion-ventana__seccion" *ngIf="mostrarArcano">
         <h3 class="creacion-titulo">Especialización arcana</h3>
-        <mat-checkbox [checked]="arcanoEspecializar" (change)="onToggleArcanoEspecializar($event.checked)">
+        <mat-checkbox *ngIf="!escuelaFija" [checked]="arcanoEspecializar" (change)="onToggleArcanoEspecializar($event.checked)">
             Quiero especializarme en una escuela
         </mat-checkbox>
+        <p class="creacion-texto-suave" *ngIf="escuelaFija">
+            Tu clase es siempre especialista en {{escuelaFija.Nombre}}{{escuelaFija.Nombre_especial ? ' (' + escuelaFija.Nombre_especial.toLowerCase() + ')' : ''}}.
+            <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="escuelaFija.Oficial === false">Homebrew</span>
+        </p>
         <p class="creacion-texto-suave" [class.especialidad-aviso]="!arcanoValido">{{textoArcanoEstado}}</p>
 
         <ng-container *ngIf="arcanoEspecializar">
-            <mat-form-field appearance="fill" class="tw-w-full">
+            <mat-form-field appearance="fill" class="tw-w-full" *ngIf="!escuelaFija">
                 <mat-label>Escuela especialista</mat-label>
                 <mat-select [value]="arcanoEscuelaEspecialistaId" (selectionChange)="onChangeEscuelaEspecialista($event.value)">
-                    <mat-option *ngFor="let escuela of escuelasEspecializables" [value]="toPositiveId(escuela.Id)">{{escuela.Nombre}}</mat-option>
+                    <mat-option *ngFor="let escuela of escuelasEspecializables" [value]="toPositiveId(escuela.Id)">
+                        {{escuela.Nombre}}{{escuela.Oficial === false ? ' (homebrew)' : ''}}
+                    </mat-option>
                 </mat-select>
             </mat-form-field>
 
@@ -28,6 +34,7 @@
                         (keydown.enter)="onClickEscuelaProhibidaFila(escuela.Id)"
                         (keydown.space)="$event.preventDefault(); onClickEscuelaProhibidaFila(escuela.Id)">
                         <span class="creacion-opcion__texto">{{escuela.Nombre}}</span>
+                        <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="escuela.Oficial === false">Homebrew</span>
                         <mat-icon class="creacion-opcion__marca" aria-hidden="true">{{isEscuelaProhibidaSeleccionada(toPositiveId(escuela.Id)) ? 'check_box' : 'check_box_outline_blank'}}</mat-icon>
                     </div>
                 </div>

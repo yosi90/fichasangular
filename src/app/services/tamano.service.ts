@@ -18,6 +18,9 @@ export function normalizeTamano(raw: any): Tamano {
         Modificador_esconderse: toNumberOrNull(raw?.Modificador_esconderse),
         Multiplicador_carga: toNumberOrNull(raw?.Multiplicador_carga),
         Multiplicador_carga_cuadrupedo: toNumberOrNull(raw?.Multiplicador_carga_cuadrupedo),
+        Espacio: toNumberOrNull(raw?.Espacio),
+        Alcance: toNumberOrNull(raw?.Alcance),
+        Alcance_largo: toNumberOrNull(raw?.Alcance_largo),
     };
 }
 

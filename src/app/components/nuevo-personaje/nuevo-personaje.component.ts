@@ -129,7 +129,7 @@ import { normalizarTexto, primerEntero, toPositiveInt } from 'src/app/services/u
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
-import { esEspecializable } from 'src/app/services/utils/reglas-magia';
+import { esEspecializable, prohibidasAlEspecializarse } from 'src/app/services/utils/reglas-magia';
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
@@ -475,6 +475,8 @@ export class NuevoPersonajeComponent {
     selectorEspecialidadClaseNombre = '';
     selectorEspecialidadRequiereArcano = false;
     selectorEspecialidadRequierePsionico = false;
+    /** La escuela de la que la clase es siempre especialista (del catálogo de escuelas): sin selector de especialidad. */
+    selectorEspecialidadEscuelaFija: EscuelaConjuros | null = null;
     ventanaDetalleAbierta = false;
     incluirHomebrewRazaBase = false;
     private razaMutadaPendiente: Raza | null = null;
@@ -3605,6 +3607,10 @@ export class NuevoPersonajeComponent {
         await this.asegurarCatalogoEscuelas();
         await this.asegurarCatalogoDisciplinas();
 
+        // La escuela fija de la clase (`Conjuros.Escuela_especialista`): sin escuelas que prohibir, no hay nada que elegir.
+        const escuelaFija = this.nuevoPSvc.escuelaFijaEnCatalogo(pendiente, this.catalogoEscuelas);
+        const soloEscuelaFija = !!escuelaFija && !pendiente.requierePsionico && prohibidasAlEspecializarse(escuelaFija) < 1;
+
         if (pendiente.requierePsionico) {
             // Basta con una disciplina que se pueda elegir: el psiónico no prohíbe ninguna (Manual de psiónica expandido).
             const hayDisciplinas = (this.catalogoDisciplinas ?? [])
@@ -3620,7 +3626,9 @@ export class NuevoPersonajeComponent {
             }
         }
 
-        const seleccion = await this.solicitarEspecialidadMagicaClase(clase, pendiente);
+        const seleccion = soloEscuelaFija
+            ? { arcana: { especializar: true, escuelaEspecialistaId: toPositiveInt(escuelaFija?.Id) ?? null, escuelasProhibidasIds: [] } }
+            : await this.solicitarEspecialidadMagicaClase(clase, pendiente, escuelaFija);
         if (!seleccion)
             return false;
 
@@ -5495,11 +5503,13 @@ export class NuevoPersonajeComponent {
 
     private solicitarEspecialidadMagicaClase(
         clase: Clase,
-        pendiente: EspecialidadMagicaPendiente
+        pendiente: EspecialidadMagicaPendiente,
+        escuelaFija: EscuelaConjuros | null
     ): Promise<SelectorEspecialidadMagicaConfirmacion | null> {
         this.selectorEspecialidadClaseNombre = `${clase?.Nombre ?? ''}`.trim();
         this.selectorEspecialidadRequiereArcano = !!pendiente?.requiereArcano;
         this.selectorEspecialidadRequierePsionico = !!pendiente?.requierePsionico;
+        this.selectorEspecialidadEscuelaFija = escuelaFija;
         this.modalSelectorEspecialidadMagicaAbierto = true;
 
         return new Promise<SelectorEspecialidadMagicaConfirmacion | null>((resolve) => {
@@ -5514,6 +5524,7 @@ export class NuevoPersonajeComponent {
         this.selectorEspecialidadClaseNombre = '';
         this.selectorEspecialidadRequiereArcano = false;
         this.selectorEspecialidadRequierePsionico = false;
+        this.selectorEspecialidadEscuelaFija = null;
 
         const resolver = this.resolverSelectorEspecialidadMagica;
         this.resolverSelectorEspecialidadMagica = null;
@@ -5563,6 +5574,8 @@ export class NuevoPersonajeComponent {
             tipo: opcion?.tipo === 'especial' ? 'especial' : 'dote',
             nombre: `${opcion?.nombre ?? ''}`.trim(),
             extra: `${opcion?.extra ?? ''}`.trim(),
+            bloqueada: !!opcion?.bloqueada,
+            motivo: `${opcion?.motivo ?? ''}`.trim(),
         }));
         this.modalSelectorClaseOpcionalAbierto = true;
 

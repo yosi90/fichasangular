@@ -7,4 +7,6 @@ export interface EscuelaConjuros {
     Especializable?: boolean;
     /** Cuántas escuelas prohíbe quien se especializa en ella (2; la adivinación, 1). */
     Prohibidas_al_especializarse?: number;
+    /** `false` en las escuelas propias (homebrew), como la Ingeniería mágica; sin dato (una caché antigua), oficial. */
+    Oficial?: boolean;
 }

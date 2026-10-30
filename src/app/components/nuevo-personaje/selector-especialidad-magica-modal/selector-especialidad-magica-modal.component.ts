@@ -35,6 +35,23 @@ export class SelectorEspecialidadMagicaModalComponent {
     @Input() escuelas: EscuelaConjuros[] = [];
     @Input() disciplinas: DisciplinaConjuros[] = [];
 
+    /**
+     * La escuela de la que la clase es siempre especialista (`Conjuros.Escuela_especialista`, ya buscada en el catálogo):
+     * no se elige ni se puede dejar de especializar; solo se eligen sus escuelas prohibidas.
+     */
+    @Input() set escuelaFija(escuela: EscuelaConjuros | null) {
+        this.escuelaFijaActual = escuela ?? null;
+        if (!this.escuelaFijaActual)
+            return;
+        this.arcanoEspecializar = true;
+        this.arcanoEscuelaEspecialistaId = this.toPositiveId(this.escuelaFijaActual.Id) || null;
+        this.reconciliarEscuelasProhibidas();
+    }
+    get escuelaFija(): EscuelaConjuros | null {
+        return this.escuelaFijaActual;
+    }
+    private escuelaFijaActual: EscuelaConjuros | null = null;
+
     @Output() confirmar = new EventEmitter<SelectorEspecialidadMagicaConfirmacion>();
 
     arcanoEspecializar = false;
@@ -52,6 +69,8 @@ export class SelectorEspecialidadMagicaModalComponent {
     }
 
     get escuelaEspecialistaSeleccionada(): EscuelaConjuros | null {
+        if (this.escuelaFijaActual)
+            return this.escuelaFijaActual;
         const id = Number(this.arcanoEscuelaEspecialistaId ?? 0);
         if (!Number.isFinite(id) || id <= 0)
             return null;
@@ -153,6 +172,8 @@ export class SelectorEspecialidadMagicaModalComponent {
     }
 
     onToggleArcanoEspecializar(value: boolean): void {
+        if (this.escuelaFijaActual)
+            return;
         this.arcanoEspecializar = !!value;
         if (!this.arcanoEspecializar) {
             this.arcanoEscuelaEspecialistaId = null;
@@ -164,6 +185,8 @@ export class SelectorEspecialidadMagicaModalComponent {
     }
 
     onChangeEscuelaEspecialista(value: number | string | null): void {
+        if (this.escuelaFijaActual)
+            return;
         const id = this.toPositiveId(value);
         this.arcanoEscuelaEspecialistaId = id > 0 ? id : null;
         this.reconciliarEscuelasProhibidas();

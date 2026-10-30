@@ -136,7 +136,10 @@ function totalesDelBorrador(pj: Personaje | null | undefined): PersonajeTotales 
             : sumar([
                 parte('ataqueBase', 'Ataque base', ataqueBase),
                 parte('caracteristica', 'Fuerza', pj?.ModFuerza),
-                ...partesVarias('tamano', [{ valor: pj?.Raza?.Tamano?.Modificador_presa, origen: `Tamaño (${pj?.Raza?.Tamano?.Nombre ?? ''})` }]),
+                // El tamaño que cuenta: el de la raza movido por sus aptitudes (`Tamano_efectivo`), como la ficha de la API.
+                ...partesVarias('tamano', [pj?.Tamano_efectivo
+                    ? { valor: pj.Tamano_efectivo.modificadorPresa, origen: `Tamaño (${pj.Tamano_efectivo.nombre ?? ''})` }
+                    : { valor: pj?.Raza?.Tamano?.Modificador_presa, origen: `Tamaño (${pj?.Raza?.Tamano?.Nombre ?? ''})` }]),
                 ...partesVarias('varios', pj?.Presa_varios),
             ]),
         salvaciones: {

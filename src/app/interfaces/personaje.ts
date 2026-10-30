@@ -19,6 +19,7 @@ import {
     PersonajeProgresionLanzadorDto,
     PersonajePuntosPoderDto,
     PersonajeSalvacionesDto,
+    PersonajeTamanoDto,
     PersonajeTotalDto
 } from "./personajes-api";
 
@@ -226,6 +227,14 @@ export interface Personaje extends PersonajeSimple {
         Media: number;
         Pesada: number;
     }
+    /**
+     * El tamaño que cuenta (el de la raza movido por las aptitudes que lo cambian): en la ficha, el `tamano` de la API; en
+     * la creación, el de `tamanoEfectivo`. Sin raza, `null`.
+     */
+    Tamano_efectivo?: PersonajeTamanoDto | null;
+    /** En la creación: el espacio y el alcance que se guardan, en pies (los de la raza movidos por su tamaño). */
+    Espacio?: number | null;
+    Alcance?: number | null;
     Salvaciones: {
         fortaleza: {
             modsClaseos:{

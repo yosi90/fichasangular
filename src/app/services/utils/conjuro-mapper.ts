@@ -6,6 +6,11 @@ function toStrictArray<T = any>(value: any): T[] {
     return Array.isArray(value) ? value : [];
 }
 
+/** El `Oficial` de una escuela (`GET /escuelas` y la escuela de cada conjuro): sin dato (una caché antigua), oficial. */
+export function oficialDeEscuela(raw: any): boolean {
+    return raw?.Oficial === undefined || raw?.Oficial === null ? true : toBoolean(raw.Oficial);
+}
+
 function normalizeEscuelaApi(raw: any): Conjuro['Escuela'] {
     if (!raw || typeof raw !== 'object')
         return { Id: 0, Nombre: '', Nombre_especial: '', Prohibible: false };
@@ -15,6 +20,7 @@ function normalizeEscuelaApi(raw: any): Conjuro['Escuela'] {
         Nombre: toText(raw?.Nombre ?? raw?.n),
         Nombre_especial: toText(raw?.Nombre_esp ?? raw?.ne),
         Prohibible: toBoolean(raw?.Prohibible ?? raw?.p),
+        Oficial: oficialDeEscuela(raw),
     };
 }
 
@@ -60,6 +66,7 @@ function normalizeEscuelaLegacy(raw: any): Conjuro['Escuela'] {
         Nombre: toText(raw?.Nombre ?? raw?.n),
         Nombre_especial: toText(raw?.Nombre_especial ?? raw?.Nombre_esp ?? raw?.ne),
         Prohibible: toBoolean(raw?.Prohibible ?? raw?.p),
+        Oficial: oficialDeEscuela(raw),
     };
 }
 

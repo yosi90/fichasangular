@@ -1,5 +1,6 @@
 import { Comodin } from "./comodin";
 import { EsenciaRasgo } from "./incarnum";
+import { PrerrequisitoItem } from "./prerrequisito";
 
 export interface EspecialRefSimple {
     Id: number;
@@ -16,6 +17,23 @@ export interface EspecialBonificadores {
     CA: number;
     Armadura_natural: number;
     RD: number;
+    /** Las categorías de tamaño que suma para siempre (+1, una más grande, como *agrandar persona*); 0 sin cambio. */
+    Tamano_pasos: number;
+}
+
+/**
+ * Con qué actitud se puede elegir la aptitud (la senda esandy pide bueno): `[{ Id_actitud, Actitud, Opcional, Frase }]`;
+ * las alternativas llevan el mismo `Opcional` (> 0).
+ */
+export interface EspecialPrerrequisitos {
+    actitud_requerido: PrerrequisitoItem[];
+    actitud_prohibido: PrerrequisitoItem[];
+}
+
+/** Una actitud de los prerrequisitos de un especial al guardarlo. */
+export interface EspecialPrerrequisitoActitudMutation {
+    id_actitud: number;
+    opcional: number;
 }
 
 export interface EspecialFlagsExtra {
@@ -63,6 +81,8 @@ export interface EspecialClaseMutationCore {
         ca: number;
         arm_nat: number;
         rd: number;
+        /** Opcional: sin él, el alta guarda 0 y la edición conserva el que tenía. */
+        tamano_pasos?: number;
     };
     flags_extra: {
         no_aplica: boolean;
@@ -90,6 +110,11 @@ export interface EspecialClaseMutationRequest {
     especial: EspecialClaseMutationCore;
     extras?: EspecialClaseMutationExtra[];
     habilidades?: EspecialClaseMutationHabilidad[];
+    /** Opcional: si viene, reemplaza los dos tipos (el que no viene, vacío); sin él, la edición conserva los que tenía. */
+    prerrequisitos?: {
+        actitud_requerido: EspecialPrerrequisitoActitudMutation[];
+        actitud_prohibido: EspecialPrerrequisitoActitudMutation[];
+    };
 }
 
 export interface EspecialClaseMutationApiResponse {
@@ -121,6 +146,7 @@ export interface EspecialClaseDetalle {
     Subtipo: EspecialRefSimple;
     Extras: EspecialExtraRef[];
     Habilidades: EspecialHabilidadRef[];
+    Prerrequisitos: EspecialPrerrequisitos;
     /** Magic of Incarnum: la esencia que da a la reserva y si es receptáculo (`null` si nada). */
     Esencia?: EsenciaRasgo | null;
 }

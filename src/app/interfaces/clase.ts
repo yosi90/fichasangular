@@ -23,6 +23,26 @@ export interface ClaseConjuroRef {
 }
 
 /** El libro de conjuros de la clase (MJ cap. 3, Mago): con cuántos empieza y cuántos gana por nivel de lanzador. */
+/** Un conjuro de la lista de la clase que solo tiene quien tiene una de sus aptitudes (y ese extra; `null`, con cualquiera). */
+export interface ClaseConjuroEspecialRef extends ClaseConjuroRef {
+    Especial: { Id: number; Nombre: string; };
+    Extra: { Id: number; Nombre: string; } | null;
+}
+
+/** Un nivel de conjuro cuyos espacios solo tiene quien tiene la aptitud o la dote (una de las dos; varias filas son alternativas). */
+export interface ClaseNivelConjuroRequisito {
+    Nivel: number;
+    Especial: { Id: number; Nombre: string; } | null;
+    Dote: { Id: number; Nombre: string; } | null;
+}
+
+/** La escuela de la que la clase es siempre especialista (`{ Id, Nombre, Nombre_esp }`). */
+export interface ClaseEscuelaEspecialista {
+    Id: number;
+    Nombre: string;
+    Nombre_esp: string;
+}
+
 export interface ClaseLibroConjuros {
     Nivel_cero_completo: boolean;
     Iniciales: number;
@@ -60,6 +80,12 @@ export interface ClaseConjurosConfig {
         Nombre: string;
     };
     Listado: ClaseConjuroRef[];
+    /** La escuela de la que la clase es siempre especialista (no la elige); `null` si no tiene. */
+    Escuela_especialista?: ClaseEscuelaEspecialista | null;
+    /** Los conjuros de su lista que solo da una de sus aptitudes: se suman a `Listado` si el personaje la tiene. */
+    Listado_por_especial?: ClaseConjuroEspecialRef[];
+    /** Los niveles de conjuro que piden una aptitud o una dote. */
+    Niveles_con_requisito?: ClaseNivelConjuroRequisito[];
 }
 
 export interface ClaseRoles {

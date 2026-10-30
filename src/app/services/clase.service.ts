@@ -7,7 +7,9 @@ import { environment } from "src/environments/environment";
 import { Alineamiento } from "../interfaces/alineamiento";
 import {
     Clase,
+    ClaseConjuroRef,
     ClaseConjurosConfig,
+    ClaseEscuelaEspecialista,
     ClaseLibroConjuros,
     ClaseMutationApiResponse,
     ClaseMutationRequest,
@@ -154,13 +156,39 @@ function normalizeConjuros(raw: any): ClaseConjurosConfig {
             Id: toNumber(raw?.Clase_origen?.Id),
             Nombre: toText(raw?.Clase_origen?.Nombre),
         },
-        Listado: toArray(raw?.Listado).map((item: any) => ({
-            Id: toNumber(item?.Id),
-            Nombre: toText(item?.Nombre),
-            Nivel: toNumber(item?.Nivel),
-            Espontaneo: toBoolean(item?.Espontaneo),
+        Listado: toArray(raw?.Listado).map(normalizeConjuroDelListado),
+        Escuela_especialista: normalizeEscuelaEspecialista(raw?.Escuela_especialista),
+        Listado_por_especial: toArray(raw?.Listado_por_especial).map((item: any) => ({
+            ...normalizeConjuroDelListado(item),
+            Especial: { Id: toNumber(item?.Especial?.Id), Nombre: toText(item?.Especial?.Nombre) },
+            Extra: normalizeRefIdNombre(item?.Extra),
+        })),
+        Niveles_con_requisito: toArray(raw?.Niveles_con_requisito).map((item: any) => ({
+            Nivel: toInt(item?.Nivel),
+            Especial: normalizeRefIdNombre(item?.Especial),
+            Dote: normalizeRefIdNombre(item?.Dote),
         })),
     };
+}
+
+function normalizeConjuroDelListado(item: any): ClaseConjuroRef {
+    return {
+        Id: toNumber(item?.Id),
+        Nombre: toText(item?.Nombre),
+        Nivel: toNumber(item?.Nivel),
+        Espontaneo: toBoolean(item?.Espontaneo),
+    };
+}
+
+/** Un `{ Id, Nombre }` que puede no estar (`null`): sin id, `null`. */
+function normalizeRefIdNombre(raw: any): { Id: number; Nombre: string; } | null {
+    const id = toNumber(raw?.Id);
+    return id > 0 ? { Id: id, Nombre: toText(raw?.Nombre) } : null;
+}
+
+function normalizeEscuelaEspecialista(raw: any): ClaseEscuelaEspecialista | null {
+    const id = toNumber(raw?.Id);
+    return id > 0 ? { Id: id, Nombre: toText(raw?.Nombre), Nombre_esp: toText(raw?.Nombre_esp) } : null;
 }
 
 function normalizeAlineamiento(raw: any): Alineamiento {

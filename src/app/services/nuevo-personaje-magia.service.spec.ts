@@ -438,3 +438,165 @@ describe('Reglas de la magia: nivel de lanzador, característica mínima y punto
         expect(service.filtrarConjurosDisponibles().map((c) => c.Id).sort()).toEqual([301, 302]);
     });
 });
+
+// Las clases propias (guía `docs/publica/CLASES_PROPIAS_FRONT.md`): escuela fija, aptitudes según el alineamiento, listas
+// de conjuros por aptitud, niveles de conjuro con requisito y el cambio de tamaño. Datos inventados: nada va por nombre.
+describe('Clases propias: lo que dicen los datos de la clase y de sus aptitudes', () => {
+    const LIBRO = { Nivel_cero_completo: false, Iniciales: 3, Iniciales_suman_caracteristica: false, Por_nivel: 2 };
+    const BUENO = { Id_actitud: 4, Actitud: 'Bueno', Opcional: 0, Frase: 'Cualquier alineamiento bueno' };
+
+    function especialNivel(id: number, nombre: string, opcional = 0, especial: Record<string, any> = {}): Record<string, any> {
+        return { Especial: { Id: id, Nombre: nombre, ...especial }, Opcional: opcional, Id_extra: null, Extra: '', Id_interno: 0 };
+    }
+
+    function claseConLibro(raw: Record<string, any>, especiales: Record<string, any>[] = []): Clase {
+        return clase({
+            Id: 80, Nombre: 'Lanzador de prueba', Mod_salv_conjuros: 'Inteligencia',
+            ...raw,
+            Conjuros: { Arcanos: true, Libro: LIBRO, ...(raw['Conjuros'] ?? {}) },
+            Desglose_niveles: [nivel(1, { Conjuros_diarios: diarios(3, 1, 1), Especiales: especiales })],
+        });
+    }
+
+    const deLaClase = (n: number) => ({ Nivel_clase: [{ Id_clase: 80, Clase: 'Lanzador de prueba', Nivel: n, Espontaneo: false }] });
+
+    function aniadibles(claseObjetivo: Clase, catalogo: Conjuro[]): number[] {
+        const service = crearServicio({ Inteligencia: 16 });
+        service.setCatalogoClases([claseObjetivo]);
+        service.setCatalogoConjuros(catalogo);
+        expect(service.aplicarSiguienteNivelClase(claseObjetivo).aplicado).toBeTrue();
+        return service.conjurosAniadiblesAlLibro(claseObjetivo).map((item) => Number(item.conjuro.Id)).sort();
+    }
+
+    describe('la escuela fija de la clase (Conjuros.Escuela_especialista)', () => {
+        const fija = { Id: 9, Nombre: 'Escuela propia', Nombre_esp: 'Especialista propio' };
+        const escuelas = [
+            { Id: 3, Nombre: 'Conjuración', Nombre_especial: 'Conjurador', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 5, Nombre: 'Evocación', Nombre_especial: 'Evocador', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 6, Nombre: 'Ilusión', Nombre_especial: 'Ilusionista', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2 },
+            { Id: 9, Nombre: 'Escuela propia', Nombre_especial: 'Especialista propio', Prohibible: true, Especializable: true, Prohibidas_al_especializarse: 2, Oficial: false },
+        ];
+        const conFija = claseConLibro({ Conjuros: { puede_elegir_especialidad: false, Escuela_especialista: fija } });
+
+        it('pide la especialidad aunque la clase no la elija, con la escuela fija', () => {
+            const service = crearServicio({ Inteligencia: 16 });
+            expect(service.getEspecialidadMagicaPendiente(conFija, 1)).toEqual({ requiereArcano: true, requierePsionico: false, escuelaFija: fija });
+            expect(service.getEspecialidadMagicaPendiente(claseConLibro({}), 1)).toBeNull();
+        });
+
+        it('guarda la escuela fija como especialidad (para idEspArcana) aunque no se elija, y sus prohibidas', () => {
+            const service = crearServicio({ Inteligencia: 16 });
+            const resultado = service.aplicarEspecialidadMagicaClase(conFija, 1, {
+                arcana: { especializar: false, escuelaEspecialistaId: null, escuelasProhibidasIds: [3, 5] },
+            }, escuelas, []);
+            expect(resultado.aplicado).toBeTrue();
+            expect(service.PersonajeCreacion.Escuela_especialista).toEqual({ Nombre: 'Escuela propia', Calificativo: 'Especialista propio' });
+            expect(service.PersonajeCreacion.Escuelas_prohibidas).toEqual([{ Nombre: 'Conjuración' }, { Nombre: 'Evocación' }]);
+        });
+
+        it('pide tantas prohibidas como diga la escuela fija y que esté en el catálogo', () => {
+            const service = crearServicio({ Inteligencia: 16 });
+            expect(service.aplicarEspecialidadMagicaClase(conFija, 1, {
+                arcana: { especializar: true, escuelaEspecialistaId: 3, escuelasProhibidasIds: [5] },
+            }, escuelas, []).aplicado).toBeFalse();
+            expect(service.aplicarEspecialidadMagicaClase(conFija, 1, {
+                arcana: { especializar: true, escuelaEspecialistaId: null, escuelasProhibidasIds: [3, 5] },
+            }, escuelas.filter((escuela) => escuela.Id !== 9), []).razon).toBe('No se encuentra la escuela Escuela propia en el catálogo de escuelas.');
+        });
+    });
+
+    describe('las aptitudes opcionales según el alineamiento (Prerrequisitos de actitud)', () => {
+        const conSendas = claseConLibro({}, [
+            especialNivel(50, 'Senda buena', 1, { Prerrequisitos: { actitud_requerido: [BUENO], actitud_prohibido: [] } }),
+            especialNivel(51, 'Senda libre', 1),
+        ]);
+
+        it('la que no permite su alineamiento sale bloqueada con su motivo y no se puede elegir', () => {
+            const service = crearServicio({ Inteligencia: 16 });
+            service.setCatalogoClases([conSendas]);
+            service.PersonajeCreacion.Alineamiento = 'Caotico maligno';
+            const [grupo] = service.obtenerOpcionalesSiguienteNivelClase(conSendas);
+            expect(grupo.opciones.map((opcion) => [opcion.nombre, !!opcion.bloqueada, opcion.motivo ?? ''])).toEqual([
+                ['Senda buena', true, 'No cumple: Cualquier alineamiento bueno'],
+                ['Senda libre', false, ''],
+            ]);
+            expect(service.aplicarSiguienteNivelClase(conSendas, { [grupo.grupo]: grupo.opciones[0].clave }).aplicado).toBeFalse();
+        });
+
+        it('con el alineamiento que pide, se puede elegir', () => {
+            const service = crearServicio({ Inteligencia: 16 });
+            service.setCatalogoClases([conSendas]);
+            service.PersonajeCreacion.Alineamiento = 'Legal bueno';
+            const [grupo] = service.obtenerOpcionalesSiguienteNivelClase(conSendas);
+            expect(grupo.opciones.every((opcion) => !opcion.bloqueada)).toBeTrue();
+            expect(service.aplicarSiguienteNivelClase(conSendas, { [grupo.grupo]: grupo.opciones[0].clave }).aplicado).toBeTrue();
+            expect(service.PersonajeCreacion.Claseas.map((especial) => especial.Nombre)).toEqual(['Senda buena']);
+        });
+    });
+
+    describe('la lista de conjuros de una aptitud (Conjuros.Listado_por_especial)', () => {
+        const catalogo = [
+            conjuro(201, 'De la clase', 'Evocación', deLaClase(1)),
+            conjuro(202, 'De la senda', 'Evocación', {}),
+        ];
+        const listas = {
+            Conjuros: {
+                Listado: [{ Id: 201, Nombre: 'De la clase', Nivel: 1, Espontaneo: false }],
+                Listado_por_especial: [{ Id: 202, Nombre: 'De la senda', Nivel: 1, Espontaneo: false, Especial: { Id: 60, Nombre: 'Senda' }, Extra: null }],
+            },
+        };
+
+        it('sin la aptitud, solo los de la clase; con ella, también los suyos (al subir de nivel y en la tienda del libro)', () => {
+            expect(aniadibles(claseConLibro(listas), catalogo)).toEqual([201]);
+            expect(aniadibles(claseConLibro(listas, [especialNivel(60, 'Senda')]), catalogo)).toEqual([201, 202]);
+        });
+    });
+
+    describe('los niveles de conjuro con requisito (Conjuros.Niveles_con_requisito)', () => {
+        const catalogo = [
+            conjuro(211, 'De primero', 'Evocación', deLaClase(1)),
+            conjuro(212, 'De segundo', 'Evocación', deLaClase(2)),
+        ];
+        const requisito = { Conjuros: { Niveles_con_requisito: [{ Nivel: 2, Especial: { Id: 70, Nombre: 'Implante' }, Dote: null }] } };
+
+        it('sin la aptitud no ofrece conjuros de ese nivel; con ella, sí', () => {
+            expect(aniadibles(claseConLibro(requisito), catalogo)).toEqual([211]);
+            expect(aniadibles(claseConLibro(requisito, [especialNivel(70, 'Implante')]), catalogo)).toEqual([211, 212]);
+        });
+    });
+
+    describe('el cambio de tamaño de una aptitud (Modificadores.Tamano_pasos)', () => {
+        const tamanos = [
+            { Id: 1, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0, Modificador_esconderse: 0, Multiplicador_carga: 1, Espacio: 5, Alcance: 5, Alcance_largo: 5 },
+            { Id: 2, Nombre: 'Grande', Modificador: -1, Modificador_presa: 4, Modificador_esconderse: -4, Multiplicador_carga: 2, Espacio: 10, Alcance: 10, Alcance_largo: 5 },
+        ];
+
+        it('pasa a Grande: CA, presa, espacio y alcance del tamaño nuevo', () => {
+            const service = crearServicio({ Inteligencia: 16 });
+            service.setCatalogoTamanos(tamanos);
+            const grande = claseConLibro({}, [especialNivel(90, 'Aptitud grande', 0, { Modificadores: { Tamano_pasos: 1 } })]);
+            service.setCatalogoClases([grande]);
+            expect(service.PersonajeCreacion.Espacio).toBe(5);
+            const caAntes = service.PersonajeCreacion.Ca;
+            expect(service.aplicarSiguienteNivelClase(grande).aplicado).toBeTrue();
+            const pj = service.PersonajeCreacion;
+            expect(pj.Tamano_efectivo).toEqual(jasmine.objectContaining({
+                nombre: 'Grande', pasos: 1, base: { Id: 1, Nombre: 'Mediano' }, origenes: [{ origen: 'Aptitud grande', pasos: 1 }],
+            }));
+            expect(pj.Espacio).toBe(10);
+            expect(pj.Alcance).toBe(10);
+            expect(pj.Ca).toBe(caAntes - 1);
+            expect(pj.Presa).toBe(4);
+        });
+
+        it('sin aptitudes que lo cambien, el de la raza', () => {
+            const service = crearServicio({ Inteligencia: 16 });
+            service.setCatalogoTamanos(tamanos);
+            const normal = claseConLibro({}, [especialNivel(91, 'Aptitud normal')]);
+            service.setCatalogoClases([normal]);
+            service.aplicarSiguienteNivelClase(normal);
+            expect(service.PersonajeCreacion.Tamano_efectivo?.nombre).toBe('Mediano');
+            expect(service.PersonajeCreacion.Presa).toBe(0);
+        });
+    });
+});

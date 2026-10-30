@@ -6,6 +6,9 @@ export interface SelectorClaseOpcionalModalOpcion {
     tipo: 'dote' | 'especial';
     nombre: string;
     extra: string;
+    /** No se puede elegir (la aptitud pide otra actitud): se enseña atenuada con su motivo. */
+    bloqueada?: boolean;
+    motivo?: string;
 }
 
 @Component({
@@ -34,7 +37,7 @@ export class SelectorClaseOpcionalModalComponent implements OnChanges {
         const clave = `${this.claveSeleccionada ?? ''}`.trim();
         if (clave.length < 1)
             return false;
-        return (this.opciones ?? []).some((item) => `${item?.clave ?? ''}`.trim() === clave);
+        return (this.opciones ?? []).some((item) => `${item?.clave ?? ''}`.trim() === clave && !item?.bloqueada);
     }
 
     trackByClave(_index: number, opcion: SelectorClaseOpcionalModalOpcion): string {
@@ -43,7 +46,7 @@ export class SelectorClaseOpcionalModalComponent implements OnChanges {
 
     seleccionarOpcion(clave: string): void {
         const valor = `${clave ?? ''}`.trim();
-        if (valor.length < 1)
+        if (valor.length < 1 || (this.opciones ?? []).some((item) => `${item?.clave ?? ''}`.trim() === valor && item?.bloqueada))
             return;
         this.claveSeleccionada = valor;
     }

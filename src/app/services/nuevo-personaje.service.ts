@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { AptitudSortilega } from '../interfaces/aptitud-sortilega';
 import { CARACTERISTICAS, Caracteristica } from '../interfaces/caracteristica';
-import { Clase, ClaseAumentoLanzador, ClaseConjuroRef, ClaseDoteNivel, ClaseEspecialNivel, ClaseNivelDetalle } from '../interfaces/clase';
+import { Clase, ClaseAumentoLanzador, ClaseConjuroRef, ClaseDoteNivel, ClaseEscuelaEspecialista, ClaseEspecialNivel, ClaseNivelDetalle } from '../interfaces/clase';
 import { Conjuro } from '../interfaces/conjuro';
 import { DisciplinaConjuros } from '../interfaces/disciplina-conjuros';
 import { Dote, DoteExtraItem } from '../interfaces/dote';
@@ -74,6 +74,8 @@ import {
     puntuacionLanzamiento,
 } from './utils/reglas-magia';
 import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './utils/alineamiento-contrato';
+import { AptitudDelPersonaje, evaluarActitudEspecial, listadoConjurosClase, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
+import { OrigenTamano, tamanoEfectivo } from './utils/tamano-efectivo';
 import { ajusteDePlantillas, dgsDePlantilla, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
@@ -636,6 +638,11 @@ export interface AplicacionClaseResultado {
 export interface EspecialidadMagicaPendiente {
     requiereArcano: boolean;
     requierePsionico: boolean;
+    /**
+     * La escuela de la que la clase es siempre especialista (`Conjuros.Escuela_especialista`): no se elige, solo sus
+     * escuelas prohibidas. `null` si se elige (o no se especializa).
+     */
+    escuelaFija: ClaseEscuelaEspecialista | null;
 }
 
 export interface EspecialidadArcanaSeleccion {
@@ -752,6 +759,10 @@ export interface ClaseOpcionInternaPendiente {
     idInterno: number;
     idEspecialRequerido: number;
     idDoteRequerida: number;
+    /** Si no se puede elegir por el alineamiento del personaje (los prerrequisitos de actitud de la aptitud). */
+    bloqueada?: boolean;
+    /** Por qué no se puede elegir («No cumple: Cualquier alineamiento bueno»). */
+    motivo?: string;
 }
 
 export interface ClaseGrupoOpcionalPendiente {
@@ -2173,7 +2184,10 @@ export class NuevoPersonajeService {
         const reglas = catalogo.flatMap((habilidad) => habilidad?.Sinergias ?? []);
         const sumanTamano = new Set(catalogo.filter((habilidad) => habilidad?.Modificador_tamano === true)
             .map((habilidad) => toNumber(habilidad.Id_habilidad)));
-        const parteTamano = bonoTamano(this.personajeCreacion?.Raza?.Tamano);
+        const efectivo = this.personajeCreacion?.Tamano_efectivo;
+        const parteTamano = bonoTamano(efectivo
+            ? { Nombre: efectivo.nombre, Modificador_esconderse: efectivo.modificadorEsconderse }
+            : this.personajeCreacion?.Raza?.Tamano);
         const habilidades = (this.personajeCreacion.Habilidades ?? []).filter((habilidad) => !habilidad?.Custom);
         const refs = habilidades.map((habilidad) => ({
             id: toNumber(habilidad.Id),
@@ -2700,7 +2714,21 @@ export class NuevoPersonajeService {
         this.recalcularDerivadasPorCaracteristicas();
         this.recalcularDerivadasPorCombate();
         pendiente.estado = 'resuelta';
+        this.refrescarSesionConjurosSiAbreNivel(idDote);
         return true;
+    }
+
+    /**
+     * Si la dote abre un nivel de conjuro de alguna clase de la sesión de conjuros (`Niveles_con_requisito`), la sesión se
+     * vuelve a calcular para ofrecer ya sus conjuros.
+     */
+    private refrescarSesionConjurosSiAbreNivel(idDote: number): void {
+        const abre = (this.estadoFlujo.conjuros.entradas ?? []).some((entrada) => {
+            const clase = this.catalogoClases.find((item) => toNumber(item?.Id) === toNumber(entrada?.claseObjetivo?.id));
+            return (clase?.Conjuros?.Niveles_con_requisito ?? []).some((fila) => toNumber(fila?.Dote?.Id) === idDote);
+        });
+        if (abre)
+            this.refrescarSesionConjurosPorEspecialidad();
     }
 
     contarSeleccionesEnemigoPredilectoPorEspeciales(especiales: ClaseEspecialNivel[]): number {
@@ -3628,8 +3656,10 @@ export class NuevoPersonajeService {
         }
         const modificador = modificadorDePuntuacion(puntuacion);
         const diarios = conjurosDiariosPorNivel(detalle?.Conjuros_diarios);
+        const sinRequisito = this.nivelesConjuroBloqueadosClase(clase);
         return Object.keys(diarios)
             .map((nivel) => toNumber(nivel))
+            .filter((nivel) => !sinRequisito.has(nivel))
             .filter((nivel) => toNumber(diarios[nivel]) >= 0 && puedeLanzarNivelConjuro(puntuacion, nivel))
             // Sin característica de lanzamiento en el catálogo no se puede saber si tiene adicionales: no se filtra.
             .filter((nivel) => puntuacion === null || toNumber(diarios[nivel]) > 0 || conjurosAdicionales(modificador, nivel) > 0)
@@ -4564,18 +4594,30 @@ export class NuevoPersonajeService {
         const nivel = Math.max(0, toInt(nivelAplicado));
         if (nivel !== 1)
             return null;
-        if (!toBoolean(clase?.Conjuros?.puede_elegir_especialidad))
+        const escuelaFija = clase?.Conjuros?.Arcanos ? (clase?.Conjuros?.Escuela_especialista ?? null) : null;
+        const puedeElegir = toBoolean(clase?.Conjuros?.puede_elegir_especialidad);
+        if (!puedeElegir && !escuelaFija)
             return null;
 
         const requiereArcano = !!clase?.Conjuros?.Arcanos;
-        const requierePsionico = !!clase?.Conjuros?.Psionicos;
+        const requierePsionico = puedeElegir && !!clase?.Conjuros?.Psionicos;
         if (!requiereArcano && !requierePsionico)
             return null;
 
         return {
             requiereArcano,
             requierePsionico,
+            escuelaFija,
         };
+    }
+
+    /**
+     * La escuela fija de la clase en el catálogo de escuelas (para sus escuelas prohibidas, `Prohibidas_al_especializarse`);
+     * `null` si el catálogo no la tiene.
+     */
+    escuelaFijaEnCatalogo(pendiente: EspecialidadMagicaPendiente | null, escuelasCatalogo: EscuelaConjuros[]): EscuelaConjuros | null {
+        const id = toInt(pendiente?.escuelaFija?.Id);
+        return id > 0 ? (escuelasCatalogo ?? []).find((escuela) => toInt(escuela?.Id) === id) ?? null : null;
     }
 
     aplicarEspecialidadMagicaClase(
@@ -4591,7 +4633,7 @@ export class NuevoPersonajeService {
 
         if (pendiente.requiereArcano) {
             const arcana = seleccion?.arcana;
-            const especializar = toBoolean(arcana?.especializar);
+            const especializar = !!pendiente.escuelaFija || toBoolean(arcana?.especializar);
             if (!especializar) {
                 this.personajeCreacion.Escuela_especialista = {
                     Nombre: 'Cualquiera',
@@ -4600,12 +4642,16 @@ export class NuevoPersonajeService {
                 this.personajeCreacion.Escuelas_prohibidas = [];
             } else {
                 const escuelasEspecializables = this.obtenerCatalogoEscuelasEspecializables(escuelasCatalogo);
-                const idEspecialista = toInt(arcana?.escuelaEspecialistaId);
-                const escuelaEspecialista = escuelasEspecializables.find((escuela) => toNumber(escuela?.Id) === idEspecialista);
+                const idEspecialista = pendiente.escuelaFija ? toInt(pendiente.escuelaFija.Id) : toInt(arcana?.escuelaEspecialistaId);
+                const escuelaEspecialista = pendiente.escuelaFija
+                    ? this.escuelaFijaEnCatalogo(pendiente, escuelasCatalogo)
+                    : escuelasEspecializables.find((escuela) => toNumber(escuela?.Id) === idEspecialista);
                 if (!escuelaEspecialista) {
                     return {
                         aplicado: false,
-                        razon: 'Debes seleccionar una escuela válida para especializarte.',
+                        razon: pendiente.escuelaFija
+                            ? `No se encuentra la escuela ${pendiente.escuelaFija.Nombre} en el catálogo de escuelas.`
+                            : 'Debes seleccionar una escuela válida para especializarte.',
                     };
                 }
 
@@ -4828,6 +4874,11 @@ export class NuevoPersonajeService {
         ];
         this.aplicarDotesNivelClase(clase, siguienteNivel, dotesAplicar);
         this.aplicarEspecialesNivelClase(especialesAplicar);
+        if (especialesAplicar.some((especialNivel) => pasosTamanoEspecialNivel(especialNivel) !== 0)) {
+            // Una aptitud que cambia el tamaño cambia la CA, la presa, Esconderse y la carga.
+            this.recalcularDerivadasPorCaracteristicas();
+            this.recalcularSinergiasHabilidades();
+        }
         this.aplicarDominiosNivelClase(clase, siguienteNivel, seleccionDominios);
         const advertenciasConjuros = this.prepararSesionConjurosTrasNivelClase(
             clase,
@@ -6523,7 +6574,7 @@ export class NuevoPersonajeService {
     private requierePrimerEscalonLanzadorEnNivelUno(clase: Clase | null | undefined): boolean {
         if (!this.tieneLanzamientoPropio(clase))
             return false;
-        return (clase?.Conjuros?.Listado ?? []).some((ref) => Math.max(0, toNumber(ref?.Nivel)) === 0);
+        return listadoConjurosClase(clase, this.aptitudesDelPersonaje()).some((ref) => Math.max(0, toNumber(ref?.Nivel)) === 0);
     }
 
     private obtenerNivelesClaseQueAumentanNivelLanzador(clase: Clase | null | undefined): number[] {
@@ -6984,16 +7035,33 @@ export class NuevoPersonajeService {
     }
 
     private mapearOpcionesPendientes(opciones: ClaseNivelOpcionInterna[]): ClaseOpcionInternaPendiente[] {
-        return opciones.map((opcion) => ({
-            clave: opcion.clave,
-            tipo: opcion.tipo,
-            nombre: opcion.nombre,
-            descripcion: opcion.descripcion,
-            extra: opcion.extra,
-            idInterno: opcion.idInterno,
-            idEspecialRequerido: opcion.idEspecialRequerido,
-            idDoteRequerida: opcion.idDoteRequerida,
-        }));
+        return opciones.map((opcion) => {
+            const actitud = this.evaluarActitudOpcion(opcion);
+            return {
+                clave: opcion.clave,
+                tipo: opcion.tipo,
+                nombre: opcion.nombre,
+                descripcion: opcion.descripcion,
+                extra: opcion.extra,
+                idInterno: opcion.idInterno,
+                idEspecialRequerido: opcion.idEspecialRequerido,
+                idDoteRequerida: opcion.idDoteRequerida,
+                ...(actitud.cumple ? {} : { bloqueada: true, motivo: actitud.motivos.join(' · ') }),
+            };
+        });
+    }
+
+    /**
+     * Si el alineamiento del personaje permite la opción: las aptitudes pueden pedir una actitud (`Prerrequisitos` del
+     * especial del nivel: la senda esandy del convocador divino, un alineamiento bueno). Las dotes no llevan esa marca.
+     */
+    private evaluarActitudOpcion(opcion: ClaseNivelOpcionInterna): { cumple: boolean; motivos: string[]; } {
+        if (opcion.tipo !== 'especial' || !opcion.especialNivel)
+            return { cumple: true, motivos: [] };
+        const prerrequisitos = prerrequisitosEspecialNivel(opcion.especialNivel);
+        if (!tienePrerrequisitosActitud(prerrequisitos))
+            return { cumple: true, motivos: [] };
+        return evaluarActitudEspecial(prerrequisitos, getAlineamientoBasicoIdPorNombre(`${this.personajeCreacion.Alineamiento ?? ''}`));
     }
 
     private resolverOpcionalesNivelClase(
@@ -7036,6 +7104,12 @@ export class NuevoPersonajeService {
                 advertencias.push(`No hay opciones habilitadas para el grupo opcional ${grupo}`);
                 return;
             }
+            // Las que no permite su alineamiento se enseñan con su motivo, pero no se pueden elegir.
+            const permitidas = elegibles.filter((opcion) => this.evaluarActitudOpcion(opcion).cumple);
+            if (permitidas.length < 1) {
+                advertencias.push(`Tu alineamiento no permite ninguna opción del grupo opcional ${grupo}`);
+                return;
+            }
 
             const claveSeleccionada = `${seleccionesOpcionales?.[grupo] ?? ''}`.trim();
             if (claveSeleccionada.length < 1 && elegibles.length > 1) {
@@ -7047,8 +7121,8 @@ export class NuevoPersonajeService {
             }
 
             const elegida = claveSeleccionada.length > 0
-                ? elegibles.find((opcion) => opcion.clave === claveSeleccionada) ?? null
-                : elegibles[0];
+                ? permitidas.find((opcion) => opcion.clave === claveSeleccionada) ?? null
+                : permitidas[0];
             if (!elegida) {
                 gruposPendientes.push({
                     grupo,
@@ -7565,16 +7639,32 @@ export class NuevoPersonajeService {
         return delta;
     }
 
-    private construirNivelesAccesiblesDesdeDiarios(mapaDiarios: Record<number, number>): Set<number> {
+    private construirNivelesAccesiblesDesdeDiarios(mapaDiarios: Record<number, number>, sinRequisito: Set<number> = new Set()): Set<number> {
         const resultado = new Set<number>();
         Object.keys(mapaDiarios)
             .map((nivel) => toNumber(nivel))
-            .filter((nivel) => Number.isFinite(nivel) && nivel >= 0)
+            .filter((nivel) => Number.isFinite(nivel) && nivel >= 0 && !sinRequisito.has(nivel))
             .forEach((nivel) => {
                 if (toNumber(mapaDiarios[nivel]) >= 0)
                     resultado.add(nivel);
             });
         return resultado;
+    }
+
+    /** Las aptitudes especiales que tiene el personaje (su id y su extra): dan listas de conjuros y abren niveles. */
+    private aptitudesDelPersonaje(): AptitudDelPersonaje[] {
+        return (this.personajeCreacion?.Claseas ?? [])
+            .map((especial) => ({ id: toNumber(especial?.Id), idExtra: toNumber(especial?.Id_extra) }))
+            .filter((aptitud) => aptitud.id > 0);
+    }
+
+    /** Los niveles de conjuro de la clase que piden una aptitud o una dote que el personaje no tiene. */
+    private nivelesConjuroBloqueadosClase(clase: Clase | null | undefined): Set<number> {
+        return nivelesConjuroSinRequisito(
+            clase,
+            this.aptitudesDelPersonaje().map((aptitud) => aptitud.id),
+            (this.personajeCreacion?.DotesContextuales ?? []).map((item) => toNumber(item?.Dote?.Id)),
+        );
     }
 
     private construirNivelesAccesiblesHastaNivelMax(nivelMax: number): Set<number> {
@@ -7641,8 +7731,10 @@ export class NuevoPersonajeService {
                 );
             }
 
-            const nivelesActuales = this.construirNivelesAccesiblesDesdeDiarios(diariosActual);
-            const nivelesPrevios = this.construirNivelesAccesiblesDesdeDiarios(diariosPrevio);
+            // Un nivel que pide una aptitud o una dote que no tiene no da espacios ni conjuros (`Niveles_con_requisito`).
+            const sinRequisito = this.nivelesConjuroBloqueadosClase(claseObjetivo);
+            const nivelesActuales = this.construirNivelesAccesiblesDesdeDiarios(diariosActual, sinRequisito);
+            const nivelesPrevios = this.construirNivelesAccesiblesDesdeDiarios(diariosPrevio, sinRequisito);
             const nivelesRecienDesbloqueados = new Set<number>(
                 Array.from(nivelesActuales).filter((nivel) => !nivelesPrevios.has(nivel))
             );
@@ -7742,7 +7834,7 @@ export class NuevoPersonajeService {
             resultado.push(conjuro);
         });
 
-        (claseObjetivo?.Conjuros?.Listado ?? []).forEach((ref) => {
+        listadoConjurosClase(claseObjetivo, this.aptitudesDelPersonaje()).forEach((ref) => {
             const id = toNumber(ref?.Id);
             const nivel = toNumber(ref?.Nivel);
             if (id <= 0)
@@ -7813,7 +7905,7 @@ export class NuevoPersonajeService {
                 return compatibles[0].nivel;
         }
 
-        const refListado = (claseObjetivo?.Conjuros?.Listado ?? [])
+        const refListado = listadoConjurosClase(claseObjetivo, this.aptitudesDelPersonaje())
             .find((ref) => toNumber(ref?.Id) === toNumber(conjuro?.Id));
         if (refListado)
             return toNumber(refListado?.Nivel);
@@ -8251,6 +8343,7 @@ export class NuevoPersonajeService {
      * el multiplicador de su tamaño, de bípedo o de cuadrúpedo según la raza, como la ficha de la API.
      */
     private recalcularCapacidadCarga(): void {
+        this.recalcularTamanoEfectivo();
         const tamano = this.resolverTamanoActual();
         const multiplicador = this.razaSeleccionada?.Cuadrupedo
             ? tamano?.Multiplicador_carga_cuadrupedo
@@ -8259,11 +8352,12 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * El tamaño del personaje: el de su raza, movido por los pasos de tamaño de sus plantillas (`Modificacion_tamano`),
-     * por el orden de los tamaños del catálogo. El `Tamano` fijo de un licántropo es el de su forma animal, no el suyo.
+     * El tamaño del personaje para la carga: el efectivo (el de su raza con las aptitudes que lo cambian), movido por los
+     * pasos de tamaño de sus plantillas (`Modificacion_tamano`), por el orden de los tamaños del catálogo. El `Tamano` fijo
+     * de un licántropo es el de su forma animal, no el suyo.
      */
     private resolverTamanoActual(): Tamano | null {
-        const idRaza = toInt(this.personajeCreacion?.Raza?.Tamano?.Id);
+        const idRaza = toInt(this.personajeCreacion?.Tamano_efectivo?.id ?? this.personajeCreacion?.Raza?.Tamano?.Id);
         const ordenados = [...this.catalogoTamanos]
             .filter((tamano) => toInt(tamano?.Id) > 0)
             .sort((a, b) => toNumber(a.Modificador_presa) - toNumber(b.Modificador_presa));
@@ -8284,8 +8378,43 @@ export class NuevoPersonajeService {
         }, 0);
     }
 
+    /**
+     * El tamaño que cuenta (`tamano-efectivo.ts`, la misma regla que la ficha de la API): el de la raza movido por las
+     * aptitudes del personaje que lo cambian (`Tamano_pasos`), con el espacio y el alcance que se guardan.
+     */
+    private recalcularTamanoEfectivo(): void {
+        const raza = this.razaSeleccionada;
+        const tamanoRaza = this.personajeCreacion?.Raza?.Tamano;
+        const base = this.catalogoTamanos.find((tamano) => toInt(tamano?.Id) === toInt(tamanoRaza?.Id))
+            ?? (tamanoRaza ? (tamanoRaza as Tamano) : null);
+        const efectivo = tamanoEfectivo(base, this.catalogoTamanos, this.origenesTamano(), raza?.Espacio, raza?.Alcance);
+        this.personajeCreacion.Tamano_efectivo = efectivo?.ficha ?? null;
+        this.personajeCreacion.Espacio = efectivo?.ficha.espacio ?? null;
+        this.personajeCreacion.Alcance = efectivo?.ficha.alcance ?? null;
+    }
+
+    /** Las aptitudes del personaje que cambian el tamaño, con las categorías que suma cada una (las de las tablas de clase). */
+    private origenesTamano(): OrigenTamano[] {
+        const ids = new Set(this.aptitudesDelPersonaje().map((aptitud) => aptitud.id));
+        const vistos = new Set<number>();
+        const origenes: OrigenTamano[] = [];
+        (this.catalogoClases ?? []).forEach((clase) => (clase?.Desglose_niveles ?? []).forEach((nivel) =>
+            (nivel?.Especiales ?? []).forEach((especialNivel) => {
+                const especial = (especialNivel?.Especial ?? {}) as Record<string, any>;
+                const id = toNumber(especial?.['Id']);
+                if (!ids.has(id) || vistos.has(id))
+                    return;
+                vistos.add(id);
+                const pasos = pasosTamanoEspecialNivel(especialNivel);
+                if (pasos !== 0)
+                    origenes.push({ origen: `${especial?.['Nombre'] ?? ''}`.trim(), pasos });
+            })));
+        return origenes;
+    }
+
     private recalcularDefensasYPresa(): void {
-        const modTamanoCa = toNumber(this.personajeCreacion?.Raza?.Tamano?.Modificador);
+        this.recalcularTamanoEfectivo();
+        const modTamanoCa = toNumber(this.personajeCreacion?.Tamano_efectivo?.modificador ?? this.personajeCreacion?.Raza?.Tamano?.Modificador);
 
         this.personajeCreacion.Ca = 10
             + toNumber(this.personajeCreacion.ModDestreza)

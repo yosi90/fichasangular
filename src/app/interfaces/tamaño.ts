@@ -12,4 +12,10 @@ export interface Tamano {
     Multiplicador_carga?: number | null;
     /** Lo mismo para un cuadrúpedo. */
     Multiplicador_carga_cuadrupedo?: number | null;
+    /** Su espacio, en pies (MJ tabla 8-4: Grande 10); `null` si la caché aún no lo trae. */
+    Espacio?: number | null;
+    /** Su alcance natural si es alta, en pies (Grande 10). */
+    Alcance?: number | null;
+    /** El de una criatura larga (Grande 5). */
+    Alcance_largo?: number | null;
 }
