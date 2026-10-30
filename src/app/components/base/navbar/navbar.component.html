@@ -1,4 +1,8 @@
 <div class="ribbon-nav">
+    <button type="button" class="ribbon-trigger ribbon-trigger--icon ribbon-menu" *ngIf="esMovil" (click)="alternarMenu()"
+        aria-label="Abrir el menú" [attr.aria-expanded]="menuAbierto">
+        <mat-icon aria-hidden="true">menu</mat-icon>
+    </button>
     <button type="button" class="ribbon-trigger ribbon-trigger--icon" #archivoTrigger="matMenuTrigger" [matMenuTriggerFor]="menuArchivo"
         matTooltip="Archivo" aria-label="Archivo"
         (click)="onRibbonTriggerClick(archivoTrigger)"

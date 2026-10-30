@@ -81,3 +81,30 @@ mat-icon.pestana-icono
     min-height: 0
     overflow: auto
     padding: 0.75rem
+
+// Móvil (vista 10): las pestañas solo con su icono, salvo la activa, que lleva también su nombre y la × de 44 px.
+// El nombre de las demás sigue ahí para el lector de pantalla.
+@media (max-width: 699.98px)
+    :host ::ng-deep .mat-mdc-tab.mdc-tab
+        min-width: 44px
+        padding-right: 8px
+        padding-left: 8px
+
+    :host ::ng-deep .mat-mdc-tab:not(.mdc-tab--active)
+        .pestana-etiqueta
+            position: absolute
+            width: 1px
+            height: 1px
+            overflow: hidden
+            clip: rect(0 0 0 0)
+
+        .pestana-cerrar
+            display: none
+
+    .pestana-etiqueta
+        max-width: 150px
+
+    .pestana-cerrar.mat-mdc-icon-button
+        width: 44px
+        height: 44px
+        padding: 10px

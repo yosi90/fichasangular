@@ -13,6 +13,7 @@ import { UserProfileNavigationService } from 'src/app/services/user-profile-navi
 import { UserService } from 'src/app/services/user.service';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
 import { BuscadorGlobalVentanaService } from '../../shared/buscador-global/buscador-global.component';
+import { MarcoMovilService } from 'src/app/services/marco-movil.service';
 
 @Component({
     selector: 'app-navbar',
@@ -46,7 +47,21 @@ export class NavbarComponent implements OnInit, OnDestroy {
         private usrService: UserService,
         private userProfileNavSvc: UserProfileNavigationService,
         private buscadorGlobal?: BuscadorGlobalVentanaService,
+        private marco?: MarcoMovilService,
     ) { }
+
+    /** En el móvil, la cinta lleva el botón «Menú», que abre el menú lateral como cajón (vista 10 del lienzo). */
+    get esMovil(): boolean {
+        return this.marco?.esMovil ?? false;
+    }
+
+    get menuAbierto(): boolean {
+        return this.marco?.menuAbierto ?? false;
+    }
+
+    alternarMenu(): void {
+        this.marco?.alternarMenu();
+    }
 
     /** El atajo de la búsqueda global, como se escribe en este equipo. */
     readonly atajoBuscar = /mac|iphone|ipad/i.test(typeof navigator !== 'undefined' ? navigator.platform || navigator.userAgent : '') ? '⌘K' : 'Ctrl+K';

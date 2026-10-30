@@ -271,12 +271,20 @@ table
     .lista-personajes
         padding: 10px
 
+    table, :host ::ng-deep .lista-personajes__tabla tbody
+        display: block
+        width: 100%
+
     table
-        thead
+        tr.mat-mdc-header-row
             display: none
+
+        tr.pj-detalle, tr.pj-detalle td
+            display: block
 
         tr.pj-fila
             display: flex
+            width: 100%
             align-items: center
             height: auto
             min-height: 64px

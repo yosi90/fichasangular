@@ -1,10 +1,73 @@
-#base
-    float: right
+@use '../../../../assets/css/variables' as *
 
-    width: calc(100% - 282px)
-    height: calc(100% - 45px) //33 navabar + 3 margin-top aside + 10 margin-bottom aside
+// El marco (menú y pestañas) ocupa lo que deja la cinta. En el escritorio, el menú va fijo a la izquierda (250 px y
+// su margen) y la zona principal, hundida, a su lado; en el móvil (< 700 px), el menú es un cajón sobre todo lo demás.
+:host
+    display: block
+    flex: 1 1 auto
+    min-height: 0
+
+.marco.mat-drawer-container
+    height: 100%
+    background: transparent
+    color: inherit
+
+.marco__menu.mat-drawer
+    width: 260px
+    background: transparent
+    border: 0
+    box-shadow: none
+
+    // El menú cabe entero (sus desplegables van en un overlay): sin barras de desplazamiento propias en el escritorio.
+    ::ng-deep .mat-drawer-inner-container
+        overflow: hidden
+
+.marco__contenido.mat-drawer-content
+    overflow: hidden
+
+#base
+    width: calc(100% - 22px)
+    height: calc(100% - 12px)
 
     box-shadow: 3px 3px 10px inset black
 
     padding: 10px 10px
-    margin: 5px 10px 0 0
+    margin: 5px 10px 0 12px
+
+// Móvil: el cajón de min(320 px, 86 vw) con su cabecera «Menú» y la ×; la zona principal, a todo lo ancho con 8 px.
+.marco--movil
+    .marco__menu.mat-drawer
+        width: min(320px, 86vw)
+        box-sizing: border-box
+        padding: 10px
+        background: #424242
+        box-shadow: 3px 0 10px black
+
+        ::ng-deep .mat-drawer-inner-container
+            overflow-y: auto
+
+    #base
+        width: calc(100% - 16px)
+        height: calc(100% - 8px)
+        margin: 0 8px 8px
+        padding: 6px
+
+.marco__menu-cabecera
+    display: flex
+    align-items: center
+    justify-content: space-between
+    height: 44px
+    padding-left: 4px
+
+.marco__menu-titulo
+    font-size: 12px
+    font-weight: 700
+    letter-spacing: .14em
+    text-transform: uppercase
+    color: $accent
+
+.marco__menu-cerrar.mat-mdc-icon-button
+    width: 44px
+    height: 44px
+    padding: 10px
+    color: #ffffff

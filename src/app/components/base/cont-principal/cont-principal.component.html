@@ -1,12 +1,28 @@
-<app-base-menu #menu (NuevoPersonajeTab)="AbrirNuevoPersonaje()" (ListadoTab)="abrirListado($event)"></app-base-menu>
-<mat-card id="base">
-    <app-tab-control 
-        [AbrirNuevoPersonajeTab]="NuevoPersonaje" 
-        (CerrarNuevoPersonajeTab)="CerrarNuevoPersonaje()"
-        [AbrirListadoTab]="Listado" 
-        [ListadoTabTipo]="TipoListado" 
-        [ListadoTabOperacion]="OperacionListado" 
-        (CerrarListadoTab)="CerrarListado()"
-        (NuevoPersonajeSolicitado)="menu.AbrirNuevoPersonaje()">
-    </app-tab-control>
-</mat-card>
+<!-- El marco: el menú lateral y las pestañas. En el móvil (vista 10 del lienzo), el menú es un cajón que se abre con
+     el botón «Menú» de la cinta y se cierra al elegir, con Esc, con el fondo o con el gesto atrás. -->
+<mat-sidenav-container class="marco" [hasBackdrop]="esMovil" [class.marco--movil]="esMovil">
+    <mat-sidenav class="marco__menu" [mode]="esMovil ? 'over' : 'side'" [opened]="!esMovil || menuAbierto"
+        [disableClose]="!esMovil" [autoFocus]="esMovil ? 'first-tabbable' : false" (closedStart)="alCerrarCajon()"
+        [attr.role]="esMovil ? 'dialog' : null" [attr.aria-label]="esMovil ? 'Menú' : null" [attr.aria-modal]="esMovil ? 'true' : null">
+        <div class="marco__menu-cabecera" *ngIf="esMovil">
+            <span class="marco__menu-titulo">Menú</span>
+            <button type="button" mat-icon-button class="marco__menu-cerrar" aria-label="Cerrar el menú" (click)="cerrarMenu()">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+        <app-base-menu #menu (NuevoPersonajeTab)="AbrirNuevoPersonaje()" (ListadoTab)="abrirListado($event)"></app-base-menu>
+    </mat-sidenav>
+    <mat-sidenav-content class="marco__contenido">
+        <mat-card id="base">
+            <app-tab-control
+                [AbrirNuevoPersonajeTab]="NuevoPersonaje"
+                (CerrarNuevoPersonajeTab)="CerrarNuevoPersonaje()"
+                [AbrirListadoTab]="Listado"
+                [ListadoTabTipo]="TipoListado"
+                [ListadoTabOperacion]="OperacionListado"
+                (CerrarListadoTab)="CerrarListado()"
+                (NuevoPersonajeSolicitado)="menu.AbrirNuevoPersonaje()">
+            </app-tab-control>
+        </mat-card>
+    </mat-sidenav-content>
+</mat-sidenav-container>

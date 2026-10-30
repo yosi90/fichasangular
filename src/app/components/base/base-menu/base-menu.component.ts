@@ -4,6 +4,7 @@ import { UserProfileNavigationService } from '../../../services/user-profile-nav
 import { MatExpansionPanel } from '@angular/material/expansion';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 import { TipoRol, tipoRolDeListado } from 'src/app/services/utils/iconos-rol';
+import { MarcoMovilService } from 'src/app/services/marco-movil.service';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
 type GrupoOtros = 'equipo' | 'rasgos' | 'mundo';
@@ -115,7 +116,8 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
 
     constructor(
         private usrService: UserService,
-        private userProfileNavSvc: UserProfileNavigationService
+        private userProfileNavSvc: UserProfileNavigationService,
+        private marco?: MarcoMovilService,
     ) { }
 
     ngOnInit(): void {
@@ -130,7 +132,9 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         this.cancelarCierreOtros();
     }
 
+    /** Tras elegir una opción: pliega el acordeón y, en el móvil, cierra el cajón. */
     closeAcordion() {
+        this.marco?.cerrarMenu();
         if (this.primero.expanded)
             this.primero.close();
         else if (this.segundo.expanded)

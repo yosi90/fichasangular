@@ -5,6 +5,8 @@
 // número, filas de 44 px (recuadro 28/18, nombre y subtítulo gris a la derecha) y la ayuda del teclado al pie.
 :host
     display: block
+    // El panel del overlay es flex: sin esto, la ventana encogería a su contenido.
+    width: 100%
 
 .buscador-global
     display: flex

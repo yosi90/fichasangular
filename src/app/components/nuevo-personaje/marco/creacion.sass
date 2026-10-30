@@ -277,3 +277,110 @@ app-ficha-detalle.creacion > .ficha
 
     .creacion-personaje__pares
         grid-template-columns: minmax(0, 1fr)
+
+// Móvil (< 700 px; vista 10 del lienzo): la cabecera en columna con «Paso 1 de 7 · Raza» y una barra en lugar de la
+// fila de pasos; la vista previa, como hoja sobre la lista, con su × y el pie fijo con la acción para seguir.
+.creacion-progreso, .creacion-cabecera__paso-nombre
+    display: none
+
+@media (max-width: 699.98px)
+    app-ficha-detalle.creacion > .ficha
+        gap: 8px
+        padding: 8px
+
+    .creacion-cabecera
+        flex-direction: column
+        align-items: stretch
+        gap: 8px
+        padding: 12px 14px 10px
+
+    .creacion-cabecera__identidad
+        flex-direction: column
+        align-items: flex-start
+        gap: 4px
+
+    .creacion-cabecera__paso
+        font-size: 11px
+
+    .creacion-cabecera__paso-nombre
+        display: inline
+
+    .creacion-cabecera .creacion-cabecera__nombre
+        font-size: 20px
+
+    .creacion-cabecera__acciones
+        flex-wrap: wrap
+
+    .creacion-pasos
+        display: none
+
+    .creacion-progreso
+        display: flex
+        gap: 4px
+
+    .creacion-progreso__tramo
+        flex: 1 1 0
+        height: 4px
+        border-radius: 2px
+        background: #616161
+
+    .creacion-progreso__tramo--hecho
+        background: $accent
+
+    .creacion-progreso__tramo--actual
+        background: $active
+
+    .creacion-cuerpo__tarea
+        padding: 10px
+
+    // La hoja, a pantalla completa. Sus antepasados crean contextos de apilamiento (el marco y la pestaña, con z-index
+    // 1): mientras está abierta, se suben por encima de la cinta (cuyos paneles van a 1500) y de la fila de pestañas.
+    mat-sidenav-container:has(.creacion-cuerpo__lateral app-creacion-vista-previa)
+        z-index: 1550
+
+    mat-tab-body:has(.creacion-cuerpo__lateral app-creacion-vista-previa)
+        z-index: 10
+
+    .creacion-cuerpo__lateral:has(app-creacion-vista-previa)
+        position: fixed
+        inset: 0
+        z-index: 1550
+        overflow-y: auto
+        padding: 0 12px 140px
+        background: $contrast
+
+        .creacion-vista-previa__cabecera
+            position: sticky
+            top: 0
+            z-index: 1
+            margin: 0 -12px
+            padding: 4px 4px 4px 14px
+            background: $contrast-dark
+
+    app-ficha-detalle.creacion:has(.creacion-cuerpo__lateral app-creacion-vista-previa) .creacion-pie
+        position: fixed
+        right: 0
+        bottom: 0
+        left: 0
+        z-index: 1551
+        flex-direction: column
+        align-items: stretch
+        padding: 10px 12px
+        background: #424242
+        border-top: 1px solid rgba(255, 255, 255, .08)
+
+        .creacion-pie__nota
+            flex: 0 0 auto
+
+        .creacion-pie__acciones
+            flex-direction: column-reverse
+            align-items: stretch
+            margin-left: 0
+
+            .mat-mdc-button-base
+                min-height: 44px
+
+    .creacion-vista-previa__cerrar.mat-mdc-icon-button
+        width: 44px
+        height: 44px
+        padding: 10px

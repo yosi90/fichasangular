@@ -23,7 +23,7 @@ export class CreacionMarcoComponent { }
     template: `
         <section class="creacion-cabecera" aria-label="Personaje en creación">
             <div class="creacion-cabecera__identidad">
-                <span class="creacion-cabecera__paso">Nuevo personaje · Paso {{numeroActual}} de {{pasos.length}}</span>
+                <span class="creacion-cabecera__paso">Nuevo personaje · Paso {{numeroActual}} de {{pasos.length}}<span class="creacion-cabecera__paso-nombre"> · {{nombreActual}}</span></span>
                 <h1 class="creacion-cabecera__nombre" [class.creacion-cabecera__nombre--vacio]="!nombreVisible">{{nombreVisible || 'Sin nombre todavía'}}</h1>
                 <span class="creacion-cabecera__linea" *ngIf="linea">{{linea}}</span>
             </div>
@@ -33,6 +33,11 @@ export class CreacionMarcoComponent { }
                     <mat-icon aria-hidden="true">visibility</mat-icon>
                     Ver la ficha
                 </button>
+            </div>
+            <!-- En el móvil (vista 10), la fila de pasos se resume en esta barra. -->
+            <div class="creacion-progreso" role="progressbar" aria-valuemin="1" [attr.aria-valuemax]="pasos.length"
+                [attr.aria-valuenow]="numeroActual" [attr.aria-valuetext]="'Paso ' + numeroActual + ' de ' + pasos.length + ': ' + nombreActual">
+                <span class="creacion-progreso__tramo" *ngFor="let paso of pasos" [ngClass]="'creacion-progreso__tramo--' + paso.estado"></span>
             </div>
         </section>
         <ol class="creacion-pasos" aria-label="Pasos de la creación">
@@ -66,12 +71,15 @@ export class CreacionCabeceraComponent implements OnChanges {
 
     pasos: PasoCreacionPintado[] = [];
     numeroActual = 1;
+    nombreActual = '';
     nombreVisible = '';
 
     ngOnChanges(): void {
         const opciones: OpcionesPasosCreacion = { conVentajas: this.conVentajas, conConjuros: this.conConjuros, conFormacion: this.conFormacion };
         this.pasos = pintarPasosCreacion(opciones, this.paso);
-        this.numeroActual = this.pasos.find((paso) => paso.estado === 'actual')?.numero ?? 1;
+        const actual = this.pasos.find((paso) => paso.estado === 'actual');
+        this.numeroActual = actual?.numero ?? 1;
+        this.nombreActual = actual?.nombre ?? '';
         this.nombreVisible = `${this.nombre ?? ''}`.trim();
     }
 }

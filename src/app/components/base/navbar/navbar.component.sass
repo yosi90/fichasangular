@@ -77,6 +77,44 @@
     font-family: inherit
     color: $accent
 
+// Móvil (vista 10): la cinta sube a 44 px para que todo se pueda pulsar; el botón «Menú» va primero y «Buscar» se
+// queda en la lupa.
+@media (max-width: 699.98px)
+    .ribbon-nav
+        min-height: 44px
+        gap: 0
+        overflow-x: auto
+
+    .ribbon-trigger--icon
+        min-width: 40px
+        min-height: 44px
+        padding: 0 8px
+        margin: 0
+
+        .mat-icon
+            font-size: 22px
+            width: 22px
+            height: 22px
+
+    .ribbon-menu
+        min-width: 44px
+        margin-right: 6px
+
+    .ribbon-buscar
+        min-width: 40px
+        min-height: 36px
+        justify-content: center
+        margin: 0 4px
+        padding: 0 8px
+
+        .mat-icon
+            width: 20px
+            height: 20px
+            font-size: 20px
+
+    .ribbon-buscar__texto, .ribbon-buscar__atajo
+        display: none
+
 .ribbon-notificaciones
     display: inline-flex
     align-items: center

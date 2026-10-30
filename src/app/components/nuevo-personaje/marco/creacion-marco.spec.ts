@@ -97,6 +97,16 @@ describe('El marco de la creación', () => {
         expect(el().textContent).toContain('Paso 6 de 7');
     });
 
+    it('en el móvil, la fila se resume en «Paso 6 de 7 · Habilidades» y una barra accesible', () => {
+        expect(el().querySelector('.creacion-cabecera__paso-nombre')?.textContent).toContain('· Habilidades');
+        const barra = el().querySelector('[role="progressbar"]')!;
+        expect(barra.getAttribute('aria-valuenow')).toBe('6');
+        expect(barra.getAttribute('aria-valuemax')).toBe('7');
+        expect(barra.getAttribute('aria-valuetext')).toBe('Paso 6 de 7: Habilidades');
+        expect(barra.querySelectorAll('.creacion-progreso__tramo--hecho').length).toBe(5);
+        expect(barra.querySelectorAll('.creacion-progreso__tramo--actual').length).toBe(1);
+    });
+
     it('no se puede volver atrás ni saltar: los pasos no son botones ni enlaces', () => {
         const fila = el().querySelector('.creacion-pasos')!;
         expect(fila.querySelectorAll('button, a, [tabindex]').length).toBe(0);
