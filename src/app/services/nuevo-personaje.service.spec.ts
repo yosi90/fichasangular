@@ -1503,7 +1503,7 @@ describe('NuevoPersonajeService (clases)', () => {
             },
             Oficial: true,
             Ataques_naturales: '',
-            Tamano: { Id: 1, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0 },
+            Tamano: { Id: 5, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0 },
             Dgs_adicionales: {
                 Cantidad: 1,
                 Dado: 'd8',
@@ -1579,7 +1579,7 @@ describe('NuevoPersonajeService (clases)', () => {
         { Fuerza: 29, Ligera: 466, Media: 933, Pesada: 1400 },
     ];
     const TAMANOS_CARGA = [
-        { Id: 1, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0, Multiplicador_carga: 1, Multiplicador_carga_cuadrupedo: 1.5 },
+        { Id: 5, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0, Multiplicador_carga: 1, Multiplicador_carga_cuadrupedo: 1.5 },
         { Id: 4, Nombre: 'Pequeño', Modificador: 1, Modificador_presa: -4, Multiplicador_carga: 0.75, Multiplicador_carga_cuadrupedo: 1 },
         { Id: 6, Nombre: 'Grande', Modificador: -1, Modificador_presa: 4, Multiplicador_carga: 2, Multiplicador_carga_cuadrupedo: 3 },
     ];

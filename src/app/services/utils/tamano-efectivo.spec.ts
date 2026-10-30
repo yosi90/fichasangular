@@ -1,6 +1,6 @@
 import { Tamano } from 'src/app/interfaces/tamaño';
 import { normalizeTamano } from 'src/app/services/tamano.service';
-import { normalizarTamanoFicha, pasosDeAptitudes, tamanoEfectivo } from 'src/app/services/utils/tamano-efectivo';
+import { normalizarTamanoFicha, pasosDeAptitudes, tamanoEfectivo, tamanoQueCuenta, tamanoTrasPasos } from 'src/app/services/utils/tamano-efectivo';
 
 // El tamaño con las aptitudes que lo cambian (Manual del jugador, tablas 8-1 y 8-4), con la misma regla que la ficha de
 // la API (`utils/tamano.py`). Las cifras son las de `GET /tamanos`.
@@ -85,5 +85,21 @@ describe('tamano-efectivo', () => {
             base: { Id: 5, Nombre: 'Mediano' }, pasos: 1, origenes: [{ origen: 'Tamaño imponente', pasos: 1 }],
         });
         expect(normalizarTamanoFicha(null)).toBeNull();
+    });
+
+    it('mueve el tamaño por el orden de los ids del catálogo, sin pasar de los extremos (aptitudes y plantillas)', () => {
+        expect(tamanoTrasPasos(CATALOGO, 5, 1)).toEqual({ tamano: tamano(6), pasos: 1 });
+        expect(tamanoTrasPasos(CATALOGO, 2, -3)).toEqual({ tamano: tamano(1), pasos: -1 });
+        expect(tamanoTrasPasos(CATALOGO, 5, 0)).toEqual({ tamano: tamano(5), pasos: 0 });
+        expect(tamanoTrasPasos(CATALOGO, 0, 1)).toBeNull();
+    });
+
+    it('el tamaño que cuenta es el efectivo y, sin él, el de la raza', () => {
+        const raza = { Tamano: tamano(5) } as any;
+        expect(tamanoQueCuenta({ Raza: raza, Tamano_efectivo: tamanoEfectivo(tamano(5), CATALOGO, [{ origen: 'Aptitud', pasos: 1 }])!.ficha }))
+            .toEqual({ nombre: 'Grande', modificador: -1, modificadorPresa: 4, modificadorEsconderse: -4 });
+        expect(tamanoQueCuenta({ Raza: raza, Tamano_efectivo: null }))
+            .toEqual({ nombre: 'Mediano', modificador: 0, modificadorPresa: 0, modificadorEsconderse: 0 });
+        expect(tamanoQueCuenta(null)).toBeNull();
     });
 });

@@ -18,6 +18,7 @@ import {
     textoValorCaracteristica,
 } from 'src/app/services/utils/caracteristicas';
 import { camposPdfEquipo } from './utils/ficha-pdf-equipo';
+import { tamanoQueCuenta } from './utils/tamano-efectivo';
 
 /** Cada característica de un familiar o un compañero y su campo en la hoja (`fue`, y su modificador `mod_fue`). */
 const CAMPOS_CARACTERISTICAS_PDF: ReadonlyArray<[Caracteristica, string]> = [
@@ -58,8 +59,8 @@ export class FichaPersonajeService {
         if (pj.Deidad && pj.Deidad.length > 0)
             form.getTextField('deidad').setText(pj.Deidad);
         // El tamaño que cuenta (el de la raza movido por sus aptitudes, `tamano` de la ficha); sin él, el de la raza.
-        const tamano = pj.Tamano_efectivo;
-        form.getTextField('tamaño').setText(tamano?.nombre ?? pj.Raza.Tamano.Nombre);
+        const tamano = tamanoQueCuenta(pj);
+        form.getTextField('tamaño').setText(tamano?.nombre ?? '');
         form.getTextField('edad').setText(pj.Edad.toString());
         form.getTextField('sexo').setText(pj.Genero);
         form.getTextField('altura').setText(pj.Altura.toString());
@@ -78,12 +79,12 @@ export class FichaPersonajeService {
         form.getTextField('mod_sab').setText(`${pj.ModSabiduria > 0 ? '+' : ''}${pj.ModSabiduria}`);
         form.getTextField('mod_car').setText(`${pj.ModCarisma > 0 ? '+' : ''}${pj.ModCarisma}`);
         form.getTextField('mod_varios_iniciativa').setText(`${sumarPartes(totales.iniciativa, 'varios')}`);
-        form.getTextField('mod_tamaño_presa').setText(`${tamano ? tamano.modificadorPresa : pj.Raza.Tamano.Modificador_presa}`);
+        form.getTextField('mod_tamaño_presa').setText(`${tamano?.modificadorPresa ?? 0}`);
         form.getTextField('mod_varios_presa').setText(`${sumarPartes(totales.presa, 'varios')}`);
         form.getTextField('ca').setText(pj.Ca.toString());
         form.getTextField('ca_armadura').setText('0');
         form.getTextField('ca_escudo').setText('0');
-        form.getTextField('mod_tamaño_ca').setText(`${tamano ? tamano.modificador : pj.Raza.Tamano.Modificador}`);
+        form.getTextField('mod_tamaño_ca').setText(`${tamano?.modificador ?? 0}`);
         form.getTextField('armadura_natural').setText(pj.Armadura_natural.toString());
         form.getTextField('mod_desvio').setText(pj.Ca_desvio.toString());
         form.getTextField('mod_varios_ca').setText(pj.Ca_varios.toString());

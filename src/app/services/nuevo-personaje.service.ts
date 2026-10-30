@@ -75,7 +75,7 @@ import {
 } from './utils/reglas-magia';
 import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './utils/alineamiento-contrato';
 import { AptitudDelPersonaje, evaluarActitudEspecial, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
-import { OrigenTamano, TamanoEfectivo, tamanoEfectivo } from './utils/tamano-efectivo';
+import { OrigenTamano, TamanoEfectivo, tamanoEfectivo, tamanoQueCuenta, tamanoTrasPasos } from './utils/tamano-efectivo';
 import { ajusteDePlantillas, dgsDePlantilla, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
@@ -2185,10 +2185,8 @@ export class NuevoPersonajeService {
         const sumanTamano = new Set(catalogo.filter((habilidad) => habilidad?.Modificador_tamano === true)
             .map((habilidad) => toNumber(habilidad.Id_habilidad)));
         this.recalcularTamanoEfectivo();
-        const efectivo = this.personajeCreacion?.Tamano_efectivo;
-        const parteTamano = bonoTamano(efectivo
-            ? { Nombre: efectivo.nombre, Modificador_esconderse: efectivo.modificadorEsconderse }
-            : this.personajeCreacion?.Raza?.Tamano);
+        const tamano = tamanoQueCuenta(this.personajeCreacion);
+        const parteTamano = bonoTamano(tamano ? { Nombre: tamano.nombre, Modificador_esconderse: tamano.modificadorEsconderse } : null);
         const habilidades = (this.personajeCreacion.Habilidades ?? []).filter((habilidad) => !habilidad?.Custom);
         const refs = habilidades.map((habilidad) => ({
             id: toNumber(habilidad.Id),
@@ -7240,12 +7238,17 @@ export class NuevoPersonajeService {
 
     /** Las aptitudes especiales con id de las tablas de nivel del catálogo de clases, en su orden. */
     private especialesDeLasTablasDeClases(): Array<{ id: number; nombre: string; }> {
-        return (this.catalogoClases ?? []).flatMap((clase) => (clase?.Desglose_niveles ?? []).flatMap((nivel) =>
-            (nivel?.Especiales ?? []).map((especialNivel) => {
+        return this.especialesNivelDeLasTablasDeClases()
+            .map((especialNivel) => {
                 const especial = (especialNivel?.Especial as Record<string, any>) ?? {};
                 return { id: toNumber(especial?.['Id']), nombre: `${especial?.['Nombre'] ?? ''}`.trim() };
-            })))
+            })
             .filter((especial) => especial.id > 0);
+    }
+
+    /** Los especiales de las tablas de nivel del catálogo de clases (con sus datos: `Modificadores`…), en su orden. */
+    private especialesNivelDeLasTablasDeClases(): ClaseEspecialNivel[] {
+        return (this.catalogoClases ?? []).flatMap((clase) => (clase?.Desglose_niveles ?? []).flatMap((nivel) => nivel?.Especiales ?? []));
     }
 
     private resolverAumentosClaseLanzadora(
@@ -8396,15 +8399,12 @@ export class NuevoPersonajeService {
      */
     private resolverTamanoActual(): Tamano | null {
         const idRaza = toInt(this.calcularTamanoEfectivo()?.ficha.id ?? this.personajeCreacion?.Raza?.Tamano?.Id);
-        const ordenados = [...this.catalogoTamanos]
-            .filter((tamano) => toInt(tamano?.Id) > 0)
-            .sort((a, b) => toNumber(a.Modificador_presa) - toNumber(b.Modificador_presa));
-        const indice = ordenados.findIndex((tamano) => toInt(tamano.Id) === idRaza);
-        if (indice < 0)
-            return idRaza > 0 ? (this.personajeCreacion.Raza.Tamano as Tamano) : null;
         const pasos = (this.estadoFlujo.plantillas.seleccionadas ?? [])
             .reduce((acc, plantilla) => acc + toInt(plantilla?.Modificacion_tamano?.Id_paso_modificacion), 0);
-        return ordenados[Math.max(0, Math.min(ordenados.length - 1, indice + pasos))];
+        const movido = tamanoTrasPasos(this.catalogoTamanos, idRaza, pasos);
+        if (!movido)
+            return idRaza > 0 ? (this.personajeCreacion.Raza.Tamano as Tamano) : null;
+        return movido.tamano;
     }
 
     private obtenerMinimoCaracteristicaPorPlantillas(key: CaracteristicaKey): number {
@@ -8460,12 +8460,11 @@ export class NuevoPersonajeService {
      */
     private especialesDeClaseDelPersonaje(): ClaseEspecialNivel[] {
         const porId = new Map<number, ClaseEspecialNivel>();
-        (this.catalogoClases ?? []).forEach((clase) => (clase?.Desglose_niveles ?? []).forEach((nivel) =>
-            (nivel?.Especiales ?? []).forEach((especialNivel) => {
-                const id = toNumber((especialNivel?.Especial as Record<string, any>)?.['Id']);
-                if (id > 0 && !porId.has(id))
-                    porId.set(id, especialNivel);
-            })));
+        this.especialesNivelDeLasTablasDeClases().forEach((especialNivel) => {
+            const id = toNumber((especialNivel?.Especial as Record<string, any>)?.['Id']);
+            if (id > 0 && !porId.has(id))
+                porId.set(id, especialNivel);
+        });
         return this.aptitudesDelPersonaje()
             .map((aptitud) => porId.get(aptitud.id))
             .filter((especialNivel): especialNivel is ClaseEspecialNivel => !!especialNivel);
@@ -8490,7 +8489,7 @@ export class NuevoPersonajeService {
 
     private recalcularDefensasYPresa(): void {
         this.recalcularTamanoEfectivo();
-        const modTamanoCa = toNumber(this.personajeCreacion?.Tamano_efectivo?.modificador ?? this.personajeCreacion?.Raza?.Tamano?.Modificador);
+        const modTamanoCa = toNumber(tamanoQueCuenta(this.personajeCreacion)?.modificador);
 
         this.personajeCreacion.Ca = 10
             + toNumber(this.personajeCreacion.ModDestreza)

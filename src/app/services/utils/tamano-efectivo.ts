@@ -1,3 +1,4 @@
+import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeTamanoDto } from 'src/app/interfaces/personajes-api';
 import { Tamano } from 'src/app/interfaces/tamaño';
 import { toInt, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
@@ -26,6 +27,38 @@ export interface TamanoEfectivo {
     ficha: PersonajeTamanoDto;
 }
 
+/** Lo que cuenta del tamaño del personaje en la CA, la presa y Esconderse, y su nombre. */
+export interface TamanoQueCuenta {
+    nombre: string | null;
+    modificador: number;
+    modificadorPresa: number;
+    modificadorEsconderse: number;
+}
+
+/**
+ * El tamaño que cuenta del personaje (la ficha, su PDF, sus totales y la creación): el efectivo (`Tamano_efectivo`, el de
+ * su raza movido por sus aptitudes) o, sin él, el de su raza. `null` sin ninguno de los dos.
+ */
+export function tamanoQueCuenta(pj: Pick<Personaje, 'Tamano_efectivo' | 'Raza'> | null | undefined): TamanoQueCuenta | null {
+    const efectivo = pj?.Tamano_efectivo;
+    const raza = pj?.Raza?.Tamano;
+    if (efectivo)
+        return {
+            nombre: toText(efectivo.nombre).trim() || toText(raza?.Nombre).trim() || null,
+            modificador: toInt(efectivo.modificador),
+            modificadorPresa: toInt(efectivo.modificadorPresa),
+            modificadorEsconderse: toInt(efectivo.modificadorEsconderse),
+        };
+    if (!raza)
+        return null;
+    return {
+        nombre: toText(raza.Nombre).trim() || null,
+        modificador: toInt(raza.Modificador),
+        modificadorPresa: toInt(raza.Modificador_presa),
+        modificadorEsconderse: toInt(raza.Modificador_esconderse),
+    };
+}
+
 /** Las categorías que cambia el tamaño: el mayor aumento más la mayor reducción (no se apilan). */
 export function pasosDeAptitudes(pasos: number[]): number {
     const valores = pasos.map((paso) => toInt(paso));
@@ -47,17 +80,13 @@ export function tamanoEfectivo(
     const idBase = toInt(base?.Id);
     if (!base || (idBase <= 0 && toText(base?.Nombre).trim().length < 1))
         return null;
-    const conPasos = origenes.filter((origen) => toInt(origen?.pasos) !== 0)
-        .map((origen) => ({ origen: toText(origen.origen).trim(), pasos: toInt(origen.pasos) }));
+    const conPasos = origenesConPasos(origenes);
     const pasos = pasosDeAptitudes(conPasos.map((origen) => origen.pasos));
-    const escala = (catalogo ?? []).filter((tamano) => toInt(tamano?.Id) > 0).sort((a, b) => toInt(a.Id) - toInt(b.Id));
     const filaBase = (catalogo ?? []).find((tamano) => toInt(tamano?.Id) === idBase) ?? null;
-    const indiceBase = escala.findIndex((tamano) => toInt(tamano.Id) === idBase);
-    const indiceFinal = pasos !== 0 && filaBase && indiceBase >= 0
-        ? Math.min(Math.max(indiceBase + pasos, 0), escala.length - 1)
-        : indiceBase;
-    const cambia = indiceBase >= 0 && indiceFinal !== indiceBase;
-    const fila: Tamano = cambia ? escala[indiceFinal] : { ...(filaBase ?? {}), ...base } as Tamano;
+    const movido = pasos !== 0 && filaBase ? tamanoTrasPasos(catalogo, idBase, pasos) : null;
+    const destino = movido && movido.pasos !== 0 ? movido : null;
+    const cambia = destino !== null;
+    const fila: Tamano = destino ? destino.tamano : { ...(filaBase ?? {}), ...base } as Tamano;
     const medidas = espacioYAlcance(filaBase, fila, espacio, alcance, cambia);
     return {
         tamano: fila,
@@ -70,10 +99,32 @@ export function tamanoEfectivo(
             espacio: medidas.espacio,
             alcance: medidas.alcance,
             base: { Id: idBase, Nombre: toText(base.Nombre).trim() || null },
-            pasos: cambia ? indiceFinal - indiceBase : 0,
+            pasos: destino?.pasos ?? 0,
             origenes: conPasos,
         },
     };
+}
+
+/**
+ * El tamaño `pasos` categorías por encima (o por debajo, si es negativo) del de `idBase`, por el orden de los ids de
+ * `GET /tamanos` (Minúsculo 1 … Colosal 9), sin pasar de los extremos, y las categorías que se ha movido de verdad. La
+ * fila 0 («Depende») no está en la escala. `null` si `idBase` no está en ella. Lo usan las aptitudes y los pasos de
+ * tamaño de las plantillas.
+ */
+export function tamanoTrasPasos(catalogo: Tamano[], idBase: number, pasos: number): { tamano: Tamano; pasos: number; } | null {
+    const escala = (catalogo ?? []).filter((tamano) => toInt(tamano?.Id) > 0).sort((a, b) => toInt(a.Id) - toInt(b.Id));
+    const indiceBase = escala.findIndex((tamano) => toInt(tamano.Id) === toInt(idBase));
+    if (indiceBase < 0)
+        return null;
+    const indiceFinal = Math.min(Math.max(indiceBase + toInt(pasos), 0), escala.length - 1);
+    return { tamano: escala[indiceFinal], pasos: indiceFinal - indiceBase };
+}
+
+/** Las aptitudes que cambian el tamaño, limpias: su nombre sin espacios y sin las que no lo cambian. */
+function origenesConPasos(origenes: any[] | null | undefined): OrigenTamano[] {
+    return (Array.isArray(origenes) ? origenes : [])
+        .map((origen) => ({ origen: toText(origen?.origen).trim(), pasos: toInt(origen?.pasos) }))
+        .filter((origen) => origen.pasos !== 0);
 }
 
 function espacioYAlcance(
@@ -112,8 +163,6 @@ export function normalizarTamanoFicha(raw: any): PersonajeTamanoDto | null {
         alcance: toNumberOrNull(raw?.alcance),
         base: { Id: toInt(raw?.base?.Id), Nombre: toText(raw?.base?.Nombre).trim() || null },
         pasos: toInt(raw?.pasos),
-        origenes: (Array.isArray(raw?.origenes) ? raw.origenes : [])
-            .map((origen: any) => ({ origen: toText(origen?.origen).trim(), pasos: toInt(origen?.pasos) }))
-            .filter((origen: OrigenTamano) => origen.pasos !== 0),
+        origenes: origenesConPasos(raw?.origenes),
     };
 }

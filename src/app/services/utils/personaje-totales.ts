@@ -2,6 +2,7 @@ import { Personaje, PersonajeTotales } from 'src/app/interfaces/personaje';
 import { PersonajeParteDto, PersonajeTipoParteDto, PersonajeTotalDto } from 'src/app/interfaces/personajes-api';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { primerEntero, toArray, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
+import { tamanoQueCuenta } from 'src/app/services/utils/tamano-efectivo';
 
 export type TipoSalvacion = 'fortaleza' | 'reflejos' | 'voluntad';
 
@@ -126,6 +127,7 @@ function partesDe(total: PersonajeTotalDto | null | undefined, tipo: PersonajeTi
 
 function totalesDelBorrador(pj: Personaje | null | undefined): PersonajeTotales {
     const ataqueBase = primerEntero(pj?.Ataque_base);
+    const tamano = tamanoQueCuenta(pj);
     return {
         iniciativa: sumar([
             parte('caracteristica', 'Destreza', pj?.ModDestreza),
@@ -137,9 +139,7 @@ function totalesDelBorrador(pj: Personaje | null | undefined): PersonajeTotales 
                 parte('ataqueBase', 'Ataque base', ataqueBase),
                 parte('caracteristica', 'Fuerza', pj?.ModFuerza),
                 // El tamaño que cuenta: el de la raza movido por sus aptitudes (`Tamano_efectivo`), como la ficha de la API.
-                ...partesVarias('tamano', [pj?.Tamano_efectivo
-                    ? { valor: pj.Tamano_efectivo.modificadorPresa, origen: `Tamaño (${pj.Tamano_efectivo.nombre ?? ''})` }
-                    : { valor: pj?.Raza?.Tamano?.Modificador_presa, origen: `Tamaño (${pj?.Raza?.Tamano?.Nombre ?? ''})` }]),
+                ...partesVarias('tamano', [{ valor: tamano?.modificadorPresa, origen: `Tamaño (${tamano?.nombre ?? ''})` }]),
                 ...partesVarias('varios', pj?.Presa_varios),
             ]),
         salvaciones: {
