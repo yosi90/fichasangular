@@ -11,6 +11,7 @@ import { UserPublicProfileTab } from 'src/app/interfaces/user-account';
 import { SocialV3ApiService } from 'src/app/services/social-v3-api.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
+import { textoRol } from '../user-profile/perfil-acciones';
 
 @Component({
     selector: 'app-social-community-section',
@@ -185,13 +186,7 @@ export class SocialCommunitySectionComponent implements OnChanges {
     }
 
     getRoleLabel(role: SocialCommunityRole): string {
-        if (role === 'master')
-            return 'Master';
-        if (role === 'colaborador')
-            return 'Colaborador';
-        if (role === 'admin')
-            return 'Admin';
-        return 'Jugador';
+        return textoRol(role, 'Jugador');
     }
 
     getAvatarUrl(user: Pick<SocialCommunityUserItem, 'uid' | 'displayName' | 'photoThumbUrl'>): string {

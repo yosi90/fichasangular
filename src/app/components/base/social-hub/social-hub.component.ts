@@ -18,7 +18,13 @@ import { PlatformSessionService } from 'src/app/services/platform-session.servic
 import { InvitacionRecibidaEspacio, PlatformSpacesService } from 'src/app/services/platform-spaces.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 import { toPositiveInt } from 'src/app/services/utils/normalizacion';
-import { mensajeErrorDeAccion, permitirAccionGuardada } from '../user-profile/perfil-acciones';
+import {
+    mensajeErrorDeAccion,
+    permitirAccionGuardada,
+    textoEstadoEnCampana,
+    textoRolEnCampana,
+    textoVisibilidadEnCampana,
+} from '../user-profile/perfil-acciones';
 
 @Component({
     selector: 'app-social-hub',
@@ -359,31 +365,9 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         });
     }
 
-    getCampaignRoleLabel(role: string | null | undefined, isOwner: boolean = false): string {
-        const normalized = `${role ?? ''}`.trim().toLowerCase();
-        if (normalized === 'master')
-            return 'Master';
-        if (normalized === 'jugador')
-            return 'Jugador';
-        if (isOwner)
-            return 'Creador';
-        return 'Sin rol';
-    }
-
-    getCampaignMembershipLabel(status: string | null | undefined): string {
-        const normalized = `${status ?? ''}`.trim().toLowerCase();
-        if (normalized === 'activo')
-            return 'Activo';
-        if (normalized === 'inactivo')
-            return 'Inactivo';
-        if (normalized === 'expulsado')
-            return 'Expulsado';
-        return 'Sin estado';
-    }
-
-    getCampaignVisibilityLabel(visibleParaJugadores: boolean | null | undefined): string {
-        return visibleParaJugadores === false ? 'Solo master' : 'Visible para jugadores';
-    }
+    readonly getCampaignRoleLabel = textoRolEnCampana;
+    readonly getCampaignMembershipLabel = textoEstadoEnCampana;
+    readonly getCampaignVisibilityLabel = textoVisibilidadEnCampana;
 
     private async loadAuthenticatedState(): Promise<void> {
         this.loading = true;

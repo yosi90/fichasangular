@@ -23,7 +23,13 @@ import { UserService } from 'src/app/services/user.service';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
 import { MAX_TIRADAS_PUNTOS_GOLPE, MIN_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
-import { mensajeErrorDeAccion, permitirAccionGuardada } from '../user-profile/perfil-acciones';
+import {
+    mensajeErrorDeAccion,
+    permitirAccionGuardada,
+    textoEstadoEnCampana,
+    textoRolEnCampana,
+    textoVisibilidadEnCampana,
+} from '../user-profile/perfil-acciones';
 import { textoFechaHora } from 'src/app/services/utils/fecha-texto';
 import { toPositiveInt } from 'src/app/services/utils/normalizacion';
 
@@ -1000,31 +1006,9 @@ export class CampanasGestionEstado implements OnDestroy {
         return this.subtramaSaveInFlightId === subtramaId;
     }
 
-    getCampaignRoleLabel(role: string | null | undefined, isOwner: boolean = false): string {
-        const normalized = `${role ?? ''}`.trim().toLowerCase();
-        if (normalized === 'master')
-            return 'Master';
-        if (normalized === 'jugador')
-            return 'Jugador';
-        if (isOwner)
-            return 'Creador';
-        return 'Sin rol';
-    }
-
-    getMembershipStatusLabel(status: string | null | undefined): string {
-        const normalized = `${status ?? ''}`.trim().toLowerCase();
-        if (normalized === 'inactivo')
-            return 'Inactivo';
-        if (normalized === 'expulsado')
-            return 'Expulsado';
-        if (normalized === 'activo')
-            return 'Activo';
-        return 'Sin estado';
-    }
-
-    getCampaignVisibilityLabel(visibleParaJugadores: boolean | null | undefined): string {
-        return visibleParaJugadores === false ? 'Solo master' : 'Visible para jugadores';
-    }
+    readonly getCampaignRoleLabel = textoRolEnCampana;
+    readonly getMembershipStatusLabel = textoEstadoEnCampana;
+    readonly getCampaignVisibilityLabel = textoVisibilidadEnCampana;
 
     getUserDisplayLabel(displayName: string | null | undefined, email: string | null | undefined, uid: string): string {
         const nombre = `${displayName ?? ''}`.trim();

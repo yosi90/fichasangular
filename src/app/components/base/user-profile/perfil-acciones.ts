@@ -64,3 +64,32 @@ export function textoRol(role: string | null | undefined, fallback: string = 'Si
         return 'Jugador';
     return fallback;
 }
+
+/** El papel de alguien en una campaña («Master», «Jugador»); sin papel, «Creador» si es quien la creó. */
+export function textoRolEnCampana(role: string | null | undefined, isOwner: boolean = false): string {
+    const normalized = `${role ?? ''}`.trim().toLowerCase();
+    if (normalized === 'master')
+        return 'Master';
+    if (normalized === 'jugador')
+        return 'Jugador';
+    if (isOwner)
+        return 'Creador';
+    return 'Sin rol';
+}
+
+/** El estado de alguien en una campaña («Activo», «Inactivo», «Expulsado»). */
+export function textoEstadoEnCampana(status: string | null | undefined): string {
+    const normalized = `${status ?? ''}`.trim().toLowerCase();
+    if (normalized === 'activo')
+        return 'Activo';
+    if (normalized === 'inactivo')
+        return 'Inactivo';
+    if (normalized === 'expulsado')
+        return 'Expulsado';
+    return 'Sin estado';
+}
+
+/** A quién se enseña una trama o subtrama. */
+export function textoVisibilidadEnCampana(visibleParaJugadores: boolean | null | undefined): string {
+    return visibleParaJugadores === false ? 'Solo master' : 'Visible para jugadores';
+}
