@@ -51,4 +51,24 @@ describe('ListadoCabeceraComponent', () => {
         fixture.detectChanges();
         expect(elemento().querySelector('.listado-cabecera__total')).toBeNull();
     });
+
+    it('una pantalla que no es un listado la usa con subtítulo y sin buscador', async () => {
+        expect(elemento().querySelector('.listado-cabecera__subtitulo')).toBeNull();
+        TestBed.resetTestingModule();
+        @Component({
+            template: '<app-listado-cabecera icono="dado-d20" titulo="Dados" subtitulo="Tiradas sueltas para la mesa" [buscador]="false"></app-listado-cabecera>',
+            standalone: false
+        })
+        class SinBuscadorComponent { }
+        await TestBed.configureTestingModule({
+            declarations: [SinBuscadorComponent, ListadoCabeceraComponent, IconoRolComponent],
+            imports: [MatIconModule],
+        }).compileComponents();
+        const otra = TestBed.createComponent(SinBuscadorComponent);
+        otra.detectChanges();
+        const raiz = otra.nativeElement as HTMLElement;
+        expect(raiz.querySelector('.listado-cabecera__subtitulo')?.textContent?.trim()).toBe('Tiradas sueltas para la mesa');
+        expect(raiz.querySelector('input')).toBeNull();
+        expect(raiz.querySelector('[role="search"]')).toBeNull();
+    });
 });

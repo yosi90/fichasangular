@@ -1,0 +1,78 @@
+<div class="dados" [class.dados--compacto]="compacto" #raiz tabindex="-1" (keydown)="alPulsarTecla($event)">
+    <app-listado-cabecera icono="dado-d20" titulo="Dados" [subtitulo]="subtitulo" [buscador]="false"></app-listado-cabecera>
+
+    <div class="dados__cuerpo">
+        <section class="dados-tarjeta dados-tirada" aria-labelledby="dados-tirada-titulo">
+            <div class="dados-tirada__expresion">
+                <h3 class="dados-versalitas" id="dados-tirada-titulo">Tirada</h3>
+                <p class="dados-tirada__texto" [class.dados-tirada__texto--vacia]="!conDados">{{conDados ? expresion : 'Toca un dado'}}</p>
+            </div>
+
+            <div class="dados-fila" role="group" aria-label="Dados">
+                <button type="button" class="dados-dado" *ngFor="let dado of dados; trackBy: trackDado"
+                    [class.dados-dado--puesto]="cantidad(dado) > 0" [attr.aria-label]="etiqueta(dado)"
+                    (click)="anadir(dado)" (contextmenu)="quitar(dado, $event)">
+                    <app-icono-rol [tipo]="dado.icono" [tamano]="compacto ? 32 : 44"></app-icono-rol>
+                    <span class="dados-dado__porcentaje" *ngIf="dado.porcentaje" aria-hidden="true">%</span>
+                    <span class="dados-dado__insignia" *ngIf="cantidad(dado) > 0" aria-hidden="true">{{cantidad(dado)}}</span>
+                </button>
+            </div>
+
+            <div class="dados-bonificador">
+                <span class="dados-bonificador__nombre" id="dados-bonificador-nombre">Bonificador</span>
+                <div class="dados-paso" role="group" aria-labelledby="dados-bonificador-nombre dados-bonificador-valor">
+                    <button type="button" class="dados-paso__boton" aria-label="Restar 1 al bonificador"
+                        [disabled]="estado.tirada.bonificador <= -maximoBonificador" (click)="cambiarBonificador(-1)">−</button>
+                    <output class="dados-paso__valor" id="dados-bonificador-valor" aria-live="polite">{{bonificador}}</output>
+                    <button type="button" class="dados-paso__boton" aria-label="Sumar 1 al bonificador"
+                        [disabled]="estado.tirada.bonificador >= maximoBonificador" (click)="cambiarBonificador(1)">+</button>
+                </div>
+                <span class="dados-nota dados-bonificador__ayuda">Se suma o resta al total</span>
+            </div>
+
+            <div class="dados-acciones">
+                <button mat-button type="button" class="dados-acciones__limpiar" *ngIf="conAlgo" data-intro-nativo
+                    (click)="limpiar(); enfocarRaiz()">Limpiar</button>
+                <button mat-flat-button type="button" class="dados-acciones__tirar" [disabled]="!conDados" data-intro-nativo
+                    (click)="tirar()">Tirar</button>
+            </div>
+
+            <div class="dados-resultado-zona" aria-live="polite">
+                <div class="dados-resultado" *ngIf="ultimo">
+                    <span class="dados-resultado__total" [class.dados--natural-20]="ultimo.natural === 20"
+                        [class.dados--natural-1]="ultimo.natural === 1">{{ultimo.total}}</span>
+                    <div class="dados-resultado__detalle">
+                        <span class="dados-resultado__expresion">{{ultimo.expresion}}</span>
+                        <span class="dados-nota">{{ultimo.desglose}}</span>
+                        <span class="dados-resultado__natural dados--natural-20" *ngIf="ultimo.natural === 20">¡20 natural!</span>
+                        <span class="dados-resultado__natural dados--natural-1" *ngIf="ultimo.natural === 1">1 natural</span>
+                    </div>
+                </div>
+            </div>
+
+            <p class="dados-nota dados-tirada__ayuda">Clic en un dado para añadirlo; clic derecho para quitar uno. Intro tira y Escape limpia.</p>
+        </section>
+
+        <section class="dados-tarjeta dados-historial" aria-labelledby="dados-historial-titulo">
+            <div class="dados-historial__cabecera">
+                <h3 class="dados-historial__titulo" id="dados-historial-titulo">Historial de esta sesión</h3>
+                <button mat-button type="button" class="dados-historial__borrar" *ngIf="historial.length" data-intro-nativo
+                    (click)="borrarHistorial(); enfocarRaiz()">Borrar historial</button>
+            </div>
+            <ol class="dados-historial__lista" *ngIf="historial.length; else sinHistorial">
+                <li class="dados-historial__fila" *ngFor="let fila of historial; let i = index; trackBy: trackFila">
+                    <div class="dados-historial__texto">
+                        <span class="dados-historial__expresion">{{fila.expresion}}</span>
+                        <span class="dados-nota">{{fila.desglose}} · {{fila.hora}}</span>
+                    </div>
+                    <span class="dados-historial__total" [class.dados--natural-20]="fila.natural === 20" [class.dados--natural-1]="fila.natural === 1">
+                        {{fila.total}}<span class="solo-lectores" *ngIf="fila.natural"> ({{fila.natural}} natural)</span>
+                    </span>
+                </li>
+            </ol>
+            <ng-template #sinHistorial>
+                <p class="dados-nota dados-historial__vacio">Aún no has tirado en esta sesión.</p>
+            </ng-template>
+        </section>
+    </div>
+</div>

@@ -1,7 +1,7 @@
 import { Component, ElementRef, Input, OnChanges, ViewEncapsulation, inject } from '@angular/core';
 import { AyudaSolicitud, SeccionAyuda } from 'src/app/interfaces/ayuda';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
-import { AUTORES_ICONOS_ROL } from 'src/app/services/utils/iconos-rol';
+import { AUTORES_ICONOS_ROL, ICONOS_PROPIOS_ROL } from 'src/app/services/utils/iconos-rol';
 
 export const SECCIONES_AYUDA: readonly { id: SeccionAyuda; titulo: string }[] = [
     { id: 'primeros-pasos', titulo: 'Primeros pasos' },
@@ -28,6 +28,7 @@ export class AyudaComponent implements OnChanges {
 
     readonly secciones = SECCIONES_AYUDA;
     readonly autores = AUTORES_ICONOS_ROL;
+    readonly iconosPropios = ICONOS_PROPIOS_ROL;
     readonly urlCompanion = inject(PlatformSessionService).urlCompanion;
     seccion: SeccionAyuda = 'primeros-pasos';
 

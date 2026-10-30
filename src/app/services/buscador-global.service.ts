@@ -28,6 +28,7 @@ import { mayusculaInicial } from './utils/formato-registros';
 import { esFilaComodin } from './utils/comodin';
 import { normalizarTexto } from './utils/normalizacion';
 import { textoVisible } from './utils/texto-visible';
+import { SUBTITULO_DADOS } from './utils/dados';
 import { TipoCatalogoEquipo } from '../interfaces/equipo';
 import { nombreDeManual } from '../components/detalles/ficha/ficha';
 
@@ -232,7 +233,7 @@ export class BuscadorGlobalService {
         ];
     }
 
-    /** Las pantallas de la web: cada listado y la ayuda. */
+    /** Las pantallas de la web: cada listado, la ayuda y los dados. */
     private pantallas(): ElementoBusqueda[] {
         const listados = Object.entries(LISTADOS_ROL).map(([lista, { tipo, titulo }]): ElementoBusqueda => {
             const nombre = `Lista de ${titulo}`;
@@ -247,6 +248,11 @@ export class BuscadorGlobalService {
                 clave: 'pantalla:ayuda', tipo: null, iconoMaterial: 'help_center', nombre: 'Ayuda', subtitulo: 'Primeros pasos, novedades, legal y créditos',
                 buscable: textoBuscable('Ayuda', 'Primeros pasos novedades legal privacidad cookies créditos companion'),
                 abrir: () => this.perfilNav.openAyuda(),
+            },
+            {
+                clave: 'pantalla:dados', tipo: 'dado-d20', nombre: 'Dados', subtitulo: SUBTITULO_DADOS,
+                buscable: textoBuscable('Dados', 'tirada tirar d4 d6 d8 d10 d12 d20 d100'),
+                abrir: () => this.navegacion.abrir({ clase: 'dados' }),
             },
         ];
     }
