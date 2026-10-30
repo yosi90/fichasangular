@@ -8,6 +8,7 @@ import { PlatformSocialError, PlatformSocialService, RelacionPlataforma } from '
 import { SocialV3ApiService } from 'src/app/services/social-v3-api.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
+import { textoFecha } from 'src/app/services/utils/fecha-texto';
 
 /**
  * Ficha de otra persona en la comunidad de Rol: sus datos de Rol vienen de la API
@@ -35,12 +36,6 @@ export class PublicUserProfileComponent implements OnInit, OnChanges, OnDestroy 
     errorMessage = '';
     private loadSeq = 0;
     private readonly destroy$ = new Subject<void>();
-    private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
-
     constructor(
         private socialV3ApiSvc: SocialV3ApiService,
         private platformSocialSvc: PlatformSocialService,
@@ -115,11 +110,7 @@ export class PublicUserProfileComponent implements OnInit, OnChanges, OnDestroy 
     }
 
     get formattedMemberSince(): string {
-        const raw = `${this.relationshipProfile?.profile?.joinedAtUtc ?? ''}`.trim();
-        const parsed = new Date(raw);
-        if (raw.length < 1 || Number.isNaN(parsed.getTime()))
-            return '';
-        return this.dateFormatter.format(parsed);
+        return textoFecha(this.relationshipProfile?.profile?.joinedAtUtc, '');
     }
 
     get relationshipLabel(): string {

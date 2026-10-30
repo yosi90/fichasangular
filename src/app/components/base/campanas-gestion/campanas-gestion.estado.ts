@@ -23,7 +23,8 @@ import { UserService } from 'src/app/services/user.service';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
 import { MAX_TIRADAS_PUNTOS_GOLPE, MIN_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
-import { mensajeErrorDeAccion, permitirAccionGuardada, textoFechaHora, textoRol } from '../user-profile/perfil-acciones';
+import { mensajeErrorDeAccion, permitirAccionGuardada } from '../user-profile/perfil-acciones';
+import { textoFechaHora } from 'src/app/services/utils/fecha-texto';
 import { toPositiveInt } from 'src/app/services/utils/normalizacion';
 
 export type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';

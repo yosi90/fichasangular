@@ -60,28 +60,6 @@ export function mensajeErrorDeAccion(userSvc: UserService, error: any, fallback:
     return toUserFacingErrorMessage(error, fallback);
 }
 
-const formatoFechaHora = new Intl.DateTimeFormat('es-ES', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-});
-
-/** «30 de octubre de 2026 18:05», o el texto de reserva si no hay fecha válida. */
-export function textoFechaHora(value: string | null | undefined, fallback: string): string {
-    const text = `${value ?? ''}`.trim();
-    if (text.length < 1)
-        return fallback;
-
-    const parsed = new Date(text);
-    if (Number.isNaN(parsed.getTime()))
-        return fallback;
-
-    return formatoFechaHora.format(parsed).replace(',', '');
-}
-
 /** El nombre de un rol de Rol para enseñarlo («Master», «Colaborador»…). */
 export function textoRol(role: string | null | undefined, fallback: string = 'Sin rol'): string {
     const normalized = `${role ?? ''}`.trim().toLowerCase();

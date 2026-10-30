@@ -17,7 +17,8 @@ import { PlatformSessionService } from 'src/app/services/platform-session.servic
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { CampanasGestionEstado } from '../campanas-gestion/campanas-gestion.estado';
-import { mensajeErrorDeAccion, permitirAccionGuardada, textoFechaHora, textoRol } from './perfil-acciones';
+import { mensajeErrorDeAccion, permitirAccionGuardada, textoRol } from './perfil-acciones';
+import { textoFecha, textoFechaHora } from 'src/app/services/utils/fecha-texto';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 import { toPositiveInt } from 'src/app/services/utils/normalizacion';
 
@@ -89,11 +90,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         { value: 'hidden', label: 'No mostrar' },
         { value: 'custom', label: 'Rellenar' },
     ];
-    private readonly dateFormatter = new Intl.DateTimeFormat('es-ES', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-    });
 
     constructor(
         private userSvc: UserService,
@@ -203,11 +199,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     get formattedCreatedAt(): string {
-        return this.formatDateLabel(this.profile?.createdAt, 'Sin dato');
+        return textoFecha(this.profile?.createdAt, 'Sin dato');
     }
 
     get formattedLastSeenAt(): string {
-        return this.formatDateLabel(this.profile?.lastSeenAt, 'Sin dato');
+        return textoFecha(this.profile?.lastSeenAt, 'Sin dato');
     }
 
     get effectiveProfileRole(): 'jugador' | 'master' | 'colaborador' | 'admin' {
@@ -519,18 +515,6 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
             .replace(/\r/g, '\n')
             .trim();
         return text.length > 0 ? text : null;
-    }
-
-    private formatDateLabel(value: string | null | undefined, fallback: string): string {
-        const source = `${value ?? ''}`.trim();
-        if (source.length < 1)
-            return fallback;
-
-        const parsed = new Date(source);
-        if (Number.isNaN(parsed.getTime()))
-            return fallback;
-
-        return this.dateFormatter.format(parsed);
     }
 
     private formatCreatePermissionLabel(resource: string | null | undefined): string {
