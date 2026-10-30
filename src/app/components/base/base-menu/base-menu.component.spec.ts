@@ -194,4 +194,15 @@ describe('BaseMenuComponent', () => {
         expect(component.tieneOpcionesGrupo(rasgos)).toBeFalse();
         expect(component.tieneOpcionesGrupo(mundo)).toBeFalse();
     });
+
+    it('cada opción de los grupos lleva el icono de su catálogo, el mismo en Insertar, Modificar y Detalles', () => {
+        const tipos = (seccion: 'insertar' | 'modificar' | 'detalles') =>
+            component.gruposOtros[seccion].map(grupo => grupo.opciones.map(opcion => `${opcion.etiqueta}:${opcion.tipo}`));
+        expect(component.gruposOtros.detalles.flatMap(g => g.opciones).every(o => !!o.tipo)).toBeTrue();
+        expect(tipos('insertar')).toEqual(tipos('modificar'));
+        const detalles = tipos('detalles').flat();
+        expect(tipos('insertar').flat().every(t => detalles.includes(t))).toBeTrue();
+        expect(detalles).toContain('Munición:municion');
+        expect(detalles).toContain('Ventajas y desventajas:ventaja');
+    });
 });

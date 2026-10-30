@@ -1,5 +1,31 @@
 @use '../../../../assets/css/_variables' as *
 @use '../../../../assets/css/_sombras' as *
+
+// Una opción con icono del menú y de sus desplegables: fila de 36 px, el recuadro del icono y 10 px de hueco; sin
+// permiso, el icono y el texto al 38 % (con el tooltip de permisos de siempre); el foco de teclado, anillo rosa.
+@mixin menu-opcion
+    button.menu-opcion
+        height: 36px
+        padding: 0 12px
+        justify-content: flex-start
+
+        ::ng-deep .mdc-button__label
+            display: inline-flex
+            align-items: center
+            gap: 10px
+            min-width: 0
+
+        &[disabled]
+            opacity: 1
+
+            ::ng-deep .mdc-button__label
+                color: $active
+                opacity: .38
+
+    button.menu-opcion, button.menu-otros-trigger
+        &:focus-visible
+            outline: 2px solid $active
+            outline-offset: -2px
 #menu
     float: left
 
@@ -62,7 +88,7 @@
                 padding: 0
 
                 button
-                    justify-content: right
+                    justify-content: flex-start
 
                     width: 100%
 
@@ -74,31 +100,32 @@
                         
                         font-size: 25px
 
-                > button:nth-child(even):not([disabled]):not([mat-raised-button]),
-                > span:nth-child(even) > button:not([disabled]):not([mat-raised-button])
+                > button:nth-child(even):not([mat-raised-button]),
+                > span:nth-child(even) > button:not([mat-raised-button])
                     background-color: #ccc
 
-                > button:nth-child(odd):not([disabled]):not([mat-raised-button]),
-                > span:nth-child(odd) > button:not([disabled]):not([mat-raised-button])
+                > button:nth-child(odd):not([mat-raised-button]),
+                > span:nth-child(odd) > button:not([mat-raised-button])
                     background-color: lightgray
 
-                span > button[disabled],
-                button[disabled]:not([mat-raised-button])
-                    background-color: $contrast-dark
-                    opacity: 1
-
-                    ::ng-deep .mdc-button__label
-                        color: #B0BEC5
-
-                button.menu-otros-trigger--sin-opciones
-                    background-color: $contrast-dark !important
-                    opacity: 1
+                // Los grupos «Otros», sin icono: el texto alineado con el de las opciones (recuadro de 24 + 10 de hueco).
+                button.menu-otros-trigger
+                    padding-left: 46px
 
                     mat-icon
-                        color: #B0BEC5
+                        margin-left: auto
+                        font-size: 24px
 
                     ::ng-deep .mdc-button__label
-                        color: #B0BEC5
+                        flex: 1 1 auto
+                        text-align: left
+
+                button.menu-otros-trigger--sin-opciones ::ng-deep .mdc-button__label,
+                button.menu-otros-trigger--sin-opciones mat-icon
+                    opacity: .38
+
+        // Cada opción de catálogo: su icono en el recuadro oscuro y el texto a su lado (lienzo, vista 2).
+        @include menu-opcion
 
         mat-expansion-panel:last-child
             display: flex !important
@@ -232,8 +259,10 @@
 
     box-shadow: 3px 3px 10px black
 
+    background-color: lightgray
+
     button
-        justify-content: right
+        justify-content: flex-start
 
         width: 100%
         border-radius: 0
@@ -244,21 +273,21 @@
     > span
         display: block
 
-    > button:nth-child(odd):not([disabled]),
-    > span:nth-child(odd) > button:not([disabled])
+    .menu-otros-panel__titulo
+        padding: 10px 12px 6px
+        font-size: 11px
+        font-weight: 700
+        letter-spacing: .14em
+        text-transform: uppercase
+        color: #5f6368
+
+    > .menu-otros-panel__opcion:nth-child(even) > button
         background-color: lightgray
 
-    > button:nth-child(even):not([disabled]),
-    > span:nth-child(even) > button:not([disabled])
+    > .menu-otros-panel__opcion:nth-child(odd) > button
         background-color: #ccc
 
-    > span > button[disabled],
-    > button[disabled]
-        background-color: $contrast-dark
-        opacity: 1
-
-        ::ng-deep .mdc-button__label
-            color: #B0BEC5
+    @include menu-opcion
 
 ::ng-deep .menu-otros-tooltip
     pointer-events: none
