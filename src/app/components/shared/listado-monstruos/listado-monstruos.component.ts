@@ -129,7 +129,7 @@ export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
     get anuncioHomebrew(): string {
         return this.mostrarHomebrew
             ? 'Mostrando monstruos homebrew'
-            : 'Clic para mostar monstruos homebrew';
+            : 'Clic para mostrar monstruos homebrew';
     }
 
     AlternarMonstruosHombrew() {

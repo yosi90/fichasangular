@@ -99,7 +99,7 @@ export class ListadoTiposCriaturaComponent implements OnDestroy, ListadoBuscable
     }
 
     get anuncioTiposHomebrew(): string {
-        return this.mostrarHomebrew ? 'Mostrando tipos homebrew' : 'Clic para mostar tipos homebrew';
+        return this.mostrarHomebrew ? 'Mostrando tipos homebrew' : 'Clic para mostrar tipos homebrew';
     }
 
     alternarTiposHomebrew(): void {

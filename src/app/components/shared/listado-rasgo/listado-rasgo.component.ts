@@ -88,7 +88,7 @@ export class ListadoRasgoRacialComponent implements OnDestroy, ListadoBuscable {
     }
 
     get anuncioRasgosHomebrew(): string {
-        return this.mostrarHomebrew ? 'Mostrando rasgos homebrew' : 'Clic para mostar rasgos homebrew';
+        return this.mostrarHomebrew ? 'Mostrando rasgos homebrew' : 'Clic para mostrar rasgos homebrew';
     }
 
     alternarRasgosHomebrew(): void {

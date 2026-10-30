@@ -99,7 +99,7 @@ export class ListadoSubtiposComponent implements OnDestroy, ListadoBuscable {
     }
 
     get anuncioSubtiposHomebrew(): string {
-        return this.mostrarHomebrew ? 'Mostrando subtipos homebrew' : 'Clic para mostar subtipos homebrew';
+        return this.mostrarHomebrew ? 'Mostrando subtipos homebrew' : 'Clic para mostrar subtipos homebrew';
     }
 
     alternarSubtiposHomebrew(): void {

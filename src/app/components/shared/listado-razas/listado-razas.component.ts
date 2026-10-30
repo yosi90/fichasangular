@@ -141,7 +141,7 @@ export class ListadoRazasComponent implements OnDestroy, ListadoBuscable {
     }
 
     get anuncioHomebrew(): string {
-        return this.isHomebrewActivo() ? 'Mostrando razas homebrew' : 'Clic para mostar razas homebrew';
+        return this.isHomebrewActivo() ? 'Mostrando razas homebrew' : 'Clic para mostrar razas homebrew';
     }
 
     get homebrewActivo(): boolean {

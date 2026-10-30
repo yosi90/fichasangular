@@ -105,7 +105,7 @@ export class ListadoArmasComponent implements OnDestroy, ListadoBuscable {
     }
 
     get anuncioHomebrew(): string {
-        return this.mostrarHomebrew ? 'Mostrando armas homebrew' : 'Clic para mostar armas homebrew';
+        return this.mostrarHomebrew ? 'Mostrando armas homebrew' : 'Clic para mostrar armas homebrew';
     }
 
     get homebrewActivo(): boolean {

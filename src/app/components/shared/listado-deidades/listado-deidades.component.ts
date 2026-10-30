@@ -112,7 +112,7 @@ export class ListadoDeidadesComponent implements OnDestroy, ListadoBuscable {
     }
 
     get anuncioHomebrew(): string {
-        return this.mostrarHomebrew ? 'Mostrando deidades homebrew' : 'Clic para mostar deidades homebrew';
+        return this.mostrarHomebrew ? 'Mostrando deidades homebrew' : 'Clic para mostrar deidades homebrew';
     }
 
     get homebrewActivo(): boolean {

@@ -104,7 +104,7 @@ export class ListadoConjurosComponent implements OnDestroy, ListadoBuscable {
     }
 
     get anuncioConjurosHomebrew(): string {
-        return this.mostrarHomebrew ? 'Mostrando conjuros homebrew' : 'Clic para mostar conjuros homebrew';
+        return this.mostrarHomebrew ? 'Mostrando conjuros homebrew' : 'Clic para mostrar conjuros homebrew';
     }
 
     alternarConjurosHomebrew(): void {

@@ -108,7 +108,7 @@ export class ListadoArmadurasComponent implements OnDestroy, ListadoBuscable {
     }
 
     get anuncioHomebrew(): string {
-        return this.mostrarHomebrew ? 'Mostrando armaduras homebrew' : 'Clic para mostar armaduras homebrew';
+        return this.mostrarHomebrew ? 'Mostrando armaduras homebrew' : 'Clic para mostrar armaduras homebrew';
     }
 
     get homebrewActivo(): boolean {
