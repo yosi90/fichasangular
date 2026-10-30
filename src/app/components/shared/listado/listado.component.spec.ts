@@ -71,4 +71,3 @@ describe('ListadoComponent', () => {
         expect(instancia.buscar).toHaveBeenCalledWith('oso');
     });
 });
-
