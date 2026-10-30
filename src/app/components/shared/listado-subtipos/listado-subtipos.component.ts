@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
@@ -8,6 +8,8 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { Subscription } from 'rxjs';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
     selector: 'app-listado-subtipos',
@@ -15,13 +17,18 @@ import { compararTexto } from 'src/app/services/utils/orden-texto';
     styleUrls: ['./listado-subtipos.component.sass'],
     standalone: false
 })
-export class ListadoSubtiposComponent {
+export class ListadoSubtiposComponent implements OnDestroy, ListadoBuscable {
     subtipos: SubtipoResumen[] = [];
     manuales: string[] = [];
     defaultManual = 'Cualquiera';
     subtiposDS = new MatTableDataSource(this.subtipos);
     subtipoColumns = ['Nombre', 'Manual', 'Heredada'];
-    anuncioSubtiposHomebrew = 'Clic para mostar subtipos homebrew';
+    mostrarHomebrew = false;
+    /** El buscador rápido de la cabecera. */
+    textoBusqueda = '';
+    cargado = false;
+    errorCarga = false;
+    private catalogoSub?: Subscription;
 
     constructor(
         private cdr: ChangeDetectorRef,
@@ -31,25 +38,49 @@ export class ListadoSubtiposComponent {
 
     @ViewChild(MatSort) subtipoSort!: MatSort;
     @ViewChild(MatPaginator) subtipoPaginator!: MatPaginator;
-    @ViewChild('subtipoTextInc', { read: ElementRef }) nombreText!: ElementRef;
 
     ngAfterViewInit() {
         this.subtiposDS.paginator = this.subtipoPaginator;
         this.subtiposDS.sort = this.subtipoSort;
         ordenarEnEspanol(this.subtiposDS);
-        this.subtipoSvc.getSubtipos().subscribe(subtipos => {
-            this.subtipos = subtipos;
-            this.manuales = this.buildManualesDisponibles(this.subtipos);
-            this.defaultManual = 'Cualquiera';
-            this.cdr.detectChanges();
-            this.filtroSubtipos();
-            this.cdr.detectChanges();
+        this.cargar();
+    }
+
+    ngOnDestroy(): void {
+        this.catalogoSub?.unsubscribe();
+    }
+
+    /** Lee los subtipos (otra vez, con «Reintentar»). */
+    cargar(): void {
+        this.cargado = false;
+        this.errorCarga = false;
+        this.catalogoSub?.unsubscribe();
+        this.catalogoSub = this.subtipoSvc.getSubtipos().subscribe({
+            next: (subtipos) => {
+                this.subtipos = subtipos ?? [];
+                this.manuales = this.buildManualesDisponibles(this.subtipos);
+                this.defaultManual = 'Cualquiera';
+                this.cargado = true;
+                this.cdr.detectChanges();
+                this.filtroSubtipos();
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.cargado = true;
+                this.errorCarga = true;
+                this.cdr.detectChanges();
+            },
         });
     }
 
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
+        this.filtroSubtipos();
+    }
+
     filtroSubtipos() {
-        const texto = normalizarTexto(this.nombreText?.nativeElement.value ?? '');
-        const homebrew = this.anuncioSubtiposHomebrew !== 'Clic para mostar subtipos homebrew';
+        const texto = normalizarTexto(this.textoBusqueda);
+        const homebrew = this.mostrarHomebrew;
         const subtiposFiltrados = this.subtipos.filter(subtipo =>
             (texto === '' || normalizarTexto(subtipo.Nombre).includes(texto))
             && (this.defaultManual === 'Cualquiera' || `${subtipo.Manual?.Nombre ?? ''}` === this.defaultManual)
@@ -62,19 +93,36 @@ export class ListadoSubtiposComponent {
             ordenarEnEspanol(this.subtiposDS);
         }, 200);
         this.subtiposDS.paginator = this.subtipoPaginator;
-        this.subtipoSort.active = 'Nombre';
-        this.subtipoSort.direction = 'asc';
+        if (this.subtipoSort) {
+            this.subtipoSort.active = 'Nombre';
+            this.subtipoSort.direction = 'asc';
+        }
     }
 
-    alternarSubtiposHomebrew(value: string) {
-        if (value === 'Clic para mostar subtipos homebrew') {
-            this.anuncioSubtiposHomebrew = 'Mostrando subtipos homebrew';
-            this.subtipoColumns.push('Homebrew');
-        } else {
-            this.anuncioSubtiposHomebrew = 'Clic para mostar subtipos homebrew';
-            this.subtipoColumns = this.subtipoColumns.filter(c => c !== 'Homebrew');
-        }
+    get anuncioSubtiposHomebrew(): string {
+        return this.mostrarHomebrew ? 'Mostrando subtipos homebrew' : 'Clic para mostar subtipos homebrew';
+    }
+
+    alternarSubtiposHomebrew(): void {
+        this.mostrarHomebrew = !this.mostrarHomebrew;
+        this.subtipoColumns = this.mostrarHomebrew
+            ? [...this.subtipoColumns.filter((c) => c !== 'Homebrew'), 'Homebrew']
+            : this.subtipoColumns.filter((c) => c !== 'Homebrew');
         this.filtroSubtipos();
+    }
+
+    /** Si algún filtro no está como al abrir el listado. */
+    get hayFiltros(): boolean {
+        return this.textoBusqueda.trim() !== '' || this.defaultManual !== 'Cualquiera' || this.mostrarHomebrew;
+    }
+
+    limpiarFiltros(): void {
+        this.textoBusqueda = '';
+        this.defaultManual = 'Cualquiera';
+        if (this.mostrarHomebrew)
+            this.alternarSubtiposHomebrew();
+        else
+            this.filtroSubtipos();
     }
 
     @Output() subtipoDetalles: EventEmitter<SubtipoResumen> = new EventEmitter<SubtipoResumen>();

@@ -1,11 +1,8 @@
-<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
-    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
+<div id="container-lista">
+    <app-listado-cabecera icono="plantilla" titulo="Plantillas" [total]="cargado && !errorCarga ? plantillasDS.data.length : null"
+        [texto]="textoBusqueda" (textoChange)="buscar($event)" etiquetaBuscar="Buscar plantillas" placeholder="Buscar en el nombre o la descripción">
         <app-menu-filtros titulo="Filtros de plantillas" [hayFiltros]="hayFiltros" (limpiar)="limpiarFiltros()">
             <app-menu-filtros-grupo titulo="Buscar">
-                <mat-form-field (keyup)="filtroPlantillas();">
-                    <mat-label>Incluye texto</mat-label>
-                    <input #plantillaTextInc matInput placeholder="Texto a buscar">
-                </mat-form-field>
                 <app-manual-autocomplete
                     [manuales]="manuales"
                     [includeAny]="false"
@@ -18,57 +15,62 @@
                     (click)="alternarHomebrew();">{{anuncioHomebrew}}</mat-chip-option>
             </app-menu-filtros-grupo>
         </app-menu-filtros>
+    </app-listado-cabecera>
 
-        <table id="plantillas" #tablaPlantillas mat-table [dataSource]="plantillasDS" matSort *ngIf="plantillas.length > 0; else cargando">
-            <ng-container matColumnDef="{{column}}" *ngFor="let column of plantillaColumns">
-                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
-                    {{column.replace('_', ' ')}}
-                </th>
-                <td mat-cell *matCellDef="let element">
-                    <button mat-stroked-button matTooltip="Clic para ver esta plantilla" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent"
-                        class="tw-flex tw-justify-start sombra3d tw-w-full" (click)="verDetallesPlantilla(element.Id); $event.stopPropagation();">
-                        <mat-icon>read_more</mat-icon>
-                        {{element[column]}}
-                    </button>
-                    <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
-                        (click)="abrirDetalleManual(element, $event)">
-                        {{element.Manual?.Nombre}} (p. {{element.Manual?.Pagina}})
-                    </button>
-                    <p class="tw-mb-0 tw-text-center" *ngIf="column == 'Ajuste_nivel'">
-                        {{element.Ajuste_nivel > 0 ? '+' + element.Ajuste_nivel : element.Ajuste_nivel}}
-                    </p>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Nacimiento'">
-                        <mat-checkbox [checked]="element.Nacimiento" [disableRipple]="true"
-                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
-                    </div>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Prerrequisitos'">
-                        <mat-checkbox [checked]="tienePrerrequisitos(element)" [disableRipple]="true"
-                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
-                    </div>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Oficial'">
-                        <mat-checkbox [checked]="element.Oficial" [disableRipple]="true"
-                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
-                    </div>
+    <div class="listado__tabla" [class.listado-oculto]="!cargado || errorCarga">
+        <table id="plantillas" mat-table [dataSource]="plantillasDS" matSort aria-label="Plantillas">
+            <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por nombre">Nombre</th>
+                <td mat-cell *matCellDef="let plantilla">
+                    <app-listado-nombre tipo="plantilla" [nombre]="plantilla.Nombre" [original]="nombreOriginal(plantilla)"
+                        (abrir)="verDetallesPlantilla(plantilla.Id)"></app-listado-nombre>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Manual">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por manual">Manual</th>
+                <td mat-cell *matCellDef="let plantilla">
+                    <button type="button" class="listado-manual" (click)="abrirDetalleManual(plantilla, $event)">{{plantilla.Manual | manualListado}}</button>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Ajuste_nivel">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por ajuste de nivel">Ajuste</th>
+                <td mat-cell *matCellDef="let plantilla">{{plantilla.Ajuste_nivel > 0 ? '+' + plantilla.Ajuste_nivel : plantilla.Ajuste_nivel}}</td>
+            </ng-container>
+            <ng-container matColumnDef="Nacimiento">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por nacimiento">Nacimiento</th>
+                <td mat-cell *matCellDef="let plantilla">
+                    <mat-checkbox [checked]="plantilla.Nacimiento" [disableRipple]="true" [attr.aria-label]="plantilla.Nacimiento ? 'Heredada' : 'Adquirida'"
+                        (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Prerrequisitos">
+                <th mat-header-cell *matHeaderCellDef>Prerrequisitos</th>
+                <td mat-cell *matCellDef="let plantilla">
+                    <mat-checkbox [checked]="tienePrerrequisitos(plantilla)" [disableRipple]="true"
+                        [attr.aria-label]="tienePrerrequisitos(plantilla) ? 'Con prerrequisitos' : 'Sin prerrequisitos'"
+                        (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Oficial">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por oficial">Oficial</th>
+                <td mat-cell *matCellDef="let plantilla">
+                    <mat-checkbox [checked]="plantilla.Oficial" [disableRipple]="true" [attr.aria-label]="plantilla.Oficial ? 'Oficial' : 'Homebrew'"
+                        (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                 </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="plantillaColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let element; columns: plantillaColumns;" class="element-row elegir"
-                (click)="seleccionarPlantilla(element.Id)"></tr>
+            <tr mat-row *matRowDef="let plantilla; columns: plantillaColumns;" class="elegir" (click)="seleccionarPlantilla(plantilla.Id)"></tr>
             <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell tw-text-center tw-text-white tw-p-3" [attr.colspan]="plantillaColumns.length">
-                    Ninguna plantilla encaja con los filtros
+                <td class="mat-cell" [attr.colspan]="plantillaColumns.length">
+                    <app-listado-estado tipo="vacio" [mensaje]="hayFiltros ? 'Ninguna plantilla cumple los filtros.' : 'Aún no hay plantillas.'"
+                        [textoAccion]="hayFiltros ? 'Limpiar filtros' : ''" (accion)="limpiarFiltros()"></app-listado-estado>
                 </td>
             </tr>
         </table>
-        <ng-template #cargando>
-            <div class="superballs">
-                <div class="superballs__dot"></div>
-                <div class="superballs__dot"></div>
-            </div>
-        </ng-template>
     </div>
-    <div class="lista-row tw-w-full tw-flex tw-items-center">
-        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una pagina de plantillas">
-        </mat-paginator>
-    </div>
+
+    <app-listado-estado *ngIf="!cargado" tipo="cargando" etiqueta="Cargando plantillas"></app-listado-estado>
+    <app-listado-estado *ngIf="cargado && errorCarga" tipo="error" mensaje="No se pudieron cargar las plantillas." (accion)="cargar()"></app-listado-estado>
+
+    <mat-paginator class="listado-paginador" [class.listado-oculto]="!cargado || errorCarga" aria-label="Páginas de plantillas"></mat-paginator>
 </div>

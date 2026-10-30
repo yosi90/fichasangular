@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
@@ -6,6 +6,8 @@ import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { EspecialService } from 'src/app/services/especial.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { Subscription } from 'rxjs';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
     selector: 'app-listado-especiales',
@@ -13,31 +15,75 @@ import { normalizarTexto } from 'src/app/services/utils/normalizacion';
     styleUrls: ['./listado-especiales.component.sass'],
     standalone: false
 })
-export class ListadoEspecialesComponent {
+export class ListadoEspecialesComponent implements OnDestroy, ListadoBuscable {
     especiales: EspecialClaseDetalle[] = [];
     especialesDS = new MatTableDataSource(this.especiales);
     especialColumns = ['Nombre', 'Extra', 'Repetible', 'Activa_extra'];
+    /** Las columnas de casilla, con su nombre visible. */
+    readonly casillas = [
+        { columna: 'Extra', etiqueta: 'Extra' },
+        { columna: 'Repetible', etiqueta: 'Repetible' },
+        { columna: 'Activa_extra', etiqueta: 'Activa extra' },
+    ] as const;
+    /** El buscador rápido de la cabecera (nombre y descripción); es el único filtro de los especiales. */
+    textoBusqueda = '';
+    cargado = false;
+    errorCarga = false;
+    private catalogoSub?: Subscription;
 
     constructor(private cdr: ChangeDetectorRef, private eSvc: EspecialService) { }
 
     @ViewChild(MatSort) especialSort!: MatSort;
     @ViewChild(MatPaginator) especialPaginator!: MatPaginator;
-    @ViewChild('especialTextInc', { read: ElementRef }) nombreText!: ElementRef;
 
     ngAfterViewInit() {
         this.especialesDS.paginator = this.especialPaginator;
         this.especialesDS.sort = this.especialSort;
         ordenarEnEspanol(this.especialesDS);
-        this.eSvc.getEspeciales().subscribe(especiales => {
-            this.especiales = (especiales ?? []).filter((especial) => this.esEspecialValido(especial));
-            this.cdr.detectChanges();
-            this.filtroEspeciales();
-            this.cdr.detectChanges();
+        this.cargar();
+    }
+
+    ngOnDestroy(): void {
+        this.catalogoSub?.unsubscribe();
+    }
+
+    /** Lee los especiales (otra vez, con «Reintentar»). */
+    cargar(): void {
+        this.cargado = false;
+        this.errorCarga = false;
+        this.catalogoSub?.unsubscribe();
+        this.catalogoSub = this.eSvc.getEspeciales().subscribe({
+            next: (especiales) => {
+                this.especiales = (especiales ?? []).filter((especial) => this.esEspecialValido(especial));
+                this.cargado = true;
+                this.cdr.detectChanges();
+                this.filtroEspeciales();
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.cargado = true;
+                this.errorCarga = true;
+                this.cdr.detectChanges();
+            },
         });
     }
 
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
+        this.filtroEspeciales();
+    }
+
+    get hayFiltros(): boolean {
+        return this.textoBusqueda.trim() !== '';
+    }
+
+    limpiarFiltros(): void {
+        this.textoBusqueda = '';
+        this.filtroEspeciales();
+    }
+
     filtroEspeciales() {
-        const texto = normalizarTexto(this.nombreText?.nativeElement.value);
+        const texto = normalizarTexto(this.textoBusqueda);
         const especialesFiltrados = this.especiales.filter((especial) => {
             if (!this.esEspecialValido(especial))
                 return false;
@@ -53,8 +99,10 @@ export class ListadoEspecialesComponent {
             ordenarEnEspanol(this.especialesDS);
         }, 200);
         this.especialesDS.paginator = this.especialPaginator;
-        this.especialSort.active = 'Nombre';
-        this.especialSort.direction = 'asc';
+        if (this.especialSort) {
+            this.especialSort.active = 'Nombre';
+            this.especialSort.direction = 'asc';
+        }
     }
 
     @Output() especialDetalles: EventEmitter<EspecialClaseDetalle> = new EventEmitter<EspecialClaseDetalle>();

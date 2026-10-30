@@ -1,45 +1,29 @@
-<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
-    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
-        <app-menu-filtros titulo="Filtros de raciales">
-            <app-menu-filtros-grupo titulo="Buscar">
-                <mat-form-field (keyup)="filtroRaciales();">
-                    <mat-label>Incluye texto</mat-label>
-                    <input #racialTextInc matInput placeholder="Texto a buscar">
-                </mat-form-field>
-            </app-menu-filtros-grupo>
-        </app-menu-filtros>
+<div id="container-lista">
+    <app-listado-cabecera icono="racial" titulo="Raciales" [total]="cargado && !errorCarga ? racialesDS.data.length : null"
+        [texto]="textoBusqueda" (textoChange)="buscar($event)" etiquetaBuscar="Buscar raciales" placeholder="Buscar en el nombre o la descripción">
+    </app-listado-cabecera>
 
-        <table id="raciales" #tablaRaciales mat-table [dataSource]="racialesDS" matSort *ngIf="raciales.length > 0; else cargando">
-            <ng-container matColumnDef="{{column}}" *ngFor="let column of racialColumns">
-                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
-                    {{column.replace('_', ' ')}}
-                </th>
-                <td mat-cell *matCellDef="let element">
-                    <button mat-stroked-button matTooltip="Clic para ver esta racial" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent"
-                        class="tw-flex tw-justify-start sombra3d tw-w-full" (click)="verDetallesRacial(element.Id); $event.stopPropagation();">
-                        <mat-icon>read_more</mat-icon>
-                        {{element[column]}}
-                    </button>
+    <div class="listado__tabla" [class.listado-oculto]="!cargado || errorCarga">
+        <table id="raciales" mat-table [dataSource]="racialesDS" matSort aria-label="Raciales">
+            <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por nombre">Nombre</th>
+                <td mat-cell *matCellDef="let racial">
+                    <app-listado-nombre tipo="racial" [nombre]="racial.Nombre" (abrir)="verDetallesRacial(racial.Id)"></app-listado-nombre>
                 </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="racialColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let element; columns: racialColumns;" class="element-row elegir"
-                (click)="seleccionarRacial(element.Id)"></tr>
+            <tr mat-row *matRowDef="let racial; columns: racialColumns;" class="elegir" (click)="seleccionarRacial(racial.Id)"></tr>
             <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell tw-text-center tw-text-white tw-p-3" [attr.colspan]="racialColumns.length">
-                    Ninguna racial encaja con los filtros
+                <td class="mat-cell" [attr.colspan]="racialColumns.length">
+                    <app-listado-estado tipo="vacio" [mensaje]="hayFiltros ? 'Ninguna racial cumple la búsqueda.' : 'Aún no hay raciales.'"
+                        [textoAccion]="hayFiltros ? 'Limpiar filtros' : ''" (accion)="limpiarFiltros()"></app-listado-estado>
                 </td>
             </tr>
         </table>
-        <ng-template #cargando>
-            <div class="superballs">
-                <div class="superballs__dot"></div>
-                <div class="superballs__dot"></div>
-            </div>
-        </ng-template>
     </div>
-    <div class="lista-row tw-w-full tw-flex tw-items-center">
-        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una página de raciales">
-        </mat-paginator>
-    </div>
+
+    <app-listado-estado *ngIf="!cargado" tipo="cargando" etiqueta="Cargando raciales"></app-listado-estado>
+    <app-listado-estado *ngIf="cargado && errorCarga" tipo="error" mensaje="No se pudieron cargar las raciales." (accion)="cargar()"></app-listado-estado>
+
+    <mat-paginator class="listado-paginador" [class.listado-oculto]="!cargado || errorCarga" aria-label="Páginas de raciales"></mat-paginator>
 </div>

@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
@@ -7,7 +7,9 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
-import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/menu-filtros/menu-filtros.component';
+import { Subscription } from 'rxjs';
+import { nombreOriginalVisible } from 'src/app/components/detalles/ficha/ficha';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
     selector: 'app-listado-plantillas',
@@ -15,13 +17,18 @@ import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/
     styleUrls: ['./listado-plantillas.component.sass'],
     standalone: false
 })
-export class ListadoPlantillasComponent {
+export class ListadoPlantillasComponent implements OnDestroy, ListadoBuscable {
     plantillas: Plantilla[] = [];
     plantillasDS = new MatTableDataSource<Plantilla>([]);
     plantillaColumns = ['Nombre', 'Manual', 'Ajuste_nivel', 'Nacimiento', 'Prerrequisitos', 'Oficial'];
     manuales: string[] = [];
     defaultManual: string = 'Cualquiera';
     incluirHomebrew: boolean = false;
+    /** El buscador rápido de la cabecera (nombre y descripción). */
+    textoBusqueda = '';
+    cargado = false;
+    errorCarga = false;
+    private catalogoSub?: Subscription;
 
     constructor(
         private cdr: ChangeDetectorRef,
@@ -31,24 +38,48 @@ export class ListadoPlantillasComponent {
 
     @ViewChild(MatSort) plantillaSort!: MatSort;
     @ViewChild(MatPaginator) plantillaPaginator!: MatPaginator;
-    @ViewChild('plantillaTextInc', { read: ElementRef }) plantillaTextInc!: ElementRef;
 
     ngAfterViewInit() {
         this.plantillasDS.paginator = this.plantillaPaginator;
         this.plantillasDS.sort = this.plantillaSort;
         ordenarEnEspanol(this.plantillasDS);
-        this.plantillaSvc.getPlantillas().subscribe(plantillas => {
-            this.plantillas = plantillas;
-            this.manuales = ['Cualquiera', ...Array.from(new Set(plantillas.map(p => p.Manual?.Nombre).filter(Boolean)))];
-            this.defaultManual = this.manuales[0] ?? 'Cualquiera';
-            this.cdr.detectChanges();
-            this.filtroPlantillas();
-            this.cdr.detectChanges();
+        this.cargar();
+    }
+
+    ngOnDestroy(): void {
+        this.catalogoSub?.unsubscribe();
+    }
+
+    /** Lee las plantillas (otra vez, con «Reintentar»). */
+    cargar(): void {
+        this.cargado = false;
+        this.errorCarga = false;
+        this.catalogoSub?.unsubscribe();
+        this.catalogoSub = this.plantillaSvc.getPlantillas().subscribe({
+            next: (plantillas) => {
+                this.plantillas = plantillas ?? [];
+                this.manuales = ['Cualquiera', ...Array.from(new Set(this.plantillas.map(p => p.Manual?.Nombre).filter(Boolean)))];
+                this.defaultManual = this.manuales[0] ?? 'Cualquiera';
+                this.cargado = true;
+                this.cdr.detectChanges();
+                this.filtroPlantillas();
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.cargado = true;
+                this.errorCarga = true;
+                this.cdr.detectChanges();
+            },
         });
     }
 
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
+        this.filtroPlantillas();
+    }
+
     filtroPlantillas() {
-        const texto = normalizarTexto(this.plantillaTextInc?.nativeElement?.value, true);
+        const texto = normalizarTexto(this.textoBusqueda, true);
 
         const filtradas = this.plantillas.filter(plantilla =>
             (texto === ''
@@ -64,8 +95,10 @@ export class ListadoPlantillasComponent {
             ordenarEnEspanol(this.plantillasDS);
         }, 100);
         this.plantillasDS.paginator = this.plantillaPaginator;
-        this.plantillaSort.active = 'Nombre';
-        this.plantillaSort.direction = 'asc';
+        if (this.plantillaSort) {
+            this.plantillaSort.active = 'Nombre';
+            this.plantillaSort.direction = 'asc';
+        }
     }
 
     get anuncioHomebrew(): string {
@@ -78,14 +111,18 @@ export class ListadoPlantillasComponent {
     }
 
     get hayFiltros(): boolean {
-        return textoDelFiltro(this.plantillaTextInc) !== '' || this.defaultManual !== 'Cualquiera' || this.incluirHomebrew;
+        return this.textoBusqueda.trim() !== '' || this.defaultManual !== 'Cualquiera' || this.incluirHomebrew;
     }
 
     limpiarFiltros(): void {
-        vaciarTextoDelFiltro(this.plantillaTextInc);
+        this.textoBusqueda = '';
         this.defaultManual = 'Cualquiera';
         this.incluirHomebrew = false;
         this.filtroPlantillas();
+    }
+
+    nombreOriginal(plantilla: Plantilla): string {
+        return nombreOriginalVisible(plantilla);
     }
 
     tienePrerrequisitos(plantilla: Plantilla): boolean {

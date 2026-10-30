@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
@@ -8,7 +8,9 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { esFilaComodin } from 'src/app/services/utils/comodin';
-import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/menu-filtros/menu-filtros.component';
+import { Subscription } from 'rxjs';
+import { TipoRol, tipoRolDeClase } from 'src/app/services/utils/iconos-rol';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
     selector: 'app-listado-clases',
@@ -16,7 +18,7 @@ import { textoDelFiltro, vaciarTextoDelFiltro } from 'src/app/components/shared/
     styleUrls: ['./listado-clases.component.sass'],
     standalone: false
 })
-export class ListadoClasesComponent {
+export class ListadoClasesComponent implements OnDestroy, ListadoBuscable {
     clases: Clase[] = [];
     clasesDS = new MatTableDataSource(this.clases);
     claseColumns = ['Nombre', 'Manual', 'Tipo_dado', 'Puntos_habilidad', 'Nivel_max_claseo', 'Prestigio', 'Prerrequisitos'];
@@ -25,6 +27,11 @@ export class ListadoClasesComponent {
     incluirHomebrew: boolean = false;
     soloPrestigio: boolean = false;
     ocultarConPrerrequisitos: boolean = false;
+    /** El buscador rápido de la cabecera (nombre y descripción). */
+    textoBusqueda = '';
+    cargado = false;
+    errorCarga = false;
+    private catalogoSub?: Subscription;
 
     constructor(
         private cdr: ChangeDetectorRef,
@@ -34,25 +41,49 @@ export class ListadoClasesComponent {
 
     @ViewChild(MatSort) claseSort!: MatSort;
     @ViewChild(MatPaginator) clasePaginator!: MatPaginator;
-    @ViewChild('claseTextInc', { read: ElementRef }) claseTextInc!: ElementRef;
 
     ngAfterViewInit() {
         this.clasesDS.paginator = this.clasePaginator;
         this.clasesDS.sort = this.claseSort;
         ordenarEnEspanol(this.clasesDS);
-        this.claseSvc.getClases().subscribe(clases => {
-            // La clase 0, «Cualquiera», es un comodín de los prerrequisitos y los editores: aquí no se lista.
-            this.clases = clases.filter((clase) => !esFilaComodin(clase));
-            this.manuales = ['Cualquiera', ...Array.from(new Set(this.clases.map(c => c.Manual?.Nombre).filter(Boolean)))];
-            this.defaultManual = this.manuales[0];
-            this.cdr.detectChanges();
-            this.filtroClases();
-            this.cdr.detectChanges();
+        this.cargar();
+    }
+
+    ngOnDestroy(): void {
+        this.catalogoSub?.unsubscribe();
+    }
+
+    /** Lee las clases (otra vez, con «Reintentar»). */
+    cargar(): void {
+        this.cargado = false;
+        this.errorCarga = false;
+        this.catalogoSub?.unsubscribe();
+        this.catalogoSub = this.claseSvc.getClases().subscribe({
+            next: (clases) => {
+                // La clase 0, «Cualquiera», es un comodín de los prerrequisitos y los editores: aquí no se lista.
+                this.clases = (clases ?? []).filter((clase) => !esFilaComodin(clase));
+                this.manuales = ['Cualquiera', ...Array.from(new Set(this.clases.map(c => c.Manual?.Nombre).filter(Boolean)))];
+                this.defaultManual = this.manuales[0];
+                this.cargado = true;
+                this.cdr.detectChanges();
+                this.filtroClases();
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                this.cargado = true;
+                this.errorCarga = true;
+                this.cdr.detectChanges();
+            },
         });
     }
 
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
+        this.filtroClases();
+    }
+
     filtroClases() {
-        const texto = normalizarTexto(this.claseTextInc?.nativeElement?.value, true);
+        const texto = normalizarTexto(this.textoBusqueda, true);
 
         const clasesFiltradas = this.clases.filter(clase =>
             (texto === ''
@@ -70,8 +101,10 @@ export class ListadoClasesComponent {
             ordenarEnEspanol(this.clasesDS);
         }, 200);
         this.clasesDS.paginator = this.clasePaginator;
-        this.claseSort.active = 'Nombre';
-        this.claseSort.direction = 'asc';
+        if (this.claseSort) {
+            this.claseSort.active = 'Nombre';
+            this.claseSort.direction = 'asc';
+        }
     }
 
     get anuncioHomebrew(): string {
@@ -84,12 +117,12 @@ export class ListadoClasesComponent {
     }
 
     get hayFiltros(): boolean {
-        return textoDelFiltro(this.claseTextInc) !== '' || this.defaultManual !== 'Cualquiera'
+        return this.textoBusqueda.trim() !== '' || this.defaultManual !== 'Cualquiera'
             || this.incluirHomebrew || this.soloPrestigio || this.ocultarConPrerrequisitos;
     }
 
     limpiarFiltros(): void {
-        vaciarTextoDelFiltro(this.claseTextInc);
+        this.textoBusqueda = '';
         this.defaultManual = 'Cualquiera';
         this.incluirHomebrew = false;
         this.soloPrestigio = false;
@@ -113,6 +146,11 @@ export class ListadoClasesComponent {
     alternarFiltroPrerrequisitos() {
         this.ocultarConPrerrequisitos = !this.ocultarConPrerrequisitos;
         this.filtroClases();
+    }
+
+    /** Clase básica o de prestigio, según el dato (`Prestigio`). */
+    tipoDe(clase: Clase): TipoRol {
+        return tipoRolDeClase(clase);
     }
 
     tienePrerrequisitos(clase: Clase): boolean {

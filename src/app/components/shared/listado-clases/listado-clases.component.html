@@ -1,11 +1,8 @@
-<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
-    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
+<div id="container-lista">
+    <app-listado-cabecera icono="clase" titulo="Clases" [total]="cargado && !errorCarga ? clasesDS.data.length : null"
+        [texto]="textoBusqueda" (textoChange)="buscar($event)" etiquetaBuscar="Buscar clases" placeholder="Buscar en el nombre o la descripción">
         <app-menu-filtros titulo="Filtros de clases" [hayFiltros]="hayFiltros" (limpiar)="limpiarFiltros()">
             <app-menu-filtros-grupo titulo="Buscar">
-                <mat-form-field (keyup)="filtroClases();">
-                    <mat-label>Incluye texto</mat-label>
-                    <input #claseTextInc matInput placeholder="Texto a buscar">
-                </mat-form-field>
                 <app-manual-autocomplete
                     [manuales]="manuales"
                     [includeAny]="false"
@@ -22,59 +19,62 @@
                     (click)="alternarFiltroPrerrequisitos();">{{anuncioPrerrequisitos}}</mat-chip-option>
             </app-menu-filtros-grupo>
         </app-menu-filtros>
+    </app-listado-cabecera>
 
-        <table id="clases" #tablaClases mat-table [dataSource]="clasesDS" matSort *ngIf="clases.length > 0; else cargando">
-            <ng-container matColumnDef="{{column}}" *ngFor="let column of claseColumns">
-                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
-                    {{column == 'Nivel_max_claseo' ? 'Nivel máximo' : column == 'Prestigio' ? 'De prestigio' : column.replace('_', ' ')}}
-                </th>
-                <td mat-cell *matCellDef="let element">
-                    <button mat-stroked-button matTooltip="Clic para ver esta clase" [matTooltipShowDelay]="200" *ngIf="column == 'Nombre'" color="accent"
-                        class="tw-flex tw-justify-start sombra3d tw-w-full" (click)="verDetallesClase(element.Id); $event.stopPropagation();">
-                        <mat-icon>read_more</mat-icon>
-                        {{element[column]}}
-                    </button>
-                    <button type="button" class="manual-clickable" *ngIf="column == 'Manual'"
-                        (click)="abrirDetalleManual(element, $event)">
-                        {{element.Manual?.Nombre}} (p. {{element.Manual?.Pagina}})
-                    </button>
-                    <p class="tw-mb-0" *ngIf="column == 'Tipo_dado'">
-                        {{element.Tipo_dado?.Nombre}}
-                    </p>
-                    <p class="tw-mb-0" *ngIf="column == 'Puntos_habilidad'">
-                        {{element.Puntos_habilidad?.Valor}}
-                    </p>
-                    <p class="tw-mb-0 tw-text-center" *ngIf="column == 'Nivel_max_claseo'">
-                        {{element.Nivel_max_claseo}}
-                    </p>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Prestigio'">
-                        <mat-checkbox [checked]="element.Prestigio" [disableRipple]="true"
-                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
-                    </div>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column == 'Prerrequisitos'">
-                        <mat-checkbox [checked]="tienePrerrequisitos(element)" [disableRipple]="true"
-                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
-                    </div>
+    <div class="listado__tabla" [class.listado-oculto]="!cargado || errorCarga">
+        <table id="clases" mat-table [dataSource]="clasesDS" matSort aria-label="Clases">
+            <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por nombre">Nombre</th>
+                <td mat-cell *matCellDef="let clase">
+                    <app-listado-nombre [tipo]="tipoDe(clase)" [nombre]="clase.Nombre" (abrir)="verDetallesClase(clase.Id)"></app-listado-nombre>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Manual">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por manual">Manual</th>
+                <td mat-cell *matCellDef="let clase">
+                    <button type="button" class="listado-manual" (click)="abrirDetalleManual(clase, $event)">{{clase.Manual | manualListado}}</button>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Tipo_dado">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por dado de golpe">Dado de golpe</th>
+                <td mat-cell *matCellDef="let clase">{{clase.Tipo_dado?.Nombre}}</td>
+            </ng-container>
+            <ng-container matColumnDef="Puntos_habilidad">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por puntos de habilidad">Puntos de habilidad</th>
+                <td mat-cell *matCellDef="let clase">{{clase.Puntos_habilidad?.Valor}}</td>
+            </ng-container>
+            <ng-container matColumnDef="Nivel_max_claseo">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por nivel máximo">Nivel máximo</th>
+                <td mat-cell *matCellDef="let clase">{{clase.Nivel_max_claseo}}</td>
+            </ng-container>
+            <ng-container matColumnDef="Prestigio">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por prestigio">De prestigio</th>
+                <td mat-cell *matCellDef="let clase">
+                    <mat-checkbox [checked]="clase.Prestigio" [disableRipple]="true" [attr.aria-label]="clase.Prestigio ? 'De prestigio' : 'Básica'"
+                        (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Prerrequisitos">
+                <th mat-header-cell *matHeaderCellDef>Prerrequisitos</th>
+                <td mat-cell *matCellDef="let clase">
+                    <mat-checkbox [checked]="tienePrerrequisitos(clase)" [disableRipple]="true"
+                        [attr.aria-label]="tienePrerrequisitos(clase) ? 'Con prerrequisitos' : 'Sin prerrequisitos'"
+                        (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                 </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="claseColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let element; columns: claseColumns;" class="element-row elegir"
-                (click)="seleccionarClase(element.Id)"></tr>
+            <tr mat-row *matRowDef="let clase; columns: claseColumns;" class="elegir" (click)="seleccionarClase(clase.Id)"></tr>
             <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell tw-text-center tw-text-white tw-p-3" [attr.colspan]="claseColumns.length">
-                    Ninguna clase encaja con los filtros
+                <td class="mat-cell" [attr.colspan]="claseColumns.length">
+                    <app-listado-estado tipo="vacio" [mensaje]="hayFiltros ? 'Ninguna clase cumple los filtros.' : 'Aún no hay clases.'"
+                        [textoAccion]="hayFiltros ? 'Limpiar filtros' : ''" (accion)="limpiarFiltros()"></app-listado-estado>
                 </td>
             </tr>
         </table>
-        <ng-template #cargando>
-            <div class="superballs">
-                <div class="superballs__dot"></div>
-                <div class="superballs__dot"></div>
-            </div>
-        </ng-template>
     </div>
-    <div class="lista-row tw-w-full tw-flex tw-items-center">
-        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una página de clases">
-        </mat-paginator>
-    </div>
+
+    <app-listado-estado *ngIf="!cargado" tipo="cargando" etiqueta="Cargando clases"></app-listado-estado>
+    <app-listado-estado *ngIf="cargado && errorCarga" tipo="error" mensaje="No se pudieron cargar las clases." (accion)="cargar()"></app-listado-estado>
+
+    <mat-paginator class="listado-paginador" [class.listado-oculto]="!cargado || errorCarga" aria-label="Páginas de clases"></mat-paginator>
 </div>

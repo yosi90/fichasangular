@@ -1,11 +1,8 @@
-<div id="container-lista" class="tw-w-full tw-bg-[#212529] tw-h-full">
-    <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
-        <app-menu-filtros titulo="Filtros de subtipos">
+<div id="container-lista">
+    <app-listado-cabecera icono="subtipo" titulo="Subtipos" [total]="cargado && !errorCarga ? subtiposDS.data.length : null"
+        [texto]="textoBusqueda" (textoChange)="buscar($event)" etiquetaBuscar="Buscar subtipos" placeholder="Buscar subtipos">
+        <app-menu-filtros titulo="Filtros de subtipos" [hayFiltros]="hayFiltros" (limpiar)="limpiarFiltros()">
             <app-menu-filtros-grupo titulo="Buscar">
-                <mat-form-field (keyup)="filtroSubtipos();">
-                    <mat-label>Incluye texto</mat-label>
-                    <input #subtipoTextInc matInput placeholder="Texto a buscar">
-                </mat-form-field>
                 <app-manual-autocomplete
                     [manuales]="manuales"
                     [(value)]="defaultManual"
@@ -13,57 +10,53 @@
                 </app-manual-autocomplete>
             </app-menu-filtros-grupo>
             <app-menu-filtros-grupo titulo="Mostrar" [chips]="true">
-                <mat-chip-option #subtiposHomebrew color="warn" class="filtro-chip"
-                    (click)="alternarSubtiposHomebrew(subtiposHomebrew.value);">
-                    {{anuncioSubtiposHomebrew}}
-                </mat-chip-option>
+                <mat-chip-option color="warn" class="filtro-chip" [selected]="mostrarHomebrew"
+                    (click)="alternarSubtiposHomebrew();">{{anuncioSubtiposHomebrew}}</mat-chip-option>
             </app-menu-filtros-grupo>
         </app-menu-filtros>
+    </app-listado-cabecera>
 
-        <table id="subtipos" #tablaSubtipos mat-table [dataSource]="subtiposDS" matSort *ngIf="subtipos.length > 0; else cargando">
-            <ng-container matColumnDef="{{column}}" *ngFor="let column of subtipoColumns">
-                <th class="tw-text-lg tw-font-medium" mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por {{column}}">
-                    {{column.replace('_', ' ')}}
-                </th>
-                <td mat-cell *matCellDef="let element">
-                    <button mat-stroked-button matTooltip="Clic para ver este subtipo" [matTooltipShowDelay]="200"
-                        *ngIf="column === 'Nombre'" color="accent" class="tw-flex tw-justify-start sombra3d tw-w-full"
-                        (click)="verDetallesSubtipo(element.Id); $event.stopPropagation();">
-                        <mat-icon>read_more</mat-icon>
-                        {{element.Nombre}}
-                    </button>
-                    <button type="button" class="manual-clickable" *ngIf="column === 'Manual'"
-                        (click)="abrirDetalleManual(element, $event)">
-                        {{element.Manual?.Nombre}} <span *ngIf="(element.Manual?.Pagina ?? 0) > 0">(p. {{element.Manual?.Pagina}})</span>
-                    </button>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column === 'Heredada'">
-                        <mat-checkbox [checked]="!!element.Heredada" [disableRipple]="true"
-                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
-                    </div>
-                    <div class="tw-flex tw-justify-center tw-items-center" *ngIf="column === 'Homebrew'">
-                        <mat-checkbox [checked]="!element.Oficial" [disableRipple]="true"
-                            (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
-                    </div>
+    <div class="listado__tabla" [class.listado-oculto]="!cargado || errorCarga">
+        <table id="subtipos" mat-table [dataSource]="subtiposDS" matSort aria-label="Subtipos">
+            <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por nombre">Nombre</th>
+                <td mat-cell *matCellDef="let subtipo">
+                    <app-listado-nombre tipo="subtipo" [nombre]="subtipo.Nombre" (abrir)="verDetallesSubtipo(subtipo.Id)"></app-listado-nombre>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Manual">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por manual">Manual</th>
+                <td mat-cell *matCellDef="let subtipo">
+                    <button type="button" class="listado-manual" (click)="abrirDetalleManual(subtipo, $event)">{{subtipo.Manual | manualListado}}</button>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Heredada">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por heredada">Heredada</th>
+                <td mat-cell *matCellDef="let subtipo">
+                    <mat-checkbox [checked]="!!subtipo.Heredada" [disableRipple]="true" [attr.aria-label]="subtipo.Heredada ? 'Heredada' : 'No heredada'"
+                        (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Homebrew">
+                <th mat-header-cell *matHeaderCellDef>Homebrew</th>
+                <td mat-cell *matCellDef="let subtipo">
+                    <mat-checkbox [checked]="!subtipo.Oficial" [disableRipple]="true" [attr.aria-label]="subtipo.Oficial ? 'Oficial' : 'Homebrew'"
+                        (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
                 </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="subtipoColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let element; columns: subtipoColumns;" class="element-row elegir"
-                (click)="seleccionarSubtipo(element.Id)"></tr>
+            <tr mat-row *matRowDef="let subtipo; columns: subtipoColumns;" class="elegir" (click)="seleccionarSubtipo(subtipo.Id)"></tr>
             <tr class="mat-row" *matNoDataRow>
-                <td class="mat-cell tw-text-center tw-text-white tw-p-3" colspan="6">
-                    Ningun subtipo encaja con los filtros
+                <td class="mat-cell" [attr.colspan]="subtipoColumns.length">
+                    <app-listado-estado tipo="vacio" [mensaje]="hayFiltros ? 'Ningún subtipo cumple los filtros.' : 'Aún no hay subtipos.'"
+                        [textoAccion]="hayFiltros ? 'Limpiar filtros' : ''" (accion)="limpiarFiltros()"></app-listado-estado>
                 </td>
             </tr>
         </table>
-        <ng-template #cargando>
-            <div class="superballs">
-                <div class="superballs__dot"></div>
-                <div class="superballs__dot"></div>
-            </div>
-        </ng-template>
     </div>
-    <div class="lista-row tw-w-full tw-flex tw-items-center">
-        <mat-paginator class="tw-w-full" [pageSizeOptions]="[10, 20, 30, 40]" showFirstLastButtons aria-label="Selecciona una pagina de subtipos">
-        </mat-paginator>
-    </div>
+
+    <app-listado-estado *ngIf="!cargado" tipo="cargando" etiqueta="Cargando subtipos"></app-listado-estado>
+    <app-listado-estado *ngIf="cargado && errorCarga" tipo="error" mensaje="No se pudieron cargar los subtipos." (accion)="cargar()"></app-listado-estado>
+
+    <mat-paginator class="listado-paginador" [class.listado-oculto]="!cargado || errorCarga" aria-label="Páginas de subtipos"></mat-paginator>
 </div>
