@@ -4,6 +4,7 @@ import {
     conjurosDeAptitudes,
     evaluarActitudEspecial,
     listadoConjurosClase,
+    modificadoresCaracteristicaEspecialNivel,
     nivelesConjuroSinRequisito,
     pasosTamanoEspecialNivel,
     prerrequisitosEspecialNivel,
@@ -66,6 +67,8 @@ describe('aptitudes-clase', () => {
         expect(pasosTamanoEspecialNivel(especialNivel)).toBe(1);
         expect(prerrequisitosEspecialNivel(especialNivel)).toEqual({ actitud_requerido: [BUENO], actitud_prohibido: [] });
         expect(pasosTamanoEspecialNivel({ Especial: {} } as any)).toBe(0);
+        expect(modificadoresCaracteristicaEspecialNivel({ Especial: { Modificadores: { Fuerza: 2, Destreza: -2 } } } as any))
+            .toEqual({ Fuerza: 2, Destreza: -2, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 });
     });
 
     describe('listas de conjuros por aptitud', () => {

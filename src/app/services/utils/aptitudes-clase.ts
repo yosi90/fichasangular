@@ -1,4 +1,5 @@
 import { Clase, ClaseConjuroRef, ClaseEspecialNivel, ClaseNivelConjuroRequisito } from 'src/app/interfaces/clase';
+import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { EspecialPrerrequisitos } from 'src/app/interfaces/especial';
 import { cumpleActitud } from 'src/app/services/utils/alineamiento-contrato';
 import { toArray, toInt } from 'src/app/services/utils/normalizacion';
@@ -37,6 +38,12 @@ function especialDelNivel(especialNivel: ClaseEspecialNivel | null | undefined):
 /** Las categorías de tamaño que suma el especial de un nivel de la clase (`Modificadores.Tamano_pasos`). */
 export function pasosTamanoEspecialNivel(especialNivel: ClaseEspecialNivel | null | undefined): number {
     return toInt(especialDelNivel(especialNivel)?.['Modificadores']?.['Tamano_pasos']);
+}
+
+/** Las columnas de características del especial de un nivel de la clase (`Modificadores.Fuerza`…); 0 las que no da. */
+export function modificadoresCaracteristicaEspecialNivel(especialNivel: ClaseEspecialNivel | null | undefined): Record<Caracteristica, number> {
+    const modificadores = especialDelNivel(especialNivel)?.['Modificadores'] ?? {};
+    return Object.fromEntries(CARACTERISTICAS.map((key) => [key, toInt(modificadores?.[key])])) as Record<Caracteristica, number>;
 }
 
 /** Los prerrequisitos de actitud del especial de un nivel de la clase. */

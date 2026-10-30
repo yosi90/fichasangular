@@ -589,6 +589,25 @@ describe('Clases propias: lo que dicen los datos de la clase y de sus aptitudes'
             expect(pj.Presa).toBe(4);
         });
 
+        it('las columnas de características de la aptitud van a las características (Fue +2 y Des −2 al agrandarse)', () => {
+            const service = crearServicio({ Inteligencia: 16, Fuerza: 14, Destreza: 12 });
+            service.setCatalogoTamanos(tamanos);
+            const grande = claseConLibro({}, [especialNivel(92, 'Aptitud grande', 0, {
+                Modificadores: { Tamano_pasos: 1, Fuerza: 2, Destreza: -2, Constitucion: 0 },
+            })]);
+            service.setCatalogoClases([grande]);
+            expect(service.aplicarSiguienteNivelClase(grande).aplicado).toBeTrue();
+
+            const pj = service.PersonajeCreacion;
+            expect([pj.Fuerza, pj.ModFuerza, pj.Destreza, pj.ModDestreza]).toEqual([16, 3, 10, 0]);
+            expect(pj.CaracteristicasVarios.Fuerza).toEqual([{ valor: 2, origen: 'Especial: Aptitud grande' }]);
+            // Un recálculo posterior (una ventaja, una plantilla) no la cuenta dos veces.
+            service.recalcularEfectosVentajas();
+            expect([service.PersonajeCreacion.Fuerza, service.PersonajeCreacion.Destreza]).toEqual([16, 10]);
+            // La presa del tamaño nuevo (+4) con la Fuerza nueva (+3).
+            expect(service.PersonajeCreacion.Presa).toBe(7);
+        });
+
         it('sin aptitudes que lo cambien, el de la raza', () => {
             const service = crearServicio({ Inteligencia: 16 });
             service.setCatalogoTamanos(tamanos);

@@ -74,7 +74,7 @@ import {
     puntuacionLanzamiento,
 } from './utils/reglas-magia';
 import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './utils/alineamiento-contrato';
-import { AptitudDelPersonaje, evaluarActitudEspecial, listadoConjurosClase, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
+import { AptitudDelPersonaje, evaluarActitudEspecial, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
 import { OrigenTamano, TamanoEfectivo, tamanoEfectivo } from './utils/tamano-efectivo';
 import { ajusteDePlantillas, dgsDePlantilla, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
@@ -4893,7 +4893,13 @@ export class NuevoPersonajeService {
         ];
         this.aplicarDotesNivelClase(clase, siguienteNivel, dotesAplicar);
         this.aplicarEspecialesNivelClase(especialesAplicar);
-        if (especialesAplicar.some((especialNivel) => pasosTamanoEspecialNivel(especialNivel) !== 0)) {
+        const cambiaCaracteristicas = especialesAplicar.some((especialNivel) =>
+            Object.values(modificadoresCaracteristicaEspecialNivel(especialNivel)).some((valor) => toInt(valor) !== 0));
+        if (cambiaCaracteristicas) {
+            // Sus características se suman con las demás (dotes, plantillas, ventajas) desde la base.
+            this.recalcularEfectosVentajas();
+        }
+        if (cambiaCaracteristicas || especialesAplicar.some((especialNivel) => pasosTamanoEspecialNivel(especialNivel) !== 0)) {
             // Una aptitud que cambia el tamaño cambia la CA, la presa, Esconderse y la carga.
             this.recalcularDerivadasPorCaracteristicas();
             this.recalcularSinergiasHabilidades();
@@ -5412,6 +5418,7 @@ export class NuevoPersonajeService {
         const pendientesOro: PendienteOroState[] = [];
         this.aplicarEfectosPlantillasFase2(caracteristicasVarios, nuevosRaciales, bonosHabilidades);
         this.aplicarModificadoresDotesDelPersonaje({ caracteristicasVarios, bonosHabilidades });
+        this.aplicarCaracteristicasEspecialesDelPersonaje(caracteristicasVarios);
 
         const todasLasSelecciones: Array<{ detalle: VentajaDetalle; seleccion: SeleccionVentajaState; claseOrigen: 'Ventaja' | 'Desventaja'; }> = [
             ...this.estadoFlujo.ventajas.seleccionDesventajas
@@ -8419,21 +8426,54 @@ export class NuevoPersonajeService {
 
     /** Las aptitudes del personaje que cambian el tamaño, con las categorías que suma cada una (las de las tablas de clase). */
     private origenesTamano(): OrigenTamano[] {
-        const ids = new Set(this.aptitudesDelPersonaje().map((aptitud) => aptitud.id));
         const vistos = new Set<number>();
-        const origenes: OrigenTamano[] = [];
+        return this.especialesDeClaseDelPersonaje()
+            .filter((especialNivel) => {
+                const id = toNumber((especialNivel?.Especial as Record<string, any>)?.['Id']);
+                if (vistos.has(id))
+                    return false;
+                vistos.add(id);
+                return true;
+            })
+            .map((especialNivel) => ({
+                origen: `${(especialNivel?.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim(),
+                pasos: pasosTamanoEspecialNivel(especialNivel),
+            }))
+            .filter((origen) => origen.pasos !== 0);
+    }
+
+    /**
+     * El especial de las tablas de clase de cada aptitud que tiene el personaje (`Claseas`), con sus `Modificadores`: el
+     * mismo especial en cualquier clase y nivel trae los mismos datos, así que vale el primero.
+     */
+    private especialesDeClaseDelPersonaje(): ClaseEspecialNivel[] {
+        const porId = new Map<number, ClaseEspecialNivel>();
         (this.catalogoClases ?? []).forEach((clase) => (clase?.Desglose_niveles ?? []).forEach((nivel) =>
             (nivel?.Especiales ?? []).forEach((especialNivel) => {
-                const especial = (especialNivel?.Especial ?? {}) as Record<string, any>;
-                const id = toNumber(especial?.['Id']);
-                if (!ids.has(id) || vistos.has(id))
-                    return;
-                vistos.add(id);
-                const pasos = pasosTamanoEspecialNivel(especialNivel);
-                if (pasos !== 0)
-                    origenes.push({ origen: `${especial?.['Nombre'] ?? ''}`.trim(), pasos });
+                const id = toNumber((especialNivel?.Especial as Record<string, any>)?.['Id']);
+                if (id > 0 && !porId.has(id))
+                    porId.set(id, especialNivel);
             })));
-        return origenes;
+        return this.aptitudesDelPersonaje()
+            .map((aptitud) => porId.get(aptitud.id))
+            .filter((especialNivel): especialNivel is ClaseEspecialNivel => !!especialNivel);
+    }
+
+    /**
+     * Las columnas de características de las aptitudes del personaje (`Modificadores.Fuerza`…: Fue +2 y Des −2 de un
+     * cambio de tamaño como *agrandar persona*) van a sus características, como las de las dotes y las plantillas
+     * (guía `docs/publica/CLASES_PROPIAS_FRONT.md`).
+     */
+    private aplicarCaracteristicasEspecialesDelPersonaje(caracteristicasVarios: Personaje['CaracteristicasVarios']): void {
+        this.especialesDeClaseDelPersonaje().forEach((especialNivel) => {
+            const origen = `Especial: ${`${(especialNivel?.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim()}`;
+            const modificadores = modificadoresCaracteristicaEspecialNivel(especialNivel);
+            CARACTERISTICAS.forEach((key) => {
+                const valor = toInt(modificadores[key]);
+                if (valor !== 0)
+                    (caracteristicasVarios[key] ?? []).push({ valor, origen });
+            });
+        });
     }
 
     private recalcularDefensasYPresa(): void {
