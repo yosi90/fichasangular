@@ -1,4 +1,5 @@
 @use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
 
 // La Ayuda (lienzo, vista 9): sin encapsular y con el prefijo `ayuda-`, porque lo usan también sus secciones
 // (`app-help-usage-about`, `app-help-roadmap`, `app-help-legal`). Tarjetas como las de la ficha: título en versalitas,
@@ -184,7 +185,7 @@ app-ayuda
         color: #cfd8dc
 
 // Móvil: la navegación pasa a una fila que se desplaza en horizontal, encima del contenido.
-@media (max-width: 699.98px)
+@include movil
     .ayuda
         flex-direction: column
         padding: 10px
@@ -208,12 +209,7 @@ app-ayuda
 
 // Novedades: cada versión plegable (la que está en curso, abierta y con la raya rosa).
 .ayuda-oculto
-    position: absolute
-    width: 1px
-    height: 1px
-    overflow: hidden
-    clip: rect(0 0 0 0)
-    white-space: nowrap
+    @include solo-lectores
 
 .ayuda-version
     border-radius: 6px

@@ -1,4 +1,5 @@
 @use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
 @use '../../detalles/ficha/ficha-tonos' as *
 
 // El marco común de los pasos de la creación (lienzo aprobado por el propietario el 2026-10-26): cabecera, fila de pasos,
@@ -283,7 +284,7 @@ app-ficha-detalle.creacion > .ficha
 .creacion-progreso, .creacion-cabecera__paso-nombre
     display: none
 
-@media (max-width: 699.98px)
+@include movil
     app-ficha-detalle.creacion > .ficha
         gap: 8px
         padding: 8px

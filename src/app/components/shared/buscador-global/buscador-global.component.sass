@@ -1,4 +1,5 @@
 @use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
 @use '../../../../assets/css/iconos' as *
 
 // La ventana de la búsqueda global (lienzo, vista 5): 640 px, campo de 52 px con lupa, grupos con su icono y su
@@ -20,12 +21,7 @@
     font-family: Roboto, "Segoe UI", system-ui, sans-serif
 
 .buscador-global__oculto
-    position: absolute
-    width: 1px
-    height: 1px
-    overflow: hidden
-    clip: rect(0 0 0 0)
-    white-space: nowrap
+    @include solo-lectores
 
 .buscador-global__campo
     display: flex
@@ -178,7 +174,7 @@
         font-family: inherit
 
 // En el móvil, la ventana ocupa el ancho (menos 8 px a cada lado) y la ayuda del teclado sobra.
-@media (max-width: 699.98px)
+@include movil
     .buscador-global
         max-height: 80vh
 

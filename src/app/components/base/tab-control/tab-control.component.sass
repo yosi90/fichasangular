@@ -1,4 +1,5 @@
 @use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
 :host
     display: block
     width: 100%
@@ -84,7 +85,7 @@ mat-icon.pestana-icono
 
 // Móvil (vista 10): las pestañas solo con su icono, salvo la activa, que lleva también su nombre y la × de 44 px.
 // El nombre de las demás sigue ahí para el lector de pantalla.
-@media (max-width: 699.98px)
+@include movil
     :host ::ng-deep .mat-mdc-tab.mdc-tab
         min-width: 44px
         padding-right: 8px
@@ -92,11 +93,7 @@ mat-icon.pestana-icono
 
     :host ::ng-deep .mat-mdc-tab:not(.mdc-tab--active)
         .pestana-etiqueta
-            position: absolute
-            width: 1px
-            height: 1px
-            overflow: hidden
-            clip: rect(0 0 0 0)
+            @include solo-lectores
 
         .pestana-cerrar
             display: none

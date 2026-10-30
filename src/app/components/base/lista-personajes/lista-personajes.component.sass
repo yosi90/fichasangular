@@ -1,4 +1,5 @@
 @use '../../../../assets/css/_variables' as *
+@use '../../../../assets/css/marco' as *
 
 // El inicio (lienzo «Rol: las vistas que faltan», vista 6): la cabecera común de los listados, la tabla sin
 // pastillas (filas de 60 px, cabecera de 44 px en versalitas, filas alternas) y el paginador en español.
@@ -148,12 +149,7 @@ table
     text-align: center
 
 .pj-oculto
-    position: absolute
-    width: 1px
-    height: 1px
-    overflow: hidden
-    clip: rect(0 0 0 0)
-    white-space: nowrap
+    @include solo-lectores
 
 .details
     overflow: hidden
@@ -267,7 +263,7 @@ table
 
 // Móvil (vista 10): cada personaje es una tarjeta de una columna (icono, nombre y su línea); el resto de columnas,
 // en el desplegable.
-@media (max-width: 699.98px)
+@include movil
     .lista-personajes
         padding: 10px
 

@@ -1,0 +1,20 @@
+// Lo común del marco de la web (lienzo «Rol: las vistas que faltan»): el corte del móvil y el texto solo para lectores
+// de pantalla. Se usa con `@use '…/assets/css/marco' as *`.
+
+// El móvil (vista 10): por debajo de 700 px. Es la misma consulta que `CONSULTA_MOVIL` de
+// `src/app/services/marco-movil.service.ts` (el cajón del menú); si cambia una, cambia la otra.
+@mixin movil
+    @media (max-width: 699.98px)
+        @content
+
+// Lo que no se ve pero lee el lector de pantalla («(hecho)», «en total», la etiqueta de un campo con solo icono…).
+@mixin solo-lectores
+    position: absolute
+    width: 1px
+    height: 1px
+    padding: 0
+    margin: -1px
+    overflow: hidden
+    clip: rect(0 0 0 0)
+    white-space: nowrap
+    border: 0

@@ -1,4 +1,5 @@
 @use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
 
 .ribbon-nav
     display: flex
@@ -33,15 +34,7 @@
         height: 18px
 
 .ribbon-trigger__sr-only
-    position: absolute
-    width: 1px
-    height: 1px
-    padding: 0
-    margin: -1px
-    overflow: hidden
-    clip: rect(0, 0, 0, 0)
-    white-space: nowrap
-    border: 0
+    @include solo-lectores
 
 .ribbon-spacer
     flex: 1 1 auto
@@ -79,7 +72,7 @@
 
 // Móvil (vista 10): la cinta sube a 44 px para que todo se pueda pulsar; el botón «Menú» va primero y «Buscar» se
 // queda en la lupa.
-@media (max-width: 699.98px)
+@include movil
     .ribbon-nav
         min-height: 44px
         gap: 0

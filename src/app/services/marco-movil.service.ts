@@ -2,7 +2,10 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { Injectable, NgZone, OnDestroy } from '@angular/core';
 import { BehaviorSubject, Observable, Subscription, distinctUntilChanged, map } from 'rxjs';
 
-/** Por debajo de 700 px, el marco es el del móvil (lienzo «Rol: las vistas que faltan», vista 10). */
+/**
+ * Por debajo de 700 px, el marco es el del móvil (lienzo «Rol: las vistas que faltan», vista 10). Los estilos usan la
+ * misma consulta con la mezcla `movil` de `src/assets/css/_marco.sass`; si cambia una, cambia la otra.
+ */
 export const CONSULTA_MOVIL = '(max-width: 699.98px)';
 
 /**
