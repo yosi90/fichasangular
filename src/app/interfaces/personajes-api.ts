@@ -154,7 +154,7 @@ export interface PersonajeCreateRequestDto {
         volar?: number;
         idManiobrabilidad?: number;
         trepar?: number;
-        escalar?: number;
+        excavar?: number;
         espacio?: number;
         alcance?: number;
         idEspArcana?: number;

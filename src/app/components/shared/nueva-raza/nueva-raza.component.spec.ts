@@ -896,7 +896,7 @@ describe('NuevaRazaComponent', () => {
             nadar: 201,
             volar: 201,
             trepar: 201,
-            escalar: 201,
+            excavar: 201,
             espacio: 41,
             alcance: 41,
         });
@@ -906,7 +906,7 @@ describe('NuevaRazaComponent', () => {
         expect(component.form.controls.nadar.invalid).toBeTrue();
         expect(component.form.controls.volar.invalid).toBeTrue();
         expect(component.form.controls.trepar.invalid).toBeTrue();
-        expect(component.form.controls.escalar.invalid).toBeTrue();
+        expect(component.form.controls.excavar.invalid).toBeTrue();
         expect(component.form.controls.espacio.invalid).toBeTrue();
         expect(component.form.controls.alcance.invalid).toBeTrue();
     });

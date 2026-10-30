@@ -49,7 +49,7 @@ function createRawMonstruo(overrides: Record<string, any> = {}) {
         Tipo: { Id: 2, Nombre: "Bestia", Descripcion: "Tipo", Oficial: 1 },
         Tamano: { Id: 3, Nombre: "Mediano", Modificador: 0, Modificador_presa: 0 },
         Dados_golpe: { Cantidad: "2", Tipo_dado: { Id: 1, Nombre: "d8" }, Suma: 2 },
-        Movimientos: { Correr: 40, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+        Movimientos: { Correr: 40, Nadar: 0, Volar: 0, Trepar: 0, Excavar: 0 },
         Maniobrabilidad: {
             Id: 0, Nombre: "Ninguna", Velocidad_avance: "", Flotar: 0, Volar_atras: 0, Contramarcha: 0,
             Giro: "", Rotacion: "", Giro_max: "", Angulo_ascenso: "", Velocidad_ascenso: "", Angulo_descenso: "", Descenso_ascenso: 0

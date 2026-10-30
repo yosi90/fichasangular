@@ -75,7 +75,7 @@ describe('RazaService helpers', () => {
             vo: 0,
             man: {},
             tr: 0,
-            es: 0,
+            ex: 10,
             ari: 0,
             ars: 0,
             pri: 0,
@@ -231,6 +231,11 @@ describe('RazaService helpers', () => {
         expect(raza.Alineamiento.Basico.Nombre).toBe('Neutral');
         expect(raza.Subtipos).toEqual([{ Id: 11, Nombre: 'Humano' }]);
         expect(raza.Raciales[0].Nombre).toBe('Vision en la penumbra');
+        expect(raza.Excavar).toBe(10);
+    });
+
+    it('lee la velocidad de excavar de la caché (`Excavar`)', () => {
+        expect(normalizeRazaLegacy({ Id: 360, Nombre: 'Armand', Excavar: 10 }).Excavar).toBe(10);
     });
 
     it('lee la dote adicional y los puntos de habilidad extra de la raza, por HTTP y desde la caché', () => {
@@ -355,7 +360,7 @@ describe('RazaService helpers', () => {
             Volar: 0,
             Maniobrabilidad: {},
             Trepar: 0,
-            Escalar: 0,
+            Excavar: 0,
             Altura_rango_inf: 0,
             Altura_rango_sup: 0,
             Peso_rango_inf: 0,
@@ -446,7 +451,7 @@ describe('RazaService helpers', () => {
                 Volar: 0,
                 Maniobrabilidad: {},
                 Trepar: 0,
-                Escalar: 0,
+                Excavar: 0,
                 Altura_rango_inf: 0,
                 Altura_rango_sup: 0,
                 Peso_rango_inf: 0,
@@ -549,7 +554,7 @@ describe('RazaService helpers', () => {
                         Volar: 0,
                         Maniobrabilidad: {},
                         Trepar: 0,
-                        Escalar: 0,
+                        Excavar: 0,
                         Altura_rango_inf: 0,
                         Altura_rango_sup: 0,
                         Peso_rango_inf: 0,

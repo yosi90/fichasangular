@@ -85,12 +85,12 @@ describe('Ficha de detalle: reglas', () => {
     });
 
     it('textosMovimiento pone primero la velocidad base y la maniobrabilidad con el vuelo', () => {
-        expect(textosMovimiento({ Correr: 40, Nadar: 20, Volar: 60, Trepar: 0, Escalar: 0 }, 'Buena')).toEqual(["40'", "nadar 20'", "volar 60' (buena)"]);
-        expect(textosMovimiento({ Correr: 0, Nadar: 30, Volar: 0, Trepar: 0, Escalar: 0 }, null)).toEqual(["nadar 30'"]);
+        expect(textosMovimiento({ Correr: 40, Nadar: 20, Volar: 60, Trepar: 0, Excavar: 0 }, 'Buena')).toEqual(["40'", "nadar 20'", "volar 60' (buena)"]);
+        expect(textosMovimiento({ Correr: 0, Nadar: 30, Volar: 0, Trepar: 0, Excavar: 0 }, null)).toEqual(["nadar 30'"]);
     });
 
     it('datoFranjaVelocidad da la velocidad de la franja y, si vuela con maniobrabilidad, el botón de sus reglas', () => {
-        const movimientos = { Correr: 40, Nadar: 0, Volar: 60, Trepar: 0, Escalar: 0 };
+        const movimientos = { Correr: 40, Nadar: 0, Volar: 60, Trepar: 0, Excavar: 0 };
         const abrirReglas = jasmine.createSpy('abrirReglas');
         const conVuelo = datoFranjaVelocidad(movimientos, { maniobrabilidad: 'Buena', abrirReglas });
         expect([conVuelo.etiqueta, conVuelo.valor, conVuelo.detalle]).toEqual(['Velocidad', "40'", "volar 60' (buena)"]);
@@ -103,7 +103,7 @@ describe('Ficha de detalle: reglas', () => {
     });
 
     it('datosMovimiento enseña los movimientos que tiene, en pies, y la maniobrabilidad', () => {
-        const datos = datosMovimiento({ Correr: 20, Nadar: 0, Volar: 60, Trepar: 0, Escalar: 0 }, 'Buena');
+        const datos = datosMovimiento({ Correr: 20, Nadar: 0, Volar: 60, Trepar: 0, Excavar: 0 }, 'Buena');
         expect(datos.map((dato) => `${dato.etiqueta} ${dato.valor}`)).toEqual(["Correr 20'", "Volar 60'", 'Maniobrabilidad Buena']);
         expect(datosMovimiento(null, null)).toEqual([]);
     });

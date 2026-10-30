@@ -63,7 +63,7 @@ function crearRazaMock(extra: Partial<Raza> = {}): Raza {
         Volar: 0,
         Maniobrabilidad: { Nombre: '-' } as any,
         Trepar: 0,
-        Escalar: 0,
+        Excavar: 0,
         Altura_rango_inf: 1.4,
         Altura_rango_sup: 1.9,
         Peso_rango_inf: 45,

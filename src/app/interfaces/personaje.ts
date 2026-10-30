@@ -190,7 +190,7 @@ export interface Personaje extends PersonajeSimple {
     Nadar: number;
     Volar: number;
     Trepar: number;
-    Escalar: number;
+    Excavar: number;
     Oficial: boolean;
     Dados_golpe: number;
     Pgs_lic: number;
@@ -294,7 +294,7 @@ export interface Personaje extends PersonajeSimple {
         Volar: number;
         Maniobrabilidad: string;
         Trepar: number;
-        Escalar: number;
+        Excavar: number;
         Ataque_base: number;
         Ca: string;
         Reduccion_dano: string;

@@ -137,8 +137,8 @@ export class FichaPersonajeService {
             notas += `\r\n\r\nNadar: ${pj.Nadar} pies`;
         if (pj.Trepar > 0)
             notas += `\r\n\r\nTrepar: ${pj.Trepar} pies`;
-        if (pj.Escalar > 0)
-            notas += `\r\n\r\nEscalar: ${pj.Escalar} pies`;
+        if (pj.Excavar > 0)
+            notas += `\r\n\r\nExcavar: ${pj.Excavar} pies`;
         const self = this;
         form.getTextField('rangos_max').setText((pj.NEP + 3).toString());
         form.getTextField('rangos_min').setText(((pj.NEP + 3) / 2).toString());
