@@ -23,7 +23,6 @@ describe('ListadoArmadurasComponent', () => {
         );
         component.armaduraSort = { active: '', direction: '', sortChange: of({}), initialized: of({}) } as any;
         component.armaduraPaginator = { page: of({}), initialized: of({}) } as any;
-        component.nombreText = { nativeElement: { value: '' } } as any;
         component.armaduras = [
             normalizeArmadura(crearRodelaApi({ Id: 1, Nombre: 'Escudo pesado', Manual: { Id: 1, Nombre: 'Manual base', Pagina: 10 }, Tipo_escudo: { Id: 3, Nombre: 'Pesado' } })),
             normalizeArmadura(crearArmaduraApi({ Id: 2, Nombre: 'Cota de mallas' })),
@@ -63,5 +62,28 @@ describe('ListadoArmadurasComponent', () => {
         component.defaultTipoArmadura = 'Intermedia';
         component.filtroArmaduras();
         expect(component.armadurasDS.data.map((a) => a.Id)).toEqual([2]);
+    });
+
+    it('el buscador rápido filtra por nombre y cuenta como filtro', () => {
+        component.buscar('cota');
+        expect(component.armadurasDS.data.map((a) => a.Id)).toEqual([2]);
+        expect(component.hayFiltros).toBeTrue();
+    });
+
+    it('«Limpiar filtros» quita el texto, la categoría, los escudos y el homebrew', () => {
+        component.textoBusqueda = 'escudo';
+        component.defaultTipoArmadura = 'Intermedia';
+        component.soloEscudos = true;
+        component.AlternarArmadurasHombrew();
+        expect(component.hayFiltros).toBeTrue();
+
+        component.limpiarFiltros();
+
+        expect(component.textoBusqueda).toBe('');
+        expect(component.defaultTipoArmadura).toBe('Cualquiera');
+        expect(component.soloEscudos).toBeFalse();
+        expect(component.homebrewActivo).toBeFalse();
+        expect(component.hayFiltros).toBeFalse();
+        expect(component.armadurasDS.data.length).toBe(2);
     });
 });

@@ -1,16 +1,16 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { combineLatest, Subject, takeUntil } from 'rxjs';
-import Swal from 'sweetalert2';
+import { combineLatest, Subject, Subscription, takeUntil } from 'rxjs';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
-import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
+import { TipoRol, tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 interface VentajaListadoItem extends VentajaDetalle {
     Tipo: 'Ventaja' | 'Desventaja';
@@ -22,12 +22,17 @@ interface VentajaListadoItem extends VentajaDetalle {
     styleUrls: ['./listado-ventajas.component.sass'],
     standalone: false
 })
-export class ListadoVentajasComponent implements OnDestroy {
+export class ListadoVentajasComponent implements OnDestroy, ListadoBuscable {
     ventajas: VentajaListadoItem[] = [];
     manuales: string[] = [];
     defaultManual = 'Cualquiera';
     ventajasDS = new MatTableDataSource<VentajaListadoItem>([]);
     ventajaColumns = ['Nombre', 'Tipo', 'Coste', 'Manual'];
+    /** El buscador rápido de la cabecera. */
+    textoBusqueda = '';
+    cargado = false;
+    errorCarga = false;
+    private catalogoSub?: Subscription;
 
     private readonly destroy$ = new Subject<void>();
 
@@ -39,43 +44,79 @@ export class ListadoVentajasComponent implements OnDestroy {
 
     @ViewChild(MatSort) ventajaSort!: MatSort;
     @ViewChild(MatPaginator) ventajaPaginator!: MatPaginator;
-    @ViewChild('ventajaTextInc', { read: ElementRef }) nombreText!: ElementRef;
 
     ngAfterViewInit() {
         this.ventajasDS.paginator = this.ventajaPaginator;
         this.ventajasDS.sort = this.ventajaSort;
         ordenarEnEspanol(this.ventajasDS);
+        this.cargar();
+    }
 
-        combineLatest([
+    /** Lee las ventajas y las desventajas (otra vez, con «Reintentar»). */
+    cargar(): void {
+        this.cargado = false;
+        this.errorCarga = false;
+        this.catalogoSub?.unsubscribe();
+        this.catalogoSub = combineLatest([
             this.ventajaSvc.getVentajas(),
             this.ventajaSvc.getDesventajas(),
         ])
             .pipe(takeUntil(this.destroy$))
-            .subscribe(([ventajas, desventajas]) => {
-                const listadoVentajas = ventajas.map((v) => ({ ...v, Tipo: 'Ventaja' as const }));
-                const listadoDesventajas = desventajas.map((d) => ({ ...d, Tipo: 'Desventaja' as const }));
+            .subscribe({
+                next: ([ventajas, desventajas]) => {
+                    const listadoVentajas = (ventajas ?? []).map((v) => ({ ...v, Tipo: 'Ventaja' as const }));
+                    const listadoDesventajas = (desventajas ?? []).map((d) => ({ ...d, Tipo: 'Desventaja' as const }));
 
-                this.ventajas = [...listadoVentajas, ...listadoDesventajas]
-                    .sort(porNombre);
+                    this.ventajas = [...listadoVentajas, ...listadoDesventajas]
+                        .sort(porNombre);
 
-                this.manuales = Array.from(new Set(
-                    this.ventajas
-                        .map((v) => `${v.Manual?.Nombre ?? ''}`.trim())
-                        .filter((nombre) => nombre.length > 0)
-                )).sort(compararTexto);
+                    this.manuales = Array.from(new Set(
+                        this.ventajas
+                            .map((v) => `${v.Manual?.Nombre ?? ''}`.trim())
+                            .filter((nombre) => nombre.length > 0)
+                    )).sort(compararTexto);
 
-                this.filtroVentajas();
-                this.cdr.detectChanges();
+                    this.cargado = true;
+                    this.filtroVentajas();
+                    this.cdr.detectChanges();
+                },
+                error: () => {
+                    this.cargado = true;
+                    this.errorCarga = true;
+                    this.cdr.detectChanges();
+                },
             });
     }
 
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
+        this.filtroVentajas();
+    }
+
+    /** Si algún filtro no está como al abrir el listado. */
+    get hayFiltros(): boolean {
+        return this.textoBusqueda.trim() !== '' || this.defaultManual !== 'Cualquiera';
+    }
+
+    limpiarFiltros(): void {
+        this.textoBusqueda = '';
+        this.defaultManual = 'Cualquiera';
+        this.filtroVentajas();
+    }
+
+    /** Ventaja o desventaja, según el dato (`Coste`). */
+    tipoDe(item: VentajaListadoItem): TipoRol {
+        return tipoRolDeVentaja(item);
+    }
+
     ngOnDestroy(): void {
+        this.catalogoSub?.unsubscribe();
         this.destroy$.next();
         this.destroy$.complete();
     }
 
     filtroVentajas() {
-        const texto = normalizarTexto(this.nombreText?.nativeElement.value ?? '');
+        const texto = normalizarTexto(this.textoBusqueda);
         const filtradas = this.ventajas.filter((ventaja) => {
             const nombre = normalizarTexto(ventaja.Nombre);
             const manual = `${ventaja.Manual?.Nombre ?? ''}`.trim();
@@ -88,38 +129,12 @@ export class ListadoVentajasComponent implements OnDestroy {
         setTimeout(() => {
             this.ventajasDS.sort = this.ventajaSort;
             ordenarEnEspanol(this.ventajasDS);
-            this.ventajaSort.active = 'Nombre';
-            this.ventajaSort.direction = 'asc';
+            if (this.ventajaSort) {
+                this.ventajaSort.active = 'Nombre';
+                this.ventajaSort.direction = 'asc';
+            }
         }, 50);
         this.ventajasDS.paginator = this.ventajaPaginator;
-    }
-
-    abrirInfoVentajasHomebrew(event?: Event): void {
-        event?.preventDefault();
-        event?.stopPropagation();
-        Swal.fire({
-            target: document.body,
-            icon: 'info',
-            title: 'Ventajas y desventajas (homebrew)',
-            width: 560,
-            html: `
-                <p style="text-align:left; margin-bottom:10px;">
-                    El sistema de ventajas y desventajas es un añadido homebrew para enriquecer la experiencia de juego
-                    y, sobre todo, el roleo de los personajes.
-                </p>
-                <p style="text-align:left; margin-bottom:10px;">
-                    La idea no es conseguir personajes más poderosos, sino darle sabor al roleo. Si solo te importan
-                    los combates, te recomendamos no usar esta funcionalidad.
-                </p>
-                <p style="text-align:left; margin-bottom:4px;"><strong>Sistema de ventajas:</strong></p>
-                <ul style="text-align:left; padding-left:18px; margin:0;">
-                    <li>Cada personaje puede tener un máximo de tres ventajas.</li>
-                    <li>Cada ventaja cuesta puntos de ventaja.</li>
-                    <li>Obtienes esos puntos eligiendo desventajas para tu personaje.</li>
-                </ul>
-            `,
-            confirmButtonText: 'Entendido',
-        });
     }
 
     @Output() ventajaDetalles: EventEmitter<VentajaDetalle> = new EventEmitter<VentajaDetalle>();
@@ -130,10 +145,6 @@ export class ListadoVentajasComponent implements OnDestroy {
     @Output() ventajaSeleccionada: EventEmitter<VentajaDetalle> = new EventEmitter<VentajaDetalle>();
     seleccionarVentaja(item: VentajaListadoItem) {
         this.ventajaSeleccionada.emit(item);
-    }
-
-    getManualVisible(item: VentajaListadoItem): string {
-        return etiquetaManual(item.Manual);
     }
 
     abrirDetalleManual(item: VentajaListadoItem, event?: Event) {

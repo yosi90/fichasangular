@@ -23,7 +23,6 @@ describe('ListadoArmasComponent', () => {
         );
         component.armaSort = { active: '', direction: '', sortChange: of({}), initialized: of({}) } as any;
         component.armaPaginator = { page: of({}), initialized: of({}) } as any;
-        component.nombreText = { nativeElement: { value: '' } } as any;
         component.armas = [normalizeArma(crearArmaApi({ Id: 1, Nombre: 'Espada larga', Manual: { Id: 1, Nombre: 'Manual base', Pagina: 5 } }))];
     });
 
@@ -39,5 +38,28 @@ describe('ListadoArmasComponent', () => {
         expect(event.preventDefault).toHaveBeenCalled();
         expect(event.stopPropagation).toHaveBeenCalled();
         expect(manualDetalleNavSvcMock.abrirDetalleManual).toHaveBeenCalledWith({ id: 1, nombre: 'Manual base' });
+    });
+
+    it('el buscador rápido filtra por nombre y cuenta como filtro', () => {
+        component.armas = [...component.armas, { ...component.armas[0], Id: 2, Nombre: 'Hacha de batalla' }];
+        component.buscar('ESPADA');
+        expect(component.armasDS.data.map((a) => a.Id)).toEqual([1]);
+        expect(component.hayFiltros).toBeTrue();
+    });
+
+    it('«Limpiar filtros» vacía el texto y vuelve el manual, el tipo y el homebrew a como se abre', () => {
+        component.textoBusqueda = 'espada';
+        component.defaultManual = 'Manual base';
+        component.defaultTipoArma = 'Sencilla';
+        component.AlternarArmasHombrew();
+        expect(component.hayFiltros).toBeTrue();
+
+        component.limpiarFiltros();
+
+        expect(component.textoBusqueda).toBe('');
+        expect(component.defaultManual).toBe('Cualquiera');
+        expect(component.defaultTipoArma).toBe('Cualquiera');
+        expect(component.homebrewActivo).toBeFalse();
+        expect(component.hayFiltros).toBeFalse();
     });
 });

@@ -1,16 +1,16 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, Subscription, takeUntil } from 'rxjs';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { categoriaArmadura, textoDestrezaMaxima } from 'src/app/services/utils/equipo-texto';
-import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
     selector: 'app-listado-armaduras',
@@ -18,7 +18,7 @@ import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
     styleUrls: ['./listado-armaduras.component.sass'],
     standalone: false
 })
-export class ListadoArmadurasComponent implements OnDestroy {
+export class ListadoArmadurasComponent implements OnDestroy, ListadoBuscable {
     armaduras: ArmaduraDetalle[] = [];
     manuales: string[] = [];
     defaultManual = 'Cualquiera';
@@ -26,12 +26,11 @@ export class ListadoArmadurasComponent implements OnDestroy {
     soloEscudos = false;
     armadurasDS = new MatTableDataSource<ArmaduraDetalle>([]);
     armaduraColumns = ['Nombre', 'Manual', 'Categoria', 'Bon_des'];
-    private readonly columnLabels: Record<string, string> = {
-        Nombre: 'Nombre',
-        Manual: 'Manual',
-        Categoria: 'Categoría',
-        Bon_des: 'Destreza máx.',
-    };
+    /** El buscador rápido de la cabecera (nombre y descripción). */
+    textoBusqueda = '';
+    cargado = false;
+    errorCarga = false;
+    private catalogoSub?: Subscription;
 
     private mostrarHomebrew = false;
     private readonly destroy$ = new Subject<void>();
@@ -44,29 +43,64 @@ export class ListadoArmadurasComponent implements OnDestroy {
 
     @ViewChild(MatSort) armaduraSort!: MatSort;
     @ViewChild(MatPaginator) armaduraPaginator!: MatPaginator;
-    @ViewChild('armaduraTextInc', { read: ElementRef }) nombreText!: ElementRef;
 
     ngAfterViewInit() {
         this.armadurasDS.paginator = this.armaduraPaginator;
         this.armadurasDS.sort = this.armaduraSort;
         ordenarEnEspanol(this.armadurasDS);
         this.armadurasDS.sortingDataAccessor = (item, property) => this.sortingAccessor(item, property);
+        this.cargar();
+    }
 
-        this.armaduraSvc.getArmaduras()
+    /** Lee las armaduras y los escudos (otra vez, con «Reintentar»). */
+    cargar(): void {
+        this.cargado = false;
+        this.errorCarga = false;
+        this.catalogoSub?.unsubscribe();
+        this.catalogoSub = this.armaduraSvc.getArmaduras()
             .pipe(takeUntil(this.destroy$))
-            .subscribe((armaduras) => {
-                this.armaduras = [...(armaduras ?? [])]
-                    .filter(armadura => Number(armadura?.Id) > 0)
-                    .sort(porNombre);
-                this.manuales = this.buildManualesDisponibles(this.armaduras);
-                this.defaultManual = 'Cualquiera';
-                this.defaultTipoArmadura = 'Cualquiera';
-                this.filtroArmaduras();
-                this.cdr.detectChanges();
+            .subscribe({
+                next: (armaduras) => {
+                    this.armaduras = [...(armaduras ?? [])]
+                        .filter(armadura => Number(armadura?.Id) > 0)
+                        .sort(porNombre);
+                    this.manuales = this.buildManualesDisponibles(this.armaduras);
+                    this.defaultManual = 'Cualquiera';
+                    this.defaultTipoArmadura = 'Cualquiera';
+                    this.cargado = true;
+                    this.filtroArmaduras();
+                    this.cdr.detectChanges();
+                },
+                error: () => {
+                    this.cargado = true;
+                    this.errorCarga = true;
+                    this.cdr.detectChanges();
+                },
             });
     }
 
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
+        this.filtroArmaduras();
+    }
+
+    /** Si algún filtro no está como al abrir el listado. */
+    get hayFiltros(): boolean {
+        return this.textoBusqueda.trim() !== '' || this.defaultManual !== 'Cualquiera'
+            || this.defaultTipoArmadura !== 'Cualquiera' || this.soloEscudos || this.mostrarHomebrew;
+    }
+
+    limpiarFiltros(): void {
+        this.textoBusqueda = '';
+        this.defaultManual = 'Cualquiera';
+        this.defaultTipoArmadura = 'Cualquiera';
+        this.soloEscudos = false;
+        this.mostrarHomebrew = false;
+        this.filtroArmaduras();
+    }
+
     ngOnDestroy(): void {
+        this.catalogoSub?.unsubscribe();
         this.destroy$.next();
         this.destroy$.complete();
     }
@@ -98,7 +132,7 @@ export class ListadoArmadurasComponent implements OnDestroy {
     }
 
     filtroArmaduras() {
-        const texto = normalizarTexto(this.nombreText?.nativeElement?.value ?? '');
+        const texto = normalizarTexto(this.textoBusqueda);
         const tipoArmadura = normalizarTexto(this.defaultTipoArmadura);
         const armadurasFiltradas = this.armaduras.filter((armadura) => {
             const visiblePorTexto = texto.length < 1
@@ -147,14 +181,6 @@ export class ListadoArmadurasComponent implements OnDestroy {
             id: armadura?.Manual?.Id,
             nombre: armadura?.Manual?.Nombre,
         });
-    }
-
-    getManualVisible(armadura: ArmaduraDetalle): string {
-        return etiquetaManual(armadura?.Manual);
-    }
-
-    getColumnLabel(column: string): string {
-        return this.columnLabels[column] ?? column;
     }
 
     getCategoria(armadura: ArmaduraDetalle): string {

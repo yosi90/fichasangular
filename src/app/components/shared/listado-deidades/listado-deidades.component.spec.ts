@@ -21,7 +21,6 @@ describe('ListadoDeidadesComponent', () => {
         );
         component.deidadSort = { active: '', direction: '', sortChange: of({}), initialized: of({}) } as any;
         component.deidadPaginator = { page: of({}), initialized: of({}) } as any;
-        component.nombreText = { nativeElement: { value: '' } } as any;
         component.deidades = [{
             Id: 1,
             Nombre: 'Heironeous',
@@ -55,5 +54,31 @@ describe('ListadoDeidadesComponent', () => {
         expect(event.preventDefault).toHaveBeenCalled();
         expect(event.stopPropagation).toHaveBeenCalled();
         expect(manualDetalleNavSvcMock.abrirDetalleManual).toHaveBeenCalledWith({ id: 2, nombre: 'Manual base' });
+    });
+
+    it('el buscador rápido busca también en la descripción', () => {
+        component.buscar('valor');
+        expect(component.deidadesDS.data.length).toBe(1);
+        component.buscar('xyz');
+        expect(component.deidadesDS.data.length).toBe(0);
+        expect(component.hayFiltros).toBeTrue();
+    });
+
+    it('«Limpiar filtros» vuelve el texto, el manual, el alineamiento, el pabellón y el homebrew a como se abre', () => {
+        component.textoBusqueda = 'xyz';
+        component.defaultManual = 'Manual base';
+        component.defaultAlineamiento = 'Legal bueno';
+        component.defaultPabellon = 'Bien';
+        component.alternarHomebrew();
+
+        component.limpiarFiltros();
+
+        expect(component.textoBusqueda).toBe('');
+        expect(component.defaultManual).toBe('Cualquiera');
+        expect(component.defaultAlineamiento).toBe('Cualquiera');
+        expect(component.defaultPabellon).toBe('Cualquiera');
+        expect(component.homebrewActivo).toBeFalse();
+        expect(component.hayFiltros).toBeFalse();
+        expect(component.deidadesDS.data.length).toBe(1);
     });
 });

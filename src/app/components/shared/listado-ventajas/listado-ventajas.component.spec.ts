@@ -48,9 +48,8 @@ describe('ListadoVentajasComponent', () => {
         ventajaSvcMock.getDesventajas.and.returnValue(of([]));
 
         component = new ListadoVentajasComponent(cdrMock, ventajaSvcMock, manualDetalleNavSvcMock);
-        component.ventajaSort = { active: '', direction: '' } as any;
-        component.ventajaPaginator = {} as any;
-        component.nombreText = { nativeElement: { value: '' } } as any;
+        component.ventajaSort = { active: '', direction: '', sortChange: of({}), initialized: of({}) } as any;
+        component.ventajaPaginator = { page: of({}), initialized: of({}) } as any;
     });
 
     afterEach(() => {
@@ -70,5 +69,29 @@ describe('ListadoVentajasComponent', () => {
         expect(event.preventDefault).toHaveBeenCalled();
         expect(event.stopPropagation).toHaveBeenCalled();
         expect(manualDetalleNavSvcMock.abrirDetalleManual).toHaveBeenCalledWith({ id: 1, nombre: 'Manual base' });
+    });
+
+    it('carga ventajas y desventajas, y el buscador rápido filtra por nombre', () => {
+        ventajaSvcMock.getDesventajas.and.returnValue(of([{ ...ventajaBase, Id: 2, Nombre: 'Cojo', Coste: 2 }]));
+        component.cargar();
+        expect(component.cargado).toBeTrue();
+        expect(component.ventajas.map((v) => v.Tipo)).toEqual(['Ventaja', 'Desventaja']);
+        expect(component.tipoDe(component.ventajas[1])).toBe('desventaja');
+
+        component.buscar('cojo');
+        expect(component.ventajasDS.data.map((v) => v.Nombre)).toEqual(['Cojo']);
+        expect(component.hayFiltros).toBeTrue();
+    });
+
+    it('«Limpiar filtros» vacía el texto y vuelve el manual a «Cualquiera»', () => {
+        component.textoBusqueda = 'bendecido';
+        component.defaultManual = 'Manual base';
+        expect(component.hayFiltros).toBeTrue();
+
+        component.limpiarFiltros();
+
+        expect(component.textoBusqueda).toBe('');
+        expect(component.defaultManual).toBe('Cualquiera');
+        expect(component.hayFiltros).toBeFalse();
     });
 });

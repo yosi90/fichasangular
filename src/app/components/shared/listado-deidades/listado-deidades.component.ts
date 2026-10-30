@@ -1,15 +1,15 @@
-import { ChangeDetectorRef, Component, ElementRef, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, OnDestroy, Output, ViewChild } from '@angular/core';
 import { MatPaginator } from '@angular/material/paginator';
 import { MatSort } from '@angular/material/sort';
 import { MatTableDataSource } from '@angular/material/table';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, Subscription, takeUntil } from 'rxjs';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
-import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
+import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
     selector: 'app-listado-deidades',
@@ -17,7 +17,7 @@ import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
     styleUrls: ['./listado-deidades.component.sass'],
     standalone: false
 })
-export class ListadoDeidadesComponent implements OnDestroy {
+export class ListadoDeidadesComponent implements OnDestroy, ListadoBuscable {
     deidades: DeidadDetalle[] = [];
     manuales: string[] = [];
     defaultManual = 'Cualquiera';
@@ -25,6 +25,11 @@ export class ListadoDeidadesComponent implements OnDestroy {
     defaultPabellon = 'Cualquiera';
     deidadesDS = new MatTableDataSource<DeidadDetalle>([]);
     deidadColumns = ['Nombre', 'Manual', 'Alineamiento'];
+    /** El buscador rápido de la cabecera (nombre y descripción). */
+    textoBusqueda = '';
+    cargado = false;
+    errorCarga = false;
+    private catalogoSub?: Subscription;
 
     private mostrarHomebrew = false;
     private readonly destroy$ = new Subject<void>();
@@ -37,30 +42,65 @@ export class ListadoDeidadesComponent implements OnDestroy {
 
     @ViewChild(MatSort) deidadSort!: MatSort;
     @ViewChild(MatPaginator) deidadPaginator!: MatPaginator;
-    @ViewChild('deidadTextInc', { read: ElementRef }) nombreText!: ElementRef;
 
     ngAfterViewInit() {
         this.deidadesDS.paginator = this.deidadPaginator;
         this.deidadesDS.sort = this.deidadSort;
         ordenarEnEspanol(this.deidadesDS);
         this.deidadesDS.sortingDataAccessor = (item, property) => this.sortingAccessor(item, property);
+        this.cargar();
+    }
 
-        this.deidadSvc.getDeidades()
+    /** Lee las deidades (otra vez, con «Reintentar»). */
+    cargar(): void {
+        this.cargado = false;
+        this.errorCarga = false;
+        this.catalogoSub?.unsubscribe();
+        this.catalogoSub = this.deidadSvc.getDeidades()
             .pipe(takeUntil(this.destroy$))
-            .subscribe((deidades) => {
-                this.deidades = [...(deidades ?? [])]
-                    .filter((deidad) => Number(deidad?.Id) > 0)
-                    .sort(porNombre);
-                this.manuales = this.buildManualesDisponibles(this.deidades);
-                this.defaultManual = 'Cualquiera';
-                this.defaultAlineamiento = 'Cualquiera';
-                this.defaultPabellon = 'Cualquiera';
-                this.filtroDeidades();
-                this.cdr.detectChanges();
+            .subscribe({
+                next: (deidades) => {
+                    this.deidades = [...(deidades ?? [])]
+                        .filter((deidad) => Number(deidad?.Id) > 0)
+                        .sort(porNombre);
+                    this.manuales = this.buildManualesDisponibles(this.deidades);
+                    this.defaultManual = 'Cualquiera';
+                    this.defaultAlineamiento = 'Cualquiera';
+                    this.defaultPabellon = 'Cualquiera';
+                    this.cargado = true;
+                    this.filtroDeidades();
+                    this.cdr.detectChanges();
+                },
+                error: () => {
+                    this.cargado = true;
+                    this.errorCarga = true;
+                    this.cdr.detectChanges();
+                },
             });
     }
 
+    buscar(texto: string): void {
+        this.textoBusqueda = texto ?? '';
+        this.filtroDeidades();
+    }
+
+    /** Si algún filtro no está como al abrir el listado. */
+    get hayFiltros(): boolean {
+        return this.textoBusqueda.trim() !== '' || this.defaultManual !== 'Cualquiera'
+            || this.defaultAlineamiento !== 'Cualquiera' || this.defaultPabellon !== 'Cualquiera' || this.mostrarHomebrew;
+    }
+
+    limpiarFiltros(): void {
+        this.textoBusqueda = '';
+        this.defaultManual = 'Cualquiera';
+        this.defaultAlineamiento = 'Cualquiera';
+        this.defaultPabellon = 'Cualquiera';
+        this.mostrarHomebrew = false;
+        this.filtroDeidades();
+    }
+
     ngOnDestroy(): void {
+        this.catalogoSub?.unsubscribe();
         this.destroy$.next();
         this.destroy$.complete();
     }
@@ -95,7 +135,7 @@ export class ListadoDeidadesComponent implements OnDestroy {
     }
 
     filtroDeidades() {
-        const texto = normalizarTexto(this.nombreText?.nativeElement?.value ?? '');
+        const texto = normalizarTexto(this.textoBusqueda);
         const alineamiento = normalizarTexto(this.defaultAlineamiento);
         const pabellon = normalizarTexto(this.defaultPabellon);
 
@@ -147,10 +187,6 @@ export class ListadoDeidadesComponent implements OnDestroy {
             id: deidad?.Manual?.Id,
             nombre: deidad?.Manual?.Nombre,
         });
-    }
-
-    getManualVisible(deidad: DeidadDetalle): string {
-        return etiquetaManual(deidad?.Manual);
     }
 
     private sortingAccessor(item: DeidadDetalle, property: string): string | number {
