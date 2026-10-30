@@ -248,6 +248,26 @@ describe('RazaService helpers', () => {
         expect(sinExtras.Puntos_habilidad_extra_por_nivel).toBe(0);
     });
 
+    it('lee la descripción, el nombre original y si es traducida, por HTTP y desde la caché', () => {
+        const textos = { Descripcion: ' Los goliats viven en las cumbres.\n\nCompiten en todo. ', Nombre_original: 'Goliath', Traducido: true };
+        const http = normalizeRazaApi(createRazaApiRaw(textos));
+        const cache = normalizeRazaLegacy({ Id: 406, Nombre: 'Goliat', ...textos });
+
+        [http, cache].forEach((raza) => {
+            expect(raza.Descripcion).toBe('Los goliats viven en las cumbres.\n\nCompiten en todo.');
+            expect(raza.Nombre_original).toBe('Goliath');
+            expect(raza.Traducido).toBeTrue();
+        });
+        // En la caché, sin nombre original la clave no está; por HTTP llega `null`.
+        const sinTextosHttp = normalizeRazaApi(createRazaApiRaw({ Descripcion: '', Nombre_original: null, Traducido: false }));
+        const sinTextosCache = normalizeRazaLegacy({ Id: 25, Nombre: 'Humano' });
+        [sinTextosHttp, sinTextosCache].forEach((raza) => {
+            expect(raza.Descripcion).toBe('');
+            expect(raza.Nombre_original).toBeNull();
+            expect(raza.Traducido).toBeFalse();
+        });
+    });
+
     it('el conjuro de las sortílegas de la API usa normalizeConjuroApi (Niveles_clase, alma, Nombre_esp)', () => {
         const raza = normalizeRazaApi(createRazaApiRaw({
             sor: [{

@@ -6,7 +6,7 @@ import { RacialDetalle } from "src/app/interfaces/racial";
 import { MutacionRaza, Raza, RazaCompetencias, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from "src/app/interfaces/raza";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
-import { normalizarTexto, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroApi } from './conjuro-mapper';
 import { leerComodin } from './comodin';
 
@@ -186,6 +186,21 @@ export function normalizarCamposCreacionRaza(raw: any): Pick<Raza, CamposCreacio
     };
 }
 
+/** Los textos de la raza: su descripción y, si la hemos traducido de un libro en inglés, su nombre original. */
+type TextosRaza = 'Descripcion' | 'Nombre_original' | 'Traducido';
+
+/**
+ * La descripción, el nombre original y la marca de traducida de la raza. La API y la caché (`Razas/{id}`) los guardan con
+ * el mismo nombre; en la caché, sin nombre original, la clave no está.
+ */
+export function normalizarTextosRaza(raw: any): Pick<Raza, TextosRaza> {
+    return {
+        Descripcion: toText(raw?.Descripcion).trim(),
+        Nombre_original: toNullableText(raw?.Nombre_original),
+        Traducido: toBoolean(raw?.Traducido),
+    };
+}
+
 function normalizeHabilidadesApi(raw: any): RazaHabilidades {
     const base = toStrictArray(raw?.Base)
         .map((item: any) => ({
@@ -301,6 +316,7 @@ export function normalizeRazaApi(raw: any): Raza {
     return {
         Id: toNumber(raw?.i),
         Nombre: toText(raw?.n),
+        ...normalizarTextosRaza(raw),
         Modificadores: normalizeModificadoresApi(raw?.m),
         Alineamiento: normalizeAlineamientoApi(raw?.ali),
         Manual: toText(raw?.ma),

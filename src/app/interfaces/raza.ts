@@ -96,6 +96,12 @@ export interface RazaHabilidades {
 export interface Raza {
     Id: number;
     Nombre: string;
+    /** Cómo es, cómo se comporta y cómo vive (el lore propio de las importadas de los manuales). Vacía si no tiene. */
+    Descripcion?: string;
+    /** El nombre en inglés de una raza de un libro en inglés que hemos traducido; `null` si no lo tiene. */
+    Nombre_original?: string | null;
+    /** El nombre es nuestra traducción de un libro en inglés. */
+    Traducido?: boolean;
     Ajuste_nivel: number;
     Manual: string;
     Clase_predilecta: string;

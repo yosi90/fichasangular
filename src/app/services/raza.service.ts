@@ -9,7 +9,7 @@ import { environment } from 'src/environments/environment';
 import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { normalizarCamposCreacionRaza, normalizeRazaApi } from './utils/raza-mapper';
+import { normalizarCamposCreacionRaza, normalizarTextosRaza, normalizeRazaApi } from './utils/raza-mapper';
 import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
@@ -261,6 +261,7 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
     return {
         Id: toNumber(id),
         Nombre: `${raw?.Nombre ?? raw?.n ?? ''}`,
+        ...normalizarTextosRaza(raw),
         Modificadores: normalizeModificadores(raw?.Modificadores ?? raw?.m),
         Alineamiento: normalizeAlineamientoRaza(raw?.Alineamiento ?? raw?.alineamiento ?? raw?.ali),
         Manual: `${raw?.Manual ?? raw?.ma ?? ''}`,

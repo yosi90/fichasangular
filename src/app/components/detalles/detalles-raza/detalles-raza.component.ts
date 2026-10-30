@@ -2,11 +2,14 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import {
     DatoFicha,
     DoteFicha,
+    EtiquetaFicha,
     HabilidadFicha,
     datoAlineamiento,
     datosModificadoresCaracteristicas,
     dotesVisibles,
+    etiquetaTraducido,
     habilidadesVisibles,
+    nombreOriginalVisible,
     textoDato,
     textoEsenciaRasgo,
     textoPies,
@@ -68,8 +71,8 @@ export class DetallesRazaComponent {
 
     /** «Raza · Mediano · Humanoide». */
     tipoCabecera = '';
-    /** «Mutada» y si su tamaño depende de la mutación. */
-    etiquetas: string[] = [];
+    /** «Mutada», si su tamaño depende de la mutación y «Traducido» (con el nombre original en el tooltip). */
+    etiquetas: (string | EtiquetaFicha)[] = [];
     /** Los datos clave, en el orden del manual. Lo que la API da `null` o 0 no sale. */
     datos: DatoFicha[] = [];
     /** Los dados de golpe raciales y lo que dan, si la raza los tiene. */
@@ -98,9 +101,10 @@ export class DetallesRazaComponent {
         this.razaActual = value;
         this.tipoCabecera = unirTipo(['Raza', value?.Tamano?.Nombre, value?.Tipo_criatura?.Nombre]);
         this.etiquetas = [
-            value?.Mutada ? 'Mutada' : '',
-            value?.Tamano_mutacion_dependiente ? 'Tamaño según la mutación' : '',
-        ].filter(Boolean);
+            value?.Mutada ? 'Mutada' : null,
+            value?.Tamano_mutacion_dependiente ? 'Tamaño según la mutación' : null,
+            etiquetaTraducido(value),
+        ].filter((etiqueta): etiqueta is string | EtiquetaFicha => etiqueta !== null);
         this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos);
         this.dotes = dotesVisibles(value?.DotesContextuales);
         this.plantillasPorSubtipo = (value?.Plantillas_por_subtipo ?? [])
@@ -279,6 +283,7 @@ export class DetallesRazaComponent {
             },
             { etiqueta: 'Puntos de habilidad extra', valor: this.textoPuntosHabilidadExtra(), ancho: 2 },
             datoAlineamiento(r?.Alineamiento),
+            { etiqueta: 'Nombre original', valor: nombreOriginalVisible(r) },
             { etiqueta: 'Altura', valor: this.textoRango(r?.Altura_rango_inf, r?.Altura_rango_sup, 'm') },
             { etiqueta: 'Peso', valor: this.textoRango(r?.Peso_rango_inf, r?.Peso_rango_sup, 'kg') },
             { etiqueta: 'Espacio', valor: textoPies(r?.Espacio) },

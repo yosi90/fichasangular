@@ -11,6 +11,8 @@
     <app-ficha-datos [datos]="datos" titulo="Datos de la raza"></app-ficha-datos>
 
     <app-ficha-cuerpo>
+        <!-- Cómo es, cómo se comporta y cómo vive (el lore propio de las razas importadas de los manuales). -->
+        <app-ficha-seccion titulo="Descripción" [texto]="raza.Descripcion"></app-ficha-seccion>
         <app-ficha-seccion titulo="Ataques naturales" [texto]="raza.Ataques_naturales"></app-ficha-seccion>
 
         <app-ficha-lateral titulo="Prerrequisitos" *ngIf="prerrequisitosAgrupados.length > 0">

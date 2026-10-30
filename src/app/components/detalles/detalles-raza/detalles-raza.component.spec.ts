@@ -302,6 +302,37 @@ describe('DetallesRazaComponent', () => {
         expect(valor('Resistencia elemental')).toBeNull();
     });
 
+    it('enseña la descripción de la raza, con sus párrafos, antes de los ataques naturales', () => {
+        pintar({
+            Descripcion: 'Los goliats viven en las cumbres.\n\nCompiten en todo.',
+            Ataques_naturales: 'Mordisco (1d6).',
+        });
+
+        expect(titulos().slice(0, 2)).toEqual(['Descripción', 'Ataques naturales']);
+        expect(seccion('Descripción')?.querySelectorAll('app-texto-manual p').length).toBe(2);
+        expect(texto()).toContain('Compiten en todo.');
+    });
+
+    it('sin descripción no pinta la sección', () => {
+        pintar({ Descripcion: '' });
+
+        expect(titulos()).not.toContain('Descripción');
+    });
+
+    it('una raza traducida lleva la etiqueta «Traducido» y su nombre original', () => {
+        pintar({ Nombre: 'Goliat', Nombre_original: 'Goliath', Traducido: true });
+
+        expect(etiquetasCabecera()).toEqual(['Traducido', 'Oficial']);
+        expect(valor('Nombre original')).toBe('Goliath');
+    });
+
+    it('sin traducción no hay etiqueta ni nombre original', () => {
+        pintar({ Nombre_original: 'Elf', Traducido: false });
+
+        expect(etiquetasCabecera()).toEqual(['Oficial']);
+        expect(valor('Nombre original')).toBeNull();
+    });
+
     it('enseña los prerrequisitos con su frase, las dotes y las plantillas por subtipo, enlazadas', () => {
         const doteSpy = spyOn(component.doteDetalles, 'emit');
         const plantillaSpy = spyOn(component.plantillaDetalles, 'emit');
