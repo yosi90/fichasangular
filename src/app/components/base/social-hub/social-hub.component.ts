@@ -18,6 +18,7 @@ import { PlatformSessionService } from 'src/app/services/platform-session.servic
 import { InvitacionRecibidaEspacio, PlatformSpacesService } from 'src/app/services/platform-spaces.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 import { toPositiveInt } from 'src/app/services/utils/normalizacion';
+import { mensajeErrorDeAccion, permitirAccionGuardada } from '../user-profile/perfil-acciones';
 
 @Component({
     selector: 'app-social-hub',
@@ -531,26 +532,10 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     private shouldRunGuardedApiAction(actionKey: string): boolean {
-        const accessRestrictionMessage = this.userSvc.getAccessRestrictionMessage('usage');
-        if (accessRestrictionMessage.length > 0) {
-            this.appToastSvc.showError(accessRestrictionMessage);
-            return false;
-        }
-
-        const decision = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, actionKey);
-        if (decision.status !== 'allowed') {
-            this.appToastSvc.showError(this.apiActionGuardSvc.getBlockedMessage(decision), {
-                dedupeKey: this.apiActionGuardSvc.getBlockedToastDedupeKey(this.userSvc.CurrentUserUid, decision.status),
-            });
-            return false;
-        }
-        return true;
+        return permitirAccionGuardada(this.userSvc, this.apiActionGuardSvc, this.appToastSvc, actionKey);
     }
 
     private mapSocialActionError(error: any, fallback: string): string {
-        const complianceError = this.userSvc.getComplianceErrorMessage(error, 'usage');
-        if (complianceError.length > 0)
-            return complianceError;
-        return toUserFacingErrorMessage(error, fallback);
+        return mensajeErrorDeAccion(this.userSvc, error, fallback);
     }
 }

@@ -5,8 +5,8 @@ import { UserService } from 'src/app/services/user.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
 /**
- * Lo que comparten «Mi perfil» y la gestión de campañas al lanzar una acción contra la API: comprobar las normas y el
- * freno de repeticiones antes, y convertir el error en una frase para la persona después.
+ * Lo que comparten «Mi perfil», la gestión de campañas y el social al lanzar una acción contra la API: comprobar las
+ * normas y el freno de repeticiones antes, y convertir el error en una frase para la persona después.
  */
 
 /** Las acciones que crean o cambian contenido de rol piden las normas de creación; las demás, las de uso. */
@@ -46,18 +46,9 @@ export function permitirAccionGuardada(
     return true;
 }
 
-/** La frase del error: la de las normas o la sanción si es eso, o la de la API. */
+/** La frase del error: la de las normas, la sanción o la limitación si es eso (las de `UserService`), o la de la API. */
 export function mensajeErrorDeAccion(userSvc: UserService, error: any, fallback: string, scope: UserAccessScope = 'usage'): string {
-    const restriction = userSvc.resolveComplianceRestrictionFromError(error, scope);
-    if (restriction === 'temporaryBan')
-        return 'Tu cuenta está restringida temporalmente. Solo puedes revisar tu estado hasta que termine la sanción.';
-    if (restriction === 'permanentBan')
-        return 'Tu cuenta no puede realizar esta acción en este momento.';
-    if (restriction === 'mustAcceptUsage')
-        return 'Debes aceptar las normas de uso vigentes antes de continuar.';
-    if (restriction === 'mustAcceptCreation')
-        return 'Debes aceptar las normas de creación vigentes antes de continuar.';
-    return toUserFacingErrorMessage(error, fallback);
+    return userSvc.getComplianceErrorMessage(error, scope) || toUserFacingErrorMessage(error, fallback);
 }
 
 /** El nombre de un rol de Rol para enseñarlo («Master», «Colaborador»…). */

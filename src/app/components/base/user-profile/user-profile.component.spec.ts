@@ -150,12 +150,12 @@ describe('UserProfileComponent', () => {
             canProceed: jasmine.createSpy('canProceed').and.returnValue(true),
             getAccessRestriction: jasmine.createSpy('getAccessRestriction').and.returnValue(null),
             getAccessRestrictionMessage: jasmine.createSpy('getAccessRestrictionMessage').and.returnValue(''),
-            resolveComplianceRestrictionFromError: jasmine.createSpy('resolveComplianceRestrictionFromError').and.callFake((error: any, scope: 'usage' | 'creation' = 'usage') => {
-                if (error?.code === 'CREATION_POLICY_ACCEPTANCE_REQUIRED')
-                    return 'mustAcceptCreation';
+            getComplianceErrorMessage: jasmine.createSpy('getComplianceErrorMessage').and.callFake((error: any, scope: 'usage' | 'creation' = 'usage') => {
+                if (error?.code === 'CREATION_POLICY_ACCEPTANCE_REQUIRED' || (Number(error?.status ?? 0) === 403 && scope === 'creation'))
+                    return 'Debes aceptar las normas de Rol vigentes antes de crear o editar contenido.';
                 if (Number(error?.status ?? 0) === 403)
-                    return scope === 'creation' ? 'mustAcceptCreation' : 'mustAcceptUsage';
-                return null;
+                    return 'Debes aceptar las normas de uso vigentes antes de continuar.';
+                return '';
             }),
         };
 

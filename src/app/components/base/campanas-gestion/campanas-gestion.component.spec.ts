@@ -63,7 +63,7 @@ describe('CampanasGestionComponent', () => {
                         canProceed: () => true,
                         CurrentUserUid: 'uid-1',
                         getAccessRestrictionMessage: () => '',
-                        resolveComplianceRestrictionFromError: () => null,
+                        getComplianceErrorMessage: () => '',
                     },
                 },
                 { provide: CampanaService, useValue: campanaSvc },
