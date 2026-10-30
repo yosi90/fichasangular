@@ -21,9 +21,23 @@
                     [attr.aria-current]="i === pasoActual ? 'step' : null" (click)="irAPaso(i)">
                     <span class="insercion-paso-boton__numero" aria-hidden="true">{{i + 1}}</span>
                     <span class="insercion-paso-boton__nombre">{{paso}}</span>
+                    <span class="insercion-paso-boton__cambios" *ngIf="pasoConCambios(i)" title="Con cambios sin guardar">
+                        <span class="solo-lectores">(con cambios)</span>
+                    </span>
                 </button>
             </li>
         </ol>
+
+        <!-- En el móvil, los pasos van en un desplegable: «Paso 3 de 5: Rasgos». -->
+        <mat-form-field class="insercion-pasos-movil" appearance="fill" subscriptSizing="dynamic" *ngIf="conPasos">
+            <mat-label>Paso</mat-label>
+            <mat-select [value]="pasoActual" (selectionChange)="irAPaso($event.value)" aria-label="Paso">
+                <mat-select-trigger>{{textoPaso(pasoActual, true)}}</mat-select-trigger>
+                <mat-option *ngFor="let paso of pasos; let i = index" [value]="i">
+                    {{textoPaso(i, true)}}<ng-container *ngIf="pasoConCambios(i)"> · con cambios</ng-container>
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
     </header>
 
     <p class="insercion-aviso" *ngIf="sinPermisos" role="status">
@@ -42,8 +56,12 @@
 
     <footer class="insercion-pie">
         <ng-container *ngIf="conPasos">
-            <button mat-stroked-button type="button" [disabled]="pasoActual === 0" (click)="irAPaso(pasoActual - 1)">Anterior</button>
-            <button mat-stroked-button type="button" *ngIf="siguientePaso" (click)="irAPaso(pasoActual + 1)">Siguiente: {{siguientePaso}}</button>
+            <button mat-stroked-button type="button" class="insercion-pie__anterior" [disabled]="pasoActual === 0" (click)="irAPaso(pasoActual - 1)">Anterior</button>
+            <button mat-icon-button type="button" class="insercion-pie__atras" [disabled]="pasoActual === 0" (click)="irAPaso(pasoActual - 1)"
+                aria-label="Paso anterior"><mat-icon>arrow_back</mat-icon></button>
+            <button mat-stroked-button type="button" class="insercion-pie__siguiente" *ngIf="siguientePaso" (click)="irAPaso(pasoActual + 1)">
+                Siguiente<span class="insercion-pie__siguiente-nombre">: {{siguientePaso}}</span>
+            </button>
         </ng-container>
         <ng-content select="[insercionPieSecundario]"></ng-content>
         <p class="insercion-pie__nota" [class.insercion-pie__nota--aviso]="sinPermisos && !nota">{{notaVisible}}</p>

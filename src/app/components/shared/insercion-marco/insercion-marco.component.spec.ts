@@ -2,6 +2,8 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -13,7 +15,7 @@ import { InsercionMarcoComponent, ModoInsercion } from './insercion-marco.compon
     template: `
         <form (ngSubmit)="envios = envios + 1">
             <app-insercion-marco [modo]="modo" tipo="Raza" [iconoTipo]="iconoTipo" [enVentana]="enVentana" [nombre]="nombre" [oficial]="oficial" [pasos]="pasos"
-                [(pasoActual)]="paso" [avisoPermisos]="avisoPermisos" [guardando]="guardando" [nota]="nota"
+                [(pasoActual)]="paso" [pasosConCambios]="pasosConCambios" [detalleTipo]="detalleTipo" [avisoPermisos]="avisoPermisos" [guardando]="guardando" [nota]="nota"
                 textoAccion="Crear raza">
                 <div class="insercion-paso contenido-uno" [hidden]="paso !== 0">Uno</div>
                 <div class="insercion-paso contenido-dos" [hidden]="paso !== 1">Dos</div>
@@ -30,6 +32,8 @@ class AnfitrionComponent {
     oficial: boolean | null = true;
     pasos = ['Base y cuerpo', 'Valores', 'Relaciones'];
     paso = 0;
+    pasosConCambios: number[] = [];
+    detalleTipo = '';
     avisoPermisos = '';
     guardando = false;
     nota = '';
@@ -43,7 +47,7 @@ describe('InsercionMarcoComponent', () => {
     beforeEach(async () => {
         await TestBed.configureTestingModule({
             declarations: [AnfitrionComponent, InsercionMarcoComponent, IconoRolComponent],
-            imports: [FormsModule, ReactiveFormsModule, MatButtonModule, MatIconModule, MatTooltipModule, NoopAnimationsModule],
+            imports: [FormsModule, ReactiveFormsModule, MatButtonModule, MatFormFieldModule, MatSelectModule, MatIconModule, MatTooltipModule, NoopAnimationsModule],
         }).compileComponents();
         fixture = TestBed.createComponent(AnfitrionComponent);
         anfitrion = fixture.componentInstance;
@@ -165,5 +169,31 @@ describe('InsercionMarcoComponent', () => {
         fixture.detectChanges();
 
         expect(texto('.insercion-pie__nota')).toBe('Faltan la descripción y el alineamiento.');
+    });
+
+    it('al modificar, la línea del tipo puede llevar el manual en vez del paso', () => {
+        anfitrion.modo = 'editar';
+        anfitrion.detalleTipo = 'Manual de monstruos 1, p. 175';
+        fixture.detectChanges();
+
+        expect(texto('.insercion-cabecera__tipo')).toBe('Modificar · Raza · Manual de monstruos 1, p. 175');
+    });
+
+    it('los pasos con cambios llevan un punto ámbar (y lo dicen al lector de pantalla)', () => {
+        anfitrion.pasosConCambios = [1];
+        fixture.detectChanges();
+
+        const pasos = Array.from(raiz().querySelectorAll('.insercion-paso-boton'));
+        expect(pasos.map((paso) => !!paso.querySelector('.insercion-paso-boton__cambios'))).toEqual([false, true, false]);
+        expect(pasos[1].textContent).toContain('(con cambios)');
+    });
+
+    it('tiene el desplegable de los pasos del móvil, «Paso N de M: nombre», y la flecha atrás', async () => {
+        await fixture.whenStable();
+        fixture.detectChanges();
+        const desplegable = raiz().querySelector('.insercion-pasos-movil');
+        expect(desplegable).not.toBeNull();
+        expect(desplegable!.textContent).toContain('Paso 1 de 3: Base y cuerpo');
+        expect(raiz().querySelector('.insercion-pie__atras')).not.toBeNull();
     });
 });

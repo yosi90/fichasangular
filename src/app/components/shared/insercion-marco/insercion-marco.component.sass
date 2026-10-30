@@ -137,6 +137,39 @@ app-insercion-marco
     text-overflow: ellipsis
     white-space: nowrap
 
+// Un paso con cambios sin guardar (al modificar): un punto ámbar.
+.insercion-paso-boton__cambios
+    flex-shrink: 0
+    width: 8px
+    height: 8px
+    margin-left: auto
+    border-radius: 50%
+    background: $ficha-aviso
+
+// El desplegable de los pasos: solo en el móvil (ver la consulta de abajo).
+.insercion-pasos-movil
+    display: none
+    width: 100%
+
+// Lo cambiado al modificar: borde ámbar y la etiqueta en ámbar («Nombre · cambiado»). Vale en un `mat-form-field`, en
+// lo que lo envuelve (un buscador) y en un chip; una tarjeta entera lleva `insercion-tarjeta--cambiada`.
+.insercion-campo-cambiado
+    .mdc-text-field--filled, &.mdc-text-field--filled
+        box-shadow: inset 0 0 0 1px $ficha-aviso
+        border-radius: 4px 4px 0 0
+
+    .mat-mdc-form-field-label, .mdc-floating-label
+        color: $ficha-aviso !important
+
+// Una tarjeta entera cambiada (una lista): solo su borde, sin pintar los campos de dentro.
+.insercion-tarjeta--cambiada
+    outline: 1px solid $ficha-aviso
+    outline-offset: -1px
+
+.mat-mdc-chip.insercion-campo-cambiado
+    outline: 1px solid $ficha-aviso
+    outline-offset: 1px
+
 // Avisos de arriba: permisos en ámbar (no en rojo: no es un error), carga en neutro y error global en rojo.
 .insercion-aviso, .insercion-cargando, .insercion-error
     display: flex
@@ -272,6 +305,27 @@ app-insercion-marco
 
     .insercion-tarjetas
         grid-template-columns: minmax(0, 1fr)
+
+// El móvil (lienzo de las plantillas, < 768 px de marco): los pasos en un desplegable y el pie fijo abajo con la flecha
+// atrás, «Siguiente» y la acción principal.
+.insercion-pie__atras
+    display: none !important
+
+@container insercion (max-width: 767px)
+    .insercion-pasos
+        display: none
+
+    .insercion-pasos-movil
+        display: block
+
+    .insercion-pie__anterior
+        display: none !important
+
+    .insercion-pie__atras
+        display: inline-flex !important
+
+    .insercion-pie__siguiente-nombre
+        display: none
 
 @container insercion (max-width: 520px)
     .insercion-campos
