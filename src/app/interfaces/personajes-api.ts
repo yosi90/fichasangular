@@ -271,7 +271,6 @@ export interface PersonajeClaseDto extends PersonajeNombreIdDto {
     puntosPoder?: PersonajePuntosPoderDto | null;
 }
 
-/** Los conjuros al día de un nivel de conjuro (MJ tabla 1-1 y cap. 3): los de la tabla y los adicionales. */
 /**
  * El tamaño que cuenta en la ficha (`PersonajeDetalle.tamano`, desde el 2026-10-30): el de la raza movido por las
  * aptitudes que lo cambian. La creación calcula el mismo con `tamanoEfectivo` (`services/utils/tamano-efectivo.ts`).
@@ -294,6 +293,7 @@ export interface PersonajeTamanoDto {
     origenes: { origen: string; pasos: number; }[];
 }
 
+/** Los conjuros al día de un nivel de conjuro (MJ tabla 1-1 y cap. 3): los de la tabla y los adicionales. */
 export interface PersonajeConjurosDiariosNivelDto {
     nivel: number;
     base: number;

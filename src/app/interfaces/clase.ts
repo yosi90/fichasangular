@@ -22,7 +22,6 @@ export interface ClaseConjuroRef {
     Espontaneo: boolean;
 }
 
-/** El libro de conjuros de la clase (MJ cap. 3, Mago): con cuántos empieza y cuántos gana por nivel de lanzador. */
 /** Un conjuro de la lista de la clase que solo tiene quien tiene una de sus aptitudes (y ese extra; `null`, con cualquiera). */
 export interface ClaseConjuroEspecialRef extends ClaseConjuroRef {
     Especial: { Id: number; Nombre: string; };
@@ -43,6 +42,7 @@ export interface ClaseEscuelaEspecialista {
     Nombre_esp: string;
 }
 
+/** El libro de conjuros de la clase (MJ cap. 3, Mago): con cuántos empieza y cuántos gana por nivel de lanzador. */
 export interface ClaseLibroConjuros {
     Nivel_cero_completo: boolean;
     Iniciales: number;
