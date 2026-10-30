@@ -2,7 +2,6 @@ import { Plantilla, PlantillaCompatibilidadTipo } from "src/app/interfaces/plant
 import { TipoCriatura } from "src/app/interfaces/tipo_criatura";
 import { valorCaracteristicaPorId } from './caracteristicas';
 import {
-    cumpleActitud,
     extraerEjesAlineamientoDesdeContrato,
     getAlineamientoBasicoIdPorNombre,
     getVectorDesdeNombreBasico,
@@ -13,7 +12,7 @@ import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion'
 import { leerComodin } from './comodin';
 import { ClaveEntidadPrerrequisito, existeCoincidenciaClaveEntidad } from './identidad-prerrequisitos';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { MotivosPrerrequisitos, compararSubtipo, compararTamano } from './prerrequisitos-evaluacion';
+import { MotivosPrerrequisitos, compararActitud, compararSubtipo, compararTamano } from './prerrequisitos-evaluacion';
 
 export type EstadoElegibilidadPlantilla = "eligible" | "blocked_failed" | "blocked_unknown";
 
@@ -257,24 +256,6 @@ function parseCantidad(entry: Record<string, any>): number {
     return Number.NaN;
 }
 
-function parseActitudId(entry: Record<string, any>): number {
-    const candidates = [
-        entry?.["Id_actitud"],
-        entry?.["id_actitud"],
-        entry?.["i"],
-        entry?.["Id"],
-        entry?.["id"],
-    ];
-
-    for (const value of candidates) {
-        const n = toNumber(value);
-        if (n > 0)
-            return n;
-    }
-
-    return 0;
-}
-
 
 function parseTipoCompId(entry: Record<string, any>): number {
     const candidates = [
@@ -435,19 +416,15 @@ export function evaluarElegibilidadPlantilla(
 
     if (flags.actitud_prohibido) {
         (prer.actitud_prohibido ?? []).forEach((entry) => {
-            const actitudId = parseActitudId(entry);
-            const evaluable = actitudId > 0 && alineamientoId > 0;
-            const cumple = evaluable ? !cumpleActitud(actitudId, alineamientoId) : false;
-            registrarPrerrequisito(motivos, "actitud_prohibido", entry, evaluable, cumple, "Actitud prohibida con formato no reconocido");
+            const { evaluable, cumple, razonUnknown } = compararActitud(entry, alineamientoId, true);
+            registrarPrerrequisito(motivos, "actitud_prohibido", entry, evaluable, cumple, razonUnknown);
         });
     }
 
     if (flags.actitud_requerido) {
         (prer.actitud_requerido ?? []).forEach((entry) => {
-            const actitudId = parseActitudId(entry);
-            const evaluable = actitudId > 0 && alineamientoId > 0;
-            const cumple = evaluable ? cumpleActitud(actitudId, alineamientoId) : false;
-            registrarPrerrequisito(motivos, "actitud_requerido", entry, evaluable, cumple, "Actitud requerida con formato no reconocido");
+            const { evaluable, cumple, razonUnknown } = compararActitud(entry, alineamientoId, false);
+            registrarPrerrequisito(motivos, "actitud_requerido", entry, evaluable, cumple, razonUnknown);
         });
     }
 

@@ -1,10 +1,10 @@
 import { Clase } from "src/app/interfaces/clase";
 import { valorCaracteristicaPorId } from './caracteristicas';
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, existeCoincidenciaClaveEntidad } from "./identidad-prerrequisitos";
-import { cumpleActitud, getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from "./alineamiento-contrato";
+import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from "./alineamiento-contrato";
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { EvaluacionPrerrequisito, MotivosPrerrequisitos, compararSubtipo, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { EvaluacionPrerrequisito, MotivosPrerrequisitos, compararActitud, compararSubtipo, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
@@ -242,17 +242,7 @@ function buildEvaluacionActitud(
     alineamientoActualId: number,
     prohibido: boolean
 ): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
-    const idActitud = parseId(entry, ["Id_actitud", "id_actitud", "i", "Id", "id"]);
-    const evaluable = idActitud > 0 && alineamientoActualId > 0;
-    const coincide = evaluable ? cumpleActitud(idActitud, alineamientoActualId) : false;
-    const cumple = prohibido ? !coincide : coincide;
-    return {
-        grupoOpcional,
-        evaluable,
-        cumple,
-        razonUnknown: "Prerrequisito de actitud con formato no reconocido",
-    };
+    return { grupoOpcional: parseOpcional(entry), ...compararActitud(entry, alineamientoActualId, prohibido) };
 }
 
 function buildEvaluacionGenero(entry: Record<string, any>, generoActual: string): EvaluacionItem {

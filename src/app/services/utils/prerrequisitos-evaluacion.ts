@@ -1,12 +1,13 @@
 import { AptitudEspecialOtorgante } from 'src/app/interfaces/aptitud-especial';
 import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
+import { cumpleActitud } from 'src/app/services/utils/alineamiento-contrato';
 import { leerComodin } from 'src/app/services/utils/comodin';
 import { ClaveEntidadPrerrequisito, existeCoincidenciaClaveEntidad } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normalizarTexto, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito, grupoOpcionalPrerrequisito, avisoSinComprobar, razonNoCumple } from 'src/app/services/utils/prerrequisito-frase';
 
 // Lo común de evaluar los prerrequisitos contra el personaje (`dote-elegibilidad`, `clase-elegibilidad`,
-// `plantilla-elegibilidad`).
+// `plantilla-elegibilidad` y `aptitudes-clase`).
 
 /** Lo que dice la evaluación de un prerrequisito contra el personaje. */
 export interface EvaluacionPrerrequisito {
@@ -179,6 +180,24 @@ export function cumpleExtraPedido(
 
 /** Lo que dice la comparación de un prerrequisito, sin su grupo ni su frase (cada evaluador lee el `Opcional` a su manera). */
 export type ComparacionPrerrequisito = Pick<EvaluacionPrerrequisito, 'evaluable' | 'cumple' | 'razonUnknown'>;
+
+/**
+ * `actitud_requerido` y `actitud_prohibido` (dotes, clases, plantillas y aptitudes de clase): si el
+ * alineamiento básico del personaje (1-9) cumple la actitud pedida (`cumpleActitud`). Sin alineamiento no se puede
+ * comprobar, y lo dice («Elige antes un alineamiento»).
+ */
+export function compararActitud(pedido: Record<string, any>, idAlineamientoBasico: number, prohibido: boolean): ComparacionPrerrequisito {
+    const idActitud = ['Id_actitud', 'id_actitud', 'i', 'Id', 'id']
+        .map((clave) => toNumber(pedido?.[clave]))
+        .find((valor) => valor > 0) ?? 0;
+    const idBasico = toInt(idAlineamientoBasico, 0);
+    if (idActitud <= 0)
+        return { evaluable: false, cumple: false, razonUnknown: 'Prerrequisito de actitud con formato no reconocido' };
+    if (idBasico <= 0)
+        return { evaluable: false, cumple: false, razonUnknown: 'Elige antes un alineamiento' };
+    const coincide = cumpleActitud(idActitud, idBasico);
+    return { evaluable: true, cumple: prohibido ? !coincide : coincide, razonUnknown: '' };
+}
 
 /**
  * `tamano_minimo` y `tamano_maximo` (dotes, clases y plantillas): el tamaño del personaje contra el pedido. Los ids de

@@ -5,11 +5,11 @@ import {
     IdentidadPrerrequisitos,
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
-import { cumpleActitud, getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from './alineamiento-contrato';
+import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from './alineamiento-contrato';
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { EvaluacionPrerrequisito, MotivosPrerrequisitos, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { EvaluacionPrerrequisito, MotivosPrerrequisitos, compararActitud, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
@@ -592,16 +592,7 @@ function buildEvaluacionActitud(
     idAlineamiento: number,
     prohibido: boolean
 ): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
-    const idActitud = parseId(entry, ['Id_actitud', 'id_actitud', 'Id', 'id']);
-    const evaluable = idActitud > 0 && idAlineamiento > 0;
-    const coincide = evaluable ? cumpleActitud(idActitud, idAlineamiento) : false;
-    return {
-        grupoOpcional,
-        evaluable,
-        cumple: prohibido ? !coincide : coincide,
-        razonUnknown: 'Prerrequisito de actitud con formato no reconocido',
-    };
+    return { grupoOpcional: parseOpcional(entry), ...compararActitud(entry, idAlineamiento, prohibido) };
 }
 
 function buildEvaluacionCompArma(

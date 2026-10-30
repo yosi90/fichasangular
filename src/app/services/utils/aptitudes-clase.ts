@@ -1,9 +1,8 @@
 import { Clase, ClaseConjuroRef, ClaseEspecialNivel, ClaseNivelConjuroRequisito } from 'src/app/interfaces/clase';
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { EspecialPrerrequisitos } from 'src/app/interfaces/especial';
-import { cumpleActitud } from 'src/app/services/utils/alineamiento-contrato';
 import { toArray, toInt } from 'src/app/services/utils/normalizacion';
-import { MotivosPrerrequisitos } from 'src/app/services/utils/prerrequisitos-evaluacion';
+import { MotivosPrerrequisitos, compararActitud } from 'src/app/services/utils/prerrequisitos-evaluacion';
 import { frasePrerrequisito, grupoOpcionalPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 
 /*
@@ -67,19 +66,12 @@ export function evaluarActitudEspecial(
 ): { cumple: boolean; motivos: string[]; } {
     const motivos = new MotivosPrerrequisitos();
     const registrar = (clave: 'actitud_requerido' | 'actitud_prohibido', prohibido: boolean) =>
-        toArray<Record<string, any>>(prerrequisitos?.[clave]).forEach((entrada) => {
-            const idActitud = toInt(entrada?.['Id_actitud']);
-            const evaluable = idActitud > 0 && idAlineamientoBasico > 0;
-            const coincide = evaluable && cumpleActitud(idActitud, idAlineamientoBasico);
-            motivos.registrar({
-                grupoOpcional: grupoOpcionalPrerrequisito(entrada),
-                evaluable,
-                cumple: prohibido ? !coincide : coincide,
-                razonUnknown: 'Elige antes un alineamiento',
-                frase: frasePrerrequisito(clave, entrada),
-                clave,
-            });
-        });
+        toArray<Record<string, any>>(prerrequisitos?.[clave]).forEach((entrada) => motivos.registrar({
+            grupoOpcional: grupoOpcionalPrerrequisito(entrada),
+            ...compararActitud(entrada, idAlineamientoBasico, prohibido),
+            frase: frasePrerrequisito(clave, entrada),
+            clave,
+        }));
     registrar('actitud_requerido', false);
     registrar('actitud_prohibido', true);
     motivos.cerrarGrupos();
