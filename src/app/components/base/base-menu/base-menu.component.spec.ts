@@ -204,5 +204,7 @@ describe('BaseMenuComponent', () => {
         expect(tipos('insertar').flat().every(t => detalles.includes(t))).toBeTrue();
         expect(detalles).toContain('Munición:municion');
         expect(detalles).toContain('Ventajas y desventajas:ventaja');
+        expect(detalles).toContain('Subtipos de criatura:subtipo');
+        expect(detalles).toContain('Armaduras y escudos:armadura');
     });
 });

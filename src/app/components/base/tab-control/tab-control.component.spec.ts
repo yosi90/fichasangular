@@ -603,6 +603,7 @@ describe('TabControlComponent navegación por origen', () => {
         expect(component.getEtiquetaListadoTab({ key: 'listado:razas:insertar', tipo: 'razas', operacion: 'insertar' } as any)).toBe('Nueva raza');
         expect(component.getEtiquetaListadoTab({ key: 'listado:conjuros:insertar', tipo: 'conjuros', operacion: 'insertar' } as any)).toBe('Nuevo conjuro');
         expect(component.getEtiquetaListadoTab({ key: 'listado:razas:detalles', tipo: 'razas', operacion: 'detalles' } as any)).toBe('Lista de razas');
+        expect(component.getEtiquetaListadoTab({ key: 'listado:armaduras:detalles', tipo: 'armaduras', operacion: 'detalles' } as any)).toBe('Lista de armaduras y escudos');
         expect(component.getEtiquetaEdicionRacialTab({ key: 'r', idRacial: 1, nombre: 'Visión en la oscuridad' })).toBe('Editar racial: Visión en la oscuridad');
     });
 

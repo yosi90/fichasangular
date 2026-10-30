@@ -135,7 +135,7 @@ export const LISTADOS_ROL: Readonly<Record<string, ListadoRol>> = {
     'fusiones del alma': listado('fusion', 'fusiones del alma'),
     'chakras': listado('chakra', 'chakras'),
     'tipos de criatura': listado('tipo-criatura', 'tipos de criatura'),
-    'subtipos': listado('subtipo', 'subtipos'),
+    'subtipos': listado('subtipo', 'subtipos de criatura'),
     'deidades': listado('deidad', 'deidades'),
 };
 
@@ -168,3 +168,8 @@ export const AUTORES_ICONOS_ROL: readonly AutorIconos[] = [
     { nombre: 'Skoll', web: null, iconos: ['fangs'] },
     { nombre: 'Faithtoken', web: null, iconos: ['ore'] },
 ];
+
+/** El título de un listado para el menú y las pestañas («Armaduras y escudos»); sin registro, la clave tal cual. */
+export function tituloListado(lista: string): string {
+    return LISTADOS_ROL[`${lista ?? ''}`.trim()]?.titulo ?? `${lista ?? ''}`.trim();
+}

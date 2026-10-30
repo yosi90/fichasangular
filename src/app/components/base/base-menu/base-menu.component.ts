@@ -3,7 +3,8 @@ import { UserService } from '../../../services/user.service';
 import { UserProfileNavigationService } from '../../../services/user-profile-navigation.service';
 import { MatExpansionPanel } from '@angular/material/expansion';
 import { ConnectedPosition } from '@angular/cdk/overlay';
-import { TipoRol, tipoRolDeListado } from 'src/app/services/utils/iconos-rol';
+import { TipoRol, tipoRolDeListado, tituloListado } from 'src/app/services/utils/iconos-rol';
+import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { MarcoMovilService } from 'src/app/services/marco-movil.service';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
@@ -44,67 +45,67 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     readonly gruposOtros: Readonly<Record<SeccionOtros, readonly GrupoMenuOtros[]>> = {
         insertar: [
             this.grupo('equipo', 'Equipo', [
-                this.opcion('Armas', 'arma', () => this.canGestionar('armas', 'create')),
-                this.opcion('Armaduras y escudos', 'armadura', () => this.canGestionar('armaduras', 'create')),
+                this.opcion('armas', () => this.canGestionar('armas', 'create')),
+                this.opcion('armaduras', () => this.canGestionar('armaduras', 'create')),
             ]),
             this.grupo('rasgos', 'Rasgos y aptitudes', [
-                this.opcion('Especiales', 'especial', () => this.canGestionar('clases', 'create'), () => this.onInsertarEspecial()),
-                this.opcion('Raciales', 'racial', () => this.canInsertarRaciales(), () => this.onInsertarRacial()),
-                this.opcion('Rasgos', 'rasgo', () => this.canGestionar('rasgos', 'create')),
-                this.opcion('Idiomas', 'idioma', () => this.canGestionarIdiomas(), () => this.onInsertarIdioma()),
-                this.opcion('Ventajas y desventajas', 'ventaja', () => this.canGestionar('ventajas', 'create')),
-                this.opcion('Fusiones del alma', 'fusion', () => this.canGestionar('clases', 'create')),
-                this.opcion('Chakras', 'chakra', () => this.canGestionar('clases', 'create')),
+                this.opcion('especiales', () => this.canGestionar('clases', 'create'), () => this.onInsertarEspecial()),
+                this.opcion('raciales', () => this.canInsertarRaciales(), () => this.onInsertarRacial()),
+                this.opcion('rasgos', () => this.canGestionar('rasgos', 'create')),
+                this.opcion('idiomas', () => this.canGestionarIdiomas(), () => this.onInsertarIdioma()),
+                this.opcion('ventajas', () => this.canGestionar('ventajas', 'create')),
+                this.opcion('fusiones del alma', () => this.canGestionar('clases', 'create')),
+                this.opcion('chakras', () => this.canGestionar('clases', 'create')),
             ]),
             this.grupo('mundo', 'Criaturas y mundo', [
-                this.opcion('Tipos de criatura', 'tipo-criatura', () => this.canGestionar('tipos_criatura', 'create')),
-                this.opcion('Subtipos de criatura', 'subtipo', () => this.canGestionar('subtipos', 'create')),
-                this.opcion('Deidades', 'deidad', () => this.canGestionar('deidades', 'create')),
+                this.opcion('tipos de criatura', () => this.canGestionar('tipos_criatura', 'create')),
+                this.opcion('subtipos', () => this.canGestionar('subtipos', 'create')),
+                this.opcion('deidades', () => this.canGestionar('deidades', 'create')),
             ]),
         ],
         modificar: [
             this.grupo('equipo', 'Equipo', [
-                this.opcion('Armas', 'arma', () => this.canGestionar('armas', 'update')),
-                this.opcion('Armaduras y escudos', 'armadura', () => this.canGestionar('armaduras', 'update')),
+                this.opcion('armas', () => this.canGestionar('armas', 'update')),
+                this.opcion('armaduras', () => this.canGestionar('armaduras', 'update')),
             ]),
             this.grupo('rasgos', 'Rasgos y aptitudes', [
-                this.opcion('Especiales', 'especial', () => this.canGestionar('especiales', 'update') || this.canGestionar('clases', 'update'), () => this.onModificarEspecial()),
-                this.opcion('Raciales', 'racial', () => this.canGestionar('raciales', 'update'), () => this.onModificarRacial()),
-                this.opcion('Rasgos', 'rasgo', () => this.canGestionar('rasgos', 'update')),
-                this.opcion('Idiomas', 'idioma', () => this.canGestionarIdiomas(), () => this.onModificarIdioma()),
-                this.opcion('Ventajas y desventajas', 'ventaja', () => this.canGestionar('ventajas', 'update')),
-                this.opcion('Fusiones del alma', 'fusion', () => this.canGestionar('clases', 'update')),
-                this.opcion('Chakras', 'chakra', () => this.canGestionar('clases', 'update')),
+                this.opcion('especiales', () => this.canGestionar('especiales', 'update') || this.canGestionar('clases', 'update'), () => this.onModificarEspecial()),
+                this.opcion('raciales', () => this.canGestionar('raciales', 'update'), () => this.onModificarRacial()),
+                this.opcion('rasgos', () => this.canGestionar('rasgos', 'update')),
+                this.opcion('idiomas', () => this.canGestionarIdiomas(), () => this.onModificarIdioma()),
+                this.opcion('ventajas', () => this.canGestionar('ventajas', 'update')),
+                this.opcion('fusiones del alma', () => this.canGestionar('clases', 'update')),
+                this.opcion('chakras', () => this.canGestionar('clases', 'update')),
             ]),
             this.grupo('mundo', 'Criaturas y mundo', [
-                this.opcion('Tipos de criatura', 'tipo-criatura', () => this.canGestionar('tipos_criatura', 'update')),
-                this.opcion('Subtipos de criatura', 'subtipo', () => this.canGestionar('subtipos', 'update')),
-                this.opcion('Deidades', 'deidad', () => this.canGestionar('deidades', 'update')),
+                this.opcion('tipos de criatura', () => this.canGestionar('tipos_criatura', 'update')),
+                this.opcion('subtipos', () => this.canGestionar('subtipos', 'update')),
+                this.opcion('deidades', () => this.canGestionar('deidades', 'update')),
             ]),
         ],
         detalles: [
             this.grupo('equipo', 'Equipo', [
-                this.detalle('Armas', 'armas'),
-                this.detalle('Armaduras y escudos', 'armaduras'),
-                this.detalle('Munición', 'munición'),
-                this.detalle('Materiales especiales', 'materiales especiales'),
-                this.detalle('Aptitudes de armas y armaduras', 'aptitudes de armas y armaduras'),
-                this.detalle('Objetos', 'objetos'),
-                this.detalle('Conjuntos de objetos', 'conjuntos de objetos'),
+                this.detalle('armas'),
+                this.detalle('armaduras'),
+                this.detalle('munición'),
+                this.detalle('materiales especiales'),
+                this.detalle('aptitudes de armas y armaduras'),
+                this.detalle('objetos'),
+                this.detalle('conjuntos de objetos'),
             ]),
             this.grupo('rasgos', 'Rasgos y aptitudes', [
-                this.detalle('Especiales', 'especiales'),
-                this.detalle('Raciales', 'raciales'),
-                this.detalle('Rasgos', 'rasgos'),
-                this.detalle('Idiomas', 'idiomas'),
-                this.detalle('Ventajas y desventajas', 'ventajas'),
-                this.detalle('Fusiones del alma', 'fusiones del alma'),
-                this.detalle('Chakras', 'chakras'),
+                this.detalle('especiales'),
+                this.detalle('raciales'),
+                this.detalle('rasgos'),
+                this.detalle('idiomas'),
+                this.detalle('ventajas'),
+                this.detalle('fusiones del alma'),
+                this.detalle('chakras'),
             ]),
             this.grupo('mundo', 'Criaturas y mundo', [
-                this.detalle('Tipos de criatura', 'tipos de criatura'),
-                this.detalle('Subtipos de criatura', 'subtipos'),
-                this.detalle('Deidades', 'deidades'),
+                this.detalle('tipos de criatura'),
+                this.detalle('subtipos'),
+                this.detalle('deidades'),
             ]),
         ],
     };
@@ -244,13 +245,16 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         return { id, titulo, opciones };
     }
 
-    /** Una opción de Insertar o Modificar; sin acción propia (aún no tiene pantalla), solo cierra el menú. */
-    private opcion(etiqueta: string, tipo: TipoRol, habilitada: () => boolean, abrir: () => void = () => this.cerrarOtros()): OpcionOtros {
-        return { etiqueta, tipo, habilitada, abrir };
+    /**
+     * Una opción de Insertar o Modificar, por su listado: el texto y el icono salen del registro (`LISTADOS_ROL`).
+     * Sin acción propia (aún no tiene pantalla), solo cierra el menú.
+     */
+    private opcion(lista: string, habilitada: () => boolean, abrir: () => void = () => this.cerrarOtros()): OpcionOtros {
+        return { etiqueta: mayusculaInicial(tituloListado(lista)), tipo: tipoRolDeListado(lista)!, habilitada, abrir };
     }
 
-    private detalle(etiqueta: string, lista: string): OpcionOtros {
-        return this.opcion(etiqueta, tipoRolDeListado(lista)!, () => true, () => {
+    private detalle(lista: string): OpcionOtros {
+        return this.opcion(lista, () => true, () => {
             this.AbrirListado(lista, 'detalles');
             this.closeAcordion();
             this.cerrarOtros();

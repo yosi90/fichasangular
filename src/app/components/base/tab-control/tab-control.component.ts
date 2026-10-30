@@ -60,7 +60,7 @@ import { ChakraDetalle, Fusion } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
 import { AyudaSolicitud } from 'src/app/interfaces/ayuda';
 import { AperturaRol, NavegacionRolService } from 'src/app/services/navegacion-rol.service';
-import { iconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
+import { iconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja, tituloListado } from 'src/app/services/utils/iconos-rol';
 
 interface ListadoTabAbierto {
     key: string;
@@ -1043,8 +1043,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (operacion === 'insertar')
             return ETIQUETA_INSERCION[tipo] ?? `Insertar ${tipo}`;
         if (operacion === 'modificar')
-            return `Modificar ${tipo}`;
-        return `Lista de ${tipo}`;
+            return `Modificar ${tituloListado(tipo)}`;
+        return `Lista de ${tituloListado(tipo)}`;
     }
 
     getEtiquetaEdicionRacialTab(tab: EdicionRacialTabAbierto): string {

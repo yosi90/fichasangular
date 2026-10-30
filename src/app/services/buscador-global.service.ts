@@ -24,7 +24,7 @@ import { TipoCriaturaService } from './tipo-criatura.service';
 import { VentajaService } from './ventaja.service';
 import { UserProfileNavigationService } from './user-profile-navigation.service';
 import { ElementoBusqueda, FuenteBusqueda, LETRAS_MINIMAS_BUSQUEDA, RESULTADOS_POR_GRUPO, textoBuscable } from './utils/busqueda-global';
-import { ICONOS_ROL, LISTADOS_ROL, TipoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from './utils/iconos-rol';
+import { ICONOS_ROL, LISTADOS_ROL, TipoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja, tituloListado } from './utils/iconos-rol';
 import { mayusculaInicial } from './utils/formato-registros';
 import { esFilaComodin } from './utils/comodin';
 import { normalizarTexto } from './utils/normalizacion';
@@ -44,8 +44,8 @@ interface DefinicionFuente {
 }
 
 /** El título de un listado como grupo o pantalla: «Armaduras y escudos» (`LISTADOS_ROL`). */
-function tituloListado(lista: string): string {
-    return mayusculaInicial(LISTADOS_ROL[lista]?.titulo);
+function tituloGrupo(lista: string): string {
+    return mayusculaInicial(tituloListado(lista));
 }
 
 /**
@@ -132,7 +132,7 @@ export class BuscadorGlobalService {
     private buscarObjetos(texto: string): Observable<FuenteBusqueda | null> {
         if (normalizarTexto(texto, true).length < LETRAS_MINIMAS_BUSQUEDA)
             return of(null);
-        const base = { id: 'objetos', titulo: tituloListado('objetos'), tipo: tipoRolDeListado('objetos'), lista: 'objetos', yaFiltrados: true };
+        const base = { id: 'objetos', titulo: tituloGrupo('objetos'), tipo: tipoRolDeListado('objetos'), lista: 'objetos', yaFiltrados: true };
         return from([null]).pipe(
             switchMap(() => this.equipo.getObjetos({ q: texto.trim(), limit: RESULTADOS_POR_GRUPO, offset: 0 })),
             map((pagina): FuenteBusqueda => ({
@@ -176,7 +176,7 @@ export class BuscadorGlobalService {
 
     private definiciones(): DefinicionFuente[] {
         // El título del grupo es el del listado («Armaduras y escudos»), salvo que se dé otro.
-        const fuente = (id: string, lista: string, femenino: boolean, cargar: () => Observable<ElementoBusqueda[]>, titulo = tituloListado(lista)): DefinicionFuente =>
+        const fuente = (id: string, lista: string, femenino: boolean, cargar: () => Observable<ElementoBusqueda[]>, titulo = tituloGrupo(lista)): DefinicionFuente =>
             ({ id, titulo, tipo: tipoRolDeListado(lista), lista, femenino, cargar });
         return [
             {
