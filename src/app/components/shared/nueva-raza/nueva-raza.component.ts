@@ -259,6 +259,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     selectorPrerrequisitosMutacionFiltro: string = '';
     selectorPrerrequisitosMutacionTempKeys: MutacionPrerequisiteType[] = [];
     pasoActivoIndex: number = 0;
+    /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera (el paso se guarda en el borrador). */
+    readonly pasos = ['Base y cuerpo', 'Valores', 'Relaciones', 'Rasgos', 'Mutación'];
 
     readonly prerrequisitosMutacionOpciones: MutacionPrerequisiteOption[] = getPrerequisiteTypeOptions<MutacionPrerequisiteType>(
         (type) => this.esTipoPrerrequisitoMutacion(type)

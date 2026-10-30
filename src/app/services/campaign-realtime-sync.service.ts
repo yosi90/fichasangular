@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Observable, Subject } from 'rxjs';
 import { CampaignRealtimeEvent } from '../interfaces/campaign-management';
+import { toPositiveInt } from 'src/app/services/utils/normalizacion';
 
 // Avisa a las vistas de campañas de que algo ha cambiado. Antes también escuchaba los mensajes de sistema del chat
 // propio (invitaciones); ahora las invitaciones llegan como notificaciones de la plataforma y la lista de campañas
@@ -22,16 +23,11 @@ export class CampaignRealtimeSyncService {
     notifyLocalChange(campaignId?: number | null): void {
         const event: CampaignRealtimeEvent = {
             code: 'campaign.local_change',
-            campaignId: this.toPositiveInt(campaignId),
+            campaignId: toPositiveInt(campaignId),
             conversationId: null,
             source: 'local',
         };
         this.eventsSubject.next(event);
         this.listInvalidationsSubject.next(event);
-    }
-
-    private toPositiveInt(value: any): number | null {
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 }

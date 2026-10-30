@@ -139,6 +139,9 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
 
     guardando: boolean = false;
     cargandoEdicion: boolean = false;
+    /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera. */
+    readonly pasos = ['Base', 'Rasgos'];
+    pasoActual = 0;
     puedeCrear: boolean = false;
     puedeActualizar: boolean = false;
     dotes: Dote[] = [];
@@ -253,14 +256,10 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
             : 'No tienes permisos para crear raciales.';
     }
 
-    get tituloFormulario(): string {
-        return this.esModoEdicion ? 'Modificar racial' : 'Crear racial';
-    }
-
     get etiquetaAccionPrincipal(): string {
         if (this.guardando)
             return this.esModoEdicion ? 'Guardando cambios...' : 'Creando racial...';
-        return this.esModoEdicion ? 'Actualizar racial' : 'Crear racial';
+        return this.esModoEdicion ? 'Guardar cambios' : 'Crear racial';
     }
 
     get isDirty(): boolean {

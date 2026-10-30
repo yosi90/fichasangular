@@ -1,0 +1,457 @@
+<div class="campanas">
+    <section class="campanas-lista" aria-label="Tus campañas">
+        <button type="button" class="campanas-nueva" [class.campanas-nueva--activa]="g.isCreatingCampaign"
+            [disabled]="!g.canCreateCampaign" [attr.aria-pressed]="g.isCreatingCampaign" (click)="g.seleccionarNuevaCampana()">
+            <mat-icon aria-hidden="true">add</mat-icon>
+            Nueva campaña
+        </button>
+        <p class="campanas-nota" *ngIf="!g.canCreateCampaign">{{g.campaignCreateHint}}</p>
+
+        <p class="campanas-nota" *ngIf="g.campaignsLoading" role="status">Cargando campañas…</p>
+        <p class="bloque-error campanas-error" *ngIf="g.campaignsErrorMessage.length > 0" role="alert">{{g.campaignsErrorMessage}}</p>
+        <p class="campanas-vacia" *ngIf="!g.campaignsLoading && g.manageableCampaigns.length < 1 && g.campaignsErrorMessage.length < 1">
+            Aún no diriges ninguna campaña.
+        </p>
+
+        <button type="button" class="campanas-tarjeta" *ngFor="let campaign of g.manageableCampaigns; trackBy: g.trackByCampaignId"
+            [class.campanas-tarjeta--elegida]="g.isCampaignSelected(campaign.id)" [attr.aria-pressed]="g.isCampaignSelected(campaign.id)"
+            (click)="g.seleccionarCampana(campaign.id)">
+            <!--
+                ICONO DE CAMPAÑA (lienzo, vistas 1 y 8): al unir con la rama de los iconos, aquí va
+                <app-icono-rol tipo="campana" [tamano]="24" [recuadro]="true"></app-icono-rol> (tabletop-players, recuadro 36/24).
+            -->
+            <span class="campanas-tarjeta__texto">
+                <span class="campanas-tarjeta__nombre">{{campaign.nombre}}</span>
+                <span class="campanas-tarjeta__rol">{{g.getCampaignRoleLabel(campaign.campaignRole, campaign.isOwner === true)}} · {{g.getMembershipStatusLabel(campaign.membershipStatus)}}</span>
+            </span>
+        </button>
+    </section>
+
+    <section class="campanas-trabajo" aria-label="Espacio de trabajo de la campaña">
+        <ng-container *ngIf="g.isCreatingCampaign || g.selectedCampaignSummary; else sinCampana">
+            <header class="campanas-cabecera">
+                <!-- ICONO DE CAMPAÑA: <app-icono-rol tipo="campana" [tamano]="32" [recuadro]="true"></app-icono-rol> (recuadro 48/32). -->
+                <div class="campanas-cabecera__identidad">
+                    <span class="campanas-cabecera__tipo">{{lineaTipo}}</span>
+                    <h2 class="campanas-cabecera__nombre">{{g.isCreatingCampaign ? 'Nueva campaña' : g.selectedCampaignSummary?.nombre}}</h2>
+                </div>
+                <div class="campanas-cabecera__acciones" *ngIf="g.selectedCampaignSummary && !g.isCreatingCampaign">
+                    <button mat-stroked-button type="button" *ngIf="g.selectedCampaignAcceptsRequests" (click)="g.copiarEnlaceCampana()">
+                        <mat-icon aria-hidden="true">link</mat-icon>
+                        Copiar el enlace para pedir entrar
+                    </button>
+                    <button mat-stroked-button type="button" (click)="g.abrirVistaSocialCampana()">Abrir vista social</button>
+                    <button mat-stroked-button type="button" *ngIf="g.canOpenSelectedCampaignChat" (click)="g.abrirChatCampanaSeleccionada()">Abrir chat</button>
+                </div>
+            </header>
+
+            <div class="campanas-pestanas" role="tablist" aria-label="Partes de la campaña" *ngIf="!g.isCreatingCampaign">
+                <button type="button" role="tab" class="campanas-pestana" *ngFor="let p of pestanas"
+                    [id]="'campanas-pestana-' + p.id" [attr.aria-selected]="pestana === p.id" [attr.aria-controls]="'campanas-panel-' + p.id"
+                    [attr.tabindex]="pestana === p.id ? 0 : -1" [class.campanas-pestana--activa]="pestana === p.id"
+                    (click)="abrirPestana(p.id)" (keydown)="moverPestana($event)">
+                    {{p.etiqueta}}
+                </button>
+            </div>
+
+            <p class="campanas-nota" *ngIf="g.selectedCampaignLoading" role="status">Cargando la campaña…</p>
+            <p class="bloque-error campanas-error" *ngIf="g.selectedCampaignErrorMessage.length > 0" role="alert">{{g.selectedCampaignErrorMessage}}</p>
+
+            <ng-container *ngIf="!g.selectedCampaignLoading && g.selectedCampaignErrorMessage.length < 1">
+                <!-- Política de creación (también al crear una campaña nueva) -->
+                <div class="campanas-panel" *ngIf="pestana === 'politica'" role="tabpanel" id="campanas-panel-politica"
+                    [attr.aria-labelledby]="g.isCreatingCampaign ? null : 'campanas-pestana-politica'">
+                    <div class="campanas-bloques">
+                        <section class="campanas-bloque campanas-bloque--entero">
+                            <h3 class="campanas-bloque__titulo">Nombre</h3>
+                            <label class="campanas-fila campanas-fila--campo">
+                                <span class="campanas-oculto">Nombre de la campaña</span>
+                                <input class="campanas-texto" type="text" [placeholder]="g.campaignEditorNamePlaceholder"
+                                    [attr.maxlength]="g.campaignNameMaxLength" [(ngModel)]="g.campaignCreateDraft" [disabled]="g.campaignEditorFormDisabled" />
+                                <span class="campanas-contador">{{g.campaignNameLength}}/{{g.campaignNameMaxLength}}</span>
+                            </label>
+                        </section>
+
+                        <section class="campanas-bloque">
+                            <h3 class="campanas-bloque__titulo">Entrada</h3>
+                            <div class="campanas-fila" *ngIf="g.selectedCampaignSummary && !g.isCreatingCampaign && g.selectedCampaignSpace">
+                                <span class="campanas-fila__etiqueta">Admitir solicitudes para entrar</span>
+                                <mat-slide-toggle color="primary" aria-label="Admitir solicitudes para entrar"
+                                    [checked]="g.selectedCampaignAcceptsRequests" [disabled]="g.entryModeSaving || !g.selectedCampaignCanManage"
+                                    (change)="g.cambiarEntradaCampana($event.checked)"></mat-slide-toggle>
+                            </div>
+                            <label class="campanas-fila">
+                                <span class="campanas-fila__etiqueta">NEP máximo de un personaje nuevo</span>
+                                <input class="campanas-valor" type="number" [min]="g.campaignNepMin" [max]="g.campaignNepMax"
+                                    [(ngModel)]="g.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo" [disabled]="g.campaignEditorFormDisabled"
+                                    (blur)="g.onCampaignMaxNepBlur()" />
+                            </label>
+                        </section>
+
+                        <section class="campanas-bloque">
+                            <h3 class="campanas-bloque__titulo">Tiradas</h3>
+                            <label class="campanas-fila">
+                                <span class="campanas-fila__etiqueta">Tirada mínima de característica</span>
+                                <input class="campanas-valor" type="number" [min]="g.campaignMinimumRollMin" [max]="g.campaignMinimumRollMax"
+                                    [(ngModel)]="g.campaignCreatePolicyDraft.tiradaMinimaCaracteristica" [disabled]="g.campaignEditorFormDisabled"
+                                    (blur)="g.onCampaignMinimumRollBlur()" />
+                            </label>
+                            <label class="campanas-fila">
+                                <span class="campanas-fila__etiqueta">Tablas de dados, como mucho</span>
+                                <input class="campanas-valor" type="number" [min]="g.campaignMaxTablesMin" [max]="g.campaignMaxTablesMax"
+                                    [(ngModel)]="g.campaignCreatePolicyDraft.maxTablasDadosCaracteristicas" [disabled]="g.campaignEditorFormDisabled"
+                                    (blur)="g.onCampaignMaxTablesBlur()" />
+                            </label>
+                            <label class="campanas-fila">
+                                <span class="campanas-fila__etiqueta">Tiradas de PG (1 = Manual del jugador)</span>
+                                <input class="campanas-valor" type="number" [min]="g.campaignHpRollsMin" [max]="g.campaignHpRollsMax"
+                                    [(ngModel)]="g.campaignCreatePolicyDraft.maxTiradasPuntosGolpe" [disabled]="g.campaignEditorFormDisabled"
+                                    (blur)="g.onCampaignHpRollsBlur()" />
+                            </label>
+                        </section>
+
+                        <section class="campanas-bloque">
+                            <div class="campanas-bloque__cabeza">
+                                <h3 class="campanas-bloque__titulo">Contenido</h3>
+                                <button type="button" mat-icon-button class="campanas-ayuda" (click)="g.abrirInfoCampaignHomebrew($event)"
+                                    aria-label="Información sobre el homebrew de campaña" matTooltip="Información sobre el homebrew de campaña">
+                                    <mat-icon>help_outline</mat-icon>
+                                </button>
+                            </div>
+                            <div class="campanas-opciones" role="radiogroup" aria-label="Homebrew">
+                                <label class="campanas-opcion" [class.campanas-opcion--activa]="g.campaignHomebrewMode === 'none'">
+                                    <input type="radio" name="campanas-homebrew" [checked]="g.campaignHomebrewMode === 'none'"
+                                        [disabled]="g.campaignEditorFormDisabled" (change)="g.setCampaignHomebrewMode('none')" />
+                                    <span>Sin homebrew</span>
+                                </label>
+                                <label class="campanas-opcion" [class.campanas-opcion--activa]="g.campaignHomebrewMode === 'limitado'">
+                                    <input type="radio" name="campanas-homebrew" [checked]="g.campaignHomebrewMode === 'limitado'"
+                                        [disabled]="g.campaignEditorFormDisabled" (change)="g.setCampaignHomebrewMode('limitado')" />
+                                    <span>Solo N fuentes</span>
+                                </label>
+                                <label class="campanas-opcion" [class.campanas-opcion--activa]="g.campaignHomebrewMode === 'general'">
+                                    <input type="radio" name="campanas-homebrew" [checked]="g.campaignHomebrewMode === 'general'"
+                                        [disabled]="g.campaignEditorFormDisabled" (change)="g.setCampaignHomebrewMode('general')" />
+                                    <span>En general</span>
+                                </label>
+                            </div>
+                            <label class="campanas-fila" *ngIf="g.showCampaignHomebrewLimitInput">
+                                <span class="campanas-fila__etiqueta">Fuentes homebrew, como mucho</span>
+                                <input class="campanas-valor" type="number" [min]="g.campaignHomebrewSourcesMin" [max]="g.campaignHomebrewSourcesMax"
+                                    [(ngModel)]="g.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje" [disabled]="g.campaignHomebrewLimitDisabled"
+                                    (blur)="g.onCampaignHomebrewLimitBlur()" />
+                            </label>
+                            <ng-container *ngIf="g.showCampaignHomebrewAdvancedToggles">
+                                <div class="campanas-fila">
+                                    <span class="campanas-fila__etiqueta">Ventajas y desventajas</span>
+                                    <mat-slide-toggle color="primary" aria-label="Permitir ventajas y desventajas"
+                                        [(ngModel)]="g.campaignCreatePolicyDraft.permitirVentajasDesventajas" [disabled]="g.campaignEditorFormDisabled"></mat-slide-toggle>
+                                </div>
+                                <div class="campanas-fila">
+                                    <span class="campanas-fila__etiqueta">
+                                        Saltarse restricciones de alineamiento
+                                        <button type="button" mat-icon-button class="campanas-ayuda" (click)="g.abrirInfoCampaignAlignmentOverride($event)"
+                                            aria-label="Información sobre saltarse restricciones de alineamiento" matTooltip="Qué supone">
+                                            <mat-icon>help_outline</mat-icon>
+                                        </button>
+                                    </span>
+                                    <mat-slide-toggle color="primary" aria-label="Permitir saltarse restricciones de alineamiento"
+                                        [(ngModel)]="g.campaignCreatePolicyDraft.permitirIgnorarRestriccionesAlineamiento" [disabled]="g.campaignEditorFormDisabled"></mat-slide-toggle>
+                                </div>
+                            </ng-container>
+                        </section>
+
+                        <section class="campanas-bloque">
+                            <h3 class="campanas-bloque__titulo">Tienda del final de la creación</h3>
+                            <div class="campanas-fila">
+                                <span class="campanas-fila__etiqueta">Objetos mágicos</span>
+                                <mat-slide-toggle color="primary" aria-label="Permitir comprar objetos mágicos"
+                                    [(ngModel)]="g.campaignCreatePolicyDraft.permitirObjetosMagicos" [disabled]="g.campaignEditorFormDisabled"></mat-slide-toggle>
+                            </div>
+                            <div class="campanas-fila">
+                                <span class="campanas-fila__etiqueta">Armas y armaduras a medida (mejora, aptitudes y material)</span>
+                                <mat-slide-toggle color="primary" aria-label="Permitir armas y armaduras a medida"
+                                    [(ngModel)]="g.campaignCreatePolicyDraft.permitirObjetosAMedida" [disabled]="g.campaignEditorFormDisabled"></mat-slide-toggle>
+                            </div>
+                            <div class="campanas-fila">
+                                <span class="campanas-fila__etiqueta">Copiar conjuros al libro (pagándolos)</span>
+                                <mat-slide-toggle color="primary" aria-label="Permitir copiar conjuros al libro"
+                                    [(ngModel)]="g.campaignCreatePolicyDraft.permitirCopiarConjuros" [disabled]="g.campaignEditorFormDisabled"></mat-slide-toggle>
+                            </div>
+                            <label class="campanas-fila">
+                                <span class="campanas-fila__etiqueta">Precio máximo por objeto (po)</span>
+                                <input class="campanas-valor" type="number" min="0" placeholder="Sin tope"
+                                    [(ngModel)]="g.campaignCreatePolicyDraft.precioMaximoPorObjeto" [disabled]="g.campaignEditorFormDisabled"
+                                    (blur)="g.onCampaignMaxItemPriceBlur()" />
+                            </label>
+                        </section>
+                    </div>
+
+                    <div class="campanas-pie" *ngIf="g.campaignEditorCanSave">
+                        <button mat-flat-button type="button" class="campanas-accion" (click)="g.guardarCampanaDesdeEditor()" [disabled]="g.campaignEditorSaving">
+                            {{g.campaignEditorSaving ? 'Guardando…' : (g.isCreatingCampaign ? g.campaignEditorSubmitLabel : 'Guardar la política')}}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Jugadores -->
+                <div class="campanas-panel" *ngIf="pestana === 'jugadores' && g.selectedCampaignDetail" role="tabpanel"
+                    id="campanas-panel-jugadores" aria-labelledby="campanas-pestana-jugadores">
+                    <div class="campanas-bloques">
+                        <section class="campanas-bloque">
+                            <h3 class="campanas-bloque__titulo">Estado privado</h3>
+                            <p class="campanas-texto-ayuda" *ngIf="g.selectedCampaignHasActiveMaster">
+                                Máster actual: {{g.selectedCampaignDetail.activeMasterDisplayName || g.getUserDisplayLabel(g.selectedCampaignMaster?.displayName, g.selectedCampaignMaster?.email, g.selectedCampaignMaster?.uid || '')}}
+                            </p>
+                            <p class="campanas-texto-ayuda" *ngIf="g.selectedCampaignDetail.ownerDisplayName && g.selectedCampaignDetail.ownerUid !== g.selectedCampaignDetail.activeMasterUid">
+                                Creada por: {{g.selectedCampaignDetail.ownerDisplayName}}
+                            </p>
+                            <p class="campanas-texto-ayuda">
+                                {{g.selectedCampaignAcceptsRequests ? 'Se entra por invitación o pidiendo entrar.' : 'Solo se entra por invitación.'}}
+                            </p>
+                            <p class="campanas-texto-ayuda" *ngIf="!g.selectedCampaignSpace">
+                                La campaña aún no tiene su espacio en Yosiftware: podrás invitar en cuanto esté listo.
+                            </p>
+                        </section>
+
+                        <section class="campanas-bloque" *ngIf="g.selectedCampaignCanTransferMaster">
+                            <h3 class="campanas-bloque__titulo">Traspasar el máster</h3>
+                            <ng-container *ngIf="g.selectedCampaignPendingTransfer; else candidatos">
+                                <p class="campanas-texto-ayuda">
+                                    Traspaso ofrecido a {{g.selectedCampaignPendingTransferLabel}}: pasará a ser el máster cuando lo acepte, y tú te quedarás como jugador.
+                                </p>
+                                <div class="campanas-acciones">
+                                    <button mat-stroked-button color="warn" type="button" (click)="g.cancelarTraspaso()" [disabled]="g.transferCancelInFlight">
+                                        {{g.transferCancelInFlight ? 'Cancelando…' : 'Cancelar el traspaso'}}
+                                    </button>
+                                </div>
+                            </ng-container>
+                            <ng-template #candidatos>
+                                <span class="campanas-subtitulo">Jugadores activos</span>
+                                <button type="button" class="campanas-elegible" *ngFor="let member of g.selectedCampaignTransferCandidates; trackBy: g.trackByMemberUid"
+                                    (click)="g.seleccionarNuevoMaster(member)">
+                                    <strong>{{g.getUserDisplayLabel(member.displayName, member.email, member.uid)}}</strong>
+                                    <span>Ofrecerle el máster</span>
+                                </button>
+                                <ng-container *ngIf="g.transferSelectedUser">
+                                    <p class="campanas-texto-ayuda">
+                                        Nuevo máster: {{g.getUserDisplayLabel(g.transferSelectedUser.displayName, null, g.transferSelectedUser.uid || '')}}. Tendrá que aceptarlo, y tú te quedarás como jugador.
+                                    </p>
+                                    <div class="campanas-acciones">
+                                        <button mat-stroked-button type="button" (click)="g.limpiarNuevoMaster()" [disabled]="g.transferSaving">Cambiar selección</button>
+                                        <button mat-flat-button type="button" class="campanas-accion" (click)="g.transferirMaster()" [disabled]="g.transferSaving">
+                                            {{g.transferSaving ? 'Ofreciendo…' : 'Ofrecer el traspaso'}}
+                                        </button>
+                                    </div>
+                                </ng-container>
+                            </ng-template>
+                        </section>
+
+                        <section class="campanas-bloque campanas-bloque--entero">
+                            <div class="campanas-bloque__cabeza">
+                                <h3 class="campanas-bloque__titulo">Jugadores e invitaciones</h3>
+                                <div class="campanas-fila campanas-fila--compacta">
+                                    <span class="campanas-fila__etiqueta">Mostrar histórico</span>
+                                    <mat-slide-toggle color="primary" aria-label="Mostrar histórico de jugadores"
+                                        [checked]="g.selectedCampaignDetail.includeInactiveMembers" (change)="g.toggleHistorialMiembros()"></mat-slide-toggle>
+                                </div>
+                            </div>
+                            <p class="campanas-texto-ayuda">La pertenencia la lleva Yosiftware: las invitaciones y las salidas pasan por el espacio de la campaña.</p>
+
+                            <div class="campanas-invitar" *ngIf="g.selectedCampaignCanManage && g.selectedCampaignSpace">
+                                <label class="campanas-campo">
+                                    <span class="campanas-oculto">Buscar usuario para invitar</span>
+                                    <mat-icon aria-hidden="true">search</mat-icon>
+                                    <input class="campanas-texto" type="text" placeholder="Buscar usuario para invitar"
+                                        [(ngModel)]="g.memberSearchQuery" (ngModelChange)="g.onMemberSearchQueryChange()" />
+                                </label>
+                                <label class="campanas-campo">
+                                    <span class="campanas-oculto">Invitar por correo</span>
+                                    <mat-icon aria-hidden="true">mail_outline</mat-icon>
+                                    <input class="campanas-texto" type="email" placeholder="O invitar por correo"
+                                        [(ngModel)]="g.memberInviteEmailDraft" [disabled]="g.memberInviteEmailSending" (keyup.enter)="g.invitarPorCorreo()" />
+                                </label>
+                                <button mat-stroked-button type="button" (click)="g.invitarPorCorreo()" [disabled]="g.memberInviteEmailSending">
+                                    {{g.memberInviteEmailSending ? 'Enviando…' : 'Invitar'}}
+                                </button>
+                            </div>
+
+                            <p class="campanas-nota" *ngIf="g.memberSearchLoading" role="status">Buscando usuarios…</p>
+                            <p class="bloque-error campanas-error" *ngIf="g.memberSearchErrorMessage.length > 0" role="alert">{{g.memberSearchErrorMessage}}</p>
+
+                            <div class="campanas-grupo" *ngIf="g.selectedCampaignCanManage && g.memberSearchResults.length > 0">
+                                <span class="campanas-subtitulo">Resultados de búsqueda</span>
+                                <button type="button" class="campanas-elegible" *ngFor="let result of g.memberSearchResults; trackBy: g.trackByUserUid"
+                                    (click)="g.agregarJugador(result)" [disabled]="g.isAddingMember(result.uid)">
+                                    <strong>{{g.getUserDisplayLabel(result.displayName, null, result.uid)}}</strong>
+                                    <span>{{g.isAddingMember(result.uid) ? 'Enviando…' : 'Invitar a la campaña'}}</span>
+                                </button>
+                            </div>
+
+                            <div class="campanas-grupo" *ngIf="g.selectedCampaignPendingInvitations.length > 0">
+                                <span class="campanas-subtitulo">Invitaciones pendientes</span>
+                                <div class="campanas-persona" *ngFor="let invitation of g.selectedCampaignPendingInvitations">
+                                    <div class="campanas-persona__texto">
+                                        <strong>{{invitation.alias || invitation.correo || 'Invitación'}}</strong>
+                                        <span>{{invitation.correo ? 'Invitación por correo' : 'Invitación pendiente'}}<ng-container *ngIf="invitation.caduca"> · caduca {{g.formatOptionalDateTime(invitation.caduca)}}</ng-container></span>
+                                    </div>
+                                    <button mat-stroked-button color="warn" type="button" *ngIf="g.selectedCampaignCanManage"
+                                        (click)="g.cancelarInvitacionCampana(invitation)" [disabled]="g.isCancelingCampaignInvitation(invitation.id)">
+                                        {{g.isCancelingCampaignInvitation(invitation.id) ? 'Retirando…' : 'Retirar'}}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="campanas-grupo" *ngIf="g.selectedCampaignCanManage && g.selectedCampaignJoinRequests.length > 0">
+                                <span class="campanas-subtitulo">Solicitudes para entrar</span>
+                                <div class="campanas-persona" *ngFor="let request of g.selectedCampaignJoinRequests">
+                                    <div class="campanas-persona__texto">
+                                        <strong>{{request.nombre || request.alias || 'Alguien'}}</strong>
+                                        <span>{{request.mensaje || 'Pide entrar en la campaña'}}<ng-container *ngIf="request.creada"> · {{g.formatOptionalDateTime(request.creada)}}</ng-container></span>
+                                    </div>
+                                    <div class="campanas-acciones">
+                                        <button mat-stroked-button color="warn" type="button" (click)="g.resolverSolicitud(request, 'rechazar')" [disabled]="g.joinRequestInFlightId === request.id">Rechazar</button>
+                                        <button mat-stroked-button type="button" (click)="g.resolverSolicitud(request, 'aprobar')" [disabled]="g.joinRequestInFlightId === request.id">Aprobar</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="campanas-grupo" *ngIf="g.selectedCampaignMembers.length > 0">
+                                <span class="campanas-subtitulo">Miembros</span>
+                                <div class="campanas-persona" *ngFor="let member of g.selectedCampaignMembers; trackBy: g.trackByMemberUid">
+                                    <div class="campanas-persona__texto">
+                                        <strong>{{g.getUserDisplayLabel(member.displayName, member.email, member.uid)}}</strong>
+                                        <span>{{g.getCampaignRoleLabel(member.campaignRole)}} · {{g.getMembershipStatusLabel(member.membershipStatus)}}<ng-container *ngIf="member.addedAtUtc"> · alta {{g.formatOptionalDateTime(member.addedAtUtc)}}</ng-container></span>
+                                    </div>
+                                    <button mat-stroked-button color="warn" type="button"
+                                        *ngIf="g.selectedCampaignCanManage && g.selectedCampaignSpace && member.campaignRole !== 'master' && member.isActive"
+                                        (click)="g.retirarJugador(member)" [disabled]="g.isRemovingMember(member.uid)">
+                                        {{g.isRemovingMember(member.uid) ? 'Sacando…' : 'Sacar'}}
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="campanas-texto-ayuda" *ngIf="g.selectedCampaignMembers.length < 1">No hay miembros visibles para esta campaña.</p>
+                        </section>
+                    </div>
+                </div>
+
+                <!-- Historias -->
+                <div class="campanas-panel" *ngIf="pestana === 'historias' && g.selectedCampaignDetail" role="tabpanel"
+                    id="campanas-panel-historias" aria-labelledby="campanas-pestana-historias">
+                    <section class="campanas-bloque">
+                        <h3 class="campanas-bloque__titulo">Tramas y subtramas</h3>
+
+                        <div class="campanas-crear" *ngIf="g.selectedCampaignCanManage">
+                            <label class="campanas-campo">
+                                <span class="campanas-oculto">Nueva trama</span>
+                                <input class="campanas-texto" type="text" placeholder="Nueva trama" [(ngModel)]="g.tramaCreateDraft" [disabled]="g.tramaCreateSaving" />
+                            </label>
+                            <label class="campanas-casilla">
+                                <input type="checkbox" [(ngModel)]="g.tramaCreateVisibleParaJugadores" [disabled]="g.tramaCreateSaving" />
+                                <span>Visible para jugadores</span>
+                            </label>
+                            <button mat-flat-button type="button" class="campanas-accion" (click)="g.crearTrama()" [disabled]="g.tramaCreateSaving">
+                                {{g.tramaCreateSaving ? 'Creando…' : 'Crear trama'}}
+                            </button>
+                        </div>
+
+                        <ol class="campanas-arbol" *ngIf="g.selectedCampaignTramas.length > 0">
+                            <li class="campanas-trama" *ngFor="let trama of g.selectedCampaignTramas; trackBy: g.trackByTramaId">
+                                <div class="campanas-nodo">
+                                    <ng-container *ngIf="!g.isEditingTrama(trama.id); else editarTrama">
+                                        <mat-icon class="campanas-nodo__icono" [attr.aria-label]="trama.visibleParaJugadores ? null : 'Oculta'"
+                                            [attr.aria-hidden]="trama.visibleParaJugadores ? 'true' : null"
+                                            [matTooltip]="g.getCampaignVisibilityLabel(trama.visibleParaJugadores)">{{trama.visibleParaJugadores ? 'auto_stories' : 'lock'}}</mat-icon>
+                                        <span class="campanas-nodo__texto">
+                                            <strong>{{trama.nombre}}</strong>
+                                            <span>{{g.getCampaignVisibilityLabel(trama.visibleParaJugadores)}}</span>
+                                        </span>
+                                        <button mat-stroked-button type="button" *ngIf="g.selectedCampaignCanManage" (click)="g.iniciarEdicionTrama(trama)">Editar</button>
+                                    </ng-container>
+                                    <ng-template #editarTrama>
+                                        <div class="campanas-crear">
+                                            <label class="campanas-campo">
+                                                <span class="campanas-oculto">Nombre de la trama</span>
+                                                <input class="campanas-texto" type="text" [(ngModel)]="g.editingTramaDraft" [disabled]="g.isSavingTrama(trama.id)" />
+                                            </label>
+                                            <label class="campanas-casilla">
+                                                <input type="checkbox" [(ngModel)]="g.editingTramaVisibleParaJugadores" [disabled]="g.isSavingTrama(trama.id)" />
+                                                <span>Visible para jugadores</span>
+                                            </label>
+                                            <button mat-stroked-button type="button" (click)="g.cancelarEdicionTrama()" [disabled]="g.isSavingTrama(trama.id)">Cancelar</button>
+                                            <button mat-flat-button type="button" class="campanas-accion" (click)="g.guardarEdicionTrama()" [disabled]="g.isSavingTrama(trama.id)">
+                                                {{g.isSavingTrama(trama.id) ? 'Guardando…' : 'Guardar'}}
+                                            </button>
+                                        </div>
+                                    </ng-template>
+                                </div>
+
+                                <ol class="campanas-subtramas" *ngIf="trama.subtramas.length > 0">
+                                    <li class="campanas-nodo campanas-nodo--sub" *ngFor="let subtrama of trama.subtramas; trackBy: g.trackBySubtramaId">
+                                        <ng-container *ngIf="!g.isEditingSubtrama(subtrama.id); else editarSubtrama">
+                                            <mat-icon class="campanas-nodo__icono" [attr.aria-label]="subtrama.visibleParaJugadores ? null : 'Oculta'"
+                                                [attr.aria-hidden]="subtrama.visibleParaJugadores ? 'true' : null"
+                                                [matTooltip]="g.getCampaignVisibilityLabel(subtrama.visibleParaJugadores)">{{subtrama.visibleParaJugadores ? 'subdirectory_arrow_right' : 'lock'}}</mat-icon>
+                                            <span class="campanas-nodo__texto">
+                                                <span>{{subtrama.nombre}}</span>
+                                                <small>{{g.getCampaignVisibilityLabel(subtrama.visibleParaJugadores)}}</small>
+                                            </span>
+                                            <button mat-stroked-button type="button" *ngIf="g.selectedCampaignCanManage" (click)="g.iniciarEdicionSubtrama(subtrama)">Editar</button>
+                                        </ng-container>
+                                        <ng-template #editarSubtrama>
+                                            <div class="campanas-crear">
+                                                <label class="campanas-campo">
+                                                    <span class="campanas-oculto">Nombre de la subtrama</span>
+                                                    <input class="campanas-texto" type="text" [(ngModel)]="g.editingSubtramaDraft" [disabled]="g.isSavingSubtrama(subtrama.id)" />
+                                                </label>
+                                                <label class="campanas-casilla">
+                                                    <input type="checkbox" [(ngModel)]="g.editingSubtramaVisibleParaJugadores" [disabled]="g.isSavingSubtrama(subtrama.id)" />
+                                                    <span>Visible para jugadores</span>
+                                                </label>
+                                                <button mat-stroked-button type="button" (click)="g.cancelarEdicionSubtrama()" [disabled]="g.isSavingSubtrama(subtrama.id)">Cancelar</button>
+                                                <button mat-flat-button type="button" class="campanas-accion" (click)="g.guardarEdicionSubtrama()" [disabled]="g.isSavingSubtrama(subtrama.id)">
+                                                    {{g.isSavingSubtrama(subtrama.id) ? 'Guardando…' : 'Guardar'}}
+                                                </button>
+                                            </div>
+                                        </ng-template>
+                                    </li>
+                                </ol>
+
+                                <div class="campanas-crear campanas-crear--sub" *ngIf="g.selectedCampaignCanManage">
+                                    <label class="campanas-campo">
+                                        <span class="campanas-oculto">Nueva subtrama de {{trama.nombre}}</span>
+                                        <input class="campanas-texto" type="text" placeholder="Nueva subtrama"
+                                            [ngModel]="g.subtramaCreateDraftByTrama[trama.id] || ''" (ngModelChange)="g.actualizarNuevaSubtrama(trama.id, $event)"
+                                            [disabled]="g.subtramaCreateSavingTramaId === trama.id" />
+                                    </label>
+                                    <label class="campanas-casilla">
+                                        <input type="checkbox" [ngModel]="g.subtramaCreateVisibleByTrama[trama.id] !== false"
+                                            (ngModelChange)="g.actualizarNuevaSubtramaVisible(trama.id, $event)" [disabled]="g.subtramaCreateSavingTramaId === trama.id" />
+                                        <span>Visible para jugadores</span>
+                                    </label>
+                                    <button mat-stroked-button type="button" (click)="g.crearSubtrama(trama.id)" [disabled]="g.subtramaCreateSavingTramaId === trama.id">
+                                        {{g.subtramaCreateSavingTramaId === trama.id ? 'Creando…' : 'Crear subtrama'}}
+                                    </button>
+                                </div>
+                            </li>
+                        </ol>
+
+                        <p class="campanas-texto-ayuda" *ngIf="g.selectedCampaignTramas.length < 1">Esta campaña no tiene tramas todavía.</p>
+                    </section>
+                </div>
+            </ng-container>
+        </ng-container>
+
+        <ng-template #sinCampana>
+            <div class="campanas-vacio" *ngIf="!g.campaignsLoading">
+                <mat-icon aria-hidden="true">campaign</mat-icon>
+                <p *ngIf="g.manageableCampaigns.length > 0">Elige una campaña de la lista para trabajar en ella.</p>
+                <ng-container *ngIf="g.manageableCampaigns.length < 1">
+                    <p>Aún no diriges ninguna campaña.</p>
+                    <button mat-flat-button type="button" class="campanas-accion" *ngIf="g.canCreateCampaign" (click)="g.seleccionarNuevaCampana()">Nueva campaña</button>
+                    <p class="campanas-nota" *ngIf="!g.canCreateCampaign">{{g.campaignCreateHint}}</p>
+                </ng-container>
+            </div>
+        </ng-template>
+    </section>
+</div>

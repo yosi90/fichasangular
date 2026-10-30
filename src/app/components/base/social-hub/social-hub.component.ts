@@ -17,6 +17,14 @@ import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { InvitacionRecibidaEspacio, PlatformSpacesService } from 'src/app/services/platform-spaces.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
+import { toPositiveInt } from 'src/app/services/utils/normalizacion';
+import {
+    mensajeErrorDeAccion,
+    permitirAccionGuardada,
+    textoEstadoEnCampana,
+    textoRolEnCampana,
+    textoVisibilidadEnCampana,
+} from '../user-profile/perfil-acciones';
 
 @Component({
     selector: 'app-social-hub',
@@ -121,7 +129,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     /** Las invitaciones son de la plataforma (espacios): se aceptan desde Rol y después se pone al día la copia. */
     async respondCampaignInvitation(invitation: InvitacionRecibidaEspacio, respuesta: 'aceptar' | 'rechazar'): Promise<void> {
-        const inviteId = this.toPositiveInt(invitation?.id);
+        const inviteId = toPositiveInt(invitation?.id);
         if (!inviteId || this.campaignInviteResolveInFlightId === inviteId)
             return;
         if (!this.shouldRunGuardedApiAction(`social.campaign.invitation.${inviteId}.${respuesta}`))
@@ -320,7 +328,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     async selectCampaign(campaignId: number, forceReload: boolean = false): Promise<void> {
-        const id = this.toPositiveInt(campaignId);
+        const id = toPositiveInt(campaignId);
         if (!id)
             return;
 
@@ -357,31 +365,9 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         });
     }
 
-    getCampaignRoleLabel(role: string | null | undefined, isOwner: boolean = false): string {
-        const normalized = `${role ?? ''}`.trim().toLowerCase();
-        if (normalized === 'master')
-            return 'Master';
-        if (normalized === 'jugador')
-            return 'Jugador';
-        if (isOwner)
-            return 'Creador';
-        return 'Sin rol';
-    }
-
-    getCampaignMembershipLabel(status: string | null | undefined): string {
-        const normalized = `${status ?? ''}`.trim().toLowerCase();
-        if (normalized === 'activo')
-            return 'Activo';
-        if (normalized === 'inactivo')
-            return 'Inactivo';
-        if (normalized === 'expulsado')
-            return 'Expulsado';
-        return 'Sin estado';
-    }
-
-    getCampaignVisibilityLabel(visibleParaJugadores: boolean | null | undefined): string {
-        return visibleParaJugadores === false ? 'Solo master' : 'Visible para jugadores';
-    }
+    readonly getCampaignRoleLabel = textoRolEnCampana;
+    readonly getCampaignMembershipLabel = textoEstadoEnCampana;
+    readonly getCampaignVisibilityLabel = textoVisibilidadEnCampana;
 
     private async loadAuthenticatedState(): Promise<void> {
         this.loading = true;
@@ -457,7 +443,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             return;
         }
         this.currentSection = section === 'actividad' ? 'resumen' : section;
-        this.pendingCampaignId = this.toPositiveInt(request.campaignId);
+        this.pendingCampaignId = toPositiveInt(request.campaignId);
         if (!this.isLoggedIn)
             return;
         // Primero la lista: la campaña pedida se abre si está en ella, y si no, se ofrece pedir entrar.
@@ -504,7 +490,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
                 this.campaigns[0]?.id ?? null,
             ];
             const nextCampaignId = candidateIds
-                .map((item) => this.toPositiveInt(item))
+                .map((item) => toPositiveInt(item))
                 .find((item) => !!item && this.campaigns.some((campaign) => campaign.id === item)) ?? null;
 
             if (nextCampaignId)
@@ -526,35 +512,14 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     private campaignIdFromSpaceKey(idExterno: string): number | null {
         const match = /^campana-(\d+)$/.exec(`${idExterno ?? ''}`);
-        return match ? this.toPositiveInt(match[1]) : null;
-    }
-
-    private toPositiveInt(value: any): number | null {
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+        return match ? toPositiveInt(match[1]) : null;
     }
 
     private shouldRunGuardedApiAction(actionKey: string): boolean {
-        const accessRestrictionMessage = this.userSvc.getAccessRestrictionMessage('usage');
-        if (accessRestrictionMessage.length > 0) {
-            this.appToastSvc.showError(accessRestrictionMessage);
-            return false;
-        }
-
-        const decision = this.apiActionGuardSvc.shouldAllow(this.userSvc.CurrentUserUid, actionKey);
-        if (decision.status !== 'allowed') {
-            this.appToastSvc.showError(this.apiActionGuardSvc.getBlockedMessage(decision), {
-                dedupeKey: this.apiActionGuardSvc.getBlockedToastDedupeKey(this.userSvc.CurrentUserUid, decision.status),
-            });
-            return false;
-        }
-        return true;
+        return permitirAccionGuardada(this.userSvc, this.apiActionGuardSvc, this.appToastSvc, actionKey);
     }
 
     private mapSocialActionError(error: any, fallback: string): string {
-        const complianceError = this.userSvc.getComplianceErrorMessage(error, 'usage');
-        if (complianceError.length > 0)
-            return complianceError;
-        return toUserFacingErrorMessage(error, fallback);
+        return mensajeErrorDeAccion(this.userSvc, error, fallback);
     }
 }

@@ -48,6 +48,8 @@ interface EspecialHabilidadRow {
     standalone: false,
 })
 export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
+    /** Abierta dentro de otra inserción (la ventana de la clase): cabecera compacta con su ✕. */
+    @Input() modal: boolean = false;
     @Input() modo: 'crear' | 'editar' = 'crear';
     @Input() idEspecial: number | null = null;
     @Input() editorTabKey: string = '';
@@ -62,6 +64,9 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
 
     guardando = false;
     cargandoEdicion = false;
+    /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera. */
+    readonly pasos = ['Base', 'Bonos', 'Relaciones'];
+    pasoActual = 0;
     puedeCrear = false;
     puedeActualizar = false;
     extras: ExtraDetalle[] = [];
@@ -160,14 +165,10 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
         return this.guardando || this.cargandoEdicion || !this.puedeGuardar;
     }
 
-    get tituloFormulario(): string {
-        return this.esModoEdicion ? 'Modificar especial' : 'Crear especial';
-    }
-
     get etiquetaAccionPrincipal(): string {
         if (this.guardando)
             return this.esModoEdicion ? 'Guardando cambios...' : 'Creando especial...';
-        return this.esModoEdicion ? 'Actualizar especial' : 'Crear especial';
+        return this.esModoEdicion ? 'Guardar cambios' : 'Crear especial';
     }
 
     get mensajePermisoInsuficiente(): string {

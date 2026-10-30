@@ -1,0 +1,314 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// El marco común de las inserciones y modificaciones de catálogo (lienzo «Rol: las vistas que faltan», vista 7). Lo
+// carga `InsercionMarcoComponent` sin encapsular, así que todas las clases llevan el prefijo `insercion-` y valen en lo
+// que proyecta cada formulario. Las medidas de la rejilla se toman del ancho del propio marco (consultas de contenedor),
+// no del de la ventana, como la ficha común. Guía: `GUIA_ESTILO_INSERCIONES.md`.
+
+$insercion-hueco: 14px
+
+app-insercion-marco
+    display: flex
+    flex: 1 1 auto
+    flex-direction: column
+
+.insercion-marco
+    container-name: insercion
+    container-type: inline-size
+    display: flex
+    flex: 1 1 auto
+    flex-direction: column
+    gap: $insercion-hueco
+    box-sizing: border-box
+    color: $ficha-texto
+    --mat-form-field-filled-container-color: #{$primary}
+
+// Cabecera
+.insercion-cabecera
+    display: flex
+    flex-direction: column
+    gap: 12px
+    padding: 16px 22px 14px
+    background: $primary
+    border-radius: $ficha-radio
+    border-bottom: 3px solid $active
+    box-shadow: $ficha-sombra
+
+.insercion-cabecera__fila
+    display: flex
+    align-items: center
+    gap: 16px
+
+.insercion-cabecera__identidad
+    display: flex
+    flex: 1 1 auto
+    flex-direction: column
+    gap: 3px
+    min-width: 0
+
+.insercion-cabecera__tipo
+    @include ficha-versalitas
+
+.insercion-cabecera .insercion-cabecera__nombre
+    margin: 0
+    font-size: 28px
+    font-weight: 500
+    line-height: 1.25
+    color: $ficha-blanco
+    overflow-wrap: anywhere
+
+.insercion-cabecera .insercion-cabecera__nombre--vacio
+    font-style: italic
+    color: $font-base
+
+.insercion-etiqueta
+    display: inline-flex
+    flex-shrink: 0
+    align-items: center
+    height: 24px
+    padding: 0 10px
+    border: 1px solid $accent
+    border-radius: 4px
+    font-size: 12px
+    color: $ficha-texto-suave
+    white-space: nowrap
+
+.insercion-etiqueta--aviso
+    border-color: $ficha-aviso
+    color: $ficha-aviso
+
+.insercion-cabecera__cerrar
+    flex-shrink: 0
+    color: $ficha-texto-suave
+
+// Fila de pasos: en las inserciones sí se puede saltar a cualquier paso, así que cada uno es un botón.
+.insercion-pasos
+    display: flex
+    gap: 6px
+    margin: 0
+    padding: 0
+    list-style: none
+    overflow-x: auto
+
+.insercion-pasos__item
+    flex: 1 1 0
+    min-width: 0
+
+.insercion-paso-boton
+    display: flex
+    align-items: center
+    gap: 8px
+    width: 100%
+    height: 36px
+    box-sizing: border-box
+    padding: 0 10px
+    border: 0
+    border-radius: 4px
+    background: $contrast-dark
+    color: $ficha-texto-suave
+    font: inherit
+    font-size: 13.5px
+    text-align: left
+    cursor: pointer
+
+    &:hover
+        background: $primary-hover
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+.insercion-paso-boton--actual
+    background: rgba($active, .18)
+    color: $ficha-blanco
+
+    &:hover
+        background: rgba($active, .24)
+
+    .insercion-paso-boton__numero
+        background: $active
+
+.insercion-paso-boton__numero
+    display: inline-flex
+    flex-shrink: 0
+    align-items: center
+    justify-content: center
+    width: 22px
+    height: 22px
+    border-radius: 50%
+    background: #616161
+    color: $ficha-blanco
+    font-size: 12px
+    font-weight: 700
+
+.insercion-paso-boton__nombre
+    min-width: 0
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+
+// Avisos de arriba: permisos en ámbar (no en rojo: no es un error), carga en neutro y error global en rojo.
+.insercion-aviso, .insercion-cargando, .insercion-error
+    display: flex
+    align-items: center
+    gap: 8px
+    margin: 0
+    padding: 10px 14px
+    border-radius: $ficha-radio
+    font-size: 14px
+
+    .mat-icon
+        flex-shrink: 0
+        width: 20px
+        height: 20px
+        font-size: 20px
+
+.insercion-aviso
+    color: $ficha-aviso
+    background: rgba($ficha-aviso, .12)
+    border: 1px solid rgba($ficha-aviso, .45)
+
+.insercion-cargando
+    color: $ficha-texto-suave
+    background: rgba($accent, .1)
+    border: 1px solid rgba($accent, .35)
+
+// Cuerpo, pasos y tarjetas
+.insercion-cuerpo
+    display: flex
+    flex: 1 1 auto
+    flex-direction: column
+    gap: $insercion-hueco
+    min-width: 0
+
+.insercion-paso
+    display: flex
+    flex-direction: column
+    gap: $insercion-hueco
+    min-width: 0
+
+    &[hidden]
+        display: none !important
+
+.insercion-tarjeta
+    @include inserciones.insercion-tarjeta
+    display: flex
+    flex-direction: column
+    gap: 12px
+
+.insercion-tarjeta__cabeza
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    justify-content: space-between
+    gap: 8px
+
+.insercion-tarjeta .insercion-tarjeta__titulo
+    @include ficha-versalitas
+
+// Rejilla de campos: 4 columnas; 2 por debajo de 900 px de marco y 1 por debajo de 520 px.
+.insercion-campos
+    display: grid
+    grid-template-columns: repeat(4, minmax(0, 1fr))
+    gap: 4px 12px
+    align-items: start
+
+    > .insercion-campos__doble
+        grid-column: span 2
+
+    > .insercion-campos__entero
+        grid-column: 1 / -1
+
+// Tarjetas en dos columnas (las que van de dos en dos en el lienzo).
+.insercion-tarjetas
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: $insercion-hueco
+    align-items: start
+
+    > .insercion-tarjetas__entera
+        grid-column: 1 / -1
+
+// Pie fijo: «Anterior» y «Siguiente» a la izquierda, la nota y la acción principal abajo a la derecha.
+.insercion-pie
+    position: sticky
+    bottom: 0
+    z-index: 2
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 10px
+    margin-top: auto
+    padding: 12px 18px
+    background: $ficha-tarjeta
+    border-top: 1px solid rgba(255, 255, 255, .08)
+    border-radius: $ficha-radio
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, .45)
+
+.insercion-pie__nota
+    flex: 1 1 200px
+    min-width: 0
+    margin: 0
+    padding-right: 8px
+    font-size: 13px
+    color: $ficha-texto-suave
+    text-align: right
+
+.insercion-pie__nota--aviso
+    color: $ficha-aviso
+
+.insercion-pie .insercion-pie__accion
+    --mat-button-filled-container-color: #{$active}
+    --mat-button-filled-label-text-color: #{$ficha-blanco}
+    height: 40px
+    padding: 0 20px
+    font-weight: 700
+    box-shadow: $ficha-sombra
+
+    &:disabled
+        box-shadow: none
+
+// Dentro de una ventana (una inserción abierta desde otra): cabecera más compacta.
+.insercion-marco--ventana
+    .insercion-cabecera
+        padding: 12px 16px 10px
+
+    .insercion-cabecera .insercion-cabecera__nombre
+        font-size: 22px
+
+@container insercion (max-width: 900px)
+    .insercion-campos
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+
+    .insercion-tarjetas
+        grid-template-columns: minmax(0, 1fr)
+
+@container insercion (max-width: 520px)
+    .insercion-campos
+        grid-template-columns: minmax(0, 1fr)
+
+        > .insercion-campos__doble
+            grid-column: auto
+
+    .insercion-cabecera
+        padding: 12px 14px
+
+    .insercion-cabecera .insercion-cabecera__nombre
+        font-size: 22px
+
+    .insercion-pasos__item
+        flex: 0 0 auto
+
+    .insercion-pie
+        padding: 10px 12px
+
+    .insercion-pie__nota
+        flex-basis: 100%
+        order: -1
+        padding-right: 0
+        text-align: left
+
+    .insercion-pie .insercion-pie__accion
+        margin-left: auto

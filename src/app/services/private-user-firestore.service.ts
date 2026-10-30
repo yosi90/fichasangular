@@ -12,7 +12,7 @@ import { CampaignListItem } from '../interfaces/campaign-management';
 import { PersonajeSimple } from '../interfaces/simplificaciones/personaje-simple';
 import { UserRole } from '../interfaces/user-acl';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { toBoolean, toNullableText } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toNullableText, toPositiveInt } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 @Injectable({
@@ -160,7 +160,7 @@ export class PrivateUserFirestoreService {
     }
 
     private mapCampaignSummary(raw: any, docId: string): CampaignListItem | null {
-        const id = this.toPositiveInt(raw?.id ?? raw?.idCampana ?? raw?.IdCampana ?? raw?.Id ?? raw?.i ?? docId);
+        const id = toPositiveInt(raw?.id ?? raw?.idCampana ?? raw?.IdCampana ?? raw?.Id ?? raw?.i ?? docId);
         if (!id)
             return null;
 
@@ -192,7 +192,7 @@ export class PrivateUserFirestoreService {
     }
 
     private mapCharacter(raw: any, docId: string): PersonajeSimple | null {
-        const id = this.toPositiveInt(raw?.Id ?? raw?.i ?? raw?.id ?? docId);
+        const id = toPositiveInt(raw?.Id ?? raw?.i ?? raw?.id ?? docId);
         if (!id)
             return null;
 
@@ -216,7 +216,7 @@ export class PrivateUserFirestoreService {
             Nombre: toNullableText(raw?.Nombre ?? raw?.n) ?? `Personaje ${id}`,
             ownerUid: toNullableText(raw?.ownerUid),
             ownerDisplayName: toNullableText(raw?.ownerDisplayName),
-            campaignId: this.toPositiveInt(raw?.campaignId ?? raw?.campaign_id ?? raw?.idCampana) ?? null,
+            campaignId: toPositiveInt(raw?.campaignId ?? raw?.campaign_id ?? raw?.idCampana) ?? null,
             campaignName: toNullableText(raw?.campaignName ?? raw?.campaign_name ?? raw?.nombreCampana),
             accessReason: this.normalizeCharacterAccessReason(raw?.accessReason ?? raw?.access_reason),
             visible_otros_usuarios: raw?.visible_otros_usuarios === true,
@@ -309,11 +309,6 @@ export class PrivateUserFirestoreService {
         if (normalized === 'expulsado')
             return 'expulsado';
         return null;
-    }
-
-    private toPositiveInt(value: any): number | null {
-        const parsed = Math.trunc(Number(value));
-        return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
     }
 
     private fallbackDisplayName(email: string | null): string | null {

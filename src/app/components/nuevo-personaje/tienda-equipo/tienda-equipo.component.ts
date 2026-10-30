@@ -8,6 +8,7 @@ import { EquipoService } from 'src/app/services/equipo.service';
 import { textoPeso, textoPrecio, textoPrecioGenerico } from 'src/app/services/utils/equipo-texto';
 import { ConjuroParaElLibro, LibroTienda, PAGINAS_POR_LIBRO } from 'src/app/services/utils/libro-conjuros';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { destinoEnTablist } from 'src/app/services/utils/teclado';
 import {
     ArticuloTienda,
     CopiaLibro,
@@ -338,12 +339,11 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     /** Flechas, Inicio y Fin entre las pestañas (patrón `tablist`). */
     moverPestana(evento: KeyboardEvent): void {
         const indice = this.pestanas.findIndex((pestana) => pestana.id === this.seccion);
-        const destino = evento.key === 'ArrowRight' ? indice + 1 : evento.key === 'ArrowLeft' ? indice - 1
-            : evento.key === 'Home' ? 0 : evento.key === 'End' ? this.pestanas.length - 1 : null;
+        const destino = destinoEnTablist(evento.key, indice, this.pestanas.length);
         if (destino === null)
             return;
         evento.preventDefault();
-        const pestana = this.pestanas[(destino + this.pestanas.length) % this.pestanas.length];
+        const pestana = this.pestanas[destino];
         this.cambiarSeccion(pestana.id);
         const boton = (evento.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>(`[data-pestana="${pestana.id}"]`);
         boton?.focus();

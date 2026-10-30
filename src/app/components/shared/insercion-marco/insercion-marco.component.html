@@ -1,0 +1,61 @@
+<section class="insercion-marco" [class.insercion-marco--ventana]="enVentana">
+    <header class="insercion-cabecera" #cabecera>
+        <div class="insercion-cabecera__fila">
+            <!--
+                ICONO DE CATÁLOGO (lienzo, vistas 1 y 7): al unir con la rama de los iconos, aquí va
+                <app-icono-rol *ngIf="iconoTipo" [tipo]="iconoTipo" [tamano]="enVentana ? 28 : 38" [recuadro]="true"></app-icono-rol>
+                (recuadro 56/38; en ventana, 40/28), con aria-hidden porque el tipo ya va escrito al lado.
+                Sin icono, la cabecera queda igual.
+            -->
+            <div class="insercion-cabecera__identidad">
+                <span class="insercion-cabecera__tipo">{{lineaTipo}}</span>
+                <h2 class="insercion-cabecera__nombre" [class.insercion-cabecera__nombre--vacio]="!nombreVisible">{{nombreVisible || 'Sin nombre todavía'}}</h2>
+            </div>
+            <span class="insercion-etiqueta" *ngIf="oficial === true || oficial === false" [class.insercion-etiqueta--aviso]="oficial === false">
+                {{oficial ? 'Oficial' : 'Homebrew'}}
+            </span>
+            <button type="button" mat-icon-button class="insercion-cabecera__cerrar" *ngIf="cerrable" (click)="cerrar.emit()"
+                aria-label="Cerrar" matTooltip="Cerrar">
+                <mat-icon>close</mat-icon>
+            </button>
+        </div>
+
+        <ol class="insercion-pasos" *ngIf="conPasos" aria-label="Pasos">
+            <li class="insercion-pasos__item" *ngFor="let paso of pasos; let i = index">
+                <button type="button" class="insercion-paso-boton" [class.insercion-paso-boton--actual]="i === pasoActual"
+                    [attr.aria-current]="i === pasoActual ? 'step' : null" (click)="irAPaso(i)">
+                    <span class="insercion-paso-boton__numero" aria-hidden="true">{{i + 1}}</span>
+                    <span class="insercion-paso-boton__nombre">{{paso}}</span>
+                </button>
+            </li>
+        </ol>
+    </header>
+
+    <p class="insercion-aviso" *ngIf="sinPermisos" role="status">
+        <mat-icon aria-hidden="true">lock</mat-icon>
+        <span>{{avisoPermisos}}</span>
+    </p>
+    <p class="insercion-cargando" *ngIf="cargando" role="status">
+        <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+        <span>{{cargando}}</span>
+    </p>
+    <p class="bloque-error insercion-error" *ngIf="error" role="alert">{{error}}</p>
+
+    <div class="insercion-cuerpo">
+        <ng-content></ng-content>
+    </div>
+
+    <footer class="insercion-pie">
+        <ng-container *ngIf="conPasos">
+            <button mat-stroked-button type="button" [disabled]="pasoActual === 0" (click)="irAPaso(pasoActual - 1)">Anterior</button>
+            <button mat-stroked-button type="button" *ngIf="siguientePaso" (click)="irAPaso(pasoActual + 1)">Siguiente: {{siguientePaso}}</button>
+        </ng-container>
+        <ng-content select="[insercionPieSecundario]"></ng-content>
+        <p class="insercion-pie__nota" [class.insercion-pie__nota--aviso]="sinPermisos && !nota">{{notaVisible}}</p>
+        <button mat-flat-button class="insercion-pie__accion" [attr.type]="enviaFormulario ? 'submit' : 'button'"
+            [disabled]="accionBloqueada" [matTooltip]="sinPermisos ? (avisoPermisos || '') : ''" (click)="pulsarAccion()">
+            <mat-icon aria-hidden="true">{{guardando ? 'hourglass_top' : 'save'}}</mat-icon>
+            {{guardando ? textoGuardando : textoAccion}}
+        </button>
+    </footer>
+</section>

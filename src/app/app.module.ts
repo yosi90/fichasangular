@@ -104,6 +104,7 @@ import { NuevaConjuroComponent } from './components/shared/nueva-conjuro/nueva-c
 import { NuevaRazaComponent } from './components/shared/nueva-raza/nueva-raza.component';
 import { NuevaRacialComponent } from './components/shared/nueva-racial/nueva-racial.component';
 import { NuevaIdiomaComponent } from './components/shared/nueva-idioma/nueva-idioma.component';
+import { InsercionMarcoComponent } from './components/shared/insercion-marco/insercion-marco.component';
 import { NuevaEspecialComponent } from './components/shared/nueva-especial/nueva-especial.component';
 import { NuevaClaseComponent } from './components/shared/nueva-clase/nueva-clase.component';
 import { HabilidadCustomModalComponent } from './components/shared/habilidad-custom-modal/habilidad-custom-modal.component';
@@ -132,6 +133,7 @@ import { FormacionIncarnumComponent } from './components/nuevo-personaje/formaci
 import { ListadoIdiomasComponent } from './components/shared/listado-idiomas/listado-idiomas.component';
 import { DetallesIdiomaComponent } from './components/detalles/detalles-idioma/detalles-idioma.component';
 import { UserProfileComponent } from './components/base/user-profile/user-profile.component';
+import { CampanasGestionComponent } from './components/base/campanas-gestion/campanas-gestion.component';
 import { PublicUserProfileComponent } from './components/base/public-user-profile/public-user-profile.component';
 import { ChatFloatingConversationWindowComponent } from './components/chat-floating/chat-floating-conversation-window.component';
 import { ChatFloatingHostComponent } from './components/chat-floating/chat-floating-host.component';
@@ -158,6 +160,7 @@ import { PROVEEDOR_PAGINADOR_ES } from './services/utils/paginador-es';
         TabControlComponent,
         BaseMenuComponent,
         UserProfileComponent,
+        CampanasGestionComponent,
         PublicUserProfileComponent,
         ChatFloatingHostComponent,
         ChatFloatingListWindowComponent,
@@ -252,6 +255,7 @@ import { PROVEEDOR_PAGINADOR_ES } from './services/utils/paginador-es';
         NuevaRazaComponent,
         NuevaRacialComponent,
         NuevaIdiomaComponent,
+        InsercionMarcoComponent,
         NuevaEspecialComponent,
         NuevaClaseComponent,
         HabilidadCustomModalComponent,

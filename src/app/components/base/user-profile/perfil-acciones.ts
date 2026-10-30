@@ -1,0 +1,95 @@
+import { UserAccessScope } from 'src/app/interfaces/user-moderation';
+import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
+import { AppToastService } from 'src/app/services/app-toast.service';
+import { UserService } from 'src/app/services/user.service';
+import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
+
+/**
+ * Lo que comparten «Mi perfil», la gestión de campañas y el social al lanzar una acción contra la API: comprobar las
+ * normas y el freno de repeticiones antes, y convertir el error en una frase para la persona después.
+ */
+
+/** Las acciones que crean o cambian contenido de rol piden las normas de creación; las demás, las de uso. */
+export function ambitoDeAccion(actionKey: string): UserAccessScope {
+    const normalized = `${actionKey ?? ''}`.trim().toLowerCase();
+    if (normalized === 'campaign.create'
+        || normalized.startsWith('campaign.update.')
+        || normalized.startsWith('campaign.trama.create.')
+        || normalized.startsWith('campaign.trama.update.')
+        || normalized.startsWith('campaign.subtrama.create.')
+        || normalized.startsWith('campaign.subtrama.update.')) {
+        return 'creation';
+    }
+    return 'usage';
+}
+
+/** `true` si se puede lanzar la acción; si no, ya ha avisado con un toast (normas pendientes o demasiadas seguidas). */
+export function permitirAccionGuardada(
+    userSvc: UserService,
+    apiActionGuardSvc: ApiActionGuardService,
+    appToastSvc: AppToastService,
+    actionKey: string,
+): boolean {
+    const accessRestrictionMessage = userSvc.getAccessRestrictionMessage(ambitoDeAccion(actionKey));
+    if (accessRestrictionMessage.length > 0) {
+        appToastSvc.showError(accessRestrictionMessage);
+        return false;
+    }
+
+    const decision = apiActionGuardSvc.shouldAllow(userSvc.CurrentUserUid, actionKey);
+    if (decision.status !== 'allowed') {
+        appToastSvc.showError(apiActionGuardSvc.getBlockedMessage(decision), {
+            dedupeKey: apiActionGuardSvc.getBlockedToastDedupeKey(userSvc.CurrentUserUid, decision.status),
+        });
+        return false;
+    }
+    return true;
+}
+
+/** La frase del error: la de las normas, la sanción o la limitación si es eso (las de `UserService`), o la de la API. */
+export function mensajeErrorDeAccion(userSvc: UserService, error: any, fallback: string, scope: UserAccessScope = 'usage'): string {
+    return userSvc.getComplianceErrorMessage(error, scope) || toUserFacingErrorMessage(error, fallback);
+}
+
+/** El nombre de un rol de Rol para enseñarlo («Master», «Colaborador»…). */
+export function textoRol(role: string | null | undefined, fallback: string = 'Sin rol'): string {
+    const normalized = `${role ?? ''}`.trim().toLowerCase();
+    if (normalized === 'admin')
+        return 'Admin';
+    if (normalized === 'colaborador')
+        return 'Colaborador';
+    if (normalized === 'master')
+        return 'Master';
+    if (normalized === 'jugador')
+        return 'Jugador';
+    return fallback;
+}
+
+/** El papel de alguien en una campaña («Master», «Jugador»); sin papel, «Creador» si es quien la creó. */
+export function textoRolEnCampana(role: string | null | undefined, isOwner: boolean = false): string {
+    const normalized = `${role ?? ''}`.trim().toLowerCase();
+    if (normalized === 'master')
+        return 'Master';
+    if (normalized === 'jugador')
+        return 'Jugador';
+    if (isOwner)
+        return 'Creador';
+    return 'Sin rol';
+}
+
+/** El estado de alguien en una campaña («Activo», «Inactivo», «Expulsado»). */
+export function textoEstadoEnCampana(status: string | null | undefined): string {
+    const normalized = `${status ?? ''}`.trim().toLowerCase();
+    if (normalized === 'activo')
+        return 'Activo';
+    if (normalized === 'inactivo')
+        return 'Inactivo';
+    if (normalized === 'expulsado')
+        return 'Expulsado';
+    return 'Sin estado';
+}
+
+/** A quién se enseña una trama o subtrama. */
+export function textoVisibilidadEnCampana(visibleParaJugadores: boolean | null | undefined): string {
+    return visibleParaJugadores === false ? 'Solo master' : 'Visible para jugadores';
+}

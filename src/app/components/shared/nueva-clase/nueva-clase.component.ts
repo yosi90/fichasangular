@@ -117,6 +117,9 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
 
     guardando = false;
     cargandoEdicion = false;
+    /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera. */
+    readonly pasos = ['Base', 'Progresión', 'Competencias', 'Habilidades', 'Magia', 'Dotes y especiales', 'Prerrequisitos'];
+    pasoActual = 0;
     puedeCrear = false;
     puedeActualizar = false;
     manuales: Manual[] = [];
@@ -336,14 +339,10 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         return this.guardando || this.cargandoEdicion || !this.puedeGuardar;
     }
 
-    get tituloFormulario(): string {
-        return this.esModoEdicion ? 'Modificar clase' : 'Crear clase';
-    }
-
     get etiquetaAccionPrincipal(): string {
         if (this.guardando)
             return this.esModoEdicion ? 'Guardando cambios...' : 'Creando clase...';
-        return this.esModoEdicion ? 'Actualizar clase' : 'Crear clase';
+        return this.esModoEdicion ? 'Guardar cambios' : 'Crear clase';
     }
 
     get mensajePermisoInsuficiente(): string {

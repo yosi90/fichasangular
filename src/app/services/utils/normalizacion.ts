@@ -22,6 +22,12 @@ export function toInt(value: any, fallback: number = 0): number {
     return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
 }
 
+/** El entero (truncado) que representa `value` si es mayor que 0 (los ids), o `null` si no lo es o no es un número. */
+export function toPositiveInt(value: unknown): number | null {
+    const parsed = Math.trunc(Number(value));
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
 /** `value` redondeado a centésimas (los precios en po y los pesos en lb); lo que no es un número finito, 0. */
 export function redondearCentesimas(value: number): number {
     return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
