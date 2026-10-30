@@ -99,12 +99,13 @@ function normalizeSubtipoRefsApi(raw: any): SubtipoRef[] {
     return output;
 }
 
+/** `Prerrequisitos.criaturas_compatibles` de la API: `{ Id_tipo_compatible, Tipo_compatible, Id_tipo_nuevo, Tipo_nuevo, Tipo_nuevo_comodin, Opcional, Frase }`. */
 function normalizeCompatibilidadesApi(prerrequisitosRaw: any): PlantillaCompatibilidadTipo[] {
     return toStrictArray(prerrequisitosRaw?.criaturas_compatibles)
         .map((item: any) => ({
-            Id_tipo_comp: toNumber(item?.Id_tipo_comp),
+            Id_tipo_comp: toNumber(item?.Id_tipo_compatible),
             Id_tipo_nuevo: toNumber(item?.Id_tipo_nuevo),
-            Tipo_comp: toText(item?.Tipo_comp),
+            Tipo_comp: toText(item?.Tipo_compatible),
             Tipo_nuevo: toText(item?.Tipo_nuevo),
             Tipo_nuevo_comodin: leerComodin(item?.Tipo_nuevo_comodin),
             Opcional: toNumber(item?.Opcional),

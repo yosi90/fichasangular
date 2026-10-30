@@ -53,7 +53,8 @@
                 <span
                     [matTooltip]="canGestionar('plantillas', 'create') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="canGestionar('plantillas', 'create')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!canGestionar('plantillas', 'create')"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Plantilla</span></button>
+                    <button mat-button color="primary" class="menu-opcion" [disabled]="!canGestionar('plantillas', 'create')"
+                        (click)="onInsertarPlantilla()"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Plantilla</span></button>
                 </span>
                 <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'insertar' }"></ng-container>
             </mat-expansion-panel>
@@ -90,9 +91,10 @@
                     <button mat-button color="primary" class="menu-opcion" [disabled]="!canGestionar('tipos_criatura', 'update')"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Monstruo</span></button>
                 </span>
                 <span
-                    [matTooltip]="canGestionar('plantillas', 'update') ? '' : mensajePermisosInsuficientes"
-                    [matTooltipDisabled]="canGestionar('plantillas', 'update')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!canGestionar('plantillas', 'update')"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Plantilla</span></button>
+                    [matTooltip]="canModificarPlantillas() ? '' : mensajePermisosInsuficientes"
+                    [matTooltipDisabled]="canModificarPlantillas()">
+                    <button mat-button color="primary" class="menu-opcion" [disabled]="!canModificarPlantillas()"
+                        (click)="onModificarPlantilla()"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Plantilla</span></button>
                 </span>
                 <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'modificar' }"></ng-container>
             </mat-expansion-panel>

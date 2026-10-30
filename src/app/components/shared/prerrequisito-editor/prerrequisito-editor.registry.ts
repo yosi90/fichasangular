@@ -32,6 +32,7 @@ function createDefaultRow(type: PrerequisiteType): PrerequisiteRowModel {
         repetido: 1,
         requiere_extra: false,
         salvacion_tipo: 'fortaleza',
+        id_destino: 0,
     };
 }
 
@@ -124,8 +125,18 @@ function buildCatalogPayload(
     }
     if (tipo === 'tamano_maximo' || tipo === 'tamano_minimo')
         return { ...base, Id_tamano: id, Tamano: context.getCatalogName(tipo, id) };
-    if (tipo === 'subtipo')
+    if (tipo === 'subtipo' || tipo === 'subtipo_prohibido')
         return { ...base, Id_subtipo: id, Subtipo: context.getCatalogName(tipo, id) };
+    if (tipo === 'criaturas_compatibles') {
+        const destino = toInt(row.id_destino, 0);
+        return {
+            ...base,
+            Id_tipo_compatible: id,
+            Tipo_compatible: context.getCatalogName(tipo, id),
+            Id_tipo_nuevo: destino,
+            Tipo_nuevo: context.getCatalogName(tipo, destino),
+        };
+    }
     if (tipo === 'tipo_criatura')
         return { ...base, Id_tipo: id, Tipo: context.getCatalogName(tipo, id) };
     if (tipo === 'tipo_dote')
@@ -269,6 +280,13 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
+    definition('criaturas_compatibles', 'catalog-pair', {
+        requiredCatalogs: ['tipos_criatura'],
+        catalogLabel: 'Tipo de criatura',
+        valueLabel: 'Pasa a ser',
+        isComplete: isCatalogOnlyComplete,
+        toPayload: buildCatalogPayload,
+    }),
     definition('dg', 'value-only', {
         valueLabel: 'DG minimos',
         isComplete: isValueOnlyComplete,
@@ -370,6 +388,11 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         isComplete: isCatalogValueComplete,
         toPayload: buildCatalogPayload,
     }),
+    definition('nivel_lanzador', 'value-only', {
+        valueLabel: 'Nivel de lanzador minimo',
+        isComplete: isValueOnlyComplete,
+        toPayload: (row) => buildValuePayload(row),
+    }),
     definition('nivel_max', 'value-only', {
         valueLabel: 'Nivel maximo personaje',
         isComplete: isValueOnlyComplete,
@@ -430,6 +453,12 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
+    definition('subtipo_prohibido', 'catalog-only', {
+        requiredCatalogs: ['subtipos'],
+        catalogLabel: 'Subtipo',
+        isComplete: isCatalogOnlyComplete,
+        toPayload: buildCatalogPayload,
+    }),
     definition('tipo_criatura', 'catalog-only', {
         requiredCatalogs: ['tipos_criatura'],
         catalogLabel: 'Tipo criatura',
@@ -443,6 +472,16 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         toPayload: buildCatalogPayload,
     }),
 ];
+
+/**
+ * Los tipos que solo tienen las plantillas (`Prerrequisitos` de `PlantillaDetalle`): las demás inserciones no los ofrecen,
+ * porque sus contratos no los admiten.
+ */
+export const TIPOS_PRERREQUISITO_SOLO_PLANTILLA: ReadonlySet<PrerequisiteType> = new Set<PrerequisiteType>([
+    'criaturas_compatibles',
+    'nivel_lanzador',
+    'subtipo_prohibido',
+]);
 
 const PREREQUISITE_DEFINITION_MAP = new Map<PrerequisiteType, PrerequisiteEditorDefinition>(
     PREREQUISITE_EDITOR_DEFINITIONS.map((item) => [item.type, item])

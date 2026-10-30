@@ -1,3 +1,10 @@
+import { HttpErrorResponse } from '@angular/common/http';
+import { of, throwError } from 'rxjs';
+import { simularTokenApi } from 'src/testing/simular-token-api';
+import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
+import { PlantillaService } from './plantilla.service';
+import { ErrorDeCatalogo } from './utils/error-catalogo';
+import { construirPlantillaRequest, listasPlantillaVacias, valorPlantillaNueva } from './utils/plantilla-formulario';
 import { normalizePlantilla } from './utils/plantilla-mapper';
 import { normalizePlantillaApi } from './utils/plantilla-mapper';
 
@@ -61,9 +68,9 @@ describe('Plantilla mappers', () => {
                 alineamiento_requerido: [],
                 caracteristica: [],
                 criaturas_compatibles: [{
-                    Id_tipo_comp: 3,
+                    Id_tipo_compatible: 3,
                     Id_tipo_nuevo: 9,
-                    Tipo_comp: 'Humanoide',
+                    Tipo_compatible: 'Humanoide',
                     Tipo_nuevo: 'Cambiaformas',
                     Opcional: 1,
                 }],
@@ -172,5 +179,72 @@ describe('Plantilla mappers', () => {
             Tipo_nuevo_comodin: null,
             Opcional: 1,
         }]);
+    });
+});
+
+describe('PlantillaService, alta y modificación', () => {
+    const cuerpo = () => construirPlantillaRequest({ ...valorPlantillaNueva(), nombre: 'Prueba', id_manual: 4, id_tamano: 0 }, listasPlantillaVacias());
+    const servicio = (http: any, auth: any = { currentUser: { uid: 'a' } }) => new PlantillaService({} as any, http, {} as any, auth);
+
+    it('sin la sesión de Firebase avisa y no llama a la API', async () => {
+        const http = jasmine.createSpyObj('HttpClient', ['post']);
+        await expectAsync(servicio(http, { currentUser: null }).crearPlantilla(cuerpo()))
+            .toBeRejectedWithError('Debes iniciar sesión para gestionar plantillas');
+        expect(http.post).not.toHaveBeenCalled();
+    });
+
+    it('crea con POST /plantillas/add, el cuerpo del contrato y el token como Bearer', async () => {
+        simularTokenApi('token-plantilla');
+        const http = jasmine.createSpyObj('HttpClient', ['post']);
+        http.post.and.returnValue(of({ message: 'Plantilla creada correctamente.', idPlantilla: 21, plantilla: plantillaApiDeEjemplo() }));
+
+        const respuesta = await servicio(http).crearPlantilla(cuerpo());
+
+        const [url, enviado, opciones] = http.post.calls.argsFor(0);
+        expect(url).toMatch(/plantillas\/add$/);
+        expect(enviado).toEqual(cuerpo());
+        expect(opciones.headers).toEqual({ Authorization: 'Bearer token-plantilla' });
+        expect(respuesta.idPlantilla).toBe(21);
+        expect(respuesta.message).toBe('Plantilla creada correctamente.');
+        expect(respuesta.plantilla?.Nombre).toBe('Licántropo de prueba');
+    });
+
+    it('modifica con PUT /plantillas/<id> y el mismo cuerpo que el alta (la plantilla entera)', async () => {
+        simularTokenApi();
+        const http = jasmine.createSpyObj('HttpClient', ['put']);
+        http.put.and.returnValue(of({ message: 'Plantilla actualizada correctamente.', idPlantilla: 21, plantilla: plantillaApiDeEjemplo() }));
+
+        const respuesta = await servicio(http).actualizarPlantilla(21, cuerpo());
+
+        expect(http.put.calls.argsFor(0)[0]).toMatch(/plantillas\/21$/);
+        expect(http.put.calls.argsFor(0)[1]).toEqual(cuerpo());
+        expect(respuesta.plantilla?.Id).toBe(21);
+    });
+
+    it('conserva el code y el field de un 400 para que el formulario marque el campo', async () => {
+        simularTokenApi();
+        const http = jasmine.createSpyObj('HttpClient', ['put']);
+        http.put.and.returnValue(throwError(() => new HttpErrorResponse({
+            status: 400,
+            error: { error: "'dotes[0].dg' es obligatorio.", code: 'peticion_no_valida', field: 'dotes[0].dg', debug: { requestId: 'x' } },
+        })));
+
+        const error = await servicio(http).actualizarPlantilla(21, cuerpo()).catch((e) => e);
+
+        expect(error instanceof ErrorDeCatalogo).toBeTrue();
+        expect(error.campo).toBe('dotes[0].dg');
+        expect(error.codigo).toBe('peticion_no_valida');
+        expect(error.estado).toBe(400);
+        expect(error.message).toContain('Los datos de la plantilla no son válidos.');
+    });
+
+    it('lee la plantilla que se va a modificar de la API, sin la caché', (done) => {
+        const http = jasmine.createSpyObj('HttpClient', ['get']);
+        http.get.and.returnValue(of(plantillaApiDeEjemplo()));
+        servicio(http).getPlantillaFresca(21).subscribe((plantilla) => {
+            expect(http.get.calls.argsFor(0)[0]).toMatch(/plantillas\/21$/);
+            expect(plantilla.Licantronia_dg?.Multiplicador).toBe(2);
+            done();
+        });
     });
 });

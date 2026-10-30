@@ -4,7 +4,7 @@ import {
     PrerequisiteRowModel,
 } from './prerrequisito-editor.models';
 import { registrarTiposPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
-import { buildPrerequisitePayload, getPrerequisiteDefinition, getPrerequisiteTypeOptions } from './prerrequisito-editor.registry';
+import { TIPOS_PRERREQUISITO_SOLO_PLANTILLA, buildPrerequisitePayload, getPrerequisiteDefinition, getPrerequisiteTypeOptions } from './prerrequisito-editor.registry';
 
 describe('prerrequisito-editor.registry', () => {
     const catalogosPorTipo = new Map<string, PrerequisiteCatalogItem[]>([
@@ -99,5 +99,47 @@ describe('prerrequisito-editor.registry', () => {
 
         expect(getPrerequisiteDefinition('caracteristica').label).toBe('Característica mínima');
         expect(opciones.map((opcion) => opcion.label)).toEqual(['Característica mínima', 'Raza']);
+    });
+});
+
+describe('prerrequisito-editor.registry, los tipos de las plantillas', () => {
+    const nombres = new Map<number, string>([[5, 'Humanoide'], [7, 'Bestia mágica'], [14, 'Incorporal']]);
+    const context = {
+        getCatalog: () => [],
+        getCatalogName: (_: any, id: number) => nombres.get(id) ?? '',
+        getDoteExtraOptions: () => [],
+        dotePermiteExtra: () => false,
+        getGlobalExtraOptions: () => [],
+        habilidadPermiteExtra: () => false,
+        especialPermiteExtra: () => false,
+    };
+    const fila = (tipo: any, cambios: any) => ({ ...getPrerequisiteDefinition(tipo).createDefaultRow(), ...cambios });
+
+    it('nivel_lanzador es un valor (el nivel mínimo) y está completo con un nivel mayor que 0', () => {
+        const definicion = getPrerequisiteDefinition('nivel_lanzador');
+        expect(definicion.editorKind).toBe('value-only');
+        expect(definicion.isComplete(fila('nivel_lanzador', { valor: 0 }))).toBeFalse();
+        expect(buildPrerequisitePayload([fila('nivel_lanzador', { valor: 11 })], context)['nivel_lanzador']).toEqual([{ Nivel: 11 }]);
+    });
+
+    it('subtipo_prohibido elige un subtipo del catálogo de subtipos', () => {
+        const definicion = getPrerequisiteDefinition('subtipo_prohibido');
+        expect(definicion.editorKind).toBe('catalog-only');
+        expect(definicion.requiredCatalogs).toEqual(['subtipos']);
+        expect(buildPrerequisitePayload([fila('subtipo_prohibido', { id: 14, opcional: 2 })], context)['subtipo_prohibido'])
+            .toEqual([{ Opcional: 2, Id_subtipo: 14, Subtipo: 'Incorporal' }]);
+    });
+
+    it('criaturas_compatibles es un par de tipos de criatura: el que se pide y en qué se convierte', () => {
+        const definicion = getPrerequisiteDefinition('criaturas_compatibles');
+        expect(definicion.editorKind).toBe('catalog-pair');
+        expect(definicion.createDefaultRow().id_destino).toBe(0);
+        expect(definicion.isComplete(fila('criaturas_compatibles', { id: 5, id_destino: 0 }))).toBeTrue();
+        expect(buildPrerequisitePayload([fila('criaturas_compatibles', { id: 5, id_destino: 7 })], context)['criaturas_compatibles'])
+            .toEqual([{ Id_tipo_compatible: 5, Tipo_compatible: 'Humanoide', Id_tipo_nuevo: 7, Tipo_nuevo: 'Bestia mágica' }]);
+    });
+
+    it('los tres solo los ofrecen las plantillas', () => {
+        expect(Array.from(TIPOS_PRERREQUISITO_SOLO_PLANTILLA).sort()).toEqual(['criaturas_compatibles', 'nivel_lanzador', 'subtipo_prohibido']);
     });
 });

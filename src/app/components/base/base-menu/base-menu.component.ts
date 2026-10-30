@@ -297,6 +297,27 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         this.cerrarOtros();
     }
 
+    /** Modificar una plantilla pide, en la API, el mismo permiso que crearla (`PUT /plantillas/<id>`). */
+    canModificarPlantillas(): boolean {
+        return this.canGestionar('plantillas', 'create');
+    }
+
+    onInsertarPlantilla(): void {
+        if (!this.canGestionar('plantillas', 'create'))
+            return;
+        this.AbrirListado('plantillas', 'insertar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    onModificarPlantilla(): void {
+        if (!this.canModificarPlantillas())
+            return;
+        this.AbrirListado('plantillas', 'modificar');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
     onInsertarRaza(): void {
         if (!this.canInsertarRazas())
             return;

@@ -1,0 +1,11 @@
+<mat-form-field appearance="fill" class="catalogo-buscador">
+    <mat-label>{{etiqueta}}</mat-label>
+    <mat-icon matPrefix *ngIf="anadir" aria-hidden="true">add</mat-icon>
+    <input matInput [value]="texto" [placeholder]="placeholder" [disabled]="deshabilitado" [matAutocomplete]="auto"
+        (input)="texto = $any($event.target).value" (blur)="restaurar()">
+    <mat-autocomplete #auto="matAutocomplete" [displayWith]="mostrar" (optionSelected)="seleccionar($event.option.value)">
+        <mat-option *ngFor="let opcion of filtradas" [value]="opcion.id">{{opcion.nombre}}</mat-option>
+    </mat-autocomplete>
+    <mat-hint *ngIf="!error && texto && filtradas.length < 1">Nada coincide con «{{texto}}».</mat-hint>
+    <mat-hint class="catalogo-buscador__error" *ngIf="error" role="alert">{{error}}</mat-hint>
+</mat-form-field>

@@ -6,6 +6,10 @@
         [oficial]="plantillaData.Oficial"
         [etiquetas]="etiquetas"
         (abrirManual)="abrirDetalleManual()">
+        <button mat-stroked-button type="button" *ngIf="puedeModificar" (click)="modificar.emit(plantillaData)">
+            <mat-icon>edit</mat-icon>
+            Modificar
+        </button>
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" titulo="Datos de la plantilla"></app-ficha-datos>

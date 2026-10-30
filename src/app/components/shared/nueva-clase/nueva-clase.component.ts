@@ -28,6 +28,7 @@ import {
     findCatalogName,
     getPrerequisiteCatalogsForTypes,
     getPrerequisiteTypeOptions,
+    TIPOS_PRERREQUISITO_SOLO_PLANTILLA,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
@@ -192,7 +193,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     ];
     aumentosClaseLanzadoraCatalogo: ClaseAumentoClaseLanzadoraCatalogItem[] = [];
     readonly nivelesConjuro = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
-    readonly prerrequisitoOpciones = getPrerequisiteTypeOptions(() => true);
+    readonly prerrequisitoOpciones = getPrerequisiteTypeOptions((type) => !TIPOS_PRERREQUISITO_SOLO_PLANTILLA.has(type));
     readonly generoCatalogo: PrerequisiteCatalogItem[] = [
         { id: 1, nombre: 'Masculino' },
         { id: 2, nombre: 'Femenino' },

@@ -4,6 +4,7 @@ import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 import { DetallesPlantillaComponent } from './detalles-plantilla.component';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
@@ -77,14 +78,19 @@ describe('DetallesPlantillaComponent', () => {
     let component: DetallesPlantillaComponent;
     let fixture: ComponentFixture<DetallesPlantillaComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
+    let usuario: { can: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
     const { texto, titulos, datos, seccion, lateral, enlace, filasPares } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
+        usuario = { can: jasmine.createSpy('can').and.returnValue(false) };
         await TestBed.configureTestingModule({
             declarations: [DetallesPlantillaComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
-            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNav }],
+            providers: [
+                { provide: ManualDetalleNavigationService, useValue: manualNav },
+                { provide: UserService, useValue: usuario },
+            ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
 
@@ -288,5 +294,24 @@ describe('DetallesPlantillaComponent', () => {
         expect(conjuroSpy).toHaveBeenCalledWith(11);
         expect(subtipoSpy).toHaveBeenCalledWith({ Id: 4, Nombre: 'Dragón' });
         expect(manualNav.abrirDetalleManual).toHaveBeenCalledWith({ id: 2, nombre: 'Manual de monstruos' });
+    });
+
+    it('enseña el lápiz «Modificar» solo con permiso de plantillas y si alguien lo escucha', () => {
+        component.plantilla = crearPlantilla();
+        fixture.detectChanges();
+        expect(texto()).not.toContain('Modificar');
+
+        const abiertas: Plantilla[] = [];
+        component.modificar.subscribe((plantilla) => abiertas.push(plantilla));
+        fixture.detectChanges();
+        expect(texto()).not.toContain('Modificar');
+        expect(usuario.can).toHaveBeenCalledWith('plantillas', 'create');
+
+        usuario.can.and.returnValue(true);
+        fixture.detectChanges();
+        const lapiz = Array.from(elemento().querySelectorAll('button')).find((boton) => boton.textContent?.includes('Modificar'));
+        expect(lapiz).toBeTruthy();
+        lapiz!.click();
+        expect(abiertas.map((plantilla) => plantilla.Id)).toEqual([3]);
     });
 });

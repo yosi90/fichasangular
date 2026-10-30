@@ -112,7 +112,7 @@
             <span class="pestana-etiqueta" [matTooltip]="getEtiquetaListadoTab(listadoTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{getEtiquetaListadoTab(listadoTab)}}</span>
             <button (click)="quitarListado(listadoTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <ng-container *ngIf="listadoTab.operacion === 'insertar' && (listadoTab.tipo === 'dotes' || listadoTab.tipo === 'conjuros' || listadoTab.tipo === 'razas' || listadoTab.tipo === 'raciales' || listadoTab.tipo === 'idiomas' || listadoTab.tipo === 'especiales' || listadoTab.tipo === 'clases'); else listadoGenerico">
+        <ng-container *ngIf="listadoTab.operacion === 'insertar' && (listadoTab.tipo === 'dotes' || listadoTab.tipo === 'conjuros' || listadoTab.tipo === 'razas' || listadoTab.tipo === 'raciales' || listadoTab.tipo === 'idiomas' || listadoTab.tipo === 'especiales' || listadoTab.tipo === 'clases' || listadoTab.tipo === 'plantillas'); else listadoGenerico">
             <div class="insercion-dotes-shell">
                 <app-nueva-dote *ngIf="listadoTab.tipo === 'dotes'"></app-nueva-dote>
                 <app-nueva-conjuro *ngIf="listadoTab.tipo === 'conjuros'"></app-nueva-conjuro>
@@ -121,6 +121,7 @@
                 <app-nueva-racial *ngIf="listadoTab.tipo === 'raciales'"></app-nueva-racial>
                 <app-nueva-idioma *ngIf="listadoTab.tipo === 'idiomas'"></app-nueva-idioma>
                 <app-nueva-especial *ngIf="listadoTab.tipo === 'especiales'"></app-nueva-especial>
+                <app-nueva-plantilla *ngIf="listadoTab.tipo === 'plantillas'"></app-nueva-plantilla>
             </div>
         </ng-container>
         <ng-template #listadoGenerico>
@@ -195,6 +196,22 @@
                 (cerrar)="quitarEdicionClase(claseTab)"
                 (claseActualizada)="onClaseActualizadaDesdeEdicion($event)">
             </app-nueva-clase>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let plantillaTab of edicionPlantillasAbiertos" [label]="getEtiquetaEdicionPlantillaTab(plantillaTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'plantilla'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEdicionPlantillaTab(plantillaTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{getEtiquetaEdicionPlantillaTab(plantillaTab)}}</span>
+            <button (click)="quitarEdicionPlantilla(plantillaTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-plantilla
+                modo="editar"
+                [idPlantilla]="plantillaTab.idPlantilla"
+                [editorTabKey]="plantillaTab.key"
+                (cerrar)="quitarEdicionPlantilla(plantillaTab)"
+                (plantillaActualizada)="onPlantillaActualizadaDesdeEdicion($event)">
+            </app-nueva-plantilla>
         </div>
     </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
@@ -331,7 +348,8 @@
             (conjuroDetalles)="abrirDetallesConjuroPorId($event)"
             (doteDetalles)="abrirDetallesDotePorId($event)"
             (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)"
-            (racialDetalles)="abrirDetallesRacial($event)">
+            (racialDetalles)="abrirDetallesRacial($event)"
+            (modificar)="abrirEdicionPlantilla($event)">
         </app-detalles-plantilla>
     </mat-tab>
     <mat-tab *ngFor="let subtipo of detallesSubtipoAbiertos; let index = index" [label]="getEtiquetaSubtipo(subtipo)">

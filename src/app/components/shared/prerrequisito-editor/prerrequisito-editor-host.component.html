@@ -51,6 +51,15 @@
                 (patchChange)="updateRow(row.uid, $event)">
             </app-prerrequisito-catalog-value-editor>
 
+            <app-prerrequisito-catalog-pair-editor
+                *ngSwitchCase="'catalog-pair'"
+                [row]="row"
+                [definition]="group.definition"
+                [catalog]="getCatalog(group.type)"
+                [disabled]="disabled || loading"
+                (patchChange)="updateRow(row.uid, $event)">
+            </app-prerrequisito-catalog-pair-editor>
+
             <app-prerrequisito-special-editor
                 *ngSwitchCase="'catalog-plus-special'"
                 [row]="row"

@@ -48,6 +48,7 @@ import { NuevaRazaComponent } from '../../shared/nueva-raza/nueva-raza.component
 import { NuevaIdiomaComponent } from '../../shared/nueva-idioma/nueva-idioma.component';
 import { NuevaEspecialComponent } from '../../shared/nueva-especial/nueva-especial.component';
 import { NuevaClaseComponent } from '../../shared/nueva-clase/nueva-clase.component';
+import { NuevaPlantillaComponent } from '../../shared/nueva-plantilla/nueva-plantilla.component';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
@@ -92,6 +93,12 @@ interface EdicionClaseTabAbierto {
     nombre: string;
 }
 
+interface EdicionPlantillaTabAbierto {
+    key: string;
+    idPlantilla: number;
+    nombre: string;
+}
+
 /** La pestaña de una inserción: «Nueva raza», «Nuevo conjuro»… (por el listado con el que se abre). */
 const ETIQUETA_INSERCION: Readonly<Record<string, string>> = {
     'razas': 'Nueva raza',
@@ -101,6 +108,7 @@ const ETIQUETA_INSERCION: Readonly<Record<string, string>> = {
     'raciales': 'Nuevo racial',
     'idiomas': 'Nuevo idioma',
     'especiales': 'Nuevo especial',
+    'plantillas': 'Nueva plantilla',
 };
 
 @Component({
@@ -160,6 +168,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public edicionIdiomasAbiertos: EdicionIdiomaTabAbierto[] = [];
     public edicionEspecialesAbiertos: EdicionEspecialTabAbierto[] = [];
     public edicionClasesAbiertos: EdicionClaseTabAbierto[] = [];
+    public edicionPlantillasAbiertos: EdicionPlantillaTabAbierto[] = [];
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_PROFILE = 'base:perfil';
     private readonly TAB_SOCIAL = 'base:social';
@@ -201,6 +210,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     @ViewChildren(NuevaIdiomaComponent) idiomasEditables!: QueryList<NuevaIdiomaComponent>;
     @ViewChildren(NuevaEspecialComponent) especialesEditables!: QueryList<NuevaEspecialComponent>;
     @ViewChildren(NuevaClaseComponent) clasesEditables!: QueryList<NuevaClaseComponent>;
+    @ViewChildren(NuevaPlantillaComponent) plantillasEditables!: QueryList<NuevaPlantillaComponent>;
 
     ngOnInit() {
         this.usrSvc.isLoggedIn$
@@ -346,6 +356,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             void this.quitarEdicionClase(activeKey);
             return;
         }
+        if (activeKey?.startsWith('edicion:plantilla:')) {
+            void this.quitarEdicionPlantilla(activeKey);
+            return;
+        }
         if (this.detallesPersonajeAbiertos.map(p => p.Nombre).includes(tabLabel) && this.quitarDetallesPersonaje(tabLabel))
             return;
         else if (this.detallesRazaAbiertos.map(r => r.Nombre).includes(tabLabel) && this.quitarDetallesRaza(tabLabel))
@@ -410,6 +424,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         keys.push(...this.edicionIdiomasAbiertos.map((tab) => tab.key));
         keys.push(...this.edicionEspecialesAbiertos.map((tab) => tab.key));
         keys.push(...this.edicionClasesAbiertos.map((tab) => tab.key));
+        keys.push(...this.edicionPlantillasAbiertos.map((tab) => tab.key));
         keys.push(...this.detallesManualAbiertos.map((manual) => this.getManualTabKey(manual)));
         keys.push(...this.detallesRazaAbiertos.map((raza) => this.getRazaTabKey(raza)));
         keys.push(...this.detallesConjuroAbiertos.map((conjuro) => this.getConjuroTabKey(conjuro)));
@@ -645,6 +660,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.edicionIdiomasAbiertos = [];
         this.edicionEspecialesAbiertos = [];
         this.edicionClasesAbiertos = [];
+        this.edicionPlantillasAbiertos = [];
         this.nuevoPSvc.resetearCreacionNuevoPersonaje();
         this.AbrirNuevoPersonajeTab = 0;
         this.openerByTab.clear();
@@ -725,6 +741,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         }
         if (normalizarTexto(operacion) === 'modificar' && value.tipo === 'clases') {
             this.abrirEdicionClase(value.item);
+            return;
+        }
+        if (normalizarTexto(operacion) === 'modificar' && value.tipo === 'plantillas') {
+            this.abrirEdicionPlantilla(value.item);
             return;
         }
         if (value.tipo === 'razas') {
@@ -1053,6 +1073,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     getEtiquetaEdicionClaseTab(tab: EdicionClaseTabAbierto): string {
         return `Editar clase: ${tab.nombre}`;
+    }
+
+    getEtiquetaEdicionPlantillaTab(tab: EdicionPlantillaTabAbierto): string {
+        return `Modificar: ${tab.nombre}`;
     }
 
     private getPersonajeTabKey(personaje: Personaje): string {
@@ -1565,6 +1589,56 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.edicionClasesAbiertos.push(tab);
         this.registerOpenContext(key, this.getSafeOpenerKey());
         this.focusOpenedTab(key);
+    }
+
+    /** La pestaña «Modificar: <nombre>» de una plantilla (desde «Modificar → Plantilla» o el lápiz de su detalle). */
+    abrirEdicionPlantilla(plantilla: Plantilla): void {
+        const idPlantilla = Math.trunc(Number(plantilla?.Id));
+        if (!Number.isFinite(idPlantilla) || idPlantilla <= 0)
+            return;
+
+        const key = `edicion:plantilla:${idPlantilla}`;
+        const abierto = this.edicionPlantillasAbiertos.find((tab) => tab.key === key);
+        if (abierto) {
+            this.selectTabByKey(abierto.key);
+            return;
+        }
+
+        this.edicionPlantillasAbiertos.push({ key, idPlantilla, nombre: `${plantilla?.Nombre ?? ''}`.trim() || `#${idPlantilla}` });
+        this.registerOpenContext(key, this.getSafeOpenerKey());
+        this.focusOpenedTab(key);
+    }
+
+    async quitarEdicionPlantilla(value?: string | EdicionPlantillaTabAbierto): Promise<boolean> {
+        const key = typeof value === 'string'
+            ? value
+            : value?.key ?? (this.activeTabKey.startsWith('edicion:plantilla:') ? this.activeTabKey : '');
+        const tab = this.edicionPlantillasAbiertos.find((item) => item.key === key);
+        if (!tab)
+            return false;
+        const editor = this.plantillasEditables?.toArray().find((component) => component.editorTabKey === tab.key);
+        if (editor && !(await editor.confirmarSalidaSiHayCambios()))
+            return false;
+
+        return this.closeTabWithNavigation(tab.key, () => {
+            const indexTab = this.edicionPlantillasAbiertos.indexOf(tab);
+            if (indexTab < 0)
+                return false;
+            this.edicionPlantillasAbiertos.splice(indexTab, 1);
+            return true;
+        });
+    }
+
+    /** Tras guardar una plantilla: su detalle abierto y su pestaña de modificar, con lo nuevo. */
+    onPlantillaActualizadaDesdeEdicion(plantilla: Plantilla): void {
+        if (!plantilla || Number(plantilla.Id) <= 0)
+            return;
+        const detalleIndex = this.detallesPlantillaAbiertos.findIndex((item) => Number(item.Id) === Number(plantilla.Id));
+        if (detalleIndex >= 0)
+            this.detallesPlantillaAbiertos.splice(detalleIndex, 1, plantilla);
+        const tab = this.edicionPlantillasAbiertos.find((item) => item.idPlantilla === Number(plantilla.Id));
+        if (tab)
+            tab.nombre = `${plantilla.Nombre ?? ''}`.trim() || tab.nombre;
     }
 
     async quitarEdicionClase(value?: string | EdicionClaseTabAbierto): Promise<boolean> {

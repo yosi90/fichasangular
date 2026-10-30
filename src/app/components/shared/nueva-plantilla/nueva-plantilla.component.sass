@@ -1,0 +1,226 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar plantillas, dentro del marco común de las inserciones (lienzo «Plantillas: crear y modificar»). Aquí
+// solo van sus rejillas propias: la tabla de características, las tarjetas de rasgos, las tarjetas de radio y la
+// columna de la lectura de los requisitos. Lo que va dentro del marco se pliega por su ancho (`@container insercion`).
+:host
+    @include inserciones.insercion-host
+
+.nueva-plantilla-shell
+    @include inserciones.insercion-shell
+
+.nueva-plantilla-form
+    @include inserciones.insercion-form-base
+
+    mat-form-field, app-catalogo-buscador
+        width: 100%
+
+// Rejillas de campos más estrechas dentro de las tarjetas de dos en dos.
+.insercion-campos.plantilla-campos-2
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+
+.insercion-campos.plantilla-campos-3
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+
+.plantilla-estados
+    display: flex
+    align-items: center
+    min-height: 56px
+
+// «Cómo se tiene»: dos tarjetas de radio.
+.plantilla-radios
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 10px
+
+.plantilla-radio
+    display: flex
+    align-items: flex-start
+    gap: 10px
+    padding: 12px 14px
+    border: 1px solid rgba(255, 255, 255, .14)
+    border-radius: $ficha-radio
+    background: $primary
+    color: $ficha-texto
+    font: inherit
+    text-align: left
+    cursor: pointer
+
+    .mat-icon
+        flex-shrink: 0
+        color: $ficha-texto-suave
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+.plantilla-radio--elegida
+    border-color: $active
+    background: rgba($active, .14)
+
+    .mat-icon
+        color: $active
+
+.plantilla-radio__texto
+    display: flex
+    flex-direction: column
+    gap: 4px
+    font-size: 13px
+    color: $ficha-texto-suave
+
+    strong
+        font-size: 15px
+        color: $ficha-blanco
+
+// La tabla de características: modificador y mínimo de la criatura.
+.plantilla-caracteristicas
+    display: flex
+    flex-direction: column
+    gap: 6px
+    overflow-x: auto
+
+.plantilla-caracteristicas__fila
+    display: grid
+    grid-template-columns: 170px repeat(6, minmax(64px, 1fr))
+    gap: 8px
+    align-items: center
+
+.plantilla-caracteristicas__fila--cabeza
+    @include ficha-versalitas
+    text-align: center
+
+.plantilla-caracteristicas__nombre
+    font-size: 13.5px
+    color: $ficha-texto-suave
+
+// Paso 3: seis tarjetas de rasgos en rejilla de 3.
+.plantilla-rasgos
+    display: grid
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+    gap: 14px
+    align-items: start
+
+.plantilla-rasgo__cabeza
+    display: flex
+    align-items: center
+    gap: 8px
+    width: 100%
+    padding: 0
+    border: 0
+    background: none
+    color: inherit
+    font: inherit
+    text-align: left
+    cursor: default
+
+    .insercion-tarjeta__titulo
+        flex: 1 1 auto
+        margin: 0
+
+.plantilla-rasgo__icono
+    color: $ficha-texto-suave
+
+.plantilla-rasgo__cuenta
+    color: $ficha-texto-suave
+
+// En el escritorio las tarjetas están siempre abiertas: la flecha de plegar es del móvil.
+.plantilla-rasgo__plegar
+    display: none !important
+
+.plantilla-rasgo__cuerpo
+    display: flex
+    flex-direction: column
+    gap: 8px
+
+.plantilla-rasgo__vacio
+    margin: 0
+    padding: 12px
+    border: 1px dashed rgba(255, 255, 255, .22)
+    border-radius: $ficha-radio
+    font-size: 13px
+    color: $ficha-texto-suave
+    text-align: center
+
+.plantilla-fila
+    display: grid
+    grid-template-columns: minmax(0, 1fr) 92px 42px
+    gap: 8px
+    align-items: center
+    padding-bottom: 6px
+    border-bottom: 1px solid rgba(255, 255, 255, .06)
+
+    &:has(mat-select)
+        grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr) 42px
+
+.plantilla-fila--sortilega, .plantilla-fila--habilidad
+    grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr) 42px
+
+    .plantilla-fila__nombre
+        grid-column: 1 / -2
+
+.plantilla-fila--habilidad:has(mat-select)
+    grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr) minmax(0, 1fr) 42px
+
+.plantilla-fila__nombre
+    min-width: 0
+    font-size: 14px
+    color: $ficha-blanco
+    overflow-wrap: anywhere
+
+.plantilla-error
+    margin: 0
+    font-size: 13px
+    color: var(--mat-form-field-error-text-color, #f44336)
+
+// Paso 4: los requisitos y, a la derecha, cómo se leerán en la creación (la ficha común, sin su margen).
+.plantilla-requisitos
+    display: grid
+    grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr)
+    gap: 14px
+    align-items: start
+
+.plantilla-lectura ::ng-deep .ficha
+    padding: 0
+
+@container insercion (max-width: 1100px)
+    .plantilla-rasgos
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+
+@container insercion (max-width: 900px)
+    .plantilla-requisitos
+        grid-template-columns: minmax(0, 1fr)
+
+// El móvil: una columna; las tarjetas de rasgos, plegables con su cuenta («Ataques especiales · 2»).
+@container insercion (max-width: 767px)
+    .plantilla-rasgos, .plantilla-radios, .insercion-campos.plantilla-campos-2, .insercion-campos.plantilla-campos-3
+        grid-template-columns: minmax(0, 1fr)
+
+    .plantilla-rasgo__cabeza
+        min-height: 44px
+        cursor: pointer
+
+    .plantilla-rasgo__plegar
+        display: inline-block !important
+        transition: transform .15s
+
+    .plantilla-rasgo--plegada
+        .plantilla-rasgo__cuerpo
+            display: none
+
+        .plantilla-rasgo__plegar
+            transform: rotate(-90deg)
+
+    .plantilla-fila, .plantilla-fila--sortilega, .plantilla-fila--habilidad, .plantilla-fila:has(mat-select), .plantilla-fila--habilidad:has(mat-select)
+        grid-template-columns: minmax(0, 1fr) 42px
+
+        > *:not(.row-action-btn)
+            grid-column: 1
+
+        .row-action-btn
+            grid-column: 2
+            grid-row: 1
+
+    .plantilla-caracteristicas__fila
+        grid-template-columns: 96px repeat(6, minmax(52px, 1fr))

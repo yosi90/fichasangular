@@ -35,6 +35,7 @@ export type PrerequisiteType =
     | 'competencia_grupo_arma'
     | 'competencia_grupo_armadura'
     | 'conjuros_escuela'
+    | 'criaturas_compatibles'
     | 'dg'
     | 'dominio'
     | 'dote'
@@ -50,6 +51,7 @@ export type PrerequisiteType =
     | 'limite_tipo_dote'
     | 'nivel'
     | 'nivel_de_clase'
+    | 'nivel_lanzador'
     | 'nivel_max'
     | 'poder_seleccionar_companero'
     | 'poder_seleccionar_familiar'
@@ -63,6 +65,7 @@ export type PrerequisiteType =
     | 'lanzar_poder_psionico_nivel'
     | 'no_raza'
     | 'subtipo'
+    | 'subtipo_prohibido'
     | 'tamano_maximo'
     | 'tamano_minimo'
     | 'tipo_criatura'
@@ -73,7 +76,9 @@ export type PrerequisiteEditorKind =
     | 'value-only'
     | 'catalog-only'
     | 'catalog-plus-value'
-    | 'catalog-plus-special';
+    | 'catalog-plus-special'
+    /** Dos elementos del mismo catálogo: el que se pide y en qué se convierte (`criaturas_compatibles` de las plantillas). */
+    | 'catalog-pair';
 
 export interface PrerequisiteCatalogItem {
     id: number;
@@ -90,6 +95,8 @@ export interface PrerequisiteRowModel {
     repetido: number;
     requiere_extra: boolean;
     salvacion_tipo: 'fortaleza' | 'reflejos' | 'voluntad';
+    /** El segundo elemento de un tipo `catalog-pair`: el tipo de criatura nuevo de `criaturas_compatibles` (0, «cualquiera»: conserva su tipo). */
+    id_destino?: number;
 }
 
 export interface PrerequisiteCatalogContext {

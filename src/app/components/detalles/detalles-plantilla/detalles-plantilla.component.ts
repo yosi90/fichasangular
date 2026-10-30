@@ -22,6 +22,7 @@ import { Plantilla, PlantillaRacialContextual } from 'src/app/interfaces/plantil
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
@@ -34,7 +35,7 @@ import { porNombre } from 'src/app/services/utils/orden-texto';
     standalone: false
 })
 export class DetallesPlantillaComponent {
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
 
     plantillaData!: Plantilla;
 
@@ -109,6 +110,13 @@ export class DetallesPlantillaComponent {
     @Output() doteDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
     @Output() racialDetalles: EventEmitter<RacialDetalle> = new EventEmitter<RacialDetalle>();
+    /** El lápiz «Modificar»: abre la pestaña de modificar la plantilla. Sin quien lo escuche (la creación), no sale. */
+    @Output() modificar: EventEmitter<Plantilla> = new EventEmitter<Plantilla>();
+
+    /** Solo con permiso: el de crear plantillas, que es el que pide `PUT /plantillas/<id>`. */
+    get puedeModificar(): boolean {
+        return this.modificar.observed && this.userSvc.can('plantillas', 'create');
+    }
 
     abrirDetalleManual() {
         this.manualDetalleNavSvc.abrirDetalleManual({

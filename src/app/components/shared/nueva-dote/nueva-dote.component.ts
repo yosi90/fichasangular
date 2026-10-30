@@ -17,6 +17,7 @@ import {
     getPrerequisiteCatalogsForTypes,
     getPrerequisiteDefinition,
     getPrerequisiteTypeOptions,
+    TIPOS_PRERREQUISITO_SOLO_PLANTILLA,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { DoteCreateRequest, DoteCreateResponse, DoteHabilidadOtorgadaDto } from 'src/app/interfaces/dotes-api';
@@ -132,7 +133,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         { key: 'excavar', label: 'Aumenta velocidad de excavación' },
     ];
     readonly prerrequisitoOpciones: PrerrequisitoOption[] = getPrerequisiteTypeOptions(
-        (type) => !this.prerrequisitosSoloClase.has(type)
+        (type) => !this.prerrequisitosSoloClase.has(type) && !TIPOS_PRERREQUISITO_SOLO_PLANTILLA.has(type)
     );
     readonly caracteristicasCatalogo: ExtraSelectorItem[] = [
         { id: 1, nombre: 'Fuerza' },

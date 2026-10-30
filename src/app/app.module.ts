@@ -103,6 +103,9 @@ import { NuevaDoteComponent } from './components/shared/nueva-dote/nueva-dote.co
 import { NuevaConjuroComponent } from './components/shared/nueva-conjuro/nueva-conjuro.component';
 import { NuevaRazaComponent } from './components/shared/nueva-raza/nueva-raza.component';
 import { NuevaRacialComponent } from './components/shared/nueva-racial/nueva-racial.component';
+import { NuevaPlantillaComponent } from './components/shared/nueva-plantilla/nueva-plantilla.component';
+import { CatalogoBuscadorComponent } from './components/shared/nueva-plantilla/catalogo-buscador.component';
+import { PrerrequisitoCatalogPairEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-pair-editor.component';
 import { NuevaIdiomaComponent } from './components/shared/nueva-idioma/nueva-idioma.component';
 import { InsercionMarcoComponent } from './components/shared/insercion-marco/insercion-marco.component';
 import { NuevaEspecialComponent } from './components/shared/nueva-especial/nueva-especial.component';
@@ -262,6 +265,8 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         NuevaConjuroComponent,
         NuevaRazaComponent,
         NuevaRacialComponent,
+        NuevaPlantillaComponent,
+        CatalogoBuscadorComponent,
         NuevaIdiomaComponent,
         InsercionMarcoComponent,
         NuevaEspecialComponent,
@@ -273,6 +278,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         PrerrequisitoCatalogEditorComponent,
         PrerrequisitoCatalogValueEditorComponent,
         PrerrequisitoSpecialEditorComponent,
+        PrerrequisitoCatalogPairEditorComponent,
     ],
     imports: [
         BrowserModule,
