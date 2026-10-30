@@ -103,6 +103,7 @@ import { NuevaConjuroComponent } from './components/shared/nueva-conjuro/nueva-c
 import { NuevaRazaComponent } from './components/shared/nueva-raza/nueva-raza.component';
 import { NuevaRacialComponent } from './components/shared/nueva-racial/nueva-racial.component';
 import { NuevaIdiomaComponent } from './components/shared/nueva-idioma/nueva-idioma.component';
+import { InsercionMarcoComponent } from './components/shared/insercion-marco/insercion-marco.component';
 import { NuevaEspecialComponent } from './components/shared/nueva-especial/nueva-especial.component';
 import { NuevaClaseComponent } from './components/shared/nueva-clase/nueva-clase.component';
 import { HabilidadCustomModalComponent } from './components/shared/habilidad-custom-modal/habilidad-custom-modal.component';
@@ -242,6 +243,7 @@ import { MENU_FILTROS_COMPONENTES } from './components/shared/menu-filtros/menu-
         NuevaRazaComponent,
         NuevaRacialComponent,
         NuevaIdiomaComponent,
+        InsercionMarcoComponent,
         NuevaEspecialComponent,
         NuevaClaseComponent,
         HabilidadCustomModalComponent,
