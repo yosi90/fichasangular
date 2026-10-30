@@ -28,6 +28,10 @@ describe('equipo-texto', () => {
         expect(textoOrigenDescripcion('propia')).toBe('Descripción propia');
         expect(textoConSigno(-1)).toBe('-1');
         expect(textoConSigno(0)).toBe('+0');
+        // El de los dados, con el menos tipográfico del lienzo.
+        expect(textoConSigno(3, '−')).toBe('+3');
+        expect(textoConSigno(-1, '−')).toBe('−1');
+        expect(textoConSigno(0, '−')).toBe('+0');
     });
 
     it('la mejora, con la segunda cabeza de un arma doble solo si la lleva', () => {

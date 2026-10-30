@@ -1,6 +1,7 @@
 import { AfterViewInit, Component, ElementRef, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { DadosService, EstadoDados } from 'src/app/services/dados.service';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import {
     DADOS_FILA,
     DadoFila,
@@ -10,7 +11,6 @@ import {
     etiquetaDado,
     expresionTirada,
     horaTirada,
-    textoBonificador,
     textoTotal,
     tieneDados,
     tiradaConAlgo,
@@ -160,7 +160,7 @@ export class DadosComponent implements OnInit, AfterViewInit, OnDestroy {
     private pintar(estado: EstadoDados): void {
         this.estado = estado;
         this.expresion = expresionTirada(estado.tirada);
-        this.bonificador = textoBonificador(estado.tirada.bonificador);
+        this.bonificador = textoConSigno(estado.tirada.bonificador, '−');
         this.conDados = tieneDados(estado.tirada);
         this.conAlgo = tiradaConAlgo(estado.tirada);
         this.ultimo = estado.ultimo ? resultadoVisible(estado.ultimo, true) : null;

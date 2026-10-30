@@ -1,4 +1,5 @@
 import { TipoRol } from './iconos-rol';
+import { textoConSigno } from './equipo-texto';
 import { enteroEntre } from './normalizacion';
 
 /**
@@ -97,18 +98,13 @@ export function textoTotal(valor: number): string {
     return valor < 0 ? `−${Math.abs(valor)}` : `${valor}`;
 }
 
-/** Un bonificador con su signo y el menos tipográfico, como en el lienzo: «+3», «−1», «+0». */
-export function textoBonificador(valor: number): string {
-    return valor < 0 ? textoTotal(valor) : `+${valor}`;
-}
-
 /** «2d6 + 1d20 + 3», «3d8 − 1»; sin dados, solo el bonificador («+3»), y sin nada, cadena vacía. */
 export function expresionTirada(tirada: TiradaPreparada): string {
     const dados = CARAS_DADOS.filter((caras) => tirada.reserva[caras] > 0).map((caras) => `${tirada.reserva[caras]}d${caras}`).join(' + ');
     if (tirada.bonificador === 0)
         return dados;
     if (!dados)
-        return textoBonificador(tirada.bonificador);
+        return textoConSigno(tirada.bonificador, '−');
     return `${dados} ${tirada.bonificador < 0 ? '−' : '+'} ${Math.abs(tirada.bonificador)}`;
 }
 
@@ -119,7 +115,7 @@ export function expresionTirada(tirada: TiradaPreparada): string {
 export function desgloseTirada(resultado: Pick<ResultadoTirada, 'grupos' | 'bonificador'>, conDados: boolean): string {
     const partes = resultado.grupos.map((g) => conDados ? `${g.valores.length}d${g.caras} [${g.valores.join(', ')}]` : `[${g.valores.join(', ')}]`);
     if (resultado.bonificador !== 0)
-        partes.push(textoBonificador(resultado.bonificador));
+        partes.push(textoConSigno(resultado.bonificador, '−'));
     return partes.join(conDados ? ' · ' : ' ');
 }
 

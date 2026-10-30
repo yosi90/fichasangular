@@ -33,9 +33,13 @@ export function textoDestrezaMaxima(bonDes: number | null | undefined): string {
     return textoConSigno(bonDes);
 }
 
-/** Un bonificador con signo («+2», «-1», «+0»). */
-export function textoConSigno(valor: number): string {
-    return `${valor >= 0 ? '+' : ''}${valor}`;
+/**
+ * Un bonificador con signo («+2», «-1», «+0»). Con `menos = '−'`, el menos tipográfico del lienzo de los dados
+ * («+3», «−1», «+0»).
+ */
+export function textoConSigno(valor: number, menos: '-' | '−' = '-'): string {
+    const texto = `${valor >= 0 ? '+' : ''}${valor}`;
+    return menos === '-' ? texto : texto.replace('-', menos);
 }
 
 /**

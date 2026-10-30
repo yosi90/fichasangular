@@ -12,7 +12,6 @@ import {
     etiquetaDado,
     expresionTirada,
     horaTirada,
-    textoBonificador,
     textoTotal,
     tiradaConAlgo,
     tirar,
@@ -72,9 +71,6 @@ describe('dados', () => {
         t = cambiarBonificador(TIRADA_VACIA, -150);
         expect(t.bonificador).toBe(-99);
         expect(cambiarBonificador(t, -1)).toBe(t);
-        expect(textoBonificador(3)).toBe('+3');
-        expect(textoBonificador(-1)).toBe('−1');
-        expect(textoBonificador(0)).toBe('+0');
     });
 
     it('hay algo que limpiar con un dado o con el bonificador', () => {
