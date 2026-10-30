@@ -9,7 +9,9 @@ import { NuevaClaseComponent } from './nueva-clase.component';
 function crearEditor(): NuevaClaseComponent {
     // Sin `ngOnInit`: no se cargan catálogos; los servicios no se usan.
     const servicios = Array.from({ length: 23 }, () => ({}) as any);
-    return new (NuevaClaseComponent as any)(new FormBuilder(), ...servicios);
+    const editor: NuevaClaseComponent = new (NuevaClaseComponent as any)(new FormBuilder(), ...servicios);
+    editor.modo = 'editar';
+    return editor;
 }
 
 function claseCargada(): Clase {

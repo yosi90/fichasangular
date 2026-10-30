@@ -8393,8 +8393,9 @@ export class NuevoPersonajeService {
     private calcularTamanoEfectivo(): TamanoEfectivo | null {
         const raza = this.razaSeleccionada;
         const tamanoRaza = this.personajeCreacion?.Raza?.Tamano;
-        const base = this.catalogoTamanos.find((tamano) => toInt(tamano?.Id) === toInt(tamanoRaza?.Id))
-            ?? (tamanoRaza ? (tamanoRaza as Tamano) : null);
+        // Lo que trae la raza manda; el catálogo añade lo que no trae (espacio, alcance, carga).
+        const delCatalogo = this.catalogoTamanos.find((tamano) => toInt(tamano?.Id) === toInt(tamanoRaza?.Id));
+        const base = tamanoRaza ? ({ ...(delCatalogo ?? {}), ...tamanoRaza } as Tamano) : (delCatalogo ?? null);
         return tamanoEfectivo(base, this.catalogoTamanos, this.origenesTamano(), raza?.Espacio, raza?.Alcance);
     }
 
