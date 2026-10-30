@@ -57,6 +57,7 @@ import { UserService } from 'src/app/services/user.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
+import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 
 interface NombreIdItem {
     Id: number;
@@ -1368,11 +1369,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     private actualizarOpcionesExtraDote(dotes: any[]): void {
         const next = new Map<number, PrerequisiteCatalogItem[]>();
         (dotes ?? []).forEach((dote) => {
-            const extras: PrerequisiteCatalogItem[] = [];
-            const disponibles = dote?.Extras_disponibles ?? {};
-            ['Armas', 'Armaduras', 'Escuelas', 'Habilidades'].forEach((key) => {
-                (disponibles[key] ?? []).forEach((item: any) => extras.push({ id: this.getId(item), nombre: this.texto(item?.Nombre) }));
-            });
+            const extras: PrerequisiteCatalogItem[] = extrasDisponiblesDeDote(dote)
+                .map((item) => ({ id: this.getId(item), nombre: this.texto(item?.Nombre) }));
             if (extras.length > 0)
                 next.set(this.getId(dote), this.ordenarCatalog(extras.filter((item) => item.id > 0)));
         });

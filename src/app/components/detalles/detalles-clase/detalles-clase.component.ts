@@ -5,6 +5,7 @@ import { NombreTraducible } from 'src/app/interfaces/incarnum';
 import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseNivelDetalle } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { idiomasVisibles, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { esCampoId, extraerValorSimple, formatearClave, formatearValor, mayusculaInicial } from 'src/app/services/utils/formato-registros';
@@ -975,16 +976,7 @@ export class DetallesClaseComponent {
     }
 
     private getExtrasDisponiblesDote(doteNivel: ClaseDoteNivel): { Id: number, Nombre: string }[] {
-        const disponibles = doteNivel?.Dote?.Extras_disponibles;
-        if (!disponibles)
-            return [];
-
-        return [
-            ...(disponibles.Armas ?? []),
-            ...(disponibles.Armaduras ?? []),
-            ...(disponibles.Escuelas ?? []),
-            ...(disponibles.Habilidades ?? []),
-        ];
+        return extrasDisponiblesDeDote(doteNivel?.Dote);
     }
 
     private doteTieneExtras(doteNivel: ClaseDoteNivel): boolean {

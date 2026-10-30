@@ -20,6 +20,7 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { textoAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
+import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
@@ -368,9 +369,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     extrasDote(fila: FilaDotePlantilla): OpcionCatalogo[] {
-        const dote = this.dotes.find((item) => item.Id === fila.id);
-        const extras = dote?.Extras_disponibles;
-        return [...(extras?.Armas ?? []), ...(extras?.Armaduras ?? []), ...(extras?.Escuelas ?? []), ...(extras?.Habilidades ?? [])]
+        return extrasDisponiblesDeDote(this.dotes.find((item) => item.Id === fila.id))
             .map((item) => ({ id: toInt(item.Id), nombre: toText(item.Nombre) }));
     }
 

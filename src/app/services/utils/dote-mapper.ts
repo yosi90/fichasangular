@@ -324,3 +324,17 @@ export function toDoteLegacyArray(ctx: DoteContextual[]): DoteLegacy[] {
         Origen: getOrigenFromContexto(item.Contexto),
     }));
 }
+
+/**
+ * Los extras que lista una dote (`Extras_disponibles`) de armas, armaduras, escuelas y habilidades, en ese orden: los que
+ * se pueden elegir con ella. Los chakras y las fusiones (Magic of Incarnum) no entran.
+ */
+export function extrasDisponiblesDeDote(dote: Pick<Dote, 'Extras_disponibles'> | null | undefined): DoteExtraItem[] {
+    const disponibles = dote?.Extras_disponibles;
+    return [
+        ...(disponibles?.Armas ?? []),
+        ...(disponibles?.Armaduras ?? []),
+        ...(disponibles?.Escuelas ?? []),
+        ...(disponibles?.Habilidades ?? []),
+    ];
+}
