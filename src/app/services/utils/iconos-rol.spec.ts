@@ -1,4 +1,4 @@
-import { AUTORES_ICONOS_ROL, ICONOS_ROL, rutaIconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from './iconos-rol';
+import { AUTORES_ICONOS_ROL, ICONOS_ROL, LISTADOS_ROL, rutaIconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from './iconos-rol';
 
 describe('iconos-rol', () => {
     it('cada catálogo tiene su icono y su etiqueta, sin repetir dibujo', () => {
@@ -32,6 +32,9 @@ describe('iconos-rol', () => {
         expect(tipoRolDeListado('munición')).toBe('municion');
         expect(tipoRolDeListado('tipos de criatura')).toBe('tipo-criatura');
         expect(tipoRolDeListado('lo que sea')).toBeNull();
+        expect(tipoRolDeListado('constructor')).toBeNull();
+        expect(LISTADOS_ROL['armaduras']).toEqual({ tipo: 'armadura', titulo: 'armaduras y escudos' });
+        expect(Object.values(LISTADOS_ROL).every(l => l.titulo.length > 0)).toBeTrue();
     });
 
     it('cada icono tiene un solo autor en los créditos, y no hay autores de iconos que no se usen', () => {

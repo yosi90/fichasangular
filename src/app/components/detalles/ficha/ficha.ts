@@ -163,3 +163,10 @@ export function separarManualTexto(texto: string | null | undefined): { nombre: 
         return { nombre: conPagina[1].trim(), pagina: Number(conPagina[2]) };
     return { nombre: limpio, pagina: null };
 }
+
+/** El nombre del manual, venga como texto con la página dentro (`separarManualTexto`) o como referencia de la API. */
+export function nombreDeManual(manual: string | { Nombre?: string | null } | null | undefined): string {
+    if (typeof manual === 'string')
+        return separarManualTexto(manual).nombre;
+    return textoVisible(manual?.Nombre);
+}

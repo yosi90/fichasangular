@@ -16,6 +16,7 @@ import {
     datosVisibles,
     esTextoCorto,
     etiquetaTraducido,
+    nombreDeManual,
     nombreOriginalVisible,
     separarManualTexto,
     etiquetasVisibles,
@@ -405,5 +406,14 @@ describe('separarManualTexto', () => {
         expect(separarManualTexto('Compendio de conjuros, Página: 6')).toEqual({ nombre: 'Compendio de conjuros', pagina: 6 });
         expect(separarManualTexto('Rol mapa mundi')).toEqual({ nombre: 'Rol mapa mundi', pagina: null });
         expect(separarManualTexto(null)).toEqual({ nombre: '', pagina: null });
+    });
+});
+
+describe('nombreDeManual', () => {
+    it('da el nombre del manual, venga como texto con la página o como referencia', () => {
+        expect(nombreDeManual('Manual del jugador, pág. 12')).toBe('Manual del jugador');
+        expect(nombreDeManual('El combatiente completo (p. 96)')).toBe('El combatiente completo');
+        expect(nombreDeManual({ Nombre: ' Manual de monstruos ' })).toBe('Manual de monstruos');
+        expect(nombreDeManual(null)).toBe('');
     });
 });

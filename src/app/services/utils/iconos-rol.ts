@@ -100,38 +100,47 @@ export function tipoRolDeEquipo(tipo: TipoCatalogoEquipo): TipoRol {
     return TIPO_ROL_DE_EQUIPO[tipo];
 }
 
+/** Un listado de la web: el tipo de rol de su icono y su nombre en plural, en minúscula («Lista de armaduras y escudos»). */
+export interface ListadoRol {
+    readonly tipo: TipoRol;
+    readonly titulo: string;
+}
+
+const listado = (tipo: TipoRol, titulo: string): ListadoRol => ({ tipo, titulo });
+
 /**
- * El tipo de cada listado, por el nombre con el que se abre (`AbrirListado` del menú y la pestaña «Lista de …»). Las
- * ventajas abren también las desventajas, y las clases las de prestigio: el listado lleva el icono del tipo general.
+ * Los listados, por el nombre con el que se abren (`AbrirListado` del menú y la pestaña «Lista de …»), en el orden del
+ * menú. Las ventajas abren también las desventajas, y las clases las de prestigio: el listado lleva el icono del tipo
+ * general.
  */
-const TIPO_ROL_DE_LISTADO: Readonly<Record<string, TipoRol>> = {
-    'razas': 'raza',
-    'clases': 'clase',
-    'dotes': 'dote',
-    'conjuros': 'conjuro',
-    'monstruos': 'monstruo',
-    'plantillas': 'plantilla',
-    'armas': 'arma',
-    'armaduras': 'armadura',
-    'munición': 'municion',
-    'materiales especiales': 'material',
-    'aptitudes de armas y armaduras': 'aptitud-equipo',
-    'objetos': 'objeto',
-    'conjuntos de objetos': 'conjunto',
-    'especiales': 'especial',
-    'raciales': 'racial',
-    'rasgos': 'rasgo',
-    'idiomas': 'idioma',
-    'ventajas': 'ventaja',
-    'fusiones del alma': 'fusion',
-    'chakras': 'chakra',
-    'tipos de criatura': 'tipo-criatura',
-    'subtipos': 'subtipo',
-    'deidades': 'deidad',
+export const LISTADOS_ROL: Readonly<Record<string, ListadoRol>> = {
+    'razas': listado('raza', 'razas'),
+    'clases': listado('clase', 'clases'),
+    'dotes': listado('dote', 'dotes'),
+    'conjuros': listado('conjuro', 'conjuros'),
+    'monstruos': listado('monstruo', 'monstruos'),
+    'plantillas': listado('plantilla', 'plantillas'),
+    'armas': listado('arma', 'armas'),
+    'armaduras': listado('armadura', 'armaduras y escudos'),
+    'munición': listado('municion', 'munición'),
+    'materiales especiales': listado('material', 'materiales especiales'),
+    'aptitudes de armas y armaduras': listado('aptitud-equipo', 'aptitudes de armas y armaduras'),
+    'objetos': listado('objeto', 'objetos'),
+    'conjuntos de objetos': listado('conjunto', 'conjuntos de objetos'),
+    'especiales': listado('especial', 'especiales'),
+    'raciales': listado('racial', 'raciales'),
+    'rasgos': listado('rasgo', 'rasgos'),
+    'idiomas': listado('idioma', 'idiomas'),
+    'ventajas': listado('ventaja', 'ventajas y desventajas'),
+    'fusiones del alma': listado('fusion', 'fusiones del alma'),
+    'chakras': listado('chakra', 'chakras'),
+    'tipos de criatura': listado('tipo-criatura', 'tipos de criatura'),
+    'subtipos': listado('subtipo', 'subtipos'),
+    'deidades': listado('deidad', 'deidades'),
 };
 
 export function tipoRolDeListado(lista: string | null | undefined): TipoRol | null {
-    return TIPO_ROL_DE_LISTADO[`${lista ?? ''}`.trim()] ?? null;
+    return LISTADOS_ROL[`${lista ?? ''}`.trim()]?.tipo ?? null;
 }
 
 export interface AutorIconos {

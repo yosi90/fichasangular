@@ -1,8 +1,8 @@
 import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { ManualReferencia } from 'src/app/interfaces/manual';
 import { TipoRol } from 'src/app/services/utils/iconos-rol';
-import { textoVisible, tieneNumeroVisible } from 'src/app/services/utils/texto-visible';
-import { EtiquetaFicha, esTextoCorto, etiquetasVisibles, separarManualTexto } from './ficha';
+import { tieneNumeroVisible } from 'src/app/services/utils/texto-visible';
+import { EtiquetaFicha, esTextoCorto, etiquetasVisibles, nombreDeManual, separarManualTexto } from './ficha';
 
 /**
  * La cabecera de la ficha: el icono de su catálogo (si se da), el tipo en versalitas, el nombre, una línea opcional en cursiva y, a la derecha, el manual
@@ -37,9 +37,7 @@ export class FichaCabeceraComponent implements OnChanges {
     }
 
     get nombreManual(): string {
-        if (typeof this.manual === 'string')
-            return separarManualTexto(this.manual).nombre;
-        return textoVisible(this.manual?.Nombre);
+        return nombreDeManual(this.manual);
     }
 
     get paginaManual(): number | null {

@@ -24,10 +24,12 @@ import { TipoCriaturaService } from './tipo-criatura.service';
 import { VentajaService } from './ventaja.service';
 import { UserProfileNavigationService } from './user-profile-navigation.service';
 import { ElementoBusqueda, FuenteBusqueda, LETRAS_MINIMAS_BUSQUEDA, RESULTADOS_POR_GRUPO, textoBuscable } from './utils/busqueda-global';
-import { ICONOS_ROL, TipoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from './utils/iconos-rol';
+import { ICONOS_ROL, LISTADOS_ROL, TipoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from './utils/iconos-rol';
+import { mayusculaInicial } from './utils/formato-registros';
 import { normalizarTexto } from './utils/normalizacion';
 import { textoVisible } from './utils/texto-visible';
 import { TipoCatalogoEquipo } from '../interfaces/equipo';
+import { nombreDeManual } from '../components/detalles/ficha/ficha';
 
 /** Una fuente de la búsqueda: un catálogo que la web ya carga (caché o API), sin rutas nuevas. */
 interface DefinicionFuente {
@@ -40,25 +42,10 @@ interface DefinicionFuente {
     readonly cargar: () => Observable<ElementoBusqueda[]>;
 }
 
-/** El nombre del manual de una fila, venga como texto («Manual del jugador, pág. 12») o como referencia. */
-function nombreManual(item: any): string {
-    const manual = item?.Manual;
-    if (typeof manual === 'string')
-        return textoVisible(manual.split(/,\s*p[áa]g/i)[0]);
-    return textoVisible(manual?.Nombre);
+/** El título de un listado como grupo o pantalla: «Armaduras y escudos» (`LISTADOS_ROL`). */
+function tituloListado(lista: string): string {
+    return mayusculaInicial(LISTADOS_ROL[lista]?.titulo);
 }
-
-const LISTADOS_PANTALLA: readonly { lista: string; titulo: string }[] = [
-    { lista: 'razas', titulo: 'razas' }, { lista: 'clases', titulo: 'clases' }, { lista: 'dotes', titulo: 'dotes' },
-    { lista: 'conjuros', titulo: 'conjuros' }, { lista: 'monstruos', titulo: 'monstruos' }, { lista: 'plantillas', titulo: 'plantillas' },
-    { lista: 'armas', titulo: 'armas' }, { lista: 'armaduras', titulo: 'armaduras y escudos' }, { lista: 'munición', titulo: 'munición' },
-    { lista: 'materiales especiales', titulo: 'materiales especiales' }, { lista: 'aptitudes de armas y armaduras', titulo: 'aptitudes de armas y armaduras' },
-    { lista: 'objetos', titulo: 'objetos' }, { lista: 'conjuntos de objetos', titulo: 'conjuntos de objetos' },
-    { lista: 'especiales', titulo: 'especiales' }, { lista: 'raciales', titulo: 'raciales' }, { lista: 'rasgos', titulo: 'rasgos' },
-    { lista: 'idiomas', titulo: 'idiomas' }, { lista: 'ventajas', titulo: 'ventajas y desventajas' },
-    { lista: 'fusiones del alma', titulo: 'fusiones del alma' }, { lista: 'chakras', titulo: 'chakras' },
-    { lista: 'tipos de criatura', titulo: 'tipos de criatura' }, { lista: 'subtipos', titulo: 'subtipos' }, { lista: 'deidades', titulo: 'deidades' },
-];
 
 /**
  * Los datos de la búsqueda global (Ctrl+K o ⌘K; lienzo «Rol: las vistas que faltan», vista 5; la ventana es
@@ -144,7 +131,7 @@ export class BuscadorGlobalService {
     private buscarObjetos(texto: string): Observable<FuenteBusqueda | null> {
         if (normalizarTexto(texto, true).length < LETRAS_MINIMAS_BUSQUEDA)
             return of(null);
-        const base = { id: 'objetos', titulo: 'Objetos', tipo: 'objeto' as TipoRol, lista: 'objetos', yaFiltrados: true };
+        const base = { id: 'objetos', titulo: tituloListado('objetos'), tipo: tipoRolDeListado('objetos'), lista: 'objetos', yaFiltrados: true };
         return from([null]).pipe(
             switchMap(() => this.equipo.getObjetos({ q: texto.trim(), limit: RESULTADOS_POR_GRUPO, offset: 0 })),
             map((pagina): FuenteBusqueda => ({
@@ -157,7 +144,7 @@ export class BuscadorGlobalService {
         );
     }
 
-    private elemento(lista: string, tipo: TipoRol, item: any, subtitulo: string = nombreManual(item)): ElementoBusqueda {
+    private elemento(lista: string, tipo: TipoRol, item: any, subtitulo: string = nombreDeManual(item?.Manual)): ElementoBusqueda {
         const nombre = textoVisible(item?.Nombre);
         return {
             clave: `${lista}:${item?.Id}`,
@@ -187,7 +174,8 @@ export class BuscadorGlobalService {
     }
 
     private definiciones(): DefinicionFuente[] {
-        const fuente = (id: string, titulo: string, lista: string, femenino: boolean, cargar: () => Observable<ElementoBusqueda[]>): DefinicionFuente =>
+        // El título del grupo es el del listado («Armaduras y escudos»), salvo que se dé otro.
+        const fuente = (id: string, lista: string, femenino: boolean, cargar: () => Observable<ElementoBusqueda[]>, titulo = tituloListado(lista)): DefinicionFuente =>
             ({ id, titulo, tipo: tipoRolDeListado(lista), lista, femenino, cargar });
         return [
             {
@@ -205,32 +193,32 @@ export class BuscadorGlobalService {
                     })),
                 ),
             },
-            fuente('razas', 'Razas', 'razas', true, () => this.catalogo(this.razas.getRazas(), (r) => this.elemento('razas', 'raza', r))),
-            fuente('clases', 'Clases', 'clases', true, () => this.catalogo(this.clases.getClases(), (c) => this.elemento('clases', tipoRolDeClase(c), c))),
-            fuente('dotes', 'Dotes', 'dotes', true, () => this.catalogo(this.dotes.getDotes(), (d) => this.elemento('dotes', 'dote', d))),
-            fuente('conjuros', 'Conjuros y poderes', 'conjuros', false, () => this.catalogo(this.conjuros.getConjuros(), (c) => this.elemento('conjuros', tipoRolDeConjuro(c), c))),
-            fuente('monstruos', 'Monstruos', 'monstruos', false, () => this.catalogo(this.monstruos.getMonstruos(), (m) => this.elemento('monstruos', 'monstruo', m))),
-            fuente('plantillas', 'Plantillas', 'plantillas', true, () => this.catalogo(this.plantillas.getPlantillas(), (p) => this.elemento('plantillas', 'plantilla', p))),
-            fuente('especiales', 'Especiales', 'especiales', false, () => this.catalogo(this.especiales.getEspeciales(), (e) => this.elemento('especiales', 'especial', e))),
-            fuente('raciales', 'Raciales', 'raciales', false, () => this.catalogo(this.raciales.getRaciales(), (r) => this.elemento('raciales', 'racial', r))),
-            fuente('rasgos', 'Rasgos', 'rasgos', false, () => this.catalogo(this.rasgos.getRasgos(), (r) => this.elemento('rasgos', 'rasgo', r))),
-            fuente('idiomas', 'Idiomas', 'idiomas', false, () => this.catalogo(this.idiomas.getIdiomas(), (i) => this.elemento('idiomas', 'idioma', i))),
-            fuente('ventajas', 'Ventajas y desventajas', 'ventajas', true, () => this.ventajas.getVentajas().pipe(
+            fuente('razas', 'razas', true, () => this.catalogo(this.razas.getRazas(), (r) => this.elemento('razas', 'raza', r))),
+            fuente('clases', 'clases', true, () => this.catalogo(this.clases.getClases(), (c) => this.elemento('clases', tipoRolDeClase(c), c))),
+            fuente('dotes', 'dotes', true, () => this.catalogo(this.dotes.getDotes(), (d) => this.elemento('dotes', 'dote', d))),
+            fuente('conjuros', 'conjuros', false, () => this.catalogo(this.conjuros.getConjuros(), (c) => this.elemento('conjuros', tipoRolDeConjuro(c), c)), 'Conjuros y poderes'),
+            fuente('monstruos', 'monstruos', false, () => this.catalogo(this.monstruos.getMonstruos(), (m) => this.elemento('monstruos', 'monstruo', m))),
+            fuente('plantillas', 'plantillas', true, () => this.catalogo(this.plantillas.getPlantillas(), (p) => this.elemento('plantillas', 'plantilla', p))),
+            fuente('especiales', 'especiales', false, () => this.catalogo(this.especiales.getEspeciales(), (e) => this.elemento('especiales', 'especial', e))),
+            fuente('raciales', 'raciales', false, () => this.catalogo(this.raciales.getRaciales(), (r) => this.elemento('raciales', 'racial', r))),
+            fuente('rasgos', 'rasgos', false, () => this.catalogo(this.rasgos.getRasgos(), (r) => this.elemento('rasgos', 'rasgo', r))),
+            fuente('idiomas', 'idiomas', false, () => this.catalogo(this.idiomas.getIdiomas(), (i) => this.elemento('idiomas', 'idioma', i))),
+            fuente('ventajas', 'ventajas', true, () => this.ventajas.getVentajas().pipe(
                 take(1),
                 switchMap((ventajas) => this.ventajas.getDesventajas().pipe(take(1), map((desventajas) => [...ventajas, ...desventajas]))),
                 map((todas) => this.filas(todas).map((v) => this.elemento('ventajas', tipoRolDeVentaja(v), v, ICONOS_ROL[tipoRolDeVentaja(v)].etiqueta))),
             )),
-            fuente('fusiones', 'Fusiones del alma', 'fusiones del alma', true, () => this.catalogo(this.incarnum.getFusiones(), (f) => this.elemento('fusiones del alma', 'fusion', f))),
-            fuente('chakras', 'Chakras', 'chakras', false, () => this.catalogo(this.incarnum.getChakras(), (c) => this.elemento('chakras', 'chakra', c, ''))),
-            fuente('tipos', 'Tipos de criatura', 'tipos de criatura', false, () => this.catalogo(this.tiposCriatura.getTiposCriatura(), (t) => this.elemento('tipos de criatura', 'tipo-criatura', t))),
-            fuente('subtipos', 'Subtipos', 'subtipos', false, () => this.catalogo(this.subtipos.getSubtipos(), (s) => this.elemento('subtipos', 'subtipo', s))),
-            fuente('deidades', 'Deidades', 'deidades', true, () => this.catalogo(this.deidades.getDeidades(), (d) => this.elemento('deidades', 'deidad', d))),
-            fuente('armas', 'Armas', 'armas', true, () => this.catalogo(this.armas.getArmas(), (a) => this.elemento('armas', 'arma', a))),
-            fuente('armaduras', 'Armaduras y escudos', 'armaduras', true, () => this.catalogo(this.armaduras.getArmaduras(), (a) => this.elemento('armaduras', 'armadura', a))),
-            fuente('municiones', 'Munición', 'munición', true, () => this.catalogo(this.equipo.getMuniciones(), (m) => this.elementoEquipo('municion', 'munición', m))),
-            fuente('materiales', 'Materiales especiales', 'materiales especiales', false, () => this.catalogo(this.equipo.getMateriales(), (m) => this.elementoEquipo('material', 'materiales especiales', m))),
-            fuente('aptitudes', 'Aptitudes de armas y armaduras', 'aptitudes de armas y armaduras', true, () => this.catalogo(this.equipo.getEncantamientos(), (e) => this.elementoEquipo('encantamiento', 'aptitudes de armas y armaduras', e))),
-            fuente('conjuntos', 'Conjuntos de objetos', 'conjuntos de objetos', false, () => this.catalogo(this.equipo.getConjuntos(), (c) => this.elementoEquipo('conjunto', 'conjuntos de objetos', c))),
+            fuente('fusiones', 'fusiones del alma', true, () => this.catalogo(this.incarnum.getFusiones(), (f) => this.elemento('fusiones del alma', 'fusion', f))),
+            fuente('chakras', 'chakras', false, () => this.catalogo(this.incarnum.getChakras(), (c) => this.elemento('chakras', 'chakra', c, ''))),
+            fuente('tipos', 'tipos de criatura', false, () => this.catalogo(this.tiposCriatura.getTiposCriatura(), (t) => this.elemento('tipos de criatura', 'tipo-criatura', t))),
+            fuente('subtipos', 'subtipos', false, () => this.catalogo(this.subtipos.getSubtipos(), (s) => this.elemento('subtipos', 'subtipo', s))),
+            fuente('deidades', 'deidades', true, () => this.catalogo(this.deidades.getDeidades(), (d) => this.elemento('deidades', 'deidad', d))),
+            fuente('armas', 'armas', true, () => this.catalogo(this.armas.getArmas(), (a) => this.elemento('armas', 'arma', a))),
+            fuente('armaduras', 'armaduras', true, () => this.catalogo(this.armaduras.getArmaduras(), (a) => this.elemento('armaduras', 'armadura', a))),
+            fuente('municiones', 'munición', true, () => this.catalogo(this.equipo.getMuniciones(), (m) => this.elementoEquipo('municion', 'munición', m))),
+            fuente('materiales', 'materiales especiales', false, () => this.catalogo(this.equipo.getMateriales(), (m) => this.elementoEquipo('material', 'materiales especiales', m))),
+            fuente('aptitudes', 'aptitudes de armas y armaduras', true, () => this.catalogo(this.equipo.getEncantamientos(), (e) => this.elementoEquipo('encantamiento', 'aptitudes de armas y armaduras', e))),
+            fuente('conjuntos', 'conjuntos de objetos', false, () => this.catalogo(this.equipo.getConjuntos(), (c) => this.elementoEquipo('conjunto', 'conjuntos de objetos', c))),
             {
                 id: 'manuales', titulo: 'Manuales', tipo: 'manual',
                 cargar: () => this.catalogo(this.manuales.getManualesAsociados(), (manual): ElementoBusqueda => ({
@@ -247,10 +235,10 @@ export class BuscadorGlobalService {
 
     /** Las pantallas de la web: cada listado y la ayuda. */
     private pantallas(): ElementoBusqueda[] {
-        const listados = LISTADOS_PANTALLA.map(({ lista, titulo }): ElementoBusqueda => {
+        const listados = Object.entries(LISTADOS_ROL).map(([lista, { tipo, titulo }]): ElementoBusqueda => {
             const nombre = `Lista de ${titulo}`;
             return {
-                clave: `pantalla:${lista}`, tipo: tipoRolDeListado(lista), nombre, subtitulo: 'Listado',
+                clave: `pantalla:${lista}`, tipo, nombre, subtitulo: 'Listado',
                 buscable: textoBuscable(nombre), abrir: () => this.abrirListado(lista),
             };
         });
