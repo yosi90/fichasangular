@@ -31,7 +31,7 @@ import {
     textoVisibilidadEnCampana,
 } from '../user-profile/perfil-acciones';
 import { textoFechaHora } from 'src/app/services/utils/fecha-texto';
-import { toPositiveInt } from 'src/app/services/utils/normalizacion';
+import { enteroEntre, toPositiveInt } from 'src/app/services/utils/normalizacion';
 
 export type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
 export type CampaignWorkspaceTab = 'usuarios' | 'historias';
@@ -1104,33 +1104,21 @@ export class CampanasGestionEstado implements OnDestroy {
     }
 
     private normalizeCampaignMinimumRoll(value: number | null | undefined): number {
-        const parsed = Math.trunc(Number(value));
-        if (!Number.isFinite(parsed))
-            return this.campaignMinimumRollMin;
-        return Math.min(this.campaignMinimumRollMax, Math.max(this.campaignMinimumRollMin, parsed));
+        return enteroEntre(value, this.campaignMinimumRollMin, this.campaignMinimumRollMax, this.campaignMinimumRollMin);
     }
 
     private normalizeCampaignMaxNep(value: number | null | undefined): number | null {
         if (value === null || value === undefined || `${value}`.trim() === '')
             return null;
-        const parsed = Math.trunc(Number(value));
-        if (!Number.isFinite(parsed))
-            return null;
-        return Math.min(this.campaignNepMax, Math.max(this.campaignNepMin, parsed));
+        return enteroEntre(value, this.campaignNepMin, this.campaignNepMax, null);
     }
 
     private normalizeCampaignMaxTables(value: number | null | undefined): number {
-        const parsed = Math.trunc(Number(value));
-        if (!Number.isFinite(parsed))
-            return this.campaignMaxTablesMin;
-        return Math.min(this.campaignMaxTablesMax, Math.max(this.campaignMaxTablesMin, parsed));
+        return enteroEntre(value, this.campaignMaxTablesMin, this.campaignMaxTablesMax, this.campaignMaxTablesMin);
     }
 
     private normalizeCampaignHomebrewLimit(value: number | null | undefined, fallback: number): number {
-        const parsed = Math.trunc(Number(value));
-        if (!Number.isFinite(parsed))
-            return fallback;
-        return Math.min(this.campaignHomebrewSourcesMax, Math.max(fallback, parsed));
+        return enteroEntre(value, fallback, this.campaignHomebrewSourcesMax, fallback);
     }
 
     private validateCampaignName(value: string | null | undefined): string | null {

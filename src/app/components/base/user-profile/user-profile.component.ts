@@ -20,7 +20,7 @@ import { CampanasGestionEstado } from '../campanas-gestion/campanas-gestion.esta
 import { mensajeErrorDeAccion, permitirAccionGuardada, textoRol } from './perfil-acciones';
 import { textoFecha, textoFechaHora } from 'src/app/services/utils/fecha-texto';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
-import { toPositiveInt } from 'src/app/services/utils/normalizacion';
+import { enteroEntre, toPositiveInt } from 'src/app/services/utils/normalizacion';
 
 type IdentityFieldKey = 'displayName' | 'bio' | 'genderIdentity' | 'pronouns';
 type GenderIdentityPreset = 'male' | 'female' | 'hidden' | 'custom';
@@ -426,17 +426,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     private normalizeGeneradorMinimo(value: number): number {
-        const parsed = Math.trunc(Number(value));
-        if (!Number.isFinite(parsed))
-            return 13;
-        return Math.min(13, Math.max(3, parsed));
+        return enteroEntre(value, 3, 13, 13);
     }
 
     private normalizeGeneradorTablas(value: number): number {
-        const parsed = Math.trunc(Number(value));
-        if (!Number.isFinite(parsed))
-            return 3;
-        return Math.min(5, Math.max(1, parsed));
+        return enteroEntre(value, 1, 5, 3);
     }
 
     async solicitarCambioRol(): Promise<void> {

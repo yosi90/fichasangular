@@ -1,4 +1,4 @@
-import { normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toPositiveInt } from './normalizacion';
+import { enteroEntre, normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toPositiveInt } from './normalizacion';
 
 describe('toBoolean', () => {
     it('es sí con true, 1 y los textos de sí, sin distinguir mayúsculas ni espacios alrededor', () => {
@@ -66,5 +66,19 @@ describe('redondearCentesimas', () => {
         expect(redondearCentesimas(0.125)).toBe(0.13);
         expect(redondearCentesimas(Number.NaN)).toBe(0);
         expect(redondearCentesimas(Number.POSITIVE_INFINITY)).toBe(0);
+    });
+});
+
+describe('enteroEntre', () => {
+    it('trunca y lleva el entero a sus límites', () => {
+        expect(enteroEntre(7.9, 3, 13, 13)).toBe(7);
+        expect(enteroEntre('20', 3, 13, 13)).toBe(13);
+        expect(enteroEntre(-4, 1, 5, 3)).toBe(1);
+    });
+
+    it('lo que no es un número da el valor de reserva, sin acotar', () => {
+        expect(enteroEntre('abc', 3, 13, 13)).toBe(13);
+        expect(enteroEntre(undefined, 0, 99, null)).toBeNull();
+        expect(enteroEntre(null, 1, 5, 3)).toBe(1);
     });
 });

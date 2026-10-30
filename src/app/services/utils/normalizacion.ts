@@ -28,6 +28,17 @@ export function toPositiveInt(value: unknown): number | null {
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
+/**
+ * El entero (truncado) que representa `value`, llevado a `[min, max]`; si no es un número finito, `siNoEsNumero` (sin
+ * acotar). Los límites de la política de campaña y del generador de características.
+ */
+export function enteroEntre<F extends number | null>(value: unknown, min: number, max: number, siNoEsNumero: F): number | F {
+    const parsed = Math.trunc(Number(value));
+    if (!Number.isFinite(parsed))
+        return siNoEsNumero;
+    return Math.min(max, Math.max(min, parsed));
+}
+
 /** `value` redondeado a centésimas (los precios en po y los pesos en lb); lo que no es un número finito, 0. */
 export function redondearCentesimas(value: number): number {
     return Math.round((Number.isFinite(value) ? value : 0) * 100) / 100;
