@@ -1,4 +1,5 @@
 import { TipoRol } from './iconos-rol';
+import { enteroEntre } from './normalizacion';
 
 /**
  * Las tiradas sueltas de la pestaña «Dados» (lienzo «Dados: Companion y web», aprobado por el propietario el
@@ -63,14 +64,10 @@ export function reservaVacia(): ReservaDados {
 
 export const TIRADA_VACIA: TiradaPreparada = { reserva: reservaVacia(), bonificador: 0 };
 
-function entre(valor: number, minimo: number, maximo: number): number {
-    return Math.min(maximo, Math.max(minimo, Math.trunc(valor)));
-}
-
 /** Un dado más (o menos, con `cambio` negativo) de ese tipo, entre 0 y 99. */
 export function cambiarDado(tirada: TiradaPreparada, caras: CarasDado, cambio: number): TiradaPreparada {
     const actual = tirada.reserva[caras];
-    const nuevo = entre(actual + cambio, 0, MAXIMO_DADOS_POR_TIPO);
+    const nuevo = enteroEntre(actual + cambio, 0, MAXIMO_DADOS_POR_TIPO, actual);
     if (nuevo === actual)
         return tirada;
     return { ...tirada, reserva: { ...tirada.reserva, [caras]: nuevo } };
@@ -78,7 +75,7 @@ export function cambiarDado(tirada: TiradaPreparada, caras: CarasDado, cambio: n
 
 /** El bonificador más `cambio`, entre −99 y +99. */
 export function cambiarBonificador(tirada: TiradaPreparada, cambio: number): TiradaPreparada {
-    const nuevo = entre(tirada.bonificador + cambio, -MAXIMO_BONIFICADOR, MAXIMO_BONIFICADOR);
+    const nuevo = enteroEntre(tirada.bonificador + cambio, -MAXIMO_BONIFICADOR, MAXIMO_BONIFICADOR, tirada.bonificador);
     return nuevo === tirada.bonificador ? tirada : { ...tirada, bonificador: nuevo };
 }
 
