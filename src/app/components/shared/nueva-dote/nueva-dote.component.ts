@@ -20,6 +20,7 @@ import {
     TIPOS_PRERREQUISITO_SOLO_PLANTILLA,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
+import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { DoteCreateRequest, DoteCreateResponse, DoteHabilidadOtorgadaDto } from 'src/app/interfaces/dotes-api';
 import { Dote } from 'src/app/interfaces/dote';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
@@ -137,13 +138,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         (type) => !this.prerrequisitosSoloClase.has(type) && !TIPOS_PRERREQUISITO_SOLO_PLANTILLA.has(type)
     );
     readonly caracteristicasCatalogo: ExtraSelectorItem[] = [...CATALOGO_CARACTERISTICAS];
-    readonly actitudesCatalogo: ExtraSelectorItem[] = [
-        { id: 1, nombre: 'Legal' },
-        { id: 2, nombre: 'Neutral' },
-        { id: 3, nombre: 'Caótica' },
-        { id: 4, nombre: 'Buena' },
-        { id: 5, nombre: 'Maligna' },
-    ];
+    /** Las actitudes de los prerrequisitos `actitud_requerido`/`actitud_prohibido`, del catálogo (`GET /actitudes`). */
+    actitudesCatalogo: ExtraSelectorItem[] = [];
     @Output() doteCreada = new EventEmitter<CrearDoteEmitPayload>();
     @ViewChild(PrerrequisitoEditorHostComponent) prerrequisitoEditorHost?: PrerrequisitoEditorHostComponent;
 
@@ -271,6 +267,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         private alineamientoSvc: AlineamientoService,
         private tamanoSvc: TamanoService,
         private prerrequisitosTiposSvc: PrerrequisitosTiposService,
+        private razaCatalogosSvc: RazaCatalogosService,
     ) { }
 
     ngOnInit(): void {
@@ -285,6 +282,16 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         this.userSvc.isLoggedIn$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => this.recalcularPermisos());
+
+        this.razaCatalogosSvc.getActitudes()
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+                next: (actitudes) => this.actitudesCatalogo = (actitudes ?? [])
+                    .map((item) => ({ id: toInt(item?.Id, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
+                    .filter((item) => item.id > 0 && item.nombre.length > 0)
+                    .sort((a, b) => compararTexto(a.nombre, b.nombre)),
+                error: () => this.actitudesCatalogo = [],
+            });
 
         this.doteSvc.getDotes()
             .pipe(takeUntil(this.destroy$))

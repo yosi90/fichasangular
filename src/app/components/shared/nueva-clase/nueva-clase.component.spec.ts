@@ -1,4 +1,5 @@
 import { FormBuilder } from '@angular/forms';
+import { of } from 'rxjs';
 import { Clase } from 'src/app/interfaces/clase';
 import { normalizeClase } from 'src/app/services/clase.service';
 import { NuevaClaseComponent } from './nueva-clase.component';
@@ -6,10 +7,10 @@ import { NuevaClaseComponent } from './nueva-clase.component';
 // El `PUT /clases` deja vacío lo que no viene (guía `docs/publica/CLASES_PROPIAS_FRONT.md`): el editor reenvía lo que no
 // edita (la lista de conjuros, el libro y el divisor) y manda los campos de las clases propias.
 
-function crearEditor(): NuevaClaseComponent {
-    // Sin `ngOnInit`: no se cargan catálogos; los servicios no se usan.
+function crearEditor(razaCatalogosSvc: any = {}): NuevaClaseComponent {
+    // Sin `ngOnInit`: no se cargan catálogos; los servicios no se usan (el último, `RazaCatalogosService`, el de las actitudes).
     const servicios = Array.from({ length: 23 }, () => ({}) as any);
-    const editor: NuevaClaseComponent = new (NuevaClaseComponent as any)(new FormBuilder(), ...servicios);
+    const editor: NuevaClaseComponent = new (NuevaClaseComponent as any)(new FormBuilder(), ...servicios, razaCatalogosSvc);
     editor.modo = 'editar';
     return editor;
 }
@@ -80,5 +81,23 @@ describe('NuevaClaseComponent (lo que manda al guardar)', () => {
         expect(conjuros.Nivel_lanzador_divisor).toBe(1);
         expect(conjuros.Listado_por_especial).toEqual([]);
         expect(conjuros.Niveles_con_requisito).toEqual([]);
+    });
+});
+
+describe('NuevaClaseComponent (catálogos de los prerrequisitos)', () => {
+    it('las actitudes salen del catálogo (`GET /actitudes`), no de una lista escrita en el código', () => {
+        const editor = crearEditor({ getActitudes: () => of([
+            { Id: 1, Nombre: 'Legal' }, { Id: 2, Nombre: 'Neutral' }, { Id: 3, Nombre: 'Caótico' },
+            { Id: 4, Nombre: 'Bueno' }, { Id: 5, Nombre: 'Maligno' },
+        ]) });
+        expect((editor as any).getCatalogoPrerrequisito('actitud_requerido')).toEqual([]);
+
+        (editor as any).cargarActitudes();
+
+        expect((editor as any).getCatalogoPrerrequisito('actitud_requerido')).toEqual([
+            { id: 4, nombre: 'Bueno' }, { id: 3, nombre: 'Caótico' }, { id: 1, nombre: 'Legal' },
+            { id: 5, nombre: 'Maligno' }, { id: 2, nombre: 'Neutral' },
+        ]);
+        expect((editor as any).getCatalogoPrerrequisito('actitud_prohibido')).toBe(editor.actitudesCatalogo);
     });
 });

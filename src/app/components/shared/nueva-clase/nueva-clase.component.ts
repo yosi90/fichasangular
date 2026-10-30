@@ -36,6 +36,7 @@ import {
     TIPOS_PRERREQUISITO_SOLO_PLANTILLA,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
+import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
@@ -238,13 +239,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         { id: 2, nombre: 'Femenino' },
         { id: 3, nombre: 'Otro' },
     ];
-    readonly actitudesCatalogo: PrerequisiteCatalogItem[] = [
-        { id: 1, nombre: 'Legal' },
-        { id: 2, nombre: 'Neutral' },
-        { id: 3, nombre: 'Caotica' },
-        { id: 4, nombre: 'Buena' },
-        { id: 5, nombre: 'Maligna' },
-    ];
+    /** Las actitudes de los prerrequisitos `actitud_requerido`/`actitud_prohibido`, del catálogo (`GET /actitudes`). */
+    actitudesCatalogo: PrerequisiteCatalogItem[] = [];
 
     private catalogosPrerrequisito: Record<string, PrerequisiteCatalogItem[]> = {
         alineamientos: [],
@@ -345,6 +341,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         private tamanoSvc: TamanoService,
         private tipoCriaturaSvc: TipoCriaturaService,
         private prerrequisitosTiposSvc: PrerrequisitosTiposService,
+        private razaCatalogosSvc: RazaCatalogosService,
     ) { }
 
     ngOnInit(): void {
@@ -1123,6 +1120,13 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         return out;
     }
 
+    private cargarActitudes(): void {
+        this.razaCatalogosSvc.getActitudes().pipe(takeUntil(this.destroy$)).subscribe({
+            next: (items) => this.actitudesCatalogo = this.toCatalog(items, 'Id', 'Nombre'),
+            error: () => this.actitudesCatalogo = [],
+        });
+    }
+
     private cargarCatalogosBase(): void {
         this.claseSvc.getCatalogosProgresion().pipe(takeUntil(this.destroy$)).subscribe({
             next: (catalogos) => {
@@ -1139,6 +1143,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
             },
         });
         this.manualSvc.getManuales().pipe(takeUntil(this.destroy$)).subscribe((items) => this.manuales = this.ordenar(items ?? []));
+        this.cargarActitudes();
         this.claseSvc.getClases().pipe(takeUntil(this.destroy$)).subscribe((items) => {
             this.clasesCatalogo = this.ordenar(items ?? []);
             this.catalogosPrerrequisito['clases'] = this.toCatalog(items, 'Id', 'Nombre');

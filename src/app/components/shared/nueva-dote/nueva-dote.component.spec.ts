@@ -35,6 +35,7 @@ import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { AptitudEspecialService } from 'src/app/services/aptitud-especial.service';
+import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { NuevaDoteComponent } from './nueva-dote.component';
 
 describe('NuevaDoteComponent', () => {
@@ -166,6 +167,11 @@ describe('NuevaDoteComponent', () => {
                     { Id: 2, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0 },
                     { Id: 3, Nombre: 'Grande', Modificador: -1, Modificador_presa: 4 },
                 ]) } },
+                // `GET /actitudes`, tal como lo da la API de desarrollo.
+                { provide: RazaCatalogosService, useValue: { getActitudes: () => of([
+                    { Id: 1, Nombre: 'Legal' }, { Id: 2, Nombre: 'Neutral' }, { Id: 3, Nombre: 'Caótico' },
+                    { Id: 4, Nombre: 'Bueno' }, { Id: 5, Nombre: 'Maligno' },
+                ]) } },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -187,6 +193,14 @@ describe('NuevaDoteComponent', () => {
         expect(component.tiposDote[0]).toEqual({ Id: 0, Nombre: 'Sin tipo secundario' });
         expect(component.tiposPrimarios.some((tipo) => tipo.Id === 0)).toBeFalse();
         expect(component.form.controls.id_tipo2.value).toBe(0);
+    });
+
+    it('las actitudes de los prerrequisitos salen del catálogo, no de una lista escrita en el código', () => {
+        expect(component.getCatalogoPrerrequisito('actitud_requerido')).toEqual([
+            { id: 4, nombre: 'Bueno' }, { id: 3, nombre: 'Caótico' }, { id: 1, nombre: 'Legal' },
+            { id: 5, nombre: 'Maligno' }, { id: 2, nombre: 'Neutral' },
+        ]);
+        expect(component.getCatalogoPrerrequisito('actitud_prohibido')).toBe(component.actitudesCatalogo);
     });
 
     it('detecta nombre duplicado normalizado', () => {
