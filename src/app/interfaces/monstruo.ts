@@ -6,6 +6,7 @@ import { DoteContextual } from "./dote-contextual";
 import { EspecialClaseDetalle } from "./especial";
 import { IdiomaDetalle } from "./idioma";
 import { Maniobrabilidad } from "./maniobrabilidad";
+import { Movimientos } from "./movimientos";
 import { RacialDetalle } from "./racial";
 import { Tamano } from "./tamaño";
 
@@ -35,14 +36,6 @@ export interface MonstruoDadosGolpe {
     Cantidad: string;
     Tipo_dado: MonstruoTipoDadoRef;
     Suma: number;
-}
-
-export interface MonstruoMovimientos {
-    Correr: number;
-    Nadar: number;
-    Volar: number;
-    Trepar: number;
-    Excavar: number;
 }
 
 export interface MonstruoDefensa {
@@ -160,7 +153,7 @@ export interface MonstruoDetalle {
     Tipo: MonstruoTipoRef;
     Tamano: Tamano;
     Dados_golpe: MonstruoDadosGolpe;
-    Movimientos: MonstruoMovimientos;
+    Movimientos: Movimientos;
     Maniobrabilidad: Maniobrabilidad;
     Alineamiento: Alineamiento;
     Iniciativa: number;

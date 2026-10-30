@@ -4,6 +4,7 @@ import { Comodin } from "./comodin";
 import { Conjuro } from "./conjuro";
 import { DoteContextual } from "./dote-contextual";
 import { Maniobrabilidad } from "./maniobrabilidad";
+import { Movimientos } from "./movimientos";
 import { RacialDetalle } from "./racial";
 import { SubtipoRef } from "./subtipo";
 import { Tamano } from "./tamaño";
@@ -40,14 +41,6 @@ export interface PlantillaLicantroniaDg {
 export interface PlantillaPuntosHabilidad {
     Suma: number;
     Suma_fija: number;
-}
-
-export interface PlantillaMovimientos {
-    Correr: number;
-    Nadar: number;
-    Volar: number;
-    Trepar: number;
-    Excavar: number;
 }
 
 export interface PlantillaHabilidadRef {
@@ -162,7 +155,7 @@ export interface Plantilla {
     Cd: number;
     Puntos_habilidad: PlantillaPuntosHabilidad;
     Nacimiento: boolean;
-    Movimientos: PlantillaMovimientos;
+    Movimientos: Movimientos;
     Maniobrabilidad: Maniobrabilidad;
     Alineamiento: Alineamiento;
     /** Lo que dice el manual de la criatura con la plantilla; `null` si no lo da (desde el 2026-10-29). */

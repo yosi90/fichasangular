@@ -1,6 +1,7 @@
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
+import { Movimientos } from 'src/app/interfaces/movimientos';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
@@ -107,20 +108,11 @@ export function textoPies(valor: unknown): string | null {
     return tieneNumeroVisible(valor) ? `${Number(valor)}'` : null;
 }
 
-/** Los movimientos de una criatura, en pies. */
-interface MovimientosCriatura {
-    Correr: number;
-    Nadar: number;
-    Volar: number;
-    Trepar: number;
-    Excavar: number;
-}
-
 /**
  * Los movimientos como en la franja de una criatura: «40'», «nadar 30'», «volar 80' (buena)». El primero es la velocidad
  * base y el resto, sus otros movimientos. La maniobrabilidad (su nombre, o nada si no se enseña) va con el vuelo.
  */
-export function textosMovimiento(movimientos: MovimientosCriatura | null | undefined, maniobrabilidad: string | null | undefined): string[] {
+export function textosMovimiento(movimientos: Movimientos | null | undefined, maniobrabilidad: string | null | undefined): string[] {
     const vuelo = tieneTextoVisible(maniobrabilidad) ? ` (${`${maniobrabilidad}`.trim().toLowerCase()})` : '';
     return [
         { nombre: '', valor: toNumber(movimientos?.Correr) },
@@ -139,7 +131,7 @@ export function textosMovimiento(movimientos: MovimientosCriatura | null | undef
  * reglas.
  */
 export function datoFranjaVelocidad(
-    movimientos: MovimientosCriatura | null | undefined,
+    movimientos: Movimientos | null | undefined,
     vuelo: { maniobrabilidad: string | null | undefined; abrirReglas: (evento: Event) => void; } | null,
 ): DatoFranja {
     const textos = textosMovimiento(movimientos, vuelo?.maniobrabilidad);
@@ -155,7 +147,7 @@ export function datoFranjaVelocidad(
  * Los datos de la sección «Movimiento»: cada movimiento que tiene (en pies) y la maniobrabilidad, que la API da a
  * `null` sin vuelo.
  */
-export function datosMovimiento(movimientos: MovimientosCriatura | null | undefined, maniobrabilidad: string | null | undefined): DatoFicha[] {
+export function datosMovimiento(movimientos: Movimientos | null | undefined, maniobrabilidad: string | null | undefined): DatoFicha[] {
     return datosVisibles([
         { etiqueta: 'Correr', valor: textoPies(movimientos?.Correr) },
         { etiqueta: 'Nadar', valor: textoPies(movimientos?.Nadar) },
