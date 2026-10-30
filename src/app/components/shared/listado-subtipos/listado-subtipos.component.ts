@@ -7,7 +7,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
-import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { textosDistintos } from 'src/app/services/utils/orden-texto';
 import { Subscription } from 'rxjs';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
@@ -58,7 +58,7 @@ export class ListadoSubtiposComponent implements OnDestroy, ListadoBuscable {
         this.catalogoSub = this.subtipoSvc.getSubtipos().subscribe({
             next: (subtipos) => {
                 this.subtipos = subtipos ?? [];
-                this.manuales = this.buildManualesDisponibles(this.subtipos);
+                this.manuales = textosDistintos(this.subtipos, (subtipo) => subtipo?.Manual?.Nombre);
                 this.defaultManual = 'Cualquiera';
                 this.cargado = true;
                 this.cdr.detectChanges();
@@ -146,14 +146,6 @@ export class ListadoSubtiposComponent implements OnDestroy, ListadoBuscable {
             id: subtipo?.Manual?.Id,
             nombre: subtipo?.Manual?.Nombre,
         });
-    }
-
-    private buildManualesDisponibles(subtipos: SubtipoResumen[]): string[] {
-        return Array.from(new Set(
-            (subtipos ?? [])
-                .map((subtipo) => `${subtipo?.Manual?.Nombre ?? ''}`.trim())
-                .filter((nombre) => nombre.length > 0)
-        )).sort(compararTexto);
     }
 
 }

@@ -8,7 +8,7 @@ import { DeidadService } from 'src/app/services/deidad.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
-import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { porNombre, textosDistintos } from 'src/app/services/utils/orden-texto';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
@@ -63,7 +63,7 @@ export class ListadoDeidadesComponent implements OnDestroy, ListadoBuscable {
                     this.deidades = [...(deidades ?? [])]
                         .filter((deidad) => Number(deidad?.Id) > 0)
                         .sort(porNombre);
-                    this.manuales = this.buildManualesDisponibles(this.deidades);
+                    this.manuales = textosDistintos(this.deidades, (deidad) => deidad?.Manual?.Nombre);
                     this.defaultManual = 'Cualquiera';
                     this.defaultAlineamiento = 'Cualquiera';
                     this.defaultPabellon = 'Cualquiera';
@@ -106,19 +106,11 @@ export class ListadoDeidadesComponent implements OnDestroy, ListadoBuscable {
     }
 
     get alineamientos(): string[] {
-        return ['Cualquiera', ...Array.from(new Set(
-            this.deidades
-                .map((deidad) => `${deidad?.Alineamiento?.Nombre ?? ''}`.trim())
-                .filter((value) => value.length > 0)
-        )).sort(compararTexto)];
+        return ['Cualquiera', ...textosDistintos(this.deidades, (deidad) => deidad?.Alineamiento?.Nombre)];
     }
 
     get pabellones(): string[] {
-        return ['Cualquiera', ...Array.from(new Set(
-            this.deidades
-                .map((deidad) => `${deidad?.Pabellon?.Nombre ?? ''}`.trim())
-                .filter((value) => value.length > 0)
-        )).sort(compararTexto)];
+        return ['Cualquiera', ...textosDistintos(this.deidades, (deidad) => deidad?.Pabellon?.Nombre)];
     }
 
     get anuncioHomebrew(): string {
@@ -195,14 +187,6 @@ export class ListadoDeidadesComponent implements OnDestroy, ListadoBuscable {
         if (property === 'Alineamiento')
             return `${item?.Alineamiento?.Nombre ?? ''}`;
         return (item as any)?.[property] ?? '';
-    }
-
-    private buildManualesDisponibles(deidades: DeidadDetalle[]): string[] {
-        return Array.from(new Set(
-            (deidades ?? [])
-                .map((deidad) => `${deidad?.Manual?.Nombre ?? ''}`.trim())
-                .filter((nombre) => nombre.length > 0)
-        )).sort(compararTexto);
     }
 
 }

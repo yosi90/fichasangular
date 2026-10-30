@@ -8,7 +8,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { RazaService } from 'src/app/services/raza.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
-import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { compararTexto, textosDistintos } from 'src/app/services/utils/orden-texto';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { nombreOriginalVisible } from 'src/app/components/detalles/ficha/ficha';
@@ -63,7 +63,7 @@ export class ListadoRazasComponent implements OnDestroy, ListadoBuscable {
         this.catalogosSub = this.rSvc.getRazas().subscribe({
             next: (razas) => {
                 this.razas = (razas ?? []).map((raza) => this.normalizarRaza(raza));
-                this.Manuales = this.buildManualesDisponibles(this.razas);
+                this.Manuales = textosDistintos(this.razas, (raza) => raza?.Manual);
                 this.defaultManual = 'Cualquiera';
                 this.cargado = true;
                 this.sincronizarColumnaHomebrew();
@@ -261,13 +261,5 @@ export class ListadoRazasComponent implements OnDestroy, ListadoBuscable {
         event?.preventDefault();
         event?.stopPropagation();
         this.manualDetalleNavSvc.abrirDetalleManual(raza?.Manual);
-    }
-
-    private buildManualesDisponibles(razas: Raza[]): string[] {
-        return Array.from(new Set(
-            (razas ?? [])
-                .map((raza) => `${raza?.Manual ?? ''}`.trim())
-                .filter((nombre) => nombre.length > 0)
-        )).sort(compararTexto);
     }
 }

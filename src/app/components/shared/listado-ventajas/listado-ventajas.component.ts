@@ -8,7 +8,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
-import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { porNombre, textosDistintos } from 'src/app/services/utils/orden-texto';
 import { TipoRol, tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
@@ -70,11 +70,7 @@ export class ListadoVentajasComponent implements OnDestroy, ListadoBuscable {
                     this.ventajas = [...listadoVentajas, ...listadoDesventajas]
                         .sort(porNombre);
 
-                    this.manuales = Array.from(new Set(
-                        this.ventajas
-                            .map((v) => `${v.Manual?.Nombre ?? ''}`.trim())
-                            .filter((nombre) => nombre.length > 0)
-                    )).sort(compararTexto);
+                    this.manuales = textosDistintos(this.ventajas, (v) => v.Manual?.Nombre);
 
                     this.cargado = true;
                     this.filtroVentajas();

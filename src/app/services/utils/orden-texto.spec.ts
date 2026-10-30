@@ -1,4 +1,4 @@
-import { compararTexto, porNombre } from './orden-texto';
+import { compararTexto, porNombre, textosDistintos } from './orden-texto';
 
 describe('compararTexto', () => {
     it('ordena en español sin distinguir tildes ni mayúsculas', () => {
@@ -24,5 +24,16 @@ describe('porNombre', () => {
     it('ordena por Nombre', () => {
         const lista = [{ Nombre: 'Orco' }, { Nombre: 'élfico' }, { Nombre: 'Enano' }, { Nombre: null }];
         expect(lista.sort(porNombre).map((x) => x.Nombre)).toEqual([null, 'élfico', 'Enano', 'Orco']);
+    });
+});
+
+describe('textosDistintos', () => {
+    it('da los textos recortados, sin vacíos ni repetidos, en el orden de compararTexto', () => {
+        const lista = [{ M: ' Manual del jugador ' }, { M: 'Ármas' }, { M: null }, { M: '' }, { M: 'Manual del jugador' }, { M: 'alfa' }];
+        expect(textosDistintos(lista, (x) => x.M)).toEqual(['alfa', 'Ármas', 'Manual del jugador']);
+    });
+
+    it('sin lista, ninguno', () => {
+        expect(textosDistintos(null, (x: unknown) => x)).toEqual([]);
     });
 });

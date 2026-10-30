@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, 
 import { Dote } from 'src/app/interfaces/dote';
 import { DoteSeleccionConfirmada, DoteSelectorCandidato, DotePendienteState } from 'src/app/services/nuevo-personaje.service';
 import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
-import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { compararTexto, textosDistintos } from 'src/app/services/utils/orden-texto';
 
 @Component({
     selector: 'app-selector-dotes-modal',
@@ -179,7 +179,7 @@ export class SelectorDotesModalComponent implements OnChanges {
     }
 
     private refreshViewModel(): void {
-        this.manualesDisponibles = this.buildManualesDisponibles();
+        this.manualesDisponibles = ['Cualquiera', ...textosDistintos(this.candidatos, (candidato) => candidato?.dote?.Manual?.Nombre)];
         this.tiposDisponibles = this.buildTiposDisponibles();
         if (!this.manualesDisponibles.includes(this.filtroManual))
             this.filtroManual = 'Cualquiera';
@@ -257,13 +257,6 @@ export class SelectorDotesModalComponent implements OnChanges {
             return true;
 
         return this.extrasCandidatoSeleccionado.some((extra) => toNumber(extra?.Id) === toNumber(this.idExtraSeleccionado));
-    }
-
-    private buildManualesDisponibles(): string[] {
-        const base = (this.candidatos ?? [])
-            .map((candidato) => `${candidato?.dote?.Manual?.Nombre ?? ''}`.trim())
-            .filter((nombre) => nombre.length > 0);
-        return ['Cualquiera', ...Array.from(new Set(base)).sort(compararTexto)];
     }
 
     private buildTiposDisponibles(): string[] {

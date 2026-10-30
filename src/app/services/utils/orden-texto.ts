@@ -11,6 +11,18 @@ export function compararTexto(a: unknown, b: unknown): number {
     return COMPARADOR_TEXTO.compare(`${a ?? ''}`, `${b ?? ''}`);
 }
 
+/**
+ * Los textos distintos que da `valor` en una lista, recortados, sin vacíos y en el orden de `compararTexto`: las
+ * opciones de un filtro de listado (los manuales, los tipos de arma, los pabellones…). Es la única copia.
+ */
+export function textosDistintos<T>(lista: readonly T[] | null | undefined, valor: (item: T) => unknown): string[] {
+    return Array.from(new Set(
+        (lista ?? [])
+            .map((item) => `${valor(item) ?? ''}`.trim())
+            .filter((texto) => texto.length > 0)
+    )).sort(compararTexto);
+}
+
 /** Ordena por `Nombre` con `compararTexto`: el orden de los catálogos. */
 export function porNombre(a: { Nombre?: string | null }, b: { Nombre?: string | null }): number {
     return compararTexto(a?.Nombre, b?.Nombre);

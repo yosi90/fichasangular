@@ -8,7 +8,7 @@ import { ArmaService } from 'src/app/services/arma.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
-import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { porNombre, textosDistintos } from 'src/app/services/utils/orden-texto';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
@@ -62,7 +62,7 @@ export class ListadoArmasComponent implements OnDestroy, ListadoBuscable {
                     this.armas = [...(armas ?? [])]
                         .filter(arma => Number(arma?.Id) > 0)
                         .sort(porNombre);
-                    this.manuales = this.buildManualesDisponibles(this.armas);
+                    this.manuales = textosDistintos(this.armas, (arma) => arma?.Manual?.Nombre);
                     this.defaultManual = 'Cualquiera';
                     this.defaultTipoArma = 'Cualquiera';
                     this.cargado = true;
@@ -103,11 +103,7 @@ export class ListadoArmasComponent implements OnDestroy, ListadoBuscable {
     }
 
     get tiposArma(): string[] {
-        return ['Cualquiera', ...Array.from(new Set(
-            this.armas
-                .map((arma) => `${arma?.Tipo_arma?.Nombre ?? ''}`.trim())
-                .filter((value) => value.length > 0)
-        )).sort(compararTexto)];
+        return ['Cualquiera', ...textosDistintos(this.armas, (arma) => arma?.Tipo_arma?.Nombre)];
     }
 
     get anuncioHomebrew(): string {
@@ -182,14 +178,6 @@ export class ListadoArmasComponent implements OnDestroy, ListadoBuscable {
         if (property === 'Tipo_dano')
             return `${item?.Tipo_dano?.Nombre ?? ''}`;
         return (item as any)?.[property] ?? '';
-    }
-
-    private buildManualesDisponibles(armas: ArmaDetalle[]): string[] {
-        return Array.from(new Set(
-            (armas ?? [])
-                .map((arma) => `${arma?.Manual?.Nombre ?? ''}`.trim())
-                .filter((nombre) => nombre.length > 0)
-        )).sort(compararTexto);
     }
 
 }

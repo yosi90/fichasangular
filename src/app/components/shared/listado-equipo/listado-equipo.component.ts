@@ -16,7 +16,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { formatoNumero, textoAplicaA, textoConSigno, textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
-import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { textosDistintos } from 'src/app/services/utils/orden-texto';
 import { TipoRol, tipoRolDeEquipo, tituloListado } from 'src/app/services/utils/iconos-rol';
 import { nombreOriginalVisible } from 'src/app/components/detalles/ficha/ficha';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
@@ -156,9 +156,7 @@ export class ListadoEquipoComponent implements AfterViewInit, OnDestroy, Listado
         this.suscripcion = this.configuracion.cargar(this.equipoSvc).subscribe({
             next: (items) => {
                 this.items = [...(items ?? [])];
-                this.manuales = Array.from(new Set(this.items
-                    .map((item) => `${item.Manual?.Nombre ?? ''}`.trim())
-                    .filter((nombre) => nombre.length > 0))).sort(compararTexto);
+                this.manuales = textosDistintos(this.items, (item) => item.Manual?.Nombre);
                 this.cargado = true;
                 this.filtrar();
                 this.cdr.detectChanges();

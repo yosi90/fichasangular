@@ -8,7 +8,7 @@ import { ConjuroService } from 'src/app/services/conjuro.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
-import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { textosDistintos } from 'src/app/services/utils/orden-texto';
 import { TipoRol, tipoRolDeConjuro } from 'src/app/services/utils/iconos-rol';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
@@ -65,7 +65,7 @@ export class ListadoConjurosComponent implements OnDestroy, ListadoBuscable {
         this.catalogoSub = this.cSvc.getConjuros().subscribe({
             next: (conjuros) => {
                 this.conjuros = conjuros ?? [];
-                this.Manuales = this.buildManualesDisponibles(this.conjuros);
+                this.Manuales = textosDistintos(this.conjuros, (conjuro) => conjuro?.Manual);
                 this.defaultManual = 'Cualquiera';
                 this.cargado = true;
                 this.cdr.detectChanges();
@@ -149,13 +149,5 @@ export class ListadoConjurosComponent implements OnDestroy, ListadoBuscable {
         event?.preventDefault();
         event?.stopPropagation();
         this.manualDetalleNavSvc.abrirDetalleManual(conjuro?.Manual);
-    }
-
-    private buildManualesDisponibles(conjuros: Conjuro[]): string[] {
-        return Array.from(new Set(
-            (conjuros ?? [])
-                .map((conjuro) => `${conjuro?.Manual ?? ''}`.trim())
-                .filter((nombre) => nombre.length > 0)
-        )).sort(compararTexto);
     }
 }

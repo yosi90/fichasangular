@@ -9,7 +9,7 @@ import { IncarnumService } from 'src/app/services/incarnum.service';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
-import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { textosDistintos } from 'src/app/services/utils/orden-texto';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 /** Una fila del catálogo de fusiones, con lo que enseña cada columna. */
@@ -118,12 +118,11 @@ export class ListadoFusionesComponent implements OnDestroy, ListadoBuscable {
         const ordenChakras = new Map(chakras.map((chakra) => [chakra.Id, chakra.Orden]));
         this.fusiones = fusiones;
         this.filas = fusiones.map((fusion) => filaFusion(fusion, ordenChakras));
-        const unicos = (valores: string[]) => Array.from(new Set(valores.filter((v) => `${v ?? ''}`.trim().length > 0)));
-        this.clases = [CUALQUIERA, ...unicos(fusiones.flatMap((f) => f.Clases.map((c) => c.Nombre))).sort(compararTexto)];
+        this.clases = [CUALQUIERA, ...textosDistintos(fusiones.flatMap((f) => f.Clases), (c) => c.Nombre)];
         const enFusiones = new Set(fusiones.flatMap((f) => f.Chakras.map((c) => c.Id)));
         this.chakras = [CUALQUIERA, ...chakras.filter((chakra) => enFusiones.has(chakra.Id)).map((chakra) => chakra.Nombre)];
-        this.descriptores = [CUALQUIERA, ...unicos(fusiones.flatMap((f) => f.Descriptores.map((d) => d.Nombre))).sort(compararTexto)];
-        this.manuales = unicos(fusiones.map((f) => f.Manual?.Nombre ?? '')).sort(compararTexto);
+        this.descriptores = [CUALQUIERA, ...textosDistintos(fusiones.flatMap((f) => f.Descriptores), (d) => d.Nombre)];
+        this.manuales = textosDistintos(fusiones, (f) => f.Manual?.Nombre);
         this.filtroFusiones();
     }
 

@@ -8,7 +8,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { MonstruoService } from 'src/app/services/monstruo.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
-import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { porNombre, textosDistintos } from 'src/app/services/utils/orden-texto';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
@@ -61,7 +61,7 @@ export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
                     this.monstruos = [...(monstruos ?? [])]
                         .filter(monstruo => toNumber(monstruo?.Id) > 0)
                         .sort(porNombre);
-                    this.Manuales = this.buildManualesDisponibles(this.monstruos);
+                    this.Manuales = textosDistintos(this.monstruos, (monstruo) => this.getManualNombre(monstruo));
                     this.defaultManual = 'Cualquiera';
                     this.cargado = true;
                     this.sincronizarColumnaHomebrew();
@@ -188,14 +188,6 @@ export class ListadoMonstruosComponent implements OnDestroy, ListadoBuscable {
 
     private getManualNombre(monstruo: MonstruoDetalle): string {
         return `${monstruo?.Manual?.Nombre ?? ''}`.trim();
-    }
-
-    private buildManualesDisponibles(monstruos: MonstruoDetalle[]): string[] {
-        return Array.from(new Set(
-            (monstruos ?? [])
-                .map((monstruo) => this.getManualNombre(monstruo))
-                .filter((nombre) => nombre.length > 0)
-        )).sort(compararTexto);
     }
 
 }

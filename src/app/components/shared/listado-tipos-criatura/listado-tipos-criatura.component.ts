@@ -7,7 +7,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
-import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { textosDistintos } from 'src/app/services/utils/orden-texto';
 import { esFilaComodin } from 'src/app/services/utils/comodin';
 import { Subscription } from 'rxjs';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
@@ -60,7 +60,7 @@ export class ListadoTiposCriaturaComponent implements OnDestroy, ListadoBuscable
             next: (tipos) => {
                 // El tipo 0, «Cualquiera», es un comodín de los prerrequisitos y los editores: aquí no se lista.
                 this.tipos = (tipos ?? []).filter(t => !esFilaComodin(t));
-                this.Manuales = this.buildManualesDisponibles(this.tipos);
+                this.Manuales = textosDistintos(this.tipos, (tipo) => tipo?.Manual);
                 this.defaultManual = 'Cualquiera';
                 this.cargado = true;
                 this.cdr.detectChanges();
@@ -139,13 +139,5 @@ export class ListadoTiposCriaturaComponent implements OnDestroy, ListadoBuscable
         event?.preventDefault();
         event?.stopPropagation();
         this.manualDetalleNavSvc.abrirDetalleManual(tipo?.Manual);
-    }
-
-    private buildManualesDisponibles(tipos: TipoCriatura[]): string[] {
-        return Array.from(new Set(
-            (tipos ?? [])
-                .map((tipo) => `${tipo?.Manual ?? ''}`.trim())
-                .filter((nombre) => nombre.length > 0)
-        )).sort(compararTexto);
     }
 }

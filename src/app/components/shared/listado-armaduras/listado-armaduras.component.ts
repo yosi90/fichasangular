@@ -9,7 +9,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { categoriaArmadura, textoDestrezaMaxima } from 'src/app/services/utils/equipo-texto';
-import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
+import { porNombre, textosDistintos } from 'src/app/services/utils/orden-texto';
 import { ListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
 
 @Component({
@@ -64,7 +64,7 @@ export class ListadoArmadurasComponent implements OnDestroy, ListadoBuscable {
                     this.armaduras = [...(armaduras ?? [])]
                         .filter(armadura => Number(armadura?.Id) > 0)
                         .sort(porNombre);
-                    this.manuales = this.buildManualesDisponibles(this.armaduras);
+                    this.manuales = textosDistintos(this.armaduras, (armadura) => armadura?.Manual?.Nombre);
                     this.defaultManual = 'Cualquiera';
                     this.defaultTipoArmadura = 'Cualquiera';
                     this.cargado = true;
@@ -106,11 +106,7 @@ export class ListadoArmadurasComponent implements OnDestroy, ListadoBuscable {
     }
 
     get tiposArmadura(): string[] {
-        return ['Cualquiera', ...Array.from(new Set(
-            this.armaduras
-                .map((armadura) => categoriaArmadura(armadura))
-                .filter((value) => value.length > 0)
-        )).sort(compararTexto)];
+        return ['Cualquiera', ...textosDistintos(this.armaduras, categoriaArmadura)];
     }
 
     get anuncioHomebrew(): string {
@@ -199,14 +195,6 @@ export class ListadoArmadurasComponent implements OnDestroy, ListadoBuscable {
         if (property === 'Bon_des')
             return item?.Bon_des ?? Number.MAX_SAFE_INTEGER;
         return (item as any)?.[property] ?? '';
-    }
-
-    private buildManualesDisponibles(armaduras: ArmaduraDetalle[]): string[] {
-        return Array.from(new Set(
-            (armaduras ?? [])
-                .map((armadura) => `${armadura?.Manual?.Nombre ?? ''}`.trim())
-                .filter((nombre) => nombre.length > 0)
-        )).sort(compararTexto);
     }
 
 }
