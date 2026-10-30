@@ -39,6 +39,13 @@
         <mat-icon>help_center</mat-icon>
         <span class="ribbon-trigger__sr-only">Ayuda</span>
     </button>
+    <!-- La búsqueda global (lienzo, vista 5): también con Ctrl+K o ⌘K desde cualquier pantalla. -->
+    <button type="button" class="ribbon-buscar" (click)="abrirBuscador()" [attr.aria-keyshortcuts]="atajoBuscar === '⌘K' ? 'Meta+K' : 'Control+K'"
+        [matTooltip]="'Buscar en Rol (' + atajoBuscar + ')'">
+        <mat-icon aria-hidden="true">search</mat-icon>
+        <span class="ribbon-buscar__texto">Buscar</span>
+        <kbd class="ribbon-buscar__atajo">{{atajoBuscar}}</kbd>
+    </button>
     <div class="ribbon-spacer" aria-hidden="true"></div>
     <!-- El centro de notificaciones de Yosiftware (ecosistema-kit/NOTIFICACIONES.md): sin sesión no enseña nada. -->
     <yosi-notificaciones class="ribbon-notificaciones" (yosi-notificacion-abrir)="onNotificacionAbrir($event)"></yosi-notificaciones>

@@ -11,6 +11,7 @@ import { PlatformSessionService } from 'src/app/services/platform-session.servic
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
+import { BuscadorGlobalVentanaService } from '../../shared/buscador-global/buscador-global.component';
 
 @Component({
     selector: 'app-navbar',
@@ -43,7 +44,15 @@ export class NavbarComponent implements OnInit, OnDestroy {
         private platformSessionSvc: PlatformSessionService,
         private usrService: UserService,
         private userProfileNavSvc: UserProfileNavigationService,
+        private buscadorGlobal?: BuscadorGlobalVentanaService,
     ) { }
+
+    /** El atajo de la búsqueda global, como se escribe en este equipo. */
+    readonly atajoBuscar = /mac|iphone|ipad/i.test(typeof navigator !== 'undefined' ? navigator.platform || navigator.userAgent : '') ? '⌘K' : 'Ctrl+K';
+
+    abrirBuscador(): void {
+        this.buscadorGlobal?.abrir();
+    }
 
     ngOnInit(): void {
         this.isLoading = true;

@@ -5,6 +5,7 @@ describe('AppComponent Swal wrapper', () => {
     let originalFire: typeof Swal.fire;
     let baseFireSpy: jasmine.Spy;
     let component: AppComponent;
+    let buscador: { alternar: jasmine.Spy };
 
     beforeEach(() => {
         localStorage.clear();
@@ -14,12 +15,14 @@ describe('AppComponent Swal wrapper', () => {
         (AppComponent as any).swalConfigurado = false;
 
         const initSpy = jasmine.createSpy('init');
+        buscador = { alternar: jasmine.createSpy('alternar') };
         component = new AppComponent(
             { init: initSpy } as any,
             { iniciar: initSpy } as any,
             { iniciar: initSpy } as any,
             { init: initSpy } as any,
             { init: initSpy } as any,
+            buscador as any,
         );
     });
 
@@ -41,5 +44,18 @@ describe('AppComponent Swal wrapper', () => {
         expect(baseFireSpy.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
             text: 'Error al obtener la dote.',
         }));
+    });
+
+    it('Ctrl+K y ⌘K abren y cierran la búsqueda global; la K sola, no', () => {
+        const tecla = (init: KeyboardEventInit) => {
+            const evento = new KeyboardEvent('keydown', init);
+            component.alPulsarTecla(evento);
+            return evento;
+        };
+        expect(tecla({ key: 'k', ctrlKey: true, cancelable: true }).defaultPrevented).toBeTrue();
+        tecla({ key: 'K', metaKey: true, cancelable: true });
+        tecla({ key: 'k' });
+        tecla({ key: 'k', ctrlKey: true, shiftKey: true });
+        expect(buscador.alternar).toHaveBeenCalledTimes(2);
     });
 });

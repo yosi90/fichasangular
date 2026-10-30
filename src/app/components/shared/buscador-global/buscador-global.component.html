@@ -1,0 +1,40 @@
+<div class="buscador-global" role="dialog" aria-modal="true" aria-label="Buscar en Rol" (keydown)="alPulsarTecla($event)">
+    <div class="buscador-global__campo">
+        <mat-icon aria-hidden="true">search</mat-icon>
+        <label class="buscador-global__oculto" for="buscador-global-campo">Buscar razas, clases, dotes, conjuros, personajes…</label>
+        <input #campo id="buscador-global-campo" type="text" role="combobox" aria-autocomplete="list" autocomplete="off" spellcheck="false"
+            aria-controls="buscador-global-lista" [attr.aria-expanded]="opciones.length > 0"
+            [attr.aria-activedescendant]="idActiva" placeholder="Buscar razas, clases, dotes, conjuros, personajes…"
+            [value]="texto" (input)="alEscribir(campo.value)">
+        <button type="button" class="buscador-global__esc" (click)="cerrar()" aria-label="Cerrar la búsqueda">Esc</button>
+    </div>
+    <p class="buscador-global__estado" *ngIf="mensaje">{{mensaje}}</p>
+    <p class="buscador-global__oculto" aria-live="polite">{{anuncio}}</p>
+    <div #resultados class="buscador-global__resultados" id="buscador-global-lista" role="listbox" aria-label="Resultados"
+        [hidden]="grupos.length < 1">
+        <div class="buscador-global__grupo" role="group" *ngFor="let pintado of grupos" [attr.aria-labelledby]="'buscador-global-grupo-' + pintado.grupo.id">
+            <div class="buscador-global__titulo" [id]="'buscador-global-grupo-' + pintado.grupo.id"
+                [ngClass]="pintado.grupo.tipo ? 'buscador-global__titulo--' + iconoDe(pintado.grupo.tipo).grupo : ''">
+                <app-icono-rol *ngIf="pintado.grupo.tipo; else iconoGrupo" [tipo]="pintado.grupo.tipo" [tamano]="14"></app-icono-rol>
+                <ng-template #iconoGrupo><mat-icon aria-hidden="true">{{pintado.grupo.iconoMaterial}}</mat-icon></ng-template>
+                <span>{{pintado.grupo.titulo}}</span>
+                <span class="buscador-global__total" *ngIf="!pintado.grupo.cargando">· {{pintado.grupo.total}}</span>
+            </div>
+            <p class="buscador-global__cargando" *ngIf="pintado.grupo.cargando">Cargando…</p>
+            <div class="buscador-global__opcion" role="option" *ngFor="let fila of pintado.elementos" [id]="opciones[fila.indice].id"
+                [attr.aria-selected]="fila.indice === activa" [class.buscador-global__opcion--activa]="fila.indice === activa"
+                (mousemove)="marcar(fila.indice)" (click)="opciones[fila.indice].activar()">
+                <app-icono-rol *ngIf="fila.elemento.tipo; else iconoFila" [tipo]="fila.elemento.tipo" [recuadro]="true"></app-icono-rol>
+                <ng-template #iconoFila><mat-icon class="buscador-global__icono-material" aria-hidden="true">{{fila.elemento.iconoMaterial}}</mat-icon></ng-template>
+                <span class="buscador-global__nombre">{{fila.elemento.nombre}}</span>
+                <span class="buscador-global__subtitulo" *ngIf="fila.elemento.subtitulo">{{fila.elemento.subtitulo}}</span>
+            </div>
+            <div class="buscador-global__ver-todos" role="option" *ngIf="pintado.verTodos as todos" [id]="opciones[todos.indice].id"
+                [attr.aria-selected]="todos.indice === activa" [class.buscador-global__opcion--activa]="todos.indice === activa"
+                (mousemove)="marcar(todos.indice)" (click)="opciones[todos.indice].activar()">{{todos.texto}}</div>
+        </div>
+    </div>
+    <div class="buscador-global__pie" aria-hidden="true">
+        <span><kbd>↑</kbd> <kbd>↓</kbd> moverse</span><span><kbd>Intro</kbd> abrir</span><span><kbd>Esc</kbd> cerrar</span>
+    </div>
+</div>

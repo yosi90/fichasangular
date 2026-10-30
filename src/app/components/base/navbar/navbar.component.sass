@@ -46,6 +46,37 @@
 .ribbon-spacer
     flex: 1 1 auto
 
+// El botón de la búsqueda global: una pastilla fina con borde rosa, la lupa y el atajo (la cinta no cambia de alto).
+.ribbon-buscar
+    display: inline-flex
+    align-items: center
+    gap: 6px
+    margin: 2px 0 2px 10px
+    padding: 1px 8px
+    border: 1px solid $active
+    border-radius: 3px
+    background: transparent
+    color: white
+    font: inherit
+    font-size: 12px
+    cursor: pointer
+
+    .mat-icon
+        width: 14px
+        height: 14px
+        font-size: 14px
+
+    &:hover
+        background: rgba(194, 24, 91, .25)
+
+    &:focus-visible
+        outline: 2px solid white
+        outline-offset: 1px
+
+.ribbon-buscar__atajo
+    font-family: inherit
+    color: $accent
+
 .ribbon-notificaciones
     display: inline-flex
     align-items: center

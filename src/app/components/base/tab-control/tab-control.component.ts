@@ -58,6 +58,7 @@ import { EquipoService } from 'src/app/services/equipo.service';
 import { claveEntradaEquipo, claveEquipo, etiquetaEntradaEquipo, tipoDeListaEquipo } from '../../shared/listado-equipo/listas-equipo';
 import { ChakraDetalle, Fusion } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
+import { AperturaRol, NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
 
 interface ListadoTabAbierto {
@@ -194,6 +195,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private userProfileNavSvc?: UserProfileNavigationService,
         private equipoSvc?: EquipoService,
         private incarnumSvc?: IncarnumService,
+        private navegacionRolSvc?: NavegacionRolService,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
@@ -223,6 +225,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.manualVistaNavSvc.aperturas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((manual) => this.abrirDetallesManual(manual));
+        this.navegacionRolSvc?.aperturas$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((apertura) => this.abrirDesdeNavegacion(apertura));
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPerfilPrivado(request));
@@ -2711,6 +2716,16 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 || actualBase.includes(objetivoBase)
                 || objetivoBase.includes(actualBase);
         });
+    }
+
+    /** Lo que se abre desde fuera de las pestañas (la búsqueda global): como si viniera de su listado. */
+    abrirDesdeNavegacion(apertura: AperturaRol): void {
+        if (apertura.clase === 'detalle')
+            this.recibirObjetoListado({ item: apertura.item, tipo: apertura.lista }, 'detalles');
+        else if (apertura.clase === 'personaje')
+            void this.abrirDetallesPersonaje(apertura.id);
+        else
+            this.abrirListadoTab(apertura.lista, 'detalles');
     }
 
     private abrirDesdeManual(payload: ManualReferenciaNavegacion): void {

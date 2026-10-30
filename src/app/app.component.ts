@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit } from '@angular/core';
 import { Observable, Subject, fromEvent, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import { CampaignRealtimeSyncService } from './services/campaign-realtime-sync.service';
@@ -8,6 +8,7 @@ import { FirebaseSessionBridgeService } from './services/firebase-session-bridge
 import { PlatformSessionService } from './services/platform-session.service';
 import { toUserFacingErrorMessage } from './services/utils/user-facing-error.util';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { BuscadorGlobalVentanaService } from './components/shared/buscador-global/buscador-global.component';
 
 @Component({
     selector: 'app-root',
@@ -28,7 +29,17 @@ export class AppComponent implements OnInit, OnDestroy {
         private firebaseSessionBridgeSvc: FirebaseSessionBridgeService,
         private chatFloatingSvc: ChatFloatingService,
         private campaignSpacesBridgeSvc: CampaignSpacesBridgeService,
+        private buscadorGlobal: BuscadorGlobalVentanaService,
     ) { }
+
+    /** La búsqueda global, desde cualquier pantalla: Ctrl+K (⌘K en Mac) la abre y la cierra. */
+    @HostListener('document:keydown', ['$event'])
+    alPulsarTecla(evento: KeyboardEvent): void {
+        if ((evento.ctrlKey || evento.metaKey) && !evento.altKey && !evento.shiftKey && evento.key?.toLowerCase() === 'k') {
+            evento.preventDefault();
+            this.buscadorGlobal.alternar();
+        }
+    }
 
     async ngOnInit(): Promise<void> {
         this.configurarSwalGlobal();

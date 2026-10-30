@@ -634,4 +634,20 @@ describe('TabControlComponent navegación por origen', () => {
         expect(component.tipoRolDeVentaja({ Coste: 1 } as any)).toBe('desventaja');
         expect(component.tipoRolDeEquipo('conjunto')).toBe('conjunto');
     });
+
+    it('lo que abre la búsqueda global va como si viniera de su listado', () => {
+        const component = crearComponente();
+        const recibir = spyOn(component, 'recibirObjetoListado');
+        const personaje = spyOn(component, 'abrirDetallesPersonaje').and.resolveTo();
+        const listado = spyOn(component, 'abrirListadoTab');
+        const raza = { Id: 3, Nombre: 'Azurín' };
+
+        component.abrirDesdeNavegacion({ clase: 'detalle', lista: 'razas', item: raza });
+        component.abrirDesdeNavegacion({ clase: 'personaje', id: 9 });
+        component.abrirDesdeNavegacion({ clase: 'listado', lista: 'dotes' });
+
+        expect(recibir).toHaveBeenCalledWith({ item: raza, tipo: 'razas' }, 'detalles');
+        expect(personaje).toHaveBeenCalledWith(9);
+        expect(listado).toHaveBeenCalledWith('dotes', 'detalles');
+    });
 });

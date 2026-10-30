@@ -143,6 +143,7 @@ import { HelpLegalComponent } from './components/base/help-legal/help-legal.comp
 import { HelpUsageAboutComponent } from './components/base/help-usage-about/help-usage-about.component';
 import { MENU_FILTROS_COMPONENTES } from './components/shared/menu-filtros/menu-filtros.component';
 import { IconoRolComponent } from './components/shared/icono-rol/icono-rol.component';
+import { BuscadorGlobalComponent } from './components/shared/buscador-global/buscador-global.component';
 
 @NgModule({
     declarations: [
@@ -165,6 +166,7 @@ import { IconoRolComponent } from './components/shared/icono-rol/icono-rol.compo
         HelpUsageAboutComponent,
         ...MENU_FILTROS_COMPONENTES,
         IconoRolComponent,
+        BuscadorGlobalComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
         DetallesRazaComponent,
