@@ -1,5 +1,8 @@
 @use 'src/assets/css/preformas/inserciones' as inserciones
 
+:host
+    @include inserciones.insercion-host
+
 // La clase dentro del marco común de las inserciones (siete pasos, tarjetas). Las tarjetas, sus títulos y los chips
 // salen de `preformas/_inserciones`; aquí solo lo propio de la clase. Se pliega según el ancho del marco.
 .nueva-clase-shell
@@ -7,7 +10,6 @@
 
 .nueva-clase-form
     @include inserciones.insercion-form-base
-    min-height: 100%
 
 .base-grid,
 .progression-controls

@@ -1,5 +1,8 @@
 @use '../../../../assets/css/preformas/_inserciones' as inserciones
 
+:host
+    @include inserciones.insercion-host
+
 // Inserción pequeña: sin pasos ni tarjetas, los campos directamente en el marco común (guía de inserciones).
 .nueva-idioma-shell
     @include inserciones.insercion-shell
@@ -11,7 +14,6 @@
 
 .nueva-idioma-form
     @include inserciones.insercion-form-base
-    min-height: 100%
 
     .idioma-status-row
         justify-content: flex-start

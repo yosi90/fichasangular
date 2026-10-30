@@ -3,8 +3,7 @@
 // La racial dentro del marco común de las inserciones (pasos Base y Rasgos, tarjetas). Aquí solo van las rejillas de
 // sus filas repetibles; se pliegan a una columna según el ancho del marco, no el de la ventana.
 :host
-    display: block
-    min-height: 0
+    @include inserciones.insercion-host
 
 .nueva-racial-shell
     @include inserciones.insercion-shell
@@ -14,7 +13,6 @@
 
 .nueva-racial-form
     @include inserciones.insercion-form-base
-    min-height: 100%
 
     .racial-status-row
         align-items: center

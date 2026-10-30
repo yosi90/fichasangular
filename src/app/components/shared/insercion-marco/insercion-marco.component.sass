@@ -9,16 +9,17 @@
 $insercion-hueco: 14px
 
 app-insercion-marco
-    display: block
-    min-height: 100%
+    display: flex
+    flex: 1 1 auto
+    flex-direction: column
 
 .insercion-marco
     container-name: insercion
     container-type: inline-size
     display: flex
+    flex: 1 1 auto
     flex-direction: column
     gap: $insercion-hueco
-    min-height: 100%
     box-sizing: border-box
     color: $ficha-texto
     --mat-form-field-filled-container-color: #{$primary}

@@ -6,10 +6,19 @@
 // estos mixins dan el mismo aspecto a las piezas que cada formulario ya tenía (tarjetas, subpaneles, chips y filas).
 // Guía: `docs/guias-estilo/GUIA_ESTILO_INSERCIONES.md`.
 
+// El anfitrión de cada inserción (`:host`): llena el alto de la pestaña para que el pie del marco quede abajo aunque el
+// formulario sea corto. Va en cadena de flex porque los altos en % no se resuelven contra un `min-height`.
+@mixin insercion-host
+    display: flex
+    flex-direction: column
+    min-height: 100%
+
 @mixin insercion-shell
     position: relative
+    display: flex
+    flex: 1 1 auto
+    flex-direction: column
     width: 100%
-    min-height: 100%
 
 // Una tarjeta del cuerpo, como las del lienzo: #424242, radio 6 y la sombra de lo que flota.
 @mixin insercion-tarjeta
@@ -23,6 +32,7 @@
 
 @mixin insercion-form-base
     display: flex
+    flex: 1 1 auto
     flex-direction: column
     width: 100%
     color: $ficha-texto

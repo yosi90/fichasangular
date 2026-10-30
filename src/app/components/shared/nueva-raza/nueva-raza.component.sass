@@ -1,6 +1,9 @@
 @use '../../../../assets/css/preformas/_inserciones' as inserciones
 @use '../../detalles/ficha/ficha-tonos' as *
 
+:host
+    @include inserciones.insercion-host
+
 // La raza dentro del marco común de las inserciones (cinco pasos, tarjetas). Las rejillas se pliegan según el ancho del
 // marco, no el de la ventana.
 .nueva-raza-shell
@@ -8,7 +11,6 @@
 
 .nueva-raza-form
     @include inserciones.insercion-form-base
-    min-height: 100%
 
 .grid-base,
 .grid-content,

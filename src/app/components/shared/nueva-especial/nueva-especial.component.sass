@@ -1,5 +1,8 @@
 @use '../../../../assets/css/preformas/_inserciones' as inserciones
 
+:host
+    @include inserciones.insercion-host
+
 // El especial dentro del marco común de las inserciones (pasos Base, Bonos y Relaciones). Las rejillas se pliegan según
 // el ancho del marco, no el de la ventana.
 .nueva-especial-shell
@@ -7,7 +10,6 @@
 
 .nueva-especial-form
     @include inserciones.insercion-form-base
-    min-height: 100%
 
     .base-grid
         display: grid
