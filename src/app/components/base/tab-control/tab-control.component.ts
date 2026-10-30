@@ -60,7 +60,7 @@ import { ChakraDetalle, Fusion } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
 import { AyudaSolicitud } from 'src/app/interfaces/ayuda';
 import { AperturaRol, NavegacionRolService } from 'src/app/services/navegacion-rol.service';
-import { tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
+import { iconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
 
 interface ListadoTabAbierto {
     key: string;
@@ -1002,7 +1002,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     getEtiquetaVentaja(ventaja: VentajaDetalle): string {
-        return `${ventaja.Nombre} (${this.esDesventaja(ventaja) ? 'Desventaja' : 'Ventaja'})`;
+        return `${ventaja.Nombre} (${iconoRol(tipoRolDeVentaja(ventaja)).etiqueta})`;
     }
 
     getEtiquetaMonstruo(monstruo: MonstruoDetalle): string {
@@ -2329,14 +2329,17 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     getEtiquetaDote(doteCtx: DoteContextual): string {
-        const extra = doteCtx.Contexto.Extra && doteCtx.Contexto.Extra !== 'No aplica' ? `: ${doteCtx.Contexto.Extra}` : '';
-        return `${doteCtx.Dote.Nombre} (Dote - ${doteCtx.Contexto.Entidad}${extra})`;
+        return `${doteCtx.Dote.Nombre} (Dote - ${doteCtx.Contexto.Entidad}${this.sufijoElegidoDote(doteCtx)})`;
     }
 
     /** Lo que se ve en la pestaña de una dote: su nombre y, si la tiene, la elección («Soltura con un arma: Espada larga»). */
     getNombreDoteTab(doteCtx: DoteContextual): string {
-        const extra = doteCtx.Contexto.Extra && doteCtx.Contexto.Extra !== 'No aplica' ? `: ${doteCtx.Contexto.Extra}` : '';
-        return `${doteCtx.Dote.Nombre}${extra}`;
+        return `${doteCtx.Dote.Nombre}${this.sufijoElegidoDote(doteCtx)}`;
+    }
+
+    /** «: Espada larga», si la dote lleva una elección; si no («No aplica»), nada. */
+    private sufijoElegidoDote(doteCtx: DoteContextual): string {
+        return doteCtx.Contexto.Extra && doteCtx.Contexto.Extra !== 'No aplica' ? `: ${doteCtx.Contexto.Extra}` : '';
     }
 
     getClaveDoteTab(doteCtx: DoteContextual): string {

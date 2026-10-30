@@ -6,7 +6,7 @@ import { BuscadorGlobalService } from 'src/app/services/buscador-global.service'
 import {
     ElementoBusqueda, FuenteBusqueda, GrupoResultados, LETRAS_MINIMAS_BUSQUEDA, buscarEnFuentes, textoVerTodos,
 } from 'src/app/services/utils/busqueda-global';
-import { ICONOS_ROL, IconoRol, TipoRol } from 'src/app/services/utils/iconos-rol';
+import { iconoRol } from 'src/app/services/utils/iconos-rol';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 
 /** Una fila que se puede elegir con el teclado: un resultado o «Ver los N en el listado». */
@@ -115,9 +115,8 @@ export class BuscadorGlobalComponent implements OnInit, AfterViewInit, OnDestroy
         this.ventana.cerrar();
     }
 
-    iconoDe(tipo: TipoRol): IconoRol {
-        return ICONOS_ROL[tipo];
-    }
+    /** El icono (y su grupo de color) de un tipo, para el título de cada grupo. */
+    readonly iconoDe = iconoRol;
 
     private recalcular(reiniciarActiva: boolean): void {
         const fuentes = this.conObjetos();
