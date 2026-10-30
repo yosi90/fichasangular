@@ -298,7 +298,7 @@ export class DetallesRazaComponent {
                 alPulsar: () => this.abrirInfoManiobrabilidad(),
             },
             { etiqueta: 'Trepar', valor: textoPies(r?.Trepar) },
-            { etiqueta: 'Escalar', valor: textoPies(r?.Escalar) },
+            { etiqueta: 'Excavar', valor: textoPies(r?.Excavar) },
             { etiqueta: 'Armadura natural', valor: this.tieneNumeroNoCero(r?.Armadura_natural) ? textoConSigno(Number(r.Armadura_natural)) : null },
             { etiqueta: 'CA varios', valor: this.tieneNumeroNoCero(r?.Varios_armadura) ? textoConSigno(Number(r.Varios_armadura)) : null },
             { etiqueta: 'Reducción de daño', valor: r?.Reduccion_dano },

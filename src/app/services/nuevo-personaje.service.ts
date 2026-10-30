@@ -1337,7 +1337,7 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Nadar = razaEfectiva.Nadar ?? 0;
         this.personajeCreacion.Volar = razaEfectiva.Volar ?? 0;
         this.personajeCreacion.Trepar = razaEfectiva.Trepar ?? 0;
-        this.personajeCreacion.Escalar = razaEfectiva.Escalar ?? 0;
+        this.personajeCreacion.Excavar = razaEfectiva.Excavar ?? 0;
         this.personajeCreacion.Raciales = this.asignarOrigenRaciales(
             this.copiarRaciales(razaEfectiva.Raciales),
             razaEfectiva.Nombre
@@ -5694,7 +5694,7 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Nadar = toNumber(raza?.Nadar);
         this.personajeCreacion.Volar = toNumber(raza?.Volar);
         this.personajeCreacion.Trepar = toNumber(raza?.Trepar);
-        this.personajeCreacion.Escalar = toNumber(raza?.Escalar);
+        this.personajeCreacion.Excavar = toNumber(raza?.Excavar);
 
         this.personajeCreacion.Rds = [];
         this.personajeCreacion.Rcs = [];
@@ -5747,8 +5747,8 @@ export class NuevoPersonajeService {
                 this.personajeCreacion.Volar = toNumber(plantilla.Movimientos.Volar);
             if (toNumber(plantilla?.Movimientos?.Trepar) > 0)
                 this.personajeCreacion.Trepar = toNumber(plantilla.Movimientos.Trepar);
-            if (toNumber(plantilla?.Movimientos?.Escalar) > 0)
-                this.personajeCreacion.Escalar = toNumber(plantilla.Movimientos.Escalar);
+            if (toNumber(plantilla?.Movimientos?.Excavar) > 0)
+                this.personajeCreacion.Excavar = toNumber(plantilla.Movimientos.Excavar);
 
             if (toNumber(plantilla?.Fortaleza) !== 0) {
                 this.personajeCreacion.Salvaciones.fortaleza.modsVarios.push({
@@ -10127,7 +10127,7 @@ export class NuevoPersonajeService {
             Volar: toNumber(plantilla.Movimientos?.Volar),
             Maniobrabilidad: `${plantilla.Maniobrabilidad?.Nombre ?? '-'}`,
             Trepar: toNumber(plantilla.Movimientos?.Trepar),
-            Escalar: toNumber(plantilla.Movimientos?.Escalar),
+            Excavar: toNumber(plantilla.Movimientos?.Excavar),
             Ataque_base: toNumber(plantilla.Ataque_base),
             Ca: `${plantilla.Ca ?? ''}`,
             Reduccion_dano: `${plantilla.Reduccion_dano ?? ''}`,
@@ -10255,7 +10255,7 @@ export class NuevoPersonajeService {
             Nadar: 0,
             Volar: 0,
             Trepar: 0,
-            Escalar: 0,
+            Excavar: 0,
             Oficial: true,
             Dados_golpe: 0,
             Pgs_lic: 0,

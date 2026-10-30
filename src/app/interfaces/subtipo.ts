@@ -24,7 +24,7 @@ export interface SubtipoMovimientos {
     Nadar: number;
     Volar: number;
     Trepar: number;
-    Escalar: number;
+    Excavar: number;
 }
 
 export interface SubtipoHabilidadBase {

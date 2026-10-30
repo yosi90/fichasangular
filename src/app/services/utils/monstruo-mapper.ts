@@ -118,7 +118,7 @@ function normalizeMovimientos(raw: any): MonstruoMovimientos {
         Nadar: toNumber(raw?.Nadar),
         Volar: toNumber(raw?.Volar),
         Trepar: toNumber(raw?.Trepar),
-        Escalar: toNumber(raw?.Escalar),
+        Excavar: toNumber(raw?.Excavar),
     };
 }
 

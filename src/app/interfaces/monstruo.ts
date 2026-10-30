@@ -42,7 +42,7 @@ export interface MonstruoMovimientos {
     Nadar: number;
     Volar: number;
     Trepar: number;
-    Escalar: number;
+    Excavar: number;
 }
 
 export interface MonstruoDefensa {

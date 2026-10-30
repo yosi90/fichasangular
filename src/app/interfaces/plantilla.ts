@@ -47,7 +47,7 @@ export interface PlantillaMovimientos {
     Nadar: number;
     Volar: number;
     Trepar: number;
-    Escalar: number;
+    Excavar: number;
 }
 
 export interface PlantillaHabilidadRef {

@@ -60,10 +60,10 @@ export interface CacheContractEntry {
 }
 
 export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
-    { key: "monstruos", label: "Monstruos", schemaVersion: 8 },
-    { key: "familiares", label: "Familiares", schemaVersion: 8 },
-    { key: "companeros", label: "Compañeros animales", schemaVersion: 8 },
-    { key: "razas", label: "Razas", schemaVersion: 16 },
+    { key: "monstruos", label: "Monstruos", schemaVersion: 9 },
+    { key: "familiares", label: "Familiares", schemaVersion: 9 },
+    { key: "companeros", label: "Compañeros animales", schemaVersion: 9 },
+    { key: "razas", label: "Razas", schemaVersion: 17 },
     { key: "manuales", label: "Manuales", schemaVersion: 1 },
     { key: "manuales_asociados", label: "Manuales asociados", schemaVersion: 2 },
     { key: "tipos_criatura", label: "Tipos de criatura", schemaVersion: 3 },
@@ -71,8 +71,8 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "rasgos", label: "Rasgos", schemaVersion: 1 },
     { key: "conjuros", label: "Conjuros", schemaVersion: 6 },
     { key: "extras", label: "Extras", schemaVersion: 1 },
-    { key: "dotes", label: "Dotes", schemaVersion: 11 },
-    { key: "clases", label: "Clases", schemaVersion: 12 },
+    { key: "dotes", label: "Dotes", schemaVersion: 12 },
+    { key: "clases", label: "Clases", schemaVersion: 13 },
     { key: "especiales", label: "Especiales", schemaVersion: 6 },
     { key: "escuelas_conjuros", label: "Escuelas de conjuros", schemaVersion: 1 },
     { key: "disciplinas_conjuros", label: "Disciplinas de conjuros", schemaVersion: 1 },
@@ -109,7 +109,7 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "ambitos", label: "Ambitos", schemaVersion: 1 },
     { key: "pabellones", label: "Pabellones", schemaVersion: 1 },
     { key: "deidades", label: "Deidades", schemaVersion: 3 },
-    { key: "plantillas", label: "Plantillas", schemaVersion: 11 },
+    { key: "plantillas", label: "Plantillas", schemaVersion: 13 },
     { key: "ventajas_desventajas", label: "Ventajas y desventajas", schemaVersion: 1 },
     // Magic of Incarnum (docs/publica/INCARNUM.md, «Cachés de la RTDB»): las dos cachés nuevas.
     { key: "fusiones", label: "Fusiones del incarnum", schemaVersion: 1 },

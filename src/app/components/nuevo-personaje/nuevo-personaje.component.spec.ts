@@ -86,7 +86,7 @@ function crearRazaMock(oficial = true): Raza {
             Descenso_ascenso: 0,
         },
         Trepar: 0,
-        Escalar: 0,
+        Excavar: 0,
         Altura_rango_inf: 1.5,
         Altura_rango_sup: 1.9,
         Peso_rango_inf: 55,
@@ -486,7 +486,7 @@ function crearPlantillaMock(partial?: Partial<Plantilla>): Plantilla {
         Cd: 0,
         Puntos_habilidad: { Suma: 0, Suma_fija: 0 },
         Nacimiento: false,
-        Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Escalar: 0 },
+        Movimientos: { Correr: 0, Nadar: 0, Volar: 0, Trepar: 0, Excavar: 0 },
         Maniobrabilidad: {
             Id: 0,
             Nombre: '-',

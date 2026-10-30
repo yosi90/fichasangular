@@ -113,7 +113,7 @@ interface MovimientosCriatura {
     Nadar: number;
     Volar: number;
     Trepar: number;
-    Escalar: number;
+    Excavar: number;
 }
 
 /**
@@ -127,7 +127,7 @@ export function textosMovimiento(movimientos: MovimientosCriatura | null | undef
         { nombre: 'nadar ', valor: toNumber(movimientos?.Nadar) },
         { nombre: 'volar ', valor: toNumber(movimientos?.Volar), extra: vuelo },
         { nombre: 'trepar ', valor: toNumber(movimientos?.Trepar) },
-        { nombre: 'escalar ', valor: toNumber(movimientos?.Escalar) },
+        { nombre: 'excavar ', valor: toNumber(movimientos?.Excavar) },
     ]
         .filter((movimiento) => movimiento.valor > 0)
         .map((movimiento) => `${movimiento.nombre}${movimiento.valor}'${movimiento.extra ?? ''}`);
@@ -161,7 +161,7 @@ export function datosMovimiento(movimientos: MovimientosCriatura | null | undefi
         { etiqueta: 'Nadar', valor: textoPies(movimientos?.Nadar) },
         { etiqueta: 'Volar', valor: textoPies(movimientos?.Volar) },
         { etiqueta: 'Trepar', valor: textoPies(movimientos?.Trepar) },
-        { etiqueta: 'Escalar', valor: textoPies(movimientos?.Escalar) },
+        { etiqueta: 'Excavar', valor: textoPies(movimientos?.Excavar) },
         { etiqueta: 'Maniobrabilidad', valor: maniobrabilidad },
     ]);
 }

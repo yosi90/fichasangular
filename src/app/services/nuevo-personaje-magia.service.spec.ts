@@ -37,7 +37,7 @@ function crearRaza(): Raza {
         Tamano_mutacion_dependiente: false,
         Prerrequisitos: { actitud_prohibido: [], actitud_requerido: [], alineamiento_prohibido: [], alineamiento_requerido: [], tipo_criatura: [] },
         Armadura_natural: 0, Varios_armadura: 0, Correr: 30, Nadar: 0, Volar: 0, Maniobrabilidad: { Id: 0, Nombre: '-' },
-        Trepar: 0, Escalar: 0, Altura_rango_inf: 1.6, Altura_rango_sup: 1.9, Peso_rango_inf: 55, Peso_rango_sup: 95,
+        Trepar: 0, Excavar: 0, Altura_rango_inf: 1.6, Altura_rango_sup: 1.9, Peso_rango_inf: 55, Peso_rango_sup: 95,
         Edad_adulto: 18, Edad_mediana: 40, Edad_viejo: 60, Edad_venerable: 80, Espacio: 5, Alcance: 5, Tipo_criatura: TIPO,
         Subtipos: [], Sortilegas: [], Raciales: [], Habilidades: { Base: [], Custom: [] }, DotesContextuales: [],
     } as unknown as Raza;

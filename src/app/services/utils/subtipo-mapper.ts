@@ -140,7 +140,7 @@ export function normalizeSubtipoDetalle(raw: any): SubtipoDetalle {
             Nadar: toNumber(raw?.Movimientos?.Nadar),
             Volar: toNumber(raw?.Movimientos?.Volar),
             Trepar: toNumber(raw?.Movimientos?.Trepar),
-            Escalar: toNumber(raw?.Movimientos?.Escalar),
+            Excavar: toNumber(raw?.Movimientos?.Excavar),
         },
         Maniobrabilidad: raw?.Maniobrabilidad ?? {},
         Alineamiento: raw?.Alineamiento ?? {
