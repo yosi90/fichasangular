@@ -3,6 +3,8 @@
 .nueva-dote-shell
     @include inserciones.insercion-shell
 
+// Dentro del marco común de las inserciones (sin pasos: tarjetas en vertical). Las rejillas se pliegan según el ancho
+// del marco, no el de la ventana.
 .nueva-dote-form
     @include inserciones.insercion-form-base
 
@@ -199,13 +201,6 @@
         display: inline-flex
         align-items: center
 
-    .error-form
-        margin: 0
-        color: #fecaca
-        border: 1px solid rgba(248, 113, 113, 0.4)
-        border-radius: 8px
-        background: rgba(127, 29, 29, 0.25)
-        padding: 0.55rem 0.75rem
 
 .selector-overlay
     position: fixed
@@ -333,12 +328,12 @@
 ::ng-deep body.nueva-dote-modal-open
     overflow: hidden
 
-@media (max-width: 1200px)
+@container insercion (max-width: 1200px)
     .nueva-dote-form
         .valores-grid
             grid-template-columns: 1fr
 
-@media (max-width: 900px)
+@container insercion (max-width: 900px)
     .nueva-dote-form
         .grid-content
             grid-template-columns: repeat(2, minmax(0, 1fr))
@@ -352,13 +347,8 @@
         .skill-grid
             grid-template-columns: 1fr 1fr 110px 44px
 
-        .actions-row
-            justify-content: stretch
 
-            button
-                width: 100%
-
-@media (max-width: 640px)
+@container insercion (max-width: 640px)
     .nueva-dote-form
         .grid-content,
         .option-list
@@ -372,6 +362,9 @@
         .prereq-row-grid
             grid-template-columns: 1fr
 
+
+// Las ventanas de selección van fuera del marco (en el overlay): se pliegan por el ancho de la ventana.
+@media (max-width: 640px)
     .selector-tools--inline
         flex-direction: column
 

@@ -3,6 +3,8 @@
 .nueva-conjuro-shell
     @include inserciones.insercion-shell
 
+// Dentro del marco común de las inserciones (sin pasos: tarjetas en vertical). Las rejillas se pliegan según el ancho
+// del marco, no el de la ventana.
 .nueva-conjuro-form
     @include inserciones.insercion-form-base
 
@@ -82,8 +84,6 @@
         flex-wrap: wrap
         gap: 0.45rem
 
-    .subpanel-title-chip
-        margin-bottom: 0
 
     .selector-pill
         min-height: 36px
@@ -116,7 +116,7 @@
             border-radius: 6px
             background: rgba(0, 0, 0, 0.1)
 
-@media (max-width: 1200px)
+@container insercion (max-width: 1200px)
     .nueva-conjuro-form
         .base-layout
             grid-template-columns: 1fr
@@ -135,18 +135,13 @@
         .grid-content
             grid-template-columns: repeat(2, minmax(0, 1fr))
 
-@media (max-width: 900px)
+@container insercion (max-width: 900px)
     .nueva-conjuro-form
         .span-2
             grid-column: span 1
 
-        .actions-row
-            justify-content: stretch
 
-            button
-                width: 100%
-
-@media (max-width: 760px)
+@container insercion (max-width: 760px)
     .nueva-conjuro-form
         .nivel-grid
             grid-template-columns: 1fr
@@ -154,7 +149,7 @@
             &.head
                 display: none
 
-@media (max-width: 640px)
+@container insercion (max-width: 640px)
     .nueva-conjuro-form
         .grid-content
             grid-template-columns: 1fr
