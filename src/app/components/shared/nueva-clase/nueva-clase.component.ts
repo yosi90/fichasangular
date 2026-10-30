@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, S
 import { FormBuilder, Validators } from '@angular/forms';
 import { Subject, take, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
+import { confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
 import {
     Clase,
     ClaseMutationRequest,
@@ -759,15 +760,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     async confirmarSalidaSiHayCambios(): Promise<boolean> {
         if (!this.esModoEdicion || !this.isDirty)
             return true;
-        const result = await Swal.fire({
-            icon: 'warning',
-            title: 'Hay cambios sin guardar',
-            text: 'Si cierras esta pestana perderas los cambios de la clase.',
-            showCancelButton: true,
-            confirmButtonText: 'Cerrar sin guardar',
-            cancelButtonText: 'Seguir editando',
-        });
-        return result.isConfirmed === true;
+        return confirmarCierreConCambios('de la clase');
     }
 
     private construirPayload(): ClaseMutationRequest {

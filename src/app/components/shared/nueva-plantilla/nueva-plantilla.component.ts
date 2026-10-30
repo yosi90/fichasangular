@@ -46,7 +46,7 @@ import {
     valorPlantillaNueva,
 } from 'src/app/services/utils/plantilla-formulario';
 import { GrupoPrerrequisitos, agruparPrerrequisitos, nombreTipoPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
-import { ModoInsercion } from '../insercion-marco/insercion-marco.component';
+import { ModoInsercion, confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
 import {
     PrerequisiteCatalogContext,
     PrerequisiteCatalogItem,
@@ -459,15 +459,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
     async confirmarSalidaSiHayCambios(): Promise<boolean> {
         if (!this.esEdicion || !this.hayCambios)
             return true;
-        const resultado = await Swal.fire({
-            icon: 'warning',
-            title: 'Hay cambios sin guardar',
-            text: 'Si cierras esta pestaña perderás los cambios de la plantilla.',
-            showCancelButton: true,
-            confirmButtonText: 'Cerrar sin guardar',
-            cancelButtonText: 'Seguir editando',
-        });
-        return resultado.isConfirmed === true;
+        return confirmarCierreConCambios('de la plantilla');
     }
 
     /** El cuerpo del alta (y del `PUT`) con lo que hay ahora en el formulario. */

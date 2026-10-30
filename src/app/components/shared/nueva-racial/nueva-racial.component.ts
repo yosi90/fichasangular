@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, S
 import { FormBuilder, Validators } from '@angular/forms';
 import { Subject, firstValueFrom, take, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
+import { confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
 import { HabilidadBasicaDetalle, HabilidadExtraRef } from 'src/app/interfaces/habilidad';
@@ -366,17 +367,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     async confirmarSalidaSiHayCambios(): Promise<boolean> {
         if (!this.esModoEdicion || !this.isDirty)
             return true;
-
-        const result = await Swal.fire({
-            icon: 'warning',
-            title: 'Hay cambios sin guardar',
-            text: 'Si cierras esta pestaña perderás los cambios del racial.',
-            showCancelButton: true,
-            confirmButtonText: 'Cerrar sin guardar',
-            cancelButtonText: 'Seguir editando',
-        });
-
-        return result.isConfirmed === true;
+        return confirmarCierreConCambios('del racial');
     }
 
     agregarDote(): void {

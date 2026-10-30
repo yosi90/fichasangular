@@ -1,8 +1,25 @@
 import { Component, ElementRef, EventEmitter, Input, Output, ViewChild, ViewEncapsulation } from '@angular/core';
+import Swal from 'sweetalert2';
 import { TipoRol } from 'src/app/services/utils/iconos-rol';
 
 /** Lo que dice la cabecera según se cree o se modifique. */
 export type ModoInsercion = 'crear' | 'editar';
+
+/**
+ * Antes de cerrar la pestaña de una modificación con cambios sin guardar, la misma pregunta en todas: `deQue` completa
+ * «perderás los cambios …» («de la clase», «del idioma»). `true` si se puede cerrar.
+ */
+export async function confirmarCierreConCambios(deQue: string): Promise<boolean> {
+    const resultado = await Swal.fire({
+        icon: 'warning',
+        title: 'Hay cambios sin guardar',
+        text: `Si cierras esta pestaña perderás los cambios ${deQue}.`,
+        showCancelButton: true,
+        confirmButtonText: 'Cerrar sin guardar',
+        cancelButtonText: 'Seguir editando',
+    });
+    return resultado.isConfirmed === true;
+}
 
 /**
  * El marco común de las inserciones y modificaciones de catálogo (lienzo «Rol: las vistas que faltan», vista 7,

@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, S
 import { FormBuilder, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
+import { confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
 import { IdiomaCreateRequest, IdiomaDetalle, IdiomaUpdateRequest } from 'src/app/interfaces/idioma';
 import { IdiomaService } from 'src/app/services/idioma.service';
 import { UserService } from 'src/app/services/user.service';
@@ -175,17 +176,7 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
     async confirmarSalidaSiHayCambios(): Promise<boolean> {
         if (!this.esModoEdicion || !this.isDirty)
             return true;
-
-        const result = await Swal.fire({
-            icon: 'warning',
-            title: 'Hay cambios sin guardar',
-            text: 'Si cierras esta pestaña perderás los cambios del idioma.',
-            showCancelButton: true,
-            confirmButtonText: 'Cerrar sin guardar',
-            cancelButtonText: 'Seguir editando',
-        });
-
-        return result.isConfirmed === true;
+        return confirmarCierreConCambios('del idioma');
     }
 
     private construirPayload(): IdiomaCreateRequest | IdiomaUpdateRequest {

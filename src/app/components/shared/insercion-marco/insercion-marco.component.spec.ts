@@ -9,7 +9,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { TipoRol } from 'src/app/services/utils/iconos-rol';
 import { IconoRolComponent } from '../icono-rol/icono-rol.component';
-import { InsercionMarcoComponent, ModoInsercion } from './insercion-marco.component';
+import Swal from 'sweetalert2';
+import { InsercionMarcoComponent, ModoInsercion, confirmarCierreConCambios } from './insercion-marco.component';
 
 @Component({
     template: `
@@ -195,5 +196,22 @@ describe('InsercionMarcoComponent', () => {
         expect(desplegable).not.toBeNull();
         expect(desplegable!.textContent).toContain('Paso 1 de 3: Base y cuerpo');
         expect(raiz().querySelector('.insercion-pie__atras')).not.toBeNull();
+    });
+});
+
+describe('confirmarCierreConCambios', () => {
+    it('pregunta lo mismo en todas las modificaciones y deja cerrar solo si se confirma', async () => {
+        const swal = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        expect(await confirmarCierreConCambios('del idioma')).toBeTrue();
+        expect(swal).toHaveBeenCalledWith(jasmine.objectContaining({
+            title: 'Hay cambios sin guardar',
+            text: 'Si cierras esta pestaña perderás los cambios del idioma.',
+            confirmButtonText: 'Cerrar sin guardar',
+            cancelButtonText: 'Seguir editando',
+        }));
+
+        swal.and.resolveTo({ isConfirmed: false } as any);
+        expect(await confirmarCierreConCambios('de la clase')).toBeFalse();
     });
 });
