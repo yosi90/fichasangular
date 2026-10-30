@@ -14,12 +14,14 @@ $ficha-hueco: 18px
 // La misma sombra que `.sombra`, la de lo que flota sobre el fondo.
 $ficha-sombra: 3px 3px 10px black
 
-// Los títulos en versalitas de la ficha y de la creación de personaje.
-@mixin ficha-versalitas
-    margin: 0
-    font-size: 12px
+// Las versalitas de los títulos de la ficha, la creación, las inserciones, el marco y las cabeceras de los listados.
+// Con `null` en `$margen` o `$interlineado`, la regla no lo pone (las cabeceras de tabla y las etiquetas que ya
+// tienen el suyo); `$tamano` es para las que van un punto más pequeñas.
+@mixin ficha-versalitas($tamano: 12px, $interlineado: 1.4, $margen: 0)
+    margin: $margen
+    font-size: $tamano
     font-weight: 700
-    line-height: 1.4
+    line-height: $interlineado
     letter-spacing: .14em
     text-transform: uppercase
     color: $accent

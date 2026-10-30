@@ -36,11 +36,7 @@ table
     th.mat-mdc-header-cell
         height: 44px
         background: $primary
-        font-size: 12px
-        font-weight: 700
-        letter-spacing: .14em
-        text-transform: uppercase
-        color: $accent
+        @include ficha-versalitas($interlineado: null, $margen: null)
         border-bottom: 0
 
     td.mat-mdc-cell
@@ -161,11 +157,7 @@ table
 
     dt
         margin-bottom: 4px
-        font-size: 12px
-        font-weight: 700
-        letter-spacing: .14em
-        text-transform: uppercase
-        color: $accent
+        @include ficha-versalitas($interlineado: null, $margen: null)
 
     dd
         margin: 0

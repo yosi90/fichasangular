@@ -50,12 +50,8 @@ $listado-columnas-centradas: Ajuste_nivel, Dgs_adicionales, Arcano, Divino, Psio
     th.mat-mdc-header-cell
         height: 44px
         background: $primary
-        font-size: 12px
-        font-weight: 700
-        letter-spacing: .14em
-        text-transform: uppercase
+        @include ficha-versalitas($interlineado: null, $margen: null)
         white-space: nowrap
-        color: $accent
         border-bottom: 0
 
         // El texto de las cabeceras que ordenan, con las mismas versalitas que las demás.
