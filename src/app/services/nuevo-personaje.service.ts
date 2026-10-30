@@ -4374,7 +4374,25 @@ export class NuevoPersonajeService {
         };
         const prefijo = prefijos[pendiente.fuente] ?? 'Dote adicional';
         const origen = `${pendiente?.origen ?? ''}`.trim();
-        return origen.length > 0 ? `${prefijo}: ${origen}` : prefijo;
+        const base = origen.length > 0 ? `${prefijo}: ${origen}` : prefijo;
+        const numero = this.numeroDotePendiente(pendiente);
+        return numero > 1 ? `${base} (${numero})` : base;
+    }
+
+    /**
+     * El puesto de la dote pendiente entre las que comparten fuente y origen (los dos DG raciales de un ogro, las dotes
+     * adicionales de una raza, dos especiales con dote del mismo nivel), por orden de creación. Así cada una lleva un
+     * origen propio y estable («DGs de raza: Ogro (2)»): la ficha guarda una dote repetible por dote, extra y origen, y
+     * dos iguales con el mismo origen se juntarían en una. Las pendientes no se borran al resolverse, así que el número
+     * no cambia.
+     */
+    private numeroDotePendiente(pendiente: DotePendienteState): number {
+        const hermanas = this.dotesPendientes
+            .filter((item) => item.fuente === pendiente.fuente
+                && `${item.origen ?? ''}`.trim() === `${pendiente.origen ?? ''}`.trim()
+                && toInt(item.nivelProgresion) === toInt(pendiente.nivelProgresion))
+            .sort((a, b) => toNumber(a.id) - toNumber(b.id));
+        return Math.max(1, hermanas.findIndex((item) => toNumber(item.id) === toNumber(pendiente.id)) + 1);
     }
 
     private resolverExtraTextoDote(dote: Dote, idExtra: number, extraSeleccionado: string): string {

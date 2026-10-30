@@ -5833,6 +5833,47 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(creadas.map((pendiente) => pendiente.fuente)).toEqual(['raza', 'raza_dg']);
     });
 
+    it('dos dotes de los DG raciales llevan cada una su origen: una dote repetible elegida dos veces no se junta', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs({
+            Nombre: 'Gigante de prueba',
+            Dgs_adicionales: {
+                Cantidad: 4, Dado: 'd8', Tipo_criatura: 'Gigante', Ataque_base: 3, Dotes_extra: 2,
+                Puntos_habilidad: 7, Multiplicador_puntos_habilidad: 1, Fortaleza: 4, Reflejos: 1, Voluntad: 1,
+            },
+        } as any));
+        svc.setCatalogoDotes([{
+            Id: 601, Nombre: 'Dote repetible', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+            Modificadores: {}, Repetible: 1,
+        } as any]);
+
+        const creadas = svc.registrarDotesPendientesPorRazaExtras('Gigante de prueba');
+        expect(creadas.map((pendiente) => pendiente.fuente)).toEqual(['raza_dg', 'raza_dg']);
+        // Se eligen en otro orden: el número sale del orden en que se crearon, no del de elección.
+        expect(svc.aplicarDotePendiente(creadas[1].id, { idDote: 601, idExtra: 0, extra: 'No aplica' })).toBeTrue();
+        expect(svc.aplicarDotePendiente(creadas[0].id, { idDote: 601, idExtra: 0, extra: 'No aplica' })).toBeTrue();
+
+        const origenes = svc.PersonajeCreacion.Dotes.filter((dote) => dote.Nombre === 'Dote repetible').map((dote) => dote.Origen);
+        expect(origenes).toEqual(['DGs de raza: Gigante de prueba (2)', 'DGs de raza: Gigante de prueba']);
+        expect(svc.PersonajeCreacion.DotesContextuales.filter((item) => item.Dote.Id === 601).length).toBe(2);
+    });
+
+    it('dos especiales con dote del mismo nivel dan dos orígenes distintos', () => {
+        const svc = new NuevoPersonajeService();
+        svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
+        svc.setCatalogoDotes([{
+            Id: 602, Nombre: 'Dote repetible', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+            Modificadores: {}, Repetible: 1,
+        } as any]);
+        const especial = { Especial: { Id: 1, Nombre: 'Dote adicional', Otorga_dote: true }, Extra: '', Id_extra: null } as any;
+
+        const creadas = svc.registrarDotesPendientesPorEspeciales([especial, especial], 'Clase de prueba nivel 1');
+        creadas.forEach((pendiente) => expect(svc.aplicarDotePendiente(pendiente.id, { idDote: 602, idExtra: 0, extra: 'No aplica' })).toBeTrue());
+
+        expect(svc.PersonajeCreacion.Dotes.filter((dote) => dote.Nombre === 'Dote repetible').map((dote) => dote.Origen))
+            .toEqual(['Dote adicional: Clase de prueba nivel 1', 'Dote adicional: Clase de prueba nivel 1 (2)']);
+    });
+
     it('raza sin DG raciales (humano): la dote adicional espera al primer nivel de clase, no a las características', () => {
         const svc = new NuevoPersonajeService();
         svc.seleccionarRaza(crearRazaConDgs({ ...sinDgs(), Nombre: 'Humano', Dotes_adicionales: 1 }));
