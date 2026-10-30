@@ -83,22 +83,30 @@ describe('ListaPersonajesComponent', () => {
         expect(component.Campanas.map((item) => item.Nombre)).toEqual(['Sin campaña', 'Caballeros']);
     });
 
-    it('normaliza el resumen de clases usando siempre Clase (Nivel) cuando hay nivel', () => {
+    it('la línea del personaje enseña cada clase con su nivel («Burlón 4»)', () => {
         const component = createComponent(new Subject<Campana[]>());
 
-        expect(component.resumenClases('Guerrero 3, Mago(2), Pícaro')).toBe('Guerrero (3), Mago (2), Pícaro');
+        expect(component.extraerClases('Guerrero 3, Mago(2), Pícaro').map((c) => component.textoClase(c))).toEqual(['Guerrero 3', 'Mago 2', 'Pícaro']);
     });
 
-    it('formatea una única clase con el mismo criterio visual que la multiclase', () => {
+    it('el buscador de la cabecera filtra por nombre, raza o clase sin tildes y «Limpiar filtros» lo vacía', () => {
         const component = createComponent(new Subject<Campana[]>());
+        component.Personajes = [
+            buildPersonaje({ Id: 1, Nombre: 'Lázaro' }),
+            buildPersonaje({ Id: 2, Nombre: 'Ajira' }),
+        ];
 
-        expect(component.formatearClase({ Nombre: 'Clérigo', Nivel: 5 })).toBe('Clérigo (5)');
-        expect(component.formatearClase({ Nombre: 'Monje', Nivel: null })).toBe('Monje');
+        component.buscar('  LAZARO ');
+        expect(component.personajesDS.data.map((item) => item.Id)).toEqual([1]);
+        expect(component.hayFiltros).toBeTrue();
+
+        component.limpiarFiltros();
+        expect(component.textoBusqueda).toBe('');
+        expect(component.personajesDS.data.map((item) => item.Id)).toEqual([1, 2]);
     });
 
     it('filtroPersonajes permite mostrar solo personajes propios', () => {
         const component = createComponent(new Subject<Campana[]>());
-        component.inputText = { nativeElement: { value: '' } } as any;
         component.Personajes = [
             buildPersonaje({ Id: 1, Nombre: 'Propio con ownerUid', ownerUid: 'uid-actor' }),
             buildPersonaje({ Id: 2, Nombre: 'Propio por accessReason', ownerUid: null, accessReason: 'owner' }),
@@ -113,7 +121,6 @@ describe('ListaPersonajesComponent', () => {
 
     it('filtroPersonajes filtra por visibilidad publica o privada', () => {
         const component = createComponent(new Subject<Campana[]>());
-        component.inputText = { nativeElement: { value: '' } } as any;
         component.Personajes = [
             buildPersonaje({ Id: 1, Nombre: 'Publico', visible_otros_usuarios: true }),
             buildPersonaje({ Id: 2, Nombre: 'Privado', visible_otros_usuarios: false }),

@@ -1,4 +1,4 @@
-import { Component, ViewChild, OnInit, AfterViewInit, ElementRef, Output, EventEmitter, OnDestroy } from '@angular/core';
+import { Component, ViewChild, OnInit, AfterViewInit, Output, EventEmitter, OnDestroy } from '@angular/core';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 import { ListaPersonajesService } from '../../../services/listas/lista-personajes.service';
 import { PersonajeSimple } from '../../../interfaces/simplificaciones/personaje-simple';
@@ -12,6 +12,7 @@ import { UserService } from 'src/app/services/user.service';
 import { Subscription } from 'rxjs';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { TAMANO_PAGINA_POR_DEFECTO, TAMANOS_PAGINA } from 'src/app/services/utils/paginador-es';
 
 type FiltroVisibilidadPersonajes = 'todos' | 'publicos' | 'privados';
 
@@ -39,10 +40,16 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     defaultSubtrama!: string;
     columns = this.listaPjs.ceateDataTable();
     personajesDS = new MatTableDataSource(this.Personajes);
-    columnsToDisplay = ['Nombre', 'Clases', 'Raza', 'Visibilidad'];
+    columnsToDisplay = ['Personaje', 'Campana', 'Visibilidad', 'Homebrew'];
     columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
     expandedElement!: PersonajeSimple;
     personajesCargados: boolean = false;
+    /** No se pudo leer el listado: se enseña el error con «Reintentar». */
+    errorCarga = false;
+    /** El buscador rápido de la cabecera (el «Incluye texto» de antes). */
+    textoBusqueda = '';
+    readonly tamanosPagina = TAMANOS_PAGINA;
+    readonly tamanoPagina = TAMANO_PAGINA_POR_DEFECTO;
     mostrarArchivados = false;
     mostrarSoloMios = false;
     filtroVisibilidad: FiltroVisibilidadPersonajes = 'todos';
@@ -61,7 +68,6 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
 
     @ViewChild(MatSort) sort!: MatSort;
     @ViewChild(MatPaginator) paginator!: MatPaginator;
-    @ViewChild('textInc', { read: ElementRef }) inputText!: ElementRef;
 
     async ngOnInit(): Promise<void> {
         await Promise.all([
@@ -130,7 +136,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     }
 
     filtroPersonajes() {
-        const texto = normalizarTexto(this.inputText?.nativeElement?.value ?? '', true);
+        const texto = normalizarTexto(this.textoBusqueda, true);
         const pjFiltrados = this.Personajes.filter(pj => (texto === '' || this.coincideConTextoFiltro(pj, texto))
             && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
             && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
@@ -143,8 +149,10 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
         this.personajesDS.sortingDataAccessor = (item: PersonajeSimple, property: string) => {
             if (property === 'Visibilidad')
                 return this.esPublicoPersonaje(item) ? 1 : 0;
-            if (property === '¿Archivado?')
+            if (property === 'Archivado')
                 return item?.Archivado ? 1 : 0;
+            if (property === 'Personaje')
+                return item?.Nombre;
             return (item as any)?.[property];
         };
         this.personajesDS.sort = this.sort;
@@ -158,11 +166,11 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
 
     AlternarArchivados() {
         this.mostrarArchivados = !this.mostrarArchivados;
-        const hasArchivadoColumn = this.columnsToDisplay.includes('¿Archivado?');
+        const hasArchivadoColumn = this.columnsToDisplay.includes('Archivado');
         if (this.mostrarArchivados && !hasArchivadoColumn)
-            this.columnsToDisplay.push('¿Archivado?');
+            this.columnsToDisplay = [...this.columnsToDisplay, 'Archivado'];
         if (!this.mostrarArchivados && hasArchivadoColumn)
-            this.columnsToDisplay = this.columnsToDisplay.filter((column) => column !== '¿Archivado?');
+            this.columnsToDisplay = this.columnsToDisplay.filter((column) => column !== 'Archivado');
         this.columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
         this.filtroPersonajes();
     }
@@ -176,12 +184,50 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     }
 
     announceSortChange(sortState: Sort) {
-        if (sortState.direction) {
-            this.lva.announce(`Ordenado ${sortState.direction}ending`);
-        } else {
-            this.lva.announce('Orden limpiado');
-        }
+        if (sortState.direction)
+            this.lva.announce(sortState.direction === 'asc' ? 'Orden ascendente' : 'Orden descendente');
+        else
+            this.lva.announce('Sin orden');
     }
+
+    /** El buscador rápido de la cabecera. */
+    buscar(texto: string): void {
+        this.textoBusqueda = texto;
+        this.filtroPersonajes();
+    }
+
+    /** Si algún filtro no es el de por defecto (para «Limpiar filtros»). */
+    get hayFiltros(): boolean {
+        return normalizarTexto(this.textoBusqueda, true).length > 0
+            || this.filtroVisibilidad !== 'todos'
+            || this.mostrarSoloMios
+            || this.mostrarArchivados
+            || (this.Campanas.length > 0 && this.defaultCampana !== this.Campanas[0]?.Nombre);
+    }
+
+    limpiarFiltros(): void {
+        this.textoBusqueda = '';
+        this.filtroVisibilidad = 'todos';
+        this.mostrarSoloMios = false;
+        if (this.mostrarArchivados)
+            this.AlternarArchivados();
+        this.defaultCampana = this.Campanas[0]?.Nombre ?? 'Sin campaña';
+        this.actualizarTramas(this.defaultCampana);
+    }
+
+    reintentar(): void {
+        this.personajesCargados = false;
+        this.errorCarga = false;
+        void this.cargarPersonajes();
+    }
+
+    /** «Burlón 4»: la clase con su nivel, como en la línea del personaje. */
+    textoClase(clase: { Nombre: string, Nivel: number | null }): string {
+        return clase.Nivel === null ? clase.Nombre : `${clase.Nombre} ${clase.Nivel}`;
+    }
+
+    /** «Aún no hay personajes que puedas ver»: abre la creación (como el botón del menú). */
+    @Output() nuevoPersonaje = new EventEmitter<void>();
 
     @Output() NewDetallesTab: EventEmitter<any> = new EventEmitter();
     CrearDetallesDe(value: number) {
@@ -229,22 +275,6 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
             this.ClaseDetallesTab.emit(nombreClase.trim());
     }
 
-    formatearClase(item: { Nombre: string, Nivel: number | null } | null | undefined): string {
-        const nombre = `${item?.Nombre ?? ''}`.trim();
-        if (nombre.length < 1)
-            return 'Sin clase';
-        if (item?.Nivel === null || item?.Nivel === undefined)
-            return nombre;
-        return `${nombre} (${item.Nivel})`;
-    }
-
-    resumenClases(raw: string): string {
-        const clases = this.extraerClases(raw);
-        if (clases.length < 1)
-            return `${raw ?? ''}`.trim() || 'Sin clase';
-        return clases.map((item) => this.formatearClase(item)).join(', ');
-    }
-
     esPublicoPersonaje(personaje: PersonajeSimple): boolean {
         return personaje?.visible_otros_usuarios === true;
     }
@@ -284,12 +314,14 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
             this.personajesSub = (await this.listaPjs.getPersonajes()).subscribe(personajes => {
                 this.Personajes = personajes;
                 this.personajesCargados = true;
+                this.errorCarga = false;
                 this.filtroPersonajes();
             });
         } catch {
             this.Personajes = [];
             this.personajesDS = new MatTableDataSource(this.Personajes);
             this.personajesCargados = true;
+            this.errorCarga = true;
         }
     }
 

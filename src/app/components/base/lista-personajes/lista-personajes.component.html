@@ -1,338 +1,168 @@
-<div id="container-personajes" class="tw-w-full tw-bg-[#212529]">
-  <div class="lista-row tw-w-full tw-relative tw-flex tw-justify-center tw-items-center">
-    <button
-      id="filtrosLP"
-      matTooltip="Filtros de personajes"
-      #filtros
-      mat-icon-button
-      [matMenuTriggerFor]="menu"
-      class="filtros lista-personajes__filters-trigger"
-    >
-      <mat-icon>filter_alt</mat-icon>
-    </button>
-    <mat-menu
-      id="containerMenu"
-      #menu="matMenu"
-      class="tw-me-1 menu-filtros-estandar menu-filtros-personajes"
-    >
-      <div id="menu">
-        <mat-form-field
-          (click)="$event.stopPropagation()"
-          (keyup)="filtroPersonajes()"
-        >
-          <mat-label>Incluye texto</mat-label>
-          <input #textInc matInput placeholder="Texto a buscar" />
-        </mat-form-field>
-        <mat-form-field (click)="$event.stopPropagation()">
-          <mat-label>Filtrar por campaña</mat-label>
-          <!-- <mat-select appearance="fill" [(value)]="personajeCampania"> <mat-option *ngFor="let c of campanias" [value]="c.id">{{c.nombre + " [" + c.id + "]"}}</mat-option> </mat-select> -->
-          <mat-select
-            #campanas
-            appearance="fill"
-            [(value)]="defaultCampana"
-            (selectionChange)="actualizarTramas(campanas.value)"
-          >
-            <mat-option *ngFor="let c of Campanas" [value]="c.Nombre">{{
-              c.Nombre
-            }}</mat-option>
+<!-- El inicio: los personajes que se pueden ver (lienzo «Rol: las vistas que faltan», vista 6). Los mismos datos y
+     filtros de siempre, con la cabecera común de los listados y filas sin pastillas. -->
+<div class="lista-personajes">
+  <app-listado-cabecera icono="personaje" titulo="Personajes" [total]="personajesCargados && !errorCarga ? personajesDS.data.length : null"
+    [texto]="textoBusqueda" (textoChange)="buscar($event)" etiquetaBuscar="Buscar personajes"
+    placeholder="Buscar por nombre, raza o clase">
+    <app-menu-filtros titulo="Filtros de personajes" [hayFiltros]="hayFiltros" (limpiar)="limpiarFiltros()">
+      <app-menu-filtros-grupo titulo="Campaña">
+        <mat-form-field>
+          <mat-label>Campaña</mat-label>
+          <mat-select #campanas [(value)]="defaultCampana" (selectionChange)="actualizarTramas(campanas.value)">
+            <mat-option *ngFor="let c of Campanas" [value]="c.Nombre">{{ c.Nombre }}</mat-option>
           </mat-select>
         </mat-form-field>
-        <mat-form-field (click)="$event.stopPropagation()">
-          <mat-label>Filtrar por trama</mat-label>
-          <mat-select
-            #tramas
-            appearance="fill"
-            [(value)]="defaultTrama"
-            (selectionChange)="actualizarSubtramas(tramas.value)"
-          >
-            <mat-option *ngFor="let t of Tramas" [value]="t.Nombre">{{
-              t.Nombre
-            }}</mat-option>
+        <mat-form-field>
+          <mat-label>Trama</mat-label>
+          <mat-select #tramas [(value)]="defaultTrama" (selectionChange)="actualizarSubtramas(tramas.value)">
+            <mat-option *ngFor="let t of Tramas" [value]="t.Nombre">{{ t.Nombre }}</mat-option>
           </mat-select>
         </mat-form-field>
-        <mat-form-field (click)="$event.stopPropagation()">
-          <mat-label>Filtrar por subtrama</mat-label>
-          <mat-select
-            #subtramas
-            appearance="fill"
-            [(ngModel)]="defaultSubtrama"
-            (selectionChange)="filtroPersonajes()"
-          >
-            <mat-option *ngFor="let s of Subtramas" [value]="s.Nombre">{{
-              s.Nombre
-            }}</mat-option>
+        <mat-form-field>
+          <mat-label>Subtrama</mat-label>
+          <mat-select [(ngModel)]="defaultSubtrama" (selectionChange)="filtroPersonajes()">
+            <mat-option *ngFor="let s of Subtramas" [value]="s.Nombre">{{ s.Nombre }}</mat-option>
           </mat-select>
         </mat-form-field>
-        <mat-form-field (click)="$event.stopPropagation()">
+      </app-menu-filtros-grupo>
+      <app-menu-filtros-grupo titulo="Visibilidad">
+        <mat-form-field>
           <mat-label>Visibilidad</mat-label>
-          <mat-select
-            appearance="fill"
-            [(ngModel)]="filtroVisibilidad"
-            (selectionChange)="filtroPersonajes()"
-          >
+          <mat-select [(ngModel)]="filtroVisibilidad" (selectionChange)="filtroPersonajes()">
             <mat-option value="todos">Todos</mat-option>
             <mat-option value="publicos">Solo públicos</mat-option>
             <mat-option value="privados">Solo privados</mat-option>
           </mat-select>
         </mat-form-field>
-      </div>
-      <mat-chip-option
-        color="accent"
-        class="tw-mt-4 tw-mb-1"
-        [selected]="mostrarSoloMios"
-        [disabled]="!sesionIniciada"
-        (click)="$event.stopPropagation(); AlternarSoloMios()"
-        >Míos</mat-chip-option
-      >
-      <mat-chip-option
-        #archivo
-        color="warn"
-        class="tw-mt-4 tw-mb-1"
-        (click)="$event.stopPropagation(); AlternarArchivados()"
-        >{{ anuncioArchivo }}</mat-chip-option
-      >
-    </mat-menu>
-    <table
-      id="personajes"
-      #tablaPjs
-      mat-table
-      [dataSource]="personajesDS"
-      multiTemplateDataRows
-      matSort
-      (matSortChange)="announceSortChange($event)"
-      *ngIf="personajesCargados; else cargando"
-    >
-      <ng-container
-        matColumnDef="{{ column }}"
-        *ngFor="let column of columnsToDisplay"
-      >
-        <th
-          class="tw-text-lg tw-font-medium"
-          mat-header-cell
-          *matHeaderCellDef
-          mat-sort-header
-          sortActionDescription="Ordenar por {{ column }}"
-        >
-          <ng-container>
-            <mat-icon *ngIf="column == 'Nombre'">portrait</mat-icon>
-            <mat-icon *ngIf="column == 'Clases'">style</mat-icon>
-            <mat-icon *ngIf="column == 'Raza'">settings_accessibility</mat-icon>
-            <mat-icon *ngIf="column == 'Visibilidad'">visibility</mat-icon>
-            <mat-icon *ngIf="column == '¿Archivado?'">archive</mat-icon>
-            &nbsp;{{ column }}
-          </ng-container>
-        </th>
-        <td mat-cell *matCellDef="let element">
-          <ng-container [ngSwitch]="column">
-            <ng-container *ngSwitchCase="'Clases'">
-              <ng-container *ngIf="extraerClases(element[column]) as clases">
-                <button
-                  mat-stroked-button
-                  matTooltip="Click para ver la clase"
-                  [matTooltipShowDelay]="300"
-                  color="accent"
-                  class="tw-flex tw-justify-start sombra3d-sm tw-w-full"
-                  *ngIf="clases.length === 1"
-                  (click)="
-                    CrearDetallesClase(clases[0].Nombre);
-                    $event.stopPropagation()
-                  "
-                >
-                  <mat-icon>read_more</mat-icon> {{ formatearClase(clases[0]) }}
-                </button>
-                <button
-                  mat-stroked-button
-                  matTooltip="Click para elegir clase"
-                  [matTooltipShowDelay]="300"
-                  color="accent"
-                  class="tw-flex tw-justify-start sombra3d-sm tw-w-full"
-                  *ngIf="clases.length > 1"
-                  [matMenuTriggerFor]="menuClases"
-                  #clasesTrigger="matMenuTrigger"
-                  [matMenuTriggerData]="{
-                    clases: clases,
-                    trigger: clasesTrigger,
-                  }"
-                  (click)="$event.stopPropagation()"
-                >
-                  <mat-icon>read_more</mat-icon> {{ resumenClases(element[column]) }}
-                </button>
-                <p class="tw-mb-0" *ngIf="clases.length < 1">Sin clase</p>
-                <mat-menu
-                  #menuClases="matMenu"
-                  class="menuOscuro menu-clases-personaje"
-                  xPosition="after"
-                  yPosition="below"
-                >
-                  <ng-template
-                    matMenuContent
-                    let-clases="clases"
-                    let-trigger="trigger"
-                  >
-                    <button
-                      mat-menu-item
-                      *ngFor="let c of clases"
-                      (click)="
-                        CrearDetallesClase(c.Nombre); trigger?.closeMenu()
-                      "
-                    >
-                      {{ formatearClase(c) }}
-                    </button>
-                  </ng-template>
-                </mat-menu>
-              </ng-container>
-            </ng-container>
-            <ng-container *ngSwitchCase="'Raza'">
-              <button
-                mat-stroked-button
-                matTooltip="Click para ver esta raza"
-                [matTooltipShowDelay]="300"
-                color="accent"
-                class="tw-flex tw-justify-start sombra3d-sm tw-w-full"
-                (click)="
-                  CrearDetallesRaza(element[column].Id);
-                  $event.stopPropagation()
-                "
-              >
-                <mat-icon>read_more</mat-icon> {{ element[column].Nombre }}
-              </button>
-            </ng-container>
-            <ng-container *ngSwitchCase="'Visibilidad'">
-              <div class="tw-flex tw-justify-center tw-items-center tw-gap-1">
-                <mat-icon>{{
-                  esPublicoPersonaje(element) ? "public" : "lock"
-                }}</mat-icon>
-                <span>{{
-                  esPublicoPersonaje(element) ? "Público" : "Privado"
-                }}</span>
-              </div>
-            </ng-container>
-            <ng-container *ngSwitchCase="'¿Archivado?'">
-              <div class="tw-flex tw-justify-center tw-items-center">
-                <mat-checkbox
-                  [checked]="element.Archivado"
-                  [disableRipple]="true"
-                  (click)="$event.preventDefault(); $event.stopPropagation()"
-                >
-                </mat-checkbox>
-              </div>
-            </ng-container>
-            <ng-container *ngSwitchCase="'Nombre'">
-              <button
-                mat-stroked-button
-                matTooltip="Click para ver este personaje"
-                [matTooltipShowDelay]="400"
-                color="accent"
-                class="tw-flex tw-justify-start sombra3d-sm tw-w-full"
-                (click)="CrearDetallesDe(element.Id); $event.stopPropagation()"
-              >
-                <mat-icon>read_more</mat-icon> {{ element[column] }}
-              </button>
-            </ng-container>
-            <ng-container *ngSwitchDefault>
-              <p class="tw-mb-0">{{ element[column] }}</p>
-            </ng-container>
-          </ng-container>
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="expand">
-        <th mat-header-cell *matHeaderCellDef aria-label="row actions">
-          &nbsp;
-        </th>
-        <td mat-cell *matCellDef="let element">
-          <button
-            mat-icon-button
-            aria-label="expand row"
-            (click)="
-              expandedElement = expandedElement === element ? null : element;
-              $event.stopPropagation()
-            "
-          >
-            <mat-icon *ngIf="expandedElement !== element"
-              >keyboard_arrow_down</mat-icon
-            >
-            <mat-icon *ngIf="expandedElement === element"
-              >keyboard_arrow_up</mat-icon
-            >
-          </button>
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="expandedDetail">
-        <td
-          mat-cell
-          *matCellDef="let element"
-          [attr.colspan]="columnsToDisplayWithExpand.length"
-        >
-          <div
-            class="details"
-            [@detailExpand]="
-              element == expandedElement ? 'expanded' : 'collapsed'
-            "
-          >
-            <div class="contenedorDetalles">
-              <div class="campana tw-p-2">
-                <h4>Campaña:</h4>
-                <p class="tw-text-center tw-p-1 tw-mx-4">
-                  {{ element.Campana }}
-                </p>
-                <p class="tw-text-center tw-p-1 tw-mx-4">{{ element.Trama }}</p>
-                <p class="tw-text-center tw-p-1 tw-mx-4">
-                  {{ element.Subtrama }}
-                </p>
-              </div>
-              <div class="tw-pt-2">
-                <h4>Personalidad:</h4>
-                <p class="tw-h-full tw-p-2 tw-m-1 tw-me-3">
-                  {{ element.Personalidad }}
-                </p>
-              </div>
-              <div class="tw-pt-2">
-                <h4>Contexto:</h4>
-                <p class="tw-h-full tw-p-2 tw-m-1">{{ element.Contexto }}</p>
-              </div>
+      </app-menu-filtros-grupo>
+      <app-menu-filtros-grupo titulo="Mostrar" [chips]="true">
+        <mat-chip-option color="accent" class="filtro-chip" [selected]="mostrarSoloMios" [disabled]="!sesionIniciada"
+          (click)="AlternarSoloMios()">Míos</mat-chip-option>
+        <mat-chip-option color="warn" class="filtro-chip" [selected]="mostrarArchivados"
+          (click)="AlternarArchivados()">{{ anuncioArchivo }}</mat-chip-option>
+      </app-menu-filtros-grupo>
+    </app-menu-filtros>
+  </app-listado-cabecera>
+
+  <div class="lista-personajes__tabla" [class.lista-personajes__tabla--oculta]="!personajesCargados || errorCarga || Personajes.length < 1">
+    <table mat-table [dataSource]="personajesDS" multiTemplateDataRows matSort (matSortChange)="announceSortChange($event)"
+      aria-label="Personajes">
+      <ng-container matColumnDef="Personaje">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por nombre">Personaje</th>
+        <td mat-cell *matCellDef="let pj">
+          <div class="pj-celda">
+            <app-icono-rol tipo="personaje" [tamano]="28" [recuadro]="true"></app-icono-rol>
+            <div class="pj-celda__texto">
+              <button type="button" class="pj-nombre" (click)="CrearDetallesDe(pj.Id); $event.stopPropagation()">{{ pj.Nombre }}</button>
+              <span class="pj-linea">
+                <button type="button" class="pj-enlace" *ngIf="pj.Raza?.Nombre" [attr.aria-label]="'Ver la raza ' + pj.Raza.Nombre"
+                  (click)="CrearDetallesRaza(pj.Raza.Id); $event.stopPropagation()">{{ pj.Raza.Nombre }}</button>
+                <ng-container *ngIf="extraerClases(pj.Clases) as clases">
+                  <span class="pj-separador" *ngIf="pj.Raza?.Nombre && clases.length > 0" aria-hidden="true"> · </span>
+                  <ng-container *ngFor="let c of clases; let ultima = last">
+                    <button type="button" class="pj-enlace" [attr.aria-label]="'Ver la clase ' + c.Nombre"
+                      (click)="CrearDetallesClase(c.Nombre); $event.stopPropagation()">{{ textoClase(c) }}</button><span *ngIf="!ultima">, </span>
+                  </ng-container>
+                  <span class="pj-nota" *ngIf="clases.length < 1"> · Sin clase</span>
+                </ng-container>
+              </span>
             </div>
           </div>
         </td>
       </ng-container>
-      <tr
-        mat-header-row
-        *matHeaderRowDef="columnsToDisplayWithExpand; sticky: true"
-      ></tr>
-      <tr
-        mat-row
-        *matRowDef="let element; columns: columnsToDisplayWithExpand"
-        class="element-row"
-        [class.expanded-row]="expandedElement === element"
-        (click)="expandedElement = expandedElement === element ? null : element"
-      ></tr>
-      <tr
-        mat-row
-        *matRowDef="let row; columns: ['expandedDetail']"
-        class="details-row"
-      ></tr>
+      <ng-container matColumnDef="Campana">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por campaña">Campaña</th>
+        <td mat-cell *matCellDef="let pj">
+          <span [class.pj-nota]="!pj.Campana">{{ pj.Campana || 'Sin campaña' }}</span>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="Visibilidad">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por visibilidad">Visibilidad</th>
+        <td mat-cell *matCellDef="let pj">
+          <span class="pj-visibilidad">
+            <mat-icon aria-hidden="true">{{ esPublicoPersonaje(pj) ? 'public' : 'lock' }}</mat-icon>
+            {{ esPublicoPersonaje(pj) ? 'Público' : 'Privado' }}
+          </span>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="Homebrew">
+        <th mat-header-cell *matHeaderCellDef><span class="pj-oculto">Homebrew</span></th>
+        <td mat-cell *matCellDef="let pj">
+          <span class="pj-etiqueta" *ngIf="pj.oficial === false">Homebrew</span>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="Archivado">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por archivado">Archivado</th>
+        <td mat-cell *matCellDef="let pj" class="pj-centro">
+          <mat-checkbox [checked]="pj.Archivado" [disableRipple]="true" [attr.aria-label]="pj.Archivado ? 'Archivado' : 'No archivado'"
+            (click)="$event.preventDefault(); $event.stopPropagation()"></mat-checkbox>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="expand">
+        <th mat-header-cell *matHeaderCellDef><span class="pj-oculto">Más datos</span></th>
+        <td mat-cell *matCellDef="let pj">
+          <button mat-icon-button type="button" [attr.aria-label]="'Más datos de ' + pj.Nombre" [attr.aria-expanded]="expandedElement === pj"
+            (click)="expandedElement = expandedElement === pj ? null : pj; $event.stopPropagation()">
+            <mat-icon>{{ expandedElement === pj ? 'keyboard_arrow_up' : 'keyboard_arrow_down' }}</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="expandedDetail">
+        <td mat-cell *matCellDef="let pj" [attr.colspan]="columnsToDisplayWithExpand.length">
+          <div class="details" [@detailExpand]="pj == expandedElement ? 'expanded' : 'collapsed'">
+            <dl class="pj-desplegable">
+              <div class="pj-desplegable__bloque">
+                <dt>Campaña</dt>
+                <dd>{{ pj.Campana || 'Sin campaña' }}</dd>
+                <dd *ngIf="pj.Trama">{{ pj.Trama }}</dd>
+                <dd *ngIf="pj.Subtrama">{{ pj.Subtrama }}</dd>
+              </div>
+              <div class="pj-desplegable__bloque">
+                <dt>Personalidad</dt>
+                <dd>{{ pj.Personalidad || '—' }}</dd>
+              </div>
+              <div class="pj-desplegable__bloque">
+                <dt>Contexto</dt>
+                <dd>{{ pj.Contexto || '—' }}</dd>
+              </div>
+            </dl>
+          </div>
+        </td>
+      </ng-container>
+      <tr mat-header-row *matHeaderRowDef="columnsToDisplayWithExpand; sticky: true"></tr>
+      <tr mat-row *matRowDef="let pj; columns: columnsToDisplayWithExpand" class="pj-fila" [class.pj-fila--abierta]="expandedElement === pj"
+        (click)="CrearDetallesDe(pj.Id)"></tr>
+      <tr mat-row *matRowDef="let row; columns: ['expandedDetail']" class="pj-detalle"></tr>
       <tr class="mat-row" *matNoDataRow>
-        <td
-          class="mat-cell tw-text-center tw-text-white tw-p-3"
-          [attr.colspan]="columnsToDisplayWithExpand.length"
-        >
-          Ningún personaje encaja con los filtros
+        <td class="mat-cell" [attr.colspan]="columnsToDisplayWithExpand.length">
+          <div class="pj-vacio">
+            <p>Ningún personaje cumple los filtros.</p>
+            <button type="button" mat-stroked-button (click)="limpiarFiltros()">Limpiar filtros</button>
+          </div>
         </td>
       </tr>
     </table>
-    <ng-template #cargando>
-      <div class="superballs">
-        <div class="superballs__dot"></div>
-        <div class="superballs__dot"></div>
-      </div>
-    </ng-template>
   </div>
-  <div class="lista-row tw-w-full tw-flex tw-items-center">
-    <mat-paginator
-      class="tw-w-full"
-      [pageSizeOptions]="[10, 20, 30, 40]"
-      showFirstLastButtons
-      aria-label="Selecciona una página de personajes"
-    >
-    </mat-paginator>
+
+  <!-- Cargando: seis filas de esqueleto. -->
+  <div class="lista-personajes__esqueleto" *ngIf="!personajesCargados" role="status" aria-label="Cargando personajes">
+    <div class="pj-esqueleto" *ngFor="let fila of [1, 2, 3, 4, 5, 6]" aria-hidden="true">
+      <span class="pj-esqueleto__icono"></span>
+      <span class="pj-esqueleto__lineas"><span></span><span></span></span>
+    </div>
   </div>
+
+  <div class="bloque-error lista-personajes__error" *ngIf="personajesCargados && errorCarga" role="alert">
+    <span>No se pudieron cargar los personajes.</span>
+    <button type="button" mat-stroked-button (click)="reintentar()">Reintentar</button>
+  </div>
+
+  <div class="pj-vacio pj-vacio--total" *ngIf="personajesCargados && !errorCarga && Personajes.length < 1">
+    <p>Aún no hay personajes que puedas ver</p>
+    <button type="button" mat-raised-button color="primary" (click)="nuevoPersonaje.emit()">Nuevo personaje</button>
+  </div>
+
+  <mat-paginator class="lista-personajes__paginador" [pageSizeOptions]="tamanosPagina" [pageSize]="tamanoPagina" showFirstLastButtons
+    aria-label="Páginas de personajes" [class.lista-personajes__tabla--oculta]="!personajesCargados || errorCarga || Personajes.length < 1">
+  </mat-paginator>
 </div>

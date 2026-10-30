@@ -144,6 +144,8 @@ import { HelpUsageAboutComponent } from './components/base/help-usage-about/help
 import { MENU_FILTROS_COMPONENTES } from './components/shared/menu-filtros/menu-filtros.component';
 import { IconoRolComponent } from './components/shared/icono-rol/icono-rol.component';
 import { BuscadorGlobalComponent } from './components/shared/buscador-global/buscador-global.component';
+import { ListadoCabeceraComponent } from './components/shared/listado-cabecera/listado-cabecera.component';
+import { PROVEEDOR_PAGINADOR_ES } from './services/utils/paginador-es';
 
 @NgModule({
     declarations: [
@@ -167,6 +169,7 @@ import { BuscadorGlobalComponent } from './components/shared/buscador-global/bus
         ...MENU_FILTROS_COMPONENTES,
         IconoRolComponent,
         BuscadorGlobalComponent,
+        ListadoCabeceraComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
         DetallesRazaComponent,
@@ -285,6 +288,7 @@ import { BuscadorGlobalComponent } from './components/shared/buscador-global/bus
     ],
     providers: [
         DataServices,
+        PROVEEDOR_PAGINADOR_ES,
         provideHttpClient(withInterceptorsFromDi()),
         provideFirebaseApp(() => initializeApp(environment.firebase)),
         // La sesión de Firebase sale del token propio que da la API con la sesión de la plataforma: solo en

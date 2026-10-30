@@ -2541,6 +2541,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     @Output() CerrarNuevoPersonajeTab: EventEmitter<void> = new EventEmitter();
+    /** «Nuevo personaje» desde el inicio vacío: lo abre el menú, que comprueba la sesión y el permiso. */
+    @Output() NuevoPersonajeSolicitado: EventEmitter<void> = new EventEmitter();
     quitarNuevoPersonaje() {
         this.closeTabWithNavigation(this.TAB_NUEVO, () => {
             this.nuevoPSvc.resetearCreacionNuevoPersonaje();

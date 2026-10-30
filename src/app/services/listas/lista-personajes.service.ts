@@ -242,6 +242,7 @@ export class ListaPersonajesService {
             Trama: trama,
             Subtrama: subtrama,
             Archivado: toBoolean(element?.archivado ?? element?.Archivado ?? element?.a),
+            oficial: typeof (element?.oficial ?? element?.o) === 'boolean' ? (element?.oficial ?? element?.o) : null,
         };
     }
 

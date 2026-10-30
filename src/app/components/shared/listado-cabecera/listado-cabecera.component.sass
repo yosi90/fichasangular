@@ -1,0 +1,98 @@
+@use '../../../../assets/css/variables' as *
+
+:host
+    display: block
+
+.listado-cabecera
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 8px 14px
+    min-height: 64px
+    box-sizing: border-box
+    padding: 12px 16px
+    background: $primary
+    border-radius: 6px
+    box-shadow: 3px 3px 10px black
+
+.listado-cabecera__titulo
+    margin: 0
+    font-size: 20px
+    font-weight: 500
+    line-height: 1.3
+    color: #ffffff
+
+.listado-cabecera__total
+    font-size: 14px
+    color: $accent
+
+.listado-cabecera__oculto
+    position: absolute
+    width: 1px
+    height: 1px
+    overflow: hidden
+    clip: rect(0 0 0 0)
+    white-space: nowrap
+
+.listado-cabecera__buscar
+    display: flex
+    align-items: center
+    gap: 8px
+    width: 280px
+    max-width: 100%
+    height: 40px
+    box-sizing: border-box
+    margin-left: auto
+    padding: 0 12px
+    background: $contrast-dark
+    border-radius: 4px
+    border-bottom: 1px solid $accent
+
+    mat-icon
+        flex-shrink: 0
+        width: 18px
+        height: 18px
+        font-size: 18px
+        color: $accent
+
+    input
+        flex: 1 1 auto
+        min-width: 0
+        border: 0
+        outline: none
+        background: transparent
+        color: #ffffff
+        font: inherit
+        font-size: 14px
+
+        &::placeholder
+            color: #9aa5ab
+
+    &:focus-within
+        border-bottom-color: $active
+        box-shadow: inset 0 -1px 0 $active
+
+.listado-cabecera__acciones
+    display: flex
+    align-items: center
+    gap: 8px
+
+    &:empty
+        display: none
+
+// Móvil: título, total y filtros en la primera línea; el buscador, a todo lo ancho debajo.
+@media (max-width: 699.98px)
+    .listado-cabecera
+        min-height: 48px
+        padding: 8px 12px
+
+    .listado-cabecera__titulo
+        font-size: 17px
+
+    .listado-cabecera__buscar
+        order: 5
+        width: 100%
+        margin-left: 0
+
+    .listado-cabecera__acciones
+        margin-left: auto

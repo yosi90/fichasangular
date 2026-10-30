@@ -20,4 +20,6 @@ export interface PersonajeSimple {
     Trama: string;
     Subtrama: string;
     Archivado: boolean;
+    /** `false` si el personaje es homebrew (`oficial` de la proyección privada, `o` del detalle); sin el dato, `null`. */
+    oficial?: boolean | null;
 }

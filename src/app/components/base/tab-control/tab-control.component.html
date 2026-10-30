@@ -5,6 +5,7 @@
             <span class="pestana-etiqueta">Personajes</span>
         </ng-template>
         <app-lista-personajes
+            (nuevoPersonaje)="NuevoPersonajeSolicitado.emit()"
             (NewDetallesTab)="abrirDetallesPersonaje($event)"
             (RazaDetallesTab)="abrirDetallesRazaPorId($event)"
             (ClaseDetallesTab)="abrirDetallesClasePorNombre($event)">

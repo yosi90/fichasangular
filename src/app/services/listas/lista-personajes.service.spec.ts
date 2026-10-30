@@ -690,4 +690,13 @@ describe('ListaPersonajesService', () => {
         expect((service as any).personajesSubject.value.find((item: any) => item.Id === 9)?.Nombre).toBe('Visible para usuario');
         sub.unsubscribe();
     });
+
+    it('lleva si el personaje es oficial cuando la proyección lo trae (para la etiqueta Homebrew del inicio)', () => {
+        const service = new ListaPersonajesService({ currentUser: null } as any, {} as any, {} as any, firebaseContextMock);
+        const mapear = (raw: any) => (service as any).mapApiToPersonajeSimple({ Id: 1, Nombre: 'Lázaro', ...raw });
+
+        expect(mapear({ oficial: false }).oficial).toBeFalse();
+        expect(mapear({ oficial: true }).oficial).toBeTrue();
+        expect(mapear({}).oficial).toBeNull();
+    });
 });
