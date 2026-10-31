@@ -52,6 +52,8 @@ export interface ResultadoPuntosGolpe {
     total: number;
     maximo: number;
     tiradas: number;
+    /** Los DG raciales que han contado (`dgsRacialesQueCuentan`). */
+    dgsRaciales: number;
 }
 
 /** Las caras de un dado por su nombre en los datos («d8», «D10») o 0 si no lo dice. */
@@ -114,5 +116,5 @@ export function calcularPuntosGolpe(entrada: EntradaPuntosGolpe): ResultadoPunto
 
     total += toInt(entrada.bonoPlano);
     maximo += toInt(entrada.bonoPlano);
-    return { total: Math.max(1, total), maximo: Math.max(1, maximo), tiradas };
+    return { total: Math.max(1, total), maximo: Math.max(1, maximo), tiradas, dgsRaciales };
 }

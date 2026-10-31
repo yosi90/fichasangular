@@ -26,6 +26,7 @@ describe('puntos-golpe', () => {
         expect(resultado.total).toBe(8 + 3 * 3 + 2 * 4);
         expect(resultado.maximo).toBe(8 * 4 + 2 * 4);
         expect(resultado.tiradas).toBe(3);
+        expect(resultado.dgsRaciales).toBe(4);
     });
 
     it('con DG raciales ningún nivel de clase va al máximo: centauro (4 DG d8) guerrero 2', () => {
@@ -59,6 +60,7 @@ describe('puntos-golpe', () => {
         expect(resultado.total).toBe(6 + 4);
         expect(resultado.maximo).toBe(12);
         expect(resultado.tiradas).toBe(1);
+        expect(resultado.dgsRaciales).toBe(0);
     });
 
     it('los DG de plantilla nunca son el primero: se tiran todos', () => {

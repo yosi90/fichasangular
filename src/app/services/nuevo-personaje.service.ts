@@ -77,7 +77,7 @@ import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './
 import { AptitudDelPersonaje, evaluarActitudEspecial, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
 import { OrigenTamano, TamanoEfectivo, tamanoEfectivo, tamanoQueCuenta, tamanoTrasPasos } from './utils/tamano-efectivo';
 import { ajusteDePlantillas, dgsDePlantilla, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
-import { calcularPuntosGolpe, carasDado, dadoTrasPasos, dgsRacialesQueCuentan, GrupoDadosGolpe } from './utils/puntos-golpe';
+import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
 import { bonoTamano, bonosSinergia } from './utils/habilidades-bonos';
 import { textoAtaqueBase } from './utils/ataque-base';
@@ -10049,13 +10049,12 @@ export class NuevoPersonajeService {
         const raza = this.razaSeleccionada;
         const plantillas = this.estadoFlujo.plantillas.seleccionadas ?? [];
         const partes = this.getPartesNivelPersonaje(plantillas);
-        const dgsRaciales = dgsRacialesQueCuentan(partes.dgsRaza, partes.nivelesClase);
         const bonoDotes = this.resolverBonosPgsDesdeDotes();
         const reglaConstitucion = this.resolverModConstitucionParaVida();
 
         const flags = {
             dadosGolpe: false,
-            dgsRacialesExtra: dgsRaciales > 0,
+            dgsRacialesExtra: false,
             plantillasDgsAdicionales: false,
             plantillasAumentoReduccionDgs: false,
             plantillasActualizacionDgsRazaClase: false,
@@ -10092,7 +10091,7 @@ export class NuevoPersonajeService {
         flags.dadosGolpe = nivelesClase.length > 0;
 
         const resultado = calcularPuntosGolpe({
-            dgsRaciales: { cantidad: dgsRaciales, caras: dadoComun ?? dadoRacial },
+            dgsRaciales: { cantidad: partes.dgsRaza, caras: dadoComun ?? dadoRacial },
             nivelesClase,
             dgsPlantillas: plantillas
                 .filter((plantilla) => dgsDePlantilla(plantilla) > 0)
@@ -10105,6 +10104,8 @@ export class NuevoPersonajeService {
             bonoPlano: bonoDotes.bonoPlano,
             tirar: (caras) => this.randomInt(1, caras),
         });
+        // Los DG raciales que cuentan los decide `calcularPuntosGolpe` (con 1 o menos, el primer nivel de clase ocupa su lugar).
+        flags.dgsRacialesExtra = resultado.dgsRaciales > 0;
 
         return {
             total: resultado.total,
@@ -10113,7 +10114,7 @@ export class NuevoPersonajeService {
                 constitucionAplicada: reglaConstitucion.aplica,
                 modificadorConstitucion: reglaConstitucion.modificador,
                 tiradasAleatorias: resultado.tiradas,
-                dgsRaciales,
+                dgsRaciales: resultado.dgsRaciales,
                 nivelesClase: nivelesClase.reduce((acc, grupo) => acc + grupo.cantidad, 0),
                 bonoPlanoDotes: bonoDotes.bonoPlano,
                 bonoPorDadoClaseDotes: bonoDotes.bonoPorDadoClase,

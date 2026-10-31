@@ -81,7 +81,7 @@ describe('Cifras de la creación (Manual del jugador, Guía del DM y Manual de m
                 bonoPlano: 0,
                 tirar: () => 1,
             });
-            expect(resultado).toEqual({ total: 2, maximo: 2, tiradas: 1 });
+            expect(resultado).toEqual({ total: 2, maximo: 2, tiradas: 1, dgsRaciales: 0 });
         });
     });
 
