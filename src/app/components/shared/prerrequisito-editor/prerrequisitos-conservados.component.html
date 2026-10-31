@@ -1,0 +1,9 @@
+<div class="prerrequisitos-conservados" *ngIf="conservados.length > 0">
+    <span class="prerrequisitos-conservados__nota">Se guardan tal cual:</span>
+    <mat-chip *ngFor="let conservado of conservados; let i = index" [class.con-borde]="conBorde">
+        {{conservado.frase}}
+        <button matChipRemove type="button" [attr.aria-label]="'Quitar ' + conservado.frase" (click)="quitar.emit(i)">
+            <mat-icon>cancel</mat-icon>
+        </button>
+    </mat-chip>
+</div>

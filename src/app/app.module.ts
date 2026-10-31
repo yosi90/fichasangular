@@ -114,6 +114,7 @@ import { HabilidadCustomModalComponent } from './components/shared/habilidad-cus
 import { PrerrequisitoCatalogEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-editor.component';
 import { PrerrequisitoCatalogValueEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-value-editor.component';
 import { PrerrequisitoEditorHostComponent } from './components/shared/prerrequisito-editor/prerrequisito-editor-host.component';
+import { PrerrequisitosConservadosComponent } from './components/shared/prerrequisito-editor/prerrequisitos-conservados.component';
 import { PrerrequisitoFlagEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-flag-editor.component';
 import { PrerrequisitoSpecialEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-special-editor.component';
 import { PrerrequisitoValueEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-value-editor.component';
@@ -275,6 +276,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         NuevaClaseComponent,
         HabilidadCustomModalComponent,
         PrerrequisitoEditorHostComponent,
+        PrerrequisitosConservadosComponent,
         PrerrequisitoFlagEditorComponent,
         PrerrequisitoValueEditorComponent,
         PrerrequisitoCatalogEditorComponent,

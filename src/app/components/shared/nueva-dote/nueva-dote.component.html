@@ -284,15 +284,9 @@
                     </mat-chip>
                 </div>
 
-                <div class="prerrequisitos-conservados" *ngIf="prerrequisitosConservados.length > 0">
-                    <span class="prerrequisitos-conservados__nota">Se guardan tal cual:</span>
-                    <mat-chip *ngFor="let conservado of prerrequisitosConservados; let i = index" class="mod-chip">
-                        {{conservado.frase}}
-                        <button matChipRemove type="button" [attr.aria-label]="'Quitar ' + conservado.frase" (click)="quitarPrerrequisitoConservado(i)">
-                            <mat-icon>cancel</mat-icon>
-                        </button>
-                    </mat-chip>
-                </div>
+                <app-prerrequisitos-conservados [conservados]="prerrequisitosConservados" [conBorde]="true"
+                    (quitar)="quitarPrerrequisitoConservado($event)">
+                </app-prerrequisitos-conservados>
 
                 <app-prerrequisito-editor-host
                     [selectedTypes]="prerrequisitosSeleccionados"

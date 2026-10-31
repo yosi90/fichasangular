@@ -642,15 +642,9 @@
                             Tipos
                         </button>
                     </div>
-                    <div class="prerrequisitos-conservados" *ngIf="prerrequisitosConservados.length > 0">
-                        <span class="prerrequisitos-conservados__nota">Se guardan tal cual:</span>
-                        <mat-chip *ngFor="let conservado of prerrequisitosConservados; let i = index">
-                            {{conservado.frase}}
-                            <button matChipRemove type="button" [attr.aria-label]="'Quitar ' + conservado.frase" (click)="quitarPrerrequisitoConservado(i)">
-                                <mat-icon>cancel</mat-icon>
-                            </button>
-                        </mat-chip>
-                    </div>
+                    <app-prerrequisitos-conservados [conservados]="prerrequisitosConservados"
+                        (quitar)="quitarPrerrequisitoConservado($event)">
+                    </app-prerrequisitos-conservados>
                     <p class="no-editable-motivo" *ngIf="prerrequisitosIncarnumConservados.length > 0">
                         <mat-icon aria-hidden="true">lock</mat-icon>
                         De Magic of Incarnum, no editables aquí (se conservan al guardar): {{prerrequisitosIncarnumConservados.join(' · ')}}.
