@@ -4,6 +4,7 @@ import { Clase } from 'src/app/interfaces/clase';
 import { normalizeClase } from 'src/app/services/clase.service';
 import { NuevaClaseComponent } from './nueva-clase.component';
 import { IDA_Y_VUELTA_CLASES } from 'src/testing/ida-y-vuelta-clases';
+import { soloLoDeLaReferencia } from 'src/testing/cuerpo-de-catalogo';
 
 // El `PUT /clases` deja vacío lo que no viene (guía `docs/publica/CLASES_PROPIAS_FRONT.md`): el editor reenvía lo que no
 // edita (la lista de conjuros, el libro y el divisor) y manda los campos de las clases propias.
@@ -103,26 +104,14 @@ describe('NuevaClaseComponent (catálogos de los prerrequisitos)', () => {
     });
 });
 
-/**
- * El cuerpo que monta la web reducido a lo que trae `referencia` (el de la comprobación del backend, que solo lleva lo
- * que lee la API): la web añade los nombres. Las listas de ids, en orden (la web ordena las selecciones), y los
- * prerrequisitos sin las claves vacías.
- */
-function comparable(valor: any, referencia: any): any {
-    if (Array.isArray(referencia))
-        return (valor ?? []).map((item: any, i: number) => comparable(item, referencia[i] ?? item));
-    if (referencia && typeof referencia === 'object') {
-        if (!valor || typeof valor !== 'object')
-            return valor;
-        return Object.fromEntries(Object.keys(referencia).map((clave) => [clave, comparable(valor[clave], referencia[clave])]));
-    }
-    return valor;
-}
-
 function porId(lista: any[] | undefined): any[] {
     return [...(lista ?? [])].sort((a, b) => a.Id - b.Id);
 }
 
+/**
+ * Un cuerpo de la clase comparable con el de la comprobación del backend (luego, con `soloLoDeLaReferencia`): las listas
+ * de ids en orden (la web ordena las selecciones) y los prerrequisitos sin las claves vacías.
+ */
 function ordenado(cuerpo: any): any {
     const copia = JSON.parse(JSON.stringify(cuerpo));
     ['Armas', 'Armaduras', 'Grupos_arma', 'Grupos_armadura'].forEach((k) => copia.Competencias[k] = porId(copia.Competencias[k]));
@@ -142,7 +131,7 @@ describe('NuevaClaseComponent (Modificar clase: guardar sin cambios)', () => {
             const web = ordenado((editor as any).construirPayload());
             const esperado = ordenado(cuerpo);
             expect(Object.keys(web.Prerrequisitos).sort()).toEqual(Object.keys(esperado.Prerrequisitos).sort());
-            expect(comparable(web, esperado)).toEqual(esperado);
+            expect(soloLoDeLaReferencia(web, esperado)).toEqual(esperado);
             expect(editor.isDirty).toBeFalse();
         });
     });

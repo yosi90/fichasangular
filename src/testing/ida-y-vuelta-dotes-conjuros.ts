@@ -6,12 +6,7 @@
  *
  * Generado desde la comprobación del backend; no se edita a mano.
  */
-export interface IdaYVuelta {
-    id: number;
-    nombre: string;
-    get: any;
-    cuerpo: any;
-}
+import type { IdaYVuelta } from './cuerpo-de-catalogo';
 
 export const IDA_Y_VUELTA: { dotes: IdaYVuelta[]; conjuros: IdaYVuelta[]; } = {
  "conjuros": [
