@@ -20,6 +20,7 @@ import { ManualService } from 'src/app/services/manual.service';
 import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-conjuros.service';
 import { UserService } from 'src/app/services/user.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+import { avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { normalizarTexto, toArray, toInt } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -489,7 +490,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
 
     async crearConjuro(): Promise<void> {
         if (!this.puedeCrear) {
-            await this.mostrarPermisosInsuficientes();
+            await avisarSinPermisos(this.mensajePermisosInsuficientes);
             return;
         }
 
@@ -641,15 +642,6 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
         this.sincronizarSelectPorDefecto('id_tiempo_lanz', this.tiemposLanzamiento);
         this.sincronizarSelectPorDefecto('id_alcance', this.alcances);
         this.sincronizarSubdisciplinas();
-    }
-
-    private async mostrarPermisosInsuficientes(): Promise<void> {
-        await Swal.fire({
-            icon: 'warning',
-            title: 'Permisos insuficientes',
-            text: this.mensajePermisosInsuficientes,
-            showConfirmButton: true
-        });
     }
 
     private recalcularPermisos(): void {

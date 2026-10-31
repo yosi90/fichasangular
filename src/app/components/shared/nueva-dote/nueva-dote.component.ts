@@ -34,6 +34,7 @@ import { HabilidadService } from 'src/app/services/habilidad.service';
 import { ManualService } from 'src/app/services/manual.service';
 import { UserService } from 'src/app/services/user.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+import { avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
@@ -569,7 +570,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (this.guardando)
             return;
         if (!this.puedeCrear) {
-            await this.mostrarPermisosInsuficientes();
+            await avisarSinPermisos(this.mensajePermisosInsuficientes);
             return;
         }
 
@@ -1032,7 +1033,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
     async crearDote(): Promise<void> {
         if (!this.puedeCrear) {
-            await this.mostrarPermisosInsuficientes();
+            await avisarSinPermisos(this.mensajePermisosInsuficientes);
             return;
         }
 
@@ -1495,15 +1496,6 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             title: 'Error al cargar datos',
             text: texto,
             confirmButtonText: 'Entendido',
-        });
-    }
-
-    private async mostrarPermisosInsuficientes(): Promise<void> {
-        await Swal.fire({
-            icon: 'warning',
-            title: 'Permisos insuficientes',
-            text: this.mensajePermisosInsuficientes,
-            showConfirmButton: true
         });
     }
 

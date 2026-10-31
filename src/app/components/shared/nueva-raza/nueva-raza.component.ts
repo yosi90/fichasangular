@@ -48,6 +48,7 @@ import { recargandoPorCambioDeIdentidad } from 'src/app/services/platform-sessio
 import { UserService } from 'src/app/services/user.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { quitarFila } from '../insercion-marco/filas-repetibles';
+import { avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { buildManiobrabilidadInfoSecciones } from 'src/app/services/utils/maniobrabilidad-info';
 import { PrerrequisitoEditorHostComponent } from '../prerrequisito-editor/prerrequisito-editor-host.component';
 import {
@@ -429,12 +430,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         const errorDominio = this.validarReglasDominio();
 
         if (!this.puedeCrear) {
-            await Swal.fire({
-                icon: 'warning',
-                title: 'Permisos insuficientes',
-                text: this.mensajePermisosInsuficientes,
-                showConfirmButton: true,
-            });
+            await avisarSinPermisos(this.mensajePermisosInsuficientes);
             return;
         }
 

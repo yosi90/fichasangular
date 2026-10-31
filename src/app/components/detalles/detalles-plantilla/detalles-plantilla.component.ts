@@ -28,6 +28,7 @@ import { toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { GrupoPrerrequisitos, agruparPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
 import { porNombre } from 'src/app/services/utils/orden-texto';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 
 @Component({
     selector: 'app-detalles-plantilla',
@@ -113,9 +114,9 @@ export class DetallesPlantillaComponent {
     /** El lápiz «Modificar»: abre la pestaña de modificar la plantilla. Sin quien lo escuche (la creación), no sale. */
     @Output() modificar: EventEmitter<Plantilla> = new EventEmitter<Plantilla>();
 
-    /** Solo con permiso: el de crear plantillas, que es el que pide `PUT /plantillas/<id>`. */
+    /** Solo con permiso: el de crear plantillas, que es el que pide `PUT /plantillas/<id>` (`permisos-catalogo.ts`). */
     get puedeModificar(): boolean {
-        return this.modificar.observed && this.userSvc.can('plantillas', 'create');
+        return this.modificar.observed && puedeGestionarCatalogo(this.userSvc, 'plantillas');
     }
 
     abrirDetalleManual() {

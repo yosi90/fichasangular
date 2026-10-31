@@ -1,9 +1,10 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
-import Swal from 'sweetalert2';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
+import { HABILIDAD } from 'src/app/services/utils/nombres-de-catalogo';
+import { avisarErrorAlGuardar } from '../insercion-marco/avisos-insercion';
 
 @Component({
     selector: 'app-habilidad-custom-modal',
@@ -62,12 +63,7 @@ export class HabilidadCustomModalComponent implements OnChanges {
                 : await this.habilidadSvc.crearHabilidadCustom(payload);
             this.guardada.emit(response.habilidad);
         } catch (error: any) {
-            await Swal.fire({
-                icon: 'error',
-                title: this.modo === 'editar' ? 'No se pudo actualizar la habilidad' : 'No se pudo crear la habilidad',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true,
-            });
+            await avisarErrorAlGuardar(HABILIDAD, this.modo === 'editar', error);
         } finally {
             this.guardando = false;
         }
