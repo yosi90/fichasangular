@@ -23,6 +23,10 @@ export interface NuevaRazaDraftRows {
     sortilegiosRows: any[];
     prerrequisitosMutacionRows: any[];
     prerrequisitosMutacionSeleccionados: string[];
+    /** El paso «Edades»: si crece por edades y sus filas (opcionales: los borradores de antes no las traen). */
+    porEdades?: boolean;
+    categoriasEdadRows?: any[];
+    pasosEdadRows?: any[];
 }
 
 export interface NuevaRazaDraftContenido {
@@ -155,6 +159,9 @@ export class NuevaRazaDraftService {
                 sortilegiosRows: this.clonarArray(contenido.rows?.sortilegiosRows),
                 prerrequisitosMutacionRows: this.clonarArray(contenido.rows?.prerrequisitosMutacionRows),
                 prerrequisitosMutacionSeleccionados: this.normalizarTextos(contenido.rows?.prerrequisitosMutacionSeleccionados),
+                porEdades: contenido.rows?.porEdades === true,
+                categoriasEdadRows: this.clonarArray(contenido.rows?.categoriasEdadRows),
+                pasosEdadRows: this.clonarArray(contenido.rows?.pasosEdadRows),
             },
         };
     }
@@ -216,7 +223,7 @@ export class NuevaRazaDraftService {
 
     private normalizarSelectedIndex(value: any): number {
         const index = Math.trunc(Number(value ?? 0));
-        return Number.isFinite(index) ? Math.max(0, Math.min(4, index)) : 0;
+        return Number.isFinite(index) ? Math.max(0, Math.min(5, index)) : 0;
     }
 
     private normalizarIds(values: any): number[] {

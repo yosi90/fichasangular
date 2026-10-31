@@ -6,6 +6,7 @@ import { ElementoDeCatalogo } from './error-catalogo';
  * `insercion-marco`), para que el nombre de un catálogo esté en un solo sitio.
  */
 export const RAZA: ElementoDeCatalogo = { singular: 'raza', plural: 'razas', femenino: true };
+export const CATEGORIA_EDAD: ElementoDeCatalogo = { singular: 'categoría de edad', plural: 'categorías de edad', femenino: true };
 export const RACIAL: ElementoDeCatalogo = { singular: 'racial', plural: 'raciales', femenino: false };
 export const IDIOMA: ElementoDeCatalogo = { singular: 'idioma', plural: 'idiomas', femenino: false };
 export const CLASE: ElementoDeCatalogo = { singular: 'clase', plural: 'clases', femenino: true };

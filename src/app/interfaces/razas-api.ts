@@ -137,6 +137,57 @@ export interface RazaCreateRequest {
     competencias?: RazaCreateCompetencias;
     /** Las listas que lanza además como arcanas con el lanzamiento racial: `{ id_clase }` o `{ id_dominio }`. */
     lanzamiento_listas?: RazaCreateListaLanzamiento[];
+    /** Las categorías de edad de una raza por edades, en su orden (vacía en las demás). Desde el hito 3 (2026-10-31). */
+    categorias_edad?: RazaCreateCategoriaEdad[];
+    /** Los pasos de edad que elige el personaje; los que ya existen llevan su `id` (los personajes apuntan a él). */
+    pasos_edad?: RazaCreatePasoEdad[];
+}
+
+/** Una categoría de edad de la raza con lo que gana en ella (`docs/publica/endpoints/catalogos.md`, `POST /razas/add`). */
+export interface RazaCreateCategoriaEdad {
+    id_categoria_edad: number;
+    edad_desde: number;
+    /** `null`: sin tope (solo la última). */
+    edad_hasta: number | null;
+    id_tamano: number;
+    espacio: number;
+    alcance: number;
+    dgs: number;
+    /** `null`: el manual no da ajuste a esta edad (solo PNJ). */
+    ajuste_nivel: number | null;
+    vd: number | null;
+    /** Las puntuaciones del libro; 0 es «—». */
+    fuerza: number;
+    destreza: number;
+    constitucion: number;
+    inteligencia: number;
+    sabiduria: number;
+    carisma: number;
+    armadura_natural: number;
+    correr: number;
+    nadar: number;
+    volar: number;
+    trepar: number;
+    excavar: number;
+    id_maniobrabilidad: number;
+    ataques_naturales: string | null;
+    reduccion_dano: string | null;
+    resistencia_conjuros: string | null;
+    resistencia_energia: string | null;
+    nivel_lanzamiento: number;
+    nivel_lanzador_sortilegas: number;
+    raciales: { id_racial: number; valor: string | null; }[];
+    sortilegas: { id_conjuro: number; usos_diarios: string; descripcion: string; }[];
+}
+
+/** Un paso de edad: con `id`, uno que ya existe y se conserva; sin él, uno nuevo. */
+export interface RazaCreatePasoEdad {
+    id?: number;
+    edad: number;
+    id_categoria_edad: number;
+    dgs: number;
+    ajuste_nivel: number | null;
+    armadura_natural: number;
 }
 
 export type RazaCreateListaLanzamiento = { id_clase: number; } | { id_dominio: number; };

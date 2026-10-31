@@ -46,7 +46,7 @@ import {
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
-import { TEXTO_SIN_ESPECIFICAR, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
+import { TEXTO_SIN_ESPECIFICAR, USOS_SORTILEGA_INICIALES, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 
@@ -809,7 +809,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             .map((row) => ({
                 id_conjuro: this.entero(row.id_conjuro),
                 nivel_lanzador: Math.max(1, this.entero(row.nivel_lanzador, 1)),
-                usos_diarios: this.texto(row.usos_diarios, '1/día'),
+                usos_diarios: this.texto(row.usos_diarios, USOS_SORTILEGA_INICIALES),
             }));
     }
 
@@ -971,7 +971,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             uid: this.uid(),
             id_conjuro: this.entero(item?.Conjuro?.Id ?? this.pick(item, 'Id_conjuro', 'id_conjuro', 'Id', 'id')),
             nivel_lanzador: Math.max(1, this.entero(this.pick(item, 'Nivel_lanzador', 'nivel_lanzador', 'nl'), 1)),
-            usos_diarios: this.texto(this.pick(item, 'Usos_diarios', 'usos_diarios', 'ud'), '1/día'),
+            usos_diarios: this.texto(this.pick(item, 'Usos_diarios', 'usos_diarios', 'ud'), USOS_SORTILEGA_INICIALES),
             busqueda: this.texto(item?.Conjuro?.Nombre ?? this.pick(item, 'Conjuro', 'conjuro', 'Nombre', 'nombre')),
         }));
         return rows.length > 0 ? rows : [this.crearSortilegaRow()];
@@ -1061,7 +1061,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private crearSortilegaRow(): SortilegaRow {
-        return { uid: this.uid(), id_conjuro: 0, nivel_lanzador: 1, usos_diarios: '1/día', busqueda: '' };
+        return { uid: this.uid(), id_conjuro: 0, nivel_lanzador: 1, usos_diarios: USOS_SORTILEGA_INICIALES, busqueda: '' };
     }
 
     private crearAtaqueRow(): AtaqueRow {

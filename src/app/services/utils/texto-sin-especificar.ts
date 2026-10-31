@@ -8,6 +8,9 @@ import { toText } from './normalizacion';
  */
 export const TEXTO_SIN_ESPECIFICAR = 'No especifica';
 
+/** Los usos con los que empieza una sortílega nueva en las inserciones (raza, racial y las edades de la raza). */
+export const USOS_SORTILEGA_INICIALES = '1/día';
+
 /** El texto recortado o, si llega vacío, el relleno: «No especifica» (la plantilla usa «No modifica», `TEXTO_SIN_CAMBIO`). */
 export function textoOSinEspecificar(valor: unknown, relleno: string = TEXTO_SIN_ESPECIFICAR): string {
     const texto = toText(valor).trim();

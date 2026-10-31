@@ -1,7 +1,7 @@
 import { normalizeRazaApi } from './raza-mapper';
 import {
     leerCategoriaEdadListado, MOTIVO_EDAD_SOLO_PNJ, MOTIVO_PJ_SIN_CLASE, motivoBloqueoPasoEdad, opcionesEdad, pasoEdadInicial,
-    puedeQuedarseSinClases, rangoEdadPaso, razaConCategoria, razaConEdad, razaPorEdades, textoRangoEdad
+    puedeQuedarseSinClases, rangoEdadPaso, razaConCategoria, razaConEdad, razaPorEdades, SOLO_PNJ, textoNepDePaso, textoRangoEdad
 } from './razas-por-edades';
 import { razaPorEdadesApi } from 'src/testing/raza-por-edades';
 
@@ -53,6 +53,15 @@ describe('razas-por-edades', () => {
         expect(rangoEdadPaso(raza, 15)).toEqual({ desde: 26, hasta: 50 });
         expect(rangoEdadPaso(raza, 99)).toBeNull();
         expect(textoRangoEdad({ desde: 1201, hasta: null })).toBe('desde 1201 años');
+        // En una tabla (el paso «Edades» de la inserción de razas), la forma corta.
+        expect(textoRangoEdad({ desde: 16, hasta: 25 }, 'corta')).toBe('16–25');
+        expect(textoRangoEdad({ desde: 1201, hasta: null }, 'corta')).toBe('1201 o más');
+    });
+
+    it('un paso se lee «NEP n» si es jugable y «Solo PNJ» si no (la creación y el paso «Edades» de la inserción)', () => {
+        expect(textoNepDePaso(11)).toBe('NEP 11');
+        expect(textoNepDePaso(null)).toBe(SOLO_PNJ);
+        expect(SOLO_PNJ).toBe('Solo PNJ');
     });
 
     it('una edad sin ajuste se puede elegir igualmente (homebrew); la que pasa del NEP de la campaña, no', () => {

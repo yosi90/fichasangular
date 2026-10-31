@@ -12,6 +12,14 @@ import { esPnj, TipoPersonaje, textoVd } from './tipo-personaje';
 /** El texto del contrato para un PJ en una edad sin ajuste (`paso_edad_no_jugable`). */
 export const MOTIVO_EDAD_SOLO_PNJ = 'El manual no da ajuste de nivel a esta edad; solo como PNJ.';
 
+/** Lo que se lee de una edad sin ajuste de nivel. */
+export const SOLO_PNJ = 'Solo PNJ';
+
+/** Lo que se lee de un paso de edad para un PJ: «NEP 11» si es jugable (con su NEP base) o «Solo PNJ» (`null`). */
+export function textoNepDePaso(nepBase: number | null): string {
+    return nepBase === null ? SOLO_PNJ : `NEP ${nepBase}`;
+}
+
 /** Un PJ cuya raza da al menos estos DG raciales se puede crear sin clase (el centauro o el ogro; `pj_sin_clase` del contrato). */
 export const DGS_RACIALES_PJ_SIN_CLASE = 4;
 
@@ -115,7 +123,7 @@ function nivelPaso(paso: PasoEdadRaza, contexto: ContextoEdad, vdCategoria: numb
         const vd = vdCategoria ?? paso.Vd;
         return vd === null ? 'Sin VD' : `VD ${textoVd(vd)}`;
     }
-    return paso.Jugable && paso.Nep_base !== null ? `NEP ${paso.Nep_base}` : 'Solo PNJ';
+    return textoNepDePaso(paso.Jugable ? paso.Nep_base : null);
 }
 
 /**
@@ -173,7 +181,7 @@ function pieCategoria(opciones: OpcionPasoEdad[], contexto: ContextoEdad, vdCate
         return nivelPaso(opciones[0].paso, contexto, vdCategoria);
     const neps = opciones.filter((o) => o.paso.Jugable && o.paso.Nep_base !== null).map((o) => o.paso.Nep_base as number);
     if (neps.length < 1)
-        return 'Solo PNJ';
+        return SOLO_PNJ;
     const minimo = Math.min(...neps);
     const maximo = Math.max(...neps);
     return minimo === maximo ? `NEP ${minimo}` : `NEP ${minimo}–${maximo}`;
@@ -205,7 +213,9 @@ export function rangoEdadPaso(raza: Pick<Raza, 'Categorias_edad' | 'Pasos_edad'>
     return { desde: paso.Edad, hasta: categoria?.Edad_hasta ?? null };
 }
 
-/** «de 16 a 25 años», «desde 1201 años». */
-export function textoRangoEdad(rango: { desde: number; hasta: number | null; }): string {
+/** «de 16 a 25 años», «desde 1201 años»; en una tabla (`corta`), «16–25» y «1201 o más». */
+export function textoRangoEdad(rango: { desde: number; hasta: number | null; }, forma: 'frase' | 'corta' = 'frase'): string {
+    if (forma === 'corta')
+        return rango.hasta === null ? `${rango.desde} o más` : `${rango.desde}–${rango.hasta}`;
     return rango.hasta === null ? `desde ${rango.desde} años` : `de ${rango.desde} a ${rango.hasta} años`;
 }
