@@ -1082,18 +1082,9 @@ export class NuevoPersonajeComponent {
         const opcion = this.opcionPasoEdadMirado;
         if (!raza || !opcion)
             return;
-        const confirmacion = await Swal.fire({
-            icon: 'warning',
-            title: `Elegir ${razaConEdad(this.razaMirada?.Nombre, opcion.paso.Categoria.Nombre)} como personaje jugador`,
-            html: `<ul style="text-align:left; margin-top: 4px;"><li>${opcion.motivo ?? ''}</li><li>${AVISO_EDAD_SIN_AJUSTE_MASTER}</li></ul>${AVISO_HOMEBREW_REGLA_SALTADA}`,
-            showCancelButton: true,
-            confirmButtonText: 'Aceptar y elegirla',
-            cancelButtonText: 'Cancelar',
-            target: document.body,
-            heightAuto: false,
-            scrollbarPadding: false,
-        });
-        if (!confirmacion.isConfirmed || this.razaParaElegirIgualmente !== raza)
+        const titulo = `Elegir ${razaConEdad(this.razaMirada?.Nombre, opcion.paso.Categoria.Nombre)} como personaje jugador`;
+        if (!await this.confirmarEleccionHomebrew(titulo, [opcion.motivo ?? '', AVISO_EDAD_SIN_AJUSTE_MASTER])
+            || this.razaParaElegirIgualmente !== raza)
             return;
         this.seleccionarRaza(raza);
     }
@@ -3582,11 +3573,23 @@ export class NuevoPersonajeComponent {
     async elegirPlantillaSaltandoRequisitos(item: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }): Promise<void> {
         if (!item?.evaluacion?.saltable || !this.puedeSaltarRequisitosPlantilla)
             return;
-        const motivos = item.evaluacion.razones.map((razon) => `<li>${razon}</li>`).join('');
+        if (!await this.confirmarEleccionHomebrew(`Elegir ${item.plantilla.Nombre} sin cumplir sus requisitos`, item.evaluacion.razones))
+            return;
+        this.plantillasConRequisitosSaltados.add(Number(item.plantilla.Id));
+        this.plantillaMirada = null;
+        this.seleccionarPlantilla(item.plantilla);
+    }
+
+    /**
+     * Confirma elegir igualmente algo que se salta una regla (una plantilla sin sus requisitos, una edad sin ajuste para un
+     * PJ): sus motivos en lista y el aviso de homebrew de siempre. `true` si acepta.
+     */
+    private async confirmarEleccionHomebrew(titulo: string, motivos: string[]): Promise<boolean> {
+        const lista = motivos.map((motivo) => `<li>${motivo}</li>`).join('');
         const confirmacion = await Swal.fire({
             icon: 'warning',
-            title: `Elegir ${item.plantilla.Nombre} sin cumplir sus requisitos`,
-            html: `<ul style="text-align:left; margin-top: 4px;">${motivos}</ul>${AVISO_HOMEBREW_REGLA_SALTADA}`,
+            title: titulo,
+            html: `<ul style="text-align:left; margin-top: 4px;">${lista}</ul>${AVISO_HOMEBREW_REGLA_SALTADA}`,
             showCancelButton: true,
             confirmButtonText: 'Aceptar y elegirla',
             cancelButtonText: 'Cancelar',
@@ -3594,11 +3597,7 @@ export class NuevoPersonajeComponent {
             heightAuto: false,
             scrollbarPadding: false,
         });
-        if (!confirmacion.isConfirmed)
-            return;
-        this.plantillasConRequisitosSaltados.add(Number(item.plantilla.Id));
-        this.plantillaMirada = null;
-        this.seleccionarPlantilla(item.plantilla);
+        return confirmacion.isConfirmed;
     }
 
     /** La plantilla cuya vista previa está abierta (pulsar su tarjeta); se elige con su botón del pie. */
@@ -8138,10 +8137,10 @@ export class NuevoPersonajeComponent {
     }
 }
 
-/** El aviso de siempre cuando una elección se salta una regla del sistema y vuelve homebrew el personaje. */
 /** Un PJ en una edad sin ajuste: solo lo guarda el máster de su campaña saltándose sus reglas (`overrideReglasCampana`). */
 const MOTIVO_EDAD_SIN_AJUSTE_CAMPANA = 'Un personaje jugador en una edad sin ajuste de nivel solo lo guarda el máster de su campaña, saltándose sus reglas.';
 const AVISO_EDAD_SIN_AJUSTE_MASTER = `${MOTIVO_EDAD_SIN_AJUSTE_CAMPANA} En Básicos solo podrás elegir una campaña que dirijas.`;
+/** El aviso de siempre cuando una elección se salta una regla del sistema y vuelve homebrew el personaje. */
 const AVISO_HOMEBREW_REGLA_SALTADA = '<strong>Esta elección está saltándose una regla importante del sistema. El personaje quedará marcado como Homebrew y será una rareza excepcional en el mundo.</strong>';
 
 /** La progresión de moldeado del paso de clases: las filas de su tabla con los especiales y el nivel que toma. */
