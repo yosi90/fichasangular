@@ -5,9 +5,10 @@ import { getPrerequisiteDefinition } from './prerrequisito-editor.registry';
 
 /**
  * La lectura de los prerrequisitos de la API como filas del editor compartido: dónde lee cada tipo, en la forma de
- * lectura de `Prerrequisitos` (`GET /dotes/<id>`, `/plantillas/<id>`, `/especiales/<id>`), su id, su valor y lo propio
- * del tipo. La escritura es la de cada catálogo (`toPayload` del registro o la tabla de la plantilla). La raza lee otra
- * forma (sus prerrequisitos de mutación) y se queda aparte.
+ * lectura de `Prerrequisitos` (`GET /dotes/<id>`, `/plantillas/<id>`, `/especiales/<id>`, `/clases/<id>`), su id, su
+ * valor y lo propio del tipo. Un catálogo que lee un tipo con otra clave la da en `ClavesDeLectura` (la clase). La
+ * escritura es la de cada catálogo (`toPayload` del registro o la tabla de la plantilla). La raza lee otra forma (sus
+ * prerrequisitos de mutación) y se queda aparte.
  */
 
 /** Dónde lee cada tipo el id de su fila. */
@@ -23,16 +24,20 @@ export const ID_DE_LECTURA: Partial<Readonly<Record<PrerequisiteType, string>>> 
     competencia_armadura: 'Id_armadura',
     competencia_grupo_arma: 'Id_grupo_arma',
     competencia_grupo_armadura: 'Id_grupo_armadura',
+    conjuro_conocido: 'Id_conjuro',
     conjuros_escuela: 'Id_escuela',
+    conocer_poder_psionico: 'Id_conjuro',
     criaturas_compatibles: 'Id_tipo_compatible',
     dominio: 'Id_dominio',
     dote: 'Id_dote_prerrequisito',
     escuela_nivel: 'Id_escuela',
+    genero: 'Genero',
     habilidad: 'Id_habilidad',
     idioma: 'Id_idioma',
     lanz_espontaneo: 'Id_conjuro',
     limite_tipo_dote: 'Id_tipo',
     nivel_de_clase: 'Id_clase',
+    no_raza: 'Id_raza',
     raza: 'Id_raza',
     region: 'Id_region',
     subtipo: 'Id_subtipo',
@@ -56,11 +61,23 @@ export const VALOR_DE_LECTURA: Partial<Readonly<Record<PrerequisiteType, string>
     lanzador_psionico: 'Nivel',
     lanzar_conjuros_arcanos_nivel: 'Nivel',
     lanzar_conjuros_divinos_nivel: 'Nivel',
+    lanzar_poder_psionico_nivel: 'Nivel',
     nivel: 'Nivel',
     nivel_de_clase: 'Nivel',
     nivel_lanzador: 'Nivel',
     nivel_max: 'Nivel',
+    reserva_psionica: 'Cantidad',
 };
+
+/**
+ * Las claves con las que un catálogo lee algún tipo distinto de las tablas comunes (`ID_DE_LECTURA` y
+ * `VALOR_DE_LECTURA`): la clase lee el ataque base y el nivel de la escuela de `Cantidad` y los rangos de la habilidad de
+ * `Rangos` (`LECTURA_DE_CLASE`, `clase-formulario.ts`).
+ */
+export interface ClavesDeLectura {
+    id?: Partial<Readonly<Record<PrerequisiteType, string>>>;
+    valor?: Partial<Readonly<Record<PrerequisiteType, string>>>;
+}
 
 const SALVACIONES = ['fortaleza', 'reflejos', 'voluntad'] as const;
 
@@ -79,21 +96,24 @@ function extrasLeidos(item: PrerrequisitoItem): number[] {
     return idsUnicosOrdenados(extras.map((extra) => extra?.['Id_extra'] ?? extra?.['Id']), 0);
 }
 
-/** Un prerrequisito de la lectura (`item`) de ese tipo como fila del editor compartido, con su `uid` y su `Opcional`. */
-export function filaDeLectura(tipo: PrerequisiteType, item: PrerrequisitoItem, uid: string): PrerequisiteRowModel {
+/**
+ * Un prerrequisito de la lectura (`item`) de ese tipo como fila del editor compartido, con su `uid` y su `Opcional`; con
+ * las claves propias del catálogo (`claves`) donde las tenga.
+ */
+export function filaDeLectura(tipo: PrerequisiteType, item: PrerrequisitoItem, uid: string, claves: ClavesDeLectura = {}): PrerequisiteRowModel {
     const fila: PrerequisiteRowModel = {
         ...getPrerequisiteDefinition(tipo).createDefaultRow(),
         uid,
         tipo,
         opcional: Math.max(0, toInt(item?.Opcional)),
     };
-    const claveId = ID_DE_LECTURA[tipo];
+    const claveId = claves.id?.[tipo] ?? ID_DE_LECTURA[tipo];
     if (claveId)
         fila.id = toInt(item?.[claveId]);
     if (claveId && fila.id === 0 && getPrerequisiteDefinition(tipo).comodinLabel)
         // El 0 de su catálogo es su comodín («Elegir»: el arma elegida), no una fila sin elegir.
         fila.comodin = true;
-    const claveValor = VALOR_DE_LECTURA[tipo];
+    const claveValor = claves.valor?.[tipo] ?? VALOR_DE_LECTURA[tipo];
     if (claveValor)
         fila.valor = toInt(item?.[claveValor]);
     if (tipo === 'salvacion_minimo') {

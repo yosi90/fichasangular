@@ -29,7 +29,7 @@ import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { Manual } from 'src/app/interfaces/manual';
 import { DOTE } from 'src/app/services/utils/nombres-de-catalogo';
-import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import {
     extrasDisponiblesDeDote,
     habilidadesOtorgadasDeDote,
@@ -1042,11 +1042,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     /** Los extras de una habilidad del catálogo (Saber: arcano, naturaleza…), para el prerrequisito que los pide. */
     extrasDeHabilidad(idHabilidad: number): PrerequisiteCatalogItem[] {
-        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => toInt(item?.Id_habilidad, 0) === toInt(idHabilidad, 0));
-        return (habilidad?.Extras ?? [])
-            .map((extra) => ({ id: toInt(extra?.Id_extra, -1), nombre: `${extra?.Extra ?? ''}`.trim() }))
-            .filter((extra) => extra.id >= 0 && extra.nombre.length > 0)
-            .sort((a, b) => compararTexto(a.nombre, b.nombre));
+        return opcionesDeExtrasDeHabilidad(this.habilidadesOtorgadasCatalogo, idHabilidad);
     }
 
     habilidadCatalogoPermiteExtra(idHabilidad: number): boolean {

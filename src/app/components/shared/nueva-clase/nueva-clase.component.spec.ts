@@ -142,16 +142,46 @@ describe('NuevaClaseComponent (Modificar clase: guardar sin cambios)', () => {
         return editor;
     }
 
-    it('los prerrequisitos llegan como filas del editor; la habilidad con extras se guarda tal cual', () => {
+    it('los prerrequisitos llegan como filas del editor, también la habilidad con extras pedidos', () => {
         const archimago = cargada(15);
-        expect(archimago.prerrequisitosEditor.length).toBeGreaterThan(0);
         expect(archimago.prerrequisitosSeleccionados).toContain('dote');
-        expect(archimago.prerrequisitosConservados.length).toBe(1);
-        expect(archimago.prerrequisitosConservados[0].clave).toBe('rangos_habilidad');
-        expect((archimago.prerrequisitosConservados[0].item as any).Extras.length).toBeGreaterThan(0);
+        expect(archimago.prerrequisitosConservados).toEqual([]);
+        const saber = archimago.prerrequisitosEditor.find((fila) => fila.tipo === 'habilidad' && fila.requiere_extra)!;
+        expect(saber.valor).toBe(15);
+        expect(saber.extras).toEqual([51]);
 
-        archimago.quitarPrerrequisitoConservado(0);
+        // «Extras pedidos» ofrece los de esa habilidad del catálogo, por nombre.
+        archimago.habilidadesBase = [{
+            Id_habilidad: saber.id, Nombre: 'Saber', Soporta_extra: true,
+            Extras: [{ Id_extra: 51, Extra: 'Arcano' }, { Id_extra: 3, Extra: 'Planos' }],
+        } as any];
+        expect(archimago.prerrequisitosCatalogContext.getHabilidadExtraOptions!(saber.id))
+            .toEqual([{ id: 51, nombre: 'Arcano' }, { id: 3, nombre: 'Planos' }]);
+
+        archimago.prerrequisitosEditor = archimago.prerrequisitosEditor.filter((fila) => fila !== saber);
         expect(archimago.isDirty).toBeTrue();
+    });
+
+    it('lo que el editor no puede enseñar se guarda tal cual: una fila incompleta o extras sin «requiere extra»', () => {
+        const editor = crearEditor();
+        const clase = claseCargada();
+        clase.Prerrequisitos = {
+            ...clase.Prerrequisitos,
+            raza: [{ Id_raza: 0, Frase: 'Raza sin elegir' }],
+            rangos_habilidad: [{ Id_habilidad: 32, Rangos: 8, Requiere_extra: 0, Extras: [{ Id_extra: 60, Extra: 'Religión' }], Frase: 'Saber (religión) 8 rangos' }],
+        } as any;
+        (editor as any).hidratarDesdeClase(clase);
+
+        expect(editor.prerrequisitosConservados.map((c) => [c.clave, c.frase])).toEqual(jasmine.arrayWithExactContents([
+            ['raza', 'Raza sin elegir'],
+            ['rangos_habilidad', 'Saber (religión) 8 rangos'],
+        ]));
+        const cuerpo = (editor as any).construirPayload().Prerrequisitos;
+        expect(cuerpo.rangos_habilidad).toEqual([clase.Prerrequisitos.rangos_habilidad[0]]);
+        expect(cuerpo.raza).toEqual([clase.Prerrequisitos.raza[0]]);
+
+        editor.quitarPrerrequisitoConservado(0);
+        expect(editor.isDirty).toBeTrue();
     });
 
     it('lo de Magic of Incarnum se enseña sin editar y no va en el cuerpo', () => {

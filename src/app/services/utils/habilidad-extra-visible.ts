@@ -1,5 +1,8 @@
 import { Comodin } from 'src/app/interfaces/comodin';
 import { normalizarTexto, toArray, toBoolean, toInt } from 'src/app/services/utils/normalizacion';
+import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
+import { PrerequisiteCatalogItem } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.models';
 
 /** Ids de `extras_habilidades` al guardar una habilidad: -1 («-») si no lleva extra; 0 («Elegir») si lo admite y falta. */
 export const ID_EXTRA_HABILIDAD_SIN_EXTRA = -1;
@@ -23,6 +26,18 @@ export function idExtraHabilidadParaGuardar(entrada: any): number {
     }
     return toBoolean(entrada?.Soporta_extra) ? ID_EXTRA_HABILIDAD_ELEGIR : ID_EXTRA_HABILIDAD_SIN_EXTRA;
 }
+/**
+ * Los extras de una habilidad del catálogo como opciones del editor de prerrequisitos («Extras pedidos»,
+ * `getHabilidadExtraOptions` de su contexto), por nombre. Los usan la dote y la clase.
+ */
+export function opcionesDeExtrasDeHabilidad(habilidades: readonly HabilidadBasicaDetalle[], idHabilidad: number): PrerequisiteCatalogItem[] {
+    const habilidad = habilidades.find((item) => toInt(item?.Id_habilidad, 0) === toInt(idHabilidad, 0));
+    return (habilidad?.Extras ?? [])
+        .map((extra) => ({ id: toInt(extra?.Id_extra, -1), nombre: `${extra?.Extra ?? ''}`.trim() }))
+        .filter((extra) => extra.id >= 0 && extra.nombre.length > 0)
+        .sort((a, b) => compararTexto(a.nombre, b.nombre));
+}
+
 export interface ResolverExtraHabilidadOptions {
     extra?: any;
     idExtra?: any;

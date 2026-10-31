@@ -38,4 +38,22 @@ describe('filaDeLectura (los prerrequisitos de la API como filas del editor)', (
         expect(filaDeLectura('competencia_arma', { Id_arma: 7 }, 'u').comodin).toBeUndefined();
         expect(filaDeLectura('competencia_armadura', { Id_armadura: 0 }, 'u').comodin).toBeUndefined();
     });
+
+    it('lee los tipos psiónicos, el género y no_raza (los de la clase)', () => {
+        expect(filaDeLectura('genero', { Genero: 2 }, 'u').id).toBe(2);
+        expect(filaDeLectura('no_raza', { Id_raza: 5 }, 'u').id).toBe(5);
+        expect(filaDeLectura('conocer_poder_psionico', { Id_conjuro: 77 }, 'u').id).toBe(77);
+        expect(filaDeLectura('reserva_psionica', { Cantidad: 3 }, 'u').valor).toBe(3);
+        expect(filaDeLectura('lanzar_poder_psionico_nivel', { Nivel: 2 }, 'u').valor).toBe(2);
+    });
+
+    it('un catálogo puede leer un tipo con otra clave (la clase: Rangos, Cantidad)', () => {
+        const claves = { valor: { habilidad: 'Rangos', ataque_base: 'Cantidad', escuela_nivel: 'Cantidad' } };
+        expect(filaDeLectura('habilidad', { Id_habilidad: 9, Rangos: 15, Cantidad: 1 }, 'u', claves).valor).toBe(15);
+        expect(filaDeLectura('ataque_base', { Cantidad: 6 }, 'u', claves).valor).toBe(6);
+        expect(filaDeLectura('escuela_nivel', { Id_escuela: 4, Cantidad: 3 }, 'u', claves))
+            .toEqual(jasmine.objectContaining({ id: 4, valor: 3 }));
+        // Sin claves propias, la común.
+        expect(filaDeLectura('ataque_base', { Ataque_base: 4 }, 'u').valor).toBe(4);
+    });
 });

@@ -76,7 +76,7 @@ import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 import { textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
-import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import { CLAVES_PRERREQUISITOS_INCARNUM } from 'src/app/services/utils/incarnum';
 import {
     CAMPOS_CLASE,
@@ -364,6 +364,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         dotePermiteExtra: (idDote) => this.getOpcionesExtraDote(idDote).length > 0,
         getGlobalExtraOptions: () => this.catalogosPrerrequisito['extras'],
         habilidadPermiteExtra: (idHabilidad) => this.habilidadesBase.some((item) => item.Id_habilidad === this.entero(idHabilidad) && item.Soporta_extra),
+        getHabilidadExtraOptions: (idHabilidad) => opcionesDeExtrasDeHabilidad(this.habilidadesBase, idHabilidad),
         especialPermiteExtra: (idEspecial) => this.especiales.some((item) => item.Id === this.entero(idEspecial) && item.Extra),
     };
     readonly ensurePrerequisiteCatalogs = (types: PrerequisiteType[]) => this.asegurarCatalogosPrerrequisitos(types);
