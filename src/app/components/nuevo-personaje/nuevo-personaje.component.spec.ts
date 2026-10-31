@@ -16,6 +16,8 @@ import { crearArmaApi, crearArmaduraApi, crearEquipoCatalogosApi, crearMunicionA
 import { normalizeClase } from 'src/app/services/clase.service';
 import { normalizeEspecial } from 'src/app/services/especial.service';
 import { CONVOCADOR_DIVINO_API, GRAN_ARCANO_API, SENDA_ASENDA_API } from 'src/testing/clases-propias-api';
+import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
+import { razaPorEdadesApi, razaPorEdadesEnPasoApi } from 'src/testing/raza-por-edades';
 
 function crearRazaMock(oficial = true): Raza {
     return {
@@ -6288,5 +6290,121 @@ describe('NuevoPersonajeComponent', () => {
         component.recalcularOficialidad();
 
         expect(component.Personaje.Oficial).toBeFalse();
+    });
+
+    describe('dragones jugables: qué se crea y la edad de la raza (lienzo, tableros 0 a 2)', () => {
+        const razaPorEdades = () => normalizeRazaApi(razaPorEdadesApi());
+        const esperar = () => new Promise((resolve) => setTimeout(resolve));
+
+        beforeEach(() => {
+            razaSvcMock.getRazaEnPasoEdad = jasmine.createSpy('getRazaEnPasoEdad')
+                .and.callFake(async (_id: number, idPaso: number) => normalizeRazaApi(razaPorEdadesEnPasoApi(idPaso)));
+            nuevoPSvc.reiniciar();
+            component.Personaje = nuevoPSvc.PersonajeCreacion;
+            component.selectedInternalTabIndex = 0;
+        });
+
+        it('lo primero es elegir personaje jugador o PNJ; el título lo dice y se puede cambiar hasta elegir la raza', () => {
+            expect(component.eligiendoTipoPersonaje).toBeTrue();
+            expect(component.tituloCreacion).toBe('Nuevo personaje');
+
+            component.elegirTipoPersonaje('pnj');
+            expect(component.eligiendoTipoPersonaje).toBeFalse();
+            expect(component.tituloCreacion).toBe('Nuevo PNJ');
+            expect(component.puedeCambiarTipoPersonaje).toBeTrue();
+            component.cambiarTipoPersonaje();
+            expect(component.tituloCreacion).toBe('Nuevo personaje jugador');
+
+            component.seleccionarRaza(crearRazaMock());
+            expect(component.puedeCambiarTipoPersonaje).toBeFalse();
+        });
+
+        it('mirar una raza por edades pide la raza a esa edad y el botón dice la edad', async () => {
+            component.elegirTipoPersonaje('pj');
+            component.mirarRaza(razaPorEdades());
+            await esperar();
+
+            expect(razaSvcMock.getRazaEnPasoEdad).toHaveBeenCalledWith(709, 11);
+            expect(component.razaVistaPrevia?.Dgs_adicionales.Cantidad).toBe(7);
+            expect(component.textoElegirRaza).toBe('Elegir Dragón rojo (cría) y continuar');
+            expect(component.razaParaElegir?.Paso_edad?.Id).toBe(11);
+            expect(component.opcionesEdadMirada.map((c) => c.bloqueada)).toEqual([false, false, false, true]);
+            expect(component.notaPieRaza.texto).toBe('Las edades sin ajuste de nivel solo se eligen creando un PNJ.');
+
+            await component.mirarPasoEdad(component.opcionesEdadMirada[2].pasos[1].paso);
+            expect(component.textoElegirRaza).toBe('Elegir Dragón rojo (joven) y continuar');
+            expect(component.razaVistaPrevia?.Ajuste_nivel).toBe(6);
+        });
+
+        it('un PNJ elige cualquier edad; al volver a PJ, una edad sin ajuste pasa a la primera que sí', async () => {
+            component.elegirTipoPersonaje('pnj');
+            component.mirarRaza(razaPorEdades());
+            await esperar();
+            expect(component.opcionesEdadMirada.every((c) => !c.bloqueada)).toBeTrue();
+            await component.mirarPasoEdad(component.opcionesEdadMirada[3].pasos[0].paso);
+            expect(component.razaParaElegir?.Paso_edad?.Id).toBe(15);
+            expect(component.notaPieRaza.texto).toContain('Creando un PNJ');
+
+            component.cambiarTipoPersonaje();
+            await esperar();
+            expect(component.pasoEdadMiradoId).toBe(11);
+            expect(razaSvcMock.getRazaEnPasoEdad).toHaveBeenCalledWith(709, 11);
+        });
+
+        it('sin la raza a esa edad (error de la API) no se puede elegir y el pie dice por qué', async () => {
+            razaSvcMock.getRazaEnPasoEdad.and.rejectWith(new ProfileApiError('Esa edad no es de esta raza.', 'paso_edad_no_valido', 404, 'idPasoEdad'));
+            component.elegirTipoPersonaje('pj');
+            component.mirarRaza(razaPorEdades());
+            await esperar();
+            expect(component.razaParaElegir).toBeNull();
+            expect(component.notaPieRaza).toEqual({ texto: 'Esa edad no es de esta raza.', aviso: true });
+        });
+
+        it('elegirla guarda el paso; en Básicos la edad se limita a los años de ese paso', async () => {
+            component.elegirTipoPersonaje('pj');
+            component.mirarRaza(razaPorEdades());
+            await esperar();
+            await component.mirarPasoEdad(component.opcionesEdadMirada[2].pasos[0].paso);
+            component.elegirRazaMirada();
+
+            expect(component.Personaje.IdPasoEdad).toBe(13);
+            expect(component.Personaje.Edad).toBe(16);
+            expect(component.lineaCabeceraCreacion).toContain('Dragón rojo (joven)');
+            expect(component.edadRangosHint).toBe('Joven: de 16 a 19 años');
+            expect(component.motivoEdadFueraDeCategoria).toBeNull();
+            component.Personaje.Edad = 30;
+            expect(component.motivoEdadFueraDeCategoria).toBe('La edad tiene que estar de 16 a 19 años (joven).');
+            expect(component.motivosBloqueoBasicos).toContain('La edad tiene que estar de 16 a 19 años (joven).');
+        });
+
+        it('un PNJ en una campaña solo lo crea su máster: las demás campañas salen desactivadas', () => {
+            component.elegirTipoPersonaje('pnj');
+            component.seleccionarRaza(crearRazaMock());
+            const ajena = { Id: 5, Nombre: 'Ajena', CampaignRole: 'jugador', Tramas: [] } as Campana;
+            const mia = { Id: 6, Nombre: 'Mía', CampaignRole: 'master', Tramas: [] } as Campana;
+            component.Campanas = [ajena, mia];
+
+            expect(component.campanaSoloDelMaster(ajena)).toBeTrue();
+            expect(component.campanaSoloDelMaster(mia)).toBeFalse();
+            component.Personaje.Campana = 'Ajena';
+            expect(component.motivoPnjCampana).toContain('solo su máster puede crear PNJ');
+            component.Personaje.Campana = 'Mía';
+            expect(component.motivoPnjCampana).toBeNull();
+        });
+
+        it('el error del contrato al guardar se enseña con su texto y sin hablar de SQL', async () => {
+            component.seleccionarRaza(crearRazaMock());
+            component.Personaje.Nombre = 'Aldric';
+            component.Personaje.desgloseClases = [{ Id: 9, Nombre: 'Guerrero', Nivel: 1 }];
+            personajeSvcMock.crearPersonajeApiDesdeCreacion.and.rejectWith(
+                new ProfileApiError('El manual no da ajuste de nivel a esta edad; solo como PNJ.', 'paso_edad_no_jugable', 400, 'personaje.idPasoEdad'));
+            const swal = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+            await component.onConfirmarSelectorVisibilidad(false);
+
+            const opciones = swal.calls.mostRecent().args[0] as any;
+            expect(opciones.title).toBe('No se pudo crear el personaje');
+            expect(opciones.text).toBe('El manual no da ajuste de nivel a esta edad; solo como PNJ.');
+        });
     });
 });

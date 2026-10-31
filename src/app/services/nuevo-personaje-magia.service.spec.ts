@@ -825,3 +825,111 @@ describe('Clases propias con las respuestas reales de la API', () => {
         });
     });
 });
+
+describe('Lanzamiento racial (Draconomicón, pág. 24): la raza lanza como una clase y suma sus niveles', () => {
+    const hechicero = clase({
+        Id: 7, Nombre: 'Hechicero', Mod_salv_conjuros: 'Carisma', Conjuros: { Arcanos: true, Conocidos_total: true },
+        Desglose_niveles: [
+            nivel(1, { Conjuros_diarios: diarios(5, 3), Conjuros_conocidos_total: 2 }),
+            nivel(2, { Conjuros_diarios: diarios(6, 4), Conjuros_conocidos_total: 3 }),
+            nivel(3, { Conjuros_diarios: diarios(6, 5), Conjuros_conocidos_total: 4 }),
+        ],
+    });
+    const guerrero = clase({ Id: 1, Nombre: 'Guerrero', Desglose_niveles: [nivel(1)] });
+    const deHechicero = (n: number) => ({ Nivel_clase: [{ Id_clase: 7, Clase: 'Hechicero', Nivel: n, Espontaneo: true }] });
+    const catalogo = [
+        conjuro(201, 'Luz', 'Evocación', deHechicero(0)),
+        conjuro(202, 'Proyectil mágico', 'Evocación', deHechicero(1)),
+        conjuro(203, 'Escudo', 'Abjuración', deHechicero(1)),
+        // Solo de clérigo y divino: lo lanza como arcano por la lista extra de su raza.
+        { ...conjuro(301, 'Bendición', 'Encantamiento', { Nivel_clase: [{ Id_clase: 2, Clase: 'Clérigo', Nivel: 1, Espontaneo: false }] }), Arcano: false },
+        { ...conjuro(302, 'Nube brumosa', 'Conjuración', { Nivel_dominio: [{ Id_dominio: 5, Dominio: 'Aire', Nivel: 1 }] }), Arcano: false },
+    ];
+
+    function preparar(lanzamiento: Raza['Lanzamiento']): NuevoPersonajeService {
+        const service = new NuevoPersonajeService();
+        service.setCatalogoTiposCriatura([TIPO]);
+        service.seleccionarRaza({ ...crearRaza(), Lanzamiento: lanzamiento });
+        service.aplicarCaracteristicasGeneradas({ Fuerza: 10, Destreza: 10, Constitucion: 10, Inteligencia: 10, Sabiduria: 10, Carisma: 14 });
+        service.setCatalogoClases([hechicero, guerrero]);
+        service.setCatalogoConjuros(catalogo);
+        return service;
+    }
+
+    it('en la primera sesión elige los conjuros del nivel de su raza, aunque su primer nivel sea de otra clase', () => {
+        const service = preparar({ Clase: { Id: 7, Nombre: 'Hechicero' }, Nivel: 2, Listas: [] });
+        expect(service.aplicarSiguienteNivelClase(guerrero).aplicado).toBeTrue();
+
+        const entradas = service.getConjurosSesionActual().entradas;
+        expect(entradas.length).toBe(1);
+        expect(entradas[0].claseObjetivo.nombre).toBe('Hechicero');
+        expect([entradas[0].nivelLanzadorPrevio, entradas[0].nivelLanzadorActual]).toEqual([0, 2]);
+        expect(entradas[0].cupoPendiente.total).toBe(3);
+        expect(entradas[0].origen).toContain('Lanzamiento racial');
+    });
+
+    it('sus niveles reales de la clase se suman encima del nivel racial, y el racial no se repite', () => {
+        const service = preparar({ Clase: { Id: 7, Nombre: 'Hechicero' }, Nivel: 2, Listas: [] });
+        service.aplicarSiguienteNivelClase(hechicero);
+
+        const entradas = service.getConjurosSesionActual().entradas;
+        expect(entradas.map((e) => [e.nivelLanzadorPrevio, e.nivelLanzadorActual])).toEqual([[0, 2], [2, 3]]);
+        expect(entradas[1].cupoPendiente.total).toBe(1);
+
+        service.cerrarSesionConjuros();
+        service.aplicarSiguienteNivelClase(guerrero);
+        expect(service.getConjurosSesionActual().entradas.length).toBe(0);
+    });
+
+    it('las listas extra de su raza (una clase y un dominio) entran como arcanas', () => {
+        const service = preparar({
+            Clase: { Id: 7, Nombre: 'Hechicero' }, Nivel: 2,
+            Listas: [{ Tipo: 'clase', Id: 2, Nombre: 'Clérigo' }, { Tipo: 'dominio', Id: 5, Nombre: 'Aire' }],
+        });
+        service.aplicarSiguienteNivelClase(guerrero);
+
+        expect(service.getConjurosSesionActual().entradas[0].elegiblesIds.sort()).toEqual([201, 202, 203, 301, 302]);
+    });
+
+    it('sin lanzamiento racial (o con nivel 0 a su edad) no hay sesión de conjuros para un guerrero', () => {
+        [null, { Clase: { Id: 7, Nombre: 'Hechicero' }, Nivel: 0, Listas: [] }].forEach((lanzamiento) => {
+            const service = preparar(lanzamiento);
+            service.aplicarSiguienteNivelClase(guerrero);
+            expect(service.getConjurosSesionActual().activa).toBeFalse();
+        });
+    });
+});
+
+describe('PJ o PNJ y la edad de una raza por edades, en la creación', () => {
+    it('el tipo se elige lo primero, se puede cambiar hasta elegir la raza y un PNJ nace privado', () => {
+        const service = new NuevoPersonajeService();
+        expect(service.TipoPersonajeCreacion).toBeNull();
+        service.PersonajeCreacion.visible_otros_usuarios = true;
+
+        expect(service.elegirTipoPersonaje('pnj')).toBeTrue();
+        expect(service.TipoPersonajeCreacion).toBe('pnj');
+        expect(service.PersonajeCreacion.visible_otros_usuarios).toBeFalse();
+        expect(service.elegirTipoPersonaje('pj')).toBeTrue();
+
+        service.setCatalogoTiposCriatura([TIPO]);
+        service.seleccionarRaza(crearRaza());
+        expect(service.elegirTipoPersonaje('pnj')).toBeFalse();
+        expect(service.TipoPersonajeCreacion).toBe('pj');
+    });
+
+    it('una raza resuelta a una edad guarda su paso y empieza con sus años; sin edades, nada', () => {
+        const service = new NuevoPersonajeService();
+        service.setCatalogoTiposCriatura([TIPO]);
+        const paso = { Id: 13, Edad: 16, Categoria: { Id: 3, Nombre: 'Joven' }, Orden: 3, Dgs: 13, Ajuste_nivel: 6, Armadura_natural: 12, Nep_base: 19, Jugable: true, Vd: 7 };
+        service.seleccionarRaza({ ...crearRaza(), Paso_edad: paso });
+
+        expect(service.PersonajeCreacion.IdPasoEdad).toBe(13);
+        expect(service.PersonajeCreacion.CategoriaEdad?.categoria.Nombre).toBe('Joven');
+        expect(service.PersonajeCreacion.Edad).toBe(16);
+
+        service.seleccionarRaza(crearRaza());
+        expect(service.PersonajeCreacion.IdPasoEdad).toBeNull();
+        expect(service.PersonajeCreacion.CategoriaEdad).toBeNull();
+        expect(service.PersonajeCreacion.Edad).toBe(18);
+    });
+});

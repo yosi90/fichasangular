@@ -131,6 +131,13 @@ import { IncarnumService } from 'src/app/services/incarnum.service';
 import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from 'src/app/interfaces/incarnum';
 import { AlineamientoParaFusiones, CODIGOS_FALLO_FORMACION, FalloFormacion } from 'src/app/services/utils/incarnum';
 import { PasoCreacionId, lineaPersonajeCreacion, pasoCreacionDeLaPestana, textoContinuarCreacion } from './marco';
+import {
+    ContextoEdad, OpcionCategoriaEdad, OpcionPasoEdad, opcionesEdad, pasoEdadInicial, rangoEdadPaso, razaConEdad, razaPorEdades,
+    textoRangoEdad
+} from 'src/app/services/utils/razas-por-edades';
+import { esPnj, TipoPersonaje, tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
+import { mensajeDeError } from 'src/app/services/utils/error-api';
+import { PasoEdadRaza } from 'src/app/interfaces/raza';
 import { normalizarTexto, primerEntero, toPositiveInt } from 'src/app/services/utils/normalizacion';
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
@@ -328,6 +335,11 @@ interface SelectorCompaneroBloqueadoItem {
     razones: string[];
     nivelMinimoRequerido: number | null;
 }
+
+/** Los errores de `POST /personajes/add` del tipo (PJ o PNJ) y de la edad (`docs/publica/DRAGONES_FRONT.md`). */
+const CODIGOS_FALLO_TIPO_Y_EDAD: readonly string[] = [
+    'tipo_personaje_no_valido', 'paso_edad_obligatorio', 'paso_edad_no_valido', 'paso_edad_no_jugable', 'pnj_solo_master',
+];
 
 const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
     tiradaMinimaCaracteristica: null,
@@ -625,6 +637,14 @@ export class NuevoPersonajeComponent {
     // El marco de la creación (lienzo del 2026-10-26): qué paso se ve, qué pasos salen y lo que se mira a la derecha.
     /** La raza que se mira en el paso de Raza, a la derecha, antes de elegirla. */
     razaMirada: Raza | null = null;
+    /** En una raza por edades: el paso de edad que se mira y la raza resuelta a esa edad (`GET /razas/{id}/pasos-edad/{idPaso}`). */
+    pasoEdadMiradoId: number | null = null;
+    razaMiradaAEdad: Raza | null = null;
+    cargandoRazaAEdad = false;
+    errorRazaAEdad: string | null = null;
+    private razaMiradaAEdadPasoId: number | null = null;
+    private peticionRazaAEdad = 0;
+    private opcionesEdadCache: { clave: string; valor: OpcionCategoriaEdad[]; } = { clave: '', valor: [] };
 
     get pasoCreacion(): PasoCreacionId {
         return pasoCreacionDeLaPestana(this.selectedInternalTabIndex, {
@@ -884,6 +904,170 @@ export class NuevoPersonajeComponent {
 
     mirarRaza(raza: Raza): void {
         this.razaMirada = raza;
+        this.razaMiradaAEdad = null;
+        this.razaMiradaAEdadPasoId = null;
+        this.errorRazaAEdad = null;
+        this.pasoEdadMiradoId = null;
+        this.peticionRazaAEdad++;
+        this.cargandoRazaAEdad = false;
+        if (razaPorEdades(raza)) {
+            const paso = pasoEdadInicial(this.opcionesEdadMirada);
+            if (paso)
+                void this.mirarPasoEdad(paso);
+        }
+    }
+
+    // PJ o PNJ (decisión del propietario del 2026-10-31, lienzo de los dragones jugables): lo primero de la creación, que
+    // se puede cambiar hasta elegir la raza y se ve en la pestaña, la cabecera, la ficha y el listado.
+    get tipoPersonajeCreacion(): TipoPersonaje | null {
+        return this.nuevoPSvc.TipoPersonajeCreacion;
+    }
+
+    get esPnjCreacion(): boolean {
+        return esPnj(this.tipoPersonajeCreacion);
+    }
+
+    /** Antes de elegir la raza y sin haber elegido qué se crea: la pantalla «¿Qué vas a crear?». */
+    get eligiendoTipoPersonaje(): boolean {
+        return this.pasoCreacion === 'raza' && !this.razaElegida && !this.tipoPersonajeCreacion;
+    }
+
+    get tituloCreacion(): string {
+        return tituloNuevoPersonaje(this.tipoPersonajeCreacion);
+    }
+
+    get puedeCambiarTipoPersonaje(): boolean {
+        return !this.razaElegida && !!this.tipoPersonajeCreacion;
+    }
+
+    elegirTipoPersonaje(tipo: TipoPersonaje): void {
+        if (!this.nuevoPSvc.elegirTipoPersonaje(tipo))
+            return;
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        // Con el otro tipo cambian las edades que se pueden elegir: si la que se mira ya no vale, la primera que sí.
+        if (this.razaMirada && razaPorEdades(this.razaMirada)) {
+            const paso = pasoEdadInicial(this.opcionesEdadMirada, this.pasoEdadMiradoId);
+            if (paso && paso.Id !== this.pasoEdadMiradoId)
+                void this.mirarPasoEdad(paso);
+        }
+    }
+
+    cambiarTipoPersonaje(): void {
+        this.elegirTipoPersonaje(this.esPnjCreacion ? 'pj' : 'pnj');
+    }
+
+    /** Si la raza que se mira crece por edades (trae pasos de edad): su vista previa lleva «Categoría de edad». */
+    get razaMiradaPorEdades(): boolean {
+        return razaPorEdades(this.razaMirada);
+    }
+
+    /**
+     * Lo que decide las edades que puede elegir: el tipo y, para un PJ, el NEP máximo de su campaña si ya se conoce (un
+     * PNJ no pasa por la política, y el máster de la campaña tampoco tiene ese límite).
+     */
+    private get contextoEdad(): ContextoEdad {
+        const tipo = this.tipoPersonajeCreacion ?? 'pj';
+        const politica = this.effectiveSelectedCampaignPolicy;
+        const nepMaximo = !esPnj(tipo) && this.selectedCampaignPolicyResolved && !this.isSelectedCampaignActiveMaster
+            ? this.normalizarCampaignMaxNep(politica?.nepMaximoPersonajeNuevo ?? null)
+            : null;
+        return { tipo, nepMaximo };
+    }
+
+    /** Las categorías de edad de la raza que se mira, con lo que puede elegir (se guardan mientras no cambie nada). */
+    get opcionesEdadMirada(): OpcionCategoriaEdad[] {
+        const raza = this.razaMirada;
+        if (!raza || !razaPorEdades(raza))
+            return [];
+        const contexto = this.contextoEdad;
+        const clave = `${raza.Id}|${contexto.tipo}|${contexto.nepMaximo ?? ''}|${raza.Pasos_edad?.length ?? 0}`;
+        if (this.opcionesEdadCache.clave !== clave)
+            this.opcionesEdadCache = { clave, valor: opcionesEdad(raza, contexto) };
+        return this.opcionesEdadCache.valor;
+    }
+
+    private get opcionPasoEdadMirado(): OpcionPasoEdad | null {
+        return this.opcionesEdadMirada.flatMap((categoria) => categoria.pasos).find((opcion) => opcion.paso.Id === this.pasoEdadMiradoId) ?? null;
+    }
+
+    /** Mira la raza a esa edad: pide sus cifras a la API y las pinta debajo (las de la petición más reciente). */
+    async mirarPasoEdad(paso: PasoEdadRaza): Promise<void> {
+        const raza = this.razaMirada;
+        if (!raza)
+            return;
+        this.pasoEdadMiradoId = paso.Id;
+        const peticion = ++this.peticionRazaAEdad;
+        this.cargandoRazaAEdad = true;
+        this.errorRazaAEdad = null;
+        try {
+            const resuelta = await this.razaSvc.getRazaEnPasoEdad(raza.Id, paso.Id);
+            if (peticion !== this.peticionRazaAEdad)
+                return;
+            // Las edades de la raza se conservan aunque la respuesta a una edad no las traiga: Básicos limita los años con ellas.
+            this.razaMiradaAEdad = {
+                ...resuelta,
+                Categorias_edad: (resuelta.Categorias_edad ?? []).length > 0 ? resuelta.Categorias_edad : raza.Categorias_edad,
+                Pasos_edad: (resuelta.Pasos_edad ?? []).length > 0 ? resuelta.Pasos_edad : raza.Pasos_edad,
+                Paso_edad: resuelta.Paso_edad ?? paso,
+            };
+            this.razaMiradaAEdadPasoId = paso.Id;
+        } catch (error) {
+            if (peticion !== this.peticionRazaAEdad)
+                return;
+            this.razaMiradaAEdad = null;
+            this.razaMiradaAEdadPasoId = null;
+            this.errorRazaAEdad = mensajeDeError(error, 'No se pudo leer la raza a esa edad.');
+        } finally {
+            if (peticion === this.peticionRazaAEdad)
+                this.cargandoRazaAEdad = false;
+        }
+    }
+
+    /** Lo que pinta la vista previa: la raza a la edad que se mira, si ya llegó; si no, la raza. */
+    get razaVistaPrevia(): Raza | null {
+        return this.razaMiradaAEdad ?? this.razaMirada;
+    }
+
+    /** La raza que elige el botón del pie: en una raza por edades, la resuelta a un paso que puede elegir. */
+    get razaParaElegir(): Raza | null {
+        if (!this.razaMirada)
+            return null;
+        if (!this.razaMiradaPorEdades)
+            return this.razaMirada;
+        const opcion = this.opcionPasoEdadMirado;
+        if (!opcion || opcion.bloqueado || this.cargandoRazaAEdad || this.razaMiradaAEdadPasoId !== opcion.paso.Id)
+            return null;
+        return this.razaMiradaAEdad;
+    }
+
+    /** «Elegir Dragón rojo (joven) y continuar». */
+    get textoElegirRaza(): string {
+        if (!this.razaMirada)
+            return 'Elegir y continuar';
+        const categoria = this.razaMiradaPorEdades ? this.opcionPasoEdadMirado?.paso.Categoria.Nombre : null;
+        return `Elegir ${razaConEdad(this.razaMirada.Nombre, categoria)} y continuar`;
+    }
+
+    /** La nota del pie del paso Raza y si es un aviso (por qué no se puede elegir). */
+    get notaPieRaza(): { texto: string; aviso: boolean; } {
+        if (!this.razaMirada)
+            return { texto: 'Pulsa una raza para verla a la derecha antes de elegirla.', aviso: false };
+        if (this.razaMiradaPorEdades) {
+            if (this.errorRazaAEdad)
+                return { texto: this.errorRazaAEdad, aviso: true };
+            if (!this.opcionPasoEdadMirado)
+                return { texto: 'Esta raza no tiene ninguna edad que puedas elegir como personaje jugador; créala como PNJ.', aviso: true };
+            return this.esPnjCreacion
+                ? { texto: 'Creando un PNJ: todas las edades, sin la política de la campaña.', aviso: false }
+                : { texto: 'Las edades sin ajuste de nivel solo se eligen creando un PNJ.', aviso: false };
+        }
+        return { texto: 'Elígela con «Elegir y continuar». Un paso hecho no se puede deshacer.', aviso: false };
+    }
+
+    elegirRazaMirada(): void {
+        const raza = this.razaParaElegir;
+        if (raza)
+            this.seleccionarRaza(raza);
     }
 
     verFichaEnCreacion(): void {
@@ -980,6 +1164,9 @@ export class NuevoPersonajeComponent {
 
         this.nuevoPSvc.refrescarDerivadasPreviewNuevoPersonaje();
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        // Un borrador de antes de elegir PJ o PNJ que ya tiene la raza era un personaje jugador.
+        if (this.razaElegida && !this.Personaje.tipo)
+            this.Personaje.tipo = 'pj';
         this.sincronizarOwnerUidEnCreacion();
         this.normalizarDeidadSeleccionada();
         this.normalizarRegionSeleccionada();
@@ -1356,7 +1543,44 @@ export class NuevoPersonajeComponent {
             && this.esNumeroValidoPositivo(this.Personaje.Altura)
             && !this.selectedCampaignPolicyLoading
             && !this.tieneHistoriaCampanaIncompleta
-            && !this.hasCampaignBlockersForBasicos();
+            && !this.hasCampaignBlockersForBasicos()
+            && !this.motivoPnjCampana
+            && !this.motivoEdadFueraDeCategoria;
+    }
+
+    /** En una campaña, solo su máster crea PNJ (`pnj_solo_master`): el motivo si la campaña elegida no es suya. */
+    get motivoPnjCampana(): string | null {
+        if (!this.esPnjCreacion || !this.hasSelectedCampaignContext)
+            return null;
+        const campana = this.Campanas.find((c) => c.Nombre === this.Personaje?.Campana);
+        const esMaster = campana?.CampaignRole
+            ? campana.CampaignRole === 'master'
+            : (!this.selectedCampaignPolicyResolved || this.isSelectedCampaignActiveMaster);
+        return esMaster ? null : 'En una campaña, solo su máster puede crear PNJ. Elige otra campaña o «Sin campaña».';
+    }
+
+    /** Si la campaña del selector no deja crear un PNJ en ella (no es su máster). */
+    campanaSoloDelMaster(campana: Campana): boolean {
+        return this.esPnjCreacion && !!campana?.CampaignRole && campana.CampaignRole !== 'master';
+    }
+
+    /** En una raza por edades, los años que puede tener con el paso elegido. */
+    get rangoEdadCategoria(): { desde: number; hasta: number | null; } | null {
+        if (!this.Personaje?.IdPasoEdad)
+            return null;
+        return rangoEdadPaso(this.razaSeleccionada, this.Personaje.IdPasoEdad);
+    }
+
+    /** El motivo si la edad en años no cabe en la categoría elegida (lienzo: «solo acepta los años de la categoría»). */
+    get motivoEdadFueraDeCategoria(): string | null {
+        const rango = this.rangoEdadCategoria;
+        if (!rango || !this.esNumeroValidoPositivo(this.Personaje.Edad))
+            return null;
+        const edad = Number(this.Personaje.Edad);
+        if (edad >= rango.desde && (rango.hasta === null || edad <= rango.hasta))
+            return null;
+        const categoria = `${this.Personaje.CategoriaEdad?.categoria?.Nombre ?? ''}`.trim().toLocaleLowerCase('es');
+        return `La edad tiene que estar ${textoRangoEdad(rango)}${categoria ? ` (${categoria})` : ''}.`;
     }
 
     get motivosBloqueoBasicos(): string[] {
@@ -1378,6 +1602,10 @@ export class NuevoPersonajeComponent {
             motivos.push('Si eliges una trama concreta para la campaña, debes elegir también una subtrama. Si no, deja la historia sin especificar por ahora.');
         if (!this.esNumeroValidoPositivo(this.Personaje.Edad))
             motivos.push('La edad debe ser un número mayor que 0.');
+        if (this.motivoEdadFueraDeCategoria)
+            motivos.push(this.motivoEdadFueraDeCategoria);
+        if (this.motivoPnjCampana)
+            motivos.push(this.motivoPnjCampana);
         if (!this.esNumeroValidoPositivo(this.Personaje.Peso))
             motivos.push('El peso debe ser un número mayor que 0.');
         if (!this.esNumeroValidoPositivo(this.Personaje.Altura))
@@ -1473,6 +1701,9 @@ export class NuevoPersonajeComponent {
 
     /** Bajo la edad: el envejecimiento que aplica la etapa elegida o, si no envejece, las edades de la raza. */
     get edadRangosHint(): string {
+        const rango = this.rangoEdadCategoria;
+        if (rango)
+            return `${this.Personaje.CategoriaEdad?.categoria?.Nombre ?? 'Su edad'}: ${textoRangoEdad(rango)}`;
         const etapa = this.etapaEdad;
         const envejecimiento = textoEnvejecimiento(etapa);
         if (etapa && envejecimiento)
@@ -1488,12 +1719,17 @@ export class NuevoPersonajeComponent {
     }
 
     get etapaEdadActual(): string {
+        if (this.Personaje?.CategoriaEdad)
+            return this.Personaje.CategoriaEdad.categoria.Nombre;
         if (this.razaSeleccionada && !razaTieneEdades(this.razaSeleccionada))
             return 'Sin edades en la raza';
         return this.etapaEdad?.nombre ?? 'Sin definir';
     }
 
     get edadMensajeContextual(): string {
+        const rango = this.rangoEdadCategoria;
+        if (rango)
+            return `Su raza crece por categorías de edad: la suya es la que eligió con la raza (${textoRangoEdad(rango)}) y no envejece como en el Manual del jugador.`;
         const raza = this.razaSeleccionada;
         if (raza && !razaTieneEdades(raza))
             return 'Su raza no trae las edades de sus etapas: no se comprueba la edad ni se aplica el envejecimiento.';
@@ -4540,7 +4776,8 @@ export class NuevoPersonajeComponent {
     private abrirSelectorPuntosGolpe(): void {
         this.resetearEstadoFinalizacion();
         // Las tiradas que deja la campaña (`tiradasPuntosGolpe`); sin campaña o sin límite, el máximo.
-        this.tiradasVidaTotales = tiradasPuntosGolpe(this.selectedCampaignPolicy?.maxTiradasPuntosGolpe);
+        // A un PNJ no le aplica la política de la campaña: sin límite de tiradas.
+        this.tiradasVidaTotales = tiradasPuntosGolpe(this.esPnjCreacion ? null : this.selectedCampaignPolicy?.maxTiradasPuntosGolpe);
         this.tiradasVidaRestantes = Math.max(0, this.tiradasVidaTotales - 1);
         this.resultadoVidaActual = this.nuevoPSvc.calcularVidaFinalAleatoria();
         this.modalSelectorVisibilidadAbierto = false;
@@ -4633,9 +4870,12 @@ export class NuevoPersonajeComponent {
             }
             const complianceMessage = this.userSvc.getComplianceErrorMessage(error, 'creation');
             const texto = `${complianceMessage || error?.message || 'Error no identificado'}`.trim();
-            const titulo = etapa === 'sql'
-                ? 'No se pudo guardar en SQL'
-                : 'No se pudo finalizar el personaje';
+            // Los errores del tipo y de la edad (dragones jugables) traen su frase: el título no habla de SQL.
+            const titulo = CODIGOS_FALLO_TIPO_Y_EDAD.includes(`${error?.code ?? ''}`)
+                ? 'No se pudo crear el personaje'
+                : etapa === 'sql'
+                    ? 'No se pudo guardar en SQL'
+                    : 'No se pudo finalizar el personaje';
             await Swal.fire({
                 icon: 'warning',
                 title: titulo,
@@ -6231,7 +6471,8 @@ export class NuevoPersonajeComponent {
     }
 
     private get effectiveSelectedCampaignPolicy(): CampaignCreationPolicy | null {
-        if (!this.hasSelectedCampaignContext)
+        // A un PNJ no le aplica la política de creación de la campaña (contrato de los dragones jugables).
+        if (!this.hasSelectedCampaignContext || this.esPnjCreacion)
             return null;
         return {
             ...DEFAULT_CAMPAIGN_CREATION_POLICY,
@@ -6556,7 +6797,7 @@ export class NuevoPersonajeComponent {
             this.selectedCampaignActiveMasterUid = `${detail?.activeMasterUid ?? ''}`.trim() || null;
             this.selectedCampaignPolicyResolved = true;
             this.nuevoPSvc.aplicarRestriccionCampanaGenerador(
-                detail?.politicaCreacion ?? null,
+                this.esPnjCreacion ? null : (detail?.politicaCreacion ?? null),
                 { permitirOverride: this.isSelectedCampaignActiveMaster }
             );
         } catch {

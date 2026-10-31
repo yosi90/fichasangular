@@ -1,5 +1,7 @@
 import { CreacionCabeceraComponent, CreacionCuerpoComponent, CreacionMarcoComponent, CreacionPieComponent, CreacionVistaPreviaComponent } from './creacion-marco.component';
+import { CreacionEdadComponent } from './creacion-edad.component';
 import { CreacionPersonajeComponent } from './creacion-personaje.component';
+import { CreacionTipoComponent } from './creacion-tipo.component';
 import { CreacionVentanaComponent } from './creacion-ventana.component';
 
 export * from './creacion';
@@ -17,4 +19,6 @@ export const CREACION_MARCO_COMPONENTES = [
     CreacionPersonajeComponent,
     CreacionVentanaComponent,
     CreacionVistaPreviaComponent,
+    CreacionTipoComponent,
+    CreacionEdadComponent,
 ];

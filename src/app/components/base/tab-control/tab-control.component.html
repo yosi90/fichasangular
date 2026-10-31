@@ -82,10 +82,10 @@
             (profileLoaded)="actualizarEtiquetaPerfilPublico($event)">
         </app-public-user-profile>
     </mat-tab>
-    <mat-tab label="Nuevo personaje" *ngIf="AbrirNuevoPersonajeTab">
+    <mat-tab [label]="etiquetaNuevoPersonaje" *ngIf="AbrirNuevoPersonajeTab">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'personaje'"></app-icono-rol>
-            <span class="pestana-etiqueta">Nuevo personaje</span>
+            <span class="pestana-etiqueta">{{etiquetaNuevoPersonaje}}</span>
             <button (click)="quitarNuevoPersonaje()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-nuevo-personaje

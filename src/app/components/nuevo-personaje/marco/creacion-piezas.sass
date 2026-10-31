@@ -40,6 +40,12 @@
 .creacion-etiqueta--aviso
     @include ficha-etiqueta-aviso
 
+// PJ o PNJ (dragones jugables): la etiqueta del PNJ, rosa oscuro como en el lienzo y en el listado de personajes.
+.creacion-etiqueta--pnj
+    border-color: #7b2d4f
+    background: #7b2d4f
+    color: $ficha-blanco
+
 // El buscador: una lupa y el campo, sobre $primary.
 .creacion-buscador
     display: flex
@@ -253,3 +259,181 @@ tr.creacion-fila-abierta td, tr.creacion-fila-abierta:hover td, .creacion-fila-a
 
 tr.creacion-fila-abierta td:first-child, .creacion-fila-abierta:not(tr)
     box-shadow: inset 3px 0 0 $accent
+
+// Lo primero de la creación: «¿Qué vas a crear?», dos tarjetas (lienzo de los dragones jugables, tablero 0). La elegida,
+// con el borde rosa y el fondo rosado, como una opción elegida.
+.creacion-tipo
+    display: flex
+    flex: 1 1 auto
+    flex-direction: column
+    align-items: center
+    justify-content: center
+    gap: 22px
+    padding: 16px
+    overflow-y: auto
+
+.creacion-tipo__opciones
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 20px
+    width: min(980px, 100%)
+
+.creacion-tipo__opcion
+    display: flex
+    flex-direction: column
+    align-items: flex-start
+    gap: 14px
+    padding: 24px 26px
+    border: 2px solid transparent
+    border-radius: 8px
+    background: $ficha-tarjeta
+    color: $ficha-blanco
+    font: inherit
+    text-align: left
+    cursor: pointer
+    box-shadow: 3px 3px 10px black
+
+    &:hover
+        background: rgba(255, 255, 255, .08)
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+.creacion-tipo__opcion--elegida, .creacion-tipo__opcion--elegida:hover
+    border-color: $active
+    background: #4a3a42
+
+.creacion-tipo__cabeza
+    display: flex
+    align-items: center
+    gap: 14px
+
+.creacion-tipo__icono
+    display: inline-flex
+    flex-shrink: 0
+    align-items: center
+    justify-content: center
+    width: 48px
+    height: 48px
+    border-radius: 50%
+    background: $primary
+
+    .mat-icon
+        color: #f48fb1
+
+.creacion-tipo__nombre
+    display: flex
+    flex-direction: column
+    gap: 2px
+
+.creacion-tipo__titulo
+    font-size: 22px
+    font-weight: 500
+
+.creacion-tipo__subtitulo
+    font-size: 14px
+    color: $ficha-texto-suave
+
+.creacion-tipo__puntos
+    display: flex
+    flex-direction: column
+    gap: 8px
+    margin: 0
+    padding: 0 0 0 18px
+    font-size: 14px
+    color: #e3eaee
+
+.creacion-tipo__nota
+    width: min(980px, 100%)
+    margin: 0
+    font-size: 13px
+    color: $ficha-texto-suave
+
+.creacion-tipo__acciones
+    display: flex
+    justify-content: flex-end
+    width: min(980px, 100%)
+
+@media (max-width: 700px)
+    .creacion-tipo__opciones
+        grid-template-columns: minmax(0, 1fr)
+
+// «Categoría de edad» en la vista previa de una raza por edades (lienzo de los dragones jugables, tableros 1 y 2): una
+// rejilla de botones con la edad y su NEP (o VD); la elegida, como una opción elegida; las que no se pueden, atenuadas.
+.creacion-edad
+    display: flex
+    flex-direction: column
+    gap: 10px
+    margin: 0 0 12px
+    padding: 12px 14px
+    border-radius: 6px
+    background: $ficha-tarjeta
+
+.creacion-edad__cabecera
+    display: flex
+    flex-wrap: wrap
+    align-items: baseline
+    justify-content: space-between
+    gap: 4px 12px
+
+.creacion-edad__ayuda
+    font-size: 12px
+    color: $font-base
+
+.creacion-edad__categorias
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr))
+    gap: 6px
+
+.creacion-edad__categoria
+    display: flex
+    flex-direction: column
+    align-items: flex-start
+    gap: 2px
+    min-height: 44px
+    padding: 6px 10px
+    border: 1px solid transparent
+    border-radius: 4px
+    background: $primary
+    color: $ficha-blanco
+    font: inherit
+    font-size: 13px
+    text-align: left
+    cursor: pointer
+
+    &:hover:not(:disabled)
+        background: $primary-hover
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+    &:disabled
+        opacity: .5
+        cursor: not-allowed
+
+.creacion-edad__categoria--elegida, .creacion-edad__categoria--elegida:hover:not(:disabled)
+    border-color: $active
+    background: #4a3a42
+
+.creacion-edad__nombre
+    font-weight: 500
+
+.creacion-edad__pie
+    font-size: 12px
+    color: $ficha-texto-suave
+
+.creacion-edad__categoria--elegida .creacion-edad__pie
+    color: #f8bbd0
+
+.creacion-edad__pasos
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr))
+    gap: 6px
+
+.creacion-edad__motivos
+    margin: 0
+    padding: 0 0 0 18px
+    font-size: 12px
+    color: $font-base

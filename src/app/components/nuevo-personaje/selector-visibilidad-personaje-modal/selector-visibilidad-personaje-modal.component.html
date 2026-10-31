@@ -1,5 +1,5 @@
 <app-creacion-ventana titulo="Visibilidad del personaje"
-    subtitulo="Decide si este personaje será visible solo para su creador o para todo el mundo." ancho="estrecha"
+    [subtitulo]="soloPrivado ? 'Un PNJ nace privado: tus jugadores no lo ven hasta que tú quieras.' : 'Decide si este personaje será visible solo para su creador o para todo el mundo.'" ancho="estrecha"
     [cierreBloqueado]="bloqueado" (cerrar)="onCerrar()" (pulsarFondo)="onCerrar()">
     <div class="creacion-opciones" role="radiogroup" aria-label="Visibilidad del personaje">
         <button type="button" role="radio" class="creacion-opcion creacion-opcion--caja" [class.creacion-opcion--activa]="seleccion === false"
@@ -7,8 +7,11 @@
             <span class="creacion-opcion__texto">Solo para mí</span>
         </button>
         <button type="button" role="radio" class="creacion-opcion creacion-opcion--caja" [class.creacion-opcion--activa]="seleccion === true"
-            [attr.aria-checked]="seleccion === true" [disabled]="bloqueado" (click)="onSeleccionar(true)">
-            <span class="creacion-opcion__texto">Todo el mundo</span>
+            [attr.aria-checked]="seleccion === true" [disabled]="bloqueado || soloPrivado" [class.creacion-opcion--bloqueada]="soloPrivado"
+            (click)="onSeleccionar(true)">
+            <span class="creacion-opcion__texto">Todo el mundo
+                <span class="creacion-opcion__nota" *ngIf="soloPrivado">Podrás hacerlo público desde su ficha cuando quieras.</span>
+            </span>
         </button>
     </div>
 

@@ -2,6 +2,7 @@ import { unirTipo } from 'src/app/components/detalles/ficha/ficha';
 import { esVisibleEnPersonaje, textoClasePersonaje } from 'src/app/components/detalles/ficha/personaje';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { toNumber } from 'src/app/services/utils/normalizacion';
+import { razaConEdad } from 'src/app/services/utils/razas-por-edades';
 
 /*
  * El marco común de la creación de personaje (lienzo aprobado por el propietario el 2026-10-26): cabecera, fila de
@@ -88,9 +89,12 @@ export function pasoCreacionDeLaPestana(
     return paso === 'conjuros' && opciones.eligiendoDotesSinConjuros ? 'clases' : paso;
 }
 
-/** La línea corta de la cabecera: «Humano · Guerrero 5 · Neutral bueno»; sin raza, «Elige la raza». */
+/**
+ * La línea corta de la cabecera: «Humano · Guerrero 5 · Neutral bueno» (en una raza por edades, con la suya: «Dragón rojo
+ * (joven)»); sin raza, «Elige la raza».
+ */
 export function lineaPersonajeCreacion(pj: Personaje | null | undefined): string {
-    const raza = esVisibleEnPersonaje(pj?.Raza?.Nombre) ? `${pj?.Raza?.Nombre}`.trim() : '';
+    const raza = esVisibleEnPersonaje(pj?.Raza?.Nombre) ? razaConEdad(pj?.Raza?.Nombre, pj?.CategoriaEdad?.categoria?.Nombre) : '';
     if (!raza)
         return 'Elige la raza';
     const clases = (pj?.desgloseClases ?? [])

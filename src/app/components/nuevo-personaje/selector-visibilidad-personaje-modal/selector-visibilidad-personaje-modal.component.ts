@@ -10,6 +10,8 @@ import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 export class SelectorVisibilidadPersonajeModalComponent implements OnChanges {
     @Input() seleccionInicial: boolean | null = null;
     @Input() bloqueado = false;
+    /** Un PNJ nace privado (contrato de los dragones jugables): solo «Solo para mí», sin poder cambiarlo. */
+    @Input() soloPrivado = false;
 
     @Output() confirmar = new EventEmitter<boolean>();
     @Output() cerrar = new EventEmitter<void>();
@@ -17,8 +19,8 @@ export class SelectorVisibilidadPersonajeModalComponent implements OnChanges {
     seleccion: boolean | null = null;
 
     ngOnChanges(changes: SimpleChanges): void {
-        if (changes['seleccionInicial'])
-            this.seleccion = this.seleccionInicial;
+        if (changes['seleccionInicial'] || changes['soloPrivado'])
+            this.seleccion = this.soloPrivado ? false : this.seleccionInicial;
     }
 
     get puedeConfirmar(): boolean {
@@ -26,7 +28,7 @@ export class SelectorVisibilidadPersonajeModalComponent implements OnChanges {
     }
 
     onSeleccionar(visibleOtros: boolean): void {
-        if (this.bloqueado)
+        if (this.bloqueado || (this.soloPrivado && visibleOtros))
             return;
         this.seleccion = visibleOtros;
     }
@@ -36,7 +38,7 @@ export class SelectorVisibilidadPersonajeModalComponent implements OnChanges {
             return;
         if (this.seleccion === null)
             return;
-        this.confirmar.emit(this.seleccion);
+        this.confirmar.emit(this.soloPrivado ? false : this.seleccion);
     }
 
     onCerrar(): void {

@@ -60,6 +60,7 @@ import { IncarnumService } from 'src/app/services/incarnum.service';
 import { AyudaSolicitud } from 'src/app/interfaces/ayuda';
 import { AperturaRol, NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { iconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja, tituloListado } from 'src/app/services/utils/iconos-rol';
+import { tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
 
 interface ListadoTabAbierto {
     key: string;
@@ -2567,6 +2568,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
     @Output() CerrarNuevoPersonajeTab: EventEmitter<void> = new EventEmitter();
     /** «Nuevo personaje» desde el inicio vacío: lo abre el menú, que comprueba la sesión y el permiso. */
     @Output() NuevoPersonajeSolicitado: EventEmitter<void> = new EventEmitter();
+    /** La pestaña dice qué se crea: «Nuevo personaje» hasta elegirlo y después «Nuevo personaje jugador» o «Nuevo PNJ». */
+    get etiquetaNuevoPersonaje(): string {
+        return tituloNuevoPersonaje(this.nuevoPSvc?.TipoPersonajeCreacion);
+    }
+
     quitarNuevoPersonaje() {
         this.closeTabWithNavigation(this.TAB_NUEVO, () => {
             this.nuevoPSvc.resetearCreacionNuevoPersonaje();

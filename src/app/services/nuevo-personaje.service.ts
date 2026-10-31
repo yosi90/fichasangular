@@ -18,7 +18,7 @@ import { Personaje, PersonajeNivelLanzadorResumen } from '../interfaces/personaj
 import { Plantilla } from '../interfaces/plantilla';
 import { RegionDetalle } from '../interfaces/region';
 import { RacialDetalle } from '../interfaces/racial';
-import { Raza, RazaPlantillaReferencia } from '../interfaces/raza';
+import { ListaLanzamientoRaza, Raza, RazaPlantillaReferencia } from '../interfaces/raza';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import { SubtipoRef, SubtipoResumen } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
@@ -51,7 +51,8 @@ import {
 import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
-import { normalizarTexto, primerEntero, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
+import { esPnj, leerTipoPersonaje, TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
 import { esTextoExtraPorElegir, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
 import { caracteristicaPorId, caracteristicaPorTexto, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
@@ -946,6 +947,7 @@ interface NuevoPersonajeDraftV1 {
     aumentosProgresionConcedidos: number;
     secuenciaAumentoPendiente: number;
     bonusNivelLanzadorPorClase: Record<string, number>;
+    nivelLanzamientoRacialAplicado?: number;
     clasesCerradasPorMulticlase?: string[];
     progresionLanzadorSelecciones?: PersonajeProgresionLanzadorSeleccionDto[];
     idsEspecialesInternosActivos: number[];
@@ -1002,6 +1004,11 @@ export class NuevoPersonajeService {
     private catalogoRegiones: RegionDetalle[] = [];
     private catalogoDeidades: DeidadDetalle[] = [];
     private bonusNivelLanzadorPorClase: Record<string, number> = {};
+    /**
+     * El nivel del lanzamiento racial (`Raza.Lanzamiento`, el de su edad) que ya se sumó al nivel de lanzador de su clase:
+     * 0 hasta la primera sesión de conjuros, en la que se eligen los conjuros de ese nivel.
+     */
+    private nivelLanzamientoRacialAplicado = 0;
     /**
      * Las clases con `Multiclase_restringida` (monje y paladín, MJ cap. 3) en las que ya no puede subir: el personaje ganó
      * un nivel de otra clase después de tenerlas. Por su nombre normalizado, como `desgloseClases`.
@@ -1315,6 +1322,7 @@ export class NuevoPersonajeService {
         this.idsDotesInternosActivos.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
+        this.nivelLanzamientoRacialAplicado = 0;
         this.clasesCerradasPorMulticlase.clear();
         this.progresionLanzadorSelecciones = [];
         this.dotesPendientes = [];
@@ -1344,6 +1352,25 @@ export class NuevoPersonajeService {
 
     resetearCreacionNuevoPersonaje(): void {
         this.reiniciar();
+    }
+
+    /** PJ o PNJ; `null` hasta que se elige, lo primero de la creación. */
+    get TipoPersonajeCreacion(): TipoPersonaje | null {
+        return leerTipoPersonaje(this.personajeCreacion?.tipo);
+    }
+
+    /**
+     * Qué se crea: personaje jugador o PNJ (decisión del propietario del 2026-10-31). Se puede cambiar hasta elegir la raza;
+     * después, no (devuelve `false`). Un PNJ nace privado.
+     */
+    elegirTipoPersonaje(tipo: TipoPersonaje): boolean {
+        if (this.razaSeleccionada)
+            return false;
+        this.personajeCreacion.tipo = tipo;
+        if (esPnj(tipo))
+            this.personajeCreacion.visible_otros_usuarios = false;
+        this.programarPersistenciaBorradorLocal();
+        return true;
     }
 
     seleccionarRaza(
@@ -1395,7 +1422,21 @@ export class NuevoPersonajeService {
             this.personajeCreacion.Tipo_criatura = this.copiarTipoCriatura(razaEfectiva.Tipo_criatura);
             this.sincronizarCaracteristicasPerdidasConTipoActual();
         }
-        this.personajeCreacion.Edad = razaEfectiva.Edad_adulto ?? 0;
+        // Una raza por edades llega ya resuelta a la edad elegida (`GET /razas/{id}/pasos-edad/{idPaso}`): guarda su paso y
+        // empieza con los años de ese paso; las demás, con la mayoría de edad.
+        const pasoEdad = razaEfectiva.Paso_edad ?? null;
+        this.personajeCreacion.IdPasoEdad = pasoEdad ? pasoEdad.Id : null;
+        this.personajeCreacion.CategoriaEdad = pasoEdad ? {
+            idPasoEdad: pasoEdad.Id,
+            edad: pasoEdad.Edad,
+            categoria: { ...pasoEdad.Categoria },
+            orden: pasoEdad.Orden,
+            dgs: pasoEdad.Dgs,
+            ajusteNivel: pasoEdad.Ajuste_nivel,
+            jugable: pasoEdad.Jugable,
+            vd: pasoEdad.Vd,
+        } : null;
+        this.personajeCreacion.Edad = pasoEdad ? pasoEdad.Edad : (razaEfectiva.Edad_adulto ?? 0);
         this.personajeCreacion.Altura = razaEfectiva.Altura_rango_inf ?? 0;
         this.personajeCreacion.Peso = razaEfectiva.Peso_rango_inf ?? 0;
 
@@ -1433,6 +1474,7 @@ export class NuevoPersonajeService {
         this.firmasDotesPlantillaAplicadas.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
+        this.nivelLanzamientoRacialAplicado = 0;
         this.clasesCerradasPorMulticlase.clear();
         this.progresionLanzadorSelecciones = [];
         this.aumentosPendientesCaracteristica = [];
@@ -7517,6 +7559,14 @@ export class NuevoPersonajeService {
         const avisos: string[] = [...(advertenciasAumentos ?? [])];
         const origenBase = `${claseAplicada?.Nombre ?? 'Clase'} nivel ${Math.max(1, toInt(nivelAplicado))}`;
 
+        // El lanzamiento racial (los dragones, el rakshasa) entra en la primera sesión: sus conjuros se eligen aquí, con la
+        // tabla de la clase al nivel de la raza, y ese nivel se suma desde ya a los niveles reales de la clase (*Draconomicón*,
+        // pág. 24), así que el nivel de esa clase que se aplique ahora empieza encima.
+        const racial = this.aplicarLanzamientoRacialPendiente(claseAplicada, nivelAplicado);
+        avisos.push(...racial.avisos);
+        if (racial.entrada)
+            entradas.push(racial.entrada);
+
         if (this.tieneLanzamientoPropio(claseAplicada)) {
             const bonusActual = this.obtenerBonusNivelLanzadorClase(claseAplicada?.Nombre ?? '');
             const nivelClaseActual = Math.max(1, toInt(nivelAplicado));
@@ -7574,6 +7624,84 @@ export class NuevoPersonajeService {
             avisos,
         };
         return avisos;
+    }
+
+    /** La clase del lanzamiento racial de la raza elegida (del catálogo) y su nivel a su edad; `null` si no lanza. */
+    private lanzamientoRacialActual(): { clase: Clase | null; nombre: string; nivel: number; } | null {
+        const lanzamiento = this.razaSeleccionada?.Lanzamiento ?? null;
+        const nivel = Math.max(0, toInt(lanzamiento?.Nivel));
+        if (!lanzamiento || nivel < 1)
+            return null;
+        const idClase = toNumber(lanzamiento.Clase?.Id);
+        const nombre = `${lanzamiento.Clase?.Nombre ?? ''}`.trim();
+        const clase = this.catalogoClases.find((item) => (idClase > 0 && toNumber(item?.Id) === idClase)
+            || (nombre.length > 0 && normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombre))) ?? null;
+        return { clase, nombre: clase?.Nombre ?? nombre, nivel };
+    }
+
+    /**
+     * Suma el nivel del lanzamiento racial que falta al nivel de lanzador de su clase y crea la entrada de la sesión con los
+     * conjuros que da (de 0, o de los niveles reales que ya tuviera, a ese nivel más). Solo una vez por nivel racial.
+     */
+    private aplicarLanzamientoRacialPendiente(
+        claseAplicada: Clase,
+        nivelAplicado: number
+    ): { entrada: ConjurosSesionStateEntrada | null; avisos: string[]; } {
+        const racial = this.lanzamientoRacialActual();
+        const pendiente = racial ? racial.nivel - this.nivelLanzamientoRacialAplicado : 0;
+        if (!racial || pendiente < 1)
+            return { entrada: null, avisos: [] };
+        if (!racial.clase || !this.tieneLanzamientoPropio(racial.clase))
+            return { entrada: null, avisos: [`No se encontró en el catálogo la clase del lanzamiento racial (${racial.nombre}).`] };
+
+        const mismaClase = normalizarTexto(racial.clase.Nombre) === normalizarTexto(claseAplicada?.Nombre ?? '');
+        const nivelesReales = mismaClase ? Math.max(0, toInt(nivelAplicado) - 1) : undefined;
+        const nivelPrevio = Math.max(0, this.obtenerNivelLanzadorBaseClase(racial.clase.Nombre, nivelesReales)
+            + this.obtenerBonusNivelLanzadorClase(racial.clase.Nombre));
+        this.incrementarBonusNivelLanzadorClase(racial.clase.Nombre, pendiente);
+        this.nivelLanzamientoRacialAplicado = racial.nivel;
+        const { entrada, avisos } = this.crearEntradaSesionConjuros(
+            racial.clase,
+            `Lanzamiento racial (${this.razaSeleccionada?.Nombre ?? 'raza'}: ${racial.clase.Nombre} de nivel ${racial.nivel})`,
+            nivelPrevio,
+            nivelPrevio + pendiente
+        );
+        return { entrada, avisos };
+    }
+
+    /**
+     * Las listas que la raza lanza además como arcanas con la clase de su lanzamiento racial (el dragón azul: clérigo y los
+     * dominios de Aire, Ley y Mal); vacía para otra clase o sin lanzamiento.
+     */
+    private listasLanzamientoRacial(claseObjetivo: Clase | null | undefined): ListaLanzamientoRaza[] {
+        const lanzamiento = this.razaSeleccionada?.Lanzamiento ?? null;
+        if (!lanzamiento || !claseObjetivo)
+            return [];
+        const idClase = toNumber(lanzamiento.Clase?.Id);
+        const esSuClase = (idClase > 0 && toNumber(claseObjetivo.Id) === idClase)
+            || normalizarTexto(lanzamiento.Clase?.Nombre ?? '') === normalizarTexto(claseObjetivo.Nombre ?? '');
+        return esSuClase ? (lanzamiento.Listas ?? []) : [];
+    }
+
+    /** El nivel del conjuro en las listas extra del lanzamiento racial (el más bajo), o `null` si no está en ninguna. */
+    private nivelConjuroEnListasRaciales(listas: ListaLanzamientoRaza[], conjuro: Conjuro): number | null {
+        if (listas.length < 1)
+            return null;
+        const niveles: number[] = [];
+        toArray<Record<string, any>>(conjuro?.Nivel_clase).forEach((nivel) => {
+            const id = toNumber(nivel?.['Id_clase'] ?? nivel?.['id_clase']);
+            const nombre = normalizarTexto(nivel?.['Clase'] ?? nivel?.['clase'] ?? '');
+            if (listas.some((lista) => lista.Tipo === 'clase' && ((lista.Id > 0 && lista.Id === id) || normalizarTexto(lista.Nombre) === nombre)))
+                niveles.push(toNumber(nivel?.['Nivel'] ?? nivel?.['nivel']));
+        });
+        toArray<Record<string, any>>(conjuro?.Nivel_dominio).forEach((nivel) => {
+            const id = toNumber(nivel?.['Id_dominio'] ?? nivel?.['id_dominio']);
+            const nombre = normalizarTexto(nivel?.['Dominio'] ?? nivel?.['dominio'] ?? '');
+            if (listas.some((lista) => lista.Tipo === 'dominio' && ((lista.Id > 0 && lista.Id === id) || normalizarTexto(lista.Nombre) === nombre)))
+                niveles.push(toNumber(nivel?.['Nivel'] ?? nivel?.['nivel']));
+        });
+        const validos = niveles.filter((nivel) => nivel >= 0);
+        return validos.length > 0 ? Math.min(...validos) : null;
     }
 
     private crearEntradaSesionConjuros(
@@ -7928,11 +8056,13 @@ export class NuevoPersonajeService {
         );
         const puntuacion = puntuacionLanzamiento(this.personajeCreacion, claseObjetivo);
 
-        const puedeAgregar = (conjuro: Conjuro, nivelConjuro: number): boolean => {
+        const listasRaciales = this.listasLanzamientoRacial(claseObjetivo);
+        // Los de las listas extra del lanzamiento racial se lanzan como arcanos, aunque en su lista sean divinos.
+        const puedeAgregar = (conjuro: Conjuro, nivelConjuro: number, deListaRacial = false): boolean => {
             const id = toNumber(conjuro?.Id);
             if (id <= 0 || usados.has(id))
                 return false;
-            if (!this.esConjuroCompatibleTipoLanzamiento(claseObjetivo, conjuro))
+            if (!deListaRacial && !this.esConjuroCompatibleTipoLanzamiento(claseObjetivo, conjuro))
                 return false;
             if (acceso.nivelesAccesibles && !acceso.nivelesAccesibles.has(nivelConjuro))
                 return false;
@@ -7952,10 +8082,11 @@ export class NuevoPersonajeService {
         };
 
         this.catalogoConjuros.forEach((conjuro) => {
-            const nivelConjuro = this.resolverNivelConjuroParaClase(claseObjetivo, conjuro, dominiosSeleccionados);
+            const nivelPropio = this.resolverNivelConjuroParaClase(claseObjetivo, conjuro, dominiosSeleccionados);
+            const nivelConjuro = nivelPropio ?? this.nivelConjuroEnListasRaciales(listasRaciales, conjuro);
             if (nivelConjuro === null)
                 return;
-            if (!puedeAgregar(conjuro, nivelConjuro))
+            if (!puedeAgregar(conjuro, nivelConjuro, nivelPropio === null))
                 return;
             const id = toNumber(conjuro?.Id);
             usados.add(id);
@@ -9081,6 +9212,7 @@ export class NuevoPersonajeService {
             aumentosProgresionConcedidos: Math.max(0, toInt(this.aumentosProgresionConcedidos)),
             secuenciaAumentoPendiente: Math.max(1, toInt(this.secuenciaAumentoPendiente)),
             bonusNivelLanzadorPorClase: this.clonarProfundo(this.bonusNivelLanzadorPorClase),
+            nivelLanzamientoRacialAplicado: Math.max(0, toInt(this.nivelLanzamientoRacialAplicado)),
             clasesCerradasPorMulticlase: Array.from(this.clasesCerradasPorMulticlase.values()),
             progresionLanzadorSelecciones: this.getProgresionLanzadorPersistible()?.selecciones ?? [],
             idsEspecialesInternosActivos: Array.from(this.idsEspecialesInternosActivos.values()),
@@ -9158,6 +9290,7 @@ export class NuevoPersonajeService {
         this.aumentosProgresionConcedidos = Math.max(0, toInt(borrador.aumentosProgresionConcedidos));
         this.secuenciaAumentoPendiente = Math.max(1, toInt(borrador.secuenciaAumentoPendiente));
         this.bonusNivelLanzadorPorClase = this.clonarProfundo(borrador.bonusNivelLanzadorPorClase ?? {});
+        this.nivelLanzamientoRacialAplicado = Math.max(0, toInt(borrador.nivelLanzamientoRacialAplicado));
         this.clasesCerradasPorMulticlase = new Set((borrador.clasesCerradasPorMulticlase ?? []).map((nombre) => normalizarTexto(nombre)));
         this.progresionLanzadorSelecciones = this.normalizarSeleccionesProgresionLanzadorBorrador(
             borrador.progresionLanzadorSelecciones
@@ -10502,6 +10635,10 @@ export class NuevoPersonajeService {
             Nombre: '',
             ownerUid: null,
             visible_otros_usuarios: this.visibilidadPorDefectoPersonajes,
+            // Qué se crea (PJ o PNJ) se elige lo primero; hasta entonces, sin dato.
+            tipo: null,
+            IdPasoEdad: null,
+            CategoriaEdad: null,
             Id_region: 0,
             Region: {
                 Id: 0,

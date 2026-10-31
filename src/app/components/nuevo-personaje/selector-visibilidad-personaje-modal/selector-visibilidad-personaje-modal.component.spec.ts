@@ -42,4 +42,23 @@ describe('SelectorVisibilidadPersonajeModalComponent', () => {
         expect(confirmarSpy).not.toHaveBeenCalled();
         expect(cerrarSpy).not.toHaveBeenCalled();
     });
+
+    it('un PNJ nace privado: no deja elegir «Todo el mundo» y confirma privado', () => {
+        const component = new SelectorVisibilidadPersonajeModalComponent();
+        const confirmarSpy = jasmine.createSpy('confirmar');
+        component.confirmar.subscribe(confirmarSpy);
+
+        component.seleccionInicial = true;
+        component.soloPrivado = true;
+        component.ngOnChanges({
+            seleccionInicial: new SimpleChange(null, true, true),
+            soloPrivado: new SimpleChange(false, true, true),
+        });
+
+        expect(component.seleccion).toBeFalse();
+        component.onSeleccionar(true);
+        expect(component.seleccion).toBeFalse();
+        component.onConfirmar();
+        expect(confirmarSpy).toHaveBeenCalledWith(false);
+    });
 });

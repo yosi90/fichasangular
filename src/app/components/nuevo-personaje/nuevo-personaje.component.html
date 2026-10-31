@@ -4,14 +4,19 @@
     <app-creacion-marco>
         <app-creacion-cabecera [paso]="pasoCreacion" [conVentajas]="!campaignForbidsAdvantages" [conConjuros]="pasoConConjuros" [conFormacion]="pasoConFormacion"
             [nombre]="Personaje.Nombre" [linea]="lineaCabeceraCreacion" [oficial]="razaElegida ? Personaje.Oficial !== false : null"
-            [puedeVerFicha]="puedeVerFichaEnCreacion" (verFicha)="verFichaEnCreacion()">
+            [puedeVerFicha]="puedeVerFichaEnCreacion" (verFicha)="verFichaEnCreacion()"
+            [titulo]="tituloCreacion" [tipo]="tipoPersonajeCreacion" [eligiendoTipo]="eligiendoTipoPersonaje"
+            [puedeCambiarTipo]="puedeCambiarTipoPersonaje" (cambiarTipo)="cambiarTipoPersonaje()">
         </app-creacion-cabecera>
 
         <app-ficha-franja [datos]="franjaPasoCreacion" titulo="En este paso"></app-ficha-franja>
 
         <ng-container [ngSwitch]="pasoCreacion">
-            <!-- Raza: el catálogo a todo lo ancho; al pulsar una fila, su vista previa a la derecha -->
+            <!-- Raza: el catálogo a todo lo ancho; al pulsar una fila, su vista previa a la derecha. Antes, qué se crea. -->
             <ng-container *ngSwitchCase="'raza'">
+                <app-creacion-tipo *ngIf="eligiendoTipoPersonaje; else pasoRaza" [tipo]="tipoPersonajeCreacion"
+                    (elegir)="elegirTipoPersonaje($event)"></app-creacion-tipo>
+                <ng-template #pasoRaza>
                 <app-creacion-cuerpo tituloTarea="Razas" tituloLateral="La raza que miras" [lateral]="!!razaMirada">
                     <div creacionTarea class="paso-raza">
                         <app-listado-razas [homebrewSeleccionado]="homebrewForzado ? true : undefined"
@@ -22,7 +27,12 @@
                     <div creacionLateral class="paso-lateral">
                         <app-creacion-vista-previa *ngIf="razaMirada as raza" titulo="La raza que miras" [clave]="raza.Id"
                             (cerrar)="razaMirada = null">
-                            <app-detalles-raza [raza]="raza"
+                            <p class="creacion-aviso paso-raza__aviso" *ngIf="esPnjCreacion">Un PNJ no sigue la política de creación de la
+                                campaña, se mide por su VD y nace privado.</p>
+                            <app-creacion-edad *ngIf="razaMiradaPorEdades" [opciones]="opcionesEdadMirada" [idPaso]="pasoEdadMiradoId"
+                                [pnj]="esPnjCreacion" (elegir)="mirarPasoEdad($event)"></app-creacion-edad>
+                            <p class="creacion-texto-suave" *ngIf="razaMiradaPorEdades && cargandoRazaAEdad" role="status">Cargando la raza a esa edad…</p>
+                            <app-detalles-raza [raza]="razaVistaPrevia ?? raza"
                                 (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"
                                 (subtipoDetalles)="subtipoDetalles.emit($event)"
                                 (doteDetalles)="doteDetallesId.emit($event)"
@@ -31,16 +41,17 @@
                         </app-creacion-vista-previa>
                     </div>
                 </app-creacion-cuerpo>
-                <app-creacion-pie [nota]="razaMirada ? 'Elígela con «Elegir y continuar». Un paso hecho no se puede deshacer.' : 'Pulsa una raza para verla a la derecha antes de elegirla.'">
+                <app-creacion-pie [nota]="notaPieRaza.texto" [aviso]="notaPieRaza.aviso">
                     <button type="button" mat-stroked-button *ngIf="razaMirada" (click)="verDetallesRaza(razaMirada)">
                         Abrir su ficha completa
                     </button>
-                    <button type="button" mat-raised-button color="primary" [disabled]="!razaMirada"
-                        (click)="razaMirada && seleccionarRaza(razaMirada)">
-                        {{razaMirada ? 'Elegir ' + razaMirada.Nombre + ' y continuar' : 'Elegir y continuar'}}
+                    <button type="button" mat-raised-button color="primary" [disabled]="!razaParaElegir"
+                        (click)="elegirRazaMirada()">
+                        {{textoElegirRaza}}
                         <mat-icon iconPositionEnd>arrow_forward</mat-icon>
                     </button>
                 </app-creacion-pie>
+                </ng-template>
             </ng-container>
 
             <!-- Básicos: el formulario a la izquierda y el trasfondo a la derecha -->
@@ -137,8 +148,9 @@
                                             <mat-select [(value)]="Personaje.Campana" (selectionChange)="actualizarTramas()">
                                                 <mat-option value="Sin campaña">Sin campaña</mat-option>
                                                 <mat-option *ngIf="campanasLoading" disabled>Cargando campañas...</mat-option>
-                                                <mat-option *ngFor="let campana of Campanas"
-                                                    [value]="campana.Nombre">{{campana.Nombre}}</mat-option>
+                                                <mat-option *ngFor="let campana of Campanas" [value]="campana.Nombre"
+                                                    [disabled]="campanaSoloDelMaster(campana)">{{campana.Nombre}}<span
+                                                        *ngIf="campanaSoloDelMaster(campana)"> · solo su máster crea PNJ</span></mat-option>
                                             </mat-select>
                                             <mat-hint *ngIf="campanasLoading">Cargando campañas y tramas disponibles...</mat-hint>
                                         </mat-form-field>
@@ -1070,7 +1082,7 @@
 
     <ng-container *ngIf="modalSelectorVisibilidadAbierto">
         <app-selector-visibilidad-personaje-modal [seleccionInicial]="selectorVisibilidadValorInicial"
-            [bloqueado]="finalizacionEnCurso" (confirmar)="onConfirmarSelectorVisibilidad($event)"
+            [soloPrivado]="esPnjCreacion" [bloqueado]="finalizacionEnCurso" (confirmar)="onConfirmarSelectorVisibilidad($event)"
             (cerrar)="onCerrarSelectorVisibilidad()">
         </app-selector-visibilidad-personaje-modal>
     </ng-container>
