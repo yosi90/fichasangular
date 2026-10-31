@@ -43,12 +43,9 @@ import { ArmaduraService } from 'src/app/services/armadura.service';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { DeidadService } from 'src/app/services/deidad.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
-import { NuevaRacialComponent } from '../../shared/nueva-racial/nueva-racial.component';
 import { NuevaRazaComponent } from '../../shared/nueva-raza/nueva-raza.component';
-import { NuevaIdiomaComponent } from '../../shared/nueva-idioma/nueva-idioma.component';
-import { NuevaEspecialComponent } from '../../shared/nueva-especial/nueva-especial.component';
-import { NuevaClaseComponent } from '../../shared/nueva-clase/nueva-clase.component';
-import { NuevaPlantillaComponent } from '../../shared/nueva-plantilla/nueva-plantilla.component';
+import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../../shared/insercion-marco/editor-de-catalogo';
+import { EDICIONES_CATALOGO, EdicionCatalogoTab, INSERCIONES_CATALOGO, TIPOS_EDICION, TipoEdicion, claveEdicion, edicionesVacias, tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
@@ -62,6 +59,9 @@ import { AperturaRol, NavegacionRolService } from 'src/app/services/navegacion-r
 import { iconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja, tituloListado } from 'src/app/services/utils/iconos-rol';
 import { tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
 
+/** Lo que hace falta de una entrada para abrir o refrescar su pestaña de «Modificar»: su id y su nombre. */
+type EntradaEditable = { Id?: unknown; Nombre?: unknown; };
+
 interface ListadoTabAbierto {
     key: string;
     tipo: string;
@@ -69,48 +69,6 @@ interface ListadoTabAbierto {
     /** Lo que se pone en el buscador del listado al abrirlo («Ver los N en el listado» de la búsqueda global). */
     texto?: string;
 }
-
-interface EdicionRacialTabAbierto {
-    key: string;
-    idRacial: number;
-    nombre: string;
-}
-
-interface EdicionIdiomaTabAbierto {
-    key: string;
-    idIdioma: number;
-    nombre: string;
-}
-
-interface EdicionEspecialTabAbierto {
-    key: string;
-    idEspecial: number;
-    nombre: string;
-}
-
-interface EdicionClaseTabAbierto {
-    key: string;
-    idClase: number;
-    nombre: string;
-}
-
-interface EdicionPlantillaTabAbierto {
-    key: string;
-    idPlantilla: number;
-    nombre: string;
-}
-
-/** La pestaña de una inserción: «Nueva raza», «Nuevo conjuro»… (por el listado con el que se abre). */
-const ETIQUETA_INSERCION: Readonly<Record<string, string>> = {
-    'razas': 'Nueva raza',
-    'clases': 'Nueva clase',
-    'dotes': 'Nueva dote',
-    'conjuros': 'Nuevo conjuro',
-    'raciales': 'Nuevo racial',
-    'idiomas': 'Nuevo idioma',
-    'especiales': 'Nuevo especial',
-    'plantillas': 'Nueva plantilla',
-};
 
 @Component({
     selector: 'app-tab-control',
@@ -167,11 +125,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public detallesFusionAbiertos: Fusion[] = [];
     public detallesChakraAbiertos: ChakraDetalle[] = [];
     public listadoTabsAbiertos: ListadoTabAbierto[] = [];
-    public edicionRacialesAbiertos: EdicionRacialTabAbierto[] = [];
-    public edicionIdiomasAbiertos: EdicionIdiomaTabAbierto[] = [];
-    public edicionEspecialesAbiertos: EdicionEspecialTabAbierto[] = [];
-    public edicionClasesAbiertos: EdicionClaseTabAbierto[] = [];
-    public edicionPlantillasAbiertos: EdicionPlantillaTabAbierto[] = [];
+    /** Las pestañas de «Modificar» abiertas, por catálogo (`catalogos-editables.ts`). */
+    public ediciones: Record<TipoEdicion, EdicionCatalogoTab[]> = edicionesVacias();
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_PROFILE = 'base:perfil';
     private readonly TAB_SOCIAL = 'base:social';
@@ -210,11 +165,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
     @ViewChildren(NuevaRazaComponent) nuevasRazasInsertadas!: QueryList<NuevaRazaComponent>;
-    @ViewChildren(NuevaRacialComponent) racialesEditables!: QueryList<NuevaRacialComponent>;
-    @ViewChildren(NuevaIdiomaComponent) idiomasEditables!: QueryList<NuevaIdiomaComponent>;
-    @ViewChildren(NuevaEspecialComponent) especialesEditables!: QueryList<NuevaEspecialComponent>;
-    @ViewChildren(NuevaClaseComponent) clasesEditables!: QueryList<NuevaClaseComponent>;
-    @ViewChildren(NuevaPlantillaComponent) plantillasEditables!: QueryList<NuevaPlantillaComponent>;
+    /** Los formularios de inserción y de «Modificar» abiertos, por `EDITOR_DE_CATALOGO`. */
+    @ViewChildren(EDITOR_DE_CATALOGO) editoresDeCatalogo!: QueryList<EditorDeCatalogo>;
 
     ngOnInit() {
         this.usrSvc.isLoggedIn$
@@ -348,24 +300,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             void this.quitarListado(activeKey);
             return;
         }
-        if (activeKey?.startsWith('edicion:racial:')) {
-            void this.quitarEdicionRacial(activeKey);
-            return;
-        }
-        if (activeKey?.startsWith('edicion:idioma:')) {
-            void this.quitarEdicionIdioma(activeKey);
-            return;
-        }
-        if (activeKey?.startsWith('edicion:especial:')) {
-            void this.quitarEdicionEspecial(activeKey);
-            return;
-        }
-        if (activeKey?.startsWith('edicion:clase:')) {
-            void this.quitarEdicionClase(activeKey);
-            return;
-        }
-        if (activeKey?.startsWith('edicion:plantilla:')) {
-            void this.quitarEdicionPlantilla(activeKey);
+        if (activeKey?.startsWith('edicion:')) {
+            void this.quitarEdicion(activeKey);
             return;
         }
         if (this.detallesPersonajeAbiertos.map(p => p.Nombre).includes(tabLabel) && this.quitarDetallesPersonaje(tabLabel))
@@ -430,11 +366,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (this.AbrirNuevoPersonajeTab)
             keys.push(this.TAB_NUEVO);
         keys.push(...this.listadoTabsAbiertos.map((tab) => tab.key));
-        keys.push(...this.edicionRacialesAbiertos.map((tab) => tab.key));
-        keys.push(...this.edicionIdiomasAbiertos.map((tab) => tab.key));
-        keys.push(...this.edicionEspecialesAbiertos.map((tab) => tab.key));
-        keys.push(...this.edicionClasesAbiertos.map((tab) => tab.key));
-        keys.push(...this.edicionPlantillasAbiertos.map((tab) => tab.key));
+        TIPOS_EDICION.forEach((tipo) => keys.push(...this.ediciones[tipo].map((tab) => tab.key)));
         keys.push(...this.detallesManualAbiertos.map((manual) => this.getManualTabKey(manual)));
         keys.push(...this.detallesRazaAbiertos.map((raza) => this.getRazaTabKey(raza)));
         keys.push(...this.detallesConjuroAbiertos.map((conjuro) => this.getConjuroTabKey(conjuro)));
@@ -687,11 +619,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.detallesFusionAbiertos = [];
         this.detallesChakraAbiertos = [];
         this.listadoTabsAbiertos = [];
-        this.edicionRacialesAbiertos = [];
-        this.edicionIdiomasAbiertos = [];
-        this.edicionEspecialesAbiertos = [];
-        this.edicionClasesAbiertos = [];
-        this.edicionPlantillasAbiertos = [];
+        this.ediciones = edicionesVacias();
         this.nuevoPSvc.resetearCreacionNuevoPersonaje();
         this.AbrirNuevoPersonajeTab = 0;
         this.openerByTab.clear();
@@ -758,24 +686,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     recibirObjetoListado(value: { item: any, tipo: string }, operacion: string = 'detalles') {
-        if (normalizarTexto(operacion) === 'modificar' && value.tipo === 'raciales') {
-            this.abrirEdicionRacial(value.item);
-            return;
-        }
-        if (normalizarTexto(operacion) === 'modificar' && value.tipo === 'idiomas') {
-            this.abrirEdicionIdioma(value.item);
-            return;
-        }
-        if (normalizarTexto(operacion) === 'modificar' && value.tipo === 'especiales') {
-            this.abrirEdicionEspecial(value.item);
-            return;
-        }
-        if (normalizarTexto(operacion) === 'modificar' && value.tipo === 'clases') {
-            this.abrirEdicionClase(value.item);
-            return;
-        }
-        if (normalizarTexto(operacion) === 'modificar' && value.tipo === 'plantillas') {
-            this.abrirEdicionPlantilla(value.item);
+        const tipoEdicion = normalizarTexto(operacion) === 'modificar' ? tipoEdicionDeListado(value.tipo) : null;
+        if (tipoEdicion) {
+            this.abrirEdicion(tipoEdicion, value.item);
             return;
         }
         if (value.tipo === 'razas') {
@@ -1084,30 +997,23 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const tipo = `${tab?.tipo ?? ''}`.trim();
         const operacion = normalizarTexto(tab?.operacion ?? '');
         if (operacion === 'insertar')
-            return ETIQUETA_INSERCION[tipo] ?? `Insertar ${tipo}`;
+            return INSERCIONES_CATALOGO[tipo] ?? `Insertar ${tipo}`;
         if (operacion === 'modificar')
             return `Modificar ${tituloListado(tipo)}`;
         return `Lista de ${tituloListado(tipo)}`;
     }
 
-    getEtiquetaEdicionRacialTab(tab: EdicionRacialTabAbierto): string {
-        return `Editar racial: ${tab.nombre}`;
+    /** Si la inserción de un listado ya tiene pantalla (si no, «Insertar» abre su listado). */
+    readonly tieneInsercion = tieneInsercion;
+
+    /** El nombre completo de una pestaña de «Modificar» («Editar racial: Alas»): su `label` y su tooltip. */
+    etiquetaEdicion(tab: EdicionCatalogoTab): string {
+        return EDICIONES_CATALOGO[tab.tipo].etiqueta(tab.nombre);
     }
 
-    getEtiquetaEdicionIdiomaTab(tab: EdicionIdiomaTabAbierto): string {
-        return `Editar idioma: ${tab.nombre}`;
-    }
-
-    getEtiquetaEdicionEspecialTab(tab: EdicionEspecialTabAbierto): string {
-        return `Editar especial: ${tab.nombre}`;
-    }
-
-    getEtiquetaEdicionClaseTab(tab: EdicionClaseTabAbierto): string {
-        return `Editar clase: ${tab.nombre}`;
-    }
-
-    getEtiquetaEdicionPlantillaTab(tab: EdicionPlantillaTabAbierto): string {
-        return `Modificar: ${tab.nombre}`;
+    /** Lo que se lee en una pestaña de «Modificar» («Editar Alas»). */
+    textoEdicion(tab: EdicionCatalogoTab): string {
+        return EDICIONES_CATALOGO[tab.tipo].texto(tab.nombre);
     }
 
     private getPersonajeTabKey(personaje: Personaje): string {
@@ -1211,38 +1117,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private getListadoTabByKey(key: string): ListadoTabAbierto | undefined {
         return this.listadoTabsAbiertos.find((tab) => tab.key === key);
-    }
-
-    private getEdicionRacialTabKey(idRacial: number): string {
-        return `edicion:racial:${Math.trunc(Number(idRacial ?? 0))}`;
-    }
-
-    private getEdicionRacialTabByKey(key: string): EdicionRacialTabAbierto | undefined {
-        return this.edicionRacialesAbiertos.find((tab) => tab.key === key);
-    }
-
-    private getEdicionIdiomaTabKey(idIdioma: number): string {
-        return `edicion:idioma:${Math.trunc(Number(idIdioma ?? 0))}`;
-    }
-
-    private getEdicionIdiomaTabByKey(key: string): EdicionIdiomaTabAbierto | undefined {
-        return this.edicionIdiomasAbiertos.find((tab) => tab.key === key);
-    }
-
-    private getEdicionEspecialTabKey(idEspecial: number): string {
-        return `edicion:especial:${Math.trunc(Number(idEspecial ?? 0))}`;
-    }
-
-    private getEdicionEspecialTabByKey(key: string): EdicionEspecialTabAbierto | undefined {
-        return this.edicionEspecialesAbiertos.find((tab) => tab.key === key);
-    }
-
-    private getEdicionClaseTabKey(idClase: number): string {
-        return `edicion:clase:${Math.trunc(Number(idClase ?? 0))}`;
-    }
-
-    private getEdicionClaseTabByKey(key: string): EdicionClaseTabAbierto | undefined {
-        return this.edicionClasesAbiertos.find((tab) => tab.key === key);
     }
 
     private getManualTabKey(manual: ManualAsociadoDetalle): string {
@@ -1469,274 +1343,84 @@ export class TabControlComponent implements OnInit, OnDestroy {
         }
     }
 
-    abrirEdicionRacial(racial: RacialDetalle): void {
-        const idRacial = Number(racial?.Id);
-        if (!Number.isFinite(idRacial) || idRacial <= 0)
+    /**
+     * La pestaña de «Modificar» de una entrada: desde la fila de su listado en modo modificar o desde el lápiz de su
+     * detalle. Una sola por entrada: si ya está abierta, va a ella.
+     */
+    abrirEdicion<T extends EntradaEditable>(tipo: TipoEdicion, entrada: T | null | undefined): void {
+        const id = Math.trunc(Number(entrada?.Id));
+        if (!Number.isFinite(id) || id <= 0)
             return;
 
-        const key = this.getEdicionRacialTabKey(idRacial);
-        const abierto = this.getEdicionRacialTabByKey(key);
-        if (abierto) {
-            if (`${racial?.Nombre ?? ''}`.trim().length > 0)
-                abierto.nombre = `${racial.Nombre}`.trim();
-            this.selectTabByKey(abierto.key);
+        const nombre = `${entrada?.Nombre ?? ''}`.trim();
+        const key = claveEdicion(tipo, id);
+        const abierta = this.ediciones[tipo].find((tab) => tab.key === key);
+        if (abierta) {
+            if (nombre.length > 0)
+                abierta.nombre = nombre;
+            this.selectTabByKey(abierta.key);
             return;
         }
 
-        const tab: EdicionRacialTabAbierto = {
-            key,
-            idRacial,
-            nombre: `${racial?.Nombre ?? ''}`.trim() || `#${idRacial}`,
-        };
-        this.edicionRacialesAbiertos.push(tab);
+        this.ediciones[tipo].push({ key, tipo, id, nombre: nombre || `#${id}` });
         this.registerOpenContext(key, this.getSafeOpenerKey());
         this.focusOpenedTab(key);
     }
 
-    async quitarEdicionRacial(value?: string | EdicionRacialTabAbierto): Promise<boolean> {
+    /** Cierra una pestaña de «Modificar» (sin nada, la activa); con cambios sin guardar, su formulario pregunta antes. */
+    async quitarEdicion(value?: string | EdicionCatalogoTab): Promise<boolean> {
         const key = typeof value === 'string'
             ? value
-            : value?.key ?? (this.activeTabKey.startsWith('edicion:racial:') ? this.activeTabKey : '');
-        const tab = this.getEdicionRacialTabByKey(key);
+            : value?.key ?? (this.activeTabKey.startsWith('edicion:') ? this.activeTabKey : '');
+        const tab = TIPOS_EDICION
+            .map((tipo) => this.ediciones[tipo].find((item) => item.key === key))
+            .find((item): item is EdicionCatalogoTab => !!item);
         if (!tab)
             return false;
-        if (!(await this.puedeCerrarEdicionRacial(tab)))
-            return false;
-
-        return this.closeTabWithNavigation(tab.key, () => {
-            const indexTab = this.edicionRacialesAbiertos.indexOf(tab);
-            if (indexTab < 0)
-                return false;
-            this.edicionRacialesAbiertos.splice(indexTab, 1);
-            return true;
-        });
-    }
-
-    abrirEdicionIdioma(idioma: IdiomaDetalle): void {
-        const idIdioma = Number(idioma?.Id);
-        if (!Number.isFinite(idIdioma) || idIdioma <= 0)
-            return;
-
-        const key = this.getEdicionIdiomaTabKey(idIdioma);
-        const abierto = this.getEdicionIdiomaTabByKey(key);
-        if (abierto) {
-            if (`${idioma?.Nombre ?? ''}`.trim().length > 0)
-                abierto.nombre = `${idioma.Nombre}`.trim();
-            this.selectTabByKey(abierto.key);
-            return;
-        }
-
-        const tab: EdicionIdiomaTabAbierto = {
-            key,
-            idIdioma,
-            nombre: `${idioma?.Nombre ?? ''}`.trim() || `#${idIdioma}`,
-        };
-        this.edicionIdiomasAbiertos.push(tab);
-        this.registerOpenContext(key, this.getSafeOpenerKey());
-        this.focusOpenedTab(key);
-    }
-
-    async quitarEdicionIdioma(value?: string | EdicionIdiomaTabAbierto): Promise<boolean> {
-        const key = typeof value === 'string'
-            ? value
-            : value?.key ?? (this.activeTabKey.startsWith('edicion:idioma:') ? this.activeTabKey : '');
-        const tab = this.getEdicionIdiomaTabByKey(key);
-        if (!tab)
-            return false;
-        if (!(await this.puedeCerrarEdicionIdioma(tab)))
-            return false;
-
-        return this.closeTabWithNavigation(tab.key, () => {
-            const indexTab = this.edicionIdiomasAbiertos.indexOf(tab);
-            if (indexTab < 0)
-                return false;
-            this.edicionIdiomasAbiertos.splice(indexTab, 1);
-            return true;
-        });
-    }
-
-    abrirEdicionEspecial(especial: EspecialClaseDetalle): void {
-        const idEspecial = Number(especial?.Id);
-        if (!Number.isFinite(idEspecial) || idEspecial <= 0)
-            return;
-
-        const key = this.getEdicionEspecialTabKey(idEspecial);
-        const abierto = this.getEdicionEspecialTabByKey(key);
-        if (abierto) {
-            if (`${especial?.Nombre ?? ''}`.trim().length > 0)
-                abierto.nombre = `${especial.Nombre}`.trim();
-            this.selectTabByKey(abierto.key);
-            return;
-        }
-
-        const tab: EdicionEspecialTabAbierto = {
-            key,
-            idEspecial,
-            nombre: `${especial?.Nombre ?? ''}`.trim() || `#${idEspecial}`,
-        };
-        this.edicionEspecialesAbiertos.push(tab);
-        this.registerOpenContext(key, this.getSafeOpenerKey());
-        this.focusOpenedTab(key);
-    }
-
-    async quitarEdicionEspecial(value?: string | EdicionEspecialTabAbierto): Promise<boolean> {
-        const key = typeof value === 'string'
-            ? value
-            : value?.key ?? (this.activeTabKey.startsWith('edicion:especial:') ? this.activeTabKey : '');
-        const tab = this.getEdicionEspecialTabByKey(key);
-        if (!tab)
-            return false;
-        if (!(await this.puedeCerrarEdicionEspecial(tab)))
-            return false;
-
-        return this.closeTabWithNavigation(tab.key, () => {
-            const indexTab = this.edicionEspecialesAbiertos.indexOf(tab);
-            if (indexTab < 0)
-                return false;
-            this.edicionEspecialesAbiertos.splice(indexTab, 1);
-            return true;
-        });
-    }
-
-    abrirEdicionClase(clase: Clase): void {
-        const idClase = Number(clase?.Id);
-        if (!Number.isFinite(idClase) || idClase <= 0)
-            return;
-
-        const key = this.getEdicionClaseTabKey(idClase);
-        const abierto = this.getEdicionClaseTabByKey(key);
-        if (abierto) {
-            if (`${clase?.Nombre ?? ''}`.trim().length > 0)
-                abierto.nombre = `${clase.Nombre}`.trim();
-            this.selectTabByKey(abierto.key);
-            return;
-        }
-
-        const tab: EdicionClaseTabAbierto = {
-            key,
-            idClase,
-            nombre: `${clase?.Nombre ?? ''}`.trim() || `#${idClase}`,
-        };
-        this.edicionClasesAbiertos.push(tab);
-        this.registerOpenContext(key, this.getSafeOpenerKey());
-        this.focusOpenedTab(key);
-    }
-
-    /** La pestaña «Modificar: <nombre>» de una plantilla (desde «Modificar → Plantilla» o el lápiz de su detalle). */
-    abrirEdicionPlantilla(plantilla: Plantilla): void {
-        const idPlantilla = Math.trunc(Number(plantilla?.Id));
-        if (!Number.isFinite(idPlantilla) || idPlantilla <= 0)
-            return;
-
-        const key = `edicion:plantilla:${idPlantilla}`;
-        const abierto = this.edicionPlantillasAbiertos.find((tab) => tab.key === key);
-        if (abierto) {
-            this.selectTabByKey(abierto.key);
-            return;
-        }
-
-        this.edicionPlantillasAbiertos.push({ key, idPlantilla, nombre: `${plantilla?.Nombre ?? ''}`.trim() || `#${idPlantilla}` });
-        this.registerOpenContext(key, this.getSafeOpenerKey());
-        this.focusOpenedTab(key);
-    }
-
-    async quitarEdicionPlantilla(value?: string | EdicionPlantillaTabAbierto): Promise<boolean> {
-        const key = typeof value === 'string'
-            ? value
-            : value?.key ?? (this.activeTabKey.startsWith('edicion:plantilla:') ? this.activeTabKey : '');
-        const tab = this.edicionPlantillasAbiertos.find((item) => item.key === key);
-        if (!tab)
-            return false;
-        const editor = this.plantillasEditables?.toArray().find((component) => component.editorTabKey === tab.key);
+        const editor = this.editoresDeCatalogo?.toArray().find((componente) => componente.editorTabKey === tab.key);
         if (editor && !(await editor.confirmarSalidaSiHayCambios()))
             return false;
 
         return this.closeTabWithNavigation(tab.key, () => {
-            const indexTab = this.edicionPlantillasAbiertos.indexOf(tab);
+            const abiertas = this.ediciones[tab.tipo];
+            const indexTab = abiertas.indexOf(tab);
             if (indexTab < 0)
                 return false;
-            this.edicionPlantillasAbiertos.splice(indexTab, 1);
+            abiertas.splice(indexTab, 1);
             return true;
         });
     }
 
-    /** Tras guardar una plantilla: su detalle abierto y su pestaña de modificar, con lo nuevo. */
-    onPlantillaActualizadaDesdeEdicion(plantilla: Plantilla): void {
-        if (!plantilla || Number(plantilla.Id) <= 0)
+    /** Tras guardar una modificación: su detalle abierto (si lo hay) y el nombre de su pestaña, con lo nuevo. */
+    onEdicionGuardada<T extends EntradaEditable>(tipo: TipoEdicion, entrada: T | null | undefined): void {
+        const id = Number(entrada?.Id);
+        if (!entrada || !(id > 0))
             return;
-        const detalleIndex = this.detallesPlantillaAbiertos.findIndex((item) => Number(item.Id) === Number(plantilla.Id));
+
+        const detalles = this.detallesDeEdicion(tipo);
+        const detalleIndex = detalles.findIndex((item) => Number(item.Id) === id);
         if (detalleIndex >= 0)
-            this.detallesPlantillaAbiertos.splice(detalleIndex, 1, plantilla);
-        const tab = this.edicionPlantillasAbiertos.find((item) => item.idPlantilla === Number(plantilla.Id));
+            detalles.splice(detalleIndex, 1, entrada);
+
+        const tab = this.ediciones[tipo].find((item) => item.id === id);
         if (tab)
-            tab.nombre = `${plantilla.Nombre ?? ''}`.trim() || tab.nombre;
+            tab.nombre = `${entrada.Nombre ?? ''}`.trim() || tab.nombre;
     }
 
-    async quitarEdicionClase(value?: string | EdicionClaseTabAbierto): Promise<boolean> {
-        const key = typeof value === 'string'
-            ? value
-            : value?.key ?? (this.activeTabKey.startsWith('edicion:clase:') ? this.activeTabKey : '');
-        const tab = this.getEdicionClaseTabByKey(key);
-        if (!tab)
-            return false;
-        if (!(await this.puedeCerrarEdicionClase(tab)))
-            return false;
-
-        return this.closeTabWithNavigation(tab.key, () => {
-            const indexTab = this.edicionClasesAbiertos.indexOf(tab);
-            if (indexTab < 0)
-                return false;
-            this.edicionClasesAbiertos.splice(indexTab, 1);
-            return true;
-        });
-    }
-
-    onIdiomaActualizadoDesdeEdicion(idioma: IdiomaDetalle): void {
-        if (!idioma || Number(idioma.Id) <= 0)
-            return;
-
-        const editTab = this.getEdicionIdiomaTabByKey(this.getEdicionIdiomaTabKey(idioma.Id));
-        if (editTab)
-            editTab.nombre = `${idioma.Nombre ?? ''}`.trim() || editTab.nombre;
-    }
-
-    onRacialActualizadoDesdeEdicion(racial: RacialDetalle): void {
-        if (!racial || Number(racial.Id) <= 0)
-            return;
-
-        const detalleIndex = this.detallesRacialAbiertos.findIndex((item) => Number(item.Id) === Number(racial.Id));
-        if (detalleIndex >= 0)
-            this.detallesRacialAbiertos.splice(detalleIndex, 1, racial);
-
-        const editTab = this.getEdicionRacialTabByKey(this.getEdicionRacialTabKey(racial.Id));
-        if (editTab)
-            editTab.nombre = `${racial.Nombre ?? ''}`.trim() || editTab.nombre;
-    }
-
-    onEspecialActualizadoDesdeEdicion(especial: EspecialClaseDetalle): void {
-        if (!especial || Number(especial.Id) <= 0)
-            return;
-
-        const detalleIndex = this.detallesEspecialAbiertos.findIndex((item) => Number(item.Id) === Number(especial.Id));
-        if (detalleIndex >= 0)
-            this.detallesEspecialAbiertos.splice(detalleIndex, 1, especial);
-
-        const editTab = this.getEdicionEspecialTabByKey(this.getEdicionEspecialTabKey(especial.Id));
-        if (editTab)
-            editTab.nombre = `${especial.Nombre ?? ''}`.trim() || editTab.nombre;
-    }
-
-    onClaseActualizadaDesdeEdicion(clase: Clase): void {
-        if (!clase || Number(clase.Id) <= 0)
-            return;
-
-        const detalleIndex = this.detallesClaseAbiertos.findIndex((item) => Number(item.Id) === Number(clase.Id));
-        if (detalleIndex >= 0)
-            this.detallesClaseAbiertos.splice(detalleIndex, 1, clase);
-
-        const editTab = this.getEdicionClaseTabByKey(this.getEdicionClaseTabKey(clase.Id));
-        if (editTab)
-            editTab.nombre = `${clase.Nombre ?? ''}`.trim() || editTab.nombre;
+    /** Los detalles abiertos del catálogo de una pestaña de «Modificar», para refrescarlos al guardar. */
+    private detallesDeEdicion(tipo: TipoEdicion): { Id?: unknown; }[] {
+        switch (tipo) {
+            case 'racial':
+                return this.detallesRacialAbiertos;
+            case 'idioma':
+                return this.detallesIdiomaAbiertos;
+            case 'especial':
+                return this.detallesEspecialAbiertos;
+            case 'clase':
+                return this.detallesClaseAbiertos;
+            case 'plantilla':
+                return this.detallesPlantillaAbiertos;
+        }
     }
 
     abrirDetallesRacialPorId(idRacial: number) {
@@ -2650,50 +2334,6 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (!componente)
             return true;
         return componente.confirmarSalidaConRacialesPendientes();
-    }
-
-    private async puedeCerrarEdicionRacial(tab: EdicionRacialTabAbierto): Promise<boolean> {
-        const componente = this.getEditorRacialPorTabKey(tab.key);
-        if (!componente)
-            return true;
-        return componente.confirmarSalidaSiHayCambios();
-    }
-
-    private async puedeCerrarEdicionIdioma(tab: EdicionIdiomaTabAbierto): Promise<boolean> {
-        const componente = this.getEditorIdiomaPorTabKey(tab.key);
-        if (!componente)
-            return true;
-        return componente.confirmarSalidaSiHayCambios();
-    }
-
-    private async puedeCerrarEdicionEspecial(tab: EdicionEspecialTabAbierto): Promise<boolean> {
-        const componente = this.getEditorEspecialPorTabKey(tab.key);
-        if (!componente)
-            return true;
-        return componente.confirmarSalidaSiHayCambios();
-    }
-
-    private async puedeCerrarEdicionClase(tab: EdicionClaseTabAbierto): Promise<boolean> {
-        const componente = this.getEditorClasePorTabKey(tab.key);
-        if (!componente)
-            return true;
-        return componente.confirmarSalidaSiHayCambios();
-    }
-
-    private getEditorRacialPorTabKey(key: string): NuevaRacialComponent | undefined {
-        return this.racialesEditables?.toArray().find((component) => component.editorTabKey === key);
-    }
-
-    private getEditorIdiomaPorTabKey(key: string): NuevaIdiomaComponent | undefined {
-        return this.idiomasEditables?.toArray().find((component) => component.editorTabKey === key);
-    }
-
-    private getEditorEspecialPorTabKey(key: string): NuevaEspecialComponent | undefined {
-        return this.especialesEditables?.toArray().find((component) => component.editorTabKey === key);
-    }
-
-    private getEditorClasePorTabKey(key: string): NuevaClaseComponent | undefined {
-        return this.clasesEditables?.toArray().find((component) => component.editorTabKey === key);
     }
 
     /** Un nombre vacío no abre nada. Los nombres de relleno («No aplica», «Nada») ya llegan a `null` de la API. */

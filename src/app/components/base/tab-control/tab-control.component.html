@@ -120,7 +120,7 @@
             <span class="pestana-etiqueta" [matTooltip]="getEtiquetaListadoTab(listadoTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{getEtiquetaListadoTab(listadoTab)}}</span>
             <button (click)="quitarListado(listadoTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <ng-container *ngIf="listadoTab.operacion === 'insertar' && (listadoTab.tipo === 'dotes' || listadoTab.tipo === 'conjuros' || listadoTab.tipo === 'razas' || listadoTab.tipo === 'raciales' || listadoTab.tipo === 'idiomas' || listadoTab.tipo === 'especiales' || listadoTab.tipo === 'clases' || listadoTab.tipo === 'plantillas'); else listadoGenerico">
+        <ng-container *ngIf="listadoTab.operacion === 'insertar' && tieneInsercion(listadoTab.tipo); else listadoGenerico">
             <div class="insercion-dotes-shell">
                 <app-nueva-dote *ngIf="listadoTab.tipo === 'dotes'"></app-nueva-dote>
                 <app-nueva-conjuro *ngIf="listadoTab.tipo === 'conjuros'"></app-nueva-conjuro>
@@ -142,83 +142,83 @@
             </app-listado>
         </ng-template>
     </mat-tab>
-    <mat-tab *ngFor="let racialTab of edicionRacialesAbiertos" [label]="getEtiquetaEdicionRacialTab(racialTab)">
+    <mat-tab *ngFor="let racialTab of ediciones.racial" [label]="etiquetaEdicion(racialTab)">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'racial'"></app-icono-rol>
-            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEdicionRacialTab(racialTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{'Editar ' + racialTab.nombre}}</span>
-            <button (click)="quitarEdicionRacial(racialTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(racialTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(racialTab)}}</span>
+            <button (click)="quitarEdicion(racialTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <div class="insercion-dotes-shell">
             <app-nueva-racial
                 modo="editar"
-                [idRacial]="racialTab.idRacial"
+                [idRacial]="racialTab.id"
                 [editorTabKey]="racialTab.key"
-                (cerrar)="quitarEdicionRacial(racialTab)"
-                (racialActualizado)="onRacialActualizadoDesdeEdicion($event)">
+                (cerrar)="quitarEdicion(racialTab)"
+                (racialActualizado)="onEdicionGuardada('racial', $event)">
             </app-nueva-racial>
         </div>
     </mat-tab>
-    <mat-tab *ngFor="let idiomaTab of edicionIdiomasAbiertos" [label]="getEtiquetaEdicionIdiomaTab(idiomaTab)">
+    <mat-tab *ngFor="let idiomaTab of ediciones.idioma" [label]="etiquetaEdicion(idiomaTab)">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'idioma'"></app-icono-rol>
-            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEdicionIdiomaTab(idiomaTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{'Editar ' + idiomaTab.nombre}}</span>
-            <button (click)="quitarEdicionIdioma(idiomaTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(idiomaTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(idiomaTab)}}</span>
+            <button (click)="quitarEdicion(idiomaTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <div class="insercion-dotes-shell">
             <app-nueva-idioma
                 modo="editar"
-                [idIdioma]="idiomaTab.idIdioma"
+                [idIdioma]="idiomaTab.id"
                 [editorTabKey]="idiomaTab.key"
-                (cerrar)="quitarEdicionIdioma(idiomaTab)"
-                (idiomaActualizado)="onIdiomaActualizadoDesdeEdicion($event)">
+                (cerrar)="quitarEdicion(idiomaTab)"
+                (idiomaActualizado)="onEdicionGuardada('idioma', $event)">
             </app-nueva-idioma>
         </div>
     </mat-tab>
-    <mat-tab *ngFor="let especialTab of edicionEspecialesAbiertos" [label]="getEtiquetaEdicionEspecialTab(especialTab)">
+    <mat-tab *ngFor="let especialTab of ediciones.especial" [label]="etiquetaEdicion(especialTab)">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'especial'"></app-icono-rol>
-            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEdicionEspecialTab(especialTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{'Editar ' + especialTab.nombre}}</span>
-            <button (click)="quitarEdicionEspecial(especialTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(especialTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(especialTab)}}</span>
+            <button (click)="quitarEdicion(especialTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <div class="insercion-dotes-shell">
             <app-nueva-especial
                 modo="editar"
-                [idEspecial]="especialTab.idEspecial"
+                [idEspecial]="especialTab.id"
                 [editorTabKey]="especialTab.key"
-                (cerrar)="quitarEdicionEspecial(especialTab)"
-                (especialActualizado)="onEspecialActualizadoDesdeEdicion($event)">
+                (cerrar)="quitarEdicion(especialTab)"
+                (especialActualizado)="onEdicionGuardada('especial', $event)">
             </app-nueva-especial>
         </div>
     </mat-tab>
-    <mat-tab *ngFor="let claseTab of edicionClasesAbiertos" [label]="getEtiquetaEdicionClaseTab(claseTab)">
+    <mat-tab *ngFor="let claseTab of ediciones.clase" [label]="etiquetaEdicion(claseTab)">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'clase'"></app-icono-rol>
-            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEdicionClaseTab(claseTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{'Editar ' + claseTab.nombre}}</span>
-            <button (click)="quitarEdicionClase(claseTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(claseTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(claseTab)}}</span>
+            <button (click)="quitarEdicion(claseTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <div class="insercion-dotes-shell">
             <app-nueva-clase
                 modo="editar"
-                [idClase]="claseTab.idClase"
+                [idClase]="claseTab.id"
                 [editorTabKey]="claseTab.key"
-                (cerrar)="quitarEdicionClase(claseTab)"
-                (claseActualizada)="onClaseActualizadaDesdeEdicion($event)">
+                (cerrar)="quitarEdicion(claseTab)"
+                (claseActualizada)="onEdicionGuardada('clase', $event)">
             </app-nueva-clase>
         </div>
     </mat-tab>
-    <mat-tab *ngFor="let plantillaTab of edicionPlantillasAbiertos" [label]="getEtiquetaEdicionPlantillaTab(plantillaTab)">
+    <mat-tab *ngFor="let plantillaTab of ediciones.plantilla" [label]="etiquetaEdicion(plantillaTab)">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'plantilla'"></app-icono-rol>
-            <span class="pestana-etiqueta" [matTooltip]="getEtiquetaEdicionPlantillaTab(plantillaTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{getEtiquetaEdicionPlantillaTab(plantillaTab)}}</span>
-            <button (click)="quitarEdicionPlantilla(plantillaTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(plantillaTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(plantillaTab)}}</span>
+            <button (click)="quitarEdicion(plantillaTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <div class="insercion-dotes-shell">
             <app-nueva-plantilla
                 modo="editar"
-                [idPlantilla]="plantillaTab.idPlantilla"
+                [idPlantilla]="plantillaTab.id"
                 [editorTabKey]="plantillaTab.key"
-                (cerrar)="quitarEdicionPlantilla(plantillaTab)"
-                (plantillaActualizada)="onPlantillaActualizadaDesdeEdicion($event)">
+                (cerrar)="quitarEdicion(plantillaTab)"
+                (plantillaActualizada)="onEdicionGuardada('plantilla', $event)">
             </app-nueva-plantilla>
         </div>
     </mat-tab>
@@ -357,7 +357,7 @@
             (doteDetalles)="abrirDetallesDotePorId($event)"
             (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)"
             (racialDetalles)="abrirDetallesRacial($event)"
-            (modificar)="abrirEdicionPlantilla($event)">
+            (modificar)="abrirEdicion('plantilla', $event)">
         </app-detalles-plantilla>
     </mat-tab>
     <mat-tab *ngFor="let subtipo of detallesSubtipoAbiertos; let index = index" [label]="getEtiquetaSubtipo(subtipo)">

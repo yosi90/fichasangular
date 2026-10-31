@@ -84,7 +84,7 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         if (component.AbrirNuevoPersonajeTab)
             tabs.push({ textLabel: 'Nuevo personaje' });
         (component.listadoTabsAbiertos ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaListadoTab(tab) }));
-        (component.edicionRacialesAbiertos ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaEdicionRacialTab(tab) }));
+        Object.values(component.ediciones ?? {}).forEach((abiertas: any) => abiertas.forEach((tab: any) => tabs.push({ textLabel: component.etiquetaEdicion(tab) })));
         (component.detallesManualAbiertos ?? []).forEach((manual: any) => tabs.push({ textLabel: component.getEtiquetaManual(manual) }));
         (component.detallesRazaAbiertos ?? []).forEach((raza: any) => tabs.push({ textLabel: raza.Nombre }));
         (component.detallesConjuroAbiertos ?? []).forEach((conjuro: any) => tabs.push({ textLabel: conjuro.Nombre }));
@@ -250,9 +250,10 @@ describe('TabControlComponent navegación por origen', () => {
         component.recibirObjetoListado({ item: racial, tipo: 'raciales' }, 'modificar');
         tick(120);
 
-        expect(component.edicionRacialesAbiertos).toEqual([{
+        expect(component.ediciones.racial).toEqual([{
             key: 'edicion:racial:41',
-            idRacial: 41,
+            tipo: 'racial',
+            id: 41,
             nombre: 'Alas',
         }]);
         expect(component.detallesRacialAbiertos.length).toBe(0);
@@ -281,28 +282,29 @@ describe('TabControlComponent navegación por origen', () => {
         tick(120);
 
         expect(component.detallesRacialAbiertos.length).toBe(1);
-        expect(component.edicionRacialesAbiertos.length).toBe(0);
+        expect(component.ediciones.racial.length).toBe(0);
         expect((component as any).activeTabKey).toBe('racial:42');
     }));
 
     it('avisa antes de cerrar una edición de racial con cambios pendientes', async () => {
         const component = crearComponente();
-        component.edicionRacialesAbiertos = [{
+        component.ediciones.racial = [{
             key: 'edicion:racial:41',
-            idRacial: 41,
+            tipo: 'racial',
+            id: 41,
             nombre: 'Alas',
         }];
-        (component as any).racialesEditables = {
+        (component as any).editoresDeCatalogo = {
             toArray: () => [{
                 editorTabKey: 'edicion:racial:41',
                 confirmarSalidaSiHayCambios: jasmine.createSpy('confirmarSalidaSiHayCambios').and.resolveTo(false),
             }],
         };
 
-        const cerrado = await component.quitarEdicionRacial('edicion:racial:41');
+        const cerrado = await component.quitarEdicion('edicion:racial:41');
 
         expect(cerrado).toBeFalse();
-        expect(component.edicionRacialesAbiertos.length).toBe(1);
+        expect(component.ediciones.racial.length).toBe(1);
     });
 
     it('actualizar un racial sustituye su detalle abierto y renombra la tab de edición', () => {
@@ -311,13 +313,14 @@ describe('TabControlComponent navegación por origen', () => {
             Id: 41,
             Nombre: 'Alas',
         } as any];
-        component.edicionRacialesAbiertos = [{
+        component.ediciones.racial = [{
             key: 'edicion:racial:41',
-            idRacial: 41,
+            tipo: 'racial',
+            id: 41,
             nombre: 'Alas',
         }];
 
-        component.onRacialActualizadoDesdeEdicion({
+        component.onEdicionGuardada('racial', {
             Id: 41,
             Nombre: 'Alas perfeccionadas',
             Descripcion: 'Nueva descripción',
@@ -333,27 +336,59 @@ describe('TabControlComponent navegación por origen', () => {
         });
 
         expect(component.detallesRacialAbiertos[0].Nombre).toBe('Alas perfeccionadas');
-        expect(component.edicionRacialesAbiertos[0].nombre).toBe('Alas perfeccionadas');
+        expect(component.ediciones.racial[0].nombre).toBe('Alas perfeccionadas');
     });
+
+    it('cada catálogo con «Modificar» abre su pestaña desde su listado, una sola vez, y la refresca al guardar', fakeAsync(() => {
+        const component = crearComponente();
+        component.detallesIdiomaAbiertos = [{ Id: 7, Nombre: 'Dracónico', Descripcion: '', Secreto: false, Oficial: true } as any];
+
+        component.recibirObjetoListado({ item: { Id: 7, Nombre: 'Dracónico' }, tipo: 'idiomas' }, 'modificar');
+        tick(120);
+        component.recibirObjetoListado({ item: { Id: 7, Nombre: 'Dracónico' }, tipo: 'idiomas' }, 'modificar');
+        tick(120);
+        component.recibirObjetoListado({ item: { Id: 3, Nombre: 'Vampiro' }, tipo: 'plantillas' }, 'modificar');
+        tick(120);
+
+        expect(component.ediciones.idioma.map((tab) => tab.key)).toEqual(['edicion:idioma:7']);
+        expect(component.ediciones.plantilla.map((tab) => tab.key)).toEqual(['edicion:plantilla:3']);
+        expect(component.etiquetaEdicion(component.ediciones.plantilla[0])).toBe('Modificar: Vampiro');
+        expect(component.textoEdicion(component.ediciones.idioma[0])).toBe('Editar Dracónico');
+
+        component.onEdicionGuardada('idioma', { Id: 7, Nombre: 'Dracónico antiguo' });
+        expect(component.ediciones.idioma[0].nombre).toBe('Dracónico antiguo');
+        expect(component.detallesIdiomaAbiertos[0].Nombre).toBe('Dracónico antiguo');
+    }));
+
+    it('un listado sin «Modificar» todavía abre el detalle aunque venga del menú de modificar', fakeAsync(() => {
+        const component = crearComponente();
+
+        component.recibirObjetoListado({ item: { Id: 5, Nombre: 'Orco' } as any, tipo: 'razas' }, 'modificar');
+        tick(120);
+
+        expect(Object.values(component.ediciones).every((abiertas) => abiertas.length === 0)).toBeTrue();
+        expect(component.detallesRazaAbiertos.length).toBe(1);
+    }));
 
     it('cerrar edición de racial sin cambios quita la tab cuando el editor lo emite', async () => {
         const component = crearComponente();
-        component.edicionRacialesAbiertos = [{
+        component.ediciones.racial = [{
             key: 'edicion:racial:41',
-            idRacial: 41,
+            tipo: 'racial',
+            id: 41,
             nombre: 'Alas',
         }];
-        (component as any).racialesEditables = {
+        (component as any).editoresDeCatalogo = {
             toArray: () => [{
                 editorTabKey: 'edicion:racial:41',
                 confirmarSalidaSiHayCambios: jasmine.createSpy('confirmarSalidaSiHayCambios').and.resolveTo(true),
             }],
         };
 
-        const cerrado = await component.quitarEdicionRacial('edicion:racial:41');
+        const cerrado = await component.quitarEdicion('edicion:racial:41');
 
         expect(cerrado).toBeTrue();
-        expect(component.edicionRacialesAbiertos.length).toBe(0);
+        expect(component.ediciones.racial.length).toBe(0);
     });
 
     it('abre el detalle de un objeto desde su listado y lo cierra volviendo al listado', fakeAsync(() => {
@@ -638,7 +673,7 @@ describe('TabControlComponent navegación por origen', () => {
         expect(component.getEtiquetaListadoTab({ key: 'listado:conjuros:insertar', tipo: 'conjuros', operacion: 'insertar' } as any)).toBe('Nuevo conjuro');
         expect(component.getEtiquetaListadoTab({ key: 'listado:razas:detalles', tipo: 'razas', operacion: 'detalles' } as any)).toBe('Lista de razas');
         expect(component.getEtiquetaListadoTab({ key: 'listado:armaduras:detalles', tipo: 'armaduras', operacion: 'detalles' } as any)).toBe('Lista de armaduras y escudos');
-        expect(component.getEtiquetaEdicionRacialTab({ key: 'r', idRacial: 1, nombre: 'Visión en la oscuridad' })).toBe('Editar racial: Visión en la oscuridad');
+        expect(component.etiquetaEdicion({ key: 'r', tipo: 'racial', id: 1, nombre: 'Visión en la oscuridad' })).toBe('Editar racial: Visión en la oscuridad');
     });
 
     it('la pestaña de una dote enseña su nombre con la elección; el tooltip, también de dónde viene', () => {
