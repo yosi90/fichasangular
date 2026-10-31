@@ -1,7 +1,9 @@
 import { Personaje } from 'src/app/interfaces/personaje';
+import { ListaLanzamientoRaza } from 'src/app/interfaces/raza';
 import { nombreEdadEnFrase } from 'src/app/services/utils/razas-por-edades';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { esPnj, textoNivelPersonaje } from 'src/app/services/utils/tipo-personaje';
+import { EtiquetaFicha, unirLista } from './ficha';
 
 /*
  * Lo que enseña la ficha de un personaje de una raza que crece por edades y de una raza que lanza conjuros (lienzo de los
@@ -18,7 +20,7 @@ export function razaConCategoriaPersonaje(pj: Personaje | null | undefined): str
 }
 
 /** Las etiquetas del tipo de la cabecera: «PNJ» y su nivel («VD 18»); un PJ no lleva ninguna. */
-export function etiquetasTipoPersonaje(pj: Personaje | null | undefined): { texto: string; ayuda: string; }[] {
+export function etiquetasTipoPersonaje(pj: Personaje | null | undefined): EtiquetaFicha[] {
     if (!pj || !esPnj(pj.tipo))
         return [];
     const nivel = textoNivelPersonaje({ tipo: pj.tipo, vd: pj.vd });
@@ -89,18 +91,14 @@ export function lanzamientoRacialPersonaje(pj: Personaje | null | undefined): La
     };
 }
 
-/** «a, b y c». */
-function unirConY(partes: string[]): string {
-    return partes.length < 2 ? partes.join('') : `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}`;
-}
-
 /** «También lanza como arcanos los conjuros de clérigo y de los dominios de Aire, Ley y Mal.»; sin listas, `null`. */
-function textoListasRaciales(listas: { Tipo: 'clase' | 'dominio'; Nombre: string; }[]): string | null {
-    const clases = listas.filter((lista) => lista.Tipo === 'clase').map((lista) => lista.Nombre.toLocaleLowerCase('es'));
-    const dominios = listas.filter((lista) => lista.Tipo === 'dominio').map((lista) => lista.Nombre);
+function textoListasRaciales(listas: Pick<ListaLanzamientoRaza, 'Tipo' | 'Nombre'>[]): string | null {
+    const conNombre = listas.filter((lista) => lista.Nombre.length > 0);
+    const clases = conNombre.filter((lista) => lista.Tipo === 'clase').map((lista) => lista.Nombre.toLocaleLowerCase('es'));
+    const dominios = conNombre.filter((lista) => lista.Tipo === 'dominio').map((lista) => lista.Nombre);
     const partes = [
-        clases.length > 0 ? `de ${unirConY(clases)}` : '',
-        dominios.length === 1 ? `del dominio de ${dominios[0]}` : dominios.length > 1 ? `de los dominios de ${unirConY(dominios)}` : '',
+        clases.length > 0 ? `de ${unirLista(clases, 'y')}` : '',
+        dominios.length === 1 ? `del dominio de ${dominios[0]}` : dominios.length > 1 ? `de los dominios de ${unirLista(dominios, 'y')}` : '',
     ].filter((parte) => parte.length > 0);
     return partes.length > 0 ? `También lanza como arcanos los conjuros ${partes.join(' y ')}.` : null;
 }

@@ -3,6 +3,7 @@ import { Alineamiento } from "./alineamiento";
 import { Comodin } from "./comodin";
 import { AptitudSortilega } from "./aptitud-sortilega";
 import { DoteContextual } from "./dote-contextual";
+import { Id_nombre } from "./genericas";
 import { IdiomaDetalle } from "./idioma";
 import { Maniobrabilidad } from "./maniobrabilidad";
 import { RacialDetalle } from "./racial";
@@ -93,12 +94,6 @@ export interface RazaHabilidades {
     Custom: RazaHabilidadCustom[];
 }
 
-/** Una referencia `{ Id, Nombre }` del contrato. */
-export interface RefRaza {
-    Id: number;
-    Nombre: string;
-}
-
 export type ClaveCaracteristicaRaza = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
 
 /** Un racial que la raza gana en una categoría de edad (o cuya cifra cambia en ella: el daño del aliento). */
@@ -108,7 +103,7 @@ export interface RacialDeEdad {
     /** La cifra del racial a esa edad («2d10»); `null` si no cambia. */
     Valor: string | null;
     /** La característica de su CD (10 + ½ DG raciales + su modificador); `null` si no tiene. */
-    Caracteristica_cd: RefRaza | null;
+    Caracteristica_cd: Id_nombre | null;
 }
 
 /**
@@ -117,7 +112,7 @@ export interface RacialDeEdad {
  */
 export interface CategoriaEdadRaza {
     Orden: number;
-    Categoria: RefRaza;
+    Categoria: Id_nombre;
     Edad_desde: number;
     /** `null`: sin tope (la gran sierpe). */
     Edad_hasta: number | null;
@@ -134,7 +129,7 @@ export interface CategoriaEdadRaza {
     Modificadores: Record<ClaveCaracteristicaRaza, number | null>;
     Armadura_natural: number;
     Velocidades: { Correr: number; Nadar: number; Volar: number; Trepar: number; Excavar: number; };
-    Maniobrabilidad: RefRaza | null;
+    Maniobrabilidad: Id_nombre | null;
     Ataques_naturales: string | null;
     Rd: string | null;
     Rc: string | null;
@@ -144,7 +139,7 @@ export interface CategoriaEdadRaza {
     Nivel_lanzador_sortilegas: number;
     /** Lo que gana en esta edad y conserva después. */
     Raciales: RacialDeEdad[];
-    Sortilegas: { Conjuro: RefRaza; Usos_diarios: string; Descripcion: string; }[];
+    Sortilegas: { Conjuro: Id_nombre; Usos_diarios: string; Descripcion: string; }[];
 }
 
 /** Un paso de edad que puede elegir el personaje (`RazaCompleta.Pasos_edad[]`, *Draconomicón*, tabla 3-21). */
@@ -153,7 +148,7 @@ export interface PasoEdadRaza {
     Id: number;
     /** Años desde los que vale. */
     Edad: number;
-    Categoria: RefRaza;
+    Categoria: Id_nombre;
     Orden: number;
     Dgs: number;
     /** `null` si el manual no da ajuste a esa edad. */
@@ -180,7 +175,7 @@ export interface ListaLanzamientoRaza {
  * un paso, el de esa edad).
  */
 export interface LanzamientoRaza {
-    Clase: RefRaza;
+    Clase: Id_nombre;
     Nivel: number;
     Listas: ListaLanzamientoRaza[];
 }

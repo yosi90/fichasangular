@@ -2,6 +2,8 @@
 // normalización de textos para compararlos o buscarlos. Son la única copia: los mappers, servicios y componentes las
 // importan de aquí en vez de declarar las suyas.
 
+import { Id_nombre } from 'src/app/interfaces/genericas';
+
 /** El número que representa `value`, o `fallback` si no es un número finito (`null`, `''` se leen como 0). */
 export function toNumber(value: any, fallback: number = 0): number {
     const parsed = Number(value);
@@ -61,6 +63,13 @@ export function toText(value: any, fallback: string = ''): string {
 export function toNullableText(value: unknown): string | null {
     const text = `${value ?? ''}`.trim();
     return text.length > 0 ? text : null;
+}
+
+/** Una referencia `{ Id, Nombre }` del contrato (el nombre, sin espacios a los lados), o `null` si no trae ni id ni nombre. */
+export function toRefIdNombre(value: any): Id_nombre | null {
+    const id = toNumber(value?.Id);
+    const nombre = toText(value?.Nombre).trim();
+    return id > 0 || nombre.length > 0 ? { Id: id, Nombre: nombre } : null;
 }
 
 const VALORES_SI = new Set(['true', '1', 'sí', 'si', 'yes']);

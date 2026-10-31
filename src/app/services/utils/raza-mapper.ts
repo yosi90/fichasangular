@@ -5,11 +5,11 @@ import { IdiomaDetalle } from "src/app/interfaces/idioma";
 import { RacialDetalle } from "src/app/interfaces/racial";
 import {
     CategoriaEdadRaza, ClaveCaracteristicaRaza, LanzamientoRaza, ListaLanzamientoRaza, MutacionRaza, PasoEdadRaza, Raza, RazaCompetencias,
-    RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags, RefRaza
+    RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags
 } from "src/app/interfaces/raza";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
-import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroApi } from './conjuro-mapper';
 import { leerComodin } from './comodin';
 import { camposEdadRacial } from './racial-mapper';
@@ -190,13 +190,6 @@ export function normalizarCamposCreacionRaza(raw: any): Pick<Raza, CamposCreacio
     };
 }
 
-/** Una referencia `{ Id, Nombre }`, o `null` si no trae ni id ni nombre. */
-function refRaza(raw: any): RefRaza | null {
-    const id = toNumber(raw?.Id);
-    const nombre = toText(raw?.Nombre).trim();
-    return id > 0 || nombre.length > 0 ? { Id: id, Nombre: nombre } : null;
-}
-
 function caracteristicasDeEdad(raw: any): Record<ClaveCaracteristicaRaza, number | null> {
     return {
         Fuerza: toNumberOrNull(raw?.Fuerza),
@@ -212,7 +205,7 @@ function categoriaEdad(raw: any): CategoriaEdadRaza {
     const tamano = raw?.Tamano && typeof raw.Tamano === 'object' ? raw.Tamano : null;
     return {
         Orden: toNumber(raw?.Orden),
-        Categoria: refRaza(raw?.Categoria) ?? { Id: 0, Nombre: '' },
+        Categoria: toRefIdNombre(raw?.Categoria) ?? { Id: 0, Nombre: '' },
         Edad_desde: toNumber(raw?.Edad_desde),
         Edad_hasta: toNumberOrNull(raw?.Edad_hasta),
         Tamano: tamano,
@@ -231,7 +224,7 @@ function categoriaEdad(raw: any): CategoriaEdadRaza {
             Trepar: toNumber(raw?.Velocidades?.Trepar),
             Excavar: toNumber(raw?.Velocidades?.Excavar),
         },
-        Maniobrabilidad: refRaza(raw?.Maniobrabilidad),
+        Maniobrabilidad: toRefIdNombre(raw?.Maniobrabilidad),
         Ataques_naturales: toNullableText(raw?.Ataques_naturales),
         Rd: toNullableText(raw?.Rd),
         Rc: toNullableText(raw?.Rc),
@@ -242,10 +235,10 @@ function categoriaEdad(raw: any): CategoriaEdadRaza {
             Id: toNumber(racial?.Id),
             Nombre: toText(racial?.Nombre).trim(),
             Valor: toNullableText(racial?.Valor),
-            Caracteristica_cd: refRaza(racial?.Caracteristica_cd),
+            Caracteristica_cd: toRefIdNombre(racial?.Caracteristica_cd),
         })).filter((racial) => racial.Nombre.length > 0),
         Sortilegas: toArray(raw?.Sortilegas).map((sortilega: any) => ({
-            Conjuro: refRaza(sortilega?.Conjuro) ?? { Id: 0, Nombre: '' },
+            Conjuro: toRefIdNombre(sortilega?.Conjuro) ?? { Id: 0, Nombre: '' },
             Usos_diarios: toText(sortilega?.Usos_diarios).trim(),
             Descripcion: toText(sortilega?.Descripcion).trim(),
         })).filter((sortilega) => sortilega.Conjuro.Nombre.length > 0),
@@ -256,7 +249,7 @@ function pasoEdad(raw: any): PasoEdadRaza {
     return {
         Id: toNumber(raw?.Id),
         Edad: toNumber(raw?.Edad),
-        Categoria: refRaza(raw?.Categoria) ?? { Id: 0, Nombre: '' },
+        Categoria: toRefIdNombre(raw?.Categoria) ?? { Id: 0, Nombre: '' },
         Orden: toNumber(raw?.Orden),
         Dgs: toNumber(raw?.Dgs),
         Ajuste_nivel: toNumberOrNull(raw?.Ajuste_nivel),
@@ -267,20 +260,28 @@ function pasoEdad(raw: any): PasoEdadRaza {
     };
 }
 
+/**
+ * Las listas que se lanzan además como arcanas con el lanzamiento racial (`Lanzamiento.Listas` de la raza y `listas` del
+ * `lanzamientoRacial` de la ficha, con la misma forma): `clase` o `dominio`, su id y su nombre.
+ */
+export function normalizarListasLanzamiento(raw: any): ListaLanzamientoRaza[] {
+    return toArray(raw)
+        .map((lista: any) => ({
+            Tipo: (toText(lista?.Tipo).trim().toLowerCase() === 'dominio' ? 'dominio' : 'clase') as ListaLanzamientoRaza['Tipo'],
+            Id: toNumber(lista?.Id),
+            Nombre: toText(lista?.Nombre).trim(),
+        }))
+        .filter((lista) => lista.Id > 0 || lista.Nombre.length > 0);
+}
+
 function lanzamientoRaza(raw: any): LanzamientoRaza | null {
-    const clase = refRaza(raw?.Clase);
+    const clase = toRefIdNombre(raw?.Clase);
     if (!clase)
         return null;
     return {
         Clase: clase,
         Nivel: toNumber(raw?.Nivel),
-        Listas: toArray(raw?.Listas)
-            .map((lista: any) => ({
-                Tipo: (toText(lista?.Tipo).trim().toLowerCase() === 'dominio' ? 'dominio' : 'clase') as ListaLanzamientoRaza['Tipo'],
-                Id: toNumber(lista?.Id),
-                Nombre: toText(lista?.Nombre).trim(),
-            }))
-            .filter((lista) => lista.Id > 0 || lista.Nombre.length > 0),
+        Listas: normalizarListasLanzamiento(raw?.Listas),
     };
 }
 

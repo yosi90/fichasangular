@@ -5,6 +5,7 @@ import { EnemigoPredilectoSeleccion } from "./enemigo-predilecto-seleccion";
 import { PersonajeIncarnum } from "./incarnum";
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from "./monstruo";
 import { RacialDetalle } from "./racial";
+import { ListaLanzamientoRaza } from "./raza";
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
 import { SubtipoRef } from "./subtipo";
 import { TipoCriatura } from "./tipo_criatura";
@@ -125,7 +126,7 @@ export interface LanzamientoRacialPersonaje {
     caracteristicaLanzamiento: string | null;
     modificadorLanzamiento: number | null;
     conjurosDiarios: PersonajeConjurosDiariosNivelDto[];
-    listas: { Tipo: 'clase' | 'dominio'; Id: number; Nombre: string; }[];
+    listas: ListaLanzamientoRaza[];
 }
 
 export interface Personaje extends PersonajeSimple {

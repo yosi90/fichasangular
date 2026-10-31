@@ -1,4 +1,4 @@
-import { enteroEntre, normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toPositiveInt } from './normalizacion';
+import { enteroEntre, normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toPositiveInt, toRefIdNombre } from './normalizacion';
 
 describe('toBoolean', () => {
     it('es sí con true, 1 y los textos de sí, sin distinguir mayúsculas ni espacios alrededor', () => {
@@ -80,5 +80,14 @@ describe('enteroEntre', () => {
         expect(enteroEntre('abc', 3, 13, 13)).toBe(13);
         expect(enteroEntre(undefined, 0, 99, null)).toBeNull();
         expect(enteroEntre(null, 1, 5, 3)).toBe(1);
+    });
+});
+
+describe('toRefIdNombre', () => {
+    it('lee la referencia con id o con nombre, y sin ninguno de los dos da null', () => {
+        expect(toRefIdNombre({ Id: '4', Nombre: ' Carisma ' })).toEqual({ Id: 4, Nombre: 'Carisma' });
+        expect(toRefIdNombre({ Nombre: 'Joven' })).toEqual({ Id: 0, Nombre: 'Joven' });
+        expect(toRefIdNombre({ Id: 0, Nombre: '  ' })).toBeNull();
+        expect(toRefIdNombre(null)).toBeNull();
     });
 });

@@ -1,6 +1,6 @@
 import { Conjuro } from "src/app/interfaces/conjuro";
 import { RacialDetalle } from "src/app/interfaces/racial";
-import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizarEsenciaRasgo } from './incarnum-mapper';
 
@@ -27,15 +27,10 @@ function pick(raw: any, ...keys: string[]): any {
  * caché y la ficha; sin dato, cada campo es `null`.
  */
 export function camposEdadRacial(raw: any): Pick<RacialDetalle, 'Caracteristica_cd' | 'Valor' | 'Categoria_edad' | 'Cd'> {
-    const ref = (valor: any) => {
-        const id = toNumber(valor?.Id);
-        const nombre = toText(valor?.Nombre).trim();
-        return id > 0 || nombre.length > 0 ? { Id: id, Nombre: nombre } : null;
-    };
     return {
-        Caracteristica_cd: ref(raw?.Caracteristica_cd),
+        Caracteristica_cd: toRefIdNombre(raw?.Caracteristica_cd),
         Valor: toNullableText(raw?.Valor),
-        Categoria_edad: ref(raw?.Categoria_edad),
+        Categoria_edad: toRefIdNombre(raw?.Categoria_edad),
         Cd: toNumberOrNull(raw?.Cd),
     };
 }

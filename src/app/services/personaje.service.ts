@@ -39,10 +39,11 @@ import {
 } from './utils/monstruo-mapper';
 import { normalizarProgresionLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { normalizeRaciales } from './utils/racial-mapper';
+import { normalizarListasLanzamiento } from './utils/raza-mapper';
 import { normalizarPersonajeIncarnum } from './utils/incarnum-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
 import { leerTipoPersonaje } from './utils/tipo-personaje';
 import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
@@ -1231,7 +1232,7 @@ function normalizarCategoriaEdadPersonaje(raw: any): CategoriaEdadPersonaje | nu
     return {
         idPasoEdad: toInt(raw.idPasoEdad),
         edad: toNumber(raw?.edad),
-        categoria: { Id: toInt(raw?.categoria?.Id), Nombre: toText(raw?.categoria?.Nombre).trim() },
+        categoria: toRefIdNombre(raw?.categoria) ?? { Id: 0, Nombre: '' },
         orden: toNumber(raw?.orden),
         dgs: toNumber(raw?.dgs),
         ajusteNivel: toNumberOrNull(raw?.ajusteNivel),
@@ -1253,13 +1254,7 @@ function normalizarLanzamientoRacial(raw: any): LanzamientoRacialPersonaje | nul
         caracteristicaLanzamiento: toNullableText(raw?.caracteristicaLanzamiento),
         modificadorLanzamiento: toNumberOrNull(raw?.modificadorLanzamiento),
         conjurosDiarios: toArray(raw?.conjurosDiarios),
-        listas: toArray<any>(raw?.listas)
-            .map((lista) => ({
-                Tipo: (toText(lista?.Tipo).trim().toLowerCase() === 'dominio' ? 'dominio' : 'clase') as 'clase' | 'dominio',
-                Id: toInt(lista?.Id),
-                Nombre: toText(lista?.Nombre).trim(),
-            }))
-            .filter((lista) => lista.Nombre.length > 0),
+        listas: normalizarListasLanzamiento(raw?.listas),
     };
 }
 
