@@ -355,16 +355,9 @@ export interface ClaseAumentoClaseLanzadoraCatalogItem {
     Nombre: string;
 }
 
-/** Un dado de golpe de `tipos_dados` (su id es el de `Tipo_dado.Id`, no las caras del dado). */
-export interface ClaseTipoDadoCatalogItem {
-    Id: number;
-    Nombre: string;
-}
-
 export interface ClaseProgressionCatalogs {
     ataques_base: ClaseProgressionCatalogItem[];
     salvaciones: ClaseProgressionCatalogItem[];
     puntos_habilidad: ClasePuntosHabilidadCatalogItem[];
     aumentos_clase_lanzadora: ClaseAumentoClaseLanzadoraCatalogItem[];
-    tipos_dado: ClaseTipoDadoCatalogItem[];
 }

@@ -21,8 +21,8 @@ import {
     ClaseAumentoClaseLanzadoraCatalogItem,
     ClaseProgressionCatalogItem,
     ClasePuntosHabilidadCatalogItem,
-    ClaseTipoDadoCatalogItem,
 } from 'src/app/interfaces/clase';
+import { TipoDadoCatalogItem } from 'src/app/interfaces/raza-catalogos';
 import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
 import { ClaseMoldeado } from 'src/app/interfaces/incarnum';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
@@ -236,7 +236,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     /** Lo que el editor de prerrequisitos no puede enseñar como fila: se guarda tal cual (`clase-formulario.ts`). */
     prerrequisitosConservados: PrerrequisitoDeClaseConservado[] = [];
     alineamientosBasicos: AlineamientoBasicoCatalogItem[] = [];
-    tiposDadoCatalogo: ClaseTipoDadoCatalogItem[] = [];
+    tiposDadoCatalogo: TipoDadoCatalogItem[] = [];
     escuelas: EscuelaConjuros[] = [];
     readonly nivelesConjuroRequisito = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     /**
@@ -355,7 +355,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         id_manual: [0, [Validators.required, Validators.min(1)]],
         pagina: [0, [Validators.min(0)]],
         oficial: [true],
-        // El id de `tipos_dados` (`GET /clases/catalogos/progresion`, `tipos_dado`); 0 hasta elegir uno.
+        // El id de `GET /tipos-dado` (el de la raza y la plantilla); 0 hasta elegir uno.
         tipo_dado: [0, [Validators.required, Validators.min(1)]],
         puntos_habilidad_id: [2, [Validators.required, Validators.min(1)]],
         nivel_max_claseo: [20, [Validators.required, Validators.min(1), Validators.max(20)]],
@@ -1366,7 +1366,6 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
                 if (catalogos.puntos_habilidad.length > 0)
                     this.puntosHabilidadCatalogo = catalogos.puntos_habilidad;
                 this.aumentosClaseLanzadoraCatalogo = catalogos.aumentos_clase_lanzadora;
-                this.tiposDadoCatalogo = catalogos.tipos_dado ?? [];
             },
             error: () => {
                 this.aumentosClaseLanzadoraCatalogo = [];
@@ -1374,6 +1373,11 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         });
         this.manualSvc.getManuales().pipe(takeUntil(this.destroy$)).subscribe((items) => this.manuales = this.ordenar(items ?? []));
         this.cargarActitudes();
+        // Los dados de golpe, sin el 0 «Elegir» y por su id (d4, d6, d8…).
+        this.razaCatalogosSvc.getTiposDado().pipe(takeUntil(this.destroy$)).subscribe({
+            next: (items) => this.tiposDadoCatalogo = (items ?? []).filter((item) => item.Id > 0).sort((a, b) => a.Id - b.Id),
+            error: () => this.tiposDadoCatalogo = [],
+        });
         this.alineamientoSvc.getAlineamientosBasicosCatalogo().pipe(takeUntil(this.destroy$)).subscribe({
             next: (items) => this.alineamientosBasicos = (items ?? []).filter((item) => this.entero(item?.Id) > 0),
             error: () => this.alineamientosBasicos = [],

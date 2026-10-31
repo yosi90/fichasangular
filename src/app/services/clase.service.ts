@@ -429,10 +429,6 @@ export class ClaseService {
                     Id: toNumber(item?.Id),
                     Nombre: toText(item?.Nombre),
                 })),
-                tipos_dado: toArray(raw?.tipos_dado).map((item: any) => ({
-                    Id: toNumber(item?.Id),
-                    Nombre: toText(item?.Nombre),
-                })).filter((item) => item.Id > 0),
             })));
     }
 
