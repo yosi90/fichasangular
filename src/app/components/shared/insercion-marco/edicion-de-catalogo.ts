@@ -98,10 +98,10 @@ export class EdicionDeCatalogo<T> {
         return confirmarCierreConCambios(delCatalogo(this.opciones.nombre));
     }
 
-    /** «Crear idioma» / «Guardar cambios»; mientras guarda, «Creando idioma...» / «Guardando cambios...». */
+    /** «Crear idioma» / «Guardar cambios»; mientras guarda, «Creando idioma…» / «Guardando cambios…» (con «…», como el marco). */
     textoAccion(guardando: boolean): string {
         if (guardando)
-            return this.editando ? 'Guardando cambios...' : `Creando ${this.opciones.nombre.singular}...`;
+            return this.editando ? 'Guardando cambios…' : `Creando ${this.opciones.nombre.singular}…`;
         return this.editando ? 'Guardar cambios' : `Crear ${this.opciones.nombre.singular}`;
     }
 

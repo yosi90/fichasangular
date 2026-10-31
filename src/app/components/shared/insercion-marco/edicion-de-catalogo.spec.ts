@@ -91,12 +91,12 @@ describe('EdicionDeCatalogo (el modo «Modificar» común de las inserciones)', 
 
     it('los textos del marco cambian entre crear y modificar', () => {
         expect(edicion.textoAccion(false)).toBe('Guardar cambios');
-        expect(edicion.textoAccion(true)).toBe('Guardando cambios...');
+        expect(edicion.textoAccion(true)).toBe('Guardando cambios…');
         expect(edicion.avisoPermisos(false)).toBe('No tienes permisos para modificar idiomas.');
         expect(edicion.avisoPermisos(true)).toBe('');
         modo = 'crear';
         expect(edicion.textoAccion(false)).toBe('Crear idioma');
-        expect(edicion.textoAccion(true)).toBe('Creando idioma...');
+        expect(edicion.textoAccion(true)).toBe('Creando idioma…');
         expect(edicion.avisoPermisos(false)).toBe('No tienes permisos para crear idiomas.');
     });
 
