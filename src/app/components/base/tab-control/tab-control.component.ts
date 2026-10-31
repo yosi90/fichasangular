@@ -36,6 +36,7 @@ import { VentajaService } from 'src/app/services/ventaja.service';
 import { combineLatest } from 'rxjs';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { MonstruoService } from 'src/app/services/monstruo.service';
+import { esMonstruoDerivado } from 'src/app/services/utils/monstruo-mapper';
 import { ArmaDetalle } from 'src/app/interfaces/arma';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { ArmaService } from 'src/app/services/arma.service';
@@ -1405,6 +1406,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (tipo === 'dote')
             this.detallesDoteAbiertos = this.detallesDoteAbiertos
                 .map((ctx) => Number(ctx?.Dote?.Id) === id ? { ...ctx, Dote: entrada as unknown as Dote } : ctx);
+        // Un familiar o un compañero que sale del monstruo lleva su mismo `Id`: solo se cambia el detalle del monstruo.
+        if (tipo === 'monstruo')
+            this.detallesMonstruoAbiertos = this.detallesMonstruoAbiertos
+                .map((monstruo) => Number(monstruo?.Id) === id && !esMonstruoDerivado(monstruo) ? entrada as unknown as MonstruoDetalle : monstruo);
 
         const tab = this.ediciones[tipo].find((item) => item.id === id);
         if (tab)
@@ -1430,6 +1435,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 return this.detallesConjuroAbiertos;
             case 'dote':
                 // Van con su contexto (`DoteContextual`): los refresca `onEdicionGuardada`.
+                return [];
+            case 'monstruo':
+                // Con ellos pueden estar sus familiares y compañeros (con el mismo `Id`): los refresca `onEdicionGuardada`.
                 return [];
         }
     }

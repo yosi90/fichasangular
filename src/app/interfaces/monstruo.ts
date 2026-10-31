@@ -208,3 +208,88 @@ export interface CompaneroMonstruoDetalle extends MonstruoDetalle {
     Especiales: EspecialContextualMonstruo[];
     Personajes: PersonajeRefMonstruo[];
 }
+
+/**
+ * Los escalares del alta y de la edición de un monstruo (`monstruo` de `MonstruoCreateRequest`, contrato en
+ * `docs/publica/endpoints/catalogos.md`). Los textos pueden ir vacíos; las características, `null` sin valor (el «—»).
+ */
+export interface MonstruoEscalaresRequest {
+    nombre: string;
+    descripcion: string;
+    id_manual: number;
+    pagina: number;
+    id_tipo: number;
+    id_tamano: number;
+    cantidad_dg: string;
+    id_tipo_dado: number;
+    suma_dg: number;
+    iniciativa: number;
+    correr: number;
+    nadar: number;
+    volar: number;
+    trepar: number;
+    excavar: number;
+    /** `null`: no vuela. */
+    id_maniobrabilidad: number | null;
+    ca: number;
+    toque: number;
+    desprevenido: number;
+    armadura_natural: number;
+    ataque_base: number;
+    presa: number;
+    ataques: string;
+    ataque_completo: string;
+    reduccion_dano: string;
+    resistencia_conjuros: string;
+    resistencia_elemental: string;
+    cd_sortilegas: string;
+    /** En pies, en medios (2,5 de una criatura Menuda). */
+    espacio: number;
+    alcance: number;
+    fortaleza: number;
+    reflejos: number;
+    voluntad: number;
+    fuerza: number | null;
+    destreza: number | null;
+    constitucion: number | null;
+    inteligencia: number | null;
+    sabiduria: number | null;
+    carisma: number | null;
+    valor_desafio: string;
+    tesoro: string;
+    familiar: boolean;
+    companero: boolean;
+    id_alineamiento: number;
+    oficial: boolean;
+}
+
+/** Una clase (y su nivel) con la que el monstruo es familiar o compañero; sin plantilla, dote o preferencia, `null`. */
+export interface MonstruoNivelClaseRequest {
+    id_clase: number;
+    nivel: number;
+    id_plantilla: number | null;
+    id_preferencia_legal: number | null;
+    id_preferencia_moral: number | null;
+    id_dote: number | null;
+}
+
+/** El cuerpo de `POST /monstruos/add` y de `PUT /monstruos/<id>` (la edición reemplaza el monstruo entero). */
+export interface MonstruoCreateRequest {
+    monstruo: MonstruoEscalaresRequest;
+    subtipos: number[];
+    idiomas: number[];
+    dotes: { id_dote: number; id_extra: number | null; }[];
+    habilidades: { id_habilidad: number; id_extra: number | null; rangos: number; }[];
+    sortilegas: { id_conjuro: number; nivel_lanzador: number; usos_diarios: string; }[];
+    raciales: number[];
+    ataquesEspeciales: number[];
+    niveles_clase: MonstruoNivelClaseRequest[];
+    alineamientos_requeridos: { familiar: number[]; companero: number[]; };
+}
+
+/** La respuesta del alta y de la edición: `{ message, idMonstruo, monstruo }`. */
+export interface MonstruoMutacionResponse {
+    message: string;
+    idMonstruo: number;
+    monstruo: MonstruoDetalle | null;
+}

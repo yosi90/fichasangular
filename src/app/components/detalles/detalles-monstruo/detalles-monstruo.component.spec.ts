@@ -6,6 +6,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 import { DetallesMonstruoComponent } from './detalles-monstruo.component';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
@@ -98,12 +99,18 @@ describe('DetallesMonstruoComponent', () => {
         return dts.map((dt, i) => [dt, dds[i]]);
     };
 
+    let usuario: { can: jasmine.Spy };
+
     beforeEach(async () => {
         manualNavSpy = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
+        usuario = { can: jasmine.createSpy('can').and.returnValue(false) };
 
         await TestBed.configureTestingModule({
             declarations: [DetallesMonstruoComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
-            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNavSpy }],
+            providers: [
+                { provide: ManualDetalleNavigationService, useValue: manualNavSpy },
+                { provide: UserService, useValue: usuario },
+            ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
 
@@ -376,6 +383,27 @@ describe('DetallesMonstruoComponent', () => {
         expect(datos()).toContain(['Origen', 'Lobo']);
         expect(datos().map(([dt]) => dt)).not.toContain('Plantilla');
         expect(texto()).not.toContain('null');
+    });
+
+    it('enseña el lápiz «Modificar» solo con permiso de monstruos, si alguien lo escucha y en el monstruo (no en su familiar)', () => {
+        const botonModificar = () => Array.from(elemento().querySelectorAll('button')).find((boton) => boton.textContent?.includes('Modificar'));
+        fixture.detectChanges();
+        expect(botonModificar()).toBeUndefined();
+
+        const abiertos: MonstruoDetalle[] = [];
+        component.modificar.subscribe((monstruo) => abiertos.push(monstruo));
+        fixture.detectChanges();
+        expect(botonModificar()).toBeUndefined();
+        expect(usuario.can).toHaveBeenCalledWith('monstruos', 'create');
+
+        usuario.can.and.returnValue(true);
+        fixture.detectChanges();
+        botonModificar()!.click();
+        expect(abiertos.map((monstruo) => monstruo.Id)).toEqual([1]);
+
+        component.monstruo = { ...crearMonstruoMock(), Id_familiar: 7 } as MonstruoDetalle;
+        fixture.detectChanges();
+        expect(botonModificar()).toBeUndefined();
     });
 
     it('abre detalle de manual con referencia normalizada', () => {

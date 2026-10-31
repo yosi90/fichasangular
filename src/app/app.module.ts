@@ -106,6 +106,7 @@ import { NuevaRazaComponent } from './components/shared/nueva-raza/nueva-raza.co
 import { RazaEdadesComponent } from './components/shared/nueva-raza/raza-edades/raza-edades.component';
 import { NuevaRacialComponent } from './components/shared/nueva-racial/nueva-racial.component';
 import { NuevaPlantillaComponent } from './components/shared/nueva-plantilla/nueva-plantilla.component';
+import { NuevaMonstruoComponent } from './components/shared/nueva-monstruo/nueva-monstruo.component';
 import { CatalogoBuscadorComponent } from './components/shared/catalogo-buscador/catalogo-buscador.component';
 import { PrerrequisitoCatalogPairEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-pair-editor.component';
 import { NuevaIdiomaComponent } from './components/shared/nueva-idioma/nueva-idioma.component';
@@ -273,6 +274,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         RazaEdadesComponent,
         NuevaRacialComponent,
         NuevaPlantillaComponent,
+        NuevaMonstruoComponent,
         CatalogoBuscadorComponent,
         NuevaIdiomaComponent,
         InsercionMarcoComponent,

@@ -1,0 +1,89 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar monstruos, dentro del marco común de las inserciones. Las tarjetas de rasgos, las rejillas de 2 y de
+// 3, la tabla de características y sus filas son las de la plantilla (`tarjetas-de-rasgos`); aquí, lo propio: las
+// tarjetas de dos de la identidad, las filas de los niveles de clase y las notas. Lo que va dentro del marco se pliega
+// por su ancho (`@container insercion`).
+:host
+    @include inserciones.insercion-host
+
+.nueva-monstruo-shell
+    @include inserciones.insercion-shell
+
+.nueva-monstruo-form
+    @include inserciones.insercion-form-base
+
+    mat-form-field, app-catalogo-buscador
+        width: 100%
+
+@include inserciones.tarjetas-de-rasgos('monstruo')
+
+// Subtipos e idiomas, en la identidad: dos tarjetas.
+.monstruo-rasgos.monstruo-rasgos--dos
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    margin-top: 14px
+
+// Las filas del monstruo no llevan «Desde DG»: el nombre, sus campos y quitar.
+.monstruo-fila
+    grid-template-columns: minmax(0, 1fr) 42px
+
+    &:has(mat-select)
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 42px
+
+.monstruo-fila--habilidad
+    grid-template-columns: minmax(0, 1fr) 92px 42px
+
+.monstruo-fila--sortilega, .monstruo-fila--habilidad:has(mat-select)
+    grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr) 42px
+
+.monstruo-fila--sortilega, .monstruo-fila--habilidad
+    .monstruo-fila__nombre
+        grid-column: auto
+
+.monstruo-nota
+    margin: 8px 0 0
+    font-size: 13px
+    color: $ficha-texto-suave
+
+.monstruo-descripcion
+    width: 100%
+
+// Una clase con la que se tiene: la clase, su nivel, la plantilla, la dote y las dos preferencias.
+.monstruo-nivel
+    display: grid
+    grid-template-columns: minmax(0, 1.2fr) 80px minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 42px
+    gap: 8px
+    align-items: center
+    margin-bottom: 8px
+    padding-bottom: 6px
+    border-bottom: 1px solid rgba(255, 255, 255, .06)
+
+@container insercion (max-width: 1100px)
+    .monstruo-nivel
+        grid-template-columns: minmax(0, 1fr) 80px minmax(0, 1fr) 42px
+
+        > .row-action-btn
+            grid-column: 4
+            grid-row: 1
+
+@container insercion (max-width: 767px)
+    .monstruo-rasgos.monstruo-rasgos--dos
+        grid-template-columns: minmax(0, 1fr)
+
+    .monstruo-fila, .monstruo-fila--sortilega, .monstruo-fila--habilidad, .monstruo-fila:has(mat-select), .monstruo-fila--habilidad:has(mat-select)
+        grid-template-columns: minmax(0, 1fr) 42px
+
+        .monstruo-fila__nombre
+            grid-column: 1
+
+    .monstruo-nivel
+        grid-template-columns: minmax(0, 1fr) 42px
+
+        > *:not(.row-action-btn)
+            grid-column: 1
+
+        > .row-action-btn
+            grid-column: 2
+            grid-row: 1

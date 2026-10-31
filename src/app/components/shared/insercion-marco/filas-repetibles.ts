@@ -1,5 +1,12 @@
 import { AbstractControl } from '@angular/forms';
 
+/** Una fila de una lista que es un elemento de un catálogo (un subtipo, una aptitud, una dote…), con su `uid` de fila. */
+export interface FilaNombrada {
+    uid: string;
+    id: number;
+    nombre: string;
+}
+
 /**
  * Quitar una fila de una lista repetible (guía de inserciones, «Filas repetibles»): si era la última, queda una fila
  * vacía, para que el bloque siga disponible. Devuelve una lista nueva.

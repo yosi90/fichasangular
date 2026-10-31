@@ -19,9 +19,10 @@ import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
-import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
+import { opcionesDeExtrasDeDote } from 'src/app/services/utils/dote-mapper';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
-import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
+import { CAMPOS_VELOCIDAD } from 'src/app/services/utils/movimientos-mapper';
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
 import {
     CAMPOS_PLANTILLA,
@@ -47,11 +48,12 @@ import {
     valorPlantillaNueva,
 } from 'src/app/services/utils/plantilla-formulario';
 import { GrupoPrerrequisitos, agruparPrerrequisitos, nombreTipoPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
-import { ModoInsercion, confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
+import { ModoInsercion, confirmarCierreConCambios, detalleDeManual } from '../insercion-marco/insercion-marco.component';
 import { avisarGuardado, avisarSinPermisos, textoSinPermisos } from '../insercion-marco/avisos-insercion';
 import { PLANTILLA } from 'src/app/services/utils/nombres-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
-import { ErrorDeCampo, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
+import { ErrorDeCampo, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
+import { etiquetaDeCampo, notaDeCambios, pasosConCambios } from '../insercion-marco/cambios-de-formulario';
 import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import {
@@ -69,14 +71,6 @@ import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalog
 
 /** Las listas de rasgos del paso 3 (las tarjetas). */
 export type ListaRasgos = 'raciales' | 'ataquesEspeciales' | 'sortilegas' | 'dotes' | 'habilidades' | 'subtipos';
-
-/** Un entero (o vacío): lo único que la web comprueba de los números; lo demás lo valida la API. */
-function entero(control: AbstractControl): ValidationErrors | null {
-    const valor = control.value;
-    if (valor === null || valor === undefined || valor === '')
-        return null;
-    return Number.isInteger(Number(valor)) ? null : { entero: true };
-}
 
 /** Lo que se elige en una lista: «Elige uno» (obligatorio, como el manual y el tamaño). */
 function elegido(control: AbstractControl): ValidationErrors | null {
@@ -114,6 +108,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
     readonly pasos = PASOS_PLANTILLA;
     pasoActual = 0;
     readonly caracteristicas = CARACTERISTICAS_PLANTILLA;
+    readonly velocidades = CAMPOS_VELOCIDAD;
     readonly sinExtraHabilidad = ID_EXTRA_HABILIDAD_SIN_EXTRA;
     readonly tiposPrerrequisito = getPrerequisiteTypeOptions((tipo) => TIPOS_PRERREQUISITO_PLANTILLA.includes(tipo));
 
@@ -261,12 +256,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
 
     /** En modificar: «Modificar · Plantilla · <manual, p. N>»; en crear, el marco pone «Paso N de 5». */
     get lineaManual(): string {
-        const manual = this.plantillaCargada?.Manual;
-        const nombre = toText(manual?.Nombre).trim();
-        if (!this.esEdicion || !nombre)
-            return '';
-        const pagina = toInt(manual?.Pagina);
-        return pagina > 0 ? `${nombre}, p. ${pagina}` : nombre;
+        return this.esEdicion ? detalleDeManual(this.plantillaCargada?.Manual) : '';
     }
 
     get hayCambios(): boolean {
@@ -275,12 +265,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
 
     /** La nota del pie: en modificar, «N cambios: Nombre, Tamaño…»; con un error de la API, su paso. */
     get notaPie(): string {
-        if (!this.esEdicion || this.cargandoEdicion)
-            return '';
-        if (!this.hayCambios)
-            return 'Sin cambios todavía.';
-        const etiquetas = this.cambios.map((campo) => CAMPOS_PLANTILLA[campo].etiqueta);
-        return `${this.cambios.length === 1 ? '1 cambio' : `${this.cambios.length} cambios`}: ${etiquetas.join(', ')}`;
+        return !this.esEdicion || this.cargandoEdicion ? '' : notaDeCambios(this.cambios, CAMPOS_PLANTILLA);
     }
 
     get accionDesactivada(): boolean {
@@ -290,8 +275,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
     // Campos
 
     etiqueta(campo: string): string {
-        const base = CAMPOS_PLANTILLA[campo]?.etiqueta ?? campo;
-        return this.cambiado(campo) ? `${base} · cambiado` : base;
+        return etiquetaDeCampo(CAMPOS_PLANTILLA, campo, this.cambiado(campo));
     }
 
     cambiado(campo: string): boolean {
@@ -386,14 +370,11 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
     }
 
     extrasDote(fila: FilaDotePlantilla): OpcionCatalogo[] {
-        return extrasDisponiblesDeDote(this.dotes.find((item) => item.Id === fila.id))
-            .map((item) => ({ id: toInt(item.Id), nombre: toText(item.Nombre) }));
+        return opcionesDeExtrasDeDote(this.dotes, fila.id);
     }
 
     extrasHabilidad(fila: FilaHabilidadPlantilla): OpcionCatalogo[] {
-        return (this.habilidades.find((item) => item.Id_habilidad === fila.id)?.Extras ?? [])
-            .map((item) => ({ id: toInt(item.Id_extra), nombre: toText(item.Extra) }))
-            .filter((item) => item.id > 0);
+        return opcionesDeExtrasDeHabilidad(this.habilidades, fila.id).filter((item) => item.id > 0);
     }
 
     trackByUid(_: number, fila: { uid: string; }): string {
@@ -490,7 +471,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         } else {
             this.cambios = [];
         }
-        this.pasosConCambios = Array.from(new Set(this.cambios.map((campo) => CAMPOS_PLANTILLA[campo].paso)));
+        this.pasosConCambios = pasosConCambios(this.cambios, CAMPOS_PLANTILLA);
         this.recalcularLectura();
     }
 

@@ -160,7 +160,7 @@
                     <section class="insercion-tarjeta">
                         <h3 class="insercion-tarjeta__titulo">Movimiento</h3>
                         <div class="insercion-campos plantilla-campos-3">
-                            <ng-container *ngFor="let campo of ['correr', 'nadar', 'volar', 'trepar', 'excavar']">
+                            <ng-container *ngFor="let campo of velocidades">
                                 <ng-container *ngTemplateOutlet="numero; context: { $implicit: campo }"></ng-container>
                             </ng-container>
                             <ng-container *ngTemplateOutlet="lista; context: { $implicit: 'id_maniobrabilidad', opciones: maniobrabilidades, ninguna: 'Sin maniobrabilidad' }"></ng-container>

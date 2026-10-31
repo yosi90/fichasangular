@@ -5,7 +5,9 @@
         [manual]="monstruo.Manual"
         [oficial]="monstruo.Oficial"
         [etiquetas]="etiquetas"
-        (abrirManual)="abrirDetalleManual()">
+        [modificable]="puedeModificar"
+        (abrirManual)="abrirDetalleManual()"
+        (modificar)="modificar.emit(monstruo)">
     </app-ficha-cabecera>
 
     <app-ficha-franja [datos]="principales"></app-ficha-franja>

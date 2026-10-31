@@ -295,6 +295,15 @@ function normalizeMonstruoBase(raw: any, depth: number): MonstruoDetalle {
     };
 }
 
+/**
+ * Si es un familiar o un compañero que sale de un monstruo (con su `Id_familiar` o `Id_companero`; lleva el `Id` de su
+ * monstruo), y no el monstruo mismo: lo que se modifica es el monstruo.
+ */
+export function esMonstruoDerivado(monstruo: MonstruoDetalle | null | undefined): boolean {
+    const raw = monstruo as Partial<FamiliarMonstruoDetalle & CompaneroMonstruoDetalle> | null | undefined;
+    return toNumber(raw?.Id_familiar) > 0 || toNumber(raw?.Id_companero) > 0;
+}
+
 export function normalizeMonstruoDetalle(raw: any, depth = 1): MonstruoDetalle {
     return normalizeMonstruoBase(raw, depth);
 }

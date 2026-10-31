@@ -16,6 +16,9 @@ import {
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { UserService } from 'src/app/services/user.service';
+import { esMonstruoDerivado } from 'src/app/services/utils/monstruo-mapper';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { textoEjesAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
@@ -69,7 +72,7 @@ export class DetallesMonstruoComponent {
     private monstruoData!: MonstruoDetalle;
     mostrarInfoManiobrabilidad = false;
 
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
 
     @Input()
     set monstruo(value: MonstruoDetalle) {
@@ -88,6 +91,16 @@ export class DetallesMonstruoComponent {
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
     @Output() tipoCriaturaDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() monstruoRelacionadoDetalles: EventEmitter<MonstruoDetalle> = new EventEmitter<MonstruoDetalle>();
+    /** El lápiz «Modificar»: abre la pestaña de modificar el monstruo. Sin quien lo escuche, no sale. */
+    @Output() modificar: EventEmitter<MonstruoDetalle> = new EventEmitter<MonstruoDetalle>();
+
+    /**
+     * Solo con permiso (el de crear monstruos, que es el que pide `PUT /monstruos/<id>`) y en el detalle del monstruo:
+     * el de un familiar o un compañero que sale de él no se modifica aquí.
+     */
+    get puedeModificar(): boolean {
+        return !this.esDetalleFamiliarOCompanero && puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'monstruos');
+    }
 
     // Lo que pinta la ficha, calculado una vez al recibir el monstruo.
     /** «Monstruo · Bestia · Mediano» (o «Familiar» / «Compañero animal» en el detalle de uno de ellos). */
@@ -184,7 +197,7 @@ export class DetallesMonstruoComponent {
     }
 
     get esDetalleFamiliarOCompanero(): boolean {
-        return this.idFamiliar > 0 || this.idCompanero > 0;
+        return esMonstruoDerivado(this.monstruo);
     }
 
     private get idFamiliar(): number {
