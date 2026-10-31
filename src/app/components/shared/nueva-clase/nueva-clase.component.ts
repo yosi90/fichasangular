@@ -396,10 +396,6 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         return this.edicion.textoAccion(this.guardando);
     }
 
-    get mensajePermisoInsuficiente(): string {
-        return this.edicion.avisoPermisos;
-    }
-
     get isDirty(): boolean {
         return this.edicion.hayCambios;
     }

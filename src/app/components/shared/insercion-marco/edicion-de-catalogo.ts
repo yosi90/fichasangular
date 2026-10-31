@@ -1,6 +1,6 @@
 import { Observable, take, takeUntil } from 'rxjs';
 import { ElementoDeCatalogo } from 'src/app/services/utils/error-catalogo';
-import { avisarErrorAlCargar, delCatalogo } from './avisos-insercion';
+import { avisarErrorAlCargar, delCatalogo, textoSinPermisos } from './avisos-insercion';
 import { ModoInsercion, confirmarCierreConCambios } from './insercion-marco.component';
 
 export interface OpcionesEdicionDeCatalogo<T> {
@@ -105,8 +105,16 @@ export class EdicionDeCatalogo<T> {
         return this.editando ? 'Guardar cambios' : `Crear ${this.opciones.nombre.singular}`;
     }
 
-    /** El aviso ámbar del marco sin permisos: «No tienes permisos para modificar idiomas.». */
-    get avisoPermisos(): string {
-        return `No tienes permisos para ${this.editando ? 'modificar' : 'crear'} ${this.opciones.nombre.plural}.`;
+    /** `[cargando]` del marco: «Cargando idioma…» mientras se trae la entrada; si no, nada. */
+    get textoCargando(): string {
+        return this.cargando ? `Cargando ${this.opciones.nombre.singular}…` : '';
+    }
+
+    /**
+     * `[avisoPermisos]` del marco: sin permiso, «No tienes permisos para modificar idiomas.» (o «crear»); con permiso o
+     * mientras se trae la entrada, nada.
+     */
+    avisoPermisos(puedeGuardar: boolean): string {
+        return this.cargando || puedeGuardar ? '' : textoSinPermisos(this.opciones.nombre, this.editando);
     }
 }

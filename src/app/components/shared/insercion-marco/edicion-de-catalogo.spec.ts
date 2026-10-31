@@ -92,11 +92,26 @@ describe('EdicionDeCatalogo (el modo «Modificar» común de las inserciones)', 
     it('los textos del marco cambian entre crear y modificar', () => {
         expect(edicion.textoAccion(false)).toBe('Guardar cambios');
         expect(edicion.textoAccion(true)).toBe('Guardando cambios...');
-        expect(edicion.avisoPermisos).toBe('No tienes permisos para modificar idiomas.');
+        expect(edicion.avisoPermisos(false)).toBe('No tienes permisos para modificar idiomas.');
+        expect(edicion.avisoPermisos(true)).toBe('');
         modo = 'crear';
         expect(edicion.textoAccion(false)).toBe('Crear idioma');
         expect(edicion.textoAccion(true)).toBe('Creando idioma...');
-        expect(edicion.avisoPermisos).toBe('No tienes permisos para crear idiomas.');
+        expect(edicion.avisoPermisos(false)).toBe('No tienes permisos para crear idiomas.');
+    });
+
+    it('mientras trae la entrada, el marco dice «Cargando …» y no avisa de permisos', () => {
+        const respuesta = new Subject<{ Id: number; Nombre: string; }>();
+        obtener.and.returnValue(respuesta);
+        expect(edicion.textoCargando).toBe('');
+
+        edicion.cargarSiHaceFalta();
+        expect(edicion.textoCargando).toBe('Cargando idioma…');
+        expect(edicion.avisoPermisos(false)).toBe('');
+
+        respuesta.next({ Id: 7, Nombre: 'Dracónico' });
+        expect(edicion.textoCargando).toBe('');
+        expect(edicion.avisoPermisos(false)).toBe('No tienes permisos para modificar idiomas.');
     });
 });
 

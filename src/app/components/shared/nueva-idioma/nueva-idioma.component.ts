@@ -103,10 +103,6 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges, Edito
         return this.edicion.textoAccion(this.guardando);
     }
 
-    get mensajePermisoInsuficiente(): string {
-        return this.edicion.avisoPermisos;
-    }
-
     get isDirty(): boolean {
         return this.edicion.hayCambios;
     }

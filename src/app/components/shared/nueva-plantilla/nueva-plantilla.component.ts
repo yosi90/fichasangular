@@ -48,7 +48,7 @@ import {
 } from 'src/app/services/utils/plantilla-formulario';
 import { GrupoPrerrequisitos, agruparPrerrequisitos, nombreTipoPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 import { ModoInsercion, confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
-import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { avisarGuardado, avisarSinPermisos, textoSinPermisos } from '../insercion-marco/avisos-insercion';
 import { PLANTILLA } from 'src/app/services/utils/nombres-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { ErrorDeCampo, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
@@ -248,7 +248,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
     get avisoPermisos(): string {
         if (this.cargandoEdicion || this.puedeGuardar)
             return '';
-        return this.esEdicion ? 'No tienes permisos para modificar plantillas.' : 'No tienes permisos para crear plantillas.';
+        return textoSinPermisos(PLANTILLA, this.esEdicion);
     }
 
     get textoAccion(): string {

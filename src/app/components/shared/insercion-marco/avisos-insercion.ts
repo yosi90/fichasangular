@@ -12,6 +12,11 @@ export function delCatalogo(nombre: ElementoDeCatalogo): string {
     return `${nombre.femenino ? 'de la' : 'del'} ${nombre.singular}`;
 }
 
+/** El aviso ámbar del marco sin permisos: «No tienes permisos para crear idiomas.» o «… para modificar idiomas.». */
+export function textoSinPermisos(nombre: ElementoDeCatalogo, editando: boolean): string {
+    return `No tienes permisos para ${editando ? 'modificar' : 'crear'} ${nombre.plural}.`;
+}
+
 function articulo(nombre: ElementoDeCatalogo): string {
     return nombre.femenino ? 'la' : 'el';
 }

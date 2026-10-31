@@ -209,10 +209,6 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
         return this.edicion.textoAccion(this.guardando);
     }
 
-    get mensajePermisoInsuficiente(): string {
-        return this.edicion.avisoPermisos;
-    }
-
     get isDirty(): boolean {
         return this.edicion.hayCambios;
     }

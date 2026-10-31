@@ -260,10 +260,6 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         return this.esModoEdicion ? this.puedeActualizar : this.puedeCrear;
     }
 
-    get mensajePermisoInsuficiente(): string {
-        return this.edicion.avisoPermisos;
-    }
-
     get etiquetaAccionPrincipal(): string {
         return this.edicion.textoAccion(this.guardando);
     }
