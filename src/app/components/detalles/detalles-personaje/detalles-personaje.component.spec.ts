@@ -491,11 +491,24 @@ describe('DetallesPersonajeComponent', () => {
 
         it('calcula la madurez venerable y sus modificadores como en C#', () => {
             component.pj.Edad = 95;
+            component.pj.Raza.Edad_adulto = 20;
             component.pj.Raza.Edad_mediana = 40;
             component.pj.Raza.Edad_viejo = 60;
             component.pj.Raza.Edad_venerable = 80;
 
             expect(component.madurezEdad).toEqual({ id: 3, nombre: 'Venerable', modFisico: -6, modMental: 3 });
+        });
+
+        it('sin las edades de la raza no enseña la madurez (MJ, tabla 6-5: sin edades no hay etapas)', () => {
+            component.pj.Edad = 95;
+            component.pj.Raza.Edad_adulto = 0;
+            component.pj.Raza.Edad_mediana = 0;
+            component.pj.Raza.Edad_viejo = 0;
+            component.pj.Raza.Edad_venerable = 0;
+            verPagina();
+
+            expect(valor('Edad')).toBe('95 años');
+            expect(valor('Madurez')).toBeNull();
         });
 
         it('los subtipos son enlaces, sin los textos que no se enseñan; la raza base sale si la hay', () => {

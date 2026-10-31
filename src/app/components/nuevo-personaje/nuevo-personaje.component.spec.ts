@@ -1524,14 +1524,14 @@ describe('NuevoPersonajeComponent', () => {
         expect(`${deidadHomebrew?.etiqueta ?? ''}`).toContain('bloqueada por campaña');
     });
 
-    it('getInconsistenciasManual incluye peso, altura y edad fuera de rango', () => {
-        component.Personaje.Edad = 100;
+    it('getInconsistenciasManual incluye peso, altura y edad fuera de rango (la edad, solo por debajo de la mayoría de edad)', () => {
+        component.Personaje.Edad = 12;
         component.Personaje.Peso = 120;
         component.Personaje.Altura = 2.2;
 
         const inconsistencias = component.getInconsistenciasManual();
 
-        expect(inconsistencias.some(i => i.includes('Edad fuera de rango'))).toBeTrue();
+        expect(inconsistencias.some(i => i.includes('Edad por debajo de la mayoría de edad'))).toBeTrue();
         expect(inconsistencias.some(i => i.includes('Peso fuera de rango'))).toBeTrue();
         expect(inconsistencias.some(i => i.includes('Altura fuera de rango'))).toBeTrue();
     });
@@ -1666,7 +1666,7 @@ describe('NuevoPersonajeComponent', () => {
         component.abrirInfoEdadRacial();
 
         expect(component.informacionBasicosModalTitulo).toBe('Rangos de edad');
-        expect(component.informacionBasicosModalSecciones[0].titulo).toBe('Rangos oficiales');
+        expect(component.informacionBasicosModalSecciones[0].titulo).toBe('Edades de la raza');
         expect(component.informacionBasicosModalSecciones[0].items).toEqual([
             'Adulto: 20',
             'Mediana: 40',
@@ -1675,9 +1675,60 @@ describe('NuevoPersonajeComponent', () => {
         ]);
         expect(component.informacionBasicosModalSecciones[1].lineas).toEqual([
             'Mediana edad',
-            'Tu personaje esta en mediana edad.',
+            'Por envejecer: −1 a Fue, Des y Con; +1 a Int, Sab y Car (ninguna baja de 1).',
         ]);
+        expect(component.edadRangosHint).toBe('Mediana edad: −1 a Fue, Des y Con; +1 a Int, Sab y Car');
+        component.onEdadChange(25);
         expect(component.edadRangosHint).toBe('Adulto 20, Mediana 40, Viejo 60, Venerable 80');
+    });
+
+    it('las etapas de edad salen de las edades de la raza: viejo hasta la venerable y venerable desde ella (MJ, tabla 6-5)', () => {
+        component.seleccionarRaza(crearRazaMock());
+
+        component.onEdadChange(19);
+        expect(component.etapaEdadActual).toBe('Joven');
+        component.onEdadChange(20);
+        expect(component.etapaEdadActual).toBe('Adulto');
+        component.onEdadChange(60);
+        expect(component.etapaEdadActual).toBe('Viejo');
+        component.onEdadChange(79);
+        expect(component.etapaEdadActual).toBe('Viejo');
+        component.onEdadChange(80);
+        expect(component.etapaEdadActual).toBe('Venerable');
+        component.onEdadChange(95);
+        expect(component.etapaEdadActual).toBe('Venerable');
+        expect(component.edadMensajeContextual).toContain('edad máxima');
+    });
+
+    it('pasar de la edad venerable no vuelve homebrew el personaje; no llegar a la mayoría de edad, sí', () => {
+        component.seleccionarRaza(crearRazaMock());
+        component.Personaje.Deidad = 'No tener deidad';
+
+        component.onEdadChange(95);
+        expect(component.edadFueraRango).toBeFalse();
+        expect(component.getInconsistenciasManual().some((i) => i.includes('Edad'))).toBeFalse();
+        expect(component.Personaje.Oficial).toBeTrue();
+
+        component.onEdadChange(15);
+        expect(component.edadFueraRango).toBeTrue();
+        expect(component.getInconsistenciasManual()).toContain('Edad por debajo de la mayoría de edad de la raza: 15 (adulto a los 20).');
+        expect(component.Personaje.Oficial).toBeFalse();
+    });
+
+    it('una raza sin edades no comprueba la edad (antes, cualquier edad la volvía homebrew)', () => {
+        const raza = crearRazaMock();
+        raza.Edad_adulto = 0;
+        raza.Edad_mediana = 0;
+        raza.Edad_viejo = 0;
+        raza.Edad_venerable = 0;
+        component.seleccionarRaza(raza);
+        component.Personaje.Deidad = 'No tener deidad';
+
+        component.onEdadChange(40);
+
+        expect(component.edadFueraRango).toBeFalse();
+        expect(component.etapaEdadActual).toBe('Sin edades en la raza');
+        expect(component.Personaje.Oficial).toBeTrue();
     });
 
     it('si existe una deidad custom en el personaje, también aparece en el selector', () => {

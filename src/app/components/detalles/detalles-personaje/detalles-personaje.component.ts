@@ -69,6 +69,7 @@ import { clavePorCuenta, guardarPreferenciaLocal, leerPreferenciaLocal } from 's
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import Swal from 'sweetalert2';
 import { destinoEnTablist } from 'src/app/services/utils/teclado';
+import { etapaEdad } from 'src/app/services/utils/edad-personaje';
 
 /** Cómo se enseña la ficha: toda en una página o con pestañas internas (las dos propuestas aprobadas del lienzo). */
 export type VistaFicha = 'pagina' | 'pestanas';
@@ -729,30 +730,17 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
     }
 
     private tieneMadurezEdadVisible(): boolean {
-        const raza = this.pj?.Raza;
-        return this.positivo(this.pj?.Edad)
-            && [raza?.Edad_adulto, raza?.Edad_mediana, raza?.Edad_viejo, raza?.Edad_venerable].some((edad) => this.positivo(edad));
+        return etapaEdad(this.pj?.Edad, this.pj?.Raza) !== null;
     }
 
+    /** La etapa de la vida por la edad y las edades de la raza, con su envejecimiento (`services/utils/edad-personaje.ts`). */
     get madurezEdad(): MadurezEdadResumen {
-        const edadActual = Number(this.pj?.Edad ?? 0);
-        const mediana = Number(this.pj?.Raza?.Edad_mediana ?? 0);
-        const viejo = Number(this.pj?.Raza?.Edad_viejo ?? 0);
-        const venerable = Number(this.pj?.Raza?.Edad_venerable ?? 0);
-
-        const id = mediana <= 0 || edadActual < mediana
-            ? 0
-            : edadActual < viejo
-                ? 1
-                : edadActual < venerable
-                    ? 2
-                    : 3;
-
+        const etapa = etapaEdad(this.pj?.Edad, this.pj?.Raza);
         return {
-            id,
-            nombre: id === 0 ? 'Adulto' : id === 1 ? 'Mediana edad' : id === 2 ? 'Viejo' : 'Venerable',
-            modFisico: id === 0 ? 0 : id === 1 ? -1 : id === 2 ? -3 : -6,
-            modMental: id,
+            id: etapa?.pasos ?? 0,
+            nombre: etapa?.nombre ?? 'Adulto',
+            modFisico: etapa?.fisico ?? 0,
+            modMental: etapa?.mental ?? 0,
         };
     }
 

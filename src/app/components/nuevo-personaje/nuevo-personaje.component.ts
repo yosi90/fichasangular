@@ -156,6 +156,7 @@ import {
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
+import { edadFueraDelManual, etapaEdad, EtapaEdad, razaTieneEdades, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
 
 interface VectorAlineamiento {
     ley: number;
@@ -1465,7 +1466,7 @@ export class NuevoPersonajeComponent {
 
     get edadRangosItems(): string[] {
         const raza = this.razaSeleccionada;
-        if (!raza)
+        if (!raza || !razaTieneEdades(raza))
             return [];
         return [
             `Adulto: ${raza.Edad_adulto}`,
@@ -1475,65 +1476,48 @@ export class NuevoPersonajeComponent {
         ];
     }
 
+    /** Bajo la edad: el envejecimiento que aplica la etapa elegida o, si no envejece, las edades de la raza. */
     get edadRangosHint(): string {
+        const etapa = this.etapaEdad;
+        const envejecimiento = textoEnvejecimiento(etapa);
+        if (etapa && envejecimiento)
+            return `${etapa.nombre}: ${envejecimiento}`;
         return this.edadRangosItems
             .map((item) => item.replace(':', ''))
             .join(', ');
     }
 
+    /** La etapa de la vida del personaje por su edad y las edades de su raza (Manual del jugador, tabla 6-5). */
+    private get etapaEdad(): EtapaEdad | null {
+        return etapaEdad(this.Personaje?.Edad, this.razaSeleccionada);
+    }
+
     get etapaEdadActual(): string {
-        const raza = this.razaSeleccionada;
-        const edad = this.Personaje.Edad;
-        if (!raza || edad <= 0) {
-            return 'Sin definir';
-        }
-        if (edad < raza.Edad_adulto) {
-            return 'Joven';
-        }
-        if (edad < raza.Edad_mediana) {
-            return 'Adulto';
-        }
-        if (edad < raza.Edad_viejo) {
-            return 'Mediana edad';
-        }
-        if (edad <= raza.Edad_venerable) {
-            return 'Viejo';
-        }
-        return 'Fuera de rango tipico';
+        if (this.razaSeleccionada && !razaTieneEdades(this.razaSeleccionada))
+            return 'Sin edades en la raza';
+        return this.etapaEdad?.nombre ?? 'Sin definir';
     }
 
     get edadMensajeContextual(): string {
         const raza = this.razaSeleccionada;
-        const edad = this.Personaje.Edad;
-        if (!raza || edad <= 0) {
-            return 'Introduce una edad para ver su etapa vital aproximada.';
-        }
-        if (edad < raza.Edad_adulto) {
-            return 'Tu personaje aun no alcanza la edad adulta tipica de su raza.';
-        }
-        if (edad < raza.Edad_mediana) {
-            return 'Tu personaje esta en edad adulta temprana.';
-        }
-        if (edad < raza.Edad_viejo) {
-            return 'Tu personaje esta en mediana edad.';
-        }
-        if (edad <= raza.Edad_venerable) {
-            return 'Tu personaje esta en una etapa avanzada de su vida.';
-        }
-        return 'La edad supera el valor venerable tipico de la raza.';
+        if (raza && !razaTieneEdades(raza))
+            return 'Su raza no trae las edades de sus etapas: no se comprueba la edad ni se aplica el envejecimiento.';
+        const etapa = this.etapaEdad;
+        if (!etapa)
+            return 'Introduce una edad para ver su etapa de la vida.';
+        if (etapa.id === 'joven')
+            return 'Tu personaje aún no tiene la mayoría de edad de su raza: el Manual del jugador no llega ahí y el personaje será homebrew.';
+        if (etapa.id === 'adulto')
+            return 'Tu personaje es adulto: la edad no cambia sus características.';
+        const venerable = etapa.id === 'venerable'
+            ? ' Vivirá hasta su edad máxima, que el DM tira en secreto.'
+            : '';
+        return `Por envejecer: ${textoEnvejecimiento(etapa)} (ninguna baja de 1).${venerable}`;
     }
 
+    /** Solo por debajo de la mayoría de edad: pasada la venerable, el manual llega hasta la edad máxima (tabla 6-5). */
     get edadFueraRango(): boolean {
-        const raza = this.razaSeleccionada;
-        const edad = Number(this.Personaje.Edad);
-        const min = Number(raza?.Edad_adulto);
-        const max = Number(raza?.Edad_venerable);
-        const epsilon = 0.0001;
-
-        if (!raza || Number.isNaN(edad) || Number.isNaN(min) || Number.isNaN(max) || edad <= 0) {
-            return false;
-        }
-        return edad < (min - epsilon) || edad > (max + epsilon);
+        return edadFueraDelManual(this.Personaje?.Edad, this.razaSeleccionada);
     }
 
     get pesoFueraRango(): boolean {
@@ -1880,7 +1864,7 @@ export class NuevoPersonajeComponent {
         const deidadIngresada = this.Personaje.Deidad?.trim() ?? '';
 
         if (this.edadFueraRango) {
-            otherOfficialBlockers.push(`Edad fuera de rango: ${this.Personaje.Edad} (tipico ${this.razaSeleccionada?.Edad_adulto}-${this.razaSeleccionada?.Edad_venerable}).`);
+            otherOfficialBlockers.push(`Edad por debajo de la mayoría de edad de la raza: ${this.Personaje.Edad} (adulto a los ${this.razaSeleccionada?.Edad_adulto}).`);
         }
         if (this.pesoFueraRango) {
             otherOfficialBlockers.push(`Peso fuera de rango: ${this.Personaje.Peso} kg (tipico ${this.razaSeleccionada?.Peso_rango_inf}-${this.razaSeleccionada?.Peso_rango_sup} kg).`);
@@ -2374,6 +2358,9 @@ export class NuevoPersonajeComponent {
 
     onEdadChange(value: number | string | null | undefined): void {
         this.Personaje.Edad = this.normalizarNumeroConMaxCifras(value, 4, 0);
+        // El envejecimiento cambia las características ya generadas.
+        if (this.nuevoPSvc.EstadoFlujo?.caracteristicasGeneradas)
+            this.nuevoPSvc.recalcularEfectosVentajas();
         this.recalcularOficialidad();
     }
 
@@ -5824,7 +5811,7 @@ export class NuevoPersonajeComponent {
             'schedule',
             [
                 {
-                    titulo: 'Rangos oficiales',
+                    titulo: 'Edades de la raza',
                     items: this.edadRangosItems,
                 },
                 {

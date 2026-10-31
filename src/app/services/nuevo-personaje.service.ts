@@ -86,6 +86,7 @@ import { Tamano } from '../interfaces/tamaño';
 import { ElementoConTipoArma, armasDeGrupos, competenciasDeDotes } from './utils/competencias-armas';
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from './utils/deidad-seleccion';
 import { vectorAlineamientoDeidad } from './utils/alineamiento-deidad';
+import { ajustesEnvejecimiento, etapaEdad } from './utils/edad-personaje';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -5517,6 +5518,7 @@ export class NuevoPersonajeService {
             this.aplicarIdioma(detalle, seleccion, nuevosIdiomas, origen);
             this.registrarPendienteOro(detalle, origen, pendientesOro);
         });
+        this.aplicarEnvejecimiento(caracteristicasVarios);
 
         this.personajeCreacion.CaracteristicasVarios = caracteristicasVarios;
         this.aplicarCaracteristicasFinalesDesdeBase();
@@ -8556,6 +8558,26 @@ export class NuevoPersonajeService {
      * cambio de tamaño como *agrandar persona*) van a sus características, como las de las dotes y las plantillas
      * (guía `docs/publica/CLASES_PROPIAS_FRONT.md`).
      */
+    /**
+     * El envejecimiento del Manual del jugador (tabla 6-5, pág. 109; `services/utils/edad-personaje.ts`): según la edad
+     * elegida y las edades de la raza, sus pasos van a las características con el origen «Envejecimiento: Viejo», sin
+     * bajar ninguna de 1. Va el último, sobre lo que ya suman la raza, las plantillas, las dotes y las ventajas, y solo con
+     * las características ya generadas (antes no hay puntuaciones que envejecer).
+     */
+    private aplicarEnvejecimiento(caracteristicasVarios: Personaje['CaracteristicasVarios']): void {
+        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
+        const etapa = etapaEdad(this.personajeCreacion?.Edad, this.razaSeleccionada);
+        if (!this.estadoFlujo.caracteristicasGeneradas || !base || !etapa)
+            return;
+        const valores: Partial<Record<CaracteristicaKey, number>> = {};
+        CARACTERISTICAS.forEach((key) => {
+            valores[key] = toNumber(base[key]) + (caracteristicasVarios[key] ?? []).reduce((acc, mod) => acc + toNumber(mod.valor), 0);
+        });
+        const origen = `Envejecimiento: ${etapa.nombre}`;
+        ajustesEnvejecimiento(etapa, valores, (clave) => this.esCaracteristicaPerdida(clave))
+            .forEach(({ clave, valor }) => (caracteristicasVarios[clave] ?? []).push({ valor, origen }));
+    }
+
     private aplicarCaracteristicasEspecialesDelPersonaje(caracteristicasVarios: Personaje['CaracteristicasVarios']): void {
         this.especialesDeClaseDelPersonaje().forEach((especialNivel) => {
             const origen = `Especial: ${`${(especialNivel?.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim()}`;

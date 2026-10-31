@@ -7865,6 +7865,105 @@ describe('NuevoPersonajeService (vida final)', () => {
         expect(resultado.detalle.dgsRaciales).toBe(0);
         expect(resultado.detalle.flags.dgsRacialesExtra).toBeFalse();
     });
+
+    describe('envejecimiento (MJ, tabla 6-5, pág. 109)', () => {
+        // La raza de prueba: adulto a los 20, mediana edad a los 40, viejo a los 60 y venerable a los 80.
+        function crearConCaracteristicas(fuerza = 14): NuevoPersonajeService {
+            const svc = new NuevoPersonajeService();
+            svc.seleccionarRaza(crearRazaVida(crearTipoVida(false), 0));
+            svc.aplicarCaracteristicasGeneradas({
+                Fuerza: fuerza, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9,
+            });
+            return svc;
+        }
+
+        function puntuaciones(svc: NuevoPersonajeService): number[] {
+            const pj = svc.PersonajeCreacion;
+            return [pj.Fuerza, pj.Destreza, pj.Constitucion, pj.Inteligencia, pj.Sabiduria, pj.Carisma];
+        }
+
+        it('de adulto no cambia nada', () => {
+            const svc = crearConCaracteristicas();
+            svc.PersonajeCreacion.Edad = 39;
+            svc.recalcularEfectosVentajas();
+
+            expect(puntuaciones(svc)).toEqual([14, 12, 13, 10, 11, 9]);
+        });
+
+        it('mediana edad: −1 a Fue, Des y Con y +1 a Int, Sab y Car, con su origen en el desglose', () => {
+            const svc = crearConCaracteristicas();
+            svc.PersonajeCreacion.Edad = 40;
+            svc.recalcularEfectosVentajas();
+
+            expect(puntuaciones(svc)).toEqual([13, 11, 12, 11, 12, 10]);
+            expect(svc.PersonajeCreacion.ModConstitucion).toBe(1);
+            expect(svc.PersonajeCreacion.CaracteristicasVarios.Fuerza).toContain({ valor: -1, origen: 'Envejecimiento: Mediana edad' });
+            expect(svc.PersonajeCreacion.CaracteristicasVarios.Carisma).toContain({ valor: 1, origen: 'Envejecimiento: Mediana edad' });
+        });
+
+        it('los pasos se acumulan: viejo −3/+2 y venerable −6/+3, también pasada la edad venerable', () => {
+            const svc = crearConCaracteristicas();
+            svc.PersonajeCreacion.Edad = 60;
+            svc.recalcularEfectosVentajas();
+            expect(puntuaciones(svc)).toEqual([11, 9, 10, 12, 13, 11]);
+
+            svc.PersonajeCreacion.Edad = 95;
+            svc.recalcularEfectosVentajas();
+            expect(puntuaciones(svc)).toEqual([8, 6, 7, 13, 14, 12]);
+            expect(svc.PersonajeCreacion.CaracteristicasVarios.Destreza).toEqual([{ valor: -6, origen: 'Envejecimiento: Venerable' }]);
+        });
+
+        it('ninguna puntuación baja de 1 por envejecer', () => {
+            const svc = crearConCaracteristicas(3);
+            svc.PersonajeCreacion.Edad = 80;
+            svc.recalcularEfectosVentajas();
+
+            expect(svc.PersonajeCreacion.Fuerza).toBe(1);
+            expect(svc.PersonajeCreacion.CaracteristicasVarios.Fuerza).toEqual([{ valor: -2, origen: 'Envejecimiento: Venerable' }]);
+        });
+
+        it('volver a una edad adulta quita el envejecimiento', () => {
+            const svc = crearConCaracteristicas();
+            svc.PersonajeCreacion.Edad = 80;
+            svc.recalcularEfectosVentajas();
+            svc.PersonajeCreacion.Edad = 25;
+            svc.recalcularEfectosVentajas();
+
+            expect(puntuaciones(svc)).toEqual([14, 12, 13, 10, 11, 9]);
+        });
+
+        it('una raza sin edades no envejece, y antes de generar las características no se aplica', () => {
+            const sinEdades = new NuevoPersonajeService();
+            const raza = crearRazaVida(crearTipoVida(false), 0);
+            raza.Edad_adulto = 0;
+            raza.Edad_mediana = 0;
+            raza.Edad_viejo = 0;
+            raza.Edad_venerable = 0;
+            sinEdades.seleccionarRaza(raza);
+            sinEdades.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            sinEdades.PersonajeCreacion.Edad = 500;
+            sinEdades.recalcularEfectosVentajas();
+            expect(puntuaciones(sinEdades)).toEqual([14, 12, 13, 10, 11, 9]);
+
+            const sinGenerar = new NuevoPersonajeService();
+            sinGenerar.seleccionarRaza(crearRazaVida(crearTipoVida(false), 0));
+            sinGenerar.PersonajeCreacion.Edad = 90;
+            sinGenerar.recalcularEfectosVentajas();
+            expect(sinGenerar.PersonajeCreacion.CaracteristicasVarios.Fuerza).toEqual([]);
+        });
+
+        it('una característica perdida (sin Constitución) no envejece', () => {
+            const svc = new NuevoPersonajeService();
+            svc.seleccionarRaza(crearRazaVida(crearTipoVida(true), 0));
+            svc.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: null, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            svc.PersonajeCreacion.Edad = 40;
+            svc.recalcularEfectosVentajas();
+
+            expect(svc.PersonajeCreacion.Constitucion).toBe(0);
+            expect(svc.PersonajeCreacion.CaracteristicasVarios.Constitucion).toEqual([]);
+            expect(svc.PersonajeCreacion.Fuerza).toBe(13);
+        });
+    });
 });
 
 describe('NuevoPersonajeService (dotes repetibles con extra)', () => {
