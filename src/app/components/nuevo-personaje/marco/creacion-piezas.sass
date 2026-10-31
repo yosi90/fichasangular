@@ -42,8 +42,8 @@
 
 // PJ o PNJ (dragones jugables): la etiqueta del PNJ, rosa oscuro como en el lienzo y en el listado de personajes.
 .creacion-etiqueta--pnj
-    border-color: #7b2d4f
-    background: #7b2d4f
+    border-color: $ficha-pnj
+    background: $ficha-pnj
     color: $ficha-blanco
 
 // El buscador: una lupa y el campo, sobre $primary.
@@ -156,7 +156,7 @@
     background: $ficha-tarjeta
 
 .creacion-opcion--activa, .creacion-opcion--activa:hover
-    background: #4a3a42
+    background: $ficha-elegida
     box-shadow: inset 3px 0 0 $active
 
 .creacion-opcion--bloqueada
@@ -291,7 +291,7 @@ tr.creacion-fila-abierta td:first-child, .creacion-fila-abierta:not(tr)
     font: inherit
     text-align: left
     cursor: pointer
-    box-shadow: 3px 3px 10px black
+    box-shadow: $ficha-sombra
 
     &:hover
         background: rgba(255, 255, 255, .08)
@@ -302,7 +302,7 @@ tr.creacion-fila-abierta td:first-child, .creacion-fila-abierta:not(tr)
 
 .creacion-tipo__opcion--elegida, .creacion-tipo__opcion--elegida:hover
     border-color: $active
-    background: #4a3a42
+    background: $ficha-elegida
 
 .creacion-tipo__cabeza
     display: flex
@@ -415,7 +415,7 @@ tr.creacion-fila-abierta td:first-child, .creacion-fila-abierta:not(tr)
 
 .creacion-edad__categoria--elegida, .creacion-edad__categoria--elegida:hover:not(:disabled)
     border-color: $active
-    background: #4a3a42
+    background: $ficha-elegida
 
 .creacion-edad__nombre
     font-weight: 500

@@ -238,7 +238,7 @@ table
     gap: 1px
     border-radius: 4px
     overflow: hidden
-    box-shadow: 3px 3px 10px black
+    box-shadow: $ficha-sombra
 
 .lista-personajes__tipo
     min-height: 36px
@@ -266,19 +266,12 @@ table
 
 // «Qué es»: la etiqueta del tipo; la del PNJ, rosa oscuro.
 .pj-tipo
-    display: inline-flex
-    align-items: center
-    height: 22px
-    padding: 0 8px
-    border: 1px solid $accent
-    border-radius: 4px
-    font-size: 12px
+    @include ficha-etiqueta-borde
     color: $ficha-blanco
-    white-space: nowrap
 
 .pj-tipo--pnj
-    border-color: #7b2d4f
-    background: #7b2d4f
+    border-color: $ficha-pnj
+    background: $ficha-pnj
 
 .pj-numero
     text-align: right
