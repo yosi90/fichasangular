@@ -2432,15 +2432,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         const referencias = raza.Edicion;
         const dgs = referencias?.Dgs_raciales;
         const alineamiento = this.controlesDeAlineamiento(raza.Alineamiento?.Id);
-        const textoTecnico = (valor: string | null | undefined) => {
-            const texto = this.texto(valor);
-            return texto.length > 0 ? texto : 'No especifica';
-        };
         this.form.reset({
             ...this.getFormularioDefaultValues(),
             nombre: this.texto(raza.Nombre),
             descripcion: this.texto(raza.Descripcion),
-            ataques_naturales: textoTecnico(raza.Ataques_naturales),
+            ataques_naturales: this.textoTecnico(raza.Ataques_naturales),
             espacio: this.numero(raza.Espacio),
             alcance: this.numero(raza.Alcance),
             id_manual: this.numero(referencias?.Manual?.Id),
@@ -2466,9 +2462,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             cuadrupedo: raza.Cuadrupedo === true,
             id_tamano: this.numero(raza.Tamano?.Id),
             ajuste_nivel: this.numero(raza.Ajuste_nivel),
-            reduccion_dano: textoTecnico(raza.Reduccion_dano),
-            resistencia_conjuros: textoTecnico(raza.Resistencia_magica),
-            resistencia_energia: textoTecnico(raza.Resistencia_energia),
+            reduccion_dano: this.textoTecnico(raza.Reduccion_dano),
+            resistencia_conjuros: this.textoTecnico(raza.Resistencia_magica),
+            resistencia_energia: this.textoTecnico(raza.Resistencia_energia),
             altura_rango_inf: this.numeroDecimal(raza.Altura_rango_inf),
             altura_rango_sup: this.numeroDecimal(raza.Altura_rango_sup),
             peso_rango_inf: this.numeroDecimal(raza.Peso_rango_inf),
@@ -2513,7 +2509,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             id_habilidad: this.numero(habilidad.Id_habilidad),
             cantidad: this.numero(habilidad.Cantidad),
             id_extra: this.numero(habilidad.Id_extra ?? -1),
-            varios: textoTecnico(habilidad.Varios),
+            varios: this.textoTecnico(habilidad.Varios),
             busqueda: this.texto(habilidad.Habilidad),
             extraBusqueda: this.numero(habilidad.Id_extra ?? -1) >= 0 ? this.texto(habilidad.Extra) : '',
         })), () => this.crearHabilidadBaseRow());
@@ -2542,7 +2538,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             id_conjuro: this.numero(sortilega.Conjuro?.Id),
             nivel_lanzador: this.numero(sortilega.Nivel_lanzador),
             usos_diarios: this.texto(sortilega.Usos_diarios),
-            descripcion: textoTecnico(sortilega.Descripcion),
+            descripcion: this.textoTecnico(sortilega.Descripcion),
             busqueda: this.texto(sortilega.Conjuro?.Nombre),
         })), () => this.crearSortilegioRow());
 
