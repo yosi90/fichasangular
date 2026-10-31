@@ -13,7 +13,6 @@ import { normalizePlantilla, normalizePlantillaApi } from "./utils/plantilla-map
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
-
 function hasValidId(raw: any): boolean {
     return toNumber(raw?.Id) > 0;
 }

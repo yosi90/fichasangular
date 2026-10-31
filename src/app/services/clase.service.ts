@@ -31,7 +31,6 @@ import { leerComodin } from "src/app/services/utils/comodin";
 import { normalizarClaseMoldeado, normalizarHabilidadesPorAlineamiento } from "src/app/services/utils/incarnum-mapper";
 import { CLAVES_PRERREQUISITOS_INCARNUM } from "src/app/services/utils/incarnum";
 
-
 /** Los tipos de prerrequisito de las clases (`Prerrequisitos` de la API y de sus escrituras). */
 export const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "subtipo",

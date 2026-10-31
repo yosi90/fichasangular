@@ -13,7 +13,6 @@ import { cabeceraApiConFirebase } from './platform-session.service';
 import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { CONJURO } from "src/app/services/utils/nombres-de-catalogo";
 
-
 @Injectable({
     providedIn: 'root'
 })

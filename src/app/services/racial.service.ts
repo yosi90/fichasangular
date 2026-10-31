@@ -22,7 +22,6 @@ import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { RACIAL } from "src/app/services/utils/nombres-de-catalogo";
 import { porNombre } from "src/app/services/utils/orden-texto";
 
-
 function sortRaciales(raciales: RacialDetalle[]): RacialDetalle[] {
     return [...raciales]
         .sort(porNombre);

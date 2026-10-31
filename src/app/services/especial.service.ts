@@ -20,13 +20,12 @@ import { FirebaseInjectionContextService } from "./firebase-injection-context.se
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
-import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { ESPECIAL } from "src/app/services/utils/nombres-de-catalogo";
 import { leerComodin } from "src/app/services/utils/comodin";
 import { mensajeDeError } from './utils/error-api';
 import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
 import { normalizarPrerrequisitosEspecial } from './utils/aptitudes-clase';
-
-const ESPECIAL: ElementoDeCatalogo = { singular: "especial", plural: "especiales", femenino: false };
 
 function normalizeRefSimple(raw: any): EspecialRefSimple {
     return {

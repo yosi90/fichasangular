@@ -18,7 +18,6 @@ import { escucharRtdb, listaRtdb } from './catalogo-api';
 import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { IDIOMA } from "src/app/services/utils/nombres-de-catalogo";
 
-
 export function normalizeIdioma(raw: any): IdiomaDetalle {
     return {
         Id: toNumber(raw?.Id),

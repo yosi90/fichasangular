@@ -22,7 +22,6 @@ import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { HABILIDAD } from "src/app/services/utils/nombres-de-catalogo";
 import { porNombre } from "src/app/services/utils/orden-texto";
 
-
 function toArray<T = any>(value: any): T[] {
     if (Array.isArray(value))
         return value;

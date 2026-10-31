@@ -21,7 +21,6 @@ import { RAZA } from 'src/app/services/utils/nombres-de-catalogo';
 import { leerComodin } from 'src/app/services/utils/comodin';
 import { errorDePerfil } from 'src/app/services/utils/error-api';
 
-
 function parseIdExtra(value: any): number {
     if (value === undefined || value === null || `${value}`.trim() === '')
         return -1;
