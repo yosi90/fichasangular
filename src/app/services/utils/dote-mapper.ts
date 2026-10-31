@@ -1,6 +1,6 @@
 import { Dote, DoteCompetenciasOtorgadas, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteHabilidadOtorgada, DoteSalvacionCondicional, DoteTipo } from "src/app/interfaces/dote";
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
-import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { normalizeManualApi, normalizeManualLegacy } from './manual-mapper';
 import { normalizarDoteIncarnum, normalizarNombreTraducible } from './incarnum-mapper';
@@ -337,4 +337,14 @@ export function extrasDisponiblesDeDote(dote: Pick<Dote, 'Extras_disponibles'> |
         ...(disponibles?.Escuelas ?? []),
         ...(disponibles?.Habilidades ?? []),
     ];
+}
+
+/**
+ * Los extras de la dote `idDote` de `dotes` como opciones de un desplegable (`{ id, nombre }`, en el orden de
+ * `extrasDisponiblesDeDote`): el «Extra» de las filas de dotes de la plantilla y el monstruo. Sin la dote, ninguno.
+ */
+export function opcionesDeExtrasDeDote(dotes: readonly Pick<Dote, 'Id' | 'Extras_disponibles'>[], idDote: number): { id: number; nombre: string; }[] {
+    return extrasDisponiblesDeDote(dotes.find((dote) => dote.Id === idDote))
+        .map((extra) => ({ id: toInt(extra.Id), nombre: toText(extra.Nombre) }))
+        .filter((extra) => extra.id > 0);
 }

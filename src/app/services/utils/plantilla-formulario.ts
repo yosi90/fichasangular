@@ -9,6 +9,8 @@ import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { PrerequisiteRowModel, PrerequisiteType } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.models';
 import { getPrerequisiteDefinition } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.registry';
 import { filaDeLectura } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-lectura';
+import { cambiosEntreCuerpos, enOrdenDeCampos, firmaLista } from 'src/app/components/shared/insercion-marco/cambios-de-formulario';
+import { FilaNombrada } from 'src/app/components/shared/insercion-marco/filas-repetibles';
 import { CamposDeFormulario } from 'src/app/components/shared/insercion-marco/errores-de-formulario';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
@@ -152,10 +154,7 @@ export type PlantillaFormularioValor =
     };
 
 /** Una aptitud racial o un ataque especial que da la plantilla, desde sus DG (1: desde el principio). */
-export interface FilaRasgoPlantilla {
-    uid: string;
-    id: number;
-    nombre: string;
+export interface FilaRasgoPlantilla extends FilaNombrada {
     dg: number;
 }
 
@@ -169,21 +168,12 @@ export interface FilaSortilegaPlantilla extends FilaRasgoPlantilla {
     usos_diarios: string;
 }
 
-export interface FilaHabilidadPlantilla {
-    uid: string;
-    id: number;
-    nombre: string;
+export interface FilaHabilidadPlantilla extends FilaNombrada {
     /** El bono que da (`rangos` en el alta). */
     rangos: number;
     /** `ID_EXTRA_HABILIDAD_SIN_EXTRA` (-1) sin extra; > 0, un extra de la habilidad. */
     id_extra: number;
     varios: string;
-}
-
-export interface FilaSubtipoPlantilla {
-    uid: string;
-    id: number;
-    nombre: string;
 }
 
 /** Las listas del formulario: los rasgos del paso 3 y los requisitos del paso 4. */
@@ -193,7 +183,7 @@ export interface ListasPlantilla {
     sortilegas: FilaSortilegaPlantilla[];
     dotes: FilaDotePlantilla[];
     habilidades: FilaHabilidadPlantilla[];
-    subtipos: FilaSubtipoPlantilla[];
+    subtipos: FilaNombrada[];
     prerrequisitos: PrerequisiteRowModel[];
 }
 
@@ -511,11 +501,6 @@ export function construirPlantillaRequest(valor: PlantillaFormularioValor, lista
     };
 }
 
-/** Una lista del cuerpo sin depender del orden de las filas. */
-function firmaLista(lista: unknown[]): string {
-    return JSON.stringify(lista.map((item) => JSON.stringify(item)).sort());
-}
-
 /** Los escalares que sigue el interruptor de los DG de licantropía: si cambia alguno, cambia «Añade DG de otra criatura». */
 const CAMPOS_DG_LIC = ['id_tipo_dado_lic', 'mult_dg_lic', 'suma_dg_lic', 'id_tipo_criatura_dg_lic'];
 
@@ -524,22 +509,14 @@ const CAMPOS_DG_LIC = ['id_tipo_dado_lic', 'mult_dg_lic', 'suma_dg_lic', 'id_tip
  * ahora), en el orden de los campos. Así se marcan los campos y los pasos y se escribe «N cambios: …».
  */
 export function camposCambiados(antes: PlantillaCreateRequest, ahora: PlantillaCreateRequest, antesConDgLic: boolean, ahoraConDgLic: boolean): string[] {
-    const cambiados = new Set<string>();
-    (Object.keys(ahora.plantilla) as (keyof PlantillaEscalaresRequest)[]).forEach((campo) => {
-        if (JSON.stringify(antes.plantilla[campo] ?? null) !== JSON.stringify(ahora.plantilla[campo] ?? null))
-            cambiados.add(campo);
-    });
+    const cambiados = cambiosEntreCuerpos(antes, ahora, 'plantilla', ['raciales', 'ataquesEspeciales', 'sortilegas', 'dotes', 'habilidades', 'subtipos']);
     if (antesConDgLic !== ahoraConDgLic)
         cambiados.add('con_dg_lic');
-    (['raciales', 'ataquesEspeciales', 'sortilegas', 'dotes', 'habilidades', 'subtipos'] as const).forEach((lista) => {
-        if (firmaLista(antes[lista]) !== firmaLista(ahora[lista]))
-            cambiados.add(lista);
-    });
     const familias = Object.keys(ahora.prerrequisitos) as (keyof PlantillaPrerrequisitosRequest)[];
     if (familias.some((familia) => firmaLista(antes.prerrequisitos[familia] ?? []) !== firmaLista(ahora.prerrequisitos[familia] ?? [])))
         cambiados.add('prerrequisitos');
     // Al apagar el interruptor, los DG añadidos dejan de contar: basta con decir que cambió el interruptor.
     if (cambiados.has('con_dg_lic'))
         CAMPOS_DG_LIC.forEach((campo) => cambiados.delete(campo));
-    return Object.keys(CAMPOS_PLANTILLA).filter((campo) => cambiados.has(campo));
+    return enOrdenDeCampos(cambiados, CAMPOS_PLANTILLA);
 }

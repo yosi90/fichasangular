@@ -1,3 +1,5 @@
+import { cambiosEntreCuerpos, enOrdenDeCampos } from 'src/app/components/shared/insercion-marco/cambios-de-formulario';
+import { FilaNombrada } from 'src/app/components/shared/insercion-marco/filas-repetibles';
 import { CamposDeFormulario } from 'src/app/components/shared/insercion-marco/errores-de-formulario';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import {
@@ -6,6 +8,7 @@ import {
     MonstruoEscalaresRequest,
 } from 'src/app/interfaces/monstruo';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
 import { idsUnicosOrdenados, toInt, toNumber, toNumberOrNull, toPositiveInt, toText } from './normalizacion';
 
 // El formulario de los monstruos (hito 6 del roadmap de inserciones, 2026-10-31): los pasos, los campos con su etiqueta
@@ -93,20 +96,13 @@ export const CAMPOS_MONSTRUO: CamposDeFormulario = {
 /** Los escalares del formulario: los del alta, con los números a `null` mientras estén vacíos. */
 export type MonstruoFormularioValor = { [K in keyof MonstruoEscalaresRequest]: MonstruoEscalaresRequest[K] | null };
 
-/** Una fila de una lista que solo es un elemento de un catálogo (subtipo, idioma, aptitud, ataque especial). */
-export interface FilaNombrada {
-    uid: string;
-    id: number;
-    nombre: string;
-}
-
 export interface FilaDoteMonstruo extends FilaNombrada {
     /** -1 sin extra; > 0, un extra de la dote. */
     id_extra: number;
 }
 
 export interface FilaHabilidadMonstruo extends FilaNombrada {
-    /** -1 sin extra; > 0, un extra de la habilidad. */
+    /** `ID_EXTRA_HABILIDAD_SIN_EXTRA` (-1) sin extra; > 0, un extra de la habilidad. */
     id_extra: number;
     rangos: number;
 }
@@ -274,7 +270,7 @@ export function listasDesdeMonstruo(monstruo: MonstruoDetalle, uid: () => string
             uid: uid(),
             id: toInt(item?.Id_habilidad),
             nombre: toText(item?.Habilidad),
-            id_extra: toPositiveInt(item?.Id_extra) ?? -1,
+            id_extra: toPositiveInt(item?.Id_extra) ?? ID_EXTRA_HABILIDAD_SIN_EXTRA,
             rangos: toInt(item?.Rangos),
         })).filter(conId),
         niveles_clase: (monstruo.Niveles_clase ?? []).map((item) => ({
@@ -345,11 +341,6 @@ export function construirMonstruoRequest(valor: MonstruoFormularioValor, listas:
     };
 }
 
-/** Una lista del cuerpo sin depender del orden de las filas. */
-function firmaLista(lista: unknown[]): string {
-    return JSON.stringify(lista.map((item) => JSON.stringify(item)).sort());
-}
-
 const LISTAS = ['subtipos', 'idiomas', 'dotes', 'habilidades', 'sortilegas', 'raciales', 'ataquesEspeciales', 'niveles_clase'] as const;
 
 /**
@@ -357,16 +348,8 @@ const LISTAS = ['subtipos', 'idiomas', 'dotes', 'habilidades', 'sortilegas', 'ra
  * en el orden de los campos: así se marcan los campos y los pasos y se escribe «N cambios: …».
  */
 export function camposCambiadosMonstruo(antes: MonstruoCreateRequest, ahora: MonstruoCreateRequest): string[] {
-    const cambiados = new Set<string>();
-    (Object.keys(ahora.monstruo) as (keyof MonstruoEscalaresRequest)[]).forEach((campo) => {
-        if (JSON.stringify(antes.monstruo[campo] ?? null) !== JSON.stringify(ahora.monstruo[campo] ?? null))
-            cambiados.add(campo);
-    });
-    LISTAS.forEach((lista) => {
-        if (firmaLista(antes[lista]) !== firmaLista(ahora[lista]))
-            cambiados.add(lista);
-    });
+    const cambiados = cambiosEntreCuerpos(antes, ahora, 'monstruo', LISTAS);
     if (JSON.stringify(antes.alineamientos_requeridos) !== JSON.stringify(ahora.alineamientos_requeridos))
         cambiados.add('alineamientos_requeridos');
-    return Object.keys(CAMPOS_MONSTRUO).filter((campo) => cambiados.has(campo));
+    return enOrdenDeCampos(cambiados, CAMPOS_MONSTRUO);
 }

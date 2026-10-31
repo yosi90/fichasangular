@@ -1,9 +1,22 @@
 import { Component, ElementRef, EventEmitter, Input, Output, ViewChild, ViewEncapsulation } from '@angular/core';
 import Swal from 'sweetalert2';
 import { TipoRol } from 'src/app/services/utils/iconos-rol';
+import { toInt, toText } from 'src/app/services/utils/normalizacion';
 
 /** Lo que dice la cabecera según se cree o se modifique. */
 export type ModoInsercion = 'crear' | 'editar';
+
+/**
+ * `[detalleTipo]` al modificar una entrada con manual: «Manual de monstruos, p. 12» («Modificar · Plantilla · …»), o
+ * solo el nombre si no tiene página; sin manual, nada.
+ */
+export function detalleDeManual(manual: { Nombre?: unknown; Pagina?: unknown; } | null | undefined): string {
+    const nombre = toText(manual?.Nombre).trim();
+    if (!nombre)
+        return '';
+    const pagina = toInt(manual?.Pagina);
+    return pagina > 0 ? `${nombre}, p. ${pagina}` : nombre;
+}
 
 /**
  * Antes de cerrar la pestaña de una modificación con cambios sin guardar, la misma pregunta en todas: `deQue` completa

@@ -20,14 +20,13 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
-import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
+import { opcionesDeExtrasDeDote } from 'src/app/services/utils/dote-mapper';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
-import { opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import {
     CAMPOS_MONSTRUO,
     CARACTERISTICAS_MONSTRUO,
     FilaNivelClaseMonstruo,
-    FilaNombrada,
     ListasMonstruo,
     MonstruoFormularioValor,
     PASOS_MONSTRUO,
@@ -46,20 +45,13 @@ import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-ins
 import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
-import { ErrorDeCampo, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
-import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
-import { ModoInsercion } from '../insercion-marco/insercion-marco.component';
+import { ErrorDeCampo, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
+import { etiquetaDeCampo, notaDeCambios, pasosConCambios } from '../insercion-marco/cambios-de-formulario';
+import { FilaNombrada, alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
+import { ModoInsercion, detalleDeManual } from '../insercion-marco/insercion-marco.component';
 
 /** Las listas de catálogo del paso «Aptitudes» (las tarjetas) y las del paso «Identidad» (subtipos e idiomas). */
 export type ListaMonstruo = 'raciales' | 'ataquesEspeciales' | 'sortilegas' | 'dotes' | 'habilidades' | 'subtipos' | 'idiomas';
-
-/** Un entero (o vacío): lo único que la web comprueba de los números; lo demás lo valida la API. */
-function entero(control: AbstractControl): ValidationErrors | null {
-    const valor = control.value;
-    if (valor === null || valor === undefined || valor === '')
-        return null;
-    return Number.isInteger(Number(valor)) ? null : { entero: true };
-}
 
 /** El espacio, en medios pies (2,5 de una criatura Menuda). */
 function enMedios(control: AbstractControl): ValidationErrors | null {
@@ -107,6 +99,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
     readonly pasos = PASOS_MONSTRUO;
     pasoActual = 0;
     readonly caracteristicas = CARACTERISTICAS_MONSTRUO;
+    readonly sinExtraHabilidad = ID_EXTRA_HABILIDAD_SIN_EXTRA;
 
     readonly form: FormGroup<Record<keyof MonstruoFormularioValor, FormControl>>;
     listas: ListasMonstruo = listasMonstruoVacias();
@@ -244,12 +237,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
 
     /** En modificar: «Modificar · Monstruo · <manual, p. N>»; en crear, el marco pone «Paso N de 6». */
     get lineaManual(): string {
-        const manual = this.monstruoCargado?.Manual;
-        const nombre = toText(manual?.Nombre).trim();
-        if (!this.esEdicion || !nombre)
-            return '';
-        const pagina = toInt(manual?.Pagina);
-        return pagina > 0 ? `${nombre}, p. ${pagina}` : nombre;
+        return this.esEdicion ? detalleDeManual(this.monstruoCargado?.Manual) : '';
     }
 
     get hayCambios(): boolean {
@@ -258,12 +246,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
 
     /** La nota del pie: en modificar, «N cambios: Nombre, Tamaño…». */
     get notaPie(): string {
-        if (!this.esEdicion || this.edicion.cargando)
-            return '';
-        if (this.cambios.length < 1)
-            return 'Sin cambios todavía.';
-        const etiquetas = this.cambios.map((campo) => CAMPOS_MONSTRUO[campo].etiqueta);
-        return `${this.cambios.length === 1 ? '1 cambio' : `${this.cambios.length} cambios`}: ${etiquetas.join(', ')}`;
+        return !this.esEdicion || this.edicion.cargando ? '' : notaDeCambios(this.cambios, CAMPOS_MONSTRUO);
     }
 
     get accionDesactivada(): boolean {
@@ -284,8 +267,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
     // Campos
 
     etiqueta(campo: string): string {
-        const base = CAMPOS_MONSTRUO[campo]?.etiqueta ?? campo;
-        return this.cambiado(campo) ? `${base} · cambiado` : base;
+        return etiquetaDeCampo(CAMPOS_MONSTRUO, campo, this.cambiado(campo));
     }
 
     cambiado(campo: string): boolean {
@@ -363,7 +345,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
             return;
         const base: FilaNombrada = { uid: this.uid(), id: opcion.id, nombre: opcion.nombre };
         if (lista === 'habilidades')
-            this.listas.habilidades = [...this.listas.habilidades, { ...base, rangos: 0, id_extra: -1 }];
+            this.listas.habilidades = [...this.listas.habilidades, { ...base, rangos: 0, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA }];
         else if (lista === 'sortilegas')
             this.listas.sortilegas = [...this.listas.sortilegas, { ...base, nivel_lanzador: 1, usos_diarios: '' }];
         else if (lista === 'dotes')
@@ -397,9 +379,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
     }
 
     extrasDote(idDote: number): OpcionCatalogo[] {
-        return extrasDisponiblesDeDote(this.dotes.find((item) => item.Id === idDote))
-            .map((item) => ({ id: toInt(item.Id), nombre: toText(item.Nombre) }))
-            .filter((item) => item.id > 0);
+        return opcionesDeExtrasDeDote(this.dotes, idDote);
     }
 
     extrasHabilidad(idHabilidad: number): OpcionCatalogo[] {
@@ -503,7 +483,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
     alCambiar(): void {
         this.errores.seguirCambios();
         this.cambios = this.esEdicion && this.cuerpoInicial ? camposCambiadosMonstruo(this.cuerpoInicial, this.cuerpoActual()) : [];
-        this.pasosConCambios = Array.from(new Set(this.cambios.map((campo) => CAMPOS_MONSTRUO[campo].paso)));
+        this.pasosConCambios = pasosConCambios(this.cambios, CAMPOS_MONSTRUO);
     }
 
     /** Rellena el formulario con un monstruo y lo toma como punto de partida de los cambios. */
