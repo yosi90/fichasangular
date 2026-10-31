@@ -1,6 +1,6 @@
 import { Personaje } from 'src/app/interfaces/personaje';
 import { ListaLanzamientoRaza } from 'src/app/interfaces/raza';
-import { nombreEdadEnFrase } from 'src/app/services/utils/razas-por-edades';
+import { nombreEdadEnFrase, razaConCategoria } from 'src/app/services/utils/razas-por-edades';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { esPnj, textoNivelPersonaje } from 'src/app/services/utils/tipo-personaje';
 import { EtiquetaFicha, unirLista } from './ficha';
@@ -14,9 +14,7 @@ import { EtiquetaFicha, unirLista } from './ficha';
 
 /** «Dragón rojo · adulto maduro»; sin edad, la raza. */
 export function razaConCategoriaPersonaje(pj: Personaje | null | undefined): string {
-    const raza = `${pj?.Raza?.Nombre ?? ''}`.trim();
-    const categoria = nombreEdadEnFrase(pj?.CategoriaEdad?.categoria?.Nombre);
-    return [raza, categoria].filter((parte) => parte.length > 0).join(' · ');
+    return razaConCategoria(pj?.Raza?.Nombre, pj?.CategoriaEdad?.categoria?.Nombre);
 }
 
 /** Las etiquetas del tipo de la cabecera: «PNJ» y su nivel («VD 18»); un PJ no lleva ninguna. */

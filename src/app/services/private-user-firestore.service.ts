@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { leerTipoYNivelPersonaje } from './utils/tipo-personaje';
+import { leerCategoriaEdadListado } from './utils/razas-por-edades';
 import { Auth } from '@angular/fire/auth';
 import {
     Firestore,
@@ -237,6 +238,7 @@ export class PrivateUserFirestoreService {
             Subtrama: toNullableText(raw?.Subtrama ?? raw?.s) ?? '',
             Archivado: toBoolean(raw?.archivado ?? raw?.Archivado ?? raw?.a),
             ...leerTipoYNivelPersonaje(raw),
+            categoriaEdad: leerCategoriaEdadListado(raw),
         };
     }
 

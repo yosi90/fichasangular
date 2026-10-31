@@ -699,4 +699,14 @@ describe('ListaPersonajesService', () => {
         expect(mapear({ oficial: true }).oficial).toBeTrue();
         expect(mapear({}).oficial).toBeNull();
     });
+
+    it('lleva la categoría de edad: `Categoria_edad` de `listado-personajes`; la ficha y la creación, como objeto', () => {
+        const service = new ListaPersonajesService({ currentUser: null } as any, {} as any, {} as any, firebaseContextMock);
+        const mapear = (raw: any) => (service as any).mapApiToPersonajeSimple({ Id: 1, Nombre: 'Ignivarax', ...raw });
+
+        expect(mapear({ Categoria_edad: 'Cría' }).categoriaEdad).toBe('Cría');
+        expect(mapear({ categoriaEdad: { idPasoEdad: 13, categoria: { Id: 3, Nombre: 'Joven' } } }).categoriaEdad).toBe('Joven');
+        expect(mapear({ CategoriaEdad: { categoria: { Id: 7, Nombre: 'Adulto maduro' } } }).categoriaEdad).toBe('Adulto maduro');
+        expect(mapear({}).categoriaEdad).toBeNull();
+    });
 });

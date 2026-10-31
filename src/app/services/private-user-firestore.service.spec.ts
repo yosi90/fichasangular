@@ -122,4 +122,16 @@ describe('PrivateUserFirestoreService', () => {
             campaignId: null, Campana: '', Trama: '', Subtrama: '', Id_region: 0, Region: { Id: 0, Nombre: '' },
         }));
     });
+
+    it('lleva la categoría de edad de la copia privada (`categoriaEdad`, una cadena); sin edad, `null`', () => {
+        const service = new PrivateUserFirestoreService(
+            { currentUser: null } as unknown as Auth,
+            {} as any,
+            { run: <T>(fn: () => T) => fn() } as FirebaseInjectionContextService,
+        );
+
+        expect((service as any).mapCharacter({ i: 7, n: 'Ignivarax', tipo: 'pnj', vd: 18, categoriaEdad: 'Adulto maduro' }, '7').categoriaEdad)
+            .toBe('Adulto maduro');
+        expect((service as any).mapCharacter({ i: 8, n: 'Brenna', tipo: 'pj', nep: 5, categoriaEdad: null }, '8').categoriaEdad).toBeNull();
+    });
 });

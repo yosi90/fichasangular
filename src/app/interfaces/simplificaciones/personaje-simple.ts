@@ -29,4 +29,6 @@ export interface PersonajeSimple {
     nep?: number | null;
     /** El VD orientativo de un PNJ (`vd`); `null` en un PJ. */
     vd?: number | null;
+    /** El nombre de su categoría de edad («Cría»; `categoriaEdad` o `Categoria_edad`); `null` si su raza no tiene edades. */
+    categoriaEdad?: string | null;
 }

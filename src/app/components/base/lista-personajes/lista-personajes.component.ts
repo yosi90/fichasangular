@@ -14,6 +14,7 @@ import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
 import { normalizarTexto, toNumberOrNull } from 'src/app/services/utils/normalizacion';
 import { esPnj, nombreTipoPersonaje, textoNivelPersonaje } from 'src/app/services/utils/tipo-personaje';
+import { razaConCategoria } from 'src/app/services/utils/razas-por-edades';
 
 type FiltroVisibilidadPersonajes = 'todos' | 'publicos' | 'privados';
 /** «Todos · Personajes jugadores · PNJ» (lienzo de los dragones jugables, tablero 4). */
@@ -216,6 +217,11 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     /** «Personaje jugador» o «PNJ». */
     textoTipo(pj: PersonajeSimple): string {
         return nombreTipoPersonaje(pj?.tipo);
+    }
+
+    /** La raza con su edad, «Dragón rojo · cría» (`categoriaEdad` del listado); sin edad, solo la raza. */
+    textoRaza(pj: PersonajeSimple): string {
+        return razaConCategoria(pj?.Raza?.Nombre, pj?.categoriaEdad);
     }
 
     esPnj(pj: PersonajeSimple): boolean {

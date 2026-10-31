@@ -65,7 +65,7 @@
               <button type="button" class="pj-nombre" (click)="CrearDetallesDe(pj.Id); $event.stopPropagation()">{{ pj.Nombre }}</button>
               <span class="pj-linea">
                 <button type="button" class="pj-enlace" *ngIf="pj.Raza?.Nombre" [attr.aria-label]="'Ver la raza ' + pj.Raza.Nombre"
-                  (click)="CrearDetallesRaza(pj.Raza.Id); $event.stopPropagation()">{{ pj.Raza.Nombre }}</button>
+                  (click)="CrearDetallesRaza(pj.Raza.Id); $event.stopPropagation()">{{ textoRaza(pj) }}</button>
                 <ng-container *ngIf="extraerClases(pj.Clases) as clases">
                   <span class="pj-separador" *ngIf="pj.Raza?.Nombre && clases.length > 0" aria-hidden="true"> · </span>
                   <ng-container *ngFor="let c of clases; let ultima = last">

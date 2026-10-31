@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import { leerTipoYNivelPersonaje } from '../utils/tipo-personaje';
+import { leerCategoriaEdadListado } from '../utils/razas-por-edades';
 import { PersonajeSimple } from '../../interfaces/simplificaciones/personaje-simple';
 import { Database, onValue, ref } from '@angular/fire/database';
 import { Auth, onAuthStateChanged } from '@angular/fire/auth';
@@ -245,6 +246,7 @@ export class ListaPersonajesService {
             Archivado: toBoolean(element?.archivado ?? element?.Archivado ?? element?.a),
             oficial: typeof (element?.oficial ?? element?.o) === 'boolean' ? (element?.oficial ?? element?.o) : null,
             ...leerTipoYNivelPersonaje(element),
+            categoriaEdad: leerCategoriaEdadListado(element),
         };
     }
 

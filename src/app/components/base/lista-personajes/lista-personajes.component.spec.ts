@@ -174,4 +174,13 @@ describe('ListaPersonajesComponent', () => {
         component.limpiarFiltros();
         expect(component.filtroTipo).toBe('todos');
     });
+
+    it('escribe la raza con su edad, «Dragón rojo · cría»; sin categoría de edad, solo la raza', () => {
+        const component = createComponent(new Subject<Campana[]>());
+        const cria = buildPersonaje({ Raza: { Id: 4, Nombre: 'Dragón rojo' } as any, categoriaEdad: 'Cría', tipo: 'pnj', vd: 4 });
+        const humano = buildPersonaje({ Raza: { Id: 1, Nombre: 'Humano' } as any, categoriaEdad: null });
+
+        expect(component.textoRaza(cria)).toBe('Dragón rojo · cría');
+        expect(component.textoRaza(humano)).toBe('Humano');
+    });
 });
