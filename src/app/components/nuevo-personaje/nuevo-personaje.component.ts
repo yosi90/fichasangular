@@ -3926,17 +3926,7 @@ export class NuevoPersonajeComponent {
             }
         }
 
-        if ((resultado.advertencias ?? []).length > 0) {
-            await Swal.fire({
-                icon: 'info',
-                title: 'Nivel aplicado con avisos',
-                html: `<div style="text-align:left;">${(resultado.advertencias ?? []).map((aviso) => `• ${aviso}`).join('<br>')}</div>`,
-                confirmButtonText: 'Continuar',
-                target: document.body,
-                heightAuto: false,
-                scrollbarPadding: false,
-            });
-        }
+        await this.mostrarAvisos('Nivel aplicado con avisos', resultado.advertencias ?? []);
 
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         if (seleccion.clase.Oficial === false) {
@@ -4876,16 +4866,7 @@ export class NuevoPersonajeComponent {
     private async abrirSesionLanzamientoRacial(): Promise<boolean> {
         const avisos = this.nuevoPSvc.iniciarSesionLanzamientoRacial(this.flujo.pasoActual);
         if (!this.flujoConjuros.activa) {
-            if (avisos.length > 0)
-                await Swal.fire({
-                    icon: 'info',
-                    title: 'Lanzamiento racial',
-                    html: `<div style="text-align:left;">${avisos.map((aviso) => `• ${aviso}`).join('<br>')}</div>`,
-                    confirmButtonText: 'Continuar',
-                    target: document.body,
-                    heightAuto: false,
-                    scrollbarPadding: false,
-                });
+            await this.mostrarAvisos('Lanzamiento racial', avisos);
             return false;
         }
         this.finalizarTrasLanzamientoRacial = true;
@@ -4895,6 +4876,21 @@ export class NuevoPersonajeComponent {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         this.sincronizarTabConPaso();
         return true;
+    }
+
+    /** Los avisos de un paso en una lista («• …») antes de seguir; sin avisos, nada. */
+    private async mostrarAvisos(titulo: string, avisos: string[]): Promise<void> {
+        if (avisos.length < 1)
+            return;
+        await Swal.fire({
+            icon: 'info',
+            title: titulo,
+            html: `<div style="text-align:left;">${avisos.map((aviso) => `• ${aviso}`).join('<br>')}</div>`,
+            confirmButtonText: 'Continuar',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
     }
 
     onRecalcularPuntosGolpe(): void {

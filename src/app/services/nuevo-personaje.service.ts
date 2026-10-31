@@ -611,6 +611,13 @@ export interface ConjurosSesionStateEntrada {
     avisos: string[];
 }
 
+/** El lanzamiento racial de la raza elegida: la clase del catálogo (si está), su nombre y su nivel a su edad. */
+interface LanzamientoRacialCreacion {
+    clase: Clase | null;
+    nombre: string;
+    nivel: number;
+}
+
 export interface ConjurosFlujoState {
     activa: boolean;
     indiceEntradaActual: number;
@@ -7667,20 +7674,24 @@ export class NuevoPersonajeService {
                 entradas.push(entrada);
         });
 
+        this.abrirSesionConjuros(entradas, avisos, 'dotes');
+        return avisos;
+    }
+
+    /** Deja abierta la sesión de conjuros con esas entradas (activa si hay alguna), que vuelve a `returnStep` al cerrarla. */
+    private abrirSesionConjuros(entradas: ConjurosSesionStateEntrada[], avisos: string[], returnStep: StepNuevoPersonaje): void {
         this.estadoFlujo.conjuros = {
             activa: entradas.length > 0,
             indiceEntradaActual: 0,
-            returnStep: 'dotes',
+            returnStep,
             entradas,
             avisos,
         };
-        return avisos;
     }
 
     /** Si la raza lanza conjuros (`Lanzamiento`, el de su edad) y aún no se eligieron los de su nivel racial. */
     hayLanzamientoRacialPendiente(): boolean {
-        const racial = this.lanzamientoRacialActual();
-        return !!racial && racial.nivel - this.nivelLanzamientoRacialAplicado >= 1;
+        return this.lanzamientoRacialPendiente() !== null;
     }
 
     /**
@@ -7690,24 +7701,25 @@ export class NuevoPersonajeService {
      */
     iniciarSesionLanzamientoRacial(returnStep: StepNuevoPersonaje): string[] {
         const { entrada, avisos } = this.aplicarLanzamientoRacialPendiente(null, 0);
-        this.estadoFlujo.conjuros = {
-            activa: !!entrada,
-            indiceEntradaActual: 0,
-            returnStep,
-            entradas: entrada ? [entrada] : [],
-            avisos: [...avisos],
-        };
+        this.abrirSesionConjuros(entrada ? [entrada] : [], [...avisos], returnStep);
         return avisos;
     }
 
     /** La clase del lanzamiento racial de la raza elegida (del catálogo) y su nivel a su edad; `null` si no lanza. */
-    private lanzamientoRacialActual(): { clase: Clase | null; nombre: string; nivel: number; } | null {
+    private lanzamientoRacialActual(): LanzamientoRacialCreacion | null {
         const lanzamiento = this.razaSeleccionada?.Lanzamiento ?? null;
         const nivel = Math.max(0, toInt(lanzamiento?.Nivel));
         if (!lanzamiento || nivel < 1)
             return null;
         const clase = this.obtenerClaseDeDesglose(lanzamiento.Clase);
         return { clase, nombre: clase?.Nombre ?? `${lanzamiento.Clase?.Nombre ?? ''}`.trim(), nivel };
+    }
+
+    /** El lanzamiento racial y los niveles suyos que aún no se aplicaron (al menos 1); `null` si no lanza o ya están todos. */
+    private lanzamientoRacialPendiente(): { racial: LanzamientoRacialCreacion; pendiente: number; } | null {
+        const racial = this.lanzamientoRacialActual();
+        const pendiente = racial ? racial.nivel - this.nivelLanzamientoRacialAplicado : 0;
+        return racial && pendiente >= 1 ? { racial, pendiente } : null;
     }
 
     /**
@@ -7719,10 +7731,10 @@ export class NuevoPersonajeService {
         claseAplicada: Clase | null,
         nivelAplicado: number
     ): { entrada: ConjurosSesionStateEntrada | null; avisos: string[]; } {
-        const racial = this.lanzamientoRacialActual();
-        const pendiente = racial ? racial.nivel - this.nivelLanzamientoRacialAplicado : 0;
-        if (!racial || pendiente < 1)
+        const pendienteRacial = this.lanzamientoRacialPendiente();
+        if (!pendienteRacial)
             return { entrada: null, avisos: [] };
+        const { racial, pendiente } = pendienteRacial;
         if (!racial.clase || !this.tieneLanzamientoPropio(racial.clase))
             return { entrada: null, avisos: [`No se encontró en el catálogo la clase del lanzamiento racial (${racial.nombre}).`] };
 
