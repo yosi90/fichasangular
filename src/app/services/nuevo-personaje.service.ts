@@ -616,6 +616,14 @@ export interface ConjurosSesionStateEntrada {
     avisos: string[];
 }
 
+/**
+ * Los ids que se pueden elegir en una entrada de conjuros: los de `elegiblesIds` y, con `conHomebrew` (la ficha ya es
+ * homebrew o pidió «También homebrew»), los de `elegiblesHomebrewIds`.
+ */
+export function idsElegiblesDeEntrada(entrada: ConjurosSesionStateEntrada | null | undefined, conHomebrew: boolean): number[] {
+    return [...(entrada?.elegiblesIds ?? []), ...(conHomebrew ? entrada?.elegiblesHomebrewIds ?? [] : [])];
+}
+
 /** El lanzamiento racial de la raza elegida: la clase del catálogo (si está), su nombre y su nivel a su edad. */
 interface LanzamientoRacialCreacion {
     clase: Clase | null;
@@ -8425,8 +8433,7 @@ export class NuevoPersonajeService {
      * homebrew que una ficha oficial no ve sin pedirlos (`elegiblesHomebrewIds`).
      */
     private obtenerConjurosElegiblesParaEntrada(entrada: ConjurosSesionStateEntrada, incluirHomebrew = false): Conjuro[] {
-        const conHomebrew = incluirHomebrew || this.personajeCreacion?.Oficial === false;
-        return [...(entrada?.elegiblesIds ?? []), ...(conHomebrew ? entrada?.elegiblesHomebrewIds ?? [] : [])]
+        return idsElegiblesDeEntrada(entrada, incluirHomebrew || this.personajeCreacion?.Oficial === false)
             .map((id) => this.obtenerConjuroCatalogoPorId(id))
             .filter((conjuro): conjuro is Conjuro => !!conjuro);
     }

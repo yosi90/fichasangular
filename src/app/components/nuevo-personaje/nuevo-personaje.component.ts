@@ -70,6 +70,7 @@ import {
     DoteSelectorCandidato,
     EspecialidadMagicaPendiente,
     EspecialidadMagicaSeleccion,
+    idsElegiblesDeEntrada,
     NuevoPersonajeDraftResumen,
     NuevoPersonajeService,
     ResultadoCalculoVidaFinal,
@@ -109,7 +110,7 @@ import { VentajaService } from 'src/app/services/ventaja.service';
 import { PlantillaEvaluacionResultado, esPlantillaLicantropa, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { incumpleAlineamientoDeidad } from 'src/app/services/utils/alineamiento-deidad';
-import { motivoHomebrew, motivosHomebrewPersonaje, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
+import { MOTIVO_VENTAJAS_HOMEBREW, motivoHomebrew, motivosHomebrewPersonaje, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
 import { GrupoRacialesOpcionales, SeleccionRacialesOpcionales, agruparRacialesPorOpcional, getClaveSeleccionRacial } from 'src/app/services/utils/racial-opcionales';
 import { RacialEvaluacionResultado, evaluarRacialParaSeleccion } from 'src/app/services/utils/racial-prerrequisitos';
@@ -1444,7 +1445,7 @@ export class NuevoPersonajeComponent {
         const entrada = this.entradaConjurosActual;
         if (!entrada)
             return [];
-        const visibles = new Set([...(entrada.elegiblesIds ?? []), ...(this.incluirHomebrewConjurosEfectivo ? entrada.elegiblesHomebrewIds ?? [] : [])]);
+        const visibles = new Set(idsElegiblesDeEntrada(entrada, this.incluirHomebrewConjurosEfectivo));
         return Object.entries(entrada.nivelesPorConjuro ?? {})
             .filter(([id]) => visibles.has(Number(id)))
             .map(([, nivel]) => Number(nivel))
@@ -3613,16 +3614,25 @@ export class NuevoPersonajeComponent {
         this.recalcularPlantillasVisibles();
     }
 
-    /** Elige una plantilla; una homebrew en una ficha oficial, tras confirmarlo (`confirmada`: ya se preguntó). */
-    seleccionarPlantilla(plantilla: Plantilla, confirmada = false): Promise<boolean> {
+    /**
+     * Elige una plantilla; una homebrew en una ficha oficial, tras confirmarlo. `alElegir` se hace justo antes de añadirla,
+     * solo si se elige (al cancelar, nada).
+     */
+    seleccionarPlantilla(plantilla: Plantilla, alElegir: () => void = () => undefined): Promise<boolean> {
         return this.confirmarSiVuelveHomebrew(`Elegir ${plantilla?.Nombre ?? 'la plantilla'}`, [motivoHomebrew('Plantilla', plantilla)], () => {
-            const agregado = this.nuevoPSvc.agregarPlantillaSeleccion(plantilla);
-            if (!agregado)
-                return;
-            this.recalcularPlantillasVisibles();
-            this.recalcularClasesVisibles();
-            this.recalcularOficialidad();
-        }, confirmada || this.personajeNoOficial);
+            alElegir();
+            this.aplicarPlantilla(plantilla);
+        });
+    }
+
+    /** Añade la plantilla ya confirmada y recalcula lo que depende de ella. */
+    private aplicarPlantilla(plantilla: Plantilla): void {
+        const agregado = this.nuevoPSvc.agregarPlantillaSeleccion(plantilla);
+        if (!agregado)
+            return;
+        this.recalcularPlantillasVisibles();
+        this.recalcularClasesVisibles();
+        this.recalcularOficialidad();
     }
 
     /**
@@ -3645,7 +3655,7 @@ export class NuevoPersonajeComponent {
         await this.confirmarSiVuelveHomebrew(`Elegir ${item.plantilla.Nombre} sin cumplir sus requisitos`, motivos, () => {
             this.plantillasConRequisitosSaltados.add(Number(item.plantilla.Id));
             this.plantillaMirada = null;
-            this.seleccionarPlantilla(item.plantilla, true);
+            this.aplicarPlantilla(item.plantilla);
         });
     }
 
@@ -3719,11 +3729,7 @@ export class NuevoPersonajeComponent {
     elegirPlantillaMirada(): void {
         if (!this.plantillaMirada || !this.plantillaMiradaElegible)
             return;
-        const plantilla = this.plantillaMirada;
-        void this.confirmarSiVuelveHomebrew(`Elegir ${plantilla.Nombre}`, [motivoHomebrew('Plantilla', plantilla)], () => {
-            this.plantillaMirada = null;
-            void this.seleccionarPlantilla(plantilla, true);
-        });
+        void this.seleccionarPlantilla(this.plantillaMirada, () => { this.plantillaMirada = null; });
     }
 
     /** La nota del pie del paso de plantillas. */
@@ -4078,8 +4084,7 @@ export class NuevoPersonajeComponent {
             }
         }
 
-        if (soloEscuelaFija && !await this.confirmarSiVuelveHomebrew(`Especializarse en ${escuelaFija?.Nombre ?? 'su escuela'}`,
-            [motivoHomebrew('Escuela de especialista', escuelaFija)], undefined, this.personajeNoOficial || clase?.Oficial === false))
+        if (soloEscuelaFija && !await this.confirmarEscuelaEspecialista(escuelaFija, clase))
             return false;
         const seleccion = soloEscuelaFija
             ? { arcana: { especializar: true, escuelaEspecialistaId: toPositiveInt(escuelaFija?.Id) ?? null, escuelasProhibidasIds: [] } }
@@ -6021,16 +6026,22 @@ export class NuevoPersonajeComponent {
         return;
     }
 
-    /**
-     * Antes de cerrar el selector: especializarse en una escuela homebrew (la Ingeniería mágica) vuelve homebrew la ficha
-     * y se confirma (prohibirla, no). Si la clase que se aplica ya es homebrew (el magiingeniero), ya se confirmó con ella.
-     */
+    /** Antes de cerrar el selector: la escuela de especialista elegida, con `confirmarEscuelaEspecialista`. */
     onConfirmarEspecialidadMagica(seleccion: SelectorEspecialidadMagicaConfirmacion): Promise<boolean> {
         const idEscuela = seleccion?.arcana?.especializar ? Number(seleccion.arcana.escuelaEspecialistaId ?? 0) : 0;
         const escuela = idEscuela > 0 ? (this.catalogoEscuelas ?? []).find((item) => Number(item?.Id) === idEscuela) ?? null : null;
-        const yaHomebrew = this.personajeNoOficial || this.claseEspecialidadEnCurso?.Oficial === false;
-        return this.confirmarSiVuelveHomebrew(`Especializarse en ${escuela?.Nombre ?? 'esta escuela'}`, [motivoHomebrew('Escuela de especialista', escuela)],
-            () => this.cerrarSelectorEspecialidadMagicaContexto(seleccion ?? null), yaHomebrew);
+        return this.confirmarEscuelaEspecialista(escuela, this.claseEspecialidadEnCurso,
+            () => this.cerrarSelectorEspecialidadMagicaContexto(seleccion ?? null));
+    }
+
+    /**
+     * Especializarse en una escuela homebrew (la Ingeniería mágica) vuelve homebrew la ficha y se confirma (prohibirla,
+     * no), al elegirla en el selector o al aplicar la escuela fija de la clase. Si la clase que se aplica ya es homebrew
+     * (el magiingeniero), ya se confirmó con ella.
+     */
+    private confirmarEscuelaEspecialista(escuela: EscuelaConjuros | null, clase: Clase | null, aplicar?: () => void): Promise<boolean> {
+        return this.confirmarSiVuelveHomebrew(`Especializarse en ${escuela?.Nombre ?? 'esta escuela'}`,
+            [motivoHomebrew('Escuela de especialista', escuela)], aplicar, this.personajeNoOficial || clase?.Oficial === false);
     }
 
     private solicitarEspecialidadMagicaClase(
@@ -8277,9 +8288,6 @@ export class NuevoPersonajeComponent {
 /** Un PJ en una edad sin ajuste: solo lo guarda el máster de su campaña saltándose sus reglas (`overrideReglasCampana`). */
 const MOTIVO_EDAD_SIN_AJUSTE_CAMPANA = 'Un personaje jugador en una edad sin ajuste de nivel solo lo guarda el máster de su campaña, saltándose sus reglas.';
 const AVISO_EDAD_SIN_AJUSTE_MASTER = `${MOTIVO_EDAD_SIN_AJUSTE_CAMPANA} En Básicos solo podrás elegir una campaña que dirijas.`;
-/** El motivo de homebrew de las ventajas y desventajas (un sistema propio, decisión del 2026-10-25). */
-const MOTIVO_VENTAJAS_HOMEBREW = 'Ventajas y desventajas (homebrew)';
-
 /** El aviso de siempre cuando una elección se salta una regla del sistema y vuelve homebrew el personaje. */
 const AVISO_HOMEBREW_REGLA_SALTADA = '<strong>Esta elección está saltándose una regla importante del sistema. El personaje quedará marcado como Homebrew y será una rareza excepcional en el mundo.</strong>';
 

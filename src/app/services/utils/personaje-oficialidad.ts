@@ -25,6 +25,9 @@ export interface ContextoOficialidad {
     conjurosEnSesion?: ConOficial[];
 }
 
+/** El motivo de homebrew de las ventajas y desventajas (un sistema propio, decisión del propietario del 2026-10-25). */
+export const MOTIVO_VENTAJAS_HOMEBREW = 'Ventajas y desventajas (homebrew)';
+
 function noOficiales(tipo: string, elementos: (ConOficial | null | undefined)[] | null | undefined): string[] {
     return (elementos ?? [])
         .filter((elemento): elemento is ConOficial => !!elemento && elemento.Oficial === false)
@@ -50,7 +53,7 @@ export function motivosHomebrewPersonaje(personaje: Personaje | null | undefined
         ...noOficiales('Escuela de especialista', [contexto.escuelaEspecialista]),
         ...noOficiales('Familiar', personaje?.Familiares as ConOficial[]),
         ...noOficiales('Compañero', personaje?.Companeros as ConOficial[]),
-        ...(contexto.tieneVentajas ? ['Ventajas y desventajas (homebrew)'] : []),
+        ...(contexto.tieneVentajas ? [MOTIVO_VENTAJAS_HOMEBREW] : []),
     ];
 }
 
