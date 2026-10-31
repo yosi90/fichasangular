@@ -22,6 +22,7 @@ import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas
 import { opcionesDeExtrasDeDote } from 'src/app/services/utils/dote-mapper';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
+import { CAMPOS_VELOCIDAD } from 'src/app/services/utils/movimientos-mapper';
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
 import {
     CAMPOS_PLANTILLA,
@@ -107,6 +108,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
     readonly pasos = PASOS_PLANTILLA;
     pasoActual = 0;
     readonly caracteristicas = CARACTERISTICAS_PLANTILLA;
+    readonly velocidades = CAMPOS_VELOCIDAD;
     readonly sinExtraHabilidad = ID_EXTRA_HABILIDAD_SIN_EXTRA;
     readonly tiposPrerrequisito = getPrerequisiteTypeOptions((tipo) => TIPOS_PRERREQUISITO_PLANTILLA.includes(tipo));
 

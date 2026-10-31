@@ -38,6 +38,7 @@ import {
     valorDesdeMonstruo,
     valorMonstruoNuevo,
 } from 'src/app/services/utils/monstruo-formulario';
+import { CAMPOS_VELOCIDAD } from 'src/app/services/utils/movimientos-mapper';
 import { MONSTRUO } from 'src/app/services/utils/nombres-de-catalogo';
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
@@ -100,6 +101,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
     pasoActual = 0;
     readonly caracteristicas = CARACTERISTICAS_MONSTRUO;
     readonly sinExtraHabilidad = ID_EXTRA_HABILIDAD_SIN_EXTRA;
+    readonly velocidades = CAMPOS_VELOCIDAD;
 
     readonly form: FormGroup<Record<keyof MonstruoFormularioValor, FormControl>>;
     listas: ListasMonstruo = listasMonstruoVacias();
@@ -186,7 +188,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
         controles.cantidad_dg.setValidators([Validators.required, Validators.pattern(PATRON_DG)]);
         controles.espacio.setValidators([enMedios]);
         CARACTERISTICAS_MONSTRUO.forEach((c) => controles[c.campo].setValidators([entero, Validators.min(0)]));
-        (['pagina', 'suma_dg', 'correr', 'nadar', 'volar', 'trepar', 'excavar', 'alcance'] as const)
+        (['pagina', 'suma_dg', ...CAMPOS_VELOCIDAD, 'alcance'] as const)
             .forEach((campo) => controles[campo].addValidators(Validators.min(0)));
         Object.values(controles).forEach((control) => control.updateValueAndValidity({ emitEvent: false }));
         this.form = this.fb.group(controles);
