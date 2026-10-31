@@ -177,26 +177,26 @@ describe('NuevaEspecialComponent', () => {
         expect(component.catalogContext.getCatalog('actitud_requerido')).toEqual([{ id: 4, nombre: 'Bueno' }, { id: 5, nombre: 'Maligno' }]);
     });
 
-    it('crea habilidad custom desde el modal y la selecciona', async () => {
+    it('selecciona la habilidad custom que crea la ventana', () => {
         component.abrirCrearCustom();
-        component.customForm.patchValue({ nombre: 'Pilotar dirigible', id_caracteristica: 4 });
+        expect(component.customModalAbierto).toBeTrue();
+        expect(component.customModalModo).toBe('crear');
 
-        await component.guardarCustomModal();
+        component.onCustomGuardada({ Id_habilidad: 13, Nombre: 'Pilotar dirigible', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] });
 
-        expect(habilidadSvc.crearHabilidadCustom).toHaveBeenCalledWith({ nombre: 'Pilotar dirigible', id_caracteristica: 4 });
         expect(component.habilidadRows.some((row) => row.tipo === 'custom' && row.id_habilidad === 13)).toBeTrue();
         expect(component.customModalAbierto).toBeFalse();
     });
 
-    it('edita habilidad custom seleccionada desde su fila', async () => {
+    it('abre la ventana con la habilidad custom de su fila y recoge el cambio', () => {
         const row = { uid: 'h1', tipo: 'custom' as const, id_habilidad: 12, id_extra: -1, rangos: 1, busqueda: 'Pilotar aeronave', extraBusqueda: '' };
         component.habilidadRows = [row];
         component.abrirEditarCustom(row);
-        component.customForm.patchValue({ nombre: 'Pilotar aeronave mayor', id_caracteristica: 4 });
+        expect(component.customModalModo).toBe('editar');
+        expect(component.customModalHabilidad?.Id_habilidad).toBe(12);
 
-        await component.guardarCustomModal();
+        component.onCustomGuardada({ Id_habilidad: 12, Nombre: 'Pilotar aeronave mayor', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] });
 
-        expect(habilidadSvc.actualizarHabilidadCustom).toHaveBeenCalledWith(12, { nombre: 'Pilotar aeronave mayor', id_caracteristica: 4 });
         expect(component.habilidadRows[0].busqueda).toBe('Pilotar aeronave mayor');
     });
 });

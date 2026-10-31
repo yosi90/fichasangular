@@ -1,7 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
-import Swal from 'sweetalert2';
 import {
     EspecialClaseDetalle,
     EspecialClaseMutationHabilidad,
@@ -17,7 +16,6 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserService } from 'src/app/services/user.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
-import { mensajeDeError } from 'src/app/services/utils/error-api';
 import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { PrerequisiteCatalogContext, PrerequisiteCatalogItem, PrerequisiteRowModel, PrerequisiteType } from '../prerrequisito-editor/prerrequisito-editor.models';
 import { getPrerequisiteTypeOptions } from '../prerrequisito-editor/prerrequisito-editor.registry';
@@ -99,7 +97,6 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
     customModalModo: 'crear' | 'editar' = 'crear';
     customModalRowUid = '';
     customModalHabilidad: HabilidadBasicaDetalle | null = null;
-    customModalGuardando = false;
     /** Los prerrequisitos de actitud, con el editor compartido. */
     readonly tiposPrerrequisito = getPrerequisiteTypeOptions((tipo) => TIPOS_PRERREQUISITO_ESPECIAL.includes(tipo));
     prerrequisitosTipos: PrerequisiteType[] = [];
@@ -153,11 +150,6 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
         da_armadura_natural: [false],
         da_rd: [false],
         da_velocidad: [false],
-    });
-
-    readonly customForm = this.fb.group({
-        nombre: ['', [Validators.required, Validators.minLength(2), Validators.maxLength(80)]],
-        id_caracteristica: [4, [Validators.required, Validators.min(1)]],
     });
 
     constructor(
@@ -329,7 +321,6 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
         this.customModalModo = 'crear';
         this.customModalRowUid = '';
         this.customModalHabilidad = null;
-        this.customForm.reset({ nombre: '', id_caracteristica: 4 });
         this.customModalAbierto = true;
     }
 
@@ -342,16 +333,10 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
         this.customModalModo = 'editar';
         this.customModalRowUid = row.uid;
         this.customModalHabilidad = habilidad;
-        this.customForm.reset({
-            nombre: habilidad.Nombre,
-            id_caracteristica: habilidad.Id_caracteristica > 0 ? habilidad.Id_caracteristica : 4,
-        });
         this.customModalAbierto = true;
     }
 
     cerrarCustomModal(): void {
-        if (this.customModalGuardando)
-            return;
         this.customModalAbierto = false;
         this.customModalRowUid = '';
         this.customModalHabilidad = null;
@@ -363,34 +348,6 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
         this.customModalAbierto = false;
         this.customModalRowUid = '';
         this.customModalHabilidad = null;
-    }
-
-    async guardarCustomModal(): Promise<void> {
-        this.customForm.markAllAsTouched();
-        if (this.customForm.invalid)
-            return;
-
-        this.customModalGuardando = true;
-        try {
-            const raw = this.customForm.getRawValue();
-            const payload = {
-                nombre: this.texto(raw.nombre),
-                id_caracteristica: this.entero(raw.id_caracteristica),
-            };
-            const response = this.customModalModo === 'editar' && this.customModalHabilidad
-                ? await this.habilidadSvc.actualizarHabilidadCustom(this.customModalHabilidad.Id_habilidad, payload)
-                : await this.habilidadSvc.crearHabilidadCustom(payload);
-            this.onCustomGuardada(response.habilidad);
-        } catch (error: any) {
-            await Swal.fire({
-                icon: 'error',
-                title: this.customModalModo === 'editar' ? 'No se pudo actualizar la habilidad' : 'No se pudo crear la habilidad',
-                text: mensajeDeError(error, 'Error no identificado'),
-                showConfirmButton: true,
-            });
-        } finally {
-            this.customModalGuardando = false;
-        }
     }
 
     confirmarSalidaSiHayCambios(): Promise<boolean> {
