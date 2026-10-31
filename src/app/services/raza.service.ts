@@ -16,11 +16,11 @@ import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
-import { ElementoDeCatalogo, errorDeCatalogo } from 'src/app/services/utils/error-catalogo';
+import { errorDeCatalogo } from 'src/app/services/utils/error-catalogo';
+import { RAZA } from 'src/app/services/utils/nombres-de-catalogo';
 import { leerComodin } from 'src/app/services/utils/comodin';
 import { errorDePerfil } from 'src/app/services/utils/error-api';
 
-const RAZA: ElementoDeCatalogo = { singular: 'raza', plural: 'razas', femenino: true };
 
 function parseIdExtra(value: any): number {
     if (value === undefined || value === null || `${value}`.trim() === '')

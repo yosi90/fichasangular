@@ -6,7 +6,10 @@ import { normalizarTexto } from './normalizacion';
 /** Lo que se intentaba hacer con el elemento del catálogo. */
 export type AccionDeCatalogo = 'crear' | 'actualizar';
 
-/** Cómo se nombra un elemento del catálogo en las frases de error: «la raza», «las razas», «el especial»… */
+/**
+ * Cómo se nombra un elemento del catálogo en las frases de error y en los avisos de su inserción: «la raza», «las razas»,
+ * «el especial»… Los de cada catálogo están en `nombres-de-catalogo.ts`.
+ */
 export interface ElementoDeCatalogo {
     singular: string;
     plural: string;

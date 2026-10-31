@@ -18,10 +18,10 @@ import { FirebaseInjectionContextService } from "./firebase-injection-context.se
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { toBoolean, toInt, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
-import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { HABILIDAD } from "src/app/services/utils/nombres-de-catalogo";
 import { porNombre } from "src/app/services/utils/orden-texto";
 
-const HABILIDAD: ElementoDeCatalogo = { singular: "habilidad", plural: "habilidades", femenino: true };
 
 function toArray<T = any>(value: any): T[] {
     if (Array.isArray(value))

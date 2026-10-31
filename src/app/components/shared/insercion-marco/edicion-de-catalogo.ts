@@ -1,9 +1,11 @@
 import { Observable, take, takeUntil } from 'rxjs';
-import { NombreDeCatalogo, avisarErrorAlCargar, delCatalogo } from './avisos-insercion';
+import { ElementoDeCatalogo } from 'src/app/services/utils/error-catalogo';
+import { avisarErrorAlCargar, delCatalogo } from './avisos-insercion';
 import { ModoInsercion, confirmarCierreConCambios } from './insercion-marco.component';
 
 export interface OpcionesEdicionDeCatalogo<T> {
-    nombre: NombreDeCatalogo;
+    /** El nombre del catálogo (`services/utils/nombres-de-catalogo.ts`). */
+    nombre: ElementoDeCatalogo;
     /** El `modo` del formulario (`crear` o `editar`), leído cada vez. */
     modo: () => ModoInsercion;
     /** El id de la entrada que se modifica (el `@Input` del formulario), leído cada vez. */

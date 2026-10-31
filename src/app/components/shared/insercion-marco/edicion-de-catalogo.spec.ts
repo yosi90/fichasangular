@@ -1,12 +1,10 @@
 import { FormControl } from '@angular/forms';
 import { Subject, of, throwError } from 'rxjs';
 import Swal from 'sweetalert2';
-import { NombreDeCatalogo, avisarErrorAlGuardar, avisarGuardado, delCatalogo } from './avisos-insercion';
+import { CLASE, IDIOMA } from 'src/app/services/utils/nombres-de-catalogo';
+import { avisarErrorAlGuardar, avisarGuardado, delCatalogo } from './avisos-insercion';
 import { EdicionDeCatalogo } from './edicion-de-catalogo';
 import { alternarControl, quitarFila } from './filas-repetibles';
-
-const IDIOMA: NombreDeCatalogo = { singular: 'idioma', plural: 'idiomas', femenino: false };
-const CLASE: NombreDeCatalogo = { singular: 'clase', plural: 'clases', femenino: true };
 
 describe('EdicionDeCatalogo (el modo «Modificar» común de las inserciones)', () => {
     let modo: 'crear' | 'editar';

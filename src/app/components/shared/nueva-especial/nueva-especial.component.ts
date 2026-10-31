@@ -23,15 +23,14 @@ import { PrerequisiteCatalogContext, PrerequisiteCatalogItem, PrerequisiteRowMod
 import { getPrerequisiteTypeOptions } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { filaNuevaDePrerrequisito, filasDesdePrerrequisitos, prerrequisitosDesdeFilas, tiposConFilas } from 'src/app/services/utils/plantilla-formulario';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
-import { NombreDeCatalogo, avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { ESPECIAL } from 'src/app/services/utils/nombres-de-catalogo';
 import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { alternarControl, quitarFila } from '../insercion-marco/filas-repetibles';
 
 /** Los prerrequisitos que admite un especial: con qué actitud se puede elegir (la senda de una clase, por su alineamiento). */
 const TIPOS_PRERREQUISITO_ESPECIAL: readonly PrerequisiteType[] = ['actitud_requerido', 'actitud_prohibido'];
-
-const ESPECIAL: NombreDeCatalogo = { singular: 'especial', plural: 'especiales', femenino: false };
 
 interface NombreIdItem {
     Id: number;

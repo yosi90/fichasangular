@@ -6,13 +6,13 @@ import { Observable, firstValueFrom, map } from "rxjs";
 import { environment } from "src/environments/environment";
 import { Plantilla, PlantillaCreateRequest, PlantillaMutacionResponse } from "../interfaces/plantilla";
 import { cabeceraApiConFirebase } from "./platform-session.service";
-import { ElementoDeCatalogo, errorDeCatalogo } from "./utils/error-catalogo";
+import { errorDeCatalogo } from "./utils/error-catalogo";
+import { PLANTILLA } from "./utils/nombres-de-catalogo";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizePlantilla, normalizePlantillaApi } from "./utils/plantilla-mapper";
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
-const PLANTILLA: ElementoDeCatalogo = { singular: "plantilla", plural: "plantillas", femenino: true };
 
 function hasValidId(raw: any): boolean {
     return toNumber(raw?.Id) > 0;

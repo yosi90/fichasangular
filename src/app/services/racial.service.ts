@@ -18,10 +18,10 @@ import {
 } from "../interfaces/raciales-api";
 import { normalizeRacial, normalizeRaciales } from "./utils/racial-mapper";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { RACIAL } from "src/app/services/utils/nombres-de-catalogo";
 import { porNombre } from "src/app/services/utils/orden-texto";
 
-const RACIAL: ElementoDeCatalogo = { singular: "racial", plural: "raciales", femenino: false };
 
 function sortRaciales(raciales: RacialDetalle[]): RacialDetalle[] {
     return [...raciales]

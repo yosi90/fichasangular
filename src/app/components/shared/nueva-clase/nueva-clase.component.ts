@@ -2,7 +2,8 @@ import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, S
 import { FormBuilder, Validators } from '@angular/forms';
 import { Subject, take, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
-import { NombreDeCatalogo, avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { CLASE } from 'src/app/services/utils/nombres-de-catalogo';
 import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { alternarControl } from '../insercion-marco/filas-repetibles';
@@ -130,8 +131,6 @@ interface ClaseNivelEditor {
 }
 
 type PrerrequisitoEditorItem = PrerequisiteRowModel;
-
-const CLASE: NombreDeCatalogo = { singular: 'clase', plural: 'clases', femenino: true };
 
 @Component({
     selector: 'app-nueva-clase',

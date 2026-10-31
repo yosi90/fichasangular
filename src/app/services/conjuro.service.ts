@@ -10,9 +10,9 @@ import { ConjuroCreateApiResponse, ConjuroCreateRequest, ConjuroCreateResponse }
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeConjuroApi, normalizeConjuroLegacy } from "./utils/conjuro-mapper";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { CONJURO } from "src/app/services/utils/nombres-de-catalogo";
 
-const CONJURO: ElementoDeCatalogo = { singular: "conjuro", plural: "conjuros", femenino: false };
 
 @Injectable({
     providedIn: 'root'

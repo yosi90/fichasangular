@@ -10,9 +10,9 @@ import { environment } from "src/environments/environment";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeDoteApi, normalizeDoteLegacy } from "./utils/dote-mapper";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { DOTE } from "src/app/services/utils/nombres-de-catalogo";
 
-const DOTE: ElementoDeCatalogo = { singular: "dote", plural: "dotes", femenino: true };
 
 @Injectable({
     providedIn: "root"

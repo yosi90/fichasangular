@@ -49,7 +49,8 @@ import {
 } from 'src/app/services/utils/plantilla-formulario';
 import { GrupoPrerrequisitos, agruparPrerrequisitos, nombreTipoPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 import { ModoInsercion, confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
-import { NombreDeCatalogo, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { PLANTILLA } from 'src/app/services/utils/nombres-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { ErrorDeCampo, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { alternarControl } from '../insercion-marco/filas-repetibles';
@@ -66,8 +67,6 @@ import {
     getPrerequisiteTypeOptions,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
-
-const PLANTILLA: NombreDeCatalogo = { singular: 'plantilla', plural: 'plantillas', femenino: true };
 
 /** Las listas de rasgos del paso 3 (las tarjetas). */
 export type ListaRasgos = 'raciales' | 'ataquesEspeciales' | 'sortilegas' | 'dotes' | 'habilidades' | 'subtipos';

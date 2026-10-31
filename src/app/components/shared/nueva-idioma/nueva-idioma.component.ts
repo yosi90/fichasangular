@@ -1,7 +1,8 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
-import { NombreDeCatalogo, avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { IDIOMA } from 'src/app/services/utils/nombres-de-catalogo';
 import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { alternarControl } from '../insercion-marco/filas-repetibles';
@@ -9,8 +10,6 @@ import { IdiomaCreateRequest, IdiomaDetalle, IdiomaUpdateRequest } from 'src/app
 import { IdiomaService } from 'src/app/services/idioma.service';
 import { UserService } from 'src/app/services/user.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
-
-const IDIOMA: NombreDeCatalogo = { singular: 'idioma', plural: 'idiomas', femenino: false };
 
 @Component({
     selector: 'app-nueva-idioma',

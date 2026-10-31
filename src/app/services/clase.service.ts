@@ -25,12 +25,12 @@ import { cabeceraApiConFirebase } from './platform-session.service';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
-import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { CLASE } from "src/app/services/utils/nombres-de-catalogo";
 import { leerComodin } from "src/app/services/utils/comodin";
 import { normalizarClaseMoldeado, normalizarHabilidadesPorAlineamiento } from "src/app/services/utils/incarnum-mapper";
 import { CLAVES_PRERREQUISITOS_INCARNUM } from "src/app/services/utils/incarnum";
 
-const CLASE: ElementoDeCatalogo = { singular: "clase", plural: "clases", femenino: true };
 
 /** Los tipos de prerrequisito de las clases (`Prerrequisitos` de la API y de sus escrituras). */
 export const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [

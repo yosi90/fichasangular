@@ -15,9 +15,9 @@ import { FirebaseInjectionContextService } from "./firebase-injection-context.se
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { escucharRtdb, listaRtdb } from './catalogo-api';
-import { ElementoDeCatalogo, errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { IDIOMA } from "src/app/services/utils/nombres-de-catalogo";
 
-const IDIOMA: ElementoDeCatalogo = { singular: "idioma", plural: "idiomas", femenino: false };
 
 export function normalizeIdioma(raw: any): IdiomaDetalle {
     return {

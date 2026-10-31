@@ -2,7 +2,8 @@ import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, S
 import { FormBuilder, Validators } from '@angular/forms';
 import { Subject, firstValueFrom, take, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
-import { NombreDeCatalogo, avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { RACIAL } from 'src/app/services/utils/nombres-de-catalogo';
 import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { alternarControl, quitarFila } from '../insercion-marco/filas-repetibles';
@@ -119,8 +120,6 @@ interface AtaqueRow {
     uid: string;
     descripcion: string;
 }
-
-const RACIAL: NombreDeCatalogo = { singular: 'racial', plural: 'raciales', femenino: false };
 
 @Component({
     selector: 'app-nueva-racial',

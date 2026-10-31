@@ -1,29 +1,18 @@
 import Swal from 'sweetalert2';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
+import { ElementoDeCatalogo } from 'src/app/services/utils/error-catalogo';
 
-/**
- * Cómo se nombra un elemento del catálogo en los textos de su inserción: «el idioma», «la clase», «los especiales»…
- * Lo usan los avisos de abajo y el modo «Modificar» (`EdicionDeCatalogo`).
- */
-export interface NombreDeCatalogo {
-    /** En minúscula: «idioma», «clase», «racial». */
-    singular: string;
-    /** En minúscula: «idiomas», «clases», «raciales». */
-    plural: string;
-    femenino: boolean;
-}
-
-/** «Idioma», «Clase». */
-export function nombreConMayuscula(nombre: NombreDeCatalogo): string {
+/** «Idioma», «Clase» (el nombre de cada catálogo está en `services/utils/nombres-de-catalogo.ts`). */
+export function nombreConMayuscula(nombre: ElementoDeCatalogo): string {
     return nombre.singular.charAt(0).toUpperCase() + nombre.singular.slice(1);
 }
 
 /** «del idioma», «de la clase»: lo que completa «perderás los cambios …». */
-export function delCatalogo(nombre: NombreDeCatalogo): string {
+export function delCatalogo(nombre: ElementoDeCatalogo): string {
     return `${nombre.femenino ? 'de la' : 'del'} ${nombre.singular}`;
 }
 
-function articulo(nombre: NombreDeCatalogo): string {
+function articulo(nombre: ElementoDeCatalogo): string {
     return nombre.femenino ? 'la' : 'el';
 }
 
@@ -38,7 +27,7 @@ export function avisarSinPermisos(mensaje: string): Promise<unknown> {
 }
 
 /** Tras guardar: «Idioma creado» o «Clase actualizada», con el `message` de la API. */
-export function avisarGuardado(nombre: NombreDeCatalogo, editando: boolean, mensaje: string | null | undefined): Promise<unknown> {
+export function avisarGuardado(nombre: ElementoDeCatalogo, editando: boolean, mensaje: string | null | undefined): Promise<unknown> {
     const a = nombre.femenino ? 'a' : 'o';
     return Swal.fire({
         icon: 'success',
@@ -55,7 +44,7 @@ export function avisarGuardado(nombre: NombreDeCatalogo, editando: boolean, mens
  * Si falla el alta o la edición: «No se pudo crear el idioma» con el texto del error. Los servicios de catálogo ya lo
  * dan hecho con `errorDeCatalogo` (la frase de siempre y el `error` de la API, leído con `leerErrorDeApi`).
  */
-export function avisarErrorAlGuardar(nombre: NombreDeCatalogo, editando: boolean, error: unknown): Promise<unknown> {
+export function avisarErrorAlGuardar(nombre: ElementoDeCatalogo, editando: boolean, error: unknown): Promise<unknown> {
     return Swal.fire({
         icon: 'error',
         title: `No se pudo ${editando ? 'actualizar' : 'crear'} ${articulo(nombre)} ${nombre.singular}`,
@@ -65,7 +54,7 @@ export function avisarErrorAlGuardar(nombre: NombreDeCatalogo, editando: boolean
 }
 
 /** Si no se puede traer la entrada que se va a modificar: «No se pudo cargar la clase». */
-export function avisarErrorAlCargar(nombre: NombreDeCatalogo, error: unknown): Promise<unknown> {
+export function avisarErrorAlCargar(nombre: ElementoDeCatalogo, error: unknown): Promise<unknown> {
     return Swal.fire({
         icon: 'error',
         title: `No se pudo cargar ${articulo(nombre)} ${nombre.singular}`,
