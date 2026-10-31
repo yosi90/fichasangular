@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { UserService } from 'src/app/services/user.service';
-import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { ICONOS_ROL, TipoRol, tipoRolDeClase } from 'src/app/services/utils/iconos-rol';
 import { DatoFicha, EtiquetaFicha, FilaMoldeado, datoAlineamiento, datosMoldeadoClase, datosVisibles, filasMoldeado, textoBonoCapacidad, unirTipo } from 'src/app/components/detalles/ficha';
 import { NombreTraducible } from 'src/app/interfaces/incarnum';
@@ -203,7 +203,7 @@ export class DetallesClaseComponent {
 
     /** Solo con permiso: el de crear clases, que es el que pide `PUT /clases/<id>` (`permisos-catalogo.ts`). */
     get puedeModificar(): boolean {
-        return this.modificar.observed && puedeGestionarCatalogo(this.userSvc, 'clases');
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'clases');
     }
 
     abrirDetalleManual() {

@@ -5,11 +5,9 @@
         [manual]="claseData.Manual"
         [oficial]="claseData.Oficial"
         [etiquetas]="etiquetas"
-        (abrirManual)="abrirDetalleManual()">
-        <button mat-stroked-button type="button" *ngIf="puedeModificar" (click)="modificar.emit(claseData)">
-            <mat-icon>edit</mat-icon>
-            Modificar
-        </button>
+        [modificable]="puedeModificar"
+        (abrirManual)="abrirDetalleManual()"
+        (modificar)="modificar.emit(claseData)">
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" titulo="Datos de la clase"></app-ficha-datos>
