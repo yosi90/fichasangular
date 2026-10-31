@@ -73,6 +73,7 @@ import {
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
 interface CrearRazaEmitPayload {
@@ -717,8 +718,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                         .filter((row) => this.numero(row.id_habilidad) > 0)
                         .map((row) => {
                             const idExtra = this.getIdExtraHabilidadBase(row);
-                            // -1: sin extra (lo que guarda la API si no se manda); una fila cargada así se queda así.
-                            const enviarExtra = this.numero(row.id_extra) >= 0
+                            // Sin extra (-1, lo que guarda la API si no se manda): una fila cargada así se queda así.
+                            const enviarExtra = this.numero(row.id_extra) > ID_EXTRA_HABILIDAD_SIN_EXTRA
                                 && this.habilidadBaseSoportaExtra(row)
                                 && this.esExtraHabilidadBaseValido(row, idExtra);
                             return {
@@ -2508,10 +2509,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             ...this.crearHabilidadBaseRow(),
             id_habilidad: this.numero(habilidad.Id_habilidad),
             cantidad: this.numero(habilidad.Cantidad),
-            id_extra: this.numero(habilidad.Id_extra ?? -1),
+            id_extra: this.numero(habilidad.Id_extra ?? ID_EXTRA_HABILIDAD_SIN_EXTRA),
             varios: this.textoTecnico(habilidad.Varios),
             busqueda: this.texto(habilidad.Habilidad),
-            extraBusqueda: this.numero(habilidad.Id_extra ?? -1) >= 0 ? this.texto(habilidad.Extra) : '',
+            extraBusqueda: this.numero(habilidad.Id_extra ?? ID_EXTRA_HABILIDAD_SIN_EXTRA) > ID_EXTRA_HABILIDAD_SIN_EXTRA ? this.texto(habilidad.Extra) : '',
         })), () => this.crearHabilidadBaseRow());
         this.habilidadesCustomRows = conFilaVacia((raza.Habilidades?.Custom ?? []).map((habilidad) => ({
             ...this.crearHabilidadCustomRow(),
