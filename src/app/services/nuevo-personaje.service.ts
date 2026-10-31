@@ -5595,17 +5595,26 @@ export class NuevoPersonajeService {
         CARACTERISTICAS.forEach((key) => {
             const perdida = this.esCaracteristicaPerdida(key);
             const minimoPlantilla = this.obtenerMinimoCaracteristicaPorPlantillas(key);
-            const suma = perdida
+            const final = perdida
                 ? 0
-                : (this.personajeCreacion.CaracteristicasVarios[key] ?? [])
-                    .reduce((acc, mod) => acc + toNumber(mod.valor), 0);
-            const finalSinMin = perdida ? 0 : toNumber(base[key]) + suma;
-            const final = perdida ? 0 : Math.max(finalSinMin, minimoPlantilla);
+                : Math.max(this.puntuacionSinMinimo(key, base, this.personajeCreacion.CaracteristicasVarios), minimoPlantilla);
             this.setValorCaracteristica(key, final);
             this.setModCaracteristica(key, perdida ? 0 : modificadorCaracteristica(final));
         });
         this.recalcularDerivadasPorCaracteristicas();
         this.sincronizarAliasConstitucionPerdida();
+    }
+
+    /**
+     * La puntuación de una característica: la base + lo que le suman sus `caracteristicasVarios`, sin el mínimo de las
+     * plantillas.
+     */
+    private puntuacionSinMinimo(
+        key: CaracteristicaKey,
+        base: Record<CaracteristicaKey, number>,
+        caracteristicasVarios: Personaje['CaracteristicasVarios'],
+    ): number {
+        return toNumber(base[key]) + (caracteristicasVarios[key] ?? []).reduce((acc, mod) => acc + toNumber(mod.valor), 0);
     }
 
     private aplicarModificadoresCaracteristica(
@@ -8554,11 +8563,6 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Las columnas de características de las aptitudes del personaje (`Modificadores.Fuerza`…: Fue +2 y Des −2 de un
-     * cambio de tamaño como *agrandar persona*) van a sus características, como las de las dotes y las plantillas
-     * (guía `docs/publica/CLASES_PROPIAS_FRONT.md`).
-     */
-    /**
      * El envejecimiento del Manual del jugador (tabla 6-5, pág. 109; `services/utils/edad-personaje.ts`): según la edad
      * elegida y las edades de la raza, sus pasos van a las características con el origen «Envejecimiento: Viejo», sin
      * bajar ninguna de 1. Va el último, sobre lo que ya suman la raza, las plantillas, las dotes y las ventajas, y solo con
@@ -8571,13 +8575,18 @@ export class NuevoPersonajeService {
             return;
         const valores: Partial<Record<CaracteristicaKey, number>> = {};
         CARACTERISTICAS.forEach((key) => {
-            valores[key] = toNumber(base[key]) + (caracteristicasVarios[key] ?? []).reduce((acc, mod) => acc + toNumber(mod.valor), 0);
+            valores[key] = this.puntuacionSinMinimo(key, base, caracteristicasVarios);
         });
         const origen = `Envejecimiento: ${etapa.nombre}`;
         ajustesEnvejecimiento(etapa, valores, (clave) => this.esCaracteristicaPerdida(clave))
             .forEach(({ clave, valor }) => (caracteristicasVarios[clave] ?? []).push({ valor, origen }));
     }
 
+    /**
+     * Las columnas de características de las aptitudes del personaje (`Modificadores.Fuerza`…: Fue +2 y Des −2 de un
+     * cambio de tamaño como *agrandar persona*) van a sus características, como las de las dotes y las plantillas
+     * (guía `docs/publica/CLASES_PROPIAS_FRONT.md`).
+     */
     private aplicarCaracteristicasEspecialesDelPersonaje(caracteristicasVarios: Personaje['CaracteristicasVarios']): void {
         this.especialesDeClaseDelPersonaje().forEach((especialNivel) => {
             const origen = `Especial: ${`${(especialNivel?.Especial as Record<string, any>)?.['Nombre'] ?? ''}`.trim()}`;
