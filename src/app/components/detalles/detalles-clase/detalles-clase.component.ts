@@ -1,4 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { UserService } from 'src/app/services/user.service';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { ICONOS_ROL, TipoRol, tipoRolDeClase } from 'src/app/services/utils/iconos-rol';
 import { DatoFicha, EtiquetaFicha, FilaMoldeado, datoAlineamiento, datosMoldeadoClase, datosVisibles, filasMoldeado, textoBonoCapacidad, unirTipo } from 'src/app/components/detalles/ficha';
 import { NombreTraducible } from 'src/app/interfaces/incarnum';
@@ -90,7 +92,7 @@ type ListadoConjurosAptitud = NivelListadoConjuros & {
     standalone: false
 })
 export class DetallesClaseComponent {
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
 
     claseData!: Clase;
     /** El nombre con la primera letra en mayúscula (algunos llegan en minúscula de los datos). */
@@ -196,6 +198,13 @@ export class DetallesClaseComponent {
     @Output() armaduraDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() fusionDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() chakraDetalles: EventEmitter<number> = new EventEmitter<number>();
+    /** El lápiz «Modificar»: abre la pestaña de modificar la clase. Sin quien lo escuche (la creación), no sale. */
+    @Output() modificar: EventEmitter<Clase> = new EventEmitter<Clase>();
+
+    /** Solo con permiso: el de crear clases, que es el que pide `PUT /clases/<id>` (`permisos-catalogo.ts`). */
+    get puedeModificar(): boolean {
+        return this.modificar.observed && puedeGestionarCatalogo(this.userSvc, 'clases');
+    }
 
     abrirDetalleManual() {
         this.manualDetalleNavSvc.abrirDetalleManual({

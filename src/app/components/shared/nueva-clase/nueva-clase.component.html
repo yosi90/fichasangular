@@ -20,7 +20,7 @@
                     <div class="base-grid">
                         <mat-form-field appearance="fill">
                             <mat-label>Nombre</mat-label>
-                            <input matInput formControlName="nombre" maxlength="200">
+                            <input matInput formControlName="nombre" maxlength="50">
                             <mat-error *ngIf="form.controls.nombre.hasError('required')">Nombre obligatorio.</mat-error>
                         </mat-form-field>
 
@@ -41,8 +41,9 @@
                         <mat-form-field appearance="fill">
                             <mat-label>Dado de golpe</mat-label>
                             <mat-select formControlName="tipo_dado">
-                                <mat-option *ngFor="let dado of dados" [value]="dado.Id">{{dado.Nombre}}</mat-option>
+                                <mat-option *ngFor="let dado of tiposDadoCatalogo" [value]="dado.Id">{{dado.Nombre}}</mat-option>
                             </mat-select>
+                            <mat-error *ngIf="form.controls.tipo_dado.hasError('min')">Elige el dado de golpe.</mat-error>
                         </mat-form-field>
 
                         <mat-form-field appearance="fill">
@@ -54,7 +55,7 @@
 
                         <mat-form-field appearance="fill">
                             <mat-label>Nivel maximo</mat-label>
-                            <input matInput type="number" min="1" max="30" formControlName="nivel_max_claseo">
+                            <input matInput type="number" min="1" max="20" formControlName="nivel_max_claseo">
                         </mat-form-field>
 
                         <mat-form-field appearance="fill">
@@ -64,7 +65,7 @@
 
                         <mat-form-field appearance="fill" class="full-span">
                             <mat-label>Descripcion</mat-label>
-                            <textarea matInput formControlName="descripcion" rows="5" maxlength="8000"></textarea>
+                            <textarea matInput formControlName="descripcion" rows="5" maxlength="4000"></textarea>
                         </mat-form-field>
 
                         <div class="toggle-toolbar full-span">
@@ -73,6 +74,18 @@
                                     <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="toggleBoolean('oficial')">Oficial</mat-chip-option>
                                     <mat-chip-option [selected]="form.controls.prestigio.value === true" (click)="toggleBoolean('prestigio')">Prestigio</mat-chip-option>
                                     <mat-chip-option [selected]="form.controls.es_predilecta.value === true" (click)="toggleBoolean('es_predilecta')">Predilecta</mat-chip-option>
+                                    <mat-chip-option
+                                        [selected]="form.controls.multiclase_restringida.value === true"
+                                        (click)="toggleBoolean('multiclase_restringida')"
+                                        matTooltip="Tras subir un nivel de otra clase ya no puede subir esta (monje, paladín)">
+                                        Multiclase restringida
+                                    </mat-chip-option>
+                                    <mat-chip-option
+                                        [selected]="form.controls.alineamiento_deidad.value === true"
+                                        (click)="toggleBoolean('alineamiento_deidad')"
+                                        matTooltip="Su alineamiento, a un paso del de su deidad (clérigo)">
+                                        Alineamiento de su deidad
+                                    </mat-chip-option>
                                 </mat-chip-listbox>
                             </div>
 
@@ -192,6 +205,7 @@
                             <span>Vol</span>
                             <span *ngIf="esLanzadorPsionico">Reserva</span>
                             <span *ngIf="esLanzadorPsionico">Poder</span>
+                            <span *ngIf="muestraAumentosLanzador" class="progression-head__aumentos">Aumenta lanzador</span>
                         </div>
                         <div class="progression-row" *ngFor="let nivel of niveles">
                             <span>{{nivel.nivel}}</span>
@@ -201,6 +215,16 @@
                             <span>{{voluntadSeleccionada.Valores[nivel.nivel - 1]}}</span>
                             <input *ngIf="esLanzadorPsionico" type="number" [(ngModel)]="nivel.reserva_psionica" [ngModelOptions]="{standalone: true}">
                             <input *ngIf="esLanzadorPsionico" type="number" [(ngModel)]="nivel.nivel_max_poder" [ngModelOptions]="{standalone: true}">
+                            <mat-select
+                                *ngIf="muestraAumentosLanzador"
+                                class="progression-aumentos"
+                                multiple
+                                placeholder="—"
+                                [attr.aria-label]="'Aumentos de clase lanzadora del nivel ' + nivel.nivel"
+                                [(ngModel)]="nivel.aumentos"
+                                [ngModelOptions]="{standalone: true}">
+                                <mat-option *ngFor="let aumento of aumentosClaseLanzadoraCatalogo" [value]="aumento.Id">{{aumento.Nombre}}</mat-option>
+                            </mat-select>
                         </div>
                     </div>
                 </section>
@@ -257,6 +281,18 @@
                         </mat-checkbox>
                     </div>
                 </div>
+                <div class="panel-card">
+                    <span class="panel-title"><mat-icon>translate</mat-icon>Idiomas adicionales</span>
+                    <p class="panel-nota">Los que la clase añade a los idiomas adicionales que puede aprender por Inteligencia (clérigo, druida, mago).</p>
+                    <div class="chips-checkbox-grid">
+                        <mat-checkbox
+                            *ngFor="let idioma of idiomas"
+                            [checked]="isSeleccionado('idiomasAdicionales', idioma.Id)"
+                            (change)="toggleSeleccion('idiomasAdicionales', idioma.Id, $event.checked)">
+                            {{idioma.Nombre}}
+                        </mat-checkbox>
+                    </div>
+                </div>
             </div>
 
             <div class="insercion-paso" [hidden]="pasoActual !== 3">
@@ -302,6 +338,40 @@
                             <mat-icon>delete</mat-icon>
                         </button>
                     </div>
+
+                    <div class="subpanel">
+                        <div class="subpanel-head">
+                            <span class="subpanel-title">De clase según el alineamiento</span>
+                            <button mat-stroked-button type="button" (click)="agregarHabilidadAlineamiento()"><mat-icon>add</mat-icon>Añadir fila</button>
+                        </div>
+                        <p class="panel-nota" *ngIf="habilidadesAlineamientoRows.length === 0">Habilidades que solo son de clase con un alineamiento (el nacido del alma).</p>
+                        <div class="repeat-row habilidad-alineamiento-row" *ngFor="let row of habilidadesAlineamientoRows; let i = index">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Habilidad</mat-label>
+                                <input matInput [(ngModel)]="row.busqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="habAliAuto">
+                                <mat-autocomplete #habAliAuto="matAutocomplete" (optionSelected)="seleccionarHabilidadAlineamiento(row, $event.option.value)">
+                                    <mat-option *ngFor="let habilidad of getHabilidadesAlineamientoFiltradas(row)" [value]="habilidad.Id_habilidad">{{habilidad.Nombre}}</mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Extra</mat-label>
+                                <input matInput [(ngModel)]="row.extraBusqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="habAliExtraAuto" placeholder="Sin extra">
+                                <mat-autocomplete #habAliExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraHabilidadAlineamiento(row, $event.option.value)">
+                                    <mat-option [value]="-1">Sin extra</mat-option>
+                                    <mat-option *ngFor="let extra of getExtrasHabilidadAlineamiento(row)" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Alineamiento</mat-label>
+                                <mat-select [(ngModel)]="row.id_alineamiento" [ngModelOptions]="{standalone: true}">
+                                    <mat-option *ngFor="let alineamiento of alineamientosBasicos" [value]="alineamiento.Id">{{alineamiento.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <button mat-icon-button type="button" class="row-action-btn" aria-label="Borrar fila" matTooltip="Borrar fila" (click)="quitarHabilidadAlineamiento(i)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -326,6 +396,96 @@
                                 </mat-option>
                             </mat-select>
                         </mat-form-field>
+                    </div>
+
+                    <div class="base-grid" *ngIf="esLanzadorConjuros">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Divisor del nivel de lanzador</mat-label>
+                            <input matInput type="number" min="1" formControlName="nivel_lanzador_divisor">
+                            <mat-hint>2: la mitad de su nivel (paladín, explorador)</mat-hint>
+                        </mat-form-field>
+                        <div class="libro-conjuros full-span">
+                            <mat-chip-listbox class="boolean-chips" aria-label="Libro de conjuros" [multiple]="true">
+                                <mat-chip-option [selected]="form.controls.libro_conjuros.value === true" (click)="toggleBoolean('libro_conjuros')">Libro de conjuros</mat-chip-option>
+                                <mat-chip-option *ngIf="form.controls.libro_conjuros.value === true" [selected]="form.controls.libro_nivel_cero_completo.value === true" (click)="toggleBoolean('libro_nivel_cero_completo')">Todos los de nivel 0</mat-chip-option>
+                                <mat-chip-option *ngIf="form.controls.libro_conjuros.value === true" [selected]="form.controls.libro_iniciales_caracteristica.value === true" (click)="toggleBoolean('libro_iniciales_caracteristica')">Suma el modificador a los iniciales</mat-chip-option>
+                            </mat-chip-listbox>
+                        </div>
+                        <ng-container *ngIf="form.controls.libro_conjuros.value === true">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Conjuros iniciales en el libro</mat-label>
+                                <input matInput type="number" min="0" formControlName="libro_iniciales">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Conjuros nuevos por nivel</mat-label>
+                                <input matInput type="number" min="0" formControlName="libro_por_nivel">
+                            </mat-form-field>
+                        </ng-container>
+                    </div>
+
+                    <div class="spell-known-table" *ngIf="esLanzadorArcanoODivino">
+                        <div class="spell-known-table__grid spell-known-table__grid--levels">
+                            <div class="spell-known-head">
+                                <span>Diarios</span>
+                                <span *ngFor="let nivelConjuro of nivelesConjuro">{{nivelConjuro}}</span>
+                            </div>
+                            <div class="spell-known-row" *ngFor="let nivel of niveles">
+                                <span>{{nivel.nivel}}</span>
+                                <input
+                                    *ngFor="let nivelConjuro of nivelesConjuro"
+                                    type="number"
+                                    min="-1"
+                                    placeholder="—"
+                                    [attr.aria-label]="'Conjuros diarios de nivel ' + nivelConjuro + ' en el nivel ' + nivel.nivel"
+                                    [(ngModel)]="nivel.conjuros_diarios['Nivel_' + nivelConjuro]"
+                                    [ngModelOptions]="{standalone: true}">
+                            </div>
+                        </div>
+                        <p class="panel-nota">Vacío o -1: no tiene espacios de ese nivel; 0: solo los de su característica.</p>
+                    </div>
+
+                    <div class="subpanel" *ngIf="esLanzadorConjuros">
+                        <div class="subpanel-head">
+                            <span class="subpanel-title">Lista de conjuros · {{listadoRows.length}}</span>
+                        </div>
+                        <p class="panel-nota" *ngIf="(form.controls.clase_origen_id.value ?? 0) > 0">Se suman a la lista de su clase de origen ({{claseOrigenBusqueda}}).</p>
+                        <div class="listado-filtros">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Buscar en la lista</mat-label>
+                                <input matInput [(ngModel)]="listadoFiltro" [ngModelOptions]="{standalone: true}">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Nivel</mat-label>
+                                <mat-select [(ngModel)]="listadoNivelFiltro" [ngModelOptions]="{standalone: true}">
+                                    <mat-option [value]="null">Todos</mat-option>
+                                    <mat-option *ngFor="let nivelConjuro of nivelesConjuroRequisito" [value]="nivelConjuro">{{nivelConjuro}} · {{contarListadoNivel(nivelConjuro)}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </div>
+                        <div class="repeat-row listado-row" *ngFor="let row of listadoFiltrado">
+                            <span class="listado-row__nombre">{{row.nombre}}</span>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Nivel</mat-label>
+                                <input matInput type="number" min="0" max="9" [(ngModel)]="row.nivel" [ngModelOptions]="{standalone: true}">
+                            </mat-form-field>
+                            <mat-checkbox [(ngModel)]="row.espontaneo" [ngModelOptions]="{standalone: true}">Espontáneo</mat-checkbox>
+                            <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar ' + row.nombre" matTooltip="Quitar de la lista" (click)="quitarConjuroListado(row)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                        <div class="repeat-row listado-row listado-row--nuevo">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Añadir conjuro</mat-label>
+                                <input matInput [(ngModel)]="listadoNuevoBusqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="listadoAuto">
+                                <mat-autocomplete #listadoAuto="matAutocomplete" (optionSelected)="agregarConjuroListado($event.option.value)">
+                                    <mat-option *ngFor="let conjuro of getConjurosParaListado()" [value]="conjuro.Id">{{conjuro.Nombre}}</mat-option>
+                                </mat-autocomplete>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Nivel</mat-label>
+                                <input matInput type="number" min="0" max="9" [(ngModel)]="listadoNuevoNivel" [ngModelOptions]="{standalone: true}">
+                            </mat-form-field>
+                        </div>
                     </div>
 
                     <div class="subpanel" *ngIf="esLanzadorConjuros">
@@ -410,7 +570,8 @@
                                 <input
                                     *ngFor="let nivelConjuro of nivelesConjuro"
                                     type="number"
-                                    [(ngModel)]="nivel.conjuros_conocidos_nivel[nivelConjuro]"
+                                    [attr.aria-label]="'Conjuros conocidos de nivel ' + nivelConjuro + ' en el nivel ' + nivel.nivel"
+                                    [(ngModel)]="nivel.conjuros_conocidos_nivel['Nivel_' + nivelConjuro]"
                                     [ngModelOptions]="{standalone: true}">
                             </div>
                         </div>
@@ -427,6 +588,22 @@
                         </div>
                     </div>
                 </div>
+
+                <section class="panel-card incarnum-conservado" *ngIf="moldeadoConservado as moldeado">
+                    <span class="panel-title panel-title--con-nota">
+                        <span><mat-icon>blur_on</mat-icon>Moldeado de Magic of Incarnum</span>
+                        <span class="panel-nota-titulo">no editable</span>
+                    </span>
+                    <p class="no-editable-motivo">
+                        <mat-icon aria-hidden="true">lock</mat-icon>
+                        El moldeado de fusiones lo cargan los scripts del manual y aún no se edita aquí. Al guardar, sus fusiones, chakras, capacidad de esencia y su tabla por nivel se conservan tal cual.
+                    </p>
+                    <ul class="incarnum-resumen">
+                        <li>{{moldeado.Fusiones.length}} fusiones moldeables · {{moldeado.Chakras.length}} chakras que vincula</li>
+                        <li>Nivel de moldeador: nivel de clase entre {{moldeado.Divisor_nivel_moldeador}}<ng-container *ngIf="moldeado.Caracteristica_cd"> · CD por {{moldeado.Caracteristica_cd.Nombre}}</ng-container><ng-container *ngIf="moldeado.Caracteristica_fusiones"> · fusiones extra por {{moldeado.Caracteristica_fusiones.Nombre}}</ng-container></li>
+                        <li *ngIf="moldeado.Limitado_por_alineamiento">Solo moldea fusiones de su alineamiento</li>
+                    </ul>
+                </section>
             </div>
 
             <div class="insercion-paso" [hidden]="pasoActual !== 5">
@@ -497,6 +674,19 @@
                             Tipos
                         </button>
                     </div>
+                    <div class="prerrequisitos-conservados" *ngIf="prerrequisitosConservados.length > 0">
+                        <span class="prerrequisitos-conservados__nota">Se guardan tal cual:</span>
+                        <mat-chip *ngFor="let conservado of prerrequisitosConservados; let i = index">
+                            {{conservado.frase}}
+                            <button matChipRemove type="button" [attr.aria-label]="'Quitar ' + conservado.frase" (click)="quitarPrerrequisitoConservado(i)">
+                                <mat-icon>cancel</mat-icon>
+                            </button>
+                        </mat-chip>
+                    </div>
+                    <p class="no-editable-motivo" *ngIf="prerrequisitosIncarnumConservados.length > 0">
+                        <mat-icon aria-hidden="true">lock</mat-icon>
+                        De Magic of Incarnum, no editables aquí (se conservan al guardar): {{prerrequisitosIncarnumConservados.join(' · ')}}.
+                    </p>
                     <app-prerrequisito-editor-host
                         [selectedTypes]="prerrequisitosSeleccionados"
                         [rows]="prerrequisitosEditor"

@@ -4,6 +4,7 @@ import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { Clase, ClaseNivelDetalle } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 import { DetallesClaseComponent } from './detalles-clase.component';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 import { normalizarClaseMoldeado } from 'src/app/services/utils/incarnum-mapper';
@@ -129,14 +130,17 @@ describe('DetallesClaseComponent', () => {
         };
     }
 
+    let usuario: { can: jasmine.Spy };
+
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
+        usuario = { can: jasmine.createSpy('can').and.returnValue(false) };
         await TestBed.configureTestingModule({
             declarations: [DetallesClaseComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
-            providers: [{
-                provide: ManualDetalleNavigationService,
-                useValue: manualNav,
-            }],
+            providers: [
+                { provide: ManualDetalleNavigationService, useValue: manualNav },
+                { provide: UserService, useValue: usuario },
+            ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
 
@@ -677,5 +681,24 @@ describe('DetallesClaseComponent', () => {
         expect(lateral('Habilidades de clase')?.textContent).toContain('Según el alineamiento');
         expect(lateral('Habilidades de clase')?.textContent).toContain('Diplomacia');
         expect(lateral('Habilidades de clase')?.textContent).toContain('Legal bueno');
+    });
+
+    it('enseña el lápiz «Modificar» solo con permiso de clases y si alguien lo escucha (hito 5 de inserciones)', () => {
+        component.clase = crearClaseMock();
+        fixture.detectChanges();
+        const lapiz = () => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('button'))
+            .find((boton) => boton.textContent?.includes('Modificar'));
+        expect(lapiz()).toBeUndefined();
+
+        const abiertas: Clase[] = [];
+        component.modificar.subscribe((clase) => abiertas.push(clase));
+        fixture.detectChanges();
+        expect(lapiz()).toBeUndefined();
+        expect(usuario.can).toHaveBeenCalledWith('clases', 'create');
+
+        usuario.can.and.returnValue(true);
+        fixture.detectChanges();
+        lapiz()!.click();
+        expect(abiertas.length).toBe(1);
     });
 });

@@ -344,7 +344,8 @@
             (armaDetallesId)="abrirDetallesArmaPorId($event)"
             (armaduraDetallesId)="abrirDetallesArmaduraPorId($event)"
             (fusionDetalles)="abrirDetallesFusionPorId($event)"
-            (chakraDetalles)="abrirDetallesChakraPorId($event)">
+            (chakraDetalles)="abrirDetallesChakraPorId($event)"
+            (modificar)="abrirEdicion('clase', $event)">
         </app-detalles-clase>
     </mat-tab>
     <mat-tab *ngFor="let especial of detallesEspecialAbiertos; let index = index" [label]="getEtiquetaEspecial(especial)">

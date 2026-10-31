@@ -304,8 +304,16 @@ export interface ClaseProgresionBaseMutationRef {
     Valores?: string[];
 }
 
-export interface ClaseMutationRequest extends Omit<Clase, 'Id'> {
+/** Un nivel en el cuerpo de escritura: el poder máximo va con la clave con la que lo lee la API (en minúscula). */
+export interface ClaseNivelMutation extends Omit<ClaseNivelDetalle, 'Nivel_max_poder_accesible_nivel_lanzadorPsionico'> {
+    nivel_max_poder_accesible_nivel_lanzadorPsionico: number;
+}
+
+export interface ClaseMutationRequest extends Omit<Clase, 'Id' | 'Desglose_niveles' | 'Conjuros'> {
     Id?: number;
+    /** `Clase_origen` `null`: sin clase de origen. */
+    Conjuros: Omit<ClaseConjurosConfig, 'Clase_origen'> & { Clase_origen: { Id: number; Nombre: string; } | null; };
+    Desglose_niveles: ClaseNivelMutation[];
     Ataque_base: ClaseProgresionBaseMutationRef;
     Salvaciones: {
         Fortaleza: ClaseProgresionBaseMutationRef;
@@ -347,9 +355,16 @@ export interface ClaseAumentoClaseLanzadoraCatalogItem {
     Nombre: string;
 }
 
+/** Un dado de golpe de `tipos_dados` (su id es el de `Tipo_dado.Id`, no las caras del dado). */
+export interface ClaseTipoDadoCatalogItem {
+    Id: number;
+    Nombre: string;
+}
+
 export interface ClaseProgressionCatalogs {
     ataques_base: ClaseProgressionCatalogItem[];
     salvaciones: ClaseProgressionCatalogItem[];
     puntos_habilidad: ClasePuntosHabilidadCatalogItem[];
     aumentos_clase_lanzadora: ClaseAumentoClaseLanzadoraCatalogItem[];
+    tipos_dado: ClaseTipoDadoCatalogItem[];
 }
