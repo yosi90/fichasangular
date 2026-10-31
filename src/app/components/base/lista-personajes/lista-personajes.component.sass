@@ -227,21 +227,22 @@ table
 
 // Jugadores y PNJ por separado (lienzo de los dragones jugables, tablero 4): el conmutador de la creación, un punto más
 // grande y con sombra.
-.lista-personajes__tipos
-    display: flex
-    flex-wrap: wrap
-    align-items: center
-    gap: 8px 12px
-
+// En la barra de la cabecera común, junto al buscador: su mismo fondo oscuro y su altura (40 px).
 .lista-personajes__tipos-botones
-    @include ficha-conmutador(14px, 16px)
+    @include ficha-conmutador(14px, 14px)
     flex-wrap: wrap
-    box-shadow: $ficha-sombra
 
-    button:not([aria-pressed="true"]):hover
-        background: $primary-hover
+    button
+        height: 40px
+
+    button:not([aria-pressed="true"])
+        background: $contrast-dark
+
+        &:hover
+            background: $primary-hover
 
 .lista-personajes__tipos-ayuda
+    margin: 0
     font-size: 13px
     color: $ficha-texto-suave
 

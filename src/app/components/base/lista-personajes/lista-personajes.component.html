@@ -4,6 +4,12 @@
   <app-listado-cabecera icono="personaje" titulo="Personajes" [total]="personajesCargados && !errorCarga ? personajesDS.data.length : null"
     [texto]="textoBusqueda" (textoChange)="buscar($event)" etiquetaBuscar="Buscar personajes"
     placeholder="Buscar por nombre, raza o clase">
+    <!-- Jugadores y PNJ por separado (lienzo de los dragones jugables, tablero 4), en la barra del buscador -->
+    <div class="lista-personajes__tipos-botones" role="group" aria-label="Qué personajes ver"
+      *ngIf="personajesCargados && !errorCarga && Personajes.length > 0">
+      <button type="button" *ngFor="let filtro of filtrosTipo" [attr.aria-pressed]="filtro.clave === filtroTipo"
+        (click)="elegirFiltroTipo(filtro.clave)">{{ filtro.texto }} · {{ filtro.total }}</button>
+    </div>
     <app-menu-filtros titulo="Filtros de personajes" [hayFiltros]="hayFiltros" (limpiar)="limpiarFiltros()">
       <app-menu-filtros-grupo titulo="Campaña">
         <mat-form-field>
@@ -44,14 +50,7 @@
     </app-menu-filtros>
   </app-listado-cabecera>
 
-  <!-- Jugadores y PNJ por separado (lienzo de los dragones jugables, tablero 4) -->
-  <div class="lista-personajes__tipos" *ngIf="personajesCargados && !errorCarga && Personajes.length > 0">
-    <div class="lista-personajes__tipos-botones" role="group" aria-label="Qué personajes ver">
-      <button type="button" *ngFor="let filtro of filtrosTipo" [attr.aria-pressed]="filtro.clave === filtroTipo"
-        (click)="elegirFiltroTipo(filtro.clave)">{{ filtro.texto }} · {{ filtro.total }}</button>
-    </div>
-    <span class="lista-personajes__tipos-ayuda" *ngIf="filtroTipo === 'pnj'">Tus PNJ: solo los ves tú, salvo que los compartas.</span>
-  </div>
+  <p class="lista-personajes__tipos-ayuda" *ngIf="filtroTipo === 'pnj' && personajesCargados && !errorCarga">Tus PNJ: solo los ves tú, salvo que los compartas.</p>
 
   <div class="lista-personajes__tabla" [class.lista-personajes__tabla--oculta]="!personajesCargados || errorCarga || Personajes.length < 1">
     <table mat-table [dataSource]="personajesDS" multiTemplateDataRows matSort (matSortChange)="announceSortChange($event)"
