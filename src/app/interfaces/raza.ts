@@ -180,6 +180,30 @@ export interface LanzamientoRaza {
     Listas: ListaLanzamientoRaza[];
 }
 
+/** Los DG raciales tal como los guarda la raza (`RazaCompleta.Dgs_raciales`), también sin DG: el mediano guarda aquí su +1 a las tres salvaciones. */
+export interface DgsRacialesGuardados {
+    Cantidad: number;
+    Id_dado: number;
+    Id_tipo_criatura: number;
+    Ataque_base: number;
+    Fortaleza: number;
+    Reflejos: number;
+    Voluntad: number;
+    Dotes_extra: number;
+    Puntos_habilidad: number;
+    Multiplicador_puntos_habilidad: number;
+}
+
+/**
+ * Lo que la raza guarda con su id y el resto de la raza solo da con su nombre o deja a cero (`RazaCompleta.Manual`,
+ * `Clase_predilecta` y `Dgs_raciales`): con ello se rellena «Modificar raza». Solo lo trae la API; la caché no.
+ */
+export interface ReferenciasEdicionRaza {
+    Manual: { Id: number; Nombre: string; Pagina: number; };
+    Clase_predilecta: Id_nombre;
+    Dgs_raciales: DgsRacialesGuardados;
+}
+
 export interface Raza {
     Id: number;
     Nombre: string;
@@ -277,4 +301,6 @@ export interface Raza {
     /** Solo en la raza resuelta a una edad (`GET /razas/{id}/pasos-edad/{idPaso}`): su paso y su categoría. */
     Paso_edad?: PasoEdadRaza | null;
     Categoria_edad?: CategoriaEdadRaza | null;
+    /** Solo en la API (`GET /razas/{id}`): lo que necesita «Modificar raza»; `null` si no llega. */
+    Edicion?: ReferenciasEdicionRaza | null;
 }

@@ -290,9 +290,6 @@
     gap: 0.45rem
     min-height: 34px
 
-    &--single
-        margin-top: -0.65rem
-
 .selected-chip
     display: inline-flex
     align-items: center
@@ -478,6 +475,54 @@
     background: linear-gradient(135deg, #d61a73 0%, #b8105f 100%)
     color: #fff
 
+// Las edades de una raza por edades (los dragones), al modificarla: solo se leen (se editan más adelante).
+.edades-panel
+    margin-bottom: 1rem
+
+.edades-motivo
+    display: flex
+    align-items: flex-start
+    gap: 0.45rem
+    margin: 0 0 0.75rem
+    color: $ficha-aviso
+
+    mat-icon
+        flex: 0 0 auto
+        width: 18px
+        height: 18px
+        font-size: 18px
+
+.edades-tabla
+    display: grid
+    gap: 2px
+    overflow-x: auto
+
+.edades-fila
+    display: grid
+    grid-template-columns: minmax(120px, 1.4fr) minmax(90px, 1fr) minmax(90px, 1fr) repeat(3, minmax(56px, 0.6fr)) minmax(90px, 1fr)
+    gap: 0.5rem
+    padding: 4px 6px
+    color: $ficha-texto
+
+    &:nth-child(odd)
+        background: $ficha-fila-alterna
+
+    &--cabecera
+        @include ficha-versalitas
+        color: $ficha-texto-suave
+        background: transparent !important
+
+// El lanzamiento racial: la clase, su nivel y las listas que lanza además como arcanas.
+.lanzamiento-ayuda
+    margin: 0 0 0.75rem
+    color: $ficha-texto-suave
+
+.lanzamiento-grid
+    display: grid
+    grid-template-columns: minmax(220px, 1.4fr) minmax(140px, 0.8fr) auto
+    gap: 0.85rem
+    align-items: start
+
 @container insercion (max-width: 720px)
     .span-2,
     .span-3
@@ -508,7 +553,8 @@
     .values-grid,
     .values-grid--six,
     .values-grid--four,
-    .values-grid--dgs
+    .values-grid--dgs,
+    .lanzamiento-grid
         grid-template-columns: 1fr
 
     .values-characteristics,

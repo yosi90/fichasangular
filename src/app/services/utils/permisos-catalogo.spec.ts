@@ -43,6 +43,7 @@ describe('Catálogos con pantalla de insertar o modificar', () => {
         expect(tieneInsercion('razas')).toBeTrue();
         expect(tieneInsercion('armas')).toBeFalse();
         expect(tipoEdicionDeListado('raciales')).toBe('racial');
-        expect(tipoEdicionDeListado('razas')).toBeNull();
+        expect(tipoEdicionDeListado('razas')).toBe('raza');
+        expect(tipoEdicionDeListado('rasgos')).toBeNull();
     });
 });

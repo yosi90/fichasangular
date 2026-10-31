@@ -222,6 +222,22 @@
             </app-nueva-plantilla>
         </div>
     </mat-tab>
+    <mat-tab *ngFor="let razaTab of ediciones.raza" [label]="etiquetaEdicion(razaTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'raza'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(razaTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(razaTab)}}</span>
+            <button (click)="quitarEdicion(razaTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-raza
+                modo="editar"
+                [idRaza]="razaTab.id"
+                [editorTabKey]="razaTab.key"
+                (cerrar)="quitarEdicion(razaTab)"
+                (razaActualizada)="onEdicionGuardada('raza', $event)">
+            </app-nueva-raza>
+        </div>
+    </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'manual'"></app-icono-rol>
@@ -241,7 +257,8 @@
             (racialDetallesPorNombre)="abrirDetallesRacialDesdeReferencia($event)"
             (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)"
             (doteDetalles)="abrirDetallesDotePorId($event)"
-            (plantillaDetalles)="abrirDetallesPlantillaPorId($event)">
+            (plantillaDetalles)="abrirDetallesPlantillaPorId($event)"
+            (modificar)="abrirEdicion('raza', $event)">
         </app-detalles-raza>
     </mat-tab>
     <mat-tab *ngFor="let tab of detallesConjuroAbiertos; let index = index" [label]="tab.Nombre">

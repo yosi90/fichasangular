@@ -33,9 +33,7 @@ describe('NuevaRazaDraftService', () => {
                 gruposArmaduraSeleccionados: [19],
             },
             searches: {
-                manualBusqueda: 'Manual base',
                 clasePredilectaBusqueda: 'Guerrero',
-                subtipoBusqueda: 'Humano',
                 tipoCriaturaDgsBusqueda: 'Humanoide',
             },
             relacionQueries: {

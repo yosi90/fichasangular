@@ -1,10 +1,10 @@
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Database, Unsubscribe } from '@angular/fire/database';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, map } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from '../interfaces/raza';
-import { RazaCreateApiResponse, RazaCreateRequest, RazaCreateResponse } from '../interfaces/razas-api';
+import { RazaActualizadaResponse, RazaCreateApiResponse, RazaCreateRequest, RazaCreateResponse } from '../interfaces/razas-api';
 import { environment } from 'src/environments/environment';
 import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
@@ -385,6 +385,12 @@ export class RazaService {
         });
     }
 
+    /** La raza recién leída de la API (`GET /razas/{id}`), sin caché: la que se rellena en «Modificar raza». */
+    getRazaFresca(id: number): Observable<Raza> {
+        return this.http.get(`${environment.apiUrl}razas/${Math.trunc(Number(id ?? 0))}`)
+            .pipe(map((raw) => normalizeRazaApi(raw)));
+    }
+
     /**
      * La raza a una edad (`GET /razas/{id}/pasos-edad/{idPaso}`): la `RazaCompleta` con las cifras de ese paso y su
      * categoría (tamaño, modificadores, DG, armadura natural, velocidades, raciales y sortílegas acumulados, lanzamiento).
@@ -416,6 +422,29 @@ export class RazaService {
             return normalizedResponse;
         } catch (error: any) {
             throw errorDeCatalogo(error, 'crear', RAZA);
+        }
+    }
+
+    /**
+     * `PUT /razas/{id}`: el mismo cuerpo que el alta, que reemplaza la raza entera. Las categorías de edad, sus pasos y lo
+     * que se gana en cada una (las razas por edades) no van en el cuerpo y la API los conserva.
+     */
+    public async actualizarRaza(idRaza: number, payload: RazaCreateRequest): Promise<RazaActualizadaResponse> {
+        try {
+            const headers = await cabeceraApiConFirebase(this.auth);
+            const response = await firstValueFrom(
+                this.http.put<RazaCreateApiResponse>(`${environment.apiUrl}razas/${Math.trunc(Number(idRaza ?? 0))}`, payload, { headers })
+            );
+            const id = Math.trunc(Number(response?.idRaza ?? 0));
+            if (!Number.isFinite(id) || id <= 0)
+                throw new Error('La API no devolvió un idRaza válido');
+            return {
+                message: `${response?.message ?? 'Raza actualizada'}`,
+                idRaza: id,
+                raza: normalizeRazaApi(response?.raza),
+            };
+        } catch (error: any) {
+            throw errorDeCatalogo(error, 'actualizar', RAZA);
         }
     }
 }

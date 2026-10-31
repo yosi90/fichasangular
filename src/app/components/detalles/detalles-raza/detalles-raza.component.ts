@@ -21,6 +21,8 @@ import { Raza, RazaHabilidadBase, RazaHabilidadCustom, RazaPlantillaReferencia }
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
@@ -65,7 +67,7 @@ interface ParRaza {
     standalone: false
 })
 export class DetallesRazaComponent {
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
 
     private razaActual!: Raza;
     mostrarInfoManiobrabilidad = false;
@@ -136,6 +138,13 @@ export class DetallesRazaComponent {
     @Output() subtipoDetalles: EventEmitter<{ Id?: number | null; Nombre: string; }> = new EventEmitter<{ Id?: number | null; Nombre: string; }>();
     @Output() doteDetalles: EventEmitter<number> = new EventEmitter<number>();
     @Output() plantillaDetalles: EventEmitter<number> = new EventEmitter<number>();
+    /** El lápiz «Modificar»: abre la pestaña de modificar la raza. Sin quien lo escuche (la creación), no sale. */
+    @Output() modificar: EventEmitter<Raza> = new EventEmitter<Raza>();
+
+    /** Solo con permiso: el de crear razas, que es el que pide `PUT /razas/<id>` (`permisos-catalogo.ts`). */
+    get puedeModificar(): boolean {
+        return this.modificar.observed && puedeGestionarCatalogo(this.userSvc, 'razas');
+    }
 
     abrirDetallesDote(doteCtx: DoteContextual) {
         const id = Number(doteCtx?.Dote?.Id);

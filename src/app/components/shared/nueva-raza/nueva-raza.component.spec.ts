@@ -7,6 +7,7 @@ import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ClaseService } from 'src/app/services/clase.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
+import { DominioService } from 'src/app/services/dominio.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
 import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
@@ -22,6 +23,8 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
+import { ProfileApiError } from 'src/app/interfaces/user-account';
+import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
 import { NuevaRazaComponent } from './nueva-raza.component';
 
 describe('NuevaRazaComponent', () => {
@@ -39,7 +42,7 @@ describe('NuevaRazaComponent', () => {
         canCreate = true;
         currentUid = '';
         localStorage.clear();
-        razaSvc = jasmine.createSpyObj<RazaService>('RazaService', ['getRazas', 'crearRaza']);
+        razaSvc = jasmine.createSpyObj<RazaService>('RazaService', ['getRazas', 'crearRaza', 'getRazaFresca', 'actualizarRaza']);
         racialSvc = jasmine.createSpyObj<RacialService>('RacialService', ['getRaciales', 'anadirPrerrequisitosRacial']);
         razaSvc.getRazas.and.returnValue(of([]));
         razaSvc.crearRaza.and.resolveTo({ message: 'ok', idRaza: 99 });
@@ -110,6 +113,7 @@ describe('NuevaRazaComponent', () => {
                 { provide: DoteService, useValue: { getDotes: () => of([{ Id: 14, Nombre: 'Alerta', Extras_soportados: {}, Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] } }]) } },
                 { provide: RacialService, useValue: racialSvc },
                 { provide: ConjuroService, useValue: { getConjuros: () => of([{ Id: 16, Nombre: 'Luz' }]) } },
+                { provide: DominioService, useValue: { getDominios: () => of([{ Id: 2, Nombre: 'Aire' }, { Id: 20, Nombre: 'Ley' }]) } },
                 { provide: ArmaService, useValue: { getArmas: () => of([{ Id: 17, Nombre: 'Espada larga' }]) } },
                 { provide: ArmaduraService, useValue: { getArmaduras: () => of([{ Id: 23, Nombre: 'Camisote de mallas' }]) } },
                 { provide: GrupoArmaService, useValue: { getGruposArmas: () => of([{ Id: 18, Nombre: 'Armas marciales' }]) } },
@@ -237,9 +241,7 @@ describe('NuevaRazaComponent', () => {
                 gruposArmaduraSeleccionados: [19],
             },
             searches: {
-                manualBusqueda: 'Manual base',
                 clasePredilectaBusqueda: 'Guerrero',
-                subtipoBusqueda: 'Humano',
                 tipoCriaturaDgsBusqueda: '',
             },
             relacionQueries: {
@@ -691,27 +693,38 @@ describe('NuevaRazaComponent', () => {
         expect(component.idiomasSeleccionados).toEqual([7, 9]);
     });
 
-    it('mantiene un unico subtipo desde el selector de creacion', () => {
-        component.seleccionarSubtipo(8);
-        component.seleccionarSubtipo(6);
+    it('admite varios subtipos, como guarda la API (el haraknín tiene cinco)', () => {
+        component.agregarSeleccion('subtiposSeleccionados', 8);
+        component.agregarSeleccion('subtiposSeleccionados', 6);
+        component.agregarSeleccion('subtiposSeleccionados', 8);
 
-        expect(component.subtiposSeleccionados).toEqual([6]);
-        expect(component.subtipoBusqueda).toBe('Dragon');
+        expect(component.subtiposSeleccionados).toEqual([6, 8]);
+        expect(component.getOpcionesRelacion('subtiposSeleccionados', component.subtipos)).toEqual([]);
+        component.quitarSeleccion('subtiposSeleccionados', 8);
         expect(component.buildPayload().subtipos).toEqual([6]);
     });
 
-    it('actualiza autocompletes de manual y clase manteniendo ids de payload', () => {
-        component.actualizarManualBusqueda('man');
+    it('elige el manual con el buscador común y la clase predilecta, también «Cualquiera»', () => {
+        expect(component.opcionesManuales).toEqual([{ id: 1, nombre: 'Manual base' }]);
         component.seleccionarManual(1);
         component.actualizarClasePredilectaBusqueda('gue');
+        expect(component.form.controls.id_clase_predilecta.value).toBeNull();
+        expect(component.form.controls.id_clase_predilecta.invalid).toBeTrue();
         component.seleccionarClasePredilecta(1);
 
-        expect(component.manualBusqueda).toBe('Manual base');
         expect(component.clasePredilectaBusqueda).toBe('Guerrero');
-        expect(component.displayManualAutocomplete(1)).toBe('Manual base');
         expect(component.displayClasePredilectaAutocomplete(1)).toBe('Guerrero');
         expect(component.buildPayload().raza.id_manual).toBe(1);
         expect(component.buildPayload().raza.id_clase_predilecta).toBe(1);
+
+        // La 0 de la base: el humano y el semielfo no tienen una clase predilecta concreta.
+        component.actualizarClasePredilectaBusqueda('cual');
+        expect(component.getClasesPredilectasFiltradas().map((clase) => clase.Nombre)).toEqual(['Cualquiera']);
+        component.seleccionarClasePredilecta(0);
+        expect(component.form.controls.id_clase_predilecta.valid).toBeTrue();
+        expect(component.clasePredilectaBusqueda).toBe('Cualquiera');
+        expect(component.buildPayload().raza.id_clase_predilecta).toBe(0);
+        expect(component.displayClasePredilectaAutocomplete(null)).toBe('');
     });
 
     it('ordena tipos de dado por id y filtra tipo criatura DG como autocomplete', () => {
@@ -835,12 +848,12 @@ describe('NuevaRazaComponent', () => {
 
     it('valida limites de cuerpo, edades y otros valores numericos', () => {
         component.form.patchValue({
-            altura_rango_inf: 0,
+            altura_rango_inf: -1,
             altura_rango_sup: 10.01,
-            peso_rango_inf: 0,
-            peso_rango_sup: 10001,
-            edad_adulto: 0,
-            ajuste_nivel: 21,
+            peso_rango_inf: -1,
+            peso_rango_sup: 1000,
+            edad_adulto: -1,
+            ajuste_nivel: -1,
             dotes_extra: 11,
             puntos_extra_1: 21,
             puntos_extra: 21,
@@ -868,6 +881,11 @@ describe('NuevaRazaComponent', () => {
 
         expect(payload.raza.altura_rango_inf).toBe(1.52);
         expect(payload.raza.altura_rango_sup).toBe(1.87);
+
+        // Y los pesos con sus decimales (el elfo: de 38,5 a 61,2 kg).
+        component.form.patchValue({ peso_rango_inf: 38.5, peso_rango_sup: 61.2 });
+        expect(component.buildPayload().raza.peso_rango_inf).toBe(38.5);
+        expect(component.buildPayload().raza.peso_rango_sup).toBe(61.2);
     });
 
     it('permite textos tecnicos vacios como no especifica y valida longitudes si se rellenan', () => {
@@ -884,11 +902,23 @@ describe('NuevaRazaComponent', () => {
         expect(component.buildPayload().raza.ataques_naturales).toBe('No especifica');
         expect(component.buildPayload().raza.reduccion_dano).toBe('No especifica');
 
-        component.form.patchValue({ ataques_naturales: 'abc', reduccion_dano: 'abc' });
+        // Textos cortos de los manuales («14» de resistencia a conjuros) valen; el límite es el de la API.
+        component.form.patchValue({ ataques_naturales: 'abc', resistencia_conjuros: '14', reduccion_dano: 'x'.repeat(1001) });
         component.form.updateValueAndValidity();
 
-        expect(component.form.controls.ataques_naturales.invalid).toBeTrue();
+        expect(component.form.controls.ataques_naturales.valid).toBeTrue();
+        expect(component.form.controls.resistencia_conjuros.valid).toBeTrue();
         expect(component.form.controls.reduccion_dano.invalid).toBeTrue();
+    });
+
+    it('deja a 0 las alturas, los pesos y las edades que el manual no da, como la API', () => {
+        component.form.patchValue({
+            altura_rango_inf: 0, altura_rango_sup: 0, peso_rango_inf: 0, peso_rango_sup: 0,
+            edad_adulto: 0, edad_mediana: 200, edad_viejo: 300, edad_venerable: 400,
+        });
+        component.form.updateValueAndValidity();
+
+        expect(component.form.valid).toBeTrue();
     });
 
     it('limita velocidades, espacio y alcance a rangos de creacion', () => {
@@ -1010,7 +1040,7 @@ describe('NuevaRazaComponent', () => {
         });
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
-        await component.crearRaza();
+        await component.guardarRaza();
 
         expect(racialSvc.anadirPrerrequisitosRacial).toHaveBeenCalledWith(41, {
             raza: [{ id_raza: 99 }],
@@ -1023,7 +1053,7 @@ describe('NuevaRazaComponent', () => {
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
         const consoleSpy = spyOn(console, 'log');
 
-        await component.crearRaza();
+        await component.guardarRaza();
 
         expect(consoleSpy).toHaveBeenCalledWith(
             '[NuevaRaza] Payload crear raza',
@@ -1056,7 +1086,7 @@ describe('NuevaRazaComponent', () => {
         expect(draftSvc.leerBorradorLocal(uid)).not.toBeNull();
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
-        await component.crearRaza();
+        await component.guardarRaza();
 
         expect(draftSvc.leerBorradorLocal(uid)).toBeNull();
     });
@@ -1069,7 +1099,7 @@ describe('NuevaRazaComponent', () => {
         razaSvc.crearRaza.and.rejectWith(new Error('Fallo backend'));
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
-        await component.crearRaza();
+        await component.guardarRaza();
 
         expect(draftSvc.leerBorradorLocal(uid)).not.toBeNull();
     });
@@ -1079,7 +1109,7 @@ describe('NuevaRazaComponent', () => {
         (component as any).recalcularPermisos();
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
-        await component.crearRaza();
+        await component.guardarRaza();
 
         expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({
             icon: 'warning',
@@ -1087,5 +1117,195 @@ describe('NuevaRazaComponent', () => {
             text: 'Sin permisos suficientes.',
         }));
         expect(razaSvc.crearRaza).not.toHaveBeenCalled();
+    });
+
+    describe('al modificar', () => {
+        /** Una raza como la da `GET /razas/{id}` (con las referencias de «Modificar»), con los ids de los catálogos de prueba. */
+        function razaDeLaApi(extra: Record<string, unknown> = {}): any {
+            return {
+                i: 24, n: 'Elfo', Descripcion: 'Los elfos viven en los bosques antiguos.', an: null, esp: 5, alc: 5,
+                ma: 'Manual base, Página: 14', c: 'Guerrero', o: true,
+                m: { Fuerza: 0, Destreza: 2, Constitucion: -2, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+                aju: 0, t: { Id: 2, Nombre: 'Mediano' }, man: null, tc: { Id: 3, Nombre: 'Humanoide' },
+                ali: { Id: 9 }, va: 0, ant: 0, co: 30, na: 0, vo: 0, tr: 0, ex: 0,
+                ari: '1.37', ars: '1.67', pri: '38.50', prs: '61.20', ea: 110, em: 250, ev: 400, eve: 700,
+                rd: null, rc: '14', re: null, mu: 0, tmd: 0, pr: {},
+                dg: { Cantidad: 0 },
+                Dotes_adicionales: 0, Puntos_habilidad_extra_primer_nivel: 0, Puntos_habilidad_extra_por_nivel: 0, Cuadrupedo: false,
+                Competencias: { Armas: [{ Id: 17, Nombre: 'Espada larga' }], Armaduras: [], Grupos_arma: [], Grupos_armadura: [] },
+                Habilidades: {
+                    Base: [{ Id_habilidad: 11, Habilidad: 'Avistar', Cantidad: 2, Id_extra: -1, Extra: '-', Varios: 'No especifica' }],
+                    Custom: [],
+                },
+                Idiomas: [{ Id: 9, Nombre: 'Comun' }, { Id: 7, Nombre: 'Draconico' }],
+                subtipos: [{ Id: 8, Nombre: 'Humano' }, { Id: 6, Nombre: 'Dragon' }],
+                dotes: [{ Dote: { Id: 14, Nombre: 'Alerta' }, Contexto: { Entidad: 'raza', Id_raza: 24, Id_extra: 0, Extra: 'No aplica' } }],
+                rac: [{ Id: 15, Nombre: 'Vision en la penumbra', Opcional: 0 }],
+                sor: [{ Conjuro: { Id: 16, Nombre: 'Luz' }, Nivel_lanzador: '1', Usos_diarios: '1/día', Descripcion: 'No especifica' }],
+                Lanzamiento: null, Categorias_edad: [], Pasos_edad: [],
+                Manual: { Id: 1, Nombre: 'Manual base', Pagina: 14 },
+                Clase_predilecta: { Id: 1, Nombre: 'Guerrero' },
+                Dgs_raciales: {
+                    Cantidad: 0, Id_dado: 0, Id_tipo_criatura: 0, Ataque_base: 0, Fortaleza: 1, Reflejos: 1, Voluntad: 1,
+                    Dotes_extra: 0, Puntos_habilidad: 0, Multiplicador_puntos_habilidad: 0,
+                },
+                ...extra,
+            };
+        }
+
+        async function crearEnModificar(raw: any): Promise<void> {
+            fixture.destroy();
+            currentUid = 'uid-modificar';
+            razaSvc.getRazaFresca.and.returnValue(of(normalizeRazaApi(raw)));
+            fixture = TestBed.createComponent(NuevaRazaComponent);
+            component = fixture.componentInstance;
+            component.modo = 'editar';
+            component.idRaza = Number(raw.i);
+            component.editorTabKey = `edicion:raza:${raw.i}`;
+            fixture.detectChanges();
+            await Promise.resolve();
+            await Promise.resolve();
+        }
+
+        it('rellena la pantalla con su GET y, sin tocar nada, manda lo mismo que llegó', async () => {
+            await crearEnModificar(razaDeLaApi());
+
+            expect(razaSvc.getRazaFresca).toHaveBeenCalledWith(24);
+            expect(component.edicion.hayCambios).toBeFalse();
+            expect(component.edicion.textoAccion(false)).toBe('Guardar cambios');
+            expect(component.edicion.textoAccion(true)).toBe('Guardando cambios…');
+            expect(component.form.valid).toBeTrue();
+            const payload = component.buildPayload();
+            expect(payload.raza).toEqual(jasmine.objectContaining({
+                nombre: 'Elfo', id_manual: 1, pagina: 14, id_clase_predilecta: 1, id_tamano: 2, id_tipo_criatura: 3,
+                mod_des: 2, mod_cons: -2, altura_rango_inf: 1.37, peso_rango_inf: 38.5, peso_rango_sup: 61.2, edad_venerable: 700,
+                ataques_naturales: 'No especifica', resistencia_conjuros: '14', id_alineamiento: 9,
+                // Sin DG raciales, los que guardaba: el +1 a las tres salvaciones y los tipos 0.
+                dgs_extra: 0, fortaleza: 1, reflejos: 1, voluntad: 1, id_tipo_dado: 0, id_tipo_criatura_dgs: 0,
+                cuadrupedo: false, id_clase_lanzamiento: null, nivel_lanzamiento: 0,
+            }));
+            expect(payload.subtipos).toEqual([6, 8]);
+            expect(payload.idiomas).toEqual([7, 9]);
+            expect(payload.competencias?.armas).toEqual([17]);
+            // -1: sin extra; no se manda y la API guarda -1, como estaba.
+            expect(payload.habilidades?.base).toEqual([{ id_habilidad: 11, cantidad: 2, varios: 'No especifica' }]);
+            expect(payload.dotes).toEqual([{ id_dote: 14 }]);
+            expect(payload.raciales).toEqual([{ id_racial: 15, opcional: 0 }]);
+            expect(payload.sortilegios).toEqual([{ id_conjuro: 16, nivel_lanzador: 1, usos_diarios: '1/día', descripcion: 'No especifica' }]);
+            expect(payload.lanzamiento_listas).toEqual([]);
+
+            component.form.patchValue({ nombre: 'Elfo gris' });
+            expect(component.edicion.hayCambios).toBeTrue();
+        });
+
+        it('no ofrece ni guarda el borrador de «Nueva raza»', async () => {
+            draftSvc.guardarBorradorLocal('uid-modificar', crearDraftContenido());
+            const fire = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+            await crearEnModificar(razaDeLaApi());
+            component.form.patchValue({ nombre: 'Elfo gris' });
+            component.onBeforeUnload();
+
+            expect(fire).not.toHaveBeenCalled();
+            expect(component.form.controls.nombre.value).toBe('Elfo gris');
+            expect(draftSvc.leerBorradorLocal('uid-modificar')?.formValue['nombre']).toBe('Raza en borrador');
+        });
+
+        it('guarda con PUT, avisa, emite la raza nueva y cierra', async () => {
+            await crearEnModificar(razaDeLaApi());
+            const guardada = normalizeRazaApi(razaDeLaApi({ n: 'Elfo gris' }));
+            razaSvc.actualizarRaza.and.resolveTo({ message: 'Raza actualizada exitosamente', idRaza: 24, raza: guardada });
+            const fire = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+            const emitidas: any[] = [];
+            let cerrada = false;
+            component.razaActualizada.subscribe((raza) => emitidas.push(raza));
+            component.cerrar.subscribe(() => cerrada = true);
+            component.form.patchValue({ nombre: 'Elfo gris' });
+
+            await component.guardarRaza();
+
+            expect(razaSvc.actualizarRaza).toHaveBeenCalledWith(24, jasmine.objectContaining({
+                raza: jasmine.objectContaining({ nombre: 'Elfo gris' }),
+            }));
+            expect(razaSvc.crearRaza).not.toHaveBeenCalled();
+            expect(fire).toHaveBeenCalledWith(jasmine.objectContaining({ title: 'Raza actualizada', text: 'Raza actualizada exitosamente' }));
+            expect(emitidas).toEqual([guardada]);
+            expect(cerrada).toBeTrue();
+            expect(component.edicion.hayCambios).toBeFalse();
+        });
+
+        it('un error de la API con su campo va al marco y al paso del campo', async () => {
+            await crearEnModificar(razaDeLaApi());
+            razaSvc.actualizarRaza.and.rejectWith(new ProfileApiError('Ya existe una raza con ese nombre.', 'nombre_duplicado', 409, 'raza.nombre'));
+            component.pasoActivoIndex = 3;
+
+            await component.guardarRaza();
+
+            expect(component.errores.global).toBe('Ya existe una raza con ese nombre.');
+            expect(component.errores.campo?.campo).toBe('nombre');
+            expect(component.pasoActivoIndex).toBe(0);
+            expect(component.form.controls.nombre.hasError('api')).toBeTrue();
+        });
+
+        it('en una raza por edades enseña sus edades sin editar y conserva su lanzamiento', async () => {
+            await crearEnModificar(razaDeLaApi({
+                n: 'Dragón azul',
+                Lanzamiento: {
+                    Clase: { Id: 1, Nombre: 'Guerrero' }, Nivel: 0,
+                    Listas: [{ Tipo: 'dominio', Id: 2, Nombre: 'Aire' }, { Tipo: 'clase', Id: 1, Nombre: 'Guerrero' }],
+                },
+                Categorias_edad: [
+                    { Orden: 1, Categoria: { Id: 1, Nombre: 'Cría' }, Edad_desde: 0, Edad_hasta: 5, Dgs: 6, Ajuste_nivel: 4, Vd: 3, Nivel_lanzamiento: 0 },
+                    { Orden: 12, Categoria: { Id: 12, Nombre: 'Gran sierpe' }, Edad_desde: 1201, Edad_hasta: null, Dgs: 39, Ajuste_nivel: null, Vd: 25, Nivel_lanzamiento: 19 },
+                ],
+                Pasos_edad: [{ Id: 1, Edad: 0, Categoria: { Id: 1, Nombre: 'Cría' } }],
+            }));
+
+            expect(component.esRazaPorEdades).toBeTrue();
+            expect(component.categoriasEdad.map((categoria) => component.textoAniosEdad(categoria))).toEqual(['0–5', '1201 o más']);
+            expect(component.pasosEdad).toBe(1);
+            expect(component.edicion.hayCambios).toBeFalse();
+            const payload = component.buildPayload();
+            expect(payload.raza).toEqual(jasmine.objectContaining({ id_clase_lanzamiento: 1, nivel_lanzamiento: 0 }));
+            expect(payload.lanzamiento_listas).toEqual([{ id_dominio: 2 }, { id_clase: 1 }]);
+            expect(component.nombreListaLanzamiento({ tipo: 'dominio', id: 2 })).toBe('Dominio de Aire');
+            // Las categorías no van en el cuerpo: la API las conserva.
+            expect(Object.keys(payload)).not.toContain('categorias_edad');
+        });
+
+        it('acepta los raciales que piden esta misma raza', async () => {
+            await crearEnModificar(razaDeLaApi());
+            const propio = { Id: 41, Nombre: 'Entrenamiento élfico', Prerrequisitos_flags: { raza: true }, Prerrequisitos: { raza: [{ Id_raza: 24 }] } } as any;
+            const ajeno = { Id: 42, Nombre: 'Furia enana', Prerrequisitos_flags: { raza: true }, Prerrequisitos: { raza: [{ Id_raza: 3 }] } } as any;
+            component.raciales = [propio, ajeno];
+
+            expect(component.getRacialesCompatibles().map((racial) => racial.Id)).toEqual([41]);
+        });
+    });
+
+    it('el lanzamiento racial de una raza nueva: la clase, su nivel y sus listas', () => {
+        expect(component.buildPayload().raza).toEqual(jasmine.objectContaining({ id_clase_lanzamiento: null, nivel_lanzamiento: 0 }));
+
+        component.seleccionarClaseLanzamiento(1);
+        component.form.patchValue({ nivel_lanzamiento: 7 });
+        component.agregarListaLanzamiento('dominio', 20);
+        component.agregarListaLanzamiento('dominio', 20);
+        component.agregarListaLanzamiento('clase', 1);
+        expect(component.idsListasLanzamiento('dominio')).toEqual([20]);
+        let payload = component.buildPayload();
+        expect(payload.raza).toEqual(jasmine.objectContaining({ id_clase_lanzamiento: 1, nivel_lanzamiento: 7 }));
+        expect(payload.lanzamiento_listas).toEqual([{ id_dominio: 20 }, { id_clase: 1 }]);
+
+        component.quitarListaLanzamiento({ tipo: 'dominio', id: 20 });
+        expect(component.buildPayload().lanzamiento_listas).toEqual([{ id_clase: 1 }]);
+        component.quitarLanzamiento();
+        payload = component.buildPayload();
+        expect(payload.raza).toEqual(jasmine.objectContaining({ id_clase_lanzamiento: null, nivel_lanzamiento: 0 }));
+        expect(payload.lanzamiento_listas).toEqual([]);
+    });
+
+    it('manda si la raza carga como un cuadrúpedo', () => {
+        component.toggleBooleanControl('cuadrupedo');
+        expect(component.buildPayload().raza.cuadrupedo).toBeTrue();
     });
 });

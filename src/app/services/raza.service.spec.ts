@@ -707,6 +707,61 @@ describe('RazaService helpers', () => {
         expect(raza.Raciales[0].Caracteristica_cd?.Nombre).toBe('Constitución');
     });
 
+    it('getRazaFresca pide GET /razas/{id} sin caché y trae las referencias de «Modificar»', async () => {
+        const raw = createRazaApiRaw({
+            i: 24, n: 'Elfo',
+            Manual: { Id: 54, Nombre: 'Manual del jugador 1', Pagina: 14 },
+            Clase_predilecta: { Id: 9, Nombre: 'Mago' },
+            Dgs_raciales: { Cantidad: 0, Id_dado: 0, Id_tipo_criatura: 0, Fortaleza: 1, Reflejos: 1, Voluntad: 1 },
+        });
+        const http = { get: jasmine.createSpy().and.returnValue(of(raw)) };
+        const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
+
+        const raza = await firstValueFrom(service.getRazaFresca(24));
+
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/24$/));
+        expect(raza.Edicion?.Manual).toEqual({ Id: 54, Nombre: 'Manual del jugador 1', Pagina: 14 });
+        expect(raza.Edicion?.Clase_predilecta).toEqual({ Id: 9, Nombre: 'Mago' });
+        expect(raza.Edicion?.Dgs_raciales.Fortaleza).toBe(1);
+        // La caché no las trae: sin ellas, `null`.
+        expect(normalizeRazaApi(createRazaApiRaw({ i: 24 })).Edicion).toBeNull();
+    });
+
+    it('actualizarRaza envía PUT /razas/{id} con Bearer y devuelve la raza leída', async () => {
+        const http = {
+            put: jasmine.createSpy().and.returnValue(of({
+                message: 'Raza actualizada exitosamente', idRaza: 24, raza: createRazaApiRaw({ i: 24, n: 'Elfo gris' }),
+            })),
+        };
+        const auth = { currentUser: { getIdToken: jasmine.createSpy().and.resolveTo('token-firebase') } };
+        const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any, auth as any);
+        const payload = { raza: { nombre: 'Elfo gris' } } as any;
+
+        const respuesta = await service.actualizarRaza(24, payload);
+
+        expect(http.put).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/24$/), payload, jasmine.anything());
+        expect(http.put.calls.mostRecent().args[2].headers.Authorization).toBe('Bearer token-firebase');
+        expect(respuesta.message).toBe('Raza actualizada exitosamente');
+        expect(respuesta.idRaza).toBe(24);
+        expect(respuesta.raza.Nombre).toBe('Elfo gris');
+    });
+
+    it('actualizarRaza traduce el error de la API con su campo', async () => {
+        const http = {
+            put: jasmine.createSpy().and.returnValue(throwError(() => new HttpErrorResponse({
+                status: 409,
+                error: { error: 'Ya existe una raza con ese nombre.', code: 'nombre_duplicado', field: 'raza.nombre' },
+            }))),
+        };
+        const auth = { currentUser: { getIdToken: jasmine.createSpy().and.resolveTo('token-firebase') } };
+        const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any, auth as any);
+
+        const error = await service.actualizarRaza(24, { raza: { nombre: 'Enano' } } as any).catch((e) => e);
+
+        expect(error.code).toBe('nombre_duplicado');
+        expect(error.field).toBe('raza.nombre');
+    });
+
     it('getRazaEnPasoEdad da el texto del error de la API (paso_edad_no_valido)', async () => {
         const http = {
             get: jasmine.createSpy().and.returnValue(throwError(() => new HttpErrorResponse({

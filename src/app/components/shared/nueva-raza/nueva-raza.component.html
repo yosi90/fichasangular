@@ -1,6 +1,7 @@
 <div class="nueva-raza-shell">
-    <form class="nueva-raza-form" [formGroup]="form" (ngSubmit)="crearRaza()">
+    <form class="nueva-raza-form" [formGroup]="form" (ngSubmit)="guardarRaza()">
         <app-insercion-marco
+            [modo]="modo"
             tipo="Raza"
             iconoTipo="raza"
             [nombre]="form.controls.nombre.value"
@@ -8,10 +9,13 @@
             [pasos]="pasos"
             [pasoActual]="pasoActivoIndex"
             (pasoActualChange)="onStepSelectionChange({ selectedIndex: $event })"
-            [avisoPermisos]="!puedeCrear ? mensajePermisosInsuficientes : ''"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeCrear)"
+            [error]="errores.global"
             [guardando]="guardando"
-            textoAccion="Crear raza"
-            textoGuardando="Creando raza…">
+            [accionDesactivada]="edicion.cargando"
+            [textoAccion]="edicion.textoAccion(false)"
+            [textoGuardando]="edicion.textoAccion(true)">
             <div class="insercion-paso" [hidden]="pasoActivoIndex !== 0">
                 <div class="step-layout">
                     <div class="step-main">
@@ -26,14 +30,13 @@
                                             <mat-error *ngIf="form.controls.nombre.invalid">Nombre obligatorio entre 3 y 30 caracteres.</mat-error>
                                         </mat-form-field>
 
-                                        <mat-form-field appearance="fill" class="manual-field">
-                                            <mat-label>Manual</mat-label>
-                                            <input matInput [value]="manualBusqueda" (input)="actualizarManualBusqueda($any($event.target).value)" [matAutocomplete]="manualAuto" />
-                                            <mat-autocomplete #manualAuto="matAutocomplete" [displayWith]="displayManualAutocomplete" (optionSelected)="seleccionarManual($event.option.value)">
-                                                <mat-option *ngFor="let manual of getManualesFiltrados(); trackBy: trackById" [value]="manual.Id">{{manual.Nombre}}</mat-option>
-                                            </mat-autocomplete>
-                                            <mat-error *ngIf="form.controls.id_manual.invalid">Manual obligatorio.</mat-error>
-                                        </mat-form-field>
+                                        <app-catalogo-buscador class="manual-field"
+                                            etiqueta="Manual"
+                                            [opciones]="opcionesManuales"
+                                            [valor]="form.controls.id_manual.value"
+                                            [error]="form.controls.id_manual.touched && form.controls.id_manual.invalid ? 'Manual obligatorio.' : null"
+                                            (elegir)="seleccionarManual($event)">
+                                        </app-catalogo-buscador>
 
                                         <mat-form-field appearance="fill" class="page-field">
                                             <mat-label>Página</mat-label>
@@ -147,16 +150,16 @@
 
                                         <div class="single-lookup-block">
                                             <mat-form-field appearance="fill">
-                                                <mat-label>Subtipo</mat-label>
-                                                <input matInput [value]="subtipoBusqueda" (input)="actualizarSubtipoBusqueda($any($event.target).value)" [matAutocomplete]="subtipoUnicoAuto" />
-                                                <mat-autocomplete #subtipoUnicoAuto="matAutocomplete" (optionSelected)="seleccionarSubtipo($event.option.value)">
-                                                    <mat-option *ngFor="let subtipo of getSubtiposFiltrados(); trackBy: trackById" [value]="subtipo.Id">{{subtipo.Nombre}}</mat-option>
+                                                <mat-label>Subtipos</mat-label>
+                                                <input matInput [value]="relacionQueries.subtiposSeleccionados" (input)="actualizarRelacionQuery('subtiposSeleccionados', $any($event.target).value)" [matAutocomplete]="subtiposAuto" />
+                                                <mat-autocomplete #subtiposAuto="matAutocomplete" [displayWith]="displayAutocompleteVacio" (optionSelected)="agregarSeleccion('subtiposSeleccionados', $event.option.value)">
+                                                    <mat-option *ngFor="let subtipo of getOpcionesRelacion('subtiposSeleccionados', subtipos); trackBy: trackById" [value]="subtipo.Id">{{subtipo.Nombre}}</mat-option>
                                                 </mat-autocomplete>
                                             </mat-form-field>
-                                            <div class="selected-chips selected-chips--single" *ngIf="subtiposSeleccionados.length > 0">
-                                                <span class="selected-chip">
-                                                    {{getSubtipoSeleccionadoLabel()}}
-                                                    <button mat-icon-button type="button" matTooltip="Quitar" (click)="limpiarSubtipo()"><mat-icon>close</mat-icon></button>
+                                            <div class="selected-chips" *ngIf="subtiposSeleccionados.length > 0">
+                                                <span class="selected-chip" *ngFor="let id of subtiposSeleccionados">
+                                                    {{getEtiquetaRelacion(subtipos, id)}}
+                                                    <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarSeleccion('subtiposSeleccionados', id)"><mat-icon>close</mat-icon></button>
                                                 </span>
                                             </div>
                                         </div>
@@ -172,6 +175,15 @@
                                             <input matInput type="number" min="0" max="40" formControlName="alcance" />
                                             <mat-error *ngIf="form.controls.alcance.invalid">Entre 0 y 40.</mat-error>
                                         </mat-form-field>
+
+                                        <div class="estado-row">
+                                            <mat-chip-listbox class="boolean-chips" aria-label="Carga de la raza">
+                                                <mat-chip-option [selected]="form.controls.cuadrupedo.value === true" (click)="toggleBooleanControl('cuadrupedo')"
+                                                    matTooltip="Carga como un cuadrúpedo (Manual del jugador, tabla 9-1), como el centauro">
+                                                    Cuadrúpedo
+                                                </mat-chip-option>
+                                            </mat-chip-listbox>
+                                        </div>
                                     </div>
                                 </section>
 
@@ -231,6 +243,37 @@
                 <div class="step-layout">
                     <div class="step-main">
                         <section class="step-section">
+                            <section class="form-panel edades-panel" *ngIf="esRazaPorEdades">
+                                <h3 class="form-panel-title form-panel-title--with-note">
+                                    <span>Edades</span>
+                                    <span class="form-panel-note">no editable</span>
+                                </h3>
+                                <p class="edades-motivo">
+                                    <mat-icon aria-hidden="true">lock</mat-icon>
+                                    Las edades se editan en una próxima versión de esta pantalla. Al guardar, sus categorías, sus {{pasosEdad}} pasos de edad y lo que gana en cada una se conservan tal cual.
+                                </p>
+                                <div class="edades-tabla" role="table" aria-label="Categorías de edad">
+                                    <div class="edades-fila edades-fila--cabecera" role="row">
+                                        <span role="columnheader">Categoría</span>
+                                        <span role="columnheader">Años</span>
+                                        <span role="columnheader">Tamaño</span>
+                                        <span role="columnheader">DG</span>
+                                        <span role="columnheader">Ajuste</span>
+                                        <span role="columnheader">VD</span>
+                                        <span role="columnheader">Nivel de lanzamiento</span>
+                                    </div>
+                                    <div class="edades-fila" role="row" *ngFor="let categoria of categoriasEdad">
+                                        <span role="cell">{{categoria.Categoria.Nombre}}</span>
+                                        <span role="cell">{{textoAniosEdad(categoria)}}</span>
+                                        <span role="cell">{{categoria.Tamano?.Nombre || '—'}}</span>
+                                        <span role="cell">{{categoria.Dgs}}</span>
+                                        <span role="cell">{{categoria.Ajuste_nivel === null ? 'Solo PNJ' : categoria.Ajuste_nivel}}</span>
+                                        <span role="cell">{{categoria.Vd ?? '—'}}</span>
+                                        <span role="cell">{{categoria.Nivel_lanzamiento || '—'}}</span>
+                                    </div>
+                                </div>
+                            </section>
+
                             <div class="values-card-grid" [class.error-section]="form.errors?.['rangosInvalidos']">
                                 <section class="form-panel values-panel values-characteristics">
                                     <h3 class="form-panel-title">Características</h3>
@@ -276,10 +319,10 @@
                                         <span class="form-panel-note">valores en metros y kilogramos</span>
                                     </h3>
                                     <div class="values-grid values-grid--four">
-                                        <mat-form-field appearance="fill"><mat-label>Altura mín. (m)</mat-label><input matInput type="number" min="0.01" max="10" step="0.01" formControlName="altura_rango_inf" /><mat-error>Entre 0,01 y 10 m.</mat-error></mat-form-field>
-                                        <mat-form-field appearance="fill"><mat-label>Altura máx. (m)</mat-label><input matInput type="number" min="0.01" max="10" step="0.01" formControlName="altura_rango_sup" /><mat-error>Entre 0,01 y 10 m.</mat-error></mat-form-field>
-                                        <mat-form-field appearance="fill"><mat-label>Peso mín.</mat-label><input matInput type="number" min="1" max="10000" formControlName="peso_rango_inf" /><mat-error>Entre 1 y 10000.</mat-error></mat-form-field>
-                                        <mat-form-field appearance="fill"><mat-label>Peso máx.</mat-label><input matInput type="number" min="1" max="10000" formControlName="peso_rango_sup" /><mat-error>Entre 1 y 10000.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Altura mín. (m)</mat-label><input matInput type="number" min="0" max="10" step="0.01" formControlName="altura_rango_inf" /><mat-error>Entre 0 y 10 m.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Altura máx. (m)</mat-label><input matInput type="number" min="0" max="10" step="0.01" formControlName="altura_rango_sup" /><mat-error>Entre 0 y 10 m.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Peso mín.</mat-label><input matInput type="number" min="0" max="999.99" step="0.01" formControlName="peso_rango_inf" /><mat-error>Entre 0 y 999,99.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Peso máx.</mat-label><input matInput type="number" min="0" max="999.99" step="0.01" formControlName="peso_rango_sup" /><mat-error>Entre 0 y 999,99.</mat-error></mat-form-field>
                                     </div>
                                     <p class="field-error" *ngIf="form.errors?.['rangosInvalidos']">Revisa que los mínimos no superen los máximos.</p>
                                 </section>
@@ -287,10 +330,10 @@
                                 <section class="form-panel values-panel values-age">
                                     <h3 class="form-panel-title">Rangos de edad</h3>
                                     <div class="values-grid values-grid--four">
-                                        <mat-form-field appearance="fill"><mat-label>Adulto</mat-label><input matInput type="number" min="1" formControlName="edad_adulto" /><mat-error>Mínimo 1.</mat-error></mat-form-field>
-                                        <mat-form-field appearance="fill"><mat-label>Mediana edad</mat-label><input matInput type="number" min="1" formControlName="edad_mediana" /><mat-error>Mínimo 1.</mat-error></mat-form-field>
-                                        <mat-form-field appearance="fill"><mat-label>Viejo</mat-label><input matInput type="number" min="1" formControlName="edad_viejo" /><mat-error>Mínimo 1.</mat-error></mat-form-field>
-                                        <mat-form-field appearance="fill"><mat-label>Venerable</mat-label><input matInput type="number" min="1" formControlName="edad_venerable" /><mat-error>Mínimo 1.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Adulto</mat-label><input matInput type="number" min="0" formControlName="edad_adulto" /><mat-error>Mínimo 0.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Mediana edad</mat-label><input matInput type="number" min="0" formControlName="edad_mediana" /><mat-error>Mínimo 0.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Viejo</mat-label><input matInput type="number" min="0" formControlName="edad_viejo" /><mat-error>Mínimo 0.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Venerable</mat-label><input matInput type="number" min="0" formControlName="edad_venerable" /><mat-error>Mínimo 0.</mat-error></mat-form-field>
                                     </div>
                                     <p class="field-error" *ngIf="form.errors?.['rangosInvalidos']">Orden esperado: adulto, mediana edad, viejo y venerable.</p>
                                 </section>
@@ -300,7 +343,7 @@
                                     <div class="values-grid values-grid--six">
                                         <mat-form-field appearance="fill"><mat-label>Armadura natural</mat-label><input matInput type="number" formControlName="armadura_natural" /></mat-form-field>
                                         <mat-form-field appearance="fill"><mat-label>Varios de armadura</mat-label><input matInput type="number" formControlName="varios_armadura" /></mat-form-field>
-                                        <mat-form-field appearance="fill"><mat-label>Ajuste de nivel</mat-label><input matInput type="number" min="0" max="20" formControlName="ajuste_nivel" /><mat-error>Entre 0 y 20.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Ajuste de nivel</mat-label><input matInput type="number" min="0" formControlName="ajuste_nivel" /><mat-error>Mínimo 0.</mat-error></mat-form-field>
                                         <mat-form-field appearance="fill"><mat-label>Fortaleza</mat-label><input matInput type="number" formControlName="fortaleza" /></mat-form-field>
                                         <mat-form-field appearance="fill"><mat-label>Reflejos</mat-label><input matInput type="number" formControlName="reflejos" /></mat-form-field>
                                         <mat-form-field appearance="fill"><mat-label>Voluntad</mat-label><input matInput type="number" formControlName="voluntad" /></mat-form-field>
@@ -524,6 +567,48 @@
                                     <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarSortilegio(i)"><mat-icon>delete</mat-icon></button>
                                 </div>
                                 <button mat-stroked-button type="button" (click)="agregarSortilegio()"><mat-icon>add</mat-icon> Añadir sortilegio</button>
+                            </section>
+
+                            <section class="form-panel lanzamiento-panel">
+                                <h3 class="form-panel-title">Lanzamiento racial</h3>
+                                <p class="lanzamiento-ayuda">Si la raza lanza conjuros como una clase (el rakshasa, como un hechicero de 7.º nivel): esos niveles se suman a los de la clase solo para los conjuros.</p>
+                                <div class="lanzamiento-grid">
+                                    <app-catalogo-buscador
+                                        etiqueta="Lanza como la clase"
+                                        placeholder="No lanza conjuros"
+                                        [opciones]="opcionesClasesLanzamiento"
+                                        [valor]="lanzaConjuros ? form.controls.id_clase_lanzamiento.value : null"
+                                        (elegir)="seleccionarClaseLanzamiento($event)">
+                                    </app-catalogo-buscador>
+                                    <mat-form-field appearance="fill" *ngIf="lanzaConjuros">
+                                        <mat-label>Nivel de lanzamiento</mat-label>
+                                        <input matInput type="number" min="0" formControlName="nivel_lanzamiento" [readonly]="esRazaPorEdades" />
+                                        <mat-hint *ngIf="esRazaPorEdades">En esta raza el nivel va en cada edad.</mat-hint>
+                                        <mat-error *ngIf="form.controls.nivel_lanzamiento.invalid">Mínimo 0.</mat-error>
+                                    </mat-form-field>
+                                    <button mat-stroked-button type="button" *ngIf="lanzaConjuros" (click)="quitarLanzamiento()">
+                                        <mat-icon>block</mat-icon> No lanza
+                                    </button>
+                                </div>
+                                <ng-container *ngIf="lanzaConjuros">
+                                    <h4>Listas que lanza además como arcanas</h4>
+                                    <div class="selected-chips">
+                                        <span class="selected-chip" *ngFor="let lista of listasLanzamientoElegidas">
+                                            {{nombreListaLanzamiento(lista)}}
+                                            <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarListaLanzamiento(lista)"><mat-icon>close</mat-icon></button>
+                                        </span>
+                                    </div>
+                                    <div class="lanzamiento-grid">
+                                        <app-catalogo-buscador etiqueta="Añadir la lista de una clase" [anadir]="true"
+                                            [opciones]="opcionesClasesLanzamiento" [excluir]="idsListasLanzamiento('clase')"
+                                            (elegir)="agregarListaLanzamiento('clase', $event)">
+                                        </app-catalogo-buscador>
+                                        <app-catalogo-buscador etiqueta="Añadir un dominio" [anadir]="true"
+                                            [opciones]="opcionesDominios" [excluir]="idsListasLanzamiento('dominio')"
+                                            (elegir)="agregarListaLanzamiento('dominio', $event)">
+                                        </app-catalogo-buscador>
+                                    </div>
+                                </ng-container>
                             </section>
                         </div>
                     </div>

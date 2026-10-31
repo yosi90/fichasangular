@@ -4,6 +4,7 @@ import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 import { createRacialPlaceholder } from 'src/app/services/utils/racial-mapper';
 import { DetallesRazaComponent } from './detalles-raza.component';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
@@ -88,6 +89,7 @@ describe('DetallesRazaComponent', () => {
     let component: DetallesRazaComponent;
     let fixture: ComponentFixture<DetallesRazaComponent>;
     let manualNav: jasmine.SpyObj<ManualDetalleNavigationService>;
+    let usuario: { can: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
     const { texto, titulos, etiquetasDatos, valor, filasPares, enlace, lateral, seccion, etiquetasCabecera } = lectorFicha(elemento);
 
@@ -98,9 +100,13 @@ describe('DetallesRazaComponent', () => {
 
     beforeEach(async () => {
         manualNav = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
+        usuario = { can: jasmine.createSpy('can').and.returnValue(false) };
         await TestBed.configureTestingModule({
             declarations: [DetallesRazaComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
-            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNav }],
+            providers: [
+                { provide: ManualDetalleNavigationService, useValue: manualNav },
+                { provide: UserService, useValue: usuario },
+            ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
 
@@ -386,5 +392,22 @@ describe('DetallesRazaComponent', () => {
         expect(component.mostrarInfoManiobrabilidad).toBeTrue();
         expect(secciones).toContain('Regular');
         expect(secciones).toContain('Velocidad de avance: Mitad.');
+    });
+
+    it('enseña el lápiz «Modificar» solo con permiso de razas y si alguien lo escucha', () => {
+        expect(texto()).not.toContain('Modificar');
+
+        const abiertas: Raza[] = [];
+        component.modificar.subscribe((raza) => abiertas.push(raza));
+        fixture.detectChanges();
+        expect(texto()).not.toContain('Modificar');
+        expect(usuario.can).toHaveBeenCalledWith('razas', 'create');
+
+        usuario.can.and.returnValue(true);
+        fixture.detectChanges();
+        const lapiz = Array.from(elemento().querySelectorAll('button')).find((boton) => boton.textContent?.includes('Modificar'));
+        expect(lapiz).toBeTruthy();
+        lapiz!.click();
+        expect(abiertas.map((raza) => raza.Id)).toEqual([component.raza.Id]);
     });
 });

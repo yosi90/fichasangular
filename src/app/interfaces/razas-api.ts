@@ -54,6 +54,11 @@ export interface RazaCreateCore {
     tamano_mutacion_dependiente: boolean;
     id_alineamiento: number;
     oficial: boolean;
+    /** Carga como un cuadrúpedo (el centauro). Opcional en la API (por defecto, no). */
+    cuadrupedo?: boolean;
+    /** El lanzamiento racial: lanza como esa clase de ese nivel (el rakshasa, hechicero 7); sin clase, `null` y 0. */
+    id_clase_lanzamiento?: number | null;
+    nivel_lanzamiento?: number;
 }
 
 export interface RazaCreatePrerequisitoActitud {
@@ -130,15 +135,25 @@ export interface RazaCreateRequest {
     raciales?: RazaCreateRacial[];
     sortilegios?: RazaCreateSortilegio[];
     competencias?: RazaCreateCompetencias;
+    /** Las listas que lanza además como arcanas con el lanzamiento racial: `{ id_clase }` o `{ id_dominio }`. */
+    lanzamiento_listas?: RazaCreateListaLanzamiento[];
 }
 
+export type RazaCreateListaLanzamiento = { id_clase: number; } | { id_dominio: number; };
+
+/** `POST /razas/add` y `PUT /razas/{id}`: `{ message, idRaza, raza }`, con la raza como la da su `GET`. */
 export interface RazaCreateApiResponse {
     message: string;
     idRaza: number;
-    raza?: Raza;
+    raza?: unknown;
 }
 
 export interface RazaCreateResponse {
     message: string;
     idRaza: number;
+}
+
+/** La respuesta de `PUT /razas/{id}`, con la raza ya leída. */
+export interface RazaActualizadaResponse extends RazaCreateResponse {
+    raza: Raza;
 }

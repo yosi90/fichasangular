@@ -363,11 +363,24 @@ describe('TabControlComponent navegación por origen', () => {
     it('un listado sin «Modificar» todavía abre el detalle aunque venga del menú de modificar', fakeAsync(() => {
         const component = crearComponente();
 
-        component.recibirObjetoListado({ item: { Id: 5, Nombre: 'Orco' } as any, tipo: 'razas' }, 'modificar');
+        component.recibirObjetoListado({ item: { Id: 5, Nombre: 'Humanoide' } as any, tipo: 'tipos de criatura' }, 'modificar');
         tick(120);
 
         expect(Object.values(component.ediciones).every((abiertas) => abiertas.length === 0)).toBeTrue();
-        expect(component.detallesRazaAbiertos.length).toBe(1);
+        expect(component.detallesTipoCriaturaAbiertos.length).toBe(1);
+    }));
+
+    it('una raza del menú de modificar abre su pestaña de «Modificar» y, al guardarla, refresca su detalle', fakeAsync(() => {
+        const component = crearComponente();
+        component.detallesRazaAbiertos = [{ Id: 5, Nombre: 'Orco' } as any];
+
+        component.recibirObjetoListado({ item: { Id: 5, Nombre: 'Orco' } as any, tipo: 'razas' }, 'modificar');
+        tick(120);
+
+        expect(component.ediciones.raza).toEqual([{ key: 'edicion:raza:5', tipo: 'raza', id: 5, nombre: 'Orco' }]);
+        component.onEdicionGuardada('raza', { Id: 5, Nombre: 'Orco gris' } as any);
+        expect(component.detallesRazaAbiertos[0].Nombre).toBe('Orco gris');
+        expect(component.ediciones.raza[0].nombre).toBe('Orco gris');
     }));
 
     it('cerrar edición de racial sin cambios quita la tab cuando el editor lo emite', async () => {
@@ -556,11 +569,16 @@ describe('TabControlComponent navegación por origen', () => {
     it('avisa antes de cerrar insertar razas si hay raciales pendientes', async () => {
         const component = crearComponente();
         component.abrirListadoTab('razas', 'insertar');
-        (component as any).nuevasRazasInsertadas = {
-            first: {
-                confirmarSalidaConRacialesPendientes: jasmine.createSpy('confirmarSalidaConRacialesPendientes').and.resolveTo(false),
-            },
+        const insercion = {
+            edicion: { editando: false },
+            confirmarSalidaConRacialesPendientes: jasmine.createSpy('confirmarSalidaConRacialesPendientes').and.resolveTo(false),
         };
+        const modificacion = {
+            edicion: { editando: true },
+            confirmarSalidaConRacialesPendientes: jasmine.createSpy('confirmarSalidaConRacialesPendientes').and.resolveTo(true),
+        };
+        // La de «Modificar» puede ir antes en las pestañas: pregunta la de «Nueva raza».
+        (component as any).nuevasRazasInsertadas = { find: (fn: (c: any) => boolean) => [modificacion, insercion].find(fn) };
 
         const cerrado = await component.quitarListado('listado:insertar:razas');
 

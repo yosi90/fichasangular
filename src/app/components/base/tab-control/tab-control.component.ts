@@ -1420,6 +1420,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 return this.detallesClaseAbiertos;
             case 'plantilla':
                 return this.detallesPlantillaAbiertos;
+            case 'raza':
+                return this.detallesRazaAbiertos;
         }
     }
 
@@ -2330,7 +2332,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     private async puedeCerrarListado(tab: ListadoTabAbierto): Promise<boolean> {
         if (tab.tipo !== 'razas' || tab.operacion !== 'insertar')
             return true;
-        const componente = this.nuevasRazasInsertadas?.first;
+        // La de «Nueva raza»: las de «Modificar» preguntan desde su pestaña (`quitarEdicion`).
+        const componente = this.nuevasRazasInsertadas?.find((raza) => !raza.edicion.editando);
         if (!componente)
             return true;
         return componente.confirmarSalidaConRacialesPendientes();

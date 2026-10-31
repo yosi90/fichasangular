@@ -10,9 +10,7 @@ export interface NuevaRazaDraftSelections {
 }
 
 export interface NuevaRazaDraftSearches {
-    manualBusqueda: string;
     clasePredilectaBusqueda: string;
-    subtipoBusqueda: string;
     tipoCriaturaDgsBusqueda: string;
 }
 
@@ -136,7 +134,7 @@ export class NuevaRazaDraftService {
             selectedIndex: this.normalizarSelectedIndex(contenido.selectedIndex),
             formValue: this.clonarObjeto(contenido.formValue),
             selections: {
-                subtiposSeleccionados: this.normalizarIds(contenido.selections?.subtiposSeleccionados).slice(0, 1),
+                subtiposSeleccionados: this.normalizarIds(contenido.selections?.subtiposSeleccionados),
                 idiomasSeleccionados: this.normalizarIds(contenido.selections?.idiomasSeleccionados),
                 armasCompetenciaSeleccionadas: this.normalizarIds(contenido.selections?.armasCompetenciaSeleccionadas),
                 armadurasCompetenciaSeleccionadas: this.normalizarIds(contenido.selections?.armadurasCompetenciaSeleccionadas),
@@ -144,9 +142,7 @@ export class NuevaRazaDraftService {
                 gruposArmaduraSeleccionados: this.normalizarIds(contenido.selections?.gruposArmaduraSeleccionados),
             },
             searches: {
-                manualBusqueda: this.texto(contenido.searches?.manualBusqueda),
                 clasePredilectaBusqueda: this.texto(contenido.searches?.clasePredilectaBusqueda),
-                subtipoBusqueda: this.texto(contenido.searches?.subtipoBusqueda),
                 tipoCriaturaDgsBusqueda: this.texto(contenido.searches?.tipoCriaturaDgsBusqueda),
             },
             relacionQueries: this.normalizarRecordTexto(contenido.relacionQueries),

@@ -5,7 +5,7 @@ import { IdiomaDetalle } from "src/app/interfaces/idioma";
 import { RacialDetalle } from "src/app/interfaces/racial";
 import {
     CategoriaEdadRaza, ClaveCaracteristicaRaza, LanzamientoRaza, ListaLanzamientoRaza, MutacionRaza, PasoEdadRaza, Raza, RazaCompetencias,
-    RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags
+    RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags, ReferenciasEdicionRaza
 } from "src/app/interfaces/raza";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
@@ -305,6 +305,33 @@ export function normalizarCamposEdadRaza(raw: any): Pick<Raza, CamposEdadRaza> {
     };
 }
 
+/**
+ * Lo que necesita «Modificar raza» y el resto de la raza no da con su id (`Manual`, `Clase_predilecta` y `Dgs_raciales`
+ * de `GET /razas/{id}`). Solo lo trae la API: sin ello (la caché), `null`.
+ */
+function referenciasEdicionRaza(raw: any): ReferenciasEdicionRaza | null {
+    const manual = raw?.Manual;
+    if (!manual || typeof manual !== 'object')
+        return null;
+    const dgs = raw?.Dgs_raciales;
+    return {
+        Manual: { Id: toNumber(manual?.Id), Nombre: toText(manual?.Nombre).trim(), Pagina: toNumber(manual?.Pagina) },
+        Clase_predilecta: toRefIdNombre(raw?.Clase_predilecta) ?? { Id: 0, Nombre: '' },
+        Dgs_raciales: {
+            Cantidad: toNumber(dgs?.Cantidad),
+            Id_dado: toNumber(dgs?.Id_dado),
+            Id_tipo_criatura: toNumber(dgs?.Id_tipo_criatura),
+            Ataque_base: toNumber(dgs?.Ataque_base),
+            Fortaleza: toNumber(dgs?.Fortaleza),
+            Reflejos: toNumber(dgs?.Reflejos),
+            Voluntad: toNumber(dgs?.Voluntad),
+            Dotes_extra: toNumber(dgs?.Dotes_extra),
+            Puntos_habilidad: toNumber(dgs?.Puntos_habilidad),
+            Multiplicador_puntos_habilidad: toNumber(dgs?.Multiplicador_puntos_habilidad),
+        },
+    };
+}
+
 /** Los textos de la raza: su descripción y, si la hemos traducido de un libro en inglés, su nombre original. */
 type TextosRaza = 'Descripcion' | 'Nombre_original' | 'Traducido';
 
@@ -483,5 +510,6 @@ export function normalizeRazaApi(raw: any): Raza {
         Idiomas: normalizeIdiomasApi(raw?.Idiomas),
         Plantillas_por_subtipo: normalizePlantillasPorSubtipoApi(raw?.Plantillas_por_subtipo),
         ...normalizarCamposEdadRaza(raw),
+        Edicion: referenciasEdicionRaza(raw),
     };
 }
