@@ -1,4 +1,5 @@
 import { CategoriaEdadRaza, PasoEdadRaza, Raza } from 'src/app/interfaces/raza';
+import { toNullableText } from './normalizacion';
 import { esPnj, TipoPersonaje, textoVd } from './tipo-personaje';
 
 /*
@@ -11,10 +12,10 @@ import { esPnj, TipoPersonaje, textoVd } from './tipo-personaje';
 /** El texto del contrato para un PJ en una edad sin ajuste (`paso_edad_no_jugable`). */
 export const MOTIVO_EDAD_SOLO_PNJ = 'El manual no da ajuste de nivel a esta edad; solo como PNJ.';
 
-/** El texto del contrato para un PJ sin niveles de clase que no puede quedarse así (`pj_sin_clase`). */
 /** Un PJ cuya raza da al menos estos DG raciales se puede crear sin clase (el centauro o el ogro; `pj_sin_clase` del contrato). */
 export const DGS_RACIALES_PJ_SIN_CLASE = 4;
 
+/** El texto del contrato para un PJ sin niveles de clase que no puede quedarse así (`pj_sin_clase`). */
 export const MOTIVO_PJ_SIN_CLASE = `Un PJ necesita al menos un nivel de clase; sin clases solo puede ser un PNJ, una raza que se juega por edades o una raza con ${DGS_RACIALES_PJ_SIN_CLASE} DG raciales o más.`;
 
 export interface ContextoEdad {
@@ -76,9 +77,7 @@ export function razaConCategoria(nombreRaza: string | null | undefined, categori
  */
 export function leerCategoriaEdadListado(raw: any): string | null {
     const valor = raw?.categoriaEdad ?? raw?.Categoria_edad ?? raw?.CategoriaEdad ?? null;
-    const nombre = typeof valor === 'string' ? valor : valor?.categoria?.Nombre;
-    const texto = `${nombre ?? ''}`.trim();
-    return texto.length > 0 ? texto : null;
+    return toNullableText(typeof valor === 'string' ? valor : valor?.categoria?.Nombre);
 }
 
 /**
