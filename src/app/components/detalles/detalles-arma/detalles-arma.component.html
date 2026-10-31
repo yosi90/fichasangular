@@ -5,7 +5,9 @@
         [manual]="arma.Manual"
         [oficial]="arma.Oficial"
         [etiquetas]="etiquetas"
-        (abrirManual)="abrirDetalleManual()">
+        [modificable]="puedeModificar"
+        (abrirManual)="abrirDetalleManual()"
+        (modificar)="modificar.emit(arma)">
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" titulo="Datos del arma"></app-ficha-datos>

@@ -1,3 +1,4 @@
+import { UserService } from 'src/app/services/user.service';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
@@ -10,6 +11,7 @@ import { crearArmaduraApi, crearRodelaApi } from 'src/testing/equipo-api';
 import { lectorFicha } from 'src/testing/ficha-detalle';
 
 describe('DetallesArmaduraComponent', () => {
+    const usuario = { can: jasmine.createSpy('can').and.returnValue(true) };
     let component: DetallesArmaduraComponent;
     let fixture: ComponentFixture<DetallesArmaduraComponent>;
     let manualNavSpy: jasmine.SpyObj<ManualDetalleNavigationService>;
@@ -23,6 +25,7 @@ describe('DetallesArmaduraComponent', () => {
             declarations: [DetallesArmaduraComponent, TextoManualComponent, DescripcionEquipoComponent, ...FICHA_DETALLE_COMPONENTES],
             providers: [
                 { provide: ManualDetalleNavigationService, useValue: manualNavSpy },
+                { provide: UserService, useValue: usuario },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -81,5 +84,24 @@ describe('DetallesArmaduraComponent', () => {
         expect(etiquetasDatos()).not.toContain('Correr');
         expect(texto()).not.toContain('Descripción');
         expect(texto()).not.toContain('Tipo_armadura');
+    });
+
+    it('enseña el lápiz «Modificar» solo con permiso de armaduras y si alguien lo escucha', () => {
+        usuario.can.and.returnValue(false);
+        fixture.detectChanges();
+        expect(texto()).not.toContain('Modificar');
+
+        const abiertas: number[] = [];
+        component.modificar.subscribe((armadura) => abiertas.push(armadura.Id));
+        fixture.detectChanges();
+        expect(texto()).not.toContain('Modificar');
+        expect(usuario.can).toHaveBeenCalledWith('armaduras', 'create');
+
+        usuario.can.and.returnValue(true);
+        fixture.detectChanges();
+        const lapiz = Array.from(elemento().querySelectorAll('button')).find((boton) => boton.textContent?.includes('Modificar'));
+        expect(lapiz).toBeTruthy();
+        lapiz!.click();
+        expect(abiertas).toEqual([component.armadura.Id]);
     });
 });

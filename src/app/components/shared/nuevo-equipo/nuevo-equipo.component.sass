@@ -1,0 +1,68 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar armas y armaduras, dentro del marco común de las inserciones (guía de inserciones, «El equipo»). Sin
+// pasos: tarjetas una debajo de otra. Aquí solo van las filas de las propiedades y el campo con su botón de quitar.
+:host
+    @include inserciones.insercion-host
+
+.nuevo-equipo-shell
+    @include inserciones.insercion-shell
+
+.nuevo-equipo-form
+    @include inserciones.insercion-form-base
+
+    mat-form-field, app-catalogo-buscador
+        width: 100%
+
+    .insercion-tarjeta + .insercion-tarjeta
+        margin-top: 12px
+
+// Un buscador de un solo valor que se puede dejar vacío (el material, la munición): el buscador y su ✕.
+.equipo-con-quitar
+    display: flex
+    align-items: flex-start
+    gap: 4px
+
+    app-catalogo-buscador
+        flex: 1 1 auto
+        min-width: 0
+
+    .row-action-btn
+        margin-top: 8px
+
+.equipo-vacio
+    margin: 0 0 8px
+    padding: 12px
+    border: 1px dashed rgba(255, 255, 255, .22)
+    border-radius: $ficha-radio
+    font-size: 13px
+    color: $ficha-texto-suave
+    text-align: center
+
+.equipo-fila
+    display: grid
+    grid-template-columns: minmax(0, 1fr) 92px 42px
+    gap: 8px
+    align-items: center
+    padding-bottom: 6px
+    margin-bottom: 6px
+    border-bottom: 1px solid rgba(255, 255, 255, .06)
+
+.equipo-fila__nombre
+    display: flex
+    flex-direction: column
+    min-width: 0
+    font-size: 14px
+    color: $ficha-blanco
+    overflow-wrap: anywhere
+
+    small
+        font-size: 12px
+        color: $ficha-texto-suave
+
+.equipo-error
+    margin: 0 0 8px
+    font-size: 13px
+    color: var(--mat-form-field-error-text-color, #f44336)

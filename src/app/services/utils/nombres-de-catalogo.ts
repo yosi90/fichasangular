@@ -15,3 +15,6 @@ export const DOTE: ElementoDeCatalogo = { singular: 'dote', plural: 'dotes', fem
 export const CONJURO: ElementoDeCatalogo = { singular: 'conjuro', plural: 'conjuros', femenino: false };
 export const PLANTILLA: ElementoDeCatalogo = { singular: 'plantilla', plural: 'plantillas', femenino: true };
 export const HABILIDAD: ElementoDeCatalogo = { singular: 'habilidad', plural: 'habilidades', femenino: true };
+
+export const ARMA: ElementoDeCatalogo = { singular: 'arma', plural: 'armas', femenino: true };
+export const ARMADURA: ElementoDeCatalogo = { singular: 'armadura', plural: 'armaduras', femenino: true };

@@ -275,3 +275,19 @@ export type EntradaEquipo =
     | { tipo: 'municion'; item: MunicionDetalle }
     | { tipo: 'encantamiento'; item: EncantamientoDetalle }
     | { tipo: 'conjunto'; item: ConjuntoObjetosDetalle };
+
+/**
+ * Lo que comparten los cuerpos del alta y la edición del equipo (`POST /armas/add`, `PUT /armas/<id>`…; hito 7 del
+ * roadmap de inserciones): el nombre, la descripción propia o del SRD con su origen, el nombre original, el manual y su
+ * página y si es oficial.
+ */
+export interface EquipoCuerpoComun {
+    nombre: string;
+    descripcion: string;
+    origen_descripcion: OrigenDescripcion;
+    nombre_original: string | null;
+    traducido: boolean;
+    id_manual: number;
+    pagina: number;
+    oficial: boolean;
+}

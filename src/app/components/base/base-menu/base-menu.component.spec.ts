@@ -201,14 +201,14 @@ describe('BaseMenuComponent', () => {
     it('Insertar y Modificar piden el permiso de creación del recurso de cada catálogo; sin pantalla, solo cierran el menú', () => {
         canCreateRazas = false;
         permissions['monstruos:create'] = true;
-        permissions['armas:create'] = true;
+        permissions['deidades:create'] = true;
         const emitSpy = spyOn(component.ListadoTab, 'emit');
-        const armas = component.gruposOtros.modificar[0].opciones[0];
+        const deidades = component.gruposOtros.modificar[2].opciones[2];
 
         expect(component.puedeGestionar('monstruos')).toBeTrue();
         expect(component.puedeGestionar('tipos de criatura')).toBeFalse();
-        expect(armas.habilitada()).toBeTrue();
-        armas.abrir();
+        expect(deidades.habilitada()).toBeTrue();
+        deidades.abrir();
         expect(emitSpy).not.toHaveBeenCalled();
 
         permissions['clases:create'] = true;

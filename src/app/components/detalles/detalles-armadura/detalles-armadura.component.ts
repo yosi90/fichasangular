@@ -1,8 +1,10 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DatoFicha, unirTipo } from 'src/app/components/detalles/ficha';
 import { descripcionEquipoVisible } from 'src/app/components/shared/descripcion-equipo/descripcion-equipo.component';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { textoDestrezaMaxima, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { tieneNumeroVisible } from 'src/app/services/utils/texto-visible';
 
@@ -30,7 +32,14 @@ export class DetallesArmaduraComponent {
     datos: DatoFicha[] = [];
     conDescripcion = false;
 
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    /** El lápiz «Modificar»: abre la pestaña de modificar la armadura. Sin quien lo escuche (la creación, la ficha), no sale. */
+    @Output() modificar = new EventEmitter<ArmaduraDetalle>();
+
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
+
+    get puedeModificar(): boolean {
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'armaduras');
+    }
 
     abrirDetalleManual() {
         this.manualDetalleNavSvc.abrirDetalleManual({

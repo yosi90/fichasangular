@@ -1431,6 +1431,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             case 'dote':
                 // Van con su contexto (`DoteContextual`): los refresca `onEdicionGuardada`.
                 return [];
+            case 'arma':
+                return this.detallesArmaAbiertos;
+            case 'armadura':
+                return this.detallesArmaduraAbiertos;
         }
     }
 
