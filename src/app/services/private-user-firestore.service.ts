@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { leerTipoYNivelPersonaje } from './utils/tipo-personaje';
 import { Auth } from '@angular/fire/auth';
 import {
     Firestore,
@@ -235,6 +236,7 @@ export class PrivateUserFirestoreService {
             Trama: toNullableText(raw?.Trama ?? raw?.t) ?? '',
             Subtrama: toNullableText(raw?.Subtrama ?? raw?.s) ?? '',
             Archivado: toBoolean(raw?.archivado ?? raw?.Archivado ?? raw?.a),
+            ...leerTipoYNivelPersonaje(raw),
         };
     }
 

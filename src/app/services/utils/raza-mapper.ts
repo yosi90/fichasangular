@@ -3,12 +3,16 @@ import { AptitudSortilega } from "src/app/interfaces/aptitud-sortilega";
 import { DoteContextual } from "src/app/interfaces/dote-contextual";
 import { IdiomaDetalle } from "src/app/interfaces/idioma";
 import { RacialDetalle } from "src/app/interfaces/racial";
-import { MutacionRaza, Raza, RazaCompetencias, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from "src/app/interfaces/raza";
+import {
+    CategoriaEdadRaza, ClaveCaracteristicaRaza, LanzamientoRaza, ListaLanzamientoRaza, MutacionRaza, PasoEdadRaza, Raza, RazaCompetencias,
+    RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags, RefRaza
+} from "src/app/interfaces/raza";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
-import { normalizarTexto, toBoolean, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroApi } from './conjuro-mapper';
 import { leerComodin } from './comodin';
+import { camposEdadRacial } from './racial-mapper';
 
 function toStrictArray<T = any>(value: any): T[] {
     return Array.isArray(value) ? value : [];
@@ -186,6 +190,120 @@ export function normalizarCamposCreacionRaza(raw: any): Pick<Raza, CamposCreacio
     };
 }
 
+/** Una referencia `{ Id, Nombre }`, o `null` si no trae ni id ni nombre. */
+function refRaza(raw: any): RefRaza | null {
+    const id = toNumber(raw?.Id);
+    const nombre = toText(raw?.Nombre).trim();
+    return id > 0 || nombre.length > 0 ? { Id: id, Nombre: nombre } : null;
+}
+
+function caracteristicasDeEdad(raw: any): Record<ClaveCaracteristicaRaza, number | null> {
+    return {
+        Fuerza: toNumberOrNull(raw?.Fuerza),
+        Destreza: toNumberOrNull(raw?.Destreza),
+        Constitucion: toNumberOrNull(raw?.Constitucion),
+        Inteligencia: toNumberOrNull(raw?.Inteligencia),
+        Sabiduria: toNumberOrNull(raw?.Sabiduria),
+        Carisma: toNumberOrNull(raw?.Carisma),
+    };
+}
+
+function categoriaEdad(raw: any): CategoriaEdadRaza {
+    const tamano = raw?.Tamano && typeof raw.Tamano === 'object' ? raw.Tamano : null;
+    return {
+        Orden: toNumber(raw?.Orden),
+        Categoria: refRaza(raw?.Categoria) ?? { Id: 0, Nombre: '' },
+        Edad_desde: toNumber(raw?.Edad_desde),
+        Edad_hasta: toNumberOrNull(raw?.Edad_hasta),
+        Tamano: tamano,
+        Espacio: toNumber(raw?.Espacio),
+        Alcance: toNumber(raw?.Alcance),
+        Dgs: toNumber(raw?.Dgs),
+        Ajuste_nivel: toNumberOrNull(raw?.Ajuste_nivel),
+        Vd: toNumberOrNull(raw?.Vd),
+        Caracteristicas: caracteristicasDeEdad(raw?.Caracteristicas),
+        Modificadores: caracteristicasDeEdad(raw?.Modificadores),
+        Armadura_natural: toNumber(raw?.Armadura_natural),
+        Velocidades: {
+            Correr: toNumber(raw?.Velocidades?.Correr),
+            Nadar: toNumber(raw?.Velocidades?.Nadar),
+            Volar: toNumber(raw?.Velocidades?.Volar),
+            Trepar: toNumber(raw?.Velocidades?.Trepar),
+            Excavar: toNumber(raw?.Velocidades?.Excavar),
+        },
+        Maniobrabilidad: refRaza(raw?.Maniobrabilidad),
+        Ataques_naturales: toNullableText(raw?.Ataques_naturales),
+        Rd: toNullableText(raw?.Rd),
+        Rc: toNullableText(raw?.Rc),
+        Re: toNullableText(raw?.Re),
+        Nivel_lanzamiento: toNumber(raw?.Nivel_lanzamiento),
+        Nivel_lanzador_sortilegas: toNumber(raw?.Nivel_lanzador_sortilegas),
+        Raciales: toArray(raw?.Raciales).map((racial: any) => ({
+            Id: toNumber(racial?.Id),
+            Nombre: toText(racial?.Nombre).trim(),
+            Valor: toNullableText(racial?.Valor),
+            Caracteristica_cd: refRaza(racial?.Caracteristica_cd),
+        })).filter((racial) => racial.Nombre.length > 0),
+        Sortilegas: toArray(raw?.Sortilegas).map((sortilega: any) => ({
+            Conjuro: refRaza(sortilega?.Conjuro) ?? { Id: 0, Nombre: '' },
+            Usos_diarios: toText(sortilega?.Usos_diarios).trim(),
+            Descripcion: toText(sortilega?.Descripcion).trim(),
+        })).filter((sortilega) => sortilega.Conjuro.Nombre.length > 0),
+    };
+}
+
+function pasoEdad(raw: any): PasoEdadRaza {
+    return {
+        Id: toNumber(raw?.Id),
+        Edad: toNumber(raw?.Edad),
+        Categoria: refRaza(raw?.Categoria) ?? { Id: 0, Nombre: '' },
+        Orden: toNumber(raw?.Orden),
+        Dgs: toNumber(raw?.Dgs),
+        Ajuste_nivel: toNumberOrNull(raw?.Ajuste_nivel),
+        Armadura_natural: toNumber(raw?.Armadura_natural),
+        Nep_base: toNumberOrNull(raw?.Nep_base),
+        Jugable: toBoolean(raw?.Jugable),
+        Vd: toNumberOrNull(raw?.Vd),
+    };
+}
+
+function lanzamientoRaza(raw: any): LanzamientoRaza | null {
+    const clase = refRaza(raw?.Clase);
+    if (!clase)
+        return null;
+    return {
+        Clase: clase,
+        Nivel: toNumber(raw?.Nivel),
+        Listas: toArray(raw?.Listas)
+            .map((lista: any) => ({
+                Tipo: (toText(lista?.Tipo).trim().toLowerCase() === 'dominio' ? 'dominio' : 'clase') as ListaLanzamientoRaza['Tipo'],
+                Id: toNumber(lista?.Id),
+                Nombre: toText(lista?.Nombre).trim(),
+            }))
+            .filter((lista) => lista.Id > 0 || lista.Nombre.length > 0),
+    };
+}
+
+/** Lo que una raza tiene por edades (dragones jugables). */
+type CamposEdadRaza = 'Categorias_edad' | 'Pasos_edad' | 'Lanzamiento' | 'Paso_edad' | 'Categoria_edad';
+
+/**
+ * Las categorías de edad, los pasos y el lanzamiento racial de la raza (`docs/publica/DRAGONES_FRONT.md`), y, en la raza
+ * resuelta a una edad (`GET /razas/{id}/pasos-edad/{idPaso}`), su paso y su categoría. La API y la caché (`Razas/{id}`,
+ * versión 19) los guardan con el mismo nombre; en la caché, las listas pueden llegar como objetos.
+ */
+export function normalizarCamposEdadRaza(raw: any): Pick<Raza, CamposEdadRaza> {
+    const paso = raw?.Paso_edad && typeof raw.Paso_edad === 'object' ? pasoEdad(raw.Paso_edad) : null;
+    const categoria = raw?.Categoria_edad && typeof raw.Categoria_edad === 'object' ? categoriaEdad(raw.Categoria_edad) : null;
+    return {
+        Categorias_edad: toArray(raw?.Categorias_edad).map(categoriaEdad).sort((a, b) => a.Orden - b.Orden),
+        Pasos_edad: toArray(raw?.Pasos_edad).map(pasoEdad).filter((p) => p.Id > 0).sort((a, b) => a.Edad - b.Edad),
+        Lanzamiento: lanzamientoRaza(raw?.Lanzamiento),
+        Paso_edad: paso,
+        Categoria_edad: categoria,
+    };
+}
+
 /** Los textos de la raza: su descripción y, si la hemos traducido de un libro en inglés, su nombre original. */
 type TextosRaza = 'Descripcion' | 'Nombre_original' | 'Traducido';
 
@@ -287,6 +405,7 @@ function normalizeRacialesApi(raw: any): RacialDetalle[] {
         Ataques: toStrictArray(item?.Ataques).map((ataque: any) => ({
             Descripcion: toText(ataque?.Descripcion),
         })),
+        ...camposEdadRacial(item),
         Prerrequisitos_flags: {
             raza: toBoolean(item?.Prerrequisitos_flags?.raza),
             caracteristica_minima: toBoolean(item?.Prerrequisitos_flags?.caracteristica_minima),
@@ -362,5 +481,6 @@ export function normalizeRazaApi(raw: any): Raza {
         DotesContextuales: dotesContextuales,
         Idiomas: normalizeIdiomasApi(raw?.Idiomas),
         Plantillas_por_subtipo: normalizePlantillasPorSubtipoApi(raw?.Plantillas_por_subtipo),
+        ...normalizarCamposEdadRaza(raw),
     };
 }

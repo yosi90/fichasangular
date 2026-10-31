@@ -100,7 +100,41 @@ export interface PersonajeCompetenciaArmaduraDirecta extends PersonajeCompetenci
     Es_escudo?: boolean;
 }
 
+/** Su edad en una raza por edades (`categoriaEdad` de la ficha; en la creación, la del paso elegido). */
+export interface CategoriaEdadPersonaje {
+    idPasoEdad: number;
+    edad: number;
+    categoria: { Id: number; Nombre: string; };
+    orden: number;
+    dgs: number;
+    ajusteNivel: number | null;
+    jugable: boolean;
+    vd: number | null;
+}
+
+/**
+ * Lanza como la clase de su raza con el nivel de su raza (o de su edad) más sus niveles reales de esa clase
+ * (`lanzamientoRacial` de la ficha, *Draconomicón*, pág. 24).
+ */
+export interface LanzamientoRacialPersonaje {
+    clase: { id: number; nombre: string; };
+    nivelRacial: number;
+    nivelesClase: number;
+    nivel: number;
+    nivelLanzador: number | null;
+    caracteristicaLanzamiento: string | null;
+    modificadorLanzamiento: number | null;
+    conjurosDiarios: PersonajeConjurosDiariosNivelDto[];
+    listas: { Tipo: 'clase' | 'dominio'; Id: number; Nombre: string; }[];
+}
+
 export interface Personaje extends PersonajeSimple {
+    /** En la creación: el paso de edad elegido de una raza por edades (`personaje.idPasoEdad`); `null` en las demás. */
+    IdPasoEdad?: number | null;
+    /** Su edad en una raza por edades; `null` en las demás. */
+    CategoriaEdad?: CategoriaEdadPersonaje | null;
+    /** Solo en la ficha de la API: si su raza lanza conjuros como una clase; `null` si no. */
+    LanzamientoRacial?: LanzamientoRacialPersonaje | null;
     Id_region?: number;
     Region?: { Id: number; Nombre: string; } | null;
     RazaBase?: PersonajeSimple['Raza'] | null;
@@ -116,6 +150,8 @@ export interface Personaje extends PersonajeSimple {
         Nivel_lanzador?: number | null;
         Conjuros_diarios?: PersonajeConjurosDiariosNivelDto[] | null;
         Puntos_poder?: PersonajePuntosPoderDto | null;
+        /** Solo en la ficha: el nivel de su raza que se suma a esta clase para los conjuros (lanzamiento racial). */
+        Nivel_lanzamiento_racial?: number | null;
     }[],
     Ataque_base: string;
     /** Solo en la ficha que llega de la API; el borrador de la creación los calcula (`totalesPersonaje`). */

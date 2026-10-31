@@ -4,6 +4,7 @@ import Swal from 'sweetalert2';
 import { normalizeRazaApi } from './utils/raza-mapper';
 import { RazaService, normalizeAlineamientoRaza, normalizeHabilidadesRaza, normalizeIdiomasRaza, normalizeRazaLegacy } from './raza.service';
 import { simularTokenApi } from 'src/testing/simular-token-api';
+import { razaPorEdadesApi, razaPorEdadesEnPasoApi } from 'src/testing/raza-por-edades';
 
 describe('RazaService helpers', () => {
     beforeEach(() => simularTokenApi('token-firebase'));
@@ -667,5 +668,54 @@ describe('RazaService helpers', () => {
             await expectAsync(service.crearRaza({ raza: { nombre: 'Duplicada' } } as any))
                 .toBeRejectedWithError(`${expected} duplicado`);
         });
+    });
+
+    it('lee las categorías de edad, los pasos y el lanzamiento racial, por HTTP y desde la caché', () => {
+        const raw = razaPorEdadesApi();
+        const http = normalizeRazaApi(raw);
+        const cache = normalizeRazaLegacy({ Id: raw.i, Nombre: raw.n, Categorias_edad: raw.Categorias_edad, Pasos_edad: { a: raw.Pasos_edad[0], b: raw.Pasos_edad[4] }, Lanzamiento: raw.Lanzamiento });
+
+        expect(http.Categorias_edad?.map((c) => c.Categoria.Nombre)).toEqual(['Cría', 'Muy joven', 'Joven', 'Juvenil']);
+        expect(http.Categorias_edad?.[3].Ajuste_nivel).toBeNull();
+        expect(http.Categorias_edad?.[0].Raciales[0]).toEqual({ Id: 900, Nombre: 'Arma de aliento', Valor: '2d10', Caracteristica_cd: { Id: 3, Nombre: 'Constitución' } });
+        expect(http.Pasos_edad?.map((p) => p.Jugable)).toEqual([true, true, true, true, false]);
+        expect(http.Pasos_edad?.[4].Nep_base).toBeNull();
+        expect(http.Lanzamiento).toEqual({ Clase: { Id: 9, Nombre: 'Hechicero' }, Nivel: 0, Listas: [] });
+        expect(cache.Categorias_edad?.length).toBe(4);
+        expect(cache.Pasos_edad?.map((p) => p.Id)).toEqual([11, 15]);
+        expect(cache.Lanzamiento?.Clase.Nombre).toBe('Hechicero');
+
+        const sinEdades = normalizeRazaApi(createRazaApiRaw({}));
+        expect(sinEdades.Categorias_edad).toEqual([]);
+        expect(sinEdades.Pasos_edad).toEqual([]);
+        expect(sinEdades.Lanzamiento).toBeNull();
+    });
+
+    it('getRazaEnPasoEdad pide GET /razas/{id}/pasos-edad/{idPaso} y devuelve la raza a esa edad', async () => {
+        const http = { get: jasmine.createSpy().and.returnValue(of(razaPorEdadesEnPasoApi(13))) };
+        const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
+
+        const raza = await service.getRazaEnPasoEdad(709, 13);
+
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/709\/pasos-edad\/13$/));
+        expect(raza.Paso_edad?.Id).toBe(13);
+        expect(raza.Categoria_edad?.Categoria.Nombre).toBe('Joven');
+        expect(raza.Dgs_adicionales.Cantidad).toBe(13);
+        expect(raza.Ajuste_nivel).toBe(6);
+        expect(raza.Lanzamiento?.Nivel).toBe(1);
+        expect(raza.Raciales[0].Valor).toBe('6d10');
+        expect(raza.Raciales[0].Caracteristica_cd?.Nombre).toBe('Constitución');
+    });
+
+    it('getRazaEnPasoEdad da el texto del error de la API (paso_edad_no_valido)', async () => {
+        const http = {
+            get: jasmine.createSpy().and.returnValue(throwError(() => new HttpErrorResponse({
+                status: 404,
+                error: { error: 'Esa edad no es de esta raza.', code: 'paso_edad_no_valido', field: 'idPasoEdad' },
+            }))),
+        };
+        const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
+
+        await expectAsync(service.getRazaEnPasoEdad(709, 99)).toBeRejectedWithError('Esa edad no es de esta raza.');
     });
 });

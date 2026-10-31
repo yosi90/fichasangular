@@ -9,7 +9,7 @@ import { environment } from 'src/environments/environment';
 import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { normalizarCamposCreacionRaza, normalizarTextosRaza, normalizeRazaApi } from './utils/raza-mapper';
+import { normalizarCamposCreacionRaza, normalizarCamposEdadRaza, normalizarTextosRaza, normalizeRazaApi } from './utils/raza-mapper';
 import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
@@ -18,6 +18,7 @@ import { toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizaci
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 import { ElementoDeCatalogo, errorDeCatalogo } from 'src/app/services/utils/error-catalogo';
 import { leerComodin } from 'src/app/services/utils/comodin';
+import { errorDePerfil } from 'src/app/services/utils/error-api';
 
 const RAZA: ElementoDeCatalogo = { singular: 'raza', plural: 'razas', femenino: true };
 
@@ -307,6 +308,7 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
         DotesContextuales: dotesContextuales,
         Idiomas: normalizeIdiomasRaza(raw?.Idiomas ?? raw?.idiomas ?? raw?.idi),
         Plantillas_por_subtipo: normalizePlantillasPorSubtipo(raw?.Plantillas_por_subtipo ?? raw?.plantillas_por_subtipo),
+        ...normalizarCamposEdadRaza(raw),
     };
 }
 
@@ -382,6 +384,20 @@ export class RazaService {
                 error: 'Error al obtener el listado de razas',
             },
         });
+    }
+
+    /**
+     * La raza a una edad (`GET /razas/{id}/pasos-edad/{idPaso}`): la `RazaCompleta` con las cifras de ese paso y su
+     * categoría (tamaño, modificadores, DG, armadura natural, velocidades, raciales y sortílegas acumulados, lanzamiento).
+     * Es la vista previa de la creación y la raza que se elige. Con un error de la API, su texto (`paso_edad_no_valido`).
+     */
+    public async getRazaEnPasoEdad(idRaza: number, idPasoEdad: number): Promise<Raza> {
+        try {
+            const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}razas/${idRaza}/pasos-edad/${idPasoEdad}`));
+            return normalizeRazaApi(raw);
+        } catch (error) {
+            throw errorDePerfil(error, 'No se pudo leer la raza a esa edad.');
+        }
     }
 
     public async crearRaza(payload: RazaCreateRequest): Promise<RazaCreateResponse> {

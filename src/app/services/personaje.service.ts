@@ -3,6 +3,8 @@ import { Auth } from '@angular/fire/auth';
 import { Observable, firstValueFrom, of } from 'rxjs';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import {
+    CategoriaEdadPersonaje,
+    LanzamientoRacialPersonaje,
     Personaje,
     PersonajeCompetenciaArmaduraDirecta,
     PersonajeCompetenciaDirecta,
@@ -40,7 +42,8 @@ import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizarPersonajeIncarnum } from './utils/incarnum-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { leerTipoPersonaje } from './utils/tipo-personaje';
 import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
@@ -300,7 +303,12 @@ export class PersonajeService {
             idDisProhibida: idDisProhibida > 0 ? idDisProhibida : 0,
             visible_otros_usuarios: !!personaje?.visible_otros_usuarios,
             oficial: personaje?.Oficial !== false,
+            // PJ o PNJ, explícito (decisión del propietario del 2026-10-31); sin elegir, el valor por defecto: PJ.
+            tipo: personaje?.tipo === 'pnj' ? 'pnj' : 'pj',
         };
+        const idPasoEdad = toInt(personaje?.IdPasoEdad);
+        if (idPasoEdad > 0)
+            personajePayload.idPasoEdad = idPasoEdad;
         if (idRazaBase > 0)
             personajePayload.idRazaBase = idRazaBase;
         if (tieneCampana)
@@ -993,6 +1001,8 @@ export class PersonajeService {
                 Nivel_lanzador: clase?.nivelLanzador ?? null,
                 Conjuros_diarios: Array.isArray(clase?.conjurosDiarios) ? clase.conjurosDiarios : null,
                 Puntos_poder: clase?.puntosPoder ?? null,
+                // Solo en la clase de su lanzamiento racial.
+                ...(toNumberOrNull(clase?.nivelLanzamientoRacial) !== null ? { Nivel_lanzamiento_racial: toNumberOrNull(clase?.nivelLanzamientoRacial) } : {}),
             }))
             .filter((clase) => clase.Nombre.length > 0);
         const plantillas = toArray<any>(element?.pla);
@@ -1018,6 +1028,12 @@ export class PersonajeService {
             ownerUid: extractOwnerUid(element),
             ownerDisplayName: extractOwnerDisplayName(element),
             visible_otros_usuarios: toBoolean(element?.visible_otros_usuarios),
+            tipo: leerTipoPersonaje(element?.tipo) ?? 'pj',
+            vd: toNumberOrNull(element?.vd),
+            nep: toNumberOrNull(element?.nivelEfectivo),
+            CategoriaEdad: normalizarCategoriaEdadPersonaje(element?.categoriaEdad),
+            IdPasoEdad: toNumberOrNull(element?.categoriaEdad?.idPasoEdad),
+            LanzamientoRacial: normalizarLanzamientoRacial(element?.lanzamientoRacial),
             Id_region: idRegion,
             Region: idRegion > 0 ? { Id: idRegion, Nombre: '' } : null,
             Personalidad: toText(element?.dcp),
@@ -1208,6 +1224,45 @@ function extractOwnerDisplayName(value: any): string | null {
 }
 
 /** Las listas `{ id, nombre }` de la ficha (dominios, ventajas, escuelas prohibidas). */
+/** `categoriaEdad` de la ficha (su edad en una raza por edades), o `null`. */
+function normalizarCategoriaEdadPersonaje(raw: any): CategoriaEdadPersonaje | null {
+    if (!raw || typeof raw !== 'object' || toInt(raw?.idPasoEdad) <= 0)
+        return null;
+    return {
+        idPasoEdad: toInt(raw.idPasoEdad),
+        edad: toNumber(raw?.edad),
+        categoria: { Id: toInt(raw?.categoria?.Id), Nombre: toText(raw?.categoria?.Nombre).trim() },
+        orden: toNumber(raw?.orden),
+        dgs: toNumber(raw?.dgs),
+        ajusteNivel: toNumberOrNull(raw?.ajusteNivel),
+        jugable: toBoolean(raw?.jugable),
+        vd: toNumberOrNull(raw?.vd),
+    };
+}
+
+/** `lanzamientoRacial` de la ficha (lanza como la clase de su raza), o `null`. */
+function normalizarLanzamientoRacial(raw: any): LanzamientoRacialPersonaje | null {
+    if (!raw || typeof raw !== 'object' || (toInt(raw?.clase?.id) <= 0 && toText(raw?.clase?.nombre).trim().length < 1))
+        return null;
+    return {
+        clase: { id: toInt(raw?.clase?.id), nombre: toText(raw?.clase?.nombre).trim() },
+        nivelRacial: toNumber(raw?.nivelRacial),
+        nivelesClase: toNumber(raw?.nivelesClase),
+        nivel: toNumber(raw?.nivel),
+        nivelLanzador: toNumberOrNull(raw?.nivelLanzador),
+        caracteristicaLanzamiento: toNullableText(raw?.caracteristicaLanzamiento),
+        modificadorLanzamiento: toNumberOrNull(raw?.modificadorLanzamiento),
+        conjurosDiarios: toArray(raw?.conjurosDiarios),
+        listas: toArray<any>(raw?.listas)
+            .map((lista) => ({
+                Tipo: (toText(lista?.Tipo).trim().toLowerCase() === 'dominio' ? 'dominio' : 'clase') as 'clase' | 'dominio',
+                Id: toInt(lista?.Id),
+                Nombre: toText(lista?.Nombre).trim(),
+            }))
+            .filter((lista) => lista.Nombre.length > 0),
+    };
+}
+
 function nombresConId(raw: unknown): { Id: number; Nombre: string; }[] {
     return toArray<PersonajeNombreIdDto>(raw)
         .map((item) => ({ Id: toInt(item?.id), Nombre: toText(item?.nombre).trim() }))

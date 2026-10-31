@@ -1,6 +1,6 @@
 import { Conjuro } from "src/app/interfaces/conjuro";
 import { RacialDetalle } from "src/app/interfaces/racial";
-import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizarEsenciaRasgo } from './incarnum-mapper';
 
@@ -19,6 +19,25 @@ function pick(raw: any, ...keys: string[]): any {
             return raw[key];
     }
     return undefined;
+}
+
+/**
+ * Lo que trae un racial en una raza por edades y en la ficha (dragones jugables, `docs/publica/DRAGONES_FRONT.md`): la
+ * característica de su CD, su cifra a esa edad, la categoría en la que se ganó y la CD ya calculada. Igual en la API, la
+ * caché y la ficha; sin dato, cada campo es `null`.
+ */
+export function camposEdadRacial(raw: any): Pick<RacialDetalle, 'Caracteristica_cd' | 'Valor' | 'Categoria_edad' | 'Cd'> {
+    const ref = (valor: any) => {
+        const id = toNumber(valor?.Id);
+        const nombre = toText(valor?.Nombre).trim();
+        return id > 0 || nombre.length > 0 ? { Id: id, Nombre: nombre } : null;
+    };
+    return {
+        Caracteristica_cd: ref(raw?.Caracteristica_cd),
+        Valor: toNullableText(raw?.Valor),
+        Categoria_edad: ref(raw?.Categoria_edad),
+        Cd: toNumberOrNull(raw?.Cd),
+    };
 }
 
 export function normalizeRacial(raw: any): RacialDetalle {
@@ -61,6 +80,7 @@ export function normalizeRacial(raw: any): RacialDetalle {
             Descripcion: toText(pick(item, "Descripcion", "descripcion", "d")),
         })),
         Esencia: normalizarEsenciaRasgo(pick(raw, "Esencia")),
+        ...camposEdadRacial(raw),
         Prerrequisitos_flags: {
             raza: toBoolean(pick(flagsRaw, "raza", "r")),
             caracteristica_minima: toBoolean(pick(flagsRaw, "caracteristica_minima", "caracteristica", "c")),

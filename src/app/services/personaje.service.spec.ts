@@ -568,6 +568,55 @@ describe('PersonajeService', () => {
         expect(personaje.Archivado).toBeFalse();
     });
 
+    it('manda el tipo (PJ por defecto) y la edad elegida en la creación', () => {
+        const service = crearServicio({ post: jasmine.createSpy('post') } as any);
+        const pj = crearPersonajeMock();
+
+        const sinElegir = service.construirPayloadCreacionDesdePersonaje(pj, { idCampana: 1, idTrama: 1, idSubtrama: 1 });
+        expect(sinElegir.personaje.tipo).toBe('pj');
+        expect(sinElegir.personaje.idPasoEdad).toBeUndefined();
+
+        pj.tipo = 'pnj';
+        pj.IdPasoEdad = 15;
+        const pnj = service.construirPayloadCreacionDesdePersonaje(pj, { idCampana: 1, idTrama: 1, idSubtrama: 1 });
+        expect(pnj.personaje.tipo).toBe('pnj');
+        expect(pnj.personaje.idPasoEdad).toBe(15);
+    });
+
+    it('mapApiDetalleToPersonaje lee el tipo, el VD, la edad y el lanzamiento racial de la ficha', () => {
+        const service = crearServicio({} as any);
+        const diarios = [{ nivel: 0, base: 6, adicionales: 0, especialista: 0, dominio: 0, total: 6, puedeLanzar: true }];
+        const personaje = (service as any).mapApiDetalleToPersonaje(crearDetalleApi({
+            tipo: 'pnj',
+            vd: 18,
+            nivelEfectivo: null,
+            categoriaEdad: { idPasoEdad: 21, edad: 201, categoria: { Id: 7, Nombre: 'Adulto maduro' }, orden: 7, dgs: 25, ajusteNivel: null, jugable: false, vd: 18 },
+            rac: [{ Id: 1, Nombre: 'Arma de aliento', Valor: '14d10', Cd: 28, Caracteristica_cd: { Id: 3, Nombre: 'Constitución' } }],
+            lanzamientoRacial: {
+                clase: { id: 9, nombre: 'Hechicero' }, nivelRacial: 9, nivelesClase: 2, nivel: 11, nivelLanzador: 11,
+                caracteristicaLanzamiento: 'Carisma', modificadorLanzamiento: 4, conjurosDiarios: diarios, listas: [{ Tipo: 'dominio', Id: 1, Nombre: 'Aire' }],
+            },
+            clases: [{ id: 9, nombre: 'Hechicero', nivel: 2, lanzaConjuros: true, caracteristicaLanzamiento: 'Carisma', modificadorLanzamiento: 4,
+                nivelLanzador: 11, conjurosDiarios: diarios, puntosPoder: null, nivelLanzamientoRacial: 9 }],
+        })) as Personaje;
+
+        expect(personaje.tipo).toBe('pnj');
+        expect(personaje.vd).toBe(18);
+        expect(personaje.nep).toBeNull();
+        expect(personaje.CategoriaEdad?.categoria.Nombre).toBe('Adulto maduro');
+        expect(personaje.IdPasoEdad).toBe(21);
+        expect(personaje.Raciales[0].Cd).toBe(28);
+        expect(personaje.Raciales[0].Valor).toBe('14d10');
+        expect(personaje.LanzamientoRacial?.nivel).toBe(11);
+        expect(personaje.LanzamientoRacial?.listas).toEqual([{ Tipo: 'dominio', Id: 1, Nombre: 'Aire' }]);
+        expect(personaje.desgloseClases[0].Nivel_lanzamiento_racial).toBe(9);
+
+        const pj = (service as any).mapApiDetalleToPersonaje(crearDetalleApi({})) as Personaje;
+        expect(pj.tipo).toBe('pj');
+        expect(pj.CategoriaEdad).toBeNull();
+        expect(pj.LanzamientoRacial).toBeNull();
+    });
+
     it('construye payload minimo valido para /personajes/add', () => {
         const httpMock = {
             post: jasmine.createSpy('post').and.returnValue(of({})),

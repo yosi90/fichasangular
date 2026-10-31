@@ -55,6 +55,14 @@ export interface RacialDetalle {
     Ataques: RacialAtaque[];
     /** Magic of Incarnum: la esencia que da a la reserva y si es receptáculo (`null` si nada). */
     Esencia?: EsenciaRasgo | null;
+    /** La característica de la CD de la aptitud (10 + ½ DG raciales + su modificador); `null` si no tiene. */
+    Caracteristica_cd?: { Id: number; Nombre: string; } | null;
+    /** En una raza por edades: su cifra a esa edad («4d10»), si la edad la cambia. */
+    Valor?: string | null;
+    /** En una raza resuelta a una edad: la categoría en la que se ganó. */
+    Categoria_edad?: { Id: number; Nombre: string; } | null;
+    /** En la ficha: la CD ya calculada por la API, si tiene `Caracteristica_cd`. */
+    Cd?: number | null;
     Prerrequisitos_flags: RacialPrerrequisitosFlags;
     Prerrequisitos: RacialPrerrequisitos;
 }

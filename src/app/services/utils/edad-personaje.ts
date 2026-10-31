@@ -13,6 +13,8 @@ import { toNumber } from 'src/app/services/utils/normalizacion';
  * - Pasada la edad venerable, el personaje sigue siendo venerable hasta su edad máxima, que el DM tira en secreto (la
  *   columna «Edad máxima» de la tabla 6-5): no sale del manual.
  * - Una raza sin esas edades (0) no tiene etapas: ni se comprueba la edad ni envejece.
+ * - Una raza que crece por categorías de edad (los dragones, `Categorias_edad`) tampoco: su edad es su categoría, que se
+ *   elige con la raza, y no envejece así (análisis de los dragones jugables, §1.4).
  */
 
 export interface EdadesRaza {
@@ -20,6 +22,8 @@ export interface EdadesRaza {
     Edad_mediana?: number | null;
     Edad_viejo?: number | null;
     Edad_venerable?: number | null;
+    /** Las categorías de edad de una raza que crece por edades: si las tiene, no usa las del Manual del jugador. */
+    Categorias_edad?: unknown[] | null;
 }
 
 export type EtapaEdadId = 'joven' | 'adulto' | 'mediana' | 'viejo' | 'venerable';
@@ -55,6 +59,8 @@ const NOMBRES: Record<EtapaEdadId, string> = {
 
 /** Si la raza trae las edades de sus etapas (la mayoría de edad y la venerable, al menos). */
 export function razaTieneEdades(raza: EdadesRaza | null | undefined): boolean {
+    if ((raza?.Categorias_edad?.length ?? 0) > 0)
+        return false;
     return toNumber(raza?.Edad_adulto) > 0 && toNumber(raza?.Edad_venerable) > 0;
 }
 

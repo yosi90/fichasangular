@@ -162,6 +162,10 @@ export interface PersonajeCreateRequestDto {
         idDisProhibida?: number;
         visible_otros_usuarios: boolean;
         oficial: boolean;
+        /** `pj` (por defecto) o `pnj` (desde el 2026-10-31). Un PNJ se guarda privado aunque llegue `visible_otros_usuarios`. */
+        tipo?: 'pj' | 'pnj';
+        /** La edad elegida en una raza por edades: un `Pasos_edad[].Id` de la raza (obligatorio en ellas). */
+        idPasoEdad?: number;
     };
     caracteristicas: {
         fuerza: PersonajeCaracteristicaCreateDto;
@@ -269,6 +273,8 @@ export interface PersonajeClaseDto extends PersonajeNombreIdDto {
     conjurosDiarios?: PersonajeConjurosDiariosNivelDto[] | null;
     /** Su reserva de puntos de poder; `null` si no es psiónica. */
     puntosPoder?: PersonajePuntosPoderDto | null;
+    /** Con la clase de su lanzamiento racial: el nivel de la raza que se suma para los conjuros (desde el 2026-10-31). */
+    nivelLanzamientoRacial?: number | null;
 }
 
 /**

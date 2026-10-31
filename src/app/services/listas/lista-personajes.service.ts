@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { leerTipoYNivelPersonaje } from '../utils/tipo-personaje';
 import { PersonajeSimple } from '../../interfaces/simplificaciones/personaje-simple';
 import { Database, onValue, ref } from '@angular/fire/database';
 import { Auth, onAuthStateChanged } from '@angular/fire/auth';
@@ -243,6 +244,7 @@ export class ListaPersonajesService {
             Subtrama: subtrama,
             Archivado: toBoolean(element?.archivado ?? element?.Archivado ?? element?.a),
             oficial: typeof (element?.oficial ?? element?.o) === 'boolean' ? (element?.oficial ?? element?.o) : null,
+            ...leerTipoYNivelPersonaje(element),
         };
     }
 

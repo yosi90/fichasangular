@@ -93,6 +93,98 @@ export interface RazaHabilidades {
     Custom: RazaHabilidadCustom[];
 }
 
+/** Una referencia `{ Id, Nombre }` del contrato. */
+export interface RefRaza {
+    Id: number;
+    Nombre: string;
+}
+
+export type ClaveCaracteristicaRaza = 'Fuerza' | 'Destreza' | 'Constitucion' | 'Inteligencia' | 'Sabiduria' | 'Carisma';
+
+/** Un racial que la raza gana en una categoría de edad (o cuya cifra cambia en ella: el daño del aliento). */
+export interface RacialDeEdad {
+    Id: number;
+    Nombre: string;
+    /** La cifra del racial a esa edad («2d10»); `null` si no cambia. */
+    Valor: string | null;
+    /** La característica de su CD (10 + ½ DG raciales + su modificador); `null` si no tiene. */
+    Caracteristica_cd: RefRaza | null;
+}
+
+/**
+ * Una categoría de edad de una raza que crece por edades (`RazaCompleta.Categorias_edad[]`: los dragones auténticos,
+ * cría … gran sierpe). `docs/publica/endpoints/catalogos.md`, `CategoriaEdadRaza`.
+ */
+export interface CategoriaEdadRaza {
+    Orden: number;
+    Categoria: RefRaza;
+    Edad_desde: number;
+    /** `null`: sin tope (la gran sierpe). */
+    Edad_hasta: number | null;
+    Tamano: Tamano | null;
+    Espacio: number;
+    Alcance: number;
+    Dgs: number;
+    /** `null`: el manual no da ajuste de nivel a esta edad; solo como PNJ. */
+    Ajuste_nivel: number | null;
+    Vd: number | null;
+    /** Las puntuaciones del libro. */
+    Caracteristicas: Record<ClaveCaracteristicaRaza, number | null>;
+    /** Los modificadores raciales que salen de ellas; `null` en las de menos de 10 (aún sin la tabla de la GDM). */
+    Modificadores: Record<ClaveCaracteristicaRaza, number | null>;
+    Armadura_natural: number;
+    Velocidades: { Correr: number; Nadar: number; Volar: number; Trepar: number; Excavar: number; };
+    Maniobrabilidad: RefRaza | null;
+    Ataques_naturales: string | null;
+    Rd: string | null;
+    Rc: string | null;
+    Re: string | null;
+    /** El nivel con el que lanza como la clase de `Lanzamiento` a esta edad (0 si aún no lanza). */
+    Nivel_lanzamiento: number;
+    Nivel_lanzador_sortilegas: number;
+    /** Lo que gana en esta edad y conserva después. */
+    Raciales: RacialDeEdad[];
+    Sortilegas: { Conjuro: RefRaza; Usos_diarios: string; Descripcion: string; }[];
+}
+
+/** Un paso de edad que puede elegir el personaje (`RazaCompleta.Pasos_edad[]`, *Draconomicón*, tabla 3-21). */
+export interface PasoEdadRaza {
+    /** El que manda la creación en `personaje.idPasoEdad`. */
+    Id: number;
+    /** Años desde los que vale. */
+    Edad: number;
+    Categoria: RefRaza;
+    Orden: number;
+    Dgs: number;
+    /** `null` si el manual no da ajuste a esa edad. */
+    Ajuste_nivel: number | null;
+    Armadura_natural: number;
+    /** DG + ajuste; `null` si no es jugable. */
+    Nep_base: number | null;
+    /** Un PJ puede elegirlo (tiene ajuste). */
+    Jugable: boolean;
+    /** El VD de su categoría. */
+    Vd: number | null;
+}
+
+/** Una lista que la raza lanza además como arcana (el dragón azul: clérigo y los dominios de Aire, Ley y Mal). */
+export interface ListaLanzamientoRaza {
+    Tipo: 'clase' | 'dominio';
+    Id: number;
+    Nombre: string;
+}
+
+/**
+ * La raza lanza conjuros como esa clase (`RazaCompleta.Lanzamiento`): el rakshasa, hechicero 7; los dragones, hechicero
+ * del nivel de su edad. En una raza por edades `Nivel` es 0 y el de cada edad va en su categoría (y en la raza resuelta a
+ * un paso, el de esa edad).
+ */
+export interface LanzamientoRaza {
+    Clase: RefRaza;
+    Nivel: number;
+    Listas: ListaLanzamientoRaza[];
+}
+
 export interface Raza {
     Id: number;
     Nombre: string;
@@ -181,4 +273,13 @@ export interface Raza {
     DotesContextuales: DoteContextual[];
     Idiomas?: IdiomaDetalle[];
     Plantillas_por_subtipo?: RazaPlantillasPorSubtipo[];
+    /** Las categorías de edad de una raza que crece por edades, en su orden; vacía (o sin dato) en las demás. */
+    Categorias_edad?: CategoriaEdadRaza[];
+    /** Los pasos de edad que puede elegir el personaje, por edad; vacía (o sin dato) en las razas sin edades. */
+    Pasos_edad?: PasoEdadRaza[];
+    /** Si la raza lanza conjuros como una clase; `null` si no. */
+    Lanzamiento?: LanzamientoRaza | null;
+    /** Solo en la raza resuelta a una edad (`GET /razas/{id}/pasos-edad/{idPaso}`): su paso y su categoría. */
+    Paso_edad?: PasoEdadRaza | null;
+    Categoria_edad?: CategoriaEdadRaza | null;
 }
