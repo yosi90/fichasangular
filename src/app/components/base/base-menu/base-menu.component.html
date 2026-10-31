@@ -48,7 +48,8 @@
                 <span
                     [matTooltip]="puedeGestionar('monstruos') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('monstruos')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('monstruos')"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Monstruo</span></button>
+                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('monstruos')"
+                        (click)="abrirOperacion('monstruos', 'insertar')"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Monstruo</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('plantillas') ? '' : mensajePermisosInsuficientes"
@@ -67,7 +68,8 @@
                 <span
                     [matTooltip]="puedeGestionar('razas') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('razas')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('razas')"><app-icono-rol tipo="raza" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Raza</span></button>
+                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('razas')"
+                        (click)="abrirOperacion('razas', 'modificar')"><app-icono-rol tipo="raza" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Raza</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('clases') ? '' : mensajePermisosInsuficientes"
@@ -78,17 +80,20 @@
                 <span
                     [matTooltip]="puedeGestionar('dotes') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('dotes')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('dotes')"><app-icono-rol tipo="dote" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Dote</span></button>
+                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('dotes')"
+                        (click)="abrirOperacion('dotes', 'modificar')"><app-icono-rol tipo="dote" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Dote</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('conjuros') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('conjuros')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('conjuros')"><app-icono-rol tipo="conjuro" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Conjuro</span></button>
+                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('conjuros')"
+                        (click)="abrirOperacion('conjuros', 'modificar')"><app-icono-rol tipo="conjuro" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Conjuro</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('monstruos') ? '' : mensajePermisosInsuficientes"
                     [matTooltipDisabled]="puedeGestionar('monstruos')">
-                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('monstruos')"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Monstruo</span></button>
+                    <button mat-button color="primary" class="menu-opcion" [disabled]="!puedeGestionar('monstruos')"
+                        (click)="abrirOperacion('monstruos', 'modificar')"><app-icono-rol tipo="monstruo" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Monstruo</span></button>
                 </span>
                 <span
                     [matTooltip]="puedeGestionar('plantillas') ? '' : mensajePermisosInsuficientes"
