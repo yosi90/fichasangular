@@ -969,6 +969,31 @@ const NUEVO_PERSONAJE_DRAFT_STORAGE_PREFIX = 'fichas35.nuevoPersonaje.draft.v1.'
 const NUEVO_PERSONAJE_DRAFT_AUTOSAVE_MS = 1200;
 const NUEVO_PERSONAJE_DRAFT_DEBOUNCE_MS = 300;
 
+/** Un nivel de un conjuro en la lista de una clase o de un dominio: su id, su nombre normalizado y el nivel. */
+interface NivelListaConjuro {
+    id: number;
+    nombre: string;
+    nivel: number;
+}
+
+/** Los niveles del conjuro en las listas de clase (`Nivel_clase`), leídos igual de la API y de la caché. */
+function nivelesDeClaseDelConjuro(conjuro: Conjuro): NivelListaConjuro[] {
+    return toArray<Record<string, any>>(conjuro?.Nivel_clase).map((nivel) => ({
+        id: toNumber(nivel?.['Id_clase'] ?? nivel?.['id_clase']),
+        nombre: normalizarTexto(nivel?.['Clase'] ?? nivel?.['clase'] ?? ''),
+        nivel: toNumber(nivel?.['Nivel'] ?? nivel?.['nivel']),
+    }));
+}
+
+/** Los niveles del conjuro en las listas de dominio (`Nivel_dominio`), leídos igual de la API y de la caché. */
+function nivelesDeDominioDelConjuro(conjuro: Conjuro): NivelListaConjuro[] {
+    return toArray<Record<string, any>>(conjuro?.Nivel_dominio).map((nivel) => ({
+        id: toNumber(nivel?.['Id_dominio'] ?? nivel?.['id_dominio']),
+        nombre: normalizarTexto(nivel?.['Dominio'] ?? nivel?.['dominio'] ?? ''),
+        nivel: toNumber(nivel?.['Nivel'] ?? nivel?.['nivel']),
+    }));
+}
+
 @Injectable({
     providedIn: 'root'
 })
@@ -7632,11 +7657,8 @@ export class NuevoPersonajeService {
         const nivel = Math.max(0, toInt(lanzamiento?.Nivel));
         if (!lanzamiento || nivel < 1)
             return null;
-        const idClase = toNumber(lanzamiento.Clase?.Id);
-        const nombre = `${lanzamiento.Clase?.Nombre ?? ''}`.trim();
-        const clase = this.catalogoClases.find((item) => (idClase > 0 && toNumber(item?.Id) === idClase)
-            || (nombre.length > 0 && normalizarTexto(item?.Nombre ?? '') === normalizarTexto(nombre))) ?? null;
-        return { clase, nombre: clase?.Nombre ?? nombre, nivel };
+        const clase = this.obtenerClaseDeDesglose(lanzamiento.Clase);
+        return { clase, nombre: clase?.Nombre ?? `${lanzamiento.Clase?.Nombre ?? ''}`.trim(), nivel };
     }
 
     /**
@@ -7677,9 +7699,9 @@ export class NuevoPersonajeService {
         const lanzamiento = this.razaSeleccionada?.Lanzamiento ?? null;
         if (!lanzamiento || !claseObjetivo)
             return [];
-        const idClase = toNumber(lanzamiento.Clase?.Id);
-        const esSuClase = (idClase > 0 && toNumber(claseObjetivo.Id) === idClase)
-            || normalizarTexto(lanzamiento.Clase?.Nombre ?? '') === normalizarTexto(claseObjetivo.Nombre ?? '');
+        const suClase = this.obtenerClaseDeDesglose(lanzamiento.Clase);
+        const esSuClase = !!suClase && ((toInt(suClase.Id) > 0 && toInt(suClase.Id) === toInt(claseObjetivo.Id))
+            || normalizarTexto(suClase.Nombre) === normalizarTexto(claseObjetivo.Nombre ?? ''));
         return esSuClase ? (lanzamiento.Listas ?? []) : [];
     }
 
@@ -7687,20 +7709,12 @@ export class NuevoPersonajeService {
     private nivelConjuroEnListasRaciales(listas: ListaLanzamientoRaza[], conjuro: Conjuro): number | null {
         if (listas.length < 1)
             return null;
-        const niveles: number[] = [];
-        toArray<Record<string, any>>(conjuro?.Nivel_clase).forEach((nivel) => {
-            const id = toNumber(nivel?.['Id_clase'] ?? nivel?.['id_clase']);
-            const nombre = normalizarTexto(nivel?.['Clase'] ?? nivel?.['clase'] ?? '');
-            if (listas.some((lista) => lista.Tipo === 'clase' && ((lista.Id > 0 && lista.Id === id) || normalizarTexto(lista.Nombre) === nombre)))
-                niveles.push(toNumber(nivel?.['Nivel'] ?? nivel?.['nivel']));
-        });
-        toArray<Record<string, any>>(conjuro?.Nivel_dominio).forEach((nivel) => {
-            const id = toNumber(nivel?.['Id_dominio'] ?? nivel?.['id_dominio']);
-            const nombre = normalizarTexto(nivel?.['Dominio'] ?? nivel?.['dominio'] ?? '');
-            if (listas.some((lista) => lista.Tipo === 'dominio' && ((lista.Id > 0 && lista.Id === id) || normalizarTexto(lista.Nombre) === nombre)))
-                niveles.push(toNumber(nivel?.['Nivel'] ?? nivel?.['nivel']));
-        });
-        const validos = niveles.filter((nivel) => nivel >= 0);
+        const enLista = (tipo: ListaLanzamientoRaza['Tipo']) => (item: NivelListaConjuro) =>
+            listas.some((lista) => lista.Tipo === tipo && ((lista.Id > 0 && lista.Id === item.id) || normalizarTexto(lista.Nombre) === item.nombre));
+        const validos = [
+            ...nivelesDeClaseDelConjuro(conjuro).filter(enLista('clase')),
+            ...nivelesDeDominioDelConjuro(conjuro).filter(enLista('dominio')),
+        ].map((item) => item.nivel).filter((nivel) => nivel >= 0);
         return validos.length > 0 ? Math.min(...validos) : null;
     }
 
@@ -8123,17 +8137,7 @@ export class NuevoPersonajeService {
     ): number | null {
         const nombreClaseNorm = normalizarTexto(claseObjetivo?.Nombre ?? '');
         const idClase = toNumber(claseObjetivo?.Id);
-        const nivelesClase = Array.isArray(conjuro?.Nivel_clase)
-            ? conjuro.Nivel_clase
-            : (conjuro?.Nivel_clase && typeof conjuro.Nivel_clase === 'object'
-                ? Object.values(conjuro.Nivel_clase as any)
-                : []);
-        const niveles = nivelesClase
-            .map((nivel) => ({
-                id: toNumber((nivel as Record<string, any>)?.['Id_clase'] ?? (nivel as Record<string, any>)?.['id_clase']),
-                nombre: normalizarTexto((nivel as Record<string, any>)?.['Clase'] ?? (nivel as Record<string, any>)?.['clase'] ?? ''),
-                nivel: toNumber((nivel as Record<string, any>)?.['Nivel'] ?? (nivel as Record<string, any>)?.['nivel']),
-            }));
+        const niveles = nivelesDeClaseDelConjuro(conjuro);
         // La lista de la clase de origen (`Conjuros.Clase_origen`: el magiingeniero toma la del mago) cuenta como suya.
         const idOrigen = toNumber(this.claseOrigenDe(claseObjetivo)?.Id);
         const nivelClase = niveles
@@ -8153,17 +8157,8 @@ export class NuevoPersonajeService {
         }
 
         if (claseObjetivo?.Conjuros?.Dominio && dominiosSeleccionados.size > 0) {
-            const nivelesDominio = Array.isArray(conjuro?.Nivel_dominio)
-                ? conjuro.Nivel_dominio
-                : (conjuro?.Nivel_dominio && typeof conjuro.Nivel_dominio === 'object'
-                    ? Object.values(conjuro.Nivel_dominio as any)
-                    : []);
-            const compatibles = nivelesDominio
-                .map((nivel) => ({
-                    dominio: normalizarTexto((nivel as Record<string, any>)?.['Dominio'] ?? (nivel as Record<string, any>)?.['dominio'] ?? ''),
-                    nivel: toNumber((nivel as Record<string, any>)?.['Nivel'] ?? (nivel as Record<string, any>)?.['nivel']),
-                }))
-                .filter((item) => item.dominio.length > 0 && dominiosSeleccionados.has(item.dominio) && item.nivel >= 0)
+            const compatibles = nivelesDeDominioDelConjuro(conjuro)
+                .filter((item) => item.nombre.length > 0 && dominiosSeleccionados.has(item.nombre) && item.nivel >= 0)
                 .sort((a, b) => a.nivel - b.nivel);
             if (compatibles.length > 0)
                 return compatibles[0].nivel;
