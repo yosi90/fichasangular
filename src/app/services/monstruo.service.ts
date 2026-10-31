@@ -1,9 +1,21 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { Auth } from "@angular/fire/auth";
 import { Database } from "@angular/fire/database";
-import { Observable } from "rxjs";
+import { Observable, firstValueFrom, map } from "rxjs";
 import { environment } from "src/environments/environment";
-import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle, MonstruoDetalle } from "../interfaces/monstruo";
+import {
+    CompaneroMonstruoDetalle,
+    FamiliarMonstruoDetalle,
+    MonstruoCreateRequest,
+    MonstruoDetalle,
+    MonstruoMutacionResponse,
+} from "../interfaces/monstruo";
+import { cabeceraApiConFirebase } from "./platform-session.service";
+import { errorDeCatalogo } from "./utils/error-catalogo";
+import { MONSTRUO } from "./utils/nombres-de-catalogo";
+import { toArray, toInt, toText } from "./utils/normalizacion";
+import { leerRespuestaDeEscritura } from "./utils/respuesta-de-escritura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import {
     normalizeCompaneroMonstruoDetalle,
@@ -21,6 +33,7 @@ export class MonstruoService {
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService,
+        private auth?: Auth,
     ) { }
 
     getMonstruo(id: number): Observable<MonstruoDetalle> {
@@ -42,6 +55,58 @@ export class MonstruoService {
             (valor) => normalizeMonstruoDetalle(valor, 1),
             (monstruo) => monstruo.Id > 0,
         );
+    }
+
+    /** El monstruo recién leído de la API (`GET /monstruos/<id>`), sin pasar por la caché: el que se va a modificar. */
+    getMonstruoFresco(id: number): Observable<MonstruoDetalle> {
+        return this.http.get(`${environment.apiUrl}monstruos/${toInt(id)}`)
+            .pipe(map((raw) => normalizeMonstruoDetalle(raw, 1)));
+    }
+
+    /**
+     * Las plantillas con las que un monstruo es familiar o compañero (`GET /monstruos/plantillas-familiar`: básica,
+     * celestial, infernal…), para los niveles de clase de «Insertar/Modificar monstruo».
+     */
+    getPlantillasFamiliar(): Observable<{ Id: number; Nombre: string; }[]> {
+        return this.http.get(`${environment.apiUrl}monstruos/plantillas-familiar`).pipe(
+            map((raw) => toArray(raw)
+                .map((item) => ({ Id: toInt(item?.Id), Nombre: toText(item?.Nombre) }))
+                .filter((item) => item.Id > 0)),
+        );
+    }
+
+    /** `POST /monstruos/add`. Las cachés las rehace el backend. */
+    async crearMonstruo(payload: MonstruoCreateRequest): Promise<MonstruoMutacionResponse> {
+        try {
+            const headers = await this.cabeceras();
+            const response = await firstValueFrom(this.http.post(`${environment.apiUrl}monstruos/add`, payload, { headers }));
+            return this.leerMutacion(response, "Monstruo creado");
+        } catch (error: unknown) {
+            throw errorDeCatalogo(error, "crear", MONSTRUO);
+        }
+    }
+
+    /**
+     * `PUT /monstruos/<id>`: el mismo cuerpo que el alta, que **reemplaza el monstruo entero** (lo que no venga queda
+     * vacío), así que se manda siempre el formulario completo.
+     */
+    async actualizarMonstruo(idMonstruo: number, payload: MonstruoCreateRequest): Promise<MonstruoMutacionResponse> {
+        try {
+            const headers = await this.cabeceras();
+            const response = await firstValueFrom(this.http.put(`${environment.apiUrl}monstruos/${toInt(idMonstruo)}`, payload, { headers }));
+            return this.leerMutacion(response, "Monstruo actualizado");
+        } catch (error: unknown) {
+            throw errorDeCatalogo(error, "actualizar", MONSTRUO);
+        }
+    }
+
+    private cabeceras(): Promise<{ Authorization: string }> {
+        return cabeceraApiConFirebase(this.auth, () => new Error("Debes iniciar sesión para gestionar monstruos"));
+    }
+
+    private leerMutacion(response: any, mensajePorDefecto: string): MonstruoMutacionResponse {
+        const { message, id } = leerRespuestaDeEscritura(response, 'idMonstruo', mensajePorDefecto);
+        return { message, idMonstruo: id, monstruo: response?.monstruo ? normalizeMonstruoDetalle(response.monstruo, 1) : null };
     }
 
     getFamiliar(idFamiliar: number): Observable<FamiliarMonstruoDetalle> {

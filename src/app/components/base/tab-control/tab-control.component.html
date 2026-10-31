@@ -130,6 +130,7 @@
                 <app-nueva-idioma *ngIf="listadoTab.tipo === 'idiomas'"></app-nueva-idioma>
                 <app-nueva-especial *ngIf="listadoTab.tipo === 'especiales'"></app-nueva-especial>
                 <app-nueva-plantilla *ngIf="listadoTab.tipo === 'plantillas'"></app-nueva-plantilla>
+                <app-nueva-monstruo *ngIf="listadoTab.tipo === 'monstruos'"></app-nueva-monstruo>
             </div>
         </ng-container>
         <ng-template #listadoGenerico>
@@ -268,6 +269,22 @@
                 (cerrar)="quitarEdicion(conjuroTab)"
                 (conjuroActualizado)="onEdicionGuardada('conjuro', $event)">
             </app-nueva-conjuro>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let monstruoTab of ediciones.monstruo" [label]="etiquetaEdicion(monstruoTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'monstruo'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(monstruoTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(monstruoTab)}}</span>
+            <button (click)="quitarEdicion(monstruoTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-monstruo
+                modo="editar"
+                [idMonstruo]="monstruoTab.id"
+                [editorTabKey]="monstruoTab.key"
+                (cerrar)="quitarEdicion(monstruoTab)"
+                (monstruoActualizado)="onEdicionGuardada('monstruo', $event)">
+            </app-nueva-monstruo>
         </div>
     </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
@@ -439,7 +456,8 @@
             (claseDetallesId)="abrirDetallesClasePorId($event)"
             (subtipoDetalles)="abrirDetallesSubtipoDesdeReferencia($event)"
             (tipoCriaturaDetallesId)="abrirDetallesTipoCriaturaPorId($event)"
-            (monstruoRelacionadoDetalles)="abrirDetallesMonstruo($event)">
+            (monstruoRelacionadoDetalles)="abrirDetallesMonstruo($event)"
+            (modificar)="abrirEdicion('monstruo', $event)">
         </app-detalles-monstruo>
     </mat-tab>
     <mat-tab *ngFor="let arma of detallesArmaAbiertos; let index = index" [label]="getEtiquetaArma(arma)">

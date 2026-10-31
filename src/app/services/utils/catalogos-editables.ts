@@ -18,6 +18,7 @@ export const INSERCIONES_CATALOGO: Readonly<Record<string, string>> = {
     'idiomas': 'Nuevo idioma',
     'especiales': 'Nuevo especial',
     'plantillas': 'Nueva plantilla',
+    'monstruos': 'Nuevo monstruo',
 };
 
 /** Si la inserción de un listado ya tiene pantalla. */
@@ -30,7 +31,7 @@ export function tieneInsercion(lista: string | null | undefined): boolean {
  * abre desde su listado en modo modificar (la fila) o desde el lápiz de su detalle, una sola vez por entrada (clave
  * `edicion:<tipo>:<id>`), y lleva dentro la misma pantalla que la inserción, en modo `editar`.
  */
-export type TipoEdicion = 'racial' | 'idioma' | 'especial' | 'clase' | 'plantilla' | 'raza' | 'dote' | 'conjuro';
+export type TipoEdicion = 'racial' | 'idioma' | 'especial' | 'clase' | 'plantilla' | 'raza' | 'dote' | 'conjuro' | 'monstruo';
 
 /** Una pestaña de «Modificar» abierta. */
 export interface EdicionCatalogoTab {
@@ -64,6 +65,7 @@ export const EDICIONES_CATALOGO: Readonly<Record<TipoEdicion, DefinicionEdicion>
     raza: { listado: 'razas', ...editar('raza') },
     dote: { listado: 'dotes', ...editar('dote') },
     conjuro: { listado: 'conjuros', ...editar('conjuro') },
+    monstruo: { listado: 'monstruos', ...editar('monstruo') },
 };
 
 export const TIPOS_EDICION = Object.keys(EDICIONES_CATALOGO) as TipoEdicion[];

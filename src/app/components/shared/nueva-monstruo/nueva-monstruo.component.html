@@ -1,0 +1,355 @@
+<div class="nueva-monstruo-shell">
+    <form class="nueva-monstruo-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <app-insercion-marco
+            [modo]="modo"
+            tipo="Monstruo"
+            iconoTipo="monstruo"
+            [detalleTipo]="lineaManual"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="form.controls.oficial.value"
+            [pasos]="pasos"
+            [(pasoActual)]="pasoActual"
+            [pasosConCambios]="pasosConCambios"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="avisoPermisos"
+            [error]="errorGlobal"
+            [guardando]="guardando"
+            [accionDesactivada]="accionDesactivada"
+            [textoAccion]="textoAccion"
+            [textoGuardando]="textoGuardando"
+            [nota]="notaPie">
+
+            <!-- Paso 1: identidad -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 0">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Identidad</h3>
+                    <div class="insercion-campos">
+                        <mat-form-field appearance="fill" class="insercion-campos__doble" [class.insercion-campo-cambiado]="cambiado('nombre')">
+                            <mat-label>{{etiqueta('nombre')}}</mat-label>
+                            <input matInput formControlName="nombre" maxlength="50" required>
+                            <mat-error *ngIf="errorDe('nombre') as error">{{error}}</mat-error>
+                        </mat-form-field>
+                        <app-catalogo-buscador [class.insercion-campo-cambiado]="cambiado('id_manual')"
+                            [etiqueta]="etiqueta('id_manual')" [opciones]="manuales" [valor]="form.controls.id_manual.value"
+                            [error]="errorDe('id_manual')" (elegir)="elegir('id_manual', $event)">
+                        </app-catalogo-buscador>
+                        <ng-container *ngTemplateOutlet="numero; context: { $implicit: 'pagina' }"></ng-container>
+                        <app-catalogo-buscador class="insercion-campos__doble" [class.insercion-campo-cambiado]="cambiado('id_tipo')"
+                            [etiqueta]="etiqueta('id_tipo')" [opciones]="tiposCriatura" [valor]="form.controls.id_tipo.value"
+                            [error]="errorDe('id_tipo')" (elegir)="elegir('id_tipo', $event)">
+                        </app-catalogo-buscador>
+                        <mat-form-field appearance="fill" [class.insercion-campo-cambiado]="cambiado('id_tamano')">
+                            <mat-label>{{etiqueta('id_tamano')}}</mat-label>
+                            <mat-select formControlName="id_tamano" (selectionChange)="alElegirTamano($event.value)">
+                                <mat-option *ngFor="let tamano of tamanos" [value]="tamano.Id">{{tamano.Nombre}}</mat-option>
+                            </mat-select>
+                            <mat-error *ngIf="errorDe('id_tamano') as error">{{error}}</mat-error>
+                        </mat-form-field>
+                        <div class="monstruo-estados">
+                            <mat-chip-listbox class="boolean-chips" aria-label="Estado del monstruo">
+                                <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="alternar('oficial')"
+                                    [class.insercion-campo-cambiado]="cambiado('oficial')">Oficial</mat-chip-option>
+                            </mat-chip-listbox>
+                        </div>
+                        <app-catalogo-buscador class="insercion-campos__doble" [class.insercion-campo-cambiado]="cambiado('id_alineamiento')"
+                            [etiqueta]="etiqueta('id_alineamiento')" [opciones]="alineamientos" [valor]="form.controls.id_alineamiento.value"
+                            [error]="errorDe('id_alineamiento')" (elegir)="elegir('id_alineamiento', $event)">
+                        </app-catalogo-buscador>
+                        <ng-container *ngTemplateOutlet="texto; context: { $implicit: 'valor_desafio', maximo: 500, vacio: '1/2, 3…' }"></ng-container>
+                        <ng-container *ngTemplateOutlet="texto; context: { $implicit: 'tesoro', maximo: 100, vacio: 'Estándar, ninguno…' }"></ng-container>
+                    </div>
+                </section>
+
+                <div class="monstruo-rasgos monstruo-rasgos--dos">
+                    <ng-container *ngTemplateOutlet="tarjeta; context: { $implicit: 'subtipos', icono: 'subtipo', anadir: 'Añadir subtipo', vacio: 'Sin subtipos.' }"></ng-container>
+                    <ng-container *ngTemplateOutlet="tarjeta; context: { $implicit: 'idiomas', icono: 'idioma', anadir: 'Añadir idioma', vacio: 'No habla ningún idioma.' }"></ng-container>
+                </div>
+            </div>
+
+            <!-- Paso 2: combate -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 1">
+                <div class="insercion-tarjetas">
+                    <section class="insercion-tarjeta">
+                        <h3 class="insercion-tarjeta__titulo">Dados de golpe e iniciativa</h3>
+                        <div class="insercion-campos monstruo-campos-2">
+                            <mat-form-field appearance="fill" [class.insercion-campo-cambiado]="cambiado('cantidad_dg')">
+                                <mat-label>{{etiqueta('cantidad_dg')}}</mat-label>
+                                <input matInput formControlName="cantidad_dg" maxlength="10" placeholder="12, 1/2…">
+                                <mat-error *ngIf="errorDe('cantidad_dg') as error">{{error}}</mat-error>
+                            </mat-form-field>
+                            <ng-container *ngTemplateOutlet="lista; context: { $implicit: 'id_tipo_dado', opciones: tiposDado }"></ng-container>
+                            <ng-container *ngTemplateOutlet="numero; context: { $implicit: 'suma_dg' }"></ng-container>
+                            <ng-container *ngTemplateOutlet="numero; context: { $implicit: 'iniciativa' }"></ng-container>
+                        </div>
+                    </section>
+
+                    <section class="insercion-tarjeta">
+                        <h3 class="insercion-tarjeta__titulo">Clase de armadura</h3>
+                        <div class="insercion-campos monstruo-campos-2">
+                            <ng-container *ngFor="let campo of ['ca', 'toque', 'desprevenido', 'armadura_natural']">
+                                <ng-container *ngTemplateOutlet="numero; context: { $implicit: campo }"></ng-container>
+                            </ng-container>
+                        </div>
+                    </section>
+
+                    <section class="insercion-tarjeta">
+                        <h3 class="insercion-tarjeta__titulo">Ataques</h3>
+                        <div class="insercion-campos monstruo-campos-2">
+                            <ng-container *ngTemplateOutlet="numero; context: { $implicit: 'ataque_base' }"></ng-container>
+                            <ng-container *ngTemplateOutlet="numero; context: { $implicit: 'presa' }"></ng-container>
+                            <ng-container *ngTemplateOutlet="texto; context: { $implicit: 'ataques', clase: 'insercion-campos__entero', maximo: 500 }"></ng-container>
+                            <ng-container *ngTemplateOutlet="texto; context: { $implicit: 'ataque_completo', clase: 'insercion-campos__entero', maximo: 500 }"></ng-container>
+                            <mat-form-field appearance="fill" [class.insercion-campo-cambiado]="cambiado('espacio')">
+                                <mat-label>{{etiqueta('espacio')}}</mat-label>
+                                <input matInput type="number" step="0.5" min="0" formControlName="espacio">
+                                <mat-error *ngIf="errorDe('espacio') as error">{{error}}</mat-error>
+                            </mat-form-field>
+                            <ng-container *ngTemplateOutlet="numero; context: { $implicit: 'alcance' }"></ng-container>
+                        </div>
+                    </section>
+
+                    <section class="insercion-tarjeta">
+                        <h3 class="insercion-tarjeta__titulo">Movimiento</h3>
+                        <div class="insercion-campos monstruo-campos-3">
+                            <ng-container *ngFor="let campo of ['correr', 'nadar', 'volar', 'trepar', 'excavar']">
+                                <ng-container *ngTemplateOutlet="numero; context: { $implicit: campo }"></ng-container>
+                            </ng-container>
+                            <ng-container *ngTemplateOutlet="lista; context: { $implicit: 'id_maniobrabilidad', opciones: maniobrabilidades, ninguna: 'No vuela' }"></ng-container>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Paso 3: características y salvaciones -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 2">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Características</h3>
+                    <div class="monstruo-caracteristicas" role="table" aria-label="Características">
+                        <div class="monstruo-caracteristicas__fila monstruo-caracteristicas__fila--cabeza" role="row">
+                            <span role="columnheader"></span>
+                            <span role="columnheader" *ngFor="let c of caracteristicas" [title]="c.nombre">{{c.corto}}</span>
+                        </div>
+                        <div class="monstruo-caracteristicas__fila" role="row">
+                            <span role="rowheader" class="monstruo-caracteristicas__nombre">Puntuación</span>
+                            <mat-form-field appearance="fill" role="cell" *ngFor="let c of caracteristicas" subscriptSizing="dynamic"
+                                [class.insercion-campo-cambiado]="cambiado(c.campo)">
+                                <input matInput type="number" step="1" min="0" placeholder="—" [formControl]="control(c.campo)" [attr.aria-label]="etiqueta(c.campo)">
+                                <mat-error *ngIf="errorDe(c.campo) as error">{{error}}</mat-error>
+                            </mat-form-field>
+                        </div>
+                    </div>
+                    <p class="monstruo-nota">Vacía: no tiene esa característica (el «—» del manual, como la Constitución de un muerto viviente).</p>
+                </section>
+
+                <div class="insercion-tarjetas">
+                    <section class="insercion-tarjeta">
+                        <h3 class="insercion-tarjeta__titulo">Salvaciones</h3>
+                        <div class="insercion-campos monstruo-campos-3">
+                            <ng-container *ngFor="let campo of ['fortaleza', 'reflejos', 'voluntad']">
+                                <ng-container *ngTemplateOutlet="numero; context: { $implicit: campo }"></ng-container>
+                            </ng-container>
+                        </div>
+                    </section>
+
+                    <section class="insercion-tarjeta">
+                        <h3 class="insercion-tarjeta__titulo">Defensas</h3>
+                        <div class="insercion-campos monstruo-campos-2">
+                            <ng-container *ngTemplateOutlet="texto; context: { $implicit: 'reduccion_dano', clase: 'insercion-campos__entero', maximo: 500, vacio: 'Vacío: no tiene' }"></ng-container>
+                            <ng-container *ngTemplateOutlet="texto; context: { $implicit: 'resistencia_conjuros', maximo: 500, vacio: 'Vacío: no tiene' }"></ng-container>
+                            <ng-container *ngTemplateOutlet="texto; context: { $implicit: 'cd_sortilegas', maximo: 100, vacio: 'Vacío: no tiene' }"></ng-container>
+                            <ng-container *ngTemplateOutlet="texto; context: { $implicit: 'resistencia_elemental', clase: 'insercion-campos__entero', maximo: 500, vacio: 'Vacío: no tiene' }"></ng-container>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Paso 4: aptitudes -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 3">
+                <div class="monstruo-rasgos">
+                    <ng-container *ngTemplateOutlet="tarjeta; context: { $implicit: 'raciales', icono: 'racial', anadir: 'Añadir aptitud', vacio: 'Sin aptitudes.' }"></ng-container>
+                    <ng-container *ngTemplateOutlet="tarjeta; context: { $implicit: 'ataquesEspeciales', icono: 'rasgo', anadir: 'Añadir ataque especial', vacio: 'Sin ataques especiales.' }"></ng-container>
+                    <ng-container *ngTemplateOutlet="tarjeta; context: { $implicit: 'sortilegas', icono: 'conjuro', anadir: 'Añadir conjuro', vacio: 'Sin aptitudes sortílegas.' }"></ng-container>
+                    <ng-container *ngTemplateOutlet="tarjeta; context: { $implicit: 'dotes', icono: 'dote', anadir: 'Añadir dote', vacio: 'Sin dotes.' }"></ng-container>
+                    <ng-container *ngTemplateOutlet="tarjeta; context: { $implicit: 'habilidades', icono: null, anadir: 'Añadir habilidad', vacio: 'Sin habilidades.' }"></ng-container>
+                </div>
+            </div>
+
+            <!-- Paso 5: familiar y compañero -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 4">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Familiar y compañero animal</h3>
+                    <div class="monstruo-estados">
+                        <mat-chip-listbox class="boolean-chips" aria-label="Familiar y compañero">
+                            <mat-chip-option [selected]="form.controls.familiar.value === true" (click)="alternar('familiar')"
+                                [class.insercion-campo-cambiado]="cambiado('familiar')">Puede ser familiar</mat-chip-option>
+                            <mat-chip-option [selected]="form.controls.companero.value === true" (click)="alternar('companero')"
+                                [class.insercion-campo-cambiado]="cambiado('companero')">Puede ser compañero animal</mat-chip-option>
+                        </mat-chip-listbox>
+                    </div>
+                    <p class="monstruo-nota">La creación de personajes lo ofrece con las clases (y su nivel) de abajo y los alineamientos que pide.</p>
+                </section>
+
+                <div class="insercion-tarjetas">
+                    <section class="insercion-tarjeta" [class.insercion-tarjeta--cambiada]="cambiado('alineamientos_requeridos')"
+                        *ngFor="let relacion of ['familiar', 'companero']">
+                        <h3 class="insercion-tarjeta__titulo">{{relacion === 'familiar' ? 'Alineamientos para tenerlo de familiar' : 'Alineamientos para tenerlo de compañero'}}</h3>
+                        <mat-chip-listbox class="boolean-chips" multiple [attr.aria-label]="relacion === 'familiar' ? 'Alineamientos del familiar' : 'Alineamientos del compañero'">
+                            <mat-chip-option *ngFor="let alineamiento of alineamientosBasicos" [selected]="alineamientoRequerido($any(relacion), alineamiento.id)"
+                                (click)="alternarAlineamientoRequerido($any(relacion), alineamiento.id)">{{alineamiento.nombre}}</mat-chip-option>
+                        </mat-chip-listbox>
+                        <p class="monstruo-nota">Sin ninguno: cualquiera.</p>
+                    </section>
+                </div>
+
+                <section class="insercion-tarjeta" [class.insercion-tarjeta--cambiada]="cambiado('niveles_clase')">
+                    <h3 class="insercion-tarjeta__titulo">{{etiqueta('niveles_clase')}} <span class="monstruo-rasgo__cuenta">· {{listas.niveles_clase.length}}</span></h3>
+                    <p class="monstruo-error" role="alert" *ngIf="errorCampo?.campo === 'niveles_clase'">{{errorCampo?.mensaje}}</p>
+                    <p class="monstruo-rasgo__vacio" *ngIf="listas.niveles_clase.length < 1">Ninguna: no sale como familiar ni como compañero.</p>
+                    <div class="monstruo-nivel" *ngFor="let fila of listas.niveles_clase; trackBy: trackByUid">
+                        <span class="monstruo-fila__nombre">{{nombreClase(fila.id_clase)}}</span>
+                        <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                            <mat-label>Nivel</mat-label>
+                            <input matInput type="number" min="0" step="1" [(ngModel)]="fila.nivel" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                        </mat-form-field>
+                        <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                            <mat-label>Plantilla</mat-label>
+                            <mat-select [(ngModel)]="fila.id_plantilla" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                                <mat-option [value]="0">Ninguna</mat-option>
+                                <mat-option *ngFor="let plantilla of plantillasFamiliar" [value]="plantilla.id">{{plantilla.nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <app-catalogo-buscador etiqueta="Dote que hace falta" placeholder="Ninguna" [opciones]="dotesOpciones" [valor]="fila.id_dote || null"
+                            (elegir)="elegirDoteDeNivel(fila, $event)">
+                        </app-catalogo-buscador>
+                        <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                            <mat-label>Preferencia legal</mat-label>
+                            <mat-select [(ngModel)]="fila.id_preferencia_legal" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                                <mat-option [value]="0">No aplica</mat-option>
+                                <mat-option *ngFor="let preferencia of preferenciasLey" [value]="preferencia.id">{{preferencia.nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                            <mat-label>Preferencia moral</mat-label>
+                            <mat-select [(ngModel)]="fila.id_preferencia_moral" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                                <mat-option [value]="0">No aplica</mat-option>
+                                <mat-option *ngFor="let preferencia of preferenciasMoral" [value]="preferencia.id">{{preferencia.nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar ' + nombreClase(fila.id_clase)" (click)="quitarNivelClase(fila.uid)">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                    <app-catalogo-buscador etiqueta="Añadir clase" [anadir]="true" [opciones]="clases" [deshabilitado]="edicion.cargando"
+                        (elegir)="anadirNivelClase($event)">
+                    </app-catalogo-buscador>
+                </section>
+
+                <section class="insercion-tarjeta" *ngIf="derivados.length > 0">
+                    <h3 class="insercion-tarjeta__titulo">No editable aquí</h3>
+                    <p class="monstruo-nota">Los familiares y compañeros que ya salen de este monstruo (con sus propias cifras y los personajes que los tienen) se conservan tal cual al guardar: {{derivados.join(', ')}}.</p>
+                </section>
+            </div>
+
+            <!-- Paso 6: descripción -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 5">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Descripción</h3>
+                    <mat-form-field appearance="fill" class="monstruo-descripcion" [class.insercion-campo-cambiado]="cambiado('descripcion')">
+                        <mat-label>{{etiqueta('descripcion')}}</mat-label>
+                        <textarea matInput formControlName="descripcion" rows="8"></textarea>
+                        <mat-hint>Con tus palabras: nunca el texto del manual, salvo el del SRD.</mat-hint>
+                        <mat-error *ngIf="errorDe('descripcion') as error">{{error}}</mat-error>
+                    </mat-form-field>
+                </section>
+            </div>
+
+            <button insercionPieSecundario mat-stroked-button type="button" *ngIf="esEdicion" [disabled]="!hayCambios || guardando" (click)="descartar()">
+                Descartar
+            </button>
+        </app-insercion-marco>
+
+        <!-- Piezas repetidas -->
+        <ng-template #numero let-campo>
+            <mat-form-field appearance="fill" [class.insercion-campo-cambiado]="cambiado(campo)">
+                <mat-label>{{etiqueta(campo)}}</mat-label>
+                <input matInput type="number" step="1" [formControl]="control(campo)">
+                <mat-error *ngIf="errorDe(campo) as error">{{error}}</mat-error>
+            </mat-form-field>
+        </ng-template>
+
+        <ng-template #texto let-campo let-clase="clase" let-maximo="maximo" let-vacio="vacio">
+            <mat-form-field appearance="fill" [ngClass]="clase" [class.insercion-campo-cambiado]="cambiado(campo)">
+                <mat-label>{{etiqueta(campo)}}</mat-label>
+                <input matInput [formControl]="control(campo)" [attr.maxlength]="maximo || 500" [placeholder]="vacio || ''">
+                <mat-error *ngIf="errorDe(campo) as error">{{error}}</mat-error>
+            </mat-form-field>
+        </ng-template>
+
+        <ng-template #lista let-campo let-opciones="opciones" let-ninguna="ninguna">
+            <mat-form-field appearance="fill" [class.insercion-campo-cambiado]="cambiado(campo)">
+                <mat-label>{{etiqueta(campo)}}</mat-label>
+                <mat-select [formControl]="control(campo)">
+                    <mat-option *ngIf="ninguna" [value]="null">{{ninguna}}</mat-option>
+                    <mat-option *ngFor="let opcion of opciones" [value]="opcion.id">{{opcion.nombre}}</mat-option>
+                </mat-select>
+                <mat-error *ngIf="errorDe(campo) as error">{{error}}</mat-error>
+            </mat-form-field>
+        </ng-template>
+
+        <ng-template #tarjeta let-clave let-icono="icono" let-textoAnadir="anadir" let-vacio="vacio">
+            <section class="insercion-tarjeta monstruo-rasgo" [class.monstruo-rasgo--plegada]="plegada(clave)"
+                [class.insercion-tarjeta--cambiada]="cambiado(clave)">
+                <button type="button" class="monstruo-rasgo__cabeza" [attr.aria-expanded]="!plegada(clave)" (click)="alternarPlegada(clave)">
+                    <app-icono-rol *ngIf="icono; else iconoHabilidad" [tipo]="icono" [tamano]="20"></app-icono-rol>
+                    <ng-template #iconoHabilidad><mat-icon class="monstruo-rasgo__icono" aria-hidden="true">school</mat-icon></ng-template>
+                    <h3 class="insercion-tarjeta__titulo">{{etiqueta(clave)}} <span class="monstruo-rasgo__cuenta">· {{contar(clave)}}</span></h3>
+                    <mat-icon class="monstruo-rasgo__plegar" aria-hidden="true">expand_more</mat-icon>
+                </button>
+                <div class="monstruo-rasgo__cuerpo">
+                    <p class="monstruo-error" role="alert" *ngIf="errorCampo?.campo === clave">{{errorCampo?.mensaje}}</p>
+                    <p class="monstruo-rasgo__vacio" *ngIf="contar(clave) < 1">{{vacio}}</p>
+                    <div class="monstruo-fila" *ngFor="let fila of $any(listas)[clave]; trackBy: trackByUid"
+                        [class.monstruo-fila--sortilega]="clave === 'sortilegas'" [class.monstruo-fila--habilidad]="clave === 'habilidades'">
+                        <span class="monstruo-fila__nombre">{{fila.nombre}}</span>
+                        <ng-container *ngIf="clave === 'sortilegas'">
+                            <mat-form-field appearance="fill" class="monstruo-fila__corto" subscriptSizing="dynamic">
+                                <mat-label>Nivel de lanzador</mat-label>
+                                <input matInput type="number" min="0" step="1" [(ngModel)]="fila.nivel_lanzador" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                                <mat-label>Usos</mat-label>
+                                <input matInput maxlength="50" placeholder="3/día, a voluntad…" [(ngModel)]="fila.usos_diarios" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                            </mat-form-field>
+                        </ng-container>
+                        <mat-form-field appearance="fill" subscriptSizing="dynamic" *ngIf="clave === 'dotes' && extrasDote(fila.id).length > 0">
+                            <mat-label>Extra</mat-label>
+                            <mat-select [(ngModel)]="fila.id_extra" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                                <mat-option [value]="-1">Sin extra</mat-option>
+                                <mat-option *ngFor="let extra of extrasDote(fila.id)" [value]="extra.id">{{extra.nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <ng-container *ngIf="clave === 'habilidades'">
+                            <mat-form-field appearance="fill" class="monstruo-fila__corto" subscriptSizing="dynamic">
+                                <mat-label>Rangos</mat-label>
+                                <input matInput type="number" step="1" [(ngModel)]="fila.rangos" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic" *ngIf="extrasHabilidad(fila.id).length > 0">
+                                <mat-label>Extra</mat-label>
+                                <mat-select [(ngModel)]="fila.id_extra" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                                    <mat-option [value]="-1">Sin extra</mat-option>
+                                    <mat-option *ngFor="let extra of extrasHabilidad(fila.id)" [value]="extra.id">{{extra.nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </ng-container>
+                        <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar ' + fila.nombre" (click)="quitarDeLista(clave, fila.uid)">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                    <app-catalogo-buscador [etiqueta]="textoAnadir" [anadir]="true" [opciones]="opcionesDe(clave)" [excluir]="idsDe(clave)"
+                        [deshabilitado]="edicion.cargando" (elegir)="anadirALista(clave, $event)">
+                    </app-catalogo-buscador>
+                </div>
+            </section>
+        </ng-template>
+    </form>
+</div>

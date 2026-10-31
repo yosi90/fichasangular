@@ -157,3 +157,157 @@
     ::ng-deep .mat-mdc-checkbox .mdc-form-field > label,
     ::ng-deep .mat-mdc-slide-toggle .mdc-label
         color: $ficha-texto
+
+// Las tarjetas de rasgos de una inserción de criatura (la plantilla y el monstruo): rejillas de campos de 2 y de 3, los
+// chips de estado, la tabla de características, las tarjetas de una lista con su cuenta, sus filas y su error. Las clases
+// llevan el prefijo del formulario (`plantilla-rasgos`, `monstruo-rasgos`…). Lo que va dentro del marco se pliega por su
+// ancho (`@container insercion`); en el móvil, las tarjetas se pliegan.
+@mixin tarjetas-de-rasgos($p)
+    // Rejillas de campos más estrechas dentro de las tarjetas de dos en dos.
+    .insercion-campos.#{$p}-campos-2
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+
+    .insercion-campos.#{$p}-campos-3
+        grid-template-columns: repeat(3, minmax(0, 1fr))
+
+    .#{$p}-estados
+        display: flex
+        align-items: center
+        min-height: 56px
+
+    // La tabla de características: modificador y mínimo de la criatura.
+    .#{$p}-caracteristicas
+        display: flex
+        flex-direction: column
+        gap: 6px
+        overflow-x: auto
+
+    .#{$p}-caracteristicas__fila
+        display: grid
+        grid-template-columns: 170px repeat(6, minmax(64px, 1fr))
+        gap: 8px
+        align-items: center
+
+    .#{$p}-caracteristicas__fila--cabeza
+        @include ficha-versalitas
+        text-align: center
+
+    .#{$p}-caracteristicas__nombre
+        font-size: 13.5px
+        color: $ficha-texto-suave
+
+    // Las tarjetas de rasgos, en rejilla de 3.
+    .#{$p}-rasgos
+        display: grid
+        grid-template-columns: repeat(3, minmax(0, 1fr))
+        gap: 14px
+        align-items: start
+
+    .#{$p}-rasgo__cabeza
+        display: flex
+        align-items: center
+        gap: 8px
+        width: 100%
+        padding: 0
+        border: 0
+        background: none
+        color: inherit
+        font: inherit
+        text-align: left
+        cursor: default
+
+        .insercion-tarjeta__titulo
+            flex: 1 1 auto
+            margin: 0
+
+    .#{$p}-rasgo__icono
+        color: $ficha-texto-suave
+
+    .#{$p}-rasgo__cuenta
+        color: $ficha-texto-suave
+
+    // En el escritorio las tarjetas están siempre abiertas: la flecha de plegar es del móvil.
+    .#{$p}-rasgo__plegar
+        display: none !important
+
+    .#{$p}-rasgo__cuerpo
+        display: flex
+        flex-direction: column
+        gap: 8px
+
+    .#{$p}-rasgo__vacio
+        margin: 0
+        padding: 12px
+        border: 1px dashed rgba(255, 255, 255, .22)
+        border-radius: $ficha-radio
+        font-size: 13px
+        color: $ficha-texto-suave
+        text-align: center
+
+    .#{$p}-fila
+        display: grid
+        grid-template-columns: minmax(0, 1fr) 92px 42px
+        gap: 8px
+        align-items: center
+        padding-bottom: 6px
+        border-bottom: 1px solid rgba(255, 255, 255, .06)
+
+        &:has(mat-select)
+            grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr) 42px
+
+    .#{$p}-fila--sortilega, .#{$p}-fila--habilidad
+        grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr) 42px
+
+        .#{$p}-fila__nombre
+            grid-column: 1 / -2
+
+    .#{$p}-fila--habilidad:has(mat-select)
+        grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr) minmax(0, 1fr) 42px
+
+    .#{$p}-fila__nombre
+        min-width: 0
+        font-size: 14px
+        color: $ficha-blanco
+        overflow-wrap: anywhere
+
+    .#{$p}-error
+        margin: 0
+        font-size: 13px
+        color: var(--mat-form-field-error-text-color, #f44336)
+
+    @container insercion (max-width: 1100px)
+        .#{$p}-rasgos
+            grid-template-columns: repeat(2, minmax(0, 1fr))
+
+    // El móvil: una columna; las tarjetas de rasgos, plegables con su cuenta («Ataques especiales · 2»).
+    @container insercion (max-width: 767px)
+        .#{$p}-rasgos, .insercion-campos.#{$p}-campos-2, .insercion-campos.#{$p}-campos-3
+            grid-template-columns: minmax(0, 1fr)
+
+        .#{$p}-rasgo__cabeza
+            min-height: 44px
+            cursor: pointer
+
+        .#{$p}-rasgo__plegar
+            display: inline-block !important
+            transition: transform .15s
+
+        .#{$p}-rasgo--plegada
+            .#{$p}-rasgo__cuerpo
+                display: none
+
+            .#{$p}-rasgo__plegar
+                transform: rotate(-90deg)
+
+        .#{$p}-fila, .#{$p}-fila--sortilega, .#{$p}-fila--habilidad, .#{$p}-fila:has(mat-select), .#{$p}-fila--habilidad:has(mat-select)
+            grid-template-columns: minmax(0, 1fr) 42px
+
+            > *:not(.row-action-btn)
+                grid-column: 1
+
+            .row-action-btn
+                grid-column: 2
+                grid-row: 1
+
+        .#{$p}-caracteristicas__fila
+            grid-template-columns: 96px repeat(6, minmax(52px, 1fr))
