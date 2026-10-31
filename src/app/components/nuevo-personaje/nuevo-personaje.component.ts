@@ -5007,8 +5007,8 @@ export class NuevoPersonajeComponent {
             this.recalcularFamiliaresElegiblesSelector();
             return;
         }
-        const parsed = Math.trunc(Number(plantilla));
-        if (!Number.isFinite(parsed) || parsed < 1)
+        const parsed = toPositiveInt(plantilla);
+        if (parsed === null)
             return;
         this.selectorFamiliarPlantillaSeleccionada = parsed;
         this.recalcularFamiliaresElegiblesSelector();

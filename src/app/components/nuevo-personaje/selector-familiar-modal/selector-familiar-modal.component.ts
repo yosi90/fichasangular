@@ -1,7 +1,7 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { FamiliarMonstruoDetalle } from 'src/app/interfaces/monstruo';
 import { FamiliarPlantillaId, FamiliarPlantillaOpcion } from 'src/app/services/utils/familiar-reglas';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toPositiveInt } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
 export interface SelectorFamiliarConfirmacion {
@@ -105,8 +105,8 @@ export class SelectorFamiliarModalComponent {
             this.idPlantillaSeleccionada = 0;
             return;
         }
-        const plantilla = Math.trunc(Number(value));
-        if (!Number.isFinite(plantilla) || plantilla < 1)
+        const plantilla = toPositiveInt(value);
+        if (plantilla === null)
             return;
         this.plantillaChange.emit(plantilla);
         this.idFamiliarSeleccionado = 0;

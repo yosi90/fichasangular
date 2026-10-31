@@ -4137,7 +4137,7 @@ export class NuevoPersonajeService {
 
     /** La pseudoplantilla de un familiar (su id del catálogo), de la elegida o de la que ya lleva. */
     private plantillaFamiliar(valor: unknown): FamiliarPlantillaId {
-        return Math.max(0, Math.trunc(toNumber(valor)));
+        return Math.max(0, toInt(valor));
     }
 
     /** Los nombres de las aptitudes especiales que ya conoce la creación (las del catálogo de clases y las del personaje). */
