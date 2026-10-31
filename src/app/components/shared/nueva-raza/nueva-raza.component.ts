@@ -181,6 +181,9 @@ const SIN_VUELO: RazaCatalogItem = { Id: 0, Nombre: 'No vuela' };
 /** La clase predilecta 0 de la base, «Cualquiera» (el humano y el semielfo), que el catálogo de clases no lista. */
 const CUALQUIER_CLASE: CatalogItem = { Id: 0, Nombre: 'Cualquiera' };
 
+/** El peso más alto que admite la API (`numeric(7, 2)`; el centauro de *Races of the Wild* pesa 1.060,52 kg). */
+const PESO_MAXIMO = 99999.99;
+
 /**
  * Los catálogos de los que depende el cuerpo que se manda (el alineamiento que se resuelve, los extras de habilidad, el
  * tipo de dado…). Al modificar, la raza se rellena cuando ya están, para que guardar sin tocar nada mande lo que llegó.
@@ -449,8 +452,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         altura_rango_inf: [0, [Validators.min(0), Validators.max(10)]],
         altura_rango_sup: [0, [Validators.min(0), Validators.max(10)]],
         // Con decimales, hasta lo que cabe en la columna (`numeric(5, 2)`): el elfo pesa de 38,5 a 61,2 kg.
-        peso_rango_inf: [0, [Validators.min(0), Validators.max(999.99)]],
-        peso_rango_sup: [0, [Validators.min(0), Validators.max(999.99)]],
+        peso_rango_inf: [0, [Validators.min(0), Validators.max(PESO_MAXIMO)]],
+        peso_rango_sup: [0, [Validators.min(0), Validators.max(PESO_MAXIMO)]],
         edad_adulto: [0, [Validators.min(0)]],
         edad_mediana: [0, [Validators.min(0)]],
         edad_viejo: [0, [Validators.min(0)]],
@@ -690,10 +693,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 edad_viejo: this.numero(raw.edad_viejo),
                 edad_venerable: this.numero(raw.edad_venerable),
                 id_tipo_criatura: this.numero(raw.id_tipo_criatura),
-                ataque_base: this.tieneDgsExtra() ? this.numero(raw.ataque_base) : (dgsOcultos?.Ataque_base ?? 0),
-                fortaleza: this.numero(raw.fortaleza),
-                reflejos: this.numero(raw.reflejos),
-                voluntad: this.numero(raw.voluntad),
+                // El ataque base y las salvaciones son los de los DG raciales: sin DG, 0 (`400 dg_raciales_sin_dg`).
+                ataque_base: this.tieneDgsExtra() ? this.numero(raw.ataque_base) : 0,
+                fortaleza: this.tieneDgsExtra() ? this.numero(raw.fortaleza) : 0,
+                reflejos: this.tieneDgsExtra() ? this.numero(raw.reflejos) : 0,
+                voluntad: this.tieneDgsExtra() ? this.numero(raw.voluntad) : 0,
                 dgs_extra: this.numero(raw.dgs_extra),
                 id_tipo_dado: dgsOcultos && !this.tieneDgsExtra() ? dgsOcultos.Id_dado : this.getIdTipoDadoPayload(),
                 id_tipo_criatura_dgs: dgsOcultos && !this.tieneDgsExtra() ? dgsOcultos.Id_tipo_criatura : this.getIdTipoCriaturaDgsPayload(),
@@ -2073,10 +2077,16 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     private sincronizarCamposDgsExtra(): void {
         const tipoDadoControl = this.form.controls.id_tipo_dado;
         const tipoCriaturaControl = this.form.controls.id_tipo_criatura_dgs;
+        const salvaciones = [this.form.controls.fortaleza, this.form.controls.reflejos, this.form.controls.voluntad];
         if (!this.tieneDgsExtra()) {
             tipoDadoControl.clearValidators();
             tipoCriaturaControl.clearValidators();
+            // Sin DG raciales no hay salvaciones de DG: a 0 y sin editar.
+            salvaciones.forEach((control) => control.disable({ emitEvent: false }));
             this.form.patchValue({
+                fortaleza: 0,
+                reflejos: 0,
+                voluntad: 0,
                 ataque_base: 0,
                 dotes_dg: 0,
                 puntos_hab: 0,
@@ -2090,6 +2100,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             return;
         }
 
+        salvaciones.forEach((control) => control.enable({ emitEvent: false }));
         tipoDadoControl.setValidators([Validators.min(1)]);
         tipoCriaturaControl.setValidators([Validators.min(1)]);
         if (this.numero(tipoDadoControl.value) <= 0)
@@ -2585,7 +2596,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     /**
      * Sin DG raciales el formulario no enseña ni guarda sus campos (a cero en una raza nueva); al modificar una raza que ya
-     * no los tenía, se conservan los que guardaba.
+     * no los tenía, se conservan los que guardaba (el dado, el tipo, las dotes y los puntos; el ataque base y las
+     * salvaciones, a 0).
      */
     private dgsOcultosAConservar() {
         const dgs = this.razaCargada?.Edicion?.Dgs_raciales;

@@ -851,7 +851,7 @@ describe('NuevaRazaComponent', () => {
             altura_rango_inf: -1,
             altura_rango_sup: 10.01,
             peso_rango_inf: -1,
-            peso_rango_sup: 1000,
+            peso_rango_sup: 100000,
             edad_adulto: -1,
             ajuste_nivel: -1,
             dotes_extra: 11,
@@ -1146,7 +1146,7 @@ describe('NuevaRazaComponent', () => {
                 Manual: { Id: 1, Nombre: 'Manual base', Pagina: 14 },
                 Clase_predilecta: { Id: 1, Nombre: 'Guerrero' },
                 Dgs_raciales: {
-                    Cantidad: 0, Id_dado: 0, Id_tipo_criatura: 0, Ataque_base: 0, Fortaleza: 1, Reflejos: 1, Voluntad: 1,
+                    Cantidad: 0, Id_dado: 0, Id_tipo_criatura: 0, Ataque_base: 0, Fortaleza: 0, Reflejos: 0, Voluntad: 0,
                     Dotes_extra: 0, Puntos_habilidad: 0, Multiplicador_puntos_habilidad: 0,
                 },
                 ...extra,
@@ -1167,6 +1167,32 @@ describe('NuevaRazaComponent', () => {
             await Promise.resolve();
         }
 
+        it('sin DG raciales, las salvaciones y el ataque base van a 0 y no se editan; con DG, sí', async () => {
+            // Una raza aún con el +1 del mediano en las salvaciones de DG (antes de razas_mediano_suerte.sql).
+            await crearEnModificar(razaDeLaApi({
+                Dgs_raciales: {
+                    Cantidad: 0, Id_dado: 0, Id_tipo_criatura: 0, Ataque_base: 1, Fortaleza: 1, Reflejos: 1, Voluntad: 1,
+                    Dotes_extra: 0, Puntos_habilidad: 0, Multiplicador_puntos_habilidad: 0,
+                },
+            }));
+            expect(component.form.controls.fortaleza.disabled).toBeTrue();
+            expect(component.form.controls.voluntad.disabled).toBeTrue();
+            expect(component.buildPayload().raza).toEqual(jasmine.objectContaining({ dgs_extra: 0, ataque_base: 0, fortaleza: 0, reflejos: 0, voluntad: 0 }));
+
+            component.form.controls.dgs_extra.setValue(2);
+            expect(component.form.controls.fortaleza.enabled).toBeTrue();
+            component.form.patchValue({ fortaleza: 3 });
+            expect(component.buildPayload().raza.fortaleza).toBe(3);
+        });
+
+        it('admite pesos de más de 999,99 (el centauro de Races of the Wild)', async () => {
+            await crearEnModificar(razaDeLaApi());
+            component.form.patchValue({ peso_rango_sup: 1060.52 });
+            expect(component.form.controls.peso_rango_sup.valid).toBeTrue();
+            component.form.patchValue({ peso_rango_sup: 100000 });
+            expect(component.form.controls.peso_rango_sup.valid).toBeFalse();
+        });
+
         it('rellena la pantalla con su GET y, sin tocar nada, manda lo mismo que llegó', async () => {
             await crearEnModificar(razaDeLaApi());
 
@@ -1180,8 +1206,8 @@ describe('NuevaRazaComponent', () => {
                 nombre: 'Elfo', id_manual: 1, pagina: 14, id_clase_predilecta: 1, id_tamano: 2, id_tipo_criatura: 3,
                 mod_des: 2, mod_cons: -2, altura_rango_inf: 1.37, peso_rango_inf: 38.5, peso_rango_sup: 61.2, edad_venerable: 700,
                 ataques_naturales: 'No especifica', resistencia_conjuros: '14', id_alineamiento: 9,
-                // Sin DG raciales, los que guardaba: el +1 a las tres salvaciones y los tipos 0.
-                dgs_extra: 0, fortaleza: 1, reflejos: 1, voluntad: 1, id_tipo_dado: 0, id_tipo_criatura_dgs: 0,
+                // Sin DG raciales, los que guardaba (los tipos 0) y las salvaciones de DG a 0.
+                dgs_extra: 0, fortaleza: 0, reflejos: 0, voluntad: 0, id_tipo_dado: 0, id_tipo_criatura_dgs: 0,
                 cuadrupedo: false, id_clase_lanzamiento: null, nivel_lanzamiento: 0,
             }));
             expect(payload.subtipos).toEqual([6, 8]);

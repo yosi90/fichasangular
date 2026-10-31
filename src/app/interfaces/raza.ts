@@ -181,7 +181,11 @@ export interface LanzamientoRaza {
     Listas: ListaLanzamientoRaza[];
 }
 
-/** Los DG raciales tal como los guarda la raza (`RazaCompleta.Dgs_raciales`), también sin DG: el mediano guarda aquí su +1 a las tres salvaciones. */
+/**
+ * Los DG raciales tal como los guarda la raza (`RazaCompleta.Dgs_raciales`), también sin DG (el dado, el tipo, las dotes
+ * y los puntos que se conservan al modificarla). El ataque base y las salvaciones son los de los DG: sin DG, 0 (la API lo
+ * exige, `400 dg_raciales_sin_dg`); un bonificador racial a las salvaciones, como la suerte del mediano, es un racial.
+ */
 export interface DgsRacialesGuardados {
     Cantidad: number;
     Id_dado: number;
