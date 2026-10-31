@@ -568,13 +568,14 @@ describe('NuevaRazaComponent', () => {
     });
 
     it('actualiza booleanos desde helpers de chips', () => {
-        component.setBooleanControl('oficial', false);
-        component.setBooleanControl('mutada', true);
-        component.setBooleanControl('tamano_mutacion_dependiente', true);
+        component.toggleBooleanControl('oficial');
+        component.toggleBooleanControl('mutada');
+        component.toggleBooleanControl('tamano_mutacion_dependiente');
 
         expect(component.form.controls.oficial.value).toBeFalse();
         expect(component.form.controls.mutada.value).toBeTrue();
         expect(component.form.controls.tamano_mutacion_dependiente.value).toBeTrue();
+        expect(component.form.controls.mutada.dirty).toBeTrue();
 
         component.toggleBooleanControl('mutada');
         expect(component.form.controls.mutada.value).toBeFalse();

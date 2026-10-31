@@ -35,6 +35,7 @@ import { ManualService } from 'src/app/services/manual.service';
 import { UserService } from 'src/app/services/user.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { alternarControl } from '../insercion-marco/filas-repetibles';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
@@ -1019,8 +1020,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     toggleOficial(): void {
-        const actual = this.form.controls.oficial.value === true;
-        this.form.controls.oficial.setValue(!actual);
+        alternarControl(this.form.controls.oficial);
     }
 
     get oficialActivo(): boolean {

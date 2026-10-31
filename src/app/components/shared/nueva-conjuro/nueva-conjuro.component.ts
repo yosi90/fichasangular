@@ -21,6 +21,7 @@ import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-con
 import { UserService } from 'src/app/services/user.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { alternarControl } from '../insercion-marco/filas-repetibles';
 import { normalizarTexto, toArray, toInt } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -341,19 +342,15 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
     }
 
     toggleOficial(): void {
-        this.form.controls.oficial.setValue(this.form.controls.oficial.value !== true);
+        alternarControl(this.form.controls.oficial);
     }
 
     toggleResistencia(): void {
-        if (this.varianteActualEsBase) {
-            this.form.controls.resistencia_conjuros.setValue(this.form.controls.resistencia_conjuros.value !== true);
-            return;
-        }
-        this.form.controls.resistencia_poderes.setValue(this.form.controls.resistencia_poderes.value !== true);
+        alternarControl(this.varianteActualEsBase ? this.form.controls.resistencia_conjuros : this.form.controls.resistencia_poderes);
     }
 
     togglePermanente(): void {
-        this.form.controls.permanente.setValue(this.form.controls.permanente.value !== true);
+        alternarControl(this.form.controls.permanente);
     }
 
     get resistenciaActiva(): boolean {
@@ -377,8 +374,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
             });
             this.sincronizarComponentesPorVariante();
         }
-        const control = this.form.controls[flag];
-        control.setValue(control.value !== true);
+        alternarControl(this.form.controls[flag]);
     }
 
     activarPsionico(): void {

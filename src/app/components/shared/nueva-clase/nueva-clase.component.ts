@@ -6,7 +6,7 @@ import { avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../inse
 import { CLASE } from 'src/app/services/utils/nombres-de-catalogo';
 import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
-import { alternarControl } from '../insercion-marco/filas-repetibles';
+import { alternarControl, quitarFila } from '../insercion-marco/filas-repetibles';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import {
     Clase,
@@ -625,8 +625,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     }
 
     quitarHabilidad(index: number): void {
-        const next = this.habilidadesRows.filter((_, rowIndex) => rowIndex !== index);
-        this.habilidadesRows = next.length > 0 ? next : [this.crearHabilidadRow('base')];
+        this.habilidadesRows = quitarFila(this.habilidadesRows, index, () => this.crearHabilidadRow('base'));
     }
 
     seleccionarHabilidad(index: number, id: number): void {

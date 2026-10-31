@@ -47,7 +47,7 @@ import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { recargandoPorCambioDeIdentidad } from 'src/app/services/platform-session.service';
 import { UserService } from 'src/app/services/user.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
-import { quitarFila } from '../insercion-marco/filas-repetibles';
+import { alternarControl, quitarFila } from '../insercion-marco/filas-repetibles';
 import { avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { buildManiobrabilidadInfoSecciones } from 'src/app/services/utils/maniobrabilidad-info';
 import { PrerrequisitoEditorHostComponent } from '../prerrequisito-editor/prerrequisito-editor-host.component';
@@ -716,13 +716,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         return this.prerrequisitosMutacionOpciones.find((item) => item.key === key)?.label ?? key;
     }
 
-    setBooleanControl(controlName: 'oficial' | 'mutada' | 'tamano_mutacion_dependiente', value: boolean): void {
-        this.form.controls[controlName].setValue(value);
-        this.form.controls[controlName].markAsDirty();
-    }
-
     toggleBooleanControl(controlName: 'oficial' | 'mutada' | 'tamano_mutacion_dependiente'): void {
-        this.setBooleanControl(controlName, this.form.controls[controlName].value !== true);
+        alternarControl(this.form.controls[controlName]);
     }
 
     setAlineamientoModo(modo: AlineamientoModo): void {
