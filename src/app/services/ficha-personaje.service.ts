@@ -565,13 +565,9 @@ export class FichaPersonajeService {
             return '-';
 
         if (esFamiliar) {
-            if (idPlantilla === 3)
-                return `${nombreBase} celestial`;
-            if (idPlantilla === 4)
-                return `${nombreBase} remendado`;
-            if (idPlantilla === 5)
-                return `${nombreBase} mejorado`;
-            return nombreBase;
+            // La pseudoplantilla del familiar, por su nombre del catálogo (cualquiera, no solo las del Manual del jugador).
+            const plantilla = `${(monstruo as any)?.Plantilla?.Nombre ?? ''}`.trim();
+            return plantilla.length > 0 ? `${nombreBase} (${plantilla})` : nombreBase;
         }
 
         if (idPlantilla === 2)

@@ -1,6 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, Output } from '@angular/core';
 import { FamiliarMonstruoDetalle } from 'src/app/interfaces/monstruo';
-import { FamiliarPlantillaId } from 'src/app/services/utils/familiar-reglas';
+import { FamiliarPlantillaId, FamiliarPlantillaOpcion } from 'src/app/services/utils/familiar-reglas';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -29,6 +29,8 @@ export class SelectorFamiliarModalComponent {
     @Input() nivelesRequeridos: Record<string, number> = {};
     @Input() familiaresSeleccionados: FamiliarMonstruoDetalle[] = [];
     @Input() plantillaSeleccionada: FamiliarPlantillaId | null = null;
+    /** Las pseudoplantillas del filtro, de los datos (`plantillasFamiliarDisponibles`). */
+    @Input() plantillasDisponibles: FamiliarPlantillaOpcion[] = [];
     @Input() incluirHomebrew = false;
     @Input() cuposDisponibles = 0;
     @Input() nombreFamiliar = '';
@@ -103,10 +105,9 @@ export class SelectorFamiliarModalComponent {
             this.idPlantillaSeleccionada = 0;
             return;
         }
-        const parsed = Number(value);
-        if (parsed < 1 || parsed > 5)
+        const plantilla = Math.trunc(Number(value));
+        if (!Number.isFinite(plantilla) || plantilla < 1)
             return;
-        const plantilla = parsed as FamiliarPlantillaId;
         this.plantillaChange.emit(plantilla);
         this.idFamiliarSeleccionado = 0;
         this.idPlantillaSeleccionada = 0;
@@ -139,7 +140,7 @@ export class SelectorFamiliarModalComponent {
             return;
         this.confirmar.emit({
             familiar,
-            plantilla: this.getIdPlantillaFamiliarSeguro(Number(familiar?.Plantilla?.Id ?? 1)),
+            plantilla: Number(familiar?.Plantilla?.Id ?? 0),
             nombre: `${this.nombreFamiliar ?? ''}`.trim(),
         });
     }
@@ -153,16 +154,9 @@ export class SelectorFamiliarModalComponent {
             && Number(this.idPlantillaSeleccionada) === Number(familiar?.Plantilla?.Id);
     }
 
-    getEtiquetaPlantilla(idPlantilla: number): string {
-        if (idPlantilla === 2)
-            return 'Draconica';
-        if (idPlantilla === 3)
-            return 'Celestial';
-        if (idPlantilla === 4)
-            return 'Remendado';
-        if (idPlantilla === 5)
-            return 'Mejorado';
-        return 'Basica';
+    /** El nombre de la pseudoplantilla del familiar, tal como lo da el contrato. */
+    getEtiquetaPlantilla(familiar: FamiliarMonstruoDetalle | null | undefined): string {
+        return `${familiar?.Plantilla?.Nombre ?? ''}`.trim();
     }
 
     esFamiliarElegible(familiar: FamiliarMonstruoDetalle): boolean {
@@ -235,18 +229,6 @@ export class SelectorFamiliarModalComponent {
 
     private sonMismoFamiliar(a: FamiliarMonstruoDetalle | null | undefined, b: FamiliarMonstruoDetalle | null | undefined): boolean {
         return this.getClaveFamiliar(a) === this.getClaveFamiliar(b);
-    }
-
-    private getIdPlantillaFamiliarSeguro(idPlantilla: number): FamiliarPlantillaId {
-        if (idPlantilla === 2)
-            return 2;
-        if (idPlantilla === 3)
-            return 3;
-        if (idPlantilla === 4)
-            return 4;
-        if (idPlantilla === 5)
-            return 5;
-        return 1;
     }
 
 }

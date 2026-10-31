@@ -84,7 +84,9 @@ import {
     construirCatalogoFamiliaresDesdeMonstruos,
     evaluarFamiliaresElegibilidad,
     FamiliarPlantillaId,
+    FamiliarPlantillaOpcion,
     FamiliarElegibilidadEvaluadaItem,
+    plantillasFamiliarDisponibles,
 } from 'src/app/services/utils/familiar-reglas';
 import {
     construirCatalogoCompanerosDesdeMonstruos,
@@ -528,6 +530,7 @@ export class NuevoPersonajeComponent {
     selectorEnemigoPredilectoTotal = 1;
     selectorFamiliarTitulo = 'Seleccionar familiar';
     selectorFamiliarPlantillaSeleccionada: FamiliarPlantillaId | null = null;
+    selectorFamiliarPlantillas: FamiliarPlantillaOpcion[] = [];
     selectorFamiliarIncluirHomebrew = false;
     selectorFamiliarCuposDisponibles = 0;
     selectorFamiliarNombre = '';
@@ -4455,7 +4458,7 @@ export class NuevoPersonajeComponent {
             return;
         this.cerrarSelectorFamiliarContexto({
             familiar,
-            plantilla: plantilla as FamiliarPlantillaId,
+            plantilla,
             nombre: `${seleccion?.nombre ?? ''}`,
         });
     }
@@ -5004,10 +5007,10 @@ export class NuevoPersonajeComponent {
             this.recalcularFamiliaresElegiblesSelector();
             return;
         }
-        const parsed = Number(plantilla);
-        if (!Number.isFinite(parsed) || parsed < 1 || parsed > 5)
+        const parsed = Math.trunc(Number(plantilla));
+        if (!Number.isFinite(parsed) || parsed < 1)
             return;
-        this.selectorFamiliarPlantillaSeleccionada = parsed as FamiliarPlantillaId;
+        this.selectorFamiliarPlantillaSeleccionada = parsed;
         this.recalcularFamiliaresElegiblesSelector();
     }
 
@@ -5182,11 +5185,16 @@ export class NuevoPersonajeComponent {
 
     private recalcularFamiliaresElegiblesSelector(): void {
         if (!this.selectorFamiliarEstadoCupos) {
+            this.selectorFamiliarPlantillas = [];
             this.selectorFamiliarElegibles = [];
             this.selectorFamiliarBloqueados = [];
             this.selectorFamiliarNivelesRequeridos = {};
             return;
         }
+        this.selectorFamiliarPlantillas = plantillasFamiliarDisponibles(
+            this.selectorFamiliarCatalogoCompleto,
+            this.selectorFamiliarEstadoCupos.fuentesClaseIds
+        );
         const incluirHomebrewEfectivo = this.selectorFamiliarIncluirHomebrew || !this.Personaje.Oficial;
         const evaluaciones = evaluarFamiliaresElegibilidad({
             familiares: this.selectorFamiliarCatalogoCompleto,
@@ -5399,6 +5407,7 @@ export class NuevoPersonajeComponent {
         this.modalSelectorFamiliarAbierto = false;
         this.selectorFamiliarTitulo = 'Seleccionar familiar';
         this.selectorFamiliarPlantillaSeleccionada = null;
+        this.selectorFamiliarPlantillas = [];
         this.selectorFamiliarIncluirHomebrew = false;
         this.selectorFamiliarNombre = '';
         this.selectorFamiliarCuposDisponibles = 0;

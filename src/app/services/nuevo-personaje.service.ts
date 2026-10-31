@@ -244,6 +244,14 @@ const DOTE_FAMILIAR_ID = 17;
 const ESPECIALES_BONUS_FAMILIAR_FIJOS = [81, 82];
 const ESPECIAL_BONUS_FAMILIAR_MENSAJERO = 83;
 const ESPECIAL_BONUS_FAMILIAR_HECHIZO = 87;
+/**
+ * Las dos pseudoplantillas de familiar con otra tabla de aptitudes del amo: la dracónica (mensajero a nivel 9 y
+ * transferencia de hechizo a 17) y la mejorada (sin ellas). El contrato no dice qué tabla sigue cada pseudoplantilla
+ * (hueco anotado en el bugs.md de las clases de Rol mapa mundi), así que solo estas dos van por id; las demás, las que
+ * dé el catálogo, siguen la del Manual del jugador.
+ */
+const PSEUDOPLANTILLA_FAMILIAR_DRACONICA = 2;
+const PSEUDOPLANTILLA_FAMILIAR_MEJORADA = 5;
 const DOTE_COMPANERO_ELEVADO_ID = 53;
 const DOTE_COMPANERO_SABANDIJA_ID = 56;
 const DOTE_COMPANERO_BONUS_ID = 49;
@@ -4024,30 +4032,15 @@ export class NuevoPersonajeService {
         plantillaSeleccionada: FamiliarPlantillaId,
         nombrePersonalizado: string = ''
     ): FamiliarMonstruoDetalle {
-        const nombrePlantillaOriginal = `${familiar?.Plantilla?.Nombre ?? ''}`.trim();
         const nombreVisible = `${nombrePersonalizado ?? ''}`.trim();
         return {
             ...familiar,
             Nombre: nombreVisible.length > 0 ? nombreVisible : `${familiar?.Nombre ?? ''}`.trim(),
             Plantilla: {
                 Id: plantillaSeleccionada,
-                Nombre: nombrePlantillaOriginal.length > 0
-                    ? nombrePlantillaOriginal
-                    : this.getNombrePlantillaFamiliar(plantillaSeleccionada),
+                Nombre: `${familiar?.Plantilla?.Nombre ?? ''}`.trim(),
             },
         };
-    }
-
-    private getNombrePlantillaFamiliar(plantilla: FamiliarPlantillaId): string {
-        if (plantilla === 2)
-            return 'Draconica';
-        if (plantilla === 3)
-            return 'Celestial';
-        if (plantilla === 4)
-            return 'Remendado';
-        if (plantilla === 5)
-            return 'Mejorado';
-        return 'Basica';
     }
 
     private normalizarPlantillaCompanero(plantilla: CompaneroPlantillaSelector | string): CompaneroPlantillaSelector {
@@ -4142,9 +4135,9 @@ export class NuevoPersonajeService {
         return agregados;
     }
 
-    /** La plantilla de un familiar (1 a 5), de la elegida o de la que ya lleva. */
+    /** La pseudoplantilla de un familiar (su id del catálogo), de la elegida o de la que ya lleva. */
     private plantillaFamiliar(valor: unknown): FamiliarPlantillaId {
-        return Math.max(1, Math.min(5, toNumber(valor))) as FamiliarPlantillaId;
+        return Math.max(0, Math.trunc(toNumber(valor)));
     }
 
     /** Los nombres de las aptitudes especiales que ya conoce la creación (las del catálogo de clases y las del personaje). */
@@ -4408,17 +4401,17 @@ export class NuevoPersonajeService {
     }
 
     private debeAgregarEspecialFamiliar83(plantilla: FamiliarPlantillaId, nivelLanzador: number): boolean {
-        if (plantilla === 2)
+        if (plantilla === PSEUDOPLANTILLA_FAMILIAR_DRACONICA)
             return nivelLanzador >= 9;
-        if (plantilla === 5)
+        if (plantilla === PSEUDOPLANTILLA_FAMILIAR_MEJORADA)
             return false;
         return nivelLanzador >= 4;
     }
 
     private debeAgregarEspecialFamiliar87(plantilla: FamiliarPlantillaId, nivelLanzador: number): boolean {
-        if (plantilla === 2)
+        if (plantilla === PSEUDOPLANTILLA_FAMILIAR_DRACONICA)
             return nivelLanzador >= 17;
-        if (plantilla === 5)
+        if (plantilla === PSEUDOPLANTILLA_FAMILIAR_MEJORADA)
             return false;
         return nivelLanzador >= 14;
     }

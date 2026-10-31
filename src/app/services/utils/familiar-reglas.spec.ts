@@ -1,11 +1,16 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { FamiliarMonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
+import { normalizeClase } from 'src/app/services/clase.service';
+import { normalizeMonstruoDetalle } from 'src/app/services/utils/monstruo-mapper';
+import { CONVOCADOR_DIVINO_API, MAGIINGENIERO_API } from 'src/testing/clases-propias-api';
+import { SERPIENTE_API } from 'src/testing/familiares-api';
 import {
     construirCatalogoFamiliaresDesdeMonstruos,
     EstadoCuposFamiliar,
     evaluarFamiliaresElegibilidad,
     filtrarFamiliaresElegibles,
+    plantillasFamiliarDisponibles,
     resolverEstadoCuposFamiliarEspecial47
 } from './familiar-reglas';
 
@@ -405,5 +410,135 @@ describe('familiar-reglas', () => {
         expect(evaluaciones[0].razones.some((item) => item.includes('Exigencias del monstruo:'))).toBeTrue();
         expect(evaluaciones[0].razones.some((item) => item.includes('legal:'))).toBeTrue();
         expect(evaluaciones[0].razones.some((item) => item.includes('moral:'))).toBeTrue();
+    });
+});
+
+// Con las respuestas reales de la API de desarrollo: la serpiente (`GET /monstruos/16`) y las dos clases propias que dan
+// familiar (`GET /clases/418` y `/419`). Las pseudoplantillas salen de los datos, no de una lista de ids.
+describe('familiar-reglas con las respuestas reales de la API', () => {
+    const serpiente = normalizeMonstruoDetalle(SERPIENTE_API, 1);
+    const magiingeniero = normalizeClase(MAGIINGENIERO_API);
+    const convocador = normalizeClase(CONVOCADOR_DIVINO_API);
+    const catalogo = construirCatalogoFamiliaresDesdeMonstruos([serpiente]);
+    type DoteActual = { id: number | null; nombre: string; };
+
+    function estadoDe(clase: Clase, nivel = 1): EstadoCuposFamiliar {
+        const personaje = crearPersonajeMock({ desgloseClases: [{ Nombre: clase.Nombre, Nivel: nivel }] as any });
+        return resolverEstadoCuposFamiliarEspecial47(personaje, [clase]);
+    }
+
+    function evaluar(clase: Clase, alineamiento: string, dotesActuales: DoteActual[] = []) {
+        return evaluarFamiliaresElegibilidad({
+            familiares: catalogo,
+            estado: estadoDe(clase),
+            alineamientoPersonaje: alineamiento,
+            plantillaSeleccionada: null,
+            incluirHomebrew: true,
+            dotesActuales,
+        });
+    }
+
+    function elegibles(clase: Clase, alineamiento: string): string[] {
+        return evaluar(clase, alineamiento)
+            .filter((item) => item.elegible)
+            .map((item) => item.familiar.Plantilla.Nombre)
+            .sort();
+    }
+
+    it('el catálogo tiene una entrada por cada pseudoplantilla de la serpiente, con el nombre que da la API', () => {
+        const plantillas = catalogo.map((item) => item.Plantilla.Nombre).sort();
+        expect(plantillas).toEqual([
+            'Básica',
+            'Celestial',
+            'Criatura elemental de agua',
+            'Criatura elemental de aire',
+            'Criatura elemental de fuego',
+            'Criatura elemental de tierra',
+            'Familiar forjado',
+            'Infernal',
+            'Remendado',
+        ]);
+        expect(catalogo.every((item) => item.Id_familiar === 16)).toBeTrue();
+    });
+
+    it('el magiingeniero y el convocador tienen hueco de familiar desde el nivel 1 (`Otorga_familiar`)', () => {
+        expect(estadoDe(magiingeniero).fuentesClaseIds).toEqual([418]);
+        expect(estadoDe(convocador).fuentesClaseIds).toEqual([419]);
+        expect(estadoDe(convocador).cuposDisponibles).toBe(1);
+    });
+
+    it('el filtro de plantilla ofrece solo las pseudoplantillas de las clases con familiar del personaje', () => {
+        expect(plantillasFamiliarDisponibles(catalogo, [418]).map((item) => item.Nombre)).toEqual(['Familiar forjado']);
+        expect(plantillasFamiliarDisponibles(catalogo, [419]).map((item) => item.Nombre)).toEqual([
+            'Celestial',
+            'Criatura elemental de agua',
+            'Criatura elemental de aire',
+            'Criatura elemental de fuego',
+            'Criatura elemental de tierra',
+            'Infernal',
+        ]);
+        expect(plantillasFamiliarDisponibles(catalogo, [8]).map((item) => item.Nombre)).toEqual(['Básica', 'Celestial', 'Remendado']);
+        expect(plantillasFamiliarDisponibles(catalogo, []).length).toBe(9);
+    });
+
+    it('el magiingeniero recibe la serpiente como familiar forjado, sea cual sea su alineamiento', () => {
+        expect(elegibles(magiingeniero, 'Legal bueno')).toEqual(['Familiar forjado']);
+        expect(elegibles(magiingeniero, 'Caótico maligno')).toEqual(['Familiar forjado']);
+        const basica = evaluar(magiingeniero, 'Legal bueno').find((item) => item.familiar.Plantilla.Nombre === 'Básica');
+        expect(basica?.razones).toContain('Esta criatura no tiene progresión válida para tus clases con familiar.');
+    });
+
+    it('el convocador recibe la pseudoplantilla de su senda por la preferencia moral de cada fila', () => {
+        expect(elegibles(convocador, 'Neutral bueno')).toEqual(['Celestial']);
+        expect(elegibles(convocador, 'Legal maligno')).toEqual(['Infernal']);
+        expect(elegibles(convocador, 'Neutral auténtico')).toEqual([
+            'Criatura elemental de agua',
+            'Criatura elemental de aire',
+            'Criatura elemental de fuego',
+            'Criatura elemental de tierra',
+        ]);
+        const infernal = evaluar(convocador, 'Neutral bueno').find((item) => item.familiar.Plantilla.Nombre === 'Infernal');
+        expect(infernal?.elegible).toBeFalse();
+        expect(infernal?.razones.join(' ')).toContain('Convocador divino nivel 0 (moral: Siempre Maligno)');
+    });
+
+    it('al convocador no se le pide la dote Familiar celestial, que es de las filas del hechicero y del mago', () => {
+        const celestial = evaluar(convocador, 'Neutral bueno').find((item) => item.familiar.Plantilla.Nombre === 'Celestial');
+        expect(celestial?.elegible).toBeTrue();
+        expect(celestial?.razones).toEqual([]);
+    });
+
+    it('al hechicero, la celestial le sigue pidiendo su dote y su nivel', () => {
+        const hechicero = { Id: 8, Nombre: 'Hechicero', Desglose_niveles: magiingeniero.Desglose_niveles } as Clase;
+        const evaluarHechicero = (nivel: number, dotesActuales: DoteActual[]) =>
+            evaluarFamiliaresElegibilidad({
+                familiares: catalogo,
+                estado: estadoDe(hechicero, nivel),
+                alineamientoPersonaje: 'Neutral bueno',
+                plantillaSeleccionada: 3,
+                incluirHomebrew: true,
+                dotesActuales,
+            });
+        const sinDote = evaluarHechicero(3, []);
+        expect(sinDote.length).toBe(1);
+        expect(sinDote[0].elegible).toBeFalse();
+        expect(sinDote[0].razones).toContain('Requiere la dote Familiar celestial para esta plantilla.');
+        expect(evaluarHechicero(3, [{ id: 45, nombre: 'Familiar celestial' }])[0].elegible).toBeTrue();
+        const pocoNivel = evaluarHechicero(2, [{ id: 45, nombre: 'Familiar celestial' }])[0];
+        expect(pocoNivel.elegible).toBeFalse();
+        expect(pocoNivel.razones).toContain('Necesitas al menos nivel 3 de lanzador de familiar para esta opción.');
+    });
+
+    it('filtra por una pseudoplantilla nueva (de id mayor que 5) cuando se elige en el selector', () => {
+        const idForjado = catalogo.find((item) => item.Plantilla.Nombre === 'Familiar forjado')!.Plantilla.Id;
+        expect(idForjado).toBeGreaterThan(5);
+        const filtrados = filtrarFamiliaresElegibles({
+            familiares: catalogo,
+            estado: estadoDe(magiingeniero),
+            alineamientoPersonaje: 'Neutral auténtico',
+            plantillaSeleccionada: idForjado,
+            incluirHomebrew: true,
+        });
+        expect(filtrados.map((item) => item.Plantilla.Id)).toEqual([idForjado]);
     });
 });

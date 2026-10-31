@@ -10,11 +10,7 @@
                 <mat-label>Plantilla</mat-label>
                 <mat-select [value]="plantillaSeleccionada" (valueChange)="onCambiarPlantilla($event)">
                     <mat-option [value]="null">Cualquiera</mat-option>
-                    <mat-option [value]="1">Básica</mat-option>
-                    <mat-option [value]="2">Dracónica</mat-option>
-                    <mat-option [value]="3">Celestial</mat-option>
-                    <mat-option [value]="4">Remendado</mat-option>
-                    <mat-option [value]="5">Mejorado</mat-option>
+                    <mat-option *ngFor="let plantilla of plantillasDisponibles" [value]="plantilla.Id">{{plantilla.Nombre}}</mat-option>
                 </mat-select>
             </mat-form-field>
             <div class="creacion-ventana__interruptores">
@@ -29,7 +25,7 @@
                         (click)="onSeleccionarFamiliar(familiar)">
                         <span class="creacion-opcion__texto">
                             {{familiar.Nombre}}
-                            <span class="creacion-opcion__nota">{{getEtiquetaPlantilla(familiar?.Plantilla?.Id ?? 1)}} · {{familiar.Manual.Nombre || '-'}}</span>
+                            <span class="creacion-opcion__nota">{{getEtiquetaPlantilla(familiar)}} · {{familiar.Manual.Nombre || '-'}}</span>
                         </span>
                         <span class="creacion-opcion__estado" *ngIf="!esFamiliarElegible(familiar)">{{getEtiquetaEstado(familiar)}}</span>
                     </button>
@@ -45,7 +41,7 @@
             <ng-container *ngFor="let familiar of familiaresFiltrados; trackBy: trackByFamiliar">
                 <ng-container *ngIf="esSeleccionado(familiar)">
                     <div>
-                        <p class="creacion-ventana__detalle-tipo">Familiar · {{getEtiquetaPlantilla(familiar?.Plantilla?.Id ?? 1)}}</p>
+                        <p class="creacion-ventana__detalle-tipo">Familiar · {{getEtiquetaPlantilla(familiar)}}</p>
                         <h3 class="creacion-ventana__detalle-nombre">{{familiar.Nombre}}</h3>
                         <button type="button" class="creacion-enlace" (click)="onAbrirDetalle(familiar, $event)">Ver su ficha completa</button>
                     </div>
@@ -64,7 +60,7 @@
                 <h4 class="creacion-titulo">Familiares tras confirmar</h4>
                 <ul class="creacion-resultado" *ngIf="previewFamiliares.length > 0; else sinPreviewTpl">
                     <li *ngFor="let item of previewFamiliares; trackBy: trackByFamiliar">
-                        <span>{{item.Nombre}}</span><span class="creacion-texto-suave">{{getEtiquetaPlantilla(item?.Plantilla?.Id ?? 1)}}</span>
+                        <span>{{item.Nombre}}</span><span class="creacion-texto-suave">{{getEtiquetaPlantilla(item)}}</span>
                     </li>
                 </ul>
                 <ng-template #sinPreviewTpl>

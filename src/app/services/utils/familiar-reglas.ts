@@ -13,7 +13,17 @@ import {
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { CupoMascota, resolverCupoMascota } from 'src/app/services/utils/mascota-cupos';
 
-export type FamiliarPlantillaId = 1 | 2 | 3 | 4 | 5;
+/**
+ * Id de la pseudoplantilla de un familiar (`Niveles_clase[].Plantilla.Id` de los monstruos, `Pseudoplantillas_familiares`
+ * en la base). Sale de los datos: cualquier pseudoplantilla que dé el contrato vale, no solo las cinco del Manual del jugador.
+ */
+export type FamiliarPlantillaId = number;
+
+/** Una pseudoplantilla de familiar tal como la da el contrato (`{ Id, Nombre }`). */
+export interface FamiliarPlantillaOpcion {
+    Id: number;
+    Nombre: string;
+}
 
 export interface EstadoCuposFamiliar extends CupoMascota {
     nivelLanzadorFamiliar: number;
@@ -35,16 +45,31 @@ export interface FamiliarElegibilidadEvaluadaItem {
     nivelMinimoRequerido: number | null;
 }
 
-function getNombrePlantilla(idPlantilla: number): string {
-    if (idPlantilla === 2)
-        return 'Draconica';
-    if (idPlantilla === 3)
-        return 'Celestial';
-    if (idPlantilla === 4)
-        return 'Remendado';
-    if (idPlantilla === 5)
-        return 'Mejorado';
-    return 'Basica';
+function idPlantillaDeNivel(nivel: MonstruoNivelClase | null | undefined): number {
+    return Math.max(0, toInt(nivel?.Plantilla?.Id));
+}
+
+/**
+ * Las pseudoplantillas que el catálogo da a las clases con familiar del personaje (todas, si no hay ninguna), una vez
+ * cada una y por nombre: son las opciones del filtro de plantilla del selector.
+ */
+export function plantillasFamiliarDisponibles(
+    familiares: FamiliarMonstruoDetalle[],
+    fuentesClaseIds: number[] = []
+): FamiliarPlantillaOpcion[] {
+    const fuentes = new Set((fuentesClaseIds ?? []).map((id) => toNumber(id)).filter((id) => id > 0));
+    const plantillas = new Map<number, FamiliarPlantillaOpcion>();
+    (Array.isArray(familiares) ? familiares : []).forEach((familiar) => {
+        (familiar?.Niveles_clase ?? []).forEach((nivel) => {
+            const id = idPlantillaDeNivel(nivel);
+            if (id < 1 || plantillas.has(id))
+                return;
+            if (fuentes.size > 0 && !fuentes.has(toNumber(nivel?.Clase?.Id)))
+                return;
+            plantillas.set(id, { Id: id, Nombre: `${nivel?.Plantilla?.Nombre ?? ''}`.trim() });
+        });
+    });
+    return Array.from(plantillas.values()).sort(porNombre);
 }
 
 export function construirCatalogoFamiliaresDesdeMonstruos(monstruos: MonstruoDetalle[]): FamiliarMonstruoDetalle[] {
@@ -63,13 +88,13 @@ export function construirCatalogoFamiliaresDesdeMonstruos(monstruos: MonstruoDet
         const nivelesClase = Array.isArray(monstruo?.Niveles_clase) ? monstruo.Niveles_clase : [];
         const plantillas = Array.from(new Set(
             nivelesClase
-                .map((nivel) => toNumber(nivel?.Plantilla?.Id))
-                .filter((id) => id >= 1 && id <= 5)
+                .map((nivel) => idPlantillaDeNivel(nivel))
+                .filter((id) => id >= 1)
         ));
 
         plantillas.forEach((idPlantilla) => {
             const nivelesPlantilla = nivelesClase.filter((nivel) =>
-                toNumber(nivel?.Plantilla?.Id) === idPlantilla
+                idPlantillaDeNivel(nivel) === idPlantilla
             );
             if (nivelesPlantilla.length < 1)
                 return;
@@ -79,8 +104,9 @@ export function construirCatalogoFamiliaresDesdeMonstruos(monstruos: MonstruoDet
                 return;
             dedupe.add(clave);
 
-            const plantillaNombre = `${nivelesPlantilla[0]?.Plantilla?.Nombre ?? ''}`.trim()
-                || getNombrePlantilla(idPlantilla);
+            const plantillaNombre = nivelesPlantilla
+                .map((nivel) => `${nivel?.Plantilla?.Nombre ?? ''}`.trim())
+                .find((nombre) => nombre.length > 0) ?? '';
 
             resultado.push({
                 ...monstruo,
@@ -141,14 +167,14 @@ function resolveDoteNombreFromNivelClase(nivelClase: MonstruoNivelClase | null |
         ?? ''}`.trim();
 }
 
-function resolverDoteRequeridaPlantilla(nivelesClasePlantilla: MonstruoNivelClase[]): { id: number; nombre: string; } | null {
-    const nivelConDote = nivelesClasePlantilla.find((nivelClase) => resolveDoteIdFromNivelClase(nivelClase) > 0);
-    if (!nivelConDote)
+/** La dote que pide una fila de `Niveles_clase` (la de *Familiar celestial*, por ejemplo); `null` si no pide ninguna. */
+function doteDeNivelClase(nivelClase: MonstruoNivelClase | null | undefined): { id: number; nombre: string; } | null {
+    const id = resolveDoteIdFromNivelClase(nivelClase);
+    if (id <= 0)
         return null;
-    const id = resolveDoteIdFromNivelClase(nivelConDote);
     return {
         id,
-        nombre: resolveDoteNombreFromNivelClase(nivelConDote) || `Dote ${id}`,
+        nombre: resolveDoteNombreFromNivelClase(nivelClase) || `Dote ${id}`,
     };
 }
 
@@ -189,10 +215,8 @@ export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesIn
             .filter((id) => id > 0)
     );
     const nivelLanzadorFamiliar = Math.max(0, toNumber(input?.estado?.nivelLanzadorFamiliar));
-    const plantillaRaw = toNumber(input?.plantillaSeleccionada, 0);
-    const plantillaSeleccionada = plantillaRaw >= 1 && plantillaRaw <= 5
-        ? (Math.trunc(plantillaRaw) as FamiliarPlantillaId)
-        : null;
+    const plantillaRaw = Math.trunc(toNumber(input?.plantillaSeleccionada, 0));
+    const plantillaSeleccionada: FamiliarPlantillaId | null = plantillaRaw >= 1 ? plantillaRaw : null;
     const includeHomebrew = !!input?.incluirHomebrew;
     const alineamientoPersonaje = normalizarTexto(input?.alineamientoPersonaje ?? '');
     const idAlineamientoBasico = getAlineamientoBasicoIdPorNombre(input?.alineamientoPersonaje ?? '');
@@ -212,30 +236,39 @@ export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesIn
         if (!includeHomebrew && familiar?.Oficial === false)
             razones.push('Es una opción homebrew y el filtro Homebrew está desactivado.');
 
+        // Cada fila de `Niveles_clase` es una forma de tener esta criatura con esta plantilla: la de una clase, con su
+        // nivel, su dote y su preferencia de alineamiento (en el convocador divino, la de su senda). Vale si una fila de
+        // las clases con familiar del personaje lo cumple todo; la dote de otra clase no se pide.
         const nivelesClasePlantilla = (familiar?.Niveles_clase ?? []).filter((nivelClase) =>
-            toNumber(nivelClase?.Plantilla?.Id) === idPlantilla
+            idPlantillaDeNivel(nivelClase) === idPlantilla
             && toNumber(nivelClase?.Nivel) >= 0
         );
-        const doteRequerida = resolverDoteRequeridaPlantilla(nivelesClasePlantilla);
-        if (doteRequerida && !tieneDoteActual(dotesActuales, doteRequerida))
-            razones.push(`Requiere la dote ${doteRequerida.nombre} para esta plantilla.`);
-
         const nivelesClaseFuente = nivelesClasePlantilla.filter((nivelClase) =>
             fuentesClaseIds.has(toNumber(nivelClase?.Clase?.Id))
-            && (!doteRequerida || resolveDoteIdFromNivelClase(nivelClase) === doteRequerida.id)
         );
-        const nivelesClase = nivelesClaseFuente.filter((nivelClase) => toNumber(nivelClase?.Nivel) <= nivelLanzadorFamiliar);
-        const nivelMinimoRequerido = nivelesClaseFuente.length > 0
-            ? Math.min(...nivelesClaseFuente.map((nivelClase) => Math.max(0, toInt(nivelClase?.Nivel))))
+        const nivelesConDote = nivelesClaseFuente.filter((nivelClase) => {
+            const dote = doteDeNivelClase(nivelClase);
+            return !dote || tieneDoteActual(dotesActuales, dote);
+        });
+        const nivelesConNivel = nivelesConDote.filter((nivelClase) => toNumber(nivelClase?.Nivel) <= nivelLanzadorFamiliar);
+        const nivelesParaMinimo = nivelesConDote.length > 0 ? nivelesConDote : nivelesClaseFuente;
+        const nivelMinimoRequerido = nivelesParaMinimo.length > 0
+            ? Math.min(...nivelesParaMinimo.map((nivelClase) => Math.max(0, toInt(nivelClase?.Nivel))))
             : null;
         if (nivelesClaseFuente.length < 1) {
             razones.push('Esta criatura no tiene progresión válida para tus clases con familiar.');
-        } else if (nivelesClase.length < 1) {
+        } else {
+            if (nivelesConDote.length < 1) {
+                const dotesFaltantes = new Set(nivelesClaseFuente
+                    .map((nivelClase) => doteDeNivelClase(nivelClase)?.nombre ?? '')
+                    .filter((nombre) => nombre.length > 0));
+                dotesFaltantes.forEach((nombre) => razones.push(`Requiere la dote ${nombre} para esta plantilla.`));
+            }
             if (nivelMinimoRequerido !== null && nivelMinimoRequerido > nivelLanzadorFamiliar)
                 razones.push(`Necesitas al menos nivel ${nivelMinimoRequerido} de lanzador de familiar para esta opción.`);
-            else
-                razones.push('No tiene niveles de clase compatibles con tus fuentes actuales de familiar.');
         }
+        const nivelesAlineamiento = [nivelesConNivel, nivelesConDote, nivelesClaseFuente, nivelesClasePlantilla]
+            .find((niveles) => niveles.length > 0) ?? [];
 
         const requeridosExplicitos = normalizeAlineamientosRequeridos(familiar?.Alineamientos_requeridos?.Familiar ?? []);
         if (requeridosExplicitos.length > 0 || nivelesClasePlantilla.length > 0) {
@@ -254,11 +287,11 @@ export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesIn
                     razones.push(`Requiere alineamiento ${requeridosTexto}.`);
                 }
             } else if (idAlineamientoBasico > 0) {
-                cumpleAlineamiento = nivelesClasePlantilla.some((nivelClase) =>
+                cumpleAlineamiento = nivelesAlineamiento.some((nivelClase) =>
                     cumpleAlineamientoPorPreferencias(nivelClase, idAlineamientoBasico)
                 );
                 if (!cumpleAlineamiento) {
-                    const detalle = getDetallePreferenciasAlineamiento(nivelesClasePlantilla);
+                    const detalle = getDetallePreferenciasAlineamiento(nivelesAlineamiento);
                     if (detalle.length > 0)
                         razones.push(`No cumple las preferencias de alineamiento para este familiar. Exigencias del monstruo: ${detalle}.`);
                     else

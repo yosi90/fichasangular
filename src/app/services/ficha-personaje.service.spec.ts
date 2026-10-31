@@ -112,6 +112,17 @@ describe('FichaPersonajeService', () => {
         expect(saveAsSpy).toHaveBeenCalled();
     });
 
+    it('la raza de la hoja del familiar lleva el nombre de su pseudoplantilla del catálogo, sea cual sea', async () => {
+        const familiar = crearMonstruoBase('Serpiente');
+        familiar.Plantilla = { Id: 16, Nombre: 'Familiar forjado' };
+        const escrito = new Map<string, string>();
+        spyOn<any>(service, 'trySetText').and.callFake((_form: unknown, campo: string, valor: string) => escrito.set(campo, valor));
+
+        await service.generarPDF_Familiar(crearPersonajeBase(), familiar, 0);
+
+        expect(escrito.get('raza')).toBe('Serpiente (Familiar forjado)');
+    });
+
     it('genera PDF de companero con fixture minimo sin lanzar excepcion', async () => {
         const pj = crearPersonajeBase();
         const companero = crearMonstruoBase('Lobo') as unknown as CompaneroMonstruoDetalle;

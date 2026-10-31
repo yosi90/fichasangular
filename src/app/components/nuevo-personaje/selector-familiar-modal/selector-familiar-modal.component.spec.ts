@@ -78,6 +78,23 @@ describe('SelectorFamiliarModalComponent', () => {
         expect(component.idPlantillaSeleccionada).toBe(0);
     });
 
+    it('acepta cualquier pseudoplantilla de los datos y la etiqueta con su nombre', () => {
+        const spy = spyOn(component.plantillaChange, 'emit');
+        const confirmar = spyOn(component.confirmar, 'emit');
+        const forjada = crearFamiliar(5, 'Serpiente', 16);
+        forjada.Plantilla.Nombre = 'Familiar forjado';
+        component.plantillasDisponibles = [{ Id: 16, Nombre: 'Familiar forjado' }];
+        component.familiaresElegibles = [forjada];
+
+        component.onCambiarPlantilla(16);
+        component.onSeleccionarFamiliar(forjada);
+        component.onConfirmar();
+
+        expect(spy).toHaveBeenCalledWith(16);
+        expect(component.getEtiquetaPlantilla(forjada)).toBe('Familiar forjado');
+        expect(confirmar.calls.mostRecent()?.args?.[0]?.plantilla).toBe(16);
+    });
+
     it('emite cambios de nombre personalizado del familiar', () => {
         const spy = spyOn(component.nombreFamiliarChange, 'emit');
         component.onCambiarNombreFamiliar('Familiar de Aramil');
