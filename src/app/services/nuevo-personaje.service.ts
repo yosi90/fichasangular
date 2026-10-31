@@ -9788,7 +9788,7 @@ export class NuevoPersonajeService {
         };
     }
 
-    /** Los subtipos del personaje en el catálogo de subtipos (con su `Oficial` y su manual), para la oficialidad. */
+    /** Los subtipos del personaje en el catálogo de subtipos (con su `Oficial`, su manual y su ajuste de nivel). */
     subtiposDelPersonajeEnElCatalogo(): SubtipoResumen[] {
         const porId = new Map(this.catalogoSubtipos.map((subtipo) => [toNumber(subtipo?.Id), subtipo]));
         return (this.personajeCreacion?.Subtipos ?? [])
@@ -9798,9 +9798,7 @@ export class NuevoPersonajeService {
 
     /** El ajuste de nivel de los subtipos del personaje, del catálogo de subtipos (como la API). */
     private getAjusteSubtiposActual(): number {
-        const ajustes = new Map(this.catalogoSubtipos.map((subtipo) => [toNumber(subtipo?.Id), toNumber(subtipo?.Ajuste_nivel)]));
-        return (this.personajeCreacion?.Subtipos ?? [])
-            .reduce((acc, subtipo) => acc + (ajustes.get(toNumber(subtipo?.Id)) ?? 0), 0);
+        return this.subtiposDelPersonajeEnElCatalogo().reduce((acc, subtipo) => acc + toNumber(subtipo?.Ajuste_nivel), 0);
     }
 
     private crearVentajasFlujoBase(): VentajasFlujoState {
