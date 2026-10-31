@@ -6,7 +6,7 @@ import {
     MonstruoEscalaresRequest,
 } from 'src/app/interfaces/monstruo';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
-import { idsUnicosOrdenados, toInt, toNumber, toNumberOrNull, toText } from './normalizacion';
+import { idsUnicosOrdenados, toInt, toNumber, toNumberOrNull, toPositiveInt, toText } from './normalizacion';
 
 // El formulario de los monstruos (hito 6 del roadmap de inserciones, 2026-10-31): los pasos, los campos con su etiqueta
 // y su paso, el cuerpo de `POST /monstruos/add` y de `PUT /monstruos/<id>` (`MonstruoCreateRequest` en
@@ -199,12 +199,6 @@ export function listasMonstruoVacias(): ListasMonstruo {
     };
 }
 
-/** Un id que puede no estar (la lectura da `null` y el mapper 0): `null` si no es positivo. */
-function idONulo(valor: unknown): number | null {
-    const id = toInt(valor);
-    return id > 0 ? id : null;
-}
-
 /** El formulario de un monstruo que ya existe (`GET /monstruos/<id>`, normalizado con `normalizeMonstruoDetalle`). */
 export function valorDesdeMonstruo(monstruo: MonstruoDetalle): MonstruoFormularioValor {
     const car = monstruo.Caracteristicas;
@@ -213,10 +207,10 @@ export function valorDesdeMonstruo(monstruo: MonstruoDetalle): MonstruoFormulari
         descripcion: toText(monstruo.Descripcion),
         id_manual: toInt(monstruo.Manual?.Id),
         pagina: toInt(monstruo.Manual?.Pagina),
-        id_tipo: idONulo(monstruo.Tipo?.Id),
-        id_tamano: idONulo(monstruo.Tamano?.Id),
+        id_tipo: toPositiveInt(monstruo.Tipo?.Id),
+        id_tamano: toPositiveInt(monstruo.Tamano?.Id),
         cantidad_dg: toText(monstruo.Dados_golpe?.Cantidad),
-        id_tipo_dado: idONulo(monstruo.Dados_golpe?.Tipo_dado?.Id),
+        id_tipo_dado: toPositiveInt(monstruo.Dados_golpe?.Tipo_dado?.Id),
         suma_dg: toInt(monstruo.Dados_golpe?.Suma),
         iniciativa: toInt(monstruo.Iniciativa),
         correr: toInt(monstruo.Movimientos?.Correr),
@@ -224,7 +218,7 @@ export function valorDesdeMonstruo(monstruo: MonstruoDetalle): MonstruoFormulari
         volar: toInt(monstruo.Movimientos?.Volar),
         trepar: toInt(monstruo.Movimientos?.Trepar),
         excavar: toInt(monstruo.Movimientos?.Excavar),
-        id_maniobrabilidad: idONulo(monstruo.Maniobrabilidad?.Id),
+        id_maniobrabilidad: toPositiveInt(monstruo.Maniobrabilidad?.Id),
         ca: toInt(monstruo.Defensa?.Ca),
         toque: toInt(monstruo.Defensa?.Toque),
         desprevenido: toInt(monstruo.Defensa?.Desprevenido),
@@ -252,7 +246,7 @@ export function valorDesdeMonstruo(monstruo: MonstruoDetalle): MonstruoFormulari
         tesoro: toText(monstruo.Tesoro),
         familiar: monstruo.Familiar === true,
         companero: monstruo.Companero === true,
-        id_alineamiento: idONulo(monstruo.Alineamiento?.Id),
+        id_alineamiento: toPositiveInt(monstruo.Alineamiento?.Id),
         oficial: monstruo.Oficial === true,
     };
 }
@@ -274,13 +268,13 @@ export function listasDesdeMonstruo(monstruo: MonstruoDetalle, uid: () => string
         })).filter(conId),
         dotes: (monstruo.Dotes ?? []).map((item) => ({
             ...nombrada(item?.Dote),
-            id_extra: idONulo(item?.Contexto?.Id_extra) ?? -1,
+            id_extra: toPositiveInt(item?.Contexto?.Id_extra) ?? -1,
         })).filter(conId),
         habilidades: (monstruo.Habilidades ?? []).map((item) => ({
             uid: uid(),
             id: toInt(item?.Id_habilidad),
             nombre: toText(item?.Habilidad),
-            id_extra: idONulo(item?.Id_extra) ?? -1,
+            id_extra: toPositiveInt(item?.Id_extra) ?? -1,
             rangos: toInt(item?.Rangos),
         })).filter(conId),
         niveles_clase: (monstruo.Niveles_clase ?? []).map((item) => ({
@@ -312,9 +306,9 @@ export function construirMonstruoRequest(valor: MonstruoFormularioValor, listas:
         else if (BOOLEANOS.includes(campo))
             monstruo[campo] = dato === true;
         else if ((CARACTERISTICAS_CAMPOS as string[]).includes(campo))
-            monstruo[campo] = dato === null || dato === undefined || `${dato}`.trim() === '' ? null : toInt(dato);
+            monstruo[campo] = toNumberOrNull(dato) === null ? null : toInt(dato);
         else if (campo === 'id_maniobrabilidad')
-            monstruo[campo] = idONulo(dato);
+            monstruo[campo] = toPositiveInt(dato);
         else if (campo === 'espacio')
             monstruo[campo] = toNumber(dato);
         else
@@ -326,9 +320,9 @@ export function construirMonstruoRequest(valor: MonstruoFormularioValor, listas:
         subtipos: ids(listas.subtipos),
         idiomas: ids(listas.idiomas),
         dotes: listas.dotes.filter((fila) => fila.id > 0)
-            .map((fila) => ({ id_dote: toInt(fila.id), id_extra: idONulo(fila.id_extra) })),
+            .map((fila) => ({ id_dote: toInt(fila.id), id_extra: toPositiveInt(fila.id_extra) })),
         habilidades: listas.habilidades.filter((fila) => fila.id > 0)
-            .map((fila) => ({ id_habilidad: toInt(fila.id), id_extra: idONulo(fila.id_extra), rangos: toInt(fila.rangos) })),
+            .map((fila) => ({ id_habilidad: toInt(fila.id), id_extra: toPositiveInt(fila.id_extra), rangos: toInt(fila.rangos) })),
         sortilegas: listas.sortilegas.filter((fila) => fila.id > 0).map((fila) => ({
             id_conjuro: toInt(fila.id),
             nivel_lanzador: toInt(fila.nivel_lanzador),
@@ -339,10 +333,10 @@ export function construirMonstruoRequest(valor: MonstruoFormularioValor, listas:
         niveles_clase: listas.niveles_clase.filter((fila) => fila.id_clase > 0).map((fila) => ({
             id_clase: toInt(fila.id_clase),
             nivel: toInt(fila.nivel),
-            id_plantilla: idONulo(fila.id_plantilla),
-            id_preferencia_legal: idONulo(fila.id_preferencia_legal),
-            id_preferencia_moral: idONulo(fila.id_preferencia_moral),
-            id_dote: idONulo(fila.id_dote),
+            id_plantilla: toPositiveInt(fila.id_plantilla),
+            id_preferencia_legal: toPositiveInt(fila.id_preferencia_legal),
+            id_preferencia_moral: toPositiveInt(fila.id_preferencia_moral),
+            id_dote: toPositiveInt(fila.id_dote),
         })),
         alineamientos_requeridos: {
             familiar: idsUnicosOrdenados(listas.alineamientos_familiar),
