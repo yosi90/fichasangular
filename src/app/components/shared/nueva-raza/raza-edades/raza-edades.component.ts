@@ -14,9 +14,9 @@ import {
     categoriaVacia,
     pasoAlEmpezar,
 } from 'src/app/services/utils/raza-edades-formulario';
-import { textoRangoEdad } from 'src/app/services/utils/razas-por-edades';
+import { SOLO_PNJ, textoNepDePaso, textoRangoEdad } from 'src/app/services/utils/razas-por-edades';
 import { toInt, toNumber } from 'src/app/services/utils/normalizacion';
-import { OpcionCatalogo } from '../../catalogo-buscador/catalogo-buscador.component';
+import { OpcionCatalogo, nombreDeOpcion } from '../../catalogo-buscador/catalogo-buscador.component';
 
 /** Las etiquetas cortas de las puntuaciones y las velocidades, como en el paso «Valores». */
 const ETIQUETA_CARACTERISTICA: Record<CaracteristicaEdad, string> = {
@@ -67,6 +67,7 @@ export class RazaEdadesComponent {
     readonly velocidades = VELOCIDADES_EDAD;
     readonly etiquetaCaracteristica = ETIQUETA_CARACTERISTICA;
     readonly etiquetaVelocidad = ETIQUETA_VELOCIDAD;
+    readonly soloPnj = SOLO_PNJ;
 
     nuevaCategoriaVisible = false;
     nuevaCategoria = { nombre: '', orden_tipico: 13, id_manual: 0, pagina: 0, oficial: false };
@@ -159,8 +160,7 @@ export class RazaEdadesComponent {
         const id = toInt(idRacial);
         if (id <= 0 || fila.raciales.some((racial) => racial.id_racial === id))
             return;
-        const nombre = this.opcionesRaciales.find((opcion) => opcion.id === id)?.nombre ?? `#${id}`;
-        fila.raciales = [...fila.raciales, { id_racial: id, nombre, valor: '' }];
+        fila.raciales = [...fila.raciales, { id_racial: id, nombre: nombreDeOpcion(this.opcionesRaciales, id), valor: '' }];
         this.cambio.emit();
     }
 
@@ -178,8 +178,7 @@ export class RazaEdadesComponent {
         const id = toInt(idConjuro);
         if (id <= 0 || fila.sortilegas.some((sortilega) => sortilega.id_conjuro === id))
             return;
-        const nombre = this.opcionesConjuros.find((opcion) => opcion.id === id)?.nombre ?? `#${id}`;
-        fila.sortilegas = [...fila.sortilegas, { id_conjuro: id, nombre, usos_diarios: '1/día', descripcion: '' }];
+        fila.sortilegas = [...fila.sortilegas, { id_conjuro: id, nombre: nombreDeOpcion(this.opcionesConjuros, id), usos_diarios: '1/día', descripcion: '' }];
         this.cambio.emit();
     }
 
@@ -203,9 +202,8 @@ export class RazaEdadesComponent {
     /** Lo que se lee del paso: «NEP 11» si es jugable (él y su categoría tienen ajuste), si no «Solo PNJ». */
     nivelDelPaso(paso: FilaPasoEdad): string {
         const categoria = this.categorias.find((fila) => toInt(fila.id_categoria_edad) === toInt(paso.id_categoria_edad));
-        if (paso.ajuste_nivel === null || !categoria || categoria.ajuste_nivel === null)
-            return 'Solo PNJ';
-        return `NEP ${toInt(paso.dgs) + toInt(paso.ajuste_nivel)}`;
+        const jugable = paso.ajuste_nivel !== null && !!categoria && categoria.ajuste_nivel !== null;
+        return textoNepDePaso(jugable ? toInt(paso.dgs) + toInt(paso.ajuste_nivel) : null);
     }
 
     agregarPaso(): void {

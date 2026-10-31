@@ -30,6 +30,11 @@ export function opcionesDeCatalogo(items: readonly any[] | null | undefined, lee
         .sort((a, b) => compararTexto(a.nombre, b.nombre));
 }
 
+/** El nombre de la opción `id` para enseñar lo ya elegido en una lista, o `#id` si no está entre las opciones. */
+export function nombreDeOpcion(opciones: readonly OpcionCatalogo[], id: number): string {
+    return opciones.find((opcion) => opcion.id === id)?.nombre ?? `#${id}`;
+}
+
 /** Cuántas opciones enseña a la vez (se afina escribiendo). */
 const MAXIMO_OPCIONES = 50;
 

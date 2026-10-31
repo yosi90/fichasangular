@@ -22,6 +22,11 @@ export function normalizarCategoriaEdad(raw: any): CategoriaEdadCatalogo {
     };
 }
 
+/** El orden de las categorías: por su orden típico (cría 1 … gran sierpe 12, y las añadidas) y, si empatan, por nombre. */
+export function porOrdenTipico(a: CategoriaEdadCatalogo, b: CategoriaEdadCatalogo): number {
+    return a.Orden_tipico - b.Orden_tipico || compararTexto(a.Nombre, b.Nombre);
+}
+
 /**
  * El catálogo común de las categorías de edad (`docs/publica/endpoints/catalogos.md`, `GET /categorias-edad` y
  * `POST /categorias-edad/add`), del que cada raza por edades elige las suyas. Sin caché de la RTDB: se lee por HTTP.
@@ -30,12 +35,12 @@ export function normalizarCategoriaEdad(raw: any): CategoriaEdadCatalogo {
 export class CategoriaEdadService {
     constructor(private http: HttpClient, private auth?: Auth) { }
 
-    /** Las categorías, por su orden típico (cría 1 … gran sierpe 12, y las añadidas). */
+    /** Las categorías, por su orden típico (`porOrdenTipico`). */
     getCategoriasEdad(): Observable<CategoriaEdadCatalogo[]> {
         return this.http.get(`${environment.apiUrl}categorias-edad`).pipe(
             map((raw) => toArray(raw).map(normalizarCategoriaEdad)
                 .filter((categoria) => categoria.Id > 0 && categoria.Nombre.length > 0)
-                .sort((a, b) => a.Orden_tipico - b.Orden_tipico || compararTexto(a.Nombre, b.Nombre))),
+                .sort(porOrdenTipico)),
         );
     }
 

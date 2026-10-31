@@ -1,6 +1,7 @@
-import { CategoriaEdadRaza, ClaveCaracteristicaRaza, PasoEdadRaza, Raza } from 'src/app/interfaces/raza';
+import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
+import { CategoriaEdadRaza, PasoEdadRaza, Raza } from 'src/app/interfaces/raza';
 import { RazaCreateCategoriaEdad, RazaCreatePasoEdad } from 'src/app/interfaces/razas-api';
-import { toInt, toNullableText, toNumber } from './normalizacion';
+import { toInt, toNullableText, toNumber, toNumberOrNull } from './normalizacion';
 
 /*
  * Las edades de una raza en su inserción (hito 3 del roadmap de inserciones, 2026-10-31): las filas que edita el paso
@@ -14,16 +15,15 @@ import { toInt, toNullableText, toNumber } from './normalizacion';
 export interface FilaRacialEdad { id_racial: number; nombre: string; valor: string; }
 export interface FilaSortilegaEdad { id_conjuro: number; nombre: string; usos_diarios: string; descripcion: string; }
 
-/** Las puntuaciones del libro de cada categoría, como sus claves en el cuerpo (0 es «—»). */
-export const CARACTERISTICAS_EDAD = ['fuerza', 'destreza', 'constitucion', 'inteligencia', 'sabiduria', 'carisma'] as const;
-export type CaracteristicaEdad = typeof CARACTERISTICAS_EDAD[number];
+/**
+ * Las puntuaciones del libro de cada categoría, como sus claves en el cuerpo (0 es «—»): las seis de `CARACTERISTICAS`
+ * (las claves de la respuesta, `Caracteristicas`), en minúsculas.
+ */
+export type CaracteristicaEdad = Lowercase<Caracteristica>;
+const claveEdad = (caracteristica: Caracteristica) => caracteristica.toLowerCase() as CaracteristicaEdad;
+export const CARACTERISTICAS_EDAD: readonly CaracteristicaEdad[] = CARACTERISTICAS.map(claveEdad);
 export const VELOCIDADES_EDAD = ['correr', 'nadar', 'volar', 'trepar', 'excavar'] as const;
 export type VelocidadEdad = typeof VELOCIDADES_EDAD[number];
-
-/** La clave de cada puntuación en la respuesta de la API (`Caracteristicas`). */
-const CLAVE_RESPUESTA: Record<CaracteristicaEdad, ClaveCaracteristicaRaza> = {
-    fuerza: 'Fuerza', destreza: 'Destreza', constitucion: 'Constitucion', inteligencia: 'Inteligencia', sabiduria: 'Sabiduria', carisma: 'Carisma',
-};
 
 export interface FilaCategoriaEdad extends Record<CaracteristicaEdad | VelocidadEdad, number> {
     uid: string;
@@ -69,18 +69,10 @@ function uid(prefijo: string): string {
     return `${prefijo}-${siguienteUid++}`;
 }
 
+/** `toNumberOrNull` truncado: sin tope, sin ajuste (solo PNJ). */
 function enteroONulo(valor: unknown): number | null {
-    if (valor === null || valor === undefined || `${valor}`.trim() === '')
-        return null;
-    const numero = Number(valor);
-    return Number.isFinite(numero) ? Math.trunc(numero) : null;
-}
-
-function decimalONulo(valor: unknown): number | null {
-    if (valor === null || valor === undefined || `${valor}`.trim() === '')
-        return null;
-    const numero = Number(valor);
-    return Number.isFinite(numero) ? numero : null;
+    const numero = toNumberOrNull(valor);
+    return numero === null ? null : Math.trunc(numero);
 }
 
 /** Una categoría nueva: después de la última (sus años y sus DG desde donde acaba aquella). */
@@ -167,7 +159,7 @@ function filaDeCategoria(categoria: CategoriaEdadRaza): FilaCategoriaEdad {
             descripcion: sortilega.Descripcion ?? '',
         })),
     } as FilaCategoriaEdad;
-    CARACTERISTICAS_EDAD.forEach((clave) => fila[clave] = toInt(categoria.Caracteristicas?.[CLAVE_RESPUESTA[clave]]));
+    CARACTERISTICAS.forEach((clave) => fila[claveEdad(clave)] = toInt(categoria.Caracteristicas?.[clave]));
     return fila;
 }
 
@@ -203,7 +195,7 @@ export function cuerpoDeEdades(edades: EdadesDeRaza): { categorias_edad: RazaCre
             alcance: toInt(fila.alcance),
             dgs: toInt(fila.dgs),
             ajuste_nivel: enteroONulo(fila.ajuste_nivel),
-            vd: decimalONulo(fila.vd),
+            vd: toNumberOrNull(fila.vd),
             fuerza: toInt(fila.fuerza),
             destreza: toInt(fila.destreza),
             constitucion: toInt(fila.constitucion),

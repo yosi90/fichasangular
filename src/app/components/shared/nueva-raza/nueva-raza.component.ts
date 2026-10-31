@@ -30,7 +30,7 @@ import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ArmaService } from 'src/app/services/arma.service';
-import { CategoriaEdadService } from 'src/app/services/categoria-edad.service';
+import { CategoriaEdadService, porOrdenTipico } from 'src/app/services/categoria-edad.service';
 import { ClaseService } from 'src/app/services/clase.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DominioService } from 'src/app/services/dominio.service';
@@ -56,7 +56,7 @@ import { CatalogosPendientes, EdicionDeCatalogo } from '../insercion-marco/edici
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { ModoInsercion } from '../insercion-marco/insercion-marco.component';
-import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
+import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { RAZA } from 'src/app/services/utils/nombres-de-catalogo';
 import { buildManiobrabilidadInfoSecciones } from 'src/app/services/utils/maniobrabilidad-info';
 import { PrerrequisitoEditorHostComponent } from '../prerrequisito-editor/prerrequisito-editor-host.component';
@@ -1110,7 +1110,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     onCategoriaEdadCreada(categoria: CategoriaEdadCatalogo): void {
         this.categoriasEdadCatalogo = [...this.categoriasEdadCatalogo.filter((item) => item.Id !== categoria.Id), categoria]
-            .sort((a, b) => a.Orden_tipico - b.Orden_tipico || porNombre(a, b));
+            .sort(porOrdenTipico);
     }
 
     /** El error de las edades: el de la API (`field` `categorias_edad…` o `pasos_edad…`). */
@@ -1143,7 +1143,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     nombreListaLanzamiento(lista: ListaLanzamientoFila): string {
         const opciones = lista.tipo === 'clase' ? this.opcionesClasesLanzamiento : this.opcionesDominios;
-        const nombre = opciones.find((opcion) => opcion.id === lista.id)?.nombre ?? `#${lista.id}`;
+        const nombre = nombreDeOpcion(opciones, lista.id);
         return lista.tipo === 'dominio' ? `Dominio de ${nombre}` : nombre;
     }
 

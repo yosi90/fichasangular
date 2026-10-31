@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { PasoEdadRaza } from 'src/app/interfaces/raza';
-import { OpcionCategoriaEdad, OpcionPasoEdad } from 'src/app/services/utils/razas-por-edades';
+import { OpcionCategoriaEdad, OpcionPasoEdad, SOLO_PNJ } from 'src/app/services/utils/razas-por-edades';
 
 let siguienteId = 0;
 
@@ -68,7 +68,7 @@ export class CreacionEdadComponent implements OnChanges {
         this.categoriaElegida = this.opciones.find((categoria) => categoria.pasos.some((opcion) => opcion.paso.Id === this.idPaso)) ?? null;
         const motivos = this.opciones
             .filter((categoria) => categoria.bloqueada && categoria.motivo)
-            .map((categoria) => categoria.pie === 'Solo PNJ' ? `Solo PNJ: ${categoria.motivo}` : `${categoria.nombre}: ${categoria.motivo}`);
+            .map((categoria) => categoria.pie === SOLO_PNJ ? `${SOLO_PNJ}: ${categoria.motivo}` : `${categoria.nombre}: ${categoria.motivo}`);
         this.motivos = Array.from(new Set(motivos));
     }
 

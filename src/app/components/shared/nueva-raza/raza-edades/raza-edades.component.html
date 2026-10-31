@@ -38,7 +38,7 @@
                     <mat-label>Orden</mat-label>
                     <input matInput type="number" min="1" [value]="nuevaCategoria.orden_tipico" (input)="nuevaCategoria.orden_tipico = +$any($event.target).value" />
                 </mat-form-field>
-                <div class="estado-fila">
+                <div class="estado-row">
                     <button type="button" class="estado-chip" [class.activo]="nuevaCategoria.oficial" [attr.aria-pressed]="nuevaCategoria.oficial"
                         (click)="nuevaCategoria.oficial = !nuevaCategoria.oficial">Oficial</button>
                 </div>
@@ -51,7 +51,7 @@
                 </mat-form-field>
             </div>
             <p class="edades-error" *ngIf="errorNuevaCategoria" role="alert">{{errorNuevaCategoria}}</p>
-            <div class="edades-acciones edades-acciones--fin">
+            <div class="actions-row">
                 <button mat-button type="button" (click)="cerrarNuevaCategoria()">Cancelar</button>
                 <button mat-flat-button color="primary" type="button" [disabled]="creandoCategoria" (click)="crearCategoria()">
                     {{creandoCategoria ? 'Creando categoría…' : 'Crear categoría'}}
@@ -236,7 +236,7 @@
                 <mat-label>Armadura natural</mat-label>
                 <input matInput type="number" [value]="paso.armadura_natural" (input)="numeroPaso(paso, 'armadura_natural', $any($event.target).value)" />
             </mat-form-field>
-            <span class="edades-paso-nivel" [class.edades-paso-nivel--pnj]="nivelDelPaso(paso) === 'Solo PNJ'">{{nivelDelPaso(paso)}}</span>
+            <span class="edades-paso-nivel" [class.edades-paso-nivel--pnj]="nivelDelPaso(paso) === soloPnj">{{nivelDelPaso(paso)}}</span>
             <button mat-icon-button type="button" class="row-action-btn" matTooltip="Quitar el paso" (click)="quitarPaso(k)"><mat-icon>delete</mat-icon></button>
         </div>
     </ng-container>
