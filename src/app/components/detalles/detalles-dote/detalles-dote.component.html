@@ -6,6 +6,10 @@
         [manual]="doteData.Manual"
         [oficial]="doteData.Oficial"
         (abrirManual)="abrirDetalleManual()">
+        <button mat-stroked-button type="button" *ngIf="puedeModificar" (click)="modificar.emit(doteData)">
+            <mat-icon>edit</mat-icon>
+            Modificar
+        </button>
     </app-ficha-cabecera>
 
     <app-ficha-cuerpo>

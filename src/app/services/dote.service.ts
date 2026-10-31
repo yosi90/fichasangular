@@ -3,7 +3,7 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
 import { Database, Unsubscribe } from "@angular/fire/database";
-import { Observable, firstValueFrom } from "rxjs";
+import { Observable, firstValueFrom, map } from "rxjs";
 import { Dote } from "../interfaces/dote";
 import { DoteCreateApiResponse, DoteCreateRequest, DoteCreateResponse } from "../interfaces/dotes-api";
 import { environment } from "src/environments/environment";
@@ -46,6 +46,12 @@ export class DoteService {
         });
     }
 
+    /** La dote por HTTP, sin caché: la que abre «Modificar» (guía de modificaciones de catálogo). */
+    getDoteFresco(id: number): Observable<Dote> {
+        return this.http.get(`${environment.apiUrl}dotes/${Math.trunc(Number(id))}`)
+            .pipe(map((raw: any) => normalizeDoteApi(raw)));
+    }
+
     getDotes(): Observable<Dote[]> {
         return cacheRtdbOApi({
             escuchar: (onNext, onError) => this.watchDotesPath(onNext, onError),
@@ -77,17 +83,33 @@ export class DoteService {
             const response = await firstValueFrom(
                 this.http.post<DoteCreateApiResponse>(`${environment.apiUrl}dotes/add`, payload, { headers })
             );
-            const idDote = Math.trunc(Number(response?.idDote ?? 0));
-            if (!Number.isFinite(idDote) || idDote <= 0)
-                throw new Error("La API no devolvio un idDote valido");
-
-            const normalizedResponse: DoteCreateResponse = {
-                message: `${response?.message ?? "Dote creada"}`,
-                idDote,
-            };
-            return normalizedResponse;
+            return respuestaDeDote(response);
         } catch (error: any) {
             throw errorDeCatalogo(error, "crear", DOTE);
         }
     }
+
+    /** `PUT /dotes/<id>`: la dote entera, con el mismo cuerpo que el alta. */
+    public async actualizarDote(idDote: number, payload: DoteCreateRequest): Promise<DoteCreateResponse> {
+        try {
+            const headers = await cabeceraApiConFirebase(this.auth);
+            const response = await firstValueFrom(
+                this.http.put<DoteCreateApiResponse>(`${environment.apiUrl}dotes/${Math.trunc(Number(idDote))}`, payload, { headers })
+            );
+            return respuestaDeDote(response);
+        } catch (error: any) {
+            throw errorDeCatalogo(error, "actualizar", DOTE);
+        }
+    }
+}
+
+function respuestaDeDote(response: DoteCreateApiResponse): DoteCreateResponse {
+    const idDote = Math.trunc(Number(response?.idDote ?? 0));
+    if (!Number.isFinite(idDote) || idDote <= 0)
+        throw new Error("La API no devolvio un idDote valido");
+    return {
+        message: `${response?.message ?? ""}`,
+        idDote,
+        dote: normalizeDoteApi(response?.dote),
+    };
 }

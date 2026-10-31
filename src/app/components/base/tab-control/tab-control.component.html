@@ -222,6 +222,38 @@
             </app-nueva-plantilla>
         </div>
     </mat-tab>
+    <mat-tab *ngFor="let doteTab of ediciones.dote" [label]="etiquetaEdicion(doteTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'dote'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(doteTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(doteTab)}}</span>
+            <button (click)="quitarEdicion(doteTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-dote
+                modo="editar"
+                [idDote]="doteTab.id"
+                [editorTabKey]="doteTab.key"
+                (cerrar)="quitarEdicion(doteTab)"
+                (doteActualizada)="onEdicionGuardada('dote', $event)">
+            </app-nueva-dote>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let conjuroTab of ediciones.conjuro" [label]="etiquetaEdicion(conjuroTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'conjuro'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(conjuroTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(conjuroTab)}}</span>
+            <button (click)="quitarEdicion(conjuroTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-conjuro
+                modo="editar"
+                [idConjuro]="conjuroTab.id"
+                [editorTabKey]="conjuroTab.key"
+                (cerrar)="quitarEdicion(conjuroTab)"
+                (conjuroActualizado)="onEdicionGuardada('conjuro', $event)">
+            </app-nueva-conjuro>
+        </div>
+    </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'manual'"></app-icono-rol>
@@ -250,7 +282,7 @@
             <span class="pestana-etiqueta" [matTooltip]="tab.Nombre + ' (Conjuro)'" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{tab.Nombre}}</span>
             <button (click)="quitarDetallesConjuro(tab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-conjuro [conjuro]="detallesConjuroAbiertos[index]"></app-detalles-conjuro>
+        <app-detalles-conjuro [conjuro]="detallesConjuroAbiertos[index]" (modificar)="abrirEdicion('conjuro', $event)"></app-detalles-conjuro>
     </mat-tab>
     <mat-tab *ngFor="let tupla of detallesSortilegaAbiertos; let index = index" [label]="tupla.ap.Conjuro.Nombre">
         <ng-template mat-tab-label>
@@ -334,7 +366,8 @@
             (armaduraDetallesId)="abrirDetallesArmaduraPorId($event)"
             (doteDetallesId)="abrirDetallesDotePorId($event)"
             (chakraDetallesId)="abrirDetallesChakraPorId($event)"
-            (fusionDetallesId)="abrirDetallesFusionPorId($event)">
+            (fusionDetallesId)="abrirDetallesFusionPorId($event)"
+            (modificar)="abrirEdicion('dote', $event)">
         </app-detalles-dote>
     </mat-tab>
     <mat-tab *ngFor="let ventaja of detallesVentajaAbiertos; let index = index" [label]="getEtiquetaVentaja(ventaja)">

@@ -1,3 +1,5 @@
+import { Dote } from './dote';
+
 export interface DoteCreateDoteDto {
     nombre: string;
     beneficio: string;
@@ -53,12 +55,15 @@ export interface DoteCreateRequest {
     [key: string]: any;
 }
 
+/** La respuesta del alta (201) y de la edición (200): `dote` es la entrada ya guardada, como su `GET`. */
 export interface DoteCreateApiResponse {
     message: string;
     idDote: number;
+    dote: unknown;
 }
 
 export interface DoteCreateResponse {
     message: string;
     idDote: number;
+    dote: Dote;
 }

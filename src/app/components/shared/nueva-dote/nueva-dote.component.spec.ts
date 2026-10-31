@@ -13,6 +13,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Subject, of } from 'rxjs';
+import Swal from 'sweetalert2';
+import { ProfileApiError } from 'src/app/interfaces/user-account';
 import { DoteService } from 'src/app/services/dote.service';
 import { ExtraService } from 'src/app/services/extra.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
@@ -37,6 +39,9 @@ import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipo
 import { AptitudEspecialService } from 'src/app/services/aptitud-especial.service';
 import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { NuevaDoteComponent } from './nueva-dote.component';
+import { normalizeDoteApi } from 'src/app/services/utils/dote-mapper';
+import { IDA_Y_VUELTA } from 'src/testing/ida-y-vuelta-dotes-conjuros';
+import { cuerpoComparable } from 'src/testing/cuerpo-de-catalogo';
 
 describe('NuevaDoteComponent', () => {
     let component: NuevaDoteComponent;
@@ -368,11 +373,73 @@ describe('NuevaDoteComponent', () => {
         expect(component.form.controls.id_manual.value).toBe(7);
     });
 
-    it('trackByManualId no depende del contexto this de Angular', () => {
-        const trackBy = component.trackByManualId;
+    it('el manual sale del buscador común de catálogos, con sus opciones', () => {
+        expect(component.manualesOpciones).toEqual([{ id: 1, nombre: 'Manual basico' }]);
+        component.seleccionarManual(1);
+        expect(component.form.controls.id_manual.value).toBe(1);
+    });
 
-        expect(trackBy(0, { Id: 12, Nombre: 'Manual base' } as any)).toBe(12);
-        expect(trackBy(1, { Id: 'x', Nombre: 'Manual invalido' } as any)).toBe(0);
+    describe('«Modificar dote»', () => {
+        // TestBed inyecta una copia del doble (`useValue`): los espías van en la instancia inyectada.
+        const servicio = () => TestBed.inject(DoteService) as any;
+
+        async function abrir(get: any): Promise<void> {
+            servicio().getDoteFresco = jasmine.createSpy('getDoteFresco').and.returnValue(of(normalizeDoteApi(get)));
+            component.modo = 'editar';
+            component.idDote = get.Id;
+            component.ngOnChanges({ idDote: {} as any });
+            // La dote llega después de cargar los catálogos que necesita (promesas encadenadas): se espera a que acabe.
+            for (let intento = 0; intento < 50 && component.edicion.cargando; intento++)
+                await new Promise((resolver) => setTimeout(resolver, 10));
+        }
+
+        IDA_Y_VUELTA.dotes.forEach(({ id, nombre, get, cuerpo }) => {
+            it(`guardar sin cambios «${nombre}» (${id}) manda el cuerpo que devuelve el mismo GET`, async () => {
+                await abrir(get);
+
+                expect(component.edicion.cargando).toBeFalse();
+                expect(component.edicion.hayCambios).toBeFalse();
+                expect(cuerpoComparable((component as any).buildPayload(), cuerpo)).toEqual(cuerpoComparable(cuerpo, cuerpo));
+            });
+        });
+
+        it('guarda con PUT, avisa con el aviso común y devuelve la dote de la API', async () => {
+            const { get } = IDA_Y_VUELTA.dotes[0];
+            servicio().actualizarDote = jasmine.createSpy('actualizarDote')
+                .and.resolveTo({ message: 'Dote actualizada exitosamente', idDote: get.Id, dote: normalizeDoteApi(get) });
+            await abrir(get);
+            const actualizada = jasmine.createSpy('doteActualizada');
+            const cerrar = jasmine.createSpy('cerrar');
+            component.doteActualizada.subscribe(actualizada);
+            component.cerrar.subscribe(cerrar);
+            spyOn(Swal, 'fire').and.resolveTo({} as any);
+
+            await component.guardarDote();
+
+            expect(servicio().actualizarDote).toHaveBeenCalledWith(get.Id, jasmine.any(Object));
+            expect((Swal.fire as jasmine.Spy).calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+                icon: 'success', title: 'Dote actualizada', text: 'Dote actualizada exitosamente',
+            }));
+            expect(actualizada).toHaveBeenCalledWith(jasmine.objectContaining({ Id: get.Id }));
+            expect(cerrar).toHaveBeenCalled();
+        });
+
+        it('el error de la API va al marco y, con su campo, al campo', async () => {
+            const { get } = IDA_Y_VUELTA.dotes[0];
+            servicio().actualizarDote = jasmine.createSpy('actualizarDote').and.rejectWith(
+                new ProfileApiError('Ya existe una dote con ese nombre.', 'nombre_duplicado', 409, 'dote.nombre'));
+            await abrir(get);
+
+            await component.guardarDote();
+
+            expect(component.errorDelMarco).toBe('Ya existe una dote con ese nombre.');
+            expect(component.errorDe('nombre', 'por defecto')).toBe('Ya existe una dote con ese nombre.');
+        });
+
+        it('su propio nombre no cuenta como repetido', async () => {
+            await abrir({ ...IDA_Y_VUELTA.dotes[0].get, Id: 1, Nombre: 'Ataque poderoso' });
+            expect((component as any).validarReglasDominio()).not.toContain('Ya existe una dote');
+        });
     });
 
     it('los modificadores usan las claves del alta de la API (`modificadores` de POST /dotes/add)', () => {

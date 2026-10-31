@@ -1,6 +1,6 @@
-import { Component, EventEmitter, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
+import { Component, EventEmitter, forwardRef, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
-import { firstValueFrom, Subject, takeUntil } from 'rxjs';
+import { firstValueFrom, from, map, Observable, Subject, switchMap, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import { PrerrequisitoEditorHostComponent } from '../prerrequisito-editor/prerrequisito-editor-host.component';
 import {
@@ -21,20 +21,36 @@ import {
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
-import { DoteCreateRequest, DoteCreateResponse, DoteHabilidadOtorgadaDto } from 'src/app/interfaces/dotes-api';
+import { DoteCreateRequest, DoteHabilidadOtorgadaDto } from 'src/app/interfaces/dotes-api';
 import { Dote } from 'src/app/interfaces/dote';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { EspecialClaseDetalle } from 'src/app/interfaces/especial';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { Manual } from 'src/app/interfaces/manual';
+import { DOTE } from 'src/app/services/utils/nombres-de-catalogo';
+import {
+    extrasDisponiblesDeDote,
+    habilidadesOtorgadasDeDote,
+    HabilidadOtorgadaFila,
+    modificadoresDeDote,
+    PrerrequisitoConservado,
+    prerrequisitosDeDote,
+} from 'src/app/services/utils/dote-formulario';
+import { TEXTO_SIN_ESPECIFICAR, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
+import { tiposConFilas } from 'src/app/services/utils/plantilla-formulario';
+import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
+import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
+import { CamposDeFormulario, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
+import { ModoInsercion } from '../insercion-marco/insercion-marco.component';
 import { DoteService } from 'src/app/services/dote.service';
 import { ExtraService } from 'src/app/services/extra.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { ManualService } from 'src/app/services/manual.service';
 import { UserService } from 'src/app/services/user.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
-import { avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { alternarControl } from '../insercion-marco/filas-repetibles';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
@@ -64,6 +80,26 @@ interface CrearDoteEmitPayload {
     nombre: string;
 }
 
+/**
+ * Los campos de la dote por su clave en el cuerpo del alta (`dote.<campo>` y las listas), para que un error de la API con
+ * `field` vaya a su campo (`ErroresDeFormulario`). La dote no tiene pasos: todos en el 0.
+ */
+const CAMPOS_DOTE: CamposDeFormulario = {
+    nombre: { etiqueta: 'Nombre', paso: 0 },
+    id_manual: { etiqueta: 'Manual', paso: 0 },
+    pagina: { etiqueta: 'Página', paso: 0 },
+    id_tipo: { etiqueta: 'Tipo principal', paso: 0 },
+    id_tipo2: { etiqueta: 'Tipo secundario', paso: 0 },
+    descripcion: { etiqueta: 'Descripción', paso: 0 },
+    beneficio: { etiqueta: 'Beneficio', paso: 0 },
+    normal: { etiqueta: 'Normal', paso: 0 },
+    especial: { etiqueta: 'Especial', paso: 0 },
+    modificadores: { etiqueta: 'Modificadores', paso: 0 },
+    habilidades_otorgadas: { etiqueta: 'Habilidades otorgadas', paso: 0 },
+    extras_disponibles: { etiqueta: 'Extras', paso: 0 },
+    prerrequisitos: { etiqueta: 'Prerrequisitos', paso: 0 },
+};
+
 interface ModificadorCatalogoItem {
     key: string;
     label: string;
@@ -74,11 +110,7 @@ interface ModificadorEditorItem {
     value: number;
 }
 
-interface HabilidadOtorgadaEditorItem {
-    id_habilidad: number;
-    id_extra: number;
-    rangos: number;
-}
+type HabilidadOtorgadaEditorItem = HabilidadOtorgadaFila;
 
 interface PrerrequisitoOption {
     key: PrerequisiteType;
@@ -93,9 +125,10 @@ type ArmaduraSelectorItem = ExtraSelectorItem & { esEscudo: boolean; };
     selector: 'app-nueva-dote',
     templateUrl: './nueva-dote.component.html',
     styleUrls: ['./nueva-dote.component.sass'],
-    standalone: false
+    standalone: false,
+    providers: [{ provide: EDITOR_DE_CATALOGO, useExisting: forwardRef(() => NuevaDoteComponent) }],
 })
-export class NuevaDoteComponent implements OnInit, OnDestroy {
+export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorDeCatalogo {
     private static readonly bodyModalClass = 'nueva-dote-modal-open';
     private static readonly preferredManualName = 'Compendio de dotes';
     private readonly extraFamilyKeys: ExtraFamilyKey[] = ['extra_arma', 'extra_armadura', 'extra_escuela', 'extra_habilidad'];
@@ -143,7 +176,13 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     readonly caracteristicasCatalogo: ExtraSelectorItem[] = [...CATALOGO_CARACTERISTICAS];
     /** Las actitudes de los prerrequisitos `actitud_requerido`/`actitud_prohibido`, del catálogo (`GET /actitudes`). */
     actitudesCatalogo: ExtraSelectorItem[] = [];
+    /** «Modificar dote» es esta misma pantalla con la dote cargada (`modo="editar"` e `idDote`). */
+    @Input() modo: ModoInsercion = 'crear';
+    @Input() idDote: number | null = null;
+    @Input() editorTabKey = '';
+    @Output() cerrar = new EventEmitter<void>();
     @Output() doteCreada = new EventEmitter<CrearDoteEmitPayload>();
+    @Output() doteActualizada = new EventEmitter<Dote>();
     @ViewChild(PrerrequisitoEditorHostComponent) prerrequisitoEditorHost?: PrerrequisitoEditorHostComponent;
 
     guardando: boolean = false;
@@ -154,7 +193,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     habilidadesCatalogoPrerrequisito: ExtraSelectorItem[] = [];
     tiposDoteCatalogoPrerrequisito: ExtraSelectorItem[] = [];
     manuales: Manual[] = [];
-    manualBusqueda: string = '';
+    manualesOpciones: OpcionCatalogo[] = [];
     tiposDote: Array<{ Id: number; Nombre: string; }> = [];
     modificadoresEditor: ModificadorEditorItem[] = [];
     habilidadesCatalogo: HabilidadBasicaDetalle[] = [];
@@ -180,6 +219,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     habilidadesOtorgadasEditor: HabilidadOtorgadaEditorItem[] = [];
     prerrequisitosEditor: PrerrequisitoEditorItem[] = [];
     prerrequisitosSeleccionados: PrerequisiteType[] = [];
+    /** Los prerrequisitos de la dote cargada que el editor no enseña como fila (el comodín 0 de su catálogo). */
+    prerrequisitosConservados: PrerrequisitoConservado[] = [];
     extrasSeleccionados: { armas: number[]; armaduras: number[]; escuelas: number[]; habilidades: number[]; } = {
         armas: [],
         armaduras: [],
@@ -220,8 +261,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         nombre: ['', [Validators.required, Validators.minLength(3)]],
         beneficio: ['', [Validators.required, Validators.minLength(3)]],
         descripcion: ['', [Validators.required, Validators.minLength(10)]],
-        normal: ['No especifica'],
-        especial: ['No especifica'],
+        normal: [TEXTO_SIN_ESPECIFICAR],
+        especial: [TEXTO_SIN_ESPECIFICAR],
         id_manual: [0, [Validators.required, Validators.min(1)]],
         pagina: [1, [Validators.required, Validators.min(0)]],
         id_tipo: [1, [Validators.required, Validators.min(0)]],
@@ -245,6 +286,27 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     });
 
     private readonly destroy$ = new Subject<void>();
+    private uidFila = 0;
+
+    /** «Modificar dote»: la dote por su `GET`, si hay cambios y la pregunta al cerrar (`insercion-marco`). */
+    readonly edicion = new EdicionDeCatalogo<Dote>({
+        nombre: DOTE,
+        modo: () => this.modo,
+        id: () => this.idDote,
+        obtener: (id) => this.obtenerDoteParaEditar(id),
+        hidratar: (dote) => this.hidratarDesdeDote(dote),
+        foto: () => this.foto(),
+        destruir$: this.destroy$,
+    });
+
+    /** El error global (en el `bloque-error` del marco) y, si la API lo da, el de su campo. */
+    readonly errores = new ErroresDeFormulario({
+        campos: CAMPOS_DOTE,
+        raiz: 'dote',
+        control: (campo) => (this.form.controls as Record<string, AbstractControl>)[campo],
+        firma: (campo) => this.firmaCampo(campo),
+        irAPaso: () => undefined,
+    });
 
     constructor(
         private fb: FormBuilder,
@@ -320,11 +382,12 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
                 next: (manuales) => {
                     this.manuales = (Array.isArray(manuales) ? [...manuales] : [])
                         .sort(porNombre);
+                    this.manualesOpciones = opcionesDeCatalogo(this.manuales);
                     this.sincronizarManualSeleccionado();
                 },
                 error: () => {
                     this.manuales = [];
-                    this.manualBusqueda = '';
+                    this.manualesOpciones = [];
                 }
             });
 
@@ -358,6 +421,40 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         this.habilidadSvc.habilidadesCustomMutadas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((habilidad) => this.upsertHabilidadCustom(habilidad));
+
+        this.form.valueChanges
+            .pipe(takeUntil(this.destroy$))
+            .subscribe(() => this.errores.seguirCambios());
+
+        this.edicion.cargarSiHaceFalta();
+    }
+
+    ngOnChanges(cambios: SimpleChanges): void {
+        if (cambios['modo'] || cambios['idDote'])
+            this.edicion.cargarSiHaceFalta();
+    }
+
+    get editando(): boolean {
+        return this.edicion.editando;
+    }
+
+    /** El error del marco: el de la API o el de guardar, y si no, el de las reglas del formulario. */
+    get errorDelMarco(): string {
+        return this.errores.global || this.mensajeErrorFormulario;
+    }
+
+    /** El texto del `mat-error` de un campo: el de la API si lo ha dado para él; si no, el de siempre. */
+    errorDe(campo: string, porDefecto: string): string {
+        const control = (this.form.controls as Record<string, AbstractControl>)[campo];
+        return `${control?.errors?.['api'] ?? porDefecto}`;
+    }
+
+    async confirmarSalidaSiHayCambios(): Promise<boolean> {
+        return this.edicion.confirmarSalida();
+    }
+
+    quitarPrerrequisitoConservado(indice: number): void {
+        this.prerrequisitosConservados = this.prerrequisitosConservados.filter((_, i) => i !== indice);
     }
 
     ngOnDestroy(): void {
@@ -465,14 +562,12 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
 
     get textoAccionPrincipal(): string {
         if (this.guardando)
-            return 'Creando...';
-        if (!this.requiereSelectorExtras)
-            return this.prerrequisitosPendientes ? 'Configurar prerrequisitos' : 'Crear dote';
-        if (this.cantidadExtrasSeleccionadosActual < 1)
+            return this.edicion.textoAccion(true);
+        if (this.requiereSelectorExtras && this.cantidadExtrasSeleccionadosActual < 1)
             return 'Elegir extras';
         if (this.prerrequisitosPendientes)
             return 'Configurar prerrequisitos';
-        return 'Crear dote';
+        return this.edicion.textoAccion(false);
     }
 
     get itemsSelectorExtrasActual(): ExtraSelectorItem[] {
@@ -568,7 +663,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     async onAccionPrincipal(): Promise<void> {
-        if (this.guardando)
+        if (this.guardando || this.edicion.cargando)
             return;
         if (!this.puedeCrear) {
             await avisarSinPermisos(this.mensajePermisosInsuficientes);
@@ -585,35 +680,14 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             return;
         }
 
-        await this.crearDote();
-    }
-
-    getManualesFiltrados(): Manual[] {
-        const filtro = normalizarTexto(this.manualBusqueda);
-        return this.manuales
-            .filter((manual) => filtro.length < 1 || normalizarTexto(manual?.Nombre ?? '').includes(filtro))
-            .slice(0, 40);
-    }
-
-    actualizarManualBusqueda(value: string): void {
-        this.manualBusqueda = value ?? '';
-        this.form.controls.id_manual.setValue(0);
-        this.form.controls.id_manual.markAsDirty();
-        this.form.controls.id_manual.updateValueAndValidity();
+        await this.guardarDote();
     }
 
     seleccionarManual(id: number): void {
-        const idManual = toInt(id, 0);
-        const manual = this.manuales.find((item) => toInt(item?.Id, 0) === idManual);
-        this.form.controls.id_manual.setValue(idManual);
+        this.form.controls.id_manual.setValue(toInt(id, 0));
         this.form.controls.id_manual.markAsDirty();
+        this.form.controls.id_manual.markAsTouched();
         this.form.controls.id_manual.updateValueAndValidity();
-        this.manualBusqueda = `${manual?.Nombre ?? ''}`.trim();
-    }
-
-    trackByManualId(_: number, manual: Manual): number {
-        const parsed = Math.trunc(Number(manual?.Id));
-        return Number.isFinite(parsed) ? parsed : 0;
     }
 
     async abrirSelectorExtras(): Promise<void> {
@@ -749,7 +823,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     agregarHabilidadOtorgada(): void {
         this.habilidadesOtorgadasEditor = [
             ...this.habilidadesOtorgadasEditor,
-            { id_habilidad: 0, id_extra: 0, rangos: 0 }
+            { id_habilidad: 0, id_extra: -1, rangos: 0 }
         ];
     }
 
@@ -771,8 +845,10 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             ...patch,
         };
 
+        if (patch.id_habilidad !== undefined && patch.id_habilidad !== current.id_habilidad)
+            delete next.custom;
         if (!this.habilidadPermiteExtra(next.id_habilidad))
-            next.id_extra = 0;
+            next.id_extra = -1;
 
         this.habilidadesOtorgadasEditor = this.habilidadesOtorgadasEditor.map((row, i) => i === index ? next : row);
     }
@@ -807,13 +883,13 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         this.upsertHabilidadCustom(habilidad);
         const targetIndex = this.customModalRowIndex;
         if (targetIndex >= 0 && targetIndex < this.habilidadesOtorgadasEditor.length) {
-            this.onHabilidadOtorgadaChange(targetIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: 0 });
+            this.onHabilidadOtorgadaChange(targetIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: -1, custom: true });
         } else {
             const emptyIndex = this.habilidadesOtorgadasEditor.findIndex((row) => toInt(row.id_habilidad, 0) <= 0);
             if (emptyIndex >= 0)
-                this.onHabilidadOtorgadaChange(emptyIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: 0 });
+                this.onHabilidadOtorgadaChange(emptyIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: -1, custom: true });
             else
-                this.habilidadesOtorgadasEditor = [...this.habilidadesOtorgadasEditor, { id_habilidad: habilidad.Id_habilidad, id_extra: 0, rangos: 0 }];
+                this.habilidadesOtorgadasEditor = [...this.habilidadesOtorgadasEditor, { id_habilidad: habilidad.Id_habilidad, id_extra: -1, rangos: 0, custom: true }];
         }
         this.cerrarCustomModal();
     }
@@ -1031,38 +1107,40 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         return this.tiposDote.filter((tipo) => tipo.Id > 0);
     }
 
-    async crearDote(): Promise<void> {
+    /** Crea la dote o, en «Modificar», la guarda entera (`PUT /dotes/<id>`, el mismo cuerpo que el alta). */
+    async guardarDote(): Promise<void> {
         if (!this.puedeCrear) {
             await avisarSinPermisos(this.mensajePermisosInsuficientes);
             return;
         }
 
+        this.errores.limpiar();
         this.form.markAllAsTouched();
         const errorDominio = this.validarReglasDominio();
         if (this.form.invalid || errorDominio.length > 0) {
-            const text = errorDominio.length > 0 ? errorDominio : this.mensajeErrorFormulario || 'Revisa los campos obligatorios.';
-            Swal.fire({
-                icon: 'warning',
-                title: 'Formulario inválido',
-                text,
-                showConfirmButton: true
-            });
+            this.errores.global = errorDominio.length > 0 ? errorDominio : this.mensajeErrorFormulario || 'Revisa los campos obligatorios.';
+            this.errores.irAlPrimerError();
             return;
         }
 
         const payload = this.buildPayload();
+        const editando = this.editando;
         this.guardando = true;
         try {
-            const response = await this.doteSvc.crearDote(payload);
-            this.notificarExito(response, payload.dote.nombre);
-            this.resetFormulario();
-        } catch (error: any) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'No se pudo crear la dote',
-                text: `${error?.message ?? 'Error no identificado'}`,
-                showConfirmButton: true
-            });
+            if (editando) {
+                const respuesta = await this.doteSvc.actualizarDote(this.edicion.id, payload);
+                await avisarGuardado(DOTE, true, respuesta.message);
+                this.hidratarDesdeDote(respuesta.dote);
+                this.doteActualizada.emit(respuesta.dote);
+                this.cerrar.emit();
+            } else {
+                const respuesta = await this.doteSvc.crearDote(payload);
+                await avisarGuardado(DOTE, false, respuesta.message);
+                this.doteCreada.emit({ idDote: respuesta.idDote, nombre: payload.dote.nombre });
+                this.resetFormulario();
+            }
+        } catch (error: unknown) {
+            this.errores.mostrar(error, editando ? 'No se ha podido actualizar la dote.' : 'No se ha podido crear la dote.');
         } finally {
             this.guardando = false;
         }
@@ -1101,18 +1179,91 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         };
     }
 
-    private notificarExito(response: DoteCreateResponse, nombre: string): void {
-        Swal.fire({
-            icon: 'success',
-            title: 'Dote creada',
-            text: `${response?.message ?? 'Creación completada'} (id: ${response.idDote})`,
-            timer: 2200,
-            showConfirmButton: true
+    /**
+     * La dote para «Modificar», con los catálogos que hacen falta para enseñarla y volver a mandarla igual: las
+     * armaduras si admite armaduras o escudos (el cuerpo solo lleva las que cuadran con su subtipo) y los de los tipos de
+     * sus prerrequisitos (los nombres de las filas).
+     */
+    private obtenerDoteParaEditar(id: number): Observable<Dote> {
+        return this.doteSvc.getDoteFresco(id).pipe(
+            switchMap((dote) => from(this.prepararCatalogosDeDote(dote)).pipe(map(() => dote))),
+        );
+    }
+
+    private async prepararCatalogosDeDote(dote: Dote): Promise<void> {
+        const tipos = Object.keys(dote?.Prerrequisitos ?? {})
+            .filter((tipo) => (dote.Prerrequisitos[tipo] ?? []).length > 0)
+            .filter((tipo): tipo is PrerequisiteType => this.prerrequisitoOpciones.some((opcion) => opcion.key === tipo));
+        const cargas: Promise<void>[] = [this.precargarCatalogosPrerrequisitos(tipos)];
+        if (this.doteSoportaArmaduras(dote) || this.doteSoportaEscudos(dote))
+            cargas.push(this.asegurarCatalogo('armaduras'));
+        await Promise.all(cargas.map((carga) => carga.catch(() => undefined)));
+    }
+
+    /** Rellena el formulario con la dote de la API (su `GET` o la respuesta de guardar). */
+    private hidratarDesdeDote(dote: Dote): void {
+        const tipos = dote?.Tipos ?? [];
+        const extras = dote?.Extras_soportados;
+        this.form.reset({
+            nombre: dote?.Nombre ?? '',
+            beneficio: textoOSinEspecificar(dote?.Beneficio),
+            descripcion: textoOSinEspecificar(dote?.Descripcion),
+            normal: textoOSinEspecificar(dote?.Normal),
+            especial: textoOSinEspecificar(dote?.Especial),
+            id_manual: toInt(dote?.Manual?.Id, 0),
+            pagina: toInt(dote?.Manual?.Pagina, 0),
+            id_tipo: toInt(tipos[0]?.Id, 0),
+            id_tipo2: toInt(tipos[1]?.Id, 0),
+            oficial: dote?.Oficial === true,
+            comp_arma: toInt(dote?.Comp_arma) > 0,
+            repetible: toInt(dote?.Repetible) > 0,
+            repetible_distinto_extra: toInt(dote?.Repetible_distinto_extra) > 0,
+            repetible_comb: toInt(dote?.Repetible_comb) > 0,
+            extra_arma: toInt(extras?.Extra_arma) > 0,
+            extra_armadura_armaduras: toInt(extras?.Extra_armadura_armaduras) > 0,
+            extra_armadura_escudos: toInt(extras?.Extra_armadura_escudos) > 0,
+            extra_escuela: toInt(extras?.Extra_escuela) > 0,
+            extra_habilidad: toInt(extras?.Extra_habilidad) > 0,
         });
-        this.doteCreada.emit({
-            idDote: response.idDote,
-            nombre,
+        this.modificadoresEditor = modificadoresDeDote(dote);
+        if (this.modificadoresEditor.length < 1)
+            this.agregarModificador();
+        this.habilidadesOtorgadasEditor = habilidadesOtorgadasDeDote(dote);
+        if (this.habilidadesOtorgadasEditor.length < 1)
+            this.agregarHabilidadOtorgada();
+        this.extrasSeleccionados = extrasDisponiblesDeDote(dote);
+        const tiposEditables = new Set(this.prerrequisitoOpciones.map((opcion) => opcion.key));
+        const { filas, conservados } = prerrequisitosDeDote(dote, tiposEditables, () => `pre_dote_${++this.uidFila}`);
+        this.prerrequisitosEditor = filas;
+        this.prerrequisitosSeleccionados = tiposConFilas(this.prerrequisitoOpciones.map((opcion) => opcion.key), filas);
+        this.prerrequisitosConservados = conservados;
+        this.errores.limpiar();
+        this.edicion.tomarPuntoDePartida();
+    }
+
+    /** Lo que se compara para saber si hay cambios: el formulario y sus listas (sin los nombres de los catálogos). */
+    private foto(): string {
+        return JSON.stringify({
+            form: this.form.getRawValue(),
+            modificadores: this.construirModificadoresPayload(),
+            habilidades: this.habilidadesOtorgadasEditor,
+            extras: this.construirExtrasDisponiblesPayload(),
+            prerrequisitos: this.prerrequisitosEditor,
+            conservados: this.prerrequisitosConservados.map((conservado) => conservado.fila),
         });
+    }
+
+    private firmaCampo(campo: string): string {
+        const control = (this.form.controls as Record<string, AbstractControl>)[campo];
+        if (control)
+            return JSON.stringify(control.value);
+        if (campo === 'modificadores')
+            return JSON.stringify(this.modificadoresEditor);
+        if (campo === 'habilidades_otorgadas')
+            return JSON.stringify(this.habilidadesOtorgadasEditor);
+        if (campo === 'extras_disponibles')
+            return JSON.stringify(this.extrasSeleccionados);
+        return JSON.stringify([this.prerrequisitosEditor, this.prerrequisitosConservados]);
     }
 
     private resetFormulario(): void {
@@ -1120,8 +1271,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             nombre: '',
             beneficio: '',
             descripcion: '',
-            normal: 'No especifica',
-            especial: 'No especifica',
+            normal: TEXTO_SIN_ESPECIFICAR,
+            especial: TEXTO_SIN_ESPECIFICAR,
             id_manual: 0,
             pagina: 1,
             id_tipo: 1,
@@ -1145,6 +1296,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         this.agregarHabilidadOtorgada();
         this.prerrequisitosEditor = [];
         this.prerrequisitosSeleccionados = [];
+        this.prerrequisitosConservados = [];
+        this.errores.limpiar();
+        this.edicion.olvidar();
         this.extrasSeleccionados = {
             armas: [],
             armaduras: [],
@@ -1186,6 +1340,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             .filter((item) => item.Id > 0)
             .map((item) => ({ id: item.Id, nombre: item.Nombre }));
 
+        // En «Modificar» mandan los tipos de la dote cargada.
+        if (this.editando)
+            return;
         const idTipoActual = toInt(this.form.controls.id_tipo.value, -1);
         if (!this.tiposPrimarios.some((tipo) => tipo.Id === idTipoActual) && this.tiposPrimarios.length > 0)
             this.form.controls.id_tipo.setValue(this.tiposPrimarios[0].Id);
@@ -1196,13 +1353,13 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     private sincronizarManualSeleccionado(): void {
-        if (this.manuales.length < 1)
+        // En «Modificar» manda el manual de la dote cargada.
+        if (this.manuales.length < 1 || this.editando)
             return;
 
         const idActual = toInt(this.form.controls.id_manual.value, -1);
         if (!this.manuales.some((manual) => toInt(manual?.Id, -1) === idActual))
             this.form.controls.id_manual.setValue(this.getManualPorDefectoId());
-        this.sincronizarManualBusquedaDesdeControl();
     }
 
     private getManualPorDefectoId(): number {
@@ -1212,12 +1369,6 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         if (manualPreferido)
             return toInt(manualPreferido.Id, 0);
         return toInt(this.manuales[0]?.Id, 0);
-    }
-
-    private sincronizarManualBusquedaDesdeControl(): void {
-        const idActual = toInt(this.form.controls.id_manual.value, 0);
-        const manual = this.manuales.find((item) => toInt(item?.Id, 0) === idActual);
-        this.manualBusqueda = `${manual?.Nombre ?? ''}`.trim();
     }
 
     private validarReglasDominio(): string {
@@ -1511,20 +1662,30 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         return out;
     }
 
+    /** Sin extra (-1), sin `id_extra`: la API guarda el -1 «sin extra» (el 0 es el extra «Elegir»). */
     private construirHabilidadesOtorgadasPayload(): DoteHabilidadOtorgadaDto[] {
         return this.habilidadesOtorgadasEditor
-            .map((item) => ({
-                id_habilidad: toInt(item.id_habilidad, 0),
-                id_extra: toInt(item.id_extra, 0),
-                rangos: toInt(item.rangos, 0),
-                custom: this.esHabilidadCustom(item.id_habilidad),
-            }))
-            .filter((item) => item.id_habilidad > 0)
-            .map((item) => item.id_extra > 0 ? item : { ...item, id_extra: 0 });
+            .filter((item) => toInt(item.id_habilidad, 0) > 0)
+            .map((item) => {
+                const habilidad: DoteHabilidadOtorgadaDto = {
+                    id_habilidad: toInt(item.id_habilidad, 0),
+                    rangos: toInt(item.rangos, 0),
+                    custom: item.custom ?? this.esHabilidadCustom(item.id_habilidad),
+                };
+                const idExtra = toInt(item.id_extra, -1);
+                return idExtra >= 0 ? { ...habilidad, id_extra: idExtra } : habilidad;
+            });
     }
 
+    /** Las filas del editor y, tal cual, los prerrequisitos que el editor no enseña (`prerrequisitosConservados`). */
     private construirPrerrequisitosPayload(): Record<string, Array<Record<string, any>>> {
-        return buildPrerequisitePayload(this.prerrequisitosEditor, this.prerrequisitosCatalogContext);
+        const payload = buildPrerequisitePayload(this.prerrequisitosEditor, this.prerrequisitosCatalogContext);
+        this.prerrequisitosConservados.forEach(({ fila }) => {
+            const entrada = getPrerequisiteDefinition(fila.tipo).toPayload(fila, this.prerrequisitosCatalogContext);
+            if (entrada)
+                payload[fila.tipo] = [...(payload[fila.tipo] ?? []), entrada];
+        });
+        return payload;
     }
 
     private getNombreCatalogo(tipo: PrerequisiteType, id: number): string {
@@ -1631,8 +1792,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
             .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
+    /** Sin repetir y en orden; el 0 es el comodín «Elegir» de los extras (se elige de todo el catálogo). */
     private uniqueSorted(ids: number[]): number[] {
-        return Array.from(new Set((ids ?? []).map((id) => toInt(id, 0)).filter((id) => id > 0))).sort((a, b) => a - b);
+        return Array.from(new Set((ids ?? []).map((id) => toInt(id, -1)).filter((id) => id >= 0))).sort((a, b) => a - b);
     }
 
     private armaduraCoincideConSubtiposActivos(item: ArmaduraSelectorItem | null | undefined): boolean {
@@ -1648,7 +1810,9 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     private armaduraSeleccionablePorSubtipo(id: number): boolean {
-        const objetivo = toInt(id, 0);
+        const objetivo = toInt(id, -1);
+        if (objetivo === 0)
+            return true;
         if (objetivo < 1)
             return false;
         const armadura = this.armadurasCatalogo.find((item) => item.id === objetivo);
@@ -1740,11 +1904,13 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
         return false;
     }
 
+    /** Otra dote con el mismo nombre; al modificar, la propia no cuenta (como en la API). */
     private esNombreDuplicado(nombre: string): boolean {
         const objetivo = normalizarTexto(nombre);
         if (objetivo.length < 1)
             return false;
-        return this.dotesExistentes.some((dote) => normalizarTexto(dote?.Nombre ?? '') === objetivo);
+        const propia = this.editando ? this.edicion.id : 0;
+        return this.dotesExistentes.some((dote) => toInt(dote?.Id, 0) !== propia && normalizarTexto(dote?.Nombre ?? '') === objetivo);
     }
 
     private esExtraFamilyKey(value: any): value is ExtraFamilyKey {

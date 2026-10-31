@@ -1,4 +1,5 @@
 import { Conjuro } from 'src/app/interfaces/conjuro';
+import { ConjuroEditable } from 'src/app/interfaces/conjuros-api';
 import { Subdisciplinas } from 'src/app/interfaces/disciplina-conjuros';
 import { toArray, toBoolean, toInt, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 
@@ -185,6 +186,23 @@ export function normalizeConjuroApi(raw: any): Conjuro {
         Oficial: toBoolean(raw?.Oficial ?? raw?.o),
     };
 }
+
+/** `GET /conjuros/<id>` (y la entrada que devuelven el alta y la edición): el conjuro y los ids del alta. */
+export function normalizeConjuroEditableApi(raw: any): ConjuroEditable {
+    return {
+        ...normalizeConjuroApi(raw),
+        Id_manual: toInt(raw?.Id_manual),
+        Pagina: toInt(raw?.Pagina),
+        Id_tiempo_lanzamiento: toInt(raw?.Id_tiempo_lanzamiento),
+        Id_alcance: toInt(raw?.Id_alcance),
+        Id_subdisciplina: toInt(raw?.Id_subdisciplina),
+        Textos_sin_especificar: TEXTOS_CON_RELLENO.filter((clave) => raw?.[clave] === null),
+    };
+}
+
+const TEXTOS_CON_RELLENO = [
+    'Descripcion', 'Objetivo', 'Efecto', 'Area', 'Duracion', 'Tipo_salvacion', 'Descripcion_componentes', 'Descripcion_aumentos',
+];
 
 export function normalizeConjuroLegacy(raw: any): Conjuro {
     const base = createBaseConjuro();

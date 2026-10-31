@@ -3,22 +3,26 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 import { DetallesDoteComponent } from './detalles-dote.component';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
 describe('DetallesDoteComponent', () => {
     let component: DetallesDoteComponent;
     let fixture: ComponentFixture<DetallesDoteComponent>;
+    let usuario: { can: jasmine.Spy };
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
     const { texto, titulos, lateral, filasPares } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
+        usuario = { can: jasmine.createSpy('can').and.returnValue(false) };
         await TestBed.configureTestingModule({
             declarations: [DetallesDoteComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
             providers: [
                 { provide: ManualDetalleNavigationService, useValue: manualNav },
+                { provide: UserService, useValue: usuario },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -319,5 +323,24 @@ describe('DetallesDoteComponent', () => {
         fixture.detectChanges();
         expect(titulos()).not.toContain('Incarnum');
         expect(titulos()).not.toContain('Cuenta como');
+    });
+
+    it('enseña el lápiz «Modificar» solo con permiso de dotes y si alguien lo escucha', () => {
+        component.dote = ataquePoderoso();
+        fixture.detectChanges();
+        expect(texto()).not.toContain('Modificar');
+
+        const abiertas: number[] = [];
+        component.modificar.subscribe((dote) => abiertas.push(dote.Id));
+        fixture.detectChanges();
+        expect(texto()).not.toContain('Modificar');
+        expect(usuario.can).toHaveBeenCalledWith('dotes', 'create');
+
+        usuario.can.and.returnValue(true);
+        fixture.detectChanges();
+        const lapiz = Array.from(elemento().querySelectorAll('button')).find((boton) => boton.textContent?.includes('Modificar'));
+        expect(lapiz).toBeTruthy();
+        lapiz!.click();
+        expect(abiertas).toEqual([component.doteData.Id]);
     });
 });

@@ -237,17 +237,15 @@ describe('DoteService', () => {
 
     it('devuelve respuesta normalizada cuando el POST es exitoso', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
-        httpMock.post.and.returnValue(of({ message: 'Dote creada', idDote: 9 }));
+        httpMock.post.and.returnValue(of({ message: 'Dote creada', idDote: 9, dote: { Id: 9, Nombre: 'Dote nueva' } }));
         httpMock.get.and.returnValue(throwError(() => new Error('refresh fail')));
         const service = new DoteService(authMock, {} as any, httpMock, firebaseContextMock);
 
         const response = await service.crearDote(crearPayload());
 
         expect(response.idDote).toBe(9);
-        expect(response).toEqual({
-            message: 'Dote creada',
-            idDote: 9,
-        });
+        expect(response.message).toBe('Dote creada');
+        expect(response.dote).toEqual(jasmine.objectContaining({ Id: 9, Nombre: 'Dote nueva' }));
         expect(httpMock.post.calls.mostRecent().args[1]).not.toEqual(jasmine.objectContaining({ uid: jasmine.anything() }));
         expect(httpMock.post).toHaveBeenCalledWith(
             jasmine.any(String),
@@ -353,5 +351,22 @@ describe('DoteService', () => {
 
         expect(httpMock.get).not.toHaveBeenCalled();
         expect(emitted.map((item) => item.Nombre)).toEqual(['Alerta cacheada', 'Soltura cacheada']);
+    });
+
+    it('«Modificar»: la dote fresca por HTTP y el PUT con el mismo cuerpo que el alta', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['put', 'get']);
+        httpMock.get.and.returnValue(of({ Id: 4, Nombre: 'Soltura con un arma' }));
+        httpMock.put.and.returnValue(of({ message: 'Dote actualizada exitosamente', idDote: 4, dote: { Id: 4, Nombre: 'Soltura con un arma' } }));
+        const service = new DoteService(authMock, {} as any, httpMock, firebaseContextMock);
+
+        const fresca = await firstValueFrom(service.getDoteFresco(4));
+        const respuesta = await service.actualizarDote(4, crearPayload());
+
+        expect(httpMock.get.calls.mostRecent().args[0]).toMatch(/dotes\/4$/);
+        expect(fresca.Nombre).toBe('Soltura con un arma');
+        expect(httpMock.put.calls.mostRecent().args[0]).toMatch(/dotes\/4$/);
+        expect(httpMock.put.calls.mostRecent().args[1]).toEqual(crearPayload());
+        expect(respuesta).toEqual(jasmine.objectContaining({ message: 'Dote actualizada exitosamente', idDote: 4 }));
+        expect(respuesta.dote.Id).toBe(4);
     });
 });

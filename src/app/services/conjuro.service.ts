@@ -3,12 +3,12 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
 import { Database, Unsubscribe } from '@angular/fire/database';
-import { Observable, firstValueFrom } from "rxjs";
+import { Observable, firstValueFrom, map } from "rxjs";
 import { environment } from "src/environments/environment";
 import { Conjuro } from "../interfaces/conjuro";
-import { ConjuroCreateApiResponse, ConjuroCreateRequest, ConjuroCreateResponse } from "../interfaces/conjuros-api";
+import { ConjuroCreateApiResponse, ConjuroCreateRequest, ConjuroCreateResponse, ConjuroEditable } from "../interfaces/conjuros-api";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { normalizeConjuroApi, normalizeConjuroLegacy } from "./utils/conjuro-mapper";
+import { normalizeConjuroApi, normalizeConjuroEditableApi, normalizeConjuroLegacy } from "./utils/conjuro-mapper";
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { CONJURO } from "src/app/services/utils/nombres-de-catalogo";
@@ -46,6 +46,12 @@ export class ConjuroService {
         });
     }
 
+    /** El conjuro por HTTP, sin caché y con los ids del alta: el que abre «Modificar». */
+    getConjuroFresco(id: number): Observable<ConjuroEditable> {
+        return this.http.get(`${environment.apiUrl}conjuros/${Math.trunc(Number(id))}`)
+            .pipe(map((raw: any) => normalizeConjuroEditableApi(raw)));
+    }
+
     getConjuros(): Observable<Conjuro[]> {
         return cacheRtdbOApi({
             escuchar: (onNext, onError) => this.watchConjurosPath(onNext, onError),
@@ -73,21 +79,37 @@ export class ConjuroService {
             const response = await firstValueFrom(
                 this.http.post<ConjuroCreateApiResponse>(`${environment.apiUrl}conjuros/add`, payload, { headers })
             );
-            const idConjuro = Math.trunc(Number(response?.idConjuro ?? 0));
-            if (!Number.isFinite(idConjuro) || idConjuro <= 0)
-                throw new Error("La API no devolvio un idConjuro valido");
-
-            const normalizedResponse: ConjuroCreateResponse = {
-                message: `${response?.message ?? "Conjuro creado"}`,
-                idConjuro,
-            };
-            return normalizedResponse;
+            return respuestaDeConjuro(response);
         } catch (error: any) {
             throw errorDeCatalogo(error, "crear", CONJURO);
+        }
+    }
+
+    /** `PUT /conjuros/<id>`: el conjuro entero, con el mismo cuerpo que el alta. */
+    public async actualizarConjuro(idConjuro: number, payload: ConjuroCreateRequest): Promise<ConjuroCreateResponse> {
+        try {
+            const headers = await cabeceraApiConFirebase(this.auth);
+            const response = await firstValueFrom(
+                this.http.put<ConjuroCreateApiResponse>(`${environment.apiUrl}conjuros/${Math.trunc(Number(idConjuro))}`, payload, { headers })
+            );
+            return respuestaDeConjuro(response);
+        } catch (error: any) {
+            throw errorDeCatalogo(error, "actualizar", CONJURO);
         }
     }
 
     private syncConjuros(): Observable<any> {
         return leerListadoCompleto(this.http, `${environment.apiUrl}conjuros`);
     }
+}
+
+function respuestaDeConjuro(response: ConjuroCreateApiResponse): ConjuroCreateResponse {
+    const idConjuro = Math.trunc(Number(response?.idConjuro ?? 0));
+    if (!Number.isFinite(idConjuro) || idConjuro <= 0)
+        throw new Error("La API no devolvio un idConjuro valido");
+    return {
+        message: `${response?.message ?? ""}`,
+        idConjuro,
+        conjuro: normalizeConjuroEditableApi(response?.conjuro),
+    };
 }
