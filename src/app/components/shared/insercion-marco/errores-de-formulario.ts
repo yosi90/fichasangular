@@ -98,4 +98,9 @@ export class ErroresDeFormulario {
     mensajeDe(campo: string): string | null {
         return this.campo?.campo === campo ? this.campo.mensaje : null;
     }
+
+    /** El texto del `mat-error` de un control: el de la API si lo ha dado para él (clave `api`); si no, `porDefecto`. */
+    textoDe(campo: string, porDefecto: string): string {
+        return `${this.opciones.control(campo)?.errors?.['api'] ?? porDefecto}`;
+    }
 }

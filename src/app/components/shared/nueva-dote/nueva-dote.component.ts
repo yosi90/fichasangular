@@ -51,7 +51,7 @@ import { ManualService } from 'src/app/services/manual.service';
 import { UserService } from 'src/app/services/user.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
-import { alternarControl } from '../insercion-marco/filas-repetibles';
+import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
@@ -443,12 +443,6 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return this.errores.global || this.mensajeErrorFormulario;
     }
 
-    /** El texto del `mat-error` de un campo: el de la API si lo ha dado para él; si no, el de siempre. */
-    errorDe(campo: string, porDefecto: string): string {
-        const control = (this.form.controls as Record<string, AbstractControl>)[campo];
-        return `${control?.errors?.['api'] ?? porDefecto}`;
-    }
-
     async confirmarSalidaSiHayCambios(): Promise<boolean> {
         return this.edicion.confirmarSalida();
     }
@@ -684,10 +678,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     seleccionarManual(id: number): void {
-        this.form.controls.id_manual.setValue(toInt(id, 0));
-        this.form.controls.id_manual.markAsDirty();
-        this.form.controls.id_manual.markAsTouched();
-        this.form.controls.id_manual.updateValueAndValidity();
+        elegirEnControl(this.form.controls.id_manual, toInt(id, 0));
     }
 
     async abrirSelectorExtras(): Promise<void> {
@@ -1373,7 +1364,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     private validarReglasDominio(): string {
         const nombre = `${this.form.controls.nombre.value ?? ''}`.trim();
-        if (this.esNombreDuplicado(nombre))
+        if (this.edicion.nombreOcupado(this.dotesExistentes, nombre))
             return 'Ya existe una dote con ese nombre (comparación normalizada).';
 
         const extras = this.construirExtrasDisponiblesPayload();
@@ -1902,15 +1893,6 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         if (this.doteSoportaArmaduras(dote))
             return item.esEscudo !== true;
         return false;
-    }
-
-    /** Otra dote con el mismo nombre; al modificar, la propia no cuenta (como en la API). */
-    private esNombreDuplicado(nombre: string): boolean {
-        const objetivo = normalizarTexto(nombre);
-        if (objetivo.length < 1)
-            return false;
-        const propia = this.editando ? this.edicion.id : 0;
-        return this.dotesExistentes.some((dote) => toInt(dote?.Id, 0) !== propia && normalizarTexto(dote?.Nombre ?? '') === objetivo);
     }
 
     private esExtraFamilyKey(value: any): value is ExtraFamilyKey {

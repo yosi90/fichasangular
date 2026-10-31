@@ -27,7 +27,7 @@ import { CamposDeFormulario, ErroresDeFormulario } from '../insercion-marco/erro
 import { ModoInsercion } from '../insercion-marco/insercion-marco.component';
 import { CONJURO } from 'src/app/services/utils/nombres-de-catalogo';
 import { textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
-import { alternarControl } from '../insercion-marco/filas-repetibles';
+import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
 import { normalizarTexto, toArray, toInt } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -382,12 +382,6 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy, OnChanges, Edit
         return this.edicion.textoAccion(this.guardando);
     }
 
-    /** El texto del `mat-error` de un campo: el de la API si lo ha dado para él; si no, el de siempre. */
-    errorDe(campo: string, porDefecto: string): string {
-        const control = (this.form.controls as Record<string, AbstractControl>)[campo];
-        return `${control?.errors?.['api'] ?? porDefecto}`;
-    }
-
     async confirmarSalidaSiHayCambios(): Promise<boolean> {
         return this.edicion.confirmarSalida();
     }
@@ -506,10 +500,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy, OnChanges, Edit
     }
 
     seleccionarManual(id: number): void {
-        this.form.controls.id_manual.setValue(toInt(id, 0));
-        this.form.controls.id_manual.markAsDirty();
-        this.form.controls.id_manual.markAsTouched();
-        this.form.controls.id_manual.updateValueAndValidity();
+        elegirEnControl(this.form.controls.id_manual, toInt(id, 0));
     }
 
     agregarNivel(coleccion: NivelCollectionKey): void {
@@ -842,7 +833,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy, OnChanges, Edit
 
     private validarReglasDominio(): string {
         const nombre = `${this.form.controls.nombre.value ?? ''}`.trim();
-        if (this.esNombreDuplicado(nombre))
+        if (this.edicion.nombreOcupado(this.conjurosExistentes, nombre))
             return 'Ya existe un conjuro con ese nombre (comparación normalizada).';
 
         if (this.varianteActualEsBase) {
@@ -904,15 +895,6 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy, OnChanges, Edit
             const right = toInt(b[idField], 0);
             return left - right;
         });
-    }
-
-    /** Otro conjuro con el mismo nombre; al modificar, el propio no cuenta (como en la API). */
-    private esNombreDuplicado(nombre: string): boolean {
-        const objetivo = normalizarTexto(nombre);
-        if (objetivo.length < 1)
-            return false;
-        const propio = this.editando ? this.edicion.id : 0;
-        return this.conjurosExistentes.some((conjuro) => toInt(conjuro?.Id, 0) !== propio && normalizarTexto(conjuro?.Nombre ?? '') === objetivo);
     }
 
     private crearNivelRow(): NivelEditorRow {

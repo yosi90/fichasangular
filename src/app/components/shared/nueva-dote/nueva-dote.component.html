@@ -20,21 +20,21 @@
                     <mat-form-field appearance="fill">
                         <mat-label>Nombre</mat-label>
                         <input matInput formControlName="nombre" maxlength="100" />
-                        <mat-error *ngIf="form.controls.nombre.invalid">{{errorDe('nombre', 'Nombre obligatorio (mínimo 3 caracteres).')}}</mat-error>
+                        <mat-error *ngIf="form.controls.nombre.invalid">{{errores.textoDe('nombre', 'Nombre obligatorio (mínimo 3 caracteres).')}}</mat-error>
                     </mat-form-field>
 
                     <app-catalogo-buscador
                         etiqueta="Manual"
                         [opciones]="manualesOpciones"
                         [valor]="form.controls.id_manual.value"
-                        [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errorDe('id_manual', 'Manual obligatorio.') : null"
+                        [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errores.textoDe('id_manual', 'Manual obligatorio.') : null"
                         (elegir)="seleccionarManual($event)">
                     </app-catalogo-buscador>
 
                     <mat-form-field appearance="fill">
                         <mat-label>Página</mat-label>
                         <input matInput type="number" formControlName="pagina" />
-                        <mat-error *ngIf="form.controls.pagina.invalid">{{errorDe('pagina', 'Página obligatoria (>= 0).')}}</mat-error>
+                        <mat-error *ngIf="form.controls.pagina.invalid">{{errores.textoDe('pagina', 'Página obligatoria (>= 0).')}}</mat-error>
                     </mat-form-field>
 
                     <mat-form-field appearance="fill">
@@ -69,13 +69,13 @@
                     <mat-form-field appearance="fill" class="span-2">
                         <mat-label>Descripción</mat-label>
                         <textarea matInput rows="4" formControlName="descripcion"></textarea>
-                        <mat-error *ngIf="form.controls.descripcion.invalid">{{errorDe('descripcion', 'Descripción obligatoria (mínimo 10 caracteres).')}}</mat-error>
+                        <mat-error *ngIf="form.controls.descripcion.invalid">{{errores.textoDe('descripcion', 'Descripción obligatoria (mínimo 10 caracteres).')}}</mat-error>
                     </mat-form-field>
 
                     <mat-form-field appearance="fill" class="span-2">
                         <mat-label>Beneficio</mat-label>
                         <textarea matInput rows="4" formControlName="beneficio"></textarea>
-                        <mat-error *ngIf="form.controls.beneficio.invalid">{{errorDe('beneficio', 'Beneficio obligatorio.')}}</mat-error>
+                        <mat-error *ngIf="form.controls.beneficio.invalid">{{errores.textoDe('beneficio', 'Beneficio obligatorio.')}}</mat-error>
                     </mat-form-field>
 
                     <mat-form-field appearance="fill" class="span-2">

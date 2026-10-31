@@ -1,5 +1,6 @@
 import { Observable, take, takeUntil } from 'rxjs';
 import { ElementoDeCatalogo } from 'src/app/services/utils/error-catalogo';
+import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { avisarErrorAlCargar, delCatalogo, textoSinPermisos } from './avisos-insercion';
 import { ModoInsercion, confirmarCierreConCambios } from './insercion-marco.component';
 
@@ -45,6 +46,18 @@ export class EdicionDeCatalogo<T> {
     get id(): number {
         const valor = Number(this.opciones.id());
         return Number.isFinite(valor) ? Math.trunc(valor) : 0;
+    }
+
+    /**
+     * Si otra entrada del catálogo ya tiene ese nombre (sin tildes ni mayúsculas): el aviso de la web antes del 409
+     * `nombre_duplicado`. Al modificar, la propia no cuenta, como en la API.
+     */
+    nombreOcupado(existentes: readonly { Id?: unknown; Nombre?: string | null; }[], nombre: string): boolean {
+        const objetivo = normalizarTexto(nombre);
+        if (objetivo.length < 1)
+            return false;
+        const propia = this.editando ? this.id : 0;
+        return existentes.some((entrada) => toInt(entrada?.Id, 0) !== propia && normalizarTexto(entrada?.Nombre ?? '') === objetivo);
     }
 
     /** Trae la entrada y rellena el formulario, una vez por id: al abrirlo y si cambia el id que recibe. */

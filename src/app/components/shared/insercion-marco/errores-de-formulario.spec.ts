@@ -44,6 +44,13 @@ describe('ErroresDeFormulario (los errores de una inserción, en el marco y en s
         expect(paso).toBe(0);
     });
 
+    it('el mat-error de un control dice el error de la API o, si no lo hay, el de siempre', () => {
+        expect(errores.textoDe('nombre', 'Nombre obligatorio.')).toBe('Nombre obligatorio.');
+        errores.mostrar(new ProfileApiError('Ya existe una cosa con ese nombre.', 'nombre_duplicado', 409, 'cosa.nombre'), 'No se pudo.');
+        expect(errores.textoDe('nombre', 'Nombre obligatorio.')).toBe('Ya existe una cosa con ese nombre.');
+        expect(errores.textoDe('pagina', 'Página obligatoria.')).toBe('Página obligatoria.');
+    });
+
     it('el error de una lista se lee con mensajeDe y se va al corregirla', () => {
         errores.mostrar(new ProfileApiError('No se ha encontrado la dote.', 'no_encontrado', 404, 'dotes[0].id_dote'), 'No se pudo.');
         expect(paso).toBe(2);

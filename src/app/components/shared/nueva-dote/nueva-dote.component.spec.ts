@@ -433,7 +433,7 @@ describe('NuevaDoteComponent', () => {
             await component.guardarDote();
 
             expect(component.errorDelMarco).toBe('Ya existe una dote con ese nombre.');
-            expect(component.errorDe('nombre', 'por defecto')).toBe('Ya existe una dote con ese nombre.');
+            expect(component.errores.textoDe('nombre', 'por defecto')).toBe('Ya existe una dote con ese nombre.');
         });
 
         it('su propio nombre no cuenta como repetido', async () => {

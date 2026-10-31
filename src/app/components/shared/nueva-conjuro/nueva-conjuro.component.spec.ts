@@ -437,7 +437,7 @@ describe('NuevaConjuroComponent', () => {
             await component.guardarConjuro();
 
             expect(component.errores.global).toBe('Ya existe un conjuro con ese nombre.');
-            expect(component.errorDe('nombre', 'por defecto')).toBe('Ya existe un conjuro con ese nombre.');
+            expect(component.errores.textoDe('nombre', 'por defecto')).toBe('Ya existe un conjuro con ese nombre.');
         });
     });
 });
