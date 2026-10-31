@@ -52,7 +52,7 @@ import { avisarGuardado, avisarSinPermisos, textoSinPermisos } from '../insercio
 import { PLANTILLA } from 'src/app/services/utils/nombres-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { ErrorDeCampo, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
-import { alternarControl } from '../insercion-marco/filas-repetibles';
+import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import {
     PrerequisiteCatalogContext,
@@ -321,9 +321,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
     }
 
     elegir(campo: keyof PlantillaFormularioValor, id: number): void {
-        const control = this.form.controls[campo];
-        control.setValue(id);
-        control.markAsTouched();
+        elegirEnControl(this.form.controls[campo], id);
     }
 
     alternar(campo: 'oficial' | 'traducido' | 'act_dg' | 'con_dg_lic'): void {

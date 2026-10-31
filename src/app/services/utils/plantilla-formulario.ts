@@ -12,6 +12,7 @@ import { CamposDeFormulario } from 'src/app/components/shared/insercion-marco/er
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
+import { textoOSinEspecificar } from './texto-sin-especificar';
 import { toInt, toNullableText, toText } from './normalizacion';
 
 // El formulario de las plantillas (lienzo «Plantillas: crear y modificar», aprobado el 2026-10-30): los pasos, los
@@ -471,11 +472,6 @@ export function prerrequisitosDesdeFilas(
     return salida;
 }
 
-function textoConRelleno(valor: string): string {
-    const texto = `${valor ?? ''}`.trim();
-    return texto.length > 0 ? texto : TEXTO_SIN_CAMBIO;
-}
-
 /** El cuerpo de `POST /plantillas/add` (y del `PUT` de la modificación, que lleva el mismo). */
 export function construirPlantillaRequest(valor: PlantillaFormularioValor, listas: ListasPlantilla): PlantillaCreateRequest {
     const { con_dg_lic, ...escalares } = valor;
@@ -493,7 +489,7 @@ export function construirPlantillaRequest(valor: PlantillaFormularioValor, lista
         mult_dg_lic: con_dg_lic ? toInt(valor.mult_dg_lic) : 0,
         suma_dg_lic: con_dg_lic ? toInt(valor.suma_dg_lic) : 0,
         id_tipo_criatura_dg_lic: con_dg_lic ? toInt(valor.id_tipo_criatura_dg_lic) : 0,
-        ...Object.fromEntries(TEXTOS_CON_RELLENO.map((campo) => [campo, textoConRelleno(valor[campo])])),
+        ...Object.fromEntries(TEXTOS_CON_RELLENO.map((campo) => [campo, textoOSinEspecificar(valor[campo], TEXTO_SIN_CAMBIO)])),
         ...Object.fromEntries(TEXTOS_OPCIONALES.map((campo) => [campo, toNullableText(valor[campo])])),
     } as PlantillaEscalaresRequest;
     // Los números, enteros (un campo numérico vacío del formulario llega como `null`).

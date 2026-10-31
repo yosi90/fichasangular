@@ -4,7 +4,7 @@ import Swal from 'sweetalert2';
 import { CLASE, IDIOMA } from 'src/app/services/utils/nombres-de-catalogo';
 import { avisarErrorAlGuardar, avisarGuardado, delCatalogo } from './avisos-insercion';
 import { EdicionDeCatalogo } from './edicion-de-catalogo';
-import { alternarControl, quitarFila } from './filas-repetibles';
+import { alternarControl, elegirEnControl, quitarFila } from './filas-repetibles';
 
 describe('EdicionDeCatalogo (el modo «Modificar» común de las inserciones)', () => {
     let modo: 'crear' | 'editar';
@@ -81,6 +81,15 @@ describe('EdicionDeCatalogo (el modo «Modificar» común de las inserciones)', 
         expect((swal.calls.mostRecent().args[0] as any).text).toBe('Si cierras esta pestaña perderás los cambios del idioma.');
     });
 
+    it('el nombre de otra entrada está ocupado; al modificar, el de la propia no', () => {
+        const existentes = [{ Id: 7, Nombre: 'Dracónico' }, { Id: 9, Nombre: 'Élfico' }];
+        expect(edicion.nombreOcupado(existentes, ' dracónico ')).toBeFalse();
+        expect(edicion.nombreOcupado(existentes, 'ELFICO')).toBeTrue();
+        expect(edicion.nombreOcupado(existentes, '')).toBeFalse();
+        modo = 'crear';
+        expect(edicion.nombreOcupado(existentes, 'Draconico')).toBeTrue();
+    });
+
     it('olvidar deja el formulario como recién abierto', () => {
         edicion.cargarSiHaceFalta();
         edicion.olvidar();
@@ -140,6 +149,13 @@ describe('Filas repetibles', () => {
         const control = new FormControl(true);
         alternarControl(control);
         expect(control.value).toBeFalse();
+        expect(control.dirty && control.touched).toBeTrue();
+    });
+
+    it('elegir en el buscador de catálogos pone el id y marca el control como tocado', () => {
+        const control = new FormControl(0);
+        elegirEnControl(control, 12);
+        expect(control.value).toBe(12);
         expect(control.dirty && control.touched).toBeTrue();
     });
 });

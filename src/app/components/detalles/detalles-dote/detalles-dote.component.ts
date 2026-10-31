@@ -3,6 +3,8 @@ import { DatoFicha, HabilidadFicha, datosIncarnumDote, datosVisibles, esTextoCor
 import { Dote, DoteExtrasDeTodoElCatalogo, DoteSalvacionCondicional } from 'src/app/interfaces/dote';
 import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import {
     CondicionPrerrequisito,
     GrupoPrerrequisitos,
@@ -16,7 +18,7 @@ import {
     standalone: false
 })
 export class DetallesDoteComponent {
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
 
     doteData!: Dote;
     contexto?: DoteContexto;
@@ -100,6 +102,13 @@ export class DetallesDoteComponent {
     @Output() doteDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() chakraDetallesId: EventEmitter<number> = new EventEmitter<number>();
     @Output() fusionDetallesId: EventEmitter<number> = new EventEmitter<number>();
+    /** El lápiz «Modificar»: abre la pestaña de modificar la dote. Sin quien lo escuche (la creación, la ficha), no sale. */
+    @Output() modificar: EventEmitter<Dote> = new EventEmitter<Dote>();
+
+    /** Solo con permiso: el de crear dotes, que es el que pide `PUT /dotes/<id>` (`permisos-catalogo.ts`). */
+    get puedeModificar(): boolean {
+        return this.modificar.observed && puedeGestionarCatalogo(this.userSvc, 'dotes');
+    }
 
     abrirDetallesDote(id: number): void {
         if (Number(id) > 0)

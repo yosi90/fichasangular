@@ -1401,6 +1401,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         const detalleIndex = detalles.findIndex((item) => Number(item.Id) === id);
         if (detalleIndex >= 0)
             detalles.splice(detalleIndex, 1, entrada);
+        // El detalle de una dote guarda la dote con su contexto (quién la tiene): se cambia la dote y se deja el contexto.
+        if (tipo === 'dote')
+            this.detallesDoteAbiertos = this.detallesDoteAbiertos
+                .map((ctx) => Number(ctx?.Dote?.Id) === id ? { ...ctx, Dote: entrada as unknown as Dote } : ctx);
 
         const tab = this.ediciones[tipo].find((item) => item.id === id);
         if (tab)
@@ -1422,6 +1426,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 return this.detallesPlantillaAbiertos;
             case 'raza':
                 return this.detallesRazaAbiertos;
+            case 'conjuro':
+                return this.detallesConjuroAbiertos;
+            case 'dote':
+                // Van con su contexto (`DoteContextual`): los refresca `onEdicionGuardada`.
+                return [];
         }
     }
 

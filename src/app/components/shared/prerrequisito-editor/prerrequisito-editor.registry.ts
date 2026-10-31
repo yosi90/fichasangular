@@ -92,7 +92,8 @@ function buildCatalogPayload(
         return withOpcional(base, {
             Id_dote_prerrequisito: id,
             Dote_prerrequisito: context.getCatalogName(tipo, id),
-            Repetido: Math.max(1, toInt(row.repetido, 1)),
+            // 0 y 1 son «una vez»; el 0 de los datos cargados por script se devuelve tal cual (una fila nueva lleva 1).
+            Repetido: Math.max(0, toInt(row.repetido, 1)),
             Id_extra: row.id_extra
         });
     if (tipo === 'escuela_nivel')

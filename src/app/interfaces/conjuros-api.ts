@@ -1,3 +1,5 @@
+import { Conjuro } from './conjuro';
+
 export type ConjuroVariante = 'base' | 'psionico';
 
 export interface ConjuroCreateCore {
@@ -47,12 +49,33 @@ export interface ConjuroCreateRequest {
     [key: string]: any;
 }
 
+/** La respuesta del alta (201) y de la edición (200): `conjuro` es la entrada ya guardada, como su `GET`. */
 export interface ConjuroCreateApiResponse {
     message: string;
     idConjuro: number;
+    conjuro: unknown;
 }
 
 export interface ConjuroCreateResponse {
     message: string;
     idConjuro: number;
+    conjuro: ConjuroEditable;
+}
+
+/**
+ * `GET /conjuros/<id>`: el conjuro con los ids del alta que el detalle no lleva, para abrirlo en «Modificar»
+ * (`ConjuroEditable` del contrato, desde el 2026-10-31).
+ */
+export interface ConjuroEditable extends Conjuro {
+    Id_manual: number;
+    Pagina: number;
+    Id_tiempo_lanzamiento: number;
+    Id_alcance: number;
+    /** 0 si no tiene. */
+    Id_subdisciplina: number;
+    /**
+     * Los textos que la API da `null` (un texto de relleno de la base, como «no especifica»): el formulario los devuelve
+     * como «No especifica», y no como un texto vacío, para que guardar sin cambios los deje igual.
+     */
+    Textos_sin_especificar: string[];
 }

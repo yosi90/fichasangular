@@ -23,6 +23,10 @@ import { ManualService } from 'src/app/services/manual.service';
 import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-conjuros.service';
 import { UserService } from 'src/app/services/user.service';
 import { NuevaConjuroComponent } from './nueva-conjuro.component';
+import { normalizeConjuroEditableApi } from 'src/app/services/utils/conjuro-mapper';
+import { ProfileApiError } from 'src/app/interfaces/user-account';
+import { IDA_Y_VUELTA } from 'src/testing/ida-y-vuelta-dotes-conjuros';
+import { cuerpoComparable } from 'src/testing/cuerpo-de-catalogo';
 
 describe('NuevaConjuroComponent', () => {
     let component: NuevaConjuroComponent;
@@ -164,11 +168,17 @@ describe('NuevaConjuroComponent', () => {
         expect(component.form.controls.id_manual.value).toBe(3);
     });
 
-    it('trackByManualId no depende del contexto this de Angular', () => {
-        const trackBy = component.trackByManualId;
+    it('el manual sale del buscador común de catálogos, con sus opciones', () => {
+        expect(component.manualesOpciones.map((opcion) => opcion.id)).toEqual([3, 1, 2]);
+        component.seleccionarManual(1);
+        expect(component.form.controls.id_manual.value).toBe(1);
+    });
 
-        expect(trackBy(0, { Id: 12, Nombre: 'Manual base' } as any)).toBe(12);
-        expect(trackBy(1, { Id: 'x', Nombre: 'Manual invalido' } as any)).toBe(0);
+    it('los costes del componente material y de PX van en el cuerpo solo si tienen un número', () => {
+        component.form.patchValue({ coste_material: 100.5, coste_px: null });
+        const conCoste = (component as any).buildPayload();
+        expect(conCoste.conjuro.coste_material).toBe(100.5);
+        expect('coste_px' in conCoste.conjuro).toBeFalse();
     });
 
     it('permite dejar vacío el tiro de salvación', () => {
@@ -361,11 +371,73 @@ describe('NuevaConjuroComponent', () => {
         userSvc.can = () => false;
         component['recalcularPermisos']();
 
-        await component.crearConjuro();
+        await component.guardarConjuro();
 
         expect(Swal.fire).toHaveBeenCalledWith(jasmine.objectContaining({
             title: 'Permisos insuficientes',
             text: 'No dispones de los permisos necesarios para realizar esta acción. Puedes solicitar convertirte en master desde tu perfil.',
         }));
+    });
+
+    describe('«Modificar conjuro»', () => {
+        // TestBed inyecta una copia del doble (`useValue`): los espías van en la instancia inyectada.
+        const servicio = () => TestBed.inject(ConjuroService) as any;
+
+        async function abrir(get: any): Promise<void> {
+            servicio().getConjuroFresco = jasmine.createSpy('getConjuroFresco').and.returnValue(of(normalizeConjuroEditableApi(get)));
+            // La subdisciplina del conjuro, en el catálogo de prueba (el de verdad las trae todas).
+            if (Number(get.Id_subdisciplina) > 0)
+                component.subdisciplinasCatalogo = [...component.subdisciplinasCatalogo,
+                    { Id: Number(get.Id_subdisciplina), Nombre: 'Subdisciplina', id_disciplina: Number(get.Disciplina?.Id) } as any];
+            component.modo = 'editar';
+            component.idConjuro = Number(get.Id);
+            component.ngOnChanges({ idConjuro: {} as any });
+            await fixture.whenStable();
+        }
+
+        IDA_Y_VUELTA.conjuros.forEach(({ id, nombre, get, cuerpo }) => {
+            it(`guardar sin cambios «${nombre}» (${id}) manda el cuerpo que devuelve el mismo GET`, async () => {
+                await abrir(get);
+
+                expect(component.edicion.hayCambios).toBeFalse();
+                expect(cuerpoComparable((component as any).buildPayload(), cuerpo)).toEqual(cuerpoComparable(cuerpo, cuerpo));
+            });
+        });
+
+        it('enseña los componentes del conjuro aunque no sean de la lista de su variante (la Esencia de Incarnum)', async () => {
+            await abrir({ ...IDA_Y_VUELTA.conjuros[0].get, Componentes: [{ Id_componente: '17', Componente: 'Esencia' }] });
+            (component as any).componentesCatalogo = [...(component as any).componentesCatalogo, { Id: 17, Nombre: 'Esencia' }];
+            expect(component.componentesCatalogoActual.some((item) => item.Id === 17)).toBeTrue();
+            expect((component as any).buildPayload().componentes).toEqual([17]);
+        });
+
+        it('guarda con PUT, avisa con el aviso común y devuelve el conjuro de la API', async () => {
+            const { get } = IDA_Y_VUELTA.conjuros[0];
+            servicio().actualizarConjuro = jasmine.createSpy('actualizarConjuro')
+                .and.resolveTo({ message: 'Conjuro actualizado exitosamente', idConjuro: Number(get.Id), conjuro: normalizeConjuroEditableApi(get) });
+            await abrir(get);
+            const actualizado = jasmine.createSpy('conjuroActualizado');
+            component.conjuroActualizado.subscribe(actualizado);
+
+            await component.guardarConjuro();
+
+            expect(servicio().actualizarConjuro).toHaveBeenCalledWith(Number(get.Id), jasmine.any(Object));
+            expect((Swal.fire as jasmine.Spy).calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({
+                icon: 'success', title: 'Conjuro actualizado', text: 'Conjuro actualizado exitosamente',
+            }));
+            expect(actualizado).toHaveBeenCalledWith(jasmine.objectContaining({ Id: Number(get.Id) }));
+        });
+
+        it('el error de la API va al marco y, con su campo, al campo', async () => {
+            const { get } = IDA_Y_VUELTA.conjuros[0];
+            servicio().actualizarConjuro = jasmine.createSpy('actualizarConjuro').and.rejectWith(
+                new ProfileApiError('Ya existe un conjuro con ese nombre.', 'nombre_duplicado', 409, 'conjuro.nombre'));
+            await abrir(get);
+
+            await component.guardarConjuro();
+
+            expect(component.errores.global).toBe('Ya existe un conjuro con ese nombre.');
+            expect(component.errores.textoDe('nombre', 'por defecto')).toBe('Ya existe un conjuro con ese nombre.');
+        });
     });
 });

@@ -1,10 +1,12 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { TipoRol, tipoRolDeConjuro } from 'src/app/services/utils/iconos-rol';
 import { DatoFicha, EtiquetaFicha, unirTipo } from 'src/app/components/detalles/ficha';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Id_nombre } from 'src/app/interfaces/genericas';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import { tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
@@ -14,7 +16,7 @@ import { tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/te
     standalone: false
 })
 export class DetallesConjuroComponent {
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
 
     @Input()
     set sortilega(value: {ap: AptitudSortilega, fuente: string}) {
@@ -33,6 +35,17 @@ export class DetallesConjuroComponent {
     }
     get conjuro(): Conjuro {
         return this.conjuroData;
+    }
+
+    /**
+     * El lápiz «Modificar»: abre la pestaña de modificar el conjuro. Sin quien lo escuche (la sortílega, la ficha), no
+     * sale.
+     */
+    @Output() modificar: EventEmitter<Conjuro> = new EventEmitter<Conjuro>();
+
+    /** Solo con permiso: el de crear conjuros, que es el que pide `PUT /conjuros/<id>` (`permisos-catalogo.ts`). */
+    get puedeModificar(): boolean {
+        return !this.ap && this.modificar.observed && puedeGestionarCatalogo(this.userSvc, 'conjuros');
     }
 
     private conjuroData!: Conjuro;

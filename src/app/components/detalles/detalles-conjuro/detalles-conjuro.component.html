@@ -6,6 +6,10 @@
         [oficial]="conjuro.Oficial"
         [etiquetas]="etiquetas"
         (abrirManual)="abrirDetalleManual()">
+        <button mat-stroked-button type="button" *ngIf="puedeModificar" (click)="modificar.emit(conjuro)">
+            <mat-icon>edit</mat-icon>
+            Modificar
+        </button>
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" [titulo]="conjuro.Psionico ? 'Datos del poder' : 'Datos del conjuro'"></app-ficha-datos>

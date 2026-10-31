@@ -15,3 +15,10 @@ export function alternarControl(control: AbstractControl): void {
     control.markAsDirty();
     control.markAsTouched();
 }
+
+/** Pone en un control el id elegido en `<app-catalogo-buscador>` (el manual, un tipo…) y lo marca como tocado. */
+export function elegirEnControl(control: AbstractControl, id: number): void {
+    control.setValue(id);
+    control.markAsDirty();
+    control.markAsTouched();
+}

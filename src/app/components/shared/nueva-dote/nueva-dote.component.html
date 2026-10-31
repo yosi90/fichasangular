@@ -1,13 +1,16 @@
 <div class="nueva-dote-shell">
     <form class="nueva-dote-form" [formGroup]="form" (ngSubmit)="onAccionPrincipal()">
         <app-insercion-marco
+            [modo]="modo"
             tipo="Dote"
             iconoTipo="dote"
             [nombre]="form.controls.nombre.value"
             [oficial]="form.controls.oficial.value"
-            [avisoPermisos]="!puedeCrear ? mensajePermisosInsuficientes : ''"
-            [error]="mensajeErrorFormulario"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeCrear)"
+            [error]="errorDelMarco"
             [guardando]="guardando"
+            [accionDesactivada]="edicion.cargando"
             [textoAccion]="textoAccionPrincipal"
             [textoGuardando]="textoAccionPrincipal">
             <section class="panel-card">
@@ -17,22 +20,21 @@
                     <mat-form-field appearance="fill">
                         <mat-label>Nombre</mat-label>
                         <input matInput formControlName="nombre" maxlength="100" />
-                        <mat-error *ngIf="form.controls.nombre.invalid">Nombre obligatorio (mínimo 3 caracteres).</mat-error>
+                        <mat-error *ngIf="form.controls.nombre.invalid">{{errores.textoDe('nombre', 'Nombre obligatorio (mínimo 3 caracteres).')}}</mat-error>
                     </mat-form-field>
 
-                    <mat-form-field appearance="fill">
-                        <mat-label>Manual</mat-label>
-                        <input matInput [value]="manualBusqueda" (input)="actualizarManualBusqueda($any($event.target).value)" [matAutocomplete]="manualAuto" />
-                        <mat-autocomplete #manualAuto="matAutocomplete" (optionSelected)="seleccionarManual($event.option.value)">
-                            <mat-option *ngFor="let manual of getManualesFiltrados(); trackBy: trackByManualId" [value]="manual.Id">{{manual.Nombre}}</mat-option>
-                        </mat-autocomplete>
-                        <mat-error *ngIf="form.controls.id_manual.invalid">Manual obligatorio.</mat-error>
-                    </mat-form-field>
+                    <app-catalogo-buscador
+                        etiqueta="Manual"
+                        [opciones]="manualesOpciones"
+                        [valor]="form.controls.id_manual.value"
+                        [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errores.textoDe('id_manual', 'Manual obligatorio.') : null"
+                        (elegir)="seleccionarManual($event)">
+                    </app-catalogo-buscador>
 
                     <mat-form-field appearance="fill">
                         <mat-label>Página</mat-label>
                         <input matInput type="number" formControlName="pagina" />
-                        <mat-error *ngIf="form.controls.pagina.invalid">Página obligatoria (>= 0).</mat-error>
+                        <mat-error *ngIf="form.controls.pagina.invalid">{{errores.textoDe('pagina', 'Página obligatoria (>= 0).')}}</mat-error>
                     </mat-form-field>
 
                     <mat-form-field appearance="fill">
@@ -67,13 +69,13 @@
                     <mat-form-field appearance="fill" class="span-2">
                         <mat-label>Descripción</mat-label>
                         <textarea matInput rows="4" formControlName="descripcion"></textarea>
-                        <mat-error *ngIf="form.controls.descripcion.invalid">Descripción obligatoria (mínimo 10 caracteres).</mat-error>
+                        <mat-error *ngIf="form.controls.descripcion.invalid">{{errores.textoDe('descripcion', 'Descripción obligatoria (mínimo 10 caracteres).')}}</mat-error>
                     </mat-form-field>
 
                     <mat-form-field appearance="fill" class="span-2">
                         <mat-label>Beneficio</mat-label>
                         <textarea matInput rows="4" formControlName="beneficio"></textarea>
-                        <mat-error *ngIf="form.controls.beneficio.invalid">Beneficio obligatorio.</mat-error>
+                        <mat-error *ngIf="form.controls.beneficio.invalid">{{errores.textoDe('beneficio', 'Beneficio obligatorio.')}}</mat-error>
                     </mat-form-field>
 
                     <mat-form-field appearance="fill" class="span-2">
@@ -231,7 +233,7 @@
                         <div class="skill-grid row" *ngFor="let row of habilidadesOtorgadasEditor; let i = index">
                             <mat-form-field appearance="fill" class="skill-habilidad" [class.skill-habilidad--expand]="!habilidadPermiteExtra(row.id_habilidad)">
                                 <mat-label>Habilidad</mat-label>
-                                <mat-select [value]="row.id_habilidad" (selectionChange)="onHabilidadOtorgadaChange(i, { id_habilidad: $event.value, id_extra: 0 })">
+                                <mat-select [value]="row.id_habilidad" (selectionChange)="onHabilidadOtorgadaChange(i, { id_habilidad: $event.value, id_extra: sinExtraHabilidad })">
                                     <mat-option [value]="0">Sin habilidad</mat-option>
                                     <mat-option *ngFor="let habilidad of habilidadesOtorgadasCatalogo" [value]="habilidad.Id_habilidad">
                                         {{habilidad.Nombre}}{{esHabilidadCustom(habilidad.Id_habilidad) ? ' (custom)' : ''}}
@@ -244,7 +246,7 @@
                                 <mat-select
                                     [value]="row.id_extra"
                                     (selectionChange)="onHabilidadOtorgadaChange(i, { id_extra: $event.value })">
-                                    <mat-option [value]="0">Sin extra</mat-option>
+                                    <mat-option [value]="sinExtraHabilidad">Sin extra</mat-option>
                                     <mat-option *ngFor="let extra of getExtrasDeHabilidad(row.id_habilidad)" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
                                 </mat-select>
                             </mat-form-field>
@@ -279,6 +281,16 @@
                 <div class="mod-preview" *ngIf="hayPrerrequisitosMarcados">
                     <mat-chip *ngFor="let tipo of prerrequisitosSeleccionados" class="mod-chip">
                         {{getEtiquetaPrerrequisito(tipo)}}
+                    </mat-chip>
+                </div>
+
+                <div class="prerrequisitos-conservados" *ngIf="prerrequisitosConservados.length > 0">
+                    <span class="prerrequisitos-conservados__nota">Se guardan tal cual:</span>
+                    <mat-chip *ngFor="let conservado of prerrequisitosConservados; let i = index" class="mod-chip">
+                        {{conservado.frase}}
+                        <button matChipRemove type="button" [attr.aria-label]="'Quitar ' + conservado.frase" (click)="quitarPrerrequisitoConservado(i)">
+                            <mat-icon>cancel</mat-icon>
+                        </button>
                     </mat-chip>
                 </div>
 

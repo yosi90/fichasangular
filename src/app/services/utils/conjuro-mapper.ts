@@ -1,4 +1,5 @@
 import { Conjuro } from 'src/app/interfaces/conjuro';
+import { ConjuroEditable } from 'src/app/interfaces/conjuros-api';
 import { Subdisciplinas } from 'src/app/interfaces/disciplina-conjuros';
 import { toArray, toBoolean, toInt, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 
@@ -183,6 +184,27 @@ export function normalizeConjuroApi(raw: any): Conjuro {
         Coste_material: toNumberOrNull(raw?.Coste_material ?? raw?.cmat),
         Coste_px: toNumberOrNull(raw?.Coste_px ?? raw?.cpx),
         Oficial: toBoolean(raw?.Oficial ?? raw?.o),
+    };
+}
+
+/**
+ * Los textos del conjuro que la API da `null` si son de relleno («no especifica»; `Textos_sin_especificar`). En el
+ * formulario, cada uno es el control con su nombre en minúscula.
+ */
+export const TEXTOS_CONJURO_CON_RELLENO = [
+    'Descripcion', 'Objetivo', 'Efecto', 'Area', 'Duracion', 'Tipo_salvacion', 'Descripcion_componentes', 'Descripcion_aumentos',
+] as const;
+
+/** `GET /conjuros/<id>` (y la entrada que devuelven el alta y la edición): el conjuro y los ids del alta. */
+export function normalizeConjuroEditableApi(raw: any): ConjuroEditable {
+    return {
+        ...normalizeConjuroApi(raw),
+        Id_manual: toInt(raw?.Id_manual),
+        Pagina: toInt(raw?.Pagina),
+        Id_tiempo_lanzamiento: toInt(raw?.Id_tiempo_lanzamiento),
+        Id_alcance: toInt(raw?.Id_alcance),
+        Id_subdisciplina: toInt(raw?.Id_subdisciplina),
+        Textos_sin_especificar: TEXTOS_CONJURO_CON_RELLENO.filter((clave) => raw?.[clave] === null),
     };
 }
 

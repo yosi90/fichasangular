@@ -3,22 +3,26 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 import { DetallesConjuroComponent } from './detalles-conjuro.component';
 import { lectorFicha } from 'src/testing/ficha-detalle';
 
 describe('DetallesConjuroComponent', () => {
     let component: DetallesConjuroComponent;
     let fixture: ComponentFixture<DetallesConjuroComponent>;
+    let usuario: { can: jasmine.Spy };
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
     const { texto, titulos, datos, tipoCabecera } = lectorFicha(elemento);
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
+        usuario = { can: jasmine.createSpy('can').and.returnValue(false) };
         await TestBed.configureTestingModule({
             declarations: [DetallesConjuroComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
             providers: [
                 { provide: ManualDetalleNavigationService, useValue: manualNav },
+                { provide: UserService, useValue: usuario },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -234,5 +238,21 @@ describe('DetallesConjuroComponent', () => {
         fixture.detectChanges();
         (elemento().querySelector('button.ficha-cabecera__manual') as HTMLButtonElement).click();
         expect(manualNav.abrirDetalleManual).toHaveBeenCalledWith('Compendio de conjuros, página: 79');
+    });
+
+    it('enseña el lápiz «Modificar» solo con permiso de conjuros, si alguien lo escucha y no en una sortílega', () => {
+        const abiertos: number[] = [];
+        component.modificar.subscribe((conjuro) => abiertos.push(conjuro.Id));
+        component.conjuro = desvioDeRayos();
+        fixture.detectChanges();
+        expect(texto()).not.toContain('Modificar');
+        expect(usuario.can).toHaveBeenCalledWith('conjuros', 'create');
+
+        usuario.can.and.returnValue(true);
+        fixture.detectChanges();
+        const lapiz = Array.from(elemento().querySelectorAll('button')).find((boton) => boton.textContent?.includes('Modificar'));
+        expect(lapiz).toBeTruthy();
+        lapiz!.click();
+        expect(abiertos).toEqual([component.conjuro.Id]);
     });
 });

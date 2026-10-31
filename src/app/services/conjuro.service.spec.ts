@@ -222,17 +222,15 @@ describe('ConjuroService', () => {
 
     it('devuelve respuesta normalizada cuando el POST es exitoso', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['post', 'get']);
-        httpMock.post.and.returnValue(of({ message: 'Conjuro creado', idConjuro: 9 }));
+        httpMock.post.and.returnValue(of({ message: 'Conjuro creado', idConjuro: 9, conjuro: { Id: 9, Nombre: 'Conjuro nuevo', Id_manual: 2, Pagina: 30 } }));
         httpMock.get.and.returnValue(of([]));
         const service = new ConjuroService(authMock, {} as any, httpMock, firebaseContextMock);
 
         const response = await service.crearConjuro(crearPayload());
 
         expect(response.idConjuro).toBe(9);
-        expect(response).toEqual({
-            message: 'Conjuro creado',
-            idConjuro: 9,
-        });
+        expect(response.message).toBe('Conjuro creado');
+        expect(response.conjuro).toEqual(jasmine.objectContaining({ Id: 9, Nombre: 'Conjuro nuevo', Id_manual: 2, Pagina: 30 }));
         expect(httpMock.post.calls.mostRecent().args[1]).not.toEqual(jasmine.objectContaining({ uid: jasmine.anything() }));
         expect(httpMock.post).toHaveBeenCalledWith(
             jasmine.any(String),
@@ -338,5 +336,22 @@ describe('ConjuroService', () => {
 
         expect(httpMock.get).not.toHaveBeenCalled();
         expect(emitted.map((item) => item.Nombre)).toEqual(['Luz cacheada', 'Escudo cacheado']);
+    });
+
+    it('«Modificar»: el conjuro fresco por HTTP con los ids del alta y el PUT con el mismo cuerpo', async () => {
+        const httpMock = jasmine.createSpyObj('HttpClient', ['put', 'get']);
+        const detalle = { Id: '467', Nombre: 'Bola de fuego', Objetivo: null, Area: 'Esfera', Id_manual: 54, Pagina: 206, Id_tiempo_lanzamiento: 1, Id_alcance: 3, Id_subdisciplina: 0 };
+        httpMock.get.and.returnValue(of(detalle));
+        httpMock.put.and.returnValue(of({ message: 'Conjuro actualizado exitosamente', idConjuro: 467, conjuro: detalle }));
+        const service = new ConjuroService(authMock, {} as any, httpMock, firebaseContextMock);
+
+        const fresco = await firstValueFrom(service.getConjuroFresco(467));
+        const respuesta = await service.actualizarConjuro(467, crearPayload());
+
+        expect(httpMock.get.calls.mostRecent().args[0]).toMatch(/conjuros\/467$/);
+        expect(fresco).toEqual(jasmine.objectContaining({ Id: 467, Id_manual: 54, Pagina: 206, Id_tiempo_lanzamiento: 1, Id_alcance: 3 }));
+        expect(fresco.Textos_sin_especificar).toEqual(['Objetivo']);
+        expect(httpMock.put.calls.mostRecent().args[0]).toMatch(/conjuros\/467$/);
+        expect(respuesta.conjuro.Id).toBe(467);
     });
 });
