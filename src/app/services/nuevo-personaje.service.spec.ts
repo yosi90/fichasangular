@@ -7663,10 +7663,10 @@ describe('NuevoPersonajeService (vida final)', () => {
         };
     }
 
-    it('calcula vida con DG racial, clases y bonos de dote Pg_a/Pg_a_n: el primer DG fue racial y ningún nivel de clase va al máximo', () => {
+    it('calcula vida con DG racial, clases y bonos de dote Pg_a/Pg_a_n: el primer DG racial va al máximo y ningún nivel de clase (GDM, pág. 172)', () => {
         const svc = new NuevoPersonajeService();
         const tipo = crearTipoVida(false);
-        const raza = crearRazaVida(tipo, 1);
+        const raza = crearRazaVida(tipo, 2);
         const clase = crearClaseBase({
             Id: 10,
             Nombre: 'Guerrero',
@@ -7685,10 +7685,11 @@ describe('NuevoPersonajeService (vida final)', () => {
 
         const resultado = svc.calcularVidaFinalAleatoria();
 
-        // DG racial d8: 5 + 2 + 1; guerrero d10: 7 + 2 + 1 y 4 + 2 + 1; Dureza +3.
+        // DG raciales d8: el primero al máximo, 8 + 2 + 1, y 5 + 2 + 1; guerrero d10: 7 + 2 + 1 y 4 + 2 + 1; Dureza +3.
         expect(randomSpy).toHaveBeenCalledTimes(3);
-        expect(resultado.total).toBe(8 + 10 + 7 + 3);
-        expect(resultado.maximo).toBe(11 + 13 + 13 + 3);
+        expect(resultado.total).toBe(11 + 8 + 10 + 7 + 3);
+        expect(resultado.maximo).toBe(11 + 11 + 13 + 13 + 3);
+        expect(resultado.detalle.tiradasAleatorias).toBe(3);
         expect(resultado.detalle.bonoPlanoDotes).toBe(3);
         expect(resultado.detalle.bonoPorDadoClaseDotes).toBe(1);
     });
@@ -7829,6 +7830,40 @@ describe('NuevoPersonajeService (vida final)', () => {
 
         expect(resultado.total).toBe(1);
         expect(resultado.maximo).toBe(1);
+    });
+
+    it('ogro (4 DG d8, Con 15 +2) sin clase: el primer DG racial va al máximo, 8 + 3d8 + Con × 4 (GDM, pág. 172)', () => {
+        const svc = new NuevoPersonajeService();
+        const raza = crearRazaVida(crearTipoVida(false), 4);
+        const randomSpy = spyOn<any>(svc, 'randomInt').and.returnValues(4, 5, 6);
+        svc.seleccionarRaza(raza);
+        svc.PersonajeCreacion.ModConstitucion = 2;
+        svc.PersonajeCreacion.desgloseClases = [];
+
+        const resultado = svc.calcularVidaFinalAleatoria();
+
+        expect(randomSpy.calls.allArgs()).toEqual([[1, 8], [1, 8], [1, 8]]);
+        expect(resultado.total).toBe(8 + 4 + 5 + 6 + 2 * 4);
+        expect(resultado.maximo).toBe(8 * 4 + 2 * 4);
+        expect(resultado.detalle.dgsRaciales).toBe(4);
+    });
+
+    it('una raza con 1 DG racial lo cambia por el primer nivel de clase: guerrero 1, 10 PG, sin el DG racial (GDM, pág. 172)', () => {
+        const svc = new NuevoPersonajeService();
+        const raza = crearRazaVida(crearTipoVida(false), 1);
+        svc.setCatalogoClases([crearClaseBase({ Id: 10, Nombre: 'Guerrero', Tipo_dado: { Id: 4, Nombre: 'd10' } })]);
+        const randomSpy = spyOn<any>(svc, 'randomInt').and.returnValue(3);
+        svc.seleccionarRaza(raza);
+        svc.PersonajeCreacion.ModConstitucion = 0;
+        svc.PersonajeCreacion.desgloseClases = [{ Id: 10, Nombre: 'Guerrero', Nivel: 1 } as any];
+
+        const resultado = svc.calcularVidaFinalAleatoria();
+
+        expect(randomSpy).not.toHaveBeenCalled();
+        expect(resultado.total).toBe(10);
+        expect(resultado.maximo).toBe(10);
+        expect(resultado.detalle.dgsRaciales).toBe(0);
+        expect(resultado.detalle.flags.dgsRacialesExtra).toBeFalse();
     });
 });
 

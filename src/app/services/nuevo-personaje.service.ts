@@ -77,7 +77,7 @@ import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './
 import { AptitudDelPersonaje, evaluarActitudEspecial, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
 import { OrigenTamano, TamanoEfectivo, tamanoEfectivo, tamanoQueCuenta, tamanoTrasPasos } from './utils/tamano-efectivo';
 import { ajusteDePlantillas, dgsDePlantilla, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
-import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
+import { calcularPuntosGolpe, carasDado, dadoTrasPasos, dgsRacialesQueCuentan, GrupoDadosGolpe } from './utils/puntos-golpe';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
 import { bonoTamano, bonosSinergia } from './utils/habilidades-bonos';
 import { textoAtaqueBase } from './utils/ataque-base';
@@ -10010,14 +10010,15 @@ export class NuevoPersonajeService {
 
     /**
      * Los PG del personaje (`services/utils/puntos-golpe.ts`, Manual del jugador cap. 3): cada DG, lo que sale en su dado
-     * + Constitución (mínimo 1 por DG); el máximo solo en el primer DG del personaje si es de clase; los DG de plantilla
-     * también suman; y los bonos de las dotes (`Modificadores.Pg_a_n` por DG, todos los DG, y `Modificadores.Pg_a`).
+     * + Constitución (mínimo 1 por DG); el máximo solo en el primer DG del personaje, racial o de clase (Guía del DM,
+     * pág. 172; con 1 DG racial o menos, el primer nivel de clase ocupa su lugar); los DG de plantilla también suman; y
+     * los bonos de las dotes (`Modificadores.Pg_a_n` por DG, todos los DG, y `Modificadores.Pg_a`).
      */
     calcularVidaFinalAleatoria(): ResultadoCalculoVidaFinal {
         const raza = this.razaSeleccionada;
         const plantillas = this.estadoFlujo.plantillas.seleccionadas ?? [];
         const partes = this.getPartesNivelPersonaje(plantillas);
-        const dgsRaciales = Math.max(0, toInt(partes.dgsRaza));
+        const dgsRaciales = dgsRacialesQueCuentan(partes.dgsRaza, partes.nivelesClase);
         const bonoDotes = this.resolverBonosPgsDesdeDotes();
         const reglaConstitucion = this.resolverModConstitucionParaVida();
 
