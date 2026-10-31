@@ -12,7 +12,10 @@ import { esPnj, TipoPersonaje, textoVd } from './tipo-personaje';
 export const MOTIVO_EDAD_SOLO_PNJ = 'El manual no da ajuste de nivel a esta edad; solo como PNJ.';
 
 /** El texto del contrato para un PJ sin niveles de clase que no puede quedarse así (`pj_sin_clase`). */
-export const MOTIVO_PJ_SIN_CLASE = 'Un PJ necesita al menos un nivel de clase; sin clases solo puede ser un PNJ o una raza que se juega por edades.';
+/** Un PJ cuya raza da al menos estos DG raciales se puede crear sin clase (el centauro o el ogro; `pj_sin_clase` del contrato). */
+export const DGS_RACIALES_PJ_SIN_CLASE = 4;
+
+export const MOTIVO_PJ_SIN_CLASE = `Un PJ necesita al menos un nivel de clase; sin clases solo puede ser un PNJ, una raza que se juega por edades o una raza con ${DGS_RACIALES_PJ_SIN_CLASE} DG raciales o más.`;
 
 export interface ContextoEdad {
     tipo: TipoPersonaje;
@@ -80,11 +83,13 @@ export function leerCategoriaEdadListado(raw: any): string | null {
 
 /**
  * Si un personaje puede quedarse sin niveles de clase (decisión del propietario del 2026-10-31; `pj_sin_clase` en
- * `docs/publica/endpoints/personajes.md`): un PNJ siempre, sea cual sea su raza; un PJ solo si su raza se juega por edades
- * y tiene DG raciales a su edad (el dragón del *Draconomicón*). Sin clases, todo sale de los DG raciales (0 si no tiene).
+ * `docs/publica/endpoints/personajes.md`): un PNJ siempre, sea cual sea su raza; un PJ, si su raza se juega por edades y
+ * tiene DG raciales a su edad (el dragón del *Draconomicón*) o si su raza da `DGS_RACIALES_PJ_SIN_CLASE` DG raciales o más.
+ * Sin clases, todo sale de los DG raciales (0 si no tiene).
  */
 export function puedeQuedarseSinClases(datos: { tipo: TipoPersonaje | null | undefined; porEdades: boolean; dgsRaciales: number; }): boolean {
-    return esPnj(datos.tipo) || (datos.porEdades && Number(datos.dgsRaciales) > 0);
+    const dgs = Number(datos.dgsRaciales) || 0;
+    return esPnj(datos.tipo) || (datos.porEdades ? dgs > 0 : dgs >= DGS_RACIALES_PJ_SIN_CLASE);
 }
 
 /** «Dragón rojo (joven)»: la raza con su edad, para el botón de elegirla y la cabecera de la creación. */

@@ -64,12 +64,13 @@ describe('razas-por-edades', () => {
         expect(opcionesEdad(raza, { tipo: 'pnj' }).some((c) => c.saltable)).toBeFalse();
     });
 
-    it('sin clases: un PNJ siempre; un PJ solo de una raza por edades con DG raciales a su edad', () => {
+    it('sin clases: un PNJ siempre; un PJ de una raza por edades con DG raciales a su edad o con 4 DG raciales o más', () => {
         expect(puedeQuedarseSinClases({ tipo: 'pnj', porEdades: false, dgsRaciales: 0 })).toBeTrue();
         expect(puedeQuedarseSinClases({ tipo: 'pnj', porEdades: true, dgsRaciales: 27 })).toBeTrue();
         expect(puedeQuedarseSinClases({ tipo: 'pj', porEdades: true, dgsRaciales: 11 })).toBeTrue();
         expect(puedeQuedarseSinClases({ tipo: 'pj', porEdades: true, dgsRaciales: 0 })).toBeFalse();
-        expect(puedeQuedarseSinClases({ tipo: 'pj', porEdades: false, dgsRaciales: 4 })).toBeFalse();
+        expect(puedeQuedarseSinClases({ tipo: 'pj', porEdades: false, dgsRaciales: 4 })).toBeTrue();
+        expect(puedeQuedarseSinClases({ tipo: 'pj', porEdades: false, dgsRaciales: 3 })).toBeFalse();
         expect(puedeQuedarseSinClases({ tipo: null, porEdades: false, dgsRaciales: 2 })).toBeFalse();
         expect(MOTIVO_PJ_SIN_CLASE).toContain('Un PJ necesita al menos un nivel de clase');
     });

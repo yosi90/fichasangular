@@ -5161,9 +5161,11 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.mostrarBotonFinalizarCreacion).toBeTrue();
         expect(component.textoFinalizarCreacion).toBe('Finalizar aquí');
 
-        // Decisión del propietario del 2026-10-31: los 4 DG raciales ya no bastan a un PJ (la API responde `pj_sin_clase`).
+        // Un PJ de una raza con 4 DG raciales o más (el centauro) puede terminar sin clases; con 3, no.
         component.Personaje.desgloseClases = [];
         component.Personaje.Raza.Dgs_adicionales.Cantidad = 4;
+        expect(component.mostrarBotonFinalizarCreacion).toBeTrue();
+        component.Personaje.Raza.Dgs_adicionales.Cantidad = 3;
         expect(component.mostrarBotonFinalizarCreacion).toBeFalse();
 
         component.Personaje.tipo = 'pnj';
@@ -6533,7 +6535,7 @@ describe('NuevoPersonajeComponent', () => {
             component.seleccionarRaza(crearRazaMock());
             component.Personaje.Nombre = 'Aldric';
             component.Personaje.desgloseClases = [];
-            const texto = 'Un PJ necesita al menos un nivel de clase; sin clases solo puede ser un PNJ o una raza que se juega por edades.';
+            const texto = 'Un PJ necesita al menos un nivel de clase; sin clases solo puede ser un PNJ, una raza que se juega por edades o una raza con 4 DG raciales o más.';
             personajeSvcMock.crearPersonajeApiDesdeCreacion.and.rejectWith(new ProfileApiError(texto, 'pj_sin_clase', 400, 'colecciones.clases'));
             const swal = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 

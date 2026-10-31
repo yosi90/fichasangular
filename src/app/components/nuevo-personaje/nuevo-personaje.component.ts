@@ -1545,7 +1545,8 @@ export class NuevoPersonajeComponent {
 
     /**
      * Si puede terminar sin niveles de clase (decisión del propietario del 2026-10-31, `puedeQuedarseSinClases`): un PNJ
-     * siempre; un PJ, solo de una raza por edades con DG raciales a su edad. Sin clases, todo sale de sus DG raciales.
+     * siempre; un PJ, de una raza por edades con DG raciales a su edad o de una raza con 4 DG raciales o más. Sin clases,
+     * todo sale de sus DG raciales.
      */
     get puedeTerminarSinClases(): boolean {
         return puedeQuedarseSinClases({
