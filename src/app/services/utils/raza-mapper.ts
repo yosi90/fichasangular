@@ -12,6 +12,7 @@ import { toDoteContextualArray } from "./dote-mapper";
 import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroApi } from './conjuro-mapper';
 import { leerComodin } from './comodin';
+import { normalizeManualApi } from './manual-mapper';
 import { camposEdadRacial } from './racial-mapper';
 
 function toStrictArray<T = any>(value: any): T[] {
@@ -315,7 +316,7 @@ function referenciasEdicionRaza(raw: any): ReferenciasEdicionRaza | null {
         return null;
     const dgs = raw?.Dgs_raciales;
     return {
-        Manual: { Id: toNumber(manual?.Id), Nombre: toText(manual?.Nombre).trim(), Pagina: toNumber(manual?.Pagina) },
+        Manual: normalizeManualApi(manual),
         Clase_predilecta: toRefIdNombre(raw?.Clase_predilecta) ?? { Id: 0, Nombre: '' },
         Dgs_raciales: {
             Cantidad: toNumber(dgs?.Cantidad),

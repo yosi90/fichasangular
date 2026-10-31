@@ -5,6 +5,7 @@ import { AptitudSortilega } from "./aptitud-sortilega";
 import { DoteContextual } from "./dote-contextual";
 import { Id_nombre } from "./genericas";
 import { IdiomaDetalle } from "./idioma";
+import { ManualReferencia } from "./manual";
 import { Maniobrabilidad } from "./maniobrabilidad";
 import { RacialDetalle } from "./racial";
 import { SubtipoRef } from "./subtipo";
@@ -199,7 +200,7 @@ export interface DgsRacialesGuardados {
  * `Clase_predilecta` y `Dgs_raciales`): con ello se rellena «Modificar raza». Solo lo trae la API; la caché no.
  */
 export interface ReferenciasEdicionRaza {
-    Manual: { Id: number; Nombre: string; Pagina: number; };
+    Manual: ManualReferencia;
     Clase_predilecta: Id_nombre;
     Dgs_raciales: DgsRacialesGuardados;
 }
