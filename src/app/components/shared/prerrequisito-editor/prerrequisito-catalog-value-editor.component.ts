@@ -4,6 +4,7 @@ import {
     PrerequisiteEditorDefinition,
     PrerequisiteRowModel,
 } from './prerrequisito-editor.models';
+import { idsUnicosOrdenados } from 'src/app/services/utils/normalizacion';
 
 @Component({
     selector: 'app-prerrequisito-catalog-value-editor',
@@ -27,7 +28,7 @@ export class PrerrequisitoCatalogValueEditorComponent {
     }
 
     elegirExtras(ids: number[]): void {
-        this.patchChange.emit({ extras: Array.from(new Set((ids ?? []).map(Number))).sort((a, b) => a - b) });
+        this.patchChange.emit({ extras: idsUnicosOrdenados(ids, 0) });
     }
 
     readonly salvacionesCatalogo: Array<{ key: 'fortaleza' | 'reflejos' | 'voluntad'; label: string; }> = [

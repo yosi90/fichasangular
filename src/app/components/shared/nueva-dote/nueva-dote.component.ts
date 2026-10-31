@@ -69,7 +69,7 @@ import { EspecialService } from 'src/app/services/especial.service';
 import { AptitudEspecialService } from 'src/app/services/aptitud-especial.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { TamanoService } from 'src/app/services/tamano.service';
-import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { idsUnicosOrdenados, normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -748,7 +748,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         if (idNum < 1)
             return;
         if (checked) {
-            this.selectorExtrasTempIds = this.uniqueSorted([...this.selectorExtrasTempIds, idNum]);
+            this.selectorExtrasTempIds = idsUnicosOrdenados([...this.selectorExtrasTempIds, idNum], 0);
             return;
         }
         this.selectorExtrasTempIds = this.selectorExtrasTempIds.filter((current) => current !== idNum);
@@ -759,11 +759,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
             this.selectorExtrasTempIds = [];
             return;
         }
-        this.selectorExtrasTempIds = this.uniqueSorted(this.itemsSelectorExtrasActual.map((item) => item.id));
+        this.selectorExtrasTempIds = idsUnicosOrdenados(this.itemsSelectorExtrasActual.map((item) => item.id), 0);
     }
 
     seleccionarTodosExtrasTemporales(): void {
-        this.selectorExtrasTempIds = this.uniqueSorted(this.itemsSelectorExtrasActual.map((item) => item.id));
+        this.selectorExtrasTempIds = idsUnicosOrdenados(this.itemsSelectorExtrasActual.map((item) => item.id), 0);
     }
 
     agregarModificador(): void {
@@ -1046,7 +1046,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return (habilidad?.Extras ?? [])
             .map((extra) => ({ id: toInt(extra?.Id_extra, -1), nombre: `${extra?.Extra ?? ''}`.trim() }))
             .filter((extra) => extra.id >= 0 && extra.nombre.length > 0)
-            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
     }
 
     habilidadCatalogoPermiteExtra(idHabilidad: number): boolean {
@@ -1715,7 +1715,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         if (!keyActiva)
             return base;
 
-        const seleccionados = this.uniqueSorted(this.extrasSeleccionados[keyActiva]);
+        const seleccionados = idsUnicosOrdenados(this.extrasSeleccionados[keyActiva], 0);
         base[keyActiva] = keyActiva === 'armaduras'
             ? this.filtrarIdsArmaduraPorSubtipo(seleccionados)
             : seleccionados;
@@ -1775,7 +1775,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
             return;
         this.extrasSeleccionados[key] = key === 'armaduras'
             ? this.filtrarIdsArmaduraPorSubtipo(ids)
-            : this.uniqueSorted(ids);
+            : idsUnicosOrdenados(ids, 0);
     }
 
     private uniqueItemsById(items: ExtraSelectorItem[]): ExtraSelectorItem[] {
@@ -1789,11 +1789,6 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return Array.from(map.entries())
             .map(([id, nombre]) => ({ id, nombre }))
             .sort((a, b) => compararTexto(a.nombre, b.nombre));
-    }
-
-    /** Sin repetir y en orden; el 0 es el comodín «Elegir» de los extras (se elige de todo el catálogo). */
-    private uniqueSorted(ids: number[]): number[] {
-        return Array.from(new Set((ids ?? []).map((id) => toInt(id, -1)).filter((id) => id >= 0))).sort((a, b) => a - b);
     }
 
     private armaduraCoincideConSubtiposActivos(item: ArmaduraSelectorItem | null | undefined): boolean {
@@ -1821,7 +1816,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private filtrarIdsArmaduraPorSubtipo(ids: number[]): number[] {
-        return this.uniqueSorted(ids).filter((id) => this.armaduraSeleccionablePorSubtipo(id));
+        return idsUnicosOrdenados(ids, 0).filter((id) => this.armaduraSeleccionablePorSubtipo(id));
     }
 
     private doteSoportaArmaduras(dote: Dote | null | undefined): boolean {

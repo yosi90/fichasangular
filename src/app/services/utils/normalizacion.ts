@@ -31,6 +31,14 @@ export function toPositiveInt(value: unknown): number | null {
 }
 
 /**
+ * Los ids (enteros, truncados) sin repetidos y de menor a mayor, desde `minimo`: por defecto 1 (los ids); 0 donde el 0
+ * es el comodín «Elegir» de un catálogo (los extras). Lo que no es un número se descarta.
+ */
+export function idsUnicosOrdenados(ids: readonly unknown[] | null | undefined, minimo: number = 1): number[] {
+    return Array.from(new Set((ids ?? []).map((id) => toInt(id, minimo - 1)).filter((id) => id >= minimo))).sort((a, b) => a - b);
+}
+
+/**
  * El entero (truncado) que representa `value`, llevado a `[min, max]`; si no es un número finito, `siNoEsNumero` (sin
  * acotar). Los límites de la política de campaña y del generador de características.
  */

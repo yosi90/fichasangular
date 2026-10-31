@@ -14,7 +14,7 @@ import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
 import { textoOSinEspecificar } from './texto-sin-especificar';
-import { toInt, toNullableText, toText } from './normalizacion';
+import { idsUnicosOrdenados, toInt, toNullableText, toText } from './normalizacion';
 
 // El formulario de las plantillas (lienzo «Plantillas: crear y modificar», aprobado el 2026-10-30): los pasos, los
 // campos con su etiqueta y su paso, el cuerpo de `POST /plantillas/add` (contrato: «Endpoint: GET /plantillas» y
@@ -487,7 +487,7 @@ export function construirPlantillaRequest(valor: PlantillaFormularioValor, lista
     return {
         plantilla,
         prerrequisitos: prerrequisitosPlantillaDesdeFilas(listas.prerrequisitos),
-        subtipos: unicos(listas.subtipos.map((fila) => toInt(fila.id)).filter((id) => id > 0)),
+        subtipos: idsUnicosOrdenados(listas.subtipos.map((fila) => fila.id)),
         dotes: listas.dotes.filter((fila) => fila.id > 0).map((fila) => ({
             id_dote: toInt(fila.id),
             ...(toInt(fila.id_extra) > 0 ? { id_extra: toInt(fila.id_extra) } : {}),
@@ -509,10 +509,6 @@ export function construirPlantillaRequest(valor: PlantillaFormularioValor, lista
         ataquesEspeciales: listas.ataquesEspeciales.filter((fila) => fila.id > 0)
             .map((fila) => ({ id_racial: toInt(fila.id), dg: dgDesde(fila.dg) })),
     };
-}
-
-function unicos(ids: number[]): number[] {
-    return Array.from(new Set(ids)).sort((a, b) => a - b);
 }
 
 /** Una lista del cuerpo sin depender del orden de las filas. */

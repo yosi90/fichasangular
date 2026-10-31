@@ -1,5 +1,5 @@
 import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
-import { toInt } from 'src/app/services/utils/normalizacion';
+import { idsUnicosOrdenados, toInt } from 'src/app/services/utils/normalizacion';
 import { PrerequisiteRowModel, PrerequisiteType } from './prerrequisito-editor.models';
 import { getPrerequisiteDefinition } from './prerrequisito-editor.registry';
 
@@ -76,8 +76,7 @@ function idExtraLeido(item: PrerrequisitoItem): number | null {
 /** Los ids de los extras de una habilidad pedida (`Extras: [{ Id_extra, Extra }]`), sin repetidos y ordenados. */
 function extrasLeidos(item: PrerrequisitoItem): number[] {
     const extras = Array.isArray(item?.['Extras']) ? item['Extras'] as Record<string, unknown>[] : [];
-    const ids = extras.map((extra) => toInt(extra?.['Id_extra'] ?? extra?.['Id'], -1)).filter((id) => id >= 0);
-    return Array.from(new Set(ids)).sort((a, b) => a - b);
+    return idsUnicosOrdenados(extras.map((extra) => extra?.['Id_extra'] ?? extra?.['Id']), 0);
 }
 
 /** Un prerrequisito de la lectura (`item`) de ese tipo como fila del editor compartido, con su `uid` y su `Opcional`. */

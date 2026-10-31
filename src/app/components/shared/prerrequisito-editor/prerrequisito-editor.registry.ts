@@ -7,7 +7,7 @@ import {
     PrerequisiteRowModel,
     PrerequisiteType,
 } from './prerrequisito-editor.models';
-import { toInt } from 'src/app/services/utils/normalizacion';
+import { idsUnicosOrdenados, toInt } from 'src/app/services/utils/normalizacion';
 import { nombreTipoPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 
 function withOpcional(base: Record<string, any>, payload: Record<string, any>): Record<string, any> {
@@ -34,11 +34,6 @@ function createDefaultRow(type: PrerequisiteType): PrerequisiteRowModel {
         salvacion_tipo: 'fortaleza',
         id_destino: 0,
     };
-}
-
-/** Los extras pedidos de una fila de `habilidad`, sin repetidos y ordenados. */
-function extrasDeFila(row: PrerequisiteRowModel): number[] {
-    return Array.from(new Set((row.extras ?? []).map((id) => toInt(id, -1)).filter((id) => id >= 0))).sort((a, b) => a - b);
 }
 
 function buildBase(row: PrerequisiteRowModel): Record<string, any> {
@@ -105,7 +100,7 @@ function buildCatalogPayload(
         return { ...base, Id_escuela: id, Escuela: context.getCatalogName(tipo, id), Nivel: valor };
     if (tipo === 'habilidad') {
         // Los extras pedidos van solo con «requiere extra» (la API rechaza extras sin él y «requiere extra» sin extras).
-        const extras = row.requiere_extra ? extrasDeFila(row) : [];
+        const extras = row.requiere_extra ? idsUnicosOrdenados(row.extras, 0) : [];
         return {
             ...base,
             Id_habilidad: id,
