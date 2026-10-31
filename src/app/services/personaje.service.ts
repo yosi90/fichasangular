@@ -44,7 +44,7 @@ import { normalizarPersonajeIncarnum } from './utils/incarnum-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
-import { leerTipoPersonaje } from './utils/tipo-personaje';
+import { esPnj, leerTipoYNivelPersonaje } from './utils/tipo-personaje';
 import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { getAlineamientoBasicoIdPorNombre } from './utils/alineamiento-contrato';
@@ -305,7 +305,7 @@ export class PersonajeService {
             visible_otros_usuarios: !!personaje?.visible_otros_usuarios,
             oficial: personaje?.Oficial !== false,
             // PJ o PNJ, explícito (decisión del propietario del 2026-10-31); sin elegir, el valor por defecto: PJ.
-            tipo: personaje?.tipo === 'pnj' ? 'pnj' : 'pj',
+            tipo: esPnj(personaje?.tipo) ? 'pnj' : 'pj',
         };
         const idPasoEdad = toInt(personaje?.IdPasoEdad);
         if (idPasoEdad > 0)
@@ -1029,9 +1029,7 @@ export class PersonajeService {
             ownerUid: extractOwnerUid(element),
             ownerDisplayName: extractOwnerDisplayName(element),
             visible_otros_usuarios: toBoolean(element?.visible_otros_usuarios),
-            tipo: leerTipoPersonaje(element?.tipo) ?? 'pj',
-            vd: toNumberOrNull(element?.vd),
-            nep: toNumberOrNull(element?.nivelEfectivo),
+            ...leerTipoYNivelPersonaje(element),
             CategoriaEdad: normalizarCategoriaEdadPersonaje(element?.categoriaEdad),
             IdPasoEdad: toNumberOrNull(element?.categoriaEdad?.idPasoEdad),
             LanzamientoRacial: normalizarLanzamientoRacial(element?.lanzamientoRacial),

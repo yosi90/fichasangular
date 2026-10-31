@@ -132,11 +132,11 @@ import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarn
 import { AlineamientoParaFusiones, CODIGOS_FALLO_FORMACION, FalloFormacion } from 'src/app/services/utils/incarnum';
 import { PasoCreacionId, lineaPersonajeCreacion, pasoCreacionDeLaPestana, textoContinuarCreacion } from './marco';
 import {
-    ContextoEdad, OpcionCategoriaEdad, OpcionPasoEdad, opcionesEdad, pasoEdadInicial, rangoEdadPaso, razaConEdad, razaPorEdades,
-    textoRangoEdad
+    ContextoEdad, nombreEdadEnFrase, OpcionCategoriaEdad, OpcionPasoEdad, opcionesEdad, pasoEdadInicial, rangoEdadPaso, razaConEdad,
+    razaPorEdades, textoRangoEdad
 } from 'src/app/services/utils/razas-por-edades';
 import { esPnj, TipoPersonaje, tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
-import { mensajeDeError } from 'src/app/services/utils/error-api';
+import { codigoDeError, mensajeDeError } from 'src/app/services/utils/error-api';
 import { PasoEdadRaza } from 'src/app/interfaces/raza';
 import { normalizarTexto, primerEntero, toPositiveInt } from 'src/app/services/utils/normalizacion';
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
@@ -1579,7 +1579,7 @@ export class NuevoPersonajeComponent {
         const edad = Number(this.Personaje.Edad);
         if (edad >= rango.desde && (rango.hasta === null || edad <= rango.hasta))
             return null;
-        const categoria = `${this.Personaje.CategoriaEdad?.categoria?.Nombre ?? ''}`.trim().toLocaleLowerCase('es');
+        const categoria = nombreEdadEnFrase(this.Personaje.CategoriaEdad?.categoria?.Nombre);
         return `La edad tiene que estar ${textoRangoEdad(rango)}${categoria ? ` (${categoria})` : ''}.`;
     }
 
@@ -4871,7 +4871,7 @@ export class NuevoPersonajeComponent {
             const complianceMessage = this.userSvc.getComplianceErrorMessage(error, 'creation');
             const texto = `${complianceMessage || error?.message || 'Error no identificado'}`.trim();
             // Los errores del tipo y de la edad (dragones jugables) traen su frase: el título no habla de SQL.
-            const titulo = CODIGOS_FALLO_TIPO_Y_EDAD.includes(`${error?.code ?? ''}`)
+            const titulo = CODIGOS_FALLO_TIPO_Y_EDAD.includes(codigoDeError(error))
                 ? 'No se pudo crear el personaje'
                 : etapa === 'sql'
                     ? 'No se pudo guardar en SQL'

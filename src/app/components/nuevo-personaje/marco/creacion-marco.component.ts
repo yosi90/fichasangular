@@ -1,5 +1,5 @@
 import { AfterViewInit, Component, ElementRef, EventEmitter, Input, OnChanges, Output, ViewChild, ViewEncapsulation } from '@angular/core';
-import { TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
+import { nombreTipoPersonaje, TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
 import { OpcionesPasosCreacion, PasoCreacionId, PasoCreacionPintado, pintarPasosCreacion } from './creacion';
 
 /**
@@ -39,7 +39,7 @@ export class CreacionMarcoComponent { }
                 <button type="button" mat-stroked-button *ngIf="puedeCambiarTipo && tipo" (click)="cambiarTipo.emit()">
                     {{tipo === 'pnj' ? 'Cambiar a personaje jugador' : 'Cambiar a PNJ'}}
                 </button>
-                <span class="creacion-etiqueta creacion-etiqueta--tipo" *ngIf="tipo" [class.creacion-etiqueta--pnj]="tipo === 'pnj'">{{tipo === 'pnj' ? 'PNJ' : 'Personaje jugador'}}</span>
+                <span class="creacion-etiqueta creacion-etiqueta--tipo" *ngIf="tipo" [class.creacion-etiqueta--pnj]="tipo === 'pnj'">{{nombreTipo}}</span>
                 <span class="creacion-etiqueta" *ngIf="oficial !== null" [class.creacion-etiqueta--aviso]="oficial === false">{{oficial ? 'Oficial' : 'Homebrew'}}</span>
                 <button type="button" mat-stroked-button *ngIf="puedeVerFicha" (click)="verFicha.emit()">
                     <mat-icon aria-hidden="true">visibility</mat-icon>
@@ -89,6 +89,11 @@ export class CreacionCabeceraComponent implements OnChanges {
     /** Hasta elegir la raza se puede cambiar de PJ a PNJ y al revés. */
     @Input() puedeCambiarTipo = false;
     @Output() cambiarTipo = new EventEmitter<void>();
+
+    /** «Personaje jugador» o «PNJ», la etiqueta del tipo. */
+    get nombreTipo(): string {
+        return nombreTipoPersonaje(this.tipo);
+    }
 
     pasos: PasoCreacionPintado[] = [];
     numeroActual = 1;
