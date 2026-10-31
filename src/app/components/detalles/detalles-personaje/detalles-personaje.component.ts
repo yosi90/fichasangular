@@ -70,6 +70,11 @@ import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import Swal from 'sweetalert2';
 import { destinoEnTablist } from 'src/app/services/utils/teclado';
 import { edadesDeLaRaza, etapaEdad, EtapaEdad, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
+import { esPnj, textoNivelPersonaje, textoVd } from 'src/app/services/utils/tipo-personaje';
+import {
+    aptitudesDeEdadPersonaje, AptitudesDeEdadFicha, etiquetasTipoPersonaje, lanzamientoRacialPersonaje, LanzamientoRacialFicha,
+    razaConCategoriaPersonaje
+} from '../ficha/personaje-edad';
 
 /** Cómo se enseña la ficha: toda en una página o con pestañas internas (las dos propuestas aprobadas del lienzo). */
 export type VistaFicha = 'pagina' | 'pestanas';
@@ -178,6 +183,9 @@ interface ModeloFicha {
     idiomas: EntradaLista[];
     magia: DatoFicha[];
     lanzadores: LanzadorFila[];
+    /** Dragones jugables: el lanzamiento racial y las aptitudes con su cifra y su CD a su edad; `null` si no tiene. */
+    lanzamientoRacial: LanzamientoRacialFicha | null;
+    aptitudesEdad: AptitudesDeEdadFicha | null;
     conjuros: EntradaLista<Conjuro>[];
     sortilegas: EntradaLista<AptitudSortilega>[];
     /** Magic of Incarnum: lo que calcula la API (`incarnum`) y la formación de partida; `null` si no tiene nada. */
@@ -726,7 +734,10 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
      * La etapa de la vida por la edad y las edades de la raza, con su envejecimiento (`services/utils/edad-personaje.ts`),
      * o `null` si no hay edad o la raza no trae sus edades.
      */
+    /** La etapa de la vida (Manual del jugador); una raza por edades no la tiene: su edad es su categoría. */
     get madurezEdad(): EtapaEdad | null {
+        if (this.pj?.CategoriaEdad)
+            return null;
         return etapaEdad(this.pj?.Edad, this.pj?.Raza);
     }
 
@@ -771,6 +782,10 @@ ${envejecimiento}` : edades;
         const nivelLanzadorApi = claseDesglose?.Nivel_lanzador;
         if (typeof nivelLanzadorApi === 'number' && nivelLanzadorApi > 0)
             chips.push(`Nivel de lanzador ${nivelLanzadorApi}`);
+        // Con la clase de su lanzamiento racial, el nivel de su raza se suma para los conjuros (*Draconomicón*, pág. 24).
+        const nivelRacial = toNumber(claseDesglose?.Nivel_lanzamiento_racial);
+        if (nivelRacial > 0)
+            chips.push(`${nivelRacial} de su raza`);
         else if (resumenLanzador)
             chips.push(`Nivel de lanzador ${resumenLanzador.nivelLanzador}`);
         if (conjuros.Lanzamiento_espontaneo)
@@ -1085,15 +1100,15 @@ ${envejecimiento}` : edades;
     private construirModelo(): ModeloFicha {
         const pj = this.pj;
         const preview = this.esPreviewNuevoPersonaje;
-        const raza = this.texto(pj.Raza?.Nombre);
+        const raza = this.texto(razaConCategoriaPersonaje(pj));
         const clases = (pj.desgloseClases ?? []).filter((c) => this.esVisible(c?.Nombre));
         const textoClases = clases.map((c) => textoClasePersonaje(c)).join(' / ');
         const alineamiento = this.texto(pj.Alineamiento);
 
         const modelo: ModeloFicha = {
             ...this.modeloVacio(),
-            tipoPagina: unirTipo(['Personaje', raza, textoClases]),
-            tipoPestanas: unirTipo([raza, textoClases, this.positivo(pj.NEP) ? `NEP ${pj.NEP}` : '', alineamiento]),
+            tipoPagina: unirTipo([esPnj(pj.tipo) ? 'Personaje no jugador' : 'Personaje', raza, textoClases]),
+            tipoPestanas: unirTipo([raza, textoClases, textoNivelPersonaje({ tipo: pj.tipo, nep: pj.NEP, vd: pj.vd }), alineamiento]),
             etiquetas: this.calcularEtiquetas(),
             creador: preview ? null : {
                 nombre: this.etiquetaCreador === 'Tú' ? 'ti' : this.etiquetaCreador,
@@ -1135,6 +1150,8 @@ ${envejecimiento}` : edades;
                 ayuda: this.texto(i.Descripcion),
             })),
             magia: this.calcularMagia(),
+            lanzamientoRacial: lanzamientoRacialPersonaje(pj),
+            aptitudesEdad: aptitudesDeEdadPersonaje(pj),
             lanzadores: clases
                 .map((c) => ({ clase: c.Nombre.trim(), texto: textoClasePersonaje(c), detalle: this.getSubchipsLanzadorClase(c).join(' · ') }))
                 .filter((l) => l.detalle.length > 0),
@@ -1159,16 +1176,20 @@ ${envejecimiento}` : edades;
             tipoPagina: '', tipoPestanas: '', etiquetas: [], creador: null, datos: [], franja: [], caracteristicas: [], casillasPagina: [],
             salvaciones: [], defensa: [], presaIniciativa: [], defensasEspeciales: [], enemigos: [], habilidades: [],
             habilidadesConRangos: [], verHabilidades: false, dotes: [], aptitudes: [], raciales: [], rasgosTipo: [], plantillas: [],
-            ventajas: [], idiomas: [], magia: [], lanzadores: [], conjuros: [], sortilegas: [], incarnum: null, piezas: [], equipo: [], carga: [],
+            ventajas: [], idiomas: [], magia: [], lanzadores: [], lanzamientoRacial: null, aptitudesEdad: null, conjuros: [], sortilegas: [],
+            incarnum: null, piezas: [], equipo: [], carga: [],
             modificadoresEquipo: [], sinEquipo: false, familiares: [], companeros: [], personalidad: '', contexto: '',
             multimedia: false, pestanas: [],
         };
     }
 
     private calcularEtiquetas(): EtiquetaFicha[] {
+        // PJ o PNJ se ve en todas partes (decisión del propietario del 2026-10-31): el PNJ, con su VD.
+        const tipo = etiquetasTipoPersonaje(this.pj);
         if (this.esPreviewNuevoPersonaje || toNumber(this.pj?.Id) <= 0)
-            return [];
+            return tipo;
         return [
+            ...tipo,
             this.personajeVisiblePublicamente
                 ? { texto: 'Público', ayuda: 'Lo puede ver cualquiera' }
                 : { texto: 'Privado', ayuda: 'Solo lo ven quien lo creó y su campaña' },
@@ -1210,8 +1231,13 @@ ${envejecimiento}` : edades;
             },
             { etiqueta: 'Nivel', valor: this.positivo(this.nivelPersonaje) ? this.nivelPersonaje : null, ayuda: this.nivelDisclaimer },
             {
+                etiqueta: 'Valor de desafío (VD)',
+                valor: esPnj(pj.tipo) && typeof pj.vd === 'number' ? textoVd(pj.vd) : null,
+                ayuda: 'Orientativo: el de su raza a su edad, más sus niveles de clase (Manual de monstruos, pág. 294).',
+            },
+            {
                 etiqueta: 'Nivel efectivo (NEP)',
-                valor: this.positivo(pj.NEP) ? toNumber(pj.NEP) : null,
+                valor: !esPnj(pj.tipo) && this.positivo(pj.NEP) ? toNumber(pj.NEP) : null,
                 detalle: this.textoDesgloseNep() ? `· ${this.textoDesgloseNep()}` : null,
                 ayuda: this.nepDisclaimer,
             },
@@ -1228,6 +1254,7 @@ ${envejecimiento}` : edades;
             { etiqueta: 'Región', valor: this.obtenerIdRegionPersonaje() > 0 ? this.nombreRegionPrincipal() : null },
             { etiqueta: 'Género', valor: this.texto(pj.Genero) || null },
             { etiqueta: 'Edad', valor: this.positivo(pj.Edad) ? `${toNumber(pj.Edad)} años` : null },
+            { etiqueta: 'Categoría de edad', valor: this.texto(pj.CategoriaEdad?.categoria?.Nombre) || null },
             {
                 etiqueta: 'Madurez',
                 valor: madurez?.nombre ?? null,
@@ -1464,8 +1491,8 @@ ${envejecimiento}` : edades;
         const visibles: Record<PestanaFicha, boolean> = {
             combate: true,
             habilidades: m.verHabilidades,
-            capacidades: hay(m.dotes, m.aptitudes, m.raciales, m.rasgosTipo, m.plantillas, m.ventajas, m.idiomas, m.familiares, m.companeros),
-            magia: this.tieneDatos(m.magia) || hay(m.lanzadores, m.conjuros, m.sortilegas),
+            capacidades: !!m.aptitudesEdad || hay(m.dotes, m.aptitudes, m.raciales, m.rasgosTipo, m.plantillas, m.ventajas, m.idiomas, m.familiares, m.companeros),
+            magia: !!m.lanzamientoRacial || this.tieneDatos(m.magia) || hay(m.lanzadores, m.conjuros, m.sortilegas),
             incarnum: !!m.incarnum,
             equipo: this.tieneDatos(m.equipo) || this.tieneDatos(m.carga) || hay(m.piezas, m.modificadoresEquipo) || m.sinEquipo,
             historia: true,

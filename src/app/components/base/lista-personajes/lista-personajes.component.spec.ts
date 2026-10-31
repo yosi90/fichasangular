@@ -146,4 +146,32 @@ describe('ListaPersonajesComponent', () => {
 
         expect(component.mostrarSoloMios).toBeFalse();
     });
+
+    it('separa jugadores y PNJ con su cuenta, y enseña qué es y su nivel (NEP de un PJ, VD de un PNJ)', () => {
+        const component = createComponent(new Subject<Campana[]>());
+        component.Personajes = [
+            buildPersonaje({ Id: 1, Nombre: 'Brenna', tipo: 'pj', nep: 5 }),
+            buildPersonaje({ Id: 2, Nombre: 'Ignivarax', tipo: 'pnj', nep: null, vd: 18 }),
+            buildPersonaje({ Id: 3, Nombre: 'Sin tipo' }),
+        ];
+
+        component.filtroPersonajes();
+        expect(component.filtrosTipo.map((f) => `${f.texto} · ${f.total}`)).toEqual(['Todos · 3', 'Personajes jugadores · 2', 'PNJ · 1']);
+        expect(component.columnsToDisplay).toContain('QueEs');
+        expect(component.columnsToDisplay).toContain('Nivel');
+
+        component.elegirFiltroTipo('pnj');
+        expect(component.personajesDS.data.map((item) => item.Id)).toEqual([2]);
+        expect(component.hayFiltros).toBeTrue();
+        component.elegirFiltroTipo('pj');
+        expect(component.personajesDS.data.map((item) => item.Id)).toEqual([1, 3]);
+
+        const [brenna, ignivarax, sinTipo] = component.Personajes;
+        expect([component.textoTipo(brenna), component.textoNivel(brenna)]).toEqual(['Personaje jugador', 'NEP 5']);
+        expect([component.textoTipo(ignivarax), component.textoNivel(ignivarax)]).toEqual(['PNJ', 'VD 18']);
+        expect(component.textoNivel(sinTipo)).toBe('—');
+
+        component.limpiarFiltros();
+        expect(component.filtroTipo).toBe('todos');
+    });
 });

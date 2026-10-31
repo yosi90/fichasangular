@@ -223,6 +223,27 @@
 </ng-template>
 
 <ng-template #magiaTpl>
+    <!-- Lanzamiento racial (dragones jugables, lienzo, tablero 3): el nivel de su raza o su edad más sus niveles de la clase -->
+    <app-ficha-lateral titulo="Lanzamiento racial" *ngIf="m.lanzamientoRacial as lanzamiento">
+        <p class="ficha-texto">{{lanzamiento.texto}}</p>
+        <p class="ficha-nota">{{lanzamiento.detalle}}</p>
+        <table class="ficha-tabla" *ngIf="lanzamiento.conjuros.length > 0">
+            <thead>
+                <tr>
+                    <th scope="row">Nivel de conjuro</th>
+                    <th scope="col" class="ficha-num" *ngFor="let fila of lanzamiento.conjuros">{{fila.nivel}}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th scope="row">Por día</th>
+                    <td class="ficha-num" *ngFor="let fila of lanzamiento.conjuros">{{fila.total}}</td>
+                </tr>
+            </tbody>
+        </table>
+        <p class="ficha-nota" *ngIf="lanzamiento.caracteristica">Característica: {{lanzamiento.caracteristica}}</p>
+        <p class="ficha-nota" *ngIf="lanzamiento.listas">{{lanzamiento.listas}}</p>
+    </app-ficha-lateral>
     <app-ficha-lateral titulo="Magia" *ngIf="m.lanzadores.length > 0 || tieneDatos(m.magia)">
         <app-ficha-datos [datos]="m.magia" [columnas]="2" [tarjeta]="false" titulo="Datos de la magia"></app-ficha-datos>
         <div class="ficha-grupo" *ngFor="let lanzador of m.lanzadores">
@@ -302,6 +323,10 @@
 </ng-template>
 
 <ng-template #razaTpl>
+    <!-- Las aptitudes con su cifra a su edad y su CD (dragones jugables, lienzo, tablero 3) -->
+    <app-ficha-lateral [titulo]="m.aptitudesEdad.titulo" *ngIf="m.aptitudesEdad">
+        <ng-container *ngTemplateOutlet="paresTpl; context: { $implicit: m.aptitudesEdad.filas }"></ng-container>
+    </app-ficha-lateral>
     <app-ficha-lateral titulo="Rasgos raciales" *ngIf="m.raciales.length > 0">
         <ng-container *ngTemplateOutlet="listaTpl; context: { $implicit: m.raciales, abrir: abrirRacial }"></ng-container>
     </app-ficha-lateral>

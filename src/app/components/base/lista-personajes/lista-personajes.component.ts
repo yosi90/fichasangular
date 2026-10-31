@@ -12,9 +12,12 @@ import { UserService } from 'src/app/services/user.service';
 import { Subscription } from 'rxjs';
 import { ordenarEnEspanol } from 'src/app/services/utils/orden-tabla';
 import { conColumnaOpcional } from 'src/app/services/utils/columnas-tabla';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNumberOrNull } from 'src/app/services/utils/normalizacion';
+import { esPnj, nombreTipoPersonaje, textoNivelPersonaje } from 'src/app/services/utils/tipo-personaje';
 
 type FiltroVisibilidadPersonajes = 'todos' | 'publicos' | 'privados';
+/** «Todos · Personajes jugadores · PNJ» (lienzo de los dragones jugables, tablero 4). */
+type FiltroTipoPersonajes = 'todos' | 'pj' | 'pnj';
 
 @Component({
     selector: 'app-lista-personajes',
@@ -40,7 +43,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     defaultSubtrama!: string;
     columns = this.listaPjs.ceateDataTable();
     personajesDS = new MatTableDataSource(this.Personajes);
-    columnsToDisplay = ['Personaje', 'Campana', 'Visibilidad', 'Homebrew'];
+    columnsToDisplay = ['Personaje', 'QueEs', 'Nivel', 'Campana', 'Visibilidad', 'Homebrew'];
     columnsToDisplayWithExpand = [...this.columnsToDisplay, 'expand'];
     expandedElement!: PersonajeSimple;
     personajesCargados: boolean = false;
@@ -51,6 +54,9 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
     mostrarArchivados = false;
     mostrarSoloMios = false;
     filtroVisibilidad: FiltroVisibilidadPersonajes = 'todos';
+    filtroTipo: FiltroTipoPersonajes = 'todos';
+    /** Los botones del filtro por tipo, con cuántos hay de cada uno con los demás filtros. */
+    filtrosTipo: { clave: FiltroTipoPersonajes; texto: string; total: number; }[] = [];
     sesionIniciada = false;
     private personajesSub?: Subscription;
     private campanasSub?: Subscription;
@@ -135,7 +141,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
 
     filtroPersonajes() {
         const texto = normalizarTexto(this.textoBusqueda, true);
-        const pjFiltrados = this.Personajes.filter(pj => (texto === '' || this.coincideConTextoFiltro(pj, texto))
+        const sinTipo = this.Personajes.filter(pj => (texto === '' || this.coincideConTextoFiltro(pj, texto))
             && (this.defaultCampana === undefined || this.defaultCampana === 'Sin campaña' || pj.Campana === this.defaultCampana)
             && (this.defaultTrama === undefined || this.defaultTrama === 'Trama base' || pj.Trama === this.defaultTrama)
             && (this.defaultSubtrama === undefined || this.defaultSubtrama === 'Subtrama base' || pj.Subtrama === this.defaultSubtrama)
@@ -143,8 +149,19 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
             && this.cumpleFiltroVisibilidad(pj)
             && (this.mostrarArchivados || !pj.Archivado)
         );
+        const pnj = sinTipo.filter((pj) => esPnj(pj.tipo)).length;
+        this.filtrosTipo = [
+            { clave: 'todos', texto: 'Todos', total: sinTipo.length },
+            { clave: 'pj', texto: 'Personajes jugadores', total: sinTipo.length - pnj },
+            { clave: 'pnj', texto: 'PNJ', total: pnj },
+        ];
+        const pjFiltrados = sinTipo.filter((pj) => this.filtroTipo === 'todos' || (this.filtroTipo === 'pnj') === esPnj(pj.tipo));
         this.personajesDS = new MatTableDataSource(pjFiltrados);
         this.personajesDS.sortingDataAccessor = (item: PersonajeSimple, property: string) => {
+            if (property === 'QueEs')
+                return esPnj(item?.tipo) ? 1 : 0;
+            if (property === 'Nivel')
+                return toNumberOrNull(esPnj(item?.tipo) ? item?.vd : item?.nep) ?? -1;
             if (property === 'Visibilidad')
                 return this.esPublicoPersonaje(item) ? 1 : 0;
             if (property === 'Archivado')
@@ -190,9 +207,30 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
         this.filtroPersonajes();
     }
 
+    /** «Todos», «Personajes jugadores» o «PNJ». */
+    elegirFiltroTipo(clave: FiltroTipoPersonajes): void {
+        this.filtroTipo = clave;
+        this.filtroPersonajes();
+    }
+
+    /** «Personaje jugador» o «PNJ». */
+    textoTipo(pj: PersonajeSimple): string {
+        return nombreTipoPersonaje(pj?.tipo);
+    }
+
+    esPnj(pj: PersonajeSimple): boolean {
+        return esPnj(pj?.tipo);
+    }
+
+    /** El NEP de un PJ («NEP 5») o el VD de un PNJ («VD 18»); sin el dato, «—». */
+    textoNivel(pj: PersonajeSimple): string {
+        return textoNivelPersonaje({ tipo: pj?.tipo, nep: pj?.nep, vd: pj?.vd }) ?? '—';
+    }
+
     /** Si algún filtro no es el de por defecto (para «Limpiar filtros»). */
     get hayFiltros(): boolean {
         return normalizarTexto(this.textoBusqueda, true).length > 0
+            || this.filtroTipo !== 'todos'
             || this.filtroVisibilidad !== 'todos'
             || this.mostrarSoloMios
             || this.mostrarArchivados
@@ -201,6 +239,7 @@ export class ListaPersonajesComponent implements OnInit, AfterViewInit, OnDestro
 
     limpiarFiltros(): void {
         this.textoBusqueda = '';
+        this.filtroTipo = 'todos';
         this.filtroVisibilidad = 'todos';
         this.mostrarSoloMios = false;
         if (this.mostrarArchivados)
