@@ -116,8 +116,7 @@ import {
     FamiliaHomebrew,
     FuenteHomebrew,
     MOTIVO_VENTAJAS_HOMEBREW,
-    claveFuenteHomebrew,
-    elementoHomebrew,
+    claveFuenteHomebrewDe,
     elementosHomebrewPersonaje,
     fuentesHomebrewDeCampana,
     motivoHomebrew,
@@ -1106,7 +1105,7 @@ export class NuevoPersonajeComponent {
             return;
         const titulo = `Elegir ${razaConEdad(this.razaMirada?.Nombre, opcion.paso.Categoria.Nombre)} como personaje jugador`;
         // Se pregunta siempre (es una excepción del máster); si la raza también es homebrew, va en el mismo aviso.
-        const motivos = motivosQueConfirmar([opcion.motivo, AVISO_EDAD_SIN_AJUSTE_MASTER, motivoHomebrew('Raza', raza)], false);
+        const motivos = motivosQueConfirmar([opcion.motivo, AVISO_EDAD_SIN_AJUSTE_MASTER, motivoHomebrew('raza', raza)], false);
         if (!await this.confirmarEleccionHomebrew(titulo, motivos) || this.razaParaElegirIgualmente !== raza)
             return;
         this.seleccionarRaza(raza);
@@ -1149,7 +1148,7 @@ export class NuevoPersonajeComponent {
         const raza = this.razaParaElegir;
         if (!raza)
             return Promise.resolve(false);
-        return this.confirmarSiVuelveHomebrew(`Elegir ${raza.Nombre}`, [motivoHomebrew('Raza', raza)], () => this.seleccionarRaza(raza), false);
+        return this.confirmarSiVuelveHomebrew(`Elegir ${raza.Nombre}`, [motivoHomebrew('raza', raza)], () => this.seleccionarRaza(raza), false);
     }
 
     verFichaEnCreacion(): void {
@@ -3374,7 +3373,7 @@ export class NuevoPersonajeComponent {
         }
 
         // Antes de cerrar el selector: una raza base homebrew (si la mutación ya lo era, ya se confirmó).
-        await this.confirmarSiVuelveHomebrew(`Usar ${item.raza.Nombre} como raza base`, [motivoHomebrew('Raza base', item.raza)], () => {
+        await this.confirmarSiVuelveHomebrew(`Usar ${item.raza.Nombre} como raza base`, [motivoHomebrew('raza_base', item.raza)], () => {
             this.cerrarSelectorRazaBaseContexto();
             this.prepararSeleccionRazaFinal(razaMutadaConfirmada, item.raza);
         }, razaMutadaConfirmada.Oficial === false);
@@ -3518,7 +3517,7 @@ export class NuevoPersonajeComponent {
         const contexto = this.contextoRazaPendienteOpcionales;
         const motivos = this.gruposRacialesOpcionalesModal.map((grupo) => {
             const clave = `${seleccion?.[grupo.grupo] ?? ''}`.trim();
-            return motivoHomebrew('Racial', grupo.opciones.find((opcion) => opcion.clave === clave)?.racial);
+            return motivoHomebrew('racial', grupo.opciones.find((opcion) => opcion.clave === clave)?.racial);
         });
         const razaYaHomebrew = contexto.raza?.Oficial === false || contexto.razaBase?.Oficial === false;
         void this.confirmarSiVuelveHomebrew('Elegir raciales homebrew', motivos, () => {
@@ -3645,7 +3644,7 @@ export class NuevoPersonajeComponent {
      * solo si se elige (al cancelar, nada).
      */
     seleccionarPlantilla(plantilla: Plantilla, alElegir: () => void = () => undefined): Promise<boolean> {
-        return this.confirmarSiVuelveHomebrew(`Elegir ${plantilla?.Nombre ?? 'la plantilla'}`, [motivoHomebrew('Plantilla', plantilla)], () => {
+        return this.confirmarSiVuelveHomebrew(`Elegir ${plantilla?.Nombre ?? 'la plantilla'}`, [motivoHomebrew('plantilla', plantilla)], () => {
             alElegir();
             this.aplicarPlantilla(plantilla);
         });
@@ -3677,7 +3676,7 @@ export class NuevoPersonajeComponent {
     async elegirPlantillaSaltandoRequisitos(item: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }): Promise<void> {
         if (!item?.evaluacion?.saltable || !this.puedeSaltarRequisitosPlantilla)
             return;
-        const motivos = [...item.evaluacion.razones, motivoHomebrew('Plantilla', item.plantilla)];
+        const motivos = [...item.evaluacion.razones, motivoHomebrew('plantilla', item.plantilla)];
         await this.confirmarSiVuelveHomebrew(`Elegir ${item.plantilla.Nombre} sin cumplir sus requisitos`, motivos, () => {
             this.plantillasConRequisitosSaltados.add(Number(item.plantilla.Id));
             this.plantillaMirada = null;
@@ -3956,7 +3955,7 @@ export class NuevoPersonajeComponent {
         // Una clase homebrew o saltarse su alineamiento vuelven homebrew la ficha: se confirma antes de aplicarla.
         const motivosClase = [
             requiereAvisoAlineamiento ? detalleAlineamiento : null,
-            primerNivelClase ? motivoHomebrew('Clase', seleccion.clase) : null,
+            primerNivelClase ? motivoHomebrew('clase', seleccion.clase) : null,
         ];
         const tituloClase = requiereAvisoAlineamiento ? 'Aviso de alineamiento de clase' : `Elegir ${seleccion.clase?.Nombre ?? 'la clase'}`;
         if (!await this.confirmarSiVuelveHomebrew(tituloClase, motivosClase))
@@ -4596,7 +4595,7 @@ export class NuevoPersonajeComponent {
 
     /** Un conjuro homebrew en una ficha oficial se confirma antes de añadirlo. */
     agregarConjuroSesion(conjuro: Conjuro): Promise<boolean> {
-        return this.confirmarSiVuelveHomebrew(`Elegir ${conjuro?.Nombre ?? 'el conjuro'}`, [motivoHomebrew('Conjuro', conjuro)], () => {
+        return this.confirmarSiVuelveHomebrew(`Elegir ${conjuro?.Nombre ?? 'el conjuro'}`, [motivoHomebrew('conjuro', conjuro)], () => {
             if (this.nuevoPSvc.seleccionarConjuroSesion(Number(conjuro?.Id), this.incluirHomebrewConjurosEfectivo || conjuro?.Oficial === false))
                 this.recalcularOficialidad();
         });
@@ -4762,7 +4761,7 @@ export class NuevoPersonajeComponent {
         if (!companero)
             return Promise.resolve(false);
         // Antes de cerrar el selector: un compañero homebrew en una ficha oficial se confirma.
-        return this.confirmarSiVuelveHomebrew(`Elegir ${companero.Nombre}`, [motivoHomebrew('Compañero', companero)], () => this.cerrarSelectorCompaneroContexto({
+        return this.confirmarSiVuelveHomebrew(`Elegir ${companero.Nombre}`, [motivoHomebrew('companero', companero)], () => this.cerrarSelectorCompaneroContexto({
             companero,
             plantilla: seleccion?.plantilla ?? 'base',
             nombre: `${seleccion?.nombre ?? ''}`,
@@ -4885,7 +4884,7 @@ export class NuevoPersonajeComponent {
     /** Antes de cerrar el selector: una dote homebrew en una ficha oficial se confirma. */
     onConfirmarDotePendiente(seleccion: DoteSeleccionConfirmada): Promise<boolean> {
         const dote = this.selectorDoteCandidatos.find((candidato) => Number(candidato?.dote?.Id) === Number(seleccion?.idDote))?.dote;
-        return this.confirmarSiVuelveHomebrew(`Elegir ${dote?.Nombre ?? 'la dote'}`, [motivoHomebrew('Dote', dote)], () => {
+        return this.confirmarSiVuelveHomebrew(`Elegir ${dote?.Nombre ?? 'la dote'}`, [motivoHomebrew('dote', dote)], () => {
             const resolver = this.resolverSelectorDotes;
             this.cerrarSelectorDotesContexto();
             resolver?.(seleccion);
@@ -4937,7 +4936,7 @@ export class NuevoPersonajeComponent {
         if (!familiar)
             return Promise.resolve(false);
         // Antes de cerrar el selector: un familiar homebrew en una ficha oficial se confirma.
-        return this.confirmarSiVuelveHomebrew(`Elegir ${familiar.Nombre}`, [motivoHomebrew('Familiar', familiar)], () => this.cerrarSelectorFamiliarContexto({
+        return this.confirmarSiVuelveHomebrew(`Elegir ${familiar.Nombre}`, [motivoHomebrew('familiar', familiar)], () => this.cerrarSelectorFamiliarContexto({
             familiar,
             plantilla,
             nombre: `${seleccion?.nombre ?? ''}`,
@@ -6065,7 +6064,7 @@ export class NuevoPersonajeComponent {
      */
     private confirmarEscuelaEspecialista(escuela: EscuelaConjuros | null, clase: Clase | null, aplicar?: () => void): Promise<boolean> {
         return this.confirmarSiVuelveHomebrew(`Especializarse en ${escuela?.Nombre ?? 'esta escuela'}`,
-            [motivoHomebrew('Escuela de especialista', escuela)], aplicar, this.personajeNoOficial || clase?.Oficial === false);
+            [motivoHomebrew('escuela_especialista', escuela)], aplicar, this.personajeNoOficial || clase?.Oficial === false);
     }
 
     private solicitarEspecialidadMagicaClase(
@@ -6505,7 +6504,7 @@ export class NuevoPersonajeComponent {
         if (idiomas.length < 1)
             return Promise.resolve(false);
         const titulo = idiomas.length > 1 ? 'Elegir idiomas homebrew' : `Elegir ${idiomas[0].Nombre}`;
-        return this.confirmarSiVuelveHomebrew(titulo, idiomas.map((idioma) => motivoHomebrew('Idioma', idioma)), () => this.aplicarIdiomasElegidos(idiomas));
+        return this.confirmarSiVuelveHomebrew(titulo, idiomas.map((idioma) => motivoHomebrew('idioma', idioma)), () => this.aplicarIdiomasElegidos(idiomas));
     }
 
     private aplicarIdiomasElegidos(idiomas: IdiomaDetalle[]): void {
@@ -6966,10 +6965,7 @@ export class NuevoPersonajeComponent {
         elemento: ConOficial | null | undefined,
         validation: CampaignCreationValidationResult | null = null,
     ): string | null {
-        if (!elemento || elemento.Oficial !== false)
-            return null;
-
-        const key = claveFuenteHomebrew(elementoHomebrew(familia, elemento));
+        const key = claveFuenteHomebrewDe(familia, elemento);
         if (!key)
             return null;
 

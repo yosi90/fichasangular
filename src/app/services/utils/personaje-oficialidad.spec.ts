@@ -1,5 +1,6 @@
 import {
     FAMILIAS_HOMEBREW,
+    claveFuenteHomebrewDe,
     elementosHomebrewPersonaje,
     fuentesHomebrewDeCampana,
     motivoHomebrew,
@@ -67,9 +68,9 @@ describe('personaje-oficialidad (decisión del 2026-10-17)', () => {
         expect(motivosQueConfirmar(['Clase homebrew: X', 'Clase homebrew: X', '', null], false)).toEqual(['Clase homebrew: X']);
         expect(motivosQueConfirmar(['Clase homebrew: X'], true)).toEqual([]);
         expect(motivosQueConfirmar([null, undefined], false)).toEqual([]);
-        expect(motivoHomebrew('Clase', { Nombre: 'Magiingeniero', Oficial: false })).toBe('Clase homebrew: Magiingeniero');
-        expect(motivoHomebrew('Clase', { Nombre: 'Mago', Oficial: true })).toBeNull();
-        expect(motivoHomebrew('Clase', null)).toBeNull();
+        expect(motivoHomebrew('clase', { Nombre: 'Magiingeniero', Oficial: false })).toBe('Clase homebrew: Magiingeniero');
+        expect(motivoHomebrew('clase', { Nombre: 'Mago', Oficial: true })).toBeNull();
+        expect(motivoHomebrew('clase', null)).toBeNull();
     });
 
     it('cuentan también los subtipos, las aptitudes sortílegas y las fusiones (como la API)', () => {
@@ -127,6 +128,14 @@ describe('personaje-oficialidad (decisión del 2026-10-17)', () => {
                 .map((f) => f.nombre)).toEqual(['Clase: Magiingeniero']);
             expect(fuentesHomebrewDeCampana(elementosHomebrewPersonaje(personajeOficial, { escuelaEspecialista: escuela }))
                 .map((f) => f.key)).toEqual(['escuelas_conjuros:12']);
+        });
+
+        it('la fuente de un candidato, con la misma clave que las del personaje; ninguna si es oficial', () => {
+            expect(claveFuenteHomebrewDe('dote', { Id: 1, Nombre: 'Dote de la casa', Oficial: false, Manual: casa }))
+                .toBe('manual:manual de la casa');
+            expect(claveFuenteHomebrewDe('idioma', { Id: 28, Nombre: 'Vrykul', Oficial: false, Manual: casa })).toBe('idiomas:28');
+            expect(claveFuenteHomebrewDe('deidad', { Id: 19, Nombre: 'Moradin', Oficial: true })).toBeNull();
+            expect(claveFuenteHomebrewDe('deidad', null)).toBeNull();
         });
     });
 });

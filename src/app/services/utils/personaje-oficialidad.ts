@@ -112,7 +112,7 @@ function nombreDeManual(manual: ConOficial['Manual']): string {
 }
 
 /** Un elemento de catálogo de esa familia como elemento homebrew (sin mirar su `Oficial`). */
-export function elementoHomebrew(familia: FamiliaHomebrew, elemento: ConOficial): ElementoHomebrew {
+function elementoHomebrew(familia: FamiliaHomebrew, elemento: ConOficial): ElementoHomebrew {
     return {
         familia,
         id: Math.trunc(Number(elemento?.Id ?? 0)) || 0,
@@ -127,8 +127,9 @@ function noOficiales(familia: FamiliaHomebrew, elementos: (ConOficial | null | u
         .map((elemento) => elementoHomebrew(familia, elemento));
 }
 
-function textoMotivo(etiqueta: string, nombre: string): string {
-    return `${etiqueta} homebrew: ${nombre || 'sin nombre'}`;
+/** «Clase homebrew: Magiingeniero». */
+function textoMotivo(elemento: ElementoHomebrew): string {
+    return `${FAMILIAS_HOMEBREW[elemento.familia].etiqueta} homebrew: ${elemento.nombre || 'sin nombre'}`;
 }
 
 /** Si la escuela es la fija de una clase homebrew del personaje: ya la trae esa clase (`_escuela_especialista_homebrew`). */
@@ -177,7 +178,7 @@ export function elementosHomebrewPersonaje(personaje: Personaje | null | undefin
 export function motivosHomebrewPersonaje(personaje: Personaje | null | undefined, contexto: ContextoOficialidad): string[] {
     const motivos = elementosHomebrewPersonaje(personaje, contexto)
         .filter((elemento) => !FAMILIAS_HOMEBREW[elemento.familia].oficialidadEnBasicos)
-        .map((elemento) => textoMotivo(FAMILIAS_HOMEBREW[elemento.familia].etiqueta, elemento.nombre));
+        .map(textoMotivo);
     return Array.from(new Set([...motivos, ...(contexto.tieneVentajas ? [MOTIVO_VENTAJAS_HOMEBREW] : [])]));
 }
 
@@ -185,12 +186,21 @@ export function motivosHomebrewPersonaje(personaje: Personaje | null | undefined
  * La clave de la fuente de un elemento, como `clave_fuente_homebrew` de la API: su manual (`manual:<nombre>`) o, sin
  * manual, el elemento (`<tabla de la API>:<id>`; la raza y la raza base son la misma tabla). `null` sin id ni nombre.
  */
-export function claveFuenteHomebrew(elemento: ElementoHomebrew): string | null {
+function claveFuenteHomebrew(elemento: ElementoHomebrew): string | null {
     if (elemento.manual.length > 0)
         return `manual:${normalizarTexto(elemento.manual, true)}`;
     if (!Number.isFinite(elemento.id) || elemento.id <= 0 || elemento.nombre.length < 1)
         return null;
     return `${FAMILIAS_HOMEBREW[elemento.familia].tablaApi}:${elemento.id}`;
+}
+
+/**
+ * La fuente homebrew (`claveFuenteHomebrew`) de un elemento de catálogo de esa familia, para saber si la campaña deja
+ * elegirlo; `null` si es oficial (o no se sabe) o no tiene id ni nombre.
+ */
+export function claveFuenteHomebrewDe(familia: FamiliaHomebrew, elemento: ConOficial | null | undefined): string | null {
+    const [homebrew] = noOficiales(familia, [elemento]);
+    return homebrew ? claveFuenteHomebrew(homebrew) : null;
 }
 
 /** «Clase: Magiingeniero». */
@@ -235,9 +245,11 @@ export function motivosQueConfirmar(motivos: (string | null | undefined)[], yaEs
     return Array.from(new Set(motivos.map((motivo) => `${motivo ?? ''}`.trim()).filter((motivo) => motivo.length > 0)));
 }
 
-/** «Clase homebrew: Magiingeniero» de un elemento no oficial; `null` si es oficial (o no se sabe). */
-export function motivoHomebrew(tipo: string, elemento: ConOficial | null | undefined): string | null {
-    if (!elemento || elemento.Oficial !== false)
-        return null;
-    return textoMotivo(tipo, `${elemento.Nombre ?? ''}`.trim());
+/**
+ * «Clase homebrew: Magiingeniero» de un elemento no oficial de esa familia, con el mismo texto que los motivos de
+ * `motivosHomebrewPersonaje`; `null` si es oficial (o no se sabe).
+ */
+export function motivoHomebrew(familia: FamiliaHomebrew, elemento: ConOficial | null | undefined): string | null {
+    const [homebrew] = noOficiales(familia, [elemento]);
+    return homebrew ? textoMotivo(homebrew) : null;
 }
