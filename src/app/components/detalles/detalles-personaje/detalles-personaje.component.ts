@@ -69,7 +69,7 @@ import { clavePorCuenta, guardarPreferenciaLocal, leerPreferenciaLocal } from 's
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import Swal from 'sweetalert2';
 import { destinoEnTablist } from 'src/app/services/utils/teclado';
-import { edadesDeLaRaza, etapaEdad, EtapaEdad } from 'src/app/services/utils/edad-personaje';
+import { edadesDeLaRaza, etapaEdad, EtapaEdad, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
 
 /** Cómo se enseña la ficha: toda en una página o con pestañas internas (las dos propuestas aprobadas del lienzo). */
 export type VistaFicha = 'pagina' | 'pestanas';
@@ -732,8 +732,9 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
 
     private getTooltipMadurezEdad(madurez: EtapaEdad): string {
         const edades = edadesDeLaRaza(this.pj?.Raza).map(({ nombre, valor }) => `${nombre}: ${valor}`).join(' | ');
-        return `${edades}
-Fue/Des/Con: ${textoConSigno(madurez.fisico)} | Int/Sab/Car: ${textoConSigno(madurez.mental)}`;
+        const envejecimiento = textoEnvejecimiento(madurez);
+        return envejecimiento ? `${edades}
+${envejecimiento}` : edades;
     }
 
     getSubtiposVisibles(): SubtipoRef[] {
@@ -1230,7 +1231,7 @@ Fue/Des/Con: ${textoConSigno(madurez.fisico)} | Int/Sab/Car: ${textoConSigno(mad
             {
                 etiqueta: 'Madurez',
                 valor: madurez?.nombre ?? null,
-                detalle: madurez ? `· Fue/Des/Con ${textoConSigno(madurez.fisico)} · Int/Sab/Car ${textoConSigno(madurez.mental)}` : null,
+                detalle: textoEnvejecimiento(madurez) ? `· ${textoEnvejecimiento(madurez)}` : null,
                 ayuda: madurez ? this.getTooltipMadurezEdad(madurez) : null,
             },
             { etiqueta: 'Altura', valor: this.textoAltura() },

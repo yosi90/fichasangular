@@ -480,9 +480,9 @@ describe('DetallesPersonajeComponent', () => {
             expect(valor('Edad')).toBe('180 años');
             expect(valor('Altura')).toBe('1,84 m');
             expect(valor('Peso')).toBe('73 kg');
-            expect(valor('Madurez')).toBe('Mediana edad · Fue/Des/Con -1 · Int/Sab/Car +1');
+            expect(valor('Madurez')).toBe('Mediana edad · −1 a Fue, Des y Con; +1 a Int, Sab y Car');
             expect((component as any).m.datos.find((d: any) => d.etiqueta === 'Madurez').ayuda)
-                .toBe('Adulto: 110 | Mediana: 175 | Viejo: 263 | Venerable: 350\nFue/Des/Con: -1 | Int/Sab/Car: +1');
+                .toBe('Adulto: 110 | Mediana: 175 | Viejo: 263 | Venerable: 350\n−1 a Fue, Des y Con; +1 a Int, Sab y Car');
         });
 
         it('pasa a metros la altura que llega en centímetros', () => {
