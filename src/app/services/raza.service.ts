@@ -14,7 +14,7 @@ import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 import { errorDeCatalogo } from 'src/app/services/utils/error-catalogo';
 import { RAZA } from 'src/app/services/utils/nombres-de-catalogo';
@@ -387,7 +387,7 @@ export class RazaService {
 
     /** La raza recién leída de la API (`GET /razas/{id}`), sin caché: la que se rellena en «Modificar raza». */
     getRazaFresca(id: number): Observable<Raza> {
-        return this.http.get(`${environment.apiUrl}razas/${Math.trunc(Number(id ?? 0))}`)
+        return this.http.get(`${environment.apiUrl}razas/${toInt(id)}`)
             .pipe(map((raw) => normalizeRazaApi(raw)));
     }
 
@@ -411,15 +411,7 @@ export class RazaService {
             const response = await firstValueFrom(
                 this.http.post<RazaCreateApiResponse>(`${environment.apiUrl}razas/add`, payload, { headers })
             );
-            const idRaza = Math.trunc(Number(response?.idRaza ?? 0));
-            if (!Number.isFinite(idRaza) || idRaza <= 0)
-                throw new Error('La API no devolvio un idRaza valido');
-
-            const normalizedResponse: RazaCreateResponse = {
-                message: `${response?.message ?? 'Raza creada'}`,
-                idRaza,
-            };
-            return normalizedResponse;
+            return respuestaDeRaza(response, 'Raza creada');
         } catch (error: any) {
             throw errorDeCatalogo(error, 'crear', RAZA);
         }
@@ -433,18 +425,19 @@ export class RazaService {
         try {
             const headers = await cabeceraApiConFirebase(this.auth);
             const response = await firstValueFrom(
-                this.http.put<RazaCreateApiResponse>(`${environment.apiUrl}razas/${Math.trunc(Number(idRaza ?? 0))}`, payload, { headers })
+                this.http.put<RazaCreateApiResponse>(`${environment.apiUrl}razas/${toInt(idRaza)}`, payload, { headers })
             );
-            const id = Math.trunc(Number(response?.idRaza ?? 0));
-            if (!Number.isFinite(id) || id <= 0)
-                throw new Error('La API no devolvió un idRaza válido');
-            return {
-                message: `${response?.message ?? 'Raza actualizada'}`,
-                idRaza: id,
-                raza: normalizeRazaApi(response?.raza),
-            };
+            return { ...respuestaDeRaza(response, 'Raza actualizada'), raza: normalizeRazaApi(response?.raza) };
         } catch (error: any) {
             throw errorDeCatalogo(error, 'actualizar', RAZA);
         }
     }
+}
+
+/** `{ message, idRaza }` de la respuesta del alta y de la edición (`RazaCreateApiResponse`); sin un `idRaza` válido, falla. */
+function respuestaDeRaza(response: RazaCreateApiResponse | null | undefined, mensajePorDefecto: string): RazaCreateResponse {
+    const idRaza = toInt(response?.idRaza);
+    if (idRaza <= 0)
+        throw new Error('La API no devolvió un idRaza válido');
+    return { message: `${response?.message ?? mensajePorDefecto}`, idRaza };
 }
