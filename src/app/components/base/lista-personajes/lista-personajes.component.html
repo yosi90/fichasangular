@@ -47,8 +47,7 @@
   <!-- Jugadores y PNJ por separado (lienzo de los dragones jugables, tablero 4) -->
   <div class="lista-personajes__tipos" *ngIf="personajesCargados && !errorCarga && Personajes.length > 0">
     <div class="lista-personajes__tipos-botones" role="group" aria-label="Qué personajes ver">
-      <button type="button" class="lista-personajes__tipo" *ngFor="let filtro of filtrosTipo"
-        [class.lista-personajes__tipo--activo]="filtro.clave === filtroTipo" [attr.aria-pressed]="filtro.clave === filtroTipo"
+      <button type="button" *ngFor="let filtro of filtrosTipo" [attr.aria-pressed]="filtro.clave === filtroTipo"
         (click)="elegirFiltroTipo(filtro.clave)">{{ filtro.texto }} · {{ filtro.total }}</button>
     </div>
     <span class="lista-personajes__tipos-ayuda" *ngIf="filtroTipo === 'pnj'">Tus PNJ: solo los ves tú, salvo que los compartas.</span>

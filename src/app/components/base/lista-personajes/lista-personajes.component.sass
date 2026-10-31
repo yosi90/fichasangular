@@ -225,7 +225,8 @@ table
     .pj-desplegable
         grid-template-columns: minmax(0, 1fr)
 
-// Jugadores y PNJ por separado (lienzo de los dragones jugables, tablero 4): botones pegados, el activo en rosa.
+// Jugadores y PNJ por separado (lienzo de los dragones jugables, tablero 4): el conmutador de la creación, un punto más
+// grande y con sombra.
 .lista-personajes__tipos
     display: flex
     flex-wrap: wrap
@@ -233,32 +234,12 @@ table
     gap: 8px 12px
 
 .lista-personajes__tipos-botones
-    display: flex
+    @include ficha-conmutador(14px, 16px)
     flex-wrap: wrap
-    gap: 1px
-    border-radius: 4px
-    overflow: hidden
     box-shadow: $ficha-sombra
 
-.lista-personajes__tipo
-    min-height: 36px
-    padding: 0 16px
-    border: 0
-    background: $primary
-    color: $ficha-blanco
-    font: inherit
-    font-size: 14px
-    cursor: pointer
-
-    &:hover
+    button:not([aria-pressed="true"]):hover
         background: $primary-hover
-
-    &:focus-visible
-        outline: 2px solid $active
-        outline-offset: -2px
-
-.lista-personajes__tipo--activo, .lista-personajes__tipo--activo:hover
-    background: $active
 
 .lista-personajes__tipos-ayuda
     font-size: 13px

@@ -61,3 +61,34 @@ $ficha-sombra: 3px 3px 10px black
 @mixin ficha-etiqueta-aviso
     border-color: $ficha-aviso
     color: $ficha-aviso
+
+// Un conmutador de pocas opciones: botones pegados sobre $primary y el elegido en rosa (`aria-pressed` o `aria-checked`).
+// Lo usan la creación (`.creacion-conmutador`: «Oficiales / También homebrew», «Sin, +1…+5») y el listado de personajes
+// («Todos · Personajes jugadores · PNJ», un punto más grande).
+@mixin ficha-conmutador($tamano: 13px, $relleno: 12px)
+    display: inline-flex
+    gap: 1px
+    border-radius: 4px
+    overflow: hidden
+
+    button
+        min-width: 44px
+        height: 36px
+        padding: 0 $relleno
+        border: 0
+        background: $primary
+        color: $ficha-blanco
+        font: inherit
+        font-size: $tamano
+        cursor: pointer
+
+        &[aria-pressed="true"], &[aria-checked="true"]
+            background: $active
+
+        &:disabled
+            opacity: .45
+            cursor: not-allowed
+
+        &:focus-visible
+            outline: 2px solid $ficha-blanco
+            outline-offset: -2px

@@ -87,32 +87,7 @@
 
 // Un conmutador de pocas opciones («Oficiales / También homebrew», «Sin, +1…+5»).
 .creacion-conmutador
-    display: inline-flex
-    gap: 1px
-    border-radius: 4px
-    overflow: hidden
-
-    button
-        min-width: 44px
-        height: 36px
-        padding: 0 12px
-        border: 0
-        background: $primary
-        color: $ficha-blanco
-        font: inherit
-        font-size: 13px
-        cursor: pointer
-
-        &[aria-pressed="true"], &[aria-checked="true"]
-            background: $active
-
-        &:disabled
-            opacity: .45
-            cursor: not-allowed
-
-        &:focus-visible
-            outline: 2px solid $ficha-blanco
-            outline-offset: -2px
+    @include ficha-conmutador
 
 // Una opción que se elige de una lista: el nombre, una nota debajo y, a la derecha, su estado o su coste. La elegida, con
 // el fondo rosado y la raya rosa a la izquierda; la que no se puede elegir, atenuada (con su motivo en la nota).
