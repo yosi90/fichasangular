@@ -1,17 +1,10 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { CompaneroMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { normalizarTexto, primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
-import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
-import {
-    resolveDoteIdFromNivelClase,
-    normalizeAlineamientosRequeridos,
-    getAlineamientosRequeridosLabel,
-    cumpleAlineamientoPorPreferencias,
-    getDetallePreferenciasAlineamiento,
-} from 'src/app/services/utils/nivel-clase-monstruo';
+import { primerEntero, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { razonesAlineamientoMascota, resolveDoteIdFromNivelClase } from 'src/app/services/utils/nivel-clase-monstruo';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
-import { CupoMascota, resolverCupoMascota } from 'src/app/services/utils/mascota-cupos';
+import { CupoMascota, idsClasesFuente, resolverCupoMascota } from 'src/app/services/utils/mascota-cupos';
 
 export type CompaneroPlantillaSelector = 'base' | 'elevado' | 'sabandija';
 
@@ -135,16 +128,10 @@ export function filtrarCompanerosElegibles(input: FiltroCompanerosElegiblesInput
 
 export function evaluarCompanerosElegibilidad(input: FiltroCompanerosElegiblesInput): CompaneroElegibilidadEvaluadaItem[] {
     const companeros = Array.isArray(input?.companeros) ? input.companeros : [];
-    const fuentesClaseIds = new Set(
-        (input?.estado?.fuentesClaseIds ?? [])
-            .map((id) => toNumber(id))
-            .filter((id) => id > 0)
-    );
+    const fuentesClaseIds = idsClasesFuente(input?.estado?.fuentesClaseIds);
     const nivelEfectivoCompanero = Math.max(0, toNumber(input?.estado?.nivelEfectivoCompanero));
     const plantillaSeleccionada = input?.plantillaSeleccionada ?? null;
     const includeHomebrew = !!input?.incluirHomebrew;
-    const alineamientoPersonaje = normalizarTexto(input?.alineamientoPersonaje ?? '');
-    const idAlineamientoBasico = getAlineamientoBasicoIdPorNombre(input?.alineamientoPersonaje ?? '');
     const nivelSeleccionado = Math.max(0, toInt(input?.nivelSeleccionado));
     const plantillaIdEsperada = plantillaSeleccionada ? getPlantillaIdCompanero(plantillaSeleccionada) : 0;
     const dedupe = new Map<string, CompaneroElegibilidadEvaluadaItem>();
@@ -208,37 +195,12 @@ export function evaluarCompanerosElegibilidad(input: FiltroCompanerosElegiblesIn
             }
         }
 
-        const requeridosExplicitos = normalizeAlineamientosRequeridos(companero?.Alineamientos_requeridos?.Companero ?? []);
-        if (requeridosExplicitos.length > 0 || nivelesClaseContextoDote.length > 0) {
-            let cumpleAlineamiento = false;
-            if (requeridosExplicitos.length > 0) {
-                cumpleAlineamiento = requeridosExplicitos.some((item) => {
-                    const idRequerido = toNumber(item?.id);
-                    if (idRequerido > 0 && idAlineamientoBasico > 0 && idRequerido === idAlineamientoBasico)
-                        return true;
-                    if (alineamientoPersonaje.length > 0 && `${item?.nombreNormalizado ?? ''}`.length > 0)
-                        return item.nombreNormalizado === alineamientoPersonaje;
-                    return false;
-                });
-                if (!cumpleAlineamiento) {
-                    const requeridosTexto = getAlineamientosRequeridosLabel(requeridosExplicitos);
-                    razones.push(`Requiere alineamiento ${requeridosTexto}.`);
-                }
-            } else if (idAlineamientoBasico > 0) {
-                cumpleAlineamiento = nivelesClaseContextoDote.some((nivelClase) =>
-                    cumpleAlineamientoPorPreferencias(nivelClase, idAlineamientoBasico)
-                );
-                if (!cumpleAlineamiento) {
-                    const detalle = getDetallePreferenciasAlineamiento(nivelesClaseContextoDote);
-                    if (detalle.length > 0)
-                        razones.push(`No cumple las preferencias de alineamiento para este compañero. Exigencias del monstruo: ${detalle}.`);
-                    else
-                        razones.push('No cumple las preferencias de alineamiento para este compañero.');
-                }
-            } else {
-                razones.push('No se pudo interpretar el alineamiento actual del personaje.');
-            }
-        }
+        razones.push(...razonesAlineamientoMascota(
+            companero?.Alineamientos_requeridos?.Companero ?? [],
+            nivelesClaseContextoDote,
+            input?.alineamientoPersonaje ?? '',
+            'compañero'
+        ));
 
         const dedupeKey = `${idCompanero}:${idPlantilla}`;
         const evaluacion: CompaneroElegibilidadEvaluadaItem = {
@@ -270,7 +232,7 @@ export function resolverNivelesCompaneroDisponibles(input: Omit<FiltroCompaneros
         ...input,
         nivelSeleccionado: null,
     });
-    const fuentesClaseIds = new Set((input?.estado?.fuentesClaseIds ?? []).map((id) => toNumber(id)).filter((id) => id > 0));
+    const fuentesClaseIds = idsClasesFuente(input?.estado?.fuentesClaseIds);
     const nivelEfectivoCompanero = Math.max(0, toNumber(input?.estado?.nivelEfectivoCompanero));
     const doteRequerida = input?.plantillaSeleccionada
         ? getDoteIdRequeridaCompanero(input.plantillaSeleccionada)

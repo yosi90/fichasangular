@@ -18,6 +18,11 @@ export interface CupoMascota {
     cuposDisponibles: number;
 }
 
+/** Los ids de las clases que dan la mascota (`CupoMascota.fuentesClaseIds`), como conjunto y sin los que no son ids. */
+export function idsClasesFuente(fuentesClaseIds: readonly unknown[] | null | undefined): Set<number> {
+    return new Set((fuentesClaseIds ?? []).map((id) => toNumber(id)).filter((id) => id > 0));
+}
+
 /** Cada clase una vez, con su nivel más alto. */
 function sinFuentesRepetidas(fuentes: MascotaFuenteClase[]): MascotaFuenteClase[] {
     const byClassId = new Map<number, MascotaFuenteClase>();

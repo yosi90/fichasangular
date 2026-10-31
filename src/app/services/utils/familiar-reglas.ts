@@ -1,17 +1,10 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { FamiliarMonstruoDetalle, MonstruoDetalle, MonstruoNivelClase } from 'src/app/interfaces/monstruo';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { normalizarTexto, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
-import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
-import {
-    resolveDoteIdFromNivelClase,
-    normalizeAlineamientosRequeridos,
-    getAlineamientosRequeridosLabel,
-    cumpleAlineamientoPorPreferencias,
-    getDetallePreferenciasAlineamiento,
-} from 'src/app/services/utils/nivel-clase-monstruo';
+import { normalizarTexto, toBoolean, toInt, toNumber, toPositiveInt } from 'src/app/services/utils/normalizacion';
+import { razonesAlineamientoMascota, resolveDoteIdFromNivelClase } from 'src/app/services/utils/nivel-clase-monstruo';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
-import { CupoMascota, resolverCupoMascota } from 'src/app/services/utils/mascota-cupos';
+import { CupoMascota, idsClasesFuente, resolverCupoMascota } from 'src/app/services/utils/mascota-cupos';
 
 /**
  * Id de la pseudoplantilla de un familiar (`Niveles_clase[].Plantilla.Id` de los monstruos, `Pseudoplantillas_familiares`
@@ -19,11 +12,8 @@ import { CupoMascota, resolverCupoMascota } from 'src/app/services/utils/mascota
  */
 export type FamiliarPlantillaId = number;
 
-/** Una pseudoplantilla de familiar tal como la da el contrato (`{ Id, Nombre }`). */
-export interface FamiliarPlantillaOpcion {
-    Id: number;
-    Nombre: string;
-}
+/** Una pseudoplantilla de familiar tal como la da el contrato (la `Plantilla` de cada fila de `Niveles_clase`). */
+export type FamiliarPlantillaOpcion = MonstruoNivelClase['Plantilla'];
 
 export interface EstadoCuposFamiliar extends CupoMascota {
     nivelLanzadorFamiliar: number;
@@ -49,6 +39,10 @@ function idPlantillaDeNivel(nivel: MonstruoNivelClase | null | undefined): numbe
     return Math.max(0, toInt(nivel?.Plantilla?.Id));
 }
 
+function nombrePlantillaDeNivel(nivel: MonstruoNivelClase | null | undefined): string {
+    return `${nivel?.Plantilla?.Nombre ?? ''}`.trim();
+}
+
 /**
  * Las pseudoplantillas que el catálogo da a las clases con familiar del personaje (todas, si no hay ninguna), una vez
  * cada una y por nombre: son las opciones del filtro de plantilla del selector.
@@ -57,16 +51,16 @@ export function plantillasFamiliarDisponibles(
     familiares: FamiliarMonstruoDetalle[],
     fuentesClaseIds: number[] = []
 ): FamiliarPlantillaOpcion[] {
-    const fuentes = new Set((fuentesClaseIds ?? []).map((id) => toNumber(id)).filter((id) => id > 0));
+    const fuentes = idsClasesFuente(fuentesClaseIds);
     const plantillas = new Map<number, FamiliarPlantillaOpcion>();
     (Array.isArray(familiares) ? familiares : []).forEach((familiar) => {
         (familiar?.Niveles_clase ?? []).forEach((nivel) => {
             const id = idPlantillaDeNivel(nivel);
-            if (id < 1 || plantillas.has(id))
+            if (id < 1 || (fuentes.size > 0 && !fuentes.has(toNumber(nivel?.Clase?.Id))))
                 return;
-            if (fuentes.size > 0 && !fuentes.has(toNumber(nivel?.Clase?.Id)))
-                return;
-            plantillas.set(id, { Id: id, Nombre: `${nivel?.Plantilla?.Nombre ?? ''}`.trim() });
+            // El primer nombre que no esté vacío, como en el catálogo de familiares.
+            if (!plantillas.get(id)?.Nombre)
+                plantillas.set(id, { Id: id, Nombre: nombrePlantillaDeNivel(nivel) });
         });
     });
     return Array.from(plantillas.values()).sort(porNombre);
@@ -105,7 +99,7 @@ export function construirCatalogoFamiliaresDesdeMonstruos(monstruos: MonstruoDet
             dedupe.add(clave);
 
             const plantillaNombre = nivelesPlantilla
-                .map((nivel) => `${nivel?.Plantilla?.Nombre ?? ''}`.trim())
+                .map((nivel) => nombrePlantillaDeNivel(nivel))
                 .find((nombre) => nombre.length > 0) ?? '';
 
             resultado.push({
@@ -209,17 +203,10 @@ export function filtrarFamiliaresElegibles(input: FiltroFamiliaresElegiblesInput
 
 export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesInput): FamiliarElegibilidadEvaluadaItem[] {
     const familiares = Array.isArray(input?.familiares) ? input.familiares : [];
-    const fuentesClaseIds = new Set(
-        (input?.estado?.fuentesClaseIds ?? [])
-            .map((id) => toNumber(id))
-            .filter((id) => id > 0)
-    );
+    const fuentesClaseIds = idsClasesFuente(input?.estado?.fuentesClaseIds);
     const nivelLanzadorFamiliar = Math.max(0, toNumber(input?.estado?.nivelLanzadorFamiliar));
-    const plantillaRaw = Math.trunc(toNumber(input?.plantillaSeleccionada, 0));
-    const plantillaSeleccionada: FamiliarPlantillaId | null = plantillaRaw >= 1 ? plantillaRaw : null;
+    const plantillaSeleccionada: FamiliarPlantillaId | null = toPositiveInt(input?.plantillaSeleccionada);
     const includeHomebrew = !!input?.incluirHomebrew;
-    const alineamientoPersonaje = normalizarTexto(input?.alineamientoPersonaje ?? '');
-    const idAlineamientoBasico = getAlineamientoBasicoIdPorNombre(input?.alineamientoPersonaje ?? '');
     const dotesActuales = Array.isArray(input?.dotesActuales) ? input.dotesActuales : [];
 
     const dedupe = new Map<string, FamiliarElegibilidadEvaluadaItem>();
@@ -270,37 +257,12 @@ export function evaluarFamiliaresElegibilidad(input: FiltroFamiliaresElegiblesIn
         const nivelesAlineamiento = [nivelesConNivel, nivelesConDote, nivelesClaseFuente, nivelesClasePlantilla]
             .find((niveles) => niveles.length > 0) ?? [];
 
-        const requeridosExplicitos = normalizeAlineamientosRequeridos(familiar?.Alineamientos_requeridos?.Familiar ?? []);
-        if (requeridosExplicitos.length > 0 || nivelesClasePlantilla.length > 0) {
-            let cumpleAlineamiento = false;
-            if (requeridosExplicitos.length > 0) {
-                cumpleAlineamiento = requeridosExplicitos.some((item) => {
-                    const idRequerido = toNumber(item?.id);
-                    if (idRequerido > 0 && idAlineamientoBasico > 0 && idRequerido === idAlineamientoBasico)
-                        return true;
-                    if (alineamientoPersonaje.length > 0 && `${item?.nombreNormalizado ?? ''}`.length > 0)
-                        return item.nombreNormalizado === alineamientoPersonaje;
-                    return false;
-                });
-                if (!cumpleAlineamiento) {
-                    const requeridosTexto = getAlineamientosRequeridosLabel(requeridosExplicitos);
-                    razones.push(`Requiere alineamiento ${requeridosTexto}.`);
-                }
-            } else if (idAlineamientoBasico > 0) {
-                cumpleAlineamiento = nivelesAlineamiento.some((nivelClase) =>
-                    cumpleAlineamientoPorPreferencias(nivelClase, idAlineamientoBasico)
-                );
-                if (!cumpleAlineamiento) {
-                    const detalle = getDetallePreferenciasAlineamiento(nivelesAlineamiento);
-                    if (detalle.length > 0)
-                        razones.push(`No cumple las preferencias de alineamiento para este familiar. Exigencias del monstruo: ${detalle}.`);
-                    else
-                        razones.push('No cumple las preferencias de alineamiento para este familiar.');
-                }
-            } else {
-                razones.push('No se pudo interpretar el alineamiento actual del personaje.');
-            }
-        }
+        razones.push(...razonesAlineamientoMascota(
+            familiar?.Alineamientos_requeridos?.Familiar ?? [],
+            nivelesAlineamiento,
+            input?.alineamientoPersonaje ?? '',
+            'familiar'
+        ));
 
         const dedupeKey = `${idFamiliar}:${idPlantilla}`;
         const evaluacion: FamiliarElegibilidadEvaluadaItem = {
