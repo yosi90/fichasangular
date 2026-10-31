@@ -114,6 +114,24 @@ describe('Reglas de la magia: el libro del mago (MJ cap. 3)', () => {
         return service;
     }
 
+    it('los homebrew de su lista: una ficha oficial solo los ve si los pide, no cuentan en el cupo ni se añaden solos', () => {
+        const service = crearServicio({ Inteligencia: 16 });
+        service.setCatalogoClases([mago]);
+        service.setCatalogoConjuros([
+            ...catalogo,
+            { ...conjuro(130, 'Engranaje animado', 'Conjuración', deMago(1)), Oficial: false } as Conjuro,
+            { ...conjuro(131, 'Chispa de vapor', 'Evocación', deMago(0)), Oficial: false } as Conjuro,
+        ]);
+        expect(service.aplicarSiguienteNivelClase(mago).aplicado).toBeTrue();
+        const entrada = service.getConjurosSesionActual().entradas[0];
+        expect(entrada.autoadicionadosIds.sort()).toEqual([101, 102, 103, 104]);
+        expect(entrada.cupoPendiente.total).toBe(6);
+        expect(service.filtrarConjurosDisponibles().map((c) => c.Id)).not.toContain(130);
+        expect(service.seleccionarConjuroSesion(130)).toBeFalse();
+        expect(service.filtrarConjurosDisponibles('', null, true).map((c) => c.Id)).toContain(130);
+        expect(service.seleccionarConjuroSesion(130, true)).toBeTrue();
+    });
+
     it('mago 1 con Int 16: todos los de nivel 0 y 3 + 3 de nivel 1 a elegir; en cada nivel nuevo, 2', () => {
         const service = preparar(16);
         expect(service.aplicarSiguienteNivelClase(mago).aplicado).toBeTrue();

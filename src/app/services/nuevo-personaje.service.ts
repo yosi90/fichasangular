@@ -606,6 +606,11 @@ export interface ConjurosSesionStateEntrada {
     cupoInicial: ConjurosCupoPendiente;
     nivelesPorConjuro: Record<number, number>;
     elegiblesIds: number[];
+    /**
+     * Los homebrew que puede elegir una ficha oficial con «También homebrew» (elegir uno la vuelve homebrew, con su
+     * confirmación). No cuentan para el cupo ni para lo que se añade solo; con la ficha ya homebrew están en `elegiblesIds`.
+     */
+    elegiblesHomebrewIds?: number[];
     seleccionadosIds: number[];
     autoadicionadosIds: number[];
     avisos: string[];
@@ -2405,7 +2410,7 @@ export class NuevoPersonajeService {
         };
     }
 
-    filtrarConjurosDisponibles(filtroTexto: string = '', nivelConjuro: number | null = null): Conjuro[] {
+    filtrarConjurosDisponibles(filtroTexto: string = '', nivelConjuro: number | null = null, incluirHomebrew = false): Conjuro[] {
         const entrada = this.getEntradaConjurosActiva();
         if (!entrada || !entrada.seleccionManual)
             return [];
@@ -2417,7 +2422,7 @@ export class NuevoPersonajeService {
             ...(entrada.autoadicionadosIds ?? []),
         ].map((id) => toNumber(id)).filter((id) => id > 0));
 
-        return this.obtenerConjurosElegiblesParaEntrada(entrada)
+        return this.obtenerConjurosElegiblesParaEntrada(entrada, incluirHomebrew)
             .filter((conjuro) => !idsNoDisponibles.has(toNumber(conjuro?.Id)))
             .filter((conjuro) => {
                 if (filtro.length < 1)
@@ -2438,7 +2443,8 @@ export class NuevoPersonajeService {
             });
     }
 
-    seleccionarConjuroSesion(idConjuro: number): boolean {
+    /** Elige un conjuro de la entrada activa; uno homebrew en una ficha oficial, solo con `incluirHomebrew` (ya confirmado). */
+    seleccionarConjuroSesion(idConjuro: number, incluirHomebrew = false): boolean {
         const entrada = this.getEntradaConjurosActiva();
         if (!entrada || !entrada.seleccionManual)
             return false;
@@ -2452,7 +2458,7 @@ export class NuevoPersonajeService {
         const conjuro = this.obtenerConjuroCatalogoPorId(id);
         if (!conjuro)
             return false;
-        if (!this.obtenerConjurosElegiblesParaEntrada(entrada).some((item) => toNumber(item?.Id) === id))
+        if (!this.obtenerConjurosElegiblesParaEntrada(entrada, incluirHomebrew).some((item) => toNumber(item?.Id) === id))
             return false;
 
         const nivelConjuro = this.resolverNivelConjuroEntrada(entrada, conjuro);
@@ -7843,6 +7849,9 @@ export class NuevoPersonajeService {
                 .filter((id) => id > 0)
             : [];
         const autoadicionActiva = (autoadicion || !!cupoLibro) && !sinElegibles && idsAutoadicionados.length > 0;
+        const homebrew = requiereSeleccionManual
+            ? this.conjurosHomebrewElegibles(claseObjetivo, detalleActual, nivelLanzadorActual, detallePrevio, elegibles.conjuros)
+            : { ids: [] as number[], nivelesPorConjuro: {} as Record<number, number> };
 
         const entrada: ConjurosSesionStateEntrada = {
             id: `${normalizarTexto(claseObjetivo.Nombre)}:${origen}:${nivelLanzadorActual}`,
@@ -7866,8 +7875,9 @@ export class NuevoPersonajeService {
                 total: cupoTotal,
                 porNivel: { ...cupoPorNivel },
             },
-            nivelesPorConjuro: { ...elegibles.nivelesPorConjuro },
+            nivelesPorConjuro: { ...homebrew.nivelesPorConjuro, ...elegibles.nivelesPorConjuro },
             elegiblesIds: elegibles.conjuros.map((conjuro) => toNumber(conjuro?.Id)).filter((id) => id > 0),
+            elegiblesHomebrewIds: homebrew.ids,
             seleccionadosIds: [],
             autoadicionadosIds: idsAutoadicionados,
             avisos,
@@ -8111,7 +8121,8 @@ export class NuevoPersonajeService {
         detalleActual: ClaseNivelDetalle,
         nivelLanzadorActual: number,
         detallePrevio: ClaseNivelDetalle | null = null,
-        incluirConjurosYaConocidos = false
+        incluirConjurosYaConocidos = false,
+        incluirHomebrew = false
     ): { conjuros: Conjuro[]; nivelesPorConjuro: Record<number, number>; avisos: string[]; acceso: ConjurosAccesoNivelesInfo; } {
         const avisos: string[] = [];
         const resultado: Conjuro[] = [];
@@ -8119,7 +8130,8 @@ export class NuevoPersonajeService {
         const usados = new Set<number>();
         const acceso = this.resolverAccesoConjurosPorTipo(claseObjetivo, detalleActual, detallePrevio);
         avisos.push(...acceso.errores);
-        const incluirSoloOficiales = this.personajeCreacion?.Oficial !== false;
+        // Una ficha oficial solo ve los oficiales, salvo que pida también los homebrew (la selección manual).
+        const incluirSoloOficiales = !incluirHomebrew && this.personajeCreacion?.Oficial !== false;
         const dominiosSeleccionados = new Set(
             (this.personajeCreacion?.Dominios ?? [])
                 .map((dominio) => normalizarTexto(dominio?.Nombre ?? ''))
@@ -8408,10 +8420,37 @@ export class NuevoPersonajeService {
         return this.estadoFlujo.conjuros.entradas[indice] ?? this.estadoFlujo.conjuros.entradas[0] ?? null;
     }
 
-    private obtenerConjurosElegiblesParaEntrada(entrada: ConjurosSesionStateEntrada): Conjuro[] {
-        return (entrada?.elegiblesIds ?? [])
+    /**
+     * Los que puede elegir en esa entrada: los de `elegiblesIds` y, con `incluirHomebrew` o con la ficha ya homebrew, los
+     * homebrew que una ficha oficial no ve sin pedirlos (`elegiblesHomebrewIds`).
+     */
+    private obtenerConjurosElegiblesParaEntrada(entrada: ConjurosSesionStateEntrada, incluirHomebrew = false): Conjuro[] {
+        const conHomebrew = incluirHomebrew || this.personajeCreacion?.Oficial === false;
+        return [...(entrada?.elegiblesIds ?? []), ...(conHomebrew ? entrada?.elegiblesHomebrewIds ?? [] : [])]
             .map((id) => this.obtenerConjuroCatalogoPorId(id))
             .filter((conjuro): conjuro is Conjuro => !!conjuro);
+    }
+
+    /**
+     * Los homebrew que una ficha oficial podría elegir en esta entrada si los pide (con su nivel): los mismos de la lista
+     * de la clase sin quitar los no oficiales. Con la ficha ya homebrew ya están entre los elegibles.
+     */
+    private conjurosHomebrewElegibles(
+        claseObjetivo: Clase,
+        detalleActual: ClaseNivelDetalle,
+        nivelLanzadorActual: number,
+        detallePrevio: ClaseNivelDetalle | null,
+        oficiales: Conjuro[],
+    ): { ids: number[]; nivelesPorConjuro: Record<number, number>; } {
+        if (this.personajeCreacion?.Oficial === false)
+            return { ids: [], nivelesPorConjuro: {} };
+        const yaElegibles = new Set(oficiales.map((conjuro) => toNumber(conjuro?.Id)));
+        const todos = this.obtenerConjurosElegiblesParaClase(claseObjetivo, detalleActual, nivelLanzadorActual, detallePrevio, false, true);
+        const ids = todos.conjuros
+            .filter((conjuro) => conjuro?.Oficial === false && !yaElegibles.has(toNumber(conjuro?.Id)))
+            .map((conjuro) => toNumber(conjuro?.Id))
+            .filter((id) => id > 0);
+        return { ids, nivelesPorConjuro: Object.fromEntries(ids.map((id) => [id, toNumber(todos.nivelesPorConjuro[id])])) };
     }
 
     private resolverNivelConjuroEntrada(entrada: ConjurosSesionStateEntrada, conjuro: Conjuro): number {

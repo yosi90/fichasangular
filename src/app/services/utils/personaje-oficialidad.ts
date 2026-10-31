@@ -16,6 +16,13 @@ export interface ContextoOficialidad {
     plantillas?: ConOficial[];
     /** Si eligió ventajas o desventajas (siempre homebrew, decisión del propietario del 2026-10-25). */
     tieneVentajas?: boolean;
+    /**
+     * La escuela de especialista (del catálogo de escuelas, con su `Oficial`): una homebrew (la Ingeniería mágica) vuelve
+     * homebrew la ficha; prohibirla, no (propietario, 2026-10-31).
+     */
+    escuelaEspecialista?: ConOficial | null;
+    /** Los conjuros elegidos en la sesión de conjuros abierta, que aún no están en `Personaje.Conjuros`. */
+    conjurosEnSesion?: ConOficial[];
 }
 
 function noOficiales(tipo: string, elementos: (ConOficial | null | undefined)[] | null | undefined): string[] {
@@ -26,9 +33,9 @@ function noOficiales(tipo: string, elementos: (ConOficial | null | undefined)[] 
 
 /**
  * Los elementos no oficiales que usa el personaje (decisión del propietario del 2026-10-17: con uno solo, el personaje es
- * homebrew entero): la raza y la raza base, las clases, las plantillas, las dotes, los raciales, los idiomas, el familiar
- * y el compañero, y las ventajas y desventajas. Vacío si todo es oficial. Las restricciones saltadas (alineamiento, edad…)
- * van aparte.
+ * homebrew entero): la raza y la raza base, las clases, las plantillas, las dotes, los raciales, los idiomas, los
+ * conjuros, la escuela de especialista, el familiar y el compañero, y las ventajas y desventajas. Vacío si todo es
+ * oficial. Las restricciones saltadas (alineamiento, edad…) van aparte.
  */
 export function motivosHomebrewPersonaje(personaje: Personaje | null | undefined, contexto: ContextoOficialidad): string[] {
     return [
@@ -39,8 +46,26 @@ export function motivosHomebrewPersonaje(personaje: Personaje | null | undefined
         ...noOficiales('Dote', (personaje?.DotesContextuales ?? []).map((item) => item?.Dote)),
         ...noOficiales('Racial', personaje?.Raciales as ConOficial[]),
         ...noOficiales('Idioma', personaje?.Idiomas),
+        ...noOficiales('Conjuro', [...(personaje?.Conjuros ?? []), ...(contexto.conjurosEnSesion ?? [])] as ConOficial[]),
+        ...noOficiales('Escuela de especialista', [contexto.escuelaEspecialista]),
         ...noOficiales('Familiar', personaje?.Familiares as ConOficial[]),
         ...noOficiales('Compañero', personaje?.Companeros as ConOficial[]),
         ...(contexto.tieneVentajas ? ['Ventajas y desventajas (homebrew)'] : []),
     ];
+}
+
+/**
+ * Antes de aplicar una elección de la creación que vuelve homebrew la ficha (guía de nuevo personaje, «Homebrew»): los
+ * motivos que hay que confirmar, o ninguno si la ficha ya es homebrew por otra cosa (no se vuelve a preguntar) o si la
+ * elección no la vuelve homebrew. Sin repetidos ni vacíos.
+ */
+export function motivosQueConfirmar(motivos: (string | null | undefined)[], yaEsHomebrew: boolean): string[] {
+    if (yaEsHomebrew)
+        return [];
+    return Array.from(new Set(motivos.map((motivo) => `${motivo ?? ''}`.trim()).filter((motivo) => motivo.length > 0)));
+}
+
+/** «Clase homebrew: Magiingeniero» de un elemento no oficial; `null` si es oficial (o no se sabe). */
+export function motivoHomebrew(tipo: string, elemento: ConOficial | null | undefined): string | null {
+    return noOficiales(tipo, [elemento])[0] ?? null;
 }

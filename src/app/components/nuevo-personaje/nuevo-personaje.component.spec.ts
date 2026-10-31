@@ -1746,6 +1746,36 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Oficial).toBeFalse();
     });
 
+    it('una raza sin altura o peso (0) no tiene rango y no los comprueba', () => {
+        const raza = crearRazaMock();
+        raza.Altura_rango_inf = 0;
+        raza.Altura_rango_sup = 0;
+        raza.Peso_rango_inf = 0;
+        raza.Peso_rango_sup = 0;
+        component.seleccionarRaza(raza);
+        component.Personaje.Deidad = 'No tener deidad';
+
+        component.onPesoChange(70);
+        component.onAlturaChange(1.8);
+
+        expect(component.pesoFueraRango).toBeFalse();
+        expect(component.alturaFueraRango).toBeFalse();
+        expect(component.Personaje.Oficial).toBeTrue();
+    });
+
+    it('continuarDesdeBasicos no vuelve a preguntar por el peso si la ficha ya es homebrew por otra cosa', async () => {
+        component.seleccionarRaza(crearRazaMock(false));
+        component.Personaje.Deidad = 'No tener deidad';
+        component.Personaje.Peso = 999;
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeBasicos();
+
+        expect(swalSpy.calls.allArgs().some((args) => (args[0] as any)?.title === 'Tus elecciones van en contra de los manuales')).toBeFalse();
+        expect(component.modalCaracteristicasAbierto).toBeTrue();
+        expect(component.Personaje.Oficial).toBeFalse();
+    });
+
     it('continuarDesdeBasicos cancela al rechazar alerta', async () => {
         component.Personaje.Peso = 999;
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
@@ -3053,7 +3083,8 @@ describe('NuevoPersonajeComponent', () => {
         const avisosAlineamiento = swalSpy.calls.allArgs()
             .map((args) => args[0] as any)
             .filter((config) => config?.title === 'Aviso de alineamiento de clase');
-        expect(avisosAlineamiento.length).toBe(2);
+        // El primero vuelve homebrew la ficha: el del monje ya no se pregunta (guía, «Homebrew»).
+        expect(avisosAlineamiento.length).toBe(1);
         expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Bárbaro' && c.Nivel === 2)).toBeTrue();
         expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Monje estricto' && c.Nivel === 1)).toBeTrue();
     });
@@ -3069,11 +3100,184 @@ describe('NuevoPersonajeComponent', () => {
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
         (component as any).recalcularClasesVisibles();
         component.abrirClase(claseHomebrew);
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
         await component.continuarDesdeClases();
 
+        expect((swalSpy.calls.first().args[0] as any).title).toBe('Elegir Ejemplo homebrew');
+        expect(`${(swalSpy.calls.first().args[0] as any).html}`).toContain('Clase homebrew: Ejemplo homebrew');
+
         expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Ejemplo homebrew' && c.Nivel === 1)).toBeTrue();
         expect(component.Personaje.Oficial).toBeFalse();
+    });
+
+    it('una clase homebrew pregunta antes de aplicarse: al cancelar no se aplica y la ficha sigue oficial', async () => {
+        const claseHomebrew = crearClaseMock({ Id: 35, Nombre: 'Otra homebrew', Oficial: false });
+        component.incluirHomebrewClases = true;
+        component.catalogoClases = [claseHomebrew];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.abrirClase(claseHomebrew);
+        const aplicar = spyOn(nuevoPSvc, 'aplicarSiguienteNivelClase').and.callThrough();
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        await component.continuarDesdeClases();
+
+        expect(aplicar).not.toHaveBeenCalled();
+        expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Otra homebrew')).toBeFalse();
+        expect(component.Personaje.Oficial).toBeTrue();
+    });
+
+    it('con la ficha ya homebrew, una clase homebrew no vuelve a preguntar', async () => {
+        component.seleccionarRaza(crearRazaMock(false));
+        const claseHomebrew = crearClaseMock({ Id: 36, Nombre: 'Tercera homebrew', Oficial: false });
+        component.catalogoClases = [claseHomebrew];
+        nuevoPSvc.setCatalogoClases(component.catalogoClases);
+        (component as any).recalcularClasesVisibles();
+        component.abrirClase(claseHomebrew);
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeClases();
+
+        expect(swalSpy.calls.allArgs().some((args) => `${(args[0] as any)?.html ?? ''}`.includes('Clase homebrew'))).toBeFalse();
+    });
+
+    it('una plantilla homebrew pregunta antes de elegirse; al cancelar no se elige; con la ficha ya homebrew no pregunta', async () => {
+        component.seleccionarRaza(crearRazaMock());
+        const homebrew = crearPlantillaMock({ Id: 820, Nombre: 'Plantilla de la casa', Oficial: false });
+        const otra = crearPlantillaMock({ Id: 821, Nombre: 'Otra de la casa', Oficial: false });
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        expect(await component.seleccionarPlantilla(homebrew)).toBeFalse();
+        expect(component.plantillasSeleccionadas.some((p) => p.Id === 820)).toBeFalse();
+        expect(component.Personaje.Oficial).toBeTrue();
+        expect(`${(swalSpy.calls.mostRecent().args[0] as any).html}`).toContain('Plantilla homebrew: Plantilla de la casa');
+
+        swalSpy.and.resolveTo({ isConfirmed: true } as any);
+        await component.seleccionarPlantilla(homebrew);
+        expect(component.Personaje.Oficial).toBeFalse();
+        swalSpy.calls.reset();
+        await component.seleccionarPlantilla(otra);
+        expect(swalSpy).not.toHaveBeenCalled();
+    });
+
+    it('una dote homebrew se confirma antes de cerrar su selector: al cancelar, el selector sigue abierto', async () => {
+        const dote: any = { Id: 900, Nombre: 'Dote de la casa', Oficial: false };
+        component.modalSelectorDotesAbierto = true;
+        component.selectorDoteCandidatos = [{ dote } as any];
+        const resolver = jasmine.createSpy('resolver');
+        (component as any).resolverSelectorDotes = resolver;
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        await component.onConfirmarDotePendiente({ idDote: 900, idExtra: -1, extra: '' });
+        expect(component.modalSelectorDotesAbierto).toBeTrue();
+        expect(resolver).not.toHaveBeenCalled();
+
+        swalSpy.and.resolveTo({ isConfirmed: true } as any);
+        await component.onConfirmarDotePendiente({ idDote: 900, idExtra: -1, extra: '' });
+        expect(component.modalSelectorDotesAbierto).toBeFalse();
+        expect(resolver).toHaveBeenCalled();
+    });
+
+    it('la escuela de especialista homebrew se confirma antes de cerrar el selector; si la clase ya es homebrew, no', async () => {
+        component.catalogoEscuelas = [{ Id: 12, Nombre: 'Ingeniería mágica', Nombre_especial: '', Prohibible: true, Oficial: false }];
+        const resolver = jasmine.createSpy('resolver');
+        component.modalSelectorEspecialidadMagicaAbierto = true;
+        (component as any).resolverSelectorEspecialidadMagica = resolver;
+        const seleccion = { arcana: { especializar: true, escuelaEspecialistaId: 12, escuelasProhibidasIds: [] } } as any;
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        await component.onConfirmarEspecialidadMagica(seleccion);
+        expect(component.modalSelectorEspecialidadMagicaAbierto).toBeTrue();
+        expect(resolver).not.toHaveBeenCalled();
+        expect(`${(swalSpy.calls.mostRecent().args[0] as any).html}`).toContain('Escuela de especialista homebrew: Ingeniería mágica');
+
+        swalSpy.calls.reset();
+        (component as any).claseEspecialidadEnCurso = crearClaseMock({ Id: 418, Nombre: 'Magiingeniero', Oficial: false });
+        await component.onConfirmarEspecialidadMagica(seleccion);
+        expect(swalSpy).not.toHaveBeenCalled();
+        expect(resolver).toHaveBeenCalledWith(seleccion);
+    });
+
+    it('prohibir una escuela homebrew no pregunta', async () => {
+        component.catalogoEscuelas = [{ Id: 12, Nombre: 'Ingeniería mágica', Nombre_especial: '', Prohibible: true, Oficial: false }];
+        (component as any).resolverSelectorEspecialidadMagica = jasmine.createSpy('resolver');
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        await component.onConfirmarEspecialidadMagica({ arcana: { especializar: true, escuelaEspecialistaId: 5, escuelasProhibidasIds: [12] } } as any);
+
+        expect(swalSpy).not.toHaveBeenCalled();
+    });
+
+    it('un conjuro homebrew se confirma antes de añadirse; al cancelar no se añade', async () => {
+        const conjuro: any = { Id: 950, Nombre: 'Engranaje animado', Oficial: false };
+        const seleccionar = spyOn(nuevoPSvc, 'seleccionarConjuroSesion').and.returnValue(true);
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        expect(await component.agregarConjuroSesion(conjuro)).toBeFalse();
+        expect(seleccionar).not.toHaveBeenCalled();
+
+        swalSpy.and.resolveTo({ isConfirmed: true } as any);
+        await component.agregarConjuroSesion(conjuro);
+        expect(seleccionar).toHaveBeenCalledWith(950, true);
+
+        swalSpy.calls.reset();
+        await component.agregarConjuroSesion({ Id: 951, Nombre: 'Rayo arcano', Oficial: true } as any);
+        expect(swalSpy).not.toHaveBeenCalled();
+    });
+
+    it('los conjuros homebrew solo se ofrecen a una ficha oficial con «Incluir homebrew»', () => {
+        expect(component.incluirHomebrewConjurosEfectivo).toBeFalse();
+        component.alternarHomebrewConjuros();
+        expect(component.incluirHomebrewConjurosEfectivo).toBeTrue();
+        const filtrar = spyOn(nuevoPSvc, 'filtrarConjurosDisponibles').and.returnValue([]);
+        void component.conjurosDisponiblesActuales;
+        expect(filtrar).toHaveBeenCalledWith('', null, true);
+    });
+
+    it('un idioma homebrew se confirma antes de añadirse; al cancelar no se añade', async () => {
+        (component as any).contextoSelectorIdioma = 'idiomasIniciales';
+        const aplicar = spyOn<any>(component, 'aplicarIdiomasElegidos');
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+        const idioma: any = { Id: 70, Nombre: 'Vrykul', Descripcion: '', Secreto: false, Oficial: false };
+
+        expect(await component.onConfirmarIdiomaVentaja([idioma])).toBeFalse();
+        expect(aplicar).not.toHaveBeenCalled();
+        expect(`${(swalSpy.calls.mostRecent().args[0] as any).html}`).toContain('Idioma homebrew: Vrykul');
+
+        swalSpy.calls.reset();
+        await component.onConfirmarIdiomaVentaja([{ ...idioma, Id: 1, Nombre: 'Común', Oficial: true }]);
+        expect(swalSpy).not.toHaveBeenCalled();
+        expect(aplicar).toHaveBeenCalled();
+    });
+
+    it('una raza homebrew pregunta al elegirla; al cancelar no se elige', async () => {
+        const raza = crearRazaMock(false);
+        component.razaMirada = raza;
+        const seleccionar = spyOn(component, 'seleccionarRaza');
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        expect(await component.elegirRazaMirada()).toBeFalse();
+        expect(seleccionar).not.toHaveBeenCalled();
+        expect(`${(swalSpy.calls.mostRecent().args[0] as any).html}`).toContain('Raza homebrew: Elfo');
+
+        swalSpy.and.resolveTo({ isConfirmed: true } as any);
+        await component.elegirRazaMirada();
+        expect(seleccionar).toHaveBeenCalledWith(raza);
+    });
+
+    it('un familiar homebrew se confirma antes de cerrar su selector', async () => {
+        const familiar: any = { Id_familiar: 3, Nombre: 'Gato de la casa', Oficial: false, Plantilla: { Id: 0 } };
+        component.selectorFamiliarElegibles = [familiar];
+        const cerrar = spyOn<any>(component, 'cerrarSelectorFamiliarContexto');
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        await component.onConfirmarSelectorFamiliar({ familiar, plantilla: 0, nombre: 'Bigotes' } as any);
+        expect(cerrar).not.toHaveBeenCalled();
+
+        swalSpy.and.resolveTo({ isConfirmed: true } as any);
+        await component.onConfirmarSelectorFamiliar({ familiar, plantilla: 0, nombre: 'Bigotes' } as any);
+        expect(cerrar).toHaveBeenCalled();
     });
 
     it('continuarDesdeClases bloquea una clase incompatible si la campaña no permite ignorar alineamiento', async () => {
@@ -4847,7 +5051,7 @@ describe('NuevoPersonajeComponent', () => {
         }
     });
 
-    it('muestra contador de ventajas y puntos desde el estado del servicio', () => {
+    it('muestra contador de ventajas y puntos desde el estado del servicio', async () => {
         const ventaja: VentajaDetalle = {
             Id: 10,
             Nombre: 'Fuerte',
@@ -4886,15 +5090,16 @@ describe('NuevoPersonajeComponent', () => {
         };
 
         nuevoPSvc.setCatalogosVentajas([ventaja], [desventaja]);
-        component.toggleDesventajaSeleccion(desventaja);
-        component.toggleVentajaSeleccion(ventaja);
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        await component.toggleDesventajaSeleccion(desventaja);
+        await component.toggleVentajaSeleccion(ventaja);
 
         expect(component.ventajasSeleccionadasCount).toBe(1);
         expect(component.flujoVentajas.puntosDisponibles).toBe(1);
         expect(component.flujoVentajas.puntosRestantes).toBe(0);
     });
 
-    it('bloquea continuar desde ventajas con déficit', () => {
+    it('bloquea continuar desde ventajas con déficit', async () => {
         const ventaja: VentajaDetalle = {
             Id: 12,
             Nombre: 'Caro',
@@ -4923,7 +5128,8 @@ describe('NuevoPersonajeComponent', () => {
             Oficial: true,
         };
         nuevoPSvc.setCatalogosVentajas([ventaja], []);
-        component.toggleVentajaSeleccion(ventaja);
+        spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        await component.toggleVentajaSeleccion(ventaja);
 
         expect(component.flujoVentajas.hayDeficit).toBeTrue();
         expect(component.puedeContinuarVentajas).toBeFalse();
@@ -5784,18 +5990,42 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.desventajasVisibles.map((item) => item.Nombre)).toEqual(['Desventaja homebrew']);
     });
 
-    it('recupera oficialidad al quitar todas las ventajas y desventajas', () => {
+    it('recupera oficialidad al quitar todas las ventajas y desventajas', async () => {
         const ventaja = crearVentajaMock({ Id: 12, Nombre: 'Uso real del sistema' });
         nuevoPSvc.setCatalogosVentajas([ventaja], []);
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
         component.recalcularOficialidad();
         expect(component.Personaje.Oficial).toBeTrue();
 
-        component.toggleVentajaSeleccion(ventaja);
+        await component.toggleVentajaSeleccion(ventaja);
+        expect(swalSpy).toHaveBeenCalledTimes(1);
         expect(component.Personaje.Oficial).toBeFalse();
 
-        component.toggleVentajaSeleccion(ventaja);
+        // Quitarla no pregunta.
+        await component.toggleVentajaSeleccion(ventaja);
+        expect(swalSpy).toHaveBeenCalledTimes(1);
         expect(component.Personaje.Oficial).toBeTrue();
+    });
+
+    it('la primera ventaja pregunta antes de elegirse: al cancelar no se elige; con la ficha ya homebrew no se pregunta', async () => {
+        const ventaja = crearVentajaMock({ Id: 12, Nombre: 'Uso real del sistema' });
+        const otra = crearVentajaMock({ Id: 13, Nombre: 'Otra ventaja' });
+        nuevoPSvc.setCatalogosVentajas([ventaja, otra], []);
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+
+        expect(await component.toggleVentajaSeleccion(ventaja)).toBeFalse();
+        expect(component.isVentajaSeleccionada(12)).toBeFalse();
+        expect(component.Personaje.Oficial).toBeTrue();
+        expect(`${(swalSpy.calls.mostRecent().args[0] as any).html}`).toContain('Ventajas y desventajas (homebrew)');
+
+        swalSpy.and.resolveTo({ isConfirmed: true } as any);
+        await component.toggleVentajaSeleccion(ventaja);
+        expect(component.isVentajaSeleccionada(12)).toBeTrue();
+        swalSpy.calls.reset();
+        await component.toggleVentajaSeleccion(otra);
+        expect(swalSpy).not.toHaveBeenCalled();
+        expect(component.isVentajaSeleccionada(13)).toBeTrue();
     });
 
     it('limita edad, peso y altura al maximo de cifras permitido', () => {
