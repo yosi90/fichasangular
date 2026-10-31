@@ -1,7 +1,7 @@
 import { ManualReferencia } from './manual';
 
 /*
- * Magic of Incarnum (roadmap `ACTIVO_incarnum`, fase 3). Contrato: `docs/publica/INCARNUM.md`, con el glosario aprobado
+ * Magic of Incarnum (roadmap `PAUSADO_incarnum`, fase 3). Contrato: `docs/publica/INCARNUM.md`, con el glosario aprobado
  * (fusión, esencia, moldeado, vínculo). Los catálogos nuevos (`/incarnum/fusiones`, `/incarnum/chakras`,
  * `/incarnum/capacidad-esencia`) y lo que ganan clases, dotes, raciales, especiales y la ficha.
  */

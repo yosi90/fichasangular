@@ -657,7 +657,7 @@ export class NuevoPersonajeComponent {
         });
     }
 
-    // Magic of Incarnum (roadmap `ACTIVO_incarnum`, fase 3): el bloque del incarnum que calcula la web como la API y la
+    // Magic of Incarnum (roadmap `PAUSADO_incarnum`, fase 3): el bloque del incarnum que calcula la web como la API y la
     // formación de partida, un paso opcional al terminar los niveles (decisión 4 de la fase 0, opción B).
     formacionAbierta = false;
     formacionIncarnum: FormacionIncarnumDto | null = null;
