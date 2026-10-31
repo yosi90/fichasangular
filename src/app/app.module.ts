@@ -104,7 +104,7 @@ import { NuevaConjuroComponent } from './components/shared/nueva-conjuro/nueva-c
 import { NuevaRazaComponent } from './components/shared/nueva-raza/nueva-raza.component';
 import { NuevaRacialComponent } from './components/shared/nueva-racial/nueva-racial.component';
 import { NuevaPlantillaComponent } from './components/shared/nueva-plantilla/nueva-plantilla.component';
-import { CatalogoBuscadorComponent } from './components/shared/nueva-plantilla/catalogo-buscador.component';
+import { CatalogoBuscadorComponent } from './components/shared/catalogo-buscador/catalogo-buscador.component';
 import { PrerrequisitoCatalogPairEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-pair-editor.component';
 import { NuevaIdiomaComponent } from './components/shared/nueva-idioma/nueva-idioma.component';
 import { InsercionMarcoComponent } from './components/shared/insercion-marco/insercion-marco.component';

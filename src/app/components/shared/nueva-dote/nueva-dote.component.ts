@@ -33,6 +33,7 @@ import { ExtraService } from 'src/app/services/extra.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { ManualService } from 'src/app/services/manual.service';
 import { UserService } from 'src/app/services/user.service';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
@@ -1160,7 +1161,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy {
     }
 
     private recalcularPermisos(): void {
-        this.puedeCrear = this.userSvc.can('dotes', 'create');
+        this.puedeCrear = puedeGestionarCatalogo(this.userSvc, 'dotes');
     }
 
     private actualizarTiposDoteDesdeCatalogo(dotes: Dote[]): void {

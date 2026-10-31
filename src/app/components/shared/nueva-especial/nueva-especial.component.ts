@@ -1,6 +1,6 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
-import { Subject, firstValueFrom, take, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import {
     EspecialClaseDetalle,
@@ -22,9 +22,16 @@ import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { PrerequisiteCatalogContext, PrerequisiteCatalogItem, PrerequisiteRowModel, PrerequisiteType } from '../prerrequisito-editor/prerrequisito-editor.models';
 import { getPrerequisiteTypeOptions } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { filaNuevaDePrerrequisito, filasDesdePrerrequisitos, prerrequisitosDesdeFilas, tiposConFilas } from 'src/app/services/utils/plantilla-formulario';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+import { NombreDeCatalogo, avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
+import { alternarControl, quitarFila } from '../insercion-marco/filas-repetibles';
 
 /** Los prerrequisitos que admite un especial: con qué actitud se puede elegir (la senda de una clase, por su alineamiento). */
 const TIPOS_PRERREQUISITO_ESPECIAL: readonly PrerequisiteType[] = ['actitud_requerido', 'actitud_prohibido'];
+
+const ESPECIAL: NombreDeCatalogo = { singular: 'especial', plural: 'especiales', femenino: false };
 
 interface NombreIdItem {
     Id: number;
@@ -53,8 +60,9 @@ interface EspecialHabilidadRow {
     templateUrl: './nueva-especial.component.html',
     styleUrls: ['./nueva-especial.component.sass'],
     standalone: false,
+    providers: [{ provide: EDITOR_DE_CATALOGO, useExisting: forwardRef(() => NuevaEspecialComponent) }],
 })
-export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
+export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, EditorDeCatalogo {
     /** Abierta dentro de otra inserción (la ventana de la clase): cabecera compacta con su ✕. */
     @Input() modal: boolean = false;
     @Input() modo: 'crear' | 'editar' = 'crear';
@@ -66,11 +74,17 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
 
     private readonly destroy$ = new Subject<void>();
     private uidCounter = 0;
-    private initialEditSnapshot = '';
-    private ultimoIdEspecialCargado = 0;
+    readonly edicion = new EdicionDeCatalogo<EspecialClaseDetalle>({
+        nombre: ESPECIAL,
+        modo: () => this.modo,
+        id: () => this.idEspecial,
+        obtener: (id) => this.especialSvc.getEspecialFresco(id),
+        hidratar: (especial) => this.hidratarDesdeEspecial(especial),
+        foto: () => this.buildEditSnapshot(),
+        destruir$: this.destroy$,
+    });
 
     guardando = false;
-    cargandoEdicion = false;
     /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera. */
     readonly pasos = ['Base', 'Bonos', 'Relaciones'];
     pasoActual = 0;
@@ -163,7 +177,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
         this.userSvc.acl$.pipe(takeUntil(this.destroy$)).subscribe(() => this.actualizarPermisos());
         this.userSvc.isLoggedIn$.pipe(takeUntil(this.destroy$)).subscribe(() => this.actualizarPermisos());
         this.cargarCatalogos();
-        this.cargarEdicionSiAplica();
+        this.edicion.cargarSiHaceFalta();
     }
 
     ngOnDestroy(): void {
@@ -173,11 +187,15 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['modo'] || changes['idEspecial'])
-            this.cargarEdicionSiAplica();
+            this.edicion.cargarSiHaceFalta();
     }
 
     get esModoEdicion(): boolean {
-        return this.modo === 'editar';
+        return this.edicion.editando;
+    }
+
+    get cargandoEdicion(): boolean {
+        return this.edicion.cargando;
     }
 
     get puedeGuardar(): boolean {
@@ -189,31 +207,20 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     get etiquetaAccionPrincipal(): string {
-        if (this.guardando)
-            return this.esModoEdicion ? 'Guardando cambios...' : 'Creando especial...';
-        return this.esModoEdicion ? 'Guardar cambios' : 'Crear especial';
+        return this.edicion.textoAccion(this.guardando);
     }
 
     get mensajePermisoInsuficiente(): string {
-        return this.esModoEdicion
-            ? 'No tienes permisos para modificar especiales.'
-            : 'No tienes permisos para crear especiales.';
+        return this.edicion.avisoPermisos;
     }
 
     get isDirty(): boolean {
-        if (!this.esModoEdicion || this.cargandoEdicion)
-            return false;
-        return this.buildEditSnapshot() !== this.initialEditSnapshot;
+        return this.edicion.hayCambios;
     }
 
     async guardarEspecial(): Promise<void> {
         if (!this.puedeGuardar) {
-            await Swal.fire({
-                icon: 'warning',
-                title: 'Permisos insuficientes',
-                text: this.userSvc.getPermissionDeniedMessage(),
-                showConfirmButton: true,
-            });
+            await avisarSinPermisos(this.userSvc.getPermissionDeniedMessage());
             return;
         }
 
@@ -225,43 +232,22 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
         this.guardando = true;
         try {
             if (this.esModoEdicion) {
-                const idEspecial = this.entero(this.idEspecial);
+                const idEspecial = this.edicion.id;
                 if (idEspecial <= 0)
                     throw new Error('No se encontró un id de especial válido para editar.');
                 const response = await this.especialSvc.actualizarEspecial(idEspecial, payload);
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Especial actualizado',
-                    text: response.message,
-                    timer: 1800,
-                    showConfirmButton: true,
-                    showCloseButton: true,
-                    confirmButtonText: 'Cerrar',
-                });
+                await avisarGuardado(ESPECIAL, true, response.message);
                 this.hidratarDesdeEspecial(response.especial);
                 this.especialActualizado.emit(response.especial);
                 this.cerrar.emit();
             } else {
                 const response = await this.especialSvc.crearEspecial(payload);
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Especial creado',
-                    text: response.message,
-                    timer: 1800,
-                    showConfirmButton: true,
-                    showCloseButton: true,
-                    confirmButtonText: 'Cerrar',
-                });
+                await avisarGuardado(ESPECIAL, false, response.message);
                 this.especialCreado.emit(response.especial);
                 this.resetFormulario();
             }
         } catch (error: any) {
-            await Swal.fire({
-                icon: 'error',
-                title: this.esModoEdicion ? 'No se pudo actualizar el especial' : 'No se pudo crear el especial',
-                text: mensajeDeError(error, 'Error no identificado'),
-                showConfirmButton: true,
-            });
+            await avisarErrorAlGuardar(ESPECIAL, this.esModoEdicion, error);
         } finally {
             this.guardando = false;
         }
@@ -272,10 +258,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     toggleBoolean(controlName: keyof typeof this.form.controls): void {
-        const control = this.form.controls[controlName] as any;
-        control.setValue(control.value !== true);
-        control.markAsDirty();
-        control.markAsTouched();
+        alternarControl(this.form.controls[controlName]);
     }
 
     agregarExtra(): void {
@@ -283,7 +266,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     quitarExtra(index: number): void {
-        this.extraRows = this.quitarFila(this.extraRows, index, this.crearExtraRow());
+        this.extraRows = quitarFila(this.extraRows, index, () => this.crearExtraRow());
     }
 
     seleccionarExtra(index: number, id: number): void {
@@ -298,7 +281,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     quitarHabilidad(index: number): void {
-        this.habilidadRows = this.quitarFila(this.habilidadRows, index, this.crearHabilidadRow('base'));
+        this.habilidadRows = quitarFila(this.habilidadRows, index, () => this.crearHabilidadRow('base'));
     }
 
     seleccionarHabilidad(index: number, id: number): void {
@@ -415,20 +398,8 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
         }
     }
 
-    async confirmarSalidaSiHayCambios(): Promise<boolean> {
-        if (!this.esModoEdicion || !this.isDirty)
-            return true;
-
-        const result = await Swal.fire({
-            icon: 'warning',
-            title: 'Hay cambios sin guardar',
-            text: 'Si cierras esta pestaña perderás los cambios del especial.',
-            showCancelButton: true,
-            confirmButtonText: 'Cerrar sin guardar',
-            cancelButtonText: 'Seguir editando',
-        });
-
-        return result.isConfirmed === true;
+    confirmarSalidaSiHayCambios(): Promise<boolean> {
+        return this.edicion.confirmarSalida();
     }
 
     private construirPayload(): EspecialClaseMutationRequest {
@@ -521,34 +492,6 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
         this.habilidadSvc.habilidadesCustomMutadas$.pipe(takeUntil(this.destroy$)).subscribe((habilidad) => this.upsertHabilidadCustom(habilidad));
     }
 
-    private cargarEdicionSiAplica(): void {
-        if (!this.esModoEdicion)
-            return;
-        const idEspecial = this.entero(this.idEspecial);
-        if (idEspecial <= 0 || this.cargandoEdicion || this.ultimoIdEspecialCargado === idEspecial)
-            return;
-
-        this.cargandoEdicion = true;
-        this.especialSvc.getEspecialFresco(idEspecial)
-            .pipe(take(1), takeUntil(this.destroy$))
-            .subscribe({
-                next: (especial) => {
-                    this.hidratarDesdeEspecial(especial);
-                    this.ultimoIdEspecialCargado = idEspecial;
-                    this.cargandoEdicion = false;
-                },
-                error: async (error) => {
-                    this.cargandoEdicion = false;
-                    await Swal.fire({
-                        icon: 'error',
-                        title: 'No se pudo cargar el especial',
-                        text: mensajeDeError(error, 'Error no identificado'),
-                        showConfirmButton: true,
-                    });
-                },
-            });
-    }
-
     private hidratarDesdeEspecial(especial: EspecialClaseDetalle): void {
         this.form.reset({
             nombre: especial.Nombre ?? '',
@@ -582,7 +525,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
         this.extraRows = this.hidratarExtras(especial);
         this.habilidadRows = this.hidratarHabilidades(especial);
         this.hidratarPrerrequisitos(especial);
-        this.initialEditSnapshot = this.buildEditSnapshot();
+        this.edicion.tomarPuntoDePartida();
     }
 
     private hidratarExtras(especial: EspecialClaseDetalle): EspecialExtraRow[] {
@@ -655,8 +598,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
             da_velocidad: false,
         });
         this.resetFilas();
-        this.initialEditSnapshot = '';
-        this.ultimoIdEspecialCargado = 0;
+        this.edicion.olvidar();
     }
 
     private resetFilas(): void {
@@ -713,8 +655,9 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private actualizarPermisos(): void {
-        this.puedeCrear = this.userSvc.can('clases', 'create');
-        this.puedeActualizar = this.userSvc.can('especiales', 'update') || this.userSvc.can('clases', 'update');
+        // Modificar pide en la API el mismo permiso que crear (`docs/publica/CATALOGOS_ALTA_Y_EDICION_FRONT.md`).
+        this.puedeCrear = puedeGestionarCatalogo(this.userSvc, 'especiales');
+        this.puedeActualizar = this.puedeCrear;
     }
 
     private crearExtraRow(): EspecialExtraRow {
@@ -723,11 +666,6 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges {
 
     private crearHabilidadRow(tipo: 'base' | 'custom'): EspecialHabilidadRow {
         return { uid: this.uid(), tipo, id_habilidad: 0, id_extra: -1, rangos: 0, busqueda: '', extraBusqueda: '' };
-    }
-
-    private quitarFila<T>(rows: T[], index: number, fallback: T): T[] {
-        const next = rows.filter((_, rowIndex) => rowIndex !== index);
-        return next.length > 0 ? next : [fallback];
     }
 
     private getCatalogoHabilidades(tipo: 'base' | 'custom'): HabilidadBasicaDetalle[] {

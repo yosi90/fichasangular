@@ -1,6 +1,7 @@
 import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { getPrerequisiteDefinition } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.registry';
 import { normalizePlantillaApi } from './plantilla-mapper';
+import { campoDeErrorApi } from 'src/app/components/shared/insercion-marco/errores-de-formulario';
 import {
     CAMPOS_PLANTILLA,
     CARACTERISTICAS_PLANTILLA,
@@ -8,7 +9,6 @@ import {
     TEXTO_SIN_CAMBIO,
     TIPOS_PRERREQUISITO_PLANTILLA,
     camposCambiados,
-    campoDeErrorApi,
     construirPlantillaRequest,
     filasDesdePrerrequisitosPlantilla,
     firmaFilaPrerrequisito,
@@ -178,15 +178,15 @@ describe('plantilla-formulario', () => {
     });
 
     it('lleva el field de un error de la API a su campo y su paso', () => {
-        expect(campoDeErrorApi('plantilla.nombre')).toBe('nombre');
-        expect(campoDeErrorApi('plantilla.descripcion')).toBe('descripcion');
-        expect(campoDeErrorApi('dotes[0].dg')).toBe('dotes');
-        expect(campoDeErrorApi('ataquesEspeciales[1].id_racial')).toBe('ataquesEspeciales');
-        expect(campoDeErrorApi('subtipos[1]')).toBe('subtipos');
-        expect(campoDeErrorApi('prerrequisitos.dg[0].cantidad')).toBe('prerrequisitos');
-        expect(campoDeErrorApi('uid')).toBeNull();
-        expect(campoDeErrorApi(null)).toBeNull();
-        expect(CAMPOS_PLANTILLA[campoDeErrorApi('dotes[0].dg')!].paso).toBe(2);
+        expect(campoDeErrorApi('plantilla.nombre', CAMPOS_PLANTILLA, 'plantilla')).toBe('nombre');
+        expect(campoDeErrorApi('plantilla.descripcion', CAMPOS_PLANTILLA, 'plantilla')).toBe('descripcion');
+        expect(campoDeErrorApi('dotes[0].dg', CAMPOS_PLANTILLA, 'plantilla')).toBe('dotes');
+        expect(campoDeErrorApi('ataquesEspeciales[1].id_racial', CAMPOS_PLANTILLA, 'plantilla')).toBe('ataquesEspeciales');
+        expect(campoDeErrorApi('subtipos[1]', CAMPOS_PLANTILLA, 'plantilla')).toBe('subtipos');
+        expect(campoDeErrorApi('prerrequisitos.dg[0].cantidad', CAMPOS_PLANTILLA, 'plantilla')).toBe('prerrequisitos');
+        expect(campoDeErrorApi('uid', CAMPOS_PLANTILLA, 'plantilla')).toBeNull();
+        expect(campoDeErrorApi(null, CAMPOS_PLANTILLA, 'plantilla')).toBeNull();
+        expect(CAMPOS_PLANTILLA[campoDeErrorApi('dotes[0].dg', CAMPOS_PLANTILLA, 'plantilla')!].paso).toBe(2);
         expect(PASOS_PLANTILLA.length).toBe(5);
     });
 });

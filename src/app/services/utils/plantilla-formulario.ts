@@ -8,6 +8,7 @@ import {
 import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { PrerequisiteRowModel, PrerequisiteType } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.models';
 import { getPrerequisiteDefinition } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.registry';
+import { CamposDeFormulario } from 'src/app/components/shared/insercion-marco/errores-de-formulario';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
@@ -65,17 +66,12 @@ export const TIPOS_PRERREQUISITO_PLANTILLA: readonly PrerequisiteType[] = [
     'dote',
 ];
 
-export interface CampoPlantilla {
-    etiqueta: string;
-    /** El índice del paso (de `PASOS_PLANTILLA`) en el que está. */
-    paso: number;
-}
-
 /**
- * Cada campo del formulario: su etiqueta (la de la pantalla y la de «N cambios: …») y su paso. Las claves de los
- * escalares son las del alta (`plantilla.<campo>`), para que un 400 con `field` lleve a su campo; las listas, las suyas.
+ * Cada campo del formulario: su etiqueta (la de la pantalla y la de «N cambios: …») y su paso (de `PASOS_PLANTILLA`).
+ * Las claves de los escalares son las del alta (`plantilla.<campo>`), para que un 400 con `field` lleve a su campo
+ * (`campoDeErrorApi` de `errores-de-formulario.ts`, con la raíz `plantilla`); las listas, las suyas.
  */
-export const CAMPOS_PLANTILLA: Readonly<Record<string, CampoPlantilla>> = {
+export const CAMPOS_PLANTILLA: CamposDeFormulario = {
     nombre: { etiqueta: 'Nombre', paso: 0 },
     id_manual: { etiqueta: 'Manual', paso: 0 },
     pagina: { etiqueta: 'Página', paso: 0 },
@@ -568,18 +564,4 @@ export function camposCambiados(antes: PlantillaCreateRequest, ahora: PlantillaC
     if (cambiados.has('con_dg_lic'))
         CAMPOS_DG_LIC.forEach((campo) => cambiados.delete(campo));
     return Object.keys(CAMPOS_PLANTILLA).filter((campo) => cambiados.has(campo));
-}
-
-/**
- * El campo del formulario al que apunta el `field` de un error de la API: «plantilla.nombre» → `nombre`,
- * «dotes[0].dg» → `dotes`, «prerrequisitos.dg[0].cantidad» → `prerrequisitos`. `null` si no es ninguno.
- */
-export function campoDeErrorApi(field: string | null | undefined): string | null {
-    const texto = `${field ?? ''}`.trim();
-    if (texto.length < 1)
-        return null;
-    const partes = texto.split('.');
-    const raiz = partes[0].replace(/\[\d+\]$/, '');
-    const campo = raiz === 'plantilla' ? (partes[1] ?? '').replace(/\[\d+\]$/, '') : raiz;
-    return CAMPOS_PLANTILLA[campo] ? campo : null;
 }

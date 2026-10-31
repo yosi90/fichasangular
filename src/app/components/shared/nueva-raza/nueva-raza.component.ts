@@ -46,6 +46,8 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { recargandoPorCambioDeIdentidad } from 'src/app/services/platform-session.service';
 import { UserService } from 'src/app/services/user.service';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+import { quitarFila } from '../insercion-marco/filas-repetibles';
 import { buildManiobrabilidadInfoSecciones } from 'src/app/services/utils/maniobrabilidad-info';
 import { PrerrequisitoEditorHostComponent } from '../prerrequisito-editor/prerrequisito-editor-host.component';
 import {
@@ -1040,29 +1042,24 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
         this.sortilegiosRows = [...this.sortilegiosRows, this.crearSortilegioRow()];
     }
 
-    quitarRow<T extends { uid: string }>(coleccion: T[], index: number, fabrica: () => T): T[] {
-        const next = coleccion.filter((_, currentIndex) => currentIndex !== index);
-        return next.length > 0 ? next : [fabrica()];
-    }
-
     quitarHabilidadBase(index: number): void {
-        this.habilidadesBaseRows = this.quitarRow(this.habilidadesBaseRows, index, () => this.crearHabilidadBaseRow());
+        this.habilidadesBaseRows = quitarFila(this.habilidadesBaseRows, index, () => this.crearHabilidadBaseRow());
     }
 
     quitarHabilidadCustom(index: number): void {
-        this.habilidadesCustomRows = this.quitarRow(this.habilidadesCustomRows, index, () => this.crearHabilidadCustomRow());
+        this.habilidadesCustomRows = quitarFila(this.habilidadesCustomRows, index, () => this.crearHabilidadCustomRow());
     }
 
     quitarDote(index: number): void {
-        this.dotesRows = this.quitarRow(this.dotesRows, index, () => this.crearDoteRow());
+        this.dotesRows = quitarFila(this.dotesRows, index, () => this.crearDoteRow());
     }
 
     quitarRacial(index: number): void {
-        this.racialesRows = this.quitarRow(this.racialesRows, index, () => this.crearRacialRow());
+        this.racialesRows = quitarFila(this.racialesRows, index, () => this.crearRacialRow());
     }
 
     quitarSortilegio(index: number): void {
-        this.sortilegiosRows = this.quitarRow(this.sortilegiosRows, index, () => this.crearSortilegioRow());
+        this.sortilegiosRows = quitarFila(this.sortilegiosRows, index, () => this.crearSortilegioRow());
     }
 
     getOpcionesRelacion<T>(propiedad: RelacionSeleccionKey, items: T[]): T[] {
@@ -1803,7 +1800,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy {
     }
 
     private recalcularPermisos(): void {
-        this.puedeCrear = this.userSvc.can('razas', 'create');
+        this.puedeCrear = puedeGestionarCatalogo(this.userSvc, 'razas');
         this.mensajePermisosInsuficientes = this.userSvc.getPermissionDeniedMessage();
         if (!this.draftInicializacionHabilitada)
             return;

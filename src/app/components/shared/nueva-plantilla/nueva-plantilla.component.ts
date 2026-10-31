@@ -1,11 +1,9 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { AbstractControl, FormBuilder, FormControl, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { Observable, Subject, take, takeUntil } from 'rxjs';
-import Swal from 'sweetalert2';
 import { Dote } from 'src/app/interfaces/dote';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { Plantilla, PlantillaCreateRequest } from 'src/app/interfaces/plantilla';
-import { ProfileApiError } from 'src/app/interfaces/user-account';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DoteService } from 'src/app/services/dote.service';
@@ -39,7 +37,6 @@ import {
     TEXTO_SIN_CAMBIO,
     TIPOS_PRERREQUISITO_PLANTILLA,
     camposCambiados,
-    campoDeErrorApi,
     construirPlantillaRequest,
     filaNuevaDePrerrequisito,
     filasDesdePrerrequisitosPlantilla,
@@ -52,6 +49,11 @@ import {
 } from 'src/app/services/utils/plantilla-formulario';
 import { GrupoPrerrequisitos, agruparPrerrequisitos, nombreTipoPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 import { ModoInsercion, confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
+import { NombreDeCatalogo, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
+import { ErrorDeCampo, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
+import { alternarControl } from '../insercion-marco/filas-repetibles';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import {
     PrerequisiteCatalogContext,
     PrerequisiteCatalogItem,
@@ -63,7 +65,9 @@ import {
     getPrerequisiteDefinition,
     getPrerequisiteTypeOptions,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
-import { OpcionCatalogo } from './catalogo-buscador.component';
+import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
+
+const PLANTILLA: NombreDeCatalogo = { singular: 'plantilla', plural: 'plantillas', femenino: true };
 
 /** Las listas de rasgos del paso 3 (las tarjetas). */
 export type ListaRasgos = 'raciales' | 'ataquesEspeciales' | 'sortilegas' | 'dotes' | 'habilidades' | 'subtipos';
@@ -95,8 +99,9 @@ function elegido(control: AbstractControl): ValidationErrors | null {
     templateUrl: './nueva-plantilla.component.html',
     styleUrls: ['./nueva-plantilla.component.sass'],
     standalone: false,
+    providers: [{ provide: EDITOR_DE_CATALOGO, useExisting: forwardRef(() => NuevaPlantillaComponent) }],
 })
-export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
+export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, EditorDeCatalogo {
     @Input() modo: ModoInsercion = 'crear';
     @Input() idPlantilla: number | null = null;
     /** La pestaña que la abre: con ella el control de pestañas le pregunta antes de cerrar. */
@@ -163,9 +168,14 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
     cargandoEdicion = false;
     puedeCrear = false;
     puedeActualizar = false;
-    errorGlobal = '';
-    /** El campo (de `CAMPOS_PLANTILLA`) que la API ha dicho que falla, con su mensaje. */
-    errorCampo: { campo: string; mensaje: string; firma: string; } | null = null;
+    /** El error global (en el `bloque-error` del marco) y el del campo que la API dice que falla (de `CAMPOS_PLANTILLA`). */
+    readonly errores = new ErroresDeFormulario({
+        campos: CAMPOS_PLANTILLA,
+        raiz: 'plantilla',
+        control: (campo) => this.form.controls[campo as keyof PlantillaFormularioValor],
+        firma: (campo) => this.firmaCampo(campo),
+        irAPaso: (paso) => this.pasoActual = paso,
+    });
     /** Las tarjetas de rasgos plegadas en el móvil (en el escritorio siempre están abiertas). */
     plegadas: Record<ListaRasgos, boolean> = {
         raciales: true, ataquesEspeciales: true, sortilegas: true, dotes: true, habilidades: true, subtipos: true,
@@ -223,6 +233,14 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
 
     get esEdicion(): boolean {
         return this.modo === 'editar';
+    }
+
+    get errorGlobal(): string {
+        return this.errores.global;
+    }
+
+    get errorCampo(): ErrorDeCampo | null {
+        return this.errores.campo;
     }
 
     get puedeGuardar(): boolean {
@@ -286,7 +304,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
     errorDe(campo: string): string | null {
         const control = this.form.controls[campo as keyof PlantillaFormularioValor];
         if (!control)
-            return this.errorCampo?.campo === campo ? this.errorCampo.mensaje : null;
+            return this.errores.mensajeDe(campo);
         if (!control.touched || control.valid)
             return null;
         if (control.hasError('api'))
@@ -311,9 +329,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
     }
 
     alternar(campo: 'oficial' | 'traducido' | 'act_dg' | 'con_dg_lic'): void {
-        const control = this.form.controls[campo];
-        control.setValue(control.value !== true);
-        control.markAsTouched();
+        alternarControl(this.form.controls[campo]);
     }
 
     setNacimiento(heredada: boolean): void {
@@ -410,20 +426,19 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
 
     async guardar(): Promise<void> {
         if (!this.puedeGuardar) {
-            await Swal.fire({ icon: 'warning', title: 'Permisos insuficientes', text: this.userSvc.getPermissionDeniedMessage(), showConfirmButton: true });
+            await avisarSinPermisos(this.userSvc.getPermissionDeniedMessage());
             return;
         }
         if (this.guardando || this.accionDesactivada)
             return;
-        this.errorGlobal = '';
-        this.errorCampo = null;
+        this.errores.limpiar();
         this.form.markAllAsTouched();
         if (this.form.invalid) {
-            this.irAlPrimerError();
+            this.errores.irAlPrimerError();
             return;
         }
         if (arePrerequisitesIncomplete(this.listas.prerrequisitos, this.prerrequisitosTipos)) {
-            this.errorGlobal = 'Completa o quita los requisitos sin terminar.';
+            this.errores.global = 'Completa o quita los requisitos sin terminar.';
             this.pasoActual = CAMPOS_PLANTILLA['prerrequisitos'].paso;
             return;
         }
@@ -433,7 +448,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
         try {
             if (this.esEdicion) {
                 const respuesta = await this.plantillaSvc.actualizarPlantilla(toInt(this.idPlantilla), cuerpo);
-                await Swal.fire({ icon: 'success', title: 'Plantilla actualizada', text: respuesta.message, timer: 1800, showConfirmButton: true, showCloseButton: true, confirmButtonText: 'Cerrar' });
+                await avisarGuardado(PLANTILLA, true, respuesta.message);
                 if (respuesta.plantilla) {
                     this.hidratar(respuesta.plantilla);
                     this.plantillaActualizada.emit(respuesta.plantilla);
@@ -441,12 +456,12 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
                 this.cerrar.emit();
             } else {
                 const respuesta = await this.plantillaSvc.crearPlantilla(cuerpo);
-                await Swal.fire({ icon: 'success', title: 'Plantilla creada', text: respuesta.message, timer: 1800, showConfirmButton: true, showCloseButton: true, confirmButtonText: 'Cerrar' });
+                await avisarGuardado(PLANTILLA, false, respuesta.message);
                 this.plantillaCreada.emit(respuesta.plantilla);
                 this.reiniciar();
             }
         } catch (error: unknown) {
-            this.mostrarError(error);
+            this.errores.mostrar(error, this.esEdicion ? 'No se ha podido actualizar la plantilla.' : 'No se ha podido crear la plantilla.');
         } finally {
             this.guardando = false;
         }
@@ -472,8 +487,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
     /** Cualquier cambio en el formulario o en las listas: recalcula lo cambiado y la lectura de los requisitos. */
     alCambiar(): void {
         // El error de la API en un campo se va en cuanto se corrige ese campo.
-        if (this.errorCampo && this.firmaCampo(this.errorCampo.campo) !== this.errorCampo.firma)
-            this.errorCampo = null;
+        this.errores.seguirCambios();
         if (this.esEdicion && this.cuerpoInicial) {
             const valor = this.form.getRawValue() as PlantillaFormularioValor;
             this.cambios = camposCambiados(this.cuerpoInicial, this.cuerpoActual(), this.conDgLicInicial, valor.con_dg_lic === true);
@@ -484,22 +498,6 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
         this.recalcularLectura();
     }
 
-    private mostrarError(error: unknown): void {
-        const campo = error instanceof ProfileApiError ? campoDeErrorApi(error.field) : null;
-        const mensaje = mensajeDeError(error, this.esEdicion ? 'No se ha podido actualizar la plantilla.' : 'No se ha podido crear la plantilla.');
-        this.errorGlobal = mensaje;
-        if (!campo)
-            return;
-        this.errorCampo = { campo, mensaje, firma: this.firmaCampo(campo) };
-        this.pasoActual = CAMPOS_PLANTILLA[campo].paso;
-        // En un campo del formulario, el error es suyo: se va solo al cambiar su valor (la validación vuelve a correr).
-        const control = this.form.controls[campo as keyof PlantillaFormularioValor];
-        if (control) {
-            control.setErrors({ ...(control.errors ?? {}), api: mensaje });
-            control.markAsTouched();
-        }
-    }
-
     /** Lo que vale ahora un campo (un escalar del formulario o una lista), para saber si se ha corregido. */
     private firmaCampo(campo: string): string {
         const control = this.form.controls[campo as keyof PlantillaFormularioValor];
@@ -507,13 +505,6 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
             return JSON.stringify(control.value ?? null);
         const cuerpo = this.cuerpoActual() as unknown as Record<string, unknown>;
         return JSON.stringify(cuerpo[campo] ?? null);
-    }
-
-    private irAlPrimerError(): void {
-        const campo = Object.keys(CAMPOS_PLANTILLA)
-            .find((clave) => this.form.controls[clave as keyof PlantillaFormularioValor]?.invalid);
-        if (campo)
-            this.pasoActual = CAMPOS_PLANTILLA[campo].paso;
     }
 
     private recalcularLectura(): void {
@@ -590,7 +581,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
             },
             error: (error) => {
                 this.cargandoEdicion = false;
-                this.errorGlobal = mensajeDeError(error, 'No se ha podido cargar la plantilla.');
+                this.errores.global = mensajeDeError(error, 'No se ha podido cargar la plantilla.');
             },
         });
     }
@@ -606,8 +597,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
         this.listas = listas;
         this.frasesApi = frases;
         this.prerrequisitosTipos = tiposConFilas(TIPOS_PRERREQUISITO_PLANTILLA, filas);
-        this.errorCampo = null;
-        this.errorGlobal = '';
+        this.errores.limpiar();
         this.cuerpoInicial = this.cuerpoActual();
         this.conDgLicInicial = valor.con_dg_lic;
         this.alCambiar();
@@ -624,15 +614,12 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy {
 
     private actualizarPermisos(): void {
         // La API pide el permiso de creación de `plantillas` también para modificar (`PUT /plantillas/<id>`).
-        this.puedeCrear = this.userSvc.can('plantillas', 'create');
+        this.puedeCrear = puedeGestionarCatalogo(this.userSvc, 'plantillas');
         this.puedeActualizar = this.puedeCrear;
     }
 
     private cargarCatalogos(): void {
-        const opciones = (items: { Id?: number; Nombre?: string; }[] | null | undefined): OpcionCatalogo[] =>
-            (items ?? []).map((item) => ({ id: toInt(item?.Id), nombre: toText(item?.Nombre).trim() }))
-                .filter((item) => item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+        const opciones = opcionesDeCatalogo;
         const porId = (lista: OpcionCatalogo[]) => [...lista].sort((a, b) => a.id - b.id);
         const suscribir = <T>(fuente: Observable<T>, siguiente: (valor: T) => void) =>
             fuente.pipe(takeUntil(this.destroy$)).subscribe({ next: siguiente, error: () => undefined });

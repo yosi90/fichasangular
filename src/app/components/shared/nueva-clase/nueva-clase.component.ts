@@ -1,8 +1,12 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Subject, take, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
-import { confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
+import { NombreDeCatalogo, avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
+import { alternarControl } from '../insercion-marco/filas-repetibles';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import {
     Clase,
     ClaseConjuroEspecialRef,
@@ -61,7 +65,6 @@ import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
-import { mensajeDeError } from 'src/app/services/utils/error-api';
 import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 
@@ -128,13 +131,16 @@ interface ClaseNivelEditor {
 
 type PrerrequisitoEditorItem = PrerequisiteRowModel;
 
+const CLASE: NombreDeCatalogo = { singular: 'clase', plural: 'clases', femenino: true };
+
 @Component({
     selector: 'app-nueva-clase',
     templateUrl: './nueva-clase.component.html',
     styleUrls: ['./nueva-clase.component.sass'],
     standalone: false,
+    providers: [{ provide: EDITOR_DE_CATALOGO, useExisting: forwardRef(() => NuevaClaseComponent) }],
 })
-export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
+export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, EditorDeCatalogo {
     @Input() modo: 'crear' | 'editar' = 'crear';
     @Input() idClase: number | null = null;
     @Input() editorTabKey: string = '';
@@ -143,12 +149,18 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     @Output() claseActualizada = new EventEmitter<Clase>();
 
     private readonly destroy$ = new Subject<void>();
-    private initialEditSnapshot = '';
-    private ultimoIdClaseCargado = 0;
     private uidCounter = 0;
+    readonly edicion = new EdicionDeCatalogo<Clase>({
+        nombre: CLASE,
+        modo: () => this.modo,
+        id: () => this.idClase,
+        obtener: (id) => this.claseSvc.getClaseFresca(id),
+        hidratar: (clase) => this.hidratarDesdeClase(clase),
+        foto: () => this.buildEditSnapshot(),
+        destruir$: this.destroy$,
+    });
 
     guardando = false;
-    cargandoEdicion = false;
     /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera. */
     readonly pasos = ['Base', 'Progresión', 'Competencias', 'Habilidades', 'Magia', 'Dotes y especiales', 'Prerrequisitos'];
     pasoActual = 0;
@@ -352,7 +364,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         this.userSvc.isLoggedIn$.pipe(takeUntil(this.destroy$)).subscribe(() => this.actualizarPermisos());
         this.form.controls.nivel_max_claseo.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => this.sincronizarNiveles());
         this.cargarCatalogosBase();
-        this.cargarEdicionSiAplica();
+        this.edicion.cargarSiHaceFalta();
     }
 
     ngOnDestroy(): void {
@@ -362,11 +374,15 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['modo'] || changes['idClase'])
-            this.cargarEdicionSiAplica();
+            this.edicion.cargarSiHaceFalta();
     }
 
     get esModoEdicion(): boolean {
-        return this.modo === 'editar';
+        return this.edicion.editando;
+    }
+
+    get cargandoEdicion(): boolean {
+        return this.edicion.cargando;
     }
 
     get puedeGuardar(): boolean {
@@ -378,19 +394,15 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     get etiquetaAccionPrincipal(): string {
-        if (this.guardando)
-            return this.esModoEdicion ? 'Guardando cambios...' : 'Creando clase...';
-        return this.esModoEdicion ? 'Guardar cambios' : 'Crear clase';
+        return this.edicion.textoAccion(this.guardando);
     }
 
     get mensajePermisoInsuficiente(): string {
-        return this.esModoEdicion ? 'No tienes permisos para modificar clases.' : 'No tienes permisos para crear clases.';
+        return this.edicion.avisoPermisos;
     }
 
     get isDirty(): boolean {
-        if (!this.esModoEdicion || this.cargandoEdicion)
-            return false;
-        return this.buildEditSnapshot() !== this.initialEditSnapshot;
+        return this.edicion.hayCambios;
     }
 
     get ataqueBaseSeleccionado(): ClaseProgressionCatalogItem {
@@ -451,7 +463,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
 
     async guardarClase(): Promise<void> {
         if (!this.puedeGuardar) {
-            await Swal.fire({ icon: 'warning', title: 'Permisos insuficientes', text: this.userSvc.getPermissionDeniedMessage(), showConfirmButton: true });
+            await avisarSinPermisos(this.userSvc.getPermissionDeniedMessage());
             return;
         }
         this.form.markAllAsTouched();
@@ -466,27 +478,22 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         this.guardando = true;
         try {
             if (this.esModoEdicion) {
-                const idClase = this.entero(this.idClase);
+                const idClase = this.edicion.id;
                 if (idClase <= 0)
                     throw new Error('No se encontro un id de clase valido para editar.');
                 const response = await this.claseSvc.actualizarClase(idClase, payload);
-                await Swal.fire({ icon: 'success', title: 'Clase actualizada', text: response.message, timer: 1800, showConfirmButton: true, showCloseButton: true, confirmButtonText: 'Cerrar' });
+                await avisarGuardado(CLASE, true, response.message);
                 this.hidratarDesdeClase(response.clase);
                 this.claseActualizada.emit(response.clase);
                 this.cerrar.emit();
             } else {
                 const response = await this.claseSvc.crearClase(payload);
-                await Swal.fire({ icon: 'success', title: 'Clase creada', text: response.message, timer: 1800, showConfirmButton: true, showCloseButton: true, confirmButtonText: 'Cerrar' });
+                await avisarGuardado(CLASE, false, response.message);
                 this.claseCreada.emit(response.clase);
                 this.resetFormulario();
             }
         } catch (error: any) {
-            await Swal.fire({
-                icon: 'error',
-                title: this.esModoEdicion ? 'No se pudo actualizar la clase' : 'No se pudo crear la clase',
-                text: error?.message ?? 'Error no identificado',
-                showConfirmButton: true,
-            });
+            await avisarErrorAlGuardar(CLASE, this.esModoEdicion, error);
         } finally {
             this.guardando = false;
         }
@@ -497,10 +504,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     toggleBoolean(controlName: keyof typeof this.form.controls): void {
-        const control = this.form.controls[controlName] as any;
-        control.setValue(control.value !== true);
-        control.markAsDirty();
-        control.markAsTouched();
+        alternarControl(this.form.controls[controlName]);
         this.normalizarControlesMagia(controlName);
     }
 
@@ -793,10 +797,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         return this.prerrequisitoOpciones.filter((item) => normalizarTexto(item.label).includes(filtro));
     }
 
-    async confirmarSalidaSiHayCambios(): Promise<boolean> {
-        if (!this.esModoEdicion || !this.isDirty)
-            return true;
-        return confirmarCierreConCambios('de la clase');
+    confirmarSalidaSiHayCambios(): Promise<boolean> {
+        return this.edicion.confirmarSalida();
     }
 
     private construirPayload(): ClaseMutationRequest {
@@ -1200,26 +1202,6 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         });
     }
 
-    private cargarEdicionSiAplica(): void {
-        if (!this.esModoEdicion)
-            return;
-        const idClase = this.entero(this.idClase);
-        if (idClase <= 0 || this.cargandoEdicion || this.ultimoIdClaseCargado === idClase)
-            return;
-        this.cargandoEdicion = true;
-        this.claseSvc.getClaseFresca(idClase).pipe(take(1), takeUntil(this.destroy$)).subscribe({
-            next: (clase) => {
-                this.hidratarDesdeClase(clase);
-                this.ultimoIdClaseCargado = idClase;
-                this.cargandoEdicion = false;
-            },
-            error: async (error) => {
-                this.cargandoEdicion = false;
-                await Swal.fire({ icon: 'error', title: 'No se pudo cargar la clase', text: mensajeDeError(error, 'Error no identificado'), showConfirmButton: true });
-            },
-        });
-    }
-
     private hidratarDesdeClase(clase: Clase): void {
         this.claseCargada = clase;
         this.manualBusqueda = clase.Manual?.Nombre ?? '';
@@ -1269,7 +1251,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         this.prerrequisitosSeleccionados = this.hidratarPrerrequisitosSeleccionados(clase);
         this.prerrequisitosEditor = [];
         this.hidratarSelecciones(clase);
-        this.initialEditSnapshot = this.buildEditSnapshot();
+        this.edicion.tomarPuntoDePartida();
     }
 
     private hidratarHabilidades(clase: Clase): ClaseHabilidadRow[] {
@@ -1427,8 +1409,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
         this.seleccionados.gruposArmadura.clear();
         this.seleccionados.idiomas.clear();
         this.reiniciarFilas();
-        this.initialEditSnapshot = '';
-        this.ultimoIdClaseCargado = 0;
+        this.edicion.olvidar();
     }
 
     private crearHabilidadRow(tipo: 'base' | 'custom'): ClaseHabilidadRow {
@@ -1456,8 +1437,9 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private actualizarPermisos(): void {
-        this.puedeCrear = this.userSvc.can('clases', 'create');
-        this.puedeActualizar = this.userSvc.can('clases', 'update');
+        // Modificar pide en la API el mismo permiso que crear (`docs/publica/CATALOGOS_ALTA_Y_EDICION_FRONT.md`).
+        this.puedeCrear = puedeGestionarCatalogo(this.userSvc, 'clases');
+        this.puedeActualizar = this.puedeCrear;
     }
 
     private async asegurarCatalogosPrerrequisitos(types: PrerequisiteType[]): Promise<void> {

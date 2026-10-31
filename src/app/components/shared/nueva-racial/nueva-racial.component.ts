@@ -1,8 +1,12 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild, forwardRef } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Subject, firstValueFrom, take, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
-import { confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
+import { NombreDeCatalogo, avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
+import { alternarControl, quitarFila } from '../insercion-marco/filas-repetibles';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
 import { HabilidadBasicaDetalle, HabilidadExtraRef } from 'src/app/interfaces/habilidad';
@@ -43,7 +47,6 @@ import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipo
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
-import { mensajeDeError } from 'src/app/services/utils/error-api';
 
 type RacialPrerequisiteType = Extract<PrerequisiteType, 'raza' | 'caracteristica'>;
 const RAZA_EN_CREACION_PREREQ_ID = 2147483647;
@@ -117,13 +120,16 @@ interface AtaqueRow {
     descripcion: string;
 }
 
+const RACIAL: NombreDeCatalogo = { singular: 'racial', plural: 'raciales', femenino: false };
+
 @Component({
     selector: 'app-nueva-racial',
     templateUrl: './nueva-racial.component.html',
     styleUrls: ['./nueva-racial.component.sass'],
     standalone: false,
+    providers: [{ provide: EDITOR_DE_CATALOGO, useExisting: forwardRef(() => NuevaRacialComponent) }],
 })
-export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
+export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, EditorDeCatalogo {
     @Input() modal: boolean = false;
     @Input() permitirRazaEnCreacionPrerrequisito: boolean = false;
     @Input() modo: 'crear' | 'editar' = 'crear';
@@ -136,11 +142,17 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
 
     private readonly destroy$ = new Subject<void>();
     private uidCounter: number = 0;
-    private initialEditSnapshot: string = '';
-    private ultimoIdRacialCargado: number = 0;
+    readonly edicion = new EdicionDeCatalogo<RacialDetalle>({
+        nombre: RACIAL,
+        modo: () => this.modo,
+        id: () => this.idRacial,
+        obtener: (id) => this.racialSvc.getRacial(id),
+        hidratar: (racial) => this.hidratarDesdeRacial(racial),
+        foto: () => this.buildEditSnapshot(),
+        destruir$: this.destroy$,
+    });
 
     guardando: boolean = false;
-    cargandoEdicion: boolean = false;
     /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera. */
     readonly pasos = ['Base', 'Rasgos'];
     pasoActual = 0;
@@ -212,7 +224,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => this.actualizarPermisos());
         this.cargarCatalogos();
-        this.cargarEdicionSiAplica();
+        this.edicion.cargarSiHaceFalta();
     }
 
     ngOnDestroy(): void {
@@ -222,7 +234,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['modo'] || changes['idRacial'])
-            this.cargarEdicionSiAplica();
+            this.edicion.cargarSiHaceFalta();
     }
 
     get nombreControl() {
@@ -238,7 +250,11 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     get esModoEdicion(): boolean {
-        return this.modo === 'editar';
+        return this.edicion.editando;
+    }
+
+    get cargandoEdicion(): boolean {
+        return this.edicion.cargando;
     }
 
     get puedeGuardar(): boolean {
@@ -246,31 +262,20 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     get mensajePermisoInsuficiente(): string {
-        return this.esModoEdicion
-            ? 'No tienes permisos para modificar raciales.'
-            : 'No tienes permisos para crear raciales.';
+        return this.edicion.avisoPermisos;
     }
 
     get etiquetaAccionPrincipal(): string {
-        if (this.guardando)
-            return this.esModoEdicion ? 'Guardando cambios...' : 'Creando racial...';
-        return this.esModoEdicion ? 'Guardar cambios' : 'Crear racial';
+        return this.edicion.textoAccion(this.guardando);
     }
 
     get isDirty(): boolean {
-        if (!this.esModoEdicion || this.cargandoEdicion)
-            return false;
-        return this.buildEditSnapshot() !== this.initialEditSnapshot;
+        return this.edicion.hayCambios;
     }
 
     async guardarRacial(): Promise<void> {
         if (!this.puedeGuardar) {
-            await Swal.fire({
-                icon: 'warning',
-                title: 'Permisos insuficientes',
-                text: this.userSvc.getPermissionDeniedMessage(),
-                showConfirmButton: true,
-            });
+            await avisarSinPermisos(this.userSvc.getPermissionDeniedMessage());
             return;
         }
 
@@ -292,21 +297,13 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
         this.guardando = true;
         try {
             if (this.esModoEdicion) {
-                const idRacial = this.entero(this.idRacial);
+                const idRacial = this.edicion.id;
                 if (idRacial <= 0)
                     throw new Error('No se encontró un id de racial válido para editar.');
 
                 const response = await this.racialSvc.actualizarRacial(idRacial, payload as RacialUpdateRequest);
                 const racialActualizado = await firstValueFrom(this.racialSvc.getRacial(response.idRacial).pipe(take(1)));
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Racial actualizado',
-                    text: response.message,
-                    timer: 1800,
-                    showConfirmButton: true,
-                    showCloseButton: true,
-                    confirmButtonText: 'Cerrar',
-                });
+                await avisarGuardado(RACIAL, true, response.message);
                 this.hidratarDesdeRacial(racialActualizado);
                 this.racialActualizado.emit(racialActualizado);
                 this.cerrar.emit();
@@ -314,15 +311,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
                 const tienePrerrequisitoRaza = (payload.prerrequisitos?.raza?.length ?? 0) > 0;
                 const prerrequisitoRazaEnCreacion = this.tienePrerrequisitoRazaEnCreacion();
                 const response = await this.racialSvc.crearRacial(payload);
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Racial creado',
-                    text: response.message,
-                    timer: 1800,
-                    showConfirmButton: true,
-                    showCloseButton: true,
-                    confirmButtonText: 'Cerrar',
-                });
+                await avisarGuardado(RACIAL, false, response.message);
                 this.racialCreado.emit({
                     idRacial: response.idRacial,
                     nombre: response.racial.Nombre,
@@ -333,12 +322,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
                 this.resetFormulario();
             }
         } catch (error: any) {
-            await Swal.fire({
-                icon: 'error',
-                title: this.esModoEdicion ? 'No se pudo actualizar el racial' : 'No se pudo crear el racial',
-                text: mensajeDeError(error, 'Error no identificado'),
-                showConfirmButton: true,
-            });
+            await avisarErrorAlGuardar(RACIAL, this.esModoEdicion, error);
         } finally {
             this.guardando = false;
         }
@@ -353,15 +337,11 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     toggleOficial(): void {
-        this.form.controls.oficial.setValue(this.form.controls.oficial.value !== true);
-        this.form.controls.oficial.markAsDirty();
-        this.form.controls.oficial.markAsTouched();
+        alternarControl(this.form.controls.oficial);
     }
 
-    async confirmarSalidaSiHayCambios(): Promise<boolean> {
-        if (!this.esModoEdicion || !this.isDirty)
-            return true;
-        return confirmarCierreConCambios('del racial');
+    confirmarSalidaSiHayCambios(): Promise<boolean> {
+        return this.edicion.confirmarSalida();
     }
 
     agregarDote(): void {
@@ -369,7 +349,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     quitarDote(index: number): void {
-        this.doteRows = this.quitarFila(this.doteRows, index, this.crearDoteRow());
+        this.doteRows = quitarFila(this.doteRows, index, () => this.crearDoteRow());
     }
 
     seleccionarDote(index: number, id: number): void {
@@ -400,7 +380,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     quitarHabilidadBase(index: number): void {
-        this.habilidadesBaseRows = this.quitarFila(this.habilidadesBaseRows, index, this.crearHabilidadBaseRow());
+        this.habilidadesBaseRows = quitarFila(this.habilidadesBaseRows, index, () => this.crearHabilidadBaseRow());
     }
 
     seleccionarHabilidadBase(index: number, id: number): void {
@@ -467,7 +447,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     quitarHabilidadCustom(index: number): void {
-        this.habilidadesCustomRows = this.quitarFila(this.habilidadesCustomRows, index, this.crearHabilidadCustomRow());
+        this.habilidadesCustomRows = quitarFila(this.habilidadesCustomRows, index, () => this.crearHabilidadCustomRow());
     }
 
     seleccionarHabilidadCustom(index: number, id: number): void {
@@ -490,7 +470,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     quitarCaracteristica(index: number): void {
-        this.caracteristicasRows = this.quitarFila(this.caracteristicasRows, index, this.crearCaracteristicaRow());
+        this.caracteristicasRows = quitarFila(this.caracteristicasRows, index, () => this.crearCaracteristicaRow());
     }
 
     agregarSalvacion(): void {
@@ -498,7 +478,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     quitarSalvacion(index: number): void {
-        this.salvacionesRows = this.quitarFila(this.salvacionesRows, index, this.crearSalvacionRow());
+        this.salvacionesRows = quitarFila(this.salvacionesRows, index, () => this.crearSalvacionRow());
     }
 
     agregarSortilega(): void {
@@ -506,7 +486,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     quitarSortilega(index: number): void {
-        this.sortilegasRows = this.quitarFila(this.sortilegasRows, index, this.crearSortilegaRow());
+        this.sortilegasRows = quitarFila(this.sortilegasRows, index, () => this.crearSortilegaRow());
     }
 
     seleccionarConjuro(index: number, id: number): void {
@@ -521,7 +501,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     quitarAtaque(index: number): void {
-        this.ataquesRows = this.quitarFila(this.ataquesRows, index, this.crearAtaqueRow());
+        this.ataquesRows = quitarFila(this.ataquesRows, index, () => this.crearAtaqueRow());
     }
 
     async togglePrerrequisito(type: RacialPrerequisiteType, checked: boolean): Promise<void> {
@@ -615,38 +595,6 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
         return Number(item.Id ?? item.id ?? item.Id_habilidad ?? item.Id_extra ?? 0);
     }
 
-    private cargarEdicionSiAplica(): void {
-        if (!this.esModoEdicion) {
-            this.ultimoIdRacialCargado = 0;
-            this.initialEditSnapshot = '';
-            return;
-        }
-
-        const idRacial = this.entero(this.idRacial);
-        if (idRacial <= 0 || idRacial === this.ultimoIdRacialCargado)
-            return;
-
-        this.cargandoEdicion = true;
-        this.racialSvc.getRacial(idRacial)
-            .pipe(take(1))
-            .subscribe({
-                next: (racial) => {
-                    this.hidratarDesdeRacial(racial);
-                    this.ultimoIdRacialCargado = idRacial;
-                    this.cargandoEdicion = false;
-                },
-                error: async (error) => {
-                    this.cargandoEdicion = false;
-                    await Swal.fire({
-                        icon: 'error',
-                        title: 'No se pudo cargar el racial',
-                        text: mensajeDeError(error, 'Error no identificado'),
-                        showConfirmButton: true,
-                    });
-                },
-            });
-    }
-
     private cargarCatalogos(): void {
         this.doteSvc.getDotes()
             .pipe(takeUntil(this.destroy$))
@@ -686,7 +634,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
         this.sortilegasRows = this.hidratarSortilegas(racial);
         this.ataquesRows = this.hidratarAtaques(racial);
         this.hidratarPrerrequisitos(racial);
-        this.initialEditSnapshot = this.buildEditSnapshot();
+        this.edicion.tomarPuntoDePartida();
     }
 
     private construirPayload(): RacialCreateRequest {
@@ -913,8 +861,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     private resetFormulario(): void {
         this.form.reset({ nombre: '', descripcion: '', oficial: true });
         this.resetFilas();
-        this.initialEditSnapshot = '';
-        this.ultimoIdRacialCargado = 0;
+        this.edicion.olvidar();
     }
 
     private resetFilas(): void {
@@ -930,8 +877,9 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     private actualizarPermisos(): void {
-        this.puedeCrear = this.userSvc.can('razas', 'create');
-        this.puedeActualizar = this.userSvc.can('raciales', 'update');
+        // Modificar pide en la API el mismo permiso que crear (`docs/publica/CATALOGOS_ALTA_Y_EDICION_FRONT.md`).
+        this.puedeCrear = puedeGestionarCatalogo(this.userSvc, 'raciales');
+        this.puedeActualizar = this.puedeCrear;
     }
 
     private getCatalogoPrerrequisito(type: PrerequisiteType): PrerequisiteCatalogItem[] {
@@ -1122,11 +1070,6 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges {
 
     private crearAtaqueRow(): AtaqueRow {
         return { uid: this.uid(), descripcion: '' };
-    }
-
-    private quitarFila<T>(rows: T[], index: number, fallback: T): T[] {
-        const next = rows.filter((_, rowIndex) => rowIndex !== index);
-        return next.length > 0 ? next : [fallback];
     }
 
     private uid(): string {

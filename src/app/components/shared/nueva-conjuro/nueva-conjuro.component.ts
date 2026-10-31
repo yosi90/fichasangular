@@ -19,6 +19,7 @@ import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.servic
 import { ManualService } from 'src/app/services/manual.service';
 import { SubdisciplinaConjurosService } from 'src/app/services/subdisciplina-conjuros.service';
 import { UserService } from 'src/app/services/user.service';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { normalizarTexto, toArray, toInt } from 'src/app/services/utils/normalizacion';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -652,7 +653,7 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy {
     }
 
     private recalcularPermisos(): void {
-        this.puedeCrear = this.userSvc.can('conjuros', 'create');
+        this.puedeCrear = puedeGestionarCatalogo(this.userSvc, 'conjuros');
     }
 
     private sincronizarManualSeleccionado(): void {

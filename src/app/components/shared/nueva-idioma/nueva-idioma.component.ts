@@ -1,20 +1,25 @@
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
-import Swal from 'sweetalert2';
-import { confirmarCierreConCambios } from '../insercion-marco/insercion-marco.component';
+import { NombreDeCatalogo, avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
+import { alternarControl } from '../insercion-marco/filas-repetibles';
 import { IdiomaCreateRequest, IdiomaDetalle, IdiomaUpdateRequest } from 'src/app/interfaces/idioma';
 import { IdiomaService } from 'src/app/services/idioma.service';
 import { UserService } from 'src/app/services/user.service';
-import { mensajeDeError } from 'src/app/services/utils/error-api';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+
+const IDIOMA: NombreDeCatalogo = { singular: 'idioma', plural: 'idiomas', femenino: false };
 
 @Component({
     selector: 'app-nueva-idioma',
     templateUrl: './nueva-idioma.component.html',
     styleUrls: ['./nueva-idioma.component.sass'],
     standalone: false,
+    providers: [{ provide: EDITOR_DE_CATALOGO, useExisting: forwardRef(() => NuevaIdiomaComponent) }],
 })
-export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
+export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges, EditorDeCatalogo {
     @Input() modal: boolean = false;
     @Input() modo: 'crear' | 'editar' = 'crear';
     @Input() idIdioma: number | null = null;
@@ -24,11 +29,17 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
     @Output() idiomaActualizado = new EventEmitter<IdiomaDetalle>();
 
     private readonly destroy$ = new Subject<void>();
-    private initialEditSnapshot: string = '';
-    private ultimoIdIdiomaCargado: number = 0;
+    readonly edicion = new EdicionDeCatalogo<IdiomaDetalle>({
+        nombre: IDIOMA,
+        modo: () => this.modo,
+        id: () => this.idIdioma,
+        obtener: (id) => this.idiomaSvc.getIdioma(id),
+        hidratar: (idioma) => this.hidratarDesdeIdioma(idioma),
+        foto: () => JSON.stringify(this.construirPayload()),
+        destruir$: this.destroy$,
+    });
 
     guardando: boolean = false;
-    cargandoEdicion: boolean = false;
     puedeCrear: boolean = false;
 
     readonly form = this.fb.group({
@@ -52,7 +63,7 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
         this.userSvc.isLoggedIn$
             .pipe(takeUntil(this.destroy$))
             .subscribe(() => this.actualizarPermisos());
-        this.cargarEdicionSiAplica();
+        this.edicion.cargarSiHaceFalta();
     }
 
     ngOnDestroy(): void {
@@ -62,7 +73,7 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
 
     ngOnChanges(changes: SimpleChanges): void {
         if (changes['modo'] || changes['idIdioma'])
-            this.cargarEdicionSiAplica();
+            this.edicion.cargarSiHaceFalta();
     }
 
     get nombreControl() {
@@ -74,7 +85,11 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     get esModoEdicion(): boolean {
-        return this.modo === 'editar';
+        return this.edicion.editando;
+    }
+
+    get cargandoEdicion(): boolean {
+        return this.edicion.cargando;
     }
 
     get puedeGuardar(): boolean {
@@ -86,31 +101,20 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     get etiquetaAccionPrincipal(): string {
-        if (this.guardando)
-            return this.esModoEdicion ? 'Guardando cambios...' : 'Creando idioma...';
-        return this.esModoEdicion ? 'Guardar cambios' : 'Crear idioma';
+        return this.edicion.textoAccion(this.guardando);
     }
 
     get mensajePermisoInsuficiente(): string {
-        return this.esModoEdicion
-            ? 'No tienes permisos para modificar idiomas.'
-            : 'No tienes permisos para crear idiomas.';
+        return this.edicion.avisoPermisos;
     }
 
     get isDirty(): boolean {
-        if (!this.esModoEdicion || this.cargandoEdicion)
-            return false;
-        return this.buildEditSnapshot() !== this.initialEditSnapshot;
+        return this.edicion.hayCambios;
     }
 
     async guardarIdioma(): Promise<void> {
         if (!this.puedeGuardar) {
-            await Swal.fire({
-                icon: 'warning',
-                title: 'Permisos insuficientes',
-                text: this.userSvc.getPermissionDeniedMessage(),
-                showConfirmButton: true,
-            });
+            await avisarSinPermisos(this.userSvc.getPermissionDeniedMessage());
             return;
         }
 
@@ -121,43 +125,22 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
         this.guardando = true;
         try {
             if (this.esModoEdicion) {
-                const idIdioma = this.entero(this.idIdioma);
+                const idIdioma = this.edicion.id;
                 if (idIdioma <= 0)
                     throw new Error('No se encontró un id de idioma válido para editar.');
                 const response = await this.idiomaSvc.actualizarIdioma(idIdioma, this.construirPayload());
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Idioma actualizado',
-                    text: response.message,
-                    timer: 1800,
-                    showConfirmButton: true,
-                    showCloseButton: true,
-                    confirmButtonText: 'Cerrar',
-                });
+                await avisarGuardado(IDIOMA, true, response.message);
                 this.hidratarDesdeIdioma(response.idioma);
                 this.idiomaActualizado.emit(response.idioma);
                 this.cerrar.emit();
             } else {
                 const response = await this.idiomaSvc.crearIdioma(this.construirPayload() as IdiomaCreateRequest);
-                await Swal.fire({
-                    icon: 'success',
-                    title: 'Idioma creado',
-                    text: response.message,
-                    timer: 1800,
-                    showConfirmButton: true,
-                    showCloseButton: true,
-                    confirmButtonText: 'Cerrar',
-                });
+                await avisarGuardado(IDIOMA, false, response.message);
                 this.idiomaCreado.emit(response.idioma);
                 this.resetFormulario();
             }
         } catch (error: any) {
-            await Swal.fire({
-                icon: 'error',
-                title: this.esModoEdicion ? 'No se pudo actualizar el idioma' : 'No se pudo crear el idioma',
-                text: mensajeDeError(error, 'Error no identificado'),
-                showConfirmButton: true,
-            });
+            await avisarErrorAlGuardar(IDIOMA, this.esModoEdicion, error);
         } finally {
             this.guardando = false;
         }
@@ -168,15 +151,11 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
     }
 
     toggleOficial(): void {
-        this.form.controls.oficial.setValue(this.form.controls.oficial.value !== true);
-        this.form.controls.oficial.markAsDirty();
-        this.form.controls.oficial.markAsTouched();
+        alternarControl(this.form.controls.oficial);
     }
 
-    async confirmarSalidaSiHayCambios(): Promise<boolean> {
-        if (!this.esModoEdicion || !this.isDirty)
-            return true;
-        return confirmarCierreConCambios('del idioma');
+    confirmarSalidaSiHayCambios(): Promise<boolean> {
+        return this.edicion.confirmarSalida();
     }
 
     private construirPayload(): IdiomaCreateRequest | IdiomaUpdateRequest {
@@ -189,34 +168,6 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
         };
     }
 
-    private cargarEdicionSiAplica(): void {
-        if (!this.esModoEdicion)
-            return;
-        const idIdioma = this.entero(this.idIdioma);
-        if (idIdioma <= 0 || this.cargandoEdicion || this.ultimoIdIdiomaCargado === idIdioma)
-            return;
-
-        this.cargandoEdicion = true;
-        this.idiomaSvc.getIdioma(idIdioma)
-            .pipe(takeUntil(this.destroy$))
-            .subscribe({
-                next: (idioma) => {
-                    this.hidratarDesdeIdioma(idioma);
-                    this.ultimoIdIdiomaCargado = idIdioma;
-                    this.cargandoEdicion = false;
-                },
-                error: async (error) => {
-                    this.cargandoEdicion = false;
-                    await Swal.fire({
-                        icon: 'error',
-                        title: 'No se pudo cargar el idioma',
-                        text: mensajeDeError(error, 'Error no identificado'),
-                        showConfirmButton: true,
-                    });
-                },
-            });
-    }
-
     private hidratarDesdeIdioma(idioma: IdiomaDetalle): void {
         this.form.reset({
             nombre: idioma.Nombre ?? '',
@@ -224,12 +175,7 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
             secreto: idioma.Secreto === true,
             oficial: idioma.Oficial === true,
         });
-        this.initialEditSnapshot = this.buildEditSnapshot();
-    }
-
-    private buildEditSnapshot(): string {
-        const payload = this.construirPayload();
-        return JSON.stringify(payload);
+        this.edicion.tomarPuntoDePartida();
     }
 
     private resetFormulario(): void {
@@ -239,20 +185,14 @@ export class NuevaIdiomaComponent implements OnInit, OnDestroy, OnChanges {
             secreto: false,
             oficial: true,
         });
-        this.initialEditSnapshot = '';
-        this.ultimoIdIdiomaCargado = 0;
+        this.edicion.olvidar();
     }
 
     private actualizarPermisos(): void {
-        this.puedeCrear = this.userSvc.can('razas', 'create');
+        this.puedeCrear = puedeGestionarCatalogo(this.userSvc, 'idiomas');
     }
 
     private texto(value: unknown): string {
         return `${value ?? ''}`.trim();
-    }
-
-    private entero(value: unknown): number {
-        const parsed = Number(value);
-        return Number.isFinite(parsed) ? Math.trunc(parsed) : 0;
     }
 }
