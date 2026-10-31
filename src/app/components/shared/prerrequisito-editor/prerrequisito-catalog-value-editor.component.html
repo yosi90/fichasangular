@@ -43,6 +43,20 @@
         Exige extra en la habilidad
     </mat-checkbox>
 
+    <mat-form-field appearance="fill" *ngIf="muestraExtras">
+        <mat-label>Extras pedidos</mat-label>
+        <mat-select
+            multiple
+            [value]="row.extras ?? []"
+            [disabled]="disabled"
+            (selectionChange)="elegirExtras($event.value)">
+            <mat-option *ngFor="let item of extraOptions" [value]="item.id">
+                {{item.nombre}}
+            </mat-option>
+        </mat-select>
+        <mat-error *ngIf="(row.extras ?? []).length < 1">Elige al menos un extra.</mat-error>
+    </mat-form-field>
+
     <mat-form-field appearance="fill">
         <mat-label>Combinación (opcional)</mat-label>
         <input

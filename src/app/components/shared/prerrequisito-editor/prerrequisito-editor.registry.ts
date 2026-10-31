@@ -36,6 +36,11 @@ function createDefaultRow(type: PrerequisiteType): PrerequisiteRowModel {
     };
 }
 
+/** Los extras pedidos de una fila de `habilidad`, sin repetidos y ordenados. */
+function extrasDeFila(row: PrerequisiteRowModel): number[] {
+    return Array.from(new Set((row.extras ?? []).map((id) => toInt(id, -1)).filter((id) => id >= 0))).sort((a, b) => a - b);
+}
+
 function buildBase(row: PrerequisiteRowModel): Record<string, any> {
     const opcional = Math.max(0, toInt(row.opcional, 0));
     return opcional > 0 ? { Opcional: opcional } : {};
@@ -98,8 +103,18 @@ function buildCatalogPayload(
         });
     if (tipo === 'escuela_nivel')
         return { ...base, Id_escuela: id, Escuela: context.getCatalogName(tipo, id), Nivel: valor };
-    if (tipo === 'habilidad')
-        return { ...base, Id_habilidad: id, Habilidad: context.getCatalogName(tipo, id), Cantidad: valor, Requiere_extra: row.requiere_extra };
+    if (tipo === 'habilidad') {
+        // Los extras pedidos van solo con «requiere extra» (la API rechaza extras sin él y «requiere extra» sin extras).
+        const extras = row.requiere_extra ? extrasDeFila(row) : [];
+        return {
+            ...base,
+            Id_habilidad: id,
+            Habilidad: context.getCatalogName(tipo, id),
+            Cantidad: valor,
+            Requiere_extra: row.requiere_extra,
+            ...(extras.length > 0 ? { Extras: extras } : {}),
+        };
+    }
     if (tipo === 'idioma')
         return { ...base, Id_idioma: id, Idioma: context.getCatalogName(tipo, id) };
     if (tipo === 'lanz_espontaneo')
@@ -185,7 +200,10 @@ function definition(
         supportsExtraSelector: config.supportsExtraSelector,
         supportsCatalogExtraOptions: config.supportsCatalogExtraOptions,
         supportsRequiresExtra: config.supportsRequiresExtra,
-        isComplete: config.isComplete ?? (() => true),
+        comodinLabel: config.comodinLabel,
+        isComplete: config.comodinLabel
+            ? (row) => row.comodin === true || (config.isComplete ?? (() => true))(row)
+            : config.isComplete ?? (() => true),
         toPayload: config.toPayload ?? (() => null),
         createDefaultRow: () => createDefaultRow(type),
     };
@@ -241,6 +259,7 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
     definition('competencia_arma', 'catalog-only', {
         requiredCatalogs: ['armas'],
         catalogLabel: 'Arma',
+        comodinLabel: 'El arma elegida',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),
@@ -584,6 +603,13 @@ export function updatePrerequisiteRow(
             next.requiere_extra = false;
         if (next.tipo === 'habilidad' && !next.requiere_extra)
             next.id_extra = null;
+        // Los extras pedidos son de su habilidad: sin «requiere extra» o con otra habilidad, ninguno.
+        if (next.tipo === 'habilidad' && next.extras !== undefined
+            && (!next.requiere_extra || toInt(next.id, 0) !== toInt(row.id, 0)))
+            next.extras = [];
+        // Elegir un elemento del catálogo quita el comodín.
+        if (next.comodin === true && toInt(next.id, 0) > 0)
+            next.comodin = false;
         if (next.tipo === 'dote' && !context.dotePermiteExtra(next.id))
             next.id_extra = null;
         if (next.tipo === 'clase_especial' && !context.especialPermiteExtra(next.id))

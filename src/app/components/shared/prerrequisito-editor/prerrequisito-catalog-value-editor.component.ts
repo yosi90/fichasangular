@@ -17,8 +17,18 @@ export class PrerrequisitoCatalogValueEditorComponent {
     @Input() catalog: PrerequisiteCatalogItem[] = [];
     @Input() disabled: boolean = false;
     @Input() allowRequiresExtra: boolean = false;
+    /** Los extras de la habilidad elegida, para los que pide la fila con «requiere extra». */
+    @Input() extraOptions: PrerequisiteCatalogItem[] = [];
 
     @Output() patchChange = new EventEmitter<Partial<PrerequisiteRowModel>>();
+
+    get muestraExtras(): boolean {
+        return this.definition.supportsRequiresExtra === true && this.allowRequiresExtra && this.row.requiere_extra === true;
+    }
+
+    elegirExtras(ids: number[]): void {
+        this.patchChange.emit({ extras: Array.from(new Set((ids ?? []).map(Number))).sort((a, b) => a - b) });
+    }
 
     readonly salvacionesCatalogo: Array<{ key: 'fortaleza' | 'reflejos' | 'voluntad'; label: string; }> = [
         { key: 'fortaleza', label: 'Fortaleza' },

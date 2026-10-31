@@ -251,6 +251,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         dotePermiteExtra: (idDote) => this.doteCatalogoPermiteExtra(idDote),
         getGlobalExtraOptions: () => this.extrasCatalogo,
         habilidadPermiteExtra: (idHabilidad) => this.habilidadCatalogoPermiteExtra(idHabilidad),
+        getHabilidadExtraOptions: (idHabilidad) => this.extrasDeHabilidad(idHabilidad),
         especialPermiteExtra: (idEspecial) => this.especialCatalogoPermiteExtra(idEspecial),
     };
     readonly ensurePrerequisiteCatalogs = (types: PrerequisiteType[]) => this.asegurarCatalogosPrerrequisitos(types);
@@ -1037,6 +1038,15 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         const opciones = this.resolverOpcionesExtraDote(dote);
         this.opcionesExtraDotePorId.set(id, opciones);
         return opciones;
+    }
+
+    /** Los extras de una habilidad del catálogo (Saber: arcano, naturaleza…), para el prerrequisito que los pide. */
+    extrasDeHabilidad(idHabilidad: number): PrerequisiteCatalogItem[] {
+        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => toInt(item?.Id_habilidad, 0) === toInt(idHabilidad, 0));
+        return (habilidad?.Extras ?? [])
+            .map((extra) => ({ id: toInt(extra?.Id_extra, -1), nombre: `${extra?.Extra ?? ''}`.trim() }))
+            .filter((extra) => extra.id >= 0 && extra.nombre.length > 0)
+            .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'));
     }
 
     habilidadCatalogoPermiteExtra(idHabilidad: number): boolean {

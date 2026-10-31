@@ -8,6 +8,7 @@ import {
 import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { PrerequisiteRowModel, PrerequisiteType } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.models';
 import { getPrerequisiteDefinition } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.registry';
+import { filaDeLectura } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-lectura';
 import { CamposDeFormulario } from 'src/app/components/shared/insercion-marco/errores-de-formulario';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
@@ -362,31 +363,22 @@ function dgDesde(valor: unknown): number {
 }
 
 /**
- * Cómo se lee cada familia de `Prerrequisitos` (la de lectura) en una fila del editor compartido, y cómo se escribe en
- * el alta: el id (y el valor o el destino) de la fila y sus campos en minúscula.
+ * Cómo se escribe en el alta cada familia de requisitos de la plantilla y los especiales: el id (y el valor o el destino)
+ * de la fila en sus campos en minúscula. La lectura es la común del editor (`filaDeLectura`, `prerrequisito-lectura.ts`).
  */
-const PRERREQUISITOS_PLANTILLA: Readonly<Record<string, {
-    leer: (item: PrerrequisitoItem) => Partial<PrerequisiteRowModel>;
-    escribir: (fila: PrerequisiteRowModel) => Record<string, number>;
-}>> = {
-    actitud_requerido: { leer: (i) => ({ id: toInt(i['Id_actitud']) }), escribir: (f) => ({ id_actitud: toInt(f.id) }) },
-    actitud_prohibido: { leer: (i) => ({ id: toInt(i['Id_actitud']) }), escribir: (f) => ({ id_actitud: toInt(f.id) }) },
-    alineamiento_requerido: { leer: (i) => ({ id: toInt(i['Id_alineamiento']) }), escribir: (f) => ({ id_alineamiento: toInt(f.id) }) },
-    caracteristica: {
-        leer: (i) => ({ id: toInt(i['Id_caracteristica']), valor: toInt(i['Cantidad']) }),
-        escribir: (f) => ({ id_caracteristica: toInt(f.id), cantidad: toInt(f.valor) }),
-    },
-    criaturas_compatibles: {
-        leer: (i) => ({ id: toInt(i['Id_tipo_compatible']), id_destino: toInt(i['Id_tipo_nuevo']) }),
-        escribir: (f) => ({ id_tipo_comp: toInt(f.id), id_tipo_nuevo: toInt(f.id_destino) }),
-    },
-    nivel_lanzador: { leer: (i) => ({ valor: toInt(i['Nivel']) }), escribir: (f) => ({ nivel: toInt(f.valor) }) },
-    dote: { leer: (i) => ({ id: toInt(i['Id_dote_prerrequisito']) }), escribir: (f) => ({ id_dote: toInt(f.id) }) },
-    tamano_minimo: { leer: (i) => ({ id: toInt(i['Id_tamano']) }), escribir: (f) => ({ id_tamano: toInt(f.id) }) },
-    tamano_maximo: { leer: (i) => ({ id: toInt(i['Id_tamano']) }), escribir: (f) => ({ id_tamano: toInt(f.id) }) },
-    dg: { leer: (i) => ({ valor: toInt(i['Cantidad']) }), escribir: (f) => ({ cantidad: toInt(f.valor) }) },
-    subtipo: { leer: (i) => ({ id: toInt(i['Id_subtipo']) }), escribir: (f) => ({ id_subtipo: toInt(f.id) }) },
-    subtipo_prohibido: { leer: (i) => ({ id: toInt(i['Id_subtipo']) }), escribir: (f) => ({ id_subtipo: toInt(f.id) }) },
+const PRERREQUISITOS_PLANTILLA: Readonly<Record<string, { escribir: (fila: PrerequisiteRowModel) => Record<string, number>; }>> = {
+    actitud_requerido: { escribir: (f) => ({ id_actitud: toInt(f.id) }) },
+    actitud_prohibido: { escribir: (f) => ({ id_actitud: toInt(f.id) }) },
+    alineamiento_requerido: { escribir: (f) => ({ id_alineamiento: toInt(f.id) }) },
+    caracteristica: { escribir: (f) => ({ id_caracteristica: toInt(f.id), cantidad: toInt(f.valor) }) },
+    criaturas_compatibles: { escribir: (f) => ({ id_tipo_comp: toInt(f.id), id_tipo_nuevo: toInt(f.id_destino) }) },
+    nivel_lanzador: { escribir: (f) => ({ nivel: toInt(f.valor) }) },
+    dote: { escribir: (f) => ({ id_dote: toInt(f.id) }) },
+    tamano_minimo: { escribir: (f) => ({ id_tamano: toInt(f.id) }) },
+    tamano_maximo: { escribir: (f) => ({ id_tamano: toInt(f.id) }) },
+    dg: { escribir: (f) => ({ cantidad: toInt(f.valor) }) },
+    subtipo: { escribir: (f) => ({ id_subtipo: toInt(f.id) }) },
+    subtipo_prohibido: { escribir: (f) => ({ id_subtipo: toInt(f.id) }) },
 };
 
 /** Los requisitos de una plantilla como filas del editor, con la `Frase` de la API de cada una (por `uid`). */
@@ -411,13 +403,7 @@ export function filasDesdePrerrequisitos(
     tipos.forEach((tipo) => {
         const items = ((prerrequisitos as Record<string, PrerrequisitoItem[] | undefined> | null | undefined)?.[tipo] ?? []);
         items.forEach((item) => {
-            const fila: PrerequisiteRowModel = {
-                ...getPrerequisiteDefinition(tipo).createDefaultRow(),
-                ...PRERREQUISITOS_PLANTILLA[tipo].leer(item),
-                uid: uid(),
-                tipo,
-                opcional: Math.max(0, toInt(item?.Opcional)),
-            };
+            const fila = filaDeLectura(tipo, item, uid());
             filas.push(fila);
             const frase = toText(item?.Frase).trim();
             if (frase.length > 0)
