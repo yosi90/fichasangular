@@ -205,7 +205,9 @@ export function rangoEdadPaso(raza: Pick<Raza, 'Categorias_edad' | 'Pasos_edad'>
     return { desde: paso.Edad, hasta: categoria?.Edad_hasta ?? null };
 }
 
-/** «de 16 a 25 años», «desde 1201 años». */
-export function textoRangoEdad(rango: { desde: number; hasta: number | null; }): string {
+/** «de 16 a 25 años», «desde 1201 años»; en una tabla (`corta`), «16–25» y «1201 o más». */
+export function textoRangoEdad(rango: { desde: number; hasta: number | null; }, forma: 'frase' | 'corta' = 'frase'): string {
+    if (forma === 'corta')
+        return rango.hasta === null ? `${rango.desde} o más` : `${rango.desde}–${rango.hasta}`;
     return rango.hasta === null ? `desde ${rango.desde} años` : `de ${rango.desde} a ${rango.hasta} años`;
 }

@@ -1,0 +1,243 @@
+<section class="insercion-tarjeta edades">
+    <div class="edades-cabeza">
+        <h3 class="insercion-tarjeta__titulo">Edades</h3>
+        <mat-slide-toggle [checked]="porEdades" (change)="alternarPorEdades($event.checked)">La raza crece por edades</mat-slide-toggle>
+    </div>
+    <p class="edades-ayuda">
+        Como los dragones: en cada categoría de edad cambian el tamaño, los DG y las puntuaciones, y el personaje elige un paso de edad.
+        Usa las categorías del catálogo que necesites, con los años que quieras.
+    </p>
+    <p class="edades-error" *ngIf="error" role="alert"><mat-icon aria-hidden="true">error_outline</mat-icon>{{error}}</p>
+
+    <ng-container *ngIf="porEdades">
+        <div class="edades-fila-raza">
+            <span>La raza («Valores») lleva las cifras de su primera edad y de su primer paso, con los DG raciales y su tipo de criatura.</span>
+            <button mat-stroked-button type="button" [disabled]="categorias.length < 1" (click)="copiarPrimeraEdad.emit()">
+                <mat-icon>content_copy</mat-icon> Copiar la primera edad a la raza
+            </button>
+        </div>
+
+        <div class="subpanel-head edades-subcabeza">
+            <h4 class="edades-subtitulo">Categorías de edad · {{categorias.length}}</h4>
+            <div class="edades-acciones">
+                <button mat-stroked-button type="button" (click)="agregarCategoria()"><mat-icon>add</mat-icon> Añadir categoría</button>
+                <button mat-stroked-button type="button" *ngIf="puedeCrearCategoria" (click)="abrirNuevaCategoria()">
+                    <mat-icon>add_circle</mat-icon> Nueva categoría en el catálogo
+                </button>
+            </div>
+        </div>
+
+        <div class="edades-nueva" *ngIf="nuevaCategoriaVisible">
+            <p class="edades-nota">Una categoría nueva entra en el catálogo común y la puede usar cualquier raza. El orden dice dónde va entre las demás (cría 1 … gran sierpe 12).</p>
+            <div class="insercion-campos">
+                <mat-form-field appearance="fill" class="insercion-campos__doble">
+                    <mat-label>Nombre</mat-label>
+                    <input matInput maxlength="50" [value]="nuevaCategoria.nombre" (input)="nuevaCategoria.nombre = $any($event.target).value" />
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Orden</mat-label>
+                    <input matInput type="number" min="1" [value]="nuevaCategoria.orden_tipico" (input)="nuevaCategoria.orden_tipico = +$any($event.target).value" />
+                </mat-form-field>
+                <div class="estado-fila">
+                    <button type="button" class="estado-chip" [class.activo]="nuevaCategoria.oficial" [attr.aria-pressed]="nuevaCategoria.oficial"
+                        (click)="nuevaCategoria.oficial = !nuevaCategoria.oficial">Oficial</button>
+                </div>
+                <app-catalogo-buscador class="insercion-campos__doble" etiqueta="Manual" [opciones]="opcionesManuales"
+                    [valor]="nuevaCategoria.id_manual || null" (elegir)="nuevaCategoria.id_manual = $event">
+                </app-catalogo-buscador>
+                <mat-form-field appearance="fill">
+                    <mat-label>Página</mat-label>
+                    <input matInput type="number" min="0" [value]="nuevaCategoria.pagina" (input)="nuevaCategoria.pagina = +$any($event.target).value" />
+                </mat-form-field>
+            </div>
+            <p class="edades-error" *ngIf="errorNuevaCategoria" role="alert">{{errorNuevaCategoria}}</p>
+            <div class="edades-acciones edades-acciones--fin">
+                <button mat-button type="button" (click)="cerrarNuevaCategoria()">Cancelar</button>
+                <button mat-flat-button color="primary" type="button" [disabled]="creandoCategoria" (click)="crearCategoria()">
+                    {{creandoCategoria ? 'Creando categoría…' : 'Crear categoría'}}
+                </button>
+            </div>
+        </div>
+
+        <p class="edades-vacio" *ngIf="categorias.length < 1">Sin categorías todavía: añade la primera.</p>
+
+        <div class="subpanel edades-categoria" *ngFor="let fila of categorias; let i = index; trackBy: trackByUid">
+            <div class="subpanel-head">
+                <h5 class="subpanel-title">{{i + 1}} · {{nombreCategoria(fila.id_categoria_edad)}} <span class="edades-anios">{{textoAnios(fila)}} años</span></h5>
+                <button mat-icon-button type="button" matTooltip="Quitar la categoría y sus pasos" (click)="quitarCategoria(i)"><mat-icon>delete</mat-icon></button>
+            </div>
+            <div class="insercion-campos">
+                <mat-form-field appearance="fill">
+                    <mat-label>Categoría</mat-label>
+                    <mat-select [value]="fila.id_categoria_edad" (selectionChange)="elegirCategoria(fila, $event.value)">
+                        <mat-option *ngFor="let categoria of categoriasLibres(fila)" [value]="categoria.Id">{{categoria.Nombre}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Desde (años)</mat-label>
+                    <input matInput type="number" min="0" [value]="fila.edad_desde" (input)="numero(fila, 'edad_desde', $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Hasta (años)</mat-label>
+                    <input matInput type="number" min="0" [value]="fila.edad_hasta ?? ''" (input)="numero(fila, 'edad_hasta', $any($event.target).value)" />
+                    <mat-hint>Vacío: sin tope (solo la última)</mat-hint>
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Tamaño</mat-label>
+                    <mat-select [value]="fila.id_tamano" (selectionChange)="numero(fila, 'id_tamano', $event.value)">
+                        <mat-option *ngFor="let tamano of tamanos" [value]="tamano.Id">{{tamano.Nombre}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Espacio (pies)</mat-label>
+                    <input matInput type="number" min="0" step="0.5" [value]="fila.espacio" (input)="numero(fila, 'espacio', $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Alcance (pies)</mat-label>
+                    <input matInput type="number" min="0" [value]="fila.alcance" (input)="numero(fila, 'alcance', $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>DG</mat-label>
+                    <input matInput type="number" min="1" [value]="fila.dgs" (input)="numero(fila, 'dgs', $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Ajuste de nivel</mat-label>
+                    <input matInput type="number" min="0" [value]="fila.ajuste_nivel ?? ''" (input)="numero(fila, 'ajuste_nivel', $any($event.target).value)" />
+                    <mat-hint>Vacío: solo PNJ</mat-hint>
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>VD</mat-label>
+                    <input matInput type="number" min="0" step="0.5" [value]="fila.vd ?? ''" (input)="numero(fila, 'vd', $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Armadura natural</mat-label>
+                    <input matInput type="number" [value]="fila.armadura_natural" (input)="numero(fila, 'armadura_natural', $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Nivel de lanzamiento</mat-label>
+                    <input matInput type="number" min="0" [value]="fila.nivel_lanzamiento" (input)="numero(fila, 'nivel_lanzamiento', $any($event.target).value)" />
+                    <mat-hint>{{lanzaComoClase ? 'Como la clase del lanzamiento racial' : '0: no lanza'}}</mat-hint>
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>NL de sortílegas</mat-label>
+                    <input matInput type="number" min="0" [value]="fila.nivel_lanzador_sortilegas" (input)="numero(fila, 'nivel_lanzador_sortilegas', $any($event.target).value)" />
+                </mat-form-field>
+            </div>
+
+            <h6 class="edades-grupo">Puntuaciones del libro <span class="edades-nota">(0 es «—»; los modificadores los calcula la API)</span></h6>
+            <div class="edades-seis">
+                <mat-form-field appearance="fill" *ngFor="let clave of caracteristicas">
+                    <mat-label>{{etiquetaCaracteristica[clave]}}</mat-label>
+                    <input matInput type="number" min="0" [value]="fila[clave]" (input)="numero(fila, clave, $any($event.target).value)" />
+                </mat-form-field>
+            </div>
+
+            <h6 class="edades-grupo">Movimiento</h6>
+            <div class="edades-seis">
+                <mat-form-field appearance="fill" *ngFor="let clave of velocidades">
+                    <mat-label>{{etiquetaVelocidad[clave]}}</mat-label>
+                    <input matInput type="number" min="0" [value]="fila[clave]" (input)="numero(fila, clave, $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Maniobrabilidad</mat-label>
+                    <mat-select [value]="fila.id_maniobrabilidad" (selectionChange)="numero(fila, 'id_maniobrabilidad', $event.value)">
+                        <mat-option *ngFor="let maniobrabilidad of maniobrabilidades" [value]="maniobrabilidad.Id">{{maniobrabilidad.Nombre}}</mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </div>
+
+            <div class="insercion-campos">
+                <mat-form-field appearance="fill" class="insercion-campos__entero">
+                    <mat-label>Ataques naturales</mat-label>
+                    <input matInput maxlength="1000" [value]="fila.ataques_naturales" (input)="texto(fila, 'ataques_naturales', $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Reducción de daño</mat-label>
+                    <input matInput maxlength="1000" [value]="fila.reduccion_dano" (input)="texto(fila, 'reduccion_dano', $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Resistencia a conjuros</mat-label>
+                    <input matInput maxlength="1000" [value]="fila.resistencia_conjuros" (input)="texto(fila, 'resistencia_conjuros', $any($event.target).value)" />
+                </mat-form-field>
+                <mat-form-field appearance="fill" class="insercion-campos__doble">
+                    <mat-label>Resistencias a la energía</mat-label>
+                    <input matInput maxlength="1000" [value]="fila.resistencia_energia" (input)="texto(fila, 'resistencia_energia', $any($event.target).value)" />
+                </mat-form-field>
+            </div>
+
+            <h6 class="edades-grupo">Lo que gana en esta edad <span class="edades-nota">(lo conserva en las siguientes)</span></h6>
+            <div class="edades-gana">
+                <div class="edades-lista">
+                    <span class="edades-lista__titulo">Raciales · {{fila.raciales.length}}</span>
+                    <div class="edades-gana-fila" *ngFor="let racial of fila.raciales; let j = index">
+                        <span class="edades-gana-nombre">{{racial.nombre}}</span>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Cifra a esta edad</mat-label>
+                            <input matInput maxlength="100" [value]="racial.valor" placeholder="2d10, 150'…" (input)="valorRacial(fila, j, $any($event.target).value)" />
+                        </mat-form-field>
+                        <button mat-icon-button type="button" class="row-action-btn" matTooltip="Quitar" (click)="quitarRacial(fila, j)"><mat-icon>delete</mat-icon></button>
+                    </div>
+                    <app-catalogo-buscador etiqueta="Añadir racial" [anadir]="true" [opciones]="opcionesRaciales"
+                        [excluir]="idsRaciales(fila)" (elegir)="agregarRacial(fila, $event)">
+                    </app-catalogo-buscador>
+                </div>
+                <div class="edades-lista">
+                    <span class="edades-lista__titulo">Sortílegas · {{fila.sortilegas.length}}</span>
+                    <div class="edades-gana-fila edades-gana-fila--sortilega" *ngFor="let sortilega of fila.sortilegas; let j = index">
+                        <span class="edades-gana-nombre">{{sortilega.nombre}}</span>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Usos</mat-label>
+                            <input matInput maxlength="50" [value]="sortilega.usos_diarios" (input)="textoSortilega(fila, j, 'usos_diarios', $any($event.target).value)" />
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Nota</mat-label>
+                            <input matInput maxlength="200" [value]="sortilega.descripcion" (input)="textoSortilega(fila, j, 'descripcion', $any($event.target).value)" />
+                        </mat-form-field>
+                        <button mat-icon-button type="button" class="row-action-btn" matTooltip="Quitar" (click)="quitarSortilega(fila, j)"><mat-icon>delete</mat-icon></button>
+                    </div>
+                    <app-catalogo-buscador etiqueta="Añadir sortílega" [anadir]="true" [opciones]="opcionesConjuros"
+                        [excluir]="idsSortilegas(fila)" (elegir)="agregarSortilega(fila, $event)">
+                    </app-catalogo-buscador>
+                </div>
+            </div>
+        </div>
+
+        <div class="subpanel-head edades-subcabeza">
+            <h4 class="edades-subtitulo">Pasos de edad · {{pasos.length}}</h4>
+            <div class="edades-acciones">
+                <button mat-stroked-button type="button" [disabled]="categoriasDeLaRaza.length < 1" (click)="agregarPaso()"><mat-icon>add</mat-icon> Añadir paso</button>
+                <button mat-stroked-button type="button" *ngIf="faltanPasos" (click)="agregarPasosQueFaltan()">
+                    <mat-icon>playlist_add</mat-icon> Un paso al empezar cada categoría
+                </button>
+            </div>
+        </div>
+        <p class="edades-nota">Lo que elige el personaje al crearse. Un paso es jugable como PJ solo si él y su categoría tienen ajuste de nivel; sin ajuste, solo PNJ.
+            Un paso que ya usa algún personaje no se puede quitar: cambia sus cifras.</p>
+        <div class="edades-paso" *ngFor="let paso of pasos; let k = index; trackBy: trackByUid">
+            <mat-form-field appearance="fill">
+                <mat-label>Desde (años)</mat-label>
+                <input matInput type="number" min="0" [value]="paso.edad" (input)="numeroPaso(paso, 'edad', $any($event.target).value)" />
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+                <mat-label>Categoría</mat-label>
+                <mat-select [value]="paso.id_categoria_edad" (selectionChange)="numeroPaso(paso, 'id_categoria_edad', $event.value)">
+                    <mat-option *ngFor="let categoria of categoriasDeLaRaza" [value]="categoria.id_categoria_edad">{{nombreCategoria(categoria.id_categoria_edad)}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+                <mat-label>DG</mat-label>
+                <input matInput type="number" min="1" [value]="paso.dgs" (input)="numeroPaso(paso, 'dgs', $any($event.target).value)" />
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+                <mat-label>Ajuste</mat-label>
+                <input matInput type="number" min="0" [value]="paso.ajuste_nivel ?? ''" (input)="numeroPaso(paso, 'ajuste_nivel', $any($event.target).value)" />
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+                <mat-label>Armadura natural</mat-label>
+                <input matInput type="number" [value]="paso.armadura_natural" (input)="numeroPaso(paso, 'armadura_natural', $any($event.target).value)" />
+            </mat-form-field>
+            <span class="edades-paso-nivel" [class.edades-paso-nivel--pnj]="nivelDelPaso(paso) === 'Solo PNJ'">{{nivelDelPaso(paso)}}</span>
+            <button mat-icon-button type="button" class="row-action-btn" matTooltip="Quitar el paso" (click)="quitarPaso(k)"><mat-icon>delete</mat-icon></button>
+        </div>
+    </ng-container>
+</section>

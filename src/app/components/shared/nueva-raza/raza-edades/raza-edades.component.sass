@@ -1,0 +1,181 @@
+@use '../../../../../assets/css/variables' as *
+@use '../../../../../assets/css/preformas/_inserciones' as inserciones
+@use '../../../detalles/ficha/ficha-tonos' as *
+
+// El paso «Edades» de la inserción de razas, dentro del marco común (las tarjetas, `insercion-campos` y la rejilla que se
+// pliega por el ancho del marco son del marco; aquí, las piezas propias: filas de pasos y listas de lo que se gana).
+:host
+    @include inserciones.insercion-form-base
+    display: block
+
+.edades
+    display: grid
+    gap: 0.75rem
+
+.edades-cabeza
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 0.75rem
+    flex-wrap: wrap
+
+    .insercion-tarjeta__titulo
+        margin: 0
+
+.edades-ayuda,
+.edades-nota,
+.edades-vacio
+    margin: 0
+    color: $ficha-texto-suave
+    font-size: 0.92rem
+
+.edades-vacio
+    padding: 0.9rem
+    border: 1px dashed $ficha-separador
+    border-radius: $ficha-radio
+    text-align: center
+
+.edades-error
+    display: flex
+    align-items: flex-start
+    gap: 0.4rem
+    margin: 0
+    color: #fca5a5
+
+    mat-icon
+        flex: 0 0 auto
+        width: 18px
+        height: 18px
+        font-size: 18px
+
+.edades-fila-raza
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: 0.75rem
+    flex-wrap: wrap
+    padding: 0.6rem 0.75rem
+    border-radius: $ficha-radio
+    background: rgba(255, 255, 255, 0.04)
+    color: $ficha-texto-suave
+
+.edades-subcabeza
+    margin: 0.4rem 0 0
+
+.edades-subtitulo
+    @include ficha-versalitas
+    margin: 0
+
+.edades-acciones
+    display: flex
+    flex-wrap: wrap
+    gap: 0.5rem
+
+    &--fin
+        justify-content: flex-end
+
+.edades-nueva
+    display: grid
+    gap: 0.6rem
+    padding: 0.75rem
+    border: 1px solid rgba($active, 0.45)
+    border-radius: $ficha-radio
+
+.estado-fila
+    display: flex
+    align-items: center
+
+.edades-categoria
+    display: grid
+    gap: 0.5rem
+
+.edades-anios
+    margin-left: 0.4rem
+    color: $ficha-texto-suave
+    font-weight: 400
+
+.edades-grupo
+    @include ficha-versalitas
+    margin: 0.3rem 0 0
+    color: $ficha-texto-suave
+
+    .edades-nota
+        text-transform: none
+        letter-spacing: normal
+
+// Seis campos cortos por fila: las puntuaciones y las velocidades con la maniobrabilidad.
+.edades-seis
+    display: grid
+    grid-template-columns: repeat(6, minmax(0, 1fr))
+    gap: 0 0.6rem
+
+.edades-gana
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 0.75rem
+
+.edades-lista
+    display: grid
+    gap: 0.35rem
+    align-content: start
+    padding: 0.5rem 0.6rem
+    border: 1px solid $ficha-separador
+    border-radius: $ficha-radio
+
+.edades-lista__titulo
+    @include ficha-versalitas
+    color: $ficha-texto-suave
+
+.edades-gana-fila
+    display: grid
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 40px
+    gap: 0.5rem
+    align-items: center
+
+    &--sortilega
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.7fr) minmax(0, 1fr) 40px
+
+.edades-gana-nombre
+    color: $ficha-blanco
+
+// Los pasos: una fila por paso, con el nivel que le da (NEP o «Solo PNJ»).
+.edades-paso
+    display: grid
+    grid-template-columns: minmax(90px, 0.8fr) minmax(130px, 1.3fr) repeat(3, minmax(70px, 0.7fr)) minmax(80px, 0.7fr) 40px
+    gap: 0 0.6rem
+    align-items: center
+
+.edades-paso-nivel
+    justify-self: start
+    padding: 0.15rem 0.6rem
+    border-radius: 9999px
+    background: rgba($active, 0.22)
+    color: $ficha-blanco
+    font-size: 13px
+
+    &--pnj
+        background: rgba($ficha-pnj, 0.6)
+
+@container insercion (max-width: 900px)
+    .edades-seis
+        grid-template-columns: repeat(3, minmax(0, 1fr))
+
+    .edades-gana
+        grid-template-columns: 1fr
+
+@container insercion (max-width: 720px)
+    .edades-paso
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+        padding-bottom: 0.5rem
+        border-bottom: 1px solid $ficha-separador
+
+    .edades-gana-fila,
+    .edades-gana-fila--sortilega
+        grid-template-columns: 1fr 40px
+
+        .edades-gana-nombre
+            grid-column: 1 / -1
+
+@container insercion (max-width: 520px)
+    .edades-seis
+        grid-template-columns: repeat(2, minmax(0, 1fr))

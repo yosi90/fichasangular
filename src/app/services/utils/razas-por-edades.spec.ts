@@ -53,6 +53,9 @@ describe('razas-por-edades', () => {
         expect(rangoEdadPaso(raza, 15)).toEqual({ desde: 26, hasta: 50 });
         expect(rangoEdadPaso(raza, 99)).toBeNull();
         expect(textoRangoEdad({ desde: 1201, hasta: null })).toBe('desde 1201 años');
+        // En una tabla (el paso «Edades» de la inserción de razas), la forma corta.
+        expect(textoRangoEdad({ desde: 16, hasta: 25 }, 'corta')).toBe('16–25');
+        expect(textoRangoEdad({ desde: 1201, hasta: null }, 'corta')).toBe('1201 o más');
     });
 
     it('una edad sin ajuste se puede elegir igualmente (homebrew); la que pasa del NEP de la campaña, no', () => {

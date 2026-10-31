@@ -19,9 +19,9 @@ import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { Manual } from 'src/app/interfaces/manual';
 import { RacialDetalle } from 'src/app/interfaces/racial';
-import { CategoriaEdadRaza, Raza } from 'src/app/interfaces/raza';
+import { Raza } from 'src/app/interfaces/raza';
 import { DominioDetalle } from 'src/app/interfaces/dominio';
-import { ActitudCatalogItem, RazaCatalogItem, TipoDadoCatalogItem } from 'src/app/interfaces/raza-catalogos';
+import { ActitudCatalogItem, CategoriaEdadCatalogo, RazaCatalogItem, TipoDadoCatalogItem } from 'src/app/interfaces/raza-catalogos';
 import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { RazaCreateListaLanzamiento, RazaCreateRequest } from 'src/app/interfaces/razas-api';
 import { SubtipoResumen } from 'src/app/interfaces/subtipo';
@@ -30,6 +30,7 @@ import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
 import { ArmaService } from 'src/app/services/arma.service';
+import { CategoriaEdadService } from 'src/app/services/categoria-edad.service';
 import { ClaseService } from 'src/app/services/clase.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DominioService } from 'src/app/services/dominio.service';
@@ -76,6 +77,14 @@ import { idsUnicosOrdenados, normalizarTexto } from 'src/app/services/utils/norm
 import { TEXTO_SIN_ESPECIFICAR, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
+import {
+    EdadesDeRaza,
+    categoriaVacia,
+    cuerpoDeEdades,
+    edadesDesdeRaza,
+    filaDeRazaDesdePrimeraEdad,
+    problemaDeEdades,
+} from 'src/app/services/utils/raza-edades-formulario';
 
 interface CrearRazaEmitPayload {
     idRaza: number;
@@ -166,7 +175,7 @@ interface MutacionPrerequisiteOption {
 
 const NUEVA_RAZA_DRAFT_AUTOSAVE_MS = 1200;
 const NUEVA_RAZA_DRAFT_DEBOUNCE_MS = 300;
-const NUEVA_RAZA_MAX_STEP_INDEX = 4;
+const NUEVA_RAZA_MAX_STEP_INDEX = 5;
 const HABILIDAD_EXTRA_ELEGIR: CatalogItem = { Id: 0, Nombre: 'Elegir' };
 
 /**
@@ -258,12 +267,14 @@ const CAMPOS_RAZA: CamposDeFormulario = {
     dotes: { etiqueta: 'Dotes', paso: 3 },
     raciales: { etiqueta: 'Raciales', paso: 3 },
     sortilegios: { etiqueta: 'Sortilegios', paso: 3 },
-    id_clase_lanzamiento: { etiqueta: 'Lanza como la clase', paso: 3 },
-    nivel_lanzamiento: { etiqueta: 'Nivel de lanzamiento', paso: 3 },
-    lanzamiento_listas: { etiqueta: 'Listas del lanzamiento', paso: 3 },
-    mutada: { etiqueta: 'Raza mutada', paso: 4 },
-    tamano_mutacion_dependiente: { etiqueta: 'Tamaño dependiente', paso: 4 },
-    prerrequisitos: { etiqueta: 'Prerrequisitos de mutación', paso: 4 },
+    categorias_edad: { etiqueta: 'Categorías de edad', paso: 4 },
+    pasos_edad: { etiqueta: 'Pasos de edad', paso: 4 },
+    id_clase_lanzamiento: { etiqueta: 'Lanza como la clase', paso: 4 },
+    nivel_lanzamiento: { etiqueta: 'Nivel de lanzamiento', paso: 4 },
+    lanzamiento_listas: { etiqueta: 'Listas del lanzamiento', paso: 4 },
+    mutada: { etiqueta: 'Raza mutada', paso: 5 },
+    tamano_mutacion_dependiente: { etiqueta: 'Tamaño dependiente', paso: 5 },
+    prerrequisitos: { etiqueta: 'Prerrequisitos de mutación', paso: 5 },
 };
 
 
@@ -390,6 +401,13 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     dotesRows: DoteRow[] = [];
     racialesRows: RacialRow[] = [];
     sortilegiosRows: SortilegioRow[] = [];
+    /** Las edades de la raza (paso «Edades»): sus categorías, lo que gana en cada una y sus pasos. */
+    edades: EdadesDeRaza = { categorias: [], pasos: [] };
+    /** «La raza crece por edades»: con él apagado, el cuerpo va sin edades (las filas se guardan por si se vuelve a encender). */
+    porEdades: boolean = false;
+    categoriasEdadCatalogo: CategoriaEdadCatalogo[] = [];
+    opcionesRaciales: OpcionCatalogo[] = [];
+    opcionesConjuros: OpcionCatalogo[] = [];
 
     prerrequisitosMutacionRows: PrerequisiteRowModel[] = [];
     prerrequisitosMutacionSeleccionados: MutacionPrerequisiteType[] = [];
@@ -398,7 +416,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     selectorPrerrequisitosMutacionTempKeys: MutacionPrerequisiteType[] = [];
     pasoActivoIndex: number = 0;
     /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera (el paso se guarda en el borrador). */
-    readonly pasos = ['Base y cuerpo', 'Valores', 'Relaciones', 'Rasgos', 'Mutación'];
+    readonly pasos = ['Base y cuerpo', 'Valores', 'Relaciones', 'Rasgos', 'Edades', 'Mutación'];
 
     readonly prerrequisitosMutacionOpciones: MutacionPrerequisiteOption[] = getPrerequisiteTypeOptions<MutacionPrerequisiteType>(
         (type) => this.esTipoPrerrequisitoMutacion(type)
@@ -507,6 +525,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         private grupoArmaSvc: GrupoArmaService,
         private grupoArmaduraSvc: GrupoArmaduraService,
         private prerrequisitosTiposSvc: PrerrequisitosTiposService,
+        private categoriaEdadSvc: CategoriaEdadService,
     ) { }
 
     ngOnInit(): void {
@@ -710,7 +729,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 oficial: raw.oficial === true,
                 cuadrupedo: raw.cuadrupedo === true,
                 id_clase_lanzamiento: lanza ? idClaseLanzamiento : null,
-                nivel_lanzamiento: lanza ? this.numero(raw.nivel_lanzamiento) : 0,
+                // En una raza por edades el nivel va en cada categoría (`lanzamiento_por_edades`).
+                nivel_lanzamiento: lanza && !this.porEdades ? this.numero(raw.nivel_lanzamiento) : 0,
             },
             subtipos: idsUnicosOrdenados(this.subtiposSeleccionados),
             idiomas: idsUnicosOrdenados(this.idiomasSeleccionados),
@@ -782,6 +802,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 gruposArmadura: idsUnicosOrdenados(this.gruposArmaduraSeleccionados),
             },
             lanzamiento_listas: lanza ? this.listasLanzamiento(raw.lanzamiento_listas) : [],
+            // Las edades (la edición las reemplaza enteras; sin ellas, la raza deja de crecer por edades).
+            ...cuerpoDeEdades(this.porEdades ? this.edades : { categorias: [], pasos: [] }),
         };
 
         if (esMutada && prerrequisitos)
@@ -1059,22 +1081,52 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return this.numero(this.form.controls.dgs_extra.value) > 0;
     }
 
-    /** Las categorías de edad de la raza que se modifica (los dragones); aún no se editan aquí y se conservan al guardar. */
-    get categoriasEdad(): CategoriaEdadRaza[] {
-        return this.edicion.editando ? this.razaCargada?.Categorias_edad ?? [] : [];
-    }
-
-    get pasosEdad(): number {
-        return this.edicion.editando ? this.razaCargada?.Pasos_edad?.length ?? 0 : 0;
-    }
-
     /** En una raza por edades el nivel de lanzamiento va en cada categoría y en la raza es 0 (la API lo exige). */
     get esRazaPorEdades(): boolean {
-        return this.categoriasEdad.length > 0;
+        return this.porEdades;
     }
 
-    textoAniosEdad(categoria: CategoriaEdadRaza): string {
-        return categoria.Edad_hasta === null ? `${categoria.Edad_desde} o más` : `${categoria.Edad_desde}–${categoria.Edad_hasta}`;
+    /** El interruptor «La raza crece por edades»: al encenderlo sin categorías, empieza con una vacía. */
+    alternarPorEdades(activo: boolean): void {
+        this.porEdades = activo === true;
+        if (this.porEdades && this.edades.categorias.length < 1)
+            this.edades = { ...this.edades, categorias: [categoriaVacia()] };
+        if (this.porEdades)
+            this.form.controls.nivel_lanzamiento.setValue(0);
+        this.form.markAsDirty();
+    }
+
+    /**
+     * La fila de la raza lleva las cifras de su primera edad y su primer paso (tamaño, espacio, ajustes de las puntuaciones,
+     * armadura natural, velocidades, DG y ajuste de nivel): de ella salen el tipo de los DG y lo que aún no lee las edades.
+     */
+    copiarPrimeraEdadALaRaza(): void {
+        const fila = filaDeRazaDesdePrimeraEdad(this.edades);
+        if (!fila)
+            return;
+        this.form.patchValue(fila);
+        this.form.markAsDirty();
+    }
+
+    onCategoriaEdadCreada(categoria: CategoriaEdadCatalogo): void {
+        this.categoriasEdadCatalogo = [...this.categoriasEdadCatalogo.filter((item) => item.Id !== categoria.Id), categoria]
+            .sort((a, b) => a.Orden_tipico - b.Orden_tipico || porNombre(a, b));
+    }
+
+    /** El error de las edades: el de la API (`field` `categorias_edad…` o `pasos_edad…`). */
+    get errorDeEdades(): string | null {
+        return this.errores.mensajeDe('categorias_edad') ?? this.errores.mensajeDe('pasos_edad');
+    }
+
+    private problemaDeEdades(): string | null {
+        if (!this.porEdades)
+            return null;
+        const ordenTipico = (id: number) => this.categoriasEdadCatalogo.find((categoria) => categoria.Id === id)?.Orden_tipico;
+        return problemaDeEdades(this.edades, {
+            ordenTipico,
+            lanzaComoClase: this.lanzaConjuros,
+            dgsDeLaRaza: this.numero(this.form.controls.dgs_extra.value),
+        });
     }
 
     get lanzaConjuros(): boolean {
@@ -1666,6 +1718,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 sortilegiosRows: this.clonarProfundo(this.sortilegiosRows),
                 prerrequisitosMutacionRows: this.clonarProfundo(this.prerrequisitosMutacionRows),
                 prerrequisitosMutacionSeleccionados: [...this.prerrequisitosMutacionSeleccionados],
+                porEdades: this.porEdades,
+                categoriasEdadRows: this.clonarProfundo(this.edades.categorias),
+                pasosEdadRows: this.clonarProfundo(this.edades.pasos),
             },
         };
     }
@@ -1706,6 +1761,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             .filter((type): type is MutacionPrerequisiteType => this.esTipoPrerrequisitoMutacion(type as PrerequisiteType));
         this.prerrequisitosMutacionRows = this.restaurarRows(borrador.rows?.prerrequisitosMutacionRows, () => null)
             .filter((row) => this.esTipoPrerrequisitoMutacion(row?.tipo as PrerequisiteType));
+        this.porEdades = borrador.rows?.porEdades === true;
+        this.edades = {
+            categorias: this.restaurarRows(borrador.rows?.categoriasEdadRows, () => null),
+            pasos: this.restaurarRows(borrador.rows?.pasosEdadRows, () => null),
+        };
 
         this.selectorPrerrequisitosMutacionVisible = false;
         this.selectorPrerrequisitosMutacionFiltro = '';
@@ -1759,6 +1819,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         if (this.haySeleccionesRelacionadas())
             return true;
         if (this.hayRowsConContenido())
+            return true;
+        if (this.porEdades)
             return true;
         return this.hayValoresNumericosNoDefault(raw);
     }
@@ -1985,11 +2047,21 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
         this.racialSvc.getRaciales()
             .pipe(takeUntil(this.destroy$))
-            .subscribe({ next: (raciales) => this.raciales = this.ordenar(raciales), error: () => this.raciales = [] });
+            .subscribe({ next: (raciales) => {
+                this.raciales = this.ordenar(raciales);
+                this.opcionesRaciales = opcionesDeCatalogo(this.raciales);
+            }, error: () => this.raciales = [] });
 
         this.conjuroSvc.getConjuros()
             .pipe(takeUntil(this.destroy$))
-            .subscribe({ next: (conjuros) => this.conjuros = this.ordenar(conjuros), error: () => this.conjuros = [] });
+            .subscribe({ next: (conjuros) => {
+                this.conjuros = this.ordenar(conjuros);
+                this.opcionesConjuros = opcionesDeCatalogo(this.conjuros);
+            }, error: () => this.conjuros = [] });
+
+        this.categoriaEdadSvc.getCategoriasEdad()
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({ next: (categorias) => this.categoriasEdadCatalogo = categorias, error: () => this.categoriasEdadCatalogo = [] });
 
         this.armaSvc.getArmas()
             .pipe(takeUntil(this.destroy$))
@@ -2063,6 +2135,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             return 'Hay una dote que requiere extra y todavía no lo tiene seleccionado.';
         if (this.form.errors?.['rangosInvalidos'])
             return 'Revisa rangos de altura, peso y edades.';
+        const edades = this.problemaDeEdades();
+        if (edades) {
+            this.pasoActivoIndex = CAMPOS_RAZA['categorias_edad'].paso;
+            return edades;
+        }
         return null;
     }
 
@@ -2408,6 +2485,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         };
         this.limpiarDatosMutacion();
         this.resetRows();
+        this.porEdades = false;
+        this.edades = { categorias: [], pasos: [] };
         this.sincronizarSelect('id_clase_predilecta', this.clases);
         this.sincronizarSelect('id_tamano', this.tamanos, 'mediano');
         this.sincronizarSelect('id_tipo_criatura', this.tiposCriatura, 'humanoide');
@@ -2423,7 +2502,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     /**
      * Rellena el formulario con la raza que se modifica (su `GET`), de forma que guardar sin tocar nada mande lo mismo que
-     * llegó. Las categorías de edad y sus pasos no van en el formulario: se enseñan sin editar y la API los conserva.
+     * llegó, también sus edades (los pasos, con su id: la API los conserva y los personajes apuntan a ellos).
      */
     private hidratarDesdeRaza(raza: Raza): void {
         this.razaCargada = raza;
@@ -2491,6 +2570,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             lanzamiento_listas: (raza.Lanzamiento?.Listas ?? []).map((lista) => ({ tipo: lista.Tipo, id: this.numero(lista.Id) })),
         }, { emitEvent: false });
         this.pasoActivoIndex = 0;
+        this.edades = edadesDesdeRaza(raza);
+        this.porEdades = this.edades.categorias.length > 0 || this.edades.pasos.length > 0;
 
         this.subtiposSeleccionados = idsUnicosOrdenados((raza.Subtipos ?? []).map((subtipo) => subtipo.Id));
         this.idiomasSeleccionados = idsUnicosOrdenados((raza.Idiomas ?? []).map((idioma) => idioma.Id));

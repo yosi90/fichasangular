@@ -23,9 +23,18 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
+import { CategoriaEdadService } from 'src/app/services/categoria-edad.service';
 import { ProfileApiError } from 'src/app/interfaces/user-account';
 import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
 import { NuevaRazaComponent } from './nueva-raza.component';
+
+/** El catálogo de categorías de edad (`GET /categorias-edad`), con los ids de prueba. */
+const CATEGORIAS_EDAD = [
+    { Id: 1, Nombre: 'Cría', Orden_tipico: 1, Oficial: true, Manual: { Id: 1, Nombre: 'Manual base', Pagina: 74 } },
+    { Id: 3, Nombre: 'Joven', Orden_tipico: 3, Oficial: true, Manual: { Id: 1, Nombre: 'Manual base', Pagina: 74 } },
+    { Id: 6, Nombre: 'Adulto', Orden_tipico: 6, Oficial: true, Manual: { Id: 1, Nombre: 'Manual base', Pagina: 74 } },
+    { Id: 12, Nombre: 'Gran sierpe', Orden_tipico: 12, Oficial: true, Manual: { Id: 1, Nombre: 'Manual base', Pagina: 74 } },
+];
 
 describe('NuevaRazaComponent', () => {
     let fixture: ComponentFixture<NuevaRazaComponent>;
@@ -64,6 +73,7 @@ describe('NuevaRazaComponent', () => {
             providers: [
                 { provide: RazaService, useValue: razaSvc },
                 { provide: PrerrequisitosTiposService, useValue: { cargar: () => Promise.resolve() } },
+                { provide: CategoriaEdadService, useValue: { getCategoriasEdad: () => of(CATEGORIAS_EDAD) } },
                 { provide: UserService, useValue: {
                     acl$: acl$.asObservable(),
                     isLoggedIn$: isLoggedIn$.asObservable(),
@@ -1273,30 +1283,106 @@ describe('NuevaRazaComponent', () => {
             expect(component.form.controls.nombre.hasError('api')).toBeTrue();
         });
 
-        it('en una raza por edades enseña sus edades sin editar y conserva su lanzamiento', async () => {
+        /** Una categoría de edad como la da la API (cría del dragón azul, *Manual de monstruos 1*). */
+        function categoriaApi(extra: Record<string, unknown> = {}): any {
+            return {
+                Orden: 1, Categoria: { Id: 1, Nombre: 'Cría' }, Edad_desde: 0, Edad_hasta: 5, Tamano: { Id: 3, Nombre: 'Grande' },
+                Espacio: 5, Alcance: 5, Dgs: 6, Ajuste_nivel: 4, Vd: 3,
+                Caracteristicas: { Fuerza: 17, Destreza: 10, Constitucion: 15, Inteligencia: 10, Sabiduria: 11, Carisma: 10 },
+                Modificadores: { Fuerza: 6, Destreza: 0, Constitucion: 4, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+                Armadura_natural: 6, Velocidades: { Correr: 40, Nadar: 0, Volar: 100, Trepar: 0, Excavar: 20 },
+                Maniobrabilidad: { Id: 21, Nombre: 'Media' }, Ataques_naturales: 'Mordisco 1d8, 2 garras 1d6', Rd: null, Rc: null,
+                Re: 'Inmunidad a la electricidad', Nivel_lanzamiento: 0, Nivel_lanzador_sortilegas: 1,
+                Raciales: [{ Id: 15, Nombre: 'Vision en la penumbra', Valor: "Línea de 60' (2d8)", Caracteristica_cd: null }],
+                Sortilegas: [{ Conjuro: { Id: 16, Nombre: 'Luz' }, Usos_diarios: '3/día', Descripcion: '' }],
+                ...extra,
+            };
+        }
+
+        it('en una raza por edades carga sus edades para editarlas y, sin tocar nada, manda las mismas con sus pasos', async () => {
             await crearEnModificar(razaDeLaApi({
                 n: 'Dragón azul',
+                dg: { Cantidad: 6 },
+                Dgs_raciales: {
+                    Cantidad: 6, Id_dado: 22, Id_tipo_criatura: 4, Ataque_base: 6, Fortaleza: 5, Reflejos: 5, Voluntad: 5,
+                    Dotes_extra: 3, Puntos_habilidad: 9, Multiplicador_puntos_habilidad: 6,
+                },
                 Lanzamiento: {
                     Clase: { Id: 1, Nombre: 'Guerrero' }, Nivel: 0,
                     Listas: [{ Tipo: 'dominio', Id: 2, Nombre: 'Aire' }, { Tipo: 'clase', Id: 1, Nombre: 'Guerrero' }],
                 },
                 Categorias_edad: [
-                    { Orden: 1, Categoria: { Id: 1, Nombre: 'Cría' }, Edad_desde: 0, Edad_hasta: 5, Dgs: 6, Ajuste_nivel: 4, Vd: 3, Nivel_lanzamiento: 0 },
-                    { Orden: 12, Categoria: { Id: 12, Nombre: 'Gran sierpe' }, Edad_desde: 1201, Edad_hasta: null, Dgs: 39, Ajuste_nivel: null, Vd: 25, Nivel_lanzamiento: 19 },
+                    categoriaApi(),
+                    categoriaApi({
+                        Orden: 2, Categoria: { Id: 12, Nombre: 'Gran sierpe' }, Edad_desde: 1201, Edad_hasta: null, Dgs: 39,
+                        Ajuste_nivel: null, Vd: 25, Nivel_lanzamiento: 19, Rd: '20/mágica', Rc: '29',
+                        Caracteristicas: { Fuerza: 45, Destreza: 10, Constitucion: 31, Inteligencia: 24, Sabiduria: 25, Carisma: null },
+                        Raciales: [], Sortilegas: [],
+                    }),
                 ],
-                Pasos_edad: [{ Id: 1, Edad: 0, Categoria: { Id: 1, Nombre: 'Cría' } }],
+                Pasos_edad: [
+                    { Id: 3002, Edad: 3, Categoria: { Id: 1, Nombre: 'Cría' }, Orden: 1, Dgs: 7, Ajuste_nivel: 4, Armadura_natural: 7 },
+                    { Id: 3001, Edad: 0, Categoria: { Id: 1, Nombre: 'Cría' }, Orden: 1, Dgs: 6, Ajuste_nivel: 4, Armadura_natural: 6 },
+                    { Id: 3003, Edad: 1201, Categoria: { Id: 12, Nombre: 'Gran sierpe' }, Orden: 2, Dgs: 39, Ajuste_nivel: null, Armadura_natural: 39 },
+                ],
             }));
 
+            expect(component.porEdades).toBeTrue();
             expect(component.esRazaPorEdades).toBeTrue();
-            expect(component.categoriasEdad.map((categoria) => component.textoAniosEdad(categoria))).toEqual(['0–5', '1201 o más']);
-            expect(component.pasosEdad).toBe(1);
+            expect(component.edades.categorias.map((fila) => fila.id_categoria_edad)).toEqual([1, 12]);
             expect(component.edicion.hayCambios).toBeFalse();
             const payload = component.buildPayload();
-            expect(payload.raza).toEqual(jasmine.objectContaining({ id_clase_lanzamiento: 1, nivel_lanzamiento: 0 }));
+            expect(payload.raza).toEqual(jasmine.objectContaining({ id_clase_lanzamiento: 1, nivel_lanzamiento: 0, dgs_extra: 6 }));
             expect(payload.lanzamiento_listas).toEqual([{ id_dominio: 2 }, { id_clase: 1 }]);
             expect(component.nombreListaLanzamiento({ tipo: 'dominio', id: 2 })).toBe('Dominio de Aire');
-            // Las categorías no van en el cuerpo: la API las conserva.
-            expect(Object.keys(payload)).not.toContain('categorias_edad');
+            expect(payload.categorias_edad?.[0]).toEqual({
+                id_categoria_edad: 1, edad_desde: 0, edad_hasta: 5, id_tamano: 3, espacio: 5, alcance: 5, dgs: 6, ajuste_nivel: 4,
+                vd: 3, fuerza: 17, destreza: 10, constitucion: 15, inteligencia: 10, sabiduria: 11, carisma: 10,
+                armadura_natural: 6, correr: 40, nadar: 0, volar: 100, trepar: 0, excavar: 20, id_maniobrabilidad: 21,
+                ataques_naturales: 'Mordisco 1d8, 2 garras 1d6', reduccion_dano: null, resistencia_conjuros: null,
+                resistencia_energia: 'Inmunidad a la electricidad', nivel_lanzamiento: 0, nivel_lanzador_sortilegas: 1,
+                raciales: [{ id_racial: 15, valor: "Línea de 60' (2d8)" }],
+                sortilegas: [{ id_conjuro: 16, usos_diarios: '3/día', descripcion: '' }],
+            });
+            // La puntuación «—» (null) va como 0; sin tope, `null`.
+            expect(payload.categorias_edad?.[1]).toEqual(jasmine.objectContaining({ edad_hasta: null, ajuste_nivel: null, carisma: 0 }));
+            expect(payload.categorias_edad?.[1]).toEqual(jasmine.objectContaining({ reduccion_dano: '20/mágica', resistencia_conjuros: '29', nivel_lanzamiento: 19 }));
+            // Los pasos, por edad y con su id: la API los conserva (los personajes apuntan a ellos).
+            expect(payload.pasos_edad).toEqual([
+                { id: 3001, edad: 0, id_categoria_edad: 1, dgs: 6, ajuste_nivel: 4, armadura_natural: 6 },
+                { id: 3002, edad: 3, id_categoria_edad: 1, dgs: 7, ajuste_nivel: 4, armadura_natural: 7 },
+                { id: 3003, edad: 1201, id_categoria_edad: 12, dgs: 39, ajuste_nivel: null, armadura_natural: 39 },
+            ]);
+
+            component.edades.pasos[1].dgs = 8;
+            expect(component.edicion.hayCambios).toBeTrue();
+        });
+
+        it('apagar «crece por edades» manda la raza sin edades', async () => {
+            await crearEnModificar(razaDeLaApi({
+                dg: { Cantidad: 6 },
+                Categorias_edad: [categoriaApi()],
+                Pasos_edad: [{ Id: 3001, Edad: 0, Categoria: { Id: 1, Nombre: 'Cría' }, Orden: 1, Dgs: 6, Ajuste_nivel: 4, Armadura_natural: 6 }],
+            }));
+
+            component.alternarPorEdades(false);
+
+            const payload = component.buildPayload();
+            expect(payload.categorias_edad).toEqual([]);
+            expect(payload.pasos_edad).toEqual([]);
+            expect(component.edicion.hayCambios).toBeTrue();
+        });
+
+        it('un error de la API en las edades va al paso «Edades»', async () => {
+            await crearEnModificar(razaDeLaApi());
+            razaSvc.actualizarRaza.and.rejectWith(new ProfileApiError(
+                'No se puede quitar la edad de 0 años: la usa 1 personaje.', 'paso_edad_en_uso', 409, 'pasos_edad'));
+            component.form.patchValue({ nombre: 'Elfo gris' });
+
+            await component.guardarRaza();
+
+            expect(component.pasoActivoIndex).toBe(4);
+            expect(component.errorDeEdades).toBe('No se puede quitar la edad de 0 años: la usa 1 personaje.');
         });
 
         it('acepta los raciales que piden esta misma raza', async () => {
@@ -1333,5 +1419,79 @@ describe('NuevaRazaComponent', () => {
     it('manda si la raza carga como un cuadrúpedo', () => {
         component.toggleBooleanControl('cuadrupedo');
         expect(component.buildPayload().raza.cuadrupedo).toBeTrue();
+    });
+
+    describe('una raza nueva que crece por edades', () => {
+        /** Un dragón homebrew de tres categorías del catálogo, con sus años. */
+        function tresCategorias(): void {
+            component.alternarPorEdades(true);
+            const [cria] = component.edades.categorias;
+            Object.assign(cria, { id_categoria_edad: 1, edad_desde: 0, edad_hasta: 9, id_tamano: 2, dgs: 4, ajuste_nivel: 3, vd: 2 });
+            component.edades.categorias.push(
+                { ...cria, uid: 'joven', id_categoria_edad: 3, edad_desde: 10, edad_hasta: 99, id_tamano: 3, dgs: 8, ajuste_nivel: 5, raciales: [], sortilegas: [] },
+                { ...cria, uid: 'adulto', id_categoria_edad: 6, edad_desde: 100, edad_hasta: null, id_tamano: 3, dgs: 14, ajuste_nivel: null, vd: 9, raciales: [], sortilegas: [] },
+            );
+            component.edades.pasos.push(
+                { uid: 'p1', id: null, edad: 0, id_categoria_edad: 1, dgs: 4, ajuste_nivel: 3, armadura_natural: 4 },
+                { uid: 'p2', id: null, edad: 10, id_categoria_edad: 3, dgs: 8, ajuste_nivel: 5, armadura_natural: 8 },
+                { uid: 'p3', id: null, edad: 100, id_categoria_edad: 6, dgs: 14, ajuste_nivel: null, armadura_natural: 14 },
+            );
+        }
+
+        it('el interruptor empieza con una categoría y el nivel de lanzamiento de la raza a 0', () => {
+            component.form.patchValue({ nivel_lanzamiento: 5 });
+            component.alternarPorEdades(true);
+
+            expect(component.porEdades).toBeTrue();
+            expect(component.edades.categorias.length).toBe(1);
+            expect(component.form.controls.nivel_lanzamiento.value).toBe(0);
+        });
+
+        it('manda sus categorías y sus pasos nuevos (sin id) y copia la primera edad a la raza', () => {
+            tresCategorias();
+            component.copiarPrimeraEdadALaRaza();
+
+            const payload = component.buildPayload();
+            expect(payload.categorias_edad?.map((categoria) => [categoria.id_categoria_edad, categoria.edad_desde, categoria.edad_hasta]))
+                .toEqual([[1, 0, 9], [3, 10, 99], [6, 100, null]]);
+            expect(payload.pasos_edad?.every((paso) => !('id' in paso))).toBeTrue();
+            // La fila de la raza: la cría y su primer paso (DG, ajuste, tamaño y los ajustes de las puntuaciones del libro).
+            expect(payload.raza).toEqual(jasmine.objectContaining({ dgs_extra: 4, ajuste_nivel: 3, id_tamano: 2, mod_fue: 0 }));
+            expect(component.form.controls.fortaleza.enabled).toBeTrue();
+        });
+
+        it('no deja guardar unas edades que la API rechazaría, y lo dice en el paso «Edades»', async () => {
+            tresCategorias();
+            component.copiarPrimeraEdadALaRaza();
+            component.edades.categorias[1].edad_desde = 5;
+
+            await component.guardarRaza();
+
+            expect(razaSvc.crearRaza).not.toHaveBeenCalled();
+            expect(component.errores.global).toContain('se solapan');
+            expect(component.pasoActivoIndex).toBe(4);
+        });
+
+        it('sin los DG raciales de su primer paso en la raza, avisa', async () => {
+            tresCategorias();
+
+            await component.guardarRaza();
+
+            expect(razaSvc.crearRaza).not.toHaveBeenCalled();
+            expect(component.errores.global).toContain('«DG extra» no puede ser 0');
+        });
+
+        it('se crea con sus edades', async () => {
+            tresCategorias();
+            component.copiarPrimeraEdadALaRaza();
+            spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+            await component.guardarRaza();
+
+            expect(razaSvc.crearRaza).toHaveBeenCalledWith(jasmine.objectContaining({
+                categorias_edad: jasmine.arrayContaining([jasmine.objectContaining({ id_categoria_edad: 6, edad_hasta: null })]),
+                pasos_edad: jasmine.arrayContaining([jasmine.objectContaining({ edad: 100, ajuste_nivel: null })]),
+            }));
+        });
     });
 });

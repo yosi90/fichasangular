@@ -102,6 +102,7 @@ import { ManualAutocompleteComponent } from './components/shared/manual-autocomp
 import { NuevaDoteComponent } from './components/shared/nueva-dote/nueva-dote.component';
 import { NuevaConjuroComponent } from './components/shared/nueva-conjuro/nueva-conjuro.component';
 import { NuevaRazaComponent } from './components/shared/nueva-raza/nueva-raza.component';
+import { RazaEdadesComponent } from './components/shared/nueva-raza/raza-edades/raza-edades.component';
 import { NuevaRacialComponent } from './components/shared/nueva-racial/nueva-racial.component';
 import { NuevaPlantillaComponent } from './components/shared/nueva-plantilla/nueva-plantilla.component';
 import { CatalogoBuscadorComponent } from './components/shared/catalogo-buscador/catalogo-buscador.component';
@@ -266,6 +267,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         NuevaDoteComponent,
         NuevaConjuroComponent,
         NuevaRazaComponent,
+        RazaEdadesComponent,
         NuevaRacialComponent,
         NuevaPlantillaComponent,
         CatalogoBuscadorComponent,
