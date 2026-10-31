@@ -21,6 +21,7 @@ import { cabeceraApiConFirebase } from './platform-session.service';
 import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { RACIAL } from "src/app/services/utils/nombres-de-catalogo";
 import { porNombre } from "src/app/services/utils/orden-texto";
+import { leerRespuestaDeEscritura } from "src/app/services/utils/respuesta-de-escritura";
 
 function sortRaciales(raciales: RacialDetalle[]): RacialDetalle[] {
     return [...raciales]
@@ -105,12 +106,9 @@ export class RacialService {
         fallbackDescripcion: string | undefined,
         fallbackMessage: string,
     ): RacialCreateResponse {
-        const idRacial = Math.trunc(Number(response?.idRacial ?? 0));
-        if (!Number.isFinite(idRacial) || idRacial <= 0)
-            throw new Error("La API no devolvió un idRacial válido");
-
+        const { message, id: idRacial } = leerRespuestaDeEscritura(response, 'idRacial', fallbackMessage);
         return {
-            message: `${response?.message ?? fallbackMessage}`,
+            message,
             idRacial,
             racial: normalizeRacial(response?.racial ?? {
                 Id: idRacial,
