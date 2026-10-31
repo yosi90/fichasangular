@@ -22,7 +22,7 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { UserService } from 'src/app/services/user.service';
-import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
@@ -143,7 +143,7 @@ export class DetallesRazaComponent {
 
     /** Solo con permiso: el de crear razas, que es el que pide `PUT /razas/<id>` (`permisos-catalogo.ts`). */
     get puedeModificar(): boolean {
-        return this.modificar.observed && puedeGestionarCatalogo(this.userSvc, 'razas');
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'razas');
     }
 
     abrirDetallesDote(doteCtx: DoteContextual) {

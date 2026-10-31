@@ -12,6 +12,7 @@ import { normalizeDoteApi, normalizeDoteLegacy } from "./utils/dote-mapper";
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { DOTE } from "src/app/services/utils/nombres-de-catalogo";
+import { leerRespuestaDeEscritura } from "src/app/services/utils/respuesta-de-escritura";
 
 @Injectable({
     providedIn: "root"
@@ -104,12 +105,6 @@ export class DoteService {
 }
 
 function respuestaDeDote(response: DoteCreateApiResponse): DoteCreateResponse {
-    const idDote = Math.trunc(Number(response?.idDote ?? 0));
-    if (!Number.isFinite(idDote) || idDote <= 0)
-        throw new Error("La API no devolvio un idDote valido");
-    return {
-        message: `${response?.message ?? ""}`,
-        idDote,
-        dote: normalizeDoteApi(response?.dote),
-    };
+    const { message, id } = leerRespuestaDeEscritura(response, 'idDote');
+    return { message, idDote: id, dote: normalizeDoteApi(response?.dote) };
 }

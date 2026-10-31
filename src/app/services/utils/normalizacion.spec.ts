@@ -1,4 +1,4 @@
-import { enteroEntre, normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toPositiveInt, toRefIdNombre } from './normalizacion';
+import { enteroEntre, idsUnicosOrdenados, normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toPositiveInt, toRefIdNombre } from './normalizacion';
 
 describe('toBoolean', () => {
     it('es sí con true, 1 y los textos de sí, sin distinguir mayúsculas ni espacios alrededor', () => {
@@ -38,6 +38,17 @@ describe('toInt', () => {
         expect(toInt(-2.5)).toBe(-2);
         expect(toInt('x', 7)).toBe(7);
         expect(toInt(Infinity)).toBe(0);
+    });
+});
+
+describe('idsUnicosOrdenados', () => {
+    it('trunca, quita repetidos y lo que no es un número y ordena de menor a mayor, desde 1', () => {
+        expect(idsUnicosOrdenados([3, '1', 2.7, 3, 0, -4, 'abc', null, undefined])).toEqual([1, 2, 3]);
+        expect(idsUnicosOrdenados(null)).toEqual([]);
+    });
+
+    it('con mínimo 0 conserva el comodín 0', () => {
+        expect(idsUnicosOrdenados([5, 0, 0, -1, 'x'], 0)).toEqual([0, 5]);
     });
 });
 

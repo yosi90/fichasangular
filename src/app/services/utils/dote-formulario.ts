@@ -1,7 +1,7 @@
 import { Dote } from 'src/app/interfaces/dote';
-import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { PrerequisiteRowModel, PrerequisiteType } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.models';
 import { getPrerequisiteDefinition } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.registry';
+import { ID_DE_LECTURA, filaDeLectura } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-lectura';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
 import { toInt, toText } from './normalizacion';
 
@@ -68,84 +68,11 @@ export function extrasDisponiblesDeDote(dote: Dote): { armas: number[]; armadura
     };
 }
 
-/** Dónde lee cada tipo su id y su valor en `Prerrequisitos` (la forma de lectura de `GET /dotes/<id>`). */
-const ID_DE_LECTURA: Partial<Readonly<Record<PrerequisiteType, string>>> = {
-    actitud_prohibido: 'Id_actitud',
-    actitud_requerido: 'Id_actitud',
-    alineamiento_prohibido: 'Id_alineamiento',
-    alineamiento_requerido: 'Id_alineamiento',
-    aptitud_especial: 'Id_aptitud_especial',
-    caracteristica: 'Id_caracteristica',
-    clase_especial: 'Id_especial',
-    competencia_arma: 'Id_arma',
-    competencia_armadura: 'Id_armadura',
-    competencia_grupo_arma: 'Id_grupo_arma',
-    competencia_grupo_armadura: 'Id_grupo_armadura',
-    conjuros_escuela: 'Id_escuela',
-    dominio: 'Id_dominio',
-    dote: 'Id_dote_prerrequisito',
-    escuela_nivel: 'Id_escuela',
-    habilidad: 'Id_habilidad',
-    idioma: 'Id_idioma',
-    lanz_espontaneo: 'Id_conjuro',
-    limite_tipo_dote: 'Id_tipo',
-    nivel_de_clase: 'Id_clase',
-    raza: 'Id_raza',
-    region: 'Id_region',
-    tamano_maximo: 'Id_tamano',
-    tamano_minimo: 'Id_tamano',
-    tipo_criatura: 'Id_tipo_criatura',
-    tipo_dote: 'Id_tipo_dote',
-};
-
-const VALOR_DE_LECTURA: Partial<Readonly<Record<PrerequisiteType, string>>> = {
-    ataque_base: 'Ataque_base',
-    caracteristica: 'Cantidad',
-    conjuros_escuela: 'Cantidad',
-    dg: 'Cantidad',
-    escuela_nivel: 'Nivel',
-    habilidad: 'Cantidad',
-    lanzador_arcano: 'Nivel',
-    lanzador_divino: 'Nivel',
-    lanzador_psionico: 'Nivel',
-    lanzar_conjuros_arcanos_nivel: 'Nivel',
-    lanzar_conjuros_divinos_nivel: 'Nivel',
-    nivel: 'Nivel',
-    nivel_de_clase: 'Nivel',
-    nivel_max: 'Nivel',
-};
-
-function filaDePrerrequisito(tipo: PrerequisiteType, item: PrerrequisitoItem, uid: string): PrerequisiteRowModel {
-    const fila: PrerequisiteRowModel = { ...getPrerequisiteDefinition(tipo).createDefaultRow(), uid, opcional: Math.max(0, toInt(item?.Opcional)) };
-    const claveId = ID_DE_LECTURA[tipo];
-    if (claveId)
-        fila.id = toInt(item?.[claveId]);
-    const claveValor = VALOR_DE_LECTURA[tipo];
-    if (claveValor)
-        fila.valor = toInt(item?.[claveValor]);
-    if (tipo === 'salvacion_minimo') {
-        const salvacion = (['fortaleza', 'reflejos', 'voluntad'] as const)
-            .find((clave) => toInt(item?.[clave.charAt(0).toUpperCase() + clave.slice(1)]) > 0) ?? 'fortaleza';
-        fila.salvacion_tipo = salvacion;
-        fila.valor = toInt(item?.[salvacion.charAt(0).toUpperCase() + salvacion.slice(1)]);
-    }
-    if (tipo === 'clase_especial')
-        // Sin extra en la lectura (el 0 «Nada» de la base sale `null`), el 0: el «no aplica» que guarda la API.
-        fila.id_extra = item?.['Id_extra'] === null || item?.['Id_extra'] === undefined ? 0 : toInt(item['Id_extra']);
-    if (tipo === 'dote') {
-        // El código de la base tal cual: -1 sin extra, 0 el comodín, > 0 uno concreto (y `null` si no viene).
-        fila.id_extra = item?.['Id_extra'] === null || item?.['Id_extra'] === undefined ? null : toInt(item['Id_extra']);
-        fila.repetido = Math.max(0, toInt(item?.['Repetido']));
-    }
-    if (tipo === 'habilidad')
-        fila.requiere_extra = toInt(item?.['Requiere_extra']) > 0;
-    return fila;
-}
-
 /**
  * Los prerrequisitos de la dote como filas del editor compartido, de los tipos que edita la dote (`tipos`): los demás
  * (los de Magic of Incarnum y la psiónica) no los escribe el alta y la edición los conserva. Las filas que apuntan al
- * comodín 0 de su catálogo van aparte (`conservados`), con la `Frase` de la API.
+ * comodín 0 de su catálogo y que el editor no puede elegir (los que no tienen `comodinLabel` en el registro) van aparte
+ * (`conservados`), con la `Frase` de la API; la «Competencia con el arma elegida» ya es una fila.
  */
 export function prerrequisitosDeDote(
     dote: Dote,
@@ -159,7 +86,7 @@ export function prerrequisitosDeDote(
         if (!tipos.has(tipo))
             return;
         (items ?? []).forEach((item) => {
-            const fila = filaDePrerrequisito(tipo, item, uid());
+            const fila = filaDeLectura(tipo, item, uid());
             const definicion = getPrerequisiteDefinition(tipo);
             if (ID_DE_LECTURA[tipo] && fila.id <= 0 && tipo !== 'dote' && tipo !== 'clase_especial' && !definicion.isComplete(fila))
                 conservados.push({ fila, frase: toText(item?.Frase).trim() || definicion.label });

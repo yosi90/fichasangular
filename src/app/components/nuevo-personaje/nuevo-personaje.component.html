@@ -790,6 +790,11 @@
                                             <mat-option *ngFor="let nivel of nivelesConjurosDisponibles" [value]="nivel">{{nivel}}</mat-option>
                                         </mat-select>
                                     </mat-form-field>
+                                    <mat-chip-option color="warn" class="filtro-chip" *ngIf="hayConjurosHomebrewQuePedir || homebrewForzado"
+                                        [selected]="incluirHomebrewConjurosEfectivo" [disabled]="homebrewForzado"
+                                        (click)="alternarHomebrewConjuros()">
+                                        {{incluirHomebrewConjurosEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
+                                    </mat-chip-option>
                                 </div>
                                 <h2 class="creacion-titulo">Disponibles</h2>
                                 <table class="ficha-tabla tabla-conjuros">
@@ -802,7 +807,8 @@
                                     </thead>
                                     <tbody>
                                         <tr *ngFor="let conjuro of conjurosDisponiblesActuales">
-                                            <td><button type="button" class="ficha-enlace" (click)="verDetallesConjuro(conjuro)">{{conjuro.Nombre}}</button></td>
+                                            <td><button type="button" class="ficha-enlace" (click)="verDetallesConjuro(conjuro)">{{conjuro.Nombre}}</button>
+                                                <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="conjuro.Oficial === false">Homebrew</span></td>
                                             <td class="ficha-num">{{getNivelConjuroEntrada(conjuro)}}</td>
                                             <td class="tabla-conjuros__accion">
                                                 <button type="button" mat-stroked-button (click)="agregarConjuroSesion(conjuro)"

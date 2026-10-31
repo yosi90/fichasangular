@@ -47,6 +47,7 @@
                 [definition]="group.definition"
                 [catalog]="getCatalog(group.type)"
                 [allowRequiresExtra]="catalogContext.habilidadPermiteExtra(row.id) === true"
+                [extraOptions]="getHabilidadExtraOptions(row.id)"
                 [disabled]="disabled || loading"
                 (patchChange)="updateRow(row.uid, $event)">
             </app-prerrequisito-catalog-value-editor>

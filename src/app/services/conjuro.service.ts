@@ -12,6 +12,7 @@ import { normalizeConjuroApi, normalizeConjuroEditableApi, normalizeConjuroLegac
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
 import { CONJURO } from "src/app/services/utils/nombres-de-catalogo";
+import { leerRespuestaDeEscritura } from "src/app/services/utils/respuesta-de-escritura";
 
 @Injectable({
     providedIn: 'root'
@@ -104,12 +105,6 @@ export class ConjuroService {
 }
 
 function respuestaDeConjuro(response: ConjuroCreateApiResponse): ConjuroCreateResponse {
-    const idConjuro = Math.trunc(Number(response?.idConjuro ?? 0));
-    if (!Number.isFinite(idConjuro) || idConjuro <= 0)
-        throw new Error("La API no devolvio un idConjuro valido");
-    return {
-        message: `${response?.message ?? ""}`,
-        idConjuro,
-        conjuro: normalizeConjuroEditableApi(response?.conjuro),
-    };
+    const { message, id } = leerRespuestaDeEscritura(response, 'idConjuro');
+    return { message, idConjuro: id, conjuro: normalizeConjuroEditableApi(response?.conjuro) };
 }

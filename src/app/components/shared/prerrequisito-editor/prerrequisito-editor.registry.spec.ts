@@ -4,7 +4,7 @@ import {
     PrerequisiteRowModel,
 } from './prerrequisito-editor.models';
 import { registrarTiposPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
-import { TIPOS_PRERREQUISITO_SOLO_PLANTILLA, buildPrerequisitePayload, getPrerequisiteDefinition, getPrerequisiteTypeOptions } from './prerrequisito-editor.registry';
+import { TIPOS_PRERREQUISITO_SOLO_PLANTILLA, buildPrerequisitePayload, getPrerequisiteDefinition, getPrerequisiteTypeOptions, updatePrerequisiteRow } from './prerrequisito-editor.registry';
 
 describe('prerrequisito-editor.registry', () => {
     const catalogosPorTipo = new Map<string, PrerequisiteCatalogItem[]>([
@@ -74,6 +74,32 @@ describe('prerrequisito-editor.registry', () => {
             Cantidad: 5,
             Requiere_extra: true,
         });
+    });
+
+    it('serializa los extras pedidos de una habilidad solo con requiere_extra', () => {
+        const conExtras = buildPrerequisitePayload([row({ tipo: 'habilidad', id: 7, valor: 5, requiere_extra: true, extras: [12, 3, 12] })], context);
+        expect(conExtras['habilidad'][0]).toEqual({ Id_habilidad: 7, Habilidad: 'Acrobacias', Cantidad: 5, Requiere_extra: true, Extras: [3, 12] });
+        const sinRequerir = buildPrerequisitePayload([row({ tipo: 'habilidad', id: 7, valor: 5, requiere_extra: false, extras: [3] })], context);
+        expect(sinRequerir['habilidad'][0]['Extras']).toBeUndefined();
+    });
+
+    it('quitar «requiere extra» o cambiar de habilidad vacía los extras pedidos', () => {
+        const filas = [row({ uid: 'h', tipo: 'habilidad', id: 7, valor: 5, requiere_extra: true, extras: [3] })];
+        expect(updatePrerequisiteRow(filas, 'h', { requiere_extra: false }, context)[0].extras).toEqual([]);
+        expect(updatePrerequisiteRow(filas, 'h', { id: 9 }, context)[0].extras).toEqual([]);
+        expect(updatePrerequisiteRow(filas, 'h', { valor: 6 }, context)[0].extras).toEqual([3]);
+    });
+
+    it('la competencia con un arma admite su comodín: el arma elegida (id 0)', () => {
+        const definicion = getPrerequisiteDefinition('competencia_arma');
+        expect(definicion.comodinLabel).toBe('El arma elegida');
+        expect(definicion.isComplete(row({ tipo: 'competencia_arma', id: 0 }))).toBeFalse();
+        expect(definicion.isComplete(row({ tipo: 'competencia_arma', id: 0, comodin: true }))).toBeTrue();
+        expect(buildPrerequisitePayload([row({ tipo: 'competencia_arma', id: 0, comodin: true })], context)['competencia_arma'][0])
+            .toEqual(jasmine.objectContaining({ Id_arma: 0 }));
+        const filas = [row({ uid: 'a', tipo: 'competencia_arma', id: 0, comodin: true })];
+        expect(updatePrerequisiteRow(filas, 'a', { id: 4 }, context)[0].comodin).toBeFalse();
+        expect(getPrerequisiteDefinition('competencia_armadura').comodinLabel).toBeUndefined();
     });
 
     it('serializa salvacion_minimo segun la salvacion elegida', () => {

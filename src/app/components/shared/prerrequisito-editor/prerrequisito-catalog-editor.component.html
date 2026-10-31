@@ -2,10 +2,11 @@
     <mat-form-field appearance="fill">
         <mat-label>{{definition.catalogLabel || 'Elemento'}}</mat-label>
         <mat-select
-            [value]="row.id"
+            [value]="valorSeleccionado"
             [disabled]="disabled"
-            (selectionChange)="patchChange.emit({ id: $event.value })">
+            (selectionChange)="elegir($event.value)">
             <mat-option [value]="0">Seleccionar...</mat-option>
+            <mat-option *ngIf="definition.comodinLabel" [value]="valorComodin">{{definition.comodinLabel}}</mat-option>
             <mat-option *ngFor="let item of catalog" [value]="item.id">
                 {{item.nombre}}
             </mat-option>

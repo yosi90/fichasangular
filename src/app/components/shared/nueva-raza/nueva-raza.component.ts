@@ -1,6 +1,6 @@
 import { Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild, forwardRef } from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
-import { BehaviorSubject, Subject, combineLatest, filter, map, take, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import {
     AlineamientoBasicoCatalogItem,
@@ -49,9 +49,9 @@ import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { recargandoPorCambioDeIdentidad } from 'src/app/services/platform-session.service';
 import { UserService } from 'src/app/services/user.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
-import { alternarControl, quitarFila } from '../insercion-marco/filas-repetibles';
+import { alternarControl, elegirEnControl, quitarFila } from '../insercion-marco/filas-repetibles';
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
-import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { CatalogosPendientes, EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { ModoInsercion } from '../insercion-marco/insercion-marco.component';
@@ -72,7 +72,8 @@ import {
     getPrerequisiteTypeOptions,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { idsUnicosOrdenados, normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { TEXTO_SIN_ESPECIFICAR, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -180,6 +181,9 @@ const SIN_VUELO: RazaCatalogItem = { Id: 0, Nombre: 'No vuela' };
 /** La clase predilecta 0 de la base, «Cualquiera» (el humano y el semielfo), que el catálogo de clases no lista. */
 const CUALQUIER_CLASE: CatalogItem = { Id: 0, Nombre: 'Cualquiera' };
 
+/** El peso más alto que admite la API (`numeric(7, 2)`; el centauro de *Races of the Wild* pesa 1.060,52 kg). */
+const PESO_MAXIMO = 99999.99;
+
 /**
  * Los catálogos de los que depende el cuerpo que se manda (el alineamiento que se resuelve, los extras de habilidad, el
  * tipo de dado…). Al modificar, la raza se rellena cuando ya están, para que guardar sin tocar nada mande lo que llegó.
@@ -272,8 +276,7 @@ const CAMPOS_RAZA: CamposDeFormulario = {
 })
 export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorDeCatalogo {
     private readonly destroy$ = new Subject<void>();
-    private readonly catalogosPendientesParaModificar = new Set<CatalogoParaModificar>(CATALOGOS_PARA_MODIFICAR);
-    private readonly catalogosParaModificarListos$ = new BehaviorSubject<boolean>(false);
+    private readonly catalogosParaModificar = new CatalogosPendientes<CatalogoParaModificar>(CATALOGOS_PARA_MODIFICAR);
     /** La raza que se modifica, tal como llegó (de ella salen los DG que no se ven sin DG raciales). */
     private razaCargada: Raza | null = null;
     private nextRowId: number = 1;
@@ -307,10 +310,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         nombre: RAZA,
         modo: () => this.modo,
         id: () => this.idRaza,
-        obtener: (id) => combineLatest([
-            this.razaSvc.getRazaFresca(id),
-            this.catalogosParaModificarListos$.pipe(filter((listos) => listos), take(1)),
-        ]).pipe(map(([raza]) => raza)),
+        obtener: (id) => this.razaSvc.getRazaFresca(id),
+        antesDeHidratar: () => this.catalogosParaModificar.listos$,
         hidratar: (raza) => this.hidratarDesdeRaza(raza),
         foto: () => JSON.stringify(this.buildPayload()),
         destruir$: this.destroy$,
@@ -417,7 +418,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     readonly form = this.fb.group({
         nombre: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(30)]],
         descripcion: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(5000)]],
-        ataques_naturales: ['No especifica', [this.textoOpcionalValidator(1000)]],
+        ataques_naturales: [TEXTO_SIN_ESPECIFICAR, [this.textoOpcionalValidator(1000)]],
         espacio: [5, [Validators.required, Validators.min(0), Validators.max(40)]],
         alcance: [5, [Validators.required, Validators.min(0), Validators.max(40)]],
         id_manual: [0, [Validators.min(1)]],
@@ -444,15 +445,15 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         id_tamano: [0, [Validators.min(1)]],
         // Sin máximo, como la API: el gigante de la montaña (Manual de monstruos 2) tiene +25.
         ajuste_nivel: [0, [Validators.min(0)]],
-        reduccion_dano: ['No especifica', [this.textoOpcionalValidator(1000)]],
-        resistencia_conjuros: ['No especifica', [this.textoOpcionalValidator(1000)]],
-        resistencia_energia: ['No especifica', [this.textoOpcionalValidator(1000)]],
+        reduccion_dano: [TEXTO_SIN_ESPECIFICAR, [this.textoOpcionalValidator(1000)]],
+        resistencia_conjuros: [TEXTO_SIN_ESPECIFICAR, [this.textoOpcionalValidator(1000)]],
+        resistencia_energia: [TEXTO_SIN_ESPECIFICAR, [this.textoOpcionalValidator(1000)]],
         // 0: el manual no lo da (las razas de los manuales de monstruos), como acepta la API.
         altura_rango_inf: [0, [Validators.min(0), Validators.max(10)]],
         altura_rango_sup: [0, [Validators.min(0), Validators.max(10)]],
         // Con decimales, hasta lo que cabe en la columna (`numeric(5, 2)`): el elfo pesa de 38,5 a 61,2 kg.
-        peso_rango_inf: [0, [Validators.min(0), Validators.max(999.99)]],
-        peso_rango_sup: [0, [Validators.min(0), Validators.max(999.99)]],
+        peso_rango_inf: [0, [Validators.min(0), Validators.max(PESO_MAXIMO)]],
+        peso_rango_sup: [0, [Validators.min(0), Validators.max(PESO_MAXIMO)]],
         edad_adulto: [0, [Validators.min(0)]],
         edad_mediana: [0, [Validators.min(0)]],
         edad_viejo: [0, [Validators.min(0)]],
@@ -655,7 +656,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             raza: {
                 nombre: this.texto(raw.nombre),
                 descripcion: this.texto(raw.descripcion),
-                ataques_naturales: this.textoTecnico(raw.ataques_naturales),
+                ataques_naturales: textoOSinEspecificar(raw.ataques_naturales),
                 espacio: this.numero(raw.espacio),
                 alcance: this.numero(raw.alcance),
                 id_manual: this.numero(raw.id_manual),
@@ -680,9 +681,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 puntos_extra: this.numero(raw.puntos_extra),
                 id_tamano: this.numero(raw.id_tamano),
                 ajuste_nivel: this.numero(raw.ajuste_nivel),
-                reduccion_dano: this.textoTecnico(raw.reduccion_dano),
-                resistencia_conjuros: this.textoTecnico(raw.resistencia_conjuros),
-                resistencia_energia: this.textoTecnico(raw.resistencia_energia),
+                reduccion_dano: textoOSinEspecificar(raw.reduccion_dano),
+                resistencia_conjuros: textoOSinEspecificar(raw.resistencia_conjuros),
+                resistencia_energia: textoOSinEspecificar(raw.resistencia_energia),
                 altura_rango_inf: this.numeroDecimal(raw.altura_rango_inf),
                 altura_rango_sup: this.numeroDecimal(raw.altura_rango_sup),
                 peso_rango_inf: this.numeroDecimal(raw.peso_rango_inf),
@@ -692,10 +693,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 edad_viejo: this.numero(raw.edad_viejo),
                 edad_venerable: this.numero(raw.edad_venerable),
                 id_tipo_criatura: this.numero(raw.id_tipo_criatura),
-                ataque_base: this.tieneDgsExtra() ? this.numero(raw.ataque_base) : (dgsOcultos?.Ataque_base ?? 0),
-                fortaleza: this.numero(raw.fortaleza),
-                reflejos: this.numero(raw.reflejos),
-                voluntad: this.numero(raw.voluntad),
+                // El ataque base y las salvaciones son los de los DG raciales: sin DG, 0 (`400 dg_raciales_sin_dg`).
+                ataque_base: this.tieneDgsExtra() ? this.numero(raw.ataque_base) : 0,
+                fortaleza: this.tieneDgsExtra() ? this.numero(raw.fortaleza) : 0,
+                reflejos: this.tieneDgsExtra() ? this.numero(raw.reflejos) : 0,
+                voluntad: this.tieneDgsExtra() ? this.numero(raw.voluntad) : 0,
                 dgs_extra: this.numero(raw.dgs_extra),
                 id_tipo_dado: dgsOcultos && !this.tieneDgsExtra() ? dgsOcultos.Id_dado : this.getIdTipoDadoPayload(),
                 id_tipo_criatura_dgs: dgsOcultos && !this.tieneDgsExtra() ? dgsOcultos.Id_tipo_criatura : this.getIdTipoCriaturaDgsPayload(),
@@ -710,8 +712,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 id_clase_lanzamiento: lanza ? idClaseLanzamiento : null,
                 nivel_lanzamiento: lanza ? this.numero(raw.nivel_lanzamiento) : 0,
             },
-            subtipos: this.idsOrdenados(this.subtiposSeleccionados),
-            idiomas: this.idsOrdenados(this.idiomasSeleccionados),
+            subtipos: idsUnicosOrdenados(this.subtiposSeleccionados),
+            idiomas: idsUnicosOrdenados(this.idiomasSeleccionados),
             habilidades: {
                 base: this.dedupeByKey(
                     this.habilidadesBaseRows
@@ -726,7 +728,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                                 id_habilidad: this.numero(row.id_habilidad),
                                 cantidad: this.numero(row.cantidad),
                                 ...(enviarExtra ? { id_extra: idExtra } : {}),
-                                varios: this.textoTecnico(row.varios),
+                                varios: textoOSinEspecificar(row.varios),
                             };
                         }),
                     (item) => `${item.id_habilidad}:${item.id_extra}`
@@ -768,16 +770,16 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                     .map((row) => ({
                         id_conjuro: this.numero(row.id_conjuro),
                         nivel_lanzador: this.numero(row.nivel_lanzador),
-                        usos_diarios: this.textoTecnico(row.usos_diarios || '1/dia'),
-                        descripcion: this.textoTecnico(row.descripcion),
+                        usos_diarios: textoOSinEspecificar(row.usos_diarios || '1/dia'),
+                        descripcion: textoOSinEspecificar(row.descripcion),
                     })),
                 (item) => `${item.id_conjuro}:${item.nivel_lanzador}:${item.usos_diarios}`
             ),
             competencias: {
-                armas: this.idsOrdenados(this.armasCompetenciaSeleccionadas),
-                armaduras: this.idsOrdenados(this.armadurasCompetenciaSeleccionadas),
-                gruposArma: this.idsOrdenados(this.gruposArmaSeleccionados),
-                gruposArmadura: this.idsOrdenados(this.gruposArmaduraSeleccionados),
+                armas: idsUnicosOrdenados(this.armasCompetenciaSeleccionadas),
+                armaduras: idsUnicosOrdenados(this.armadurasCompetenciaSeleccionadas),
+                gruposArma: idsUnicosOrdenados(this.gruposArmaSeleccionados),
+                gruposArmadura: idsUnicosOrdenados(this.gruposArmaduraSeleccionados),
             },
             lanzamiento_listas: lanza ? this.listasLanzamiento(raw.lanzamiento_listas) : [],
         };
@@ -789,20 +791,20 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     actualizarSeleccion(propiedad: RelacionSeleccionKey, values: number[]): void {
-        this[propiedad] = this.idsOrdenados(values);
+        this[propiedad] = idsUnicosOrdenados(values);
     }
 
     agregarSeleccion(propiedad: RelacionSeleccionKey, value: number): void {
         const id = this.numero(value);
         if (id <= 0)
             return;
-        this[propiedad] = this.idsOrdenados([...(this[propiedad] ?? []), id]);
+        this[propiedad] = idsUnicosOrdenados([...(this[propiedad] ?? []), id]);
         this.relacionQueries[propiedad] = '';
     }
 
     quitarSeleccion(propiedad: RelacionSeleccionKey, value: number): void {
         const id = this.numero(value);
-        this[propiedad] = this.idsOrdenados((this[propiedad] ?? []).filter((item) => item !== id));
+        this[propiedad] = idsUnicosOrdenados((this[propiedad] ?? []).filter((item) => item !== id));
     }
 
     actualizarRelacionQuery(propiedad: RelacionSeleccionKey, value: string): void {
@@ -1030,9 +1032,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     seleccionarManual(id: number): void {
-        this.form.controls.id_manual.setValue(this.numero(id));
-        this.form.controls.id_manual.markAsDirty();
-        this.form.controls.id_manual.updateValueAndValidity();
+        elegirEnControl(this.form.controls.id_manual, this.numero(id));
     }
 
     seleccionarClasePredilecta(id: number): void {
@@ -1096,8 +1096,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     seleccionarClaseLanzamiento(id: number): void {
-        this.form.controls.id_clase_lanzamiento.setValue(this.numero(id));
-        this.form.controls.id_clase_lanzamiento.markAsDirty();
+        elegirEnControl(this.form.controls.id_clase_lanzamiento, this.numero(id));
     }
 
     quitarLanzamiento(): void {
@@ -1646,12 +1645,12 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             selectedIndex: this.normalizarPasoIndex(this.pasoActivoIndex),
             formValue: this.clonarProfundo(this.form.getRawValue()),
             selections: {
-                subtiposSeleccionados: this.idsOrdenados(this.subtiposSeleccionados),
-                idiomasSeleccionados: this.idsOrdenados(this.idiomasSeleccionados),
-                armasCompetenciaSeleccionadas: this.idsOrdenados(this.armasCompetenciaSeleccionadas),
-                armadurasCompetenciaSeleccionadas: this.idsOrdenados(this.armadurasCompetenciaSeleccionadas),
-                gruposArmaSeleccionados: this.idsOrdenados(this.gruposArmaSeleccionados),
-                gruposArmaduraSeleccionados: this.idsOrdenados(this.gruposArmaduraSeleccionados),
+                subtiposSeleccionados: idsUnicosOrdenados(this.subtiposSeleccionados),
+                idiomasSeleccionados: idsUnicosOrdenados(this.idiomasSeleccionados),
+                armasCompetenciaSeleccionadas: idsUnicosOrdenados(this.armasCompetenciaSeleccionadas),
+                armadurasCompetenciaSeleccionadas: idsUnicosOrdenados(this.armadurasCompetenciaSeleccionadas),
+                gruposArmaSeleccionados: idsUnicosOrdenados(this.gruposArmaSeleccionados),
+                gruposArmaduraSeleccionados: idsUnicosOrdenados(this.gruposArmaduraSeleccionados),
             },
             searches: {
                 clasePredilectaBusqueda: this.clasePredilectaBusqueda,
@@ -1663,7 +1662,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 habilidadesCustomRows: this.clonarProfundo(this.habilidadesCustomRows),
                 dotesRows: this.clonarProfundo(this.dotesRows),
                 racialesRows: this.clonarProfundo(this.racialesRows),
-                racialesPendientesRazaEnCreacionIds: this.idsOrdenados(Array.from(this.racialesPendientesRazaEnCreacionIds)),
+                racialesPendientesRazaEnCreacionIds: idsUnicosOrdenados(Array.from(this.racialesPendientesRazaEnCreacionIds)),
                 sortilegiosRows: this.clonarProfundo(this.sortilegiosRows),
                 prerrequisitosMutacionRows: this.clonarProfundo(this.prerrequisitosMutacionRows),
                 prerrequisitosMutacionSeleccionados: [...this.prerrequisitosMutacionSeleccionados],
@@ -1678,12 +1677,12 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         }, { emitEvent: false });
         this.pasoActivoIndex = this.normalizarPasoIndex(borrador.selectedIndex);
 
-        this.subtiposSeleccionados = this.idsOrdenados(borrador.selections?.subtiposSeleccionados);
-        this.idiomasSeleccionados = this.idsOrdenados(borrador.selections?.idiomasSeleccionados);
-        this.armasCompetenciaSeleccionadas = this.idsOrdenados(borrador.selections?.armasCompetenciaSeleccionadas);
-        this.armadurasCompetenciaSeleccionadas = this.idsOrdenados(borrador.selections?.armadurasCompetenciaSeleccionadas);
-        this.gruposArmaSeleccionados = this.idsOrdenados(borrador.selections?.gruposArmaSeleccionados);
-        this.gruposArmaduraSeleccionados = this.idsOrdenados(borrador.selections?.gruposArmaduraSeleccionados);
+        this.subtiposSeleccionados = idsUnicosOrdenados(borrador.selections?.subtiposSeleccionados);
+        this.idiomasSeleccionados = idsUnicosOrdenados(borrador.selections?.idiomasSeleccionados);
+        this.armasCompetenciaSeleccionadas = idsUnicosOrdenados(borrador.selections?.armasCompetenciaSeleccionadas);
+        this.armadurasCompetenciaSeleccionadas = idsUnicosOrdenados(borrador.selections?.armadurasCompetenciaSeleccionadas);
+        this.gruposArmaSeleccionados = idsUnicosOrdenados(borrador.selections?.gruposArmaSeleccionados);
+        this.gruposArmaduraSeleccionados = idsUnicosOrdenados(borrador.selections?.gruposArmaduraSeleccionados);
 
         this.clasePredilectaBusqueda = this.texto(borrador.searches?.clasePredilectaBusqueda);
         this.tipoCriaturaDgsBusqueda = this.texto(borrador.searches?.tipoCriaturaDgsBusqueda);
@@ -1701,7 +1700,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         this.habilidadesCustomRows = this.restaurarRows(borrador.rows?.habilidadesCustomRows, () => this.crearHabilidadCustomRow()) as HabilidadCustomRow[];
         this.dotesRows = this.restaurarRows(borrador.rows?.dotesRows, () => this.crearDoteRow()) as DoteRow[];
         this.racialesRows = this.restaurarRows(borrador.rows?.racialesRows, () => this.crearRacialRow()) as RacialRow[];
-        this.racialesPendientesRazaEnCreacionIds = new Set(this.idsOrdenados(borrador.rows?.racialesPendientesRazaEnCreacionIds));
+        this.racialesPendientesRazaEnCreacionIds = new Set(idsUnicosOrdenados(borrador.rows?.racialesPendientesRazaEnCreacionIds));
         this.sortilegiosRows = this.restaurarRows(borrador.rows?.sortilegiosRows, () => this.crearSortilegioRow()) as SortilegioRow[];
         this.prerrequisitosMutacionSeleccionados = (borrador.rows?.prerrequisitosMutacionSeleccionados ?? [])
             .filter((type): type is MutacionPrerequisiteType => this.esTipoPrerrequisitoMutacion(type as PrerequisiteType));
@@ -1860,10 +1859,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 // Sin la 0 («Cualquiera»): lanzar como «cualquier clase» no es nada; sin clase, la raza no lanza.
                 this.opcionesClasesLanzamiento = opcionesDeCatalogo(this.clases.filter((clase) => this.numero(clase.Id) > 0));
                 this.sincronizarBusquedaDesdeControl('id_clase_predilecta', this.clasesPredilectas, (value) => this.clasePredilectaBusqueda = value);
-                this.marcarCatalogoParaModificar('clases');
+                this.catalogosParaModificar.marcar('clases');
             }, error: () => {
                 this.clases = [];
-                this.marcarCatalogoParaModificar('clases');
+                this.catalogosParaModificar.marcar('clases');
             } });
 
         this.dominioSvc.getDominios()
@@ -1878,10 +1877,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             .subscribe({ next: (tamanos) => {
                 this.tamanos = this.ordenarPorId(tamanos);
                 this.sincronizarSelect('id_tamano', this.tamanos, 'mediano');
-                this.marcarCatalogoParaModificar('tamanos');
+                this.catalogosParaModificar.marcar('tamanos');
             }, error: () => {
                 this.tamanos = [];
-                this.marcarCatalogoParaModificar('tamanos');
+                this.catalogosParaModificar.marcar('tamanos');
             } });
 
         this.tipoCriaturaSvc.getTiposCriatura()
@@ -1890,10 +1889,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 this.tiposCriatura = this.ordenar(tipos);
                 this.sincronizarSelect('id_tipo_criatura', this.tiposCriatura, 'humanoide');
                 this.sincronizarCamposDgsExtra();
-                this.marcarCatalogoParaModificar('tiposCriatura');
+                this.catalogosParaModificar.marcar('tiposCriatura');
             }, error: () => {
                 this.tiposCriatura = [];
-                this.marcarCatalogoParaModificar('tiposCriatura');
+                this.catalogosParaModificar.marcar('tiposCriatura');
             } });
 
         this.alineamientoSvc.getAlineamientosCombinacionesCatalogo()
@@ -1901,10 +1900,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             .subscribe({ next: (alineamientos) => {
                 this.alineamientos = this.ordenarPorId(alineamientos);
                 this.sincronizarAlineamientoDesdeSeleccion();
-                this.marcarCatalogoParaModificar('alineamientos');
+                this.catalogosParaModificar.marcar('alineamientos');
             }, error: () => {
                 this.alineamientos = [];
-                this.marcarCatalogoParaModificar('alineamientos');
+                this.catalogosParaModificar.marcar('alineamientos');
             } });
 
         this.alineamientoSvc.getAlineamientosBasicosCatalogo()
@@ -1913,10 +1912,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 this.alineamientosBasicos = this.ordenarPorId(conOpcionSinValor(alineamientos, SIN_ALINEAMIENTO_BASICO));
                 this.sincronizarSelectConFallback('id_alineamiento_basico', this.alineamientosBasicos, 'no aplica');
                 this.sincronizarAlineamientoDesdeSeleccion();
-                this.marcarCatalogoParaModificar('alineamientosBasicos');
+                this.catalogosParaModificar.marcar('alineamientosBasicos');
             }, error: () => {
                 this.alineamientosBasicos = [];
-                this.marcarCatalogoParaModificar('alineamientosBasicos');
+                this.catalogosParaModificar.marcar('alineamientosBasicos');
             } });
 
         this.alineamientoSvc.getAlineamientosPrioridadesCatalogo()
@@ -1925,10 +1924,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 this.prioridadesAlineamiento = this.ordenarPorId(conOpcionSinValor(prioridades, SIN_PRIORIDAD));
                 this.asegurarPrioridadAlineamientoVisible();
                 this.sincronizarAlineamientoDesdeSeleccion();
-                this.marcarCatalogoParaModificar('prioridades');
+                this.catalogosParaModificar.marcar('prioridades');
             }, error: () => {
                 this.prioridadesAlineamiento = [];
-                this.marcarCatalogoParaModificar('prioridades');
+                this.catalogosParaModificar.marcar('prioridades');
             } });
 
         this.alineamientoSvc.getAlineamientosPreferenciaLeyCatalogo()
@@ -1937,10 +1936,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 this.preferenciasLey = this.ordenarPorId(conOpcionSinValor(preferencias, { ...SIN_PREFERENCIA }));
                 this.sincronizarSelectConFallback('id_preferencia_ley', this.preferenciasLey, 'ninguna preferencia');
                 this.sincronizarAlineamientoDesdeSeleccion();
-                this.marcarCatalogoParaModificar('preferenciasLey');
+                this.catalogosParaModificar.marcar('preferenciasLey');
             }, error: () => {
                 this.preferenciasLey = [];
-                this.marcarCatalogoParaModificar('preferenciasLey');
+                this.catalogosParaModificar.marcar('preferenciasLey');
             } });
 
         this.alineamientoSvc.getAlineamientosPreferenciaMoralCatalogo()
@@ -1949,10 +1948,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 this.preferenciasMoral = this.ordenarPorId(conOpcionSinValor(preferencias, { ...SIN_PREFERENCIA }));
                 this.sincronizarSelectConFallback('id_preferencia_moral', this.preferenciasMoral, 'ninguna preferencia');
                 this.sincronizarAlineamientoDesdeSeleccion();
-                this.marcarCatalogoParaModificar('preferenciasMoral');
+                this.catalogosParaModificar.marcar('preferenciasMoral');
             }, error: () => {
                 this.preferenciasMoral = [];
-                this.marcarCatalogoParaModificar('preferenciasMoral');
+                this.catalogosParaModificar.marcar('preferenciasMoral');
             } });
 
         this.subtipoSvc.getSubtipos()
@@ -1967,10 +1966,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (habilidades) => {
                 this.habilidades = this.ordenar(habilidades.map((item) => ({ ...item, Id: item.Id_habilidad })));
-                this.marcarCatalogoParaModificar('habilidades');
+                this.catalogosParaModificar.marcar('habilidades');
             }, error: () => {
                 this.habilidades = [];
-                this.marcarCatalogoParaModificar('habilidades');
+                this.catalogosParaModificar.marcar('habilidades');
             } });
 
         this.habilidadSvc.getHabilidadesCustom()
@@ -2014,10 +2013,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 this.maniobrabilidades = this.ordenarPorId(conOpcionSinValor(items, SIN_VUELO));
                 this.sincronizarSelect('id_maniobrabilidad', this.maniobrabilidades, 'no vuela');
                 this.sincronizarManiobrabilidadConVuelo();
-                this.marcarCatalogoParaModificar('maniobrabilidades');
+                this.catalogosParaModificar.marcar('maniobrabilidades');
             }, error: () => {
                 this.maniobrabilidades = [];
-                this.marcarCatalogoParaModificar('maniobrabilidades');
+                this.catalogosParaModificar.marcar('maniobrabilidades');
             } });
 
         this.razaCatalogosSvc.getTiposDado()
@@ -2025,10 +2024,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             .subscribe({ next: (items) => {
                 this.tiposDado = this.ordenarPorId(items);
                 this.sincronizarCamposDgsExtra();
-                this.marcarCatalogoParaModificar('tiposDado');
+                this.catalogosParaModificar.marcar('tiposDado');
             }, error: () => {
                 this.tiposDado = [];
-                this.marcarCatalogoParaModificar('tiposDado');
+                this.catalogosParaModificar.marcar('tiposDado');
             } });
 
         this.razaCatalogosSvc.getActitudes()
@@ -2050,9 +2049,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private validarReglasDominio(): string | null {
-        const nombre = normalizarTexto(this.form.controls.nombre.value ?? '', true);
-        const idPropia = this.edicion.editando ? this.edicion.id : 0;
-        if (nombre && this.razasExistentes.some((raza) => raza.Id !== idPropia && normalizarTexto(raza.Nombre, true) === nombre))
+        if (this.edicion.nombreOcupado(this.razasExistentes, this.form.controls.nombre.value ?? ''))
             return 'Ya existe una raza con ese nombre.';
         if (this.form.controls.mutada.value === true && !this.tienePrerrequisitosMutacion())
             return 'Una raza mutada necesita al menos una familia de prerrequisitos.';
@@ -2080,10 +2077,16 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     private sincronizarCamposDgsExtra(): void {
         const tipoDadoControl = this.form.controls.id_tipo_dado;
         const tipoCriaturaControl = this.form.controls.id_tipo_criatura_dgs;
+        const salvaciones = [this.form.controls.fortaleza, this.form.controls.reflejos, this.form.controls.voluntad];
         if (!this.tieneDgsExtra()) {
             tipoDadoControl.clearValidators();
             tipoCriaturaControl.clearValidators();
+            // Sin DG raciales no hay salvaciones de DG: a 0 y sin editar.
+            salvaciones.forEach((control) => control.disable({ emitEvent: false }));
             this.form.patchValue({
+                fortaleza: 0,
+                reflejos: 0,
+                voluntad: 0,
                 ataque_base: 0,
                 dotes_dg: 0,
                 puntos_hab: 0,
@@ -2097,6 +2100,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             return;
         }
 
+        salvaciones.forEach((control) => control.enable({ emitEvent: false }));
         tipoDadoControl.setValidators([Validators.min(1)]);
         tipoCriaturaControl.setValidators([Validators.min(1)]);
         if (this.numero(tipoDadoControl.value) <= 0)
@@ -2145,7 +2149,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private filtrarCatalogo<T>(items: T[] | null | undefined, query: string | null | undefined, selectedIds: number[] = []): T[] {
-        const selected = new Set(this.idsOrdenados(selectedIds));
+        const selected = new Set(idsUnicosOrdenados(selectedIds));
         const normalizedQuery = normalizarTexto(query ?? '', true);
         return [...(Array.isArray(items) ? items : [])]
             .filter((item) => {
@@ -2320,7 +2324,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return {
             nombre: '',
             descripcion: '',
-            ataques_naturales: 'No especifica',
+            ataques_naturales: TEXTO_SIN_ESPECIFICAR,
             espacio: 5,
             alcance: 5,
             id_manual: 0,
@@ -2345,9 +2349,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             puntos_extra: 0,
             id_tamano: 0,
             ajuste_nivel: 0,
-            reduccion_dano: 'No especifica',
-            resistencia_conjuros: 'No especifica',
-            resistencia_energia: 'No especifica',
+            reduccion_dano: TEXTO_SIN_ESPECIFICAR,
+            resistencia_conjuros: TEXTO_SIN_ESPECIFICAR,
+            resistencia_energia: TEXTO_SIN_ESPECIFICAR,
             altura_rango_inf: 0,
             altura_rango_sup: 0,
             peso_rango_inf: 0,
@@ -2417,13 +2421,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         this.sincronizarAlineamientoDesdeSeleccion();
     }
 
-    /** Un catálogo de los que necesita «Modificar» ha llegado (o ha fallado): con todos, ya se puede rellenar la raza. */
-    private marcarCatalogoParaModificar(catalogo: CatalogoParaModificar): void {
-        this.catalogosPendientesParaModificar.delete(catalogo);
-        if (this.catalogosPendientesParaModificar.size < 1 && !this.catalogosParaModificarListos$.value)
-            this.catalogosParaModificarListos$.next(true);
-    }
-
     /**
      * Rellena el formulario con la raza que se modifica (su `GET`), de forma que guardar sin tocar nada mande lo mismo que
      * llegó. Las categorías de edad y sus pasos no van en el formulario: se enseñan sin editar y la API los conserva.
@@ -2437,7 +2434,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             ...this.getFormularioDefaultValues(),
             nombre: this.texto(raza.Nombre),
             descripcion: this.texto(raza.Descripcion),
-            ataques_naturales: this.textoTecnico(raza.Ataques_naturales),
+            ataques_naturales: textoOSinEspecificar(raza.Ataques_naturales),
             espacio: this.numero(raza.Espacio),
             alcance: this.numero(raza.Alcance),
             id_manual: this.numero(referencias?.Manual?.Id),
@@ -2463,9 +2460,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             cuadrupedo: raza.Cuadrupedo === true,
             id_tamano: this.numero(raza.Tamano?.Id),
             ajuste_nivel: this.numero(raza.Ajuste_nivel),
-            reduccion_dano: this.textoTecnico(raza.Reduccion_dano),
-            resistencia_conjuros: this.textoTecnico(raza.Resistencia_magica),
-            resistencia_energia: this.textoTecnico(raza.Resistencia_energia),
+            reduccion_dano: textoOSinEspecificar(raza.Reduccion_dano),
+            resistencia_conjuros: textoOSinEspecificar(raza.Resistencia_magica),
+            resistencia_energia: textoOSinEspecificar(raza.Resistencia_energia),
             altura_rango_inf: this.numeroDecimal(raza.Altura_rango_inf),
             altura_rango_sup: this.numeroDecimal(raza.Altura_rango_sup),
             peso_rango_inf: this.numeroDecimal(raza.Peso_rango_inf),
@@ -2495,12 +2492,12 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         }, { emitEvent: false });
         this.pasoActivoIndex = 0;
 
-        this.subtiposSeleccionados = this.idsOrdenados((raza.Subtipos ?? []).map((subtipo) => subtipo.Id));
-        this.idiomasSeleccionados = this.idsOrdenados((raza.Idiomas ?? []).map((idioma) => idioma.Id));
-        this.armasCompetenciaSeleccionadas = this.idsOrdenados((raza.Competencias?.Armas ?? []).map((item) => item.Id));
-        this.armadurasCompetenciaSeleccionadas = this.idsOrdenados((raza.Competencias?.Armaduras ?? []).map((item) => item.Id));
-        this.gruposArmaSeleccionados = this.idsOrdenados((raza.Competencias?.Grupos_arma ?? []).map((item) => item.Id));
-        this.gruposArmaduraSeleccionados = this.idsOrdenados((raza.Competencias?.Grupos_armadura ?? []).map((item) => item.Id));
+        this.subtiposSeleccionados = idsUnicosOrdenados((raza.Subtipos ?? []).map((subtipo) => subtipo.Id));
+        this.idiomasSeleccionados = idsUnicosOrdenados((raza.Idiomas ?? []).map((idioma) => idioma.Id));
+        this.armasCompetenciaSeleccionadas = idsUnicosOrdenados((raza.Competencias?.Armas ?? []).map((item) => item.Id));
+        this.armadurasCompetenciaSeleccionadas = idsUnicosOrdenados((raza.Competencias?.Armaduras ?? []).map((item) => item.Id));
+        this.gruposArmaSeleccionados = idsUnicosOrdenados((raza.Competencias?.Grupos_arma ?? []).map((item) => item.Id));
+        this.gruposArmaduraSeleccionados = idsUnicosOrdenados((raza.Competencias?.Grupos_armadura ?? []).map((item) => item.Id));
         this.clasePredilectaBusqueda = this.texto(referencias?.Clase_predilecta?.Nombre);
         this.tipoCriaturaDgsBusqueda = '';
 
@@ -2510,7 +2507,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             id_habilidad: this.numero(habilidad.Id_habilidad),
             cantidad: this.numero(habilidad.Cantidad),
             id_extra: this.numero(habilidad.Id_extra ?? ID_EXTRA_HABILIDAD_SIN_EXTRA),
-            varios: this.textoTecnico(habilidad.Varios),
+            varios: textoOSinEspecificar(habilidad.Varios),
             busqueda: this.texto(habilidad.Habilidad),
             extraBusqueda: this.numero(habilidad.Id_extra ?? ID_EXTRA_HABILIDAD_SIN_EXTRA) > ID_EXTRA_HABILIDAD_SIN_EXTRA ? this.texto(habilidad.Extra) : '',
         })), () => this.crearHabilidadBaseRow());
@@ -2539,7 +2536,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             id_conjuro: this.numero(sortilega.Conjuro?.Id),
             nivel_lanzador: this.numero(sortilega.Nivel_lanzador),
             usos_diarios: this.texto(sortilega.Usos_diarios),
-            descripcion: this.textoTecnico(sortilega.Descripcion),
+            descripcion: textoOSinEspecificar(sortilega.Descripcion),
             busqueda: this.texto(sortilega.Conjuro?.Nombre),
         })), () => this.crearSortilegioRow());
 
@@ -2599,7 +2596,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     /**
      * Sin DG raciales el formulario no enseña ni guarda sus campos (a cero en una raza nueva); al modificar una raza que ya
-     * no los tenía, se conservan los que guardaba.
+     * no los tenía, se conservan los que guardaba (el dado, el tipo, las dotes y los puntos; el ataque base y las
+     * salvaciones, a 0).
      */
     private dgsOcultosAConservar() {
         const dgs = this.razaCargada?.Edicion?.Dgs_raciales;
@@ -2613,7 +2611,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private async completarRacialesPendientesRazaEnCreacion(idRaza: number): Promise<string[]> {
-        const pendientes = this.idsOrdenados(Array.from(this.racialesPendientesRazaEnCreacionIds));
+        const pendientes = idsUnicosOrdenados(Array.from(this.racialesPendientesRazaEnCreacionIds));
         if (pendientes.length < 1 || this.numero(idRaza) <= 0)
             return [];
 
@@ -2647,7 +2645,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private getNombresRacialesPendientesRazaEnCreacion(): string[] {
-        return this.idsOrdenados(Array.from(this.racialesPendientesRazaEnCreacionIds))
+        return idsUnicosOrdenados(Array.from(this.racialesPendientesRazaEnCreacionIds))
             .map((id) => this.getNombreRacialPendienteRazaEnCreacion(id));
     }
 
@@ -2658,7 +2656,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private crearHabilidadBaseRow(): HabilidadBaseRow {
-        return { uid: this.nuevoUid(), id_habilidad: 0, cantidad: 0, id_extra: 0, varios: 'No especifica', busqueda: '', extraBusqueda: '' };
+        return { uid: this.nuevoUid(), id_habilidad: 0, cantidad: 0, id_extra: 0, varios: TEXTO_SIN_ESPECIFICAR, busqueda: '', extraBusqueda: '' };
     }
 
     private crearHabilidadCustomRow(): HabilidadCustomRow {
@@ -2685,7 +2683,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private crearSortilegioRow(): SortilegioRow {
-        return { uid: this.nuevoUid(), id_conjuro: 0, nivel_lanzador: 1, usos_diarios: '1/dia', descripcion: 'No especifica', busqueda: '' };
+        return { uid: this.nuevoUid(), id_conjuro: 0, nivel_lanzador: 1, usos_diarios: '1/dia', descripcion: TEXTO_SIN_ESPECIFICAR, busqueda: '' };
     }
 
     private sincronizarSelectConFallback(controlName: string, items: CatalogItem[], nombrePreferente?: string): void {
@@ -2862,7 +2860,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private tieneAlineamientoBasicoSinResolver(values: number[] | null | undefined): boolean {
-        return this.idsOrdenados(values)
+        return idsUnicosOrdenados(values)
             .some((idBasico) => this.resolverIdAlineamientoPrerrequisitoDesdeBasico(idBasico) <= 0);
     }
 
@@ -2880,11 +2878,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             || texto === 'sin preferencia';
     }
 
-    private idsOrdenados(values: number[] | null | undefined): number[] {
-        return [...new Set((values ?? []).map((value) => this.numero(value)).filter((value) => value > 0))]
-            .sort((a, b) => a - b);
-    }
-
     private dedupeByKey<T>(items: T[], keyFn: (item: T) => string): T[] {
         const map = new Map<string, T>();
         items.forEach((item) => map.set(keyFn(item), item));
@@ -2893,11 +2886,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     private texto(value: any): string {
         return `${value ?? ''}`.trim();
-    }
-
-    private textoTecnico(value: any): string {
-        const text = this.texto(value);
-        return text.length > 0 ? text : 'No especifica';
     }
 
     private numero(value: any): number {

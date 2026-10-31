@@ -28,7 +28,7 @@ import { ModoInsercion } from '../insercion-marco/insercion-marco.component';
 import { CONJURO } from 'src/app/services/utils/nombres-de-catalogo';
 import { textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
 import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
-import { normalizarTexto, toArray, toInt } from 'src/app/services/utils/normalizacion';
+import { idsUnicosOrdenados, normalizarTexto, toArray, toInt } from 'src/app/services/utils/normalizacion';
 import { TEXTOS_CONJURO_CON_RELLENO } from 'src/app/services/utils/conjuro-mapper';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -468,13 +468,13 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy, OnChanges, Edit
 
     onToggleComponente(id: number, checked: boolean): void {
         this.componentesSeleccionados = checked
-            ? this.uniqueSorted([...this.componentesSeleccionados, id])
+            ? idsUnicosOrdenados([...this.componentesSeleccionados, id])
             : this.componentesSeleccionados.filter((item) => item !== id);
     }
 
     onToggleDescriptor(id: number, checked: boolean): void {
         this.descriptoresSeleccionados = checked
-            ? this.uniqueSorted([...this.descriptoresSeleccionados, id])
+            ? idsUnicosOrdenados([...this.descriptoresSeleccionados, id])
             : this.descriptoresSeleccionados.filter((item) => item !== id);
     }
 
@@ -616,8 +616,8 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy, OnChanges, Edit
             coste_material: conjuro?.Coste_material ?? null,
             coste_px: conjuro?.Coste_px ?? null,
         });
-        this.componentesSeleccionados = this.uniqueSorted((conjuro?.Componentes ?? []).map((item) => item?.Id_componente));
-        this.descriptoresSeleccionados = this.uniqueSorted((conjuro?.Descriptores ?? []).map((item) => item?.Id));
+        this.componentesSeleccionados = idsUnicosOrdenados((conjuro?.Componentes ?? []).map((item) => item?.Id_componente));
+        this.descriptoresSeleccionados = idsUnicosOrdenados((conjuro?.Descriptores ?? []).map((item) => item?.Id));
         const filas = (items: { Nivel: number; Espontaneo: boolean; }[], id: (item: any) => unknown): NivelEditorRow[] => {
             const salida = (items ?? []).map((item) => ({ ...this.crearNivelRow(), id: toInt(id(item), 0), nivel: toInt(item?.Nivel, 0), espontaneo: item?.Espontaneo === true }));
             return salida.length > 0 ? salida : [this.crearNivelRow()];
@@ -671,8 +671,8 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy, OnChanges, Edit
                     id_escuela: toInt(raw.id_escuela, 0),
                     resistencia_conjuros: raw.resistencia_conjuros === true,
                 },
-                componentes: this.uniqueSorted(this.componentesSeleccionados),
-                descriptores: this.uniqueSorted(this.descriptoresSeleccionados),
+                componentes: idsUnicosOrdenados(this.componentesSeleccionados),
+                descriptores: idsUnicosOrdenados(this.descriptoresSeleccionados),
                 niveles_clase: this.normalizarNiveles(this.nivelesBaseClase, 'id_clase'),
                 niveles_dominio: this.normalizarNiveles(this.nivelesBaseDominio, 'id_dominio'),
             };
@@ -688,8 +688,8 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy, OnChanges, Edit
                 descripcion_aumentos: `${raw.descripcion_aumentos ?? ''}`.trim(),
                 resistencia_poderes: raw.resistencia_poderes === true,
             },
-            componentes: this.uniqueSorted(this.componentesSeleccionados),
-            descriptores: this.uniqueSorted(this.descriptoresSeleccionados),
+            componentes: idsUnicosOrdenados(this.componentesSeleccionados),
+            descriptores: idsUnicosOrdenados(this.descriptoresSeleccionados),
             niveles_clase: this.normalizarNiveles(this.nivelesPsiClase, 'id_clase'),
             niveles_disciplina: this.normalizarNiveles(this.nivelesPsiDisciplina, 'id_disciplina'),
         };
@@ -901,10 +901,6 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy, OnChanges, Edit
             nivel: 0,
             espontaneo: false,
         };
-    }
-
-    private uniqueSorted(ids: number[]): number[] {
-        return Array.from(new Set((ids ?? []).map((id) => toInt(id, 0)).filter((id) => id > 0))).sort((a, b) => a - b);
     }
 
 }

@@ -97,6 +97,10 @@ export interface PrerequisiteRowModel {
     salvacion_tipo: 'fortaleza' | 'reflejos' | 'voluntad';
     /** El segundo elemento de un tipo `catalog-pair`: el tipo de criatura nuevo de `criaturas_compatibles` (0, «cualquiera»: conserva su tipo). */
     id_destino?: number;
+    /** Los extras que pide una `habilidad` con «requiere extra» (Saber (arcano)…): `Extras` del cuerpo. */
+    extras?: number[];
+    /** El comodín 0 de su catálogo elegido (`comodinLabel` de su tipo: «El arma elegida»): la fila apunta al id 0 y está completa. */
+    comodin?: boolean;
 }
 
 export interface PrerequisiteCatalogContext {
@@ -106,6 +110,8 @@ export interface PrerequisiteCatalogContext {
     dotePermiteExtra(idDote: number): boolean;
     getGlobalExtraOptions(): PrerequisiteCatalogItem[];
     habilidadPermiteExtra(idHabilidad: number): boolean;
+    /** Los extras de esa habilidad, para elegir los que pide una fila con «requiere extra». Sin él, `getGlobalExtraOptions`. */
+    getHabilidadExtraOptions?(idHabilidad: number): PrerequisiteCatalogItem[];
     especialPermiteExtra(idEspecial: number): boolean;
 }
 
@@ -121,6 +127,11 @@ export interface PrerequisiteEditorDefinition {
     supportsExtraSelector?: boolean;
     supportsCatalogExtraOptions?: boolean;
     supportsRequiresExtra?: boolean;
+    /**
+     * El comodín 0 de su catálogo como opción del selector (la «Competencia con el arma elegida» de Soltura con un arma):
+     * su etiqueta. Elegirlo deja la fila en el id 0 con `comodin` y la da por completa.
+     */
+    comodinLabel?: string;
     isComplete(row: PrerequisiteRowModel): boolean;
     toPayload(
         row: PrerequisiteRowModel,

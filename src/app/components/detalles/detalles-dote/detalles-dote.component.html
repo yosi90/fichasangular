@@ -5,11 +5,9 @@
         [subtitulo]="descripcionEnCabecera ? doteData.Descripcion : null"
         [manual]="doteData.Manual"
         [oficial]="doteData.Oficial"
-        (abrirManual)="abrirDetalleManual()">
-        <button mat-stroked-button type="button" *ngIf="puedeModificar" (click)="modificar.emit(doteData)">
-            <mat-icon>edit</mat-icon>
-            Modificar
-        </button>
+        [modificable]="puedeModificar"
+        (abrirManual)="abrirDetalleManual()"
+        (modificar)="modificar.emit(doteData)">
     </app-ficha-cabecera>
 
     <app-ficha-cuerpo>

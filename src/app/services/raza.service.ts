@@ -20,6 +20,7 @@ import { errorDeCatalogo } from 'src/app/services/utils/error-catalogo';
 import { RAZA } from 'src/app/services/utils/nombres-de-catalogo';
 import { leerComodin } from 'src/app/services/utils/comodin';
 import { errorDePerfil } from 'src/app/services/utils/error-api';
+import { leerRespuestaDeEscritura } from 'src/app/services/utils/respuesta-de-escritura';
 
 function parseIdExtra(value: any): number {
     if (value === undefined || value === null || `${value}`.trim() === '')
@@ -436,8 +437,6 @@ export class RazaService {
 
 /** `{ message, idRaza }` de la respuesta del alta y de la edición (`RazaCreateApiResponse`); sin un `idRaza` válido, falla. */
 function respuestaDeRaza(response: RazaCreateApiResponse | null | undefined, mensajePorDefecto: string): RazaCreateResponse {
-    const idRaza = toInt(response?.idRaza);
-    if (idRaza <= 0)
-        throw new Error('La API no devolvió un idRaza válido');
-    return { message: `${response?.message ?? mensajePorDefecto}`, idRaza };
+    const { message, id } = leerRespuestaDeEscritura(response, 'idRaza', mensajePorDefecto);
+    return { message, idRaza: id };
 }

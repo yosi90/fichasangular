@@ -26,6 +26,10 @@
                 {{etiqueta.texto}}
             </span>
         </div>
+        <button mat-stroked-button type="button" *ngIf="modificable" (click)="modificar.emit()">
+            <mat-icon>edit</mat-icon>
+            Modificar
+        </button>
         <ng-content></ng-content>
     </div>
 </header>

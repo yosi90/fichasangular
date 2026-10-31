@@ -1,6 +1,6 @@
 import { Component, EventEmitter, forwardRef, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
-import { firstValueFrom, from, map, Observable, Subject, switchMap, takeUntil } from 'rxjs';
+import { firstValueFrom, Subject, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import { PrerrequisitoEditorHostComponent } from '../prerrequisito-editor/prerrequisito-editor-host.component';
 import {
@@ -69,7 +69,7 @@ import { EspecialService } from 'src/app/services/especial.service';
 import { AptitudEspecialService } from 'src/app/services/aptitud-especial.service';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { TamanoService } from 'src/app/services/tamano.service';
-import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { idsUnicosOrdenados, normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 
@@ -251,6 +251,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         dotePermiteExtra: (idDote) => this.doteCatalogoPermiteExtra(idDote),
         getGlobalExtraOptions: () => this.extrasCatalogo,
         habilidadPermiteExtra: (idHabilidad) => this.habilidadCatalogoPermiteExtra(idHabilidad),
+        getHabilidadExtraOptions: (idHabilidad) => this.extrasDeHabilidad(idHabilidad),
         especialPermiteExtra: (idEspecial) => this.especialCatalogoPermiteExtra(idEspecial),
     };
     readonly ensurePrerequisiteCatalogs = (types: PrerequisiteType[]) => this.asegurarCatalogosPrerrequisitos(types);
@@ -296,7 +297,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         nombre: DOTE,
         modo: () => this.modo,
         id: () => this.idDote,
-        obtener: (id) => this.obtenerDoteParaEditar(id),
+        obtener: (id) => this.doteSvc.getDoteFresco(id),
+        antesDeHidratar: (dote) => this.prepararCatalogosDeDote(dote),
         hidratar: (dote) => this.hidratarDesdeDote(dote),
         foto: () => this.foto(),
         destruir$: this.destroy$,
@@ -746,7 +748,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         if (idNum < 1)
             return;
         if (checked) {
-            this.selectorExtrasTempIds = this.uniqueSorted([...this.selectorExtrasTempIds, idNum]);
+            this.selectorExtrasTempIds = idsUnicosOrdenados([...this.selectorExtrasTempIds, idNum], 0);
             return;
         }
         this.selectorExtrasTempIds = this.selectorExtrasTempIds.filter((current) => current !== idNum);
@@ -757,11 +759,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
             this.selectorExtrasTempIds = [];
             return;
         }
-        this.selectorExtrasTempIds = this.uniqueSorted(this.itemsSelectorExtrasActual.map((item) => item.id));
+        this.selectorExtrasTempIds = idsUnicosOrdenados(this.itemsSelectorExtrasActual.map((item) => item.id), 0);
     }
 
     seleccionarTodosExtrasTemporales(): void {
-        this.selectorExtrasTempIds = this.uniqueSorted(this.itemsSelectorExtrasActual.map((item) => item.id));
+        this.selectorExtrasTempIds = idsUnicosOrdenados(this.itemsSelectorExtrasActual.map((item) => item.id), 0);
     }
 
     agregarModificador(): void {
@@ -1038,6 +1040,15 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return opciones;
     }
 
+    /** Los extras de una habilidad del catálogo (Saber: arcano, naturaleza…), para el prerrequisito que los pide. */
+    extrasDeHabilidad(idHabilidad: number): PrerequisiteCatalogItem[] {
+        const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => toInt(item?.Id_habilidad, 0) === toInt(idHabilidad, 0));
+        return (habilidad?.Extras ?? [])
+            .map((extra) => ({ id: toInt(extra?.Id_extra, -1), nombre: `${extra?.Extra ?? ''}`.trim() }))
+            .filter((extra) => extra.id >= 0 && extra.nombre.length > 0)
+            .sort((a, b) => compararTexto(a.nombre, b.nombre));
+    }
+
     habilidadCatalogoPermiteExtra(idHabilidad: number): boolean {
         const habilidad = this.habilidadesOtorgadasCatalogo.find((item) => toInt(item?.Id_habilidad, 0) === toInt(idHabilidad, 0));
         return !!habilidad?.Soporta_extra;
@@ -1174,16 +1185,10 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     /**
-     * La dote para «Modificar», con los catálogos que hacen falta para enseñarla y volver a mandarla igual: las
+     * Antes de rellenar «Modificar», los catálogos que hacen falta para enseñar la dote y volver a mandarla igual: las
      * armaduras si admite armaduras o escudos (el cuerpo solo lleva las que cuadran con su subtipo) y los de los tipos de
      * sus prerrequisitos (los nombres de las filas).
      */
-    private obtenerDoteParaEditar(id: number): Observable<Dote> {
-        return this.doteSvc.getDoteFresco(id).pipe(
-            switchMap((dote) => from(this.prepararCatalogosDeDote(dote)).pipe(map(() => dote))),
-        );
-    }
-
     private async prepararCatalogosDeDote(dote: Dote): Promise<void> {
         const tipos = Object.keys(dote?.Prerrequisitos ?? {})
             .filter((tipo) => (dote.Prerrequisitos[tipo] ?? []).length > 0)
@@ -1710,7 +1715,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         if (!keyActiva)
             return base;
 
-        const seleccionados = this.uniqueSorted(this.extrasSeleccionados[keyActiva]);
+        const seleccionados = idsUnicosOrdenados(this.extrasSeleccionados[keyActiva], 0);
         base[keyActiva] = keyActiva === 'armaduras'
             ? this.filtrarIdsArmaduraPorSubtipo(seleccionados)
             : seleccionados;
@@ -1770,7 +1775,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
             return;
         this.extrasSeleccionados[key] = key === 'armaduras'
             ? this.filtrarIdsArmaduraPorSubtipo(ids)
-            : this.uniqueSorted(ids);
+            : idsUnicosOrdenados(ids, 0);
     }
 
     private uniqueItemsById(items: ExtraSelectorItem[]): ExtraSelectorItem[] {
@@ -1784,11 +1789,6 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return Array.from(map.entries())
             .map(([id, nombre]) => ({ id, nombre }))
             .sort((a, b) => compararTexto(a.nombre, b.nombre));
-    }
-
-    /** Sin repetir y en orden; el 0 es el comodín «Elegir» de los extras (se elige de todo el catálogo). */
-    private uniqueSorted(ids: number[]): number[] {
-        return Array.from(new Set((ids ?? []).map((id) => toInt(id, -1)).filter((id) => id >= 0))).sort((a, b) => a - b);
     }
 
     private armaduraCoincideConSubtiposActivos(item: ArmaduraSelectorItem | null | undefined): boolean {
@@ -1816,7 +1816,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private filtrarIdsArmaduraPorSubtipo(ids: number[]): number[] {
-        return this.uniqueSorted(ids).filter((id) => this.armaduraSeleccionablePorSubtipo(id));
+        return idsUnicosOrdenados(ids, 0).filter((id) => this.armaduraSeleccionablePorSubtipo(id));
     }
 
     private doteSoportaArmaduras(dote: Dote | null | undefined): boolean {

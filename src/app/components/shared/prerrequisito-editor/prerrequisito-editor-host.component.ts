@@ -94,6 +94,11 @@ export class PrerrequisitoEditorHostComponent implements OnChanges {
         return this.catalogContext?.getDoteExtraOptions(idDote) ?? [];
     }
 
+    /** Los extras de la habilidad de una fila (los suyos o, si el contexto no los da, los de todas). */
+    getHabilidadExtraOptions(idHabilidad: number) {
+        return this.catalogContext?.getHabilidadExtraOptions?.(idHabilidad) ?? this.catalogContext?.getGlobalExtraOptions() ?? [];
+    }
+
     trackByGroup(_: number, group: PrerequisiteGroupModel): string {
         return group.type;
     }

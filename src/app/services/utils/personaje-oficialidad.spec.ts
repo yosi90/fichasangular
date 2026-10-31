@@ -1,4 +1,4 @@
-import { motivosHomebrewPersonaje } from './personaje-oficialidad';
+import { motivoHomebrew, motivosHomebrewPersonaje, motivosQueConfirmar } from './personaje-oficialidad';
 
 describe('personaje-oficialidad (decisión del 2026-10-17)', () => {
     const personajeOficial: any = {
@@ -41,5 +41,27 @@ describe('personaje-oficialidad (decisión del 2026-10-17)', () => {
             'Familiar homebrew: Gato de la casa',
             'Ventajas y desventajas (homebrew)',
         ]);
+    });
+
+    it('cuentan los conjuros (también los de la sesión abierta) y la escuela de especialista homebrew', () => {
+        const personaje = { ...personajeOficial, Conjuros: [{ Nombre: 'Rayo arcano', Oficial: true }, { Nombre: 'Engranaje animado', Oficial: false }] };
+        expect(motivosHomebrewPersonaje(personaje, {
+            escuelaEspecialista: { Nombre: 'Ingeniería mágica', Oficial: false },
+            conjurosEnSesion: [{ Nombre: 'Vapor cegador', Oficial: false }],
+        })).toEqual([
+            'Conjuro homebrew: Engranaje animado',
+            'Conjuro homebrew: Vapor cegador',
+            'Escuela de especialista homebrew: Ingeniería mágica',
+        ]);
+        expect(motivosHomebrewPersonaje(personajeOficial, { escuelaEspecialista: { Nombre: 'Evocación', Oficial: true } })).toEqual([]);
+    });
+
+    it('motivosQueConfirmar: no pregunta si ya es homebrew ni sin motivos; sin repetidos', () => {
+        expect(motivosQueConfirmar(['Clase homebrew: X', 'Clase homebrew: X', '', null], false)).toEqual(['Clase homebrew: X']);
+        expect(motivosQueConfirmar(['Clase homebrew: X'], true)).toEqual([]);
+        expect(motivosQueConfirmar([null, undefined], false)).toEqual([]);
+        expect(motivoHomebrew('Clase', { Nombre: 'Magiingeniero', Oficial: false })).toBe('Clase homebrew: Magiingeniero');
+        expect(motivoHomebrew('Clase', { Nombre: 'Mago', Oficial: true })).toBeNull();
+        expect(motivoHomebrew('Clase', null)).toBeNull();
     });
 });

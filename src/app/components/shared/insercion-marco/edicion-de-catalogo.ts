@@ -1,4 +1,4 @@
-import { Observable, take, takeUntil } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, defaultIfEmpty, filter, from, map, of, switchMap, take, takeUntil } from 'rxjs';
 import { ElementoDeCatalogo } from 'src/app/services/utils/error-catalogo';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { avisarErrorAlCargar, delCatalogo, textoSinPermisos } from './avisos-insercion';
@@ -13,6 +13,12 @@ export interface OpcionesEdicionDeCatalogo<T> {
     id: () => unknown;
     /** El `GET` fresco de la entrada (la guía: no hidratar con la fila del listado). */
     obtener: (id: number) => Observable<T>;
+    /**
+     * Lo que hay que esperar, ya con la entrada, antes de rellenar el formulario: los catálogos de los que depende el cuerpo
+     * (los nombres de las filas, el alineamiento que se resuelve, los extras…), para que guardar sin tocar nada mande lo
+     * mismo que llegó. Si falla, se rellena igual. Para una lista fija de catálogos, `CatalogosPendientes`.
+     */
+    antesDeHidratar?: (entrada: T) => Observable<unknown> | Promise<unknown>;
     /** Rellena el formulario con la entrada. Al terminar, el formulario llama a `tomarPuntoDePartida()`. */
     hidratar: (entrada: T) => void;
     /** La foto del formulario para saber si hay cambios (normalmente, el cuerpo que se mandaría en `JSON`). */
@@ -49,15 +55,15 @@ export class EdicionDeCatalogo<T> {
     }
 
     /**
-     * Si otra entrada del catálogo ya tiene ese nombre (sin tildes ni mayúsculas): el aviso de la web antes del 409
+     * Si otra entrada del catálogo ya tiene ese nombre (sin tildes, mayúsculas ni espacios de sobra): el aviso de la web antes del 409
      * `nombre_duplicado`. Al modificar, la propia no cuenta, como en la API.
      */
     nombreOcupado(existentes: readonly { Id?: unknown; Nombre?: string | null; }[], nombre: string): boolean {
-        const objetivo = normalizarTexto(nombre);
+        const objetivo = normalizarTexto(nombre, true);
         if (objetivo.length < 1)
             return false;
         const propia = this.editando ? this.id : 0;
-        return existentes.some((entrada) => toInt(entrada?.Id, 0) !== propia && normalizarTexto(entrada?.Nombre ?? '') === objetivo);
+        return existentes.some((entrada) => toInt(entrada?.Id, 0) !== propia && normalizarTexto(entrada?.Nombre ?? '', true) === objetivo);
     }
 
     /** Trae la entrada y rellena el formulario, una vez por id: al abrirlo y si cambia el id que recibe. */
@@ -70,7 +76,11 @@ export class EdicionDeCatalogo<T> {
 
         this.cargando = true;
         this.opciones.obtener(id)
-            .pipe(take(1), takeUntil(this.opciones.destruir$))
+            .pipe(
+                take(1),
+                switchMap((entrada) => this.esperarAntesDeHidratar(entrada).pipe(map(() => entrada))),
+                takeUntil(this.opciones.destruir$),
+            )
             .subscribe({
                 next: (entrada) => {
                     this.opciones.hidratar(entrada);
@@ -85,6 +95,13 @@ export class EdicionDeCatalogo<T> {
                         void avisarErrorAlCargar(this.opciones.nombre, error);
                 },
             });
+    }
+
+    private esperarAntesDeHidratar(entrada: T): Observable<unknown> {
+        const espera = this.opciones.antesDeHidratar?.(entrada);
+        if (!espera)
+            return of(undefined);
+        return from(espera).pipe(take(1), defaultIfEmpty(undefined), catchError(() => of(undefined)));
     }
 
     /** Lo que hay ahora en el formulario pasa a ser «sin cambios» (tras hidratar y tras guardar). */
@@ -129,5 +146,32 @@ export class EdicionDeCatalogo<T> {
      */
     avisoPermisos(puedeGuardar: boolean): string {
         return this.cargando || puedeGuardar ? '' : textoSinPermisos(this.opciones.nombre, this.editando);
+    }
+}
+
+/**
+ * Los catálogos que un formulario espera antes de rellenar una entrada al modificarla (`antesDeHidratar` de
+ * `EdicionDeCatalogo`): cada uno se marca al llegar (o al fallar), y `listos$` avisa cuando ya están todos.
+ */
+export class CatalogosPendientes<K extends string> {
+    private readonly pendientes: Set<K>;
+    private readonly todos = new BehaviorSubject<boolean>(false);
+
+    constructor(catalogos: readonly K[]) {
+        this.pendientes = new Set(catalogos);
+        if (this.pendientes.size < 1)
+            this.todos.next(true);
+    }
+
+    /** El catálogo ha llegado (o ha fallado): con todos, `listos$` avisa. */
+    marcar(catalogo: K): void {
+        this.pendientes.delete(catalogo);
+        if (this.pendientes.size < 1 && !this.todos.value)
+            this.todos.next(true);
+    }
+
+    /** Emite una vez cuando ya han llegado todos (en seguida, si ya estaban). */
+    get listos$(): Observable<void> {
+        return this.todos.pipe(filter((listos) => listos), take(1), map(() => undefined));
     }
 }

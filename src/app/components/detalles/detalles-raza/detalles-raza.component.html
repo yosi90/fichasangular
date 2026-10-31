@@ -5,11 +5,9 @@
         [manual]="raza.Manual"
         [oficial]="raza.Oficial"
         [etiquetas]="etiquetas"
-        (abrirManual)="abrirDetalleManual()">
-        <button mat-stroked-button type="button" *ngIf="puedeModificar" (click)="modificar.emit(raza)">
-            <mat-icon>edit</mat-icon>
-            Modificar
-        </button>
+        [modificable]="puedeModificar"
+        (abrirManual)="abrirDetalleManual()"
+        (modificar)="modificar.emit(raza)">
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" titulo="Datos de la raza"></app-ficha-datos>
