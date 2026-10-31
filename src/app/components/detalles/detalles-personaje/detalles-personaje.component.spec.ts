@@ -481,6 +481,8 @@ describe('DetallesPersonajeComponent', () => {
             expect(valor('Altura')).toBe('1,84 m');
             expect(valor('Peso')).toBe('73 kg');
             expect(valor('Madurez')).toBe('Mediana edad · Fue/Des/Con -1 · Int/Sab/Car +1');
+            expect((component as any).m.datos.find((d: any) => d.etiqueta === 'Madurez').ayuda)
+                .toBe('Adulto: 110 | Mediana: 175 | Viejo: 263 | Venerable: 350\nFue/Des/Con: -1 | Int/Sab/Car: +1');
         });
 
         it('pasa a metros la altura que llega en centímetros', () => {
@@ -496,7 +498,7 @@ describe('DetallesPersonajeComponent', () => {
             component.pj.Raza.Edad_viejo = 60;
             component.pj.Raza.Edad_venerable = 80;
 
-            expect(component.madurezEdad).toEqual({ id: 3, nombre: 'Venerable', modFisico: -6, modMental: 3 });
+            expect(component.madurezEdad).toEqual(jasmine.objectContaining({ pasos: 3, nombre: 'Venerable', fisico: -6, mental: 3 }));
         });
 
         it('sin las edades de la raza no enseña la madurez (MJ, tabla 6-5: sin edades no hay etapas)', () => {

@@ -156,7 +156,7 @@ import {
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
-import { edadFueraDelManual, etapaEdad, EtapaEdad, razaTieneEdades, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
+import { edadesDeLaRaza, edadFueraDelManual, etapaEdad, EtapaEdad, razaTieneEdades, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
 
 interface VectorAlineamiento {
     ley: number;
@@ -1468,12 +1468,7 @@ export class NuevoPersonajeComponent {
         const raza = this.razaSeleccionada;
         if (!raza || !razaTieneEdades(raza))
             return [];
-        return [
-            `Adulto: ${raza.Edad_adulto}`,
-            `Mediana: ${raza.Edad_mediana}`,
-            `Viejo: ${raza.Edad_viejo}`,
-            `Venerable: ${raza.Edad_venerable}`,
-        ];
+        return edadesDeLaRaza(raza).map(({ nombre, valor }) => `${nombre}: ${valor}`);
     }
 
     /** Bajo la edad: el envejecimiento que aplica la etapa elegida o, si no envejece, las edades de la raza. */

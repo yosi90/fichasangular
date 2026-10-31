@@ -58,6 +58,16 @@ export function razaTieneEdades(raza: EdadesRaza | null | undefined): boolean {
     return toNumber(raza?.Edad_adulto) > 0 && toNumber(raza?.Edad_venerable) > 0;
 }
 
+/** Las cuatro edades de la raza, en orden y con su nombre corto («Adulto», «Mediana», «Viejo», «Venerable»), para enseñarlas. */
+export function edadesDeLaRaza(raza: EdadesRaza | null | undefined): Array<{ nombre: string; valor: number; }> {
+    return [
+        { nombre: 'Adulto', valor: toNumber(raza?.Edad_adulto) },
+        { nombre: 'Mediana', valor: toNumber(raza?.Edad_mediana) },
+        { nombre: 'Viejo', valor: toNumber(raza?.Edad_viejo) },
+        { nombre: 'Venerable', valor: toNumber(raza?.Edad_venerable) },
+    ];
+}
+
 /** La etapa de la vida de un personaje de esa edad, o `null` si no hay edad o la raza no trae sus edades. */
 export function etapaEdad(edad: unknown, raza: EdadesRaza | null | undefined): EtapaEdad | null {
     const anios = toNumber(edad);

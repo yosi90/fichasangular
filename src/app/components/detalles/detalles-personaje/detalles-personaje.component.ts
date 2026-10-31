@@ -69,7 +69,7 @@ import { clavePorCuenta, guardarPreferenciaLocal, leerPreferenciaLocal } from 's
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import Swal from 'sweetalert2';
 import { destinoEnTablist } from 'src/app/services/utils/teclado';
-import { etapaEdad } from 'src/app/services/utils/edad-personaje';
+import { edadesDeLaRaza, etapaEdad, EtapaEdad } from 'src/app/services/utils/edad-personaje';
 
 /** Cómo se enseña la ficha: toda en una página o con pestañas internas (las dos propuestas aprobadas del lienzo). */
 export type VistaFicha = 'pagina' | 'pestanas';
@@ -89,13 +89,6 @@ const NOMBRES_PESTANAS: Record<PestanaFicha, string> = {
     equipo: 'Equipo',
     historia: 'Historia',
 };
-
-interface MadurezEdadResumen {
-    id: number;
-    nombre: string;
-    modFisico: number;
-    modMental: number;
-}
 
 /** Una salvación como se enseña: el total y, por separado, la parte de clase, la de varios y la del equipo con sus orígenes. */
 interface SalvacionVisible {
@@ -729,26 +722,18 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
         return buildManiobrabilidadInfoSecciones(this.getManiobrabilidadPersonaje());
     }
 
-    private tieneMadurezEdadVisible(): boolean {
-        return etapaEdad(this.pj?.Edad, this.pj?.Raza) !== null;
+    /**
+     * La etapa de la vida por la edad y las edades de la raza, con su envejecimiento (`services/utils/edad-personaje.ts`),
+     * o `null` si no hay edad o la raza no trae sus edades.
+     */
+    get madurezEdad(): EtapaEdad | null {
+        return etapaEdad(this.pj?.Edad, this.pj?.Raza);
     }
 
-    /** La etapa de la vida por la edad y las edades de la raza, con su envejecimiento (`services/utils/edad-personaje.ts`). */
-    get madurezEdad(): MadurezEdadResumen {
-        const etapa = etapaEdad(this.pj?.Edad, this.pj?.Raza);
-        return {
-            id: etapa?.pasos ?? 0,
-            nombre: etapa?.nombre ?? 'Adulto',
-            modFisico: etapa?.fisico ?? 0,
-            modMental: etapa?.mental ?? 0,
-        };
-    }
-
-    getTooltipMadurezEdad(): string {
-        const raza = this.pj?.Raza;
-        const madurez = this.madurezEdad;
-        return `Adulto: ${raza?.Edad_adulto ?? 0} | Mediana: ${raza?.Edad_mediana ?? 0} | Viejo: ${raza?.Edad_viejo ?? 0} | Venerable: ${raza?.Edad_venerable ?? 0}
-Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(madurez.modMental)}`;
+    private getTooltipMadurezEdad(madurez: EtapaEdad): string {
+        const edades = edadesDeLaRaza(this.pj?.Raza).map(({ nombre, valor }) => `${nombre}: ${valor}`).join(' | ');
+        return `${edades}
+Fue/Des/Con: ${textoConSigno(madurez.fisico)} | Int/Sab/Car: ${textoConSigno(madurez.mental)}`;
     }
 
     getSubtiposVisibles(): SubtipoRef[] {
@@ -1196,7 +1181,7 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
         const idRaza = toNumber(pj.Raza?.Id);
         const subtipos = this.getSubtiposVisibles();
         const dgsRaza = pj.Raza?.Dgs_adicionales;
-        const madurez = this.tieneMadurezEdadVisible() ? this.madurezEdad : null;
+        const madurez = this.madurezEdad;
         const deidad = this.texto(pj.Deidad);
         return [
             {
@@ -1245,8 +1230,8 @@ Fue/Des/Con: ${textoConSigno(madurez.modFisico)} | Int/Sab/Car: ${textoConSigno(
             {
                 etiqueta: 'Madurez',
                 valor: madurez?.nombre ?? null,
-                detalle: madurez ? `· Fue/Des/Con ${textoConSigno(madurez.modFisico)} · Int/Sab/Car ${textoConSigno(madurez.modMental)}` : null,
-                ayuda: madurez ? this.getTooltipMadurezEdad() : null,
+                detalle: madurez ? `· Fue/Des/Con ${textoConSigno(madurez.fisico)} · Int/Sab/Car ${textoConSigno(madurez.mental)}` : null,
+                ayuda: madurez ? this.getTooltipMadurezEdad(madurez) : null,
             },
             { etiqueta: 'Altura', valor: this.textoAltura() },
             { etiqueta: 'Peso', valor: this.positivo(pj.Peso) ? `${formatoNumero(toNumber(pj.Peso))} kg` : null },

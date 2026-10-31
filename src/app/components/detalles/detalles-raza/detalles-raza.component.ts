@@ -32,6 +32,7 @@ import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { GrupoPrerrequisitos, agruparPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { leerComodin } from 'src/app/services/utils/comodin';
+import { edadesDeLaRaza } from 'src/app/services/utils/edad-personaje';
 
 interface GrupoRacialesDetalle {
     grupo: number;
@@ -345,13 +346,7 @@ export class DetallesRazaComponent {
     }
 
     private construirEdades(): ParRaza[] {
-        const r = this.raza;
-        return [
-            { nombre: 'Adulto', valor: r?.Edad_adulto },
-            { nombre: 'Mediana', valor: r?.Edad_mediana },
-            { nombre: 'Viejo', valor: r?.Edad_viejo },
-            { nombre: 'Venerable', valor: r?.Edad_venerable },
-        ]
+        return edadesDeLaRaza(this.raza)
             .filter((item) => tieneNumeroVisible(item.valor))
             .map((item) => ({ nombre: item.nombre, valor: `${item.valor} años` }));
     }

@@ -1,4 +1,4 @@
-import { ajustesEnvejecimiento, edadFueraDelManual, EdadesRaza, etapaEdad, razaTieneEdades, textoEnvejecimiento } from './edad-personaje';
+import { ajustesEnvejecimiento, edadesDeLaRaza, edadFueraDelManual, EdadesRaza, etapaEdad, razaTieneEdades, textoEnvejecimiento } from './edad-personaje';
 
 describe('edad-personaje (MJ, tablas 6-4 y 6-5, pág. 109)', () => {
     // El humano del Manual del jugador: mayoría de edad a los 15; mediana edad, 35; viejo, 53; venerable, 70.
@@ -20,6 +20,17 @@ describe('edad-personaje (MJ, tablas 6-4 y 6-5, pág. 109)', () => {
         expect(etapaEdad(40, humano)).toEqual(jasmine.objectContaining({ pasos: 1, fisico: -1, mental: 1 }));
         expect(etapaEdad(60, humano)).toEqual(jasmine.objectContaining({ pasos: 2, fisico: -3, mental: 2 }));
         expect(etapaEdad(80, humano)).toEqual(jasmine.objectContaining({ pasos: 3, fisico: -6, mental: 3 }));
+    });
+
+    it('las edades de la raza, en orden y con su nombre corto; la que falta, 0', () => {
+        expect(edadesDeLaRaza(humano)).toEqual([
+            { nombre: 'Adulto', valor: 15 },
+            { nombre: 'Mediana', valor: 35 },
+            { nombre: 'Viejo', valor: 53 },
+            { nombre: 'Venerable', valor: 70 },
+        ]);
+        expect(edadesDeLaRaza({ Edad_adulto: 20, Edad_mediana: null }).map((edad) => edad.valor)).toEqual([20, 0, 0, 0]);
+        expect(edadesDeLaRaza(null).map((edad) => edad.nombre)).toEqual(['Adulto', 'Mediana', 'Viejo', 'Venerable']);
     });
 
     it('sin edad o sin las edades de la raza no hay etapa', () => {
