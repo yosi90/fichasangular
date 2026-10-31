@@ -3949,13 +3949,8 @@ export class NuevoPersonajeComponent {
         }
         this.recalcularOficialidad();
 
-        const idiomasPendientes = this.nuevoPSvc.getIdiomasPendientesPostClase();
-        if (idiomasPendientes.cantidad > 0) {
-            const completo = await this.abrirSelectorIdiomasIniciales(idiomasPendientes.cantidad);
-            if (!completo)
-                return;
-            this.nuevoPSvc.marcarIdiomasInicialesConcedidos();
-        }
+        if (!await this.pedirIdiomasIniciales(this.nuevoPSvc.getIdiomasPendientesPostClase()))
+            return;
 
         const contextoAumentos = `${seleccion.clase?.Nombre ?? 'Clase'} nivel ${Number(resultado.nivelAplicado ?? 0)}`;
         this.nuevoPSvc.registrarAumentosPendientesPorEspeciales(resultado.especialesAplicados ?? [], contextoAumentos);
@@ -4862,13 +4857,8 @@ export class NuevoPersonajeComponent {
             return;
         // Sin clases, lo del primer nivel que no llega con una clase: los idiomas adicionales por Inteligencia y los
         // conjuros del lanzamiento racial (los dragones, el rakshasa), en su sesión de conjuros antes de terminar.
-        const idiomas = this.nuevoPSvc.getIdiomasPendientesSinClases();
-        if (idiomas.cantidad > 0) {
-            if (!await this.abrirSelectorIdiomasIniciales(idiomas.cantidad))
-                return;
-            this.nuevoPSvc.marcarIdiomasInicialesConcedidos();
-            this.Personaje = this.nuevoPSvc.PersonajeCreacion;
-        }
+        if (!await this.pedirIdiomasIniciales(this.nuevoPSvc.getIdiomasPendientesSinClases()))
+            return;
         if (this.nuevoPSvc.hayLanzamientoRacialPendiente() && await this.abrirSesionLanzamientoRacial())
             return;
         // Magic of Incarnum: quien puede moldear pasa antes por la formación de partida (opcional).
@@ -6400,6 +6390,20 @@ export class NuevoPersonajeComponent {
         if (this.homebrewForzado)
             return;
         this.incluirHomebrewIdiomas = value;
+    }
+
+    /**
+     * Pide los idiomas adicionales del primer nivel, si quedan (con el primer nivel de clase o, sin clases, al terminar), y
+     * los da por elegidos para no volver a pedirlos. `false` si no se completó la elección.
+     */
+    private async pedirIdiomasIniciales(pendientes: { cantidad: number; }): Promise<boolean> {
+        if (pendientes.cantidad < 1)
+            return true;
+        if (!await this.abrirSelectorIdiomasIniciales(pendientes.cantidad))
+            return false;
+        this.nuevoPSvc.marcarIdiomasInicialesConcedidos();
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        return true;
     }
 
     abrirSelectorIdiomasIniciales(cantidad: number): Promise<boolean> {

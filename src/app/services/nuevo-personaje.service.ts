@@ -2034,12 +2034,7 @@ export class NuevoPersonajeService {
                 motivo: 'Solo se eligen idiomas adicionales en el primer nivel global del personaje',
             };
         }
-
-        const cantidad = Math.max(0, toNumber(this.personajeCreacion.ModInteligencia) + EXTRA_IDIOMAS_INICIALES);
-        return {
-            cantidad,
-            motivo: 'Idiomas iniciales por modificador de Inteligencia',
-        };
+        return this.idiomasInicialesPorInteligencia();
     }
 
     /**
@@ -2049,6 +2044,11 @@ export class NuevoPersonajeService {
     getIdiomasPendientesSinClases(): IdiomasPendientesPostClase {
         if (this.getNivelClasesActual() > 0 || this.idiomasInicialesConcedidos)
             return { cantidad: 0, motivo: 'Los idiomas adicionales ya se eligieron o se eligen con el primer nivel de clase' };
+        return this.idiomasInicialesPorInteligencia();
+    }
+
+    /** Los idiomas adicionales del primer nivel, uno por punto de modificador de Inteligencia (con el primer nivel de clase o sin clases). */
+    private idiomasInicialesPorInteligencia(): IdiomasPendientesPostClase {
         return {
             cantidad: Math.max(0, toNumber(this.personajeCreacion.ModInteligencia) + EXTRA_IDIOMAS_INICIALES),
             motivo: 'Idiomas iniciales por modificador de Inteligencia',
