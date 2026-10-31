@@ -782,12 +782,12 @@ ${envejecimiento}` : edades;
         const nivelLanzadorApi = claseDesglose?.Nivel_lanzador;
         if (typeof nivelLanzadorApi === 'number' && nivelLanzadorApi > 0)
             chips.push(`Nivel de lanzador ${nivelLanzadorApi}`);
+        else if (resumenLanzador)
+            chips.push(`Nivel de lanzador ${resumenLanzador.nivelLanzador}`);
         // Con la clase de su lanzamiento racial, el nivel de su raza se suma para los conjuros (*Draconomicón*, pág. 24).
         const nivelRacial = toNumber(claseDesglose?.Nivel_lanzamiento_racial);
         if (nivelRacial > 0)
             chips.push(`${nivelRacial} de su raza`);
-        else if (resumenLanzador)
-            chips.push(`Nivel de lanzador ${resumenLanzador.nivelLanzador}`);
         if (conjuros.Lanzamiento_espontaneo)
             chips.push('Lanzamiento espontáneo');
         if (conjuros.Dependientes_alineamiento)

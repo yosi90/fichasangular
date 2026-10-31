@@ -708,6 +708,26 @@ describe('DetallesPersonajeComponent', () => {
             expect(component.pj.Niveles_lanzador?.[0]?.nivelLanzador).toBe(12);
         });
 
+        it('con el nivel de lanzador de la API no añade el calculado; el de su raza va aparte (lanzamiento racial)', () => {
+            component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 10 }, { Nombre: 'Archimago', Nivel: 2 }];
+            component.pj.ProgresionLanzador = {
+                selecciones: [
+                    { idClaseAplicada: 187, nivelClaseAplicado: 1, indiceAumento: 1, idClaseObjetivo: 186 },
+                    { idClaseAplicada: 187, nivelClaseAplicado: 2, indiceAumento: 1, idClaseObjetivo: 186 },
+                ],
+            };
+            component.clasesCatalogo = [
+                claseLanzadora(186, 'Mago', 20),
+                { Id: 187, Nombre: 'Archimago', Conjuros: { Arcanos: false, Divinos: false, Psionicos: false }, Aumenta_clase_lanzadora: true, Desglose_niveles: [] } as any,
+            ];
+            verPagina();
+
+            const chips = component.getSubchipsLanzadorClase({ Nombre: 'Mago', Nivel: 10, Nivel_lanzador: 11, Nivel_lanzamiento_racial: 4 } as any);
+            expect(chips).toContain('Nivel de lanzador 11');
+            expect(chips).not.toContain('Nivel de lanzador 12');
+            expect(chips).toContain('4 de su raza');
+        });
+
         it('enseña escuelas prohibidas y dominios aunque lleguen como texto u objeto', () => {
             component.pj.Escuelas_prohibidas = ['Evocación', { Nombre: 'Ilusión' }, { Nombre: '  ' } as any];
             (component.pj as any).Dominios = [{ Nombre: 'Guerra' }, { nombre: 'Bien' }, 'Magia'];
