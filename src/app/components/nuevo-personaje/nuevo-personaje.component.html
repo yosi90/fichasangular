@@ -113,8 +113,8 @@
                                                 <mat-label>Deidad</mat-label>
                                                 <mat-select [(ngModel)]="Personaje.Deidad" (selectionChange)="onDeidadChange()">
                                                     <mat-option *ngFor="let deidad of deidadesFiltradas"
-                                                        [value]="deidad.nombre">
-                                                        {{deidad.nombre}}
+                                                        [value]="deidad.nombre" [disabled]="deidad.disabled">
+                                                        {{deidad.etiqueta}}
                                                     </mat-option>
                                                 </mat-select>
                                             </mat-form-field>
@@ -1029,7 +1029,7 @@
     </ng-container>
 
     <ng-container *ngIf="modalSelectorIdiomaAbierto">
-        <app-selector-idioma-modal [idiomas]="catalogoIdiomas"
+        <app-selector-idioma-modal [idiomas]="idiomasDelSelector"
             [idiomasYaSeleccionados]="idiomasSeleccionadosParaSelector" [personajeOficial]="Personaje.Oficial"
             [incluirHomebrew]="incluirHomebrewIdiomasEfectivo" [titulo]="selectorIdiomaTitulo"
             [cantidadObjetivo]="selectorIdiomaCantidadObjetivo"

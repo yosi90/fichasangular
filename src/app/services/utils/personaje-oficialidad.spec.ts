@@ -87,12 +87,18 @@ describe('personaje-oficialidad (decisión del 2026-10-17)', () => {
     describe('fuentes homebrew de la campaña', () => {
         const casa = { Id: 9, Nombre: 'Manual de la casa', Pagina: 1 };
 
-        it('los idiomas vuelven homebrew la ficha pero no son fuente de la campaña', () => {
+        it('los idiomas y la deidad son fuentes de la campaña (2026-10-31); la deidad no va en los motivos', () => {
             const personaje = { ...personajeOficial, Idiomas: [{ Id: 5, Nombre: 'Vrykul', Oficial: false }] };
-            const elementos = elementosHomebrewPersonaje(personaje, {});
-            expect(elementos.map((e) => e.familia)).toEqual(['idioma']);
-            expect(fuentesHomebrewDeCampana(elementos)).toEqual([]);
-            expect(FAMILIAS_HOMEBREW.idioma.fuenteDeCampana).toBeFalse();
+            const contexto = { deidad: { Id: 40, Nombre: 'Diosa de la casa', Oficial: false, Manual: casa } };
+            const elementos = elementosHomebrewPersonaje(personaje, contexto);
+            expect(elementos.map((e) => e.familia)).toEqual(['deidad', 'idioma']);
+            expect(fuentesHomebrewDeCampana(elementos).map((f) => [f.key, f.nombre])).toEqual([
+                ['manual:manual de la casa', 'Manual de la casa (Deidad: Diosa de la casa)'],
+                ['idiomas:5', 'Idioma: Vrykul'],
+            ]);
+            // La oficialidad de la deidad va con los datos de Básicos («Deidad no oficial»).
+            expect(motivosHomebrewPersonaje(personaje, contexto)).toEqual(['Idioma homebrew: Vrykul']);
+            expect(FAMILIAS_HOMEBREW.deidad.oficialidadEnBasicos).toBeTrue();
         });
 
         it('una fuente es el manual de sus elementos o, sin manual, el propio elemento', () => {

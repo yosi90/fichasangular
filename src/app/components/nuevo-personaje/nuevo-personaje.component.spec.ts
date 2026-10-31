@@ -1490,7 +1490,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(nuevoPSvc.EstadoFlujo.generador.tablasPermitidas).toBe(3);
     });
 
-    it('una deidad homebrew no es fuente homebrew de la campaña (como en la API): no se bloquea ni cuenta', () => {
+    it('deidadesFiltradas bloquea nuevas deidades homebrew cuando la campaña no permite más fuentes (y la elegida cuenta)', () => {
         component.Personaje.Campana = 'Campaña A';
         component.seleccionarRaza(crearRazaMock(false));
         component.catalogoDeidades = [
@@ -1520,10 +1520,50 @@ describe('NuevoPersonajeComponent', () => {
         };
         (component as any).selectedCampaignPolicyResolved = true;
 
-        expect(component.deidadesFiltradas.some((item) => item.nombre === 'Diosa homebrew')).toBeTrue();
+        const deidadHomebrew = component.deidadesFiltradas.find((item) => item.nombre === 'Diosa homebrew');
+
+        expect(deidadHomebrew?.disabled).toBeTrue();
+        expect(`${deidadHomebrew?.etiqueta ?? ''}`).toContain('bloqueada por campaña');
+        // Elegida igualmente (o con otra política), es una fuente más, la de su manual.
         const antes = (component as any).getCampaignCreationValidation().sourceCount;
         component.Personaje.Deidad = 'Diosa homebrew';
-        expect((component as any).getCampaignCreationValidation().sourceCount).toBe(antes);
+        const despues = (component as any).getCampaignCreationValidation();
+        expect(despues.sourceCount).toBe(antes + 1);
+        expect(despues.sources.map((fuente: any) => fuente.nombre)).toContain('Manual homebrew (Deidad: Diosa homebrew)');
+        expect(despues.blocksExistingHomebrew).toBeTrue();
+    });
+
+    it('el selector de idiomas no ofrece los homebrew que la campaña no deja elegir; elegidos, cuentan como fuente', () => {
+        component.Personaje.Campana = 'Campaña A';
+        component.seleccionarRaza(crearRazaMock(true));
+        component.catalogoIdiomas = [
+            { Id: 1, Nombre: 'Común', Descripcion: '', Secreto: false, Oficial: true },
+            { Id: 28, Nombre: 'Vrykul', Descripcion: '', Secreto: false, Oficial: false },
+        ] as any;
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: false,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: 0,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+
+        (component as any).abrirSelectorIdiomaParaVentaja(5);
+        expect(component.idiomasDelSelector.map((idioma) => idioma.Nombre)).toEqual(['Común']);
+        (component as any).cerrarSelectorIdiomaContexto('cancelado');
+
+        component.Personaje.Idiomas = [{ Id: 28, Nombre: 'Vrykul', Oficial: false }] as any;
+        const validation = (component as any).getCampaignCreationValidation();
+        expect(validation.sources.map((fuente: any) => fuente.nombre)).toEqual(['Idioma: Vrykul']);
+        expect(validation.blocksExistingHomebrew).toBeTrue();
+
+        // Sin campaña, se ofrecen todos.
+        component.Personaje.Campana = 'Sin campaña';
+        (component as any).abrirSelectorIdiomaParaVentaja(5);
+        expect(component.idiomasDelSelector.length).toBe(2);
     });
 
     describe('fuentes homebrew de la campaña (las de la API, la misma lista que la oficialidad)', () => {

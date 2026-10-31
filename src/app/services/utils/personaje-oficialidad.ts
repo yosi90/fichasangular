@@ -18,6 +18,8 @@ interface ClaseConOficial extends ConOficial {
 /** Lo que usa el personaje en creación y no va dentro de `Personaje` (o no lleva allí su `Oficial`). */
 export interface ContextoOficialidad {
     raza?: ConOficial | null;
+    /** La deidad elegida, del catálogo de deidades (`Personaje.Deidad` es solo su nombre). */
+    deidad?: ConOficial | null;
     razaBase?: ConOficial | null;
     /** Las clases del catálogo de los niveles que tiene (`desgloseClases`). */
     clases?: ClaseConOficial[];
@@ -43,7 +45,7 @@ export const MOTIVO_VENTAJAS_HOMEBREW = 'Ventajas y desventajas (homebrew)';
 
 /** Las familias de elementos que pueden volver homebrew al personaje. */
 export type FamiliaHomebrew =
-    | 'raza' | 'raza_base' | 'clase' | 'plantilla' | 'subtipo' | 'dote' | 'racial' | 'idioma' | 'conjuro'
+    | 'raza' | 'raza_base' | 'deidad' | 'clase' | 'plantilla' | 'subtipo' | 'dote' | 'racial' | 'idioma' | 'conjuro'
     | 'escuela_especialista' | 'fusion' | 'familiar' | 'companero';
 
 export interface FamiliaHomebrewInfo {
@@ -51,33 +53,36 @@ export interface FamiliaHomebrewInfo {
     etiqueta: string;
     /** La tabla de la API con la que la cuenta (`_COLUMNA_ID`, `utils/character_creation.py`). */
     tablaApi: string;
-    /** Si cuenta para el límite de fuentes homebrew de las campañas (`maxFuentesHomebrewGeneralesPorPersonaje`). */
-    fuenteDeCampana: boolean;
+    /**
+     * Su oficialidad va con los datos de Básicos («Deidad no oficial», que se confirma al salir del paso), no en los
+     * motivos de `motivosHomebrewPersonaje`; sí es fuente de la campaña.
+     */
+    oficialidadEnBasicos?: true;
     /** Sin manual en la API (`_TABLAS_SIN_MANUAL`): cada elemento es su propia fuente. */
     sinManual?: true;
 }
 
 /**
- * La única lista de lo que vuelve homebrew al personaje, la misma que la de la API (`_detect_general_homebrew_sources` y
- * `_usa_contenido_homebrew`, `utils/character_creation.py`): de ella salen los motivos de la oficialidad y las fuentes
- * de la política de campaña. Los idiomas vuelven homebrew la ficha pero no son fuente de la campaña, como en la API; la
- * deidad, tampoco (su oficialidad va con los datos de Básicos). Una prueba del backend
+ * La única lista de lo que vuelve homebrew al personaje, la misma que la de la API (`_detect_general_homebrew_sources`,
+ * `utils/character_creation.py`): de ella salen los motivos de la oficialidad y las fuentes de la política de campaña
+ * (todas sus familias son fuentes; la deidad y los idiomas, desde el 2026-10-31). Una prueba del backend
  * (`tests/test_fuentes_homebrew_web.py`) compara estas tablas con las de la API.
  */
 export const FAMILIAS_HOMEBREW: Readonly<Record<FamiliaHomebrew, FamiliaHomebrewInfo>> = {
-    raza: { etiqueta: 'Raza', tablaApi: 'razas', fuenteDeCampana: true },
-    raza_base: { etiqueta: 'Raza base', tablaApi: 'razas', fuenteDeCampana: true },
-    clase: { etiqueta: 'Clase', tablaApi: 'clases', fuenteDeCampana: true },
-    plantilla: { etiqueta: 'Plantilla', tablaApi: 'plantillas', fuenteDeCampana: true },
-    subtipo: { etiqueta: 'Subtipo', tablaApi: 'subtipos', fuenteDeCampana: true },
-    dote: { etiqueta: 'Dote', tablaApi: 'dotes', fuenteDeCampana: true },
-    racial: { etiqueta: 'Racial', tablaApi: 'raciales', fuenteDeCampana: true, sinManual: true },
-    idioma: { etiqueta: 'Idioma', tablaApi: 'idiomas', fuenteDeCampana: false, sinManual: true },
-    conjuro: { etiqueta: 'Conjuro', tablaApi: 'conjuros', fuenteDeCampana: true },
-    escuela_especialista: { etiqueta: 'Escuela de especialista', tablaApi: 'escuelas_conjuros', fuenteDeCampana: true, sinManual: true },
-    fusion: { etiqueta: 'Fusión', tablaApi: 'soulmelds', fuenteDeCampana: true },
-    familiar: { etiqueta: 'Familiar', tablaApi: 'monstruos', fuenteDeCampana: true },
-    companero: { etiqueta: 'Compañero', tablaApi: 'monstruos', fuenteDeCampana: true },
+    raza: { etiqueta: 'Raza', tablaApi: 'razas' },
+    raza_base: { etiqueta: 'Raza base', tablaApi: 'razas' },
+    deidad: { etiqueta: 'Deidad', tablaApi: 'deidades', oficialidadEnBasicos: true },
+    clase: { etiqueta: 'Clase', tablaApi: 'clases' },
+    plantilla: { etiqueta: 'Plantilla', tablaApi: 'plantillas' },
+    subtipo: { etiqueta: 'Subtipo', tablaApi: 'subtipos' },
+    dote: { etiqueta: 'Dote', tablaApi: 'dotes' },
+    racial: { etiqueta: 'Racial', tablaApi: 'raciales', sinManual: true },
+    idioma: { etiqueta: 'Idioma', tablaApi: 'idiomas', sinManual: true },
+    conjuro: { etiqueta: 'Conjuro', tablaApi: 'conjuros' },
+    escuela_especialista: { etiqueta: 'Escuela de especialista', tablaApi: 'escuelas_conjuros', sinManual: true },
+    fusion: { etiqueta: 'Fusión', tablaApi: 'soulmelds' },
+    familiar: { etiqueta: 'Familiar', tablaApi: 'monstruos' },
+    companero: { etiqueta: 'Compañero', tablaApi: 'monstruos' },
 };
 
 /** Un elemento no oficial que usa el personaje. */
@@ -134,7 +139,7 @@ function escuelaDeClaseHomebrew(escuela: ElementoHomebrew, clases: ClaseConOfici
 
 /**
  * Los elementos no oficiales que usa el personaje (decisión del propietario del 2026-10-17: con uno solo, el personaje es
- * homebrew entero), por familia de `FAMILIAS_HOMEBREW`: la raza y la raza base, las clases, las plantillas, los
+ * homebrew entero), por familia de `FAMILIAS_HOMEBREW`: la raza y la raza base, la deidad, las clases, las plantillas, los
  * subtipos, las dotes, los raciales, los idiomas, los conjuros (los conocidos, los de la sesión abierta y las aptitudes
  * sortílegas), la escuela de especialista, las fusiones, el familiar y el compañero. Las ventajas y las restricciones
  * saltadas (alineamiento, edad…) van aparte.
@@ -145,6 +150,7 @@ export function elementosHomebrewPersonaje(personaje: Personaje | null | undefin
     return [
         ...noOficiales('raza', [contexto.raza]),
         ...noOficiales('raza_base', [contexto.razaBase]),
+        ...noOficiales('deidad', [contexto.deidad]),
         ...noOficiales('clase', contexto.clases),
         ...noOficiales('plantilla', contexto.plantillas),
         ...noOficiales('subtipo', contexto.subtipos),
@@ -165,10 +171,12 @@ export function elementosHomebrewPersonaje(personaje: Personaje | null | undefin
 
 /**
  * Los motivos por los que el personaje es homebrew: sus elementos no oficiales (`elementosHomebrewPersonaje`) y las
- * ventajas y desventajas. Vacío si todo es oficial. Sin repetidos (una aptitud sortílega que también conoce).
+ * ventajas y desventajas. Vacío si todo es oficial. Sin repetidos (una aptitud sortílega que también conoce). La deidad
+ * no está: su oficialidad va con los datos de Básicos (`oficialidadEnBasicos`).
  */
 export function motivosHomebrewPersonaje(personaje: Personaje | null | undefined, contexto: ContextoOficialidad): string[] {
     const motivos = elementosHomebrewPersonaje(personaje, contexto)
+        .filter((elemento) => !FAMILIAS_HOMEBREW[elemento.familia].oficialidadEnBasicos)
         .map((elemento) => textoMotivo(FAMILIAS_HOMEBREW[elemento.familia].etiqueta, elemento.nombre));
     return Array.from(new Set([...motivos, ...(contexto.tieneVentajas ? [MOTIVO_VENTAJAS_HOMEBREW] : [])]));
 }
@@ -191,13 +199,13 @@ export function textoElementoHomebrew(elemento: ElementoHomebrew): string {
 }
 
 /**
- * Las fuentes homebrew del personaje para el límite de la campaña: los elementos de las familias que cuentan
- * (`fuenteDeCampana`), agrupados por fuente como en la API (los de un mismo manual homebrew son una sola fuente).
+ * Las fuentes homebrew del personaje para el límite de la campaña: sus elementos homebrew, agrupados por fuente como en
+ * la API (los de un mismo manual homebrew son una sola fuente).
  */
 export function fuentesHomebrewDeCampana(elementos: readonly ElementoHomebrew[]): FuenteHomebrew[] {
     const fuentes = new Map<string, FuenteHomebrew>();
     elementos
-        .filter((elemento) => FAMILIAS_HOMEBREW[elemento.familia].fuenteDeCampana && !elemento.yaContado)
+        .filter((elemento) => !elemento.yaContado)
         .forEach((elemento) => {
             const key = claveFuenteHomebrew(elemento);
             if (!key)

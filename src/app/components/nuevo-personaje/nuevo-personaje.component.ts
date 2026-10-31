@@ -324,12 +324,10 @@ interface CampaignCreationValidationResult {
     blockers: string[];
 }
 
-/**
- * Una deidad del selector de Básicos. Una deidad homebrew no es fuente homebrew de la campaña (como en la API): vuelve
- * homebrew la ficha, pero la campaña no la bloquea.
- */
 interface DeidadBasicosOption {
     nombre: string;
+    etiqueta: string;
+    disabled: boolean;
 }
 
 interface SelectorFamiliarBloqueadoItem {
@@ -434,6 +432,18 @@ export class NuevoPersonajeComponent {
      */
     get catalogoIdiomas(): IdiomaDetalle[] {
         return this.catalogoIdiomasAdicionales ?? this.catalogoIdiomasCompleto;
+    }
+
+    /**
+     * Los idiomas que ofrece el selector, fijados al abrirlo: sin los homebrew que la campaña no deja elegir (no admite
+     * homebrew o ya no quedan fuentes; un idioma no tiene manual y cada uno es su fuente, como en la API).
+     */
+    idiomasDelSelector: IdiomaDetalle[] = [];
+
+    private prepararIdiomasDelSelector(): void {
+        const validation = this.getCampaignCreationValidation();
+        this.idiomasDelSelector = this.catalogoIdiomas
+            .filter((idioma) => !this.getCampaignBlockedReasonForCandidate('idioma', idioma, validation));
     }
 
     set catalogoIdiomas(idiomas: IdiomaDetalle[]) {
@@ -2323,6 +2333,7 @@ export class NuevoPersonajeComponent {
         return {
             raza: this.razaSeleccionada,
             razaBase: this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
+            deidad: this.deidadSeleccionadaDetalle,
             clases: this.clasesDelPersonajeEnElCatalogo(),
             plantillas: this.plantillasSeleccionadas,
             subtipos: this.nuevoPSvc.subtiposDelPersonajeEnElCatalogo(),
@@ -2407,6 +2418,7 @@ export class NuevoPersonajeComponent {
     }
 
     private buildDeidadesFiltradas(): DeidadBasicosOption[] {
+        const validation = this.getCampaignCreationValidation();
         const candidatas = this.catalogoDeidades
             .filter((deidad) => `${deidad?.Nombre ?? ''}`.trim().length > 0)
             .map((deidad) => ({
@@ -2416,6 +2428,7 @@ export class NuevoPersonajeComponent {
                     `${deidad?.Alineamiento?.Nombre ?? ''}`
                 ),
                 oficial: deidad.Oficial !== false,
+                disabledReason: this.getCampaignBlockedReasonForCandidate('deidad', deidad, validation),
             }))
             .sort((a, b) => {
                 const distA = Number.isFinite(a.distancia) ? Number(a.distancia) : 99;
@@ -2426,13 +2439,25 @@ export class NuevoPersonajeComponent {
                     return a.oficial ? -1 : 1;
                 return compararTexto(a.nombre, b.nombre);
             })
-            .map((item) => ({ nombre: item.nombre }));
-        const lista: DeidadBasicosOption[] = [{ nombre: this.deidadSinSeleccion }, ...candidatas];
+            .map((item) => ({
+                nombre: item.nombre,
+                etiqueta: item.disabledReason ? `${item.nombre} (${item.disabledReason})` : item.nombre,
+                disabled: !!item.disabledReason,
+            }));
+        const lista: DeidadBasicosOption[] = [{
+            nombre: this.deidadSinSeleccion,
+            etiqueta: this.deidadSinSeleccion,
+            disabled: false,
+        }, ...candidatas];
         const deidadActual = `${this.Personaje.Deidad ?? ''}`.trim();
         if (deidadActual.length > 0) {
             const existe = lista.some((item) => normalizarTexto(item.nombre) === normalizarTexto(deidadActual));
             if (!existe)
-                lista.push({ nombre: deidadActual });
+                lista.push({
+                    nombre: deidadActual,
+                    etiqueta: deidadActual,
+                    disabled: false,
+                });
         }
         return lista;
     }
@@ -6563,6 +6588,7 @@ export class NuevoPersonajeComponent {
         this.selectorIdiomaCantidadSeleccionada = 0;
         this.selectorIdiomaBloquearCierre = true;
         this.idiomasTemporalesSeleccionados = [];
+        this.prepararIdiomasDelSelector();
         this.modalSelectorIdiomaAbierto = true;
         return new Promise<boolean>((resolve) => {
             this.resolverSelectorIdioma = resolve;
@@ -6599,6 +6625,7 @@ export class NuevoPersonajeComponent {
         this.selectorIdiomaCantidadObjetivo = 1;
         this.selectorIdiomaCantidadSeleccionada = 0;
         this.selectorIdiomaBloquearCierre = false;
+        this.prepararIdiomasDelSelector();
         this.modalSelectorIdiomaAbierto = true;
     }
 
@@ -6930,8 +6957,15 @@ export class NuevoPersonajeComponent {
         };
     }
 
-    /** Por qué la campaña no deja elegir un elemento homebrew: no admite homebrew o sería una fuente de más. */
-    private getCampaignBlockedReasonForCandidate(familia: FamiliaHomebrew, elemento: ConOficial | null | undefined): string | null {
+    /**
+     * Por qué la campaña no deja elegir un elemento homebrew: no admite homebrew o sería una fuente de más. Para una
+     * lista entera, `validation` se calcula una vez fuera.
+     */
+    private getCampaignBlockedReasonForCandidate(
+        familia: FamiliaHomebrew,
+        elemento: ConOficial | null | undefined,
+        validation: CampaignCreationValidationResult | null = null,
+    ): string | null {
         if (!elemento || elemento.Oficial !== false)
             return null;
 
@@ -6939,15 +6973,15 @@ export class NuevoPersonajeComponent {
         if (!key)
             return null;
 
-        const validation = this.getCampaignCreationValidation();
-        if (validation.sourceKeys.has(key))
+        const actual = validation ?? this.getCampaignCreationValidation();
+        if (actual.sourceKeys.has(key))
             return null;
-        if (validation.mode === 'unrestricted')
+        if (actual.mode === 'unrestricted')
             return null;
-        if (validation.mode === 'forbidden')
+        if (actual.mode === 'forbidden')
             return 'bloqueada por campaña: no permite homebrew';
-        if (validation.maxSources !== null && validation.sourceCount >= validation.maxSources)
-            return `bloqueada por campaña: límite de ${validation.maxSources} fuente(s) homebrew alcanzado`;
+        if (actual.maxSources !== null && actual.sourceCount >= actual.maxSources)
+            return `bloqueada por campaña: límite de ${actual.maxSources} fuente(s) homebrew alcanzado`;
         return null;
     }
 
