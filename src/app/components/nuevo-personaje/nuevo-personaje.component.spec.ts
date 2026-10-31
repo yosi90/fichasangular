@@ -1490,7 +1490,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(nuevoPSvc.EstadoFlujo.generador.tablasPermitidas).toBe(3);
     });
 
-    it('deidadesFiltradas bloquea nuevas deidades homebrew cuando la campaña no permite más fuentes', () => {
+    it('una deidad homebrew no es fuente homebrew de la campaña (como en la API): no se bloquea ni cuenta', () => {
         component.Personaje.Campana = 'Campaña A';
         component.seleccionarRaza(crearRazaMock(false));
         component.catalogoDeidades = [
@@ -1520,10 +1520,62 @@ describe('NuevoPersonajeComponent', () => {
         };
         (component as any).selectedCampaignPolicyResolved = true;
 
-        const deidadHomebrew = component.deidadesFiltradas.find((item) => item.nombre === 'Diosa homebrew');
+        expect(component.deidadesFiltradas.some((item) => item.nombre === 'Diosa homebrew')).toBeTrue();
+        const antes = (component as any).getCampaignCreationValidation().sourceCount;
+        component.Personaje.Deidad = 'Diosa homebrew';
+        expect((component as any).getCampaignCreationValidation().sourceCount).toBe(antes);
+    });
 
-        expect(deidadHomebrew?.disabled).toBeTrue();
-        expect(`${deidadHomebrew?.etiqueta ?? ''}`).toContain('bloqueada por campaña');
+    describe('fuentes homebrew de la campaña (las de la API, la misma lista que la oficialidad)', () => {
+        const politica = (max: number) => ({
+            tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: false,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: max,
+        });
+        const manualCasa = { Id: 9, Nombre: 'Manual de la casa', Pagina: 1 };
+
+        beforeEach(() => {
+            component.Personaje.Campana = 'Campaña A';
+            component.seleccionarRaza(crearRazaMock(true));
+            (component as any).selectedCampaignPolicyResolved = true;
+        });
+
+        it('cuentan los raciales y los conjuros homebrew (antes la web no los contaba y la API sí)', () => {
+            component.selectedCampaignPolicy = politica(1);
+            component.Personaje.Raciales = [{ Id: 50, Nombre: 'Racial de la casa', Oficial: false }] as any;
+            component.Personaje.Conjuros = [{ Id: 70, Nombre: 'Rayo de la casa', Oficial: false, Manual: 'Manual de la casa' }] as any;
+
+            const validation = (component as any).getCampaignCreationValidation();
+
+            expect(validation.sourceCount).toBe(2);
+            expect(validation.sources.map((fuente: any) => fuente.nombre)).toEqual([
+                'Racial: Racial de la casa',
+                'Manual de la casa (Conjuro: Rayo de la casa)',
+            ]);
+            expect(validation.blocksExistingHomebrew).toBeTrue();
+        });
+
+        it('dos elementos homebrew del mismo manual son una sola fuente, como en la API', () => {
+            component.selectedCampaignPolicy = politica(1);
+            component.Personaje.DotesContextuales = [
+                { Dote: { Id: 80, Nombre: 'Dote de la casa', Oficial: false, Manual: manualCasa }, Contexto: { Entidad: 'personaje' } },
+                { Dote: { Id: 81, Nombre: 'Otra dote de la casa', Oficial: false, Manual: manualCasa }, Contexto: { Entidad: 'personaje' } },
+            ] as any;
+
+            const validation = (component as any).getCampaignCreationValidation();
+
+            expect(validation.sourceCount).toBe(1);
+            expect(validation.sources[0].nombre).toBe('Manual de la casa (Dote: Dote de la casa, Dote: Otra dote de la casa)');
+            expect(validation.blocksExistingHomebrew).toBeFalse();
+            // Otra dote de ese manual no gasta otra fuente; la de otro manual, sí.
+            expect((component as any).getCampaignBlockedReasonForCandidate('dote', { Id: 82, Nombre: 'Tercera', Oficial: false, Manual: manualCasa })).toBeNull();
+            expect((component as any).getCampaignBlockedReasonForCandidate('dote', { Id: 83, Nombre: 'Ajena', Oficial: false, Manual: { Id: 10, Nombre: 'Otro manual', Pagina: 1 } }))
+                .toContain('bloqueada por campaña');
+        });
     });
 
     it('getInconsistenciasManual incluye peso, altura y edad fuera de rango (la edad, solo por debajo de la mayoría de edad)', () => {
@@ -2589,7 +2641,8 @@ describe('NuevoPersonajeComponent', () => {
         (component as any).selectedCampaignPolicyResolved = true;
         component.seleccionarRaza(crearRazaMock(false));
         component.incluirHomebrewPlantillas = true;
-        const plantillaHomebrew = crearPlantillaMock({ Id: 911, Nombre: 'Plantilla homebrew', Oficial: false });
+        // De otro manual que la raza homebrew: otra fuente (las del mismo manual son una sola, como en la API).
+        const plantillaHomebrew = crearPlantillaMock({ Id: 911, Nombre: 'Plantilla homebrew', Oficial: false, Manual: { Id: 2, Nombre: 'Otro manual', Pagina: 1 } });
         component.plantillasCatalogo = [plantillaHomebrew];
         nuevoPSvc.setPlantillasDisponibles(component.plantillasCatalogo);
 
@@ -2944,10 +2997,12 @@ describe('NuevoPersonajeComponent', () => {
         (component as any).selectedCampaignPolicyResolved = true;
         component.seleccionarRaza(crearRazaMock(false));
         component.incluirHomebrewClases = true;
+        // De otro manual que la raza homebrew: otra fuente (las del mismo manual son una sola, como en la API).
         const claseHomebrew = crearClaseMock({
             Id: 999,
             Nombre: 'Espadachín astral',
             Oficial: false,
+            Manual: { Id: 2, Nombre: 'Otro manual', Pagina: 1 },
         });
         component.catalogoClases = [claseHomebrew];
         nuevoPSvc.setCatalogoClases(component.catalogoClases);
@@ -2957,6 +3012,8 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.clasesListadoFiltrado.length).toBe(1);
         expect(component.clasesListadoFiltrado[0].campaignBlockedReason).toContain('bloqueada por campaña');
         expect(component.clasesListadoFiltrado[0].puedeAplicarse).toBeFalse();
+        // Una del mismo manual que la raza no gasta otra fuente.
+        expect((component as any).getCampaignBlockedReasonForCandidate('clase', { ...claseHomebrew, Manual: { Id: 1, Nombre: 'Manual base', Pagina: 3 } })).toBeNull();
     });
 
     it('incompatibilidad P3: al confirmar, aplica clase y deja personaje no oficial', async () => {

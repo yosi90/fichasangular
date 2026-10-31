@@ -110,7 +110,20 @@ import { VentajaService } from 'src/app/services/ventaja.service';
 import { PlantillaEvaluacionResultado, esPlantillaLicantropa, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { incumpleAlineamientoDeidad } from 'src/app/services/utils/alineamiento-deidad';
-import { MOTIVO_VENTAJAS_HOMEBREW, motivoHomebrew, motivosHomebrewPersonaje, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
+import {
+    ConOficial,
+    ContextoOficialidad,
+    FamiliaHomebrew,
+    FuenteHomebrew,
+    MOTIVO_VENTAJAS_HOMEBREW,
+    claveFuenteHomebrew,
+    elementoHomebrew,
+    elementosHomebrewPersonaje,
+    fuentesHomebrewDeCampana,
+    motivoHomebrew,
+    motivosHomebrewPersonaje,
+    motivosQueConfirmar,
+} from 'src/app/services/utils/personaje-oficialidad';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
 import { GrupoRacialesOpcionales, SeleccionRacialesOpcionales, agruparRacialesPorOpcional, getClaveSeleccionRacial } from 'src/app/services/utils/racial-opcionales';
 import { RacialEvaluacionResultado, evaluarRacialParaSeleccion } from 'src/app/services/utils/racial-prerrequisitos';
@@ -293,22 +306,14 @@ interface ClaseListadoItem {
     campaignBlockedReason: string | null;
 }
 
-type CampaignHomebrewSourceCategory = 'raza' | 'raza_base' | 'deidad' | 'plantilla' | 'clase' | 'dote';
 type CampaignHomebrewMode = 'unrestricted' | 'limited' | 'forbidden';
-
-interface CampaignHomebrewSource {
-    key: string;
-    categoria: CampaignHomebrewSourceCategory;
-    id: number;
-    nombre: string;
-}
 
 interface CampaignCreationValidationResult {
     mode: CampaignHomebrewMode;
     nepLimit: number | null;
     currentNep: number;
     maxSources: number | null;
-    sources: CampaignHomebrewSource[];
+    sources: FuenteHomebrew[];
     sourceKeys: Set<string>;
     sourceCount: number;
     remainingSources: number | null;
@@ -319,10 +324,12 @@ interface CampaignCreationValidationResult {
     blockers: string[];
 }
 
+/**
+ * Una deidad del selector de Básicos. Una deidad homebrew no es fuente homebrew de la campaña (como en la API): vuelve
+ * homebrew la ficha, pero la campaña no la bloquea.
+ */
 interface DeidadBasicosOption {
     nombre: string;
-    etiqueta: string;
-    disabled: boolean;
 }
 
 interface SelectorFamiliarBloqueadoItem {
@@ -2299,21 +2306,33 @@ export class NuevoPersonajeComponent {
      */
     private esHomebrewSinContarBasicos(evaluacion: EvaluacionInconsistenciasBasicos = this.evaluarInconsistenciasBasicos()): boolean {
         const tieneConflictoDuroConfirmado = evaluacion.hardConflicts.length > 0 && this.hardAlignmentOverrideConfirmed;
-        const motivosHomebrew = motivosHomebrewPersonaje(this.Personaje, {
-            raza: this.razaSeleccionada,
-            razaBase: this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
-            clases: this.clasesDelPersonajeEnElCatalogo(),
-            plantillas: this.plantillasSeleccionadas,
-            tieneVentajas: this.flujoVentajas.seleccionVentajas.length > 0 || this.flujoVentajas.seleccionDesventajas.length > 0,
-            escuelaEspecialista: this.escuelaEspecialistaDelCatalogo(),
-            conjurosEnSesion: this.conjurosElegidosEnSesion(),
-        });
+        const motivosHomebrew = motivosHomebrewPersonaje(this.Personaje, this.contextoOficialidad());
         return motivosHomebrew.length > 0
             || tieneConflictoDuroConfirmado
             || this.hardAlignmentClassOverrideConfirmed
             || this.homebrewPorClaseAplicada
             || this.haySaltoRequisitosPlantilla
             || this.pjEnEdadSinAjuste;
+    }
+
+    /**
+     * Lo que la oficialidad y las fuentes homebrew de la campaña necesitan y no está en `Personaje` (o no lleva allí su
+     * `Oficial`): las dos comprobaciones salen de la misma lista (`elementosHomebrewPersonaje`).
+     */
+    private contextoOficialidad(): ContextoOficialidad {
+        return {
+            raza: this.razaSeleccionada,
+            razaBase: this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
+            clases: this.clasesDelPersonajeEnElCatalogo(),
+            plantillas: this.plantillasSeleccionadas,
+            subtipos: this.nuevoPSvc.subtiposDelPersonajeEnElCatalogo(),
+            tieneVentajas: this.flujoVentajas.seleccionVentajas.length > 0 || this.flujoVentajas.seleccionDesventajas.length > 0,
+            escuelaEspecialista: this.escuelaEspecialistaDelCatalogo(),
+            conjurosEnSesion: this.conjurosElegidosEnSesion(),
+            fusiones: (this.formacionIncarnum?.fusiones ?? [])
+                .map((fusion) => (this.incarnumFusiones ?? []).find((item) => Number(item?.Id) === Number(fusion?.idFusion)))
+                .filter((fusion): fusion is Fusion => !!fusion),
+        };
     }
 
     /** La escuela de especialista del personaje en el catálogo de escuelas (con su `Oficial`), o `null`. */
@@ -2397,12 +2416,6 @@ export class NuevoPersonajeComponent {
                     `${deidad?.Alineamiento?.Nombre ?? ''}`
                 ),
                 oficial: deidad.Oficial !== false,
-                disabledReason: this.getCampaignBlockedReasonForCandidate(
-                    'deidad',
-                    Number(deidad?.Id ?? 0),
-                    `${deidad?.Nombre ?? ''}`.trim(),
-                    deidad?.Oficial === false
-                ),
             }))
             .sort((a, b) => {
                 const distA = Number.isFinite(a.distancia) ? Number(a.distancia) : 99;
@@ -2413,25 +2426,13 @@ export class NuevoPersonajeComponent {
                     return a.oficial ? -1 : 1;
                 return compararTexto(a.nombre, b.nombre);
             })
-            .map((item) => ({
-                nombre: item.nombre,
-                etiqueta: item.disabledReason ? `${item.nombre} (${item.disabledReason})` : item.nombre,
-                disabled: !!item.disabledReason,
-            }));
-        const lista: DeidadBasicosOption[] = [{
-            nombre: this.deidadSinSeleccion,
-            etiqueta: this.deidadSinSeleccion,
-            disabled: false,
-        }, ...candidatas];
+            .map((item) => ({ nombre: item.nombre }));
+        const lista: DeidadBasicosOption[] = [{ nombre: this.deidadSinSeleccion }, ...candidatas];
         const deidadActual = `${this.Personaje.Deidad ?? ''}`.trim();
         if (deidadActual.length > 0) {
             const existe = lista.some((item) => normalizarTexto(item.nombre) === normalizarTexto(deidadActual));
             if (!existe)
-                lista.push({
-                    nombre: deidadActual,
-                    etiqueta: deidadActual,
-                    disabled: false,
-                });
+                lista.push({ nombre: deidadActual });
         }
         return lista;
     }
@@ -4763,9 +4764,7 @@ export class NuevoPersonajeComponent {
             const dote = candidato?.dote;
             const campaignBlockedReason = this.getCampaignBlockedReasonForCandidate(
                 'dote',
-                Number(dote?.Id ?? 0),
-                `${dote?.Nombre ?? ''}`.trim(),
-                dote?.Oficial === false
+                dote
             );
             if (!campaignBlockedReason)
                 return candidato;
@@ -6866,90 +6865,12 @@ export class NuevoPersonajeComponent {
         return Math.max(0, parsed);
     }
 
-    private buildCampaignHomebrewSource(
-        categoria: CampaignHomebrewSourceCategory,
-        rawId: number,
-        rawNombre: string
-    ): CampaignHomebrewSource | null {
-        const id = Number(rawId);
-        const nombre = `${rawNombre ?? ''}`.trim();
-        if (!Number.isFinite(id) || id <= 0 || nombre.length < 1)
-            return null;
-        return {
-            key: `${categoria}:${id}`,
-            categoria,
-            id,
-            nombre,
-        };
-    }
-
-    private collectCampaignHomebrewSources(): CampaignHomebrewSource[] {
-        const sources = new Map<string, CampaignHomebrewSource>();
-        const addSource = (source: CampaignHomebrewSource | null): void => {
-            if (!source || sources.has(source.key))
-                return;
-            sources.set(source.key, source);
-        };
-
-        if (this.razaSeleccionada?.Oficial === false) {
-            addSource(this.buildCampaignHomebrewSource('raza', Number(this.razaSeleccionada?.Id ?? 0), `${this.razaSeleccionada?.Nombre ?? ''}`));
-        }
-
-        if (this.nuevoPSvc.RazaBaseSeleccionadaCompleta?.Oficial === false) {
-            addSource(this.buildCampaignHomebrewSource(
-                'raza_base',
-                Number(this.nuevoPSvc.RazaBaseSeleccionadaCompleta?.Id ?? 0),
-                `${this.nuevoPSvc.RazaBaseSeleccionadaCompleta?.Nombre ?? ''}`
-            ));
-        }
-
-        if (this.deidadSeleccionadaDetalle?.Oficial === false) {
-            addSource(this.buildCampaignHomebrewSource('deidad', Number(this.deidadSeleccionadaDetalle?.Id ?? 0), `${this.deidadSeleccionadaDetalle?.Nombre ?? ''}`));
-        }
-
-        (this.plantillasSeleccionadas ?? [])
-            .filter((plantilla) => plantilla?.Oficial === false)
-            .forEach((plantilla) => {
-                addSource(this.buildCampaignHomebrewSource('plantilla', Number(plantilla?.Id ?? 0), `${plantilla?.Nombre ?? ''}`));
-            });
-
-        const clasesByNombre = new Map<string, Clase>();
-        (this.catalogoClases ?? []).forEach((clase) => {
-            const key = normalizarTexto(clase?.Nombre ?? '');
-            if (key.length > 0 && !clasesByNombre.has(key))
-                clasesByNombre.set(key, clase);
-        });
-        (this.Personaje?.desgloseClases ?? []).forEach((entrada) => {
-            const nombre = `${entrada?.Nombre ?? ''}`.trim();
-            const key = normalizarTexto(nombre);
-            const clase = key.length > 0 ? (clasesByNombre.get(key) ?? null) : null;
-            if (clase?.Oficial === false) {
-                addSource(this.buildCampaignHomebrewSource('clase', Number(clase?.Id ?? 0), nombre));
-            }
-        });
-
-        (this.Personaje?.DotesContextuales ?? [])
-            .filter((entrada) => entrada?.Contexto?.Entidad === 'personaje')
-            .filter((entrada) => entrada?.Dote?.Oficial === false)
-            .forEach((entrada) => {
-                addSource(this.buildCampaignHomebrewSource('dote', Number(entrada?.Dote?.Id ?? 0), `${entrada?.Dote?.Nombre ?? ''}`));
-            });
-
-        return Array.from(sources.values());
-    }
-
-    private getCampaignSourceCategoryLabel(categoria: CampaignHomebrewSourceCategory): string {
-        if (categoria === 'raza')
-            return 'Raza';
-        if (categoria === 'raza_base')
-            return 'Raza base';
-        if (categoria === 'deidad')
-            return 'Deidad';
-        if (categoria === 'plantilla')
-            return 'Plantilla';
-        if (categoria === 'clase')
-            return 'Clase';
-        return 'Dote';
+    /**
+     * Las fuentes homebrew del personaje para el límite de la campaña, de la misma lista que la oficialidad y con las
+     * familias y la cuenta por manual de la API (`fuentesHomebrewDeCampana`, `personaje-oficialidad.ts`).
+     */
+    private collectCampaignHomebrewSources(): FuenteHomebrew[] {
+        return fuentesHomebrewDeCampana(elementosHomebrewPersonaje(this.Personaje, this.contextoOficialidad()));
     }
 
     private getCampaignCreationValidation(): CampaignCreationValidationResult {
@@ -6974,9 +6895,7 @@ export class NuevoPersonajeComponent {
             : mode === 'limited' && maxSources !== null && sourceCount > maxSources;
         const blocksExistingVentajas = !allowsVentajasDesventajas && ventajasCount > 0;
         const blockers: string[] = [];
-        const fuentesTexto = sources
-            .map((source) => `${this.getCampaignSourceCategoryLabel(source.categoria)}: ${source.nombre}`)
-            .join(', ');
+        const fuentesTexto = sources.map((source) => source.nombre).join(', ');
 
         if (blocksExistingNep) {
             blockers.push(`La campaña limita el NEP de personajes nuevos a ${nepLimit} y este personaje tiene NEP ${currentNep}.`);
@@ -7011,21 +6930,17 @@ export class NuevoPersonajeComponent {
         };
     }
 
-    private getCampaignBlockedReasonForCandidate(
-        categoria: CampaignHomebrewSourceCategory,
-        rawId: number,
-        rawNombre: string,
-        isHomebrew: boolean
-    ): string | null {
-        if (!isHomebrew)
+    /** Por qué la campaña no deja elegir un elemento homebrew: no admite homebrew o sería una fuente de más. */
+    private getCampaignBlockedReasonForCandidate(familia: FamiliaHomebrew, elemento: ConOficial | null | undefined): string | null {
+        if (!elemento || elemento.Oficial !== false)
             return null;
 
-        const source = this.buildCampaignHomebrewSource(categoria, rawId, rawNombre);
-        if (!source)
+        const key = claveFuenteHomebrew(elementoHomebrew(familia, elemento));
+        if (!key)
             return null;
 
         const validation = this.getCampaignCreationValidation();
-        if (validation.sourceKeys.has(source.key))
+        if (validation.sourceKeys.has(key))
             return null;
         if (validation.mode === 'unrestricted')
             return null;
@@ -7049,7 +6964,7 @@ export class NuevoPersonajeComponent {
             : 'La campaña bloquea continuar';
         const detailHtml = validation.blockers.map((blocker) => `<li>${blocker}</li>`).join('');
         const sourcesHtml = validation.sources.length > 0
-            ? `<p style="text-align:left; margin: 8px 0 6px 0;"><strong>Fuentes homebrew detectadas</strong></p><ul style="text-align:left; margin-top: 4px;">${validation.sources.map((source) => `<li>${this.getCampaignSourceCategoryLabel(source.categoria)}: ${source.nombre}</li>`).join('')}</ul>`
+            ? `<p style="text-align:left; margin: 8px 0 6px 0;"><strong>Fuentes homebrew detectadas</strong></p><ul style="text-align:left; margin-top: 4px;">${validation.sources.map((source) => `<li>${source.nombre}</li>`).join('')}</ul>`
             : '';
 
         await Swal.fire({
@@ -7504,9 +7419,7 @@ export class NuevoPersonajeComponent {
             const bloqueoSoloAlineamiento = this.nuevoPSvc.esBloqueoSoloPorAlineamiento(evaluacion);
             const campaignBlockedReason = this.getCampaignBlockedReasonForCandidate(
                 'clase',
-                claseId,
-                nombre,
-                clase?.Oficial === false
+                clase
             );
             const elegiblePorReglasBase = evaluacion.estado === 'eligible' || bloqueoSoloAlineamiento;
             if (!elegiblePorReglasBase && !campaignBlockedReason)
@@ -8169,9 +8082,7 @@ export class NuevoPersonajeComponent {
             if (evaluacion.estado === 'eligible') {
                 const campaignBlockedReason = this.getCampaignBlockedReasonForCandidate(
                     'plantilla',
-                    idPlantilla,
-                    `${plantilla?.Nombre ?? ''}`.trim(),
-                    plantilla?.Oficial === false
+                    plantilla
                 );
                 if (campaignBlockedReason) {
                     bloqueadasCampana.push({

@@ -9788,6 +9788,14 @@ export class NuevoPersonajeService {
         };
     }
 
+    /** Los subtipos del personaje en el catálogo de subtipos (con su `Oficial` y su manual), para la oficialidad. */
+    subtiposDelPersonajeEnElCatalogo(): SubtipoResumen[] {
+        const porId = new Map(this.catalogoSubtipos.map((subtipo) => [toNumber(subtipo?.Id), subtipo]));
+        return (this.personajeCreacion?.Subtipos ?? [])
+            .map((subtipo) => porId.get(toNumber(subtipo?.Id)))
+            .filter((subtipo): subtipo is SubtipoResumen => !!subtipo);
+    }
+
     /** El ajuste de nivel de los subtipos del personaje, del catálogo de subtipos (como la API). */
     private getAjusteSubtiposActual(): number {
         const ajustes = new Map(this.catalogoSubtipos.map((subtipo) => [toNumber(subtipo?.Id), toNumber(subtipo?.Ajuste_nivel)]));

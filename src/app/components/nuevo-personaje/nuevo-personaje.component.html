@@ -113,8 +113,8 @@
                                                 <mat-label>Deidad</mat-label>
                                                 <mat-select [(ngModel)]="Personaje.Deidad" (selectionChange)="onDeidadChange()">
                                                     <mat-option *ngFor="let deidad of deidadesFiltradas"
-                                                        [value]="deidad.nombre" [disabled]="deidad.disabled">
-                                                        {{deidad.etiqueta}}
+                                                        [value]="deidad.nombre">
+                                                        {{deidad.nombre}}
                                                     </mat-option>
                                                 </mat-select>
                                             </mat-form-field>
