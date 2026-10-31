@@ -1,12 +1,11 @@
 import { FormBuilder } from '@angular/forms';
-import { Subject, of } from 'rxjs';
+import { EMPTY, Subject, of } from 'rxjs';
 import Swal from 'sweetalert2';
 import { NuevaRacialComponent } from './nueva-racial.component';
 
 describe('NuevaRacialComponent', () => {
     let component: NuevaRacialComponent;
     let canCreate: boolean;
-    let canUpdate: boolean;
     let racialSvc: jasmine.SpyObj<any>;
     const acl$ = new Subject<void>();
     const isLoggedIn$ = new Subject<boolean>();
@@ -28,7 +27,6 @@ describe('NuevaRacialComponent', () => {
 
     beforeEach(() => {
         canCreate = true;
-        canUpdate = true;
         racialSvc = jasmine.createSpyObj('RacialService', ['crearRacial', 'actualizarRacial', 'getRacial']);
         racialSvc.crearRacial.and.resolveTo({
             message: 'Creado',
@@ -50,8 +48,6 @@ describe('NuevaRacialComponent', () => {
                 can: jasmine.createSpy('can').and.callFake((resource: string, action: string) => {
                     if (resource === 'razas' && action === 'create')
                         return canCreate;
-                    if (resource === 'raciales' && action === 'update')
-                        return canUpdate;
                     return false;
                 }),
                 getPermissionDeniedMessage: jasmine.createSpy('getPermissionDeniedMessage').and.returnValue('Sin permisos suficientes.'),
@@ -61,6 +57,7 @@ describe('NuevaRacialComponent', () => {
             {
                 getHabilidades: () => of([{ Id_habilidad: 7, Nombre: 'Avistar', Extras: [], Soporta_extra: false }]),
                 getHabilidadesCustom: () => of([{ Id_habilidad: 8, Nombre: 'Saber antiguo', Extras: [], Soporta_extra: false }]),
+                habilidadesCustomMutadas$: EMPTY,
             } as any,
             { getConjuros: () => of([{ Id: 9, Nombre: 'Luz' }]) } as any,
             { getRazas: () => of([{ Id: 2, Nombre: 'Elfo' }]) } as any,
