@@ -29,6 +29,7 @@ import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { Manual } from 'src/app/interfaces/manual';
 import { DOTE } from 'src/app/services/utils/nombres-de-catalogo';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import {
     extrasDisponiblesDeDote,
     habilidadesOtorgadasDeDote,
@@ -177,6 +178,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     /** Las actitudes de los prerrequisitos `actitud_requerido`/`actitud_prohibido`, del catálogo (`GET /actitudes`). */
     actitudesCatalogo: ExtraSelectorItem[] = [];
     /** «Modificar dote» es esta misma pantalla con la dote cargada (`modo="editar"` e `idDote`). */
+    /** El -1 «sin extra» de las habilidades otorgadas, para la plantilla. */
+    readonly sinExtraHabilidad = ID_EXTRA_HABILIDAD_SIN_EXTRA;
     @Input() modo: ModoInsercion = 'crear';
     @Input() idDote: number | null = null;
     @Input() editorTabKey = '';
@@ -814,7 +817,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     agregarHabilidadOtorgada(): void {
         this.habilidadesOtorgadasEditor = [
             ...this.habilidadesOtorgadasEditor,
-            { id_habilidad: 0, id_extra: -1, rangos: 0 }
+            { id_habilidad: 0, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, rangos: 0 }
         ];
     }
 
@@ -839,7 +842,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         if (patch.id_habilidad !== undefined && patch.id_habilidad !== current.id_habilidad)
             delete next.custom;
         if (!this.habilidadPermiteExtra(next.id_habilidad))
-            next.id_extra = -1;
+            next.id_extra = ID_EXTRA_HABILIDAD_SIN_EXTRA;
 
         this.habilidadesOtorgadasEditor = this.habilidadesOtorgadasEditor.map((row, i) => i === index ? next : row);
     }
@@ -874,13 +877,13 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         this.upsertHabilidadCustom(habilidad);
         const targetIndex = this.customModalRowIndex;
         if (targetIndex >= 0 && targetIndex < this.habilidadesOtorgadasEditor.length) {
-            this.onHabilidadOtorgadaChange(targetIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: -1, custom: true });
+            this.onHabilidadOtorgadaChange(targetIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, custom: true });
         } else {
             const emptyIndex = this.habilidadesOtorgadasEditor.findIndex((row) => toInt(row.id_habilidad, 0) <= 0);
             if (emptyIndex >= 0)
-                this.onHabilidadOtorgadaChange(emptyIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: -1, custom: true });
+                this.onHabilidadOtorgadaChange(emptyIndex, { id_habilidad: habilidad.Id_habilidad, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, custom: true });
             else
-                this.habilidadesOtorgadasEditor = [...this.habilidadesOtorgadasEditor, { id_habilidad: habilidad.Id_habilidad, id_extra: -1, rangos: 0, custom: true }];
+                this.habilidadesOtorgadasEditor = [...this.habilidadesOtorgadasEditor, { id_habilidad: habilidad.Id_habilidad, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, rangos: 0, custom: true }];
         }
         this.cerrarCustomModal();
     }
@@ -1653,7 +1656,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return out;
     }
 
-    /** Sin extra (-1), sin `id_extra`: la API guarda el -1 «sin extra» (el 0 es el extra «Elegir»). */
+    /** Sin extra (`ID_EXTRA_HABILIDAD_SIN_EXTRA`), sin `id_extra`: la API guarda el -1 «sin extra» (el 0 es el extra «Elegir»). */
     private construirHabilidadesOtorgadasPayload(): DoteHabilidadOtorgadaDto[] {
         return this.habilidadesOtorgadasEditor
             .filter((item) => toInt(item.id_habilidad, 0) > 0)
@@ -1663,7 +1666,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
                     rangos: toInt(item.rangos, 0),
                     custom: item.custom ?? this.esHabilidadCustom(item.id_habilidad),
                 };
-                const idExtra = toInt(item.id_extra, -1);
+                const idExtra = toInt(item.id_extra, ID_EXTRA_HABILIDAD_SIN_EXTRA);
                 return idExtra >= 0 ? { ...habilidad, id_extra: idExtra } : habilidad;
             });
     }

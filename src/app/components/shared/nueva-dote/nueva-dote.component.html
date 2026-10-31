@@ -233,7 +233,7 @@
                         <div class="skill-grid row" *ngFor="let row of habilidadesOtorgadasEditor; let i = index">
                             <mat-form-field appearance="fill" class="skill-habilidad" [class.skill-habilidad--expand]="!habilidadPermiteExtra(row.id_habilidad)">
                                 <mat-label>Habilidad</mat-label>
-                                <mat-select [value]="row.id_habilidad" (selectionChange)="onHabilidadOtorgadaChange(i, { id_habilidad: $event.value, id_extra: -1 })">
+                                <mat-select [value]="row.id_habilidad" (selectionChange)="onHabilidadOtorgadaChange(i, { id_habilidad: $event.value, id_extra: sinExtraHabilidad })">
                                     <mat-option [value]="0">Sin habilidad</mat-option>
                                     <mat-option *ngFor="let habilidad of habilidadesOtorgadasCatalogo" [value]="habilidad.Id_habilidad">
                                         {{habilidad.Nombre}}{{esHabilidadCustom(habilidad.Id_habilidad) ? ' (custom)' : ''}}
@@ -246,7 +246,7 @@
                                 <mat-select
                                     [value]="row.id_extra"
                                     (selectionChange)="onHabilidadOtorgadaChange(i, { id_extra: $event.value })">
-                                    <mat-option [value]="-1">Sin extra</mat-option>
+                                    <mat-option [value]="sinExtraHabilidad">Sin extra</mat-option>
                                     <mat-option *ngFor="let extra of getExtrasDeHabilidad(row.id_habilidad)" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
                                 </mat-select>
                             </mat-form-field>

@@ -187,6 +187,14 @@ export function normalizeConjuroApi(raw: any): Conjuro {
     };
 }
 
+/**
+ * Los textos del conjuro que la API da `null` si son de relleno («no especifica»; `Textos_sin_especificar`). En el
+ * formulario, cada uno es el control con su nombre en minúscula.
+ */
+export const TEXTOS_CONJURO_CON_RELLENO = [
+    'Descripcion', 'Objetivo', 'Efecto', 'Area', 'Duracion', 'Tipo_salvacion', 'Descripcion_componentes', 'Descripcion_aumentos',
+] as const;
+
 /** `GET /conjuros/<id>` (y la entrada que devuelven el alta y la edición): el conjuro y los ids del alta. */
 export function normalizeConjuroEditableApi(raw: any): ConjuroEditable {
     return {
@@ -196,13 +204,9 @@ export function normalizeConjuroEditableApi(raw: any): ConjuroEditable {
         Id_tiempo_lanzamiento: toInt(raw?.Id_tiempo_lanzamiento),
         Id_alcance: toInt(raw?.Id_alcance),
         Id_subdisciplina: toInt(raw?.Id_subdisciplina),
-        Textos_sin_especificar: TEXTOS_CON_RELLENO.filter((clave) => raw?.[clave] === null),
+        Textos_sin_especificar: TEXTOS_CONJURO_CON_RELLENO.filter((clave) => raw?.[clave] === null),
     };
 }
-
-const TEXTOS_CON_RELLENO = [
-    'Descripcion', 'Objetivo', 'Efecto', 'Area', 'Duracion', 'Tipo_salvacion', 'Descripcion_componentes', 'Descripcion_aumentos',
-];
 
 export function normalizeConjuroLegacy(raw: any): Conjuro {
     const base = createBaseConjuro();

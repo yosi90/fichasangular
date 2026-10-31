@@ -2,6 +2,7 @@ import { Dote } from 'src/app/interfaces/dote';
 import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { PrerequisiteRowModel, PrerequisiteType } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.models';
 import { getPrerequisiteDefinition } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.registry';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
 import { toInt, toText } from './normalizacion';
 
 /**
@@ -9,7 +10,7 @@ import { toInt, toText } from './normalizacion';
  * `nueva-dote`, para que guardar sin cambios mande lo mismo que hay (`PUT /dotes/<id>` reemplaza la dote entera).
  */
 
-/** Una fila de «Habilidades otorgadas» del formulario. `id_extra` -1: sin extra (0 es el extra «Elegir»). */
+/** Una fila de «Habilidades otorgadas» del formulario. `id_extra` `ID_EXTRA_HABILIDAD_SIN_EXTRA` (-1): sin extra (0 es el extra «Elegir»). */
 export interface HabilidadOtorgadaFila {
     id_habilidad: number;
     id_extra: number;
@@ -48,7 +49,9 @@ export function modificadoresDeDote(dote: Dote): ModificadorFila[] {
 export function habilidadesOtorgadasDeDote(dote: Dote): HabilidadOtorgadaFila[] {
     return (dote?.Habilidades_otorgadas ?? []).map((habilidad) => ({
         id_habilidad: toInt(habilidad.Id_habilidad),
-        id_extra: habilidad.Id_extra === null || habilidad.Id_extra === undefined ? -1 : toInt(habilidad.Id_extra, -1),
+        id_extra: habilidad.Id_extra === null || habilidad.Id_extra === undefined
+            ? ID_EXTRA_HABILIDAD_SIN_EXTRA
+            : toInt(habilidad.Id_extra, ID_EXTRA_HABILIDAD_SIN_EXTRA),
         rangos: toInt(habilidad.Rangos),
         custom: habilidad.Custom === true,
     }));

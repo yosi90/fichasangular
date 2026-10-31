@@ -8,8 +8,8 @@ import { toText } from './normalizacion';
  */
 export const TEXTO_SIN_ESPECIFICAR = 'No especifica';
 
-/** El texto, o «No especifica» si llega vacío. */
-export function textoOSinEspecificar(valor: unknown): string {
+/** El texto recortado o, si llega vacío, el relleno: «No especifica» (la plantilla usa «No modifica», `TEXTO_SIN_CAMBIO`). */
+export function textoOSinEspecificar(valor: unknown, relleno: string = TEXTO_SIN_ESPECIFICAR): string {
     const texto = toText(valor).trim();
-    return texto.length > 0 ? texto : TEXTO_SIN_ESPECIFICAR;
+    return texto.length > 0 ? texto : relleno;
 }

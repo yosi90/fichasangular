@@ -29,6 +29,7 @@ import { CONJURO } from 'src/app/services/utils/nombres-de-catalogo';
 import { textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
 import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
 import { normalizarTexto, toArray, toInt } from 'src/app/services/utils/normalizacion';
+import { TEXTOS_CONJURO_CON_RELLENO } from 'src/app/services/utils/conjuro-mapper';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 
 interface CrearConjuroEmitPayload {
@@ -59,13 +60,6 @@ const CAMPOS_CONJURO: CamposDeFormulario = Object.fromEntries([
     ['descriptores', 'Descriptores'], ['niveles_clase', 'Niveles por clase'], ['niveles_dominio', 'Niveles por dominio'],
     ['niveles_disciplina', 'Niveles por disciplina'],
 ].map(([clave, etiqueta]) => [clave, { etiqueta, paso: 0 }]));
-
-/** Los textos del conjuro que la API da `null` si son de relleno («no especifica») y se devuelven así al guardar. */
-const TEXTOS_CONJURO: ReadonlyArray<[keyof ConjuroEditable, string]> = [
-    ['Descripcion', 'descripcion'], ['Objetivo', 'objetivo'], ['Efecto', 'efecto'], ['Area', 'area'],
-    ['Duracion', 'duracion'], ['Tipo_salvacion', 'tipo_salvacion'], ['Descripcion_componentes', 'descripcion_componentes'],
-    ['Descripcion_aumentos', 'descripcion_aumentos'],
-];
 type NivelCollectionKey = 'baseClase' | 'baseDominio' | 'psiClase' | 'psiDisciplina';
 
 @Component({
@@ -591,7 +585,9 @@ export class NuevaConjuroComponent implements OnInit, OnDestroy, OnChanges, Edit
     /** Rellena el formulario con el conjuro de la API (su `GET` o la respuesta de guardar). */
     private hidratarDesdeConjuro(conjuro: ConjuroEditable): void {
         const psionico = conjuro?.Psionico === true;
-        const textos = Object.fromEntries(TEXTOS_CONJURO.map(([lectura, campo]) => {
+        // Los textos que la API da `null` si son de relleno, en su control, y así vuelven al guardar.
+        const textos = Object.fromEntries(TEXTOS_CONJURO_CON_RELLENO.map((lectura) => {
+            const campo = lectura.toLowerCase();
             const valor = `${conjuro?.[lectura] ?? ''}`;
             // Vacío en la lectura es un texto de relleno de la base (o nada): los obligatorios y los que la API dio
             // `null` vuelven como «No especifica».
