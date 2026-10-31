@@ -1,6 +1,7 @@
 import { Clase, ClasePrerrequisitos } from 'src/app/interfaces/clase';
 import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { PrerequisiteRowModel, PrerequisiteType } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.models';
+import { CamposDeFormulario } from 'src/app/components/shared/insercion-marco/errores-de-formulario';
 import { getPrerequisiteDefinition } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.registry';
 import { CLAVES_PRERREQUISITOS_INCARNUM } from './incarnum';
 import { toInt, toText } from './normalizacion';
@@ -11,6 +12,30 @@ import { toInt, toText } from './normalizacion';
  * entera). La clase lee sus prerrequisitos con claves propias (`rangos_habilidad` con `Rangos`, `ataque_base` con
  * `Cantidad`…), distintas de las de la dote (`dote-formulario.ts`).
  */
+
+/** Los pasos del marco común de «Nueva clase» y «Modificar clase»; se puede saltar a cualquiera. */
+export const PASOS_CLASE: readonly string[] = ['Base', 'Progresión', 'Competencias', 'Habilidades', 'Magia', 'Dotes y especiales', 'Prerrequisitos'];
+
+/**
+ * Los campos del formulario de la clase que pueden no valer, en el orden del formulario, con su etiqueta y su paso (de
+ * `PASOS_CLASE`): al guardar, `ErroresDeFormulario.irAlPrimerError` lleva al paso del primero que falla.
+ */
+export const CAMPOS_CLASE: CamposDeFormulario = {
+    nombre: { etiqueta: 'Nombre', paso: 0 },
+    descripcion: { etiqueta: 'Descripción', paso: 0 },
+    id_manual: { etiqueta: 'Manual', paso: 0 },
+    pagina: { etiqueta: 'Página', paso: 0 },
+    tipo_dado: { etiqueta: 'Dado de golpe', paso: 0 },
+    puntos_habilidad_id: { etiqueta: 'Puntos de habilidad', paso: 0 },
+    nivel_max_claseo: { etiqueta: 'Nivel máximo', paso: 0 },
+    id_ataque_base: { etiqueta: 'Ataque base', paso: 1 },
+    fortaleza_id: { etiqueta: 'Fortaleza', paso: 1 },
+    reflejos_id: { etiqueta: 'Reflejos', paso: 1 },
+    voluntad_id: { etiqueta: 'Voluntad', paso: 1 },
+    libro_iniciales: { etiqueta: 'Conjuros iniciales en el libro', paso: 4 },
+    libro_por_nivel: { etiqueta: 'Conjuros nuevos por nivel', paso: 4 },
+    nivel_lanzador_divisor: { etiqueta: 'Divisor del nivel de lanzador', paso: 4 },
+};
 
 /** La clave de `Prerrequisitos` de la clase que no se llama como el tipo del editor. */
 const TIPO_DE_CLAVE: Readonly<Record<string, PrerequisiteType>> = {

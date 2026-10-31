@@ -5,8 +5,10 @@ import Swal from 'sweetalert2';
 import { avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { CLASE } from 'src/app/services/utils/nombres-de-catalogo';
 import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { alternarControl, quitarFila } from '../insercion-marco/filas-repetibles';
+import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import {
     Clase,
@@ -74,8 +76,11 @@ import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 import { textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import { CLAVES_PRERREQUISITOS_INCARNUM } from 'src/app/services/utils/incarnum';
 import {
+    CAMPOS_CLASE,
+    PASOS_CLASE,
     PrerrequisitoDeClaseConservado,
     claveDePrerrequisitoDeClase,
     clavesPrerrequisitoEditablesDeClase,
@@ -104,7 +109,7 @@ interface ClaseHabilidadAlineamientoRow {
     uid: string;
     id_habilidad: number;
     busqueda: string;
-    /** -1: sin extra. */
+    /** `ID_EXTRA_HABILIDAD_SIN_EXTRA` (-1): sin extra. */
     id_extra: number;
     extraBusqueda: string;
     id_alineamiento: number;
@@ -206,8 +211,19 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
 
     guardando = false;
     /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera. */
-    readonly pasos = ['Base', 'Progresión', 'Competencias', 'Habilidades', 'Magia', 'Dotes y especiales', 'Prerrequisitos'];
+    readonly pasos = PASOS_CLASE;
     pasoActual = 0;
+    /**
+     * Por ahora solo para saltar al paso del primer campo que no vale al guardar (`irAlPrimerError`); el error de la API
+     * sigue en su aviso (`avisarErrorAlGuardar`).
+     */
+    readonly errores = new ErroresDeFormulario({
+        campos: CAMPOS_CLASE,
+        raiz: null,
+        control: (campo) => this.form.get(campo),
+        firma: (campo) => `${this.form.get(campo)?.value ?? ''}`,
+        irAPaso: (paso) => this.pasoActual = paso,
+    });
     puedeCrear = false;
     puedeActualizar = false;
     manuales: Manual[] = [];
@@ -223,6 +239,10 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     habilidadesBase: HabilidadBasicaDetalle[] = [];
     habilidadesCustom: HabilidadBasicaDetalle[] = [];
     conjuros: any[] = [];
+    /** El «sin extra» de una habilidad, para la opción «Sin extra» de la plantilla. */
+    readonly sinExtraHabilidad = ID_EXTRA_HABILIDAD_SIN_EXTRA;
+    /** Los conjuros para «Añadir conjuro» de la lista propia (`<app-catalogo-buscador>`). */
+    opcionesConjuros: OpcionCatalogo[] = [];
     habilidadesRows: ClaseHabilidadRow[] = [];
     relacionesRows: ClaseRelacionNivelRow[] = [];
     conjurosPorEspecialRows: ClaseConjuroPorEspecialRow[] = [];
@@ -231,7 +251,6 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     listadoRows: ClaseConjuroListadoRow[] = [];
     listadoFiltro = '';
     listadoNivelFiltro: number | null = null;
-    listadoNuevoBusqueda = '';
     listadoNuevoNivel = 1;
     /** Lo que el editor de prerrequisitos no puede enseñar como fila: se guarda tal cual (`clase-formulario.ts`). */
     prerrequisitosConservados: PrerrequisitoDeClaseConservado[] = [];
@@ -554,7 +573,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         }
         this.form.markAllAsTouched();
         if (this.form.invalid) {
-            this.irAlPrimerError();
+            this.errores.irAlPrimerError();
             return;
         }
         if (this.listadoIncompleto())
@@ -723,7 +742,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         const row = this.habilidadesRows[index];
         const habilidad = this.getCatalogoHabilidades(row.tipo).find((item) => item.Id_habilidad === this.entero(id));
         this.habilidadesRows = this.habilidadesRows.map((item, rowIndex) => rowIndex === index
-            ? { ...item, id_habilidad: habilidad?.Id_habilidad ?? 0, busqueda: habilidad?.Nombre ?? '', id_extra: -1, extraBusqueda: '' }
+            ? { ...item, id_habilidad: habilidad?.Id_habilidad ?? 0, busqueda: habilidad?.Nombre ?? '', id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, extraBusqueda: '' }
             : item);
     }
 
@@ -731,7 +750,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         const row = this.habilidadesRows[index];
         const extra = this.getExtrasHabilidad(row).find((item) => item.Id_extra === this.entero(id));
         this.habilidadesRows = this.habilidadesRows.map((item, rowIndex) => rowIndex === index
-            ? { ...item, id_extra: extra?.Id_extra ?? -1, extraBusqueda: extra?.Extra ?? '' }
+            ? { ...item, id_extra: extra?.Id_extra ?? ID_EXTRA_HABILIDAD_SIN_EXTRA, extraBusqueda: extra?.Extra ?? '' }
             : item);
     }
 
@@ -765,7 +784,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         const targetUid = this.customModalRowUid;
         if (targetUid.length > 0) {
             this.habilidadesRows = this.habilidadesRows.map((row) => row.uid === targetUid
-                ? { ...row, tipo: 'custom', id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre, id_extra: -1, extraBusqueda: '' }
+                ? { ...row, tipo: 'custom', id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, extraBusqueda: '' }
                 : row);
         } else {
             this.habilidadesRows = [...this.habilidadesRows, { ...this.crearHabilidadRow('custom'), id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre }];
@@ -775,7 +794,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
 
     agregarHabilidadAlineamiento(): void {
         this.habilidadesAlineamientoRows = [...this.habilidadesAlineamientoRows, {
-            uid: this.uid(), id_habilidad: 0, busqueda: '', id_extra: -1, extraBusqueda: '', id_alineamiento: 0,
+            uid: this.uid(), id_habilidad: 0, busqueda: '', id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, extraBusqueda: '', id_alineamiento: 0,
         }];
     }
 
@@ -790,7 +809,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     seleccionarHabilidadAlineamiento(row: ClaseHabilidadAlineamientoRow, id: number): void {
         const habilidad = this.habilidadesBase.find((item) => item.Id_habilidad === this.entero(id));
         this.habilidadesAlineamientoRows = this.habilidadesAlineamientoRows.map((actual) => actual.uid === row.uid
-            ? { ...actual, id_habilidad: habilidad?.Id_habilidad ?? 0, busqueda: habilidad?.Nombre ?? '', id_extra: -1, extraBusqueda: '' }
+            ? { ...actual, id_habilidad: habilidad?.Id_habilidad ?? 0, busqueda: habilidad?.Nombre ?? '', id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, extraBusqueda: '' }
             : actual);
     }
 
@@ -802,12 +821,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     seleccionarExtraHabilidadAlineamiento(row: ClaseHabilidadAlineamientoRow, id: number): void {
         const extra = this.getExtrasHabilidadAlineamiento({ ...row, extraBusqueda: '' }).find((item) => item.Id_extra === this.entero(id));
         this.habilidadesAlineamientoRows = this.habilidadesAlineamientoRows.map((actual) => actual.uid === row.uid
-            ? { ...actual, id_extra: extra?.Id_extra ?? -1, extraBusqueda: extra?.Extra ?? '' }
+            ? { ...actual, id_extra: extra?.Id_extra ?? ID_EXTRA_HABILIDAD_SIN_EXTRA, extraBusqueda: extra?.Extra ?? '' }
             : actual);
-    }
-
-    getConjurosParaListado(): any[] {
-        return this.filtrarPorNombre(this.conjuros, this.listadoNuevoBusqueda);
     }
 
     agregarConjuroListado(id: number): void {
@@ -817,7 +832,6 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         const nivel = Math.min(9, Math.max(0, this.entero(this.listadoNuevoNivel)));
         if (!this.listadoRows.some((row) => row.id_conjuro === this.getId(conjuro) && row.nivel === nivel))
             this.listadoRows = [...this.listadoRows, { uid: this.uid(), id_conjuro: this.getId(conjuro), nombre: this.texto(conjuro.Nombre), nivel, espontaneo: false }];
-        this.listadoNuevoBusqueda = '';
     }
 
     quitarConjuroListado(row: ClaseConjuroListadoRow): void {
@@ -826,6 +840,11 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
 
     contarListadoNivel(nivel: number): number {
         return this.listadoRows.filter((row) => row.nivel === nivel).length;
+    }
+
+    /** Las celdas de un nivel de clase en una tabla por nivel de conjuro (`tablaPorNivelDeConjuro`). */
+    celdasPorNivelDeConjuro(nivel: ClaseNivelEditor, campo: 'conjuros_diarios' | 'conjuros_conocidos_nivel'): Record<string, number> {
+        return nivel[campo];
     }
 
     nombreAumento(id: number): string {
@@ -1033,17 +1052,6 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         };
     }
 
-    /** Salta al paso del primer campo que no vale (casi todos están en «Base»). */
-    private irAlPrimerError(): void {
-        const paso: Record<string, string> = {
-            id_ataque_base: 'Progresión', fortaleza_id: 'Progresión', reflejos_id: 'Progresión', voluntad_id: 'Progresión',
-            libro_iniciales: 'Magia', libro_por_nivel: 'Magia', nivel_lanzador_divisor: 'Magia',
-        };
-        const campo = Object.keys(this.form.controls).find((clave) => this.form.get(clave)?.invalid);
-        if (campo)
-            this.pasoActual = Math.max(0, this.pasos.indexOf(paso[campo] ?? 'Base'));
-    }
-
     /** Un conjuro de la lista propia sin elegir (o repetido en el mismo nivel) no deja guardar: se dice dónde. */
     private listadoIncompleto(): boolean {
         const vistos = new Set<string>();
@@ -1223,7 +1231,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             .forEach((row) => {
                 const item = {
                     Id_habilidad: this.entero(row.id_habilidad),
-                    Id_extra: this.entero(row.id_extra, -1),
+                    Id_extra: this.entero(row.id_extra, ID_EXTRA_HABILIDAD_SIN_EXTRA),
                     // Sin texto al cargarla (el relleno de la base sale `null`), «No especifica»: sigue saliendo `null`.
                     Varios: row.varios === null ? textoOSinEspecificar(null) : row.varios.trim(),
                     Habilidad: row.busqueda,
@@ -1239,7 +1247,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             .map((row) => ({
                 Id_habilidad: this.entero(row.id_habilidad),
                 Habilidad: row.busqueda,
-                Id_extra: this.entero(row.id_extra, -1),
+                Id_extra: this.entero(row.id_extra, ID_EXTRA_HABILIDAD_SIN_EXTRA),
                 Extra: row.extraBusqueda || null,
                 Alineamiento: {
                     Id: this.entero(row.id_alineamiento),
@@ -1434,6 +1442,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         });
         this.conjuroSvc.getConjuros().pipe(takeUntil(this.destroy$)).subscribe((items) => {
             this.conjuros = this.ordenar(items ?? []);
+            this.opcionesConjuros = opcionesDeCatalogo(items);
             this.catalogosPrerrequisito['conjuros'] = this.toCatalog(items, 'Id', 'Nombre');
         });
     }
@@ -1498,7 +1507,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             uid: this.uid(),
             id_habilidad: this.entero(item.Id_habilidad),
             busqueda: this.texto(item.Habilidad),
-            id_extra: item.Id_extra === null || item.Id_extra === undefined ? -1 : this.entero(item.Id_extra, -1),
+            id_extra: item.Id_extra === null || item.Id_extra === undefined
+                ? ID_EXTRA_HABILIDAD_SIN_EXTRA : this.entero(item.Id_extra, ID_EXTRA_HABILIDAD_SIN_EXTRA),
             extraBusqueda: this.texto(item.Extra),
             id_alineamiento: this.entero(item.Alineamiento?.Id),
         }));
@@ -1529,7 +1539,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             uid: this.uid(),
             tipo,
             id_habilidad: this.entero(item?.Id_habilidad ?? item?.id_habilidad),
-            id_extra: this.entero(item?.Id_extra ?? item?.id_extra, -1),
+            id_extra: this.entero(item?.Id_extra ?? item?.id_extra, ID_EXTRA_HABILIDAD_SIN_EXTRA),
             varios: item?.Varios === null || item?.Varios === undefined ? null : this.texto(item.Varios),
             busqueda: this.texto(item?.Habilidad ?? item?.Nombre),
             extraBusqueda: this.texto(item?.Extra, 'No aplica'),
@@ -1686,7 +1696,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     }
 
     private crearHabilidadRow(tipo: 'base' | 'custom'): ClaseHabilidadRow {
-        return { uid: this.uid(), tipo, id_habilidad: 0, id_extra: -1, varios: null, busqueda: '', extraBusqueda: '' };
+        return { uid: this.uid(), tipo, id_habilidad: 0, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, varios: null, busqueda: '', extraBusqueda: '' };
     }
 
     private crearRelacionRow(tipo: 'dote' | 'especial'): ClaseRelacionNivelRow {

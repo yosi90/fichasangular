@@ -357,7 +357,7 @@
                                 <mat-label>Extra</mat-label>
                                 <input matInput [(ngModel)]="row.extraBusqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="habAliExtraAuto" placeholder="Sin extra">
                                 <mat-autocomplete #habAliExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraHabilidadAlineamiento(row, $event.option.value)">
-                                    <mat-option [value]="-1">Sin extra</mat-option>
+                                    <mat-option [value]="sinExtraHabilidad">Sin extra</mat-option>
                                     <mat-option *ngFor="let extra of getExtrasHabilidadAlineamiento(row)" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
                                 </mat-autocomplete>
                             </mat-form-field>
@@ -424,23 +424,7 @@
                     </div>
 
                     <div class="spell-known-table" *ngIf="esLanzadorArcanoODivino">
-                        <div class="spell-known-table__grid spell-known-table__grid--levels">
-                            <div class="spell-known-head">
-                                <span>Diarios</span>
-                                <span *ngFor="let nivelConjuro of nivelesConjuro">{{nivelConjuro}}</span>
-                            </div>
-                            <div class="spell-known-row" *ngFor="let nivel of niveles">
-                                <span>{{nivel.nivel}}</span>
-                                <input
-                                    *ngFor="let nivelConjuro of nivelesConjuro"
-                                    type="number"
-                                    min="-1"
-                                    placeholder="—"
-                                    [attr.aria-label]="'Conjuros diarios de nivel ' + nivelConjuro + ' en el nivel ' + nivel.nivel"
-                                    [(ngModel)]="nivel.conjuros_diarios['Nivel_' + nivelConjuro]"
-                                    [ngModelOptions]="{standalone: true}">
-                            </div>
-                        </div>
+                        <ng-container *ngTemplateOutlet="tablaPorNivelDeConjuro; context: { campo: 'conjuros_diarios', cabecera: 'Diarios', que: 'Conjuros diarios', minimo: -1, relleno: '—' }"></ng-container>
                         <p class="panel-nota">Vacío o -1: no tiene espacios de ese nivel; 0: solo los de su característica.</p>
                     </div>
 
@@ -474,13 +458,9 @@
                             </button>
                         </div>
                         <div class="repeat-row listado-row listado-row--nuevo">
-                            <mat-form-field appearance="fill">
-                                <mat-label>Añadir conjuro</mat-label>
-                                <input matInput [(ngModel)]="listadoNuevoBusqueda" [ngModelOptions]="{standalone: true}" [matAutocomplete]="listadoAuto">
-                                <mat-autocomplete #listadoAuto="matAutocomplete" (optionSelected)="agregarConjuroListado($event.option.value)">
-                                    <mat-option *ngFor="let conjuro of getConjurosParaListado()" [value]="conjuro.Id">{{conjuro.Nombre}}</mat-option>
-                                </mat-autocomplete>
-                            </mat-form-field>
+                            <app-catalogo-buscador etiqueta="Añadir conjuro" [opciones]="opcionesConjuros" [anadir]="true"
+                                (elegir)="agregarConjuroListado($event)">
+                            </app-catalogo-buscador>
                             <mat-form-field appearance="fill">
                                 <mat-label>Nivel</mat-label>
                                 <input matInput type="number" min="0" max="9" [(ngModel)]="listadoNuevoNivel" [ngModelOptions]="{standalone: true}">
@@ -560,21 +540,9 @@
                     </div>
 
                     <div class="spell-known-table" *ngIf="muestraConjurosConocidosTotal || muestraConjurosConocidosPorNivel">
-                        <div class="spell-known-table__grid spell-known-table__grid--levels" *ngIf="muestraConjurosConocidosPorNivel">
-                            <div class="spell-known-head">
-                                <span>Nivel</span>
-                                <span *ngFor="let nivelConjuro of nivelesConjuro">{{nivelConjuro}}</span>
-                            </div>
-                            <div class="spell-known-row" *ngFor="let nivel of niveles">
-                                <span>{{nivel.nivel}}</span>
-                                <input
-                                    *ngFor="let nivelConjuro of nivelesConjuro"
-                                    type="number"
-                                    [attr.aria-label]="'Conjuros conocidos de nivel ' + nivelConjuro + ' en el nivel ' + nivel.nivel"
-                                    [(ngModel)]="nivel.conjuros_conocidos_nivel['Nivel_' + nivelConjuro]"
-                                    [ngModelOptions]="{standalone: true}">
-                            </div>
-                        </div>
+                        <ng-container *ngIf="muestraConjurosConocidosPorNivel">
+                            <ng-container *ngTemplateOutlet="tablaPorNivelDeConjuro; context: { campo: 'conjuros_conocidos_nivel', cabecera: 'Nivel', que: 'Conjuros conocidos', minimo: null, relleno: null }"></ng-container>
+                        </ng-container>
 
                         <div class="spell-known-table__grid spell-known-table__grid--total" *ngIf="muestraConjurosConocidosTotal">
                             <div class="spell-known-head">
@@ -755,3 +723,24 @@
         </div>
     </div>
 </div>
+
+<!-- Una tabla por nivel de clase y nivel de conjuro: los conjuros diarios y los conocidos por nivel (`Nivel_0`…`Nivel_9`). -->
+<ng-template #tablaPorNivelDeConjuro let-campo="campo" let-cabecera="cabecera" let-que="que" let-minimo="minimo" let-relleno="relleno">
+    <div class="spell-known-table__grid spell-known-table__grid--levels">
+        <div class="spell-known-head">
+            <span>{{cabecera}}</span>
+            <span *ngFor="let nivelConjuro of nivelesConjuro">{{nivelConjuro}}</span>
+        </div>
+        <div class="spell-known-row" *ngFor="let nivel of niveles">
+            <span>{{nivel.nivel}}</span>
+            <input
+                *ngFor="let nivelConjuro of nivelesConjuro"
+                type="number"
+                [attr.min]="minimo"
+                [attr.placeholder]="relleno"
+                [attr.aria-label]="que + ' de nivel ' + nivelConjuro + ' en el nivel ' + nivel.nivel"
+                [(ngModel)]="celdasPorNivelDeConjuro(nivel, campo)['Nivel_' + nivelConjuro]"
+                [ngModelOptions]="{standalone: true}">
+        </div>
+    </div>
+</ng-template>
