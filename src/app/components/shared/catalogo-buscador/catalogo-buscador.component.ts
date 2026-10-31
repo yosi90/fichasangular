@@ -8,12 +8,24 @@ export interface OpcionCatalogo {
     nombre: string;
 }
 
+type ConIdYNombre = { Id?: unknown; Nombre?: unknown; };
+
+function leerIdYNombre(item: ConIdYNombre): OpcionCatalogo {
+    return { id: toInt(item?.Id), nombre: toText(item?.Nombre) };
+}
+
 /**
- * Las opciones de un catálogo de la API (`{ Id, Nombre }`) para el buscador: sin las que no tienen nombre y por orden
- * alfabético en español.
+ * Las opciones de un catálogo de la API para el buscador: sin las que no tienen nombre y por orden alfabético en español.
+ * Cada elemento se lee como `{ Id, Nombre }` o, si el catálogo los llama de otra forma (`Id_habilidad`, el nombre de una
+ * combinación de alineamiento…), con `leer`.
  */
-export function opcionesDeCatalogo(items: readonly { Id?: unknown; Nombre?: unknown; }[] | null | undefined): OpcionCatalogo[] {
-    return (items ?? []).map((item) => ({ id: toInt(item?.Id), nombre: toText(item?.Nombre).trim() }))
+export function opcionesDeCatalogo(items: readonly ConIdYNombre[] | null | undefined): OpcionCatalogo[];
+export function opcionesDeCatalogo<T>(items: readonly T[] | null | undefined, leer: (item: T) => OpcionCatalogo): OpcionCatalogo[];
+export function opcionesDeCatalogo(items: readonly any[] | null | undefined, leer: (item: any) => OpcionCatalogo = leerIdYNombre): OpcionCatalogo[] {
+    return (items ?? []).map((item) => {
+        const opcion = leer(item);
+        return { id: opcion.id, nombre: opcion.nombre.trim() };
+    })
         .filter((item) => item.nombre.length > 0)
         .sort((a, b) => compararTexto(a.nombre, b.nombre));
 }

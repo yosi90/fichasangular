@@ -23,7 +23,6 @@ import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
-import { compararTexto } from 'src/app/services/utils/orden-texto';
 import {
     CAMPOS_PLANTILLA,
     CARACTERISTICAS_PLANTILLA,
@@ -618,39 +617,34 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
     }
 
     private cargarCatalogos(): void {
-        const opciones = opcionesDeCatalogo;
         const porId = (lista: OpcionCatalogo[]) => [...lista].sort((a, b) => a.id - b.id);
         const suscribir = <T>(fuente: Observable<T>, siguiente: (valor: T) => void) =>
             fuente.pipe(takeUntil(this.destroy$)).subscribe({ next: siguiente, error: () => undefined });
 
-        suscribir(this.manualSvc.getManuales(), (items) => this.manuales = opciones(items));
+        suscribir(this.manualSvc.getManuales(), (items) => this.manuales = opcionesDeCatalogo(items));
         // El listado de tamaños no trae el 0, «Depende» (el de la criatura base), que es el de casi todas las plantillas.
         let tamanoBase: OpcionCatalogo[] = [];
         let tamanosListado: OpcionCatalogo[] = [];
         const unirTamanos = () => this.tamanos = porId([...tamanoBase, ...tamanosListado.filter((item) => item.id !== 0)]);
-        suscribir(this.tamanoSvc.getTamanos(), (items) => { tamanosListado = opciones(items); unirTamanos(); });
-        suscribir(this.tamanoSvc.getTamano(0).pipe(take(1)), (item) => { tamanoBase = opciones(item ? [item] : []); unirTamanos(); });
-        suscribir(this.razaCatalogosSvc.getTiposDado(), (items) => this.tiposDado = porId(opciones(items)));
-        suscribir(this.razaCatalogosSvc.getManiobrabilidades(), (items) => this.maniobrabilidades = porId(opciones(items)).filter((item) => item.id > 0));
-        suscribir(this.razaCatalogosSvc.getActitudes(), (items) => this.actitudes = opciones(items));
-        suscribir(this.tipoCriaturaSvc.getTiposCriatura(), (items) => this.tiposCriatura = opciones(items));
-        suscribir(this.alineamientoSvc.getAlineamientosCombinacionesCatalogo(), (items) => this.alineamientos = (items ?? [])
-            .map((item) => ({ id: toInt(item?.Id), nombre: nombreCombinacionAlineamiento(item) }))
-            .filter((item) => item.nombre.length > 0)
-            .sort((a, b) => compararTexto(a.nombre, b.nombre)));
-        suscribir(this.racialSvc.getRaciales(), (items) => this.raciales = opciones(items));
-        suscribir(this.conjuroSvc.getConjuros(), (items) => this.conjuros = opciones(items));
-        suscribir(this.subtipoSvc.getSubtipos(), (items) => this.subtipos = opciones(items).filter((item) => item.id > 0));
+        suscribir(this.tamanoSvc.getTamanos(), (items) => { tamanosListado = opcionesDeCatalogo(items); unirTamanos(); });
+        suscribir(this.tamanoSvc.getTamano(0).pipe(take(1)), (item) => { tamanoBase = opcionesDeCatalogo(item ? [item] : []); unirTamanos(); });
+        suscribir(this.razaCatalogosSvc.getTiposDado(), (items) => this.tiposDado = porId(opcionesDeCatalogo(items)));
+        suscribir(this.razaCatalogosSvc.getManiobrabilidades(), (items) => this.maniobrabilidades = porId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
+        suscribir(this.razaCatalogosSvc.getActitudes(), (items) => this.actitudes = opcionesDeCatalogo(items));
+        suscribir(this.tipoCriaturaSvc.getTiposCriatura(), (items) => this.tiposCriatura = opcionesDeCatalogo(items));
+        suscribir(this.alineamientoSvc.getAlineamientosCombinacionesCatalogo(), (items) => this.alineamientos =
+            opcionesDeCatalogo(items, (item) => ({ id: toInt(item?.Id), nombre: nombreCombinacionAlineamiento(item) })));
+        suscribir(this.racialSvc.getRaciales(), (items) => this.raciales = opcionesDeCatalogo(items));
+        suscribir(this.conjuroSvc.getConjuros(), (items) => this.conjuros = opcionesDeCatalogo(items));
+        suscribir(this.subtipoSvc.getSubtipos(), (items) => this.subtipos = opcionesDeCatalogo(items).filter((item) => item.id > 0));
         suscribir(this.doteSvc.getDotes(), (items) => {
             this.dotes = items ?? [];
-            this.dotesOpciones = opciones(items);
+            this.dotesOpciones = opcionesDeCatalogo(items);
         });
         suscribir(this.habilidadSvc.getHabilidades(), (items) => {
             this.habilidades = items ?? [];
-            this.habilidadesOpciones = (items ?? [])
-                .map((item) => ({ id: toInt(item.Id_habilidad), nombre: toText(item.Nombre).trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            this.habilidadesOpciones = opcionesDeCatalogo(items, (item) => ({ id: toInt(item.Id_habilidad), nombre: toText(item.Nombre) }))
+                .filter((item) => item.id > 0);
         });
         // No hay catálogo de pasos de modificación en el contrato: salen de los que ya usan las plantillas, más el 0
         // (no cambia, que la lectura da como relleno).
