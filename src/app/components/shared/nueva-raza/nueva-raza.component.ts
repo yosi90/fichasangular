@@ -74,7 +74,7 @@ import {
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { idsUnicosOrdenados, normalizarTexto } from 'src/app/services/utils/normalizacion';
-import { TEXTO_SIN_ESPECIFICAR, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
+import { TEXTO_SIN_ESPECIFICAR, USOS_SORTILEGA_INICIALES, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 import {
@@ -1841,7 +1841,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             || this.habilidadesCustomRows.some((row) => this.numero(row.id_habilidad) > 0 || this.numero(row.cantidad) !== 0)
             || this.dotesRows.some((row) => this.numero(row.id_dote) > 0 || this.numero(row.id_extra) > 0)
             || this.racialesRows.some((row) => this.numero(row.id_racial) > 0 || this.numero(row.opcional) !== 0)
-            || this.sortilegiosRows.some((row) => this.numero(row.id_conjuro) > 0 || this.numero(row.nivel_lanzador) !== 1 || this.texto(row.usos_diarios) !== '1/dia' || this.esTextoTecnicoEditado(row.descripcion));
+            || this.sortilegiosRows.some((row) => this.numero(row.id_conjuro) > 0 || this.numero(row.nivel_lanzador) !== 1 || this.texto(row.usos_diarios) !== USOS_SORTILEGA_INICIALES || this.esTextoTecnicoEditado(row.descripcion));
     }
 
     private hayValoresNumericosNoDefault(raw: Record<string, any>): boolean {
@@ -2764,7 +2764,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private crearSortilegioRow(): SortilegioRow {
-        return { uid: this.nuevoUid(), id_conjuro: 0, nivel_lanzador: 1, usos_diarios: '1/dia', descripcion: TEXTO_SIN_ESPECIFICAR, busqueda: '' };
+        return { uid: this.nuevoUid(), id_conjuro: 0, nivel_lanzador: 1, usos_diarios: USOS_SORTILEGA_INICIALES, descripcion: TEXTO_SIN_ESPECIFICAR, busqueda: '' };
     }
 
     private sincronizarSelectConFallback(controlName: string, items: CatalogItem[], nombrePreferente?: string): void {

@@ -16,6 +16,7 @@ import {
 } from 'src/app/services/utils/raza-edades-formulario';
 import { SOLO_PNJ, textoNepDePaso, textoRangoEdad } from 'src/app/services/utils/razas-por-edades';
 import { toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { USOS_SORTILEGA_INICIALES } from 'src/app/services/utils/texto-sin-especificar';
 import { OpcionCatalogo, nombreDeOpcion } from '../../catalogo-buscador/catalogo-buscador.component';
 
 /** Las etiquetas cortas de las puntuaciones y las velocidades, como en el paso «Valores». */
@@ -178,7 +179,7 @@ export class RazaEdadesComponent {
         const id = toInt(idConjuro);
         if (id <= 0 || fila.sortilegas.some((sortilega) => sortilega.id_conjuro === id))
             return;
-        fila.sortilegas = [...fila.sortilegas, { id_conjuro: id, nombre: nombreDeOpcion(this.opcionesConjuros, id), usos_diarios: '1/día', descripcion: '' }];
+        fila.sortilegas = [...fila.sortilegas, { id_conjuro: id, nombre: nombreDeOpcion(this.opcionesConjuros, id), usos_diarios: USOS_SORTILEGA_INICIALES, descripcion: '' }];
         this.cambio.emit();
     }
 
