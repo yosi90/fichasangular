@@ -11,6 +11,9 @@ import { esPnj, TipoPersonaje, textoVd } from './tipo-personaje';
 /** El texto del contrato para un PJ en una edad sin ajuste (`paso_edad_no_jugable`). */
 export const MOTIVO_EDAD_SOLO_PNJ = 'El manual no da ajuste de nivel a esta edad; solo como PNJ.';
 
+/** El texto del contrato para un PJ sin niveles de clase que no puede quedarse así (`pj_sin_clase`). */
+export const MOTIVO_PJ_SIN_CLASE = 'Un PJ necesita al menos un nivel de clase; sin clases solo puede ser un PNJ o una raza que se juega por edades.';
+
 export interface ContextoEdad {
     tipo: TipoPersonaje;
     /** El NEP máximo de los personajes nuevos de su campaña, si ya se conoce (un PNJ no pasa por la política). */
@@ -21,6 +24,11 @@ export interface OpcionPasoEdad {
     paso: PasoEdadRaza;
     bloqueado: boolean;
     motivo: string | null;
+    /**
+     * Un PJ en una edad sin ajuste: no se puede elegir, pero el máster que se salta las reglas de su campaña puede
+     * elegirla igualmente (`overrideReglasCampana`), y el personaje queda homebrew. Las que pasan del NEP de la campaña no.
+     */
+    saltable: boolean;
     /** «NEP 11», «VD 4» o «Solo PNJ». */
     nivel: string;
     /** «16 años · 13 DG · NEP 19». */
@@ -36,6 +44,8 @@ export interface OpcionCategoriaEdad {
     /** Ningún paso de la categoría se puede elegir. */
     bloqueada: boolean;
     motivo: string | null;
+    /** Bloqueada, pero con algún paso que se puede elegir igualmente (`OpcionPasoEdad.saltable`). */
+    saltable: boolean;
     /** Lo que se lee bajo su nombre: «NEP 11», «NEP 11–13», «VD 5» o «Solo PNJ». */
     pie: string;
 }
@@ -49,6 +59,32 @@ export function razaPorEdades(raza: Pick<Raza, 'Pasos_edad'> | null | undefined)
 export function nombreEdadEnFrase(nombre: string | null | undefined): string {
     const texto = `${nombre ?? ''}`.trim();
     return texto.length > 0 ? texto.charAt(0).toLocaleLowerCase('es') + texto.slice(1) : '';
+}
+
+/** «Dragón rojo · cría»: la raza con su edad, en la ficha y en el listado de personajes; sin edad, la raza. */
+export function razaConCategoria(nombreRaza: string | null | undefined, categoria: string | null | undefined): string {
+    return [`${nombreRaza ?? ''}`.trim(), nombreEdadEnFrase(categoria)].filter((parte) => parte.length > 0).join(' · ');
+}
+
+/**
+ * El nombre de la categoría de edad de un personaje de los listados («Cría»), o `null` si su raza no tiene edades:
+ * `categoriaEdad` (una cadena) en la copia de Firestore y en `GET /usuarios/me/personajes`, `Categoria_edad` en
+ * `listado-personajes` (sin valor, no está); la ficha (`categoriaEdad`) y la creación (`CategoriaEdad`) la traen como objeto.
+ */
+export function leerCategoriaEdadListado(raw: any): string | null {
+    const valor = raw?.categoriaEdad ?? raw?.Categoria_edad ?? raw?.CategoriaEdad ?? null;
+    const nombre = typeof valor === 'string' ? valor : valor?.categoria?.Nombre;
+    const texto = `${nombre ?? ''}`.trim();
+    return texto.length > 0 ? texto : null;
+}
+
+/**
+ * Si un personaje puede quedarse sin niveles de clase (decisión del propietario del 2026-10-31; `pj_sin_clase` en
+ * `docs/publica/endpoints/personajes.md`): un PNJ siempre, sea cual sea su raza; un PJ solo si su raza se juega por edades
+ * y tiene DG raciales a su edad (el dragón del *Draconomicón*). Sin clases, todo sale de los DG raciales (0 si no tiene).
+ */
+export function puedeQuedarseSinClases(datos: { tipo: TipoPersonaje | null | undefined; porEdades: boolean; dgsRaciales: number; }): boolean {
+    return esPnj(datos.tipo) || (datos.porEdades && Number(datos.dgsRaciales) > 0);
 }
 
 /** «Dragón rojo (joven)»: la raza con su edad, para el botón de elegirla y la cabecera de la creación. */
@@ -105,6 +141,7 @@ export function opcionesEdad(raza: Pick<Raza, 'Categorias_edad' | 'Pasos_edad'> 
                     paso,
                     bloqueado: motivo !== null,
                     motivo,
+                    saltable: motivo === MOTIVO_EDAD_SOLO_PNJ,
                     nivel,
                     texto: [`${paso.Edad} ${paso.Edad === 1 ? 'año' : 'años'}`, `${paso.Dgs} DG`, nivel].join(' · '),
                 };
@@ -119,6 +156,7 @@ export function opcionesEdad(raza: Pick<Raza, 'Categorias_edad' | 'Pasos_edad'> 
             pasos: opciones,
             bloqueada,
             motivo: opciones.length < 1 ? 'Esta edad no tiene pasos en los datos de la raza.' : bloqueada ? opciones[0].motivo : null,
+            saltable: bloqueada && opciones.some((opcion) => opcion.saltable),
             pie: pieCategoria(opciones, contexto, vdCategoria),
         };
     });

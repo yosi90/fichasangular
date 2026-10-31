@@ -30,7 +30,8 @@
                             <p class="creacion-aviso paso-raza__aviso" *ngIf="esPnjCreacion">Un PNJ no sigue la política de creación de la
                                 campaña, se mide por su VD y nace privado.</p>
                             <app-creacion-edad *ngIf="razaMiradaPorEdades" [opciones]="opcionesEdadMirada" [idPaso]="pasoEdadMiradoId"
-                                [pnj]="esPnjCreacion" (elegir)="mirarPasoEdad($event)"></app-creacion-edad>
+                                [pnj]="esPnjCreacion" [permitirSaltar]="puedeElegirEdadSinAjusteIgualmente"
+                                (elegir)="mirarPasoEdad($event)"></app-creacion-edad>
                             <p class="creacion-texto-suave" *ngIf="razaMiradaPorEdades && cargandoRazaAEdad" role="status">Cargando la raza a esa edad…</p>
                             <app-detalles-raza [raza]="razaVistaPrevia ?? raza"
                                 (racialDetallesPorNombre)="verDetallesRacialDesdeReferencia($event)"
@@ -46,9 +47,14 @@
                         Abrir su ficha completa
                     </button>
                     <button type="button" mat-raised-button color="primary" [disabled]="!razaParaElegir"
-                        (click)="elegirRazaMirada()">
+                        *ngIf="!razaParaElegirIgualmente" (click)="elegirRazaMirada()">
                         {{textoElegirRaza}}
                         <mat-icon iconPositionEnd>arrow_forward</mat-icon>
+                    </button>
+                    <!-- El máster que se salta las reglas de su campaña: una edad sin ajuste para un PJ, como homebrew. -->
+                    <button type="button" mat-raised-button color="warn" *ngIf="razaParaElegirIgualmente"
+                        (click)="elegirRazaMiradaIgualmente()">
+                        {{textoElegirRazaIgualmente}}
                     </button>
                 </app-creacion-pie>
                 </ng-template>
@@ -150,7 +156,7 @@
                                                 <mat-option *ngIf="campanasLoading" disabled>Cargando campañas...</mat-option>
                                                 <mat-option *ngFor="let campana of Campanas" [value]="campana.Nombre"
                                                     [disabled]="campanaSoloDelMaster(campana)">{{campana.Nombre}}<span
-                                                        *ngIf="campanaSoloDelMaster(campana)"> · solo su máster crea PNJ</span></mat-option>
+                                                        *ngIf="campanaSoloDelMaster(campana)">{{textoCampanaSoloDelMaster}}</span></mat-option>
                                             </mat-select>
                                             <mat-hint *ngIf="campanasLoading">Cargando campañas y tramas disponibles...</mat-hint>
                                         </mat-form-field>
@@ -348,7 +354,7 @@
                 <app-creacion-pie [nota]="notaPasoPlantillas" [aviso]="!!bloqueoPlantillaMirada">
                     <button type="button" mat-stroked-button *ngIf="mostrarBotonFinalizarCreacion"
                         (click)="onFinalizarCreacionTemporal()">
-                        Finalizar aquí
+                        {{textoFinalizarCreacion}}
                         <mat-icon iconPositionEnd>task_alt</mat-icon>
                     </button>
                     <button type="button" mat-stroked-button *ngIf="plantillaMirada as plantilla" (click)="verDetallesPlantilla(plantilla)">
@@ -658,15 +664,17 @@
                         </app-creacion-vista-previa>
                     </div>
                 </app-creacion-cuerpo>
-                <app-creacion-pie [nota]="notaPasoClases" [aviso]="!!claseSeleccionadaActual && !puedeAplicarClaseSeleccionada">
+                <app-creacion-pie [nota]="notaPasoClases" [aviso]="avisoPasoClases">
                     <button type="button" mat-stroked-button *ngIf="mostrarInfoRecomendacionesClase"
                         (click)="abrirInfoRecomendacionesClase($event)" matTooltip="Recordar recomendación de auto-reparto">
                         <mat-icon>info</mat-icon>
                         Recomendaciones
                     </button>
-                    <button type="button" mat-stroked-button *ngIf="mostrarBotonFinalizarCreacion"
+                    <!-- Sin niveles de clase: «Terminar sin clases» (un PNJ, o un PJ de una raza por edades con DG a su edad);
+                         a un PJ normal le sale desactivado, con el motivo en la nota del pie. -->
+                    <button type="button" mat-stroked-button *ngIf="mostrarTerminarEnClases" [disabled]="!mostrarBotonFinalizarCreacion"
                         (click)="onFinalizarCreacionTemporal()">
-                        Finalizar aquí
+                        {{textoFinalizarCreacion}}
                         <mat-icon iconPositionEnd>task_alt</mat-icon>
                     </button>
                     <button type="button" mat-stroked-button *ngIf="claseSeleccionadaActual as item" (click)="verDetallesClase(item.clase)">

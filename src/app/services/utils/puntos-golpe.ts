@@ -12,6 +12,8 @@ import { toInt } from 'src/app/services/utils/normalizacion';
  *   suma y el primer nivel de clase va al máximo.
  * - Los DG de plantilla suman a los PG como los demás.
  * - Las dotes: `bonoPorDg` (+N por DG: todos los DG, también los raciales y los de plantilla) y `bonoPlano` (Dureza).
+ * - Sin ningún DG (un PNJ sin clases de una raza sin DG raciales, como un humano), no hay PG de DG: 0, no el mínimo de 1
+ *   que da cada DG (contrato, «Sin clases» en `docs/publica/DRAGONES_FRONT.md`).
  * - Las caras de cada dado salen de su nombre en los datos («d8» → 8) y la escalera de dados para los cambios de las
  *   plantillas (+1 paso…), del catálogo de tipos de dado ordenado por caras.
  */
@@ -116,5 +118,6 @@ export function calcularPuntosGolpe(entrada: EntradaPuntosGolpe): ResultadoPunto
 
     total += toInt(entrada.bonoPlano);
     maximo += toInt(entrada.bonoPlano);
-    return { total: Math.max(1, total), maximo: Math.max(1, maximo), tiradas, dgsRaciales };
+    const minimo = primerDgPendiente && !entrada.dgsPlantillas.some((grupo) => toInt(grupo.cantidad) > 0) ? 0 : 1;
+    return { total: Math.max(minimo, total), maximo: Math.max(minimo, maximo), tiradas, dgsRaciales };
 }

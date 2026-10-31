@@ -214,8 +214,6 @@ export class PersonajeService {
         const esSinCampana = normalizarTexto(personaje?.Campana, true) === 'sin campana';
         const tieneCampana = !esSinCampana && idCampana > 0;
         const tieneHistoriaCompletaCampana = tieneCampana && idTrama > 0 && idSubtrama > 0;
-        const tieneClaseConNivel = (personaje?.desgloseClases ?? [])
-            .some((entrada) => toInt(entrada?.Nivel) > 0);
         const mapasCatalogo = {
             clases: this.construirMapaNombreId(contextoIds?.catalogos?.clases),
             dominios: this.construirMapaNombreId(contextoIds?.catalogos?.dominios),
@@ -232,8 +230,6 @@ export class PersonajeService {
             throw new Error('La raza del personaje no es válida.');
         if (idTipoCriatura <= 0)
             throw new Error('El tipo de criatura del personaje no es válido.');
-        if (!tieneClaseConNivel)
-            throw new Error('Debes tener al menos una clase con nivel mayor que 0.');
         if (!esSinCampana && !tieneCampana)
             throw new Error('No se pudo resolver la campaña del personaje.');
         if ((idTrama > 0 && idSubtrama <= 0) || (idTrama <= 0 && idSubtrama > 0))
@@ -289,7 +285,8 @@ export class PersonajeService {
             deidad: idDeidad > 0 ? idDeidad : 0,
             idAlineamiento,
             idGenero,
-            puntosGolpe: Math.max(1, toInt(personaje?.Vida)),
+            // Sin ningún DG (un PNJ sin clases ni DG raciales), 0: no tiene PG de DG.
+            puntosGolpe: Math.max(0, toInt(personaje?.Vida)),
             pgsLic: toInt(personaje?.Pgs_lic),
             correr: toInt(personaje?.Correr),
             nadar: toInt(personaje?.Nadar),

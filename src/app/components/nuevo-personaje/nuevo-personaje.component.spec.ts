@@ -5152,17 +5152,23 @@ describe('NuevoPersonajeComponent', () => {
         expect(candidatos[0].evaluacion.razones.some((reason: string) => reason.includes('bloqueada por campaña'))).toBeTrue();
     });
 
-    it('mostrarBotonFinalizarCreacion permite finalizar con clase o con 4+ DGs raciales', () => {
+    it('mostrarBotonFinalizarCreacion: con una clase; sin clases, un PNJ, pero no un PJ de una raza sin edades', () => {
         component.Personaje.desgloseClases = [];
         component.Personaje.Raza.Dgs_adicionales.Cantidad = 0;
         expect(component.mostrarBotonFinalizarCreacion).toBeFalse();
 
         component.Personaje.desgloseClases = [{ Nombre: 'Mago', Nivel: 1 } as any];
         expect(component.mostrarBotonFinalizarCreacion).toBeTrue();
+        expect(component.textoFinalizarCreacion).toBe('Finalizar aquí');
 
+        // Decisión del propietario del 2026-10-31: los 4 DG raciales ya no bastan a un PJ (la API responde `pj_sin_clase`).
         component.Personaje.desgloseClases = [];
         component.Personaje.Raza.Dgs_adicionales.Cantidad = 4;
+        expect(component.mostrarBotonFinalizarCreacion).toBeFalse();
+
+        component.Personaje.tipo = 'pnj';
         expect(component.mostrarBotonFinalizarCreacion).toBeTrue();
+        expect(component.textoFinalizarCreacion).toBe('Terminar sin clases');
     });
 
     it('onFinalizarCreacionTemporal abre selector de PG y realiza tirada inicial', async () => {
@@ -6390,6 +6396,152 @@ describe('NuevoPersonajeComponent', () => {
             expect(component.motivoPnjCampana).toContain('solo su máster puede crear PNJ');
             component.Personaje.Campana = 'Mía';
             expect(component.motivoPnjCampana).toBeNull();
+        });
+
+        it('un PNJ puede terminar sin clases, también sin DG raciales (todo a 0), y la nota del pie lo explica', () => {
+            component.elegirTipoPersonaje('pnj');
+            const humano = crearRazaMock();
+            humano.Dgs_adicionales.Cantidad = 0;
+            component.seleccionarRaza(humano);
+            component.Personaje.desgloseClases = [];
+
+            expect(component.puedeTerminarSinClases).toBeTrue();
+            expect(component.mostrarTerminarEnClases).toBeTrue();
+            expect(component.textoFinalizarCreacion).toBe('Terminar sin clases');
+            expect(component.notaPasoClases).toContain('su raza no tiene DG raciales');
+            expect(component.avisoPasoClases).toBeFalse();
+        });
+
+        it('un PJ de una raza por edades con DG a su edad puede terminar sin clases; un PJ de otra raza, no, con el motivo', async () => {
+            component.elegirTipoPersonaje('pj');
+            component.mirarRaza(razaPorEdades());
+            await esperar();
+            await component.mirarPasoEdad(component.opcionesEdadMirada[2].pasos[0].paso);
+            component.elegirRazaMirada();
+            component.Personaje.desgloseClases = [];
+
+            expect(component.puedeTerminarSinClases).toBeTrue();
+            expect(component.notaPasoClases).toContain('sale solo de sus 13 DG raciales');
+
+            nuevoPSvc.reiniciar();
+            component.Personaje = nuevoPSvc.PersonajeCreacion;
+            component.elegirTipoPersonaje('pj');
+            component.seleccionarRaza(crearRazaMock());
+            component.Personaje.desgloseClases = [];
+            expect(component.puedeTerminarSinClases).toBeFalse();
+            expect(component.mostrarBotonFinalizarCreacion).toBeFalse();
+            // El botón sale desactivado y el motivo, en tono de aviso, en la nota del pie.
+            expect(component.mostrarTerminarEnClases).toBeTrue();
+            expect(component.notaPasoClases).toContain('Un PJ necesita al menos un nivel de clase');
+            expect(component.avisoPasoClases).toBeTrue();
+        });
+
+        it('terminar sin clases pide los idiomas adicionales y abre la sesión del lanzamiento racial; al cerrarla, los PG', async () => {
+            component.elegirTipoPersonaje('pnj');
+            component.seleccionarRaza(crearRazaMock());
+            component.Personaje.desgloseClases = [];
+            nuevoPSvc.actualizarPasoActual('clases');
+            let pendiente = true;
+            let activa = false;
+            spyOn(nuevoPSvc, 'getIdiomasPendientesSinClases').and.returnValues({ cantidad: 2, motivo: '' }, { cantidad: 0, motivo: '' });
+            const marcar = spyOn(nuevoPSvc, 'marcarIdiomasInicialesConcedidos').and.callThrough();
+            const idiomas = spyOn(component, 'abrirSelectorIdiomasIniciales').and.resolveTo(true);
+            spyOn(nuevoPSvc, 'hayLanzamientoRacialPendiente').and.callFake(() => pendiente);
+            const iniciar = spyOn(nuevoPSvc, 'iniciarSesionLanzamientoRacial').and.callFake(() => {
+                pendiente = false;
+                activa = true;
+                return [];
+            });
+            spyOn(nuevoPSvc, 'getConjurosSesionActual').and.callFake(() => ({
+                activa,
+                indiceEntradaActual: 0,
+                returnStep: 'clases',
+                entradas: activa ? [{ claseObjetivo: { id: 9, nombre: 'Hechicero' } } as any] : [],
+                avisos: [],
+            }));
+            spyOn(nuevoPSvc, 'puedeCerrarSesionConjuros').and.returnValue(true);
+            spyOn(nuevoPSvc, 'cerrarSesionConjuros').and.callFake(() => {
+                activa = false;
+                return 'clases';
+            });
+            spyOn(nuevoPSvc, 'calcularVidaFinalAleatoria').and.returnValue({ total: 0, maximo: 0, detalle: {} as any });
+
+            await component.onFinalizarCreacionTemporal();
+
+            expect(idiomas).toHaveBeenCalledOnceWith(2);
+            expect(marcar).toHaveBeenCalledTimes(1);
+            expect(iniciar).toHaveBeenCalledOnceWith('clases');
+            expect(component.flujo.pasoActual).toBe('conjuros');
+            expect(component.modalSelectorPuntosGolpeAbierto).toBeFalse();
+
+            component.continuarDesdeConjuros();
+            await esperar();
+
+            expect(component.flujo.pasoActual).toBe('clases');
+            expect(iniciar).toHaveBeenCalledTimes(1);
+            expect(idiomas).toHaveBeenCalledTimes(1);
+            expect(component.modalSelectorPuntosGolpeAbierto).toBeTrue();
+        });
+
+        it('el máster puede elegir para un PJ una edad sin ajuste igualmente: homebrew y solo en una campaña que dirija', async () => {
+            const ajena = { Id: 5, Nombre: 'Ajena', CampaignRole: 'jugador', Tramas: [] } as Campana;
+            const mia = { Id: 6, Nombre: 'Mía', CampaignRole: 'master', Tramas: [] } as Campana;
+            component.Campanas = [ajena, mia];
+            component.elegirTipoPersonaje('pj');
+            component.mirarRaza(razaPorEdades());
+            await esperar();
+            expect(component.puedeElegirEdadSinAjusteIgualmente).toBeTrue();
+
+            await component.mirarPasoEdad(component.opcionesEdadMirada[3].pasos[0].paso);
+            expect(component.razaParaElegir).toBeNull();
+            expect(component.razaParaElegirIgualmente?.Paso_edad?.Id).toBe(15);
+            expect(component.textoElegirRazaIgualmente).toBe('Elegir Dragón rojo (juvenil) igualmente');
+            expect(component.notaPieRaza.aviso).toBeTrue();
+            expect(component.notaPieRaza.texto).toContain('Como máster puedes elegirla igualmente');
+
+            const swal = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+            await component.elegirRazaMiradaIgualmente();
+            const opciones = swal.calls.mostRecent().args[0] as any;
+            expect(opciones.html).toContain('El manual no da ajuste de nivel a esta edad; solo como PNJ.');
+            expect(opciones.html).toContain('Homebrew');
+
+            expect(component.Personaje.IdPasoEdad).toBe(15);
+            expect(component.pjEnEdadSinAjuste).toBeTrue();
+            expect(component.Personaje.Oficial).toBeFalse();
+            expect(component.motivoEdadSinAjusteCampana).toContain('Elige una campaña que dirijas.');
+            expect(component.motivosBloqueoBasicos.some((m) => m.includes('Elige una campaña que dirijas.'))).toBeTrue();
+            expect(component.campanaSoloDelMaster(ajena)).toBeTrue();
+            expect(component.campanaSoloDelMaster(mia)).toBeFalse();
+            expect(component.textoCampanaSoloDelMaster).toBe(' · solo su máster se salta la edad');
+            component.Personaje.Campana = 'Mía';
+            expect(component.motivoEdadSinAjusteCampana).toBeNull();
+        });
+
+        it('quien no dirige ninguna campaña no puede elegir para un PJ una edad sin ajuste', async () => {
+            component.Campanas = [{ Id: 5, Nombre: 'Ajena', CampaignRole: 'jugador', Tramas: [] } as Campana];
+            component.elegirTipoPersonaje('pj');
+            component.mirarRaza(razaPorEdades());
+            await esperar();
+            await component.mirarPasoEdad(component.opcionesEdadMirada[3].pasos[0].paso);
+
+            expect(component.puedeElegirEdadSinAjusteIgualmente).toBeFalse();
+            expect(component.razaParaElegirIgualmente).toBeNull();
+            expect(component.notaPieRaza).toEqual({ texto: 'El manual no da ajuste de nivel a esta edad; solo como PNJ.', aviso: true });
+        });
+
+        it('el `pj_sin_clase` de la API se enseña con su texto', async () => {
+            component.seleccionarRaza(crearRazaMock());
+            component.Personaje.Nombre = 'Aldric';
+            component.Personaje.desgloseClases = [];
+            const texto = 'Un PJ necesita al menos un nivel de clase; sin clases solo puede ser un PNJ o una raza que se juega por edades.';
+            personajeSvcMock.crearPersonajeApiDesdeCreacion.and.rejectWith(new ProfileApiError(texto, 'pj_sin_clase', 400, 'colecciones.clases'));
+            const swal = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+            await component.onConfirmarSelectorVisibilidad(false);
+
+            const opciones = swal.calls.mostRecent().args[0] as any;
+            expect(opciones.title).toBe('No se pudo crear el personaje');
+            expect(opciones.text).toBe(texto);
         });
 
         it('el error del contrato al guardar se enseña con su texto y sin hablar de SQL', async () => {

@@ -392,6 +392,17 @@ tr.creacion-fila-abierta td:first-child, .creacion-fila-abierta:not(tr)
     border-color: $active
     background: $ficha-elegida
 
+// «Solo PNJ», pero el máster que se salta las reglas de su campaña puede mirarla y elegirla igualmente: atenuada, con la
+// raya discontinua, y se puede pulsar.
+.creacion-edad__categoria--saltable
+    border-style: dashed
+    border-color: $ficha-texto-suave
+    opacity: .7
+
+.creacion-edad__categoria--saltable.creacion-edad__categoria--elegida
+    border-color: $active
+    opacity: 1
+
 .creacion-edad__nombre
     font-weight: 500
 

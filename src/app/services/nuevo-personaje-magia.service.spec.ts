@@ -891,12 +891,73 @@ describe('Lanzamiento racial (Draconomicón, pág. 24): la raza lanza como una c
         expect(service.getConjurosSesionActual().entradas[0].elegiblesIds.sort()).toEqual([201, 202, 203, 301, 302]);
     });
 
+    it('sin clases, el lanzamiento racial abre su propia sesión, que vuelve al paso en el que estaba', () => {
+        const service = preparar({ Clase: { Id: 7, Nombre: 'Hechicero' }, Nivel: 2, Listas: [] });
+        expect(service.hayLanzamientoRacialPendiente()).toBeTrue();
+
+        expect(service.iniciarSesionLanzamientoRacial('clases')).toEqual([]);
+        const sesion = service.getConjurosSesionActual();
+        expect(sesion.activa).toBeTrue();
+        expect(sesion.entradas.map((e) => [e.claseObjetivo.nombre, e.nivelLanzadorPrevio, e.nivelLanzadorActual])).toEqual([['Hechicero', 0, 2]]);
+        expect(sesion.entradas[0].cupoPendiente.total).toBe(3);
+        expect(service.hayLanzamientoRacialPendiente()).toBeFalse();
+
+        service.seleccionarConjuroSesion(202);
+        service.seleccionarConjuroSesion(203);
+        service.seleccionarConjuroSesion(201);
+        expect(service.cerrarSesionConjuros()).toBe('clases');
+        expect(service.PersonajeCreacion.Conjuros.map((c) => c.Id).sort()).toEqual([201, 202, 203]);
+
+        // Si después toma un nivel de hechicero, sus niveles se suman encima y el racial no se repite.
+        service.aplicarSiguienteNivelClase(hechicero);
+        expect(service.getConjurosSesionActual().entradas.map((e) => [e.nivelLanzadorPrevio, e.nivelLanzadorActual])).toEqual([[2, 3]]);
+    });
+
+    it('sin lanzamiento racial no hay nada pendiente ni sesión que abrir', () => {
+        const service = preparar(null);
+        expect(service.hayLanzamientoRacialPendiente()).toBeFalse();
+        service.iniciarSesionLanzamientoRacial('clases');
+        expect(service.getConjurosSesionActual().activa).toBeFalse();
+    });
+
     it('sin lanzamiento racial (o con nivel 0 a su edad) no hay sesión de conjuros para un guerrero', () => {
         [null, { Clase: { Id: 7, Nombre: 'Hechicero' }, Nivel: 0, Listas: [] }].forEach((lanzamiento) => {
             const service = preparar(lanzamiento);
             service.aplicarSiguienteNivelClase(guerrero);
             expect(service.getConjurosSesionActual().activa).toBeFalse();
         });
+    });
+});
+
+describe('Los idiomas adicionales del primer nivel, con y sin clases', () => {
+    function preparar(): NuevoPersonajeService {
+        const service = new NuevoPersonajeService();
+        service.setCatalogoTiposCriatura([TIPO]);
+        service.seleccionarRaza(crearRaza());
+        service.aplicarCaracteristicasGeneradas({ Fuerza: 10, Destreza: 10, Constitucion: 10, Inteligencia: 14, Sabiduria: 10, Carisma: 10 });
+        return service;
+    }
+
+    it('sin clases se piden al terminar, una sola vez, y ya no vuelven con el primer nivel de clase', () => {
+        const service = preparar();
+        const guerrero = clase({ Id: 1, Nombre: 'Guerrero', Desglose_niveles: [nivel(1)] });
+        service.setCatalogoClases([guerrero]);
+        expect(service.getIdiomasPendientesSinClases().cantidad).toBe(2);
+
+        service.marcarIdiomasInicialesConcedidos();
+        expect(service.getIdiomasPendientesSinClases().cantidad).toBe(0);
+        service.aplicarSiguienteNivelClase(guerrero);
+        expect(service.getIdiomasPendientesPostClase().cantidad).toBe(0);
+    });
+
+    it('con clases se piden con el primer nivel, no al terminar', () => {
+        const service = preparar();
+        const guerrero = clase({ Id: 1, Nombre: 'Guerrero', Desglose_niveles: [nivel(1)] });
+        service.setCatalogoClases([guerrero]);
+        service.aplicarSiguienteNivelClase(guerrero);
+
+        expect(service.getIdiomasPendientesPostClase().cantidad).toBe(2);
+        expect(service.getIdiomasPendientesSinClases().cantidad).toBe(0);
     });
 });
 

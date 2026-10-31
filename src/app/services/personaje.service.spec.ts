@@ -583,6 +583,18 @@ describe('PersonajeService', () => {
         expect(pnj.personaje.idPasoEdad).toBe(15);
     });
 
+    it('sin clases también se manda (la API decide con `pj_sin_clase`), y sin ningún DG los PG van a 0', () => {
+        const service = crearServicio({ post: jasmine.createSpy('post') } as any);
+        const pj = crearPersonajeMock();
+        pj.tipo = 'pnj';
+        pj.desgloseClases = [];
+        pj.Vida = 0;
+
+        const payload = service.construirPayloadCreacionDesdePersonaje(pj, { idCampana: 1, idTrama: 1, idSubtrama: 1 });
+        expect(payload.personaje.puntosGolpe).toBe(0);
+        expect(payload.personaje.tipo).toBe('pnj');
+    });
+
     it('mapApiDetalleToPersonaje lee el tipo, el VD, la edad y el lanzamiento racial de la ficha', () => {
         const service = crearServicio({} as any);
         const diarios = [{ nivel: 0, base: 6, adicionales: 0, especialista: 0, dominio: 0, total: 6, puedeLanzar: true }];

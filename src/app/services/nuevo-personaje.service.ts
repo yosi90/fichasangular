@@ -948,6 +948,7 @@ interface NuevoPersonajeDraftV1 {
     secuenciaAumentoPendiente: number;
     bonusNivelLanzadorPorClase: Record<string, number>;
     nivelLanzamientoRacialAplicado?: number;
+    idiomasInicialesConcedidos?: boolean;
     clasesCerradasPorMulticlase?: string[];
     progresionLanzadorSelecciones?: PersonajeProgresionLanzadorSeleccionDto[];
     idsEspecialesInternosActivos: number[];
@@ -1034,6 +1035,11 @@ export class NuevoPersonajeService {
      * 0 hasta la primera sesión de conjuros, en la que se eligen los conjuros de ese nivel.
      */
     private nivelLanzamientoRacialAplicado = 0;
+    /**
+     * Ya se eligieron los idiomas adicionales por Inteligencia del primer nivel: con el primer nivel de clase o, sin
+     * clases, al terminar (`getIdiomasPendientesSinClases`). Así no se piden dos veces.
+     */
+    private idiomasInicialesConcedidos = false;
     /**
      * Las clases con `Multiclase_restringida` (monje y paladín, MJ cap. 3) en las que ya no puede subir: el personaje ganó
      * un nivel de otra clase después de tenerlas. Por su nombre normalizado, como `desgloseClases`.
@@ -1348,6 +1354,7 @@ export class NuevoPersonajeService {
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
         this.nivelLanzamientoRacialAplicado = 0;
+        this.idiomasInicialesConcedidos = false;
         this.clasesCerradasPorMulticlase.clear();
         this.progresionLanzadorSelecciones = [];
         this.dotesPendientes = [];
@@ -1500,6 +1507,7 @@ export class NuevoPersonajeService {
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
         this.nivelLanzamientoRacialAplicado = 0;
+        this.idiomasInicialesConcedidos = false;
         this.clasesCerradasPorMulticlase.clear();
         this.progresionLanzadorSelecciones = [];
         this.aumentosPendientesCaracteristica = [];
@@ -2020,7 +2028,7 @@ export class NuevoPersonajeService {
 
     getIdiomasPendientesPostClase(): IdiomasPendientesPostClase {
         const nivelClases = this.getNivelClasesActual();
-        if (nivelClases !== 1) {
+        if (nivelClases !== 1 || this.idiomasInicialesConcedidos) {
             return {
                 cantidad: 0,
                 motivo: 'Solo se eligen idiomas adicionales en el primer nivel global del personaje',
@@ -2032,6 +2040,24 @@ export class NuevoPersonajeService {
             cantidad,
             motivo: 'Idiomas iniciales por modificador de Inteligencia',
         };
+    }
+
+    /**
+     * Sin niveles de clase (un PNJ o un PJ de una raza por edades que se queda en sus DG raciales), los idiomas adicionales
+     * por Inteligencia del primer nivel se eligen al terminar, una sola vez.
+     */
+    getIdiomasPendientesSinClases(): IdiomasPendientesPostClase {
+        if (this.getNivelClasesActual() > 0 || this.idiomasInicialesConcedidos)
+            return { cantidad: 0, motivo: 'Los idiomas adicionales ya se eligieron o se eligen con el primer nivel de clase' };
+        return {
+            cantidad: Math.max(0, toNumber(this.personajeCreacion.ModInteligencia) + EXTRA_IDIOMAS_INICIALES),
+            motivo: 'Idiomas iniciales por modificador de Inteligencia',
+        };
+    }
+
+    /** Los idiomas adicionales del primer nivel ya están elegidos: no se vuelven a pedir. */
+    marcarIdiomasInicialesConcedidos(): void {
+        this.idiomasInicialesConcedidos = true;
     }
 
     iniciarDistribucionHabilidadesPorRazaDG(): boolean {
@@ -7651,6 +7677,29 @@ export class NuevoPersonajeService {
         return avisos;
     }
 
+    /** Si la raza lanza conjuros (`Lanzamiento`, el de su edad) y aún no se eligieron los de su nivel racial. */
+    hayLanzamientoRacialPendiente(): boolean {
+        const racial = this.lanzamientoRacialActual();
+        return !!racial && racial.nivel - this.nivelLanzamientoRacialAplicado >= 1;
+    }
+
+    /**
+     * Sin niveles de clase (un PNJ, o un dragón PJ que se queda en sus pasos de edad), el lanzamiento racial no llega con
+     * el primer nivel: se abre una sesión de conjuros solo con él, con la tabla de su clase al nivel de su raza, que vuelve
+     * a `returnStep` al cerrarla. Devuelve los avisos; si no hay nada que elegir, la sesión no queda activa.
+     */
+    iniciarSesionLanzamientoRacial(returnStep: StepNuevoPersonaje): string[] {
+        const { entrada, avisos } = this.aplicarLanzamientoRacialPendiente(null, 0);
+        this.estadoFlujo.conjuros = {
+            activa: !!entrada,
+            indiceEntradaActual: 0,
+            returnStep,
+            entradas: entrada ? [entrada] : [],
+            avisos: [...avisos],
+        };
+        return avisos;
+    }
+
     /** La clase del lanzamiento racial de la raza elegida (del catálogo) y su nivel a su edad; `null` si no lanza. */
     private lanzamientoRacialActual(): { clase: Clase | null; nombre: string; nivel: number; } | null {
         const lanzamiento = this.razaSeleccionada?.Lanzamiento ?? null;
@@ -7663,10 +7712,11 @@ export class NuevoPersonajeService {
 
     /**
      * Suma el nivel del lanzamiento racial que falta al nivel de lanzador de su clase y crea la entrada de la sesión con los
-     * conjuros que da (de 0, o de los niveles reales que ya tuviera, a ese nivel más). Solo una vez por nivel racial.
+     * conjuros que da (de 0, o de los niveles reales que ya tuviera, a ese nivel más). Solo una vez por nivel racial. Sin
+     * clase aplicada (`null`), con los niveles que ya tenga de su clase (ninguno, si no tiene clases).
      */
     private aplicarLanzamientoRacialPendiente(
-        claseAplicada: Clase,
+        claseAplicada: Clase | null,
         nivelAplicado: number
     ): { entrada: ConjurosSesionStateEntrada | null; avisos: string[]; } {
         const racial = this.lanzamientoRacialActual();
@@ -9208,6 +9258,7 @@ export class NuevoPersonajeService {
             secuenciaAumentoPendiente: Math.max(1, toInt(this.secuenciaAumentoPendiente)),
             bonusNivelLanzadorPorClase: this.clonarProfundo(this.bonusNivelLanzadorPorClase),
             nivelLanzamientoRacialAplicado: Math.max(0, toInt(this.nivelLanzamientoRacialAplicado)),
+            idiomasInicialesConcedidos: this.idiomasInicialesConcedidos,
             clasesCerradasPorMulticlase: Array.from(this.clasesCerradasPorMulticlase.values()),
             progresionLanzadorSelecciones: this.getProgresionLanzadorPersistible()?.selecciones ?? [],
             idsEspecialesInternosActivos: Array.from(this.idsEspecialesInternosActivos.values()),
@@ -9286,6 +9337,7 @@ export class NuevoPersonajeService {
         this.secuenciaAumentoPendiente = Math.max(1, toInt(borrador.secuenciaAumentoPendiente));
         this.bonusNivelLanzadorPorClase = this.clonarProfundo(borrador.bonusNivelLanzadorPorClase ?? {});
         this.nivelLanzamientoRacialAplicado = Math.max(0, toInt(borrador.nivelLanzamientoRacialAplicado));
+        this.idiomasInicialesConcedidos = borrador.idiomasInicialesConcedidos === true;
         this.clasesCerradasPorMulticlase = new Set((borrador.clasesCerradasPorMulticlase ?? []).map((nombre) => normalizarTexto(nombre)));
         this.progresionLanzadorSelecciones = this.normalizarSeleccionesProgresionLanzadorBorrador(
             borrador.progresionLanzadorSelecciones

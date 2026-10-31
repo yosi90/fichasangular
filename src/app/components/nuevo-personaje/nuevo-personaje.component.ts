@@ -132,8 +132,8 @@ import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarn
 import { AlineamientoParaFusiones, CODIGOS_FALLO_FORMACION, FalloFormacion } from 'src/app/services/utils/incarnum';
 import { PasoCreacionId, lineaPersonajeCreacion, pasoCreacionDeLaPestana, textoContinuarCreacion } from './marco';
 import {
-    ContextoEdad, nombreEdadEnFrase, OpcionCategoriaEdad, OpcionPasoEdad, opcionesEdad, pasoEdadInicial, rangoEdadPaso, razaConEdad,
-    razaPorEdades, textoRangoEdad
+    ContextoEdad, MOTIVO_PJ_SIN_CLASE, nombreEdadEnFrase, OpcionCategoriaEdad, OpcionPasoEdad, opcionesEdad, pasoEdadInicial,
+    puedeQuedarseSinClases, rangoEdadPaso, razaConEdad, razaPorEdades, textoRangoEdad
 } from 'src/app/services/utils/razas-por-edades';
 import { esPnj, TipoPersonaje, tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
 import { codigoDeError, mensajeDeError } from 'src/app/services/utils/error-api';
@@ -336,9 +336,12 @@ interface SelectorCompaneroBloqueadoItem {
     nivelMinimoRequerido: number | null;
 }
 
-/** Los errores de `POST /personajes/add` del tipo (PJ o PNJ) y de la edad (`docs/publica/DRAGONES_FRONT.md`). */
+/**
+ * Los errores de `POST /personajes/add` del tipo (PJ o PNJ), de la edad y del PJ sin clases (`docs/publica/DRAGONES_FRONT.md`):
+ * traen su frase, que se enseña tal cual.
+ */
 const CODIGOS_FALLO_TIPO_Y_EDAD: readonly string[] = [
-    'tipo_personaje_no_valido', 'paso_edad_obligatorio', 'paso_edad_no_valido', 'paso_edad_no_jugable', 'pnj_solo_master',
+    'tipo_personaje_no_valido', 'paso_edad_obligatorio', 'paso_edad_no_valido', 'paso_edad_no_jugable', 'pnj_solo_master', 'pj_sin_clase',
 ];
 
 const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
@@ -665,6 +668,8 @@ export class NuevoPersonajeComponent {
     incarnumFusiones: Fusion[] = [];
     /** Tras un error de la API con la formación, continuar vuelve a guardar sin repetir los PG ni la visibilidad. */
     private formacionReintento = false;
+    /** La sesión de conjuros del lanzamiento racial sin clases se abrió al terminar: al cerrarla, se sigue terminando. */
+    private finalizarTrasLanzamientoRacial = false;
     private incarnumCapacidad: CapacidadEsencia[] = [];
     private incarnumCache: { firma: string; bloque: PersonajeIncarnum | null; tuPersonaje: IncarnumTuPersonaje | null; } =
         { firma: '', bloque: null, tuPersonaje: null };
@@ -1040,6 +1045,59 @@ export class NuevoPersonajeComponent {
         return this.razaMiradaAEdad;
     }
 
+    /**
+     * El máster que se salta las reglas de su campaña (`overrideReglasCampana`) puede elegir para un PJ una edad sin ajuste,
+     * y el personaje queda homebrew (contrato de los dragones jugables). La campaña se elige en Básicos: hace falta que
+     * dirija alguna (o, si ya está elegida, que sea su máster).
+     */
+    get puedeElegirEdadSinAjusteIgualmente(): boolean {
+        if (this.esPnjCreacion)
+            return false;
+        if (this.hasSelectedCampaignContext)
+            return this.esMasterDeLaCampanaElegida;
+        return this.Campanas.some((campana) => campana?.CampaignRole === 'master');
+    }
+
+    /** La raza resuelta a una edad sin ajuste que el máster puede elegir igualmente para un PJ; `null` si no es el caso. */
+    get razaParaElegirIgualmente(): Raza | null {
+        if (!this.razaMirada || !this.razaMiradaPorEdades || !this.puedeElegirEdadSinAjusteIgualmente)
+            return null;
+        const opcion = this.opcionPasoEdadMirado;
+        if (!opcion || !opcion.bloqueado || !opcion.saltable || this.cargandoRazaAEdad || this.razaMiradaAEdadPasoId !== opcion.paso.Id)
+            return null;
+        return this.razaMiradaAEdad;
+    }
+
+    /** «Elegir Dragón rojo (adulto) igualmente». */
+    get textoElegirRazaIgualmente(): string {
+        return `Elegir ${razaConEdad(this.razaMirada?.Nombre, this.opcionPasoEdadMirado?.paso.Categoria.Nombre)} igualmente`;
+    }
+
+    /**
+     * Elige para un PJ una edad sin ajuste, con el aviso de homebrew de siempre (como una plantilla sin sus requisitos). En
+     * Básicos solo valdrán las campañas que dirige, y la creación manda `overrideReglasCampana`.
+     */
+    async elegirRazaMiradaIgualmente(): Promise<void> {
+        const raza = this.razaParaElegirIgualmente;
+        const opcion = this.opcionPasoEdadMirado;
+        if (!raza || !opcion)
+            return;
+        const confirmacion = await Swal.fire({
+            icon: 'warning',
+            title: `Elegir ${razaConEdad(this.razaMirada?.Nombre, opcion.paso.Categoria.Nombre)} como personaje jugador`,
+            html: `<ul style="text-align:left; margin-top: 4px;"><li>${opcion.motivo ?? ''}</li><li>${AVISO_EDAD_SIN_AJUSTE_MASTER}</li></ul>${AVISO_HOMEBREW_REGLA_SALTADA}`,
+            showCancelButton: true,
+            confirmButtonText: 'Aceptar y elegirla',
+            cancelButtonText: 'Cancelar',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+        if (!confirmacion.isConfirmed || this.razaParaElegirIgualmente !== raza)
+            return;
+        this.seleccionarRaza(raza);
+    }
+
     /** «Elegir Dragón rojo (joven) y continuar». */
     get textoElegirRaza(): string {
         if (!this.razaMirada)
@@ -1055,7 +1113,15 @@ export class NuevoPersonajeComponent {
         if (this.razaMiradaPorEdades) {
             if (this.errorRazaAEdad)
                 return { texto: this.errorRazaAEdad, aviso: true };
-            if (!this.opcionPasoEdadMirado)
+            const opcion = this.opcionPasoEdadMirado;
+            if (opcion?.bloqueado)
+                return {
+                    texto: opcion.saltable && this.puedeElegirEdadSinAjusteIgualmente
+                        ? `${opcion.motivo} Como máster puedes elegirla igualmente: será homebrew y solo podrás guardarlo en una campaña que dirijas.`
+                        : `${opcion.motivo ?? ''}`,
+                    aviso: true,
+                };
+            if (!opcion)
                 return { texto: 'Esta raza no tiene ninguna edad que puedas elegir como personaje jugador; créala como PNJ.', aviso: true };
             return this.esPnjCreacion
                 ? { texto: 'Creando un PNJ: todas las edades, sin la política de la campaña.', aviso: false }
@@ -1469,12 +1535,38 @@ export class NuevoPersonajeComponent {
             .reduce((acc, entrada) => acc + Math.max(0, Number(entrada?.Nivel ?? 0)), 0);
     }
 
-    get mostrarBotonFinalizarCreacion(): boolean {
-        const dgsRaciales = Math.max(
+    /** Los DG raciales de su raza (a su edad, en una raza por edades). */
+    private get dgsRacialesCreacion(): number {
+        return Math.max(
             0,
-            Number(this.Personaje?.Raza?.Dgs_adicionales?.Cantidad ?? this.razaSeleccionada?.Dgs_adicionales?.Cantidad ?? 0)
+            Number(this.Personaje?.Raza?.Dgs_adicionales?.Cantidad ?? this.razaSeleccionada?.Dgs_adicionales?.Cantidad ?? 0) || 0
         );
-        return this.totalNivelesClaseActual > 0 || dgsRaciales >= 4;
+    }
+
+    /**
+     * Si puede terminar sin niveles de clase (decisión del propietario del 2026-10-31, `puedeQuedarseSinClases`): un PNJ
+     * siempre; un PJ, solo de una raza por edades con DG raciales a su edad. Sin clases, todo sale de sus DG raciales.
+     */
+    get puedeTerminarSinClases(): boolean {
+        return puedeQuedarseSinClases({
+            tipo: this.tipoPersonajeCreacion,
+            porEdades: razaPorEdades(this.razaSeleccionada) || !!this.Personaje?.CategoriaEdad,
+            dgsRaciales: this.dgsRacialesCreacion,
+        });
+    }
+
+    get mostrarBotonFinalizarCreacion(): boolean {
+        return this.totalNivelesClaseActual > 0 || this.puedeTerminarSinClases;
+    }
+
+    /** «Terminar sin clases» mientras no tiene ningún nivel de clase; después, «Finalizar aquí». */
+    get textoFinalizarCreacion(): string {
+        return this.totalNivelesClaseActual < 1 ? 'Terminar sin clases' : 'Finalizar aquí';
+    }
+
+    /** En el paso de clases, sin niveles: el botón de terminar sale también desactivado si no puede (con su motivo). */
+    get mostrarTerminarEnClases(): boolean {
+        return this.mostrarBotonFinalizarCreacion || this.totalNivelesClaseActual < 1;
     }
 
     get incluirHomebrewPlantillasEfectivo(): boolean {
@@ -1545,23 +1637,50 @@ export class NuevoPersonajeComponent {
             && !this.tieneHistoriaCampanaIncompleta
             && !this.hasCampaignBlockersForBasicos()
             && !this.motivoPnjCampana
+            && !this.motivoEdadSinAjusteCampana
             && !this.motivoEdadFueraDeCategoria;
+    }
+
+    /** Si es el máster de la campaña elegida (por su papel en la lista de campañas o, sin él, por el máster activo). */
+    private get esMasterDeLaCampanaElegida(): boolean {
+        const campana = this.Campanas.find((c) => c.Nombre === this.Personaje?.Campana);
+        return campana?.CampaignRole
+            ? campana.CampaignRole === 'master'
+            : (!this.selectedCampaignPolicyResolved || this.isSelectedCampaignActiveMaster);
     }
 
     /** En una campaña, solo su máster crea PNJ (`pnj_solo_master`): el motivo si la campaña elegida no es suya. */
     get motivoPnjCampana(): string | null {
         if (!this.esPnjCreacion || !this.hasSelectedCampaignContext)
             return null;
-        const campana = this.Campanas.find((c) => c.Nombre === this.Personaje?.Campana);
-        const esMaster = campana?.CampaignRole
-            ? campana.CampaignRole === 'master'
-            : (!this.selectedCampaignPolicyResolved || this.isSelectedCampaignActiveMaster);
-        return esMaster ? null : 'En una campaña, solo su máster puede crear PNJ. Elige otra campaña o «Sin campaña».';
+        return this.esMasterDeLaCampanaElegida ? null : 'En una campaña, solo su máster puede crear PNJ. Elige otra campaña o «Sin campaña».';
     }
 
-    /** Si la campaña del selector no deja crear un PNJ en ella (no es su máster). */
+    /** Un PJ en una edad sin ajuste de nivel (elegida igualmente en el paso Raza): homebrew y solo para el máster. */
+    get pjEnEdadSinAjuste(): boolean {
+        return !this.esPnjCreacion && this.Personaje?.CategoriaEdad?.jugable === false;
+    }
+
+    /**
+     * Un PJ en una edad sin ajuste solo lo guarda el máster de su campaña saltándose sus reglas (`overrideReglasCampana`;
+     * sin campaña, la API responde `paso_edad_no_jugable`): el motivo si no hay campaña o no es suya.
+     */
+    get motivoEdadSinAjusteCampana(): string | null {
+        if (!this.pjEnEdadSinAjuste)
+            return null;
+        if (this.hasSelectedCampaignContext && this.esMasterDeLaCampanaElegida)
+            return null;
+        return `${MOTIVO_EDAD_SIN_AJUSTE_CAMPANA} Elige una campaña que dirijas.`;
+    }
+
+    /** Si la campaña del selector no vale (no es su máster): para un PNJ y para un PJ en una edad sin ajuste. */
     campanaSoloDelMaster(campana: Campana): boolean {
-        return this.esPnjCreacion && !!campana?.CampaignRole && campana.CampaignRole !== 'master';
+        return (this.esPnjCreacion || this.pjEnEdadSinAjuste) && !!campana?.CampaignRole && campana.CampaignRole !== 'master';
+    }
+
+    /** Lo que se lee junto a una campaña que no vale: « · solo su máster crea PNJ». */
+    get textoCampanaSoloDelMaster(): string {
+        return this.esPnjCreacion ? ' · solo su máster crea PNJ' : ' · solo su máster se salta la edad';
     }
 
     /** En una raza por edades, los años que puede tener con el paso elegido. */
@@ -1606,6 +1725,8 @@ export class NuevoPersonajeComponent {
             motivos.push(this.motivoEdadFueraDeCategoria);
         if (this.motivoPnjCampana)
             motivos.push(this.motivoPnjCampana);
+        if (this.motivoEdadSinAjusteCampana)
+            motivos.push(this.motivoEdadSinAjusteCampana);
         if (!this.esNumeroValidoPositivo(this.Personaje.Peso))
             motivos.push('El peso debe ser un número mayor que 0.');
         if (!this.esNumeroValidoPositivo(this.Personaje.Altura))
@@ -2142,7 +2263,7 @@ export class NuevoPersonajeComponent {
     /**
      * Si el personaje es oficial (decisión del propietario del 2026-10-17): ningún elemento homebrew (raza, raza base,
      * clases, plantillas, dotes, raciales, idiomas, familiar, compañero, ventajas; `motivosHomebrewPersonaje`) y ninguna
-     * restricción saltada (alineamiento, edad, peso, altura, deidad). Se recalcula entero cada vez, así que todo lo que lo
+     * restricción saltada (alineamiento, edad, peso, altura, deidad, un PJ en una edad sin ajuste). Se recalcula entero cada vez, así que todo lo que lo
      * vuelve homebrew tiene que estar aquí (antes, una dote o una plantilla homebrew no contaba y el recálculo lo volvía
      * oficial).
      */
@@ -2162,7 +2283,8 @@ export class NuevoPersonajeComponent {
             && !tieneConflictoDuroConfirmado
             && !this.hardAlignmentClassOverrideConfirmed
             && !this.homebrewPorClaseAplicada
-            && !this.haySaltoRequisitosPlantilla;
+            && !this.haySaltoRequisitosPlantilla
+            && !this.pjEnEdadSinAjuste;
         this.refreshBasicosDerivedState(evaluacion);
     }
 
@@ -3620,6 +3742,15 @@ export class NuevoPersonajeComponent {
     /** La nota del pie del paso de clases: qué hacer, o por qué no se puede elegir la que se mira. */
     get notaPasoClases(): string {
         const item = this.claseSeleccionadaActual;
+        if (!item && this.totalNivelesClaseActual < 1) {
+            if (!this.puedeTerminarSinClases)
+                return `${MOTIVO_PJ_SIN_CLASE} Pulsa una clase para ver a la derecha su siguiente nivel antes de elegirla.`;
+            const dgs = this.dgsRacialesCreacion;
+            const deDonde = dgs > 0
+                ? `sale solo de sus ${dgs} DG raciales`
+                : 'su raza no tiene DG raciales: ataque base, salvaciones y PG quedan a 0';
+            return `Sin clases, ${deDonde}. Termina con «Terminar sin clases» o pulsa una clase para verla a la derecha.`;
+        }
         if (!item)
             return 'Pulsa una clase para ver a la derecha su siguiente nivel antes de elegirla.';
         if (!item.puedeAplicarse)
@@ -3627,6 +3758,12 @@ export class NuevoPersonajeComponent {
                 ? `No puedes elegirla: ${item.campaignBlockedReason}.`
                 : 'No puedes elegirla: no cumple sus requisitos.';
         return 'Elígela con «Elegir y continuar». Un paso hecho no se puede deshacer.';
+    }
+
+    /** La nota del pie de clases va en tono de aviso si no puede elegir la que mira o si un PJ no puede quedarse sin clases. */
+    get avisoPasoClases(): boolean {
+        const item = this.claseSeleccionadaActual;
+        return item ? !this.puedeAplicarClaseSeleccionada : this.totalNivelesClaseActual < 1 && !this.puedeTerminarSinClases;
     }
 
     onFiltroClasesTextoChange(value: string): void {
@@ -3816,6 +3953,7 @@ export class NuevoPersonajeComponent {
             const completo = await this.abrirSelectorIdiomasIniciales(idiomasPendientes.cantidad);
             if (!completo)
                 return;
+            this.nuevoPSvc.marcarIdiomasInicialesConcedidos();
         }
 
         const contextoAumentos = `${seleccion.clase?.Nombre ?? 'Clase'} nivel ${Number(resultado.nivelAplicado ?? 0)}`;
@@ -4364,6 +4502,11 @@ export class NuevoPersonajeComponent {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         this.nuevoPSvc.actualizarPasoActual(nextStep);
         this.sincronizarTabConPaso();
+        // La sesión del lanzamiento racial sin clases se abrió al terminar: se sigue terminando.
+        if (this.finalizarTrasLanzamientoRacial) {
+            this.finalizarTrasLanzamientoRacial = false;
+            void this.onFinalizarCreacionTemporal();
+        }
     }
 
     private async continuarDesdeConjurosPostDotes(): Promise<void> {
@@ -4716,12 +4859,51 @@ export class NuevoPersonajeComponent {
     async onFinalizarCreacionTemporal(): Promise<void> {
         if (!this.mostrarBotonFinalizarCreacion)
             return;
+        // Sin clases, lo del primer nivel que no llega con una clase: los idiomas adicionales por Inteligencia y los
+        // conjuros del lanzamiento racial (los dragones, el rakshasa), en su sesión de conjuros antes de terminar.
+        const idiomas = this.nuevoPSvc.getIdiomasPendientesSinClases();
+        if (idiomas.cantidad > 0) {
+            if (!await this.abrirSelectorIdiomasIniciales(idiomas.cantidad))
+                return;
+            this.nuevoPSvc.marcarIdiomasInicialesConcedidos();
+            this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        }
+        if (this.nuevoPSvc.hayLanzamientoRacialPendiente() && await this.abrirSesionLanzamientoRacial())
+            return;
         // Magic of Incarnum: quien puede moldear pasa antes por la formación de partida (opcional).
         if (!this.formacionAbierta && this.incarnumBorrador?.puedeMoldear) {
             await this.abrirFormacionIncarnum();
             return;
         }
         this.abrirSelectorPuntosGolpe();
+    }
+
+    /**
+     * Abre la sesión de conjuros del lanzamiento racial sin clases; al cerrarla se sigue terminando
+     * (`finalizarTrasLanzamientoRacial`). `false` si no hay nada que elegir (los avisos, si los hay, se enseñan).
+     */
+    private async abrirSesionLanzamientoRacial(): Promise<boolean> {
+        const avisos = this.nuevoPSvc.iniciarSesionLanzamientoRacial(this.flujo.pasoActual);
+        if (!this.flujoConjuros.activa) {
+            if (avisos.length > 0)
+                await Swal.fire({
+                    icon: 'info',
+                    title: 'Lanzamiento racial',
+                    html: `<div style="text-align:left;">${avisos.map((aviso) => `• ${aviso}`).join('<br>')}</div>`,
+                    confirmButtonText: 'Continuar',
+                    target: document.body,
+                    heightAuto: false,
+                    scrollbarPadding: false,
+                });
+            return false;
+        }
+        this.finalizarTrasLanzamientoRacial = true;
+        this.filtroConjurosTexto = '';
+        this.filtroConjurosNivel = null;
+        this.nuevoPSvc.actualizarPasoActual('conjuros');
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        this.sincronizarTabConPaso();
+        return true;
     }
 
     onRecalcularPuntosGolpe(): void {
@@ -7956,6 +8138,9 @@ export class NuevoPersonajeComponent {
 }
 
 /** El aviso de siempre cuando una elección se salta una regla del sistema y vuelve homebrew el personaje. */
+/** Un PJ en una edad sin ajuste: solo lo guarda el máster de su campaña saltándose sus reglas (`overrideReglasCampana`). */
+const MOTIVO_EDAD_SIN_AJUSTE_CAMPANA = 'Un personaje jugador en una edad sin ajuste de nivel solo lo guarda el máster de su campaña, saltándose sus reglas.';
+const AVISO_EDAD_SIN_AJUSTE_MASTER = `${MOTIVO_EDAD_SIN_AJUSTE_CAMPANA} En Básicos solo podrás elegir una campaña que dirijas.`;
 const AVISO_HOMEBREW_REGLA_SALTADA = '<strong>Esta elección está saltándose una regla importante del sistema. El personaje quedará marcado como Homebrew y será una rareza excepcional en el mundo.</strong>';
 
 /** La progresión de moldeado del paso de clases: las filas de su tabla con los especiales y el nivel que toma. */

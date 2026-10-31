@@ -74,6 +74,25 @@ describe('puntos-golpe', () => {
         expect(resultado.tiradas).toBe(2);
     });
 
+    it('sin ningún DG (un humano PNJ sin clases), 0 PG: sin el mínimo de 1 por DG', () => {
+        const resultado = calcularPuntosGolpe(entrada({ modConstitucion: -3 }));
+
+        expect(resultado.total).toBe(0);
+        expect(resultado.maximo).toBe(0);
+        expect(resultado.tiradas).toBe(0);
+    });
+
+    it('sin clases, los PG salen solo de los DG raciales: el primero al máximo', () => {
+        const resultado = calcularPuntosGolpe(entrada({
+            dgsRaciales: { cantidad: 3, caras: 12 },
+            modConstitucion: 1,
+            tirar: () => 5,
+        }));
+
+        expect(resultado.total).toBe(13 + 6 + 6);
+        expect(resultado.dgsRaciales).toBe(3);
+    });
+
     it('dgsRacialesQueCuentan: 1 o menos con nivel de clase, ninguno; sin clase o con 2 o más, los de la raza', () => {
         expect(dgsRacialesQueCuentan(1, 1)).toBe(0);
         expect(dgsRacialesQueCuentan(0, 3)).toBe(0);

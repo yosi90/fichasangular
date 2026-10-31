@@ -19,7 +19,7 @@ import { CREACION_MARCO_COMPONENTES, lineaPersonajeCreacion } from '.';
                 [puedeCambiarTipo]="puedeCambiar" (cambiarTipo)="cambios = cambios + 1"></app-creacion-cabecera>
             <app-creacion-tipo *ngIf="eligiendoTipo" [tipo]="tipo" (elegir)="elegido = $event"></app-creacion-tipo>
             <app-creacion-edad *ngIf="!eligiendoTipo" [opciones]="opciones" [idPaso]="idPaso" [pnj]="tipo === 'pnj'"
-                (elegir)="pasoElegido = $event"></app-creacion-edad>
+                [permitirSaltar]="permitirSaltar" (elegir)="pasoElegido = $event"></app-creacion-edad>
         </app-creacion-marco>`,
     standalone: false
 })
@@ -32,6 +32,7 @@ class CreacionTipoYEdadDePruebaComponent {
     opciones: OpcionCategoriaEdad[] = [];
     idPaso: number | null = null;
     pasoElegido: PasoEdadRaza | null = null;
+    permitirSaltar = false;
 
     get titulo(): string {
         return tituloNuevoPersonaje(this.tipo);
@@ -114,6 +115,35 @@ describe('La creación: qué se crea y la edad de la raza', () => {
         expect(pasos.map((p) => p.textContent?.trim())).toEqual(['16 años · 13 DG · NEP 19', '20 años · 14 DG · NEP 20']);
         pasos[1].click();
         expect(host.pasoElegido?.Id).toBe(14);
+    });
+
+    it('el máster que se salta las reglas puede pulsar la edad sin ajuste: atenuada, con «Solo PNJ», y emite su paso', () => {
+        host.tipo = 'pj';
+        host.eligiendoTipo = false;
+        host.permitirSaltar = true;
+        host.opciones = opcionesEdad(raza, { tipo: 'pj', nepMaximo: 15 });
+        host.idPaso = 11;
+        fixture.detectChanges();
+        const categorias = Array.from(el().querySelectorAll('.creacion-edad__categoria')) as HTMLButtonElement[];
+        // «Joven» pasa del NEP de la campaña: eso no se salta.
+        expect(categorias[2].disabled).toBeTrue();
+        expect(categorias[3].disabled).toBeFalse();
+        expect(categorias[3].classList).toContain('creacion-edad__categoria--saltable');
+        expect(categorias[3].querySelector('.creacion-edad__pie')?.textContent?.trim()).toBe('Solo PNJ');
+        categorias[3].click();
+        expect(host.pasoElegido?.Id).toBe(15);
+    });
+
+    it('sin permiso para saltarse las reglas, la edad sin ajuste no se puede pulsar', () => {
+        host.tipo = 'pj';
+        host.eligiendoTipo = false;
+        host.opciones = opcionesEdad(raza, { tipo: 'pj' });
+        host.idPaso = 11;
+        fixture.detectChanges();
+        const categorias = Array.from(el().querySelectorAll('.creacion-edad__categoria')) as HTMLButtonElement[];
+        expect(categorias[3].classList).not.toContain('creacion-edad__categoria--saltable');
+        categorias[3].click();
+        expect(host.pasoElegido).toBeNull();
     });
 
     it('creando un PNJ, todas las edades con su VD', () => {

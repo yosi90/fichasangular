@@ -10,6 +10,9 @@ let siguienteId = 0;
  * el personaje no puede elegir salen atenuadas, con «Solo PNJ» y su motivo debajo. Si una categoría tiene varios pasos
  * (la tabla 3-21 del *Draconomicón*), se elige también el paso. Al pulsar, emite el paso; quien lo usa pide la raza a esa
  * edad y cambia las cifras de debajo.
+ *
+ * Con `permitirSaltar` (el máster que se salta las reglas de su campaña), las edades sin ajuste de un PJ siguen atenuadas
+ * con «Solo PNJ», pero se pueden pulsar para mirarlas y elegirlas igualmente desde el pie, como homebrew.
  */
 @Component({
     selector: 'app-creacion-edad',
@@ -22,7 +25,8 @@ let siguienteId = 0;
             <div class="creacion-edad__categorias" role="radiogroup" [attr.aria-labelledby]="idTitulo">
                 <button type="button" role="radio" class="creacion-edad__categoria" *ngFor="let categoria of opciones"
                     [class.creacion-edad__categoria--elegida]="categoria.id === categoriaElegida?.id"
-                    [attr.aria-checked]="categoria.id === categoriaElegida?.id" [disabled]="categoria.bloqueada"
+                    [class.creacion-edad__categoria--saltable]="categoria.bloqueada && puedeMirar(categoria)"
+                    [attr.aria-checked]="categoria.id === categoriaElegida?.id" [disabled]="categoria.bloqueada && !puedeMirar(categoria)"
                     [attr.aria-describedby]="categoria.bloqueada ? idMotivos : null" (click)="elegirCategoria(categoria)">
                     <span class="creacion-edad__nombre">{{categoria.nombre}}</span>
                     <span class="creacion-edad__pie">{{categoria.pie}}</span>
@@ -32,7 +36,8 @@ let siguienteId = 0;
                 [attr.aria-label]="'Edad dentro de ' + categoriaElegida.nombre">
                 <button type="button" role="radio" class="creacion-opcion creacion-opcion--caja" *ngFor="let opcion of categoriaElegida.pasos"
                     [class.creacion-opcion--activa]="opcion.paso.Id === idPaso" [class.creacion-opcion--bloqueada]="opcion.bloqueado"
-                    [attr.aria-checked]="opcion.paso.Id === idPaso" [disabled]="opcion.bloqueado" (click)="elegir.emit(opcion.paso)">
+                    [attr.aria-checked]="opcion.paso.Id === idPaso" [disabled]="opcion.bloqueado && !(permitirSaltar && opcion.saltable)"
+                    (click)="elegir.emit(opcion.paso)">
                     <span class="creacion-opcion__texto">{{opcion.texto}}</span>
                     <span class="creacion-opcion__estado" *ngIf="opcion.motivo">{{opcion.motivo}}</span>
                 </button>
@@ -49,6 +54,8 @@ export class CreacionEdadComponent implements OnChanges {
     @Input() idPaso: number | null = null;
     /** Creando un PNJ: todas las edades, con su VD. */
     @Input() pnj = false;
+    /** El máster que se salta las reglas de su campaña: puede mirar (y elegir igualmente) las edades sin ajuste. */
+    @Input() permitirSaltar = false;
     @Output() elegir = new EventEmitter<PasoEdadRaza>();
 
     readonly idTitulo = `creacion-edad-${++siguienteId}`;
@@ -65,11 +72,17 @@ export class CreacionEdadComponent implements OnChanges {
         this.motivos = Array.from(new Set(motivos));
     }
 
+    /** Si se puede pulsar una categoría bloqueada: solo para elegirla igualmente (`permitirSaltar` y algún paso saltable). */
+    puedeMirar(categoria: OpcionCategoriaEdad): boolean {
+        return this.permitirSaltar && categoria.saltable;
+    }
+
     elegirCategoria(categoria: OpcionCategoriaEdad): void {
-        if (categoria.bloqueada)
+        const vale = (opcion: OpcionPasoEdad) => !opcion.bloqueado || (this.puedeMirar(categoria) && opcion.saltable);
+        if (categoria.bloqueada && !this.puedeMirar(categoria))
             return;
-        const actual = categoria.pasos.find((opcion: OpcionPasoEdad) => opcion.paso.Id === this.idPaso && !opcion.bloqueado);
-        const paso = actual?.paso ?? categoria.pasos.find((opcion) => !opcion.bloqueado)?.paso;
+        const actual = categoria.pasos.find((opcion) => opcion.paso.Id === this.idPaso && vale(opcion));
+        const paso = actual?.paso ?? categoria.pasos.find(vale)?.paso;
         if (paso)
             this.elegir.emit(paso);
     }

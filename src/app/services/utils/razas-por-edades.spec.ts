@@ -1,6 +1,7 @@
 import { normalizeRazaApi } from './raza-mapper';
 import {
-    MOTIVO_EDAD_SOLO_PNJ, motivoBloqueoPasoEdad, opcionesEdad, pasoEdadInicial, rangoEdadPaso, razaConEdad, razaPorEdades, textoRangoEdad
+    leerCategoriaEdadListado, MOTIVO_EDAD_SOLO_PNJ, MOTIVO_PJ_SIN_CLASE, motivoBloqueoPasoEdad, opcionesEdad, pasoEdadInicial,
+    puedeQuedarseSinClases, rangoEdadPaso, razaConCategoria, razaConEdad, razaPorEdades, textoRangoEdad
 } from './razas-por-edades';
 import { razaPorEdadesApi } from 'src/testing/raza-por-edades';
 
@@ -52,6 +53,41 @@ describe('razas-por-edades', () => {
         expect(rangoEdadPaso(raza, 15)).toEqual({ desde: 26, hasta: 50 });
         expect(rangoEdadPaso(raza, 99)).toBeNull();
         expect(textoRangoEdad({ desde: 1201, hasta: null })).toBe('desde 1201 años');
+    });
+
+    it('una edad sin ajuste se puede elegir igualmente (homebrew); la que pasa del NEP de la campaña, no', () => {
+        const opciones = opcionesEdad(raza, { tipo: 'pj', nepMaximo: 15 });
+
+        expect(opciones.map((c) => c.saltable)).toEqual([false, false, false, true]);
+        expect(opciones[3].pasos.every((p) => p.bloqueado && p.saltable)).toBeTrue();
+        expect(opciones[2].pasos.every((p) => p.bloqueado && !p.saltable)).toBeTrue();
+        expect(opcionesEdad(raza, { tipo: 'pnj' }).some((c) => c.saltable)).toBeFalse();
+    });
+
+    it('sin clases: un PNJ siempre; un PJ solo de una raza por edades con DG raciales a su edad', () => {
+        expect(puedeQuedarseSinClases({ tipo: 'pnj', porEdades: false, dgsRaciales: 0 })).toBeTrue();
+        expect(puedeQuedarseSinClases({ tipo: 'pnj', porEdades: true, dgsRaciales: 27 })).toBeTrue();
+        expect(puedeQuedarseSinClases({ tipo: 'pj', porEdades: true, dgsRaciales: 11 })).toBeTrue();
+        expect(puedeQuedarseSinClases({ tipo: 'pj', porEdades: true, dgsRaciales: 0 })).toBeFalse();
+        expect(puedeQuedarseSinClases({ tipo: 'pj', porEdades: false, dgsRaciales: 4 })).toBeFalse();
+        expect(puedeQuedarseSinClases({ tipo: null, porEdades: false, dgsRaciales: 2 })).toBeFalse();
+        expect(MOTIVO_PJ_SIN_CLASE).toContain('Un PJ necesita al menos un nivel de clase');
+    });
+
+    it('la raza con su categoría se escribe «Dragón rojo · cría»; sin categoría, solo la raza', () => {
+        expect(razaConCategoria('Dragón rojo', 'Cría')).toBe('Dragón rojo · cría');
+        expect(razaConCategoria('Humano', null)).toBe('Humano');
+        expect(razaConCategoria('  ', 'Adulto')).toBe('adulto');
+    });
+
+    it('la categoría de los listados: cadena en Firestore y en la API, `Categoria_edad` en la RTDB, objeto en la ficha', () => {
+        expect(leerCategoriaEdadListado({ categoriaEdad: 'Cría' })).toBe('Cría');
+        expect(leerCategoriaEdadListado({ Categoria_edad: 'Joven' })).toBe('Joven');
+        expect(leerCategoriaEdadListado({ categoriaEdad: { categoria: { Id: 3, Nombre: 'Joven' } } })).toBe('Joven');
+        expect(leerCategoriaEdadListado({ CategoriaEdad: { categoria: { Id: 1, Nombre: 'Cría' } } })).toBe('Cría');
+        expect(leerCategoriaEdadListado({ categoriaEdad: null })).toBeNull();
+        expect(leerCategoriaEdadListado({})).toBeNull();
+        expect(leerCategoriaEdadListado(null)).toBeNull();
     });
 
     it('la raza con su edad se escribe «Dragón rojo (joven)»', () => {
