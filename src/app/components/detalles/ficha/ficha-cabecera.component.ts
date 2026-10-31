@@ -31,6 +31,12 @@ export class FichaCabeceraComponent implements OnChanges {
     @Input() compacta = false;
     /** Pulsar el manual abre su detalle. Si nadie escucha, el manual es solo texto. */
     @Output() abrirManual = new EventEmitter<void>();
+    /**
+     * El botón «Modificar» de los detalles de un catálogo editable, a la derecha: lo enciende el detalle cuando alguien
+     * abre su modificación y la cuenta tiene el permiso (`puedeModificarDesdeDetalle`, `permisos-catalogo.ts`).
+     */
+    @Input() modificable = false;
+    @Output() modificar = new EventEmitter<void>();
 
     get subtituloVisible(): boolean {
         return esTextoCorto(this.subtitulo);

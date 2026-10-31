@@ -1,6 +1,6 @@
 import { Component, EventEmitter, forwardRef, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
-import { firstValueFrom, from, map, Observable, Subject, switchMap, takeUntil } from 'rxjs';
+import { firstValueFrom, Subject, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
 import { PrerrequisitoEditorHostComponent } from '../prerrequisito-editor/prerrequisito-editor-host.component';
 import {
@@ -296,7 +296,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         nombre: DOTE,
         modo: () => this.modo,
         id: () => this.idDote,
-        obtener: (id) => this.obtenerDoteParaEditar(id),
+        obtener: (id) => this.doteSvc.getDoteFresco(id),
+        antesDeHidratar: (dote) => this.prepararCatalogosDeDote(dote),
         hidratar: (dote) => this.hidratarDesdeDote(dote),
         foto: () => this.foto(),
         destruir$: this.destroy$,
@@ -1174,16 +1175,10 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     /**
-     * La dote para «Modificar», con los catálogos que hacen falta para enseñarla y volver a mandarla igual: las
+     * Antes de rellenar «Modificar», los catálogos que hacen falta para enseñar la dote y volver a mandarla igual: las
      * armaduras si admite armaduras o escudos (el cuerpo solo lleva las que cuadran con su subtipo) y los de los tipos de
      * sus prerrequisitos (los nombres de las filas).
      */
-    private obtenerDoteParaEditar(id: number): Observable<Dote> {
-        return this.doteSvc.getDoteFresco(id).pipe(
-            switchMap((dote) => from(this.prepararCatalogosDeDote(dote)).pipe(map(() => dote))),
-        );
-    }
-
     private async prepararCatalogosDeDote(dote: Dote): Promise<void> {
         const tipos = Object.keys(dote?.Prerrequisitos ?? {})
             .filter((tipo) => (dote.Prerrequisitos[tipo] ?? []).length > 0)

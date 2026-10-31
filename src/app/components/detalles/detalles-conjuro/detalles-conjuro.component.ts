@@ -6,7 +6,7 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Id_nombre } from 'src/app/interfaces/genericas';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { UserService } from 'src/app/services/user.service';
-import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import { tieneNumeroVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
@@ -45,7 +45,7 @@ export class DetallesConjuroComponent {
 
     /** Solo con permiso: el de crear conjuros, que es el que pide `PUT /conjuros/<id>` (`permisos-catalogo.ts`). */
     get puedeModificar(): boolean {
-        return !this.ap && this.modificar.observed && puedeGestionarCatalogo(this.userSvc, 'conjuros');
+        return !this.ap && puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'conjuros');
     }
 
     private conjuroData!: Conjuro;

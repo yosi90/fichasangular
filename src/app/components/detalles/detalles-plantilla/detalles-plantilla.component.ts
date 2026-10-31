@@ -28,7 +28,7 @@ import { toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { GrupoPrerrequisitos, agruparPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
 import { porNombre } from 'src/app/services/utils/orden-texto';
-import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 
 @Component({
     selector: 'app-detalles-plantilla',
@@ -116,7 +116,7 @@ export class DetallesPlantillaComponent {
 
     /** Solo con permiso: el de crear plantillas, que es el que pide `PUT /plantillas/<id>` (`permisos-catalogo.ts`). */
     get puedeModificar(): boolean {
-        return this.modificar.observed && puedeGestionarCatalogo(this.userSvc, 'plantillas');
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'plantillas');
     }
 
     abrirDetalleManual() {

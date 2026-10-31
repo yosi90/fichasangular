@@ -4,7 +4,7 @@ import { Dote, DoteExtrasDeTodoElCatalogo, DoteSalvacionCondicional } from 'src/
 import { DoteContexto, DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
 import { UserService } from 'src/app/services/user.service';
-import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import {
     CondicionPrerrequisito,
     GrupoPrerrequisitos,
@@ -107,7 +107,7 @@ export class DetallesDoteComponent {
 
     /** Solo con permiso: el de crear dotes, que es el que pide `PUT /dotes/<id>` (`permisos-catalogo.ts`). */
     get puedeModificar(): boolean {
-        return this.modificar.observed && puedeGestionarCatalogo(this.userSvc, 'dotes');
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'dotes');
     }
 
     abrirDetallesDote(id: number): void {

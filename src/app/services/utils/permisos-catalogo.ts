@@ -40,3 +40,11 @@ export function puedeGestionarCatalogo(usuario: ConsultaDePermisos, lista: strin
     const recurso = RECURSO_DE_CATALOGO[`${lista ?? ''}`.trim()];
     return recurso !== undefined && usuario.can(recurso, 'create');
 }
+
+/**
+ * El botón «Modificar» de un detalle (`[modificable]` de `<app-ficha-cabecera>`): solo si alguien escucha su salida
+ * `modificar` (las pestañas; la creación y la ficha no) y la cuenta puede gestionar el catálogo de ese listado.
+ */
+export function puedeModificarDesdeDetalle(modificar: { readonly observed: boolean; }, usuario: ConsultaDePermisos, lista: string): boolean {
+    return modificar.observed && puedeGestionarCatalogo(usuario, lista);
+}

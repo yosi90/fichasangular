@@ -3,7 +3,7 @@ import { Subject, of, throwError } from 'rxjs';
 import Swal from 'sweetalert2';
 import { CLASE, IDIOMA } from 'src/app/services/utils/nombres-de-catalogo';
 import { avisarErrorAlGuardar, avisarGuardado, delCatalogo } from './avisos-insercion';
-import { EdicionDeCatalogo } from './edicion-de-catalogo';
+import { CatalogosPendientes, EdicionDeCatalogo } from './edicion-de-catalogo';
 import { alternarControl, elegirEnControl, quitarFila } from './filas-repetibles';
 
 describe('EdicionDeCatalogo (el modo «Modificar» común de las inserciones)', () => {
@@ -53,6 +53,48 @@ describe('EdicionDeCatalogo (el modo «Modificar» común de las inserciones)', 
         expect(obtener).toHaveBeenCalledWith(8);
     });
 
+    it('espera lo de antesDeHidratar antes de rellenar, y rellena igual si falla', () => {
+        const catalogos = new CatalogosPendientes(['clases', 'habilidades'] as const);
+        let hidratada = '';
+        const conEspera = new EdicionDeCatalogo<{ Id: number; Nombre: string; }>({
+            nombre: IDIOMA,
+            modo: () => 'editar',
+            id: () => 3,
+            obtener: (idPedido) => of({ Id: idPedido, Nombre: 'Élfico' }),
+            antesDeHidratar: () => catalogos.listos$,
+            hidratar: (entrada) => hidratada = entrada.Nombre,
+            foto: () => hidratada,
+            destruir$,
+        });
+        conEspera.cargarSiHaceFalta();
+        expect(hidratada).toBe('');
+        expect(conEspera.cargando).toBeTrue();
+        catalogos.marcar('clases');
+        expect(hidratada).toBe('');
+        catalogos.marcar('habilidades');
+        expect(hidratada).toBe('Élfico');
+        expect(conEspera.cargando).toBeFalse();
+
+        let otra = '';
+        new EdicionDeCatalogo<{ Id: number; Nombre: string; }>({
+            nombre: IDIOMA,
+            modo: () => 'editar',
+            id: () => 4,
+            obtener: (idPedido) => of({ Id: idPedido, Nombre: 'Común' }),
+            antesDeHidratar: () => Promise.reject(new Error('sin catálogo')),
+            hidratar: (entrada) => otra = entrada.Nombre,
+            foto: () => otra,
+            destruir$,
+        }).cargarSiHaceFalta();
+        return Promise.resolve().then(() => Promise.resolve()).then(() => expect(otra).toBe('Común'));
+    });
+
+    it('CatalogosPendientes sin catálogos está listo en seguida', () => {
+        let listos = false;
+        new CatalogosPendientes<string>([]).listos$.subscribe(() => listos = true);
+        expect(listos).toBeTrue();
+    });
+
     it('al crear no trae nada ni hay cambios que confirmar', async () => {
         modo = 'crear';
         edicion.cargarSiHaceFalta();
@@ -86,6 +128,7 @@ describe('EdicionDeCatalogo (el modo «Modificar» común de las inserciones)', 
         expect(edicion.nombreOcupado(existentes, ' dracónico ')).toBeFalse();
         expect(edicion.nombreOcupado(existentes, 'ELFICO')).toBeTrue();
         expect(edicion.nombreOcupado(existentes, '')).toBeFalse();
+        expect(edicion.nombreOcupado([{ Id: 3, Nombre: 'Alto  élfico' }], ' alto elfico ')).toBeTrue();
         modo = 'crear';
         expect(edicion.nombreOcupado(existentes, 'Draconico')).toBeTrue();
     });

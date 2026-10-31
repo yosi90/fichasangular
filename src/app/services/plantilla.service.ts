@@ -12,6 +12,7 @@ import { FirebaseInjectionContextService } from "./firebase-injection-context.se
 import { normalizePlantilla, normalizePlantillaApi } from "./utils/plantilla-mapper";
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
+import { leerRespuestaDeEscritura } from 'src/app/services/utils/respuesta-de-escritura';
 
 function hasValidId(raw: any): boolean {
     return toNumber(raw?.Id) > 0;
@@ -87,14 +88,8 @@ export class PlantillaService {
 
     /** `PlantillaCreateResponse` (alta y modificación): `{ message, idPlantilla, plantilla }`. */
     private leerMutacion(response: any, mensajePorDefecto: string): PlantillaMutacionResponse {
-        const idPlantilla = toInt(response?.idPlantilla);
-        if (idPlantilla <= 0)
-            throw new Error("La API no devolvió un id de plantilla válido.");
-        return {
-            message: `${response?.message ?? mensajePorDefecto}`,
-            idPlantilla,
-            plantilla: response?.plantilla ? normalizePlantillaApi(response.plantilla) : null,
-        };
+        const { message, id } = leerRespuestaDeEscritura(response, 'idPlantilla', mensajePorDefecto);
+        return { message, idPlantilla: id, plantilla: response?.plantilla ? normalizePlantillaApi(response.plantilla) : null };
     }
 
     buscarPorNombre(nombre: string): Observable<Plantilla | null> {

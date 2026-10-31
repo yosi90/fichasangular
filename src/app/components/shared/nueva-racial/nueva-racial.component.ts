@@ -46,6 +46,7 @@ import {
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
+import { TEXTO_SIN_ESPECIFICAR, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 
@@ -768,7 +769,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
                 rangos: this.entero(row.rangos),
                 id_extra: this.entero(row.id_extra) > 0 ? this.entero(row.id_extra) : -1,
                 se_considera_clasea: row.se_considera_clasea === true,
-                condicion: this.texto(row.condicion, 'No especifica'),
+                condicion: textoOSinEspecificar(row.condicion),
             }));
     }
 
@@ -798,7 +799,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             .map((row) => ({
                 id_salvacion: this.entero(row.id_salvacion),
                 cantidad: this.entero(row.cantidad),
-                condicion: this.texto(row.condicion, 'No especifica'),
+                condicion: textoOSinEspecificar(row.condicion),
             }));
     }
 
@@ -926,7 +927,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             rangos: this.entero(this.pick(item, 'Rangos', 'rangos', 'Cantidad', 'cantidad', 'r')),
             id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie')),
             se_considera_clasea: toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
-            condicion: this.texto(this.pick(item, 'Condicion', 'condicion', 'c'), 'No especifica'),
+            condicion: textoOSinEspecificar(this.pick(item, 'Condicion', 'condicion', 'c')),
             busqueda: this.texto(this.pick(item, 'Habilidad', 'habilidad', 'Nombre', 'nombre', 'n')),
             extraBusqueda: this.texto(this.pick(item, 'Extra', 'extra', 'x')),
         }));
@@ -960,7 +961,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             uid: this.uid(),
             id_salvacion: this.entero(this.pick(item, 'Id_salvacion', 'id_salvacion', 'Id', 'id')),
             cantidad: this.entero(this.pick(item, 'Cantidad', 'cantidad', 'c')),
-            condicion: this.texto(this.pick(item, 'Condicion', 'condicion', 'd'), 'No especifica'),
+            condicion: textoOSinEspecificar(this.pick(item, 'Condicion', 'condicion', 'd')),
         }));
         return rows.length > 0 ? rows : [this.crearSalvacionRow()];
     }
@@ -1034,7 +1035,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private crearHabilidadBaseRow(): HabilidadBaseRow {
-        return { uid: this.uid(), id_habilidad: 0, rangos: 0, id_extra: 0, se_considera_clasea: false, condicion: 'No especifica', busqueda: '', extraBusqueda: '' };
+        return { uid: this.uid(), id_habilidad: 0, rangos: 0, id_extra: 0, se_considera_clasea: false, condicion: TEXTO_SIN_ESPECIFICAR, busqueda: '', extraBusqueda: '' };
     }
 
     private crearHabilidadCustomRow(): HabilidadCustomRow {
@@ -1056,7 +1057,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private crearSalvacionRow(): SalvacionRow {
-        return { uid: this.uid(), id_salvacion: 0, cantidad: 0, condicion: 'No especifica' };
+        return { uid: this.uid(), id_salvacion: 0, cantidad: 0, condicion: TEXTO_SIN_ESPECIFICAR };
     }
 
     private crearSortilegaRow(): SortilegaRow {
