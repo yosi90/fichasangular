@@ -7,8 +7,11 @@ import { TipoRol, tipoRolDeListado, tituloListado } from 'src/app/services/utils
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { MarcoMovilService } from 'src/app/services/marco-movil.service';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
+import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+import { tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
+type OperacionCatalogo = 'insertar' | 'modificar';
 type GrupoOtros = 'equipo' | 'rasgos' | 'mundo';
 type PermissionAction = 'create' | 'update';
 
@@ -46,42 +49,42 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     readonly gruposOtros: Readonly<Record<SeccionOtros, readonly GrupoMenuOtros[]>> = {
         insertar: [
             this.grupo('equipo', 'Equipo', [
-                this.opcion('armas', () => this.canGestionar('armas', 'create')),
-                this.opcion('armaduras', () => this.canGestionar('armaduras', 'create')),
+                this.opcion('armas', 'insertar'),
+                this.opcion('armaduras', 'insertar'),
             ]),
             this.grupo('rasgos', 'Rasgos y aptitudes', [
-                this.opcion('especiales', () => this.canGestionar('clases', 'create'), () => this.onInsertarEspecial()),
-                this.opcion('raciales', () => this.canInsertarRaciales(), () => this.onInsertarRacial()),
-                this.opcion('rasgos', () => this.canGestionar('rasgos', 'create')),
-                this.opcion('idiomas', () => this.canGestionarIdiomas(), () => this.onInsertarIdioma()),
-                this.opcion('ventajas', () => this.canGestionar('ventajas', 'create')),
-                this.opcion('fusiones del alma', () => this.canGestionar('clases', 'create')),
-                this.opcion('chakras', () => this.canGestionar('clases', 'create')),
+                this.opcion('especiales', 'insertar'),
+                this.opcion('raciales', 'insertar'),
+                this.opcion('rasgos', 'insertar'),
+                this.opcion('idiomas', 'insertar'),
+                this.opcion('ventajas', 'insertar'),
+                this.opcion('fusiones del alma', 'insertar'),
+                this.opcion('chakras', 'insertar'),
             ]),
             this.grupo('mundo', 'Criaturas y mundo', [
-                this.opcion('tipos de criatura', () => this.canGestionar('tipos_criatura', 'create')),
-                this.opcion('subtipos', () => this.canGestionar('subtipos', 'create')),
-                this.opcion('deidades', () => this.canGestionar('deidades', 'create')),
+                this.opcion('tipos de criatura', 'insertar'),
+                this.opcion('subtipos', 'insertar'),
+                this.opcion('deidades', 'insertar'),
             ]),
         ],
         modificar: [
             this.grupo('equipo', 'Equipo', [
-                this.opcion('armas', () => this.canGestionar('armas', 'update')),
-                this.opcion('armaduras', () => this.canGestionar('armaduras', 'update')),
+                this.opcion('armas', 'modificar'),
+                this.opcion('armaduras', 'modificar'),
             ]),
             this.grupo('rasgos', 'Rasgos y aptitudes', [
-                this.opcion('especiales', () => this.canGestionar('especiales', 'update') || this.canGestionar('clases', 'update'), () => this.onModificarEspecial()),
-                this.opcion('raciales', () => this.canGestionar('raciales', 'update'), () => this.onModificarRacial()),
-                this.opcion('rasgos', () => this.canGestionar('rasgos', 'update')),
-                this.opcion('idiomas', () => this.canGestionarIdiomas(), () => this.onModificarIdioma()),
-                this.opcion('ventajas', () => this.canGestionar('ventajas', 'update')),
-                this.opcion('fusiones del alma', () => this.canGestionar('clases', 'update')),
-                this.opcion('chakras', () => this.canGestionar('clases', 'update')),
+                this.opcion('especiales', 'modificar'),
+                this.opcion('raciales', 'modificar'),
+                this.opcion('rasgos', 'modificar'),
+                this.opcion('idiomas', 'modificar'),
+                this.opcion('ventajas', 'modificar'),
+                this.opcion('fusiones del alma', 'modificar'),
+                this.opcion('chakras', 'modificar'),
             ]),
             this.grupo('mundo', 'Criaturas y mundo', [
-                this.opcion('tipos de criatura', () => this.canGestionar('tipos_criatura', 'update')),
-                this.opcion('subtipos', () => this.canGestionar('subtipos', 'update')),
-                this.opcion('deidades', () => this.canGestionar('deidades', 'update')),
+                this.opcion('tipos de criatura', 'modificar'),
+                this.opcion('subtipos', 'modificar'),
+                this.opcion('deidades', 'modificar'),
             ]),
         ],
         detalles: [
@@ -211,6 +214,23 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         return this.usrService.can(resource, action);
     }
 
+    /**
+     * Si la cuenta puede insertar y modificar en el catálogo de un listado: el permiso de creación de su recurso
+     * (`permisos-catalogo.ts`); la API pide el mismo para modificar.
+     */
+    puedeGestionar(lista: string): boolean {
+        return puedeGestionarCatalogo(this.usrService, lista);
+    }
+
+    /** Insertar o Modificar en un catálogo: abre su pestaña (la inserción o el listado para elegir qué modificar). */
+    abrirOperacion(lista: string, operacion: OperacionCatalogo): void {
+        if (!this.puedeGestionar(lista))
+            return;
+        this.AbrirListado(lista, operacion);
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
     get esInvitado(): boolean {
         return !this.usrService.IsLoggedIn;
     }
@@ -248,148 +268,26 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     }
 
     /**
-     * Una opción de Insertar o Modificar, por su listado: el texto y el icono salen del registro (`LISTADOS_ROL`).
-     * Sin acción propia (aún no tiene pantalla), solo cierra el menú.
+     * Una opción de Insertar o Modificar, por su listado: el texto y el icono salen del registro (`LISTADOS_ROL`), el
+     * permiso de `permisos-catalogo.ts` y si tiene pantalla de `catalogos-editables.ts`. Sin pantalla todavía, solo
+     * cierra el menú.
      */
-    private opcion(lista: string, habilitada: () => boolean, abrir: () => void = () => this.cerrarOtros()): OpcionOtros {
-        return { etiqueta: mayusculaInicial(tituloListado(lista)), tipo: tipoRolDeListado(lista)!, habilitada, abrir };
+    private opcion(lista: string, operacion: OperacionCatalogo): OpcionOtros {
+        const conPantalla = operacion === 'insertar' ? tieneInsercion(lista) : tipoEdicionDeListado(lista) !== null;
+        return this.entrada(lista, () => this.puedeGestionar(lista),
+            conPantalla ? () => this.abrirOperacion(lista, operacion) : () => this.cerrarOtros());
     }
 
     private detalle(lista: string): OpcionOtros {
-        return this.opcion(lista, () => true, () => {
+        return this.entrada(lista, () => true, () => {
             this.AbrirListado(lista, 'detalles');
             this.closeAcordion();
             this.cerrarOtros();
         });
     }
 
-    canInsertarDotes(): boolean {
-        return this.usrService.can('dotes', 'create');
-    }
-
-    canInsertarRazas(): boolean {
-        return this.usrService.can('razas', 'create');
-    }
-
-    canInsertarRaciales(): boolean {
-        return this.usrService.can('razas', 'create');
-    }
-
-    canGestionarIdiomas(): boolean {
-        return this.usrService.can('razas', 'create');
-    }
-
-    canInsertarConjuros(): boolean {
-        return this.usrService.can('conjuros', 'create');
-    }
-
-    onInsertarClase(): void {
-        if (!this.canGestionar('clases', 'create'))
-            return;
-        this.AbrirListado('clases', 'insertar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    onModificarClase(): void {
-        if (!this.canGestionar('clases', 'update'))
-            return;
-        this.AbrirListado('clases', 'modificar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    /** Modificar una plantilla pide, en la API, el mismo permiso que crearla (`PUT /plantillas/<id>`). */
-    canModificarPlantillas(): boolean {
-        return this.canGestionar('plantillas', 'create');
-    }
-
-    onInsertarPlantilla(): void {
-        if (!this.canGestionar('plantillas', 'create'))
-            return;
-        this.AbrirListado('plantillas', 'insertar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    onModificarPlantilla(): void {
-        if (!this.canModificarPlantillas())
-            return;
-        this.AbrirListado('plantillas', 'modificar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    onInsertarRaza(): void {
-        if (!this.canInsertarRazas())
-            return;
-        this.AbrirListado('razas', 'insertar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    onInsertarRacial(): void {
-        if (!this.canInsertarRaciales())
-            return;
-        this.AbrirListado('raciales', 'insertar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    onModificarRacial(): void {
-        if (!this.canGestionar('raciales', 'update'))
-            return;
-        this.AbrirListado('raciales', 'modificar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    onInsertarIdioma(): void {
-        if (!this.canGestionarIdiomas())
-            return;
-        this.AbrirListado('idiomas', 'insertar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    onInsertarEspecial(): void {
-        if (!this.canGestionar('clases', 'create'))
-            return;
-        this.AbrirListado('especiales', 'insertar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    onModificarEspecial(): void {
-        if (!this.canGestionar('especiales', 'update') && !this.canGestionar('clases', 'update'))
-            return;
-        this.AbrirListado('especiales', 'modificar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    onModificarIdioma(): void {
-        if (!this.canGestionarIdiomas())
-            return;
-        this.AbrirListado('idiomas', 'modificar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    onInsertarDote(): void {
-        if (!this.canInsertarDotes())
-            return;
-        this.AbrirListado('dotes', 'insertar');
-        this.closeAcordion();
-        this.cerrarOtros();
-    }
-
-    onInsertarConjuro(): void {
-        if (!this.canInsertarConjuros())
-            return;
-        this.AbrirListado('conjuros', 'insertar');
-        this.closeAcordion();
-        this.cerrarOtros();
+    private entrada(lista: string, habilitada: () => boolean, abrir: () => void): OpcionOtros {
+        return { etiqueta: mayusculaInicial(tituloListado(lista)), tipo: tipoRolDeListado(lista)!, habilitada, abrir };
     }
 
     /** Entrar es de la plataforma: abre el acceso de Yosiftware sobre la web. */

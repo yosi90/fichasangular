@@ -2,9 +2,12 @@ import { toBoolean } from 'src/app/services/utils/normalizacion';
 
 export type UserAclPermissions = Record<string, Record<string, boolean>>;
 export type UserRole = 'jugador' | 'master' | 'colaborador' | 'admin';
+/** Los recursos de `dbo.PermissionResource` del backend (permisos de creación). */
 export type PermissionResource =
     | 'personajes'
     | 'campanas'
+    | 'tramas'
+    | 'subtramas'
     | 'conjuros'
     | 'dotes'
     | 'razas'
@@ -15,11 +18,17 @@ export type PermissionResource =
     | 'subtipos'
     | 'rasgos'
     | 'ventajas'
-    | 'desventajas';
+    | 'desventajas'
+    | 'armas'
+    | 'armaduras'
+    | 'deidades'
+    | 'monstruos';
 
 export const PERMISSION_RESOURCES: PermissionResource[] = [
     'personajes',
     'campanas',
+    'tramas',
+    'subtramas',
     'conjuros',
     'dotes',
     'razas',
@@ -31,6 +40,10 @@ export const PERMISSION_RESOURCES: PermissionResource[] = [
     'rasgos',
     'ventajas',
     'desventajas',
+    'armas',
+    'armaduras',
+    'deidades',
+    'monstruos',
 ];
 
 export interface UserAcl {

@@ -37,7 +37,7 @@ describe('BaseMenuComponent', () => {
     it('abre la insercion de razas desde el menu principal', () => {
         const emitSpy = spyOn(component.ListadoTab, 'emit');
 
-        component.onInsertarRaza();
+        component.abrirOperacion('razas', 'insertar');
 
         expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'razas', operacion: 'insertar' });
         expect(component.primero.close).toHaveBeenCalled();
@@ -60,7 +60,7 @@ describe('BaseMenuComponent', () => {
         canCreateRazas = false;
         const emitSpy = spyOn(component.ListadoTab, 'emit');
 
-        component.onInsertarRaza();
+        component.abrirOperacion('razas', 'insertar');
 
         expect(emitSpy).not.toHaveBeenCalled();
     });
@@ -105,7 +105,7 @@ describe('BaseMenuComponent', () => {
         expect(component.tieneOpcionesOtros('modificar')).toBeFalse();
 
         permissions['armas:create'] = true;
-        permissions['armaduras:update'] = true;
+        permissions['armaduras:create'] = true;
 
         expect(component.tieneOpcionesOtros('insertar')).toBeTrue();
         expect(component.tieneOpcionesOtros('modificar')).toBeTrue();
@@ -115,7 +115,7 @@ describe('BaseMenuComponent', () => {
     it('abre la inserción de raciales con permiso de creación de razas', () => {
         const emitSpy = spyOn(component.ListadoTab, 'emit');
 
-        component.onInsertarRacial();
+        component.abrirOperacion('raciales', 'insertar');
 
         expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'raciales', operacion: 'insertar' });
         expect(component.primero.close).toHaveBeenCalled();
@@ -125,25 +125,25 @@ describe('BaseMenuComponent', () => {
         canCreateRazas = false;
         const emitSpy = spyOn(component.ListadoTab, 'emit');
 
-        component.onInsertarRacial();
+        component.abrirOperacion('raciales', 'insertar');
 
         expect(emitSpy).not.toHaveBeenCalled();
     });
 
-    it('abre la modificación de raciales con permiso update', () => {
-        permissions['raciales:update'] = true;
+    it('abre la modificación de raciales con el permiso de creación de razas (el que pide la API para modificar)', () => {
         const emitSpy = spyOn(component.ListadoTab, 'emit');
 
-        component.onModificarRacial();
+        component.abrirOperacion('raciales', 'modificar');
 
         expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'raciales', operacion: 'modificar' });
         expect(component.primero.close).toHaveBeenCalled();
     });
 
-    it('no abre la modificación de raciales sin permiso update', () => {
+    it('no abre la modificación de raciales sin razas.create', () => {
+        canCreateRazas = false;
         const emitSpy = spyOn(component.ListadoTab, 'emit');
 
-        component.onModificarRacial();
+        component.abrirOperacion('raciales', 'modificar');
 
         expect(emitSpy).not.toHaveBeenCalled();
     });
@@ -196,6 +196,24 @@ describe('BaseMenuComponent', () => {
 
         component.toggleOtros('insertar', 'rasgos', evento);
         expect(component.otrosAbierto).toBeNull();
+    });
+
+    it('Insertar y Modificar piden el permiso de creación del recurso de cada catálogo; sin pantalla, solo cierran el menú', () => {
+        canCreateRazas = false;
+        permissions['monstruos:create'] = true;
+        permissions['armas:create'] = true;
+        const emitSpy = spyOn(component.ListadoTab, 'emit');
+        const armas = component.gruposOtros.modificar[0].opciones[0];
+
+        expect(component.puedeGestionar('monstruos')).toBeTrue();
+        expect(component.puedeGestionar('tipos de criatura')).toBeFalse();
+        expect(armas.habilitada()).toBeTrue();
+        armas.abrir();
+        expect(emitSpy).not.toHaveBeenCalled();
+
+        permissions['clases:create'] = true;
+        component.gruposOtros.modificar[1].opciones[0].abrir();
+        expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'especiales', operacion: 'modificar' });
     });
 
     it('marca sin opciones solo el grupo sin permisos', () => {
