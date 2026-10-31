@@ -273,11 +273,9 @@
                                     [value]="filtroPlantillasManual"
                                     (selectionChange)="onFiltroPlantillasManualChange($any($event))">
                                 </app-manual-autocomplete>
-                                <mat-chip-option color="warn" class="filtro-chip"
-                                    [selected]="incluirHomebrewPlantillasEfectivo" [disabled]="homebrewForzado"
-                                    (click)="alternarHomebrewPlantillas()">
-                                    {{incluirHomebrewPlantillasEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
-                                </mat-chip-option>
+                                <app-chip-homebrew class="filtro-chip" [incluido]="incluirHomebrewPlantillasEfectivo"
+                                    [forzado]="homebrewForzado" (alternar)="alternarHomebrewPlantillas()">
+                                </app-chip-homebrew>
                             </div>
 
                             <!-- Tu selección, arriba de la lista (la columna derecha es solo para la vista previa) -->
@@ -506,11 +504,9 @@
                                     <mat-option value="prestigio">Prestigio</mat-option>
                                 </mat-select>
                             </mat-form-field>
-                            <mat-chip-option color="warn" class="filtro-chip"
-                                [selected]="incluirHomebrewClasesEfectivo" [disabled]="homebrewForzado"
-                                (click)="alternarHomebrewClases()">
-                                {{incluirHomebrewClasesEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
-                            </mat-chip-option>
+                            <app-chip-homebrew class="filtro-chip" [incluido]="incluirHomebrewClasesEfectivo"
+                                [forzado]="homebrewForzado" (alternar)="alternarHomebrewClases()">
+                            </app-chip-homebrew>
                         </div>
 
                         <p class="creacion-vacio" *ngIf="cargandoClases">Cargando clases…</p>
@@ -790,11 +786,10 @@
                                             <mat-option *ngFor="let nivel of nivelesConjurosDisponibles" [value]="nivel">{{nivel}}</mat-option>
                                         </mat-select>
                                     </mat-form-field>
-                                    <mat-chip-option color="warn" class="filtro-chip" *ngIf="hayConjurosHomebrewQuePedir || homebrewForzado"
-                                        [selected]="incluirHomebrewConjurosEfectivo" [disabled]="homebrewForzado"
-                                        (click)="alternarHomebrewConjuros()">
-                                        {{incluirHomebrewConjurosEfectivo ? 'Homebrew incluido' : 'Incluir homebrew'}}
-                                    </mat-chip-option>
+                                    <app-chip-homebrew class="filtro-chip" *ngIf="hayConjurosHomebrewQuePedir || homebrewForzado"
+                                        [incluido]="incluirHomebrewConjurosEfectivo" [forzado]="homebrewForzado"
+                                        (alternar)="alternarHomebrewConjuros()">
+                                    </app-chip-homebrew>
                                 </div>
                                 <h2 class="creacion-titulo">Disponibles</h2>
                                 <table class="ficha-tabla tabla-conjuros">

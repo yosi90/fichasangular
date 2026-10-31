@@ -45,6 +45,7 @@ import { TabControlComponent } from './components/base/tab-control/tab-control.c
 import { BaseMenuComponent } from './components/base/base-menu/base-menu.component';
 import { DetallesPersonajeComponent } from './components/detalles/detalles-personaje/detalles-personaje.component';
 import { NuevoPersonajeComponent } from './components/nuevo-personaje/nuevo-personaje.component';
+import { ChipHomebrewComponent } from './components/nuevo-personaje/chip-homebrew/chip-homebrew.component';
 import { DetallesRazaComponent } from './components/detalles/detalles-raza/detalles-raza.component';
 import { ListadoComponent } from './components/shared/listado/listado.component';
 import { ListadoRazasComponent } from './components/shared/listado-razas/listado-razas.component';
@@ -192,6 +193,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         ListadoManualComponent,
         DetallesPersonajeComponent,
         NuevoPersonajeComponent,
+        ChipHomebrewComponent,
         DetallesRazaComponent,
         ListadoComponent,
         ListadoRazasComponent,
