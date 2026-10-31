@@ -24,6 +24,7 @@ import {
 } from 'src/app/services/utils/equipo-formulario';
 import { ElementoDeCatalogo } from 'src/app/services/utils/error-catalogo';
 import { ARMA, ARMADURA } from 'src/app/services/utils/nombres-de-catalogo';
+import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
@@ -222,7 +223,7 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
     /** Las opciones de un catálogo pequeño, con la de la entrada cargada si el catálogo no la lista («Elegir» en el daño). */
     opcionesDe(clave: keyof EquipoCatalogos, actual: EquipoRef | null | undefined = null): EquipoRef[] {
         const lista = ((this.catalogos?.[clave] ?? []) as EquipoRef[]).filter((item) => item.Id >= 0 && `${item.Nombre}`.trim());
-        return actual && !lista.some((item) => item.Id === actual.Id) ? [actual, ...lista] : lista;
+        return actual ? conOpcionSinValor(lista, actual) : lista;
     }
 
     get tiposDano(): EquipoRef[] {
@@ -247,7 +248,7 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
 
     get tamanosOpciones(): EquipoRef[] {
         const actual = this.cargada?.Tamano;
-        return actual && !this.tamanos.some((item) => item.Id === actual.Id) ? [actual, ...this.tamanos] : this.tamanos;
+        return actual ? conOpcionSinValor(this.tamanos, actual) : this.tamanos;
     }
 
     get idsPropiedades(): number[] {

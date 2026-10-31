@@ -1,7 +1,7 @@
 import { ArmaCuerpo, ArmaDetalle } from 'src/app/interfaces/arma';
 import { ArmaduraCuerpo, ArmaduraDetalle } from 'src/app/interfaces/armadura';
-import { EquipoCuerpoComun, EquipoRef, OrigenDescripcion } from 'src/app/interfaces/equipo';
-import { toNumberOrNull } from './normalizacion';
+import { EquipoCuerpoComun, OrigenDescripcion } from 'src/app/interfaces/equipo';
+import { toNullableText, toNumber, toNumberOrNull, toText } from './normalizacion';
 
 /**
  * El formulario de «Insertar/Modificar arma» y «Insertar/Modificar armadura» (`nuevo-equipo`, hito 7 del roadmap de
@@ -81,10 +81,6 @@ export function valoresVacios(idTamanoMediano: number | null = null): ValoresEqu
     };
 }
 
-function idDe(ref: EquipoRef | null | undefined): number | null {
-    return ref && Number.isFinite(Number(ref.Id)) ? Number(ref.Id) : null;
-}
-
 function comunesDe(entrada: ArmaDetalle | ArmaduraDetalle): Partial<ValoresEquipo> {
     return {
         nombre: entrada.Nombre ?? '',
@@ -92,13 +88,13 @@ function comunesDe(entrada: ArmaDetalle | ArmaduraDetalle): Partial<ValoresEquip
         origen_descripcion: entrada.Origen_descripcion === 'srd' ? 'srd' : 'propia',
         nombre_original: entrada.Nombre_original ?? '',
         traducido: entrada.Traducido === true,
-        id_manual: idDe(entrada.Manual),
+        id_manual: toNumberOrNull(entrada.Manual?.Id),
         pagina: toNumberOrNull(entrada.Manual?.Pagina),
         oficial: entrada.Oficial === true,
         precio: toNumberOrNull(entrada.Precio),
         peso: toNumberOrNull(entrada.Peso),
-        id_material: idDe(entrada.Material),
-        id_tamano: idDe(entrada.Tamano),
+        id_material: toNumberOrNull(entrada.Material?.Id),
+        id_tamano: toNumberOrNull(entrada.Tamano?.Id),
     };
 }
 
@@ -106,14 +102,14 @@ export function valoresDeArma(arma: ArmaDetalle): ValoresEquipo {
     return {
         ...valoresVacios(),
         ...comunesDe(arma),
-        id_tipo_dano: idDe(arma.Tipo_dano),
-        id_tipo_arma: idDe(arma.Tipo_arma),
-        id_manejo: idDe(arma.Manejo),
+        id_tipo_dano: toNumberOrNull(arma.Tipo_dano?.Id),
+        id_tipo_arma: toNumberOrNull(arma.Tipo_arma?.Id),
+        id_manejo: toNumberOrNull(arma.Manejo?.Id),
         a_distancia: arma.A_distancia === true,
         arrojadiza: arma.Arrojadiza === true,
         doble: arma.Doble === true,
         alcance: toNumberOrNull(arma.Alcance),
-        id_municion: idDe(arma.Municion),
+        id_municion: toNumberOrNull(arma.Municion?.Id),
         dano_pequeno: arma.Dano_pequeno ?? '',
         dano_mediano: arma.Dano_mediano ?? '',
         critico_rango: toNumberOrNull(arma.Critico_rango),
@@ -136,8 +132,8 @@ export function valoresDeArmadura(armadura: ArmaduraDetalle): ValoresEquipo {
         ca: toNumberOrNull(armadura.Ca),
         bon_des: toNumberOrNull(armadura.Bon_des),
         penalizador: toNumberOrNull(armadura.Penalizador),
-        id_peso_armadura: idDe(armadura.Peso_armadura),
-        id_tipo_escudo: idDe(armadura.Tipo_escudo),
+        id_peso_armadura: toNumberOrNull(armadura.Peso_armadura?.Id),
+        id_tipo_escudo: toNumberOrNull(armadura.Tipo_escudo?.Id),
         fallo_arcano: toNumberOrNull(armadura.Fallo_arcano),
         velocidad_30: toNumberOrNull(armadura.Velocidad_30),
         velocidad_20: toNumberOrNull(armadura.Velocidad_20),
@@ -148,34 +144,22 @@ export function valoresDeArmadura(armadura: ArmaduraDetalle): ValoresEquipo {
     };
 }
 
-function texto(valor: unknown): string {
-    return `${valor ?? ''}`.trim();
-}
-
-function textoONulo(valor: unknown): string | null {
-    return texto(valor) || null;
-}
-
-function numero(valor: unknown, porDefecto: number = 0): number {
-    return toNumberOrNull(valor) ?? porDefecto;
-}
-
 function comunesDelCuerpo(v: ValoresEquipo): EquipoCuerpoComun {
     return {
-        nombre: texto(v.nombre),
-        descripcion: texto(v.descripcion),
+        nombre: toText(v.nombre).trim(),
+        descripcion: toText(v.descripcion).trim(),
         origen_descripcion: v.origen_descripcion === 'srd' ? 'srd' : 'propia',
-        nombre_original: textoONulo(v.nombre_original),
+        nombre_original: toNullableText(v.nombre_original),
         traducido: v.traducido === true,
-        id_manual: numero(v.id_manual),
-        pagina: numero(v.pagina),
+        id_manual: toNumber(v.id_manual),
+        pagina: toNumber(v.pagina),
         oficial: v.oficial === true,
     };
 }
 
 /** Un daño en minúsculas y sin espacios («1D8» → «1d8»); vacío, `null`. */
 export function danoNormalizado(valor: unknown): string | null {
-    return texto(valor).replace(/\s+/g, '').toLowerCase() || null;
+    return toText(valor).replace(/\s+/g, '').toLowerCase() || null;
 }
 
 export function cuerpoDeArma(v: ValoresEquipo, propiedades: readonly FilaPropiedadArma[]): ArmaCuerpo {
@@ -183,8 +167,8 @@ export function cuerpoDeArma(v: ValoresEquipo, propiedades: readonly FilaPropied
     return {
         arma: {
             ...comunesDelCuerpo(v),
-            id_tipo_dano: numero(v.id_tipo_dano),
-            id_tipo_arma: numero(v.id_tipo_arma),
+            id_tipo_dano: toNumber(v.id_tipo_dano),
+            id_tipo_arma: toNumber(v.id_tipo_arma),
             id_manejo: toNumberOrNull(v.id_manejo),
             a_distancia: v.a_distancia === true,
             arrojadiza: v.arrojadiza === true,
@@ -197,16 +181,16 @@ export function cuerpoDeArma(v: ValoresEquipo, propiedades: readonly FilaPropied
             critico_rango: multiplicador === null ? null : toNumberOrNull(v.critico_rango),
             critico_multiplicador: multiplicador,
             critico_multiplicador_2: multiplicador === null || v.doble !== true ? null : toNumberOrNull(v.critico_multiplicador_2),
-            precio: numero(v.precio),
+            precio: toNumber(v.precio),
             id_material: toNumberOrNull(v.id_material),
-            id_tamano: numero(v.id_tamano),
-            peso: numero(v.peso),
-            incremento_distancia: numero(v.incremento_distancia),
+            id_tamano: toNumber(v.id_tamano),
+            peso: toNumber(v.peso),
+            incremento_distancia: toNumber(v.incremento_distancia),
             indice_fuerza_coste: toNumberOrNull(v.indice_fuerza_coste),
         },
         propiedades: propiedades
-            .filter((fila) => numero(fila.id_propiedad) > 0)
-            .map((fila) => ({ id_propiedad: numero(fila.id_propiedad), valor: toNumberOrNull(fila.valor) })),
+            .filter((fila) => toNumber(fila.id_propiedad) > 0)
+            .map((fila) => ({ id_propiedad: toNumber(fila.id_propiedad), valor: toNumberOrNull(fila.valor) })),
     };
 }
 
@@ -215,23 +199,23 @@ export function cuerpoDeArmadura(v: ValoresEquipo): ArmaduraCuerpo {
     return {
         armadura: {
             ...comunesDelCuerpo(v),
-            ca: numero(v.ca),
+            ca: toNumber(v.ca),
             bon_des: toNumberOrNull(v.bon_des),
-            penalizador: numero(v.penalizador),
-            precio: numero(v.precio),
+            penalizador: toNumber(v.penalizador),
+            precio: toNumber(v.precio),
             id_material: toNumberOrNull(v.id_material),
             es_escudo: escudo,
             id_peso_armadura: escudo ? null : toNumberOrNull(v.id_peso_armadura),
             id_tipo_escudo: escudo ? toNumberOrNull(v.id_tipo_escudo) : null,
-            peso: numero(v.peso),
-            id_tamano: numero(v.id_tamano),
-            fallo_arcano: numero(v.fallo_arcano),
+            peso: toNumber(v.peso),
+            id_tamano: toNumber(v.id_tamano),
+            fallo_arcano: toNumber(v.fallo_arcano),
             velocidad_30: toNumberOrNull(v.velocidad_30),
             velocidad_20: toNumberOrNull(v.velocidad_20),
             correr_multiplicador: toNumberOrNull(v.correr_multiplicador),
-            tiempo_poner: textoONulo(v.tiempo_poner),
-            tiempo_poner_rapido: textoONulo(v.tiempo_poner_rapido),
-            tiempo_quitar: textoONulo(v.tiempo_quitar),
+            tiempo_poner: toNullableText(v.tiempo_poner),
+            tiempo_poner_rapido: toNullableText(v.tiempo_poner_rapido),
+            tiempo_quitar: toNullableText(v.tiempo_quitar),
         },
     };
 }
@@ -268,7 +252,7 @@ export function problemaDeArma(v: ValoresEquipo, propiedades: readonly FilaPropi
                 mensaje: 'Un arma doble lleva el daño de sus dos cabezas («1d8/1d6»); una que no es doble, uno solo.',
             };
     }
-    const ids = propiedades.map((fila) => numero(fila.id_propiedad)).filter((id) => id > 0);
+    const ids = propiedades.map((fila) => toNumber(fila.id_propiedad)).filter((id) => id > 0);
     if (new Set(ids).size !== ids.length)
         return { campo: 'propiedades', mensaje: 'Una propiedad está repetida.' };
     return null;
