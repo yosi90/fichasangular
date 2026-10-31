@@ -1,6 +1,7 @@
 {
   "projects": {
-    "default": "yosiftware-fichas"
+    "default": "yosiftware-fichas",
+    "qa": "yosiftware-fichas-qa"
   },
   "targets": {
     "yosiftware-fichas": {
