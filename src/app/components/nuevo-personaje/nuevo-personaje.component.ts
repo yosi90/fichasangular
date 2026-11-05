@@ -4516,11 +4516,7 @@ export class NuevoPersonajeComponent {
     private getRangosInicialesSesionHabilidad(habilidad: Personaje['Habilidades'][number]): number {
         if (Number(habilidad?.Id ?? 0) <= 0)
             return 0;
-        const mapa = this.flujoHabilidades?.rangosIniciales ?? {};
-        const valor = Number(mapa?.[claveHabilidad(habilidad)] ?? 0);
-        if (!Number.isFinite(valor))
-            return 0;
-        return Math.max(0, Math.trunc(valor));
+        return this.nuevoPSvc.obtenerRangoInicialHabilidadSesion(claveHabilidad(habilidad));
     }
 
     async continuarDesdeHabilidades(): Promise<void> {

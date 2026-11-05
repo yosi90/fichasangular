@@ -6237,7 +6237,8 @@ export class NuevoPersonajeService {
             || toNumber(habilidad?.Rangos_varios) !== 0;
     }
 
-    private obtenerRangoInicialHabilidadSesion(clave: ClaveHabilidad): number {
+    /** Los rangos con los que entró en la sesión la habilidad con esa clave (`habilidad-clave.ts`): el suelo al bajar. */
+    obtenerRangoInicialHabilidadSesion(clave: ClaveHabilidad): number {
         const mapa = this.estadoFlujo?.habilidades?.rangosIniciales ?? {};
         const valor = toNumber(mapa?.[clave] ?? 0);
         if (!Number.isFinite(valor))
