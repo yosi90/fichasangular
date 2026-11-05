@@ -34,7 +34,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatStepperModule } from '@angular/material/stepper';
 import { FormsModule } from '@angular/forms';
 import { ListaPersonajesComponent } from './components/base/lista-personajes/lista-personajes.component';
-import { provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
+import { NormasCreacionInterceptor } from './services/normas-creacion.interceptor';
+import { NormasCreacionDialogoComponent } from './components/shared/normas-creacion-dialogo/normas-creacion-dialogo.component';
 import { DataServices } from './data.services';
 import { provideAuth, initializeAuth, inMemoryPersistence } from '@angular/fire/auth';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
@@ -173,6 +175,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         TabControlComponent,
         BaseMenuComponent,
         UserProfileComponent,
+        NormasCreacionDialogoComponent,
         CampanasGestionComponent,
         PublicUserProfileComponent,
         ChatFloatingHostComponent,
@@ -324,6 +327,8 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         DataServices,
         ...PROVEEDORES_PAGINADOR,
         provideHttpClient(withInterceptorsFromDi()),
+        // Las normas de Rol que pide la API al crear: se ofrecen y, si se aceptan, se repite la petición.
+        { provide: HTTP_INTERCEPTORS, useClass: NormasCreacionInterceptor, multi: true },
         provideFirebaseApp(() => initializeApp(environment.firebase)),
         // La sesión de Firebase sale del token propio que da la API con la sesión de la plataforma: solo en
         // memoria, sin tokens en el almacenamiento del navegador (ecosistema-kit/ACCESO.md).

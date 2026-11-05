@@ -6,7 +6,8 @@ import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-err
 
 /**
  * Lo que comparten «Mi perfil», la gestión de campañas y el social al lanzar una acción contra la API: comprobar las
- * normas y el freno de repeticiones antes, y convertir el error en una frase para la persona después.
+ * restricciones, las normas de Rol (al crear) y el freno de repeticiones antes, y convertir el error en una frase para la
+ * persona después.
  */
 
 /** Las acciones que crean o cambian contenido de rol piden las normas de creación; las demás, las de uso. */
@@ -44,6 +45,28 @@ export function permitirAccionGuardada(
         return false;
     }
     return true;
+}
+
+/**
+ * Como `permitirAccionGuardada`, pero si la acción crea o cambia contenido de rol (`ambitoDeAccion`), antes pide las
+ * normas de Rol si faltan (su ventana): sin aceptarlas, no se lanza y no se avisa de nada más.
+ */
+export async function permitirAccionConNormas(
+    userSvc: UserService,
+    apiActionGuardSvc: ApiActionGuardService,
+    appToastSvc: AppToastService,
+    actionKey: string,
+): Promise<boolean> {
+    if (ambitoDeAccion(actionKey) === 'creation') {
+        const restriccion = userSvc.getAccessRestrictionMessage('creation');
+        if (restriccion.length > 0) {
+            appToastSvc.showError(restriccion);
+            return false;
+        }
+        if (userSvc.normasDeCreacionPendientes && !await userSvc.asegurarNormasDeCreacion())
+            return false;
+    }
+    return permitirAccionGuardada(userSvc, apiActionGuardSvc, appToastSvc, actionKey);
 }
 
 /** La frase del error: la de las normas, la sanción o la limitación si es eso (las de `UserService`), o la de la API. */

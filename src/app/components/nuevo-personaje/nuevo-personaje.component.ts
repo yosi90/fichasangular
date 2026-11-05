@@ -5105,6 +5105,9 @@ export class NuevoPersonajeComponent {
             });
             return;
         }
+        // Si la creación se abrió sin pasar por «Nuevo personaje» (un borrador recuperado), las normas de Rol se piden aquí.
+        if (this.userSvc.normasDeCreacionPendientes && !await this.userSvc.asegurarNormasDeCreacion())
+            return;
 
         if (!await this.ensureCampaignCreationRulesSatisfied('finalizacion'))
             return;

@@ -369,9 +369,9 @@ describe('UserService', () => {
             error: { error: 'Faltan por aceptar las normas.', code: 'CREATION_POLICY_ACCEPTANCE_REQUIRED', policyKind: 'creation' },
         });
 
-        expect(service.getComplianceErrorMessage(http, 'creation')).toBe('Debes aceptar las normas de Rol vigentes antes de crear o editar contenido.');
+        expect(service.getComplianceErrorMessage(http, 'creation')).toBe('Para crear o editar en Rol tienes que aceptar sus normas.');
         expect(service.getComplianceErrorMessage(new ProfileApiError('x', 'CREATION_POLICY_ACCEPTANCE_REQUIRED', 403), 'usage'))
-            .toBe('Debes aceptar las normas de Rol vigentes antes de crear o editar contenido.');
+            .toBe('Para crear o editar en Rol tienes que aceptar sus normas.');
         expect(service.getComplianceErrorMessage({ code: 'USER_BANNED', status: 400 }, 'usage')).toBe('');
         expect(service.getComplianceErrorMessage(new HttpErrorResponse({ status: 400, error: { message: 'CREATION_POLICY_ACCEPTANCE_REQUIRED' } }), 'usage')).toBe('');
     });
@@ -789,8 +789,10 @@ function crearPlataformaFalsa() {
 class UserServicePlataformaDouble extends UserService {
     private authHandler?: ((firebaseUser: User | null) => void) | null;
     readonly plataforma: ReturnType<typeof crearPlataformaFalsa>;
+    readonly normas: { pedir: jasmine.Spy };
+    aclDeLaCuenta: any = null;
 
-    constructor(plataforma = crearPlataformaFalsa()) {
+    constructor(plataforma = crearPlataformaFalsa(), normas = { pedir: jasmine.createSpy('pedir').and.resolveTo(true) }) {
         super(
             {} as Auth,
             {} as Database,
@@ -798,8 +800,10 @@ class UserServicePlataformaDouble extends UserService {
             undefined,
             undefined,
             plataforma as any,
+            normas as any,
         );
         this.plataforma = plataforma;
+        this.normas = normas;
     }
 
     protected override subscribeAuthState(handler: (firebaseUser: User | null) => void): void {
@@ -807,7 +811,7 @@ class UserServicePlataformaDouble extends UserService {
     }
 
     protected override watchAclPath(_: string, onData: (rawAcl: any) => void, __: () => void): () => void {
-        onData(null);
+        onData(this.aclDeLaCuenta);
         return () => undefined;
     }
 
@@ -826,14 +830,75 @@ describe('UserService con la cuenta de Yosiftware', () => {
         expect(service.canProceed('creation')).toBeTrue();
     });
 
-    it('con normas de Rol pendientes no deja crear y lo explica', () => {
+    const NORMAS_PENDIENTES = { id: 3, version: 2, titulo: 'Normas de Rol', importante: true, publicadas: '2026-10-01' };
+
+    it('con normas de Rol pendientes no desactiva crear: se piden al pulsar', () => {
         const service = new UserServicePlataformaDouble();
-        service.entrarConCuenta({
-            normasPendientes: { id: 3, version: 2, titulo: 'Normas de Rol', importante: true, publicadas: '2026-10-01' },
-        });
+        service.aclDeLaCuenta = { permissions: { personajes: { create: true } } };
+        service.entrarConCuenta({ normasPendientes: NORMAS_PENDIENTES });
+
+        expect(service.normasDeCreacionPendientes).toBeTrue();
+        expect(service.canProceed('creation')).toBeTrue();
+        expect(service.can('personajes', 'create')).toBeTrue();
+        expect(service.getAccessRestrictionMessage('creation')).toBe('');
+        expect(service.getPermissionDeniedMessage()).not.toContain('normas');
+    });
+
+    it('la limitación de creación sigue bloqueando aunque falten las normas', () => {
+        const service = new UserServicePlataformaDouble();
+        service.aclDeLaCuenta = { permissions: { personajes: { create: true } } };
+        service.entrarConCuenta({ normasPendientes: NORMAS_PENDIENTES, restricciones: { alcances: ['creacion'], hasta: null } });
 
         expect(service.canProceed('creation')).toBeFalse();
-        expect(service.getAccessRestrictionMessage('creation')).toBe('Debes aceptar las normas de Rol vigentes antes de crear o editar contenido.');
+        expect(service.can('personajes', 'create')).toBeFalse();
+        expect(service.getAccessRestrictionMessage('creation')).toContain('Tu cuenta tiene limitada la creación de contenido');
+    });
+
+    it('asegurarNormasDeCreacion abre la ventana solo si faltan y devuelve lo que decide la persona', async () => {
+        const service = new UserServicePlataformaDouble();
+        service.entrarConCuenta({ normasPendientes: NORMAS_PENDIENTES });
+        service.normas.pedir.and.resolveTo(false);
+
+        expect(await service.asegurarNormasDeCreacion()).toBeFalse();
+        expect(service.normas.pedir).toHaveBeenCalledTimes(1);
+
+        service.normas.pedir.and.resolveTo(true);
+        expect(await service.asegurarNormasDeCreacion()).toBeTrue();
+        expect(service.normas.pedir).toHaveBeenCalledTimes(2);
+    });
+
+    it('asegurarNormasDeCreacion sin normas pendientes sigue sin preguntar', async () => {
+        const service = new UserServicePlataformaDouble();
+        service.entrarConCuenta();
+
+        expect(service.normasDeCreacionPendientes).toBeFalse();
+        expect(await service.asegurarNormasDeCreacion()).toBeTrue();
+        expect(service.normas.pedir).not.toHaveBeenCalled();
+    });
+
+    it('asegurarNormasDeCreacion abre la ventana si lo dice la API aunque el estado aún no lo sepa', async () => {
+        const service = new UserServicePlataformaDouble();
+        service.entrarConCuenta();
+
+        expect(await service.asegurarNormasDeCreacion(true)).toBeTrue();
+        expect(service.normas.pedir).toHaveBeenCalledTimes(1);
+    });
+
+    it('asegurarNormasDeCreacion sin sesión no abre nada', async () => {
+        const service = new UserServicePlataformaDouble();
+
+        expect(await service.asegurarNormasDeCreacion()).toBeFalse();
+        expect(service.normas.pedir).not.toHaveBeenCalled();
+    });
+
+    it('al aceptar las normas, el estado nuevo deja de pedirlas', () => {
+        const service = new UserServicePlataformaDouble();
+        service.entrarConCuenta({ normasPendientes: NORMAS_PENDIENTES });
+        expect(service.normasDeCreacionPendientes).toBeTrue();
+
+        service.plataforma.estado$.next({ tipo: 'con_sesion', cuenta: { id: 'sub-1', alias: 'aldric', correo: null } });
+
+        expect(service.normasDeCreacionPendientes).toBeFalse();
     });
 
     it('aplica la limitación de creación de la plataforma mientras está vigente', () => {
