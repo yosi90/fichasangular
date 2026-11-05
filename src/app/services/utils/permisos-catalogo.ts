@@ -45,6 +45,23 @@ export function puedeGestionarCatalogo(usuario: ConsultaDePermisos, lista: strin
 }
 
 /**
+ * Los listados que llevan más de un catálogo, cada uno con su permiso: el de ventajas lleva también las desventajas (una
+ * pantalla para las dos). Un listado que no está aquí es un solo catálogo, el suyo.
+ */
+export const CATALOGOS_DEL_LISTADO: Readonly<Record<string, readonly string[]>> = {
+    'ventajas': ['ventajas', 'desventajas'],
+};
+
+/**
+ * Si la cuenta puede crear o modificar algo de un listado (el menú lateral): el permiso de cualquiera de sus catálogos
+ * (`CATALOGOS_DEL_LISTADO`). Cada pantalla sigue pidiendo el de su catálogo con `puedeGestionarCatalogo`.
+ */
+export function puedeGestionarListado(usuario: ConsultaDePermisos, lista: string): boolean {
+    const texto = `${lista ?? ''}`.trim();
+    return (CATALOGOS_DEL_LISTADO[texto] ?? [texto]).some((catalogo) => puedeGestionarCatalogo(usuario, catalogo));
+}
+
+/**
  * El botón «Modificar» de un detalle (`[modificable]` de `<app-ficha-cabecera>`): solo si alguien escucha su salida
  * `modificar` (las pestañas; la creación y la ficha no) y la cuenta puede gestionar el catálogo de ese listado.
  */
