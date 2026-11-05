@@ -1,0 +1,69 @@
+<div class="nuevo-chakra-shell">
+    <form class="nuevo-chakra-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <app-insercion-marco
+            [modo]="modo"
+            tipo="Chakra"
+            iconoTipo="chakra"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="form.controls.oficial.value"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeCrear)"
+            [error]="errores.global"
+            [guardando]="guardando"
+            [accionDesactivada]="edicion.cargando || (edicion.editando && !edicion.hayCambios)"
+            [nota]="edicion.editando && !edicion.hayCambios ? 'Sin cambios todavía.' : ''"
+            [textoAccion]="textoAccion"
+            [textoGuardando]="textoAccion">
+            <div class="insercion-campos">
+                <mat-form-field appearance="fill" class="insercion-campos__doble">
+                    <mat-label>Nombre</mat-label>
+                    <input matInput formControlName="nombre" maxlength="50">
+                    <mat-error *ngIf="form.controls.nombre.invalid">{{errores.textoDe('nombre', 'Nombre obligatorio (hasta 50 caracteres).')}}</mat-error>
+                </mat-form-field>
+                <mat-form-field appearance="fill" class="insercion-campos__doble">
+                    <mat-label>Nombre original</mat-label>
+                    <input matInput formControlName="nombre_original" maxlength="50">
+                    <mat-hint>El nombre en inglés, si viene de un libro sin traducir.</mat-hint>
+                    <mat-error *ngIf="form.controls.nombre_original.invalid">{{errores.textoDe('nombre_original', 'Hasta 50 caracteres.')}}</mat-error>
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Categoría</mat-label>
+                    <mat-select formControlName="id_categoria">
+                        <mat-option *ngFor="let categoria of categorias" [value]="categoria.Id">{{categoria.Nombre}}</mat-option>
+                    </mat-select>
+                    <mat-error *ngIf="form.controls.id_categoria.invalid">{{errores.textoDe('id_categoria', 'Categoría obligatoria.')}}</mat-error>
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Ranura que cierra al vincular</mat-label>
+                    <mat-select formControlName="id_ranura">
+                        <mat-option [value]="null">Ninguna (como el tótem)</mat-option>
+                        <mat-option *ngFor="let ranura of ranuras" [value]="ranura.Id">{{ranura.Nombre}}</mat-option>
+                    </mat-select>
+                    <mat-error *ngIf="form.controls.id_ranura.invalid">{{errores.textoDe('id_ranura', 'Ranura no válida.')}}</mat-error>
+                </mat-form-field>
+                <mat-form-field appearance="fill">
+                    <mat-label>Orden</mat-label>
+                    <input matInput type="number" min="1" max="255" step="1" formControlName="orden">
+                    <mat-hint>Su lugar entre los chakras (corona 1 … tótem 11).</mat-hint>
+                    <mat-error *ngIf="form.controls.orden.invalid">{{errores.textoDe('orden', 'Un número entero de 1 a 255.')}}</mat-error>
+                </mat-form-field>
+                <div class="estado-row">
+                    <mat-chip-listbox class="boolean-chips" aria-label="Estado del chakra" [multiple]="true">
+                        <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="alternar('oficial')">Oficial</mat-chip-option>
+                        <mat-chip-option [selected]="form.controls.traducido.value === true" (click)="alternar('traducido')">Traducción nuestra</mat-chip-option>
+                    </mat-chip-listbox>
+                </div>
+                <mat-form-field appearance="fill" class="insercion-campos__entero">
+                    <mat-label>Descripción</mat-label>
+                    <textarea matInput formControlName="descripcion" rows="3" maxlength="8000"></textarea>
+                    <mat-hint>Propia y breve: dónde está y qué ranura cierra.</mat-hint>
+                    <mat-error *ngIf="form.controls.descripcion.invalid">{{errores.textoDe('descripcion', 'Hasta 8000 caracteres.')}}</mat-error>
+                </mat-form-field>
+                <p class="chakra-nota insercion-campos__entero" *ngIf="cargado">
+                    Sus fusiones ({{cargado.Fusiones.length}}) se eligen en cada fusión y las clases que lo abren ({{cargado.Clases.length}}),
+                    en cada clase: aquí no se editan.
+                </p>
+            </div>
+        </app-insercion-marco>
+    </form>
+</div>

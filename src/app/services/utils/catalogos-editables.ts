@@ -1,3 +1,5 @@
+import { tipoRolDeVentaja } from './iconos-rol';
+
 /**
  * Los catálogos que ya tienen pantalla de insertar o de modificar en la web. Lo leen el menú lateral (si una opción abre
  * algo o todavía solo cierra el menú) y las pestañas (qué formulario abren).
@@ -21,6 +23,11 @@ export const INSERCIONES_CATALOGO: Readonly<Record<string, string>> = {
     'monstruos': 'Nuevo monstruo',
     'armas': 'Nueva arma',
     'armaduras': 'Nueva armadura',
+    // Hito 8 del roadmap de inserciones: rasgos, ventajas (y desventajas, en la misma pantalla) y el incarnum.
+    'rasgos': 'Nuevo rasgo',
+    'ventajas': 'Nueva ventaja',
+    'fusiones del alma': 'Nueva fusión',
+    'chakras': 'Nuevo chakra',
 };
 
 /** Si la inserción de un listado ya tiene pantalla. */
@@ -34,7 +41,8 @@ export function tieneInsercion(lista: string | null | undefined): boolean {
  * `edicion:<tipo>:<id>`), y lleva dentro la misma pantalla que la inserción, en modo `editar`.
  */
 export type TipoEdicion = 'racial' | 'idioma' | 'especial' | 'clase' | 'plantilla' | 'raza' | 'dote' | 'conjuro' | 'monstruo'
-    | 'arma' | 'armadura';
+    | 'arma' | 'armadura'
+    | 'rasgo' | 'ventaja' | 'desventaja' | 'fusion' | 'chakra';
 
 /** Una pestaña de «Modificar» abierta. */
 export interface EdicionCatalogoTab {
@@ -51,6 +59,11 @@ interface DefinicionEdicion {
     readonly etiqueta: (nombre: string) => string;
     /** Lo que se lee en la pestaña. */
     readonly texto: (nombre: string) => string;
+    /**
+     * Si una entrada de su listado es de este tipo, cuando un listado lleva dos (las ventajas y las desventajas, que se
+     * distinguen por el signo de su coste). Sin él, todas las del listado.
+     */
+    readonly admite?: (entrada: unknown) => boolean;
 }
 
 const editar = (tipo: string): Pick<DefinicionEdicion, 'etiqueta' | 'texto'> => ({
@@ -71,6 +84,11 @@ export const EDICIONES_CATALOGO: Readonly<Record<TipoEdicion, DefinicionEdicion>
     monstruo: { listado: 'monstruos', ...editar('monstruo') },
     arma: { listado: 'armas', ...editar('arma') },
     armadura: { listado: 'armaduras', ...editar('armadura') },
+    rasgo: { listado: 'rasgos', ...editar('rasgo') },
+    ventaja: { listado: 'ventajas', ...editar('ventaja'), admite: (entrada) => tipoRolDeVentaja(entrada as { Coste?: unknown; }) === 'ventaja' },
+    desventaja: { listado: 'ventajas', ...editar('desventaja'), admite: (entrada) => tipoRolDeVentaja(entrada as { Coste?: unknown; }) === 'desventaja' },
+    fusion: { listado: 'fusiones del alma', ...editar('fusión') },
+    chakra: { listado: 'chakras', ...editar('chakra') },
 };
 
 export const TIPOS_EDICION = Object.keys(EDICIONES_CATALOGO) as TipoEdicion[];
@@ -80,10 +98,14 @@ export function edicionesVacias(): Record<TipoEdicion, EdicionCatalogoTab[]> {
     return TIPOS_EDICION.reduce((todas, tipo) => ({ ...todas, [tipo]: [] }), {} as Record<TipoEdicion, EdicionCatalogoTab[]>);
 }
 
-/** El catálogo que se modifica desde un listado («raciales» → `racial`), o `null` si no se puede modificar aún. */
-export function tipoEdicionDeListado(lista: string | null | undefined): TipoEdicion | null {
+/**
+ * El catálogo que se modifica desde un listado («raciales» → `racial`), o `null` si no se puede modificar aún. Con la
+ * entrada elegida, el tipo que la admite (una desventaja del listado de ventajas → `desventaja`).
+ */
+export function tipoEdicionDeListado(lista: string | null | undefined, entrada?: unknown): TipoEdicion | null {
     const texto = `${lista ?? ''}`.trim();
-    return TIPOS_EDICION.find((tipo) => EDICIONES_CATALOGO[tipo].listado === texto) ?? null;
+    return TIPOS_EDICION.find((tipo) => EDICIONES_CATALOGO[tipo].listado === texto
+        && (entrada === undefined || EDICIONES_CATALOGO[tipo].admite?.(entrada) !== false)) ?? null;
 }
 
 export function claveEdicion(tipo: TipoEdicion, id: number): string {

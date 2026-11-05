@@ -26,6 +26,8 @@ export interface Chakra extends NombreTraducible {
     Ranura: { Id: number; Nombre: string; } | null;
     Orden: number;
     Descripcion: string | null;
+    /** Del libro u homebrew (desde el hito 8 del roadmap de inserciones, que deja dar de alta chakras). */
+    Oficial: boolean;
 }
 
 /** Una fusión que se moldea o se vincula en un chakra (`ChakraDetalle.Fusiones`). */
@@ -77,6 +79,64 @@ export interface Fusion extends NombreTraducible {
     Clases: { Id: number; Nombre: string; }[];
     Descriptores: FusionDescriptor[];
     Chakras: FusionChakra[];
+}
+
+/** Un chakra de la fusión en su alta y su edición: dónde se moldea, dónde se vincula y qué hace vinculada ahí. */
+export interface FusionChakraCuerpo {
+    id_chakra: number;
+    ocupa: boolean;
+    vinculo: boolean;
+    efecto_vinculo: string;
+}
+
+/**
+ * Cuerpo de `POST /incarnum/fusiones/add` y `PUT /incarnum/fusiones/<id>` (hito 8 del roadmap de inserciones). Sin los
+ * datos de juego (`Datos_*`): la edición conserva los que hay.
+ */
+export interface FusionCuerpo {
+    fusion: {
+        nombre: string;
+        nombre_original: string | null;
+        traducido: boolean;
+        descripcion: string;
+        efecto_basico: string;
+        efecto_esencia: string;
+        origen_descripcion: string;
+        salvacion: { tipo: string | null; efecto: string | null; } | null;
+        alineado_portador: boolean;
+        id_manual: number;
+        pagina: number;
+        oficial: boolean;
+    };
+    clases: number[];
+    descriptores: number[];
+    chakras: FusionChakraCuerpo[];
+}
+
+export interface FusionGuardada {
+    message: string;
+    idFusion: number;
+    fusion: Fusion;
+}
+
+/** Cuerpo de `POST /incarnum/chakras/add` y `PUT /incarnum/chakras/<id>`: solo su fila. */
+export interface ChakraCuerpo {
+    chakra: {
+        nombre: string;
+        nombre_original: string | null;
+        traducido: boolean;
+        id_categoria: number;
+        id_ranura: number | null;
+        orden: number;
+        descripcion: string;
+        oficial: boolean;
+    };
+}
+
+export interface ChakraGuardado {
+    message: string;
+    idChakra: number;
+    chakra: ChakraDetalle;
 }
 
 /** `GET /incarnum/capacidad-esencia`: un tramo de la tabla 2-1; el último no tiene tope y sube cada `Incremento_cada`. */

@@ -1,0 +1,15 @@
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar rasgos: una inserción pequeña, sin pasos ni tarjetas, con los campos directamente en el marco común
+// (guía de inserciones, como el idioma).
+:host
+    @include inserciones.insercion-host
+
+.nuevo-rasgo-shell
+    @include inserciones.insercion-shell
+
+.nuevo-rasgo-form
+    @include inserciones.insercion-form-base
+
+    .estado-row
+        justify-content: flex-start

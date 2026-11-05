@@ -1,9 +1,14 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
-import { Database, Unsubscribe, onValue, ref, set } from "@angular/fire/database";
-import { Observable } from "rxjs";
-import Swal from "sweetalert2";
-import { VentajaDetalle } from "../interfaces/ventaja";
+import { Auth } from "@angular/fire/auth";
+import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
+import { Observable, firstValueFrom, map } from "rxjs";
+import { environment } from "src/environments/environment";
+import { TipoVentaja, VentajaCuerpo, VentajaDetalle, VentajaGuardada } from "../interfaces/ventaja";
+import { cabeceraApiConFirebase } from "./platform-session.service";
+import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { nombreDeVentaja } from "src/app/services/utils/nombres-de-catalogo";
+import { leerRespuestaDeEscritura } from "src/app/services/utils/respuesta-de-escritura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { porNombre } from "src/app/services/utils/orden-texto";
@@ -143,7 +148,34 @@ export class VentajaService {
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService,
+        private auth?: Auth,
     ) { }
+
+    /** La ventaja o la desventaja por HTTP, sin caché: la que abre «Modificar» (`GET /<tipo>s/<id>`). */
+    getVentajaFresca(tipo: TipoVentaja, id: number): Observable<VentajaDetalle> {
+        return this.http.get(`${environment.apiUrl}${tipo}s/${Math.trunc(Number(id))}`).pipe(map((raw: any) => normalizeVentaja(raw)));
+    }
+
+    /** `POST /ventajas/add` o `/desventajas/add`: permiso de creación `ventajas` o `desventajas`. */
+    async crearVentaja(tipo: TipoVentaja, cuerpo: VentajaCuerpo): Promise<VentajaGuardada> {
+        try {
+            const headers = await cabeceraApiConFirebase(this.auth);
+            return respuestaDeVentaja(tipo, await firstValueFrom(this.http.post<any>(`${environment.apiUrl}${tipo}s/add`, cuerpo, { headers })));
+        } catch (error: unknown) {
+            throw errorDeCatalogo(error, 'crear', nombreDeVentaja(tipo));
+        }
+    }
+
+    /** `PUT /<tipo>s/<id>`: la entrada entera, con el mismo cuerpo que el alta (el mismo permiso; el tipo no cambia). */
+    async actualizarVentaja(tipo: TipoVentaja, id: number, cuerpo: VentajaCuerpo): Promise<VentajaGuardada> {
+        try {
+            const headers = await cabeceraApiConFirebase(this.auth);
+            const url = `${environment.apiUrl}${tipo}s/${Math.trunc(Number(id))}`;
+            return respuestaDeVentaja(tipo, await firstValueFrom(this.http.put<any>(url, cuerpo, { headers })));
+        } catch (error: unknown) {
+            throw errorDeCatalogo(error, 'actualizar', nombreDeVentaja(tipo));
+        }
+    }
 
     getVentajas(): Observable<VentajaDetalle[]> {
         return this.getColeccion("Ventajas");
@@ -183,4 +215,11 @@ export class VentajaService {
         });
     }
 
+}
+
+/** `{ message, idVentaja, ventaja }` o `{ message, idDesventaja, desventaja }`. */
+function respuestaDeVentaja(tipo: TipoVentaja, respuesta: unknown): VentajaGuardada {
+    const clave = tipo === 'ventaja' ? 'idVentaja' : 'idDesventaja';
+    const { message, id } = leerRespuestaDeEscritura(respuesta, clave);
+    return { message, id, ventaja: normalizeVentaja((respuesta as any)?.[tipo]) };
 }

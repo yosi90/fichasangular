@@ -4,6 +4,7 @@ import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 import { DetallesVentajaComponent } from './detalles-ventaja.component';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 
@@ -43,6 +44,7 @@ describe('DetallesVentajaComponent', () => {
     let fixture: ComponentFixture<DetallesVentajaComponent>;
     let manualNav: { abrirDetalleManual: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
+    const usuario = { can: jasmine.createSpy('can').and.returnValue(false) };
     const { texto, titulos, datos, lateral } = lectorFicha(elemento);
     const lista = (titulo: string): string[] => Array.from(lateral(titulo)?.querySelectorAll('.ficha-lista__item') ?? [])
         .map((item) => limpio(item.querySelector('span') ?? item));
@@ -51,7 +53,7 @@ describe('DetallesVentajaComponent', () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
         await TestBed.configureTestingModule({
             declarations: [DetallesVentajaComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
-            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNav }],
+            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNav }, { provide: UserService, useValue: usuario }],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
 
@@ -125,5 +127,37 @@ describe('DetallesVentajaComponent', () => {
 
         (elemento().querySelector('button.ficha-cabecera__manual') as HTMLButtonElement).click();
         expect(manualNav.abrirDetalleManual).toHaveBeenCalledWith({ id: 4, nombre: 'Unearthed Arcana' });
+    });
+
+    it('enseña el lápiz «Modificar» solo con el permiso de ventajas y si alguien lo escucha', () => {
+        component.ventaja = crearVentaja();
+        const abiertas: unknown[] = [];
+        component.modificar.subscribe((entrada) => abiertas.push(entrada));
+        usuario.can.and.returnValue(false);
+        fixture.detectChanges();
+        expect(usuario.can).toHaveBeenCalledWith('ventajas', 'create');
+        expect(Array.from(elemento().querySelectorAll('button')).some((b) => b.textContent?.includes('Modificar'))).toBeFalse();
+
+        usuario.can.and.callFake((r: string) => r === 'ventajas');
+        fixture.detectChanges();
+        const lapiz = Array.from(elemento().querySelectorAll('button')).find((b) => b.textContent?.includes('Modificar')) as HTMLButtonElement;
+        lapiz.click();
+        expect(abiertas).toEqual([component.ventaja]);
+    });
+
+    it('enseña el lápiz «Modificar» solo con el permiso de desventajas y si alguien lo escucha (una desventaja)', () => {
+        component.ventaja = crearVentaja({ Id: 22, Coste: 5 });
+        const abiertas: unknown[] = [];
+        component.modificar.subscribe((entrada) => abiertas.push(entrada));
+        usuario.can.and.returnValue(false);
+        fixture.detectChanges();
+        expect(usuario.can).toHaveBeenCalledWith('desventajas', 'create');
+        expect(Array.from(elemento().querySelectorAll('button')).some((b) => b.textContent?.includes('Modificar'))).toBeFalse();
+
+        usuario.can.and.callFake((r: string) => r === 'desventajas');
+        fixture.detectChanges();
+        const lapiz = Array.from(elemento().querySelectorAll('button')).find((b) => b.textContent?.includes('Modificar')) as HTMLButtonElement;
+        lapiz.click();
+        expect(abiertas).toEqual([component.ventaja]);
     });
 });

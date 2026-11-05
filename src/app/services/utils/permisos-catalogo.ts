@@ -25,6 +25,8 @@ export const RECURSO_DE_CATALOGO: Readonly<Record<string, PermissionResource>> =
     'armaduras': 'armaduras',
     'rasgos': 'rasgos',
     'ventajas': 'ventajas',
+    // Las desventajas se listan con las ventajas, pero tienen su propio permiso (hito 8): el de su alta y su edición.
+    'desventajas': 'desventajas',
     'tipos de criatura': 'tipos_criatura',
     'subtipos': 'subtipos',
     'deidades': 'deidades',

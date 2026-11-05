@@ -141,6 +141,10 @@
                 <app-nueva-monstruo *ngIf="listadoTab.tipo === 'monstruos'"></app-nueva-monstruo>
                 <app-nuevo-equipo *ngIf="listadoTab.tipo === 'armas'" tipo="arma"></app-nuevo-equipo>
                 <app-nuevo-equipo *ngIf="listadoTab.tipo === 'armaduras'" tipo="armadura"></app-nuevo-equipo>
+                <app-nuevo-rasgo *ngIf="listadoTab.tipo === 'rasgos'"></app-nuevo-rasgo>
+                <app-nueva-ventaja *ngIf="listadoTab.tipo === 'ventajas'"></app-nueva-ventaja>
+                <app-nueva-fusion *ngIf="listadoTab.tipo === 'fusiones del alma'"></app-nueva-fusion>
+                <app-nuevo-chakra *ngIf="listadoTab.tipo === 'chakras'"></app-nuevo-chakra>
             </div>
         </ng-container>
         <ng-template #listadoGenerico>
@@ -331,6 +335,89 @@
             </app-nuevo-equipo>
         </div>
     </mat-tab>
+    <!-- Hito 8 del roadmap de inserciones: rasgos, ventajas y desventajas, fusiones y chakras. -->
+    <mat-tab *ngFor="let rasgoTab of ediciones.rasgo" [label]="etiquetaEdicion(rasgoTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'rasgo'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(rasgoTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(rasgoTab)}}</span>
+            <button (click)="quitarEdicion(rasgoTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-rasgo
+                [idRasgo]="rasgoTab.id"
+                modo="editar"
+                [editorTabKey]="rasgoTab.key"
+                (cerrar)="quitarEdicion(rasgoTab)"
+                (rasgoActualizado)="onEdicionGuardada('rasgo', $event)">
+            </app-nuevo-rasgo>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let ventajaTab of ediciones.ventaja" [label]="etiquetaEdicion(ventajaTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'ventaja'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(ventajaTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(ventajaTab)}}</span>
+            <button (click)="quitarEdicion(ventajaTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-ventaja
+                tipo="ventaja"
+                [idVentaja]="ventajaTab.id"
+                modo="editar"
+                [editorTabKey]="ventajaTab.key"
+                (cerrar)="quitarEdicion(ventajaTab)"
+                (ventajaActualizada)="onEdicionGuardada('ventaja', $event)">
+            </app-nueva-ventaja>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let desventajaTab of ediciones.desventaja" [label]="etiquetaEdicion(desventajaTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'desventaja'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(desventajaTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(desventajaTab)}}</span>
+            <button (click)="quitarEdicion(desventajaTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-ventaja
+                tipo="desventaja"
+                [idVentaja]="desventajaTab.id"
+                modo="editar"
+                [editorTabKey]="desventajaTab.key"
+                (cerrar)="quitarEdicion(desventajaTab)"
+                (ventajaActualizada)="onEdicionGuardada('desventaja', $event)">
+            </app-nueva-ventaja>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let fusionTab of ediciones.fusion" [label]="etiquetaEdicion(fusionTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'fusion'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(fusionTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(fusionTab)}}</span>
+            <button (click)="quitarEdicion(fusionTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-fusion
+                [idFusion]="fusionTab.id"
+                modo="editar"
+                [editorTabKey]="fusionTab.key"
+                (cerrar)="quitarEdicion(fusionTab)"
+                (fusionActualizada)="onEdicionGuardada('fusion', $event)">
+            </app-nueva-fusion>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let chakraTab of ediciones.chakra" [label]="etiquetaEdicion(chakraTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'chakra'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(chakraTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(chakraTab)}}</span>
+            <button (click)="quitarEdicion(chakraTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-chakra
+                [idChakra]="chakraTab.id"
+                modo="editar"
+                [editorTabKey]="chakraTab.key"
+                (cerrar)="quitarEdicion(chakraTab)"
+                (chakraActualizado)="onEdicionGuardada('chakra', $event)">
+            </app-nuevo-chakra>
+        </div>
+    </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'manual'"></app-icono-rol>
@@ -387,7 +474,7 @@
             <span class="pestana-etiqueta" [matTooltip]="rasgo.Nombre + ' (Rasgo)'" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{rasgo.Nombre}}</span>
             <button (click)="quitarDetallesRasgo(rasgo)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-rasgo [rasgo]="detallesRasgoAbiertos[index]"></app-detalles-rasgo>
+        <app-detalles-rasgo [rasgo]="detallesRasgoAbiertos[index]" (modificar)="abrirEdicion('rasgo', $event)"></app-detalles-rasgo>
     </mat-tab>
     <mat-tab *ngFor="let clase of detallesClaseAbiertos; let index = index" [label]="getEtiquetaClase(clase)">
         <ng-template mat-tab-label>
@@ -455,7 +542,7 @@
             <span class="pestana-etiqueta" [matTooltip]="getEtiquetaVentaja(ventaja)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{ventaja.Nombre}}</span>
             <button (click)="quitarDetallesVentaja(ventaja)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-ventaja [ventaja]="detallesVentajaAbiertos[index]"></app-detalles-ventaja>
+        <app-detalles-ventaja [ventaja]="detallesVentajaAbiertos[index]" (modificar)="abrirEdicionVentaja($event)"></app-detalles-ventaja>
     </mat-tab>
     <mat-tab *ngFor="let plantilla of detallesPlantillaAbiertos; let index = index" [label]="getEtiquetaPlantilla(plantilla)">
         <ng-template mat-tab-label>
@@ -565,7 +652,8 @@
         <app-detalles-fusion
             [fusion]="detallesFusionAbiertos[index]"
             (claseDetallesId)="abrirDetallesClasePorId($event)"
-            (chakraDetallesId)="abrirDetallesChakraPorId($event)">
+            (chakraDetallesId)="abrirDetallesChakraPorId($event)"
+            (modificar)="abrirEdicion('fusion', $event)">
         </app-detalles-fusion>
     </mat-tab>
     <mat-tab *ngFor="let chakra of detallesChakraAbiertos; let index = index" [label]="getEtiquetaChakra(chakra)">
@@ -577,7 +665,8 @@
         <app-detalles-chakra
             [chakra]="detallesChakraAbiertos[index]"
             (claseDetallesId)="abrirDetallesClasePorId($event)"
-            (fusionDetallesId)="abrirDetallesFusionPorId($event)">
+            (fusionDetallesId)="abrirDetallesFusionPorId($event)"
+            (modificar)="abrirEdicion('chakra', $event)">
         </app-detalles-chakra>
     </mat-tab>
 </mat-tab-group>

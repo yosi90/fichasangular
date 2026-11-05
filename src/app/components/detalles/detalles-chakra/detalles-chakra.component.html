@@ -3,7 +3,10 @@
         [tipo]="tipoCabecera"
         [nombre]="chakra.Nombre"
         [subtitulo]="descripcionEnCabecera ? chakra.Descripcion : null"
-        [etiquetas]="etiquetas">
+        [oficial]="chakra.Oficial"
+        [etiquetas]="etiquetas"
+        [modificable]="puedeModificar"
+        (modificar)="modificar.emit(chakra)">
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" titulo="Datos del chakra"></app-ficha-datos>

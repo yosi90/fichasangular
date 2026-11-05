@@ -712,7 +712,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     recibirObjetoListado(value: { item: any, tipo: string }, operacion: string = 'detalles') {
-        const tipoEdicion = normalizarTexto(operacion) === 'modificar' ? tipoEdicionDeListado(value.tipo) : null;
+        const tipoEdicion = normalizarTexto(operacion) === 'modificar' ? tipoEdicionDeListado(value.tipo, value.item) : null;
         if (tipoEdicion) {
             this.abrirEdicion(tipoEdicion, value.item);
             return;
@@ -1468,7 +1468,21 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 return this.detallesArmaAbiertos;
             case 'armadura':
                 return this.detallesArmaduraAbiertos;
+            case 'rasgo':
+                return this.detallesRasgoAbiertos;
+            case 'ventaja':
+            case 'desventaja':
+                return this.detallesVentajaAbiertos;
+            case 'fusion':
+                return this.detallesFusionAbiertos;
+            case 'chakra':
+                return this.detallesChakraAbiertos;
         }
+    }
+
+    /** El lápiz «Modificar» del detalle de una ventaja o una desventaja: cada una con su tipo (el signo de su coste). */
+    abrirEdicionVentaja(ventaja: VentajaDetalle): void {
+        this.abrirEdicion(tipoRolDeVentaja(ventaja), ventaja);
     }
 
     abrirDetallesRacialPorId(idRacial: number) {

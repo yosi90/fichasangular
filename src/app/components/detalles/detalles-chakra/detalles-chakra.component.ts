@@ -2,6 +2,8 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DatoFicha, EtiquetaFicha, esTextoCorto, etiquetaTraducido, nombreOriginalVisible, unirTipo } from 'src/app/components/detalles/ficha';
 import { ChakraClase, ChakraDetalle, ChakraFusion } from 'src/app/interfaces/incarnum';
 import { porNombre } from 'src/app/services/utils/orden-texto';
+import { UserService } from 'src/app/services/user.service';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 
 /**
  * El detalle de un chakra (Magic of Incarnum) con la ficha común: su categoría, la ranura de objeto que cierra su
@@ -46,6 +48,14 @@ export class DetallesChakraComponent {
 
     @Output() claseDetallesId = new EventEmitter<number>();
     @Output() fusionDetallesId = new EventEmitter<number>();
+    /** El lápiz «Modificar»: abre la pestaña de modificar el chakra. Sin quien lo escuche, no sale. */
+    @Output() modificar = new EventEmitter<ChakraDetalle>();
+
+    constructor(private userSvc: UserService) { }
+
+    get puedeModificar(): boolean {
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'chakras');
+    }
 
     abrirDetallesClase(id: number): void {
         if (Number(id) > 0)

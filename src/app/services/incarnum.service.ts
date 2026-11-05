@@ -1,11 +1,18 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { Auth } from '@angular/fire/auth';
 import { Database } from '@angular/fire/database';
-import { Observable, map, shareReplay } from 'rxjs';
+import { Observable, firstValueFrom, map, shareReplay } from 'rxjs';
 import { environment } from 'src/environments/environment';
-import { CapacidadEsencia, Chakra, ChakraDetalle, Fusion } from '../interfaces/incarnum';
+import {
+    CapacidadEsencia, Chakra, ChakraCuerpo, ChakraDetalle, ChakraGuardado, Fusion, FusionCuerpo, FusionGuardada,
+} from '../interfaces/incarnum';
 import { EscuchaRtdb, cacheRtdbOApi, escucharCatalogo } from './catalogo-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { cabeceraApiConFirebase } from './platform-session.service';
+import { errorDeCatalogo } from './utils/error-catalogo';
+import { CHAKRA, FUSION } from './utils/nombres-de-catalogo';
+import { leerRespuestaDeEscritura } from './utils/respuesta-de-escritura';
 import { normalizarCapacidadEsencia, normalizarChakra, normalizarChakraDetalle, normalizarFusion } from './utils/incarnum-mapper';
 import { toArray } from './utils/normalizacion';
 import { porNombre } from './utils/orden-texto';
@@ -28,7 +35,46 @@ export class IncarnumService {
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService,
+        private auth?: Auth,
     ) { }
+
+    /** La fusión por HTTP, sin caché: la que abre «Modificar fusión». */
+    getFusionFresca(id: number): Observable<Fusion> {
+        return this.http.get(`${environment.apiUrl}incarnum/fusiones/${Math.trunc(Number(id))}`).pipe(map((raw) => normalizarFusion(raw)));
+    }
+
+    /** El chakra por HTTP, sin caché: el que abre «Modificar chakra». */
+    getChakraFresco(id: number): Observable<ChakraDetalle> {
+        return this.http.get(`${environment.apiUrl}incarnum/chakras/${Math.trunc(Number(id))}`).pipe(map((raw) => normalizarChakraDetalle(raw)));
+    }
+
+    /** `POST /incarnum/fusiones/add` o, con `id`, `PUT /incarnum/fusiones/<id>`: permiso de creación `clases`. */
+    async guardarFusion(cuerpo: FusionCuerpo, id: number | null = null): Promise<FusionGuardada> {
+        try {
+            const headers = await cabeceraApiConFirebase(this.auth);
+            const respuesta = id === null
+                ? await firstValueFrom(this.http.post<any>(`${environment.apiUrl}incarnum/fusiones/add`, cuerpo, { headers }))
+                : await firstValueFrom(this.http.put<any>(`${environment.apiUrl}incarnum/fusiones/${Math.trunc(id)}`, cuerpo, { headers }));
+            const { message, id: idFusion } = leerRespuestaDeEscritura(respuesta, 'idFusion');
+            return { message, idFusion, fusion: normalizarFusion(respuesta?.fusion) };
+        } catch (error: unknown) {
+            throw errorDeCatalogo(error, id === null ? 'crear' : 'actualizar', FUSION);
+        }
+    }
+
+    /** `POST /incarnum/chakras/add` o, con `id`, `PUT /incarnum/chakras/<id>`: permiso de creación `clases`. */
+    async guardarChakra(cuerpo: ChakraCuerpo, id: number | null = null): Promise<ChakraGuardado> {
+        try {
+            const headers = await cabeceraApiConFirebase(this.auth);
+            const respuesta = id === null
+                ? await firstValueFrom(this.http.post<any>(`${environment.apiUrl}incarnum/chakras/add`, cuerpo, { headers }))
+                : await firstValueFrom(this.http.put<any>(`${environment.apiUrl}incarnum/chakras/${Math.trunc(id)}`, cuerpo, { headers }));
+            const { message, id: idChakra } = leerRespuestaDeEscritura(respuesta, 'idChakra');
+            return { message, idChakra, chakra: normalizarChakraDetalle(respuesta?.chakra) };
+        } catch (error: unknown) {
+            throw errorDeCatalogo(error, id === null ? 'crear' : 'actualizar', CHAKRA);
+        }
+    }
 
     private escuchar(ruta: string): EscuchaRtdb {
         return escucharCatalogo(this.db, this.firebaseContextSvc, ruta);

@@ -1,0 +1,40 @@
+<div class="nuevo-rasgo-shell">
+    <form class="nuevo-rasgo-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <app-insercion-marco
+            [modo]="modo"
+            tipo="Rasgo"
+            iconoTipo="rasgo"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="form.controls.oficial.value"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeCrear)"
+            [error]="errores.global"
+            [guardando]="guardando"
+            [accionDesactivada]="edicion.cargando || (edicion.editando && !edicion.hayCambios)"
+            [nota]="edicion.editando && !edicion.hayCambios ? 'Sin cambios todavía.' : ''"
+            [textoAccion]="textoAccion"
+            [textoGuardando]="textoAccion">
+            <div class="insercion-campos">
+                <mat-form-field appearance="fill" class="insercion-campos__doble">
+                    <mat-label>Nombre</mat-label>
+                    <input matInput formControlName="nombre" maxlength="200">
+                    <mat-hint>Como se lee en el tipo o el subtipo: «Visión en la oscuridad 60'», «Inmunidad al veneno».</mat-hint>
+                    <mat-error *ngIf="form.controls.nombre.invalid">{{errores.textoDe('nombre', 'Nombre obligatorio (hasta 200 caracteres).')}}</mat-error>
+                </mat-form-field>
+
+                <div class="estado-row insercion-campos__doble">
+                    <mat-chip-listbox class="boolean-chips" aria-label="Estado del rasgo">
+                        <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="alternarOficial()">Oficial</mat-chip-option>
+                    </mat-chip-listbox>
+                </div>
+
+                <mat-form-field appearance="fill" class="insercion-campos__entero">
+                    <mat-label>Descripción</mat-label>
+                    <textarea matInput formControlName="descripcion" rows="5" maxlength="8000"></textarea>
+                    <mat-hint>Propia y breve, con nuestras palabras; puede ir vacía.</mat-hint>
+                    <mat-error *ngIf="form.controls.descripcion.invalid">{{errores.textoDe('descripcion', 'Hasta 8000 caracteres.')}}</mat-error>
+                </mat-form-field>
+            </div>
+        </app-insercion-marco>
+    </form>
+</div>

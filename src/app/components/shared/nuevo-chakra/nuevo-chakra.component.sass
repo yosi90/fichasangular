@@ -1,0 +1,17 @@
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar chakras: una inserción pequeña, sin pasos ni tarjetas (guía de inserciones, «La fusión y el chakra»).
+:host
+    @include inserciones.insercion-host
+
+.nuevo-chakra-shell
+    @include inserciones.insercion-shell
+
+.nuevo-chakra-form
+    @include inserciones.insercion-form-base
+
+    .estado-row
+        justify-content: flex-start
+
+.chakra-nota
+    @include inserciones.nota-de-insercion

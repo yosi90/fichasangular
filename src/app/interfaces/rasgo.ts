@@ -5,3 +5,19 @@ export interface Rasgo {
     Oficial: boolean;
     Origen?: string;
 }
+
+/** Cuerpo de `POST /rasgos/add` y `PUT /rasgos/<id>` (el mismo; hito 8 del roadmap de inserciones). */
+export interface RasgoCuerpo {
+    rasgo: {
+        nombre: string;
+        descripcion: string;
+        oficial: boolean;
+    };
+}
+
+/** Respuesta del alta y de la edición: el rasgo como lo da su `GET`. */
+export interface RasgoGuardado {
+    message: string;
+    idRasgo: number;
+    rasgo: Rasgo;
+}

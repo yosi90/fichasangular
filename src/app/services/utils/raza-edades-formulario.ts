@@ -1,7 +1,7 @@
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { CategoriaEdadRaza, PasoEdadRaza, Raza } from 'src/app/interfaces/raza';
 import { RazaCreateCategoriaEdad, RazaCreatePasoEdad } from 'src/app/interfaces/razas-api';
-import { toInt, toNullableText, toNumber, toNumberOrNull } from './normalizacion';
+import { toInt, toIntOrNull, toNullableText, toNumber, toNumberOrNull } from './normalizacion';
 import { categoriasEdadOrdenadas, pasosEdadOrdenados } from './razas-por-edades';
 
 /*
@@ -68,12 +68,6 @@ export interface EdadesDeRaza {
 let siguienteUid = 1;
 function uid(prefijo: string): string {
     return `${prefijo}-${siguienteUid++}`;
-}
-
-/** `toNumberOrNull` truncado: sin tope, sin ajuste (solo PNJ). */
-function enteroONulo(valor: unknown): number | null {
-    const numero = toNumberOrNull(valor);
-    return numero === null ? null : Math.trunc(numero);
 }
 
 /** Una categoría nueva: después de la última (sus años y sus DG desde donde acaba aquella). */
@@ -190,12 +184,12 @@ export function cuerpoDeEdades(edades: EdadesDeRaza): { categorias_edad: RazaCre
         categorias_edad: edades.categorias.map((fila) => ({
             id_categoria_edad: toInt(fila.id_categoria_edad),
             edad_desde: toInt(fila.edad_desde),
-            edad_hasta: enteroONulo(fila.edad_hasta),
+            edad_hasta: toIntOrNull(fila.edad_hasta),
             id_tamano: toInt(fila.id_tamano),
             espacio: toNumber(fila.espacio),
             alcance: toInt(fila.alcance),
             dgs: toInt(fila.dgs),
-            ajuste_nivel: enteroONulo(fila.ajuste_nivel),
+            ajuste_nivel: toIntOrNull(fila.ajuste_nivel),
             vd: toNumberOrNull(fila.vd),
             fuerza: toInt(fila.fuerza),
             destreza: toInt(fila.destreza),
@@ -230,7 +224,7 @@ export function cuerpoDeEdades(edades: EdadesDeRaza): { categorias_edad: RazaCre
             edad: toInt(fila.edad),
             id_categoria_edad: toInt(fila.id_categoria_edad),
             dgs: toInt(fila.dgs),
-            ajuste_nivel: enteroONulo(fila.ajuste_nivel),
+            ajuste_nivel: toIntOrNull(fila.ajuste_nivel),
             armadura_natural: toInt(fila.armadura_natural),
         })),
     };
