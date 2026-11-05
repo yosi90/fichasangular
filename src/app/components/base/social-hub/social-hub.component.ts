@@ -23,6 +23,7 @@ import {
     mensajeErrorDeAccion,
     permitirAccionGuardada,
     textoEstadoEnCampana,
+    textoPersona,
     textoRolEnCampana,
     textoVisibilidadEnCampana,
 } from '../user-profile/perfil-acciones';
@@ -143,7 +144,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         else if (this.currentSection === 'amistades')
             void this.amistades.cargarAmistades();
         else if (this.currentSection === 'bloqueos')
-            void this.amistades.cargarBloqueos();
+            void this.amistades.bloqueos.cargar();
     }
 
     /** Cuántas solicitudes de amistad esperan respuesta, para el contador de «Amistades» en la navegación. */
@@ -319,11 +320,6 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         void this.chatFloatingSvc.abrir().catch(() => undefined);
     }
 
-    /** Lo que se ve de alguien de la campaña: su nombre o su correo, nunca su id. */
-    nombreMiembro(member: CampaignMemberItem): string {
-        return `${member.displayName ?? ''}`.trim() || `${member.email ?? ''}`.trim() || 'Persona sin nombre';
-    }
-
     get selectedCampaignSummary(): CampaignListItem | null {
         if (!this.selectedCampaignId)
             return null;
@@ -399,6 +395,8 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     readonly getCampaignRoleLabel = textoRolEnCampana;
     readonly getCampaignMembershipLabel = textoEstadoEnCampana;
     readonly getCampaignVisibilityLabel = textoVisibilidadEnCampana;
+    /** Lo que se ve de alguien de la campaña: su nombre o su correo, nunca su id. */
+    readonly textoPersona = textoPersona;
 
     private async loadAuthenticatedState(): Promise<void> {
         this.loading = true;

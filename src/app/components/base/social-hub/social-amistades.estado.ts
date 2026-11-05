@@ -1,25 +1,102 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { Subject, catchError, debounceTime, distinctUntilChanged, from, map, of, switchMap, takeUntil } from 'rxjs';
-import Swal from 'sweetalert2';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import {
     BUSQUEDA_PERSONAS_MAX,
     BUSQUEDA_PERSONAS_MIN,
+    PaginaVinculosPlataforma,
     PersonaPlataforma,
-    PlatformSocialError,
     PlatformSocialService,
     ResumenSocialPlataforma,
     SolicitudAmistadPlataforma,
     VinculoPlataforma,
+    mensajeDeErrorSocial,
     nombreVisiblePersona,
     urlAvatar,
 } from 'src/app/services/platform-social.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
+import { confirmarAccion } from '../user-profile/perfil-acciones';
 
 /** La espera al teclear antes de buscar personas. */
 export const ESPERA_BUSQUEDA_MS = 350;
+
+/**
+ * Un listado por cursor de la plataforma (las amistades o los bloqueos): la primera página, «Cargar más» y su estado.
+ * Al vaciarlo sube su generación, así que una página que llegue tarde, de la cuenta anterior, se descarta.
+ */
+export class ListaPorCursor {
+    vinculos: VinculoPlataforma[] = [];
+    cursor: string | null = null;
+    cargando = false;
+    cargandoMas = false;
+    error = '';
+    cargada = false;
+    private generacion = 0;
+
+    constructor(
+        private readonly leer: (cursor: string | null) => Promise<PaginaVinculosPlataforma>,
+        private readonly errorAlCargar: string,
+        private readonly errorAlCargarMas: string,
+    ) { }
+
+    /** La primera página (al entrar en la sección, al reintentar o tras un cambio). */
+    cargar(): Promise<void> {
+        return this.pedir(null);
+    }
+
+    /** La página siguiente, si la hay y no se está pidiendo ya. */
+    async cargarMas(): Promise<void> {
+        if (this.cursor && !this.cargandoMas)
+            await this.pedir(this.cursor);
+    }
+
+    /** Quita a esa persona de lo cargado (tras dejar la amistad o desbloquearla). */
+    quitar(idPersona: string): void {
+        this.vinculos = this.vinculos.filter((item) => item.persona.id !== idPersona);
+    }
+
+    vaciar(): void {
+        this.generacion += 1;
+        this.vinculos = [];
+        this.cursor = null;
+        this.cargando = false;
+        this.cargandoMas = false;
+        this.error = '';
+        this.cargada = false;
+    }
+
+    private async pedir(cursor: string | null): Promise<void> {
+        const generacion = this.generacion;
+        const mas = cursor !== null;
+        if (mas) {
+            this.cargandoMas = true;
+        } else {
+            this.cargando = true;
+            this.error = '';
+        }
+        try {
+            const pagina = await this.leer(cursor);
+            if (generacion !== this.generacion)
+                return;
+            this.vinculos = mas ? [...this.vinculos, ...pagina.vinculos] : pagina.vinculos;
+            this.cursor = pagina.cursor;
+            if (!mas)
+                this.cargada = true;
+        } catch (error) {
+            if (generacion === this.generacion)
+                this.error = mensajeDeErrorSocial(error, mas ? this.errorAlCargarMas : this.errorAlCargar);
+        } finally {
+            if (generacion === this.generacion) {
+                if (mas)
+                    this.cargandoMas = false;
+                else
+                    this.cargando = false;
+            }
+        }
+    }
+}
 
 /**
  * Las amistades, sus solicitudes, la búsqueda de personas y los bloqueos dentro de Social (decisión 7 de la ronda de
@@ -33,24 +110,14 @@ export const ESPERA_BUSQUEDA_MS = 350;
 export class SocialAmistadesEstado implements OnDestroy {
     resumen: ResumenSocialPlataforma | null = null;
 
-    amistades: VinculoPlataforma[] = [];
-    amistadesCursor: string | null = null;
-    amistadesCargando = false;
-    amistadesCargandoMas = false;
-    amistadesError = '';
-    amistadesCargadas = false;
+    readonly amistades: ListaPorCursor;
 
     recibidas: SolicitudAmistadPlataforma[] = [];
     enviadas: SolicitudAmistadPlataforma[] = [];
     solicitudesCargando = false;
     solicitudesError = '';
 
-    bloqueos: VinculoPlataforma[] = [];
-    bloqueosCursor: string | null = null;
-    bloqueosCargando = false;
-    bloqueosCargandoMas = false;
-    bloqueosError = '';
-    bloqueosCargados = false;
+    readonly bloqueos: ListaPorCursor;
 
     busqueda = '';
     resultados: PersonaPlataforma[] = [];
@@ -75,6 +142,10 @@ export class SocialAmistadesEstado implements OnDestroy {
         private appToastSvc: AppToastService,
         private userProfileNavSvc: UserProfileNavigationService,
     ) {
+        this.amistades = new ListaPorCursor((cursor) => this.platformSocialSvc.amistades(cursor),
+            'No se pudieron cargar tus amistades.', 'No se pudieron cargar más amistades.');
+        this.bloqueos = new ListaPorCursor((cursor) => this.platformSocialSvc.bloqueos(cursor),
+            'No se pudieron cargar tus bloqueos.', 'No se pudieron cargar más bloqueos.');
         this.busqueda$.pipe(
             debounceTime(ESPERA_BUSQUEDA_MS),
             distinctUntilChanged(),
@@ -87,7 +158,7 @@ export class SocialAmistadesEstado implements OnDestroy {
                 this.busquedaError = '';
                 return from(this.platformSocialSvc.buscarPersonas(texto)).pipe(
                     map((personas) => ({ texto, personas, error: '', generacion })),
-                    catchError((error) => of({ texto, personas: [] as PersonaPlataforma[], error: this.mensaje(error, 'No se pudo buscar ahora mismo.'), generacion })),
+                    catchError((error) => of({ texto, personas: [] as PersonaPlataforma[], error: mensajeDeErrorSocial(error, 'No se pudo buscar ahora mismo.'), generacion })),
                 );
             }),
             takeUntil(this.destroy$),
@@ -111,7 +182,7 @@ export class SocialAmistadesEstado implements OnDestroy {
     }
 
     get totalAmistades(): number {
-        return this.resumen?.amistades ?? this.amistades.length;
+        return this.resumen?.amistades ?? this.amistades.vinculos.length;
     }
 
     get busquedaCorta(): boolean {
@@ -154,70 +225,7 @@ export class SocialAmistadesEstado implements OnDestroy {
 
     /** La sección «Amistades»: solicitudes, la primera página de amistades y los contadores. */
     async cargarAmistades(): Promise<void> {
-        await Promise.all([this.cargarPrimeraPaginaAmistades(), this.cargarSolicitudes(), this.cargarResumen()]);
-    }
-
-    async cargarMasAmistades(): Promise<void> {
-        const cursor = this.amistadesCursor;
-        if (!cursor || this.amistadesCargandoMas)
-            return;
-        const generacion = this.generacion;
-        this.amistadesCargandoMas = true;
-        try {
-            const pagina = await this.platformSocialSvc.amistades(cursor);
-            if (generacion !== this.generacion)
-                return;
-            this.amistades = [...this.amistades, ...pagina.vinculos];
-            this.amistadesCursor = pagina.cursor;
-        } catch (error) {
-            if (generacion === this.generacion)
-                this.amistadesError = this.mensaje(error, 'No se pudieron cargar más amistades.');
-        } finally {
-            if (generacion === this.generacion)
-                this.amistadesCargandoMas = false;
-        }
-    }
-
-    /** La sección «Bloqueos». */
-    async cargarBloqueos(): Promise<void> {
-        const generacion = this.generacion;
-        this.bloqueosCargando = true;
-        this.bloqueosError = '';
-        try {
-            const pagina = await this.platformSocialSvc.bloqueos();
-            if (generacion !== this.generacion)
-                return;
-            this.bloqueos = pagina.vinculos;
-            this.bloqueosCursor = pagina.cursor;
-            this.bloqueosCargados = true;
-        } catch (error) {
-            if (generacion === this.generacion)
-                this.bloqueosError = this.mensaje(error, 'No se pudieron cargar tus bloqueos.');
-        } finally {
-            if (generacion === this.generacion)
-                this.bloqueosCargando = false;
-        }
-    }
-
-    async cargarMasBloqueos(): Promise<void> {
-        const cursor = this.bloqueosCursor;
-        if (!cursor || this.bloqueosCargandoMas)
-            return;
-        const generacion = this.generacion;
-        this.bloqueosCargandoMas = true;
-        try {
-            const pagina = await this.platformSocialSvc.bloqueos(cursor);
-            if (generacion !== this.generacion)
-                return;
-            this.bloqueos = [...this.bloqueos, ...pagina.vinculos];
-            this.bloqueosCursor = pagina.cursor;
-        } catch (error) {
-            if (generacion === this.generacion)
-                this.bloqueosError = this.mensaje(error, 'No se pudieron cargar más bloqueos.');
-        } finally {
-            if (generacion === this.generacion)
-                this.bloqueosCargandoMas = false;
-        }
+        await Promise.all([this.amistades.cargar(), this.cargarSolicitudes(), this.cargarResumen()]);
     }
 
     /** Lo que se teclea en «Buscar personas»: con 2 caracteres o más, busca tras una pausa. */
@@ -271,11 +279,11 @@ export class SocialAmistadesEstado implements OnDestroy {
 
     async dejarAmistad(vinculo: VinculoPlataforma): Promise<void> {
         const persona = vinculo.persona;
-        if (this.ocupada(persona) || !await this.confirmar(`¿Dejar de ser amistades de ${nombreVisiblePersona(persona)}?`, 'Dejar la amistad'))
+        if (this.ocupada(persona) || !await confirmarAccion(`¿Dejar de ser amistades de ${nombreVisiblePersona(persona)}?`, 'Dejar la amistad'))
             return;
         await this.conPersona(persona, async () => {
             await this.platformSocialSvc.dejarAmistad(persona.id);
-            this.amistades = this.amistades.filter((item) => item.persona.id !== persona.id);
+            this.amistades.quitar(persona.id);
             this.appToastSvc.showSuccess('Ya no sois amistades.', { category: 'amistad' });
             await this.cargarResumen();
         }, 'No se pudo dejar la amistad.');
@@ -285,7 +293,7 @@ export class SocialAmistadesEstado implements OnDestroy {
         const persona = vinculo.persona;
         return this.conPersona(persona, async () => {
             await this.platformSocialSvc.bloquear(persona.id, false);
-            this.bloqueos = this.bloqueos.filter((item) => item.persona.id !== persona.id);
+            this.bloqueos.quitar(persona.id);
             this.appToastSvc.showSuccess(`Has desbloqueado a ${nombreVisiblePersona(persona)}.`, { category: 'amistad' });
             await this.cargarResumen();
         }, 'No se pudo desbloquear.');
@@ -295,22 +303,12 @@ export class SocialAmistadesEstado implements OnDestroy {
     vaciar(): void {
         this.generacion += 1;
         this.resumen = null;
-        this.amistades = [];
-        this.amistadesCursor = null;
-        this.amistadesCargando = false;
-        this.amistadesCargandoMas = false;
-        this.amistadesError = '';
-        this.amistadesCargadas = false;
+        this.amistades.vaciar();
         this.recibidas = [];
         this.enviadas = [];
         this.solicitudesCargando = false;
         this.solicitudesError = '';
-        this.bloqueos = [];
-        this.bloqueosCursor = null;
-        this.bloqueosCargando = false;
-        this.bloqueosCargandoMas = false;
-        this.bloqueosError = '';
-        this.bloqueosCargados = false;
+        this.bloqueos.vaciar();
         this.busqueda = '';
         this.resultados = [];
         this.busquedaHecha = '';
@@ -328,26 +326,6 @@ export class SocialAmistadesEstado implements OnDestroy {
         return persona.id;
     }
 
-    private async cargarPrimeraPaginaAmistades(): Promise<void> {
-        const generacion = this.generacion;
-        this.amistadesCargando = true;
-        this.amistadesError = '';
-        try {
-            const pagina = await this.platformSocialSvc.amistades();
-            if (generacion !== this.generacion)
-                return;
-            this.amistades = pagina.vinculos;
-            this.amistadesCursor = pagina.cursor;
-            this.amistadesCargadas = true;
-        } catch (error) {
-            if (generacion === this.generacion)
-                this.amistadesError = this.mensaje(error, 'No se pudieron cargar tus amistades.');
-        } finally {
-            if (generacion === this.generacion)
-                this.amistadesCargando = false;
-        }
-    }
-
     private async cargarSolicitudes(): Promise<void> {
         const generacion = this.generacion;
         this.solicitudesCargando = true;
@@ -363,7 +341,7 @@ export class SocialAmistadesEstado implements OnDestroy {
             this.enviadas = enviadas;
         } catch (error) {
             if (generacion === this.generacion)
-                this.solicitudesError = this.mensaje(error, 'No se pudieron cargar las solicitudes de amistad.');
+                this.solicitudesError = mensajeDeErrorSocial(error, 'No se pudieron cargar las solicitudes de amistad.');
         } finally {
             if (generacion === this.generacion)
                 this.solicitudesCargando = false;
@@ -377,7 +355,7 @@ export class SocialAmistadesEstado implements OnDestroy {
             await Promise.all([
                 this.cargarSolicitudes(),
                 this.cargarResumen(),
-                respuesta === 'aceptar' ? this.cargarPrimeraPaginaAmistades() : Promise.resolve(),
+                respuesta === 'aceptar' ? this.amistades.cargar() : Promise.resolve(),
             ]);
         }, 'No se pudo responder a la solicitud.');
     }
@@ -395,24 +373,9 @@ export class SocialAmistadesEstado implements OnDestroy {
             await accion();
         } catch (error) {
             if (generacion === this.generacion)
-                this.appToastSvc.showError(this.mensaje(error, porDefecto));
+                this.appToastSvc.showError(mensajeDeErrorSocial(error, porDefecto));
         } finally {
             this.enCurso.delete(persona.id);
         }
-    }
-
-    private mensaje(error: unknown, porDefecto: string): string {
-        return error instanceof PlatformSocialError && error.message.trim().length > 0 ? error.message : porDefecto;
-    }
-
-    private async confirmar(texto: string, boton: string): Promise<boolean> {
-        const resultado = await Swal.fire({
-            text: texto,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: boton,
-            cancelButtonText: 'Cancelar',
-        });
-        return resultado.isConfirmed === true;
     }
 }

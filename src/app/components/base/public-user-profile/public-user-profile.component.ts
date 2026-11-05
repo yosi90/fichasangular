@@ -1,14 +1,13 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
 import { Subject, distinctUntilChanged, skip, takeUntil } from 'rxjs';
-import Swal from 'sweetalert2';
 import { SocialRelationshipProfile } from 'src/app/interfaces/social-v3';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import {
     PerfilPublicoPlataforma,
-    PlatformSocialError,
     PlatformSocialService,
     RelacionPlataforma,
+    mensajeDeErrorSocial,
     nombreVisiblePersona,
     urlAvatar,
 } from 'src/app/services/platform-social.service';
@@ -17,6 +16,7 @@ import { SocialV3ApiService } from 'src/app/services/social-v3-api.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
 import { textoFecha } from 'src/app/services/utils/fecha-texto';
+import { confirmarAccion } from '../user-profile/perfil-acciones';
 
 /**
  * Ficha de otra persona en la comunidad de Rol: sus datos de Rol vienen de la API
@@ -236,7 +236,7 @@ export class PublicUserProfileComponent implements OnInit, OnChanges, OnDestroy 
     }
 
     async dejarAmistad(): Promise<void> {
-        if (!await this.confirmar(`¿Dejar de ser amistades de ${this.profileLabel}?`, 'Dejar la amistad'))
+        if (!await confirmarAccion(`¿Dejar de ser amistades de ${this.profileLabel}?`, 'Dejar la amistad'))
             return;
         await this.ejecutar('Ya no sois amistades.', () => this.platformSocialSvc.dejarAmistad(this.uid));
     }
@@ -248,7 +248,7 @@ export class PublicUserProfileComponent implements OnInit, OnChanges, OnDestroy 
 
     async bloquear(): Promise<void> {
         const texto = `${this.profileLabel} dejará de verte en todas las webs de Yosiftware y se terminarán la amistad, las solicitudes y los seguimientos entre vosotros.`;
-        if (!await this.confirmar(texto, 'Bloquear'))
+        if (!await confirmarAccion(texto, 'Bloquear'))
             return;
         await this.ejecutar('Persona bloqueada.', () => this.platformSocialSvc.bloquear(this.uid, true));
     }
@@ -280,22 +280,11 @@ export class PublicUserProfileComponent implements OnInit, OnChanges, OnDestroy 
             await accion();
             this.appToastSvc.showSuccess(mensaje, { category: 'amistad' });
         } catch (error) {
-            this.appToastSvc.showError(error instanceof PlatformSocialError ? error.message : 'No se pudo completar la acción.');
+            this.appToastSvc.showError(mensajeDeErrorSocial(error, 'No se pudo completar la acción.'));
         } finally {
             this.actionInFlight = false;
         }
         await this.cargar();
-    }
-
-    private async confirmar(texto: string, boton: string): Promise<boolean> {
-        const resultado = await Swal.fire({
-            text: texto,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: boton,
-            cancelButtonText: 'Cancelar',
-        });
-        return resultado.isConfirmed === true;
     }
 
     private toNumber(value: any): number {

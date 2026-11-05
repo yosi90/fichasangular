@@ -1,7 +1,9 @@
+import Swal from 'sweetalert2';
 import { UserAccessScope } from 'src/app/interfaces/user-moderation';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { UserService } from 'src/app/services/user.service';
+import { normasDeCreacionAceptadas } from 'src/app/services/utils/normas-creacion';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
 /**
@@ -63,7 +65,7 @@ export async function permitirAccionConNormas(
             appToastSvc.showError(restriccion);
             return false;
         }
-        if (userSvc.normasDeCreacionPendientes && !await userSvc.asegurarNormasDeCreacion())
+        if (!await normasDeCreacionAceptadas(userSvc))
             return false;
     }
     return permitirAccionGuardada(userSvc, apiActionGuardSvc, appToastSvc, actionKey);
@@ -72,6 +74,23 @@ export async function permitirAccionConNormas(
 /** La frase del error: la de las normas, la sanción o la limitación si es eso (las de `UserService`), o la de la API. */
 export function mensajeErrorDeAccion(userSvc: UserService, error: any, fallback: string, scope: UserAccessScope = 'usage'): string {
     return userSvc.getComplianceErrorMessage(error, scope) || toUserFacingErrorMessage(error, fallback);
+}
+
+/** Pregunta antes de una acción sobre alguien (dejar la amistad, bloquear): `true` solo si se confirma con `boton`. */
+export async function confirmarAccion(texto: string, boton: string): Promise<boolean> {
+    const resultado = await Swal.fire({
+        text: texto,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: boton,
+        cancelButtonText: 'Cancelar',
+    });
+    return resultado.isConfirmed === true;
+}
+
+/** Lo que se enseña de alguien de una campaña o de la comunidad: su nombre visible o su correo; nunca su id. */
+export function textoPersona(nombre: string | null | undefined, correo?: string | null): string {
+    return `${nombre ?? ''}`.trim() || `${correo ?? ''}`.trim() || 'Persona sin nombre';
 }
 
 /** El nombre de un rol de Rol para enseñarlo («Master», «Colaborador»…). */

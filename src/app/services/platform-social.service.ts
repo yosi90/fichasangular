@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { cabecerasPlataforma, PlatformSessionService } from './platform-session.service';
+import { codigoDeError } from './utils/error-api';
 
 // Las relaciones de la plataforma desde las páginas de comunidad de Rol (ecosistema-kit/SOCIAL.md, «Con páginas
 // propias»): las mismas rutas que la web social, con el token de la plataforma. Rol no guarda amistades ni bloqueos.
@@ -103,6 +104,11 @@ export class PlatformSocialError extends Error {
     constructor(message: string, readonly code: string, readonly status: number) {
         super(message);
     }
+}
+
+/** La frase de un fallo de las relaciones: la de `PlatformSocialError` o, con cualquier otro error, `porDefecto`. */
+export function mensajeDeErrorSocial(error: unknown, porDefecto: string): string {
+    return error instanceof PlatformSocialError && error.message.trim().length > 0 ? error.message : porDefecto;
 }
 
 const MENSAJES: Record<string, string> = {
@@ -239,7 +245,7 @@ export class PlatformSocialService {
             return new PlatformSocialError(message || 'No se pudo completar la acción en tu cuenta de Yosiftware.', code, error.status);
         }
         // Los errores del SDK (`yosiftware.chat.directa`) traen su `code`.
-        const code = `${(error as { code?: unknown })?.code ?? ''}`.trim();
+        const code = codigoDeError(error);
         return new PlatformSocialError(MENSAJES[code] ?? 'No se pudo completar la acción en tu cuenta de Yosiftware.', code, 0);
     }
 }

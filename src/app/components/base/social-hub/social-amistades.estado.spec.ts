@@ -45,7 +45,7 @@ describe('SocialAmistadesEstado', () => {
     it('carga amistades, solicitudes recibidas y enviadas y los contadores', async () => {
         await estado.cargarAmistades();
 
-        expect(estado.amistades.map((v) => v.persona.alias)).toEqual(['yuna']);
+        expect(estado.amistades.vinculos.map((v) => v.persona.alias)).toEqual(['yuna']);
         expect(estado.recibidas.map((s) => s.id)).toEqual([12]);
         expect(estado.enviadas.map((s) => s.id)).toEqual([13]);
         expect(estado.solicitudesRecibidasPendientes).toBe(1);
@@ -69,13 +69,13 @@ describe('SocialAmistadesEstado', () => {
             Promise.resolve({ vinculos: [{ persona: brenna, desde: null }], cursor: null }),
         );
         await estado.cargarAmistades();
-        expect(estado.amistadesCursor).toBe('c2');
+        expect(estado.amistades.cursor).toBe('c2');
 
-        await estado.cargarMasAmistades();
+        await estado.amistades.cargarMas();
 
         expect(social.amistades).toHaveBeenCalledWith('c2');
-        expect(estado.amistades.map((v) => v.persona.id)).toEqual(['c-yuna', 'c-brenna']);
-        expect(estado.amistadesCursor).toBeNull();
+        expect(estado.amistades.vinculos.map((v) => v.persona.id)).toEqual(['c-yuna', 'c-brenna']);
+        expect(estado.amistades.cursor).toBeNull();
     });
 
     it('busca personas tras la pausa al teclear, y no con menos de dos caracteres', fakeAsync(() => {
@@ -171,23 +171,23 @@ describe('SocialAmistadesEstado', () => {
         await estado.cargarAmistades();
         const confirmar = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
 
-        await estado.dejarAmistad(estado.amistades[0]);
+        await estado.dejarAmistad(estado.amistades.vinculos[0]);
         expect(social.dejarAmistad).not.toHaveBeenCalled();
 
         confirmar.and.resolveTo({ isConfirmed: true } as any);
-        await estado.dejarAmistad(estado.amistades[0]);
+        await estado.dejarAmistad(estado.amistades.vinculos[0]);
         expect(social.dejarAmistad).toHaveBeenCalledWith('c-yuna');
-        expect(estado.amistades).toEqual([]);
+        expect(estado.amistades.vinculos).toEqual([]);
     });
 
     it('lista los bloqueos y desbloquea', async () => {
-        await estado.cargarBloqueos();
-        expect(estado.bloqueos.map((v) => v.persona.alias)).toEqual(['brenna']);
+        await estado.bloqueos.cargar();
+        expect(estado.bloqueos.vinculos.map((v) => v.persona.alias)).toEqual(['brenna']);
 
-        await estado.desbloquear(estado.bloqueos[0]);
+        await estado.desbloquear(estado.bloqueos.vinculos[0]);
 
         expect(social.bloquear).toHaveBeenCalledWith('c-brenna', false);
-        expect(estado.bloqueos).toEqual([]);
+        expect(estado.bloqueos.vinculos).toEqual([]);
     });
 
     it('al cambiar de cuenta vacía todo y descarta las respuestas de la anterior', async () => {
@@ -199,8 +199,8 @@ describe('SocialAmistadesEstado', () => {
         resolver({ vinculos: [{ persona: yuna, desde: null }], cursor: 'otra' });
         await carga;
 
-        expect(estado.amistades).toEqual([]);
-        expect(estado.amistadesCursor).toBeNull();
+        expect(estado.amistades.vinculos).toEqual([]);
+        expect(estado.amistades.cursor).toBeNull();
         expect(estado.recibidas).toEqual([]);
         expect(estado.resumen).toBeNull();
     });

@@ -6,6 +6,7 @@ import { environment } from 'src/environments/environment';
 import { NormasCreacionDialogoComponent } from '../components/shared/normas-creacion-dialogo/normas-creacion-dialogo.component';
 import { CLAVE_WEB_ROL, DatosVentanaNormas, NormasCreacionError, NormasDeRol } from '../interfaces/normas-rol';
 import { cabecerasPlataforma, EstadoPlataforma, PlatformSessionService } from './platform-session.service';
+import { codigoDeError, leerErrorDeApi } from './utils/error-api';
 
 // Las normas propias de Rol (ecosistema-kit/MODERACION.md, «Las normas propias de la web») se piden solo al crear
 // (decisión 5 del roadmap de la ronda de mejoras de noviembre): al pulsar un botón de crear, si faltan, se abre la
@@ -92,16 +93,15 @@ export class NormasCreacionService {
         if (error instanceof NormasCreacionError)
             return error;
         if (error instanceof HttpErrorResponse) {
-            const code = `${error.error?.code ?? ''}`.trim();
-            if (code === 'normas_no_vigentes')
-                return new NormasCreacionError('Las normas han cambiado mientras las leías. Aquí tienes las nuevas.', code);
-            if (error.status === 0)
+            // La plataforma responde con el mismo formato de error que la API de Rol (`error`, `code`).
+            const leido = leerErrorDeApi(error, porDefecto);
+            if (leido.codigo === 'normas_no_vigentes')
+                return new NormasCreacionError('Las normas han cambiado mientras las leías. Aquí tienes las nuevas.', leido.codigo);
+            if (leido.estado === 0)
                 return new NormasCreacionError('No hay conexión con Yosiftware. Revisa tu red y vuelve a intentarlo.', 'sin_conexion');
-            const texto = `${error.error?.error ?? ''}`.trim();
-            return new NormasCreacionError(texto || porDefecto, code);
+            return new NormasCreacionError(leido.mensaje, leido.codigo);
         }
-        const code = `${(error as { code?: unknown })?.code ?? ''}`.trim();
-        return new NormasCreacionError(porDefecto, code);
+        return new NormasCreacionError(porDefecto, codigoDeError(error));
     }
 }
 

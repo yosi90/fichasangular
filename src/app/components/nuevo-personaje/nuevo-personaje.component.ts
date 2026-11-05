@@ -124,6 +124,7 @@ import {
     motivosQueConfirmar,
 } from 'src/app/services/utils/personaje-oficialidad';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
+import { normasDeCreacionAceptadas } from 'src/app/services/utils/normas-creacion';
 import { GrupoRacialesOpcionales, SeleccionRacialesOpcionales, agruparRacialesPorOpcional, getClaveSeleccionRacial } from 'src/app/services/utils/racial-opcionales';
 import { RacialEvaluacionResultado, evaluarRacialParaSeleccion } from 'src/app/services/utils/racial-prerrequisitos';
 import { ClaseEvaluacionResultado } from 'src/app/services/utils/clase-elegibilidad';
@@ -5106,7 +5107,7 @@ export class NuevoPersonajeComponent {
             return;
         }
         // Si la creación se abrió sin pasar por «Nuevo personaje» (un borrador recuperado), las normas de Rol se piden aquí.
-        if (this.userSvc.normasDeCreacionPendientes && !await this.userSvc.asegurarNormasDeCreacion())
+        if (!await normasDeCreacionAceptadas(this.userSvc))
             return;
 
         if (!await this.ensureCampaignCreationRulesSatisfied('finalizacion'))

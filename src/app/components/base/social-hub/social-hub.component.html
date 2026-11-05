@@ -85,11 +85,7 @@
                         <div class="social-user-list" *ngIf="amistades.resultados.length > 0" aria-labelledby="social-buscar-personas">
                             <article class="social-user-card social-persona" *ngFor="let persona of amistades.resultados; trackBy: amistades.trackPersona">
                                 <button type="button" class="social-persona__identidad" (click)="amistades.abrirPerfil(persona)">
-                                    <img class="social-persona__avatar" [src]="amistades.avatar(persona)" alt="">
-                                    <span class="social-user-card__copy">
-                                        <strong>{{amistades.nombre(persona)}}</strong>
-                                        <span class="social-persona__alias" *ngIf="amistades.aliasSecundario(persona)">{{amistades.aliasSecundario(persona)}}</span>
-                                    </span>
+                                    <ng-container *ngTemplateOutlet="identidadPersona; context: { $implicit: persona }"></ng-container>
                                 </button>
                                 <div class="social-user-card__actions">
                                     <button mat-stroked-button color="primary" type="button" (click)="amistades.abrirPerfil(persona)">Ver perfil</button>
@@ -104,11 +100,7 @@
                         <div class="social-user-list">
                             <article class="social-user-card social-persona" *ngFor="let solicitud of amistades.recibidas">
                                 <button type="button" class="social-persona__identidad" (click)="amistades.abrirPerfil(solicitud.persona)">
-                                    <img class="social-persona__avatar" [src]="amistades.avatar(solicitud.persona)" alt="">
-                                    <span class="social-user-card__copy">
-                                        <strong>{{amistades.nombre(solicitud.persona)}}</strong>
-                                        <span class="social-persona__alias" *ngIf="amistades.aliasSecundario(solicitud.persona)">{{amistades.aliasSecundario(solicitud.persona)}}</span>
-                                    </span>
+                                    <ng-container *ngTemplateOutlet="identidadPersona; context: { $implicit: solicitud.persona }"></ng-container>
                                 </button>
                                 <div class="social-user-card__actions">
                                     <button mat-stroked-button color="primary" type="button" [disabled]="amistades.ocupada(solicitud.persona)"
@@ -121,20 +113,16 @@
                     </article>
 
                     <article class="social-panel">
-                        <h3>Tus amistades <span class="social-panel__contador" *ngIf="amistades.amistadesCargadas">{{amistades.totalAmistades}}</span></h3>
-                        <p class="social-inline-hint" *ngIf="amistades.amistadesCargando" role="status">Cargando amistades…</p>
-                        <div class="bloque-error social-bloque-error" *ngIf="amistades.amistadesError" role="alert">
-                            <span>{{amistades.amistadesError}}</span>
+                        <h3>Tus amistades <span class="social-panel__contador" *ngIf="amistades.amistades.cargada">{{amistades.totalAmistades}}</span></h3>
+                        <p class="social-inline-hint" *ngIf="amistades.amistades.cargando" role="status">Cargando amistades…</p>
+                        <div class="bloque-error social-bloque-error" *ngIf="amistades.amistades.error" role="alert">
+                            <span>{{amistades.amistades.error}}</span>
                             <button mat-button type="button" (click)="amistades.cargarAmistades()">Reintentar</button>
                         </div>
-                        <div class="social-user-list" *ngIf="amistades.amistades.length > 0">
-                            <article class="social-user-card social-persona" *ngFor="let vinculo of amistades.amistades; trackBy: amistades.trackPorPersona">
+                        <div class="social-user-list" *ngIf="amistades.amistades.vinculos.length > 0">
+                            <article class="social-user-card social-persona" *ngFor="let vinculo of amistades.amistades.vinculos; trackBy: amistades.trackPorPersona">
                                 <button type="button" class="social-persona__identidad" (click)="amistades.abrirPerfil(vinculo.persona)">
-                                    <img class="social-persona__avatar" [src]="amistades.avatar(vinculo.persona)" alt="">
-                                    <span class="social-user-card__copy">
-                                        <strong>{{amistades.nombre(vinculo.persona)}}</strong>
-                                        <span class="social-persona__alias" *ngIf="amistades.aliasSecundario(vinculo.persona)">{{amistades.aliasSecundario(vinculo.persona)}}</span>
-                                    </span>
+                                    <ng-container *ngTemplateOutlet="identidadPersona; context: { $implicit: vinculo.persona }"></ng-container>
                                 </button>
                                 <div class="social-user-card__actions">
                                     <button mat-stroked-button color="primary" type="button" [disabled]="amistades.ocupada(vinculo.persona)"
@@ -149,14 +137,10 @@
                                 </div>
                             </article>
                         </div>
-                        <p class="social-inline-hint" *ngIf="amistades.amistadesCargadas && amistades.amistades.length < 1 && !amistades.amistadesError">
+                        <p class="social-inline-hint" *ngIf="amistades.amistades.cargada && amistades.amistades.vinculos.length < 1 && !amistades.amistades.error">
                             Aún no tienes amistades. Busca a alguien arriba y pídele amistad desde su perfil.
                         </p>
-                        <div class="social-actions" *ngIf="amistades.amistadesCursor">
-                            <button mat-stroked-button type="button" [disabled]="amistades.amistadesCargandoMas" (click)="amistades.cargarMasAmistades()">
-                                {{amistades.amistadesCargandoMas ? 'Cargando…' : 'Cargar más'}}
-                            </button>
-                        </div>
+                        <ng-container *ngTemplateOutlet="cargarMasLista; context: { $implicit: amistades.amistades }"></ng-container>
                     </article>
 
                     <article class="social-panel" *ngIf="amistades.enviadas.length > 0">
@@ -164,11 +148,7 @@
                         <div class="social-user-list">
                             <article class="social-user-card social-persona" *ngFor="let solicitud of amistades.enviadas">
                                 <button type="button" class="social-persona__identidad" (click)="amistades.abrirPerfil(solicitud.persona)">
-                                    <img class="social-persona__avatar" [src]="amistades.avatar(solicitud.persona)" alt="">
-                                    <span class="social-user-card__copy">
-                                        <strong>{{amistades.nombre(solicitud.persona)}}</strong>
-                                        <span class="social-persona__alias" *ngIf="amistades.aliasSecundario(solicitud.persona)">{{amistades.aliasSecundario(solicitud.persona)}}</span>
-                                    </span>
+                                    <ng-container *ngTemplateOutlet="identidadPersona; context: { $implicit: solicitud.persona }"></ng-container>
                                 </button>
                                 <div class="social-user-card__actions">
                                     <button mat-stroked-button type="button" [disabled]="amistades.ocupada(solicitud.persona)"
@@ -191,19 +171,15 @@
                 <article class="social-panel" *ngIf="isLoggedIn">
                     <h3>Personas bloqueadas</h3>
                     <p class="social-inline-hint">No te ven ni pueden escribirte en ninguna web de Yosiftware. Para bloquear a alguien, abre su perfil.</p>
-                    <p class="social-inline-hint" *ngIf="amistades.bloqueosCargando" role="status">Cargando bloqueos…</p>
-                    <div class="bloque-error social-bloque-error" *ngIf="amistades.bloqueosError" role="alert">
-                        <span>{{amistades.bloqueosError}}</span>
-                        <button mat-button type="button" (click)="amistades.cargarBloqueos()">Reintentar</button>
+                    <p class="social-inline-hint" *ngIf="amistades.bloqueos.cargando" role="status">Cargando bloqueos…</p>
+                    <div class="bloque-error social-bloque-error" *ngIf="amistades.bloqueos.error" role="alert">
+                        <span>{{amistades.bloqueos.error}}</span>
+                        <button mat-button type="button" (click)="amistades.bloqueos.cargar()">Reintentar</button>
                     </div>
-                    <div class="social-user-list" *ngIf="amistades.bloqueos.length > 0">
-                        <article class="social-user-card social-persona" *ngFor="let vinculo of amistades.bloqueos; trackBy: amistades.trackPorPersona">
+                    <div class="social-user-list" *ngIf="amistades.bloqueos.vinculos.length > 0">
+                        <article class="social-user-card social-persona" *ngFor="let vinculo of amistades.bloqueos.vinculos; trackBy: amistades.trackPorPersona">
                             <div class="social-persona__identidad social-persona__identidad--quieta">
-                                <img class="social-persona__avatar" [src]="amistades.avatar(vinculo.persona)" alt="">
-                                <span class="social-user-card__copy">
-                                    <strong>{{amistades.nombre(vinculo.persona)}}</strong>
-                                    <span class="social-persona__alias" *ngIf="amistades.aliasSecundario(vinculo.persona)">{{amistades.aliasSecundario(vinculo.persona)}}</span>
-                                </span>
+                                <ng-container *ngTemplateOutlet="identidadPersona; context: { $implicit: vinculo.persona }"></ng-container>
                             </div>
                             <div class="social-user-card__actions">
                                 <button mat-stroked-button type="button" [disabled]="amistades.ocupada(vinculo.persona)"
@@ -214,14 +190,10 @@
                             </div>
                         </article>
                     </div>
-                    <p class="social-inline-hint" *ngIf="amistades.bloqueosCargados && amistades.bloqueos.length < 1 && !amistades.bloqueosError">
+                    <p class="social-inline-hint" *ngIf="amistades.bloqueos.cargada && amistades.bloqueos.vinculos.length < 1 && !amistades.bloqueos.error">
                         No tienes a nadie bloqueado.
                     </p>
-                    <div class="social-actions" *ngIf="amistades.bloqueosCursor">
-                        <button mat-stroked-button type="button" [disabled]="amistades.bloqueosCargandoMas" (click)="amistades.cargarMasBloqueos()">
-                            {{amistades.bloqueosCargandoMas ? 'Cargando…' : 'Cargar más'}}
-                        </button>
-                    </div>
+                    <ng-container *ngTemplateOutlet="cargarMasLista; context: { $implicit: amistades.bloqueos }"></ng-container>
                 </article>
             </section>
 
@@ -352,7 +324,7 @@
                                 <div class="social-user-list" *ngIf="selectedCampaignMembers.length > 0">
                                     <article class="social-user-card social-user-card--compact" *ngFor="let member of selectedCampaignMembers">
                                         <div class="social-user-card__main">
-                                            <strong>{{nombreMiembro(member)}}</strong>
+                                            <strong>{{textoPersona(member.displayName, member.email)}}</strong>
                                             <span class="social-user-card__meta">{{getCampaignRoleLabel(member.campaignRole)}} · {{getCampaignMembershipLabel(member.membershipStatus)}}</span>
                                         </div>
                                         <div class="social-user-card__actions" *ngIf="canReportCampaignMember(member)">
@@ -394,3 +366,21 @@
         </main>
     </div>
 </section>
+
+<!-- La identidad de una persona en las listas de amistades, solicitudes, búsqueda y bloqueos. -->
+<ng-template #identidadPersona let-persona>
+    <img class="social-persona__avatar" [src]="amistades.avatar(persona)" alt="">
+    <span class="social-user-card__copy">
+        <strong>{{amistades.nombre(persona)}}</strong>
+        <span class="social-persona__alias" *ngIf="amistades.aliasSecundario(persona)">{{amistades.aliasSecundario(persona)}}</span>
+    </span>
+</ng-template>
+
+<!-- «Cargar más» de un listado por cursor (las amistades o los bloqueos). -->
+<ng-template #cargarMasLista let-lista>
+    <div class="social-actions" *ngIf="lista.cursor">
+        <button mat-stroked-button type="button" [disabled]="lista.cargandoMas" (click)="lista.cargarMas()">
+            {{lista.cargandoMas ? 'Cargando…' : 'Cargar más'}}
+        </button>
+    </div>
+</ng-template>

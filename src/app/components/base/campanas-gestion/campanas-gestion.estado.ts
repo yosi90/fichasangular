@@ -28,6 +28,7 @@ import {
     permitirAccionConNormas,
     permitirAccionGuardada,
     textoEstadoEnCampana,
+    textoPersona,
     textoRolEnCampana,
     textoVisibilidadEnCampana,
 } from '../user-profile/perfil-acciones';
@@ -283,7 +284,7 @@ export class CampanasGestionEstado implements OnDestroy {
         if (!transfer)
             return '';
         const member = this.selectedCampaignMembers.find((item) => item.uid.toLowerCase() === transfer.cuenta.toLowerCase());
-        return member ? this.getUserDisplayLabel(member.displayName, member.email, member.uid) : 'un jugador';
+        return member ? textoPersona(member.displayName, member.email) : 'un jugador';
     }
 
     get selectedCampaignMembers(): CampaignMemberItem[] {
@@ -753,7 +754,7 @@ export class CampanasGestionEstado implements OnDestroy {
         const result = await Swal.fire({
             icon: 'warning',
             title: 'Sacar de la campaña',
-            text: `${this.getUserDisplayLabel(member.displayName, member.email, member.uid)} dejará de ver la campaña. Sus personajes se quedan en ella, y solo podrá volver con una invitación nueva.`,
+            text: `${textoPersona(member.displayName, member.email)} dejará de ver la campaña. Sus personajes se quedan en ella, y solo podrá volver con una invitación nueva.`,
             showCancelButton: true,
             confirmButtonText: 'Sacar',
             cancelButtonText: 'Cancelar',
@@ -782,7 +783,7 @@ export class CampanasGestionEstado implements OnDestroy {
             displayName: member.displayName,
             photoThumbUrl: null,
         };
-        this.transferSearchQuery = this.getUserDisplayLabel(member.displayName, member.email, member.uid);
+        this.transferSearchQuery = textoPersona(member.displayName, member.email);
         this.transferSearchResults = [];
         this.transferSearchErrorMessage = '';
     }
@@ -1022,15 +1023,7 @@ export class CampanasGestionEstado implements OnDestroy {
     readonly getMembershipStatusLabel = textoEstadoEnCampana;
     readonly getCampaignVisibilityLabel = textoVisibilidadEnCampana;
 
-    getUserDisplayLabel(displayName: string | null | undefined, email: string | null | undefined, uid: string): string {
-        const nombre = `${displayName ?? ''}`.trim();
-        if (nombre.length > 0)
-            return nombre;
-        const correo = `${email ?? ''}`.trim();
-        if (correo.length > 0)
-            return correo;
-        return 'Usuario sin nombre';
-    }
+    readonly textoPersona = textoPersona;
 
     formatOptionalDateTime(value: string | null | undefined, fallback: string = 'Sin dato'): string {
         return textoFechaHora(value, fallback);

@@ -18,3 +18,11 @@ export function trasLasNormasDeCreacion(usuario: ConsultaNormasCreacion, accion:
             accion();
     });
 }
+
+/**
+ * La misma regla para quien ya espera la respuesta (guardar la creación, crear o cambiar una campaña): `true` si puede
+ * seguir, porque no le faltan las normas de Rol o porque las acaba de aceptar en su ventana.
+ */
+export async function normasDeCreacionAceptadas(usuario: ConsultaNormasCreacion): Promise<boolean> {
+    return !usuario.normasDeCreacionPendientes || await usuario.asegurarNormasDeCreacion();
+}

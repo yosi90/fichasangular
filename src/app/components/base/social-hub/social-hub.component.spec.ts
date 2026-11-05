@@ -209,12 +209,12 @@ describe('SocialHubComponent', () => {
         tick();
         component.selectSection('amistades');
         tick();
-        expect(component.amistades.amistades.length).toBe(1);
+        expect(component.amistades.amistades.vinculos.length).toBe(1);
 
         isLoggedIn$.next(false);
         tick();
 
-        expect(component.amistades.amistades).toEqual([]);
+        expect(component.amistades.amistades.vinculos).toEqual([]);
         expect(component.amistades.resumen).toBeNull();
         expect(component.currentSection).toBe('resumen');
     }));
