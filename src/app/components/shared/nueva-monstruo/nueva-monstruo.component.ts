@@ -43,7 +43,7 @@ import { MONSTRUO } from 'src/app/services/utils/nombres-de-catalogo';
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
-import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
+import { OpcionCatalogo, opcionesDeCatalogo, opcionesPorId } from '../catalogo-buscador/catalogo-buscador.component';
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { ErrorDeCampo, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
@@ -524,20 +524,19 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
     }
 
     private cargarCatalogos(): void {
-        const porId = (lista: OpcionCatalogo[]) => [...lista].sort((a, b) => a.id - b.id);
         const suscribir = cargadorDeCatalogos(this.destroy$);
 
         suscribir(this.manualSvc.getManuales(), (items) => this.manuales = opcionesDeCatalogo(items));
         suscribir(this.tipoCriaturaSvc.getTiposCriatura(), (items) => this.tiposCriatura = opcionesDeCatalogo(items));
         suscribir(this.tamanoSvc.getTamanos(), (items) => this.tamanos = [...(items ?? [])].filter((item) => item.Id > 0).sort((a, b) => a.Id - b.Id));
-        suscribir(this.razaCatalogosSvc.getTiposDado(), (items) => this.tiposDado = porId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
-        suscribir(this.razaCatalogosSvc.getManiobrabilidades(), (items) => this.maniobrabilidades = porId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
+        suscribir(this.razaCatalogosSvc.getTiposDado(), (items) => this.tiposDado = opcionesPorId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
+        suscribir(this.razaCatalogosSvc.getManiobrabilidades(), (items) => this.maniobrabilidades = opcionesPorId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
         suscribir(this.alineamientoSvc.getAlineamientosCombinacionesCatalogo(), (items) => this.alineamientos =
             opcionesDeCatalogo(items, (item) => ({ id: toInt(item?.Id), nombre: nombreCombinacionAlineamiento(item) })));
-        suscribir(this.alineamientoSvc.getAlineamientosBasicosCatalogo(), (items) => this.alineamientosBasicos = porId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
-        suscribir(this.alineamientoSvc.getAlineamientosPreferenciaLeyCatalogo(), (items) => this.preferenciasLey = porId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
-        suscribir(this.alineamientoSvc.getAlineamientosPreferenciaMoralCatalogo(), (items) => this.preferenciasMoral = porId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
-        suscribir(this.monstruoSvc.getPlantillasFamiliar(), (items) => this.plantillasFamiliar = porId(opcionesDeCatalogo(items)));
+        suscribir(this.alineamientoSvc.getAlineamientosBasicosCatalogo(), (items) => this.alineamientosBasicos = opcionesPorId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
+        suscribir(this.alineamientoSvc.getAlineamientosPreferenciaLeyCatalogo(), (items) => this.preferenciasLey = opcionesPorId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
+        suscribir(this.alineamientoSvc.getAlineamientosPreferenciaMoralCatalogo(), (items) => this.preferenciasMoral = opcionesPorId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
+        suscribir(this.monstruoSvc.getPlantillasFamiliar(), (items) => this.plantillasFamiliar = opcionesPorId(opcionesDeCatalogo(items)));
         suscribir(this.claseSvc.getClases(), (items) => this.clases = opcionesDeCatalogo(items).filter((item) => item.id > 0));
         suscribir(this.subtipoSvc.getSubtipos(), (items) => this.subtipos = opcionesDeCatalogo(items).filter((item) => item.id > 0));
         suscribir(this.idiomaSvc.getIdiomas(), (items) => this.idiomas = opcionesDeCatalogo(items).filter((item) => item.id > 0));

@@ -68,7 +68,7 @@ import {
     getPrerequisiteDefinition,
     getPrerequisiteTypeOptions,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
-import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
+import { OpcionCatalogo, opcionesDeCatalogo, opcionesPorId } from '../catalogo-buscador/catalogo-buscador.component';
 
 /** Las listas de rasgos del paso 3 (las tarjetas). */
 export type ListaRasgos = 'raciales' | 'ataquesEspeciales' | 'sortilegas' | 'dotes' | 'habilidades' | 'subtipos';
@@ -597,18 +597,17 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
     }
 
     private cargarCatalogos(): void {
-        const porId = (lista: OpcionCatalogo[]) => [...lista].sort((a, b) => a.id - b.id);
         const suscribir = cargadorDeCatalogos(this.destroy$);
 
         suscribir(this.manualSvc.getManuales(), (items) => this.manuales = opcionesDeCatalogo(items));
         // El listado de tamaños no trae el 0, «Depende» (el de la criatura base), que es el de casi todas las plantillas.
         let tamanoBase: OpcionCatalogo[] = [];
         let tamanosListado: OpcionCatalogo[] = [];
-        const unirTamanos = () => this.tamanos = porId([...tamanoBase, ...tamanosListado.filter((item) => item.id !== 0)]);
+        const unirTamanos = () => this.tamanos = opcionesPorId([...tamanoBase, ...tamanosListado.filter((item) => item.id !== 0)]);
         suscribir(this.tamanoSvc.getTamanos(), (items) => { tamanosListado = opcionesDeCatalogo(items); unirTamanos(); });
         suscribir(this.tamanoSvc.getTamano(0).pipe(take(1)), (item) => { tamanoBase = opcionesDeCatalogo(item ? [item] : []); unirTamanos(); });
-        suscribir(this.razaCatalogosSvc.getTiposDado(), (items) => this.tiposDado = porId(opcionesDeCatalogo(items)));
-        suscribir(this.razaCatalogosSvc.getManiobrabilidades(), (items) => this.maniobrabilidades = porId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
+        suscribir(this.razaCatalogosSvc.getTiposDado(), (items) => this.tiposDado = opcionesPorId(opcionesDeCatalogo(items)));
+        suscribir(this.razaCatalogosSvc.getManiobrabilidades(), (items) => this.maniobrabilidades = opcionesPorId(opcionesDeCatalogo(items)).filter((item) => item.id > 0));
         suscribir(this.razaCatalogosSvc.getActitudes(), (items) => this.actitudes = opcionesDeCatalogo(items));
         suscribir(this.tipoCriaturaSvc.getTiposCriatura(), (items) => this.tiposCriatura = opcionesDeCatalogo(items));
         suscribir(this.alineamientoSvc.getAlineamientosCombinacionesCatalogo(), (items) => this.alineamientos =
