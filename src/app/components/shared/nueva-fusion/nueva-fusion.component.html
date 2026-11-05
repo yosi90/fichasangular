@@ -1,0 +1,155 @@
+<div class="nueva-fusion-shell">
+    <form class="nueva-fusion-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <app-insercion-marco
+            [modo]="modo"
+            tipo="Fusión del alma"
+            iconoTipo="fusion"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="form.controls.oficial.value"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeCrear)"
+            [error]="errores.global"
+            [guardando]="guardando"
+            [accionDesactivada]="edicion.cargando || (edicion.editando && !edicion.hayCambios)"
+            [nota]="edicion.editando && !edicion.hayCambios ? 'Sin cambios todavía.' : ''"
+            [textoAccion]="textoAccion"
+            [textoGuardando]="textoAccion">
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Datos</h3>
+                <div class="insercion-campos">
+                    <mat-form-field appearance="fill" class="insercion-campos__doble">
+                        <mat-label>Nombre</mat-label>
+                        <input matInput formControlName="nombre" maxlength="100">
+                        <mat-error *ngIf="form.controls.nombre.invalid">{{errores.textoDe('nombre', 'Nombre obligatorio (hasta 100 caracteres).')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill" class="insercion-campos__doble">
+                        <mat-label>Nombre original</mat-label>
+                        <input matInput formControlName="nombre_original" maxlength="100">
+                        <mat-hint>El nombre en inglés, si viene de un libro sin traducir.</mat-hint>
+                        <mat-error *ngIf="form.controls.nombre_original.invalid">{{errores.textoDe('nombre_original', 'Hasta 100 caracteres.')}}</mat-error>
+                    </mat-form-field>
+                    <app-catalogo-buscador class="insercion-campos__doble" etiqueta="Manual" [opciones]="manuales" [valor]="form.controls.id_manual.value"
+                        [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errores.textoDe('id_manual', 'Manual obligatorio.') : null"
+                        (elegir)="elegirManual($event)">
+                    </app-catalogo-buscador>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Página</mat-label>
+                        <input matInput type="number" min="0" step="1" formControlName="pagina">
+                        <mat-error *ngIf="form.controls.pagina.invalid">{{errores.textoDe('pagina', 'Página obligatoria (0 o más).')}}</mat-error>
+                    </mat-form-field>
+                    <div class="estado-row insercion-campos__entero">
+                        <mat-chip-listbox class="boolean-chips" aria-label="Estado de la fusión" [multiple]="true">
+                            <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="alternar('oficial')">Oficial</mat-chip-option>
+                            <mat-chip-option [selected]="form.controls.traducido.value === true" (click)="alternar('traducido')">Traducción nuestra</mat-chip-option>
+                            <mat-chip-option [selected]="form.controls.alineado_portador.value === true" (click)="alternar('alineado_portador')">Toma el alineamiento de quien la moldea</mat-chip-option>
+                        </mat-chip-listbox>
+                    </div>
+                </div>
+            </section>
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Chakras · {{chakras.length}}</h3>
+                <p class="fusion-error" role="alert" *ngIf="avisoDe('chakras') as aviso">{{aviso}}</p>
+                <p class="fusion-rasgo__vacio" *ngIf="chakras.length < 1">Sin chakras: añade al menos uno donde se pueda moldear.</p>
+                <div class="fusion-chakra" *ngFor="let fila of chakras; trackBy: trackByUid">
+                    <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                        <mat-label>Chakra</mat-label>
+                        <mat-select [(ngModel)]="fila.id_chakra" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                            <mat-option *ngFor="let chakra of chakrasLibres(fila)" [value]="chakra.Id">{{chakra.Nombre}}</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <mat-chip-listbox class="boolean-chips" aria-label="Uso del chakra" [multiple]="true">
+                        <mat-chip-option [selected]="fila.ocupa" (click)="alternarChakra(fila, 'ocupa')">Se moldea aquí</mat-chip-option>
+                        <mat-chip-option [selected]="fila.vinculo" (click)="alternarChakra(fila, 'vinculo')">Se vincula aquí</mat-chip-option>
+                    </mat-chip-listbox>
+                    <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar el chakra" (click)="quitarChakra(fila.uid)">
+                        <mat-icon>delete</mat-icon>
+                    </button>
+                    <mat-form-field appearance="fill" class="fusion-chakra__efecto" subscriptSizing="dynamic" *ngIf="fila.vinculo">
+                        <mat-label>Al vincularla a este chakra</mat-label>
+                        <textarea matInput rows="2" maxlength="8000" [(ngModel)]="fila.efecto_vinculo" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()"></textarea>
+                    </mat-form-field>
+                    <p class="fusion-error fusion-chakra__efecto" role="alert" *ngIf="avisoDeFila(fila) as aviso">{{aviso}}</p>
+                </div>
+                <button mat-stroked-button type="button" (click)="anadirChakra()"><mat-icon>add</mat-icon> Añadir chakra</button>
+            </section>
+
+            <div class="insercion-tarjetas">
+                <section class="insercion-tarjeta" *ngFor="let lista of ['clases', 'descriptores']">
+                    <h3 class="insercion-tarjeta__titulo">{{lista === 'clases' ? 'Clases' : 'Descriptores'}} · {{$any(this)[lista].length}}</h3>
+                    <p class="fusion-error" role="alert" *ngIf="avisoDe($any(lista)) as aviso">{{aviso}}</p>
+                    <p class="fusion-rasgo__vacio" *ngIf="$any(this)[lista].length < 1">
+                        {{lista === 'clases' ? 'En la lista de ninguna clase: solo se tiene con una dote.' : 'Sin descriptores.'}}
+                    </p>
+                    <div class="fusion-fila fusion-fila--simple" *ngFor="let fila of $any(this)[lista]; trackBy: trackByUid">
+                        <span class="fusion-fila__nombre">{{fila.nombre}}</span>
+                        <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar" (click)="quitar($any(lista), fila.uid)">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                    <app-catalogo-buscador [etiqueta]="lista === 'clases' ? 'Añadir clase (las que moldean)' : 'Añadir descriptor'" [anadir]="true"
+                        [opciones]="lista === 'clases' ? clasesOpciones : descriptoresOpciones" [excluir]="idsDe($any(lista))"
+                        (elegir)="anadir($any(lista), $event)">
+                    </app-catalogo-buscador>
+                </section>
+            </div>
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Salvación</h3>
+                <div class="insercion-campos">
+                    <mat-form-field appearance="fill">
+                        <mat-label>Salvación</mat-label>
+                        <mat-select formControlName="salvacion_tipo">
+                            <mat-option [value]="null">Ninguna</mat-option>
+                            <mat-option *ngFor="let salvacion of salvaciones" [value]="salvacion">{{salvacion}}</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Efecto de la salvación</mat-label>
+                        <mat-select formControlName="salvacion_efecto">
+                            <mat-option [value]="null">Ninguno</mat-option>
+                            <mat-option *ngFor="let efecto of efectosSalvacion" [value]="efecto">{{efecto}}</mat-option>
+                        </mat-select>
+                        <mat-hint>«Ver texto» si lo explica el efecto.</mat-hint>
+                    </mat-form-field>
+                </div>
+            </section>
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Textos</h3>
+                <div class="insercion-campos">
+                    <mat-form-field appearance="fill" class="insercion-campos__entero">
+                        <mat-label>Descripción</mat-label>
+                        <textarea matInput formControlName="descripcion" rows="3" maxlength="8000"></textarea>
+                        <mat-hint>Propia y breve, con nuestras palabras; nunca el texto del libro.</mat-hint>
+                        <mat-error *ngIf="form.controls.descripcion.invalid">{{errores.textoDe('descripcion', 'Hasta 8000 caracteres.')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill" class="insercion-campos__doble">
+                        <mat-label>Origen de la descripción</mat-label>
+                        <mat-select formControlName="origen_descripcion">
+                            <mat-option value="propia">Propia (un resumen nuestro)</mat-option>
+                            <mat-option value="srd">Del SRD (licencia abierta)</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill" class="insercion-campos__entero">
+                        <mat-label>Efecto básico</mat-label>
+                        <textarea matInput formControlName="efecto_basico" rows="3" maxlength="8000"></textarea>
+                        <mat-error *ngIf="form.controls.efecto_basico.invalid">{{errores.textoDe('efecto_basico', 'Hasta 8000 caracteres.')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill" class="insercion-campos__entero">
+                        <mat-label>Efecto de la esencia</mat-label>
+                        <textarea matInput formControlName="efecto_esencia" rows="3" maxlength="8000"></textarea>
+                        <mat-hint>Lo que hace cada punto de esencia invertido.</mat-hint>
+                        <mat-error *ngIf="form.controls.efecto_esencia.invalid">{{errores.textoDe('efecto_esencia', 'Hasta 8000 caracteres.')}}</mat-error>
+                    </mat-form-field>
+                </div>
+            </section>
+
+            <section class="insercion-tarjeta" *ngIf="edicion.editando">
+                <h3 class="insercion-tarjeta__titulo">Datos de juego · no editables aquí</h3>
+                <p class="fusion-nota">Las cifras de cada efecto que carga el importador del libro (bonos, daño, alcances…) se conservan al guardar: esta pantalla no las cambia.</p>
+            </section>
+        </app-insercion-marco>
+    </form>
+</div>

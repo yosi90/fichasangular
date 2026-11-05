@@ -1,0 +1,119 @@
+<div class="nueva-ventaja-shell">
+    <form class="nueva-ventaja-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <app-insercion-marco
+            [modo]="modo"
+            [tipo]="etiquetaTipo"
+            [iconoTipo]="tipo"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="false"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeCrear)"
+            [error]="errores.global"
+            [guardando]="guardando"
+            [accionDesactivada]="edicion.cargando || (edicion.editando && !edicion.hayCambios)"
+            [nota]="edicion.editando && !edicion.hayCambios ? 'Sin cambios todavía.' : 'Las ventajas y desventajas son homebrew: un personaje que las use también lo es.'"
+            [textoAccion]="textoAccion"
+            [textoGuardando]="textoAccion">
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Datos</h3>
+                <div class="insercion-campos">
+                    <div class="estado-row insercion-campos__entero">
+                        <mat-chip-listbox class="boolean-chips" aria-label="Tipo" [disabled]="edicion.editando">
+                            <mat-chip-option [selected]="tipo === 'ventaja'" (click)="elegirTipo('ventaja')">Ventaja: cuesta puntos</mat-chip-option>
+                            <mat-chip-option [selected]="tipo === 'desventaja'" (click)="elegirTipo('desventaja')">Desventaja: da puntos</mat-chip-option>
+                        </mat-chip-listbox>
+                        <span class="ventaja-nota" *ngIf="edicion.editando">El tipo no cambia al modificar.</span>
+                    </div>
+                    <mat-form-field appearance="fill" class="insercion-campos__doble">
+                        <mat-label>Nombre</mat-label>
+                        <input matInput formControlName="nombre" maxlength="50">
+                        <mat-error *ngIf="form.controls.nombre.invalid">{{errores.textoDe('nombre', 'Nombre obligatorio (hasta 50 caracteres).')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>{{tipo === 'ventaja' ? 'Cuesta (puntos)' : 'Da (puntos)'}}</mat-label>
+                        <input matInput type="number" min="1" step="1" formControlName="puntos">
+                        <mat-error *ngIf="form.controls.puntos.invalid">{{errores.textoDe('puntos', 'Un número entero, 1 o más.')}}</mat-error>
+                    </mat-form-field>
+                    <div class="estado-row">
+                        <mat-chip-listbox class="boolean-chips" aria-label="Si se puede perder">
+                            <mat-chip-option [selected]="marcada('disipable')" (click)="alternar('disipable')">Disipable</mat-chip-option>
+                        </mat-chip-listbox>
+                    </div>
+                    <app-catalogo-buscador class="insercion-campos__doble" etiqueta="Manual" [opciones]="manuales" [valor]="form.controls.id_manual.value"
+                        [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errores.textoDe('id_manual', 'Manual obligatorio.') : errorDe('id_manual')"
+                        (elegir)="elegir('id_manual', $event)">
+                    </app-catalogo-buscador>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Página</mat-label>
+                        <input matInput type="number" min="0" step="1" formControlName="pagina">
+                        <mat-error *ngIf="form.controls.pagina.invalid">{{errores.textoDe('pagina', 'Página obligatoria (0 o más).')}}</mat-error>
+                    </mat-form-field>
+                </div>
+            </section>
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Efecto</h3>
+                <div class="insercion-campos">
+                    <mat-form-field appearance="fill">
+                        <mat-label>Mejora</mat-label>
+                        <input matInput type="number" step="1" formControlName="mejora">
+                        <mat-hint>Lo que suma (o resta, en negativo) a lo marcado o a la habilidad.</mat-hint>
+                        <mat-error *ngIf="form.controls.mejora.invalid">{{errores.textoDe('mejora', 'Un número entero.')}}</mat-error>
+                    </mat-form-field>
+                    <div class="ventaja-banderas insercion-campos__entero">
+                        <span class="ventaja-banderas__titulo">Afecta a</span>
+                        <mat-chip-listbox class="boolean-chips" aria-label="Afecta a" [multiple]="true">
+                            <mat-chip-option *ngFor="let bandera of banderasAfecta" [selected]="marcada(bandera.clave)" (click)="alternar(bandera.clave)">{{bandera.etiqueta}}</mat-chip-option>
+                        </mat-chip-listbox>
+                    </div>
+                    <div class="ventaja-banderas insercion-campos__entero">
+                        <span class="ventaja-banderas__titulo">Al crear el personaje</span>
+                        <mat-chip-listbox class="boolean-chips" aria-label="Lo que da al crear el personaje" [multiple]="true">
+                            <mat-chip-option *ngFor="let bandera of banderasDa" [selected]="marcada(bandera.clave)" (click)="alternar(bandera.clave)">{{bandera.etiqueta}}</mat-chip-option>
+                        </mat-chip-listbox>
+                    </div>
+                    <div class="ventaja-con-quitar insercion-campos__doble">
+                        <app-catalogo-buscador etiqueta="Habilidad" placeholder="Ninguna" [opciones]="habilidades" [valor]="form.controls.id_habilidad.value"
+                            [error]="errorDe('id_habilidad')" (elegir)="elegir('id_habilidad', $event)">
+                        </app-catalogo-buscador>
+                        <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_habilidad.value !== null"
+                            aria-label="Sin habilidad" (click)="quitar('id_habilidad')">
+                            <mat-icon>close</mat-icon>
+                        </button>
+                    </div>
+                    <div class="ventaja-con-quitar insercion-campos__doble">
+                        <app-catalogo-buscador etiqueta="Rasgo que da" placeholder="Ninguno" [opciones]="rasgos" [valor]="form.controls.id_rasgo.value"
+                            [error]="errorDe('id_rasgo')" (elegir)="elegir('id_rasgo', $event)">
+                        </app-catalogo-buscador>
+                        <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_rasgo.value !== null"
+                            aria-label="Sin rasgo" (click)="quitar('id_rasgo')">
+                            <mat-icon>close</mat-icon>
+                        </button>
+                    </div>
+                    <div class="ventaja-con-quitar insercion-campos__doble" *ngIf="!marcada('idioma_extra')">
+                        <app-catalogo-buscador etiqueta="Idioma que da" placeholder="Ninguno" [opciones]="idiomas" [valor]="form.controls.id_idioma.value"
+                            [error]="errorDe('id_idioma')" (elegir)="elegir('id_idioma', $event)">
+                        </app-catalogo-buscador>
+                        <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_idioma.value !== null"
+                            aria-label="Sin idioma" (click)="quitar('id_idioma')">
+                            <mat-icon>close</mat-icon>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Descripción</h3>
+                <div class="insercion-campos">
+                    <mat-form-field appearance="fill" class="insercion-campos__entero">
+                        <mat-label>Descripción</mat-label>
+                        <textarea matInput formControlName="descripcion" rows="4" maxlength="8000"></textarea>
+                        <mat-hint>Lo que significa para el personaje y cómo se juega.</mat-hint>
+                        <mat-error *ngIf="form.controls.descripcion.invalid">{{errores.textoDe('descripcion', 'Hasta 8000 caracteres.')}}</mat-error>
+                    </mat-form-field>
+                </div>
+            </section>
+        </app-insercion-marco>
+    </form>
+</div>

@@ -1,0 +1,55 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar fusiones del alma, dentro del marco común (guía de inserciones, «La fusión y el chakra»). Sin pasos:
+// tarjetas una debajo de otra; las listas (clases y descriptores), con las filas y el vacío de las tarjetas de rasgos.
+:host
+    @include inserciones.insercion-host
+
+.nueva-fusion-shell
+    @include inserciones.insercion-shell
+
+.nueva-fusion-form
+    @include inserciones.insercion-form-base
+    @include inserciones.tarjetas-de-rasgos('fusion')
+
+    mat-form-field, app-catalogo-buscador
+        width: 100%
+
+    .insercion-tarjeta + .insercion-tarjeta, .insercion-tarjeta + .insercion-tarjetas, .insercion-tarjetas + .insercion-tarjeta
+        margin-top: 12px
+
+    .estado-row
+        justify-content: flex-start
+
+    // Una fila de una lista sin cifras: el nombre y quitar.
+    .fusion-fila--simple
+        grid-template-columns: minmax(0, 1fr) 42px
+        margin-bottom: 6px
+
+// Un chakra de la fusión: cuál, para qué y, si se vincula, qué hace ahí.
+.fusion-chakra
+    display: grid
+    grid-template-columns: minmax(160px, 220px) minmax(0, 1fr) 42px
+    gap: 8px
+    align-items: center
+    padding-bottom: 8px
+    margin-bottom: 8px
+    border-bottom: 1px solid rgba(255, 255, 255, .06)
+
+.fusion-chakra__efecto
+    grid-column: 1 / -1
+
+.fusion-nota
+    margin: 0
+    font-size: 13px
+    color: $ficha-texto-suave
+
+@container insercion (max-width: 767px)
+    .fusion-chakra
+        grid-template-columns: minmax(0, 1fr) 42px
+
+        mat-chip-listbox
+            grid-column: 1 / -1
+            grid-row: 2

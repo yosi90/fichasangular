@@ -311,3 +311,18 @@
 
         .#{$p}-caracteristicas__fila
             grid-template-columns: 96px repeat(6, minmax(52px, 1fr))
+
+// Un buscador de un solo valor que se puede dejar vacío (`<app-catalogo-buscador>` y su ✕ al lado): el rasgo, el idioma
+// o la habilidad de una ventaja (hito 8 del roadmap de inserciones). El material y la munición del equipo
+// (`.equipo-con-quitar`) son lo mismo.
+@mixin buscador-con-quitar
+    display: flex
+    align-items: flex-start
+    gap: 4px
+
+    app-catalogo-buscador
+        flex: 1 1 auto
+        min-width: 0
+
+    .row-action-btn
+        margin-top: 8px

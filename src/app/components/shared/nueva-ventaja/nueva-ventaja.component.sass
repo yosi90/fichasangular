@@ -1,0 +1,43 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar ventajas y desventajas, dentro del marco común (guía de inserciones, «La ventaja»). Sin pasos:
+// tarjetas una debajo de otra. Aquí solo van los grupos de chips con su título y el buscador con su ✕.
+:host
+    @include inserciones.insercion-host
+
+.nueva-ventaja-shell
+    @include inserciones.insercion-shell
+
+.nueva-ventaja-form
+    @include inserciones.insercion-form-base
+
+    mat-form-field, app-catalogo-buscador
+        width: 100%
+
+    .insercion-tarjeta + .insercion-tarjeta
+        margin-top: 12px
+
+    .estado-row
+        justify-content: flex-start
+        align-items: center
+        gap: 12px
+
+.ventaja-nota
+    font-size: 13px
+    color: $ficha-texto-suave
+
+.ventaja-banderas
+    display: flex
+    flex-direction: column
+    gap: 4px
+
+.ventaja-banderas__titulo
+    font-size: 12px
+    letter-spacing: .06em
+    text-transform: uppercase
+    color: $ficha-texto-suave
+
+.ventaja-con-quitar
+    @include inserciones.buscador-con-quitar
