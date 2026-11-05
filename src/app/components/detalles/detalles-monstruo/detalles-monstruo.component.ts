@@ -24,7 +24,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { textoEjesAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
-import { normalizarTexto, toNumber } from 'src/app/services/utils/normalizacion';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 import {
@@ -65,10 +65,6 @@ interface RequisitosRelacion {
     standalone: false
 })
 export class DetallesMonstruoComponent {
-    private static readonly DOTE_IDS_COMPANERO = new Set<number>([53, 56]);
-    private static readonly DOTE_IDS_FAMILIAR = new Set<number>([45, 46, 48]);
-    private static readonly CLASE_IDS_COMPANERO = new Set<number>([5, 6]);
-    private static readonly CLASE_IDS_FAMILIAR = new Set<number>([8, 9]);
     private monstruoData!: MonstruoDetalle;
     mostrarInfoManiobrabilidad = false;
 
@@ -453,7 +449,7 @@ export class DetallesMonstruoComponent {
             }));
     }
 
-    private getNivelesClaseNormalizados(): Array<NivelClaseRequerido & { plantillaId: number; doteId: number; }> {
+    private getNivelesClaseNormalizados(): Array<NivelClaseRequerido & { plantillaId: number; }> {
         return (this.monstruo?.Niveles_clase ?? [])
             .filter(item => toNumber(item?.Clase?.Id) > 0 && tieneTextoVisible(item?.Clase?.Nombre))
             .map((item) => ({
@@ -462,58 +458,26 @@ export class DetallesMonstruoComponent {
                 nivel: toNumber(item?.Nivel),
                 plantillaId: toNumber(item?.Plantilla?.Id),
                 plantilla: `${item?.Plantilla?.Nombre ?? ''}`.trim(),
-                doteId: toNumber(item?.Dote?.Id),
                 dote: `${item?.Dote?.Nombre ?? ''}`.trim(),
                 alineamiento: textoEjesAlineamiento(item?.Preferencia_legal?.Nombre, item?.Preferencia_moral?.Nombre),
             }));
     }
 
-    private getContextosNivelClase(nivel: NivelClaseRequerido & { plantillaId: number; doteId: number; }): Array<'Familiar' | 'Companero'> {
-        const contextos = new Set<'Familiar' | 'Companero'>();
-        const doteNormalizada = normalizarTexto(nivel?.dote ?? '');
-        const claseNormalizada = normalizarTexto(nivel?.nombreClase ?? '');
-        const plantillaNormalizada = normalizarTexto(nivel?.plantilla ?? '');
-
-        if (DetallesMonstruoComponent.DOTE_IDS_COMPANERO.has(toNumber(nivel?.doteId))
-            || doteNormalizada.includes('companero')
-            || doteNormalizada.includes('compañero')) {
-            contextos.add('Companero');
-        }
-        if (DetallesMonstruoComponent.DOTE_IDS_FAMILIAR.has(toNumber(nivel?.doteId))
-            || doteNormalizada.includes('familiar')) {
-            contextos.add('Familiar');
-        }
-
-        if (DetallesMonstruoComponent.CLASE_IDS_COMPANERO.has(toNumber(nivel?.idClase))
-            || claseNormalizada === 'druida'
-            || claseNormalizada === 'explorador'
-            || claseNormalizada === 'ranger') {
-            contextos.add('Companero');
-        }
-        if (DetallesMonstruoComponent.CLASE_IDS_FAMILIAR.has(toNumber(nivel?.idClase))
-            || claseNormalizada === 'mago'
-            || claseNormalizada === 'hechicero'
-            || claseNormalizada === 'wizard'
-            || claseNormalizada === 'sorcerer') {
-            contextos.add('Familiar');
-        }
-
-        // Sin plantilla, la API da `null` (antes, «No aplica»).
-        if (toNumber(nivel?.plantillaId) > 0 || plantillaNormalizada.length > 0)
-            contextos.add('Familiar');
-
-        if (contextos.size < 1) {
-            if (this.monstruo?.Familiar && !this.monstruo?.Companero)
-                contextos.add('Familiar');
-            else if (this.monstruo?.Companero && !this.monstruo?.Familiar)
-                contextos.add('Companero');
-            else {
-                contextos.add('Familiar');
-                contextos.add('Companero');
-            }
-        }
-
-        return Array.from(contextos.values());
+    /**
+     * Si una fila de `Niveles_clase` es una forma de tenerlo de familiar o de compañero, por sus datos y no por ids o
+     * nombres fijos: la que lleva pseudoplantilla de familiar (`Plantilla.Id` > 0, `Pseudoplantillas_familiares`) es de
+     * familiar, como las que ofrece la creación (`construirCatalogoFamiliaresDesdeMonstruos`); sin ella, de compañero si el
+     * monstruo puede serlo (`Companero`) y, si no, de familiar. Comprobado el 2026-11-05 con las 288 filas de `rol` y
+     * `rol_dev`: la misma separación que daban los ids de las clases y las dotes.
+     */
+    private getContextosNivelClase(nivel: NivelClaseRequerido & { plantillaId: number; }): Array<'Familiar' | 'Companero'> {
+        if (toNumber(nivel?.plantillaId) > 0)
+            return ['Familiar'];
+        if (this.monstruo?.Companero)
+            return ['Companero'];
+        if (this.monstruo?.Familiar)
+            return ['Familiar'];
+        return ['Familiar', 'Companero'];
     }
 
 }

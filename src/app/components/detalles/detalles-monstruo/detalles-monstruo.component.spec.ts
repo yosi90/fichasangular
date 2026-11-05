@@ -452,6 +452,33 @@ describe('DetallesMonstruoComponent', () => {
         expect(nivelesFamiliar[0].dote).toBe('Familiar mejorado');
     });
 
+    it('separa los niveles por sus datos, no por los ids ni los nombres de las clases y las dotes (homebrew)', () => {
+        const nivel = (clase: string, idClase: number, plantilla: { Id: number; Nombre: string } | null) => ({
+            Clase: { Id: idClase, Nombre: clase },
+            Nivel: 1,
+            Plantilla: plantilla,
+            Preferencia_legal: { Id: 10, Nombre: 'Ninguna preferencia' },
+            Preferencia_moral: { Id: 10, Nombre: 'Ninguna preferencia' },
+            Dote: { Id: 0, Nombre: null },
+        });
+        component.monstruo = crearMonstruoMock({
+            Familiar: true,
+            Companero: true,
+            Niveles_clase: [nivel('Domador de bestias', 900, null), nivel('Invocador de sombras', 901, { Id: 30, Nombre: 'Sombrío' })] as any,
+        });
+        expect(component.getNivelesClaseRequeridosCompanero().map((n) => n.nombreClase)).toEqual(['Domador de bestias']);
+        expect(component.getNivelesClaseRequeridosFamiliar().map((n) => n.nombreClase)).toEqual(['Invocador de sombras']);
+
+        // Un monstruo que solo puede ser familiar: sin pseudoplantilla, la fila también es de familiar.
+        component.monstruo = crearMonstruoMock({
+            Familiar: true,
+            Companero: false,
+            Niveles_clase: [nivel('Invocador de sombras', 901, null)] as any,
+        });
+        expect(component.getNivelesClaseRequeridosFamiliar().length).toBe(1);
+        expect(component.getNivelesClaseRequeridosCompanero().length).toBe(0);
+    });
+
     it('muestra ayuda de maniobrabilidad cuando el monstruo vuela', () => {
         component.monstruo = crearMonstruoMock({
             Movimientos: { Correr: 40, Nadar: 0, Volar: 60, Trepar: 0, Excavar: 0 },
