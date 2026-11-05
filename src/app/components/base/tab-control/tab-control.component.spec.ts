@@ -728,6 +728,22 @@ describe('TabControlComponent navegación por origen', () => {
             component.ngOnDestroy();
         }));
 
+        it('el Esc con el que se cierra un menú no cierra también la pestaña', fakeAsync(() => {
+            const component = crearComponente({ novedadesSvc: conPreferencia(true) });
+            component.ngOnInit();
+            flushMicrotasks();
+            tick(120);
+            const usado = new KeyboardEvent('keydown', { key: 'Escape', cancelable: true });
+            usado.preventDefault();
+
+            component.handleKeyboardEvent(usado);
+            expect(component.novedadesTabOpen).toBeTrue();
+
+            component.handleKeyboardEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+            expect(component.novedadesTabOpen).toBeFalse();
+            component.ngOnDestroy();
+        }));
+
         it('al cerrar sesión sigue abierta y elegida: es pública', fakeAsync(() => {
             const component = crearComponente({ novedadesSvc: conPreferencia(true) });
             component.ngOnInit();

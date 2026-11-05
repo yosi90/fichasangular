@@ -269,7 +269,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     @HostListener('document:keydown', ['$event'])
     handleKeyboardEvent(event: KeyboardEvent): void {
-        if (event.key === 'Escape') {
+        // Un Esc que ya ha usado otro (el menú de la cinta o de «Otros» al cerrarse) no cierra también la pestaña.
+        if (event.key === 'Escape' && !event.defaultPrevented) {
             if (this.activeTabKey === this.TAB_NUEVO) {
                 Swal.fire({
                     title: "¿Estas seguro?",
