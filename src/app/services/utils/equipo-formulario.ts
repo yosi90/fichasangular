@@ -167,8 +167,12 @@ export function valoresVacios(idTamanoMediano: number | null = null): ValoresEqu
     };
 }
 
+/** Los controles que tienen todas las entradas del equipo (también los objetos y los conjuntos, `objeto-formulario.ts`). */
+export type ValoresComunesDeEquipo = Pick<ValoresEquipo,
+    'nombre' | 'descripcion' | 'origen_descripcion' | 'nombre_original' | 'traducido' | 'id_manual' | 'pagina' | 'oficial'>;
+
 /** El nombre, la descripción con su origen, el nombre original, el manual y si es oficial, de cualquier entrada. */
-function textosDe(entrada: TextoEquipo & { Nombre: string; Oficial: boolean; }): Partial<ValoresEquipo> {
+export function valoresComunesDe(entrada: TextoEquipo & { Nombre: string; Oficial: boolean; }): ValoresComunesDeEquipo {
     return {
         nombre: entrada.Nombre ?? '',
         descripcion: entrada.Descripcion ?? '',
@@ -183,14 +187,7 @@ function textosDe(entrada: TextoEquipo & { Nombre: string; Oficial: boolean; }):
 
 function comunesDe(entrada: ArmaDetalle | ArmaduraDetalle): Partial<ValoresEquipo> {
     return {
-        nombre: entrada.Nombre ?? '',
-        descripcion: entrada.Descripcion ?? '',
-        origen_descripcion: entrada.Origen_descripcion === 'srd' ? 'srd' : 'propia',
-        nombre_original: entrada.Nombre_original ?? '',
-        traducido: entrada.Traducido === true,
-        id_manual: toNumberOrNull(entrada.Manual?.Id),
-        pagina: toNumberOrNull(entrada.Manual?.Pagina),
-        oficial: entrada.Oficial === true,
+        ...valoresComunesDe(entrada),
         precio: toNumberOrNull(entrada.Precio),
         peso: toNumberOrNull(entrada.Peso),
         id_material: toNumberOrNull(entrada.Material?.Id),
@@ -247,7 +244,7 @@ export function valoresDeArmadura(armadura: ArmaduraDetalle): ValoresEquipo {
 export function valoresDeMunicion(municion: MunicionDetalle): ValoresEquipo {
     return {
         ...valoresVacios(),
-        ...textosDe(municion),
+        ...valoresComunesDe(municion),
         precio: toNumberOrNull(municion.Precio),
         peso: toNumberOrNull(municion.Peso),
         cantidad_por_precio: toNumberOrNull(municion.Cantidad_por_precio),
@@ -258,7 +255,7 @@ export function valoresDeMaterial(material: MaterialDetalle): ValoresEquipo {
     const efectos = material.Efectos;
     return {
         ...valoresVacios(),
-        ...textosDe(material),
+        ...valoresComunesDe(material),
         dureza: toNumberOrNull(material.Dureza),
         pg_por_pulgada: toNumberOrNull(material.Pg_por_pulgada),
         cuenta_como_gran_calidad: material.Cuenta_como_gran_calidad === true,
@@ -287,7 +284,7 @@ export function valoresDeEncantamiento(encantamiento: EncantamientoDetalle): Val
     const aplica = encantamiento.Aplica_a;
     return {
         ...valoresVacios(),
-        ...textosDe(encantamiento),
+        ...valoresComunesDe(encantamiento),
         modificador: toNumberOrNull(encantamiento.Modificador),
         coste: toNumberOrNull(encantamiento.Coste),
         aplica_arma_cc: aplica?.Arma_cuerpo_a_cuerpo === true,
@@ -314,7 +311,7 @@ export function filasDeEncantamiento(encantamiento: EncantamientoDetalle, uid: (
     };
 }
 
-function comunesDelCuerpo(v: ValoresEquipo): EquipoCuerpoComun {
+export function comunesDelCuerpo(v: ValoresComunesDeEquipo): EquipoCuerpoComun {
     return {
         nombre: toText(v.nombre).trim(),
         descripcion: toText(v.descripcion).trim(),
@@ -328,7 +325,7 @@ function comunesDelCuerpo(v: ValoresEquipo): EquipoCuerpoComun {
 }
 
 /** Lo común con el manual y la página que pueden faltar (la munición y los materiales). */
-function comunesSinManualDelCuerpo(v: ValoresEquipo): EquipoCuerpoComunSinManual {
+function comunesSinManualDelCuerpo(v: ValoresComunesDeEquipo): EquipoCuerpoComunSinManual {
     return { ...comunesDelCuerpo(v), id_manual: toNumberOrNull(v.id_manual), pagina: toNumberOrNull(v.pagina) };
 }
 

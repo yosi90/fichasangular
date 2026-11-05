@@ -1,4 +1,5 @@
-import { ConjuntoObjetosCuerpo, ConjuntoObjetosDetalle, ObjetoCuerpo, ObjetoDetalle, OrigenDescripcion } from 'src/app/interfaces/equipo';
+import { ConjuntoObjetosCuerpo, ConjuntoObjetosDetalle, ObjetoCuerpo, ObjetoDetalle } from 'src/app/interfaces/equipo';
+import { ValoresComunesDeEquipo, comunesDelCuerpo, valoresComunesDe } from './equipo-formulario';
 import { toNullableText, toNumber, toNumberOrNull, toText } from './normalizacion';
 import {
     ElegidoDeCatalogo,
@@ -20,15 +21,7 @@ import {
 export type TipoObjetoEditable = 'objeto' | 'conjunto';
 
 /** Los valores de los controles (los dos tipos en un formulario; el conjunto solo usa los comunes). */
-export interface ValoresObjeto {
-    nombre: string;
-    descripcion: string;
-    origen_descripcion: OrigenDescripcion;
-    nombre_original: string;
-    traducido: boolean;
-    id_manual: number | null;
-    pagina: number | null;
-    oficial: boolean;
+export interface ValoresObjeto extends ValoresComunesDeEquipo {
     id_tipo_objeto: number | null;
     precio: number | null;
     nivel_objeto: number | null;
@@ -112,24 +105,11 @@ export function valoresObjetoVacios(): ValoresObjeto {
     };
 }
 
-function textosDe(entrada: ObjetoDetalle | ConjuntoObjetosDetalle): Partial<ValoresObjeto> {
-    return {
-        nombre: entrada.Nombre ?? '',
-        descripcion: entrada.Descripcion ?? '',
-        origen_descripcion: entrada.Origen_descripcion === 'srd' ? 'srd' : 'propia',
-        nombre_original: entrada.Nombre_original ?? '',
-        traducido: entrada.Traducido === true,
-        id_manual: toNumberOrNull(entrada.Manual?.Id),
-        pagina: toNumberOrNull(entrada.Manual?.Pagina),
-        oficial: entrada.Oficial === true,
-    };
-}
-
 export function valoresDeObjeto(objeto: ObjetoDetalle): ValoresObjeto {
     const generico = objeto.Generico_conjuro;
     return {
         ...valoresObjetoVacios(),
-        ...textosDe(objeto),
+        ...valoresComunesDe(objeto),
         id_tipo_objeto: toNumberOrNull(objeto.Tipo?.Id),
         precio: toNumberOrNull(objeto.Precio),
         nivel_objeto: toNumberOrNull(objeto.Nivel_objeto),
@@ -182,7 +162,7 @@ export function filasDeObjeto(objeto: ObjetoDetalle, uid: () => string): FilasDe
 }
 
 export function valoresDeConjunto(conjunto: ConjuntoObjetosDetalle): ValoresObjeto {
-    return { ...valoresObjetoVacios(), ...textosDe(conjunto) };
+    return { ...valoresObjetoVacios(), ...valoresComunesDe(conjunto) };
 }
 
 export function filasDeConjunto(conjunto: ConjuntoObjetosDetalle, uid: () => string): FilasDeObjeto {
@@ -192,19 +172,6 @@ export function filasDeConjunto(conjunto: ConjuntoObjetosDetalle, uid: () => str
         bonificaciones: (conjunto.Bonificaciones ?? []).map((bonificacion) => ({
             uid: uid(), piezas: toNumberOrNull(bonificacion.Piezas), descripcion: toText(bonificacion.Descripcion),
         })),
-    };
-}
-
-function comunesDelCuerpo(v: ValoresObjeto) {
-    return {
-        nombre: toText(v.nombre).trim(),
-        descripcion: toText(v.descripcion).trim(),
-        origen_descripcion: (v.origen_descripcion === 'srd' ? 'srd' : 'propia') as OrigenDescripcion,
-        nombre_original: toNullableText(v.nombre_original),
-        traducido: v.traducido === true,
-        id_manual: toNumber(v.id_manual),
-        pagina: toNumber(v.pagina),
-        oficial: v.oficial === true,
     };
 }
 
