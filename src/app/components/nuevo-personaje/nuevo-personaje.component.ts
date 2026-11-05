@@ -832,14 +832,27 @@ export class NuevoPersonajeComponent {
         this.formacionAbierta = true;
     }
 
-    onConfirmarFormacion(formacion: FormacionIncarnumDto): void {
+    /**
+     * Confirma la formación de partida. Si sus fusiones o sus chakras vuelven homebrew la ficha, se pregunta antes (guía de
+     * nuevo personaje, «Homebrew»); al cancelar no se aplica y se sigue en la formación. `true` si se aplicó.
+     */
+    onConfirmarFormacion(formacion: FormacionIncarnumDto): Promise<boolean> {
         const vacia = formacion.fusiones.length < 1 && formacion.receptaculos.length < 1;
-        this.formacionIncarnum = vacia ? null : formacion;
-        this.continuarTrasFormacion();
+        const contexto = this.contextoDeFormacion(vacia ? null : formacion);
+        const motivos = [
+            ...(contexto.fusiones ?? []).map((fusion) => motivoHomebrew('fusion', fusion)),
+            ...(contexto.chakras ?? []).map((chakra) => motivoHomebrew('chakra', chakra)),
+        ];
+        return this.confirmarSiVuelveHomebrew('Elegir la formación', motivos, () => {
+            this.formacionIncarnum = vacia ? null : formacion;
+            this.recalcularOficialidad();
+            this.continuarTrasFormacion();
+        });
     }
 
     onSaltarFormacion(): void {
         this.formacionIncarnum = null;
+        this.recalcularOficialidad();
         this.continuarTrasFormacion();
     }
 
@@ -2340,9 +2353,22 @@ export class NuevoPersonajeComponent {
             tieneVentajas: this.flujoVentajas.seleccionVentajas.length > 0 || this.flujoVentajas.seleccionDesventajas.length > 0,
             escuelaEspecialista: this.escuelaEspecialistaDelCatalogo(),
             conjurosEnSesion: this.conjurosElegidosEnSesion(),
-            fusiones: (this.formacionIncarnum?.fusiones ?? [])
+            ...this.contextoDeFormacion(this.formacionIncarnum),
+        };
+    }
+
+    /**
+     * Las fusiones y los chakras (donde se moldea cada una y al que se vincula) de una formación de Incarnum, de sus
+     * catálogos (con su `Oficial`), sin repetidos.
+     */
+    private contextoDeFormacion(formacion: FormacionIncarnumDto | null): Pick<ContextoOficialidad, 'fusiones' | 'chakras'> {
+        const fusiones = formacion?.fusiones ?? [];
+        const idsChakras = new Set(fusiones.flatMap((fusion) => [Number(fusion?.idChakra), Number(fusion?.idChakraVinculo ?? 0)]));
+        return {
+            fusiones: fusiones
                 .map((fusion) => (this.incarnumFusiones ?? []).find((item) => Number(item?.Id) === Number(fusion?.idFusion)))
                 .filter((fusion): fusion is Fusion => !!fusion),
+            chakras: (this.incarnumChakras ?? []).filter((chakra) => Number(chakra?.Id) > 0 && idsChakras.has(Number(chakra.Id))),
         };
     }
 
