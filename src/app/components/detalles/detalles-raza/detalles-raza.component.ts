@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Optional, Output } from '@angular/core';
 import {
     DatoFicha,
     DoteFicha,
@@ -13,11 +13,15 @@ import {
     textoDato,
     textoEsenciaRasgo,
     textoPies,
+    textosMovimiento,
     unirTipo,
 } from 'src/app/components/detalles/ficha';
+import { textoListasRaciales } from 'src/app/components/detalles/ficha/personaje-edad';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
-import { Raza, RazaHabilidadBase, RazaHabilidadCustom, RazaPlantillaReferencia } from 'src/app/interfaces/raza';
+import { CategoriaEdadRaza, Raza, RazaHabilidadBase, RazaHabilidadCustom, RazaPlantillaReferencia, RacialDeEdad } from 'src/app/interfaces/raza';
+import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
+import { Id_nombre } from 'src/app/interfaces/genericas';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
@@ -35,6 +39,20 @@ import { GrupoPrerrequisitos, agruparPrerrequisitos } from 'src/app/services/uti
 import { Comodin } from 'src/app/interfaces/comodin';
 import { leerComodin } from 'src/app/services/utils/comodin';
 import { edadesDeLaRaza } from 'src/app/services/utils/edad-personaje';
+import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
+import { abreviaturaCaracteristica, NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
+import { textoVd } from 'src/app/services/utils/tipo-personaje';
+import {
+    SOLO_PNJ,
+    categoriasEdadOrdenadas,
+    edadDeLasCifras,
+    gananciasPorEdad,
+    nombreEdadEnFrase,
+    racialesConValorPorEdad,
+    textoAjusteEdad,
+    textoNivelLanzamientoRaza,
+    textoRangoEdad,
+} from 'src/app/services/utils/razas-por-edades';
 
 interface GrupoRacialesDetalle {
     grupo: number;
@@ -60,6 +78,26 @@ interface ParRaza {
     valor: string;
 }
 
+/** Una columna de las tablas por edad: su título, el nombre entero (si se abrevia) y si es una cifra (centrada). */
+interface ColumnaEdad {
+    titulo: string;
+    nombre?: string;
+    cifra?: boolean;
+}
+
+/** Una tabla por edad: la primera columna es la edad; las columnas sin ningún dato no salen. */
+interface TablaEdad {
+    columnas: ColumnaEdad[];
+    filas: string[][];
+}
+
+/** Lo que gana una edad, ya con su texto: cada aptitud con la característica de su CD y cada sortílega con sus usos. */
+interface GananciaEdadFila {
+    edad: string;
+    raciales: { racial: RacialDeEdad; detalle: string; }[];
+    sortilegas: { conjuro: Id_nombre; detalle: string; }[];
+}
+
 @Component({
     selector: 'app-detalles-raza',
     templateUrl: './detalles-raza.component.html',
@@ -67,7 +105,12 @@ interface ParRaza {
     standalone: false
 })
 export class DetallesRazaComponent {
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
+    constructor(
+        private manualDetalleNavSvc: ManualDetalleNavigationService,
+        private userSvc: UserService,
+        // Abre el conjuro de una sortílega y la clase del lanzamiento racial en su pestaña (las pestañas lo escuchan).
+        @Optional() private navegacion?: NavegacionRolService,
+    ) { }
 
     private razaActual!: Raza;
     mostrarInfoManiobrabilidad = false;
@@ -99,9 +142,26 @@ export class DetallesRazaComponent {
     sortilegasConDgs = false;
     sortilegasConDescripcion = false;
 
+    /** Crece por categorías de edad (los dragones): sus cifras sueltas son las de una edad y lleva sus tablas por edad. */
+    porEdades = false;
+    /** «cría»: la edad de las cifras sueltas (la primera, o la de la raza resuelta a un paso). */
+    edadCifras = '';
+    /** La línea de la cabecera que lo dice. */
+    notaCifras: string | null = null;
+    tablaPorEdad: TablaEdad | null = null;
+    tablaCaracteristicas: TablaEdad | null = null;
+    tablaMovimiento: TablaEdad | null = null;
+    ganancias: GananciaEdadFila[] = [];
+    tablaPasos: TablaEdad | null = null;
+    /** El lanzamiento racial (el rakshasa, los dragones): como qué clase y con qué nivel, y las listas de más. */
+    lanzamientoClase: Id_nombre | null = null;
+    lanzamiento: ParRaza[] = [];
+    lanzamientoListas: string | null = null;
+
     @Input()
     set raza(value: Raza) {
         this.razaActual = value;
+        this.construirEdades();
         this.tipoCabecera = unirTipo(['Raza', value?.Tamano?.Nombre, value?.Tipo_criatura?.Nombre]);
         this.etiquetas = [
             value?.Mutada ? 'Mutada' : null,
@@ -119,7 +179,8 @@ export class DetallesRazaComponent {
         this.datos = this.construirDatos();
         this.datosDgs = this.construirDatosDgs();
         this.modificadores = this.construirModificadores();
-        this.edades = this.construirEdades();
+        this.edades = this.porEdades ? [] : this.construirEdadesManual();
+        this.construirLanzamiento();
         this.subtipos = this.getSubtiposActivos();
         this.habilidadesBase = this.getHabilidadesBaseOtorgadas();
         this.habilidadesCustom = this.getHabilidadesCustomOtorgadas();
@@ -156,6 +217,33 @@ export class DetallesRazaComponent {
         const id = Number(plantilla?.Id);
         if (Number.isFinite(id) && id > 0)
             this.plantillaDetalles.emit(id);
+    }
+
+    /** El conjuro de una sortílega que gana con la edad, en su pestaña. */
+    abrirDetalleConjuro(conjuro: Id_nombre): void {
+        this.abrirReferencia('conjuro', conjuro);
+    }
+
+    /** La clase como la que lanza la raza, en su pestaña. */
+    abrirDetalleClaseLanzamiento(): void {
+        if (this.lanzamientoClase)
+            this.abrirReferencia('clase', this.lanzamientoClase);
+    }
+
+    /** Una aptitud que gana con la edad, como los demás raciales. */
+    abrirDetalleRacialDeEdad(racial: RacialDeEdad): void {
+        this.abrirDetalleRacial({ Id: racial.Id, Nombre: racial.Nombre } as RacialDetalle);
+    }
+
+    get puedeAbrirReferencias(): boolean {
+        return !!this.navegacion;
+    }
+
+    private abrirReferencia(tipo: 'conjuro' | 'clase', ref: Id_nombre): void {
+        const id = Number(ref?.Id);
+        if (!this.navegacion || !Number.isFinite(id) || id <= 0)
+            return;
+        this.navegacion.abrir({ clase: 'referencia-manual', referencia: { tipo, id, nombre: ref.Nombre, manualId: 0 } });
     }
 
     abrirDetalleManual() {
@@ -283,8 +371,12 @@ export class DetallesRazaComponent {
 
     private construirDatos(): DatoFicha[] {
         const r = this.raza;
+        // En una raza por edades, las cifras que cambian con la edad son las de una edad: se dice cuál.
+        const deEdad = (dato: DatoFicha): DatoFicha => this.porEdades && this.edadCifras
+            ? { ...dato, detalle: `de ${this.edadCifras}` }
+            : dato;
         return [
-            { etiqueta: 'Ajuste de nivel', valor: tieneNumeroVisible(r?.Ajuste_nivel) ? `+${r.Ajuste_nivel}` : null },
+            deEdad({ etiqueta: 'Ajuste de nivel', valor: tieneNumeroVisible(r?.Ajuste_nivel) ? `+${r.Ajuste_nivel}` : null }),
             { etiqueta: 'Clase predilecta', valor: mayusculaInicial(r?.Clase_predilecta) },
             {
                 etiqueta: 'Dotes adicionales',
@@ -296,25 +388,187 @@ export class DetallesRazaComponent {
             { etiqueta: 'Nombre original', valor: nombreOriginalVisible(r) },
             { etiqueta: 'Altura', valor: this.textoRango(r?.Altura_rango_inf, r?.Altura_rango_sup, 'm') },
             { etiqueta: 'Peso', valor: this.textoRango(r?.Peso_rango_inf, r?.Peso_rango_sup, 'kg') },
-            { etiqueta: 'Espacio', valor: textoPies(r?.Espacio) },
-            { etiqueta: 'Alcance', valor: textoPies(r?.Alcance) },
-            { etiqueta: 'Correr', valor: textoPies(r?.Correr) },
-            { etiqueta: 'Nadar', valor: textoPies(r?.Nadar) },
-            { etiqueta: 'Volar', valor: textoPies(r?.Volar) },
-            {
+            deEdad({ etiqueta: 'Espacio', valor: textoPies(r?.Espacio) }),
+            deEdad({ etiqueta: 'Alcance', valor: textoPies(r?.Alcance) }),
+            deEdad({ etiqueta: 'Correr', valor: textoPies(r?.Correr) }),
+            deEdad({ etiqueta: 'Nadar', valor: textoPies(r?.Nadar) }),
+            deEdad({ etiqueta: 'Volar', valor: textoPies(r?.Volar) }),
+            deEdad({
                 etiqueta: 'Maniobrabilidad',
                 valor: this.mostrarManiobrabilidad() ? r.Maniobrabilidad.Nombre : null,
                 ayuda: 'Reglas de maniobrabilidad',
                 alPulsar: () => this.abrirInfoManiobrabilidad(),
-            },
-            { etiqueta: 'Trepar', valor: textoPies(r?.Trepar) },
-            { etiqueta: 'Excavar', valor: textoPies(r?.Excavar) },
-            { etiqueta: 'Armadura natural', valor: this.tieneNumeroNoCero(r?.Armadura_natural) ? textoConSigno(Number(r.Armadura_natural)) : null },
+            }),
+            deEdad({ etiqueta: 'Trepar', valor: textoPies(r?.Trepar) }),
+            deEdad({ etiqueta: 'Excavar', valor: textoPies(r?.Excavar) }),
+            deEdad({ etiqueta: 'Armadura natural', valor: this.tieneNumeroNoCero(r?.Armadura_natural) ? textoConSigno(Number(r.Armadura_natural)) : null }),
             { etiqueta: 'CA varios', valor: this.tieneNumeroNoCero(r?.Varios_armadura) ? textoConSigno(Number(r.Varios_armadura)) : null },
-            { etiqueta: 'Reducción de daño', valor: r?.Reduccion_dano },
-            { etiqueta: 'Resistencia a conjuros', valor: r?.Resistencia_magica },
-            { etiqueta: 'Resistencia elemental', valor: r?.Resistencia_energia },
+            deEdad({ etiqueta: 'Reducción de daño', valor: r?.Reduccion_dano }),
+            deEdad({ etiqueta: 'Resistencia a conjuros', valor: r?.Resistencia_magica }),
+            deEdad({ etiqueta: 'Resistencia elemental', valor: r?.Resistencia_energia }),
         ];
+    }
+
+    /**
+     * Lo que enseña una raza que crece por edades (decisión 8 de la ronda de noviembre; como 3.5 Companion): qué edad
+     * tienen sus cifras sueltas y sus tablas por edad. Todo sale de `Categorias_edad` y `Pasos_edad`.
+     */
+    private construirEdades(): void {
+        const raza = this.raza;
+        const categorias = categoriasEdadOrdenadas(raza);
+        this.porEdades = categorias.length > 0;
+        this.edadCifras = this.porEdades ? nombreEdadEnFrase(edadDeLasCifras(raza)) : '';
+        this.notaCifras = !this.porEdades || !this.edadCifras
+            ? null
+            : raza?.Categoria_edad
+                ? `Crece por edades: las cifras son las de ${this.edadCifras}; las de cada edad, abajo, en «Por edad».`
+                : `Crece por edades: las cifras sueltas son las de ${this.edadCifras}, su primera edad; las de cada edad, abajo, en «Por edad».`;
+        this.tablaPorEdad = this.porEdades ? this.construirTablaPorEdad(categorias) : null;
+        this.tablaCaracteristicas = this.porEdades ? this.construirTablaCaracteristicas(categorias) : null;
+        this.tablaMovimiento = this.porEdades ? this.construirTablaMovimiento(categorias) : null;
+        this.ganancias = this.porEdades ? this.construirGanancias(categorias) : [];
+        this.tablaPasos = this.construirTablaPasos();
+    }
+
+    /**
+     * Una fila por edad: los años, el tamaño, los DG, la armadura natural, la cifra de cada aptitud que cambia con la edad,
+     * la RD, la RC, el nivel de lanzamiento, el ajuste o «Solo PNJ» y el VD.
+     */
+    private construirTablaPorEdad(categorias: CategoriaEdadRaza[]): TablaEdad | null {
+        const conValor = racialesConValorPorEdad(categorias);
+        const clase = `${this.raza?.Lanzamiento?.Clase?.Nombre ?? ''}`.trim();
+        const columnas: ColumnaEdad[] = [
+            { titulo: 'Edad' },
+            { titulo: 'Años', cifra: true },
+            { titulo: 'Tamaño' },
+            { titulo: 'DG', nombre: 'Dados de golpe', cifra: true },
+            { titulo: 'CA natural', nombre: 'Armadura natural', cifra: true },
+            ...conValor.map((racial) => ({ titulo: racial.titulo })),
+            { titulo: 'RD', nombre: 'Reducción del daño' },
+            { titulo: 'RC', nombre: 'Resistencia a conjuros', cifra: true },
+            { titulo: clase ? `Nivel de ${nombreEdadEnFrase(clase)}` : 'Nivel de lanzador', cifra: true },
+            { titulo: 'Ajuste', nombre: 'Ajuste de nivel', cifra: true },
+            { titulo: 'VD', nombre: 'Valor de desafío', cifra: true },
+        ];
+        const filas = categorias.map((categoria, indice) => [
+            categoria.Categoria.Nombre,
+            textoRangoEdad({ desde: categoria.Edad_desde, hasta: categoria.Edad_hasta }, 'corta'),
+            `${categoria.Tamano?.Nombre ?? ''}`.trim(),
+            categoria.Dgs > 0 ? `${categoria.Dgs}` : '',
+            textoConSigno(Number(categoria.Armadura_natural) || 0),
+            ...conValor.map((racial) => racial.valores[indice]),
+            `${categoria.Rd ?? ''}`.trim(),
+            `${categoria.Rc ?? ''}`.trim(),
+            categoria.Nivel_lanzamiento > 0 ? `${categoria.Nivel_lanzamiento}` : '',
+            textoAjusteEdad(categoria.Ajuste_nivel),
+            categoria.Vd === null ? '' : textoVd(categoria.Vd),
+        ]);
+        return this.sinColumnasVacias(columnas, filas);
+    }
+
+    /** Las puntuaciones del libro a cada edad y, entre paréntesis, lo que suma la raza («13 (+2)»). */
+    private construirTablaCaracteristicas(categorias: CategoriaEdadRaza[]): TablaEdad | null {
+        const columnas: ColumnaEdad[] = [
+            { titulo: 'Edad' },
+            ...CARACTERISTICAS.map((clave) => ({ titulo: abreviaturaCaracteristica(clave), nombre: NOMBRES_CARACTERISTICAS[clave], cifra: true })),
+        ];
+        const filas = categorias.map((categoria) => [
+            categoria.Categoria.Nombre,
+            ...CARACTERISTICAS.map((clave) => {
+                const valor = categoria.Caracteristicas?.[clave];
+                if (valor === null || valor === undefined)
+                    return '—';
+                const modificador = categoria.Modificadores?.[clave];
+                return modificador === null || modificador === undefined ? `${valor}` : `${valor} (${textoConSigno(modificador)})`;
+            }),
+        ]);
+        return this.sinColumnasVacias(columnas, filas);
+    }
+
+    /** El espacio y el alcance, las velocidades (el vuelo con su maniobrabilidad), los ataques, la energía y el NL de las sortílegas. */
+    private construirTablaMovimiento(categorias: CategoriaEdadRaza[]): TablaEdad | null {
+        const columnas: ColumnaEdad[] = [
+            { titulo: 'Edad' },
+            { titulo: 'Espacio / alcance' },
+            { titulo: 'Velocidad' },
+            { titulo: 'Ataques naturales' },
+            { titulo: 'Resistencia a la energía' },
+            { titulo: 'NL de las sortílegas', nombre: 'Nivel de lanzador de las aptitudes sortílegas', cifra: true },
+        ];
+        const filas = categorias.map((categoria) => [
+            categoria.Categoria.Nombre,
+            [textoPies(categoria.Espacio), textoPies(categoria.Alcance)].filter((t): t is string => !!t).join(' / '),
+            textosMovimiento(categoria.Velocidades, categoria.Maniobrabilidad?.Nombre).join(', '),
+            `${categoria.Ataques_naturales ?? ''}`.trim(),
+            `${categoria.Re ?? ''}`.trim(),
+            categoria.Nivel_lanzador_sortilegas > 0 ? `${categoria.Nivel_lanzador_sortilegas}` : '',
+        ]);
+        return this.sinColumnasVacias(columnas, filas);
+    }
+
+    private construirGanancias(categorias: CategoriaEdadRaza[]): GananciaEdadFila[] {
+        return gananciasPorEdad(categorias).map((ganancia) => ({
+            edad: ganancia.categoria.Categoria.Nombre,
+            raciales: ganancia.raciales.map((racial) => ({
+                racial,
+                detalle: racial.Caracteristica_cd?.Nombre ? `CD por ${racial.Caracteristica_cd.Nombre}` : '',
+            })),
+            sortilegas: ganancia.sortilegas.map((sortilega) => ({
+                conjuro: sortilega.Conjuro,
+                detalle: [sortilega.Usos_diarios, sortilega.Descripcion].filter((parte) => tieneTextoVisible(parte)).join(' · '),
+            })),
+        }));
+    }
+
+    /** Los pasos que puede elegir el personaje al crearlo (*Draconomicón*, tabla 3-21). */
+    private construirTablaPasos(): TablaEdad | null {
+        const pasos = [...(this.raza?.Pasos_edad ?? [])].sort((a, b) => a.Edad - b.Edad);
+        if (pasos.length < 1)
+            return null;
+        const columnas: ColumnaEdad[] = [
+            { titulo: 'Desde' },
+            { titulo: 'Edad' },
+            { titulo: 'DG', nombre: 'Dados de golpe', cifra: true },
+            { titulo: 'CA natural', nombre: 'Armadura natural', cifra: true },
+            { titulo: 'Ajuste', nombre: 'Ajuste de nivel', cifra: true },
+            { titulo: 'NEP', nombre: 'Nivel efectivo de personaje', cifra: true },
+            { titulo: 'VD', nombre: 'Valor de desafío', cifra: true },
+        ];
+        const filas = pasos.map((paso) => [
+            `${paso.Edad} ${paso.Edad === 1 ? 'año' : 'años'}`,
+            paso.Categoria.Nombre,
+            `${paso.Dgs}`,
+            textoConSigno(Number(paso.Armadura_natural) || 0),
+            textoAjusteEdad(paso.Ajuste_nivel),
+            paso.Jugable && paso.Nep_base !== null ? `${paso.Nep_base}` : SOLO_PNJ,
+            paso.Vd === null ? '' : textoVd(paso.Vd),
+        ]);
+        return this.sinColumnasVacias(columnas, filas);
+    }
+
+    /** Como qué clase lanza la raza, con qué nivel, y las listas que lanza además como arcanas. */
+    private construirLanzamiento(): void {
+        const lanzamiento = this.raza?.Lanzamiento;
+        this.lanzamientoClase = lanzamiento?.Clase && tieneTextoVisible(lanzamiento.Clase.Nombre) ? lanzamiento.Clase : null;
+        if (!lanzamiento || !this.lanzamientoClase) {
+            this.lanzamiento = [];
+            this.lanzamientoListas = null;
+            return;
+        }
+        const nivel = textoNivelLanzamientoRaza(this.raza);
+        this.lanzamiento = nivel ? [{ nombre: 'Nivel', valor: nivel }] : [];
+        this.lanzamientoListas = textoListasRaciales(lanzamiento.Listas ?? []);
+    }
+
+    /** Quita las columnas en las que no hay nada (la primera, la edad, se queda siempre); sin filas, nada. */
+    private sinColumnasVacias(columnas: ColumnaEdad[], filas: string[][]): TablaEdad | null {
+        if (filas.length < 1)
+            return null;
+        const visibles = columnas.map((_, i) => i).filter((i) => i === 0 || filas.some((fila) => `${fila[i] ?? ''}`.trim().length > 0));
+        return {
+            columnas: visibles.map((i) => columnas[i]),
+            filas: filas.map((fila) => visibles.map((i) => fila[i] ?? '')),
+        };
     }
 
     /** «4 en el primer nivel y 1 por nivel» (el humano), o la parte que tenga la raza. */
@@ -354,7 +608,7 @@ export class DetallesRazaComponent {
             .map((dato) => ({ nombre: dato.etiqueta, valor: textoDato(dato.valor) ?? '' }));
     }
 
-    private construirEdades(): ParRaza[] {
+    private construirEdadesManual(): ParRaza[] {
         return edadesDeLaRaza(this.raza)
             .filter((item) => tieneNumeroVisible(item.valor))
             .map((item) => ({ nombre: item.nombre, valor: `${item.valor} años` }));

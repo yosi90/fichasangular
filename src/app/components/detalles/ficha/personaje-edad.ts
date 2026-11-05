@@ -89,8 +89,8 @@ export function lanzamientoRacialPersonaje(pj: Personaje | null | undefined): La
     };
 }
 
-/** «También lanza como arcanos los conjuros de clérigo y de los dominios de Aire, Ley y Mal.»; sin listas, `null`. */
-function textoListasRaciales(listas: Pick<ListaLanzamientoRaza, 'Tipo' | 'Nombre'>[]): string | null {
+/** «También lanza como arcanos los conjuros de clérigo y de los dominios de Aire, Ley y Mal.»; sin listas, `null`. Lo usan la ficha y el detalle de la raza. */
+export function textoListasRaciales(listas: Pick<ListaLanzamientoRaza, 'Tipo' | 'Nombre'>[]): string | null {
     const conNombre = listas.filter((lista) => lista.Nombre.length > 0);
     const clases = conNombre.filter((lista) => lista.Tipo === 'clase').map((lista) => lista.Nombre.toLocaleLowerCase('es'));
     const dominios = conNombre.filter((lista) => lista.Tipo === 'dominio').map((lista) => lista.Nombre);
