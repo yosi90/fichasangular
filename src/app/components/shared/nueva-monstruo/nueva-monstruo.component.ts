@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { AbstractControl, FormBuilder, FormControl, FormGroup, ValidationErrors, Validators } from '@angular/forms';
-import { Observable, Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { Dote } from 'src/app/interfaces/dote';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { MonstruoCreateRequest, MonstruoDetalle } from 'src/app/interfaces/monstruo';
@@ -44,7 +44,7 @@ import { toInt, toText } from 'src/app/services/utils/normalizacion';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
-import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { ErrorDeCampo, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
 import { etiquetaDeCampo, notaDeCambios, pasosConCambios } from '../insercion-marco/cambios-de-formulario';
@@ -525,8 +525,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
 
     private cargarCatalogos(): void {
         const porId = (lista: OpcionCatalogo[]) => [...lista].sort((a, b) => a.id - b.id);
-        const suscribir = <T>(fuente: Observable<T>, siguiente: (valor: T) => void) =>
-            fuente.pipe(takeUntil(this.destroy$)).subscribe({ next: siguiente, error: () => undefined });
+        const suscribir = cargadorDeCatalogos(this.destroy$);
 
         suscribir(this.manualSvc.getManuales(), (items) => this.manuales = opcionesDeCatalogo(items));
         suscribir(this.tipoCriaturaSvc.getTiposCriatura(), (items) => this.tiposCriatura = opcionesDeCatalogo(items));

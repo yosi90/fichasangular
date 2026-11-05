@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { AbstractControl, FormBuilder, FormControl, FormGroup, ValidationErrors, Validators } from '@angular/forms';
-import { Observable, Subject, take, takeUntil } from 'rxjs';
+import { Subject, take, takeUntil } from 'rxjs';
 import { Dote } from 'src/app/interfaces/dote';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { Plantilla, PlantillaCreateRequest } from 'src/app/interfaces/plantilla';
@@ -50,6 +50,7 @@ import {
 import { GrupoPrerrequisitos, agruparPrerrequisitos, nombreTipoPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 import { ModoInsercion, confirmarCierreConCambios, detalleDeManual } from '../insercion-marco/insercion-marco.component';
 import { avisarGuardado, avisarSinPermisos, textoSinPermisos } from '../insercion-marco/avisos-insercion';
+import { cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { PLANTILLA } from 'src/app/services/utils/nombres-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { ErrorDeCampo, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
@@ -597,8 +598,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
 
     private cargarCatalogos(): void {
         const porId = (lista: OpcionCatalogo[]) => [...lista].sort((a, b) => a.id - b.id);
-        const suscribir = <T>(fuente: Observable<T>, siguiente: (valor: T) => void) =>
-            fuente.pipe(takeUntil(this.destroy$)).subscribe({ next: siguiente, error: () => undefined });
+        const suscribir = cargadorDeCatalogos(this.destroy$);
 
         suscribir(this.manualSvc.getManuales(), (items) => this.manuales = opcionesDeCatalogo(items));
         // El listado de tamaños no trae el 0, «Depende» (el de la criatura base), que es el de casi todas las plantillas.
