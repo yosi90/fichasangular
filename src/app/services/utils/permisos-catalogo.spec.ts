@@ -3,10 +3,11 @@ import { EDICIONES_CATALOGO, INSERCIONES_CATALOGO, TIPOS_EDICION, tieneInsercion
 import { LISTADOS_ROL } from './iconos-rol';
 import { RECURSO_DE_CATALOGO, puedeGestionarCatalogo } from './permisos-catalogo';
 
+const conPermisos = (...recursos: string[]) => ({
+    can: jasmine.createSpy('can').and.callFake((recurso: string, accion: string) => accion === 'create' && recursos.includes(recurso)),
+});
+
 describe('Permisos de los catálogos (docs/publica/CATALOGOS_ALTA_Y_EDICION_FRONT.md)', () => {
-    const conPermisos = (...recursos: string[]) => ({
-        can: jasmine.createSpy('can').and.callFake((recurso: string, accion: string) => accion === 'create' && recursos.includes(recurso)),
-    });
 
     it('insertar y modificar miran el permiso de creación del recurso de su catálogo', () => {
         const usuario = conPermisos('razas');
@@ -28,7 +29,8 @@ describe('Permisos de los catálogos (docs/publica/CATALOGOS_ALTA_Y_EDICION_FRON
 
     it('cada recurso de la tabla existe en el backend y cada catálogo del menú es un listado', () => {
         Object.values(RECURSO_DE_CATALOGO).forEach((recurso) => expect(PERMISSION_RESOURCES).toContain(recurso));
-        Object.keys(RECURSO_DE_CATALOGO).filter((lista) => lista !== 'manuales')
+        // Los manuales no están en el menú lateral y las desventajas se listan con las ventajas (con su propio permiso).
+        Object.keys(RECURSO_DE_CATALOGO).filter((lista) => !['manuales', 'desventajas'].includes(lista))
             .forEach((lista) => expect(LISTADOS_ROL[lista]).withContext(lista).toBeDefined());
     });
 });
@@ -46,6 +48,18 @@ describe('Catálogos con pantalla de insertar o modificar', () => {
         expect(tipoEdicionDeListado('armaduras')).toBe('armadura');
         expect(tipoEdicionDeListado('raciales')).toBe('racial');
         expect(tipoEdicionDeListado('razas')).toBe('raza');
-        expect(tipoEdicionDeListado('rasgos')).toBeNull();
+        expect(tipoEdicionDeListado('rasgos')).toBe('rasgo');
+        expect(tipoEdicionDeListado('fusiones del alma')).toBe('fusion');
+        expect(tipoEdicionDeListado('chakras')).toBe('chakra');
+        expect(tipoEdicionDeListado('deidades')).toBeNull();
+    });
+
+    it('las ventajas y las desventajas se modifican desde el mismo listado, cada una con su tipo y su permiso', () => {
+        expect(tieneInsercion('ventajas')).toBeTrue();
+        expect(tipoEdicionDeListado('ventajas')).toBe('ventaja');
+        expect(tipoEdicionDeListado('ventajas', { Id: 1, Coste: -4 })).toBe('ventaja');
+        expect(tipoEdicionDeListado('ventajas', { Id: 22, Coste: 5 })).toBe('desventaja');
+        expect(puedeGestionarCatalogo(conPermisos('desventajas'), 'desventajas')).toBeTrue();
+        expect(puedeGestionarCatalogo(conPermisos('desventajas'), 'ventajas')).toBeFalse();
     });
 });

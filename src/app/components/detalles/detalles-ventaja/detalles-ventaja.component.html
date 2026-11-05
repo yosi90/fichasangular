@@ -4,7 +4,9 @@
         [nombre]="ventaja.Nombre"
         [manual]="ventaja.Manual"
         [oficial]="false"
-        (abrirManual)="abrirDetalleManual()">
+        [modificable]="puedeModificar"
+        (abrirManual)="abrirDetalleManual()"
+        (modificar)="modificar.emit(ventaja)">
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" [titulo]="'Datos de la ' + (tipoCabecera | lowercase)"></app-ficha-datos>

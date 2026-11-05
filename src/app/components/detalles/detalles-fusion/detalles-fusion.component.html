@@ -6,7 +6,9 @@
         [manual]="fusion.Manual"
         [oficial]="fusion.Oficial"
         [etiquetas]="etiquetas"
-        (abrirManual)="abrirDetalleManual()">
+        [modificable]="puedeModificar"
+        (abrirManual)="abrirDetalleManual()"
+        (modificar)="modificar.emit(fusion)">
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" titulo="Datos de la fusión"></app-ficha-datos>

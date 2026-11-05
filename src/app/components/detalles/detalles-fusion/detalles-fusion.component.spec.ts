@@ -8,6 +8,7 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { normalizarChakraDetalle, normalizarFusion } from 'src/app/services/utils/incarnum-mapper';
 import { chakraApi, fusionApi } from 'src/testing/incarnum';
 import { lectorFicha } from 'src/testing/ficha-detalle';
+import { UserService } from 'src/app/services/user.service';
 import { DetallesFusionComponent } from './detalles-fusion.component';
 
 describe('DetallesFusionComponent', () => {
@@ -15,6 +16,7 @@ describe('DetallesFusionComponent', () => {
     let fixture: ComponentFixture<DetallesFusionComponent>;
     let manualNavSpy: jasmine.SpyObj<ManualDetalleNavigationService>;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
+    const usuario = { can: jasmine.createSpy('can').and.returnValue(false) };
     const { texto, titulos, valor, etiquetasDatos, etiquetasCabecera, tipoCabecera, enlace, filasPares } = lectorFicha(elemento);
 
     beforeEach(async () => {
@@ -24,6 +26,7 @@ describe('DetallesFusionComponent', () => {
             providers: [
                 { provide: ManualDetalleNavigationService, useValue: manualNavSpy },
                 { provide: IncarnumService, useValue: { getChakra: () => of(normalizarChakraDetalle(chakraApi())) } },
+                { provide: UserService, useValue: usuario },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -74,5 +77,20 @@ describe('DetallesFusionComponent', () => {
         expect(titulos()).not.toContain('Esencia');
         expect(titulos()).not.toContain('Descripción');
         expect(texto()).not.toContain('Descripción propia');
+    });
+
+    it('enseña el lápiz «Modificar» solo con el permiso de clases y si alguien lo escucha (el de clases)', () => {
+        const abiertas: unknown[] = [];
+        component.modificar.subscribe((entrada) => abiertas.push(entrada));
+        usuario.can.and.returnValue(false);
+        fixture.detectChanges();
+        expect(usuario.can).toHaveBeenCalledWith('clases', 'create');
+        expect(Array.from(elemento().querySelectorAll('button')).some((b) => b.textContent?.includes('Modificar'))).toBeFalse();
+
+        usuario.can.and.callFake((r: string) => r === 'clases');
+        fixture.detectChanges();
+        const lapiz = Array.from(elemento().querySelectorAll('button')).find((b) => b.textContent?.includes('Modificar')) as HTMLButtonElement;
+        lapiz.click();
+        expect(abiertas).toEqual([component.fusion]);
     });
 });

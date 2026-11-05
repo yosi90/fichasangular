@@ -46,6 +46,7 @@ import { DeidadService } from 'src/app/services/deidad.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { NuevaRazaComponent } from '../../shared/nueva-raza/nueva-raza.component';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../../shared/insercion-marco/editor-de-catalogo';
+import { tipoDeVentaja } from 'src/app/services/utils/ventaja-formulario';
 import { EDICIONES_CATALOGO, EdicionCatalogoTab, INSERCIONES_CATALOGO, TIPOS_EDICION, TipoEdicion, claveEdicion, edicionesVacias, tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
@@ -712,7 +713,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     recibirObjetoListado(value: { item: any, tipo: string }, operacion: string = 'detalles') {
-        const tipoEdicion = normalizarTexto(operacion) === 'modificar' ? tipoEdicionDeListado(value.tipo) : null;
+        const tipoEdicion = normalizarTexto(operacion) === 'modificar' ? tipoEdicionDeListado(value.tipo, value.item) : null;
         if (tipoEdicion) {
             this.abrirEdicion(tipoEdicion, value.item);
             return;
@@ -1468,7 +1469,21 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 return this.detallesArmaAbiertos;
             case 'armadura':
                 return this.detallesArmaduraAbiertos;
+            case 'rasgo':
+                return this.detallesRasgoAbiertos;
+            case 'ventaja':
+            case 'desventaja':
+                return this.detallesVentajaAbiertos;
+            case 'fusion':
+                return this.detallesFusionAbiertos;
+            case 'chakra':
+                return this.detallesChakraAbiertos;
         }
+    }
+
+    /** El lápiz «Modificar» del detalle de una ventaja o una desventaja: cada una con su tipo (el signo de su coste). */
+    abrirEdicionVentaja(ventaja: VentajaDetalle): void {
+        this.abrirEdicion(tipoDeVentaja(ventaja), ventaja);
     }
 
     abrirDetallesRacialPorId(idRacial: number) {

@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { ICONOS_ROL, TipoRol, tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
 import { DatoFicha } from 'src/app/components/detalles/ficha';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
@@ -7,6 +7,9 @@ import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-
 import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { UserService } from 'src/app/services/user.service';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
+import { tipoDeVentaja } from 'src/app/services/utils/ventaja-formulario';
 
 @Component({
     selector: 'app-detalles-ventaja',
@@ -14,7 +17,15 @@ import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-vi
     standalone: false
 })
 export class DetallesVentajaComponent {
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
+
+    /** El lápiz «Modificar»: abre la pestaña de modificar la ventaja (o la desventaja). Sin quien lo escuche, no sale. */
+    @Output() modificar = new EventEmitter<VentajaDetalle>();
+
+    /** Con el permiso de su tipo: `ventajas` o `desventajas`. */
+    get puedeModificar(): boolean {
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, `${tipoDeVentaja(this.ventajaData)}s`);
+    }
 
     private ventajaData!: VentajaDetalle;
 

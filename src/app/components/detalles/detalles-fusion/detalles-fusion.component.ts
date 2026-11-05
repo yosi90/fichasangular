@@ -1,5 +1,7 @@
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { Subscription, forkJoin, of, take } from 'rxjs';
+import { UserService } from 'src/app/services/user.service';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { catchError } from 'rxjs/operators';
 import {
     DatoFicha,
@@ -70,11 +72,18 @@ export class DetallesFusionComponent implements OnInit, OnDestroy {
 
     @Output() claseDetallesId = new EventEmitter<number>();
     @Output() chakraDetallesId = new EventEmitter<number>();
+    /** El lápiz «Modificar»: abre la pestaña de modificar la fusión. Sin quien lo escuche, no sale. */
+    @Output() modificar = new EventEmitter<Fusion>();
 
     constructor(
         private manualDetalleNavSvc: ManualDetalleNavigationService,
         private incarnumSvc: IncarnumService,
+        private userSvc: UserService,
     ) { }
+
+    get puedeModificar(): boolean {
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'fusiones del alma');
+    }
 
     ngOnInit(): void {
         this.iniciado = true;
