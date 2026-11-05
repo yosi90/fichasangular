@@ -17,6 +17,13 @@
     border-radius: 6px
     box-shadow: $ficha-sombra
 
+// Las pantallas que no son un elemento de rol (Novedades): su icono de Material, sin recuadro.
+.listado-cabecera__icono-material
+    width: 28px
+    height: 28px
+    font-size: 28px
+    color: $accent
+
 .listado-cabecera__titulo
     margin: 0
     font-size: 20px
@@ -73,6 +80,10 @@
 
     &:empty
         display: none
+
+// Sin buscador, lo proyectado (la preferencia de Novedades) va a la derecha, donde iría el buscador.
+.listado-cabecera--sin-buscador .listado-cabecera__acciones
+    margin-left: auto
 
 // Móvil: título, total y filtros en la primera línea; el buscador, a todo lo ancho debajo.
 @include movil

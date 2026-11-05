@@ -71,4 +71,23 @@ describe('ListadoCabeceraComponent', () => {
         expect(raiz.querySelector('input')).toBeNull();
         expect(raiz.querySelector('[role="search"]')).toBeNull();
     });
+
+    it('una pantalla que no es de rol (Novedades) lleva su icono de Material y lo proyectado va a la derecha', async () => {
+        TestBed.resetTestingModule();
+        @Component({
+            template: '<app-listado-cabecera iconoMaterial="new_releases" titulo="Novedades" [buscador]="false"><span class="extra">x</span></app-listado-cabecera>',
+            standalone: false
+        })
+        class MaterialComponent { }
+        await TestBed.configureTestingModule({
+            declarations: [MaterialComponent, ListadoCabeceraComponent, IconoRolComponent],
+            imports: [MatIconModule],
+        }).compileComponents();
+        const otra = TestBed.createComponent(MaterialComponent);
+        otra.detectChanges();
+        const raiz = otra.nativeElement as HTMLElement;
+        expect(raiz.querySelector('app-icono-rol')).toBeNull();
+        expect(raiz.querySelector('mat-icon.listado-cabecera__icono-material')?.textContent?.trim()).toBe('new_releases');
+        expect(raiz.querySelector('.listado-cabecera--sin-buscador .listado-cabecera__acciones .extra')).not.toBeNull();
+    });
 });

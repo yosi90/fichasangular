@@ -20,13 +20,18 @@ export function esListadoBuscable(valor: unknown): valor is ListadoBuscable {
  * La cabecera común de un listado (lienzo «Rol: las vistas que faltan», vistas 4 y 6): el icono del catálogo en su
  * recuadro (40/28), el título, el total en gris, el buscador rápido (280 px; es el mismo campo «Buscar» del listado,
  * no otro filtro) y, proyectado a la derecha, el botón de `<app-menu-filtros>`. En el móvil, el buscador baja a su
- * propia línea. Una pantalla que no es un listado (los dados) la usa con `subtitulo` y sin buscador.
+ * propia línea. Una pantalla que no es un listado (los dados, las novedades) la usa con `subtitulo` y sin buscador; sin
+ * buscador, lo proyectado va a la derecha. Si la pantalla no es un elemento de rol, lleva un icono de Material
+ * (`iconoMaterial`) en vez del de `ICONOS_ROL`.
  */
 @Component({
     selector: 'app-listado-cabecera',
     template: `
-        <header class="listado-cabecera">
-            <app-icono-rol [tipo]="icono" [tamano]="28" [recuadro]="true"></app-icono-rol>
+        <header class="listado-cabecera" [class.listado-cabecera--sin-buscador]="!buscador">
+            <app-icono-rol *ngIf="icono; else material" [tipo]="icono" [tamano]="28" [recuadro]="true"></app-icono-rol>
+            <ng-template #material>
+                <mat-icon class="listado-cabecera__icono-material" aria-hidden="true" *ngIf="iconoMaterial">{{iconoMaterial}}</mat-icon>
+            </ng-template>
             <h2 class="listado-cabecera__titulo">{{titulo}}</h2>
             <span class="listado-cabecera__total" *ngIf="total !== null">
                 {{total}}<span class="solo-lectores"> en total</span>
@@ -44,13 +49,15 @@ export function esListadoBuscable(valor: unknown): valor is ListadoBuscable {
     standalone: false
 })
 export class ListadoCabeceraComponent {
-    @Input({ required: true }) icono!: TipoRol;
+    /** El icono del catálogo; sin él, el de Material de `iconoMaterial` (Novedades). */
+    @Input() icono: TipoRol | null = null;
+    @Input() iconoMaterial = '';
     @Input() titulo = '';
     /** Cuántos hay con los filtros puestos; sin él, no se enseña. */
     @Input() total: number | null = null;
     /** Una línea gris tras el título, en las pantallas que no son listados («Tiradas sueltas para la mesa»). */
     @Input() subtitulo = '';
-    /** Sin buscador rápido: la pestaña «Dados», que usa la cabecera sin ser un listado. */
+    /** Sin buscador rápido: las pestañas «Dados» y «Novedades», que usan la cabecera sin ser un listado. */
     @Input() buscador = true;
     @Input() texto = '';
     @Input() placeholder = 'Buscar';
