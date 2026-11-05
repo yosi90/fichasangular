@@ -70,6 +70,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
     visibilidadPorDefectoPersonajes = false;
     autoAbrirVentanaChats = true;
     permitirBurbujasChat = true;
+    abrirNovedadesAlEntrar = true;
     generadorMinimoSeleccionado = 13;
     generadorTablasPermitidas = 3;
     previewResetting = false;
@@ -368,6 +369,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
                     visibilidadPorDefectoPersonajes: this.visibilidadPorDefectoPersonajes === true,
                     autoAbrirVentanaChats: this.autoAbrirVentanaChats !== false,
                     permitirBurbujasChat: this.permitirBurbujasChat !== false,
+                    abrirNovedadesAlEntrar: this.abrirNovedadesAlEntrar !== false,
                 },
                 nuevo_personaje: {
                     ...current.nuevo_personaje,
@@ -421,6 +423,7 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         this.visibilidadPorDefectoPersonajes = settings?.perfil?.visibilidadPorDefectoPersonajes === true;
         this.autoAbrirVentanaChats = settings?.perfil?.autoAbrirVentanaChats !== false;
         this.permitirBurbujasChat = settings?.perfil?.permitirBurbujasChat !== false;
+        this.abrirNovedadesAlEntrar = settings?.perfil?.abrirNovedadesAlEntrar !== false;
         this.generadorMinimoSeleccionado = this.normalizeGeneradorMinimo(settings?.nuevo_personaje?.generador_config?.minimoSeleccionado ?? 13);
         this.generadorTablasPermitidas = this.normalizeGeneradorTablas(settings?.nuevo_personaje?.generador_config?.tablasPermitidas ?? 3);
     }

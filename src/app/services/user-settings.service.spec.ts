@@ -81,4 +81,37 @@ describe('UserSettingsService', () => {
             cuentaSistema: false,
         });
     });
+
+    it('«Abrir Novedades al entrar» está activada por defecto y solo se apaga con false', () => {
+        const service = createServiceStub();
+
+        expect(createDefaultUserSettings().perfil.abrirNovedadesAlEntrar).toBeTrue();
+        expect(service.normalizeSettingsDocument({ version: 1, perfil: {} } as any).perfil.abrirNovedadesAlEntrar).toBeTrue();
+        expect(service.normalizeSettingsDocument({ version: 1, perfil: { abrirNovedadesAlEntrar: false } } as any)
+            .perfil.abrirNovedadesAlEntrar).toBeFalse();
+    });
+
+    it('guarda «Abrir Novedades al entrar» en los ajustes de Rol de la plataforma', async () => {
+        const service = createServiceStub();
+        service.hasCurrentUid = jasmine.createSpy('hasCurrentUid').and.resolveTo(true);
+        service.platformSessionSvc = jasmine.createSpyObj('PlatformSessionService', ['guardarAjustes']);
+        service.platformSessionSvc.guardarAjustes.and.callFake(async (cambios: any) => ({ version: 2, documento: cambios }));
+        service.loadSettings = jasmine.createSpy('loadSettings').and.resolveTo(createDefaultUserSettings());
+
+        const perfil = await service.saveProfileSettings({ abrirNovedadesAlEntrar: false });
+
+        expect(service.platformSessionSvc.guardarAjustes.calls.mostRecent().args[0].perfil.abrirNovedadesAlEntrar).toBeFalse();
+        expect(perfil.abrirNovedadesAlEntrar).toBeFalse();
+    });
+
+    it('lee «Abrir Novedades al entrar» de la plataforma sin esperar a Firebase', async () => {
+        const service = createServiceStub();
+        service.platformSessionSvc = jasmine.createSpyObj('PlatformSessionService', ['leerAjustes']);
+        service.platformSessionSvc.leerAjustes.and.resolveTo({ version: 3, documento: { version: 1, perfil: { abrirNovedadesAlEntrar: false } } });
+
+        expect(await service.loadAbrirNovedadesAlEntrar()).toBeFalse();
+
+        service.platformSessionSvc.leerAjustes.and.resolveTo(null);
+        expect(await service.loadAbrirNovedadesAlEntrar()).toBeTrue();
+    });
 });

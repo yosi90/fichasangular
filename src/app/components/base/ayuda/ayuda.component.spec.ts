@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MatIconModule } from '@angular/material/icon';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { HelpLegalComponent } from '../help-legal/help-legal.component';
-import { HelpRoadmapComponent, VERSIONES_ROL } from '../help-roadmap/help-roadmap.component';
 import { HelpUsageAboutComponent } from '../help-usage-about/help-usage-about.component';
 import { AyudaComponent } from './ayuda.component';
 
@@ -17,7 +16,7 @@ describe('AyudaComponent', () => {
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
-            declarations: [AyudaComponent, HelpUsageAboutComponent, HelpRoadmapComponent, HelpLegalComponent],
+            declarations: [AyudaComponent, HelpUsageAboutComponent, HelpLegalComponent],
             imports: [MatIconModule],
             providers: [{ provide: PlatformSessionService, useValue: { urlCompanion: 'https://apk.test/rol', urlSocial: () => 'https://social.test/normas' } }],
         }).compileComponents();
@@ -25,9 +24,9 @@ describe('AyudaComponent', () => {
         fixture.detectChanges();
     });
 
-    it('una navegación lateral con las cinco secciones y la actual marcada', () => {
+    it('una navegación lateral con las cuatro secciones y la actual marcada (las novedades tienen su pestaña)', () => {
         const botones = Array.from(elemento().querySelectorAll('.ayuda-nav__boton'));
-        expect(botones.map((b) => b.textContent?.trim())).toEqual(['Primeros pasos', 'Novedades', 'Legal y privacidad', '3.5 Companion', 'Créditos']);
+        expect(botones.map((b) => b.textContent?.trim())).toEqual(['Primeros pasos', 'Legal y privacidad', '3.5 Companion', 'Créditos']);
         expect(botones[0].getAttribute('aria-current')).toBe('page');
         expect(titulo()).toBe('Primeros pasos');
         expect(elemento().textContent).toContain('Ctrl+K');
@@ -39,18 +38,9 @@ describe('AyudaComponent', () => {
         expect(elemento().querySelector('#legal-medicion')?.textContent).toContain('yosiftadisticas:ultima');
         expect(Array.from(elemento().querySelectorAll('.ayuda-indice__enlace')).length).toBe(6);
 
-        (elemento().querySelectorAll('.ayuda-nav__boton')[1] as HTMLButtonElement).click();
+        (elemento().querySelectorAll('.ayuda-nav__boton')[2] as HTMLButtonElement).click();
         fixture.detectChanges();
-        expect(titulo()).toBe('Novedades');
-    });
-
-    it('Novedades: la versión en curso arriba y abierta; las demás, plegadas', () => {
-        abrir('novedades', 2);
-        const versiones = Array.from(elemento().querySelectorAll('details.ayuda-version')) as HTMLDetailsElement[];
-        expect(versiones.length).toBe(VERSIONES_ROL.length);
-        expect(versiones[0].classList).toContain('ayuda-version--actual');
-        expect(versiones[0].open).toBeTrue();
-        expect(versiones.slice(1).every((v) => !v.open)).toBeTrue();
+        expect(titulo()).toBe('3.5 Companion');
     });
 
     it('3.5 Companion enlaza la descarga y Créditos da la atribución de cada autor', () => {

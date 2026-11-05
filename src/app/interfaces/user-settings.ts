@@ -63,6 +63,8 @@ export interface UserSettingsV1 {
         allowDirectMessagesFromNonFriends: boolean;
         autoAbrirVentanaChats: boolean;
         permitirBurbujasChat: boolean;
+        /** Abrir la pestaña Novedades al entrar (por defecto, sí). */
+        abrirNovedadesAlEntrar: boolean;
         notificaciones: {
             mensajes: boolean;
             amistad: boolean;
@@ -87,6 +89,7 @@ export function createDefaultUserSettings(): UserSettingsV1 {
             allowDirectMessagesFromNonFriends: false,
             autoAbrirVentanaChats: true,
             permitirBurbujasChat: true,
+            abrirNovedadesAlEntrar: true,
             notificaciones: {
                 mensajes: true,
                 amistad: true,

@@ -57,6 +57,7 @@ import { ChakraDetalle, Fusion } from 'src/app/interfaces/incarnum';
 import { IncarnumService } from 'src/app/services/incarnum.service';
 import { AyudaSolicitud } from 'src/app/interfaces/ayuda';
 import { AperturaRol, NavegacionRolService } from 'src/app/services/navegacion-rol.service';
+import { NovedadesService } from 'src/app/services/novedades.service';
 import { iconoRol, tipoRolDeClase, tipoRolDeConjuro, tipoRolDeEquipo, tipoRolDeListado, tipoRolDeVentaja, tituloListado } from 'src/app/services/utils/iconos-rol';
 import { tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
 
@@ -100,6 +101,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public ayudaSolicitud: AyudaSolicitud | null = null;
     /** Los dados (lienzo «Dados: Companion y web»): una sola pestaña, como la Ayuda. */
     public dadosTabOpen = false;
+    /**
+     * Las novedades (decisión 2 de la ronda de noviembre): una sola pestaña, antes de Personajes. Se abre al entrar, con
+     * o sin sesión, salvo que la persona lo haya apagado («Abrir Novedades al entrar»); siempre se puede abrir a mano.
+     */
+    public novedadesTabOpen = false;
     public publicProfileTabs: UserPublicProfileTab[] = [];
     public detallesPersonajeAbiertos: Personaje[] = [];
     public detallesRazaAbiertos: Raza[] = [];
@@ -128,6 +134,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public listadoTabsAbiertos: ListadoTabAbierto[] = [];
     /** Las pestañas de «Modificar» abiertas, por catálogo (`catalogos-editables.ts`). */
     public ediciones: Record<TipoEdicion, EdicionCatalogoTab[]> = edicionesVacias();
+    private readonly TAB_NOVEDADES = 'base:novedades';
     private readonly TAB_PERSONAJES = 'base:personajes';
     private readonly TAB_PROFILE = 'base:perfil';
     private readonly TAB_SOCIAL = 'base:social';
@@ -162,6 +169,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private userProfileNavSvc?: UserProfileNavigationService,
         private equipoSvc?: EquipoService,
         private incarnumSvc?: IncarnumService,
+        private novedadesSvc?: NovedadesService,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
@@ -199,6 +207,20 @@ export class TabControlComponent implements OnInit, OnDestroy {
             .pipe(takeUntil(this.destroy$))
             .subscribe((payload) => this.abrirPerfilPublico(payload));
         this.atenderVistaDeLaUrl();
+        void this.abrirNovedadesAlEntrar();
+    }
+
+    /**
+     * Al cargar la página: si la preferencia lo pide (por defecto, sí), abre Novedades y la deja elegida, salvo que la
+     * persona ya se haya ido a otra pestaña mientras se decidía (entonces solo la abre).
+     */
+    private async abrirNovedadesAlEntrar(): Promise<void> {
+        if (!this.novedadesSvc || !(await this.novedadesSvc.abrirAlEntrar()) || this.novedadesTabOpen)
+            return;
+        const sinMoverse = this.activeTabKey === this.TAB_PERSONAJES;
+        this.novedadesTabOpen = true;
+        if (sinMoverse)
+            this.focusOpenedTab(this.TAB_NOVEDADES);
     }
 
     /** `?vista=campanas&campana={id}` y `?vista=cuenta` (notificaciones de Rol): se abren al tener sesión. */
@@ -221,7 +243,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     ngAfterViewInit() {
-        this.activeTabKey = this.TAB_PERSONAJES;
+        this.activeTabKey = this.tabKeyByIndex(this.TabGroup?.selectedIndex ?? 0) ?? this.getDefaultBaseTabKey();
     }
 
     ngOnChanges(changes: SimpleChanges) {
@@ -269,10 +291,17 @@ export class TabControlComponent implements OnInit, OnDestroy {
     // Función que se ejecuta al presionar "Esc"
     onEscPressed(): void {
         const currentIndex = this.TabGroup.selectedIndex;
-        if (!currentIndex || currentIndex == 0)
+        if (currentIndex === null || currentIndex === undefined)
             return;
         const activeKey = this.tabKeyByIndex(currentIndex);
+        // Personajes no se cierra (Novedades, antes que ella, sí).
+        if (!activeKey || activeKey === this.TAB_PERSONAJES)
+            return;
         const tabLabel = this.TabGroup._tabs.toArray()[currentIndex].textLabel;
+        if (activeKey === this.TAB_NOVEDADES) {
+            this.quitarNovedades();
+            return;
+        }
         if (activeKey === this.TAB_PROFILE) {
             this.quitarPerfilPrivado();
             return;
@@ -353,6 +382,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
 
     private buildOrderedTabKeys(): string[] {
         const keys: string[] = [];
+        if (this.novedadesTabOpen)
+            keys.push(this.TAB_NOVEDADES);
         keys.push(this.TAB_PERSONAJES);
         if (this.usrLoggedIn && this.privateProfileTabOpen)
             keys.push(this.TAB_PROFILE);
@@ -557,6 +588,26 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
+    /** Abre la pestaña «Novedades» (la entrada de Ayuda, la búsqueda global); si ya está abierta, va a ella. */
+    public abrirNovedades(): void {
+        if (this.novedadesTabOpen) {
+            this.selectTabByKey(this.TAB_NOVEDADES, true);
+            return;
+        }
+        this.novedadesTabOpen = true;
+        this.registerOpenContext(this.TAB_NOVEDADES, this.getSafeOpenerKey());
+        this.focusOpenedTab(this.TAB_NOVEDADES);
+    }
+
+    public quitarNovedades(): boolean {
+        if (!this.novedadesTabOpen)
+            return false;
+        return this.closeTabWithNavigation(this.TAB_NOVEDADES, () => {
+            this.novedadesTabOpen = false;
+            return true;
+        });
+    }
+
     /** Abre la pestaña «Dados»; si ya está abierta, va a ella. */
     public abrirDados(): void {
         if (this.dadosTabOpen) {
@@ -624,14 +675,16 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.nuevoPSvc.resetearCreacionNuevoPersonaje();
         this.AbrirNuevoPersonajeTab = 0;
         this.openerByTab.clear();
-        this.activeTabKey = this.TAB_PERSONAJES;
+        // Novedades es pública, como Personajes: se queda abierta y, si era la elegida, lo sigue siendo.
+        const destino = this.novedadesTabOpen && this.activeTabKey === this.TAB_NOVEDADES ? this.TAB_NOVEDADES : this.TAB_PERSONAJES;
+        this.activeTabKey = destino;
 
         if (hadNuevoPersonajeOpen)
             this.CerrarNuevoPersonajeTab.emit();
         if (hadListadoTabsOpen)
             this.CerrarListadoTab.emit();
         if (this.TabGroup)
-            this.selectTabByKey(this.TAB_PERSONAJES, true);
+            this.selectTabByKey(destino, true);
     }
 
     public abrirPerfilPublico(payload: UserPublicProfileTab): void {
@@ -2429,6 +2482,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDesdeManual(apertura.referencia);
         else if (apertura.clase === 'dados')
             this.abrirDados();
+        else if (apertura.clase === 'novedades')
+            this.abrirNovedades();
         else
             this.abrirListadoTab(apertura.lista, 'detalles', apertura.texto);
     }

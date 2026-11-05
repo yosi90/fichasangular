@@ -202,11 +202,17 @@ describe('NavbarComponent', () => {
     });
 
     it('los elementos del menú Ayuda abren la única Ayuda en su sección', () => {
-        component.abrirAyuda('novedades');
         component.abrirAyuda('legal');
         component.abrirAyuda('primeros-pasos');
 
-        expect(userProfileNavSvc.openAyuda.calls.allArgs()).toEqual([['novedades'], ['legal'], ['primeros-pasos']]);
+        expect(userProfileNavSvc.openAyuda.calls.allArgs()).toEqual([['legal'], ['primeros-pasos']]);
+    });
+
+    it('«Ayuda → Novedades» abre la pestaña Novedades por el bus de pestañas', () => {
+        component.abrirNovedades();
+
+        expect(navegacionRol.abrir).toHaveBeenCalledOnceWith({ clase: 'novedades' });
+        expect(userProfileNavSvc.openAyuda).not.toHaveBeenCalled();
     });
 
     it('abre reportar bug desde Ayuda si hay sesión', () => {
@@ -359,18 +365,19 @@ describe('NavbarComponent template', () => {
         expect(panelAbierto()).toBeNull();
     });
 
-    it('elegir una entrada la ejecuta y cierra el menú', () => {
+    it('elegir una entrada la ejecuta y cierra el menú; «Ayuda → Novedades» abre su pestaña', () => {
         const ayuda = activadores()[3];
-        const nav = TestBed.inject(UserProfileNavigationService) as jasmine.SpyObj<UserProfileNavigationService>;
+        const navegacion = TestBed.inject(NavegacionRolService) as jasmine.SpyObj<NavegacionRolService>;
 
         ayuda.click();
         fixture.detectChanges();
-        const legal = Array.from(document.querySelectorAll<HTMLButtonElement>('.cdk-overlay-container .ribbon-panel__item'))
-            .find((boton) => boton.textContent?.includes('Legal'))!;
-        legal.click();
+        const novedades = Array.from(document.querySelectorAll<HTMLButtonElement>('.cdk-overlay-container .ribbon-panel__item'))
+            .find((boton) => boton.textContent?.includes('Novedades'))!;
+        novedades.click();
         fixture.detectChanges();
 
-        expect(nav.openAyuda).toHaveBeenCalledWith('legal');
+        expect(navegacion.abrir).toHaveBeenCalledWith({ clase: 'novedades' });
         expect(panelAbierto()).toBeNull();
     });
+
 });

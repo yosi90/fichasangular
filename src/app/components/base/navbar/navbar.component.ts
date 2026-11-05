@@ -173,6 +173,11 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.userProfileNavSvc.openAyuda(seccion);
     }
 
+    /** «Ayuda → Novedades» abre la pestaña Novedades (una sola). */
+    abrirNovedades(): void {
+        this.navegacionRol.abrir({ clase: 'novedades' });
+    }
+
     get urlCompanion(): string {
         return this.platformSessionSvc.urlCompanion;
     }

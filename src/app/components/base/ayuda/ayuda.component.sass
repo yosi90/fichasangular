@@ -3,7 +3,7 @@
 @use '../../detalles/ficha/ficha-tonos' as *
 
 // La Ayuda (lienzo, vista 9): sin encapsular y con el prefijo `ayuda-`, porque lo usan también sus secciones
-// (`app-help-usage-about`, `app-help-roadmap`, `app-help-legal`). Tarjetas como las de la ficha: título en versalitas,
+// (`app-help-usage-about`, `app-help-legal`). Tarjetas como las de la ficha: título en versalitas,
 // prosa de 15 px con interlineado 1.65 y como mucho 74 caracteres de ancho. Sin degradados.
 app-ayuda
     display: block
@@ -194,73 +194,6 @@ app-ayuda
 
     .ayuda-creditos
         grid-template-columns: minmax(0, 1fr)
-
-// Novedades: cada versión plegable (la que está en curso, abierta y con la raya rosa).
-.ayuda-oculto
-    @include solo-lectores
-
-.ayuda-version
-    border-radius: 6px
-    background: $ficha-fila-alterna
-
-    summary
-        display: flex
-        align-items: center
-        gap: 10px
-        min-height: 44px
-        padding: 0 14px
-        cursor: pointer
-        list-style: none
-
-        &::-webkit-details-marker
-            display: none
-
-        &:focus-visible
-            outline: 2px solid $active
-            outline-offset: -2px
-
-.ayuda-version--actual
-    box-shadow: inset 3px 0 0 $active
-
-.ayuda-version__marca mat-icon
-    display: block
-    width: 20px
-    height: 20px
-    font-size: 20px
-    color: $accent
-
-.ayuda-version--actual .ayuda-version__marca mat-icon
-    color: $active
-
-.ayuda-version__nombre
-    flex: 1 1 auto
-    font-weight: 500
-    color: #ffffff
-
-.ayuda-version__estado
-    font-size: 12px
-    color: $accent
-
-.ayuda-prosa ul.ayuda-hitos
-    margin: 0
-    padding: 0 14px 12px 44px
-    list-style: none
-
-    li
-        display: flex
-        align-items: flex-start
-        gap: 8px
-
-    mat-icon
-        flex-shrink: 0
-        width: 18px
-        height: 18px
-        margin-top: 4px
-        font-size: 18px
-        color: #8a949b
-
-    .ayuda-hito--hecho mat-icon
-        color: #81c784
 
 // Legal y privacidad: el texto y, a la derecha, el índice de sus apartados.
 .ayuda-legal

@@ -3,7 +3,7 @@ import { BehaviorSubject, of, Subject } from 'rxjs';
 import Swal from 'sweetalert2';
 import { TabControlComponent } from './tab-control.component';
 
-function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
+function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; }): TabControlComponent {
     const isLoggedIn$ = new BehaviorSubject<boolean>(false);
     const permisos$ = new BehaviorSubject<number>(0);
     const banStatus$ = new BehaviorSubject<any>({
@@ -66,10 +66,13 @@ function crearComponente(overrides?: { pSvc?: any; }): TabControlComponent {
         userProfileNavSvc,
         equipoSvc,
         incarnumSvc,
+        overrides?.novedadesSvc,
     );
 
     const buildTabs = () => {
         const tabs: any[] = [];
+        if (component.novedadesTabOpen)
+            tabs.push({ textLabel: 'Novedades' });
         tabs.push({ textLabel: 'Personajes' });
         if (component.usrLoggedIn && component.privateProfileTabOpen)
             tabs.push({ textLabel: 'Mi perfil' });
@@ -621,10 +624,10 @@ describe('TabControlComponent navegación por origen', () => {
     it('la Ayuda es una sola pestaña: se abre en su sección, cambia de sección sin abrir otra y se cierra con ESC', fakeAsync(() => {
         const component = crearComponente();
 
-        component.abrirAyuda({ seccion: 'novedades', id: 1 });
+        component.abrirAyuda({ seccion: 'primeros-pasos', id: 1 });
         tick(120);
         expect(component.ayudaTabOpen).toBeTrue();
-        expect(component.ayudaSolicitud?.seccion).toBe('novedades');
+        expect(component.ayudaSolicitud?.seccion).toBe('primeros-pasos');
         expect((component as any).activeTabKey).toBe('base:ayuda');
 
         component.abrirAyuda({ seccion: 'legal', id: 2 });
@@ -658,6 +661,86 @@ describe('TabControlComponent navegación por origen', () => {
         expect(component.dadosTabOpen).toBeFalse();
         component.ngOnDestroy();
     }));
+
+    describe('Novedades', () => {
+        const conPreferencia = (abrir: boolean) => ({ abrirAlEntrar: jasmine.createSpy('abrirAlEntrar').and.resolveTo(abrir) });
+
+        it('al entrar se abre antes de Personajes y queda elegida', fakeAsync(() => {
+            const component = crearComponente({ novedadesSvc: conPreferencia(true) });
+            component.ngOnInit();
+            flushMicrotasks();
+            tick(120);
+
+            expect(component.novedadesTabOpen).toBeTrue();
+            expect((component as any).buildOrderedTabKeys().slice(0, 2)).toEqual(['base:novedades', 'base:personajes']);
+            expect((component as any).activeTabKey).toBe('base:novedades');
+            expect((component as any).TabGroup.selectedIndex).toBe(0);
+            component.ngOnDestroy();
+        }));
+
+        it('con «Abrir Novedades al entrar» apagada no se abre sola, pero se abre a mano (una sola) y se cierra con ESC', fakeAsync(() => {
+            const component = crearComponente({ novedadesSvc: conPreferencia(false) });
+            component.ngOnInit();
+            flushMicrotasks();
+            tick(120);
+            expect(component.novedadesTabOpen).toBeFalse();
+            expect((component as any).activeTabKey).toBe('base:personajes');
+
+            (component as any).__navegacionRolSvc.aperturas$.next({ clase: 'novedades' });
+            tick(120);
+            (component as any).__navegacionRolSvc.aperturas$.next({ clase: 'novedades' });
+            tick(120);
+            expect((component as any).buildOrderedTabKeys().filter((k: string) => k === 'base:novedades').length).toBe(1);
+            expect((component as any).activeTabKey).toBe('base:novedades');
+
+            component.onEscPressed();
+            expect(component.novedadesTabOpen).toBeFalse();
+            expect((component as any).activeTabKey).toBe('base:personajes');
+            component.ngOnDestroy();
+        }));
+
+        it('si mientras se decidía ya se fue a otra pestaña, la abre sin quitarle el sitio', fakeAsync(() => {
+            let decidir!: (abrir: boolean) => void;
+            const component = crearComponente({ novedadesSvc: { abrirAlEntrar: () => new Promise<boolean>((r) => decidir = r) } });
+            component.ngOnInit();
+            component.abrirDados();
+            tick(120);
+            decidir(true);
+            flushMicrotasks();
+            tick(120);
+
+            expect(component.novedadesTabOpen).toBeTrue();
+            expect((component as any).activeTabKey).toBe('base:dados');
+            component.ngOnDestroy();
+        }));
+
+        it('ESC en Personajes no cierra nada aunque Novedades esté delante', fakeAsync(() => {
+            const component = crearComponente({ novedadesSvc: conPreferencia(true) });
+            component.ngOnInit();
+            flushMicrotasks();
+            tick(120);
+            (component as any).selectTabByKey('base:personajes');
+
+            component.onEscPressed();
+
+            expect(component.novedadesTabOpen).toBeTrue();
+            expect((component as any).activeTabKey).toBe('base:personajes');
+            component.ngOnDestroy();
+        }));
+
+        it('al cerrar sesión sigue abierta y elegida: es pública', fakeAsync(() => {
+            const component = crearComponente({ novedadesSvc: conPreferencia(true) });
+            component.ngOnInit();
+            flushMicrotasks();
+            tick(120);
+            (component as any).__isLoggedIn$.next(true);
+            (component as any).__isLoggedIn$.next(false);
+
+            expect(component.novedadesTabOpen).toBeTrue();
+            expect((component as any).activeTabKey).toBe('base:novedades');
+            component.ngOnDestroy();
+        }));
+    });
 
     it('al cerrar sesión se cierra la pestaña de los Dados', fakeAsync(() => {
         const component = crearComponente();
