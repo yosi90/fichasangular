@@ -1,7 +1,7 @@
-import { HttpErrorResponse } from '@angular/common/http';
+import { HttpErrorResponse, HttpHeaders, HttpResponse } from '@angular/common/http';
 import { Subject, of, throwError } from 'rxjs';
 import Swal from 'sweetalert2';
-import { EscuchaRtdb, LecturaCacheOApi, cacheRtdbOApi, listaRtdb } from './catalogo-api';
+import { EscuchaRtdb, LecturaCacheOApi, cabecerasDePagina, cacheRtdbOApi, listaRtdb } from './catalogo-api';
 
 describe('cacheRtdbOApi', () => {
     let emitir: (snapshot: any) => void;
@@ -202,5 +202,19 @@ describe('listaRtdb', () => {
         emitir(lista([3, 1, 2]));
 
         expect(resultado[0].map((x: any) => x.Id)).toEqual([1, 2, 3]);
+    });
+});
+
+describe('cabecerasDePagina', () => {
+    const respuesta = (cabeceras: Record<string, string>) => new HttpResponse({ body: [], headers: new HttpHeaders(cabeceras) });
+
+    it('lee el total y si hay más de las cabeceras', () => {
+        expect(cabecerasDePagina(respuesta({ 'X-Total-Count': '45', 'X-Has-More': 'true' }), 20)).toEqual({ total: 45, hayMas: true });
+    });
+
+    it('sin un total válido, o menor que lo visto, cuenta hasta el final de la página', () => {
+        expect(cabecerasDePagina(respuesta({}), 25)).toEqual({ total: 25, hayMas: false });
+        expect(cabecerasDePagina(respuesta({ 'X-Total-Count': 'n/a' }), 25)).toEqual({ total: 25, hayMas: false });
+        expect(cabecerasDePagina(respuesta({ 'X-Total-Count': '3' }), 25)).toEqual({ total: 25, hayMas: false });
     });
 });

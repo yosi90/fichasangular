@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { Observable, filter, firstValueFrom, map, of, timeout } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { Novedad, PaginaNovedades } from '../interfaces/novedad';
+import { cabecerasDePagina } from './catalogo-api';
 import { EstadoPlataforma, PlatformSessionService } from './platform-session.service';
 import { UserSettingsService } from './user-settings.service';
 import { toArray, toNullableText, toText } from './utils/normalizacion';
@@ -37,12 +38,7 @@ export class NovedadesService {
         return this.http.get<unknown[]>(`${environment.apiUrl}novedades`, { params, observe: 'response' }).pipe(
             map((respuesta: HttpResponse<unknown[]>) => {
                 const novedades = toArray(respuesta.body).map(normalizarNovedad).filter((n): n is Novedad => n !== null);
-                const total = Number(respuesta.headers.get('X-Total-Count'));
-                return {
-                    novedades,
-                    total: Number.isFinite(total) && total >= offset + novedades.length ? total : offset + novedades.length,
-                    hayMas: respuesta.headers.get('X-Has-More') === 'true',
-                };
+                return { novedades, ...cabecerasDePagina(respuesta, offset + novedades.length) };
             }),
         );
     }

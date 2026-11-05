@@ -15,7 +15,7 @@ import {
     PaginaObjetos,
     TipoCatalogoEquipo,
 } from '../interfaces/equipo';
-import { AvisosFalloApi, EscuchaRtdb, cacheRtdbOApi, escucharCatalogo } from './catalogo-api';
+import { AvisosFalloApi, EscuchaRtdb, cabecerasDePagina, cacheRtdbOApi, escucharCatalogo } from './catalogo-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { esFilaComodin } from './utils/comodin';
 import {
@@ -115,12 +115,7 @@ export class EquipoService {
                 const items = toArray(respuesta.body)
                     .filter((raw) => !esFilaComodin(raw))
                     .map((raw) => normalizeObjeto(raw));
-                const total = Number(respuesta.headers.get('X-Total-Count'));
-                return {
-                    items,
-                    total: Number.isFinite(total) && total >= items.length ? total : items.length,
-                    hayMas: respuesta.headers.get('X-Has-More') === 'true',
-                };
+                return { items, ...cabecerasDePagina(respuesta, (Number(filtros.offset) || 0) + items.length) };
             }),
         );
     }

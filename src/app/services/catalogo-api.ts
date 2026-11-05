@@ -29,6 +29,19 @@ export function leerListadoCompleto<T = any>(http: HttpClient, url: string): Obs
     );
 }
 
+/**
+ * El total y si hay más de una página de un listado paginado de la API (cabeceras `X-Total-Count` y `X-Has-More`).
+ * `vistos` es hasta dónde llega esta página (su `offset` más las filas que trae): sin un total válido, o si es menor, se
+ * cuenta ese.
+ */
+export function cabecerasDePagina(respuesta: HttpResponse<unknown>, vistos: number): { total: number; hayMas: boolean } {
+    const total = Number(respuesta.headers.get('X-Total-Count'));
+    return {
+        total: Number.isFinite(total) && total >= vistos ? total : vistos,
+        hayMas: respuesta.headers.get('X-Has-More') === 'true',
+    };
+}
+
 /** Un snapshot de la RTDB sin datos, como el de una ruta que no existe. */
 const SIN_DATOS_RTDB = { exists: () => false, val: () => null, forEach: () => false };
 
