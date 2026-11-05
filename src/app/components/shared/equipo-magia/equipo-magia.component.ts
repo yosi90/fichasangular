@@ -8,6 +8,7 @@ import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.servic
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
+import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { FilaModificador, RelacionesMagicas, filaModificadorVacia } from 'src/app/services/utils/relaciones-equipo-formulario';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
@@ -119,8 +120,8 @@ export class EquipoMagiaComponent implements OnInit, OnDestroy {
     }
 
     /** Las opciones de un selector con la de la fila si el catálogo no la lista (llega con la entrada). */
-    opcionesCon(lista: readonly EquipoRef[], id: number | null): EquipoRef[] {
-        return id === null || lista.some((item) => item.Id === id) ? [...lista] : [...lista, { Id: id, Nombre: `#${id}` }];
+    opcionesCon(lista: EquipoRef[], id: number | null): EquipoRef[] {
+        return id === null ? lista : conOpcionSinValor(lista, { Id: id, Nombre: `#${id}` });
     }
 
     /** «Salvaciones · resistencia +1», el resumen de la fila en su cabecera. */
