@@ -17,15 +17,15 @@ import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalog
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
-import { CamposDeFormulario, ErroresDeFormulario, OpcionesErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
+import { CamposDeFormulario, camposSinPasos, entero, ErroresDeFormulario, OpcionesErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { alternarControl, elegirEnControl, vaciarControl } from '../insercion-marco/filas-repetibles';
 
 /** Los campos con su etiqueta, para llevar el error de la API (`field` `ventaja.<clave>` o `desventaja.<clave>`). */
-const CAMPOS: CamposDeFormulario = Object.fromEntries(([
+const CAMPOS: CamposDeFormulario = camposSinPasos([
     ['nombre', 'Nombre'], ['id_manual', 'Manual'], ['pagina', 'Página'], ['coste', 'Puntos'], ['puntos', 'Puntos'],
     ['mejora', 'Mejora'], ['descripcion', 'Descripción'], ['id_rasgo', 'Rasgo'], ['id_idioma', 'Idioma'],
     ['id_habilidad', 'Habilidad'],
-] as const).map(([clave, etiqueta]) => [clave, { etiqueta, paso: 0 }]));
+]);
 
 /**
  * «Insertar/Modificar ventaja» (hito 8 del roadmap de inserciones): una pantalla para las ventajas y las desventajas,

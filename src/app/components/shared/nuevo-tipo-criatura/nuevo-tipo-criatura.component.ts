@@ -21,17 +21,17 @@ import { OpcionCatalogo, opcionesDeCatalogo, opcionesPorId } from '../catalogo-b
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
-import { CamposDeFormulario, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
+import { CamposDeFormulario, camposSinPasos, entero, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
 import { FilaDeLista, anadirALista, filasDeIds } from '../lista-de-catalogo/lista-de-catalogo.component';
 
 /** Los campos con su etiqueta, para llevar el error de la API (`field` `tipo.<clave>` o `rasgos[i]`). Sin pasos. */
-const CAMPOS: CamposDeFormulario = Object.fromEntries(([
+const CAMPOS: CamposDeFormulario = camposSinPasos([
     ['nombre', 'Nombre'], ['id_manual', 'Manual'], ['pagina', 'Página'], ['id_alineamiento', 'Alineamiento'],
     ['tesoro', 'Tesoro'], ['id_tipo_dado', 'Dado de golpe'], ['id_puntos_habilidad', 'Puntos de habilidad'],
     ['id_ataque', 'Ataque base'], ['id_fortaleza', 'Fortaleza'], ['id_reflejos', 'Reflejos'], ['id_voluntad', 'Voluntad'],
     ['limite_inteligencia', 'Límite de Inteligencia'], ['descripcion', 'Descripción'], ['rasgos', 'Rasgos'],
-] as const).map(([clave, etiqueta]) => [clave, { etiqueta, paso: 0 }]));
+]);
 
 /**
  * «Insertar/Modificar tipo de criatura» (hito 9 del roadmap de inserciones): los datos del tipo, su progresión (dado de

@@ -40,7 +40,7 @@ import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-
 import { avisarGuardado, avisarSinPermisos, elCatalogo } from '../insercion-marco/avisos-insercion';
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
-import { CamposDeFormulario, ErroresDeFormulario, OpcionesErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
+import { CamposDeFormulario, camposSinPasos, ErroresDeFormulario, OpcionesErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { alternarControl, elegirEnControl, uidDeFila, vaciarControl } from '../insercion-marco/filas-repetibles';
 
 type EntradaEquipo = ArmaDetalle | ArmaduraDetalle | MunicionDetalle | MaterialDetalle | EncantamientoDetalle;
@@ -70,7 +70,7 @@ const TIPOS: Readonly<Record<TipoEquipoEditable, DefinicionTipo>> = {
 };
 
 /** Los campos con su etiqueta, para llevar el error de la API (`field` `arma.<clave>`, `costes[0]…`) a su control. Sin pasos. */
-const CAMPOS: CamposDeFormulario = Object.fromEntries(([
+const CAMPOS: CamposDeFormulario = camposSinPasos([
     ['nombre', 'Nombre'], ['id_manual', 'Manual'], ['pagina', 'Página'], ['descripcion', 'Descripción'],
     ['origen_descripcion', 'Origen de la descripción'], ['nombre_original', 'Nombre original'], ['precio', 'Precio'],
     ['peso', 'Peso'], ['id_material', 'Material'], ['id_tamano', 'Tamaño'], ['id_tipo_dano', 'Tipo de daño'],
@@ -88,7 +88,7 @@ const CAMPOS: CamposDeFormulario = Object.fromEntries(([
     ['coste', 'Precio fijo'], ['nivel_lanzador', 'Nivel de lanzador'], ['id_intensidad_aura', 'Aura'],
     ['id_encantamiento_base', 'Aptitud base'], ['tipos_dano', 'Tipos de daño'], ['danos', 'Daños'],
     ['aura_escuelas', 'Escuelas del aura'], ['requisitos', 'Requisitos'], ['modificadores', 'Modificadores'],
-] as const).map(([clave, etiqueta]) => [clave, { etiqueta, paso: 0 }]));
+]);
 
 /** Los multiplicadores de crítico de la base (×2 … ×8). */
 const MULTIPLICADORES = [2, 3, 4, 5, 6, 7, 8];

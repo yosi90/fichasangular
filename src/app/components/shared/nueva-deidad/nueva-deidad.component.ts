@@ -19,18 +19,18 @@ import { OpcionCatalogo, opcionesDeCatalogo, opcionesPorId } from '../catalogo-b
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
-import { CamposDeFormulario, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
+import { CamposDeFormulario, camposSinPasos, entero, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { alternarControl, elegirEnControl, vaciarControl } from '../insercion-marco/filas-repetibles';
 import { FilaDeLista, anadirALista, filasDeIds } from '../lista-de-catalogo/lista-de-catalogo.component';
 
 type ListaDeidad = 'ambitos' | 'dominios';
 
 /** Los campos con su etiqueta, para llevar el error de la API (`field` `deidad.<clave>` o el de una lista). Sin pasos. */
-const CAMPOS: CamposDeFormulario = Object.fromEntries(([
+const CAMPOS: CamposDeFormulario = camposSinPasos([
     ['nombre', 'Nombre'], ['id_manual', 'Manual'], ['pagina', 'Página'], ['id_alineamiento', 'Alineamiento'],
     ['id_arma', 'Arma predilecta'], ['id_pabellon', 'Panteón'], ['id_genero', 'Género'], ['descripcion', 'Descripción'],
     ['ambitos', 'Ámbitos'], ['dominios', 'Dominios'], ['alineamientos_devotos', 'Alineamientos de sus devotos'],
-] as const).map(([clave, etiqueta]) => [clave, { etiqueta, paso: 0 }]));
+]);
 
 /**
  * «Insertar/Modificar deidad» (hito 9 del roadmap de inserciones): los datos de la deidad (manual, alineamiento, arma

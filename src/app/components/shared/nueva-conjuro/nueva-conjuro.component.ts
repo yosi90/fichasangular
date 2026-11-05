@@ -23,7 +23,7 @@ import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-ins
 import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
-import { CamposDeFormulario, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
+import { CamposDeFormulario, camposSinPasos, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { ModoInsercion } from '../insercion-marco/insercion-marco.component';
 import { CONJURO } from 'src/app/services/utils/nombres-de-catalogo';
 import { textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
@@ -50,7 +50,7 @@ type NivelFieldKey = 'id_clase' | 'id_dominio' | 'id_disciplina';
  * Los campos del conjuro por su clave en el cuerpo del alta (`conjuro.<campo>` y las listas), para que un error de la API
  * con `field` vaya a su campo (`ErroresDeFormulario`). El conjuro no tiene pasos: todos en el 0.
  */
-const CAMPOS_CONJURO: CamposDeFormulario = Object.fromEntries([
+const CAMPOS_CONJURO: CamposDeFormulario = camposSinPasos([
     ['nombre', 'Nombre'], ['descripcion', 'Descripción'], ['id_manual', 'Manual'], ['pagina', 'Página'],
     ['id_tiempo_lanz', 'Tiempo de lanzamiento'], ['id_alcance', 'Alcance'], ['objetivo', 'Objetivo'], ['efecto', 'Efecto'],
     ['area', 'Área'], ['duracion', 'Duración'], ['tipo_salvacion', 'Tiro de salvación'],
@@ -59,7 +59,7 @@ const CAMPOS_CONJURO: CamposDeFormulario = Object.fromEntries([
     ['coste_material', 'Coste del componente material'], ['coste_px', 'Coste en PX'], ['componentes', 'Componentes'],
     ['descriptores', 'Descriptores'], ['niveles_clase', 'Niveles por clase'], ['niveles_dominio', 'Niveles por dominio'],
     ['niveles_disciplina', 'Niveles por disciplina'],
-].map(([clave, etiqueta]) => [clave, { etiqueta, paso: 0 }]));
+]);
 type NivelCollectionKey = 'baseClase' | 'baseDominio' | 'psiClase' | 'psiDisciplina';
 
 @Component({

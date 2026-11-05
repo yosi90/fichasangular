@@ -12,13 +12,13 @@ import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
-import { CamposDeFormulario, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
+import { CamposDeFormulario, camposSinPasos, entero, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { alternarControl } from '../insercion-marco/filas-repetibles';
 
-const CAMPOS: CamposDeFormulario = Object.fromEntries(([
+const CAMPOS: CamposDeFormulario = camposSinPasos([
     ['nombre', 'Nombre'], ['nombre_original', 'Nombre original'], ['id_categoria', 'Categoría'], ['id_ranura', 'Ranura'],
     ['orden', 'Orden'], ['descripcion', 'Descripción'],
-] as const).map(([clave, etiqueta]) => [clave, { etiqueta, paso: 0 }]));
+]);
 
 /**
  * «Insertar/Modificar chakra» (hito 8 del roadmap de inserciones; contrato en `docs/publica/INCARNUM.md`): solo la fila

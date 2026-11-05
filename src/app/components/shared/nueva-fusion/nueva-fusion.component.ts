@@ -17,16 +17,16 @@ import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalog
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
-import { CamposDeFormulario, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
+import { CamposDeFormulario, camposSinPasos, entero, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { FilaNombrada, alternarControl, elegirEnControl, uidDeFila } from '../insercion-marco/filas-repetibles';
 
 /** Los campos con su etiqueta, para llevar el error de la API (`field` `fusion.<clave>`, `chakras[0]`, `clases[1]`…). */
-const CAMPOS: CamposDeFormulario = Object.fromEntries(([
+const CAMPOS: CamposDeFormulario = camposSinPasos([
     ['nombre', 'Nombre'], ['nombre_original', 'Nombre original'], ['id_manual', 'Manual'], ['pagina', 'Página'],
     ['descripcion', 'Descripción'], ['efecto_basico', 'Efecto básico'], ['efecto_esencia', 'Efecto de la esencia'],
     ['origen_descripcion', 'Origen de la descripción'], ['salvacion', 'Salvación'], ['chakras', 'Chakras'],
     ['clases', 'Clases'], ['descriptores', 'Descriptores'],
-] as const).map(([clave, etiqueta]) => [clave, { etiqueta, paso: 0 }]));
+]);
 
 /**
  * «Insertar/Modificar fusión» (hito 8 del roadmap de inserciones; contrato en `docs/publica/INCARNUM.md`): la fusión

@@ -11,6 +11,14 @@ export interface CampoDeFormulario {
 /** Los campos de una inserción, por su clave: los controles del formulario y las listas (`dotes`, `prerrequisitos`…). */
 export type CamposDeFormulario = Readonly<Record<string, CampoDeFormulario>>;
 
+/**
+ * Los campos de una inserción sin pasos (todos en el paso 0), de pares `[clave, etiqueta]`: la ventaja, el equipo, la fusión,
+ * el tipo de criatura…
+ */
+export function camposSinPasos(pares: readonly (readonly [string, string])[]): CamposDeFormulario {
+    return Object.fromEntries(pares.map(([clave, etiqueta]) => [clave, { etiqueta, paso: 0 }]));
+}
+
 /** Validador de un número entero (o vacío, `{ entero: true }` si no lo es): lo único que la web comprueba de los números
  * de la plantilla y el monstruo; lo demás lo valida la API. */
 export function entero(control: AbstractControl): ValidationErrors | null {
