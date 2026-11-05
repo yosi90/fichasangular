@@ -6292,9 +6292,8 @@ export class NuevoPersonajeService {
         const propias = especialidadesDelHueco(habilidad.Extras);
         if (propias.length > 0)
             return propias;
-        const id = toNumber(habilidad.Id);
-        return especialidadesDelHueco(this.estadoFlujo.ventajas.catalogoHabilidades
-            .find((item) => toNumber(item?.Id_habilidad) === id)?.Extras);
+        const catalogo = this.buscarDefinicionHabilidadCatalogo(toNumber(habilidad.Id), '', false);
+        return catalogo.esCustom ? [] : especialidadesDelHueco(catalogo.detalle?.Extras);
     }
 
     /** Otra habilidad de la misma familia (las Artesanías, los Saberes…) ya tiene ese extra. */
