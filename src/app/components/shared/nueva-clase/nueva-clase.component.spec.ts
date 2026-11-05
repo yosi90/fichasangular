@@ -101,6 +101,8 @@ describe('NuevaClaseComponent (el error de la API, en el marco y en su campo)', 
         expect(editor.errores.global).toBe("'Conjuros.Libro.Iniciales' no puede ser negativo.");
         expect(editor.pasoActual).toBe(4);
         expect(editor.form.controls.libro_iniciales.getError('api')).toBe("'Conjuros.Libro.Iniciales' no puede ser negativo.");
+        expect(editor.errores.textoDe('Conjuros.Libro.Iniciales', 'No puede ser negativo.')).toBe("'Conjuros.Libro.Iniciales' no puede ser negativo.");
+        expect(editor.errores.textoDe('Conjuros.Libro.Por_nivel', 'No puede ser negativo.')).toBe('No puede ser negativo.');
 
         editor.errores.limpiar();
         editor.errores.mostrar(new ProfileApiError('No se ha encontrado el género de prerrequisito.', 'no_encontrado', 404,
