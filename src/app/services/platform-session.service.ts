@@ -80,8 +80,10 @@ interface YosiftwareSdk {
     privacidad(opciones?: { recorrido?: boolean }): Promise<void>;
     reportar(opciones?: { tipo?: 'error' | 'propuesta' }): Promise<boolean>;
     denunciar(datos: DenunciaPlataforma): Promise<boolean>;
+    fetch(entrada: string, opciones?: RequestInit): Promise<Response>;
     chat: {
         abrir(idConversacion?: number): boolean;
+        directa(idCuenta: string): Promise<number | null>;
         alCambiarNoLeidos(oyente: (noLeidos: number) => void): () => void;
         conversaciones(): Promise<ConversacionChatPlataforma[] | null>;
     };
@@ -261,6 +263,39 @@ export class PlatformSessionService {
      */
     async abrirChat(idConversacion?: number): Promise<boolean> {
         return (await this.cargarSdk()).chat.abrir(idConversacion);
+    }
+
+    /**
+     * La conversación directa con una amistad (la crea si no existía) y su id; `null` sin sesión. Si no sois amistades,
+     * el SDK falla con `code: "solo_entre_amistades"` (ecosistema-kit/CHAT.md).
+     */
+    async conversacionDirecta(idCuenta: string): Promise<number | null> {
+        this.comprobarCuentaVigente();
+        const sdk = await this.cargarSdk();
+        const id = await sdk.chat.directa(idCuenta);
+        this.comprobarCuentaVigente(sdk);
+        return id;
+    }
+
+    /**
+     * Pide al SDK que vuelva a comprobar la sesión y renueve los tokens, y devuelve el estado de después. Hace falta tras
+     * aceptar las normas de Rol, para que el estado y el token dejen de traer `normasPendientes`.
+     *
+     * El SDK 1.30 no tiene un método público para esto. Lo hace su `fetch` cuando la respuesta es un 401
+     * (ecosistema-kit/ACCESO.md, «La API del SDK»): renueva y repite una vez. Se le pide una ruta de la plataforma, que
+     * no acepta el token de la API de Rol (otra audiencia) y responde 401, y así renueva la sesión sin más efecto. Cuando
+     * se publique `yosiftware.normasDeLaWeb()` (petición «mostrar las normas de la web al crear»), esto sobra.
+     */
+    async renovarSesion(): Promise<EstadoPlataforma> {
+        this.comprobarCuentaVigente();
+        const sdk = await this.cargarSdk();
+        try {
+            await sdk.fetch(`${environment.plataforma.apiUrl}/v1/perfil`, { cache: 'no-store' });
+        } catch {
+            // Sin red o con otra cuenta: lo que cuenta es el estado que haya quedado.
+        }
+        this.comprobarCuentaVigente(sdk);
+        return this.estado;
     }
 
     /** Conversaciones con mensajes sin leer, más invitaciones a grupos: avisa ahora y en cada cambio. */

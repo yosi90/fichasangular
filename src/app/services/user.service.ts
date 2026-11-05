@@ -7,6 +7,7 @@ import { Usuario } from '../interfaces/usuario';
 import { EMPTY_USER_ACL, UserAcl, UserRole, normalizeUserAcl } from '../interfaces/user-acl';
 import { UserAccessRestrictionReason, UserAccessScope, UserBanStatus, UserComplianceSnapshot, UserModerationSanction } from '../interfaces/user-moderation';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
+import { NormasCreacionService } from './normas-creacion.service';
 import { EstadoPlataforma, PlatformSessionService, RestriccionesPlataforma } from './platform-session.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserProfileApiService } from './user-profile-api.service';
@@ -95,9 +96,33 @@ export class UserService {
             return banRestriction;
         if (compliance.mustAcceptUsage)
             return 'mustAcceptUsage';
-        if (scope === 'creation' && compliance.mustAcceptCreation)
-            return 'mustAcceptCreation';
+        // Las normas de Rol ya no bloquean de antemano: se piden al pulsar crear (`asegurarNormasDeCreacion`).
         return null;
+    }
+
+    /** Si a la cuenta le faltan las normas propias de Rol (las que se piden para crear). */
+    public get normasDeCreacionPendientes(): boolean {
+        return this.sesionAbierta && this.getCurrentCompliance()?.mustAcceptCreation === true;
+    }
+
+    /**
+     * El paso previo de toda acción de crear (personajes, campañas, contenido de los catálogos): si faltan las normas de
+     * Rol, abre su ventana y resuelve `true` solo si las acepta (con los tokens ya renovados); si dice «Ahora no», `false`
+     * y no pasa nada más. Sin normas pendientes, `true` al momento. Sin sesión, `false`. Con `porLaApi` (la API ha
+     * respondido `CREATION_POLICY_ACCEPTANCE_REQUIRED`), la ventana sale aunque el estado aún no lo diga.
+     */
+    public async asegurarNormasDeCreacion(porLaApi: boolean = false): Promise<boolean> {
+        if (!this.sesionAbierta)
+            return false;
+        if (!porLaApi && !this.normasDeCreacionPendientes)
+            return true;
+        if (!this.normasCreacionSvc)
+            return false;
+        try {
+            return await this.normasCreacionSvc.pedir();
+        } catch {
+            return false;
+        }
     }
 
     public canProceed(scope: UserAccessScope = 'usage'): boolean {
@@ -132,6 +157,7 @@ export class UserService {
         private userProfileApiSvc?: UserProfileApiService,
         private privateUserFirestoreSvc?: PrivateUserFirestoreService,
         private platformSessionSvc?: PlatformSessionService,
+        private normasCreacionSvc?: NormasCreacionService,
     ) {
         this.subscribeAuthState((firebaseUser) => {
             this.actualizarSesionDesdeAuth(firebaseUser);
@@ -675,7 +701,7 @@ export class UserService {
         if (restriction === 'mustAcceptUsage')
             return 'Debes aceptar las normas de uso vigentes antes de continuar.';
         if (restriction === 'mustAcceptCreation')
-            return 'Debes aceptar las normas de Rol vigentes antes de crear o editar contenido.';
+            return 'Para crear o editar en Rol tienes que aceptar sus normas.';
         if (restriction === 'creationRestricted' || restriction === 'communityRestricted') {
             const estado = this.estadoPlataforma;
             const hasta = estado.tipo === 'con_sesion' ? this.fechaRestriccion(estado.restricciones?.hasta) : null;

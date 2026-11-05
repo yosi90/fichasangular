@@ -12,7 +12,7 @@
         {{errorMessage}}
     </div>
 
-    <div *ngIf="isLoggedIn && !loading && !relationshipProfile && isBlockedByMe" class="public-profile-state sombra-caja-sm tw-rounded-md tw-p-6">
+    <div *ngIf="isLoggedIn && !loading && isBlockedByMe" class="public-profile-state sombra-caja-sm tw-rounded-md tw-p-6">
         <p>Has bloqueado a {{profileLabel}}. No os veis en ninguna web de Yosiftware.</p>
         <button mat-stroked-button color="primary" type="button" [disabled]="actionInFlight" (click)="desbloquear()">
             <mat-icon>lock_open</mat-icon>
@@ -20,15 +20,17 @@
         </button>
     </div>
 
-    <section class="public-profile-card sombra-caja-sm tw-rounded-md" *ngIf="isLoggedIn && !loading && relationshipProfile">
+    <section class="public-profile-card sombra-caja-sm tw-rounded-md" *ngIf="isLoggedIn && !loading && hayPerfil && !isBlockedByMe">
         <div class="public-profile-layout">
             <div class="public-profile-avatar">
                 <img [src]="avatarUrl" [alt]="profileLabel" />
             </div>
             <div class="public-profile-copy">
-                <div class="public-profile-tag">Perfil de la comunidad</div>
+                <div class="public-profile-tag">{{relationshipProfile ? 'Perfil de la comunidad' : 'Perfil de Yosiftware'}}</div>
                 <h2 class="public-profile-title">{{profileLabel}}</h2>
+                <p class="public-profile-subtitle" *ngIf="perfilPlataforma && perfilPlataforma.nombre">@{{perfilPlataforma.alias}}</p>
                 <p class="public-profile-subtitle" *ngIf="formattedMemberSince.length > 0">En Rol desde {{formattedMemberSince}}</p>
+                <p class="public-profile-subtitle" *ngIf="!relationshipProfile">Aún no ha entrado en Rol.</p>
                 <p class="public-profile-pronouns" *ngIf="pronouns.length > 0">{{pronouns}}</p>
                 <p class="public-profile-bio" *ngIf="bio.length > 0">{{bio}}</p>
                 <p class="public-profile-relationship" *ngIf="relationshipLabel.length > 0">{{relationshipLabel}}</p>
@@ -71,7 +73,9 @@
                 </div>
                 <p class="public-profile-note" *ngIf="!isSelf">
                     Las amistades, los seguimientos y los bloqueos son de tu cuenta de Yosiftware y valen en todas sus webs.
-                    <a [href]="urlWebSocial" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>Gestiónalos en la web social</a>.
+                    <button type="button" class="public-profile-enlace" (click)="abrirAmistades()">Tus amistades y bloqueos</button>
+                    ·
+                    <a [href]="urlWebSocial" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>También en la web social</a>
                 </p>
 
                 <div class="public-profile-stats">

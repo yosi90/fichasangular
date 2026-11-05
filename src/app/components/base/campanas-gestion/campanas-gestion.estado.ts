@@ -25,12 +25,15 @@ import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-eq
 import { MAX_TIRADAS_PUNTOS_GOLPE, MIN_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import {
     mensajeErrorDeAccion,
+    permitirAccionConNormas,
     permitirAccionGuardada,
     textoEstadoEnCampana,
+    textoPersona,
     textoRolEnCampana,
     textoVisibilidadEnCampana,
 } from '../user-profile/perfil-acciones';
 import { textoFechaHora } from 'src/app/services/utils/fecha-texto';
+import { trasLasNormasDeCreacion } from 'src/app/services/utils/normas-creacion';
 import { enteroEntre, toPositiveInt } from 'src/app/services/utils/normalizacion';
 
 export type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
@@ -188,6 +191,11 @@ export class CampanasGestionEstado implements OnDestroy {
         return permitirAccionGuardada(this.userSvc, this.apiActionGuardSvc, this.appToastSvc, actionKey);
     }
 
+    /** Crear o cambiar la campaña, una trama o una subtrama: antes, las normas de Rol si faltan. */
+    private puedeLanzarConNormas(actionKey: string): Promise<boolean> {
+        return permitirAccionConNormas(this.userSvc, this.apiActionGuardSvc, this.appToastSvc, actionKey);
+    }
+
     get campaignNameLength(): number {
         return `${this.campaignCreateDraft ?? ''}`.trim().length;
     }
@@ -276,7 +284,7 @@ export class CampanasGestionEstado implements OnDestroy {
         if (!transfer)
             return '';
         const member = this.selectedCampaignMembers.find((item) => item.uid.toLowerCase() === transfer.cuenta.toLowerCase());
-        return member ? this.getUserDisplayLabel(member.displayName, member.email, member.uid) : 'un jugador';
+        return member ? textoPersona(member.displayName, member.email) : 'un jugador';
     }
 
     get selectedCampaignMembers(): CampaignMemberItem[] {
@@ -374,7 +382,12 @@ export class CampanasGestionEstado implements OnDestroy {
         this.campaignWorkspaceTab = 'usuarios';
     }
 
+    /** «Nueva campaña»: si faltan las normas de Rol, antes su ventana; sin aceptarlas, no se abre el editor. */
     seleccionarNuevaCampana(): void {
+        trasLasNormasDeCreacion(this.userSvc, () => this.empezarNuevaCampana());
+    }
+
+    private empezarNuevaCampana(): void {
         this.selectedCampaignId = null;
         this.selectedCampaignDetail = null;
         this.selectedCampaignErrorMessage = '';
@@ -511,7 +524,7 @@ export class CampanasGestionEstado implements OnDestroy {
             this.appToastSvc.showError(validationError);
             return;
         }
-        if (!this.puedeLanzar('campaign.create'))
+        if (!await this.puedeLanzarConNormas('campaign.create'))
             return;
 
         this.campaignCreateSaving = true;
@@ -542,7 +555,7 @@ export class CampanasGestionEstado implements OnDestroy {
             this.appToastSvc.showError(validationError);
             return;
         }
-        if (!this.puedeLanzar(`campaign.update.${this.selectedCampaignId}`))
+        if (!await this.puedeLanzarConNormas(`campaign.update.${this.selectedCampaignId}`))
             return;
 
         this.campaignRenameSaving = true;
@@ -741,7 +754,7 @@ export class CampanasGestionEstado implements OnDestroy {
         const result = await Swal.fire({
             icon: 'warning',
             title: 'Sacar de la campaña',
-            text: `${this.getUserDisplayLabel(member.displayName, member.email, member.uid)} dejará de ver la campaña. Sus personajes se quedan en ella, y solo podrá volver con una invitación nueva.`,
+            text: `${textoPersona(member.displayName, member.email)} dejará de ver la campaña. Sus personajes se quedan en ella, y solo podrá volver con una invitación nueva.`,
             showCancelButton: true,
             confirmButtonText: 'Sacar',
             cancelButtonText: 'Cancelar',
@@ -770,7 +783,7 @@ export class CampanasGestionEstado implements OnDestroy {
             displayName: member.displayName,
             photoThumbUrl: null,
         };
-        this.transferSearchQuery = this.getUserDisplayLabel(member.displayName, member.email, member.uid);
+        this.transferSearchQuery = textoPersona(member.displayName, member.email);
         this.transferSearchResults = [];
         this.transferSearchErrorMessage = '';
     }
@@ -836,7 +849,7 @@ export class CampanasGestionEstado implements OnDestroy {
     async crearTrama(): Promise<void> {
         if (!this.selectedCampaignId || !this.selectedCampaignCanManage || this.tramaCreateSaving)
             return;
-        if (!this.puedeLanzar(`campaign.trama.create.${this.selectedCampaignId}`))
+        if (!await this.puedeLanzarConNormas(`campaign.trama.create.${this.selectedCampaignId}`))
             return;
 
         this.tramaCreateSaving = true;
@@ -872,7 +885,7 @@ export class CampanasGestionEstado implements OnDestroy {
     async guardarEdicionTrama(): Promise<void> {
         if (!this.editingTramaId || this.tramaSaveInFlightId === this.editingTramaId)
             return;
-        if (!this.puedeLanzar(`campaign.trama.update.${this.editingTramaId}`))
+        if (!await this.puedeLanzarConNormas(`campaign.trama.update.${this.editingTramaId}`))
             return;
 
         this.tramaSaveInFlightId = this.editingTramaId;
@@ -909,7 +922,7 @@ export class CampanasGestionEstado implements OnDestroy {
     async guardarEdicionSubtrama(): Promise<void> {
         if (!this.editingSubtramaId || this.subtramaSaveInFlightId === this.editingSubtramaId)
             return;
-        if (!this.puedeLanzar(`campaign.subtrama.update.${this.editingSubtramaId}`))
+        if (!await this.puedeLanzarConNormas(`campaign.subtrama.update.${this.editingSubtramaId}`))
             return;
 
         this.subtramaSaveInFlightId = this.editingSubtramaId;
@@ -947,7 +960,7 @@ export class CampanasGestionEstado implements OnDestroy {
     async crearSubtrama(tramaId: number): Promise<void> {
         if (!this.selectedCampaignCanManage || this.subtramaCreateSavingTramaId === tramaId)
             return;
-        if (!this.puedeLanzar(`campaign.subtrama.create.${tramaId}`))
+        if (!await this.puedeLanzarConNormas(`campaign.subtrama.create.${tramaId}`))
             return;
 
         this.subtramaCreateSavingTramaId = tramaId;
@@ -1010,15 +1023,7 @@ export class CampanasGestionEstado implements OnDestroy {
     readonly getMembershipStatusLabel = textoEstadoEnCampana;
     readonly getCampaignVisibilityLabel = textoVisibilidadEnCampana;
 
-    getUserDisplayLabel(displayName: string | null | undefined, email: string | null | undefined, uid: string): string {
-        const nombre = `${displayName ?? ''}`.trim();
-        if (nombre.length > 0)
-            return nombre;
-        const correo = `${email ?? ''}`.trim();
-        if (correo.length > 0)
-            return correo;
-        return 'Usuario sin nombre';
-    }
+    readonly textoPersona = textoPersona;
 
     formatOptionalDateTime(value: string | null | undefined, fallback: string = 'Sin dato'): string {
         return textoFechaHora(value, fallback);

@@ -2,6 +2,7 @@ import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristi
 import { CategoriaEdadRaza, PasoEdadRaza, Raza } from 'src/app/interfaces/raza';
 import { RazaCreateCategoriaEdad, RazaCreatePasoEdad } from 'src/app/interfaces/razas-api';
 import { toInt, toNullableText, toNumber, toNumberOrNull } from './normalizacion';
+import { categoriasEdadOrdenadas, pasosEdadOrdenados } from './razas-por-edades';
 
 /*
  * Las edades de una raza en su inserción (hito 3 del roadmap de inserciones, 2026-10-31): las filas que edita el paso
@@ -178,8 +179,8 @@ function filaDePaso(paso: PasoEdadRaza): FilaPasoEdad {
 /** Las edades de una raza tal como las da su `GET` (las categorías en su orden, los pasos por edad). */
 export function edadesDesdeRaza(raza: Pick<Raza, 'Categorias_edad' | 'Pasos_edad'> | null | undefined): EdadesDeRaza {
     return {
-        categorias: [...(raza?.Categorias_edad ?? [])].sort((a, b) => a.Orden - b.Orden).map(filaDeCategoria),
-        pasos: [...(raza?.Pasos_edad ?? [])].sort((a, b) => a.Edad - b.Edad).map(filaDePaso),
+        categorias: categoriasEdadOrdenadas(raza).map(filaDeCategoria),
+        pasos: pasosEdadOrdenados(raza).map(filaDePaso),
     };
 }
 

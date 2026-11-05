@@ -2,3 +2,31 @@
 :host
     display: block
     position: relative
+
+// Las tablas por edad (razas que crecen por edades): la edad de cada fila no va en versalitas como la cabecera, las
+// cifras no se parten y, en una ficha estrecha (el móvil), la tabla se desplaza de lado (`.ficha-bloque__contenido`)
+// en vez de apretarse.
+.raza-edades, .raza-ganancias
+    tbody th
+        font-size: 14px
+        font-weight: 600
+        letter-spacing: normal
+        text-transform: none
+        white-space: nowrap
+        vertical-align: top
+
+    .ficha-num
+        white-space: nowrap
+
+    abbr[title]
+        text-decoration: none
+        cursor: help
+
+.raza-edades
+    min-width: 36rem
+
+.raza-ganancias
+    min-width: 28rem
+
+    .ficha-lista
+        margin: 0

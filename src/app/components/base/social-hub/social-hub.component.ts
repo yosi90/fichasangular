@@ -18,10 +18,12 @@ import { PlatformSessionService } from 'src/app/services/platform-session.servic
 import { InvitacionRecibidaEspacio, PlatformSpacesService } from 'src/app/services/platform-spaces.service';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 import { toPositiveInt } from 'src/app/services/utils/normalizacion';
+import { SocialAmistadesEstado } from './social-amistades.estado';
 import {
     mensajeErrorDeAccion,
     permitirAccionGuardada,
     textoEstadoEnCampana,
+    textoPersona,
     textoRolEnCampana,
     textoVisibilidadEnCampana,
 } from '../user-profile/perfil-acciones';
@@ -30,6 +32,7 @@ import {
     selector: 'app-social-hub',
     templateUrl: './social-hub.component.html',
     styleUrls: ['./social-hub.component.sass'],
+    providers: [SocialAmistadesEstado],
     standalone: false
 })
 export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
@@ -62,9 +65,11 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     readonly sections: { id: SocialHubSectionId; label: string; icon: string; }[] = [
         { id: 'resumen', label: 'Resumen', icon: 'hub' },
+        { id: 'amistades', label: 'Amistades', icon: 'group' },
         { id: 'comunidad', label: 'Comunidad', icon: 'groups' },
         { id: 'convocatorias', label: 'Convocatorias', icon: 'forum' },
         { id: 'campanas', label: 'Campañas', icon: 'diversity_3' },
+        { id: 'bloqueos', label: 'Bloqueos', icon: 'block' },
     ];
 
     constructor(
@@ -78,6 +83,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         private platformSessionSvc: PlatformSessionService,
         private chatFloatingSvc: ChatFloatingService,
         private platformSpacesSvc: PlatformSpacesService,
+        readonly amistades: SocialAmistadesEstado,
     ) { }
 
     ngOnInit(): void {
@@ -88,6 +94,9 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
                 if (this.isLoggedIn) {
                     this.socialRealtimeSvc.activate();
                     void this.loadAuthenticatedState();
+                    void this.amistades.cargarResumen();
+                    if (this.currentSection === 'amistades' || this.currentSection === 'bloqueos')
+                        this.cargarSeccion();
                     return;
                 }
                 this.socialRealtimeSvc.deactivate();
@@ -123,8 +132,24 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     selectSection(section: SocialHubSectionId): void {
         this.currentSection = section;
-        if (section === 'campanas' && this.isLoggedIn)
+        this.cargarSeccion();
+    }
+
+    /** Lo que necesita la sección abierta: las campañas, las amistades o los bloqueos se leen al entrar en ella. */
+    private cargarSeccion(): void {
+        if (!this.isLoggedIn)
+            return;
+        if (this.currentSection === 'campanas')
             void this.ensureCampaignSectionLoaded();
+        else if (this.currentSection === 'amistades')
+            void this.amistades.cargarAmistades();
+        else if (this.currentSection === 'bloqueos')
+            void this.amistades.bloqueos.cargar();
+    }
+
+    /** Cuántas solicitudes de amistad esperan respuesta, para el contador de «Amistades» en la navegación. */
+    contadorSeccion(section: SocialHubSectionId): number {
+        return section === 'amistades' ? this.amistades.solicitudesRecibidasPendientes : 0;
     }
 
     /** Las invitaciones son de la plataforma (espacios): se aceptan desde Rol y después se pone al día la copia. */
@@ -280,6 +305,8 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
 
     get summaryCards(): { label: string; value: number; hint: string; }[] {
         return [
+            { label: 'Amistades', value: this.amistades.totalAmistades, hint: 'En todas las webs de Yosiftware' },
+            { label: 'Solicitudes de amistad', value: this.amistades.solicitudesRecibidasPendientes, hint: 'Pendientes de responder' },
             { label: 'Campañas', value: this.campaigns.length, hint: 'Donde juegas o diriges' },
             { label: 'Invitaciones', value: this.campaignInvitations.length, hint: 'Pendientes de responder' },
         ];
@@ -368,6 +395,8 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
     readonly getCampaignRoleLabel = textoRolEnCampana;
     readonly getCampaignMembershipLabel = textoEstadoEnCampana;
     readonly getCampaignVisibilityLabel = textoVisibilidadEnCampana;
+    /** Lo que se ve de alguien de la campaña: su nombre o su correo, nunca su id. */
+    readonly textoPersona = textoPersona;
 
     private async loadAuthenticatedState(): Promise<void> {
         this.loading = true;
@@ -396,6 +425,7 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
         this.campaignMembershipActionInFlight = false;
         this.dismissCampaignEntry();
         this.pendingCampaignId = null;
+        this.amistades.vaciar();
         this.socialRealtimeSvc.deactivate();
         this.currentSection = 'resumen';
     }
@@ -437,15 +467,14 @@ export class SocialHubComponent implements OnInit, OnChanges, OnDestroy {
             this.currentSection = 'resumen';
             return;
         }
-        if (section === 'amistades' || section === 'bloqueos') {
-            window.open(this.urlWebSocial, '_blank', 'noopener');
-            this.currentSection = 'resumen';
-            return;
-        }
         this.currentSection = section === 'actividad' ? 'resumen' : section;
         this.pendingCampaignId = toPositiveInt(request.campaignId);
         if (!this.isLoggedIn)
             return;
+        if (this.currentSection === 'amistades' || this.currentSection === 'bloqueos') {
+            this.cargarSeccion();
+            return;
+        }
         // Primero la lista: la campaña pedida se abre si está en ella, y si no, se ofrece pedir entrar.
         if (this.currentSection === 'campanas')
             void this.ensureCampaignSectionLoaded().then(() => this.tryOpenPendingCampaign());

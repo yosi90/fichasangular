@@ -8,6 +8,9 @@ import { UserService } from 'src/app/services/user.service';
 import { createRacialPlaceholder } from 'src/app/services/utils/racial-mapper';
 import { DetallesRazaComponent } from './detalles-raza.component';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
+import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
+import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
+import { categoriasEdadContrato, razaPorEdadesApi, razaPorEdadesEnPasoApi } from 'src/testing/raza-por-edades';
 
 function crearRazaMock(extra: Partial<Raza> = {}): Raza {
     return {
@@ -90,8 +93,9 @@ describe('DetallesRazaComponent', () => {
     let fixture: ComponentFixture<DetallesRazaComponent>;
     let manualNav: jasmine.SpyObj<ManualDetalleNavigationService>;
     let usuario: { can: jasmine.Spy };
+    let navegacion: { abrir: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
-    const { texto, titulos, etiquetasDatos, valor, filasPares, enlace, lateral, seccion, etiquetasCabecera } = lectorFicha(elemento);
+    const { texto, titulos, etiquetasDatos, valor, filasPares, enlace, lateral, seccion, etiquetasCabecera, bloque, textos } = lectorFicha(elemento);
 
     function pintar(extra: Partial<Raza> = {}): void {
         component.raza = crearRazaMock(extra);
@@ -101,11 +105,13 @@ describe('DetallesRazaComponent', () => {
     beforeEach(async () => {
         manualNav = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
         usuario = { can: jasmine.createSpy('can').and.returnValue(false) };
+        navegacion = { abrir: jasmine.createSpy('abrir') };
         await TestBed.configureTestingModule({
             declarations: [DetallesRazaComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
             providers: [
                 { provide: ManualDetalleNavigationService, useValue: manualNav },
                 { provide: UserService, useValue: usuario },
+                { provide: NavegacionRolService, useValue: navegacion },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -409,5 +415,117 @@ describe('DetallesRazaComponent', () => {
         expect(lapiz).toBeTruthy();
         lapiz!.click();
         expect(abiertas.map((raza) => raza.Id)).toEqual([component.raza.Id]);
+    });
+
+    describe('una raza que crece por edades (los dragones)', () => {
+        /** El dragón del contrato con una sortílega en juvenil y la presencia pavorosa desde joven. */
+        function dragon(): Raza {
+            const categorias = categoriasEdadContrato();
+            categorias[2].Raciales.push({ Id: 901, Nombre: 'Presencia pavorosa (dragón)', Valor: "150'", Caracteristica_cd: { Id: 6, Nombre: 'Carisma' } });
+            categorias[3].Raciales.push({ Id: 901, Nombre: 'Presencia pavorosa (dragón)', Valor: "180'", Caracteristica_cd: { Id: 6, Nombre: 'Carisma' } });
+            categorias[3].Sortilegas = [{ Conjuro: { Id: 55, Nombre: 'Localizar objeto' }, Usos_diarios: '1/día por categoría de edad', Descripcion: '' }];
+            categorias[3].Rd = '5/mágica';
+            return normalizeRazaApi(razaPorEdadesApi({
+                co: 40,
+                Categorias_edad: categorias,
+                Lanzamiento: { Clase: { Id: 9, Nombre: 'Hechicero' }, Nivel: 0, Listas: [{ Tipo: 'clase', Id: 4, Nombre: 'Clérigo' }, { Tipo: 'dominio', Id: 2, Nombre: 'Aire' }] },
+            }));
+        }
+
+        function tabla(titulo: string): { cabecera: string[]; filas: string[][]; } {
+            const tarjeta = bloque(titulo);
+            return {
+                cabecera: textos('thead th', tarjeta),
+                filas: Array.from(tarjeta?.querySelectorAll('tbody tr') ?? []).map((fila) => Array.from(fila.children).map((celda) => limpio(celda))),
+            };
+        }
+
+        beforeEach(() => {
+            component.raza = dragon();
+            fixture.detectChanges();
+        });
+
+        it('dice que las cifras sueltas son las de la cría, en la cabecera, en cada dato y en los DG', () => {
+            expect(limpio(elemento().querySelector('.ficha-cabecera__subtitulo'))).toBe('Crece por edades: las cifras sueltas son las de cría, su primera edad; las de cada edad, abajo, en «Por edad».');
+            expect(valor('Ajuste de nivel')).toBe('+4 de cría');
+            expect(valor('Correr')).toBe("40' de cría");
+            expect(lateral('Dados de golpe adicionales · cría')).not.toBeNull();
+            expect(lateral('Modificadores de característica · cría')).not.toBeNull();
+            expect(lateral('Edades')).toBeNull();
+        });
+
+        it('la tabla por edad, con una columna por cada aptitud cuya cifra cambia y sin las columnas vacías', () => {
+            const porEdad = tabla('Por edad');
+
+            expect(porEdad.cabecera).toEqual(['Edad', 'Años', 'Tamaño', 'DG', 'CA natural', 'Arma de aliento', 'Presencia pavorosa', 'RD', 'Nivel de hechicero', 'Ajuste', 'VD']);
+            expect(porEdad.filas[0]).toEqual(['Cría', '0–5', 'Mediano', '7', '+6', '2d10', '', '', '', '+4', '4']);
+            expect(porEdad.filas[2]).toEqual(['Joven', '16–25', 'Grande', '13', '+12', '6d10', "150'", '', '1', '+6', '7']);
+            expect(porEdad.filas[3]).toEqual(['Juvenil', '26–50', 'Grande', '16', '+15', '8d10', "180'", '5/mágica', '3', 'Solo PNJ', '10']);
+            expect(bloque('Por edad')?.querySelector('abbr[title="Armadura natural"]')).not.toBeNull();
+        });
+
+        it('las características por edad con lo que suma la raza, y el movimiento y los ataques', () => {
+            const caracteristicas = tabla('Características por edad');
+            expect(caracteristicas.cabecera).toEqual(['Edad', 'FUE', 'DES', 'CON', 'INT', 'SAB', 'CAR']);
+            expect(caracteristicas.filas[0]).toEqual(['Cría', '21 (+11)', '10 (+0)', '15 (+4)', '10 (+0)', '11 (+0)', '10 (+0)']);
+
+            const movimiento = tabla('Movimiento y ataques por edad');
+            expect(movimiento.cabecera).toEqual(['Edad', 'Espacio / alcance', 'Velocidad', 'Ataques naturales', 'NL de las sortílegas']);
+            expect(movimiento.filas[1]).toEqual(['Muy joven', "10' / 5'", "40', volar 150' (mala)", 'Mordisco 1d8, 2 garras 1d6', '2']);
+        });
+
+        it('lo que gana cada edad, una vez, con la característica de su CD y los usos, enlazado a su detalle', () => {
+            const ganancias = tabla('Lo que gana cada edad');
+            expect(ganancias.filas.map((fila) => fila[0])).toEqual(['Cría', 'Joven', 'Juvenil']);
+            expect(ganancias.filas[0][1]).toBe('Arma de aliento · CD por Constitución');
+            expect(ganancias.filas[1][1]).toBe('Presencia pavorosa (dragón) · CD por Carisma');
+            expect(ganancias.filas[2]).toEqual(['Juvenil', '', 'Localizar objeto · 1/día por categoría de edad']);
+
+            const racial = spyOn(component.racialDetallesPorNombre, 'emit');
+            enlace('Presencia pavorosa (dragón)').click();
+            expect(racial).toHaveBeenCalledWith({ id: 901, nombre: 'Presencia pavorosa (dragón)' });
+
+            enlace('Localizar objeto').click();
+            expect(navegacion.abrir).toHaveBeenCalledWith({
+                clase: 'referencia-manual', referencia: { tipo: 'conjuro', id: 55, nombre: 'Localizar objeto', manualId: 0 },
+            });
+        });
+
+        it('los pasos de edad, con el NEP o «Solo PNJ»', () => {
+            const pasos = tabla('Pasos de edad al crear el personaje');
+            expect(pasos.cabecera).toEqual(['Desde', 'Edad', 'DG', 'CA natural', 'Ajuste', 'NEP', 'VD']);
+            expect(pasos.filas[0]).toEqual(['0 años', 'Cría', '7', '+6', '+4', '11', '4']);
+            expect(pasos.filas[4]).toEqual(['26 años', 'Juvenil', '16', '+15', 'Solo PNJ', 'Solo PNJ', '10']);
+        });
+
+        it('el lanzamiento racial: la clase (enlazada), «el de su edad» y las listas de más', () => {
+            expect(filasPares(lateral('Lanzamiento racial'))).toEqual([['Lanza como', 'Hechicero'], ['Nivel', 'El de su edad (en «Por edad»)']]);
+            expect(limpio(lateral('Lanzamiento racial'))).toContain('También lanza como arcanos los conjuros de clérigo y del dominio de Aire.');
+
+            enlace('Hechicero').click();
+            expect(navegacion.abrir).toHaveBeenCalledWith({
+                clase: 'referencia-manual', referencia: { tipo: 'clase', id: 9, nombre: 'Hechicero', manualId: 0 },
+            });
+        });
+
+        it('resuelta a una edad (la vista previa de la creación), las cifras son las de esa edad', () => {
+            component.raza = normalizeRazaApi(razaPorEdadesEnPasoApi(13));
+            fixture.detectChanges();
+
+            expect(limpio(elemento().querySelector('.ficha-cabecera__subtitulo'))).toBe('Crece por edades: las cifras son las de joven; las de cada edad, abajo, en «Por edad».');
+            expect(valor('Ajuste de nivel')).toBe('+6 de joven');
+            expect(filasPares(lateral('Lanzamiento racial'))).toContain(['Nivel', '1']);
+        });
+    });
+
+    it('una raza sin edades que lanza como una clase (el rakshasa): su nivel, sin tablas por edad', () => {
+        pintar({ Lanzamiento: { Clase: { Id: 8, Nombre: 'Hechicero' }, Nivel: 7, Listas: [] } } as Partial<Raza>);
+
+        expect(filasPares(lateral('Lanzamiento racial'))).toEqual([['Lanza como', 'Hechicero'], ['Nivel', '7']]);
+        expect(bloque('Por edad')).toBeNull();
+        expect(bloque('Pasos de edad al crear el personaje')).toBeNull();
+        expect(elemento().querySelector('.ficha-cabecera__subtitulo')).toBeNull();
+        expect(valor('Correr')).toBe("30'");
+        expect(lateral('Edades')).not.toBeNull();
     });
 });

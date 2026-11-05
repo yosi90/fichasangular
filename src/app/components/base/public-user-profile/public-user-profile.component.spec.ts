@@ -9,6 +9,7 @@ describe('PublicUserProfileComponent', () => {
     let platformSessionSvc: any;
     let userSvc: any;
     let appToastSvc: any;
+    let navSvc: any;
     let isLoggedIn$: BehaviorSubject<boolean>;
 
     const perfilRol = {
@@ -22,7 +23,7 @@ describe('PublicUserProfileComponent', () => {
     function crear(logueado = true): void {
         isLoggedIn$ = new BehaviorSubject<boolean>(logueado);
         userSvc = { IsLoggedIn: logueado, isLoggedIn$ };
-        component = new PublicUserProfileComponent(socialV3ApiSvc, platformSocialSvc, platformSessionSvc, userSvc, appToastSvc);
+        component = new PublicUserProfileComponent(socialV3ApiSvc, platformSocialSvc, platformSessionSvc, userSvc, appToastSvc, navSvc);
         component.uid = 'uid-2';
         component.isLoggedIn = logueado;
     }
@@ -43,6 +44,7 @@ describe('PublicUserProfileComponent', () => {
         platformSessionSvc.denunciar.and.resolveTo(true);
         platformSessionSvc.urlSocial.and.returnValue('https://qa-social.yosiftware.es');
         appToastSvc = jasmine.createSpyObj('AppToastService', ['showSuccess', 'showError']);
+        navSvc = jasmine.createSpyObj('UserProfileNavigationService', ['openSocial']);
     });
 
     afterEach(() => component?.ngOnDestroy());
@@ -112,6 +114,51 @@ describe('PublicUserProfileComponent', () => {
 
         await component.desbloquear();
         expect(platformSocialSvc.bloquear).toHaveBeenCalledWith('uid-2', false);
+    });
+
+    it('a quien aún no ha entrado en Rol (se le encuentra al buscar) se le ve con su perfil de Yosiftware', async () => {
+        socialV3ApiSvc.getRelationshipProfile.and.rejectWith(new Error('No encontrado.'));
+        platformSocialSvc.perfil.and.resolveTo({
+            id: 'uid-2', alias: 'yuna', nombre: null, biografia: null, pronombres: null, privado: true,
+            avatar: { url: '/v1/perfiles/uid-2/avatar?v=3', miniatura: '/v1/perfiles/uid-2/avatar/miniatura?v=3' },
+        });
+        crear();
+        await component.cargar();
+
+        expect(component.hayPerfil).toBeTrue();
+        expect(component.errorMessage).toBe('');
+        expect(component.profileLabel).toBe('@yuna');
+        expect(component.avatarUrl).toMatch(/^https:\/\/.+\/v1\/perfiles\/uid-2\/avatar\/miniatura\?v=3$/);
+        expect(component.statsItems).toEqual([]);
+        expect(component.relacion).toEqual(sinRelacion);
+    });
+
+    it('sin perfil en Rol ni en Yosiftware dice que no se pudo cargar', async () => {
+        socialV3ApiSvc.getRelationshipProfile.and.rejectWith(new Error('Esta persona no está disponible.'));
+        platformSocialSvc.perfil.and.rejectWith(new PlatformSocialError('Esta persona no está disponible.', 'persona_no_encontrada', 404));
+        platformSocialSvc.relacion.and.rejectWith(new PlatformSocialError('Esta persona no está disponible.', 'persona_no_encontrada', 404));
+        crear();
+        await component.cargar();
+
+        expect(component.hayPerfil).toBeFalse();
+        expect(component.errorMessage).toBe('Esta persona no está disponible.');
+    });
+
+    it('reconoce el perfil propio por la cuenta de la sesión', async () => {
+        socialV3ApiSvc.getRelationshipProfile.and.rejectWith(new Error('No encontrado.'));
+        platformSessionSvc.cuenta = { id: 'uid-2', alias: 'yuna', correo: null };
+        crear();
+        await component.cargar();
+
+        expect(component.isSelf).toBeTrue();
+    });
+
+    it('lleva a las amistades y bloqueos de Social', () => {
+        crear();
+
+        component.abrirAmistades();
+
+        expect(navSvc.openSocial).toHaveBeenCalledWith('amistades');
     });
 
     it('denuncia a la persona con la ventana de la plataforma', async () => {

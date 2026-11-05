@@ -1,12 +1,16 @@
+import Swal from 'sweetalert2';
 import { UserAccessScope } from 'src/app/interfaces/user-moderation';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { AppToastService } from 'src/app/services/app-toast.service';
+import { PERSONA_SIN_NOMBRE } from 'src/app/services/platform-social.service';
 import { UserService } from 'src/app/services/user.service';
+import { normasDeCreacionAceptadas } from 'src/app/services/utils/normas-creacion';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
 
 /**
  * Lo que comparten «Mi perfil», la gestión de campañas y el social al lanzar una acción contra la API: comprobar las
- * normas y el freno de repeticiones antes, y convertir el error en una frase para la persona después.
+ * restricciones, las normas de Rol (al crear) y el freno de repeticiones antes, y convertir el error en una frase para la
+ * persona después.
  */
 
 /** Las acciones que crean o cambian contenido de rol piden las normas de creación; las demás, las de uso. */
@@ -46,9 +50,48 @@ export function permitirAccionGuardada(
     return true;
 }
 
+/**
+ * Como `permitirAccionGuardada`, pero si la acción crea o cambia contenido de rol (`ambitoDeAccion`), antes pide las
+ * normas de Rol si faltan (su ventana): sin aceptarlas, no se lanza y no se avisa de nada más.
+ */
+export async function permitirAccionConNormas(
+    userSvc: UserService,
+    apiActionGuardSvc: ApiActionGuardService,
+    appToastSvc: AppToastService,
+    actionKey: string,
+): Promise<boolean> {
+    if (ambitoDeAccion(actionKey) === 'creation') {
+        const restriccion = userSvc.getAccessRestrictionMessage('creation');
+        if (restriccion.length > 0) {
+            appToastSvc.showError(restriccion);
+            return false;
+        }
+        if (!await normasDeCreacionAceptadas(userSvc))
+            return false;
+    }
+    return permitirAccionGuardada(userSvc, apiActionGuardSvc, appToastSvc, actionKey);
+}
+
 /** La frase del error: la de las normas, la sanción o la limitación si es eso (las de `UserService`), o la de la API. */
 export function mensajeErrorDeAccion(userSvc: UserService, error: any, fallback: string, scope: UserAccessScope = 'usage'): string {
     return userSvc.getComplianceErrorMessage(error, scope) || toUserFacingErrorMessage(error, fallback);
+}
+
+/** Pregunta antes de una acción sobre alguien (dejar la amistad, bloquear): `true` solo si se confirma con `boton`. */
+export async function confirmarAccion(texto: string, boton: string): Promise<boolean> {
+    const resultado = await Swal.fire({
+        text: texto,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: boton,
+        cancelButtonText: 'Cancelar',
+    });
+    return resultado.isConfirmed === true;
+}
+
+/** Lo que se enseña de alguien de una campaña o de la comunidad: su nombre visible o su correo; nunca su id. */
+export function textoPersona(nombre: string | null | undefined, correo?: string | null): string {
+    return `${nombre ?? ''}`.trim() || `${correo ?? ''}`.trim() || PERSONA_SIN_NOMBRE;
 }
 
 /** El nombre de un rol de Rol para enseñarlo («Master», «Colaborador»…). */

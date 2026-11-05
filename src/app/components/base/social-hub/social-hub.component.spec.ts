@@ -9,6 +9,7 @@ import { CampanaService } from 'src/app/services/campana.service';
 import { CampaignRealtimeSyncService } from 'src/app/services/campaign-realtime-sync.service';
 import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
+import { PlatformSocialService } from 'src/app/services/platform-social.service';
 import { PlatformSpacesService } from 'src/app/services/platform-spaces.service';
 import { SocialRealtimeService } from 'src/app/services/social-realtime.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
@@ -27,6 +28,7 @@ describe('SocialHubComponent', () => {
     let appToastSvc: jasmine.SpyObj<AppToastService>;
     let platformSessionSvc: jasmine.SpyObj<PlatformSessionService>;
     let platformSpacesSvc: jasmine.SpyObj<PlatformSpacesService>;
+    let platformSocialSvc: jasmine.SpyObj<PlatformSocialService>;
 
     beforeEach(async () => {
         sessionStorage.clear();
@@ -101,6 +103,16 @@ describe('SocialHubComponent', () => {
 
         chatFloatingSvc = jasmine.createSpyObj<ChatFloatingService>('ChatFloatingService', ['abrir']);
         chatFloatingSvc.abrir.and.resolveTo(true);
+        platformSocialSvc = jasmine.createSpyObj<PlatformSocialService>('PlatformSocialService', [
+            'resumen', 'amistades', 'bloqueos', 'solicitudes', 'buscarPersonas', 'conversacionDirecta',
+            'responderSolicitud', 'retirarSolicitud', 'dejarAmistad', 'bloquear',
+        ]);
+        platformSocialSvc.resumen.and.resolveTo({ solicitudesRecibidas: 1, solicitudesEnviadas: 0, amistades: 1, seguidos: 0, seguidores: 0, bloqueos: 0 });
+        platformSocialSvc.amistades.and.resolveTo({ vinculos: [{ persona: { id: 'c-yuna', alias: 'yuna', nombre: 'Yuna', privado: false, avatar: null }, desde: null }], cursor: null });
+        platformSocialSvc.bloqueos.and.resolveTo({ vinculos: [], cursor: null });
+        platformSocialSvc.solicitudes.and.callFake(async (tipo) => tipo === 'recibidas'
+            ? [{ id: 12, persona: { id: 'c-brenna', alias: 'brenna', nombre: null, privado: true, avatar: null }, creada: null, caduca: null }]
+            : []);
 
         await TestBed.configureTestingModule({
             declarations: [SocialHubComponent],
@@ -132,6 +144,7 @@ describe('SocialHubComponent', () => {
                 { provide: ChatFloatingService, useValue: chatFloatingSvc },
                 { provide: PlatformSessionService, useValue: platformSessionSvc },
                 { provide: PlatformSpacesService, useValue: platformSpacesSvc },
+                { provide: PlatformSocialService, useValue: platformSocialSvc },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -140,16 +153,71 @@ describe('SocialHubComponent', () => {
         component = fixture.componentInstance;
     });
 
-    it('deja solo lo que sigue siendo de Rol: resumen, comunidad, convocatorias y campañas', () => {
+    it('tiene resumen, amistades, comunidad, convocatorias, campañas y bloqueos', () => {
         fixture.detectChanges();
 
         expect(component.sections.map((item) => item.id)).toEqual([
             'resumen',
+            'amistades',
             'comunidad',
             'convocatorias',
             'campanas',
+            'bloqueos',
         ]);
     });
+
+    it('abre las amistades dentro de Rol (no en la web social) con las solicitudes recibidas y el contador', fakeAsync(() => {
+        const abrirVentana = spyOn(window, 'open');
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+
+        component.ngOnChanges({ openRequest: { currentValue: { section: 'amistades', requestId: 2 } } as any });
+        tick();
+        fixture.detectChanges();
+
+        expect(abrirVentana).not.toHaveBeenCalled();
+        expect(component.currentSection).toBe('amistades');
+        const texto = (fixture.nativeElement as HTMLElement).textContent ?? '';
+        expect(texto).toContain('Buscar personas');
+        expect(texto).toContain('Solicitudes recibidas');
+        expect(texto).toContain('@brenna');
+        expect(texto).toContain('Yuna');
+        expect(texto).not.toContain('c-yuna');
+        expect(texto).not.toContain('Gestiónalos en la web social');
+        expect(component.contadorSeccion('amistades')).toBe(1);
+        const enlace = (fixture.nativeElement as HTMLElement).querySelector('a.social-enlace-cuenta');
+        expect(enlace?.querySelector('.simbolo-yosiftware')).not.toBeNull();
+    }));
+
+    it('la sección de bloqueos lee la lista al abrirla', fakeAsync(() => {
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+
+        component.selectSection('bloqueos');
+        tick();
+        fixture.detectChanges();
+
+        expect(platformSocialSvc.bloqueos).toHaveBeenCalled();
+        expect((fixture.nativeElement as HTMLElement).textContent).toContain('No tienes a nadie bloqueado.');
+    }));
+
+    it('al salir de la cuenta vacía las amistades', fakeAsync(() => {
+        fixture.detectChanges();
+        isLoggedIn$.next(true);
+        tick();
+        component.selectSection('amistades');
+        tick();
+        expect(component.amistades.amistades.vinculos.length).toBe(1);
+
+        isLoggedIn$.next(false);
+        tick();
+
+        expect(component.amistades.amistades.vinculos).toEqual([]);
+        expect(component.amistades.resumen).toBeNull();
+        expect(component.currentSection).toBe('resumen');
+    }));
 
     it('abre el chat de la campaña en el chat de la plataforma', fakeAsync(() => {
         campanaSvc.listSocialCampaigns.and.resolveTo([

@@ -198,7 +198,7 @@
                         <section class="campanas-bloque">
                             <h3 class="campanas-bloque__titulo">Estado privado</h3>
                             <p class="campanas-texto-ayuda" *ngIf="g.selectedCampaignHasActiveMaster">
-                                Máster actual: {{g.selectedCampaignDetail.activeMasterDisplayName || g.getUserDisplayLabel(g.selectedCampaignMaster?.displayName, g.selectedCampaignMaster?.email, g.selectedCampaignMaster?.uid || '')}}
+                                Máster actual: {{g.selectedCampaignDetail.activeMasterDisplayName || g.textoPersona(g.selectedCampaignMaster?.displayName, g.selectedCampaignMaster?.email)}}
                             </p>
                             <p class="campanas-texto-ayuda" *ngIf="g.selectedCampaignDetail.ownerDisplayName && g.selectedCampaignDetail.ownerUid !== g.selectedCampaignDetail.activeMasterUid">
                                 Creada por: {{g.selectedCampaignDetail.ownerDisplayName}}
@@ -227,12 +227,12 @@
                                 <span class="campanas-subtitulo">Jugadores activos</span>
                                 <button type="button" class="campanas-elegible" *ngFor="let member of g.selectedCampaignTransferCandidates; trackBy: g.trackByMemberUid"
                                     (click)="g.seleccionarNuevoMaster(member)">
-                                    <strong>{{g.getUserDisplayLabel(member.displayName, member.email, member.uid)}}</strong>
+                                    <strong>{{g.textoPersona(member.displayName, member.email)}}</strong>
                                     <span>Ofrecerle el máster</span>
                                 </button>
                                 <ng-container *ngIf="g.transferSelectedUser">
                                     <p class="campanas-texto-ayuda">
-                                        Nuevo máster: {{g.getUserDisplayLabel(g.transferSelectedUser.displayName, null, g.transferSelectedUser.uid || '')}}. Tendrá que aceptarlo, y tú te quedarás como jugador.
+                                        Nuevo máster: {{g.textoPersona(g.transferSelectedUser.displayName)}}. Tendrá que aceptarlo, y tú te quedarás como jugador.
                                     </p>
                                     <div class="campanas-acciones">
                                         <button mat-stroked-button type="button" (click)="g.limpiarNuevoMaster()" [disabled]="g.transferSaving">Cambiar selección</button>
@@ -280,7 +280,7 @@
                                 <span class="campanas-subtitulo">Resultados de búsqueda</span>
                                 <button type="button" class="campanas-elegible" *ngFor="let result of g.memberSearchResults; trackBy: g.trackByUserUid"
                                     (click)="g.agregarJugador(result)" [disabled]="g.isAddingMember(result.uid)">
-                                    <strong>{{g.getUserDisplayLabel(result.displayName, null, result.uid)}}</strong>
+                                    <strong>{{g.textoPersona(result.displayName)}}</strong>
                                     <span>{{g.isAddingMember(result.uid) ? 'Enviando…' : 'Invitar a la campaña'}}</span>
                                 </button>
                             </div>
@@ -317,7 +317,7 @@
                                 <span class="campanas-subtitulo">Miembros</span>
                                 <div class="campanas-persona" *ngFor="let member of g.selectedCampaignMembers; trackBy: g.trackByMemberUid">
                                     <div class="campanas-persona__texto">
-                                        <strong>{{g.getUserDisplayLabel(member.displayName, member.email, member.uid)}}</strong>
+                                        <strong>{{g.textoPersona(member.displayName, member.email)}}</strong>
                                         <span>{{g.getCampaignRoleLabel(member.campaignRole)}} · {{g.getMembershipStatusLabel(member.membershipStatus)}}<ng-container *ngIf="member.addedAtUtc"> · alta {{g.formatOptionalDateTime(member.addedAtUtc)}}</ng-container></span>
                                     </div>
                                     <button mat-stroked-button color="warn" type="button"

@@ -9,6 +9,7 @@ import { MarcoMovilService } from 'src/app/services/marco-movil.service';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
+import { trasLasNormasDeCreacion } from 'src/app/services/utils/normas-creacion';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
 type OperacionCatalogo = 'insertar' | 'modificar';
@@ -198,7 +199,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         }
         if (!this.canCrearPersonajes)
             return;
-        this.NuevoPersonajeTab.emit();
+        trasLasNormasDeCreacion(this.usrService, () => this.NuevoPersonajeTab.emit());
     }
 
     @Output() ListadoTab: EventEmitter<{ tipo: string, operacion: string }> = new EventEmitter();
@@ -226,9 +227,11 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     abrirOperacion(lista: string, operacion: OperacionCatalogo): void {
         if (!this.puedeGestionar(lista))
             return;
-        this.AbrirListado(lista, operacion);
-        this.closeAcordion();
-        this.cerrarOtros();
+        trasLasNormasDeCreacion(this.usrService, () => {
+            this.AbrirListado(lista, operacion);
+            this.closeAcordion();
+            this.cerrarOtros();
+        });
     }
 
     get esInvitado(): boolean {

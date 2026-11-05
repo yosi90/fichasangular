@@ -2,6 +2,7 @@
     <app-ficha-cabecera icono="raza"
         [tipo]="tipoCabecera"
         [nombre]="raza.Nombre"
+        [subtitulo]="notaCifras"
         [manual]="raza.Manual"
         [oficial]="raza.Oficial"
         [etiquetas]="etiquetas"
@@ -51,7 +52,7 @@
             </ul>
         </app-ficha-lateral>
 
-        <app-ficha-lateral titulo="Modificadores de característica" *ngIf="modificadores.length > 0">
+        <app-ficha-lateral [titulo]="porEdades && edadCifras ? 'Modificadores de característica · ' + edadCifras : 'Modificadores de característica'" *ngIf="modificadores.length > 0">
             <ng-container *ngTemplateOutlet="pares; context: { $implicit: modificadores }"></ng-container>
         </app-ficha-lateral>
 
@@ -88,14 +89,98 @@
             </ul>
         </app-ficha-lateral>
 
-        <app-ficha-lateral titulo="Dados de golpe adicionales" *ngIf="datosDgs.length > 0">
+        <app-ficha-lateral [titulo]="porEdades && edadCifras ? 'Dados de golpe adicionales · ' + edadCifras : 'Dados de golpe adicionales'" *ngIf="datosDgs.length > 0">
             <app-ficha-datos [datos]="datosDgs" [columnas]="2" [tarjeta]="false"></app-ficha-datos>
         </app-ficha-lateral>
 
         <app-ficha-lateral titulo="Edades" *ngIf="edades.length > 0">
             <ng-container *ngTemplateOutlet="pares; context: { $implicit: edades }"></ng-container>
         </app-ficha-lateral>
+
+        <!-- Como qué clase lanza la raza (el rakshasa, los dragones; Draconomicón, pág. 24). -->
+        <app-ficha-lateral titulo="Lanzamiento racial" *ngIf="lanzamientoClase">
+            <table class="ficha-pares">
+                <tbody>
+                    <tr>
+                        <td>Lanza como</td>
+                        <td>
+                            <button type="button" class="ficha-enlace" *ngIf="puedeAbrirReferencias; else claseSinEnlace"
+                                (click)="abrirDetalleClaseLanzamiento()">{{lanzamientoClase.Nombre}}</button>
+                            <ng-template #claseSinEnlace>{{lanzamientoClase.Nombre}}</ng-template>
+                        </td>
+                    </tr>
+                    <tr *ngFor="let fila of lanzamiento">
+                        <td>{{fila.nombre}}</td>
+                        <td>{{fila.valor}}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p class="ficha-nota" *ngIf="lanzamientoListas">{{lanzamientoListas}}</p>
+            <p class="ficha-nota">Si sube niveles de esa clase, se suman a los de su raza, solo para los conjuros.</p>
+        </app-ficha-lateral>
     </app-ficha-cuerpo>
+
+    <ng-container *ngIf="porEdades">
+        <app-ficha-bloque titulo="Por edad" *ngIf="tablaPorEdad">
+            <p class="ficha-nota">
+                Un personaje jugador solo puede tener las edades a las que el manual da ajuste de nivel; las demás, solo
+                como PNJ. Lo que gana en una edad lo conserva en las siguientes.
+            </p>
+            <ng-container *ngTemplateOutlet="tablaEdad; context: { $implicit: tablaPorEdad, nombre: 'Cifras por edad' }"></ng-container>
+        </app-ficha-bloque>
+
+        <app-ficha-bloque titulo="Características por edad" *ngIf="tablaCaracteristicas">
+            <p class="ficha-nota">Las puntuaciones del libro; entre paréntesis, lo que suma la raza.</p>
+            <ng-container *ngTemplateOutlet="tablaEdad; context: { $implicit: tablaCaracteristicas, nombre: 'Características por edad' }"></ng-container>
+        </app-ficha-bloque>
+
+        <app-ficha-bloque titulo="Movimiento y ataques por edad" *ngIf="tablaMovimiento">
+            <ng-container *ngTemplateOutlet="tablaEdad; context: { $implicit: tablaMovimiento, nombre: 'Movimiento y ataques por edad' }"></ng-container>
+        </app-ficha-bloque>
+
+        <app-ficha-bloque titulo="Lo que gana cada edad" *ngIf="ganancias.length > 0">
+            <table class="ficha-tabla raza-ganancias" aria-label="Lo que gana cada edad">
+                <thead>
+                    <tr>
+                        <th scope="col">Edad</th>
+                        <th scope="col">Aptitudes</th>
+                        <th scope="col">Aptitudes sortílegas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr *ngFor="let ganancia of ganancias">
+                        <th scope="row">{{ganancia.edad}}</th>
+                        <td>
+                            <ul class="ficha-lista" *ngIf="ganancia.raciales.length > 0">
+                                <li class="ficha-lista__item" *ngFor="let item of ganancia.raciales">
+                                    <span>
+                                        <button type="button" class="ficha-enlace" (click)="abrirDetalleRacialDeEdad(item.racial)">{{item.racial.Nombre}}</button>
+                                        <span class="ficha-nota" *ngIf="item.detalle"> · {{item.detalle}}</span>
+                                    </span>
+                                </li>
+                            </ul>
+                        </td>
+                        <td>
+                            <ul class="ficha-lista" *ngIf="ganancia.sortilegas.length > 0">
+                                <li class="ficha-lista__item" *ngFor="let item of ganancia.sortilegas">
+                                    <span>
+                                        <button type="button" class="ficha-enlace" *ngIf="puedeAbrirReferencias; else conjuroSinEnlace"
+                                            (click)="abrirDetalleConjuro(item.conjuro)">{{item.conjuro.Nombre}}</button>
+                                        <ng-template #conjuroSinEnlace>{{item.conjuro.Nombre}}</ng-template>
+                                        <span class="ficha-nota" *ngIf="item.detalle"> · {{item.detalle}}</span>
+                                    </span>
+                                </li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </app-ficha-bloque>
+    </ng-container>
+
+    <app-ficha-bloque titulo="Pasos de edad al crear el personaje" *ngIf="tablaPasos">
+        <ng-container *ngTemplateOutlet="tablaEdad; context: { $implicit: tablaPasos, nombre: 'Pasos de edad' }"></ng-container>
+    </app-ficha-bloque>
 
     <app-ficha-bloque titulo="Aptitudes sortílegas" *ngIf="raza.Sortilegas?.length">
         <table class="ficha-tabla">
@@ -128,6 +213,28 @@
     [secciones]="getManiobrabilidadInfoSecciones()"
     (cerrar)="cerrarInfoManiobrabilidad()">
 </app-informacion-basicos-modal>
+
+<!-- Una tabla por edad: la primera columna es la edad (cabecera de fila); las abreviadas llevan su nombre entero. -->
+<ng-template #tablaEdad let-tabla let-nombre="nombre">
+    <table class="ficha-tabla raza-edades" [attr.aria-label]="nombre">
+        <thead>
+            <tr>
+                <th scope="col" *ngFor="let columna of tabla.columnas" [class.ficha-num]="columna.cifra">
+                    <abbr *ngIf="columna.nombre; else tituloEntero" [title]="columna.nombre">{{columna.titulo}}</abbr>
+                    <ng-template #tituloEntero>{{columna.titulo}}</ng-template>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr *ngFor="let fila of tabla.filas">
+                <ng-container *ngFor="let celda of fila; let i = index">
+                    <th scope="row" *ngIf="i === 0">{{celda}}</th>
+                    <td *ngIf="i > 0" [class.ficha-num]="tabla.columnas[i].cifra">{{celda}}</td>
+                </ng-container>
+            </tr>
+        </tbody>
+    </table>
+</ng-template>
 
 <ng-template #pares let-filas>
     <table class="ficha-pares">

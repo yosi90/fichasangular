@@ -3,7 +3,7 @@
         <div class="social-v3-toolbar">
             <mat-form-field appearance="outline" class="social-v3-toolbar__query">
                 <mat-label>Buscar en comunidad</mat-label>
-                <input matInput [(ngModel)]="query" (keyup.enter)="reloadUsers(true)" placeholder="Nombre visible o UID">
+                <input matInput [(ngModel)]="query" (keyup.enter)="reloadUsers(true)" placeholder="Nombre visible">
             </mat-form-field>
 
             <mat-form-field appearance="outline">
@@ -50,7 +50,7 @@
             <div class="social-v3-ranking-list" *ngIf="rankings && !rankingsLoading; else rankingsLoadingState">
                 <button type="button" class="social-v3-ranking-item" *ngFor="let item of rankings.items" (click)="openRelationshipProfile(item)">
                     <span class="social-v3-ranking-item__position">#{{item.position}}</span>
-                    <span class="social-v3-ranking-item__label">{{item.displayName || item.uid}}</span>
+                    <span class="social-v3-ranking-item__label">{{textoPersona(item.displayName)}}</span>
                     <strong>{{item.value}}</strong>
                 </button>
             </div>
@@ -72,10 +72,10 @@
                 <article class="social-v3-user-card" *ngFor="let user of users; trackBy: trackByUid">
                     <div class="social-v3-user-card__identity">
                         <button type="button" class="social-v3-avatar" (click)="openRelationshipProfile(user)">
-                            <img [src]="getAvatarUrl(user)" [alt]="user.displayName || user.uid">
+                            <img [src]="getAvatarUrl(user)" [alt]="textoPersona(user.displayName)">
                         </button>
                         <div>
-                            <strong>{{user.displayName || user.uid}}</strong>
+                            <strong>{{textoPersona(user.displayName)}}</strong>
                             <span>{{getRoleLabel(user.role)}} · {{getRelationshipLabel(user)}}</span>
                         </div>
                     </div>
