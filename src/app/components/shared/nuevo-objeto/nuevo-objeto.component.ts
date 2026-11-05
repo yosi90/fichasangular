@@ -11,7 +11,7 @@ import { MonstruoService } from 'src/app/services/monstruo.service';
 import { UserService } from 'src/app/services/user.service';
 import { ElementoDeCatalogo } from 'src/app/services/utils/error-catalogo';
 import { TipoRol } from 'src/app/services/utils/iconos-rol';
-import { CONJUNTO_OBJETOS, OBJETO } from 'src/app/services/utils/nombres-de-catalogo';
+import { CONJUNTO_OBJETOS, OBJETO, nombreQueCambia } from 'src/app/services/utils/nombres-de-catalogo';
 import {
     FilaActivacion,
     FilaBonificacion,
@@ -32,7 +32,7 @@ import {
 } from 'src/app/services/utils/objeto-formulario';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
-import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { avisarGuardado, avisarSinPermisos, elCatalogo } from '../insercion-marco/avisos-insercion';
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, OpcionesErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
@@ -160,14 +160,14 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
     readonly errores = new ErroresDeFormulario(this.opcionesDeErrores());
 
     readonly edicion = new EdicionDeCatalogo<EntradaObjeto>({
-        nombre: this.nombreDelTipo(),
+        nombre: nombreQueCambia(() => this.definicion.elemento),
         modo: () => this.modo,
         id: () => this.idEntrada,
         obtener: (id) => this.tipo === 'objeto' ? this.equipoSvc.getObjeto(id) : this.equipoSvc.getConjuntoFresco(id),
         hidratar: (entrada) => this.hidratar(entrada),
         foto: () => JSON.stringify(this.cuerpo()),
         destruir$: this.destroy$,
-        alFallar: (error) => this.errores.mostrar(error, `No se ha podido cargar ${this.articulo()}.`),
+        alFallar: (error) => this.errores.mostrar(error, `No se ha podido cargar ${elCatalogo(this.definicion.elemento)}.`),
     });
 
     constructor(
@@ -422,7 +422,7 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
                 this.reiniciar();
             }
         } catch (error: unknown) {
-            this.errores.mostrar(error, `No se ha podido guardar ${this.articulo()}.`);
+            this.errores.mostrar(error, `No se ha podido guardar ${elCatalogo(this.definicion.elemento)}.`);
         } finally {
             this.guardando = false;
         }
@@ -463,21 +463,6 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
                 : (componente.form.controls as Record<string, any>)[campo]?.value ?? null),
             irAPaso: (paso) => componente.pasoActual = componente.esObjeto ? paso : 0,
         };
-    }
-
-    private nombreDelTipo(): ElementoDeCatalogo {
-        const componente = this;
-        const actual = () => TIPOS[componente.tipo].elemento;
-        return {
-            get singular() { return actual().singular; },
-            get plural() { return actual().plural; },
-            get femenino() { return actual().femenino; },
-        };
-    }
-
-    private articulo(): string {
-        const elemento = this.definicion.elemento;
-        return `${elemento.femenino ? 'la' : 'el'} ${elemento.singular}`;
     }
 
     /** El tipo de objeto es obligatorio en el objeto (el conjunto no lo tiene). */

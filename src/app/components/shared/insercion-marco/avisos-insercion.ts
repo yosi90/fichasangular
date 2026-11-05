@@ -17,8 +17,9 @@ export function textoSinPermisos(nombre: ElementoDeCatalogo, editando: boolean):
     return `No tienes permisos para ${editando ? 'modificar' : 'crear'} ${nombre.plural}.`;
 }
 
-function articulo(nombre: ElementoDeCatalogo): string {
-    return nombre.femenino ? 'la' : 'el';
+/** «la clase», «el objeto»: el elemento con su artículo («No se ha podido guardar el objeto.»). */
+export function elCatalogo(nombre: ElementoDeCatalogo): string {
+    return `${nombre.femenino ? 'la' : 'el'} ${nombre.singular}`;
 }
 
 /** Intentar guardar sin permisos: el mismo aviso en todas las inserciones (el texto es el de `UserService`). */
@@ -52,7 +53,7 @@ export function avisarGuardado(nombre: ElementoDeCatalogo, editando: boolean, me
 export function avisarErrorAlGuardar(nombre: ElementoDeCatalogo, editando: boolean, error: unknown): Promise<unknown> {
     return Swal.fire({
         icon: 'error',
-        title: `No se pudo ${editando ? 'actualizar' : 'crear'} ${articulo(nombre)} ${nombre.singular}`,
+        title: `No se pudo ${editando ? 'actualizar' : 'crear'} ${elCatalogo(nombre)}`,
         text: mensajeDeError(error, 'Error no identificado'),
         showConfirmButton: true,
     });
@@ -62,7 +63,7 @@ export function avisarErrorAlGuardar(nombre: ElementoDeCatalogo, editando: boole
 export function avisarErrorAlCargar(nombre: ElementoDeCatalogo, error: unknown): Promise<unknown> {
     return Swal.fire({
         icon: 'error',
-        title: `No se pudo cargar ${articulo(nombre)} ${nombre.singular}`,
+        title: `No se pudo cargar ${elCatalogo(nombre)}`,
         text: mensajeDeError(error, 'Error no identificado'),
         showConfirmButton: true,
     });

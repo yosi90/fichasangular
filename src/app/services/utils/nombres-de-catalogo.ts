@@ -24,3 +24,15 @@ export const MATERIAL: ElementoDeCatalogo = { singular: 'material especial', plu
 export const APTITUD_EQUIPO: ElementoDeCatalogo = { singular: 'aptitud especial', plural: 'aptitudes especiales', femenino: true };
 export const OBJETO: ElementoDeCatalogo = { singular: 'objeto', plural: 'objetos', femenino: false };
 export const CONJUNTO_OBJETOS: ElementoDeCatalogo = { singular: 'conjunto de objetos', plural: 'conjuntos de objetos', femenino: false };
+
+/**
+ * El nombre de una pantalla que sirve a dos catálogos (la ventaja y la desventaja, el arma y la armadura), leído cada vez:
+ * el `nombre` de `EdicionDeCatalogo` se fija al crearla, antes de que llegue el tipo, y al crear el tipo puede cambiar.
+ */
+export function nombreQueCambia(actual: () => ElementoDeCatalogo): ElementoDeCatalogo {
+    return {
+        get singular() { return actual().singular; },
+        get plural() { return actual().plural; },
+        get femenino() { return actual().femenino; },
+    };
+}

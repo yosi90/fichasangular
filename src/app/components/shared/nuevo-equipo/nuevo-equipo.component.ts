@@ -33,11 +33,11 @@ import {
 } from 'src/app/services/utils/equipo-formulario';
 import { ElementoDeCatalogo } from 'src/app/services/utils/error-catalogo';
 import { TipoRol } from 'src/app/services/utils/iconos-rol';
-import { APTITUD_EQUIPO, ARMA, ARMADURA, MATERIAL, MUNICION } from 'src/app/services/utils/nombres-de-catalogo';
+import { APTITUD_EQUIPO, ARMA, ARMADURA, MATERIAL, MUNICION, nombreQueCambia } from 'src/app/services/utils/nombres-de-catalogo';
 import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
-import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { avisarGuardado, avisarSinPermisos, elCatalogo } from '../insercion-marco/avisos-insercion';
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, OpcionesErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
@@ -206,14 +206,14 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
     readonly errores = new ErroresDeFormulario(this.opcionesDeErrores());
 
     readonly edicion = new EdicionDeCatalogo<EntradaEquipo>({
-        nombre: this.nombreDelTipo(),
+        nombre: nombreQueCambia(() => this.definicion.elemento),
         modo: () => this.modo,
         id: () => this.idEntrada,
         obtener: (id) => this.obtener(id),
         hidratar: (entrada) => this.hidratar(entrada),
         foto: () => JSON.stringify(this.cuerpo()),
         destruir$: this.destroy$,
-        alFallar: (error) => this.errores.mostrar(error, `No se ha podido cargar ${this.articulo()}.`),
+        alFallar: (error) => this.errores.mostrar(error, `No se ha podido cargar ${elCatalogo(this.definicion.elemento)}.`),
     });
 
     constructor(
@@ -485,7 +485,7 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
                 this.reiniciar();
             }
         } catch (error: unknown) {
-            this.errores.mostrar(error, `No se ha podido guardar ${this.articulo()}.`);
+            this.errores.mostrar(error, `No se ha podido guardar ${elCatalogo(this.definicion.elemento)}.`);
         } finally {
             this.guardando = false;
         }
@@ -522,26 +522,6 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
                 : (componente.form.controls as Record<string, any>)[campo]?.value ?? null),
             irAPaso: () => undefined,
         };
-    }
-
-    /**
-     * El nombre del catálogo en los textos de «Modificar» («Crear arma», «Cargando munición…», el aviso sin permisos),
-     * que depende del tipo que recibe la pantalla (llega después de crear `edicion`).
-     */
-    private nombreDelTipo(): ElementoDeCatalogo {
-        const componente = this;
-        const actual = () => TIPOS[componente.tipo].elemento;
-        return {
-            get singular() { return actual().singular; },
-            get plural() { return actual().plural; },
-            get femenino() { return actual().femenino; },
-        };
-    }
-
-    /** «el arma», «la munición», «el material especial»… */
-    private articulo(): string {
-        const elemento = this.definicion.elemento;
-        return `${elemento.femenino ? 'la' : 'el'} ${elemento.singular}`;
     }
 
     /**
