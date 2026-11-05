@@ -51,13 +51,12 @@ interface CatalogoEquipo<T> {
 
 /**
  * Cómo se escribe cada catálogo (segunda parte del hito 7: `POST <ruta>/add` y `PUT <ruta>/<id>`, el mismo cuerpo):
- * su ruta, la clave de la entrada y de su id en la respuesta, su normalizador y su nombre en los errores.
+ * su ruta y su normalizador (los de su lectura), la clave de la entrada y de su id en la respuesta y su nombre en los
+ * errores.
  */
-interface EscrituraEquipo<T> {
-    url: string;
+interface EscrituraEquipo<T> extends Pick<CatalogoEquipo<T>, 'url' | 'normalizar'> {
     clave: string;
     claveId: string;
-    normalizar: (raw: any) => T;
     nombre: ElementoDeCatalogo;
 }
 
@@ -78,20 +77,17 @@ const CONJUNTOS: CatalogoEquipo<ConjuntoObjetosDetalle> = {
     noEncontrado: 'Conjunto de objetos no encontrado', error: 'Error al obtener el conjunto de objetos',
 };
 
-const ESCRITURA_MUNICION: EscrituraEquipo<MunicionDetalle> = {
-    url: 'municiones', clave: 'municion', claveId: 'idMunicion', normalizar: normalizeMunicion, nombre: MUNICION,
-};
-const ESCRITURA_MATERIAL: EscrituraEquipo<MaterialDetalle> = {
-    url: 'materiales', clave: 'material', claveId: 'idMaterial', normalizar: normalizeMaterial, nombre: MATERIAL,
-};
+const ESCRITURA_MUNICION: EscrituraEquipo<MunicionDetalle> = { ...MUNICIONES, clave: 'municion', claveId: 'idMunicion', nombre: MUNICION };
+const ESCRITURA_MATERIAL: EscrituraEquipo<MaterialDetalle> = { ...MATERIALES, clave: 'material', claveId: 'idMaterial', nombre: MATERIAL };
 const ESCRITURA_ENCANTAMIENTO: EscrituraEquipo<EncantamientoDetalle> = {
-    url: 'encantamientos', clave: 'encantamiento', claveId: 'idEncantamiento', normalizar: normalizeEncantamiento, nombre: APTITUD_EQUIPO,
+    ...ENCANTAMIENTOS, clave: 'encantamiento', claveId: 'idEncantamiento', nombre: APTITUD_EQUIPO,
 };
+// Los objetos no tienen caché (catálogo grande, paginado): su lectura por id es la misma `fresca`.
 const ESCRITURA_OBJETO: EscrituraEquipo<ObjetoDetalle> = {
     url: 'objetos', clave: 'objeto', claveId: 'idObjeto', normalizar: normalizeObjeto, nombre: OBJETO,
 };
 const ESCRITURA_CONJUNTO: EscrituraEquipo<ConjuntoObjetosDetalle> = {
-    url: 'conjuntos-objetos', clave: 'conjunto', claveId: 'idConjunto', normalizar: normalizeConjuntoObjetos, nombre: CONJUNTO_OBJETOS,
+    ...CONJUNTOS, clave: 'conjunto', claveId: 'idConjunto', nombre: CONJUNTO_OBJETOS,
 };
 
 /**
@@ -161,7 +157,7 @@ export class EquipoService {
     }
 
     getObjeto(id: number): Observable<ObjetoDetalle> {
-        return this.http.get(`${environment.apiUrl}objetos/${id}`).pipe(map((raw) => normalizeObjeto(raw)));
+        return this.fresca(ESCRITURA_OBJETO, id);
     }
 
     // --- Alta y edición (segunda parte del hito 7; permiso de creación `objetos`) -------------------------------------
