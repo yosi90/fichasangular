@@ -9,7 +9,6 @@ import { AppComponent } from './app.component';
 import { NavbarComponent } from './components/base/navbar/navbar.component';
 import { ContPrincipalComponent } from './components/base/cont-principal/cont-principal.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { OverlayModule } from '@angular/cdk/overlay';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 
@@ -300,7 +299,6 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         BrowserModule,
         FormsModule,
         BrowserAnimationsModule,
-        OverlayModule,
         CdkMenuModule,
         MatSidenavModule,
         MatIconModule,
