@@ -394,7 +394,7 @@ describe('clase-elegibilidad', () => {
                 conocer_poder_psionico: [{ Id_conjuro: 500, opcional: 0 }],
                 dg: [{ Cantidad: 7, opcional: 0 }],
                 nivel_escuela: [{ Id_escuela: 11, Cantidad: 6, opcional: 0 }],
-                rangos_habilidad: [{ Id_habilidad: 600, Rangos: 8, Id_extra: 9, opcional: 0 }],
+                rangos_habilidad: [{ Id_habilidad: 600, Rangos: 8, Requiere_extra: 1, Extras: [{ Id_extra: 9, Extra: 'Saltos', Extra_comodin: null }], Opcional: 0 }],
                 lanzador_arcano: [{ Nivel: 6, opcional: 0 }],
                 lanzador_divino: [{ Nivel: 4, opcional: 0 }],
                 lanzar_conjuros_arcanos_nivel: [{ Nivel: 3, opcional: 0 }],
@@ -427,6 +427,84 @@ describe('clase-elegibilidad', () => {
 
         const res = evaluarElegibilidadClase(clase, crearContextoBase());
         expect(res.estado).toBe('blocked_failed');
+    });
+
+    describe('rangos_habilidad con especialidad (Saber, Artesanía…)', () => {
+        // Los cinco huecos de Saber de `GET /habilidades` admiten las mismas especialidades: son una familia.
+        const ESPECIALIDADES_SABER = [51, 55, 59, 60];
+        const saber = (id: number, rangos: number, idExtra: number | null, extra: string) => ({
+            id, nombre: `Saber ${id - 31}`, rangos, idExtra, extra, idsExtras: ESPECIALIDADES_SABER,
+        });
+        const pedido = (idHabilidad: number, rangos: number, extras: Array<[number, string]>, requiereExtra = extras.length > 0, opcional = 0) => ({
+            Id_habilidad: idHabilidad,
+            Habilidad: `Saber ${idHabilidad - 31}`,
+            Rangos: rangos,
+            Requiere_extra: requiereExtra ? 1 : 0,
+            Extras: extras.map(([Id_extra, Extra]) => ({ Id_extra, Extra, Extra_comodin: null })),
+            Opcional: opcional,
+            Frase: `Saber${extras.length > 0 ? ` (${extras.map(([, extra]) => extra.toLowerCase()).join(' o ')})` : ''} ${rangos} rangos`,
+        });
+        const claseConRangos = (rangos: Record<string, any>[]) => crearClaseBase({
+            Prerrequisitos_flags: { rangos_habilidad: true },
+            Prerrequisitos: { ...crearClaseBase().Prerrequisitos, rangos_habilidad: rangos as any },
+        });
+        // Como en la creación, el personaje tiene todos los huecos del catálogo, aunque sea sin rangos.
+        const conTodosLosHuecos = (habilidades: NonNullable<ClaseEvaluacionContexto['habilidades']>) => [
+            ...habilidades,
+            ...[32, 33, 34, 35, 36].filter((id) => !habilidades.some((h) => h.id === id)).map((id) => saber(id, 0, null, '')),
+        ];
+        const evaluar = (rangos: Record<string, any>[], habilidades: NonNullable<ClaseEvaluacionContexto['habilidades']>) =>
+            evaluarElegibilidadClase(claseConRangos(rangos), { ...crearContextoBase(), habilidades: conTodosLosHuecos(habilidades) });
+
+        // Demonologista (Libro de oscuridad vil, pág. 57): Saber (arcano) 4 en el hueco Saber 1 y Saber (los planos) 8 en Saber 2.
+        const demonologista = [pedido(32, 4, [[51, 'Arcano']]), pedido(33, 8, [[59, 'Los planos']])];
+
+        it('demonologista: cumple con Saber (los planos) en otro hueco', () => {
+            const res = evaluar(demonologista, [saber(32, 8, 59, 'Los planos'), saber(33, 2, 60, 'Religión'), saber(35, 4, 51, 'Arcano')]);
+            expect(res.estado).toBe('eligible');
+        });
+
+        it('demonologista: Saber (religión) en el hueco pedido no cumple Saber (los planos)', () => {
+            const res = evaluar(demonologista, [saber(32, 4, 51, 'Arcano'), saber(33, 8, 60, 'Religión')]);
+            expect(res.estado).toBe('blocked_failed');
+            expect(res.razones).toEqual(['No cumple: Saber (los planos) 8 rangos']);
+        });
+
+        it('demonologista: la especialidad sin los rangos no cumple', () => {
+            const res = evaluar(demonologista, [saber(32, 4, 51, 'Arcano'), saber(34, 7, 59, 'Los planos')]);
+            expect(res.estado).toBe('blocked_failed');
+        });
+
+        it('Saber (cualquiera): vale cualquier hueco con su especialidad', () => {
+            const cualquiera = [pedido(32, 4, [], true)];
+            expect(evaluar(cualquiera, [saber(32, 0, null, ''), saber(36, 4, 55, 'Historia')]).estado).toBe('eligible');
+            expect(evaluar(cualquiera, [saber(32, 3, 51, 'Arcano'), saber(36, 2, 55, 'Historia')]).estado).toBe('blocked_failed');
+        });
+
+        it('Saber (arcano o religión): vale cualquiera de las dos', () => {
+            const unaDeDos = [pedido(32, 5, [[51, 'Arcano'], [60, 'Religión']])];
+            expect(evaluar(unaDeDos, [saber(34, 5, 60, 'Religión')]).estado).toBe('eligible');
+            expect(evaluar(unaDeDos, [saber(34, 5, 59, 'Los planos')]).estado).toBe('blocked_failed');
+        });
+
+        it('siervo de Demogorgon: el Saber sin especialidad es otro distinto de los que ya pide', () => {
+            const siervo = [pedido(32, 2, [[51, 'Arcano']]), pedido(33, 2, [[60, 'Religión']]), pedido(34, 2, [], false)];
+            const arcanoYReligion = [saber(32, 2, 51, 'Arcano'), saber(33, 2, 60, 'Religión'), saber(34, 0, null, '')];
+            expect(evaluar(siervo, arcanoYReligion).estado).toBe('blocked_failed');
+            expect(evaluar(siervo, [...arcanoYReligion, saber(36, 2, 59, 'Los planos')]).estado).toBe('eligible');
+        });
+
+        it('dos Saber (cualquiera) necesitan dos especialidades', () => {
+            const dos = [pedido(32, 10, [], true), pedido(33, 4, [], true)];
+            expect(evaluar(dos, [saber(32, 10, 51, 'Arcano')]).estado).toBe('blocked_failed');
+            expect(evaluar(dos, [saber(32, 10, 51, 'Arcano'), saber(34, 4, 55, 'Historia')]).estado).toBe('eligible');
+        });
+
+        it('una habilidad sin familia se busca por su hueco', () => {
+            const piruetas = [{ Id_habilidad: 30, Habilidad: 'Piruetas', Rangos: 4, Requiere_extra: 0, Extras: [], Opcional: 0 }];
+            expect(evaluar(piruetas, [{ id: 30, nombre: 'Piruetas', rangos: 4, idExtra: null, extra: '' }]).estado).toBe('eligible');
+            expect(evaluar(piruetas, [{ id: 31, nombre: 'Saltar', rangos: 9, idExtra: null, extra: '' }]).estado).toBe('blocked_failed');
+        });
     });
 
     describe('aptitud_especial', () => {

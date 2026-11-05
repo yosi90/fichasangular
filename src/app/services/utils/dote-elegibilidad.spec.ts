@@ -90,6 +90,47 @@ describe('dote-elegibilidad', () => {
         expect(resultado.estado).toBe('eligible');
     });
 
+    it('habilidad con especialidad: cuenta la especialidad en cualquier hueco de su familia, no el hueco', () => {
+        const saber = [51, 59, 60];
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                habilidad: [{
+                    Id_habilidad: 32, Habilidad: 'Saber 1', Cantidad: 4, Requiere_extra: 1,
+                    Extras: [{ Id_extra: 59, Extra: 'Los planos', Extra_comodin: null }], Opcional: 0, Frase: 'Saber (los planos) 4 rangos',
+                }],
+            },
+        });
+        const evaluar = (habilidades: DoteEvaluacionContexto['habilidades']) =>
+            evaluarElegibilidadDote({ dote, contexto: crearContextoBase({ habilidades }) }).estado;
+
+        expect(evaluar([
+            { id: 32, nombre: 'Saber 1', rangos: 6, idExtra: 60, extra: 'Religión', idsExtras: saber },
+            { id: 34, nombre: 'Saber 3', rangos: 4, idExtra: 59, extra: 'Los planos', idsExtras: saber },
+        ])).toBe('eligible');
+        expect(evaluar([
+            { id: 32, nombre: 'Saber 1', rangos: 6, idExtra: 60, extra: 'Religión', idsExtras: saber },
+        ])).toBe('blocked_failed');
+    });
+
+    it('habilidad con «requiere extra» y sin especialidad concreta: cualquier Saber con la suya elegida', () => {
+        const saber = [51, 59, 60];
+        const dote = crearDoteBase({
+            Prerrequisitos: {
+                habilidad: [{ Id_habilidad: 32, Habilidad: 'Saber 1', Cantidad: 4, Requiere_extra: 1, Extras: [], Opcional: 0 }],
+            },
+        });
+        const evaluar = (habilidades: DoteEvaluacionContexto['habilidades']) =>
+            evaluarElegibilidadDote({ dote, contexto: crearContextoBase({ habilidades }) }).estado;
+
+        expect(evaluar([
+            { id: 32, nombre: 'Saber 1', rangos: 0, idExtra: null, extra: '', idsExtras: saber },
+            { id: 33, nombre: 'Saber 2', rangos: 4, idExtra: 51, extra: 'Arcano', idsExtras: saber },
+        ])).toBe('eligible');
+        expect(evaluar([
+            { id: 32, nombre: 'Saber 1', rangos: 4, idExtra: null, extra: 'Elegir', idsExtras: saber },
+        ])).toBe('blocked_failed');
+    });
+
     it('evalua poder seleccionar compañero con el cupo calculado por el contexto', () => {
         const dote = crearDoteBase({
             Prerrequisitos: {

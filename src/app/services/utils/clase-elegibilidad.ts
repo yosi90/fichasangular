@@ -4,7 +4,7 @@ import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, existeCoincidenciaC
 import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from "./alineamiento-contrato";
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { EvaluacionPrerrequisito, MotivosPrerrequisitos, compararActitud, compararSubtipo, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { EvaluacionPrerrequisito, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararRangosHabilidad, compararSubtipo, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
@@ -28,7 +28,8 @@ export interface ClaseEvaluacionContexto {
     raciales?: ClaveEntidadPrerrequisito[];
     /** Las plantillas del personaje, para `aptitud_especial`. */
     plantillas?: ClaveEntidadPrerrequisito[];
-    habilidades?: { id: number | null; nombre: string; rangos: number; idExtra: number | null; extra: string; }[];
+    /** Para `rangos_habilidad`: cada hueco con su especialidad y las que admite (`compararRangosHabilidad`). */
+    habilidades?: HabilidadParaPrerrequisitos[];
     conjuros?: { id: number | null; nombre: string; idEscuela: number | null; escuela: string; }[];
     idiomas: { id: number | null; nombre: string; }[];
     dominios?: { id: number | null; nombre: string; }[];
@@ -130,16 +131,6 @@ function parseNombre(entry: Record<string, any>, keys: string[]): string {
             return text;
     }
     return "";
-}
-
-function parseIdOpcional(entry: Record<string, any>, keys: string[]): number {
-    const raw = pick(entry, keys);
-    if (raw === undefined || raw === null)
-        return Number.NaN;
-    const text = `${raw}`.trim();
-    if (text.length < 1)
-        return Number.NaN;
-    return toInt(raw, Number.NaN);
 }
 
 type EvaluacionItem = Omit<EvaluacionPrerrequisito, 'frase'>;
@@ -410,37 +401,8 @@ function buildEvaluacionNivelEscuela(entry: Record<string, any>, ctx: ClaseEvalu
     };
 }
 
-function buildEvaluacionRangosHabilidad(entry: Record<string, any>, ctx: ClaseEvaluacionContexto): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
-    const idHabilidad = parseId(entry, ["Id_habilidad", "id_habilidad", "IdHabilidad", "idHabilidad", "Id", "id", "i"]);
-    const nombreHabilidad = parseNombre(entry, ["Habilidad", "habilidad", "Nombre", "nombre"]);
-    const nombreNorm = normalizarTexto(nombreHabilidad);
-    const rangosReq = parseNumber(entry, ["Rangos", "rangos", "Cantidad", "cantidad", "Valor", "valor", "c"]);
-    const idExtraReq = parseIdOpcional(entry, ["Id_extra", "id_extra", "IdExtra", "idExtra", "e", "Extra"]);
-    const habilidadesActuales = ctx.habilidades ?? [];
-    const evaluable = (idHabilidad > 0 || nombreNorm.length > 0) && Number.isFinite(rangosReq);
-
-    const cumple = habilidadesActuales.some((habilidad) => {
-        const coincideHabilidad = (idHabilidad > 0 && toNumber(habilidad.id) === idHabilidad)
-            || (nombreNorm.length > 0 && normalizarTexto(habilidad.nombre) === nombreNorm);
-        if (!coincideHabilidad)
-            return false;
-        if (toNumber(habilidad.rangos) < rangosReq)
-            return false;
-
-        if (!Number.isFinite(idExtraReq))
-            return true;
-        if (idExtraReq < 0)
-            return toNumber(habilidad.idExtra) <= 0;
-        return toNumber(habilidad.idExtra) === idExtraReq;
-    });
-
-    return {
-        grupoOpcional,
-        evaluable,
-        cumple: evaluable ? cumple : false,
-        razonUnknown: "Prerrequisito rangos_habilidad con formato no reconocido",
-    };
+function buildEvaluacionRangosHabilidad(entry: Record<string, any>, ctx: ClaseEvaluacionContexto, pedidos: Record<string, any>[]): EvaluacionItem {
+    return { grupoOpcional: parseOpcional(entry), ...compararRangosHabilidad(entry, ctx.habilidades ?? [], pedidos) };
 }
 
 function buildEvaluacionClaseEspecial(entry: Record<string, any>, ctx: ClaseEvaluacionContexto): EvaluacionItem {
@@ -563,7 +525,8 @@ export function evaluarElegibilidadClase(clase: Clase, ctx: ClaseEvaluacionConte
     evaluarFamilia(motivos, "dg", flags?.dg, toArray(prer?.dg), (entry) => buildEvaluacionDg(entry, ctx));
     evaluarFamilia(motivos, "dote_elegida", flags?.dote_elegida, toArray(prer?.dote_elegida), (entry) => buildEvaluacionDote(entry, ctx));
     evaluarFamilia(motivos, "nivel_escuela", flags?.nivel_escuela, toArray(prer?.nivel_escuela), (entry) => buildEvaluacionNivelEscuela(entry, ctx));
-    evaluarFamilia(motivos, "rangos_habilidad", flags?.rangos_habilidad, toArray(prer?.rangos_habilidad), (entry) => buildEvaluacionRangosHabilidad(entry, ctx));
+    const rangosHabilidad = toArray<Record<string, any>>(prer?.rangos_habilidad);
+    evaluarFamilia(motivos, "rangos_habilidad", flags?.rangos_habilidad, rangosHabilidad, (entry) => buildEvaluacionRangosHabilidad(entry, ctx, rangosHabilidad));
     evaluarFamilia(motivos, "idioma", flags?.idioma, toArray(prer?.idioma), (entry) => buildEvaluacionIdioma(entry, ctx));
     evaluarFamilia(motivos, "aptitud_especial", flags?.aptitud_especial, toArray(prer?.aptitud_especial), (entry) => evaluarAptitudEspecial(entry, ctx), { permitirSinDatos: true });
     evaluarFamilia(motivos, "lanzador_arcano", flags?.lanzador_arcano, toArray(prer?.lanzador_arcano), (entry) => buildEvaluacionNumeroMinimo(
