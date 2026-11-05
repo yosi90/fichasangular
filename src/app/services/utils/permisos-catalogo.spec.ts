@@ -23,7 +23,13 @@ describe('Permisos de los catálogos (docs/publica/CATALOGOS_ALTA_Y_EDICION_FRON
     });
 
     it('un catálogo sin permiso en la tabla no se puede gestionar', () => {
-        expect(puedeGestionarCatalogo(conPermisos('objetos'), 'objetos')).toBeFalse();
+        expect(puedeGestionarCatalogo(conPermisos('inventado'), 'inventado')).toBeFalse();
+    });
+
+    it('munición, materiales, aptitudes, objetos y conjuntos piden el permiso objetos (hito 7)', () => {
+        ['munición', 'materiales especiales', 'aptitudes de armas y armaduras', 'objetos', 'conjuntos de objetos']
+            .forEach((lista) => expect(RECURSO_DE_CATALOGO[lista]).withContext(lista).toBe('objetos'));
+        expect(puedeGestionarCatalogo(conPermisos('objetos'), 'munición')).toBeTrue();
     });
 
     it('cada recurso de la tabla existe en el backend y cada catálogo del menú es un listado', () => {
@@ -42,7 +48,10 @@ describe('Catálogos con pantalla de insertar o modificar', () => {
     it('sabe qué listado abre cada pantalla', () => {
         expect(tieneInsercion('razas')).toBeTrue();
         expect(tieneInsercion('armas')).toBeTrue();
-        expect(tieneInsercion('objetos')).toBeFalse();
+        expect(tieneInsercion('objetos')).toBeTrue();
+        expect(tieneInsercion('deidades')).toBeFalse();
+        expect(tipoEdicionDeListado('munición')).toBe('municion');
+        expect(tipoEdicionDeListado('conjuntos de objetos')).toBe('conjunto');
         expect(tipoEdicionDeListado('armaduras')).toBe('armadura');
         expect(tipoEdicionDeListado('raciales')).toBe('racial');
         expect(tipoEdicionDeListado('razas')).toBe('raza');

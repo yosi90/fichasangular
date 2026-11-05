@@ -19,3 +19,8 @@ export const HABILIDAD: ElementoDeCatalogo = { singular: 'habilidad', plural: 'h
 
 export const ARMA: ElementoDeCatalogo = { singular: 'arma', plural: 'armas', femenino: true };
 export const ARMADURA: ElementoDeCatalogo = { singular: 'armadura', plural: 'armaduras', femenino: true };
+export const MUNICION: ElementoDeCatalogo = { singular: 'munición', plural: 'municiones', femenino: true };
+export const MATERIAL: ElementoDeCatalogo = { singular: 'material especial', plural: 'materiales especiales', femenino: false };
+export const APTITUD_EQUIPO: ElementoDeCatalogo = { singular: 'aptitud especial', plural: 'aptitudes especiales', femenino: true };
+export const OBJETO: ElementoDeCatalogo = { singular: 'objeto', plural: 'objetos', femenino: false };
+export const CONJUNTO_OBJETOS: ElementoDeCatalogo = { singular: 'conjunto de objetos', plural: 'conjuntos de objetos', femenino: false };

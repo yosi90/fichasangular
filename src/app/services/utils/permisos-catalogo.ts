@@ -5,9 +5,8 @@ import { PermissionResource } from 'src/app/interfaces/user-acl';
  * nombre con el que se abre su listado (`LISTADOS_ROL`). Es la tabla de `docs/publica/CATALOGOS_ALTA_Y_EDICION_FRONT.md`:
  * en Rol no hay un permiso aparte para modificar, así que Insertar y Modificar miran el mismo.
  *
- * Los catálogos del equipo que aún no están en el menú (munición, materiales, aptitudes, objetos y conjuntos) no tienen
- * permiso todavía: se decide en la segunda parte del hito 7 (armas y armaduras ya tienen pantalla, con `armas` y
- * `armaduras`).
+ * Armas y armaduras tienen su permiso; los demás catálogos del equipo (munición, materiales, aptitudes, objetos y
+ * conjuntos) comparten uno, `objetos` (segunda parte del hito 7).
  */
 export const RECURSO_DE_CATALOGO: Readonly<Record<string, PermissionResource>> = {
     'razas': 'razas',
@@ -23,6 +22,11 @@ export const RECURSO_DE_CATALOGO: Readonly<Record<string, PermissionResource>> =
     'plantillas': 'plantillas',
     'armas': 'armas',
     'armaduras': 'armaduras',
+    'munición': 'objetos',
+    'materiales especiales': 'objetos',
+    'aptitudes de armas y armaduras': 'objetos',
+    'objetos': 'objetos',
+    'conjuntos de objetos': 'objetos',
     'rasgos': 'rasgos',
     'ventajas': 'ventajas',
     'tipos de criatura': 'tipos_criatura',
