@@ -9,6 +9,7 @@ describe('NuevaEspecialComponent', () => {
     let habilidadSvc: jasmine.SpyObj<any>;
     let canCreate: boolean;
     let canUpdate: boolean;
+    let crearComponente: () => NuevaEspecialComponent;
     const acl$ = new Subject<void>();
     const isLoggedIn$ = new Subject<boolean>();
 
@@ -35,7 +36,7 @@ describe('NuevaEspecialComponent', () => {
         canCreate = true;
         canUpdate = true;
         especialSvc = jasmine.createSpyObj('EspecialService', ['crearEspecial', 'actualizarEspecial', 'getEspecialFresco']);
-        habilidadSvc = jasmine.createSpyObj('HabilidadService', ['getHabilidades', 'getHabilidadesCustom', 'crearHabilidadCustom', 'actualizarHabilidadCustom'], {
+        habilidadSvc = jasmine.createSpyObj('HabilidadService', ['getHabilidades', 'getHabilidadesCustom'], {
             habilidadesCustomMutadas$: new Subject().asObservable(),
         });
         especialSvc.crearEspecial.and.resolveTo({ message: 'Creado', idEspecial: 77, especial: buildEspecial() });
@@ -43,18 +44,8 @@ describe('NuevaEspecialComponent', () => {
         especialSvc.getEspecialFresco.and.returnValue(of(buildEspecial()));
         habilidadSvc.getHabilidades.and.returnValue(of([{ Id_habilidad: 8, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Extras: [], Soporta_extra: false }]));
         habilidadSvc.getHabilidadesCustom.and.returnValue(of([{ Id_habilidad: 12, Nombre: 'Pilotar aeronave', Id_caracteristica: 3, Caracteristica: 'Inteligencia', Extras: [], Soporta_extra: false }]));
-        habilidadSvc.crearHabilidadCustom.and.resolveTo({
-            message: 'Creada',
-            idHabilidad: 13,
-            habilidad: { Id_habilidad: 13, Nombre: 'Pilotar dirigible', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
-        });
-        habilidadSvc.actualizarHabilidadCustom.and.resolveTo({
-            message: 'Actualizada',
-            idHabilidad: 12,
-            habilidad: { Id_habilidad: 12, Nombre: 'Pilotar aeronave mayor', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
-        });
 
-        component = new NuevaEspecialComponent(
+        crearComponente = () => new NuevaEspecialComponent(
             new FormBuilder(),
             {
                 acl$: acl$.asObservable(),
@@ -74,6 +65,7 @@ describe('NuevaEspecialComponent', () => {
             { getSubtipos: () => of([{ Id: 9, Nombre: 'Fuego' }]) } as any,
             { getActitudes: () => of([{ Id: 4, Nombre: 'Bueno' }, { Id: 5, Nombre: 'Maligno' }]) } as any,
         );
+        component = crearComponente();
         spyOn(Swal, 'fire').and.returnValue(Promise.resolve({ isConfirmed: true } as any));
         component.ngOnInit();
     });
@@ -98,8 +90,8 @@ describe('NuevaEspecialComponent', () => {
             { uid: 'e2', id_extra: 0, orden: 1, busqueda: '' },
         ];
         component.habilidadRows = [
-            { uid: 'h1', tipo: 'base', id_habilidad: 8, id_extra: -1, rangos: 2, busqueda: 'Avistar', extraBusqueda: '' },
-            { uid: 'h2', tipo: 'custom', id_habilidad: 0, id_extra: -1, rangos: 0, busqueda: '', extraBusqueda: '' },
+            { uid: 'h1', id_habilidad: 8, id_extra: -1, rangos: 2, busqueda: 'Avistar', extraBusqueda: '' },
+            { uid: 'h2', id_habilidad: 0, id_extra: -1, rangos: 0, busqueda: '', extraBusqueda: '' },
         ];
 
         const payload = (component as any).construirPayload();
@@ -121,7 +113,7 @@ describe('NuevaEspecialComponent', () => {
     it('hidrata modo edición desde GET fresco y detecta cambios', () => {
         especialSvc.getEspecialFresco.and.returnValue(of(buildEspecial({
             Extras: [{ Id_extra: 4, Extra: 'Fuego', Orden: 1 }],
-            Habilidades: [{ Id_habilidad: 12, Habilidad: 'Pilotar aeronave', Id_extra: -1, Extra: '', Rangos: 3 }],
+            Habilidades: [{ Id_habilidad: 8, Habilidad: 'Avistar', Id_extra: -1, Extra: '', Rangos: 3 }],
         })));
         component.modo = 'editar';
         component.idEspecial = 77;
@@ -134,7 +126,7 @@ describe('NuevaEspecialComponent', () => {
         expect(especialSvc.getEspecialFresco).toHaveBeenCalledWith(77);
         expect(component.form.value.nombre).toBe('Aura de mando');
         expect(component.extraRows[0].id_extra).toBe(4);
-        expect(component.habilidadRows[0].tipo).toBe('custom');
+        expect(component.habilidadRows[0]).toEqual(jasmine.objectContaining({ id_habilidad: 8, busqueda: 'Avistar', rangos: 3 }));
         expect(component.isDirty).toBeFalse();
 
         component.form.patchValue({ nombre: 'Aura superior' });
@@ -177,27 +169,30 @@ describe('NuevaEspecialComponent', () => {
         expect(component.catalogContext.getCatalog('actitud_requerido')).toEqual([{ id: 4, nombre: 'Bueno' }, { id: 5, nombre: 'Maligno' }]);
     });
 
-    it('selecciona la habilidad custom que crea la ventana', () => {
-        component.abrirCrearCustom();
-        expect(component.customModalAbierto).toBeTrue();
-        expect(component.customModalModo).toBe('crear');
+    it('solo da habilidades del catálogo: Artesanía 1 no pasa a la personalizada de su mismo id', () => {
+        // En `rol_dev`, la habilidad 2 es Artesanía 1 y la personalizada 2, Autohipnosis; `especiales_habilidades` solo
+        // apunta a `habilidades` (el contrato no tiene habilidades personalizadas en los especiales).
+        component.ngOnDestroy();
+        habilidadSvc.getHabilidades.and.returnValue(of([
+            { Id_habilidad: 2, Nombre: 'Artesanía 1', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Soporta_extra: true, Extras: [{ Id_extra: 1, Extra: 'Alfarería' }] },
+        ]));
+        habilidadSvc.getHabilidadesCustom.and.returnValue(of([
+            { Id_habilidad: 2, Nombre: 'Autohipnosis', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Soporta_extra: false, Extras: [] },
+        ]));
+        especialSvc.getEspecialFresco.and.returnValue(of(buildEspecial({
+            Habilidades: [{ Id_habilidad: 2, Habilidad: 'Artesanía 1', Id_extra: 1, Extra: 'Alfarería', Rangos: 2 }],
+        })));
+        component = crearComponente();
+        component.modo = 'editar';
+        component.idEspecial = 77;
+        component.ngOnInit();
 
-        component.onCustomGuardada({ Id_habilidad: 13, Nombre: 'Pilotar dirigible', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] });
-
-        expect(component.habilidadRows.some((row) => row.tipo === 'custom' && row.id_habilidad === 13)).toBeTrue();
-        expect(component.customModalAbierto).toBeFalse();
-    });
-
-    it('abre la ventana con la habilidad custom de su fila y recoge el cambio', () => {
-        const row = { uid: 'h1', tipo: 'custom' as const, id_habilidad: 12, id_extra: -1, rangos: 1, busqueda: 'Pilotar aeronave', extraBusqueda: '' };
-        component.habilidadRows = [row];
-        component.abrirEditarCustom(row);
-        expect(component.customModalModo).toBe('editar');
-        expect(component.customModalHabilidad?.Id_habilidad).toBe(12);
-
-        component.onCustomGuardada({ Id_habilidad: 12, Nombre: 'Pilotar aeronave mayor', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] });
-
-        expect(component.habilidadRows[0].busqueda).toBe('Pilotar aeronave mayor');
+        const fila = component.habilidadRows[0];
+        expect(fila.busqueda).toBe('Artesanía 1');
+        expect(component.getHabilidadesFiltradas({ ...fila, busqueda: '' }).map((habilidad) => habilidad.Nombre)).toEqual(['Artesanía 1']);
+        expect(component.getExtrasHabilidad(fila)).toEqual([{ Id_extra: 1, Extra: 'Alfarería' }]);
+        expect((component as any).construirPayload().habilidades).toEqual([{ id_habilidad: 2, id_extra: 1, rangos: 2 }]);
+        expect(component.isDirty).toBeFalse();
     });
 });
 
