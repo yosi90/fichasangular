@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ElementoDeCatalogo, errorDeCatalogo } from './error-catalogo';
+import { ElementoDeCatalogo, articulosDe, errorDeCatalogo } from './error-catalogo';
 
 const RAZA: ElementoDeCatalogo = { singular: 'raza', plural: 'razas', femenino: true };
 const ESPECIAL: ElementoDeCatalogo = { singular: 'especial', plural: 'especiales', femenino: false };
@@ -63,5 +63,14 @@ describe('errorDeCatalogo', () => {
         const propio = new Error('Debes iniciar sesión para gestionar razas');
         expect(errorDeCatalogo(propio, 'crear', RAZA)).toBe(propio);
         expect(errorDeCatalogo('raro', 'actualizar', ESPECIAL).message).toBe('No se ha podido actualizar el especial.');
+    });
+});
+
+describe('articulosDe', () => {
+    it('un femenino con «a» tónica lleva «el», «un» y «del» (el arma)', () => {
+        const arma: ElementoDeCatalogo = { singular: 'arma', plural: 'armas', femenino: true, aTonica: true };
+        expect(articulosDe(arma)).toEqual({ el: 'el', un: 'un', del: 'del' });
+        expect(articulosDe(RAZA)).toEqual({ el: 'la', un: 'una', del: 'de la' });
+        expect(errorDeCatalogo(http(409), 'crear', arma).message).toContain('Ya existe un arma con ese nombre.');
     });
 });
