@@ -838,11 +838,8 @@ export class NuevoPersonajeComponent {
      */
     onConfirmarFormacion(formacion: FormacionIncarnumDto): Promise<boolean> {
         const vacia = formacion.fusiones.length < 1 && formacion.receptaculos.length < 1;
-        const contexto = this.contextoDeFormacion(vacia ? null : formacion);
-        const motivos = [
-            ...(contexto.fusiones ?? []).map((fusion) => motivoHomebrew('fusion', fusion)),
-            ...(contexto.chakras ?? []).map((chakra) => motivoHomebrew('chakra', chakra)),
-        ];
+        // Los motivos de solo la formación: los de su contexto, sin personaje (las mismas familias que cuenta la ficha).
+        const motivos = motivosHomebrewPersonaje(null, this.contextoDeFormacion(vacia ? null : formacion));
         return this.confirmarSiVuelveHomebrew('Elegir la formación', motivos, () => {
             this.formacionIncarnum = vacia ? null : formacion;
             this.recalcularOficialidad();
