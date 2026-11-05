@@ -1,4 +1,4 @@
-import { NO_ERRORS_SCHEMA, signal } from '@angular/core';
+import { NO_ERRORS_SCHEMA, SimpleChange, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { BehaviorSubject } from 'rxjs';
 import { IdeasIaError, IdeasIaService } from 'src/app/services/ideas-ia.service';
@@ -363,8 +363,19 @@ describe('ImagenesPersonajeComponent', () => {
     const RETRATO = { tipo: 'retrato', ancho: 512, alto: 512, origen: 'subida', creada: '2026-10-23T20:00:00Z', imagen: '/personajes/7/imagenes/retrato?v=1' };
     const CUERPO_IA = { tipo: 'cuerpo', ancho: 768, alto: 1152, origen: 'ia', creada: '2026-10-23T20:00:00Z', imagen: '/personajes/7/imagenes/cuerpo?v=2' };
 
+    let sesion: any;
+
     beforeEach(async () => {
         servicio = crearServicio();
+        sesion = {
+            estado$: new BehaviorSubject<any>({ tipo: 'con_sesion' }),
+            cuenta: { id: 'sub-del-dueno' },
+            imagenesDelEncargo: jasmine.createSpy('imagenesDelEncargo').and.resolveTo([
+                new Blob(['uno'], { type: 'image/webp' }),
+                new Blob(['dos'], { type: 'image/webp' }),
+            ]),
+            recogerEncargo: jasmine.createSpy('recogerEncargo').and.resolveTo(),
+        };
         imagenes = {
             imagenes: jasmine.createSpy('imagenes').and.resolveTo({ retrato: RETRATO, cuerpo: null }),
             archivo: jasmine.createSpy('archivo').and.resolveTo(new Blob(['webp'], { type: 'image/webp' })),
@@ -377,10 +388,7 @@ describe('ImagenesPersonajeComponent', () => {
             providers: [
                 { provide: IdeasIaService, useValue: servicio },
                 { provide: ImagenesPersonajeService, useValue: imagenes },
-                {
-                    provide: PlatformSessionService,
-                    useValue: { estado$: new BehaviorSubject<any>({ tipo: 'con_sesion' }), cuenta: { id: 'sub-del-dueno' } },
-                },
+                { provide: PlatformSessionService, useValue: sesion },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -403,6 +411,7 @@ describe('ImagenesPersonajeComponent', () => {
         const html = fixture.nativeElement as HTMLElement;
         expect(html.querySelector('img')?.getAttribute('alt')).toBe('Retrato de Thorin');
         expect(html.textContent).not.toContain('Subir');
+        expect(html.querySelector('yosi-encargos')).toBeNull();
     });
 
     it('sin imágenes y sin ser el dueño, no se enseña', async () => {
@@ -471,6 +480,113 @@ describe('ImagenesPersonajeComponent', () => {
             expect(texto).toContain('Tus claves de IA han llegado a su tope.');
             expect(texto).toContain('Ir a tus claves de IA');
             expect(component.conIa).toBe('cuerpo');
+        });
+
+        describe('encargarla a otra web (ENCARGOS.md)', () => {
+            const ENCARGO = { id: 'enc-1', estado: 'entregado', titulo: 'Cuerpo entero de Thorin', nombreDestino: 'p.i.c.', idExterno: 'personaje-7-cuerpo' };
+            const botones = () => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('yosi-encargos')) as any[];
+            const esperar = () => new Promise<void>((resolve) => setTimeout(resolve));
+
+            async function llega(encargo: any = ENCARGO): Promise<any> {
+                const boton = botones()[encargo.idExterno.endsWith('retrato') ? 0 : 1];
+                boton.cargar = jasmine.createSpy('cargar').and.resolveTo();
+                boton.dispatchEvent(new CustomEvent('yosi-encargo-entregado', { detail: { encargo } }));
+                await esperar();
+                fixture.detectChanges();
+                return boton;
+            }
+
+            it('pide cada tipo con <yosi-encargos>: título, id externo, indicaciones y referencia', () => {
+                const [retrato, cuerpo] = botones();
+                expect(botones().length).toBe(2);
+                expect(retrato.getAttribute('tipo')).toBe('imagen');
+                expect(retrato.getAttribute('maximo')).toBe('2');
+                expect(retrato.getAttribute('titulo')).toBe('Retrato de Thorin');
+                expect(retrato.getAttribute('id-externo')).toBe('personaje-7-retrato');
+                expect(cuerpo.getAttribute('id-externo')).toBe('personaje-7-cuerpo');
+                expect(retrato.indicaciones.formato).toBe('1:1');
+                expect(cuerpo.indicaciones.formato).toBe('2:3');
+                expect(retrato.indicaciones.texto).toContain('Raza: Enano');
+                expect(retrato.indicaciones.texto).toContain('Género: Masculino');
+                expect(retrato.indicaciones.texto).not.toContain('Thorin');
+                // Sin cuerpo entero, la referencia de los dos es el retrato que ya tiene.
+                expect(retrato.referencia).toBe(component.archivos.retrato);
+                expect(cuerpo.referencia).toBe(component.archivos.retrato);
+            });
+
+            it('al llegar enseña las imágenes, sube la elegida y recoge el encargo', async () => {
+                imagenes.subir.and.resolveTo(CUERPO_IA);
+                const boton = await llega();
+                expect(sesion.imagenesDelEncargo).toHaveBeenCalledOnceWith('enc-1');
+                expect((fixture.nativeElement as HTMLElement).textContent).toContain('p.i.c. ha enviado 2 imágenes');
+                const segunda = component.llegadas.cuerpo!.imagenes[1].archivo;
+
+                await component.usarDelEncargo('cuerpo', segunda);
+
+                expect(imagenes.subir).toHaveBeenCalledWith(7, 'cuerpo', segunda, 'cuerpo.webp');
+                expect(sesion.recogerEncargo).toHaveBeenCalledWith('enc-1');
+                expect(component.llegadas.cuerpo).toBeUndefined();
+                expect(boton.cargar).toHaveBeenCalled();
+            });
+
+            it('si no se puede subir, no recoge: sigue pudiendo elegir', async () => {
+                imagenes.subir.and.rejectWith(new IdeasIaError('La imagen no es válida.', 'imagen_no_valida', 400));
+                await llega();
+
+                await component.usarDelEncargo('cuerpo', component.llegadas.cuerpo!.imagenes[0].archivo);
+
+                expect(sesion.recogerEncargo).not.toHaveBeenCalled();
+                expect(component.llegadas.cuerpo).toBeDefined();
+                expect(component.error?.message).toBe('La imagen no es válida.');
+            });
+
+            it('descartarlas pregunta y recoge sin subir nada', async () => {
+                spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+                await llega();
+
+                await component.descartarEncargo('cuerpo');
+
+                expect(imagenes.subir).not.toHaveBeenCalled();
+                expect(sesion.recogerEncargo).toHaveBeenCalledWith('enc-1');
+                expect(component.llegadas.cuerpo).toBeUndefined();
+            });
+
+            it('si otra pestaña ya lo recogió, no enseña ningún error', async () => {
+                sesion.imagenesDelEncargo.and.rejectWith(Object.assign(new Error('Ese encargo ya está cerrado.'), { code: 'encargo_cerrado', status: 409 }));
+                const boton = await llega();
+
+                expect(component.llegadas.cuerpo).toBeUndefined();
+                expect(component.error).toBeNull();
+                expect(boton.cargar).toHaveBeenCalled();
+            });
+
+            it('el error de la plataforma al recoger se enseña y deja volver a intentarlo', async () => {
+                sesion.recogerEncargo.and.rejectWith(Object.assign(new Error('La plataforma no responde.'), { code: 'no_disponible', status: 503 }));
+                spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+                await llega();
+
+                await component.descartarEncargo('cuerpo');
+
+                expect(component.error?.message).toBe('La plataforma no responde.');
+                expect(component.llegadas.cuerpo?.cerrando).toBeFalse();
+            });
+
+            it('no atiende un encargo de otro personaje', async () => {
+                await llega({ ...ENCARGO, idExterno: 'personaje-8-cuerpo' });
+
+                expect(sesion.imagenesDelEncargo).not.toHaveBeenCalled();
+                expect(component.llegadas.cuerpo).toBeUndefined();
+            });
+
+            it('al cambiar de personaje olvida lo llegado', async () => {
+                await llega();
+                const anterior = component.pj;
+                component.pj = { ...anterior, Id: 8 } as any;
+                component.ngOnChanges({ pj: new SimpleChange(anterior, component.pj, false) });
+
+                expect(component.llegadas.cuerpo).toBeUndefined();
+                expect(component.pedido('cuerpo').idExterno).toBe('personaje-8-cuerpo');
+            });
         });
     });
 });

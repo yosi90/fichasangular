@@ -190,6 +190,17 @@ yosi-chat::part(burbuja-flotante):hover
     transform: translateY(-1px)
     box-shadow: 0 12px 28px rgba(0, 0, 0, 0.44)
 
+// El botón para encargar una imagen del personaje a otra web (`<yosi-encargos>`, ecosistema-kit/ESTILOS.md, «Los
+// encargos»), en el hueco de 160 px de cada imagen: a la medida de los botones de Rol de al lado.
+yosi-encargos.imagenes-pj__encargo::part(boton)
+    min-height: 34px
+    padding: 0 10px
+    font-size: 13px
+
+yosi-encargos.imagenes-pj__encargo::part(estado)
+    padding: 8px 10px
+    font-size: 13px
+
 // El fondo de la búsqueda global (Ctrl+K): oscurece la web detrás de la ventana.
 .buscador-global-fondo
     background: rgba(0, 0, 0, .6)

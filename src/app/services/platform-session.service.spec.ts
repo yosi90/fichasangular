@@ -330,3 +330,57 @@ describe('PlatformSessionService, el correo sin confirmar (SDK 1.32, kit 1.80)',
         expect(confirmar).toHaveBeenCalledTimes(2);
     });
 });
+
+describe('PlatformSessionService, encargos a otras webs (ENCARGOS.md, SDK 1.23)', () => {
+    let anterior: unknown;
+    let sdk: SdkFalso & { encargos: { imagenes: jasmine.Spy; recoger: jasmine.Spy } };
+    let servicio: PlatformSessionServicePrueba;
+
+    beforeEach(async () => {
+        anterior = (window as any).yosiftware;
+        sdk = Object.assign(new SdkFalso(), {
+            encargos: {
+                imagenes: jasmine.createSpy('imagenes').and.resolveTo([new Blob(['webp'], { type: 'image/webp' })]),
+                recoger: jasmine.createSpy('recoger').and.resolveTo({ id: 'enc-1', estado: 'recogido' }),
+            },
+        });
+        (window as any).yosiftware = sdk;
+        servicio = new PlatformSessionServicePrueba(new NgZone({ enableLongStackTrace: false }));
+        servicio.iniciar();
+        await esperar();
+        sdk.cambiar(conSesion('a'));
+    });
+
+    afterEach(() => {
+        (window as any).yosiftware = anterior;
+    });
+
+    it('trae las imágenes entregadas y recoge el encargo', async () => {
+        expect((await servicio.imagenesDelEncargo('enc-1')).length).toBe(1);
+        await servicio.recogerEncargo('enc-1');
+
+        expect(sdk.encargos.imagenes).toHaveBeenCalledWith('enc-1');
+        expect(sdk.encargos.recoger).toHaveBeenCalledWith('enc-1');
+    });
+
+    it('sin sesión en el SDK, ninguna imagen', async () => {
+        sdk.encargos.imagenes.and.resolveTo(null);
+
+        expect(await servicio.imagenesDelEncargo('enc-1')).toEqual([]);
+    });
+
+    it('A → B mientras llegan las imágenes: no se dan a B y la página se recarga', async () => {
+        let dar!: (imagenes: Blob[]) => void;
+        sdk.encargos.imagenes.and.returnValue(new Promise<Blob[]>((resolver) => dar = resolver));
+        const imagenes = servicio.imagenesDelEncargo('enc-1');
+        await esperar();
+        sdk.estado = conSesion('b');
+        dar([new Blob(['webp'])]);
+
+        const error = await imagenes.then(() => null, (e) => e);
+        expect(error?.code).toBe('CAMBIO_DE_IDENTIDAD');
+        expect(servicio.recargas).toBe(1);
+        expect(await servicio.recogerEncargo('enc-1').then(() => 'recogido', (e) => e.code)).toBe('CAMBIO_DE_IDENTIDAD');
+        expect(sdk.encargos.recoger).not.toHaveBeenCalled();
+    });
+});

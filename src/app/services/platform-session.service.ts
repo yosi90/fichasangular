@@ -60,6 +60,19 @@ export interface EspacioAceptado {
     idExterno: string;
 }
 
+/**
+ * Un encargo entre webs que ha pedido Rol (ecosistema-kit/ENCARGOS.md, SDK 1.23): lo que usa la web de lo que da el SDK
+ * en los eventos de `<yosi-encargos>` (`EncargoDeYosiftware` en sus tipos).
+ */
+export interface EncargoPlataforma {
+    id: string;
+    estado: 'pendiente' | 'entregado' | 'recogido' | 'cancelado' | 'caducado';
+    titulo: string;
+    /** La web que lo hace («p.i.c.»). */
+    nombreDestino: string;
+    idExterno: string | null;
+}
+
 /** Bloque de ajustes de Rol en la plataforma (`yosiftware.ajustes`): solo lo lee y lo escribe esta web. */
 export interface BloqueAjustes {
     version: number;
@@ -94,6 +107,11 @@ interface YosiftwareSdk {
     };
     espacios: {
         verInvitaciones(opciones?: { codigo?: string }): Promise<void>;
+    };
+    /** Los encargos que pide Rol (`<yosi-encargos>`); sin sesión resuelven `null` y los errores llevan `code`. */
+    encargos: {
+        imagenes(id: string): Promise<Blob[] | null>;
+        recoger(id: string): Promise<EncargoPlataforma | null>;
     };
 }
 
@@ -214,14 +232,23 @@ export class PlatformSessionService {
      * una acción que empezó con A no sale con el token de B en lo que tarda en irse la página.
      */
     private async tokenDeLaCuentaVigente(pedir: (sdk: YosiftwareSdk) => Promise<string | null>): Promise<string> {
-        this.comprobarCuentaVigente();
-        const sdk = await this.cargarSdk();
-        this.comprobarCuentaVigente(sdk);
-        const token = await pedir(sdk);
-        this.comprobarCuentaVigente(sdk);
+        const token = await this.conLaCuentaVigente(pedir);
         if (!token)
             throw ProfileApiError.sinSesion('sin_sesion');
         return token;
+    }
+
+    /**
+     * Lo que pide [accion] al SDK, solo si la cuenta sigue siendo la que ve esta página antes y después de pedirlo; si
+     * no, falla con `CAMBIO_DE_IDENTIDAD` y la página se recarga (ver `tokenDeLaCuentaVigente`).
+     */
+    private async conLaCuentaVigente<T>(accion: (sdk: YosiftwareSdk) => Promise<T>): Promise<T> {
+        this.comprobarCuentaVigente();
+        const sdk = await this.cargarSdk();
+        this.comprobarCuentaVigente(sdk);
+        const resultado = await accion(sdk);
+        this.comprobarCuentaVigente(sdk);
+        return resultado;
     }
 
     private comprobarCuentaVigente(sdk?: YosiftwareSdk): void {
@@ -273,12 +300,8 @@ export class PlatformSessionService {
      * La conversación directa con una amistad (la crea si no existía) y su id; `null` sin sesión. Si no sois amistades,
      * el SDK falla con `code: "solo_entre_amistades"` (ecosistema-kit/CHAT.md).
      */
-    async conversacionDirecta(idCuenta: string): Promise<number | null> {
-        this.comprobarCuentaVigente();
-        const sdk = await this.cargarSdk();
-        const id = await sdk.chat.directa(idCuenta);
-        this.comprobarCuentaVigente(sdk);
-        return id;
+    conversacionDirecta(idCuenta: string): Promise<number | null> {
+        return this.conLaCuentaVigente((sdk) => sdk.chat.directa(idCuenta));
     }
 
     /**
@@ -286,12 +309,8 @@ export class PlatformSessionService {
      * que empieza por `motivo`. Resuelve `true` si ya estaban aceptadas o se aceptan ahora (con los tokens ya renovados,
      * sin `normasPendientes`) y `false` sin sesión o con «Ahora no».
      */
-    async normasDeLaWeb(motivo: string): Promise<boolean> {
-        this.comprobarCuentaVigente();
-        const sdk = await this.cargarSdk();
-        const aceptadas = await sdk.normasDeLaWeb({ motivo });
-        this.comprobarCuentaVigente(sdk);
-        return aceptadas;
+    normasDeLaWeb(motivo: string): Promise<boolean> {
+        return this.conLaCuentaVigente((sdk) => sdk.normasDeLaWeb({ motivo }));
     }
 
     /**
@@ -317,14 +336,21 @@ export class PlatformSessionService {
         return this.confirmacionCorreo;
     }
 
-    private async confirmarCorreo(): Promise<boolean> {
-        this.comprobarCuentaVigente();
-        const sdk = await this.cargarSdk();
-        if (typeof sdk.confirmarCorreo !== 'function')
-            return false;
-        const confirmado = await sdk.confirmarCorreo();
-        this.comprobarCuentaVigente(sdk);
-        return confirmado === true;
+    private confirmarCorreo(): Promise<boolean> {
+        return this.conLaCuentaVigente(async (sdk) => typeof sdk.confirmarCorreo === 'function' && (await sdk.confirmarCorreo()) === true);
+    }
+
+    /**
+     * Las imágenes que ha entregado la web de destino de un encargo de Rol, en orden (WebP; ecosistema-kit/ENCARGOS.md).
+     * Sin sesión, ninguna. Solo de la cuenta que ve la página.
+     */
+    async imagenesDelEncargo(id: string): Promise<Blob[]> {
+        return (await this.conLaCuentaVigente((sdk) => sdk.encargos.imagenes(id))) ?? [];
+    }
+
+    /** Rol ya ha guardado (o descartado) lo entregado: la plataforma lo borra y el botón del encargo vuelve. */
+    async recogerEncargo(id: string): Promise<void> {
+        await this.conLaCuentaVigente((sdk) => sdk.encargos.recoger(id));
     }
 
     /** Conversaciones con mensajes sin leer, más invitaciones a grupos: avisa ahora y en cada cambio. */

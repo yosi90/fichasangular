@@ -28,8 +28,41 @@
                     <mat-icon>delete_outline</mat-icon>
                 </button>
             </div>
+            <!-- Encargarla a otra web (p.i.c.), con el botón del SDK: solo sale si alguna web acepta imágenes
+                 (ecosistema-kit/ENCARGOS.md). Un botón por personaje y tipo: se crea de nuevo si cambia el personaje. -->
+            <ng-container *ngIf="esDueno">
+                <yosi-encargos #botonEncargo *ngFor="let encargo of [pedido(tipo)]" class="imagenes-pj__encargo" tipo="imagen"
+                    [attr.maximo]="maximoEncargo" [attr.titulo]="encargo.titulo" [attr.id-externo]="encargo.idExterno"
+                    [indicaciones]="encargo.indicaciones" [referencia]="referencia(tipo)"
+                    (yosi-encargo-entregado)="alLlegarEncargo(tipo, $event)"
+                    (yosi-encargo-cancelado)="olvidarLlegada(tipo)"></yosi-encargos>
+            </ng-container>
         </figure>
     </div>
+
+    <!-- Lo que ha llegado de un encargo: el dueño elige una (se sube como las demás) o las descarta; las dos recogen. -->
+    <ng-container *ngFor="let tipo of tipos">
+        <section class="ideas-ia__propuesta imagenes-pj__llegada" *ngIf="esDueno && llegadas[tipo] as llegada"
+            [attr.aria-label]="nombre(tipo) + ': imágenes de ' + llegada.de">
+            <p class="ideas-ia__propuesta-titulo">{{nombre(tipo)}} · {{llegada.de}} ha enviado {{llegada.imagenes.length === 1 ? 'una imagen' : llegada.imagenes.length + ' imágenes'}}</p>
+            <div class="imagenes-pj__opciones">
+                <figure class="imagenes-pj__opcion" [class.imagenes-pj__opcion--cuerpo]="tipo === 'cuerpo'"
+                    *ngFor="let imagen of llegada.imagenes; let i = index">
+                    <img [src]="imagen.url" [alt]="'Imagen ' + (i + 1) + ' de ' + llegada.de">
+                    <button type="button" mat-stroked-button class="ideas-ia__boton" [disabled]="!!ocupado || llegada.cerrando"
+                        (click)="usarDelEncargo(tipo, imagen.archivo)"
+                        [attr.aria-label]="'Usar la imagen ' + (i + 1) + ' como ' + (tipo === 'retrato' ? 'retrato' : 'imagen de cuerpo entero')">
+                        Usar esta
+                    </button>
+                </figure>
+            </div>
+            <div class="ideas-ia__acciones">
+                <button type="button" mat-button [disabled]="!!ocupado || llegada.cerrando" (click)="descartarEncargo(tipo)">
+                    {{llegada.imagenes.length === 1 ? 'Descartarla' : 'Descartarlas'}}
+                </button>
+            </div>
+        </section>
+    </ng-container>
 
     <!-- Generar con IA: una opción; lo principal es subirla. -->
     <div class="ideas-ia__voz" *ngIf="conIa && esDueno">

@@ -8,7 +8,8 @@ import { PlatformSessionService } from './platform-session.service';
 // Las imágenes de un personaje (docs/publica/endpoints/personajes.md, «Las imágenes de un personaje»): un retrato y una
 // de cuerpo entero. Su dueño las sube o, si quiere, las genera con IA (OpenAI, con su clave); la API las deja todas en
 // WebP con las mismas medidas. Las ve quien puede ver la ficha. El archivo necesita el token si la ficha no es pública:
-// se descarga y se enseña desde un `blob:`.
+// se descarga y se enseña desde un `blob:`. También se pueden encargar a otra web del ecosistema (p.i.c.) con
+// `<yosi-encargos>`: lo que llega se sube por el mismo `PUT` (docs/publica/IDEAS_CON_IA.md, punto 6).
 
 export type TipoImagenPersonaje = 'retrato' | 'cuerpo';
 export const TIPOS_IMAGEN_PERSONAJE: TipoImagenPersonaje[] = ['retrato', 'cuerpo'];
@@ -34,6 +35,34 @@ export interface PeticionImagenIa {
 const ERROR_GENERICO = 'No se ha podido atender la imagen. Inténtalo de nuevo.';
 /** Lo que deja subir la API (10 MB); se comprueba antes para no mandar archivos que va a rechazar. */
 export const MAX_BYTES_IMAGEN = 10 * 1024 * 1024;
+
+/** La proporción con la que la API guarda cada tipo (512 × 512 y 768 × 1152), la que se pide a otra web. */
+export const FORMATO_IMAGEN_PERSONAJE: Record<TipoImagenPersonaje, string> = { retrato: '1:1', cuerpo: '2:3' };
+
+const ENCUADRE_ENCARGO: Record<TipoImagenPersonaje, string> = {
+    retrato: 'Retrato de cabeza y hombros',
+    cuerpo: 'Imagen de cuerpo entero, de la cabeza a los pies',
+};
+
+/**
+ * Lo que se manda a la web que hace el encargo de una imagen (ecosistema-kit/ENCARGOS.md, `indicaciones`): en `texto`,
+ * el encuadre y lo que se ve del personaje, lo mismo que mira la IA de Rol (`POST …/ia`: raza, clases, género, edad,
+ * alineamiento, deidad y región; ni el nombre, que ya va en el título, ni los textos largos); en `formato`, su proporción.
+ */
+export function indicacionesDeEncargo(tipo: TipoImagenPersonaje, datos: DatosIdeaIa): { texto: string; formato: string } {
+    const clases = (datos.clases ?? []).map(clase => clase.nivel ? `${clase.nombre} ${clase.nivel}` : clase.nombre).join(', ');
+    const lineas = [
+        ['Raza', datos.raza],
+        ['Clases', clases],
+        ['Género', datos.genero],
+        ['Edad', datos.edad],
+        ['Alineamiento', datos.alineamiento],
+        ['Deidad', datos.deidad],
+        ['Región', datos.region],
+    ].filter(([, valor]) => `${valor ?? ''}`.trim().length > 0).map(([etiqueta, valor]) => `${etiqueta}: ${valor}`);
+    const encabezado = `${ENCUADRE_ENCARGO[tipo]} de un personaje de Dragones y Mazmorras 3.5.`;
+    return { texto: lineas.length > 0 ? `${encabezado}\n${lineas.join('\n')}` : encabezado, formato: FORMATO_IMAGEN_PERSONAJE[tipo] };
+}
 
 @Injectable({
     providedIn: 'root'
