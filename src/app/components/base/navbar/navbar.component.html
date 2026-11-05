@@ -3,46 +3,32 @@
         aria-label="Abrir el menú" [attr.aria-expanded]="menuAbierto">
         <mat-icon aria-hidden="true">menu</mat-icon>
     </button>
-    <button type="button" class="ribbon-trigger ribbon-trigger--icon" #archivoTrigger="matMenuTrigger" [matMenuTriggerFor]="menuArchivo"
-        matTooltip="Archivo" aria-label="Archivo"
-        (click)="onRibbonTriggerClick(archivoTrigger)"
-        (menuOpened)="onRibbonMenuOpened(archivoTrigger)"
-        (menuClosed)="onRibbonMenuClosed(archivoTrigger)"
-        (mouseenter)="onRibbonTriggerEnter(archivoTrigger)"
-        (mouseleave)="onRibbonTriggerLeave(archivoTrigger)">
-        <mat-icon>folder</mat-icon>
-        <span class="solo-lectores">Archivo</span>
-    </button>
-    <button type="button" class="ribbon-trigger ribbon-trigger--icon" #menuTrigger="matMenuTrigger" [matMenuTriggerFor]="menuManuales"
-        matTooltip="Manuales" aria-label="Manuales"
-        (click)="onRibbonTriggerClick(menuTrigger)"
-        (menuOpened)="onRibbonMenuOpened(menuTrigger)"
-        (menuClosed)="onRibbonMenuClosed(menuTrigger)"
-        (mouseenter)="onRibbonTriggerEnter(menuTrigger)"
-        (mouseleave)="onRibbonTriggerLeave(menuTrigger)">
-        <mat-icon>menu_book</mat-icon>
-        <span class="solo-lectores">Manuales</span>
-    </button>
-    <button type="button" class="ribbon-trigger ribbon-trigger--icon" #opcionesTrigger="matMenuTrigger" [matMenuTriggerFor]="menuOpciones"
-        matTooltip="Opciones" aria-label="Opciones"
-        (click)="onRibbonTriggerClick(opcionesTrigger)"
-        (menuOpened)="onRibbonMenuOpened(opcionesTrigger)"
-        (menuClosed)="onRibbonMenuClosed(opcionesTrigger)"
-        (mouseenter)="onRibbonTriggerEnter(opcionesTrigger)"
-        (mouseleave)="onRibbonTriggerLeave(opcionesTrigger)">
-        <mat-icon>tune</mat-icon>
-        <span class="solo-lectores">Opciones</span>
-    </button>
-    <button type="button" class="ribbon-trigger ribbon-trigger--icon" #ayudaTrigger="matMenuTrigger" [matMenuTriggerFor]="menuAyuda"
-        matTooltip="Ayuda" aria-label="Ayuda"
-        (click)="onRibbonTriggerClick(ayudaTrigger)"
-        (menuOpened)="onRibbonMenuOpened(ayudaTrigger)"
-        (menuClosed)="onRibbonMenuClosed(ayudaTrigger)"
-        (mouseenter)="onRibbonTriggerEnter(ayudaTrigger)"
-        (mouseleave)="onRibbonTriggerLeave(ayudaTrigger)">
-        <mat-icon>help_center</mat-icon>
-        <span class="solo-lectores">Ayuda</span>
-    </button>
+    <!--
+        Archivo, Manuales, Opciones y Ayuda son una barra de menús (menú de la CDK): con uno abierto, pasar por encima de
+        otro botón cierra el primero y abre ese; se cierran al pulsar fuera, con Esc o al elegir, y se navega con las flechas.
+    -->
+    <div class="ribbon-barra" cdkMenuBar aria-label="Menús de Rol">
+        <button type="button" class="ribbon-trigger ribbon-trigger--icon" cdkMenuItem [cdkMenuTriggerFor]="menuArchivo"
+            matTooltip="Archivo" aria-label="Archivo">
+            <mat-icon>folder</mat-icon>
+            <span class="solo-lectores">Archivo</span>
+        </button>
+        <button type="button" class="ribbon-trigger ribbon-trigger--icon" cdkMenuItem [cdkMenuTriggerFor]="menuManuales"
+            matTooltip="Manuales" aria-label="Manuales">
+            <mat-icon>menu_book</mat-icon>
+            <span class="solo-lectores">Manuales</span>
+        </button>
+        <button type="button" class="ribbon-trigger ribbon-trigger--icon" cdkMenuItem [cdkMenuTriggerFor]="menuOpciones"
+            matTooltip="Opciones" aria-label="Opciones">
+            <mat-icon>tune</mat-icon>
+            <span class="solo-lectores">Opciones</span>
+        </button>
+        <button type="button" class="ribbon-trigger ribbon-trigger--icon" cdkMenuItem [cdkMenuTriggerFor]="menuAyuda"
+            matTooltip="Ayuda" aria-label="Ayuda">
+            <mat-icon>help_center</mat-icon>
+            <span class="solo-lectores">Ayuda</span>
+        </button>
+    </div>
     <!-- La búsqueda global (lienzo, vista 5): también con Ctrl+K o ⌘K desde cualquier pantalla. -->
     <button type="button" class="ribbon-buscar" (click)="abrirBuscador()" [attr.aria-keyshortcuts]="atajoBuscar === '⌘K' ? 'Meta+K' : 'Control+K'"
         [matTooltip]="'Buscar en Rol (' + atajoBuscar + ')'">
@@ -58,45 +44,40 @@
     <yosi-acceso class="ribbon-yosi ribbon-yosi--cuenta"></yosi-acceso>
 </div>
 
-<mat-menu #menuArchivo="matMenu" [class]="'menuSuperficieOscura'">
-    <div class="ribbon-menu-shell"
-        (mouseenter)="cancelarCierreRibbonMenu()"
-        (mouseleave)="programarCierreRibbonMenu(archivoTrigger)">
-        <div class="menu-user-state" (click)="$event.stopPropagation()">
+<ng-template #menuArchivo>
+    <div class="menuSuperficieOscura ribbon-panel ribbon-menu-shell" cdkMenu aria-label="Archivo">
+        <div class="menu-user-state">
             <span class="menu-user-state__eyebrow">Sesión actual</span>
             <strong class="menu-user-state__title">{{usr}}</strong>
             <span class="menu-user-state__subtitle">{{userSubLabel}}</span>
         </div>
 
-        <button mat-menu-item *ngIf="isLoggedIn" (click)="abrirMiPerfil()">
+        <button type="button" class="ribbon-panel__item" cdkMenuItem *ngIf="isLoggedIn" (cdkMenuItemTriggered)="abrirMiPerfil()">
             <mat-icon>account_circle</mat-icon>
             <span>Mi perfil</span>
         </button>
 
-        <button mat-menu-item *ngIf="isLoggedIn" (click)="abrirSocial()">
+        <button type="button" class="ribbon-panel__item" cdkMenuItem *ngIf="isLoggedIn" (cdkMenuItemTriggered)="abrirSocial()">
             <mat-icon>hub</mat-icon>
             <span>Social</span>
         </button>
 
-        <div class="menu-separator" *ngIf="isLoggedIn" (click)="$event.stopPropagation()"></div>
+        <div class="menu-separator" *ngIf="isLoggedIn" role="separator"></div>
 
-        <button mat-menu-item *ngIf="isLoggedIn" class="menu-entry-danger" (click)="logOut()">
+        <button type="button" class="ribbon-panel__item menu-entry-danger" cdkMenuItem *ngIf="isLoggedIn" (cdkMenuItemTriggered)="logOut()">
             <mat-icon>logout</mat-icon>
             <span>Cerrar sesión</span>
         </button>
 
-        <button mat-menu-item *ngIf="!isLoggedIn" (click)="openSesionDialog()">
+        <button type="button" class="ribbon-panel__item" cdkMenuItem *ngIf="!isLoggedIn" (cdkMenuItemTriggered)="openSesionDialog()">
             <mat-icon>login</mat-icon>
             <span>Entrar</span>
         </button>
     </div>
-</mat-menu>
+</ng-template>
 
-<mat-menu #menuManuales="matMenu" [class]="'menuSuperficieOscura menuSuperficieOscura--wide'">
-    <div class="manuales-menu"
-        (click)="$event.stopPropagation();"
-        (mouseenter)="cancelarCierreRibbonMenu()"
-        (mouseleave)="programarCierreRibbonMenu(menuTrigger)">
+<ng-template #menuManuales>
+    <div class="menuSuperficieOscura menuSuperficieOscura--wide ribbon-panel manuales-menu" cdkMenu aria-label="Manuales">
         <p class="menu-estado" *ngIf="isLoading">
             Cargando manuales...
         </p>
@@ -114,90 +95,85 @@
         </p>
 
         <div class="manuales-lista" *ngIf="!isLoading && !errorState && manuales.length > 0">
-            <div class="manual-item manual-item-clickable" *ngFor="let manual of manuales"
+            <button type="button" class="manual-item manual-item-clickable" cdkMenuItem *ngFor="let manual of manuales"
                 matTooltip="Abrir vista del manual" [matTooltipShowDelay]="180"
-                (click)="abrirManual(manual, $event, menuTrigger)">
-                <div class="manual-linea">
-                    <div class="manual-nombre">{{manual.Nombre}}</div>
-                    <div class="manual-actions">
+                (cdkMenuItemTriggered)="abrirManual(manual)">
+                <span class="manual-linea">
+                    <span class="manual-nombre">{{manual.Nombre}}</span>
+                    <span class="manual-actions">
                         <span class="chip chip-estado" [ngClass]="manual.Oficial ? 'chip-oficial' : 'chip-homebrew'">
                             {{manual.Oficial ? 'Oficial' : 'Homebrew'}}
                         </span>
-                    </div>
-                </div>
-                <div class="manual-chips">
+                    </span>
+                </span>
+                <span class="manual-chips">
                     <span class="chip chip-categoria" *ngFor="let categoria of getCategorias(manual)">
                         <mat-icon class="chip-categoria-icon">{{categoria.icono}}</mat-icon>
                         {{categoria.label}}
                     </span>
-                </div>
-            </div>
+                </span>
+            </button>
         </div>
     </div>
-</mat-menu>
+</ng-template>
 
-<mat-menu #menuOpciones="matMenu" [class]="'menuSuperficieOscura menuSuperficieOscura--options'">
-    <div class="options-menu ribbon-menu-shell"
-        (click)="$event.stopPropagation()"
-        (mouseenter)="cancelarCierreRibbonMenu()"
-        (mouseleave)="programarCierreRibbonMenu(opcionesTrigger)">
+<ng-template #menuOpciones>
+    <div class="menuSuperficieOscura menuSuperficieOscura--options ribbon-panel options-menu ribbon-menu-shell" cdkMenu aria-label="Opciones">
         <div class="options-section">
             <span class="options-section__eyebrow">Cuenta</span>
-            <button mat-menu-item [disabled]="!isLoggedIn" (click)="abrirSeccionPerfil('resumen')">
+            <button type="button" class="ribbon-panel__item" cdkMenuItem [cdkMenuItemDisabled]="!isLoggedIn" (cdkMenuItemTriggered)="abrirSeccionPerfil('resumen')">
                 <mat-icon>badge</mat-icon>
                 <span>Mi cuenta</span>
             </button>
-            <button mat-menu-item [disabled]="!isLoggedIn" (click)="abrirSeccionPerfil('preferencias')">
+            <button type="button" class="ribbon-panel__item" cdkMenuItem [cdkMenuItemDisabled]="!isLoggedIn" (cdkMenuItemTriggered)="abrirSeccionPerfil('preferencias')">
                 <mat-icon>tune</mat-icon>
                 <span>Preferencias de Rol</span>
             </button>
-            <button mat-menu-item [disabled]="!isLoggedIn" (click)="editarPerfilPlataforma()">
+            <button type="button" class="ribbon-panel__item" cdkMenuItem [cdkMenuItemDisabled]="!isLoggedIn" (cdkMenuItemTriggered)="editarPerfilPlataforma()">
                 <mat-icon>account_circle</mat-icon>
                 <span>Perfil de Yosiftware</span>
             </button>
             <!-- Sin sesión, el SDK explica qué sabe Yosiftware de quien usa Rol sin cuenta. -->
-            <button mat-menu-item (click)="abrirPrivacidad()">
+            <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirPrivacidad()">
                 <mat-icon>lock</mat-icon>
                 <span>Privacidad</span>
             </button>
         </div>
 
         <div class="options-section" *ngIf="!isLoggedIn">
-            <button mat-menu-item (click)="openSesionDialog()">
+            <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="openSesionDialog()">
                 <mat-icon>login</mat-icon>
                 <span>Entrar</span>
             </button>
         </div>
     </div>
-</mat-menu>
+</ng-template>
 
-<mat-menu #menuAyuda="matMenu" [class]="'menuSuperficieOscura'">
-    <div class="ribbon-menu-shell"
-        (mouseenter)="cancelarCierreRibbonMenu()"
-        (mouseleave)="programarCierreRibbonMenu(ayudaTrigger)">
-        <button mat-menu-item (click)="abrirAyuda('primeros-pasos')">
+<ng-template #menuAyuda>
+    <div class="menuSuperficieOscura ribbon-panel ribbon-menu-shell" cdkMenu aria-label="Ayuda">
+        <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirAyuda('primeros-pasos')">
             <mat-icon>help_center</mat-icon>
             <span>Primeros pasos</span>
         </button>
-        <button mat-menu-item (click)="abrirAyuda('novedades')">
+        <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirAyuda('novedades')">
             <mat-icon>map</mat-icon>
             <span>Novedades</span>
         </button>
-        <button mat-menu-item (click)="abrirAyuda('legal')">
+        <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirAyuda('legal')">
             <mat-icon>gavel</mat-icon>
             <span>Legal y privacidad</span>
         </button>
-        <a mat-menu-item [href]="urlCompanion" target="_blank" rel="noopener">
+        <a class="ribbon-panel__item" cdkMenuItem [href]="urlCompanion" target="_blank" rel="noopener">
             <mat-icon>phone_android</mat-icon>
             <span>Descargar 3.5 Companion</span>
         </a>
-        <button mat-menu-item (click)="abrirReportarBug()">
+        <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirReportarBug()">
             <mat-icon>bug_report</mat-icon>
             <span>Reportar bug</span>
         </button>
-        <button mat-menu-item (click)="abrirSolicitarFuncionalidad()">
+        <button type="button" class="ribbon-panel__item" cdkMenuItem (cdkMenuItemTriggered)="abrirSolicitarFuncionalidad()">
             <mat-icon>lightbulb</mat-icon>
             <span>Solicitar funcionalidad</span>
         </button>
     </div>
-</mat-menu>
+</ng-template>

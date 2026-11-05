@@ -1,5 +1,4 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
-import { MatMenuTrigger } from '@angular/material/menu';
 import { Subscription } from 'rxjs';
 import { getManualCategorias, ManualCategoriaConIcono } from 'src/app/config/manual-secciones.config';
 import { UserPrivateProfileSectionId } from 'src/app/interfaces/user-account';
@@ -35,9 +34,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
     private loggedInSub?: Subscription;
     private permisosSub?: Subscription;
     private profileSub?: Subscription;
-    private ribbonMenuCloseTimer: ReturnType<typeof setTimeout> | null = null;
-    private activeRibbonMenuTrigger: MatMenuTrigger | null = null;
-    private lastRibbonMenuOpenedAt: number = 0;
 
     constructor(
         private manualesAsociadosSvc: ManualesAsociadosService,
@@ -111,19 +107,17 @@ export class NavbarComponent implements OnInit, OnDestroy {
         this.loggedInSub?.unsubscribe();
         this.permisosSub?.unsubscribe();
         this.profileSub?.unsubscribe();
-        this.cancelarCierreRibbonMenu();
     }
 
     getCategorias(manual: ManualAsociadoDetalle): ManualCategoriaConIcono[] {
         return getManualCategorias(manual);
     }
 
-    abrirManual(manual: ManualAsociadoDetalle, event: MouseEvent, trigger?: MatMenuTrigger): void {
-        event.stopPropagation();
+    /** Un manual del menú Manuales: abre su detalle (el menú se cierra solo al elegir). */
+    abrirManual(manual: ManualAsociadoDetalle): void {
         if (!manual || Number(manual.Id) <= 0)
             return;
         this.navegacionRol.abrir({ clase: 'manual', manual });
-        trigger?.closeMenu();
     }
 
     /** Entrar es de la plataforma: abre el acceso de Yosiftware sobre la web. */
@@ -193,68 +187,6 @@ export class NavbarComponent implements OnInit, OnDestroy {
 
     abrirSolicitarFuncionalidad(): void {
         this.userProfileNavSvc.openFeedbackFeature();
-    }
-
-    onRibbonTriggerClick(trigger: MatMenuTrigger): void {
-        this.cancelarCierreRibbonMenu();
-        this.activeRibbonMenuTrigger = trigger;
-    }
-
-    onRibbonTriggerEnter(trigger: MatMenuTrigger): void {
-        this.cancelarCierreRibbonMenu();
-        if (!trigger)
-            return;
-
-        const current = this.activeRibbonMenuTrigger;
-        if (!current || current === trigger || current.menuOpen !== true)
-            return;
-
-        this.activeRibbonMenuTrigger = trigger;
-        current.closeMenu();
-        setTimeout(() => {
-            if (this.activeRibbonMenuTrigger !== trigger)
-                return;
-            trigger.openMenu();
-            this.lastRibbonMenuOpenedAt = Date.now();
-        });
-    }
-
-    onRibbonTriggerLeave(trigger: MatMenuTrigger): void {
-        if (!trigger)
-            return;
-        if (this.activeRibbonMenuTrigger === trigger && Date.now() - this.lastRibbonMenuOpenedAt < 220)
-            return;
-        this.programarCierreRibbonMenu(trigger);
-    }
-
-    onRibbonMenuOpened(trigger: MatMenuTrigger): void {
-        this.cancelarCierreRibbonMenu();
-        this.activeRibbonMenuTrigger = trigger;
-        this.lastRibbonMenuOpenedAt = Date.now();
-    }
-
-    onRibbonMenuClosed(trigger: MatMenuTrigger): void {
-        if (this.activeRibbonMenuTrigger === trigger)
-            this.activeRibbonMenuTrigger = null;
-    }
-
-    programarCierreRibbonMenu(trigger?: MatMenuTrigger): void {
-        this.cancelarCierreRibbonMenu();
-        if (!trigger)
-            return;
-        this.ribbonMenuCloseTimer = setTimeout(() => {
-            trigger.closeMenu();
-            if (this.activeRibbonMenuTrigger === trigger)
-                this.activeRibbonMenuTrigger = null;
-            this.ribbonMenuCloseTimer = null;
-        }, 150);
-    }
-
-    cancelarCierreRibbonMenu(): void {
-        if (!this.ribbonMenuCloseTimer)
-            return;
-        clearTimeout(this.ribbonMenuCloseTimer);
-        this.ribbonMenuCloseTimer = null;
     }
 
     private syncUserState(): void {

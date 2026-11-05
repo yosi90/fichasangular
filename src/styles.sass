@@ -110,8 +110,9 @@ body.rol-ocultar-chat app-chat-floating-host
     display: none !important
 
 // Un menú abierto prevalece sobre las ventanas del chat flotante (z-index 1490). Solo mientras está abierto, para no
-// cambiar el orden de los diálogos y los avisos, que van en la misma capa.
-.cdk-overlay-container:has(.mat-mdc-menu-panel)
+// cambiar el orden de los diálogos y los avisos, que van en la misma capa. Los de `mat-menu` y los de la CDK
+// (`cdkMenu`: la cinta y los grupos «Otros» del menú lateral).
+.cdk-overlay-container:has(.mat-mdc-menu-panel, .cdk-menu)
     z-index: 1700
 
 // Lo que no se ve pero lee el lector de pantalla («(hecho)», la etiqueta de un campo con solo icono, la cabecera de una

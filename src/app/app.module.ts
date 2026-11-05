@@ -10,6 +10,7 @@ import { NavbarComponent } from './components/base/navbar/navbar.component';
 import { ContPrincipalComponent } from './components/base/cont-principal/cont-principal.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { OverlayModule } from '@angular/cdk/overlay';
+import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 
 import { MatIconModule } from '@angular/material/icon';
@@ -297,6 +298,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         FormsModule,
         BrowserAnimationsModule,
         OverlayModule,
+        CdkMenuModule,
         MatSidenavModule,
         MatIconModule,
         MatInputModule,
