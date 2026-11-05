@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { cabecerasPlataforma, PlatformSessionService } from './platform-session.service';
+import { CORREO_SIN_CONFIRMAR, MENSAJE_CORREO_SIN_CONFIRMAR, conCorreoConfirmado } from './utils/correo-sin-confirmar';
 import { codigoDeError } from './utils/error-api';
 
 // Las relaciones de la plataforma desde las páginas de comunidad de Rol (ecosistema-kit/SOCIAL.md, «Con páginas
@@ -129,6 +130,7 @@ const MENSAJES: Record<string, string> = {
     busqueda_no_valida: 'Escribe entre 2 y 60 caracteres para buscar.',
     cursor_no_valido: 'La lista ha cambiado. Vuelve a cargarla.',
     solo_entre_amistades: 'Solo puedes escribir por privado a tus amistades.',
+    [CORREO_SIN_CONFIRMAR]: MENSAJE_CORREO_SIN_CONFIRMAR,
 };
 
 @Injectable({
@@ -232,13 +234,15 @@ export class PlatformSocialService {
         };
     }
 
-    private async peticion<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', ruta: string, body?: unknown): Promise<T> {
-        const headers = await cabecerasPlataforma(this.platformSessionSvc, body !== undefined);
-        try {
-            return await firstValueFrom(this.http.request<T>(method, `${this.api}${ruta}`, { headers, body }));
-        } catch (error) {
-            throw this.toError(error);
-        }
+    private peticion<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', ruta: string, body?: unknown): Promise<T> {
+        return conCorreoConfirmado(this.platformSessionSvc, method !== 'GET', async () => {
+            const headers = await cabecerasPlataforma(this.platformSessionSvc, body !== undefined);
+            try {
+                return await firstValueFrom(this.http.request<T>(method, `${this.api}${ruta}`, { headers, body }));
+            } catch (error) {
+                throw this.toError(error);
+            }
+        });
     }
 
     private toError(error: unknown): PlatformSocialError {

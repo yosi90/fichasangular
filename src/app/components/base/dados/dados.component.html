@@ -9,13 +9,18 @@
             </div>
 
             <div class="dados-fila" role="group" aria-label="Dados">
-                <button type="button" class="dados-dado" *ngFor="let dado of dados; trackBy: trackDado"
-                    [class.dados-dado--puesto]="cantidad(dado) > 0" [attr.aria-label]="etiqueta(dado)"
-                    (click)="anadir(dado)" (contextmenu)="quitar(dado, $event)">
-                    <app-icono-rol [tipo]="dado.icono" [tamano]="compacto ? 32 : 44"></app-icono-rol>
-                    <span class="dados-dado__porcentaje" *ngIf="dado.porcentaje" aria-hidden="true">%</span>
-                    <span class="dados-dado__insignia" *ngIf="cantidad(dado) > 0" aria-hidden="true">{{cantidad(dado)}}</span>
-                </button>
+                <div class="dados-pieza" *ngFor="let dado of dados; trackBy: trackDado" [class.dados-pieza--puesta]="cantidad(dado) > 0">
+                    <button type="button" class="dados-pieza__paso" [attr.aria-label]="'Quitar un ' + dado.nombre"
+                        [disabled]="cantidad(dado) === 0" (click)="quitar(dado)">−</button>
+                    <button type="button" class="dados-dado" [class.dados-dado--puesto]="cantidad(dado) > 0"
+                        [attr.aria-label]="etiqueta(dado)" (click)="anadir(dado)" (contextmenu)="quitar(dado, $event)">
+                        <app-icono-rol [tipo]="dado.icono" [tamano]="compacto ? 32 : 44"></app-icono-rol>
+                        <span class="dados-dado__porcentaje" *ngIf="dado.porcentaje" aria-hidden="true">%</span>
+                        <span class="dados-dado__insignia" *ngIf="cantidad(dado) > 0" aria-hidden="true">{{cantidad(dado)}}</span>
+                    </button>
+                    <button type="button" class="dados-pieza__paso" [attr.aria-label]="'Añadir un ' + dado.nombre"
+                        [disabled]="cantidad(dado) >= maximoDados" (click)="anadir(dado)">+</button>
+                </div>
             </div>
 
             <div class="dados-bonificador">
@@ -50,7 +55,7 @@
                 </div>
             </div>
 
-            <p class="dados-nota dados-tirada__ayuda">Clic en un dado para añadirlo; clic derecho para quitar uno. Intro tira y Escape limpia.</p>
+            <p class="dados-nota dados-tirada__ayuda">− y + quitan y añaden un dado; un clic en el dado también añade uno. Intro tira y Escape limpia.</p>
         </section>
 
         <section class="dados-tarjeta dados-historial" aria-labelledby="dados-historial-titulo">

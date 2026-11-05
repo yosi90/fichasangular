@@ -75,41 +75,82 @@ $dados-rojo: var(--yosi-color-error)
 .dados-tirada__ayuda
     margin: 0
 
-// Los dados: solo el icono, dorado, sobre la superficie y sin borde; con dados puestos, fondo dorado suave y la
-// insignia con cuántos lleva.
+// Los dados (2026-11-05, como en Companion): cada uno en una cápsula de borde neutro con − a la izquierda, el icono
+// dorado en el centro (un clic también añade uno) y + a la derecha. Con dados puestos, la cápsula se tiñe de dorado
+// suave y el icono lleva la insignia con cuántos.
 .dados-fila
-    display: flex
-    flex-wrap: wrap
+    display: grid
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr))
     gap: 12px
+
+.dados-pieza
+    display: flex
+    align-items: center
+    height: 64px
+    border: 1px solid rgba(255, 255, 255, .3)
+    border-radius: 32px
+    transition: background-color .15s ease, border-color .15s ease
+
+.dados-pieza--puesta
+    border-color: color.change($dados-dorado, $alpha: .5)
+    background: $dados-dorado-suave
+
+.dados-pieza__paso
+    flex: none
+    width: 48px
+    height: 100%
+    padding: 0
+    border: 0
+    background: none
+    color: $ficha-blanco
+    font: inherit
+    font-size: 22px
+    line-height: 1
+    cursor: pointer
+
+    &:first-child
+        border-radius: 32px 0 0 32px
+
+    &:last-child
+        border-radius: 0 32px 32px 0
+
+    &:hover:not(:disabled)
+        background: rgba(255, 255, 255, .08)
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: -2px
+
+    &:disabled
+        opacity: .38
+        cursor: default
 
 .dados-dado
     position: relative
     display: flex
+    flex: 1 1 auto
     align-items: center
     justify-content: center
-    width: 64px
-    height: 64px
+    min-width: 0
+    height: 100%
     padding: 0
     border: 0
     border-radius: 8px
-    background: $contrast-dark
+    background: none
     cursor: pointer
     transition: background-color .15s ease
 
     &:hover
-        background: color-mix(in srgb, #{$contrast-dark} 85%, #{$dados-dorado})
+        background: rgba(255, 255, 255, .06)
 
     &:focus-visible
         outline: 2px solid $active
-        outline-offset: 2px
-
-.dados-dado--puesto, .dados-dado--puesto:hover
-    background: $dados-dorado-suave
+        outline-offset: -2px
 
 .dados-dado__porcentaje
     position: absolute
-    right: 4px
-    bottom: 2px
+    left: calc(50% + 16px)
+    bottom: 8px
     font-size: 13px
     font-weight: 700
     line-height: 1
@@ -117,8 +158,8 @@ $dados-rojo: var(--yosi-color-error)
 
 .dados-dado__insignia
     position: absolute
-    top: -7px
-    right: -7px
+    top: 2px
+    left: calc(50% + 12px)
     display: flex
     align-items: center
     justify-content: center
@@ -316,7 +357,7 @@ $dados-rojo: var(--yosi-color-error)
     margin: 0
     padding: 16px 18px
 
-// Estrecha (< 768 px de pestaña, el móvil): una columna; los siete dados en una fila de 44 × 48 con el icono de 32;
+// Estrecha (< 768 px de pestaña, el móvil): una columna; los dados en dos columnas de cápsulas de 52 px con el icono de 32;
 // el bonificador en su fila, y «Limpiar» y «Tirar», que se queda con el resto del ancho.
 .dados--compacto
     padding: 12px 8px
@@ -334,23 +375,30 @@ $dados-rojo: var(--yosi-color-error)
         font-size: 23px
 
     .dados-fila
-        flex-wrap: nowrap
-        justify-content: space-between
-        gap: 2px
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+        gap: 8px
 
-    .dados-dado
-        flex: 0 1 44px
+    .dados-pieza
+        height: 52px
+        border-radius: 26px
+
+    .dados-pieza__paso
         width: 44px
-        height: 48px
+
+        &:first-child
+            border-radius: 26px 0 0 26px
+
+        &:last-child
+            border-radius: 0 26px 26px 0
 
     .dados-dado__porcentaje
-        right: 2px
-        bottom: 1px
+        left: calc(50% + 11px)
+        bottom: 6px
         font-size: 11px
 
     .dados-dado__insignia
-        top: -6px
-        right: -5px
+        top: 2px
+        left: calc(50% + 8px)
         min-width: 18px
         height: 18px
         border-radius: 9px

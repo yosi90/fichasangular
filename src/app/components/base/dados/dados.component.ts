@@ -6,6 +6,7 @@ import {
     DADOS_FILA,
     DadoFila,
     MAXIMO_BONIFICADOR,
+    MAXIMO_DADOS_POR_TIPO,
     ResultadoTirada,
     SUBTITULO_DADOS,
     desgloseTirada,
@@ -57,6 +58,7 @@ export class DadosComponent implements OnInit, AfterViewInit, OnDestroy {
 
     readonly dados = DADOS_FILA;
     readonly maximoBonificador = MAXIMO_BONIFICADOR;
+    readonly maximoDados = MAXIMO_DADOS_POR_TIPO;
     readonly subtitulo = SUBTITULO_DADOS;
 
     estado: EstadoDados;
@@ -108,9 +110,9 @@ export class DadosComponent implements OnInit, AfterViewInit, OnDestroy {
         this.dadosSvc.anadir(dado.caras);
     }
 
-    /** Clic derecho: quita uno (y no abre el menú del navegador). */
-    quitar(dado: DadoFila, evento: Event): void {
-        evento.preventDefault();
+    /** «−» o clic derecho en el dado: quita uno (el clic derecho no abre el menú del navegador). */
+    quitar(dado: DadoFila, evento?: Event): void {
+        evento?.preventDefault();
         this.dadosSvc.quitar(dado.caras);
     }
 

@@ -4,6 +4,7 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import { cabecerasPlataforma, PlatformSessionService } from './platform-session.service';
 import { toNullableText } from 'src/app/services/utils/normalizacion';
+import { CORREO_SIN_CONFIRMAR, MENSAJE_CORREO_SIN_CONFIRMAR, conCorreoConfirmado } from './utils/correo-sin-confirmar';
 
 // La pertenencia de las campañas en los espacios de la plataforma (ecosistema-kit/ESPACIOS.md, «Con tu propia
 // interfaz»): las rutas /v1/espacios con el token de la plataforma. Rol no guarda invitaciones ni solicitudes; tras
@@ -94,6 +95,7 @@ const MENSAJES: Record<string, string> = {
     cuenta_restringida: 'Tu cuenta de Yosiftware tiene limitado este tipo de acciones.',
     demasiadas_invitaciones: 'Has enviado demasiadas invitaciones. Espera un poco y vuelve a intentarlo.',
     demasiadas_peticiones: 'Demasiadas acciones seguidas. Espera un poco y vuelve a intentarlo.',
+    [CORREO_SIN_CONFIRMAR]: MENSAJE_CORREO_SIN_CONFIRMAR,
 };
 
 @Injectable({
@@ -237,13 +239,15 @@ export class PlatformSpacesService {
         return Array.isArray(value) ? value : [];
     }
 
-    private async peticion<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', ruta: string, body?: unknown): Promise<T> {
-        const headers = await cabecerasPlataforma(this.platformSessionSvc, body !== undefined);
-        try {
-            return await firstValueFrom(this.http.request<T>(method, `${this.api}${ruta}`, { headers, body }));
-        } catch (error) {
-            throw this.toError(error);
-        }
+    private peticion<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', ruta: string, body?: unknown): Promise<T> {
+        return conCorreoConfirmado(this.platformSessionSvc, method !== 'GET', async () => {
+            const headers = await cabecerasPlataforma(this.platformSessionSvc, body !== undefined);
+            try {
+                return await firstValueFrom(this.http.request<T>(method, `${this.api}${ruta}`, { headers, body }));
+            } catch (error) {
+                throw this.toError(error);
+            }
+        });
     }
 
     private toError(error: unknown): PlatformSpacesError {

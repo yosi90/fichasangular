@@ -280,3 +280,53 @@ describe('PlatformSessionService, normas de Rol al crear (SDK 1.31)', () => {
         expect(sdk.normasDeLaWeb).toHaveBeenCalledWith({ motivo: 'Para crear en Rol necesitas aceptar sus normas.' });
     });
 });
+
+describe('PlatformSessionService, el correo sin confirmar (SDK 1.32, kit 1.80)', () => {
+    let anterior: unknown;
+
+    beforeEach(() => {
+        anterior = (window as any).yosiftware;
+    });
+
+    afterEach(() => {
+        (window as any).yosiftware = anterior;
+    });
+
+    async function servicioConSdk(confirmar: jasmine.Spy): Promise<PlatformSessionServicePrueba> {
+        const sdk = new SdkFalso() as SdkFalso & { confirmarCorreo: jasmine.Spy };
+        sdk.confirmarCorreo = confirmar;
+        (window as any).yosiftware = sdk;
+        const servicio = new PlatformSessionServicePrueba(new NgZone({ enableLongStackTrace: false }));
+        servicio.iniciar();
+        await esperar();
+        sdk.cambiar(conSesion('a'));
+        return servicio;
+    }
+
+    it('varias peticiones que fallan a la vez comparten una sola ventana del código', async () => {
+        let resolver!: (valor: boolean) => void;
+        const confirmar = jasmine.createSpy('confirmarCorreo').and.returnValue(new Promise<boolean>((r) => resolver = r));
+        const servicio = await servicioConSdk(confirmar);
+
+        const primera = servicio.ofrecerConfirmarCorreo(false);
+        const segunda = servicio.ofrecerConfirmarCorreo(true);
+        await esperar();
+        resolver(true);
+
+        expect(await primera).toBeTrue();
+        expect(await segunda).toBeTrue();
+        expect(confirmar).toHaveBeenCalledTimes(1);
+    });
+
+    it('con «Ahora no», las cargas no la vuelven a abrir solas; una acción sí', async () => {
+        const confirmar = jasmine.createSpy('confirmarCorreo').and.resolveTo(false);
+        const servicio = await servicioConSdk(confirmar);
+
+        expect(await servicio.ofrecerConfirmarCorreo(false)).toBeFalse();
+        expect(await servicio.ofrecerConfirmarCorreo(false)).toBeFalse();
+        expect(confirmar).toHaveBeenCalledTimes(1);
+
+        expect(await servicio.ofrecerConfirmarCorreo(true)).toBeFalse();
+        expect(confirmar).toHaveBeenCalledTimes(2);
+    });
+});

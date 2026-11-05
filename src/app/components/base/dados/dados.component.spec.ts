@@ -95,6 +95,28 @@ describe('DadosComponent', () => {
         expect(dado('d6').classList).not.toContain('dados-dado--puesto');
     });
 
+    it('cada dado tiene su − y su +: el − empieza desactivado y quita uno; el + añade uno', () => {
+        const paso = (etiqueta: string): HTMLButtonElement =>
+            elemento().querySelector<HTMLButtonElement>(`[aria-label="${etiqueta}"]`)!;
+        expect(elemento().querySelectorAll('.dados-pieza').length).toBe(7);
+        expect(paso('Quitar un d8').disabled).withContext('sin dados no se puede quitar').toBeTrue();
+
+        clic(paso('Añadir un d8'));
+        clic(paso('Añadir un d8'));
+        clic(paso('Añadir un d8'));
+        expect(dado('d8').getAttribute('aria-label')).toBe('d8, llevas 3');
+        expect(dado('d8').closest('.dados-pieza')?.classList).toContain('dados-pieza--puesta');
+        expect(paso('Quitar un d8').disabled).toBeFalse();
+
+        clic(paso('Quitar un d8'));
+        expect(texto('.dados-tirada__texto')).toBe('2d8');
+        clic(paso('Quitar un d8'));
+        clic(paso('Quitar un d8'));
+        expect(dado('d8').getAttribute('aria-label')).toBe('Añadir un d8');
+        expect(paso('Quitar un d8').disabled).toBeTrue();
+        expect(dado('d8').closest('.dados-pieza')?.classList).not.toContain('dados-pieza--puesta');
+    });
+
     it('el bonificador es un paso a paso de − y +, que entra en la expresión', () => {
         const restar = elemento().querySelector<HTMLButtonElement>('[aria-label="Restar 1 al bonificador"]')!;
         const sumar = elemento().querySelector<HTMLButtonElement>('[aria-label="Sumar 1 al bonificador"]')!;

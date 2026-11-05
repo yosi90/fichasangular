@@ -80,6 +80,8 @@ interface YosiftwareSdk {
     reportar(opciones?: { tipo?: 'error' | 'propuesta' }): Promise<boolean>;
     denunciar(datos: DenunciaPlataforma): Promise<boolean>;
     normasDeLaWeb(opciones?: { motivo?: string }): Promise<boolean>;
+    /** SDK 1.32 (kit 1.80): pide el código del correo sin confirmar; `true` si se confirma, con la sesión renovada. */
+    confirmarCorreo(): Promise<boolean>;
     chat: {
         abrir(idConversacion?: number): boolean;
         directa(idCuenta: string): Promise<number | null>;
@@ -153,6 +155,9 @@ export class PlatformSessionService {
     private readonly estadoSubject = new BehaviorSubject<EstadoPlataforma>({ tipo: 'comprobando' });
     private cargaSdk: Promise<YosiftwareSdk> | null = null;
     private iniciado = false;
+    /** La ventana del código del correo, abierta (`ofrecerConfirmarCorreo`), y si ya la cerraron con «Ahora no». */
+    private confirmacionCorreo: Promise<boolean> | null = null;
+    private correoAplazado = false;
     /** La última cuenta que ha visto la web en esta carga de la página. */
     private cuentaConfirmada: string | null = null;
     recargando = false;
@@ -287,6 +292,39 @@ export class PlatformSessionService {
         const aceptadas = await sdk.normasDeLaWeb({ motivo });
         this.comprobarCuentaVigente(sdk);
         return aceptadas;
+    }
+
+    /**
+     * Lo social de la plataforma ha respondido `403 correo_sin_confirmar` (kit 1.80, ACCESO.md «El correo sin
+     * confirmar»): se ofrece confirmarlo con `yosiftware.confirmarCorreo()`, que abre la página del código. Varias
+     * peticiones que fallan a la vez comparten la misma ventana. Si la persona la cierra («Ahora no»), las cargas no la
+     * vuelven a abrir solas (ya se lo recuerda el SDK al entrar y cada día); una acción que pulse, sí (`porAccion`).
+     * Resuelve `true` si se confirma, con los tokens ya renovados. Al cambiar de cuenta la página se recarga, y con ella
+     * este estado.
+     */
+    ofrecerConfirmarCorreo(porAccion: boolean): Promise<boolean> {
+        if (this.confirmacionCorreo)
+            return this.confirmacionCorreo;
+        if (!porAccion && this.correoAplazado)
+            return Promise.resolve(false);
+        this.confirmacionCorreo = this.confirmarCorreo()
+            .then((confirmado) => {
+                this.correoAplazado = !confirmado;
+                return confirmado;
+            })
+            .catch(() => false)
+            .finally(() => this.confirmacionCorreo = null);
+        return this.confirmacionCorreo;
+    }
+
+    private async confirmarCorreo(): Promise<boolean> {
+        this.comprobarCuentaVigente();
+        const sdk = await this.cargarSdk();
+        if (typeof sdk.confirmarCorreo !== 'function')
+            return false;
+        const confirmado = await sdk.confirmarCorreo();
+        this.comprobarCuentaVigente(sdk);
+        return confirmado === true;
     }
 
     /** Conversaciones con mensajes sin leer, más invitaciones a grupos: avisa ahora y en cada cambio. */
