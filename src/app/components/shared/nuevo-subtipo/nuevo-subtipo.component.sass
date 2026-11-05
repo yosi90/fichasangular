@@ -1,0 +1,39 @@
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar subtipos, dentro del marco común (guía de inserciones, «El tipo de criatura, el subtipo, la deidad y el
+// manual»), por pasos como la plantilla. La tabla de características y las rejillas de dos son las de las tarjetas de
+// rasgos (`subtipo-…`); las listas, `<app-lista-de-catalogo>` de dos en dos.
+:host
+    @include inserciones.insercion-host
+
+.nuevo-subtipo-shell
+    @include inserciones.insercion-shell
+
+.nuevo-subtipo-form
+    @include inserciones.insercion-form-base
+    @include inserciones.tarjetas-de-rasgos('subtipo')
+
+    mat-form-field, app-catalogo-buscador
+        width: 100%
+
+    .insercion-tarjeta + .insercion-tarjeta, .insercion-tarjeta + .insercion-tarjetas, .insercion-tarjetas + .insercion-tarjeta
+        margin-top: 12px
+
+    .estado-row
+        justify-content: flex-start
+
+    // La tabla de características: modificador y mínimo, sin la columna ancha del nombre de la plantilla.
+    .subtipo-caracteristicas__fila
+        grid-template-columns: 110px repeat(6, minmax(56px, 1fr))
+
+    .subtipo-velocidad
+        text-transform: capitalize
+
+    .subtipo-corto
+        flex: 0 1 110px
+
+.subtipo-con-quitar
+    @include inserciones.buscador-con-quitar
+
+.subtipo-nota
+    @include inserciones.nota-de-insercion

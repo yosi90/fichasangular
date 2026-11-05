@@ -1,0 +1,106 @@
+<div class="nuevo-tipo-shell">
+    <form class="nuevo-tipo-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <app-insercion-marco
+            [modo]="modo"
+            tipo="Tipo de criatura"
+            iconoTipo="tipo-criatura"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="form.controls.oficial.value"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeCrear)"
+            [error]="errores.global"
+            [guardando]="guardando"
+            [accionDesactivada]="edicion.cargando || (edicion.editando && !edicion.hayCambios)"
+            [nota]="edicion.editando && !edicion.hayCambios ? 'Sin cambios todavía.' : ''"
+            [textoAccion]="textoAccion"
+            [textoGuardando]="textoAccion">
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Datos</h3>
+                <div class="insercion-campos">
+                    <mat-form-field appearance="fill" class="insercion-campos__doble">
+                        <mat-label>Nombre</mat-label>
+                        <input matInput formControlName="nombre" maxlength="150">
+                        <mat-error *ngIf="form.controls.nombre.invalid">{{errores.textoDe('nombre', 'Nombre obligatorio (hasta 150 caracteres).')}}</mat-error>
+                    </mat-form-field>
+                    <div class="estado-row insercion-campos__doble">
+                        <mat-chip-listbox class="boolean-chips" aria-label="Estado del tipo de criatura">
+                            <mat-chip-option [selected]="marcada('oficial')" (click)="alternar('oficial')">Oficial</mat-chip-option>
+                        </mat-chip-listbox>
+                    </div>
+                    <app-catalogo-buscador class="insercion-campos__doble" etiqueta="Manual" [opciones]="manuales" [valor]="form.controls.id_manual.value"
+                        [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errores.textoDe('id_manual', 'Manual obligatorio.') : errores.mensajeDe('id_manual')"
+                        (elegir)="elegir('id_manual', $event)">
+                    </app-catalogo-buscador>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Página</mat-label>
+                        <input matInput type="number" min="0" max="999" step="1" formControlName="pagina">
+                        <mat-error *ngIf="form.controls.pagina.invalid">{{errores.textoDe('pagina', 'Página obligatoria (de 0 a 999).')}}</mat-error>
+                    </mat-form-field>
+                    <span></span>
+                    <app-catalogo-buscador class="insercion-campos__doble" etiqueta="Alineamiento" [opciones]="alineamientos"
+                        [valor]="form.controls.id_alineamiento.value"
+                        [error]="form.controls.id_alineamiento.invalid && form.controls.id_alineamiento.touched ? errores.textoDe('id_alineamiento', 'Alineamiento obligatorio.') : errores.mensajeDe('id_alineamiento')"
+                        (elegir)="elegir('id_alineamiento', $event)">
+                    </app-catalogo-buscador>
+                    <mat-form-field appearance="fill" class="insercion-campos__doble">
+                        <mat-label>Tesoro</mat-label>
+                        <input matInput formControlName="tesoro" maxlength="800">
+                        <mat-hint>Vacío: no tiene un tesoro propio.</mat-hint>
+                        <mat-error *ngIf="form.controls.tesoro.invalid">{{errores.textoDe('tesoro', 'Hasta 800 caracteres.')}}</mat-error>
+                    </mat-form-field>
+                </div>
+            </section>
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Dados de golpe y progresión</h3>
+                <div class="insercion-campos">
+                    <ng-container *ngTemplateOutlet="selector; context: { $implicit: 'id_tipo_dado', etiqueta: 'Dado de golpe', opciones: tiposDado }"></ng-container>
+                    <ng-container *ngTemplateOutlet="selector; context: { $implicit: 'id_puntos_habilidad', etiqueta: 'Puntos de habilidad', opciones: puntosHabilidad }"></ng-container>
+                    <ng-container *ngTemplateOutlet="selector; context: { $implicit: 'id_ataque', etiqueta: 'Ataque base', opciones: ataques }"></ng-container>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Límite de Inteligencia</mat-label>
+                        <input matInput type="number" min="-1" max="99" step="1" formControlName="limite_inteligencia">
+                        <mat-hint>-1: sin límite; 0: sin Inteligencia.</mat-hint>
+                        <mat-error *ngIf="form.controls.limite_inteligencia.invalid">{{errores.textoDe('limite_inteligencia', 'Un entero de -1 a 99.')}}</mat-error>
+                    </mat-form-field>
+                    <ng-container *ngTemplateOutlet="selector; context: { $implicit: 'id_fortaleza', etiqueta: 'Fortaleza', opciones: salvaciones }"></ng-container>
+                    <ng-container *ngTemplateOutlet="selector; context: { $implicit: 'id_reflejos', etiqueta: 'Reflejos', opciones: salvaciones }"></ng-container>
+                    <ng-container *ngTemplateOutlet="selector; context: { $implicit: 'id_voluntad', etiqueta: 'Voluntad', opciones: salvaciones }"></ng-container>
+                </div>
+            </section>
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Naturaleza</h3>
+                <mat-chip-listbox class="boolean-chips" aria-label="Lo que hace una criatura de este tipo" [multiple]="true">
+                    <mat-chip-option *ngFor="let bandera of banderas" [selected]="marcada(bandera.clave)" (click)="alternar(bandera.clave)">{{bandera.etiqueta}}</mat-chip-option>
+                </mat-chip-listbox>
+            </section>
+
+            <app-lista-de-catalogo titulo="Rasgos" icono="rasgo" vacio="Sin rasgos." textoAnadir="Añadir rasgo"
+                [filas]="rasgos" [opciones]="rasgosOpciones" [deshabilitado]="edicion.cargando" [error]="errores.mensajeDe('rasgos')"
+                (anadir)="anadirRasgo($event)" (quitar)="quitarRasgo($event)">
+            </app-lista-de-catalogo>
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Descripción</h3>
+                <mat-form-field appearance="fill">
+                    <mat-label>Descripción</mat-label>
+                    <textarea matInput formControlName="descripcion" rows="4" maxlength="8000"></textarea>
+                    <mat-hint>Propia y breve, con nuestras palabras; puede ir vacía.</mat-hint>
+                    <mat-error *ngIf="form.controls.descripcion.invalid">{{errores.textoDe('descripcion', 'Hasta 8000 caracteres.')}}</mat-error>
+                </mat-form-field>
+            </section>
+        </app-insercion-marco>
+
+        <ng-template #selector let-campo let-etiqueta="etiqueta" let-opciones="opciones">
+            <mat-form-field appearance="fill">
+                <mat-label>{{etiqueta}}</mat-label>
+                <mat-select [formControl]="$any(form.controls)[campo]">
+                    <mat-option *ngFor="let opcion of opciones" [value]="opcion.id">{{opcion.nombre}}</mat-option>
+                </mat-select>
+                <mat-error *ngIf="$any(form.controls)[campo].invalid">{{errores.textoDe(campo, etiqueta + ' obligatorio.')}}</mat-error>
+            </mat-form-field>
+        </ng-template>
+    </form>
+</div>

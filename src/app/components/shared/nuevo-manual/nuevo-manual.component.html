@@ -1,0 +1,41 @@
+<div class="nuevo-manual-shell">
+    <form class="nuevo-manual-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <app-insercion-marco
+            [modo]="modo"
+            tipo="Manual"
+            iconoTipo="manual"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="form.controls.oficial.value"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeCrear)"
+            [error]="errores.global"
+            [guardando]="guardando"
+            [accionDesactivada]="edicion.cargando || (edicion.editando && !edicion.hayCambios)"
+            [nota]="edicion.editando && !edicion.hayCambios ? 'Sin cambios todavía.' : ''"
+            [textoAccion]="textoAccion"
+            [textoGuardando]="textoAccion">
+            <div class="insercion-campos">
+                <mat-form-field appearance="fill" class="insercion-campos__doble">
+                    <mat-label>Nombre</mat-label>
+                    <input matInput formControlName="nombre" maxlength="50">
+                    <mat-error *ngIf="form.controls.nombre.invalid">{{errores.textoDe('nombre', 'Nombre obligatorio (hasta 50 caracteres).')}}</mat-error>
+                </mat-form-field>
+                <div class="estado-row insercion-campos__doble">
+                    <mat-chip-listbox class="boolean-chips" aria-label="Estado del manual" [disabled]="edicion.editando">
+                        <mat-chip-option [selected]="marcada('oficial')" (click)="alternar('oficial')">Oficial</mat-chip-option>
+                    </mat-chip-listbox>
+                </div>
+                <p class="manual-nota insercion-campos__entero" *ngIf="edicion.editando">
+                    El nombre y si es oficial no se cambian al modificar: los copia todo lo que cita el manual.
+                </p>
+                <div class="manual-banderas insercion-campos__entero">
+                    <span class="manual-banderas__titulo">Qué trae</span>
+                    <mat-chip-listbox class="boolean-chips" aria-label="Qué trae el manual" [multiple]="true">
+                        <mat-chip-option *ngFor="let bandera of banderas" [selected]="marcada(bandera.clave)" (click)="alternar(bandera.clave)">{{bandera.etiqueta}}</mat-chip-option>
+                    </mat-chip-listbox>
+                    <span class="manual-nota">Las secciones de su detalle. La renovación de las cachés las pone al día con lo que cita el manual.</span>
+                </div>
+            </div>
+        </app-insercion-marco>
+    </form>
+</div>

@@ -1,0 +1,202 @@
+<div class="nuevo-subtipo-shell">
+    <form class="nuevo-subtipo-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <app-insercion-marco
+            [modo]="modo"
+            tipo="Subtipo"
+            iconoTipo="subtipo"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="form.controls.oficial.value"
+            [pasos]="pasos"
+            [(pasoActual)]="pasoActual"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeCrear)"
+            [error]="errores.global"
+            [guardando]="guardando"
+            [accionDesactivada]="edicion.cargando || (edicion.editando && !edicion.hayCambios)"
+            [nota]="edicion.editando && !edicion.hayCambios ? 'Sin cambios todavía.' : ''"
+            [textoAccion]="textoAccion"
+            [textoGuardando]="textoAccion">
+
+            <!-- Paso 1: identidad -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 0">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Datos</h3>
+                    <div class="insercion-campos">
+                        <mat-form-field appearance="fill" class="insercion-campos__doble">
+                            <mat-label>Nombre</mat-label>
+                            <input matInput formControlName="nombre" maxlength="60">
+                            <mat-error *ngIf="form.controls.nombre.invalid">{{errores.textoDe('nombre', 'Nombre obligatorio (hasta 60 caracteres).')}}</mat-error>
+                        </mat-form-field>
+                        <div class="estado-row insercion-campos__doble">
+                            <mat-chip-listbox class="boolean-chips" aria-label="Estado del subtipo" [multiple]="true">
+                                <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="alternar('oficial')">Oficial</mat-chip-option>
+                                <mat-chip-option [selected]="form.controls.heredada.value === true" (click)="alternar('heredada')">Heredado</mat-chip-option>
+                            </mat-chip-listbox>
+                        </div>
+                        <app-catalogo-buscador class="insercion-campos__doble" etiqueta="Manual" [opciones]="manuales" [valor]="form.controls.id_manual.value"
+                            [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errores.textoDe('id_manual', 'Manual obligatorio.') : errores.mensajeDe('id_manual')"
+                            (elegir)="elegir('id_manual', $event)">
+                        </app-catalogo-buscador>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Página</mat-label>
+                            <input matInput type="number" min="0" step="1" formControlName="pagina">
+                            <mat-error *ngIf="form.controls.pagina.invalid">{{errores.textoDe('pagina', 'Página obligatoria (0 o más).')}}</mat-error>
+                        </mat-form-field>
+                        <span></span>
+                        <app-catalogo-buscador class="insercion-campos__doble" etiqueta="Alineamiento" [opciones]="alineamientos"
+                            [valor]="form.controls.id_alineamiento.value"
+                            [error]="form.controls.id_alineamiento.invalid && form.controls.id_alineamiento.touched ? errores.textoDe('id_alineamiento', 'Alineamiento obligatorio.') : errores.mensajeDe('id_alineamiento')"
+                            (elegir)="elegir('id_alineamiento', $event)">
+                        </app-catalogo-buscador>
+                        <mat-form-field appearance="fill" class="insercion-campos__entero">
+                            <mat-label>Descripción</mat-label>
+                            <textarea matInput formControlName="descripcion" rows="4" maxlength="8000"></textarea>
+                            <mat-hint>Propia y breve, con nuestras palabras; puede ir vacía.</mat-hint>
+                            <mat-error *ngIf="form.controls.descripcion.invalid">{{errores.textoDe('descripcion', 'Hasta 8000 caracteres.')}}</mat-error>
+                        </mat-form-field>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Paso 2: modificadores -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 1">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Características</h3>
+                    <div class="subtipo-caracteristicas" role="table" aria-label="Características">
+                        <div class="subtipo-caracteristicas__fila subtipo-caracteristicas__fila--cabeza" role="row">
+                            <span role="columnheader"></span>
+                            <span role="columnheader" *ngFor="let c of caracteristicas" [title]="c.nombre">{{c.corto}}</span>
+                        </div>
+                        <div class="subtipo-caracteristicas__fila" role="row" *ngFor="let fila of ['modificador', 'minimo']">
+                            <span role="rowheader" class="subtipo-caracteristicas__nombre">{{fila === 'modificador' ? 'Modificador' : 'Mínimo'}}</span>
+                            <mat-form-field appearance="fill" role="cell" *ngFor="let c of caracteristicas" subscriptSizing="dynamic">
+                                <input matInput type="number" step="1" [min]="fila === 'minimo' ? 0 : null" [formControl]="control($any(c)[fila])"
+                                    [attr.aria-label]="(fila === 'modificador' ? '' : 'Mínimo de ') + c.nombre">
+                                <mat-error *ngIf="control($any(c)[fila]).invalid">{{errores.textoDe($any(c)[fila], fila === 'minimo' ? '0 o más.' : 'Un entero.')}}</mat-error>
+                            </mat-form-field>
+                        </div>
+                    </div>
+                    <p class="subtipo-nota">El mínimo, 0 si no pide ninguno.</p>
+                </section>
+
+                <div class="insercion-tarjetas">
+                    <section class="insercion-tarjeta">
+                        <h3 class="insercion-tarjeta__titulo">Combate</h3>
+                        <div class="insercion-campos subtipo-campos-2">
+                            <mat-form-field appearance="fill" *ngFor="let campo of combate">
+                                <mat-label>{{campo.etiqueta}}</mat-label>
+                                <input matInput type="number" step="1" [formControl]="control(campo.clave)">
+                                <mat-error *ngIf="control(campo.clave).invalid">{{errores.textoDe(campo.clave, 'Un entero.')}}</mat-error>
+                            </mat-form-field>
+                        </div>
+                    </section>
+                    <section class="insercion-tarjeta">
+                        <h3 class="insercion-tarjeta__titulo">Movimiento</h3>
+                        <div class="insercion-campos subtipo-campos-2">
+                            <mat-form-field appearance="fill" *ngFor="let campo of velocidades">
+                                <mat-label class="subtipo-velocidad">{{campo}} (pies)</mat-label>
+                                <input matInput type="number" min="0" step="5" [formControl]="control(campo)">
+                                <mat-error *ngIf="control(campo).invalid">{{errores.textoDe(campo, '0 o más.')}}</mat-error>
+                            </mat-form-field>
+                            <div class="subtipo-con-quitar">
+                                <mat-form-field appearance="fill">
+                                    <mat-label>Maniobrabilidad</mat-label>
+                                    <mat-select formControlName="id_maniobrabilidad" placeholder="No vuela">
+                                        <mat-option *ngFor="let maniobrabilidad of maniobrabilidades" [value]="maniobrabilidad.id">{{maniobrabilidad.nombre}}</mat-option>
+                                    </mat-select>
+                                </mat-form-field>
+                                <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_maniobrabilidad.value !== null"
+                                    aria-label="No vuela" (click)="quitarManiobrabilidad()">
+                                    <mat-icon>close</mat-icon>
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Lo que modifica</h3>
+                    <div class="insercion-campos">
+                        <mat-form-field appearance="fill" class="insercion-campos__doble" *ngFor="let campo of textos">
+                            <mat-label>{{campo.etiqueta}}</mat-label>
+                            <textarea matInput rows="2" maxlength="2000" [formControl]="control(campo.clave)"></textarea>
+                            <mat-hint>Vacío: no lo modifica.</mat-hint>
+                            <mat-error *ngIf="control(campo.clave).invalid">{{errores.textoDe(campo.clave, 'Hasta 2000 caracteres.')}}</mat-error>
+                        </mat-form-field>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Paso 3: lo que da -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 2">
+                <div class="insercion-tarjetas">
+                    <app-lista-de-catalogo titulo="Idiomas" icono="idioma" vacio="Sin idiomas." textoAnadir="Añadir idioma"
+                        [filas]="listas.idiomas" [opciones]="opciones.idiomas" [deshabilitado]="edicion.cargando" [error]="errores.mensajeDe('idiomas')"
+                        (anadir)="anadirId('idiomas', $event)" (quitar)="quitarId('idiomas', $event)">
+                    </app-lista-de-catalogo>
+                    <app-lista-de-catalogo titulo="Rasgos" icono="rasgo" vacio="Sin rasgos." textoAnadir="Añadir rasgo"
+                        [filas]="listas.rasgos" [opciones]="opciones.rasgos" [deshabilitado]="edicion.cargando" [error]="errores.mensajeDe('rasgos')"
+                        (anadir)="anadirId('rasgos', $event)" (quitar)="quitarId('rasgos', $event)">
+                    </app-lista-de-catalogo>
+                    <app-lista-de-catalogo titulo="Plantillas que trae a las razas" icono="plantilla" vacio="Sin plantillas." textoAnadir="Añadir plantilla"
+                        [filas]="listas.plantillas" [opciones]="opciones.plantillas" [deshabilitado]="edicion.cargando" [error]="errores.mensajeDe('plantillas')"
+                        (anadir)="anadirId('plantillas', $event)" (quitar)="quitarId('plantillas', $event)">
+                    </app-lista-de-catalogo>
+                    <app-lista-de-catalogo titulo="Dotes" icono="dote" vacio="Sin dotes." textoAnadir="Añadir dote" [repetibles]="true"
+                        [filas]="listas.dotes" [opciones]="opciones.dotes" [deshabilitado]="edicion.cargando" [error]="errores.mensajeDe('dotes')"
+                        (anadir)="anadirFila('dotes', $event)" (quitar)="quitarFila('dotes', $event)">
+                        <ng-template let-fila>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic" *ngIf="extrasDote(fila).length > 0">
+                                <mat-label>Extra</mat-label>
+                                <mat-select [(ngModel)]="$any(fila).id_extra" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiarFila()">
+                                    <mat-option [value]="-1">Sin extra</mat-option>
+                                    <mat-option *ngFor="let extra of extrasDote(fila)" [value]="extra.id">{{extra.nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </ng-template>
+                    </app-lista-de-catalogo>
+                    <app-lista-de-catalogo titulo="Habilidades" vacio="Sin habilidades." textoAnadir="Añadir habilidad"
+                        [filas]="listas.habilidades" [opciones]="opciones.habilidades" [deshabilitado]="edicion.cargando" [error]="errores.mensajeDe('habilidades')"
+                        (anadir)="anadirFila('habilidades', $event)" (quitar)="quitarFila('habilidades', $event)">
+                        <ng-template let-fila>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic" class="subtipo-corto">
+                                <mat-label>Bono</mat-label>
+                                <input matInput type="number" step="1" [(ngModel)]="$any(fila).cantidad" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiarFila()">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic" *ngIf="extrasHabilidad(fila).length > 0">
+                                <mat-label>Extra</mat-label>
+                                <mat-select [(ngModel)]="$any(fila).id_extra" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiarFila()">
+                                    <mat-option [value]="sinExtra">Sin extra</mat-option>
+                                    <mat-option *ngFor="let extra of extrasHabilidad(fila)" [value]="extra.id">{{extra.nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                                <mat-label>Cuándo</mat-label>
+                                <input matInput maxlength="200" placeholder="Siempre" [(ngModel)]="$any(fila).varios" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiarFila()">
+                            </mat-form-field>
+                        </ng-template>
+                    </app-lista-de-catalogo>
+                    <app-lista-de-catalogo titulo="Aptitudes sortílegas" icono="conjuro" vacio="Sin aptitudes sortílegas." textoAnadir="Añadir conjuro"
+                        [filas]="listas.sortilegas" [opciones]="opciones.sortilegas" [deshabilitado]="edicion.cargando" [error]="errores.mensajeDe('sortilegas')"
+                        (anadir)="anadirFila('sortilegas', $event)" (quitar)="quitarFila('sortilegas', $event)">
+                        <ng-template let-fila>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic" class="subtipo-corto">
+                                <mat-label>Nivel de lanzador</mat-label>
+                                <input matInput type="number" min="0" step="1" [(ngModel)]="$any(fila).nivel_lanzador" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiarFila()">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                                <mat-label>Usos</mat-label>
+                                <input matInput maxlength="100" placeholder="3/día, a voluntad…" [(ngModel)]="$any(fila).usos_diarios" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiarFila()">
+                            </mat-form-field>
+                        </ng-template>
+                    </app-lista-de-catalogo>
+                </div>
+
+                <section class="insercion-tarjeta" *ngIf="personalizadas.length > 0">
+                    <h3 class="insercion-tarjeta__titulo">Habilidades personalizadas · no editables aquí</h3>
+                    <p class="subtipo-nota">Se conservan al guardar: {{personalizadas.join(', ')}}.</p>
+                </section>
+            </div>
+        </app-insercion-marco>
+    </form>
+</div>

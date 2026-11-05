@@ -1,0 +1,26 @@
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar manuales: una inserción pequeña, sin pasos ni tarjetas, con los campos directamente en el marco común
+// (guía de inserciones, como el idioma y el rasgo).
+:host
+    @include inserciones.insercion-host
+
+.nuevo-manual-shell
+    @include inserciones.insercion-shell
+
+.nuevo-manual-form
+    @include inserciones.insercion-form-base
+
+    .estado-row
+        justify-content: flex-start
+
+.manual-nota
+    @include inserciones.nota-de-insercion
+
+.manual-banderas
+    display: flex
+    flex-direction: column
+    gap: 4px
+
+.manual-banderas__titulo
+    @include inserciones.titulo-de-grupo

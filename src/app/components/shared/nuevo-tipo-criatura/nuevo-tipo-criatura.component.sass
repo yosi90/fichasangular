@@ -1,0 +1,21 @@
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar tipos de criatura, dentro del marco común (guía de inserciones, «El tipo de criatura, el subtipo, la
+// deidad y el manual»). Sin pasos: tarjetas una debajo de otra; los rasgos, con `<app-lista-de-catalogo>`.
+:host
+    @include inserciones.insercion-host
+
+.nuevo-tipo-shell
+    @include inserciones.insercion-shell
+
+.nuevo-tipo-form
+    @include inserciones.insercion-form-base
+
+    mat-form-field, app-catalogo-buscador
+        width: 100%
+
+    .insercion-tarjeta + .insercion-tarjeta, .insercion-tarjeta + app-lista-de-catalogo, app-lista-de-catalogo + .insercion-tarjeta
+        margin-top: 12px
+
+    .estado-row
+        justify-content: flex-start

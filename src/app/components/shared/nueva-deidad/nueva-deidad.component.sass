@@ -1,0 +1,31 @@
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar deidades, dentro del marco común (guía de inserciones, «El tipo de criatura, el subtipo, la deidad y
+// el manual»). Sin pasos: tarjetas una debajo de otra; los ámbitos y los dominios, de dos en dos con
+// `<app-lista-de-catalogo>`; el alineamiento, el arma y el panteón, con su ✕ para dejarlos vacíos.
+:host
+    @include inserciones.insercion-host
+
+.nueva-deidad-shell
+    @include inserciones.insercion-shell
+
+.nueva-deidad-form
+    @include inserciones.insercion-form-base
+
+    mat-form-field, app-catalogo-buscador
+        width: 100%
+
+    .insercion-tarjeta + .insercion-tarjeta, .insercion-tarjeta + .insercion-tarjetas, .insercion-tarjetas + .insercion-tarjeta
+        margin-top: 12px
+
+    .estado-row
+        justify-content: flex-start
+
+.deidad-con-quitar
+    @include inserciones.buscador-con-quitar
+
+.deidad-nota
+    @include inserciones.nota-de-insercion
+
+.deidad-error
+    @include inserciones.error-de-lista

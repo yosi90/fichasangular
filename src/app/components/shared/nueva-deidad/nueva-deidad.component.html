@@ -1,0 +1,110 @@
+<div class="nueva-deidad-shell">
+    <form class="nueva-deidad-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <app-insercion-marco
+            [modo]="modo"
+            tipo="Deidad"
+            iconoTipo="deidad"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="form.controls.oficial.value"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeCrear)"
+            [error]="errores.global"
+            [guardando]="guardando"
+            [accionDesactivada]="edicion.cargando || (edicion.editando && !edicion.hayCambios)"
+            [nota]="edicion.editando && !edicion.hayCambios ? 'Sin cambios todavía.' : ''"
+            [textoAccion]="textoAccion"
+            [textoGuardando]="textoAccion">
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Datos</h3>
+                <div class="insercion-campos">
+                    <mat-form-field appearance="fill" class="insercion-campos__doble">
+                        <mat-label>Nombre</mat-label>
+                        <input matInput formControlName="nombre" maxlength="100">
+                        <mat-error *ngIf="form.controls.nombre.invalid">{{errores.textoDe('nombre', 'Nombre obligatorio (hasta 100 caracteres).')}}</mat-error>
+                    </mat-form-field>
+                    <div class="estado-row insercion-campos__doble">
+                        <mat-chip-listbox class="boolean-chips" aria-label="Estado de la deidad">
+                            <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="alternarOficial()">Oficial</mat-chip-option>
+                        </mat-chip-listbox>
+                    </div>
+                    <app-catalogo-buscador class="insercion-campos__doble" etiqueta="Manual" [opciones]="manuales" [valor]="form.controls.id_manual.value"
+                        [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errores.textoDe('id_manual', 'Manual obligatorio.') : errores.mensajeDe('id_manual')"
+                        (elegir)="elegir('id_manual', $event)">
+                    </app-catalogo-buscador>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Página</mat-label>
+                        <input matInput type="number" min="0" step="1" formControlName="pagina">
+                        <mat-error *ngIf="form.controls.pagina.invalid">{{errores.textoDe('pagina', 'Página obligatoria (0 o más).')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Género</mat-label>
+                        <mat-select formControlName="id_genero">
+                            <mat-option *ngFor="let genero of generos" [value]="genero.id">{{genero.nombre}}</mat-option>
+                        </mat-select>
+                        <mat-error *ngIf="form.controls.id_genero.invalid">{{errores.textoDe('id_genero', 'Género obligatorio.')}}</mat-error>
+                    </mat-form-field>
+                    <div class="deidad-con-quitar insercion-campos__doble">
+                        <app-catalogo-buscador etiqueta="Alineamiento" placeholder="No aplica" [opciones]="alineamientos" [valor]="form.controls.id_alineamiento.value"
+                            [error]="errores.mensajeDe('id_alineamiento')" (elegir)="elegir('id_alineamiento', $event)">
+                        </app-catalogo-buscador>
+                        <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_alineamiento.value !== null"
+                            aria-label="Sin alineamiento" (click)="quitar('id_alineamiento')">
+                            <mat-icon>close</mat-icon>
+                        </button>
+                    </div>
+                    <div class="deidad-con-quitar insercion-campos__doble">
+                        <app-catalogo-buscador etiqueta="Arma predilecta" placeholder="Ninguna" [opciones]="armas" [valor]="form.controls.id_arma.value"
+                            [error]="errores.mensajeDe('id_arma')" (elegir)="elegir('id_arma', $event)">
+                        </app-catalogo-buscador>
+                        <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_arma.value !== null"
+                            aria-label="Sin arma predilecta" (click)="quitar('id_arma')">
+                            <mat-icon>close</mat-icon>
+                        </button>
+                    </div>
+                    <div class="deidad-con-quitar insercion-campos__doble">
+                        <app-catalogo-buscador etiqueta="Panteón" placeholder="Ninguno" [opciones]="pabellones" [valor]="form.controls.id_pabellon.value"
+                            [error]="errores.mensajeDe('id_pabellon')" (elegir)="elegir('id_pabellon', $event)">
+                        </app-catalogo-buscador>
+                        <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_pabellon.value !== null"
+                            aria-label="Sin panteón" (click)="quitar('id_pabellon')">
+                            <mat-icon>close</mat-icon>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <div class="insercion-tarjetas">
+                <app-lista-de-catalogo titulo="Ámbitos" vacio="Sin ámbitos de poder." textoAnadir="Añadir ámbito"
+                    [filas]="listas.ambitos" [opciones]="ambitosOpciones" [deshabilitado]="edicion.cargando" [error]="errores.mensajeDe('ambitos')"
+                    (anadir)="anadirA('ambitos', $event)" (quitar)="quitarDe('ambitos', $event)">
+                </app-lista-de-catalogo>
+                <app-lista-de-catalogo titulo="Dominios" vacio="Sin dominios." textoAnadir="Añadir dominio"
+                    [filas]="listas.dominios" [opciones]="dominiosOpciones" [deshabilitado]="edicion.cargando" [error]="errores.mensajeDe('dominios')"
+                    (anadir)="anadirA('dominios', $event)" (quitar)="quitarDe('dominios', $event)">
+                </app-lista-de-catalogo>
+            </div>
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Alineamientos de sus devotos</h3>
+                <p class="deidad-nota">Los únicos que admite en los devotos de una clase que sigue el alineamiento de su deidad (los clérigos).
+                    Ninguno: la regla general, a un paso del suyo.</p>
+                <p class="deidad-error" role="alert" *ngIf="errores.mensajeDe('alineamientos_devotos') as error">{{error}}</p>
+                <mat-chip-listbox class="boolean-chips" aria-label="Alineamientos de sus devotos" [multiple]="true">
+                    <mat-chip-option *ngFor="let alineamiento of alineamientosBasicos" [selected]="devoto(alineamiento.id)"
+                        (click)="alternarDevoto(alineamiento.id)">{{alineamiento.nombre}}</mat-chip-option>
+                </mat-chip-listbox>
+            </section>
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Descripción</h3>
+                <mat-form-field appearance="fill">
+                    <mat-label>Descripción</mat-label>
+                    <textarea matInput formControlName="descripcion" rows="4" maxlength="8000"></textarea>
+                    <mat-hint>Propia y breve, con nuestras palabras; puede ir vacía.</mat-hint>
+                    <mat-error *ngIf="form.controls.descripcion.invalid">{{errores.textoDe('descripcion', 'Hasta 8000 caracteres.')}}</mat-error>
+                </mat-form-field>
+            </section>
+        </app-insercion-marco>
+    </form>
+</div>
