@@ -1,6 +1,7 @@
 import { HttpHeaders } from '@angular/common/http';
 import { Injectable, NgZone } from '@angular/core';
 import { BehaviorSubject, Subject } from 'rxjs';
+import { NormasDeRol } from 'src/app/interfaces/normas-rol';
 import { ProfileApiError } from 'src/app/interfaces/user-account';
 import { environment } from 'src/environments/environment';
 
@@ -22,14 +23,12 @@ export interface RestriccionesPlataforma {
     hasta?: string | number | null;
 }
 
-/** Normas propias de Rol que la persona aún no ha aceptado (el SDK se las enseña solo). */
-export interface NormasPendientesPlataforma {
-    id: number;
-    version: number;
-    titulo: string;
-    importante: boolean;
-    publicadas: string;
-}
+/**
+ * La versión de las normas propias de Rol que la persona aún no ha aceptado, como la da el estado del SDK: la de
+ * `GET /v1/webs/rol/normas` sin el texto. Con `data-normas="al-crear"` el SDK no las enseña al entrar; la web las pide
+ * al crear (`PlatformSessionService.normasDeLaWeb`).
+ */
+export type NormasPendientesPlataforma = Omit<NormasDeRol, 'texto'>;
 
 export type EstadoPlataforma =
     | { tipo: 'comprobando' }
