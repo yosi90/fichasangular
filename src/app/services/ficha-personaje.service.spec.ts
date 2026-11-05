@@ -1,4 +1,4 @@
-import { PDFDocument } from 'pdf-lib';
+import { AnnotationFlags, PDFDocument, PDFForm } from 'pdf-lib';
 import * as fileSaver from 'file-saver';
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from '../interfaces/monstruo';
 import { Personaje } from '../interfaces/personaje';
@@ -207,6 +207,147 @@ describe('FichaPersonajeService', () => {
         expect(campo('custom1')).toBe('Interpretar (onomatopeyas)');
         expect(campo('car1')).toBe('CAR');
         expect(campo('mod_custom1')).toBe('3');
+    });
+
+    /** Genera la hoja con la plantilla de verdad y la ficha de la API con [cambios]; devuelve el formulario rellenado. */
+    async function hojaDe(cambios: Record<string, any>): Promise<PDFForm> {
+        const plantilla = await plantillaFicha(fetchOriginal);
+        fetchSpy.and.returnValue(Promise.resolve({ arrayBuffer: () => Promise.resolve(plantilla) } as any));
+        const personajeSvc = new PersonajeService({ currentUser: null } as any, {} as any);
+        const pj = (personajeSvc as any).mapApiDetalleToPersonaje(crearDetalleApi(cambios));
+        await service.generarPDF(pj);
+        const blob = saveAsSpy.calls.mostRecent().args[0] as Blob;
+        return (await PDFDocument.load(await blob.arrayBuffer())).getForm();
+    }
+
+    it('una habilidad custom va a sus filas propias y no pisa la fila de la base con su mismo número', async () => {
+        const form = await hojaDe({
+            habilidades: [
+                {
+                    id: 1, nombre: 'Abrir cerraduras', custom: false, deClase: false, idExtra: null, extra: null, extraComodin: null,
+                    caracteristica: 'Destreza', modificadorCaracteristica: 4, rangos: 5, rangosVarios: 0, varios: null, total: 9, desglose: [],
+                },
+                {
+                    id: 1, nombre: 'Cocina', custom: true, deClase: true, idExtra: null, extra: 'Repostería', extraComodin: null,
+                    caracteristica: 'Sabiduría', modificadorCaracteristica: 4, rangos: 2, rangosVarios: 1, varios: null, total: 7, desglose: [],
+                },
+                ...[2, 3].map((id) => ({
+                    id, nombre: `Custom ${id}`, custom: true, deClase: false, idExtra: null, extra: null, extraComodin: null,
+                    caracteristica: 'Carisma', modificadorCaracteristica: 0, rangos: 1, rangosVarios: 0, varios: null, total: 1, desglose: [],
+                })),
+            ],
+        });
+
+        expect(form.getTextField('rangos0').getText()).toBe('5');
+        expect(form.getCheckBox('clasea0').isChecked()).toBeFalse();
+        // Su casilla «de clase», la de su fila (la 44).
+        expect(form.getCheckBox('clasea44').isChecked()).toBeTrue();
+        expect(form.getTextField('custom1').getText()).toBe('Cocina');
+        expect(form.getTextField('rangos_custom1').getText()).toBe('2');
+        expect(form.getTextField('varios_custom1').getText()).toBe('1');
+        // La que no cabe va a las notas, con su título; sin `varios`, no escribe «null».
+        const notas = form.getTextField('notas').getText() ?? '';
+        expect(notas.replace(/\r\n/g, '\n')).toContain('Habilidades extra (No caben):\n1.- Custom 3 [CAR] rangos: 1 rangos varios: 0\n');
+        expect(notas).not.toContain('null');
+    });
+
+    it('rellena los totales que la plantilla calcula con JavaScript con los de la ficha', async () => {
+        const form = await hojaDe({
+            habilidades: [
+                {
+                    id: 6, nombre: 'Avistar', custom: false, deClase: true, idExtra: null, extra: null, extraComodin: null,
+                    caracteristica: 'Sabiduría', modificadorCaracteristica: 4, rangos: 14, rangosVarios: 0, varios: null, total: 20,
+                    desglose: [],
+                },
+                {
+                    id: 3, nombre: 'Artesanía', custom: false, deClase: false, idExtra: 0, extra: 'Elegir', extraComodin: 'elegir',
+                    caracteristica: 'Inteligencia', modificadorCaracteristica: 4, rangos: 0, rangosVarios: 0, varios: null, total: 4,
+                    desglose: [],
+                },
+                {
+                    id: 2, nombre: 'Cocina', custom: true, deClase: true, idExtra: null, extra: null, extraComodin: null,
+                    caracteristica: 'Sabiduría', modificadorCaracteristica: 4, rangos: 2, rangosVarios: 0, varios: null, total: 6,
+                    desglose: [],
+                },
+                {
+                    id: 3, nombre: 'Cetrería', custom: true, deClase: false, idExtra: null, extra: null, extraComodin: null,
+                    caracteristica: 'Carisma', modificadorCaracteristica: 0, rangos: 1, rangosVarios: 0, varios: null, total: 1,
+                    desglose: [],
+                },
+            ],
+        });
+        const campo = (nombre: string) => form.getTextField(nombre).getText() ?? '';
+
+        expect(campo('fort')).toBe('11');
+        expect(campo('ref')).toBe('14');
+        expect(campo('vol')).toBe('6');
+        expect(campo('iniciativa')).toBe('8');
+        expect(campo('presa')).toBe('20');
+        // Avistar es la habilidad 6 (`rangos5`) y su total, el de la API (con lo que la hoja no suma).
+        expect(campo('total_avistar')).toBe('20');
+        expect(campo('total_artesania2')).toBe('4');
+        expect(campo('total_custom1')).toBe('6');
+        expect(campo('total_custom2')).toBe('1');
+        // Las que la ficha no trae se quedan como en la plantilla.
+        expect(campo('total_abrir_cerraduras')).toBe('0');
+    });
+
+    it('quita todos los paréntesis de las clases', async () => {
+        const form = await hojaDe({
+            clases: [
+                { id: 6, nombre: 'Explorador', nivel: 8, lanzaConjuros: true, caracteristicaLanzamiento: 'Sabiduría', modificadorLanzamiento: 4 },
+                { id: 1, nombre: 'Guerrero', nivel: 2, lanzaConjuros: false },
+            ],
+        });
+
+        expect(form.getTextField('clase').getText()).not.toMatch(/[()]/);
+        expect(form.getTextField('clase').getText()).toContain('Guerrero 2');
+    });
+
+    it('una característica sin valor sale con «—», no con «null»', async () => {
+        const form = await hojaDe({ co: 0, mco: null });
+
+        expect(form.getTextField('con').getText()).toBe('—');
+        expect(form.getTextField('mod_con').getText()).toBe('—');
+        expect(form.getTextField('mod_fue').getText()).toBe('+8');
+        expect(form.getTextField('mod_car').getText()).toBe('0');
+    });
+
+    it('los idiomas que no caben van todos a las notas, con su título', async () => {
+        const idi = Array.from({ length: 12 }, (_, i) => ({ Nombre: `Idioma ${i + 1}`, Descripcion: '', Secreto: false, Oficial: true }));
+        const form = await hojaDe({ idi });
+        const notas = form.getTextField('notas').getText() ?? '';
+
+        expect(form.getTextField('idioma9').getText()).toBe('Idioma 9');
+        expect(notas.replace(/\r\n/g, '\n')).toContain('Idiomas que no cabían: \n - Idioma 10\n - Idioma 11\n - Idioma 12');
+    });
+
+    it('enseña el aviso de elementos no oficiales solo en un personaje homebrew', async () => {
+        const oculto = (form: PDFForm) => form.getTextField('oficial').acroField.getWidgets()
+            .every((widget) => (widget.getFlags() & AnnotationFlags.Hidden) !== 0);
+
+        expect(oculto(await hojaDe({ o: true }))).toBeTrue();
+        const homebrew = await hojaDe({ o: false });
+        expect(oculto(homebrew)).toBeFalse();
+        expect(homebrew.getTextField('oficial').getText()).toBe('Contiene elementos no oficiales');
+    });
+
+    it('escribe los usos diarios de una sortílega como los da la API', async () => {
+        const escrito = new Map<string, string>();
+        spyOn<any>(service, 'trySetText').and.callFake((_form: unknown, campo: string, valor: string) => escrito.set(campo, valor));
+        const pj = {
+            ...crearPersonajeBase(),
+            Sortilegas: [
+                { Conjuro: { Nombre: 'Luz', Manual: 'Manual del jugador' }, Nivel_lanzador: 3, Usos_diarios: '3/día', Descripcion: '' },
+                { Conjuro: { Nombre: 'Detectar magia', Manual: 'Manual del jugador' }, Nivel_lanzador: 3, Usos_diarios: 'A voluntad', Descripcion: '' },
+            ],
+        } as any;
+
+        await service.generarPDF_Conjuros(pj);
+
+        expect(escrito.get('desc_con0')).toContain('Usos diarios: 3/día');
+        expect(escrito.get('desc_con1')).toContain('Usos diarios: A voluntad');
+        expect(escrito.get('desc_con0')).toContain('Nivel de lanzador: 3');
     });
 
     it('escribe en la hoja la defensa, el equipo y el dinero de la ficha', async () => {
