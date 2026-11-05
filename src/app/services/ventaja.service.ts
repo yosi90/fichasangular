@@ -7,7 +7,7 @@ import { environment } from "src/environments/environment";
 import { TipoVentaja, VentajaCuerpo, VentajaDetalle, VentajaGuardada } from "../interfaces/ventaja";
 import { cabeceraApiConFirebase } from "./platform-session.service";
 import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
-import { DESVENTAJA, VENTAJA } from "src/app/services/utils/nombres-de-catalogo";
+import { nombreDeVentaja } from "src/app/services/utils/nombres-de-catalogo";
 import { leerRespuestaDeEscritura } from "src/app/services/utils/respuesta-de-escritura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
@@ -162,7 +162,7 @@ export class VentajaService {
             const headers = await cabeceraApiConFirebase(this.auth);
             return respuestaDeVentaja(tipo, await firstValueFrom(this.http.post<any>(`${environment.apiUrl}${tipo}s/add`, cuerpo, { headers })));
         } catch (error: unknown) {
-            throw errorDeCatalogo(error, 'crear', tipo === 'ventaja' ? VENTAJA : DESVENTAJA);
+            throw errorDeCatalogo(error, 'crear', nombreDeVentaja(tipo));
         }
     }
 
@@ -173,7 +173,7 @@ export class VentajaService {
             const url = `${environment.apiUrl}${tipo}s/${Math.trunc(Number(id))}`;
             return respuestaDeVentaja(tipo, await firstValueFrom(this.http.put<any>(url, cuerpo, { headers })));
         } catch (error: unknown) {
-            throw errorDeCatalogo(error, 'actualizar', tipo === 'ventaja' ? VENTAJA : DESVENTAJA);
+            throw errorDeCatalogo(error, 'actualizar', nombreDeVentaja(tipo));
         }
     }
 

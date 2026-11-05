@@ -57,11 +57,6 @@ export interface ValoresVentaja extends Record<BanderaVentaja, boolean> {
     id_habilidad: number | null;
 }
 
-/** El tipo de una entrada por su coste, como sus lecturas (`tipoRolDeVentaja`). */
-export function tipoDeVentaja(ventaja: Pick<VentajaDetalle, 'Coste'> | null | undefined): TipoVentaja {
-    return Number(ventaja?.Coste) > 0 ? 'desventaja' : 'ventaja';
-}
-
 export function valoresVaciosDeVentaja(): ValoresVentaja {
     const banderas = Object.fromEntries(TODAS.map((clave) => [clave, false])) as Record<BanderaVentaja, boolean>;
     return {

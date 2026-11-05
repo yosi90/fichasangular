@@ -16,7 +16,8 @@ import { ManualService } from 'src/app/services/manual.service';
 import { RasgoService } from 'src/app/services/rasgo.service';
 import { UserService } from 'src/app/services/user.service';
 import { VentajaService, normalizeVentaja } from 'src/app/services/ventaja.service';
-import { idDeReferencia, tipoDeVentaja } from 'src/app/services/utils/ventaja-formulario';
+import { tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
+import { idDeReferencia } from 'src/app/services/utils/ventaja-formulario';
 import { IDA_Y_VUELTA_RASGOS_VENTAJAS_INCARNUM } from 'src/testing/ida-y-vuelta-rasgos-ventajas-incarnum';
 import { NuevaVentajaComponent } from './nueva-ventaja.component';
 
@@ -66,7 +67,7 @@ describe('NuevaVentajaComponent', () => {
         (['ventajas', 'desventajas'] as const).forEach((lista) => {
             IDA_Y_VUELTA_RASGOS_VENTAJAS_INCARNUM[lista].forEach(({ id, nombre, get, cuerpo }) => {
                 it(`${lista === 'ventajas' ? 'ventaja' : 'desventaja'} «${nombre}» (${id}): cargada y sin tocar, manda el cuerpo que devuelve el mismo GET`, async () => {
-                    await montar(tipoDeVentaja(get), 'editar', get);
+                    await montar(tipoRolDeVentaja(get), 'editar', get);
 
                     expect(component.edicion.hayCambios).toBeFalse();
                     expect(component.cuerpo()).toEqual(cuerpo);
@@ -75,9 +76,7 @@ describe('NuevaVentajaComponent', () => {
         });
     });
 
-    it('el tipo sale del signo del coste y una referencia sin nombre es «ninguna»', () => {
-        expect(tipoDeVentaja({ Coste: -4 })).toBe('ventaja');
-        expect(tipoDeVentaja({ Coste: 5 })).toBe('desventaja');
+    it('una referencia sin nombre es «ninguna»', () => {
         expect(idDeReferencia({ Id: 0, Nombre: '', Descripcion: '' })).toBeNull();
         expect(idDeReferencia({ Id: 0, Nombre: 'Elegir', Descripcion: '' })).toBe(0);
         expect(idDeReferencia({ Id: 22, Nombre: 'Intimidar', Descripcion: '' })).toBe(22);

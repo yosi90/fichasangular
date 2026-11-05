@@ -1,4 +1,5 @@
 import { TipoCatalogoEquipo } from 'src/app/interfaces/equipo';
+import { TipoVentaja } from 'src/app/interfaces/ventaja';
 
 /**
  * Los iconos de los elementos de rol (lienzo «Rol: las vistas que faltan», vista 1, aprobado de antemano por el
@@ -91,8 +92,11 @@ export function tipoRolDeConjuro(conjuro: { Psionico?: boolean | null } | null |
     return conjuro?.Psionico === true ? 'poder-psionico' : 'conjuro';
 }
 
-/** Una ventaja con coste en puntos (`Coste` > 0) es una desventaja: da puntos en vez de gastarlos. */
-export function tipoRolDeVentaja(ventaja: { Coste?: number | null } | null | undefined): TipoRol {
+/**
+ * Una ventaja con coste en puntos (`Coste` > 0) es una desventaja: da puntos en vez de gastarlos. La única regla del
+ * tipo: la usan el icono, el listado, el detalle, el permiso (`ventajas` o `desventajas`) y la pestaña de modificar.
+ */
+export function tipoRolDeVentaja(ventaja: { Coste?: unknown } | null | undefined): TipoVentaja {
     return Number(ventaja?.Coste) > 0 ? 'desventaja' : 'ventaja';
 }
 

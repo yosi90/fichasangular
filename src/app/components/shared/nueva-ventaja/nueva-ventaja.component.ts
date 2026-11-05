@@ -9,7 +9,7 @@ import { RasgoService } from 'src/app/services/rasgo.service';
 import { UserService } from 'src/app/services/user.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
 import { ElementoDeCatalogo } from 'src/app/services/utils/error-catalogo';
-import { DESVENTAJA, VENTAJA } from 'src/app/services/utils/nombres-de-catalogo';
+import { nombreDeVentaja } from 'src/app/services/utils/nombres-de-catalogo';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import {
     BANDERAS_AFECTA, BANDERAS_DA, BanderaVentaja, ValoresVentaja, cuerpoDeVentaja, valoresDeVentaja, valoresVaciosDeVentaja,
@@ -236,7 +236,7 @@ export class NuevaVentajaComponent implements OnInit, OnDestroy, OnChanges, Edit
     }
 
     private nombreActual(): ElementoDeCatalogo {
-        return this.tipo === 'ventaja' ? VENTAJA : DESVENTAJA;
+        return nombreDeVentaja(this.tipo);
     }
 
     /** «Crear ventaja», «Cargando desventaja…», el aviso sin permisos: dependen del tipo, que puede cambiar al crear. */

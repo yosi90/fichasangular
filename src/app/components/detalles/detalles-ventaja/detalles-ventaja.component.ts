@@ -9,7 +9,6 @@ import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { UserService } from 'src/app/services/user.service';
 import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
-import { tipoDeVentaja } from 'src/app/services/utils/ventaja-formulario';
 
 @Component({
     selector: 'app-detalles-ventaja',
@@ -24,7 +23,7 @@ export class DetallesVentajaComponent {
 
     /** Con el permiso de su tipo: `ventajas` o `desventajas`. */
     get puedeModificar(): boolean {
-        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, `${tipoDeVentaja(this.ventajaData)}s`);
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, `${tipoRolDeVentaja(this.ventajaData)}s`);
     }
 
     private ventajaData!: VentajaDetalle;

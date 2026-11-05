@@ -1,3 +1,4 @@
+import { TipoVentaja } from 'src/app/interfaces/ventaja';
 import { ElementoDeCatalogo } from './error-catalogo';
 
 /**
@@ -26,3 +27,8 @@ export const VENTAJA: ElementoDeCatalogo = { singular: 'ventaja', plural: 'venta
 export const DESVENTAJA: ElementoDeCatalogo = { singular: 'desventaja', plural: 'desventajas', femenino: true };
 export const FUSION: ElementoDeCatalogo = { singular: 'fusión', plural: 'fusiones', femenino: true };
 export const CHAKRA: ElementoDeCatalogo = { singular: 'chakra', plural: 'chakras', femenino: false };
+
+/** La ventaja o la desventaja, por su tipo (el servicio y la pantalla, que sirven a las dos). */
+export function nombreDeVentaja(tipo: TipoVentaja): ElementoDeCatalogo {
+    return tipo === 'ventaja' ? VENTAJA : DESVENTAJA;
+}

@@ -1,3 +1,5 @@
+import { tipoRolDeVentaja } from './iconos-rol';
+
 /**
  * Los catálogos que ya tienen pantalla de insertar o de modificar en la web. Lo leen el menú lateral (si una opción abre
  * algo o todavía solo cierra el menú) y las pestañas (qué formulario abren).
@@ -83,16 +85,11 @@ export const EDICIONES_CATALOGO: Readonly<Record<TipoEdicion, DefinicionEdicion>
     arma: { listado: 'armas', ...editar('arma') },
     armadura: { listado: 'armaduras', ...editar('armadura') },
     rasgo: { listado: 'rasgos', ...editar('rasgo') },
-    ventaja: { listado: 'ventajas', ...editar('ventaja'), admite: (entrada) => !esDesventaja(entrada) },
-    desventaja: { listado: 'ventajas', ...editar('desventaja'), admite: esDesventaja },
+    ventaja: { listado: 'ventajas', ...editar('ventaja'), admite: (entrada) => tipoRolDeVentaja(entrada as { Coste?: unknown; }) === 'ventaja' },
+    desventaja: { listado: 'ventajas', ...editar('desventaja'), admite: (entrada) => tipoRolDeVentaja(entrada as { Coste?: unknown; }) === 'desventaja' },
     fusion: { listado: 'fusiones del alma', ...editar('fusión') },
     chakra: { listado: 'chakras', ...editar('chakra') },
 };
-
-/** Una desventaja da puntos: su coste es positivo (como lo leen el listado y el detalle, `tipoRolDeVentaja`). */
-function esDesventaja(entrada: unknown): boolean {
-    return Number((entrada as { Coste?: unknown; } | null)?.Coste) > 0;
-}
 
 export const TIPOS_EDICION = Object.keys(EDICIONES_CATALOGO) as TipoEdicion[];
 
