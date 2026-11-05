@@ -13,7 +13,7 @@ import {
     createDefaultUserSettings,
 } from '../interfaces/user-settings';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { PlatformSessionService } from './platform-session.service';
+import { BloqueAjustes, PlatformSessionService } from './platform-session.service';
 import { toBoolean } from 'src/app/services/utils/normalizacion';
 
 const GENERADOR_MIGRATION_FLAG_PATH = 'migrations/generador_config_local_v1_done';
@@ -162,7 +162,7 @@ export class UserSettingsService {
 
         // Los ajustes de Rol viven en la plataforma (`yosiftware.ajustes`, ecosistema-kit/ACCESO.md).
         const bloque = await this.platformSessionSvc.leerAjustes();
-        const settings = this.normalizeSettingsDocument((bloque?.documento ?? null) as unknown as UserSettingsV1 | null);
+        const settings = this.ajustesDelBloque(bloque);
         this.settingsCache = this.cloneSettings(settings);
         return this.cloneSettings(settings);
     }
@@ -185,7 +185,7 @@ export class UserSettingsService {
             },
             mensajeria_flotante: normalizado.mensajeria_flotante,
         });
-        const guardado = this.normalizeSettingsDocument((bloque?.documento ?? null) as unknown as UserSettingsV1 | null);
+        const guardado = this.ajustesDelBloque(bloque);
         this.settingsCache = this.cloneSettings(guardado);
         return this.cloneSettings(guardado);
     }
@@ -208,9 +208,7 @@ export class UserSettingsService {
      * antes de que exista la sesión de Firebase que pide `loadSettings`. Sin sesión o sin ajustes, `true`.
      */
     async loadAbrirNovedadesAlEntrar(): Promise<boolean> {
-        const bloque = await this.platformSessionSvc.leerAjustes();
-        return this.normalizeSettingsDocument((bloque?.documento ?? null) as unknown as UserSettingsV1 | null)
-            .perfil.abrirNovedadesAlEntrar;
+        return this.ajustesDelBloque(await this.platformSessionSvc.leerAjustes()).perfil.abrirNovedadesAlEntrar;
     }
 
     async saveProfileSettings(data: Partial<UserSettingsV1['perfil']>): Promise<UserSettingsV1['perfil']> {
@@ -422,6 +420,11 @@ export class UserSettingsService {
         } catch {
             // Ignorado: localStorage puede no estar disponible.
         }
+    }
+
+    /** Los ajustes de Rol del bloque de la plataforma (`yosiftware.ajustes`), normalizados; sin bloque, los de por defecto. */
+    private ajustesDelBloque(bloque: BloqueAjustes | null | undefined): UserSettingsV1 {
+        return this.normalizeSettingsDocument((bloque?.documento ?? null) as unknown as UserSettingsV1 | null);
     }
 
     private normalizeSettingsDocument(raw: UserSettingsV1 | null | undefined): UserSettingsV1 {
