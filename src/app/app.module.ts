@@ -36,7 +36,6 @@ import { FormsModule } from '@angular/forms';
 import { ListaPersonajesComponent } from './components/base/lista-personajes/lista-personajes.component';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { NormasCreacionInterceptor } from './services/normas-creacion.interceptor';
-import { NormasCreacionDialogoComponent } from './components/shared/normas-creacion-dialogo/normas-creacion-dialogo.component';
 import { DataServices } from './data.services';
 import { provideAuth, initializeAuth, inMemoryPersistence } from '@angular/fire/auth';
 import { provideDatabase, getDatabase } from '@angular/fire/database';
@@ -175,7 +174,6 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         TabControlComponent,
         BaseMenuComponent,
         UserProfileComponent,
-        NormasCreacionDialogoComponent,
         CampanasGestionComponent,
         PublicUserProfileComponent,
         ChatFloatingHostComponent,

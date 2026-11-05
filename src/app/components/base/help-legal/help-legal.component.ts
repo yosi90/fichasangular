@@ -1,12 +1,9 @@
-import { HttpClient } from '@angular/common/http';
 import { Component, ElementRef, OnInit, inject } from '@angular/core';
-import { firstValueFrom } from 'rxjs';
+import { NormasRolService } from 'src/app/services/normas-rol.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { textoFecha } from 'src/app/services/utils/fecha-texto';
-import { toInt, toNullableText } from 'src/app/services/utils/normalizacion';
-import { environment } from 'src/environments/environment';
 
-/** Las normas propias de Rol, como las da la plataforma sin sesión (`GET /v1/webs/rol/normas`). */
+/** Las normas propias de Rol como se enseñan aquí: la fecha, ya en texto. */
 interface NormasDeRolPublicas {
     readonly titulo: string;
     readonly version: number;
@@ -23,7 +20,7 @@ export class HelpLegalComponent implements OnInit {
     /** Normas comunes y política de privacidad de la plataforma, públicas (ecosistema-kit/PRIVACIDAD.md). */
     readonly urlNormas = inject(PlatformSessionService).urlSocial('normas');
     private readonly host = inject(ElementRef<HTMLElement>);
-    private readonly http = inject(HttpClient);
+    private readonly normasRolSvc = inject(NormasRolService);
 
     /** Las normas de Rol: se leen al abrir Legal, sin sesión. */
     normas: NormasDeRolPublicas | null = null;
@@ -47,15 +44,12 @@ export class HelpLegalComponent implements OnInit {
     async cargarNormas(): Promise<void> {
         this.estadoNormas = 'cargando';
         try {
-            const raw = await firstValueFrom(this.http.get<any>(`${environment.plataforma.apiUrl}/v1/webs/rol/normas`));
-            const texto = toNullableText(raw?.texto);
-            if (!texto)
-                throw new Error('Sin normas');
+            const normas = await this.normasRolSvc.leer();
             this.normas = {
-                titulo: toNullableText(raw?.titulo) ?? 'Normas de Rol',
-                version: toInt(raw?.version),
-                texto,
-                publicadas: textoFecha(raw?.publicadas, ''),
+                titulo: normas.titulo,
+                version: normas.version,
+                texto: normas.texto,
+                publicadas: textoFecha(normas.publicadas, ''),
             };
             this.estadoNormas = 'listo';
         } catch {

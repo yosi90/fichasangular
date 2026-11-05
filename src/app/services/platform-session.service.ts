@@ -80,7 +80,7 @@ interface YosiftwareSdk {
     privacidad(opciones?: { recorrido?: boolean }): Promise<void>;
     reportar(opciones?: { tipo?: 'error' | 'propuesta' }): Promise<boolean>;
     denunciar(datos: DenunciaPlataforma): Promise<boolean>;
-    fetch(entrada: string, opciones?: RequestInit): Promise<Response>;
+    normasDeLaWeb(opciones?: { motivo?: string }): Promise<boolean>;
     chat: {
         abrir(idConversacion?: number): boolean;
         directa(idCuenta: string): Promise<number | null>;
@@ -278,24 +278,16 @@ export class PlatformSessionService {
     }
 
     /**
-     * Pide al SDK que vuelva a comprobar la sesión y renueve los tokens, y devuelve el estado de después. Hace falta tras
-     * aceptar las normas de Rol, para que el estado y el token dejen de traer `normasPendientes`.
-     *
-     * El SDK 1.30 no tiene un método público para esto. Lo hace su `fetch` cuando la respuesta es un 401
-     * (ecosistema-kit/ACCESO.md, «La API del SDK»): renueva y repite una vez. Se le pide una ruta de la plataforma, que
-     * no acepta el token de la API de Rol (otra audiencia) y responde 401, y así renueva la sesión sin más efecto. Cuando
-     * se publique `yosiftware.normasDeLaWeb()` (petición «mostrar las normas de la web al crear»), esto sobra.
+     * Las normas propias de Rol, a demanda (SDK 1.31, ecosistema-kit/MODERACION.md): si faltan, el SDK abre su ventana,
+     * que empieza por `motivo`. Resuelve `true` si ya estaban aceptadas o se aceptan ahora (con los tokens ya renovados,
+     * sin `normasPendientes`) y `false` sin sesión o con «Ahora no».
      */
-    async renovarSesion(): Promise<EstadoPlataforma> {
+    async normasDeLaWeb(motivo: string): Promise<boolean> {
         this.comprobarCuentaVigente();
         const sdk = await this.cargarSdk();
-        try {
-            await sdk.fetch(`${environment.plataforma.apiUrl}/v1/perfil`, { cache: 'no-store' });
-        } catch {
-            // Sin red o con otra cuenta: lo que cuenta es el estado que haya quedado.
-        }
+        const aceptadas = await sdk.normasDeLaWeb({ motivo });
         this.comprobarCuentaVigente(sdk);
-        return this.estado;
+        return aceptadas;
     }
 
     /** Conversaciones con mensajes sin leer, más invitaciones a grupos: avisa ahora y en cada cambio. */
@@ -385,6 +377,9 @@ export class PlatformSessionService {
             // El aspecto de Rol para lo que pinta el SDK, también en sus ventanas (ecosistema-kit/ESTILOS.md).
             // Se sirve con `no-cache` (firebase.json); la versión fuerza a pedirla de nuevo a quien la guardó antes.
             script.dataset['estilos'] = '/assets/yosiftware.css?v=2';
+            // Las normas de Rol solo cuentan para crear: el SDK no las enseña al entrar y la web las pide al pulsar crear
+            // (`normasDeLaWeb`, SDK 1.31). El estado y el token siguen diciendo si faltan.
+            script.dataset['normas'] = 'al-crear';
             script.onload = () => {
                 const sdk = (window as any).yosiftware as YosiftwareSdk | undefined;
                 if (sdk)

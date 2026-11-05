@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Auth, User } from '@angular/fire/auth';
 import { Database } from '@angular/fire/database';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { UserService } from './user.service';
+import { MOTIVO_NORMAS_DE_CREACION, UserService } from './user.service';
 import { ProfileApiError } from '../interfaces/user-account';
 import { BehaviorSubject } from 'rxjs';
 import { EstadoPlataforma } from './platform-session.service';
@@ -783,16 +783,16 @@ function crearPlataformaFalsa() {
         cuenta: null,
         entrar: jasmine.createSpy('entrar').and.resolveTo(true),
         salir: jasmine.createSpy('salir').and.resolveTo(),
+        normasDeLaWeb: jasmine.createSpy('normasDeLaWeb').and.resolveTo(true),
     };
 }
 
 class UserServicePlataformaDouble extends UserService {
     private authHandler?: ((firebaseUser: User | null) => void) | null;
     readonly plataforma: ReturnType<typeof crearPlataformaFalsa>;
-    readonly normas: { pedir: jasmine.Spy };
     aclDeLaCuenta: any = null;
 
-    constructor(plataforma = crearPlataformaFalsa(), normas = { pedir: jasmine.createSpy('pedir').and.resolveTo(true) }) {
+    constructor(plataforma = crearPlataformaFalsa()) {
         super(
             {} as Auth,
             {} as Database,
@@ -800,10 +800,8 @@ class UserServicePlataformaDouble extends UserService {
             undefined,
             undefined,
             plataforma as any,
-            normas as any,
         );
         this.plataforma = plataforma;
-        this.normas = normas;
     }
 
     protected override subscribeAuthState(handler: (firebaseUser: User | null) => void): void {
@@ -857,14 +855,38 @@ describe('UserService con la cuenta de Yosiftware', () => {
     it('asegurarNormasDeCreacion abre la ventana solo si faltan y devuelve lo que decide la persona', async () => {
         const service = new UserServicePlataformaDouble();
         service.entrarConCuenta({ normasPendientes: NORMAS_PENDIENTES });
-        service.normas.pedir.and.resolveTo(false);
+        service.plataforma.normasDeLaWeb.and.resolveTo(false);
 
         expect(await service.asegurarNormasDeCreacion()).toBeFalse();
-        expect(service.normas.pedir).toHaveBeenCalledTimes(1);
+        expect(service.plataforma.normasDeLaWeb).toHaveBeenCalledTimes(1);
 
-        service.normas.pedir.and.resolveTo(true);
+        service.plataforma.normasDeLaWeb.and.resolveTo(true);
         expect(await service.asegurarNormasDeCreacion()).toBeTrue();
-        expect(service.normas.pedir).toHaveBeenCalledTimes(2);
+        expect(service.plataforma.normasDeLaWeb).toHaveBeenCalledTimes(2);
+    });
+
+    it('asegurarNormasDeCreacion pide las normas al SDK con el motivo de Rol, una sola ventana aunque la pidan dos a la vez', async () => {
+        const service = new UserServicePlataformaDouble();
+        service.entrarConCuenta({ normasPendientes: NORMAS_PENDIENTES });
+        let responder: (aceptadas: boolean) => void = () => undefined;
+        service.plataforma.normasDeLaWeb.and.returnValue(new Promise<boolean>((r) => responder = r));
+
+        const a = service.asegurarNormasDeCreacion();
+        const b = service.asegurarNormasDeCreacion(true);
+        responder(true);
+
+        expect(await a).toBeTrue();
+        expect(await b).toBeTrue();
+        expect(service.plataforma.normasDeLaWeb).toHaveBeenCalledOnceWith(MOTIVO_NORMAS_DE_CREACION);
+        expect(MOTIVO_NORMAS_DE_CREACION).toContain('Para crear en Rol');
+    });
+
+    it('si el SDK falla al pedir las normas, no se crea nada', async () => {
+        const service = new UserServicePlataformaDouble();
+        service.entrarConCuenta({ normasPendientes: NORMAS_PENDIENTES });
+        service.plataforma.normasDeLaWeb.and.rejectWith(new Error('CambioDeIdentidad'));
+
+        expect(await service.asegurarNormasDeCreacion()).toBeFalse();
     });
 
     it('asegurarNormasDeCreacion sin normas pendientes sigue sin preguntar', async () => {
@@ -873,7 +895,7 @@ describe('UserService con la cuenta de Yosiftware', () => {
 
         expect(service.normasDeCreacionPendientes).toBeFalse();
         expect(await service.asegurarNormasDeCreacion()).toBeTrue();
-        expect(service.normas.pedir).not.toHaveBeenCalled();
+        expect(service.plataforma.normasDeLaWeb).not.toHaveBeenCalled();
     });
 
     it('asegurarNormasDeCreacion abre la ventana si lo dice la API aunque el estado aún no lo sepa', async () => {
@@ -881,14 +903,14 @@ describe('UserService con la cuenta de Yosiftware', () => {
         service.entrarConCuenta();
 
         expect(await service.asegurarNormasDeCreacion(true)).toBeTrue();
-        expect(service.normas.pedir).toHaveBeenCalledTimes(1);
+        expect(service.plataforma.normasDeLaWeb).toHaveBeenCalledTimes(1);
     });
 
     it('asegurarNormasDeCreacion sin sesión no abre nada', async () => {
         const service = new UserServicePlataformaDouble();
 
         expect(await service.asegurarNormasDeCreacion()).toBeFalse();
-        expect(service.normas.pedir).not.toHaveBeenCalled();
+        expect(service.plataforma.normasDeLaWeb).not.toHaveBeenCalled();
     });
 
     it('al aceptar las normas, el estado nuevo deja de pedirlas', () => {

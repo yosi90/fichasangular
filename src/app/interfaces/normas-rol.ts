@@ -8,20 +8,9 @@ export interface NormasDeRol {
     id: number;
     version: number;
     titulo: string;
+    /** En Markdown. */
     texto: string;
     importante: boolean;
+    /** Fecha ISO de su publicación. */
     publicadas: string;
-}
-
-/** Lo que la ventana necesita: leer las normas y aceptarlas (sin acoplarla al servicio). */
-export interface DatosVentanaNormas {
-    leer(): Promise<NormasDeRol>;
-    aceptar(idVersion: number): Promise<void>;
-}
-
-/** Un fallo al leer o aceptar las normas, ya en una frase para la persona. */
-export class NormasCreacionError extends Error {
-    constructor(message: string, readonly code: string) {
-        super(message);
-    }
 }
