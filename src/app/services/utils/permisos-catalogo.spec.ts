@@ -1,7 +1,7 @@
 import { PERMISSION_RESOURCES } from 'src/app/interfaces/user-acl';
 import { EDICIONES_CATALOGO, INSERCIONES_CATALOGO, TIPOS_EDICION, tieneInsercion, tipoEdicionDeListado } from './catalogos-editables';
 import { LISTADOS_ROL } from './iconos-rol';
-import { RECURSO_DE_CATALOGO, puedeGestionarCatalogo } from './permisos-catalogo';
+import { CATALOGOS_DEL_LISTADO, RECURSO_DE_CATALOGO, puedeGestionarCatalogo, puedeGestionarListado } from './permisos-catalogo';
 
 const conPermisos = (...recursos: string[]) => ({
     can: jasmine.createSpy('can').and.callFake((recurso: string, accion: string) => accion === 'create' && recursos.includes(recurso)),
@@ -70,5 +70,16 @@ describe('Catálogos con pantalla de insertar o modificar', () => {
         expect(tipoEdicionDeListado('ventajas', { Id: 22, Coste: 5 })).toBe('desventaja');
         expect(puedeGestionarCatalogo(conPermisos('desventajas'), 'desventajas')).toBeTrue();
         expect(puedeGestionarCatalogo(conPermisos('desventajas'), 'ventajas')).toBeFalse();
+    });
+
+    it('el listado de ventajas (con las desventajas) se gestiona con cualquiera de los dos permisos; cada catálogo, con el suyo', () => {
+        expect(puedeGestionarListado(conPermisos('desventajas'), 'ventajas')).toBeTrue();
+        expect(puedeGestionarListado(conPermisos('ventajas'), 'ventajas')).toBeTrue();
+        expect(puedeGestionarListado(conPermisos('razas'), 'ventajas')).toBeFalse();
+        // Un listado de un solo catálogo, como su catálogo.
+        expect(puedeGestionarListado(conPermisos('razas'), 'raciales')).toBeTrue();
+        expect(puedeGestionarListado(conPermisos('clases'), 'raciales')).toBeFalse();
+        // Cada catálogo de un listado tiene su permiso en la tabla.
+        Object.values(CATALOGOS_DEL_LISTADO).flat().forEach((catalogo) => expect(RECURSO_DE_CATALOGO[catalogo]).withContext(catalogo).toBeDefined());
     });
 });

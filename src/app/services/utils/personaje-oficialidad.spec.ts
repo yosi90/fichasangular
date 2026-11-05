@@ -85,6 +85,20 @@ describe('personaje-oficialidad (decisión del 2026-10-17)', () => {
         ]);
     });
 
+    it('cuentan los chakras de la formación de Incarnum (desde el hito 8 tienen `Oficial`, como en la API)', () => {
+        const chakras = [
+            { Id: 3, Nombre: 'Corona', Oficial: true },
+            { Id: 12, Nombre: 'Chakra de la casa', Oficial: false },
+        ];
+        expect(motivosHomebrewPersonaje(personajeOficial, { chakras: [chakras[0]] })).toEqual([]);
+        expect(motivosHomebrewPersonaje(personajeOficial, { chakras })).toEqual(['Chakra homebrew: Chakra de la casa']);
+        expect(motivoHomebrew('chakra', chakras[1])).toBe('Chakra homebrew: Chakra de la casa');
+        // Sin manual en la API: cada chakra es su propia fuente.
+        expect(FAMILIAS_HOMEBREW.chakra).toEqual(jasmine.objectContaining({ tablaApi: 'chakras', sinManual: true }));
+        expect(fuentesHomebrewDeCampana(elementosHomebrewPersonaje(personajeOficial, { chakras })).map((f) => [f.key, f.nombre]))
+            .toEqual([['chakras:12', 'Chakra: Chakra de la casa']]);
+    });
+
     describe('fuentes homebrew de la campaña', () => {
         const casa = { Id: 9, Nombre: 'Manual de la casa', Pagina: 1 };
 

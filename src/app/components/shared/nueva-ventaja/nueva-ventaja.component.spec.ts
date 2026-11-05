@@ -113,11 +113,29 @@ describe('NuevaVentajaComponent', () => {
     });
 
     it('el permiso es el del tipo: desventajas para las desventajas', async () => {
+        permisos = ['ventajas'];
+        await montar();
+        expect(component.puedeCrear).toBeTrue();
+        component.elegirTipo('desventaja');
+        expect(component.puedeCrear).toBeFalse();
+    });
+
+    it('al crear con solo el permiso de desventajas, empieza en desventaja; elegir ventaja sigue pidiendo el suyo', async () => {
         permisos = ['desventajas'];
         await montar();
-        expect(component.puedeCrear).toBeFalse();
-        component.elegirTipo('desventaja');
+        expect(component.tipo).toBe('desventaja');
         expect(component.puedeCrear).toBeTrue();
+        component.elegirTipo('ventaja');
+        expect(component.tipo).toBe('ventaja');
+        expect(component.puedeCrear).toBeFalse();
+    });
+
+    it('al modificar no cambia de tipo aunque falte su permiso', async () => {
+        permisos = ['desventajas'];
+        const { get } = IDA_Y_VUELTA_RASGOS_VENTAJAS_INCARNUM.ventajas[0];
+        await montar('ventaja', 'editar', get);
+        expect(component.tipo).toBe('ventaja');
+        expect(component.puedeCrear).toBeFalse();
     });
 
     it('un idioma a elegir quita el idioma fijo, y elegir uno fijo quita el de elegir', async () => {

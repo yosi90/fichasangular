@@ -1617,6 +1617,75 @@ describe('NuevoPersonajeComponent', () => {
             expect((component as any).getCampaignBlockedReasonForCandidate('dote', { Id: 83, Nombre: 'Ajena', Oficial: false, Manual: { Id: 10, Nombre: 'Otro manual', Pagina: 1 } }))
                 .toContain('bloqueada por campaña');
         });
+
+        it('cuentan los chakras homebrew de la formación (donde se moldea y al que se vincula), como la API', () => {
+            component.selectedCampaignPolicy = politica(0);
+            component.incarnumFusiones = [{ Id: 40, Nombre: 'Fusión del libro', Oficial: true }] as any;
+            component.incarnumChakras = [
+                { Id: 3, Nombre: 'Corona', Oficial: true },
+                { Id: 12, Nombre: 'Chakra de la casa', Oficial: false },
+            ] as any;
+            component.formacionIncarnum = {
+                fusiones: [{ idFusion: 40, idClase: null, idChakra: 3, idChakraVinculo: 12, esencia: 0 }],
+                receptaculos: [],
+            };
+
+            const validation = (component as any).getCampaignCreationValidation();
+
+            expect(validation.sources.map((fuente: any) => [fuente.key, fuente.nombre])).toEqual([['chakras:12', 'Chakra: Chakra de la casa']]);
+            expect(validation.blocksExistingHomebrew).toBeTrue();
+        });
+    });
+
+    it('un chakra homebrew de la formación vuelve homebrew la ficha', () => {
+        component.seleccionarRaza(crearRazaMock(true));
+        component.incarnumFusiones = [{ Id: 40, Nombre: 'Fusión del libro', Oficial: true }] as any;
+        component.incarnumChakras = [{ Id: 12, Nombre: 'Chakra de la casa', Oficial: false }] as any;
+        component.formacionIncarnum = { fusiones: [{ idFusion: 40, idClase: null, idChakra: 12, idChakraVinculo: null, esencia: 0 }], receptaculos: [] };
+
+        component.recalcularOficialidad();
+
+        expect(component.Personaje.Oficial).toBeFalse();
+    });
+
+    it('la formación con una fusión o un chakra homebrew se confirma antes; al cancelar, sigue en la formación', async () => {
+        component.seleccionarRaza(crearRazaMock(true));
+        component.incarnumFusiones = [
+            { Id: 40, Nombre: 'Fusión del libro', Oficial: true },
+            { Id: 41, Nombre: 'Fusión de la casa', Oficial: false },
+        ] as any;
+        component.incarnumChakras = [{ Id: 3, Nombre: 'Corona', Oficial: true }, { Id: 12, Nombre: 'Chakra de la casa', Oficial: false }] as any;
+        component.formacionAbierta = true;
+        const continuar = spyOn<any>(component, 'abrirSelectorPuntosGolpe');
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+        const formacion = {
+            fusiones: [
+                { idFusion: 40, idClase: null, idChakra: 12, idChakraVinculo: null, esencia: 0 },
+                { idFusion: 41, idClase: null, idChakra: 3, idChakraVinculo: null, esencia: 0 },
+            ],
+            receptaculos: [],
+        };
+
+        expect(await component.onConfirmarFormacion(formacion)).toBeFalse();
+        expect(component.formacionIncarnum).toBeNull();
+        expect(component.formacionAbierta).toBeTrue();
+        expect(continuar).not.toHaveBeenCalled();
+        expect(component.Personaje.Oficial).toBeTrue();
+        const html = `${(swalSpy.calls.mostRecent().args[0] as any).html}`;
+        expect(html).toContain('Fusión homebrew: Fusión de la casa');
+        expect(html).toContain('Chakra homebrew: Chakra de la casa');
+
+        swalSpy.and.resolveTo({ isConfirmed: true } as any);
+        expect(await component.onConfirmarFormacion(formacion)).toBeTrue();
+        expect(component.formacionIncarnum).toEqual(formacion);
+        expect(continuar).toHaveBeenCalled();
+        expect(component.Personaje.Oficial).toBeFalse();
+
+        // Lo oficial no pregunta.
+        swalSpy.calls.reset();
+        component.Personaje.Oficial = true;
+        await component.onConfirmarFormacion({ fusiones: [{ idFusion: 40, idClase: null, idChakra: 3, idChakraVinculo: null, esencia: 0 }], receptaculos: [] });
+        expect(swalSpy).not.toHaveBeenCalled();
     });
 
     it('getInconsistenciasManual incluye peso, altura y edad fuera de rango (la edad, solo por debajo de la mayoría de edad)', () => {

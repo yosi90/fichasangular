@@ -9,7 +9,7 @@ import { TipoRol, tipoRolDeListado, tituloListado } from 'src/app/services/utils
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { MarcoMovilService } from 'src/app/services/marco-movil.service';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
-import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
+import { puedeGestionarListado } from 'src/app/services/utils/permisos-catalogo';
 import { tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
 import { trasLasNormasDeCreacion } from 'src/app/services/utils/normas-creacion';
 import { MisCampanasService } from 'src/app/services/mis-campanas.service';
@@ -201,10 +201,11 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
 
     /**
      * Si la cuenta puede insertar y modificar en el catálogo de un listado: el permiso de creación de su recurso
-     * (`permisos-catalogo.ts`); la API pide el mismo para modificar.
+     * (`permisos-catalogo.ts`); la API pide el mismo para modificar. Un listado de dos catálogos (ventajas y
+     * desventajas), con el de cualquiera de los dos: la pantalla pide después el de cada uno.
      */
     puedeGestionar(lista: string): boolean {
-        return puedeGestionarCatalogo(this.usrService, lista);
+        return puedeGestionarListado(this.usrService, lista);
     }
 
     /** Insertar o Modificar en un catálogo: abre su pestaña (la inserción o el listado para elegir qué modificar). */

@@ -38,6 +38,11 @@ export interface ContextoOficialidad {
     conjurosEnSesion?: ConOficial[];
     /** Las fusiones de la formación de Incarnum, del catálogo de fusiones. */
     fusiones?: ConOficial[];
+    /**
+     * Los chakras de la formación de Incarnum (donde se moldea cada fusión y al que se vincula), del catálogo de chakras:
+     * tienen `Oficial` desde el hito 8 del roadmap de inserciones, que deja dar de alta chakras homebrew.
+     */
+    chakras?: ConOficial[];
 }
 
 /** El motivo de homebrew de las ventajas y desventajas (un sistema propio, decisión del propietario del 2026-10-25). */
@@ -46,7 +51,7 @@ export const MOTIVO_VENTAJAS_HOMEBREW = 'Ventajas y desventajas (homebrew)';
 /** Las familias de elementos que pueden volver homebrew al personaje. */
 export type FamiliaHomebrew =
     | 'raza' | 'raza_base' | 'deidad' | 'clase' | 'plantilla' | 'subtipo' | 'dote' | 'racial' | 'idioma' | 'conjuro'
-    | 'escuela_especialista' | 'fusion' | 'familiar' | 'companero';
+    | 'escuela_especialista' | 'fusion' | 'chakra' | 'familiar' | 'companero';
 
 export interface FamiliaHomebrewInfo {
     /** Cómo se nombra en los motivos («Clase homebrew: …») y en las fuentes de la campaña («Clase: …»). */
@@ -81,6 +86,7 @@ export const FAMILIAS_HOMEBREW: Readonly<Record<FamiliaHomebrew, FamiliaHomebrew
     conjuro: { etiqueta: 'Conjuro', tablaApi: 'conjuros' },
     escuela_especialista: { etiqueta: 'Escuela de especialista', tablaApi: 'escuelas_conjuros', sinManual: true },
     fusion: { etiqueta: 'Fusión', tablaApi: 'soulmelds' },
+    chakra: { etiqueta: 'Chakra', tablaApi: 'chakras', sinManual: true },
     familiar: { etiqueta: 'Familiar', tablaApi: 'monstruos' },
     companero: { etiqueta: 'Compañero', tablaApi: 'monstruos' },
 };
@@ -142,7 +148,7 @@ function escuelaDeClaseHomebrew(escuela: ElementoHomebrew, clases: ClaseConOfici
  * Los elementos no oficiales que usa el personaje (decisión del propietario del 2026-10-17: con uno solo, el personaje es
  * homebrew entero), por familia de `FAMILIAS_HOMEBREW`: la raza y la raza base, la deidad, las clases, las plantillas, los
  * subtipos, las dotes, los raciales, los idiomas, los conjuros (los conocidos, los de la sesión abierta y las aptitudes
- * sortílegas), la escuela de especialista, las fusiones, el familiar y el compañero. Las ventajas y las restricciones
+ * sortílegas), la escuela de especialista, las fusiones y sus chakras, el familiar y el compañero. Las ventajas y las restricciones
  * saltadas (alineamiento, edad…) van aparte.
  */
 export function elementosHomebrewPersonaje(personaje: Personaje | null | undefined, contexto: ContextoOficialidad): ElementoHomebrew[] {
@@ -165,6 +171,7 @@ export function elementosHomebrewPersonaje(personaje: Personaje | null | undefin
         ] as ConOficial[]),
         ...escuelas,
         ...noOficiales('fusion', contexto.fusiones),
+        ...noOficiales('chakra', contexto.chakras),
         ...noOficiales('familiar', personaje?.Familiares as ConOficial[]),
         ...noOficiales('companero', personaje?.Companeros as ConOficial[]),
     ];

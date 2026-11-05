@@ -234,6 +234,27 @@ describe('BaseMenuComponent', () => {
         expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'objetos', operacion: 'modificar' });
     });
 
+    it('«Ventajas» (ventajas y desventajas) sale con cualquiera de los dos permisos y abre su pantalla', () => {
+        canCreateRazas = false;
+        const emitSpy = spyOn(component.ListadoTab, 'emit');
+        const ventajas = (seccion: 'insertar' | 'modificar') => component.gruposOtros[seccion][1].opciones
+            .find((opcion) => opcion.tipo === 'ventaja')!;
+
+        expect(ventajas('insertar').habilitada()).toBeFalse();
+        expect(ventajas('modificar').habilitada()).toBeFalse();
+
+        permissions['desventajas:create'] = true;
+        expect(ventajas('insertar').habilitada()).toBeTrue();
+        expect(ventajas('modificar').habilitada()).toBeTrue();
+        expect(component.tieneOpcionesGrupo(component.gruposOtros.insertar[1])).toBeTrue();
+        ventajas('insertar').abrir();
+        expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'ventajas', operacion: 'insertar' });
+
+        permissions['desventajas:create'] = false;
+        permissions['ventajas:create'] = true;
+        expect(ventajas('modificar').habilitada()).toBeTrue();
+    });
+
     it('marca sin opciones solo el grupo sin permisos', () => {
         canCreateRazas = false;
         permissions['armas:create'] = true;

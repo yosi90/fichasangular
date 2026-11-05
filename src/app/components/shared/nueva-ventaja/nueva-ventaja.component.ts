@@ -55,6 +55,8 @@ export class NuevaVentajaComponent implements OnInit, OnDestroy, OnChanges, Edit
     readonly banderasDa = BANDERAS_DA;
     guardando = false;
     puedeCrear = false;
+    /** Si la persona ya eligió el tipo al crear: entonces no se cambia solo por los permisos. */
+    private tipoElegido = false;
 
     manuales: OpcionCatalogo[] = [];
     rasgos: OpcionCatalogo[] = [];
@@ -134,6 +136,7 @@ export class NuevaVentajaComponent implements OnInit, OnDestroy, OnChanges, Edit
         if (this.edicion.editando || this.tipo === tipo)
             return;
         this.tipo = tipo;
+        this.tipoElegido = true;
         this.actualizarPermisos();
         this.errores.limpiar();
     }
@@ -238,8 +241,19 @@ export class NuevaVentajaComponent implements OnInit, OnDestroy, OnChanges, Edit
             (h) => ({ id: h.Id_habilidad, nombre: h.Nombre })));
     }
 
-    /** El permiso de creación del tipo: `ventajas` o `desventajas` (también al modificar, como pide la API). */
+    /**
+     * El permiso de creación del tipo: `ventajas` o `desventajas` (también al modificar, como pide la API). Al crear, si la
+     * cuenta solo puede con el otro tipo y aún no lo ha elegido nadie, se empieza por ese (el menú abre esta pantalla con
+     * cualquiera de los dos permisos).
+     */
     private actualizarPermisos(): void {
-        this.puedeCrear = puedeGestionarCatalogo(this.userSvc, `${this.tipo}s`);
+        const otro: TipoVentaja = this.tipo === 'ventaja' ? 'desventaja' : 'ventaja';
+        if (!this.edicion.editando && !this.tipoElegido && !this.puedeConTipo(this.tipo) && this.puedeConTipo(otro))
+            this.tipo = otro;
+        this.puedeCrear = this.puedeConTipo(this.tipo);
+    }
+
+    private puedeConTipo(tipo: TipoVentaja): boolean {
+        return puedeGestionarCatalogo(this.userSvc, `${tipo}s`);
     }
 }
