@@ -77,7 +77,7 @@ import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 import { textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
-import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionDeHabilidad, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import { CLAVES_PRERREQUISITOS_INCARNUM } from 'src/app/services/utils/incarnum';
 import {
     CAMPOS_CLASE,
@@ -1432,7 +1432,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         });
         this.habilidadSvc.getHabilidades().pipe(takeUntil(this.destroy$)).subscribe((items) => {
             this.habilidadesBase = this.ordenarHabilidades(items ?? []);
-            this.catalogosPrerrequisito['habilidades'] = this.habilidadesBase.map((item) => ({ id: item.Id_habilidad, nombre: item.Nombre }));
+            this.catalogosPrerrequisito['habilidades'] = this.habilidadesBase.map(opcionDeHabilidad);
         });
         // Cada fila ya es de su catálogo (`Habilidades.Base` o `.Custom` del GET, o el botón con el que se añadió): los ids
         // de las personalizadas y de las del catálogo se solapan, así que el id solo no dice de cuál es.

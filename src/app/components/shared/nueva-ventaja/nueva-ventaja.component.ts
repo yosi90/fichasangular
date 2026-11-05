@@ -8,6 +8,7 @@ import { ManualService } from 'src/app/services/manual.service';
 import { RasgoService } from 'src/app/services/rasgo.service';
 import { UserService } from 'src/app/services/user.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
+import { opcionDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import { nombreDeVentaja, nombreQueCambia } from 'src/app/services/utils/nombres-de-catalogo';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import {
@@ -237,8 +238,7 @@ export class NuevaVentajaComponent implements OnInit, OnDestroy, OnChanges, Edit
         cargar(this.manualSvc.getManuales(), (manuales) => this.manuales = opcionesDeCatalogo(manuales as any[]));
         cargar(this.rasgoSvc.getRasgos(), (rasgos) => this.rasgos = opcionesDeCatalogo(rasgos.filter((r) => r.Id > 0)));
         cargar(this.idiomaSvc.getIdiomas(), (idiomas) => this.idiomas = opcionesDeCatalogo(idiomas.filter((i) => i.Id > 0)));
-        cargar(this.habilidadSvc.getHabilidades(), (habilidades) => this.habilidades = opcionesDeCatalogo(habilidades,
-            (h) => ({ id: h.Id_habilidad, nombre: h.Nombre })));
+        cargar(this.habilidadSvc.getHabilidades(), (habilidades) => this.habilidades = opcionesDeCatalogo(habilidades, opcionDeHabilidad));
     }
 
     /**

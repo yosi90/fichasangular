@@ -7,7 +7,7 @@ import { EquipoService } from 'src/app/services/equipo.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
-import { toInt, toText } from 'src/app/services/utils/normalizacion';
+import { opcionDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { FilaModificador, RelacionesMagicas, filaModificadorVacia } from 'src/app/services/utils/relaciones-equipo-formulario';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
@@ -63,8 +63,8 @@ export class EquipoMagiaComponent implements OnInit, OnDestroy {
         cargar(this.escuelaSvc.getEscuelas(), (items) => this.escuelas = opcionesDeCatalogo(items as any[]).filter((item) => item.id > 0));
         cargar(this.doteSvc.getDotes(), (items) => this.dotes = opcionesDeCatalogo(items as any[]));
         cargar(this.conjuroSvc.getConjuros(), (items) => this.conjuros = opcionesDeCatalogo(items as any[]));
-        cargar(this.habilidadSvc.getHabilidades(), (items) => this.habilidades = opcionesDeCatalogo(items as any[],
-            (item: any) => ({ id: toInt(item?.Id_habilidad), nombre: toText(item?.Nombre) })).filter((item) => item.id > 0));
+        cargar(this.habilidadSvc.getHabilidades(), (items) => this.habilidades = opcionesDeCatalogo(items, opcionDeHabilidad)
+            .filter((item) => item.id > 0));
     }
 
     ngOnDestroy(): void {
