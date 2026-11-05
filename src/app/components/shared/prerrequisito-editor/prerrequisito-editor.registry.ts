@@ -307,10 +307,12 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         isComplete: isValueOnlyComplete,
         toPayload: (row) => buildValuePayload(row),
     }),
+    // El género sale del catálogo `genero` (`GET /generos`); la clase lo lee con `Id_genero` (o `Genero`, su id).
     definition('genero', 'catalog-only', {
+        requiredCatalogs: ['generos'],
         catalogLabel: 'Genero',
         isComplete: isCatalogOnlyComplete,
-        toPayload: (row) => ({ ...buildBase(row), Id_genero: toInt(row.id, 0), Genero: row.id === 1 ? 'Masculino' : row.id === 2 ? 'Femenino' : 'Otro' }),
+        toPayload: (row) => ({ ...buildBase(row), Id_genero: toInt(row.id, 0) }),
     }),
     definition('dominio', 'catalog-only', {
         requiredCatalogs: ['dominios'],

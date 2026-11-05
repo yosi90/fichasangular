@@ -5,14 +5,16 @@ import { normalizeClase } from 'src/app/services/clase.service';
 import { NuevaClaseComponent } from './nueva-clase.component';
 import { IDA_Y_VUELTA_CLASES } from 'src/testing/ida-y-vuelta-clases';
 import { soloLoDeLaReferencia } from 'src/testing/cuerpo-de-catalogo';
+import { getPrerequisiteDefinition } from '../prerrequisito-editor/prerrequisito-editor.registry';
 
 // El `PUT /clases` deja vacío lo que no viene (guía `docs/publica/CLASES_PROPIAS_FRONT.md`): el editor reenvía lo que no
 // edita (la lista de conjuros, el libro y el divisor) y manda los campos de las clases propias.
 
-function crearEditor(razaCatalogosSvc: any = {}): NuevaClaseComponent {
-    // Sin `ngOnInit`: no se cargan catálogos; los servicios no se usan (el último, `RazaCatalogosService`, el de las actitudes).
+function crearEditor(razaCatalogosSvc: any = {}, deidadSvc: any = {}): NuevaClaseComponent {
+    // Sin `ngOnInit`: no se cargan catálogos; los servicios no se usan (los dos últimos, `RazaCatalogosService`, el de las
+    // actitudes, y `DeidadService`, el de los géneros).
     const servicios = Array.from({ length: 23 }, () => ({}) as any);
-    const editor: NuevaClaseComponent = new (NuevaClaseComponent as any)(new FormBuilder(), ...servicios, razaCatalogosSvc);
+    const editor: NuevaClaseComponent = new (NuevaClaseComponent as any)(new FormBuilder(), ...servicios, razaCatalogosSvc, deidadSvc);
     editor.modo = 'editar';
     return editor;
 }
@@ -102,6 +104,22 @@ describe('NuevaClaseComponent (catálogos de los prerrequisitos)', () => {
         ]);
         expect((editor as any).getCatalogoPrerrequisito('actitud_prohibido')).toBe(editor.actitudesCatalogo);
     });
+
+    it('el género sale del catálogo (`GET /generos`), no de una lista escrita en el código, y se manda por su id', async () => {
+        const editor = crearEditor({}, { getGeneros: () => of([
+            { Id: 1, Nombre: 'Macho' }, { Id: 2, Nombre: 'Hembra' }, { Id: 3, Nombre: 'Hermafrodita' }, { Id: 4, Nombre: 'Sin genero' },
+        ]) });
+        expect((editor as any).getCatalogoPrerrequisito('genero')).toEqual([]);
+        expect(getPrerequisiteDefinition('genero').requiredCatalogs).toEqual(['generos']);
+
+        await (editor as any).asegurarCatalogosPrerrequisitos(['genero']);
+
+        expect((editor as any).getCatalogoPrerrequisito('genero')).toEqual([
+            { id: 2, nombre: 'Hembra' }, { id: 3, nombre: 'Hermafrodita' }, { id: 1, nombre: 'Macho' }, { id: 4, nombre: 'Sin genero' },
+        ]);
+        const fila = { ...getPrerequisiteDefinition('genero').createDefaultRow(), id: 4 };
+        expect(getPrerequisiteDefinition('genero').toPayload(fila, (editor as any).prerrequisitosCatalogContext)).toEqual({ Id_genero: 4 });
+    });
 });
 
 describe('NuevaClaseComponent (una habilidad del catálogo y una personalizada con el mismo id)', () => {
@@ -115,7 +133,7 @@ describe('NuevaClaseComponent (una habilidad del catálogo y una personalizada c
     /** El editor con sus catálogos cargándose: los de las habilidades, de verdad; los demás no llegan nunca. */
     function editorConCatalogos(personalizadas$: Subject<any[]>): NuevaClaseComponent {
         const sinDatos = () => new Proxy({}, { get: (_objeto, clave) => `${String(clave)}`.endsWith('$') ? EMPTY : () => EMPTY });
-        const servicios: any[] = Array.from({ length: 24 }, sinDatos);
+        const servicios: any[] = Array.from({ length: 25 }, sinDatos);
         servicios[8] = {
             getHabilidades: () => of(catalogo),
             getHabilidadesCustom: () => personalizadas$.asObservable(),

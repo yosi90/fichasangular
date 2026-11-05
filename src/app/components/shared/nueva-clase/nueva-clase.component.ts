@@ -55,6 +55,7 @@ import { ArmaduraService } from 'src/app/services/armadura.service';
 import { CLAVES_PRERREQUISITOS, ClaseService } from 'src/app/services/clase.service';
 import { AptitudEspecialService } from 'src/app/services/aptitud-especial.service';
 import { ConjuroService } from 'src/app/services/conjuro.service';
+import { DeidadService } from 'src/app/services/deidad.service';
 import { DominioService } from 'src/app/services/dominio.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
@@ -179,7 +180,7 @@ type PrerrequisitoEditorItem = PrerequisiteRowModel;
 const NOMBRES_DE_CATALOGO = new Set([
     'Nombre', 'Nombre_esp', 'Habilidad', 'Extra', 'Dote_prerrequisito', 'Arma', 'Armadura', 'Grupo', 'Conjuro', 'Dominio',
     'Escuela', 'Idioma', 'Raza', 'Subtipo', 'Tamano', 'Actitud', 'Alineamiento', 'Caracteristica', 'Clase_especial',
-    'Aptitud_especial', 'Genero',
+    'Aptitud_especial',
 ]);
 
 @Component({
@@ -324,11 +325,6 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         clavesPrerrequisitoEditablesDeClase(CLAVES_PRERREQUISITOS).map((clave) => tipoDePrerrequisitoDeClase(clave)));
     readonly prerrequisitoOpciones = getPrerequisiteTypeOptions(
         (type) => !TIPOS_PRERREQUISITO_SOLO_PLANTILLA.has(type) && this.tiposPrerrequisitoClase.has(type));
-    readonly generoCatalogo: PrerequisiteCatalogItem[] = [
-        { id: 1, nombre: 'Masculino' },
-        { id: 2, nombre: 'Femenino' },
-        { id: 3, nombre: 'Otro' },
-    ];
     /** Las actitudes de los prerrequisitos `actitud_requerido`/`actitud_prohibido`, del catálogo (`GET /actitudes`). */
     actitudesCatalogo: PrerequisiteCatalogItem[] = [];
 
@@ -344,6 +340,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         escuelas: [],
         especiales: [],
         extras: [],
+        generos: [],
         grupos_arma: [],
         grupos_armadura: [],
         habilidades: [],
@@ -442,6 +439,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         private tipoCriaturaSvc: TipoCriaturaService,
         private prerrequisitosTiposSvc: PrerrequisitosTiposService,
         private razaCatalogosSvc: RazaCatalogosService,
+        private deidadSvc: DeidadService,
     ) { }
 
     ngOnInit(): void {
@@ -1775,6 +1773,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
                 this.aptitudEspecialSvc.getAptitudesEspeciales().pipe(take(1)).subscribe({ next: (items) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
             } else if (key === 'dominios') {
                 this.dominioSvc.getDominios().pipe(take(1)).subscribe({ next: (items) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
+            } else if (key === 'generos') {
+                this.deidadSvc.getGeneros().pipe(take(1)).subscribe({ next: (items) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
             } else if (key === 'escuelas') {
                 this.escuelaSvc.getEscuelas().pipe(take(1)).subscribe({ next: (items) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
             } else if (key === 'razas') {
@@ -1799,7 +1799,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         if (type === 'actitud_prohibido' || type === 'actitud_requerido')
             return this.actitudesCatalogo;
         if (type === 'genero')
-            return this.generoCatalogo;
+            return this.catalogosPrerrequisito['generos'];
         if (type === 'alineamiento_prohibido' || type === 'alineamiento_requerido')
             return this.catalogosPrerrequisito['alineamientos'];
         if (type === 'competencia_arma')

@@ -10,6 +10,7 @@ export type PrerequisiteCatalogKey =
     | 'escuelas'
     | 'especiales'
     | 'extras'
+    | 'generos'
     | 'grupos_arma'
     | 'grupos_armadura'
     | 'habilidades'
