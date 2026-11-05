@@ -55,6 +55,19 @@ function crearVentajaBase(partial: Partial<VentajaDetalle>): VentajaDetalle {
     };
 }
 
+/**
+ * Los huecos de una familia de habilidades como los da `GET /habilidades`: todos con los mismos `Extras` (ids de
+ * `rol_dev`), que es de donde sale la familia.
+ */
+const EXTRAS_SABER: Array<[number, string]> = [[51, 'Arcano'], [55, 'Historia'], [59, 'Los planos'], [60, 'Religión']];
+const EXTRAS_ARTESANIA: Array<[number, string]> = [[2, 'Alquimia'], [5, 'Carpintería'], [13, 'Fabricación de trampas'], [14, 'Herrería']];
+function huecosDeFamilia(nombre: string, ids: number[], extras: Array<[number, string]>, entrenada = false) {
+    return ids.map((id, indice) => ({
+        Id_habilidad: id, Nombre: `${nombre} ${indice + 1}`, Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '',
+        Soporta_extra: true, Entrenada: entrenada, Extras: extras.map(([Id_extra, Extra]) => ({ Id_extra, Extra, Descripcion: '' })),
+    }));
+}
+
 function crearClaseBase(partial?: Partial<Clase>): Clase {
     return {
         Id: 1,
@@ -1754,7 +1767,7 @@ describe('NuevoPersonajeService (clases)', () => {
         service.setCatalogoHabilidades([
             { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduria', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
             { Id_habilidad: 7, Nombre: 'Nadar', Id_caracteristica: 1, Caracteristica: 'Fuerza', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
-            { Id_habilidad: 32, Nombre: 'Saber', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: true, Extras: [] },
+            ...huecosDeFamilia('Saber', [32], EXTRAS_SABER, true),
         ]);
         expect(service.aplicarSiguienteNivelClase(claseBase).aplicado).toBeTrue();
         service.PersonajeCreacion.Nombre = 'Completo';
@@ -6214,34 +6227,17 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
     });
 
-    it('permite reutilizar extra entre Conocimiento y Saber porque no comparten familia', () => {
+    it('permite repetir el nombre de una especialidad en otra familia: la familia sale de los ids de los Extras', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
-            {
-                Id_habilidad: 6,
-                Nombre: 'Conocimiento de conjuros',
-                Id_caracteristica: 4,
-                Caracteristica: 'Inteligencia',
-                Descripcion: '',
-                Soporta_extra: true,
-                Entrenada: false,
-                Extras: [{ Id_extra: 1, Extra: 'Planos', Descripcion: '' }],
-            },
-            {
-                Id_habilidad: 32,
-                Nombre: 'Saber 1',
-                Id_caracteristica: 4,
-                Caracteristica: 'Inteligencia',
-                Descripcion: '',
-                Soporta_extra: true,
-                Entrenada: false,
-                Extras: [{ Id_extra: 1, Extra: 'Planos', Descripcion: '' }],
-            },
+            ...huecosDeFamilia('Saber', [32], [[59, 'Planos']]),
+            // Una habilidad homebrew con su propia especialidad «Planos» (otro id): no es de la familia de Saber.
+            ...huecosDeFamilia('Cartografía', [90], [[900, 'Planos']]),
         ]);
         svc.seleccionarRaza(crearRazaConDgs({
             Habilidades: {
                 Base: [
-                    { Id_habilidad: 6, Habilidad: 'Conocimiento de conjuros', Cantidad: 1 },
+                    { Id_habilidad: 90, Habilidad: 'Cartografía 1', Cantidad: 1 },
                     { Id_habilidad: 32, Habilidad: 'Saber 1', Cantidad: 1 },
                 ],
                 Custom: [],
@@ -6251,7 +6247,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.EstadoFlujo.habilidades.puntosRestantes = 0;
 
         expect(svc.setExtraHabilidad(32, 'Planos')).toBeTrue();
-        expect(svc.setExtraHabilidad(6, 'Planos')).toBeTrue();
+        expect(svc.setExtraHabilidad(90, 'Planos')).toBeTrue();
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
     });
 
@@ -6321,9 +6317,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
     it('familias repetibles: artesanía reparte slots y pierde exceso sobre 3', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
-            { Id_habilidad: 2, Nombre: 'Artesania 1', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 3, Nombre: 'Artesania 2', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 4, Nombre: 'Artesania 3', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            ...huecosDeFamilia('Artesania', [2, 3, 4], EXTRAS_ARTESANIA),
         ]);
         svc.seleccionarRaza(crearRazaConDgs({
             Habilidades: {
@@ -6355,12 +6349,8 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
     it('familia saberes ocupa Saber 1..5 aunque exista un Conocimiento de conjuros', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
-            { Id_habilidad: 6, Nombre: 'Conocimiento de conjuros', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 32, Nombre: 'Saber 1', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 33, Nombre: 'Saber 2', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 34, Nombre: 'Saber 3', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 35, Nombre: 'Saber 4', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 36, Nombre: 'Saber 5', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            { Id_habilidad: 6, Nombre: 'Conocimiento de conjuros', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+            ...huecosDeFamilia('Saber', [32, 33, 34, 35, 36], EXTRAS_SABER),
         ]);
         svc.seleccionarRaza(crearRazaConDgs({
             Habilidades: {
@@ -6460,14 +6450,106 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         });
     });
 
+    describe('familias de Interpretar y Oficio, por sus Extras', () => {
+        const EXTRAS_INTERPRETAR: Array<[number, string]> = [[19, 'Actuación'], [20, 'Canto'], [22, 'Danza']];
+        const EXTRAS_OFICIO: Array<[number, string]> = [[33, 'Cocinero'], [44, 'Marinero']];
+        const crear = () => {
+            const svc = new NuevoPersonajeService();
+            svc.setCatalogoHabilidades([
+                ...huecosDeFamilia('Interpretar', [19, 20, 21], EXTRAS_INTERPRETAR),
+                ...huecosDeFamilia('Oficio', [28, 29], EXTRAS_OFICIO),
+            ]);
+            svc.seleccionarRaza(crearRazaConDgs({ Habilidades: { Base: [], Custom: [] } } as any));
+            return svc;
+        };
+        const hueco = (svc: NuevoPersonajeService, id: number) => svc.PersonajeCreacion.Habilidades.find((h) => Number(h.Id) === id)!;
+
+        it('una clase con Interpretar (canto) y (danza) usa el hueco que ya tiene la danza y no pisa su especialidad', () => {
+            const svc = crear();
+            hueco(svc, 19).Extra = 'Danza';
+            hueco(svc, 19).Rangos = 2;
+            const hojacantante = crearClaseBase({
+                Id: 283,
+                Nombre: 'Hojacantante',
+                Habilidades: {
+                    Base: [
+                        { Id_habilidad: 19, Habilidad: 'Interpretar 1', Id_extra: 20, Extra: 'Canto' },
+                        { Id_habilidad: 20, Habilidad: 'Interpretar 2', Id_extra: 22, Extra: 'Danza' },
+                    ],
+                    Custom: [],
+                },
+            } as any);
+            expect(svc.aplicarSiguienteNivelClase(hojacantante).aplicado).toBeTrue();
+
+            expect(hueco(svc, 19).Extra).toBe('Danza');
+            expect(hueco(svc, 19).Clasea).toBeTrue();
+            const canto = svc.PersonajeCreacion.Habilidades.filter((h) => h.Extra === 'Canto');
+            expect(canto.length).toBe(1);
+            expect([20, 21]).toContain(Number(canto[0].Id));
+            expect(canto[0].Clasea).toBeTrue();
+        });
+
+        it('dos Oficio de clase ocupan los dos huecos de la familia', () => {
+            const svc = crear();
+            const clase = crearClaseBase({
+                Id: 84,
+                Nombre: 'Gremial',
+                Habilidades: { Base: [{ Id_habilidad: 28, Habilidad: 'Oficio 1' }, { Id_habilidad: 28, Habilidad: 'Oficio 1' }], Custom: [] },
+            });
+            expect(svc.aplicarSiguienteNivelClase(clase).aplicado).toBeTrue();
+            expect(hueco(svc, 28).Clasea).toBeTrue();
+            expect(hueco(svc, 29).Clasea).toBeTrue();
+        });
+
+        it('no deja repetir la especialidad en otro hueco de Interpretar', () => {
+            const svc = crear();
+            const clase = crearClaseBase({
+                Id: 85,
+                Nombre: 'Juglar',
+                Habilidades: { Base: [{ Id_habilidad: 19, Habilidad: 'Interpretar 1' }, { Id_habilidad: 19, Habilidad: 'Interpretar 1' }], Custom: [] },
+            });
+            expect(svc.aplicarSiguienteNivelClase(clase).aplicado).toBeTrue();
+            svc.iniciarDistribucionHabilidadesPorClase(clase);
+
+            expect(svc.setExtraHabilidad(19, 'Canto')).toBeTrue();
+            expect(svc.setExtraHabilidad(20, 'Canto')).toBeFalse();
+            expect(svc.setExtraHabilidad(20, 'Danza')).toBeTrue();
+        });
+    });
+
+    it('una habilidad personalizada no cuenta para los prerrequisitos de la habilidad con su mismo id (Autohipnosis 2 no es Artesanía 1)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades(huecosDeFamilia('Artesania', [2, 3, 4], EXTRAS_ARTESANIA));
+        svc.seleccionarRaza(crearRazaConDgs({ Habilidades: { Base: [], Custom: [] } } as any));
+        // Delante de Artesanía 1, para que una búsqueda por id la encontrara primero.
+        svc.PersonajeCreacion.Habilidades.unshift({
+            Id: 2, Nombre: 'Autohipnosis', Clasea: true, Car: 'Sabiduria', Mod_car: 0, Rangos: 6, Rangos_varios: 0,
+            Extra: '', Varios: '', Custom: true, Soporta_extra: false, Extras: [], Bonos_varios: [],
+        } as any);
+        const clase = crearClaseBase({
+            Id: 293,
+            Nombre: 'Maestro en armas exóticas',
+            Tiene_prerrequisitos: true,
+            Prerrequisitos_flags: { rangos_habilidad: true },
+            Prerrequisitos: {
+                ...crearClaseBase().Prerrequisitos,
+                rangos_habilidad: [{
+                    Id_habilidad: 2, Habilidad: 'Artesania 1', Rangos: 3, Requiere_extra: 0, Extras: [], Opcional: 0, Frase: 'Artesanía 3 rangos',
+                }],
+            },
+        } as any);
+
+        expect(svc.evaluarClaseParaSeleccion(clase).estado).toBe('blocked_failed');
+        const artesania = svc.PersonajeCreacion.Habilidades.find((h) => !h.Custom && Number(h.Id) === 3)!;
+        artesania.Extra = 'Herrería';
+        artesania.Rangos = 3;
+        expect(svc.evaluarClaseParaSeleccion(clase).estado).toBe('eligible');
+    });
+
     it('raza no duplica slots de saberes cuando la misma referencia se repite', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
-            { Id_habilidad: 32, Nombre: 'Saber 1', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 33, Nombre: 'Saber 2', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 34, Nombre: 'Saber 3', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 35, Nombre: 'Saber 4', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 36, Nombre: 'Saber 5', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            ...huecosDeFamilia('Saber', [32, 33, 34, 35, 36], EXTRAS_SABER),
         ]);
         svc.seleccionarRaza(crearRazaConDgs({
             Habilidades: {
@@ -6578,9 +6660,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
     it('el bonificador racial a una Artesanía se queda en su hueco en cada recálculo, y una clase con Artesanía la hace de clase (kobold)', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
-            { Id_habilidad: 2, Nombre: 'Artesania 1', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [{ Id_extra: 13, Extra: 'Fabricación de trampas', Descripcion: '' }] },
-            { Id_habilidad: 3, Nombre: 'Artesania 2', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
-            { Id_habilidad: 4, Nombre: 'Artesania 3', Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '', Soporta_extra: true, Entrenada: false, Extras: [] },
+            ...huecosDeFamilia('Artesania', [2, 3, 4], EXTRAS_ARTESANIA),
         ]);
         svc.seleccionarRaza(crearRazaConDgs({
             ...sinDgs(),

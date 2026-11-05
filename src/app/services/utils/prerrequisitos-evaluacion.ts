@@ -3,6 +3,7 @@ import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { cumpleActitud } from 'src/app/services/utils/alineamiento-contrato';
 import { leerComodin } from 'src/app/services/utils/comodin';
 import { extraHabilidadElegido } from 'src/app/services/utils/habilidad-extra-visible';
+import { sonDeLaMismaFamilia } from 'src/app/services/utils/habilidad-familia';
 import { esLaHabilidadDeLaRegla } from 'src/app/services/utils/habilidades-bonos';
 import { ClaveEntidadPrerrequisito, existeCoincidenciaClaveEntidad } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normalizarTexto, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
@@ -247,8 +248,8 @@ export function compararSubtipo(
 
 /**
  * Una habilidad del personaje para `rangos_habilidad` (clases) y `habilidad` (dotes): su hueco (`id`: Saber 3), sus rangos,
- * la especialidad elegida (`idExtra`: los planos) y las que admite su hueco (`idsExtras`, los `Extras` de
- * `GET /habilidades`). Los huecos que admiten las mismas especialidades son de la misma familia (Saber 1 a 5).
+ * la especialidad elegida (`idExtra`: los planos) y las que admite su hueco (`idsExtras`: `especialidadesDelHueco`), de
+ * las que sale su familia (`habilidad-familia.ts`).
  */
 export interface HabilidadParaPrerrequisitos {
     id: number | null;
@@ -290,11 +291,10 @@ function esElHuecoPedido(habilidad: HabilidadParaPrerrequisitos, id: number, nom
 }
 
 /** Las especialidades que admite el hueco pedido, según el del personaje; sin ellas, la habilidad no tiene familia. */
-function especialidadesDelHueco(pedido: Record<string, any>, habilidades: readonly HabilidadParaPrerrequisitos[]): number[] {
+function especialidadesDelHuecoPedido(pedido: Record<string, any>, habilidades: readonly HabilidadParaPrerrequisitos[]): number[] {
     const id = idHabilidadPedida(pedido);
     const nombre = nombreHabilidadPedida(pedido);
-    const hueco = habilidades.find((habilidad) => esElHuecoPedido(habilidad, id, nombre));
-    return (hueco?.idsExtras ?? []).filter((idExtra) => idExtra > 0);
+    return habilidades.find((habilidad) => esElHuecoPedido(habilidad, id, nombre))?.idsExtras ?? [];
 }
 
 function tieneEspecialidad(habilidad: HabilidadParaPrerrequisitos): boolean {
@@ -334,15 +334,15 @@ export function compararRangosHabilidad(
             razonUnknown,
         };
 
-    const familia = especialidadesDelHueco(pedido, habilidades);
+    const familia = especialidadesDelHuecoPedido(pedido, habilidades);
     if (familia.length < 1)
         return { evaluable: true, cumple: conRangos.some((habilidad) => esElHuecoPedido(habilidad, id, nombre)), razonUnknown };
 
-    const esDeLaFamilia = (otro: Record<string, any>) => especialidadesDelHueco(otro, habilidades).some((idExtra) => familia.includes(idExtra));
+    const esDeLaFamilia = (otro: Record<string, any>) => sonDeLaMismaFamilia(especialidadesDelHuecoPedido(otro, habilidades), familia);
     const obligatorios = pedidos.filter((otro) => otro !== pedido && grupoOpcionalPrerrequisito(otro) <= 0 && esDeLaFamilia(otro));
     const reservadas = obligatorios.flatMap((otro) => especialidadesPedidas(otro));
     const requiereEspecialidad = toInt(pedido?.['Requiere_extra'], 0) > 0;
-    const candidatas = conRangos.filter((habilidad) => (habilidad.idsExtras ?? []).some((idExtra) => familia.includes(idExtra))
+    const candidatas = conRangos.filter((habilidad) => sonDeLaMismaFamilia(habilidad.idsExtras, familia)
         && !reservadas.includes(toNumber(habilidad.idExtra))
         && (!requiereEspecialidad || tieneEspecialidad(habilidad)));
     // Cada «cualquiera» de la familia, de más a menos rangos, se queda con una distinta.
