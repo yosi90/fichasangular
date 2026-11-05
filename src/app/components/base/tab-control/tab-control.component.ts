@@ -526,105 +526,76 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (!this.usrLoggedIn)
             return;
         this.privateProfileOpenRequest = this.buildPrivateProfileOpenRequest(request);
-        if (this.privateProfileTabOpen) {
-            this.selectTabByKey(this.TAB_PROFILE, true);
-            return;
-        }
-        this.privateProfileTabOpen = true;
-        this.registerOpenContext(this.TAB_PROFILE, this.getSafeOpenerKey());
-        this.focusOpenedTab(this.TAB_PROFILE);
+        this.abrirPestanaFija(this.TAB_PROFILE, this.privateProfileTabOpen, () => this.privateProfileTabOpen = true);
     }
 
     public quitarPerfilPrivado(): boolean {
-        if (!this.privateProfileTabOpen)
-            return false;
-
-        return this.closeTabWithNavigation(this.TAB_PROFILE, () => {
-            this.privateProfileTabOpen = false;
-            return true;
-        });
+        return this.cerrarPestanaFija(this.TAB_PROFILE, this.privateProfileTabOpen, () => this.privateProfileTabOpen = false);
     }
 
     public abrirSocial(request?: SocialHubOpenRequest | null): void {
         this.socialOpenRequest = this.buildSocialOpenRequest(request);
-        if (this.socialTabOpen) {
-            this.selectTabByKey(this.TAB_SOCIAL, true);
-            return;
-        }
-        this.socialTabOpen = true;
-        this.registerOpenContext(this.TAB_SOCIAL, this.getSafeOpenerKey());
-        this.focusOpenedTab(this.TAB_SOCIAL);
+        this.abrirPestanaFija(this.TAB_SOCIAL, this.socialTabOpen, () => this.socialTabOpen = true);
     }
 
     public quitarSocial(): boolean {
-        if (!this.socialTabOpen)
-            return false;
-
-        return this.closeTabWithNavigation(this.TAB_SOCIAL, () => {
+        return this.cerrarPestanaFija(this.TAB_SOCIAL, this.socialTabOpen, () => {
             this.socialTabOpen = false;
             this.socialOpenRequest = null;
-            return true;
         });
     }
 
     /** Abre la Ayuda (una sola pestaña) en su sección; si ya está abierta, va a ella y cambia de sección. */
     public abrirAyuda(solicitud: AyudaSolicitud = { seccion: 'primeros-pasos', id: Date.now() }): void {
         this.ayudaSolicitud = solicitud;
-        if (this.ayudaTabOpen) {
-            this.selectTabByKey(this.TAB_AYUDA, true);
-            return;
-        }
-        this.ayudaTabOpen = true;
-        this.registerOpenContext(this.TAB_AYUDA, this.getSafeOpenerKey());
-        this.focusOpenedTab(this.TAB_AYUDA);
+        this.abrirPestanaFija(this.TAB_AYUDA, this.ayudaTabOpen, () => this.ayudaTabOpen = true);
     }
 
     public quitarAyuda(): boolean {
-        if (!this.ayudaTabOpen)
-            return false;
-        return this.closeTabWithNavigation(this.TAB_AYUDA, () => {
+        return this.cerrarPestanaFija(this.TAB_AYUDA, this.ayudaTabOpen, () => {
             this.ayudaTabOpen = false;
             this.ayudaSolicitud = null;
-            return true;
         });
     }
 
     /** Abre la pestaña «Novedades» (la entrada de Ayuda, la búsqueda global); si ya está abierta, va a ella. */
     public abrirNovedades(): void {
-        if (this.novedadesTabOpen) {
-            this.selectTabByKey(this.TAB_NOVEDADES, true);
-            return;
-        }
-        this.novedadesTabOpen = true;
-        this.registerOpenContext(this.TAB_NOVEDADES, this.getSafeOpenerKey());
-        this.focusOpenedTab(this.TAB_NOVEDADES);
+        this.abrirPestanaFija(this.TAB_NOVEDADES, this.novedadesTabOpen, () => this.novedadesTabOpen = true);
     }
 
     public quitarNovedades(): boolean {
-        if (!this.novedadesTabOpen)
-            return false;
-        return this.closeTabWithNavigation(this.TAB_NOVEDADES, () => {
-            this.novedadesTabOpen = false;
-            return true;
-        });
+        return this.cerrarPestanaFija(this.TAB_NOVEDADES, this.novedadesTabOpen, () => this.novedadesTabOpen = false);
     }
 
     /** Abre la pestaña «Dados»; si ya está abierta, va a ella. */
     public abrirDados(): void {
-        if (this.dadosTabOpen) {
-            this.selectTabByKey(this.TAB_DADOS, true);
-            return;
-        }
-        this.dadosTabOpen = true;
-        this.registerOpenContext(this.TAB_DADOS, this.getSafeOpenerKey());
-        this.focusOpenedTab(this.TAB_DADOS);
+        this.abrirPestanaFija(this.TAB_DADOS, this.dadosTabOpen, () => this.dadosTabOpen = true);
     }
 
     public quitarDados(): boolean {
-        if (!this.dadosTabOpen)
+        return this.cerrarPestanaFija(this.TAB_DADOS, this.dadosTabOpen, () => this.dadosTabOpen = false);
+    }
+
+    /**
+     * Abre una pestaña fija, de las que solo hay una (perfil, Social, Ayuda, Novedades, Dados): si ya está abierta, va a
+     * ella; si no, la marca como abierta con `abrir`, recuerda desde qué pestaña se abrió y la elige.
+     */
+    private abrirPestanaFija(clave: string, abierta: boolean, abrir: () => void): void {
+        if (abierta) {
+            this.selectTabByKey(clave, true);
+            return;
+        }
+        abrir();
+        this.registerOpenContext(clave, this.getSafeOpenerKey());
+        this.focusOpenedTab(clave);
+    }
+
+    /** Cierra una pestaña fija, si está abierta (`cerrar` la marca como cerrada), y vuelve a la que la abrió. */
+    private cerrarPestanaFija(clave: string, abierta: boolean, cerrar: () => void): boolean {
+        if (!abierta)
             return false;
-        return this.closeTabWithNavigation(this.TAB_DADOS, () => {
-            this.dadosTabOpen = false;
+        return this.closeTabWithNavigation(clave, () => {
+            cerrar();
             return true;
         });
     }
