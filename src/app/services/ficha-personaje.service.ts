@@ -9,7 +9,7 @@ import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/se
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from 'src/app/services/utils/personaje-totales';
-import { esTextoExtraPorElegir, habilidadConExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
+import { extraHabilidadElegido, habilidadConExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { esNombreComodin } from 'src/app/services/utils/comodin';
 import {
     SIN_CARACTERISTICA,
@@ -465,7 +465,7 @@ export class FichaPersonajeService {
 
             const extra = `${(habilidad as any)?.Extra ?? ''}`.trim();
             const custom = (habilidad as any)?.Custom === true;
-            if (extra.length > 0 && !esTextoExtraPorElegir(extra)) {
+            if (extraHabilidadElegido(extra)) {
                 this.trySetText(form, `extra${index}`, extra);
                 return;
             }

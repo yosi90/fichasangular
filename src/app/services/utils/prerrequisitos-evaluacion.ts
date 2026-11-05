@@ -2,6 +2,8 @@ import { AptitudEspecialOtorgante } from 'src/app/interfaces/aptitud-especial';
 import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { cumpleActitud } from 'src/app/services/utils/alineamiento-contrato';
 import { leerComodin } from 'src/app/services/utils/comodin';
+import { extraHabilidadElegido } from 'src/app/services/utils/habilidad-extra-visible';
+import { esLaHabilidadDeLaRegla } from 'src/app/services/utils/habilidades-bonos';
 import { ClaveEntidadPrerrequisito, existeCoincidenciaClaveEntidad } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normalizarTexto, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito, grupoOpcionalPrerrequisito, avisoSinComprobar, razonNoCumple } from 'src/app/services/utils/prerrequisito-frase';
@@ -241,4 +243,113 @@ export function compararSubtipo(
         return { evaluable: false, cumple: false, razonUnknown };
     const tiene = existeCoincidenciaClaveEntidad(subtipos ?? [], id, nombre);
     return { evaluable: true, cumple: prohibido ? !tiene : tiene, razonUnknown };
+}
+
+/**
+ * Una habilidad del personaje para `rangos_habilidad` (clases) y `habilidad` (dotes): su hueco (`id`: Saber 3), sus rangos,
+ * la especialidad elegida (`idExtra`: los planos) y las que admite su hueco (`idsExtras`, los `Extras` de
+ * `GET /habilidades`). Los huecos que admiten las mismas especialidades son de la misma familia (Saber 1 a 5).
+ */
+export interface HabilidadParaPrerrequisitos {
+    id: number | null;
+    nombre: string;
+    rangos: number;
+    idExtra?: number | null;
+    extra?: string;
+    idsExtras?: number[];
+}
+
+function idHabilidadPedida(pedido: Record<string, any>): number {
+    return ['Id_habilidad', 'id_habilidad', 'IdHabilidad', 'idHabilidad', 'Id', 'id', 'i']
+        .map((clave) => toNumber(pedido?.[clave]))
+        .find((valor) => valor > 0) ?? 0;
+}
+
+function nombreHabilidadPedida(pedido: Record<string, any>): string {
+    return normalizarTexto(['Habilidad', 'habilidad', 'Nombre', 'nombre']
+        .map((clave) => `${pedido?.[clave] ?? ''}`.trim())
+        .find((texto) => texto.length > 0) ?? '');
+}
+
+function rangosPedidos(pedido: Record<string, any>): number {
+    const clave = ['Rangos', 'rangos', 'Cantidad', 'cantidad', 'Valor', 'valor', 'c']
+        .find((item) => Object.prototype.hasOwnProperty.call(pedido ?? {}, item));
+    return clave ? toNumber(pedido[clave], Number.NaN) : Number.NaN;
+}
+
+/** Las especialidades concretas que pide (`Extras`, sin los comodines): Saber (arcano o religión) da las dos. */
+function especialidadesPedidas(pedido: Record<string, any>): number[] {
+    return toArray<Record<string, any>>(pedido?.['Extras'])
+        .filter((extra) => leerComodin(extra?.['Extra_comodin']) === null)
+        .map((extra) => toInt(extra?.['Id_extra'], 0))
+        .filter((id) => id > 0);
+}
+
+function esElHuecoPedido(habilidad: HabilidadParaPrerrequisitos, id: number, nombre: string): boolean {
+    return (id > 0 && toNumber(habilidad.id) === id) || (nombre.length > 0 && normalizarTexto(habilidad.nombre) === nombre);
+}
+
+/** Las especialidades que admite el hueco pedido, según el del personaje; sin ellas, la habilidad no tiene familia. */
+function especialidadesDelHueco(pedido: Record<string, any>, habilidades: readonly HabilidadParaPrerrequisitos[]): number[] {
+    const id = idHabilidadPedida(pedido);
+    const nombre = nombreHabilidadPedida(pedido);
+    const hueco = habilidades.find((habilidad) => esElHuecoPedido(habilidad, id, nombre));
+    return (hueco?.idsExtras ?? []).filter((idExtra) => idExtra > 0);
+}
+
+function tieneEspecialidad(habilidad: HabilidadParaPrerrequisitos): boolean {
+    if (toNumber(habilidad.idExtra) > 0)
+        return true;
+    return extraHabilidadElegido(habilidad.extra);
+}
+
+/**
+ * `rangos_habilidad` de las clases y `habilidad` de las dotes: los rangos en una habilidad, contados por la habilidad y su
+ * especialidad, no por el hueco. Con especialidades concretas en `Extras` (Saber (los planos) 8), las cumple la que
+ * tenga una de ellas en cualquier hueco (`esLaHabilidadDeLaRegla`, como las sinergias). Sin ellas, en
+ * una habilidad con familia (Saber (cualquiera), o un Saber sin especialidad), vale cualquier hueco de la familia, con
+ * su especialidad elegida si `Requiere_extra`; y si la misma entidad pide otras especialidades de esa familia, es
+ * «cualquier otra»: no cuentan las que ya piden sus otros obligatorios, y cada «cualquiera» necesita la suya. Sin
+ * familia (Piruetas), el hueco pedido. `pedidos` es la lista entera del tipo (las demás habilidades pedidas).
+ */
+export function compararRangosHabilidad(
+    pedido: Record<string, any>,
+    habilidades: readonly HabilidadParaPrerrequisitos[],
+    pedidos: readonly Record<string, any>[] = [pedido],
+): ComparacionPrerrequisito {
+    const razonUnknown = 'Prerrequisito de habilidad con formato no reconocido';
+    const id = idHabilidadPedida(pedido);
+    const nombre = nombreHabilidadPedida(pedido);
+    const rangos = rangosPedidos(pedido);
+    if ((id <= 0 && nombre.length < 1) || !Number.isFinite(rangos))
+        return { evaluable: false, cumple: false, razonUnknown };
+
+    const conRangos = habilidades.filter((habilidad) => toNumber(habilidad.rangos) >= rangos);
+    const especialidades = especialidadesPedidas(pedido);
+    if (especialidades.length > 0)
+        return {
+            evaluable: true,
+            cumple: conRangos.some((habilidad) => especialidades.some((idExtra) =>
+                esLaHabilidadDeLaRegla(toNumber(habilidad.id), toNumber(habilidad.idExtra), id, idExtra))),
+            razonUnknown,
+        };
+
+    const familia = especialidadesDelHueco(pedido, habilidades);
+    if (familia.length < 1)
+        return { evaluable: true, cumple: conRangos.some((habilidad) => esElHuecoPedido(habilidad, id, nombre)), razonUnknown };
+
+    const esDeLaFamilia = (otro: Record<string, any>) => especialidadesDelHueco(otro, habilidades).some((idExtra) => familia.includes(idExtra));
+    const obligatorios = pedidos.filter((otro) => otro !== pedido && grupoOpcionalPrerrequisito(otro) <= 0 && esDeLaFamilia(otro));
+    const reservadas = obligatorios.flatMap((otro) => especialidadesPedidas(otro));
+    const requiereEspecialidad = toInt(pedido?.['Requiere_extra'], 0) > 0;
+    const candidatas = conRangos.filter((habilidad) => (habilidad.idsExtras ?? []).some((idExtra) => familia.includes(idExtra))
+        && !reservadas.includes(toNumber(habilidad.idExtra))
+        && (!requiereEspecialidad || tieneEspecialidad(habilidad)));
+    // Cada «cualquiera» de la familia, de más a menos rangos, se queda con una distinta.
+    const cualquieras = pedidos
+        .map((item, orden) => ({ item, orden }))
+        .filter(({ item }) => item === pedido || (obligatorios.includes(item) && especialidadesPedidas(item).length < 1))
+        .sort((a, b) => rangosPedidos(b.item) - rangosPedidos(a.item) || a.orden - b.orden);
+    const posicion = Math.max(0, cualquieras.findIndex(({ item }) => item === pedido));
+    return { evaluable: true, cumple: candidatas.length > posicion, razonUnknown };
 }

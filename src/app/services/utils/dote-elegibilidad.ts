@@ -6,10 +6,10 @@ import {
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
 import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from './alineamiento-contrato';
-import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, textosUnicos, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { EvaluacionPrerrequisito, MotivosPrerrequisitos, compararActitud, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { EvaluacionPrerrequisito, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararRangosHabilidad, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
@@ -34,7 +34,8 @@ export interface DoteEvaluacionContexto {
     plantillas?: ClaveEntidadPrerrequisito[];
     dominios?: Array<{ id: number | null; nombre: string; }>;
     idiomas: Array<{ id: number | null; nombre: string; }>;
-    habilidades: Array<{ id: number | null; nombre: string; rangos: number; extra: string; }>;
+    /** Para `habilidad`: cada hueco con su especialidad y las que admite (`compararRangosHabilidad`). */
+    habilidades: HabilidadParaPrerrequisitos[];
     conjuros: Array<{ id: number | null; nombre: string; idEscuela: number | null; escuela: string; }>;
     conjurosAccesibles?: Array<{ id: number | null; nombre: string; idEscuela: number | null; escuela: string; }>;
     competenciasArmas: Array<{ id: number | null; nombre: string; }>;
@@ -214,30 +215,8 @@ function buildEvaluacionIdioma(entry: Record<string, any>, ctx: DoteEvaluacionCo
     };
 }
 
-function buildEvaluacionHabilidad(entry: Record<string, any>, ctx: DoteEvaluacionContexto): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
-    const idHabilidad = parseId(entry, ['Id_habilidad', 'id_habilidad', 'Id', 'id']);
-    const nombreHabilidad = parseText(entry, ['Habilidad', 'habilidad', 'Nombre', 'nombre']);
-    const nombreNorm = normalizarTexto(nombreHabilidad);
-    const minimo = toNumber(pick(entry, ['Cantidad', 'cantidad', 'Valor', 'valor']));
-    const requiereExtra = toBoolean(pick(entry, ['Requiere_extra', 'requiere_extra']));
-    const evaluable = (idHabilidad > 0 || nombreNorm.length > 0) && minimo > 0;
-
-    const habilidad = ctx.habilidades.find((item) => {
-        if (idHabilidad > 0 && toNumber(item.id) === idHabilidad)
-            return true;
-        return nombreNorm.length > 0 && normalizarTexto(item.nombre) === nombreNorm;
-    });
-    const rangos = toNumber(habilidad?.rangos);
-    const extra = normalizarTexto(habilidad?.extra ?? '');
-    const cumpleExtra = !requiereExtra || extra.length > 0;
-
-    return {
-        grupoOpcional,
-        evaluable,
-        cumple: evaluable ? rangos >= minimo && cumpleExtra : false,
-        razonUnknown: 'Prerrequisito de habilidad con formato no reconocido',
-    };
+function buildEvaluacionHabilidad(entry: Record<string, any>, ctx: DoteEvaluacionContexto, pedidos: Record<string, any>[]): EvaluacionItem {
+    return { grupoOpcional: parseOpcional(entry), ...compararRangosHabilidad(entry, ctx.habilidades, pedidos) };
 }
 
 function buildEvaluacionNivelClase(entry: Record<string, any>, ctx: DoteEvaluacionContexto): EvaluacionItem {
@@ -686,7 +665,7 @@ function evaluateFamily(
     if (keyNorm === 'idioma')
         return entries.map((entry) => buildEvaluacionIdioma(entry, ctx));
     if (keyNorm === 'habilidad')
-        return entries.map((entry) => buildEvaluacionHabilidad(entry, ctx));
+        return entries.map((entry) => buildEvaluacionHabilidad(entry, ctx, entries));
     if (keyNorm === 'nivel_de_clase')
         return entries.map((entry) => buildEvaluacionNivelClase(entry, ctx));
     if (keyNorm === 'aptitud_especial')

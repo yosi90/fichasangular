@@ -19,7 +19,12 @@ export interface HabilidadSinergiaRef {
     rangos: number;
 }
 
-export function esLaHabilidadDeLaSinergia(id: number, idExtra: number, reglaId: number, reglaExtra: number): boolean {
+/**
+ * Si una habilidad del personaje (su hueco `id` y su extra `idExtra`) es la que nombra una regla: con un extra distinto de
+ * -1, por el extra en cualquier hueco de su familia (Saber (arcano) en Saber 1 o en Saber 4); con -1, por su id. Lo usan
+ * las sinergias y los prerrequisitos de rangos (`compararRangosHabilidad`).
+ */
+export function esLaHabilidadDeLaRegla(id: number, idExtra: number, reglaId: number, reglaExtra: number): boolean {
     if (toInt(reglaExtra, ID_EXTRA_HABILIDAD_SIN_EXTRA) !== ID_EXTRA_HABILIDAD_SIN_EXTRA)
         return toInt(idExtra, ID_EXTRA_HABILIDAD_SIN_EXTRA) === toInt(reglaExtra);
     return toInt(id) === toInt(reglaId);
@@ -45,9 +50,9 @@ export function bonosSinergia(
     reglas: readonly ReglaSinergia[],
 ): PersonajeParteDto[] {
     return reglas
-        .filter((regla) => esLaHabilidadDeLaSinergia(destino.id, destino.idExtra, regla.Id_habilidad_destino, regla.Id_extra_destino)
+        .filter((regla) => esLaHabilidadDeLaRegla(destino.id, destino.idExtra, regla.Id_habilidad_destino, regla.Id_extra_destino)
             && habilidades.some((habilidad) => toInt(habilidad.rangos) >= toInt(regla.Rangos_minimos)
-                && esLaHabilidadDeLaSinergia(habilidad.id, habilidad.idExtra, regla.Id_habilidad_origen, regla.Id_extra_origen)))
+                && esLaHabilidadDeLaRegla(habilidad.id, habilidad.idExtra, regla.Id_habilidad_origen, regla.Id_extra_origen)))
         .map((regla) => {
             const condicion = toNullableText(regla.Condicion);
             return {

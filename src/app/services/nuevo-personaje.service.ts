@@ -33,6 +33,7 @@ import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
+import { HabilidadParaPrerrequisitos } from './utils/prerrequisitos-evaluacion';
 import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from '../interfaces/incarnum';
 import { EntradaIncarnumBorrador, calcularIncarnumBorrador, incarnumParaPrerrequisitos } from './utils/incarnum';
 import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
@@ -53,7 +54,7 @@ import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoPersonaje, TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
-import { esTextoExtraPorElegir, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
+import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
 import { caracteristicaPorId, caracteristicaPorTexto, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
@@ -1856,40 +1857,7 @@ export class NuevoPersonajeService {
                 });
                 return acc;
             }, []);
-        type HabilidadEvaluacionClase = { id: number | null; nombre: string; rangos: number; idExtra: number | null; extra: string; };
-        const habilidades = (this.personajeCreacion.Habilidades ?? [])
-            .reduce<HabilidadEvaluacionClase[]>((acc, habilidad) => {
-                const nombre = `${habilidad?.Nombre ?? ''}`.trim();
-                if (nombre.length < 1)
-                    return acc;
-
-                const extra = `${habilidad?.Extra ?? ''}`.trim();
-                const extraNorm = normalizarTexto(extra);
-                let idExtra: number | null = null;
-                const extrasDisponibles = Array.isArray(habilidad?.Extras) ? habilidad.Extras : [];
-                if (extraNorm.length > 0) {
-                    const extraEncontrado = extrasDisponibles.find((item) =>
-                        normalizarTexto(item?.Extra ?? '') === extraNorm
-                    );
-                    const idExtraEncontrado = toNumber(extraEncontrado?.Id_extra);
-                    if (idExtraEncontrado > 0)
-                        idExtra = idExtraEncontrado;
-                    else {
-                        const parseExtra = toNumber(extra);
-                        if (parseExtra > 0)
-                            idExtra = parseExtra;
-                    }
-                }
-
-                acc.push({
-                    id: toNumber(habilidad?.Id) > 0 ? toNumber(habilidad?.Id) : null,
-                    nombre,
-                    rangos: toNumber(habilidad?.Rangos),
-                    idExtra,
-                    extra,
-                });
-                return acc;
-            }, []);
+        const habilidades = this.habilidadesParaPrerrequisitos();
         type ConjuroEvaluacionClase = { id: number | null; nombre: string; idEscuela: number | null; escuela: string; };
         const conjuros = (this.personajeCreacion.Conjuros ?? [])
             .reduce<ConjuroEvaluacionClase[]>((acc, conjuro) => {
@@ -1966,6 +1934,26 @@ export class NuevoPersonajeService {
             },
             tamanoId: this.resolverTamanoActualId(),
         });
+    }
+
+    /**
+     * Las habilidades del personaje para los prerrequisitos de rangos de las clases y las dotes: cada hueco con sus rangos,
+     * su especialidad (por su id o por su nombre entre los `Extras`) y las especialidades que admite su hueco.
+     */
+    private habilidadesParaPrerrequisitos(): HabilidadParaPrerrequisitos[] {
+        return (this.personajeCreacion.Habilidades ?? [])
+            .filter((habilidad) => `${habilidad?.Nombre ?? ''}`.trim().length > 0)
+            .map((habilidad) => {
+                const idExtra = idExtraHabilidadParaGuardar(habilidad);
+                return {
+                    id: toNumber(habilidad?.Id) > 0 ? toNumber(habilidad?.Id) : null,
+                    nombre: `${habilidad?.Nombre ?? ''}`.trim(),
+                    rangos: toNumber(habilidad?.Rangos),
+                    idExtra: idExtra > 0 ? idExtra : null,
+                    extra: `${habilidad?.Extra ?? ''}`.trim(),
+                    idsExtras: (habilidad?.Extras ?? []).map((extra) => toInt(extra?.Id_extra)).filter((id) => id > 0),
+                };
+            });
     }
 
     esBloqueoSoloPorAlineamiento(evaluacion: ClaseEvaluacionResultado | null | undefined): boolean {
@@ -2253,7 +2241,7 @@ export class NuevoPersonajeService {
         const opciones = (habilidad.Extras ?? [])
             .map((item) => `${item?.Extra ?? ''}`.trim())
             .filter((item) => item.length > 0);
-        if (opciones.length > 0 && !this.esExtraHabilidadPendienteValor(extraNormalizado)) {
+        if (opciones.length > 0 && extraHabilidadElegido(extraNormalizado)) {
             const existeOpcion = opciones.some((opcion) => normalizarTexto(opcion) === extraNormalizado);
             if (!existeOpcion)
                 return false;
@@ -3563,14 +3551,7 @@ export class NuevoPersonajeService {
             })
             .filter((item): item is { id: number | null; nombre: string; } => !!item);
 
-        const habilidades = (this.personajeCreacion.Habilidades ?? [])
-            .map((habilidad) => ({
-                id: toNumber(habilidad?.Id) > 0 ? toNumber(habilidad?.Id) : null,
-                nombre: `${habilidad?.Nombre ?? ''}`.trim(),
-                rangos: toNumber(habilidad?.Rangos),
-                extra: `${habilidad?.Extra ?? ''}`.trim(),
-            }))
-            .filter((item) => item.nombre.length > 0);
+        const habilidades = this.habilidadesParaPrerrequisitos();
 
         const conjuros = (this.personajeCreacion.Conjuros ?? [])
             .map((conjuro) => ({
@@ -6311,12 +6292,7 @@ export class NuevoPersonajeService {
         if (!toBoolean(habilidad?.Soporta_extra))
             return false;
 
-        return this.esExtraHabilidadPendienteValor(normalizarTexto(`${habilidad?.Extra ?? ''}`));
-    }
-
-    private esExtraHabilidadPendienteValor(extraNormalizado: string): boolean {
-        // Un extra vacío o «Elegir» está por escoger. Los textos de relleno («-», «No aplica»…) ya no llegan de la API.
-        return extraNormalizado.length < 1 || esTextoExtraPorElegir(extraNormalizado);
+        return !extraHabilidadElegido(normalizarTexto(`${habilidad?.Extra ?? ''}`));
     }
 
     private getClaveGrupoExtraHabilidad(habilidad: Personaje['Habilidades'][number]): string {
@@ -6339,7 +6315,7 @@ export class NuevoPersonajeService {
         habilidadObjetivo: Personaje['Habilidades'][number],
         extraNormalizadoObjetivo: string
     ): boolean {
-        if (this.esExtraHabilidadPendienteValor(extraNormalizadoObjetivo))
+        if (!extraHabilidadElegido(extraNormalizadoObjetivo))
             return false;
 
         const claveGrupo = this.getClaveGrupoExtraHabilidad(habilidadObjetivo);
@@ -6357,7 +6333,7 @@ export class NuevoPersonajeService {
             if (this.getClaveGrupoExtraHabilidad(habilidad) !== claveGrupo)
                 return false;
             const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
-            if (this.esExtraHabilidadPendienteValor(extraNormalizado))
+            if (!extraHabilidadElegido(extraNormalizado))
                 return false;
             return extraNormalizado === extraNormalizadoObjetivo;
         });
@@ -6373,7 +6349,7 @@ export class NuevoPersonajeService {
                 continue;
 
             const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
-            if (this.esExtraHabilidadPendienteValor(extraNormalizado))
+            if (!extraHabilidadElegido(extraNormalizado))
                 continue;
 
             const claveGrupo = this.getClaveGrupoExtraHabilidad(habilidad);
@@ -6444,20 +6420,34 @@ export class NuevoPersonajeService {
             || !!habilidad?.Clasea;
     }
 
+    /**
+     * El hueco de la familia para lo que se otorga. Con una especialidad fija (Saber (los planos)), la cuenta la habilidad y
+     * no el hueco: si el personaje ya la tiene en uno, es ese; si no, uno libre que no tenga ya otra especialidad elegida.
+     */
     private resolverSlotFamiliaParaOtorgamiento(
         familia: HabilidadFamiliaRepetibleKey,
         preferida: Personaje['Habilidades'][number] | null,
-        paraClasea: boolean
+        paraClasea: boolean,
+        extraFijo = ''
     ): Personaje['Habilidades'][number] | null {
         const slots = this.obtenerSlotsFamiliaRepetible(familia);
         if (slots.length < 1)
             return preferida;
 
+        const extraFijoNorm = normalizarTexto(extraFijo);
+        if (extraFijoNorm.length > 0) {
+            const conLaEspecialidad = slots.find((slot) => normalizarTexto(`${slot?.Extra ?? ''}`) === extraFijoNorm);
+            if (conLaEspecialidad)
+                return conLaEspecialidad;
+        }
+        const ocupado = (slot: Personaje['Habilidades'][number]) => this.esSlotHabilidadOcupado(slot, paraClasea)
+            || (extraFijoNorm.length > 0 && extraHabilidadElegido(normalizarTexto(`${slot?.Extra ?? ''}`)));
+
         const preferidaId = toNumber(preferida?.Id);
-        if (preferida && slots.some((item) => toNumber(item?.Id) === preferidaId) && !this.esSlotHabilidadOcupado(preferida, paraClasea))
+        if (preferida && slots.some((item) => toNumber(item?.Id) === preferidaId) && !ocupado(preferida))
             return preferida;
 
-        const libre = slots.find((slot) => !this.esSlotHabilidadOcupado(slot, paraClasea));
+        const libre = slots.find((slot) => !ocupado(slot));
         return libre ?? null;
     }
 
@@ -6514,7 +6504,7 @@ export class NuevoPersonajeService {
             // Sin expandir (la raza), la referencia apunta a su hueco (Artesanía 1) y se queda en él en cada recálculo.
             const slotFamilia = !expandirFamiliaConDuplicados && existente
                 ? existente
-                : this.resolverSlotFamiliaParaOtorgamiento(familia, existente, marcarClasea);
+                : this.resolverSlotFamiliaParaOtorgamiento(familia, existente, marcarClasea, extraFijoReferencia.bloqueado ? extraFijoReferencia.valor : '');
             if (slotFamilia) {
                 if (marcarClasea)
                     slotFamilia.Clasea = true;
@@ -6535,7 +6525,8 @@ export class NuevoPersonajeService {
                 }
                 return slotFamilia;
             }
-            if (existente && this.esSlotHabilidadOcupado(existente, marcarClasea))
+            // Sin hueco libre, una especialidad fija no pisa la que ya tiene el suyo.
+            if (existente && (this.esSlotHabilidadOcupado(existente, marcarClasea) || extraFijoReferencia.bloqueado))
                 return null;
         }
 
@@ -6667,7 +6658,7 @@ export class NuevoPersonajeService {
     ): { bloqueado: boolean; valor: string; } {
         const extraRaw = `${referencia?.['Extra'] ?? referencia?.['extra'] ?? ''}`.trim();
         const extraNorm = normalizarTexto(extraRaw);
-        if (extraRaw.length > 0 && !this.esExtraHabilidadPendienteValor(extraNorm))
+        if (extraRaw.length > 0 && extraHabilidadElegido(extraNorm))
             return { bloqueado: true, valor: extraRaw };
 
         const idExtra = toNumber(
@@ -6679,7 +6670,7 @@ export class NuevoPersonajeService {
         const encontrado = extrasDisponibles.find((item) => toNumber(item?.Id_extra) === idExtra);
         const valor = `${encontrado?.Extra ?? ''}`.trim();
         const valorNorm = normalizarTexto(valor);
-        if (valor.length > 0 && !this.esExtraHabilidadPendienteValor(valorNorm))
+        if (valor.length > 0 && extraHabilidadElegido(valorNorm))
             return { bloqueado: true, valor };
 
         return { bloqueado: false, valor: '' };

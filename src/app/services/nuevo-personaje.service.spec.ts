@@ -6393,6 +6393,73 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(saberesClaseos.some((h) => Number(h.Id) === 36)).toBeTrue();
     });
 
+    describe('Saber con especialidad de una clase (demonologista)', () => {
+        const extrasSaber = [
+            { Id_extra: 51, Extra: 'Arcano', Descripcion: '' },
+            { Id_extra: 59, Extra: 'Los planos', Descripcion: '' },
+            { Id_extra: 60, Extra: 'Religión', Descripcion: '' },
+        ];
+        const catalogoSaberes = () => [32, 33, 34, 35, 36].map((id) => ({
+            Id_habilidad: id, Nombre: `Saber ${id - 31}`, Id_caracteristica: 4, Caracteristica: 'Inteligencia', Descripcion: '',
+            Soporta_extra: true, Entrenada: true, Extras: extrasSaber,
+        }));
+        const crearConLosPlanosEnSaber1 = () => {
+            const svc = new NuevoPersonajeService();
+            svc.setCatalogoHabilidades(catalogoSaberes());
+            svc.seleccionarRaza(crearRazaConDgs({ Habilidades: { Base: [], Custom: [] } } as any));
+            const saber1 = svc.PersonajeCreacion.Habilidades.find((h) => Number(h.Id) === 32)!;
+            saber1.Extra = 'Los planos';
+            saber1.Rangos = 8;
+            return svc;
+        };
+        const demonologista = (prerrequisitos = false) => crearClaseBase({
+            Id: 460,
+            Nombre: 'Demonologista',
+            Habilidades: {
+                Base: [
+                    { Id_habilidad: 32, Habilidad: 'Saber 1', Id_extra: 51, Extra: 'Arcano' },
+                    { Id_habilidad: 33, Habilidad: 'Saber 2', Id_extra: 59, Extra: 'Los planos' },
+                ],
+                Custom: [],
+            },
+            ...(prerrequisitos ? {
+                Tiene_prerrequisitos: true,
+                Prerrequisitos_flags: { rangos_habilidad: true },
+                Prerrequisitos: {
+                    ...crearClaseBase().Prerrequisitos,
+                    rangos_habilidad: [{
+                        Id_habilidad: 33, Habilidad: 'Saber 2', Rangos: 8, Requiere_extra: 1, Opcional: 0,
+                        Extras: [{ Id_extra: 59, Extra: 'Los planos', Extra_comodin: null }], Frase: 'Saber (los planos) 8 rangos',
+                    }],
+                },
+            } : {}),
+        } as any);
+
+        it('cumple Saber (los planos) 8 aunque lo tenga en otro hueco', () => {
+            const svc = crearConLosPlanosEnSaber1();
+            expect(svc.evaluarClaseParaSeleccion(demonologista(true)).estado).toBe('eligible');
+
+            svc.PersonajeCreacion.Habilidades.find((h) => Number(h.Id) === 32)!.Extra = 'Religión';
+            expect(svc.evaluarClaseParaSeleccion(demonologista(true)).estado).toBe('blocked_failed');
+        });
+
+        it('hace de clase el hueco que ya tiene la especialidad y no le cambia la suya a otro', () => {
+            const svc = crearConLosPlanosEnSaber1();
+            expect(svc.aplicarSiguienteNivelClase(demonologista()).aplicado).toBeTrue();
+
+            const saberes = svc.PersonajeCreacion.Habilidades.filter((h) => [32, 33, 34, 35, 36].includes(Number(h.Id)));
+            const losPlanos = saberes.filter((h) => h.Extra === 'Los planos');
+            expect(losPlanos.length).toBe(1);
+            expect(Number(losPlanos[0].Id)).toBe(32);
+            expect(losPlanos[0].Rangos).toBe(8);
+            expect(losPlanos[0].Clasea).toBeTrue();
+            const arcano = saberes.filter((h) => h.Extra === 'Arcano');
+            expect(arcano.length).toBe(1);
+            expect(Number(arcano[0].Id)).not.toBe(32);
+            expect(arcano[0].Clasea).toBeTrue();
+        });
+    });
+
     it('raza no duplica slots de saberes cuando la misma referencia se repite', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([
