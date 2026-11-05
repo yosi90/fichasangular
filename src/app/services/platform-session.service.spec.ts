@@ -243,3 +243,40 @@ describe('cabeceraApiConFirebase', () => {
         expect(error.status).toBe(401);
     });
 });
+
+describe('PlatformSessionService, normas de Rol al crear (SDK 1.31)', () => {
+    let anterior: unknown;
+
+    beforeEach(() => {
+        anterior = (window as any).yosiftware;
+    });
+
+    afterEach(() => {
+        (window as any).yosiftware = anterior;
+    });
+
+    it('carga el SDK con data-normas="al-crear", para que no enseñe las normas al entrar', () => {
+        delete (window as any).yosiftware;
+        const anadir = spyOn(document.head, 'appendChild').and.callFake(<T extends Node>(nodo: T) => nodo);
+        const servicio = new PlatformSessionServicePrueba(new NgZone({ enableLongStackTrace: false }));
+
+        servicio.iniciar();
+
+        const script = anadir.calls.mostRecent().args[0] as unknown as HTMLScriptElement;
+        expect(script.dataset['normas']).toBe('al-crear');
+        expect(script.dataset['estilos']).toContain('/assets/yosiftware.css');
+    });
+
+    it('pide las normas al SDK con el motivo y devuelve si se aceptan', async () => {
+        const sdk = new SdkFalso() as SdkFalso & { normasDeLaWeb: jasmine.Spy };
+        sdk.normasDeLaWeb = jasmine.createSpy('normasDeLaWeb').and.resolveTo(true);
+        (window as any).yosiftware = sdk;
+        const servicio = new PlatformSessionServicePrueba(new NgZone({ enableLongStackTrace: false }));
+        servicio.iniciar();
+        await esperar();
+        sdk.cambiar(conSesion('a'));
+
+        expect(await servicio.normasDeLaWeb('Para crear en Rol necesitas aceptar sus normas.')).toBeTrue();
+        expect(sdk.normasDeLaWeb).toHaveBeenCalledWith({ motivo: 'Para crear en Rol necesitas aceptar sus normas.' });
+    });
+});

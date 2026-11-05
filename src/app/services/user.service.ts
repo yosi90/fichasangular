@@ -7,11 +7,13 @@ import { Usuario } from '../interfaces/usuario';
 import { EMPTY_USER_ACL, UserAcl, UserRole, normalizeUserAcl } from '../interfaces/user-acl';
 import { UserAccessRestrictionReason, UserAccessScope, UserBanStatus, UserComplianceSnapshot, UserModerationSanction } from '../interfaces/user-moderation';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { NormasCreacionService } from './normas-creacion.service';
 import { EstadoPlataforma, PlatformSessionService, RestriccionesPlataforma } from './platform-session.service';
 import { PrivateUserFirestoreService } from './private-user-firestore.service';
 import { UserProfileApiService } from './user-profile-api.service';
 import { codigoDeError } from './utils/error-api';
+
+/** La frase con la que empieza la ventana de las normas de Rol del SDK al pulsar crear. */
+export const MOTIVO_NORMAS_DE_CREACION = 'Para crear en Rol (personajes, campañas o contenido de los catálogos) necesitas aceptar sus normas.';
 
 @Injectable({
     providedIn: 'root'
@@ -29,6 +31,8 @@ export class UserService {
     private canonicalAdminAccess: boolean | null = null;
     private canonicalAdminValidationInFlight: Promise<boolean> | null = null;
     private estadoPlataforma: EstadoPlataforma = { tipo: 'comprobando' };
+    /** La ventana de las normas abierta: dos botones o dos rechazos de la API a la vez comparten la respuesta. */
+    private normasEnCurso: Promise<boolean> | null = null;
     private isLoggedInSubject = new BehaviorSubject<boolean>(false);
     private permisosSubject = new BehaviorSubject<number>(0);
     private isBannedSubject = new BehaviorSubject<boolean>(false);
@@ -107,22 +111,23 @@ export class UserService {
 
     /**
      * El paso previo de toda acción de crear (personajes, campañas, contenido de los catálogos): si faltan las normas de
-     * Rol, abre su ventana y resuelve `true` solo si las acepta (con los tokens ya renovados); si dice «Ahora no», `false`
-     * y no pasa nada más. Sin normas pendientes, `true` al momento. Sin sesión, `false`. Con `porLaApi` (la API ha
-     * respondido `CREATION_POLICY_ACCEPTANCE_REQUIRED`), la ventana sale aunque el estado aún no lo diga.
+     * Rol, la ventana del SDK las pide (`normasDeLaWeb`, SDK 1.31) y resuelve `true` solo si las acepta (con los tokens
+     * ya renovados); si dice «Ahora no», `false` y no pasa nada más. Sin normas pendientes, `true` al momento. Sin
+     * sesión, `false`. Con `porLaApi` (la API ha respondido `CREATION_POLICY_ACCEPTANCE_REQUIRED`), se pregunta al SDK
+     * aunque el estado de la web aún no lo diga. Varias peticiones a la vez comparten la misma ventana.
      */
-    public async asegurarNormasDeCreacion(porLaApi: boolean = false): Promise<boolean> {
-        if (!this.sesionAbierta)
-            return false;
+    public asegurarNormasDeCreacion(porLaApi: boolean = false): Promise<boolean> {
+        if (!this.sesionAbierta || !this.platformSessionSvc)
+            return Promise.resolve(false);
         if (!porLaApi && !this.normasDeCreacionPendientes)
-            return true;
-        if (!this.normasCreacionSvc)
-            return false;
-        try {
-            return await this.normasCreacionSvc.pedir();
-        } catch {
-            return false;
-        }
+            return Promise.resolve(true);
+        const sesion = this.platformSessionSvc;
+        this.normasEnCurso ??= sesion.normasDeLaWeb(MOTIVO_NORMAS_DE_CREACION)
+            .catch(() => false)
+            .finally(() => {
+                this.normasEnCurso = null;
+            });
+        return this.normasEnCurso;
     }
 
     public canProceed(scope: UserAccessScope = 'usage'): boolean {
@@ -157,7 +162,6 @@ export class UserService {
         private userProfileApiSvc?: UserProfileApiService,
         private privateUserFirestoreSvc?: PrivateUserFirestoreService,
         private platformSessionSvc?: PlatformSessionService,
-        private normasCreacionSvc?: NormasCreacionService,
     ) {
         this.subscribeAuthState((firebaseUser) => {
             this.actualizarSesionDesdeAuth(firebaseUser);
