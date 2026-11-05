@@ -1,11 +1,11 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { BehaviorSubject, of } from 'rxjs';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
+import { CdkMenuModule } from '@angular/cdk/menu';
 
 import { NavbarComponent } from './navbar.component';
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
@@ -164,16 +164,13 @@ describe('NavbarComponent', () => {
         expect(userSvc.logOut).toHaveBeenCalled();
     });
 
-    it('mantiene manuales operativo y cierra el menú al abrir uno', () => {
-        const trigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu']);
+    it('abre el detalle de un manual del menú Manuales', () => {
         const manual = { Id: 5, Nombre: 'Manual del jugador', Oficial: true } as any;
-        const event = new MouseEvent('click');
-        spyOn(event, 'stopPropagation');
 
-        component.abrirManual(manual, event, trigger as any);
+        component.abrirManual(manual);
+        component.abrirManual({ Id: 0, Nombre: 'Sin id' } as any);
 
-        expect(navegacionRol.abrir).toHaveBeenCalledWith({ clase: 'manual', manual });
-        expect(trigger.closeMenu).toHaveBeenCalled();
+        expect(navegacionRol.abrir).toHaveBeenCalledOnceWith({ clase: 'manual', manual });
     });
 
     it('calcula categorías efectivas aunque la flag esté desajustada', () => {
@@ -205,11 +202,17 @@ describe('NavbarComponent', () => {
     });
 
     it('los elementos del menú Ayuda abren la única Ayuda en su sección', () => {
-        component.abrirAyuda('novedades');
         component.abrirAyuda('legal');
         component.abrirAyuda('primeros-pasos');
 
-        expect(userProfileNavSvc.openAyuda.calls.allArgs()).toEqual([['novedades'], ['legal'], ['primeros-pasos']]);
+        expect(userProfileNavSvc.openAyuda.calls.allArgs()).toEqual([['legal'], ['primeros-pasos']]);
+    });
+
+    it('«Ayuda → Novedades» abre la pestaña Novedades por el bus de pestañas', () => {
+        component.abrirNovedades();
+
+        expect(navegacionRol.abrir).toHaveBeenCalledOnceWith({ clase: 'novedades' });
+        expect(userProfileNavSvc.openAyuda).not.toHaveBeenCalled();
     });
 
     it('abre reportar bug desde Ayuda si hay sesión', () => {
@@ -235,49 +238,6 @@ describe('NavbarComponent', () => {
         expect(userProfileNavSvc.openFeedbackFeature).toHaveBeenCalled();
     });
 
-    it('cierra un menú de la cinta con retardo al alejarse', fakeAsync(() => {
-        const trigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu']);
-
-        component.programarCierreRibbonMenu(trigger as any);
-        tick(149);
-        expect(trigger.closeMenu).not.toHaveBeenCalled();
-
-        tick(1);
-        expect(trigger.closeMenu).toHaveBeenCalled();
-    }));
-
-    it('cancela el cierre diferido al reentrar en el menú', fakeAsync(() => {
-        const trigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu']);
-
-        component.programarCierreRibbonMenu(trigger as any);
-        component.cancelarCierreRibbonMenu();
-        tick(151);
-
-        expect(trigger.closeMenu).not.toHaveBeenCalled();
-    }));
-
-    it('al pasar por otro botón con un menú abierto cambia al nuevo menú', fakeAsync(() => {
-        const activeTrigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu', 'openMenu'], { menuOpen: true });
-        const nextTrigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu', 'openMenu'], { menuOpen: false });
-
-        component.onRibbonMenuOpened(activeTrigger as any);
-        component.onRibbonTriggerEnter(nextTrigger as any);
-        tick();
-
-        expect(activeTrigger.closeMenu).toHaveBeenCalled();
-        expect(nextTrigger.openMenu).toHaveBeenCalled();
-    }));
-
-    it('ignora el primer mouseleave inmediato tras abrir el mismo menú', fakeAsync(() => {
-        const trigger = jasmine.createSpyObj('MatMenuTrigger', ['closeMenu', 'openMenu'], { menuOpen: true });
-
-        component.onRibbonMenuOpened(trigger as any);
-        component.onRibbonTriggerLeave(trigger as any);
-        tick(250);
-
-        expect(trigger.closeMenu).not.toHaveBeenCalled();
-    }));
-
 });
 
 describe('NavbarComponent template', () => {
@@ -293,7 +253,7 @@ describe('NavbarComponent template', () => {
             imports: [
                 NoopAnimationsModule,
                 MatButtonModule,
-                MatMenuModule,
+                CdkMenuModule,
                 MatIconModule,
             ],
             providers: [
@@ -347,9 +307,14 @@ describe('NavbarComponent template', () => {
         localStorage.clear();
     });
 
+    const activadores = (): HTMLButtonElement[] =>
+        fixture.debugElement.queryAll(By.css('.ribbon-barra > .ribbon-trigger')).map((boton) => boton.nativeElement);
+    const panelAbierto = (): string | null =>
+        document.querySelector('.cdk-overlay-container .ribbon-panel')?.getAttribute('aria-label') ?? null;
+
     it('crea la cinta iconificada con la campana de Yosiftware a la derecha', () => {
-        const botones = fixture.debugElement.queryAll(By.css('.ribbon-nav > .ribbon-trigger'));
-        const iconos = fixture.debugElement.queryAll(By.css('.ribbon-nav > .ribbon-trigger .mat-icon'));
+        const botones = fixture.debugElement.queryAll(By.css('.ribbon-barra > .ribbon-trigger'));
+        const iconos = fixture.debugElement.queryAll(By.css('.ribbon-barra > .ribbon-trigger .mat-icon'));
 
         expect(botones.length).toBe(4);
         expect(iconos.map((item) => item.nativeElement.textContent.trim())).toEqual([
@@ -359,6 +324,60 @@ describe('NavbarComponent template', () => {
             'help_center',
         ]);
         expect(fixture.debugElement.query(By.css('.ribbon-nav > yosi-notificaciones'))).not.toBeNull();
+        expect(fixture.debugElement.query(By.css('.ribbon-barra')).nativeElement.getAttribute('role')).toBe('menubar');
+    });
+
+    it('es una barra de menús: con uno abierto, pasar por encima de otro botón lo cambia; Esc y pulsar fuera cierran', () => {
+        const [archivo, manuales, opciones] = activadores();
+        expect(panelAbierto()).toBeNull();
+
+        // Sin ninguno abierto, pasar por encima no abre nada.
+        manuales.dispatchEvent(new MouseEvent('mouseenter'));
+        fixture.detectChanges();
+        expect(panelAbierto()).toBeNull();
+
+        archivo.click();
+        fixture.detectChanges();
+        expect(panelAbierto()).toBe('Archivo');
+        expect(archivo.getAttribute('aria-expanded')).toBe('true');
+
+        manuales.dispatchEvent(new MouseEvent('mouseenter'));
+        fixture.detectChanges();
+        expect(panelAbierto()).toBe('Manuales');
+        expect(archivo.getAttribute('aria-expanded')).toBe('false');
+        expect(manuales.getAttribute('aria-expanded')).toBe('true');
+        expect(document.querySelectorAll('.cdk-overlay-container .ribbon-panel').length).toBe(1);
+
+        opciones.dispatchEvent(new MouseEvent('mouseenter'));
+        fixture.detectChanges();
+        expect(panelAbierto()).toBe('Opciones');
+
+        document.querySelector('.cdk-overlay-container .ribbon-panel')!
+            .dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));
+        fixture.detectChanges();
+        expect(panelAbierto()).toBeNull();
+
+        archivo.click();
+        fixture.detectChanges();
+        expect(panelAbierto()).toBe('Archivo');
+        document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        fixture.detectChanges();
+        expect(panelAbierto()).toBeNull();
+    });
+
+    it('elegir una entrada la ejecuta y cierra el menú; «Ayuda → Novedades» abre su pestaña', () => {
+        const ayuda = activadores()[3];
+        const navegacion = TestBed.inject(NavegacionRolService) as jasmine.SpyObj<NavegacionRolService>;
+
+        ayuda.click();
+        fixture.detectChanges();
+        const novedades = Array.from(document.querySelectorAll<HTMLButtonElement>('.cdk-overlay-container .ribbon-panel__item'))
+            .find((boton) => boton.textContent?.includes('Novedades'))!;
+        novedades.click();
+        fixture.detectChanges();
+
+        expect(navegacion.abrir).toHaveBeenCalledWith({ clase: 'novedades' });
+        expect(panelAbierto()).toBeNull();
     });
 
 });

@@ -1,4 +1,12 @@
 <mat-tab-group #TabControl mat-stretch-tabs="false" mat-align-tabs="start" (selectedTabChange)="onTabChange($event)">
+    <mat-tab label="Novedades" *ngIf="novedadesTabOpen">
+        <ng-template mat-tab-label>
+            <mat-icon class="pestana-icono">new_releases</mat-icon>
+            <span class="pestana-etiqueta">Novedades</span>
+            <button (click)="quitarNovedades()" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <app-novedades></app-novedades>
+    </mat-tab>
     <mat-tab label="Personajes">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'personaje'"></app-icono-rol>

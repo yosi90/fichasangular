@@ -117,6 +117,10 @@
                 <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('plantillas', 'detalles'); closeAcordion();"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Plantilla</span></button>
                 <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'detalles' }"></ng-container>
             </mat-expansion-panel>
+            <!-- «Mis campañas» (ronda de noviembre, decisión 3): con sesión, para quien puede tener campañas o ya está en una. -->
+            <button type="button" class="menu-dados menu-campanas" *ngIf="misCampanasVisible$ | async" (click)="abrirMisCampanas()">
+                <app-icono-rol tipo="campana" [tamano]="22"></app-icono-rol><span>Mis campañas</span>
+            </button>
             <!-- Debajo de las de catálogo (lienzo «Dados: Companion y web»): abre la pestaña «Dados». -->
             <button type="button" class="menu-dados" (click)="abrirDados()">
                 <app-icono-rol tipo="dado-d20" [tamano]="22"></app-icono-rol><span>Dados</span>
@@ -165,34 +169,33 @@
             </mat-expansion-panel>
         </mat-accordion>
     </aside>
-    <!-- Los «Otros» de Insertar, Modificar y Detalles: los mismos grupos en los tres (gruposOtros). -->
+    <!--
+        Los «Otros» de Insertar, Modificar y Detalles: los mismos grupos en los tres (gruposOtros). Son una barra de menús
+        vertical (menú de la CDK): con uno abierto, pasar por encima de otro grupo cierra el primero y abre ese; se cierran
+        al pulsar fuera, con Esc o al elegir, y se navega con las flechas.
+    -->
     <ng-template #gruposOtrosMenu let-seccion>
-        <ng-container *ngFor="let grupo of gruposDe(seccion)">
-            <button mat-button color="primary" class="menu-otros-trigger" cdkOverlayOrigin #origenGrupo="cdkOverlayOrigin"
-                [class.menu-otros-trigger--sin-opciones]="!tieneOpcionesGrupo(grupo)"
-                [attr.aria-expanded]="estaAbiertoOtros(seccion, grupo.id)"
-                (mouseenter)="abrirOtros(seccion, grupo.id)" (mouseleave)="programarCierreOtros()"
-                (click)="toggleOtros(seccion, grupo.id, $event)">
+        <div class="menu-otros-grupos" cdkMenu [attr.aria-label]="'Otros de ' + seccion">
+            <button mat-button color="primary" class="menu-otros-trigger" *ngFor="let grupo of gruposDe(seccion)"
+                cdkMenuItem [cdkMenuTriggerFor]="panelOtros" [cdkMenuTriggerData]="{ $implicit: grupo }"
+                [cdkMenuPosition]="posicionesOtros" #grupoOtros="cdkMenuTriggerFor"
+                [class.menu-otros-trigger--sin-opciones]="!tieneOpcionesGrupo(grupo)">
                 {{ grupo.titulo }} ({{ grupo.opciones.length }})
                 <mat-icon iconPositionEnd>arrow_right</mat-icon>
             </button>
-            <ng-template cdkConnectedOverlay [cdkConnectedOverlayOrigin]="origenGrupo"
-                [cdkConnectedOverlayOpen]="estaAbiertoOtros(seccion, grupo.id)"
-                [cdkConnectedOverlayPositions]="posicionesOtros" [cdkConnectedOverlayPush]="true"
-                [cdkConnectedOverlayViewportMargin]="8" [cdkConnectedOverlayHasBackdrop]="true"
-                [cdkConnectedOverlayBackdropClass]="'cdk-overlay-transparent-backdrop'"
-                (backdropClick)="cerrarOtros()" (detach)="cerrarOtros()" (overlayKeydown)="onOverlayKeydown($event)">
-                <div class="menu-otros-panel" [attr.aria-label]="grupo.titulo" (mouseenter)="cancelarCierreOtros()" (mouseleave)="programarCierreOtros()">
-                    <span class="menu-otros-panel__titulo" aria-hidden="true">{{ grupo.titulo }}</span>
-                    <span class="menu-otros-panel__opcion" *ngFor="let opcion of grupo.opciones"
-                        matTooltipClass="menu-otros-tooltip"
-                        matTooltipPosition="right"
-                        [matTooltip]="opcion.habilitada() ? '' : mensajePermisosInsuficientes"
-                        [matTooltipDisabled]="opcion.habilitada()">
-                        <button mat-button color="primary" class="menu-opcion" [disabled]="!opcion.habilitada()" (click)="opcion.abrir()"><app-icono-rol [tipo]="opcion.tipo" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>{{ opcion.etiqueta }}</span></button>
-                    </span>
-                </div>
-            </ng-template>
-        </ng-container>
+        </div>
+    </ng-template>
+    <ng-template #panelOtros let-grupo>
+        <div class="menu-otros-panel" cdkMenu [attr.aria-label]="grupo.titulo">
+            <span class="menu-otros-panel__titulo" aria-hidden="true">{{ grupo.titulo }}</span>
+            <span class="menu-otros-panel__opcion" *ngFor="let opcion of grupo.opciones"
+                matTooltipClass="menu-otros-tooltip"
+                matTooltipPosition="right"
+                [matTooltip]="opcion.habilitada() ? '' : mensajePermisosInsuficientes"
+                [matTooltipDisabled]="opcion.habilitada()">
+                <button mat-button color="primary" class="menu-opcion" cdkMenuItem [disabled]="!opcion.habilitada()"
+                    [cdkMenuItemDisabled]="!opcion.habilitada()" (cdkMenuItemTriggered)="opcion.abrir()"><app-icono-rol [tipo]="opcion.tipo" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>{{ opcion.etiqueta }}</span></button>
+            </span>
+        </div>
     </ng-template>
 </mat-card>

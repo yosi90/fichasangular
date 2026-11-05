@@ -1,4 +1,10 @@
-import { of, Subject } from 'rxjs';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { CdkMenuModule } from '@angular/cdk/menu';
+import { TestBed } from '@angular/core/testing';
+import { BehaviorSubject, of, Subject } from 'rxjs';
+import { MisCampanasService } from 'src/app/services/mis-campanas.service';
+import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 import { BaseMenuComponent } from './base-menu.component';
 
 describe('BaseMenuComponent', () => {
@@ -174,28 +180,27 @@ describe('BaseMenuComponent', () => {
 
     it('abre el listado de un grupo de Detalles y cierra el menú', () => {
         const emitSpy = spyOn(component.ListadoTab, 'emit');
-        component.otrosAbierto = 'detalles:equipo';
+        const trigger = jasmine.createSpyObj('CdkMenuTrigger', ['close']);
+        component.triggersOtros = [trigger] as any;
 
         component.gruposOtros.detalles[0].opciones[0].abrir();
 
         expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'armas', operacion: 'detalles' });
         expect(component.primero.close).toHaveBeenCalled();
-        expect(component.otrosAbierto).toBeNull();
+        expect(trigger.close).toHaveBeenCalled();
     });
 
-    it('abre cada grupo por separado y lo cierra al pulsarlo otra vez', () => {
-        const evento = new MouseEvent('click');
+    it('«Mis campañas» abre Social en Campañas y cierra el cajón', () => {
+        const nav = jasmine.createSpyObj('UserProfileNavigationService', ['openSocial']);
+        const marco = { cerrarMenu: jasmine.createSpy('cerrarMenu') };
+        const conCampanas = new BaseMenuComponent(userSvc as any, nav, marco as any);
+        for (const panel of ['primero', 'segundo', 'tercero', 'cuarto'] as const)
+            conCampanas[panel] = { expanded: false, close: jasmine.createSpy() } as any;
 
-        component.toggleOtros('insertar', 'equipo', evento);
-        expect(component.estaAbiertoOtros('insertar', 'equipo')).toBeTrue();
-        expect(component.estaAbiertoOtros('insertar', 'rasgos')).toBeFalse();
-        expect(component.estaAbiertoOtros('detalles', 'equipo')).toBeFalse();
+        conCampanas.abrirMisCampanas();
 
-        component.toggleOtros('insertar', 'rasgos', evento);
-        expect(component.estaAbiertoOtros('insertar', 'rasgos')).toBeTrue();
-
-        component.toggleOtros('insertar', 'rasgos', evento);
-        expect(component.otrosAbierto).toBeNull();
+        expect(nav.openSocial).toHaveBeenCalledOnceWith(jasmine.objectContaining({ section: 'campanas' }));
+        expect(marco.cerrarMenu).toHaveBeenCalled();
     });
 
     it('Insertar y Modificar piden el permiso de creación del recurso de cada catálogo; sin pantalla, solo cierran el menú', () => {
@@ -237,5 +242,84 @@ describe('BaseMenuComponent', () => {
         expect(detalles).toContain('Ventajas y desventajas:ventaja');
         expect(detalles).toContain('Subtipos de criatura:subtipo');
         expect(detalles).toContain('Armaduras y escudos:armadura');
+    });
+});
+
+describe('BaseMenuComponent: los grupos «Otros» y «Mis campañas» en la plantilla', () => {
+    let visible$: BehaviorSubject<boolean>;
+
+    beforeEach(async () => {
+        visible$ = new BehaviorSubject<boolean>(false);
+        await TestBed.configureTestingModule({
+            declarations: [BaseMenuComponent],
+            imports: [CdkMenuModule],
+            providers: [
+                {
+                    provide: UserService,
+                    useValue: {
+                        Usuario: { nombre: '', correo: '', permisos: 0 },
+                        IsLoggedIn: false,
+                        isLoggedIn$: new Subject<boolean>(),
+                        can: () => true,
+                        getPermissionDeniedMessage: () => 'Sin permisos suficientes.',
+                    },
+                },
+                { provide: UserProfileNavigationService, useValue: jasmine.createSpyObj('UserProfileNavigationService', ['openSocial']) },
+                { provide: MisCampanasService, useValue: { visible$ } },
+            ],
+            schemas: [NO_ERRORS_SCHEMA],
+        }).compileComponents();
+    });
+
+    afterEach(() => document.querySelectorAll('.cdk-overlay-container .menu-otros-panel').forEach((panel) => panel.remove()));
+
+    const panelAbierto = (): string | null =>
+        document.querySelector('.cdk-overlay-container .menu-otros-panel')?.getAttribute('aria-label') ?? null;
+
+    it('con un grupo abierto, pasar por encima de otro lo cambia (barra de menús de la CDK)', () => {
+        const fixture = TestBed.createComponent(BaseMenuComponent);
+        fixture.detectChanges();
+        const grupos = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLButtonElement>('.menu-otros-grupos'))
+            .map((barra) => Array.from(barra.querySelectorAll<HTMLButtonElement>('button.menu-otros-trigger')));
+        expect(grupos.length).toBe(3);
+        const [equipo, rasgos, mundo] = grupos[2];
+        expect(grupos[2][0].closest('.menu-otros-grupos')?.getAttribute('role')).toBe('menu');
+
+        rasgos.dispatchEvent(new MouseEvent('mouseenter'));
+        fixture.detectChanges();
+        expect(panelAbierto()).toBeNull();
+
+        equipo.click();
+        fixture.detectChanges();
+        expect(panelAbierto()).toBe('Equipo');
+
+        rasgos.dispatchEvent(new MouseEvent('mouseenter'));
+        fixture.detectChanges();
+        expect(panelAbierto()).toBe('Rasgos y aptitudes');
+        expect(document.querySelectorAll('.cdk-overlay-container .menu-otros-panel').length).toBe(1);
+        expect(equipo.getAttribute('aria-expanded')).toBe('false');
+
+        mundo.dispatchEvent(new MouseEvent('mouseenter'));
+        fixture.detectChanges();
+        expect(panelAbierto()).toBe('Criaturas y mundo');
+
+        fixture.componentInstance.cerrarOtros();
+        fixture.detectChanges();
+        expect(panelAbierto()).toBeNull();
+        fixture.destroy();
+    });
+
+    it('«Mis campañas» va encima de «Dados» solo cuando toca', () => {
+        const fixture = TestBed.createComponent(BaseMenuComponent);
+        fixture.detectChanges();
+        const elemento = fixture.nativeElement as HTMLElement;
+        expect(elemento.querySelector('.menu-campanas')).toBeNull();
+
+        visible$.next(true);
+        fixture.detectChanges();
+        const campanas = elemento.querySelector('.menu-campanas');
+        expect(campanas?.textContent?.trim()).toBe('Mis campañas');
+        expect(campanas?.nextElementSibling?.textContent?.trim()).toBe('Dados');
+        fixture.destroy();
     });
 });

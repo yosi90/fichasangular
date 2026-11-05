@@ -110,6 +110,24 @@
                 > span:nth-child(odd) > button:not([mat-raised-button])
                     background-color: lightgray
 
+                // Los grupos «Otros» van en su barra de menús (menú de la CDK, en línea): siguen la alternancia de las filas
+                // de encima (seis opciones, así que el primero es impar).
+                > .menu-otros-grupos
+                    display: flex
+                    flex-direction: column
+
+                    &:focus
+                        outline: none
+
+                    > button:nth-child(odd)
+                        background-color: lightgray
+
+                    > button:nth-child(even)
+                        background-color: #ccc
+
+                    > button[aria-expanded='true']
+                        background-color: #bdbdbd
+
                 // Los grupos «Otros», sin icono: el texto alineado con el de las opciones (recuadro de 24 + 10 de hueco).
                 button.menu-otros-trigger
                     padding: 0 4px 0 46px
@@ -165,6 +183,10 @@
             &:focus-visible
                 outline: 2px solid $active
                 outline-offset: 2px
+
+        // «Mis campañas», encima de «Dados» y con su misma fila (ronda de noviembre, decisión 3).
+        .menu-campanas + .menu-dados
+            margin-top: 6px
 
         mat-expansion-panel:last-child
             display: flex !important

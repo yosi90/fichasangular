@@ -1,8 +1,10 @@
-import { Component, EventEmitter, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
+import { Component, EventEmitter, OnDestroy, OnInit, Output, QueryList, ViewChild, ViewChildren } from '@angular/core';
 import { UserService } from '../../../services/user.service';
 import { UserProfileNavigationService } from '../../../services/user-profile-navigation.service';
 import { MatExpansionPanel } from '@angular/material/expansion';
 import { ConnectedPosition } from '@angular/cdk/overlay';
+import { CdkMenuTrigger } from '@angular/cdk/menu';
+import { Observable, of } from 'rxjs';
 import { TipoRol, tipoRolDeListado, tituloListado } from 'src/app/services/utils/iconos-rol';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { MarcoMovilService } from 'src/app/services/marco-movil.service';
@@ -10,6 +12,7 @@ import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
 import { trasLasNormasDeCreacion } from 'src/app/services/utils/normas-creacion';
+import { MisCampanasService } from 'src/app/services/mis-campanas.service';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
 type OperacionCatalogo = 'insertar' | 'modificar';
@@ -41,11 +44,10 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     @ViewChild('segundo') segundo!: MatExpansionPanel;
     @ViewChild('tercero') tercero!: MatExpansionPanel;
     @ViewChild('cuarto') cuarto!: MatExpansionPanel;
+    /** Los activadores de los grupos «Otros» (menú de la CDK), para cerrarlos al elegir fuera de ellos. */
+    @ViewChildren(CdkMenuTrigger) triggersOtros?: QueryList<CdkMenuTrigger>;
 
     usr: string = 'Invitado';
-    /** El grupo de «Otros» abierto, como `seccion:grupo`. */
-    otrosAbierto: string | null = null;
-    private timerCierreOtros: ReturnType<typeof setTimeout> | null = null;
     /** Los mismos grupos en los tres menús: todo lo que tiene detalle tendrá también inserción y modificación. */
     readonly gruposOtros: Readonly<Record<SeccionOtros, readonly GrupoMenuOtros[]>> = {
         insertar: [
@@ -125,7 +127,13 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         private userProfileNavSvc: UserProfileNavigationService,
         private marco?: MarcoMovilService,
         private navegacion?: NavegacionRolService,
+        private misCampanas?: MisCampanasService,
     ) { }
+
+    /** «Mis campañas»: con sesión, si el rol es máster, colaborador o admin, o si es miembro activo de alguna campaña. */
+    get misCampanasVisible$(): Observable<boolean> {
+        return this.misCampanas?.visible$ ?? of(false);
+    }
 
     ngOnInit(): void {
         this.usrService.isLoggedIn$.subscribe(_ => {
@@ -136,7 +144,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy(): void {
-        this.cancelarCierreOtros();
+        this.cerrarOtros();
     }
 
     /** Tras elegir una opción: pliega el acordeón y, en el móvil, cierra el cajón. */
@@ -152,43 +160,9 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
             this.cuarto.close();
     }
 
-    abrirOtros(seccion: SeccionOtros, grupo: GrupoOtros) {
-        this.cancelarCierreOtros();
-        this.otrosAbierto = this.claveOtros(seccion, grupo);
-    }
-
-    toggleOtros(seccion: SeccionOtros, grupo: GrupoOtros, event: MouseEvent) {
-        event.preventDefault();
-        event.stopPropagation();
-        this.cancelarCierreOtros();
-        const clave = this.claveOtros(seccion, grupo);
-        this.otrosAbierto = this.otrosAbierto === clave ? null : clave;
-    }
-
-    estaAbiertoOtros(seccion: SeccionOtros, grupo: GrupoOtros): boolean {
-        return this.otrosAbierto === this.claveOtros(seccion, grupo);
-    }
-
-    programarCierreOtros() {
-        this.cancelarCierreOtros();
-        this.timerCierreOtros = setTimeout(() => this.cerrarOtros(), 150);
-    }
-
-    cancelarCierreOtros() {
-        if (this.timerCierreOtros) {
-            clearTimeout(this.timerCierreOtros);
-            this.timerCierreOtros = null;
-        }
-    }
-
-    cerrarOtros() {
-        this.cancelarCierreOtros();
-        this.otrosAbierto = null;
-    }
-
-    onOverlayKeydown(event: KeyboardEvent) {
-        if (event.key === 'Escape')
-            this.cerrarOtros();
+    /** Cierra el grupo de «Otros» que esté abierto (al elegir algo del menú que no es de los grupos). */
+    cerrarOtros(): void {
+        this.triggersOtros?.forEach((trigger) => trigger.close());
     }
 
     @Output() NuevoPersonajeTab: EventEmitter<any> = new EventEmitter();
@@ -262,10 +236,6 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         return grupo.opciones.some(opcion => opcion.habilitada());
     }
 
-    private claveOtros(seccion: SeccionOtros, grupo: GrupoOtros): string {
-        return `${seccion}:${grupo}`;
-    }
-
     private grupo(id: GrupoOtros, titulo: string, opciones: OpcionOtros[]): GrupoMenuOtros {
         return { id, titulo, opciones };
     }
@@ -273,12 +243,12 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
     /**
      * Una opción de Insertar o Modificar, por su listado: el texto y el icono salen del registro (`LISTADOS_ROL`), el
      * permiso de `permisos-catalogo.ts` y si tiene pantalla de `catalogos-editables.ts`. Sin pantalla todavía, solo
-     * cierra el menú.
+     * cierra el menú (lo cierra el propio menú al elegir).
      */
     private opcion(lista: string, operacion: OperacionCatalogo): OpcionOtros {
         const conPantalla = operacion === 'insertar' ? tieneInsercion(lista) : tipoEdicionDeListado(lista) !== null;
         return this.entrada(lista, () => this.puedeGestionar(lista),
-            conPantalla ? () => this.abrirOperacion(lista, operacion) : () => this.cerrarOtros());
+            conPantalla ? () => this.abrirOperacion(lista, operacion) : () => undefined);
     }
 
     private detalle(lista: string): OpcionOtros {
@@ -319,6 +289,13 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
 
     abrirSocial(): void {
         this.userProfileNavSvc.openSocial('resumen');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    /** La entrada «Mis campañas», encima de «Dados»: abre Social en Campañas y, en el móvil, cierra el cajón. */
+    abrirMisCampanas(): void {
+        this.userProfileNavSvc.openSocial({ section: 'campanas', requestId: Date.now() });
         this.closeAcordion();
         this.cerrarOtros();
     }

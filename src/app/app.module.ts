@@ -10,6 +10,7 @@ import { NavbarComponent } from './components/base/navbar/navbar.component';
 import { ContPrincipalComponent } from './components/base/cont-principal/cont-principal.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { OverlayModule } from '@angular/cdk/overlay';
+import { CdkMenuModule } from '@angular/cdk/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 
 import { MatIconModule } from '@angular/material/icon';
@@ -151,7 +152,7 @@ import { ChatFloatingListWindowComponent } from './components/chat-floating/chat
 import { SocialHubComponent } from './components/base/social-hub/social-hub.component';
 import { SocialCommunitySectionComponent } from './components/base/social-hub/social-community-section.component';
 import { SocialLfgSectionComponent } from './components/base/social-hub/social-lfg-section.component';
-import { HelpRoadmapComponent } from './components/base/help-roadmap/help-roadmap.component';
+import { NovedadesComponent } from './components/base/novedades/novedades.component';
 import { HelpLegalComponent } from './components/base/help-legal/help-legal.component';
 import { HelpUsageAboutComponent } from './components/base/help-usage-about/help-usage-about.component';
 import { AyudaComponent } from './components/base/ayuda/ayuda.component';
@@ -184,7 +185,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         SocialHubComponent,
         SocialCommunitySectionComponent,
         SocialLfgSectionComponent,
-        HelpRoadmapComponent,
+        NovedadesComponent,
         HelpLegalComponent,
         HelpUsageAboutComponent,
         AyudaComponent,
@@ -300,6 +301,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         FormsModule,
         BrowserAnimationsModule,
         OverlayModule,
+        CdkMenuModule,
         MatSidenavModule,
         MatIconModule,
         MatInputModule,

@@ -62,6 +62,7 @@ describe('UserProfileComponent', () => {
             allowDirectMessagesFromNonFriends: false,
             autoAbrirVentanaChats: true,
             permitirBurbujasChat: true,
+            abrirNovedadesAlEntrar: true,
             notificaciones: {
                 mensajes: true,
                 amistad: true,
@@ -352,6 +353,7 @@ describe('UserProfileComponent', () => {
         tick();
 
         component.visibilidadPorDefectoPersonajes = true;
+        component.abrirNovedadesAlEntrar = false;
         component.onGeneradorMinimoSeleccionadoChange(20);
         component.onGeneradorTablasPermitidasChange('2');
         void component.guardarPreferencias();
@@ -359,6 +361,7 @@ describe('UserProfileComponent', () => {
 
         const guardado = userSettingsSvc.saveSettings.calls.mostRecent().args[0];
         expect(guardado.perfil.visibilidadPorDefectoPersonajes).toBeTrue();
+        expect(guardado.perfil.abrirNovedadesAlEntrar).toBeFalse();
         expect(guardado.nuevo_personaje.generador_config).toEqual(jasmine.objectContaining({
             minimoSeleccionado: 13,
             tablasPermitidas: 2,

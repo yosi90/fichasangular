@@ -1,0 +1,46 @@
+<div class="novedades">
+    <header class="novedades-cabecera">
+        <mat-icon class="novedades-cabecera__icono" aria-hidden="true">new_releases</mat-icon>
+        <div class="novedades-cabecera__texto">
+            <h2 class="novedades-cabecera__titulo">Novedades</h2>
+            <span class="novedades-cabecera__subtitulo">Lo nuevo de Rol y de 3.5 Companion</span>
+        </div>
+        <mat-slide-toggle class="novedades-cabecera__preferencia" color="primary" [checked]="abrirAlEntrar"
+            [disabled]="guardandoPreferencia" (change)="cambiarAbrirAlEntrar($event.checked)">
+            Abrir Novedades al entrar
+        </mat-slide-toggle>
+    </header>
+    <p class="bloque-error novedades__aviso" role="alert" *ngIf="errorPreferencia">{{errorPreferencia}}</p>
+
+    <app-listado-estado *ngIf="estado === 'cargando'" tipo="cargando" etiqueta="Cargando las novedades"></app-listado-estado>
+    <app-listado-estado *ngIf="estado === 'error'" tipo="error" [mensaje]="mensajeError" (accion)="cargar()"></app-listado-estado>
+    <app-listado-estado *ngIf="estado === 'listo' && dias.length === 0" tipo="vacio" [tarjeta]="true"
+        mensaje="Aún no hay novedades."></app-listado-estado>
+
+    <ng-container *ngIf="estado === 'listo' && dias.length > 0">
+        <section class="novedades-dia" *ngFor="let dia of dias; trackBy: trackDia" [attr.aria-label]="dia.fecha">
+            <h3 class="novedades-dia__fecha">{{dia.fecha}}</h3>
+            <ul class="novedades-dia__lista">
+                <li class="novedad" *ngFor="let novedad of dia.novedades; trackBy: trackNovedad">
+                    <span class="novedad__tipo" [attr.data-tipo]="novedad.tipo">
+                        <mat-icon aria-hidden="true">{{tipo(novedad).icono}}</mat-icon>
+                        {{tipo(novedad).etiqueta}}
+                    </span>
+                    <p class="novedad__texto">{{novedad.texto}}</p>
+                    <a class="novedad__enlace" *ngIf="destino(novedad) as destino" [href]="novedad.enlace" target="_blank" rel="noopener">
+                        <span class="simbolo-yosiftware" *ngIf="destino.social" aria-hidden="true"></span>
+                        {{destino.texto}}<span class="solo-lectores"> (se abre en otra pestaña)</span>
+                        <mat-icon aria-hidden="true">open_in_new</mat-icon>
+                    </a>
+                </li>
+            </ul>
+        </section>
+
+        <div class="novedades__mas" *ngIf="hayMas || errorMas">
+            <p class="bloque-error" role="alert" *ngIf="errorMas">{{errorMas}}</p>
+            <button type="button" mat-stroked-button *ngIf="hayMas" [disabled]="cargandoMas" (click)="verMas()">
+                {{cargandoMas ? 'Cargando…' : (errorMas ? 'Reintentar' : 'Ver más')}}
+            </button>
+        </div>
+    </ng-container>
+</div>

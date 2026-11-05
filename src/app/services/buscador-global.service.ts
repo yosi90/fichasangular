@@ -29,6 +29,7 @@ import { esFilaComodin } from './utils/comodin';
 import { normalizarTexto } from './utils/normalizacion';
 import { textoVisible } from './utils/texto-visible';
 import { SUBTITULO_DADOS } from './utils/dados';
+import { MisCampanasService } from './mis-campanas.service';
 import { TipoCatalogoEquipo } from '../interfaces/equipo';
 import { nombreDeManual } from '../components/detalles/ficha/ficha';
 
@@ -88,6 +89,7 @@ export class BuscadorGlobalService {
         private armaduras: ArmaduraService,
         private equipo: EquipoService,
         private manuales: ManualesAsociadosService,
+        private misCampanas?: MisCampanasService,
     ) {
         this.textoObjetos$
             .pipe(switchMap((texto) => this.buscarObjetos(texto)))
@@ -233,7 +235,7 @@ export class BuscadorGlobalService {
         ];
     }
 
-    /** Las pantallas de la web: cada listado, la ayuda y los dados. */
+    /** Las pantallas de la web: cada listado, las novedades, la ayuda, «Mis campañas» (si se ve en el menú) y los dados. */
     private pantallas(): ElementoBusqueda[] {
         const listados = Object.entries(LISTADOS_ROL).map(([lista, { tipo, titulo }]): ElementoBusqueda => {
             const nombre = `Lista de ${titulo}`;
@@ -245,10 +247,21 @@ export class BuscadorGlobalService {
         return [
             ...listados,
             {
-                clave: 'pantalla:ayuda', tipo: null, iconoMaterial: 'help_center', nombre: 'Ayuda', subtitulo: 'Primeros pasos, novedades, legal y créditos',
-                buscable: textoBuscable('Ayuda', 'Primeros pasos novedades legal privacidad cookies créditos companion'),
+                clave: 'pantalla:novedades', tipo: null, iconoMaterial: 'new_releases', nombre: 'Novedades', subtitulo: 'Lo nuevo de Rol y de 3.5 Companion',
+                buscable: textoBuscable('Novedades', 'cambios actualizaciones arreglos versiones companion'),
+                abrir: () => this.navegacion.abrir({ clase: 'novedades' }),
+            },
+            {
+                clave: 'pantalla:ayuda', tipo: null, iconoMaterial: 'help_center', nombre: 'Ayuda', subtitulo: 'Primeros pasos, legal y créditos',
+                buscable: textoBuscable('Ayuda', 'Primeros pasos legal privacidad cookies normas créditos companion'),
                 abrir: () => this.perfilNav.openAyuda(),
             },
+            // Como en el menú lateral: solo para quien puede tener campañas o ya está en alguna.
+            ...(this.misCampanas?.visible ? [{
+                clave: 'pantalla:mis-campanas', tipo: 'campana' as const, nombre: 'Mis campañas', subtitulo: 'Social → Campañas',
+                buscable: textoBuscable('Mis campañas', 'campañas tramas subtramas partida máster'),
+                abrir: () => this.perfilNav.openSocial({ section: 'campanas', requestId: Date.now() }),
+            }] : []),
             {
                 clave: 'pantalla:dados', tipo: 'dado-d20', nombre: 'Dados', subtitulo: SUBTITULO_DADOS,
                 buscable: textoBuscable('Dados', 'tirada tirar d4 d6 d8 d10 d12 d20 d100'),

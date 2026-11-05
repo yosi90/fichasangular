@@ -1,7 +1,7 @@
 <div class="ayuda-legal">
     <section class="ayuda-tarjeta" aria-label="Legal y privacidad">
         <div class="ayuda-prosa">
-            <p>Aclaraciones básicas del proyecto y del tratamiento de datos.</p>
+            <p>Aclaraciones básicas del proyecto, sus normas y el tratamiento de datos.</p>
             <section class="ayuda-apartado" id="legal-no-oficial" aria-labelledby="legal-no-oficial-titulo">
                 <h3 class="ayuda-titulo" id="legal-no-oficial-titulo">Proyecto no oficial</h3>
                 <p>
@@ -26,18 +26,29 @@
                 </p>
             </section>
 
+            <section class="ayuda-apartado" id="legal-normas" aria-labelledby="legal-normas-titulo">
+                <h3 class="ayuda-titulo" id="legal-normas-titulo">Normas de Rol</h3>
+                <p>
+                    Además de las normas comunes de Yosiftware, Rol tiene las suyas, sobre lo que creas aquí. Se aceptan antes de crear
+                    personajes, campañas o contenido.
+                </p>
+                <p *ngIf="estadoNormas === 'cargando'" role="status">Cargando las normas de Rol…</p>
+                <p class="bloque-error legal-normas__error" *ngIf="estadoNormas === 'error'" role="alert">
+                    No se han podido cargar las normas de Rol.
+                    <button type="button" class="legal-normas__reintentar" (click)="cargarNormas()">Reintentar</button>
+                </p>
+                <div class="legal-normas" *ngIf="estadoNormas === 'listo' && normas">
+                    <p class="legal-normas__version">
+                        {{normas.titulo}} · versión {{normas.version}}<ng-container *ngIf="normas.publicadas"> · {{normas.publicadas}}</ng-container>
+                    </p>
+                    <app-texto-manual [texto]="normas.texto"></app-texto-manual>
+                </div>
+            </section>
+
             <section class="ayuda-apartado" id="legal-datos" aria-labelledby="legal-datos-titulo">
                 <h3 class="ayuda-titulo" id="legal-datos-titulo">Datos de usuario</h3>
                 <p>
-                    No se trafica en modo alguno con los datos de los usuarios. Los datos que se usan en la aplicación tienen
-                    como finalidad operar sus funciones de cuenta, permisos, perfiles y contenido asociado.
-                </p>
-                <p>
-                    Tu cuenta, tu perfil y tu privacidad son de tu cuenta de Yosiftware, y los gestionas desde ella. Rol guarda lo que es de
-                    Rol: tus personajes, tus campañas y tus solicitudes de rol. Puedes descargarlo desde «Mi cuenta».
-                </p>
-                <p>
-                    Las normas comunes y la política de privacidad de Yosiftware valen también aquí, y se pueden leer sin entrar:
+                    Tus datos los trata Yosiftware según su política de privacidad, que vale también aquí y se puede leer sin entrar:
                     <a [href]="urlNormas" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>normas y privacidad de Yosiftware</a>.
                 </p>
             </section>

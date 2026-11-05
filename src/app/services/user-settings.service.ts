@@ -181,6 +181,7 @@ export class UserSettingsService {
                 visibilidadPorDefectoPersonajes: normalizado.perfil.visibilidadPorDefectoPersonajes,
                 autoAbrirVentanaChats: normalizado.perfil.autoAbrirVentanaChats,
                 permitirBurbujasChat: normalizado.perfil.permitirBurbujasChat,
+                abrirNovedadesAlEntrar: normalizado.perfil.abrirNovedadesAlEntrar,
             },
             mensajeria_flotante: normalizado.mensajeria_flotante,
         });
@@ -197,8 +198,19 @@ export class UserSettingsService {
             allowDirectMessagesFromNonFriends: settings.perfil.allowDirectMessagesFromNonFriends === true,
             autoAbrirVentanaChats: settings.perfil.autoAbrirVentanaChats !== false,
             permitirBurbujasChat: settings.perfil.permitirBurbujasChat !== false,
+            abrirNovedadesAlEntrar: settings.perfil.abrirNovedadesAlEntrar !== false,
             notificaciones: this.normalizeNotificationSettings(settings.perfil.notificaciones),
         };
+    }
+
+    /**
+     * «Abrir Novedades al entrar», leído directamente de los ajustes de la plataforma: se decide al cargar la página,
+     * antes de que exista la sesión de Firebase que pide `loadSettings`. Sin sesión o sin ajustes, `true`.
+     */
+    async loadAbrirNovedadesAlEntrar(): Promise<boolean> {
+        const bloque = await this.platformSessionSvc.leerAjustes();
+        return this.normalizeSettingsDocument((bloque?.documento ?? null) as unknown as UserSettingsV1 | null)
+            .perfil.abrirNovedadesAlEntrar;
     }
 
     async saveProfileSettings(data: Partial<UserSettingsV1['perfil']>): Promise<UserSettingsV1['perfil']> {
@@ -211,6 +223,7 @@ export class UserSettingsService {
                 allowDirectMessagesFromNonFriends: data.allowDirectMessagesFromNonFriends ?? settings.perfil.allowDirectMessagesFromNonFriends,
                 autoAbrirVentanaChats: data.autoAbrirVentanaChats ?? settings.perfil.autoAbrirVentanaChats,
                 permitirBurbujasChat: data.permitirBurbujasChat ?? settings.perfil.permitirBurbujasChat,
+                abrirNovedadesAlEntrar: data.abrirNovedadesAlEntrar ?? settings.perfil.abrirNovedadesAlEntrar,
                 notificaciones: this.normalizeNotificationSettings(data.notificaciones ?? settings.perfil.notificaciones),
             },
         });
@@ -429,6 +442,7 @@ export class UserSettingsService {
                 allowDirectMessagesFromNonFriends: raw?.perfil?.allowDirectMessagesFromNonFriends === true,
                 autoAbrirVentanaChats: raw?.perfil?.autoAbrirVentanaChats !== false,
                 permitirBurbujasChat: raw?.perfil?.permitirBurbujasChat !== false,
+                abrirNovedadesAlEntrar: raw?.perfil?.abrirNovedadesAlEntrar !== false,
                 notificaciones: this.normalizeNotificationSettings(raw?.perfil?.notificaciones),
             },
             mensajeria_flotante: this.normalizeChatFloatingSettings(raw?.mensajeria_flotante),

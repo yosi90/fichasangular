@@ -8,7 +8,7 @@ import { ManualReferenciaNavegacion } from '../interfaces/manual-referencia-nave
  * a un manual, una entrada del detalle de un manual o la entrada «Dados» del menú lateral. Las pestañas
  * (`TabControlComponent`) son las únicas que lo escuchan y lo abren como si viniera de su listado: `lista` es el nombre
  * con el que se abre el listado («razas», «munición»…), `item` la fila del listado y `texto`, lo que se pone en el
- * buscador del listado al abrirlo. `dados` abre la pestaña «Dados» (una sola: si ya está abierta, va a ella).
+ * buscador del listado al abrirlo. `dados` y `novedades` abren su pestaña (una sola: si ya está abierta, va a ella).
  */
 export type AperturaRol =
     | { readonly clase: 'detalle'; readonly lista: string; readonly item: unknown }
@@ -16,7 +16,8 @@ export type AperturaRol =
     | { readonly clase: 'listado'; readonly lista: string; readonly texto?: string }
     | { readonly clase: 'manual'; readonly manual: ManualAsociadoDetalle }
     | { readonly clase: 'referencia-manual'; readonly referencia: ManualReferenciaNavegacion }
-    | { readonly clase: 'dados' };
+    | { readonly clase: 'dados' }
+    | { readonly clase: 'novedades' };
 
 @Injectable({
     providedIn: 'root'

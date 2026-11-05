@@ -5,7 +5,6 @@ import { AUTORES_ICONOS_ROL, ICONOS_PROPIOS_ROL } from 'src/app/services/utils/i
 
 export const SECCIONES_AYUDA: readonly { id: SeccionAyuda; titulo: string }[] = [
     { id: 'primeros-pasos', titulo: 'Primeros pasos' },
-    { id: 'novedades', titulo: 'Novedades' },
     { id: 'legal', titulo: 'Legal y privacidad' },
     { id: 'companion', titulo: '3.5 Companion' },
     { id: 'creditos', titulo: 'Créditos' },
