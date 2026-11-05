@@ -18,6 +18,7 @@ import { normalizeEspecial } from 'src/app/services/especial.service';
 import { CONVOCADOR_DIVINO_API, GRAN_ARCANO_API, SENDA_ASENDA_API } from 'src/testing/clases-propias-api';
 import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
 import { razaPorEdadesApi, razaPorEdadesEnPasoApi } from 'src/testing/raza-por-edades';
+import { claveDeHabilidad } from 'src/app/services/utils/habilidad-clave';
 
 function crearRazaMock(oficial = true): Raza {
     return {
@@ -3479,7 +3480,7 @@ describe('NuevoPersonajeComponent', () => {
             Clasea: true,
             Entrenada: false,
         } as any;
-        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { 10: 1 };
+        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { [claveDeHabilidad(10, false)]: 1 };
 
         expect(component.tieneRangosHabilidad(habilidad)).toBeTrue();
         expect(component.esRangoNuevoHabilidad(habilidad)).toBeTrue();
@@ -3493,7 +3494,7 @@ describe('NuevoPersonajeComponent', () => {
             Clasea: true,
             Entrenada: false,
         } as any;
-        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { 11: 1 };
+        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { [claveDeHabilidad(11, false)]: 1 };
 
         expect(component.tieneRangosHabilidad(habilidad)).toBeTrue();
         expect(component.esRangoNuevoHabilidad(habilidad)).toBeFalse();
@@ -3507,7 +3508,7 @@ describe('NuevoPersonajeComponent', () => {
             Clasea: true,
             Entrenada: false,
         } as any;
-        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { 12: 3 };
+        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { [claveDeHabilidad(12, false)]: 3 };
 
         expect(component.puedeBajarRangoHabilidad(habilidad)).toBeFalse();
     });
@@ -3520,9 +3521,21 @@ describe('NuevoPersonajeComponent', () => {
             Clasea: true,
             Entrenada: false,
         } as any;
-        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { 13: 3 };
+        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { [claveDeHabilidad(13, false)]: 3 };
 
         expect(component.puedeBajarRangoHabilidad(habilidad)).toBeTrue();
+    });
+
+    it('una personalizada y una del catálogo con el mismo id son dos filas, cada una con sus rangos iniciales', () => {
+        // Como en `rol_dev`: la personalizada 2 es Autohipnosis y la habilidad 2, Artesanía 1.
+        const artesania = { Id: 2, Nombre: 'Artesanía 1', Rangos: 1, Clasea: true, Custom: false } as any;
+        const autohipnosis = { Id: 2, Nombre: 'Autohipnosis', Rangos: 1, Clasea: true, Custom: true } as any;
+        nuevoPSvc.EstadoFlujo.habilidades.rangosIniciales = { [claveDeHabilidad(2, false)]: 1, [claveDeHabilidad(2, true)]: 0 };
+
+        expect(component.trackByHabilidad(0, artesania)).not.toBe(component.trackByHabilidad(1, autohipnosis));
+        expect(component.puedeBajarRangoHabilidad(artesania)).toBeFalse();
+        expect(component.puedeBajarRangoHabilidad(autohipnosis)).toBeTrue();
+        expect(component.esRangoNuevoHabilidad(autohipnosis)).toBeTrue();
     });
 
     it('onExtraHabilidadChange actualiza extra y desbloquea continuar si era obligatorio', () => {
@@ -3555,7 +3568,7 @@ describe('NuevoPersonajeComponent', () => {
         };
 
         expect(component.puedeContinuarHabilidades).toBeFalse();
-        component.onExtraHabilidadChange(55, 'Planos');
+        component.onExtraHabilidadChange(component.Personaje.Habilidades[0], 'Planos');
         expect(component.Personaje.Habilidades[0].Extra).toBe('Planos');
         expect(component.puedeContinuarHabilidades).toBeTrue();
     });

@@ -35,6 +35,7 @@ import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clas
 import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
 import { HabilidadParaPrerrequisitos } from './utils/prerrequisitos-evaluacion';
 import { especialidadesDelHueco, sonDeLaMismaFamilia } from './utils/habilidad-familia';
+import { ClaveHabilidad, claveDeHabilidad, claveHabilidad, clavesDeReferenciaGuardada } from './utils/habilidad-clave';
 import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from '../interfaces/incarnum';
 import { EntradaIncarnumBorrador, calcularIncarnumBorrador, incarnumParaPrerrequisitos } from './utils/incarnum';
 import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
@@ -542,7 +543,8 @@ export interface VentajasFlujoState {
     puntosRestantes: number;
     hayDeficit: boolean;
     pendientesOro: PendienteOroState[];
-    bonosHabilidades: Record<number, HabilidadBonoVario[]>;
+    /** Los bonos de cada habilidad, por su clave (`habilidad-clave.ts`). */
+    bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]>;
     baseCaracteristicas: Record<CaracteristicaKey, number> | null;
     baseRaciales: RacialDetalle[];
     baseIdiomas: {
@@ -561,8 +563,10 @@ export interface HabilidadesFlujoState {
     puntosTotales: number;
     puntosRestantes: number;
     nivelPersonajeReferencia: number;
-    classSkillTemporales: number[];
-    rangosIniciales?: Record<number, number>;
+    /** Las habilidades que son de clase solo en esta sesión, por su clave (`habilidad-clave.ts`). */
+    classSkillTemporales: ClaveHabilidad[];
+    /** Los rangos con los que entró cada habilidad en la sesión, por su clave: el suelo al bajar. */
+    rangosIniciales?: Record<ClaveHabilidad, number>;
     /** En `companero_dg`, las habilidades del compañero que se reparten (con la forma de las del personaje). */
     habilidadesCompanero?: Personaje['Habilidades'] | null;
 }
@@ -709,7 +713,7 @@ interface DoteDeRaza {
 /** Dónde deja `aplicarModificadoresDote` lo que monta el recálculo de las ventajas. */
 interface DestinoModificadoresDote {
     caracteristicasVarios: Record<CaracteristicaKey, { valor: number; origen: string; }[]>;
-    bonosHabilidades: Record<number, HabilidadBonoVario[]>;
+    bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]>;
 }
 
 export type DoteFuentePendiente = 'nivel' | 'adicional' | 'raza' | 'raza_dg';
@@ -2075,8 +2079,9 @@ export class NuevoPersonajeService {
         // Las habilidades de la entrada de la raza son de clase para los puntos de sus DG raciales, y solo para ellos
         // (Manual de monstruos, «Monstruos como razas»), como las del animal en los DG de una plantilla.
         const classSkillTemporales = this.referenciasHabilidadesRaza(raza)
-            .map(({ raw, custom }) => toNumber(this.asegurarHabilidadDesdeRaza(raw, custom)?.Id))
-            .filter((id) => id > 0);
+            .map(({ raw, custom }) => this.asegurarHabilidadDesdeRaza(raw, custom))
+            .filter((habilidad) => toNumber(habilidad?.Id) > 0)
+            .map((habilidad) => claveHabilidad(habilidad));
 
         this.iniciarDistribucionHabilidadesInterna('raza_dg', 'plantillas', total, classSkillTemporales);
         return true;
@@ -2101,13 +2106,12 @@ export class NuevoPersonajeService {
         if (total < 1)
             return false;
 
-        const classSkillTemporales = new Set<number>();
+        const classSkillTemporales = new Set<ClaveHabilidad>();
         plantillasConDg.forEach((plantilla) => {
             (plantilla?.Habilidades ?? []).forEach((habilidadRef) => {
                 const habilidad = this.asegurarHabilidadDesdePlantilla(habilidadRef);
-                const id = toNumber(habilidad?.Id);
-                if (id > 0)
-                    classSkillTemporales.add(id);
+                if (toNumber(habilidad?.Id) > 0)
+                    classSkillTemporales.add(claveHabilidad(habilidad));
             });
         });
 
@@ -2137,16 +2141,16 @@ export class NuevoPersonajeService {
         return true;
     }
 
-    ajustarRangoHabilidad(idHabilidad: number, delta: number): boolean {
+    /** Sube o baja los rangos de la habilidad de la sesión con esa clave (`habilidad-clave.ts`). */
+    ajustarRangoHabilidad(clave: ClaveHabilidad, delta: number): boolean {
         if (!this.estadoFlujo.habilidades.activa)
             return false;
 
-        const id = toNumber(idHabilidad);
         const cambio = toInt(delta);
-        if (id <= 0 || cambio === 0)
+        if (cambio === 0)
             return false;
 
-        const habilidad = this.habilidadDelPersonaje(id);
+        const habilidad = this.habilidadDelPersonaje(clave);
         if (!habilidad)
             return false;
 
@@ -2154,7 +2158,7 @@ export class NuevoPersonajeService {
         const coste = costeRangoHabilidad(this.esHabilidadClaseaParaSesion(habilidad));
 
         if (cambio > 0) {
-            const limite = this.obtenerLimiteRangoHabilidad(id);
+            const limite = this.obtenerLimiteRangoHabilidad(clave);
             const maxSubida = limite - actual;
             const subida = Math.min(cambio, maxSubida);
             if (subida < 1)
@@ -2167,7 +2171,7 @@ export class NuevoPersonajeService {
             return true;
         }
 
-        const rangoInicial = this.obtenerRangoInicialHabilidadSesion(id);
+        const rangoInicial = this.obtenerRangoInicialHabilidadSesion(clave);
         const margenBajada = Math.max(0, actual - rangoInicial);
         const bajada = Math.min(Math.abs(cambio), margenBajada);
         if (bajada < 1)
@@ -2182,8 +2186,8 @@ export class NuevoPersonajeService {
     }
 
     /** Puntos que cuesta un rango de la habilidad en esta sesión: 1 si es clásea y 2 si es transclásea. */
-    obtenerCosteRangoHabilidad(idHabilidad: number): number {
-        const habilidad = this.habilidadDelPersonaje(idHabilidad);
+    obtenerCosteRangoHabilidad(clave: ClaveHabilidad): number {
+        const habilidad = this.habilidadDelPersonaje(clave);
         return costeRangoHabilidad(!!habilidad && this.esHabilidadClaseaParaSesion(habilidad));
     }
 
@@ -2191,28 +2195,21 @@ export class NuevoPersonajeService {
      * Se le puede subir un rango a la habilidad en esta sesión: no ha llegado a su límite y los puntos que quedan pagan
      * su coste. Una «solo entrenada» transclásea también se compra, a 2 puntos por rango (MJ cap. 4).
      */
-    puedeSubirRangoHabilidad(idHabilidad: number): boolean {
-        const id = toNumber(idHabilidad);
-        if (id <= 0)
-            return false;
-        const habilidad = this.habilidadDelPersonaje(id);
+    puedeSubirRangoHabilidad(clave: ClaveHabilidad): boolean {
+        const habilidad = this.habilidadDelPersonaje(clave);
         if (!habilidad)
             return false;
-        return toNumber(habilidad?.Rangos) < this.obtenerLimiteRangoHabilidad(id)
-            && toNumber(this.estadoFlujo.habilidades.puntosRestantes) >= this.obtenerCosteRangoHabilidad(id);
+        return toNumber(habilidad?.Rangos) < this.obtenerLimiteRangoHabilidad(clave)
+            && toNumber(this.estadoFlujo.habilidades.puntosRestantes) >= this.obtenerCosteRangoHabilidad(clave);
     }
 
     /** Queda alguna habilidad a la que subir un rango con los puntos que quedan. */
     private puedeComprarAlgunRangoHabilidad(): boolean {
-        return this.getHabilidadesSesion().some((habilidad) => this.puedeSubirRangoHabilidad(toNumber(habilidad?.Id)));
+        return this.getHabilidadesSesion().some((habilidad) => this.puedeSubirRangoHabilidad(claveHabilidad(habilidad)));
     }
 
-    setExtraHabilidad(idHabilidad: number, extra: string): boolean {
-        const id = toNumber(idHabilidad);
-        if (id <= 0)
-            return false;
-
-        const habilidad = this.habilidadDelPersonaje(id);
+    setExtraHabilidad(clave: ClaveHabilidad, extra: string): boolean {
+        const habilidad = this.habilidadDelPersonaje(clave);
         if (!habilidad)
             return false;
 
@@ -2524,20 +2521,13 @@ export class NuevoPersonajeService {
         return returnStep;
     }
 
-    esHabilidadClaseaEfectiva(idHabilidad: number): boolean {
-        const id = toNumber(idHabilidad);
-        if (id <= 0)
-            return false;
-
-        const habilidad = this.habilidadDelPersonaje(id);
-        if (!habilidad)
-            return false;
-
-        return this.esHabilidadClaseaParaSesion(habilidad);
+    esHabilidadClaseaEfectiva(clave: ClaveHabilidad): boolean {
+        const habilidad = this.habilidadDelPersonaje(clave);
+        return !!habilidad && this.esHabilidadClaseaParaSesion(habilidad);
     }
 
-    esExtraElegibleHabilidad(idHabilidad: number): boolean {
-        const habilidad = this.habilidadDelPersonaje(idHabilidad);
+    esExtraElegibleHabilidad(clave: ClaveHabilidad): boolean {
+        const habilidad = this.habilidadDelPersonaje(clave);
         return !!habilidad && this.esExtraElegibleParaSesion(habilidad);
     }
 
@@ -2552,18 +2542,13 @@ export class NuevoPersonajeService {
         return this.personajeCreacion.Habilidades ?? [];
     }
 
-    /** La habilidad de la sesión con ese id. */
-    private habilidadDelPersonaje(idHabilidad: number): Personaje['Habilidades'][number] | undefined {
-        const id = toNumber(idHabilidad);
-        return this.getHabilidadesSesion().find((item) => toNumber(item?.Id) === id);
+    /** La habilidad de la sesión con esa clave: su catálogo y su id (`habilidad-clave.ts`). */
+    private habilidadDelPersonaje(clave: ClaveHabilidad): Personaje['Habilidades'][number] | undefined {
+        return this.getHabilidadesSesion().find((item) => toNumber(item?.Id) > 0 && claveHabilidad(item) === clave);
     }
 
-    obtenerLimiteRangoHabilidad(idHabilidad: number): number {
-        const id = toNumber(idHabilidad);
-        if (id <= 0)
-            return 0;
-
-        const habilidad = this.habilidadDelPersonaje(id);
+    obtenerLimiteRangoHabilidad(clave: ClaveHabilidad): number {
+        const habilidad = this.habilidadDelPersonaje(clave);
         if (!habilidad)
             return 0;
 
@@ -2578,22 +2563,17 @@ export class NuevoPersonajeService {
         origen: HabilidadesFlujoOrigen,
         returnStep: StepNuevoPersonaje,
         puntosTotales: number,
-        classSkillTemporales: number[],
+        classSkillTemporales: ClaveHabilidad[],
         companero: { habilidades: Personaje['Habilidades']; dados: number; } | null = null
     ): void {
         const total = Math.max(0, toInt(puntosTotales));
         const nivelReferencia = companero ? Math.max(0, toInt(companero.dados)) : this.getNivelEfectivoParaAumentos();
-        const temporales = Array.from(new Set(
-            (classSkillTemporales ?? [])
-                .map((id) => toNumber(id))
-                .filter((id) => id > 0)
-        ));
-        const rangosIniciales: Record<number, number> = {};
+        const temporales = Array.from(new Set(classSkillTemporales ?? []));
+        const rangosIniciales: Record<ClaveHabilidad, number> = {};
         (companero?.habilidades ?? this.personajeCreacion?.Habilidades ?? []).forEach((habilidad) => {
-            const id = toNumber(habilidad?.Id);
-            if (id <= 0)
+            if (toNumber(habilidad?.Id) <= 0)
                 return;
-            rangosIniciales[id] = Math.max(0, toInt(habilidad?.Rangos));
+            rangosIniciales[claveHabilidad(habilidad)] = Math.max(0, toInt(habilidad?.Rangos));
         });
 
         this.estadoFlujo.habilidades = {
@@ -4665,7 +4645,7 @@ export class NuevoPersonajeService {
         (dote?.Habilidades_otorgadas ?? []).forEach((otorgada) => {
             const valor = toInt(otorgada?.Rangos);
             const objetivo = (this.personajeCreacion.Habilidades ?? [])
-                .find((habilidad) => !habilidad?.Custom === !otorgada?.Custom && toNumber(habilidad?.Id) === toNumber(otorgada?.Id_habilidad));
+                .find((habilidad) => claveHabilidad(habilidad) === claveDeHabilidad(otorgada?.Id_habilidad, otorgada?.Custom));
             if (!objetivo || valor === 0)
                 return;
             this.sumarBonoHabilidad(objetivo, valor, origen, destino?.bonosHabilidades);
@@ -4677,10 +4657,10 @@ export class NuevoPersonajeService {
         objetivo: Personaje['Habilidades'][number],
         valor: number,
         origen: string,
-        bonosHabilidades?: Record<number, HabilidadBonoVario[]>,
+        bonosHabilidades?: Record<ClaveHabilidad, HabilidadBonoVario[]>,
     ): void {
         if (bonosHabilidades) {
-            this.agregarBonoHabilidad(bonosHabilidades, toNumber(objetivo.Id), valor, origen);
+            this.agregarBonoHabilidad(bonosHabilidades, claveHabilidad(objetivo), valor, origen);
             return;
         }
         const bonos = Array.isArray(objetivo.Bonos_varios) ? [...objetivo.Bonos_varios] : [];
@@ -4698,14 +4678,17 @@ export class NuevoPersonajeService {
         origen: string,
         idExtra: number,
         extraTexto: string,
-        bonosHabilidades?: Record<number, HabilidadBonoVario[]>
+        bonosHabilidades?: Record<ClaveHabilidad, HabilidadBonoVario[]>
     ): void {
         const requiereExtraHabilidad = toBoolean(dote?.Extras_soportados?.Extra_habilidad);
         const idObjetivo = requiereExtraHabilidad ? Math.max(0, toNumber(idExtra)) : 0;
         const extraNorm = normalizarTexto(extraTexto ?? '');
 
+        // El extra de habilidad de una dote (Soltura con una habilidad) es una habilidad del catálogo, no una personalizada.
         const objetivo = (this.personajeCreacion.Habilidades ?? []).find((habilidad) => {
-            if (idObjetivo > 0 && toNumber(habilidad?.Id) === idObjetivo)
+            if (habilidad?.Custom)
+                return false;
+            if (idObjetivo > 0 && claveHabilidad(habilidad) === claveDeHabilidad(idObjetivo, false))
                 return true;
             if (!requiereExtraHabilidad)
                 return false;
@@ -5567,7 +5550,7 @@ export class NuevoPersonajeService {
         const caracteristicasVarios = this.crearCaracteristicasVariosVacias();
         const nuevosRaciales = this.copiarRaciales(this.estadoFlujo.ventajas.baseRaciales);
         const nuevosIdiomas = this.copiarIdiomas(this.estadoFlujo.ventajas.baseIdiomas);
-        const bonosHabilidades: Record<number, HabilidadBonoVario[]> = {};
+        const bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]> = {};
         const pendientesOro: PendienteOroState[] = [];
         this.aplicarEfectosPlantillasFase2(caracteristicasVarios, nuevosRaciales, bonosHabilidades);
         this.aplicarModificadoresDotesDelPersonaje({ caracteristicasVarios, bonosHabilidades });
@@ -5818,7 +5801,7 @@ export class NuevoPersonajeService {
     private aplicarModificadorHabilidad(
         detalle: VentajaDetalle,
         origen: string,
-        bonosHabilidades: Record<number, HabilidadBonoVario[]>
+        bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]>
     ): void {
         const valor = toNumber(detalle.Mejora);
         if (valor === 0)
@@ -5828,18 +5811,21 @@ export class NuevoPersonajeService {
         if (!habilidadObjetivo)
             return;
 
-        this.agregarBonoHabilidad(bonosHabilidades, toNumber(habilidadObjetivo.Id), valor, origen);
+        this.agregarBonoHabilidad(bonosHabilidades, claveHabilidad(habilidadObjetivo), valor, origen);
     }
 
     /** Un bono a la habilidad en lo que monta el recálculo de las ventajas (`estadoFlujo.ventajas.bonosHabilidades`). */
-    private agregarBonoHabilidad(bonosHabilidades: Record<number, HabilidadBonoVario[]>, idHabilidad: number, valor: number, origen: string): void {
-        (bonosHabilidades[idHabilidad] ??= []).push({ valor, origen });
+    private agregarBonoHabilidad(bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]>, clave: ClaveHabilidad, valor: number, origen: string): void {
+        (bonosHabilidades[clave] ??= []).push({ valor, origen });
     }
 
+    /** La habilidad de una ventaja: es del catálogo (`habilidades`), así que no se busca entre las personalizadas. */
     private buscarHabilidadEnPersonaje(detalle: VentajaDetalle): Personaje['Habilidades'][number] | null {
+        const delCatalogo = this.personajeCreacion.Habilidades.filter((h) => !h?.Custom);
         const idObjetivo = toNumber(detalle.Habilidad?.Id);
         if (idObjetivo > 0) {
-            const porId = this.personajeCreacion.Habilidades.find(h => toNumber(h.Id) === idObjetivo);
+            const clave = claveDeHabilidad(idObjetivo, false);
+            const porId = delCatalogo.find((h) => claveHabilidad(h) === clave);
             if (porId)
                 return porId;
         }
@@ -5848,13 +5834,13 @@ export class NuevoPersonajeService {
         if (nombreObjetivo.length < 1)
             return null;
 
-        return this.personajeCreacion.Habilidades.find((h) => normalizarTexto(h.Nombre) === nombreObjetivo) ?? null;
+        return delCatalogo.find((h) => normalizarTexto(h.Nombre) === nombreObjetivo) ?? null;
     }
 
     private aplicarBonosHabilidadEnPersonaje(): void {
         this.actualizarModsHabilidadesPorCaracteristica();
         this.personajeCreacion.Habilidades = this.personajeCreacion.Habilidades.map((h) => {
-            const bonos = this.estadoFlujo.ventajas.bonosHabilidades[toNumber(h.Id)] ?? [];
+            const bonos = this.estadoFlujo.ventajas.bonosHabilidades[claveHabilidad(h)] ?? [];
             const rangosVarios = bonos.reduce((acc, b) => acc + toNumber(b.valor), 0);
             const diversos = bonos.map((b) => `${b.origen} ${b.valor > 0 ? '+' : ''}${b.valor}`).join(', ');
             return {
@@ -5938,7 +5924,7 @@ export class NuevoPersonajeService {
     private aplicarEfectosPlantillasFase2(
         caracteristicasVarios: Record<CaracteristicaKey, { valor: number; origen: string; }[]>,
         raciales: RacialDetalle[],
-        bonosHabilidades: Record<number, HabilidadBonoVario[]>
+        bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]>
     ): void {
         const seleccionadas = this.estadoFlujo.plantillas.seleccionadas;
         const raza = this.razaSeleccionada;
@@ -6086,11 +6072,10 @@ export class NuevoPersonajeService {
                 if (!habilidad)
                     return;
 
-                const idHabilidad = toNumber(habilidad.Id);
-                if (idHabilidad <= 0)
+                if (toNumber(habilidad.Id) <= 0)
                     return;
 
-                this.agregarBonoHabilidad(bonosHabilidades, idHabilidad, rangos, origen);
+                this.agregarBonoHabilidad(bonosHabilidades, claveHabilidad(habilidad), rangos, origen);
             });
 
             this.aplicarDotesPlantilla(plantilla, origen);
@@ -6243,10 +6228,9 @@ export class NuevoPersonajeService {
     private esHabilidadClaseaParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
         if (habilidad.Clasea)
             return true;
-        const id = toNumber(habilidad?.Id);
-        if (id <= 0)
+        if (toNumber(habilidad?.Id) <= 0)
             return false;
-        return this.estadoFlujo.habilidades.classSkillTemporales.includes(id);
+        return this.estadoFlujo.habilidades.classSkillTemporales.includes(claveHabilidad(habilidad));
     }
 
     /**
@@ -6259,13 +6243,9 @@ export class NuevoPersonajeService {
             || toNumber(habilidad?.Rangos_varios) !== 0;
     }
 
-    private obtenerRangoInicialHabilidadSesion(idHabilidad: number): number {
-        const id = Math.max(0, toInt(idHabilidad));
-        if (id <= 0)
-            return 0;
-
+    private obtenerRangoInicialHabilidadSesion(clave: ClaveHabilidad): number {
         const mapa = this.estadoFlujo?.habilidades?.rangosIniciales ?? {};
-        const valor = toNumber((mapa as Record<number, number>)?.[id] ?? 0);
+        const valor = toNumber(mapa?.[clave] ?? 0);
         if (!Number.isFinite(valor))
             return 0;
 
@@ -6292,8 +6272,7 @@ export class NuevoPersonajeService {
         const propias = especialidadesDelHueco(habilidad.Extras);
         if (propias.length > 0)
             return propias;
-        const catalogo = this.buscarDefinicionHabilidadCatalogo(toNumber(habilidad.Id), '', false);
-        return catalogo.esCustom ? [] : especialidadesDelHueco(catalogo.detalle?.Extras);
+        return especialidadesDelHueco(this.buscarDefinicionHabilidadCatalogo(toNumber(habilidad.Id), '', false)?.Extras);
     }
 
     /** Otra habilidad de la misma familia (las Artesanías, los Saberes…) ya tiene ese extra. */
@@ -6307,10 +6286,10 @@ export class NuevoPersonajeService {
         const familia = this.especialidadesDeHabilidad(habilidadObjetivo);
         if (familia.length < 1)
             return false;
-        const idObjetivo = toNumber(habilidadObjetivo?.Id);
+        const claveObjetivo = claveHabilidad(habilidadObjetivo);
 
         return this.getHabilidadesSesion().some((habilidad) => {
-            if (toNumber(habilidad?.Id) === idObjetivo)
+            if (claveHabilidad(habilidad) === claveObjetivo)
                 return false;
             if (!this.esExtraElegibleParaSesion(habilidad))
                 return false;
@@ -6376,8 +6355,8 @@ export class NuevoPersonajeService {
         const ocupado = (slot: Personaje['Habilidades'][number]) => this.esSlotHabilidadOcupado(slot, paraClasea)
             || (extraFijoNorm.length > 0 && extraHabilidadElegido(normalizarTexto(`${slot?.Extra ?? ''}`)));
 
-        const preferidaId = toNumber(preferida?.Id);
-        if (preferida && slots.some((item) => toNumber(item?.Id) === preferidaId) && !ocupado(preferida))
+        const clavePreferida = claveHabilidad(preferida);
+        if (preferida && slots.some((item) => claveHabilidad(item) === clavePreferida) && !ocupado(preferida))
             return preferida;
 
         const libre = slots.find((slot) => !ocupado(slot));
@@ -6399,12 +6378,12 @@ export class NuevoPersonajeService {
         );
         const nombreObjetivo = `${referencia?.['Habilidad'] ?? referencia?.['habilidad'] ?? referencia?.['Nombre'] ?? referencia?.['nombre'] ?? ''}`.trim();
         const nombreNorm = normalizarTexto(nombreObjetivo);
-        const catalogo = this.buscarDefinicionHabilidadCatalogo(idObjetivoRaw, nombreNorm, !!opciones.customPreferido);
-        const detalleCatalogo = catalogo.detalle;
+        // Su catálogo sale de dónde viene la referencia (`Habilidades.Custom` de la clase o la raza, `Custom` de la dote):
+        // los ids de las personalizadas y los de las del catálogo son de espacios distintos y no se mezclan.
+        const custom = !!(opciones.customPreferido || toBoolean(referencia?.['Custom'] ?? referencia?.['custom']));
+        const detalleCatalogo = this.buscarDefinicionHabilidadCatalogo(idObjetivoRaw, nombreNorm, custom);
         const idObjetivoCatalogo = toNumber(detalleCatalogo?.Id_habilidad);
         const idObjetivo = idObjetivoRaw > 0 ? idObjetivoRaw : idObjetivoCatalogo;
-
-        const custom = !!(opciones.customPreferido || referencia?.['Custom'] || referencia?.['custom'] || catalogo.esCustom);
         const marcarClasea = opciones.marcarClasea !== false;
         const expandirFamiliaConDuplicados = opciones.expandirFamiliaConDuplicados !== false;
         const entrenada = toBoolean(
@@ -6423,13 +6402,15 @@ export class NuevoPersonajeService {
         const extraFijoReferencia = this.resolverExtraFijoDesdeReferencia(referencia, extras);
         const keyCar = this.resolverCaracteristicaPorIdOTexto(idCaracteristica, textoCaracteristica);
 
+        // La del personaje, en el mismo catálogo: por su clave y, sin id, por su nombre.
+        const delMismoCatalogo = this.personajeCreacion.Habilidades.filter((h) => !!h?.Custom === custom);
         let existente: Personaje['Habilidades'][number] | null = null;
         if (idObjetivo > 0) {
-            existente = this.personajeCreacion.Habilidades.find((h) => toNumber(h.Id) === idObjetivo) ?? null;
+            const clave = claveDeHabilidad(idObjetivo, custom);
+            existente = delMismoCatalogo.find((h) => claveHabilidad(h) === clave) ?? null;
         }
         if (!existente && nombreNorm.length > 0) {
-            existente = this.personajeCreacion.Habilidades
-                .find((h) => normalizarTexto(h.Nombre) === nombreNorm) ?? null;
+            existente = delMismoCatalogo.find((h) => normalizarTexto(h.Nombre) === nombreNorm) ?? null;
         }
 
         const familia = custom ? [] : [especialidadesDelHueco(extras), this.especialidadesDeHabilidad(existente)]
@@ -6466,8 +6447,6 @@ export class NuevoPersonajeService {
             if (marcarClasea)
                 existente.Clasea = true;
             existente.Entrenada = existente.Entrenada === true || entrenada;
-            if (custom)
-                existente.Custom = true;
             if (soportaExtra)
                 existente.Soporta_extra = true;
             if ((existente.Extras ?? []).length < 1 && extras.length > 0)
@@ -6516,45 +6495,23 @@ export class NuevoPersonajeService {
             nuevaHabilidad,
         ].sort(porNombre);
 
-        return this.personajeCreacion.Habilidades
-            .find((h) => toNumber(h.Id) === nuevoId || normalizarTexto(h.Nombre) === normalizarTexto(nuevoNombre))
-            ?? null;
+        return nuevaHabilidad;
     }
 
-    private buscarDefinicionHabilidadCatalogo(
-        idObjetivo: number,
-        nombreNorm: string,
-        preferCustom: boolean
-    ): { detalle: HabilidadBasicaDetalle | null; esCustom: boolean; } {
-        const buscarEn = (catalogo: HabilidadBasicaDetalle[]): HabilidadBasicaDetalle | null => {
-            if (idObjetivo > 0) {
-                const porId = catalogo.find((h) => toNumber(h?.Id_habilidad) === idObjetivo) ?? null;
-                if (porId)
-                    return porId;
-            }
-            if (nombreNorm.length > 0) {
-                return catalogo.find((h) => normalizarTexto(h?.Nombre ?? '') === nombreNorm) ?? null;
-            }
-            return null;
-        };
-
-        const orden: Array<{ catalogo: HabilidadBasicaDetalle[]; esCustom: boolean; }> = preferCustom
-            ? [
-                { catalogo: this.estadoFlujo.ventajas.catalogoHabilidadesCustom, esCustom: true },
-                { catalogo: this.estadoFlujo.ventajas.catalogoHabilidades, esCustom: false },
-            ]
-            : [
-                { catalogo: this.estadoFlujo.ventajas.catalogoHabilidades, esCustom: false },
-                { catalogo: this.estadoFlujo.ventajas.catalogoHabilidadesCustom, esCustom: true },
-            ];
-
-        for (const item of orden) {
-            const encontrado = buscarEn(item.catalogo ?? []);
-            if (encontrado)
-                return { detalle: encontrado, esCustom: item.esCustom };
+    /**
+     * La definición de una habilidad en su catálogo: el de las personalizadas (`custom`) o el de `habilidades`, por su id
+     * o, sin él, por su nombre. No se busca en el otro: sus ids son de otro espacio.
+     */
+    private buscarDefinicionHabilidadCatalogo(idObjetivo: number, nombreNorm: string, custom: boolean): HabilidadBasicaDetalle | null {
+        const catalogo = (custom ? this.estadoFlujo.ventajas.catalogoHabilidadesCustom : this.estadoFlujo.ventajas.catalogoHabilidades) ?? [];
+        if (idObjetivo > 0) {
+            const porId = catalogo.find((h) => toNumber(h?.Id_habilidad) === idObjetivo) ?? null;
+            if (porId)
+                return porId;
         }
-
-        return { detalle: null, esCustom: false };
+        if (nombreNorm.length > 0)
+            return catalogo.find((h) => normalizarTexto(h?.Nombre ?? '') === nombreNorm) ?? null;
+        return null;
     }
 
     private resolverExtrasHabilidadDesdeReferencia(
@@ -6626,7 +6583,7 @@ export class NuevoPersonajeService {
      */
     private aplicarHabilidadesOtorgadasPorRaza(
         raza: Raza | null,
-        bonosHabilidades: Record<number, HabilidadBonoVario[]>
+        bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]>
     ): void {
         const origen = `${raza?.Nombre ?? 'Raza'}`.trim() || 'Raza';
         const refs = this.referenciasHabilidadesRaza(raza);
@@ -6638,17 +6595,13 @@ export class NuevoPersonajeService {
             if (!habilidad)
                 return;
 
-            if (custom)
-                habilidad.Custom = true;
-
             const cantidad = toNumber(raw['Cantidad'] ?? raw['cantidad'] ?? raw['Rangos'] ?? raw['rangos']);
             if (cantidad === 0)
                 return;
 
-            const idHabilidad = toNumber(habilidad.Id);
-            if (idHabilidad <= 0)
+            if (toNumber(habilidad.Id) <= 0)
                 return;
-            this.agregarBonoHabilidad(bonosHabilidades, idHabilidad, cantidad, origen);
+            this.agregarBonoHabilidad(bonosHabilidades, claveHabilidad(habilidad), cantidad, origen);
         });
     }
 
@@ -9296,10 +9249,10 @@ export class NuevoPersonajeService {
                 seleccionVentajas: this.clonarProfundo(flujoPersistido.ventajas?.seleccionVentajas ?? []),
                 seleccionDesventajas: this.clonarProfundo(flujoPersistido.ventajas?.seleccionDesventajas ?? []),
             };
-            this.estadoFlujo.habilidades = {
+            this.estadoFlujo.habilidades = this.normalizarClavesSesionHabilidades({
                 ...this.crearHabilidadesFlujoBase(),
                 ...this.clonarProfundo(flujoPersistido.habilidades ?? this.crearHabilidadesFlujoBase()),
-            };
+            });
             this.estadoFlujo.conjuros = {
                 ...this.crearConjurosFlujoBase(),
                 ...this.clonarProfundo(flujoPersistido.conjuros ?? this.crearConjurosFlujoBase()),
@@ -9742,6 +9695,25 @@ export class NuevoPersonajeService {
             baseCaracteristicas: null,
             baseRaciales: [],
             baseIdiomas: [],
+        };
+    }
+
+    /**
+     * La sesión de habilidades de un borrador con las claves de ahora (`habilidad-clave.ts`): los de antes guardaban las
+     * habilidades de clase temporales y los rangos iniciales por su id solo, que pasa a las habilidades con ese id.
+     */
+    private normalizarClavesSesionHabilidades(flujo: HabilidadesFlujoState): HabilidadesFlujoState {
+        const habilidades = flujo.origen === 'companero_dg' && Array.isArray(flujo.habilidadesCompanero)
+            ? flujo.habilidadesCompanero
+            : this.personajeCreacion.Habilidades;
+        const rangosIniciales: Record<ClaveHabilidad, number> = {};
+        Object.entries(flujo.rangosIniciales ?? {}).forEach(([referencia, rangos]) =>
+            clavesDeReferenciaGuardada(referencia, habilidades).forEach((clave) => rangosIniciales[clave] = toNumber(rangos)));
+        return {
+            ...flujo,
+            classSkillTemporales: Array.from(new Set((flujo.classSkillTemporales ?? [])
+                .flatMap((referencia) => clavesDeReferenciaGuardada(referencia, habilidades)))),
+            rangosIniciales,
         };
     }
 

@@ -155,6 +155,7 @@ import { codigoDeError, mensajeDeError } from 'src/app/services/utils/error-api'
 import { PasoEdadRaza } from 'src/app/interfaces/raza';
 import { normalizarTexto, primerEntero, toPositiveInt } from 'src/app/services/utils/normalizacion';
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
+import { ClaveHabilidad, claveHabilidad } from 'src/app/services/utils/habilidad-clave';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { esEspecializable, prohibidasAlEspecializarse } from 'src/app/services/utils/reglas-magia';
@@ -4269,20 +4270,20 @@ export class NuevoPersonajeComponent {
         return `${indice}º`;
     }
 
-    esHabilidadClaseaEfectiva(idHabilidad: number): boolean {
-        return this.nuevoPSvc.esHabilidadClaseaEfectiva(idHabilidad);
+    esHabilidadClaseaEfectiva(habilidad: Personaje['Habilidades'][number]): boolean {
+        return this.nuevoPSvc.esHabilidadClaseaEfectiva(claveHabilidad(habilidad));
     }
 
-    getLimiteRangoHabilidad(idHabilidad: number): number {
-        return this.nuevoPSvc.obtenerLimiteRangoHabilidad(idHabilidad);
+    getLimiteRangoHabilidad(habilidad: Personaje['Habilidades'][number]): number {
+        return this.nuevoPSvc.obtenerLimiteRangoHabilidad(claveHabilidad(habilidad));
     }
 
-    getCosteRangoHabilidad(idHabilidad: number): number {
-        return this.nuevoPSvc.obtenerCosteRangoHabilidad(idHabilidad);
+    getCosteRangoHabilidad(habilidad: Personaje['Habilidades'][number]): number {
+        return this.nuevoPSvc.obtenerCosteRangoHabilidad(claveHabilidad(habilidad));
     }
 
-    getTooltipLimiteRangoHabilidad(idHabilidad: number): string {
-        return this.getCosteRangoHabilidad(idHabilidad) > 1
+    getTooltipLimiteRangoHabilidad(habilidad: Personaje['Habilidades'][number]): string {
+        return this.getCosteRangoHabilidad(habilidad) > 1
             ? 'Transclásea: cada rango cuesta 2 puntos y el límite es la mitad (nivel + 3) / 2'
             : 'Clásea: cada rango cuesta 1 punto y el límite es nivel + 3';
     }
@@ -4297,18 +4298,16 @@ export class NuevoPersonajeComponent {
     }
 
     esRangoNuevoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
-        const idHabilidad = Number(habilidad?.Id ?? 0);
         const rangosActuales = Math.max(0, Math.trunc(Number(habilidad?.Rangos ?? 0)));
-        if (idHabilidad <= 0 || rangosActuales <= 0)
+        if (Number(habilidad?.Id ?? 0) <= 0 || rangosActuales <= 0)
             return false;
-        const rangosIniciales = this.getRangosInicialesSesionHabilidad(idHabilidad);
+        const rangosIniciales = this.getRangosInicialesSesionHabilidad(habilidad);
         return rangosActuales > rangosIniciales;
     }
 
     getTooltipRangoHabilidad(habilidad: Personaje['Habilidades'][number]): string {
-        const idHabilidad = Number(habilidad?.Id ?? 0);
         const actuales = Math.max(0, Math.trunc(Number(habilidad?.Rangos ?? 0)));
-        const iniciales = this.getRangosInicialesSesionHabilidad(idHabilidad);
+        const iniciales = this.getRangosInicialesSesionHabilidad(habilidad);
         if (this.esRangoNuevoHabilidad(habilidad))
             return `Rangos nuevos en esta distribución: ${actuales - iniciales}.`;
         return 'Rangos previos (sin nuevos en esta distribución).';
@@ -4337,8 +4336,7 @@ export class NuevoPersonajeComponent {
     }
 
     getOpcionesExtraHabilidad(habilidad: Personaje['Habilidades'][number]): Array<{ Id_extra: number; Extra: string; Descripcion: string; }> {
-        const idHabilidad = Number(habilidad?.Id ?? 0);
-        if (!this.nuevoPSvc.esExtraElegibleHabilidad(idHabilidad))
+        if (!this.nuevoPSvc.esExtraElegibleHabilidad(claveHabilidad(habilidad)))
             return [];
         if (Boolean(habilidad?.Extra_bloqueado))
             return [];
@@ -4374,15 +4372,15 @@ export class NuevoPersonajeComponent {
         return '-';
     }
 
-    onExtraHabilidadChange(idHabilidad: number, value: string): void {
-        const aplicado = this.nuevoPSvc.setExtraHabilidad(idHabilidad, `${value ?? ''}`);
+    onExtraHabilidadChange(habilidad: Personaje['Habilidades'][number], value: string): void {
+        const aplicado = this.nuevoPSvc.setExtraHabilidad(claveHabilidad(habilidad), `${value ?? ''}`);
         if (!aplicado)
             return;
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
 
     async abrirSelectorExtraHabilidad(habilidad: Personaje['Habilidades'][number]): Promise<void> {
-        if (!habilidad?.Soporta_extra || !this.nuevoPSvc.esExtraElegibleHabilidad(Number(habilidad?.Id)))
+        if (!habilidad?.Soporta_extra || !this.nuevoPSvc.esExtraElegibleHabilidad(claveHabilidad(habilidad)))
             return;
         if (Boolean(habilidad?.Extra_bloqueado))
             return;
@@ -4400,17 +4398,18 @@ export class NuevoPersonajeComponent {
         if (!seleccionado)
             return;
 
-        this.onExtraHabilidadChange(Number(habilidad?.Id), seleccionado);
+        this.onExtraHabilidadChange(habilidad, seleccionado);
     }
 
-    trackByHabilidadId(index: number, habilidad: Personaje['Habilidades'][number]): number {
-        return Number(habilidad?.Id ?? index);
+    /** Por su catálogo y su id: una personalizada y una del catálogo pueden tener el mismo id. */
+    trackByHabilidad(_index: number, habilidad: Personaje['Habilidades'][number]): ClaveHabilidad {
+        return claveHabilidad(habilidad);
     }
 
     esExtraEditableHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
         if (!habilidad?.Soporta_extra)
             return false;
-        if (!this.nuevoPSvc.esExtraElegibleHabilidad(Number(habilidad?.Id)))
+        if (!this.nuevoPSvc.esExtraElegibleHabilidad(claveHabilidad(habilidad)))
             return false;
         if (Boolean(habilidad?.Extra_bloqueado))
             return false;
@@ -4460,20 +4459,19 @@ export class NuevoPersonajeComponent {
 
     /** Sirve para el botón de un rango y para el de subir al máximo: los dos necesitan poder pagar al menos un rango. */
     puedeSubirRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
-        return !!habilidad && this.nuevoPSvc.puedeSubirRangoHabilidad(Number(habilidad?.Id));
+        return !!habilidad && this.nuevoPSvc.puedeSubirRangoHabilidad(claveHabilidad(habilidad));
     }
 
     puedeBajarRangoHabilidad(habilidad: Personaje['Habilidades'][number]): boolean {
         if (!habilidad)
             return false;
-        const idHabilidad = Number(habilidad?.Id ?? 0);
         const actuales = Math.max(0, Math.trunc(Number(habilidad?.Rangos ?? 0)));
-        const iniciales = this.getRangosInicialesSesionHabilidad(idHabilidad);
+        const iniciales = this.getRangosInicialesSesionHabilidad(habilidad);
         return actuales > iniciales;
     }
 
-    ajustarRangoHabilidad(idHabilidad: number, delta: number): void {
-        const aplicado = this.nuevoPSvc.ajustarRangoHabilidad(idHabilidad, delta);
+    ajustarRangoHabilidad(habilidad: Personaje['Habilidades'][number], delta: number): void {
+        const aplicado = this.nuevoPSvc.ajustarRangoHabilidad(claveHabilidad(habilidad), delta);
         if (!aplicado)
             return;
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
@@ -4483,16 +4481,15 @@ export class NuevoPersonajeComponent {
         if (!habilidad)
             return;
 
-        const idHabilidad = Number(habilidad?.Id ?? 0);
         const actual = Number(habilidad?.Rangos ?? 0);
-        const limite = this.getLimiteRangoHabilidad(idHabilidad);
+        const limite = this.getLimiteRangoHabilidad(habilidad);
         const margenLimite = Math.max(0, limite - actual);
-        const rangosPagables = Math.floor(Math.max(0, Number(this.flujoHabilidades.puntosRestantes ?? 0)) / this.getCosteRangoHabilidad(idHabilidad));
+        const rangosPagables = Math.floor(Math.max(0, Number(this.flujoHabilidades.puntosRestantes ?? 0)) / this.getCosteRangoHabilidad(habilidad));
         const delta = Math.min(margenLimite, rangosPagables);
-        if (idHabilidad <= 0 || delta < 1)
+        if (Number(habilidad?.Id ?? 0) <= 0 || delta < 1)
             return;
 
-        const aplicado = this.nuevoPSvc.ajustarRangoHabilidad(idHabilidad, delta);
+        const aplicado = this.nuevoPSvc.ajustarRangoHabilidad(claveHabilidad(habilidad), delta);
         if (!aplicado)
             return;
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
@@ -4516,12 +4513,11 @@ export class NuevoPersonajeComponent {
         return normalizado === 'crear 1' || normalizado === 'crear 2';
     }
 
-    private getRangosInicialesSesionHabilidad(idHabilidad: number): number {
-        const id = Math.max(0, Math.trunc(Number(idHabilidad ?? 0)));
-        if (id <= 0)
+    private getRangosInicialesSesionHabilidad(habilidad: Personaje['Habilidades'][number]): number {
+        if (Number(habilidad?.Id ?? 0) <= 0)
             return 0;
         const mapa = this.flujoHabilidades?.rangosIniciales ?? {};
-        const valor = Number((mapa as Record<number, number>)?.[id] ?? 0);
+        const valor = Number(mapa?.[claveHabilidad(habilidad)] ?? 0);
         if (!Number.isFinite(valor))
             return 0;
         return Math.max(0, Math.trunc(valor));

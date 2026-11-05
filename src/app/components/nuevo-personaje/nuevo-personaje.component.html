@@ -702,10 +702,10 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr *ngFor="let habilidad of habilidadesOrdenadas; trackBy: trackByHabilidadId">
+                                <tr *ngFor="let habilidad of habilidadesOrdenadas; trackBy: trackByHabilidad">
                                     <td>
                                         {{getNombreHabilidadConMarcaEntrenada(habilidad)}}
-                                        <span class="habilidad-marca" *ngIf="esHabilidadClaseaEfectiva(habilidad.Id)">clásea</span>
+                                        <span class="habilidad-marca" *ngIf="esHabilidadClaseaEfectiva(habilidad)">clásea</span>
                                     </td>
                                     <td>{{getCaracteristicaAbreviada(habilidad.Car)}}</td>
                                     <td class="habilidad-extra-col"
@@ -730,14 +730,14 @@
                                     <td class="ficha-num">{{habilidad.Rangos_varios}}</td>
                                     <td [matTooltip]="getTextoVariosHabilidad(habilidad)" matTooltipClass="tt-accent tt-multiline"
                                         class="habilidad-varios">{{getTextoVariosHabilidad(habilidad)}}</td>
-                                    <td class="ficha-num" [matTooltip]="getTooltipLimiteRangoHabilidad(habilidad.Id)"
-                                        matTooltipClass="tt-accent">{{getLimiteRangoHabilidad(habilidad.Id)}}</td>
+                                    <td class="ficha-num" [matTooltip]="getTooltipLimiteRangoHabilidad(habilidad)"
+                                        matTooltipClass="tt-accent">{{getLimiteRangoHabilidad(habilidad)}}</td>
                                     <td class="habilidad-acciones">
                                         <button type="button" class="habilidad-boton" [disabled]="!puedeBajarRangoHabilidad(habilidad)"
-                                            (click)="ajustarRangoHabilidad(habilidad.Id, -1)"
+                                            (click)="ajustarRangoHabilidad(habilidad, -1)"
                                             [attr.aria-label]="'Quitar un rango de ' + habilidad.Nombre">−</button>
                                         <button type="button" class="habilidad-boton" [disabled]="!puedeSubirRangoHabilidad(habilidad)"
-                                            (click)="ajustarRangoHabilidad(habilidad.Id, 1)"
+                                            (click)="ajustarRangoHabilidad(habilidad, 1)"
                                             [attr.aria-label]="'Añadir un rango a ' + habilidad.Nombre">+</button>
                                         <button type="button" class="habilidad-maximo" [disabled]="!puedeSubirRangoHabilidad(habilidad)"
                                             (click)="maxearRangoHabilidad(habilidad)"

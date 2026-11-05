@@ -15,6 +15,7 @@ import { PersonajeService } from './personaje.service';
 import { totalesPersonaje, totalHabilidad } from './utils/personaje-totales';
 import { normalizarClaseMoldeado } from './utils/incarnum-mapper';
 import { moldeadoEncarnadoApi } from 'src/testing/incarnum';
+import { claveDeHabilidad } from './utils/habilidad-clave';
 
 /** Las banderas con las que la API marca los especiales que dan familiar o compañero (`Otorga_*`). */
 const BANDERAS_ESPECIAL_MASCOTA: Record<string, Record<string, boolean>> = {
@@ -978,6 +979,36 @@ describe('NuevoPersonajeService (borrador local)', () => {
         expect(localStorage.getItem(storageKey)).toBeNull();
     });
 
+    it('la sesión de habilidades se guarda por catálogo e id, y la de un borrador de antes (solo el id) vale para los dos', () => {
+        const base = new NuevoPersonajeService();
+        base.setCatalogoHabilidades(huecosDeFamilia('Artesanía', [2], EXTRAS_ARTESANIA));
+        base.seleccionarRaza(crearRazaDraft());
+        base.PersonajeCreacion.Nombre = 'Aldric';
+        // Como en `rol_dev`: la personalizada 2 (Autohipnosis), con un rango, y la habilidad 2 (Artesanía 1), sin rangos.
+        base.PersonajeCreacion.Habilidades.push({
+            Id: 2, Nombre: 'Autohipnosis', Clasea: true, Car: 'Sabiduría', Mod_car: 0, Rangos: 1, Rangos_varios: 0, Extra: '', Varios: '',
+            Custom: true, Bonos_varios: [],
+        } as any);
+        base.iniciarDistribucionHabilidadesPorClase(crearClaseBase());
+        base.activarPersistenciaBorradorLocal(uid);
+        base.persistirBorradorLocalAhora();
+        base.desactivarPersistenciaBorradorLocal();
+
+        const borrador = JSON.parse(localStorage.getItem(storageKey) as string);
+        expect(borrador.estadoFlujoPersistible.habilidades.rangosIniciales[claveDeHabilidad(2, true)]).toBe(1);
+        expect(borrador.estadoFlujoPersistible.habilidades.rangosIniciales[claveDeHabilidad(2, false)]).toBe(0);
+
+        borrador.estadoFlujoPersistible.habilidades.rangosIniciales = { 2: 1 };
+        borrador.estadoFlujoPersistible.habilidades.classSkillTemporales = [2];
+        localStorage.setItem(storageKey, JSON.stringify(borrador));
+
+        const restaurado = new NuevoPersonajeService();
+        expect(restaurado.restaurarBorradorLocal(uid)).toBeTrue();
+        const flujo = restaurado.EstadoFlujo.habilidades;
+        expect(flujo.rangosIniciales).toEqual({ [claveDeHabilidad(2, false)]: 1, [claveDeHabilidad(2, true)]: 1 });
+        expect(flujo.classSkillTemporales).toEqual([claveDeHabilidad(2, false), claveDeHabilidad(2, true)]);
+    });
+
     it('limpia el borrador cuando se reinicia y se persiste de nuevo', () => {
         const service = new NuevoPersonajeService();
         service.seleccionarRaza(crearRazaDraft());
@@ -1375,7 +1406,7 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
         expect(`${avistar?.Varios ?? ''}`).toContain('Elfo');
     });
 
-    it('seleccionarRaza suma duplicados de habilidades y custom prevalece en flag, sin hacerla clásea', () => {
+    it('seleccionarRaza no junta una habilidad del catálogo con una personalizada del mismo id: son dos, sin hacerlas cláseas', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades([]);
         const razaConDuplicadas = {
@@ -1402,11 +1433,12 @@ describe('NuevoPersonajeService (ventajas/desventajas)', () => {
 
         svc.seleccionarRaza(razaConDuplicadas);
 
-        const habilidad = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 90);
-        expect(svc.PersonajeCreacion.Habilidades.filter((h) => h.Id === 90).length).toBe(1);
-        expect(habilidad?.Clasea).toBeFalse();
-        expect(habilidad?.Custom).toBeTrue();
-        expect(habilidad?.Rangos_varios).toBe(3);
+        // Los ids de `habilidades` y de `habilidades_custom` son de espacios distintos: la 90 de cada lista es otra habilidad.
+        const conId90 = svc.PersonajeCreacion.Habilidades.filter((h) => h.Id === 90);
+        expect(conId90.length).toBe(2);
+        expect(conId90.every((h) => !h.Clasea)).toBeTrue();
+        expect(conId90.find((h) => !h.Custom)?.Rangos_varios).toBe(1);
+        expect(conId90.find((h) => h.Custom)?.Rangos_varios).toBe(2);
     });
 
     it('Rasgo no duplica una racial ya presente en la base', () => {
@@ -1881,10 +1913,10 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.EstadoFlujo.habilidades.origen).toBe('companero_dg');
         expect(service.EstadoFlujo.habilidades.puntosTotales).toBe(2);
         expect(service.getHabilidadesSesion().find((habilidad) => habilidad.Id === 6)?.Rangos).toBe(3);
-        expect(service.obtenerLimiteRangoHabilidad(6)).toBe(7);
-        expect(service.ajustarRangoHabilidad(6, 1)).toBeTrue();
-        expect(service.ajustarRangoHabilidad(7, 1)).toBeFalse(); // transclásea: 2 puntos, solo queda 1
-        expect(service.ajustarRangoHabilidad(6, 1)).toBeTrue();
+        expect(service.obtenerLimiteRangoHabilidad(claveDeHabilidad(6, false))).toBe(7);
+        expect(service.ajustarRangoHabilidad(claveDeHabilidad(6, false), 1)).toBeTrue();
+        expect(service.ajustarRangoHabilidad(claveDeHabilidad(7, false), 1)).toBeFalse(); // transclásea: 2 puntos, solo queda 1
+        expect(service.ajustarRangoHabilidad(claveDeHabilidad(6, false), 1)).toBeTrue();
         expect(service.cerrarDistribucionHabilidades()).toBe('clases');
 
         const companero = service.PersonajeCreacion.Companeros[0];
@@ -1898,7 +1930,7 @@ describe('NuevoPersonajeService (clases)', () => {
         (service as any).actualizarMascotasPorNivel();
         expect(service.iniciarDistribucionHabilidadesCompanero('clases')).toBeTrue();
         expect(service.EstadoFlujo.habilidades.puntosTotales).toBe(2);
-        expect(service.obtenerLimiteRangoHabilidad(6)).toBe(9);
+        expect(service.obtenerLimiteRangoHabilidad(claveDeHabilidad(6, false))).toBe(9);
     });
 
     it('un mago guarda su familiar con los datos de su amo y la tabla del familiar por nivel (MJ cap. 3)', () => {
@@ -5976,8 +6008,8 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.seleccionarRaza(raza);
 
         expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
-        expect(svc.obtenerLimiteRangoHabilidad(6)).toBe(5);
-        expect(svc.obtenerLimiteRangoHabilidad(7)).toBe(2);
+        expect(svc.obtenerLimiteRangoHabilidad(claveDeHabilidad(6, false))).toBe(5);
+        expect(svc.obtenerLimiteRangoHabilidad(claveDeHabilidad(7, false))).toBe(2);
     });
 
     it('transclásea de nivel 1: 2 puntos por rango, llega a 2 rangos con 4 puntos y al bajar devuelve 2', () => {
@@ -5994,16 +6026,16 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.iniciarDistribucionHabilidadesPorClase(crearClaseBase({ Puntos_habilidad: { Id: 1, Valor: 2 } }));
         svc.EstadoFlujo.habilidades.puntosRestantes = 4;
 
-        expect(svc.obtenerCosteRangoHabilidad(7)).toBe(2);
-        expect(svc.obtenerCosteRangoHabilidad(6)).toBe(1);
-        expect(svc.obtenerLimiteRangoHabilidad(7)).toBe(2);
-        expect(svc.ajustarRangoHabilidad(7, 1)).toBeTrue();
-        expect(svc.ajustarRangoHabilidad(7, 1)).toBeTrue();
-        expect(svc.ajustarRangoHabilidad(7, 1)).toBeFalse();
+        expect(svc.obtenerCosteRangoHabilidad(claveDeHabilidad(7, false))).toBe(2);
+        expect(svc.obtenerCosteRangoHabilidad(claveDeHabilidad(6, false))).toBe(1);
+        expect(svc.obtenerLimiteRangoHabilidad(claveDeHabilidad(7, false))).toBe(2);
+        expect(svc.ajustarRangoHabilidad(claveDeHabilidad(7, false), 1)).toBeTrue();
+        expect(svc.ajustarRangoHabilidad(claveDeHabilidad(7, false), 1)).toBeTrue();
+        expect(svc.ajustarRangoHabilidad(claveDeHabilidad(7, false), 1)).toBeFalse();
         expect(svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 7)?.Rangos).toBe(2);
         expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(0);
 
-        expect(svc.ajustarRangoHabilidad(7, -1)).toBeTrue();
+        expect(svc.ajustarRangoHabilidad(claveDeHabilidad(7, false), -1)).toBeTrue();
         expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(2);
     });
 
@@ -6033,8 +6065,8 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svcNoClasea.iniciarDistribucionHabilidadesPorRazaDG();
         svcNoClasea.EstadoFlujo.habilidades.puntosRestantes = 2;
 
-        expect(svcNoClasea.puedeSubirRangoHabilidad(6)).toBeTrue();
-        expect(svcNoClasea.ajustarRangoHabilidad(6, 1)).toBeTrue();
+        expect(svcNoClasea.puedeSubirRangoHabilidad(claveDeHabilidad(6, false))).toBeTrue();
+        expect(svcNoClasea.ajustarRangoHabilidad(claveDeHabilidad(6, false), 1)).toBeTrue();
         expect(svcNoClasea.EstadoFlujo.habilidades.puntosRestantes).toBe(0);
 
         const svcClasea = new NuevoPersonajeService();
@@ -6045,7 +6077,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svcClasea.iniciarDistribucionHabilidadesPorRazaDG();
         svcClasea.EstadoFlujo.habilidades.puntosRestantes = 2;
 
-        expect(svcClasea.ajustarRangoHabilidad(6, 1)).toBeTrue();
+        expect(svcClasea.ajustarRangoHabilidad(claveDeHabilidad(6, false), 1)).toBeTrue();
         expect(svcClasea.EstadoFlujo.habilidades.puntosRestantes).toBe(1);
     });
 
@@ -6058,11 +6090,11 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.iniciarDistribucionHabilidadesPorRazaDG();
         svc.EstadoFlujo.habilidades.puntosRestantes = 2;
 
-        expect(svc.esExtraElegibleHabilidad(32)).toBeFalse();
-        expect(svc.ajustarRangoHabilidad(32, 1)).toBeTrue();
-        expect(svc.esExtraElegibleHabilidad(32)).toBeTrue();
+        expect(svc.esExtraElegibleHabilidad(claveDeHabilidad(32, false))).toBeFalse();
+        expect(svc.ajustarRangoHabilidad(claveDeHabilidad(32, false), 1)).toBeTrue();
+        expect(svc.esExtraElegibleHabilidad(claveDeHabilidad(32, false))).toBeTrue();
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeFalse();
-        expect(svc.setExtraHabilidad(32, 'Religión')).toBeTrue();
+        expect(svc.setExtraHabilidad(claveDeHabilidad(32, false), 'Religión')).toBeTrue();
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
     });
 
@@ -6101,7 +6133,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.EstadoFlujo.habilidades.puntosRestantes = 0;
 
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeFalse();
-        expect(svc.setExtraHabilidad(6, 'Planos')).toBeTrue();
+        expect(svc.setExtraHabilidad(claveDeHabilidad(6, false), 'Planos')).toBeTrue();
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
     });
 
@@ -6143,7 +6175,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.seleccionarRaza(crearRazaConDgs());
         svc.iniciarDistribucionHabilidadesPorRazaDG();
 
-        expect(svc.setExtraHabilidad(7, 'Alquimia')).toBeFalse();
+        expect(svc.setExtraHabilidad(claveDeHabilidad(7, false), 'Alquimia')).toBeFalse();
     });
 
     it('bloquea edición de extra cuando la fuente lo trae predefinido', () => {
@@ -6175,7 +6207,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(habilidad?.Extra_bloqueado).toBeTrue();
 
         svc.iniciarDistribucionHabilidadesPorRazaDG();
-        expect(svc.setExtraHabilidad(32, 'Planos')).toBeFalse();
+        expect(svc.setExtraHabilidad(claveDeHabilidad(32, false), 'Planos')).toBeFalse();
         expect(svc.PersonajeCreacion.Habilidades.find((h) => Number(h.Id) === 32)?.Extra).toBe('Religion');
     });
 
@@ -6221,9 +6253,9 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.iniciarDistribucionHabilidadesPorRazaDG();
         svc.EstadoFlujo.habilidades.puntosRestantes = 0;
 
-        expect(svc.setExtraHabilidad(2, 'Alquimia')).toBeTrue();
-        expect(svc.setExtraHabilidad(3, 'Alquimia')).toBeFalse();
-        expect(svc.setExtraHabilidad(3, 'Carpinteria')).toBeTrue();
+        expect(svc.setExtraHabilidad(claveDeHabilidad(2, false), 'Alquimia')).toBeTrue();
+        expect(svc.setExtraHabilidad(claveDeHabilidad(3, false), 'Alquimia')).toBeFalse();
+        expect(svc.setExtraHabilidad(claveDeHabilidad(3, false), 'Carpinteria')).toBeTrue();
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
     });
 
@@ -6246,8 +6278,8 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.iniciarDistribucionHabilidadesPorRazaDG();
         svc.EstadoFlujo.habilidades.puntosRestantes = 0;
 
-        expect(svc.setExtraHabilidad(32, 'Planos')).toBeTrue();
-        expect(svc.setExtraHabilidad(90, 'Planos')).toBeTrue();
+        expect(svc.setExtraHabilidad(claveDeHabilidad(32, false), 'Planos')).toBeTrue();
+        expect(svc.setExtraHabilidad(claveDeHabilidad(90, false), 'Planos')).toBeTrue();
         expect(svc.puedeCerrarDistribucionHabilidades()).toBeTrue();
     });
 
@@ -6259,7 +6291,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         svc.seleccionarRaza(crearRazaConDgs());
         svc.iniciarDistribucionHabilidadesPorRazaDG();
 
-        expect(svc.ajustarRangoHabilidad(6, 1)).toBeTrue();
+        expect(svc.ajustarRangoHabilidad(claveDeHabilidad(6, false), 1)).toBeTrue();
         const avistar = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6);
         expect(avistar?.Rangos).toBe(1);
         expect(avistar?.Rangos_varios).toBe(0);
@@ -6275,7 +6307,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         } as any));
 
         svc.iniciarDistribucionHabilidadesPorRazaDG();
-        expect(svc.ajustarRangoHabilidad(6, 2)).toBeTrue();
+        expect(svc.ajustarRangoHabilidad(claveDeHabilidad(6, false), 2)).toBeTrue();
         svc.EstadoFlujo.habilidades.puntosRestantes = 0;
         expect(svc.cerrarDistribucionHabilidades()).toBe('plantillas');
 
@@ -6283,8 +6315,8 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         const buscar = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6);
 
         expect(buscar?.Rangos).toBe(2);
-        expect(svc.EstadoFlujo.habilidades.rangosIniciales?.[6]).toBe(2);
-        expect(svc.ajustarRangoHabilidad(6, -1)).toBeFalse();
+        expect(svc.EstadoFlujo.habilidades.rangosIniciales?.[claveDeHabilidad(6, false)]).toBe(2);
+        expect(svc.ajustarRangoHabilidad(claveDeHabilidad(6, false), -1)).toBeFalse();
         expect(buscar?.Rangos).toBe(2);
     });
 
@@ -6298,18 +6330,18 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         } as any));
 
         svc.iniciarDistribucionHabilidadesPorRazaDG();
-        expect(svc.ajustarRangoHabilidad(6, 2)).toBeTrue();
+        expect(svc.ajustarRangoHabilidad(claveDeHabilidad(6, false), 2)).toBeTrue();
         svc.EstadoFlujo.habilidades.puntosRestantes = 0;
         expect(svc.cerrarDistribucionHabilidades()).toBe('plantillas');
 
         expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
-        expect(svc.ajustarRangoHabilidad(6, 2)).toBeTrue();
+        expect(svc.ajustarRangoHabilidad(claveDeHabilidad(6, false), 2)).toBeTrue();
 
         const buscar = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6);
         expect(buscar?.Rangos).toBe(4);
         expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(0);
 
-        expect(svc.ajustarRangoHabilidad(6, -3)).toBeTrue();
+        expect(svc.ajustarRangoHabilidad(claveDeHabilidad(6, false), -3)).toBeTrue();
         expect(buscar?.Rangos).toBe(2);
         expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(2);
     });
@@ -6511,9 +6543,9 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
             expect(svc.aplicarSiguienteNivelClase(clase).aplicado).toBeTrue();
             svc.iniciarDistribucionHabilidadesPorClase(clase);
 
-            expect(svc.setExtraHabilidad(19, 'Canto')).toBeTrue();
-            expect(svc.setExtraHabilidad(20, 'Canto')).toBeFalse();
-            expect(svc.setExtraHabilidad(20, 'Danza')).toBeTrue();
+            expect(svc.setExtraHabilidad(claveDeHabilidad(19, false), 'Canto')).toBeTrue();
+            expect(svc.setExtraHabilidad(claveDeHabilidad(20, false), 'Canto')).toBeFalse();
+            expect(svc.setExtraHabilidad(claveDeHabilidad(20, false), 'Danza')).toBeTrue();
         });
     });
 
@@ -6601,8 +6633,8 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         // Un guerrero (sin Avistar entre sus habilidades de clase) la compra como transclásea.
         svc.PersonajeCreacion.ModInteligencia = 0;
         svc.iniciarDistribucionHabilidadesPorClase(crearClaseBase({ Id: 80, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 2 } }));
-        expect(svc.esHabilidadClaseaEfectiva(6)).toBeFalse();
-        expect(svc.obtenerCosteRangoHabilidad(6)).toBe(2);
+        expect(svc.esHabilidadClaseaEfectiva(claveDeHabilidad(6, false))).toBeFalse();
+        expect(svc.obtenerCosteRangoHabilidad(claveDeHabilidad(6, false))).toBe(2);
     });
 
     it('raza con DG raciales (centauro): las habilidades de su entrada son de clase solo al repartir los puntos de esos DG (MM, «Monstruos como razas»)', () => {
@@ -6624,22 +6656,22 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 17)?.Clasea).toBeFalse();
 
         expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
-        expect(svc.esHabilidadClaseaEfectiva(6)).toBeTrue();
-        expect(svc.esHabilidadClaseaEfectiva(17)).toBeTrue();
-        expect(svc.esHabilidadClaseaEfectiva(7)).toBeFalse();
-        expect(svc.obtenerCosteRangoHabilidad(6)).toBe(1);
-        expect(svc.obtenerCosteRangoHabilidad(7)).toBe(2);
+        expect(svc.esHabilidadClaseaEfectiva(claveDeHabilidad(6, false))).toBeTrue();
+        expect(svc.esHabilidadClaseaEfectiva(claveDeHabilidad(17, false))).toBeTrue();
+        expect(svc.esHabilidadClaseaEfectiva(claveDeHabilidad(7, false))).toBeFalse();
+        expect(svc.obtenerCosteRangoHabilidad(claveDeHabilidad(6, false))).toBe(1);
+        expect(svc.obtenerCosteRangoHabilidad(claveDeHabilidad(7, false))).toBe(2);
         // 2 DG: tope de clase 2 + 3; Buscar, transclásea, ⌊5 / 2⌋.
-        expect(svc.obtenerLimiteRangoHabilidad(6)).toBe(5);
-        expect(svc.obtenerLimiteRangoHabilidad(7)).toBe(2);
+        expect(svc.obtenerLimiteRangoHabilidad(claveDeHabilidad(6, false))).toBe(5);
+        expect(svc.obtenerLimiteRangoHabilidad(claveDeHabilidad(7, false))).toBe(2);
         svc.EstadoFlujo.habilidades.puntosRestantes = 0;
         svc.cerrarDistribucionHabilidades();
 
         // En los niveles de clase ya no lo son.
         svc.iniciarDistribucionHabilidadesPorClase(crearClaseBase({ Id: 80, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 2 } }));
-        expect(svc.esHabilidadClaseaEfectiva(6)).toBeFalse();
-        expect(svc.esHabilidadClaseaEfectiva(17)).toBeFalse();
-        expect(svc.obtenerCosteRangoHabilidad(17)).toBe(2);
+        expect(svc.esHabilidadClaseaEfectiva(claveDeHabilidad(6, false))).toBeFalse();
+        expect(svc.esHabilidadClaseaEfectiva(claveDeHabilidad(17, false))).toBeFalse();
+        expect(svc.obtenerCosteRangoHabilidad(claveDeHabilidad(17, false))).toBe(2);
         expect(svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 17)?.Rangos_varios).toBe(2);
     });
 
@@ -6706,10 +6738,136 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
 
         const artesania = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 2)!;
         expect(artesania.Clasea).toBeFalse();
-        expect(svc.esExtraElegibleHabilidad(2)).toBeTrue();
+        expect(svc.esExtraElegibleHabilidad(claveDeHabilidad(2, false))).toBeTrue();
         expect(svc.esExtraHabilidadPendienteParaSesion(artesania)).toBeTrue();
-        expect(svc.setExtraHabilidad(2, 'Herrería')).toBeTrue();
+        expect(svc.setExtraHabilidad(claveDeHabilidad(2, false), 'Herrería')).toBeTrue();
         expect(artesania.Extra).toBe('Herrería');
+    });
+
+    describe('una personalizada y una del catálogo con el mismo id', () => {
+        // Como en `rol_dev`: la personalizada 2 es Autohipnosis y la habilidad 2, Artesanía 1. Son catálogos distintos.
+        const autohipnosis = { Id_habilidad: 2, Nombre: 'Autohipnosis', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] };
+        const cuchilloDelAlma = () => crearClaseBase({
+            Id: 19,
+            Nombre: 'Cuchillo del alma',
+            Puntos_habilidad: { Id: 1, Valor: 4 },
+            Habilidades: {
+                Base: [{ Id_habilidad: 2, Habilidad: 'Artesanía 1' }, { Id_habilidad: 6, Habilidad: 'Avistar' }],
+                Custom: [{ Id_habilidad: 2, Habilidad: 'Autohipnosis', Id_caracteristica: 5, Caracteristica: 'Sabiduría' }],
+            },
+        });
+
+        function conCatalogos(): NuevoPersonajeService {
+            const svc = new NuevoPersonajeService();
+            svc.setCatalogoHabilidades([
+                ...huecosDeFamilia('Artesanía', [2, 3, 4], EXTRAS_ARTESANIA),
+                { Id_habilidad: 6, Nombre: 'Avistar', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [] },
+            ]);
+            svc.setCatalogoHabilidadesCustom([autohipnosis]);
+            return svc;
+        }
+
+        const conId2 = (svc: NuevoPersonajeService) => svc.PersonajeCreacion.Habilidades.filter((h) => h.Id === 2);
+        const artesania1 = (svc: NuevoPersonajeService) => svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 2 && !h.Custom);
+        const deAutohipnosis = (svc: NuevoPersonajeService) => svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 2 && h.Custom);
+
+        it('el cuchillo del alma hace de clase la Autohipnosis personalizada y la Artesanía 1, cada una en su fila', () => {
+            const svc = conCatalogos();
+            svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
+            const clase = cuchilloDelAlma();
+            svc.setCatalogoClases([clase]);
+
+            svc.aplicarSiguienteNivelClase(clase);
+
+            expect(conId2(svc).length).toBe(2);
+            expect(artesania1(svc)?.Nombre).toBe('Artesanía 1');
+            expect(artesania1(svc)?.Clasea).toBeTrue();
+            expect(deAutohipnosis(svc)?.Nombre).toBe('Autohipnosis');
+            expect(deAutohipnosis(svc)?.Clasea).toBeTrue();
+            expect(deAutohipnosis(svc)?.Car).toBe('Sabiduría');
+
+            svc.PersonajeCreacion.Nombre = 'Cuchillo';
+            const payload = new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+                svc.PersonajeCreacion,
+                { idAlineamiento: 1, idGenero: 1, idDeidad: 1 } as any,
+            );
+            expect((payload.colecciones as any).habilidades.base.find((h: any) => h.idHabilidad === 2)?.clasea).toBeTrue();
+            expect((payload.colecciones as any).habilidades.custom).toEqual([jasmine.objectContaining({ idHabilidad: 2, clasea: true })]);
+        });
+
+        it('el bonificador racial a la personalizada 2 no va a la Artesanía 1', () => {
+            const svc = conCatalogos();
+            svc.seleccionarRaza(crearRazaConDgs({
+                ...sinDgs(),
+                Nombre: 'Psiónico',
+                Habilidades: { Base: [], Custom: [{ Id_habilidad: 2, Habilidad: 'Autohipnosis', Cantidad: 2 }] },
+            } as any));
+
+            expect(conId2(svc).length).toBe(2);
+            expect(artesania1(svc)?.Rangos_varios).toBe(0);
+            expect(artesania1(svc)?.Custom).toBeFalse();
+            expect(deAutohipnosis(svc)?.Rangos_varios).toBe(2);
+        });
+
+        it('en el reparto, los rangos, el coste y el extra van a la fila de su catálogo', () => {
+            const svc = conCatalogos();
+            svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
+            const clase = cuchilloDelAlma();
+            svc.setCatalogoClases([clase]);
+            svc.aplicarSiguienteNivelClase(clase);
+            svc.PersonajeCreacion.ModInteligencia = 0;
+            svc.iniciarDistribucionHabilidadesPorClase(clase);
+            svc.EstadoFlujo.habilidades.puntosRestantes = 10;
+            const claveAutohipnosis = claveDeHabilidad(2, true);
+            const claveArtesania = claveDeHabilidad(2, false);
+
+            expect(svc.obtenerCosteRangoHabilidad(claveAutohipnosis)).toBe(1);
+            expect(svc.ajustarRangoHabilidad(claveAutohipnosis, 2)).toBeTrue();
+            expect(deAutohipnosis(svc)?.Rangos).toBe(2);
+            expect(artesania1(svc)?.Rangos).toBe(0);
+
+            expect(svc.setExtraHabilidad(claveAutohipnosis, 'Alquimia')).toBeFalse();
+            expect(svc.setExtraHabilidad(claveArtesania, 'Alquimia')).toBeTrue();
+            expect(artesania1(svc)?.Extra).toBe('Alquimia');
+            expect(deAutohipnosis(svc)?.Extra).toBe('');
+
+            // El suelo de cada una es el suyo: la Artesanía 1 no tiene rangos nuevos que bajar.
+            expect(svc.ajustarRangoHabilidad(claveArtesania, -1)).toBeFalse();
+            expect(svc.ajustarRangoHabilidad(claveAutohipnosis, -1)).toBeTrue();
+            expect(deAutohipnosis(svc)?.Rangos).toBe(1);
+            expect(svc.EstadoFlujo.habilidades.puntosRestantes).toBe(9);
+        });
+
+        it('con DG raciales, la personalizada de la raza es de clase para sus puntos y la Artesanía 1 no', () => {
+            const svc = conCatalogos();
+            svc.seleccionarRaza(crearRazaConDgs({
+                Habilidades: { Base: [], Custom: [{ Id_habilidad: 2, Habilidad: 'Autohipnosis', Cantidad: 0 }] },
+            } as any));
+
+            expect(svc.iniciarDistribucionHabilidadesPorRazaDG()).toBeTrue();
+            expect(svc.EstadoFlujo.habilidades.classSkillTemporales).toEqual([claveDeHabilidad(2, true)]);
+            expect(svc.esHabilidadClaseaEfectiva(claveDeHabilidad(2, true))).toBeTrue();
+            expect(svc.esHabilidadClaseaEfectiva(claveDeHabilidad(2, false))).toBeFalse();
+            expect(svc.obtenerCosteRangoHabilidad(claveDeHabilidad(2, false))).toBe(2);
+        });
+
+        it('el extra de habilidad de una dote (Soltura con una habilidad) es del catálogo: no va a la personalizada', () => {
+            const svc = conCatalogos();
+            svc.seleccionarRaza(crearRazaConDgs(sinDgs()));
+            svc.PersonajeCreacion.Habilidades.unshift({
+                Id: 2, Nombre: 'Autohipnosis', Clasea: false, Car: 'Sabiduría', Mod_car: 0, Rangos: 0, Rangos_varios: 0, Extra: '', Varios: '',
+                Custom: true, Bonos_varios: [],
+            } as any);
+            const soltura = {
+                Id: 900, Nombre: 'Soltura con una habilidad', Descripcion: '', Beneficio: '', Manual: { Id: 1, Nombre: 'Manual', Pagina: 1 },
+                Modificadores: { Habilidad: 3 }, Extras_soportados: { Extra_habilidad: true },
+            } as any;
+
+            (svc as any).aplicarModificadoresDote(soltura, 'Dote: Soltura con una habilidad', 2, 'Artesanía 1');
+
+            expect(artesania1(svc)?.Rangos_varios).toBe(3);
+            expect(deAutohipnosis(svc)?.Rangos_varios).toBe(0);
+        });
     });
 });
 
