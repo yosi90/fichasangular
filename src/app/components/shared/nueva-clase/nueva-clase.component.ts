@@ -735,6 +735,13 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         this.habilidadesRows = [...this.habilidadesRows, this.crearHabilidadRow(tipo)];
     }
 
+    /** Cambiar de catálogo vacía la fila: el mismo id es otra habilidad en el otro (la 2, Artesanía 1 o Autohipnosis). */
+    cambiarTipoHabilidad(row: ClaseHabilidadRow, tipo: 'base' | 'custom'): void {
+        this.habilidadesRows = this.habilidadesRows.map((actual) => actual.uid === row.uid && actual.tipo !== tipo
+            ? { ...this.crearHabilidadRow(tipo), uid: actual.uid }
+            : actual);
+    }
+
     quitarHabilidad(index: number): void {
         this.habilidadesRows = quitarFila(this.habilidadesRows, index, () => this.crearHabilidadRow('base'));
     }
@@ -854,6 +861,13 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
 
     agregarRelacion(tipo: 'dote' | 'especial'): void {
         this.relacionesRows = [...this.relacionesRows, this.crearRelacionRow(tipo)];
+    }
+
+    /** Cambiar entre dote y especial vacía lo elegido: el mismo id es otra cosa en el otro catálogo. */
+    cambiarTipoRelacion(row: ClaseRelacionNivelRow, tipo: 'dote' | 'especial'): void {
+        this.relacionesRows = this.relacionesRows.map((actual) => actual.uid === row.uid && actual.tipo !== tipo
+            ? { ...actual, tipo, id: 0, id_extra: -1, busqueda: '', extraBusqueda: '' }
+            : actual);
     }
 
     quitarRelacion(index: number): void {
@@ -1419,9 +1433,10 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             this.habilidadesBase = this.ordenarHabilidades(items ?? []);
             this.catalogosPrerrequisito['habilidades'] = this.habilidadesBase.map((item) => ({ id: item.Id_habilidad, nombre: item.Nombre }));
         });
+        // Cada fila ya es de su catálogo (`Habilidades.Base` o `.Custom` del GET, o el botón con el que se añadió): los ids
+        // de las personalizadas y de las del catálogo se solapan, así que el id solo no dice de cuál es.
         this.habilidadSvc.getHabilidadesCustom().pipe(takeUntil(this.destroy$)).subscribe((items) => {
             this.habilidadesCustom = this.ordenarHabilidades(items ?? []);
-            this.reclasificarHabilidadesCustom();
         });
         this.habilidadSvc.habilidadesCustomMutadas$.pipe(takeUntil(this.destroy$)).subscribe((habilidad) => this.upsertHabilidadCustom(habilidad));
         this.doteSvc.getDotes().pipe(takeUntil(this.destroy$)).subscribe((items) => {
@@ -1859,13 +1874,6 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         this.catalogosPrerrequisito['especiales'] = this.toCatalog(this.especiales, 'Id', 'Nombre');
         this.relacionesRows = this.relacionesRows.map((row) => row.tipo === 'especial' && row.id === especial.Id
             ? { ...row, busqueda: especial.Nombre }
-            : row);
-    }
-
-    private reclasificarHabilidadesCustom(): void {
-        const customIds = new Set(this.habilidadesCustom.map((item) => item.Id_habilidad));
-        this.habilidadesRows = this.habilidadesRows.map((row) => customIds.has(row.id_habilidad)
-            ? { ...row, tipo: 'custom' }
             : row);
     }
 

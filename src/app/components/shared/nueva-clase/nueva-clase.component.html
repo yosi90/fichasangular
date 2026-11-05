@@ -308,7 +308,7 @@
                     <div class="repeat-row habilidad-row" *ngFor="let row of habilidadesRows; let i = index">
                         <mat-form-field appearance="fill">
                             <mat-label>Tipo</mat-label>
-                            <mat-select [(ngModel)]="row.tipo" [ngModelOptions]="{standalone: true}">
+                            <mat-select [ngModel]="row.tipo" [ngModelOptions]="{standalone: true}" (ngModelChange)="cambiarTipoHabilidad(row, $event)">
                                 <mat-option value="base">Base</mat-option>
                                 <mat-option value="custom">Custom</mat-option>
                             </mat-select>
@@ -591,7 +591,7 @@
                         </mat-form-field>
                         <mat-form-field appearance="fill">
                             <mat-label>Tipo</mat-label>
-                            <mat-select [(ngModel)]="row.tipo" [ngModelOptions]="{standalone: true}">
+                            <mat-select [ngModel]="row.tipo" [ngModelOptions]="{standalone: true}" (ngModelChange)="cambiarTipoRelacion(row, $event)">
                                 <mat-option value="dote">Dote</mat-option>
                                 <mat-option value="especial">Especial</mat-option>
                             </mat-select>

@@ -1,5 +1,5 @@
 import { FormBuilder } from '@angular/forms';
-import { of } from 'rxjs';
+import { EMPTY, Subject, of } from 'rxjs';
 import { Clase } from 'src/app/interfaces/clase';
 import { normalizeClase } from 'src/app/services/clase.service';
 import { NuevaClaseComponent } from './nueva-clase.component';
@@ -101,6 +101,95 @@ describe('NuevaClaseComponent (catálogos de los prerrequisitos)', () => {
             { id: 5, nombre: 'Maligno' }, { id: 2, nombre: 'Neutral' },
         ]);
         expect((editor as any).getCatalogoPrerrequisito('actitud_prohibido')).toBe(editor.actitudesCatalogo);
+    });
+});
+
+describe('NuevaClaseComponent (una habilidad del catálogo y una personalizada con el mismo id)', () => {
+    // De `GET /clases/19` (cuchillo del alma) y del catálogo de `rol_dev`: la habilidad 2 es Artesanía 1 y la
+    // personalizada 2, Autohipnosis. Las dos son de la clase; cada una va en su lista (`Base` y `Custom`).
+    const artesania = { Id_habilidad: 2, Habilidad: 'Artesanía 1', Id_extra: 0, Extra: 'Elegir', Extra_comodin: 'elegir', Varios: null };
+    const autohipnosis = { Id_habilidad: 2, Habilidad: 'Autohipnosis', Id_caracteristica: 5, Caracteristica: 'Sabiduría', Varios: null };
+    const catalogo = [{ Id_habilidad: 2, Nombre: 'Artesanía 1', Soporta_extra: true, Extras: [{ Id_extra: 1, Extra: 'Alfarería' }] }];
+    const personalizadas = [{ Id_habilidad: 2, Nombre: 'Autohipnosis', Soporta_extra: false, Extras: [] }];
+
+    /** El editor con sus catálogos cargándose: los de las habilidades, de verdad; los demás no llegan nunca. */
+    function editorConCatalogos(personalizadas$: Subject<any[]>): NuevaClaseComponent {
+        const sinDatos = () => new Proxy({}, { get: (_objeto, clave) => `${String(clave)}`.endsWith('$') ? EMPTY : () => EMPTY });
+        const servicios: any[] = Array.from({ length: 24 }, sinDatos);
+        servicios[8] = {
+            getHabilidades: () => of(catalogo),
+            getHabilidadesCustom: () => personalizadas$.asObservable(),
+            habilidadesCustomMutadas$: EMPTY,
+        };
+        const editor: NuevaClaseComponent = new (NuevaClaseComponent as any)(new FormBuilder(), ...servicios);
+        editor.modo = 'editar';
+        (editor as any).cargarCatalogosBase();
+        return editor;
+    }
+
+    function cuchilloDelAlma(): Clase {
+        return normalizeClase({ Id: 19, Nombre: 'Cuchillo del alma', Nivel_max_claseo: 1, Habilidades: { Base: [artesania], Custom: [autohipnosis] } });
+    }
+
+    function habilidadesDelCuerpo(editor: NuevaClaseComponent): { base: string[]; custom: string[]; } {
+        const habilidades = (editor as any).construirPayload().Habilidades;
+        return {
+            base: habilidades.Base.map((item: any) => `${item.Id_habilidad} ${item.Habilidad}`),
+            custom: habilidades.Custom.map((item: any) => `${item.Id_habilidad} ${item.Habilidad}`),
+        };
+    }
+
+    it('si las personalizadas llegan después de la clase, Artesanía 1 sigue siendo del catálogo', () => {
+        const personalizadas$ = new Subject<any[]>();
+        const editor = editorConCatalogos(personalizadas$);
+        (editor as any).hidratarDesdeClase(cuchilloDelAlma());
+
+        personalizadas$.next(personalizadas);
+
+        expect(editor.habilidadesRows.map((fila) => `${fila.tipo} ${fila.id_habilidad} ${fila.busqueda}`))
+            .toEqual(['base 2 Artesanía 1', 'custom 2 Autohipnosis']);
+        expect(habilidadesDelCuerpo(editor)).toEqual({ base: ['2 Artesanía 1'], custom: ['2 Autohipnosis'] });
+        expect(editor.isDirty).toBeFalse();
+        editor.ngOnDestroy();
+    });
+
+    it('si las personalizadas llegan antes, igual', () => {
+        const personalizadas$ = new Subject<any[]>();
+        const editor = editorConCatalogos(personalizadas$);
+        personalizadas$.next(personalizadas);
+
+        (editor as any).hidratarDesdeClase(cuchilloDelAlma());
+
+        expect(habilidadesDelCuerpo(editor)).toEqual({ base: ['2 Artesanía 1'], custom: ['2 Autohipnosis'] });
+        expect(editor.getExtrasHabilidad(editor.habilidadesRows[0]).map((extra) => extra.Extra)).toEqual(['Alfarería']);
+        expect(editor.getExtrasHabilidad(editor.habilidadesRows[1])).toEqual([]);
+        editor.ngOnDestroy();
+    });
+
+    it('cambiar el tipo de una fila la vacía: el mismo id es otra habilidad en el otro catálogo', () => {
+        const editor = crearEditor();
+        (editor as any).hidratarDesdeClase(cuchilloDelAlma());
+
+        editor.cambiarTipoHabilidad(editor.habilidadesRows[1], 'custom');
+        editor.cambiarTipoHabilidad(editor.habilidadesRows[0], 'custom');
+
+        expect(editor.habilidadesRows.map((fila) => `${fila.tipo} ${fila.id_habilidad} ${fila.busqueda}`))
+            .toEqual(['custom 0 ', 'custom 2 Autohipnosis']);
+        expect(habilidadesDelCuerpo(editor)).toEqual({ base: [], custom: ['2 Autohipnosis'] });
+    });
+
+    it('cambiar una dote de nivel a especial (o al revés) vacía lo elegido', () => {
+        const editor = crearEditor();
+        editor.agregarRelacion('dote');
+        const fila = editor.relacionesRows[editor.relacionesRows.length - 1];
+        fila.id = 5;
+        fila.busqueda = 'Ataque poderoso';
+
+        editor.cambiarTipoRelacion(fila, 'especial');
+
+        expect(editor.relacionesRows[editor.relacionesRows.length - 1]).toEqual(jasmine.objectContaining({
+            uid: fila.uid, tipo: 'especial', id: 0, busqueda: '', id_extra: -1,
+        }));
     });
 });
 

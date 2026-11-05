@@ -1,3 +1,4 @@
+import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -10,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSelectHarness } from '@angular/material/select/testing';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Subject, of } from 'rxjs';
@@ -377,6 +379,77 @@ describe('NuevaDoteComponent', () => {
         expect(component.manualesOpciones).toEqual([{ id: 1, nombre: 'Manual basico' }]);
         component.seleccionarManual(1);
         expect(component.form.controls.id_manual.value).toBe(1);
+    });
+
+    describe('habilidades del catálogo y personalizadas con el mismo id', () => {
+        // En `rol_dev`, la habilidad 2 es Artesanía 1 (con extras) y la personalizada 2, Autohipnosis (sin extras).
+        const artesania = {
+            Id_habilidad: 2, Nombre: 'Artesanía 1', Soporta_extra: true,
+            Extras: [{ Id_extra: 1, Extra: 'Alfarería' }, { Id_extra: 2, Extra: 'Alquimia' }],
+        };
+        const autohipnosis = { Id_habilidad: 2, Nombre: 'Autohipnosis', Soporta_extra: false, Extras: [] };
+
+        beforeEach(() => {
+            // TestBed inyecta una copia del doble (`useValue`): se cambia la copia y se crea el formulario otra vez.
+            const habilidades = TestBed.inject(HabilidadService) as any;
+            habilidades.getHabilidades = () => of([artesania]);
+            habilidades.getHabilidadesCustom = () => of([autohipnosis]);
+            fixture.destroy();
+            fixture = TestBed.createComponent(NuevaDoteComponent);
+            component = fixture.componentInstance;
+            fixture.detectChanges();
+        });
+
+        const selectorDeLaFila = () => TestbedHarnessEnvironment.loader(fixture)
+            .getHarness(MatSelectHarness.with({ ancestor: '.skill-grid.row', selector: '.skill-habilidad mat-select' }));
+        const otorgadas = () => (component as any).buildPayload().habilidades_otorgadas
+            .map((item: any) => ({ id_habilidad: item.id_habilidad, custom: item.custom }));
+
+        it('elegir Artesanía 1 la otorga del catálogo, no la personalizada de su id', async () => {
+            const selector = await selectorDeLaFila();
+            await selector.open();
+            await selector.clickOptions({ text: 'Artesanía 1' });
+
+            expect(otorgadas()).toEqual([{ id_habilidad: 2, custom: false }]);
+            expect(component.getExtrasDeHabilidad(component.habilidadesOtorgadasEditor[0] as any).map((extra) => extra.Extra))
+                .toEqual(['Alfarería', 'Alquimia']);
+        });
+
+        it('elegir Autohipnosis la otorga personalizada, sin los extras de Artesanía 1', async () => {
+            const selector = await selectorDeLaFila();
+            await selector.open();
+            await selector.clickOptions({ text: 'Autohipnosis (custom)' });
+
+            expect(otorgadas()).toEqual([{ id_habilidad: 2, custom: true }]);
+            expect(component.habilidadPermiteExtra(component.habilidadesOtorgadasEditor[0] as any)).toBeFalse();
+            // La fila se pinta de nuevo (otra fila, sin `trackBy`): se vuelve a buscar su selector.
+            expect(await (await selectorDeLaFila()).getValueText()).toBe('Autohipnosis (custom)');
+        });
+
+        it('una dote cargada con Autohipnosis la enseña y la guarda personalizada', async () => {
+            const servicio = TestBed.inject(DoteService) as any;
+            servicio.getDoteFresco = jasmine.createSpy('getDoteFresco').and.returnValue(of(normalizeDoteApi({
+                ...IDA_Y_VUELTA.dotes[0].get,
+                Habilidades_otorgadas: [{ Id_habilidad: 2, Habilidad: 'Autohipnosis', Id_extra: -1, Extra: '', Rangos: 2, Custom: true }],
+            })));
+            component.modo = 'editar';
+            component.idDote = IDA_Y_VUELTA.dotes[0].get.Id;
+            component.ngOnChanges({ idDote: {} as any });
+            for (let intento = 0; intento < 50 && component.edicion.cargando; intento++)
+                await new Promise((resolver) => setTimeout(resolver, 10));
+            fixture.detectChanges();
+
+            expect(await (await selectorDeLaFila()).getValueText()).toBe('Autohipnosis (custom)');
+            expect(otorgadas()).toEqual([{ id_habilidad: 2, custom: true }]);
+            expect(component.edicion.hayCambios).toBeFalse();
+        });
+
+        it('los prerrequisitos y los extras de habilidad solo ofrecen las del catálogo (sus tablas apuntan a `habilidades`)', () => {
+            expect(component.habilidadesCatalogoPrerrequisito.map((item) => item.nombre)).toEqual(['Artesanía 1']);
+            expect(component.extrasDeHabilidad(2).map((item) => item.nombre)).toEqual(['Alfarería', 'Alquimia']);
+            expect(component.habilidadCatalogoPermiteExtra(2)).toBeTrue();
+            expect((component as any).getItemsSelectorExtrasPorTipo('extra_habilidad').map((item: any) => item.nombre)).toEqual(['Artesanía 1']);
+        });
     });
 
     describe('«Modificar dote»', () => {
