@@ -290,6 +290,20 @@ describe('UserProfileComponent', () => {
         expect(component.currentSection).toBe('preferencias');
     }));
 
+    it('enlaza a «Tu cuenta › Logros» de la web social con el símbolo del ecosistema', fakeAsync(() => {
+        const platformSessionSvc = TestBed.inject(PlatformSessionService) as jasmine.SpyObj<PlatformSessionService>;
+        platformSessionSvc.urlSocial.and.callFake((vista?: string) => `https://social.yosiftware.es/?vista=${vista ?? ''}`);
+        fixture.detectChanges();
+        tick();
+        fixture.detectChanges();
+
+        const enlace = (fixture.nativeElement as HTMLElement).querySelector<HTMLAnchorElement>('a[href="https://social.yosiftware.es/?vista=logros"]');
+        expect(enlace).withContext('enlace a los logros').not.toBeNull();
+        expect(enlace?.target).toBe('_blank');
+        expect(enlace?.querySelector('.simbolo-yosiftware')).not.toBeNull();
+        expect(enlace?.textContent?.trim()).toBe('Ver tus logros');
+    }));
+
     it('presenta el resumen de permisos con etiquetas legibles para usuario final', fakeAsync(() => {
         profileSubject.next({
             ...buildProfile('correo'),
