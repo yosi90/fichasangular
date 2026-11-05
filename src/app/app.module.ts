@@ -112,6 +112,8 @@ import { CatalogoBuscadorComponent } from './components/shared/catalogo-buscador
 import { PrerrequisitoCatalogPairEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-pair-editor.component';
 import { NuevaIdiomaComponent } from './components/shared/nueva-idioma/nueva-idioma.component';
 import { NuevoEquipoComponent } from './components/shared/nuevo-equipo/nuevo-equipo.component';
+import { NuevoObjetoComponent } from './components/shared/nuevo-objeto/nuevo-objeto.component';
+import { EquipoMagiaComponent } from './components/shared/equipo-magia/equipo-magia.component';
 import { InsercionMarcoComponent } from './components/shared/insercion-marco/insercion-marco.component';
 import { NuevaEspecialComponent } from './components/shared/nueva-especial/nueva-especial.component';
 import { NuevaClaseComponent } from './components/shared/nueva-clase/nueva-clase.component';
@@ -280,6 +282,8 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         CatalogoBuscadorComponent,
         NuevaIdiomaComponent,
         NuevoEquipoComponent,
+        NuevoObjetoComponent,
+        EquipoMagiaComponent,
         InsercionMarcoComponent,
         NuevaEspecialComponent,
         NuevaClaseComponent,

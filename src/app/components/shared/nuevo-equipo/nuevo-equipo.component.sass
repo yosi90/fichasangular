@@ -66,3 +66,21 @@
     margin: 0 0 8px
     font-size: 13px
     color: var(--mat-form-field-error-text-color, #f44336)
+
+// Los costes de un material (aplicación y cuatro importes) y los daños de una aptitud (dados, tipo y condición).
+.equipo-fila--coste
+    grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr)) 42px
+
+    @container insercion (max-width: 900px)
+        grid-template-columns: repeat(2, minmax(0, 1fr)) 42px
+
+.equipo-fila--dano
+    grid-template-columns: 110px minmax(0, 1fr) minmax(0, 2fr) 42px
+
+    @container insercion (max-width: 520px)
+        grid-template-columns: minmax(0, 1fr) 42px
+
+.equipo-nota
+    margin: 0 0 8px
+    font-size: 13px
+    color: $ficha-texto-suave

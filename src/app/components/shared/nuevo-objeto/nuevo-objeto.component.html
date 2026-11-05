@@ -1,0 +1,388 @@
+<div class="nuevo-objeto-shell">
+    <form class="nuevo-objeto-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <app-insercion-marco
+            [modo]="modo"
+            [tipo]="definicion.etiqueta"
+            [iconoTipo]="definicion.icono"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="form.controls.oficial.value"
+            [pasos]="definicion.pasos"
+            [(pasoActual)]="pasoActual"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeGuardar)"
+            [error]="errores.global"
+            [guardando]="guardando"
+            [accionDesactivada]="edicion.cargando || (edicion.editando && !edicion.hayCambios)"
+            [nota]="edicion.editando && !edicion.hayCambios ? 'Sin cambios todavía.' : ''"
+            [textoAccion]="textoAccion"
+            [textoGuardando]="textoAccion">
+
+            <!-- Paso 1 (y el conjunto entero): lo común -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 0">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Datos</h3>
+                    <div class="insercion-campos">
+                        <mat-form-field appearance="fill" class="insercion-campos__doble">
+                            <mat-label>Nombre</mat-label>
+                            <input matInput formControlName="nombre" maxlength="150">
+                            <mat-error *ngIf="form.controls.nombre.invalid">{{errorDe('nombre', 'Nombre obligatorio (hasta 150 caracteres).')}}</mat-error>
+                        </mat-form-field>
+                        <app-catalogo-buscador etiqueta="Manual" [opciones]="manuales" [valor]="form.controls.id_manual.value"
+                            [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errorDe('id_manual', 'Manual obligatorio.') : null"
+                            (elegir)="elegir('id_manual', $event)">
+                        </app-catalogo-buscador>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Página</mat-label>
+                            <input matInput type="number" min="0" step="1" formControlName="pagina">
+                            <mat-error *ngIf="form.controls.pagina.invalid">{{errorDe('pagina', 'Página obligatoria (0 o más).')}}</mat-error>
+                        </mat-form-field>
+                        <ng-container *ngIf="esObjeto">
+                            <mat-form-field appearance="fill" class="insercion-campos__doble">
+                                <mat-label>Tipo</mat-label>
+                                <mat-select formControlName="id_tipo_objeto">
+                                    <mat-option *ngFor="let item of tiposObjeto" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                </mat-select>
+                                <mat-hint class="objeto-error" *ngIf="avisoDe('id_tipo_objeto') as aviso">{{aviso}}</mat-hint>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Ranura</mat-label>
+                                <mat-select formControlName="id_ranura">
+                                    <mat-option [value]="null">Sin ranura</mat-option>
+                                    <mat-option *ngFor="let item of opcionesDe('Ranuras')" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Nivel del objeto</mat-label>
+                                <input matInput type="number" min="0" max="255" step="1" formControlName="nivel_objeto">
+                                <mat-error *ngIf="form.controls.nivel_objeto.invalid">{{errorDe('nivel_objeto', 'Entre 0 y 255.')}}</mat-error>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Precio (po)</mat-label>
+                                <input matInput type="number" min="0" step="0.01" formControlName="precio">
+                                <mat-hint>Vacío si no se vende (o sale de su fórmula).</mat-hint>
+                                <mat-error *ngIf="form.controls.precio.invalid">{{errorDe('precio', '0 o más.')}}</mat-error>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Peso (lb)</mat-label>
+                                <input matInput type="number" min="0" step="0.01" formControlName="peso">
+                                <mat-error *ngIf="form.controls.peso.invalid">{{errorDe('peso', '0 o más.')}}</mat-error>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Conjunto</mat-label>
+                                <mat-select formControlName="id_conjunto">
+                                    <mat-option [value]="null">Ninguno</mat-option>
+                                    <mat-option *ngFor="let item of conjuntos" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <div class="objeto-con-quitar">
+                                <app-catalogo-buscador etiqueta="Montura (monstruo)" placeholder="No es una montura" [opciones]="monstruos"
+                                    [valor]="form.controls.id_monstruo.value" [error]="avisoDe('id_monstruo')"
+                                    (elegir)="elegir('id_monstruo', $event)">
+                                </app-catalogo-buscador>
+                                <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_monstruo.value !== null"
+                                    aria-label="No es una montura" (click)="quitarSeleccion('id_monstruo')">
+                                    <mat-icon>close</mat-icon>
+                                </button>
+                            </div>
+                            <mat-form-field appearance="fill" class="insercion-campos__doble">
+                                <mat-label>Requisitos de uso</mat-label>
+                                <input matInput formControlName="requisitos_uso" maxlength="500">
+                                <mat-error *ngIf="form.controls.requisitos_uso.invalid">{{errorDe('requisitos_uso', 'Hasta 500 caracteres.')}}</mat-error>
+                            </mat-form-field>
+                        </ng-container>
+                        <mat-form-field appearance="fill" class="insercion-campos__doble">
+                            <mat-label>Nombre original</mat-label>
+                            <input matInput formControlName="nombre_original" maxlength="150">
+                            <mat-hint>El nombre en inglés, si viene de un libro sin traducir.</mat-hint>
+                            <mat-error *ngIf="form.controls.nombre_original.invalid">{{errorDe('nombre_original', 'Hasta 150 caracteres.')}}</mat-error>
+                        </mat-form-field>
+                        <div class="estado-row insercion-campos__doble">
+                            <mat-chip-listbox class="boolean-chips" aria-label="Estado de la entrada">
+                                <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="alternar('oficial')">Oficial</mat-chip-option>
+                                <mat-chip-option [selected]="form.controls.traducido.value === true" (click)="alternar('traducido')">Traducción nuestra</mat-chip-option>
+                                <ng-container *ngIf="esObjeto">
+                                    <mat-chip-option [selected]="form.controls.maldito.value === true" (click)="alternar('maldito')">Maldito</mat-chip-option>
+                                    <mat-chip-option [selected]="form.controls.inteligente.value === true" (click)="alternar('inteligente')">Inteligente</mat-chip-option>
+                                    <mat-chip-option [selected]="form.controls.es_reliquia.value === true" (click)="alternar('es_reliquia')">Reliquia</mat-chip-option>
+                                </ng-container>
+                            </mat-chip-listbox>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Descripción</h3>
+                    <div class="insercion-campos">
+                        <mat-form-field appearance="fill" class="insercion-campos__entero">
+                            <mat-label>Descripción</mat-label>
+                            <textarea matInput formControlName="descripcion" rows="4" maxlength="8000"></textarea>
+                            <mat-hint>Propia y breve, con nuestras palabras, o el texto del SRD traducido; nunca el texto del manual.</mat-hint>
+                            <mat-error *ngIf="form.controls.descripcion.invalid">{{errorDe('descripcion', 'Hasta 8000 caracteres.')}}</mat-error>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill" class="insercion-campos__doble">
+                            <mat-label>Origen de la descripción</mat-label>
+                            <mat-select formControlName="origen_descripcion">
+                                <mat-option value="propia">Propia (un resumen nuestro)</mat-option>
+                                <mat-option value="srd">Del SRD (licencia abierta)</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                    </div>
+                </section>
+
+                <!-- Conjunto: sus piezas y sus bonificaciones -->
+                <ng-container *ngIf="!esObjeto">
+                    <section class="insercion-tarjeta">
+                        <h3 class="insercion-tarjeta__titulo">Piezas · {{filas.piezas.length}}</h3>
+                        <p class="objeto-error" role="alert" *ngIf="avisoDe('piezas') as aviso">{{aviso}}</p>
+                        <p class="objeto-vacio" *ngIf="filas.piezas.length < 1">Sin piezas todavía.</p>
+                        <mat-chip-set aria-label="Piezas del conjunto">
+                            <mat-chip *ngFor="let pieza of filas.piezas; trackBy: trackById" (removed)="quitarPieza(pieza.id)">
+                                {{pieza.nombre}}
+                                <button matChipRemove [attr.aria-label]="'Quitar ' + pieza.nombre"><mat-icon>cancel</mat-icon></button>
+                            </mat-chip>
+                        </mat-chip-set>
+                        <mat-form-field appearance="fill" class="objeto-buscar-pieza">
+                            <mat-label>Añadir pieza</mat-label>
+                            <mat-icon matPrefix aria-hidden="true">add</mat-icon>
+                            <input matInput [value]="textoPieza" [matAutocomplete]="piezas" placeholder="Busca el objeto por su nombre"
+                                (input)="buscarPieza($any($event.target).value)">
+                            <mat-autocomplete #piezas="matAutocomplete" [displayWith]="mostrarPieza" (optionSelected)="anadirPieza($event.option.value)">
+                                <mat-option *ngFor="let pieza of piezasEncontradas" [value]="pieza" [disabled]="idsPiezas.includes(pieza.Id)">{{pieza.Nombre}}</mat-option>
+                            </mat-autocomplete>
+                            <mat-hint>Un objeto es pieza de un solo conjunto.</mat-hint>
+                        </mat-form-field>
+                    </section>
+
+                    <section class="insercion-tarjeta">
+                        <h3 class="insercion-tarjeta__titulo">Bonificaciones · {{filas.bonificaciones.length}}</h3>
+                        <p class="objeto-error" role="alert" *ngIf="avisoDe('bonificaciones') as aviso">{{aviso}}</p>
+                        <div class="objeto-fila objeto-fila--bonificacion" *ngFor="let fila of filas.bonificaciones; trackBy: trackByUid">
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                                <mat-label>Piezas</mat-label>
+                                <input matInput type="number" min="1" step="1" [(ngModel)]="fila.piezas" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                                <mat-label>Lo que da</mat-label>
+                                <textarea matInput rows="2" maxlength="8000" [(ngModel)]="fila.descripcion" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()"></textarea>
+                            </mat-form-field>
+                            <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar la bonificación" (click)="quitarBonificacion(fila.uid)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                        <button mat-stroked-button type="button" (click)="anadirBonificacion()"><mat-icon>add</mat-icon> Añadir bonificación</button>
+                    </section>
+                </ng-container>
+            </div>
+
+            <!-- Paso 2: la magia del objeto -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 1" *ngIf="esObjeto">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Magia</h3>
+                    <div class="insercion-campos">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Nivel de lanzador</mat-label>
+                            <input matInput type="number" min="0" max="255" step="1" formControlName="nivel_lanzador">
+                            <mat-error *ngIf="form.controls.nivel_lanzador.invalid">{{errorDe('nivel_lanzador', 'Entre 0 y 255.')}}</mat-error>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Aura</mat-label>
+                            <mat-select formControlName="id_intensidad_aura">
+                                <mat-option [value]="null">Sin aura</mat-option>
+                                <mat-option *ngFor="let item of opcionesDe('Intensidades_aura')" [value]="item.Id">{{item.Nombre}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Cargas</mat-label>
+                            <input matInput type="number" min="0" step="1" formControlName="cargas">
+                            <mat-error *ngIf="form.controls.cargas.invalid">{{errorDe('cargas', 'Entre 0 y 32.767.')}}</mat-error>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Usos al día</mat-label>
+                            <input matInput type="number" min="0" max="255" step="1" formControlName="usos_por_dia">
+                            <mat-error *ngIf="form.controls.usos_por_dia.invalid">{{errorDe('usos_por_dia', 'Entre 0 y 255.')}}</mat-error>
+                        </mat-form-field>
+                    </div>
+                    <div class="subpanel">
+                        <div class="subpanel-head"><span>Activaciones · {{filas.activaciones.length}}</span></div>
+                        <p class="objeto-error" role="alert" *ngIf="avisoDe('activaciones') as aviso">{{aviso}}</p>
+                        <div class="objeto-fila objeto-fila--activacion" *ngFor="let fila of filas.activaciones; trackBy: trackByUid">
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                                <mat-label>Cómo se activa</mat-label>
+                                <mat-select [(ngModel)]="fila.id_tipo_activacion" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                                    <mat-option *ngFor="let item of opcionesDe('Tipos_activacion')" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                                <mat-label>Acción</mat-label>
+                                <mat-select [(ngModel)]="fila.id_tipo_accion" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                                    <mat-option [value]="null">—</mat-option>
+                                    <mat-option *ngFor="let item of opcionesDe('Tipos_accion')" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar la activación" (click)="quitarActivacion(fila.uid)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                        <button mat-stroked-button type="button" (click)="anadirActivacion()"><mat-icon>add</mat-icon> Añadir activación</button>
+                    </div>
+                    <div class="subpanel">
+                        <div class="subpanel-head"><span>Conjuros que lanza · {{filas.conjuros.length}}</span></div>
+                        <p class="objeto-error" role="alert" *ngIf="avisoDe('conjuros') as aviso">{{aviso}}</p>
+                        <div class="objeto-fila objeto-fila--conjuro" *ngFor="let conjuro of filas.conjuros; trackBy: trackById">
+                            <span class="objeto-fila__nombre">{{conjuro.nombre}}</span>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                                <mat-label>NL</mat-label>
+                                <input matInput type="number" min="0" max="255" step="1" [(ngModel)]="conjuro.nivel_lanzador" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                                <mat-label>Cargas por uso</mat-label>
+                                <input matInput type="number" min="0" max="255" step="1" [(ngModel)]="conjuro.cargas_por_uso" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                                <mat-label>Usos al día</mat-label>
+                                <input matInput type="number" min="0" max="255" step="1" [(ngModel)]="conjuro.usos_por_dia" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                            </mat-form-field>
+                            <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar ' + conjuro.nombre" (click)="quitarConjuro(conjuro.id)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                        <app-catalogo-buscador etiqueta="Añadir conjuro" [anadir]="true" [opciones]="conjurosOpciones"
+                            [excluir]="idsConjuros" (elegir)="anadirConjuro($event)">
+                        </app-catalogo-buscador>
+                    </div>
+                </section>
+
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Creación</h3>
+                    <div class="insercion-campos">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Coste (po)</mat-label>
+                            <input matInput type="number" min="0" step="0.01" formControlName="coste_creacion_po">
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Coste (PX)</mat-label>
+                            <input matInput type="number" min="0" step="1" formControlName="coste_creacion_px">
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Días</mat-label>
+                            <input matInput type="number" min="0" step="1" formControlName="dias_creacion">
+                        </mat-form-field>
+                        <mat-form-field appearance="fill" class="insercion-campos__entero">
+                            <mat-label>Otros requisitos</mat-label>
+                            <input matInput formControlName="requisitos_otros" maxlength="500" placeholder="El creador debe ser legal bueno">
+                            <mat-error *ngIf="form.controls.requisitos_otros.invalid">{{errorDe('requisitos_otros', 'Hasta 500 caracteres.')}}</mat-error>
+                        </mat-form-field>
+                    </div>
+                </section>
+
+                <app-equipo-magia [relaciones]="filas.relaciones" [errorRequisitos]="errorRequisitos"
+                    [errorModificadores]="avisoDe('modificadores')" (cambio)="alCambiar()">
+                </app-equipo-magia>
+            </div>
+
+            <!-- Paso 3: arma o armadura específica y genérico de un conjuro -->
+            <div class="insercion-paso" [hidden]="pasoActual !== 2" *ngIf="esObjeto">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Arma o armadura mágica específica</h3>
+                    <p class="objeto-nota">Con una base, el objeto es un arma o una armadura (o escudo) específica: su tipo debe ser el de las específicas.</p>
+                    <div class="insercion-campos">
+                        <div class="objeto-con-quitar insercion-campos__doble">
+                            <app-catalogo-buscador etiqueta="Arma base" placeholder="Ninguna" [opciones]="armas"
+                                [valor]="form.controls.id_arma_base.value" [error]="avisoDe('id_arma_base')"
+                                (elegir)="elegir('id_arma_base', $event)">
+                            </app-catalogo-buscador>
+                            <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_arma_base.value !== null"
+                                aria-label="Sin arma base" (click)="quitarSeleccion('id_arma_base')">
+                                <mat-icon>close</mat-icon>
+                            </button>
+                        </div>
+                        <div class="objeto-con-quitar insercion-campos__doble">
+                            <app-catalogo-buscador etiqueta="Armadura o escudo base" placeholder="Ninguna" [opciones]="armaduras"
+                                [valor]="form.controls.id_armadura_base.value" [error]="avisoDe('id_armadura_base')"
+                                (elegir)="elegir('id_armadura_base', $event)">
+                            </app-catalogo-buscador>
+                            <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_armadura_base.value !== null"
+                                aria-label="Sin armadura base" (click)="quitarSeleccion('id_armadura_base')">
+                                <mat-icon>close</mat-icon>
+                            </button>
+                        </div>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Mejora</mat-label>
+                            <input matInput type="number" min="0" max="10" step="1" formControlName="bonificador_mejora">
+                            <mat-error *ngIf="form.controls.bonificador_mejora.invalid">{{errorDe('bonificador_mejora', 'Entre 0 y 10.')}}</mat-error>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill" *ngIf="conArmaBase">
+                            <mat-label>Mejora de la segunda cabeza</mat-label>
+                            <input matInput type="number" min="0" max="10" step="1" formControlName="bonificador_mejora_2">
+                            <mat-hint>Solo en las armas dobles.</mat-hint>
+                            <mat-error *ngIf="form.controls.bonificador_mejora_2.invalid">{{errorDe('bonificador_mejora_2', 'Entre 0 y 10.')}}</mat-error>
+                        </mat-form-field>
+                        <div class="objeto-con-quitar insercion-campos__doble">
+                            <app-catalogo-buscador etiqueta="Material especial" placeholder="Ninguno" [opciones]="materiales"
+                                [valor]="form.controls.id_material.value" [error]="avisoDe('id_material')"
+                                (elegir)="elegir('id_material', $event)">
+                            </app-catalogo-buscador>
+                            <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_material.value !== null"
+                                aria-label="Sin material especial" (click)="quitarSeleccion('id_material')">
+                                <mat-icon>close</mat-icon>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="subpanel">
+                        <div class="subpanel-head"><span>Aptitudes especiales · {{filas.aptitudes.length}}</span></div>
+                        <p class="objeto-error" role="alert" *ngIf="avisoDe('encantamientos') as aviso">{{aviso}}</p>
+                        <div class="objeto-fila objeto-fila--aptitud" *ngFor="let aptitud of filas.aptitudes; trackBy: trackById">
+                            <span class="objeto-fila__nombre">{{aptitud.nombre}}</span>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                                <mat-label>Cabeza</mat-label>
+                                <mat-select [(ngModel)]="aptitud.cabeza" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                                    <mat-option [value]="1">Primera</mat-option>
+                                    <mat-option [value]="2">Segunda</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar ' + aptitud.nombre" (click)="quitarAptitud(aptitud.id)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                        <app-catalogo-buscador etiqueta="Añadir aptitud especial" [anadir]="true" [opciones]="aptitudes"
+                            [excluir]="idsAptitudes" [deshabilitado]="!conBase" [placeholder]="conBase ? '' : 'Antes, su base'"
+                            (elegir)="anadirAptitud($event)">
+                        </app-catalogo-buscador>
+                    </div>
+                </section>
+
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Genérico de un conjuro</h3>
+                    <p class="objeto-nota">Pociones, pergaminos, varitas…: un objeto por tipo, y el conjuro en el equipo del personaje. Precio = precio por nivel × nivel del conjuro × NL + el componente caro × sus usos.</p>
+                    <div class="insercion-campos">
+                        <div class="estado-row">
+                            <mat-chip-listbox class="boolean-chips" aria-label="Genérico de un conjuro">
+                                <mat-chip-option [selected]="esGenerico" (click)="alternar('es_generico_conjuro')">Es el genérico de un conjuro</mat-chip-option>
+                            </mat-chip-listbox>
+                        </div>
+                        <ng-container *ngIf="esGenerico">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Precio por nivel (po)</mat-label>
+                                <input matInput type="number" min="0" step="0.01" formControlName="precio_por_nivel_conjuro">
+                                <mat-error *ngIf="form.controls.precio_por_nivel_conjuro.invalid || problema?.campo === 'precio_por_nivel_conjuro'">{{errorDe('precio_por_nivel_conjuro', '0 o más.')}}</mat-error>
+                                <mat-hint class="objeto-error" *ngIf="avisoDe('precio_por_nivel_conjuro') as aviso">{{aviso}}</mat-hint>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Nivel de conjuro máximo</mat-label>
+                                <input matInput type="number" min="0" max="9" step="1" formControlName="nivel_conjuro_maximo">
+                                <mat-hint class="objeto-error" *ngIf="avisoDe('nivel_conjuro_maximo') as aviso">{{aviso}}</mat-hint>
+                                <mat-error *ngIf="form.controls.nivel_conjuro_maximo.invalid">{{errorDe('nivel_conjuro_maximo', 'Entre 0 y 9.')}}</mat-error>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Usos del componente caro</mat-label>
+                                <input matInput type="number" min="0" step="1" formControlName="usos_componente_caro">
+                            </mat-form-field>
+                        </ng-container>
+                    </div>
+                </section>
+            </div>
+
+            <button mat-stroked-button type="button" insercionPieSecundario *ngIf="edicion.editando" (click)="cerrar.emit()">Cancelar</button>
+        </app-insercion-marco>
+    </form>
+</div>

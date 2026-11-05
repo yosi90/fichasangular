@@ -1,15 +1,38 @@
 import { ArmaCuerpo, ArmaDetalle } from 'src/app/interfaces/arma';
 import { ArmaduraCuerpo, ArmaduraDetalle } from 'src/app/interfaces/armadura';
-import { EquipoCuerpoComun, OrigenDescripcion } from 'src/app/interfaces/equipo';
+import {
+    EncantamientoCuerpo,
+    EncantamientoDetalle,
+    EquipoCuerpoComun,
+    EquipoCuerpoComunSinManual,
+    MaterialCuerpo,
+    MaterialDetalle,
+    MunicionCuerpo,
+    MunicionDetalle,
+    OrigenDescripcion,
+    TextoEquipo,
+} from 'src/app/interfaces/equipo';
 import { toNullableText, toNumber, toNumberOrNull, toText } from './normalizacion';
+import {
+    ProblemaDeRelaciones,
+    RelacionesMagicas,
+    escuelasDelCuerpo,
+    modificadoresDelCuerpo,
+    problemaDeModificadores,
+    relacionesDeLectura,
+    relacionesVacias,
+    requisitosDelCuerpo,
+} from './relaciones-equipo-formulario';
 
 /**
  * El formulario de «Insertar/Modificar arma» y «Insertar/Modificar armadura» (`nuevo-equipo`, hito 7 del roadmap de
  * inserciones): los valores de sus controles a partir del `GET` de la entrada y el cuerpo de `POST …/add` y
  * `PUT …/<id>` a partir de los controles. Comprueba antes de mandar lo mismo que la API (`docs/publica/endpoints/
- * catalogos.md`, «Armas» y «Armaduras»), para avisar en su campo.
+ * catalogos.md`, «Armas» y «Armaduras»), para avisar en su campo. Desde la segunda parte del hito 7 (2026-11-05), también
+ * la munición, los materiales especiales y las aptitudes especiales de armas y armaduras («Alta y edición de munición,
+ * materiales…»), que comparten con ellas el nombre, el manual y la descripción.
  */
-export type TipoEquipoEditable = 'arma' | 'armadura';
+export type TipoEquipoEditable = 'arma' | 'armadura' | 'municion' | 'material' | 'encantamiento';
 
 /** Los valores de los controles (los dos tipos en un mismo formulario; cada uno manda los suyos). */
 export interface ValoresEquipo {
@@ -55,6 +78,63 @@ export interface ValoresEquipo {
     tiempo_poner: string;
     tiempo_poner_rapido: string;
     tiempo_quitar: string;
+    // Munición: el precio y el peso son de un lote de tantas piezas.
+    cantidad_por_precio: number | null;
+    // Material especial.
+    dureza: number | null;
+    pg_por_pulgada: number | null;
+    cuenta_como_gran_calidad: boolean;
+    supera_rd: boolean;
+    peso_multiplicador: number | null;
+    bon_des_mas: number | null;
+    penalizador_menos: number | null;
+    fallo_arcano_menos: number | null;
+    categoria_mas_ligera: boolean;
+    dano_mod: number | null;
+    // Aptitud especial.
+    modificador: number | null;
+    coste: number | null;
+    aplica_arma_cc: boolean;
+    aplica_arma_distancia: boolean;
+    aplica_municion: boolean;
+    aplica_armadura: boolean;
+    aplica_escudo: boolean;
+    nivel_lanzador: number | null;
+    id_intensidad_aura: number | null;
+    id_encantamiento_base: number | null;
+    es_plantilla: boolean;
+}
+
+/** Un coste de un material según a qué se aplica (armadura ligera, +1.000 po). */
+export interface FilaCosteMaterial {
+    uid: string;
+    id_aplicacion: number | null;
+    coste: number | null;
+    coste_por_libra: number | null;
+    multiplicador_precio: number | null;
+    coste_encantar: number | null;
+}
+
+/** Un daño que suma una aptitud (llameante, 1d6 de fuego), con su condición. */
+export interface FilaDanoAptitud {
+    uid: string;
+    dados: string;
+    id_tipo_dano: number | null;
+    condicion: string;
+}
+
+/** Lo que no son controles del formulario: las filas repetibles de cada tipo. */
+export interface FilasDeEquipo {
+    propiedades: FilaPropiedadArma[];
+    costes: FilaCosteMaterial[];
+    danos: FilaDanoAptitud[];
+    /** Los tipos de daño que la aptitud pide al arma (afilada: cortante o perforante). */
+    tiposDano: number[];
+    relaciones: RelacionesMagicas;
+}
+
+export function filasVacias(): FilasDeEquipo {
+    return { propiedades: [], costes: [], danos: [], tiposDano: [], relaciones: relacionesVacias() };
 }
 
 /** Una propiedad del arma en su fila: «Desarmar» con su bonificador (`valor`), o sin cifra. */
@@ -65,7 +145,7 @@ export interface FilaPropiedadArma {
 }
 
 /** Lo que se manda de una entrada: el cuerpo de la API y, del arma, sus propiedades. */
-export type CuerpoDeEquipo = ArmaCuerpo | ArmaduraCuerpo;
+export type CuerpoDeEquipo = ArmaCuerpo | ArmaduraCuerpo | MunicionCuerpo | MaterialCuerpo | EncantamientoCuerpo;
 
 /** El formulario vacío: un arma o una armadura nueva, oficial, Mediana y sin material especial. */
 export function valoresVacios(idTamanoMediano: number | null = null): ValoresEquipo {
@@ -78,6 +158,26 @@ export function valoresVacios(idTamanoMediano: number | null = null): ValoresEqu
         es_escudo: false, ca: null, bon_des: null, penalizador: 0, id_peso_armadura: null, id_tipo_escudo: null,
         fallo_arcano: 0, velocidad_30: null, velocidad_20: null, correr_multiplicador: null,
         tiempo_poner: '', tiempo_poner_rapido: '', tiempo_quitar: '',
+        cantidad_por_precio: null,
+        dureza: null, pg_por_pulgada: null, cuenta_como_gran_calidad: false, supera_rd: false, peso_multiplicador: null,
+        bon_des_mas: null, penalizador_menos: null, fallo_arcano_menos: null, categoria_mas_ligera: false, dano_mod: null,
+        modificador: 0, coste: 0, aplica_arma_cc: false, aplica_arma_distancia: false, aplica_municion: false,
+        aplica_armadura: false, aplica_escudo: false, nivel_lanzador: null, id_intensidad_aura: null,
+        id_encantamiento_base: null, es_plantilla: false,
+    };
+}
+
+/** El nombre, la descripción con su origen, el nombre original, el manual y si es oficial, de cualquier entrada. */
+function textosDe(entrada: TextoEquipo & { Nombre: string; Oficial: boolean; }): Partial<ValoresEquipo> {
+    return {
+        nombre: entrada.Nombre ?? '',
+        descripcion: entrada.Descripcion ?? '',
+        origen_descripcion: entrada.Origen_descripcion === 'srd' ? 'srd' : 'propia',
+        nombre_original: entrada.Nombre_original ?? '',
+        traducido: entrada.Traducido === true,
+        id_manual: toNumberOrNull(entrada.Manual?.Id),
+        pagina: toNumberOrNull(entrada.Manual?.Pagina),
+        oficial: entrada.Oficial === true,
     };
 }
 
@@ -144,6 +244,76 @@ export function valoresDeArmadura(armadura: ArmaduraDetalle): ValoresEquipo {
     };
 }
 
+export function valoresDeMunicion(municion: MunicionDetalle): ValoresEquipo {
+    return {
+        ...valoresVacios(),
+        ...textosDe(municion),
+        precio: toNumberOrNull(municion.Precio),
+        peso: toNumberOrNull(municion.Peso),
+        cantidad_por_precio: toNumberOrNull(municion.Cantidad_por_precio),
+    };
+}
+
+export function valoresDeMaterial(material: MaterialDetalle): ValoresEquipo {
+    const efectos = material.Efectos;
+    return {
+        ...valoresVacios(),
+        ...textosDe(material),
+        dureza: toNumberOrNull(material.Dureza),
+        pg_por_pulgada: toNumberOrNull(material.Pg_por_pulgada),
+        cuenta_como_gran_calidad: material.Cuenta_como_gran_calidad === true,
+        supera_rd: material.Supera_rd === true,
+        peso_multiplicador: toNumberOrNull(efectos?.Peso_multiplicador),
+        bon_des_mas: toNumberOrNull(efectos?.Bon_des_mas),
+        penalizador_menos: toNumberOrNull(efectos?.Penalizador_menos),
+        fallo_arcano_menos: toNumberOrNull(efectos?.Fallo_arcano_menos),
+        categoria_mas_ligera: efectos?.Categoria_mas_ligera === true,
+        dano_mod: toNumberOrNull(efectos?.Dano_mod),
+    };
+}
+
+export function costesDeMaterial(material: MaterialDetalle, uid: () => string): FilaCosteMaterial[] {
+    return (material.Costes ?? []).map((coste) => ({
+        uid: uid(),
+        id_aplicacion: toNumberOrNull(coste.Aplicacion?.Id),
+        coste: toNumberOrNull(coste.Coste),
+        coste_por_libra: toNumberOrNull(coste.Coste_por_libra),
+        multiplicador_precio: toNumberOrNull(coste.Multiplicador_precio),
+        coste_encantar: toNumberOrNull(coste.Coste_encantar),
+    }));
+}
+
+export function valoresDeEncantamiento(encantamiento: EncantamientoDetalle): ValoresEquipo {
+    const aplica = encantamiento.Aplica_a;
+    return {
+        ...valoresVacios(),
+        ...textosDe(encantamiento),
+        modificador: toNumberOrNull(encantamiento.Modificador),
+        coste: toNumberOrNull(encantamiento.Coste),
+        aplica_arma_cc: aplica?.Arma_cuerpo_a_cuerpo === true,
+        aplica_arma_distancia: aplica?.Arma_a_distancia === true,
+        aplica_municion: aplica?.Municion === true,
+        aplica_armadura: aplica?.Armadura === true,
+        aplica_escudo: aplica?.Escudo === true,
+        nivel_lanzador: toNumberOrNull(encantamiento.Nivel_lanzador),
+        id_intensidad_aura: toNumberOrNull(encantamiento.Aura?.Intensidad?.Id),
+        id_encantamiento_base: toNumberOrNull(encantamiento.Encantamiento_base?.Id),
+        es_plantilla: encantamiento.Es_plantilla === true,
+    };
+}
+
+/** Las filas de una aptitud: sus daños, los tipos de daño que pide y su aura, requisitos y modificadores. */
+export function filasDeEncantamiento(encantamiento: EncantamientoDetalle, uid: () => string): FilasDeEquipo {
+    return {
+        ...filasVacias(),
+        danos: (encantamiento.Danos ?? []).map((dano) => ({
+            uid: uid(), dados: toText(dano.Dados), id_tipo_dano: toNumberOrNull(dano.Tipo_dano?.Id), condicion: toText(dano.Condicion),
+        })),
+        tiposDano: (encantamiento.Tipos_dano_requeridos ?? []).map((tipo) => toNumber(tipo.Id)),
+        relaciones: relacionesDeLectura(encantamiento.Aura, encantamiento.Requisitos, encantamiento.Modificadores, uid),
+    };
+}
+
 function comunesDelCuerpo(v: ValoresEquipo): EquipoCuerpoComun {
     return {
         nombre: toText(v.nombre).trim(),
@@ -154,6 +324,77 @@ function comunesDelCuerpo(v: ValoresEquipo): EquipoCuerpoComun {
         id_manual: toNumber(v.id_manual),
         pagina: toNumber(v.pagina),
         oficial: v.oficial === true,
+    };
+}
+
+/** Lo común con el manual y la página que pueden faltar (la munición y los materiales). */
+function comunesSinManualDelCuerpo(v: ValoresEquipo): EquipoCuerpoComunSinManual {
+    return { ...comunesDelCuerpo(v), id_manual: toNumberOrNull(v.id_manual), pagina: toNumberOrNull(v.pagina) };
+}
+
+export function cuerpoDeMunicion(v: ValoresEquipo): MunicionCuerpo {
+    return {
+        municion: {
+            ...comunesSinManualDelCuerpo(v),
+            precio: toNumberOrNull(v.precio),
+            cantidad_por_precio: toNumberOrNull(v.cantidad_por_precio),
+            peso: toNumberOrNull(v.peso),
+        },
+    };
+}
+
+export function cuerpoDeMaterial(v: ValoresEquipo, costes: readonly FilaCosteMaterial[]): MaterialCuerpo {
+    return {
+        material: {
+            ...comunesSinManualDelCuerpo(v),
+            dureza: toNumberOrNull(v.dureza),
+            pg_por_pulgada: toNumberOrNull(v.pg_por_pulgada),
+            cuenta_como_gran_calidad: v.cuenta_como_gran_calidad === true,
+            supera_rd: v.supera_rd === true,
+            peso_multiplicador: toNumberOrNull(v.peso_multiplicador),
+            bon_des_mas: toNumberOrNull(v.bon_des_mas),
+            penalizador_menos: toNumberOrNull(v.penalizador_menos),
+            fallo_arcano_menos: toNumberOrNull(v.fallo_arcano_menos),
+            categoria_mas_ligera: v.categoria_mas_ligera === true,
+            dano_mod: toNumberOrNull(v.dano_mod),
+        },
+        costes: costes
+            .filter((fila) => toNumber(fila.id_aplicacion) > 0)
+            .map((fila) => ({
+                id_aplicacion: toNumber(fila.id_aplicacion),
+                coste: toNumberOrNull(fila.coste),
+                coste_por_libra: toNumberOrNull(fila.coste_por_libra),
+                multiplicador_precio: toNumberOrNull(fila.multiplicador_precio),
+                coste_encantar: toNumberOrNull(fila.coste_encantar),
+            })),
+    };
+}
+
+export function cuerpoDeEncantamiento(v: ValoresEquipo, filas: FilasDeEquipo): EncantamientoCuerpo {
+    return {
+        encantamiento: {
+            ...comunesDelCuerpo(v),
+            modificador: toNumber(v.modificador),
+            coste: toNumber(v.coste),
+            aplica_arma_cc: v.aplica_arma_cc === true,
+            aplica_arma_distancia: v.aplica_arma_distancia === true,
+            aplica_municion: v.aplica_municion === true,
+            aplica_armadura: v.aplica_armadura === true,
+            aplica_escudo: v.aplica_escudo === true,
+            nivel_lanzador: toNumberOrNull(v.nivel_lanzador),
+            id_intensidad_aura: toNumberOrNull(v.id_intensidad_aura),
+            id_encantamiento_base: toNumberOrNull(v.id_encantamiento_base),
+            es_plantilla: v.es_plantilla === true,
+        },
+        aura_escuelas: escuelasDelCuerpo(filas.relaciones),
+        tipos_dano: [...filas.tiposDano],
+        requisitos: requisitosDelCuerpo(filas.relaciones),
+        danos: filas.danos.map((dano) => ({
+            dados: toText(dano.dados).trim(),
+            id_tipo_dano: toNumberOrNull(dano.id_tipo_dano),
+            condicion: toNullableText(dano.condicion),
+        })),
+        modificadores: modificadoresDelCuerpo(filas.relaciones.modificadores),
     };
 }
 
@@ -226,7 +467,7 @@ export const DANO_VALIDO = new RegExp(`^${DADO}(?:/${DADO})?$`);
 
 /** Un problema del formulario, con el campo (la clave del cuerpo) en el que se enseña. */
 export interface ProblemaDeEquipo {
-    campo: keyof ValoresEquipo | 'propiedades';
+    campo: keyof ValoresEquipo | 'propiedades' | 'costes' | 'danos' | 'modificadores';
     mensaje: string;
 }
 
@@ -267,12 +508,42 @@ export function problemaDeArmadura(v: ValoresEquipo): ProblemaDeEquipo | null {
     return null;
 }
 
+/** Un material lleva un coste por aplicación (la API rechaza una repetida). */
+export function problemaDeMaterial(costes: readonly FilaCosteMaterial[]): ProblemaDeEquipo | null {
+    const ids = costes.map((fila) => toNumber(fila.id_aplicacion)).filter((id) => id > 0);
+    if (new Set(ids).size !== ids.length)
+        return { campo: 'costes', mensaje: 'Una aplicación está repetida: un coste por aplicación.' };
+    if (costes.some((fila) => toNumber(fila.id_aplicacion) <= 0))
+        return { campo: 'costes', mensaje: 'Cada coste lleva su aplicación.' };
+    return null;
+}
+
+/** Los daños de una aptitud llevan sus dados; los modificadores, su objetivo, tipo y cifra. */
+export function problemaDeEncantamiento(filas: FilasDeEquipo): ProblemaDeEquipo | null {
+    if (filas.danos.some((dano) => toText(dano.dados).trim().length < 1))
+        return { campo: 'danos', mensaje: 'Cada daño lleva sus dados («1d6»).' };
+    const modificadores: ProblemaDeRelaciones | null = problemaDeModificadores(filas.relaciones.modificadores);
+    return modificadores ? { campo: 'modificadores', mensaje: modificadores.mensaje } : null;
+}
+
 /** El problema del formulario de un tipo antes de mandarlo, o `null`. */
-export function problemaDeEquipo(tipo: TipoEquipoEditable, v: ValoresEquipo, propiedades: readonly FilaPropiedadArma[]): ProblemaDeEquipo | null {
-    return tipo === 'arma' ? problemaDeArma(v, propiedades) : problemaDeArmadura(v);
+export function problemaDeEquipo(tipo: TipoEquipoEditable, v: ValoresEquipo, filas: FilasDeEquipo): ProblemaDeEquipo | null {
+    switch (tipo) {
+        case 'arma': return problemaDeArma(v, filas.propiedades);
+        case 'armadura': return problemaDeArmadura(v);
+        case 'material': return problemaDeMaterial(filas.costes);
+        case 'encantamiento': return problemaDeEncantamiento(filas);
+        case 'municion': return null;
+    }
 }
 
 /** El cuerpo de un tipo. */
-export function cuerpoDeEquipo(tipo: TipoEquipoEditable, v: ValoresEquipo, propiedades: readonly FilaPropiedadArma[]): CuerpoDeEquipo {
-    return tipo === 'arma' ? cuerpoDeArma(v, propiedades) : cuerpoDeArmadura(v);
+export function cuerpoDeEquipo(tipo: TipoEquipoEditable, v: ValoresEquipo, filas: FilasDeEquipo): CuerpoDeEquipo {
+    switch (tipo) {
+        case 'arma': return cuerpoDeArma(v, filas.propiedades);
+        case 'armadura': return cuerpoDeArmadura(v);
+        case 'municion': return cuerpoDeMunicion(v);
+        case 'material': return cuerpoDeMaterial(v, filas.costes);
+        case 'encantamiento': return cuerpoDeEncantamiento(v, filas);
+    }
 }

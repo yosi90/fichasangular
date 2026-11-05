@@ -1,0 +1,85 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Crear y modificar objetos y conjuntos de objetos, dentro del marco común de las inserciones (guía de inserciones, «El
+// equipo»). El objeto, por pasos; el conjunto, sin ellos. Aquí solo van las filas repetibles y el buscador de piezas.
+:host
+    @include inserciones.insercion-host
+
+.nuevo-objeto-shell
+    @include inserciones.insercion-shell
+
+.nuevo-objeto-form
+    @include inserciones.insercion-form-base
+
+    mat-form-field, app-catalogo-buscador
+        width: 100%
+
+    .insercion-tarjeta + .insercion-tarjeta
+        margin-top: 12px
+
+    .subpanel
+        margin-top: 12px
+
+.objeto-con-quitar
+    display: flex
+    align-items: flex-start
+    gap: 4px
+
+    app-catalogo-buscador
+        flex: 1 1 auto
+        min-width: 0
+
+    .row-action-btn
+        margin-top: 8px
+
+.objeto-fila
+    display: grid
+    gap: 8px
+    align-items: center
+    padding-bottom: 6px
+    margin-bottom: 6px
+    border-bottom: 1px solid rgba(255, 255, 255, .06)
+
+.objeto-fila--activacion
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 42px
+
+.objeto-fila--conjuro
+    grid-template-columns: minmax(0, 2fr) repeat(3, 92px) 42px
+
+    @container insercion (max-width: 520px)
+        grid-template-columns: minmax(0, 1fr) 42px
+
+.objeto-fila--aptitud
+    grid-template-columns: minmax(0, 1fr) 140px 42px
+
+.objeto-fila--bonificacion
+    grid-template-columns: 92px minmax(0, 1fr) 42px
+
+.objeto-fila__nombre
+    font-size: 14px
+    color: $ficha-blanco
+    overflow-wrap: anywhere
+
+.objeto-buscar-pieza
+    margin-top: 8px
+
+.objeto-nota
+    margin: 0 0 8px
+    font-size: 13px
+    color: $ficha-texto-suave
+
+.objeto-vacio
+    margin: 0 0 8px
+    padding: 12px
+    border: 1px dashed rgba(255, 255, 255, .22)
+    border-radius: $ficha-radio
+    font-size: 13px
+    color: $ficha-texto-suave
+    text-align: center
+
+.objeto-error
+    margin: 0 0 8px
+    font-size: 13px
+    color: var(--mat-form-field-error-text-color, #f44336)
