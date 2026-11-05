@@ -17,14 +17,14 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserService } from 'src/app/services/user.service';
 import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { opcionesDeExtrasDeDote } from 'src/app/services/utils/dote-mapper';
-import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionDeHabilidad, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import { CAMPOS_VELOCIDAD } from 'src/app/services/utils/movimientos-mapper';
 import { SUBTIPO } from 'src/app/services/utils/nombres-de-catalogo';
-import { toInt, toText } from 'src/app/services/utils/normalizacion';
+import { toInt } from 'src/app/services/utils/normalizacion';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { CARACTERISTICAS_PLANTILLA } from 'src/app/services/utils/plantilla-formulario';
 import {
-    COMBATE_SUBTIPO, FilaDoteSubtipo, FilaHabilidadSubtipo, FilaSortilegaSubtipo, ListasSubtipo, TEXTOS_SUBTIPO, ValoresSubtipo,
+    COMBATE_SUBTIPO, FilaDoteSubtipo, FilaHabilidadCustomSubtipo, FilaHabilidadSubtipo, FilaSortilegaSubtipo, ListasSubtipo, TEXTOS_SUBTIPO, ValoresSubtipo,
     cuerpoDeSubtipo, listasDeSubtipo, listasVaciasDeSubtipo, valoresDeSubtipo, valoresVaciosDeSubtipo,
 } from 'src/app/services/utils/subtipo-formulario';
 import { OpcionCatalogo, opcionesDeCatalogo, opcionesPorId } from '../catalogo-buscador/catalogo-buscador.component';
@@ -36,7 +36,7 @@ import { alternarControl, elegirEnControl, uidDeFila, vaciarControl } from '../i
 import { FilaDeLista, anadirALista } from '../lista-de-catalogo/lista-de-catalogo.component';
 
 type ListaDeIds = 'idiomas' | 'rasgos' | 'plantillas';
-type ListaConFilas = 'dotes' | 'habilidades' | 'sortilegas';
+type ListaConFilas = 'dotes' | 'habilidades' | 'habilidades_custom' | 'sortilegas';
 
 const PASOS = ['Identidad', 'Modificadores', 'Lo que da'];
 
@@ -58,6 +58,7 @@ const CAMPOS: CamposDeFormulario = {
     plantillas: { etiqueta: 'Plantillas', paso: 2 },
     dotes: { etiqueta: 'Dotes', paso: 2 },
     habilidades: { etiqueta: 'Habilidades', paso: 2 },
+    habilidades_custom: { etiqueta: 'Habilidades personalizadas', paso: 2 },
     sortilegas: { etiqueta: 'Aptitudes sortílegas', paso: 2 },
 };
 
@@ -65,7 +66,7 @@ const CAMPOS: CamposDeFormulario = {
  * «Insertar/Modificar subtipo» (hito 9 del roadmap de inserciones), por pasos como la plantilla: **Identidad** (nombre,
  * manual, alineamiento, si se hereda y la descripción), **Modificadores** (características con su mínimo, combate, los
  * textos que modifica y el movimiento) y **Lo que da** (idiomas, rasgos, las plantillas que trae a las razas, dotes,
- * habilidades y aptitudes sortílegas). Las habilidades personalizadas no se editan: la API las conserva.
+ * habilidades, habilidades personalizadas —con su «Nueva personalizada», como la raza y la racial— y aptitudes sortílegas).
  */
 @Component({
     selector: 'app-nuevo-subtipo',
@@ -97,13 +98,13 @@ export class NuevoSubtipoComponent implements OnInit, OnDestroy, OnChanges, Edit
     alineamientos: OpcionCatalogo[] = [];
     maniobrabilidades: OpcionCatalogo[] = [];
     opciones: Record<ListaDeIds | ListaConFilas, OpcionCatalogo[]> = {
-        idiomas: [], rasgos: [], plantillas: [], dotes: [], habilidades: [], sortilegas: [],
+        idiomas: [], rasgos: [], plantillas: [], dotes: [], habilidades: [], habilidades_custom: [], sortilegas: [],
     };
     private dotes: Dote[] = [];
     private habilidades: HabilidadBasicaDetalle[] = [];
     listas: ListasSubtipo = listasVaciasDeSubtipo();
-    /** Las habilidades personalizadas del subtipo cargado: se enseñan, pero no se editan (la API las conserva). */
-    personalizadas: string[] = [];
+    /** «Nueva personalizada»: el modal de `<app-habilidad-custom-modal>`; la que crea se añade a la lista. */
+    customModalAbierto = false;
 
     readonly form: FormGroup<Record<keyof ValoresSubtipo, FormControl>>;
 
@@ -219,6 +220,8 @@ export class NuevoSubtipoComponent implements OnInit, OnDestroy, OnChanges, Edit
                 return { ...base, id_extra: -1 } as FilaDoteSubtipo;
             if (lista === 'habilidades')
                 return { ...base, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, cantidad: 0, varios: '' } as FilaHabilidadSubtipo;
+            if (lista === 'habilidades_custom')
+                return { ...base, cantidad: 0 } as FilaHabilidadCustomSubtipo;
             return { ...base, nivel_lanzador: 1, usos_diarios: '' } as FilaSortilegaSubtipo;
         };
         // Una dote puede ir dos veces con extras distintos (la API rechaza la misma dote con el mismo extra).
@@ -235,6 +238,17 @@ export class NuevoSubtipoComponent implements OnInit, OnDestroy, OnChanges, Edit
     alCambiarFila(): void {
         this.listas = { ...this.listas };
         this.errores.seguirCambios();
+    }
+
+    /** La personalizada que acaba de crear el modal: entra en las opciones (si la caché aún no la trae) y en la lista. */
+    alCrearPersonalizada(habilidad: HabilidadBasicaDetalle): void {
+        this.customModalAbierto = false;
+        const opcion = opcionDeHabilidad(habilidad);
+        if (opcion.id <= 0)
+            return;
+        if (!this.opciones.habilidades_custom.some((item) => item.id === opcion.id))
+            this.opciones = { ...this.opciones, habilidades_custom: [...this.opciones.habilidades_custom, opcion] };
+        this.anadirFila('habilidades_custom', opcion.id);
     }
 
     extrasDote(fila: FilaDeLista): OpcionCatalogo[] {
@@ -295,15 +309,12 @@ export class NuevoSubtipoComponent implements OnInit, OnDestroy, OnChanges, Edit
         this.errores.limpiar();
         this.form.reset(valoresDeSubtipo(subtipo) as any, { emitEvent: false });
         this.listas = listasDeSubtipo(subtipo, () => uidDeFila('subtipo'));
-        this.personalizadas = (subtipo.Habilidades?.Custom ?? []).map((habilidad) =>
-            `${toText(habilidad.Habilidad)} ${toInt(habilidad.Cantidad) >= 0 ? '+' : ''}${toInt(habilidad.Cantidad)}`);
         this.edicion.tomarPuntoDePartida();
     }
 
     private reiniciar(): void {
         this.form.reset(valoresVaciosDeSubtipo() as any, { emitEvent: false });
         this.listas = listasVaciasDeSubtipo();
-        this.personalizadas = [];
         this.pasoActual = 0;
         this.edicion.olvidar();
     }
@@ -327,8 +338,9 @@ export class NuevoSubtipoComponent implements OnInit, OnDestroy, OnChanges, Edit
         });
         cargar(this.habilidadSvc.getHabilidades(), (items) => {
             this.habilidades = items ?? [];
-            enOpciones('habilidades', opcionesDeCatalogo(items, (item) => ({ id: toInt(item.Id_habilidad), nombre: toText(item.Nombre) })));
+            enOpciones('habilidades', opcionesDeCatalogo(items, opcionDeHabilidad));
         });
+        cargar(this.habilidadSvc.getHabilidadesCustom(), (items) => enOpciones('habilidades_custom', opcionesDeCatalogo(items, opcionDeHabilidad)));
     }
 
     private actualizarPermisos(): void {

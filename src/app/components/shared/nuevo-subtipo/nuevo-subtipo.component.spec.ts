@@ -51,7 +51,12 @@ describe('NuevoSubtipoComponent', () => {
                         getDotes: () => of([{ Id: 10, Nombre: 'Soltura con un arma', Extras_disponibles: { Armas: [{ Id: 3, Nombre: 'Espada larga' }] } }]),
                     },
                 },
-                { provide: HabilidadService, useValue: { getHabilidades: () => of([{ Id_habilidad: 5, Nombre: 'Avistar', Extras: [] }]) } },
+                {
+                    provide: HabilidadService, useValue: {
+                        getHabilidades: () => of([{ Id_habilidad: 5, Nombre: 'Avistar', Extras: [] }]),
+                        getHabilidadesCustom: () => of([{ Id_habilidad: 2, Nombre: 'Autohipnosis' }]),
+                    },
+                },
                 {
                     provide: UserService, useValue: {
                         acl$: of({}), isLoggedIn$: of(true), can: (recurso: string) => puede && recurso === 'subtipos',
@@ -96,6 +101,9 @@ describe('NuevoSubtipoComponent', () => {
         component.anadirFila('dotes', 10);
         (component.listas.dotes[1] as any).id_extra = 3;
         component.anadirFila('habilidades', 5);
+        component.anadirFila('habilidades_custom', 2);
+        component.anadirFila('habilidades_custom', 2);
+        (component.listas.habilidades_custom[0] as any).cantidad = 4;
         component.anadirFila('sortilegas', 20);
 
         await component.guardar();
@@ -106,11 +114,12 @@ describe('NuevoSubtipoComponent', () => {
         expect(cuerpo.rasgos).toEqual([1]);
         expect(cuerpo.dotes).toEqual([{ id_dote: 10, id_extra: -1 }, { id_dote: 10, id_extra: 3 }]);
         expect(cuerpo.habilidades).toEqual([{ id_habilidad: 5, id_extra: -1, cantidad: 0, varios: null }]);
+        expect(cuerpo.habilidades_custom).toEqual([{ id_habilidad: 2, cantidad: 4 }]);
         expect(cuerpo.sortilegas).toEqual([{ id_conjuro: 20, nivel_lanzador: 1, usos_diarios: null }]);
         expect(component.listas.dotes).toEqual([]);
     });
 
-    it('lo que da: sin extra (la API lo da `null`) vuelve como -1, y las habilidades personalizadas se nombran sin editarse', async () => {
+    it('lo que da: sin extra (la API lo da `null`) vuelve como -1, y las habilidades personalizadas vuelven con su bono', async () => {
         await montar('editar', {
             Id: 88, Nombre: 'Subtipo de prueba', Descripcion: '', Manual: { Id: 47, Nombre: 'Manual de monstruos 1', Pagina: 1 },
             Heredada: true, Oficial: false, Alineamiento: { Id: 2 }, Maniobrabilidad: null, Movimientos: { Nadar: 30 },
@@ -130,7 +139,23 @@ describe('NuevoSubtipoComponent', () => {
         expect(cuerpo.habilidades).toEqual([{ id_habilidad: 5, id_extra: -1, cantidad: 8, varios: null }]);
         expect(cuerpo.sortilegas).toEqual([{ id_conjuro: 20, nivel_lanzador: 5, usos_diarios: '1/día' }]);
         expect(cuerpo.subtipo).toEqual(jasmine.objectContaining({ nadar: 30, voluntad: 2, rd: '5/plata', ca: null, id_maniobrabilidad: null }));
-        expect(component.personalizadas).toEqual(['Autohipnosis +2']);
+        expect(cuerpo.habilidades_custom).toEqual([{ id_habilidad: 2, cantidad: 2 }]);
+        expect(component.listas.habilidades_custom.map((fila) => fila.nombre)).toEqual(['Autohipnosis']);
+
+        component.quitarFila('habilidades_custom', component.listas.habilidades_custom[0]);
+        expect(component.cuerpo().habilidades_custom).toEqual([]);
+        expect(component.edicion.hayCambios).toBeTrue();
+    });
+
+    it('«Nueva habilidad personalizada»: la que crea el modal entra en las opciones y en la lista', async () => {
+        await montar();
+        component.customModalAbierto = true;
+
+        component.alCrearPersonalizada({ Id_habilidad: 9, Nombre: 'Navegar estrellas' } as any);
+
+        expect(component.customModalAbierto).toBeFalse();
+        expect(component.opciones.habilidades_custom.map((opcion) => opcion.id)).toEqual([2, 9]);
+        expect(component.cuerpo().habilidades_custom).toEqual([{ id_habilidad: 9, cantidad: 0 }]);
     });
 
     it('el error de un campo de la API salta a su paso', async () => {

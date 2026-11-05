@@ -21,7 +21,7 @@ import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamien
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { opcionesDeExtrasDeDote } from 'src/app/services/utils/dote-mapper';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
-import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionDeHabilidad, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import { CAMPOS_VELOCIDAD } from 'src/app/services/utils/movimientos-mapper';
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
 import {
@@ -621,7 +621,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         });
         suscribir(this.habilidadSvc.getHabilidades(), (items) => {
             this.habilidades = items ?? [];
-            this.habilidadesOpciones = opcionesDeCatalogo(items, (item) => ({ id: toInt(item.Id_habilidad), nombre: toText(item.Nombre) }))
+            this.habilidadesOpciones = opcionesDeCatalogo(items, opcionDeHabilidad)
                 .filter((item) => item.id > 0);
         });
         // No hay catálogo de pasos de modificación en el contrato: salen de los que ya usan las plantillas, más el 0

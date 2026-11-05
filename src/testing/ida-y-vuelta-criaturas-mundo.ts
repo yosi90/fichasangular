@@ -11151,6 +11151,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -11276,6 +11277,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [
      4,
      5,
@@ -11486,6 +11488,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [
      7
     ],
@@ -11621,6 +11624,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -11746,6 +11750,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -11880,6 +11885,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -12005,6 +12011,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -12139,6 +12146,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -12264,6 +12272,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -12433,6 +12442,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -12595,6 +12605,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -12729,6 +12740,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -12863,6 +12875,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -12997,6 +13010,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -13152,6 +13166,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -13277,6 +13292,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -13418,6 +13434,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -13559,6 +13576,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -13728,6 +13746,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -13862,6 +13881,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -13996,6 +14016,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -14121,6 +14142,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -14255,6 +14277,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -14380,6 +14403,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -14535,6 +14559,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -14660,6 +14685,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [
      19
     ],
@@ -14795,6 +14821,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -14920,6 +14947,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -15045,6 +15073,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -15170,6 +15199,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -15295,6 +15325,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -15420,6 +15451,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -15545,6 +15577,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -15670,6 +15703,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -15795,6 +15829,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [
@@ -15929,6 +15964,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -16054,6 +16090,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -16179,6 +16216,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
@@ -16304,6 +16342,7 @@ export const IDA_Y_VUELTA_CRIATURAS_MUNDO: {
    "cuerpo": {
     "dotes": [],
     "habilidades": [],
+    "habilidades_custom": [],
     "idiomas": [],
     "plantillas": [],
     "rasgos": [],
