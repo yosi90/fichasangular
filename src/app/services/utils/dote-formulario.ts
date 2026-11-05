@@ -15,8 +15,8 @@ export interface HabilidadOtorgadaFila {
     id_habilidad: number;
     id_extra: number;
     rangos: number;
-    /** De `habilidades_custom` (la dote lo dice al cargarla; si no, el formulario lo deduce del catálogo). */
-    custom?: boolean;
+    /** De `habilidades_custom` (`Custom` de la dote al cargarla; al elegirla, el catálogo de la opción). El id solo no lo dice. */
+    custom: boolean;
 }
 
 export interface ModificadorFila {

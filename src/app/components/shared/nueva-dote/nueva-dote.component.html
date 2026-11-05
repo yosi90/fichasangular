@@ -231,23 +231,23 @@
                         </div>
 
                         <div class="skill-grid row" *ngFor="let row of habilidadesOtorgadasEditor; let i = index">
-                            <mat-form-field appearance="fill" class="skill-habilidad" [class.skill-habilidad--expand]="!habilidadPermiteExtra(row.id_habilidad)">
+                            <mat-form-field appearance="fill" class="skill-habilidad" [class.skill-habilidad--expand]="!habilidadPermiteExtra(row)">
                                 <mat-label>Habilidad</mat-label>
-                                <mat-select [value]="row.id_habilidad" (selectionChange)="onHabilidadOtorgadaChange(i, { id_habilidad: $event.value, id_extra: sinExtraHabilidad })">
-                                    <mat-option [value]="0">Sin habilidad</mat-option>
-                                    <mat-option *ngFor="let habilidad of habilidadesOtorgadasCatalogo" [value]="habilidad.Id_habilidad">
-                                        {{habilidad.Nombre}}{{esHabilidadCustom(habilidad.Id_habilidad) ? ' (custom)' : ''}}
+                                <mat-select [value]="claveHabilidadOtorgada(row)" (selectionChange)="seleccionarHabilidadOtorgada(i, $event.value)">
+                                    <mat-option [value]="claveSinHabilidad">Sin habilidad</mat-option>
+                                    <mat-option *ngFor="let opcion of opcionesHabilidadesOtorgadas" [value]="opcion.clave">
+                                        {{opcion.habilidad.Nombre}}{{opcion.custom ? ' (custom)' : ''}}
                                     </mat-option>
                                 </mat-select>
                             </mat-form-field>
 
-                            <mat-form-field appearance="fill" *ngIf="habilidadPermiteExtra(row.id_habilidad)">
+                            <mat-form-field appearance="fill" *ngIf="habilidadPermiteExtra(row)">
                                 <mat-label>Extra</mat-label>
                                 <mat-select
                                     [value]="row.id_extra"
                                     (selectionChange)="onHabilidadOtorgadaChange(i, { id_extra: $event.value })">
                                     <mat-option [value]="sinExtraHabilidad">Sin extra</mat-option>
-                                    <mat-option *ngFor="let extra of getExtrasDeHabilidad(row.id_habilidad)" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
+                                    <mat-option *ngFor="let extra of getExtrasDeHabilidad(row)" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
                                 </mat-select>
                             </mat-form-field>
 
@@ -256,7 +256,7 @@
                                 <input matInput type="number" [value]="row.rangos" (input)="onHabilidadOtorgadaChange(i, { rangos: +$any($event.target).value || 0 })">
                             </mat-form-field>
 
-                            <button type="button" mat-icon-button class="row-action-btn" matTooltip="Editar custom" [disabled]="!esHabilidadCustom(row.id_habilidad)" (click)="abrirEditarCustomOtorgada(i)">
+                            <button type="button" mat-icon-button class="row-action-btn" matTooltip="Editar custom" [disabled]="!row.custom || row.id_habilidad <= 0" (click)="abrirEditarCustomOtorgada(i)">
                                 <mat-icon>edit</mat-icon>
                             </button>
 
