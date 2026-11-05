@@ -24,6 +24,12 @@ export function toInt(value: any, fallback: number = 0): number {
     return Number.isFinite(parsed) ? Math.trunc(parsed) : fallback;
 }
 
+/** `toNumberOrNull` truncado: el entero que representa `value`, o `null` si no hay número (un dato que falta no es un 0). */
+export function toIntOrNull(value: unknown): number | null {
+    const parsed = toNumberOrNull(value);
+    return parsed === null ? null : Math.trunc(parsed);
+}
+
 /** El entero (truncado) que representa `value` si es mayor que 0 (los ids), o `null` si no lo es o no es un número. */
 export function toPositiveInt(value: unknown): number | null {
     const parsed = Math.trunc(Number(value));

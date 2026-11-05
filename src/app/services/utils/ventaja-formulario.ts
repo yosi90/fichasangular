@@ -1,5 +1,5 @@
 import { ReferenciaCorta, TipoVentaja, VentajaCampos, VentajaCuerpo, VentajaDetalle } from 'src/app/interfaces/ventaja';
-import { toInt } from './normalizacion';
+import { toInt, toIntOrNull, toPositiveInt } from './normalizacion';
 
 /**
  * El formulario de «Insertar/Modificar ventaja» (hito 8 del roadmap de inserciones): de la ventaja que da la API a los
@@ -95,7 +95,7 @@ export function valoresDeVentaja(ventaja: VentajaDetalle): ValoresVentaja {
         ...valores,
         nombre: `${ventaja.Nombre ?? ''}`,
         descripcion: `${ventaja.Descripcion ?? ''}`,
-        id_manual: toInt(ventaja.Manual?.Id, 0) > 0 ? toInt(ventaja.Manual?.Id) : null,
+        id_manual: toPositiveInt(ventaja.Manual?.Id),
         pagina: toInt(ventaja.Manual?.Pagina, 0),
         puntos: Math.abs(toInt(ventaja.Coste, 0)),
         mejora: toInt(ventaja.Mejora, 0),
@@ -105,27 +105,20 @@ export function valoresDeVentaja(ventaja: VentajaDetalle): ValoresVentaja {
     };
 }
 
-function numeroONulo(valor: unknown): number | null {
-    if (valor === null || valor === undefined || `${valor}`.trim() === '')
-        return null;
-    const numero = Number(valor);
-    return Number.isFinite(numero) ? Math.trunc(numero) : null;
-}
-
 /** El cuerpo de `POST /<tipo>s/add` y `PUT /<tipo>s/<id>`: `{ ventaja: {…} }` o `{ desventaja: {…} }`. */
 export function cuerpoDeVentaja(tipo: TipoVentaja, valores: ValoresVentaja): VentajaCuerpo {
-    const puntos = Math.abs(numeroONulo(valores.puntos) ?? 0);
+    const puntos = Math.abs(toInt(valores.puntos));
     const campos = {
         nombre: `${valores.nombre ?? ''}`.trim(),
         descripcion: `${valores.descripcion ?? ''}`.trim(),
-        id_manual: numeroONulo(valores.id_manual) ?? 0,
-        pagina: numeroONulo(valores.pagina) ?? 0,
+        id_manual: toInt(valores.id_manual),
+        pagina: toInt(valores.pagina),
         coste: tipo === 'ventaja' ? -puntos : puntos,
-        mejora: numeroONulo(valores.mejora) ?? 0,
+        mejora: toInt(valores.mejora),
         ...Object.fromEntries(TODAS.map((clave) => [clave, valores[clave] === true])),
-        id_rasgo: numeroONulo(valores.id_rasgo),
-        id_idioma: numeroONulo(valores.id_idioma),
-        id_habilidad: numeroONulo(valores.id_habilidad),
+        id_rasgo: toIntOrNull(valores.id_rasgo),
+        id_idioma: toIntOrNull(valores.id_idioma),
+        id_habilidad: toIntOrNull(valores.id_habilidad),
     } as VentajaCampos;
     return tipo === 'ventaja' ? { ventaja: campos } : { desventaja: campos };
 }

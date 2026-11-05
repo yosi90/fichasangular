@@ -1,5 +1,5 @@
 import { ChakraCuerpo, ChakraDetalle, Fusion, FusionChakraCuerpo, FusionCuerpo } from 'src/app/interfaces/incarnum';
-import { toInt } from './normalizacion';
+import { toInt, toNullableText, toPositiveInt } from './normalizacion';
 
 /**
  * Los formularios de «Insertar/Modificar fusión» y «… chakra» (hito 8 del roadmap de inserciones; contrato en
@@ -58,7 +58,7 @@ export function valoresDeFusion(fusion: Fusion): ValoresFusion {
         salvacion_tipo: fusion.Salvacion?.Tipo ?? null,
         salvacion_efecto: fusion.Salvacion?.Efecto ?? null,
         alineado_portador: fusion.Alineado_portador === true,
-        id_manual: toInt(fusion.Manual?.Id, 0) > 0 ? toInt(fusion.Manual?.Id) : null,
+        id_manual: toPositiveInt(fusion.Manual?.Id),
         pagina: toInt(fusion.Manual?.Pagina, 0),
         oficial: fusion.Oficial === true,
     };
@@ -74,25 +74,15 @@ export function filasDeChakrasDeFusion(fusion: Fusion, uid: () => string): FilaC
     }));
 }
 
-function textoONulo(valor: unknown): string | null {
-    const texto = `${valor ?? ''}`.trim();
-    return texto.length > 0 ? texto : null;
-}
-
-function entero(valor: unknown): number {
-    const numero = Number(valor);
-    return Number.isFinite(numero) ? Math.trunc(numero) : 0;
-}
-
 /** El cuerpo de `POST /incarnum/fusiones/add` y `PUT /incarnum/fusiones/<id>`. Las filas sin chakra no van. */
 export function cuerpoDeFusion(valores: ValoresFusion, clases: readonly number[], descriptores: readonly number[],
     chakras: readonly FilaChakraFusion[]): FusionCuerpo {
-    const tipo = textoONulo(valores.salvacion_tipo);
-    const efecto = textoONulo(valores.salvacion_efecto);
+    const tipo = toNullableText(valores.salvacion_tipo);
+    const efecto = toNullableText(valores.salvacion_efecto);
     return {
         fusion: {
             nombre: `${valores.nombre ?? ''}`.trim(),
-            nombre_original: textoONulo(valores.nombre_original),
+            nombre_original: toNullableText(valores.nombre_original),
             traducido: valores.traducido === true,
             descripcion: `${valores.descripcion ?? ''}`.trim(),
             efecto_basico: `${valores.efecto_basico ?? ''}`.trim(),
@@ -100,8 +90,8 @@ export function cuerpoDeFusion(valores: ValoresFusion, clases: readonly number[]
             origen_descripcion: valores.origen_descripcion || 'propia',
             salvacion: tipo || efecto ? { tipo, efecto } : null,
             alineado_portador: valores.alineado_portador === true,
-            id_manual: entero(valores.id_manual),
-            pagina: entero(valores.pagina),
+            id_manual: toInt(valores.id_manual),
+            pagina: toInt(valores.pagina),
             oficial: valores.oficial === true,
         },
         clases: [...clases],
@@ -178,15 +168,14 @@ export function valoresDeChakra(chakra: ChakraDetalle): ValoresChakra {
 }
 
 export function cuerpoDeChakra(valores: ValoresChakra): ChakraCuerpo {
-    const ranura = toInt(valores.id_ranura, 0);
     return {
         chakra: {
             nombre: `${valores.nombre ?? ''}`.trim(),
-            nombre_original: textoONulo(valores.nombre_original),
+            nombre_original: toNullableText(valores.nombre_original),
             traducido: valores.traducido === true,
-            id_categoria: entero(valores.id_categoria),
-            id_ranura: ranura > 0 ? ranura : null,
-            orden: entero(valores.orden),
+            id_categoria: toInt(valores.id_categoria),
+            id_ranura: toPositiveInt(valores.id_ranura),
+            orden: toInt(valores.orden),
             descripcion: `${valores.descripcion ?? ''}`.trim(),
             oficial: valores.oficial === true,
         },

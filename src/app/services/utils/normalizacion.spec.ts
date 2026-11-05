@@ -1,4 +1,4 @@
-import { enteroEntre, idsUnicosOrdenados, normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toPositiveInt, toRefIdNombre } from './normalizacion';
+import { enteroEntre, idsUnicosOrdenados, normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toIntOrNull, toPositiveInt, toRefIdNombre } from './normalizacion';
 
 describe('toBoolean', () => {
     it('es sí con true, 1 y los textos de sí, sin distinguir mayúsculas ni espacios alrededor', () => {
@@ -62,6 +62,20 @@ describe('toPositiveInt', () => {
     it('da null con 0, negativos, vacíos y lo que no es un número', () => {
         for (const valor of [0, 0.5, -1, '', ' ', null, undefined, 'abc', NaN, Infinity])
             expect(toPositiveInt(valor)).withContext(JSON.stringify(valor)).toBeNull();
+    });
+});
+
+describe('toIntOrNull', () => {
+    it('trunca el número, también en texto y con signo', () => {
+        expect(toIntOrNull(7)).toBe(7);
+        expect(toIntOrNull('12')).toBe(12);
+        expect(toIntOrNull(-3.9)).toBe(-3);
+        expect(toIntOrNull(0)).toBe(0);
+    });
+
+    it('da null si no hay número: un dato que falta no es un 0', () => {
+        for (const valor of ['', ' ', null, undefined, 'abc', NaN, Infinity])
+            expect(toIntOrNull(valor)).withContext(JSON.stringify(valor)).toBeNull();
     });
 });
 
