@@ -8,7 +8,8 @@ import { CARACTERISTICAS_PLANTILLA } from './plantilla-formulario';
  * El formulario de «Insertar/Modificar subtipo» (hito 9 del roadmap de inserciones): del subtipo que da la API a los
  * valores del formulario y de ellos al cuerpo de `POST /subtipos/add` y `PUT /subtipos/<id>`. Guardar sin tocar nada manda
  * lo que llegó (comprobado con todos los subtipos de `rol_dev` en `src/testing/ida-y-vuelta-criaturas-mundo.ts`). Las
- * habilidades personalizadas no van en el cuerpo: la API las conserva.
+ * habilidades personalizadas van en `habilidades_custom` desde los arreglos de cierre del roadmap (antes la API las
+ * conservaba sin editarlas).
  */
 
 /** Lo que suma el subtipo al combate (con signo), con su etiqueta. */
@@ -52,6 +53,7 @@ export type ValoresSubtipo = Record<ClaveNumerica, number | null> & Record<Clave
 /** Una dote, una habilidad o una sortílega del subtipo, como fila de su lista (`uid` para el `trackBy`). */
 export interface FilaDoteSubtipo { uid: string; id: number; nombre: string; id_extra: number; }
 export interface FilaHabilidadSubtipo { uid: string; id: number; nombre: string; id_extra: number; cantidad: number; varios: string; }
+export interface FilaHabilidadCustomSubtipo { uid: string; id: number; nombre: string; cantidad: number; }
 export interface FilaSortilegaSubtipo { uid: string; id: number; nombre: string; nivel_lanzador: number; usos_diarios: string; }
 
 /** Un idioma, un rasgo o una plantilla del subtipo: su id y, si ya se sabe, su nombre. */
@@ -64,6 +66,8 @@ export interface ListasSubtipo {
     plantillas: readonly ElementoSubtipo[];
     dotes: readonly FilaDoteSubtipo[];
     habilidades: readonly FilaHabilidadSubtipo[];
+    /** Las habilidades personalizadas (`habilidades_custom`). */
+    habilidades_custom: readonly FilaHabilidadCustomSubtipo[];
     sortilegas: readonly FilaSortilegaSubtipo[];
 }
 
@@ -129,6 +133,9 @@ export function listasDeSubtipo(subtipo: SubtipoDetalle, nuevoUid: () => string)
             id_extra: toPositiveInt(habilidad.Id_extra) ?? ID_EXTRA_HABILIDAD_SIN_EXTRA,
             cantidad: toInt(habilidad.Cantidad), varios: toText(habilidad.Varios),
         })),
+        habilidades_custom: (subtipo.Habilidades?.Custom ?? []).map((habilidad) => ({
+            uid: nuevoUid(), id: toInt(habilidad.Id_habilidad), nombre: toText(habilidad.Habilidad), cantidad: toInt(habilidad.Cantidad),
+        })),
         sortilegas: (subtipo.Sortilegas ?? []).map((sortilega) => ({
             uid: nuevoUid(), id: toInt((sortilega.Conjuro as { Id?: unknown; })?.Id), nombre: toText(sortilega.Conjuro?.Nombre),
             nivel_lanzador: toInt(sortilega.Nivel_lanzador), usos_diarios: toText(sortilega.Usos_diarios),
@@ -141,7 +148,7 @@ function elementos(lista: readonly { Id?: unknown; Nombre?: unknown; }[] | null 
 }
 
 export function listasVaciasDeSubtipo(): ListasSubtipo {
-    return { idiomas: [], rasgos: [], plantillas: [], dotes: [], habilidades: [], sortilegas: [] };
+    return { idiomas: [], rasgos: [], plantillas: [], dotes: [], habilidades: [], habilidades_custom: [], sortilegas: [] };
 }
 
 /** El texto de un campo libre: vacío, `null` (la API guarda el texto de relleno que la lectura vuelve a dar `null`). */
@@ -173,6 +180,7 @@ export function cuerpoDeSubtipo(valores: ValoresSubtipo, listas: ListasSubtipo):
         habilidades: listas.habilidades.map((fila) => ({
             id_habilidad: fila.id, id_extra: toInt(fila.id_extra, -1), cantidad: toInt(fila.cantidad), varios: textoONulo(fila.varios),
         })),
+        habilidades_custom: listas.habilidades_custom.map((fila) => ({ id_habilidad: fila.id, cantidad: toInt(fila.cantidad) })),
         sortilegas: listas.sortilegas.map((fila) => ({
             id_conjuro: fila.id, nivel_lanzador: toInt(fila.nivel_lanzador), usos_diarios: textoONulo(fila.usos_diarios),
         })),

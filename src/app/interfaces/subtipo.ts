@@ -160,5 +160,7 @@ export interface SubtipoCuerpo {
     plantillas: number[];
     dotes: { id_dote: number; id_extra: number; }[];
     habilidades: { id_habilidad: number; id_extra: number; cantidad: number; varios: string | null; }[];
+    /** Las habilidades personalizadas (`habilidades_custom`) con su bono. */
+    habilidades_custom: { id_habilidad: number; cantidad: number; }[];
     sortilegas: { id_conjuro: number; nivel_lanzador: number; usos_diarios: string | null; }[];
 }

@@ -176,6 +176,16 @@
                             </mat-form-field>
                         </ng-template>
                     </app-lista-de-catalogo>
+                    <app-lista-de-catalogo titulo="Habilidades personalizadas" vacio="Sin habilidades personalizadas." textoAnadir="Añadir habilidad personalizada"
+                        [filas]="listas.habilidades_custom" [opciones]="opciones.habilidades_custom" [deshabilitado]="edicion.cargando" [error]="errores.mensajeDe('habilidades_custom')"
+                        (anadir)="anadirFila('habilidades_custom', $event)" (quitar)="quitarFila('habilidades_custom', $event)">
+                        <ng-template let-fila>
+                            <mat-form-field appearance="fill" subscriptSizing="dynamic" class="subtipo-corto">
+                                <mat-label>Bono</mat-label>
+                                <input matInput type="number" step="1" [(ngModel)]="$any(fila).cantidad" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiarFila()">
+                            </mat-form-field>
+                        </ng-template>
+                    </app-lista-de-catalogo>
                     <app-lista-de-catalogo titulo="Aptitudes sortílegas" icono="conjuro" vacio="Sin aptitudes sortílegas." textoAnadir="Añadir conjuro"
                         [filas]="listas.sortilegas" [opciones]="opciones.sortilegas" [deshabilitado]="edicion.cargando" [error]="errores.mensajeDe('sortilegas')"
                         (anadir)="anadirFila('sortilegas', $event)" (quitar)="quitarFila('sortilegas', $event)">
@@ -192,11 +202,20 @@
                     </app-lista-de-catalogo>
                 </div>
 
-                <section class="insercion-tarjeta" *ngIf="personalizadas.length > 0">
-                    <h3 class="insercion-tarjeta__titulo">Habilidades personalizadas · no editables aquí</h3>
-                    <p class="subtipo-nota">Se conservan al guardar: {{personalizadas.join(', ')}}.</p>
-                </section>
+                <div class="subtipo-acciones">
+                    <button mat-stroked-button type="button" [disabled]="edicion.cargando" (click)="customModalAbierto = true">
+                        <mat-icon>add_circle</mat-icon>
+                        Nueva habilidad personalizada
+                    </button>
+                </div>
             </div>
         </app-insercion-marco>
     </form>
+
+    <app-habilidad-custom-modal
+        [abierto]="customModalAbierto"
+        modo="crear"
+        (cerrado)="customModalAbierto = false"
+        (guardada)="alCrearPersonalizada($event)">
+    </app-habilidad-custom-modal>
 </div>
