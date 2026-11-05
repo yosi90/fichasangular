@@ -21,6 +21,11 @@ export const INSERCIONES_CATALOGO: Readonly<Record<string, string>> = {
     'monstruos': 'Nuevo monstruo',
     'armas': 'Nueva arma',
     'armaduras': 'Nueva armadura',
+    'munición': 'Nueva munición',
+    'materiales especiales': 'Nuevo material',
+    'aptitudes de armas y armaduras': 'Nueva aptitud',
+    'objetos': 'Nuevo objeto',
+    'conjuntos de objetos': 'Nuevo conjunto',
 };
 
 /** Si la inserción de un listado ya tiene pantalla. */
@@ -34,7 +39,8 @@ export function tieneInsercion(lista: string | null | undefined): boolean {
  * `edicion:<tipo>:<id>`), y lleva dentro la misma pantalla que la inserción, en modo `editar`.
  */
 export type TipoEdicion = 'racial' | 'idioma' | 'especial' | 'clase' | 'plantilla' | 'raza' | 'dote' | 'conjuro' | 'monstruo'
-    | 'arma' | 'armadura';
+    | 'arma' | 'armadura'
+    | 'municion' | 'material' | 'encantamiento' | 'objeto' | 'conjunto';
 
 /** Una pestaña de «Modificar» abierta. */
 export interface EdicionCatalogoTab {
@@ -71,6 +77,11 @@ export const EDICIONES_CATALOGO: Readonly<Record<TipoEdicion, DefinicionEdicion>
     monstruo: { listado: 'monstruos', ...editar('monstruo') },
     arma: { listado: 'armas', ...editar('arma') },
     armadura: { listado: 'armaduras', ...editar('armadura') },
+    municion: { listado: 'munición', ...editar('munición') },
+    material: { listado: 'materiales especiales', ...editar('material') },
+    encantamiento: { listado: 'aptitudes de armas y armaduras', ...editar('aptitud') },
+    objeto: { listado: 'objetos', ...editar('objeto') },
+    conjunto: { listado: 'conjuntos de objetos', ...editar('conjunto') },
 };
 
 export const TIPOS_EDICION = Object.keys(EDICIONES_CATALOGO) as TipoEdicion[];

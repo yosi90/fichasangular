@@ -15,6 +15,9 @@ import {
     TipoCatalogoEquipo,
 } from 'src/app/interfaces/equipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
+import { LISTAS_EQUIPO } from 'src/app/components/shared/listado-equipo/listas-equipo';
 import { formatoNumero, textoAplicaA, textoConSigno, textoMejora, textoModificador, textoPeso, textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
@@ -93,6 +96,8 @@ export class DetallesEquipoComponent {
     @Output() armaduraDetallesId = new EventEmitter<number>();
     @Output() doteDetallesId = new EventEmitter<number>();
     @Output() conjuroDetallesId = new EventEmitter<number>();
+    /** El lápiz «Modificar» (segunda parte del hito 7): abre la pestaña de modificar la entrada. Sin quien lo escuche, no sale. */
+    @Output() modificar = new EventEmitter<EntradaEquipo>();
 
     objeto: ObjetoDetalle | null = null;
     material: MaterialDetalle | null = null;
@@ -121,7 +126,13 @@ export class DetallesEquipoComponent {
     costesMaterial: CosteMaterialVisible[] = [];
     columnasCostes: Columnas<CosteMaterialVisible> = {};
 
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
+
+    /** Si sale el lápiz: alguien lo escucha y la cuenta puede gestionar el catálogo de la entrada (permiso `objetos`). */
+    get puedeModificar(): boolean {
+        const listado = Object.keys(LISTAS_EQUIPO).find((lista) => LISTAS_EQUIPO[lista] === this.entrada?.tipo) ?? '';
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, listado);
+    }
 
     abrirDetalleManual(): void {
         this.manualDetalleNavSvc.abrirDetalleManual({ id: this.entrada?.item?.Manual?.Id, nombre: this.entrada?.item?.Manual?.Nombre });
@@ -252,8 +263,8 @@ export class DetallesEquipoComponent {
         const municion = this.municion;
         if (municion) {
             return [
-                { etiqueta: 'Precio', valor: municion.Precio === null ? null : `${textoPrecio(municion.Precio)} las ${municion.Cantidad_por_precio}` },
-                { etiqueta: 'Peso', valor: municion.Peso === null ? null : `${textoPeso(municion.Peso)} las ${municion.Cantidad_por_precio}` },
+                { etiqueta: 'Precio', valor: municion.Precio === null ? null : `${textoPrecio(municion.Precio)} las ${municion.Cantidad_por_precio ?? 1}` },
+                { etiqueta: 'Peso', valor: municion.Peso === null ? null : `${textoPeso(municion.Peso)} las ${municion.Cantidad_por_precio ?? 1}` },
             ];
         }
         const encantamiento = this.encantamiento;
@@ -345,8 +356,8 @@ export class DetallesEquipoComponent {
 }
 
 /** Lo que suma al precio el componente caro del conjuro (`Usos_componente_caro`: cuántas veces), o vacío. */
-function textoComponenteCaro(usos: number): string {
-    if (!(usos > 0))
+function textoComponenteCaro(usos: number | null): string {
+    if (usos === null || !(usos > 0))
         return '';
     return usos === 1
         ? 'Si el conjuro tiene un componente caro, se suma su precio.'

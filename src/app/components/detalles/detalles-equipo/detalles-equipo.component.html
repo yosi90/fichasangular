@@ -5,7 +5,9 @@
         [manual]="entrada.item.Manual"
         [oficial]="entrada.item.Oficial"
         [etiquetas]="etiquetas"
-        (abrirManual)="abrirDetalleManual()">
+        [modificable]="puedeModificar"
+        (abrirManual)="abrirDetalleManual()"
+        (modificar)="modificar.emit(entrada)">
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" titulo="Datos clave"></app-ficha-datos>
@@ -79,6 +81,7 @@
                     </li>
                     <li class="ficha-lista__item" *ngFor="let conjuro of objeto?.Creacion?.Requisitos?.Conjuros">
                         <button type="button" class="ficha-enlace" (click)="abrirConjuro(conjuro.Id)">{{conjuro.Nombre}}</button>
+                        <span class="ficha-nota" *ngIf="conjuro.Opcional">(o bien)</span>
                     </li>
                 </ul>
             </div>

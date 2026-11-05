@@ -141,6 +141,11 @@
                 <app-nueva-monstruo *ngIf="listadoTab.tipo === 'monstruos'"></app-nueva-monstruo>
                 <app-nuevo-equipo *ngIf="listadoTab.tipo === 'armas'" tipo="arma"></app-nuevo-equipo>
                 <app-nuevo-equipo *ngIf="listadoTab.tipo === 'armaduras'" tipo="armadura"></app-nuevo-equipo>
+                <app-nuevo-equipo *ngIf="listadoTab.tipo === 'munición'" tipo="municion"></app-nuevo-equipo>
+                <app-nuevo-equipo *ngIf="listadoTab.tipo === 'materiales especiales'" tipo="material"></app-nuevo-equipo>
+                <app-nuevo-equipo *ngIf="listadoTab.tipo === 'aptitudes de armas y armaduras'" tipo="encantamiento"></app-nuevo-equipo>
+                <app-nuevo-objeto *ngIf="listadoTab.tipo === 'objetos'" tipo="objeto"></app-nuevo-objeto>
+                <app-nuevo-objeto *ngIf="listadoTab.tipo === 'conjuntos de objetos'" tipo="conjunto"></app-nuevo-objeto>
             </div>
         </ng-container>
         <ng-template #listadoGenerico>
@@ -329,6 +334,91 @@
                 (cerrar)="quitarEdicion(armaduraTab)"
                 (equipoActualizado)="onEdicionGuardada('armadura', $event)">
             </app-nuevo-equipo>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let municionTab of ediciones.municion" [label]="etiquetaEdicion(municionTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'municion'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(municionTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(municionTab)}}</span>
+            <button (click)="quitarEdicion(municionTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-equipo
+                tipo="municion"
+                modo="editar"
+                [idEntrada]="municionTab.id"
+                [editorTabKey]="municionTab.key"
+                (cerrar)="quitarEdicion(municionTab)"
+                (equipoActualizado)="onEdicionGuardada('municion', $event)">
+            </app-nuevo-equipo>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let materialTab of ediciones.material" [label]="etiquetaEdicion(materialTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'material'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(materialTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(materialTab)}}</span>
+            <button (click)="quitarEdicion(materialTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-equipo
+                tipo="material"
+                modo="editar"
+                [idEntrada]="materialTab.id"
+                [editorTabKey]="materialTab.key"
+                (cerrar)="quitarEdicion(materialTab)"
+                (equipoActualizado)="onEdicionGuardada('material', $event)">
+            </app-nuevo-equipo>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let encantamientoTab of ediciones.encantamiento" [label]="etiquetaEdicion(encantamientoTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'aptitud-equipo'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(encantamientoTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(encantamientoTab)}}</span>
+            <button (click)="quitarEdicion(encantamientoTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-equipo
+                tipo="encantamiento"
+                modo="editar"
+                [idEntrada]="encantamientoTab.id"
+                [editorTabKey]="encantamientoTab.key"
+                (cerrar)="quitarEdicion(encantamientoTab)"
+                (equipoActualizado)="onEdicionGuardada('encantamiento', $event)">
+            </app-nuevo-equipo>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let objetoTab of ediciones.objeto" [label]="etiquetaEdicion(objetoTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'objeto'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(objetoTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(objetoTab)}}</span>
+            <button (click)="quitarEdicion(objetoTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-objeto
+                tipo="objeto"
+                modo="editar"
+                [idEntrada]="objetoTab.id"
+                [editorTabKey]="objetoTab.key"
+                (cerrar)="quitarEdicion(objetoTab)"
+                (objetoActualizado)="onEdicionGuardada('objeto', $event)">
+            </app-nuevo-objeto>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let conjuntoTab of ediciones.conjunto" [label]="etiquetaEdicion(conjuntoTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'conjunto'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(conjuntoTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(conjuntoTab)}}</span>
+            <button (click)="quitarEdicion(conjuntoTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-objeto
+                tipo="conjunto"
+                modo="editar"
+                [idEntrada]="conjuntoTab.id"
+                [editorTabKey]="conjuntoTab.key"
+                (cerrar)="quitarEdicion(conjuntoTab)"
+                (objetoActualizado)="onEdicionGuardada('conjunto', $event)">
+            </app-nuevo-objeto>
         </div>
     </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
@@ -534,7 +624,8 @@
             (armaDetallesId)="abrirDetallesArmaPorId($event)"
             (armaduraDetallesId)="abrirDetallesArmaduraPorId($event)"
             (doteDetallesId)="abrirDetallesDotePorId($event)"
-            (conjuroDetallesId)="abrirDetallesConjuroPorId($event)">
+            (conjuroDetallesId)="abrirDetallesConjuroPorId($event)"
+            (modificar)="abrirEdicion($event.tipo, $event.item)">
         </app-detalles-equipo>
     </mat-tab>
     <mat-tab *ngFor="let deidad of detallesDeidadAbiertos; let index = index" [label]="getEtiquetaDeidad(deidad)">

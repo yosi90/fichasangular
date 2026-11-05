@@ -54,6 +54,11 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
             this.grupo('equipo', 'Equipo', [
                 this.opcion('armas', 'insertar'),
                 this.opcion('armaduras', 'insertar'),
+                this.opcion('munición', 'insertar'),
+                this.opcion('materiales especiales', 'insertar'),
+                this.opcion('aptitudes de armas y armaduras', 'insertar'),
+                this.opcion('objetos', 'insertar'),
+                this.opcion('conjuntos de objetos', 'insertar'),
             ]),
             this.grupo('rasgos', 'Rasgos y aptitudes', [
                 this.opcion('especiales', 'insertar'),
@@ -74,6 +79,11 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
             this.grupo('equipo', 'Equipo', [
                 this.opcion('armas', 'modificar'),
                 this.opcion('armaduras', 'modificar'),
+                this.opcion('munición', 'modificar'),
+                this.opcion('materiales especiales', 'modificar'),
+                this.opcion('aptitudes de armas y armaduras', 'modificar'),
+                this.opcion('objetos', 'modificar'),
+                this.opcion('conjuntos de objetos', 'modificar'),
             ]),
             this.grupo('rasgos', 'Rasgos y aptitudes', [
                 this.opcion('especiales', 'modificar'),

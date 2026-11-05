@@ -5,6 +5,7 @@ import { DescripcionEquipoComponent } from 'src/app/components/shared/descripcio
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
 import { EntradaEquipo } from 'src/app/interfaces/equipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
 import {
     normalizeConjuntoObjetos,
     normalizeEncantamiento,
@@ -35,11 +36,19 @@ describe('DetallesEquipoComponent', () => {
     const filas = (titulo: string): string[] => Array.from(bloque(titulo)?.querySelectorAll('tr') ?? [])
         .map((tr) => Array.from(tr.querySelectorAll('th, td')).map((celda) => limpio(celda)).join(' · '));
 
+    /** La cuenta: con el permiso `objetos`, según la prueba. */
+    let conPermisoObjetos = false;
+    const usuario = { can: (recurso: string, accion: string) => conPermisoObjetos && recurso === 'objetos' && accion === 'create' };
+
     beforeEach(async () => {
+        conPermisoObjetos = false;
         manualNav = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
         await TestBed.configureTestingModule({
             declarations: [DetallesEquipoComponent, TextoManualComponent, DescripcionEquipoComponent, ...FICHA_DETALLE_COMPONENTES],
-            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNav }],
+            providers: [
+                { provide: ManualDetalleNavigationService, useValue: manualNav },
+                { provide: UserService, useValue: usuario },
+            ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
         fixture = TestBed.createComponent(DetallesEquipoComponent);
@@ -50,6 +59,19 @@ describe('DetallesEquipoComponent', () => {
         component.entrada = entrada;
         fixture.detectChanges();
     }
+
+    it('el lápiz «Modificar» sale con el permiso objetos y alguien que lo escuche, y da la entrada con su tipo', () => {
+        const entrada: EntradaEquipo = { tipo: 'objeto', item: normalizeObjeto(crearObjetoApi()) };
+        mostrar(entrada);
+        expect(component.puedeModificar).toBeFalse();
+        const recibidas: EntradaEquipo[] = [];
+        component.modificar.subscribe((valor: EntradaEquipo) => recibidas.push(valor));
+        expect(component.puedeModificar).toBeFalse();
+        conPermisoObjetos = true;
+        expect(component.puedeModificar).toBeTrue();
+        component.modificar.emit(component.entrada);
+        expect(recibidas).toEqual([entrada]);
+    });
 
     it('un objeto enseña su tipo, ranura, aura, modificadores y creación, sin pastillas', () => {
         mostrar({ tipo: 'objeto', item: normalizeObjeto(crearObjetoApi()) });
