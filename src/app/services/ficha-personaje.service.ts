@@ -22,7 +22,7 @@ import { camposPdfEquipo } from './utils/ficha-pdf-equipo';
 import { camposPdfTotales, sumasDeLaPlantilla } from './utils/ficha-pdf-totales';
 import { tamanoQueCuenta } from './utils/tamano-efectivo';
 
-/** Cada característica de un familiar o un compañero y su campo en la hoja (`fue`, y su modificador `mod_fue`). */
+/** Cada característica y su campo en la hoja (`fue`, y su modificador `mod_fue`): la del personaje, el familiar y el compañero. */
 const CAMPOS_CARACTERISTICAS_PDF: ReadonlyArray<[Caracteristica, string]> = [
     ['Fuerza', 'fue'], ['Destreza', 'des'], ['Constitucion', 'con'],
     ['Inteligencia', 'int'], ['Sabiduria', 'sab'], ['Carisma', 'car'],
@@ -274,12 +274,20 @@ export class FichaPersonajeService {
         function Rellenar_habilidades(): string {
             var notas = "";
             var contHabsCustom = 1;
+            /** Los modificadores circunstanciales de una habilidad (base o custom), a las notas bajo su título. */
+            const anotarCircunstanciales = (h: Personaje['Habilidades'][number]): void => {
+                if (`${h.Varios ?? ''}`.trim() === '')
+                    return;
+                if (!notas.includes('Habilidades con rangos circunstanciales:'))
+                    notas += '\r\n\r\nHabilidades con rangos circunstanciales:\r\n';
+                notas += `${h.Nombre}: ${h.Varios}\r\n`;
+            };
             (pj.Habilidades ?? []).forEach(h => {
                 // Una custom va a sus filas propias (`custom1`, `custom2`): su id es de `habilidades_custom`, no una fila de
                 // la hoja, así que no escribe en la de la habilidad base con su mismo número.
                 if (h.Custom) {
+                    const car = `${h.Car ?? ''}`.substring(0, 3).toUpperCase();
                     if (contHabsCustom <= CUSTOM_EN_HOJA) {
-                        const car = `${h.Car ?? ''}`.substring(0, 3).toUpperCase();
                         if (h.Clasea)
                             self.tryCheck(form, `clasea${PRIMERA_FILA_CUSTOM + contHabsCustom - 1}`, true);
                         self.trySetText(form, `custom${contHabsCustom}`, `${h.Nombre ?? ''}`);
@@ -287,15 +295,11 @@ export class FichaPersonajeService {
                         self.trySetText(form, `mod_custom${contHabsCustom}`, `${toNumber(h.Mod_car)}`);
                         self.trySetText(form, `rangos_custom${contHabsCustom}`, `${toNumber(h.Rangos)}`);
                         self.trySetText(form, `varios_custom${contHabsCustom}`, `${toNumber(h.Rangos_varios)}`);
-                        if (`${h.Varios ?? ''}`.trim() !== '') {
-                            if (!notas.includes('Habilidades con rangos circunstanciales:'))
-                                notas += '\r\n\r\nHabilidades con rangos circunstanciales:\r\n';
-                            notas += `${h.Nombre}: - ${h.Varios}\r\n`;
-                        }
+                        anotarCircunstanciales(h);
                     } else {
                         if (!notas.includes('Habilidades extra (No caben):'))
                             notas += '\r\n\r\nHabilidades extra (No caben):\r\n';
-                        notas += `${contHabsCustom - CUSTOM_EN_HOJA}.- ${h.Nombre} [${`${h.Car ?? ''}`.substring(0, 3).toUpperCase()}] rangos: ${toNumber(h.Rangos)} rangos varios: ${toNumber(h.Rangos_varios)}${`${h.Varios ?? ''}`.trim() !== '' ? ` mod varios: ${h.Varios}` : ''}\r\n`;
+                        notas += `${contHabsCustom - CUSTOM_EN_HOJA}.- ${h.Nombre} [${car}] rangos: ${toNumber(h.Rangos)} rangos varios: ${toNumber(h.Rangos_varios)}${`${h.Varios ?? ''}`.trim() !== '' ? ` mod varios: ${h.Varios}` : ''}\r\n`;
                     }
                     contHabsCustom++;
                     return;
@@ -314,11 +318,7 @@ export class FichaPersonajeService {
                     self.trySetText(form, `extra${habilidadIndex}`, `${h.Extra ?? ''}`);
                 if (h.Rangos_varios > 0)
                     self.trySetText(form, `varios${habilidadIndex}`, `${toNumber(h.Rangos_varios)}`);
-                if (`${h.Varios ?? ''}`.trim() !== '') {
-                    if (!notas.includes('Habilidades con rangos circunstanciales:'))
-                        notas += '\r\n\r\nHabilidades con rangos circunstanciales:\r\n';
-                    notas += `${h.Nombre}: ${h.Varios}\r\n`;
-                }
+                anotarCircunstanciales(h);
             });
             return notas;
         }
@@ -645,11 +645,9 @@ export class FichaPersonajeService {
      * viviente: `co` 0 y `mco` `null`), «—» en los dos, como en las hojas del familiar y el compañero.
      */
     private rellenarCaracteristicasPersonaje(form: PDFForm, pj: Personaje): void {
-        const valores: ReadonlyArray<[string, unknown, unknown]> = [
-            ['fue', pj.Fuerza, pj.ModFuerza], ['des', pj.Destreza, pj.ModDestreza], ['con', pj.Constitucion, pj.ModConstitucion],
-            ['int', pj.Inteligencia, pj.ModInteligencia], ['sab', pj.Sabiduria, pj.ModSabiduria], ['car', pj.Carisma, pj.ModCarisma],
-        ];
-        valores.forEach(([campo, valor, modificador]) => {
+        CAMPOS_CARACTERISTICAS_PDF.forEach(([clave, campo]) => {
+            const valor: unknown = pj[clave];
+            const modificador: unknown = pj[`Mod${clave}`];
             const sinModificador = modificador === null || modificador === undefined;
             const sinValor = valor === null || valor === undefined || (sinModificador && toNumber(valor) <= 0);
             form.getTextField(campo).setText(sinValor ? SIN_CARACTERISTICA : `${valor}`);
