@@ -72,7 +72,7 @@ describe('NuevoEquipoComponent', () => {
                 { provide: ArmaduraService, useValue: armaduraSvc },
                 { provide: EquipoService, useValue: equipoSvc },
                 { provide: ManualService, useValue: { getManuales: () => of([{ Id: 54, Nombre: 'Manual del jugador 1' }]) } },
-                { provide: TamanoService, useValue: { getTamanos: () => of([{ Id: 4, Nombre: 'Pequeño' }, { Id: 5, Nombre: 'Mediano' }]) } },
+                { provide: TamanoService, useValue: { getTamanos: () => of([{ Id: 4, Nombre: 'Pequeño', Modificador: 1 }, { Id: 5, Nombre: 'Mediano', Modificador: 0 }]) } },
                 {
                     provide: UserService, useValue: {
                         acl$: of({}), isLoggedIn$: of(true), can: () => puede,

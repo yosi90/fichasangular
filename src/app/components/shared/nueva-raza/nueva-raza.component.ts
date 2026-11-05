@@ -74,6 +74,7 @@ import {
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { idsUnicosOrdenados, normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { idTamanoMediano } from 'src/app/services/utils/tamano-efectivo';
 import { TEXTO_SIN_ESPECIFICAR, USOS_SORTILEGA_INICIALES, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
@@ -1938,7 +1939,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (tamanos) => {
                 this.tamanos = this.ordenarPorId(tamanos);
-                this.sincronizarSelect('id_tamano', this.tamanos, 'mediano');
+                this.ponerTamanoMediano();
                 this.catalogosParaModificar.marcar('tamanos');
             }, error: () => {
                 this.tamanos = [];
@@ -2488,7 +2489,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         this.porEdades = false;
         this.edades = { categorias: [], pasos: [] };
         this.sincronizarSelect('id_clase_predilecta', this.clases);
-        this.sincronizarSelect('id_tamano', this.tamanos, 'mediano');
+        this.ponerTamanoMediano();
         this.sincronizarSelect('id_tipo_criatura', this.tiposCriatura, 'humanoide');
         this.sincronizarSelect('id_maniobrabilidad', this.maniobrabilidades, 'no vuela');
         this.sincronizarCamposDgsExtra();
@@ -2775,6 +2776,14 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             ? items.find((item) => normalizarTexto(item.Nombre, true).includes(normalizarTexto(nombrePreferente, true)))
             : null;
         control.setValue((preferente ?? items[0]).Id);
+    }
+
+    /** Una raza nueva es Mediana mientras no se elija otro tamaño: el Mediano del catálogo (`idTamanoMediano`). */
+    private ponerTamanoMediano(): void {
+        const control = this.form.get('id_tamano');
+        const idMediano = idTamanoMediano(this.tamanos);
+        if (control && this.numero(control.value) <= 0 && idMediano !== null)
+            control.setValue(idMediano);
     }
 
     private sincronizarSelect(controlName: string, items: CatalogItem[], nombrePreferente?: string): void {

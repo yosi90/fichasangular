@@ -1,6 +1,6 @@
 import { Tamano } from 'src/app/interfaces/tamaño';
 import { normalizeTamano } from 'src/app/services/tamano.service';
-import { normalizarTamanoFicha, pasosDeAptitudes, tamanoEfectivo, tamanoQueCuenta, tamanoTrasPasos } from 'src/app/services/utils/tamano-efectivo';
+import { idTamanoMediano, normalizarTamanoFicha, pasosDeAptitudes, tamanoEfectivo, tamanoQueCuenta, tamanoTrasPasos } from 'src/app/services/utils/tamano-efectivo';
 
 // El tamaño con las aptitudes que lo cambian (Manual del jugador, tablas 8-1 y 8-4), con la misma regla que la ficha de
 // la API (`utils/tamano.py`). Las cifras son las de `GET /tamanos`.
@@ -101,5 +101,22 @@ describe('tamano-efectivo', () => {
         expect(tamanoQueCuenta({ Raza: raza, Tamano_efectivo: null }))
             .toEqual({ nombre: 'Mediano', modificador: 0, modificadorPresa: 0, modificadorEsconderse: 0 });
         expect(tamanoQueCuenta(null)).toBeNull();
+    });
+});
+
+describe('idTamanoMediano (el tamaño de una raza o una pieza nueva)', () => {
+    it('es el único de la escala sin modificador de tamaño, no por su nombre', () => {
+        expect(idTamanoMediano(CATALOGO)).toBe(5);
+        // Otro nombre o el orden cambiado no importan: cuenta el modificador.
+        const renombrado = CATALOGO.map((t) => t.Id === 5 ? { ...t, Nombre: 'Medium' } : t).reverse();
+        expect(idTamanoMediano(renombrado)).toBe(5);
+    });
+
+    it('sin un solo tamaño con modificador 0 (la fila 0 no cuenta), null', () => {
+        expect(idTamanoMediano(CATALOGO.filter((t) => t.Id !== 5))).toBeNull();
+        expect(idTamanoMediano(CATALOGO.map((t) => ({ Id: t.Id, Modificador: undefined as any })))).toBeNull();
+        expect(idTamanoMediano(CATALOGO.map((t) => ({ ...t, Modificador: 0 })))).toBeNull();
+        expect(idTamanoMediano([])).toBeNull();
+        expect(idTamanoMediano(null)).toBeNull();
     });
 });

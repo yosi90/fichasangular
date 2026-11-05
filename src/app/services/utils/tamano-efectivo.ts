@@ -120,6 +120,16 @@ export function tamanoTrasPasos(catalogo: Tamano[], idBase: number, pasos: numbe
     return { tamano: escala[indiceFinal], pasos: indiceFinal - indiceBase };
 }
 
+/**
+ * El id del tamaño Mediano del catálogo (`GET /tamanos`): el único de la escala (sin la fila 0, «Depende») sin modificador
+ * de tamaño (`Modificador` 0; Manual del jugador, tabla 8-1). Es el tamaño de una raza nueva y de una pieza de equipo
+ * nueva (las cifras de las tablas son las de la Mediana). `null` si no hay uno solo (una caché sin el modificador).
+ */
+export function idTamanoMediano(catalogo: Pick<Tamano, 'Id' | 'Modificador'>[] | null | undefined): number | null {
+    const sinModificador = (catalogo ?? []).filter((tamano) => toInt(tamano?.Id) > 0 && toNumberOrNull(tamano?.Modificador) === 0);
+    return sinModificador.length === 1 ? toInt(sinModificador[0].Id) : null;
+}
+
 /** Las aptitudes que cambian el tamaño, limpias: su nombre sin espacios y sin las que no lo cambian. */
 function origenesConPasos(origenes: any[] | null | undefined): OrigenTamano[] {
     return (Array.isArray(origenes) ? origenes : [])

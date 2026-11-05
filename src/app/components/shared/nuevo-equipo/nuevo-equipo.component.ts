@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { FormBuilder, ValidatorFn, Validators } from '@angular/forms';
-import { Observable, Subject, map, takeUntil } from 'rxjs';
+import { Observable, Subject, takeUntil } from 'rxjs';
 import { ArmaDetalle } from 'src/app/interfaces/arma';
 import { ArmaduraDetalle } from 'src/app/interfaces/armadura';
 import { EncantamientoDetalle, EquipoCatalogos, EquipoRef, MaterialDetalle, MunicionDetalle } from 'src/app/interfaces/equipo';
@@ -9,6 +9,7 @@ import { ArmaduraService } from 'src/app/services/armadura.service';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { ManualService } from 'src/app/services/manual.service';
 import { TamanoService } from 'src/app/services/tamano.service';
+import { idTamanoMediano } from 'src/app/services/utils/tamano-efectivo';
 import { UserService } from 'src/app/services/user.service';
 import {
     FilaCosteMaterial,
@@ -130,6 +131,8 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
     municiones: OpcionCatalogo[] = [];
     encantamientos: OpcionCatalogo[] = [];
     tamanos: EquipoRef[] = [];
+    /** El tamaño de una pieza nueva: el Mediano del catálogo (`idTamanoMediano`). */
+    private idMediano: number | null = null;
     catalogos: EquipoCatalogos | null = null;
     propiedadesOpciones: OpcionCatalogo[] = [];
     /** Las filas repetibles de cada tipo (propiedades, costes, daños, tipos de daño, aura, requisitos y modificadores). */
@@ -607,13 +610,8 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
         this.cargada = null;
         this.filas = filasVacias();
         this.problema = null;
-        this.form.reset(valoresVacios(this.esPieza ? this.idTamanoMediano() : null) as any, { emitEvent: false });
+        this.form.reset(valoresVacios(this.esPieza ? this.idMediano : null) as any, { emitEvent: false });
         this.edicion.olvidar();
-    }
-
-    /** El tamaño de una pieza nueva: el Mediano (las cifras del catálogo son las de la pieza Mediana), por su nombre. */
-    private idTamanoMediano(): number | null {
-        return this.tamanos.find((t) => `${t.Nombre}`.trim().toLowerCase() === 'mediano')?.Id ?? null;
     }
 
     private cargarCatalogos(): void {
@@ -625,11 +623,12 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
         });
         if (this.esPieza) {
             cargar(this.equipoSvc.getMateriales(), (materiales) => this.materiales = opcionesDeCatalogo(materiales));
-            cargar(this.tamanoSvc.getTamanos().pipe(map((tamanos) => tamanos.map((t) => ({ Id: t.Id, Nombre: t.Nombre })))), (tamanos) => {
-                this.tamanos = tamanos;
-                // Una pieza nueva es Mediana mientras no se diga otra cosa.
+            cargar(this.tamanoSvc.getTamanos(), (tamanos) => {
+                this.tamanos = tamanos.map((t) => ({ Id: t.Id, Nombre: t.Nombre }));
+                this.idMediano = idTamanoMediano(tamanos);
+                // Una pieza nueva es Mediana mientras no se diga otra cosa (las cifras del catálogo son las de la pieza Mediana).
                 if (!this.edicion.editando && this.form.controls.id_tamano.value === null && !this.form.dirty)
-                    this.form.controls.id_tamano.setValue(this.idTamanoMediano(), { emitEvent: false });
+                    this.form.controls.id_tamano.setValue(this.idMediano, { emitEvent: false });
             });
         }
         if (this.esArma)
