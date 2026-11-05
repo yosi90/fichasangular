@@ -87,6 +87,15 @@ function normalizeRole(rawRole: any, rawAdmin: any): UserRole {
     return 'jugador';
 }
 
+/**
+ * Si el rol global puede crear campañas (máster, colaborador o admin). Además hace falta el permiso `campanas.create`;
+ * con el rol basta para ver siempre «Mis campañas» en el menú lateral.
+ */
+export function rolCreaCampanas(role: string | null | undefined): boolean {
+    const clave = toKey(role);
+    return clave === 'master' || clave === 'colaborador' || clave === 'admin';
+}
+
 export function normalizeUserAcl(raw: any): UserAcl {
     if (!raw || typeof raw !== 'object')
         return { ...EMPTY_USER_ACL };

@@ -53,6 +53,7 @@ import { PersonajeService } from 'src/app/services/personaje.service';
 import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
+import { rolCreaCampanas } from 'src/app/interfaces/user-acl';
 import {
     AsignacionAumentoCaracteristica,
     AsignacionCaracteristicas,
@@ -1797,9 +1798,7 @@ export class NuevoPersonajeComponent {
     }
 
     get canOpenCampaignManagement(): boolean {
-        const role = `${this.userSvc.getCurrentRole() ?? ''}`.trim().toLowerCase();
-        const canCreateByRole = role === 'master' || role === 'colaborador' || role === 'admin';
-        return canCreateByRole && this.userSvc.can('campanas', 'create');
+        return rolCreaCampanas(this.userSvc.getCurrentRole()) && this.userSvc.can('campanas', 'create');
     }
 
     get tramaTieneSubtramas(): boolean {

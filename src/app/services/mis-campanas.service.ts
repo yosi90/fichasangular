@@ -1,11 +1,8 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { BehaviorSubject, Observable, Subscription, distinctUntilChanged, merge } from 'rxjs';
-import { UserRole } from '../interfaces/user-acl';
+import { rolCreaCampanas } from '../interfaces/user-acl';
 import { CampanaService } from './campana.service';
 import { UserService } from './user.service';
-
-/** Los roles globales que siempre ven «Mis campañas»: pueden crear campañas o gestionarlas. */
-const ROLES_CON_CAMPANAS: ReadonlySet<UserRole> = new Set<UserRole>(['master', 'colaborador', 'admin']);
 
 /**
  * Si el menú lateral enseña «Mis campañas» (decisión 3 de la ronda de noviembre): con sesión, si el rol global es máster,
@@ -46,7 +43,7 @@ export class MisCampanasService implements OnDestroy {
             this.visibleSubject.next(false);
             return;
         }
-        if (ROLES_CON_CAMPANAS.has(this.userSvc.getCurrentRole())) {
+        if (rolCreaCampanas(this.userSvc.getCurrentRole())) {
             this.pararEscucha();
             this.visibleSubject.next(true);
             return;

@@ -20,6 +20,7 @@ import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { InvitacionEnviadaEspacio, PlatformSpacesService, SolicitudEspacio, TraspasoEspacio } from 'src/app/services/platform-spaces.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
+import { rolCreaCampanas } from 'src/app/interfaces/user-acl';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
 import { MAX_TIRADAS_PUNTOS_GOLPE, MIN_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
@@ -201,8 +202,7 @@ export class CampanasGestionEstado implements OnDestroy {
     }
 
     get canCreateCampaignByRole(): boolean {
-        const role = `${this.userSvc.getCurrentRole() ?? ''}`.trim().toLowerCase();
-        return role === 'master' || role === 'colaborador' || role === 'admin';
+        return rolCreaCampanas(this.userSvc.getCurrentRole());
     }
 
     get canCreateCampaign(): boolean {
