@@ -1,0 +1,49 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// El aura, los requisitos y los modificadores de las aptitudes y los objetos, dentro del marco de las inserciones (guía
+// de inserciones, «El equipo»). Las tarjetas, la rejilla y los subpaneles son los del marco; aquí solo las filas.
+:host
+    @include inserciones.insercion-form-base
+
+    mat-form-field, app-catalogo-buscador
+        width: 100%
+
+    .insercion-tarjeta
+        margin-top: 12px
+
+.magia-listas
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 12px
+
+    @container insercion (max-width: 900px)
+        grid-template-columns: minmax(0, 1fr)
+
+.magia-listas__entera
+    grid-column: 1 / -1
+
+.magia-fila
+    @include inserciones.fila-de-lista
+    grid-template-columns: minmax(0, 1fr) 92px 42px
+
+.magia-fila__nombre
+    @include inserciones.nombre-de-fila
+
+.magia-con-quitar
+    @include inserciones.buscador-con-quitar
+
+.magia-ayuda
+    margin: 0 0 8px
+    font-size: 12px
+    color: $ficha-texto-suave
+
+.magia-vacio
+    @include inserciones.lista-vacia
+
+.magia-error
+    @include inserciones.error-de-lista
+
+.subpanel + .subpanel
+    margin-top: 8px

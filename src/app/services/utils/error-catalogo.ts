@@ -14,6 +14,13 @@ export interface ElementoDeCatalogo {
     singular: string;
     plural: string;
     femenino: boolean;
+    /** Femenino que empieza por «a» tónica: lleva «el», «un», «del» delante («el arma»), y el adjetivo en femenino. */
+    aTonica?: boolean;
+}
+
+/** Los artículos del elemento: «la clase», «una clase», «de la clase»; «el arma», «un arma», «del arma». */
+export function articulosDe(elemento: ElementoDeCatalogo): { el: string; un: string; del: string; } {
+    return elemento.femenino && !elemento.aTonica ? { el: 'la', un: 'una', del: 'de la' } : { el: 'el', un: 'un', del: 'del' };
 }
 
 /**
@@ -24,9 +31,9 @@ export interface ElementoDeCatalogo {
  * id) se devuelve tal cual.
  */
 export function errorDeCatalogo(error: unknown, accion: AccionDeCatalogo, elemento: ElementoDeCatalogo): Error {
-    const { singular, plural, femenino } = elemento;
+    const { singular } = elemento;
     if (!(error instanceof HttpErrorResponse))
-        return error instanceof Error ? error : new Error(`No se ha podido ${accion} ${femenino ? 'la' : 'el'} ${singular}.`);
+        return error instanceof Error ? error : new Error(`No se ha podido ${accion} ${articulosDe(elemento).el} ${singular}.`);
 
     const frase = fraseDeCatalogo(error.status, accion, elemento);
     const leido = leerErrorDeApi(error, frase);
@@ -35,11 +42,12 @@ export function errorDeCatalogo(error: unknown, accion: AccionDeCatalogo, elemen
     return new ProfileApiError(texto, leido.codigo, leido.estado, leido.campo);
 }
 
-function fraseDeCatalogo(status: number, accion: AccionDeCatalogo, { singular, plural, femenino }: ElementoDeCatalogo): string {
-    const el = femenino ? 'la' : 'el';
+function fraseDeCatalogo(status: number, accion: AccionDeCatalogo, elemento: ElementoDeCatalogo): string {
+    const { singular, plural } = elemento;
+    const { el, un, del } = articulosDe(elemento);
     switch (status) {
         case 400:
-            return `Los datos ${femenino ? 'de la' : 'del'} ${singular} no son válidos.`;
+            return `Los datos ${del} ${singular} no son válidos.`;
         case 401:
             return `Tu sesión no es válida para ${accion} ${plural}.`;
         case 403:
@@ -47,7 +55,7 @@ function fraseDeCatalogo(status: number, accion: AccionDeCatalogo, { singular, p
         case 404:
             return `No se ha encontrado ${el} ${singular} o algo a lo que apunta.`;
         case 409:
-            return `Ya existe ${femenino ? 'una' : 'un'} ${singular} con ese nombre.`;
+            return `Ya existe ${un} ${singular} con ese nombre.`;
         default:
             return `No se ha podido ${accion} ${el} ${singular}.`;
     }

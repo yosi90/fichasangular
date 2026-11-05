@@ -155,7 +155,7 @@ export function articuloDeArmadura(armadura: ArmaduraDetalle): ArticuloTienda {
 }
 
 export function articuloDeMunicion(municion: MunicionDetalle): ArticuloTienda {
-    const lote = Math.max(1, municion.Cantidad_por_precio);
+    const lote = Math.max(1, municion.Cantidad_por_precio ?? 1);
     return {
         ...articuloBase('municion', municion.Id, municion.Nombre),
         precio: municion.Precio, peso: municion.Peso, lote, oficial: municion.Oficial, categoria: 'Munición', sePone: false,

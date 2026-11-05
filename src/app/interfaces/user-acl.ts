@@ -22,7 +22,8 @@ export type PermissionResource =
     | 'armas'
     | 'armaduras'
     | 'deidades'
-    | 'monstruos';
+    | 'monstruos'
+    | 'objetos';
 
 export const PERMISSION_RESOURCES: PermissionResource[] = [
     'personajes',
@@ -44,6 +45,7 @@ export const PERMISSION_RESOURCES: PermissionResource[] = [
     'armaduras',
     'deidades',
     'monstruos',
+    'objetos',
 ];
 
 export interface UserAcl {

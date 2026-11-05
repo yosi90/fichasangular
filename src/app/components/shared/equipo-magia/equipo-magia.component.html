@@ -1,0 +1,111 @@
+<section class="insercion-tarjeta" [class.insercion-tarjeta--cambiada]="cambiado('aura_escuelas') || cambiado('requisitos')">
+    <h3 class="insercion-tarjeta__titulo">Aura y requisitos de creación</h3>
+    <p class="magia-error" role="alert" *ngIf="errorRequisitos">{{errorRequisitos}}</p>
+    <div class="magia-listas">
+        <div class="subpanel">
+            <div class="subpanel-head"><span>Escuelas del aura · {{relaciones.escuelas.length}}</span></div>
+            <mat-chip-set aria-label="Escuelas del aura">
+                <mat-chip *ngFor="let escuela of relaciones.escuelas; trackBy: trackById" (removed)="quitar('escuelas', escuela.id)">
+                    {{escuela.nombre}}
+                    <button matChipRemove [attr.aria-label]="'Quitar ' + escuela.nombre"><mat-icon>cancel</mat-icon></button>
+                </mat-chip>
+            </mat-chip-set>
+            <app-catalogo-buscador etiqueta="Añadir escuela" [anadir]="true" [opciones]="escuelas"
+                [excluir]="idsDe(relaciones.escuelas)" (elegir)="anadir('escuelas', $event)">
+            </app-catalogo-buscador>
+        </div>
+        <div class="subpanel">
+            <div class="subpanel-head"><span>Dotes · {{relaciones.dotes.length}}</span></div>
+            <mat-chip-set aria-label="Dotes requeridas">
+                <mat-chip *ngFor="let dote of relaciones.dotes; trackBy: trackById" (removed)="quitar('dotes', dote.id)">
+                    {{dote.nombre}}
+                    <button matChipRemove [attr.aria-label]="'Quitar ' + dote.nombre"><mat-icon>cancel</mat-icon></button>
+                </mat-chip>
+            </mat-chip-set>
+            <app-catalogo-buscador etiqueta="Añadir dote" [anadir]="true" [opciones]="dotes"
+                [excluir]="idsDe(relaciones.dotes)" (elegir)="anadir('dotes', $event)">
+            </app-catalogo-buscador>
+        </div>
+        <div class="subpanel magia-listas__entera">
+            <div class="subpanel-head"><span>Conjuros · {{relaciones.conjuros.length}}</span></div>
+            <p class="magia-ayuda" *ngIf="relaciones.conjuros.length > 0">Grupo 0: obligatorio. Los del mismo grupo (1, 2…) son alternativos: basta con uno.</p>
+            <div class="magia-fila magia-fila--conjuro" *ngFor="let conjuro of relaciones.conjuros; trackBy: trackById">
+                <span class="magia-fila__nombre">{{conjuro.nombre}}</span>
+                <mat-form-field appearance="fill" subscriptSizing="dynamic">
+                    <mat-label>Grupo</mat-label>
+                    <input matInput type="number" min="0" step="1" [(ngModel)]="conjuro.opcional" (ngModelChange)="cambio.emit()">
+                </mat-form-field>
+                <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar ' + conjuro.nombre"
+                    (click)="quitar('conjuros', conjuro.id)">
+                    <mat-icon>delete</mat-icon>
+                </button>
+            </div>
+            <app-catalogo-buscador etiqueta="Añadir conjuro" [anadir]="true" [opciones]="conjuros"
+                [excluir]="idsDe(relaciones.conjuros)" (elegir)="anadir('conjuros', $event)">
+            </app-catalogo-buscador>
+        </div>
+    </div>
+</section>
+
+<section class="insercion-tarjeta" [class.insercion-tarjeta--cambiada]="cambiado('modificadores')">
+    <h3 class="insercion-tarjeta__titulo">Modificadores · {{relaciones.modificadores.length}}</h3>
+    <p class="magia-error" role="alert" *ngIf="errorModificadores">{{errorModificadores}}</p>
+    <p class="magia-vacio" *ngIf="relaciones.modificadores.length < 1">Sin modificadores (capa de resistencia +1: salvaciones, resistencia, +1).</p>
+    <div class="subpanel" *ngFor="let fila of relaciones.modificadores; let indice = index; trackBy: trackByUid">
+        <div class="subpanel-head">
+            <span>{{resumen(fila, indice)}}</span>
+            <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar el modificador ' + (indice + 1)"
+                (click)="quitarModificador(fila.uid)">
+                <mat-icon>delete</mat-icon>
+            </button>
+        </div>
+        <div class="insercion-campos">
+            <mat-form-field appearance="fill">
+                <mat-label>Objetivo</mat-label>
+                <mat-select [(ngModel)]="fila.id_objetivo" (ngModelChange)="cambio.emit()">
+                    <mat-option *ngFor="let item of opcionesCon(objetivos, fila.id_objetivo)" [value]="item.Id">{{item.Nombre}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+                <mat-label>Tipo de bonificador</mat-label>
+                <mat-select [(ngModel)]="fila.id_tipo_bonificador" (ngModelChange)="cambio.emit()">
+                    <mat-option *ngFor="let item of opcionesCon(tiposBonificador, fila.id_tipo_bonificador)" [value]="item.Id">{{item.Nombre}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+                <mat-label>Cifra</mat-label>
+                <input matInput type="number" step="1" [(ngModel)]="fila.valor" (ngModelChange)="cambio.emit()">
+            </mat-form-field>
+            <mat-form-field appearance="fill">
+                <mat-label>Característica</mat-label>
+                <mat-select [(ngModel)]="fila.id_caracteristica" (ngModelChange)="cambio.emit()">
+                    <mat-option [value]="null">—</mat-option>
+                    <mat-option *ngFor="let item of caracteristicas" [value]="item.id">{{item.nombre}}</mat-option>
+                </mat-select>
+                <mat-hint>Solo si el objetivo la pide.</mat-hint>
+            </mat-form-field>
+            <div class="magia-con-quitar insercion-campos__doble">
+                <app-catalogo-buscador etiqueta="Habilidad" placeholder="Solo si el objetivo la pide" [opciones]="habilidades"
+                    [valor]="fila.id_habilidad" (elegir)="elegirHabilidad(fila, $event)">
+                </app-catalogo-buscador>
+                <button mat-icon-button type="button" class="row-action-btn" *ngIf="fila.id_habilidad !== null"
+                    aria-label="Sin habilidad" (click)="quitarHabilidad(fila)">
+                    <mat-icon>close</mat-icon>
+                </button>
+            </div>
+            <mat-form-field appearance="fill">
+                <mat-label>Tipo de daño o energía</mat-label>
+                <mat-select [(ngModel)]="fila.id_tipo_dano" (ngModelChange)="cambio.emit()">
+                    <mat-option [value]="null">—</mat-option>
+                    <mat-option *ngFor="let item of opcionesCon(tiposDano, fila.id_tipo_dano)" [value]="item.Id">{{item.Nombre}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="fill" class="insercion-campos__entero">
+                <mat-label>Condición</mat-label>
+                <input matInput maxlength="200" [(ngModel)]="fila.condicion" (ngModelChange)="cambio.emit()" placeholder="contra encantamientos">
+                <mat-hint>Lo condicional se enseña y no se suma.</mat-hint>
+            </mat-form-field>
+        </div>
+    </div>
+    <button mat-stroked-button type="button" (click)="anadirModificador()"><mat-icon>add</mat-icon> Añadir modificador</button>
+</section>

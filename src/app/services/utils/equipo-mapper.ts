@@ -8,6 +8,7 @@ import {
     EquipoRef,
     EquipoTipoBonificador,
     EquipoTipoObjeto,
+    ManualDeEquipo,
     MaterialDetalle,
     ModificadorEstructurado,
     MunicionDetalle,
@@ -16,7 +17,6 @@ import {
     PiezaMaterial,
     TextoEquipo,
 } from 'src/app/interfaces/equipo';
-import { ManualReferencia } from 'src/app/interfaces/manual';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 
@@ -43,8 +43,8 @@ function normalizeOrigenDescripcion(raw: any): OrigenDescripcion {
     return `${raw ?? ''}`.trim().toLowerCase() === 'srd' ? 'srd' : 'propia';
 }
 
-function normalizeManualOpcional(raw: any): ManualReferencia | null {
-    return raw && typeof raw === 'object' ? normalizeManualApi(raw) : null;
+function normalizeManualOpcional(raw: any): ManualDeEquipo | null {
+    return raw && typeof raw === 'object' ? { ...normalizeManualApi(raw), Pagina: toNumberOrNull(raw.Pagina) } : null;
 }
 
 /** La descripción con su origen, el nombre original de los libros traducidos y el manual. */
@@ -188,7 +188,8 @@ export function normalizeMunicion(raw: any): MunicionDetalle {
         Nombre: toText(raw?.Nombre),
         ...normalizeTextoEquipo(raw),
         Precio: toNumberOrNull(raw?.Precio),
-        Cantidad_por_precio: Math.max(1, toNumber(raw?.Cantidad_por_precio, 1)),
+        // `null` si el libro no lo dice (se cuenta como una pieza); se conserva para que «Modificar» lo devuelva igual.
+        Cantidad_por_precio: toNumberOrNull(raw?.Cantidad_por_precio),
         Peso: toNumberOrNull(raw?.Peso),
         Armas: normalizeEquipoRefs(raw?.Armas),
         Oficial: toBoolean(raw?.Oficial),
@@ -217,7 +218,8 @@ export function normalizeEncantamiento(raw: any): EncantamientoDetalle {
             Conjuros: toArray(raw?.Requisitos?.Conjuros).map((conjuro: any) => ({
                 Id: toNumber(conjuro?.Id),
                 Nombre: toText(conjuro?.Nombre),
-                Opcional: toBoolean(conjuro?.Opcional),
+                // El grupo de alternativas (0, obligatorio): basta con uno de los del mismo número.
+                Opcional: Math.max(0, toNumber(conjuro?.Opcional)),
             })),
         },
         Encantamiento_base: normalizeEquipoRef(raw?.Encantamiento_base),
@@ -262,7 +264,11 @@ export function normalizeObjeto(raw: any): ObjetoDetalle {
             Dias: toNumberOrNull(raw?.Creacion?.Dias),
             Requisitos: {
                 Dotes: normalizeEquipoRefs(raw?.Creacion?.Requisitos?.Dotes),
-                Conjuros: normalizeEquipoRefs(raw?.Creacion?.Requisitos?.Conjuros),
+                Conjuros: toArray(raw?.Creacion?.Requisitos?.Conjuros).map((conjuro: any) => ({
+                    Id: toNumber(conjuro?.Id),
+                    Nombre: toText(conjuro?.Nombre),
+                    Opcional: Math.max(0, toNumber(conjuro?.Opcional)),
+                })),
             },
             Otros_requisitos: toNullableText(raw?.Creacion?.Otros_requisitos),
         },
@@ -294,7 +300,7 @@ export function normalizeObjeto(raw: any): ObjetoDetalle {
             ? {
                 Precio_por_nivel: toNumber(generico.Precio_por_nivel),
                 Nivel_maximo: toNumberOrNull(generico.Nivel_maximo),
-                Usos_componente_caro: toNumber(generico.Usos_componente_caro),
+                Usos_componente_caro: toNumberOrNull(generico.Usos_componente_caro),
             }
             : null,
         Oficial: toBoolean(raw?.Oficial),

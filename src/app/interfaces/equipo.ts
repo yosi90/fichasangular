@@ -14,6 +14,9 @@ export interface EquipoRef {
 /** De dónde sale la descripción: escrita por nosotros (`propia`, un resumen) o el texto del SRD traducido. */
 export type OrigenDescripcion = 'propia' | 'srd';
 
+/** El manual de una entrada del equipo: como `ManualReferencia`, con la página que puede faltar. */
+export type ManualDeEquipo = Omit<ManualReferencia, 'Pagina'> & { Pagina: number | null; };
+
 /** Los campos de texto que comparten armas, armaduras, munición, materiales, aptitudes, objetos y conjuntos. */
 export interface TextoEquipo {
     Descripcion: string;
@@ -21,7 +24,8 @@ export interface TextoEquipo {
     Nombre_original: string | null;
     Traducido: boolean;
     /** `null` en los materiales y munición que no dicen su manual. */
-    Manual: ManualReferencia | null;
+    /** La página es `null` si el libro no la dice (algunos materiales de los scripts): «Modificar» la devuelve igual. */
+    Manual: ManualDeEquipo | null;
 }
 
 export interface EquipoPropiedadArma extends EquipoRef {
@@ -144,7 +148,8 @@ export interface MunicionDetalle extends TextoEquipo {
     Nombre: string;
     /** El precio y el peso son de un lote de `Cantidad_por_precio` piezas (20 flechas: 1 po y 3 lb). */
     Precio: number | null;
-    Cantidad_por_precio: number;
+    /** `null` si el libro no lo dice: una pieza. */
+    Cantidad_por_precio: number | null;
     Peso: number | null;
     Armas: EquipoRef[];
     Oficial: boolean;
@@ -172,7 +177,8 @@ export interface EncantamientoDetalle extends TextoEquipo {
     Aura: EquipoAura;
     Requisitos: {
         Dotes: EquipoRef[];
-        Conjuros: (EquipoRef & { Opcional: boolean; })[];
+        /** `Opcional` 0 es obligatorio; los alternativos llevan el mismo número de grupo (basta con uno). */
+        Conjuros: (EquipoRef & { Opcional: number; })[];
     };
     Encantamiento_base: EquipoRef | null;
     Es_plantilla: boolean;
@@ -184,7 +190,7 @@ export interface EncantamientoDetalle extends TextoEquipo {
 export interface GenericoConjuro {
     Precio_por_nivel: number;
     Nivel_maximo: number | null;
-    Usos_componente_caro: number;
+    Usos_componente_caro: number | null;
 }
 
 /** Una aptitud especial de un arma o armadura mágica específica (`Cabeza` 2: la segunda cabeza de un arma doble). */
@@ -217,7 +223,7 @@ export interface ObjetoDetalle extends TextoEquipo {
         Coste_po: number | null;
         Coste_px: number | null;
         Dias: number | null;
-        Requisitos: { Dotes: EquipoRef[]; Conjuros: EquipoRef[]; };
+        Requisitos: { Dotes: EquipoRef[]; Conjuros: (EquipoRef & { Opcional: number; })[]; };
         Otros_requisitos: string | null;
     };
     Conjuros: (EquipoRef & { Nivel_lanzador: number | null; Cargas_por_uso: number | null; Usos_por_dia: number | null; })[];
@@ -290,4 +296,138 @@ export interface EquipoCuerpoComun {
     id_manual: number;
     pagina: number;
     oficial: boolean;
+}
+
+/*
+ * Los cuerpos del alta y la edición de munición, materiales, aptitudes especiales, objetos y conjuntos (`POST …/add` y
+ * `PUT …/<id>`, el mismo cuerpo; segunda parte del hito 7 del roadmap de inserciones; `docs/publica/endpoints/
+ * catalogos.md`, «Alta y edición de munición, materiales…»). Un solo permiso para los cinco: `objetos`.
+ */
+
+/** Lo común, con el manual y la página que pueden faltar (la munición y los materiales de los scripts). */
+export type EquipoCuerpoComunSinManual = Omit<EquipoCuerpoComun, 'id_manual' | 'pagina'> & {
+    id_manual: number | null;
+    pagina: number | null;
+};
+
+export interface MunicionCuerpo {
+    municion: EquipoCuerpoComunSinManual & {
+        precio: number | null;
+        cantidad_por_precio: number | null;
+        peso: number | null;
+    };
+}
+
+export interface MaterialCosteCuerpo {
+    id_aplicacion: number;
+    coste: number | null;
+    coste_por_libra: number | null;
+    multiplicador_precio: number | null;
+    coste_encantar: number | null;
+}
+
+export interface MaterialCuerpo {
+    material: EquipoCuerpoComunSinManual & {
+        dureza: number | null;
+        pg_por_pulgada: number | null;
+        cuenta_como_gran_calidad: boolean;
+        supera_rd: boolean;
+        peso_multiplicador: number | null;
+        bon_des_mas: number | null;
+        penalizador_menos: number | null;
+        fallo_arcano_menos: number | null;
+        categoria_mas_ligera: boolean;
+        dano_mod: number | null;
+    };
+    costes: MaterialCosteCuerpo[];
+}
+
+/** Un modificador estructurado en un cuerpo (aptitudes y objetos). */
+export interface ModificadorCuerpo {
+    id_objetivo: number;
+    id_tipo_bonificador: number;
+    valor: number;
+    id_caracteristica: number | null;
+    id_habilidad: number | null;
+    id_tipo_dano: number | null;
+    condicion: string | null;
+}
+
+/** Los requisitos de creación: `opcional` 0 es obligatorio; los alternativos, el mismo número de grupo. */
+export interface RequisitosCuerpo {
+    dotes: number[];
+    conjuros: { id_conjuro: number; opcional: number; }[];
+}
+
+export interface EncantamientoCuerpo {
+    encantamiento: EquipoCuerpoComun & {
+        modificador: number;
+        coste: number;
+        aplica_arma_cc: boolean;
+        aplica_arma_distancia: boolean;
+        aplica_municion: boolean;
+        aplica_armadura: boolean;
+        aplica_escudo: boolean;
+        nivel_lanzador: number | null;
+        id_intensidad_aura: number | null;
+        id_encantamiento_base: number | null;
+        es_plantilla: boolean;
+    };
+    aura_escuelas: number[];
+    tipos_dano: number[];
+    requisitos: RequisitosCuerpo;
+    danos: { dados: string; id_tipo_dano: number | null; condicion: string | null; }[];
+    modificadores: ModificadorCuerpo[];
+}
+
+export interface ObjetoCuerpo {
+    objeto: EquipoCuerpoComun & {
+        id_tipo_objeto: number;
+        precio: number | null;
+        nivel_objeto: number | null;
+        peso: number | null;
+        id_ranura: number | null;
+        nivel_lanzador: number | null;
+        id_intensidad_aura: number | null;
+        cargas: number | null;
+        usos_por_dia: number | null;
+        maldito: boolean;
+        inteligente: boolean;
+        es_reliquia: boolean;
+        requisitos_uso: string | null;
+        coste_creacion_po: number | null;
+        coste_creacion_px: number | null;
+        dias_creacion: number | null;
+        requisitos_otros: string | null;
+        id_conjunto: number | null;
+        id_monstruo: number | null;
+        es_generico_conjuro: boolean;
+        precio_por_nivel_conjuro: number | null;
+        nivel_conjuro_maximo: number | null;
+        usos_componente_caro: number | null;
+        id_arma_base: number | null;
+        id_armadura_base: number | null;
+        bonificador_mejora: number | null;
+        bonificador_mejora_2: number | null;
+        id_material: number | null;
+    };
+    aura_escuelas: number[];
+    activaciones: { id_tipo_activacion: number; id_tipo_accion: number | null; }[];
+    requisitos: RequisitosCuerpo;
+    conjuros: { id_conjuro: number; nivel_lanzador: number | null; cargas_por_uso: number | null; usos_por_dia: number | null; }[];
+    modificadores: ModificadorCuerpo[];
+    encantamientos: { id_encantamiento: number; cabeza: number; }[];
+}
+
+export interface ConjuntoObjetosCuerpo {
+    conjunto: EquipoCuerpoComun;
+    piezas: number[];
+    bonificaciones: { piezas: number; descripcion: string; }[];
+}
+
+/** La respuesta del alta y la edición: el `message` y la entrada como la da su `GET`. */
+export interface EquipoGuardado<T> {
+    message: string;
+    id: number;
+    entrada: T;
 }

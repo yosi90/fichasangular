@@ -18,7 +18,7 @@ export const PLANTILLA: ElementoDeCatalogo = { singular: 'plantilla', plural: 'p
 export const MONSTRUO: ElementoDeCatalogo = { singular: 'monstruo', plural: 'monstruos', femenino: false };
 export const HABILIDAD: ElementoDeCatalogo = { singular: 'habilidad', plural: 'habilidades', femenino: true };
 
-export const ARMA: ElementoDeCatalogo = { singular: 'arma', plural: 'armas', femenino: true };
+export const ARMA: ElementoDeCatalogo = { singular: 'arma', plural: 'armas', femenino: true, aTonica: true };
 export const ARMADURA: ElementoDeCatalogo = { singular: 'armadura', plural: 'armaduras', femenino: true };
 
 // Hito 8 del roadmap de inserciones (2026-11-05): rasgos, ventajas y desventajas, y las fusiones y los chakras del incarnum.
@@ -27,6 +27,11 @@ export const VENTAJA: ElementoDeCatalogo = { singular: 'ventaja', plural: 'venta
 export const DESVENTAJA: ElementoDeCatalogo = { singular: 'desventaja', plural: 'desventajas', femenino: true };
 export const FUSION: ElementoDeCatalogo = { singular: 'fusión', plural: 'fusiones', femenino: true };
 export const CHAKRA: ElementoDeCatalogo = { singular: 'chakra', plural: 'chakras', femenino: false };
+export const MUNICION: ElementoDeCatalogo = { singular: 'munición', plural: 'municiones', femenino: true };
+export const MATERIAL: ElementoDeCatalogo = { singular: 'material especial', plural: 'materiales especiales', femenino: false };
+export const APTITUD_EQUIPO: ElementoDeCatalogo = { singular: 'aptitud especial', plural: 'aptitudes especiales', femenino: true };
+export const OBJETO: ElementoDeCatalogo = { singular: 'objeto', plural: 'objetos', femenino: false };
+export const CONJUNTO_OBJETOS: ElementoDeCatalogo = { singular: 'conjunto de objetos', plural: 'conjuntos de objetos', femenino: false };
 
 /**
  * El nombre de una pantalla que sirve a dos catálogos (la ventaja y la desventaja, el arma y la armadura), leído cada vez:

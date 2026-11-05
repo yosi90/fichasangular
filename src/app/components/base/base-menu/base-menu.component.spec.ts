@@ -221,6 +221,19 @@ describe('BaseMenuComponent', () => {
         expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'especiales', operacion: 'modificar' });
     });
 
+    it('Insertar y Modificar ofrecen todo el equipo que tiene detalle, con el permiso objetos para lo que no es arma ni armadura (hito 7)', () => {
+        const etiquetas = (seccion: 'insertar' | 'modificar' | 'detalles') => component.gruposOtros[seccion][0].opciones.map(opcion => opcion.etiqueta);
+        expect(etiquetas('insertar')).toEqual(etiquetas('detalles'));
+        expect(etiquetas('modificar')).toEqual(etiquetas('detalles'));
+        canCreateRazas = false;
+        permissions['objetos:create'] = true;
+        const habilitadas = component.gruposOtros.insertar[0].opciones.filter(opcion => opcion.habilitada()).map(opcion => opcion.etiqueta);
+        expect(habilitadas).toEqual(['Munición', 'Materiales especiales', 'Aptitudes de armas y armaduras', 'Objetos', 'Conjuntos de objetos']);
+        const emitSpy = spyOn(component.ListadoTab, 'emit');
+        component.gruposOtros.modificar[0].opciones[5].abrir();
+        expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'objetos', operacion: 'modificar' });
+    });
+
     it('marca sin opciones solo el grupo sin permisos', () => {
         canCreateRazas = false;
         permissions['armas:create'] = true;

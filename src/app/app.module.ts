@@ -116,6 +116,8 @@ import { NuevoRasgoComponent } from './components/shared/nuevo-rasgo/nuevo-rasgo
 import { NuevaVentajaComponent } from './components/shared/nueva-ventaja/nueva-ventaja.component';
 import { NuevaFusionComponent } from './components/shared/nueva-fusion/nueva-fusion.component';
 import { NuevoChakraComponent } from './components/shared/nuevo-chakra/nuevo-chakra.component';
+import { NuevoObjetoComponent } from './components/shared/nuevo-objeto/nuevo-objeto.component';
+import { EquipoMagiaComponent } from './components/shared/equipo-magia/equipo-magia.component';
 import { InsercionMarcoComponent } from './components/shared/insercion-marco/insercion-marco.component';
 import { NuevaEspecialComponent } from './components/shared/nueva-especial/nueva-especial.component';
 import { NuevaClaseComponent } from './components/shared/nueva-clase/nueva-clase.component';
@@ -288,6 +290,8 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         NuevaVentajaComponent,
         NuevaFusionComponent,
         NuevoChakraComponent,
+        NuevoObjetoComponent,
+        EquipoMagiaComponent,
         InsercionMarcoComponent,
         NuevaEspecialComponent,
         NuevaClaseComponent,

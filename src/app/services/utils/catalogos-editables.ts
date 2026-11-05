@@ -28,6 +28,11 @@ export const INSERCIONES_CATALOGO: Readonly<Record<string, string>> = {
     'ventajas': 'Nueva ventaja',
     'fusiones del alma': 'Nueva fusión',
     'chakras': 'Nuevo chakra',
+    'munición': 'Nueva munición',
+    'materiales especiales': 'Nuevo material',
+    'aptitudes de armas y armaduras': 'Nueva aptitud',
+    'objetos': 'Nuevo objeto',
+    'conjuntos de objetos': 'Nuevo conjunto',
 };
 
 /** Si la inserción de un listado ya tiene pantalla. */
@@ -42,7 +47,8 @@ export function tieneInsercion(lista: string | null | undefined): boolean {
  */
 export type TipoEdicion = 'racial' | 'idioma' | 'especial' | 'clase' | 'plantilla' | 'raza' | 'dote' | 'conjuro' | 'monstruo'
     | 'arma' | 'armadura'
-    | 'rasgo' | 'ventaja' | 'desventaja' | 'fusion' | 'chakra';
+    | 'rasgo' | 'ventaja' | 'desventaja' | 'fusion' | 'chakra'
+    | 'municion' | 'material' | 'encantamiento' | 'objeto' | 'conjunto';
 
 /** Una pestaña de «Modificar» abierta. */
 export interface EdicionCatalogoTab {
@@ -89,6 +95,11 @@ export const EDICIONES_CATALOGO: Readonly<Record<TipoEdicion, DefinicionEdicion>
     desventaja: { listado: 'ventajas', ...editar('desventaja'), admite: (entrada) => tipoRolDeVentaja(entrada as { Coste?: unknown; }) === 'desventaja' },
     fusion: { listado: 'fusiones del alma', ...editar('fusión') },
     chakra: { listado: 'chakras', ...editar('chakra') },
+    municion: { listado: 'munición', ...editar('munición') },
+    material: { listado: 'materiales especiales', ...editar('material') },
+    encantamiento: { listado: 'aptitudes de armas y armaduras', ...editar('aptitud') },
+    objeto: { listado: 'objetos', ...editar('objeto') },
+    conjunto: { listado: 'conjuntos de objetos', ...editar('conjunto') },
 };
 
 export const TIPOS_EDICION = Object.keys(EDICIONES_CATALOGO) as TipoEdicion[];

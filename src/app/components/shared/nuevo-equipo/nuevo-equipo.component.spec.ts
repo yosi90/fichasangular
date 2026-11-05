@@ -18,6 +18,9 @@ import { ManualService } from 'src/app/services/manual.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { UserService } from 'src/app/services/user.service';
 import { IDA_Y_VUELTA_EQUIPO } from 'src/testing/ida-y-vuelta-equipo';
+import { IDA_Y_VUELTA_OBJETOS } from 'src/testing/ida-y-vuelta-objetos';
+import { normalizeEncantamiento, normalizeMaterial, normalizeMunicion } from 'src/app/services/utils/equipo-mapper';
+import { TipoEquipoEditable } from 'src/app/services/utils/equipo-formulario';
 import { NuevoEquipoComponent } from './nuevo-equipo.component';
 
 describe('NuevoEquipoComponent', () => {
@@ -25,6 +28,7 @@ describe('NuevoEquipoComponent', () => {
     let component: NuevoEquipoComponent;
     let armaSvc: jasmine.SpyObj<ArmaService>;
     let armaduraSvc: jasmine.SpyObj<ArmaduraService>;
+    let equipoSvc: jasmine.SpyObj<EquipoService>;
     let puede = true;
 
     const catalogos = {
@@ -34,14 +38,30 @@ describe('NuevoEquipoComponent', () => {
         Tipos_arma: [{ Id: 1, Nombre: 'Sencilla' }, { Id: 2, Nombre: 'Marcial' }],
         Pesos_armadura: [{ Id: 1, Nombre: 'Ligera' }, { Id: 2, Nombre: 'Intermedia' }, { Id: 3, Nombre: 'Pesada' }],
         Tipos_escudo: [{ Id: 1, Nombre: 'Broquel' }, { Id: 2, Nombre: 'Ligero' }],
+        Intensidades_aura: [{ Id: 1, Nombre: 'Tenue' }, { Id: 2, Nombre: 'Débil' }],
+        Aplicaciones_material: [{ Id: 6, Nombre: 'Armadura ligera' }, { Id: 9, Nombre: 'Escudo' }],
+        Objetivos_modificador: [{ Id: 1, Nombre: 'CA' }],
+        Tipos_bonificador: [{ Id: 1, Nombre: 'Mejora', Apila: false }],
     };
 
-    async function montar(tipo: 'arma' | 'armadura', modo: 'crear' | 'editar' = 'crear', get: any = null): Promise<void> {
+    async function montar(tipo: TipoEquipoEditable, modo: 'crear' | 'editar' = 'crear', get: any = null): Promise<void> {
         armaSvc = jasmine.createSpyObj<ArmaService>('ArmaService', ['getArmaFresca', 'crearArma', 'actualizarArma']);
         armaduraSvc = jasmine.createSpyObj<ArmaduraService>('ArmaduraService', ['getArmaduraFresca', 'crearArmadura', 'actualizarArmadura']);
+        equipoSvc = jasmine.createSpyObj<EquipoService>('EquipoService', [
+            'getCatalogos', 'getMateriales', 'getMuniciones', 'getEncantamientos', 'getMunicionFresca', 'getMaterialFresco',
+            'getEncantamientoFresco', 'crearMunicion', 'actualizarMunicion', 'crearMaterial', 'actualizarMaterial',
+            'crearEncantamiento', 'actualizarEncantamiento',
+        ]);
+        equipoSvc.getCatalogos.and.returnValue(of(catalogos as any));
+        equipoSvc.getMateriales.and.returnValue(of([{ Id: 4, Nombre: 'Acero' }, { Id: 7, Nombre: 'Adamantita' }] as any));
+        equipoSvc.getMuniciones.and.returnValue(of([{ Id: 67, Nombre: 'Perdigones' }] as any));
+        equipoSvc.getEncantamientos.and.returnValue(of([{ Id: 1, Nombre: 'Afilada' }, { Id: 501, Nombre: 'Anclante' }] as any));
         if (get) {
             armaSvc.getArmaFresca.and.returnValue(of(normalizeArma(get)));
             armaduraSvc.getArmaduraFresca.and.returnValue(of(normalizeArmadura(get)));
+            equipoSvc.getMunicionFresca.and.returnValue(of(normalizeMunicion(get)));
+            equipoSvc.getMaterialFresco.and.returnValue(of(normalizeMaterial(get)));
+            equipoSvc.getEncantamientoFresco.and.returnValue(of(normalizeEncantamiento(get)));
         }
         await TestBed.configureTestingModule({
             declarations: [NuevoEquipoComponent],
@@ -50,13 +70,7 @@ describe('NuevoEquipoComponent', () => {
             providers: [
                 { provide: ArmaService, useValue: armaSvc },
                 { provide: ArmaduraService, useValue: armaduraSvc },
-                {
-                    provide: EquipoService, useValue: {
-                        getCatalogos: () => of(catalogos),
-                        getMateriales: () => of([{ Id: 4, Nombre: 'Acero' }, { Id: 7, Nombre: 'Adamantita' }]),
-                        getMuniciones: () => of([{ Id: 67, Nombre: 'Perdigones' }]),
-                    },
-                },
+                { provide: EquipoService, useValue: equipoSvc },
                 { provide: ManualService, useValue: { getManuales: () => of([{ Id: 54, Nombre: 'Manual del jugador 1' }]) } },
                 { provide: TamanoService, useValue: { getTamanos: () => of([{ Id: 4, Nombre: 'Pequeño' }, { Id: 5, Nombre: 'Mediano' }]) } },
                 {
@@ -101,6 +115,76 @@ describe('NuevoEquipoComponent', () => {
                 expect(component.cuerpo()).toEqual(cuerpo);
             });
         });
+
+        // Segunda parte del hito 7: munición, materiales y aptitudes especiales.
+        ([['municion', IDA_Y_VUELTA_OBJETOS.municiones], ['material', IDA_Y_VUELTA_OBJETOS.materiales],
+            ['encantamiento', IDA_Y_VUELTA_OBJETOS.encantamientos]] as const).forEach(([tipo, entradas]) => {
+            entradas.forEach(({ id, nombre, get, cuerpo }) => {
+                it(`${tipo} «${nombre}» (${id}): cargada y sin tocar, manda el cuerpo que devuelve el mismo GET`, async () => {
+                    await montar(tipo, 'editar', get);
+
+                    expect(component.edicion.cargando).toBeFalse();
+                    expect(component.edicion.hayCambios).toBeFalse();
+                    expect(component.cuerpo()).toEqual(cuerpo);
+                });
+            });
+        });
+    });
+
+    it('una munición sin manual ni precio se puede guardar: el manual es opcional y el lote, de una pieza', async () => {
+        await montar('municion');
+        equipoSvc.crearMunicion.and.resolveTo({ message: 'Munición creada exitosamente', id: 90, entrada: normalizeMunicion({ Id: 90 }) });
+        component.form.patchValue({ nombre: 'Dardos de cerbatana', oficial: false });
+
+        await component.guardar();
+
+        expect(component.form.controls.id_tamano.hasError('required')).toBeFalse();
+        expect(equipoSvc.crearMunicion).toHaveBeenCalledWith(jasmine.objectContaining({
+            municion: jasmine.objectContaining({ nombre: 'Dardos de cerbatana', id_manual: null, pagina: null, precio: null, cantidad_por_precio: null }),
+        }));
+    });
+
+    it('un material con un coste repetido avisa antes de mandar; el nombre hasta 30', async () => {
+        await montar('material');
+        component.form.patchValue({ nombre: 'Metal estelar' });
+        component.anadirCoste();
+        component.anadirCoste();
+        component.filas.costes.forEach((fila) => fila.id_aplicacion = 6);
+
+        await component.guardar();
+
+        expect(equipoSvc.crearMaterial).not.toHaveBeenCalled();
+        expect(component.avisoDe('costes')).toContain('repetida');
+        component.form.controls.nombre.setValue('x'.repeat(31));
+        expect(component.form.controls.nombre.hasError('maxlength')).toBeTrue();
+    });
+
+    it('una aptitud nueva manda sus tipos de daño, daños y modificadores; el error de la API en un modificador va a su tarjeta', async () => {
+        await montar('encantamiento');
+        component.form.patchValue({ nombre: 'Gélida', id_manual: 54, pagina: 120, modificador: 1, aplica_arma_cc: true });
+        component.alternarTipoDano(3);
+        component.anadirDano();
+        component.filas.danos[0].dados = '1d6';
+        component.filas.relaciones.modificadores = [{
+            uid: 'm', id_objetivo: 1, id_tipo_bonificador: 1, valor: 1, id_caracteristica: 2, id_habilidad: null, id_tipo_dano: null, condicion: '',
+        }];
+        equipoSvc.crearEncantamiento.and.rejectWith(new ProfileApiError('La característica va con el objetivo que la pide.',
+            'modificador_caracteristica', 400, 'modificadores[0].id_caracteristica'));
+
+        await component.guardar();
+
+        const cuerpo = equipoSvc.crearEncantamiento.calls.mostRecent().args[0];
+        expect(cuerpo.tipos_dano).toEqual([3]);
+        expect(cuerpo.danos).toEqual([{ dados: '1d6', id_tipo_dano: null, condicion: null }]);
+        expect(cuerpo.modificadores[0]).toEqual(jasmine.objectContaining({ id_objetivo: 1, id_caracteristica: 2, condicion: null }));
+        expect(component.avisoDe('modificadores')).toContain('característica');
+    });
+
+    it('la base de una aptitud no se ofrece a sí misma', async () => {
+        const { get } = IDA_Y_VUELTA_OBJETOS.encantamientos.find((entrada) => entrada.id === 1)!;
+        await montar('encantamiento', 'editar', get);
+
+        expect(component.encantamientosBase.map((opcion) => opcion.id)).toEqual([501]);
     });
 
     it('«Elegir» del tipo de daño de la presa sale entre las opciones aunque el catálogo no lo liste', async () => {

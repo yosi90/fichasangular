@@ -714,7 +714,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     recibirObjetoListado(value: { item: any, tipo: string }, operacion: string = 'detalles') {
         const tipoEdicion = normalizarTexto(operacion) === 'modificar' ? tipoEdicionDeListado(value.tipo, value.item) : null;
         if (tipoEdicion) {
-            this.abrirEdicion(tipoEdicion, value.item);
+            // Los listados del equipo (munición, materiales, aptitudes, objetos, conjuntos) dan la entrada con su tipo.
+            this.abrirEdicion(tipoEdicion, tipoDeListaEquipo(value.tipo) ? value.item?.item : value.item);
             return;
         }
         if (value.tipo === 'razas') {
@@ -1431,6 +1432,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (tipo === 'dote')
             this.detallesDoteAbiertos = this.detallesDoteAbiertos
                 .map((ctx) => Number(ctx?.Dote?.Id) === id ? { ...ctx, Dote: entrada as unknown as Dote } : ctx);
+        // Los detalles del equipo (munición, materiales, aptitudes, objetos y conjuntos) van con su tipo.
+        if (tipo === 'municion' || tipo === 'material' || tipo === 'encantamiento' || tipo === 'objeto' || tipo === 'conjunto')
+            this.detallesEquipoAbiertos = this.detallesEquipoAbiertos
+                .map((abierta) => abierta.tipo === tipo && Number(abierta.item?.Id) === id ? { tipo, item: entrada } as unknown as EntradaEquipo : abierta);
         // Un familiar o un compañero que sale del monstruo lleva su mismo `Id`: solo se cambia el detalle del monstruo.
         if (tipo === 'monstruo')
             this.detallesMonstruoAbiertos = this.detallesMonstruoAbiertos
@@ -1477,6 +1482,13 @@ export class TabControlComponent implements OnInit, OnDestroy {
                 return this.detallesFusionAbiertos;
             case 'chakra':
                 return this.detallesChakraAbiertos;
+            case 'municion':
+            case 'material':
+            case 'encantamiento':
+            case 'objeto':
+            case 'conjunto':
+                // Van con su tipo (`EntradaEquipo`): los refresca `onEdicionGuardada`.
+                return [];
         }
     }
 
