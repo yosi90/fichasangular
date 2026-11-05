@@ -41,7 +41,7 @@ import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-ins
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, OpcionesErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
-import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
+import { alternarControl, elegirEnControl, vaciarControl } from '../insercion-marco/filas-repetibles';
 
 type EntradaEquipo = ArmaDetalle | ArmaduraDetalle | MunicionDetalle | MaterialDetalle | EncantamientoDetalle;
 
@@ -368,8 +368,7 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     quitarSeleccion(campo: 'id_manual' | 'id_material' | 'id_municion' | 'id_encantamiento_base'): void {
-        this.form.controls[campo].setValue(null);
-        this.form.controls[campo].markAsDirty();
+        vaciarControl(this.form.controls[campo]);
     }
 
     alternar(campo: 'oficial' | 'traducido' | 'a_distancia' | 'arrojadiza' | 'doble' | 'es_escudo' | 'cuenta_como_gran_calidad'
@@ -452,7 +451,7 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
     avisoDe(campo: string): string | null {
         if (this.problema?.campo === campo)
             return this.problema.mensaje;
-        return this.errores.campo?.campo === campo ? this.errores.campo.mensaje : null;
+        return this.errores.mensajeDe(campo);
     }
 
     /** El aviso de la tarjeta de aura y requisitos de la aptitud (lo dice la API). */

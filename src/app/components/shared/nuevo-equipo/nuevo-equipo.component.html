@@ -67,7 +67,7 @@
                     </mat-form-field>
                     <div class="equipo-con-quitar" *ngIf="esPieza">
                         <app-catalogo-buscador etiqueta="Material especial" placeholder="Ninguno" [opciones]="materiales"
-                            [valor]="form.controls.id_material.value" [error]="errores.campo?.campo === 'id_material' ? errores.campo?.mensaje ?? null : null"
+                            [valor]="form.controls.id_material.value" [error]="errores.mensajeDe('id_material')"
                             (elegir)="elegir('id_material', $event)">
                         </app-catalogo-buscador>
                         <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_material.value !== null"
@@ -186,7 +186,7 @@
                         </mat-form-field>
                         <div class="equipo-con-quitar">
                             <app-catalogo-buscador etiqueta="Munición" placeholder="Ninguna" [opciones]="municiones"
-                                [valor]="form.controls.id_municion.value" [error]="errores.campo?.campo === 'id_municion' ? errores.campo?.mensaje ?? null : null"
+                                [valor]="form.controls.id_municion.value" [error]="errores.mensajeDe('id_municion')"
                                 (elegir)="elegir('id_municion', $event)">
                             </app-catalogo-buscador>
                             <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_municion.value !== null"

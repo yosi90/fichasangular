@@ -23,6 +23,12 @@ export function alternarControl(control: AbstractControl): void {
     control.markAsTouched();
 }
 
+/** Deja vacío el control de un buscador que se puede quitar (su ✕, `buscador-con-quitar`) y lo marca como cambiado. */
+export function vaciarControl(control: AbstractControl): void {
+    control.setValue(null);
+    control.markAsDirty();
+}
+
 /** Pone en un control el id elegido en `<app-catalogo-buscador>` (el manual, un tipo…) y lo marca como tocado. */
 export function elegirEnControl(control: AbstractControl, id: number): void {
     control.setValue(id);

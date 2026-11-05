@@ -36,7 +36,7 @@ import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-ins
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, OpcionesErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
-import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
+import { alternarControl, elegirEnControl, vaciarControl } from '../insercion-marco/filas-repetibles';
 
 type EntradaObjeto = ObjetoDetalle | ConjuntoObjetosDetalle;
 
@@ -282,8 +282,7 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     quitarSeleccion(campo: 'id_monstruo' | 'id_arma_base' | 'id_armadura_base' | 'id_material'): void {
-        this.form.controls[campo].setValue(null);
-        this.form.controls[campo].markAsDirty();
+        vaciarControl(this.form.controls[campo]);
         if (campo === 'id_arma_base')
             this.form.controls.bonificador_mejora_2.setValue(null);
     }
@@ -382,7 +381,7 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
     avisoDe(campo: string): string | null {
         if (this.problema?.campo === campo)
             return this.problema.mensaje;
-        return this.errores.campo?.campo === campo ? this.errores.campo.mensaje : null;
+        return this.errores.mensajeDe(campo);
     }
 
     get errorRequisitos(): string | null {
