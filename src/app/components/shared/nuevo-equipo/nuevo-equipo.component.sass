@@ -21,51 +21,27 @@
 
 // Un buscador de un solo valor que se puede dejar vacío (el material, la munición): el buscador y su ✕.
 .equipo-con-quitar
-    display: flex
-    align-items: flex-start
-    gap: 4px
-
-    app-catalogo-buscador
-        flex: 1 1 auto
-        min-width: 0
-
-    .row-action-btn
-        margin-top: 8px
+    @include inserciones.buscador-con-quitar
 
 .equipo-vacio
-    margin: 0 0 8px
-    padding: 12px
-    border: 1px dashed rgba(255, 255, 255, .22)
-    border-radius: $ficha-radio
-    font-size: 13px
-    color: $ficha-texto-suave
-    text-align: center
+    @include inserciones.lista-vacia
 
 .equipo-fila
-    display: grid
+    @include inserciones.fila-de-lista
     grid-template-columns: minmax(0, 1fr) 92px 42px
-    gap: 8px
-    align-items: center
-    padding-bottom: 6px
-    margin-bottom: 6px
-    border-bottom: 1px solid rgba(255, 255, 255, .06)
 
 .equipo-fila__nombre
+    @include inserciones.nombre-de-fila
     display: flex
     flex-direction: column
     min-width: 0
-    font-size: 14px
-    color: $ficha-blanco
-    overflow-wrap: anywhere
 
     small
         font-size: 12px
         color: $ficha-texto-suave
 
 .equipo-error
-    margin: 0 0 8px
-    font-size: 13px
-    color: var(--mat-form-field-error-text-color, #f44336)
+    @include inserciones.error-de-lista
 
 // Los costes de un material (aplicación y cuatro importes) y los daños de una aptitud (dados, tipo y condición).
 .equipo-fila--coste
@@ -81,6 +57,5 @@
         grid-template-columns: minmax(0, 1fr) 42px
 
 .equipo-nota
+    @include inserciones.nota-de-insercion
     margin: 0 0 8px
-    font-size: 13px
-    color: $ficha-texto-suave

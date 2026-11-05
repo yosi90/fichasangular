@@ -158,6 +158,37 @@
     ::ng-deep .mat-mdc-slide-toggle .mdc-label
         color: $ficha-texto
 
+// Las listas de filas de las tarjetas del equipo (`nuevo-equipo`, `nuevo-objeto` y `<app-equipo-magia>`: las propiedades
+// del arma, los costes del material, los daños, las activaciones, los conjuros, los requisitos, los modificadores…): el
+// aviso de la lista vacía, la fila (las columnas las pone cada lista), su nombre y el error de la lista. Las de las
+// tarjetas de rasgos (abajo) son casi iguales, con otros márgenes y su forma en el móvil.
+@mixin lista-vacia
+    margin: 0 0 8px
+    padding: 12px
+    border: 1px dashed rgba(255, 255, 255, .22)
+    border-radius: $ficha-radio
+    font-size: 13px
+    color: $ficha-texto-suave
+    text-align: center
+
+@mixin fila-de-lista
+    display: grid
+    gap: 8px
+    align-items: center
+    padding-bottom: 6px
+    margin-bottom: 6px
+    border-bottom: 1px solid rgba(255, 255, 255, .06)
+
+@mixin nombre-de-fila
+    font-size: 14px
+    color: $ficha-blanco
+    overflow-wrap: anywhere
+
+@mixin error-de-lista
+    margin: 0 0 8px
+    font-size: 13px
+    color: var(--mat-form-field-error-text-color, #f44336)
+
 // Las tarjetas de rasgos de una inserción de criatura (la plantilla y el monstruo): rejillas de campos de 2 y de 3, los
 // chips de estado, la tabla de características, las tarjetas de una lista con su cuenta, sus filas y su error. Las clases
 // llevan el prefijo del formulario (`plantilla-rasgos`, `monstruo-rasgos`…). Lo que va dentro del marco se pliega por su
@@ -311,3 +342,25 @@
 
         .#{$p}-caracteristicas__fila
             grid-template-columns: 96px repeat(6, minmax(52px, 1fr))
+
+// Un buscador de un solo valor que se puede dejar vacío (`<app-catalogo-buscador>` y su ✕ al lado): el rasgo, el idioma
+// o la habilidad de una ventaja (hito 8 del roadmap de inserciones). El material y la munición del equipo
+// (`.equipo-con-quitar`) son lo mismo.
+@mixin buscador-con-quitar
+    display: flex
+    align-items: flex-start
+    gap: 4px
+
+    app-catalogo-buscador
+        flex: 1 1 auto
+        min-width: 0
+
+    .row-action-btn
+        margin-top: 8px
+
+// Una nota del formulario, en gris y pequeña: lo que no se edita aquí, lo que no cambia al modificar (la ventaja, la
+// fusión y el chakra; hito 8 del roadmap de inserciones).
+@mixin nota-de-insercion
+    margin: 0
+    font-size: 13px
+    color: $ficha-texto-suave
