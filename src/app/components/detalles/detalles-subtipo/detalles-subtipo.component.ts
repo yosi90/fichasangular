@@ -17,6 +17,8 @@ import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { idiomasVisibles, textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
@@ -27,7 +29,14 @@ import { idiomasVisibles, textoVisible, tieneTextoVisible } from 'src/app/servic
     standalone: false
 })
 export class DetallesSubtipoComponent {
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
+
+    /** El lápiz «Modificar»: abre la pestaña de modificar el subtipo. Sin quien lo escuche, no sale. */
+    @Output() modificar = new EventEmitter<SubtipoDetalle>();
+
+    get puedeModificar(): boolean {
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'subtipos');
+    }
 
     private subtipoData!: SubtipoDetalle;
 

@@ -203,7 +203,7 @@ describe('BaseMenuComponent', () => {
         expect(marco.cerrarMenu).toHaveBeenCalled();
     });
 
-    it('Insertar y Modificar piden el permiso de creación del recurso de cada catálogo; sin pantalla, solo cierran el menú', () => {
+    it('Insertar y Modificar piden el permiso de creación del recurso de cada catálogo y abren su pantalla', () => {
         canCreateRazas = false;
         permissions['monstruos:create'] = true;
         permissions['deidades:create'] = true;
@@ -214,7 +214,8 @@ describe('BaseMenuComponent', () => {
         expect(component.puedeGestionar('tipos de criatura')).toBeFalse();
         expect(deidades.habilitada()).toBeTrue();
         deidades.abrir();
-        expect(emitSpy).not.toHaveBeenCalled();
+        expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'deidades', operacion: 'modificar' });
+        emitSpy.calls.reset();
 
         permissions['clases:create'] = true;
         component.gruposOtros.modificar[1].opciones[0].abrir();
@@ -232,6 +233,20 @@ describe('BaseMenuComponent', () => {
         const emitSpy = spyOn(component.ListadoTab, 'emit');
         component.gruposOtros.modificar[0].opciones[5].abrir();
         expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'objetos', operacion: 'modificar' });
+    });
+
+    it('Criaturas y mundo: tipos de criatura, subtipos, deidades y manuales, en los tres menús (hito 9)', () => {
+        const etiquetas = (seccion: 'insertar' | 'modificar' | 'detalles') => component.gruposOtros[seccion][2].opciones.map(opcion => opcion.etiqueta);
+        expect(etiquetas('insertar')).toEqual(['Tipos de criatura', 'Subtipos de criatura', 'Deidades', 'Manuales']);
+        expect(etiquetas('modificar')).toEqual(etiquetas('insertar'));
+        expect(etiquetas('detalles')).toEqual(etiquetas('insertar'));
+        canCreateRazas = false;
+        permissions['manuales:create'] = true;
+        const emitSpy = spyOn(component.ListadoTab, 'emit');
+        const manuales = component.gruposOtros.insertar[2].opciones[3];
+        expect(manuales.habilitada()).toBeTrue();
+        manuales.abrir();
+        expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'manuales', operacion: 'insertar' });
     });
 
     it('«Ventajas» (ventajas y desventajas) sale con cualquiera de los dos permisos y abre su pantalla', () => {

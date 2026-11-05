@@ -39,6 +39,8 @@ import { ListadoFusionesComponent } from '../listado-fusiones/listado-fusiones.c
 import { ListadoChakrasComponent } from '../listado-chakras/listado-chakras.component';
 import { Chakra, Fusion } from 'src/app/interfaces/incarnum';
 import { esListadoBuscable } from '../listado-cabecera/listado-cabecera.component';
+import { ListadoManualesComponent } from '../listado-manuales/listado-manuales.component';
+import { ManualAsociadoDetalle } from 'src/app/interfaces/manual-asociado';
 
 @Component({
     selector: 'app-listado',
@@ -79,6 +81,7 @@ export class ListadoComponent {
         'conjuntos de objetos': ListadoEquipoComponent,
         'fusiones del alma': ListadoFusionesComponent,
         'chakras': ListadoChakrasComponent,
+        'manuales': ListadoManualesComponent,
     };
 
     constructor(private cdr: ChangeDetectorRef) { }
@@ -232,6 +235,13 @@ export class ListadoComponent {
                 this.handleItemDetalles(item);
             });
             componentRef.instance.chakraSeleccionado.subscribe((item: Chakra) => {
+                this.handleItemSeleccionado(item);
+            });
+        } else if (componentRef.instance instanceof ListadoManualesComponent) {
+            componentRef.instance.manualDetalles.subscribe((item: ManualAsociadoDetalle) => {
+                this.handleItemDetalles(item);
+            });
+            componentRef.instance.manualSeleccionado.subscribe((item: ManualAsociadoDetalle) => {
                 this.handleItemSeleccionado(item);
             });
         } else if (componentRef.instance instanceof ListadoIdiomasComponent) {

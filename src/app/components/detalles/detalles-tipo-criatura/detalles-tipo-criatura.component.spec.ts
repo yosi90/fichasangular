@@ -1,4 +1,5 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { UserService } from 'src/app/services/user.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
@@ -46,7 +47,7 @@ describe('DetallesTipoCriaturaComponent', () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
         await TestBed.configureTestingModule({
             declarations: [DetallesTipoCriaturaComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
-            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNav }],
+            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNav }, { provide: UserService, useValue: { can: (recurso: string) => recurso === 'tipos_criatura' } }],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
 
@@ -129,5 +130,21 @@ describe('DetallesTipoCriaturaComponent', () => {
 
         expect(rasgoSpy).toHaveBeenCalledWith(rasgo);
         expect(manualNav.abrirDetalleManual).toHaveBeenCalledWith('Manual de monstruos, página: 317');
+    });
+
+    it('enseña el lápiz «Modificar» solo con el permiso de tipos_criatura y si alguien lo escucha', () => {
+        component.tipo = crearTipo();
+        const abiertas: unknown[] = [];
+        component.modificar.subscribe((entrada) => abiertas.push(entrada));
+        fixture.detectChanges();
+        const lapiz = Array.from(elemento().querySelectorAll('button')).find((b) => b.textContent?.includes('Modificar')) as HTMLButtonElement;
+        lapiz.click();
+        expect(abiertas).toEqual([component.tipo]);
+    });
+
+    it('sin quien escuche el lápiz, no sale', () => {
+        component.tipo = crearTipo();
+        fixture.detectChanges();
+        expect(Array.from(elemento().querySelectorAll('button')).some((b) => b.textContent?.includes('Modificar'))).toBeFalse();
     });
 });

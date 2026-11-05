@@ -3,6 +3,8 @@ import { DatoFicha } from 'src/app/components/detalles/ficha';
 import { Rasgo } from 'src/app/interfaces/rasgo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
@@ -13,7 +15,14 @@ import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
     standalone: false
 })
 export class DetallesTipoCriaturaComponent {
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
+
+    /** El lápiz «Modificar»: abre la pestaña de modificar el tipo de criatura. Sin quien lo escuche, no sale. */
+    @Output() modificar = new EventEmitter<TipoCriatura>();
+
+    get puedeModificar(): boolean {
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'tipos de criatura');
+    }
 
     private tipoData!: TipoCriatura;
 

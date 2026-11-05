@@ -116,6 +116,12 @@ import { NuevoRasgoComponent } from './components/shared/nuevo-rasgo/nuevo-rasgo
 import { NuevaVentajaComponent } from './components/shared/nueva-ventaja/nueva-ventaja.component';
 import { NuevaFusionComponent } from './components/shared/nueva-fusion/nueva-fusion.component';
 import { NuevoChakraComponent } from './components/shared/nuevo-chakra/nuevo-chakra.component';
+import { ListaDeCatalogoComponent } from './components/shared/lista-de-catalogo/lista-de-catalogo.component';
+import { NuevoTipoCriaturaComponent } from './components/shared/nuevo-tipo-criatura/nuevo-tipo-criatura.component';
+import { NuevoSubtipoComponent } from './components/shared/nuevo-subtipo/nuevo-subtipo.component';
+import { NuevaDeidadComponent } from './components/shared/nueva-deidad/nueva-deidad.component';
+import { NuevoManualComponent } from './components/shared/nuevo-manual/nuevo-manual.component';
+import { ListadoManualesComponent } from './components/shared/listado-manuales/listado-manuales.component';
 import { NuevoObjetoComponent } from './components/shared/nuevo-objeto/nuevo-objeto.component';
 import { EquipoMagiaComponent } from './components/shared/equipo-magia/equipo-magia.component';
 import { InsercionMarcoComponent } from './components/shared/insercion-marco/insercion-marco.component';
@@ -290,6 +296,12 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         NuevaVentajaComponent,
         NuevaFusionComponent,
         NuevoChakraComponent,
+        ListaDeCatalogoComponent,
+        NuevoTipoCriaturaComponent,
+        NuevoSubtipoComponent,
+        NuevaDeidadComponent,
+        NuevoManualComponent,
+        ListadoManualesComponent,
         NuevoObjetoComponent,
         EquipoMagiaComponent,
         InsercionMarcoComponent,

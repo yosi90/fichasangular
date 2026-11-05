@@ -1,4 +1,4 @@
-import { Component, Input, OnDestroy, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { DatoFicha } from 'src/app/components/detalles/ficha';
 import { ICONOS_ENTIDAD, getManualCategorias, getManualReferenciasValidas, getManualTipoPorSeccion, isManualSeccionIncluida, MANUAL_SECCIONES_CONFIG } from 'src/app/config/manual-secciones.config';
@@ -7,6 +7,7 @@ import { ManualReferenciaTipo } from 'src/app/interfaces/manual-referencia-naveg
 import { ManualFlagConsistencyNoticeService } from 'src/app/services/manual-flag-consistency-notice.service';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { UserService } from 'src/app/services/user.service';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { textoVisible } from 'src/app/services/utils/texto-visible';
 
@@ -36,6 +37,13 @@ export class DetallesManualComponent implements OnInit, OnDestroy {
     }
     get manual(): ManualAsociadoDetalle | null {
         return this._manual;
+    }
+
+    /** El lápiz «Modificar»: abre la pestaña de modificar el manual (sus banderas de contenido). Sin quien lo escuche, no sale. */
+    @Output() modificar = new EventEmitter<ManualAsociadoDetalle>();
+
+    get puedeModificar(): boolean {
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'manuales');
     }
 
     readonly seccionesBase: SeccionManual[] = MANUAL_SECCIONES_CONFIG.map((seccion) => ({

@@ -4,6 +4,8 @@
         [nombre]="deidad.Nombre"
         [manual]="deidad.Manual"
         [oficial]="deidad.Oficial"
+        [modificable]="puedeModificar"
+        (modificar)="modificar.emit(deidad)"
         (abrirManual)="abrirDetalleManual()">
     </app-ficha-cabecera>
 

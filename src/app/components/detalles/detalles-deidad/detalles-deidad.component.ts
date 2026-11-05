@@ -2,6 +2,8 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DatoFicha } from 'src/app/components/detalles/ficha';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { UserService } from 'src/app/services/user.service';
+import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 @Component({
@@ -29,7 +31,14 @@ export class DetallesDeidadComponent {
     ambitos: string[] = [];
     dominios: string[] = [];
 
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService) { }
+    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
+
+    /** El lápiz «Modificar»: abre la pestaña de modificar la deidad. Sin quien lo escuche, no sale. */
+    @Output() modificar = new EventEmitter<DeidadDetalle>();
+
+    get puedeModificar(): boolean {
+        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'deidades');
+    }
 
     abrirDetalleManual(): void {
         this.manualDetalleNavSvc.abrirDetalleManual({

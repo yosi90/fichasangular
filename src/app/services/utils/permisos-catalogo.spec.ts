@@ -51,7 +51,9 @@ describe('Catálogos con pantalla de insertar o modificar', () => {
         expect(tieneInsercion('razas')).toBeTrue();
         expect(tieneInsercion('armas')).toBeTrue();
         expect(tieneInsercion('objetos')).toBeTrue();
-        expect(tieneInsercion('deidades')).toBeFalse();
+        expect(tieneInsercion('deidades')).toBeTrue();
+        expect(tieneInsercion('manuales')).toBeTrue();
+        expect(tieneInsercion('pabellones')).toBeFalse();
         expect(tipoEdicionDeListado('munición')).toBe('municion');
         expect(tipoEdicionDeListado('conjuntos de objetos')).toBe('conjunto');
         expect(tipoEdicionDeListado('armaduras')).toBe('armadura');
@@ -60,7 +62,11 @@ describe('Catálogos con pantalla de insertar o modificar', () => {
         expect(tipoEdicionDeListado('rasgos')).toBe('rasgo');
         expect(tipoEdicionDeListado('fusiones del alma')).toBe('fusion');
         expect(tipoEdicionDeListado('chakras')).toBe('chakra');
-        expect(tipoEdicionDeListado('deidades')).toBeNull();
+        expect(tipoEdicionDeListado('deidades')).toBe('deidad');
+        expect(tipoEdicionDeListado('tipos de criatura')).toBe('tipo_criatura');
+        expect(tipoEdicionDeListado('subtipos')).toBe('subtipo');
+        expect(tipoEdicionDeListado('manuales')).toBe('manual');
+        expect(tipoEdicionDeListado('pabellones')).toBeNull();
     });
 
     it('las ventajas y las desventajas se modifican desde el mismo listado, cada una con su tipo y su permiso', () => {

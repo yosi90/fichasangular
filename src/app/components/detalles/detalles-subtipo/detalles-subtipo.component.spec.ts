@@ -1,4 +1,5 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { UserService } from 'src/app/services/user.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
@@ -58,7 +59,7 @@ describe('DetallesSubtipoComponent', () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
         await TestBed.configureTestingModule({
             declarations: [DetallesSubtipoComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
-            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNav }],
+            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNav }, { provide: UserService, useValue: { can: (recurso: string) => recurso === 'subtipos' } }],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
 
@@ -160,5 +161,21 @@ describe('DetallesSubtipoComponent', () => {
         expect(conjuroSpy).toHaveBeenCalledWith(11);
         expect(plantillaSpy).toHaveBeenCalledWith(3);
         expect(manualNav.abrirDetalleManual).toHaveBeenCalledWith({ id: 2, nombre: 'Manual de monstruos' });
+    });
+
+    it('enseña el lápiz «Modificar» solo con el permiso de subtipos y si alguien lo escucha', () => {
+        component.subtipo = crearSubtipo();
+        const abiertas: unknown[] = [];
+        component.modificar.subscribe((entrada) => abiertas.push(entrada));
+        fixture.detectChanges();
+        const lapiz = Array.from(elemento().querySelectorAll('button')).find((b) => b.textContent?.includes('Modificar')) as HTMLButtonElement;
+        lapiz.click();
+        expect(abiertas).toEqual([component.subtipo]);
+    });
+
+    it('sin quien escuche el lápiz, no sale', () => {
+        component.subtipo = crearSubtipo();
+        fixture.detectChanges();
+        expect(Array.from(elemento().querySelectorAll('button')).some((b) => b.textContent?.includes('Modificar'))).toBeFalse();
     });
 });

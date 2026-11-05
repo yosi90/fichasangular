@@ -4,6 +4,8 @@
         [nombre]="tipo.Nombre"
         [manual]="tipo.Manual"
         [oficial]="tipo.Oficial"
+        [modificable]="puedeModificar"
+        (modificar)="modificar.emit(tipo)"
         (abrirManual)="abrirDetalleManual()">
     </app-ficha-cabecera>
 

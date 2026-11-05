@@ -73,6 +73,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
                 this.opcion('tipos de criatura', 'insertar'),
                 this.opcion('subtipos', 'insertar'),
                 this.opcion('deidades', 'insertar'),
+                this.opcion('manuales', 'insertar'),
             ]),
         ],
         modificar: [
@@ -98,6 +99,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
                 this.opcion('tipos de criatura', 'modificar'),
                 this.opcion('subtipos', 'modificar'),
                 this.opcion('deidades', 'modificar'),
+                this.opcion('manuales', 'modificar'),
             ]),
         ],
         detalles: [
@@ -123,6 +125,7 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
                 this.detalle('tipos de criatura'),
                 this.detalle('subtipos'),
                 this.detalle('deidades'),
+                this.detalle('manuales'),
             ]),
         ],
     };

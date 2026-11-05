@@ -363,14 +363,31 @@ describe('TabControlComponent navegación por origen', () => {
         expect(component.detallesIdiomaAbiertos[0].Nombre).toBe('Dracónico antiguo');
     }));
 
-    it('un listado sin «Modificar» todavía abre el detalle aunque venga del menú de modificar', fakeAsync(() => {
+    it('un tipo de criatura del menú de modificar abre su pestaña de «Modificar» y, al guardarlo, refresca su detalle (hito 9)', fakeAsync(() => {
         const component = crearComponente();
+        component.detallesTipoCriaturaAbiertos = [{ Id: 11, Nombre: 'Humanoide' } as any];
 
-        component.recibirObjetoListado({ item: { Id: 5, Nombre: 'Humanoide' } as any, tipo: 'tipos de criatura' }, 'modificar');
+        component.recibirObjetoListado({ item: { Id: 11, Nombre: 'Humanoide' } as any, tipo: 'tipos de criatura' }, 'modificar');
         tick(120);
 
-        expect(Object.values(component.ediciones).every((abiertas) => abiertas.length === 0)).toBeTrue();
-        expect(component.detallesTipoCriaturaAbiertos.length).toBe(1);
+        expect(component.ediciones.tipo_criatura).toEqual([{ key: 'edicion:tipo_criatura:11', tipo: 'tipo_criatura', id: 11, nombre: 'Humanoide' }]);
+        component.onEdicionGuardada('tipo_criatura', { Id: 11, Nombre: 'Humanoide (MM)' } as any);
+        expect(component.detallesTipoCriaturaAbiertos[0].Nombre).toBe('Humanoide (MM)');
+    }));
+
+    it('un manual: el listado abre su detalle o su «Modificar», y guardar cambia sus datos sin perder lo que lo cita (hito 9)', fakeAsync(() => {
+        const component = crearComponente();
+        const manual = { Id: 47, Nombre: 'Manual de monstruos 1', Incluye_tipos: false, Asociados: { Tipos: [{ Id: 1, Nombre: 'Aberración' }] } } as any;
+
+        component.recibirObjetoListado({ item: manual, tipo: 'manuales' }, 'detalles');
+        component.recibirObjetoListado({ item: manual, tipo: 'manuales' }, 'modificar');
+        tick(120);
+
+        expect(component.detallesManualAbiertos.length).toBe(1);
+        expect(component.ediciones.manual.map((tab) => tab.key)).toEqual(['edicion:manual:47']);
+        component.onEdicionGuardada('manual', { Id: 47, Nombre: 'Manual de monstruos 1', Incluye_tipos: true } as any);
+        expect(component.detallesManualAbiertos[0].Incluye_tipos).toBeTrue();
+        expect(component.detallesManualAbiertos[0].Asociados.Tipos.length).toBe(1);
     }));
 
     it('una raza del menú de modificar abre su pestaña de «Modificar» y, al guardarla, refresca su detalle', fakeAsync(() => {

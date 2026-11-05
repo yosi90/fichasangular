@@ -1,0 +1,42 @@
+<div id="container-lista">
+    <app-listado-cabecera icono="manual" titulo="Manuales" [total]="cargado && !errorCarga ? manualesDS.data.length : null"
+        [texto]="textoBusqueda" (textoChange)="buscar($event)" etiquetaBuscar="Buscar manuales" placeholder="Buscar manuales">
+        <app-menu-filtros titulo="Filtros de manuales" [hayFiltros]="hayFiltros" (limpiar)="limpiarFiltros()">
+            <app-menu-filtros-grupo titulo="Mostrar" [chips]="true">
+                <mat-chip-option color="warn" class="filtro-chip" [selected]="mostrarHomebrew"
+                    (click)="alternarHomebrew();">{{anuncioHomebrew}}</mat-chip-option>
+            </app-menu-filtros-grupo>
+        </app-menu-filtros>
+    </app-listado-cabecera>
+
+    <div class="listado__tabla" [class.listado-oculto]="!cargado || errorCarga">
+        <table mat-table [dataSource]="manualesDS" matSort aria-label="Manuales">
+            <ng-container matColumnDef="Nombre">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header sortActionDescription="Ordenar por nombre">Nombre</th>
+                <td mat-cell *matCellDef="let manual">
+                    <app-listado-nombre tipo="manual" [nombre]="manual.Nombre" (abrir)="verDetalles(manual)"></app-listado-nombre>
+                </td>
+            </ng-container>
+            <ng-container matColumnDef="Homebrew">
+                <th mat-header-cell *matHeaderCellDef>Homebrew</th>
+                <td mat-cell *matCellDef="let manual">
+                    <mat-checkbox [checked]="!manual.Oficial" [disableRipple]="true" [attr.aria-label]="manual.Oficial ? 'Oficial' : 'Homebrew'"
+                        (click)="$event.preventDefault(); $event.stopPropagation();"></mat-checkbox>
+                </td>
+            </ng-container>
+            <tr mat-header-row *matHeaderRowDef="columnas; sticky: true"></tr>
+            <tr mat-row *matRowDef="let manual; columns: columnas;" class="elegir" (click)="seleccionar(manual)"></tr>
+            <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell" [attr.colspan]="columnas.length">
+                    <app-listado-estado tipo="vacio" [mensaje]="hayFiltros ? 'Ningún manual cumple los filtros.' : 'Aún no hay manuales.'"
+                        [textoAccion]="hayFiltros ? 'Limpiar filtros' : ''" (accion)="limpiarFiltros()"></app-listado-estado>
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <app-listado-estado *ngIf="!cargado" tipo="cargando" etiqueta="Cargando manuales"></app-listado-estado>
+    <app-listado-estado *ngIf="cargado && errorCarga" tipo="error" mensaje="No se pudieron cargar los manuales." (accion)="cargar()"></app-listado-estado>
+
+    <mat-paginator class="listado-paginador" [class.listado-oculto]="!cargado || errorCarga" aria-label="Páginas de manuales"></mat-paginator>
+</div>

@@ -5,6 +5,8 @@
         [manual]="subtipo.Manual"
         [oficial]="subtipo.Oficial"
         [etiquetas]="etiquetas"
+        [modificable]="puedeModificar"
+        (modificar)="modificar.emit(subtipo)"
         (abrirManual)="abrirDetalleManual()">
     </app-ficha-cabecera>
 

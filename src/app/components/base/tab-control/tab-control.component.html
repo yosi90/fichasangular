@@ -150,6 +150,10 @@
                 <app-nuevo-equipo *ngIf="listadoTab.tipo === 'aptitudes de armas y armaduras'" tipo="encantamiento"></app-nuevo-equipo>
                 <app-nuevo-objeto *ngIf="listadoTab.tipo === 'objetos'" tipo="objeto"></app-nuevo-objeto>
                 <app-nuevo-objeto *ngIf="listadoTab.tipo === 'conjuntos de objetos'" tipo="conjunto"></app-nuevo-objeto>
+                <app-nuevo-tipo-criatura *ngIf="listadoTab.tipo === 'tipos de criatura'"></app-nuevo-tipo-criatura>
+                <app-nuevo-subtipo *ngIf="listadoTab.tipo === 'subtipos'"></app-nuevo-subtipo>
+                <app-nueva-deidad *ngIf="listadoTab.tipo === 'deidades'"></app-nueva-deidad>
+                <app-nuevo-manual *ngIf="listadoTab.tipo === 'manuales'"></app-nuevo-manual>
             </div>
         </ng-container>
         <ng-template #listadoGenerico>
@@ -508,13 +512,78 @@
             </app-nuevo-objeto>
         </div>
     </mat-tab>
+    <!-- Hito 9 del roadmap de inserciones: tipos de criatura, subtipos, deidades y manuales. -->
+    <mat-tab *ngFor="let tipoTab of ediciones.tipo_criatura" [label]="etiquetaEdicion(tipoTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'tipo-criatura'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(tipoTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(tipoTab)}}</span>
+            <button (click)="quitarEdicion(tipoTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-tipo-criatura
+                [idTipo]="tipoTab.id"
+                modo="editar"
+                [editorTabKey]="tipoTab.key"
+                (cerrar)="quitarEdicion(tipoTab)"
+                (tipoActualizado)="onEdicionGuardada('tipo_criatura', $event)">
+            </app-nuevo-tipo-criatura>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let subtipoTab of ediciones.subtipo" [label]="etiquetaEdicion(subtipoTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'subtipo'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(subtipoTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(subtipoTab)}}</span>
+            <button (click)="quitarEdicion(subtipoTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-subtipo
+                [idSubtipo]="subtipoTab.id"
+                modo="editar"
+                [editorTabKey]="subtipoTab.key"
+                (cerrar)="quitarEdicion(subtipoTab)"
+                (subtipoActualizado)="onEdicionGuardada('subtipo', $event)">
+            </app-nuevo-subtipo>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let deidadTab of ediciones.deidad" [label]="etiquetaEdicion(deidadTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'deidad'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(deidadTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(deidadTab)}}</span>
+            <button (click)="quitarEdicion(deidadTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nueva-deidad
+                [idDeidad]="deidadTab.id"
+                modo="editar"
+                [editorTabKey]="deidadTab.key"
+                (cerrar)="quitarEdicion(deidadTab)"
+                (deidadActualizada)="onEdicionGuardada('deidad', $event)">
+            </app-nueva-deidad>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let manualTab of ediciones.manual" [label]="etiquetaEdicion(manualTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'manual'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(manualTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(manualTab)}}</span>
+            <button (click)="quitarEdicion(manualTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-manual
+                [idManual]="manualTab.id"
+                modo="editar"
+                [editorTabKey]="manualTab.key"
+                (cerrar)="quitarEdicion(manualTab)"
+                (manualActualizado)="onEdicionGuardada('manual', $event)">
+            </app-nuevo-manual>
+        </div>
+    </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
         <ng-template mat-tab-label>
             <app-icono-rol class="pestana-icono" [tipo]="'manual'"></app-icono-rol>
             <span class="pestana-etiqueta" [matTooltip]="getEtiquetaManual(manual)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{manual.Nombre}}</span>
             <button (click)="quitarDetallesManual(manual)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-manual [manual]="detallesManualAbiertos[index]"></app-detalles-manual>
+        <app-detalles-manual [manual]="detallesManualAbiertos[index]" (modificar)="abrirEdicion('manual', $event)"></app-detalles-manual>
     </mat-tab>
     <mat-tab *ngFor="let tab of detallesRazaAbiertos; let index = index" [label]="tab.Nombre">
         <ng-template mat-tab-label>
@@ -555,6 +624,7 @@
         </ng-template>
         <app-detalles-tipo-criatura 
             [tipo]="detallesTipoCriaturaAbiertos[index]"
+            (modificar)="abrirEdicion('tipo_criatura', $event)"
             (rasgoDetalles)="abrirDetallesRasgo($event);">
         </app-detalles-tipo-criatura>
     </mat-tab>
@@ -657,6 +727,7 @@
         </ng-template>
         <app-detalles-subtipo
             [subtipo]="detallesSubtipoAbiertos[index]"
+            (modificar)="abrirEdicion('subtipo', $event)"
             (doteDetalles)="abrirDetallesDotePorId($event)"
             (conjuroDetalles)="abrirDetallesConjuroPorId($event)"
             (rasgoDetalles)="abrirDetallesRasgo($event)"
@@ -723,6 +794,7 @@
         </ng-template>
         <app-detalles-deidad
             [deidad]="detallesDeidadAbiertos[index]"
+            (modificar)="abrirEdicion('deidad', $event)"
             (armaDetallesId)="abrirDetallesArmaPorId($event)">
         </app-detalles-deidad>
     </mat-tab>

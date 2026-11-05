@@ -55,7 +55,7 @@ describe('DetallesManualComponent', () => {
             imports: [CommonModule],
             providers: [
                 { provide: NavegacionRolService, useValue: navegacion },
-                { provide: UserService, useValue: { permisos$ } },
+                { provide: UserService, useValue: { permisos$, can: (recurso: string) => recurso === 'manuales' } },
                 {
                     provide: ManualFlagConsistencyNoticeService,
                     useValue: jasmine.createSpyObj<ManualFlagConsistencyNoticeService>('ManualFlagConsistencyNoticeService', ['notifyAdminIfNeeded']),

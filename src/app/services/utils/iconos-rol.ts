@@ -150,6 +150,7 @@ export const LISTADOS_ROL: Readonly<Record<string, ListadoRol>> = {
     'tipos de criatura': listado('tipo-criatura', 'tipos de criatura'),
     'subtipos': listado('subtipo', 'subtipos de criatura'),
     'deidades': listado('deidad', 'deidades'),
+    'manuales': listado('manual', 'manuales'),
 };
 
 export function tipoRolDeListado(lista: string | null | undefined): TipoRol | null {

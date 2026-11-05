@@ -1,4 +1,5 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { UserService } from 'src/app/services/user.service';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FICHA_DETALLE_COMPONENTES } from 'src/app/components/detalles/ficha';
 import { TextoManualComponent } from 'src/app/components/shared/texto-manual/texto-manual.component';
@@ -35,7 +36,7 @@ describe('DetallesDeidadComponent', () => {
         manualNavSpy = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
         await TestBed.configureTestingModule({
             declarations: [DetallesDeidadComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
-            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNavSpy }],
+            providers: [{ provide: ManualDetalleNavigationService, useValue: manualNavSpy }, { provide: UserService, useValue: { can: (recurso: string) => recurso === 'deidades' } }],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
         fixture = TestBed.createComponent(DetallesDeidadComponent);
@@ -87,5 +88,21 @@ describe('DetallesDeidadComponent', () => {
         expect(titulos()).not.toContain('Descripción');
         expect(titulos()).not.toContain('Ámbitos');
         expect(titulos()).not.toContain('Dominios');
+    });
+
+    it('enseña el lápiz «Modificar» solo con el permiso de deidades y si alguien lo escucha', () => {
+        component.deidad = heironeous();
+        const abiertas: unknown[] = [];
+        component.modificar.subscribe((entrada) => abiertas.push(entrada));
+        fixture.detectChanges();
+        const lapiz = Array.from(elemento().querySelectorAll('button')).find((b) => b.textContent?.includes('Modificar')) as HTMLButtonElement;
+        lapiz.click();
+        expect(abiertas).toEqual([component.deidad]);
+    });
+
+    it('sin quien escuche el lápiz, no sale', () => {
+        component.deidad = heironeous();
+        fixture.detectChanges();
+        expect(Array.from(elemento().querySelectorAll('button')).some((b) => b.textContent?.includes('Modificar'))).toBeFalse();
     });
 });

@@ -754,6 +754,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.abrirDetallesFusion(value.item);
         } else if (value.tipo === 'chakras') {
             this.abrirDetallesChakraPorId(Number(value.item?.Id));
+        } else if (value.tipo === 'manuales') {
+            this.abrirDetallesManual(value.item);
         } else if (tipoDeListaEquipo(value.tipo)) {
             this.abrirDetallesEquipo(value.item);
         }
@@ -1436,6 +1438,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (tipo === 'municion' || tipo === 'material' || tipo === 'encantamiento' || tipo === 'objeto' || tipo === 'conjunto')
             this.detallesEquipoAbiertos = this.detallesEquipoAbiertos
                 .map((abierta) => abierta.tipo === tipo && Number(abierta.item?.Id) === id ? { tipo, item: entrada } as unknown as EntradaEquipo : abierta);
+        // El detalle de un manual lleva además lo que lo cita (`Asociados`): se cambian sus datos y se deja lo demás.
+        if (tipo === 'manual')
+            this.detallesManualAbiertos = this.detallesManualAbiertos
+                .map((manual) => Number(manual?.Id) === id ? { ...manual, ...(entrada as object) } as ManualAsociadoDetalle : manual);
         // Un familiar o un compañero que sale del monstruo lleva su mismo `Id`: solo se cambia el detalle del monstruo.
         if (tipo === 'monstruo')
             this.detallesMonstruoAbiertos = this.detallesMonstruoAbiertos
@@ -1488,6 +1494,15 @@ export class TabControlComponent implements OnInit, OnDestroy {
             case 'objeto':
             case 'conjunto':
                 // Van con su tipo (`EntradaEquipo`): los refresca `onEdicionGuardada`.
+                return [];
+            case 'tipo_criatura':
+                return this.detallesTipoCriaturaAbiertos;
+            case 'subtipo':
+                return this.detallesSubtipoAbiertos;
+            case 'deidad':
+                return this.detallesDeidadAbiertos;
+            case 'manual':
+                // Llevan además lo que cita el manual (`Asociados`): los refresca `onEdicionGuardada`.
                 return [];
         }
     }
