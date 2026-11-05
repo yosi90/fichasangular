@@ -2,6 +2,7 @@ import Swal from 'sweetalert2';
 import { UserAccessScope } from 'src/app/interfaces/user-moderation';
 import { ApiActionGuardService } from 'src/app/services/api-action-guard.service';
 import { AppToastService } from 'src/app/services/app-toast.service';
+import { PERSONA_SIN_NOMBRE } from 'src/app/services/platform-social.service';
 import { UserService } from 'src/app/services/user.service';
 import { normasDeCreacionAceptadas } from 'src/app/services/utils/normas-creacion';
 import { toUserFacingErrorMessage } from 'src/app/services/utils/user-facing-error.util';
@@ -90,7 +91,7 @@ export async function confirmarAccion(texto: string, boton: string): Promise<boo
 
 /** Lo que se enseña de alguien de una campaña o de la comunidad: su nombre visible o su correo; nunca su id. */
 export function textoPersona(nombre: string | null | undefined, correo?: string | null): string {
-    return `${nombre ?? ''}`.trim() || `${correo ?? ''}`.trim() || 'Persona sin nombre';
+    return `${nombre ?? ''}`.trim() || `${correo ?? ''}`.trim() || PERSONA_SIN_NOMBRE;
 }
 
 /** El nombre de un rol de Rol para enseñarlo («Master», «Colaborador»…). */

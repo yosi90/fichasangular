@@ -76,13 +76,16 @@ export interface ResumenSocialPlataforma {
     bloqueos: number;
 }
 
+/** Lo que se lee de alguien sin nombre que enseñar (ni nombre, ni alias, ni correo). */
+export const PERSONA_SIN_NOMBRE = 'Persona sin nombre';
+
 /** Lo que se enseña de una persona: su nombre visible o, si su perfil es privado, `@alias`. Nunca su id. */
 export function nombreVisiblePersona(persona: Pick<PersonaPlataforma, 'alias' | 'nombre'> | null | undefined): string {
     const nombre = `${persona?.nombre ?? ''}`.trim();
     if (nombre.length > 0)
         return nombre;
     const alias = `${persona?.alias ?? ''}`.trim();
-    return alias.length > 0 ? `@${alias}` : 'Persona sin nombre';
+    return alias.length > 0 ? `@${alias}` : PERSONA_SIN_NOMBRE;
 }
 
 /** La dirección completa de la miniatura del avatar (la API la da relativa a ella), o `null` si no tiene. */

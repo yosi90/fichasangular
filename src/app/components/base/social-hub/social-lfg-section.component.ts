@@ -19,6 +19,7 @@ import { ChatFloatingService } from 'src/app/services/chat-floating.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
+import { textoPersona } from '../user-profile/perfil-acciones';
 
 @Component({
     selector: 'app-social-lfg-section',
@@ -29,6 +30,9 @@ import { compararTexto } from 'src/app/services/utils/orden-texto';
 export class SocialLfgSectionComponent implements OnInit, OnChanges, OnDestroy {
     @Input() isLoggedIn = false;
     @Input() openRequest: SocialHubOpenRequest | null = null;
+
+    /** El nombre visible de quien convoca o se apunta; nunca su id. */
+    readonly textoPersona = textoPersona;
 
     readonly statuses: { value: '' | SocialLfgStatus; label: string; }[] = [
         { value: '', label: 'Todos los estados' },
