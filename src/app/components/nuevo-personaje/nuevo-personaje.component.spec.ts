@@ -3560,7 +3560,8 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.puedeContinuarHabilidades).toBeTrue();
     });
 
-    it('getOpcionesExtraHabilidad no filtra extras de Saber por selección en Conocimiento', () => {
+    it('getOpcionesExtraHabilidad no filtra extras de Saber por los de otra familia con el mismo nombre', () => {
+        // La familia sale de los ids de los Extras: una habilidad homebrew con su propia «Planos» no es un Saber.
         component.Personaje.Habilidades = [
             {
                 Id: 32,
@@ -3582,8 +3583,8 @@ describe('NuevoPersonajeComponent', () => {
                 Bonos_varios: [],
             },
             {
-                Id: 6,
-                Nombre: 'Conocimiento de conjuros',
+                Id: 90,
+                Nombre: 'Cartografía 1',
                 Clasea: true,
                 Entrenada: false,
                 Car: 'Inteligencia',
@@ -3595,8 +3596,8 @@ describe('NuevoPersonajeComponent', () => {
                 Custom: false,
                 Soporta_extra: true,
                 Extras: [
-                    { Id_extra: 1, Extra: 'Planos', Descripcion: '' },
-                    { Id_extra: 2, Extra: 'Religion', Descripcion: '' },
+                    { Id_extra: 900, Extra: 'Planos', Descripcion: '' },
+                    { Id_extra: 901, Extra: 'Religion', Descripcion: '' },
                 ],
                 Bonos_varios: [],
             },

@@ -34,6 +34,7 @@ import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
 import { HabilidadParaPrerrequisitos } from './utils/prerrequisitos-evaluacion';
+import { especialidadesDelHueco, sonDeLaMismaFamilia } from './utils/habilidad-familia';
 import { CapacidadEsencia, Chakra, FormacionIncarnumDto, Fusion, PersonajeIncarnum } from '../interfaces/incarnum';
 import { EntradaIncarnumBorrador, calcularIncarnumBorrador, incarnumParaPrerrequisitos } from './utils/incarnum';
 import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
@@ -285,21 +286,6 @@ const EXTRA_ESPECIAL_FAMILIAR = 'Familiar';
 const EXTRA_ESPECIAL_COMPANERO = 'Compañero animal';
 const GENERADOR_AUTO_CON_FLOOR = 1;
 const GENERADOR_AUTO_RECOMENDACION_UMBRAL_TOP3 = 1;
-const HABILIDAD_FAMILIAS_REPETIBLES = {
-    artesania: {
-        ids: [2, 3, 4],
-        maxSlots: 3,
-        nombreBase: 'Artesania',
-        patrones: ['artesania'],
-    },
-    saberes: {
-        ids: [32, 33, 34, 35, 36],
-        maxSlots: 5,
-        nombreBase: 'Saber',
-        patrones: ['saber'],
-    },
-} as const;
-
 const GENERADOR_AUTO_PESOS_POR_POSICION: number[] = [60, 50, 40, 30, 20, 10];
 const GENERADOR_AUTO_SCORING_RULES: {
     q1: Record<GeneradorAutoRespuestaQ1, Partial<Record<CaracteristicaKey, number>>>;
@@ -503,7 +489,6 @@ const GENERADOR_AUTO_OPCIONES_Q3: Record<GeneradorAutoRespuestaQ3, GeneradorAuto
     },
 };
 
-type HabilidadFamiliaRepetibleKey = keyof typeof HABILIDAD_FAMILIAS_REPETIBLES;
 
 export interface AsignacionCaracteristicas {
     Fuerza: number | null;
@@ -1938,11 +1923,13 @@ export class NuevoPersonajeService {
 
     /**
      * Las habilidades del personaje para los prerrequisitos de rangos de las clases y las dotes: cada hueco con sus rangos,
-     * su especialidad (por su id o por su nombre entre los `Extras`) y las especialidades que admite su hueco.
+     * su especialidad (por su id o por su nombre entre los `Extras`) y las especialidades que admite su hueco. Sin las
+     * personalizadas: los prerrequisitos piden habilidades de `habilidades`, y los ids de `habilidades_custom` son otros
+     * (la personalizada 2 no es Artesanía 1).
      */
     private habilidadesParaPrerrequisitos(): HabilidadParaPrerrequisitos[] {
         return (this.personajeCreacion.Habilidades ?? [])
-            .filter((habilidad) => `${habilidad?.Nombre ?? ''}`.trim().length > 0)
+            .filter((habilidad) => !habilidad?.Custom && `${habilidad?.Nombre ?? ''}`.trim().length > 0)
             .map((habilidad) => {
                 const idExtra = idExtraHabilidadParaGuardar(habilidad);
                 return {
@@ -1951,7 +1938,7 @@ export class NuevoPersonajeService {
                     rangos: toNumber(habilidad?.Rangos),
                     idExtra: idExtra > 0 ? idExtra : null,
                     extra: `${habilidad?.Extra ?? ''}`.trim(),
-                    idsExtras: (habilidad?.Extras ?? []).map((extra) => toInt(extra?.Id_extra)).filter((id) => id > 0),
+                    idsExtras: this.especialidadesDeHabilidad(habilidad),
                 };
             });
     }
@@ -6295,22 +6282,21 @@ export class NuevoPersonajeService {
         return !extraHabilidadElegido(normalizarTexto(`${habilidad?.Extra ?? ''}`));
     }
 
-    private getClaveGrupoExtraHabilidad(habilidad: Personaje['Habilidades'][number]): string {
-        const id = toNumber(habilidad?.Id);
-        const nombre = `${habilidad?.Nombre ?? ''}`;
-        const familia = this.resolverFamiliaRepetiblePorReferencia(id, nombre);
-        if (familia)
-            return `familia:${familia}`;
-
-        const base = normalizarTexto(nombre).replace(/\s+\d+$/, '').trim();
-        if (base.length > 0)
-            return `nombre:${base}`;
-        if (id > 0)
-            return `id:${id}`;
-        return '';
+    /**
+     * Las especialidades que admite el hueco de una habilidad del personaje (sus `Extras`, o los del catálogo si no los
+     * trae), de las que sale su familia (`habilidad-familia.ts`). Una habilidad personalizada no tiene familia.
+     */
+    private especialidadesDeHabilidad(habilidad: Personaje['Habilidades'][number] | null | undefined): number[] {
+        if (!habilidad || habilidad.Custom)
+            return [];
+        const propias = especialidadesDelHueco(habilidad.Extras);
+        if (propias.length > 0)
+            return propias;
+        const catalogo = this.buscarDefinicionHabilidadCatalogo(toNumber(habilidad.Id), '', false);
+        return catalogo.esCustom ? [] : especialidadesDelHueco(catalogo.detalle?.Extras);
     }
 
-    /** Otra habilidad del mismo grupo (las Artesanías, los Saberes…) ya tiene ese extra. */
+    /** Otra habilidad de la misma familia (las Artesanías, los Saberes…) ya tiene ese extra. */
     existeExtraDuplicadoEnGrupoParaSesion(
         habilidadObjetivo: Personaje['Habilidades'][number],
         extraNormalizadoObjetivo: string
@@ -6318,8 +6304,8 @@ export class NuevoPersonajeService {
         if (!extraHabilidadElegido(extraNormalizadoObjetivo))
             return false;
 
-        const claveGrupo = this.getClaveGrupoExtraHabilidad(habilidadObjetivo);
-        if (claveGrupo.length < 1)
+        const familia = this.especialidadesDeHabilidad(habilidadObjetivo);
+        if (familia.length < 1)
             return false;
         const idObjetivo = toNumber(habilidadObjetivo?.Id);
 
@@ -6330,7 +6316,7 @@ export class NuevoPersonajeService {
                 return false;
             if (!toBoolean(habilidad?.Soporta_extra))
                 return false;
-            if (this.getClaveGrupoExtraHabilidad(habilidad) !== claveGrupo)
+            if (!sonDeLaMismaFamilia(familia, this.especialidadesDeHabilidad(habilidad)))
                 return false;
             const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
             if (!extraHabilidadElegido(extraNormalizado))
@@ -6340,69 +6326,16 @@ export class NuevoPersonajeService {
     }
 
     private hayExtrasDuplicadosClaseosParaSesion(): boolean {
-        const vistos = new Set<string>();
-
-        for (const habilidad of this.getHabilidadesSesion()) {
-            if (!this.esExtraElegibleParaSesion(habilidad))
-                continue;
-            if (!toBoolean(habilidad?.Soporta_extra))
-                continue;
-
-            const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
-            if (!extraHabilidadElegido(extraNormalizado))
-                continue;
-
-            const claveGrupo = this.getClaveGrupoExtraHabilidad(habilidad);
-            if (claveGrupo.length < 1)
-                continue;
-
-            const clave = `${claveGrupo}|${extraNormalizado}`;
-            if (vistos.has(clave))
-                return true;
-            vistos.add(clave);
-        }
-
-        return false;
+        return this.getHabilidadesSesion().some((habilidad) => this.esExtraElegibleParaSesion(habilidad)
+            && toBoolean(habilidad?.Soporta_extra)
+            && this.existeExtraDuplicadoEnGrupoParaSesion(habilidad, normalizarTexto(`${habilidad?.Extra ?? ''}`)));
     }
 
-    private resolverFamiliaRepetiblePorReferencia(idHabilidad: number, nombre: string): HabilidadFamiliaRepetibleKey | null {
-        const id = toNumber(idHabilidad);
-        const nombreNorm = normalizarTexto(nombre);
-
-        const familias = Object.entries(HABILIDAD_FAMILIAS_REPETIBLES) as Array<[
-            HabilidadFamiliaRepetibleKey,
-            typeof HABILIDAD_FAMILIAS_REPETIBLES[HabilidadFamiliaRepetibleKey]
-        ]>;
-
-        for (const [key, config] of familias) {
-            const ids = (config.ids as readonly number[]);
-            if (ids.includes(id))
-                return key;
-            if (config.patrones.some((patron) => nombreNorm.startsWith(patron)))
-                return key;
-        }
-
-        return null;
-    }
-
-    private obtenerSlotsFamiliaRepetible(familia: HabilidadFamiliaRepetibleKey): Personaje['Habilidades'][number][] {
-        const config = HABILIDAD_FAMILIAS_REPETIBLES[familia];
-        const ids = [...(config.ids as readonly number[])];
-
-        const slots = this.personajeCreacion.Habilidades.filter((habilidad) => {
-            const id = toNumber(habilidad?.Id);
-            if (ids.includes(id))
-                return true;
-            return this.resolverFamiliaRepetiblePorReferencia(id, `${habilidad?.Nombre ?? ''}`) === familia;
-        });
-
-        return slots.sort((a, b) => {
-            const idxA = ids.indexOf(toNumber(a?.Id));
-            const idxB = ids.indexOf(toNumber(b?.Id));
-            if (idxA !== idxB)
-                return idxA - idxB;
-            return compararTexto(a?.Nombre, b?.Nombre);
-        }).slice(0, config.maxSlots);
+    /** Los huecos de una familia que tiene el personaje (Saber 1 a 5), por su id. */
+    private obtenerSlotsFamilia(familia: readonly number[]): Personaje['Habilidades'][number][] {
+        return this.personajeCreacion.Habilidades
+            .filter((habilidad) => sonDeLaMismaFamilia(familia, this.especialidadesDeHabilidad(habilidad)))
+            .sort((a, b) => toNumber(a?.Id) - toNumber(b?.Id) || compararTexto(a?.Nombre, b?.Nombre));
     }
 
     /**
@@ -6425,12 +6358,12 @@ export class NuevoPersonajeService {
      * no el hueco: si el personaje ya la tiene en uno, es ese; si no, uno libre que no tenga ya otra especialidad elegida.
      */
     private resolverSlotFamiliaParaOtorgamiento(
-        familia: HabilidadFamiliaRepetibleKey,
+        familia: readonly number[],
         preferida: Personaje['Habilidades'][number] | null,
         paraClasea: boolean,
         extraFijo = ''
     ): Personaje['Habilidades'][number] | null {
-        const slots = this.obtenerSlotsFamiliaRepetible(familia);
+        const slots = this.obtenerSlotsFamilia(familia);
         if (slots.length < 1)
             return preferida;
 
@@ -6499,8 +6432,9 @@ export class NuevoPersonajeService {
                 .find((h) => normalizarTexto(h.Nombre) === nombreNorm) ?? null;
         }
 
-        const familia = this.resolverFamiliaRepetiblePorReferencia(idObjetivo, nombreObjetivo);
-        if (familia) {
+        const familia = custom ? [] : [especialidadesDelHueco(extras), this.especialidadesDeHabilidad(existente)]
+            .find((especialidades) => especialidades.length > 0) ?? [];
+        if (familia.length > 0) {
             // Sin expandir (la raza), la referencia apunta a su hueco (Artesanía 1) y se queda en él en cada recálculo.
             const slotFamilia = !expandirFamiliaConDuplicados && existente
                 ? existente
@@ -6509,8 +6443,6 @@ export class NuevoPersonajeService {
                 if (marcarClasea)
                     slotFamilia.Clasea = true;
                 slotFamilia.Entrenada = slotFamilia.Entrenada === true || entrenada;
-                if (custom)
-                    slotFamilia.Custom = true;
                 if (soportaExtra)
                     slotFamilia.Soporta_extra = true;
                 if ((slotFamilia.Extras ?? []).length < 1 && extras.length > 0)
