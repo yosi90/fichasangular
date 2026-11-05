@@ -58,7 +58,7 @@ const CONFIGURACION: Readonly<Record<TipoListadoEquipo, ConfiguracionListado>> =
         singular: 'munición', plural: 'munición',
         cargar: (svc) => svc.getMuniciones(),
         columnas: [
-            { clave: 'Precio', etiqueta: 'Precio', valor: (item: MunicionDetalle) => `${textoPrecio(item.Precio)} (${item.Cantidad_por_precio})` },
+            { clave: 'Precio', etiqueta: 'Precio', valor: (item: MunicionDetalle) => `${textoPrecio(item.Precio)} (${item.Cantidad_por_precio ?? 1})` },
             { clave: 'Armas', etiqueta: 'Armas', valor: (item: MunicionDetalle) => item.Armas.map((arma) => arma.Nombre).join(', ') },
         ],
     },

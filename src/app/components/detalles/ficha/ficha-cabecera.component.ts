@@ -21,7 +21,8 @@ export class FichaCabeceraComponent implements OnChanges {
     /** La descripción corta, en cursiva. Si no es un solo párrafo corto (`esTextoCorto`), no se enseña aquí. */
     @Input() subtitulo: string | null | undefined = null;
     /** El manual: la referencia de la API (nombre y página) o el texto que ya trae la página. */
-    @Input() manual: ManualReferencia | string | null | undefined = null;
+    /** El manual con su página (la del equipo puede faltar: `null`). */
+    @Input() manual: ManualReferencia | (Omit<ManualReferencia, 'Pagina'> & { Pagina: number | null; }) | string | null | undefined = null;
     /** `true` enseña «Oficial»; `false`, «Homebrew» en ámbar; sin dar, nada. */
     @Input() oficial: boolean | null | undefined = undefined;
     @Input() etiquetas: (string | EtiquetaFicha)[] | null | undefined = [];
