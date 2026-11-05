@@ -17,10 +17,10 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 import { UserService } from 'src/app/services/user.service';
 import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { opcionesDeExtrasDeDote } from 'src/app/services/utils/dote-mapper';
-import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionDeHabilidad, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import { CAMPOS_VELOCIDAD } from 'src/app/services/utils/movimientos-mapper';
 import { SUBTIPO } from 'src/app/services/utils/nombres-de-catalogo';
-import { toInt, toText } from 'src/app/services/utils/normalizacion';
+import { toInt } from 'src/app/services/utils/normalizacion';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { CARACTERISTICAS_PLANTILLA } from 'src/app/services/utils/plantilla-formulario';
 import {
@@ -243,7 +243,7 @@ export class NuevoSubtipoComponent implements OnInit, OnDestroy, OnChanges, Edit
     /** La personalizada que acaba de crear el modal: entra en las opciones (si la caché aún no la trae) y en la lista. */
     alCrearPersonalizada(habilidad: HabilidadBasicaDetalle): void {
         this.customModalAbierto = false;
-        const opcion = { id: toInt(habilidad?.Id_habilidad), nombre: toText(habilidad?.Nombre) };
+        const opcion = opcionDeHabilidad(habilidad);
         if (opcion.id <= 0)
             return;
         if (!this.opciones.habilidades_custom.some((item) => item.id === opcion.id))
@@ -338,10 +338,9 @@ export class NuevoSubtipoComponent implements OnInit, OnDestroy, OnChanges, Edit
         });
         cargar(this.habilidadSvc.getHabilidades(), (items) => {
             this.habilidades = items ?? [];
-            enOpciones('habilidades', opcionesDeCatalogo(items, (item) => ({ id: toInt(item.Id_habilidad), nombre: toText(item.Nombre) })));
+            enOpciones('habilidades', opcionesDeCatalogo(items, opcionDeHabilidad));
         });
-        cargar(this.habilidadSvc.getHabilidadesCustom(), (items) => enOpciones('habilidades_custom',
-            opcionesDeCatalogo(items, (item) => ({ id: toInt(item.Id_habilidad), nombre: toText(item.Nombre) }))));
+        cargar(this.habilidadSvc.getHabilidadesCustom(), (items) => enOpciones('habilidades_custom', opcionesDeCatalogo(items, opcionDeHabilidad)));
     }
 
     private actualizarPermisos(): void {

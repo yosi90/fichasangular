@@ -1,5 +1,5 @@
 import { Comodin } from 'src/app/interfaces/comodin';
-import { normalizarTexto, toArray, toBoolean, toInt } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
 import { PrerequisiteCatalogItem } from 'src/app/components/shared/prerrequisito-editor/prerrequisito-editor.models';
@@ -30,6 +30,11 @@ export function idExtraHabilidadParaGuardar(entrada: any): number {
  * Los extras de una habilidad del catálogo como opciones del editor de prerrequisitos («Extras pedidos»,
  * `getHabilidadExtraOptions` de su contexto), por nombre. Los usan la dote y la clase.
  */
+/** Una habilidad (del catálogo o personalizada) como opción de un buscador: su `Id_habilidad` y su nombre. */
+export function opcionDeHabilidad(habilidad: { Id_habilidad?: unknown; Nombre?: unknown; } | null | undefined): { id: number; nombre: string; } {
+    return { id: toInt(habilidad?.Id_habilidad), nombre: toText(habilidad?.Nombre) };
+}
+
 export function opcionesDeExtrasDeHabilidad(habilidades: readonly HabilidadBasicaDetalle[], idHabilidad: number): PrerequisiteCatalogItem[] {
     const habilidad = habilidades.find((item) => toInt(item?.Id_habilidad, 0) === toInt(idHabilidad, 0));
     return (habilidad?.Extras ?? [])

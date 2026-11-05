@@ -22,7 +22,7 @@ import { UserService } from 'src/app/services/user.service';
 import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { opcionesDeExtrasDeDote } from 'src/app/services/utils/dote-mapper';
 import { mensajeDeError } from 'src/app/services/utils/error-api';
-import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
+import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionDeHabilidad, opcionesDeExtrasDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
 import {
     CAMPOS_MONSTRUO,
     CARACTERISTICAS_MONSTRUO,
@@ -548,7 +548,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
         });
         suscribir(this.habilidadSvc.getHabilidades(), (items) => {
             this.habilidades = items ?? [];
-            this.habilidadesOpciones = opcionesDeCatalogo(items, (item) => ({ id: toInt(item.Id_habilidad), nombre: toText(item.Nombre) }))
+            this.habilidadesOpciones = opcionesDeCatalogo(items, opcionDeHabilidad)
                 .filter((item) => item.id > 0);
         });
     }
