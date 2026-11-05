@@ -13,7 +13,8 @@
             [guardando]="guardando"
             [accionDesactivada]="cargandoEdicion"
             [textoAccion]="etiquetaAccionPrincipal"
-            [textoGuardando]="etiquetaAccionPrincipal">
+            [textoGuardando]="etiquetaAccionPrincipal"
+            [error]="errores.global">
             <div class="insercion-paso" [hidden]="pasoActual !== 0">
                 <section class="panel-card">
                     <span class="panel-title"><mat-icon>badge</mat-icon>Identidad</span>
@@ -22,6 +23,7 @@
                             <mat-label>Nombre</mat-label>
                             <input matInput formControlName="nombre" maxlength="50">
                             <mat-error *ngIf="form.controls.nombre.hasError('required')">Nombre obligatorio.</mat-error>
+                            <mat-error *ngIf="form.controls.nombre.hasError('api')">{{form.controls.nombre.getError('api')}}</mat-error>
                         </mat-form-field>
 
                         <mat-form-field appearance="fill">
@@ -36,6 +38,7 @@
                         <mat-form-field appearance="fill">
                             <mat-label>Pagina</mat-label>
                             <input matInput type="number" min="0" formControlName="pagina">
+                            <mat-error *ngIf="form.controls.pagina.hasError('api')">{{form.controls.pagina.getError('api')}}</mat-error>
                         </mat-form-field>
 
                         <mat-form-field appearance="fill">
@@ -44,6 +47,7 @@
                                 <mat-option *ngFor="let dado of tiposDadoCatalogo" [value]="dado.Id">{{dado.Nombre}}</mat-option>
                             </mat-select>
                             <mat-error *ngIf="form.controls.tipo_dado.hasError('min')">Elige el dado de golpe.</mat-error>
+                            <mat-error *ngIf="form.controls.tipo_dado.hasError('api')">{{form.controls.tipo_dado.getError('api')}}</mat-error>
                         </mat-form-field>
 
                         <mat-form-field appearance="fill">
@@ -51,21 +55,25 @@
                             <mat-select formControlName="puntos_habilidad_id">
                                 <mat-option *ngFor="let puntos of puntosHabilidadCatalogo" [value]="puntos.Id">{{puntos.Valor}}</mat-option>
                             </mat-select>
+                            <mat-error *ngIf="form.controls.puntos_habilidad_id.hasError('api')">{{form.controls.puntos_habilidad_id.getError('api')}}</mat-error>
                         </mat-form-field>
 
                         <mat-form-field appearance="fill">
                             <mat-label>Nivel maximo</mat-label>
                             <input matInput type="number" min="1" max="20" formControlName="nivel_max_claseo">
+                            <mat-error *ngIf="form.controls.nivel_max_claseo.hasError('api')">{{form.controls.nivel_max_claseo.getError('api')}}</mat-error>
                         </mat-form-field>
 
                         <mat-form-field appearance="fill">
                             <mat-label>Dominios obtenibles</mat-label>
                             <input matInput type="number" min="0" formControlName="dominio_cantidad">
+                            <mat-error *ngIf="form.controls.dominio_cantidad.hasError('api')">{{form.controls.dominio_cantidad.getError('api')}}</mat-error>
                         </mat-form-field>
 
                         <mat-form-field appearance="fill" class="full-span">
                             <mat-label>Descripcion</mat-label>
                             <textarea matInput formControlName="descripcion" rows="5" maxlength="4000"></textarea>
+                            <mat-error *ngIf="form.controls.descripcion.hasError('api')">{{form.controls.descripcion.getError('api')}}</mat-error>
                         </mat-form-field>
 
                         <div class="toggle-toolbar full-span">
@@ -135,6 +143,7 @@
                                 <mat-select formControlName="mod_salv_conjuros">
                                     <mat-option *ngFor="let caracteristica of caracteristicas" [value]="caracteristica.Nombre">{{caracteristica.Nombre}}</mat-option>
                                 </mat-select>
+                                <mat-error *ngIf="form.controls.mod_salv_conjuros.hasError('api')">{{form.controls.mod_salv_conjuros.getError('api')}}</mat-error>
                             </mat-form-field>
 
                             <ng-container *ngIf="esLanzadorArcanoODivino">
@@ -175,24 +184,28 @@
                             <mat-select formControlName="id_ataque_base">
                                 <mat-option *ngFor="let item of ataqueBaseCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
                             </mat-select>
+                            <mat-error *ngIf="form.controls.id_ataque_base.hasError('api')">{{form.controls.id_ataque_base.getError('api')}}</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="fill">
                             <mat-label>Fortaleza</mat-label>
                             <mat-select formControlName="fortaleza_id">
                                 <mat-option *ngFor="let item of salvacionCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
                             </mat-select>
+                            <mat-error *ngIf="form.controls.fortaleza_id.hasError('api')">{{form.controls.fortaleza_id.getError('api')}}</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="fill">
                             <mat-label>Reflejos</mat-label>
                             <mat-select formControlName="reflejos_id">
                                 <mat-option *ngFor="let item of salvacionCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
                             </mat-select>
+                            <mat-error *ngIf="form.controls.reflejos_id.hasError('api')">{{form.controls.reflejos_id.getError('api')}}</mat-error>
                         </mat-form-field>
                         <mat-form-field appearance="fill">
                             <mat-label>Voluntad</mat-label>
                             <mat-select formControlName="voluntad_id">
                                 <mat-option *ngFor="let item of salvacionCatalogo" [value]="item.Id">{{item.Nombre}}</mat-option>
                             </mat-select>
+                            <mat-error *ngIf="form.controls.voluntad_id.hasError('api')">{{form.controls.voluntad_id.getError('api')}}</mat-error>
                         </mat-form-field>
                     </div>
 
@@ -395,6 +408,7 @@
                                     {{escuela.Nombre}}{{escuela.Oficial === false ? ' (homebrew)' : ''}}
                                 </mat-option>
                             </mat-select>
+                            <mat-error *ngIf="form.controls.escuela_especialista_id.hasError('api')">{{form.controls.escuela_especialista_id.getError('api')}}</mat-error>
                         </mat-form-field>
                     </div>
 
@@ -403,6 +417,7 @@
                             <mat-label>Divisor del nivel de lanzador</mat-label>
                             <input matInput type="number" min="1" formControlName="nivel_lanzador_divisor">
                             <mat-hint>2: la mitad de su nivel (paladín, explorador)</mat-hint>
+                            <mat-error *ngIf="form.controls.nivel_lanzador_divisor.hasError('api')">{{form.controls.nivel_lanzador_divisor.getError('api')}}</mat-error>
                         </mat-form-field>
                         <div class="libro-conjuros full-span">
                             <mat-chip-listbox class="boolean-chips" aria-label="Libro de conjuros" [multiple]="true">
@@ -415,10 +430,12 @@
                             <mat-form-field appearance="fill">
                                 <mat-label>Conjuros iniciales en el libro</mat-label>
                                 <input matInput type="number" min="0" formControlName="libro_iniciales">
+                                <mat-error *ngIf="form.controls.libro_iniciales.hasError('api')">{{form.controls.libro_iniciales.getError('api')}}</mat-error>
                             </mat-form-field>
                             <mat-form-field appearance="fill">
                                 <mat-label>Conjuros nuevos por nivel</mat-label>
                                 <input matInput type="number" min="0" formControlName="libro_por_nivel">
+                                <mat-error *ngIf="form.controls.libro_por_nivel.hasError('api')">{{form.controls.libro_por_nivel.getError('api')}}</mat-error>
                             </mat-form-field>
                         </ng-container>
                     </div>

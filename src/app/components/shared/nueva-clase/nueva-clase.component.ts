@@ -1,8 +1,8 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
-import { FormBuilder, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, Validators } from '@angular/forms';
 import { Subject, take, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
-import { avisarErrorAlGuardar, avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
+import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { CLASE } from 'src/app/services/utils/nombres-de-catalogo';
 import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
@@ -215,14 +215,15 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     readonly pasos = PASOS_CLASE;
     pasoActual = 0;
     /**
-     * Por ahora solo para saltar al paso del primer campo que no vale al guardar (`irAlPrimerError`); el error de la API
-     * sigue en su aviso (`avisarErrorAlGuardar`).
+     * Los errores, como en la raza, la dote y el conjuro: el de la API en el `bloque-error` del marco y, si da `field`
+     * (la ruta de la clave en el cuerpo: `Conjuros.Libro.Iniciales`), en su campo y su paso (`CAMPOS_CLASE`).
      */
     readonly errores = new ErroresDeFormulario({
         campos: CAMPOS_CLASE,
         raiz: null,
-        control: (campo) => this.form.get(campo),
-        firma: (campo) => `${this.form.get(campo)?.value ?? ''}`,
+        control: (campo) => this.controlDeCampo(campo),
+        // Las listas (prerrequisitos, conjuros, niveles…) no son controles: su error sigue hasta volver a guardar.
+        firma: (campo) => `${this.controlDeCampo(campo)?.value ?? ''}`,
         irAPaso: (paso) => this.pasoActual = paso,
     });
     puedeCrear = false;
@@ -449,6 +450,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         this.userSvc.acl$.pipe(takeUntil(this.destroy$)).subscribe(() => this.actualizarPermisos());
         this.userSvc.isLoggedIn$.pipe(takeUntil(this.destroy$)).subscribe(() => this.actualizarPermisos());
         this.form.controls.nivel_max_claseo.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => this.sincronizarNiveles());
+        this.form.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => this.errores.seguirCambios());
         this.cargarCatalogosBase();
         this.edicion.cargarSiHaceFalta();
     }
@@ -570,6 +572,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             await avisarSinPermisos(this.userSvc.getPermissionDeniedMessage());
             return;
         }
+        this.errores.limpiar();
         this.form.markAllAsTouched();
         if (this.form.invalid) {
             this.errores.irAlPrimerError();
@@ -601,7 +604,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
                 this.resetFormulario();
             }
         } catch (error: any) {
-            await avisarErrorAlGuardar(CLASE, this.esModoEdicion, error);
+            this.errores.mostrar(error, this.esModoEdicion ? 'No se ha podido actualizar la clase.' : 'No se ha podido crear la clase.');
         } finally {
             this.guardando = false;
         }
@@ -1739,6 +1742,12 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         return JSON.stringify(payload, function (this: any, clave: string, valor: unknown) {
             return this !== payload && typeof valor === 'string' && NOMBRES_DE_CATALOGO.has(clave) ? undefined : valor;
         });
+    }
+
+    /** El control de un campo de `CAMPOS_CLASE` (las listas no tienen). */
+    private controlDeCampo(campo: string): AbstractControl | null {
+        const control = CAMPOS_CLASE[campo]?.control;
+        return control ? this.form.get(control) : null;
     }
 
     private actualizarPermisos(): void {

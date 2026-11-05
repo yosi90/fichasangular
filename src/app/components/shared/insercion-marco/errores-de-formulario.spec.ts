@@ -35,6 +35,20 @@ describe('ErroresDeFormulario (los errores de una inserción, en el marco y en s
         expect(campoDeErrorApi('', CAMPOS, 'cosa')).toBeNull();
     });
 
+    it('con claves que son rutas (la clase), la más larga con la que empieza el field, sin los índices', () => {
+        const rutas: CamposDeFormulario = {
+            Conjuros: { etiqueta: 'Magia', paso: 4 },
+            'Conjuros.Libro.Iniciales': { etiqueta: 'Conjuros iniciales en el libro', paso: 4 },
+            'Desglose_niveles.Dotes': { etiqueta: 'Dotes por nivel', paso: 5 },
+            Desglose_niveles: { etiqueta: 'Progresión', paso: 1 },
+        };
+        expect(campoDeErrorApi('Conjuros.Libro.Iniciales', rutas, null)).toBe('Conjuros.Libro.Iniciales');
+        expect(campoDeErrorApi('Conjuros.Libro.Por_nivel', rutas, null)).toBe('Conjuros');
+        expect(campoDeErrorApi('Desglose_niveles[2].Dotes[0].Opcional', rutas, null)).toBe('Desglose_niveles.Dotes');
+        expect(campoDeErrorApi('Desglose_niveles[2].Aumentos_clase_lanzadora[0].Id', rutas, null)).toBe('Desglose_niveles');
+        expect(campoDeErrorApi('Nombre', rutas, null)).toBeNull();
+    });
+
     it('un error con field va al marco, a su control (clave api) y a su paso', () => {
         errores.mostrar(new ProfileApiError('Ya existe una cosa con ese nombre.', 'nombre_duplicado', 409, 'cosa.nombre'), 'No se pudo.');
 

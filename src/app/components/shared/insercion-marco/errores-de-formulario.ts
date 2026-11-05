@@ -31,16 +31,23 @@ export function entero(control: AbstractControl): ValidationErrors | null {
 /**
  * El campo del formulario al que apunta el `field` de un error de la API: con la raíz `plantilla`,
  * «plantilla.nombre» → `nombre`, «dotes[0].dg» → `dotes`, «prerrequisitos.dg[0].cantidad» → `prerrequisitos`.
+ * Las claves de `campos` pueden ser rutas (la clase, cuyo cuerpo anida: `Conjuros.Libro.Iniciales`): vale la más larga
+ * con la que empieza el `field`, sin los índices («Conjuros.Libro.Iniciales» antes que «Conjuros»).
  * `null` si no es ninguno de `campos`.
  */
 export function campoDeErrorApi(field: string | null | undefined, campos: CamposDeFormulario, raiz: string | null): string | null {
     const texto = `${field ?? ''}`.trim();
     if (texto.length < 1)
         return null;
-    const partes = texto.split('.');
-    const primera = partes[0].replace(/\[\d+\]$/, '');
-    const campo = raiz !== null && primera === raiz ? (partes[1] ?? '').replace(/\[\d+\]$/, '') : primera;
-    return campos[campo] ? campo : null;
+    let partes = texto.split('.').map((parte) => parte.replace(/\[\d+\]$/, ''));
+    if (raiz !== null && partes[0] === raiz)
+        partes = partes.slice(1);
+    for (let cuantas = partes.length; cuantas > 0; cuantas--) {
+        const campo = partes.slice(0, cuantas).join('.');
+        if (campos[campo])
+            return campo;
+    }
+    return null;
 }
 
 /** El error de la API en un campo, con lo que valía el campo entonces (para quitarlo en cuanto se corrige). */

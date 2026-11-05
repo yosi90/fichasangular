@@ -6,6 +6,8 @@ import { NuevaClaseComponent } from './nueva-clase.component';
 import { IDA_Y_VUELTA_CLASES } from 'src/testing/ida-y-vuelta-clases';
 import { soloLoDeLaReferencia } from 'src/testing/cuerpo-de-catalogo';
 import { getPrerequisiteDefinition } from '../prerrequisito-editor/prerrequisito-editor.registry';
+import { ProfileApiError } from 'src/app/interfaces/user-account';
+import { CAMPOS_CLASE } from 'src/app/services/utils/clase-formulario';
 
 // El `PUT /clases` deja vacío lo que no viene (guía `docs/publica/CLASES_PROPIAS_FRONT.md`): el editor reenvía lo que no
 // edita (la lista de conjuros, el libro y el divisor) y manda los campos de las clases propias.
@@ -85,6 +87,43 @@ describe('NuevaClaseComponent (lo que manda al guardar)', () => {
         expect(conjuros.Nivel_lanzador_divisor).toBe(1);
         expect(conjuros.Listado_por_especial).toEqual([]);
         expect(conjuros.Niveles_con_requisito).toEqual([]);
+    });
+});
+
+describe('NuevaClaseComponent (el error de la API, en el marco y en su campo)', () => {
+    it('con field va al bloque-error del marco, al control de su ruta y a su paso; sin control, a su paso', () => {
+        const editor = crearEditor();
+        editor.pasoActual = 0;
+
+        editor.errores.mostrar(new ProfileApiError("'Conjuros.Libro.Iniciales' no puede ser negativo.", 'peticion_no_valida', 400,
+            'Conjuros.Libro.Iniciales'), 'No se ha podido actualizar la clase.');
+
+        expect(editor.errores.global).toBe("'Conjuros.Libro.Iniciales' no puede ser negativo.");
+        expect(editor.pasoActual).toBe(4);
+        expect(editor.form.controls.libro_iniciales.getError('api')).toBe("'Conjuros.Libro.Iniciales' no puede ser negativo.");
+
+        editor.errores.limpiar();
+        editor.errores.mostrar(new ProfileApiError('No se ha encontrado el género de prerrequisito.', 'no_encontrado', 404,
+            'Prerrequisitos.genero'), 'No se ha podido actualizar la clase.');
+        expect(editor.pasoActual).toBe(6);
+        expect(editor.errores.mensajeDe('Prerrequisitos')).toBe('No se ha encontrado el género de prerrequisito.');
+
+        editor.errores.mostrar(new ProfileApiError('Ya existe una clase con ese nombre.', 'nombre_duplicado', 409, 'Nombre'), 'x');
+        expect(editor.pasoActual).toBe(0);
+        expect(editor.form.controls.nombre.hasError('api')).toBeTrue();
+        editor.form.controls.nombre.setValue('Otra clase');
+        expect(editor.form.controls.nombre.hasError('api')).toBeFalse();
+    });
+
+    it('cada control con validadores está en CAMPOS_CLASE (para saltar a su paso al guardar)', () => {
+        const editor = crearEditor();
+        const conControl = new Set(Object.values(CAMPOS_CLASE).map((campo) => campo.control).filter(Boolean));
+        const conValidador = Object.entries(editor.form.controls).filter(([, control]) => control.validator).map(([nombre]) => nombre);
+        expect(conValidador.filter((nombre) => !conControl.has(nombre))).toEqual([]);
+        Object.values(CAMPOS_CLASE).forEach((campo) => {
+            if (campo.control)
+                expect(editor.form.get(campo.control)).withContext(campo.control).not.toBeNull();
+        });
     });
 });
 
