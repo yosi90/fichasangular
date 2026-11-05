@@ -4685,15 +4685,7 @@ export class NuevoPersonajeService {
         const extraNorm = normalizarTexto(extraTexto ?? '');
 
         // El extra de habilidad de una dote (Soltura con una habilidad) es una habilidad del catálogo, no una personalizada.
-        const objetivo = (this.personajeCreacion.Habilidades ?? []).find((habilidad) => {
-            if (habilidad?.Custom)
-                return false;
-            if (idObjetivo > 0 && claveHabilidad(habilidad) === claveDeHabilidad(idObjetivo, false))
-                return true;
-            if (!requiereExtraHabilidad)
-                return false;
-            return extraNorm.length > 0 && normalizarTexto(habilidad?.Nombre ?? '') === extraNorm;
-        });
+        const objetivo = requiereExtraHabilidad ? this.buscarHabilidadDelPersonaje(idObjetivo, extraNorm, false) : null;
         if (!objetivo)
             return;
         this.sumarBonoHabilidad(objetivo, valor, origen, bonosHabilidades);
@@ -5807,7 +5799,9 @@ export class NuevoPersonajeService {
         if (valor === 0)
             return;
 
-        const habilidadObjetivo = this.buscarHabilidadEnPersonaje(detalle);
+        // La habilidad de una ventaja es del catálogo (`habilidades`), no una personalizada.
+        const habilidadObjetivo = this.buscarHabilidadDelPersonaje(
+            toNumber(detalle.Habilidad?.Id), normalizarTexto(detalle.Habilidad?.Nombre ?? ''), false);
         if (!habilidadObjetivo)
             return;
 
@@ -5819,22 +5813,22 @@ export class NuevoPersonajeService {
         (bonosHabilidades[clave] ??= []).push({ valor, origen });
     }
 
-    /** La habilidad de una ventaja: es del catálogo (`habilidades`), así que no se busca entre las personalizadas. */
-    private buscarHabilidadEnPersonaje(detalle: VentajaDetalle): Personaje['Habilidades'][number] | null {
-        const delCatalogo = this.personajeCreacion.Habilidades.filter((h) => !h?.Custom);
-        const idObjetivo = toNumber(detalle.Habilidad?.Id);
-        if (idObjetivo > 0) {
-            const clave = claveDeHabilidad(idObjetivo, false);
+    /**
+     * La habilidad del personaje en un catálogo (`custom`: el de las personalizadas; si no, `habilidades`): por su clave
+     * (`habilidad-clave.ts`) y, sin id o si no está, por su nombre ya normalizado. No se busca en el otro catálogo: sus
+     * ids son de otro espacio.
+     */
+    private buscarHabilidadDelPersonaje(id: number, nombreNorm: string, custom: boolean): Personaje['Habilidades'][number] | null {
+        const delCatalogo = (this.personajeCreacion.Habilidades ?? []).filter((h) => !!h?.Custom === custom);
+        if (id > 0) {
+            const clave = claveDeHabilidad(id, custom);
             const porId = delCatalogo.find((h) => claveHabilidad(h) === clave);
             if (porId)
                 return porId;
         }
-
-        const nombreObjetivo = normalizarTexto(detalle.Habilidad?.Nombre ?? '');
-        if (nombreObjetivo.length < 1)
+        if (nombreNorm.length < 1)
             return null;
-
-        return delCatalogo.find((h) => normalizarTexto(h.Nombre) === nombreObjetivo) ?? null;
+        return delCatalogo.find((h) => normalizarTexto(h?.Nombre ?? '') === nombreNorm) ?? null;
     }
 
     private aplicarBonosHabilidadEnPersonaje(): void {
@@ -6403,15 +6397,7 @@ export class NuevoPersonajeService {
         const keyCar = this.resolverCaracteristicaPorIdOTexto(idCaracteristica, textoCaracteristica);
 
         // La del personaje, en el mismo catálogo: por su clave y, sin id, por su nombre.
-        const delMismoCatalogo = this.personajeCreacion.Habilidades.filter((h) => !!h?.Custom === custom);
-        let existente: Personaje['Habilidades'][number] | null = null;
-        if (idObjetivo > 0) {
-            const clave = claveDeHabilidad(idObjetivo, custom);
-            existente = delMismoCatalogo.find((h) => claveHabilidad(h) === clave) ?? null;
-        }
-        if (!existente && nombreNorm.length > 0) {
-            existente = delMismoCatalogo.find((h) => normalizarTexto(h.Nombre) === nombreNorm) ?? null;
-        }
+        const existente = this.buscarHabilidadDelPersonaje(idObjetivo, nombreNorm, custom);
 
         const familia = custom ? [] : [especialidadesDelHueco(extras), this.especialidadesDeHabilidad(existente)]
             .find((especialidades) => especialidades.length > 0) ?? [];
