@@ -6,6 +6,15 @@ import { MisCampanasService } from 'src/app/services/mis-campanas.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import { BaseMenuComponent } from './base-menu.component';
+import { ListadoComponent } from '../../shared/listado/listado.component';
+import { EDICIONES_CATALOGO, INSERCIONES_CATALOGO, TIPOS_EDICION, tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
+
+/** Los listados que abren las opciones de «Otros» de una sección, en orden. */
+function emitidas(emitSpy: jasmine.Spy, component: BaseMenuComponent, seccion: 'insertar' | 'modificar' | 'detalles'): string[] {
+    emitSpy.calls.reset();
+    component.gruposOtros[seccion].flatMap(grupo => grupo.opciones).forEach(opcion => opcion.abrir());
+    return emitSpy.calls.allArgs().map(([evento]) => evento.tipo);
+}
 
 describe('BaseMenuComponent', () => {
     let canCreateRazas: boolean;
@@ -247,6 +256,38 @@ describe('BaseMenuComponent', () => {
         expect(manuales.habilitada()).toBeTrue();
         manuales.abrir();
         expect(emitSpy).toHaveBeenCalledOnceWith({ tipo: 'manuales', operacion: 'insertar' });
+    });
+
+    it('ninguna opción del menú se queda sin pantalla: con todos los permisos, cada una abre su pestaña (hito 10)', () => {
+        userSvc.can.and.returnValue(true);
+        const emitSpy = spyOn(component.ListadoTab, 'emit');
+        const listado = new ListadoComponent({} as any);
+        const principales = ['razas', 'clases', 'dotes', 'conjuros', 'monstruos', 'plantillas'];
+        const otras = (seccion: 'insertar' | 'modificar' | 'detalles') => component.gruposOtros[seccion]
+            .flatMap(grupo => grupo.opciones);
+
+        for (const seccion of ['insertar', 'modificar', 'detalles'] as const) {
+            expect(otras(seccion).length).withContext(seccion).toBe(18);
+            for (const opcion of otras(seccion)) {
+                emitSpy.calls.reset();
+                expect(opcion.habilitada()).withContext(`${seccion}: ${opcion.etiqueta}`).toBeTrue();
+                opcion.abrir();
+                expect(emitSpy).withContext(`${seccion}: ${opcion.etiqueta}`).toHaveBeenCalledTimes(1);
+            }
+        }
+        const otrasListas = emitidas(emitSpy, component, 'detalles');
+        expect(emitidas(emitSpy, component, 'insertar')).toEqual(otrasListas);
+        expect(emitidas(emitSpy, component, 'modificar')).toEqual(otrasListas);
+        const listas = [...principales, ...otrasListas];
+        for (const lista of listas) {
+            expect(tieneInsercion(lista)).withContext(`insertar ${lista}`).toBeTrue();
+            expect(tipoEdicionDeListado(lista)).withContext(`modificar ${lista}`).not.toBeNull();
+            expect(listado.componentes[lista]).withContext(`detalles ${lista}`).toBeDefined();
+        }
+        expect(new Set(listas).size).toBe(24);
+        // Y al revés: cada pantalla de insertar y de modificar se alcanza desde el menú.
+        expect(Object.keys(INSERCIONES_CATALOGO).sort()).toEqual([...listas].sort());
+        expect(TIPOS_EDICION.every(tipo => listas.includes(EDICIONES_CATALOGO[tipo].listado))).toBeTrue();
     });
 
     it('«Ventajas» (ventajas y desventajas) sale con cualquiera de los dos permisos y abre su pantalla', () => {
