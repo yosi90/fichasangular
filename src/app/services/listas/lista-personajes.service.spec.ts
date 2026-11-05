@@ -563,6 +563,29 @@ describe('ListaPersonajesService', () => {
         expect(personajes[0].Nombre).toBe('Visible en array');
     });
 
+    it('marca como homebrew las públicas de `listado-personajes` con `oficial: false`, como las privadas', async () => {
+        const service = new ListaPersonajesService(
+            { currentUser: null } as any,
+            {} as any,
+            {} as any,
+            firebaseContextMock
+        );
+        const publica = (nombre: string, oficial?: boolean) => ({
+            Nombre: nombre,
+            Archivado: false,
+            Campaña: null,
+            Raza: { Id: 1, Nombre: 'Humano' },
+            Clases: 'Guerrero (1)',
+            visible_otros_usuarios: true,
+            ...(oficial === undefined ? {} : { oficial }),
+        });
+        spyOn<any>(service, 'readCacheSnapshot').and.resolveTo([null, publica('Oficial', true), publica('Casera', false), publica('Antigua')]);
+
+        const personajes = await (service as any).readPublicPersonajesFromCache();
+
+        expect(personajes.map((pj: any) => [pj.Nombre, pj.oficial])).toEqual([['Oficial', true], ['Casera', false], ['Antigua', null]]);
+    });
+
     it('getPersonajes ignora aliases legacy de owner y usa solo el contrato canónico', async () => {
         const httpMock = {
             get: jasmine.createSpy('get').and.returnValue(of([{
