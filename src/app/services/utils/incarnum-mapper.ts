@@ -52,6 +52,8 @@ export function normalizarChakra(raw: any): Chakra {
         Ranura: idNombreONulo(raw?.Ranura),
         Orden: toInt(raw?.Orden),
         Descripcion: toNullableText(raw?.Descripcion),
+        // Sin el campo (la caché de antes de la versión 2), del libro: los once lo son.
+        Oficial: toBoolean(raw?.Oficial, true),
     };
 }
 

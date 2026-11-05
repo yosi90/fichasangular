@@ -19,3 +19,10 @@ export const HABILIDAD: ElementoDeCatalogo = { singular: 'habilidad', plural: 'h
 
 export const ARMA: ElementoDeCatalogo = { singular: 'arma', plural: 'armas', femenino: true };
 export const ARMADURA: ElementoDeCatalogo = { singular: 'armadura', plural: 'armaduras', femenino: true };
+
+// Hito 8 del roadmap de inserciones (2026-11-05): rasgos, ventajas y desventajas, y las fusiones y los chakras del incarnum.
+export const RASGO: ElementoDeCatalogo = { singular: 'rasgo', plural: 'rasgos', femenino: false };
+export const VENTAJA: ElementoDeCatalogo = { singular: 'ventaja', plural: 'ventajas', femenino: true };
+export const DESVENTAJA: ElementoDeCatalogo = { singular: 'desventaja', plural: 'desventajas', femenino: true };
+export const FUSION: ElementoDeCatalogo = { singular: 'fusión', plural: 'fusiones', femenino: true };
+export const CHAKRA: ElementoDeCatalogo = { singular: 'chakra', plural: 'chakras', femenino: false };
