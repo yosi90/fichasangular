@@ -2,7 +2,8 @@ import { AptitudEspecialOtorgante } from 'src/app/interfaces/aptitud-especial';
 import { PrerrequisitoItem } from 'src/app/interfaces/prerrequisito';
 import { cumpleActitud } from 'src/app/services/utils/alineamiento-contrato';
 import { leerComodin } from 'src/app/services/utils/comodin';
-import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
+import { extraHabilidadElegido } from 'src/app/services/utils/habilidad-extra-visible';
+import { esLaHabilidadDeLaRegla } from 'src/app/services/utils/habilidades-bonos';
 import { ClaveEntidadPrerrequisito, existeCoincidenciaClaveEntidad } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normalizarTexto, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito, grupoOpcionalPrerrequisito, avisoSinComprobar, razonNoCumple } from 'src/app/services/utils/prerrequisito-frase';
@@ -299,14 +300,13 @@ function especialidadesDelHueco(pedido: Record<string, any>, habilidades: readon
 function tieneEspecialidad(habilidad: HabilidadParaPrerrequisitos): boolean {
     if (toNumber(habilidad.idExtra) > 0)
         return true;
-    const extra = `${habilidad.extra ?? ''}`.trim();
-    return extra.length > 0 && !esTextoExtraPorElegir(extra);
+    return extraHabilidadElegido(habilidad.extra);
 }
 
 /**
  * `rangos_habilidad` de las clases y `habilidad` de las dotes: los rangos en una habilidad, contados por la habilidad y su
  * especialidad, no por el hueco. Con especialidades concretas en `Extras` (Saber (los planos) 8), las cumple la que
- * tenga una de ellas en cualquier hueco (como las sinergias: el id del extra la identifica en su familia). Sin ellas, en
+ * tenga una de ellas en cualquier hueco (`esLaHabilidadDeLaRegla`, como las sinergias). Sin ellas, en
  * una habilidad con familia (Saber (cualquiera), o un Saber sin especialidad), vale cualquier hueco de la familia, con
  * su especialidad elegida si `Requiere_extra`; y si la misma entidad pide otras especialidades de esa familia, es
  * «cualquier otra»: no cuentan las que ya piden sus otros obligatorios, y cada «cualquiera» necesita la suya. Sin
@@ -327,7 +327,12 @@ export function compararRangosHabilidad(
     const conRangos = habilidades.filter((habilidad) => toNumber(habilidad.rangos) >= rangos);
     const especialidades = especialidadesPedidas(pedido);
     if (especialidades.length > 0)
-        return { evaluable: true, cumple: conRangos.some((habilidad) => especialidades.includes(toNumber(habilidad.idExtra))), razonUnknown };
+        return {
+            evaluable: true,
+            cumple: conRangos.some((habilidad) => especialidades.some((idExtra) =>
+                esLaHabilidadDeLaRegla(toNumber(habilidad.id), toNumber(habilidad.idExtra), id, idExtra))),
+            razonUnknown,
+        };
 
     const familia = especialidadesDelHueco(pedido, habilidades);
     if (familia.length < 1)

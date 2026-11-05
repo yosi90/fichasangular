@@ -56,6 +56,14 @@ export function esTextoExtraPorElegir(extra: unknown): boolean {
     return normalizado === 'elegir' || normalizado === 'a elegir' || normalizado === 'elige';
 }
 
+/**
+ * Si el texto del extra de una habilidad de la web dice uno ya elegido (Saber (los planos)): ni vacío ni «Elegir». Los
+ * textos de relleno («-», «No aplica»…) ya no llegan de la API.
+ */
+export function extraHabilidadElegido(extra: unknown): boolean {
+    return normalizarTexto(extra).length > 0 && !esTextoExtraPorElegir(extra);
+}
+
 export function resolverExtraHabilidadVisible(options: ResolverExtraHabilidadOptions): string {
     const extraRaw = `${options?.extra ?? ''}`.trim();
 

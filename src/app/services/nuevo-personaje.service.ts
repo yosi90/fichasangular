@@ -54,7 +54,7 @@ import { UserSettingsService } from './user-settings.service';
 import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoPersonaje, TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
-import { esTextoExtraPorElegir, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
+import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
 import { caracteristicaPorId, caracteristicaPorTexto, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
@@ -2241,7 +2241,7 @@ export class NuevoPersonajeService {
         const opciones = (habilidad.Extras ?? [])
             .map((item) => `${item?.Extra ?? ''}`.trim())
             .filter((item) => item.length > 0);
-        if (opciones.length > 0 && !this.esExtraHabilidadPendienteValor(extraNormalizado)) {
+        if (opciones.length > 0 && extraHabilidadElegido(extraNormalizado)) {
             const existeOpcion = opciones.some((opcion) => normalizarTexto(opcion) === extraNormalizado);
             if (!existeOpcion)
                 return false;
@@ -6292,12 +6292,7 @@ export class NuevoPersonajeService {
         if (!toBoolean(habilidad?.Soporta_extra))
             return false;
 
-        return this.esExtraHabilidadPendienteValor(normalizarTexto(`${habilidad?.Extra ?? ''}`));
-    }
-
-    private esExtraHabilidadPendienteValor(extraNormalizado: string): boolean {
-        // Un extra vacío o «Elegir» está por escoger. Los textos de relleno («-», «No aplica»…) ya no llegan de la API.
-        return extraNormalizado.length < 1 || esTextoExtraPorElegir(extraNormalizado);
+        return !extraHabilidadElegido(normalizarTexto(`${habilidad?.Extra ?? ''}`));
     }
 
     private getClaveGrupoExtraHabilidad(habilidad: Personaje['Habilidades'][number]): string {
@@ -6320,7 +6315,7 @@ export class NuevoPersonajeService {
         habilidadObjetivo: Personaje['Habilidades'][number],
         extraNormalizadoObjetivo: string
     ): boolean {
-        if (this.esExtraHabilidadPendienteValor(extraNormalizadoObjetivo))
+        if (!extraHabilidadElegido(extraNormalizadoObjetivo))
             return false;
 
         const claveGrupo = this.getClaveGrupoExtraHabilidad(habilidadObjetivo);
@@ -6338,7 +6333,7 @@ export class NuevoPersonajeService {
             if (this.getClaveGrupoExtraHabilidad(habilidad) !== claveGrupo)
                 return false;
             const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
-            if (this.esExtraHabilidadPendienteValor(extraNormalizado))
+            if (!extraHabilidadElegido(extraNormalizado))
                 return false;
             return extraNormalizado === extraNormalizadoObjetivo;
         });
@@ -6354,7 +6349,7 @@ export class NuevoPersonajeService {
                 continue;
 
             const extraNormalizado = normalizarTexto(`${habilidad?.Extra ?? ''}`);
-            if (this.esExtraHabilidadPendienteValor(extraNormalizado))
+            if (!extraHabilidadElegido(extraNormalizado))
                 continue;
 
             const claveGrupo = this.getClaveGrupoExtraHabilidad(habilidad);
@@ -6446,7 +6441,7 @@ export class NuevoPersonajeService {
                 return conLaEspecialidad;
         }
         const ocupado = (slot: Personaje['Habilidades'][number]) => this.esSlotHabilidadOcupado(slot, paraClasea)
-            || (extraFijoNorm.length > 0 && !this.esExtraHabilidadPendienteValor(normalizarTexto(`${slot?.Extra ?? ''}`)));
+            || (extraFijoNorm.length > 0 && extraHabilidadElegido(normalizarTexto(`${slot?.Extra ?? ''}`)));
 
         const preferidaId = toNumber(preferida?.Id);
         if (preferida && slots.some((item) => toNumber(item?.Id) === preferidaId) && !ocupado(preferida))
@@ -6663,7 +6658,7 @@ export class NuevoPersonajeService {
     ): { bloqueado: boolean; valor: string; } {
         const extraRaw = `${referencia?.['Extra'] ?? referencia?.['extra'] ?? ''}`.trim();
         const extraNorm = normalizarTexto(extraRaw);
-        if (extraRaw.length > 0 && !this.esExtraHabilidadPendienteValor(extraNorm))
+        if (extraRaw.length > 0 && extraHabilidadElegido(extraNorm))
             return { bloqueado: true, valor: extraRaw };
 
         const idExtra = toNumber(
@@ -6675,7 +6670,7 @@ export class NuevoPersonajeService {
         const encontrado = extrasDisponibles.find((item) => toNumber(item?.Id_extra) === idExtra);
         const valor = `${encontrado?.Extra ?? ''}`.trim();
         const valorNorm = normalizarTexto(valor);
-        if (valor.length > 0 && !this.esExtraHabilidadPendienteValor(valorNorm))
+        if (valor.length > 0 && extraHabilidadElegido(valorNorm))
             return { bloqueado: true, valor };
 
         return { bloqueado: false, valor: '' };
