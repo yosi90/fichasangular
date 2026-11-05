@@ -1,5 +1,3 @@
-@use '../../../../assets/css/variables' as *
-@use '../../detalles/ficha/ficha-tonos' as *
 @use '../../../../assets/css/preformas/inserciones' as inserciones
 
 // Crear y modificar fusiones del alma, dentro del marco común (guía de inserciones, «La fusión y el chakra»). Sin pasos:
@@ -42,9 +40,7 @@
     grid-column: 1 / -1
 
 .fusion-nota
-    margin: 0
-    font-size: 13px
-    color: $ficha-texto-suave
+    @include inserciones.nota-de-insercion
 
 @container insercion (max-width: 767px)
     .fusion-chakra
