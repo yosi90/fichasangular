@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
-import { Observable, Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { TipoVentaja, VentajaCuerpo, VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { IdiomaService } from 'src/app/services/idioma.service';
@@ -8,18 +8,17 @@ import { ManualService } from 'src/app/services/manual.service';
 import { RasgoService } from 'src/app/services/rasgo.service';
 import { UserService } from 'src/app/services/user.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
-import { ElementoDeCatalogo } from 'src/app/services/utils/error-catalogo';
-import { nombreDeVentaja } from 'src/app/services/utils/nombres-de-catalogo';
+import { nombreDeVentaja, nombreQueCambia } from 'src/app/services/utils/nombres-de-catalogo';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import {
     BANDERAS_AFECTA, BANDERAS_DA, BanderaVentaja, ValoresVentaja, cuerpoDeVentaja, valoresDeVentaja, valoresVaciosDeVentaja,
 } from 'src/app/services/utils/ventaja-formulario';
 import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
-import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, OpcionesErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
-import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
+import { alternarControl, elegirEnControl, vaciarControl } from '../insercion-marco/filas-repetibles';
 
 /** Los campos con su etiqueta, para llevar el error de la API (`field` `ventaja.<clave>` o `desventaja.<clave>`). */
 const CAMPOS: CamposDeFormulario = Object.fromEntries(([
@@ -80,7 +79,8 @@ export class NuevaVentajaComponent implements OnInit, OnDestroy, OnChanges, Edit
     readonly errores = new ErroresDeFormulario(this.opcionesDeErrores());
 
     readonly edicion = new EdicionDeCatalogo<VentajaDetalle>({
-        nombre: this.nombreDelTipo(),
+        // «Crear ventaja», «Cargando desventaja…», el aviso sin permisos: dependen del tipo, que puede cambiar al crear.
+        nombre: nombreQueCambia(() => nombreDeVentaja(this.tipo)),
         modo: () => this.modo,
         id: () => this.idVentaja,
         obtener: (id) => this.ventajaSvc.getVentajaFresca(this.tipo, id),
@@ -156,13 +156,7 @@ export class NuevaVentajaComponent implements OnInit, OnDestroy, OnChanges, Edit
     }
 
     quitar(campo: 'id_rasgo' | 'id_idioma' | 'id_habilidad'): void {
-        this.form.controls[campo].setValue(null);
-        this.form.controls[campo].markAsDirty();
-    }
-
-    /** El aviso de la API en un buscador (rasgo, idioma, habilidad, manual). */
-    errorDe(campo: string): string | null {
-        return this.errores.campo?.campo === campo ? this.errores.campo.mensaje : null;
+        vaciarControl(this.form.controls[campo]);
     }
 
     async guardar(): Promise<void> {
@@ -177,7 +171,7 @@ export class NuevaVentajaComponent implements OnInit, OnDestroy, OnChanges, Edit
         }
         this.errores.limpiar();
         this.guardando = true;
-        const nombre = this.nombreActual();
+        const nombre = nombreDeVentaja(this.tipo);
         try {
             const editando = this.edicion.editando;
             const guardada = editando
@@ -235,24 +229,8 @@ export class NuevaVentajaComponent implements OnInit, OnDestroy, OnChanges, Edit
         };
     }
 
-    private nombreActual(): ElementoDeCatalogo {
-        return nombreDeVentaja(this.tipo);
-    }
-
-    /** «Crear ventaja», «Cargando desventaja…», el aviso sin permisos: dependen del tipo, que puede cambiar al crear. */
-    private nombreDelTipo(): ElementoDeCatalogo {
-        const componente = this;
-        return {
-            get singular() { return componente.nombreActual().singular; },
-            get plural() { return componente.nombreActual().plural; },
-            get femenino() { return componente.nombreActual().femenino; },
-        };
-    }
-
     private cargarCatalogos(): void {
-        const cargar = <T>(fuente: Observable<T> | undefined, alLlegar: (valor: T) => void) => {
-            fuente?.pipe(takeUntil(this.destroy$)).subscribe({ next: alLlegar, error: () => undefined });
-        };
+        const cargar = cargadorDeCatalogos(this.destroy$);
         cargar(this.manualSvc.getManuales(), (manuales) => this.manuales = opcionesDeCatalogo(manuales as any[]));
         cargar(this.rasgoSvc.getRasgos(), (rasgos) => this.rasgos = opcionesDeCatalogo(rasgos.filter((r) => r.Id > 0)));
         cargar(this.idiomaSvc.getIdiomas(), (idiomas) => this.idiomas = opcionesDeCatalogo(idiomas.filter((i) => i.Id > 0)));

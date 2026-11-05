@@ -28,6 +28,18 @@ export const DESVENTAJA: ElementoDeCatalogo = { singular: 'desventaja', plural: 
 export const FUSION: ElementoDeCatalogo = { singular: 'fusión', plural: 'fusiones', femenino: true };
 export const CHAKRA: ElementoDeCatalogo = { singular: 'chakra', plural: 'chakras', femenino: false };
 
+/**
+ * El nombre de una pantalla que sirve a dos catálogos (la ventaja y la desventaja, el arma y la armadura), leído cada vez:
+ * el `nombre` de `EdicionDeCatalogo` se fija al crearla, antes de que llegue el tipo, y al crear el tipo puede cambiar.
+ */
+export function nombreQueCambia(actual: () => ElementoDeCatalogo): ElementoDeCatalogo {
+    return {
+        get singular() { return actual().singular; },
+        get plural() { return actual().plural; },
+        get femenino() { return actual().femenino; },
+    };
+}
+
 /** La ventaja o la desventaja, por su tipo (el servicio y la pantalla, que sirven a las dos). */
 export function nombreDeVentaja(tipo: TipoVentaja): ElementoDeCatalogo {
     return tipo === 'ventaja' ? VENTAJA : DESVENTAJA;

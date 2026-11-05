@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
-import { Observable, Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { Chakra, Fusion, FusionCuerpo } from 'src/app/interfaces/incarnum';
 import { ClaseService } from 'src/app/services/clase.service';
 import { ConjuroCatalogosService } from 'src/app/services/conjuro-catalogos.service';
@@ -15,7 +15,7 @@ import { FUSION } from 'src/app/services/utils/nombres-de-catalogo';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
-import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
 import { FilaNombrada, alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
@@ -279,9 +279,7 @@ export class NuevaFusionComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private cargarCatalogos(): void {
-        const cargar = <T>(fuente: Observable<T> | undefined, alLlegar: (valor: T) => void) => {
-            fuente?.pipe(takeUntil(this.destroy$)).subscribe({ next: alLlegar, error: () => undefined });
-        };
+        const cargar = cargadorDeCatalogos(this.destroy$);
         cargar(this.manualSvc.getManuales(), (manuales) => this.manuales = opcionesDeCatalogo(manuales as any[]));
         cargar(this.claseSvc.getClases(), (clases) => this.clasesOpciones = opcionesDeCatalogo(clases.filter((c) => !!c.Moldeado)));
         cargar(this.conjuroCatalogosSvc.getDescriptores(), (descriptores) => this.descriptoresOpciones = opcionesDeCatalogo(descriptores));

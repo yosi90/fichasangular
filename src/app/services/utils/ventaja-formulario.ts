@@ -1,4 +1,6 @@
+import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { ReferenciaCorta, TipoVentaja, VentajaCampos, VentajaCuerpo, VentajaDetalle } from 'src/app/interfaces/ventaja';
+import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { toInt, toIntOrNull, toPositiveInt } from './normalizacion';
 
 /**
@@ -20,14 +22,12 @@ export interface DefinicionBandera {
     etiqueta: string;
 }
 
-/** A qué suma (o resta) la mejora: las características, las salvaciones, la iniciativa o una característica a elegir. */
+/**
+ * A qué suma (o resta) la mejora: las características (con su nombre de `NOMBRES_CARACTERISTICAS`), una a elegir, las
+ * salvaciones o la iniciativa.
+ */
 export const BANDERAS_AFECTA: readonly DefinicionBandera[] = [
-    { clave: 'fuerza', etiqueta: 'Fuerza' },
-    { clave: 'destreza', etiqueta: 'Destreza' },
-    { clave: 'constitucion', etiqueta: 'Constitución' },
-    { clave: 'inteligencia', etiqueta: 'Inteligencia' },
-    { clave: 'sabiduria', etiqueta: 'Sabiduría' },
-    { clave: 'carisma', etiqueta: 'Carisma' },
+    ...CARACTERISTICAS.map((clave) => ({ clave: clave.toLowerCase() as BanderaVentaja, etiqueta: NOMBRES_CARACTERISTICAS[clave] })),
     { clave: 'caracteristica', etiqueta: 'Una característica a elegir' },
     { clave: 'fortaleza', etiqueta: 'Fortaleza' },
     { clave: 'reflejos', etiqueta: 'Reflejos' },

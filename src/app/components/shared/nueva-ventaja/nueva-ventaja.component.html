@@ -41,7 +41,7 @@
                         </mat-chip-listbox>
                     </div>
                     <app-catalogo-buscador class="insercion-campos__doble" etiqueta="Manual" [opciones]="manuales" [valor]="form.controls.id_manual.value"
-                        [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errores.textoDe('id_manual', 'Manual obligatorio.') : errorDe('id_manual')"
+                        [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errores.textoDe('id_manual', 'Manual obligatorio.') : errores.mensajeDe('id_manual')"
                         (elegir)="elegir('id_manual', $event)">
                     </app-catalogo-buscador>
                     <mat-form-field appearance="fill">
@@ -75,7 +75,7 @@
                     </div>
                     <div class="ventaja-con-quitar insercion-campos__doble">
                         <app-catalogo-buscador etiqueta="Habilidad" placeholder="Ninguna" [opciones]="habilidades" [valor]="form.controls.id_habilidad.value"
-                            [error]="errorDe('id_habilidad')" (elegir)="elegir('id_habilidad', $event)">
+                            [error]="errores.mensajeDe('id_habilidad')" (elegir)="elegir('id_habilidad', $event)">
                         </app-catalogo-buscador>
                         <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_habilidad.value !== null"
                             aria-label="Sin habilidad" (click)="quitar('id_habilidad')">
@@ -84,7 +84,7 @@
                     </div>
                     <div class="ventaja-con-quitar insercion-campos__doble">
                         <app-catalogo-buscador etiqueta="Rasgo que da" placeholder="Ninguno" [opciones]="rasgos" [valor]="form.controls.id_rasgo.value"
-                            [error]="errorDe('id_rasgo')" (elegir)="elegir('id_rasgo', $event)">
+                            [error]="errores.mensajeDe('id_rasgo')" (elegir)="elegir('id_rasgo', $event)">
                         </app-catalogo-buscador>
                         <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_rasgo.value !== null"
                             aria-label="Sin rasgo" (click)="quitar('id_rasgo')">
@@ -93,7 +93,7 @@
                     </div>
                     <div class="ventaja-con-quitar insercion-campos__doble" *ngIf="!marcada('idioma_extra')">
                         <app-catalogo-buscador etiqueta="Idioma que da" placeholder="Ninguno" [opciones]="idiomas" [valor]="form.controls.id_idioma.value"
-                            [error]="errorDe('id_idioma')" (elegir)="elegir('id_idioma', $event)">
+                            [error]="errores.mensajeDe('id_idioma')" (elegir)="elegir('id_idioma', $event)">
                         </app-catalogo-buscador>
                         <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_idioma.value !== null"
                             aria-label="Sin idioma" (click)="quitar('id_idioma')">

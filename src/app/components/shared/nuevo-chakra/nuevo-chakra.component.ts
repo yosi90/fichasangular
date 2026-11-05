@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
-import { Observable, Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { EquipoRef } from 'src/app/interfaces/equipo';
 import { Chakra, ChakraCategoria, ChakraCuerpo, ChakraDetalle } from 'src/app/interfaces/incarnum';
 import { EquipoService } from 'src/app/services/equipo.service';
@@ -10,7 +10,7 @@ import { ValoresChakra, cuerpoDeChakra, valoresDeChakra, valoresVaciosDeChakra }
 import { CHAKRA } from 'src/app/services/utils/nombres-de-catalogo';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
-import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
 import { alternarControl } from '../insercion-marco/filas-repetibles';
@@ -174,9 +174,7 @@ export class NuevoChakraComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private cargarCatalogos(): void {
-        const cargar = <T>(fuente: Observable<T> | undefined, alLlegar: (valor: T) => void) => {
-            fuente?.pipe(takeUntil(this.destroy$)).subscribe({ next: alLlegar, error: () => undefined });
-        };
+        const cargar = cargadorDeCatalogos(this.destroy$);
         cargar(this.incarnumSvc.getChakras(), (chakras) => {
             this.chakras = chakras;
             // Las categorías salen de los chakras que hay (los datos), sin repetir y en su orden.

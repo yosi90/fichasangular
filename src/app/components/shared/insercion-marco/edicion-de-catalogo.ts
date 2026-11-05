@@ -149,6 +149,19 @@ export class EdicionDeCatalogo<T> {
     }
 }
 
+/** Trae un catálogo de opciones y lo entrega al llegar (`cargadorDeCatalogos`). */
+export type CargarCatalogo = <T>(fuente: Observable<T> | undefined, alLlegar: (valor: T) => void) => void;
+
+/**
+ * Lo que trae los catálogos de las opciones de un formulario (los manuales, las clases, los chakras…) mientras viva
+ * (`destruir$`). Si uno falla, su lista se queda como estaba: su buscador sale vacío y el formulario sigue.
+ */
+export function cargadorDeCatalogos(destruir$: Observable<void>): CargarCatalogo {
+    return (fuente, alLlegar) => {
+        fuente?.pipe(takeUntil(destruir$)).subscribe({ next: alLlegar, error: () => undefined });
+    };
+}
+
 /**
  * Los catálogos que un formulario espera antes de rellenar una entrada al modificarla (`antesDeHidratar` de
  * `EdicionDeCatalogo`): cada uno se marca al llegar (o al fallar), y `listos$` avisa cuando ya están todos.
