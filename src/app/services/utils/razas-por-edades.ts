@@ -1,4 +1,5 @@
 import { CategoriaEdadRaza, PasoEdadRaza, Raza } from 'src/app/interfaces/raza';
+import { textoConSigno } from './equipo-texto';
 import { toNullableText } from './normalizacion';
 import { esPnj, TipoPersonaje, textoVd } from './tipo-personaje';
 
@@ -67,6 +68,21 @@ export function razaPorEdades(raza: Pick<Raza, 'Pasos_edad'> | null | undefined)
     return (raza?.Pasos_edad?.length ?? 0) > 0;
 }
 
+/** Las categorías de edad de la raza en su orden (vacía si no crece por edades). */
+export function categoriasEdadOrdenadas(raza: Pick<Raza, 'Categorias_edad'> | null | undefined): CategoriaEdadRaza[] {
+    return [...(raza?.Categorias_edad ?? [])].sort((a, b) => a.Orden - b.Orden);
+}
+
+/** Los pasos de edad de la raza, de menor a mayor edad (vacía si no crece por edades). */
+export function pasosEdadOrdenados(raza: Pick<Raza, 'Pasos_edad'> | null | undefined): PasoEdadRaza[] {
+    return [...(raza?.Pasos_edad ?? [])].sort((a, b) => a.Edad - b.Edad);
+}
+
+/** «1 año», «16 años»: la edad de un paso. */
+export function textoAnios(anios: number): string {
+    return `${anios} ${anios === 1 ? 'año' : 'años'}`;
+}
+
 /** El nombre de una categoría dentro de una frase: «adulto maduro». */
 export function nombreEdadEnFrase(nombre: string | null | undefined): string {
     const texto = `${nombre ?? ''}`.trim();
@@ -131,10 +147,10 @@ function nivelPaso(paso: PasoEdadRaza, contexto: ContextoEdad, vdCategoria: numb
  * sin pasos en los datos sale bloqueada. Si la raza no trae categorías, se agrupan los pasos por la suya.
  */
 export function opcionesEdad(raza: Pick<Raza, 'Categorias_edad' | 'Pasos_edad'> | null | undefined, contexto: ContextoEdad): OpcionCategoriaEdad[] {
-    const pasos = [...(raza?.Pasos_edad ?? [])].sort((a, b) => a.Edad - b.Edad);
+    const pasos = pasosEdadOrdenados(raza);
     const categorias: Array<{ id: number; nombre: string; orden: number; categoria: CategoriaEdadRaza | null; }> =
         (raza?.Categorias_edad ?? []).length > 0
-            ? [...(raza?.Categorias_edad ?? [])].sort((a, b) => a.Orden - b.Orden)
+            ? categoriasEdadOrdenadas(raza)
                 .map((categoria) => ({ id: categoria.Categoria.Id, nombre: categoria.Categoria.Nombre, orden: categoria.Orden, categoria }))
             : pasos.reduce((acc, paso) => {
                 if (!acc.some((c) => c.id === paso.Categoria.Id))
@@ -155,7 +171,7 @@ export function opcionesEdad(raza: Pick<Raza, 'Categorias_edad' | 'Pasos_edad'> 
                     motivo,
                     saltable: motivo === MOTIVO_EDAD_SOLO_PNJ,
                     nivel,
-                    texto: [`${paso.Edad} ${paso.Edad === 1 ? 'año' : 'años'}`, `${paso.Dgs} DG`, nivel].join(' · '),
+                    texto: [textoAnios(paso.Edad), `${paso.Dgs} DG`, nivel].join(' · '),
                 };
             });
         const libres = opciones.filter((opcion) => !opcion.bloqueado);
@@ -201,7 +217,7 @@ export function pasoEdadInicial(opciones: OpcionCategoriaEdad[], idPreferido?: n
  * sin tope en la última). Es lo que acepta el campo «Edad» de Básicos.
  */
 export function rangoEdadPaso(raza: Pick<Raza, 'Categorias_edad' | 'Pasos_edad'> | null | undefined, idPaso: number | null | undefined): { desde: number; hasta: number | null; } | null {
-    const pasos = [...(raza?.Pasos_edad ?? [])].sort((a, b) => a.Edad - b.Edad);
+    const pasos = pasosEdadOrdenados(raza);
     const indice = pasos.findIndex((paso) => paso.Id === idPaso);
     if (indice < 0)
         return null;
@@ -230,13 +246,7 @@ export function textoRangoEdad(rango: { desde: number; hasta: number | null; }, 
 export function textoAjusteEdad(ajuste: number | null | undefined): string {
     if (ajuste === null || ajuste === undefined || !Number.isFinite(Number(ajuste)))
         return SOLO_PNJ;
-    const valor = Number(ajuste);
-    return valor >= 0 ? `+${valor}` : `${valor}`;
-}
-
-/** Las categorías de edad de la raza en su orden (vacía si no crece por edades). */
-export function categoriasEdadOrdenadas(raza: Pick<Raza, 'Categorias_edad'> | null | undefined): CategoriaEdadRaza[] {
-    return [...(raza?.Categorias_edad ?? [])].sort((a, b) => a.Orden - b.Orden);
+    return textoConSigno(Number(ajuste));
 }
 
 /**

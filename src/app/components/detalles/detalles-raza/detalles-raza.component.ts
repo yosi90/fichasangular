@@ -40,7 +40,7 @@ import { Comodin } from 'src/app/interfaces/comodin';
 import { leerComodin } from 'src/app/services/utils/comodin';
 import { edadesDeLaRaza } from 'src/app/services/utils/edad-personaje';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
-import { abreviaturaCaracteristica, NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
+import { abreviaturaCaracteristica, NOMBRES_CARACTERISTICAS, SIN_CARACTERISTICA } from 'src/app/services/utils/caracteristicas';
 import { textoVd } from 'src/app/services/utils/tipo-personaje';
 import {
     SOLO_PNJ,
@@ -48,8 +48,10 @@ import {
     edadDeLasCifras,
     gananciasPorEdad,
     nombreEdadEnFrase,
+    pasosEdadOrdenados,
     racialesConValorPorEdad,
     textoAjusteEdad,
+    textoAnios,
     textoNivelLanzamientoRaza,
     textoRangoEdad,
 } from 'src/app/services/utils/razas-por-edades';
@@ -477,7 +479,7 @@ export class DetallesRazaComponent {
             ...CARACTERISTICAS.map((clave) => {
                 const valor = categoria.Caracteristicas?.[clave];
                 if (valor === null || valor === undefined)
-                    return '—';
+                    return SIN_CARACTERISTICA;
                 const modificador = categoria.Modificadores?.[clave];
                 return modificador === null || modificador === undefined ? `${valor}` : `${valor} (${textoConSigno(modificador)})`;
             }),
@@ -522,7 +524,7 @@ export class DetallesRazaComponent {
 
     /** Los pasos que puede elegir el personaje al crearlo (*Draconomicón*, tabla 3-21). */
     private construirTablaPasos(): TablaEdad | null {
-        const pasos = [...(this.raza?.Pasos_edad ?? [])].sort((a, b) => a.Edad - b.Edad);
+        const pasos = pasosEdadOrdenados(this.raza);
         if (pasos.length < 1)
             return null;
         const columnas: ColumnaEdad[] = [
@@ -535,7 +537,7 @@ export class DetallesRazaComponent {
             { titulo: 'VD', nombre: 'Valor de desafío', cifra: true },
         ];
         const filas = pasos.map((paso) => [
-            `${paso.Edad} ${paso.Edad === 1 ? 'año' : 'años'}`,
+            textoAnios(paso.Edad),
             paso.Categoria.Nombre,
             `${paso.Dgs}`,
             textoConSigno(Number(paso.Armadura_natural) || 0),
