@@ -1,10 +1,14 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { Auth } from "@angular/fire/auth";
 import { Database } from "@angular/fire/database";
 import { Observable, map } from "rxjs";
 import { environment } from "src/environments/environment";
 import { AmbitoDetalle } from "../interfaces/ambito";
-import { DeidadDetalle } from "../interfaces/deidad";
+import { DeidadCuerpo, DeidadDetalle, DeidadGeneroRef } from "../interfaces/deidad";
+import { EscrituraDeCatalogo, guardarEnCatalogo } from "./escritura-de-catalogo";
+import { DEIDAD } from "./utils/nombres-de-catalogo";
+import { EntradaGuardada } from "./utils/respuesta-de-escritura";
 import { DominioDetalle } from "../interfaces/dominio";
 import { normalizeAmbito } from "./ambito.service";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
@@ -55,6 +59,11 @@ export function normalizeDeidad(raw: any): DeidadDetalle {
     };
 }
 
+/** `{ message, idDeidad, deidad }`, la deidad como su `GET`. */
+const ESCRITURA_DEIDAD: EscrituraDeCatalogo<DeidadDetalle> = {
+    url: 'deidades', clave: 'deidad', claveId: 'idDeidad', normalizar: normalizeDeidad, nombre: DEIDAD,
+};
+
 @Injectable({
     providedIn: "root"
 })
@@ -64,7 +73,30 @@ export class DeidadService {
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService,
+        private auth?: Auth,
     ) { }
+
+    /** La deidad por HTTP, sin caché: la que abre «Modificar deidad». */
+    getDeidadFresca(id: number): Observable<DeidadDetalle> {
+        return this.http.get(`${environment.apiUrl}deidades/${Math.trunc(Number(id))}`)
+            .pipe(map((raw: any) => normalizeDeidad(raw)));
+    }
+
+    /** `POST /deidades/add`: permiso de creación `deidades`. */
+    crearDeidad(cuerpo: DeidadCuerpo): Promise<EntradaGuardada<DeidadDetalle>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_DEIDAD, null, cuerpo);
+    }
+
+    /** `PUT /deidades/<id>`: la deidad entera, con el mismo cuerpo que el alta (el mismo permiso). */
+    actualizarDeidad(id: number, cuerpo: DeidadCuerpo): Promise<EntradaGuardada<DeidadDetalle>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_DEIDAD, id, cuerpo);
+    }
+
+    /** El catálogo de géneros (`GET /generos`), el de las deidades y los personajes. */
+    getGeneros(): Observable<DeidadGeneroRef[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}generos`)
+            .pipe(map((listado) => toArray(listado).map((raw: any) => ({ Id: toNumber(raw?.Id), Nombre: toText(raw?.Nombre) }))));
+    }
 
     getDeidad(id: number): Observable<DeidadDetalle> {
         return cacheRtdbOApi({

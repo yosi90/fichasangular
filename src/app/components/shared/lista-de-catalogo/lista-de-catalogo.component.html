@@ -1,0 +1,21 @@
+<section class="insercion-tarjeta lista-catalogo">
+    <div class="lista-catalogo__cabeza">
+        <app-icono-rol *ngIf="icono" [tipo]="icono" [tamano]="20"></app-icono-rol>
+        <h3 class="insercion-tarjeta__titulo">{{titulo}} <span class="lista-catalogo__cuenta">· {{filas.length}}</span></h3>
+    </div>
+    <p class="lista-catalogo__error" role="alert" *ngIf="error">{{error}}</p>
+    <p class="lista-catalogo__vacio" *ngIf="filas.length < 1">{{vacio}}</p>
+    <div class="lista-catalogo__fila" [class.lista-catalogo__fila--campos]="plantillaFila" *ngFor="let fila of filas; trackBy: porClave">
+        <span class="lista-catalogo__nombre">{{nombreDe(fila)}}</span>
+        <div class="lista-catalogo__campos" *ngIf="plantillaFila">
+            <ng-container *ngTemplateOutlet="plantillaFila; context: { $implicit: fila }"></ng-container>
+        </div>
+        <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar ' + nombreDe(fila)"
+            [disabled]="deshabilitado" (click)="quitar.emit(fila)">
+            <mat-icon>delete</mat-icon>
+        </button>
+    </div>
+    <app-catalogo-buscador [etiqueta]="textoAnadir" [anadir]="true" [opciones]="opciones" [excluir]="excluir"
+        [deshabilitado]="deshabilitado" (elegir)="anadir.emit($event)">
+    </app-catalogo-buscador>
+</section>

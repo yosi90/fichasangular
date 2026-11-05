@@ -17,7 +17,7 @@ import { RasgoService } from 'src/app/services/rasgo.service';
 import { UserService } from 'src/app/services/user.service';
 import { VentajaService, normalizeVentaja } from 'src/app/services/ventaja.service';
 import { tipoRolDeVentaja } from 'src/app/services/utils/iconos-rol';
-import { idDeReferencia } from 'src/app/services/utils/ventaja-formulario';
+import { idDeReferencia } from 'src/app/services/utils/normalizacion';
 import { IDA_Y_VUELTA_RASGOS_VENTAJAS_INCARNUM } from 'src/testing/ida-y-vuelta-rasgos-ventajas-incarnum';
 import { NuevaVentajaComponent } from './nueva-ventaja.component';
 
@@ -77,9 +77,9 @@ describe('NuevaVentajaComponent', () => {
     });
 
     it('una referencia sin nombre es «ninguna»', () => {
-        expect(idDeReferencia({ Id: 0, Nombre: '', Descripcion: '' })).toBeNull();
-        expect(idDeReferencia({ Id: 0, Nombre: 'Elegir', Descripcion: '' })).toBe(0);
-        expect(idDeReferencia({ Id: 22, Nombre: 'Intimidar', Descripcion: '' })).toBe(22);
+        expect(idDeReferencia({ Id: 0, Nombre: '' })).toBeNull();
+        expect(idDeReferencia({ Id: 0, Nombre: 'Elegir' })).toBe(0);
+        expect(idDeReferencia({ Id: 22, Nombre: 'Intimidar' })).toBe(22);
     });
 
     it('al crear se elige el tipo: los puntos se escriben en positivo y el signo lo pone el tipo', async () => {

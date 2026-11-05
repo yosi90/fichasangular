@@ -18,3 +18,13 @@ export interface ManualReferencia {
     Nombre: string;
     Pagina: number;
 }
+
+/** Las banderas de contenido de un manual (`Incluye_*`), las que cambia `PATCH /manuales/<id>`. */
+export type BanderasManual = Pick<Manual, 'Incluye_dotes' | 'Incluye_conjuros' | 'Incluye_plantillas' | 'Incluye_monstruos'
+    | 'Incluye_razas' | 'Incluye_clases' | 'Incluye_tipos' | 'Incluye_subtipos'>;
+
+/** Cuerpo de `POST /manuales/add`: el nombre, si es oficial y las banderas de contenido. */
+export interface ManualCuerpo extends BanderasManual {
+    nombre: string;
+    oficial: boolean;
+}

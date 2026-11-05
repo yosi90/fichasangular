@@ -110,3 +110,55 @@ export interface SubtipoDetalle {
     Rasgos: Rasgo[];
     Plantillas: SubtipoReferenciaCorta[];
 }
+
+/** Cuerpo de `POST /subtipos/add` y `PUT /subtipos/<id>` (el mismo; hito 9 del roadmap de inserciones). */
+export interface SubtipoCuerpo {
+    subtipo: {
+        nombre: string;
+        descripcion: string;
+        id_manual: number;
+        pagina: number;
+        heredada: boolean;
+        fuerza: number;
+        destreza: number;
+        constitucion: number;
+        inteligencia: number;
+        sabiduria: number;
+        carisma: number;
+        min_fuerza: number;
+        min_destreza: number;
+        min_constitucion: number;
+        min_inteligencia: number;
+        min_sabiduria: number;
+        min_carisma: number;
+        ajuste_nivel: number;
+        presa: number;
+        fortaleza: number;
+        reflejos: number;
+        voluntad: number;
+        iniciativa: number;
+        ataque_base: number;
+        /** Los textos que no modifican nada van `null` (la API guarda el texto de relleno). */
+        ca: string | null;
+        rd: string | null;
+        rc: string | null;
+        re: string | null;
+        cd: string | null;
+        tesoro: string | null;
+        correr: number;
+        nadar: number;
+        volar: number;
+        trepar: number;
+        excavar: number;
+        /** `null`: no vuela. */
+        id_maniobrabilidad: number | null;
+        id_alineamiento: number;
+        oficial: boolean;
+    };
+    idiomas: number[];
+    rasgos: number[];
+    plantillas: number[];
+    dotes: { id_dote: number; id_extra: number; }[];
+    habilidades: { id_habilidad: number; id_extra: number; cantidad: number; varios: string | null; }[];
+    sortilegas: { id_conjuro: number; nivel_lanzador: number; usos_diarios: string | null; }[];
+}

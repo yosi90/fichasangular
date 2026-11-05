@@ -193,7 +193,7 @@ describe('plantilla-formulario', () => {
 
 describe('CARACTERISTICAS_PLANTILLA', () => {
     it('sale de las características comunes: campos del alta, nombre con tildes y abreviatura', () => {
-        expect(CARACTERISTICAS_PLANTILLA[2]).toEqual({ modificador: 'constitucion', minimo: 'min_constitucion', nombre: 'Constitución', corto: 'Con' });
+        expect(CARACTERISTICAS_PLANTILLA[2]).toEqual({ caracteristica: 'Constitucion', modificador: 'constitucion', minimo: 'min_constitucion', nombre: 'Constitución', corto: 'Con' });
         expect(CARACTERISTICAS_PLANTILLA.map((c) => c.corto)).toEqual(['Fue', 'Des', 'Con', 'Int', 'Sab', 'Car']);
         expect(CARACTERISTICAS_PLANTILLA.map((c) => c.minimo)).toEqual(['min_fuerza', 'min_destreza', 'min_constitucion', 'min_inteligencia', 'min_sabiduria', 'min_carisma']);
     });

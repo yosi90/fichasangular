@@ -45,6 +45,18 @@ export function idsUnicosOrdenados(ids: readonly unknown[] | null | undefined, m
 }
 
 /**
+ * El id de una referencia a otro catálogo que la API puede dar `null` por ser de relleno (el rasgo de una ventaja, el
+ * arma o el panteón de una deidad…): `null` si no tiene (el mapper la deja con id 0 y sin nombre). Un id 0 con nombre es
+ * una opción de verdad («Elegir» en las habilidades o en el arma de una deidad).
+ */
+export function idDeReferencia(ref: { Id?: unknown; Nombre?: unknown; } | null | undefined): number | null {
+    const id = toInt(ref?.Id, 0);
+    if (id > 0)
+        return id;
+    return id === 0 && `${ref?.Nombre ?? ''}`.trim().length > 0 ? 0 : null;
+}
+
+/**
  * El entero (truncado) que representa `value`, llevado a `[min, max]`; si no es un número finito, `siNoEsNumero` (sin
  * acotar). Los límites de la política de campaña y del generador de características.
  */

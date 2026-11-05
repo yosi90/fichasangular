@@ -38,3 +38,24 @@ export interface DeidadDetalle {
     Oficial: boolean;
 }
 
+
+/** Cuerpo de `POST /deidades/add` y `PUT /deidades/<id>` (el mismo; hito 9 del roadmap de inserciones). */
+export interface DeidadCuerpo {
+    deidad: {
+        nombre: string;
+        descripcion: string;
+        id_manual: number;
+        pagina: number;
+        /** `null`: «No aplica». */
+        id_alineamiento: number | null;
+        /** 0 es «Elegir» (la elige quien la venera); `null`, sin arma. */
+        id_arma: number | null;
+        /** `null`: sin panteón. */
+        id_pabellon: number | null;
+        id_genero: number;
+        oficial: boolean;
+    };
+    ambitos: number[];
+    dominios: number[];
+    alineamientos_devotos: number[];
+}

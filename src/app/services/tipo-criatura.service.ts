@@ -1,11 +1,17 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { Auth } from "@angular/fire/auth";
 import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
-import { Observable } from "rxjs";
-import Swal from "sweetalert2";
-import { TipoCriatura } from "../interfaces/tipo_criatura";
+import { Observable, map } from "rxjs";
+import { environment } from "src/environments/environment";
+import { TipoCriatura, TipoCriaturaCuerpo, TipoCriaturaEditable } from "../interfaces/tipo_criatura";
+import { EscrituraDeCatalogo, guardarEnCatalogo } from "./escritura-de-catalogo";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
+import { normalizeRasgoTipo } from "./rasgo.service";
 import { leerComodin } from "./utils/comodin";
+import { TIPO_CRIATURA } from "./utils/nombres-de-catalogo";
+import { toArray, toBoolean, toInt, toText } from "./utils/normalizacion";
+import { EntradaGuardada } from "./utils/respuesta-de-escritura";
 
 /** Un tipo de criatura de la caché de la RTDB (`TiposCriatura/{id}`). */
 function tipoCriaturaDesdeRtdb(nodo: any, id: number): TipoCriatura {
@@ -37,6 +43,46 @@ function tipoCriaturaDesdeRtdb(nodo: any, id: number): TipoCriatura {
     };
 }
 
+/**
+ * `TipoCriaturaResumen` de la API (`GET /tiposCriatura/<id>` y la respuesta del alta y la edición), con sus claves cortas
+ * (`i`, `n`, `ma`…), como la caché, más el id del manual y la página (`im`, `pg`).
+ */
+export function normalizeTipoCriaturaApi(raw: any): TipoCriaturaEditable {
+    return {
+        Id: toInt(raw?.i),
+        Nombre: toText(raw?.n),
+        Comodin: leerComodin(raw?.Comodin),
+        Descripcion: toText(raw?.d),
+        Manual: toText(raw?.ma),
+        Id_tipo_dado: toInt(raw?.itd),
+        Tipo_dado: raw?.ntd ?? 0,
+        Id_ataque: toInt(raw?.ia),
+        Id_fortaleza: toInt(raw?.ift),
+        Id_reflejos: toInt(raw?.ir),
+        Id_voluntad: toInt(raw?.iv),
+        Id_puntos_habilidad: toInt(raw?.iph),
+        Puntos_habilidad: toInt(raw?.ph),
+        Come: toBoolean(raw?.c),
+        Respira: toBoolean(raw?.r),
+        Duerme: toBoolean(raw?.du),
+        Recibe_criticos: toBoolean(raw?.cr),
+        Puede_ser_flanqueado: toBoolean(raw?.f),
+        Pierde_constitucion: toBoolean(raw?.pc),
+        Limite_inteligencia: toInt(raw?.li),
+        Tesoro: toText(raw?.t),
+        Id_alineamiento: toInt(raw?.ial),
+        Rasgos: toArray(raw?.ra).map((rasgo) => normalizeRasgoTipo(rasgo)),
+        Oficial: toBoolean(raw?.o, true),
+        Id_manual: toInt(raw?.im),
+        Pagina: toInt(raw?.pg),
+    };
+}
+
+/** `{ message, idTipo, tipo }`, el tipo con las claves cortas de su `GET`. */
+const ESCRITURA_TIPO_CRIATURA: EscrituraDeCatalogo<TipoCriaturaEditable> = {
+    url: 'tiposCriatura', clave: 'tipo', claveId: 'idTipo', normalizar: normalizeTipoCriaturaApi, nombre: TIPO_CRIATURA,
+};
+
 @Injectable({
     providedIn: 'root'
 })
@@ -45,8 +91,25 @@ export class TipoCriaturaService {
     constructor(
         private db: Database,
         private http: HttpClient,
-        private firebaseContextSvc: FirebaseInjectionContextService
+        private firebaseContextSvc: FirebaseInjectionContextService,
+        private auth?: Auth,
     ) { }
+
+    /** El tipo por HTTP, sin caché: el que abre «Modificar tipo de criatura». */
+    getTipoCriaturaFresco(id: number): Observable<TipoCriaturaEditable> {
+        return this.http.get(`${environment.apiUrl}tiposCriatura/${Math.trunc(Number(id))}`)
+            .pipe(map((raw: any) => normalizeTipoCriaturaApi(raw)));
+    }
+
+    /** `POST /tiposCriatura/add`: permiso de creación `tipos_criatura`. */
+    crearTipoCriatura(cuerpo: TipoCriaturaCuerpo): Promise<EntradaGuardada<TipoCriaturaEditable>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_TIPO_CRIATURA, null, cuerpo);
+    }
+
+    /** `PUT /tiposCriatura/<id>`: el tipo entero, con el mismo cuerpo que el alta (el mismo permiso). */
+    actualizarTipoCriatura(id: number, cuerpo: TipoCriaturaCuerpo): Promise<EntradaGuardada<TipoCriaturaEditable>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_TIPO_CRIATURA, id, cuerpo);
+    }
 
     getTipoCriatura(id: number): Observable<TipoCriatura> {
         return new Observable((observador) => {

@@ -1,14 +1,18 @@
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Database } from '@angular/fire/database';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom, map } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
-import { Manual } from '../interfaces/manual';
-import { ManualIncludeFlag } from '../config/manual-secciones.config';
+import { BanderasManual, Manual, ManualCuerpo } from '../interfaces/manual';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
+import { EscrituraDeCatalogo, guardarEnCatalogo } from './escritura-de-catalogo';
+import { cabeceraApiConFirebase } from './platform-session.service';
+import { errorDeCatalogo } from './utils/error-catalogo';
+import { MANUAL } from './utils/nombres-de-catalogo';
 import { toBoolean } from 'src/app/services/utils/normalizacion';
+import { EntradaGuardada } from './utils/respuesta-de-escritura';
 
 function hasCanonicalManualShape(raw: any): boolean {
     return !!raw
@@ -17,7 +21,7 @@ function hasCanonicalManualShape(raw: any): boolean {
         && Object.prototype.hasOwnProperty.call(raw, 'Nombre');
 }
 
-function normalizeManual(raw: any): Manual {
+export function normalizeManual(raw: any): Manual {
     if (!hasCanonicalManualShape(raw)) {
         return {
             Id: 0,
@@ -49,7 +53,10 @@ function normalizeManual(raw: any): Manual {
     };
 }
 
-export type ManualFlagsPatchPayload = Partial<Record<ManualIncludeFlag, boolean>>;
+/** `{ message, idManual, manual }`, el manual como su `GET`. */
+const ESCRITURA_MANUAL: EscrituraDeCatalogo<Manual> = {
+    url: 'manuales', clave: 'manual', claveId: 'idManual', normalizar: normalizeManual, nombre: MANUAL,
+};
 
 @Injectable({
     providedIn: 'root'
@@ -74,6 +81,32 @@ export class ManualService {
                 error: "Error al obtener el manual",
             },
         });
+    }
+
+    /** El manual por HTTP, sin caché: el que abre «Modificar manual». */
+    getManualFresco(id: number): Observable<Manual> {
+        return this.http.get(`${environment.apiUrl}manuales/${Math.trunc(Number(id))}`)
+            .pipe(map((raw: any) => normalizeManual(raw)));
+    }
+
+    /** `POST /manuales/add`: permiso de creación `manuales`. */
+    crearManual(cuerpo: ManualCuerpo): Promise<EntradaGuardada<Manual>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_MANUAL, null, cuerpo);
+    }
+
+    /**
+     * `PATCH /manuales/<id>`: solo las banderas de contenido (el nombre y si es oficial no se editan; hito 9 del roadmap de
+     * inserciones). La API devuelve el manual sin envoltorio.
+     */
+    async actualizarBanderasManual(id: number, banderas: BanderasManual): Promise<Manual> {
+        try {
+            const headers = await cabeceraApiConFirebase(this.auth);
+            const respuesta = await firstValueFrom(this.http.patch<any>(`${environment.apiUrl}manuales/${Math.trunc(Number(id))}`,
+                banderas, { headers }));
+            return normalizeManual(respuesta);
+        } catch (error: unknown) {
+            throw errorDeCatalogo(error, 'actualizar', MANUAL);
+        }
     }
 
     getManuales(): Observable<Manual[]> {

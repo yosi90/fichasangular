@@ -45,13 +45,14 @@ const CAMPOS_NO_NUMERICOS: ReadonlySet<string> = new Set<string>([
 ]);
 
 /**
- * Las características en el orden del manual (`CARACTERISTICAS`), con su campo de modificador y de mínimo en el alta
- * («constitucion», «min_constitucion»), su nombre con tildes y su abreviatura («Con»).
+ * Las características en el orden del manual (`CARACTERISTICAS`), con su clave de la lectura («Constitucion»), su campo de
+ * modificador y de mínimo en el alta («constitucion», «min_constitucion»), su nombre con tildes y su abreviatura («Con»).
+ * Las usan la plantilla y el subtipo, que tienen las mismas columnas.
  */
 export const CARACTERISTICAS_PLANTILLA = CARACTERISTICAS.map((clave) => {
     const campo = clave.toLowerCase() as Lowercase<typeof clave>;
     const nombre = NOMBRES_CARACTERISTICAS[clave];
-    return { modificador: campo, minimo: `min_${campo}` as const, nombre, corto: nombre.slice(0, 3) };
+    return { caracteristica: clave, modificador: campo, minimo: `min_${campo}` as const, nombre, corto: nombre.slice(0, 3) };
 });
 
 /** Los tipos de prerrequisito de las plantillas, los de `Prerrequisitos` del contrato, en su orden. */

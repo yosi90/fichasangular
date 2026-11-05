@@ -21,6 +21,16 @@ export function normalizeRasgoApi(raw: any): Rasgo {
     };
 }
 
+/** Un rasgo de un tipo o un subtipo de criatura (`RasgoTipo`: `Id`, `Nombre`, `Descripcion`, `Oficial`). */
+export function normalizeRasgoTipo(raw: any): Rasgo {
+    return {
+        Id: toInt(raw?.Id),
+        Nombre: toText(raw?.Nombre),
+        Descripcion: toText(raw?.Descripcion),
+        Oficial: toBoolean(raw?.Oficial, true),
+    };
+}
+
 @Injectable({
     providedIn: 'root'
 })

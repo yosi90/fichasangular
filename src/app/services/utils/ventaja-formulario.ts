@@ -1,7 +1,7 @@
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
-import { ReferenciaCorta, TipoVentaja, VentajaCampos, VentajaCuerpo, VentajaDetalle } from 'src/app/interfaces/ventaja';
+import { TipoVentaja, VentajaCampos, VentajaCuerpo, VentajaDetalle } from 'src/app/interfaces/ventaja';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
-import { toInt, toIntOrNull, toPositiveInt } from './normalizacion';
+import { idDeReferencia, toInt, toIntOrNull, toPositiveInt } from './normalizacion';
 
 /**
  * El formulario de «Insertar/Modificar ventaja» (hito 8 del roadmap de inserciones): de la ventaja que da la API a los
@@ -63,17 +63,6 @@ export function valoresVaciosDeVentaja(): ValoresVentaja {
         ...banderas, nombre: '', descripcion: '', id_manual: null, pagina: null, puntos: null, mejora: 0,
         id_rasgo: null, id_idioma: null, id_habilidad: null,
     };
-}
-
-/**
- * El id de una referencia de la ventaja (rasgo, idioma, habilidad): `null` si no tiene (la API la da `null` y el mapper la
- * deja con id 0 y sin nombre). Un id 0 con nombre es una opción de verdad («Elegir» en las habilidades).
- */
-export function idDeReferencia(ref: ReferenciaCorta | null | undefined): number | null {
-    const id = toInt(ref?.Id, 0);
-    if (id > 0)
-        return id;
-    return id === 0 && `${ref?.Nombre ?? ''}`.trim().length > 0 ? 0 : null;
 }
 
 export function valoresDeVentaja(ventaja: VentajaDetalle): ValoresVentaja {

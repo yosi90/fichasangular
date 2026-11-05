@@ -29,3 +29,40 @@ export interface TipoCriatura {
     Rasgos: Rasgo[];
     Oficial: boolean;
 }
+
+/**
+ * Un tipo de criatura leído de la API (`GET /tiposCriatura/<id>` y la respuesta del alta y la edición): el de la caché,
+ * más el id del manual y la página (`im`, `pg`), que necesita «Modificar tipo de criatura».
+ */
+export interface TipoCriaturaEditable extends TipoCriatura {
+    Id_manual: number;
+    Pagina: number;
+}
+
+/** Cuerpo de `POST /tiposCriatura/add` y `PUT /tiposCriatura/<id>` (el mismo; hito 9 del roadmap de inserciones). */
+export interface TipoCriaturaCuerpo {
+    tipo: {
+        nombre: string;
+        descripcion: string;
+        id_manual: number;
+        pagina: number;
+        id_tipo_dado: number;
+        id_ataque: number;
+        id_fortaleza: number;
+        id_reflejos: number;
+        id_voluntad: number;
+        id_puntos_habilidad: number;
+        come: boolean;
+        respira: boolean;
+        duerme: boolean;
+        criticos: boolean;
+        flanqueado: boolean;
+        pierde_cons: boolean;
+        limite_inteligencia: number;
+        /** `null`: sin tesoro propio (la API guarda el texto de relleno). */
+        tesoro: string | null;
+        id_alineamiento: number;
+        oficial: boolean;
+    };
+    rasgos: number[];
+}

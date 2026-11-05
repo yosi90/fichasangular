@@ -33,6 +33,12 @@ export const APTITUD_EQUIPO: ElementoDeCatalogo = { singular: 'aptitud especial'
 export const OBJETO: ElementoDeCatalogo = { singular: 'objeto', plural: 'objetos', femenino: false };
 export const CONJUNTO_OBJETOS: ElementoDeCatalogo = { singular: 'conjunto de objetos', plural: 'conjuntos de objetos', femenino: false };
 
+// Hito 9 del roadmap de inserciones (2026-11-05): criaturas y mundo.
+export const TIPO_CRIATURA: ElementoDeCatalogo = { singular: 'tipo de criatura', plural: 'tipos de criatura', femenino: false };
+export const SUBTIPO: ElementoDeCatalogo = { singular: 'subtipo', plural: 'subtipos', femenino: false };
+export const DEIDAD: ElementoDeCatalogo = { singular: 'deidad', plural: 'deidades', femenino: true };
+export const MANUAL: ElementoDeCatalogo = { singular: 'manual', plural: 'manuales', femenino: false };
+
 /**
  * El nombre de una pantalla que sirve a dos catálogos (la ventaja y la desventaja, el arma y la armadura), leído cada vez:
  * el `nombre` de `EdicionDeCatalogo` se fija al crearla, antes de que llegue el tipo, y al crear el tipo puede cambiar.

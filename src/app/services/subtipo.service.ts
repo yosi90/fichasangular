@@ -1,13 +1,22 @@
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
+import { Auth } from "@angular/fire/auth";
 import { Database } from "@angular/fire/database";
 import { Observable, map, throwError } from "rxjs";
 import { environment } from "src/environments/environment";
-import { SubtipoDetalle, SubtipoResumen } from "../interfaces/subtipo";
+import { SubtipoCuerpo, SubtipoDetalle, SubtipoResumen } from "../interfaces/subtipo";
+import { EscrituraDeCatalogo, guardarEnCatalogo } from "./escritura-de-catalogo";
+import { SUBTIPO } from "./utils/nombres-de-catalogo";
+import { EntradaGuardada } from "./utils/respuesta-de-escritura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeSubtipoDetalle, normalizeSubtipoResumen } from "./utils/subtipo-mapper";
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
+
+/** `{ message, idSubtipo, subtipo }`, el subtipo como su `GET`. */
+const ESCRITURA_SUBTIPO: EscrituraDeCatalogo<SubtipoDetalle> = {
+    url: 'subtipos', clave: 'subtipo', claveId: 'idSubtipo', normalizar: normalizeSubtipoDetalle, nombre: SUBTIPO,
+};
 
 @Injectable({
     providedIn: "root"
@@ -18,7 +27,24 @@ export class SubtipoService {
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService,
+        private auth?: Auth,
     ) { }
+
+    /** El subtipo por HTTP, sin caché: el que abre «Modificar subtipo». */
+    getSubtipoFresco(id: number): Observable<SubtipoDetalle> {
+        return this.http.get(`${environment.apiUrl}subtipos/${Math.trunc(Number(id))}`)
+            .pipe(map((raw: any) => normalizeSubtipoDetalle(raw)));
+    }
+
+    /** `POST /subtipos/add`: permiso de creación `subtipos`. */
+    crearSubtipo(cuerpo: SubtipoCuerpo): Promise<EntradaGuardada<SubtipoDetalle>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_SUBTIPO, null, cuerpo);
+    }
+
+    /** `PUT /subtipos/<id>`: el subtipo entero, con el mismo cuerpo que el alta (el mismo permiso). */
+    actualizarSubtipo(id: number, cuerpo: SubtipoCuerpo): Promise<EntradaGuardada<SubtipoDetalle>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_SUBTIPO, id, cuerpo);
+    }
 
     getSubtipos(): Observable<SubtipoResumen[]> {
         return listaRtdb(
