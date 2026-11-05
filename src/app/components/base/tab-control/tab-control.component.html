@@ -131,6 +131,8 @@
                 <app-nueva-especial *ngIf="listadoTab.tipo === 'especiales'"></app-nueva-especial>
                 <app-nueva-plantilla *ngIf="listadoTab.tipo === 'plantillas'"></app-nueva-plantilla>
                 <app-nueva-monstruo *ngIf="listadoTab.tipo === 'monstruos'"></app-nueva-monstruo>
+                <app-nuevo-equipo *ngIf="listadoTab.tipo === 'armas'" tipo="arma"></app-nuevo-equipo>
+                <app-nuevo-equipo *ngIf="listadoTab.tipo === 'armaduras'" tipo="armadura"></app-nuevo-equipo>
             </div>
         </ng-container>
         <ng-template #listadoGenerico>
@@ -285,6 +287,40 @@
                 (cerrar)="quitarEdicion(monstruoTab)"
                 (monstruoActualizado)="onEdicionGuardada('monstruo', $event)">
             </app-nueva-monstruo>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let armaTab of ediciones.arma" [label]="etiquetaEdicion(armaTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'arma'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(armaTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(armaTab)}}</span>
+            <button (click)="quitarEdicion(armaTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-equipo
+                tipo="arma"
+                modo="editar"
+                [idEntrada]="armaTab.id"
+                [editorTabKey]="armaTab.key"
+                (cerrar)="quitarEdicion(armaTab)"
+                (equipoActualizado)="onEdicionGuardada('arma', $event)">
+            </app-nuevo-equipo>
+        </div>
+    </mat-tab>
+    <mat-tab *ngFor="let armaduraTab of ediciones.armadura" [label]="etiquetaEdicion(armaduraTab)">
+        <ng-template mat-tab-label>
+            <app-icono-rol class="pestana-icono" [tipo]="'armadura'"></app-icono-rol>
+            <span class="pestana-etiqueta" [matTooltip]="etiquetaEdicion(armaduraTab)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{textoEdicion(armaduraTab)}}</span>
+            <button (click)="quitarEdicion(armaduraTab)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <div class="insercion-dotes-shell">
+            <app-nuevo-equipo
+                tipo="armadura"
+                modo="editar"
+                [idEntrada]="armaduraTab.id"
+                [editorTabKey]="armaduraTab.key"
+                (cerrar)="quitarEdicion(armaduraTab)"
+                (equipoActualizado)="onEdicionGuardada('armadura', $event)">
+            </app-nuevo-equipo>
         </div>
     </mat-tab>
     <mat-tab *ngFor="let manual of detallesManualAbiertos; let index = index" [label]="getEtiquetaManual(manual)">
@@ -467,7 +503,8 @@
             <button (click)="quitarDetallesArma(arma)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
         <app-detalles-arma [arma]="detallesArmaAbiertos[index]"
-            (municionDetallesId)="abrirDetallesEquipoPorId({ tipo: 'municion', id: $event })"></app-detalles-arma>
+            (municionDetallesId)="abrirDetallesEquipoPorId({ tipo: 'municion', id: $event })"
+            (modificar)="abrirEdicion('arma', $event)"></app-detalles-arma>
     </mat-tab>
     <mat-tab *ngFor="let armadura of detallesArmaduraAbiertos; let index = index" [label]="getEtiquetaArmadura(armadura)">
         <ng-template mat-tab-label>
@@ -475,7 +512,7 @@
             <span class="pestana-etiqueta" [matTooltip]="getEtiquetaArmadura(armadura)" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">{{armadura.Nombre}}</span>
             <button (click)="quitarDetallesArmadura(armadura)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
         </ng-template>
-        <app-detalles-armadura [armadura]="detallesArmaduraAbiertos[index]"></app-detalles-armadura>
+        <app-detalles-armadura [armadura]="detallesArmaduraAbiertos[index]" (modificar)="abrirEdicion('armadura', $event)"></app-detalles-armadura>
     </mat-tab>
     <mat-tab *ngFor="let entrada of detallesEquipoAbiertos" [label]="getEtiquetaEquipo(entrada)">
         <ng-template mat-tab-label>

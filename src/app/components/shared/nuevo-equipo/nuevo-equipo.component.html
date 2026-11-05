@@ -1,0 +1,294 @@
+<div class="nuevo-equipo-shell">
+    <form class="nuevo-equipo-form" [formGroup]="form" (ngSubmit)="guardar()" novalidate>
+        <app-insercion-marco
+            [modo]="modo"
+            [tipo]="definicion.etiqueta"
+            [iconoTipo]="definicion.icono"
+            [nombre]="form.controls.nombre.value"
+            [oficial]="form.controls.oficial.value"
+            [cargando]="edicion.textoCargando"
+            [avisoPermisos]="edicion.avisoPermisos(puedeGuardar)"
+            [error]="errores.global"
+            [guardando]="guardando"
+            [accionDesactivada]="edicion.cargando || (edicion.editando && !edicion.hayCambios)"
+            [nota]="edicion.editando && !edicion.hayCambios ? 'Sin cambios todavía.' : ''"
+            [textoAccion]="textoAccion"
+            [textoGuardando]="textoAccion">
+
+            <!-- Lo común: identidad, manual, precio, peso, material y tamaño -->
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Datos</h3>
+                <div class="insercion-campos">
+                    <mat-form-field appearance="fill" class="insercion-campos__doble">
+                        <mat-label>Nombre</mat-label>
+                        <input matInput formControlName="nombre" maxlength="50">
+                        <mat-error *ngIf="form.controls.nombre.invalid">{{errorDe('nombre', 'Nombre obligatorio (hasta 50 caracteres).')}}</mat-error>
+                    </mat-form-field>
+                    <app-catalogo-buscador etiqueta="Manual" [opciones]="manuales" [valor]="form.controls.id_manual.value"
+                        [error]="form.controls.id_manual.invalid && form.controls.id_manual.touched ? errorDe('id_manual', 'Manual obligatorio.') : null"
+                        (elegir)="elegir('id_manual', $event)">
+                    </app-catalogo-buscador>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Página</mat-label>
+                        <input matInput type="number" min="0" step="1" formControlName="pagina">
+                        <mat-error *ngIf="form.controls.pagina.invalid">{{errorDe('pagina', 'Página obligatoria (0 o más).')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Precio (po)</mat-label>
+                        <input matInput type="number" min="0" step="0.01" formControlName="precio">
+                        <mat-hint>5 pp = 0,5</mat-hint>
+                        <mat-error *ngIf="form.controls.precio.invalid">{{errorDe('precio', 'Precio obligatorio (0 o más).')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Peso (lb)</mat-label>
+                        <input matInput type="number" min="0" step="0.01" formControlName="peso">
+                        <mat-error *ngIf="form.controls.peso.invalid">{{errorDe('peso', 'Peso obligatorio (0 o más).')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Tamaño</mat-label>
+                        <mat-select formControlName="id_tamano">
+                            <mat-option *ngFor="let tamano of tamanosOpciones" [value]="tamano.Id">{{tamano.Nombre}}</mat-option>
+                        </mat-select>
+                        <mat-hint>Las cifras son las de la pieza de este tamaño.</mat-hint>
+                        <mat-error *ngIf="form.controls.id_tamano.invalid">{{errorDe('id_tamano', 'Tamaño obligatorio.')}}</mat-error>
+                    </mat-form-field>
+                    <div class="equipo-con-quitar">
+                        <app-catalogo-buscador etiqueta="Material especial" placeholder="Ninguno" [opciones]="materiales"
+                            [valor]="form.controls.id_material.value" [error]="errores.campo?.campo === 'id_material' ? errores.campo?.mensaje ?? null : null"
+                            (elegir)="elegir('id_material', $event)">
+                        </app-catalogo-buscador>
+                        <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_material.value !== null"
+                            aria-label="Sin material especial" (click)="quitarSeleccion('id_material')">
+                            <mat-icon>close</mat-icon>
+                        </button>
+                    </div>
+                    <mat-form-field appearance="fill" class="insercion-campos__doble">
+                        <mat-label>Nombre original</mat-label>
+                        <input matInput formControlName="nombre_original" maxlength="150">
+                        <mat-hint>El nombre en inglés, si viene de un libro sin traducir.</mat-hint>
+                        <mat-error *ngIf="form.controls.nombre_original.invalid">{{errorDe('nombre_original', 'Hasta 150 caracteres.')}}</mat-error>
+                    </mat-form-field>
+                    <div class="estado-row insercion-campos__doble">
+                        <mat-chip-listbox class="boolean-chips" [attr.aria-label]="'Estado ' + (esArma ? 'del arma' : 'de la armadura')">
+                            <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="alternar('oficial')">Oficial</mat-chip-option>
+                            <mat-chip-option [selected]="form.controls.traducido.value === true" (click)="alternar('traducido')">Traducción nuestra</mat-chip-option>
+                        </mat-chip-listbox>
+                    </div>
+                </div>
+            </section>
+
+            <section class="insercion-tarjeta">
+                <h3 class="insercion-tarjeta__titulo">Descripción</h3>
+                <div class="insercion-campos">
+                    <mat-form-field appearance="fill" class="insercion-campos__entero">
+                        <mat-label>Descripción</mat-label>
+                        <textarea matInput formControlName="descripcion" rows="4" maxlength="8000"></textarea>
+                        <mat-hint>Propia y breve, con nuestras palabras, o el texto del SRD traducido; nunca el texto del manual.</mat-hint>
+                        <mat-error *ngIf="form.controls.descripcion.invalid">{{errorDe('descripcion', 'Hasta 8000 caracteres.')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill" class="insercion-campos__doble">
+                        <mat-label>Origen de la descripción</mat-label>
+                        <mat-select formControlName="origen_descripcion">
+                            <mat-option value="propia">Propia (un resumen nuestro)</mat-option>
+                            <mat-option value="srd">Del SRD (licencia abierta)</mat-option>
+                        </mat-select>
+                    </mat-form-field>
+                </div>
+            </section>
+
+            <!-- Arma: el ataque y las propiedades -->
+            <ng-container *ngIf="esArma">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Ataque</h3>
+                    <div class="insercion-campos">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Tipo de arma</mat-label>
+                            <mat-select formControlName="id_tipo_arma">
+                                <mat-option *ngFor="let item of tiposArma" [value]="item.Id">{{item.Nombre}}</mat-option>
+                            </mat-select>
+                            <mat-hint class="equipo-error" *ngIf="avisoDe('id_tipo_arma') as aviso">{{aviso}}</mat-hint>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Manejo</mat-label>
+                            <mat-select formControlName="id_manejo">
+                                <mat-option [value]="null">No aplica</mat-option>
+                                <mat-option *ngFor="let item of manejos" [value]="item.Id">{{item.Nombre}}</mat-option>
+                            </mat-select>
+                            <mat-hint>Ligera (Sutileza), a una mano o a dos manos.</mat-hint>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Tipo de daño</mat-label>
+                            <mat-select formControlName="id_tipo_dano">
+                                <mat-option *ngFor="let item of tiposDano" [value]="item.Id">{{item.Nombre}}</mat-option>
+                            </mat-select>
+                            <mat-hint class="equipo-error" *ngIf="avisoDe('id_tipo_dano') as aviso">{{aviso}}</mat-hint>
+                        </mat-form-field>
+                        <div class="estado-row">
+                            <mat-chip-listbox class="boolean-chips" aria-label="Cómo se usa el arma">
+                                <mat-chip-option [selected]="form.controls.a_distancia.value === true" (click)="alternar('a_distancia')">A distancia</mat-chip-option>
+                                <mat-chip-option [selected]="form.controls.arrojadiza.value === true" (click)="alternar('arrojadiza')">Arrojadiza</mat-chip-option>
+                                <mat-chip-option [selected]="esDoble" (click)="alternar('doble')">Doble</mat-chip-option>
+                            </mat-chip-listbox>
+                        </div>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Daño (Pequeño)</mat-label>
+                            <input matInput formControlName="dano_pequeno" maxlength="20" [placeholder]="esDoble ? '1d6/1d4' : '1d6'">
+                            <mat-error *ngIf="form.controls.dano_pequeno.invalid || problema?.campo === 'dano_pequeno'">{{errorDe('dano_pequeno', 'Un dado («1d6») o una cifra.')}}</mat-error>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Daño (Mediano)</mat-label>
+                            <input matInput formControlName="dano_mediano" maxlength="20" [placeholder]="esDoble ? '1d8/1d6' : '1d8'">
+                            <mat-hint>Vacío si no hace daño (red, presa).</mat-hint>
+                            <mat-error *ngIf="form.controls.dano_mediano.invalid || problema?.campo === 'dano_mediano'">{{errorDe('dano_mediano', 'Un dado («1d8») o una cifra.')}}</mat-error>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Crítico</mat-label>
+                            <mat-select formControlName="critico_multiplicador">
+                                <mat-option [value]="null">Sin crítico</mat-option>
+                                <mat-option *ngFor="let multiplicador of multiplicadores" [value]="multiplicador">×{{multiplicador}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Amenaza desde</mat-label>
+                            <input matInput type="number" min="2" max="20" step="1" formControlName="critico_rango" [readonly]="sinCritico">
+                            <mat-hint>{{sinCritico ? 'Sin crítico, no hay amenaza.' : '19 = «19-20»; vacío o 20, solo el 20.'}}</mat-hint>
+                            <mat-error *ngIf="form.controls.critico_rango.invalid">{{errorDe('critico_rango', 'Entre 2 y 20.')}}</mat-error>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill" *ngIf="esDoble">
+                            <mat-label>Crítico de la segunda cabeza</mat-label>
+                            <mat-select formControlName="critico_multiplicador_2">
+                                <mat-option [value]="null">Como la primera</mat-option>
+                                <mat-option *ngFor="let multiplicador of multiplicadores" [value]="multiplicador">×{{multiplicador}}</mat-option>
+                            </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Incremento de distancia (pies)</mat-label>
+                            <input matInput type="number" min="0" step="5" formControlName="incremento_distancia">
+                            <mat-error *ngIf="form.controls.incremento_distancia.invalid">{{errorDe('incremento_distancia', '0 o más.')}}</mat-error>
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Alcance (pies)</mat-label>
+                            <input matInput type="number" min="0" step="5" formControlName="alcance">
+                            <mat-hint>Solo las armas de asta y el látigo (10, 15).</mat-hint>
+                        </mat-form-field>
+                        <div class="equipo-con-quitar">
+                            <app-catalogo-buscador etiqueta="Munición" placeholder="Ninguna" [opciones]="municiones"
+                                [valor]="form.controls.id_municion.value" [error]="errores.campo?.campo === 'id_municion' ? errores.campo?.mensaje ?? null : null"
+                                (elegir)="elegir('id_municion', $event)">
+                            </app-catalogo-buscador>
+                            <button mat-icon-button type="button" class="row-action-btn" *ngIf="form.controls.id_municion.value !== null"
+                                aria-label="Sin munición" (click)="quitarSeleccion('id_municion')">
+                                <mat-icon>close</mat-icon>
+                            </button>
+                        </div>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Índice de Fuerza (po por punto)</mat-label>
+                            <input matInput type="number" min="0" step="0.01" formControlName="indice_fuerza_coste">
+                            <mat-hint>Arcos compuestos.</mat-hint>
+                        </mat-form-field>
+                    </div>
+                </section>
+
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Propiedades · {{propiedades.length}}</h3>
+                    <p class="equipo-error" role="alert" *ngIf="problema?.campo === 'propiedades' || errores.mensajeDe('propiedades')">
+                        {{problema?.campo === 'propiedades' ? problema?.mensaje : errores.mensajeDe('propiedades')}}
+                    </p>
+                    <p class="equipo-vacio" *ngIf="propiedades.length < 1">Sin propiedades (derribo, desarmar, apuntalar…).</p>
+                    <div class="equipo-fila" *ngFor="let fila of propiedades; trackBy: trackByUid">
+                        <span class="equipo-fila__nombre">
+                            {{nombrePropiedad(fila)}}
+                            <small *ngIf="descripcionPropiedad(fila) as descripcion">{{descripcion}}</small>
+                        </span>
+                        <mat-form-field appearance="fill" class="equipo-fila__corto" subscriptSizing="dynamic">
+                            <mat-label>Cifra</mat-label>
+                            <input matInput type="number" step="1" [(ngModel)]="fila.valor" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
+                        </mat-form-field>
+                        <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar ' + nombrePropiedad(fila)" (click)="quitarPropiedad(fila.uid)">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                    <app-catalogo-buscador etiqueta="Añadir propiedad" [anadir]="true" [opciones]="propiedadesOpciones"
+                        [excluir]="idsPropiedades" (elegir)="anadirPropiedad($event)">
+                    </app-catalogo-buscador>
+                </section>
+            </ng-container>
+
+            <!-- Armadura o escudo: la defensa -->
+            <section class="insercion-tarjeta" *ngIf="!esArma">
+                <h3 class="insercion-tarjeta__titulo">Defensa</h3>
+                <div class="insercion-campos">
+                    <div class="estado-row">
+                        <mat-chip-listbox class="boolean-chips" aria-label="Armadura o escudo">
+                            <mat-chip-option [selected]="esEscudo" (click)="alternar('es_escudo')">Es un escudo</mat-chip-option>
+                        </mat-chip-listbox>
+                    </div>
+                    <mat-form-field appearance="fill" *ngIf="!esEscudo">
+                        <mat-label>Peso de armadura</mat-label>
+                        <mat-select formControlName="id_peso_armadura">
+                            <mat-option *ngFor="let item of pesosArmadura" [value]="item.Id">{{item.Nombre}}</mat-option>
+                        </mat-select>
+                        <mat-hint class="equipo-error" *ngIf="avisoDe('id_peso_armadura') as aviso">{{aviso}}</mat-hint>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill" *ngIf="esEscudo">
+                        <mat-label>Tipo de escudo</mat-label>
+                        <mat-select formControlName="id_tipo_escudo">
+                            <mat-option *ngFor="let item of tiposEscudo" [value]="item.Id">{{item.Nombre}}</mat-option>
+                        </mat-select>
+                        <mat-hint class="equipo-error" *ngIf="avisoDe('id_tipo_escudo') as aviso">{{aviso}}</mat-hint>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Bonificador a la CA</mat-label>
+                        <input matInput type="number" min="0" step="1" formControlName="ca">
+                        <mat-error *ngIf="form.controls.ca.invalid">{{errorDe('ca', '0 o más.')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Destreza máxima</mat-label>
+                        <input matInput type="number" min="0" step="1" formControlName="bon_des" placeholder="Sin límite">
+                        <mat-hint>Vacío: sin límite.</mat-hint>
+                        <mat-error *ngIf="form.controls.bon_des.invalid">{{errorDe('bon_des', '0 o más; vacío, sin límite.')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Penalizador de armadura</mat-label>
+                        <input matInput type="number" max="0" step="1" formControlName="penalizador">
+                        <mat-error *ngIf="form.controls.penalizador.invalid">{{errorDe('penalizador', '0 o negativo.')}}</mat-error>
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Fallo de conjuro arcano (%)</mat-label>
+                        <input matInput type="number" min="0" max="100" step="5" formControlName="fallo_arcano">
+                        <mat-error *ngIf="form.controls.fallo_arcano.invalid">{{errorDe('fallo_arcano', 'Entre 0 y 100.')}}</mat-error>
+                    </mat-form-field>
+                    <ng-container *ngIf="!esEscudo">
+                        <mat-form-field appearance="fill">
+                            <mat-label>Velocidad (30 pies)</mat-label>
+                            <input matInput type="number" min="0" step="5" formControlName="velocidad_30">
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Velocidad (20 pies)</mat-label>
+                            <input matInput type="number" min="0" step="5" formControlName="velocidad_20">
+                        </mat-form-field>
+                        <mat-form-field appearance="fill">
+                            <mat-label>Correr (multiplicador)</mat-label>
+                            <input matInput type="number" min="1" step="1" formControlName="correr_multiplicador">
+                            <mat-hint>×4; ×3 con armadura pesada.</mat-hint>
+                        </mat-form-field>
+                    </ng-container>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Ponérsela</mat-label>
+                        <input matInput formControlName="tiempo_poner" maxlength="30" placeholder="1 minuto">
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Ponérsela deprisa</mat-label>
+                        <input matInput formControlName="tiempo_poner_rapido" maxlength="30">
+                    </mat-form-field>
+                    <mat-form-field appearance="fill">
+                        <mat-label>Quitársela</mat-label>
+                        <input matInput formControlName="tiempo_quitar" maxlength="30">
+                    </mat-form-field>
+                </div>
+            </section>
+
+            <button mat-stroked-button type="button" insercionPieSecundario *ngIf="edicion.editando" (click)="cerrar.emit()">Cancelar</button>
+        </app-insercion-marco>
+    </form>
+</div>

@@ -1,7 +1,13 @@
+import { Auth } from "@angular/fire/auth";
+import { ArmaduraCuerpo, ArmaduraGuardada } from "../interfaces/armadura";
+import { cabeceraApiConFirebase } from "./platform-session.service";
+import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { ARMADURA } from "src/app/services/utils/nombres-de-catalogo";
+import { leerRespuestaDeEscritura } from "src/app/services/utils/respuesta-de-escritura";
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database, Unsubscribe } from "@angular/fire/database";
-import { Observable } from "rxjs";
+import { Observable, firstValueFrom, map } from "rxjs";
 import { environment } from "src/environments/environment";
 import { ArmaduraDetalle } from "../interfaces/armadura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
@@ -47,6 +53,7 @@ export class ArmaduraService {
         private db: Database,
         private http: HttpClient,
         private firebaseContextSvc: FirebaseInjectionContextService,
+        private auth?: Auth,
     ) { }
 
     getArmadura(id: number): Observable<ArmaduraDetalle> {
@@ -97,4 +104,36 @@ export class ArmaduraService {
         return armaduras;
     }
 
+
+    /** La armadura por HTTP, sin caché: la que abre «Modificar» (guía de modificaciones de catálogo). */
+    getArmaduraFresca(id: number): Observable<ArmaduraDetalle> {
+        return this.http.get(`${environment.apiUrl}armaduras/${Math.trunc(Number(id))}`).pipe(map((raw: any) => normalizeArmadura(raw)));
+    }
+
+    /** `POST /armaduras/add`: permiso de creación `armaduras`. */
+    async crearArmadura(cuerpo: ArmaduraCuerpo): Promise<ArmaduraGuardada> {
+        try {
+            const headers = await cabeceraApiConFirebase(this.auth);
+            const respuesta = await firstValueFrom(this.http.post<any>(`${environment.apiUrl}armaduras/add`, cuerpo, { headers }));
+            return respuestaDeArmadura(respuesta);
+        } catch (error: unknown) {
+            throw errorDeCatalogo(error, 'crear', ARMADURA);
+        }
+    }
+
+    /** `PUT /armaduras/<id>`: la armadura entera, con el mismo cuerpo que el alta (el mismo permiso). */
+    async actualizarArmadura(id: number, cuerpo: ArmaduraCuerpo): Promise<ArmaduraGuardada> {
+        try {
+            const headers = await cabeceraApiConFirebase(this.auth);
+            const respuesta = await firstValueFrom(this.http.put<any>(`${environment.apiUrl}armaduras/${Math.trunc(Number(id))}`, cuerpo, { headers }));
+            return respuestaDeArmadura(respuesta);
+        } catch (error: unknown) {
+            throw errorDeCatalogo(error, 'actualizar', ARMADURA);
+        }
+    }
+}
+
+function respuestaDeArmadura(respuesta: unknown): ArmaduraGuardada {
+    const { message, id } = leerRespuestaDeEscritura(respuesta, 'idArmadura');
+    return { message, idArmadura: id, armadura: normalizeArmadura((respuesta as any)?.armadura) };
 }

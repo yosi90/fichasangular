@@ -1,4 +1,4 @@
-import { EquipoPropiedadArma, EquipoRef, TextoEquipo } from './equipo';
+import { EquipoCuerpoComun, EquipoPropiedadArma, EquipoRef, TextoEquipo } from './equipo';
 import { ManualReferencia } from './manual';
 
 /** Derribo, desarmar (con su bonificador en `Valor`), apuntalar, arma especial de monje, sutileza… */
@@ -37,4 +37,37 @@ export interface ArmaDetalle extends TextoEquipo {
     Indice_fuerza_coste: number | null;
     Propiedades: ArmaPropiedad[];
     Oficial: boolean;
+}
+
+/** `POST /armas/add` y `PUT /armas/<id>` (el mismo cuerpo): `docs/publica/endpoints/catalogos.md`, «Armas». */
+export interface ArmaCuerpo {
+    arma: EquipoCuerpoComun & {
+        id_tipo_dano: number;
+        id_tipo_arma: number;
+        id_manejo: number | null;
+        a_distancia: boolean;
+        arrojadiza: boolean;
+        doble: boolean;
+        alcance: number | null;
+        id_municion: number | null;
+        dano_pequeno: string | null;
+        dano_mediano: string | null;
+        critico_rango: number | null;
+        critico_multiplicador: number | null;
+        critico_multiplicador_2: number | null;
+        precio: number;
+        /** `null`: sin material especial. */
+        id_material: number | null;
+        id_tamano: number;
+        peso: number;
+        incremento_distancia: number;
+        indice_fuerza_coste: number | null;
+    };
+    propiedades: { id_propiedad: number; valor: number | null; }[];
+}
+
+export interface ArmaGuardada {
+    message: string;
+    idArma: number;
+    arma: ArmaDetalle;
 }

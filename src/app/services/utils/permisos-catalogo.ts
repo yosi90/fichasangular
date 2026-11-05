@@ -6,7 +6,8 @@ import { PermissionResource } from 'src/app/interfaces/user-acl';
  * en Rol no hay un permiso aparte para modificar, así que Insertar y Modificar miran el mismo.
  *
  * Los catálogos del equipo que aún no están en el menú (munición, materiales, aptitudes, objetos y conjuntos) no tienen
- * permiso todavía: se decide en su hito.
+ * permiso todavía: se decide en la segunda parte del hito 7 (armas y armaduras ya tienen pantalla, con `armas` y
+ * `armaduras`).
  */
 export const RECURSO_DE_CATALOGO: Readonly<Record<string, PermissionResource>> = {
     'razas': 'razas',

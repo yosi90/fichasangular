@@ -110,6 +110,7 @@ import { NuevaMonstruoComponent } from './components/shared/nueva-monstruo/nueva
 import { CatalogoBuscadorComponent } from './components/shared/catalogo-buscador/catalogo-buscador.component';
 import { PrerrequisitoCatalogPairEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-catalog-pair-editor.component';
 import { NuevaIdiomaComponent } from './components/shared/nueva-idioma/nueva-idioma.component';
+import { NuevoEquipoComponent } from './components/shared/nuevo-equipo/nuevo-equipo.component';
 import { InsercionMarcoComponent } from './components/shared/insercion-marco/insercion-marco.component';
 import { NuevaEspecialComponent } from './components/shared/nueva-especial/nueva-especial.component';
 import { NuevaClaseComponent } from './components/shared/nueva-clase/nueva-clase.component';
@@ -277,6 +278,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         NuevaMonstruoComponent,
         CatalogoBuscadorComponent,
         NuevaIdiomaComponent,
+        NuevoEquipoComponent,
         InsercionMarcoComponent,
         NuevaEspecialComponent,
         NuevaClaseComponent,

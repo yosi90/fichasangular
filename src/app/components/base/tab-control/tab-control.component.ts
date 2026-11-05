@@ -1439,6 +1439,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
             case 'monstruo':
                 // Con ellos pueden estar sus familiares y compañeros (con el mismo `Id`): los refresca `onEdicionGuardada`.
                 return [];
+            case 'arma':
+                return this.detallesArmaAbiertos;
+            case 'armadura':
+                return this.detallesArmaduraAbiertos;
         }
     }
 

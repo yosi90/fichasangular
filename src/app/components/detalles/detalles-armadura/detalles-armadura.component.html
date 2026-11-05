@@ -4,7 +4,9 @@
         [nombre]="armadura.Nombre"
         [manual]="armadura.Manual"
         [oficial]="armadura.Oficial"
-        (abrirManual)="abrirDetalleManual()">
+        [modificable]="puedeModificar"
+        (abrirManual)="abrirDetalleManual()"
+        (modificar)="modificar.emit(armadura)">
     </app-ficha-cabecera>
 
     <app-ficha-datos [datos]="datos" [titulo]="armadura.Es_escudo ? 'Datos del escudo' : 'Datos de la armadura'"></app-ficha-datos>

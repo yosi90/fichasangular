@@ -12,4 +12,10 @@ describe('conOpcionSinValor', () => {
         const cache = [{ Id: 0, Nombre: 'No vuela' }, { Id: 1, Nombre: 'Torpe' }];
         expect(conOpcionSinValor(cache, { Id: 0, Nombre: 'Otro' })).toBe(cache);
     });
+
+    it('con otra opción, la compara por su id (la que tiene la entrada cargada)', () => {
+        const tipos = [{ Id: 1, Nombre: 'Cortante' }, { Id: 2, Nombre: 'Perforante' }];
+        expect(conOpcionSinValor(tipos, { Id: 2, Nombre: 'Perforante' })).toBe(tipos);
+        expect(conOpcionSinValor(tipos, { Id: 9, Nombre: 'Rara' })).toEqual([{ Id: 9, Nombre: 'Rara' }, ...tipos]);
+    });
 });
