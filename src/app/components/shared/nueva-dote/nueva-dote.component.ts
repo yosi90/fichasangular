@@ -204,6 +204,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     confirmandoSelectorPrerrequisitos: boolean = false;
     dotesExistentes: Dote[] = [];
     dotesCatalogoPrerrequisito: ExtraSelectorItem[] = [];
+    /** Las habilidades del catálogo como opciones: las de los prerrequisitos de habilidad y las de los extras de habilidad. */
     habilidadesCatalogoPrerrequisito: ExtraSelectorItem[] = [];
     tiposDoteCatalogoPrerrequisito: ExtraSelectorItem[] = [];
     manuales: Manual[] = [];
@@ -839,7 +840,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     /** La habilidad elegida en el selector, por su clave: su id y de qué catálogo es. */
     seleccionarHabilidadOtorgada(index: number, clave: ClaveHabilidad): void {
-        const opcion = this.opcionesHabilidadesOtorgadas.find((item) => item.clave === clave);
+        const opcion = this.opcionHabilidadOtorgada(clave);
         this.onHabilidadOtorgadaChange(index, {
             id_habilidad: toInt(opcion?.habilidad.Id_habilidad, 0),
             custom: opcion?.custom ?? false,
@@ -882,7 +883,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         const row = this.habilidadesOtorgadasEditor[index];
         if (!row?.custom || toInt(row.id_habilidad, 0) <= 0)
             return;
-        const habilidad = this.habilidadesCustomCatalogo.find((item) => toInt(item.Id_habilidad, 0) === toInt(row.id_habilidad, 0));
+        const habilidad = this.habilidadDeFila(row);
         if (!habilidad)
             return;
         this.customModalModo = 'editar';
@@ -921,8 +922,11 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private habilidadDeFila(row: HabilidadOtorgadaEditorItem): HabilidadBasicaDetalle | undefined {
-        const clave = this.claveHabilidadOtorgada(row);
-        return this.opcionesHabilidadesOtorgadas.find((item) => item.clave === clave)?.habilidad;
+        return this.opcionHabilidadOtorgada(this.claveHabilidadOtorgada(row))?.habilidad;
+    }
+
+    private opcionHabilidadOtorgada(clave: ClaveHabilidad): OpcionHabilidadOtorgada | undefined {
+        return this.opcionesHabilidadesOtorgadas.find((item) => item.clave === clave);
     }
 
     abrirSelectorPrerrequisitos(): void {
@@ -1435,10 +1439,8 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
      * y `dotes_extra_habilidades` apuntan a `habilidades`); las otorgadas, de los dos catálogos, cada una con su clave.
      */
     private actualizarCatalogosDeHabilidades(): void {
-        this.habilidadesCatalogoPrerrequisito = this.habilidadesCatalogo
-            .map((item) => ({ id: toInt(item?.Id_habilidad, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-            .filter((item) => item.id > 0 && item.nombre.length > 0)
-            .sort((a, b) => compararTexto(a.nombre, b.nombre));
+        this.habilidadesCatalogoPrerrequisito = this.aItemsSelector(this.habilidadesCatalogo
+            .map((habilidad) => ({ Id: habilidad?.Id_habilidad, Nombre: habilidad?.Nombre })));
         const opcion = (habilidad: HabilidadBasicaDetalle, custom: boolean): OpcionHabilidadOtorgada =>
             ({ clave: claveDeHabilidad(habilidad.Id_habilidad, custom), custom, habilidad });
         this.opcionesHabilidadesOtorgadas = [
@@ -1766,10 +1768,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
         if (tipo === 'extra_escuela')
             return this.escuelasCatalogo;
         if (tipo === 'extra_habilidad')
-            return this.habilidadesCatalogo
-                .map((item) => ({ id: toInt(item?.Id_habilidad, 0), nombre: `${item?.Nombre ?? ''}`.trim() }))
-                .filter((item) => item.id > 0 && item.nombre.length > 0)
-                .sort((a, b) => compararTexto(a.nombre, b.nombre));
+            return this.habilidadesCatalogoPrerrequisito;
         return [];
     }
 
