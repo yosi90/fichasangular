@@ -1,7 +1,8 @@
 import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { CdkMenuModule } from '@angular/cdk/menu';
 import { TestBed } from '@angular/core/testing';
-import { of, Subject } from 'rxjs';
+import { BehaviorSubject, of, Subject } from 'rxjs';
+import { MisCampanasService } from 'src/app/services/mis-campanas.service';
 import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { UserService } from 'src/app/services/user.service';
 import { BaseMenuComponent } from './base-menu.component';
@@ -189,6 +190,19 @@ describe('BaseMenuComponent', () => {
         expect(trigger.close).toHaveBeenCalled();
     });
 
+    it('«Mis campañas» abre Social en Campañas y cierra el cajón', () => {
+        const nav = jasmine.createSpyObj('UserProfileNavigationService', ['openSocial']);
+        const marco = { cerrarMenu: jasmine.createSpy('cerrarMenu') };
+        const conCampanas = new BaseMenuComponent(userSvc as any, nav, marco as any);
+        for (const panel of ['primero', 'segundo', 'tercero', 'cuarto'] as const)
+            conCampanas[panel] = { expanded: false, close: jasmine.createSpy() } as any;
+
+        conCampanas.abrirMisCampanas();
+
+        expect(nav.openSocial).toHaveBeenCalledOnceWith(jasmine.objectContaining({ section: 'campanas' }));
+        expect(marco.cerrarMenu).toHaveBeenCalled();
+    });
+
     it('Insertar y Modificar piden el permiso de creación del recurso de cada catálogo; sin pantalla, solo cierran el menú', () => {
         canCreateRazas = false;
         permissions['monstruos:create'] = true;
@@ -231,8 +245,11 @@ describe('BaseMenuComponent', () => {
     });
 });
 
-describe('BaseMenuComponent: los grupos «Otros» en la plantilla', () => {
+describe('BaseMenuComponent: los grupos «Otros» y «Mis campañas» en la plantilla', () => {
+    let visible$: BehaviorSubject<boolean>;
+
     beforeEach(async () => {
+        visible$ = new BehaviorSubject<boolean>(false);
         await TestBed.configureTestingModule({
             declarations: [BaseMenuComponent],
             imports: [CdkMenuModule],
@@ -248,6 +265,7 @@ describe('BaseMenuComponent: los grupos «Otros» en la plantilla', () => {
                     },
                 },
                 { provide: UserProfileNavigationService, useValue: jasmine.createSpyObj('UserProfileNavigationService', ['openSocial']) },
+                { provide: MisCampanasService, useValue: { visible$ } },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -291,4 +309,17 @@ describe('BaseMenuComponent: los grupos «Otros» en la plantilla', () => {
         fixture.destroy();
     });
 
+    it('«Mis campañas» va encima de «Dados» solo cuando toca', () => {
+        const fixture = TestBed.createComponent(BaseMenuComponent);
+        fixture.detectChanges();
+        const elemento = fixture.nativeElement as HTMLElement;
+        expect(elemento.querySelector('.menu-campanas')).toBeNull();
+
+        visible$.next(true);
+        fixture.detectChanges();
+        const campanas = elemento.querySelector('.menu-campanas');
+        expect(campanas?.textContent?.trim()).toBe('Mis campañas');
+        expect(campanas?.nextElementSibling?.textContent?.trim()).toBe('Dados');
+        fixture.destroy();
+    });
 });

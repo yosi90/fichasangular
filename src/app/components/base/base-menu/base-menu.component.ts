@@ -4,12 +4,14 @@ import { UserProfileNavigationService } from '../../../services/user-profile-nav
 import { MatExpansionPanel } from '@angular/material/expansion';
 import { ConnectedPosition } from '@angular/cdk/overlay';
 import { CdkMenuTrigger } from '@angular/cdk/menu';
+import { Observable, of } from 'rxjs';
 import { TipoRol, tipoRolDeListado, tituloListado } from 'src/app/services/utils/iconos-rol';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { MarcoMovilService } from 'src/app/services/marco-movil.service';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { tieneInsercion, tipoEdicionDeListado } from 'src/app/services/utils/catalogos-editables';
+import { MisCampanasService } from 'src/app/services/mis-campanas.service';
 
 type SeccionOtros = 'insertar' | 'modificar' | 'detalles';
 type OperacionCatalogo = 'insertar' | 'modificar';
@@ -124,7 +126,13 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
         private userProfileNavSvc: UserProfileNavigationService,
         private marco?: MarcoMovilService,
         private navegacion?: NavegacionRolService,
+        private misCampanas?: MisCampanasService,
     ) { }
+
+    /** «Mis campañas»: con sesión, si el rol es máster, colaborador o admin, o si es miembro activo de alguna campaña. */
+    get misCampanasVisible$(): Observable<boolean> {
+        return this.misCampanas?.visible$ ?? of(false);
+    }
 
     ngOnInit(): void {
         this.usrService.isLoggedIn$.subscribe(_ => {
@@ -278,6 +286,13 @@ export class BaseMenuComponent implements OnInit, OnDestroy {
 
     abrirSocial(): void {
         this.userProfileNavSvc.openSocial('resumen');
+        this.closeAcordion();
+        this.cerrarOtros();
+    }
+
+    /** La entrada «Mis campañas», encima de «Dados»: abre Social en Campañas y, en el móvil, cierra el cajón. */
+    abrirMisCampanas(): void {
+        this.userProfileNavSvc.openSocial({ section: 'campanas', requestId: Date.now() });
         this.closeAcordion();
         this.cerrarOtros();
     }

@@ -117,6 +117,10 @@
                 <button mat-button color="primary" class="menu-opcion" (click)="AbrirListado('plantillas', 'detalles'); closeAcordion();"><app-icono-rol tipo="plantilla" [tamano]="16" recuadro="oscuro"></app-icono-rol><span>Plantilla</span></button>
                 <ng-container *ngTemplateOutlet="gruposOtrosMenu; context: { $implicit: 'detalles' }"></ng-container>
             </mat-expansion-panel>
+            <!-- «Mis campañas» (ronda de noviembre, decisión 3): con sesión, para quien puede tener campañas o ya está en una. -->
+            <button type="button" class="menu-dados menu-campanas" *ngIf="misCampanasVisible$ | async" (click)="abrirMisCampanas()">
+                <app-icono-rol tipo="campana" [tamano]="22"></app-icono-rol><span>Mis campañas</span>
+            </button>
             <!-- Debajo de las de catálogo (lienzo «Dados: Companion y web»): abre la pestaña «Dados». -->
             <button type="button" class="menu-dados" (click)="abrirDados()">
                 <app-icono-rol tipo="dado-d20" [tamano]="22"></app-icono-rol><span>Dados</span>

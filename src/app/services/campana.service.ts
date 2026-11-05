@@ -656,7 +656,8 @@ export class CampanaService {
         return parts.join('\u001e');
     }
 
-    private hasActiveMembership(campana: CampaignListItem | null | undefined): boolean {
+    /** Si la cuenta es miembro activo (máster o jugador) de la campaña. Lo usa también «Mis campañas» del menú. */
+    hasActiveMembership(campana: CampaignListItem | null | undefined): boolean {
         return campana?.membershipStatus === 'activo'
             && (campana.campaignRole === 'master' || campana.campaignRole === 'jugador');
     }
