@@ -138,6 +138,11 @@ export class UserProfileComponent implements OnInit, OnChanges, OnDestroy {
         return this.platformSessionSvc.urlSocial('moderacion');
     }
 
+    /** «Tu cuenta › Logros» de la web social: los logros de Rol los concede la API y los enseña la plataforma. */
+    get urlLogrosPlataforma(): string {
+        return this.platformSessionSvc.urlSocial('logros');
+    }
+
     /** Normas de Rol pendientes o limitaciones de la cuenta, si las hay. */
     get accountNotice(): string {
         return this.userSvc.getAccessRestrictionMessage('creation');
