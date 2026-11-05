@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, forwardRef } from '@angular/core';
 import { FormBuilder, ValidatorFn, Validators } from '@angular/forms';
-import { Observable, Subject, debounceTime, distinctUntilChanged, switchMap, of, catchError, map, takeUntil } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, switchMap, of, catchError, map, takeUntil } from 'rxjs';
 import { ConjuntoObjetosDetalle, EquipoCatalogos, EquipoRef, ObjetoDetalle } from 'src/app/interfaces/equipo';
 import { ArmaService } from 'src/app/services/arma.service';
 import { ArmaduraService } from 'src/app/services/armadura.service';
@@ -33,11 +33,10 @@ import {
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
-import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, OpcionesErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
-import { cargarCatalogo } from '../insercion-marco/cargar-catalogo';
 
 type EntradaObjeto = ObjetoDetalle | ConjuntoObjetosDetalle;
 
@@ -514,7 +513,7 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private cargarCatalogos(): void {
-        const cargar = <T>(fuente: Observable<T> | undefined, alLlegar: (valor: T) => void) => cargarCatalogo(fuente, this.destroy$, alLlegar);
+        const cargar = cargadorDeCatalogos(this.destroy$);
         cargar(this.manualSvc.getManuales(), (manuales) => this.manuales = opcionesDeCatalogo(manuales as any[]));
         if (!this.esObjeto)
             return;

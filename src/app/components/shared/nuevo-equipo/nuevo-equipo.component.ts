@@ -38,11 +38,10 @@ import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
-import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
+import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, OpcionesErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
-import { cargarCatalogo } from '../insercion-marco/cargar-catalogo';
 
 type EntradaEquipo = ArmaDetalle | ArmaduraDetalle | MunicionDetalle | MaterialDetalle | EncantamientoDetalle;
 
@@ -645,7 +644,7 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private cargarCatalogos(): void {
-        const cargar = <T>(fuente: Observable<T> | undefined, alLlegar: (valor: T) => void) => cargarCatalogo(fuente, this.destroy$, alLlegar);
+        const cargar = cargadorDeCatalogos(this.destroy$);
         cargar(this.manualSvc.getManuales(), (manuales) => this.manuales = opcionesDeCatalogo(manuales as any[]));
         cargar(this.equipoSvc.getCatalogos(), (catalogos) => {
             this.catalogos = catalogos;

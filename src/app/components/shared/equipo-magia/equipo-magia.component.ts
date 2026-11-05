@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
-import { Observable, Subject } from 'rxjs';
+import { Subject } from 'rxjs';
 import { EquipoCatalogos, EquipoRef } from 'src/app/interfaces/equipo';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DoteService } from 'src/app/services/dote.service';
@@ -10,7 +10,7 @@ import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
 import { FilaModificador, RelacionesMagicas, filaModificadorVacia } from 'src/app/services/utils/relaciones-equipo-formulario';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
-import { cargarCatalogo } from '../insercion-marco/cargar-catalogo';
+import { cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 
 let contador = 0;
 
@@ -54,7 +54,7 @@ export class EquipoMagiaComponent implements OnInit, OnDestroy {
     ) { }
 
     ngOnInit(): void {
-        const cargar = <T>(fuente: Observable<T> | undefined, alLlegar: (valor: T) => void) => cargarCatalogo(fuente, this.destroy$, alLlegar);
+        const cargar = cargadorDeCatalogos(this.destroy$);
         cargar(this.equipoSvc.getCatalogos(), (catalogos: EquipoCatalogos) => {
             this.objetivos = catalogos?.Objetivos_modificador ?? [];
             this.tiposBonificador = catalogos?.Tipos_bonificador ?? [];
