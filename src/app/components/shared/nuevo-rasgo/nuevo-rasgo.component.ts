@@ -115,11 +115,11 @@ export class NuevoRasgoComponent implements OnInit, OnDestroy, OnChanges, Editor
                 : await this.rasgoSvc.crearRasgo(this.cuerpo());
             await avisarGuardado(RASGO, editando, guardado.message);
             if (editando) {
-                this.hidratar(guardado.rasgo);
-                this.rasgoActualizado.emit(guardado.rasgo);
+                this.hidratar(guardado.entrada);
+                this.rasgoActualizado.emit(guardado.entrada);
                 this.cerrar.emit();
             } else {
-                this.rasgoCreado.emit(guardado.rasgo);
+                this.rasgoCreado.emit(guardado.entrada);
                 this.reiniciar();
             }
         } catch (error: unknown) {

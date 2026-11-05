@@ -424,10 +424,3 @@ export interface ConjuntoObjetosCuerpo {
     piezas: number[];
     bonificaciones: { piezas: number; descripcion: string; }[];
 }
-
-/** La respuesta del alta y la edición: el `message` y la entrada como la da su `GET`. */
-export interface EquipoGuardado<T> {
-    message: string;
-    id: number;
-    entrada: T;
-}

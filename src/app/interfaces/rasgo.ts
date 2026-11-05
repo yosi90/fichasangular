@@ -14,10 +14,3 @@ export interface RasgoCuerpo {
         oficial: boolean;
     };
 }
-
-/** Respuesta del alta y de la edición: el rasgo como lo da su `GET`. */
-export interface RasgoGuardado {
-    message: string;
-    idRasgo: number;
-    rasgo: Rasgo;
-}

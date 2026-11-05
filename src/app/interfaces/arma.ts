@@ -65,9 +65,3 @@ export interface ArmaCuerpo {
     };
     propiedades: { id_propiedad: number; valor: number | null; }[];
 }
-
-export interface ArmaGuardada {
-    message: string;
-    idArma: number;
-    arma: ArmaDetalle;
-}

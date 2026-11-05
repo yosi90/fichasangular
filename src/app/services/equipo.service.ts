@@ -2,7 +2,7 @@ import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Injectable, Optional } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Database } from '@angular/fire/database';
-import { Observable, firstValueFrom, map } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import {
     ConjuntoObjetosCuerpo,
@@ -11,7 +11,6 @@ import {
     EncantamientoDetalle,
     EntradaEquipo,
     EquipoCatalogos,
-    EquipoGuardado,
     FiltrosObjetos,
     MaterialCuerpo,
     MaterialDetalle,
@@ -24,8 +23,7 @@ import {
 } from '../interfaces/equipo';
 import { AvisosFalloApi, EscuchaRtdb, cabecerasDePagina, cacheRtdbOApi, escucharCatalogo } from './catalogo-api';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { cabeceraApiConFirebase } from './platform-session.service';
-import { ElementoDeCatalogo, errorDeCatalogo } from './utils/error-catalogo';
+import { EscrituraDeCatalogo, guardarEnCatalogo } from './escritura-de-catalogo';
 import { esFilaComodin } from './utils/comodin';
 import {
     normalizeConjuntoObjetos,
@@ -38,7 +36,7 @@ import {
 import { APTITUD_EQUIPO, CONJUNTO_OBJETOS, MATERIAL, MUNICION, OBJETO } from './utils/nombres-de-catalogo';
 import { toArray, toNullableText } from './utils/normalizacion';
 import { porNombre } from './utils/orden-texto';
-import { leerRespuestaDeEscritura } from './utils/respuesta-de-escritura';
+import { EntradaGuardada } from './utils/respuesta-de-escritura';
 
 /** Cada catálogo pequeño del equipo: su ruta de la API, su caché de la RTDB y cómo se llama en los avisos. */
 interface CatalogoEquipo<T> {
@@ -47,17 +45,6 @@ interface CatalogoEquipo<T> {
     normalizar: (raw: any) => T;
     noEncontrado: string;
     error: string;
-}
-
-/**
- * Cómo se escribe cada catálogo (segunda parte del hito 7: `POST <ruta>/add` y `PUT <ruta>/<id>`, el mismo cuerpo):
- * su ruta y su normalizador (los de su lectura), la clave de la entrada y de su id en la respuesta y su nombre en los
- * errores.
- */
-interface EscrituraEquipo<T> extends Pick<CatalogoEquipo<T>, 'url' | 'normalizar'> {
-    clave: string;
-    claveId: string;
-    nombre: ElementoDeCatalogo;
 }
 
 const MATERIALES: CatalogoEquipo<MaterialDetalle> = {
@@ -77,16 +64,16 @@ const CONJUNTOS: CatalogoEquipo<ConjuntoObjetosDetalle> = {
     noEncontrado: 'Conjunto de objetos no encontrado', error: 'Error al obtener el conjunto de objetos',
 };
 
-const ESCRITURA_MUNICION: EscrituraEquipo<MunicionDetalle> = { ...MUNICIONES, clave: 'municion', claveId: 'idMunicion', nombre: MUNICION };
-const ESCRITURA_MATERIAL: EscrituraEquipo<MaterialDetalle> = { ...MATERIALES, clave: 'material', claveId: 'idMaterial', nombre: MATERIAL };
-const ESCRITURA_ENCANTAMIENTO: EscrituraEquipo<EncantamientoDetalle> = {
+const ESCRITURA_MUNICION: EscrituraDeCatalogo<MunicionDetalle> = { ...MUNICIONES, clave: 'municion', claveId: 'idMunicion', nombre: MUNICION };
+const ESCRITURA_MATERIAL: EscrituraDeCatalogo<MaterialDetalle> = { ...MATERIALES, clave: 'material', claveId: 'idMaterial', nombre: MATERIAL };
+const ESCRITURA_ENCANTAMIENTO: EscrituraDeCatalogo<EncantamientoDetalle> = {
     ...ENCANTAMIENTOS, clave: 'encantamiento', claveId: 'idEncantamiento', nombre: APTITUD_EQUIPO,
 };
 // Los objetos no tienen caché (catálogo grande, paginado): su lectura por id es la misma `fresca`.
-const ESCRITURA_OBJETO: EscrituraEquipo<ObjetoDetalle> = {
+const ESCRITURA_OBJETO: EscrituraDeCatalogo<ObjetoDetalle> = {
     url: 'objetos', clave: 'objeto', claveId: 'idObjeto', normalizar: normalizeObjeto, nombre: OBJETO,
 };
-const ESCRITURA_CONJUNTO: EscrituraEquipo<ConjuntoObjetosDetalle> = {
+const ESCRITURA_CONJUNTO: EscrituraDeCatalogo<ConjuntoObjetosDetalle> = {
     ...CONJUNTOS, clave: 'conjunto', claveId: 'idConjunto', nombre: CONJUNTO_OBJETOS,
 };
 
@@ -190,24 +177,13 @@ export class EquipoService {
         }
     }
 
-    private fresca<T>(escritura: EscrituraEquipo<T>, id: number): Observable<T> {
+    private fresca<T>(escritura: EscrituraDeCatalogo<T>, id: number): Observable<T> {
         return this.http.get(`${environment.apiUrl}${escritura.url}/${Math.trunc(Number(id))}`).pipe(map((raw) => escritura.normalizar(raw)));
     }
 
-    /** `POST <ruta>/add` (sin `id`) o `PUT <ruta>/<id>`: la entrada entera; el error, con su `code` y su `field`. */
-    private async escribir<T>(escritura: EscrituraEquipo<T>, id: number | null, cuerpo: unknown): Promise<EquipoGuardado<T>> {
-        const editando = id !== null;
-        try {
-            const headers = await cabeceraApiConFirebase(this.auth);
-            const base = `${environment.apiUrl}${escritura.url}`;
-            const respuesta = await firstValueFrom(editando
-                ? this.http.put<any>(`${base}/${Math.trunc(Number(id))}`, cuerpo, { headers })
-                : this.http.post<any>(`${base}/add`, cuerpo, { headers }));
-            const { message, id: idGuardado } = leerRespuestaDeEscritura(respuesta, escritura.claveId);
-            return { message, id: idGuardado, entrada: escritura.normalizar((respuesta as any)?.[escritura.clave]) };
-        } catch (error: unknown) {
-            throw errorDeCatalogo(error, editando ? 'actualizar' : 'crear', escritura.nombre);
-        }
+    /** `POST <ruta>/add` (sin `id`) o `PUT <ruta>/<id>`, con la sesión de la API (`guardarEnCatalogo`). */
+    private escribir<T>(escritura: EscrituraDeCatalogo<T>, id: number | null, cuerpo: unknown): Promise<EntradaGuardada<T>> {
+        return guardarEnCatalogo(this.http, this.auth, escritura, id, cuerpo);
     }
 
     private lista<T extends { Id: number; Nombre: string }>(catalogo: CatalogoEquipo<T>): Observable<T[]> {

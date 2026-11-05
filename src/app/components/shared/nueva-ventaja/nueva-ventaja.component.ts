@@ -182,11 +182,11 @@ export class NuevaVentajaComponent implements OnInit, OnDestroy, OnChanges, Edit
                 : await this.ventajaSvc.crearVentaja(this.tipo, this.cuerpo());
             await avisarGuardado(nombre, editando, guardada.message);
             if (editando) {
-                this.hidratar(guardada.ventaja);
-                this.ventajaActualizada.emit(guardada.ventaja);
+                this.hidratar(guardada.entrada);
+                this.ventajaActualizada.emit(guardada.entrada);
                 this.cerrar.emit();
             } else {
-                this.ventajaCreada.emit(guardada.ventaja);
+                this.ventajaCreada.emit(guardada.entrada);
                 this.reiniciar();
             }
         } catch (error: unknown) {

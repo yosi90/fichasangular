@@ -78,7 +78,7 @@ describe('NuevoChakraComponent', () => {
 
     it('un chakra nuevo sin ranura, como el tótem', async () => {
         await montar();
-        incarnumSvc.guardarChakra.and.resolveTo({ message: 'Chakra creado exitosamente', idChakra: 45, chakra: normalizarChakraDetalle({ Id: 45, Orden: 12 }) });
+        incarnumSvc.guardarChakra.and.resolveTo({ message: 'Chakra creado exitosamente', id: 45, entrada: normalizarChakraDetalle({ Id: 45, Orden: 12 }) });
         component.form.patchValue({ nombre: 'Cola', id_categoria: 19, descripcion: 'Propio.' });
 
         await component.guardar();

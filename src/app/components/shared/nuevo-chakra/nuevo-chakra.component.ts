@@ -131,12 +131,12 @@ export class NuevoChakraComponent implements OnInit, OnDestroy, OnChanges, Edito
             const guardado = await this.incarnumSvc.guardarChakra(this.cuerpo(), editando ? this.edicion.id : null);
             await avisarGuardado(CHAKRA, editando, guardado.message);
             if (editando) {
-                this.hidratar(guardado.chakra);
-                this.chakraActualizado.emit(guardado.chakra);
+                this.hidratar(guardado.entrada);
+                this.chakraActualizado.emit(guardado.entrada);
                 this.cerrar.emit();
             } else {
-                this.chakraCreado.emit(guardado.chakra);
-                this.chakras = [...this.chakras, guardado.chakra];
+                this.chakraCreado.emit(guardado.entrada);
+                this.chakras = [...this.chakras, guardado.entrada];
                 this.reiniciar();
             }
         } catch (error: unknown) {

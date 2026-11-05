@@ -36,7 +36,7 @@ import { avisarGuardado, avisarSinPermisos, elCatalogo } from '../insercion-marc
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, OpcionesErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
-import { alternarControl, elegirEnControl, vaciarControl } from '../insercion-marco/filas-repetibles';
+import { alternarControl, elegirEnControl, uidDeFila, vaciarControl } from '../insercion-marco/filas-repetibles';
 
 type EntradaObjeto = ObjetoDetalle | ConjuntoObjetosDetalle;
 
@@ -70,8 +70,6 @@ const CAMPOS: CamposDeFormulario = Object.fromEntries(([
     ['nivel_conjuro_maximo', 'Nivel de conjuro máximo', 2], ['usos_componente_caro', 'Componente caro', 2],
     ['piezas', 'Piezas', 0], ['bonificaciones', 'Bonificaciones', 0],
 ] as const).map(([clave, etiqueta, paso]) => [clave, { etiqueta, paso }]));
-
-let contadorFilas = 0;
 
 /**
  * «Insertar/Modificar objeto» y «… conjunto de objetos» (segunda parte del hito 7 del roadmap de inserciones; guía de
@@ -292,7 +290,7 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     anadirActivacion(): void {
-        this.filas.activaciones = [...this.filas.activaciones, { uid: this.uid(), id_tipo_activacion: null, id_tipo_accion: null }];
+        this.filas.activaciones = [...this.filas.activaciones, { uid: uidDeFila('objeto-fila'), id_tipo_activacion: null, id_tipo_accion: null }];
         this.alCambiar();
     }
 
@@ -349,7 +347,7 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
     readonly mostrarPieza = (): string => this.textoPieza;
 
     anadirBonificacion(): void {
-        this.filas.bonificaciones = [...this.filas.bonificaciones, { uid: this.uid(), piezas: null, descripcion: '' }];
+        this.filas.bonificaciones = [...this.filas.bonificaciones, { uid: uidDeFila('objeto-fila'), piezas: null, descripcion: '' }];
         this.alCambiar();
     }
 
@@ -476,7 +474,7 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
         this.cargada = entrada;
         this.problema = null;
         this.errores.limpiar();
-        const uid = () => this.uid();
+        const uid = () => uidDeFila('objeto-fila');
         if (this.esObjeto) {
             this.form.reset(valoresDeObjeto(entrada as ObjetoDetalle) as any, { emitEvent: false });
             this.filas = filasDeObjeto(entrada as ObjetoDetalle, uid);
@@ -513,10 +511,5 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
 
     private actualizarPermisos(): void {
         this.puedeCrear = puedeGestionarCatalogo(this.userSvc, this.definicion.listado);
-    }
-
-    private uid(): string {
-        contadorFilas += 1;
-        return `objeto-fila-${contadorFilas}`;
     }
 }

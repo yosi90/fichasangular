@@ -18,7 +18,7 @@ import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-ins
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
-import { FilaNombrada, alternarControl, elegirEnControl } from '../insercion-marco/filas-repetibles';
+import { FilaNombrada, alternarControl, elegirEnControl, uidDeFila } from '../insercion-marco/filas-repetibles';
 
 /** Los campos con su etiqueta, para llevar el error de la API (`field` `fusion.<clave>`, `chakras[0]`, `clases[1]`…). */
 const CAMPOS: CamposDeFormulario = Object.fromEntries(([
@@ -27,8 +27,6 @@ const CAMPOS: CamposDeFormulario = Object.fromEntries(([
     ['origen_descripcion', 'Origen de la descripción'], ['salvacion', 'Salvación'], ['chakras', 'Chakras'],
     ['clases', 'Clases'], ['descriptores', 'Descriptores'],
 ] as const).map(([clave, etiqueta]) => [clave, { etiqueta, paso: 0 }]));
-
-let contadorFilas = 0;
 
 /**
  * «Insertar/Modificar fusión» (hito 8 del roadmap de inserciones; contrato en `docs/publica/INCARNUM.md`): la fusión
@@ -183,7 +181,7 @@ export class NuevaFusionComponent implements OnInit, OnDestroy, OnChanges, Edito
         const opcion = opciones.find((item) => item.id === id);
         if (!opcion || this.idsDe(lista).includes(id))
             return;
-        this[lista] = [...this[lista], { uid: this.uid(), id, nombre: opcion.nombre }];
+        this[lista] = [...this[lista], { uid: uidDeFila('fusion-fila'), id, nombre: opcion.nombre }];
         this.alCambiar();
     }
 
@@ -231,11 +229,11 @@ export class NuevaFusionComponent implements OnInit, OnDestroy, OnChanges, Edito
             const guardada = await this.incarnumSvc.guardarFusion(this.cuerpo(), editando ? this.edicion.id : null);
             await avisarGuardado(FUSION, editando, guardada.message);
             if (editando) {
-                this.hidratar(guardada.fusion);
-                this.fusionActualizada.emit(guardada.fusion);
+                this.hidratar(guardada.entrada);
+                this.fusionActualizada.emit(guardada.entrada);
                 this.cerrar.emit();
             } else {
-                this.fusionCreada.emit(guardada.fusion);
+                this.fusionCreada.emit(guardada.entrada);
                 this.reiniciar();
             }
         } catch (error: unknown) {
@@ -259,9 +257,9 @@ export class NuevaFusionComponent implements OnInit, OnDestroy, OnChanges, Edito
         this.problema = null;
         this.errores.limpiar();
         this.form.reset(valoresDeFusion(fusion) as any, { emitEvent: false });
-        this.clases = (fusion.Clases ?? []).map((clase) => ({ uid: this.uid(), id: clase.Id, nombre: clase.Nombre }));
-        this.descriptores = (fusion.Descriptores ?? []).map((d) => ({ uid: this.uid(), id: d.Id, nombre: d.Nombre }));
-        this.chakras = filasDeChakrasDeFusion(fusion, () => this.uid());
+        this.clases = (fusion.Clases ?? []).map((clase) => ({ uid: uidDeFila('fusion-fila'), id: clase.Id, nombre: clase.Nombre }));
+        this.descriptores = (fusion.Descriptores ?? []).map((d) => ({ uid: uidDeFila('fusion-fila'), id: d.Id, nombre: d.Nombre }));
+        this.chakras = filasDeChakrasDeFusion(fusion, () => uidDeFila('fusion-fila'));
         this.edicion.tomarPuntoDePartida();
     }
 
@@ -275,7 +273,7 @@ export class NuevaFusionComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private filaChakraVacia(): FilaChakraFusion {
-        return { uid: this.uid(), id_chakra: null, ocupa: true, vinculo: true, efecto_vinculo: '' };
+        return { uid: uidDeFila('fusion-fila'), id_chakra: null, ocupa: true, vinculo: true, efecto_vinculo: '' };
     }
 
     private cargarCatalogos(): void {
@@ -288,10 +286,5 @@ export class NuevaFusionComponent implements OnInit, OnDestroy, OnChanges, Edito
 
     private actualizarPermisos(): void {
         this.puedeCrear = puedeGestionarCatalogo(this.userSvc, 'fusiones del alma');
-    }
-
-    private uid(): string {
-        contadorFilas += 1;
-        return `fusion-fila-${contadorFilas}`;
     }
 }

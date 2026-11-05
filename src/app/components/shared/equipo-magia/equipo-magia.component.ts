@@ -12,8 +12,7 @@ import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { FilaModificador, RelacionesMagicas, filaModificadorVacia } from 'src/app/services/utils/relaciones-equipo-formulario';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
-
-let contador = 0;
+import { uidDeFila } from '../insercion-marco/filas-repetibles';
 
 /**
  * Lo mágico que comparten las aptitudes especiales de armas y armaduras y los objetos en su alta y su edición (segunda
@@ -99,8 +98,7 @@ export class EquipoMagiaComponent implements OnInit, OnDestroy {
     }
 
     anadirModificador(): void {
-        contador += 1;
-        this.relaciones.modificadores = [...this.relaciones.modificadores, filaModificadorVacia(`modificador-${contador}`)];
+        this.relaciones.modificadores = [...this.relaciones.modificadores, filaModificadorVacia(uidDeFila('modificador'))];
         this.cambio.emit();
     }
 

@@ -84,7 +84,7 @@ describe('NuevaVentajaComponent', () => {
 
     it('al crear se elige el tipo: los puntos se escriben en positivo y el signo lo pone el tipo', async () => {
         await montar();
-        ventajaSvc.crearVentaja.and.resolveTo({ message: 'Desventaja creada exitosamente', id: 50, ventaja: normalizeVentaja({ Id: 50, Coste: 2 }) });
+        ventajaSvc.crearVentaja.and.resolveTo({ message: 'Desventaja creada exitosamente', id: 50, entrada: normalizeVentaja({ Id: 50, Coste: 2 }) });
         component.form.patchValue({ nombre: 'Patoso', id_manual: 65, pagina: 35, puntos: 2, mejora: -1 });
         component.alternar('destreza');
         component.elegirTipo('desventaja');

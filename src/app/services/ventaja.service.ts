@@ -2,13 +2,12 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
 import { Database, Unsubscribe, onValue, ref } from "@angular/fire/database";
-import { Observable, firstValueFrom, map } from "rxjs";
+import { Observable, map } from "rxjs";
 import { environment } from "src/environments/environment";
-import { TipoVentaja, VentajaCuerpo, VentajaDetalle, VentajaGuardada } from "../interfaces/ventaja";
-import { cabeceraApiConFirebase } from "./platform-session.service";
-import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { TipoVentaja, VentajaCuerpo, VentajaDetalle } from "../interfaces/ventaja";
+import { EscrituraDeCatalogo, guardarEnCatalogo } from "./escritura-de-catalogo";
 import { nombreDeVentaja } from "src/app/services/utils/nombres-de-catalogo";
-import { leerRespuestaDeEscritura } from "src/app/services/utils/respuesta-de-escritura";
+import { EntradaGuardada } from "src/app/services/utils/respuesta-de-escritura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { porNombre } from "src/app/services/utils/orden-texto";
@@ -157,24 +156,13 @@ export class VentajaService {
     }
 
     /** `POST /ventajas/add` o `/desventajas/add`: permiso de creación `ventajas` o `desventajas`. */
-    async crearVentaja(tipo: TipoVentaja, cuerpo: VentajaCuerpo): Promise<VentajaGuardada> {
-        try {
-            const headers = await cabeceraApiConFirebase(this.auth);
-            return respuestaDeVentaja(tipo, await firstValueFrom(this.http.post<any>(`${environment.apiUrl}${tipo}s/add`, cuerpo, { headers })));
-        } catch (error: unknown) {
-            throw errorDeCatalogo(error, 'crear', nombreDeVentaja(tipo));
-        }
+    crearVentaja(tipo: TipoVentaja, cuerpo: VentajaCuerpo): Promise<EntradaGuardada<VentajaDetalle>> {
+        return guardarEnCatalogo(this.http, this.auth, escrituraDe(tipo), null, cuerpo);
     }
 
     /** `PUT /<tipo>s/<id>`: la entrada entera, con el mismo cuerpo que el alta (el mismo permiso; el tipo no cambia). */
-    async actualizarVentaja(tipo: TipoVentaja, id: number, cuerpo: VentajaCuerpo): Promise<VentajaGuardada> {
-        try {
-            const headers = await cabeceraApiConFirebase(this.auth);
-            const url = `${environment.apiUrl}${tipo}s/${Math.trunc(Number(id))}`;
-            return respuestaDeVentaja(tipo, await firstValueFrom(this.http.put<any>(url, cuerpo, { headers })));
-        } catch (error: unknown) {
-            throw errorDeCatalogo(error, 'actualizar', nombreDeVentaja(tipo));
-        }
+    actualizarVentaja(tipo: TipoVentaja, id: number, cuerpo: VentajaCuerpo): Promise<EntradaGuardada<VentajaDetalle>> {
+        return guardarEnCatalogo(this.http, this.auth, escrituraDe(tipo), id, cuerpo);
     }
 
     getVentajas(): Observable<VentajaDetalle[]> {
@@ -217,9 +205,8 @@ export class VentajaService {
 
 }
 
-/** `{ message, idVentaja, ventaja }` o `{ message, idDesventaja, desventaja }`. */
-function respuestaDeVentaja(tipo: TipoVentaja, respuesta: unknown): VentajaGuardada {
-    const clave = tipo === 'ventaja' ? 'idVentaja' : 'idDesventaja';
-    const { message, id } = leerRespuestaDeEscritura(respuesta, clave);
-    return { message, id, ventaja: normalizeVentaja((respuesta as any)?.[tipo]) };
+/** `/ventajas` con `{ message, idVentaja, ventaja }` o `/desventajas` con `{ message, idDesventaja, desventaja }`. */
+function escrituraDe(tipo: TipoVentaja): EscrituraDeCatalogo<VentajaDetalle> {
+    const claveId = tipo === 'ventaja' ? 'idVentaja' : 'idDesventaja';
+    return { url: `${tipo}s`, clave: tipo, claveId, normalizar: normalizeVentaja, nombre: nombreDeVentaja(tipo) };
 }

@@ -16,6 +16,17 @@ export function quitarFila<T>(filas: readonly T[], indice: number, vacia: () => 
     return resto.length > 0 ? resto : [vacia()];
 }
 
+let filasCreadas = 0;
+
+/**
+ * El `uid` de una fila repetible nueva (`<prefijo>-<n>`), para su `trackBy` y para llevarle el error de la API: único en
+ * toda la sesión, así que vale también para las filas que una pantalla reparte con sus piezas (`<app-equipo-magia>`).
+ */
+export function uidDeFila(prefijo: string): string {
+    filasCreadas += 1;
+    return `${prefijo}-${filasCreadas}`;
+}
+
 /** Alterna un control de sí o no (el chip «Oficial» y los demás chips de estado) y lo marca como tocado. */
 export function alternarControl(control: AbstractControl): void {
     control.setValue(control.value !== true);

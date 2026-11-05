@@ -197,7 +197,7 @@ describe('NuevoEquipoComponent', () => {
     it('modificar guarda con PUT, avisa y emite el arma de la API', async () => {
         const { get } = IDA_Y_VUELTA_EQUIPO.armas.find((entrada) => entrada.get.Propiedades.length > 0)!;
         await montar('arma', 'editar', get);
-        armaSvc.actualizarArma.and.resolveTo({ message: 'Arma actualizada exitosamente', idArma: get.Id, arma: normalizeArma(get) });
+        armaSvc.actualizarArma.and.resolveTo({ message: 'Arma actualizada exitosamente', id: get.Id, entrada: normalizeArma(get) });
         const actualizada = jasmine.createSpy('actualizada');
         component.equipoActualizado.subscribe(actualizada);
         component.form.controls.precio.setValue(99);
@@ -213,7 +213,7 @@ describe('NuevoEquipoComponent', () => {
 
     it('un arma nueva: Mediana por defecto, sin material y con sus propiedades', async () => {
         await montar('arma');
-        armaSvc.crearArma.and.resolveTo({ message: 'Arma creada exitosamente', idArma: 300, arma: normalizeArma({ Id: 300 }) });
+        armaSvc.crearArma.and.resolveTo({ message: 'Arma creada exitosamente', id: 300, entrada: normalizeArma({ Id: 300 }) });
         component.form.patchValue({
             nombre: 'Espada de fuego', id_manual: 54, pagina: 3, precio: 15, peso: 4, id_tipo_dano: 3, id_tipo_arma: 2,
             id_manejo: 3, dano_pequeno: '1D6', dano_mediano: '1d8', critico_multiplicador: 2, critico_rango: 19, oficial: false,

@@ -6,6 +6,11 @@ export interface RespuestaDeEscritura {
     id: number;
 }
 
+/** La respuesta del alta y de la edición, con la entrada guardada ya normalizada (`guardarEnCatalogo`). */
+export interface EntradaGuardada<T> extends RespuestaDeEscritura {
+    entrada: T;
+}
+
 /**
  * Lee `{ message, id<Tipo>, <tipo> }`, la respuesta del alta y de la edición de los catálogos que van por el flujo común
  * de la API (`CATALOGOS_ALTA_Y_EDICION_FRONT.md`): el `message` (o `mensajePorDefecto`) y el id de `claveId`. Sin un id

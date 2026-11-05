@@ -93,7 +93,7 @@ describe('NuevaFusionComponent', () => {
 
     it('una fusión nueva con un chakra donde moldearla, su clase y su descriptor', async () => {
         await montar();
-        incarnumSvc.guardarFusion.and.resolveTo({ message: 'Fusión creada exitosamente', idFusion: 400, fusion: normalizarFusion({ Id: 400 }) });
+        incarnumSvc.guardarFusion.and.resolveTo({ message: 'Fusión creada exitosamente', id: 400, entrada: normalizarFusion({ Id: 400 }) });
         component.form.patchValue({ nombre: 'Capa de bruma', id_manual: 65, pagina: 3, salvacion_efecto: 'Ver texto' });
         component.chakras[0].id_chakra = 39;
         component.anadir('clases', 405);

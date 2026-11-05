@@ -63,7 +63,7 @@ describe('NuevoRasgoComponent', () => {
 
     it('un rasgo nuevo: con el permiso de rasgos, lo crea, avisa y vuelve a quedar vacío', async () => {
         await montar();
-        rasgoSvc.crearRasgo.and.resolveTo({ message: 'Rasgo creado exitosamente', idRasgo: 90, rasgo: normalizeRasgoApi({ i: 90, n: 'Vista ciega', d: '', o: false }) });
+        rasgoSvc.crearRasgo.and.resolveTo({ message: 'Rasgo creado exitosamente', id: 90, entrada: normalizeRasgoApi({ i: 90, n: 'Vista ciega', d: '', o: false }) });
         const creado = jasmine.createSpy('creado');
         component.rasgoCreado.subscribe(creado);
         component.form.patchValue({ nombre: '  Vista ciega ', descripcion: '' });
@@ -102,7 +102,7 @@ describe('NuevoRasgoComponent', () => {
     it('modificar: «Guardar cambios» manda PUT con lo cambiado y emite el rasgo de la API', async () => {
         const { get } = IDA_Y_VUELTA_RASGOS_VENTAJAS_INCARNUM.rasgos[0];
         await montar('editar', get);
-        rasgoSvc.actualizarRasgo.and.resolveTo({ message: 'Rasgo actualizado exitosamente', idRasgo: get.i, rasgo: normalizeRasgoApi(get) });
+        rasgoSvc.actualizarRasgo.and.resolveTo({ message: 'Rasgo actualizado exitosamente', id: get.i, entrada: normalizeRasgoApi(get) });
         const actualizado = jasmine.createSpy('actualizado');
         component.rasgoActualizado.subscribe(actualizado);
         component.form.controls.descripcion.setValue('Otra.');

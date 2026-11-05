@@ -1,13 +1,12 @@
 import { Auth } from "@angular/fire/auth";
-import { ArmaCuerpo, ArmaGuardada } from "../interfaces/arma";
-import { cabeceraApiConFirebase } from "./platform-session.service";
-import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
+import { ArmaCuerpo } from "../interfaces/arma";
+import { EscrituraDeCatalogo, guardarEnCatalogo } from "./escritura-de-catalogo";
 import { ARMA } from "src/app/services/utils/nombres-de-catalogo";
-import { leerRespuestaDeEscritura } from "src/app/services/utils/respuesta-de-escritura";
+import { EntradaGuardada } from "src/app/services/utils/respuesta-de-escritura";
 import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Database } from "@angular/fire/database";
-import { Observable, firstValueFrom, map } from "rxjs";
+import { Observable, map } from "rxjs";
 import { environment } from "src/environments/environment";
 import { ArmaDetalle } from "../interfaces/arma";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
@@ -93,29 +92,16 @@ export class ArmaService {
     }
 
     /** `POST /armas/add`: permiso de creación `armas`. */
-    async crearArma(cuerpo: ArmaCuerpo): Promise<ArmaGuardada> {
-        try {
-            const headers = await cabeceraApiConFirebase(this.auth);
-            const respuesta = await firstValueFrom(this.http.post<any>(`${environment.apiUrl}armas/add`, cuerpo, { headers }));
-            return respuestaDeArma(respuesta);
-        } catch (error: unknown) {
-            throw errorDeCatalogo(error, 'crear', ARMA);
-        }
+    crearArma(cuerpo: ArmaCuerpo): Promise<EntradaGuardada<ArmaDetalle>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_ARMA, null, cuerpo);
     }
 
     /** `PUT /armas/<id>`: el arma entera, con el mismo cuerpo que el alta (el mismo permiso). */
-    async actualizarArma(id: number, cuerpo: ArmaCuerpo): Promise<ArmaGuardada> {
-        try {
-            const headers = await cabeceraApiConFirebase(this.auth);
-            const respuesta = await firstValueFrom(this.http.put<any>(`${environment.apiUrl}armas/${Math.trunc(Number(id))}`, cuerpo, { headers }));
-            return respuestaDeArma(respuesta);
-        } catch (error: unknown) {
-            throw errorDeCatalogo(error, 'actualizar', ARMA);
-        }
+    actualizarArma(id: number, cuerpo: ArmaCuerpo): Promise<EntradaGuardada<ArmaDetalle>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_ARMA, id, cuerpo);
     }
 }
 
-function respuestaDeArma(respuesta: unknown): ArmaGuardada {
-    const { message, id } = leerRespuestaDeEscritura(respuesta, 'idArma');
-    return { message, idArma: id, arma: normalizeArma((respuesta as any)?.arma) };
-}
+const ESCRITURA_ARMA: EscrituraDeCatalogo<ArmaDetalle> = {
+    url: 'armas', clave: 'arma', claveId: 'idArma', normalizar: normalizeArma, nombre: ARMA,
+};

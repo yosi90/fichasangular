@@ -159,9 +159,9 @@
         color: $ficha-texto
 
 // Las listas de filas de las tarjetas del equipo (`nuevo-equipo`, `nuevo-objeto` y `<app-equipo-magia>`: las propiedades
-// del arma, los costes del material, los daños, las activaciones, los conjuros, los requisitos, los modificadores…): el
-// aviso de la lista vacía, la fila (las columnas las pone cada lista), su nombre y el error de la lista. Las de las
-// tarjetas de rasgos (abajo) son casi iguales, con otros márgenes y su forma en el móvil.
+// del arma, los costes del material, los daños, las activaciones, los conjuros, los requisitos, los modificadores…) y de
+// las tarjetas de rasgos (abajo): el aviso de la lista vacía, la fila (las columnas las pone cada lista), su nombre y el
+// error de la lista. Las tarjetas de rasgos les quitan los márgenes y les dan su forma en el móvil.
 @mixin lista-vacia
     margin: 0 0 8px
     padding: 12px
@@ -267,21 +267,13 @@
         gap: 8px
 
     .#{$p}-rasgo__vacio
+        @include lista-vacia
         margin: 0
-        padding: 12px
-        border: 1px dashed rgba(255, 255, 255, .22)
-        border-radius: $ficha-radio
-        font-size: 13px
-        color: $ficha-texto-suave
-        text-align: center
 
     .#{$p}-fila
-        display: grid
+        @include fila-de-lista
         grid-template-columns: minmax(0, 1fr) 92px 42px
-        gap: 8px
-        align-items: center
-        padding-bottom: 6px
-        border-bottom: 1px solid rgba(255, 255, 255, .06)
+        margin-bottom: 0
 
         &:has(mat-select)
             grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr) 42px
@@ -296,15 +288,12 @@
         grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr) minmax(0, 1fr) 42px
 
     .#{$p}-fila__nombre
+        @include nombre-de-fila
         min-width: 0
-        font-size: 14px
-        color: $ficha-blanco
-        overflow-wrap: anywhere
 
     .#{$p}-error
+        @include error-de-lista
         margin: 0
-        font-size: 13px
-        color: var(--mat-form-field-error-text-color, #f44336)
 
     @container insercion (max-width: 1100px)
         .#{$p}-rasgos

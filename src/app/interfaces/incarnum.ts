@@ -113,12 +113,6 @@ export interface FusionCuerpo {
     chakras: FusionChakraCuerpo[];
 }
 
-export interface FusionGuardada {
-    message: string;
-    idFusion: number;
-    fusion: Fusion;
-}
-
 /** Cuerpo de `POST /incarnum/chakras/add` y `PUT /incarnum/chakras/<id>`: solo su fila. */
 export interface ChakraCuerpo {
     chakra: {
@@ -131,12 +125,6 @@ export interface ChakraCuerpo {
         descripcion: string;
         oficial: boolean;
     };
-}
-
-export interface ChakraGuardado {
-    message: string;
-    idChakra: number;
-    chakra: ChakraDetalle;
 }
 
 /** `GET /incarnum/capacidad-esencia`: un tramo de la tabla 2-1; el último no tiene tope y sube cada `Incremento_cada`. */

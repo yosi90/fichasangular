@@ -2,20 +2,26 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { Database } from '@angular/fire/database';
-import { Observable, firstValueFrom, map, shareReplay } from 'rxjs';
+import { Observable, map, shareReplay } from 'rxjs';
 import { environment } from 'src/environments/environment';
 import {
-    CapacidadEsencia, Chakra, ChakraCuerpo, ChakraDetalle, ChakraGuardado, Fusion, FusionCuerpo, FusionGuardada,
+    CapacidadEsencia, Chakra, ChakraCuerpo, ChakraDetalle, Fusion, FusionCuerpo,
 } from '../interfaces/incarnum';
 import { EscuchaRtdb, cacheRtdbOApi, escucharCatalogo } from './catalogo-api';
+import { EscrituraDeCatalogo, guardarEnCatalogo } from './escritura-de-catalogo';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { cabeceraApiConFirebase } from './platform-session.service';
-import { errorDeCatalogo } from './utils/error-catalogo';
 import { CHAKRA, FUSION } from './utils/nombres-de-catalogo';
-import { leerRespuestaDeEscritura } from './utils/respuesta-de-escritura';
+import { EntradaGuardada } from './utils/respuesta-de-escritura';
 import { normalizarCapacidadEsencia, normalizarChakra, normalizarChakraDetalle, normalizarFusion } from './utils/incarnum-mapper';
 import { toArray } from './utils/normalizacion';
 import { porNombre } from './utils/orden-texto';
+
+const ESCRITURA_FUSION: EscrituraDeCatalogo<Fusion> = {
+    url: 'incarnum/fusiones', clave: 'fusion', claveId: 'idFusion', normalizar: normalizarFusion, nombre: FUSION,
+};
+const ESCRITURA_CHAKRA: EscrituraDeCatalogo<ChakraDetalle> = {
+    url: 'incarnum/chakras', clave: 'chakra', claveId: 'idChakra', normalizar: normalizarChakraDetalle, nombre: CHAKRA,
+};
 
 /** Los chakras van en su orden (corona, pies… tótem), no por nombre. */
 function porOrden(a: Chakra, b: Chakra): number {
@@ -49,31 +55,13 @@ export class IncarnumService {
     }
 
     /** `POST /incarnum/fusiones/add` o, con `id`, `PUT /incarnum/fusiones/<id>`: permiso de creación `clases`. */
-    async guardarFusion(cuerpo: FusionCuerpo, id: number | null = null): Promise<FusionGuardada> {
-        try {
-            const headers = await cabeceraApiConFirebase(this.auth);
-            const respuesta = id === null
-                ? await firstValueFrom(this.http.post<any>(`${environment.apiUrl}incarnum/fusiones/add`, cuerpo, { headers }))
-                : await firstValueFrom(this.http.put<any>(`${environment.apiUrl}incarnum/fusiones/${Math.trunc(id)}`, cuerpo, { headers }));
-            const { message, id: idFusion } = leerRespuestaDeEscritura(respuesta, 'idFusion');
-            return { message, idFusion, fusion: normalizarFusion(respuesta?.fusion) };
-        } catch (error: unknown) {
-            throw errorDeCatalogo(error, id === null ? 'crear' : 'actualizar', FUSION);
-        }
+    guardarFusion(cuerpo: FusionCuerpo, id: number | null = null): Promise<EntradaGuardada<Fusion>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_FUSION, id, cuerpo);
     }
 
     /** `POST /incarnum/chakras/add` o, con `id`, `PUT /incarnum/chakras/<id>`: permiso de creación `clases`. */
-    async guardarChakra(cuerpo: ChakraCuerpo, id: number | null = null): Promise<ChakraGuardado> {
-        try {
-            const headers = await cabeceraApiConFirebase(this.auth);
-            const respuesta = id === null
-                ? await firstValueFrom(this.http.post<any>(`${environment.apiUrl}incarnum/chakras/add`, cuerpo, { headers }))
-                : await firstValueFrom(this.http.put<any>(`${environment.apiUrl}incarnum/chakras/${Math.trunc(id)}`, cuerpo, { headers }));
-            const { message, id: idChakra } = leerRespuestaDeEscritura(respuesta, 'idChakra');
-            return { message, idChakra, chakra: normalizarChakraDetalle(respuesta?.chakra) };
-        } catch (error: unknown) {
-            throw errorDeCatalogo(error, id === null ? 'crear' : 'actualizar', CHAKRA);
-        }
+    guardarChakra(cuerpo: ChakraCuerpo, id: number | null = null): Promise<EntradaGuardada<ChakraDetalle>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_CHAKRA, id, cuerpo);
     }
 
     private escuchar(ruta: string): EscuchaRtdb {

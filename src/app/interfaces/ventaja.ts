@@ -69,9 +69,3 @@ export interface VentajaCampos {
 }
 
 export type VentajaCuerpo = { ventaja: VentajaCampos; } | { desventaja: VentajaCampos; };
-
-export interface VentajaGuardada {
-    message: string;
-    id: number;
-    ventaja: VentajaDetalle;
-}

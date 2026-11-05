@@ -54,9 +54,3 @@ export interface ArmaduraCuerpo {
         tiempo_quitar: string | null;
     };
 }
-
-export interface ArmaduraGuardada {
-    message: string;
-    idArmadura: number;
-    armadura: ArmaduraDetalle;
-}

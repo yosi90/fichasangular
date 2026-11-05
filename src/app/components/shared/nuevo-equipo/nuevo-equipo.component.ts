@@ -41,7 +41,7 @@ import { avisarGuardado, avisarSinPermisos, elCatalogo } from '../insercion-marc
 import { EdicionDeCatalogo, cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { CamposDeFormulario, ErroresDeFormulario, OpcionesErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
-import { alternarControl, elegirEnControl, vaciarControl } from '../insercion-marco/filas-repetibles';
+import { alternarControl, elegirEnControl, uidDeFila, vaciarControl } from '../insercion-marco/filas-repetibles';
 
 type EntradaEquipo = ArmaDetalle | ArmaduraDetalle | MunicionDetalle | MaterialDetalle | EncantamientoDetalle;
 
@@ -92,8 +92,6 @@ const CAMPOS: CamposDeFormulario = Object.fromEntries(([
 
 /** Los multiplicadores de crítico de la base (×2 … ×8). */
 const MULTIPLICADORES = [2, 3, 4, 5, 6, 7, 8];
-
-let contadorFilas = 0;
 
 /**
  * «Insertar/Modificar» arma, armadura, munición, material especial y aptitud especial de armas y armaduras (hito 7 del
@@ -389,7 +387,7 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
 
     anadirPropiedad(id: number): void {
         if (id > 0 && !this.idsPropiedades.includes(id)) {
-            this.filas.propiedades = [...this.filas.propiedades, { uid: this.uid(), id_propiedad: id, valor: null }];
+            this.filas.propiedades = [...this.filas.propiedades, { uid: uidDeFila('equipo-fila'), id_propiedad: id, valor: null }];
             this.alCambiar();
         }
     }
@@ -401,7 +399,7 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
 
     anadirCoste(): void {
         this.filas.costes = [...this.filas.costes, {
-            uid: this.uid(), id_aplicacion: null, coste: null, coste_por_libra: null, multiplicador_precio: null, coste_encantar: null,
+            uid: uidDeFila('equipo-fila'), id_aplicacion: null, coste: null, coste_por_libra: null, multiplicador_precio: null, coste_encantar: null,
         }];
         this.alCambiar();
     }
@@ -412,7 +410,7 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     anadirDano(): void {
-        this.filas.danos = [...this.filas.danos, { uid: this.uid(), dados: '', id_tipo_dano: null, condicion: '' }];
+        this.filas.danos = [...this.filas.danos, { uid: uidDeFila('equipo-fila'), dados: '', id_tipo_dano: null, condicion: '' }];
         this.alCambiar();
     }
 
@@ -550,14 +548,10 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
         const id = this.edicion.id;
         const cuerpo = this.cuerpo() as any;
         switch (this.tipo) {
-            case 'arma': {
-                const r = editando ? await this.armaSvc.actualizarArma(id, cuerpo) : await this.armaSvc.crearArma(cuerpo);
-                return { message: r.message, entrada: r.arma };
-            }
-            case 'armadura': {
-                const r = editando ? await this.armaduraSvc.actualizarArmadura(id, cuerpo) : await this.armaduraSvc.crearArmadura(cuerpo);
-                return { message: r.message, entrada: r.armadura };
-            }
+            case 'arma':
+                return editando ? this.armaSvc.actualizarArma(id, cuerpo) : this.armaSvc.crearArma(cuerpo);
+            case 'armadura':
+                return editando ? this.armaduraSvc.actualizarArmadura(id, cuerpo) : this.armaduraSvc.crearArmadura(cuerpo);
             case 'municion':
                 return editando ? this.equipoSvc.actualizarMunicion(id, cuerpo) : this.equipoSvc.crearMunicion(cuerpo);
             case 'material':
@@ -581,7 +575,7 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
         this.cargada = entrada;
         this.problema = null;
         this.errores.limpiar();
-        const uid = () => this.uid();
+        const uid = () => uidDeFila('equipo-fila');
         let valores: ValoresEquipo = valoresVacios();
         let filas = filasVacias();
         switch (this.tipo) {
@@ -646,10 +640,5 @@ export class NuevoEquipoComponent implements OnInit, OnDestroy, OnChanges, Edito
 
     private actualizarPermisos(): void {
         this.puedeCrear = puedeGestionarCatalogo(this.userSvc, this.definicion.listado);
-    }
-
-    private uid(): string {
-        contadorFilas += 1;
-        return `equipo-fila-${contadorFilas}`;
     }
 }

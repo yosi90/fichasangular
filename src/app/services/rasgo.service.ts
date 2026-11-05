@@ -2,15 +2,14 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Auth } from "@angular/fire/auth";
 import { Database, Unsubscribe, onValue, ref } from '@angular/fire/database';
-import { Observable, firstValueFrom, map } from "rxjs";
+import { Observable, map } from "rxjs";
 import { environment } from "src/environments/environment";
-import { Rasgo, RasgoCuerpo, RasgoGuardado } from "../interfaces/rasgo";
+import { Rasgo, RasgoCuerpo } from "../interfaces/rasgo";
+import { EscrituraDeCatalogo, guardarEnCatalogo } from "./escritura-de-catalogo";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { cabeceraApiConFirebase } from "./platform-session.service";
-import { errorDeCatalogo } from 'src/app/services/utils/error-catalogo';
 import { RASGO } from 'src/app/services/utils/nombres-de-catalogo';
 import { toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
-import { leerRespuestaDeEscritura } from 'src/app/services/utils/respuesta-de-escritura';
+import { EntradaGuardada } from 'src/app/services/utils/respuesta-de-escritura';
 
 /** `RasgoDetalle` de la API (`GET /rasgos/<id>` y la respuesta del alta y la edición): claves cortas `i`, `n`, `d`, `o`. */
 export function normalizeRasgoApi(raw: any): Rasgo {
@@ -40,24 +39,13 @@ export class RasgoService {
     }
 
     /** `POST /rasgos/add`: permiso de creación `rasgos`. */
-    async crearRasgo(cuerpo: RasgoCuerpo): Promise<RasgoGuardado> {
-        try {
-            const headers = await cabeceraApiConFirebase(this.auth);
-            return respuestaDeRasgo(await firstValueFrom(this.http.post<any>(`${environment.apiUrl}rasgos/add`, cuerpo, { headers })));
-        } catch (error: unknown) {
-            throw errorDeCatalogo(error, 'crear', RASGO);
-        }
+    crearRasgo(cuerpo: RasgoCuerpo): Promise<EntradaGuardada<Rasgo>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_RASGO, null, cuerpo);
     }
 
     /** `PUT /rasgos/<id>`: el rasgo entero, con el mismo cuerpo que el alta (el mismo permiso). */
-    async actualizarRasgo(id: number, cuerpo: RasgoCuerpo): Promise<RasgoGuardado> {
-        try {
-            const headers = await cabeceraApiConFirebase(this.auth);
-            const url = `${environment.apiUrl}rasgos/${Math.trunc(Number(id))}`;
-            return respuestaDeRasgo(await firstValueFrom(this.http.put<any>(url, cuerpo, { headers })));
-        } catch (error: unknown) {
-            throw errorDeCatalogo(error, 'actualizar', RASGO);
-        }
+    actualizarRasgo(id: number, cuerpo: RasgoCuerpo): Promise<EntradaGuardada<Rasgo>> {
+        return guardarEnCatalogo(this.http, this.auth, ESCRITURA_RASGO, id, cuerpo);
     }
 
     private readSnapshotValue(snapshot: any, keys: string[]): any {
@@ -132,7 +120,7 @@ export class RasgoService {
 
 }
 
-function respuestaDeRasgo(respuesta: unknown): RasgoGuardado {
-    const { message, id } = leerRespuestaDeEscritura(respuesta, 'idRasgo');
-    return { message, idRasgo: id, rasgo: normalizeRasgoApi((respuesta as any)?.rasgo) };
-}
+/** `{ message, idRasgo, rasgo }`, el rasgo con las claves cortas de su `GET`. */
+const ESCRITURA_RASGO: EscrituraDeCatalogo<Rasgo> = {
+    url: 'rasgos', clave: 'rasgo', claveId: 'idRasgo', normalizar: normalizeRasgoApi, nombre: RASGO,
+};
