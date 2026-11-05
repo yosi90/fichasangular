@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
-import { PDFDocument } from 'pdf-lib';
+import { AnnotationFlags, PDFDocument, PDFForm } from 'pdf-lib';
 import { saveAs } from 'file-saver';
 import { Personaje, PersonajeNivelLanzadorResumen, PersonajeTipoLanzamiento } from '../interfaces/personaje';
 import { Caracteristica } from '../interfaces/caracteristica';
@@ -12,12 +12,14 @@ import { sumarPartes, totalesPersonaje } from 'src/app/services/utils/personaje-
 import { esTextoExtraPorElegir, habilidadConExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { esNombreComodin } from 'src/app/services/utils/comodin';
 import {
+    SIN_CARACTERISTICA,
     caracteristicaPorId,
     modificadorParaSumar,
     textoModificadorCaracteristica,
     textoValorCaracteristica,
 } from 'src/app/services/utils/caracteristicas';
 import { camposPdfEquipo } from './utils/ficha-pdf-equipo';
+import { camposPdfTotales, sumasDeLaPlantilla } from './utils/ficha-pdf-totales';
 import { tamanoQueCuenta } from './utils/tamano-efectivo';
 
 /** Cada característica de un familiar o un compañero y su campo en la hoja (`fue`, y su modificador `mod_fue`). */
@@ -25,6 +27,14 @@ const CAMPOS_CARACTERISTICAS_PDF: ReadonlyArray<[Caracteristica, string]> = [
     ['Fuerza', 'fue'], ['Destreza', 'des'], ['Constitucion', 'con'],
     ['Inteligencia', 'int'], ['Sabiduria', 'sab'], ['Carisma', 'car'],
 ];
+
+/**
+ * Los huecos de la hoja del personaje (`assets/pdf/Ficha.pdf`): 9 idiomas y 2 filas de habilidades custom, que son las
+ * filas 44 y 45 de la tabla (su casilla «de clase» es `clasea44` y `clasea45`).
+ */
+const IDIOMAS_EN_HOJA = 9;
+const CUSTOM_EN_HOJA = 2;
+const PRIMERA_FILA_CUSTOM = 44;
 
 @Injectable({
     providedIn: 'root'
@@ -42,13 +52,11 @@ export class FichaPersonajeService {
         const form = pdfDoc.getForm();
         const jugadorFicha = this.resolverNombreJugador(pj);
         const totales = totalesPersonaje(pj);
-        if (!pj.Oficial) {
-            const field = form.getTextField('oficial');
-            // TODO El campo está oculto, mostrarlo
-        }
+        if (pj.Oficial === false)
+            this.mostrarAvisoNoOficial(form);
         form.getTextField('nombre').setText(pj.Nombre);
         this.trySetText(form, 'jugador', jugadorFicha);
-        form.getTextField('clase').setText(pj.Clases.replace('(', '').replace(')', ''));
+        form.getTextField('clase').setText(`${pj.Clases ?? ''}`.replace(/[()]/g, ''));
         let raza = pj.Raza.Nombre;
         if (pj.Plantillas)
             pj.Plantillas.forEach(p => {
@@ -66,18 +74,7 @@ export class FichaPersonajeService {
         form.getTextField('altura').setText(pj.Altura.toString());
         form.getTextField('peso').setText(pj.Peso.toString());
         form.getTextField('campaña').setText(pj.Campana);
-        form.getTextField('fue').setText(pj.Fuerza.toString());
-        form.getTextField('des').setText(pj.Destreza.toString());
-        form.getTextField('con').setText(pj.Constitucion.toString());
-        form.getTextField('int').setText(pj.Inteligencia.toString());
-        form.getTextField('sab').setText(pj.Sabiduria.toString());
-        form.getTextField('car').setText(pj.Carisma.toString());
-        form.getTextField('mod_fue').setText(`${pj.ModFuerza > 0 ? '+' : ''}${pj.ModFuerza}`);
-        form.getTextField('mod_des').setText(`${pj.ModDestreza > 0 ? '+' : ''}${pj.ModDestreza}`);
-        form.getTextField('mod_con').setText(`${pj.ModConstitucion > 0 ? '+' : ''}${pj.ModConstitucion}`);
-        form.getTextField('mod_int').setText(`${pj.ModInteligencia > 0 ? '+' : ''}${pj.ModInteligencia}`);
-        form.getTextField('mod_sab').setText(`${pj.ModSabiduria > 0 ? '+' : ''}${pj.ModSabiduria}`);
-        form.getTextField('mod_car').setText(`${pj.ModCarisma > 0 ? '+' : ''}${pj.ModCarisma}`);
+        this.rellenarCaracteristicasPersonaje(form, pj);
         form.getTextField('mod_varios_iniciativa').setText(`${sumarPartes(totales.iniciativa, 'varios')}`);
         form.getTextField('mod_tamaño_presa').setText(`${tamano?.modificadorPresa ?? 0}`);
         form.getTextField('mod_varios_presa').setText(`${sumarPartes(totales.presa, 'varios')}`);
@@ -153,15 +150,14 @@ export class FichaPersonajeService {
         form.getTextField('levantar_cabeza').setText(pj.Capacidad_carga.Pesada.toString());
         form.getTextField('levantar_suelo').setText((pj.Capacidad_carga.Pesada * 2).toString());
         form.getTextField('empujar_arrastrar').setText((pj.Capacidad_carga.Pesada * 5).toString());
-        let idiomas = 1;
-        (pj.Idiomas ?? []).forEach(i => {
-            if (idiomas < 10)
-                form.getTextField(`idioma${idiomas}`).setText(`${i.Nombre}`);
-            else if (idiomas == 20)
+        // Los que no caben, todos a las notas, con su título.
+        (pj.Idiomas ?? []).forEach((i, indice) => {
+            if (indice < IDIOMAS_EN_HOJA)
+                form.getTextField(`idioma${indice + 1}`).setText(`${i.Nombre}`);
+            else if (indice === IDIOMAS_EN_HOJA)
                 notas += `\r\n\r\nIdiomas que no cabían: \r\n - ${i.Nombre}`;
             else
                 notas += `\r\n - ${i.Nombre}`;
-            idiomas++;
         });
         form.getTextField('monedas_cobre').setText("0");
         form.getTextField('monedas_plata').setText("0");
@@ -237,6 +233,8 @@ export class FichaPersonajeService {
 
         // El equipo, la defensa y el dinero de la ficha (familia 1 de objetos), encima de lo de siempre.
         Object.entries(camposPdfEquipo(pj)).forEach(([campo, valor]) => this.trySetText(form, campo, valor));
+        // Los totales que la plantilla calcula con JavaScript, para los visores que no lo ejecutan.
+        Object.entries(camposPdfTotales(pj, sumasDeLaPlantilla(form))).forEach(([campo, valor]) => this.trySetText(form, campo, valor));
 
         if (`${pj?.Jugador ?? ''}`.trim().length < 1 && jugadorFicha.length > 0)
             notas += `\r\n\r\nJugador: ${jugadorFicha}`;
@@ -277,6 +275,32 @@ export class FichaPersonajeService {
             var notas = "";
             var contHabsCustom = 1;
             (pj.Habilidades ?? []).forEach(h => {
+                // Una custom va a sus filas propias (`custom1`, `custom2`): su id es de `habilidades_custom`, no una fila de
+                // la hoja, así que no escribe en la de la habilidad base con su mismo número.
+                if (h.Custom) {
+                    if (contHabsCustom <= CUSTOM_EN_HOJA) {
+                        const car = `${h.Car ?? ''}`.substring(0, 3).toUpperCase();
+                        if (h.Clasea)
+                            self.tryCheck(form, `clasea${PRIMERA_FILA_CUSTOM + contHabsCustom - 1}`, true);
+                        self.trySetText(form, `custom${contHabsCustom}`, `${h.Nombre ?? ''}`);
+                        self.trySetText(form, `car${contHabsCustom}`, car);
+                        self.trySetText(form, `mod_custom${contHabsCustom}`, `${toNumber(h.Mod_car)}`);
+                        self.trySetText(form, `rangos_custom${contHabsCustom}`, `${toNumber(h.Rangos)}`);
+                        self.trySetText(form, `varios_custom${contHabsCustom}`, `${toNumber(h.Rangos_varios)}`);
+                        if (`${h.Varios ?? ''}`.trim() !== '') {
+                            if (!notas.includes('Habilidades con rangos circunstanciales:'))
+                                notas += '\r\n\r\nHabilidades con rangos circunstanciales:\r\n';
+                            notas += `${h.Nombre}: - ${h.Varios}\r\n`;
+                        }
+                    } else {
+                        if (!notas.includes('Habilidades extra (No caben):'))
+                            notas += '\r\n\r\nHabilidades extra (No caben):\r\n';
+                        notas += `${contHabsCustom - CUSTOM_EN_HOJA}.- ${h.Nombre} [${`${h.Car ?? ''}`.substring(0, 3).toUpperCase()}] rangos: ${toNumber(h.Rangos)} rangos varios: ${toNumber(h.Rangos_varios)}${`${h.Varios ?? ''}`.trim() !== '' ? ` mod varios: ${h.Varios}` : ''}\r\n`;
+                    }
+                    contHabsCustom++;
+                    return;
+                }
+
                 const habilidadId = toNumber((h as any)?.Id);
                 if (habilidadId <= 0)
                     return;
@@ -286,37 +310,14 @@ export class FichaPersonajeService {
                     self.tryCheck(form, `clasea${habilidadIndex}`, true);
 
                 self.trySetText(form, `rangos${habilidadIndex}`, `${toNumber(h.Rangos)}`);
-                if (`${h.Extra ?? ''}`.trim() !== '' && !habilidadConExtraPorElegir(h)) {
+                if (`${h.Extra ?? ''}`.trim() !== '' && !habilidadConExtraPorElegir(h))
                     self.trySetText(form, `extra${habilidadIndex}`, `${h.Extra ?? ''}`);
-                } else if (h.Custom) {
-                    if (contHabsCustom < 3) {
-                        const car = `${h.Car ?? ''}`.substring(0, 3).toUpperCase();
-                        self.trySetText(form, `custom${contHabsCustom}`, `${h.Nombre ?? ''}`);
-                        self.trySetText(form, `car${contHabsCustom}`, car);
-                        self.trySetText(form, `mod_custom${contHabsCustom}`, `${toNumber(h.Mod_car)}`);
-                        self.trySetText(form, `rangos_custom${contHabsCustom}`, `${toNumber(h.Rangos)}`);
-                        self.trySetText(form, `varios_custom${contHabsCustom}`, `${toNumber(h.Rangos_varios)}`);
-                        if (h.Varios != "") {
-                            if (!notas.includes('Habilidades con rangos circunstanciales:'))
-                                notas += '\r\n\r\nHabilidades con rangos circunstanciales:\r\n';
-                            notas += `${h.Nombre}: - ${h.Varios}\r\n`;
-                        }
-                    } else {
-                        if (!notas.includes('Habilidades extra (No caben):'))
-                            notas += 'Habilidades extra (No caben):\r\n';
-                        notas += `${contHabsCustom - 2}.- ${h.Nombre} [${`${h.Car ?? ''}`.substring(0, 3).toUpperCase()}] rangos: ${h.Rangos} rangos varios: ${h.Rangos_varios} mod varios: ${h.Varios}\r\n`;
-                    }
-                    contHabsCustom++;
-                }
-                if (!h.Custom) {
-                    if (h.Rangos_varios > 0) {
-                        self.trySetText(form, `varios${habilidadIndex}`, `${toNumber(h.Rangos_varios)}`);
-                    }
-                    if (h.Varios != "") {
-                        if (!notas.includes('Habilidades con rangos circunstanciales:'))
-                            notas += '\r\n\r\nHabilidades con rangos circunstanciales:\r\n';
-                        notas += `${h.Nombre}: ${h.Varios}\r\n`;
-                    }
+                if (h.Rangos_varios > 0)
+                    self.trySetText(form, `varios${habilidadIndex}`, `${toNumber(h.Rangos_varios)}`);
+                if (`${h.Varios ?? ''}`.trim() !== '') {
+                    if (!notas.includes('Habilidades con rangos circunstanciales:'))
+                        notas += '\r\n\r\nHabilidades con rangos circunstanciales:\r\n';
+                    notas += `${h.Nombre}: ${h.Varios}\r\n`;
                 }
             });
             return notas;
@@ -349,7 +350,9 @@ export class FichaPersonajeService {
         sortilegas.forEach(s => {
             this.trySetText(form, `conjuro${contador}`, `${s?.Conjuro?.Nombre ?? ''}`);
             this.trySetText(form, `pag_con${contador}`, `${s?.Conjuro?.Manual ?? ''}`);
-            this.trySetText(form, `desc_con${contador}`, `Usos diarios: ${toNumber((s as any)?.Usos_diarios)}\r\nNivel de lanzador:${toNumber((s as any)?.Nivel_lanzador)}\r\n${s?.Descripcion ? s.Descripcion : ''}`);
+            // Los usos, como los da la API («3/día», «A voluntad»).
+            const usos = `${s?.Usos_diarios ?? ''}`.trim();
+            this.trySetText(form, `desc_con${contador}`, `Usos diarios: ${usos.length > 0 ? usos : '-'}\r\nNivel de lanzador: ${toNumber((s as any)?.Nivel_lanzador)}\r\n${s?.Descripcion ? s.Descripcion : ''}`);
             contador++;
         });
 
@@ -635,6 +638,39 @@ export class FichaPersonajeService {
     private calcularModHabilidadMonstruo(monstruo: MonstruoDetalle, habilidad: any): number {
         const clave = caracteristicaPorId(toNumber(habilidad?.Id_caracteristica));
         return clave ? modificadorParaSumar(monstruo?.Caracteristicas, clave) : 0;
+    }
+
+    /**
+     * Las características del personaje y sus modificadores, los de la API. Sin valor (la Constitución de un muerto
+     * viviente: `co` 0 y `mco` `null`), «—» en los dos, como en las hojas del familiar y el compañero.
+     */
+    private rellenarCaracteristicasPersonaje(form: PDFForm, pj: Personaje): void {
+        const valores: ReadonlyArray<[string, unknown, unknown]> = [
+            ['fue', pj.Fuerza, pj.ModFuerza], ['des', pj.Destreza, pj.ModDestreza], ['con', pj.Constitucion, pj.ModConstitucion],
+            ['int', pj.Inteligencia, pj.ModInteligencia], ['sab', pj.Sabiduria, pj.ModSabiduria], ['car', pj.Carisma, pj.ModCarisma],
+        ];
+        valores.forEach(([campo, valor, modificador]) => {
+            const sinModificador = modificador === null || modificador === undefined;
+            const sinValor = valor === null || valor === undefined || (sinModificador && toNumber(valor) <= 0);
+            form.getTextField(campo).setText(sinValor ? SIN_CARACTERISTICA : `${valor}`);
+            const mod = toNumber(modificador);
+            form.getTextField(`mod_${campo}`).setText(sinModificador ? SIN_CARACTERISTICA : `${mod > 0 ? '+' : ''}${mod}`);
+        });
+    }
+
+    /** El aviso «Contiene elementos no oficiales» de la plantilla, que está oculto: se enseña y se imprime. */
+    private mostrarAvisoNoOficial(form: PDFForm): void {
+        try {
+            const aviso = form.getTextField('oficial');
+            aviso.acroField.getWidgets().forEach((widget) => {
+                widget.setFlagTo(AnnotationFlags.Hidden, false);
+                widget.setFlagTo(AnnotationFlags.Print, true);
+            });
+            // Se vuelve a escribir para que se dibuje su apariencia al guardar.
+            aviso.setText(aviso.getText() || 'Contiene elementos no oficiales');
+        } catch {
+            // El template puede no contener el campo; no interrumpimos la generación.
+        }
     }
 
     private trySetText(form: any, fieldName: string, value: string): void {
