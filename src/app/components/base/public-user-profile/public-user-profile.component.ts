@@ -4,7 +4,15 @@ import Swal from 'sweetalert2';
 import { SocialRelationshipProfile } from 'src/app/interfaces/social-v3';
 import { AppToastService } from 'src/app/services/app-toast.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
-import { PlatformSocialError, PlatformSocialService, RelacionPlataforma } from 'src/app/services/platform-social.service';
+import {
+    PerfilPublicoPlataforma,
+    PlatformSocialError,
+    PlatformSocialService,
+    RelacionPlataforma,
+    nombreVisiblePersona,
+    urlAvatar,
+} from 'src/app/services/platform-social.service';
+import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { SocialV3ApiService } from 'src/app/services/social-v3-api.service';
 import { UserService } from 'src/app/services/user.service';
 import { resolveDefaultProfileAvatar } from 'src/app/services/utils/profile-avatar.util';
@@ -13,7 +21,8 @@ import { textoFecha } from 'src/app/services/utils/fecha-texto';
 /**
  * Ficha de otra persona en la comunidad de Rol: sus datos de Rol vienen de la API
  * (`GET /social/users/{uid}/relationship-profile`) y la biografía, los pronombres y la relación (amistad,
- * seguimiento y bloqueo), de la plataforma (ecosistema-kit/SOCIAL.md). Hace falta sesión.
+ * seguimiento y bloqueo), de la plataforma (ecosistema-kit/SOCIAL.md). Hace falta sesión. A quien aún no ha entrado en
+ * Rol (se le encuentra al buscar personas) se le ve con su perfil de Yosiftware, sin los datos de Rol.
  */
 @Component({
     selector: 'app-public-user-profile',
@@ -29,6 +38,7 @@ export class PublicUserProfileComponent implements OnInit, OnChanges, OnDestroy 
     isLoggedIn = false;
     relationshipProfile: SocialRelationshipProfile | null = null;
     relacion: RelacionPlataforma | null = null;
+    perfilPlataforma: PerfilPublicoPlataforma | null = null;
     bio = '';
     pronouns = '';
     loading = false;
@@ -42,6 +52,7 @@ export class PublicUserProfileComponent implements OnInit, OnChanges, OnDestroy 
         private platformSessionSvc: PlatformSessionService,
         private userSvc: UserService,
         private appToastSvc: AppToastService,
+        private userProfileNavSvc: UserProfileNavigationService,
     ) { }
 
     ngOnInit(): void {
@@ -69,15 +80,29 @@ export class PublicUserProfileComponent implements OnInit, OnChanges, OnDestroy 
         const image = `${this.relationshipProfile?.profile?.photoThumbUrl ?? ''}`.trim();
         if (image.length > 0)
             return image;
-        return resolveDefaultProfileAvatar(this.uid || this.initialDisplayName || this.profileLabel || '');
+        return urlAvatar(this.perfilPlataforma?.avatar)
+            ?? resolveDefaultProfileAvatar(this.perfilPlataforma?.alias || this.initialDisplayName || this.profileLabel || '');
     }
 
     get profileLabel(): string {
-        return `${this.relationshipProfile?.profile?.displayName ?? this.initialDisplayName ?? ''}`.trim() || 'Perfil';
+        const deRol = `${this.relationshipProfile?.profile?.displayName ?? ''}`.trim();
+        if (deRol.length > 0)
+            return deRol;
+        if (this.perfilPlataforma)
+            return nombreVisiblePersona(this.perfilPlataforma);
+        return `${this.initialDisplayName ?? ''}`.trim() || 'Perfil';
+    }
+
+    /** Hay algo que enseñar: el perfil de Rol o, si aún no ha entrado en Rol, el de Yosiftware. */
+    get hayPerfil(): boolean {
+        return !!this.relationshipProfile || !!this.perfilPlataforma;
     }
 
     get isSelf(): boolean {
-        return this.relationshipProfile?.relationship?.state === 'self';
+        if (this.relationshipProfile?.relationship?.state === 'self')
+            return true;
+        const propia = `${this.platformSessionSvc.cuenta?.id ?? ''}`.trim();
+        return propia.length > 0 && propia === `${this.uid ?? ''}`.trim();
     }
 
     /** Has bloqueado a esta persona: la API ya no la enseña, pero se puede desbloquear desde aquí. */
@@ -141,11 +166,17 @@ export class PublicUserProfileComponent implements OnInit, OnChanges, OnDestroy 
         void this.platformSessionSvc.entrar().catch(() => undefined);
     }
 
+    /** Las amistades y los bloqueos de la cuenta, en Social. */
+    abrirAmistades(): void {
+        this.userProfileNavSvc.openSocial('amistades');
+    }
+
     async cargar(): Promise<void> {
         const uid = `${this.uid ?? ''}`.trim();
         const seq = ++this.loadSeq;
         this.relationshipProfile = null;
         this.relacion = null;
+        this.perfilPlataforma = null;
         this.bio = '';
         this.pronouns = '';
         this.errorMessage = '';
@@ -167,15 +198,18 @@ export class PublicUserProfileComponent implements OnInit, OnChanges, OnDestroy 
             if (relacion.status === 'fulfilled')
                 this.relacion = relacion.value;
             if (perfilPlataforma.status === 'fulfilled') {
+                this.perfilPlataforma = perfilPlataforma.value ?? null;
                 this.bio = `${perfilPlataforma.value?.biografia ?? ''}`.trim();
                 this.pronouns = `${perfilPlataforma.value?.pronombres ?? ''}`.trim();
             }
-            if (perfilRol.status === 'fulfilled') {
+            if (perfilRol.status === 'fulfilled')
                 this.relationshipProfile = perfilRol.value;
+            if (this.hayPerfil)
                 this.profileLoaded.emit({ uid, displayName: this.profileLabel || null });
-            } else if (!this.isBlockedByMe) {
-                this.errorMessage = `${perfilRol.reason?.message ?? 'No se pudo cargar el perfil.'}`.trim();
-            }
+            else if (!this.isBlockedByMe)
+                this.errorMessage = perfilRol.status === 'rejected'
+                    ? `${perfilRol.reason?.message ?? 'No se pudo cargar el perfil.'}`.trim()
+                    : 'No se pudo cargar el perfil.';
         } finally {
             if (seq === this.loadSeq)
                 this.loading = false;

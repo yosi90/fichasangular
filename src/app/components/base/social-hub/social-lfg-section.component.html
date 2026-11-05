@@ -163,11 +163,11 @@
                         <div class="social-lfg__panel-head">
                             <div class="social-lfg__author">
                                 <button type="button" class="social-lfg__avatar" (click)="openAuthorProfile(selectedPost)">
-                                    <img [src]="selectedPostAvatarUrl" [alt]="selectedPost.author.displayName || selectedPost.author.uid">
+                                    <img [src]="selectedPostAvatarUrl" [alt]="selectedPost.author.displayName || 'Persona sin nombre'">
                                 </button>
                                 <div>
                                     <h3>{{selectedPost.title}}</h3>
-                                    <p>{{selectedPost.author.displayName || selectedPost.author.uid}} · {{getStatusLabel(selectedPost.status)}}</p>
+                                    <p>{{selectedPost.author.displayName || 'Persona sin nombre'}} · {{getStatusLabel(selectedPost.status)}}</p>
                                 </div>
                             </div>
                             <div class="social-lfg__actions">
@@ -239,9 +239,9 @@
                                 <article class="social-lfg__application-card" *ngFor="let application of visibleApplications; trackBy: trackByApplicationId">
                                     <div class="social-lfg__application-head">
                                         <div class="social-lfg__applicant">
-                                            <img [src]="getApplicantAvatar(application)" [alt]="application.applicant.displayName || application.applicant.uid">
+                                            <img [src]="getApplicantAvatar(application)" [alt]="application.applicant.displayName || 'Persona sin nombre'">
                                             <div>
-                                                <strong>{{application.applicant.displayName || application.applicant.uid}}</strong>
+                                                <strong>{{application.applicant.displayName || 'Persona sin nombre'}}</strong>
                                                 <span>{{getStatusLabel(application.status)}}</span>
                                             </div>
                                         </div>

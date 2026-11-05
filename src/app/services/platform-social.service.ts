@@ -17,6 +17,13 @@ export interface RelacionPlataforma {
     bloqueada: boolean;
 }
 
+/** El avatar de una persona: las direcciones llegan relativas a la API de la plataforma (`urlAvatar` las completa). */
+export interface AvatarPlataforma {
+    url: string;
+    miniatura: string;
+    version?: number;
+}
+
 export interface PerfilPublicoPlataforma {
     id: string;
     alias: string;
@@ -24,7 +31,72 @@ export interface PerfilPublicoPlataforma {
     biografia: string | null;
     pronombres: string | null;
     privado: boolean;
+    avatar?: AvatarPlataforma | null;
 }
+
+/** Una persona en las respuestas de «Personas y relaciones»: `nombre` es `null` si su perfil es privado. */
+export interface PersonaPlataforma {
+    id: string;
+    alias: string;
+    nombre: string | null;
+    privado: boolean;
+    avatar: AvatarPlataforma | null;
+    borrada?: boolean;
+}
+
+/** Una fila de los listados de amistades o bloqueos: la persona y desde cuándo. */
+export interface VinculoPlataforma {
+    persona: PersonaPlataforma;
+    desde: string | null;
+}
+
+/** Una página de un listado por cursor; `cursor` es `null` en la última. */
+export interface PaginaVinculosPlataforma {
+    vinculos: VinculoPlataforma[];
+    cursor: string | null;
+}
+
+export type TipoSolicitudesAmistad = 'recibidas' | 'enviadas';
+
+export interface SolicitudAmistadPlataforma {
+    id: number;
+    persona: PersonaPlataforma;
+    creada: string | null;
+    caduca: string | null;
+}
+
+/** Los contadores de `GET /v1/social/resumen`. */
+export interface ResumenSocialPlataforma {
+    solicitudesRecibidas: number;
+    solicitudesEnviadas: number;
+    amistades: number;
+    seguidos: number;
+    seguidores: number;
+    bloqueos: number;
+}
+
+/** Lo que se enseña de una persona: su nombre visible o, si su perfil es privado, `@alias`. Nunca su id. */
+export function nombreVisiblePersona(persona: Pick<PersonaPlataforma, 'alias' | 'nombre'> | null | undefined): string {
+    const nombre = `${persona?.nombre ?? ''}`.trim();
+    if (nombre.length > 0)
+        return nombre;
+    const alias = `${persona?.alias ?? ''}`.trim();
+    return alias.length > 0 ? `@${alias}` : 'Persona sin nombre';
+}
+
+/** La dirección completa de la miniatura del avatar (la API la da relativa a ella), o `null` si no tiene. */
+export function urlAvatar(avatar: AvatarPlataforma | null | undefined, api: string = environment.plataforma.apiUrl): string | null {
+    const ruta = `${avatar?.miniatura ?? avatar?.url ?? ''}`.trim();
+    if (ruta.length < 1)
+        return null;
+    if (/^https?:\/\//i.test(ruta))
+        return ruta;
+    return `${api.replace(/\/+$/, '')}/${ruta.replace(/^\/+/, '')}`;
+}
+
+/** Lo que se escribe en el buscador de personas: de 2 a 60 caracteres (`GET /v1/personas`). */
+export const BUSQUEDA_PERSONAS_MIN = 2;
+export const BUSQUEDA_PERSONAS_MAX = 60;
 
 /** Error de la API de la plataforma, con su `code` (formato común: `error`, `code`, `field`). */
 export class PlatformSocialError extends Error {
@@ -44,6 +116,10 @@ const MENSAJES: Record<string, string> = {
     amistad_no_encontrada: 'Ya no sois amistades.',
     demasiadas_solicitudes: 'Has enviado demasiadas solicitudes de amistad hoy.',
     demasiadas_peticiones: 'Demasiadas acciones seguidas. Espera un poco y vuelve a intentarlo.',
+    relacion_consigo_mismo: 'Esa persona eres tú.',
+    busqueda_no_valida: 'Escribe entre 2 y 60 caracteres para buscar.',
+    cursor_no_valido: 'La lista ha cambiado. Vuelve a cargarla.',
+    solo_entre_amistades: 'Solo puedes escribir por privado a tus amistades.',
 };
 
 @Injectable({
@@ -89,6 +165,64 @@ export class PlatformSocialService {
         await this.peticion(bloquear ? 'PUT' : 'DELETE', `/v1/social/bloqueos/${encodeURIComponent(idCuenta)}`);
     }
 
+    /** Cuántas relaciones tiene la cuenta (solicitudes, amistades, bloqueos…). */
+    resumen(): Promise<ResumenSocialPlataforma> {
+        return this.peticion('GET', '/v1/social/resumen');
+    }
+
+    /** Las amistades, las más recientes primero, de 50 en 50: sin `cursor`, la primera página. */
+    amistades(cursor: string | null = null): Promise<PaginaVinculosPlataforma> {
+        return this.pagina('/v1/social/amistades', cursor);
+    }
+
+    /** A quién tiene bloqueado la cuenta (paginado igual). */
+    bloqueos(cursor: string | null = null): Promise<PaginaVinculosPlataforma> {
+        return this.pagina('/v1/social/bloqueos', cursor);
+    }
+
+    /** Las solicitudes pendientes y no caducadas, recibidas o enviadas. */
+    async solicitudes(tipo: TipoSolicitudesAmistad): Promise<SolicitudAmistadPlataforma[]> {
+        const respuesta = await this.peticion<{ solicitudes?: SolicitudAmistadPlataforma[] }>('GET', `/v1/social/amistades/solicitudes?tipo=${tipo}`);
+        return Array.isArray(respuesta?.solicitudes) ? respuesta.solicitudes : [];
+    }
+
+    /**
+     * Busca personas por alias o nombre (los perfiles privados, solo por su alias exacto), hasta 20. Nunca devuelve a la
+     * propia cuenta ni a nadie con un bloqueo en cualquier dirección. Fuera de 2 a 60 caracteres no pregunta: `[]`.
+     */
+    async buscarPersonas(texto: string): Promise<PersonaPlataforma[]> {
+        const q = `${texto ?? ''}`.trim();
+        if (q.length < BUSQUEDA_PERSONAS_MIN || q.length > BUSQUEDA_PERSONAS_MAX)
+            return [];
+        const respuesta = await this.peticion<{ personas?: PersonaPlataforma[] }>('GET', `/v1/personas?q=${encodeURIComponent(q)}`);
+        return Array.isArray(respuesta?.personas) ? respuesta.personas : [];
+    }
+
+    /**
+     * La conversación directa con una amistad (la crea si no existía), por el SDK (ecosistema-kit/CHAT.md). Si no sois
+     * amistades, falla con `solo_entre_amistades`, ya en una frase.
+     */
+    async conversacionDirecta(idCuenta: string): Promise<number> {
+        let id: number | null;
+        try {
+            id = await this.platformSessionSvc.conversacionDirecta(idCuenta);
+        } catch (error) {
+            throw this.toError(error);
+        }
+        if (!id)
+            throw new PlatformSocialError('Entra con tu cuenta de Yosiftware para escribir.', 'sin_sesion', 0);
+        return id;
+    }
+
+    private async pagina(ruta: string, cursor: string | null): Promise<PaginaVinculosPlataforma> {
+        const consulta = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
+        const respuesta = await this.peticion<Partial<PaginaVinculosPlataforma>>('GET', `${ruta}${consulta}`);
+        return {
+            vinculos: Array.isArray(respuesta?.vinculos) ? respuesta.vinculos : [],
+            cursor: `${respuesta?.cursor ?? ''}`.trim() || null,
+        };
+    }
+
     private async peticion<T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', ruta: string, body?: unknown): Promise<T> {
         const headers = await cabecerasPlataforma(this.platformSessionSvc, body !== undefined);
         try {
@@ -104,6 +238,8 @@ export class PlatformSocialService {
             const message = MENSAJES[code] ?? `${error.error?.error ?? ''}`.trim();
             return new PlatformSocialError(message || 'No se pudo completar la acción en tu cuenta de Yosiftware.', code, error.status);
         }
-        return new PlatformSocialError('No se pudo completar la acción en tu cuenta de Yosiftware.', '', 0);
+        // Los errores del SDK (`yosiftware.chat.directa`) traen su `code`.
+        const code = `${(error as { code?: unknown })?.code ?? ''}`.trim();
+        return new PlatformSocialError(MENSAJES[code] ?? 'No se pudo completar la acción en tu cuenta de Yosiftware.', code, 0);
     }
 }

@@ -10,10 +10,16 @@
                     (click)="selectSection(section.id)">
                     <mat-icon>{{section.icon}}</mat-icon>
                     <span>{{section.label}}</span>
+                    <span class="social-nav__contador" *ngIf="isLoggedIn && contadorSeccion(section.id) > 0"
+                        [attr.aria-label]="contadorSeccion(section.id) + ' solicitudes de amistad sin responder'">{{contadorSeccion(section.id)}}</span>
                 </button>
             </div>
 
             <div class="social-nav__summary" *ngIf="isLoggedIn">
+                <div class="social-nav__summary-row">
+                    <span>Amistades</span>
+                    <strong>{{amistades.totalAmistades}}</strong>
+                </div>
                 <div class="social-nav__summary-row">
                     <span>Campañas</span>
                     <strong>{{campaigns.length}}</strong>
@@ -43,14 +49,180 @@
                 <div class="social-empty" *ngIf="isLoggedIn">
                     <mat-icon>diversity_1</mat-icon>
                     <p>
-                        Tus amistades, seguimientos y bloqueos son de tu cuenta de Yosiftware y valen en todas sus webs.
+                        Tus amistades y bloqueos son de tu cuenta de Yosiftware y valen en todas sus webs.
                         Los mensajes están en el chat, abajo a la derecha.
                     </p>
                     <div class="social-actions">
-                        <a mat-stroked-button color="accent" [href]="urlWebSocial" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>Amistades y bloqueos</a>
+                        <button mat-stroked-button color="accent" type="button" (click)="selectSection('amistades')">Amistades</button>
                         <button mat-stroked-button color="accent" type="button" (click)="abrirChat()">Abrir el chat</button>
                     </div>
+                    <a class="social-enlace-cuenta" [href]="urlWebSocial" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>Tu cuenta en la web social</a>
                 </div>
+            </section>
+
+            <section class="social-section social-section--desplazable" *ngIf="currentSection === 'amistades'">
+                <div class="social-empty" *ngIf="!isLoggedIn">
+                    <mat-icon>lock</mat-icon>
+                    <p>Entra con tu cuenta de Yosiftware para ver tus amistades y buscar personas.</p>
+                </div>
+
+                <ng-container *ngIf="isLoggedIn">
+                    <article class="social-panel">
+                        <h3 id="social-buscar-personas">Buscar personas</h3>
+                        <mat-form-field appearance="outline" class="social-search__field" subscriptSizing="dynamic">
+                            <mat-label>Alias o nombre</mat-label>
+                            <input matInput type="search" autocomplete="off" aria-describedby="social-buscar-personas-ayuda"
+                                [maxlength]="amistades.busquedaMaxima" [ngModel]="amistades.busqueda"
+                                (ngModelChange)="amistades.alEscribirBusqueda($event)">
+                            <button mat-icon-button matSuffix type="button" *ngIf="amistades.busqueda" aria-label="Borrar la búsqueda"
+                                (click)="amistades.limpiarBusqueda()"><mat-icon>close</mat-icon></button>
+                        </mat-form-field>
+                        <p class="social-inline-hint" id="social-buscar-personas-ayuda">Los perfiles privados solo salen con su alias exacto.</p>
+                        <p class="social-inline-hint" *ngIf="amistades.busquedaCorta">Escribe al menos {{amistades.busquedaMinima}} caracteres.</p>
+                        <p class="social-inline-hint" *ngIf="amistades.buscando" role="status">Buscando…</p>
+                        <p class="social-inline-error" *ngIf="amistades.busquedaError" role="alert">{{amistades.busquedaError}}</p>
+                        <p class="social-inline-hint" *ngIf="amistades.sinResultados" role="status">Nadie con «{{amistades.busquedaHecha}}».</p>
+                        <div class="social-user-list" *ngIf="amistades.resultados.length > 0" aria-labelledby="social-buscar-personas">
+                            <article class="social-user-card social-persona" *ngFor="let persona of amistades.resultados; trackBy: amistades.trackPersona">
+                                <button type="button" class="social-persona__identidad" (click)="amistades.abrirPerfil(persona)">
+                                    <img class="social-persona__avatar" [src]="amistades.avatar(persona)" alt="">
+                                    <span class="social-user-card__copy">
+                                        <strong>{{amistades.nombre(persona)}}</strong>
+                                        <span class="social-persona__alias" *ngIf="amistades.aliasSecundario(persona)">{{amistades.aliasSecundario(persona)}}</span>
+                                    </span>
+                                </button>
+                                <div class="social-user-card__actions">
+                                    <button mat-stroked-button color="primary" type="button" (click)="amistades.abrirPerfil(persona)">Ver perfil</button>
+                                </div>
+                            </article>
+                        </div>
+                    </article>
+
+                    <article class="social-panel" *ngIf="amistades.recibidas.length > 0 || amistades.solicitudesError">
+                        <h3>Solicitudes recibidas <span class="social-panel__contador">{{amistades.recibidas.length}}</span></h3>
+                        <p class="social-inline-error" *ngIf="amistades.solicitudesError" role="alert">{{amistades.solicitudesError}}</p>
+                        <div class="social-user-list">
+                            <article class="social-user-card social-persona" *ngFor="let solicitud of amistades.recibidas">
+                                <button type="button" class="social-persona__identidad" (click)="amistades.abrirPerfil(solicitud.persona)">
+                                    <img class="social-persona__avatar" [src]="amistades.avatar(solicitud.persona)" alt="">
+                                    <span class="social-user-card__copy">
+                                        <strong>{{amistades.nombre(solicitud.persona)}}</strong>
+                                        <span class="social-persona__alias" *ngIf="amistades.aliasSecundario(solicitud.persona)">{{amistades.aliasSecundario(solicitud.persona)}}</span>
+                                    </span>
+                                </button>
+                                <div class="social-user-card__actions">
+                                    <button mat-stroked-button color="primary" type="button" [disabled]="amistades.ocupada(solicitud.persona)"
+                                        (click)="amistades.aceptar(solicitud)">Aceptar</button>
+                                    <button mat-stroked-button color="warn" type="button" [disabled]="amistades.ocupada(solicitud.persona)"
+                                        (click)="amistades.rechazar(solicitud)">Rechazar</button>
+                                </div>
+                            </article>
+                        </div>
+                    </article>
+
+                    <article class="social-panel">
+                        <h3>Tus amistades <span class="social-panel__contador" *ngIf="amistades.amistadesCargadas">{{amistades.totalAmistades}}</span></h3>
+                        <p class="social-inline-hint" *ngIf="amistades.amistadesCargando" role="status">Cargando amistades…</p>
+                        <div class="bloque-error social-bloque-error" *ngIf="amistades.amistadesError" role="alert">
+                            <span>{{amistades.amistadesError}}</span>
+                            <button mat-button type="button" (click)="amistades.cargarAmistades()">Reintentar</button>
+                        </div>
+                        <div class="social-user-list" *ngIf="amistades.amistades.length > 0">
+                            <article class="social-user-card social-persona" *ngFor="let vinculo of amistades.amistades; trackBy: amistades.trackPorPersona">
+                                <button type="button" class="social-persona__identidad" (click)="amistades.abrirPerfil(vinculo.persona)">
+                                    <img class="social-persona__avatar" [src]="amistades.avatar(vinculo.persona)" alt="">
+                                    <span class="social-user-card__copy">
+                                        <strong>{{amistades.nombre(vinculo.persona)}}</strong>
+                                        <span class="social-persona__alias" *ngIf="amistades.aliasSecundario(vinculo.persona)">{{amistades.aliasSecundario(vinculo.persona)}}</span>
+                                    </span>
+                                </button>
+                                <div class="social-user-card__actions">
+                                    <button mat-stroked-button color="primary" type="button" [disabled]="amistades.ocupada(vinculo.persona)"
+                                        (click)="amistades.escribir(vinculo.persona)">
+                                        <mat-icon>chat</mat-icon>
+                                        Escribir
+                                    </button>
+                                    <button mat-icon-button type="button" aria-label="Dejar la amistad" matTooltip="Dejar la amistad"
+                                        [disabled]="amistades.ocupada(vinculo.persona)" (click)="amistades.dejarAmistad(vinculo)">
+                                        <mat-icon>person_remove</mat-icon>
+                                    </button>
+                                </div>
+                            </article>
+                        </div>
+                        <p class="social-inline-hint" *ngIf="amistades.amistadesCargadas && amistades.amistades.length < 1 && !amistades.amistadesError">
+                            Aún no tienes amistades. Busca a alguien arriba y pídele amistad desde su perfil.
+                        </p>
+                        <div class="social-actions" *ngIf="amistades.amistadesCursor">
+                            <button mat-stroked-button type="button" [disabled]="amistades.amistadesCargandoMas" (click)="amistades.cargarMasAmistades()">
+                                {{amistades.amistadesCargandoMas ? 'Cargando…' : 'Cargar más'}}
+                            </button>
+                        </div>
+                    </article>
+
+                    <article class="social-panel" *ngIf="amistades.enviadas.length > 0">
+                        <h3>Solicitudes enviadas <span class="social-panel__contador">{{amistades.enviadas.length}}</span></h3>
+                        <div class="social-user-list">
+                            <article class="social-user-card social-persona" *ngFor="let solicitud of amistades.enviadas">
+                                <button type="button" class="social-persona__identidad" (click)="amistades.abrirPerfil(solicitud.persona)">
+                                    <img class="social-persona__avatar" [src]="amistades.avatar(solicitud.persona)" alt="">
+                                    <span class="social-user-card__copy">
+                                        <strong>{{amistades.nombre(solicitud.persona)}}</strong>
+                                        <span class="social-persona__alias" *ngIf="amistades.aliasSecundario(solicitud.persona)">{{amistades.aliasSecundario(solicitud.persona)}}</span>
+                                    </span>
+                                </button>
+                                <div class="social-user-card__actions">
+                                    <button mat-stroked-button type="button" [disabled]="amistades.ocupada(solicitud.persona)"
+                                        (click)="amistades.retirar(solicitud)">Retirar</button>
+                                </div>
+                            </article>
+                        </div>
+                    </article>
+
+                    <a class="social-enlace-cuenta" [href]="urlWebSocial" target="_blank" rel="noopener"><span class="simbolo-yosiftware" aria-hidden="true"></span>También en la web social</a>
+                </ng-container>
+            </section>
+
+            <section class="social-section social-section--desplazable" *ngIf="currentSection === 'bloqueos'">
+                <div class="social-empty" *ngIf="!isLoggedIn">
+                    <mat-icon>lock</mat-icon>
+                    <p>Entra con tu cuenta de Yosiftware para ver a quién tienes bloqueado.</p>
+                </div>
+
+                <article class="social-panel" *ngIf="isLoggedIn">
+                    <h3>Personas bloqueadas</h3>
+                    <p class="social-inline-hint">No te ven ni pueden escribirte en ninguna web de Yosiftware. Para bloquear a alguien, abre su perfil.</p>
+                    <p class="social-inline-hint" *ngIf="amistades.bloqueosCargando" role="status">Cargando bloqueos…</p>
+                    <div class="bloque-error social-bloque-error" *ngIf="amistades.bloqueosError" role="alert">
+                        <span>{{amistades.bloqueosError}}</span>
+                        <button mat-button type="button" (click)="amistades.cargarBloqueos()">Reintentar</button>
+                    </div>
+                    <div class="social-user-list" *ngIf="amistades.bloqueos.length > 0">
+                        <article class="social-user-card social-persona" *ngFor="let vinculo of amistades.bloqueos; trackBy: amistades.trackPorPersona">
+                            <div class="social-persona__identidad social-persona__identidad--quieta">
+                                <img class="social-persona__avatar" [src]="amistades.avatar(vinculo.persona)" alt="">
+                                <span class="social-user-card__copy">
+                                    <strong>{{amistades.nombre(vinculo.persona)}}</strong>
+                                    <span class="social-persona__alias" *ngIf="amistades.aliasSecundario(vinculo.persona)">{{amistades.aliasSecundario(vinculo.persona)}}</span>
+                                </span>
+                            </div>
+                            <div class="social-user-card__actions">
+                                <button mat-stroked-button type="button" [disabled]="amistades.ocupada(vinculo.persona)"
+                                    (click)="amistades.desbloquear(vinculo)">
+                                    <mat-icon>lock_open</mat-icon>
+                                    Desbloquear
+                                </button>
+                            </div>
+                        </article>
+                    </div>
+                    <p class="social-inline-hint" *ngIf="amistades.bloqueosCargados && amistades.bloqueos.length < 1 && !amistades.bloqueosError">
+                        No tienes a nadie bloqueado.
+                    </p>
+                    <div class="social-actions" *ngIf="amistades.bloqueosCursor">
+                        <button mat-stroked-button type="button" [disabled]="amistades.bloqueosCargandoMas" (click)="amistades.cargarMasBloqueos()">
+                            {{amistades.bloqueosCargandoMas ? 'Cargando…' : 'Cargar más'}}
+                        </button>
+                    </div>
+                </article>
             </section>
 
             <section class="social-section" *ngIf="currentSection === 'comunidad'">
@@ -180,7 +352,7 @@
                                 <div class="social-user-list" *ngIf="selectedCampaignMembers.length > 0">
                                     <article class="social-user-card social-user-card--compact" *ngFor="let member of selectedCampaignMembers">
                                         <div class="social-user-card__main">
-                                            <strong>{{member.displayName || member.email || member.uid}}</strong>
+                                            <strong>{{nombreMiembro(member)}}</strong>
                                             <span class="social-user-card__meta">{{getCampaignRoleLabel(member.campaignRole)}} · {{getCampaignMembershipLabel(member.membershipStatus)}}</span>
                                         </div>
                                         <div class="social-user-card__actions" *ngIf="canReportCampaignMember(member)">

@@ -913,6 +913,104 @@
 .social-empty--compact
     min-height: 6rem
 
+// Amistades y bloqueos (decisión 7 de la ronda de noviembre): las mismas tarjetas de persona que las campañas.
+.social-section--desplazable
+    flex: 1 1 auto
+    overflow-y: auto
+    padding-right: .25rem
+
+.social-nav__contador,
+.social-panel__contador
+    display: inline-flex
+    align-items: center
+    justify-content: center
+    min-width: 1.5rem
+    height: 1.5rem
+    padding: 0 .4rem
+    border-radius: 999px
+    font-size: .8rem
+    font-weight: 700
+
+.social-nav__contador
+    margin-left: auto
+    background: $active
+    color: #ffffff
+
+.social-panel__contador
+    margin-left: .35rem
+    background: rgba(255, 255, 255, .08)
+    color: rgba(245, 247, 255, .82)
+
+.social-actions
+    display: flex
+    flex-wrap: wrap
+    gap: .55rem
+
+.social-persona
+    align-items: center
+
+.social-persona__identidad
+    display: flex
+    align-items: center
+    gap: .8rem
+    min-width: 0
+    padding: 0
+    border: 0
+    background: none
+    color: inherit
+    font: inherit
+    text-align: left
+    cursor: pointer
+
+    &:hover strong
+        text-decoration: underline
+        text-decoration-color: $active
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+        border-radius: .5rem
+
+    strong
+        overflow-wrap: anywhere
+
+.social-persona__identidad--quieta
+    cursor: default
+
+    &:hover strong
+        text-decoration: none
+
+.social-persona__avatar
+    flex: 0 0 auto
+    width: 2.5rem
+    height: 2.5rem
+    border-radius: 50%
+    object-fit: cover
+    background: rgba(255, 255, 255, .08)
+
+.social-persona__alias
+    color: rgba(245, 247, 255, .65)
+    font-size: .9rem
+
+.social-bloque-error
+    display: flex
+    align-items: center
+    justify-content: space-between
+    gap: .5rem
+    padding: .6rem .8rem
+
+.social-enlace-cuenta
+    align-self: flex-start
+    color: $accent
+    font-size: .9rem
+    text-decoration: none
+
+    &:hover
+        text-decoration: underline
+
+    .social-empty &
+        align-self: center
+
 @media (max-width: 960px)
     .social-layout
         grid-template-columns: 1fr
