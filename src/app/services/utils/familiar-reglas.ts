@@ -39,6 +39,15 @@ function idPlantillaDeNivel(nivel: MonstruoNivelClase | null | undefined): numbe
     return Math.max(0, toInt(nivel?.Plantilla?.Id));
 }
 
+/**
+ * Si una fila de `Niveles_clase` de un monstruo es de familiar: la que lleva pseudoplantilla de familiar (`Plantilla.Id`
+ * > 0). Son las que ofrece la creación (`construirCatalogoFamiliaresDesdeMonstruos`) y las que el detalle del monstruo
+ * enseña como de familiar.
+ */
+export function esNivelDeFamiliar(nivel: MonstruoNivelClase | null | undefined): boolean {
+    return idPlantillaDeNivel(nivel) >= 1;
+}
+
 function nombrePlantillaDeNivel(nivel: MonstruoNivelClase | null | undefined): string {
     return `${nivel?.Plantilla?.Nombre ?? ''}`.trim();
 }
