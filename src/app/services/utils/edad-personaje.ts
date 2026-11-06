@@ -1,4 +1,5 @@
 import { Caracteristica } from 'src/app/interfaces/caracteristica';
+import { tirarDado } from 'src/app/services/utils/dados';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 
@@ -166,12 +167,12 @@ export function motivoEdadInicial(edad: unknown, raza: EdadesRaza | null | undef
 
 /**
  * Una edad inicial al azar para ese grupo de clases (tabla 6-4: la mayoría de edad más sus dados), con `tirada(caras)`
- * para cada dado (de 1 a caras); `null` sin dato.
+ * para cada dado (de 1 a caras; por defecto, el dado sin sesgo de la web, `tirarDado`); `null` sin dato.
  */
 export function tirarEdadInicial(
     raza: EdadesRaza | null | undefined,
     grupo: unknown,
-    tirada: (caras: number) => number = (caras) => 1 + Math.floor(Math.random() * caras),
+    tirada: (caras: number) => number = (caras) => tirarDado(caras),
 ): number | null {
     const dados = dadosEdadInicial(raza, grupo);
     if (!dados)

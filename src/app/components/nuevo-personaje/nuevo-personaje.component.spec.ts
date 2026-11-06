@@ -1915,9 +1915,10 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Edad).toBe(22);
         expect(component.edadInicialGrupos.map((g) => `${g.clases}: ${g.dados} (${g.minima})`))
             .toEqual(['grupo 1: +1d4 (21)', 'Guerrero: +1d6 (21)', 'Mago: +2d6 (22)']);
-        spyOn(Math, 'random').and.returnValue(0.999);
+        // Tirar: la mayoría de edad más 2d6.
         component.tirarEdadInicial(3);
-        expect(component.Personaje.Edad).toBe(32);
+        expect(component.Personaje.Edad).toBeGreaterThanOrEqual(22);
+        expect(component.Personaje.Edad).toBeLessThanOrEqual(32);
     });
 
     it('con la clase del primer nivel, una edad por debajo de su edad inicial vuelve homebrew la ficha, con su motivo', () => {
