@@ -370,15 +370,15 @@
                                         </mat-form-field>
                                         <mat-form-field appearance="fill">
                                             <mat-label>Ajuste con clases de PJ</mat-label>
-                                            <input matInput type="number" step="1" formControlName="vd_mod_clases_pj" />
+                                            <input matInput type="number" step="1" min="-10" max="10" formControlName="vd_mod_clases_pj" />
                                             <mat-hint>Vacío: 0</mat-hint>
-                                            <mat-error>{{errores.textoDe('vd_mod_clases_pj', 'Un número entero.')}}</mat-error>
+                                            <mat-error>{{errores.textoDe('vd_mod_clases_pj', 'Un número entero de −10 a +10.')}}</mat-error>
                                         </mat-form-field>
                                         <mat-form-field appearance="fill">
                                             <mat-label>Ajuste con clases de PNJ</mat-label>
-                                            <input matInput type="number" step="1" formControlName="vd_mod_clases_pnj" />
+                                            <input matInput type="number" step="1" min="-10" max="10" formControlName="vd_mod_clases_pnj" />
                                             <mat-hint>Vacío: −1 (el kóbold, −3)</mat-hint>
-                                            <mat-error>{{errores.textoDe('vd_mod_clases_pnj', 'Un número entero.')}}</mat-error>
+                                            <mat-error>{{errores.textoDe('vd_mod_clases_pnj', 'Un número entero de −10 a +10.')}}</mat-error>
                                         </mat-form-field>
                                     </div>
                                 </section>

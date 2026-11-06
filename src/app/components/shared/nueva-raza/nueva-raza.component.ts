@@ -537,8 +537,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         // El VD de sus PNJ (Guía del DM, págs. 37-38; MM, págs. 293-294). Vacío (`null`): sin dato o la regla general. El
         // validador del VD de la raza lo pone `sincronizarCamposDgsExtra`: sin DG raciales no se enseña ni se manda.
         vd: [null as number | null],
-        vd_mod_clases_pj: [null as number | null, [enteroOpcionalValidator]],
-        vd_mod_clases_pnj: [null as number | null, [enteroOpcionalValidator]],
+        // De −10 a +10, como la API (`raza.vd_mod_clases_*`; los manuales dan −1, 0 o +1).
+        vd_mod_clases_pj: [null as number | null, [enteroOpcionalValidator, Validators.min(-10), Validators.max(10)]],
+        vd_mod_clases_pnj: [null as number | null, [enteroOpcionalValidator, Validators.min(-10), Validators.max(10)]],
         clases_asociadas: [[] as FilaDeLista[]],
         id_tipo_criatura: [0, [Validators.min(1)]],
         ataque_base: [0],

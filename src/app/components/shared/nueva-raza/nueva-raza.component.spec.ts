@@ -1522,6 +1522,13 @@ describe('NuevaRazaComponent', () => {
             component.form.patchValue({ vd_mod_clases_pnj: 1.5 });
             expect(component.form.controls.vd_mod_clases_pnj.hasError('entero')).toBeTrue();
             expect(component.form.valid).toBeFalse();
+
+            // De −10 a +10, como la API.
+            component.form.patchValue({ vd_mod_clases_pnj: -10, vd_mod_clases_pj: 11 });
+            expect(component.form.controls.vd_mod_clases_pnj.valid).toBeTrue();
+            expect(component.form.controls.vd_mod_clases_pj.hasError('max')).toBeTrue();
+            component.form.patchValue({ vd_mod_clases_pj: -11 });
+            expect(component.form.controls.vd_mod_clases_pj.hasError('min')).toBeTrue();
         });
 
         it('con DG raciales manda el VD de la raza (mayor que 0, hasta 999,99; vacío, sin dato) y sus clases asociadas', () => {
