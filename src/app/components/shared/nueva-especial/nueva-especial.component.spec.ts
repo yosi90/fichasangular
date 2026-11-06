@@ -169,6 +169,51 @@ describe('NuevaEspecialComponent', () => {
         expect(component.catalogContext.getCatalog('actitud_requerido')).toEqual([{ id: 4, nombre: 'Bueno' }, { id: 5, nombre: 'Maligno' }]);
     });
 
+    it('un especial nuevo no otorga nada; los chips de la creación mandan la dote, el familiar y el compañero', () => {
+        expect(component.marcasOtorga.map((marca) => marca.clave)).toEqual(['otorga_dote', 'otorga_familiar', 'otorga_companero']);
+        component.marcasOtorga.forEach((marca) => expect(marca.ayuda.length).toBeGreaterThan(0));
+        let payload = (component as any).construirPayload();
+        expect(payload.especial).toEqual(jasmine.objectContaining({ otorga_dote: false, otorga_familiar: false, otorga_companero: false }));
+
+        component.toggleBoolean('otorga_dote');
+        component.toggleBoolean('otorga_companero');
+        payload = (component as any).construirPayload();
+        expect(payload.especial).toEqual(jasmine.objectContaining({ otorga_dote: true, otorga_familiar: false, otorga_companero: true }));
+    });
+
+    it('al editar, carga lo que otorga, guardar sin tocar lo manda igual y cambiarlo cuenta como cambio', async () => {
+        especialSvc.getEspecialFresco.and.returnValue(of(buildEspecial({ Otorga_dote: false, Otorga_familiar: true, Otorga_companero: true })));
+        component.modo = 'editar';
+        component.idEspecial = 77;
+        component.ngOnChanges({
+            modo: { currentValue: 'editar', previousValue: 'crear', firstChange: false, isFirstChange: () => false },
+            idEspecial: { currentValue: 77, previousValue: null, firstChange: false, isFirstChange: () => false },
+        });
+
+        expect(component.form.value).toEqual(jasmine.objectContaining({ otorga_dote: false, otorga_familiar: true, otorga_companero: true }));
+        expect(component.isDirty).toBeFalse();
+
+        component.toggleBoolean('otorga_familiar');
+        expect(component.isDirty).toBeTrue();
+        component.toggleBoolean('otorga_familiar');
+        expect(component.isDirty).toBeFalse();
+
+        await component.guardarEspecial();
+        const [id, payload] = especialSvc.actualizarEspecial.calls.mostRecent().args;
+        expect(id).toBe(77);
+        expect(payload.especial).toEqual(jasmine.objectContaining({ otorga_dote: false, otorga_familiar: true, otorga_companero: true }));
+    });
+
+    it('tras crear un especial que otorga un familiar, el formulario vuelve a no otorgar nada', async () => {
+        component.form.patchValue({ nombre: 'Convocar familiar arcano' });
+        component.toggleBoolean('otorga_familiar');
+
+        await component.guardarEspecial();
+
+        expect(especialSvc.crearEspecial.calls.mostRecent().args[0].especial.otorga_familiar).toBeTrue();
+        expect(component.form.value).toEqual(jasmine.objectContaining({ otorga_dote: false, otorga_familiar: false, otorga_companero: false }));
+    });
+
     it('solo da habilidades del catálogo: Artesanía 1 no pasa a la personalizada de su mismo id', () => {
         // En `rol_dev`, la habilidad 2 es Artesanía 1 y la personalizada 2, Autohipnosis; `especiales_habilidades` solo
         // apunta a `habilidades` (el contrato no tiene habilidades personalizadas en los especiales).

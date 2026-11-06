@@ -37,11 +37,24 @@
     .habilidad-row
         grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.8fr) minmax(90px, 120px) 42px
 
+    // Lo que da en la creación: cada chip con lo que hace al lado.
+    .otorga-fila
+        display: grid
+        grid-template-columns: minmax(220px, auto) 1fr
+        gap: 0.75rem
+        align-items: center
+        margin-bottom: 0.35rem
+
+    .otorga-ayuda
+        opacity: 0.75
+        font-size: 0.9rem
+
 @container insercion (max-width: 900px)
     .nueva-especial-form
         .base-grid,
         .extra-row,
-        .habilidad-row
+        .habilidad-row,
+        .otorga-fila
             grid-template-columns: 1fr
 
         .full-span
