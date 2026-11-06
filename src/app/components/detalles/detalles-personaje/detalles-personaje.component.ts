@@ -73,6 +73,7 @@ import { destinoEnTablist } from 'src/app/services/utils/teclado';
 import { edadesDeLaRaza, etapaEdad, EtapaEdad, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
 import { esPnj, textoNivelPersonaje, textoVd } from 'src/app/services/utils/tipo-personaje';
 import { etiquetaPenalizacionExperiencia, textoPenalizacionExperiencia } from 'src/app/services/utils/penalizacion-experiencia';
+import { motivosHomebrewGuardado } from 'src/app/services/utils/personaje-oficialidad';
 import {
     aptitudesDeEdadPersonaje, AptitudesDeEdadFicha, etiquetasTipoPersonaje, lanzamientoRacialPersonaje, LanzamientoRacialFicha,
     razaConCategoriaPersonaje
@@ -165,6 +166,8 @@ interface ModeloFicha {
     tipoPagina: string;
     tipoPestanas: string;
     etiquetas: EtiquetaFicha[];
+    /** Por qué es homebrew la ficha guardada (sus componentes y las reglas que se saltó al crearla); vacío si es oficial. */
+    motivosHomebrew: string[];
     creador: { nombre: string; enlace: boolean; } | null;
     datos: DatoFicha[];
     franja: DatoFranja[];
@@ -1117,6 +1120,7 @@ ${envejecimiento}` : edades;
             tipoPagina: unirTipo([esPnj(pj.tipo) ? 'Personaje no jugador' : 'Personaje', raza, textoClases]),
             tipoPestanas: unirTipo([raza, textoClases, textoNivelPersonaje({ tipo: pj.tipo, nep: pj.NEP, vd: pj.vd }), alineamiento]),
             etiquetas: this.calcularEtiquetas(),
+            motivosHomebrew: pj.Oficial === false ? motivosHomebrewGuardado(pj.Homebrew) : [],
             creador: preview ? null : {
                 nombre: this.etiquetaCreador === 'Tú' ? 'ti' : this.etiquetaCreador,
                 enlace: this.chipCreadorClickable,
@@ -1180,7 +1184,7 @@ ${envejecimiento}` : edades;
 
     private modeloVacio(): ModeloFicha {
         return {
-            tipoPagina: '', tipoPestanas: '', etiquetas: [], creador: null, datos: [], franja: [], caracteristicas: [], casillasPagina: [],
+            tipoPagina: '', tipoPestanas: '', etiquetas: [], motivosHomebrew: [], creador: null, datos: [], franja: [], caracteristicas: [], casillasPagina: [],
             salvaciones: [], defensa: [], presaIniciativa: [], defensasEspeciales: [], enemigos: [], habilidades: [],
             habilidadesConRangos: [], verHabilidades: false, dotes: [], aptitudes: [], raciales: [], rasgosTipo: [], plantillas: [],
             ventajas: [], idiomas: [], magia: [], lanzadores: [], lanzamientoRacial: null, aptitudesEdad: null, conjuros: [], sortilegas: [],

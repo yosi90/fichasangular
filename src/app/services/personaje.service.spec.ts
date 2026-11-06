@@ -629,6 +629,9 @@ describe('PersonajeService', () => {
         const sinElegir = service.construirPayloadCreacionDesdePersonaje(pj, { idCampana: 1, idTrama: 1, idSubtrama: 1 });
         expect(sinElegir.personaje.tipo).toBe('pj');
         expect(sinElegir.personaje.idPasoEdad).toBeUndefined();
+        // Desde el 2026-11-06 la oficialidad la calcula la API: no se manda.
+        expect('oficial' in sinElegir.personaje).toBeFalse();
+        expect(sinElegir.decisionesHomebrew).toBeUndefined();
 
         pj.tipo = 'pnj';
         pj.IdPasoEdad = 15;
@@ -918,7 +921,6 @@ describe('PersonajeService', () => {
                 trama: { id: 1 },
                 subtrama: { id: 1 },
                 visible_otros_usuarios: false,
-                oficial: true,
             },
             caracteristicas: {
                 fuerza: { valor: 10, minimo: 0, perdido: false },
@@ -959,7 +961,6 @@ describe('PersonajeService', () => {
                     idTipoCriatura: 1,
                     idRegion: 0,
                     visible_otros_usuarios: false,
-                    oficial: true,
                 },
                 caracteristicas: {
                     fuerza: { valor: 10, minimo: 0, perdido: false },

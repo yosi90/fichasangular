@@ -220,7 +220,25 @@ export function edadPasaDeLaMaxima(edad: unknown, raza: EdadesRaza | null | unde
  * dados de la tabla 6-5). Una raza sin esos dados no tiene tope por arriba.
  */
 export function edadFueraDelManual(edad: unknown, raza: EdadesRaza | null | undefined, grupo?: unknown): boolean {
-    return etapaEdad(edad, raza)?.id === 'joven' || edadPorDebajoDeLaInicial(edad, raza, grupo) || edadPasaDeLaMaxima(edad, raza);
+    return comoSaleLaEdadDelManual(edad, raza, grupo) !== null;
+}
+
+/** Por dónde sale la edad del manual (en este orden), o `null` si no sale. */
+export type EdadFueraDelManual = 'menor_que_la_mayoria' | 'menor_que_la_inicial' | 'mayor_que_la_maxima';
+
+/**
+ * Por dónde sale la edad del manual (`edadFueraDelManual`): por debajo de la mayoría de edad de la raza, por debajo de la
+ * edad inicial de la clase del primer nivel o por encima de la edad máxima de la raza; `null` si no sale. Con ello se
+ * guarda la decisión homebrew de la creación (`decisionesHomebrewPersonaje`).
+ */
+export function comoSaleLaEdadDelManual(edad: unknown, raza: EdadesRaza | null | undefined, grupo?: unknown): EdadFueraDelManual | null {
+    if (etapaEdad(edad, raza)?.id === 'joven')
+        return 'menor_que_la_mayoria';
+    if (edadPorDebajoDeLaInicial(edad, raza, grupo))
+        return 'menor_que_la_inicial';
+    if (edadPasaDeLaMaxima(edad, raza))
+        return 'mayor_que_la_maxima';
+    return null;
 }
 
 /**
@@ -229,15 +247,17 @@ export function edadFueraDelManual(edad: unknown, raza: EdadesRaza | null | unde
  * 110).»; `''` si no sale.
  */
 export function motivoEdadFueraDelManual(edad: unknown, raza: EdadesRaza | null | undefined, grupo?: unknown, clase?: string): string {
-    if (etapaEdad(edad, raza)?.id === 'joven')
-        return `Edad por debajo de la mayoría de edad de la raza: ${toNumber(edad)} (adulto a los ${toNumber(raza?.Edad_adulto)}).`;
-    const inicial = motivoEdadInicial(edad, raza, grupo, clase);
-    if (inicial)
-        return inicial;
-    if (edadPasaDeLaMaxima(edad, raza))
-        return `Edad por encima de la edad máxima de la raza: ${toNumber(edad)} (venerable a los ${toNumber(raza?.Edad_venerable)}, `
-            + `${textoDadosEdadMaxima(raza)}: como mucho ${edadMaximaDeLaRaza(raza)}).`;
-    return '';
+    switch (comoSaleLaEdadDelManual(edad, raza, grupo)) {
+        case 'menor_que_la_mayoria':
+            return `Edad por debajo de la mayoría de edad de la raza: ${toNumber(edad)} (adulto a los ${toNumber(raza?.Edad_adulto)}).`;
+        case 'menor_que_la_inicial':
+            return motivoEdadInicial(edad, raza, grupo, clase);
+        case 'mayor_que_la_maxima':
+            return `Edad por encima de la edad máxima de la raza: ${toNumber(edad)} (venerable a los ${toNumber(raza?.Edad_venerable)}, `
+                + `${textoDadosEdadMaxima(raza)}: como mucho ${edadMaximaDeLaRaza(raza)}).`;
+        default:
+            return '';
+    }
 }
 
 /** «−1 a Fue, Des y Con; +1 a Int, Sab y Car», o `''` si la etapa no envejece. */

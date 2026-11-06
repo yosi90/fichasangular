@@ -1,5 +1,6 @@
 import {
     ajustesEnvejecimiento,
+    comoSaleLaEdadDelManual,
     edadesDeLaRaza,
     edadFueraDelManual,
     edadMaximaDeLaRaza,
@@ -178,5 +179,22 @@ describe('edad inicial por clase (MJ, tabla 6-4, pág. 109)', () => {
         expect(edadPorDefecto(humano)).toBe(17);
         expect(edadPorDefecto(elfo)).toBe(120);
         expect(edadPorDefecto({ Edad_adulto: 40, Edad_venerable: 250 })).toBe(40);
+    });
+});
+
+describe('por dónde sale la edad del manual (la decisión homebrew que se guarda)', () => {
+    const humano: EdadesRaza = {
+        Edad_adulto: 15, Edad_mediana: 35, Edad_viejo: 53, Edad_venerable: 70, Edad_maxima_dados: 2, Edad_maxima_caras: 20,
+        Edad_inicial_dados_1: 1, Edad_inicial_caras_1: 4, Edad_inicial_dados_2: 1, Edad_inicial_caras_2: 6,
+        Edad_inicial_dados_3: 2, Edad_inicial_caras_3: 6,
+    };
+
+    it('por debajo de la mayoría, de la inicial de la clase o por encima de la máxima, en ese orden', () => {
+        expect(comoSaleLaEdadDelManual(12, humano, 2)).toBe('menor_que_la_mayoria');
+        expect(comoSaleLaEdadDelManual(15, humano, 2)).toBe('menor_que_la_inicial');
+        expect(comoSaleLaEdadDelManual(120, humano, 2)).toBe('mayor_que_la_maxima');
+        expect(comoSaleLaEdadDelManual(20, humano, 2)).toBeNull();
+        expect(edadFueraDelManual(15, humano, 2)).toBeTrue();
+        expect(motivoEdadFueraDelManual(120, humano, 2)).toContain('Edad por encima de la edad máxima de la raza');
     });
 });

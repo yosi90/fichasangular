@@ -1,5 +1,6 @@
 import { Personaje } from 'src/app/interfaces/personaje';
-import { normalizarTexto } from './normalizacion';
+import { EdadFueraDelManual } from './edad-personaje';
+import { normalizarTexto, toNullableText, toPositiveInt } from './normalizacion';
 
 /** Lo mínimo de un elemento de catálogo para saber si es oficial y de qué fuente es (su id y su manual). */
 export interface ConOficial {
@@ -259,4 +260,157 @@ export function motivosQueConfirmar(motivos: (string | null | undefined)[], yaEs
 export function motivoHomebrew(familia: FamiliaHomebrew, elemento: ConOficial | null | undefined): string | null {
     const [homebrew] = noOficiales(familia, [elemento]);
     return homebrew ? textoMotivo(homebrew) : null;
+}
+
+/**
+ * Las decisiones de la creación que contradicen las reglas y vuelven homebrew al personaje (propietario, 2026-11-06): lo
+ * único de su oficialidad que no se deduce de lo que tiene, y por eso se guarda (`decisionesHomebrew` de
+ * `POST /personajes/add`; `docs/publica/endpoints/personajes.md`). `edad_sin_ajuste` la pone la API (el PJ a una edad sin
+ * ajuste, con el permiso del máster) y `desconocida`, la migración de las fichas de antes.
+ */
+export type TipoDecisionHomebrew =
+    | 'alineamiento_raza' | 'alineamiento_deidad' | 'alineamiento_clase' | 'requisitos_plantilla'
+    | 'edad_menor_que_la_mayoria' | 'edad_menor_que_la_inicial' | 'edad_mayor_que_la_maxima'
+    | 'altura_fuera_de_rango' | 'peso_fuera_de_rango' | 'edad_sin_ajuste' | 'desconocida';
+
+/** Una decisión al crear: su tipo y el elemento del personaje al que se refiere (su raza, su clase, su plantilla…). */
+export interface DecisionHomebrew {
+    tipo: TipoDecisionHomebrew;
+    idElemento?: number;
+}
+
+/** Lo que ya sabe la creación de las reglas que se saltó (`decisionesHomebrewPersonaje`). */
+export interface EstadoDecisionesHomebrew {
+    idRaza?: number | null;
+    idDeidad?: number | null;
+    /** Un alineamiento que su raza no admite, confirmado en Básicos. */
+    alineamientoRaza?: boolean;
+    /** Un alineamiento que su deidad no admite, confirmado en Básicos. */
+    alineamientoDeidad?: boolean;
+    /** Las clases cogidas contra su alineamiento. */
+    clasesConAlineamientoSaltado?: Iterable<number>;
+    /** Las plantillas elegidas sin sus requisitos (y que sigue teniendo). */
+    plantillasSinRequisitos?: Iterable<number>;
+    /** Por dónde sale la edad del manual (`comoSaleLaEdadDelManual`). */
+    edad?: EdadFueraDelManual | null;
+    /** La clase del primer nivel: con ella se compara la edad inicial. */
+    idClasePrimerNivel?: number | null;
+    alturaFueraDeRango?: boolean;
+    pesoFueraDeRango?: boolean;
+}
+
+/**
+ * Las decisiones contra las reglas que se mandan al guardar el personaje, sin repetidas. La oficialidad del personaje
+ * guardado la calcula la API con ellas y con sus componentes; la web ya no manda `oficial`.
+ */
+export function decisionesHomebrewPersonaje(estado: EstadoDecisionesHomebrew): DecisionHomebrew[] {
+    const salida: DecisionHomebrew[] = [];
+    const vistas = new Set<string>();
+    const anadir = (tipo: TipoDecisionHomebrew, id: unknown) => {
+        const idElemento = toPositiveInt(id);
+        const clave = `${tipo}:${idElemento}`;
+        if (idElemento === null || vistas.has(clave))
+            return;
+        vistas.add(clave);
+        salida.push({ tipo, idElemento });
+    };
+    if (estado.alineamientoRaza)
+        anadir('alineamiento_raza', estado.idRaza);
+    if (estado.alineamientoDeidad)
+        anadir('alineamiento_deidad', estado.idDeidad);
+    for (const idClase of estado.clasesConAlineamientoSaltado ?? [])
+        anadir('alineamiento_clase', idClase);
+    for (const idPlantilla of estado.plantillasSinRequisitos ?? [])
+        anadir('requisitos_plantilla', idPlantilla);
+    if (estado.edad === 'menor_que_la_inicial')
+        anadir('edad_menor_que_la_inicial', estado.idClasePrimerNivel);
+    else if (estado.edad)
+        anadir(`edad_${estado.edad}`, estado.idRaza);
+    if (estado.alturaFueraDeRango)
+        anadir('altura_fuera_de_rango', estado.idRaza);
+    if (estado.pesoFueraDeRango)
+        anadir('peso_fuera_de_rango', estado.idRaza);
+    return salida;
+}
+
+/** Un componente homebrew del personaje guardado (`homebrew.componentes` de `GET /personajes/{id}`). */
+export interface ComponenteHomebrewGuardado {
+    tabla: string;
+    id: number;
+    nombre: string | null;
+}
+
+/** Una decisión contra las reglas del personaje guardado (`homebrew.decisiones`). */
+export interface DecisionHomebrewGuardada {
+    tipo: TipoDecisionHomebrew | string;
+    tabla: string | null;
+    id: number | null;
+    nombre: string | null;
+}
+
+/** Por qué es homebrew un personaje guardado, como lo da la API. */
+export interface HomebrewGuardado {
+    componentes: ComponenteHomebrewGuardado[];
+    decisiones: DecisionHomebrewGuardada[];
+}
+
+/**
+ * `homebrew` de `GET /personajes/{id}` (estricto: lo que no tiene la forma del contrato no entra). Sin él, sin motivos.
+ */
+export function normalizarHomebrewGuardado(raw: any): HomebrewGuardado {
+    const entero = (valor: unknown): number | null => (Number.isInteger(valor) ? Number(valor) : null);
+    const componentes = (Array.isArray(raw?.componentes) ? raw.componentes : [])
+        .filter((c: any) => typeof c?.tabla === 'string' && Number.isInteger(c?.id))
+        .map((c: any): ComponenteHomebrewGuardado => ({ tabla: c.tabla, id: c.id, nombre: toNullableText(c.nombre) }));
+    const decisiones = (Array.isArray(raw?.decisiones) ? raw.decisiones : [])
+        .filter((d: any) => typeof d?.tipo === 'string')
+        .map((d: any): DecisionHomebrewGuardada => ({ tipo: d.tipo, tabla: toNullableText(d.tabla), id: entero(d.id), nombre: toNullableText(d.nombre) }));
+    return { componentes, decisiones };
+}
+
+/**
+ * Cómo se nombra cada tabla de la API en los motivos de una ficha guardada: las de `FAMILIAS_HOMEBREW` y lo que solo usa
+ * la ficha guardada (la compra del final de la creación y las ventajas).
+ */
+const ETIQUETA_POR_TABLA: Readonly<Record<string, string>> = {
+    ...Object.fromEntries(Object.values(FAMILIAS_HOMEBREW).map((familia) => [familia.tablaApi, familia.etiqueta])),
+    razas: 'Raza',
+    monstruos: 'Familiar o compañero',
+    armas: 'Arma',
+    armaduras: 'Armadura',
+    objetos: 'Objeto',
+    municiones: 'Munición',
+    materiales: 'Material',
+    encantamientos: 'Aptitud especial',
+    ventajas: 'Ventaja o desventaja',
+};
+
+/** Lo que se lee de cada decisión: «Alineamiento que no admite su clase» (y, si lo tiene, «: Druida»). */
+const TEXTO_POR_DECISION: Readonly<Record<TipoDecisionHomebrew, string>> = {
+    alineamiento_raza: 'Alineamiento que no admite su raza',
+    alineamiento_deidad: 'Alineamiento que no admite su deidad',
+    alineamiento_clase: 'Alineamiento que no admite su clase',
+    requisitos_plantilla: 'Plantilla sin sus requisitos',
+    edad_menor_que_la_mayoria: 'Edad por debajo de la mayoría de edad de su raza',
+    edad_menor_que_la_inicial: 'Edad por debajo de la inicial de su clase',
+    edad_mayor_que_la_maxima: 'Edad por encima de la máxima de su raza',
+    altura_fuera_de_rango: 'Altura fuera del rango de su raza',
+    peso_fuera_de_rango: 'Peso fuera del rango de su raza',
+    edad_sin_ajuste: 'PJ a una edad sin ajuste de nivel',
+    desconocida: 'Una regla saltada al crearlo (de antes de guardarse el motivo)',
+};
+
+/**
+ * Los motivos por los que un personaje guardado es homebrew, para enseñarlos en su ficha: «Raza: Elfo (rol mapa mundi)»,
+ * «Alineamiento que no admite su clase: Druida». Vacío si es oficial.
+ */
+export function motivosHomebrewGuardado(homebrew: HomebrewGuardado | null | undefined): string[] {
+    const componentes = (homebrew?.componentes ?? [])
+        .map((c) => `${ETIQUETA_POR_TABLA[c.tabla] ?? 'Elemento'}: ${`${c.nombre ?? ''}`.trim() || `#${c.id}`}`);
+    const decisiones = (homebrew?.decisiones ?? []).map((d) => {
+        const texto = TEXTO_POR_DECISION[d.tipo as TipoDecisionHomebrew] ?? 'Una regla saltada al crearlo';
+        const nombre = `${d.nombre ?? ''}`.trim();
+        return nombre ? `${texto}: ${nombre}` : texto;
+    });
+    return Array.from(new Set([...componentes, ...decisiones]));
 }

@@ -1,5 +1,6 @@
 import { AptitudSortilega } from "./aptitud-sortilega";
 import type { PenalizacionExperiencia } from "src/app/services/utils/penalizacion-experiencia";
+import type { HomebrewGuardado } from "src/app/services/utils/personaje-oficialidad";
 import { Conjuro } from "./conjuro";
 import { DoteContextual, DoteLegacy } from "./dote-contextual";
 import { EnemigoPredilectoSeleccion } from "./enemigo-predilecto-seleccion";
@@ -235,7 +236,10 @@ export interface Personaje extends PersonajeSimple {
     Volar: number;
     Trepar: number;
     Excavar: number;
+    /** Oficial u homebrew: en una ficha guardada lo calcula la API (`o`; desde el 2026-11-06 no se guarda). */
     Oficial: boolean;
+    /** Por qué es homebrew una ficha guardada (`homebrew` de `GET /personajes/{id}`): sus componentes y decisiones. */
+    Homebrew?: HomebrewGuardado;
     Dados_golpe: number;
     Pgs_lic: number;
     Jugador: string;

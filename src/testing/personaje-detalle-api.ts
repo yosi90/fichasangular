@@ -35,6 +35,7 @@ export function crearDetalleApi(cambios: Record<string, any> = {}): Record<strin
         nst: null,
         v: 80, cor: 50, na: 0, vo: 0, t: 0, e: 0,
         o: true,
+        homebrew: { componentes: [], decisiones: [] },
         dg: 4,
         nivelEfectivo: 14,
         clases: [
