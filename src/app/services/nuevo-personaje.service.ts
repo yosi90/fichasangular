@@ -265,6 +265,15 @@ const DOTE_COMPANERO_BONUS_ID = 49;
 const ESPECIALES_BONUS_COMPANERO_PERSONAJE = [157, 158];
 const ESPECIAL_BONUS_COMPANERO_AVANZADO = 159;
 const ESPECIAL_BONUS_COMPANERO_MAESTRO = 57;
+/** Orígenes de `habilidadesDeClasePorOrigen` que no son una clase. */
+const ORIGEN_SIEMPRE_DE_CLASE = 'siempre';
+const ORIGEN_DG_RACIALES = 'dg:raza';
+const ORIGEN_DG_PLANTILLAS = 'dg:plantillas';
+
+/** El origen de `habilidadesDeClasePorOrigen` de una clase, por su nombre (como `desgloseClases`). */
+function origenDeClase(nombreClase: string | null | undefined): string {
+    return `clase:${normalizarTexto(nombreClase ?? '')}`;
+}
 
 export interface EscalaCompanero {
     dgAdi: number;
@@ -571,6 +580,12 @@ export interface HabilidadesFlujoState {
     rangosIniciales?: Record<ClaveHabilidad, number>;
     /** En `companero_dg`, las habilidades del compañero que se reparten (con la forma de las del personaje). */
     habilidadesCompanero?: Personaje['Habilidades'] | null;
+    /**
+     * Las que cuestan 1 punto en esta sesión, por su clave: en un nivel de clase, las de esa clase y las que son de clase
+     * siempre (MJ cap. 3, «Personajes multiclase»); en los DG raciales o de plantilla, las que son siempre de clase (las de
+     * su criatura van en `classSkillTemporales`). `null` o ausente (el compañero, un borrador de antes): las `Clasea`.
+     */
+    deClaseEnLaSesion?: ClaveHabilidad[] | null;
 }
 
 export interface ConjurosCupoPendiente {
@@ -957,6 +972,8 @@ interface NuevoPersonajeDraftV1 {
     dgsCompaneroRepartidos?: number;
     /** Si ya se repartieron las habilidades y la dote del DG racial único al terminar sin clases. */
     dgRacialSinClasesRepartido?: boolean;
+    /** De dónde es de clase cada habilidad (`habilidadesDeClasePorOrigen`). */
+    habilidadesDeClasePorOrigen?: Record<string, ClaveHabilidad[]>;
     aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[];
     aumentosProgresionConcedidos: number;
     secuenciaAumentoPendiente: number;
@@ -1074,6 +1091,13 @@ export class NuevoPersonajeService {
     private dgRacialSinClasesRepartido = false;
     /** DG adicionales del compañero cuyos puntos de habilidad ya se repartieron. */
     private dgsCompaneroRepartidos = 0;
+    /**
+     * De dónde es de clase cada habilidad, por su clave: cada clase (`origenDeClase`, con las de sus dominios), las que lo
+     * son siempre (`ORIGEN_SIEMPRE_DE_CLASE`, los raciales) y las de la criatura de los DG raciales o de plantilla. Un rango
+     * cuesta 1 solo si es de la clase que sube, pero el tope de nivel + 3 vale si es de clase en cualquiera (MJ cap. 3,
+     * «Personajes multiclase»).
+     */
+    private habilidadesDeClasePorOrigen: Record<string, ClaveHabilidad[]> = {};
     private firmasDotesPlantillaAplicadas = new Set<string>();
     private aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[] = [];
     private aumentosProgresionConcedidos = 0;
@@ -1383,6 +1407,7 @@ export class NuevoPersonajeService {
         this.dotesAdicionalesRazaConcedidas = 0;
         this.dgRacialSinClasesRepartido = false;
         this.dgsCompaneroRepartidos = 0;
+        this.habilidadesDeClasePorOrigen = {};
         this.aumentosPendientesCaracteristica = [];
         this.aumentosProgresionConcedidos = 0;
         this.secuenciaAumentoPendiente = 1;
@@ -1525,6 +1550,7 @@ export class NuevoPersonajeService {
         this.dotesAdicionalesRazaConcedidas = 0;
         this.dgRacialSinClasesRepartido = false;
         this.dgsCompaneroRepartidos = 0;
+        this.habilidadesDeClasePorOrigen = {};
         this.firmasDotesPlantillaAplicadas.clear();
         this.conjurosSesionPlaceholderPorId = {};
         this.bonusNivelLanzadorPorClase = {};
@@ -2104,7 +2130,8 @@ export class NuevoPersonajeService {
 
         if (sinClases)
             this.dgRacialSinClasesRepartido = true;
-        this.iniciarDistribucionHabilidadesInterna('raza_dg', pasoVuelta, total, classSkillTemporales);
+        this.anotarHabilidadesDeClase(ORIGEN_DG_RACIALES, classSkillTemporales, true);
+        this.iniciarDistribucionHabilidadesInterna('raza_dg', pasoVuelta, total, classSkillTemporales, null, this.habilidadesSiempreDeClase());
         return true;
     }
 
@@ -2161,11 +2188,16 @@ export class NuevoPersonajeService {
 
         const nivelClases = this.getNivelClasesActual();
         const returnStep: StepNuevoPersonaje = nivelClases > 0 ? 'clases' : 'ventajas';
+        // Los DG del animal son como un nivel de otra clase: solo sus habilidades (y las que son siempre de clase) cuestan
+        // 1 (Manual de monstruos, «Licántropo»: «como si fuera multiclase»).
+        this.anotarHabilidadesDeClase(ORIGEN_DG_PLANTILLAS, Array.from(classSkillTemporales), true);
         this.iniciarDistribucionHabilidadesInterna(
             'plantilla_dg',
             returnStep,
             total,
-            Array.from(classSkillTemporales)
+            Array.from(classSkillTemporales),
+            null,
+            this.habilidadesSiempreDeClase()
         );
         return true;
     }
@@ -2181,7 +2213,10 @@ export class NuevoPersonajeService {
         });
 
         const returnStep: StepNuevoPersonaje = this.estadoFlujo.conjuros.activa ? 'conjuros' : 'dotes';
-        this.iniciarDistribucionHabilidadesInterna('clase_nivel', returnStep, total, []);
+        // Sin lo anotado de esa clase (un borrador de antes), las marcadas `Clasea`, como antes.
+        const deLaClase = this.habilidadesDeClasePorOrigen[origenDeClase(clase?.Nombre)];
+        const deClaseEnLaSesion = Array.isArray(deLaClase) ? [...deLaClase, ...this.habilidadesSiempreDeClase()] : null;
+        this.iniciarDistribucionHabilidadesInterna('clase_nivel', returnStep, total, [], null, deClaseEnLaSesion);
         return true;
     }
 
@@ -2625,7 +2660,7 @@ export class NuevoPersonajeService {
             0,
             toNumber(this.estadoFlujo.habilidades.nivelPersonajeReferencia) || this.getNivelEfectivoParaAumentos()
         );
-        return limiteRangosHabilidad(nivelReferencia, this.esHabilidadClaseaParaSesion(habilidad));
+        return limiteRangosHabilidad(nivelReferencia, this.esHabilidadDeClaseEnAlguna(habilidad));
     }
 
     private iniciarDistribucionHabilidadesInterna(
@@ -2633,7 +2668,8 @@ export class NuevoPersonajeService {
         returnStep: StepNuevoPersonaje,
         puntosTotales: number,
         classSkillTemporales: ClaveHabilidad[],
-        companero: { habilidades: Personaje['Habilidades']; dados: number; } | null = null
+        companero: { habilidades: Personaje['Habilidades']; dados: number; } | null = null,
+        deClaseEnLaSesion: ClaveHabilidad[] | null = null
     ): void {
         const total = Math.max(0, toInt(puntosTotales));
         const nivelReferencia = companero ? Math.max(0, toInt(companero.dados)) : this.getNivelEfectivoParaAumentos();
@@ -2655,6 +2691,7 @@ export class NuevoPersonajeService {
             classSkillTemporales: temporales,
             rangosIniciales,
             habilidadesCompanero: companero?.habilidades ?? null,
+            deClaseEnLaSesion: deClaseEnLaSesion ? Array.from(new Set(deClaseEnLaSesion)) : null,
         };
         this.estadoFlujo.pasoActual = 'habilidades';
     }
@@ -6302,12 +6339,48 @@ export class NuevoPersonajeService {
         ].join('|');
     }
 
+    /** Un rango cuesta 1 en esta sesión: es de clase para lo que se reparte (`deClaseEnLaSesion`) o solo en ella. */
     private esHabilidadClaseaParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
-        if (habilidad.Clasea)
+        const clave = claveHabilidad(habilidad);
+        if (toNumber(habilidad?.Id) > 0 && this.estadoFlujo.habilidades.classSkillTemporales.includes(clave))
             return true;
-        if (toNumber(habilidad?.Id) <= 0)
+        const deLaSesion = this.estadoFlujo.habilidades.deClaseEnLaSesion;
+        if (Array.isArray(deLaSesion))
+            return toNumber(habilidad?.Id) > 0 && deLaSesion.includes(clave);
+        return !!habilidad.Clasea;
+    }
+
+    /**
+     * Su tope es el de una de clase (nivel + 3): lo es en cualquiera de las clases del personaje, en sus DG raciales o de
+     * plantilla, o en esta sesión (MJ cap. 3, «Personajes multiclase»). El compañero, solo con lo suyo.
+     */
+    private esHabilidadDeClaseEnAlguna(habilidad: Personaje['Habilidades'][number]): boolean {
+        if (habilidad.Clasea || this.esHabilidadClaseaParaSesion(habilidad))
+            return true;
+        if (this.estadoFlujo.habilidades.origen === 'companero_dg' || toNumber(habilidad?.Id) <= 0)
             return false;
-        return this.estadoFlujo.habilidades.classSkillTemporales.includes(claveHabilidad(habilidad));
+        const clave = claveHabilidad(habilidad);
+        return Object.values(this.habilidadesDeClasePorOrigen).some((claves) => claves.includes(clave));
+    }
+
+    /** Anota de dónde es de clase cada una (`habilidadesDeClasePorOrigen`); `reemplazar`, lo de ese origen desde cero. */
+    private anotarHabilidadesDeClase(
+        origen: string,
+        habilidades: readonly (Personaje['Habilidades'][number] | ClaveHabilidad | null | undefined)[],
+        reemplazar = false
+    ): void {
+        const claves = habilidades
+            .map((habilidad) => typeof habilidad === 'string'
+                ? habilidad
+                : (habilidad && toNumber(habilidad.Id) > 0 ? claveHabilidad(habilidad) : ''))
+            .filter((clave) => clave.length > 0);
+        const anteriores = reemplazar ? [] : (this.habilidadesDeClasePorOrigen[origen] ?? []);
+        this.habilidadesDeClasePorOrigen[origen] = Array.from(new Set([...anteriores, ...claves]));
+    }
+
+    /** Las que son de clase en todos los repartos (los raciales, `Se_considera_clasea`). */
+    private habilidadesSiempreDeClase(): ClaveHabilidad[] {
+        return this.habilidadesDeClasePorOrigen[ORIGEN_SIEMPRE_DE_CLASE] ?? [];
     }
 
     /**
@@ -6315,7 +6388,7 @@ export class NuevoPersonajeService {
      * transclásea, o si tiene un bonificador que se aplica a una sola (el +2 del duérgar a una Artesanía de su elección).
      */
     private esExtraElegibleParaSesion(habilidad: Personaje['Habilidades'][number]): boolean {
-        return this.esHabilidadClaseaParaSesion(habilidad)
+        return this.esHabilidadDeClaseEnAlguna(habilidad)
             || toNumber(habilidad?.Rangos) > 0
             || toNumber(habilidad?.Rangos_varios) !== 0;
     }
@@ -6681,15 +6754,16 @@ export class NuevoPersonajeService {
      * las `Habilidades_claseas` de un dominio. Con su especialidad, si la nombra (`Id_extra`), en su hueco.
      */
     private aplicarHabilidadesSiempreDeClase(raciales: RacialDetalle[]): void {
-        (raciales ?? []).forEach((racial) => {
+        const aseguradas = (raciales ?? []).flatMap((racial) => {
             const habilidades = racial?.Habilidades;
-            [
+            return [
                 ...(habilidades?.Base ?? []).map((ref) => ({ ref, custom: false })),
                 ...(habilidades?.Custom ?? []).map((ref) => ({ ref, custom: true })),
             ]
                 .filter(({ ref }) => toBoolean(ref?.['Se_considera_clasea']))
-                .forEach(({ ref, custom }) => this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: true, customPreferido: custom }));
+                .map(({ ref, custom }) => this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: true, customPreferido: custom }));
         });
+        this.anotarHabilidadesDeClase(ORIGEN_SIEMPRE_DE_CLASE, aseguradas, true);
     }
 
     private asegurarHabilidadDesdeRaza(
@@ -6900,26 +6974,20 @@ export class NuevoPersonajeService {
         if (refsBase.length < 1 && refsCustom.length < 1)
             return;
 
-        refsBase.forEach((ref) => {
-            const raw = ref as Record<string, any>;
-            this.asegurarHabilidadDesdeReferencia(raw, {
+        const aseguradas = [
+            ...refsBase.map((ref) => this.asegurarHabilidadDesdeReferencia(ref as Record<string, any>, {
                 marcarClasea: true,
                 customPreferido: false,
-            });
-        });
-
-        refsCustom.forEach((ref) => {
-            const raw = ref as Record<string, any>;
-            this.asegurarHabilidadDesdeReferencia(raw, {
+            })),
+            ...refsCustom.map((ref) => this.asegurarHabilidadDesdeReferencia(ref as Record<string, any>, {
                 marcarClasea: true,
                 customPreferido: true,
-            });
-        });
-
-        // Las que son de clase solo con un alineamiento básico (`Habilidades.Por_alineamiento`: el nacido del alma).
-        this.habilidadesPorAlineamientoDeClase(clase).forEach((ref) => {
-            this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: true, customPreferido: false });
-        });
+            })),
+            // Las que son de clase solo con un alineamiento básico (`Habilidades.Por_alineamiento`: el nacido del alma).
+            ...this.habilidadesPorAlineamientoDeClase(clase)
+                .map((ref) => this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: true, customPreferido: false })),
+        ];
+        this.anotarHabilidadesDeClase(origenDeClase(clase?.Nombre), aseguradas);
 
         this.personajeCreacion.Habilidades = this.personajeCreacion.Habilidades
             .slice()
@@ -7027,7 +7095,7 @@ export class NuevoPersonajeService {
         return resultado;
     }
 
-    private aplicarDominiosNivelClase(_clase: Clase, _nivel: number, dominios: ClaseDominioPendiente[]): void {
+    private aplicarDominiosNivelClase(clase: Clase, _nivel: number, dominios: ClaseDominioPendiente[]): void {
         if (dominios.length < 1)
             return;
 
@@ -7046,7 +7114,7 @@ export class NuevoPersonajeService {
                 return;
             this.personajeCreacion.Dominios.push({ Nombre: nombre });
             nombresActuales.add(nombreNorm);
-            this.aplicarPoderConcedidoDominio(this.dominioDelCatalogo(dominio.id) ?? null, nombre);
+            this.aplicarPoderConcedidoDominio(this.dominioDelCatalogo(dominio.id) ?? null, nombre, clase);
         });
     }
 
@@ -7055,7 +7123,7 @@ export class NuevoPersonajeService {
      * deidad; la competencia, solo si no la tiene ya), sus habilidades de clase y sus aptitudes. Lo que no es dote,
      * habilidad ni aptitud queda en su texto (`Poder`), que la ficha enseña con el dominio.
      */
-    private aplicarPoderConcedidoDominio(dominio: DominioDetalle | null, nombreDominio: string): void {
+    private aplicarPoderConcedidoDominio(dominio: DominioDetalle | null, nombreDominio: string, clase: Clase): void {
         if (!dominio)
             return;
         const origen = `Dominio: ${nombreDominio}`;
@@ -7074,14 +7142,14 @@ export class NuevoPersonajeService {
             if (this.agregarDoteAlPersonaje(dote, origen, idExtra, textoExtra))
                 this.aplicarModificadoresDote(dote, origen, idExtra, textoExtra);
         });
-        (dominio.Habilidades_claseas ?? []).forEach((habilidad) => {
-            this.asegurarHabilidadDesdeReferencia({
+        // Son de clase de la clase que da el dominio (MJ cap. 3: las añade a las habilidades de clase del clérigo).
+        this.anotarHabilidadesDeClase(origenDeClase(clase?.Nombre), (dominio.Habilidades_claseas ?? [])
+            .map((habilidad) => this.asegurarHabilidadDesdeReferencia({
                 Id_habilidad: habilidad.Id_habilidad,
                 Habilidad: habilidad.Habilidad,
                 Id_extra: habilidad.Id_extra,
                 Extra: habilidad.Extra ?? '',
-            }, { marcarClasea: true });
-        });
+            }, { marcarClasea: true })));
         (dominio.Especiales ?? []).forEach((especial) => {
             const nombre = `${especial?.Nombre ?? ''}`.trim();
             const yaLaTiene = (this.personajeCreacion.Claseas ?? [])
@@ -9331,6 +9399,7 @@ export class NuevoPersonajeService {
             dotesAdicionalesRazaConcedidas: Math.max(0, toInt(this.dotesAdicionalesRazaConcedidas)),
             dgsCompaneroRepartidos: Math.max(0, toInt(this.dgsCompaneroRepartidos)),
             dgRacialSinClasesRepartido: this.dgRacialSinClasesRepartido,
+            habilidadesDeClasePorOrigen: this.clonarProfundo(this.habilidadesDeClasePorOrigen),
             aumentosPendientesCaracteristica: this.clonarProfundo(this.aumentosPendientesCaracteristica),
             aumentosProgresionConcedidos: Math.max(0, toInt(this.aumentosProgresionConcedidos)),
             secuenciaAumentoPendiente: Math.max(1, toInt(this.secuenciaAumentoPendiente)),
@@ -9411,6 +9480,7 @@ export class NuevoPersonajeService {
         this.dotesAdicionalesRazaConcedidas = Math.max(0, toInt(borrador.dotesAdicionalesRazaConcedidas));
         this.dgsCompaneroRepartidos = Math.max(0, toInt(borrador.dgsCompaneroRepartidos));
         this.dgRacialSinClasesRepartido = borrador.dgRacialSinClasesRepartido === true;
+        this.habilidadesDeClasePorOrigen = this.clonarProfundo(borrador.habilidadesDeClasePorOrigen ?? {});
         this.aumentosPendientesCaracteristica = this.clonarProfundo(borrador.aumentosPendientesCaracteristica ?? []);
         this.aumentosProgresionConcedidos = Math.max(0, toInt(borrador.aumentosProgresionConcedidos));
         this.secuenciaAumentoPendiente = Math.max(1, toInt(borrador.secuenciaAumentoPendiente));

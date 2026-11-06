@@ -925,6 +925,18 @@ describe('NuevoPersonajeService (borrador local)', () => {
         expect(restaurado.EstadoFlujo.pasoActual).toBe('basicos');
     });
 
+    it('el borrador conserva de qué clase es cada habilidad (multiclase)', () => {
+        const service = new NuevoPersonajeService();
+        service.seleccionarRaza(crearRazaDraft());
+        (service as any).habilidadesDeClasePorOrigen = { 'clase:guerrero': ['habilidad:7'] };
+        service.activarPersistenciaBorradorLocal(uid);
+        service.persistirBorradorLocalAhora();
+
+        const restaurado = new NuevoPersonajeService();
+        expect(restaurado.restaurarBorradorLocal(uid)).toBeTrue();
+        expect((restaurado as any).habilidadesDeClasePorOrigen['clase:guerrero']).toEqual(['habilidad:7']);
+    });
+
     it('al restaurar el borrador tras los niveles, los modificadores de las dotes elegidas siguen, una sola vez', () => {
         const service = new NuevoPersonajeService();
         const dote = {
@@ -2396,6 +2408,91 @@ describe('NuevoPersonajeService (clases)', () => {
             conRaza(9, null);
             const prestigio = crearClaseBase({ Id: 500, Nombre: 'Caballero', Prestigio: true, Desglose_niveles: [1].map(nivel) });
             expect(service.penalizacionExperiencia(prestigio).porcentaje).toBe(0);
+        });
+    });
+
+    describe('las habilidades en multiclase (MJ cap. 3, «Personajes multiclase»)', () => {
+        const nivel = (n: number) => ({ ...crearClaseBase().Desglose_niveles[0], Nivel: n });
+        const habilidad = (Id_habilidad: number, Nombre: string) => ({
+            Id_habilidad, Nombre, Id_caracteristica: 2, Caracteristica: 'Destreza', Descripcion: '', Soporta_extra: false, Entrenada: false, Extras: [],
+        });
+        const ref = (Id_habilidad: number, Habilidad: string) => ({ Id_habilidad, Habilidad, Id_extra: -1, Extra: '' });
+        const guerrero = () => crearClaseBase({
+            Id: 7, Nombre: 'Guerrero', Desglose_niveles: [1, 2].map(nivel),
+            Habilidades: { Base: [ref(7, 'Nadar')], Custom: [] } as any,
+        });
+        const picaro = () => crearClaseBase({
+            Id: 12, Nombre: 'Pícaro', Desglose_niveles: [1, 2].map(nivel),
+            Habilidades: { Base: [ref(8, 'Esconderse')], Custom: [] } as any,
+        });
+        const avistar = claveDeHabilidad(6, false);
+        const nadar = claveDeHabilidad(7, false);
+        const esconderse = claveDeHabilidad(8, false);
+
+        function guerreroPicaro(raciales: any[] = []): void {
+            service.setCatalogoHabilidades([habilidad(6, 'Avistar'), habilidad(7, 'Nadar'), habilidad(8, 'Esconderse')]);
+            const raza = crearRazaBase(crearTipoBase());
+            raza.Dgs_adicionales.Cantidad = 0;
+            raza.Raciales = raciales;
+            service.seleccionarRaza(raza);
+            service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            service.setCatalogoClases([guerrero(), picaro()]);
+            expect(service.aplicarSiguienteNivelClase(guerrero()).aplicado).toBeTrue();
+            expect(service.aplicarSiguienteNivelClase(picaro()).aplicado).toBeTrue();
+        }
+
+        it('un rango cuesta 1 solo con las de la clase que sube; el tope de clase vale con las de cualquiera', () => {
+            guerreroPicaro();
+            service.iniciarDistribucionHabilidadesPorClase(picaro());
+            expect(service.obtenerCosteRangoHabilidad(esconderse)).toBe(1);
+            // Nadar es del guerrero: en el nivel de pícaro cuesta 2, pero su tope es el de clase (nivel 2 + 3).
+            expect(service.obtenerCosteRangoHabilidad(nadar)).toBe(2);
+            expect(service.esHabilidadClaseaEfectiva(nadar)).toBeFalse();
+            expect(service.obtenerLimiteRangoHabilidad(nadar)).toBe(5);
+            // Avistar no es de ninguna: transclásea en todo.
+            expect(service.obtenerCosteRangoHabilidad(avistar)).toBe(2);
+            expect(service.obtenerLimiteRangoHabilidad(avistar)).toBe(2);
+
+            // Al subir otra vez de guerrero, al revés.
+            expect(service.aplicarSiguienteNivelClase(guerrero()).aplicado).toBeTrue();
+            service.iniciarDistribucionHabilidadesPorClase(guerrero());
+            expect(service.obtenerCosteRangoHabilidad(nadar)).toBe(1);
+            expect(service.obtenerCosteRangoHabilidad(esconderse)).toBe(2);
+            expect(service.obtenerLimiteRangoHabilidad(esconderse)).toBe(6);
+            // Las dos se guardan de clase.
+            expect(service.PersonajeCreacion.Habilidades.filter((h) => h.Clasea).map((h) => h.Id).sort()).toEqual([7, 8]);
+        });
+
+        it('una «siempre de clase» del racial cuesta 1 en las dos clases', () => {
+            guerreroPicaro([{
+                Id: 900, Nombre: 'Vista aguda', Descripcion: '', Oficial: true, Opcional: 0, Dotes: [],
+                Habilidades: { Base: [{ ...ref(6, 'Avistar'), Rangos: 0, Se_considera_clasea: true }], Custom: [] },
+                Caracteristicas: [], Salvaciones: [], Sortilegas: [], Ataques: [],
+                Prerrequisitos_flags: { raza: false, caracteristica_minima: false }, Prerrequisitos: { raza: [], caracteristica: [] },
+            }]);
+            service.recalcularEfectosVentajas();
+            service.iniciarDistribucionHabilidadesPorClase(picaro());
+            expect(service.obtenerCosteRangoHabilidad(avistar)).toBe(1);
+            service.iniciarDistribucionHabilidadesPorClase(guerrero());
+            expect(service.obtenerCosteRangoHabilidad(avistar)).toBe(1);
+        });
+
+        it('las de un dominio son de la clase que lo da', () => {
+            guerreroPicaro();
+            (service as any).aplicarPoderConcedidoDominio({ Dotes: [], Especiales: [], Habilidades_claseas: [ref(6, 'Avistar')] }, 'Prueba', picaro());
+            service.iniciarDistribucionHabilidadesPorClase(picaro());
+            expect(service.obtenerCosteRangoHabilidad(avistar)).toBe(1);
+            service.iniciarDistribucionHabilidadesPorClase(guerrero());
+            expect(service.obtenerCosteRangoHabilidad(avistar)).toBe(2);
+            expect(service.obtenerLimiteRangoHabilidad(avistar)).toBe(5);
+        });
+
+        it('un borrador de antes, sin lo anotado, sigue con las marcadas de clase', () => {
+            guerreroPicaro();
+            (service as any).habilidadesDeClasePorOrigen = {};
+            service.iniciarDistribucionHabilidadesPorClase(picaro());
+            expect(service.obtenerCosteRangoHabilidad(nadar)).toBe(1);
+            expect(service.EstadoFlujo.habilidades.deClaseEnLaSesion).toBeNull();
         });
     });
 
