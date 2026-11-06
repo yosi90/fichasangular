@@ -93,7 +93,6 @@ import { ElementoConTipoArma, armasDeGrupos, competenciasDeDotes } from './utils
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from './utils/deidad-seleccion';
 import { vectorAlineamientoDeidad } from './utils/alineamiento-deidad';
 import { ajustesEnvejecimiento, CARACTERISTICAS_FISICAS, edadPorDefecto, etapaEdad } from './utils/edad-personaje';
-import { basesDeDgsDelTipo, BasesDeDgs, CatalogoProgresiones } from './utils/progresiones';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -266,6 +265,14 @@ const DOTE_COMPANERO_BONUS_ID = 49;
 const ESPECIALES_BONUS_COMPANERO_PERSONAJE = [157, 158];
 const ESPECIAL_BONUS_COMPANERO_AVANZADO = 159;
 const ESPECIAL_BONUS_COMPANERO_MAESTRO = 57;
+/** Lo que dan los DG de una plantilla (`Licantronia_dg`): el ataque base y las tres salvaciones base. */
+interface BasesDeDgs {
+    ataqueBase: number;
+    fortaleza: number;
+    reflejos: number;
+    voluntad: number;
+}
+
 /** Orígenes de `habilidadesDeClasePorOrigen` que no son una clase. */
 const ORIGEN_SIEMPRE_DE_CLASE = 'siempre';
 const ORIGEN_DG_RACIALES = 'dg:raza';
@@ -1055,7 +1062,6 @@ export class NuevoPersonajeService {
     private razaBaseSeleccionadaCompleta: Raza | null = null;
     private catalogoTiposCriatura: TipoCriatura[] = [];
     /** Las progresiones de ataque base y salvaciones (`GET /clases/catalogos/progresion`): las de los DG de una plantilla. */
-    private catalogoProgresiones: CatalogoProgresiones | null = null;
     /** Los subtipos con su ajuste de nivel (el NEP lo suma). */
     private catalogoSubtipos: SubtipoResumen[] = [];
     /** Las caras de los tipos de dado del catálogo: la escalera de los cambios de dado de las plantillas. */
@@ -1710,36 +1716,22 @@ export class NuevoPersonajeService {
     setCatalogoTiposCriatura(tipos: TipoCriatura[]): void {
         this.catalogoTiposCriatura = [...tipos];
         this.recalcularTipoYSubtiposDerivados();
-        // Las progresiones del tipo de los DG de una plantilla (el animal del licántropo) dan su ataque y sus salvaciones.
-        if (this.hayPlantillasConDg())
-            this.recalcularEfectosVentajas();
-    }
-
-    /** Las progresiones de ataque base y salvaciones, para el ataque y las salvaciones base de los DG de una plantilla. */
-    setCatalogoProgresiones(catalogo: CatalogoProgresiones | null): void {
-        this.catalogoProgresiones = catalogo
-            ? { ataques_base: [...(catalogo.ataques_base ?? [])], salvaciones: [...(catalogo.salvaciones ?? [])] }
-            : null;
-        if (this.hayPlantillasConDg())
-            this.recalcularEfectosVentajas();
-    }
-
-    private hayPlantillasConDg(): boolean {
-        return (this.estadoFlujo?.plantillas?.seleccionadas ?? []).some((plantilla) => dgsDePlantilla(plantilla) > 0);
     }
 
     /**
-     * El ataque base y las salvaciones base de los DG de una plantilla (los del animal base de un licántropo), por las
-     * progresiones de su tipo (`Licantronia_dg.Tipo_criatura`): «suma el ataque base [...] y las salvaciones base del
-     * animal base» (Manual de monstruos, «Licántropo»). `null` si la plantilla no añade DG o no se sabe su tipo o sus
-     * progresiones.
+     * El ataque base y las salvaciones base de los DG de una plantilla (los del animal base de un licántropo), que la API
+     * calcula por las progresiones de su tipo (`Licantronia_dg.Ataque_base`…): «suma el ataque base [...] y las
+     * salvaciones base del animal base» (Manual de monstruos, «Licántropo»). `null` si la plantilla no añade DG o no los
+     * trae (sin tipo, o una caché de antes).
      */
     private basesDeDgsDePlantilla(plantilla: Plantilla): BasesDeDgs | null {
-        const dgs = dgsDePlantilla(plantilla);
-        if (dgs <= 0)
+        const dg = plantilla?.Licantronia_dg;
+        if (dgsDePlantilla(plantilla) <= 0 || !dg)
             return null;
-        const tipo = this.buscarTipoCriaturaPorId(toNumber(plantilla?.Licantronia_dg?.Tipo_criatura?.Id));
-        return basesDeDgsDelTipo(tipo, dgs, this.catalogoProgresiones);
+        const bases = [dg.Ataque_base, dg.Fortaleza, dg.Reflejos, dg.Voluntad];
+        if (bases.some((valor) => typeof valor !== 'number' || !Number.isFinite(valor)))
+            return null;
+        return { ataqueBase: dg.Ataque_base!, fortaleza: dg.Fortaleza!, reflejos: dg.Reflejos!, voluntad: dg.Voluntad! };
     }
 
     setCatalogoSubtipos(subtipos: SubtipoResumen[]): void {

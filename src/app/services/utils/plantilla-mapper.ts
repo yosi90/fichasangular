@@ -11,7 +11,7 @@ import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeMovimientos } from "./movimientos-mapper";
 import { normalizeSubtipoRefArray } from "./subtipo-mapper";
 import { leerComodin } from "./comodin";
-import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualLegacy } from './manual-mapper';
 import { normalizeRacial } from './racial-mapper';
 
@@ -167,6 +167,10 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
                 Nombre: toText(raw.Licantronia_dg.Tipo_criatura.Nombre),
                 Puntos_habilidad: toNumber(raw.Licantronia_dg.Tipo_criatura.Puntos_habilidad),
             } : null,
+            Ataque_base: toNumberOrNull(raw.Licantronia_dg.Ataque_base),
+            Fortaleza: toNumberOrNull(raw.Licantronia_dg.Fortaleza),
+            Reflejos: toNumberOrNull(raw.Licantronia_dg.Reflejos),
+            Voluntad: toNumberOrNull(raw.Licantronia_dg.Voluntad),
         },
         Cd: toNumber(raw?.Cd),
         Puntos_habilidad: {

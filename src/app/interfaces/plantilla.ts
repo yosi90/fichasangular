@@ -36,6 +36,15 @@ export interface PlantillaLicantroniaDg {
     Suma: number;
     /** El tipo de esos DG (el animal) con sus puntos de habilidad por DG; `null` si la plantilla no lo dice. */
     Tipo_criatura?: { Id: number; Nombre: string; Puntos_habilidad: number; } | null;
+    /**
+     * Los **base** de esos DG por las progresiones de su tipo (la API, desde el 2026-11-06: un lobo, animal de 2 DG, +1,
+     * +3, +3, +0), que se suman a los del personaje; `null` sin tipo o en una caché de antes. Las columnas de la
+     * plantilla con esos nombres son las del animal en su forma.
+     */
+    Ataque_base?: number | null;
+    Fortaleza?: number | null;
+    Reflejos?: number | null;
+    Voluntad?: number | null;
 }
 
 export interface PlantillaPuntosHabilidad {

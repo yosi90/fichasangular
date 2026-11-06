@@ -2316,54 +2316,37 @@ describe('NuevoPersonajeService (clases)', () => {
     });
 
     describe('el licántropo: los DG del animal dan sus bases y la forma humana, sus características (MM, «Licántropo»)', () => {
-        // Las filas de `ataques_base` y `salvaciones` de la base (`GET /clases/catalogos/progresion`).
-        const progresiones = {
-            ataques_base: [
-                { Id: 1, Nombre: 'Bueno', Valores: ['+1', '+2', '+3', '+4', '+5', '+6/+1', '+7/+2', '+8/+3', '+9/+4', '+10/+5', '+11/+6/+1', '+12/+7/+2', '+13/+8/+3', '+14/+9/+4', '+15/+10/+5', '+16/+11/+6/+1', '+17/+12/+7/+2', '+18/+13/+8/+3', '+19/+14/+9/+4', '+20/+15/+10/+5'] },
-                { Id: 2, Nombre: 'Medio', Valores: ['+0', '+1', '+2', '+3', '+3', '+4', '+5', '+6/+1', '+6/+1', '+7/+2', '+8/+3', '+9/+4', '+9/+4', '+10/+5', '+11/+6/+1', '+12/+7/+2', '+12/+7/+2', '+13/+8/+3', '+14/+9/+4', '+15/+10/+5'] },
-                { Id: 3, Nombre: 'Pobre', Valores: ['+0', '+1', '+1', '+2', '+2', '+3', '+3', '+4', '+4', '+5', '+5', '+6/+1', '+6/+1', '+7/+2', '+7/+2', '+8/+3', '+8/+3', '+9/+4', '+9/+4', '+10/+5'] },
-            ],
-            salvaciones: [
-                { Id: 1, Nombre: 'Buena', Valores: ['+2', '+3', '+3', '+4', '+4', '+5', '+5', '+6', '+6', '+7', '+7', '+8', '+8', '+9', '+9', '+10', '+10', '+11', '+11', '+12'] },
-                { Id: 2, Nombre: 'Mala', Valores: ['+0', '+0', '+1', '+1', '+1', '+2', '+2', '+2', '+3', '+3', '+3', '+4', '+4', '+4', '+5', '+5', '+5', '+6', '+6', '+6'] },
-            ],
-        };
-        // El animal de la base (`tipos` 3): ataque medio, Fortaleza y Reflejos buenas, Voluntad mala.
-        const animal: TipoCriatura = {
-            ...crearTipoBase(), Id: 3, Nombre: 'Animal', Id_ataque: 2, Id_fortaleza: 1, Id_reflejos: 1, Id_voluntad: 2,
-        };
-
         // Las plantillas como las da `GET /plantillas` en `rol_dev`: sus columnas son las del animal en su forma (las
-        // salvaciones totales del lobo, 5/5/1, con su Des, su Con y su Sab), y los modificadores mezclan los físicos de la
-        // forma animal con el +2 a Sab de todas.
-        function licantropo(id: number, nombre: string, dgs: number, datos: Partial<Plantilla>): Plantilla {
+        // salvaciones totales del lobo, 5/5/1, con su Des, su Con y su Sab), los modificadores mezclan los físicos de la
+        // forma animal con el +2 a Sab de todas, y `Licantronia_dg` trae las bases de sus DG (las calcula la API por las
+        // progresiones del tipo animal: ataque medio, Fortaleza y Reflejos buenas, Voluntad mala).
+        function licantropo(id: number, nombre: string, dgs: number, bases: number[] | null, datos: Partial<Plantilla>): Plantilla {
+            const [Ataque_base, Fortaleza, Reflejos, Voluntad] = bases ?? [null, null, null, null];
             return {
                 Id: id,
                 Nombre: nombre,
                 Licantronia_dg: {
                     Id_dado: 3, Dado: 'D8', Multiplicador: dgs, Suma: 0,
                     Tipo_criatura: { Id: 3, Nombre: 'Animal', Puntos_habilidad: 2 },
+                    Ataque_base, Fortaleza, Reflejos, Voluntad,
                 },
                 Habilidades: [],
                 Dotes: [],
                 ...datos,
             } as any;
         }
-        const lobo = () => licantropo(9, 'Licántropo (lobo) [Infectado]', 2, {
+        const lobo = (bases: number[] | null = [1, 3, 3, 0]) => licantropo(9, 'Licántropo (lobo) [Infectado]', 2, bases, {
             Ataque_base: 1, Fortaleza: 5, Reflejos: 5, Voluntad: 1,
             Modificadores_caracteristicas: { Fuerza: 1, Destreza: 2, Constitucion: 2, Inteligencia: 0, Sabiduria: 2, Carisma: 0 },
         });
-        const lince = () => licantropo(16, 'Licántropo (lince) [Nacido]', 1, {
+        const lince = () => licantropo(16, 'Licántropo (lince) [Nacido]', 1, [0, 2, 2, 0], {
             Ataque_base: 0, Fortaleza: 2, Reflejos: 5, Voluntad: 1,
             Modificadores_caracteristicas: { Fuerza: -4, Destreza: 6, Constitucion: 2, Inteligencia: 0, Sabiduria: 2, Carisma: 0 },
         });
 
-        function humanoCon(plantilla: Plantilla, conProgresiones = true): void {
+        function humanoCon(plantilla: Plantilla): void {
             const raza = crearRazaBase(crearTipoBase());
             raza.Dgs_adicionales.Cantidad = 0;
-            service.setCatalogoTiposCriatura([crearTipoBase(), animal]);
-            if (conProgresiones)
-                service.setCatalogoProgresiones(progresiones);
             service.seleccionarRaza(raza);
             service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
             service.agregarPlantillaSeleccion(plantilla);
@@ -2419,13 +2402,9 @@ describe('NuevoPersonajeService (clases)', () => {
             });
         });
 
-        it('sin las progresiones todavía, lo que diga la plantilla; al llegar, las bases de sus DG', () => {
-            humanoCon(lobo(), false);
+        it('sin las bases de sus DG (una caché de antes, o sin tipo), lo que diga la plantilla, como antes', () => {
+            humanoCon(lobo(null));
             expect(salvacionesDe('Licántropo (lobo)')).toEqual([5, 5, 1]);
-
-            service.setCatalogoProgresiones(progresiones);
-            expect(salvacionesDe('Licántropo (lobo)')).toEqual([3, 3, 0]);
-            expect(`${service.PersonajeCreacion.Ataque_base}`).toBe('+1');
         });
 
         it('una plantilla sin DG propios sigue sumando sus salvaciones y todas sus características', () => {
