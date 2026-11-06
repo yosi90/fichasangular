@@ -50,6 +50,15 @@ export interface RazaCreateCore {
     edad_inicial_caras_2?: number;
     edad_inicial_dados_3?: number;
     edad_inicial_caras_3?: number;
+    /**
+     * El VD de un PNJ de la raza (Guía del DM, págs. 37-38; Manual de monstruos, págs. 293-294), todo opcional: si no viene,
+     * el alta lo deja sin dato y la edición conserva lo que hay. `vd`, el de la raza con sus DG raciales y sin clases (mayor
+     * que 0, hasta 999,99; `null`, sin dato); `vd_mod_clases_pj` y `vd_mod_clases_pnj`, lo que su entrada del MM suma a los
+     * niveles con clases de PJ o de PNJ (enteros; `null`, la regla general: 0 y −1).
+     */
+    vd?: number | null;
+    vd_mod_clases_pj?: number | null;
+    vd_mod_clases_pnj?: number | null;
     id_tipo_criatura: number;
     ataque_base: number;
     fortaleza: number;
@@ -143,6 +152,8 @@ export interface RazaCreateRequest {
     raza: RazaCreateCore;
     prerrequisitos?: RazaCreatePrerequisitos;
     subtipos?: number[];
+    /** Los ids de sus clases asociadas (MM, pág. 294); si no viene, el alta no deja ninguna y la edición conserva las que hay. */
+    clases_asociadas?: number[];
     idiomas?: number[];
     habilidades?: RazaCreateHabilidades;
     dotes?: RazaCreateDote[];

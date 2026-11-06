@@ -345,6 +345,51 @@
                                         <mat-form-field appearance="fill" class="values-wide-field"><mat-label>Resistencia a energía</mat-label><textarea matInput rows="2" maxlength="1000" formControlName="resistencia_energia"></textarea><mat-error>Déjalo vacío o escribe entre 5 y 1000 caracteres.</mat-error></mat-form-field>
                                     </div>
                                 </section>
+
+                                <!-- El VD de sus PNJ (Guía del DM, págs. 37-38; Manual de monstruos, págs. 293-294). Sin DG raciales solo
+                                     cuentan los ajustes por clases; el VD de la raza y las clases asociadas, con ellos. -->
+                                <section class="form-panel values-panel values-vd">
+                                    <h3 class="form-panel-title form-panel-title--with-note">
+                                        <span>Valor de desafío de sus PNJ</span>
+                                        <span class="form-panel-note">vacío: sin dato o la regla general</span>
+                                    </h3>
+                                    <p class="values-ayuda" *ngIf="tieneDgsExtra(); else notaVdSinDgs">Con DG raciales, el VD de un PNJ es el de la raza
+                                        (con sus DG y sin clases) más +1 por nivel de una clase asociada y +½ por los de las demás. Sin DG que
+                                        cuenten (1 DG y niveles de clase), sus niveles de clase más el ajuste de abajo.</p>
+                                    <ng-template #notaVdSinDgs>
+                                        <p class="values-ayuda">El VD de un PNJ de esta raza son sus niveles de clase más este ajuste, si su entrada del
+                                            Manual de monstruos da uno (el drow, +1 con clases de PJ). Con DG raciales, aquí van también el VD de la
+                                            raza y sus clases asociadas.</p>
+                                    </ng-template>
+                                    <div class="values-grid values-grid--vd">
+                                        <mat-form-field appearance="fill" *ngIf="tieneDgsExtra()">
+                                            <mat-label>VD de la raza</mat-label>
+                                            <input matInput type="number" min="0.01" max="999.99" step="0.01" formControlName="vd" />
+                                            <mat-hint>El ogro, 3; ½: 0,5</mat-hint>
+                                            <mat-error>{{errores.textoDe('vd', 'Mayor que 0 y hasta 999,99.')}}</mat-error>
+                                        </mat-form-field>
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Ajuste con clases de PJ</mat-label>
+                                            <input matInput type="number" step="1" formControlName="vd_mod_clases_pj" />
+                                            <mat-hint>Vacío: 0</mat-hint>
+                                            <mat-error>{{errores.textoDe('vd_mod_clases_pj', 'Un número entero.')}}</mat-error>
+                                        </mat-form-field>
+                                        <mat-form-field appearance="fill">
+                                            <mat-label>Ajuste con clases de PNJ</mat-label>
+                                            <input matInput type="number" step="1" formControlName="vd_mod_clases_pnj" />
+                                            <mat-hint>Vacío: −1 (el kóbold, −3)</mat-hint>
+                                            <mat-error>{{errores.textoDe('vd_mod_clases_pnj', 'Un número entero.')}}</mat-error>
+                                        </mat-form-field>
+                                    </div>
+                                </section>
+
+                                <app-lista-de-catalogo class="values-vd-asociadas" *ngIf="tieneDgsExtra()"
+                                    titulo="Clases asociadas" icono="clase" vacio="Ninguna: cuenta su clase predilecta."
+                                    textoAnadir="Añadir clase asociada"
+                                    [filas]="clasesAsociadas" [opciones]="opcionesClasesAsociadas" [deshabilitado]="edicion.cargando"
+                                    [error]="errores.mensajeDe('clases_asociadas')"
+                                    (anadir)="anadirClaseAsociada($event)" (quitar)="quitarClaseAsociada($event)">
+                                </app-lista-de-catalogo>
                             </div>
                         </section>
                     </div>
