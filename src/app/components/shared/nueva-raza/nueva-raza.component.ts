@@ -54,7 +54,7 @@ import { alternarControl, elegirEnControl, quitarFila } from '../insercion-marco
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { CatalogosPendientes, EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
-import { CamposDeFormulario, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
+import { CamposDeFormulario, ErroresDeFormulario, entero } from '../insercion-marco/errores-de-formulario';
 import { ModoInsercion } from '../insercion-marco/insercion-marco.component';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { FilaDeLista, anadirALista, filasDeIds } from '../lista-de-catalogo/lista-de-catalogo.component';
@@ -216,14 +216,6 @@ function vdDeRazaValidator(control: AbstractControl): ValidationErrors | null {
     if (vd === null)
         return `${control.value ?? ''}`.trim().length > 0 ? { vdDeRaza: true } : null;
     return vd > 0 && vd <= VD_RAZA_MAXIMO ? null : { vdDeRaza: true };
-}
-
-/** Un entero o vacío (los ajustes del VD por clases de PJ y de PNJ: vacío es la regla general). */
-function enteroOpcionalValidator(control: AbstractControl): ValidationErrors | null {
-    const valor = toNumberOrNull(control.value);
-    if (valor === null)
-        return `${control.value ?? ''}`.trim().length > 0 ? { entero: true } : null;
-    return Number.isInteger(valor) ? null : { entero: true };
 }
 
 /**
@@ -537,9 +529,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         // El VD de sus PNJ (Guía del DM, págs. 37-38; MM, págs. 293-294). Vacío (`null`): sin dato o la regla general. El
         // validador del VD de la raza lo pone `sincronizarCamposDgsExtra`: sin DG raciales no se enseña ni se manda.
         vd: [null as number | null],
-        // De −10 a +10, como la API (`raza.vd_mod_clases_*`; los manuales dan −1, 0 o +1).
-        vd_mod_clases_pj: [null as number | null, [enteroOpcionalValidator, Validators.min(-10), Validators.max(10)]],
-        vd_mod_clases_pnj: [null as number | null, [enteroOpcionalValidator, Validators.min(-10), Validators.max(10)]],
+        // Enteros de −10 a +10 o vacío (la regla general), como la API (`raza.vd_mod_clases_*`; los manuales dan −1, 0 o +1).
+        vd_mod_clases_pj: [null as number | null, [entero, Validators.min(-10), Validators.max(10)]],
+        vd_mod_clases_pnj: [null as number | null, [entero, Validators.min(-10), Validators.max(10)]],
         clases_asociadas: [[] as FilaDeLista[]],
         id_tipo_criatura: [0, [Validators.min(1)]],
         ataque_base: [0],
