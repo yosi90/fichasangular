@@ -556,14 +556,17 @@ describe('DetallesPersonajeComponent', () => {
         it('los subtipos son enlaces, sin los textos que no se enseñan; la raza base sale si la hay', () => {
             component.pj.Raza.Nombre = 'Aasimar';
             component.pj.Subtipos = [{ Id: 1, Nombre: 'Angelical' }, { Id: 2, Nombre: 'No aplica' }];
-            component.pj.RazaBase = { Id: 10, Nombre: 'Humano' } as any;
+            component.pj.RazaBase = { Id: 10, Nombre: 'Humano' };
             const subtipo = spyOn(component.subtipoDetalles, 'emit');
+            const raza = spyOn(component.razaDetalles, 'emit');
             verPagina();
 
             expect(valor('Subtipos')).toBe('Angelical');
             expect(valor('Raza base')).toBe('Humano');
             enlace('Angelical').click();
             expect(subtipo).toHaveBeenCalledWith({ Id: 1, Nombre: 'Angelical' });
+            enlace('Humano').click();
+            expect(raza).toHaveBeenCalledWith(10);
         });
 
         it('oculta la personalidad y el contexto de relleno', () => {

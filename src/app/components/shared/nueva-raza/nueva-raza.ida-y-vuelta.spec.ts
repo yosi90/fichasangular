@@ -108,6 +108,25 @@ describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
         expect(base.slice(1).every((item) => item.condicion === undefined)).toBeTrue();
     });
 
+    it('una raza mutada conserva el grupo «uno de estos» de sus alineamientos requeridos (`opcional`)', async () => {
+        // Fase 1 de las razas mutadas: la API devuelve el `opcional` de los alineamientos; antes se perdía al guardar.
+        const elfo = IDA_Y_VUELTA_RAZAS.find((item) => item.nombre === 'Elfo')!;
+        const get = JSON.parse(JSON.stringify(elfo.get));
+        const alineamiento = (id: number, basico: number, nombre: string) => ({
+            id_alineamiento: id, id_alineamiento_basico: basico, alineamiento_basico: nombre,
+            id_ley: 0, ley: 'No aplica', id_moral: 0, moral: 'No aplica', opcional: 2,
+        });
+        Object.assign(get, {
+            mu: 1, Mutada: true, tmd: 1,
+            pr: { alineamiento_requerido: [alineamiento(24, 3, 'Legal maligno'), alineamiento(25, 9, 'Caótico maligno')] },
+        });
+        const component = await cargada(get);
+
+        expect(component.edicion.hayCambios).toBeFalse();
+        const requeridos = component.buildPayload().prerrequisitos?.alineamiento_requerido ?? [];
+        expect(requeridos).toEqual([{ id_alineamiento: 24, opcional: 2 }, { id_alineamiento: 25, opcional: 2 }]);
+    });
+
     it('un dragón conserva sus pasos por su id y cada categoría con lo que gana', async () => {
         const rojo = IDA_Y_VUELTA_RAZAS.find((item) => item.cuerpo.categorias_edad.length > 0 && item.get.Lanzamiento)!;
         const component = await cargada(rojo.get);

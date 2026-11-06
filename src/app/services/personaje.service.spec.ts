@@ -473,6 +473,17 @@ describe('PersonajeService', () => {
         expect(personaje.Deidad).toBe('Ehlonna');
     });
 
+    it('mapApiDetalleToPersonaje lee la raza base de una raza mutada de `rb`, sin alias', () => {
+        const service = crearServicio({} as any);
+        const conBase = (service as any).mapApiDetalleToPersonaje(crearDetalleApi({ rb: { Id: 5, Nombre: 'Mediano' } })) as Personaje;
+        expect(conBase.RazaBase).toEqual({ Id: 5, Nombre: 'Mediano' });
+
+        const sinBase = (service as any).mapApiDetalleToPersonaje(crearDetalleApi({
+            rb: null, RazaBase: { Id: 5, Nombre: 'Mediano' }, raza_base: { Id: 5, Nombre: 'Mediano' },
+        })) as Personaje;
+        expect(sinBase.RazaBase).toBeNull();
+    });
+
     it('getDetallesPersonaje para invitados propaga el error del endpoint público y no cae a RTDB legacy', async () => {
         const httpMock = {
             get: jasmine.createSpy('get').and.returnValue(throwError(() => new HttpErrorResponse({
