@@ -254,6 +254,21 @@ describe('RazaService helpers', () => {
         expect(sinExtras.Puntos_habilidad_extra_por_nivel).toBe(0);
     });
 
+    it('lee la clase predilecta (id y comodín) y la edad máxima, por HTTP y desde la caché (tanda de noviembre)', () => {
+        const humano = { Id_clase_predilecta: 0, Clase_predilecta_comodin: 'cualquiera', Edad_maxima_dados: 2, Edad_maxima_caras: 20 };
+        [normalizeRazaApi(createRazaApiRaw(humano)), normalizeRazaLegacy({ Id: 25, Nombre: 'Humano', ...humano })].forEach((raza) => {
+            expect(raza.Id_clase_predilecta).toBe(0);
+            expect(raza.Clase_predilecta_comodin).toBe('cualquiera');
+            expect(raza.Edad_maxima_dados).toBe(2);
+            expect(raza.Edad_maxima_caras).toBe(20);
+        });
+        // El elfo: su predilecta es una clase (sin comodín; en la caché, la marca no está).
+        const elfo = normalizeRazaLegacy({ Id: 24, Nombre: 'Elfo', Id_clase_predilecta: 9 });
+        expect(elfo.Id_clase_predilecta).toBe(9);
+        expect(elfo.Clase_predilecta_comodin).toBeNull();
+        expect(elfo.Edad_maxima_dados).toBe(0);
+    });
+
     it('lee la descripción, el nombre original y si es traducida, por HTTP y desde la caché', () => {
         const textos = { Descripcion: ' Los goliats viven en las cumbres.\n\nCompiten en todo. ', Nombre_original: 'Goliath', Traducido: true };
         const http = normalizeRazaApi(createRazaApiRaw(textos));

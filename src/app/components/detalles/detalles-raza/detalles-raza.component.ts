@@ -38,7 +38,7 @@ import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { GrupoPrerrequisitos, agruparPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { leerComodin } from 'src/app/services/utils/comodin';
-import { edadesDeLaRaza } from 'src/app/services/utils/edad-personaje';
+import { edadesDeLaRaza, edadMaximaDeLaRaza, textoDadosEdadMaxima } from 'src/app/services/utils/edad-personaje';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { abreviaturaCaracteristica, NOMBRES_CARACTERISTICAS, SIN_CARACTERISTICA } from 'src/app/services/utils/caracteristicas';
 import { textoVd } from 'src/app/services/utils/tipo-personaje';
@@ -611,9 +611,14 @@ export class DetallesRazaComponent {
     }
 
     private construirEdadesManual(): ParRaza[] {
-        return edadesDeLaRaza(this.raza)
+        const edades = edadesDeLaRaza(this.raza)
             .filter((item) => tieneNumeroVisible(item.valor))
             .map((item) => ({ nombre: item.nombre, valor: `${item.valor} años` }));
+        // La edad máxima (tabla 6-5): la venerable más sus dados, como mucho lo que pueden dar.
+        const maxima = edadMaximaDeLaRaza(this.raza);
+        return maxima === null
+            ? edades
+            : [...edades, { nombre: 'Máxima', valor: `venerable ${textoDadosEdadMaxima(this.raza)} años (hasta ${maxima})` }];
     }
 
     /** «1.5 - 1.8 m»; sin ninguno de los dos extremos, nada. */

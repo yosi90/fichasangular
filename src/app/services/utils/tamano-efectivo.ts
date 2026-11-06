@@ -4,9 +4,12 @@ import { Tamano } from 'src/app/interfaces/tamaño';
 import { toInt, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 
 /*
- * El tamaño del personaje con las aptitudes que lo cambian (Manual del jugador, cap. 8, tablas 8-1 y 8-4, y *agrandar
- * persona*), con la misma regla que la ficha de la API (`utils/tamano.py`; `PersonajeTamano` en
- * `docs/publica/endpoints/personajes.md`):
+ * El tamaño del personaje con las plantillas y las aptitudes que lo cambian (Manual del jugador, cap. 8, tablas 8-1 y
+ * 8-4, y *agrandar persona*; Manual de monstruos, cap. 1, «Plantillas»), con la misma regla que la ficha de la API
+ * (`utils/tamano.py`; `PersonajeTamano` en `docs/publica/endpoints/personajes.md`). De él salen la CA, la presa,
+ * Esconderse, la carga y los prerrequisitos de tamaño:
+ * - los pasos de las plantillas (`Modificacion_tamano`) cambian la criatura misma y se suman; el `Tamano` fijo de un
+ *   licántropo es el de su forma animal y no cuenta;
  * - las aptitudes no se apilan: cuentan el mayor aumento y la mayor reducción;
  * - no se pasa de Minúsculo ni de Colosal (los extremos del catálogo); la fila 0 («Depende») no cambia;
  * - el espacio y el alcance son los de la raza más lo que cambia la tabla 8-4 de un tamaño al otro (`Espacio`, `Alcance` y
@@ -15,10 +18,12 @@ import { toInt, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/
  * Ningún tamaño va escrito aquí: todo sale del catálogo.
  */
 
-/** Una aptitud que cambia el tamaño: su nombre y las categorías que suma (+1, una más grande). */
+/** Una plantilla o una aptitud que cambia el tamaño: su nombre y las categorías que suma (+1, una más grande). */
 export interface OrigenTamano {
     origen: string;
     pasos: number;
+    /** `plantilla` (sus pasos se suman) o `aptitud` (no se apilan); sin dato, aptitud. */
+    tipo?: 'plantilla' | 'aptitud';
 }
 
 /** El tamaño efectivo: la fila del catálogo que toca (para la carga) y el bloque de la ficha. */
@@ -67,21 +72,26 @@ export function pasosDeAptitudes(pasos: number[]): number {
 
 /**
  * El tamaño con el que cuenta el personaje: `base` es el tamaño de su raza; `catalogo`, los tamaños de `GET /tamanos`;
- * `origenes`, sus aptitudes que lo cambian; `espacio` y `alcance`, los de su raza (sin ellos, los de su tamaño). `null`
- * sin tamaño de raza.
+ * `origenes`, sus aptitudes que lo cambian; `espacio` y `alcance`, los de su raza (sin ellos, los de su tamaño);
+ * `plantillas`, sus plantillas que lo cambian. Las categorías: la suma de las de las plantillas más `pasosDeAptitudes`
+ * de las aptitudes. `null` sin tamaño de raza.
  */
 export function tamanoEfectivo(
     base: Tamano | null | undefined,
     catalogo: Tamano[],
     origenes: OrigenTamano[],
     espacio?: number | null,
-    alcance?: number | null
+    alcance?: number | null,
+    plantillas: OrigenTamano[] = []
 ): TamanoEfectivo | null {
     const idBase = toInt(base?.Id);
     if (!base || (idBase <= 0 && toText(base?.Nombre).trim().length < 1))
         return null;
-    const conPasos = origenesConPasos(origenes);
-    const pasos = pasosDeAptitudes(conPasos.map((origen) => origen.pasos));
+    const dePlantillas = origenesConPasos(plantillas, 'plantilla');
+    const deAptitudes = origenesConPasos(origenes, 'aptitud');
+    const conPasos = [...dePlantillas, ...deAptitudes];
+    const pasos = dePlantillas.reduce((suma, origen) => suma + origen.pasos, 0)
+        + pasosDeAptitudes(deAptitudes.map((origen) => origen.pasos));
     const filaBase = (catalogo ?? []).find((tamano) => toInt(tamano?.Id) === idBase) ?? null;
     const movido = pasos !== 0 && filaBase ? tamanoTrasPasos(catalogo, idBase, pasos) : null;
     const destino = movido && movido.pasos !== 0 ? movido : null;
@@ -130,10 +140,17 @@ export function idTamanoMediano(catalogo: Pick<Tamano, 'Id' | 'Modificador'>[] |
     return sinModificador.length === 1 ? toInt(sinModificador[0].Id) : null;
 }
 
-/** Las aptitudes que cambian el tamaño, limpias: su nombre sin espacios y sin las que no lo cambian. */
-function origenesConPasos(origenes: any[] | null | undefined): OrigenTamano[] {
+/**
+ * Las plantillas o aptitudes que cambian el tamaño, limpias: su nombre sin espacios, su tipo (`tipo` o el que traen) y
+ * sin las que no lo cambian.
+ */
+function origenesConPasos(origenes: any[] | null | undefined, tipo?: OrigenTamano['tipo']): OrigenTamano[] {
     return (Array.isArray(origenes) ? origenes : [])
-        .map((origen) => ({ origen: toText(origen?.origen).trim(), pasos: toInt(origen?.pasos) }))
+        .map((origen): OrigenTamano => ({
+            origen: toText(origen?.origen).trim(),
+            pasos: toInt(origen?.pasos),
+            tipo: tipo ?? (origen?.tipo === 'plantilla' ? 'plantilla' : 'aptitud'),
+        }))
         .filter((origen) => origen.pasos !== 0);
 }
 

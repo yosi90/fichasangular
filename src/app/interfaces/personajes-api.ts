@@ -295,8 +295,11 @@ export interface PersonajeTamanoDto {
     base: { Id: number; Nombre: string | null; };
     /** Las categorías que cambia de verdad (0 sin cambio). */
     pasos: number;
-    /** Las aptitudes del personaje que cambian el tamaño. */
-    origenes: { origen: string; pasos: number; }[];
+    /**
+     * Las plantillas (primero; sus pasos se suman) y las aptitudes (no se apilan) del personaje que cambian el tamaño,
+     * con su `tipo` (desde el 2026-11-05).
+     */
+    origenes: { origen: string; pasos: number; tipo?: 'plantilla' | 'aptitud'; }[];
 }
 
 /** Los conjuros al día de un nivel de conjuro (MJ tabla 1-1 y cap. 3): los de la tabla y los adicionales. */

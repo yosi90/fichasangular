@@ -5,6 +5,7 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { textoDesglose, totalesPersonaje } from 'src/app/services/utils/personaje-totales';
+import { etiquetaPenalizacionExperiencia, textoPenalizacionExperiencia } from 'src/app/services/utils/penalizacion-experiencia';
 import { esVisibleEnPersonaje } from 'src/app/components/detalles/ficha/personaje';
 
 interface ParPersonaje {
@@ -21,7 +22,8 @@ interface ModeloTuPersonaje {
 
 /**
  * «Tu personaje», a la derecha de los pasos de la creación: las casillas de las características y los números que
- * cambian con cada elección (PG, CA, iniciativa, ataque base, salvaciones y velocidad) y sus dotes. El personaje de la
+ * cambian con cada elección (PG, CA, iniciativa, ataque base, salvaciones, velocidad y, si la pierde, la experiencia por
+ * multiclase) y sus dotes. El personaje de la
  * creación cambia por dentro, así que se recalcula en cada revisión y solo se vuelve a pintar si cambia algo.
  */
 @Component({
@@ -94,5 +96,9 @@ export function modeloTuPersonaje(pj: Personaje | null | undefined): ModeloTuPer
     const velocidad = textosMovimiento(pj, null)[0];
     if (velocidad)
         pares.push({ nombre: 'Velocidad', valor: velocidad, ayuda: textosMovimiento(pj, null).slice(1).join(', ') });
+    // La experiencia que deja de ganar por multiclase (Manual del jugador, cap. 3), solo si pierde algo.
+    const penalizacion = etiquetaPenalizacionExperiencia(pj.Penalizacion_experiencia);
+    if (penalizacion)
+        pares.push({ nombre: 'Experiencia', valor: penalizacion, ayuda: textoPenalizacionExperiencia(pj.Penalizacion_experiencia) });
     return { casillas, pares, dotes: dotesVisiblesPersonaje(pj) };
 }

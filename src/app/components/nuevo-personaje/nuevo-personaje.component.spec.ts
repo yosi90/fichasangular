@@ -1879,6 +1879,26 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Oficial).toBeFalse();
     });
 
+    it('pasar de la edad máxima de la raza (venerable + sus dados, tabla 6-5) sí la vuelve homebrew, con aviso', () => {
+        const raza = crearRazaMock();
+        (raza as any).Edad_maxima_dados = 2;
+        (raza as any).Edad_maxima_caras = 20;
+        component.seleccionarRaza(raza);
+        component.Personaje.Deidad = 'No tener deidad';
+        const maxima = Number(raza.Edad_venerable) + 40;
+
+        component.onEdadChange(maxima);
+        expect(component.edadFueraRango).toBeFalse();
+        expect(component.Personaje.Oficial).toBeTrue();
+
+        component.onEdadChange(maxima + 1);
+        expect(component.edadFueraRango).toBeTrue();
+        expect(component.textoEdadFueraRango).toContain('Edad por encima de la edad máxima de la raza');
+        expect(component.getInconsistenciasManual()).toContain(
+            `Edad por encima de la edad máxima de la raza: ${maxima + 1} (venerable a los ${raza.Edad_venerable}, +2d20: como mucho ${maxima}).`);
+        expect(component.Personaje.Oficial).toBeFalse();
+    });
+
     it('una raza sin edades no comprueba la edad (antes, cualquier edad la volvía homebrew)', () => {
         const raza = crearRazaMock();
         raza.Edad_adulto = 0;

@@ -603,7 +603,7 @@ describe('Clases propias: lo que dicen los datos de la clase y de sus aptitudes'
             expect(service.aplicarSiguienteNivelClase(grande).aplicado).toBeTrue();
             const pj = service.PersonajeCreacion;
             expect(pj.Tamano_efectivo).toEqual(jasmine.objectContaining({
-                nombre: 'Grande', pasos: 1, base: { Id: 1, Nombre: 'Mediano' }, origenes: [{ origen: 'Aptitud grande', pasos: 1 }],
+                nombre: 'Grande', pasos: 1, base: { Id: 1, Nombre: 'Mediano' }, origenes: [{ origen: 'Aptitud grande', pasos: 1, tipo: 'aptitud' }],
             }));
             expect(pj.Espacio).toBe(10);
             expect(pj.Alcance).toBe(10);

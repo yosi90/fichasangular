@@ -662,7 +662,12 @@ export function aplicarMutacion(base: Raza, mutada: Raza): Raza {
     resultado.Modificadores = normalizarModificadores(mutadaClone?.Modificadores);
 
     assignTextIfMeaningful(resultado as any, "Manual", mutadaClone?.Manual);
-    assignTextIfMeaningful(resultado as any, "Clase_predilecta", mutadaClone?.Clase_predilecta);
+    // La clase predilecta va entera (su texto, su id y su marca de comodín): la de la mutada si la trae.
+    if (hasMeaningfulText(`${mutadaClone?.Clase_predilecta ?? ""}`)) {
+        resultado.Clase_predilecta = `${mutadaClone.Clase_predilecta}`.trim();
+        resultado.Id_clase_predilecta = toNumber(mutadaClone?.Id_clase_predilecta);
+        resultado.Clase_predilecta_comodin = mutadaClone?.Clase_predilecta_comodin ?? null;
+    }
     assignTextIfMeaningful(resultado as any, "Ataques_naturales", mutadaClone?.Ataques_naturales);
     assignTextIfMeaningful(resultado as any, "Reduccion_dano", mutadaClone?.Reduccion_dano);
     assignTextIfMeaningful(resultado as any, "Resistencia_magica", mutadaClone?.Resistencia_magica);
@@ -686,6 +691,11 @@ export function aplicarMutacion(base: Raza, mutada: Raza): Raza {
     assignNumberIfSignificant(resultado as any, "Edad_mediana", mutadaClone?.Edad_mediana);
     assignNumberIfSignificant(resultado as any, "Edad_viejo", mutadaClone?.Edad_viejo);
     assignNumberIfSignificant(resultado as any, "Edad_venerable", mutadaClone?.Edad_venerable);
+    // La edad máxima va con sus dados y sus caras a la vez (sin dato en la mutada, la de la base).
+    if (hasSignificantNumber(mutadaClone?.Edad_maxima_dados) && hasSignificantNumber(mutadaClone?.Edad_maxima_caras)) {
+        resultado.Edad_maxima_dados = toNumber(mutadaClone.Edad_maxima_dados);
+        resultado.Edad_maxima_caras = toNumber(mutadaClone.Edad_maxima_caras);
+    }
     assignNumberIfSignificant(resultado as any, "Dotes_adicionales", mutadaClone?.Dotes_adicionales);
     assignNumberIfSignificant(resultado as any, "Puntos_habilidad_extra_primer_nivel", mutadaClone?.Puntos_habilidad_extra_primer_nivel);
     assignNumberIfSignificant(resultado as any, "Puntos_habilidad_extra_por_nivel", mutadaClone?.Puntos_habilidad_extra_por_nivel);

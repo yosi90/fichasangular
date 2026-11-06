@@ -162,7 +162,8 @@ function normalizeIdiomasApi(raw: any): IdiomaDetalle[] {
 
 /** Los campos de la raza que usan las reglas de la creación, leídos igual en la API y en la caché. */
 type CamposCreacionRaza = 'Dotes_adicionales' | 'Puntos_habilidad_extra_primer_nivel' | 'Puntos_habilidad_extra_por_nivel'
-    | 'Cuadrupedo' | 'Competencias' | 'Idiomas_adicionales' | 'Idiomas_adicionales_cualquiera';
+    | 'Cuadrupedo' | 'Competencias' | 'Idiomas_adicionales' | 'Idiomas_adicionales_cualquiera'
+    | 'Id_clase_predilecta' | 'Clase_predilecta_comodin' | 'Edad_maxima_dados' | 'Edad_maxima_caras';
 
 /**
  * Lo que la raza aporta a las reglas de la creación: su dote adicional y sus puntos de habilidad extra, si carga como un
@@ -188,6 +189,12 @@ export function normalizarCamposCreacionRaza(raw: any): Pick<Raza, CamposCreacio
         Competencias: competencias,
         Idiomas_adicionales: normalizeIdiomasApi(Array.isArray(raw?.Idiomas_adicionales) ? raw.Idiomas_adicionales : Object.values(raw?.Idiomas_adicionales ?? {})),
         Idiomas_adicionales_cualquiera: toBoolean(raw?.Idiomas_adicionales_cualquiera ?? true),
+        // La clase predilecta por su id y su marca de comodín (la API y la caché, con el mismo nombre; en la caché, sin
+        // comodín no está), y los dados de la edad máxima (0 y 0, sin dato).
+        Id_clase_predilecta: toNumber(raw?.Id_clase_predilecta),
+        Clase_predilecta_comodin: leerComodin(raw?.Clase_predilecta_comodin),
+        Edad_maxima_dados: toNumber(raw?.Edad_maxima_dados),
+        Edad_maxima_caras: toNumber(raw?.Edad_maxima_caras),
     };
 }
 

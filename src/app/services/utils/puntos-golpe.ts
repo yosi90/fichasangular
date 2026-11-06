@@ -1,4 +1,5 @@
 import { toInt } from 'src/app/services/utils/normalizacion';
+import { dgsRacialesQueCuentan } from 'src/app/services/utils/nivel-personaje';
 
 /**
  * Los puntos de golpe de la creación (Manual del jugador, cap. 3, «Dado de golpe», y cap. 1, Constitución).
@@ -71,15 +72,6 @@ export function dadoTrasPasos(caras: number, pasos: number, escalera: readonly n
     if (indice < 0 || toInt(pasos) === 0)
         return caras;
     return ordenada[Math.max(0, Math.min(ordenada.length - 1, indice + toInt(pasos)))];
-}
-
-/**
- * Los DG raciales que cuentan: con 1 DG racial o menos y algún nivel de clase, ninguno, porque el primer nivel de clase
- * ocupa su lugar (Guía del DM, pág. 172). Sin niveles de clase, los de la raza.
- */
-export function dgsRacialesQueCuentan(dgsRaciales: number, nivelesClase: number): number {
-    const dgs = Math.max(0, toInt(dgsRaciales));
-    return dgs <= 1 && toInt(nivelesClase) > 0 ? 0 : dgs;
 }
 
 export function calcularPuntosGolpe(entrada: EntradaPuntosGolpe): ResultadoPuntosGolpe {

@@ -39,9 +39,30 @@ describe('tamano-efectivo', () => {
         const efectivo = tamanoEfectivo(tamano(5), CATALOGO, [{ origen: 'Aptitud grande', pasos: 1 }, { origen: 'Sin cambio', pasos: 0 }], 5, 5)!;
         expect(efectivo.ficha).toEqual(jasmine.objectContaining({
             id: 6, nombre: 'Grande', modificador: -1, modificadorPresa: 4, modificadorEsconderse: -4, espacio: 10, alcance: 10,
-            pasos: 1, origenes: [{ origen: 'Aptitud grande', pasos: 1 }],
+            pasos: 1, origenes: [{ origen: 'Aptitud grande', pasos: 1, tipo: 'aptitud' }],
         }));
         expect(efectivo.tamano.Multiplicador_carga).toBe(2);
+    });
+
+    // Manual de monstruos, cap. 1, «Plantillas»: el cambio de tamaño de una plantilla es de la criatura misma.
+    it('una plantilla de −1 paso (Criado en la mazmorra) hace Pequeño a un Mediano: CA +1, presa −4, Esconderse +4', () => {
+        const efectivo = tamanoEfectivo(tamano(5), CATALOGO, [], 5, 5, [{ origen: 'Criado en la mazmorra', pasos: -1 }])!;
+        expect(efectivo.ficha).toEqual(jasmine.objectContaining({
+            id: 4, nombre: 'Pequeño', modificador: 1, modificadorPresa: -4, modificadorEsconderse: 4, pasos: -1,
+            origenes: [{ origen: 'Criado en la mazmorra', pasos: -1, tipo: 'plantilla' }],
+        }));
+    });
+
+    it('los pasos de las plantillas se suman; los de las aptitudes, encima, no se apilan', () => {
+        const dosPlantillas = [{ origen: 'A', pasos: 1 }, { origen: 'B', pasos: 1 }];
+        expect(tamanoEfectivo(tamano(5), CATALOGO, [], 5, 5, dosPlantillas)!.ficha.nombre).toBe('Enorme');
+        const conAptitudes = tamanoEfectivo(tamano(5), CATALOGO, [{ origen: 'X', pasos: 1 }, { origen: 'Y', pasos: 1 }], 5, 5, dosPlantillas)!;
+        expect(conAptitudes.ficha.nombre).toBe('Gargantuesco');
+        expect(conAptitudes.ficha.origenes.map((origen) => origen.tipo)).toEqual(['plantilla', 'plantilla', 'aptitud', 'aptitud']);
+        // La plantilla −1 y la aptitud +1 se compensan.
+        const compensado = tamanoEfectivo(tamano(5), CATALOGO, [{ origen: 'Tamaño imponente', pasos: 1 }], 5, 5,
+            [{ origen: 'Criado en la mazmorra', pasos: -1 }])!;
+        expect(compensado.ficha.id).toBe(5);
     });
 
     it('una raza larga sigue la columna larga del alcance', () => {
@@ -82,8 +103,10 @@ describe('tamano-efectivo', () => {
             base: { Id: 5, Nombre: 'Mediano' }, pasos: 1, origenes: [{ origen: 'Tamaño imponente', pasos: 1 }],
         })).toEqual({
             id: 6, nombre: 'Grande', modificador: -1, modificadorPresa: 4, modificadorEsconderse: -4, espacio: 10, alcance: 10,
-            base: { Id: 5, Nombre: 'Mediano' }, pasos: 1, origenes: [{ origen: 'Tamaño imponente', pasos: 1 }],
+            base: { Id: 5, Nombre: 'Mediano' }, pasos: 1, origenes: [{ origen: 'Tamaño imponente', pasos: 1, tipo: 'aptitud' }],
         });
+        expect(normalizarTamanoFicha({ id: 4, base: { Id: 5 }, origenes: [{ origen: 'Criado en la mazmorra', pasos: -1, tipo: 'plantilla' }] })!.origenes)
+            .toEqual([{ origen: 'Criado en la mazmorra', pasos: -1, tipo: 'plantilla' }]);
         expect(normalizarTamanoFicha(null)).toBeNull();
     });
 

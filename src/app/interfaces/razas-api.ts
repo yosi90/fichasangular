@@ -39,6 +39,9 @@ export interface RazaCreateCore {
     edad_mediana: number;
     edad_viejo: number;
     edad_venerable: number;
+    /** La edad máxima (tabla 6-5): los dados que se suman a la venerable; con `edad_maxima_caras`, los dos o ninguno. */
+    edad_maxima_dados?: number;
+    edad_maxima_caras?: number;
     id_tipo_criatura: number;
     ataque_base: number;
     fortaleza: number;

@@ -206,9 +206,7 @@
                                             <mat-icon>help_outline</mat-icon>
                                         </button>
                                     </div>
-                                    <p class="full-span creacion-aviso" *ngIf="edadFueraRango">
-                                        La edad elegida no llega a la mayoría de edad de la raza: el personaje será homebrew.
-                                    </p>
+                                    <p class="full-span creacion-aviso" *ngIf="edadFueraRango">{{textoEdadFueraRango}}</p>
                                     <mat-form-field appearance="fill">
                                         <mat-label>Peso (kg)</mat-label>
                                         <input matInput type="number" min="0" step="0.01" [ngModel]="Personaje.Peso"
@@ -535,6 +533,8 @@
                                                 (click)="abrirClase(item.clase); $event.stopPropagation()">{{item.clase.Nombre}}</button>
                                             <div class="clase-celda-chipline">
                                                 <span class="creacion-etiqueta" *ngIf="item.clase.Prestigio">Prestigio</span>
+                                                <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="item.penalizacionPx.etiqueta"
+                                                    [matTooltip]="item.penalizacionPx.texto" matTooltipClass="tt-accent tt-multiline">{{item.penalizacionPx.etiqueta}}</span>
                                                 <mat-chip class="bad" *ngIf="item.campaignBlockedReason">{{item.campaignBlockedReason}}</mat-chip>
                                                 <mat-chip class="tw-h-auto aviso" *ngFor="let aviso of item.evaluacion.advertencias">{{aviso}}</mat-chip>
                                             </div>
@@ -643,6 +643,8 @@
                             [clave]="item.clase.Id" (cerrar)="claseSeleccionadaId = null">
                             <p class="creacion-aviso" *ngIf="!item.puedeAplicarse && item.evaluacion.razones.length > 0">
                                 No puedes elegirla: {{item.evaluacion.razones.join(' · ')}}</p>
+                            <p class="creacion-aviso" *ngIf="item.penalizacionPx.texto">
+                                Si coges este nivel: {{item.penalizacionPx.texto}}</p>
                             <app-detalles-clase [clase]="item.clase"
                                 (conjuroDetalles)="conjuroDetallesId.emit($event)"
                                 (especialDetalles)="especialDetallesId.emit($event)"

@@ -1,4 +1,16 @@
-import { ajustesEnvejecimiento, edadesDeLaRaza, edadFueraDelManual, EdadesRaza, etapaEdad, razaTieneEdades, textoEnvejecimiento } from './edad-personaje';
+import {
+    ajustesEnvejecimiento,
+    edadesDeLaRaza,
+    edadFueraDelManual,
+    edadMaximaDeLaRaza,
+    edadPasaDeLaMaxima,
+    EdadesRaza,
+    etapaEdad,
+    motivoEdadFueraDelManual,
+    razaTieneEdades,
+    textoDadosEdadMaxima,
+    textoEnvejecimiento,
+} from './edad-personaje';
 
 describe('edad-personaje (MJ, tablas 6-4 y 6-5, pág. 109)', () => {
     // El humano del Manual del jugador: mayoría de edad a los 15; mediana edad, 35; viejo, 53; venerable, 70.
@@ -41,11 +53,43 @@ describe('edad-personaje (MJ, tablas 6-4 y 6-5, pág. 109)', () => {
         expect(razaTieneEdades(humano)).toBeTrue();
     });
 
-    it('solo sale del manual por debajo de la mayoría de edad: pasada la venerable llega hasta la edad máxima', () => {
+    it('sin la edad máxima en la raza, solo sale del manual por debajo de la mayoría de edad', () => {
         expect(edadFueraDelManual(14, humano)).toBeTrue();
         expect(edadFueraDelManual(15, humano)).toBeFalse();
         expect(edadFueraDelManual(100, humano)).toBeFalse();
+        expect(edadFueraDelManual(500, humano)).toBeFalse();
         expect(edadFueraDelManual(5, { Edad_adulto: 0, Edad_venerable: 0 })).toBeFalse();
+    });
+
+    // La columna «Edad máxima» de la tabla 6-5: el humano, venerable (70) + 2d20, como mucho 110.
+    const humanoConMaxima: EdadesRaza = { ...humano, Edad_maxima_dados: 2, Edad_maxima_caras: 20 };
+
+    it('la edad máxima es la venerable más lo máximo de sus dados; pasarla sale del manual', () => {
+        expect(edadMaximaDeLaRaza(humanoConMaxima)).toBe(110);
+        expect(edadMaximaDeLaRaza(humano)).toBeNull();
+        expect(edadPasaDeLaMaxima(110, humanoConMaxima)).toBeFalse();
+        expect(edadPasaDeLaMaxima(111, humanoConMaxima)).toBeTrue();
+        expect(edadFueraDelManual(100, humanoConMaxima)).toBeFalse();
+        expect(edadFueraDelManual(111, humanoConMaxima)).toBeTrue();
+        // Entre la venerable y la máxima sigue siendo venerable.
+        expect(etapaEdad(110, humanoConMaxima)?.nombre).toBe('Venerable');
+        // El elfo, +4d% (cuatro dados de porcentaje): 350 + 400.
+        expect(edadMaximaDeLaRaza({ Edad_adulto: 110, Edad_venerable: 350, Edad_maxima_dados: 4, Edad_maxima_caras: 100 })).toBe(750);
+    });
+
+    it('los dados se escriben como en la tabla 6-5 y el motivo dice por qué', () => {
+        expect(textoDadosEdadMaxima(humanoConMaxima)).toBe('+2d20');
+        expect(textoDadosEdadMaxima({ Edad_maxima_dados: 4, Edad_maxima_caras: 100 })).toBe('+4d%');
+        expect(textoDadosEdadMaxima(humano)).toBe('');
+        expect(motivoEdadFueraDelManual(120, humanoConMaxima))
+            .toBe('Edad por encima de la edad máxima de la raza: 120 (venerable a los 70, +2d20: como mucho 110).');
+        expect(motivoEdadFueraDelManual(12, humanoConMaxima)).toBe('Edad por debajo de la mayoría de edad de la raza: 12 (adulto a los 15).');
+        expect(motivoEdadFueraDelManual(40, humanoConMaxima)).toBe('');
+    });
+
+    it('una raza sin edades (o por categorías de edad) no tiene tope aunque traiga los dados', () => {
+        expect(edadMaximaDeLaRaza({ Edad_adulto: 0, Edad_venerable: 0, Edad_maxima_dados: 2, Edad_maxima_caras: 20 })).toBeNull();
+        expect(edadMaximaDeLaRaza({ ...humanoConMaxima, Categorias_edad: [{}] })).toBeNull();
     });
 
     it('el texto del envejecimiento', () => {

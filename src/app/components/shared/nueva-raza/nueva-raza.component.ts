@@ -250,6 +250,8 @@ const CAMPOS_RAZA: CamposDeFormulario = {
     edad_mediana: { etiqueta: 'Mediana edad', paso: 1 },
     edad_viejo: { etiqueta: 'Viejo', paso: 1 },
     edad_venerable: { etiqueta: 'Venerable', paso: 1 },
+    edad_maxima_dados: { etiqueta: 'Dados de la edad máxima', paso: 1 },
+    edad_maxima_caras: { etiqueta: 'Caras de la edad máxima', paso: 1 },
     armadura_natural: { etiqueta: 'Armadura natural', paso: 1 },
     varios_armadura: { etiqueta: 'Varios de armadura', paso: 1 },
     ajuste_nivel: { etiqueta: 'Ajuste de nivel', paso: 1 },
@@ -477,6 +479,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         edad_mediana: [0, [Validators.min(0)]],
         edad_viejo: [0, [Validators.min(0)]],
         edad_venerable: [0, [Validators.min(0)]],
+        // La edad máxima (Manual del jugador, tabla 6-5): los dados que se suman a la venerable (+2d20: 2 y 20; +4d%: 4 y
+        // 100). 0 y 0: el manual no la da.
+        edad_maxima_dados: [0, [Validators.min(0)]],
+        edad_maxima_caras: [0, [Validators.min(0)]],
         id_tipo_criatura: [0, [Validators.min(1)]],
         ataque_base: [0],
         fortaleza: [0],
@@ -712,6 +718,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 edad_mediana: this.numero(raw.edad_mediana),
                 edad_viejo: this.numero(raw.edad_viejo),
                 edad_venerable: this.numero(raw.edad_venerable),
+                edad_maxima_dados: this.numero(raw.edad_maxima_dados),
+                edad_maxima_caras: this.numero(raw.edad_maxima_caras),
                 id_tipo_criatura: this.numero(raw.id_tipo_criatura),
                 // El ataque base y las salvaciones son los de los DG raciales: sin DG, 0 (`400 dg_raciales_sin_dg`).
                 ataque_base: this.tieneDgsExtra() ? this.numero(raw.ataque_base) : 0,
@@ -1875,6 +1883,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             edad_mediana: 0,
             edad_viejo: 0,
             edad_venerable: 0,
+            edad_maxima_dados: 0,
+            edad_maxima_caras: 0,
             ataque_base: 0,
             fortaleza: 0,
             reflejos: 0,
@@ -2273,10 +2283,13 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             const mediana = getInt('edad_mediana');
             const viejo = getInt('edad_viejo');
             const venerable = getInt('edad_venerable');
+            // La edad máxima lleva sus dados y sus caras, o ninguno (`400 edad_maxima_incompleta`).
+            const edadMaximaIncompleta = (getInt('edad_maxima_dados') > 0) !== (getInt('edad_maxima_caras') > 0);
             // Las mismas reglas que la API: mínimo <= máximo y adulto <= mediana <= viejo <= venerable (0: sin dato).
             const invalid = alturaInf > alturaSup
                 || pesoInf > pesoSup
-                || !(adulto <= mediana && mediana <= viejo && viejo <= venerable);
+                || !(adulto <= mediana && mediana <= viejo && viejo <= venerable)
+                || edadMaximaIncompleta;
             return invalid ? { rangosInvalidos: true } : null;
         };
     }
@@ -2438,6 +2451,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             edad_mediana: 0,
             edad_viejo: 0,
             edad_venerable: 0,
+            edad_maxima_dados: 0,
+            edad_maxima_caras: 0,
             id_tipo_criatura: 0,
             ataque_base: 0,
             fortaleza: 0,
@@ -2551,6 +2566,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             edad_mediana: this.numero(raza.Edad_mediana),
             edad_viejo: this.numero(raza.Edad_viejo),
             edad_venerable: this.numero(raza.Edad_venerable),
+            edad_maxima_dados: this.numero(raza.Edad_maxima_dados),
+            edad_maxima_caras: this.numero(raza.Edad_maxima_caras),
             id_tipo_criatura: this.numero(raza.Tipo_criatura?.Id),
             ataque_base: this.numero(dgs?.Ataque_base),
             fortaleza: this.numero(dgs?.Fortaleza),

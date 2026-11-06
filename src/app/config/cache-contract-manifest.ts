@@ -63,7 +63,7 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "monstruos", label: "Monstruos", schemaVersion: 9 },
     { key: "familiares", label: "Familiares", schemaVersion: 9 },
     { key: "companeros", label: "Compañeros animales", schemaVersion: 9 },
-    { key: "razas", label: "Razas", schemaVersion: 18 },
+    { key: "razas", label: "Razas", schemaVersion: 20 },
     { key: "manuales", label: "Manuales", schemaVersion: 1 },
     { key: "manuales_asociados", label: "Manuales asociados", schemaVersion: 2 },
     { key: "tipos_criatura", label: "Tipos de criatura", schemaVersion: 3 },

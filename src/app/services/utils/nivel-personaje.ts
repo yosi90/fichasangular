@@ -11,7 +11,28 @@ import { toInt } from 'src/app/services/utils/normalizacion';
  *   monstruos: los PX de un personaje de raza monstruosa son los mínimos de su NEP).
  * - El primer DG del personaje: el primer DG racial si la raza tiene DG raciales; si no, su primer nivel de clase. Los DG
  *   de plantilla nunca son el primero (Manual de monstruos, «Licántropo»: el animal nunca es su primer DG).
+ * - Una raza con 1 DG racial o menos lo cambia por su primer nivel de clase (Guía del DM, pág. 172; Manual de monstruos,
+ *   «Monstruos y niveles de clase»): con algún nivel de clase, ese DG no cuenta en nada (PG, ataque base, salvaciones,
+ *   habilidades, dotes, DG totales ni NEP). `dgsRacialesQueCuentan` es la regla; la API usa la misma
+ *   (`dgs_raciales_que_cuentan`, `utils/nivel_efectivo.py`).
  */
+
+/**
+ * Los DG raciales que cuentan: con 1 DG racial o menos y algún nivel de clase, ninguno, porque el primer nivel de clase
+ * ocupa su lugar (Guía del DM, pág. 172). Sin niveles de clase, los de la raza.
+ */
+export function dgsRacialesQueCuentan(dgsRaciales: number, nivelesClase: number): number {
+    const dgs = Math.max(0, toInt(dgsRaciales));
+    return dgs <= 1 && toInt(nivelesClase) > 0 ? 0 : dgs;
+}
+
+/**
+ * Si la raza tiene un DG racial que su primer nivel de clase cambiaría (1 DG o menos, pero alguno): hasta saber si el
+ * personaje termina sin clases, las habilidades y la dote de ese DG esperan.
+ */
+export function dgRacialSustituible(dgsRaciales: number): boolean {
+    return toInt(dgsRaciales) > 0 && dgsRacialesQueCuentan(dgsRaciales, 1) === 0;
+}
 
 export interface PlantillaConDg {
     Actualiza_dg?: boolean | null;

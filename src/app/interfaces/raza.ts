@@ -221,6 +221,13 @@ export interface Raza {
     Ajuste_nivel: number;
     Manual: string;
     Clase_predilecta: string;
+    /**
+     * La clase predilecta por su id (Manual del jugador, cap. 3, «Experiencia en multiclase»: no cuenta para la
+     * penalización de PX). Sin dato (borradores antiguos), 0.
+     */
+    Id_clase_predilecta?: number;
+    /** `'cualquiera'` si la clase predilecta es la comodín «Cualquiera» (humano y semielfo: la de más nivel). */
+    Clase_predilecta_comodin?: Comodin | null;
     Modificadores: {
         Fuerza: number;
         Destreza: number;
@@ -287,6 +294,12 @@ export interface Raza {
     Edad_mediana: number; 
     Edad_viejo: number; 
     Edad_venerable: number;
+    /**
+     * Los dados de la edad máxima, que se suman a la venerable (Manual del jugador, tabla 6-5: el humano, +2d20, 2 y 20;
+     * el elfo, +4d%, 4 y 100). 0 y 0 (o sin dato): la raza no la trae y no hay tope.
+     */
+    Edad_maxima_dados?: number;
+    Edad_maxima_caras?: number;
     Espacio: number;
     Alcance: number;
     Tipo_criatura: TipoCriatura;

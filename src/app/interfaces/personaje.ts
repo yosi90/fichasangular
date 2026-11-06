@@ -1,4 +1,5 @@
 import { AptitudSortilega } from "./aptitud-sortilega";
+import type { PenalizacionExperiencia } from "src/app/services/utils/penalizacion-experiencia";
 import { Conjuro } from "./conjuro";
 import { DoteContextual, DoteLegacy } from "./dote-contextual";
 import { EnemigoPredilectoSeleccion } from "./enemigo-predilecto-seleccion";
@@ -220,6 +221,11 @@ export interface Personaje extends PersonajeSimple {
     }
     NEP: number;
     Experiencia: number;
+    /**
+     * Solo en la creación: lo que deja de ganar de experiencia por multiclase (Manual del jugador, cap. 3; no cambia la
+     * experiencia con la que se crea). No se guarda: sale de sus clases y de la clase predilecta de su raza.
+     */
+    Penalizacion_experiencia?: PenalizacionExperiencia | null;
     Deidad: string;
     Alineamiento: string;
     Genero: string;

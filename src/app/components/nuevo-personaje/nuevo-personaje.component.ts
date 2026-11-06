@@ -179,7 +179,8 @@ import {
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
-import { edadesDeLaRaza, edadFueraDelManual, etapaEdad, EtapaEdad, razaTieneEdades, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
+import { edadesDeLaRaza, edadFueraDelManual, edadMaximaDeLaRaza, etapaEdad, EtapaEdad, motivoEdadFueraDelManual, razaTieneEdades, textoDadosEdadMaxima, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
+import { etiquetaPenalizacionExperiencia, textoPenalizacionExperiencia } from 'src/app/services/utils/penalizacion-experiencia';
 
 interface VectorAlineamiento {
     ley: number;
@@ -306,6 +307,11 @@ interface ClaseListadoItem {
     compatAlineamiento: ClaseCompatibilidadAlineamientoItem;
     esHomebrew: boolean;
     campaignBlockedReason: string | null;
+    /**
+     * La experiencia que dejaría de ganar si coge este nivel (multiclase, Manual del jugador, cap. 3): la etiqueta
+     * («−20 % de PX») y su explicación; vacías si no pierde nada. No impide cogerlo ni lo vuelve homebrew.
+     */
+    penalizacionPx: { etiqueta: string; texto: string; };
 }
 
 type CampaignHomebrewMode = 'unrestricted' | 'limited' | 'forbidden';
@@ -694,6 +700,8 @@ export class NuevoPersonajeComponent {
     private formacionReintento = false;
     /** La sesión de conjuros del lanzamiento racial sin clases se abrió al terminar: al cerrarla, se sigue terminando. */
     private finalizarTrasLanzamientoRacial = false;
+    /** Se termina sin clases tras repartir lo del DG racial único (`repartirDgRacialSinClases`). */
+    private finalizarTrasDgRacial = false;
     private incarnumCapacidad: CapacidadEsencia[] = [];
     private incarnumCache: { firma: string; bloque: PersonajeIncarnum | null; tuPersonaje: IncarnumTuPersonaje | null; } =
         { firma: '', bloque: null, tuPersonaje: null };
@@ -1862,7 +1870,9 @@ export class NuevoPersonajeComponent {
         const raza = this.razaSeleccionada;
         if (!raza || !razaTieneEdades(raza))
             return [];
-        return edadesDeLaRaza(raza).map(({ nombre, valor }) => `${nombre}: ${valor}`);
+        const items = edadesDeLaRaza(raza).map(({ nombre, valor }) => `${nombre}: ${valor}`);
+        const maxima = edadMaximaDeLaRaza(raza);
+        return maxima === null ? items : [...items, `Máxima: venerable ${textoDadosEdadMaxima(raza)} (hasta ${maxima})`];
     }
 
     /** Bajo la edad: el envejecimiento que aplica la etapa elegida o, si no envejece, las edades de la raza. */
@@ -1904,17 +1914,30 @@ export class NuevoPersonajeComponent {
             return 'Introduce una edad para ver su etapa de la vida.';
         if (etapa.id === 'joven')
             return 'Tu personaje aún no tiene la mayoría de edad de su raza: el Manual del jugador no llega ahí y el personaje será homebrew.';
+        const maxima = edadMaximaDeLaRaza(raza);
+        if (maxima !== null && edadFueraDelManual(this.Personaje?.Edad, raza))
+            return `Tu personaje pasa de la edad máxima de su raza (venerable ${textoDadosEdadMaxima(raza)}: como mucho ${maxima} años): el Manual del jugador no llega ahí y el personaje será homebrew.`;
         if (etapa.id === 'adulto')
             return 'Tu personaje es adulto: la edad no cambia sus características.';
+        const tope = maxima !== null ? ` (venerable ${textoDadosEdadMaxima(raza)}: como mucho ${maxima} años)` : '';
         const venerable = etapa.id === 'venerable'
-            ? ' Vivirá hasta su edad máxima, que el DM tira en secreto.'
+            ? ` Vivirá hasta su edad máxima${tope}, que el DM tira en secreto.`
             : '';
         return `Por envejecer: ${textoEnvejecimiento(etapa)} (ninguna baja de 1).${venerable}`;
     }
 
-    /** Solo por debajo de la mayoría de edad: pasada la venerable, el manual llega hasta la edad máxima (tabla 6-5). */
+    /**
+     * Por debajo de la mayoría de edad o por encima de la edad máxima (la venerable más lo que pueden dar los dados de la
+     * tabla 6-5; sin esos dados, sin tope): fuera del Manual del jugador.
+     */
     get edadFueraRango(): boolean {
         return edadFueraDelManual(this.Personaje?.Edad, this.razaSeleccionada);
+    }
+
+    /** El aviso bajo la edad cuando sale del manual: por qué y que el personaje será homebrew. */
+    get textoEdadFueraRango(): string {
+        const motivo = motivoEdadFueraDelManual(this.Personaje?.Edad, this.razaSeleccionada);
+        return motivo ? `${motivo} El personaje será homebrew.` : '';
     }
 
     get pesoFueraRango(): boolean {
@@ -2263,7 +2286,7 @@ export class NuevoPersonajeComponent {
         const deidadIngresada = this.Personaje.Deidad?.trim() ?? '';
 
         if (this.edadFueraRango) {
-            otherOfficialBlockers.push(`Edad por debajo de la mayoría de edad de la raza: ${this.Personaje.Edad} (adulto a los ${this.razaSeleccionada?.Edad_adulto}).`);
+            otherOfficialBlockers.push(motivoEdadFueraDelManual(this.Personaje.Edad, this.razaSeleccionada));
         }
         if (this.pesoFueraRango) {
             otherOfficialBlockers.push(`Peso fuera de rango: ${this.Personaje.Peso} kg (tipico ${this.razaSeleccionada?.Peso_rango_inf}-${this.razaSeleccionada?.Peso_rango_sup} kg).`);
@@ -4581,6 +4604,11 @@ export class NuevoPersonajeComponent {
 
         this.nuevoPSvc.actualizarPasoActual(returnStep);
         this.sincronizarTabConPaso();
+        // El reparto del DG racial único se abrió al terminar sin clases: se sigue terminando.
+        if (this.finalizarTrasDgRacial) {
+            this.finalizarTrasDgRacial = false;
+            void this.onFinalizarCreacionTemporal();
+        }
     }
 
     onFiltroConjurosTextoChange(value: string): void {
@@ -4993,6 +5021,9 @@ export class NuevoPersonajeComponent {
     async onFinalizarCreacionTemporal(): Promise<void> {
         if (!this.mostrarBotonFinalizarCreacion)
             return;
+        // Sin clases, el DG racial único cuenta (Guía del DM, pág. 172): sus habilidades y su dote se reparten ahora.
+        if (await this.repartirDgRacialSinClases())
+            return;
         // Sin clases, lo del primer nivel que no llega con una clase: los idiomas adicionales por Inteligencia y los
         // conjuros del lanzamiento racial (los dragones, el rakshasa), en su sesión de conjuros antes de terminar.
         if (!await this.pedirIdiomasIniciales(this.nuevoPSvc.getIdiomasPendientesSinClases()))
@@ -5005,6 +5036,25 @@ export class NuevoPersonajeComponent {
             return;
         }
         this.abrirSelectorPuntosGolpe();
+    }
+
+    /**
+     * Una raza con 1 DG racial que termina sin clases: ese DG es su nivel, así que se reparten sus puntos de habilidad
+     * (volviendo después aquí, `finalizarTrasDgRacial`) y su dote. `true` si se abrió el reparto de habilidades y hay que
+     * esperar; `false` si no había nada que repartir o ya está (y se sigue terminando).
+     */
+    private async repartirDgRacialSinClases(): Promise<boolean> {
+        if (!this.nuevoPSvc.dgRacialPendienteSinClases())
+            return false;
+        if (this.nuevoPSvc.iniciarDistribucionHabilidadesPorRazaDG(true, this.flujo.pasoActual)) {
+            this.finalizarTrasDgRacial = true;
+            this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+            this.sincronizarTabConPaso();
+            return true;
+        }
+        this.nuevoPSvc.marcarDgRacialSinClasesRepartido();
+        this.nuevoPSvc.registrarDotesPendientesPorRazaExtras(`${this.razaSeleccionada?.Nombre ?? 'Raza'}`);
+        return !await this.resolverDotesPendientes();
     }
 
     /**
@@ -7477,6 +7527,7 @@ export class NuevoPersonajeComponent {
             const nivelActual = this.getNivelActualClasePorNombre(clase.Nombre);
             const siguienteNivel = nivelActual + 1;
             const beneficios = this.getBeneficiosSiguienteNivelClase(clase, siguienteNivel);
+            const penalizacion = this.nuevoPSvc.penalizacionExperiencia(clase);
             evaluadas.push({
                 clase,
                 evaluacion,
@@ -7491,6 +7542,10 @@ export class NuevoPersonajeComponent {
                 compatAlineamiento: this.evaluarCompatibilidadAlineamientoClase(clase),
                 esHomebrew: clase?.Oficial === false,
                 campaignBlockedReason,
+                penalizacionPx: {
+                    etiqueta: etiquetaPenalizacionExperiencia(penalizacion),
+                    texto: textoPenalizacionExperiencia(penalizacion),
+                },
             });
         });
 

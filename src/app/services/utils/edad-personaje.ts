@@ -10,8 +10,10 @@ import { toNumber } from 'src/app/services/utils/normalizacion';
  * - Desde la mediana edad, cada paso resta a las físicas y suma a las mentales, y los pasos se acumulan: mediana edad,
  *   −1 a Fue, Des y Con y +1 a Int, Sab y Car; viejo, −2 y +1 más (−3/+2); venerable, −3 y +1 más (−6/+3).
  * - Ninguna puntuación baja de 1 por envejecer.
- * - Pasada la edad venerable, el personaje sigue siendo venerable hasta su edad máxima, que el DM tira en secreto (la
- *   columna «Edad máxima» de la tabla 6-5): no sale del manual.
+ * - Pasada la edad venerable, el personaje sigue siendo venerable hasta su edad máxima, que el DM tira en secreto: la
+ *   venerable más los dados de la columna «Edad máxima» de la tabla 6-5 (`Edad_maxima_dados` y `Edad_maxima_caras`: el
+ *   humano, +2d20). Una edad mayor que la más alta que pueden dar esos dados (venerable + dados × caras) sale del manual;
+ *   sin esos dados en la raza, no hay tope.
  * - Una raza sin esas edades (0) no tiene etapas: ni se comprueba la edad ni envejece.
  * - Una raza que crece por categorías de edad (los dragones, `Categorias_edad`) tampoco: su edad es su categoría, que se
  *   elige con la raza, y no envejece así (análisis de los dragones jugables, §1.4).
@@ -22,6 +24,9 @@ export interface EdadesRaza {
     Edad_mediana?: number | null;
     Edad_viejo?: number | null;
     Edad_venerable?: number | null;
+    /** Los dados de su edad máxima, que se suman a la venerable (tabla 6-5: +2d20, 2 y 20); 0 y 0, sin dato. */
+    Edad_maxima_dados?: number | null;
+    Edad_maxima_caras?: number | null;
     /** Las categorías de edad de una raza que crece por edades: si las tiene, no usa las del Manual del jugador. */
     Categorias_edad?: unknown[] | null;
 }
@@ -91,9 +96,51 @@ export function etapaEdad(edad: unknown, raza: EdadesRaza | null | undefined): E
     return crearEtapa((['adulto', 'mediana', 'viejo', 'venerable'] as const)[pasos], pasos);
 }
 
-/** Si la edad sale de lo que da el manual: solo por debajo de la mayoría de edad de la raza. */
+/** «+2d20» o «+4d%» (las caras 100 son el dado de porcentaje): los dados de la edad máxima; `''` sin dato. */
+export function textoDadosEdadMaxima(raza: EdadesRaza | null | undefined): string {
+    const dados = toNumber(raza?.Edad_maxima_dados);
+    const caras = toNumber(raza?.Edad_maxima_caras);
+    if (dados <= 0 || caras <= 0)
+        return '';
+    return `+${dados}d${caras === 100 ? '%' : caras}`;
+}
+
+/**
+ * La edad más alta a la que puede llegar alguien de la raza: la venerable más lo máximo que dan los dados de su edad
+ * máxima (el humano, 70 + 2 × 20 = 110). `null` si la raza no trae sus edades o esos dados.
+ */
+export function edadMaximaDeLaRaza(raza: EdadesRaza | null | undefined): number | null {
+    if (!raza || !razaTieneEdades(raza) || textoDadosEdadMaxima(raza).length < 1)
+        return null;
+    return toNumber(raza.Edad_venerable) + toNumber(raza.Edad_maxima_dados) * toNumber(raza.Edad_maxima_caras);
+}
+
+/** Si la edad pasa de la más alta que da el manual para la raza (`edadMaximaDeLaRaza`). */
+export function edadPasaDeLaMaxima(edad: unknown, raza: EdadesRaza | null | undefined): boolean {
+    const maxima = edadMaximaDeLaRaza(raza);
+    return maxima !== null && toNumber(edad) > maxima;
+}
+
+/**
+ * Si la edad sale de lo que da el manual: por debajo de la mayoría de edad de la raza o por encima de su edad máxima
+ * (venerable + los dados de la tabla 6-5). Una raza sin esos dados no tiene tope por arriba.
+ */
 export function edadFueraDelManual(edad: unknown, raza: EdadesRaza | null | undefined): boolean {
-    return etapaEdad(edad, raza)?.id === 'joven';
+    return etapaEdad(edad, raza)?.id === 'joven' || edadPasaDeLaMaxima(edad, raza);
+}
+
+/**
+ * Por qué la edad sale del manual, para el aviso de homebrew: «Edad por debajo de la mayoría de edad de la raza: 12
+ * (adulto a los 15).» o «Edad por encima de la edad máxima de la raza: 120 (venerable a los 70, +2d20: como mucho
+ * 110).»; `''` si no sale.
+ */
+export function motivoEdadFueraDelManual(edad: unknown, raza: EdadesRaza | null | undefined): string {
+    if (etapaEdad(edad, raza)?.id === 'joven')
+        return `Edad por debajo de la mayoría de edad de la raza: ${toNumber(edad)} (adulto a los ${toNumber(raza?.Edad_adulto)}).`;
+    if (edadPasaDeLaMaxima(edad, raza))
+        return `Edad por encima de la edad máxima de la raza: ${toNumber(edad)} (venerable a los ${toNumber(raza?.Edad_venerable)}, `
+            + `${textoDadosEdadMaxima(raza)}: como mucho ${edadMaximaDeLaRaza(raza)}).`;
+    return '';
 }
 
 /** «−1 a Fue, Des y Con; +1 a Int, Sab y Car», o `''` si la etapa no envejece. */

@@ -79,8 +79,9 @@ import {
 } from './utils/reglas-magia';
 import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './utils/alineamiento-contrato';
 import { AptitudDelPersonaje, evaluarActitudEspecial, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
-import { OrigenTamano, TamanoEfectivo, tamanoEfectivo, tamanoQueCuenta, tamanoTrasPasos } from './utils/tamano-efectivo';
-import { ajusteDePlantillas, dgsDePlantilla, dgsDePlantillas, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
+import { OrigenTamano, TamanoEfectivo, tamanoEfectivo, tamanoQueCuenta } from './utils/tamano-efectivo';
+import { ajusteDePlantillas, dgRacialSustituible, dgsDePlantilla, dgsDePlantillas, dgsRacialesQueCuentan, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
+import { ClaseParaPenalizacion, ClasePredilecta, PenalizacionExperiencia, penalizacionExperiencia } from './utils/penalizacion-experiencia';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
 import { bonoTamano, bonosSinergia } from './utils/habilidades-bonos';
@@ -953,6 +954,8 @@ interface NuevoPersonajeDraftV1 {
     dotesExtraRazaConcedidas: number;
     dotesAdicionalesRazaConcedidas?: number;
     dgsCompaneroRepartidos?: number;
+    /** Si ya se repartieron las habilidades y la dote del DG racial único al terminar sin clases. */
+    dgRacialSinClasesRepartido?: boolean;
     aumentosPendientesCaracteristica: AumentoCaracteristicaPendiente[];
     aumentosProgresionConcedidos: number;
     secuenciaAumentoPendiente: number;
@@ -1063,6 +1066,11 @@ export class NuevoPersonajeService {
     private dotesProgresionConcedidas = 0;
     private dotesExtraRazaConcedidas = 0;
     private dotesAdicionalesRazaConcedidas = 0;
+    /**
+     * Una raza con 1 DG racial lo cambia por su primer nivel de clase (`dgRacialSustituible`): sus habilidades y su dote
+     * solo se reparten si termina sin clases, y entonces una sola vez.
+     */
+    private dgRacialSinClasesRepartido = false;
     /** DG adicionales del compañero cuyos puntos de habilidad ya se repartieron. */
     private dgsCompaneroRepartidos = 0;
     private firmasDotesPlantillaAplicadas = new Set<string>();
@@ -1372,6 +1380,7 @@ export class NuevoPersonajeService {
         this.dotesProgresionConcedidas = 0;
         this.dotesExtraRazaConcedidas = 0;
         this.dotesAdicionalesRazaConcedidas = 0;
+        this.dgRacialSinClasesRepartido = false;
         this.dgsCompaneroRepartidos = 0;
         this.aumentosPendientesCaracteristica = [];
         this.aumentosProgresionConcedidos = 0;
@@ -1512,6 +1521,7 @@ export class NuevoPersonajeService {
         this.dotesProgresionConcedidas = 0;
         this.dotesExtraRazaConcedidas = 0;
         this.dotesAdicionalesRazaConcedidas = 0;
+        this.dgRacialSinClasesRepartido = false;
         this.dgsCompaneroRepartidos = 0;
         this.firmasDotesPlantillaAplicadas.clear();
         this.conjurosSesionPlaceholderPorId = {};
@@ -2059,13 +2069,20 @@ export class NuevoPersonajeService {
         this.idiomasInicialesConcedidos = true;
     }
 
-    iniciarDistribucionHabilidadesPorRazaDG(): boolean {
+    /**
+     * Los puntos de habilidad de los DG raciales, al cerrar las características. Con 1 DG racial
+     * (`dgRacialSustituible`), no: el primer nivel de clase ocupa su lugar (Guía del DM, pág. 172), y solo si el personaje
+     * termina sin clases se reparten, entonces (`sinClases`, volviendo después al paso en que se termina, `pasoVuelta`).
+     */
+    iniciarDistribucionHabilidadesPorRazaDG(sinClases: boolean = false, pasoVuelta: StepNuevoPersonaje = 'plantillas'): boolean {
         const raza = this.razaSeleccionada;
         if (!raza)
             return false;
 
         const dgsExtra = toNumber(raza?.Dgs_adicionales?.Cantidad);
         if (dgsExtra < 1)
+            return false;
+        if (this.dgRacialSustituible() && !(sinClases && this.dgRacialPendienteSinClases()))
             return false;
 
         const total = puntosHabilidadDgRaciales({
@@ -2083,8 +2100,33 @@ export class NuevoPersonajeService {
             .filter((habilidad) => toNumber(habilidad?.Id) > 0)
             .map((habilidad) => claveHabilidad(habilidad));
 
-        this.iniciarDistribucionHabilidadesInterna('raza_dg', 'plantillas', total, classSkillTemporales);
+        if (sinClases)
+            this.dgRacialSinClasesRepartido = true;
+        this.iniciarDistribucionHabilidadesInterna('raza_dg', pasoVuelta, total, classSkillTemporales);
         return true;
+    }
+
+    /** La raza tiene 1 DG racial, que su primer nivel de clase cambiaría (`dgRacialSustituible`, Guía del DM, pág. 172). */
+    dgRacialSustituible(): boolean {
+        return dgRacialSustituible(toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad));
+    }
+
+    /**
+     * Si al terminar sin clases falta repartir lo del DG racial único (sus habilidades y su dote): la raza lo tiene, el
+     * personaje no tiene ningún nivel de clase y aún no se ha repartido.
+     */
+    dgRacialPendienteSinClases(): boolean {
+        return this.dgRacialSustituible() && this.getNivelClasesActual() < 1 && !this.dgRacialSinClasesRepartido;
+    }
+
+    /** Lo del DG racial único ya va a repartirse al terminar sin clases (cuando no hay puntos de habilidad que repartir). */
+    marcarDgRacialSinClasesRepartido(): void {
+        this.dgRacialSinClasesRepartido = true;
+    }
+
+    /** Los DG raciales que cuentan ahora (`dgsRacialesQueCuentan`): con 1 DG racial y algún nivel de clase, ninguno. */
+    private dgsRacialesEfectivos(): number {
+        return dgsRacialesQueCuentan(toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad), this.getNivelClasesActual());
     }
 
     iniciarDistribucionHabilidadesPorPlantillasDG(plantillasObjetivo?: Plantilla[]): boolean {
@@ -2739,10 +2781,16 @@ export class NuevoPersonajeService {
      */
     registrarDotesPendientesPorRazaExtras(origen: string): DotePendienteState[] {
         const origenNormalizado = `${origen ?? ''}`.trim() || `${this.razaSeleccionada?.Nombre ?? 'Raza'}`;
-        const totalDgs = Math.max(0, toNumber(this.razaSeleccionada?.Dgs_adicionales?.Dotes_extra));
+        // Las del DG racial único, solo al terminar sin clases (con sus habilidades); con un nivel de clase no cuentan.
+        const cuentanLasDeLosDg = !this.dgRacialSustituible()
+            || (this.dgRacialSinClasesRepartido && this.getNivelClasesActual() < 1);
+        const totalDgs = cuentanLasDeLosDg ? Math.max(0, toNumber(this.razaSeleccionada?.Dgs_adicionales?.Dotes_extra)) : 0;
         const nuevasDgs = Math.max(0, totalDgs - this.dotesExtraRazaConcedidas);
-        // Sin ningún DG ni nivel todavía (un humano al terminar las características), aún no es su primer nivel.
-        const totalAdicionales = this.getNivelEfectivoParaAumentos() >= 1
+        // Sin ningún DG ni nivel todavía (un humano al terminar las características), aún no es su primer nivel; con el DG
+        // racial único aún sin repartir, tampoco (su primer nivel será el de clase o ese DG, al terminar sin clases).
+        const yaTienePrimerNivel = this.getNivelEfectivoParaAumentos() >= 1
+            && (cuentanLasDeLosDg || this.getNivelClasesActual() >= 1);
+        const totalAdicionales = yaTienePrimerNivel
             ? Math.max(0, toNumber(this.razaSeleccionada?.Dotes_adicionales))
             : 0;
         const nuevasAdicionales = Math.max(0, totalAdicionales - this.dotesAdicionalesRazaConcedidas);
@@ -5023,7 +5071,9 @@ export class NuevoPersonajeService {
         this.aplicarEspecialesNivelClase(especialesAplicar, detalleSiguiente, seleccionesExtrasEspeciales);
         const cambiaCaracteristicas = especialesAplicar.some((especialNivel) =>
             Object.values(modificadoresCaracteristicaEspecialNivel(especialNivel)).some((valor) => toInt(valor) !== 0));
-        if (cambiaCaracteristicas) {
+        // El primer nivel de clase ocupa el lugar del DG racial único: su ataque base y sus salvaciones dejan de contar.
+        const sustituyeDgRacial = this.getNivelClasesActual() === 1 && this.dgRacialSustituible();
+        if (cambiaCaracteristicas || sustituyeDgRacial) {
             // Sus características se suman con las demás (dotes, plantillas, ventajas) desde la base.
             this.recalcularEfectosVentajas();
         }
@@ -5738,9 +5788,12 @@ export class NuevoPersonajeService {
             this.personajeCreacion.Salvaciones[tipo].modsVarios.push({ valor, origen });
         };
 
-        registrar('fortaleza', toNumber(raza?.Dgs_adicionales?.Fortaleza), `${nombreRaza} DG racial`);
-        registrar('reflejos', toNumber(raza?.Dgs_adicionales?.Reflejos), `${nombreRaza} DG racial`);
-        registrar('voluntad', toNumber(raza?.Dgs_adicionales?.Voluntad), `${nombreRaza} DG racial`);
+        // Las de los DG raciales, si cuentan (con 1 DG racial y un nivel de clase, no: Guía del DM, pág. 172).
+        if (this.dgsRacialesEfectivos() > 0) {
+            registrar('fortaleza', toNumber(raza?.Dgs_adicionales?.Fortaleza), `${nombreRaza} DG racial`);
+            registrar('reflejos', toNumber(raza?.Dgs_adicionales?.Reflejos), `${nombreRaza} DG racial`);
+            registrar('voluntad', toNumber(raza?.Dgs_adicionales?.Voluntad), `${nombreRaza} DG racial`);
+        }
 
         const racialesRaw = raza?.Raciales;
         const raciales = Array.isArray(racialesRaw)
@@ -5956,7 +6009,9 @@ export class NuevoPersonajeService {
         this.aplicarSalvacionesRaza(raza);
 
         const ataqueClases = this.calcularAtaqueBaseDesdeClases();
-        let ataqueBase = toNumber(raza?.Dgs_adicionales?.Ataque_base) + ataqueClases;
+        // El ataque base de los DG raciales, si cuentan (con 1 DG racial y un nivel de clase, no: Guía del DM, pág. 172).
+        const ataqueRacial = this.dgsRacialesEfectivos() > 0 ? toNumber(raza?.Dgs_adicionales?.Ataque_base) : 0;
+        let ataqueBase = ataqueRacial + ataqueClases;
         let armaduraNatural = toNumber(raza?.Armadura_natural);
         let caVarios = toNumber(raza?.Varios_armadura);
         let dadoGolpe = this.resolverDadoGolpeTipoActual();
@@ -8532,6 +8587,42 @@ export class NuevoPersonajeService {
         const nep = nivelEfectivoPersonaje(this.getPartesNivelPersonaje(plantillasSeleccionadas));
         this.personajeCreacion.NEP = nep;
         this.personajeCreacion.Experiencia = experienciaParaNivel(nep);
+        this.personajeCreacion.Penalizacion_experiencia = this.penalizacionExperiencia();
+    }
+
+    /**
+     * La penalización de PX por multiclase (`services/utils/penalizacion-experiencia.ts`, Manual del jugador, cap. 3): con
+     * las clases del personaje y, si se pasa `claseNueva`, con un nivel más de esa clase (lo que pasaría al cogerlo). La
+     * clase predilecta es la de los datos de su raza (`Id_clase_predilecta` y su comodín «cualquiera»); las de prestigio,
+     * por su dato `Prestigio`.
+     */
+    penalizacionExperiencia(claseNueva?: Clase | null): PenalizacionExperiencia {
+        const clases: ClaseParaPenalizacion[] = (this.personajeCreacion?.desgloseClases ?? []).map((entrada) => {
+            const clase = this.obtenerClaseDeDesglose(entrada);
+            return {
+                id: toInt(clase?.Id ?? entrada?.Id),
+                nombre: `${entrada?.Nombre ?? clase?.Nombre ?? ''}`.trim(),
+                nivel: toInt(entrada?.Nivel),
+                prestigio: toBoolean(clase?.Prestigio),
+            };
+        });
+        if (claseNueva) {
+            const id = toInt(claseNueva.Id);
+            const nombre = normalizarTexto(claseNueva.Nombre);
+            const existente = clases.find((clase) => (id > 0 && clase.id === id) || normalizarTexto(clase.nombre) === nombre);
+            if (existente)
+                existente.nivel += 1;
+            else
+                clases.push({ id, nombre: `${claseNueva.Nombre ?? ''}`.trim(), nivel: 1, prestigio: toBoolean(claseNueva.Prestigio) });
+        }
+        return penalizacionExperiencia(clases, this.clasePredilectaRaza());
+    }
+
+    private clasePredilectaRaza(): ClasePredilecta | null {
+        const raza = this.razaSeleccionada;
+        if (!raza)
+            return null;
+        return { id: toInt(raza.Id_clase_predilecta), comodin: raza.Clase_predilecta_comodin ?? null };
     }
 
     private recalcularDerivadasPorCaracteristicas(): void {
@@ -8582,18 +8673,14 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * El tamaño del personaje para la carga: el efectivo (el de su raza con las aptitudes que lo cambian), movido por los
-     * pasos de tamaño de sus plantillas (`Modificacion_tamano`), por el orden de los tamaños del catálogo. El `Tamano` fijo
-     * de un licántropo es el de su forma animal, no el suyo.
+     * El tamaño del personaje para la carga y los prerrequisitos: el efectivo (`calcularTamanoEfectivo`, el de su raza
+     * movido por sus plantillas y sus aptitudes), el mismo que el de la CA, la presa y Esconderse. Sin él, el de su raza.
      */
     private resolverTamanoActual(): Tamano | null {
-        const idRaza = toInt(this.calcularTamanoEfectivo()?.ficha.id ?? this.personajeCreacion?.Raza?.Tamano?.Id);
-        const pasos = (this.estadoFlujo.plantillas.seleccionadas ?? [])
-            .reduce((acc, plantilla) => acc + toInt(plantilla?.Modificacion_tamano?.Id_paso_modificacion), 0);
-        const movido = tamanoTrasPasos(this.catalogoTamanos, idRaza, pasos);
-        if (!movido)
-            return idRaza > 0 ? (this.personajeCreacion.Raza.Tamano as Tamano) : null;
-        return movido.tamano;
+        const efectivo = this.calcularTamanoEfectivo();
+        if (efectivo)
+            return efectivo.tamano;
+        return toInt(this.personajeCreacion?.Raza?.Tamano?.Id) > 0 ? (this.personajeCreacion.Raza.Tamano as Tamano) : null;
     }
 
     private obtenerMinimoCaracteristicaPorPlantillas(key: CaracteristicaKey): number {
@@ -8607,7 +8694,8 @@ export class NuevoPersonajeService {
 
     /**
      * El tamaño que cuenta (`tamano-efectivo.ts`, la misma regla que la ficha de la API): el de la raza movido por las
-     * aptitudes del personaje que lo cambian (`Tamano_pasos`), con el espacio y el alcance que se guardan.
+     * plantillas (`Modificacion_tamano`) y las aptitudes (`Tamano_pasos`) del personaje que lo cambian, con el espacio y
+     * el alcance que se guardan.
      */
     private recalcularTamanoEfectivo(): void {
         const efectivo = this.calcularTamanoEfectivo();
@@ -8622,7 +8710,21 @@ export class NuevoPersonajeService {
         // Lo que trae la raza manda; el catálogo añade lo que no trae (espacio, alcance, carga).
         const delCatalogo = this.catalogoTamanos.find((tamano) => toInt(tamano?.Id) === toInt(tamanoRaza?.Id));
         const base = tamanoRaza ? ({ ...(delCatalogo ?? {}), ...tamanoRaza } as Tamano) : (delCatalogo ?? null);
-        return tamanoEfectivo(base, this.catalogoTamanos, this.origenesTamano(), raza?.Espacio, raza?.Alcance);
+        return tamanoEfectivo(base, this.catalogoTamanos, this.origenesTamano(), raza?.Espacio, raza?.Alcance, this.plantillasTamano());
+    }
+
+    /**
+     * Las plantillas del personaje que cambian el tamaño (`Modificacion_tamano.Id_paso_modificacion`, en categorías). El
+     * `Tamano` fijo de un licántropo es el de su forma animal, no el suyo: no cuenta.
+     */
+    private plantillasTamano(): OrigenTamano[] {
+        return (this.estadoFlujo.plantillas.seleccionadas ?? [])
+            .map((plantilla): OrigenTamano => ({
+                origen: `${plantilla?.Nombre ?? ''}`.trim(),
+                pasos: toInt(plantilla?.Modificacion_tamano?.Id_paso_modificacion),
+                tipo: 'plantilla',
+            }))
+            .filter((origen) => origen.pasos !== 0);
     }
 
     /** Las aptitudes del personaje que cambian el tamaño, con las categorías que suma cada una (las de las tablas de clase). */
@@ -9174,6 +9276,7 @@ export class NuevoPersonajeService {
             dotesExtraRazaConcedidas: Math.max(0, toInt(this.dotesExtraRazaConcedidas)),
             dotesAdicionalesRazaConcedidas: Math.max(0, toInt(this.dotesAdicionalesRazaConcedidas)),
             dgsCompaneroRepartidos: Math.max(0, toInt(this.dgsCompaneroRepartidos)),
+            dgRacialSinClasesRepartido: this.dgRacialSinClasesRepartido,
             aumentosPendientesCaracteristica: this.clonarProfundo(this.aumentosPendientesCaracteristica),
             aumentosProgresionConcedidos: Math.max(0, toInt(this.aumentosProgresionConcedidos)),
             secuenciaAumentoPendiente: Math.max(1, toInt(this.secuenciaAumentoPendiente)),
@@ -9253,6 +9356,7 @@ export class NuevoPersonajeService {
         this.dotesExtraRazaConcedidas = Math.max(0, toInt(borrador.dotesExtraRazaConcedidas));
         this.dotesAdicionalesRazaConcedidas = Math.max(0, toInt(borrador.dotesAdicionalesRazaConcedidas));
         this.dgsCompaneroRepartidos = Math.max(0, toInt(borrador.dgsCompaneroRepartidos));
+        this.dgRacialSinClasesRepartido = borrador.dgRacialSinClasesRepartido === true;
         this.aumentosPendientesCaracteristica = this.clonarProfundo(borrador.aumentosPendientesCaracteristica ?? []);
         this.aumentosProgresionConcedidos = Math.max(0, toInt(borrador.aumentosProgresionConcedidos));
         this.secuenciaAumentoPendiente = Math.max(1, toInt(borrador.secuenciaAumentoPendiente));
@@ -9643,7 +9747,8 @@ export class NuevoPersonajeService {
         const seleccionadas = plantillas ?? this.estadoFlujo.plantillas.seleccionadas;
         return {
             nivelesClase: this.getNivelClasesActual(),
-            dgsRaza: Math.max(0, toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad)),
+            // Con 1 DG racial y algún nivel de clase, ese DG no cuenta (Guía del DM, pág. 172).
+            dgsRaza: this.dgsRacialesEfectivos(),
             dgsPlantillas: dgsDePlantillas(seleccionadas),
             ajusteRaza: toNumber(this.razaSeleccionada?.Ajuste_nivel),
             ajustePlantillas: ajusteDePlantillas(seleccionadas),

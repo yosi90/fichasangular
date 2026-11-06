@@ -1,4 +1,5 @@
-import { calcularPuntosGolpe, dgsRacialesQueCuentan, EntradaPuntosGolpe } from './puntos-golpe';
+import { calcularPuntosGolpe, EntradaPuntosGolpe } from './puntos-golpe';
+import { dgRacialSustituible, dgsRacialesQueCuentan } from './nivel-personaje';
 
 describe('puntos-golpe', () => {
     function entrada(parcial: Partial<EntradaPuntosGolpe>): EntradaPuntosGolpe {
@@ -99,5 +100,9 @@ describe('puntos-golpe', () => {
         expect(dgsRacialesQueCuentan(1, 0)).toBe(1);
         expect(dgsRacialesQueCuentan(2, 1)).toBe(2);
         expect(dgsRacialesQueCuentan(-3, 0)).toBe(0);
+        // La raza de 1 DG lo cambia por su primer nivel de clase; la de 0 o 2 o más, no.
+        expect(dgRacialSustituible(1)).toBeTrue();
+        expect(dgRacialSustituible(0)).toBeFalse();
+        expect(dgRacialSustituible(2)).toBeFalse();
     });
 });

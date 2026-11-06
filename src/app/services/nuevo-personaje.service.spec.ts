@@ -2278,10 +2278,156 @@ describe('NuevoPersonajeService (clases)', () => {
     });
 
     it('recalcula NEP y experiencia tras aplicar clase: la experiencia es la del NEP, con los DG raciales (GDM cap. 6)', () => {
+        // Con 2 DG raciales (con 1, el primer nivel de clase ocupa su lugar: GDM, pág. 172).
+        const raza = crearRazaBase(crearTipoBase());
+        raza.Dgs_adicionales.Cantidad = 2;
+        service.seleccionarRaza(raza);
+        service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
         service.aplicarSiguienteNivelClase(claseBase);
-        // Raza con 1 DG racial y ajuste +1, guerrero 1: NEP 3, 3000 PX (antes 1000, sin los DG raciales).
-        expect(service.PersonajeCreacion.NEP).toBe(3);
-        expect(service.PersonajeCreacion.Experiencia).toBe(3000);
+        // Raza con 2 DG raciales y ajuste +1, guerrero 1: NEP 4, 6000 PX (antes 1000, sin los DG raciales).
+        expect(service.PersonajeCreacion.NEP).toBe(4);
+        expect(service.PersonajeCreacion.Experiencia).toBe(6000);
+    });
+
+    describe('una raza con 1 DG racial lo cambia por su primer nivel de clase (GDM, pág. 172)', () => {
+        function razaDeUnDg(): Raza {
+            const raza = crearRazaBase(crearTipoBase());
+            raza.Dgs_adicionales = {
+                ...raza.Dgs_adicionales, Cantidad: 1, Ataque_base: 1, Fortaleza: 2, Reflejos: 0, Voluntad: 0, Dotes_extra: 1,
+                Puntos_habilidad: 2, Multiplicador_puntos_habilidad: 4,
+            };
+            return raza;
+        }
+
+        it('sin clases cuenta; con el primer nivel de clase, ni su ataque base, ni sus salvaciones, ni el NEP', () => {
+            service.seleccionarRaza(razaDeUnDg());
+            service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            expect(service.dgRacialSustituible()).toBeTrue();
+            // Sin clases (un PNJ), su DG racial es su nivel: NEP 2 (1 + 1 de ajuste).
+            service.recalcularEfectosVentajas();
+            expect(service.PersonajeCreacion.NEP).toBe(2);
+
+            expect(service.aplicarSiguienteNivelClase(claseBase).aplicado).toBeTrue();
+            const pj = service.PersonajeCreacion;
+            // Guerrero 1 + ajuste 1: NEP 2 y 1.000 PX (no 3 y 3.000).
+            expect(pj.NEP).toBe(2);
+            expect(pj.Experiencia).toBe(1000);
+            // El ataque base y la Fortaleza son solo los del guerrero 1 (+1 y +2), sin los del DG racial (+1 y +2).
+            expect(`${pj.Ataque_base}`).toContain('1');
+            expect(`${pj.Ataque_base}`).not.toContain('2');
+            expect(pj.Salvaciones.fortaleza.modsVarios.some((mod) => `${mod.origen}`.includes('DG racial'))).toBeFalse();
+            // Es su primer nivel: el ×4 de los puntos de habilidad y la dote del nivel 1 son de la clase.
+            expect((service as any).esPrimerNivelDelPersonaje()).toBeTrue();
+            expect((service as any).getHitosDotesProgresion()).toEqual([1]);
+            expect((service as any).resolverDgTotalActual()).toBe(1);
+        });
+
+        it('sus habilidades y su dote esperan: al cerrar las características no se reparten', () => {
+            service.seleccionarRaza(razaDeUnDg());
+            service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            expect(service.iniciarDistribucionHabilidadesPorRazaDG()).toBeFalse();
+            expect(service.registrarDotesPendientesPorRazaExtras('Kobold').filter((d) => d.fuente === 'raza_dg').length).toBe(0);
+            // Con un nivel de clase, nunca.
+            service.aplicarSiguienteNivelClase(claseBase);
+            expect(service.dgRacialPendienteSinClases()).toBeFalse();
+            expect(service.iniciarDistribucionHabilidadesPorRazaDG(true, 'clases')).toBeFalse();
+            expect(service.registrarDotesPendientesPorRazaExtras('Kobold').filter((d) => d.fuente === 'raza_dg').length).toBe(0);
+        });
+
+        it('si termina sin clases, se reparten entonces, una sola vez', () => {
+            service.seleccionarRaza(razaDeUnDg());
+            service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            expect(service.dgRacialPendienteSinClases()).toBeTrue();
+            expect(service.iniciarDistribucionHabilidadesPorRazaDG(true, 'clases')).toBeTrue();
+            expect(service.EstadoFlujo.habilidades.origen).toBe('raza_dg');
+            expect(service.EstadoFlujo.habilidades.returnStep).toBe('clases');
+            expect(service.registrarDotesPendientesPorRazaExtras('Kobold').filter((d) => d.fuente === 'raza_dg').length).toBe(1);
+            expect(service.dgRacialPendienteSinClases()).toBeFalse();
+        });
+
+        it('una raza de 2 DG raciales los cuenta siempre', () => {
+            const raza = razaDeUnDg();
+            raza.Dgs_adicionales.Cantidad = 2;
+            service.seleccionarRaza(raza);
+            service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            expect(service.dgRacialSustituible()).toBeFalse();
+            service.aplicarSiguienteNivelClase(claseBase);
+            expect(service.PersonajeCreacion.NEP).toBe(4);
+        });
+    });
+
+    describe('la penalización de PX por multiclase (MJ cap. 3, «Experiencia en multiclase»)', () => {
+        const nivel = (n: number) => ({ ...crearClaseBase().Desglose_niveles[0], Nivel: n });
+        const guerrero = () => crearClaseBase({ Id: 7, Nombre: 'Guerrero', Desglose_niveles: [1, 2, 3, 4].map(nivel) });
+        const picaro = () => crearClaseBase({ Id: 12, Nombre: 'Pícaro', Desglose_niveles: [1, 2].map(nivel) });
+        const mago = () => crearClaseBase({ Id: 9, Nombre: 'Mago', Desglose_niveles: [1].map(nivel) });
+
+        function conRaza(idPredilecta: number, comodin: 'cualquiera' | null): void {
+            const raza = crearRazaBase(crearTipoBase());
+            raza.Dgs_adicionales.Cantidad = 0;
+            raza.Id_clase_predilecta = idPredilecta;
+            raza.Clase_predilecta_comodin = comodin;
+            service.seleccionarRaza(raza);
+            service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            service.setCatalogoClases([guerrero(), picaro(), mago()]);
+            [1, 2, 3].forEach(() => service.aplicarSiguienteNivelClase(guerrero()));
+        }
+
+        it('un elfo (predilecta: mago) guerrero 3 que coge pícaro perdería un 20 %; con mago, nada', () => {
+            conRaza(9, null);
+            expect(service.penalizacionExperiencia().porcentaje).toBe(0);
+            expect(service.penalizacionExperiencia(picaro()).porcentaje).toBe(20);
+            expect(service.penalizacionExperiencia(mago()).porcentaje).toBe(0);
+            service.aplicarSiguienteNivelClase(picaro());
+            expect(service.PersonajeCreacion.Penalizacion_experiencia?.porcentaje).toBe(20);
+            expect(service.PersonajeCreacion.Penalizacion_experiencia?.penalizadas).toEqual(['Pícaro 1']);
+        });
+
+        it('un humano (predilecta: cualquiera) no cuenta su clase de más nivel', () => {
+            conRaza(0, 'cualquiera');
+            expect(service.penalizacionExperiencia(picaro()).porcentaje).toBe(0);
+            service.aplicarSiguienteNivelClase(picaro());
+            // Pícaro 1 y mago 1 están a la par: nada; la experiencia con la que se crea no cambia (NEP 5: 10.000 PX).
+            expect(service.penalizacionExperiencia(mago()).porcentaje).toBe(0);
+            expect(service.PersonajeCreacion.Experiencia).toBe(10000);
+        });
+
+        it('las clases de prestigio no cuentan', () => {
+            conRaza(9, null);
+            const prestigio = crearClaseBase({ Id: 500, Nombre: 'Caballero', Prestigio: true, Desglose_niveles: [1].map(nivel) });
+            expect(service.penalizacionExperiencia(prestigio).porcentaje).toBe(0);
+        });
+    });
+
+    it('una plantilla que cambia el tamaño mueve la CA, la presa, Esconderse y la carga (MM, «Plantillas»)', () => {
+        const svc = conCatalogosCarga(new NuevoPersonajeService());
+        const tipo = crearTipoBase();
+        svc.setCatalogoTiposCriatura([tipo]);
+        svc.setCatalogoTamanos([
+            ...TAMANOS_CARGA.map((t) => ({ ...t, Modificador_esconderse: t.Id === 4 ? 4 : (t.Id === 6 ? -4 : 0), Espacio: 5, Alcance: 5, Alcance_largo: 5 })),
+        ] as any);
+        const raza = crearRazaBase(tipo);
+        raza.Dgs_adicionales.Cantidad = 0;
+        raza.Tamano = { Id: 5, Nombre: 'Mediano', Modificador: 0, Modificador_presa: 0, Modificador_esconderse: 0 } as any;
+        svc.seleccionarRaza(raza);
+        svc.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+        const caAntes = svc.PersonajeCreacion.Ca;
+        svc.agregarPlantillaSeleccion({
+            Id: 159,
+            Nombre: 'Criado en la mazmorra',
+            Modificacion_tamano: { Id_paso_modificacion: -1, Nombre: '-1 paso' },
+        } as any);
+        svc.confirmarSeleccionActualPlantillas();
+        svc.recalcularEfectosVentajas();
+
+        const pj = svc.PersonajeCreacion;
+        expect(pj.Tamano_efectivo).toEqual(jasmine.objectContaining({
+            id: 4, nombre: 'Pequeño', pasos: -1, origenes: [{ origen: 'Criado en la mazmorra', pasos: -1, tipo: 'plantilla' }],
+        }));
+        expect(pj.Ca).toBe(caAntes + 1);
+        // Pequeño: ×0,75 la carga de Fuerza 14 (58/116/175).
+        expect(pj.Capacidad_carga?.Pesada).toBe(131);
+        expect((svc as any).resolverTamanoActualId()).toBe(4);
     });
 
     it('un centauro (4 DG, ajuste +2) explorador 1 tiene NEP 7 y 21.000 PX, como la ficha guardada', () => {
@@ -2301,8 +2447,10 @@ describe('NuevoPersonajeService (clases)', () => {
         service.PersonajeCreacion.Subtipos = [{ Id: 40, Nombre: 'Subtipo con ajuste' }];
         service.aplicarSiguienteNivelClase(claseBase);
 
-        expect(service.PersonajeCreacion.NEP).toBe(4);
-        expect(service.PersonajeCreacion.Experiencia).toBe(6000);
+        // Guerrero 1 + ajuste de la raza 1 + ajuste del subtipo 1; el DG racial único de la raza de prueba no cuenta con
+        // un nivel de clase (GDM, pág. 172).
+        expect(service.PersonajeCreacion.NEP).toBe(3);
+        expect(service.PersonajeCreacion.Experiencia).toBe(3000);
     });
 
     it('recalcula capacidad de carga base con fuerza 14 en tamaño mediano: 58/116/175 lb (MJ tabla 9-1)', () => {
@@ -2451,7 +2599,8 @@ describe('NuevoPersonajeService (clases)', () => {
     });
 
     it('getIdiomasPendientesPostClase calcula por ModInt solo en primer nivel global', () => {
-        service.PersonajeCreacion.ModInteligencia = 2;
+        // Int 14 (+2): el modificador sale de las características (el primer nivel de clase las recalcula).
+        service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 14, Sabiduria: 11, Carisma: 9 });
 
         service.aplicarSiguienteNivelClase(claseBase);
         const primerNivel = service.getIdiomasPendientesPostClase();
