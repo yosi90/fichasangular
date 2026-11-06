@@ -574,6 +574,26 @@ describe('DetallesPersonajeComponent', () => {
             expect(enlace('Ver solo las que tienen rangos')).toBeTruthy();
         });
 
+        it('marca discretamente las que la ficha no guarda y la API completa al leer (`guardada: false`)', () => {
+            component.pj.Habilidades = [
+                { Nombre: 'Avistar', Car: 'Sabiduría', Rangos: 4, Rangos_varios: 0, Mod_car: 1, Extra: '', Varios: '', Total: 5, Guardada: true } as any,
+                { Nombre: 'Diplomacia', Car: 'Carisma', Rangos: 0, Rangos_varios: 4, Mod_car: 3, Extra: '', Varios: '', Total: 7, Guardada: false } as any,
+                { Nombre: 'Sanar', Car: 'Sabiduría', Rangos: 0, Rangos_varios: 0, Mod_car: 1, Extra: '', Varios: '', Total: 1, Guardada: false } as any,
+            ];
+            verPagina();
+            enlace('Ver las 3').click();
+            fixture.detectChanges();
+
+            const filas = Array.from(lateral('Habilidades')!.querySelectorAll('tbody tr')) as HTMLElement[];
+            expect(filas.map((fila) => textos('td', fila)[0])).toEqual(['Avistar', 'Diplomacia sin guardar', 'Sanar sin guardar']);
+            expect(filas.map((fila) => fila.getAttribute('title'))).toEqual([
+                null,
+                'La ficha no la guarda: la API la completa al leer, con 0 rangos.',
+                'La ficha no la guarda: la API la completa al leer, con 0 rangos.',
+            ]);
+            expect(textos('td', filas[1]).slice(2)).toEqual(['4', '+7']);
+        });
+
         it('el total negativo sale sin el más', () => {
             component.pj.Habilidades = [{ Nombre: 'Trepar', Car: 'Fuerza', Rangos: 1, Rangos_varios: 0, Mod_car: -5, Extra: '', Varios: '' } as any];
             verPagina();

@@ -367,6 +367,14 @@ export interface PersonajeSalvacionesDto {
 export interface PersonajeHabilidadDto extends PersonajeNombreIdDto, PersonajeTotalDto {
     custom: boolean;
     deClase: boolean;
+    /**
+     * `false` si la ficha no la guarda y la API la completa al leer: 0 rangos, sin especialidad y su total con la misma
+     * regla que las guardadas (desde el 2026-11-06; `docs/publica/endpoints/personajes.md`, «Las habilidades que la
+     * ficha no guarda»).
+     */
+    guardada?: boolean;
+    /** «Solo entrenada» del catálogo (desde el 2026-11-06). La ficha de la web no la usa. */
+    soloEntrenada?: boolean;
     idExtra: number | null;
     extra: string | null;
     extraComodin: PersonajeExtraComodinDto | null;

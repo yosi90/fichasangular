@@ -385,6 +385,11 @@ export interface Personaje extends PersonajeSimple {
         Custom: boolean;
         /** Solo en la ficha de la API: el total hecho y si el extra está por elegir. */
         Total?: number;
+        /**
+         * Solo en la ficha de la API: `false` si la ficha no la guarda y la API la completa al leer (con 0 rangos; las
+         * fichas antiguas no guardan todas las del catálogo). Sin el campo (la creación), está guardada.
+         */
+        Guardada?: boolean;
         Extra_comodin?: PersonajeExtraComodinDto | null;
         Soporta_extra?: boolean;
         Extras?: {

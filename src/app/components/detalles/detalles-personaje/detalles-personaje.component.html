@@ -188,7 +188,8 @@
                 </tr>
             </thead>
             <tbody>
-                <tr *ngFor="let habilidad of habilidadesVistas">
+                <tr *ngFor="let habilidad of habilidadesVistas"
+                    [attr.title]="habilidad.sinGuardar ? 'La ficha no la guarda: la API la completa al leer, con 0 rangos.' : null">
                     <td>{{habilidad.nombre}}<span class="personaje-nota" *ngIf="habilidad.nota"> {{habilidad.nota}}</span></td>
                     <td>{{habilidad.car}}</td>
                     <td class="ficha-num">{{habilidad.rangos}}</td>

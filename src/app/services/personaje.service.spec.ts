@@ -373,6 +373,24 @@ describe('PersonajeService', () => {
         expect(textoBonosHabilidad(habilidad)).toBe('Svirfneblin +2 (solo bajo tierra)');
     });
 
+    it('mapApiDetalleToPersonaje lee las habilidades que la API completa al leer (`guardada: false`) tal cual, con su total', () => {
+        const service = crearServicio({} as any);
+        const habilidad = (guardada: boolean | undefined) => ({
+            id: 22, nombre: 'Intimidar', custom: false, deClase: false, idExtra: null, extra: null, extraComodin: null,
+            caracteristica: 'Carisma', modificadorCaracteristica: 5, rangos: 0, rangosVarios: 0, varios: null, total: 7,
+            desglose: [{ tipo: 'caracteristica', origen: 'Carisma', valor: 5 }, { tipo: 'sinergia', origen: 'Sinergia (Engañar)', valor: 2 }],
+            ...(guardada === undefined ? {} : { guardada, soloEntrenada: false }),
+        });
+        const [completada, guardada, sinCampo] = ((service as any).mapApiDetalleToPersonaje(
+            crearDetalleApi({ habilidades: [habilidad(false), habilidad(true), habilidad(undefined)] })) as Personaje).Habilidades;
+
+        expect(completada.Guardada).toBeFalse();
+        expect(totalHabilidad(completada)).toBe(7);
+        expect(textoBonosHabilidad(completada)).toBe('Sinergia (Engañar) +2');
+        expect(guardada.Guardada).toBeTrue();
+        expect(sinCampo.Guardada).toBeTrue();
+    });
+
     it('mapApiDetalleToPersonaje calcula la penalización de PX por multiclase con la predilecta de la raza y sin las de prestigio (MJ cap. 3)', () => {
         const service = crearServicio({} as any);
         const clase = (id: number, nombre: string, nivel: number, prestigio = false) => ({

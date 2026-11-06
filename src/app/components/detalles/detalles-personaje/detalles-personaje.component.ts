@@ -147,6 +147,8 @@ interface HabilidadFila {
     rangos: number;
     total: string;
     nota: string;
+    /** La ficha no la guarda: la completa la API al leer, con 0 rangos (`guardada: false`). */
+    sinGuardar: boolean;
 }
 
 interface LanzadorFila {
@@ -1395,7 +1397,9 @@ ${envejecimiento}` : edades;
                 car: `${h.Car ?? ''}`.trim().slice(0, 3),
                 rangos: toNumber(h.Rangos) + toNumber(h.Rangos_varios),
                 total: textoConSigno(totalHabilidad(h)),
-                nota: [h.Clasea ? 'de clase' : '', this.texto(h.Varios), textoBonosHabilidad(h)].filter(Boolean).join(' · '),
+                nota: [h.Clasea ? 'de clase' : '', h.Guardada === false ? 'sin guardar' : '', this.texto(h.Varios), textoBonosHabilidad(h)]
+                    .filter(Boolean).join(' · '),
+                sinGuardar: h.Guardada === false,
             };
         };
         const habilidades = todas.map(fila);

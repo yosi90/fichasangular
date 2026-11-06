@@ -1145,6 +1145,7 @@ export class PersonajeService {
                 Varios: toText(habilidad?.varios),
                 Custom: toBoolean(habilidad?.custom),
                 Total: toNumber(habilidad?.total),
+                Guardada: habilidad?.guardada !== false,
                 Extra_comodin: habilidad?.extraComodin ?? null,
                 Bonos: (normalizarTotal(habilidad)?.desglose ?? [])
                     .filter((parte) => parte.tipo === 'tamano' || parte.tipo === 'sinergia' || parte.tipo === 'armadura'),
