@@ -954,10 +954,8 @@ export class PersonajeService {
         clonado.Companeros = normalizeCompaneroMonstruoDetalleArray(clonado?.Companeros ?? [], 1);
         clonado.DotesContextuales = dotesContextualesActualizadas;
         clonado.Dotes = toDoteLegacyArray(dotesContextualesActualizadas);
-        clonado.Caracteristicas_perdidas = normalizeCaracteristicasPerdidasPersonaje(
-            clonado?.Caracteristicas_perdidas,
-            clonado?.Constitucion_perdida
-        );
+        const perdidas = normalizeCaracteristicasPerdidasPersonaje(clonado?.Caracteristicas_perdidas);
+        clonado.Caracteristicas_perdidas = { ...perdidas, Constitucion: perdidas.Constitucion || toBoolean(clonado?.Constitucion_perdida) };
         clonado.Constitucion_perdida = !!clonado?.Caracteristicas_perdidas?.Constitucion;
         clonado.ProgresionLanzador = normalizarProgresionLanzadorPersonaje(clonado?.ProgresionLanzador);
         clonado.Niveles_lanzador = Array.isArray(clonado?.Niveles_lanzador) ? clonado.Niveles_lanzador : [];
@@ -1060,8 +1058,8 @@ export class PersonajeService {
             ModDestreza: element?.md,
             Constitucion: element?.co,
             ModConstitucion: element?.mco,
-            Caracteristicas_perdidas: normalizeCaracteristicasPerdidasPersonaje(element?.cper, element?.cperd),
-            Constitucion_perdida: toBoolean(element?.cperd),
+            Caracteristicas_perdidas: normalizeCaracteristicasPerdidasPersonaje(element?.cper),
+            Constitucion_perdida: toBoolean(element?.cper?.Constitucion),
             Inteligencia: element?.int,
             ModInteligencia: element?.mint,
             Sabiduria: element?.s,
@@ -1389,7 +1387,8 @@ function resolveCompetenciaNombre(item: any, nombreKeys: string[]): string {
     return '';
 }
 
-function normalizeCaracteristicasPerdidasPersonaje(raw: any, constitucionPerdidaLegacy: any): {
+/** Las características perdidas de la ficha (`cper`, `GET /personajes/{id}`). */
+function normalizeCaracteristicasPerdidasPersonaje(raw: any): {
     Fuerza?: boolean;
     Destreza?: boolean;
     Constitucion?: boolean;
@@ -1397,7 +1396,7 @@ function normalizeCaracteristicasPerdidasPersonaje(raw: any, constitucionPerdida
     Sabiduria?: boolean;
     Carisma?: boolean;
 } {
-    const output = {
+    return {
         Fuerza: toBoolean(raw?.Fuerza),
         Destreza: toBoolean(raw?.Destreza),
         Constitucion: toBoolean(raw?.Constitucion),
@@ -1405,9 +1404,4 @@ function normalizeCaracteristicasPerdidasPersonaje(raw: any, constitucionPerdida
         Sabiduria: toBoolean(raw?.Sabiduria),
         Carisma: toBoolean(raw?.Carisma),
     };
-
-    if (toBoolean(constitucionPerdidaLegacy))
-        output.Constitucion = true;
-
-    return output;
 }
