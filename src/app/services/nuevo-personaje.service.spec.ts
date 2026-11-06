@@ -1794,6 +1794,32 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.Claseas.find((item) => item.Nombre === 'Empatía salvaje')?.Id).toBe(30);
     });
 
+    it('lo que pide una opción de clase por id_interno es de su propia clase, no del mismo número de otra', () => {
+        const nivel1 = claseBase.Desglose_niveles[0];
+        const especialNivel = (Nombre: string, Id_interno: number, Id_especial_requerido: number, Opcional: number) => ({
+            Especial: { Id: 0, Nombre }, Nivel: 1, Id_extra: 0, Extra: '', Opcional, Id_interno, Id_especial_requerido, Id_dote_requerida: -1,
+        });
+        // La primera clase tiene una aptitud con id_interno 2.
+        const primera = crearClaseBase({
+            Id: 70, Nombre: 'Primera',
+            Desglose_niveles: [{ ...nivel1, Especiales: [especialNivel('Estilo', 2, -1, 0)] as any }],
+        });
+        // La segunda ofrece, en un grupo, una opción que pide su propia aptitud 2 (que no tiene) y otra sin requisito.
+        const segunda = crearClaseBase({
+            Id: 71, Nombre: 'Segunda',
+            Desglose_niveles: [{ ...nivel1, Especiales: [especialNivel('Pide su 2', 5, 2, 1), especialNivel('Libre', 6, -1, 1)] as any }],
+        });
+        service.setCatalogoClases([primera, segunda]);
+        expect(service.aplicarSiguienteNivelClase(primera).aplicado).toBeTrue();
+
+        const grupos = service.obtenerOpcionalesSiguienteNivelClase(segunda);
+        // Con el 2 de la primera clase no basta: solo queda la libre, que se toma sola (no hay grupo que elegir).
+        expect(grupos).toEqual([]);
+        expect(service.aplicarSiguienteNivelClase(segunda).aplicado).toBeTrue();
+        expect(service.PersonajeCreacion.Claseas.map((item) => item.Nombre)).toContain('Libre');
+        expect(service.PersonajeCreacion.Claseas.map((item) => item.Nombre)).not.toContain('Pide su 2');
+    });
+
     it('al elegir la raza (la primera vez o cambiándola) el personaje se queda con sus raciales', () => {
         const nuevo = new NuevoPersonajeService();
         nuevo.resetearCreacionNuevoPersonaje();

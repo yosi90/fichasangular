@@ -271,6 +271,23 @@ const ORIGEN_SIEMPRE_DE_CLASE = 'siempre';
 const ORIGEN_DG_RACIALES = 'dg:raza';
 const ORIGEN_DG_PLANTILLAS = 'dg:plantillas';
 
+/** La clave de un `id_interno` de la tabla de una clase: `<clase normalizada>|<id>`. */
+function claveIdInterno(nombreClase: string | null | undefined, id: number): string {
+    return `${normalizarTexto(nombreClase ?? '')}|${toInt(id)}`;
+}
+
+/** Si tiene ese `id_interno` de esa clase; uno de un borrador de antes (`*|id`, sin clase) vale para cualquiera. */
+function tieneIdInterno(claves: Set<string>, nombreClase: string | null | undefined, id: number): boolean {
+    return claves.has(claveIdInterno(nombreClase, id)) || claves.has(`*|${toInt(id)}`);
+}
+
+/** Los `id_interno` de un borrador: las claves tal cual y los números de antes, sin clase (`*|id`). */
+function clavesIdInternoGuardadas(guardados: readonly (string | number)[] | null | undefined): Set<string> {
+    return new Set((guardados ?? [])
+        .map((valor) => typeof valor === 'string' && valor.includes('|') ? valor : (toInt(valor) > 0 ? `*|${toInt(valor)}` : ''))
+        .filter((clave) => clave.length > 0));
+}
+
 /** El origen de `habilidadesDeClasePorOrigen` de una clase, por su nombre (como `desgloseClases`). */
 function origenDeClase(nombreClase: string | null | undefined): string {
     return `clase:${normalizarTexto(nombreClase ?? '')}`;
@@ -983,8 +1000,9 @@ interface NuevoPersonajeDraftV1 {
     idiomasInicialesConcedidos?: boolean;
     clasesCerradasPorMulticlase?: string[];
     progresionLanzadorSelecciones?: PersonajeProgresionLanzadorSeleccionDto[];
-    idsEspecialesInternosActivos: number[];
-    idsDotesInternosActivos: number[];
+    /** `clase|id` (`claveIdInterno`); los números sueltos, de los borradores de antes, valen para cualquier clase. */
+    idsEspecialesInternosActivos: (string | number)[];
+    idsDotesInternosActivos: (string | number)[];
     conjurosSesionPlaceholderPorId: Record<number, Conjuro>;
 }
 
@@ -1080,8 +1098,12 @@ export class NuevoPersonajeService {
      */
     private clasesCerradasPorMulticlase = new Set<string>();
     private progresionLanzadorSelecciones: PersonajeProgresionLanzadorSeleccionDto[] = [];
-    private idsEspecialesInternosActivos = new Set<number>();
-    private idsDotesInternosActivos = new Set<number>();
+    /**
+     * Los `id_interno` de las aptitudes y dotes de clase que ya tiene, por clase (`claveIdInterno`): son de la tabla de
+     * su clase, así que el 2 del explorador (su estilo) no es el 2 del convocador.
+     */
+    private idsEspecialesInternosActivos = new Set<string>();
+    private idsDotesInternosActivos = new Set<string>();
     private dotesPendientes: DotePendienteState[] = [];
     private secuenciaDotePendiente = 1;
     private dotesProgresionConcedidas = 0;
@@ -2030,7 +2052,7 @@ export class NuevoPersonajeService {
         if (!detalleSiguiente)
             return [];
 
-        const resolucion = this.resolverOpcionalesNivelClase(detalleSiguiente, null);
+        const resolucion = this.resolverOpcionalesNivelClase(clase, detalleSiguiente, null);
         return resolucion.gruposPendientes;
     }
 
@@ -2043,7 +2065,7 @@ export class NuevoPersonajeService {
         seleccionesOpcionales: SeleccionOpcionalesClase | null = null
     ): ClaseEspecialExtraPendiente[] {
         const detalleSiguiente = this.obtenerDetalleNivelClase(clase, this.obtenerNivelActualClase(clase.Nombre) + 1);
-        return detalleSiguiente ? this.especialesExtraPendientesNivel(detalleSiguiente, seleccionesOpcionales) : [];
+        return detalleSiguiente ? this.especialesExtraPendientesNivel(clase, detalleSiguiente, seleccionesOpcionales) : [];
     }
 
     /** Los extras que ya tiene el personaje en una aptitud especial (para no ofrecerlos otra vez). */
@@ -2055,10 +2077,11 @@ export class NuevoPersonajeService {
     }
 
     private especialesExtraPendientesNivel(
+        clase: Clase,
         detalleNivel: ClaseNivelDetalle,
         seleccionesOpcionales: SeleccionOpcionalesClase | null
     ): ClaseEspecialExtraPendiente[] {
-        const resolucion = this.resolverOpcionalesNivelClase(detalleNivel, seleccionesOpcionales);
+        const resolucion = this.resolverOpcionalesNivelClase(clase, detalleNivel, seleccionesOpcionales);
         return [...resolucion.obligatoriasEspecial, ...resolucion.seleccionadasEspecial]
             .filter((especialNivel) => especialNivel?.Extra_comodin === 'elegir')
             .map((especialNivel) => {
@@ -5142,7 +5165,7 @@ export class NuevoPersonajeService {
             };
         }
 
-        const especialesExtraPendientes = this.especialesExtraPendientesNivel(detalleSiguiente, seleccionesOpcionales)
+        const especialesExtraPendientes = this.especialesExtraPendientesNivel(clase, detalleSiguiente, seleccionesOpcionales)
             .filter((pendiente) => toInt(seleccionesExtrasEspeciales?.[pendiente.clave]?.idExtra) <= 0
                 || `${seleccionesExtrasEspeciales?.[pendiente.clave]?.extra ?? ''}`.trim().length < 1);
         if (especialesExtraPendientes.length > 0) {
@@ -5165,7 +5188,7 @@ export class NuevoPersonajeService {
             this.aplicarIdiomasPrimerNivelClase(clase);
         }
 
-        const resolucionOpcionales = this.resolverOpcionalesNivelClase(detalleSiguiente, seleccionesOpcionales);
+        const resolucionOpcionales = this.resolverOpcionalesNivelClase(clase, detalleSiguiente, seleccionesOpcionales);
         const habiaSelecciones = !!seleccionesOpcionales && Object.keys(seleccionesOpcionales).length > 0;
         if (habiaSelecciones && resolucionOpcionales.gruposPendientes.length > 0) {
             return {
@@ -5185,7 +5208,7 @@ export class NuevoPersonajeService {
             ...resolucionOpcionales.seleccionadasEspecial,
         ];
         this.aplicarDotesNivelClase(clase, siguienteNivel, dotesAplicar);
-        this.aplicarEspecialesNivelClase(especialesAplicar, detalleSiguiente, seleccionesExtrasEspeciales);
+        this.aplicarEspecialesNivelClase(clase, especialesAplicar, detalleSiguiente, seleccionesExtrasEspeciales);
         const cambiaCaracteristicas = especialesAplicar.some((especialNivel) =>
             Object.values(modificadoresCaracteristicaEspecialNivel(especialNivel)).some((valor) => toInt(valor) !== 0));
         // El primer nivel de clase ocupa el lugar del DG racial único: su ataque base y sus salvaciones dejan de contar.
@@ -7318,30 +7341,29 @@ export class NuevoPersonajeService {
         return opciones;
     }
 
+    /** Lo que pide la opción (una aptitud o una dote de la tabla de su clase, por su `id_interno`) ya lo tiene. */
     private cumplePrerequisitosInternosOpcion(
+        clase: Clase,
         opcion: ClaseNivelOpcionInterna,
-        idsEspeciales: Set<number>,
-        idsDotes: Set<number>
+        idsEspeciales: Set<string>,
+        idsDotes: Set<string>
     ): boolean {
-        if (opcion.idEspecialRequerido > 0 && !idsEspeciales.has(opcion.idEspecialRequerido))
+        if (opcion.idEspecialRequerido > 0 && !tieneIdInterno(idsEspeciales, clase?.Nombre, opcion.idEspecialRequerido))
             return false;
-        if (opcion.idDoteRequerida > 0 && !idsDotes.has(opcion.idDoteRequerida))
+        if (opcion.idDoteRequerida > 0 && !tieneIdInterno(idsDotes, clase?.Nombre, opcion.idDoteRequerida))
             return false;
         return true;
     }
 
     private registrarIdInternoTemporal(
+        clase: Clase,
         opcion: ClaseNivelOpcionInterna,
-        idsEspeciales: Set<number>,
-        idsDotes: Set<number>
+        idsEspeciales: Set<string>,
+        idsDotes: Set<string>
     ): void {
         if (opcion.idInterno <= 0)
             return;
-        if (opcion.tipo === 'dote') {
-            idsDotes.add(opcion.idInterno);
-            return;
-        }
-        idsEspeciales.add(opcion.idInterno);
+        (opcion.tipo === 'dote' ? idsDotes : idsEspeciales).add(claveIdInterno(clase?.Nombre, opcion.idInterno));
     }
 
     private mapearOpcionesPendientes(opciones: ClaseNivelOpcionInterna[]): ClaseOpcionInternaPendiente[] {
@@ -7375,12 +7397,13 @@ export class NuevoPersonajeService {
     }
 
     private resolverOpcionalesNivelClase(
+        clase: Clase,
         detalleNivel: ClaseNivelDetalle,
         seleccionesOpcionales: SeleccionOpcionalesClase | null
     ): ResolucionOpcionalesNivelClase {
         const opciones = this.extraerOpcionesNivelClase(detalleNivel);
-        const idsEspeciales = new Set<number>(this.idsEspecialesInternosActivos);
-        const idsDotes = new Set<number>(this.idsDotesInternosActivos);
+        const idsEspeciales = new Set<string>(this.idsEspecialesInternosActivos);
+        const idsDotes = new Set<string>(this.idsDotesInternosActivos);
         const advertencias: string[] = [];
         const obligatoriasDote: ClaseDoteNivel[] = [];
         const obligatoriasEspecial: ClaseEspecialNivel[] = [];
@@ -7391,7 +7414,7 @@ export class NuevoPersonajeService {
         opciones
             .filter((opcion) => opcion.grupoOpcional === 0)
             .forEach((opcion) => {
-                if (!this.cumplePrerequisitosInternosOpcion(opcion, idsEspeciales, idsDotes)) {
+                if (!this.cumplePrerequisitosInternosOpcion(clase, opcion, idsEspeciales, idsDotes)) {
                     advertencias.push(`No se aplicó ${opcion.tipo} "${opcion.nombre}" por prerrequisito interno no cumplido`);
                     return;
                 }
@@ -7400,7 +7423,7 @@ export class NuevoPersonajeService {
                     obligatoriasDote.push(opcion.doteNivel);
                 if (opcion.tipo === 'especial' && opcion.especialNivel)
                     obligatoriasEspecial.push(opcion.especialNivel);
-                this.registrarIdInternoTemporal(opcion, idsEspeciales, idsDotes);
+                this.registrarIdInternoTemporal(clase, opcion, idsEspeciales, idsDotes);
             });
 
         const grupos = Array.from(
@@ -7409,7 +7432,7 @@ export class NuevoPersonajeService {
 
         grupos.forEach((grupo) => {
             const opcionesGrupo = opciones.filter((opcion) => opcion.grupoOpcional === grupo);
-            const elegibles = opcionesGrupo.filter((opcion) => this.cumplePrerequisitosInternosOpcion(opcion, idsEspeciales, idsDotes));
+            const elegibles = opcionesGrupo.filter((opcion) => this.cumplePrerequisitosInternosOpcion(clase, opcion, idsEspeciales, idsDotes));
             if (elegibles.length < 1) {
                 advertencias.push(`No hay opciones habilitadas para el grupo opcional ${grupo}`);
                 return;
@@ -7446,7 +7469,7 @@ export class NuevoPersonajeService {
                 seleccionadasDote.push(elegida.doteNivel);
             if (elegida.tipo === 'especial' && elegida.especialNivel)
                 seleccionadasEspecial.push(elegida.especialNivel);
-            this.registrarIdInternoTemporal(elegida, idsEspeciales, idsDotes);
+            this.registrarIdInternoTemporal(clase, elegida, idsEspeciales, idsDotes);
         });
 
         return {
@@ -7459,16 +7482,16 @@ export class NuevoPersonajeService {
         };
     }
 
-    private registrarIdInternoDote(idInterno: number): void {
+    private registrarIdInternoDote(clase: Clase, idInterno: number): void {
         const id = toInt(idInterno);
         if (id > 0)
-            this.idsDotesInternosActivos.add(id);
+            this.idsDotesInternosActivos.add(claveIdInterno(clase?.Nombre, id));
     }
 
-    private registrarIdInternoEspecial(idInterno: number): void {
+    private registrarIdInternoEspecial(clase: Clase, idInterno: number): void {
         const id = toInt(idInterno);
         if (id > 0)
-            this.idsEspecialesInternosActivos.add(id);
+            this.idsEspecialesInternosActivos.add(claveIdInterno(clase?.Nombre, id));
     }
 
     private aplicarDotesNivelClase(clase: Clase, nivel: number, dotesNivel: ClaseDoteNivel[]): void {
@@ -7484,11 +7507,12 @@ export class NuevoPersonajeService {
             if (agregado)
                 this.aplicarModificadoresDote(doteNivel.Dote, origen, idExtra, extra);
 
-            this.registrarIdInternoDote(toNumber(doteNivel?.Id_interno));
+            this.registrarIdInternoDote(clase, toNumber(doteNivel?.Id_interno));
         });
     }
 
     private aplicarEspecialesNivelClase(
+        clase: Clase,
         especialesNivel: ClaseEspecialNivel[],
         detalleNivel: ClaseNivelDetalle,
         seleccionesExtras: SeleccionExtrasEspecialesClase | null
@@ -7517,7 +7541,7 @@ export class NuevoPersonajeService {
                     Extra: extra,
                 });
             }
-            this.registrarIdInternoEspecial(toNumber(especialNivel?.Id_interno));
+            this.registrarIdInternoEspecial(clase, toNumber(especialNivel?.Id_interno));
         });
     }
 
@@ -9550,16 +9574,8 @@ export class NuevoPersonajeService {
             borrador.progresionLanzadorSelecciones
         );
         this.conjurosSesionPlaceholderPorId = this.clonarProfundo(borrador.conjurosSesionPlaceholderPorId ?? {});
-        this.idsEspecialesInternosActivos = new Set<number>(
-            (borrador.idsEspecialesInternosActivos ?? [])
-                .map((id) => toInt(id))
-                .filter((id) => id > 0)
-        );
-        this.idsDotesInternosActivos = new Set<number>(
-            (borrador.idsDotesInternosActivos ?? [])
-                .map((id) => toInt(id))
-                .filter((id) => id > 0)
-        );
+        this.idsEspecialesInternosActivos = clavesIdInternoGuardadas(borrador.idsEspecialesInternosActivos);
+        this.idsDotesInternosActivos = clavesIdInternoGuardadas(borrador.idsDotesInternosActivos);
 
         this.setCatalogoHabilidades(catalogoHabilidades);
         this.setCatalogoHabilidadesCustom(catalogoHabilidadesCustom);
