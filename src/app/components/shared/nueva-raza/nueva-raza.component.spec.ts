@@ -1315,7 +1315,7 @@ describe('NuevaRazaComponent', () => {
             expect(payload.raza).toEqual(jasmine.objectContaining({ vd: 3, vd_mod_clases_pj: null, vd_mod_clases_pnj: null }));
             expect(payload.clases_asociadas).toEqual([1]);
 
-            component.quitarClaseAsociada({ id: 1 });
+            component.quitarDe('clases_asociadas', { id: 1 });
             expect(component.edicion.hayCambios).toBeTrue();
             expect(component.buildPayload().clases_asociadas).toEqual([]);
         });
@@ -1333,7 +1333,7 @@ describe('NuevaRazaComponent', () => {
             expect(payload.raza.idiomas_adicionales_cualquiera).toBeFalse();
             expect(payload.idiomas_adicionales).toEqual([7, 9]);
 
-            component.quitarIdiomaAdicional({ id: 7 });
+            component.quitarDe('idiomas_adicionales', { id: 7 });
             expect(component.edicion.hayCambios).toBeTrue();
             expect(component.buildPayload().idiomas_adicionales).toEqual([9]);
         });
@@ -1345,7 +1345,7 @@ describe('NuevaRazaComponent', () => {
             expect(component.idiomasAdicionalesCualquiera).toBeTrue();
             expect(component.buildPayload().idiomas_adicionales).toEqual([]);
 
-            component.alternarIdiomasAdicionalesCualquiera();
+            component.toggleBooleanControl('idiomas_adicionales_cualquiera');
             expect(component.edicion.hayCambios).toBeTrue();
             expect(component.buildPayload().raza.idiomas_adicionales_cualquiera).toBeFalse();
         });
@@ -1363,7 +1363,7 @@ describe('NuevaRazaComponent', () => {
 
             // El error se queda en la lista hasta que cambia (como el de las clases asociadas).
             expect(component.form.controls.idiomas_adicionales.hasError('api')).toBeTrue();
-            component.quitarIdiomaAdicional({ id: 9 });
+            component.quitarDe('idiomas_adicionales', { id: 9 });
             expect(component.form.controls.idiomas_adicionales.hasError('api')).toBeFalse();
 
             razaSvc.actualizarRaza.and.rejectWith(new ProfileApiError("'raza.idiomas_adicionales_cualquiera' debe ser booleano.", 'peticion_no_valida', 400, 'raza.idiomas_adicionales_cualquiera'));
@@ -1562,24 +1562,24 @@ describe('NuevaRazaComponent', () => {
         });
 
         it('sin «cualquiera» manda la lista elegida, sin repetir y ordenada; con él, la lista no se manda pero se queda', () => {
-            component.alternarIdiomasAdicionalesCualquiera();
-            component.anadirIdiomaAdicional(9);
-            component.anadirIdiomaAdicional(7);
-            component.anadirIdiomaAdicional(9);
+            component.toggleBooleanControl('idiomas_adicionales_cualquiera');
+            component.anadirA('idiomas_adicionales', 9);
+            component.anadirA('idiomas_adicionales', 7);
+            component.anadirA('idiomas_adicionales', 9);
 
             expect(component.idiomasAdicionales).toEqual([{ id: 9, nombre: 'Comun' }, { id: 7, nombre: 'Draconico' }]);
             let payload = component.buildPayload();
             expect(payload.raza.idiomas_adicionales_cualquiera).toBeFalse();
             expect(payload.idiomas_adicionales).toEqual([7, 9]);
 
-            component.alternarIdiomasAdicionalesCualquiera();
+            component.toggleBooleanControl('idiomas_adicionales_cualquiera');
             payload = component.buildPayload();
             expect(payload.raza.idiomas_adicionales_cualquiera).toBeTrue();
             expect(payload.idiomas_adicionales).toEqual([]);
             expect(component.idiomasAdicionales.length).toBe(2);
 
-            component.alternarIdiomasAdicionalesCualquiera();
-            component.quitarIdiomaAdicional({ id: 9 });
+            component.toggleBooleanControl('idiomas_adicionales_cualquiera');
+            component.quitarDe('idiomas_adicionales', { id: 9 });
             expect(component.buildPayload().idiomas_adicionales).toEqual([7]);
         });
     });
@@ -1636,15 +1636,15 @@ describe('NuevaRazaComponent', () => {
             expect(component.form.controls.vd.valid).toBeTrue();
             component.form.patchValue({ vd: 3 });
 
-            component.anadirClaseAsociada(1);
-            component.anadirClaseAsociada(1);
-            component.anadirClaseAsociada(404);
+            component.anadirA('clases_asociadas', 1);
+            component.anadirA('clases_asociadas', 1);
+            component.anadirA('clases_asociadas', 404);
             expect(component.clasesAsociadas).toEqual([{ id: 1, nombre: 'Guerrero' }]);
             payload = component.buildPayload();
             expect(payload.raza.vd).toBe(3);
             expect(payload.clases_asociadas).toEqual([1]);
 
-            component.quitarClaseAsociada({ id: 1 });
+            component.quitarDe('clases_asociadas', { id: 1 });
             expect(component.buildPayload().clases_asociadas).toEqual([]);
         });
 
@@ -1663,7 +1663,7 @@ describe('NuevaRazaComponent', () => {
 
         it('se crea con su VD y sus clases asociadas', async () => {
             component.form.patchValue({ dgs_extra: 3, id_tipo_dado: 22, id_tipo_criatura_dgs: 3, vd: 2, vd_mod_clases_pnj: -2 });
-            component.anadirClaseAsociada(1);
+            component.anadirA('clases_asociadas', 1);
             spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
 
             await component.guardarRaza();

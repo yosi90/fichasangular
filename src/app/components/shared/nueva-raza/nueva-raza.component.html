@@ -388,7 +388,7 @@
                                     textoAnadir="Añadir clase asociada"
                                     [filas]="clasesAsociadas" [opciones]="opcionesClasesAsociadas" [deshabilitado]="edicion.cargando"
                                     [error]="errores.mensajeDe('clases_asociadas')"
-                                    (anadir)="anadirClaseAsociada($event)" (quitar)="quitarClaseAsociada($event)">
+                                    (anadir)="anadirA('clases_asociadas', $event)" (quitar)="quitarDe('clases_asociadas', $event)">
                                 </app-lista-de-catalogo>
                             </div>
                         </section>
@@ -495,7 +495,7 @@
                             <h3 class="form-panel-title">Idiomas adicionales por Inteligencia</h3>
                             <div class="estado-row">
                                 <mat-chip-listbox class="boolean-chips" aria-label="Idiomas adicionales">
-                                    <mat-chip-option [selected]="idiomasAdicionalesCualquiera" (click)="alternarIdiomasAdicionalesCualquiera()"
+                                    <mat-chip-option [selected]="idiomasAdicionalesCualquiera" (click)="toggleBooleanControl('idiomas_adicionales_cualquiera')"
                                         [disabled]="edicion.cargando"
                                         matTooltip="Puede aprender cualquier idioma que no sea secreto, como el humano">
                                         Cualquier idioma
@@ -512,7 +512,7 @@
                                     textoAnadir="Añadir idioma adicional"
                                     [filas]="idiomasAdicionales" [opciones]="opcionesIdiomas" [deshabilitado]="edicion.cargando"
                                     [error]="errores.mensajeDe('idiomas_adicionales')"
-                                    (anadir)="anadirIdiomaAdicional($event)" (quitar)="quitarIdiomaAdicional($event)">
+                                    (anadir)="anadirA('idiomas_adicionales', $event)" (quitar)="quitarDe('idiomas_adicionales', $event)">
                                 </app-lista-de-catalogo>
                             </ng-template>
                             <p class="idiomas-adicionales-error" *ngIf="idiomasAdicionalesCualquiera && errores.mensajeDe('idiomas_adicionales') as error">{{error}}</p>

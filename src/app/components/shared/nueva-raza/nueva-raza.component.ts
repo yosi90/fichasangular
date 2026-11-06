@@ -156,6 +156,9 @@ interface ListaLanzamientoFila {
     id: number;
 }
 
+/** Las listas de ids del formulario que se editan con `<app-lista-de-catalogo>` (`anadirA`, `quitarDe`). */
+type ListaDeRaza = 'clases_asociadas' | 'idiomas_adicionales';
+
 type RelacionSeleccionKey =
     | 'subtiposSeleccionados'
     | 'idiomasSeleccionados'
@@ -999,7 +1002,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return this.prerrequisitosMutacionOpciones.find((item) => item.key === key)?.label ?? key;
     }
 
-    toggleBooleanControl(controlName: 'oficial' | 'mutada' | 'tamano_mutacion_dependiente' | 'cuadrupedo'): void {
+    toggleBooleanControl(controlName: 'oficial' | 'mutada' | 'tamano_mutacion_dependiente' | 'cuadrupedo'
+        | 'idiomas_adicionales_cualquiera'): void {
         alternarControl(this.form.controls[controlName]);
     }
 
@@ -1258,17 +1262,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return this.form.controls.clases_asociadas.value ?? [];
     }
 
-    anadirClaseAsociada(id: number): void {
-        this.form.controls.clases_asociadas.setValue(anadirALista(this.clasesAsociadas, this.opcionesClasesAsociadas, this.numero(id),
-            (opcion) => ({ id: opcion.id, nombre: opcion.nombre })));
-        this.form.controls.clases_asociadas.markAsDirty();
-    }
-
-    quitarClaseAsociada(fila: FilaDeLista): void {
-        this.form.controls.clases_asociadas.setValue(this.clasesAsociadas.filter((item) => item.id !== fila.id));
-        this.form.controls.clases_asociadas.markAsDirty();
-    }
-
     /** Si los idiomas adicionales por Inteligencia pueden ser cualquiera no secreto (MJ cap. 2: el humano). */
     get idiomasAdicionalesCualquiera(): boolean {
         return this.form.controls.idiomas_adicionales_cualquiera.value !== false;
@@ -1279,20 +1272,22 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return this.form.controls.idiomas_adicionales.value ?? [];
     }
 
-    /** Con «cualquiera» la lista no se manda, pero se queda en el formulario por si se vuelve a quitar. */
-    alternarIdiomasAdicionalesCualquiera(): void {
-        alternarControl(this.form.controls.idiomas_adicionales_cualquiera);
+    /** Las opciones de una lista de ids del formulario (`<app-lista-de-catalogo>`). */
+    opcionesDe(lista: ListaDeRaza): OpcionCatalogo[] {
+        return lista === 'clases_asociadas' ? this.opcionesClasesAsociadas : this.opcionesIdiomas;
     }
 
-    anadirIdiomaAdicional(id: number): void {
-        this.form.controls.idiomas_adicionales.setValue(anadirALista(this.idiomasAdicionales, this.opcionesIdiomas, this.numero(id),
+    anadirA(lista: ListaDeRaza, id: number): void {
+        const control = this.form.controls[lista];
+        control.setValue(anadirALista(control.value ?? [], this.opcionesDe(lista), this.numero(id),
             (opcion) => ({ id: opcion.id, nombre: opcion.nombre })));
-        this.form.controls.idiomas_adicionales.markAsDirty();
+        control.markAsDirty();
     }
 
-    quitarIdiomaAdicional(fila: FilaDeLista): void {
-        this.form.controls.idiomas_adicionales.setValue(this.idiomasAdicionales.filter((item) => item.id !== fila.id));
-        this.form.controls.idiomas_adicionales.markAsDirty();
+    quitarDe(lista: ListaDeRaza, fila: FilaDeLista): void {
+        const control = this.form.controls[lista];
+        control.setValue((control.value ?? []).filter((item) => item.id !== fila.id));
+        control.markAsDirty();
     }
 
     actualizarHabilidadBase(index: number, patch: Partial<HabilidadBaseRow>): void {
