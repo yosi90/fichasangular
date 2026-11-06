@@ -123,6 +123,8 @@ import {
     motivoHomebrew,
     motivosHomebrewPersonaje,
     motivosQueConfirmar,
+    DecisionHomebrew,
+    decisionesHomebrewPersonaje,
 } from 'src/app/services/utils/personaje-oficialidad';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normasDeCreacionAceptadas } from 'src/app/services/utils/normas-creacion';
@@ -180,7 +182,7 @@ import {
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
-import { edadesDeLaRaza, edadFueraDelManual, edadMinimaInicial, etapaEdad, EtapaEdad, GRUPOS_EDAD_INICIAL, GrupoEdadInicial, motivoEdadFueraDelManual, motivoEdadInicial, razaTieneEdades, textoDadosEdadInicial, textoEdadMaxima, textoEnvejecimiento, tirarEdadInicial } from 'src/app/services/utils/edad-personaje';
+import { comoSaleLaEdadDelManual, edadesDeLaRaza, edadFueraDelManual, edadMinimaInicial, etapaEdad, EtapaEdad, GRUPOS_EDAD_INICIAL, GrupoEdadInicial, motivoEdadFueraDelManual, motivoEdadInicial, razaTieneEdades, textoDadosEdadInicial, textoEdadMaxima, textoEnvejecimiento, tirarEdadInicial } from 'src/app/services/utils/edad-personaje';
 import { etiquetaPenalizacionExperiencia, textoPenalizacionExperiencia } from 'src/app/services/utils/penalizacion-experiencia';
 import { textoDesglose } from 'src/app/services/utils/personaje-totales';
 
@@ -500,7 +502,8 @@ export class NuevoPersonajeComponent {
     incluirHomebrewConjuros = false;
     filtroConjurosNivel: number | null = null;
     incluirHomebrewClases: boolean = false;
-    private hardAlignmentClassOverrideConfirmed: boolean = false;
+    /** Las clases cogidas contra su alineamiento (con el permiso de la campaña): homebrew, y se guardan como decisión. */
+    private clasesConAlineamientoSaltado = new Set<number>();
     private homebrewPorClaseAplicada: boolean = false;
     /** Las plantillas elegidas saltándose sus prerrequisitos: mientras alguna siga elegida, el personaje es homebrew. */
     private plantillasConRequisitosSaltados = new Set<number>();
@@ -2399,6 +2402,30 @@ export class NuevoPersonajeComponent {
     }
 
     /**
+     * Las reglas que se saltó al crearlo, para guardarlas (`decisionesHomebrew`; desde el 2026-11-06 la oficialidad la
+     * calcula la API con ellas y con lo que usa). El PJ a una edad sin ajuste no va: lo decide la API.
+     */
+    private decisionesHomebrewParaGuardar(): DecisionHomebrew[] {
+        const evaluacion = this.evaluarInconsistenciasBasicos();
+        const alineamientoConfirmado = this.hardAlignmentOverrideConfirmed;
+        const clase = this.nuevoPSvc.clasePrimerNivel();
+        return decisionesHomebrewPersonaje({
+            idRaza: this.Personaje?.Raza?.Id,
+            idDeidad: this.deidadSeleccionadaDetalle?.Id,
+            alineamientoRaza: alineamientoConfirmado && evaluacion.hardConflicts.some((c) => c.origen === 'raza'),
+            alineamientoDeidad: alineamientoConfirmado && evaluacion.hardConflicts.some((c) => c.origen === 'deidad'),
+            clasesConAlineamientoSaltado: this.clasesConAlineamientoSaltado,
+            plantillasSinRequisitos: this.plantillasSeleccionadas
+                .map((plantilla) => Number(plantilla?.Id))
+                .filter((id) => this.plantillasConRequisitosSaltados.has(id)),
+            edad: comoSaleLaEdadDelManual(this.Personaje?.Edad, this.razaSeleccionada, clase?.Grupo_edad_inicial),
+            idClasePrimerNivel: clase?.Id,
+            alturaFueraDeRango: this.alturaFueraRango,
+            pesoFueraDeRango: this.pesoFueraRango,
+        });
+    }
+
+    /**
      * Si la ficha es homebrew por algo que no son los datos de Básicos (edad, peso, altura y deidad, que se confirman al
      * salir del paso): un elemento homebrew o una regla saltada.
      */
@@ -2407,7 +2434,7 @@ export class NuevoPersonajeComponent {
         const motivosHomebrew = motivosHomebrewPersonaje(this.Personaje, this.contextoOficialidad());
         return motivosHomebrew.length > 0
             || tieneConflictoDuroConfirmado
-            || this.hardAlignmentClassOverrideConfirmed
+            || this.clasesConAlineamientoSaltado.size > 0
             || this.homebrewPorClaseAplicada
             || this.haySaltoRequisitosPlantilla
             || this.pjEnEdadSinAjuste;
@@ -3705,7 +3732,7 @@ export class NuevoPersonajeComponent {
         this.cerrarSelectorRacialesOpcionalesContexto();
         this.ventanaDetalleAbierta = false;
         this.resetHardAlignmentOverride();
-        this.hardAlignmentClassOverrideConfirmed = false;
+        this.clasesConAlineamientoSaltado.clear();
         this.homebrewPorClaseAplicada = false;
         this.plantillasConRequisitosSaltados.clear();
         this.normalizarAlineamientoSeleccionado();
@@ -4161,7 +4188,7 @@ export class NuevoPersonajeComponent {
             this.Personaje.Oficial = false;
         }
         if (requiereAvisoAlineamiento && this.canIgnoreAlignmentRestrictionsForCurrentContext) {
-            this.hardAlignmentClassOverrideConfirmed = true;
+            this.clasesConAlineamientoSaltado.add(Number(seleccion.clase?.Id));
             this.Personaje.Oficial = false;
         }
         this.recalcularOficialidad();
@@ -5264,6 +5291,9 @@ export class NuevoPersonajeComponent {
                 );
                 if (this.formacionIncarnum)
                     payload.incarnum = this.formacionIncarnum;
+                const decisionesHomebrew = this.decisionesHomebrewParaGuardar();
+                if (decisionesHomebrew.length > 0)
+                    payload.decisionesHomebrew = decisionesHomebrew;
                 const response = await this.personajeSvc.crearPersonajeApiDesdeCreacion(payload);
                 idPersonaje = Math.trunc(Number(response?.idPersonaje ?? 0));
                 if (!Number.isFinite(idPersonaje) || idPersonaje <= 0)

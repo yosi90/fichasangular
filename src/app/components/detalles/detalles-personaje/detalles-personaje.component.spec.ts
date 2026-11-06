@@ -313,6 +313,22 @@ describe('DetallesPersonajeComponent', () => {
             expect(valor('Experiencia')).not.toContain('% de PX');
         });
 
+        it('una ficha homebrew dice por qué bajo el nombre: sus componentes y las reglas que se saltó (2026-11-06)', () => {
+            component.pj = fichaDeLaApi({
+                o: false,
+                homebrew: {
+                    componentes: [{ tabla: 'idiomas', id: 21, nombre: 'Kajhita' }],
+                    decisiones: [{ tipo: 'alineamiento_clase', tabla: 'clases', id: 5, nombre: 'Druida' }],
+                },
+            });
+            verPagina();
+            expect(etiquetasCabecera()).toContain('Homebrew');
+            expect(textos('.personaje-homebrew')).toEqual(['Homebrew por: Idioma: Kajhita · Alineamiento que no admite su clase: Druida']);
+            component.pj = fichaDeLaApi();
+            verPagina();
+            expect(elemento().querySelector('.personaje-homebrew')).toBeNull();
+        });
+
         it('enseña la cabecera, los datos, la franja grande y las casillas con las salvaciones', () => {
             component.pj = fichaDeLaApi();
             verPagina();

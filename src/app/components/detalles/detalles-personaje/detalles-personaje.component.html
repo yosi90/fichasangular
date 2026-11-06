@@ -14,6 +14,9 @@
                 (click)="verPerfilPublicoCreador()">{{creador.nombre}}</button>
             <ng-template #creadorTexto>{{creador.nombre}}</ng-template>
         </span>
+        <span fichaCabeceraPie class="ficha-cabecera__pie personaje-homebrew" *ngIf="m.motivosHomebrew.length > 0">
+            Homebrew por: {{m.motivosHomebrew.join(' · ')}}
+        </span>
         <div class="personaje-acciones">
             <div class="personaje-vista" role="group" aria-label="Cómo se ve la ficha">
                 <button type="button" class="personaje-vista__boton" [class.personaje-vista__boton--activa]="vista === 'pagina'"

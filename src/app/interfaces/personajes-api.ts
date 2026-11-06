@@ -1,5 +1,6 @@
 import { Comodin } from './comodin';
 import { FormacionIncarnumDto } from './incarnum';
+import type { DecisionHomebrew } from '../services/utils/personaje-oficialidad';
 
 export interface PersonajeContextoIdsDto {
     idCampana?: number | null;
@@ -161,7 +162,6 @@ export interface PersonajeCreateRequestDto {
         idEspPsionica?: number;
         idDisProhibida?: number;
         visible_otros_usuarios: boolean;
-        oficial: boolean;
         /** `pj` (por defecto) o `pnj` (desde el 2026-10-31). Un PNJ se guarda privado aunque llegue `visible_otros_usuarios`. */
         tipo?: 'pj' | 'pnj';
         /** La edad elegida en una raza por edades: un `Pasos_edad[].Id` de la raza (obligatorio en ellas). */
@@ -187,6 +187,11 @@ export interface PersonajeCreateRequestDto {
     companero?: PersonajeCreateCompaneroDto;
     /** Magic of Incarnum: la formación de partida de un moldeador (opcional; `docs/publica/INCARNUM.md`). */
     incarnum?: FormacionIncarnumDto;
+    /**
+     * Las decisiones de la creación que contradicen las reglas (desde el 2026-11-06; `decisionesHomebrewPersonaje`). La
+     * oficialidad no se manda: la calcula la API con ellas y con lo que usa el personaje.
+     */
+    decisionesHomebrew?: DecisionHomebrew[];
 }
 
 /** Una habilidad de un familiar o un compañero (`familiar.habilidades[]`, `companero.habilidades[]`). */
@@ -506,6 +511,6 @@ export interface PersonajeCompraResponseDto {
     costes: number[];
     /** El precio de cada conjuro copiado al libro, en su orden (`coste` los incluye). */
     costesConjuros: number[];
-    /** Si sigue siendo oficial (comprar algo homebrew lo pasa a homebrew). */
+    /** Si es oficial después de la compra, calculado por la API (comprar algo homebrew lo vuelve homebrew). */
     oficial: boolean;
 }

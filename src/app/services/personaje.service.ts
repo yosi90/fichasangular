@@ -56,6 +56,7 @@ import { penalizacionExperiencia } from './utils/penalizacion-experiencia';
 import { idExtraHabilidadParaGuardar } from './utils/habilidad-extra-visible';
 import { errorDePerfil, mensajeDeError } from './utils/error-api';
 import { normalizarTamanoFicha } from './utils/tamano-efectivo';
+import { normalizarHomebrewGuardado } from './utils/personaje-oficialidad';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -301,7 +302,6 @@ export class PersonajeService {
             idEspPsionica: idEspPsionica > 0 ? idEspPsionica : 0,
             idDisProhibida: idDisProhibida > 0 ? idDisProhibida : 0,
             visible_otros_usuarios: !!personaje?.visible_otros_usuarios,
-            oficial: personaje?.Oficial !== false,
             // PJ o PNJ, explícito (decisión del propietario del 2026-10-31); sin elegir, el valor por defecto: PJ.
             tipo: esPnj(personaje?.tipo) ? 'pnj' : 'pj',
         };
@@ -1090,6 +1090,7 @@ export class PersonajeService {
             Trepar: element?.t,
             Excavar: element?.e,
             Oficial: element?.o,
+            Homebrew: normalizarHomebrewGuardado(element?.homebrew),
             Dados_golpe: element?.dg,
             Pgs_lic: element?.pgl,
             Jugador: element?.ju,

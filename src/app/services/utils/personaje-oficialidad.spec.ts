@@ -6,6 +6,9 @@ import {
     motivoHomebrew,
     motivosHomebrewPersonaje,
     motivosQueConfirmar,
+    decisionesHomebrewPersonaje,
+    motivosHomebrewGuardado,
+    normalizarHomebrewGuardado,
 } from './personaje-oficialidad';
 
 describe('personaje-oficialidad (decisión del 2026-10-17)', () => {
@@ -151,5 +154,55 @@ describe('personaje-oficialidad (decisión del 2026-10-17)', () => {
             expect(claveFuenteHomebrewDe('deidad', { Id: 19, Nombre: 'Moradin', Oficial: true })).toBeNull();
             expect(claveFuenteHomebrewDe('deidad', null)).toBeNull();
         });
+    });
+});
+
+describe('decisiones homebrew y motivos de la ficha guardada (decisión del 2026-11-06)', () => {
+    it('sin reglas saltadas no hay decisiones', () => {
+        expect(decisionesHomebrewPersonaje({ idRaza: 3 })).toEqual([]);
+    });
+
+    it('cada regla saltada es una decisión con su elemento, sin repetidas', () => {
+        expect(decisionesHomebrewPersonaje({
+            idRaza: 3,
+            idDeidad: 40,
+            alineamientoRaza: true,
+            clasesConAlineamientoSaltado: new Set([5, 5]),
+            plantillasSinRequisitos: [12],
+            edad: 'menor_que_la_inicial',
+            idClasePrimerNivel: 5,
+            alturaFueraDeRango: true,
+            pesoFueraDeRango: true,
+        })).toEqual([
+            { tipo: 'alineamiento_raza', idElemento: 3 },
+            { tipo: 'alineamiento_clase', idElemento: 5 },
+            { tipo: 'requisitos_plantilla', idElemento: 12 },
+            { tipo: 'edad_menor_que_la_inicial', idElemento: 5 },
+            { tipo: 'altura_fuera_de_rango', idElemento: 3 },
+            { tipo: 'peso_fuera_de_rango', idElemento: 3 },
+        ]);
+    });
+
+    it('la edad fuera de la raza va con la raza, y sin elemento no se manda', () => {
+        expect(decisionesHomebrewPersonaje({ idRaza: 3, edad: 'menor_que_la_mayoria' })).toEqual([{ tipo: 'edad_menor_que_la_mayoria', idElemento: 3 }]);
+        expect(decisionesHomebrewPersonaje({ idRaza: 3, edad: 'mayor_que_la_maxima' })).toEqual([{ tipo: 'edad_mayor_que_la_maxima', idElemento: 3 }]);
+        expect(decisionesHomebrewPersonaje({ idRaza: 0, alineamientoDeidad: true, idDeidad: null, alturaFueraDeRango: true })).toEqual([]);
+    });
+
+    it('los motivos de la ficha guardada, con sus nombres', () => {
+        const homebrew = normalizarHomebrewGuardado({
+            componentes: [{ tabla: 'razas', id: 2, nombre: 'Elfo (rol mapa mundi)' }, { tabla: 'armas', id: 30, nombre: 'Espada de vapor' },
+                { tabla: 'ventajas', id: 8, nombre: 'Afortunado' }, { tabla: 'razas', id: 'x' }],
+            decisiones: [{ tipo: 'alineamiento_clase', tabla: 'clases', id: 5, nombre: 'Druida' }, { tipo: 'desconocida', tabla: null, id: null, nombre: null }],
+        });
+        expect(homebrew.componentes.length).toBe(3);
+        expect(motivosHomebrewGuardado(homebrew)).toEqual([
+            'Raza: Elfo (rol mapa mundi)',
+            'Arma: Espada de vapor',
+            'Ventaja o desventaja: Afortunado',
+            'Alineamiento que no admite su clase: Druida',
+            'Una regla saltada al crearlo (de antes de guardarse el motivo)',
+        ]);
+        expect(motivosHomebrewGuardado(normalizarHomebrewGuardado(undefined))).toEqual([]);
     });
 });
