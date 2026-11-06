@@ -4057,7 +4057,6 @@ export class NuevoPersonajeService {
         return id > 0 ? id : null;
     }
 
-    /** La salvación base que dan las clases (la parte «clase» de cada total): la que pide `salvacion_minimo`. */
     /**
      * Las salvaciones base del personaje, para los prerrequisitos de «salvación base mínima»: las de sus clases, las de
      * sus DG raciales (si cuentan) y las de los DG de sus plantillas (el animal del licántropo), que también son base
@@ -4070,12 +4069,10 @@ export class NuevoPersonajeService {
             reflejos: sumarPartes(salvaciones.reflejos, 'clase'),
             voluntad: sumarPartes(salvaciones.voluntad, 'clase'),
         };
-        if (this.dgsRacialesEfectivos() > 0) {
-            const dgs = this.razaSeleccionada?.Dgs_adicionales;
-            base.fortaleza += toNumber(dgs?.Fortaleza);
-            base.reflejos += toNumber(dgs?.Reflejos);
-            base.voluntad += toNumber(dgs?.Voluntad);
-        }
+        const deDgsRaciales = this.salvacionesDeDgsRaciales(this.razaSeleccionada);
+        base.fortaleza += deDgsRaciales.fortaleza;
+        base.reflejos += deDgsRaciales.reflejos;
+        base.voluntad += deDgsRaciales.voluntad;
         (this.estadoFlujo.plantillas.seleccionadas ?? []).forEach((plantilla) => {
             const deSusDgs = this.basesDeDgsDePlantilla(plantilla);
             if (!deSusDgs)
@@ -5917,6 +5914,18 @@ export class NuevoPersonajeService {
     }
 
     /**
+     * Las salvaciones base de los DG raciales de la raza, si cuentan (con 1 DG racial y un nivel de clase, no: Guía del
+     * DM, pág. 172); 0 si no. Las que se suman a la ficha (`aplicarSalvacionesRaza`) y las que cuentan como base en los
+     * prerrequisitos (`resolverSalvacionesBaseClase`).
+     */
+    private salvacionesDeDgsRaciales(raza: Raza | null | undefined): Record<SalvacionKey, number> {
+        if (this.dgsRacialesEfectivos() <= 0)
+            return { fortaleza: 0, reflejos: 0, voluntad: 0 };
+        const dgs = raza?.Dgs_adicionales;
+        return { fortaleza: toNumber(dgs?.Fortaleza), reflejos: toNumber(dgs?.Reflejos), voluntad: toNumber(dgs?.Voluntad) };
+    }
+
+    /**
      * Las salvaciones de la raza: las de sus DG raciales y las de sus raciales (`Salvaciones`: `Id_salvacion`, `Cantidad`
      * y `Condicion`). Las de un racial con condición («Contra veneno», Manual del jugador cap. 2) se guardan con ella y no
      * se suman al total; las que no la tienen (el +1 del mediano), sí.
@@ -5929,12 +5938,9 @@ export class NuevoPersonajeService {
             this.personajeCreacion.Salvaciones[tipo].modsVarios.push({ valor, origen });
         };
 
-        // Las de los DG raciales, si cuentan (con 1 DG racial y un nivel de clase, no: Guía del DM, pág. 172).
-        if (this.dgsRacialesEfectivos() > 0) {
-            registrar('fortaleza', toNumber(raza?.Dgs_adicionales?.Fortaleza), `${nombreRaza} DG racial`);
-            registrar('reflejos', toNumber(raza?.Dgs_adicionales?.Reflejos), `${nombreRaza} DG racial`);
-            registrar('voluntad', toNumber(raza?.Dgs_adicionales?.Voluntad), `${nombreRaza} DG racial`);
-        }
+        const deDgsRaciales = this.salvacionesDeDgsRaciales(raza);
+        (['fortaleza', 'reflejos', 'voluntad'] as SalvacionKey[])
+            .forEach((tipo) => registrar(tipo, deDgsRaciales[tipo], `${nombreRaza} DG racial`));
 
         const racialesRaw = raza?.Raciales;
         const raciales = Array.isArray(racialesRaw)
