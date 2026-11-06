@@ -57,6 +57,7 @@ import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-
 import { CamposDeFormulario, ErroresDeFormulario } from '../insercion-marco/errores-de-formulario';
 import { ModoInsercion } from '../insercion-marco/insercion-marco.component';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
+import { FilaDeLista, anadirALista, filasDeIds } from '../lista-de-catalogo/lista-de-catalogo.component';
 import { RAZA } from 'src/app/services/utils/nombres-de-catalogo';
 import { buildManiobrabilidadInfoSecciones } from 'src/app/services/utils/maniobrabilidad-info';
 import { PrerrequisitoEditorHostComponent } from '../prerrequisito-editor/prerrequisito-editor-host.component';
@@ -73,7 +74,7 @@ import {
     getPrerequisiteTypeOptions,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
-import { idsUnicosOrdenados, normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { idsUnicosOrdenados, normalizarTexto, toIntOrNull, toNumberOrNull } from 'src/app/services/utils/normalizacion';
 import { idTamanoMediano } from 'src/app/services/utils/tamano-efectivo';
 import { TEXTO_SIN_ESPECIFICAR, USOS_SORTILEGA_INICIALES, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
@@ -203,6 +204,28 @@ const SIN_CLASE_PREDILECTA_FORMULARIO: CatalogItem = { Id: -1, Nombre: 'Ninguna 
 /** El peso más alto que admite la API (`numeric(7, 2)`; el centauro de *Races of the Wild* pesa 1.060,52 kg). */
 const PESO_MAXIMO = 99999.99;
 
+/** El VD de la raza más alto que admite la API (`razas.vd`, `decimal(5, 2)`). */
+const VD_RAZA_MAXIMO = 999.99;
+
+/**
+ * El VD de la raza (`raza.vd`): vacío, sin dato; si no, mayor que 0 y hasta 999,99, como la API (`400 peticion_no_valida`
+ * con `field` `raza.vd`). Solo vale con DG raciales: sin ellos el campo no se enseña ni se manda.
+ */
+function vdDeRazaValidator(control: AbstractControl): ValidationErrors | null {
+    const vd = toNumberOrNull(control.value);
+    if (vd === null)
+        return `${control.value ?? ''}`.trim().length > 0 ? { vdDeRaza: true } : null;
+    return vd > 0 && vd <= VD_RAZA_MAXIMO ? null : { vdDeRaza: true };
+}
+
+/** Un entero o vacío (los ajustes del VD por clases de PJ y de PNJ: vacío es la regla general). */
+function enteroOpcionalValidator(control: AbstractControl): ValidationErrors | null {
+    const valor = toNumberOrNull(control.value);
+    if (valor === null)
+        return `${control.value ?? ''}`.trim().length > 0 ? { entero: true } : null;
+    return Number.isInteger(valor) ? null : { entero: true };
+}
+
 /**
  * Los catálogos de los que depende el cuerpo que se manda (el alineamiento que se resuelve, los extras de habilidad, el
  * tipo de dado…). Al modificar, la raza se rellena cuando ya están, para que guardar sin tocar nada mande lo que llegó.
@@ -267,6 +290,10 @@ const CAMPOS_RAZA: CamposDeFormulario = {
     edad_inicial_caras_2: { etiqueta: 'Caras de la edad inicial (grupo 2)', paso: 1 },
     edad_inicial_dados_3: { etiqueta: 'Dados de la edad inicial (grupo 3)', paso: 1 },
     edad_inicial_caras_3: { etiqueta: 'Caras de la edad inicial (grupo 3)', paso: 1 },
+    vd: { etiqueta: 'VD de la raza', paso: 1 },
+    vd_mod_clases_pj: { etiqueta: 'Ajuste del VD con clases de PJ', paso: 1 },
+    vd_mod_clases_pnj: { etiqueta: 'Ajuste del VD con clases de PNJ', paso: 1 },
+    clases_asociadas: { etiqueta: 'Clases asociadas', paso: 1 },
     armadura_natural: { etiqueta: 'Armadura natural', paso: 1 },
     varios_armadura: { etiqueta: 'Varios de armadura', paso: 1 },
     ajuste_nivel: { etiqueta: 'Ajuste de nivel', paso: 1 },
@@ -378,6 +405,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     dominios: DominioDetalle[] = [];
     opcionesManuales: OpcionCatalogo[] = [];
     opcionesClasesLanzamiento: OpcionCatalogo[] = [];
+    opcionesClasesAsociadas: OpcionCatalogo[] = [];
     opcionesDominios: OpcionCatalogo[] = [];
     armas: ArmaDetalle[] = [];
     armaduras: ArmaduraDetalle[] = [];
@@ -506,6 +534,12 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         edad_inicial_caras_2: [0, [Validators.min(0)]],
         edad_inicial_dados_3: [0, [Validators.min(0)]],
         edad_inicial_caras_3: [0, [Validators.min(0)]],
+        // El VD de sus PNJ (Guía del DM, págs. 37-38; MM, págs. 293-294). Vacío (`null`): sin dato o la regla general. El
+        // validador del VD de la raza lo pone `sincronizarCamposDgsExtra`: sin DG raciales no se enseña ni se manda.
+        vd: [null as number | null],
+        vd_mod_clases_pj: [null as number | null, [enteroOpcionalValidator]],
+        vd_mod_clases_pnj: [null as number | null, [enteroOpcionalValidator]],
+        clases_asociadas: [[] as FilaDeLista[]],
         id_tipo_criatura: [0, [Validators.min(1)]],
         ataque_base: [0],
         fortaleza: [0],
@@ -700,6 +734,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         const dgsOcultos = this.dgsOcultosAConservar();
         const idClaseLanzamiento = this.numero(raw.id_clase_lanzamiento);
         const lanza = idClaseLanzamiento > 0;
+        // El VD de la raza y sus clases asociadas solo cuentan con DG raciales: sin ellos no se mandan (el alta los deja
+        // sin dato y la edición conserva lo que hay, como antes de tener estos campos).
+        const conDgs = this.tieneDgsExtra();
 
         const payload: RazaCreateRequest = {
             raza: {
@@ -749,6 +786,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 edad_inicial_caras_2: this.numero(raw.edad_inicial_caras_2),
                 edad_inicial_dados_3: this.numero(raw.edad_inicial_dados_3),
                 edad_inicial_caras_3: this.numero(raw.edad_inicial_caras_3),
+                ...(conDgs ? { vd: this.vdDeRaza(raw.vd) } : {}),
+                vd_mod_clases_pj: toIntOrNull(raw.vd_mod_clases_pj),
+                vd_mod_clases_pnj: toIntOrNull(raw.vd_mod_clases_pnj),
                 id_tipo_criatura: this.numero(raw.id_tipo_criatura),
                 // El ataque base y las salvaciones son los de los DG raciales: sin DG, 0 (`400 dg_raciales_sin_dg`).
                 ataque_base: this.tieneDgsExtra() ? this.numero(raw.ataque_base) : 0,
@@ -771,6 +811,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 nivel_lanzamiento: lanza && !this.porEdades ? this.numero(raw.nivel_lanzamiento) : 0,
             },
             subtipos: idsUnicosOrdenados(this.subtiposSeleccionados),
+            ...(conDgs ? { clases_asociadas: idsUnicosOrdenados(this.clasesAsociadas.map((fila) => fila.id)) } : {}),
             idiomas: idsUnicosOrdenados(this.idiomasSeleccionados),
             habilidades: {
                 base: this.dedupeByKey(
@@ -1208,6 +1249,22 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             this.listasLanzamientoElegidas.filter((item) => !(item.tipo === lista.tipo && item.id === lista.id))
         );
         this.form.controls.lanzamiento_listas.markAsDirty();
+    }
+
+    /** Las clases asociadas de la raza (MM, pág. 294: un nivel de una de ellas suma +1 al VD de un PNJ con DG raciales). */
+    get clasesAsociadas(): FilaDeLista[] {
+        return this.form.controls.clases_asociadas.value ?? [];
+    }
+
+    anadirClaseAsociada(id: number): void {
+        this.form.controls.clases_asociadas.setValue(anadirALista(this.clasesAsociadas, this.opcionesClasesAsociadas, this.numero(id),
+            (opcion) => ({ id: opcion.id, nombre: opcion.nombre })));
+        this.form.controls.clases_asociadas.markAsDirty();
+    }
+
+    quitarClaseAsociada(fila: FilaDeLista): void {
+        this.form.controls.clases_asociadas.setValue(this.clasesAsociadas.filter((item) => item.id !== fila.id));
+        this.form.controls.clases_asociadas.markAsDirty();
     }
 
     actualizarHabilidadBase(index: number, patch: Partial<HabilidadBaseRow>): void {
@@ -1968,6 +2025,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 this.clases = this.ordenar(clases);
                 // Sin la 0 («Cualquiera»): lanzar como «cualquier clase» no es nada; sin clase, la raza no lanza.
                 this.opcionesClasesLanzamiento = opcionesDeCatalogo(this.clases.filter((clase) => this.numero(clase.Id) > 0));
+                // Las de PNJ (adepto, combatiente…) nunca son asociadas (MM, pág. 294; `Clase_pnj` de la clase).
+                this.opcionesClasesAsociadas = opcionesDeCatalogo(this.clases.filter((clase) => this.numero(clase.Id) > 0 && clase.Clase_pnj !== true));
                 this.sincronizarBusquedaDesdeControl('id_clase_predilecta', this.clasesPredilectas, (value) => this.clasePredilectaBusqueda = value);
                 this.catalogosParaModificar.marcar('clases');
             }, error: () => {
@@ -2219,9 +2278,13 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         const tipoDadoControl = this.form.controls.id_tipo_dado;
         const tipoCriaturaControl = this.form.controls.id_tipo_criatura_dgs;
         const salvaciones = [this.form.controls.fortaleza, this.form.controls.reflejos, this.form.controls.voluntad];
+        const vdControl = this.form.controls.vd;
         if (!this.tieneDgsExtra()) {
             tipoDadoControl.clearValidators();
             tipoCriaturaControl.clearValidators();
+            // El VD de la raza no se enseña ni se manda sin DG raciales (se queda lo escrito por si vuelven).
+            vdControl.clearValidators();
+            vdControl.updateValueAndValidity({ emitEvent: false });
             // Sin DG raciales no hay salvaciones de DG: a 0 y sin editar.
             salvaciones.forEach((control) => control.disable({ emitEvent: false }));
             this.form.patchValue({
@@ -2242,6 +2305,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         }
 
         salvaciones.forEach((control) => control.enable({ emitEvent: false }));
+        vdControl.setValidators([vdDeRazaValidator]);
+        vdControl.updateValueAndValidity({ emitEvent: false });
         tipoDadoControl.setValidators([Validators.min(1)]);
         tipoCriaturaControl.setValidators([Validators.min(1)]);
         if (this.numero(tipoDadoControl.value) <= 0)
@@ -2515,6 +2580,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             edad_inicial_caras_2: 0,
             edad_inicial_dados_3: 0,
             edad_inicial_caras_3: 0,
+            vd: null,
+            vd_mod_clases_pj: null,
+            vd_mod_clases_pnj: null,
+            clases_asociadas: [],
             id_tipo_criatura: 0,
             ataque_base: 0,
             fortaleza: 0,
@@ -2638,6 +2707,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             edad_inicial_caras_2: this.numero(raza.Edad_inicial_caras_2),
             edad_inicial_dados_3: this.numero(raza.Edad_inicial_dados_3),
             edad_inicial_caras_3: this.numero(raza.Edad_inicial_caras_3),
+            vd: toNumberOrNull(raza.Vd),
+            vd_mod_clases_pj: toIntOrNull(raza.Vd_mod_clases_pj),
+            vd_mod_clases_pnj: toIntOrNull(raza.Vd_mod_clases_pnj),
+            clases_asociadas: filasDeIds(raza.Clases_asociadas),
             id_tipo_criatura: this.numero(raza.Tipo_criatura?.Id),
             ataque_base: this.numero(dgs?.Ataque_base),
             fortaleza: this.numero(dgs?.Fortaleza),
@@ -3082,6 +3155,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         if (!Number.isFinite(parsed))
             return 0;
         return Math.round(parsed * 100) / 100;
+    }
+
+    /** El VD de la raza con dos decimales (los de su columna), o `null` sin dato. */
+    private vdDeRaza(value: unknown): number | null {
+        return toNumberOrNull(value) === null ? null : this.numeroDecimal(value);
     }
 
     private normalizarPasoIndex(value: any): number {

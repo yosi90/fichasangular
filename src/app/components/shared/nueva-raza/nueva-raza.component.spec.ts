@@ -1297,6 +1297,69 @@ describe('NuevaRazaComponent', () => {
             expect(component.form.controls.nombre.hasError('api')).toBeTrue();
         });
 
+        it('el VD de sus PNJ: lo carga de su GET y, sin tocar nada, manda lo mismo', async () => {
+            await crearEnModificar(razaDeLaApi({
+                n: 'Ogro', dg: { Cantidad: 4 },
+                Dgs_raciales: {
+                    Cantidad: 4, Id_dado: 22, Id_tipo_criatura: 4, Ataque_base: 3, Fortaleza: 4, Reflejos: 1, Voluntad: 1,
+                    Dotes_extra: 2, Puntos_habilidad: 2, Multiplicador_puntos_habilidad: 7,
+                },
+                Vd: 3, Vd_mod_clases_pj: null, Vd_mod_clases_pnj: null, Clases_asociadas: [{ Id: 1, Nombre: 'Guerrero' }],
+            }));
+
+            expect(component.edicion.hayCambios).toBeFalse();
+            expect(component.form.valid).toBeTrue();
+            expect(component.form.controls.vd.value).toBe(3);
+            expect(component.clasesAsociadas).toEqual([{ id: 1, nombre: 'Guerrero' }]);
+            const payload = component.buildPayload();
+            expect(payload.raza).toEqual(jasmine.objectContaining({ vd: 3, vd_mod_clases_pj: null, vd_mod_clases_pnj: null }));
+            expect(payload.clases_asociadas).toEqual([1]);
+
+            component.quitarClaseAsociada({ id: 1 });
+            expect(component.edicion.hayCambios).toBeTrue();
+            expect(component.buildPayload().clases_asociadas).toEqual([]);
+        });
+
+        it('sin DG raciales carga los ajustes por clases y no manda el VD ni las asociadas (la API conserva lo que haya)', async () => {
+            await crearEnModificar(razaDeLaApi({
+                n: 'Drow', Vd: 1, Vd_mod_clases_pj: 1, Vd_mod_clases_pnj: 0, Clases_asociadas: [{ Id: 1, Nombre: 'Guerrero' }],
+            }));
+
+            expect(component.edicion.hayCambios).toBeFalse();
+            const payload = component.buildPayload();
+            expect(payload.raza).toEqual(jasmine.objectContaining({ vd_mod_clases_pj: 1, vd_mod_clases_pnj: 0 }));
+            expect('vd' in payload.raza).toBeFalse();
+            expect('clases_asociadas' in payload).toBeFalse();
+        });
+
+        it('un error de la API en el VD o en las clases asociadas va a su campo y al paso «Valores»', async () => {
+            await crearEnModificar(razaDeLaApi({
+                dg: { Cantidad: 2 },
+                Dgs_raciales: {
+                    Cantidad: 2, Id_dado: 22, Id_tipo_criatura: 3, Ataque_base: 1, Fortaleza: 0, Reflejos: 3, Voluntad: 0,
+                    Dotes_extra: 1, Puntos_habilidad: 2, Multiplicador_puntos_habilidad: 5,
+                },
+                Vd: 1,
+            }));
+            razaSvc.actualizarRaza.and.rejectWith(new ProfileApiError("'raza.vd' debe ser mayor que 0 (o null, sin dato).", 'peticion_no_valida', 400, 'raza.vd'));
+            component.form.patchValue({ nombre: 'Elfo de las cuevas' });
+            component.pasoActivoIndex = 4;
+
+            await component.guardarRaza();
+
+            expect(component.errores.campo?.campo).toBe('vd');
+            expect(component.pasoActivoIndex).toBe(1);
+            expect(component.form.controls.vd.hasError('api')).toBeTrue();
+
+            razaSvc.actualizarRaza.and.rejectWith(new ProfileApiError('La clase asociada no existe.', 'no_encontrado', 404, 'clases_asociadas'));
+            component.form.patchValue({ vd: 2 });
+            component.pasoActivoIndex = 0;
+            await component.guardarRaza();
+
+            expect(component.pasoActivoIndex).toBe(1);
+            expect(component.errores.mensajeDe('clases_asociadas')).toBe('La clase asociada no existe.');
+        });
+
         /** Una categoría de edad como la da la API (cría del dragón azul, *Manual de monstruos 1*). */
         function categoriaApi(extra: Record<string, unknown> = {}): any {
             return {
@@ -1433,6 +1496,107 @@ describe('NuevaRazaComponent', () => {
     it('manda si la raza carga como un cuadrúpedo', () => {
         component.toggleBooleanControl('cuadrupedo');
         expect(component.buildPayload().raza.cuadrupedo).toBeTrue();
+    });
+
+    describe('el VD de sus PNJ (una raza nueva)', () => {
+        it('sin DG raciales no manda el VD de la raza ni sus clases asociadas, y los ajustes vacíos van a null', () => {
+            component.form.patchValue({ vd: 3, clases_asociadas: [{ id: 1, nombre: 'Guerrero' }] });
+            component.form.controls.dgs_extra.setValue(0);
+
+            const payload = component.buildPayload();
+            expect('vd' in payload.raza).toBeFalse();
+            expect('clases_asociadas' in payload).toBeFalse();
+            expect(payload.raza).toEqual(jasmine.objectContaining({ vd_mod_clases_pj: null, vd_mod_clases_pnj: null }));
+            // Escondido, el VD no impide guardar aunque no valga.
+            component.form.patchValue({ vd: -2 });
+            expect(component.form.controls.vd.valid).toBeTrue();
+        });
+
+        it('manda los ajustes por clases de PJ y de PNJ, enteros, también sin DG raciales (el drow, +1 y 0)', () => {
+            component.form.patchValue({ vd_mod_clases_pj: 1, vd_mod_clases_pnj: 0 });
+            expect(component.buildPayload().raza).toEqual(jasmine.objectContaining({ vd_mod_clases_pj: 1, vd_mod_clases_pnj: 0 }));
+
+            component.form.patchValue({ vd_mod_clases_pj: null, vd_mod_clases_pnj: -3 });
+            expect(component.buildPayload().raza).toEqual(jasmine.objectContaining({ vd_mod_clases_pj: null, vd_mod_clases_pnj: -3 }));
+
+            component.form.patchValue({ vd_mod_clases_pnj: 1.5 });
+            expect(component.form.controls.vd_mod_clases_pnj.hasError('entero')).toBeTrue();
+            expect(component.form.valid).toBeFalse();
+        });
+
+        it('con DG raciales manda el VD de la raza (mayor que 0, hasta 999,99; vacío, sin dato) y sus clases asociadas', () => {
+            component.form.patchValue({ dgs_extra: 4, id_tipo_dado: 22, id_tipo_criatura_dgs: 3 });
+            let payload = component.buildPayload();
+            expect(payload.raza.vd).toBeNull();
+            expect(payload.clases_asociadas).toEqual([]);
+
+            component.form.patchValue({ vd: 0.5 });
+            expect(component.form.controls.vd.valid).toBeTrue();
+            expect(component.buildPayload().raza.vd).toBe(0.5);
+            component.form.patchValue({ vd: 2.456 });
+            expect(component.buildPayload().raza.vd).toBe(2.46);
+            [0, -1, 1000].forEach((vd) => {
+                component.form.patchValue({ vd });
+                expect(component.form.controls.vd.hasError('vdDeRaza')).withContext(`${vd}`).toBeTrue();
+            });
+            component.form.patchValue({ vd: 999.99 });
+            expect(component.form.controls.vd.valid).toBeTrue();
+            component.form.patchValue({ vd: 3 });
+
+            component.anadirClaseAsociada(1);
+            component.anadirClaseAsociada(1);
+            component.anadirClaseAsociada(404);
+            expect(component.clasesAsociadas).toEqual([{ id: 1, nombre: 'Guerrero' }]);
+            payload = component.buildPayload();
+            expect(payload.raza.vd).toBe(3);
+            expect(payload.clases_asociadas).toEqual([1]);
+
+            component.quitarClaseAsociada({ id: 1 });
+            expect(component.buildPayload().clases_asociadas).toEqual([]);
+        });
+
+        it('no ofrece como asociadas las clases de PNJ (`Clase_pnj`), que nunca lo son', async () => {
+            const claseSvc = TestBed.inject(ClaseService) as any;
+            claseSvc.getClases = () => of([
+                { Id: 1, Nombre: 'Guerrero' },
+                { Id: 2, Nombre: 'Combatiente', Clase_pnj: true },
+                { Id: 3, Nombre: 'Hechicero', Clase_pnj: false },
+            ]);
+            await recrearComponenteConUid('');
+
+            expect(component.opcionesClasesAsociadas.map((opcion) => opcion.nombre)).toEqual(['Guerrero', 'Hechicero']);
+            expect(component.opcionesClasesLanzamiento.map((opcion) => opcion.nombre)).toContain('Combatiente');
+        });
+
+        it('se crea con su VD y sus clases asociadas', async () => {
+            component.form.patchValue({ dgs_extra: 3, id_tipo_dado: 22, id_tipo_criatura_dgs: 3, vd: 2, vd_mod_clases_pnj: -2 });
+            component.anadirClaseAsociada(1);
+            spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+            await component.guardarRaza();
+
+            expect(razaSvc.crearRaza).toHaveBeenCalledWith(jasmine.objectContaining({
+                raza: jasmine.objectContaining({ vd: 2, vd_mod_clases_pj: null, vd_mod_clases_pnj: -2 }),
+                clases_asociadas: [1],
+            }));
+        });
+
+        it('un borrador guarda el VD y las clases asociadas', async () => {
+            draftSvc.guardarBorradorLocal('uid-vd', crearDraftContenido({
+                formValue: {
+                    ...crearDraftContenido().formValue,
+                    dgs_extra: 2, id_tipo_dado: 22, id_tipo_criatura_dgs: 3, vd: 1, vd_mod_clases_pj: 2,
+                    clases_asociadas: [{ id: 1, nombre: 'Guerrero' }],
+                },
+            }));
+            spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+            await recrearComponenteConUid('uid-vd');
+
+            expect(component.form.controls.vd.value).toBe(1);
+            expect(component.buildPayload().clases_asociadas).toEqual([1]);
+            expect(component.buildPayload().raza.vd_mod_clases_pj).toBe(2);
+        });
     });
 
     describe('una raza nueva que crece por edades', () => {
