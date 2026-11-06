@@ -34,6 +34,7 @@ describe('SocialHubComponent', () => {
         sessionStorage.clear();
         isLoggedIn$ = new BehaviorSubject<boolean>(false);
         campanaSvc = jasmine.createSpyObj<CampanaService>('CampanaService', [
+            'avisarVista',
             'listSocialCampaigns',
             'getCampaignDetail',
             'getCampaignConversation',

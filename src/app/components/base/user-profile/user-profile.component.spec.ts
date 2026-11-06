@@ -179,6 +179,7 @@ describe('UserProfileComponent', () => {
                 {
                     provide: CampanaService,
                     useValue: jasmine.createSpyObj<CampanaService>('CampanaService', [
+                        'avisarVista',
                         'listProfileCampaigns',
                         'listSocialCampaigns',
                         'listVisibleCampaigns',

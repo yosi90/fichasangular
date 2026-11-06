@@ -50,6 +50,19 @@ describe('CampanaService', () => {
         );
     });
 
+    it('avisarVista manda POST /campanas/{id}/vista sin cuerpo y no se queja si falla', async () => {
+        httpMock.post.and.returnValue(of(null));
+        service.avisarVista(7);
+        await new Promise((resolver) => setTimeout(resolver));
+        expect(httpMock.post).toHaveBeenCalledTimes(1);
+        expect(httpMock.post.calls.mostRecent().args[0]).toMatch(/campanas\/7\/vista$/);
+        expect(httpMock.post.calls.mostRecent().args[1]).toBeNull();
+
+        httpMock.post.and.returnValue(throwError(() => new Error('sin red')));
+        expect(() => service.avisarVista(8)).not.toThrow();
+        await new Promise((resolver) => setTimeout(resolver));
+    });
+
     it('createCampaign notifica cambio local sin rehidratar una cache RTDB derivada', async () => {
         httpMock.post.and.returnValue(of({ idCampana: 7, nombre: 'Campaña nueva' }));
 

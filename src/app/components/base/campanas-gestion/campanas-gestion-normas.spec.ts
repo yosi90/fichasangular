@@ -20,7 +20,7 @@ describe('CampanasGestionEstado con las normas de Rol pendientes', () => {
             normasDeCreacionPendientes: true,
             asegurarNormasDeCreacion: jasmine.createSpy('asegurarNormasDeCreacion').and.resolveTo(true),
         };
-        campanaSvc = jasmine.createSpyObj('CampanaService', ['createTrama', 'getCampaignDetail', 'listProfileCampaigns', 'watchCampaignSummaries']);
+        campanaSvc = jasmine.createSpyObj('CampanaService', ['createTrama', 'getCampaignDetail', 'listProfileCampaigns', 'watchCampaignSummaries', 'avisarVista']);
         campanaSvc.createTrama.and.resolveTo({});
         campanaSvc.getCampaignDetail.and.resolveTo(null);
         toast = jasmine.createSpyObj('AppToastService', ['showSuccess', 'showError', 'showInfo']);

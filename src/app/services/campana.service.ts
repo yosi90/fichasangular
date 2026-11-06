@@ -93,6 +93,17 @@ export class CampanaService {
         }
     }
 
+    /**
+     * La persona ha abierto la campaña (`POST /campanas/{id}/vista`): es su última actividad en ella, la que ordena las
+     * «Campañas recientes» de 3.5 Companion. Se manda al abrirla, no al leerla para otra cosa. Sin esperar: si falla, no
+     * se dice nada (no cambia nada de lo que se ve).
+     */
+    avisarVista(idCampana: number): void {
+        void this.buildAuthHeaders()
+            .then((headers) => firstValueFrom(this.http.post(`${this.campanasBaseUrl}/${idCampana}/vista`, null, { headers })))
+            .catch(() => undefined);
+    }
+
     /** La conversación de la campaña en el chat de la plataforma (`GET /campanas/{id}/conversacion`). */
     async getCampaignConversation(idCampana: number): Promise<{ conversacionId: string; idExterno: string; }> {
         try {

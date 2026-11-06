@@ -45,7 +45,7 @@ describe('CampanasGestionComponent', () => {
     });
 
     beforeEach(async () => {
-        campanaSvc = jasmine.createSpyObj<CampanaService>('CampanaService', ['listProfileCampaigns', 'getCampaignDetail', 'watchCampaignSummaries', 'updateCampaign']);
+        campanaSvc = jasmine.createSpyObj<CampanaService>('CampanaService', ['listProfileCampaigns', 'getCampaignDetail', 'watchCampaignSummaries', 'updateCampaign', 'avisarVista']);
         campanaSvc.getCampaignDetail.and.resolveTo(detalle() as any);
         campanaSvc.updateCampaign.and.resolveTo({} as any);
         campanaSvc.watchCampaignSummaries.and.returnValue(() => undefined);
@@ -105,6 +105,12 @@ describe('CampanasGestionComponent', () => {
         expect(elegidas[0].getAttribute('aria-pressed')).toBe('true');
         expect(Array.from(raiz().querySelectorAll('.campanas-tarjeta app-icono-rol')).map((i) => i.getAttribute('tipo'))).toEqual(['campana', 'campana']);
         expect(raiz().querySelector('.campanas-cabecera app-icono-rol')?.getAttribute('tipo')).toBe('campana');
+    });
+
+    it('al abrir una campaña avisa a la API de que la ha abierto (su última actividad en ella)', async () => {
+        await elegir(7);
+
+        expect(campanaSvc.avisarVista).toHaveBeenCalledOnceWith(7);
     });
 
     it('lleva la cabecera de ficha con la campaña y las tres pestañas, con la política abierta al elegirla', async () => {

@@ -377,9 +377,15 @@ export class CampanasGestionEstado implements OnDestroy {
     }
 
     async seleccionarCampana(campaignId: number): Promise<void> {
-        await this.loadCampaignSelection(campaignId, false);
+        await this.abrirCampana(campaignId);
         this.campaignWorkspaceMode = 'idle';
         this.campaignWorkspaceTab = 'usuarios';
+    }
+
+    /** La persona abre una campaña: se carga y se avisa a la API de que la ha abierto (su última actividad en ella). */
+    private async abrirCampana(campaignId: number): Promise<void> {
+        await this.loadCampaignSelection(campaignId, false);
+        this.campanaSvc.avisarVista(campaignId);
     }
 
     /** «Nueva campaña»: si faltan las normas de Rol, antes su ventana; sin aceptarlas, no se abre el editor. */
@@ -400,7 +406,7 @@ export class CampanasGestionEstado implements OnDestroy {
     async abrirConfiguracionCampana(campaignId: number, event?: Event): Promise<void> {
         event?.preventDefault();
         event?.stopPropagation();
-        await this.loadCampaignSelection(campaignId, false);
+        await this.abrirCampana(campaignId);
         this.campaignWorkspaceMode = 'config';
         this.campaignWorkspaceTab = 'usuarios';
     }
@@ -408,7 +414,7 @@ export class CampanasGestionEstado implements OnDestroy {
     async abrirUsuariosCampana(campaignId: number, event?: Event): Promise<void> {
         event?.preventDefault();
         event?.stopPropagation();
-        await this.loadCampaignSelection(campaignId, false);
+        await this.abrirCampana(campaignId);
         this.campaignWorkspaceMode = 'peopleStories';
         this.campaignWorkspaceTab = 'usuarios';
     }
@@ -416,7 +422,7 @@ export class CampanasGestionEstado implements OnDestroy {
     async abrirHistoriasCampana(campaignId: number, event?: Event): Promise<void> {
         event?.preventDefault();
         event?.stopPropagation();
-        await this.loadCampaignSelection(campaignId, false);
+        await this.abrirCampana(campaignId);
         this.campaignWorkspaceMode = 'peopleStories';
         this.campaignWorkspaceTab = 'historias';
     }
