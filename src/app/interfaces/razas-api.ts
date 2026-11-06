@@ -1,4 +1,5 @@
 import { Raza } from "./raza";
+import { ArmaNaturalCreate } from "./arma-natural";
 
 export interface RazaCreateCore {
     nombre: string;
@@ -168,6 +169,8 @@ export interface RazaCreateRequest {
     raciales?: RazaCreateRacial[];
     sortilegios?: RazaCreateSortilegio[];
     competencias?: RazaCreateCompetencias;
+    /** Las armas naturales como dato; si no viene, el alta no deja ninguna y la edición conserva las que hay. */
+    armas_naturales?: ArmaNaturalCreate[];
     /** Las listas que lanza además como arcanas con el lanzamiento racial: `{ id_clase }` o `{ id_dominio }`. */
     lanzamiento_listas?: RazaCreateListaLanzamiento[];
     /** Las categorías de edad de una raza por edades, en su orden (vacía en las demás). Desde el hito 3 (2026-10-31). */

@@ -314,6 +314,21 @@ describe('DetallesRazaComponent', () => {
         expect(valor('Resistencia elemental')).toBeNull();
     });
 
+    it('enseña las armas naturales como dato, con la frase de la API, en lugar del texto', () => {
+        pintar({
+            Ataques_naturales: '2 garras (1d6), mordisco (1d6)',
+            Armas_naturales: [
+                { Id_arma_natural: 2, Arma_natural: 'Garra', Cantidad: 2, Dano: '1d6', Primaria: true, Texto: '2 garras 1d6' },
+                { Id_arma_natural: 1, Arma_natural: 'Mordisco', Cantidad: 1, Dano: '1d6', Primaria: false, Texto: 'Mordisco 1d6 (ataque secundario)' },
+            ],
+        });
+
+        const ataques = seccion('Ataques naturales');
+        expect(Array.from(ataques?.querySelectorAll('.ficha-lista__item') ?? []).map((item) => limpio(item)))
+            .toEqual(['2 garras 1d6', 'Mordisco 1d6 (ataque secundario)']);
+        expect(ataques?.querySelector('app-texto-manual')).toBeNull();
+    });
+
     it('enseña la descripción de la raza, con sus párrafos, antes de los ataques naturales', () => {
         pintar({
             Descripcion: 'Los goliats viven en las cumbres.\n\nCompiten en todo.',

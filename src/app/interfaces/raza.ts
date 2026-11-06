@@ -4,6 +4,7 @@ import { Comodin } from "./comodin";
 import { AptitudSortilega } from "./aptitud-sortilega";
 import { DoteContextual } from "./dote-contextual";
 import { Id_nombre } from "./genericas";
+import { ArmaNatural } from "./arma-natural";
 import { IdiomaDetalle } from "./idioma";
 import { ManualReferencia } from "./manual";
 import { Maniobrabilidad } from "./maniobrabilidad";
@@ -138,6 +139,8 @@ export interface CategoriaEdadRaza {
     Velocidades: { Correr: number; Nadar: number; Volar: number; Trepar: number; Excavar: number; };
     Maniobrabilidad: Id_nombre | null;
     Ataques_naturales: string | null;
+    /** Las de esta edad como dato (a esa edad sustituyen a las de la raza). */
+    Armas_naturales?: ArmaNatural[];
     Rd: string | null;
     Rc: string | null;
     Re: string | null;
@@ -325,6 +328,11 @@ export interface Raza {
     Vd_mod_clases_pj?: number | null;
     Vd_mod_clases_pnj?: number | null;
     Clases_asociadas?: Id_nombre[];
+    /**
+     * Las armas naturales como dato (`Ataques_naturales` es su descripción). Resuelta a una edad, las de esa edad. Las
+     * cuenta la creación para el prerrequisito `armas_naturales` de las dotes (`contarArmasNaturales`).
+     */
+    Armas_naturales?: ArmaNatural[];
     Espacio: number;
     Alcance: number;
     Tipo_criatura: TipoCriatura;

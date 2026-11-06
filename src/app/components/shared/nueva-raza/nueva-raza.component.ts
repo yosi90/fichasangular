@@ -79,6 +79,7 @@ import { idTamanoMediano } from 'src/app/services/utils/tamano-efectivo';
 import { TEXTO_SIN_ESPECIFICAR, USOS_SORTILEGA_INICIALES, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
+import { FilaArmaNatural, cuerpoDeArmasNaturales, filasDeArmasNaturales, problemaDeArmasNaturales } from 'src/app/services/utils/armas-naturales';
 import {
     EdadesDeRaza,
     categoriaVacia,
@@ -244,6 +245,7 @@ const CAMPOS_RAZA: CamposDeFormulario = {
     descripcion: { etiqueta: 'Descripción', paso: 0 },
     id_alineamiento: { etiqueta: 'Alineamiento', paso: 0 },
     ataques_naturales: { etiqueta: 'Ataques naturales', paso: 0 },
+    armas_naturales: { etiqueta: 'Armas naturales', paso: 0 },
     id_tamano: { etiqueta: 'Tamaño', paso: 0 },
     id_tipo_criatura: { etiqueta: 'Tipo de criatura', paso: 0 },
     subtipos: { etiqueta: 'Subtipos', paso: 0 },
@@ -539,6 +541,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         vd_mod_clases_pj: [null as number | null, [entero, Validators.min(-10), Validators.max(10)]],
         vd_mod_clases_pnj: [null as number | null, [entero, Validators.min(-10), Validators.max(10)]],
         clases_asociadas: [[] as FilaDeLista[]],
+        // Las armas naturales como dato (`armas_naturales`; el texto de `ataques_naturales` es su descripción).
+        armas_naturales: [[] as FilaArmaNatural[]],
         id_tipo_criatura: [0, [Validators.min(1)]],
         ataque_base: [0],
         fortaleza: [0],
@@ -816,6 +820,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             },
             subtipos: idsUnicosOrdenados(this.subtiposSeleccionados),
             ...(conDgs ? { clases_asociadas: idsUnicosOrdenados(this.clasesAsociadas.map((fila) => fila.id)) } : {}),
+            armas_naturales: cuerpoDeArmasNaturales(this.armasNaturales, false),
             idiomas: idsUnicosOrdenados(this.idiomasSeleccionados),
             idiomas_adicionales: this.idiomasAdicionalesCualquiera ? [] : idsUnicosOrdenados(this.idiomasAdicionales.map((fila) => fila.id)),
             habilidades: {
@@ -1267,6 +1272,15 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     /** Las clases asociadas de la raza (MM, pág. 294: un nivel de una de ellas suma +1 al VD de un PNJ con DG raciales). */
+    get armasNaturales(): FilaArmaNatural[] {
+        return this.form.controls.armas_naturales.value ?? [];
+    }
+
+    cambiarArmasNaturales(filas: FilaArmaNatural[]): void {
+        this.form.controls.armas_naturales.setValue(filas);
+        this.form.controls.armas_naturales.markAsDirty();
+    }
+
     get clasesAsociadas(): FilaDeLista[] {
         return this.form.controls.clases_asociadas.value ?? [];
     }
@@ -2270,6 +2284,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private validarReglasDominio(): string | null {
+        const problemaArmas = problemaDeArmasNaturales(this.armasNaturales, false);
+        if (problemaArmas) {
+            this.pasoActivoIndex = CAMPOS_RAZA['armas_naturales'].paso;
+            return problemaArmas;
+        }
         if (this.edicion.nombreOcupado(this.razasExistentes, this.form.controls.nombre.value ?? ''))
             return 'Ya existe una raza con ese nombre.';
         if (this.form.controls.mutada.value === true && !this.tienePrerrequisitosMutacion())
@@ -2627,6 +2646,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             vd_mod_clases_pj: null,
             vd_mod_clases_pnj: null,
             clases_asociadas: [],
+            armas_naturales: [],
             id_tipo_criatura: 0,
             ataque_base: 0,
             fortaleza: 0,
@@ -2759,6 +2779,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             vd_mod_clases_pj: toIntOrNull(raza.Vd_mod_clases_pj),
             vd_mod_clases_pnj: toIntOrNull(raza.Vd_mod_clases_pnj),
             clases_asociadas: filasDeIds(raza.Clases_asociadas),
+            armas_naturales: filasDeArmasNaturales(raza.Armas_naturales),
             id_tipo_criatura: this.numero(raza.Tipo_criatura?.Id),
             ataque_base: this.numero(dgs?.Ataque_base),
             fortaleza: this.numero(dgs?.Fortaleza),

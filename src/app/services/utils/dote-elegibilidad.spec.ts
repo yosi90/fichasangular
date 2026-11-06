@@ -828,6 +828,17 @@ describe('dote-elegibilidad', () => {
             expect(evaluarElegibilidadDote({ dote, contexto: crearContextoBase({ reservaPsionica: 2, nivelPoderPsionicoMaximo: 1 }) }).estado).toBe('blocked_failed');
         });
 
+        it('Ataque múltiple pide tres armas naturales o más (Manual de monstruos 1, pág. 303)', () => {
+            const ataqueMultiple = crearDoteBase({ Nombre: 'Ataque múltiple', Prerrequisitos: {
+                armas_naturales: [{ Cantidad: 3, Opcional: 0, Frase: 'Tres armas naturales o más' }],
+            } });
+            expect(evaluarElegibilidadDote({ dote: ataqueMultiple, contexto: crearContextoBase({ armasNaturales: 3 }) }).estado).toBe('eligible');
+            const elfo = evaluarElegibilidadDote({ dote: ataqueMultiple, contexto: crearContextoBase({ armasNaturales: 0 }) });
+            expect(elfo.estado).toBe('blocked_failed');
+            expect(elfo.razones.join(' ')).toContain('Tres armas naturales o más');
+            expect(evaluarElegibilidadDote({ dote: ataqueMultiple, contexto: crearContextoBase() }).estado).toBe('blocked_failed');
+        });
+
         it('una dote que «cuenta como» otra la sustituye en los prerrequisitos', () => {
             const catalogo: Record<number, Dote> = { 1087: crearDoteBase({ Id: 1087, Nombre: 'Dureza azur', Cuenta_como: [{ Id: 43, Nombre: 'Dureza' }] }) };
             const dotes = dotesConCuentaComo([{ id: 1087, nombre: 'Dureza azur', idExtra: 0, extra: '' }], (id) => catalogo[id]);

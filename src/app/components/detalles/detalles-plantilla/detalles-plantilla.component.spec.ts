@@ -241,6 +241,20 @@ describe('DetallesPlantillaComponent', () => {
         expect(datos(seccion('Movimiento'))).toEqual([]);
     });
 
+    it('enseña las armas naturales que da o quita, con su forma y su modo, antes de sus reglas en «Ataques»', () => {
+        component.plantilla = crearPlantilla({
+            Ataques: 'Gana dos ataques de garra si no los tiene.',
+            Armas_naturales: [
+                { Id_arma_natural: 2, Arma_natural: 'Garra', Cantidad: 2, Dano: null, Primaria: true, Texto: '2 garras (si no tiene ya)', Modo: 'minimo', Forma: 'todas' },
+            ],
+        });
+        fixture.detectChanges();
+
+        expect(titulos()).toContain('Armas naturales');
+        expect(titulos().indexOf('Armas naturales')).toBeLessThan(titulos().indexOf('Ataques'));
+        expect(limpio(seccion('Armas naturales'))).toContain('2 garras (si no tiene ya)');
+    });
+
     it('enseña las habilidades, los puntos de habilidad del animal y las aptitudes raciales y ataques especiales, enlazados', () => {
         const racialSpy = spyOn(component.racialDetalles, 'emit');
         const resistencia = { Id: 21, Nombre: 'Resistencia al frío' } as any;

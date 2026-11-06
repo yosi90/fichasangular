@@ -119,10 +119,15 @@
                                 </section>
 
                                 <mat-form-field appearance="fill" class="span-2">
-                                    <mat-label>Ataques naturales</mat-label>
+                                    <mat-label>Ataques naturales (descripción)</mat-label>
                                     <textarea matInput rows="4" maxlength="1000" formControlName="ataques_naturales"></textarea>
                                     <mat-error *ngIf="form.controls.ataques_naturales.invalid">Déjalo vacío o escribe entre 5 y 1000 caracteres.</mat-error>
                                 </mat-form-field>
+
+                                <!-- Las armas naturales como dato: las cuenta la creación (Ataque múltiple pide tres o más). -->
+                                <app-armas-naturales-editor class="span-2" [filas]="armasNaturales" [deshabilitado]="guardando"
+                                    [error]="errores.mensajeDe('armas_naturales')" (filasChange)="cambiarArmasNaturales($event)">
+                                </app-armas-naturales-editor>
 
                                 <section class="form-panel physical-panel span-2">
                                     <h3 class="form-panel-title">Cuerpo</h3>

@@ -1,4 +1,5 @@
 import { Alineamiento } from "./alineamiento";
+import { ArmaNatural } from "./arma-natural";
 import { Caracteristica } from "./caracteristica";
 import { Conjuro } from "./conjuro";
 import { ManualReferencia } from "./manual";
@@ -178,6 +179,8 @@ export interface MonstruoDetalle {
     Subtipos: MonstruoSubtipoRef[];
     Raciales: RacialDetalle[];
     Ataques_especiales: RacialDetalle[];
+    /** Las armas naturales como dato (`Ataque.Ataque_completo` es su descripción); los familiares y compañeros, las de su monstruo. */
+    Armas_naturales?: ArmaNatural[];
     Familiares: FamiliarMonstruoDetalle[];
     Companeros: CompaneroMonstruoDetalle[];
     Personajes_relacionados: MonstruoPersonajesRelacionados;

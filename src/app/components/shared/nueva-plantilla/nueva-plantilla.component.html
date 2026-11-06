@@ -150,6 +150,13 @@
                         </div>
                     </section>
 
+                    <!-- Las armas naturales como dato (las cuenta la creación: Ataque múltiple pide tres o más); los textos de
+                         arriba se quedan como su descripción. -->
+                    <app-armas-naturales-editor [plantilla]="true" [filas]="listas.armasNaturales" [deshabilitado]="guardando"
+                        [error]="errorDe('armas_naturales')" [class.insercion-tarjeta--cambiada]="cambiado('armas_naturales')"
+                        (filasChange)="cambiarArmasNaturales($event)">
+                    </app-armas-naturales-editor>
+
                     <section class="insercion-tarjeta">
                         <h3 class="insercion-tarjeta__titulo">Salvaciones y defensas</h3>
                         <div class="insercion-campos plantilla-campos-3">

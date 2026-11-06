@@ -53,6 +53,7 @@ export const VALOR_DE_LECTURA: Partial<Readonly<Record<PrerequisiteType, string>
     ataque_base: 'Ataque_base',
     caracteristica: 'Cantidad',
     conjuros_escuela: 'Cantidad',
+    armas_naturales: 'Cantidad',
     dg: 'Cantidad',
     escuela_nivel: 'Nivel',
     habilidad: 'Cantidad',

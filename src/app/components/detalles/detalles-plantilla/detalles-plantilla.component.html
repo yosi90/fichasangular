@@ -24,6 +24,10 @@
         <app-ficha-seccion titulo="Combate y defensas" *ngIf="combate.length > 0">
             <app-ficha-datos [datos]="combate" [columnas]="3" [tarjeta]="false" titulo="Combate y defensas"></app-ficha-datos>
         </app-ficha-seccion>
+        <!-- Las armas naturales que da o quita, como dato (con su forma y si se suman o sustituyen); sus reglas, en «Ataques». -->
+        <app-ficha-seccion titulo="Armas naturales" *ngIf="(plantillaData.Armas_naturales?.length ?? 0) > 0">
+            <app-ficha-armas-naturales [armas]="plantillaData.Armas_naturales ?? []"></app-ficha-armas-naturales>
+        </app-ficha-seccion>
         <app-ficha-seccion titulo="Ataques" [texto]="plantillaData.Ataques"></app-ficha-seccion>
         <app-ficha-seccion titulo="Ataque completo" [texto]="plantillaData.Ataque_completo"></app-ficha-seccion>
         <app-ficha-seccion titulo="Movimiento" *ngIf="hayMovimiento">

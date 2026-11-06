@@ -1,0 +1,20 @@
+@use '../../../../assets/css/variables' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+@use '../../../../assets/css/preformas/inserciones' as inserciones
+
+// Las armas naturales de una raza o una plantilla dentro del marco de las inserciones: la lista de catálogo común y, en
+// cada fila, sus campos (los chips y los campos son los del marco).
+:host
+    @include inserciones.insercion-form-base
+    display: block
+
+.arma-natural__corto
+    max-width: 140px
+
+.arma-natural__chip
+    align-self: center
+
+.arma-natural__problema
+    flex: 1 1 100%
+    margin: 0
+    color: $ficha-aviso

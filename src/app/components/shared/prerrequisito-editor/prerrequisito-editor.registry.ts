@@ -160,7 +160,8 @@ function buildValuePayload(row: PrerequisiteRowModel): Record<string, any> {
     const valor = toInt(row.valor, 0);
     const base = buildBase(row);
 
-    if (tipo === 'ataque_base' || tipo === 'dg' || tipo === 'nivel' || tipo === 'nivel_max' || tipo === 'reserva_psionica')
+    if (tipo === 'ataque_base' || tipo === 'dg' || tipo === 'nivel' || tipo === 'nivel_max' || tipo === 'reserva_psionica'
+        || tipo === 'armas_naturales')
         return { ...base, Cantidad: valor };
 
     return { ...base, Nivel: valor };
@@ -301,6 +302,12 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
         valueLabel: 'Pasa a ser',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
+    }),
+    // Armas naturales mínimas (Ataque múltiple, tres o más): las cuenta la creación en la raza y sus plantillas.
+    definition('armas_naturales', 'value-only', {
+        valueLabel: 'Armas naturales minimas',
+        isComplete: isValueOnlyComplete,
+        toPayload: (row) => buildValuePayload(row),
     }),
     definition('dg', 'value-only', {
         valueLabel: 'DG minimos',

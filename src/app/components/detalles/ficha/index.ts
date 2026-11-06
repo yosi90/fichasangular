@@ -1,3 +1,4 @@
+import { FichaArmasNaturalesComponent } from './ficha-armas-naturales.component';
 import { FichaBloqueComponent } from './ficha-bloque.component';
 import { FichaCabeceraComponent } from './ficha-cabecera.component';
 import { FichaCasillasComponent } from './ficha-casillas.component';
@@ -33,4 +34,5 @@ export const FICHA_DETALLE_COMPONENTES = [
     FichaCaracteristicasComponent,
     FichaFranjaComponent,
     FichaCasillasComponent,
+    FichaArmasNaturalesComponent,
 ];

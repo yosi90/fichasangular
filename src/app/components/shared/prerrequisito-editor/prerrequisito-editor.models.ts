@@ -28,6 +28,7 @@ export type PrerequisiteType =
     | 'alineamiento_prohibido'
     | 'alineamiento_requerido'
     | 'aptitud_especial'
+    | 'armas_naturales'
     | 'ataque_base'
     | 'caracteristica'
     | 'clase_especial'

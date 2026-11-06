@@ -17,6 +17,7 @@ import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
 import { textoOSinEspecificar } from './texto-sin-especificar';
 import { idsUnicosOrdenados, toInt, toNullableText, toText } from './normalizacion';
+import { FilaArmaNatural, cuerpoDeArmasNaturales, filasDeArmasNaturales } from './armas-naturales';
 
 // El formulario de las plantillas (lienzo «Plantillas: crear y modificar», aprobado el 2026-10-30): los pasos, los
 // campos con su etiqueta y su paso, el cuerpo de `POST /plantillas/add` (contrato: «Endpoint: GET /plantillas» y
@@ -109,6 +110,7 @@ export const CAMPOS_PLANTILLA: CamposDeFormulario = {
     ca: { etiqueta: 'CA', paso: 1 },
     ataques: { etiqueta: 'Ataques', paso: 1 },
     ataque_completo: { etiqueta: 'Ataque completo', paso: 1 },
+    armas_naturales: { etiqueta: 'Armas naturales', paso: 1 },
     ajuste_nivel: { etiqueta: 'Ajuste de nivel', paso: 1 },
     fortaleza: { etiqueta: 'Fortaleza', paso: 1 },
     reflejos: { etiqueta: 'Reflejos', paso: 1 },
@@ -190,6 +192,8 @@ export interface ListasPlantilla {
     habilidades: FilaHabilidadPlantilla[];
     subtipos: FilaNombrada[];
     prerrequisitos: PrerequisiteRowModel[];
+    /** Las armas naturales que da o quita, con su forma y su modo (`armas_naturales` del cuerpo). */
+    armasNaturales: FilaArmaNatural[];
 }
 
 /** El formulario vacío de una plantilla nueva: adquirida, homebrew, sin cambios de cuerpo ni de valores. */
@@ -251,7 +255,7 @@ export function valorPlantillaNueva(): PlantillaFormularioValor {
 }
 
 export function listasPlantillaVacias(): ListasPlantilla {
-    return { raciales: [], ataquesEspeciales: [], sortilegas: [], dotes: [], habilidades: [], subtipos: [], prerrequisitos: [] };
+    return { raciales: [], ataquesEspeciales: [], sortilegas: [], dotes: [], habilidades: [], subtipos: [], prerrequisitos: [], armasNaturales: [] };
 }
 
 /** El formulario de una plantilla que ya existe (`GET /plantillas/<id>`, normalizada). */
@@ -325,6 +329,7 @@ export function listasDesdePlantilla(plantilla: Plantilla, uid: () => string): L
     return {
         raciales: (plantilla.Raciales ?? []).map(racial).filter((fila) => fila.id > 0),
         ataquesEspeciales: (plantilla.Ataques_especiales ?? []).map(racial).filter((fila) => fila.id > 0),
+        armasNaturales: filasDeArmasNaturales(plantilla.Armas_naturales),
         sortilegas: (plantilla.Sortilegas ?? []).map((item) => ({
             uid: uid(),
             id: toInt(item?.Conjuro?.Id),
@@ -513,6 +518,7 @@ export function construirPlantillaRequest(valor: PlantillaFormularioValor, lista
         raciales: listas.raciales.filter((fila) => fila.id > 0).map((fila) => ({ id_racial: toInt(fila.id), dg: dgDesde(fila.dg) })),
         ataquesEspeciales: listas.ataquesEspeciales.filter((fila) => fila.id > 0)
             .map((fila) => ({ id_racial: toInt(fila.id), dg: dgDesde(fila.dg) })),
+        armas_naturales: cuerpoDeArmasNaturales(listas.armasNaturales ?? [], true),
     };
 }
 
@@ -526,7 +532,7 @@ const CAMPOS_DG_LIC = [
  * ahora), en el orden de los campos. Así se marcan los campos y los pasos y se escribe «N cambios: …».
  */
 export function camposCambiados(antes: PlantillaCreateRequest, ahora: PlantillaCreateRequest, antesConDgLic: boolean, ahoraConDgLic: boolean): string[] {
-    const cambiados = cambiosEntreCuerpos(antes, ahora, 'plantilla', ['raciales', 'ataquesEspeciales', 'sortilegas', 'dotes', 'habilidades', 'subtipos']);
+    const cambiados = cambiosEntreCuerpos(antes, ahora, 'plantilla', ['raciales', 'ataquesEspeciales', 'sortilegas', 'dotes', 'habilidades', 'subtipos', 'armas_naturales']);
     if (antesConDgLic !== ahoraConDgLic)
         cambiados.add('con_dg_lic');
     const familias = Object.keys(ahora.prerrequisitos) as (keyof PlantillaPrerrequisitosRequest)[];

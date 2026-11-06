@@ -34,6 +34,7 @@ import { normalizeRacial } from "./racial-mapper";
 import { toArray, toBoolean, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizeManualLegacy } from './manual-mapper';
+import { leerArmasNaturales } from './armas-naturales';
 
 function normalizeDepth(depth: number): number {
     const parsed = Number(depth);
@@ -285,6 +286,7 @@ function normalizeMonstruoBase(raw: any, depth: number): MonstruoDetalle {
         Subtipos: toArray(raw?.Subtipos).map((item) => normalizeSubtipo(item)),
         Raciales: normalizeRacialArray(raw?.Raciales),
         Ataques_especiales: normalizeRacialArray(raw?.Ataques_especiales),
+        Armas_naturales: leerArmasNaturales(raw?.Armas_naturales),
         Familiares: nestedDepth >= 0
             ? normalizeFamiliarMonstruoDetalleArray(raw?.Familiares, nestedDepth)
             : [],

@@ -69,6 +69,7 @@ import {
     getPrerequisiteTypeOptions,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { OpcionCatalogo, opcionesDeCatalogo, opcionesPorId } from '../catalogo-buscador/catalogo-buscador.component';
+import { FilaArmaNatural, problemaDeArmasNaturales } from 'src/app/services/utils/armas-naturales';
 
 /** Las listas de rasgos del paso 3 (las tarjetas). */
 export type ListaRasgos = 'raciales' | 'ataquesEspeciales' | 'sortilegas' | 'dotes' | 'habilidades' | 'subtipos';
@@ -353,6 +354,12 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         this.alCambiar();
     }
 
+    /** Las armas naturales (`<app-armas-naturales-editor>`), con su forma y su modo. */
+    cambiarArmasNaturales(filas: FilaArmaNatural[]): void {
+        this.listas.armasNaturales = filas;
+        this.alCambiar();
+    }
+
     quitarRasgo(lista: ListaRasgos, uid: string): void {
         (this.listas as unknown as Record<ListaRasgos, { uid: string; }[]>)[lista] = this.listas[lista].filter((fila) => fila.uid !== uid);
         this.alCambiar();
@@ -413,6 +420,12 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         this.form.markAllAsTouched();
         if (this.form.invalid) {
             this.errores.irAlPrimerError();
+            return;
+        }
+        const problemaArmas = problemaDeArmasNaturales(this.listas.armasNaturales, true);
+        if (problemaArmas) {
+            this.errores.global = problemaArmas;
+            this.pasoActual = CAMPOS_PLANTILLA['armas_naturales'].paso;
             return;
         }
         if (arePrerequisitesIncomplete(this.listas.prerrequisitos, this.prerrequisitosTipos)) {
