@@ -69,6 +69,19 @@
                         </mat-form-field>
                     </div>
                 </div>
+
+                <div class="panel-card">
+                    <span class="panel-title">
+                        <mat-icon>person_add</mat-icon>
+                        En la creación del personaje
+                    </span>
+                    <div class="otorga-fila" *ngFor="let marca of marcasOtorga">
+                        <mat-chip-listbox class="boolean-chips" [attr.aria-label]="marca.etiqueta">
+                            <mat-chip-option [selected]="form.controls[marca.clave].value === true" (click)="toggleBoolean(marca.clave)">{{marca.etiqueta}}</mat-chip-option>
+                        </mat-chip-listbox>
+                        <span class="otorga-ayuda">{{marca.ayuda}}</span>
+                    </div>
+                </div>
             </div>
 
             <div class="insercion-paso" [hidden]="pasoActual !== 1">

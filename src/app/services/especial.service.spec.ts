@@ -1,6 +1,6 @@
 import { of } from 'rxjs';
 import { EspecialClaseMutationRequest } from '../interfaces/especial';
-import { EspecialService } from './especial.service';
+import { EspecialService, normalizeEspecial } from './especial.service';
 import { simularTokenApi } from 'src/testing/simular-token-api';
 
 describe('EspecialService', () => {
@@ -37,6 +37,9 @@ describe('EspecialService', () => {
             },
             id_subtipo: 0,
             oficial: true,
+            otorga_dote: false,
+            otorga_familiar: true,
+            otorga_companero: false,
         },
         extras: [{ id_extra: 4, orden: 1 }],
         habilidades: [{ id_habilidad: 8, id_extra: -1, rangos: 2 }],
@@ -126,6 +129,28 @@ describe('EspecialService', () => {
         );
         expect(response.idEspecial).toBe(77);
         expect(response.especial.Oficial).toBeFalse();
+    });
+
+    it('lee lo que otorga el especial en la creación (Otorga_dote, Otorga_familiar, Otorga_companero)', () => {
+        expect(normalizeEspecial({ Id: 5, Otorga_dote: true, Otorga_familiar: false, Otorga_companero: 1 })).toEqual(jasmine.objectContaining({
+            Otorga_dote: true,
+            Otorga_familiar: false,
+            Otorga_companero: true,
+        }));
+        expect(normalizeEspecial({ Id: 5 })).toEqual(jasmine.objectContaining({
+            Otorga_dote: false,
+            Otorga_familiar: false,
+            Otorga_companero: false,
+        }));
+    });
+
+    it('sin especial en la respuesta, lo que otorga sale del cuerpo enviado', async () => {
+        const { service, http } = createService();
+        http.post.and.returnValue(of({ message: 'Creado', idEspecial: 78 }));
+
+        const response = await service.crearEspecial(payload);
+
+        expect(response.especial).toEqual(jasmine.objectContaining({ Otorga_dote: false, Otorga_familiar: true, Otorga_companero: false }));
     });
 });
 

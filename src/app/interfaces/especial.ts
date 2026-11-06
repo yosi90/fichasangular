@@ -93,6 +93,10 @@ export interface EspecialClaseMutationCore {
     };
     id_subtipo: number;
     oficial: boolean;
+    /** Lo que da en la creación del personaje: una dote adicional, un familiar o un compañero animal. */
+    otorga_dote: boolean;
+    otorga_familiar: boolean;
+    otorga_companero: boolean;
 }
 
 export interface EspecialClaseMutationExtra {
@@ -140,6 +144,12 @@ export interface EspecialClaseDetalle {
     Repite_mismo_extra: boolean;
     Repite_combinacion: boolean;
     Activa_extra: boolean;
+    /** Da una dote adicional en la creación (la «Dote adicional» del guerrero); el tipo de dote es el extra del nivel. */
+    Otorga_dote: boolean;
+    /** Da un familiar en la creación («Convocar a un familiar» del hechicero y del mago). */
+    Otorga_familiar: boolean;
+    /** Da un compañero animal en la creación (el del druida y el del explorador). */
+    Otorga_companero: boolean;
     Caracteristica: EspecialRefSimple;
     Bonificadores: EspecialBonificadores;
     Flags_extra: EspecialFlagsExtra;

@@ -30,6 +30,32 @@ import { alternarControl, quitarFila } from '../insercion-marco/filas-repetibles
 /** Los prerrequisitos que admite un especial: con qué actitud se puede elegir (la senda de una clase, por su alineamiento). */
 const TIPOS_PRERREQUISITO_ESPECIAL: readonly PrerequisiteType[] = ['actitud_requerido', 'actitud_prohibido'];
 
+/** Una marca de lo que da el especial en la creación del personaje: su control, que es la clave del cuerpo. */
+interface MarcaOtorga {
+    clave: 'otorga_dote' | 'otorga_familiar' | 'otorga_companero';
+    etiqueta: string;
+    ayuda: string;
+}
+
+/** Lo que la creación de personajes hace con cada marca (dotes pendientes, hueco de familiar, hueco de compañero). */
+export const MARCAS_OTORGA_ESPECIAL: readonly MarcaOtorga[] = [
+    {
+        clave: 'otorga_dote',
+        etiqueta: 'Da una dote adicional',
+        ayuda: 'Al tenerlo, el personaje elige una dote más; el tipo de dote es el extra del nivel de la clase.',
+    },
+    {
+        clave: 'otorga_familiar',
+        etiqueta: 'Da un familiar',
+        ayuda: 'Al tenerlo, la creación le deja elegir un familiar.',
+    },
+    {
+        clave: 'otorga_companero',
+        etiqueta: 'Da un compañero animal',
+        ayuda: 'Al tenerlo, la creación le deja elegir un compañero animal.',
+    },
+];
+
 interface NombreIdItem {
     Id: number;
     Nombre: string;
@@ -110,6 +136,8 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
         especialPermiteExtra: () => false,
     };
 
+    readonly marcasOtorga = MARCAS_OTORGA_ESPECIAL;
+
     readonly caracteristicas: NombreIdItem[] = [
         { Id: 0, Nombre: 'No aplica' },
         { Id: 1, Nombre: 'Fuerza' },
@@ -129,6 +157,9 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
         rep_mismo_extra: [false],
         rep_comb: [false],
         act_extra: [false],
+        otorga_dote: [false],
+        otorga_familiar: [false],
+        otorga_companero: [false],
         caracteristica: [0],
         id_caracteristica_ca: [0],
         id_subtipo: [0],
@@ -352,6 +383,9 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
                 },
                 id_subtipo: this.entero(raw.id_subtipo),
                 oficial: raw.oficial === true,
+                otorga_dote: raw.otorga_dote === true,
+                otorga_familiar: raw.otorga_familiar === true,
+                otorga_companero: raw.otorga_companero === true,
             },
             extras: this.extraRows
                 .filter((row) => this.entero(row.id_extra) > 0)
@@ -413,6 +447,9 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
             rep_mismo_extra: especial.Repite_mismo_extra === true,
             rep_comb: especial.Repite_combinacion === true,
             act_extra: especial.Activa_extra === true,
+            otorga_dote: especial.Otorga_dote === true,
+            otorga_familiar: especial.Otorga_familiar === true,
+            otorga_companero: especial.Otorga_companero === true,
             caracteristica: this.entero(especial.Caracteristica?.Id),
             id_caracteristica_ca: 0,
             id_subtipo: this.entero(especial.Subtipo?.Id),
@@ -484,6 +521,9 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
             rep_mismo_extra: false,
             rep_comb: false,
             act_extra: false,
+            otorga_dote: false,
+            otorga_familiar: false,
+            otorga_companero: false,
             caracteristica: 0,
             id_caracteristica_ca: 0,
             id_subtipo: 0,
