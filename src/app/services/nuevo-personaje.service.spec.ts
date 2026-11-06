@@ -2289,6 +2289,131 @@ describe('NuevoPersonajeService (clases)', () => {
         expect((service as any).resolverTamanoActualId()).toBe(6);
     });
 
+    describe('el licántropo: los DG del animal dan sus bases y la forma humana, sus características (MM, «Licántropo»)', () => {
+        // Las filas de `ataques_base` y `salvaciones` de la base (`GET /clases/catalogos/progresion`).
+        const progresiones = {
+            ataques_base: [
+                { Id: 1, Nombre: 'Bueno', Valores: ['+1', '+2', '+3', '+4', '+5', '+6/+1', '+7/+2', '+8/+3', '+9/+4', '+10/+5', '+11/+6/+1', '+12/+7/+2', '+13/+8/+3', '+14/+9/+4', '+15/+10/+5', '+16/+11/+6/+1', '+17/+12/+7/+2', '+18/+13/+8/+3', '+19/+14/+9/+4', '+20/+15/+10/+5'] },
+                { Id: 2, Nombre: 'Medio', Valores: ['+0', '+1', '+2', '+3', '+3', '+4', '+5', '+6/+1', '+6/+1', '+7/+2', '+8/+3', '+9/+4', '+9/+4', '+10/+5', '+11/+6/+1', '+12/+7/+2', '+12/+7/+2', '+13/+8/+3', '+14/+9/+4', '+15/+10/+5'] },
+                { Id: 3, Nombre: 'Pobre', Valores: ['+0', '+1', '+1', '+2', '+2', '+3', '+3', '+4', '+4', '+5', '+5', '+6/+1', '+6/+1', '+7/+2', '+7/+2', '+8/+3', '+8/+3', '+9/+4', '+9/+4', '+10/+5'] },
+            ],
+            salvaciones: [
+                { Id: 1, Nombre: 'Buena', Valores: ['+2', '+3', '+3', '+4', '+4', '+5', '+5', '+6', '+6', '+7', '+7', '+8', '+8', '+9', '+9', '+10', '+10', '+11', '+11', '+12'] },
+                { Id: 2, Nombre: 'Mala', Valores: ['+0', '+0', '+1', '+1', '+1', '+2', '+2', '+2', '+3', '+3', '+3', '+4', '+4', '+4', '+5', '+5', '+5', '+6', '+6', '+6'] },
+            ],
+        };
+        // El animal de la base (`tipos` 3): ataque medio, Fortaleza y Reflejos buenas, Voluntad mala.
+        const animal: TipoCriatura = {
+            ...crearTipoBase(), Id: 3, Nombre: 'Animal', Id_ataque: 2, Id_fortaleza: 1, Id_reflejos: 1, Id_voluntad: 2,
+        };
+
+        // Las plantillas como las da `GET /plantillas` en `rol_dev`: sus columnas son las del animal en su forma (las
+        // salvaciones totales del lobo, 5/5/1, con su Des, su Con y su Sab), y los modificadores mezclan los físicos de la
+        // forma animal con el +2 a Sab de todas.
+        function licantropo(id: number, nombre: string, dgs: number, datos: Partial<Plantilla>): Plantilla {
+            return {
+                Id: id,
+                Nombre: nombre,
+                Licantronia_dg: {
+                    Id_dado: 3, Dado: 'D8', Multiplicador: dgs, Suma: 0,
+                    Tipo_criatura: { Id: 3, Nombre: 'Animal', Puntos_habilidad: 2 },
+                },
+                Habilidades: [],
+                Dotes: [],
+                ...datos,
+            } as any;
+        }
+        const lobo = () => licantropo(9, 'Licántropo (lobo) [Infectado]', 2, {
+            Ataque_base: 1, Fortaleza: 5, Reflejos: 5, Voluntad: 1,
+            Modificadores_caracteristicas: { Fuerza: 1, Destreza: 2, Constitucion: 2, Inteligencia: 0, Sabiduria: 2, Carisma: 0 },
+        });
+        const lince = () => licantropo(16, 'Licántropo (lince) [Nacido]', 1, {
+            Ataque_base: 0, Fortaleza: 2, Reflejos: 5, Voluntad: 1,
+            Modificadores_caracteristicas: { Fuerza: -4, Destreza: 6, Constitucion: 2, Inteligencia: 0, Sabiduria: 2, Carisma: 0 },
+        });
+
+        function humanoCon(plantilla: Plantilla, conProgresiones = true): void {
+            const raza = crearRazaBase(crearTipoBase());
+            raza.Dgs_adicionales.Cantidad = 0;
+            service.setCatalogoTiposCriatura([crearTipoBase(), animal]);
+            if (conProgresiones)
+                service.setCatalogoProgresiones(progresiones);
+            service.seleccionarRaza(raza);
+            service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            service.agregarPlantillaSeleccion(plantilla);
+        }
+
+        function salvacionesDe(origen: string): number[] {
+            const salvaciones = service.PersonajeCreacion.Salvaciones;
+            return (['fortaleza', 'reflejos', 'voluntad'] as const).map((tipo) => salvaciones[tipo].modsVarios
+                .filter((mod) => `${mod.origen}`.startsWith(origen))
+                .reduce((acc, mod) => acc + Number(mod.valor), 0));
+        }
+
+        it('lobo (animal de 2 DG): ataque base +1 y salvaciones base Fort +3, Ref +3, Vol +0, no las 5/5/1 del lobo', () => {
+            humanoCon(lobo());
+
+            expect(salvacionesDe('Licántropo (lobo)')).toEqual([3, 3, 0]);
+            expect(service.PersonajeCreacion.Salvaciones.fortaleza.modsVarios.map((mod) => mod.origen))
+                .toContain('Licántropo (lobo) [Infectado] (2 DG de animal)');
+            expect(`${service.PersonajeCreacion.Ataque_base}`).toBe('+1');
+        });
+
+        it('lince (animal de 1 DG): ataque base +0 y salvaciones base Fort +2, Ref +2, Vol +0, no las 2/5/1 del lince', () => {
+            humanoCon(lince());
+
+            expect(salvacionesDe('Licántropo (lince)')).toEqual([2, 2, 0]);
+            expect(`${service.PersonajeCreacion.Ataque_base}`).toBe('+0');
+        });
+
+        it('con un nivel de guerrero, el ataque base y las salvaciones del lobo se suman a las de la clase', () => {
+            humanoCon(lobo());
+            service.aplicarSiguienteNivelClase(claseBase);
+
+            expect(salvacionesDe('Licántropo (lobo)')).toEqual([3, 3, 0]);
+            // Guerrero 1 (+1) + lobo de 2 DG (+1).
+            expect(`${service.PersonajeCreacion.Ataque_base}`).toBe('+2');
+        });
+
+        it('en forma humana solo lleva el +2 a Sab: ni la Fue, la Des ni la Con del lobo ni las del lince', () => {
+            [lobo(), lince()].forEach((plantilla) => {
+                humanoCon(plantilla);
+                const varios = service.PersonajeCreacion.CaracteristicasVarios;
+                const de = (clave: keyof typeof varios) => varios[clave]
+                    .filter((mod) => `${mod.origen}` === plantilla.Nombre)
+                    .reduce((acc, mod) => acc + Number(mod.valor), 0);
+
+                expect([de('Fuerza'), de('Destreza'), de('Constitucion'), de('Sabiduria')])
+                    .withContext(plantilla.Nombre).toEqual([0, 0, 0, 2]);
+                expect(service.PersonajeCreacion.Fuerza).withContext(plantilla.Nombre).toBe(14);
+                expect(service.PersonajeCreacion.Destreza).withContext(plantilla.Nombre).toBe(12);
+                expect(service.PersonajeCreacion.Constitucion).withContext(plantilla.Nombre).toBe(13);
+                expect(service.PersonajeCreacion.Sabiduria).withContext(plantilla.Nombre).toBe(13);
+                service.quitarPlantillaSeleccion(plantilla.Id);
+            });
+        });
+
+        it('sin las progresiones todavía, lo que diga la plantilla; al llegar, las bases de sus DG', () => {
+            humanoCon(lobo(), false);
+            expect(salvacionesDe('Licántropo (lobo)')).toEqual([5, 5, 1]);
+
+            service.setCatalogoProgresiones(progresiones);
+            expect(salvacionesDe('Licántropo (lobo)')).toEqual([3, 3, 0]);
+            expect(`${service.PersonajeCreacion.Ataque_base}`).toBe('+1');
+        });
+
+        it('una plantilla sin DG propios sigue sumando sus salvaciones y todas sus características', () => {
+            humanoCon({
+                Id: 134, Nombre: 'Constructo encarnado', Licantronia_dg: null, Habilidades: [], Dotes: [],
+                Fortaleza: 2, Reflejos: 0, Voluntad: 0, Ataque_base: 0,
+                Modificadores_caracteristicas: { Fuerza: 2, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+            } as any);
+
+            expect(salvacionesDe('Constructo encarnado')).toEqual([2, 0, 0]);
+            expect(service.PersonajeCreacion.Fuerza).toBe(16);
+        });
+    });
+
     it('recalcula NEP y experiencia tras aplicar clase: la experiencia es la del NEP, con los DG raciales (GDM cap. 6)', () => {
         // Con 2 DG raciales (con 1, el primer nivel de clase ocupa su lugar: GDM, pág. 172).
         const raza = crearRazaBase(crearTipoBase());

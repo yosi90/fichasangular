@@ -7545,7 +7545,8 @@ export class NuevoPersonajeComponent {
 
     /**
      * Los catálogos de las cifras de la creación: la tabla de carga y los tamaños con sus multiplicadores (la carga), los
-     * subtipos con su ajuste de nivel (el NEP) y los tipos de dado (la escalera de dados de las plantillas).
+     * subtipos con su ajuste de nivel (el NEP), los tipos de dado (la escalera de dados de las plantillas) y las
+     * progresiones de ataque base y salvaciones (las de los DG de una plantilla).
      */
     private cargarCatalogosCifras(): void {
         this.catalogosCifrasSubs.forEach((sub) => sub.unsubscribe());
@@ -7558,6 +7559,13 @@ export class NuevoPersonajeComponent {
         escuchar(this.tamanoSvc?.getTamanos(), (tamanos) => this.nuevoPSvc.setCatalogoTamanos(tamanos));
         escuchar(this.subtipoSvc?.getSubtipos(), (subtipos) => this.nuevoPSvc.setCatalogoSubtipos(subtipos));
         escuchar(this.razaCatalogosSvc?.getTiposDado(), (tipos) => this.nuevoPSvc.setCatalogoTiposDado(tipos));
+        // Las progresiones de ataque base y salvaciones: las de los DG de una plantilla (el animal del licántropo).
+        const progresiones = this.claseSvc?.getCatalogosProgresion?.();
+        if (progresiones)
+            this.catalogosCifrasSubs.push(progresiones.subscribe({
+                next: (catalogo) => this.nuevoPSvc.setCatalogoProgresiones(catalogo),
+                error: () => this.nuevoPSvc.setCatalogoProgresiones(null),
+            }));
     }
 
     private cargarTiposCriatura(): void {

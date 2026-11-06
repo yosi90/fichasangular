@@ -92,7 +92,8 @@ import { Tamano } from '../interfaces/tamaño';
 import { ElementoConTipoArma, armasDeGrupos, competenciasDeDotes } from './utils/competencias-armas';
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from './utils/deidad-seleccion';
 import { vectorAlineamientoDeidad } from './utils/alineamiento-deidad';
-import { ajustesEnvejecimiento, edadPorDefecto, etapaEdad } from './utils/edad-personaje';
+import { ajustesEnvejecimiento, CARACTERISTICAS_FISICAS, edadPorDefecto, etapaEdad } from './utils/edad-personaje';
+import { basesDeDgsDelTipo, BasesDeDgs, CatalogoProgresiones } from './utils/progresiones';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -1035,6 +1036,8 @@ export class NuevoPersonajeService {
     private razaSeleccionada: Raza | null = null;
     private razaBaseSeleccionadaCompleta: Raza | null = null;
     private catalogoTiposCriatura: TipoCriatura[] = [];
+    /** Las progresiones de ataque base y salvaciones (`GET /clases/catalogos/progresion`): las de los DG de una plantilla. */
+    private catalogoProgresiones: CatalogoProgresiones | null = null;
     /** Los subtipos con su ajuste de nivel (el NEP lo suma). */
     private catalogoSubtipos: SubtipoResumen[] = [];
     /** Las caras de los tipos de dado del catálogo: la escalera de los cambios de dado de las plantillas. */
@@ -1685,6 +1688,36 @@ export class NuevoPersonajeService {
     setCatalogoTiposCriatura(tipos: TipoCriatura[]): void {
         this.catalogoTiposCriatura = [...tipos];
         this.recalcularTipoYSubtiposDerivados();
+        // Las progresiones del tipo de los DG de una plantilla (el animal del licántropo) dan su ataque y sus salvaciones.
+        if (this.hayPlantillasConDg())
+            this.recalcularEfectosVentajas();
+    }
+
+    /** Las progresiones de ataque base y salvaciones, para el ataque y las salvaciones base de los DG de una plantilla. */
+    setCatalogoProgresiones(catalogo: CatalogoProgresiones | null): void {
+        this.catalogoProgresiones = catalogo
+            ? { ataques_base: [...(catalogo.ataques_base ?? [])], salvaciones: [...(catalogo.salvaciones ?? [])] }
+            : null;
+        if (this.hayPlantillasConDg())
+            this.recalcularEfectosVentajas();
+    }
+
+    private hayPlantillasConDg(): boolean {
+        return (this.estadoFlujo?.plantillas?.seleccionadas ?? []).some((plantilla) => dgsDePlantilla(plantilla) > 0);
+    }
+
+    /**
+     * El ataque base y las salvaciones base de los DG de una plantilla (los del animal base de un licántropo), por las
+     * progresiones de su tipo (`Licantronia_dg.Tipo_criatura`): «suma el ataque base [...] y las salvaciones base del
+     * animal base» (Manual de monstruos, «Licántropo»). `null` si la plantilla no añade DG o no se sabe su tipo o sus
+     * progresiones.
+     */
+    private basesDeDgsDePlantilla(plantilla: Plantilla): BasesDeDgs | null {
+        const dgs = dgsDePlantilla(plantilla);
+        if (dgs <= 0)
+            return null;
+        const tipo = this.buscarTipoCriaturaPorId(toNumber(plantilla?.Licantronia_dg?.Tipo_criatura?.Id));
+        return basesDeDgsDelTipo(tipo, dgs, this.catalogoProgresiones);
     }
 
     setCatalogoSubtipos(subtipos: SubtipoResumen[]): void {
@@ -6091,7 +6124,13 @@ export class NuevoPersonajeService {
 
         seleccionadas.forEach((plantilla) => {
             const origen = `${plantilla?.Nombre ?? ''}`.trim() || `Plantilla ${toNumber(plantilla?.Id)}`;
-            ataqueBase += toNumber(plantilla?.Ataque_base);
+            // Con DG de un tipo que se conoce (el animal del licántropo), su ataque base y sus salvaciones base salen de sus
+            // progresiones; las columnas de la plantilla son las del animal en su forma (sus salvaciones, con su Des, su
+            // Con y su Sab) y no se suman. Sin tipo, como antes: lo que diga la plantilla.
+            const basesDgs = this.basesDeDgsDePlantilla(plantilla);
+            const tipoDgs = `${plantilla?.Licantronia_dg?.Tipo_criatura?.Nombre ?? ''}`.trim().toLowerCase();
+            const origenDgs = `${origen} (${dgsDePlantilla(plantilla)} DG${tipoDgs ? ` de ${tipoDgs}` : ''})`;
+            ataqueBase += basesDgs ? basesDgs.ataqueBase : toNumber(plantilla?.Ataque_base);
 
             if (toNumber(plantilla?.Movimientos?.Correr) > 0)
                 this.personajeCreacion.Correr = toNumber(plantilla.Movimientos.Correr);
@@ -6104,24 +6143,17 @@ export class NuevoPersonajeService {
             if (toNumber(plantilla?.Movimientos?.Excavar) > 0)
                 this.personajeCreacion.Excavar = toNumber(plantilla.Movimientos.Excavar);
 
-            if (toNumber(plantilla?.Fortaleza) !== 0) {
-                this.personajeCreacion.Salvaciones.fortaleza.modsVarios.push({
-                    valor: toNumber(plantilla.Fortaleza),
-                    origen,
-                });
-            }
-            if (toNumber(plantilla?.Reflejos) !== 0) {
-                this.personajeCreacion.Salvaciones.reflejos.modsVarios.push({
-                    valor: toNumber(plantilla.Reflejos),
-                    origen,
-                });
-            }
-            if (toNumber(plantilla?.Voluntad) !== 0) {
-                this.personajeCreacion.Salvaciones.voluntad.modsVarios.push({
-                    valor: toNumber(plantilla.Voluntad),
-                    origen,
-                });
-            }
+            const salvacionesPlantilla: Record<SalvacionKey, number> = basesDgs
+                ? { fortaleza: basesDgs.fortaleza, reflejos: basesDgs.reflejos, voluntad: basesDgs.voluntad }
+                : { fortaleza: toNumber(plantilla?.Fortaleza), reflejos: toNumber(plantilla?.Reflejos), voluntad: toNumber(plantilla?.Voluntad) };
+            (Object.keys(salvacionesPlantilla) as SalvacionKey[]).forEach((tipo) => {
+                if (salvacionesPlantilla[tipo] !== 0) {
+                    this.personajeCreacion.Salvaciones[tipo].modsVarios.push({
+                        valor: salvacionesPlantilla[tipo],
+                        origen: basesDgs ? origenDgs : origen,
+                    });
+                }
+            });
             if (toNumber(plantilla?.Iniciativa) !== 0) {
                 this.personajeCreacion.Iniciativa_varios.push({
                     Valor: toNumber(plantilla.Iniciativa),
@@ -6135,7 +6167,13 @@ export class NuevoPersonajeService {
                 });
             }
 
+            // Una plantilla con DG de animal (el licántropo) tiene forma animal: sus cambios físicos (Fue, Des y Con) son los
+            // de esa forma y la híbrida, y el personaje se crea en la suya. En todas, lo mental (el +2 a Sab) (Manual de
+            // monstruos, «Licántropo», «Características»).
+            const conFormaAnimal = dgsDePlantilla(plantilla) > 0;
             CARACTERISTICAS.forEach((key) => {
+                if (conFormaAnimal && CARACTERISTICAS_FISICAS.includes(key))
+                    return;
                 const valor = toNumber((plantilla?.Modificadores_caracteristicas as Record<string, any>)?.[key]);
                 if (valor !== 0) {
                     caracteristicasVarios[key].push({
