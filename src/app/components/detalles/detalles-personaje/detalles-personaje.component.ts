@@ -55,6 +55,7 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { dgsRacialesQueCuentan } from 'src/app/services/utils/nivel-personaje';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import {
     origenesDePartes,
@@ -603,9 +604,12 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
      */
     private partesNep(): { dg: number; clase: number; ajuste: number; } {
         const plantillas = this.pj?.Plantillas ?? [];
+        const clase = (this.pj?.desgloseClases ?? []).reduce((c, d) => c + toNumber(d?.Nivel), 0);
         return {
-            dg: toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad) + plantillas.reduce((c, p) => c + toNumber(p?.Multiplicador_dgs_lic), 0),
-            clase: (this.pj?.desgloseClases ?? []).reduce((c, d) => c + toNumber(d?.Nivel), 0),
+            // Con 1 DG racial y algún nivel de clase, ese DG no cuenta (Guía del DM, pág. 172), como en el NEP de la API.
+            dg: dgsRacialesQueCuentan(toNumber(this.pj?.Raza?.Dgs_adicionales?.Cantidad), clase)
+                + plantillas.reduce((c, p) => c + toNumber(p?.Multiplicador_dgs_lic), 0),
+            clase,
             ajuste: toNumber(this.pj?.Raza?.Ajuste_nivel) + plantillas.reduce((c, p) => c + toNumber(p?.Ajuste_nivel), 0),
         };
     }

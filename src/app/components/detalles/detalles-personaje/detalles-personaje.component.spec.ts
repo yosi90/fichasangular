@@ -289,6 +289,15 @@ describe('DetallesPersonajeComponent', () => {
     });
 
     describe('página continua', () => {
+        it('el desglose del NEP no cuenta 1 DG racial con niveles de clase (GDM, pág. 172), como la API', () => {
+            const pj = fichaDeLaApi();
+            pj.Raza = { ...pj.Raza, Dgs_adicionales: { ...pj.Raza.Dgs_adicionales, Cantidad: 1 } } as any;
+            component.pj = pj;
+            verPagina();
+            expect(valor('Nivel efectivo (NEP)')).toContain('8 de clase + 2 de ajuste');
+            expect(valor('Nivel efectivo (NEP)')).not.toContain('DG raciales');
+        });
+
         it('enseña la cabecera, los datos, la franja grande y las casillas con las salvaciones', () => {
             component.pj = fichaDeLaApi();
             verPagina();
