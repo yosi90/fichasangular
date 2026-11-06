@@ -23,7 +23,8 @@ import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import { SubtipoRef, SubtipoResumen } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
-import { PersonajeCreateMascotasDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
+import { PersonajeCreateMascotasDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
+import { bonoRacialCondicional } from './utils/habilidad-raza-condicional';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
@@ -2379,7 +2380,8 @@ export class NuevoPersonajeService {
      * Las sinergias de cada habilidad del borrador (`services/utils/habilidades-bonos.ts`, MJ tabla 4-5), con las reglas
      * del catálogo de habilidades: las que suman van a `Bonos` y las condicionales, a `Bonos_condicionales`. También el
      * modificador de tamaño a Esconderse de las habilidades que lo suman (`Modificador_tamano`), con el tamaño de la
-     * raza, como la ficha. La ficha guardada los calcula la API: no se guardan.
+     * raza, como la ficha, y lo que la raza suma solo en un caso (`Cantidad_condicional` y `Condicion`, el svirfneblin
+     * «+2 bajo tierra»), que va con las condicionales y no se suma. La ficha guardada los calcula la API: no se guardan.
      */
     recalcularSinergiasHabilidades(): void {
         const catalogo = this.estadoFlujo.ventajas.catalogoHabilidades ?? [];
@@ -2395,14 +2397,38 @@ export class NuevoPersonajeService {
             idExtra: idExtraHabilidadParaGuardar(habilidad),
             rangos: toNumber(habilidad.Rangos),
         }));
+        const condicionalesRaza = this.bonosRacialesCondicionales();
         habilidades.forEach((habilidad, indice) => {
             const bonos = bonosSinergia(refs[indice], refs, reglas);
             habilidad.Bonos = [
                 ...(sumanTamano.has(toNumber(habilidad.Id)) ? parteTamano : []),
                 ...bonos.filter((bono) => !bono.condicion),
             ];
-            habilidad.Bonos_condicionales = bonos.filter((bono) => !!bono.condicion);
+            habilidad.Bonos_condicionales = [
+                ...bonos.filter((bono) => !!bono.condicion),
+                ...(condicionalesRaza.get(claveHabilidad(habilidad)) ?? []),
+            ];
         });
+    }
+
+    /**
+     * Lo que suman las habilidades de la raza solo en un caso, por la clave de la habilidad del personaje a la que van (la
+     * del hueco de su referencia, como el bonificador de siempre: `aplicarHabilidadesOtorgadasPorRaza`).
+     */
+    private bonosRacialesCondicionales(): Map<ClaveHabilidad, PersonajeParteDto[]> {
+        const raza = this.razaSeleccionada;
+        const porClave = new Map<ClaveHabilidad, PersonajeParteDto[]>();
+        (raza?.Habilidades?.Base ?? []).forEach((ref) => {
+            const parte = bonoRacialCondicional(ref, `${raza?.Nombre ?? ''}`);
+            const habilidad = parte
+                ? this.buscarHabilidadDelPersonaje(toNumber(ref?.Id_habilidad), normalizarTexto(`${ref?.Habilidad ?? ''}`), false)
+                : null;
+            if (!parte || !habilidad)
+                return;
+            const clave = claveHabilidad(habilidad);
+            porClave.set(clave, [...(porClave.get(clave) ?? []), parte]);
+        });
+        return porClave;
     }
 
 
@@ -5595,6 +5621,7 @@ export class NuevoPersonajeService {
         const bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]> = {};
         const pendientesOro: PendienteOroState[] = [];
         this.aplicarEfectosPlantillasFase2(caracteristicasVarios, nuevosRaciales, bonosHabilidades);
+        this.aplicarHabilidadesSiempreDeClase(nuevosRaciales);
         this.aplicarModificadoresDotesDelPersonaje({ caracteristicasVarios, bonosHabilidades });
         this.aplicarCaracteristicasEspecialesDelPersonaje(caracteristicasVarios);
 
@@ -6644,6 +6671,23 @@ export class NuevoPersonajeService {
             if (toNumber(habilidad.Id) <= 0)
                 return;
             this.agregarBonoHabilidad(bonosHabilidades, claveHabilidad(habilidad), cantidad, origen);
+        });
+    }
+
+    /**
+     * Las habilidades que un racial hace siempre de clase (`Se_considera_clasea` de sus `Habilidades`: el uldra, Saber
+     * (naturaleza), *Escarcha ardiente*, pág. 41): de clase en todos los repartos (niveles de clase y DG raciales), como
+     * las `Habilidades_claseas` de un dominio. Con su especialidad, si la nombra (`Id_extra`), en su hueco.
+     */
+    private aplicarHabilidadesSiempreDeClase(raciales: RacialDetalle[]): void {
+        (raciales ?? []).forEach((racial) => {
+            const habilidades = racial?.Habilidades;
+            [
+                ...(habilidades?.Base ?? []).map((ref) => ({ ref, custom: false })),
+                ...(habilidades?.Custom ?? []).map((ref) => ({ ref, custom: true })),
+            ]
+                .filter(({ ref }) => toBoolean(ref?.['Se_considera_clasea']))
+                .forEach(({ ref, custom }) => this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: true, customPreferido: custom }));
         });
     }
 

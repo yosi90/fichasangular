@@ -457,7 +457,18 @@
                                             <mat-option *ngFor="let extra of getExtrasHabilidadBaseFiltrados(row); trackBy: trackById" [value]="extra.Id">{{extra.Nombre}}</mat-option>
                                         </mat-autocomplete>
                                     </mat-form-field>
+                                    <div *ngIf="!habilidadBaseSoportaExtra(row)" class="row-editor__hueco" aria-hidden="true"></div>
                                     <mat-form-field appearance="fill"><mat-label>Varios</mat-label><input matInput [value]="row.varios" (input)="actualizarHabilidadBase(i, { varios: $any($event.target).value })" /></mat-form-field>
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>Además, solo en un caso</mat-label>
+                                        <input matInput type="number" [value]="row.cantidad_condicional" (input)="actualizarHabilidadBase(i, { cantidad_condicional: $any($event.target).value })" />
+                                        <mat-hint>Lo que suma de más (negativo si lo pierde)</mat-hint>
+                                    </mat-form-field>
+                                    <mat-form-field appearance="fill">
+                                        <mat-label>¿Cuándo?</mat-label>
+                                        <input matInput maxlength="200" [value]="row.condicion" placeholder="bajo tierra" (input)="actualizarHabilidadBase(i, { condicion: $any($event.target).value })" />
+                                        <mat-hint>Se enseña como «+2 (solo bajo tierra)» y no se suma</mat-hint>
+                                    </mat-form-field>
                                     <button mat-icon-button type="button" matTooltip="Quitar" (click)="quitarHabilidadBase(i)"><mat-icon>delete</mat-icon></button>
                                 </div>
                                 <button mat-stroked-button type="button" (click)="agregarHabilidadBase()"><mat-icon>add</mat-icon> Añadir habilidad base</button>

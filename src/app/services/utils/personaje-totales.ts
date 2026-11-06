@@ -38,8 +38,8 @@ export function normalizarTotal(raw: any): PersonajeTotalDto | null {
         total: toNumber(raw.total),
         desglose: toArray<PersonajeParteDto>(raw.desglose).map(normalizarParte),
     };
-    // Las salvaciones traen `condicionales`; las habilidades, `sinergiasCondicionales`. Ninguna se suma.
-    const condicionales = toArray<PersonajeParteDto>(raw.condicionales ?? raw.sinergiasCondicionales).map(normalizarParte);
+    // Lo condicional de las salvaciones y de las habilidades (`condicionales`) no se suma.
+    const condicionales = toArray<PersonajeParteDto>(raw.condicionales).map(normalizarParte);
     if (condicionales.length > 0)
         total.condicionales = condicionales;
     return total;

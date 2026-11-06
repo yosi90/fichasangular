@@ -72,6 +72,7 @@ import Swal from 'sweetalert2';
 import { destinoEnTablist } from 'src/app/services/utils/teclado';
 import { edadesDeLaRaza, etapaEdad, EtapaEdad, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
 import { esPnj, textoNivelPersonaje, textoVd } from 'src/app/services/utils/tipo-personaje';
+import { etiquetaPenalizacionExperiencia, textoPenalizacionExperiencia } from 'src/app/services/utils/penalizacion-experiencia';
 import {
     aptitudesDeEdadPersonaje, AptitudesDeEdadFicha, etiquetasTipoPersonaje, lanzamientoRacialPersonaje, LanzamientoRacialFicha,
     razaConCategoriaPersonaje
@@ -1245,7 +1246,14 @@ ${envejecimiento}` : edades;
                 detalle: this.textoDesgloseNep() ? `· ${this.textoDesgloseNep()}` : null,
                 ayuda: this.nepDisclaimer,
             },
-            { etiqueta: 'Experiencia', valor: this.tieneExpVisible() ? `${formatoNumero(toNumber(pj.Experiencia))} PX` : null },
+            {
+                etiqueta: 'Experiencia',
+                valor: this.tieneExpVisible() ? `${formatoNumero(toNumber(pj.Experiencia))} PX` : null,
+                // La penalización de PX por multiclase (MJ cap. 3), igual en la creación y en la ficha guardada.
+                detalle: etiquetaPenalizacionExperiencia(pj.Penalizacion_experiencia)
+                    ? `· ${etiquetaPenalizacionExperiencia(pj.Penalizacion_experiencia)}` : null,
+                ayuda: textoPenalizacionExperiencia(pj.Penalizacion_experiencia) || null,
+            },
             {
                 etiqueta: 'DG raciales',
                 valor: this.positivo(dgsRaza?.Cantidad)

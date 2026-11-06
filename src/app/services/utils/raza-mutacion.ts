@@ -11,6 +11,7 @@ import {
     parseMoralDesdePreferencia,
 } from "./alineamiento-contrato";
 import { normalizarTexto, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { parteCondicionalHabilidadRaza } from 'src/app/services/utils/habilidad-raza-condicional';
 
 export type EstadoElegibilidadRazaBase = "eligible" | "eligible_with_warning" | "blocked";
 
@@ -351,6 +352,7 @@ function normalizeRazaHabilidad(raw: any, forceCustom: boolean): any {
         Id_extra: parseIdExtra(raw?.Id_extra ?? raw?.id_extra ?? raw?.IdExtra ?? raw?.idExtra ?? raw?.i_ex ?? raw?.ie),
         Extra: `${raw?.Extra ?? raw?.extra ?? raw?.x ?? ""}`.trim(),
         Cantidad: toNumber(raw?.Cantidad ?? raw?.cantidad ?? raw?.Rangos ?? raw?.rangos),
+        ...parteCondicionalHabilidadRaza(raw),
         Varios: `${raw?.Varios ?? raw?.varios ?? ""}`.trim(),
         Soporta_extra: rawSoportaExtra === undefined ? undefined : toBoolean(rawSoportaExtra),
         Custom: forceCustom || toBoolean(raw?.Custom ?? raw?.custom),
@@ -382,6 +384,11 @@ function mergeRazaHabilidades(
         }
 
         existente.Cantidad = toNumber(existente.Cantidad) + toNumber(item.Cantidad);
+        // Lo que solo vale en un caso se suma igual; si las dos lo traen, se queda la condición de la primera.
+        if (item.Condicion) {
+            existente.Cantidad_condicional = toNumber(existente.Cantidad_condicional) + toNumber(item.Cantidad_condicional);
+            existente.Condicion = existente.Condicion ?? item.Condicion;
+        }
         existente.Custom = !!existente.Custom || !!item.Custom;
         existente.Clasea = !!existente.Clasea || !!item.Clasea;
         existente.Clase = !!existente.Clase || !!item.Clase;

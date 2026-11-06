@@ -96,6 +96,18 @@ describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
         });
     });
 
+    it('conserva lo que una habilidad de la raza suma solo en un caso (`Cantidad_condicional` y `Condicion`)', async () => {
+        const conHabilidades = IDA_Y_VUELTA_RAZAS.find((item) => (item.get.Habilidades?.Base ?? []).length > 0)!;
+        const get = JSON.parse(JSON.stringify(conHabilidades.get));
+        Object.assign(get.Habilidades.Base[0], { Cantidad_condicional: 2, Condicion: 'bajo tierra' });
+        const component = await cargada(get);
+
+        expect(component.edicion.hayCambios).toBeFalse();
+        const base = component.buildPayload().habilidades?.base ?? [];
+        expect(base[0]).toEqual(jasmine.objectContaining({ id_habilidad: get.Habilidades.Base[0].Id_habilidad, cantidad_condicional: 2, condicion: 'bajo tierra' }));
+        expect(base.slice(1).every((item) => item.condicion === undefined)).toBeTrue();
+    });
+
     it('un dragón conserva sus pasos por su id y cada categoría con lo que gana', async () => {
         const rojo = IDA_Y_VUELTA_RAZAS.find((item) => item.cuerpo.categorias_edad.length > 0 && item.get.Lanzamiento)!;
         const component = await cargada(rojo.get);

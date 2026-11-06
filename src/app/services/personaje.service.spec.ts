@@ -358,6 +358,42 @@ describe('PersonajeService', () => {
         expect(textoBonosHabilidad(habilidad)).toBe('Tamaño (Pequeño) +4');
     });
 
+    it('mapApiDetalleToPersonaje lleva lo condicional de la habilidad (sinergias y bonificadores raciales con condición) aparte, sin sumarlo', () => {
+        const service = crearServicio({} as any);
+        const esconderse = {
+            id: 16, nombre: 'Esconderse', custom: false, deClase: false, idExtra: null, extra: null, extraComodin: null,
+            caracteristica: 'Destreza', modificadorCaracteristica: 3, rangos: 0, rangosVarios: 2, varios: null, total: 5,
+            desglose: [{ tipo: 'rangosVarios', origen: 'Rangos varios', valor: 2 }, { tipo: 'caracteristica', origen: 'Destreza', valor: 3 }],
+            condicionales: [{ tipo: 'varios', origen: 'Svirfneblin', valor: 2, condicion: 'bajo tierra' }],
+        };
+        const habilidad = ((service as any).mapApiDetalleToPersonaje(crearDetalleApi({ habilidades: [esconderse] })) as Personaje).Habilidades[0];
+
+        expect(habilidad.Bonos_condicionales).toEqual([{ tipo: 'varios', origen: 'Svirfneblin', valor: 2, condicion: 'bajo tierra' }]);
+        expect(totalHabilidad(habilidad)).toBe(5);
+        expect(textoBonosHabilidad(habilidad)).toBe('Svirfneblin +2 (solo bajo tierra)');
+    });
+
+    it('mapApiDetalleToPersonaje calcula la penalización de PX por multiclase con la predilecta de la raza y sin las de prestigio (MJ cap. 3)', () => {
+        const service = crearServicio({} as any);
+        const clase = (id: number, nombre: string, nivel: number, prestigio = false) => ({
+            id, nombre, nivel, prestigio, lanzaConjuros: false, caracteristicaLanzamiento: null, modificadorLanzamiento: null,
+        });
+        const ficha = (raza: Record<string, any>, clases: any[]) => (service as any).mapApiDetalleToPersonaje(crearDetalleApi({
+            ra: { ...crearDetalleApi()['ra'], ...raza }, clases,
+        })) as Personaje;
+
+        // Un elfo (predilecta: mago) guerrero 4 / pícaro 1 / mago 1: el pícaro está a más de un nivel; el mago no cuenta.
+        const elfo = ficha({ Id_clase_predilecta: 9 }, [clase(3, 'Guerrero', 4), clase(12, 'Pícaro', 1), clase(9, 'Mago', 1)]);
+        expect(elfo.Penalizacion_experiencia?.porcentaje).toBe(20);
+        expect(elfo.Penalizacion_experiencia?.penalizadas).toEqual(['Pícaro 1']);
+        // Un humano («Cualquiera») guerrero 4 / pícaro 1: no cuenta su clase de más nivel.
+        const humano = ficha({ Id_clase_predilecta: 0, Clase_predilecta_comodin: 'cualquiera' }, [clase(3, 'Guerrero', 4), clase(12, 'Pícaro', 1)]);
+        expect(humano.Penalizacion_experiencia?.porcentaje).toBe(0);
+        // Las de prestigio no cuentan (Guía del DM, cap. 6).
+        const prestigio = ficha({ Id_clase_predilecta: 9 }, [clase(3, 'Guerrero', 4), clase(60, 'Maestro del saber', 1, true)]);
+        expect(prestigio.Penalizacion_experiencia?.porcentaje).toBe(0);
+    });
+
     it('mapApiDetalleToPersonaje toma los totales de la API sin volver a sumarlos', () => {
         const service = crearServicio({} as any);
         const personaje = (service as any).mapApiDetalleToPersonaje(crearDetalleApi()) as Personaje;

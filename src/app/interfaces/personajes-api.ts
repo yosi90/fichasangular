@@ -264,6 +264,8 @@ export interface PersonajeNombreIdDto {
 
 export interface PersonajeClaseDto extends PersonajeNombreIdDto {
     nivel: number;
+    /** Si es de prestigio: no cuenta para la penalización de PX por multiclase (desde el 2026-11-06). */
+    prestigio?: boolean;
     lanzaConjuros: boolean;
     caracteristicaLanzamiento: string | null;
     modificadorLanzamiento: number | null;
@@ -350,8 +352,8 @@ export interface PersonajeTotalDto {
     total: number;
     desglose: PersonajeParteDto[];
     /**
-     * Lo que solo cuenta en unas tiradas y no se suma (`condicionales` de las salvaciones, `sinergiasCondicionales` de las
-     * habilidades), con su `condicion`.
+     * Lo que solo cuenta en unas tiradas y no se suma (`condicionales` de las salvaciones y de las habilidades), con su
+     * `condicion`.
      */
     condicionales?: PersonajeParteDto[];
 }
@@ -373,8 +375,11 @@ export interface PersonajeHabilidadDto extends PersonajeNombreIdDto, PersonajeTo
     rangos: number;
     rangosVarios: number;
     varios: string | null;
-    /** Las sinergias que solo cuentan en unas pruebas (MJ tabla 4-5): se enseñan y no se suman. */
-    sinergiasCondicionales?: PersonajeParteDto[];
+    /**
+     * Lo que solo cuenta en unas pruebas: las sinergias con condición (MJ tabla 4-5) y los bonificadores raciales que
+     * solo valen en un caso (el svirfneblin, +2 bajo tierra; desde el 2026-11-06). Se enseñan y no se suman.
+     */
+    condicionales?: PersonajeParteDto[];
 }
 
 export interface PersonajeDefensaDto {

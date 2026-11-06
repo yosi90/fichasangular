@@ -92,6 +92,9 @@ export interface RazaCreateHabilidadBase {
     cantidad: number;
     id_extra?: number;
     varios?: string;
+    /** Lo que suma además solo cuando se cumple `condicion` («+2 bajo tierra»): los dos o ninguno. */
+    cantidad_condicional?: number;
+    condicion?: string;
 }
 
 export interface RazaCreateHabilidadCustom {

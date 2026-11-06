@@ -6786,6 +6786,86 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
         expect(svc.obtenerCosteRangoHabilidad(claveDeHabilidad(6, false))).toBe(2);
     });
 
+    function racialSiempreDeClase(base: any[], custom: any[] = []): any {
+        return {
+            Id: 900, Nombre: 'Erudito de la naturaleza (uldra)', Descripcion: '', Oficial: true, Opcional: 0, Dotes: [],
+            Habilidades: { Base: base, Custom: custom }, Caracteristicas: [], Salvaciones: [], Sortilegas: [], Ataques: [],
+            Prerrequisitos_flags: { raza: false, caracteristica_minima: false }, Prerrequisitos: { raza: [], caracteristica: [] },
+        };
+    }
+
+    it('un racial «siempre de clase» (Se_considera_clasea) hace de clase la habilidad en los niveles de clase, con su especialidad (uldra, Escarcha ardiente, pág. 41)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades([...catalogoElfo, ...huecosDeFamilia('Saber', [32, 33, 34, 35, 36], EXTRAS_SABER)]);
+        svc.seleccionarRaza(crearRazaConDgs({
+            ...sinDgs(),
+            Nombre: 'Uldra',
+            Habilidades: { Base: [{ Id_habilidad: 6, Habilidad: 'Avistar', Cantidad: 2 }], Custom: [] },
+            Raciales: [racialSiempreDeClase([
+                { Id_habilidad: 32, Habilidad: 'Saber 1', Id_extra: 59, Extra: 'Los planos', Rangos: 0, Se_considera_clasea: true },
+                { Id_habilidad: 7, Habilidad: 'Buscar', Id_extra: -1, Extra: '', Rangos: 0, Se_considera_clasea: false },
+            ])],
+        } as any));
+        svc.recalcularEfectosVentajas();
+
+        const saber = svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 32)!;
+        expect(saber.Clasea).toBeTrue();
+        expect(saber.Extra).toBe('Los planos');
+        expect(svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 7)?.Clasea).toBeFalse();
+        // El +2 de la raza sigue sin hacer de clase Avistar.
+        expect(svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 6)?.Clasea).toBeFalse();
+
+        // Un guerrero (sin Saber entre sus habilidades de clase) la compra a 1 punto y con el tope de clase.
+        svc.PersonajeCreacion.ModInteligencia = 0;
+        svc.iniciarDistribucionHabilidadesPorClase(crearClaseBase({ Id: 80, Nombre: 'Guerrero', Puntos_habilidad: { Id: 1, Valor: 2 } }));
+        expect(svc.esHabilidadClaseaEfectiva(claveDeHabilidad(32, false))).toBeTrue();
+        expect(svc.obtenerCosteRangoHabilidad(claveDeHabilidad(32, false))).toBe(1);
+        expect(svc.esHabilidadClaseaEfectiva(claveDeHabilidad(7, false))).toBeFalse();
+    });
+
+    it('un racial «siempre de clase» también vale al repartir los DG raciales, y se guarda de clase', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades(catalogoElfo);
+        svc.seleccionarRaza(crearRazaConDgs({
+            Nombre: 'Raza con DG',
+            Habilidades: { Base: [{ Id_habilidad: 17, Habilidad: 'Escuchar', Cantidad: 0 }], Custom: [] },
+            Raciales: [racialSiempreDeClase([{ Id_habilidad: 7, Habilidad: 'Buscar', Id_extra: -1, Rangos: 0, Se_considera_clasea: true }])],
+        } as any));
+        svc.recalcularEfectosVentajas();
+
+        expect(svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 7)?.Clasea).toBeTrue();
+        // Escuchar (de la entrada de la raza) solo es de clase en el reparto de sus DG, no para siempre.
+        expect(svc.PersonajeCreacion.Habilidades.find((h) => h.Id === 17)?.Clasea).toBeFalse();
+    });
+
+    it('un bonificador racial que solo vale en un caso no se suma: va aparte, con su condición (svirfneblin, MM1, pág. 140; níctero, MM3, pág. 134)', () => {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoHabilidades(catalogoElfo);
+        svc.seleccionarRaza(crearRazaConDgs({
+            ...sinDgs(),
+            Nombre: 'Svirfneblin',
+            Habilidades: {
+                Base: [
+                    { Id_habilidad: 7, Habilidad: 'Buscar', Cantidad: 2, Cantidad_condicional: 2, Condicion: 'bajo tierra' },
+                    { Id_habilidad: 6, Habilidad: 'Avistar', Cantidad: 0, Cantidad_condicional: 8, Condicion: 'en terreno rocoso' },
+                    { Id_habilidad: 17, Habilidad: 'Escuchar', Cantidad: 4, Cantidad_condicional: -4, Condicion: 'si su sentido ciego queda anulado' },
+                ],
+                Custom: [],
+            },
+        } as any));
+        svc.recalcularEfectosVentajas();
+
+        const habilidad = (id: number) => svc.PersonajeCreacion.Habilidades.find((h) => h.Id === id)!;
+        expect(habilidad(7).Rangos_varios).toBe(2);
+        expect(habilidad(7).Bonos_condicionales).toEqual([{ tipo: 'varios', origen: 'Svirfneblin', valor: 2, condicion: 'bajo tierra' }]);
+        expect(habilidad(6).Rangos_varios).toBe(0);
+        expect(habilidad(6).Bonos_condicionales?.map((parte) => parte.valor)).toEqual([8]);
+        expect(habilidad(17).Rangos_varios).toBe(4);
+        expect(habilidad(17).Bonos_condicionales?.map((parte) => parte.valor)).toEqual([-4]);
+        // El total del borrador no los cuenta.
+        expect(totalHabilidad(habilidad(6))).toBe(Number(habilidad(6).Mod_car ?? 0));
+    });
+
     it('raza con DG raciales (centauro): las habilidades de su entrada son de clase solo al repartir los puntos de esos DG (MM, «Monstruos como razas»)', () => {
         const svc = new NuevoPersonajeService();
         svc.setCatalogoHabilidades(catalogoElfo);

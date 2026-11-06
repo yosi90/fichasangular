@@ -349,6 +349,20 @@ describe('NuevaRazaComponent', () => {
         expect((payload as any).plantillasNoObtenibles).toBeUndefined();
     });
 
+    it('manda la parte condicional de una habilidad base (lo que suma solo en un caso) y exige las dos mitades', () => {
+        component.habilidadesBaseRows = [
+            { uid: 'a', id_habilidad: 16, cantidad: 2, id_extra: 0, varios: '', cantidad_condicional: 2, condicion: ' bajo tierra ' },
+            { uid: 'b', id_habilidad: 15, cantidad: 2, id_extra: 0, varios: '', cantidad_condicional: 0, condicion: '' },
+        ];
+        expect(component.buildPayload().habilidades?.base).toEqual([
+            { id_habilidad: 16, cantidad: 2, varios: 'No especifica', cantidad_condicional: 2, condicion: 'bajo tierra' },
+            { id_habilidad: 15, cantidad: 2, varios: 'No especifica' },
+        ]);
+
+        component.habilidadesBaseRows = [{ uid: 'a', id_habilidad: 16, cantidad: 2, id_extra: 0, varios: '', cantidad_condicional: 0, condicion: 'bajo tierra' }];
+        expect((component as any).validarReglasDominio()).toContain('lo que suma y cuándo');
+    });
+
     it('añade y selecciona automáticamente un racial creado desde el modal', () => {
         component.raciales = [{ Id: 15, Nombre: 'Visión en la penumbra' } as any];
         component.racialesRows = [{ uid: 'r1', id_racial: 0, opcional: 1, busqueda: '' }];

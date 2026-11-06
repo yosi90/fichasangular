@@ -111,6 +111,9 @@ interface HabilidadBaseRow {
     cantidad: number;
     id_extra: number;
     varios: string;
+    /** Lo que suma además solo en un caso (`condicion`, «bajo tierra»): los dos o ninguno. */
+    cantidad_condicional?: number;
+    condicion?: string;
     busqueda?: string;
     extraBusqueda?: string;
 }
@@ -758,6 +761,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                                 cantidad: this.numero(row.cantidad),
                                 ...(enviarExtra ? { id_extra: idExtra } : {}),
                                 varios: textoOSinEspecificar(row.varios),
+                                ...this.parteCondicionalAEnviar(row),
                             };
                         }),
                     (item) => `${item.id_habilidad}:${item.id_extra}`
@@ -1846,7 +1850,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private hayRowsConContenido(): boolean {
-        return this.habilidadesBaseRows.some((row) => this.numero(row.id_habilidad) > 0 || this.numero(row.cantidad) !== 0 || this.esTextoTecnicoEditado(row.varios))
+        return this.habilidadesBaseRows.some((row) => this.numero(row.id_habilidad) > 0 || this.numero(row.cantidad) !== 0 || this.esTextoTecnicoEditado(row.varios)
+            || this.texto(row.condicion).length > 0)
             || this.habilidadesCustomRows.some((row) => this.numero(row.id_habilidad) > 0 || this.numero(row.cantidad) !== 0)
             || this.dotesRows.some((row) => this.numero(row.id_dote) > 0 || this.numero(row.id_extra) > 0)
             || this.racialesRows.some((row) => this.numero(row.id_racial) > 0 || this.numero(row.opcional) !== 0)
@@ -2141,6 +2146,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             return 'Hay prerrequisitos de mutación pendientes de completar.';
         if (this.tieneAlineamientoMutacionSinResolver())
             return 'Hay un prerrequisito de alineamiento sin combinación válida.';
+        if (this.habilidadesBaseRows.some((row) => this.numero(row.id_habilidad) > 0 && this.parteCondicionalIncompleta(row))) {
+            this.pasoActivoIndex = CAMPOS_RAZA['habilidades'].paso;
+            return 'Un bonificador que solo vale en un caso lleva lo que suma y cuándo («+2 bajo tierra»).';
+        }
         const doteSinExtra = this.dotesRows.find((row) => this.numero(row.id_dote) > 0 && this.doteRequiereExtra(row.id_dote) && this.numero(row.id_extra) <= 0);
         if (doteSinExtra)
             return 'Hay una dote que requiere extra y todavía no lo tiene seleccionado.';
@@ -2152,6 +2161,18 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             return edades;
         }
         return null;
+    }
+
+    /** La condición sin su cantidad, o al revés (`400 condicion_incompleta` de la API). */
+    private parteCondicionalIncompleta(row: HabilidadBaseRow): boolean {
+        return (this.texto(row.condicion).length > 0) !== (this.numero(row.cantidad_condicional) !== 0);
+    }
+
+    /** `cantidad_condicional` y `condicion` si la fila los lleva; si no, nada (cuenta siempre). */
+    private parteCondicionalAEnviar(row: HabilidadBaseRow): { cantidad_condicional?: number; condicion?: string; } {
+        const condicion = this.texto(row.condicion);
+        const cantidad = this.numero(row.cantidad_condicional);
+        return condicion.length > 0 && cantidad !== 0 ? { cantidad_condicional: cantidad, condicion } : {};
     }
 
     private limpiarDatosMutacion(): void {
@@ -2607,6 +2628,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             cantidad: this.numero(habilidad.Cantidad),
             id_extra: this.numero(habilidad.Id_extra ?? ID_EXTRA_HABILIDAD_SIN_EXTRA),
             varios: textoOSinEspecificar(habilidad.Varios),
+            cantidad_condicional: this.numero(habilidad.Cantidad_condicional),
+            condicion: this.texto(habilidad.Condicion),
             busqueda: this.texto(habilidad.Habilidad),
             extraBusqueda: this.numero(habilidad.Id_extra ?? ID_EXTRA_HABILIDAD_SIN_EXTRA) > ID_EXTRA_HABILIDAD_SIN_EXTRA ? this.texto(habilidad.Extra) : '',
         })), () => this.crearHabilidadBaseRow());
@@ -2755,7 +2778,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private crearHabilidadBaseRow(): HabilidadBaseRow {
-        return { uid: this.nuevoUid(), id_habilidad: 0, cantidad: 0, id_extra: 0, varios: TEXTO_SIN_ESPECIFICAR, busqueda: '', extraBusqueda: '' };
+        return {
+            uid: this.nuevoUid(), id_habilidad: 0, cantidad: 0, id_extra: 0, varios: TEXTO_SIN_ESPECIFICAR,
+            cantidad_condicional: 0, condicion: '', busqueda: '', extraBusqueda: '',
+        };
     }
 
     private crearHabilidadCustomRow(): HabilidadCustomRow {

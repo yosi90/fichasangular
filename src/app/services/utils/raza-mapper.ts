@@ -14,6 +14,7 @@ import { normalizeConjuroApi } from './conjuro-mapper';
 import { leerComodin } from './comodin';
 import { normalizeManualApi } from './manual-mapper';
 import { camposEdadRacial } from './racial-mapper';
+import { parteCondicionalHabilidadRaza } from 'src/app/services/utils/habilidad-raza-condicional';
 
 function toStrictArray<T = any>(value: any): T[] {
     return Array.isArray(value) ? value : [];
@@ -368,6 +369,7 @@ function normalizeHabilidadesApi(raw: any): RazaHabilidades {
             Extra: toText(item?.Extra).trim(),
             Extra_comodin: leerComodin(item?.Extra_comodin),
             Cantidad: toNumber(item?.Cantidad),
+            ...parteCondicionalHabilidadRaza(item),
             Varios: toText(item?.Varios).trim(),
             Soporta_extra: item?.Soporta_extra === undefined ? undefined : toBoolean(item?.Soporta_extra),
             Custom: toBoolean(item?.Custom),

@@ -212,6 +212,10 @@
     display: grid
     grid-template-columns: minmax(220px, 2fr) repeat(3, minmax(120px, 1fr)) 48px
     gap: 0.75rem
+
+// La fila de una habilidad base: habilidad, cantidad, extra (o su hueco), varios, lo que suma solo en un caso y cuándo.
+.row-editor.row-editor--skill
+    grid-template-columns: minmax(200px, 2fr) repeat(3, minmax(100px, 1fr)) minmax(110px, 1fr) minmax(160px, 2fr) 48px
     align-items: center
     margin-bottom: 0.75rem
 
@@ -495,8 +499,11 @@
     .row-editor--compact
         grid-template-columns: 1fr
 
-    .row-editor--skill
+    .row-editor.row-editor--skill
         grid-template-columns: 1fr
+
+    .row-editor__hueco
+        display: none
 
     .lookup-with-action
         grid-template-columns: 1fr

@@ -21,6 +21,7 @@ import { RAZA } from 'src/app/services/utils/nombres-de-catalogo';
 import { leerComodin } from 'src/app/services/utils/comodin';
 import { errorDePerfil } from 'src/app/services/utils/error-api';
 import { leerRespuestaDeEscritura } from 'src/app/services/utils/respuesta-de-escritura';
+import { parteCondicionalHabilidadRaza } from 'src/app/services/utils/habilidad-raza-condicional';
 
 function parseIdExtra(value: any): number {
     if (value === undefined || value === null || `${value}`.trim() === '')
@@ -135,6 +136,7 @@ function normalizeHabilidadRazaBase(raw: any): Raza['Habilidades']['Base'][numbe
         Extra: `${pick(raw, 'Extra', 'extra', 'x') ?? ''}`.trim(),
         Extra_comodin: leerComodin(pick(raw, 'Extra_comodin')),
         Cantidad: toNumber(pick(raw, 'Cantidad', 'cantidad', 'Rangos', 'rangos')),
+        ...parteCondicionalHabilidadRaza(raw),
         Varios: `${pick(raw, 'Varios', 'varios') ?? ''}`.trim(),
         Soporta_extra: rawSoportaExtra === undefined ? undefined : toBoolean(rawSoportaExtra),
         Custom: toBoolean(pick(raw, 'Custom', 'custom')),

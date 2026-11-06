@@ -181,6 +181,7 @@ import {
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
 import { edadesDeLaRaza, edadFueraDelManual, etapaEdad, EtapaEdad, motivoEdadFueraDelManual, razaTieneEdades, textoEdadMaxima, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
 import { etiquetaPenalizacionExperiencia, textoPenalizacionExperiencia } from 'src/app/services/utils/penalizacion-experiencia';
+import { textoDesglose } from 'src/app/services/utils/personaje-totales';
 
 interface VectorAlineamiento {
     ley: number;
@@ -4541,17 +4542,20 @@ export class NuevoPersonajeComponent {
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
     }
 
+    /**
+     * Los bonificadores varios de la habilidad («Elfo +2») y, detrás, lo que solo cuenta en un caso, que no se suma a los
+     * rangos varios («Svirfneblin +2 (solo bajo tierra)»), como en la ficha.
+     */
     getTextoVariosHabilidad(habilidad: Personaje['Habilidades'][number]): string {
         const texto = `${habilidad?.Varios ?? ''}`.trim();
-        if (texto.length > 0)
-            return texto;
-        const bonos = habilidad?.Bonos_varios ?? [];
-        if (bonos.length < 1)
-            return '-';
-        return bonos
-            .map((bono) => `${bono?.origen ?? ''} ${Number(bono?.valor ?? 0) >= 0 ? '+' : ''}${Number(bono?.valor ?? 0)}`.trim())
-            .filter((item) => item.length > 0)
-            .join(', ');
+        const varios = texto.length > 0
+            ? texto
+            : (habilidad?.Bonos_varios ?? [])
+                .map((bono) => `${bono?.origen ?? ''} ${Number(bono?.valor ?? 0) >= 0 ? '+' : ''}${Number(bono?.valor ?? 0)}`.trim())
+                .filter((item) => item.length > 0)
+                .join(', ');
+        const situacional = textoDesglose({ total: 0, desglose: [], condicionales: habilidad?.Bonos_condicionales ?? [] }, ' · ');
+        return [varios, situacional].filter((parte) => parte.length > 0).join(' · ') || '-';
     }
 
     private esNombreHabilidadOcultaEnTabla(nombre: string): boolean {

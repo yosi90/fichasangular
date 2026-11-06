@@ -66,6 +66,12 @@ export interface RazaHabilidadBase {
     /** «elegir»: un extra por escoger (un Saber, una Artesanía). */
     Extra_comodin?: Comodin | null;
     Cantidad: number;
+    /**
+     * Lo que suma además solo en un caso (`Condicion`, «bajo tierra»): se enseña aparte y no se suma; puede ser negativo
+     * (lo que pierde en ese caso). 0 y `null` si cuenta siempre (desde el 2026-11-06).
+     */
+    Cantidad_condicional?: number;
+    Condicion?: string | null;
     Varios: string;
     Soporta_extra?: boolean;
     Custom?: boolean;

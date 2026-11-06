@@ -298,6 +298,21 @@ describe('DetallesPersonajeComponent', () => {
             expect(valor('Nivel efectivo (NEP)')).not.toContain('DG raciales');
         });
 
+        it('la ficha guardada enseña la penalización de PX por multiclase en la experiencia, como la creación (MJ cap. 3)', () => {
+            component.pj = fichaDeLaApi({
+                ra: { Id: 24, Nombre: 'Elfo', Ajuste_nivel: 0, Tamano: { Id: 5, Nombre: 'Mediano' }, Dgs_adicionales: { Cantidad: 0 }, Id_clase_predilecta: 9 },
+                clases: [
+                    { id: 3, nombre: 'Guerrero', nivel: 4, prestigio: false, lanzaConjuros: false },
+                    { id: 12, nombre: 'Pícaro', nivel: 1, prestigio: false, lanzaConjuros: false },
+                ],
+            });
+            verPagina();
+            expect(valor('Experiencia')).toContain('−20 % de PX');
+            component.pj = fichaDeLaApi();
+            verPagina();
+            expect(valor('Experiencia')).not.toContain('% de PX');
+        });
+
         it('enseña la cabecera, los datos, la franja grande y las casillas con las salvaciones', () => {
             component.pj = fichaDeLaApi();
             verPagina();
