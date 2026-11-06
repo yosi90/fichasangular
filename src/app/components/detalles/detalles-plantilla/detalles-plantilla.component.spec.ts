@@ -38,6 +38,7 @@ function crearPlantilla(partial: Partial<Plantilla> = {}): Plantilla {
         Reflejos: 0,
         Voluntad: 0,
         Modificadores_caracteristicas: caracteristicas({ Fuerza: 8, Constitucion: 2, Inteligencia: 2, Carisma: 2 }),
+        Modificadores_forma_animal: { Fuerza: 0, Destreza: 0, Constitucion: 0 },
         Minimos_caracteristicas: caracteristicas(),
         Ajuste_nivel: 3,
         Licantronia_dg: null,
@@ -183,6 +184,7 @@ describe('DetallesPlantillaComponent', () => {
         component.plantilla = crearPlantilla({
             Minimos_caracteristicas: caracteristicas({ Inteligencia: 3 }),
             Licantronia_dg: { Id_dado: 2, Dado: 'd8', Multiplicador: 2, Suma: 4 },
+            Modificadores_forma_animal: { Fuerza: 2, Destreza: 4, Constitucion: 4 },
             Compatibilidad_tipos: [
                 { Id_tipo_comp: 1, Id_tipo_nuevo: 2, Tipo_comp: 'Humanoide', Tipo_nuevo: 'Cambiaformas', Opcional: 0 },
                 { Id_tipo_comp: 3, Id_tipo_nuevo: 0, Tipo_comp: 'Gigante', Tipo_nuevo_comodin: 'cualquiera', Opcional: 0 },
@@ -193,7 +195,9 @@ describe('DetallesPlantillaComponent', () => {
         expect(Array.from(seccion('Características')!.querySelectorAll('.ficha-subtitulo')).map((t) => limpio(t)))
             .toEqual(['Modificadores', 'Mínimos']);
         expect(datos(seccion('Características'))).toContain(['Inteligencia', '3']);
-        expect(datos(seccion('Dados de golpe adicionales'))).toEqual([['DG otorgados', '2'], ['Dado', 'd8'], ['Suma de PG', '+4']]);
+        expect(datos(seccion('Dados de golpe adicionales'))).toEqual([['DG otorgados', '2'], ['Dado', 'd8'], ['PG por la Con del animal', '+4 el personaje usa su Con en forma animal']]);
+        // La forma animal del licántropo, aparte de lo de todas las formas (MM 1, «Licántropo»: un lobo).
+        expect(datos(seccion('Forma animal o híbrida'))).toEqual([['Fuerza', '+2'], ['Destreza', '+4'], ['Constitución', '+4']]);
         expect(filasPares()).toEqual([['Humanoide', 'Cambiaformas'], ['Gigante', 'Gigante']]);
     });
 
@@ -256,7 +260,7 @@ describe('DetallesPlantillaComponent', () => {
         fixture.detectChanges();
 
         expect(datos(seccion('Dados de golpe adicionales'))).toEqual([
-            ['DG otorgados', '2'], ['Dado', 'd8'], ['Tipo de los DG', 'Animal'], ['Suma de PG', '+4'],
+            ['DG otorgados', '2'], ['Dado', 'd8'], ['Tipo de los DG', 'Animal'], ['PG por la Con del animal', '+4 el personaje usa su Con en forma animal'],
             ['Puntos de habilidad', '2 + mod. de Int por DG'],
         ]);
         expect(filasPares(lateral('Habilidades'))).toEqual([['Avistar De clase', ''], ['Esconderse', '+8'], ['Saber (Elegir)', '+2']]);

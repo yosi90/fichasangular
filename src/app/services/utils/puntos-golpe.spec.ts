@@ -75,6 +75,19 @@ describe('puntos-golpe', () => {
         expect(resultado.tiradas).toBe(2);
     });
 
+    it('los DG de una plantilla con su propia Constitución (la forma animal del licántropo) la usan; los demás, la del personaje', () => {
+        // MM 1, «Licántropo»: humano de Con 11 (+0) y lobo de Con 15 (+2): «1d4 más 2d8+4».
+        const resultado = calcularPuntosGolpe(entrada({
+            nivelesClase: [{ cantidad: 1, caras: 4 }],
+            dgsPlantillas: [{ cantidad: 2, caras: 8, modConstitucion: 2 }],
+            modConstitucion: 0,
+            tirar: () => 5,
+        }));
+
+        expect(resultado.total).toBe(4 + 7 + 7);
+        expect(resultado.maximo).toBe(4 + 10 + 10);
+    });
+
     it('sin ningún DG (un humano PNJ sin clases), 0 PG: sin el mínimo de 1 por DG', () => {
         const resultado = calcularPuntosGolpe(entrada({ modConstitucion: -3 }));
 

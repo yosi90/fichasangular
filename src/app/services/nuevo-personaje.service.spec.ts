@@ -2317,9 +2317,10 @@ describe('NuevoPersonajeService (clases)', () => {
 
     describe('el licántropo: los DG del animal dan sus bases y la forma humana, sus características (MM, «Licántropo»)', () => {
         // Las plantillas como las da `GET /plantillas` en `rol_dev`: sus columnas son las del animal en su forma (las
-        // salvaciones totales del lobo, 5/5/1, con su Des, su Con y su Sab), los modificadores mezclan los físicos de la
-        // forma animal con el +2 a Sab de todas, y `Licantronia_dg` trae las bases de sus DG (las calcula la API por las
-        // progresiones del tipo animal: ataque medio, Fortaleza y Reflejos buenas, Voluntad mala).
+        // salvaciones totales del lobo, 5/5/1, con su Des, su Con y su Sab), los modificadores son los de todas las formas
+        // (el +2 a Sab), los de la forma animal van aparte (`Modificadores_forma_animal`, desde el 2026-11-06), y
+        // `Licantronia_dg` trae las bases de sus DG (las calcula la API por las progresiones del tipo animal: ataque medio,
+        // Fortaleza y Reflejos buenas, Voluntad mala).
         function licantropo(id: number, nombre: string, dgs: number, bases: number[] | null, datos: Partial<Plantilla>): Plantilla {
             const [Ataque_base, Fortaleza, Reflejos, Voluntad] = bases ?? [null, null, null, null];
             return {
@@ -2337,11 +2338,15 @@ describe('NuevoPersonajeService (clases)', () => {
         }
         const lobo = (bases: number[] | null = [1, 3, 3, 0]) => licantropo(9, 'Licántropo (lobo) [Infectado]', 2, bases, {
             Ataque_base: 1, Fortaleza: 5, Reflejos: 5, Voluntad: 1,
-            Modificadores_caracteristicas: { Fuerza: 1, Destreza: 2, Constitucion: 2, Inteligencia: 0, Sabiduria: 2, Carisma: 0 },
+            Modificadores_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 2, Carisma: 0 },
+            // MM 1, pág. 275: lobo Fue 13, Des 15, Con 15.
+            Modificadores_forma_animal: { Fuerza: 2, Destreza: 4, Constitucion: 4 },
         });
         const lince = () => licantropo(16, 'Licántropo (lince) [Nacido]', 1, [0, 2, 2, 0], {
             Ataque_base: 0, Fortaleza: 2, Reflejos: 5, Voluntad: 1,
-            Modificadores_caracteristicas: { Fuerza: -4, Destreza: 6, Constitucion: 2, Inteligencia: 0, Sabiduria: 2, Carisma: 0 },
+            Modificadores_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 2, Carisma: 0 },
+            // Razas de Faerûn, pág. 174: lince Fue 7, Des 17, Con 12.
+            Modificadores_forma_animal: { Fuerza: -4, Destreza: 6, Constitucion: 2 },
         });
 
         function humanoCon(plantilla: Plantilla): void {
@@ -2382,6 +2387,20 @@ describe('NuevoPersonajeService (clases)', () => {
             expect(salvacionesDe('Licántropo (lobo)')).toEqual([3, 3, 0]);
             // Guerrero 1 (+1) + lobo de 2 DG (+1).
             expect(`${service.PersonajeCreacion.Ataque_base}`).toBe('+2');
+        });
+
+        it('los PG de los DG del animal, con la Con de la forma animal: lobo 2d8 con Con 13 + 4 (17, +3), lince 1d8 con Con 13 + 2 (15, +2)', () => {
+            spyOn<any>(service, 'randomInt').and.returnValue(5);
+            [{ plantilla: lobo(), dgs: 2, mod: 3 }, { plantilla: lince(), dgs: 1, mod: 2 }].forEach(({ plantilla, dgs, mod }) => {
+                humanoCon(plantilla);
+                const resultado = service.calcularVidaFinalAleatoria();
+
+                // Humano sin niveles: solo los DG del animal, cada uno 5 + el modificador de la Con de su forma animal.
+                expect(service.PersonajeCreacion.Constitucion).withContext(plantilla.Nombre).toBe(13);
+                expect(resultado.total).withContext(plantilla.Nombre).toBe(dgs * (5 + mod));
+                expect(resultado.detalle.pgsConstitucionDgsPlantillas).withContext(plantilla.Nombre).toBe(dgs * mod);
+                service.quitarPlantillaSeleccion(plantilla.Id);
+            });
         });
 
         it('en forma humana solo lleva el +2 a Sab: ni la Fue, la Des ni la Con del lobo ni las del lince', () => {
@@ -3158,7 +3177,7 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.NEP).toBe(6);
     });
 
-    it('suma licantrópica aporta PGs y no DGs para progresion', () => {
+    it('la suma de los DG del animal no da DG para la progresión ni PG por sí sola (los PG usan la Con de la forma animal)', () => {
         const tipo = crearTipoBase();
         const raza = crearRazaBase(tipo);
         raza.Dgs_adicionales.Cantidad = 2;
@@ -3179,7 +3198,8 @@ describe('NuevoPersonajeService (clases)', () => {
 
         const creados = service.registrarAumentosPendientesPorProgresion('Plantillas');
         expect(creados.length).toBe(0);
-        expect(service.PersonajeCreacion.Pgs_lic).toBe(15);
+        // `Pgs_lic` lo pone la elección de los PG: lo que da la Con de la forma animal a esos DG (MM 1, «Licántropo»).
+        expect(service.PersonajeCreacion.Pgs_lic).toBe(0);
     });
 
     it('el ajuste de nivel racial y de plantillas no afecta la progresion de aumentos', () => {
@@ -7422,6 +7442,7 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
             Reflejos: 0,
             Voluntad: 0,
             Modificadores_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+            Modificadores_forma_animal: { Fuerza: 0, Destreza: 0, Constitucion: 0 },
             Minimos_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
             Ajuste_nivel: 0,
             Licantronia_dg: { Id_dado: 0, Dado: '', Multiplicador: 0, Suma: 0 },
@@ -8544,6 +8565,30 @@ describe('NuevoPersonajeService (vida final)', () => {
         expect(randomSpy.calls.allArgs()).toEqual([[1, 8], [1, 8]]);
         expect(resultado.total).toBe(10 + 3 + 6);
         expect(resultado.maximo).toBe(10 + 8 + 8);
+    });
+
+    it('el ejemplo del manual: un humano de Con 11 hombre-lobo tiene sus DG de clase con Con 11 y los 2d8 del lobo con Con 15, «2d8+4» (MM 1, «Licántropo»)', () => {
+        const svc = new NuevoPersonajeService();
+        const raza = crearRazaVida(crearTipoVida(false), 0);
+        svc.setCatalogoClases([crearClaseBase({ Id: 10, Nombre: 'Guerrero', Tipo_dado: { Id: 4, Nombre: 'd10' } })]);
+        spyOn<any>(svc, 'randomInt').and.returnValues(3, 6);
+        svc.seleccionarRaza(raza);
+        svc.agregarPlantillaSeleccion({
+            Id: 9,
+            Nombre: 'Licántropo (lobo)',
+            Licantronia_dg: { Id_dado: 3, Dado: 'd8', Multiplicador: 2, Suma: 4 },
+            Modificadores_forma_animal: { Fuerza: 2, Destreza: 4, Constitucion: 4 },
+        } as any);
+        svc.PersonajeCreacion.Constitucion = 11;
+        svc.PersonajeCreacion.ModConstitucion = 0;
+        svc.PersonajeCreacion.desgloseClases = [{ Id: 10, Nombre: 'Guerrero', Nivel: 1 } as any];
+
+        const resultado = svc.calcularVidaFinalAleatoria();
+
+        // Guerrero 1 al máximo con Con 11 (+0): 10. Los 2d8 del lobo con Con 15 (+2): 3 + 2 y 6 + 2. Antes: 10 + 3 + 6.
+        expect(resultado.total).toBe(10 + 5 + 8);
+        expect(resultado.maximo).toBe(10 + 10 + 10);
+        expect(resultado.detalle.pgsConstitucionDgsPlantillas).toBe(4);
     });
 
     it('una dote de +1 PG por DG cuenta también los DG raciales: centauro (4 DG) guerrero 1, +5', () => {

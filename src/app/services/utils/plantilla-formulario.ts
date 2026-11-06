@@ -94,6 +94,10 @@ export const CAMPOS_PLANTILLA: CamposDeFormulario = {
     mult_dg_lic: { etiqueta: 'Multiplicador de los DG añadidos', paso: 0 },
     suma_dg_lic: { etiqueta: 'Suma de los DG añadidos', paso: 0 },
     id_tipo_criatura_dg_lic: { etiqueta: 'Tipo de criatura de los DG añadidos', paso: 0 },
+    // La forma animal de un licántropo (Manual de monstruos 1): la puntuación del animal −10 o −11.
+    fue_forma_animal: { etiqueta: 'Fuerza en forma animal', paso: 0 },
+    des_forma_animal: { etiqueta: 'Destreza en forma animal', paso: 0 },
+    con_forma_animal: { etiqueta: 'Constitución en forma animal', paso: 0 },
     ...Object.fromEntries(CARACTERISTICAS_PLANTILLA.flatMap((c) => [
         [c.modificador, { etiqueta: `Modificador de ${c.nombre}`, paso: 1 }],
         [c.minimo, { etiqueta: `${c.nombre} mínima`, paso: 1 }],
@@ -209,6 +213,9 @@ export function valorPlantillaNueva(): PlantillaFormularioValor {
         mult_dg_lic: 0,
         suma_dg_lic: 0,
         id_tipo_criatura_dg_lic: 0,
+        fue_forma_animal: 0,
+        des_forma_animal: 0,
+        con_forma_animal: 0,
         fuerza: 0, destreza: 0, constitucion: 0, inteligencia: 0, sabiduria: 0, carisma: 0,
         min_fuerza: 0, min_destreza: 0, min_constitucion: 0, min_inteligencia: 0, min_sabiduria: 0, min_carisma: 0,
         iniciativa: 0,
@@ -271,6 +278,9 @@ export function valorDesdePlantilla(plantilla: Plantilla): PlantillaFormularioVa
         mult_dg_lic: toInt(lic?.Multiplicador),
         suma_dg_lic: toInt(lic?.Suma),
         id_tipo_criatura_dg_lic: toInt(lic?.Tipo_criatura?.Id),
+        fue_forma_animal: toInt(plantilla.Modificadores_forma_animal?.Fuerza),
+        des_forma_animal: toInt(plantilla.Modificadores_forma_animal?.Destreza),
+        con_forma_animal: toInt(plantilla.Modificadores_forma_animal?.Constitucion),
         fuerza: toInt(mods?.Fuerza), destreza: toInt(mods?.Destreza), constitucion: toInt(mods?.Constitucion),
         inteligencia: toInt(mods?.Inteligencia), sabiduria: toInt(mods?.Sabiduria), carisma: toInt(mods?.Carisma),
         min_fuerza: toInt(mins?.Fuerza), min_destreza: toInt(mins?.Destreza), min_constitucion: toInt(mins?.Constitucion),
@@ -466,6 +476,10 @@ export function construirPlantillaRequest(valor: PlantillaFormularioValor, lista
         mult_dg_lic: con_dg_lic ? toInt(valor.mult_dg_lic) : 0,
         suma_dg_lic: con_dg_lic ? toInt(valor.suma_dg_lic) : 0,
         id_tipo_criatura_dg_lic: con_dg_lic ? toInt(valor.id_tipo_criatura_dg_lic) : 0,
+        // La forma animal va con los DG del animal (el licántropo): sin ellos, no la tiene.
+        fue_forma_animal: con_dg_lic ? toInt(valor.fue_forma_animal) : 0,
+        des_forma_animal: con_dg_lic ? toInt(valor.des_forma_animal) : 0,
+        con_forma_animal: con_dg_lic ? toInt(valor.con_forma_animal) : 0,
         ...Object.fromEntries(TEXTOS_CON_RELLENO.map((campo) => [campo, textoOSinEspecificar(valor[campo], TEXTO_SIN_CAMBIO)])),
         ...Object.fromEntries(TEXTOS_OPCIONALES.map((campo) => [campo, toNullableText(valor[campo])])),
     } as PlantillaEscalaresRequest;
@@ -503,7 +517,9 @@ export function construirPlantillaRequest(valor: PlantillaFormularioValor, lista
 }
 
 /** Los escalares que sigue el interruptor de los DG de licantropía: si cambia alguno, cambia «Añade DG de otra criatura». */
-const CAMPOS_DG_LIC = ['id_tipo_dado_lic', 'mult_dg_lic', 'suma_dg_lic', 'id_tipo_criatura_dg_lic'];
+const CAMPOS_DG_LIC = [
+    'id_tipo_dado_lic', 'mult_dg_lic', 'suma_dg_lic', 'id_tipo_criatura_dg_lic', 'fue_forma_animal', 'des_forma_animal', 'con_forma_animal',
+];
 
 /**
  * Las claves de `CAMPOS_PLANTILLA` que cambian entre dos cuerpos del alta (el de la plantilla tal como llegó y el de

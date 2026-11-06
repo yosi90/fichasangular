@@ -159,7 +159,8 @@ export function datosMovimiento(movimientos: Movimientos | null | undefined, man
 }
 
 /** Las seis características de lo que cambia a una criatura (plantilla, subtipo): un número por cada una. */
-type CaracteristicasCriatura = Record<Caracteristica, number>;
+/** Las que falten no se enseñan (la forma animal de un licántropo solo trae las físicas). */
+type CaracteristicasCriatura = Partial<Record<Caracteristica, number>>;
 
 function datosCaracteristicas(
     valores: CaracteristicasCriatura | null | undefined,

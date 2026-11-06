@@ -50,6 +50,7 @@ export class DetallesPlantillaComponent {
     /** Lo que dice el manual de la criatura con la plantilla: entorno, organización, valor de desafío, tesoro y avance. */
     ecologia: DatoFicha[] = [];
     modificadoresCaracteristicas: DatoFicha[] = [];
+    modificadoresFormaAnimal: DatoFicha[] = [];
     minimosCaracteristicas: DatoFicha[] = [];
     combate: DatoFicha[] = [];
     movimiento: DatoFicha[] = [];
@@ -92,6 +93,8 @@ export class DetallesPlantillaComponent {
             { etiqueta: 'Avance', valor: value?.Avance },
         ]);
         this.modificadoresCaracteristicas = datosModificadoresCaracteristicas(value?.Modificadores_caracteristicas);
+        // Lo que suben las físicas en la forma animal e híbrida de un licántropo, aparte de lo de todas sus formas.
+        this.modificadoresFormaAnimal = datosModificadoresCaracteristicas(value?.Modificadores_forma_animal);
         this.minimosCaracteristicas = datosMinimosCaracteristicas(value?.Minimos_caracteristicas);
         this.combate = this.calcularCombate();
         this.movimiento = datosMovimiento(value?.Movimientos, value?.Maniobrabilidad?.Nombre);
@@ -202,7 +205,8 @@ export class DetallesPlantillaComponent {
             { etiqueta: 'DG otorgados', valor: multiplicador > 0 ? multiplicador : null },
             { etiqueta: 'Dado', valor: dg?.Dado },
             { etiqueta: 'Tipo de los DG', valor: tipo?.Nombre ?? null },
-            { etiqueta: 'Suma de PG', valor: suma !== 0 ? textoConSigno(suma) : null },
+            // La del animal con su propia Con (su bloque); el personaje usa la Con de su forma animal.
+            { etiqueta: 'PG por la Con del animal', valor: suma !== 0 ? textoConSigno(suma) : null, detalle: 'el personaje usa su Con en forma animal' },
             {
                 etiqueta: 'Puntos de habilidad',
                 valor: tipo && toNumber(tipo.Puntos_habilidad) > 0 ? `${toNumber(tipo.Puntos_habilidad)} + mod. de Int por DG` : null,

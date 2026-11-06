@@ -11,7 +11,8 @@ import { dgsRacialesQueCuentan } from 'src/app/services/utils/nivel-personaje';
  * - Una raza con 1 DG racial o menos cambia ese DG por el primer nivel de clase (Guía del DM, pág. 172: «las criaturas
  *   con 1 DG o menos tienen DG y rasgos de clase normales según su clase»): con algún nivel de clase, el DG racial no
  *   suma y el primer nivel de clase va al máximo.
- * - Los DG de plantilla suman a los PG como los demás.
+ * - Los DG de plantilla suman a los PG como los demás, con la Constitución de su forma si es otra (Manual de monstruos 1,
+ *   «Licántropo»: los DG del animal usan la Con de la forma animal; un humano de Con 11 hombre-lobo, «1d4 más 2d8+4»).
  * - Las dotes: `bonoPorDg` (+N por DG: todos los DG, también los raciales y los de plantilla) y `bonoPlano` (Dureza).
  * - Sin ningún DG (un PNJ sin clases de una raza sin DG raciales, como un humano), no hay PG de DG: 0, no el mínimo de 1
  *   que da cada DG (contrato, «Sin clases» en `docs/publica/DRAGONES_FRONT.md`).
@@ -37,6 +38,8 @@ export function tiradasPuntosGolpe(valor: unknown): number {
 export interface GrupoDadosGolpe {
     cantidad: number;
     caras: number;
+    /** El modificador de Constitución de estos DG si no es el del personaje (los del animal: el de su forma animal). */
+    modConstitucion?: number;
 }
 
 export interface EntradaPuntosGolpe {
@@ -75,7 +78,7 @@ export function dadoTrasPasos(caras: number, pasos: number, escalera: readonly n
 }
 
 export function calcularPuntosGolpe(entrada: EntradaPuntosGolpe): ResultadoPuntosGolpe {
-    const con = toInt(entrada.modConstitucion);
+    const conPersonaje = toInt(entrada.modConstitucion);
     const bonoPorDg = toInt(entrada.bonoPorDg);
     const nivelesClase = entrada.nivelesClase.reduce((acc, grupo) => acc + Math.max(0, toInt(grupo.cantidad)), 0);
     const dgsRaciales = dgsRacialesQueCuentan(entrada.dgsRaciales.cantidad, nivelesClase);
@@ -84,7 +87,7 @@ export function calcularPuntosGolpe(entrada: EntradaPuntosGolpe): ResultadoPunto
     let tiradas = 0;
     let primerDgPendiente = true;
 
-    const sumarDg = (caras: number, maximizar: boolean) => {
+    const sumarDg = (caras: number, maximizar: boolean, con = conPersonaje) => {
         const dado = Math.max(1, toInt(caras));
         const resultado = maximizar ? dado : entrada.tirar(dado);
         if (!maximizar)
@@ -104,8 +107,9 @@ export function calcularPuntosGolpe(entrada: EntradaPuntosGolpe): ResultadoPunto
         }
     });
     entrada.dgsPlantillas.forEach((grupo) => {
+        const con = grupo.modConstitucion === undefined ? conPersonaje : toInt(grupo.modConstitucion);
         for (let i = 0; i < toInt(grupo.cantidad); i++)
-            sumarDg(grupo.caras, false);
+            sumarDg(grupo.caras, false, con);
     });
 
     total += toInt(entrada.bonoPlano);
