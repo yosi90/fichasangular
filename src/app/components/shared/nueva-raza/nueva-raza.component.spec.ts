@@ -1320,6 +1320,60 @@ describe('NuevaRazaComponent', () => {
             expect(component.buildPayload().clases_asociadas).toEqual([]);
         });
 
+        it('los idiomas adicionales: carga la lista de su GET y, sin tocar nada, manda lo mismo', async () => {
+            await crearEnModificar(razaDeLaApi({
+                n: 'Enano', Idiomas_adicionales_cualquiera: false,
+                Idiomas_adicionales: [{ Id: 9, Nombre: 'Comun', Secreto: false, Oficial: true }, { Id: 7, Nombre: 'Draconico', Secreto: false, Oficial: true }],
+            }));
+
+            expect(component.edicion.hayCambios).toBeFalse();
+            expect(component.idiomasAdicionalesCualquiera).toBeFalse();
+            expect(component.idiomasAdicionales).toEqual([{ id: 9, nombre: 'Comun' }, { id: 7, nombre: 'Draconico' }]);
+            const payload = component.buildPayload();
+            expect(payload.raza.idiomas_adicionales_cualquiera).toBeFalse();
+            expect(payload.idiomas_adicionales).toEqual([7, 9]);
+
+            component.quitarIdiomaAdicional({ id: 7 });
+            expect(component.edicion.hayCambios).toBeTrue();
+            expect(component.buildPayload().idiomas_adicionales).toEqual([9]);
+        });
+
+        it('una raza con «cualquier idioma» (o sin el dato) la carga así y manda la lista vacía', async () => {
+            await crearEnModificar(razaDeLaApi({ Idiomas_adicionales_cualquiera: true, Idiomas_adicionales: [] }));
+
+            expect(component.edicion.hayCambios).toBeFalse();
+            expect(component.idiomasAdicionalesCualquiera).toBeTrue();
+            expect(component.buildPayload().idiomas_adicionales).toEqual([]);
+
+            component.alternarIdiomasAdicionalesCualquiera();
+            expect(component.edicion.hayCambios).toBeTrue();
+            expect(component.buildPayload().raza.idiomas_adicionales_cualquiera).toBeFalse();
+        });
+
+        it('un error de la API en los idiomas adicionales va a su lista y al paso «Idiomas»', async () => {
+            await crearEnModificar(razaDeLaApi({ Idiomas_adicionales_cualquiera: false, Idiomas_adicionales: [{ Id: 9, Nombre: 'Comun' }] }));
+            razaSvc.actualizarRaza.and.rejectWith(new ProfileApiError('No se ha encontrado el idioma adicional.', 'no_encontrado', 404, 'idiomas_adicionales[0]'));
+            component.form.patchValue({ nombre: 'Enano de las colinas' });
+            component.pasoActivoIndex = 4;
+
+            await component.guardarRaza();
+
+            expect(component.pasoActivoIndex).toBe(2);
+            expect(component.errores.mensajeDe('idiomas_adicionales')).toBe('No se ha encontrado el idioma adicional.');
+
+            // El error se queda en la lista hasta que cambia (como el de las clases asociadas).
+            expect(component.form.controls.idiomas_adicionales.hasError('api')).toBeTrue();
+            component.quitarIdiomaAdicional({ id: 9 });
+            expect(component.form.controls.idiomas_adicionales.hasError('api')).toBeFalse();
+
+            razaSvc.actualizarRaza.and.rejectWith(new ProfileApiError("'raza.idiomas_adicionales_cualquiera' debe ser booleano.", 'peticion_no_valida', 400, 'raza.idiomas_adicionales_cualquiera'));
+            component.pasoActivoIndex = 0;
+            await component.guardarRaza();
+
+            expect(component.errores.campo?.campo).toBe('idiomas_adicionales_cualquiera');
+            expect(component.pasoActivoIndex).toBe(2);
+        });
+
         it('sin DG raciales carga los ajustes por clases y no manda el VD ni las asociadas (la API conserva lo que haya)', async () => {
             await crearEnModificar(razaDeLaApi({
                 n: 'Drow', Vd: 1, Vd_mod_clases_pj: 1, Vd_mod_clases_pnj: 0, Clases_asociadas: [{ Id: 1, Nombre: 'Guerrero' }],
@@ -1496,6 +1550,38 @@ describe('NuevaRazaComponent', () => {
     it('manda si la raza carga como un cuadrúpedo', () => {
         component.toggleBooleanControl('cuadrupedo');
         expect(component.buildPayload().raza.cuadrupedo).toBeTrue();
+    });
+
+    describe('los idiomas adicionales por Inteligencia (una raza nueva)', () => {
+        it('empieza con «cualquier idioma» y la lista vacía, como el humano', () => {
+            const payload = component.buildPayload();
+            expect(payload.raza.idiomas_adicionales_cualquiera).toBeTrue();
+            expect(payload.idiomas_adicionales).toEqual([]);
+            // Las opciones salen del catálogo de idiomas.
+            expect(component.opcionesIdiomas.map((opcion) => opcion.id).sort()).toEqual([7, 9]);
+        });
+
+        it('sin «cualquiera» manda la lista elegida, sin repetir y ordenada; con él, la lista no se manda pero se queda', () => {
+            component.alternarIdiomasAdicionalesCualquiera();
+            component.anadirIdiomaAdicional(9);
+            component.anadirIdiomaAdicional(7);
+            component.anadirIdiomaAdicional(9);
+
+            expect(component.idiomasAdicionales).toEqual([{ id: 9, nombre: 'Comun' }, { id: 7, nombre: 'Draconico' }]);
+            let payload = component.buildPayload();
+            expect(payload.raza.idiomas_adicionales_cualquiera).toBeFalse();
+            expect(payload.idiomas_adicionales).toEqual([7, 9]);
+
+            component.alternarIdiomasAdicionalesCualquiera();
+            payload = component.buildPayload();
+            expect(payload.raza.idiomas_adicionales_cualquiera).toBeTrue();
+            expect(payload.idiomas_adicionales).toEqual([]);
+            expect(component.idiomasAdicionales.length).toBe(2);
+
+            component.alternarIdiomasAdicionalesCualquiera();
+            component.quitarIdiomaAdicional({ id: 9 });
+            expect(component.buildPayload().idiomas_adicionales).toEqual([7]);
+        });
     });
 
     describe('el VD de sus PNJ (una raza nueva)', () => {

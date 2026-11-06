@@ -59,6 +59,12 @@ export interface RazaCreateCore {
     vd?: number | null;
     vd_mod_clases_pj?: number | null;
     vd_mod_clases_pnj?: number | null;
+    /**
+     * Los idiomas adicionales por Inteligencia pueden ser cualquiera no secreto (Manual del jugador, cap. 2: el humano). Con
+     * `false`, solo los de `idiomas_adicionales` más los de su clase. Opcional: el alta deja `true` y la edición conserva
+     * el que hay. Con `true`, `idiomas_adicionales` va vacía (`400 idiomas_adicionales_con_cualquiera`).
+     */
+    idiomas_adicionales_cualquiera?: boolean;
     id_tipo_criatura: number;
     ataque_base: number;
     fortaleza: number;
@@ -155,6 +161,8 @@ export interface RazaCreateRequest {
     /** Los ids de sus clases asociadas (MM, pág. 294); si no viene, el alta no deja ninguna y la edición conserva las que hay. */
     clases_asociadas?: number[];
     idiomas?: number[];
+    /** Los ids de sus idiomas adicionales si no son cualquiera (el enano); si no viene, la edición conserva los que hay. */
+    idiomas_adicionales?: number[];
     habilidades?: RazaCreateHabilidades;
     dotes?: RazaCreateDote[];
     raciales?: RazaCreateRacial[];

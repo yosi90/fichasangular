@@ -488,6 +488,35 @@
                                 </div>
                             </div>
                         </section>
+
+                        <!-- Los idiomas adicionales por Inteligencia (Manual del jugador, cap. 2): los que puede aprender con una
+                             Inteligencia alta. Cualquiera no secreto (el humano) o los de su lista (el enano), más los de su clase. -->
+                        <section class="step-section form-panel">
+                            <h3 class="form-panel-title">Idiomas adicionales por Inteligencia</h3>
+                            <div class="estado-row">
+                                <mat-chip-listbox class="boolean-chips" aria-label="Idiomas adicionales">
+                                    <mat-chip-option [selected]="idiomasAdicionalesCualquiera" (click)="alternarIdiomasAdicionalesCualquiera()"
+                                        [disabled]="edicion.cargando"
+                                        matTooltip="Puede aprender cualquier idioma que no sea secreto, como el humano">
+                                        Cualquier idioma
+                                    </mat-chip-option>
+                                </mat-chip-listbox>
+                            </div>
+                            <p class="values-ayuda" *ngIf="idiomasAdicionalesCualquiera; else ayudaListaIdiomas">Con Inteligencia alta, el
+                                personaje elige cualquier idioma que no sea secreto. Quítalo para darle una lista, como la del enano.</p>
+                            <ng-template #ayudaListaIdiomas>
+                                <p class="values-ayuda">Con Inteligencia alta, el personaje elige entre estos y los que añade su clase (el
+                                    clérigo: abisal, celestial e infernal).<ng-container *ngIf="form.controls.mutada.value === true"> En una
+                                    raza mutada, esta lista sustituye a la de la raza base.</ng-container></p>
+                                <app-lista-de-catalogo titulo="Idiomas adicionales" icono="idioma" vacio="Ninguno: solo los de su clase."
+                                    textoAnadir="Añadir idioma adicional"
+                                    [filas]="idiomasAdicionales" [opciones]="opcionesIdiomas" [deshabilitado]="edicion.cargando"
+                                    [error]="errores.mensajeDe('idiomas_adicionales')"
+                                    (anadir)="anadirIdiomaAdicional($event)" (quitar)="quitarIdiomaAdicional($event)">
+                                </app-lista-de-catalogo>
+                            </ng-template>
+                            <p class="idiomas-adicionales-error" *ngIf="idiomasAdicionalesCualquiera && errores.mensajeDe('idiomas_adicionales') as error">{{error}}</p>
+                        </section>
                     </div>
                 </div>
             </div>
