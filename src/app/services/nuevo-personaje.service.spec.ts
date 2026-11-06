@@ -8874,6 +8874,46 @@ describe('NuevoPersonajeService (dotes repetibles con extra)', () => {
     });
 });
 
+describe('NuevoPersonajeService (armas naturales y Ataque múltiple, R3 de la revisión de las fichas guardadas)', () => {
+    const ataqueMultiple: any = {
+        Id: 49, Nombre: 'Ataque múltiple', Descripcion: '', Beneficio: '', Normal: '', Especial: '',
+        Manual: { Id: 47, Nombre: 'Manual de monstruos 1', Pagina: 303 }, Tipos: [{ Id: 1, Nombre: 'General', Usado: 1 }],
+        Repetible: 0, Repetible_distinto_extra: 0, Repetible_comb: 0, Comp_arma: 0, Oficial: true,
+        Extras_soportados: { Extra_arma: 0, Extra_armadura_armaduras: 0, Extra_armadura_escudos: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0 },
+        Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] },
+        Modificadores: {},
+        Prerrequisitos: { armas_naturales: [{ Cantidad: 3, Opcional: 0, Frase: 'Tres armas naturales o más' }] },
+    };
+    const arma = (id: number, nombre: string, cantidad: number, extra: any = {}) =>
+        ({ Id_arma_natural: id, Arma_natural: nombre, Cantidad: cantidad, Dano: null, Primaria: true, Texto: nombre, ...extra });
+
+    function estadoDeAtaqueMultiple(raza: any, plantillas: any[] = []): string | undefined {
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoDotes([ataqueMultiple]);
+        (svc as any).razaSeleccionada = raza;
+        (svc as any).estadoFlujo.plantillas.seleccionadas = plantillas;
+        (svc as any).dotesPendientes = [{ id: 1, fuente: 'nivel', origen: 'Nivel 3', tipoPermitido: null, estado: 'pendiente' }];
+        return svc.obtenerCandidatosDotePendiente(1).find((candidato) => candidato.dote.Id === 49)?.evaluacion?.estado;
+    }
+
+    it('un elfo del bosque (la ficha 11, sin armas naturales) no la cumple', () => {
+        expect(estadoDeAtaqueMultiple({ Armas_naturales: [] })).toBe('blocked_failed');
+    });
+
+    it('un troll (dos garras y un mordisco) sí', () => {
+        expect(estadoDeAtaqueMultiple({ Armas_naturales: [arma(2, 'Garra', 2), arma(1, 'Mordisco', 1)] })).toBe('eligible');
+    });
+
+    it('un humano licántropo lobo, en forma híbrida (dos garras y el mordisco)', () => {
+        const lobo = { Id: 9, Nombre: 'Licántropo (lobo) [Infectado]', Armas_naturales: [
+            arma(1, 'Mordisco', 1, { Modo: 'sustituye', Forma: 'animal' }),
+            arma(2, 'Garra', 2, { Modo: 'sustituye', Forma: 'hibrida' }),
+            arma(1, 'Mordisco', 1, { Modo: 'sustituye', Forma: 'hibrida' }),
+        ] };
+        expect(estadoDeAtaqueMultiple({ Armas_naturales: [] }, [lobo])).toBe('eligible');
+    });
+});
+
 describe('NuevoPersonajeService (avisos de la elegibilidad de clases)', () => {
     it('el bloqueo solo por alineamiento lo dice la evaluación (por tipo), aunque haya avisos', () => {
         const service = new NuevoPersonajeService();

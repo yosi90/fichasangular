@@ -85,6 +85,11 @@ export interface DoteEvaluacionContexto {
     reservaPsionica?: number;
     /** El nivel de poder psiónico más alto que manifiesta (`lanzar_poder_psionico_nivel`). */
     nivelPoderPsionicoMaximo?: number;
+    /**
+     * Cuántas armas naturales tiene, en la forma en que más tiene (`contarArmasNaturales`: las de su raza a su edad y sus
+     * plantillas), para `armas_naturales` (Ataque múltiple, tres o más).
+     */
+    armasNaturales?: number;
 }
 
 /**
@@ -769,6 +774,8 @@ function evaluateFamily(
     }
     if (keyNorm === 'reserva_psionica')
         return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.reservaPsionica), 'Prerrequisito reserva_psionica con formato no reconocido'));
+    if (keyNorm === 'armas_naturales')
+        return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.armasNaturales), 'Prerrequisito armas_naturales con formato no reconocido'));
     if (keyNorm === 'lanzar_poder_psionico_nivel')
         return entries.map((entry) => buildEvaluacionNumeroMinimo(entry, toNumber(ctx.nivelPoderPsionicoMaximo), 'Prerrequisito lanzar_poder_psionico_nivel con formato no reconocido'));
     if (CLAVES_PRERREQUISITOS_INCARNUM.includes(keyNorm)) {

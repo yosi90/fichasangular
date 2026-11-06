@@ -22,6 +22,10 @@
                 </ng-container>
             </dl>
         </app-ficha-seccion>
+        <!-- Las armas naturales como dato; con sus bonificadores, en «Ataque completo» de Combate. -->
+        <app-ficha-seccion titulo="Armas naturales" *ngIf="(monstruo.Armas_naturales?.length ?? 0) > 0">
+            <app-ficha-armas-naturales [armas]="monstruo.Armas_naturales ?? []"></app-ficha-armas-naturales>
+        </app-ficha-seccion>
         <app-ficha-seccion titulo="Descripción" [texto]="monstruo.Descripcion"></app-ficha-seccion>
 
         <app-ficha-lateral *ngIf="hayAptitudes">

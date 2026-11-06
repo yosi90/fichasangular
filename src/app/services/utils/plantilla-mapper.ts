@@ -14,6 +14,7 @@ import { leerComodin } from "./comodin";
 import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualLegacy } from './manual-mapper';
 import { normalizeRacial } from './racial-mapper';
+import { leerArmasNaturalesPlantilla } from './armas-naturales';
 
 function toStrictArray<T = any>(raw: any): T[] {
     return Array.isArray(raw) ? raw : [];
@@ -252,6 +253,7 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
         })),
         Raciales: normalizeRacialesContextuales(raw?.Raciales),
         Ataques_especiales: normalizeRacialesContextuales(raw?.Ataques_especiales),
+        Armas_naturales: leerArmasNaturalesPlantilla(raw?.Armas_naturales),
         Prerrequisitos_flags: normalizePrerrequisitosFlags(raw?.Prerrequisitos_flags),
         Prerrequisitos: partes.Prerrequisitos,
         Compatibilidad_tipos: partes.Compatibilidad_tipos,

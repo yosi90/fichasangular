@@ -16,7 +16,11 @@
     <app-ficha-cuerpo>
         <!-- Cómo es, cómo se comporta y cómo vive (el lore propio de las razas importadas de los manuales). -->
         <app-ficha-seccion titulo="Descripción" [texto]="raza.Descripcion"></app-ficha-seccion>
-        <app-ficha-seccion titulo="Ataques naturales" [texto]="raza.Ataques_naturales"></app-ficha-seccion>
+        <!-- Las armas naturales como dato y, si la raza aún no las tiene, su texto de siempre. -->
+        <app-ficha-seccion titulo="Ataques naturales" *ngIf="(raza.Armas_naturales?.length ?? 0) > 0">
+            <app-ficha-armas-naturales [armas]="raza.Armas_naturales ?? []"></app-ficha-armas-naturales>
+        </app-ficha-seccion>
+        <app-ficha-seccion titulo="Ataques naturales" *ngIf="!raza.Armas_naturales?.length" [texto]="raza.Ataques_naturales"></app-ficha-seccion>
 
         <app-ficha-lateral titulo="Prerrequisitos" *ngIf="prerrequisitosAgrupados.length > 0">
             <!-- Cada condición es la frase que escribe la API («Criatura de tipo dragón»). -->

@@ -168,6 +168,25 @@ describe('plantilla-formulario', () => {
         expect(camposCambiados(cuerpo, otra, true, true)).toEqual([]);
     });
 
+    it('las armas naturales van y vuelven con su modo y su forma, y cambiarlas marca su campo (el licántropo lobo)', () => {
+        const plantilla = normalizePlantillaApi({
+            ...plantillaApiDeEjemplo(),
+            Armas_naturales: [
+                { Id_arma_natural: 1, Arma_natural: 'Mordisco', Cantidad: 1, Dano: '1d6', Primaria: true, Texto: 'Mordisco 1d6 (en forma animal…)', Modo: 'sustituye', Forma: 'animal' },
+                { Id_arma_natural: 2, Arma_natural: 'Garra', Cantidad: 2, Dano: null, Primaria: true, Texto: '2 garras (en forma híbrida…)', Modo: 'sustituye', Forma: 'hibrida' },
+            ],
+        });
+        const listas = listasDesdePlantilla(plantilla, uid);
+        const cuerpo = construirPlantillaRequest(valorDesdePlantilla(plantilla), listas);
+        expect(cuerpo.armas_naturales).toEqual([
+            { id_arma_natural: 1, cantidad: 1, dano: '1d6', primaria: true, modo: 'sustituye', forma: 'animal' },
+            { id_arma_natural: 2, cantidad: 2, dano: null, primaria: true, modo: 'sustituye', forma: 'hibrida' },
+        ]);
+        const sinGarras = construirPlantillaRequest(valorDesdePlantilla(plantilla), { ...listas, armasNaturales: listas.armasNaturales.slice(0, 1) });
+        expect(camposCambiados(cuerpo, sinGarras, false, false)).toEqual(['armas_naturales']);
+        expect(CAMPOS_PLANTILLA['armas_naturales'].paso).toBe(CAMPOS_PLANTILLA['ataques'].paso);
+    });
+
     it('dice qué campos cambian, en el orden de los campos, sin depender del orden de las filas', () => {
         const plantilla = normalizePlantillaApi(plantillaApiDeEjemplo());
         const antes = construirPlantillaRequest(valorDesdePlantilla(plantilla), listasDesdePlantilla(plantilla, uid));

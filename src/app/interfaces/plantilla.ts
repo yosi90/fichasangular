@@ -1,4 +1,5 @@
 import { PrerrequisitoItem } from "./prerrequisito";
+import { ArmaNaturalCreate, ArmaNaturalPlantilla } from "./arma-natural";
 import { Alineamiento } from "./alineamiento";
 import { Comodin } from "./comodin";
 import { Conjuro } from "./conjuro";
@@ -198,6 +199,8 @@ export interface Plantilla {
     Sortilegas: PlantillaSortilega[];
     Raciales: PlantillaRacialContextual[];
     Ataques_especiales: PlantillaRacialContextual[];
+    /** Las armas naturales que da o quita, con su forma y su modo (`Ataques` y `Ataque_completo` son su descripción). */
+    Armas_naturales?: ArmaNaturalPlantilla[];
     Prerrequisitos_flags: PlantillaPrerrequisitosFlags;
     Prerrequisitos: PlantillaPrerrequisitos;
     Compatibilidad_tipos: PlantillaCompatibilidadTipo[];
@@ -298,6 +301,8 @@ export interface PlantillaCreateRequest {
     sortilegas: { id_conjuro: number; nivel_lanzador: number; usos_diarios: string; dg: number; }[];
     raciales: { id_racial: number; dg: number; }[];
     ataquesEspeciales: { id_racial: number; dg: number; }[];
+    /** Las armas naturales con su modo y su forma; si no viene, la edición conserva las que hay. */
+    armas_naturales?: ArmaNaturalCreate[];
 }
 
 /** Lo que devuelve el alta (`PlantillaCreateResponse`), con la plantilla ya normalizada. */

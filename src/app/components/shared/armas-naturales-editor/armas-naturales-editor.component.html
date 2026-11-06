@@ -1,0 +1,36 @@
+<app-lista-de-catalogo titulo="Armas naturales" [filas]="filasDeLista" [opciones]="opciones" [repetibles]="plantilla"
+    [deshabilitado]="deshabilitado" [error]="problema" textoAnadir="Añadir arma natural"
+    vacio="Ninguna como dato: el texto de los ataques sigue siendo su descripción."
+    (anadir)="anadir($event)" (quitar)="quitar($event)">
+    <ng-template let-fila>
+        <ng-container *ngIf="comoFila(fila) as arma">
+            <mat-form-field appearance="fill" class="arma-natural__corto" *ngIf="!(plantilla && arma.modo === 'quita')">
+                <mat-label>Cantidad</mat-label>
+                <input matInput type="number" min="1" max="99" [value]="arma.cantidad ?? ''" [disabled]="deshabilitado"
+                    (input)="cambiarCantidad(fila, $any($event.target).value)">
+            </mat-form-field>
+            <mat-form-field appearance="fill" class="arma-natural__corto" *ngIf="!(plantilla && arma.modo === 'quita')">
+                <mat-label>Daño</mat-label>
+                <input matInput maxlength="30" placeholder="1d6" [value]="arma.dano" [disabled]="deshabilitado"
+                    (input)="cambiar(fila, { dano: $any($event.target).value })">
+                <mat-hint>Los dados, sin la Fuerza; vacío si va por tamaño</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="fill" *ngIf="plantilla">
+                <mat-label>Cómo se junta</mat-label>
+                <mat-select [value]="arma.modo" [disabled]="deshabilitado" (selectionChange)="cambiarModo(fila, $event.value)">
+                    <mat-option *ngFor="let modo of modos" [value]="modo.valor">{{modo.etiqueta}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="fill" *ngIf="plantilla">
+                <mat-label>Forma</mat-label>
+                <mat-select [value]="arma.forma" [disabled]="deshabilitado" (selectionChange)="cambiarForma(fila, $event.value)">
+                    <mat-option *ngFor="let forma of formas" [value]="forma.valor">{{forma.etiqueta}}</mat-option>
+                </mat-select>
+            </mat-form-field>
+            <button type="button" class="estado-chip arma-natural__chip" *ngIf="!(plantilla && arma.modo === 'quita')"
+                [class.activo]="arma.primaria" [attr.aria-pressed]="arma.primaria" [disabled]="deshabilitado"
+                (click)="cambiar(fila, { primaria: !arma.primaria })">{{arma.primaria ? 'Primaria' : 'Secundaria'}}</button>
+            <p class="arma-natural__problema" role="alert" *ngIf="problemaDe(fila) as problema">{{problema}}</p>
+        </ng-container>
+    </ng-template>
+</app-lista-de-catalogo>

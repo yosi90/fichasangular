@@ -25,6 +25,7 @@ import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeCreateMascotasDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { bonoRacialCondicional } from './utils/habilidad-raza-condicional';
+import { contarArmasNaturales } from './utils/armas-naturales';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
@@ -3827,6 +3828,9 @@ export class NuevoPersonajeService {
             alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`.trim(),
             puedeSeleccionarCompanero: estadoCuposCompanero.cuposDisponibles > 0,
             puedeSeleccionarFamiliar: estadoCuposFamiliar.cuposDisponibles > 0,
+            // Las de su raza (resuelta a su edad) y sus plantillas, en la forma en que más tiene (el licántropo: la
+            // animal o la híbrida).
+            armasNaturales: contarArmasNaturales(this.razaSeleccionada, this.estadoFlujo.plantillas.seleccionadas ?? []),
             catalogoRegiones,
             incarnum: incarnumParaPrerrequisitos(this.getIncarnumBorrador()),
             reservaPsionica: this.resolverReservaPsionicaActual(),

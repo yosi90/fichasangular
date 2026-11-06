@@ -42,6 +42,7 @@ import { edadesDeLaRaza, GRUPOS_EDAD_INICIAL, textoDadosEdadInicial, textoEdadMa
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { abreviaturaCaracteristica, NOMBRES_CARACTERISTICAS, SIN_CARACTERISTICA } from 'src/app/services/utils/caracteristicas';
 import { textoVd } from 'src/app/services/utils/tipo-personaje';
+import { textoDeArmasNaturales } from 'src/app/services/utils/armas-naturales';
 import {
     SOLO_PNJ,
     categoriasEdadOrdenadas,
@@ -501,7 +502,7 @@ export class DetallesRazaComponent {
             categoria.Categoria.Nombre,
             [textoPies(categoria.Espacio), textoPies(categoria.Alcance)].filter((t): t is string => !!t).join(' / '),
             textosMovimiento(categoria.Velocidades, categoria.Maniobrabilidad?.Nombre).join(', '),
-            `${categoria.Ataques_naturales ?? ''}`.trim(),
+            textoDeArmasNaturales(categoria.Armas_naturales) || `${categoria.Ataques_naturales ?? ''}`.trim(),
             `${categoria.Re ?? ''}`.trim(),
             categoria.Nivel_lanzador_sortilegas > 0 ? `${categoria.Nivel_lanzador_sortilegas}` : '',
         ]);

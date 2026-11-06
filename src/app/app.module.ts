@@ -124,6 +124,7 @@ import { NuevoManualComponent } from './components/shared/nuevo-manual/nuevo-man
 import { ListadoManualesComponent } from './components/shared/listado-manuales/listado-manuales.component';
 import { NuevoObjetoComponent } from './components/shared/nuevo-objeto/nuevo-objeto.component';
 import { EquipoMagiaComponent } from './components/shared/equipo-magia/equipo-magia.component';
+import { ArmasNaturalesEditorComponent } from './components/shared/armas-naturales-editor/armas-naturales-editor.component';
 import { InsercionMarcoComponent } from './components/shared/insercion-marco/insercion-marco.component';
 import { NuevaEspecialComponent } from './components/shared/nueva-especial/nueva-especial.component';
 import { NuevaClaseComponent } from './components/shared/nueva-clase/nueva-clase.component';
@@ -304,6 +305,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         ListadoManualesComponent,
         NuevoObjetoComponent,
         EquipoMagiaComponent,
+        ArmasNaturalesEditorComponent,
         InsercionMarcoComponent,
         NuevaEspecialComponent,
         NuevaClaseComponent,

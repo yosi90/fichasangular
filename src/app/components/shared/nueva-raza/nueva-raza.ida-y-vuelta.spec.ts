@@ -91,7 +91,9 @@ describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
 
             expect(component.form.valid).toBeTrue();
             expect(component.edicion.hayCambios).toBeFalse();
-            expect(JSON.parse(JSON.stringify(component.buildPayload()))).toEqual(cuerpo);
+            // Las respuestas se grabaron antes de las armas naturales como dato (2026-11-06): sin `Armas_naturales` en el GET,
+            // el cuerpo manda `armas_naturales: []`, que deja el mismo GET.
+            expect(JSON.parse(JSON.stringify(component.buildPayload()))).toEqual({ ...cuerpo, armas_naturales: [] });
             expect(component.porEdades).toBe((get.Categorias_edad ?? []).length > 0);
         });
     });
@@ -106,6 +108,22 @@ describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
         const base = component.buildPayload().habilidades?.base ?? [];
         expect(base[0]).toEqual(jasmine.objectContaining({ id_habilidad: get.Habilidades.Base[0].Id_habilidad, cantidad_condicional: 2, condicion: 'bajo tierra' }));
         expect(base.slice(1).every((item) => item.condicion === undefined)).toBeTrue();
+    });
+
+    it('conserva sus armas naturales (`Armas_naturales`; el rakshasa de `rol_dev`: mordisco 1d6 y 2 garras 1d4)', async () => {
+        const rakshasa = IDA_Y_VUELTA_RAZAS.find((item) => item.id === 427)!;
+        const get = JSON.parse(JSON.stringify(rakshasa.get));
+        get.Armas_naturales = [
+            { Id_arma_natural: 1, Arma_natural: 'Mordisco', Cantidad: 1, Dano: '1d6', Primaria: true, Texto: 'Mordisco 1d6' },
+            { Id_arma_natural: 2, Arma_natural: 'Garra', Cantidad: 2, Dano: '1d4', Primaria: true, Texto: '2 garras 1d4' },
+        ];
+        const component = await cargada(get);
+
+        expect(component.edicion.hayCambios).toBeFalse();
+        expect(component.buildPayload().armas_naturales).toEqual([
+            { id_arma_natural: 1, cantidad: 1, dano: '1d6', primaria: true },
+            { id_arma_natural: 2, cantidad: 2, dano: '1d4', primaria: true },
+        ]);
     });
 
     it('un dragón conserva sus pasos por su id y cada categoría con lo que gana', async () => {
