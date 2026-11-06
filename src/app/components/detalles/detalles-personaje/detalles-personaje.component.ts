@@ -1418,10 +1418,13 @@ ${envejecimiento}` : edades;
         };
     }
 
+    /**
+     * La nota de una plantilla en la ficha: sus DG, su ajuste y si es heredada. Sin los PG de sus DG: ya van en los PG
+     * del personaje, y `Suma_dgs_lic` es el dato del bloque del animal, que no vale para cualquier Constitución.
+     */
     private detallePlantilla(p: any): string {
         return [
             toNumber(p?.Multiplicador_dgs_lic) > 0 ? `${toNumber(p.Multiplicador_dgs_lic)}${`${p?.Tipo_dgs_lic ?? ''}`.trim()} DG adicionales` : '',
-            toNumber(p?.Suma_dgs_lic) > 0 ? `+${toNumber(p.Suma_dgs_lic)} PG` : '',
             toNumber(p?.Ajuste_nivel) > 0 ? `ajuste de nivel +${toNumber(p.Ajuste_nivel)}` : '',
             p?.Heredada ? 'heredada' : 'adquirida',
         ].filter(Boolean).join(' · ');
