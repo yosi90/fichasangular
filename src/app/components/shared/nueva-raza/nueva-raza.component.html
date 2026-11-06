@@ -309,7 +309,20 @@
                                         <mat-form-field appearance="fill"><mat-label>Edad máxima: dados</mat-label><input matInput type="number" min="0" formControlName="edad_maxima_dados" /><mat-hint>+2d20: 2</mat-hint><mat-error>Mínimo 0.</mat-error></mat-form-field>
                                         <mat-form-field appearance="fill"><mat-label>Edad máxima: caras</mat-label><input matInput type="number" min="0" formControlName="edad_maxima_caras" /><mat-hint>+2d20: 20; +4d%: 100</mat-hint><mat-error>Mínimo 0.</mat-error></mat-form-field>
                                     </div>
-                                    <p class="field-error" *ngIf="form.errors?.['rangosInvalidos']">Orden esperado: adulto, mediana edad, viejo y venerable; la edad máxima, con sus dados y sus caras o sin ninguno.</p>
+                                    <!-- La tabla 6-4 del Manual del jugador: la edad inicial es la mayoría de edad + los dados del grupo de la
+                                         clase del primer nivel (1: bárbaro, hechicero, pícaro; 2: bardo, guerrero, paladín, explorador;
+                                         3: clérigo, druida, mago, monje). -->
+                                    <p class="ficha-nota">Edad inicial (tabla 6-4): los dados que se suman a la mayoría de edad según el grupo de
+                                        la clase del primer nivel (1, como el bárbaro; 2, como el guerrero; 3, como el mago). El humano: +1d4, +1d6, +2d6.</p>
+                                    <div class="values-grid values-grid--four">
+                                        <mat-form-field appearance="fill"><mat-label>Inicial 1: dados</mat-label><input matInput type="number" min="0" formControlName="edad_inicial_dados_1" /><mat-error>Mínimo 0.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Inicial 1: caras</mat-label><input matInput type="number" min="0" formControlName="edad_inicial_caras_1" /><mat-error>Mínimo 0.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Inicial 2: dados</mat-label><input matInput type="number" min="0" formControlName="edad_inicial_dados_2" /><mat-error>Mínimo 0.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Inicial 2: caras</mat-label><input matInput type="number" min="0" formControlName="edad_inicial_caras_2" /><mat-error>Mínimo 0.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Inicial 3: dados</mat-label><input matInput type="number" min="0" formControlName="edad_inicial_dados_3" /><mat-error>Mínimo 0.</mat-error></mat-form-field>
+                                        <mat-form-field appearance="fill"><mat-label>Inicial 3: caras</mat-label><input matInput type="number" min="0" formControlName="edad_inicial_caras_3" /><mat-error>Mínimo 0.</mat-error></mat-form-field>
+                                    </div>
+                                    <p class="field-error" *ngIf="form.errors?.['rangosInvalidos']">Orden esperado: adulto, mediana edad, viejo y venerable; la edad máxima y la inicial, con sus dados y sus caras o sin ninguno.</p>
                                 </section>
 
                                 <section class="form-panel values-panel values-other">

@@ -9,7 +9,8 @@ import { toInt, toText } from 'src/app/services/utils/normalizacion';
  * - Si alguna clase del personaje está a más de un nivel de su clase de más nivel, gana un 20 % menos de PX por cada
  *   clase que esté así.
  * - La clase predilecta de su raza no cuenta. Con la predilecta «Cualquiera» (el humano y el semielfo: el comodín de la
- *   raza, `Clase_predilecta_comodin`), no cuenta su clase de más nivel.
+ *   raza, `Clase_predilecta_comodin`), no cuenta su clase de más nivel. Sin clase predilecta (su libro no le da una, como
+ *   a los dragones: `Id_clase_predilecta` nulo y sin comodín), cuentan todas.
  * - Las clases de prestigio no cuentan nunca (Guía del DM, cap. 6). Los DG raciales tampoco: no son una clase.
  *
  * No cambia la experiencia con la que se crea el personaje (la mínima de su NEP): es la que gane después. Nada va por el
@@ -24,7 +25,7 @@ export interface ClaseParaPenalizacion {
     prestigio: boolean;
 }
 
-/** La clase predilecta de la raza: su id y, si es el comodín «Cualquiera», `'cualquiera'`. */
+/** La clase predilecta de la raza: su id y, si es el comodín «Cualquiera», `'cualquiera'`; sin clase predilecta, id 0 sin comodín. */
 export interface ClasePredilecta {
     id: number;
     comodin: Comodin | null;

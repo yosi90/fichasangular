@@ -342,6 +342,8 @@ export function normalizeClase(raw: any): Clase {
         Tiene_prerrequisitos: tienePrerrequisitos,
         Multiclase_restringida: toBoolean(raw?.Multiclase_restringida),
         Alineamiento_deidad: toBoolean(raw?.Alineamiento_deidad),
+        Grupo_edad_inicial: toNumber(raw?.Grupo_edad_inicial),
+        Clase_pnj: toBoolean(raw?.Clase_pnj),
         Alineamiento: normalizeAlineamiento(raw?.Alineamiento),
         Oficial: toBoolean(raw?.Oficial),
         Competencias: {

@@ -269,6 +269,26 @@ describe('RazaService helpers', () => {
         expect(elfo.Edad_maxima_dados).toBe(0);
     });
 
+    it('lee una raza sin clase predilecta («Ninguna»: null en la API, sin la clave en la caché), la edad inicial y el VD (tercera tanda)', () => {
+        const dragon = { c: null, Id_clase_predilecta: null, Clase_predilecta_comodin: null, Vd: null, Clases_asociadas: [] };
+        const http = normalizeRazaApi(createRazaApiRaw(dragon));
+        const cache = normalizeRazaLegacy({ Id: 70, Nombre: 'Dragón rojo' });
+        [http, cache].forEach((raza) => {
+            expect(raza.Id_clase_predilecta).toBe(0);
+            expect(raza.Clase_predilecta_comodin).toBeNull();
+            expect(raza.Clase_predilecta).toBe('Ninguna');
+            expect(raza.Vd).toBeNull();
+        });
+        const elfo = normalizeRazaApi(createRazaApiRaw({
+            Edad_inicial_dados_1: 4, Edad_inicial_caras_1: 6, Edad_inicial_dados_3: 10, Edad_inicial_caras_3: 6,
+            Vd: 3, Vd_mod_clases_pj: 1, Clases_asociadas: [{ Id: 7, Nombre: 'Guerrero' }],
+        }));
+        expect([elfo.Edad_inicial_dados_1, elfo.Edad_inicial_caras_1, elfo.Edad_inicial_dados_2, elfo.Edad_inicial_dados_3])
+            .toEqual([4, 6, 0, 10]);
+        expect([elfo.Vd, elfo.Vd_mod_clases_pj, elfo.Vd_mod_clases_pnj]).toEqual([3, 1, null]);
+        expect(elfo.Clases_asociadas).toEqual([{ Id: 7, Nombre: 'Guerrero' }]);
+    });
+
     it('lee la descripción, el nombre original y si es traducida, por HTTP y desde la caché', () => {
         const textos = { Descripcion: ' Los goliats viven en las cumbres.\n\nCompiten en todo. ', Nombre_original: 'Goliath', Traducido: true };
         const http = normalizeRazaApi(createRazaApiRaw(textos));

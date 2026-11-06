@@ -161,10 +161,24 @@ function normalizeIdiomasApi(raw: any): IdiomaDetalle[] {
         .filter((item) => item.Nombre.trim().length > 0);
 }
 
+/** El nombre que se enseña de una raza sin clase predilecta (la API da `null`: su libro no le da una, como los dragones). */
+export const SIN_CLASE_PREDILECTA = 'Ninguna';
+
+/**
+ * El nombre de la clase predilecta de la raza, o «Ninguna» si no tiene: la API y la caché dan `null` (o no lo dan) para
+ * la fila de relleno «Ninguna», y entonces todas sus clases cuentan para la penalización de PX.
+ */
+export function textoClasePredilecta(valor: unknown): string {
+    const nombre = toText(valor).trim();
+    return nombre.length > 0 ? nombre : SIN_CLASE_PREDILECTA;
+}
+
 /** Los campos de la raza que usan las reglas de la creación, leídos igual en la API y en la caché. */
 type CamposCreacionRaza = 'Dotes_adicionales' | 'Puntos_habilidad_extra_primer_nivel' | 'Puntos_habilidad_extra_por_nivel'
     | 'Cuadrupedo' | 'Competencias' | 'Idiomas_adicionales' | 'Idiomas_adicionales_cualquiera'
-    | 'Id_clase_predilecta' | 'Clase_predilecta_comodin' | 'Edad_maxima_dados' | 'Edad_maxima_caras';
+    | 'Id_clase_predilecta' | 'Clase_predilecta_comodin' | 'Edad_maxima_dados' | 'Edad_maxima_caras'
+    | 'Edad_inicial_dados_1' | 'Edad_inicial_caras_1' | 'Edad_inicial_dados_2' | 'Edad_inicial_caras_2'
+    | 'Edad_inicial_dados_3' | 'Edad_inicial_caras_3' | 'Vd' | 'Vd_mod_clases_pj' | 'Vd_mod_clases_pnj' | 'Clases_asociadas';
 
 /**
  * Lo que la raza aporta a las reglas de la creación: su dote adicional y sus puntos de habilidad extra, si carga como un
@@ -191,11 +205,23 @@ export function normalizarCamposCreacionRaza(raw: any): Pick<Raza, CamposCreacio
         Idiomas_adicionales: normalizeIdiomasApi(Array.isArray(raw?.Idiomas_adicionales) ? raw.Idiomas_adicionales : Object.values(raw?.Idiomas_adicionales ?? {})),
         Idiomas_adicionales_cualquiera: toBoolean(raw?.Idiomas_adicionales_cualquiera ?? true),
         // La clase predilecta por su id y su marca de comodín (la API y la caché, con el mismo nombre; en la caché, sin
-        // comodín no está), y los dados de la edad máxima (0 y 0, sin dato).
+        // comodín no está). Sin clase predilecta («Ninguna»: `null` en la API, sin el campo en la caché), 0 y sin comodín:
+        // todas las clases cuentan para la penalización de PX. Y los dados de la edad máxima y de la inicial de cada grupo
+        // de clases (0 y 0, sin dato) y lo del VD de un PNJ (`null`, sin dato).
         Id_clase_predilecta: toNumber(raw?.Id_clase_predilecta),
         Clase_predilecta_comodin: leerComodin(raw?.Clase_predilecta_comodin),
         Edad_maxima_dados: toNumber(raw?.Edad_maxima_dados),
         Edad_maxima_caras: toNumber(raw?.Edad_maxima_caras),
+        Edad_inicial_dados_1: toNumber(raw?.Edad_inicial_dados_1),
+        Edad_inicial_caras_1: toNumber(raw?.Edad_inicial_caras_1),
+        Edad_inicial_dados_2: toNumber(raw?.Edad_inicial_dados_2),
+        Edad_inicial_caras_2: toNumber(raw?.Edad_inicial_caras_2),
+        Edad_inicial_dados_3: toNumber(raw?.Edad_inicial_dados_3),
+        Edad_inicial_caras_3: toNumber(raw?.Edad_inicial_caras_3),
+        Vd: toNumberOrNull(raw?.Vd),
+        Vd_mod_clases_pj: toNumberOrNull(raw?.Vd_mod_clases_pj),
+        Vd_mod_clases_pnj: toNumberOrNull(raw?.Vd_mod_clases_pnj),
+        Clases_asociadas: refs(raw?.Clases_asociadas),
     };
 }
 
@@ -325,7 +351,8 @@ function referenciasEdicionRaza(raw: any): ReferenciasEdicionRaza | null {
     const dgs = raw?.Dgs_raciales;
     return {
         Manual: normalizeManualApi(manual),
-        Clase_predilecta: toRefIdNombre(raw?.Clase_predilecta) ?? { Id: 0, Nombre: '' },
+        // `null`: sin clase predilecta («Ninguna»), que no es la 0 («Cualquiera»).
+        Clase_predilecta: toRefIdNombre(raw?.Clase_predilecta),
         Dgs_raciales: {
             Cantidad: toNumber(dgs?.Cantidad),
             Id_dado: toNumber(dgs?.Id_dado),
@@ -478,7 +505,7 @@ export function normalizeRazaApi(raw: any): Raza {
         Alineamiento: normalizeAlineamientoApi(raw?.ali),
         Manual: toText(raw?.ma),
         Ajuste_nivel: toNumber(raw?.aju),
-        Clase_predilecta: toText(raw?.c),
+        Clase_predilecta: textoClasePredilecta(raw?.c),
         Oficial: toBoolean(raw?.o, true),
         Ataques_naturales: toText(raw?.an),
         Tamano: raw?.t ?? {} as any,

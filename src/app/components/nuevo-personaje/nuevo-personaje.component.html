@@ -206,6 +206,18 @@
                                             <mat-icon>help_outline</mat-icon>
                                         </button>
                                     </div>
+                                    <div class="full-span edad-inicial" *ngIf="edadInicialGrupos.length > 0">
+                                        <p class="ficha-nota">Edad inicial según la clase de su primer nivel (Manual del jugador,
+                                            tabla 6-4): por debajo, el personaje será homebrew.</p>
+                                        <ul class="edad-inicial__lista">
+                                            <li *ngFor="let item of edadInicialGrupos" class="edad-inicial__grupo">
+                                                <span>{{item.clases}}: {{raza.Edad_adulto}} {{item.dados}} (al menos {{item.minima}})</span>
+                                                <button type="button" mat-stroked-button class="edad-inicial__tirar"
+                                                    (click)="tirarEdadInicial(item.grupo)"
+                                                    [attr.aria-label]="'Tirar la edad inicial de ' + item.clases">Tirar {{item.dados}}</button>
+                                            </li>
+                                        </ul>
+                                    </div>
                                     <p class="full-span creacion-aviso" *ngIf="edadFueraRango">{{textoEdadFueraRango}}</p>
                                     <mat-form-field appearance="fill">
                                         <mat-label>Peso (kg)</mat-label>
@@ -535,6 +547,8 @@
                                                 <span class="creacion-etiqueta" *ngIf="item.clase.Prestigio">Prestigio</span>
                                                 <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="item.penalizacionPx.etiqueta"
                                                     [matTooltip]="item.penalizacionPx.texto" matTooltipClass="tt-accent tt-multiline">{{item.penalizacionPx.etiqueta}}</span>
+                                                <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="item.edadInicial.etiqueta"
+                                                    [matTooltip]="item.edadInicial.texto" matTooltipClass="tt-accent tt-multiline">{{item.edadInicial.etiqueta}}</span>
                                                 <mat-chip class="bad" *ngIf="item.campaignBlockedReason">{{item.campaignBlockedReason}}</mat-chip>
                                                 <mat-chip class="tw-h-auto aviso" *ngFor="let aviso of item.evaluacion.advertencias">{{aviso}}</mat-chip>
                                             </div>
@@ -645,6 +659,7 @@
                                 No puedes elegirla: {{item.evaluacion.razones.join(' · ')}}</p>
                             <p class="creacion-aviso" *ngIf="item.penalizacionPx.texto">
                                 Si coges este nivel: {{item.penalizacionPx.texto}}</p>
+                            <p class="creacion-aviso" *ngIf="item.edadInicial.texto">{{item.edadInicial.texto}}</p>
                             <app-detalles-clase [clase]="item.clase"
                                 (conjuroDetalles)="conjuroDetallesId.emit($event)"
                                 (especialDetalles)="especialDetallesId.emit($event)"

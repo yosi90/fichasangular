@@ -211,7 +211,8 @@ export interface DgsRacialesGuardados {
  */
 export interface ReferenciasEdicionRaza {
     Manual: ManualReferencia;
-    Clase_predilecta: Id_nombre;
+    /** `null`: sin clase predilecta («Ninguna»). */
+    Clase_predilecta: Id_nombre | null;
     Dgs_raciales: DgsRacialesGuardados;
 }
 
@@ -306,6 +307,24 @@ export interface Raza {
      */
     Edad_maxima_dados?: number;
     Edad_maxima_caras?: number;
+    /**
+     * Los dados de la edad inicial de cada grupo de clases (Manual del jugador, tabla 6-4: la mayoría de edad más esos
+     * dados, según el `Grupo_edad_inicial` de la clase del primer nivel; el humano en el grupo 1, +1d4). 0 y 0, sin dato.
+     */
+    Edad_inicial_dados_1?: number;
+    Edad_inicial_caras_1?: number;
+    Edad_inicial_dados_2?: number;
+    Edad_inicial_caras_2?: number;
+    Edad_inicial_dados_3?: number;
+    Edad_inicial_caras_3?: number;
+    /**
+     * El VD de un PNJ de la raza (Guía del DM, págs. 37-38; MM, págs. 293-294): el de la raza con sus DG raciales, lo que
+     * su entrada suma a los niveles con clases de PJ o de PNJ y sus clases asociadas. `null`, sin dato. Lo calcula la API.
+     */
+    Vd?: number | null;
+    Vd_mod_clases_pj?: number | null;
+    Vd_mod_clases_pnj?: number | null;
+    Clases_asociadas?: Id_nombre[];
     Espacio: number;
     Alcance: number;
     Tipo_criatura: TipoCriatura;

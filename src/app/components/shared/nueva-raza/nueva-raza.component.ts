@@ -193,6 +193,12 @@ const SIN_PRIORIDAD: PrioridadAlineamientoCatalogItem = { Id: 0, Nombre: 'Sin pr
 const SIN_VUELO: RazaCatalogItem = { Id: 0, Nombre: 'No vuela' };
 /** La clase predilecta 0 de la base, «Cualquiera» (el humano y el semielfo), que el catálogo de clases no lista. */
 const CUALQUIER_CLASE: CatalogItem = { Id: 0, Nombre: 'Cualquiera' };
+/**
+ * «Sin clase predilecta» en el formulario: el cuerpo manda `id_clase_predilecta: null` y la API lo guarda en su fila de
+ * relleno «Ninguna» (las razas cuyo libro no les da una, como los dragones: todas sus clases cuentan para la penalización
+ * de PX). El -1 solo vive en el formulario.
+ */
+const SIN_CLASE_PREDILECTA_FORMULARIO: CatalogItem = { Id: -1, Nombre: 'Ninguna (sin clase predilecta)' };
 
 /** El peso más alto que admite la API (`numeric(7, 2)`; el centauro de *Races of the Wild* pesa 1.060,52 kg). */
 const PESO_MAXIMO = 99999.99;
@@ -255,6 +261,12 @@ const CAMPOS_RAZA: CamposDeFormulario = {
     edad_venerable: { etiqueta: 'Venerable', paso: 1 },
     edad_maxima_dados: { etiqueta: 'Dados de la edad máxima', paso: 1 },
     edad_maxima_caras: { etiqueta: 'Caras de la edad máxima', paso: 1 },
+    edad_inicial_dados_1: { etiqueta: 'Dados de la edad inicial (grupo 1)', paso: 1 },
+    edad_inicial_caras_1: { etiqueta: 'Caras de la edad inicial (grupo 1)', paso: 1 },
+    edad_inicial_dados_2: { etiqueta: 'Dados de la edad inicial (grupo 2)', paso: 1 },
+    edad_inicial_caras_2: { etiqueta: 'Caras de la edad inicial (grupo 2)', paso: 1 },
+    edad_inicial_dados_3: { etiqueta: 'Dados de la edad inicial (grupo 3)', paso: 1 },
+    edad_inicial_caras_3: { etiqueta: 'Caras de la edad inicial (grupo 3)', paso: 1 },
     armadura_natural: { etiqueta: 'Armadura natural', paso: 1 },
     varios_armadura: { etiqueta: 'Varios de armadura', paso: 1 },
     ajuste_nivel: { etiqueta: 'Ajuste de nivel', paso: 1 },
@@ -448,7 +460,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         id_manual: [0, [Validators.min(1)]],
         pagina: [1, [Validators.required, Validators.min(0)]],
         // `null` hasta elegirla: la 0 es «Cualquiera», una clase predilecta de verdad.
-        id_clase_predilecta: [null as number | null, [Validators.required, Validators.min(0)]],
+        id_clase_predilecta: [null as number | null, [Validators.required, Validators.min(SIN_CLASE_PREDILECTA_FORMULARIO.Id)]],
         mod_fue: [0],
         mod_des: [0],
         mod_cons: [0],
@@ -486,6 +498,14 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         // 100). 0 y 0: el manual no la da.
         edad_maxima_dados: [0, [Validators.min(0)]],
         edad_maxima_caras: [0, [Validators.min(0)]],
+        // La edad inicial (tabla 6-4): los dados que se suman a la mayoría de edad en cada grupo de clases (el humano, grupo 1,
+        // +1d4: 1 y 4). 0 y 0: el manual no la da.
+        edad_inicial_dados_1: [0, [Validators.min(0)]],
+        edad_inicial_caras_1: [0, [Validators.min(0)]],
+        edad_inicial_dados_2: [0, [Validators.min(0)]],
+        edad_inicial_caras_2: [0, [Validators.min(0)]],
+        edad_inicial_dados_3: [0, [Validators.min(0)]],
+        edad_inicial_caras_3: [0, [Validators.min(0)]],
         id_tipo_criatura: [0, [Validators.min(1)]],
         ataque_base: [0],
         fortaleza: [0],
@@ -690,7 +710,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 alcance: this.numero(raw.alcance),
                 id_manual: this.numero(raw.id_manual),
                 pagina: this.numero(raw.pagina),
-                id_clase_predilecta: this.numero(raw.id_clase_predilecta),
+                id_clase_predilecta: this.numero(raw.id_clase_predilecta) < 0 ? null : this.numero(raw.id_clase_predilecta),
                 mod_fue: this.numero(raw.mod_fue),
                 mod_des: this.numero(raw.mod_des),
                 mod_cons: this.numero(raw.mod_cons),
@@ -723,6 +743,12 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 edad_venerable: this.numero(raw.edad_venerable),
                 edad_maxima_dados: this.numero(raw.edad_maxima_dados),
                 edad_maxima_caras: this.numero(raw.edad_maxima_caras),
+                edad_inicial_dados_1: this.numero(raw.edad_inicial_dados_1),
+                edad_inicial_caras_1: this.numero(raw.edad_inicial_caras_1),
+                edad_inicial_dados_2: this.numero(raw.edad_inicial_dados_2),
+                edad_inicial_caras_2: this.numero(raw.edad_inicial_caras_2),
+                edad_inicial_dados_3: this.numero(raw.edad_inicial_dados_3),
+                edad_inicial_caras_3: this.numero(raw.edad_inicial_caras_3),
                 id_tipo_criatura: this.numero(raw.id_tipo_criatura),
                 // El ataque base y las salvaciones son los de los DG raciales: sin DG, 0 (`400 dg_raciales_sin_dg`).
                 ataque_base: this.tieneDgsExtra() ? this.numero(raw.ataque_base) : 0,
@@ -857,9 +883,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return clase ? this.getCatalogLabel(clase) : '';
     };
 
-    /** Las clases que pueden ser la predilecta: las del catálogo y «Cualquiera» (la 0). */
+    /** Las clases que pueden ser la predilecta: las del catálogo, «Cualquiera» (la 0) y «Ninguna» (sin clase predilecta). */
     get clasesPredilectas(): CatalogItem[] {
-        return conOpcionSinValor<CatalogItem>(this.clases, CUALQUIER_CLASE);
+        return conOpcionSinValor<CatalogItem>(conOpcionSinValor<CatalogItem>(this.clases, CUALQUIER_CLASE), SIN_CLASE_PREDILECTA_FORMULARIO);
     }
 
     onStepSelectionChange(event: { selectedIndex?: number } | null | undefined): void {
@@ -1890,6 +1916,12 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             edad_venerable: 0,
             edad_maxima_dados: 0,
             edad_maxima_caras: 0,
+            edad_inicial_dados_1: 0,
+            edad_inicial_caras_1: 0,
+            edad_inicial_dados_2: 0,
+            edad_inicial_caras_2: 0,
+            edad_inicial_dados_3: 0,
+            edad_inicial_caras_3: 0,
             ataque_base: 0,
             fortaleza: 0,
             reflejos: 0,
@@ -2306,11 +2338,14 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             const venerable = getInt('edad_venerable');
             // La edad máxima lleva sus dados y sus caras, o ninguno (`400 edad_maxima_incompleta`).
             const edadMaximaIncompleta = (getInt('edad_maxima_dados') > 0) !== (getInt('edad_maxima_caras') > 0);
+            // Lo mismo, la edad inicial de cada grupo (`400 edad_inicial_incompleta`).
+            const edadInicialIncompleta = [1, 2, 3].some((g) => (getInt(`edad_inicial_dados_${g}`) > 0) !== (getInt(`edad_inicial_caras_${g}`) > 0));
             // Las mismas reglas que la API: mínimo <= máximo y adulto <= mediana <= viejo <= venerable (0: sin dato).
             const invalid = alturaInf > alturaSup
                 || pesoInf > pesoSup
                 || !(adulto <= mediana && mediana <= viejo && viejo <= venerable)
-                || edadMaximaIncompleta;
+                || edadMaximaIncompleta
+                || edadInicialIncompleta;
             return invalid ? { rangosInvalidos: true } : null;
         };
     }
@@ -2474,6 +2509,12 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             edad_venerable: 0,
             edad_maxima_dados: 0,
             edad_maxima_caras: 0,
+            edad_inicial_dados_1: 0,
+            edad_inicial_caras_1: 0,
+            edad_inicial_dados_2: 0,
+            edad_inicial_caras_2: 0,
+            edad_inicial_dados_3: 0,
+            edad_inicial_caras_3: 0,
             id_tipo_criatura: 0,
             ataque_base: 0,
             fortaleza: 0,
@@ -2555,7 +2596,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             alcance: this.numero(raza.Alcance),
             id_manual: this.numero(referencias?.Manual?.Id),
             pagina: this.numero(referencias?.Manual?.Pagina),
-            id_clase_predilecta: referencias ? this.numero(referencias.Clase_predilecta?.Id) : null,
+            id_clase_predilecta: referencias
+                ? (referencias.Clase_predilecta ? this.numero(referencias.Clase_predilecta.Id) : SIN_CLASE_PREDILECTA_FORMULARIO.Id)
+                : null,
             mod_fue: this.numero(raza.Modificadores?.Fuerza),
             mod_des: this.numero(raza.Modificadores?.Destreza),
             mod_cons: this.numero(raza.Modificadores?.Constitucion),
@@ -2589,6 +2632,12 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             edad_venerable: this.numero(raza.Edad_venerable),
             edad_maxima_dados: this.numero(raza.Edad_maxima_dados),
             edad_maxima_caras: this.numero(raza.Edad_maxima_caras),
+            edad_inicial_dados_1: this.numero(raza.Edad_inicial_dados_1),
+            edad_inicial_caras_1: this.numero(raza.Edad_inicial_caras_1),
+            edad_inicial_dados_2: this.numero(raza.Edad_inicial_dados_2),
+            edad_inicial_caras_2: this.numero(raza.Edad_inicial_caras_2),
+            edad_inicial_dados_3: this.numero(raza.Edad_inicial_dados_3),
+            edad_inicial_caras_3: this.numero(raza.Edad_inicial_caras_3),
             id_tipo_criatura: this.numero(raza.Tipo_criatura?.Id),
             ataque_base: this.numero(dgs?.Ataque_base),
             fortaleza: this.numero(dgs?.Fortaleza),
@@ -2618,7 +2667,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         this.armadurasCompetenciaSeleccionadas = idsUnicosOrdenados((raza.Competencias?.Armaduras ?? []).map((item) => item.Id));
         this.gruposArmaSeleccionados = idsUnicosOrdenados((raza.Competencias?.Grupos_arma ?? []).map((item) => item.Id));
         this.gruposArmaduraSeleccionados = idsUnicosOrdenados((raza.Competencias?.Grupos_armadura ?? []).map((item) => item.Id));
-        this.clasePredilectaBusqueda = this.texto(referencias?.Clase_predilecta?.Nombre);
+        this.clasePredilectaBusqueda = referencias && !referencias.Clase_predilecta
+            ? SIN_CLASE_PREDILECTA_FORMULARIO.Nombre
+            : this.texto(referencias?.Clase_predilecta?.Nombre);
         this.tipoCriaturaDgsBusqueda = '';
 
         const conFilaVacia = <T>(filas: T[], vacia: () => T): T[] => filas.length > 0 ? filas : [vacia()];

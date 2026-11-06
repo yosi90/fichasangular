@@ -8,7 +8,8 @@ export interface RazaCreateCore {
     alcance: number;
     id_manual: number;
     pagina: number;
-    id_clase_predilecta: number;
+    /** 0 es «Cualquiera» (la clase de más nivel); `null`, sin clase predilecta («Ninguna»: todas cuentan). */
+    id_clase_predilecta: number | null;
     mod_fue: number;
     mod_des: number;
     mod_cons: number;
@@ -42,6 +43,13 @@ export interface RazaCreateCore {
     /** La edad máxima (tabla 6-5): los dados que se suman a la venerable; con `edad_maxima_caras`, los dos o ninguno. */
     edad_maxima_dados?: number;
     edad_maxima_caras?: number;
+    /** La edad inicial (tabla 6-4): los dados de cada grupo de clases que se suman a la mayoría de edad; cada par, los dos o ninguno. */
+    edad_inicial_dados_1?: number;
+    edad_inicial_caras_1?: number;
+    edad_inicial_dados_2?: number;
+    edad_inicial_caras_2?: number;
+    edad_inicial_dados_3?: number;
+    edad_inicial_caras_3?: number;
     id_tipo_criatura: number;
     ataque_base: number;
     fortaleza: number;

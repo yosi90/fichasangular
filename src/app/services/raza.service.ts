@@ -9,7 +9,7 @@ import { environment } from 'src/environments/environment';
 import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { normalizarCamposCreacionRaza, normalizarCamposEdadRaza, normalizarTextosRaza, normalizeRazaApi } from './utils/raza-mapper';
+import { normalizarCamposCreacionRaza, normalizarCamposEdadRaza, normalizarTextosRaza, normalizeRazaApi, textoClasePredilecta } from './utils/raza-mapper';
 import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
@@ -269,7 +269,7 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
         Alineamiento: normalizeAlineamientoRaza(raw?.Alineamiento ?? raw?.alineamiento ?? raw?.ali),
         Manual: `${raw?.Manual ?? raw?.ma ?? ''}`,
         Ajuste_nivel: toNumber(raw?.Ajuste_nivel ?? raw?.aju),
-        Clase_predilecta: `${raw?.Clase_predilecta ?? raw?.c ?? ''}`,
+        Clase_predilecta: textoClasePredilecta(raw?.Clase_predilecta ?? raw?.c),
         Oficial: toBoolean(raw?.Oficial ?? raw?.oficial ?? raw?.o, true),
         Ataques_naturales: `${raw?.Ataques_naturales ?? raw?.an ?? ''}`,
         Tamano: raw?.Tamano ?? raw?.t ?? ({} as any),

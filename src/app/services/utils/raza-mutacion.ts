@@ -703,6 +703,15 @@ export function aplicarMutacion(base: Raza, mutada: Raza): Raza {
         resultado.Edad_maxima_dados = toNumber(mutadaClone.Edad_maxima_dados);
         resultado.Edad_maxima_caras = toNumber(mutadaClone.Edad_maxima_caras);
     }
+    // Igual los dados de la edad inicial de cada grupo de clases.
+    ([1, 2, 3] as const).forEach((grupo) => {
+        const dados = `Edad_inicial_dados_${grupo}` as const;
+        const caras = `Edad_inicial_caras_${grupo}` as const;
+        if (hasSignificantNumber(mutadaClone?.[dados]) && hasSignificantNumber(mutadaClone?.[caras])) {
+            resultado[dados] = toNumber(mutadaClone[dados]);
+            resultado[caras] = toNumber(mutadaClone[caras]);
+        }
+    });
     assignNumberIfSignificant(resultado as any, "Dotes_adicionales", mutadaClone?.Dotes_adicionales);
     assignNumberIfSignificant(resultado as any, "Puntos_habilidad_extra_primer_nivel", mutadaClone?.Puntos_habilidad_extra_primer_nivel);
     assignNumberIfSignificant(resultado as any, "Puntos_habilidad_extra_por_nivel", mutadaClone?.Puntos_habilidad_extra_por_nivel);

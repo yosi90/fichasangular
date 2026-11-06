@@ -3,8 +3,15 @@ import {
     edadesDeLaRaza,
     edadFueraDelManual,
     edadMaximaDeLaRaza,
+    edadMinimaInicial,
     edadPasaDeLaMaxima,
+    edadPorDebajoDeLaInicial,
+    edadPorDefecto,
     EdadesRaza,
+    dadosEdadInicial,
+    motivoEdadInicial,
+    textoDadosEdadInicial,
+    tirarEdadInicial,
     etapaEdad,
     motivoEdadFueraDelManual,
     razaTieneEdades,
@@ -116,5 +123,60 @@ describe('edad-personaje (MJ, tablas 6-4 y 6-5, pág. 109)', () => {
             { clave: 'Carisma', valor: 3 },
         ]);
         expect(ajustesEnvejecimiento(etapaEdad(30, humano), { Fuerza: 10 })).toEqual([]);
+    });
+});
+
+describe('edad inicial por clase (MJ, tabla 6-4, pág. 109)', () => {
+    // El humano y el elfo del Manual del jugador, con los dados de cada grupo de clases.
+    const humano: EdadesRaza = {
+        Edad_adulto: 15, Edad_mediana: 35, Edad_viejo: 53, Edad_venerable: 70,
+        Edad_inicial_dados_1: 1, Edad_inicial_caras_1: 4, Edad_inicial_dados_2: 1, Edad_inicial_caras_2: 6,
+        Edad_inicial_dados_3: 2, Edad_inicial_caras_3: 6,
+    };
+    const elfo: EdadesRaza = {
+        Edad_adulto: 110, Edad_mediana: 175, Edad_viejo: 263, Edad_venerable: 350,
+        Edad_inicial_dados_1: 4, Edad_inicial_caras_1: 6, Edad_inicial_dados_2: 6, Edad_inicial_caras_2: 6,
+        Edad_inicial_dados_3: 10, Edad_inicial_caras_3: 6,
+    };
+
+    it('la mínima es la mayoría de edad más un 1 por dado: el elfo explorador, 116 (el ejemplo del libro)', () => {
+        expect(edadMinimaInicial(elfo, 2)).toBe(116);
+        expect(edadMinimaInicial(humano, 1)).toBe(16);
+        expect(edadMinimaInicial(humano, 3)).toBe(17);
+        expect(textoDadosEdadInicial(humano, 3)).toBe('+2d6');
+        expect(dadosEdadInicial(humano, 2)).toEqual({ dados: 1, caras: 6 });
+    });
+
+    it('sin el grupo de la clase (0, las de prestigio) o sin los dados de la raza, no se comprueba', () => {
+        expect(edadMinimaInicial(humano, 0)).toBeNull();
+        expect(edadMinimaInicial({ ...humano, Edad_inicial_dados_2: 0, Edad_inicial_caras_2: 0 }, 2)).toBeNull();
+        expect(edadPorDebajoDeLaInicial(15, humano, null)).toBeFalse();
+        expect(edadFueraDelManual(15, humano)).toBeFalse();
+    });
+
+    it('por debajo de la edad inicial de la clase del primer nivel, fuera del manual y con su motivo', () => {
+        expect(edadPorDebajoDeLaInicial(15, humano, 2)).toBeTrue();
+        expect(edadPorDebajoDeLaInicial(16, humano, 2)).toBeFalse();
+        expect(edadFueraDelManual(15, humano, 2)).toBeTrue();
+        expect(motivoEdadInicial(15, humano, 2, 'guerrero'))
+            .toBe('Edad por debajo de la edad inicial de guerrero: 15 (adulto a los 15, +1d6: al menos 16).');
+        expect(motivoEdadFueraDelManual(15, humano, 2, 'guerrero')).toBe(motivoEdadInicial(15, humano, 2, 'guerrero'));
+        // Por debajo de la mayoría de edad, el motivo es ese.
+        expect(motivoEdadFueraDelManual(14, humano, 2, 'guerrero')).toContain('mayoría de edad');
+    });
+
+    it('tirar la edad inicial: la mayoría de edad más sus dados', () => {
+        expect(tirarEdadInicial(humano, 3, () => 6)).toBe(27);
+        expect(tirarEdadInicial(elfo, 1, () => 1)).toBe(114);
+        expect(tirarEdadInicial(humano, 0)).toBeNull();
+        const azar = tirarEdadInicial(humano, 1) ?? 0;
+        expect(azar).toBeGreaterThanOrEqual(16);
+        expect(azar).toBeLessThanOrEqual(19);
+    });
+
+    it('la edad por defecto vale para cualquier clase: la mayoría de edad más los dados del grupo que más tira', () => {
+        expect(edadPorDefecto(humano)).toBe(17);
+        expect(edadPorDefecto(elfo)).toBe(120);
+        expect(edadPorDefecto({ Edad_adulto: 40, Edad_venerable: 250 })).toBe(40);
     });
 });

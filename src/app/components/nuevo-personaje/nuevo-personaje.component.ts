@@ -153,7 +153,8 @@ import {
 import { esPnj, TipoPersonaje, tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
 import { codigoDeError, mensajeDeError } from 'src/app/services/utils/error-api';
 import { PasoEdadRaza } from 'src/app/interfaces/raza';
-import { normalizarTexto, primerEntero, toPositiveInt } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, primerEntero, toInt, toPositiveInt } from 'src/app/services/utils/normalizacion';
+import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { ClaveHabilidad, claveHabilidad } from 'src/app/services/utils/habilidad-clave';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
@@ -179,7 +180,7 @@ import {
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
-import { edadesDeLaRaza, edadFueraDelManual, etapaEdad, EtapaEdad, motivoEdadFueraDelManual, razaTieneEdades, textoEdadMaxima, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
+import { edadesDeLaRaza, edadFueraDelManual, edadMinimaInicial, etapaEdad, EtapaEdad, GRUPOS_EDAD_INICIAL, GrupoEdadInicial, motivoEdadFueraDelManual, motivoEdadInicial, razaTieneEdades, textoDadosEdadInicial, textoEdadMaxima, textoEnvejecimiento, tirarEdadInicial } from 'src/app/services/utils/edad-personaje';
 import { etiquetaPenalizacionExperiencia, textoPenalizacionExperiencia } from 'src/app/services/utils/penalizacion-experiencia';
 import { textoDesglose } from 'src/app/services/utils/personaje-totales';
 
@@ -313,6 +314,22 @@ interface ClaseListadoItem {
      * («−20 % de PX») y su explicación; vacías si no pierde nada. No impide cogerlo ni lo vuelve homebrew.
      */
     penalizacionPx: { etiqueta: string; texto: string; };
+    /**
+     * Si la edad no llega a la edad inicial de la clase (Manual del jugador, tabla 6-4), solo para el primer nivel del
+     * personaje: la etiqueta («Edad: homebrew») y el motivo; vacías si llega o no hay dato. Cogerla vuelve homebrew la ficha.
+     */
+    edadInicial: { etiqueta: string; texto: string; };
+}
+
+/** Un grupo de clases de la tabla 6-4 con sus dados para la raza elegida, para la ayuda de la edad en Básicos. */
+export interface EdadInicialGrupo {
+    grupo: GrupoEdadInicial;
+    /** «bárbaro, hechicero y pícaro», las clases del catálogo de ese grupo (o «grupo 1» si no se conocen). */
+    clases: string;
+    /** «+1d4». */
+    dados: string;
+    /** La edad más baja con una clase del grupo: la mayoría de edad más un 1 por dado. */
+    minima: number;
 }
 
 type CampaignHomebrewMode = 'unrestricted' | 'limited' | 'forbidden';
@@ -1928,17 +1945,54 @@ export class NuevoPersonajeComponent {
     }
 
     /**
-     * Por debajo de la mayoría de edad o por encima de la edad máxima (la venerable más lo que pueden dar los dados de la
-     * tabla 6-5; sin esos dados, sin tope): fuera del Manual del jugador.
+     * Por debajo de la mayoría de edad, por debajo de la edad inicial de la clase del primer nivel (tabla 6-4, cuando ya
+     * la tiene) o por encima de la edad máxima (la venerable más lo que pueden dar los dados de la tabla 6-5; sin esos
+     * dados, sin tope): fuera del Manual del jugador.
      */
     get edadFueraRango(): boolean {
-        return edadFueraDelManual(this.Personaje?.Edad, this.razaSeleccionada);
+        return edadFueraDelManual(this.Personaje?.Edad, this.razaSeleccionada, this.nuevoPSvc.clasePrimerNivel()?.Grupo_edad_inicial);
+    }
+
+    /** Por qué la edad sale del manual (`''` si no sale), con la clase del primer nivel si ya la tiene. */
+    private get motivoEdadFueraRango(): string {
+        const clase = this.nuevoPSvc.clasePrimerNivel();
+        return motivoEdadFueraDelManual(this.Personaje?.Edad, this.razaSeleccionada, clase?.Grupo_edad_inicial, clase?.Nombre);
     }
 
     /** El aviso bajo la edad cuando sale del manual: por qué y que el personaje será homebrew. */
     get textoEdadFueraRango(): string {
-        const motivo = motivoEdadFueraDelManual(this.Personaje?.Edad, this.razaSeleccionada);
+        const motivo = this.motivoEdadFueraRango;
         return motivo ? `${motivo} El personaje será homebrew.` : '';
+    }
+
+    /**
+     * La edad inicial de la tabla 6-4 por grupo de clases, con los dados de la raza elegida: la ayuda de Básicos y sus
+     * botones de «tirar». Vacía si la raza no trae esos dados. Las clases de cada grupo salen de su `Grupo_edad_inicial`.
+     */
+    get edadInicialGrupos(): EdadInicialGrupo[] {
+        const raza = this.razaSeleccionada;
+        if (!raza || this.rangoEdadCategoria)
+            return [];
+        return GRUPOS_EDAD_INICIAL
+            .map((grupo) => {
+                const minima = edadMinimaInicial(raza, grupo);
+                if (minima === null)
+                    return null;
+                const nombres = this.catalogoClases
+                    .filter((clase) => toInt(clase?.Grupo_edad_inicial) === grupo && clase?.Oficial !== false && !clase?.Prestigio)
+                    .map((clase) => `${clase.Nombre ?? ''}`.trim())
+                    .filter((nombre) => nombre.length > 0)
+                    .sort(compararTexto);
+                return { grupo, clases: nombres.length > 0 ? unirLista(nombres, 'y') : `grupo ${grupo}`, dados: textoDadosEdadInicial(raza, grupo), minima };
+            })
+            .filter((item): item is EdadInicialGrupo => item !== null);
+    }
+
+    /** «Tirar» la edad inicial de un grupo de clases (la mayoría de edad más sus dados, tabla 6-4). */
+    tirarEdadInicial(grupo: GrupoEdadInicial): void {
+        const edad = tirarEdadInicial(this.razaSeleccionada, grupo);
+        if (edad !== null)
+            this.onEdadChange(edad);
     }
 
     get pesoFueraRango(): boolean {
@@ -2287,7 +2341,7 @@ export class NuevoPersonajeComponent {
         const deidadIngresada = this.Personaje.Deidad?.trim() ?? '';
 
         if (this.edadFueraRango) {
-            otherOfficialBlockers.push(motivoEdadFueraDelManual(this.Personaje.Edad, this.razaSeleccionada));
+            otherOfficialBlockers.push(this.motivoEdadFueraRango);
         }
         if (this.pesoFueraRango) {
             otherOfficialBlockers.push(`Peso fuera de rango: ${this.Personaje.Peso} kg (tipico ${this.razaSeleccionada?.Peso_rango_inf}-${this.razaSeleccionada?.Peso_rango_sup} kg).`);
@@ -4000,10 +4054,14 @@ export class NuevoPersonajeComponent {
                 return;
             }
         }
-        // Una clase homebrew o saltarse su alineamiento vuelven homebrew la ficha: se confirma antes de aplicarla.
+        // Una clase homebrew, saltarse su alineamiento o, en el primer nivel del personaje, una edad que no llega a la
+        // inicial de la clase (tabla 6-4) vuelven homebrew la ficha: se confirma antes de aplicarla.
         const motivosClase = [
             requiereAvisoAlineamiento ? detalleAlineamiento : null,
             primerNivelClase ? motivoHomebrew('clase', seleccion.clase) : null,
+            this.nuevoPSvc.clasePrimerNivel()
+                ? null
+                : motivoEdadInicial(this.Personaje?.Edad, this.razaSeleccionada, seleccion.clase?.Grupo_edad_inicial, seleccion.clase?.Nombre) || null,
         ];
         const tituloClase = requiereAvisoAlineamiento ? 'Aviso de alineamiento de clase' : `Elegir ${seleccion.clase?.Nombre ?? 'la clase'}`;
         if (!await this.confirmarSiVuelveHomebrew(tituloClase, motivosClase))
@@ -7488,6 +7546,7 @@ export class NuevoPersonajeComponent {
         const texto = normalizarTexto(this.filtroClasesTexto);
         const manual = this.filtroClasesManual;
         const evaluadas: ClaseListadoItem[] = [];
+        const primeraClase = !this.nuevoPSvc.clasePrimerNivel();
 
         this.catalogoClases.forEach((clase) => {
             const nombre = `${clase?.Nombre ?? ''}`.trim();
@@ -7532,6 +7591,8 @@ export class NuevoPersonajeComponent {
             const siguienteNivel = nivelActual + 1;
             const beneficios = this.getBeneficiosSiguienteNivelClase(clase, siguienteNivel);
             const penalizacion = this.nuevoPSvc.penalizacionExperiencia(clase);
+            // Solo para el primer nivel del personaje: su edad tiene que llegar a la edad inicial de la clase (tabla 6-4).
+            const motivoEdad = primeraClase ? motivoEdadInicial(this.Personaje?.Edad, this.razaSeleccionada, clase?.Grupo_edad_inicial, nombre) : '';
             evaluadas.push({
                 clase,
                 evaluacion,
@@ -7549,6 +7610,10 @@ export class NuevoPersonajeComponent {
                 penalizacionPx: {
                     etiqueta: etiquetaPenalizacionExperiencia(penalizacion),
                     texto: textoPenalizacionExperiencia(penalizacion),
+                },
+                edadInicial: {
+                    etiqueta: motivoEdad ? 'Edad: homebrew' : '',
+                    texto: motivoEdad ? `${motivoEdad} Cogerla vuelve homebrew el personaje.` : '',
                 },
             });
         });

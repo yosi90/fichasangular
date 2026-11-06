@@ -42,6 +42,8 @@ export const CAMPOS_CLASE: Readonly<Record<string, CampoDeClase>> = {
     Es_predilecta: { etiqueta: 'Predilecta', paso: 0, control: 'es_predilecta' },
     Multiclase_restringida: { etiqueta: 'Multiclase restringida', paso: 0, control: 'multiclase_restringida' },
     Alineamiento_deidad: { etiqueta: 'Alineamiento de su deidad', paso: 0, control: 'alineamiento_deidad' },
+    Grupo_edad_inicial: { etiqueta: 'Edad inicial', paso: 0, control: 'grupo_edad_inicial' },
+    Clase_pnj: { etiqueta: 'Clase de PNJ', paso: 0, control: 'clase_pnj' },
     Roles: { etiqueta: 'Roles', paso: 0 },
     Alineamiento: { etiqueta: 'Alineamiento', paso: 0 },
     'Conjuros.Arcanos': { etiqueta: 'Arcanos', paso: 0, control: 'conjuros_arcanos' },

@@ -284,6 +284,10 @@ export interface Clase {
     Multiclase_restringida?: boolean;
     /** MJ cap. 3, clérigo: su alineamiento, a un paso del de su deidad, y neutral solo si ella lo es. */
     Alineamiento_deidad?: boolean;
+    /** MJ tabla 6-4: la columna de la edad inicial de la clase (1, como el bárbaro; 2, el guerrero; 3, el mago); 0, sin dato. */
+    Grupo_edad_inicial?: number;
+    /** Guía del DM, cap. 4: una clase de PNJ (adepto, combatiente…); cuenta distinto en el VD de un PNJ. */
+    Clase_pnj?: boolean;
     Alineamiento: Alineamiento;
     Oficial: boolean;
     Competencias: ClaseCompetencias;

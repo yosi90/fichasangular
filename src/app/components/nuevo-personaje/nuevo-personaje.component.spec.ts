@@ -1899,6 +1899,43 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Oficial).toBeFalse();
     });
 
+    it('la edad inicial por clase (MJ tabla 6-4): empieza con una edad que vale para cualquier clase, se puede tirar y la ayuda da cada grupo', () => {
+        const raza = crearRazaMock();
+        Object.assign(raza, {
+            Edad_inicial_dados_1: 1, Edad_inicial_caras_1: 4, Edad_inicial_dados_2: 1, Edad_inicial_caras_2: 6,
+            Edad_inicial_dados_3: 2, Edad_inicial_caras_3: 6,
+        });
+        component.catalogoClases = [
+            { Id: 7, Nombre: 'Guerrero', Grupo_edad_inicial: 2, Oficial: true, Prestigio: false } as any,
+            { Id: 9, Nombre: 'Mago', Grupo_edad_inicial: 3, Oficial: true, Prestigio: false } as any,
+        ];
+        component.seleccionarRaza(raza);
+
+        // La mayoría de edad más los dados del grupo que más tira (2d6): 20 + 2.
+        expect(component.Personaje.Edad).toBe(22);
+        expect(component.edadInicialGrupos.map((g) => `${g.clases}: ${g.dados} (${g.minima})`))
+            .toEqual(['grupo 1: +1d4 (21)', 'Guerrero: +1d6 (21)', 'Mago: +2d6 (22)']);
+        spyOn(Math, 'random').and.returnValue(0.999);
+        component.tirarEdadInicial(3);
+        expect(component.Personaje.Edad).toBe(32);
+    });
+
+    it('con la clase del primer nivel, una edad por debajo de su edad inicial vuelve homebrew la ficha, con su motivo', () => {
+        const raza = crearRazaMock();
+        Object.assign(raza, { Edad_inicial_dados_2: 1, Edad_inicial_caras_2: 6 });
+        component.seleccionarRaza(raza);
+        component.Personaje.Deidad = 'No tener deidad';
+        component.onEdadChange(20);
+        expect(component.edadFueraRango).toBeFalse();
+
+        spyOn((component as any).nuevoPSvc, 'clasePrimerNivel').and.returnValue({ Id: 7, Nombre: 'guerrero', Grupo_edad_inicial: 2 });
+        component.recalcularOficialidad();
+        expect(component.edadFueraRango).toBeTrue();
+        expect(component.textoEdadFueraRango)
+            .toBe('Edad por debajo de la edad inicial de guerrero: 20 (adulto a los 20, +1d6: al menos 21). El personaje será homebrew.');
+        expect(component.Personaje.Oficial).toBeFalse();
+    });
+
     it('una raza sin edades no comprueba la edad (antes, cualquier edad la volvía homebrew)', () => {
         const raza = crearRazaMock();
         raza.Edad_adulto = 0;

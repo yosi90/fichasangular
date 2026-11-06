@@ -73,3 +73,19 @@ describe('penalizacionExperiencia (MJ cap. 3, «Experiencia en multiclase»)', (
         expect(textoPenalizacionExperiencia(null)).toBe('');
     });
 });
+
+describe('penalizacionExperiencia sin clase predilecta (tercera tanda de reglas)', () => {
+    const dragon = [clase(GUERRERO, 'guerrero', 5), clase(8, 'hechicero', 3), clase(PICARO, 'pícaro', 1)];
+
+    it('un dragón (su libro no le da clase predilecta: «Ninguna») guerrero 5 / hechicero 3 / pícaro 1 pierde un 40 %', () => {
+        const penalizacion = penalizacionExperiencia(dragon, { id: 0, comodin: null });
+        expect(penalizacion.porcentaje).toBe(40);
+        expect(penalizacion.penalizadas).toEqual(['hechicero 3', 'pícaro 1']);
+        expect(penalizacion.predilecta).toBeNull();
+        expect(penalizacionExperiencia(dragon, null).porcentaje).toBe(40);
+    });
+
+    it('con «Cualquiera» la de más nivel no cuenta: el mismo, un 20 %', () => {
+        expect(penalizacionExperiencia(dragon, { id: 0, comodin: 'cualquiera' }).porcentaje).toBe(20);
+    });
+});

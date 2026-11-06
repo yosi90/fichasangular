@@ -74,6 +74,17 @@
                             <mat-error *ngIf="form.controls.descripcion.invalid">{{errores.textoDe('Descripcion', 'Hasta 4000 caracteres.')}}</mat-error>
                         </mat-form-field>
 
+                        <mat-form-field appearance="fill">
+                            <mat-label>Edad inicial (tabla 6-4)</mat-label>
+                            <mat-select formControlName="grupo_edad_inicial">
+                                <mat-option [value]="0">Sin dato</mat-option>
+                                <mat-option [value]="1">Grupo 1 (como el bárbaro, el hechicero o el pícaro)</mat-option>
+                                <mat-option [value]="2">Grupo 2 (como el bardo, el guerrero o el paladín)</mat-option>
+                                <mat-option [value]="3">Grupo 3 (como el clérigo, el druida o el mago)</mat-option>
+                            </mat-select>
+                            <mat-hint>La columna del Manual del jugador con los dados de su edad inicial</mat-hint>
+                        </mat-form-field>
+
                         <div class="toggle-toolbar full-span">
                             <div class="estado-row">
                                 <mat-chip-listbox class="boolean-chips" aria-label="Estados de clase" [multiple]="true">
@@ -91,6 +102,12 @@
                                         (click)="toggleBoolean('alineamiento_deidad')"
                                         matTooltip="Su alineamiento, a un paso del de su deidad (clérigo)">
                                         Alineamiento de su deidad
+                                    </mat-chip-option>
+                                    <mat-chip-option
+                                        [selected]="form.controls.clase_pnj.value === true"
+                                        (click)="toggleBoolean('clase_pnj')"
+                                        matTooltip="Clase de PNJ (Guía del DM, cap. 4: adepto, combatiente…); cuenta distinto en el VD">
+                                        Clase de PNJ
                                     </mat-chip-option>
                                 </mat-chip-listbox>
                             </div>

@@ -92,7 +92,7 @@ import { Tamano } from '../interfaces/tamaño';
 import { ElementoConTipoArma, armasDeGrupos, competenciasDeDotes } from './utils/competencias-armas';
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from './utils/deidad-seleccion';
 import { vectorAlineamientoDeidad } from './utils/alineamiento-deidad';
-import { ajustesEnvejecimiento, etapaEdad } from './utils/edad-personaje';
+import { ajustesEnvejecimiento, edadPorDefecto, etapaEdad } from './utils/edad-personaje';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -1475,7 +1475,8 @@ export class NuevoPersonajeService {
             this.sincronizarCaracteristicasPerdidasConTipoActual();
         }
         // Una raza por edades llega ya resuelta a la edad elegida (`GET /razas/{id}/pasos-edad/{idPaso}`): guarda su paso y
-        // empieza con los años de ese paso; las demás, con la mayoría de edad.
+        // empieza con los años de ese paso; las demás, con la edad más baja que vale para cualquier clase (la mayoría de
+        // edad más los dados del grupo que más tira de la tabla 6-4; sin esos dados, la mayoría de edad).
         const pasoEdad = razaEfectiva.Paso_edad ?? null;
         this.personajeCreacion.IdPasoEdad = pasoEdad ? pasoEdad.Id : null;
         this.personajeCreacion.CategoriaEdad = pasoEdad ? {
@@ -1488,7 +1489,7 @@ export class NuevoPersonajeService {
             jugable: pasoEdad.Jugable,
             vd: pasoEdad.Vd,
         } : null;
-        this.personajeCreacion.Edad = pasoEdad ? pasoEdad.Edad : (razaEfectiva.Edad_adulto ?? 0);
+        this.personajeCreacion.Edad = pasoEdad ? pasoEdad.Edad : edadPorDefecto(razaEfectiva);
         this.personajeCreacion.Altura = razaEfectiva.Altura_rango_inf ?? 0;
         this.personajeCreacion.Peso = razaEfectiva.Peso_rango_inf ?? 0;
 
@@ -8660,6 +8661,15 @@ export class NuevoPersonajeService {
                 clases.push({ id, nombre: `${claseNueva.Nombre ?? ''}`.trim(), nivel: 1, prestigio: toBoolean(claseNueva.Prestigio) });
         }
         return penalizacionExperiencia(clases, this.clasePredilectaRaza());
+    }
+
+    /**
+     * La clase del primer nivel del personaje (la primera que cogió: la de la edad inicial, Manual del jugador, tabla
+     * 6-4), o `null` si aún no tiene niveles de clase.
+     */
+    clasePrimerNivel(): Clase | null {
+        const primera = (this.personajeCreacion?.desgloseClases ?? [])[0];
+        return primera ? this.obtenerClaseDeDesglose(primera) : null;
     }
 
     private clasePredilectaRaza(): ClasePredilecta | null {

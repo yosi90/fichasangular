@@ -38,7 +38,7 @@ import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { GrupoPrerrequisitos, agruparPrerrequisitos } from 'src/app/services/utils/prerrequisito-frase';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { leerComodin } from 'src/app/services/utils/comodin';
-import { edadesDeLaRaza, textoEdadMaxima } from 'src/app/services/utils/edad-personaje';
+import { edadesDeLaRaza, GRUPOS_EDAD_INICIAL, textoDadosEdadInicial, textoEdadMaxima } from 'src/app/services/utils/edad-personaje';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { abreviaturaCaracteristica, NOMBRES_CARACTERISTICAS, SIN_CARACTERISTICA } from 'src/app/services/utils/caracteristicas';
 import { textoVd } from 'src/app/services/utils/tipo-personaje';
@@ -616,7 +616,12 @@ export class DetallesRazaComponent {
             .map((item) => ({ nombre: item.nombre, valor: `${item.valor} años` }));
         // La edad máxima (tabla 6-5): la venerable más sus dados, como mucho lo que pueden dar.
         const maxima = textoEdadMaxima(this.raza);
-        return maxima ? [...edades, { nombre: 'Máxima', valor: maxima }] : edades;
+        // La edad inicial (tabla 6-4): la mayoría de edad más los dados de cada grupo de clases.
+        const iniciales = GRUPOS_EDAD_INICIAL
+            .map((grupo) => ({ grupo, dados: textoDadosEdadInicial(this.raza, grupo) }))
+            .filter((item) => item.dados.length > 0)
+            .map((item) => ({ nombre: `Inicial (grupo ${item.grupo})`, valor: `adulto ${item.dados}` }));
+        return [...edades, ...(maxima ? [{ nombre: 'Máxima', valor: maxima }] : []), ...iniciales];
     }
 
     /** «1.5 - 1.8 m»; sin ninguno de los dos extremos, nada. */
