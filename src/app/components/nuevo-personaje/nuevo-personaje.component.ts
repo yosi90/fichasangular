@@ -166,6 +166,7 @@ import { esEspecializable, prohibidasAlEspecializarse } from 'src/app/services/u
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
 import { EquipoCatalogos, MunicionDetalle } from 'src/app/interfaces/equipo';
@@ -3912,7 +3913,7 @@ export class NuevoPersonajeComponent {
         // Los PG de esos DG suman la Con del personaje en su forma animal (Manual de monstruos 1, «Licántropo»).
         const con = Number(plantilla?.Modificadores_forma_animal?.Constitucion ?? 0);
         return Number.isFinite(con) && con !== 0
-            ? `${mult}${dado} PGs · Con ${con > 0 ? '+' : ''}${con} en forma animal`
+            ? `${mult}${dado} PGs · Con ${textoConSigno(con)} en forma animal`
             : `${mult}${dado} PGs`;
     }
 
