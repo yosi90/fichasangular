@@ -115,6 +115,12 @@ export function edadMaximaDeLaRaza(raza: EdadesRaza | null | undefined): number 
     return toNumber(raza.Edad_venerable) + toNumber(raza.Edad_maxima_dados) * toNumber(raza.Edad_maxima_caras);
 }
 
+/** «venerable +2d20: como mucho 110 años», la edad máxima de la raza para enseñarla; `''` si no la trae. */
+export function textoEdadMaxima(raza: EdadesRaza | null | undefined): string {
+    const maxima = edadMaximaDeLaRaza(raza);
+    return maxima === null ? '' : `venerable ${textoDadosEdadMaxima(raza)}: como mucho ${maxima} años`;
+}
+
 /** Si la edad pasa de la más alta que da el manual para la raza (`edadMaximaDeLaRaza`). */
 export function edadPasaDeLaMaxima(edad: unknown, raza: EdadesRaza | null | undefined): boolean {
     const maxima = edadMaximaDeLaRaza(raza);

@@ -9,6 +9,7 @@ import {
     motivoEdadFueraDelManual,
     razaTieneEdades,
     textoDadosEdadMaxima,
+    textoEdadMaxima,
     textoEnvejecimiento,
 } from './edad-personaje';
 
@@ -81,6 +82,8 @@ describe('edad-personaje (MJ, tablas 6-4 y 6-5, pág. 109)', () => {
         expect(textoDadosEdadMaxima(humanoConMaxima)).toBe('+2d20');
         expect(textoDadosEdadMaxima({ Edad_maxima_dados: 4, Edad_maxima_caras: 100 })).toBe('+4d%');
         expect(textoDadosEdadMaxima(humano)).toBe('');
+        expect(textoEdadMaxima(humanoConMaxima)).toBe('venerable +2d20: como mucho 110 años');
+        expect(textoEdadMaxima(humano)).toBe('');
         expect(motivoEdadFueraDelManual(120, humanoConMaxima))
             .toBe('Edad por encima de la edad máxima de la raza: 120 (venerable a los 70, +2d20: como mucho 110).');
         expect(motivoEdadFueraDelManual(12, humanoConMaxima)).toBe('Edad por debajo de la mayoría de edad de la raza: 12 (adulto a los 15).');

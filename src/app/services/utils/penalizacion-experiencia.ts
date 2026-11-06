@@ -1,3 +1,4 @@
+import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { toInt, toText } from 'src/app/services/utils/normalizacion';
 
@@ -93,15 +94,9 @@ export function etiquetaPenalizacionExperiencia(penalizacion: PenalizacionExperi
 export function textoPenalizacionExperiencia(penalizacion: PenalizacionExperiencia | null | undefined): string {
     if (!penalizacion || penalizacion.porcentaje <= 0)
         return '';
-    const lista = unirConY(penalizacion.penalizadas);
+    const lista = unirLista(penalizacion.penalizadas, 'y');
     const verbo = penalizacion.penalizadas.length === 1 ? 'está' : 'están';
     const predilecta = penalizacion.predilecta ? ` No cuenta ${penalizacion.predilecta}, su clase predilecta.` : '';
     return `Gana un ${penalizacion.porcentaje} % menos de experiencia: ${lista} ${verbo} a más de un nivel de `
         + `${penalizacion.referencia} (Manual del jugador, «Experiencia en multiclase»).${predilecta}`;
-}
-
-function unirConY(partes: string[]): string {
-    if (partes.length <= 1)
-        return partes.join('');
-    return `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}`;
 }

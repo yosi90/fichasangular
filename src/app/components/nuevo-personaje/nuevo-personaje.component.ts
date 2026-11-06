@@ -179,7 +179,7 @@ import {
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
-import { edadesDeLaRaza, edadFueraDelManual, edadMaximaDeLaRaza, etapaEdad, EtapaEdad, motivoEdadFueraDelManual, razaTieneEdades, textoDadosEdadMaxima, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
+import { edadesDeLaRaza, edadFueraDelManual, etapaEdad, EtapaEdad, motivoEdadFueraDelManual, razaTieneEdades, textoEdadMaxima, textoEnvejecimiento } from 'src/app/services/utils/edad-personaje';
 import { etiquetaPenalizacionExperiencia, textoPenalizacionExperiencia } from 'src/app/services/utils/penalizacion-experiencia';
 
 interface VectorAlineamiento {
@@ -1871,8 +1871,8 @@ export class NuevoPersonajeComponent {
         if (!raza || !razaTieneEdades(raza))
             return [];
         const items = edadesDeLaRaza(raza).map(({ nombre, valor }) => `${nombre}: ${valor}`);
-        const maxima = edadMaximaDeLaRaza(raza);
-        return maxima === null ? items : [...items, `Máxima: venerable ${textoDadosEdadMaxima(raza)} (hasta ${maxima})`];
+        const maxima = textoEdadMaxima(raza);
+        return maxima ? [...items, `Máxima: ${maxima}`] : items;
     }
 
     /** Bajo la edad: el envejecimiento que aplica la etapa elegida o, si no envejece, las edades de la raza. */
@@ -1914,12 +1914,12 @@ export class NuevoPersonajeComponent {
             return 'Introduce una edad para ver su etapa de la vida.';
         if (etapa.id === 'joven')
             return 'Tu personaje aún no tiene la mayoría de edad de su raza: el Manual del jugador no llega ahí y el personaje será homebrew.';
-        const maxima = edadMaximaDeLaRaza(raza);
-        if (maxima !== null && edadFueraDelManual(this.Personaje?.Edad, raza))
-            return `Tu personaje pasa de la edad máxima de su raza (venerable ${textoDadosEdadMaxima(raza)}: como mucho ${maxima} años): el Manual del jugador no llega ahí y el personaje será homebrew.`;
+        const maxima = textoEdadMaxima(raza);
+        if (maxima && edadFueraDelManual(this.Personaje?.Edad, raza))
+            return `Tu personaje pasa de la edad máxima de su raza (${maxima}): el Manual del jugador no llega ahí y el personaje será homebrew.`;
         if (etapa.id === 'adulto')
             return 'Tu personaje es adulto: la edad no cambia sus características.';
-        const tope = maxima !== null ? ` (venerable ${textoDadosEdadMaxima(raza)}: como mucho ${maxima} años)` : '';
+        const tope = maxima ? ` (${maxima})` : '';
         const venerable = etapa.id === 'venerable'
             ? ` Vivirá hasta su edad máxima${tope}, que el DM tira en secreto.`
             : '';
