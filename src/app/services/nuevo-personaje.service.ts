@@ -92,7 +92,7 @@ import { Tamano } from '../interfaces/tamaño';
 import { ElementoConTipoArma, armasDeGrupos, competenciasDeDotes } from './utils/competencias-armas';
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from './utils/deidad-seleccion';
 import { vectorAlineamientoDeidad } from './utils/alineamiento-deidad';
-import { ajustesEnvejecimiento, CARACTERISTICAS_FISICAS, edadPorDefecto, etapaEdad } from './utils/edad-personaje';
+import { ajustesEnvejecimiento, edadPorDefecto, etapaEdad } from './utils/edad-personaje';
 
 export type StepNuevoPersonaje = 'raza' | 'basicos' | 'plantillas' | 'ventajas' | 'clases' | 'habilidades' | 'conjuros' | 'dotes';
 /** `companero_dg`: los DG adicionales del compañero animal (sus habilidades, no las del personaje). */
@@ -209,6 +209,8 @@ export interface ResultadoCalculoVidaFinal {
         nivelesClase: number;
         bonoPlanoDotes: number;
         bonoPorDadoClaseDotes: number;
+        /** Lo que da la Con de su forma a los DG de las plantillas (el «+4» de «2d8+4»): se guarda en `Pgs_lic`. */
+        pgsConstitucionDgsPlantillas: number;
         flags: {
             dadosGolpe: boolean;
             dgsRacialesExtra: boolean;
@@ -6154,7 +6156,6 @@ export class NuevoPersonajeService {
         let armaduraNatural = toNumber(raza?.Armadura_natural);
         let caVarios = toNumber(raza?.Varios_armadura);
         let dadoGolpe = this.resolverDadoGolpeTipoActual();
-        let pgsLicantronia = 0;
 
         const hayReglasAlineamiento = seleccionadas.some((plantilla) => this.tieneRestriccionAlineamientoPlantilla(plantilla));
         if (hayReglasAlineamiento) {
@@ -6208,13 +6209,10 @@ export class NuevoPersonajeService {
                 });
             }
 
-            // Una plantilla con DG de animal (el licántropo) tiene forma animal: sus cambios físicos (Fue, Des y Con) son los
-            // de esa forma y la híbrida, y el personaje se crea en la suya. En todas, lo mental (el +2 a Sab) (Manual de
-            // monstruos, «Licántropo», «Características»).
-            const conFormaAnimal = dgsDePlantilla(plantilla) > 0;
+            // Lo que vale en todas las formas (en un licántropo, el +2 a Sab). Los cambios de la forma animal
+            // (`Modificadores_forma_animal`) no: el personaje se crea en su forma humanoide (Manual de monstruos 1,
+            // «Licántropo», «Características»); solo cuentan para la Con de los PG de los DG del animal.
             CARACTERISTICAS.forEach((key) => {
-                if (conFormaAnimal && CARACTERISTICAS_FISICAS.includes(key))
-                    return;
                 const valor = toNumber((plantilla?.Modificadores_caracteristicas as Record<string, any>)?.[key]);
                 if (valor !== 0) {
                     caracteristicasVarios[key].push({
@@ -6280,15 +6278,12 @@ export class NuevoPersonajeService {
             if (pasoDado !== 0)
                 dadoGolpe = this.aplicarPasoDado(dadoGolpe, pasoDado);
 
-            // Regla de negocio: Suma licantrópica incrementa PGs finales, no DGs adicionales.
-            pgsLicantronia += toNumber(plantilla?.Licantronia_dg?.Suma);
         });
 
         this.personajeCreacion.Ataque_base = textoAtaqueBase(ataqueBase);
         this.personajeCreacion.Armadura_natural = armaduraNatural;
         this.personajeCreacion.Ca_varios = caVarios;
         this.personajeCreacion.Dados_golpe = dadoGolpe;
-        this.personajeCreacion.Pgs_lic = Math.max(0, pgsLicantronia);
 
         this.recalcularDerivadasEconomiaYProgresion(seleccionadas);
         // Con la raza nueva cambia la parte de su tamaño a Esconderse.
@@ -10517,15 +10512,19 @@ export class NuevoPersonajeService {
             }));
         flags.dadosGolpe = nivelesClase.length > 0;
 
+        // Los DG de una plantilla (los del animal de un licántropo) con la Con de su forma animal: la del personaje + lo
+        // que sube en esa forma (Manual de monstruos 1, «Licántropo», «DG y puntos de golpe»).
+        const dgsPlantillas: GrupoDadosGolpe[] = plantillas
+            .filter((plantilla) => dgsDePlantilla(plantilla) > 0)
+            .map((plantilla) => ({
+                cantidad: dgsDePlantilla(plantilla),
+                caras: carasDado(plantilla?.Licantronia_dg?.Dado) || dadoRacial,
+                modConstitucion: this.modConstitucionFormaAnimal(plantilla, reglaConstitucion),
+            }));
         const resultado = calcularPuntosGolpe({
             dgsRaciales: { cantidad: partes.dgsRaza, caras: dadoComun ?? dadoRacial },
             nivelesClase,
-            dgsPlantillas: plantillas
-                .filter((plantilla) => dgsDePlantilla(plantilla) > 0)
-                .map((plantilla) => ({
-                    cantidad: dgsDePlantilla(plantilla),
-                    caras: carasDado(plantilla?.Licantronia_dg?.Dado) || dadoRacial,
-                })),
+            dgsPlantillas,
             modConstitucion: reglaConstitucion.modificador,
             bonoPorDg: bonoDotes.bonoPorDadoClase,
             bonoPlano: bonoDotes.bonoPlano,
@@ -10545,9 +10544,25 @@ export class NuevoPersonajeService {
                 nivelesClase: nivelesClase.reduce((acc, grupo) => acc + grupo.cantidad, 0),
                 bonoPlanoDotes: bonoDotes.bonoPlano,
                 bonoPorDadoClaseDotes: bonoDotes.bonoPorDadoClase,
+                pgsConstitucionDgsPlantillas: dgsPlantillas
+                    .reduce((suma, grupo) => suma + toInt(grupo.modConstitucion) * toInt(grupo.cantidad), 0),
                 flags,
             },
         };
+    }
+
+    /**
+     * El modificador de Constitución de los DG del animal de una plantilla: el de la Con del personaje + lo que sube en su
+     * forma animal (`Modificadores_forma_animal.Constitucion`; un humano de Con 11 con lobo, +4: Con 15, +2). Sin
+     * Constitución (perdida o por su tipo), 0, como los demás DG.
+     */
+    private modConstitucionFormaAnimal(plantilla: Plantilla, regla: { aplica: boolean; modificador: number; }): number {
+        if (!regla.aplica)
+            return 0;
+        const ajuste = toInt(plantilla?.Modificadores_forma_animal?.Constitucion);
+        return ajuste === 0
+            ? regla.modificador
+            : modificadorCaracteristica(toNumber(this.personajeCreacion?.Constitucion) + ajuste);
     }
 
     private randomInt(min: number, max: number): number {

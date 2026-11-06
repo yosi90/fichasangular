@@ -29,6 +29,17 @@ export interface PlantillaCaracteristicas {
     Carisma: number;
 }
 
+/**
+ * Lo que cambian Fue, Des y Con en la forma animal (y la híbrida) de un licántropo: la puntuación del animal −10 si es
+ * par o −11 si es impar (Manual de monstruos 1, «Licántropo»; un lobo, +2, +4, +4). No vale en su forma humanoide; los PG
+ * de los DG del animal usan la Con de esta forma. 0 en las plantillas sin forma animal.
+ */
+export interface PlantillaFormaAnimal {
+    Fuerza: number;
+    Destreza: number;
+    Constitucion: number;
+}
+
 export interface PlantillaLicantroniaDg {
     Id_dado: number;
     Dado: string;
@@ -156,7 +167,10 @@ export interface Plantilla {
     Fortaleza: number;
     Reflejos: number;
     Voluntad: number;
+    /** Lo que cambia en todas las formas de la criatura (en un licántropo, el +2 a Sab). */
     Modificadores_caracteristicas: PlantillaCaracteristicas;
+    /** Lo que cambian las físicas en la forma animal de un licántropo (desde el 2026-11-06). */
+    Modificadores_forma_animal: PlantillaFormaAnimal;
     Minimos_caracteristicas: PlantillaCaracteristicas;
     Ajuste_nivel: number;
     /** Los DG del animal base de un licántropo; `null` en las demás plantillas, que no añaden DG de animal. */
@@ -235,6 +249,9 @@ export interface PlantillaEscalaresRequest {
     id_tipo_dado_lic: number;
     suma_dg_lic: number;
     id_tipo_criatura_dg_lic: number;
+    fue_forma_animal: number;
+    des_forma_animal: number;
+    con_forma_animal: number;
     puntos_hab_suma_fija: number;
     puntos_hab_suma: number;
     nacimiento: boolean;

@@ -16,6 +16,7 @@ describe('SelectorPuntosGolpeModalComponent', () => {
                 nivelesClase: 1,
                 bonoPlanoDotes: 0,
                 bonoPorDadoClaseDotes: 0,
+                pgsConstitucionDgsPlantillas: 0,
                 flags: {
                     dadosGolpe: true,
                     dgsRacialesExtra: true,
@@ -56,6 +57,7 @@ describe('SelectorPuntosGolpeModalComponent', () => {
                 nivelesClase: 1,
                 bonoPlanoDotes: 0,
                 bonoPorDadoClaseDotes: 0,
+                pgsConstitucionDgsPlantillas: 0,
                 flags: {
                     dadosGolpe: true,
                     dgsRacialesExtra: true,
@@ -85,6 +87,7 @@ describe('SelectorPuntosGolpeModalComponent', () => {
                 nivelesClase: 1,
                 bonoPlanoDotes: 0,
                 bonoPorDadoClaseDotes: 0,
+                pgsConstitucionDgsPlantillas: 0,
                 flags: {
                     dadosGolpe: true,
                     dgsRacialesExtra: false,

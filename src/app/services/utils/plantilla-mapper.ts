@@ -154,6 +154,11 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
         Reflejos: toNumber(raw?.Reflejos),
         Voluntad: toNumber(raw?.Voluntad),
         Modificadores_caracteristicas: normalizeCaracteristicas(raw?.Modificadores_caracteristicas),
+        Modificadores_forma_animal: {
+            Fuerza: toNumber(raw?.Modificadores_forma_animal?.Fuerza),
+            Destreza: toNumber(raw?.Modificadores_forma_animal?.Destreza),
+            Constitucion: toNumber(raw?.Modificadores_forma_animal?.Constitucion),
+        },
         Minimos_caracteristicas: normalizeCaracteristicas(raw?.Minimos_caracteristicas),
         Ajuste_nivel: toNumber(raw?.Ajuste_nivel),
         // Solo los licántropos traen los DG de su animal; en las demás, la API (y la caché) los dan a `null`.

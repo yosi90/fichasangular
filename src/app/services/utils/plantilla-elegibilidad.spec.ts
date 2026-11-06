@@ -26,6 +26,7 @@ function crearPlantillaMock(overrides?: Partial<Plantilla>): Plantilla {
         Reflejos: 0,
         Voluntad: 0,
         Modificadores_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
+        Modificadores_forma_animal: { Fuerza: 0, Destreza: 0, Constitucion: 0 },
         Minimos_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
         Ajuste_nivel: 0,
         Licantronia_dg: { Id_dado: 0, Dado: "", Multiplicador: 0, Suma: 0 },

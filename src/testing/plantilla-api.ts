@@ -29,6 +29,7 @@ export function plantillaApiDeEjemplo(cambios: Record<string, unknown> = {}): an
         Reflejos: 0,
         Voluntad: 1,
         Modificadores_caracteristicas: { Fuerza: 2, Destreza: 0, Constitucion: 4, Inteligencia: 0, Sabiduria: 2, Carisma: 0 },
+        Modificadores_forma_animal: { Fuerza: 2, Destreza: 4, Constitucion: 4 },
         Minimos_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 3, Sabiduria: 0, Carisma: 0 },
         Ajuste_nivel: 3,
         Licantronia_dg: { Id_dado: 3, Dado: 'd8', Multiplicador: 2, Suma: 0, Tipo_criatura: { Id: 2, Nombre: 'Animal', Puntos_habilidad: 2 } },

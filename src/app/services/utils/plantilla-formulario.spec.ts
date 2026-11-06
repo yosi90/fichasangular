@@ -91,6 +91,24 @@ describe('plantilla-formulario', () => {
         expect(cuerpo.plantilla).toEqual(jasmine.objectContaining({ id_tipo_dado_lic: 3, mult_dg_lic: 2, suma_dg_lic: 1, id_tipo_criatura_dg_lic: 2 }));
     });
 
+    it('manda la forma animal con los DG del animal, y a 0 sin ellos (el lobo: +2, +4, +4; MM 1, «Licántropo»)', () => {
+        const forma = { fue_forma_animal: 2, des_forma_animal: 4, con_forma_animal: 4 };
+        const con = construirPlantillaRequest({ ...valorPlantillaNueva(), con_dg_lic: true, mult_dg_lic: 2, ...forma }, listasPlantillaVacias());
+        const sin = construirPlantillaRequest({ ...valorPlantillaNueva(), con_dg_lic: false, ...forma }, listasPlantillaVacias());
+
+        expect(con.plantilla).toEqual(jasmine.objectContaining(forma));
+        expect(sin.plantilla).toEqual(jasmine.objectContaining({ fue_forma_animal: 0, des_forma_animal: 0, con_forma_animal: 0 }));
+    });
+
+    it('cambiar la forma animal marca su campo, en el paso de los DG', () => {
+        const plantilla = normalizePlantillaApi(plantillaApiDeEjemplo());
+        const antes = construirPlantillaRequest(valorDesdePlantilla(plantilla), listasPlantillaVacias());
+        const ahora = construirPlantillaRequest({ ...valorDesdePlantilla(plantilla), con_forma_animal: 6 }, listasPlantillaVacias());
+
+        expect(camposCambiados(antes, ahora, true, true)).toEqual(['con_forma_animal']);
+        expect(CAMPOS_PLANTILLA['con_forma_animal'].paso).toBe(0);
+    });
+
     it('escribe los requisitos en minúscula, con su opcional, y deja fuera los incompletos', () => {
         const fila = (tipo: any, cambios: any) => ({ ...getPrerequisiteDefinition(tipo).createDefaultRow(), ...cambios });
         const prerrequisitos = prerrequisitosPlantillaDesdeFilas([
@@ -129,7 +147,7 @@ describe('plantilla-formulario', () => {
         expect(valor).toEqual(jasmine.objectContaining({
             nombre: 'Licántropo de prueba', id_manual: 4, pagina: 175, id_tamano: 0, id_mod_tam: 1, id_mod_dg: 0, id_tipo_dado: 3,
             nacimiento: true, oficial: true, traducido: true, nombre_original: 'Test lycanthrope', con_dg_lic: true, mult_dg_lic: 2,
-            id_tipo_criatura_dg_lic: 2, constitucion: 4, min_inteligencia: 3, ca: '+2 armadura natural', ataques: '', id_alineamiento: 7,
+            id_tipo_criatura_dg_lic: 2, constitucion: 4, min_inteligencia: 3, fue_forma_animal: 2, des_forma_animal: 4, con_forma_animal: 4, ca: '+2 armadura natural', ataques: '', id_alineamiento: 7,
             entorno: 'Igual que la criatura base', organizacion: '', vd: 'Igual que la criatura base +2', puntos_hab_suma: 2,
         }));
         expect(listas.raciales.map((f) => [f.id, f.dg])).toEqual([[70, 1]]);

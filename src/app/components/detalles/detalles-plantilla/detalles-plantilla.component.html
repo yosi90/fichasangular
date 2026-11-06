@@ -17,6 +17,10 @@
         <app-ficha-seccion titulo="Características" *ngIf="hayCaracteristicas">
             <app-ficha-caracteristicas [modificadores]="modificadoresCaracteristicas" [minimos]="minimosCaracteristicas"></app-ficha-caracteristicas>
         </app-ficha-seccion>
+        <!-- Manual de monstruos 1, «Licántropo»: en forma animal e híbrida, las físicas suben la puntuación del animal −10 o −11. -->
+        <app-ficha-seccion titulo="Forma animal o híbrida" *ngIf="modificadoresFormaAnimal.length > 0">
+            <app-ficha-datos [datos]="modificadoresFormaAnimal" [columnas]="3" [tarjeta]="false" titulo="Forma animal o híbrida"></app-ficha-datos>
+        </app-ficha-seccion>
         <app-ficha-seccion titulo="Combate y defensas" *ngIf="combate.length > 0">
             <app-ficha-datos [datos]="combate" [columnas]="3" [tarjeta]="false" titulo="Combate y defensas"></app-ficha-datos>
         </app-ficha-seccion>

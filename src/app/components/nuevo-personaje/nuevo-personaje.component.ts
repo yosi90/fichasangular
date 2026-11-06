@@ -3909,9 +3909,11 @@ export class NuevoPersonajeComponent {
         if (!Number.isFinite(mult) || mult <= 0 || dado.length < 1)
             return '';
 
-        const suma = Number(plantilla?.Licantronia_dg?.Suma ?? 0);
-        const sumaTxt = Number.isFinite(suma) && suma >= 0 ? `+${suma}` : `${suma}`;
-        return `${mult}${dado}${sumaTxt} PGs`;
+        // Los PG de esos DG suman la Con del personaje en su forma animal (Manual de monstruos 1, «Licántropo»).
+        const con = Number(plantilla?.Modificadores_forma_animal?.Constitucion ?? 0);
+        return Number.isFinite(con) && con !== 0
+            ? `${mult}${dado} PGs · Con ${con > 0 ? '+' : ''}${con} en forma animal`
+            : `${mult}${dado} PGs`;
     }
 
     esPlantillaConfirmada(plantilla: Plantilla): boolean {
@@ -5192,6 +5194,7 @@ export class NuevoPersonajeComponent {
         if (!this.modalSelectorPuntosGolpeAbierto || !this.resultadoVidaActual)
             return;
         this.Personaje.Vida = this.resultadoVidaActual.total;
+        this.Personaje.Pgs_lic = Math.max(0, Number(this.resultadoVidaActual.detalle?.pgsConstitucionDgsPlantillas) || 0);
         this.modalSelectorPuntosGolpeAbierto = false;
         this.abrirSelectorVisibilidad();
     }
