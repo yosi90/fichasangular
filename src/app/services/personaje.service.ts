@@ -1047,7 +1047,8 @@ export class PersonajeService {
             Presa: totales.presa?.total ?? 0,
             Presa_varios: modificadoresDePartes(totales.presa, 'varios').map(({ valor, origen }) => ({ Valor: valor, Origen: origen })),
             Raza: raza,
-            RazaBase: element?.RazaBase ?? element?.rb ?? element?.raza_base ?? null,
+            // La raza base de una raza mutada (`rb`, `{ Id, Nombre }`); `null` en las demás.
+            RazaBase: toRefIdNombre(element?.rb),
             Tipo_criatura: element?.tc,
             Fuerza: element?.f,
             ModFuerza: element?.mf,

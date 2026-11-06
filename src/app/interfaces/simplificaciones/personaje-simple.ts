@@ -1,5 +1,6 @@
 import { TipoPersonaje } from "src/app/services/utils/tipo-personaje";
 import { RazaSimple } from "./raza-simple";
+import { Id_nombre } from "../genericas";
 
 export interface PersonajeSimple {
     Id: number;
@@ -13,7 +14,8 @@ export interface PersonajeSimple {
     Id_region?: number;
     Region?: { Id: number; Nombre: string; } | null;
     Raza: RazaSimple;
-    RazaBase?: RazaSimple | null;
+    /** La raza base de una raza mutada: en la ficha, `rb` de la API; en la creación, la elegida. */
+    RazaBase?: Id_nombre | null;
     Clases: string;
     Personalidad: string;
     Contexto: string;

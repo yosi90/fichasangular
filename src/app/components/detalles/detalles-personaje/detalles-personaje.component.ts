@@ -1234,7 +1234,12 @@ ${envejecimiento}` : edades;
                 valor: subtipos.map((s) => s.Nombre.trim()).join(', ') || null,
                 enlaces: subtipos.map((s) => ({ texto: s.Nombre.trim(), alPulsar: () => this.verDetallesSubtipo(s) })),
             },
-            { etiqueta: 'Raza base', valor: this.texto(pj.RazaBase?.Nombre) || null },
+            // La raza sobre la que se aplica una raza mutada (`rb` de la ficha), con su detalle como la raza.
+            {
+                etiqueta: 'Raza base',
+                valor: this.texto(pj.RazaBase?.Nombre) || null,
+                alPulsar: toNumber(pj.RazaBase?.Id) > 0 ? () => this.verDetallesRaza(toNumber(this.pj.RazaBase?.Id)) : undefined,
+            },
             {
                 etiqueta: clases.length > 1 ? 'Clases' : 'Clase',
                 valor: clases.map((c) => textoClasePersonaje(c)).join(', ') || null,

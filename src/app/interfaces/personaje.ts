@@ -140,7 +140,6 @@ export interface Personaje extends PersonajeSimple {
     LanzamientoRacial?: LanzamientoRacialPersonaje | null;
     Id_region?: number;
     Region?: { Id: number; Nombre: string; } | null;
-    RazaBase?: PersonajeSimple['Raza'] | null;
     ProgresionLanzador?: PersonajeProgresionLanzadorDto;
     Niveles_lanzador?: PersonajeNivelLanzadorResumen[];
     desgloseClases: {
