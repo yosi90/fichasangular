@@ -4035,13 +4035,33 @@ export class NuevoPersonajeService {
     }
 
     /** La salvación base que dan las clases (la parte «clase» de cada total): la que pide `salvacion_minimo`. */
+    /**
+     * Las salvaciones base del personaje, para los prerrequisitos de «salvación base mínima»: las de sus clases, las de
+     * sus DG raciales (si cuentan) y las de los DG de sus plantillas (el animal del licántropo), que también son base
+     * (Manual de monstruos, «Monstruos como razas» y «Licántropo»). Sin las de características, dotes ni objetos.
+     */
     private resolverSalvacionesBaseClase(): { fortaleza: number; reflejos: number; voluntad: number; } {
         const salvaciones = totalesPersonaje(this.personajeCreacion).salvaciones;
-        return {
+        const base = {
             fortaleza: sumarPartes(salvaciones.fortaleza, 'clase'),
             reflejos: sumarPartes(salvaciones.reflejos, 'clase'),
             voluntad: sumarPartes(salvaciones.voluntad, 'clase'),
         };
+        if (this.dgsRacialesEfectivos() > 0) {
+            const dgs = this.razaSeleccionada?.Dgs_adicionales;
+            base.fortaleza += toNumber(dgs?.Fortaleza);
+            base.reflejos += toNumber(dgs?.Reflejos);
+            base.voluntad += toNumber(dgs?.Voluntad);
+        }
+        (this.estadoFlujo.plantillas.seleccionadas ?? []).forEach((plantilla) => {
+            const deSusDgs = this.basesDeDgsDePlantilla(plantilla);
+            if (!deSusDgs)
+                return;
+            base.fortaleza += deSusDgs.fortaleza;
+            base.reflejos += deSusDgs.reflejos;
+            base.voluntad += deSusDgs.voluntad;
+        });
+        return base;
     }
 
     private resolverCompetenciasClaseActuales(

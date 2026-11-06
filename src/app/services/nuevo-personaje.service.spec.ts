@@ -2491,6 +2491,25 @@ describe('NuevoPersonajeService (clases)', () => {
             service.aplicarSiguienteNivelClase(claseBase);
             expect(service.PersonajeCreacion.NEP).toBe(4);
         });
+
+        it('las salvaciones base de los prerrequisitos cuentan las de sus DG raciales, si cuentan', () => {
+            const raza = razaDeUnDg();
+            raza.Dgs_adicionales.Cantidad = 2;
+            service.seleccionarRaza(raza);
+            service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            const antes = (service as any).resolverSalvacionesBaseClase();
+            expect(antes.fortaleza).toBe(2);
+            service.aplicarSiguienteNivelClase(claseBase);
+            // Más la Fortaleza +2 del guerrero 1.
+            expect((service as any).resolverSalvacionesBaseClase().fortaleza).toBe(4);
+
+            // Con 1 DG racial y un nivel de clase, sus DG no cuentan.
+            const otro = new NuevoPersonajeService();
+            otro.seleccionarRaza(razaDeUnDg());
+            otro.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
+            otro.aplicarSiguienteNivelClase(claseBase);
+            expect((otro as any).resolverSalvacionesBaseClase().fortaleza).toBe(2);
+        });
     });
 
     describe('la penalización de PX por multiclase (MJ cap. 3, «Experiencia en multiclase»)', () => {
