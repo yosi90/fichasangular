@@ -31,9 +31,14 @@ function armaNatural(raw: any): ArmaNatural {
     };
 }
 
+/** Las que traen su tipo o, al menos, su nombre. */
+function conDato(arma: ArmaNatural): boolean {
+    return arma.Id_arma_natural > 0 || arma.Arma_natural.length > 0;
+}
+
 /** Las armas naturales de una raza, una edad o un monstruo; sin el campo, ninguna. */
 export function leerArmasNaturales(raw: any): ArmaNatural[] {
-    return toArray(raw).map(armaNatural).filter((arma) => arma.Id_arma_natural > 0 || arma.Arma_natural.length > 0);
+    return toArray(raw).map(armaNatural).filter(conDato);
 }
 
 /** Las de una plantilla, con su modo (`suma` si no lo trae) y su forma (`todas`). */
@@ -42,7 +47,7 @@ export function leerArmasNaturalesPlantilla(raw: any): ArmaNaturalPlantilla[] {
         ...armaNatural(item),
         Modo: MODOS.includes(item?.Modo) ? item.Modo : 'suma',
         Forma: FORMAS.includes(item?.Forma) ? item.Forma : 'todas',
-    })).filter((arma) => arma.Id_arma_natural > 0 || arma.Arma_natural.length > 0);
+    })).filter(conDato);
 }
 
 /** Las frases de las armas naturales en una línea («Mordisco 2d6, 2 garras 1d8 (ataques secundarios)»); vacío sin ninguna. */
@@ -58,6 +63,11 @@ function claveDe(arma: ArmaNatural): string {
     return arma.Id_arma_natural > 0 ? `${arma.Id_arma_natural}` : arma.Arma_natural.toLowerCase();
 }
 
+/** Suma a `estado` las de `arma` (las de su tipo que ya hubiera, más las suyas). */
+function sumar(estado: Estado, arma: ArmaNatural): void {
+    estado.set(claveDe(arma), (estado.get(claveDe(arma)) ?? 0) + arma.Cantidad);
+}
+
 /**
  * Las armas naturales que quedan tras una plantilla (en una forma): con alguna `sustituye`, la criatura pierde las suyas
  * y le quedan esas; después `quita` le quita las de su tipo, `minimo` las deja en al menos su cantidad y `suma` las añade.
@@ -65,12 +75,11 @@ function claveDe(arma: ArmaNatural): string {
 function aplicar(estado: Estado, armas: readonly ArmaNaturalPlantilla[]): Estado {
     const sustituyen = armas.filter((arma) => arma.Modo === 'sustituye');
     const resultado: Estado = sustituyen.length > 0 ? new Map() : new Map(estado);
-    sustituyen.forEach((arma) => resultado.set(claveDe(arma), (resultado.get(claveDe(arma)) ?? 0) + arma.Cantidad));
+    sustituyen.forEach((arma) => sumar(resultado, arma));
     armas.filter((arma) => arma.Modo === 'quita').forEach((arma) => resultado.delete(claveDe(arma)));
     armas.filter((arma) => arma.Modo === 'minimo')
         .forEach((arma) => resultado.set(claveDe(arma), Math.max(resultado.get(claveDe(arma)) ?? 0, arma.Cantidad)));
-    armas.filter((arma) => arma.Modo === 'suma')
-        .forEach((arma) => resultado.set(claveDe(arma), (resultado.get(claveDe(arma)) ?? 0) + arma.Cantidad));
+    armas.filter((arma) => arma.Modo === 'suma').forEach((arma) => sumar(resultado, arma));
     return resultado;
 }
 
@@ -91,7 +100,7 @@ export function contarArmasNaturales(
     plantillas: readonly ({ Armas_naturales?: readonly ArmaNaturalPlantilla[] | null; } | null | undefined)[] = [],
 ): number {
     const normal: Estado = new Map();
-    (raza?.Armas_naturales ?? []).forEach((arma) => normal.set(claveDe(arma), (normal.get(claveDe(arma)) ?? 0) + arma.Cantidad));
+    (raza?.Armas_naturales ?? []).forEach((arma) => sumar(normal, arma));
     const formas = new Map<FormaArmaNatural, Estado>([['todas', normal]]);
     plantillas.forEach((plantilla) => {
         const armas = plantilla?.Armas_naturales ?? [];
