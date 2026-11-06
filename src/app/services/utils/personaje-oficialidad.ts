@@ -1,6 +1,6 @@
 import { Personaje } from 'src/app/interfaces/personaje';
 import { EdadFueraDelManual } from './edad-personaje';
-import { normalizarTexto } from './normalizacion';
+import { normalizarTexto, toNullableText, toPositiveInt } from './normalizacion';
 
 /** Lo mínimo de un elemento de catálogo para saber si es oficial y de qué fuente es (su id y su manual). */
 export interface ConOficial {
@@ -299,11 +299,6 @@ export interface EstadoDecisionesHomebrew {
     pesoFueraDeRango?: boolean;
 }
 
-function idValido(id: unknown): number | null {
-    const valor = Math.trunc(Number(id ?? 0));
-    return Number.isFinite(valor) && valor > 0 ? valor : null;
-}
-
 /**
  * Las decisiones contra las reglas que se mandan al guardar el personaje, sin repetidas. La oficialidad del personaje
  * guardado la calcula la API con ellas y con sus componentes; la web ya no manda `oficial`.
@@ -312,7 +307,7 @@ export function decisionesHomebrewPersonaje(estado: EstadoDecisionesHomebrew): D
     const salida: DecisionHomebrew[] = [];
     const vistas = new Set<string>();
     const anadir = (tipo: TipoDecisionHomebrew, id: unknown) => {
-        const idElemento = idValido(id);
+        const idElemento = toPositiveInt(id);
         const clave = `${tipo}:${idElemento}`;
         if (idElemento === null || vistas.has(clave))
             return;
@@ -363,14 +358,13 @@ export interface HomebrewGuardado {
  * `homebrew` de `GET /personajes/{id}` (estricto: lo que no tiene la forma del contrato no entra). Sin él, sin motivos.
  */
 export function normalizarHomebrewGuardado(raw: any): HomebrewGuardado {
-    const texto = (valor: unknown): string | null => (typeof valor === 'string' && valor.trim().length > 0 ? valor.trim() : null);
     const entero = (valor: unknown): number | null => (Number.isInteger(valor) ? Number(valor) : null);
     const componentes = (Array.isArray(raw?.componentes) ? raw.componentes : [])
         .filter((c: any) => typeof c?.tabla === 'string' && Number.isInteger(c?.id))
-        .map((c: any): ComponenteHomebrewGuardado => ({ tabla: c.tabla, id: c.id, nombre: texto(c.nombre) }));
+        .map((c: any): ComponenteHomebrewGuardado => ({ tabla: c.tabla, id: c.id, nombre: toNullableText(c.nombre) }));
     const decisiones = (Array.isArray(raw?.decisiones) ? raw.decisiones : [])
         .filter((d: any) => typeof d?.tipo === 'string')
-        .map((d: any): DecisionHomebrewGuardada => ({ tipo: d.tipo, tabla: texto(d.tabla), id: entero(d.id), nombre: texto(d.nombre) }));
+        .map((d: any): DecisionHomebrewGuardada => ({ tipo: d.tipo, tabla: toNullableText(d.tabla), id: entero(d.id), nombre: toNullableText(d.nombre) }));
     return { componentes, decisiones };
 }
 
