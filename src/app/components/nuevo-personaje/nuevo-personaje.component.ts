@@ -156,6 +156,7 @@ import { esPnj, TipoPersonaje, tituloNuevoPersonaje } from 'src/app/services/uti
 import { codigoDeError, mensajeDeError } from 'src/app/services/utils/error-api';
 import { PasoEdadRaza } from 'src/app/interfaces/raza';
 import { normalizarTexto, primerEntero, toInt, toPositiveInt } from 'src/app/services/utils/normalizacion';
+import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
 import { ClaveHabilidad, claveHabilidad } from 'src/app/services/utils/habilidad-clave';
@@ -6763,10 +6764,7 @@ export class NuevoPersonajeComponent {
 
         this.selectorAumentosPendientes = pendientes;
         this.selectorAumentosCaracteristicasActuales = this.construirSnapshotCaracteristicasAumentos();
-        this.selectorAumentosCaracteristicasPerdidas = {
-            ...(this.Personaje?.Caracteristicas_perdidas ?? {}),
-            Constitucion: !!(this.Personaje?.Caracteristicas_perdidas?.Constitucion || this.Personaje?.Constitucion_perdida),
-        };
+        this.selectorAumentosCaracteristicasPerdidas = caracteristicasPerdidasDe(this.Personaje);
         this.selectorAumentosTopes = this.nuevoPSvc.getTopesCaracteristicas();
         this.modalSelectorAumentosAbierto = true;
 

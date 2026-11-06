@@ -57,6 +57,7 @@ import { idExtraHabilidadParaGuardar } from './utils/habilidad-extra-visible';
 import { errorDePerfil, mensajeDeError } from './utils/error-api';
 import { normalizarTamanoFicha } from './utils/tamano-efectivo';
 import { normalizarHomebrewGuardado } from './utils/personaje-oficialidad';
+import { caracteristicasPerdidasDe, normalizarCaracteristicasPerdidas } from './utils/caracteristicas';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -260,10 +261,7 @@ export class PersonajeService {
         if (!esSinDeidad(personaje?.Deidad) && idDeidad <= 0)
             throw new Error('No se pudo resolver el id de deidad para el payload de creación.');
 
-        const caracteristicasPerdidas = {
-            ...(personaje?.Caracteristicas_perdidas ?? {}),
-            Constitucion: !!(personaje?.Caracteristicas_perdidas?.Constitucion || personaje?.Constitucion_perdida),
-        };
+        const caracteristicasPerdidas = caracteristicasPerdidasDe(personaje);
         const idTamano = toInt(personaje?.Raza?.Tamano?.Id);
         const idRazaBase = toInt((personaje as any)?.RazaBase?.Id);
         const modificadores = this.construirPayloadModificadores(personaje);
@@ -954,8 +952,7 @@ export class PersonajeService {
         clonado.Companeros = normalizeCompaneroMonstruoDetalleArray(clonado?.Companeros ?? [], 1);
         clonado.DotesContextuales = dotesContextualesActualizadas;
         clonado.Dotes = toDoteLegacyArray(dotesContextualesActualizadas);
-        const perdidas = normalizeCaracteristicasPerdidasPersonaje(clonado?.Caracteristicas_perdidas);
-        clonado.Caracteristicas_perdidas = { ...perdidas, Constitucion: perdidas.Constitucion || toBoolean(clonado?.Constitucion_perdida) };
+        clonado.Caracteristicas_perdidas = caracteristicasPerdidasDe(clonado);
         clonado.Constitucion_perdida = !!clonado?.Caracteristicas_perdidas?.Constitucion;
         clonado.ProgresionLanzador = normalizarProgresionLanzadorPersonaje(clonado?.ProgresionLanzador);
         clonado.Niveles_lanzador = Array.isArray(clonado?.Niveles_lanzador) ? clonado.Niveles_lanzador : [];
@@ -1058,7 +1055,7 @@ export class PersonajeService {
             ModDestreza: element?.md,
             Constitucion: element?.co,
             ModConstitucion: element?.mco,
-            Caracteristicas_perdidas: normalizeCaracteristicasPerdidasPersonaje(element?.cper),
+            Caracteristicas_perdidas: normalizarCaracteristicasPerdidas(element?.cper),
             Constitucion_perdida: toBoolean(element?.cper?.Constitucion),
             Inteligencia: element?.int,
             ModInteligencia: element?.mint,
@@ -1385,23 +1382,4 @@ function resolveCompetenciaNombre(item: any, nombreKeys: string[]): string {
     }
 
     return '';
-}
-
-/** Las características perdidas de la ficha (`cper`, `GET /personajes/{id}`). */
-function normalizeCaracteristicasPerdidasPersonaje(raw: any): {
-    Fuerza?: boolean;
-    Destreza?: boolean;
-    Constitucion?: boolean;
-    Inteligencia?: boolean;
-    Sabiduria?: boolean;
-    Carisma?: boolean;
-} {
-    return {
-        Fuerza: toBoolean(raw?.Fuerza),
-        Destreza: toBoolean(raw?.Destreza),
-        Constitucion: toBoolean(raw?.Constitucion),
-        Inteligencia: toBoolean(raw?.Inteligencia),
-        Sabiduria: toBoolean(raw?.Sabiduria),
-        Carisma: toBoolean(raw?.Carisma),
-    };
 }

@@ -58,7 +58,7 @@ import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoPersonaje, TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
 import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
-import { caracteristicaPorId, caracteristicaPorTexto, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
+import { caracteristicaPorId, caracteristicaPorTexto, caracteristicasPerdidasDe, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from './utils/personaje-totales';
@@ -10681,13 +10681,7 @@ export class NuevoPersonajeService {
     }
 
     private esCaracteristicaPerdida(key: CaracteristicaKey): boolean {
-        const mapa = this.personajeCreacion?.Caracteristicas_perdidas ?? {};
-        const valorMapa = toBoolean((mapa as Record<string, any>)?.[key]);
-        if (key === 'Constitucion') {
-            const legado = toBoolean(this.personajeCreacion?.Constitucion_perdida);
-            return valorMapa || legado;
-        }
-        return valorMapa;
+        return caracteristicasPerdidasDe(this.personajeCreacion)[key];
     }
 
     private setCaracteristicaPerdida(key: CaracteristicaKey, estado: any, _origen?: string): void {

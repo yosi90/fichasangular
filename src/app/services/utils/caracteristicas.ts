@@ -1,6 +1,6 @@
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { MonstruoCaracteristicas } from 'src/app/interfaces/monstruo';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
 
 // El modificador de una característica lo calcula la API (`utils/caracteristicas.py` del backend) para las fichas y los
 // monstruos, familiares y compañeros (`docs/publica/MODIFICADORES_MONSTRUOS_FRONT.md`). La web solo lo calcula para el
@@ -44,6 +44,24 @@ export function caracteristicaPorTexto(texto: string): Caracteristica | null {
 export function valorCaracteristicaPorId(caracteristicas: Readonly<Record<Caracteristica, number>>, idCaracteristica: number): number {
     const clave = caracteristicaPorId(idCaracteristica);
     return clave ? Number(caracteristicas?.[clave] ?? Number.NaN) : Number.NaN;
+}
+
+/** Las seis marcas de característica perdida (`cper` de la ficha, `GET /personajes/{id}`), en booleano. */
+export function normalizarCaracteristicasPerdidas(raw: unknown): Record<Caracteristica, boolean> {
+    const mapa = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+    return Object.fromEntries(CARACTERISTICAS.map((clave) => [clave, toBoolean(mapa[clave])])) as Record<Caracteristica, boolean>;
+}
+
+/**
+ * Las características que ha perdido un personaje (los muertos vivientes, la Constitución): su `Caracteristicas_perdidas`
+ * en booleano y la Constitución también por su alias `Constitucion_perdida`. Un solo sitio para la ficha, la creación y
+ * lo que la creación manda a la API.
+ */
+export function caracteristicasPerdidasDe(
+    pj: { Caracteristicas_perdidas?: unknown; Constitucion_perdida?: unknown; } | null | undefined,
+): Record<Caracteristica, boolean> {
+    const perdidas = normalizarCaracteristicasPerdidas(pj?.Caracteristicas_perdidas);
+    return { ...perdidas, Constitucion: perdidas.Constitucion || toBoolean(pj?.Constitucion_perdida) };
 }
 
 /** Sin valor, una característica se enseña con «—», como en el manual. */

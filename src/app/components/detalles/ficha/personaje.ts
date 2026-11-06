@@ -1,9 +1,9 @@
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { DoteLegacy } from 'src/app/interfaces/dote-contextual';
 import { CaracteristicaPerdidaKey, Personaje } from 'src/app/interfaces/personaje';
-import { NOMBRES_CARACTERISTICAS, abreviaturaCaracteristica } from 'src/app/services/utils/caracteristicas';
+import { NOMBRES_CARACTERISTICAS, abreviaturaCaracteristica, caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
-import { toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { CasillaFicha } from './ficha';
 
@@ -26,11 +26,7 @@ export function tieneCaracteristicasGeneradas(pj: Personaje | null | undefined):
 
 /** Si ha perdido la característica (los muertos vivientes, la Constitución). */
 export function caracteristicaPerdida(pj: Personaje | null | undefined, key: CaracteristicaPerdidaKey): boolean {
-    const perdidas = pj?.Caracteristicas_perdidas ?? {};
-    const perdidaPorMapa = toBoolean((perdidas as Record<string, any>)?.[key]);
-    if (key === 'Constitucion')
-        return perdidaPorMapa || toBoolean(pj?.Constitucion_perdida);
-    return perdidaPorMapa;
+    return caracteristicasPerdidasDe(pj)[key];
 }
 
 /** Las casillas de las seis características («FUE 16 +3», o «—» con «Perdida»); ninguna si aún no están generadas. */

@@ -1,8 +1,10 @@
 import { MonstruoCaracteristicas } from 'src/app/interfaces/monstruo';
 import {
     CATALOGO_CARACTERISTICAS,
+    caracteristicasPerdidasDe,
     modificadorCaracteristica,
     modificadorParaSumar,
+    normalizarCaracteristicasPerdidas,
     textoCaracteristicaMonstruo,
     textoModificadorCaracteristica,
     textoValorCaracteristica,
@@ -58,5 +60,15 @@ describe('CATALOGO_CARACTERISTICAS', () => {
             { id: 5, nombre: 'Sabiduría' },
             { id: 6, nombre: 'Carisma' },
         ]);
+    });
+
+    it('lee las características perdidas: las seis en booleano y la Constitución también por su alias', () => {
+        expect(normalizarCaracteristicasPerdidas({ Constitucion: 1, Carisma: 'no' })).toEqual({
+            Fuerza: false, Destreza: false, Constitucion: true, Inteligencia: false, Sabiduria: false, Carisma: false,
+        });
+        expect(normalizarCaracteristicasPerdidas(null).Fuerza).toBeFalse();
+        expect(caracteristicasPerdidasDe({ Caracteristicas_perdidas: { Fuerza: true }, Constitucion_perdida: true }))
+            .toEqual(jasmine.objectContaining({ Fuerza: true, Constitucion: true, Destreza: false }));
+        expect(caracteristicasPerdidasDe(undefined).Constitucion).toBeFalse();
     });
 });
