@@ -789,7 +789,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 edad_inicial_caras_2: this.numero(raw.edad_inicial_caras_2),
                 edad_inicial_dados_3: this.numero(raw.edad_inicial_dados_3),
                 edad_inicial_caras_3: this.numero(raw.edad_inicial_caras_3),
-                ...(conDgs ? { vd: this.vdDeRaza(raw.vd) } : {}),
+                ...(this.pideVdDeRaza() ? { vd: this.vdDeRaza(raw.vd) } : {}),
                 vd_mod_clases_pj: toIntOrNull(raw.vd_mod_clases_pj),
                 vd_mod_clases_pnj: toIntOrNull(raw.vd_mod_clases_pnj),
                 id_tipo_criatura: this.numero(raw.id_tipo_criatura),
@@ -1167,6 +1167,14 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return this.numero(this.form.controls.dgs_extra.value) > 0;
     }
 
+    /**
+     * Se pide el VD de la raza: con DG raciales y sin edades. En una raza por edades cuenta el VD de cada categoría
+     * (el dragón), así que el de la raza no se enseña ni se manda (la edición conserva el que tuviera).
+     */
+    pideVdDeRaza(): boolean {
+        return this.tieneDgsExtra() && !this.porEdades;
+    }
+
     /** En una raza por edades el nivel de lanzamiento va en cada categoría y en la raza es 0 (la API lo exige). */
     get esRazaPorEdades(): boolean {
         return this.porEdades;
@@ -1179,6 +1187,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             this.edades = { ...this.edades, categorias: [categoriaVacia()] };
         if (this.porEdades)
             this.form.controls.nivel_lanzamiento.setValue(0);
+        this.sincronizarCamposDgsExtra();
         this.form.markAsDirty();
     }
 
@@ -2338,7 +2347,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         }
 
         salvaciones.forEach((control) => control.enable({ emitEvent: false }));
-        vdControl.setValidators([vdDeRazaValidator]);
+        // En una raza por edades no se pide (`pideVdDeRaza`): cuenta el de cada categoría.
+        vdControl.setValidators(this.porEdades ? [] : [vdDeRazaValidator]);
         vdControl.updateValueAndValidity({ emitEvent: false });
         tipoDadoControl.setValidators([Validators.min(1)]);
         tipoCriaturaControl.setValidators([Validators.min(1)]);

@@ -1598,6 +1598,20 @@ describe('NuevaRazaComponent', () => {
             expect(component.form.controls.vd.valid).toBeTrue();
         });
 
+        it('en una raza por edades no pide ni manda el VD de la raza: cuenta el de cada categoría', () => {
+            component.form.controls.dgs_extra.setValue(4);
+            component.form.patchValue({ vd: 3 });
+            expect(component.pideVdDeRaza()).toBeTrue();
+            expect(component.buildPayload().raza).toEqual(jasmine.objectContaining({ vd: 3 }));
+
+            component.alternarPorEdades(true);
+            expect(component.pideVdDeRaza()).toBeFalse();
+            expect('vd' in component.buildPayload().raza).toBeFalse();
+            // Escondido, no impide guardar aunque no valga.
+            component.form.patchValue({ vd: -2 });
+            expect(component.form.controls.vd.valid).toBeTrue();
+        });
+
         it('manda los ajustes por clases de PJ y de PNJ, enteros, también sin DG raciales (el drow, +1 y 0)', () => {
             component.form.patchValue({ vd_mod_clases_pj: 1, vd_mod_clases_pnj: 0 });
             expect(component.buildPayload().raza).toEqual(jasmine.objectContaining({ vd_mod_clases_pj: 1, vd_mod_clases_pnj: 0 }));

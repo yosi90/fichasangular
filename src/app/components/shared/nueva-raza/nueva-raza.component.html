@@ -355,14 +355,15 @@
                                     </h3>
                                     <p class="values-ayuda" *ngIf="tieneDgsExtra(); else notaVdSinDgs">Con DG raciales, el VD de un PNJ es el de la raza
                                         (con sus DG y sin clases) más +1 por nivel de una clase asociada y +½ por los de las demás. Sin DG que
-                                        cuenten (1 DG y niveles de clase), sus niveles de clase más el ajuste de abajo.</p>
+                                        cuenten (1 DG y niveles de clase), sus niveles de clase más el ajuste de abajo.<ng-container *ngIf="esRazaPorEdades"> En
+                                        una raza por edades, el VD de la raza es el de cada categoría de edad (en «Edades»).</ng-container></p>
                                     <ng-template #notaVdSinDgs>
                                         <p class="values-ayuda">El VD de un PNJ de esta raza son sus niveles de clase más este ajuste, si su entrada del
                                             Manual de monstruos da uno (el drow, +1 con clases de PJ). Con DG raciales, aquí van también el VD de la
                                             raza y sus clases asociadas.</p>
                                     </ng-template>
                                     <div class="values-grid values-grid--vd">
-                                        <mat-form-field appearance="fill" *ngIf="tieneDgsExtra()">
+                                        <mat-form-field appearance="fill" *ngIf="pideVdDeRaza()">
                                             <mat-label>VD de la raza</mat-label>
                                             <input matInput type="number" min="0.01" max="999.99" step="0.01" formControlName="vd" />
                                             <mat-hint>El ogro, 3; ½: 0,5</mat-hint>
