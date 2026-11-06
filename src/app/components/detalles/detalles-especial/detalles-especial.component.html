@@ -35,6 +35,15 @@
             </ul>
         </app-ficha-lateral>
 
+        <app-ficha-lateral titulo="En la creación" *ngIf="otorga.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let cosa of otorga">
+                    <mat-icon class="ficha-icono" aria-hidden="true">check</mat-icon>
+                    <span>{{cosa}}</span>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+
         <app-ficha-lateral titulo="Extras" *ngIf="extras.length > 0">
             <table class="ficha-pares">
                 <tbody>

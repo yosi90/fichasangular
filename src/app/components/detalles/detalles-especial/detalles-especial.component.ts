@@ -37,6 +37,7 @@ export class DetallesEspecialComponent {
         this.datos = this.construirDatos();
         this.bonificadores = this.getBonificadoresActivos();
         this.flagsExtra = this.getFlagsExtraActivos();
+        this.otorga = this.getLoQueOtorga();
         this.extras = this.getExtrasOrdenados();
         this.prerrequisitosAgrupados = agruparPrerrequisitos(valor?.Prerrequisitos);
         this.habilidades = this.getHabilidadesOrdenadas().map((habilidad) => ({
@@ -56,6 +57,8 @@ export class DetallesEspecialComponent {
     datos: DatoFicha[] = [];
     bonificadores: { clave: string, valor: number }[] = [];
     flagsExtra: string[] = [];
+    /** Lo que da en la creación del personaje (`Otorga_dote`, `Otorga_familiar`, `Otorga_companero`). */
+    otorga: string[] = [];
     extras: EspecialExtraRef[] = [];
     habilidades: HabilidadVisible[] = [];
     /** Con qué actitud se puede elegir (`Prerrequisitos`), con la frase de la API. */
@@ -82,6 +85,15 @@ export class DetallesEspecialComponent {
         if (flags.Da_RD) activos.push('Da RD');
         if (flags.Da_velocidad) activos.push('Da velocidad');
         return activos;
+    }
+
+    getLoQueOtorga(): string[] {
+        const especial = this.especial;
+        return [
+            especial?.Otorga_dote ? 'Una dote adicional' : '',
+            especial?.Otorga_familiar ? 'Un familiar' : '',
+            especial?.Otorga_companero ? 'Un compañero animal' : '',
+        ].filter((texto) => texto.length > 0);
     }
 
     getExtrasOrdenados(): EspecialExtraRef[] {

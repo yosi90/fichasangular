@@ -79,6 +79,15 @@ describe('DetallesEspecialComponent', () => {
         expect(elemento().querySelector('mat-chip')).toBeNull();
     });
 
+    it('dice lo que da en la creación del personaje, si da algo', () => {
+        expect(titulos()).not.toContain('En la creación');
+        component.especial = furia({ Otorga_dote: true, Otorga_companero: true });
+        fixture.detectChanges();
+        expect(lateral('En la creación')?.textContent).toContain('Una dote adicional');
+        expect(lateral('En la creación')?.textContent).toContain('Un compañero animal');
+        expect(lateral('En la creación')?.textContent).not.toContain('Un familiar');
+    });
+
     it('enseña el cambio de tamaño entre los bonificadores y los prerrequisitos de actitud con su frase', () => {
         component.especial = furia({
             Bonificadores: { Fuerza: 2, Destreza: -2, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0, CA: 0, Armadura_natural: 0, RD: 0, Tamano_pasos: 1 },
