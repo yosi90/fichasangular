@@ -299,6 +299,8 @@ const CAMPOS_RAZA: CamposDeFormulario = {
     resistencia_conjuros: { etiqueta: 'Resistencia a conjuros', paso: 1 },
     resistencia_energia: { etiqueta: 'Resistencia a energía', paso: 1 },
     idiomas: { etiqueta: 'Idiomas', paso: 2 },
+    idiomas_adicionales_cualquiera: { etiqueta: 'Cualquier idioma adicional', paso: 2 },
+    idiomas_adicionales: { etiqueta: 'Idiomas adicionales', paso: 2 },
     competencias: { etiqueta: 'Competencias', paso: 2 },
     habilidades: { etiqueta: 'Habilidades', paso: 3 },
     dotes: { etiqueta: 'Dotes', paso: 3 },
@@ -398,6 +400,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     opcionesManuales: OpcionCatalogo[] = [];
     opcionesClasesLanzamiento: OpcionCatalogo[] = [];
     opcionesClasesAsociadas: OpcionCatalogo[] = [];
+    opcionesIdiomas: OpcionCatalogo[] = [];
     opcionesDominios: OpcionCatalogo[] = [];
     armas: ArmaDetalle[] = [];
     armaduras: ArmaduraDetalle[] = [];
@@ -554,6 +557,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         id_preferencia_moral: [0],
         oficial: [true],
         cuadrupedo: [false],
+        // Los idiomas adicionales por Inteligencia (MJ cap. 2): cualquiera no secreto (el humano) o los de su lista (el
+        // enano), más los que añade la clase. La lista solo cuenta sin «cualquiera»: con él no se manda.
+        idiomas_adicionales_cualquiera: [true],
+        idiomas_adicionales: [[] as FilaDeLista[]],
         id_clase_lanzamiento: [0],
         nivel_lanzamiento: [0, [Validators.min(0)]],
         lanzamiento_listas: [[] as ListaLanzamientoFila[]],
@@ -799,6 +806,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 id_alineamiento: this.numero(raw.id_alineamiento),
                 oficial: raw.oficial === true,
                 cuadrupedo: raw.cuadrupedo === true,
+                idiomas_adicionales_cualquiera: this.idiomasAdicionalesCualquiera,
                 id_clase_lanzamiento: lanza ? idClaseLanzamiento : null,
                 // En una raza por edades el nivel va en cada categoría (`lanzamiento_por_edades`).
                 nivel_lanzamiento: lanza && !this.porEdades ? this.numero(raw.nivel_lanzamiento) : 0,
@@ -806,6 +814,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             subtipos: idsUnicosOrdenados(this.subtiposSeleccionados),
             ...(conDgs ? { clases_asociadas: idsUnicosOrdenados(this.clasesAsociadas.map((fila) => fila.id)) } : {}),
             idiomas: idsUnicosOrdenados(this.idiomasSeleccionados),
+            idiomas_adicionales: this.idiomasAdicionalesCualquiera ? [] : idsUnicosOrdenados(this.idiomasAdicionales.map((fila) => fila.id)),
             habilidades: {
                 base: this.dedupeByKey(
                     this.habilidadesBaseRows
@@ -1260,6 +1269,32 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         this.form.controls.clases_asociadas.markAsDirty();
     }
 
+    /** Si los idiomas adicionales por Inteligencia pueden ser cualquiera no secreto (MJ cap. 2: el humano). */
+    get idiomasAdicionalesCualquiera(): boolean {
+        return this.form.controls.idiomas_adicionales_cualquiera.value !== false;
+    }
+
+    /** La lista de idiomas adicionales de la raza (el enano): solo cuenta sin «cualquiera». */
+    get idiomasAdicionales(): FilaDeLista[] {
+        return this.form.controls.idiomas_adicionales.value ?? [];
+    }
+
+    /** Con «cualquiera» la lista no se manda, pero se queda en el formulario por si se vuelve a quitar. */
+    alternarIdiomasAdicionalesCualquiera(): void {
+        alternarControl(this.form.controls.idiomas_adicionales_cualquiera);
+    }
+
+    anadirIdiomaAdicional(id: number): void {
+        this.form.controls.idiomas_adicionales.setValue(anadirALista(this.idiomasAdicionales, this.opcionesIdiomas, this.numero(id),
+            (opcion) => ({ id: opcion.id, nombre: opcion.nombre })));
+        this.form.controls.idiomas_adicionales.markAsDirty();
+    }
+
+    quitarIdiomaAdicional(fila: FilaDeLista): void {
+        this.form.controls.idiomas_adicionales.setValue(this.idiomasAdicionales.filter((item) => item.id !== fila.id));
+        this.form.controls.idiomas_adicionales.markAsDirty();
+    }
+
     actualizarHabilidadBase(index: number, patch: Partial<HabilidadBaseRow>): void {
         const current = this.habilidadesBaseRows[index];
         const next = { ...current, ...patch };
@@ -1531,6 +1566,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             return;
         const nextIdiomas = this.idiomas.filter((item) => this.numero(item.Id) !== this.numero(idioma.Id));
         this.idiomas = this.ordenar([...nextIdiomas, idioma]);
+        this.opcionesIdiomas = opcionesDeCatalogo(this.idiomas);
         this.agregarSeleccion('idiomasSeleccionados', idioma.Id);
         this.cerrarModalNuevoIdioma();
     }
@@ -2122,7 +2158,16 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
         this.idiomaSvc.getIdiomas()
             .pipe(takeUntil(this.destroy$))
-            .subscribe({ next: (idiomas) => this.idiomas = this.ordenar(idiomas), error: () => this.idiomas = [] });
+            .subscribe({
+                next: (idiomas) => {
+                    this.idiomas = this.ordenar(idiomas);
+                    this.opcionesIdiomas = opcionesDeCatalogo(this.idiomas);
+                },
+                error: () => {
+                    this.idiomas = [];
+                    this.opcionesIdiomas = [];
+                },
+            });
 
         this.habilidadSvc.getHabilidades()
             .pipe(takeUntil(this.destroy$))
@@ -2598,6 +2643,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             id_preferencia_moral: 0,
             oficial: true,
             cuadrupedo: false,
+            idiomas_adicionales_cualquiera: true,
+            idiomas_adicionales: [],
             id_clase_lanzamiento: 0,
             nivel_lanzamiento: 0,
             lanzamiento_listas: [],
@@ -2679,6 +2726,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             puntos_extra_1: this.numero(raza.Puntos_habilidad_extra_primer_nivel),
             puntos_extra: this.numero(raza.Puntos_habilidad_extra_por_nivel),
             cuadrupedo: raza.Cuadrupedo === true,
+            // Sin dato, cualquiera (como la creación); con «cualquiera» la API no da la lista.
+            idiomas_adicionales_cualquiera: raza.Idiomas_adicionales_cualquiera !== false,
+            idiomas_adicionales: filasDeIds(raza.Idiomas_adicionales),
             id_tamano: this.numero(raza.Tamano?.Id),
             ajuste_nivel: this.numero(raza.Ajuste_nivel),
             reduccion_dano: textoOSinEspecificar(raza.Reduccion_dano),

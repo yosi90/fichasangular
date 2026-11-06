@@ -494,6 +494,10 @@
     margin: 0 0 0.75rem
     color: $ficha-texto-suave
 
+// El error de la API con «Cualquier idioma» elegido (la lista no se ve): como el de una lista.
+.idiomas-adicionales-error
+    @include inserciones.error-de-lista
+
 .lanzamiento-grid
     display: grid
     grid-template-columns: minmax(220px, 1.4fr) minmax(140px, 0.8fr) auto
