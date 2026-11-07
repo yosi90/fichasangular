@@ -116,6 +116,9 @@
                     <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarFortaleza">Fort</th>
                     <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarReflejos">Ref</th>
                     <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarVoluntad">Vol</th>
+                    <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarTablaPropia">DG</th>
+                    <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarTablaPropia">Dote</th>
+                    <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarTablaPropia">Armadura natural</th>
                     <th scope="col" [attr.rowspan]="filasCabecera" *ngIf="mostrarEspeciales">Especiales</th>
                     <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarNivelMaxPoderAccesible">Nivel máx. de poder accesible</th>
                     <th scope="col" class="ficha-num" [attr.rowspan]="filasCabecera" *ngIf="mostrarReservaPsionica">Reserva psiónica</th>
@@ -136,6 +139,11 @@
                     <td class="ficha-num" *ngIf="mostrarFortaleza">{{fila.fortaleza}}</td>
                     <td class="ficha-num" *ngIf="mostrarReflejos">{{fila.reflejos}}</td>
                     <td class="ficha-num" *ngIf="mostrarVoluntad">{{fila.voluntad}}</td>
+                    <td class="ficha-num" *ngIf="mostrarTablaPropia">{{fila.dgs}}</td>
+                    <td class="ficha-num" *ngIf="mostrarTablaPropia">
+                        <mat-icon class="ficha-icono" *ngIf="fila.dote" aria-hidden="false" aria-label="Da una dote">check</mat-icon>
+                    </td>
+                    <td class="ficha-num" *ngIf="mostrarTablaPropia">{{fila.armaduraNatural}}</td>
                     <td *ngIf="mostrarEspeciales">
                         <!-- Los especiales y las dotes del nivel como texto, cada uno un enlace a su detalle. -->
                         <ng-container *ngFor="let render of fila.especiales; let ultimo = last">

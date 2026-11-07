@@ -9,6 +9,9 @@ import { DetallesClaseComponent } from './detalles-clase.component';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 import { normalizarClaseMoldeado } from 'src/app/services/utils/incarnum-mapper';
 import { moldeadoEncarnadoApi } from 'src/testing/incarnum';
+import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
+import { normalizeClase } from 'src/app/services/clase.service';
+import { CLASE_ENGENDRO_VAMPIRICO_API } from 'src/testing/clase-engendro-vampirico-api';
 
 function crearClaseMock(partial?: Partial<Clase>): Clase {
     return {
@@ -131,15 +134,18 @@ describe('DetallesClaseComponent', () => {
     }
 
     let usuario: { can: jasmine.Spy };
+    let navegacion: { abrir: jasmine.Spy };
 
     beforeEach(async () => {
         manualNav = { abrirDetalleManual: jasmine.createSpy('abrirDetalleManual') };
         usuario = { can: jasmine.createSpy('can').and.returnValue(false) };
+        navegacion = { abrir: jasmine.createSpy('abrir') };
         await TestBed.configureTestingModule({
             declarations: [DetallesClaseComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
             providers: [
                 { provide: ManualDetalleNavigationService, useValue: manualNav },
                 { provide: UserService, useValue: usuario },
+                { provide: NavegacionRolService, useValue: navegacion },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -700,5 +706,52 @@ describe('DetallesClaseComponent', () => {
         fixture.detectChanges();
         lapiz()!.click();
         expect(abiertas.length).toBe(1);
+    });
+
+    describe('una clase de monstruo (Libris Mortis)', () => {
+        /** La columna `titulo` de la tabla de progresión, nivel a nivel. */
+        function columna(titulo: string): string[] {
+            const cabecera = celdas(0, 'thead')[0];
+            const indice = cabecera.indexOf(titulo);
+            expect(indice).withContext(titulo).toBeGreaterThan(-1);
+            return celdas(0, 'tbody').map((fila) => fila[indice]);
+        }
+
+        it('«Engendro vampírico» (482, rol_dev): su raza con enlace, sus reglas y, por nivel, los DG, la dote y la armadura natural', () => {
+            component.clase = normalizeClase(CLASE_ENGENDRO_VAMPIRICO_API);
+            fixture.detectChanges();
+
+            expect(Array.from(elemento().querySelectorAll('.ficha-etiqueta')).map((e) => e.textContent?.trim())).toContain('Clase de monstruo');
+            expect(valor('Raza mutada')).toBe('Engendro vampírico');
+            expect(valor('Progresión obligatoria')).toBe('Sí');
+            expect(valor('Penalización por multiclase')).toBe('No');
+            expect(etiquetasDatos()).toContain('Puntos de habilidad por DG');
+            expect(etiquetasDatos()).not.toContain('Puntos de habilidad por nivel');
+
+            // Libris Mortis, tabla 2-3: DG en 1.º, 3.º, 5.º y 7.º (d12); dotes a 1.º y 6.º; armadura natural +1 a +3.
+            expect(columna('DG')).toEqual(['1d12', '1d12', '2d12', '2d12', '3d12', '3d12', '4d12', '4d12']);
+            expect(Array.from(elemento().querySelectorAll('table.ficha-tabla')[0].querySelectorAll('tbody tr'))
+                .map((fila) => !!fila.querySelector('[aria-label="Da una dote"]'))).toEqual([true, false, false, false, false, true, false, false]);
+            expect(columna('Armadura natural')).toEqual(['', '+1', '+1', '+2', '+2', '+2', '+3', '+3']);
+
+            enlace('Engendro vampírico').click();
+            expect(navegacion.abrir).toHaveBeenCalledWith({
+                clase: 'referencia-manual', referencia: { tipo: 'raza', id: 1009, nombre: 'Engendro vampírico', manualId: 0 },
+            });
+        });
+
+        it('una clase de siempre no lleva nada de eso', () => {
+            component.clase = crearClaseMock({ Nivel_max_claseo: 2, Desglose_niveles: [nivel(1), nivel(2)] });
+            fixture.detectChanges();
+
+            expect(valor('Raza mutada')).toBeNull();
+            expect(valor('Progresión obligatoria')).toBeNull();
+            expect(valor('Penalización por multiclase')).toBeNull();
+            expect(etiquetasDatos()).toContain('Puntos de habilidad por nivel');
+            const cabecera = celdas(0, 'thead')[0];
+            expect(cabecera).not.toContain('DG');
+            expect(cabecera).not.toContain('Dote');
+            expect(cabecera).not.toContain('Armadura natural');
+        });
     });
 });

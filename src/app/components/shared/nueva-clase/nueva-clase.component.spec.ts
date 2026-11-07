@@ -7,7 +7,8 @@ import { IDA_Y_VUELTA_CLASES } from 'src/testing/ida-y-vuelta-clases';
 import { soloLoDeLaReferencia } from 'src/testing/cuerpo-de-catalogo';
 import { getPrerequisiteDefinition } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { ProfileApiError } from 'src/app/interfaces/user-account';
-import { CAMPOS_CLASE } from 'src/app/services/utils/clase-formulario';
+import { CAMPOS_CLASE, falloDeTablaDeNiveles } from 'src/app/services/utils/clase-formulario';
+import { CLASE_ENGENDRO_VAMPIRICO_API } from 'src/testing/clase-engendro-vampirico-api';
 
 // El `PUT /clases` deja vacío lo que no viene (guía `docs/publica/CLASES_PROPIAS_FRONT.md`): el editor reenvía lo que no
 // edita (la lista de conjuros, el libro y el divisor) y manda los campos de las clases propias.
@@ -392,5 +393,182 @@ describe('NuevaClaseComponent (Modificar clase: guardar sin cambios)', () => {
         expect(claves).not.toContain('region');
         expect(claves).not.toContain('nivel_de_clase');
         expect(claves).not.toContain('criaturas_compatibles');
+    });
+});
+
+describe('NuevaClaseComponent (las clases de monstruo de Libris Mortis)', () => {
+    /** Lo que el cuerpo lleva de una clase de monstruo, tal como lo da el `GET` (el contrato: se puede mandar tal cual). */
+    function loDeMonstruo(get: any): any {
+        return {
+            Progresion_obligatoria: get.Progresion_obligatoria === true,
+            Sin_penalizacion_multiclase: get.Sin_penalizacion_multiclase === true,
+            Mutacion: get.Mutacion ? { Id: get.Mutacion.Id } : null,
+            Desglose_niveles: get.Desglose_niveles.map((nivel: any) => ({
+                Nivel: nivel.Nivel,
+                Dg: nivel.Dg ?? true,
+                Dote: nivel.Dote ?? null,
+                Armadura_natural: nivel.Armadura_natural ?? 0,
+            })),
+        };
+    }
+
+    it('«Engendro vampírico» (482, rol_dev): guardar sin tocar nada manda su raza, sus reglas y su tabla como llegaron', () => {
+        const editor = crearEditor();
+        (editor as any).hidratarDesdeClase(normalizeClase(CLASE_ENGENDRO_VAMPIRICO_API));
+
+        expect(editor.form.controls.mutacion_id.value).toBe(1009);
+        expect(editor.tablaPropia).toBeTrue();
+        const web = (editor as any).construirPayload();
+        const esperado = loDeMonstruo(CLASE_ENGENDRO_VAMPIRICO_API);
+        expect(soloLoDeLaReferencia(web, esperado)).toEqual(esperado);
+        // DG 1/3/5/7, dotes a 1.º y 6.º, armadura natural 0 1 1 2 2 2 3 3 (Libris Mortis, tabla 2-3).
+        expect(web.Desglose_niveles.filter((n: any) => n.Dg).map((n: any) => n.Nivel)).toEqual([1, 3, 5, 7]);
+        expect(web.Desglose_niveles.filter((n: any) => n.Dote).map((n: any) => n.Nivel)).toEqual([1, 6]);
+        expect(web.Desglose_niveles.map((n: any) => n.Armadura_natural)).toEqual([0, 1, 1, 2, 2, 2, 3, 3]);
+        expect(editor.isDirty).toBeFalse();
+    });
+
+    it('las clases de siempre mandan lo que da su lectura: sin raza, sin las reglas y sin tabla', () => {
+        IDA_Y_VUELTA_CLASES.forEach(({ nombre, get }) => {
+            const editor = crearEditor();
+            const clase = normalizeClase(get);
+            (editor as any).hidratarDesdeClase(clase);
+            const web = (editor as any).construirPayload();
+            expect(editor.tablaPropia).withContext(nombre).toBeFalse();
+            expect(soloLoDeLaReferencia(web, loDeMonstruo(clase))).withContext(nombre).toEqual(loDeMonstruo(clase));
+            expect(web.Mutacion).withContext(nombre).toBeNull();
+            expect(web.Desglose_niveles.every((n: any) => n.Dg === true && n.Dote === null && n.Armadura_natural === 0))
+                .withContext(nombre).toBeTrue();
+        });
+    });
+
+    it('el alta sin tocar nada: ninguna raza, ninguna regla y sin tabla', () => {
+        const editor = crearEditor();
+        editor.modo = 'crear';
+        const web = (editor as any).construirPayload();
+        expect(web.Mutacion).toBeNull();
+        expect(web.Progresion_obligatoria).toBeFalse();
+        expect(web.Sin_penalizacion_multiclase).toBeFalse();
+        expect(web.Desglose_niveles.length).toBe(20);
+        expect(web.Desglose_niveles.every((n: any) => n.Dg === true && n.Dote === null && n.Armadura_natural === 0)).toBeTrue();
+    });
+
+    it('con «Tabla propia» manda la del formulario; los niveles nuevos siguen con la armadura natural del anterior', () => {
+        const editor = crearEditor();
+        editor.modo = 'crear';
+        editor.form.patchValue({ nivel_max_claseo: 3, progresion_obligatoria: true, sin_penalizacion_multiclase: true });
+        (editor as any).sincronizarNiveles();
+        editor.toggleBoolean('tabla_propia');
+        editor.niveles[0].dote = true;
+        editor.niveles[1].dg = false;
+        editor.niveles[1].armadura_natural = 2;
+        editor.niveles[2].armadura_natural = 2;
+        editor.form.patchValue({ nivel_max_claseo: 4 });
+        editor.tiposDadoCatalogo = [{ Id: 5, Nombre: 'D12' } as any];
+        editor.form.patchValue({ tipo_dado: 5 });
+
+        const web = (editor as any).construirPayload();
+        expect(web.Progresion_obligatoria).toBeTrue();
+        expect(web.Sin_penalizacion_multiclase).toBeTrue();
+        expect(web.Desglose_niveles.map((n: any) => [n.Nivel, n.Dg, n.Dote, n.Armadura_natural])).toEqual([
+            [1, true, true, 0], [2, false, false, 2], [3, true, false, 2], [4, true, false, 2],
+        ]);
+        expect([1, 2, 3, 4].map((nivel) => editor.dgsAcumulados(nivel))).toEqual(['1d12', '1d12', '2d12', '3d12']);
+
+        // Sin «Tabla propia», lo de siempre: la clase queda sin tabla.
+        editor.toggleBoolean('tabla_propia');
+        expect((editor as any).construirPayload().Desglose_niveles
+            .every((n: any) => n.Dg === true && n.Dote === null && n.Armadura_natural === 0)).toBeTrue();
+    });
+
+    it('la raza mutada sale de las mutadas de la caché que no lleva otra clase; al modificar, la suya sigue', () => {
+        const editor = crearEditor();
+        editor.idClase = 482;
+        editor.razasMutadas = [
+            { Id: 1009, Nombre: 'Engendro vampírico', Mutada: true },
+            { Id: 1005, Nombre: 'Mohrg', Mutada: true },
+            { Id: 900, Nombre: 'Prole de Bahamut', Mutada: true },
+        ] as any;
+        editor.clasesCatalogo = [
+            { Id: 482, Nombre: 'Engendro vampírico', Mutacion: { Id: 1009, Nombre: 'Engendro vampírico' } },
+            { Id: 483, Nombre: 'Mohrg', Mutacion: { Id: 1005, Nombre: 'Mohrg' } },
+            { Id: 1, Nombre: 'Guerrero', Mutacion: null },
+        ] as any;
+        (editor as any).actualizarOpcionesMutacion();
+        expect(editor.opcionesMutacion).toEqual([{ id: 1009, nombre: 'Engendro vampírico' }, { id: 900, nombre: 'Prole de Bahamut' }]);
+
+        editor.seleccionarMutacion(900);
+        expect(editor.form.controls.mutacion_id.value).toBe(900);
+        expect((editor as any).construirPayload().Mutacion).toEqual({ Id: 900, Nombre: 'Prole de Bahamut' });
+        editor.quitarMutacion();
+        expect((editor as any).construirPayload().Mutacion).toBeNull();
+
+        // Una nueva no puede llevar la de ninguna otra clase.
+        editor.modo = 'crear';
+        (editor as any).actualizarOpcionesMutacion();
+        expect(editor.opcionesMutacion.map((opcion) => opcion.id)).toEqual([900]);
+    });
+
+    it('los cuatro errores de la API van a su campo y a su paso', () => {
+        const editor = crearEditor();
+        (editor as any).hidratarDesdeClase(normalizeClase(CLASE_ENGENDRO_VAMPIRICO_API));
+
+        [
+            new ProfileApiError('La raza que lleva la clase tiene que ser una raza mutada.', 'raza_no_mutada', 400, 'Mutacion.Id'),
+            new ProfileApiError('Esa raza mutada ya es la de otra clase («Mohrg»).', 'mutacion_de_otra_clase', 409, 'Mutacion.Id'),
+        ].forEach((error) => {
+            editor.errores.limpiar();
+            editor.pasoActual = 3;
+            editor.errores.mostrar(error, 'No se ha podido actualizar la clase.');
+            expect(editor.pasoActual).toBe(0);
+            expect(editor.errores.global).toBe(error.message);
+            expect(editor.errores.mensajeDe('Mutacion.Id')).toBe(error.message);
+            expect(editor.form.controls.mutacion_id.getError('api')).toBe(error.message);
+        });
+        // Al elegir otra raza, el error se va.
+        editor.opcionesMutacion = [{ id: 1005, nombre: 'Mohrg' }];
+        editor.seleccionarMutacion(1005);
+        editor.errores.seguirCambios();
+        expect(editor.errores.mensajeDe('Mutacion.Id')).toBeNull();
+        expect(editor.form.controls.mutacion_id.hasError('api')).toBeFalse();
+
+        [
+            new ProfileApiError('La tabla de DG, dotes y armadura natural de la clase lleva todos sus niveles, del 1 al 8.',
+                'tabla_de_niveles_incompleta', 400, 'Desglose_niveles'),
+            new ProfileApiError('El 1.er nivel de la clase da un DG.', 'tabla_de_niveles_no_valida', 400, 'Desglose_niveles'),
+        ].forEach((error) => {
+            editor.errores.limpiar();
+            editor.pasoActual = 0;
+            editor.errores.mostrar(error, 'No se ha podido actualizar la clase.');
+            expect(editor.pasoActual).toBe(1);
+            expect(editor.errorTablaDeNiveles).toBe(error.message);
+        });
+    });
+
+    it('antes de mandar dice lo mismo que la API de una tabla que no vale, y no guarda', async () => {
+        expect(falloDeTablaDeNiveles([{ nivel: 1, dg: true, dote: true, armadura_natural: 0 }], 2))
+            .toBe('La tabla de DG, dotes y armadura natural de la clase lleva todos sus niveles, del 1 al 2.');
+        expect(falloDeTablaDeNiveles([{ nivel: 1, dg: false, dote: true, armadura_natural: 0 }], 1)).toBe('El 1.er nivel de la clase da un DG.');
+        expect(falloDeTablaDeNiveles([
+            { nivel: 1, dg: true, dote: true, armadura_natural: 2 }, { nivel: 2, dg: false, dote: false, armadura_natural: 1 },
+        ], 2)).toBe('La armadura natural de la tabla es el total a cada nivel: no puede bajar (nivel 2).');
+        expect(falloDeTablaDeNiveles([
+            { nivel: 1, dg: true, dote: true, armadura_natural: 0 }, { nivel: 2, dg: false, dote: false, armadura_natural: 1 },
+        ], 2)).toBeNull();
+
+        const editor = crearEditor();
+        const claseSvc = { actualizarClase: jasmine.createSpy('actualizarClase') };
+        (editor as any).claseSvc = claseSvc;
+        editor.idClase = 482;
+        (editor as any).hidratarDesdeClase(normalizeClase(CLASE_ENGENDRO_VAMPIRICO_API));
+        editor.puedeActualizar = true;
+        editor.niveles[0].dg = false;
+        editor.pasoActual = 0;
+
+        await editor.guardarClase();
+
+        expect(claseSvc.actualizarClase).not.toHaveBeenCalled();
+        expect(editor.pasoActual).toBe(1);
+        expect(editor.errorTablaDeNiveles).toBe('El 1.er nivel de la clase da un DG.');
     });
 });

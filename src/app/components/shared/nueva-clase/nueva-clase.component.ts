@@ -73,6 +73,9 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { claseDeLaRaza } from 'src/app/services/utils/clases-de-monstruo';
+import { dgsDeClase, tieneTablaPorNivel } from 'src/app/services/utils/clase-niveles';
+import { Raza } from 'src/app/interfaces/raza';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { nombreCombinacionAlineamiento } from 'src/app/services/utils/alineamiento-contrato';
 import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
@@ -85,6 +88,7 @@ import {
     PrerrequisitoDeClaseConservado,
     claveDePrerrequisitoDeClase,
     clavesPrerrequisitoEditablesDeClase,
+    falloDeTablaDeNiveles,
     prerrequisitosDeClase,
     tipoDePrerrequisitoDeClase,
 } from 'src/app/services/utils/clase-formulario';
@@ -172,6 +176,14 @@ interface ClaseNivelEditor {
     conjuros_diarios: Record<string, number>;
     conjuros_conocidos_nivel: Record<string, number>;
     conjuros_conocidos_total: number;
+    /**
+     * La tabla propia de la clase (las clases de monstruo de *Libris Mortis*; `Desglose_niveles[].Dg`, `.Dote` y
+     * `.Armadura_natural`): si el nivel da un DG, si da una dote y la armadura natural **total** a ese nivel. Solo se
+     * mandan con «Tabla propia»; sin ella, la clase da lo de siempre.
+     */
+    dg: boolean;
+    dote: boolean;
+    armadura_natural: number;
 }
 
 type PrerrequisitoEditorItem = PrerequisiteRowModel;
@@ -268,6 +280,17 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     niveles: ClaseNivelEditor[] = [];
     manualBusqueda = '';
     claseOrigenBusqueda = '';
+    /** Las razas mutadas de la caché (`GET /razas`, `Mutada`): las que puede llevar una clase de monstruo. */
+    razasMutadas: Raza[] = [];
+    /**
+     * Las opciones de «Raza mutada que lleva la clase»: las mutadas que no lleva otra clase (una mutación es de una sola
+     * clase, `mutacion_de_otra_clase`) y, al modificar, la que ya lleva aunque la caché no la tenga.
+     */
+    opcionesMutacion: OpcionCatalogo[] = [];
+    /** El nombre de la raza mutada que lleva la clase (el de su `Mutacion` o el de la caché). */
+    mutacionNombre = '';
+    /** El fallo de la tabla de DG, dotes y armadura natural que se ha visto al guardar, antes de mandar. */
+    private falloTablaLocal: string | null = null;
     customModalAbierto = false;
     customModalModo: 'crear' | 'editar' = 'crear';
     customModalRowUid = '';
@@ -389,6 +412,12 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         // La columna de la tabla 6-4 del Manual del jugador (la edad inicial); 0, sin dato. Y si es una clase de PNJ (el VD).
         grupo_edad_inicial: [0],
         clase_pnj: [false],
+        // Las clases de monstruo (*Libris Mortis*, págs. 34-35): se termina antes de tomar otra, no penaliza los PX por
+        // multiclase, la raza mutada que lleva (0: ninguna) y si tiene su propia tabla de DG, dotes y armadura natural.
+        progresion_obligatoria: [false],
+        sin_penalizacion_multiclase: [false],
+        mutacion_id: [0],
+        tabla_propia: [false],
         aumenta_clase_lanzadora: [false],
         rol_dps: [false],
         rol_tanque: [false],
@@ -492,6 +521,37 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         return this.edicion.hayCambios;
     }
 
+    /** Si la clase tiene su propia tabla de DG, dotes y armadura natural (las clases de monstruo). */
+    get tablaPropia(): boolean {
+        return this.form.controls.tabla_propia.value === true;
+    }
+
+    /**
+     * El error de la tabla de DG, dotes y armadura natural: el de la API (`tabla_de_niveles_incompleta` o
+     * `tabla_de_niveles_no_valida`, con `field` `Desglose_niveles`) o, antes de mandar, el mismo que daría.
+     */
+    get errorTablaDeNiveles(): string | null {
+        return this.errores.mensajeDe('Desglose_niveles') ?? this.falloTablaLocal;
+    }
+
+    /** Los DG que lleva la clase a ese nivel, como en el libro: «3d12». */
+    dgsAcumulados(nivel: number): string {
+        const dgs = dgsDeClase({ Desglose_niveles: this.filasDeTabla() }, nivel);
+        const dado = this.tiposDadoCatalogo.find((item) => item.Id === this.entero(this.form.controls.tipo_dado.value))?.Nombre ?? '';
+        return dado ? `${dgs}${dado.toLowerCase()}` : `${dgs}`;
+    }
+
+    seleccionarMutacion(id: number): void {
+        const opcion = this.opcionesMutacion.find((item) => item.id === this.entero(id));
+        this.mutacionNombre = opcion?.nombre ?? '';
+        this.form.controls.mutacion_id.setValue(opcion?.id ?? 0);
+        this.form.controls.mutacion_id.markAsDirty();
+    }
+
+    quitarMutacion(): void {
+        this.seleccionarMutacion(0);
+    }
+
     get ataqueBaseSeleccionado(): ClaseProgressionCatalogItem {
         return this.ataqueBaseCatalogo.find((item) => item.Id === this.entero(this.form.controls.id_ataque_base.value, 2)) ?? this.ataqueBaseCatalogo[1];
     }
@@ -583,6 +643,13 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         }
         if (this.listadoIncompleto())
             return;
+        this.falloTablaLocal = this.tablaPropia
+            ? falloDeTablaDeNiveles(this.filasDeTabla(), this.entero(this.form.controls.nivel_max_claseo.value, 20))
+            : null;
+        if (this.falloTablaLocal) {
+            this.pasoActual = this.pasos.indexOf('Progresión');
+            return;
+        }
         if (arePrerequisitesIncomplete(this.prerrequisitosEditor, this.prerrequisitosSeleccionados)) {
             await Swal.fire({ icon: 'warning', title: 'Prerrequisitos incompletos', text: 'Completa o desmarca los prerrequisitos antes de guardar.', showConfirmButton: true });
             return;
@@ -1040,6 +1107,10 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             Alineamiento_deidad: raw.alineamiento_deidad === true,
             Grupo_edad_inicial: Number(raw.grupo_edad_inicial) || 0,
             Clase_pnj: raw.clase_pnj === true,
+            Progresion_obligatoria: raw.progresion_obligatoria === true,
+            Sin_penalizacion_multiclase: raw.sin_penalizacion_multiclase === true,
+            // `null`: ninguna (al modificar, la quita). La API solo lee el `Id`.
+            Mutacion: this.entero(raw.mutacion_id) > 0 ? { Id: this.entero(raw.mutacion_id), Nombre: this.mutacionNombre } : null,
             Tiene_prerrequisitos: Object.values(prerrequisitos).some((items) => Array.isArray(items) && items.length > 0),
             Alineamiento: this.construirAlineamiento(raw),
             Oficial: raw.oficial === true,
@@ -1278,11 +1349,20 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         return { Base: base, Custom: custom, Por_alineamiento: porAlineamiento };
     }
 
+    /**
+     * La tabla de DG, dotes y armadura natural va en todas las filas: con «Tabla propia», la del formulario; sin ella, lo
+     * de siempre (`Dg: true`, `Dote: null`, `Armadura_natural: 0`, lo que da la lectura de una clase sin tabla), con lo
+     * que la clase queda sin tabla (`docs/publica/endpoints/catalogos.md`, «Las clases de monstruo»).
+     */
     private construirDesglose(nivelMax: number): ClaseNivelMutation[] {
         this.sincronizarNiveles();
         const extrasEspecialesActivos = new Map<number, number>();
+        const tabla = this.tablaPropia;
         return this.niveles.slice(0, nivelMax).map((nivel) => ({
             Nivel: nivel.nivel,
+            Dg: tabla ? nivel.dg === true : true,
+            Dote: tabla ? nivel.dote === true : null,
+            Armadura_natural: tabla ? Math.max(0, this.entero(nivel.armadura_natural)) : 0,
             Ataque_base: this.ataqueBaseSeleccionado.Valores[nivel.nivel - 1] ?? '+0',
             Salvaciones: {
                 Fortaleza: this.fortalezaSeleccionada.Valores[nivel.nivel - 1] ?? '+0',
@@ -1323,6 +1403,19 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
                     Id_dote_requerida: this.entero(row.id_dote_requerida),
                 };
             }),
+        }));
+    }
+
+    /** Las filas de la tabla propia, como las leen `dgsDeClase` (`clase-niveles.ts`) y `falloDeTablaDeNiveles`. */
+    private filasDeTabla() {
+        return this.niveles.map((nivel) => ({
+            nivel: nivel.nivel,
+            Nivel: nivel.nivel,
+            dg: nivel.dg === true,
+            Dg: nivel.dg === true,
+            dote: nivel.dote === true,
+            Dote: nivel.dote === true,
+            armadura_natural: this.entero(nivel.armadura_natural),
         }));
     }
 
@@ -1414,6 +1507,14 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         this.claseSvc.getClases().pipe(takeUntil(this.destroy$)).subscribe((items) => {
             this.clasesCatalogo = this.ordenar(items ?? []);
             this.catalogosPrerrequisito['clases'] = this.toCatalog(items, 'Id', 'Nombre');
+            this.actualizarOpcionesMutacion();
+        });
+        this.razaSvc.getRazas().pipe(takeUntil(this.destroy$)).subscribe({
+            next: (items) => {
+                this.razasMutadas = (items ?? []).filter((raza) => raza?.Mutada === true && this.entero(raza.Id) > 0);
+                this.actualizarOpcionesMutacion();
+            },
+            error: () => this.razasMutadas = [],
         });
         this.armaSvc.getArmas().pipe(takeUntil(this.destroy$)).subscribe((items) => {
             this.armas = this.toNombreId(items);
@@ -1469,8 +1570,27 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         });
     }
 
+    /**
+     * Las razas mutadas que puede llevar la clase: las de la caché que no lleva otra clase (la que la lleva es la que la
+     * tiene como `Mutacion`, `claseDeLaRaza`) y, al modificar, la suya, aunque la caché no la tenga.
+     */
+    private actualizarOpcionesMutacion(): void {
+        const propia = this.esModoEdicion ? this.edicion.id : 0;
+        const opciones: OpcionCatalogo[] = this.razasMutadas
+            .filter((raza) => {
+                const otra = claseDeLaRaza(this.clasesCatalogo, raza.Id);
+                return !otra || (propia > 0 && otra.Id === propia);
+            })
+            .map((raza) => ({ id: this.entero(raza.Id), nombre: this.texto(raza.Nombre) }));
+        const actual = this.entero(this.form.controls.mutacion_id.value);
+        if (actual > 0 && !opciones.some((opcion) => opcion.id === actual))
+            opciones.push({ id: actual, nombre: this.mutacionNombre || `#${actual}` });
+        this.opcionesMutacion = opciones.sort((a, b) => compararTexto(a.nombre, b.nombre));
+    }
+
     private hidratarDesdeClase(clase: Clase): void {
         this.claseCargada = clase;
+        this.mutacionNombre = this.texto(clase.Mutacion?.Nombre);
         this.manualBusqueda = clase.Manual?.Nombre ?? '';
         this.claseOrigenBusqueda = clase.Conjuros?.Clase_origen?.Nombre ?? '';
         this.form.reset({
@@ -1493,6 +1613,10 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             alineamiento_deidad: clase.Alineamiento_deidad === true,
             grupo_edad_inicial: Number(clase.Grupo_edad_inicial) || 0,
             clase_pnj: clase.Clase_pnj === true,
+            progresion_obligatoria: clase.Progresion_obligatoria === true,
+            sin_penalizacion_multiclase: clase.Sin_penalizacion_multiclase === true,
+            mutacion_id: this.entero(clase.Mutacion?.Id),
+            tabla_propia: tieneTablaPorNivel(clase),
             aumenta_clase_lanzadora: clase.Aumenta_clase_lanzadora === true,
             rol_dps: clase.Roles?.Dps === true,
             rol_tanque: clase.Roles?.Tanque === true,
@@ -1547,6 +1671,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         this.prerrequisitosSeleccionados = this.hidratarPrerrequisitosSeleccionados(prerrequisitos.filas);
         this.asegurarCatalogosPrerrequisitos(this.prerrequisitosSeleccionados).catch(() => undefined);
         this.hidratarSelecciones(clase);
+        this.falloTablaLocal = null;
+        this.actualizarOpcionesMutacion();
         this.edicion.tomarPuntoDePartida();
     }
 
@@ -1584,6 +1710,9 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
                 conjuros_diarios: { ...(source?.Conjuros_diarios ?? {}) },
                 conjuros_conocidos_nivel: { ...(source?.Conjuros_conocidos_nivel_a_nivel ?? {}) },
                 conjuros_conocidos_total: this.entero(source?.Conjuros_conocidos_total),
+                dg: source?.Dg !== false,
+                dote: source?.Dote === true,
+                armadura_natural: Math.max(0, this.entero(source?.Armadura_natural)),
             };
         });
     }
@@ -1623,9 +1752,10 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     private sincronizarNiveles(): void {
         const max = Math.max(1, Math.min(30, this.entero(this.form.controls.nivel_max_claseo.value, 20)));
         const current = new Map(this.niveles.map((item) => [item.nivel, item]));
-        this.niveles = Array.from({ length: max }, (_, index) => {
-            const nivel = index + 1;
-            return current.get(nivel) ?? {
+        const niveles: ClaseNivelEditor[] = [];
+        for (let nivel = 1; nivel <= max; nivel++) {
+            // Un nivel nuevo da un DG y ninguna dote, con la armadura natural del anterior (es el total: no baja).
+            niveles.push(current.get(nivel) ?? {
                 nivel,
                 reserva_psionica: 0,
                 nivel_max_poder: -1,
@@ -1633,8 +1763,12 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
                 conjuros_diarios: {},
                 conjuros_conocidos_nivel: {},
                 conjuros_conocidos_total: 0,
-            };
-        });
+                dg: true,
+                dote: false,
+                armadura_natural: niveles[nivel - 2]?.armadura_natural ?? 0,
+            });
+        }
+        this.niveles = niveles;
         this.relacionesRows = this.relacionesRows.filter((row) => row.nivel <= max);
     }
 
@@ -1679,6 +1813,10 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             alineamiento_deidad: false,
             grupo_edad_inicial: 0,
             clase_pnj: false,
+            progresion_obligatoria: false,
+            sin_penalizacion_multiclase: false,
+            mutacion_id: 0,
+            tabla_propia: false,
             aumenta_clase_lanzadora: false,
             rol_dps: false,
             rol_tanque: false,
@@ -1707,6 +1845,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             nivel_lanzador_divisor: 1,
         });
         this.claseCargada = null;
+        this.mutacionNombre = '';
+        this.falloTablaLocal = null;
         this.manualBusqueda = '';
         this.claseOrigenBusqueda = '';
         this.prerrequisitosEditor = [];

@@ -197,20 +197,20 @@
                                     <div class="speed-grid">
                                         <mat-form-field appearance="fill">
                                             <mat-label>Correr</mat-label>
-                                            <input matInput type="number" min="0" max="200" formControlName="correr" />
-                                            <mat-error *ngIf="form.controls.correr.invalid">Entre 0 y 200.</mat-error>
+                                            <input matInput type="number" [min]="minimoVelocidad" max="200" formControlName="correr" />
+                                            <mat-error *ngIf="form.controls.correr.invalid">{{errorVelocidad}}</mat-error>
                                         </mat-form-field>
 
                                         <mat-form-field appearance="fill">
                                             <mat-label>Nadar</mat-label>
-                                            <input matInput type="number" min="0" max="200" formControlName="nadar" />
-                                            <mat-error *ngIf="form.controls.nadar.invalid">Entre 0 y 200.</mat-error>
+                                            <input matInput type="number" [min]="minimoVelocidad" max="200" formControlName="nadar" />
+                                            <mat-error *ngIf="form.controls.nadar.invalid">{{errorVelocidad}}</mat-error>
                                         </mat-form-field>
 
                                         <mat-form-field appearance="fill">
                                             <mat-label>Volar</mat-label>
-                                            <input matInput type="number" min="0" max="200" formControlName="volar" />
-                                            <mat-error *ngIf="form.controls.volar.invalid">Entre 0 y 200.</mat-error>
+                                            <input matInput type="number" [min]="minimoVelocidad" max="200" formControlName="volar" />
+                                            <mat-error *ngIf="form.controls.volar.invalid">{{errorVelocidad}}</mat-error>
                                         </mat-form-field>
 
                                         <div class="field-with-help" *ngIf="tieneVelocidadVuelo()">
@@ -227,14 +227,14 @@
 
                                         <mat-form-field appearance="fill">
                                             <mat-label>Trepar</mat-label>
-                                            <input matInput type="number" min="0" max="200" formControlName="trepar" />
-                                            <mat-error *ngIf="form.controls.trepar.invalid">Entre 0 y 200.</mat-error>
+                                            <input matInput type="number" [min]="minimoVelocidad" max="200" formControlName="trepar" />
+                                            <mat-error *ngIf="form.controls.trepar.invalid">{{errorVelocidad}}</mat-error>
                                         </mat-form-field>
 
                                         <mat-form-field appearance="fill">
                                             <mat-label>Excavar</mat-label>
-                                            <input matInput type="number" min="0" max="200" formControlName="excavar" />
-                                            <mat-error *ngIf="form.controls.excavar.invalid">Entre 0 y 200.</mat-error>
+                                            <input matInput type="number" [min]="minimoVelocidad" max="200" formControlName="excavar" />
+                                            <mat-error *ngIf="form.controls.excavar.invalid">{{errorVelocidad}}</mat-error>
                                         </mat-form-field>
                                     </div>
                                 </section>

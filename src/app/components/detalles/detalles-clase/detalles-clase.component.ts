@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Optional, Output } from '@angular/core';
 import { UserService } from 'src/app/services/user.service';
 import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { ICONOS_ROL, TipoRol, tipoRolDeClase } from 'src/app/services/utils/iconos-rol';
@@ -6,6 +6,8 @@ import { DatoFicha, EtiquetaFicha, FilaMoldeado, datoAlineamiento, datosMoldeado
 import { NombreTraducible } from 'src/app/interfaces/incarnum';
 import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseNivelDetalle } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
+import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
+import { dgsDeClase, tieneTablaPorNivel } from 'src/app/services/utils/clase-niveles';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { extrasDisponiblesDeDote } from 'src/app/services/utils/dote-mapper';
 import { normalizarTexto } from 'src/app/services/utils/normalizacion';
@@ -71,6 +73,10 @@ type FilaProgresion = {
     diarios: string[];
     conocidos: string[];
     conocidosTotal: string;
+    /** La tabla propia de una clase de monstruo: los DG que lleva a ese nivel («3d12»), si da dote y su armadura natural total. */
+    dgs: string;
+    dote: boolean;
+    armaduraNatural: string;
 };
 
 /** Los conjuros del listado de la clase de un mismo nivel. */
@@ -92,7 +98,12 @@ type ListadoConjurosAptitud = NivelListadoConjuros & {
     standalone: false
 })
 export class DetallesClaseComponent {
-    constructor(private manualDetalleNavSvc: ManualDetalleNavigationService, private userSvc: UserService) { }
+    constructor(
+        private manualDetalleNavSvc: ManualDetalleNavigationService,
+        private userSvc: UserService,
+        // Abre la raza mutada que lleva la clase en su pestaña (las pestañas lo escuchan).
+        @Optional() private navegacion?: NavegacionRolService,
+    ) { }
 
     claseData!: Clase;
     /** El nombre con la primera letra en mayúscula (algunos llegan en minúscula de los datos). */
@@ -133,6 +144,11 @@ export class DetallesClaseComponent {
     mostrarNivelMaxPoderAccesible: boolean = false;
     mostrarReservaPsionica: boolean = false;
     mostrarAumentosClaseLanzadora: boolean = false;
+    /**
+     * Si la clase tiene su propia tabla de DG, dotes y armadura natural (las clases de monstruo de *Libris Mortis*;
+     * `Desglose_niveles[].Dg`, `.Dote` y `.Armadura_natural`): la tabla lleva sus tres columnas.
+     */
+    mostrarTablaPropia: boolean = false;
     renderEspecialesPorNivel: Record<number, ResumenEspecialRenderItem[]> = {};
     competenciasVisibles: Record<keyof Clase['Competencias'], ElementoVisual[]> = {
         Armas: [],
@@ -165,6 +181,7 @@ export class DetallesClaseComponent {
         this.etiquetas = [
             value?.Aumenta_clase_lanzadora ? { texto: 'Aumenta clase lanzadora' } : null,
             value?.Es_predilecta ? { texto: 'Puede ser predilecta' } : null,
+            value?.Mutacion ? { texto: 'Clase de monstruo' } : null,
         ].filter((etiqueta): etiqueta is EtiquetaFicha => etiqueta !== null);
         this.datos = this.construirDatos();
         this.flagsConjuros = this.construirFlagsConjuros();
@@ -204,6 +221,17 @@ export class DetallesClaseComponent {
     /** Solo con permiso: el de crear clases, que es el que pide `PUT /clases/<id>` (`permisos-catalogo.ts`). */
     get puedeModificar(): boolean {
         return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'clases');
+    }
+
+    /** La raza mutada que lleva la clase, en su pestaña. */
+    abrirDetalleMutacion(): void {
+        const id = Number(this.claseData?.Mutacion?.Id);
+        if (!this.navegacion || !Number.isFinite(id) || id <= 0)
+            return;
+        this.navegacion.abrir({
+            clase: 'referencia-manual',
+            referencia: { tipo: 'raza', id, nombre: `${this.claseData.Mutacion?.Nombre ?? ''}`, manualId: 0 },
+        });
     }
 
     abrirDetalleManual() {
@@ -475,6 +503,7 @@ export class DetallesClaseComponent {
             this.mostrarNivelMaxPoderAccesible = false;
             this.mostrarReservaPsionica = false;
             this.mostrarAumentosClaseLanzadora = false;
+            this.mostrarTablaPropia = false;
             return;
         }
 
@@ -511,6 +540,7 @@ export class DetallesClaseComponent {
         this.mostrarNivelMaxPoderAccesible = this.filasNivel.some(n => (n.Nivel_max_poder_accesible_nivel_lanzadorPsionico ?? -1) >= 0);
         this.mostrarReservaPsionica = this.filasNivel.some(n => (n.Reserva_psionica ?? 0) > 0);
         this.mostrarAumentosClaseLanzadora = this.filasNivel.some(n => this.getAumentosLanzadora(n).length > 0);
+        this.mostrarTablaPropia = tieneTablaPorNivel(this.claseData);
         this.filasCabecera = this.columnasDiarios.length > 0 || this.columnasConocidos.length > 0 ? 2 : 1;
         this.filasTabla = this.filasNivel.map((nivel) => this.construirFilaProgresion(nivel));
     }
@@ -531,7 +561,17 @@ export class DetallesClaseComponent {
             diarios: this.columnasDiarios.map((nivelConjuro) => this.getValorDiarios(nivel, nivelConjuro)),
             conocidos: this.columnasConocidos.map((nivelConjuro) => this.getValorConocidos(nivel, nivelConjuro)),
             conocidosTotal: this.getValorConocidosTotal(nivel),
+            dgs: this.mostrarTablaPropia ? this.textoDgs(nivel.Nivel) : '',
+            dote: this.mostrarTablaPropia && nivel.Dote === true,
+            armaduraNatural: this.mostrarTablaPropia && Number(nivel.Armadura_natural) > 0 ? `+${Number(nivel.Armadura_natural)}` : '',
         };
+    }
+
+    /** Los DG que lleva la clase a ese nivel, como en el libro: «3d12» (sus niveles con DG hasta ese). */
+    private textoDgs(nivel: number): string {
+        const dgs = dgsDeClase(this.claseData, nivel);
+        const dado = `${this.claseData?.Tipo_dado?.Nombre ?? ''}`.trim().toLowerCase();
+        return dado ? `${dgs}${dado}` : `${dgs}`;
     }
 
     private construirDatos(): DatoFicha[] {
@@ -543,9 +583,22 @@ export class DetallesClaseComponent {
             c?.Roles?.Utilidad ? 'Utilidad' : '',
         ].filter(Boolean);
         const puntos = c?.Puntos_habilidad?.Valor;
+        // Con su propia tabla, los puntos de habilidad van con los DG, no con cada nivel (Libris Mortis, pág. 35).
+        const porDg = tieneTablaPorNivel(c);
+        const mutacion = `${c?.Mutacion?.Nombre ?? ''}`.trim();
         return [
+            {
+                etiqueta: 'Raza mutada',
+                valor: mutacion || null,
+                ayuda: 'La clase de monstruo de esa raza: solo la toma un personaje de esa raza, que la tiene desde el 1.er nivel.',
+                alPulsar: this.navegacion && Number(c?.Mutacion?.Id) > 0 ? () => this.abrirDetalleMutacion() : undefined,
+            },
             { etiqueta: 'Dado de golpe', valor: `${c?.Tipo_dado?.Nombre ?? ''}`.toLowerCase() },
-            { etiqueta: 'Puntos de habilidad por nivel', valor: puntos, detalle: puntos !== null && puntos !== undefined ? '+ mod. de Int' : null },
+            {
+                etiqueta: porDg ? 'Puntos de habilidad por DG' : 'Puntos de habilidad por nivel',
+                valor: puntos,
+                detalle: puntos !== null && puntos !== undefined ? '+ mod. de Int' : null,
+            },
             datoAlineamiento(c?.Alineamiento),
             { etiqueta: 'Niveles', valor: c?.Nivel_max_claseo > 0 ? `1 a ${c.Nivel_max_claseo}` : null },
             // Las progresiones («Medio», «Buena»); sus valores, nivel a nivel, en la tabla.
@@ -554,6 +607,16 @@ export class DetallesClaseComponent {
             { etiqueta: 'Reflejos', valor: c?.Salvaciones?.Reflejos?.Nombre },
             { etiqueta: 'Voluntad', valor: c?.Salvaciones?.Voluntad?.Nombre },
             { etiqueta: 'Roles', valor: roles.join(', ') },
+            {
+                etiqueta: 'Progresión obligatoria',
+                valor: c?.Progresion_obligatoria ? 'Sí' : null,
+                ayuda: 'Quien la empieza la termina antes de tomar cualquier otra clase.',
+            },
+            {
+                etiqueta: 'Penalización por multiclase',
+                valor: c?.Sin_penalizacion_multiclase ? 'No' : null,
+                ayuda: 'No cuenta para la penalización de PX por multiclase, como las de prestigio.',
+            },
         ];
     }
 
