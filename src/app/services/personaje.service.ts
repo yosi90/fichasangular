@@ -53,7 +53,7 @@ import { modificadoresDePartes, normalizarTotal, totalVacio } from './utils/pers
 import { normalizarDefensa, normalizarDinero, normalizarModificadoresEquipo, normalizarPiezasEquipo } from './utils/personaje-equipo-mapper';
 import { resumenClases } from './utils/resumen-clases';
 import { leerComodin } from './utils/comodin';
-import { noPenalizaMulticlase, penalizacionExperiencia } from './utils/penalizacion-experiencia';
+import { clasePredilectaDeRaza, noPenalizaMulticlase, penalizacionExperiencia } from './utils/penalizacion-experiencia';
 import { idExtraHabilidadParaGuardar } from './utils/habilidad-extra-visible';
 import { errorDePerfil, mensajeDeError } from './utils/error-api';
 import { normalizarTamanoFicha } from './utils/tamano-efectivo';
@@ -1089,7 +1089,7 @@ export class PersonajeService {
                     id: toInt(clase?.id), nombre: toText(clase?.nombre).trim(), nivel: toNumber(clase?.nivel),
                     prestigio: noPenalizaMulticlase({ Prestigio: clase?.prestigio, Sin_penalizacion_multiclase: clase?.sinPenalizacionMulticlase }),
                 })),
-                { id: toInt(raza?.Id_clase_predilecta), comodin: leerComodin(raza?.Clase_predilecta_comodin) },
+                clasePredilectaDeRaza(raza),
             ),
             Deidad: toText(element?.de),
             Alineamiento: toText(element?.ali),

@@ -146,6 +146,20 @@ describe('DetallesRazaComponent', () => {
         expect(valor('CA varios')).toBe('-1');
     });
 
+    it('enseña las clases predilectas y la multiclase libre (la prole de Bahamut sobre un elfo)', () => {
+        pintar({
+            Clase_predilecta: 'Mago', Clases_predilectas_extra: [{ Id: 7, Nombre: 'Guerrero' }],
+            Clases_multiclase_libre: [{ Id: 11, Nombre: 'Paladín' }, { Id: 10, Nombre: 'Monje' }],
+        });
+        expect(etiquetasDatos()).not.toContain('Clase predilecta');
+        expect(valor('Clases predilectas')).toBe('Mago y guerrero');
+        expect(valor('Multiclase libre')).toBe('Paladín y monje');
+
+        pintar({ Clase_predilecta: 'Cualquiera', Clases_predilectas_extra: [{ Id: 7, Nombre: 'Guerrero' }], Clases_multiclase_libre: [] });
+        expect(valor('Clases predilectas')).toBe('Cualquiera y guerrero');
+        expect(etiquetasDatos()).not.toContain('Multiclase libre');
+    });
+
     it('enseña la dote adicional y los puntos de habilidad extra de la raza (el humano)', () => {
         pintar({ Dotes_adicionales: 1, Puntos_habilidad_extra_primer_nivel: 4, Puntos_habilidad_extra_por_nivel: 1 });
         expect(valor('Dotes adicionales')).toBe('1');

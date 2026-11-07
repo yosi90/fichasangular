@@ -14,6 +14,7 @@ import {
     textoEsenciaRasgo,
     textoPies,
     textosMovimiento,
+    unirLista,
     unirTipo,
 } from 'src/app/components/detalles/ficha';
 import { textoListasRaciales } from 'src/app/components/detalles/ficha/personaje-edad';
@@ -406,6 +407,28 @@ export class DetallesRazaComponent {
         return Number(grupo.grupo);
     }
 
+    /**
+     * La clase predilecta y las demás (`Clases_predilectas_extra`): «Mago y guerrero» (la prole de Bahamut sobre un elfo),
+     * «Cualquiera y guerrero» (sobre un humano). Ninguna de ellas cuenta para la penalización de PX por multiclase.
+     */
+    private datoClasesPredilectas(): DatoFicha {
+        const otras = this.textoClases(this.raza?.Clases_predilectas_extra);
+        const principal = mayusculaInicial(this.raza?.Clase_predilecta);
+        return otras
+            ? {
+                etiqueta: 'Clases predilectas',
+                valor: unirLista([principal, ...(this.raza?.Clases_predilectas_extra ?? []).map((c) => c.Nombre.trim().toLowerCase())], 'y'),
+                ayuda: 'Ninguna cuenta para la penalización de PX por multiclase (Manual del jugador, cap. 3)',
+            }
+            : { etiqueta: 'Clase predilecta', valor: principal };
+    }
+
+    /** «Paladín y monje»; `null` sin ninguna. */
+    private textoClases(clases: Id_nombre[] | null | undefined): string | null {
+        const nombres = (clases ?? []).map((clase) => `${clase?.Nombre ?? ''}`.trim().toLowerCase()).filter((nombre) => nombre.length > 0);
+        return nombres.length > 0 ? mayusculaInicial(unirLista(nombres, 'y')) : null;
+    }
+
     private construirDatos(): DatoFicha[] {
         const r = this.raza;
         // En una raza por edades, las cifras que cambian con la edad son las de una edad: se dice cuál.
@@ -414,7 +437,12 @@ export class DetallesRazaComponent {
             : dato;
         return [
             deEdad({ etiqueta: 'Ajuste de nivel', valor: tieneNumeroVisible(r?.Ajuste_nivel) ? `+${r.Ajuste_nivel}` : null }),
-            { etiqueta: 'Clase predilecta', valor: mayusculaInicial(r?.Clase_predilecta) },
+            this.datoClasesPredilectas(),
+            {
+                etiqueta: 'Multiclase libre',
+                valor: this.textoClases(r?.Clases_multiclase_libre),
+                ayuda: 'Puede dejar estas clases y volver a subirlas: no se cierran al tomar otra (Manual del jugador, cap. 3)',
+            },
             {
                 etiqueta: 'Clase de monstruo',
                 valor: this.claseDeMonstruo?.Nombre ?? null,

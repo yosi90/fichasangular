@@ -112,9 +112,11 @@ describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
 
             expect(component.form.valid).toBeTrue();
             expect(component.edicion.hayCambios).toBeFalse();
-            // Las respuestas se grabaron antes de las armas naturales como dato (2026-11-06): sin `Armas_naturales` en el GET,
-            // el cuerpo manda `armas_naturales: []`, que deja el mismo GET.
-            expect(JSON.parse(JSON.stringify(component.buildPayload()))).toEqual({ ...cuerpo, armas_naturales: [] });
+            // Las respuestas se grabaron antes de las armas naturales como dato (2026-11-06) y de las demás clases
+            // predilectas y la multiclase libre (2026-11-07): sin ellas en el GET, el cuerpo las manda vacías, que deja el
+            // mismo GET.
+            expect(JSON.parse(JSON.stringify(component.buildPayload())))
+                .toEqual({ ...cuerpo, armas_naturales: [], clases_predilectas_extra: [], clases_multiclase_libre: [] });
             expect(component.porEdades).toBe((get.Categorias_edad ?? []).length > 0);
         });
     });
@@ -171,6 +173,32 @@ describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
             { campo: 'Tamano', operacion: 'heredar' },
             { campo: 'Raciales', operacion: 'quitar', elementos: [12] },
         ]);
+    });
+
+    it('conserva sus otras clases predilectas y su multiclase libre (C3 y C4 de las razas mutadas, 2026-11-07)', async () => {
+        const elfo = IDA_Y_VUELTA_RAZAS.find((item) => item.nombre === 'Elfo')!;
+        // Como el iluminiano de `rol_dev` con otra predilecta: «Cualquiera» y guerrero; el paladín y el monje, libres.
+        const get = JSON.parse(JSON.stringify(elfo.get));
+        Object.assign(get, {
+            c: 'Cualquiera', Clase_predilecta: { Id: 0, Nombre: 'Cualquiera' }, Id_clase_predilecta: 0, Clase_predilecta_comodin: 'cualquiera',
+            Clases_predilectas_extra: [{ Id: 7, Nombre: 'Guerrero' }],
+            Clases_multiclase_libre: [{ Id: 11, Nombre: 'Paladín' }, { Id: 10, Nombre: 'Monje' }],
+        });
+        const component = await cargada(get);
+
+        expect(component.edicion.hayCambios).toBeFalse();
+        const cuerpo = component.buildPayload();
+        expect(cuerpo.raza.id_clase_predilecta).toBe(0);
+        expect(cuerpo.clases_predilectas_extra).toEqual([7]);
+        expect(cuerpo.clases_multiclase_libre).toEqual([10, 11]);
+
+        // La principal no se repite entre las demás, y sin clase predilecta («Ninguna») no se manda ninguna.
+        component.seleccionarClasePredilecta(7);
+        expect(component.buildPayload().clases_predilectas_extra).toEqual([]);
+        component.seleccionarClasePredilecta(-1);
+        expect(component.tieneClasePredilecta).toBeFalse();
+        expect(component.buildPayload().raza.id_clase_predilecta).toBeNull();
+        expect(component.buildPayload().clases_predilectas_extra).toEqual([]);
     });
 
     it('una raza mutada que resta velocidad la conserva (la momia de Libris Mortis: `Correr: sumar`, -10)', async () => {

@@ -279,6 +279,19 @@ describe('RazaService helpers', () => {
         expect(elfo.Edad_maxima_dados).toBe(0);
     });
 
+    it('lee las otras clases predilectas y la multiclase libre, por HTTP y desde la caché (`razas` 26)', () => {
+        // La prole de Bahamut sobre un elfo (`/razas/21/sobre/24`): mago y guerrero; el paladín, libre.
+        const prole = { Id_clase_predilecta: 9, Clases_predilectas_extra: [{ Id: 7, Nombre: 'Guerrero' }],
+                        Clases_multiclase_libre: [{ Id: 11, Nombre: 'Paladín' }] };
+        [normalizeRazaApi(createRazaApiRaw(prole)), normalizeRazaLegacy({ Id: 21, Nombre: 'Prole de Bahamut', ...prole })].forEach((raza) => {
+            expect(raza.Clases_predilectas_extra).toEqual([{ Id: 7, Nombre: 'Guerrero' }]);
+            expect(raza.Clases_multiclase_libre).toEqual([{ Id: 11, Nombre: 'Paladín' }]);
+        });
+        // Vacías, en la caché no están.
+        const elfo = normalizeRazaLegacy({ Id: 24, Nombre: 'Elfo', Id_clase_predilecta: 9 });
+        expect([elfo.Clases_predilectas_extra, elfo.Clases_multiclase_libre]).toEqual([[], []]);
+    });
+
     it('lee una raza sin clase predilecta («Ninguna»: null en la API, sin la clave en la caché), la edad inicial y el VD (tercera tanda)', () => {
         const dragon = { c: null, Id_clase_predilecta: null, Clase_predilecta_comodin: null, Vd: null, Clases_asociadas: [] };
         const http = normalizeRazaApi(createRazaApiRaw(dragon));
