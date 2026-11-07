@@ -55,12 +55,18 @@ const MODELO_MUTACION: ModeloMutacion = {
           Operaciones: ['heredar', 'sustituir', 'sustituir_si_hay', 'pasos'], Catalogo_elementos: null },
         { Campo: 'Raciales', Nombre: 'Rasgos raciales', Clase: 'lista', Por_defecto: 'unir',
           Operaciones: ['heredar', 'sustituir', 'sustituir_si_hay', 'unir', 'quitar', 'conservar'], Catalogo_elementos: 'raciales' },
+        { Campo: 'Correr', Nombre: 'Velocidad', Clase: 'numero', Por_defecto: 'sustituir_si_hay',
+          Operaciones: ['heredar', 'sustituir', 'sustituir_si_hay', 'sumar', 'maximo', 'minimo'], Catalogo_elementos: null },
     ],
+    // Las que llevan valor, como las da la API (`Operaciones[].Valor`): los pasos y el mínimo de un `sumar`.
     Operaciones: [
-        { Clave: 'heredar', Nombre: 'Heredar', Descripcion: 'lo de la raza base' },
-        { Clave: 'sustituir_si_hay', Nombre: 'Sustituir si lo trae', Descripcion: 'lo de la mutación si lo trae' },
-        { Clave: 'pasos', Nombre: 'Pasos de tamaño', Descripcion: 'categorías de tamaño sobre la raza base' },
-        { Clave: 'quitar', Nombre: 'Quitar de la base', Descripcion: 'lo de la raza base sin estos' },
+        { Clave: 'heredar', Nombre: 'Heredar', Descripcion: 'lo de la raza base', Valor: null },
+        { Clave: 'sustituir_si_hay', Nombre: 'Sustituir si lo trae', Descripcion: 'lo de la mutación si lo trae', Valor: null },
+        { Clave: 'sumar', Nombre: 'Sumar', Descripcion: 'lo de la mutación sumado a lo de la raza base',
+          Valor: { Nombre: 'Mínimo del resultado', Obligatorio: false, Minimo: -1000, Maximo: 1000 } },
+        { Clave: 'pasos', Nombre: 'Pasos de tamaño', Descripcion: 'categorías de tamaño sobre la raza base',
+          Valor: { Nombre: 'Categorías (±)', Obligatorio: true, Minimo: -8, Maximo: 8 } },
+        { Clave: 'quitar', Nombre: 'Quitar de la base', Descripcion: 'lo de la raza base sin estos', Valor: null },
     ],
     Catalogos: {
         actitudes: [{ Id: 1, Nombre: 'Legal' }, { Id: 4, Nombre: 'Bueno' }],
@@ -593,7 +599,7 @@ describe('NuevaRazaComponent', () => {
 
         // Un campo no se repite y la regla de hoy no se ofrece (sin fila es la que se aplica).
         component.actualizarCambioMutacion(tamano.uid, { campo: 'Tamano' });
-        expect(component.camposMutacionLibres(component.cambiosMutacionRows[1]).map((campo) => campo.Campo)).toEqual(['Raciales']);
+        expect(component.camposMutacionLibres(component.cambiosMutacionRows[1]).map((campo) => campo.Campo)).toEqual(['Raciales', 'Correr']);
         expect(component.operacionesMutacion(component.cambiosMutacionRows[0])).toEqual(['heredar', 'sustituir', 'pasos']);
         component.actualizarCambioMutacion(tamano.uid, { operacion: 'pasos' });
         expect(component.cambiosMutacionRows[0].valor).toBe(1);
@@ -612,6 +618,31 @@ describe('NuevaRazaComponent', () => {
         component.actualizarCambioMutacion(raciales.uid, { campo: 'Tamano' });
         expect(component.cambiosMutacionRows[1]).toEqual(jasmine.objectContaining({ operacion: '', valor: null, elementos: [] }));
         expect((component as any).validarReglasDominio()).toContain('un solo cambio');
+    });
+
+    it('el mínimo de un «sumar» sale del modelo, es opcional y se conserva al editar (la momia de Libris Mortis)', () => {
+        component.form.patchValue({ mutada: true });
+        component.agregarCambioMutacion();
+        const [correr] = component.cambiosMutacionRows;
+        component.actualizarCambioMutacion(correr.uid, { campo: 'Correr', operacion: 'sumar' });
+
+        // Con valor, pero sin uno por defecto: sin escribirlo, la suma no tiene mínimo y no se manda.
+        expect(component.valorDeOperacion('sumar')?.Nombre).toBe('Mínimo del resultado');
+        expect(component.operacionConValor('maximo')).toBeFalse();
+        expect(component.cambiosMutacionRows[0].valor).toBeNull();
+        expect((component as any).validarReglasDominio()).toBeNull();
+        expect(component.buildPayload().cambios_mutacion).toEqual([{ campo: 'Correr', operacion: 'sumar' }]);
+
+        // −10', hasta un mínimo de 10' (pág. 38).
+        component.actualizarCambioMutacion(correr.uid, { valor: component.valorDeEntrada('10') });
+        expect(component.buildPayload().cambios_mutacion).toEqual([{ campo: 'Correr', operacion: 'sumar', valor: 10 }]);
+        component.actualizarCambioMutacion(correr.uid, { valor: component.valorDeEntrada('') });
+        expect(component.cambiosMutacionRows[0].valor).toBeNull();
+
+        // Otra operación sin valor lo quita.
+        component.actualizarCambioMutacion(correr.uid, { valor: 10 });
+        component.actualizarCambioMutacion(correr.uid, { operacion: 'maximo' });
+        expect(component.cambiosMutacionRows[0].valor).toBeNull();
     });
 
     it('carga prioridades de alineamiento desde catalogo de servicio', () => {

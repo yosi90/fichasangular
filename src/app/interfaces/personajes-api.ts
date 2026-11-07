@@ -271,6 +271,11 @@ export interface PersonajeClaseDto extends PersonajeNombreIdDto {
     nivel: number;
     /** Si es de prestigio: no cuenta para la penalización de PX por multiclase (desde el 2026-11-06). */
     prestigio?: boolean;
+    /**
+     * Si no cuenta para esa penalización sin ser de prestigio (`Sin_penalizacion_multiclase` de la clase: las clases de
+     * monstruo de *Libris Mortis*); desde el 2026-11-07.
+     */
+    sinPenalizacionMulticlase?: boolean;
     lanzaConjuros: boolean;
     caracteristicaLanzamiento: string | null;
     modificadorLanzamiento: number | null;

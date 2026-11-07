@@ -489,6 +489,14 @@ export function modeloMutacionDesdeApi(raw: any): ModeloMutacion {
             .filter((campo) => campo.Campo.length > 0),
         Operaciones: toArray(raw?.Operaciones).map((o: any) => ({
             Clave: `${o?.Clave ?? ''}`, Nombre: `${o?.Nombre ?? ''}`, Descripcion: `${o?.Descripcion ?? ''}`,
+            Valor: o?.Valor && typeof o.Valor === 'object'
+                ? {
+                    Nombre: `${o.Valor.Nombre ?? ''}`,
+                    Obligatorio: o.Valor.Obligatorio === true,
+                    Minimo: toNumber(o.Valor.Minimo),
+                    Maximo: toNumber(o.Valor.Maximo),
+                }
+                : null,
         })),
         Catalogos: catalogos,
     };

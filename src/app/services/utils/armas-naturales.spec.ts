@@ -25,6 +25,23 @@ const HUMANO = {};
 const TROLL = { Armas_naturales: [arma('Garra', 2), arma('Mordisco', 1)] };
 const FORJADO = { Armas_naturales: [arma('Golpetazo', 1)] };
 
+describe('contarArmasNaturales con las de las aptitudes de clase (las clases de monstruo, 2026-11-07)', () => {
+    const arma = (id: number, nombre: string, cantidad: number) =>
+        ({ Id_arma_natural: id, Arma_natural: nombre, Cantidad: cantidad, Dano: null, Primaria: true, Texto: nombre });
+
+    it('una aptitud da su arma si no la tiene ya: el golpetazo de la raza mutada y el de su clase son uno', () => {
+        expect(contarArmasNaturales({ Armas_naturales: [arma(4, 'Golpetazo', 1)] }, [], [arma(4, 'Golpetazo', 1)])).toBe(1);
+    });
+
+    it('el necrófago 2.º: el mordisco de la raza y de la clase y sus dos garras, tres', () => {
+        expect(contarArmasNaturales({ Armas_naturales: [arma(1, 'Mordisco', 1)] }, [], [arma(1, 'Mordisco', 1), arma(2, 'Garra', 2)])).toBe(3);
+    });
+
+    it('sin aptitudes, lo de siempre', () => {
+        expect(contarArmasNaturales({ Armas_naturales: [arma(1, 'Mordisco', 1)] })).toBe(1);
+    });
+});
+
 describe('armas naturales', () => {
     it('se leen igual de la API y de la caché, y una plantilla trae su modo y su forma', () => {
         expect(leerArmasNaturales([{ Id_arma_natural: 2, Arma_natural: 'Garra', Cantidad: 2, Dano: '1d4', Primaria: true, Texto: '2 garras 1d4' }]))

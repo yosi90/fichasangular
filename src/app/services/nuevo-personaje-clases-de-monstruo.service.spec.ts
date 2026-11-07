@@ -8,9 +8,12 @@ import {
     claseDeMonstruoApi,
     ENGENDRO_VAMPIRICO,
     MOMIA,
+    NECROFAGO,
     razaDeMonstruoSobreApi,
     TablaClaseDeMonstruo,
 } from 'src/testing/clases-de-monstruo-api';
+import { claseDeMonstruoConEspecialesApi, conIdsDeRolDev, RAZAS_LIBRIS_MORTIS_API } from 'src/testing/clases-de-monstruo-especiales-api';
+import { HabilidadBasicaDetalle } from '../interfaces/habilidad';
 
 /**
  * La creación con una clase de monstruo muerto viviente de *Libris Mortis* (fase 5.2 del roadmap `ACTIVO_razas-mutadas`;
@@ -242,5 +245,105 @@ describe('NuevoPersonajeService (clases de monstruo de Libris Mortis)', () => {
         expect((svc as any).getNivelEfectivoParaAumentos()).toBe(14);
         spyOn<any>(svc, 'randomInt').and.returnValue(1);
         expect(svc.calcularVidaFinalAleatoria().maximo).toBe(8 * 12 + 10);
+    });
+});
+
+/**
+ * Los huecos de la creación que dejaron los datos de las clases de monstruo (2026-11-07, `bugs.md` del roadmap): con los
+ * especiales por nivel que da `GET /clases/{id}` de `rol_dev` y las razas combinadas reales (sobre el humano), las
+ * habilidades que mejora una aptitud, su reducción del daño y sus armas naturales.
+ */
+describe('NuevoPersonajeService (clases de monstruo: habilidades, RD y armas naturales de sus aptitudes)', () => {
+    // Las siete habilidades del engendro vampírico (Libris Mortis, pág. 36), con sus ids de `rol_dev`.
+    const SIETE = [[5, 'Averiguar intenciones'], [6, 'Avistar'], [7, 'Buscar'], [13, 'Engañar'], [16, 'Esconderse'],
+        [17, 'Escuchar'], [26, 'Moverse sigilosamente']] as const;
+    const catalogoHabilidades: HabilidadBasicaDetalle[] = SIETE.map(([id, nombre]) => ({
+        Id_habilidad: id, Nombre: nombre, Id_caracteristica: 5, Caracteristica: 'Sabiduría', Descripcion: '',
+        Soporta_extra: false, Entrenada: false, Extras: [],
+    }));
+
+    function crearLibris(tabla: TablaClaseDeMonstruo, idClase: number, raza: 'engendroSobreHumano' | 'momiaSobreHumano' | 'necrofagoSobreHumano'): Creacion {
+        const svc = new NuevoPersonajeService();
+        const claseMonstruo = normalizeClase(claseDeMonstruoConEspecialesApi(conIdsDeRolDev(tabla, idClase, RAZAS_LIBRIS_MORTIS_API[raza]['i'])));
+        const guerrero = normalizeClase(guerreroApi());
+        svc.setCatalogoClases([claseMonstruo, guerrero]);
+        svc.setCatalogoHabilidades(catalogoHabilidades);
+        expect(svc.seleccionarRaza(normalizeRazaApi(JSON.parse(JSON.stringify(RAZAS_LIBRIS_MORTIS_API[raza]))),
+            normalizeRazaApi(JSON.parse(JSON.stringify(RAZAS_LIBRIS_MORTIS_API.humano))))).toBeTrue();
+        svc.aplicarCaracteristicasGeneradas(CARACTERISTICAS);
+        return { svc, claseMonstruo, guerrero };
+    }
+
+    const habilidad = (svc: NuevoPersonajeService, nombre: string) =>
+        svc.PersonajeCreacion.Habilidades.find((h) => h.Nombre === nombre && !h.Custom);
+    const rds = (svc: NuevoPersonajeService) => svc.PersonajeCreacion.Rds.map((rd) => `${rd.Modificador} (${rd.Origen})`);
+
+    it('el humano engendro vampírico 4 tiene +4 a sus siete habilidades: +2 de su raza y +2 de la clase, una vez', () => {
+        const { svc, claseMonstruo, guerrero } = crearLibris(ENGENDRO_VAMPIRICO, 482, 'engendroSobreHumano');
+        subir(svc, claseMonstruo, 3);
+        // Antes de 4.º, solo el +2 racial (pág. 36: «bonificador de habilidad +2» a 1.er nivel).
+        expect(SIETE.map(([, nombre]) => habilidad(svc, nombre)?.Rangos_varios)).toEqual([2, 2, 2, 2, 2, 2, 2]);
+
+        subir(svc, claseMonstruo, 1);
+        expect(SIETE.map(([, nombre]) => habilidad(svc, nombre)?.Rangos_varios)).toEqual([4, 4, 4, 4, 4, 4, 4]);
+        expect(habilidad(svc, 'Avistar')?.Varios).toBe('Engendro vampírico +2, Bonificador de habilidad (Engendro vampírico) +2');
+
+        // A 8.º y con otro nivel de guerrero, ni se repite ni se apila al recalcular.
+        subir(svc, claseMonstruo, 4);
+        subir(svc, guerrero, 1);
+        svc.recalcularEfectosVentajas();
+        expect(habilidad(svc, 'Avistar')?.Rangos_varios).toBe(4);
+        // Las demás habilidades no cambian.
+        expect(svc.PersonajeCreacion.Habilidades.filter((h) => !SIETE.some(([id]) => id === h.Id)).every((h) => !h.Rangos_varios)).toBeTrue();
+    });
+
+    it('su reducción del daño 5/plateada llega a 8.º, con el nombre de la aptitud (y la guarda la creación)', () => {
+        const { svc, claseMonstruo } = crearLibris(ENGENDRO_VAMPIRICO, 482, 'engendroSobreHumano');
+        subir(svc, claseMonstruo, 7);
+        expect(rds(svc)).toEqual([]);
+
+        subir(svc, claseMonstruo, 1);
+        expect(rds(svc)).toEqual(['5/plateada (Reducción del daño (Engendro vampírico))']);
+        svc.recalcularEfectosVentajas();
+        expect(rds(svc)).toEqual(['5/plateada (Reducción del daño (Engendro vampírico))']);
+    });
+
+    it('la momia: una sola RD, la de su nivel (2/- a 4.º, 5/- a 13.º; Libris Mortis, pág. 38)', () => {
+        const { svc, claseMonstruo } = crearLibris(MOMIA, 485, 'momiaSobreHumano');
+        subir(svc, claseMonstruo, 1);
+        expect(rds(svc)).toEqual([]);
+        subir(svc, claseMonstruo, 3);
+        expect(rds(svc)).toEqual(['2/- (Reducción del daño (Momia))']);
+        subir(svc, claseMonstruo, 9);
+        expect(rds(svc)).toEqual(['5/- (Reducción del daño (Momia))']);
+        // Sobre el humano (30'), 20': la API combina la velocidad con su mínimo de 10'.
+        expect(svc.PersonajeCreacion.Correr).toBe(20);
+    });
+
+    it('el necrófago 2.º tiene mordisco y dos garras: tres armas naturales y puede tomar Ataque múltiple', () => {
+        const ataqueMultiple: any = {
+            Id: 49, Nombre: 'Ataque múltiple', Descripcion: '', Beneficio: '', Normal: '', Especial: '',
+            Manual: { Id: 47, Nombre: 'Manual de monstruos 1', Pagina: 303 }, Tipos: [{ Id: 1, Nombre: 'General', Usado: 1 }],
+            Repetible: 0, Repetible_distinto_extra: 0, Repetible_comb: 0, Comp_arma: 0, Oficial: true,
+            Extras_soportados: { Extra_arma: 0, Extra_armadura_armaduras: 0, Extra_armadura_escudos: 0, Extra_armadura: 0, Extra_escuela: 0, Extra_habilidad: 0 },
+            Extras_disponibles: { Armas: [], Armaduras: [], Escuelas: [], Habilidades: [] },
+            Modificadores: {},
+            Prerrequisitos: { armas_naturales: [{ Cantidad: 3, Opcional: 0, Frase: 'Tres armas naturales o más' }] },
+        };
+        const estado = (svc: NuevoPersonajeService) => {
+            svc.setCatalogoDotes([ataqueMultiple]);
+            (svc as any).dotesPendientes = [{ id: 1, fuente: 'nivel', origen: 'Nivel 3', tipoPermitido: null, estado: 'pendiente' }];
+            return svc.obtenerCandidatosDotePendiente(1).find((candidato) => candidato.dote.Id === 49)?.evaluacion?.estado;
+        };
+        const { svc, claseMonstruo } = crearLibris(NECROFAGO, 486, 'necrofagoSobreHumano');
+        subir(svc, claseMonstruo, 1);
+        // El mordisco de la raza mutada y el de la clase son uno.
+        expect(estado(svc)).toBe('blocked_failed');
+        subir(svc, claseMonstruo, 1);
+        expect(estado(svc)).toBe('eligible');
+        // Con el daño de su nivel: a 7.º, mordisco 1d8 y garras 1d4.
+        subir(svc, claseMonstruo, 5);
+        expect((svc as any).armasNaturalesDeAptitudes().map((arma: any) => `${arma.Cantidad} ${arma.Arma_natural} ${arma.Dano}`))
+            .toEqual(['1 Mordisco 1d8', '2 Garra 1d4']);
     });
 });

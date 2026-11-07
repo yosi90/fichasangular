@@ -1,7 +1,9 @@
+import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { Clase, ClaseConjuroRef, ClaseEspecialNivel, ClaseNivelConjuroRequisito } from 'src/app/interfaces/clase';
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { EspecialClaseDetalle, EspecialPrerrequisitos } from 'src/app/interfaces/especial';
-import { primerEntero, toArray, toInt } from 'src/app/services/utils/normalizacion';
+import { leerArmasNaturales } from 'src/app/services/utils/armas-naturales';
+import { primerEntero, toArray, toInt, toText } from 'src/app/services/utils/normalizacion';
 import { MotivosPrerrequisitos, compararActitud } from 'src/app/services/utils/prerrequisitos-evaluacion';
 import { frasePrerrequisito, grupoOpcionalPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 
@@ -14,7 +16,10 @@ import { frasePrerrequisito, grupoOpcionalPrerrequisito } from 'src/app/services
  *   que se elige al tomarla (el elemento de la senda del asenda: `extrasElegiblesEspecial`);
  * - un nivel de conjuro de la clase puede pedir una aptitud o una dote (`Conjuros.Niveles_con_requisito`);
  * - una aptitud puede cambiar el tamaño (`Tamano_pasos`; ver `tamano-efectivo.ts`);
- * - una aptitud puede mejorar la armadura natural (`Armadura_natural`, o la cifra de su extra con `Extra_da_armnat`).
+ * - una aptitud puede mejorar la armadura natural (`Armadura_natural`, o la cifra de su extra con `Extra_da_armnat`);
+ * - una aptitud puede mejorar unas habilidades (`Habilidades`, sus rangos: el bonificador de habilidad del engendro
+ *   vampírico), dar una reducción del daño (la de su extra con `Extra_da_rd`: «5/plateada») y dar armas naturales
+ *   (`Armas_naturales`, con el daño de su extra si no traen el suyo: el golpetazo de las clases de monstruo).
  */
 
 /** Una aptitud especial que tiene el personaje: su id y el de su extra (0 o sin él, ninguno). */
@@ -58,6 +63,58 @@ export function armaduraNaturalEspecialNivel(especialNivel: ClaseEspecialNivel |
     if (columna !== 0)
         return columna;
     return especial?.['Extras_soportados']?.['Extra_da_armnat'] === true ? primerEntero(extra) ?? 0 : 0;
+}
+
+/** Una habilidad que mejora el especial de un nivel de la clase (`Especial.Habilidades`). */
+export interface HabilidadDeAptitud {
+    Id_habilidad: number;
+    Habilidad: string;
+    /** La especialidad (Saber (naturaleza)); `null` sin ella. */
+    Id_extra: number | null;
+    Extra: string;
+    Rangos: number;
+}
+
+/**
+ * Las habilidades que mejora el especial de un nivel de la clase, con sus rangos (`Especial.Habilidades`, de
+ * `especiales_habilidades`: +2 a siete habilidades el «Bonificador de habilidad (Engendro vampírico)»). Sin las de 0.
+ */
+export function habilidadesEspecialNivel(especialNivel: ClaseEspecialNivel | null | undefined): HabilidadDeAptitud[] {
+    return toArray(especialDelNivel(especialNivel)?.['Habilidades'])
+        .map((habilidad) => ({
+            Id_habilidad: toInt(habilidad?.Id_habilidad),
+            Habilidad: toText(habilidad?.Habilidad).trim(),
+            Id_extra: toInt(habilidad?.Id_extra, -1) > 0 ? toInt(habilidad.Id_extra) : null,
+            Extra: toText(habilidad?.Extra).trim(),
+            Rangos: toInt(habilidad?.Rangos),
+        }))
+        .filter((habilidad) => habilidad.Id_habilidad > 0 && habilidad.Rangos !== 0);
+}
+
+/**
+ * La reducción del daño que da el especial de un nivel de la clase al personaje que lo tiene con el extra `extra`: si la
+ * cifra la da el extra (`Extras_soportados.Extra_da_rd`: «5/plateada» del engendro, «3/-» de la momia), ese extra; `''`
+ * si no da o el extra no lleva una cifra.
+ */
+export function reduccionDanoEspecialNivel(especialNivel: ClaseEspecialNivel | null | undefined, extra: string | null | undefined): string {
+    const especial = especialDelNivel(especialNivel);
+    const texto = toText(extra).trim();
+    return especial?.['Extras_soportados']?.['Extra_da_rd'] === true && (primerEntero(texto) ?? 0) > 0 ? texto : '';
+}
+
+/** Los dados de un texto («1d6», «2d4+1»); `null` si no los lleva. */
+function dadosDe(texto: string | null | undefined): string | null {
+    return /\d+d\d+(?:[+-]\d+)?/i.exec(toText(texto))?.[0] ?? null;
+}
+
+/**
+ * Las armas naturales que da el especial de un nivel de la clase al personaje que lo tiene con el extra `extra`
+ * (`Especial.Armas_naturales`): las que no traen su daño llevan el del extra, que crece con la clase (el golpetazo, 1d4 a
+ * 1.er nivel y 1d6 a 7.º, como el «Impacto sin arma» del monje).
+ */
+export function armasNaturalesEspecialNivel(especialNivel: ClaseEspecialNivel | null | undefined, extra: string | null | undefined): ArmaNatural[] {
+    return leerArmasNaturales(especialDelNivel(especialNivel)?.['Armas_naturales'])
+        .map((arma) => ({ ...arma, Dano: arma.Dano ?? dadosDe(extra) }));
 }
 
 /** Los prerrequisitos de actitud del especial de un nivel de la clase. */

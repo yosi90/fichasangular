@@ -1,7 +1,9 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { normalizeClase } from 'src/app/services/clase.service';
 import {
+    armasNaturalesEspecialNivel,
     conjurosDeAptitudes,
+    habilidadesEspecialNivel,
     evaluarActitudEspecial,
     extrasElegiblesEspecial,
     listadoConjurosClase,
@@ -9,6 +11,7 @@ import {
     nivelesConjuroSinRequisito,
     pasosTamanoEspecialNivel,
     prerrequisitosEspecialNivel,
+    reduccionDanoEspecialNivel,
     textoRequisitoNivelConjuro,
 } from 'src/app/services/utils/aptitudes-clase';
 import { normalizeEspecial } from 'src/app/services/especial.service';
@@ -151,6 +154,44 @@ describe('aptitudes-clase', () => {
         it('sin extras, nada que elegir', () => {
             expect(extrasElegiblesEspecial(null)).toEqual([]);
             expect(extrasElegiblesEspecial({ Extras: [] })).toEqual([]);
+        });
+    });
+
+    describe('habilidades, reducción del daño y armas naturales de una aptitud (las clases de monstruo, 2026-11-07)', () => {
+        const nivel = (especial: Record<string, any>, extra: string | null = null) =>
+            ({ Especial: especial, Nivel: 1, Id_extra: null, Extra: extra, Extra_comodin: null, Opcional: 0, Id_interno: 1,
+               Id_especial_requerido: -1, Id_dote_requerida: -1 } as any);
+
+        it('las habilidades que mejora, con su especialidad y sin las de 0 rangos', () => {
+            const especial = { Habilidades: [
+                { Id_habilidad: 6, Habilidad: 'Avistar', Id_extra: null, Extra: null, Rangos: 2 },
+                { Id_habilidad: 31, Habilidad: 'Saber', Id_extra: 9, Extra: 'naturaleza', Rangos: 2 },
+                { Id_habilidad: 7, Habilidad: 'Buscar', Id_extra: -1, Extra: null, Rangos: 0 },
+            ] };
+            expect(habilidadesEspecialNivel(nivel(especial))).toEqual([
+                { Id_habilidad: 6, Habilidad: 'Avistar', Id_extra: null, Extra: '', Rangos: 2 },
+                { Id_habilidad: 31, Habilidad: 'Saber', Id_extra: 9, Extra: 'naturaleza', Rangos: 2 },
+            ]);
+            // La caché no escribe las listas vacías.
+            expect(habilidadesEspecialNivel(nivel({}))).toEqual([]);
+        });
+
+        it('la reducción del daño es la de su extra si la aptitud lo dice (Extra_da_rd)', () => {
+            const rd = { Extras_soportados: { Extra_da_rd: true } };
+            expect(reduccionDanoEspecialNivel(nivel(rd), '5/plateada')).toBe('5/plateada');
+            expect(reduccionDanoEspecialNivel(nivel(rd), '3/-')).toBe('3/-');
+            expect(reduccionDanoEspecialNivel(nivel(rd), 'Nada')).toBe('');
+            expect(reduccionDanoEspecialNivel(nivel({ Extras_soportados: { Extra_da_rd: false } }), '5/plateada')).toBe('');
+        });
+
+        it('las armas naturales que da, con el daño de su extra si no traen el suyo', () => {
+            const golpetazo = { Armas_naturales: [{ Id_arma_natural: 4, Arma_natural: 'Golpetazo', Cantidad: 1, Dano: null, Primaria: true, Texto: 'Golpetazo' }] };
+            expect(armasNaturalesEspecialNivel(nivel(golpetazo), '1d6').map((arma) => [arma.Arma_natural, arma.Cantidad, arma.Dano]))
+                .toEqual([['Golpetazo', 1, '1d6']]);
+            expect(armasNaturalesEspecialNivel(nivel(golpetazo), 'Nada')[0].Dano).toBeNull();
+            const conDano = { Armas_naturales: [{ ...golpetazo.Armas_naturales[0], Dano: '2d6' }] };
+            expect(armasNaturalesEspecialNivel(nivel(conDano), '1d6')[0].Dano).toBe('2d6');
+            expect(armasNaturalesEspecialNivel(nivel({}), '1d6')).toEqual([]);
         });
     });
 });

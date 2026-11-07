@@ -25,6 +25,7 @@ import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeCreateMascotasDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { bonoRacialCondicional } from './utils/habilidad-raza-condicional';
+import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { contarArmasNaturales } from './utils/armas-naturales';
 import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
@@ -80,7 +81,7 @@ import {
     puntuacionLanzamiento,
 } from './utils/reglas-magia';
 import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './utils/alineamiento-contrato';
-import { AptitudDelPersonaje, armaduraNaturalEspecialNivel, evaluarActitudEspecial, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
+import { AptitudDelPersonaje, armaduraNaturalEspecialNivel, armasNaturalesEspecialNivel, evaluarActitudEspecial, habilidadesEspecialNivel, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, reduccionDanoEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
 import { OrigenTamano, TamanoEfectivo, tamanoEfectivo, tamanoQueCuenta } from './utils/tamano-efectivo';
 import { ajusteDePlantillas, dgRacialSustituible, dgsDePlantilla, dgsDePlantillas, dgsRacialesQueCuentan, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
 import { ClaseParaPenalizacion, ClasePredilecta, noPenalizaMulticlase, PenalizacionExperiencia, penalizacionExperiencia } from './utils/penalizacion-experiencia';
@@ -3847,9 +3848,10 @@ export class NuevoPersonajeService {
             alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`.trim(),
             puedeSeleccionarCompanero: estadoCuposCompanero.cuposDisponibles > 0,
             puedeSeleccionarFamiliar: estadoCuposFamiliar.cuposDisponibles > 0,
-            // Las de su raza (resuelta a su edad) y sus plantillas, en la forma en que más tiene (el licántropo: la
-            // animal o la híbrida).
-            armasNaturales: contarArmasNaturales(this.razaSeleccionada, this.estadoFlujo.plantillas.seleccionadas ?? []),
+            // Las de su raza (resuelta a su edad), sus aptitudes de clase (el golpetazo y las garras de una clase de
+            // monstruo) y sus plantillas, en la forma en que más tiene (el licántropo: la animal o la híbrida).
+            armasNaturales: contarArmasNaturales(this.razaSeleccionada, this.estadoFlujo.plantillas.seleccionadas ?? [],
+                this.armasNaturalesDeAptitudes()),
             catalogoRegiones,
             incarnum: incarnumParaPrerrequisitos(this.getIncarnumBorrador()),
             reservaPsionica: this.resolverReservaPsionicaActual(),
@@ -5274,9 +5276,13 @@ export class NuevoPersonajeService {
             armaduraNaturalEspecialNivel(especialNivel, especialNivel?.Extra) !== 0
             || (especialNivel?.Especial as Record<string, any>)?.['Extras_soportados']?.['Extra_da_armnat'] === true)
             || armaduraNaturalDeClase(clase, siguienteNivel) !== armaduraNaturalDeClase(clase, nivelActual);
+        // Las habilidades que mejora y la reducción del daño que da (la de su extra), también al recalcular.
+        const cambiaHabilidadesORd = especialesAplicar.some((especialNivel) =>
+            habilidadesEspecialNivel(especialNivel).length > 0
+            || (especialNivel?.Especial as Record<string, any>)?.['Extras_soportados']?.['Extra_da_rd'] === true);
         // El primer nivel de clase ocupa el lugar del DG racial único: su ataque base y sus salvaciones dejan de contar.
         const sustituyeDgRacial = this.getNivelClasesActual() === 1 && this.dgRacialSustituible();
-        if (cambiaCaracteristicas || cambiaArmaduraNatural || sustituyeDgRacial) {
+        if (cambiaCaracteristicas || cambiaArmaduraNatural || cambiaHabilidadesORd || sustituyeDgRacial) {
             // Sus características se suman con las demás (dotes, plantillas, ventajas) desde la base.
             this.recalcularEfectosVentajas();
         }
@@ -5801,6 +5807,7 @@ export class NuevoPersonajeService {
         this.aplicarHabilidadesSiempreDeClase(nuevosRaciales);
         this.aplicarModificadoresDotesDelPersonaje({ caracteristicasVarios, bonosHabilidades });
         this.aplicarCaracteristicasEspecialesDelPersonaje(caracteristicasVarios);
+        this.aplicarHabilidadesEspecialesDelPersonaje(bonosHabilidades);
 
         const todasLasSelecciones: Array<{ detalle: VentajaDetalle; seleccion: SeleccionVentajaState; claseOrigen: 'Ventaja' | 'Desventaja'; }> = [
             ...this.estadoFlujo.ventajas.seleccionDesventajas
@@ -6207,6 +6214,7 @@ export class NuevoPersonajeService {
                 Origen: `${raza?.Nombre ?? 'Raza'}`.trim(),
             });
         }
+        this.personajeCreacion.Rds.push(...this.reduccionesDanoDeAptitudes());
         if (this.esTextoReglaValido(`${raza?.Resistencia_magica ?? ''}`)) {
             this.personajeCreacion.Rcs.push({
                 Modificador: `${raza?.Resistencia_magica ?? ''}`.trim(),
@@ -9120,6 +9128,65 @@ export class NuevoPersonajeService {
                     (caracteristicasVarios[key] ?? []).push({ valor, origen });
             });
         });
+    }
+
+    /**
+     * Las habilidades que mejoran las aptitudes del personaje (`Habilidades` del especial: el «Bonificador de habilidad
+     * (Engendro vampírico)», +2 a siete habilidades a 4.º nivel, que con el +2 de su raza hacen +4), a sus rangos varios
+     * con el nombre de la aptitud como origen. Una aptitud cuenta una vez aunque el personaje la tenga con varios extras
+     * o de dos clases (el mismo especial trae los mismos datos); como se rehacen en cada recálculo, no se apilan.
+     */
+    private aplicarHabilidadesEspecialesDelPersonaje(bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]>): void {
+        const vistos = new Set<number>();
+        this.especialesDeClaseDelPersonaje().forEach((especialNivel) => {
+            const especial = (especialNivel?.Especial as Record<string, any>) ?? {};
+            const id = toNumber(especial?.['Id']);
+            if (vistos.has(id))
+                return;
+            vistos.add(id);
+            const origen = `${especial?.['Nombre'] ?? ''}`.trim();
+            habilidadesEspecialNivel(especialNivel).forEach((ref) => {
+                // Del catálogo (`especiales_habilidades` no admite personalizadas), en su hueco si nombra la especialidad.
+                const habilidad = this.asegurarHabilidadDesdeReferencia(ref, { marcarClasea: false, expandirFamiliaConDuplicados: false });
+                if (habilidad && toNumber(habilidad.Id) > 0)
+                    this.agregarBonoHabilidad(bonosHabilidades, claveHabilidad(habilidad), ref.Rangos, origen);
+            });
+        });
+    }
+
+    /**
+     * Las reducciones del daño que dan las aptitudes del personaje (la cifra del extra, con `Extra_da_rd`: «5/plateada» del
+     * engendro vampírico; de «1/-» a «5/-» la momia), con el nombre de la aptitud como origen. De cada aptitud, la más alta
+     * que tiene: el extra es el total a ese nivel, no se suman.
+     */
+    private reduccionesDanoDeAptitudes(): Array<{ Modificador: string; Origen: string; }> {
+        const porId = this.especialesNivelPorId();
+        const mayores = new Map<number, { Modificador: string; Origen: string; cifra: number; }>();
+        (this.personajeCreacion?.Claseas ?? []).forEach((aptitud) => {
+            const id = toNumber(aptitud?.Id);
+            const rd = reduccionDanoEspecialNivel(porId.get(id), aptitud?.Extra);
+            const cifra = primerEntero(rd) ?? 0;
+            if (cifra > (mayores.get(id)?.cifra ?? 0))
+                mayores.set(id, { Modificador: rd, Origen: `${aptitud?.Nombre ?? ''}`.trim(), cifra });
+        });
+        return Array.from(mayores.values()).map(({ Modificador, Origen }) => ({ Modificador, Origen }));
+    }
+
+    /**
+     * Las armas naturales que dan las aptitudes del personaje (`Armas_naturales` del especial: el golpetazo de las clases
+     * de monstruo, el mordisco y las dos garras del necrófago), con el daño del extra que tiene de cada una: la última que
+     * ganó, que es la de su nivel (1d6 el golpetazo de un engendro de 7.º).
+     */
+    private armasNaturalesDeAptitudes(): ArmaNatural[] {
+        const porId = this.especialesNivelPorId();
+        const ultimas = new Map<number, ArmaNatural[]>();
+        (this.personajeCreacion?.Claseas ?? []).forEach((aptitud) => {
+            const id = toNumber(aptitud?.Id);
+            const armas = armasNaturalesEspecialNivel(porId.get(id), aptitud?.Extra);
+            if (armas.length > 0)
+                ultimas.set(id, armas);
+        });
+        return Array.from(ultimas.values()).flat();
     }
 
     private recalcularDefensasYPresa(): void {

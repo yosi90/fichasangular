@@ -807,10 +807,10 @@
                                     </mat-select>
                                     <mat-hint *ngIf="row.operacion">{{descripcionOperacionMutacion(row.operacion)}}</mat-hint>
                                 </mat-form-field>
-                                <mat-form-field appearance="fill" *ngIf="operacionConValor(row.operacion)">
-                                    <mat-label>Categorías (±)</mat-label>
-                                    <input matInput type="number" min="-8" max="8" [value]="row.valor ?? ''" [disabled]="guardando"
-                                        (input)="actualizarCambioMutacion(row.uid, { valor: +$any($event.target).value || 0 })">
+                                <mat-form-field appearance="fill" *ngIf="valorDeOperacion(row.operacion) as valor">
+                                    <mat-label>{{valor.Nombre}}{{valor.Obligatorio ? '' : ' (opcional)'}}</mat-label>
+                                    <input matInput type="number" [min]="valor.Minimo" [max]="valor.Maximo" [value]="row.valor ?? ''" [disabled]="guardando"
+                                        (input)="actualizarCambioMutacion(row.uid, { valor: valorDeEntrada($any($event.target).value) })">
                                 </mat-form-field>
                                 <mat-form-field appearance="fill" *ngIf="operacionConElementos(row.operacion)">
                                     <mat-label>{{row.operacion === 'quitar' ? 'Se quitan de la raza base' : 'Se conservan de la raza base'}}</mat-label>

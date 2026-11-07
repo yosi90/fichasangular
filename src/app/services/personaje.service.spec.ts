@@ -412,6 +412,26 @@ describe('PersonajeService', () => {
         expect(prestigio.Penalizacion_experiencia?.porcentaje).toBe(0);
     });
 
+    it('mapApiDetalleToPersonaje no cuenta para los PX una clase sin penalización por multiclase (Libris Mortis, pág. 35)', () => {
+        const service = crearServicio({} as any);
+        const clase = (id: number, nombre: string, nivel: number, sinPenalizacionMulticlase?: boolean) => ({
+            id, nombre, nivel, prestigio: false, sinPenalizacionMulticlase, lanzaConjuros: false, caracteristicaLanzamiento: null,
+            modificadorLanzamiento: null,
+        });
+        const ficha = (clases: any[]) => (service as any).mapApiDetalleToPersonaje(crearDetalleApi({
+            ra: { ...crearDetalleApi()['ra'], Id_clase_predilecta: 9 }, clases,
+        })) as Personaje;
+
+        // Con otra clase predilecta (la de su base, mago), el engendro vampírico 8 / guerrero 1 no tiene −20 %: la
+        // clase de monstruo no cuenta, como en la creación (`noPenalizaMulticlase`).
+        const engendro = ficha([clase(482, 'Engendro vampírico', 8, true), clase(3, 'Guerrero', 1)]);
+        expect(engendro.Penalizacion_experiencia?.porcentaje).toBe(0);
+        // Sin la marca (una ficha de antes, o una clase normal) contaría.
+        const sinMarca = ficha([clase(482, 'Engendro vampírico', 8), clase(3, 'Guerrero', 1)]);
+        expect(sinMarca.Penalizacion_experiencia?.porcentaje).toBe(20);
+        expect(sinMarca.Penalizacion_experiencia?.penalizadas).toEqual(['Guerrero 1']);
+    });
+
     it('mapApiDetalleToPersonaje toma los totales de la API sin volver a sumarlos', () => {
         const service = crearServicio({} as any);
         const personaje = (service as any).mapApiDetalleToPersonaje(crearDetalleApi()) as Personaje;

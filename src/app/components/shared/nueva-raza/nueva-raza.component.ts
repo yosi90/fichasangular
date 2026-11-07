@@ -80,7 +80,7 @@ import {
     registrarTiposDeMutacion,
     tipoDeMutacion,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
-import { CampoMutacion, ModeloMutacion, RazaCreateCambioMutacion, RazaCreatePrerrequisitoMutacion } from 'src/app/interfaces/razas-api';
+import { CampoMutacion, ModeloMutacion, RazaCreateCambioMutacion, RazaCreatePrerrequisitoMutacion, ValorOperacionMutacion } from 'src/app/interfaces/razas-api';
 import { ArmaNaturalService } from 'src/app/services/arma-natural.service';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { idsUnicosOrdenados, normalizarTexto, toIntOrNull, toNumberOrNull } from 'src/app/services/utils/normalizacion';
@@ -2538,7 +2538,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             .filter((row) => this.texto(row.campo).length > 0 && this.texto(row.operacion).length > 0)
             .map((row) => {
                 const cambio: RazaCreateCambioMutacion = { campo: row.campo, operacion: row.operacion };
-                if (this.operacionConValor(row.operacion))
+                if (this.operacionConValor(row.operacion) && row.valor !== null)
                     cambio.valor = this.numero(row.valor);
                 if (this.operacionConElementos(row.operacion))
                     cambio.elementos = idsUnicosOrdenados(row.elementos);
@@ -2558,7 +2558,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         for (const row of this.cambiosMutacionRows) {
             if (!this.texto(row.campo) || !this.texto(row.operacion))
                 return 'Hay un cambio sobre la raza base sin campo o sin operación.';
-            if (this.operacionConValor(row.operacion) && this.numero(row.valor) === 0)
+            if (this.valorDeOperacion(row.operacion)?.Obligatorio && this.numero(row.valor) === 0)
                 return 'Los pasos de tamaño necesitan cuántas categorías (de −8 a 8, no 0).';
             if (this.operacionConElementos(row.operacion) && idsUnicosOrdenados(row.elementos).length < 1)
                 return 'Elige qué elementos de la raza base se quitan o se conservan.';
@@ -2651,8 +2651,21 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return (campo?.Operaciones ?? []).filter((operacion) => operacion !== campo?.Por_defecto);
     }
 
+    /**
+     * El valor que lleva una operación, del modelo (`Operaciones[].Valor`): las categorías de los pasos de tamaño o el
+     * mínimo de un `sumar`; `null` si no lleva.
+     */
+    valorDeOperacion(operacion: string): ValorOperacionMutacion | null {
+        return this.modeloMutacion?.Operaciones.find((item) => item.Clave === operacion)?.Valor ?? null;
+    }
+
     operacionConValor(operacion: string): boolean {
-        return operacion === 'pasos';
+        return this.valorDeOperacion(operacion) !== null;
+    }
+
+    /** El valor que se escribe en el campo: vacío, sin valor (el mínimo de un `sumar` es opcional). */
+    valorDeEntrada(texto: string): number | null {
+        return `${texto ?? ''}`.trim().length < 1 ? null : this.numero(texto);
     }
 
     operacionConElementos(operacion: string): boolean {
@@ -2682,7 +2695,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 Object.assign(next, { operacion: patch.operacion ?? '', valor: patch.valor ?? null, elementos: patch.elementos ?? [] });
             if (!this.operacionConValor(next.operacion))
                 next.valor = null;
-            else if (next.valor === null)
+            else if (next.valor === null && this.valorDeOperacion(next.operacion)?.Obligatorio)
                 next.valor = 1;
             if (!this.operacionConElementos(next.operacion))
                 next.elementos = [];
