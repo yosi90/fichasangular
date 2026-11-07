@@ -2015,7 +2015,7 @@ describe('NuevoPersonajeService (clases)', () => {
         const res = service.aplicarSiguienteNivelClase(claseBase);
         expect(res.aplicado).toBeTrue();
         // Con el id de la clase, para encontrarla en el catálogo sin depender de su nombre.
-        expect(service.PersonajeCreacion.desgloseClases).toEqual([{ Id: 1, Nombre: 'Guerrero', Nivel: 1, Caracteristica_lanzamiento: null }]);
+        expect(service.PersonajeCreacion.desgloseClases).toEqual([{ Id: 1, Nombre: 'Guerrero', Nivel: 1, Dgs: 1, Caracteristica_lanzamiento: null }]);
         expect(service.PersonajeCreacion.Clases).toContain('Guerrero (1)');
     });
 
