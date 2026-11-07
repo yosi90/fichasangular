@@ -7592,13 +7592,18 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
 
     it('seleccionarRaza mutada aplica la raza que combina la API y guarda su base aparte', () => {
         // La prole de Bahamut sobre cuatro bases, como la dan `GET /razas/21/sobre/{idBase}` y `GET /razas/{idBase}`
-        // (datos de `rol_dev`): la web no combina; aplica lo que llega (fase 2 de las razas mutadas).
+        // (datos de `rol_dev`): la web no combina; aplica lo que llega (fase 2 de las razas mutadas). Desde la fase 4,
+        // como en *Races of the Dragon*, pág. 10: los ajustes de la base más +2 Con −2 Des, sin los rasgos raciales de la
+        // base, con sus idiomas más el Dracónico y sin sumar a la CA el +2 de esquiva contra dragones (es un rasgo).
         const esperado: Record<string, { tamano: string; ajuste: number; dgs: number; espacio: number }> = {
             '5': { tamano: 'Pequeño', ajuste: 0, dgs: 0, espacio: 5 },
             '18': { tamano: 'Mediano', ajuste: 1, dgs: 2, espacio: 5 },
             '308': { tamano: 'Mediano', ajuste: 2, dgs: 0, espacio: 5 },
             '26': { tamano: 'Grande', ajuste: 1, dgs: 0, espacio: 10 },
         };
+        const prole = normalizeRazaApi(RAZAS_API['21']);
+        const esquiva = prole.Raciales.find((r) => r.Nombre === 'Esquiva contra dragones (prole de Bahamut)')?.Id ?? 0;
+        expect(esquiva).toBeGreaterThan(0);
         Object.entries(esperado).forEach(([idBase, cifras]) => {
             const svc = new NuevoPersonajeService();
             svc.setCatalogoTiposCriatura([crearTipo(11, 'Humanoide')]);
@@ -7614,9 +7619,13 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
             expect([raza.Tamano?.Nombre, raza.Ajuste_nivel, raza.Dgs_adicionales.Cantidad, raza.Espacio])
                 .withContext(idBase).toEqual([cifras.tamano, cifras.ajuste, cifras.dgs, cifras.espacio]);
             expect(pj.Correr).withContext(idBase).toBe(base.Correr);
-            expect(pj.Raciales.map((r) => r.Id)).withContext(idBase)
-                .toEqual([...base.Raciales.map((r) => r.Id), 168, 34]);
-            expect(pj.Idiomas.map((i) => i.Nombre)).withContext(idBase).toEqual((base.Idiomas ?? []).map((i) => i.Nombre));
+            expect(pj.Raciales.map((r) => r.Id)).withContext(idBase).toEqual([168, esquiva, 34]);
+            expect(pj.Idiomas.map((i) => i.Nombre)).withContext(idBase)
+                .toEqual([...(base.Idiomas ?? []).map((i) => i.Nombre), 'Dracónico']);
+            const sumados = Object.fromEntries(Object.entries(base.Modificadores)
+                .map(([c, v]) => [c, Number(v ?? 0) + Number(prole.Modificadores[c as keyof typeof prole.Modificadores] ?? 0)]));
+            expect(raza.Modificadores).withContext(idBase).toEqual(sumados as any);
+            expect(raza.Varios_armadura).withContext(idBase).toBe(0);
         });
     });
 
