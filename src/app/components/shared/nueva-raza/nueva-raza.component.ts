@@ -229,6 +229,26 @@ const VD_RAZA_MAXIMO = 999.99;
  * El VD de la raza (`raza.vd`): vacío, sin dato; si no, mayor que 0 y hasta 999,99, como la API (`400 peticion_no_valida`
  * con `field` `raza.vd`). Solo vale con DG raciales: sin ellos el campo no se enseña ni se manda.
  */
+/** Las velocidades de la raza (en pies), con el mismo validador. */
+const VELOCIDADES_RAZA = ['correr', 'nadar', 'volar', 'trepar', 'excavar'] as const;
+
+/**
+ * Una velocidad de la raza, de 0 a 200 pies. En una raza mutada es lo que cambia de su raza base y, con `sumar`, una
+ * diferencia: la momia de *Libris Mortis* (pág. 38) es 10' más lenta (`Correr: sumar`, -10). Así que en una mutada
+ * también vale negativa, hasta -200 (la API admite cualquier entero). Mira el control `mutada` del mismo formulario.
+ */
+function velocidadDeRazaValidator(control: AbstractControl): ValidationErrors | null {
+    if (control.value === null || control.value === undefined || `${control.value}`.trim() === '')
+        return null;
+    const valor = Number(control.value);
+    if (!Number.isFinite(valor))
+        return null;
+    const minimo = control.parent?.get('mutada')?.value === true ? -200 : 0;
+    if (valor < minimo)
+        return { min: { min: minimo, actual: valor } };
+    return valor > 200 ? { max: { max: 200, actual: valor } } : null;
+}
+
 function vdDeRazaValidator(control: AbstractControl): ValidationErrors | null {
     const vd = toNumberOrNull(control.value);
     if (vd === null)
@@ -508,12 +528,12 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         mod_car: [0],
         varios_armadura: [0],
         armadura_natural: [0],
-        correr: [30, [Validators.min(0), Validators.max(200)]],
-        nadar: [0, [Validators.min(0), Validators.max(200)]],
-        volar: [0, [Validators.min(0), Validators.max(200)]],
+        correr: [30, [velocidadDeRazaValidator]],
+        nadar: [0, [velocidadDeRazaValidator]],
+        volar: [0, [velocidadDeRazaValidator]],
         id_maniobrabilidad: [0, [Validators.min(0)]],
-        trepar: [0, [Validators.min(0), Validators.max(200)]],
-        excavar: [0, [Validators.min(0), Validators.max(200)]],
+        trepar: [0, [velocidadDeRazaValidator]],
+        excavar: [0, [velocidadDeRazaValidator]],
         dotes_extra: [0, [Validators.min(0), Validators.max(10)]],
         puntos_extra_1: [0, [Validators.min(0), Validators.max(20)]],
         puntos_extra: [0, [Validators.min(0), Validators.max(20)]],
@@ -624,6 +644,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             .subscribe((mutada) => {
                 if (mutada !== true)
                     this.limpiarDatosMutacion();
+                this.revalidarVelocidades();
             });
         this.form.controls.alineamiento_modo.valueChanges
             .pipe(takeUntil(this.destroy$))
@@ -1016,6 +1037,20 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     getEtiquetaPrerrequisitoMutacion(key: TipoEditorMutacion): string {
         return this.prerrequisitosMutacionOpciones.find((item) => item.key === key)?.label ?? key;
+    }
+
+    /** El texto del error de una velocidad: en una raza mutada, también negativa (lo que resta de la base). */
+    get errorVelocidad(): string {
+        return this.form.controls.mutada.value === true ? 'Entre -200 y 200 (en una mutada, lo que cambia de la base).' : 'Entre 0 y 200.';
+    }
+
+    /** El mínimo de una velocidad en el campo: -200 en una raza mutada (`velocidadDeRazaValidator`). */
+    get minimoVelocidad(): number {
+        return this.form.controls.mutada.value === true ? -200 : 0;
+    }
+
+    private revalidarVelocidades(): void {
+        VELOCIDADES_RAZA.forEach((clave) => this.form.controls[clave].updateValueAndValidity({ emitEvent: false }));
     }
 
     toggleBooleanControl(controlName: 'oficial' | 'mutada' | 'cuadrupedo'
@@ -2910,6 +2945,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             nivel_lanzamiento: this.numero(raza.Lanzamiento?.Nivel),
             lanzamiento_listas: (raza.Lanzamiento?.Listas ?? []).map((lista) => ({ tipo: lista.Tipo, id: this.numero(lista.Id) })),
         }, { emitEvent: false });
+        // Las velocidades se validan con `mutada`, que se rellena después de ellas.
+        this.revalidarVelocidades();
         this.pasoActivoIndex = 0;
         this.edades = edadesDesdeRaza(raza);
         this.porEdades = this.edades.categorias.length > 0 || this.edades.pasos.length > 0;

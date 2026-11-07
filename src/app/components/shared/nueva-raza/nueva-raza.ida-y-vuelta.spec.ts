@@ -173,6 +173,29 @@ describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
         ]);
     });
 
+    it('una raza mutada que resta velocidad la conserva (la momia de Libris Mortis: `Correr: sumar`, -10)', async () => {
+        const elfo = IDA_Y_VUELTA_RAZAS.find((item) => item.nombre === 'Elfo')!;
+        // Como `GET /razas/1008` de `rol_dev` (la momia, 2026-11-07): `co` -10 y su cambio `Correr: sumar`.
+        const get = JSON.parse(JSON.stringify(elfo.get));
+        Object.assign(get, {
+            Mutada: true,
+            co: -10,
+            Cambios_mutacion: [{ Campo: 'Correr', Nombre: 'Correr', Operacion: 'sumar', Valor: null, Elementos: [], Frase: '' }],
+        });
+        const component = await cargada(get);
+
+        expect(component.form.controls.correr.valid).toBeTrue();
+        expect(component.form.valid).toBeTrue();
+        expect(component.edicion.hayCambios).toBeFalse();
+        expect(component.buildPayload().raza.correr).toBe(-10);
+        expect(component.buildPayload().cambios_mutacion).toEqual([{ campo: 'Correr', operacion: 'sumar' }]);
+
+        // Sin mutar, una velocidad negativa no vale.
+        component.form.controls.mutada.setValue(false);
+        expect(component.form.controls.correr.hasError('min')).toBeTrue();
+        expect(component.errorVelocidad).toBe('Entre 0 y 200.');
+    });
+
     it('conserva sus armas naturales (`Armas_naturales`; el rakshasa de `rol_dev`: mordisco 1d6 y 2 garras 1d4)', async () => {
         const rakshasa = IDA_Y_VUELTA_RAZAS.find((item) => item.id === 427)!;
         const get = JSON.parse(JSON.stringify(rakshasa.get));
