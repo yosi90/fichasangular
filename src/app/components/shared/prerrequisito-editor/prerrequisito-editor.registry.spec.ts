@@ -4,7 +4,10 @@ import {
     PrerequisiteRowModel,
 } from './prerrequisito-editor.models';
 import { registrarTiposPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
-import { TIPOS_PRERREQUISITO_SOLO_PLANTILLA, buildPrerequisitePayload, getPrerequisiteDefinition, getPrerequisiteTypeOptions, updatePrerequisiteRow } from './prerrequisito-editor.registry';
+import {
+    TIPOS_PRERREQUISITO_SOLO_PLANTILLA, buildPrerequisitePayload, claveDeMutacion, esTipoDeMutacion, getPrerequisiteDefinition,
+    getPrerequisiteTypeOptions, registrarTiposDeMutacion, tipoDeMutacion, updatePrerequisiteRow,
+} from './prerrequisito-editor.registry';
 
 describe('prerrequisito-editor.registry', () => {
     const catalogosPorTipo = new Map<string, PrerequisiteCatalogItem[]>([
@@ -167,5 +170,54 @@ describe('prerrequisito-editor.registry, los tipos de las plantillas', () => {
 
     it('los tres solo los ofrecen las plantillas', () => {
         expect(Array.from(TIPOS_PRERREQUISITO_SOLO_PLANTILLA).sort()).toEqual(['criaturas_compatibles', 'nivel_lanzador', 'subtipo_prohibido']);
+    });
+    describe('los tipos de las razas mutadas (datos de la API, fase 3)', () => {
+        const tipo = (Clave: string, pide: { referencia?: boolean; cantidad?: boolean; texto?: boolean; }) => ({
+            Clave, Nombre: `Nombre de ${Clave}`, Ejemplo: '', Sujeto: 'raza_base' as const, Dato: Clave, Comparador: 'es',
+            Catalogo: pide.referencia ? 'tipos_criatura' : null, Pide_referencia: pide.referencia === true,
+            Pide_cantidad: pide.cantidad === true, Pide_texto: pide.texto === true,
+        });
+
+        it('genera su editor según lo que pide, con un prefijo que no choca con los de dotes y clases', () => {
+            const claves = registrarTiposDeMutacion([
+                tipo('tipo_criatura', { referencia: true }),
+                tipo('caracteristica', { referencia: true, cantidad: true }),
+                tipo('dgs_raciales_maximos', { cantidad: true }),
+                tipo('condicion_master', { texto: true }),
+            ]);
+
+            expect(claves).toEqual(['mutacion.tipo_criatura', 'mutacion.caracteristica', 'mutacion.dgs_raciales_maximos',
+                'mutacion.condicion_master']);
+            expect(claves.map((clave) => getPrerequisiteDefinition(clave).editorKind))
+                .toEqual(['catalog-only', 'catalog-plus-value', 'value-only', 'text-only']);
+            expect(getPrerequisiteDefinition('mutacion.tipo_criatura').label).toBe('Nombre de tipo_criatura');
+            // El de las dotes sigue siendo el suyo.
+            expect(getPrerequisiteDefinition('tipo_criatura').editorKind).toBe('catalog-only');
+            expect(esTipoDeMutacion('mutacion.x')).toBeTrue();
+            expect(esTipoDeMutacion('tipo_criatura')).toBeFalse();
+            expect(claveDeMutacion('mutacion.caracteristica')).toBe('caracteristica');
+            expect(tipoDeMutacion('mutacion.dgs_raciales_maximos')?.Pide_cantidad).toBeTrue();
+            expect(tipoDeMutacion('tipo_criatura')).toBeNull();
+        });
+
+        it('completa y manda cada fila con lo que pide su tipo', () => {
+            registrarTiposDeMutacion([tipo('caracteristica', { referencia: true, cantidad: true }), tipo('condicion_master', { texto: true }),
+                tipo('dgs_raciales_maximos', { cantidad: true })]);
+            const fila = (clave: string, cambios: Partial<PrerequisiteRowModel>): PrerequisiteRowModel =>
+                ({ ...getPrerequisiteDefinition(`mutacion.${clave}`).createDefaultRow(), ...cambios });
+            const caracteristica = getPrerequisiteDefinition('mutacion.caracteristica');
+            const condicion = getPrerequisiteDefinition('mutacion.condicion_master');
+            const dgs = getPrerequisiteDefinition('mutacion.dgs_raciales_maximos');
+
+            expect(caracteristica.isComplete(fila('caracteristica', { id: 0, valor: 3 }))).toBeFalse();
+            expect(caracteristica.toPayload(fila('caracteristica', { id: 4, valor: 3, opcional: 2 }), context))
+                .toEqual({ tipo: 'caracteristica', id_referencia: 4, cantidad: 3, opcional: 2 });
+            expect(condicion.isComplete(fila('condicion_master', { texto: '  ' }))).toBeFalse();
+            expect(condicion.toPayload(fila('condicion_master', { texto: ' El rito ' }), context))
+                .toEqual({ tipo: 'condicion_master', texto: 'El rito' });
+            // Una cantidad de 0 vale (sin DG raciales).
+            expect(dgs.isComplete(fila('dgs_raciales_maximos', { valor: 0 }))).toBeTrue();
+            expect(dgs.toPayload(fila('dgs_raciales_maximos', { valor: 0 }), context)).toEqual({ tipo: 'dgs_raciales_maximos', cantidad: 0 });
+        });
     });
 });

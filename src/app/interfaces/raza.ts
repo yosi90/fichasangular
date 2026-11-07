@@ -21,27 +21,36 @@ export interface RazaCompetencias {
     Grupos_armadura: { Id: number; Nombre: string; }[];
 }
 
-export interface RazaPrerrequisitosFlags {
-    actitud_prohibido?: boolean;
-    actitud_requerido?: boolean;
-    alineamiento_prohibido?: boolean;
-    alineamiento_requerido?: boolean;
-    tipo_criatura?: boolean;
+/** A quién mira un prerrequisito de una raza mutada: la raza base, el personaje o el momento de adquirirla. */
+export type SujetoPrerrequisitoMutacion = 'raza_base' | 'personaje' | 'creacion';
+
+/**
+ * Un prerrequisito de una raza mutada (`pr` de `RazaCompleta`, fase 3 de las razas mutadas): sus tipos son datos de la
+ * API (`GET /razas/mutaciones/modelo`), así que `Tipo` es cualquier clave. `Frase` la escribe la API.
+ */
+export interface PrerrequisitoMutacion {
+    Id: number;
+    Tipo: string;
+    Sujeto: SujetoPrerrequisitoMutacion;
+    Id_referencia: number | null;
+    Referencia: string | null;
+    Cantidad: number | null;
+    Texto: string | null;
+    Opcional: number;
+    Frase: string;
 }
 
-export interface RazaPrerrequisitos {
-    actitud_prohibido?: PrerrequisitoItem[];
-    actitud_requerido?: PrerrequisitoItem[];
-    alineamiento_prohibido?: PrerrequisitoItem[];
-    alineamiento_requerido?: PrerrequisitoItem[];
-    tipo_criatura?: PrerrequisitoItem[];
-}
+/** Lo que pide una raza mutada, por la clave de su tipo. */
+export type RazaPrerrequisitos = Record<string, PrerrequisitoMutacion[]>;
 
-export interface MutacionRaza {
-    Es_mutada?: boolean;
-    Tamano_dependiente?: boolean;
-    Tiene_prerrequisitos?: boolean;
-    Heredada?: boolean;
+/** Un cambio de una raza mutada sobre su raza base donde se aparta de la regla de hoy (`Cambios_mutacion`). */
+export interface CambioMutacion {
+    Campo: string;
+    Nombre: string;
+    Operacion: string;
+    Valor: number | null;
+    Elementos: { Id: number; Nombre: string | null; }[];
+    Frase: string;
 }
 
 export interface RazaPlantillaReferencia {
@@ -284,10 +293,10 @@ export interface Raza {
     Resistencia_energia: string;
     Heredada: boolean;
     Mutada: boolean;
-    Tamano_mutacion_dependiente: boolean;
+    /** Lo que pide una raza mutada (de la raza base, del personaje o el momento), por la clave de su tipo. */
     Prerrequisitos: RazaPrerrequisitos;
-    Prerrequisitos_flags?: RazaPrerrequisitosFlags;
-    Mutacion?: MutacionRaza;
+    /** Lo que cambia una raza mutada de su raza base donde se aparta de la regla de hoy. */
+    Cambios_mutacion: CambioMutacion[];
     Armadura_natural: number;
     Varios_armadura: number;
     Correr: number;

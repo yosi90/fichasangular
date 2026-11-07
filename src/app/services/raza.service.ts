@@ -3,16 +3,19 @@ import { Auth } from '@angular/fire/auth';
 import { Database, Unsubscribe } from '@angular/fire/database';
 import { Observable, firstValueFrom, map } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
-import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from '../interfaces/raza';
+import { Raza, RazaHabilidades } from '../interfaces/raza';
 import {
-    BaseRazaMutada, BasesRazaMutada, EstadoBaseRazaMutada, RazaActualizadaResponse, RazaCreateApiResponse, RazaCreateRequest,
-    RazaCreateResponse,
+    BaseRazaMutada, BasesRazaMutada, EstadoBaseRazaMutada, ModeloMutacion, RazaActualizadaResponse, RazaCreateApiResponse,
+    RazaCreateRequest, RazaCreateResponse, TipoPrerrequisitoMutacion,
 } from '../interfaces/razas-api';
 import { environment } from 'src/environments/environment';
 import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
-import { normalizarCamposCreacionRaza, normalizarCamposEdadRaza, normalizarTextosRaza, normalizeRazaApi, textoClasePredilecta } from './utils/raza-mapper';
+import {
+    normalizarCambiosMutacion, normalizarCamposCreacionRaza, normalizarCamposEdadRaza, normalizarPrerrequisitosMutacion,
+    normalizarTextosRaza, normalizeRazaApi, textoClasePredilecta,
+} from './utils/raza-mapper';
 import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
@@ -189,43 +192,6 @@ export function normalizeHabilidadesRaza(raw: any): RazaHabilidades {
     };
 }
 
-function normalizePrerrequisitos(raw: any): RazaPrerrequisitos {
-    const source = raw ?? {};
-    return {
-        actitud_prohibido: toArray(source?.actitud_prohibido),
-        actitud_requerido: toArray(source?.actitud_requerido),
-        alineamiento_prohibido: toArray(source?.alineamiento_prohibido),
-        alineamiento_requerido: toArray(source?.alineamiento_requerido),
-        tipo_criatura: toArray(source?.tipo_criatura),
-    };
-}
-
-function normalizePrerrequisitosFlags(raw: any, prer: RazaPrerrequisitos): RazaPrerrequisitosFlags {
-    const source = raw ?? {};
-    return {
-        actitud_prohibido: toBoolean(source?.actitud_prohibido) || (prer?.actitud_prohibido?.length ?? 0) > 0,
-        actitud_requerido: toBoolean(source?.actitud_requerido) || (prer?.actitud_requerido?.length ?? 0) > 0,
-        alineamiento_prohibido: toBoolean(source?.alineamiento_prohibido) || (prer?.alineamiento_prohibido?.length ?? 0) > 0,
-        alineamiento_requerido: toBoolean(source?.alineamiento_requerido) || (prer?.alineamiento_requerido?.length ?? 0) > 0,
-        tipo_criatura: toBoolean(source?.tipo_criatura) || (prer?.tipo_criatura?.length ?? 0) > 0,
-    };
-}
-
-function normalizeMutacion(raw: any, mutada: any, tmd: any, heredada: any, prer: RazaPrerrequisitos): MutacionRaza {
-    const source = raw ?? {};
-    const tienePrerrequisitos = (prer?.actitud_prohibido?.length ?? 0) > 0
-        || (prer?.actitud_requerido?.length ?? 0) > 0
-        || (prer?.alineamiento_prohibido?.length ?? 0) > 0
-        || (prer?.alineamiento_requerido?.length ?? 0) > 0
-        || (prer?.tipo_criatura?.length ?? 0) > 0;
-    return {
-        Es_mutada: toBoolean(source?.Es_mutada) || toBoolean(mutada),
-        Tamano_dependiente: toBoolean(source?.Tamano_dependiente) || toBoolean(tmd),
-        Tiene_prerrequisitos: toBoolean(source?.Tiene_prerrequisitos) || tienePrerrequisitos,
-        Heredada: toBoolean(source?.Heredada) || toBoolean(heredada),
-    };
-}
-
 function normalizeModificadores(raw: any): Raza['Modificadores'] {
     return {
         Fuerza: toNumber(raw?.Fuerza),
@@ -253,16 +219,7 @@ function normalizeDgsAdicionales(raw: any): Raza['Dgs_adicionales'] {
 }
 
 function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[], subtipos: any[], raciales: any[]): Raza {
-    const prerrequisitos = normalizePrerrequisitos(raw?.Prerrequisitos ?? raw?.pr ?? raw?.PR);
-    const prerrequisitosFlags = normalizePrerrequisitosFlags(
-        raw?.Prerrequisitos_flags ?? raw?.prf ?? raw?.PrerrequisitosFlags,
-        prerrequisitos
-    );
-
-    const mutadaRaw = raw?.Mutada ?? raw?.mu;
-    const tmdRaw = raw?.Tamano_mutacion_dependiente ?? raw?.Tamano_mutacion_pendiente ?? raw?.tmd;
     const heredadaRaw = raw?.Heredada ?? raw?.he;
-    const mutacion = normalizeMutacion(raw?.Mutacion, mutadaRaw, tmdRaw, heredadaRaw, prerrequisitos);
 
     return {
         Id: toNumber(id),
@@ -282,11 +239,10 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
         Resistencia_magica: `${raw?.Resistencia_magica ?? raw?.Resistencia_magia ?? raw?.rc ?? ''}`,
         Resistencia_energia: `${raw?.Resistencia_energia ?? raw?.re ?? ''}`,
         Heredada: toBoolean(heredadaRaw),
-        Mutada: mutacion.Es_mutada === true,
-        Tamano_mutacion_dependiente: mutacion.Tamano_dependiente === true,
-        Prerrequisitos: prerrequisitos,
-        Prerrequisitos_flags: prerrequisitosFlags,
-        Mutacion: mutacion,
+        // La caché `Razas` 24 (fase 3 de las razas mutadas): lo que pide y lo que cambia una mutada, como la API.
+        Mutada: toBoolean(raw?.Mutada),
+        Prerrequisitos: normalizarPrerrequisitosMutacion(raw?.Prerrequisitos),
+        Cambios_mutacion: normalizarCambiosMutacion(raw?.Cambios_mutacion),
         Armadura_natural: toNumber(raw?.Armadura_natural ?? raw?.ant),
         Varios_armadura: toNumber(raw?.Varios_armadura ?? raw?.va),
         Correr: toNumber(raw?.Correr ?? raw?.co),
@@ -421,6 +377,25 @@ export class RazaService {
         }
     }
 
+    private modeloMutacion: Promise<ModeloMutacion> | null = null;
+
+    /**
+     * Lo que necesita el formulario para dar de alta una raza mutada (`GET /razas/mutaciones/modelo`): los tipos de
+     * prerrequisito, los campos combinables con su regla de hoy y los catálogos pequeños. Se lee una vez por sesión (un
+     * error no se guarda: el siguiente intento vuelve a pedirlo).
+     */
+    public getModeloMutacion(): Promise<ModeloMutacion> {
+        if (!this.modeloMutacion) {
+            this.modeloMutacion = firstValueFrom(this.http.get(`${environment.apiUrl}razas/mutaciones/modelo`))
+                .then((raw) => modeloMutacionDesdeApi(raw))
+                .catch((error) => {
+                    this.modeloMutacion = null;
+                    throw errorDePerfil(error, 'No se pudo leer lo que admite una raza mutada.');
+                });
+        }
+        return this.modeloMutacion;
+    }
+
     /**
      * La raza mutada aplicada sobre una raza base, ya combinada por la API (`GET /razas/{id}/sobre/{idBase}`): la raza que
      * se elige en la creación. La web no combina. Con un error de la API, su texto (`raza_base_no_cumple_requisitos`…).
@@ -476,6 +451,49 @@ function respuestaDeRaza(response: RazaCreateApiResponse | null | undefined, men
 }
 
 const ESTADOS_BASE_RAZA_MUTADA: EstadoBaseRazaMutada[] = ['elegible', 'con_aviso'];
+const SUJETOS_TIPO_MUTACION: TipoPrerrequisitoMutacion['Sujeto'][] = ['raza_base', 'personaje', 'creacion'];
+
+function idsNombres(raw: any): { Id: number; Nombre: string; }[] {
+    return toArray(raw).map((item: any) => ({ Id: toInt(item?.Id), Nombre: `${item?.Nombre ?? ''}` }));
+}
+
+/** `ModeloMutacion` de la API (`GET /razas/mutaciones/modelo`, estricto). */
+export function modeloMutacionDesdeApi(raw: any): ModeloMutacion {
+    const catalogos: ModeloMutacion['Catalogos'] = {};
+    const fuente = raw?.Catalogos && typeof raw.Catalogos === 'object' ? raw.Catalogos : {};
+    Object.keys(fuente).forEach((clave) => catalogos[clave] = idsNombres(fuente[clave]));
+    return {
+        Tipos_de_prerrequisito: toArray(raw?.Tipos_de_prerrequisito)
+            .map((tipo: any): TipoPrerrequisitoMutacion => ({
+                Clave: `${tipo?.Clave ?? ''}`,
+                Nombre: `${tipo?.Nombre ?? ''}`,
+                Ejemplo: `${tipo?.Ejemplo ?? ''}`,
+                Sujeto: SUJETOS_TIPO_MUTACION.includes(tipo?.Sujeto) ? tipo.Sujeto : 'raza_base',
+                Dato: `${tipo?.Dato ?? ''}`,
+                Comparador: `${tipo?.Comparador ?? ''}`,
+                Catalogo: typeof tipo?.Catalogo === 'string' && tipo.Catalogo ? tipo.Catalogo : null,
+                Pide_referencia: tipo?.Pide_referencia === true,
+                Pide_cantidad: tipo?.Pide_cantidad === true,
+                Pide_texto: tipo?.Pide_texto === true,
+            }))
+            .filter((tipo) => tipo.Clave.length > 0),
+        Campos: toArray(raw?.Campos)
+            .map((campo: any) => ({
+                Campo: `${campo?.Campo ?? ''}`,
+                Nombre: `${campo?.Nombre ?? ''}`,
+                Clase: `${campo?.Clase ?? ''}`,
+                Por_defecto: `${campo?.Por_defecto ?? ''}`,
+                Operaciones: toArray(campo?.Operaciones).map((o: any) => `${o}`),
+                Catalogo_elementos: typeof campo?.Catalogo_elementos === 'string' && campo.Catalogo_elementos
+                    ? campo.Catalogo_elementos : null,
+            }))
+            .filter((campo) => campo.Campo.length > 0),
+        Operaciones: toArray(raw?.Operaciones).map((o: any) => ({
+            Clave: `${o?.Clave ?? ''}`, Nombre: `${o?.Nombre ?? ''}`, Descripcion: `${o?.Descripcion ?? ''}`,
+        })),
+        Catalogos: catalogos,
+    };
+}
 
 /** `BasesDeRazaMutada` de la API (estricto: lo que no trae su forma no se lee). */
 export function basesDeRazaMutadaDesdeApi(raw: any): BasesRazaMutada {
@@ -494,6 +512,7 @@ export function basesDeRazaMutadaDesdeApi(raw: any): BasesRazaMutada {
         Requisitos_del_personaje: toArray(raw?.Requisitos_del_personaje).map((requisito: any) => ({
             Frase: `${requisito?.Frase ?? ''}`,
             Cumple: typeof requisito?.Cumple === 'boolean' ? requisito.Cumple : null,
+            Confirma_master: requisito?.Confirma_master === true,
         })),
     };
 }

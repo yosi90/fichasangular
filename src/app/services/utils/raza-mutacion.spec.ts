@@ -7,9 +7,9 @@ import { esRazaMutada } from "./raza-mutacion";
  * `aplicarMutacion` está en el commit `00dbf5f` de la rama `mutadas/fase-2`.
  */
 describe("esRazaMutada", () => {
-    it("lee la marca de la raza o la de su mutación", () => {
+    it("lee la marca de la raza (sin el alias `Mutacion`, retirado en la fase 3)", () => {
         expect(esRazaMutada({ Mutada: true } as Raza)).toBeTrue();
-        expect(esRazaMutada({ Mutada: false, Mutacion: { Es_mutada: true } } as Raza)).toBeTrue();
+        expect(esRazaMutada({ Mutada: false, Mutacion: { Es_mutada: true } } as unknown as Raza)).toBeFalse();
         expect(esRazaMutada({ Mutada: false } as Raza)).toBeFalse();
         expect(esRazaMutada(null)).toBeFalse();
     });

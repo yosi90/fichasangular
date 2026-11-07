@@ -136,6 +136,7 @@ import { PrerrequisitosConservadosComponent } from './components/shared/prerrequ
 import { PrerrequisitoFlagEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-flag-editor.component';
 import { PrerrequisitoSpecialEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-special-editor.component';
 import { PrerrequisitoValueEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-value-editor.component';
+import { PrerrequisitoTextEditorComponent } from './components/shared/prerrequisito-editor/prerrequisito-text-editor.component';
 import { DetallesArmaComponent } from './components/detalles/detalles-arma/detalles-arma.component';
 import { DetallesArmaduraComponent } from './components/detalles/detalles-armadura/detalles-armadura.component';
 import { ListadoArmasComponent } from './components/shared/listado-armas/listado-armas.component';
@@ -314,6 +315,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         PrerrequisitosConservadosComponent,
         PrerrequisitoFlagEditorComponent,
         PrerrequisitoValueEditorComponent,
+        PrerrequisitoTextEditorComponent,
         PrerrequisitoCatalogEditorComponent,
         PrerrequisitoCatalogValueEditorComponent,
         PrerrequisitoSpecialEditorComponent,

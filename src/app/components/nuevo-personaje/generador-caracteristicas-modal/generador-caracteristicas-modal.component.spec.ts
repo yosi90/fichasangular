@@ -46,7 +46,7 @@ function crearRazaMock(pierdeConstitucion = false): Raza {
         Resistencia_energia: 'No especifica',
         Heredada: false,
         Mutada: false,
-        Tamano_mutacion_dependiente: false,
+        Cambios_mutacion: [],
         Prerrequisitos: {
             actitud_prohibido: [],
             actitud_requerido: [],

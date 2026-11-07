@@ -78,7 +78,6 @@ export interface RazaCreateCore {
     puntos_hab: number;
     puntos_hab_mult: number;
     mutada: boolean;
-    tamano_mutacion_dependiente: boolean;
     id_alineamiento: number;
     oficial: boolean;
     /** Carga como un cuadrúpedo (el centauro). Opcional en la API (por defecto, no). */
@@ -88,27 +87,27 @@ export interface RazaCreateCore {
     nivel_lanzamiento?: number;
 }
 
-export interface RazaCreatePrerequisitoActitud {
-    id_actitud: number;
+/**
+ * Un prerrequisito de una raza mutada en el alta y la edición (`prerrequisitos_mutacion[]`, fase 3 de las razas mutadas):
+ * la clave de su tipo y lo que pide ese tipo (`GET /razas/mutaciones/modelo`): la referencia de su catálogo, la cantidad
+ * o el texto que confirma el máster. `opcional` > 0 forma un grupo «uno de estos».
+ */
+export interface RazaCreatePrerrequisitoMutacion {
+    tipo: string;
+    id_referencia?: number;
+    cantidad?: number;
+    texto?: string;
     opcional?: number;
 }
 
-export interface RazaCreatePrerequisitoAlineamiento {
-    id_alineamiento: number;
-    opcional?: number;
-}
-
-export interface RazaCreatePrerequisitoTipoCriatura {
-    id_tipo_criatura: number;
-    opcional?: number;
-}
-
-export interface RazaCreatePrerequisitos {
-    actitud_requerido?: RazaCreatePrerequisitoActitud[];
-    actitud_prohibido?: RazaCreatePrerequisitoActitud[];
-    alineamiento_requerido?: RazaCreatePrerequisitoAlineamiento[];
-    alineamiento_prohibido?: RazaCreatePrerequisitoAlineamiento[];
-    tipo_criatura?: RazaCreatePrerequisitoTipoCriatura[];
+/** Un cambio de una raza mutada sobre su base (`cambios_mutacion[]`): solo donde se aparta de la regla de hoy. */
+export interface RazaCreateCambioMutacion {
+    campo: string;
+    operacion: string;
+    /** Los pasos de tamaño (de −8 a 8, no 0). */
+    valor?: number;
+    /** Los ids que se quitan de la lista de la base o los únicos que se conservan. */
+    elementos?: number[];
 }
 
 export interface RazaCreateHabilidadBase {
@@ -157,7 +156,8 @@ export interface RazaCreateCompetencias {
 
 export interface RazaCreateRequest {
     raza: RazaCreateCore;
-    prerrequisitos?: RazaCreatePrerequisitos;
+    prerrequisitos_mutacion?: RazaCreatePrerrequisitoMutacion[];
+    cambios_mutacion?: RazaCreateCambioMutacion[];
     subtipos?: number[];
     /** Los ids de sus clases asociadas (MM, pág. 294); si no viene, el alta no deja ninguna y la edición conserva las que hay. */
     clases_asociadas?: number[];
@@ -257,10 +257,14 @@ export interface BaseRazaMutada {
     Avisos: string[];
 }
 
-/** Lo que la mutación pide del personaje (su alineamiento y su actitud): `Cumple` es `null` sin comprobar. */
+/**
+ * Lo que la mutación pide del personaje: `Cumple` es `null` sin comprobar (lo comprueba el alta); `Confirma_master`, una
+ * condición que confirma el máster (un rito), que nunca bloquea.
+ */
 export interface RequisitoDelPersonajeMutacion {
     Frase: string;
     Cumple: boolean | null;
+    Confirma_master: boolean;
 }
 
 /**
@@ -271,4 +275,48 @@ export interface BasesRazaMutada {
     Raza: { Id: number; Nombre: string };
     Bases: BaseRazaMutada[];
     Requisitos_del_personaje: RequisitoDelPersonajeMutacion[];
+}
+
+/** Un tipo de prerrequisito de una raza mutada (`GET /razas/mutaciones/modelo`): a quién mira, qué dato y qué pide. */
+export interface TipoPrerrequisitoMutacion {
+    Clave: string;
+    Nombre: string;
+    Ejemplo: string;
+    Sujeto: 'raza_base' | 'personaje' | 'creacion';
+    Dato: string;
+    Comparador: string;
+    /** El catálogo de su referencia (`tipos_criatura`, `subtipos`, `razas`, `tamanos`, `clases` o uno de `Catalogos`). */
+    Catalogo: string | null;
+    Pide_referencia: boolean;
+    Pide_cantidad: boolean;
+    Pide_texto: boolean;
+}
+
+/** Un campo que combina una raza mutada: su regla de hoy y las operaciones que admite. */
+export interface CampoMutacion {
+    Campo: string;
+    Nombre: string;
+    Clase: string;
+    Por_defecto: string;
+    Operaciones: string[];
+    /** El catálogo de los elementos de una lista (para quitar o conservar); `null` si no es una lista con elementos. */
+    Catalogo_elementos: string | null;
+}
+
+export interface OperacionMutacion {
+    Clave: string;
+    Nombre: string;
+    Descripcion: string;
+}
+
+/**
+ * `GET /razas/mutaciones/modelo` (fase 3 de las razas mutadas): lo que necesita el formulario para dar de alta una raza
+ * mutada. Los tipos y los campos son datos de la API: un tipo nuevo de la base sale aquí sin tocar la web.
+ */
+export interface ModeloMutacion {
+    Tipos_de_prerrequisito: TipoPrerrequisitoMutacion[];
+    Campos: CampoMutacion[];
+    Operaciones: OperacionMutacion[];
+    /** Los catálogos pequeños de las referencias: `momentos`, `actitudes`, `alineamientos_basicos`, `caracteristicas`. */
+    Catalogos: Record<string, { Id: number; Nombre: string; }[]>;
 }

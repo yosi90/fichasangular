@@ -841,7 +841,10 @@ describe('RazaService helpers', () => {
                 { Id: 5, Nombre: 'Mediano', Oficial: true, Estado: 'elegible', Avisos: [] },
                 { Id: 26, Nombre: 'Jacquar', Oficial: false, Estado: 'con_aviso', Avisos: ['No se ha podido comprobar: x.'] },
             ],
-            Requisitos_del_personaje: [{ Frase: 'Cualquier alineamiento no maligno', Cumple: null }],
+            Requisitos_del_personaje: [
+                { Frase: 'Cualquier alineamiento no maligno', Cumple: null, Confirma_master: false },
+                { Frase: 'Completar el Rito del Renacimiento', Cumple: null, Confirma_master: true },
+            ],
         };
         const http = { get: jasmine.createSpy().and.returnValue(of(respuesta)) };
         const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
@@ -850,5 +853,55 @@ describe('RazaService helpers', () => {
         expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/21\/bases$/));
         await service.getBasesDeRazaMutada(21, 7);
         expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/21\/bases\?idAlineamiento=7$/));
+    });
+
+    // Fase 3 de las razas mutadas: lo que pide y lo que cambia una mutada, y el modelo de lo que admite.
+    const PR_API = {
+        tipo_criatura: [{ Id: 1, Tipo: 'tipo_criatura', Sujeto: 'raza_base', Id_referencia: 11, Referencia: 'Humanoide',
+            Cantidad: null, Texto: null, Opcional: 0, Frase: 'Criatura de tipo humanoide' }],
+        dgs_raciales_maximos: [{ Id: 2, Tipo: 'dgs_raciales_maximos', Sujeto: 'raza_base', Id_referencia: null, Referencia: null,
+            Cantidad: 1, Texto: null, Opcional: 0, Frase: 'Raza base con 1 DG raciales como máximo' }],
+    };
+    const CAMBIOS_API = [{ Campo: 'Tamano', Nombre: 'Tamaño', Operacion: 'heredar', Valor: null, Elementos: [],
+        Frase: 'Tamaño: lo de la raza base' }];
+
+    it('lee `pr` por la clave de su tipo y `Cambios_mutacion`, sin los alias retirados', () => {
+        const raza = normalizeRazaApi({ i: 21, n: 'Prole', Mutada: true, pr: PR_API, Cambios_mutacion: CAMBIOS_API,
+            mu: 1, tmd: 1, prf: { tipo_criatura: true }, Mutacion: { Es_mutada: true } });
+
+        expect(raza.Mutada).toBeTrue();
+        expect(raza.Prerrequisitos).toEqual(PR_API as any);
+        expect(raza.Cambios_mutacion).toEqual(CAMBIOS_API as any);
+        for (const retirada of ['Prerrequisitos_flags', 'Mutacion', 'Tamano_mutacion_dependiente'])
+            expect(retirada in raza).toBeFalse();
+        // Sin `Mutada`, `mu` ya no la marca.
+        expect(normalizeRazaApi({ i: 22, mu: 1 }).Mutada).toBeFalse();
+    });
+
+    it('lee lo mismo de la caché `Razas` 24', () => {
+        const raza = normalizeRazaLegacy({ Nombre: 'Prole', Mutada: true, Prerrequisitos: PR_API, Cambios_mutacion: CAMBIOS_API }, 21);
+
+        expect(raza.Mutada).toBeTrue();
+        expect(raza.Prerrequisitos).toEqual(PR_API as any);
+        expect(raza.Cambios_mutacion).toEqual(CAMBIOS_API as any);
+    });
+
+    it('getModeloMutacion pide GET /razas/mutaciones/modelo una vez y lee su forma', async () => {
+        const modelo = {
+            Tipos_de_prerrequisito: [{ Clave: 'dgs_raciales_maximos', Nombre: 'DG raciales máximos de la raza base', Ejemplo: 'x',
+                Sujeto: 'raza_base', Dato: 'dgs', Comparador: 'maximo', Catalogo: null, Pide_referencia: false, Pide_cantidad: true,
+                Pide_texto: false }],
+            Campos: [{ Campo: 'Tamano', Nombre: 'Tamaño', Clase: 'tamano', Por_defecto: 'sustituir_si_hay',
+                Operaciones: ['heredar', 'pasos'], Catalogo_elementos: null }],
+            Operaciones: [{ Clave: 'heredar', Nombre: 'Heredar', Descripcion: 'lo de la raza base' }],
+            Catalogos: { momentos: [{ Id: 1, Nombre: 'Al crear el personaje' }] },
+        };
+        const http = { get: jasmine.createSpy().and.returnValue(of(modelo)) };
+        const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
+
+        expect(await service.getModeloMutacion()).toEqual(modelo as any);
+        await service.getModeloMutacion();
+        expect(http.get).toHaveBeenCalledTimes(1);
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/mutaciones\/modelo$/));
     });
 });

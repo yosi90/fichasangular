@@ -27,6 +27,48 @@ import { CategoriaEdadService } from 'src/app/services/categoria-edad.service';
 import { ProfileApiError } from 'src/app/interfaces/user-account';
 import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
 import { NuevaRazaComponent } from './nueva-raza.component';
+import { ModeloMutacion } from 'src/app/interfaces/razas-api';
+
+function tipoMutacion(Clave: string, Nombre: string, Sujeto: 'raza_base' | 'personaje' | 'creacion', Catalogo: string | null,
+                      pide: { referencia?: boolean; cantidad?: boolean; texto?: boolean; } = {}) {
+    return {
+        Clave, Nombre, Ejemplo: '', Sujeto, Dato: Clave, Comparador: 'es', Catalogo,
+        Pide_referencia: pide.referencia === true, Pide_cantidad: pide.cantidad === true, Pide_texto: pide.texto === true,
+    };
+}
+
+/**
+ * Lo que admite una raza mutada (`GET /razas/mutaciones/modelo`, fase 3): los tipos son datos de la API, también uno que
+ * no está en el registro del código (`dgs_raciales_maximos`).
+ */
+const MODELO_MUTACION: ModeloMutacion = {
+    Tipos_de_prerrequisito: [
+        tipoMutacion('actitud_requerido', 'Actitud requerida', 'personaje', 'actitudes', { referencia: true }),
+        tipoMutacion('alineamiento_requerido', 'Alineamiento requerido', 'personaje', 'alineamientos_basicos', { referencia: true }),
+        tipoMutacion('tipo_criatura', 'Tipo de criatura', 'raza_base', 'tipos_criatura', { referencia: true }),
+        tipoMutacion('caracteristica', 'Característica mínima', 'personaje', 'caracteristicas', { referencia: true, cantidad: true }),
+        tipoMutacion('condicion_master', 'Condición que confirma el máster', 'personaje', null, { texto: true }),
+        tipoMutacion('dgs_raciales_maximos', 'DG raciales máximos de la raza base', 'raza_base', null, { cantidad: true }),
+    ],
+    Campos: [
+        { Campo: 'Tamano', Nombre: 'Tamaño', Clase: 'tamano', Por_defecto: 'sustituir_si_hay',
+          Operaciones: ['heredar', 'sustituir', 'sustituir_si_hay', 'pasos'], Catalogo_elementos: null },
+        { Campo: 'Raciales', Nombre: 'Rasgos raciales', Clase: 'lista', Por_defecto: 'unir',
+          Operaciones: ['heredar', 'sustituir', 'sustituir_si_hay', 'unir', 'quitar', 'conservar'], Catalogo_elementos: 'raciales' },
+    ],
+    Operaciones: [
+        { Clave: 'heredar', Nombre: 'Heredar', Descripcion: 'lo de la raza base' },
+        { Clave: 'sustituir_si_hay', Nombre: 'Sustituir si lo trae', Descripcion: 'lo de la mutación si lo trae' },
+        { Clave: 'pasos', Nombre: 'Pasos de tamaño', Descripcion: 'categorías de tamaño sobre la raza base' },
+        { Clave: 'quitar', Nombre: 'Quitar de la base', Descripcion: 'lo de la raza base sin estos' },
+    ],
+    Catalogos: {
+        actitudes: [{ Id: 1, Nombre: 'Legal' }, { Id: 4, Nombre: 'Bueno' }],
+        alineamientos_basicos: [{ Id: 2, Nombre: 'Legal bueno' }],
+        caracteristicas: [{ Id: 4, Nombre: 'Inteligencia' }],
+        momentos: [{ Id: 1, Nombre: 'Al crear el personaje' }],
+    },
+};
 
 /** El catálogo de categorías de edad (`GET /categorias-edad`), con los ids de prueba. */
 const CATEGORIAS_EDAD = [
@@ -51,7 +93,8 @@ describe('NuevaRazaComponent', () => {
         canCreate = true;
         currentUid = '';
         localStorage.clear();
-        razaSvc = jasmine.createSpyObj<RazaService>('RazaService', ['getRazas', 'crearRaza', 'getRazaFresca', 'actualizarRaza']);
+        razaSvc = jasmine.createSpyObj<RazaService>('RazaService', ['getRazas', 'crearRaza', 'getRazaFresca', 'actualizarRaza', 'getModeloMutacion']);
+        razaSvc.getModeloMutacion.and.resolveTo(MODELO_MUTACION);
         racialSvc = jasmine.createSpyObj<RacialService>('RacialService', ['getRaciales', 'anadirPrerrequisitosRacial']);
         razaSvc.getRazas.and.returnValue(of([]));
         razaSvc.crearRaza.and.resolveTo({ message: 'ok', idRaza: 99 });
@@ -173,6 +216,7 @@ describe('NuevaRazaComponent', () => {
         component = fixture.componentInstance;
         draftSvc = TestBed.inject(NuevaRazaDraftService);
         fixture.detectChanges();
+        await fixture.whenStable();
         setFormularioValido();
     });
 
@@ -206,10 +250,11 @@ describe('NuevaRazaComponent', () => {
         component.form.updateValueAndValidity();
     }
 
-    function prerreqRow(tipo: any, id: number, opcional: number = 0): any {
+    /** Una fila del editor de un tipo de prerrequisito de mutación (`mutacion.<clave>`). */
+    function prerreqRow(tipo: string, id: number, opcional: number = 0): any {
         return {
             uid: `${tipo}-${id}-${opcional}`,
-            tipo,
+            tipo: `mutacion.${tipo}`,
             id,
             valor: 0,
             opcional,
@@ -270,7 +315,8 @@ describe('NuevaRazaComponent', () => {
                 racialesPendientesRazaEnCreacionIds: [],
                 sortilegiosRows: [{ uid: 's', id_conjuro: 16, nivel_lanzador: 2, usos_diarios: '1/dia', descripcion: 'No especifica', busqueda: 'Luz' }],
                 prerrequisitosMutacionRows: [prerreqRow('tipo_criatura', 3, 2)],
-                prerrequisitosMutacionSeleccionados: ['tipo_criatura'],
+                prerrequisitosMutacionSeleccionados: ['mutacion.tipo_criatura'],
+                cambiosMutacionRows: [{ uid: 'cm', campo: 'Tamano', operacion: 'heredar', valor: null, elementos: [] }],
             },
             ...partial,
         };
@@ -304,7 +350,7 @@ describe('NuevaRazaComponent', () => {
         ];
         component.racialesRows = [{ uid: 'f', id_racial: 15, opcional: 0 }];
         component.sortilegiosRows = [{ uid: 'g', id_conjuro: 16, nivel_lanzador: 3, usos_diarios: '1/dia', descripcion: '' }];
-        component.prerrequisitosMutacionSeleccionados = ['actitud_requerido', 'tipo_criatura'];
+        component.prerrequisitosMutacionSeleccionados = ['mutacion.actitud_requerido', 'mutacion.tipo_criatura'];
         component.prerrequisitosMutacionRows = [
             prerreqRow('actitud_requerido', 4, 1),
             prerreqRow('actitud_requerido', 1, 1),
@@ -338,10 +384,13 @@ describe('NuevaRazaComponent', () => {
         expect(payload.dotes).toEqual([{ id_dote: 14 }]);
         expect(payload.raciales).toEqual([{ id_racial: 15, opcional: 0 }]);
         expect(payload.sortilegios).toEqual([{ id_conjuro: 16, nivel_lanzador: 3, usos_diarios: '1/dia', descripcion: 'No especifica' }]);
-        expect(payload.prerrequisitos).toEqual({
-            actitud_requerido: [{ id_actitud: 4, opcional: 1 }, { id_actitud: 1, opcional: 1 }],
-            tipo_criatura: [{ id_tipo_criatura: 3 }, { id_tipo_criatura: 4, opcional: 2 }],
-        });
+        expect(payload.prerrequisitos_mutacion).toEqual([
+            { tipo: 'actitud_requerido', id_referencia: 4, opcional: 1 },
+            { tipo: 'actitud_requerido', id_referencia: 1, opcional: 1 },
+            { tipo: 'tipo_criatura', id_referencia: 3 },
+            { tipo: 'tipo_criatura', id_referencia: 4, opcional: 2 },
+        ]);
+        expect(payload.cambios_mutacion).toEqual([]);
         expect((payload as any).uid).toBeUndefined();
         expect((payload as any).firebaseUid).toBeUndefined();
         expect((payload as any).createdAt).toBeUndefined();
@@ -456,49 +505,113 @@ describe('NuevaRazaComponent', () => {
         expect(error).toContain('Ya existe una raza');
     });
 
-    it('bloquea raza mutada sin prerrequisitos', () => {
+    it('deja guardar una raza mutada sin prerrequisitos (fase 3)', () => {
         component.form.patchValue({ mutada: true });
 
-        const error = (component as any).validarReglasDominio();
-
-        expect(error).toContain('prerrequisitos');
+        expect((component as any).validarReglasDominio()).toBeNull();
+        expect(component.buildPayload().prerrequisitos_mutacion).toEqual([]);
     });
 
-    it('no envia prerrequisitos ni tamaño dependiente cuando no es mutada', () => {
-        component.form.patchValue({ mutada: false, tamano_mutacion_dependiente: true });
-        component.prerrequisitosMutacionSeleccionados = ['actitud_requerido'];
+    it('no envia prerrequisitos ni cambios de mutación cuando no es mutada', () => {
+        component.form.patchValue({ mutada: false });
+        component.prerrequisitosMutacionSeleccionados = ['mutacion.actitud_requerido'];
         component.prerrequisitosMutacionRows = [prerreqRow('actitud_requerido', 4)];
 
         const payload = component.buildPayload();
 
         expect(payload.raza.mutada).toBeFalse();
-        expect(payload.raza.tamano_mutacion_dependiente).toBeFalse();
-        expect(payload.prerrequisitos).toBeUndefined();
+        expect('tamano_mutacion_dependiente' in payload.raza).toBeFalse();
+        expect(payload.prerrequisitos_mutacion).toBeUndefined();
+        expect(payload.cambios_mutacion).toBeUndefined();
+        expect((payload as any).prerrequisitos).toBeUndefined();
     });
 
-    it('limpia prerrequisitos y tamaño dependiente al desactivar mutada', () => {
-        component.form.patchValue({ mutada: true, tamano_mutacion_dependiente: true });
-        component.prerrequisitosMutacionSeleccionados = ['actitud_requerido', 'alineamiento_requerido', 'tipo_criatura'];
-        component.prerrequisitosMutacionRows = [
-            prerreqRow('actitud_requerido', 4),
-            prerreqRow('alineamiento_requerido', 2),
-            prerreqRow('tipo_criatura', 3),
-        ];
+    it('limpia prerrequisitos y cambios al desactivar mutada', () => {
+        component.form.patchValue({ mutada: true });
+        component.prerrequisitosMutacionSeleccionados = ['mutacion.actitud_requerido', 'mutacion.tipo_criatura'];
+        component.prerrequisitosMutacionRows = [prerreqRow('actitud_requerido', 4), prerreqRow('tipo_criatura', 3)];
+        component.agregarCambioMutacion();
         component.selectorPrerrequisitosMutacionVisible = true;
 
         component.form.patchValue({ mutada: false });
 
-        expect(component.form.controls.tamano_mutacion_dependiente.value).toBeFalse();
         expect(component.prerrequisitosMutacionSeleccionados).toEqual([]);
         expect(component.prerrequisitosMutacionRows).toEqual([]);
+        expect(component.cambiosMutacionRows).toEqual([]);
         expect(component.selectorPrerrequisitosMutacionVisible).toBeFalse();
     });
 
-    it('carga actitudes desde catalogo de servicio', () => {
-        expect(component.actitudes).toEqual([
-            { Id: 4, Nombre: 'Buena' },
-            { Id: 1, Nombre: 'Legal' },
+    it('ofrece los tipos de prerrequisito del modelo de la API, también uno que solo existe como datos', () => {
+        expect(component.prerrequisitosMutacionOpciones.map((opcion) => [opcion.key, opcion.label])).toEqual([
+            ['mutacion.actitud_requerido', 'Actitud requerida'],
+            ['mutacion.alineamiento_requerido', 'Alineamiento requerido'],
+            ['mutacion.tipo_criatura', 'Tipo de criatura'],
+            ['mutacion.caracteristica', 'Característica mínima'],
+            ['mutacion.condicion_master', 'Condición que confirma el máster'],
+            ['mutacion.dgs_raciales_maximos', 'DG raciales máximos de la raza base'],
         ]);
+        // La referencia sale del catálogo que dice el tipo: los pequeños, del modelo; los grandes, de los del formulario.
+        const contexto = component.prerrequisitosMutacionCatalogContext;
+        expect(contexto.getCatalog('mutacion.actitud_requerido')).toEqual([{ id: 1, nombre: 'Legal' }, { id: 4, nombre: 'Bueno' }]);
+        expect(contexto.getCatalog('mutacion.tipo_criatura').map((item) => item.nombre)).toEqual(['Gigante', 'Humanoide']);
+    });
+
+    it('manda cada tipo con lo que pide: la referencia, la cantidad o el texto', () => {
+        component.form.patchValue({ mutada: true });
+        component.prerrequisitosMutacionSeleccionados = ['mutacion.caracteristica', 'mutacion.condicion_master',
+            'mutacion.dgs_raciales_maximos', 'mutacion.alineamiento_requerido'];
+        component.prerrequisitosMutacionRows = [
+            { ...prerreqRow('caracteristica', 4), valor: 3 },
+            { ...prerreqRow('condicion_master', 0), texto: '  Completar el Rito del Renacimiento ' },
+            { ...prerreqRow('dgs_raciales_maximos', 0), valor: 0 },
+            prerreqRow('alineamiento_requerido', 2, 3),
+        ];
+
+        expect((component as any).validarReglasDominio()).toBeNull();
+        expect(component.buildPayload().prerrequisitos_mutacion).toEqual([
+            { tipo: 'caracteristica', id_referencia: 4, cantidad: 3 },
+            { tipo: 'condicion_master', texto: 'Completar el Rito del Renacimiento' },
+            { tipo: 'dgs_raciales_maximos', cantidad: 0 },
+            // El alineamiento, por su básico (la API ya no pide la combinación).
+            { tipo: 'alineamiento_requerido', id_referencia: 2, opcional: 3 },
+        ]);
+    });
+
+    it('no deja guardar un prerrequisito sin completar', () => {
+        component.form.patchValue({ mutada: true });
+        component.prerrequisitosMutacionSeleccionados = ['mutacion.condicion_master'];
+        component.prerrequisitosMutacionRows = [{ ...prerreqRow('condicion_master', 0), texto: '' }];
+
+        expect((component as any).validarReglasDominio()).toContain('pendientes de completar');
+    });
+
+    it('los cambios sobre la raza base: campo, operación y lo que va con ella', () => {
+        component.form.patchValue({ mutada: true });
+        component.agregarCambioMutacion();
+        component.agregarCambioMutacion();
+        const [tamano, raciales] = component.cambiosMutacionRows;
+
+        // Un campo no se repite y la regla de hoy no se ofrece (sin fila es la que se aplica).
+        component.actualizarCambioMutacion(tamano.uid, { campo: 'Tamano' });
+        expect(component.camposMutacionLibres(component.cambiosMutacionRows[1]).map((campo) => campo.Campo)).toEqual(['Raciales']);
+        expect(component.operacionesMutacion(component.cambiosMutacionRows[0])).toEqual(['heredar', 'sustituir', 'pasos']);
+        component.actualizarCambioMutacion(tamano.uid, { operacion: 'pasos' });
+        expect(component.cambiosMutacionRows[0].valor).toBe(1);
+        component.actualizarCambioMutacion(raciales.uid, { campo: 'Raciales', operacion: 'quitar' });
+        expect((component as any).validarReglasDominio()).toContain('Elige qué elementos');
+        component.actualizarCambioMutacion(raciales.uid, { elementos: [15, 15] });
+        expect(component.elementosDeCambio(component.cambiosMutacionRows[1])).toEqual([{ id: 15, nombre: 'Vision en la penumbra' }]);
+
+        expect((component as any).validarReglasDominio()).toBeNull();
+        expect(component.buildPayload().cambios_mutacion).toEqual([
+            { campo: 'Tamano', operacion: 'pasos', valor: 1 },
+            { campo: 'Raciales', operacion: 'quitar', elementos: [15] },
+        ]);
+
+        // Otro campo vuelve a empezar la operación y lo que va con ella.
+        component.actualizarCambioMutacion(raciales.uid, { campo: 'Tamano' });
+        expect(component.cambiosMutacionRows[1]).toEqual(jasmine.objectContaining({ operacion: '', valor: null, elementos: [] }));
+        expect((component as any).validarReglasDominio()).toContain('un solo cambio');
     });
 
     it('carga prioridades de alineamiento desde catalogo de servicio', () => {
@@ -582,30 +695,16 @@ describe('NuevaRazaComponent', () => {
         expect(component.buildPayload().raza.id_alineamiento).toBe(0);
     });
 
-    it('resuelve prerrequisitos de alineamiento desde basicos antes de enviar', () => {
-        component.form.patchValue({ mutada: true });
-        component.prerrequisitosMutacionSeleccionados = ['alineamiento_requerido'];
-        component.prerrequisitosMutacionRows = [prerreqRow('alineamiento_requerido', 2, 3)];
-
-        const payload = component.buildPayload();
-
-        expect(component.getAlineamientosBasicosPrerrequisito().map((item) => item.Nombre)).toEqual(['Legal bueno']);
-        expect(payload.prerrequisitos?.alineamiento_requerido).toEqual([{ id_alineamiento: 7, opcional: 3 }]);
-    });
-
     it('actualiza booleanos desde helpers de chips', () => {
         component.toggleBooleanControl('oficial');
         component.toggleBooleanControl('mutada');
-        component.toggleBooleanControl('tamano_mutacion_dependiente');
 
         expect(component.form.controls.oficial.value).toBeFalse();
         expect(component.form.controls.mutada.value).toBeTrue();
-        expect(component.form.controls.tamano_mutacion_dependiente.value).toBeTrue();
         expect(component.form.controls.mutada.dirty).toBeTrue();
 
         component.toggleBooleanControl('mutada');
         expect(component.form.controls.mutada.value).toBeFalse();
-        expect(component.form.controls.tamano_mutacion_dependiente.value).toBeFalse();
     });
 
     it('bloquea dotes con extra requerido sin extra seleccionado', () => {
@@ -985,7 +1084,8 @@ describe('NuevaRazaComponent', () => {
         expect(component.subtiposSeleccionados).toEqual([8]);
         expect(component.idiomasSeleccionados).toEqual([9]);
         expect(component.habilidadesBaseRows[0].id_habilidad).toBe(11);
-        expect(component.prerrequisitosMutacionSeleccionados).toEqual(['tipo_criatura']);
+        expect(component.prerrequisitosMutacionSeleccionados).toEqual(['mutacion.tipo_criatura']);
+        expect(component.cambiosMutacionRows.map((row) => [row.campo, row.operacion])).toEqual([['Tamano', 'heredar']]);
         expect(component.prerrequisitosMutacionRows[0].id).toBe(3);
     });
 

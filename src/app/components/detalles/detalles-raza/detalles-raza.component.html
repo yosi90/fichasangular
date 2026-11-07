@@ -22,9 +22,18 @@
         </app-ficha-seccion>
         <app-ficha-seccion titulo="Ataques naturales" *ngIf="!raza.Armas_naturales?.length" [texto]="raza.Ataques_naturales"></app-ficha-seccion>
 
-        <app-ficha-lateral titulo="Prerrequisitos" *ngIf="prerrequisitosAgrupados.length > 0">
-            <!-- Cada condición es la frase que escribe la API («Criatura de tipo dragón»). -->
-            <app-ficha-prerrequisitos [grupos]="prerrequisitosAgrupados"></app-ficha-prerrequisitos>
+        <!-- Una raza mutada: lo que pide de su raza base y del personaje (la frase que escribe la API, «Criatura de tipo
+             humanoide») y lo que cambia de su raza base donde se aparta de la regla de hoy. -->
+        <app-ficha-lateral titulo="Pide de la raza base" *ngIf="prerrequisitosDeLaBase.length > 0">
+            <app-ficha-prerrequisitos [grupos]="prerrequisitosDeLaBase"></app-ficha-prerrequisitos>
+        </app-ficha-lateral>
+        <app-ficha-lateral titulo="Pide del personaje" *ngIf="prerrequisitosDelPersonaje.length > 0">
+            <app-ficha-prerrequisitos [grupos]="prerrequisitosDelPersonaje"></app-ficha-prerrequisitos>
+        </app-ficha-lateral>
+        <app-ficha-lateral titulo="Cambios sobre la raza base" *ngIf="cambiosMutacion.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let cambio of cambiosMutacion">{{cambio}}</li>
+            </ul>
         </app-ficha-lateral>
 
         <app-ficha-lateral titulo="Subtipos" *ngIf="subtipos.length > 0">

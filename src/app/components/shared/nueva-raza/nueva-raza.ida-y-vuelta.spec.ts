@@ -25,6 +25,26 @@ import { UserService } from 'src/app/services/user.service';
 import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
 import { CATALOGOS_IDA_Y_VUELTA_RAZAS as CATALOGOS, IDA_Y_VUELTA_RAZAS } from 'src/testing/ida-y-vuelta-razas';
 import { NuevaRazaComponent } from './nueva-raza.component';
+import { ModeloMutacion } from 'src/app/interfaces/razas-api';
+
+function tipo(Clave: string, Sujeto: 'raza_base' | 'personaje', Catalogo: string | null,
+              pide: { referencia?: boolean; cantidad?: boolean; texto?: boolean; }) {
+    return {
+        Clave, Nombre: Clave, Ejemplo: '', Sujeto, Dato: Clave, Comparador: 'es', Catalogo,
+        Pide_referencia: pide.referencia === true, Pide_cantidad: pide.cantidad === true, Pide_texto: pide.texto === true,
+    };
+}
+
+/** Lo que admite una raza mutada (`GET /razas/mutaciones/modelo`): los tipos que usa la prueba. */
+const MODELO_MUTACION: ModeloMutacion = {
+    Tipos_de_prerrequisito: [
+        tipo('tipo_criatura', 'raza_base', 'tipos_criatura', { referencia: true }),
+        tipo('alineamiento_requerido', 'personaje', 'alineamientos_basicos', { referencia: true }),
+        tipo('condicion_master', 'personaje', null, { texto: true }),
+        tipo('dgs_raciales_maximos', 'raza_base', null, { cantidad: true }),
+    ],
+    Campos: [], Operaciones: [], Catalogos: {},
+};
 
 /*
  * «Modificar raza» sin tocar nada manda el cuerpo con el que la API devuelve el mismo GET (hito 3 del roadmap de
@@ -33,8 +53,9 @@ import { NuevaRazaComponent } from './nueva-raza.component';
  */
 describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
     async function cargada(get: any): Promise<NuevaRazaComponent> {
-        const razaSvc = jasmine.createSpyObj<RazaService>('RazaService', ['getRazas', 'getRazaFresca']);
+        const razaSvc = jasmine.createSpyObj<RazaService>('RazaService', ['getRazas', 'getRazaFresca', 'getModeloMutacion']);
         razaSvc.getRazas.and.returnValue(of([]));
+        razaSvc.getModeloMutacion.and.resolveTo(MODELO_MUTACION);
         razaSvc.getRazaFresca.and.returnValue(of(normalizeRazaApi(get)));
         await TestBed.configureTestingModule({
             imports: [ReactiveFormsModule],
@@ -81,7 +102,7 @@ describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
         component.modo = 'editar';
         component.idRaza = Number(get.i);
         fixture.detectChanges();
-        await Promise.resolve();
+        await fixture.whenStable();
         return component;
     }
 
@@ -110,23 +131,46 @@ describe('NuevaRazaComponent (Modificar raza: guardar sin cambios)', () => {
         expect(base.slice(1).every((item) => item.condicion === undefined)).toBeTrue();
     });
 
-    it('una raza mutada conserva el grupo «uno de estos» de sus alineamientos requeridos (`opcional`)', async () => {
-        // Fase 1 de las razas mutadas: la API devuelve el `opcional` de los alineamientos; antes se perdía al guardar.
+    it('una raza mutada manda lo que pide y lo que cambia tal como llegó (fase 3: `pr` y `Cambios_mutacion`)', async () => {
         const elfo = IDA_Y_VUELTA_RAZAS.find((item) => item.nombre === 'Elfo')!;
         const get = JSON.parse(JSON.stringify(elfo.get));
-        const alineamiento = (id: number, basico: number, nombre: string) => ({
-            id_alineamiento: id, id_alineamiento_basico: basico, alineamiento_basico: nombre,
-            id_ley: 0, ley: 'No aplica', id_moral: 0, moral: 'No aplica', opcional: 2,
+        const prerrequisito = (Id: number, Tipo: string, Sujeto: string, extra: Record<string, any>) => ({
+            Id, Tipo, Sujeto, Id_referencia: null, Referencia: null, Cantidad: null, Texto: null, Opcional: 0, Frase: Tipo, ...extra,
         });
         Object.assign(get, {
-            mu: 1, Mutada: true, tmd: 1,
-            pr: { alineamiento_requerido: [alineamiento(24, 3, 'Legal maligno'), alineamiento(25, 9, 'Caótico maligno')] },
+            Mutada: true,
+            pr: {
+                tipo_criatura: [prerrequisito(1, 'tipo_criatura', 'raza_base', { Id_referencia: 11, Referencia: 'Humanoide' })],
+                // El grupo «uno de estos» de los alineamientos (`Opcional`), por su básico.
+                alineamiento_requerido: [
+                    prerrequisito(2, 'alineamiento_requerido', 'personaje', { Id_referencia: 3, Opcional: 2 }),
+                    prerrequisito(3, 'alineamiento_requerido', 'personaje', { Id_referencia: 9, Opcional: 2 }),
+                ],
+                condicion_master: [prerrequisito(4, 'condicion_master', 'personaje', { Texto: 'Completar el rito' })],
+                // Un tipo que solo existe como datos en la base.
+                dgs_raciales_maximos: [prerrequisito(5, 'dgs_raciales_maximos', 'raza_base', { Cantidad: 0 })],
+            },
+            Cambios_mutacion: [
+                { Campo: 'Tamano', Nombre: 'Tamaño', Operacion: 'heredar', Valor: null, Elementos: [], Frase: '' },
+                { Campo: 'Raciales', Nombre: 'Rasgos raciales', Operacion: 'quitar', Valor: null,
+                  Elementos: [{ Id: 12, Nombre: 'Visión en la oscuridad' }], Frase: '' },
+            ],
         });
         const component = await cargada(get);
 
         expect(component.edicion.hayCambios).toBeFalse();
-        const requeridos = component.buildPayload().prerrequisitos?.alineamiento_requerido ?? [];
-        expect(requeridos).toEqual([{ id_alineamiento: 24, opcional: 2 }, { id_alineamiento: 25, opcional: 2 }]);
+        const cuerpo = component.buildPayload();
+        expect(cuerpo.prerrequisitos_mutacion).toEqual([
+            { tipo: 'tipo_criatura', id_referencia: 11 },
+            { tipo: 'alineamiento_requerido', id_referencia: 3, opcional: 2 },
+            { tipo: 'alineamiento_requerido', id_referencia: 9, opcional: 2 },
+            { tipo: 'condicion_master', texto: 'Completar el rito' },
+            { tipo: 'dgs_raciales_maximos', cantidad: 0 },
+        ]);
+        expect(cuerpo.cambios_mutacion).toEqual([
+            { campo: 'Tamano', operacion: 'heredar' },
+            { campo: 'Raciales', operacion: 'quitar', elementos: [12] },
+        ]);
     });
 
     it('conserva sus armas naturales (`Armas_naturales`; el rakshasa de `rol_dev`: mordisco 1d6 y 2 garras 1d4)', async () => {

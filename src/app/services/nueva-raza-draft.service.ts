@@ -23,6 +23,8 @@ export interface NuevaRazaDraftRows {
     sortilegiosRows: any[];
     prerrequisitosMutacionRows: any[];
     prerrequisitosMutacionSeleccionados: string[];
+    /** Los cambios sobre la raza base de una mutada (fase 3; los borradores de antes no los traen). */
+    cambiosMutacionRows?: any[];
     /** El paso «Edades»: si crece por edades y sus filas (opcionales: los borradores de antes no las traen). */
     porEdades?: boolean;
     categoriasEdadRows?: any[];
@@ -159,6 +161,7 @@ export class NuevaRazaDraftService {
                 sortilegiosRows: this.clonarArray(contenido.rows?.sortilegiosRows),
                 prerrequisitosMutacionRows: this.clonarArray(contenido.rows?.prerrequisitosMutacionRows),
                 prerrequisitosMutacionSeleccionados: this.normalizarTextos(contenido.rows?.prerrequisitosMutacionSeleccionados),
+                cambiosMutacionRows: this.clonarArray(contenido.rows?.cambiosMutacionRows),
                 porEdades: contenido.rows?.porEdades === true,
                 categoriasEdadRows: this.clonarArray(contenido.rows?.categoriasEdadRows),
                 pasosEdadRows: this.clonarArray(contenido.rows?.pasosEdadRows),

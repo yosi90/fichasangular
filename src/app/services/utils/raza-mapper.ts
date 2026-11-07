@@ -4,8 +4,9 @@ import { DoteContextual } from "src/app/interfaces/dote-contextual";
 import { IdiomaDetalle } from "src/app/interfaces/idioma";
 import { RacialDetalle } from "src/app/interfaces/racial";
 import {
-    CategoriaEdadRaza, ClaveCaracteristicaRaza, LanzamientoRaza, ListaLanzamientoRaza, MutacionRaza, PasoEdadRaza, Raza, RazaCompetencias,
-    RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags, ReferenciasEdicionRaza
+    CambioMutacion, CategoriaEdadRaza, ClaveCaracteristicaRaza, LanzamientoRaza, ListaLanzamientoRaza, PasoEdadRaza,
+    PrerrequisitoMutacion, Raza, RazaCompetencias, RazaHabilidades, RazaPrerrequisitos, ReferenciasEdicionRaza,
+    SujetoPrerrequisitoMutacion
 } from "src/app/interfaces/raza";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
@@ -55,40 +56,55 @@ function normalizeAlineamientoApi(raw: any): Alineamiento {
     };
 }
 
-function normalizePrerrequisitosApi(raw: any): RazaPrerrequisitos {
-    return {
-        actitud_prohibido: toStrictArray(raw?.actitud_prohibido),
-        actitud_requerido: toStrictArray(raw?.actitud_requerido),
-        alineamiento_prohibido: toStrictArray(raw?.alineamiento_prohibido),
-        alineamiento_requerido: toStrictArray(raw?.alineamiento_requerido),
-        tipo_criatura: toStrictArray(raw?.tipo_criatura),
-    };
+const SUJETOS_MUTACION: SujetoPrerrequisitoMutacion[] = ['raza_base', 'personaje', 'creacion'];
+
+function numeroONulo(valor: any): number | null {
+    return valor === null || valor === undefined || `${valor}`.trim() === '' ? null : toNumber(valor);
 }
 
-function normalizePrerrequisitosFlagsApi(raw: any, prer: RazaPrerrequisitos): RazaPrerrequisitosFlags {
-    const source = raw ?? {};
-    return {
-        actitud_prohibido: toBoolean(source?.actitud_prohibido) || (prer?.actitud_prohibido?.length ?? 0) > 0,
-        actitud_requerido: toBoolean(source?.actitud_requerido) || (prer?.actitud_requerido?.length ?? 0) > 0,
-        alineamiento_prohibido: toBoolean(source?.alineamiento_prohibido) || (prer?.alineamiento_prohibido?.length ?? 0) > 0,
-        alineamiento_requerido: toBoolean(source?.alineamiento_requerido) || (prer?.alineamiento_requerido?.length ?? 0) > 0,
-        tipo_criatura: toBoolean(source?.tipo_criatura) || (prer?.tipo_criatura?.length ?? 0) > 0,
-    };
+function textoONulo(valor: any): string | null {
+    const texto = valor === null || valor === undefined ? '' : `${valor}`.trim();
+    return texto ? texto : null;
 }
 
-function normalizeMutacionApi(raw: any, mutada: any, tmd: any, heredada: any, prer: RazaPrerrequisitos): MutacionRaza {
-    const source = raw ?? {};
-    const tienePrerrequisitos = (prer?.actitud_prohibido?.length ?? 0) > 0
-        || (prer?.actitud_requerido?.length ?? 0) > 0
-        || (prer?.alineamiento_prohibido?.length ?? 0) > 0
-        || (prer?.alineamiento_requerido?.length ?? 0) > 0
-        || (prer?.tipo_criatura?.length ?? 0) > 0;
-    return {
-        Es_mutada: toBoolean(source?.Es_mutada) || toBoolean(mutada),
-        Tamano_dependiente: toBoolean(source?.Tamano_dependiente) || toBoolean(tmd),
-        Tiene_prerrequisitos: toBoolean(source?.Tiene_prerrequisitos) || tienePrerrequisitos,
-        Heredada: toBoolean(source?.Heredada) || toBoolean(heredada),
-    };
+/**
+ * Lo que pide una raza mutada (`pr` de la API, `Prerrequisitos` de su caché): por la clave de su tipo, que es un dato
+ * (fase 3 de las razas mutadas). Lo comparten la lectura HTTP y la de la caché, que tienen la misma forma.
+ */
+export function normalizarPrerrequisitosMutacion(raw: any): RazaPrerrequisitos {
+    const salida: RazaPrerrequisitos = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw))
+        return salida;
+    Object.keys(raw).forEach((clave) => {
+        const items: PrerrequisitoMutacion[] = toStrictArray(raw[clave]).map((item: any) => ({
+            Id: toNumber(item?.Id),
+            Tipo: `${item?.Tipo ?? clave}`,
+            Sujeto: SUJETOS_MUTACION.includes(item?.Sujeto) ? item.Sujeto : 'raza_base',
+            Id_referencia: numeroONulo(item?.Id_referencia),
+            Referencia: textoONulo(item?.Referencia),
+            Cantidad: numeroONulo(item?.Cantidad),
+            Texto: textoONulo(item?.Texto),
+            Opcional: toNumber(item?.Opcional),
+            Frase: toText(item?.Frase),
+        }));
+        if (items.length > 0)
+            salida[clave] = items;
+    });
+    return salida;
+}
+
+/** Lo que cambia una raza mutada de su raza base (`Cambios_mutacion`), igual en la API y en la caché. */
+export function normalizarCambiosMutacion(raw: any): CambioMutacion[] {
+    return toStrictArray(raw)
+        .map((item: any): CambioMutacion => ({
+            Campo: toText(item?.Campo),
+            Nombre: toText(item?.Nombre),
+            Operacion: toText(item?.Operacion),
+            Valor: numeroONulo(item?.Valor),
+            Elementos: toStrictArray(item?.Elementos).map((e: any) => ({ Id: toNumber(e?.Id), Nombre: textoONulo(e?.Nombre) })),
+            Frase: toText(item?.Frase),
+        }))
+        .filter((cambio: CambioMutacion) => cambio.Campo.length > 0 && cambio.Operacion.length > 0);
 }
 
 function normalizeDgsAdicionalesApi(raw: any): Raza["Dgs_adicionales"] {
@@ -488,18 +504,6 @@ function normalizeRacialesApi(raw: any): RacialDetalle[] {
 }
 
 export function normalizeRazaApi(raw: any): Raza {
-    const prerrequisitos = normalizePrerrequisitosApi(raw?.pr);
-    const prerrequisitosFlags = normalizePrerrequisitosFlagsApi(
-        raw?.prf ?? raw?.Prerrequisitos_flags,
-        prerrequisitos
-    );
-    const mutacion = normalizeMutacionApi(
-        raw?.Mutacion,
-        raw?.Mutada ?? raw?.mu,
-        raw?.tmd,
-        raw?.he,
-        prerrequisitos
-    );
     const dotesContextuales: DoteContextual[] = toDoteContextualArray(raw?.dotes);
 
     return {
@@ -520,11 +524,9 @@ export function normalizeRazaApi(raw: any): Raza {
         Resistencia_magica: toText(raw?.rc),
         Resistencia_energia: toText(raw?.re),
         Heredada: toBoolean(raw?.he),
-        Mutada: mutacion.Es_mutada === true,
-        Tamano_mutacion_dependiente: mutacion.Tamano_dependiente === true,
-        Prerrequisitos: prerrequisitos,
-        Prerrequisitos_flags: prerrequisitosFlags,
-        Mutacion: mutacion,
+        Mutada: raw?.Mutada === true,
+        Prerrequisitos: normalizarPrerrequisitosMutacion(raw?.pr),
+        Cambios_mutacion: normalizarCambiosMutacion(raw?.Cambios_mutacion),
         Armadura_natural: toNumber(raw?.ant),
         Varios_armadura: toNumber(raw?.va),
         Correr: toNumber(raw?.co),
