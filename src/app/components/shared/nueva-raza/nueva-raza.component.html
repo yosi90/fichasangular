@@ -732,19 +732,21 @@
                                     <mat-chip-option [selected]="form.controls.mutada.value === true" (click)="toggleBooleanControl('mutada')">
                                         Raza mutada
                                     </mat-chip-option>
-                                    <mat-chip-option *ngIf="form.controls.mutada.value === true" [selected]="form.controls.tamano_mutacion_dependiente.value === true" (click)="toggleBooleanControl('tamano_mutacion_dependiente')">
-                                        Tamaño dependiente de la raza base
-                                    </mat-chip-option>
                                 </mat-chip-listbox>
                             </div>
 
                             <div class="mutacion-panel" *ngIf="form.controls.mutada.value === true">
+                                <div class="mod-empty" *ngIf="!modeloMutacion">Cargando lo que admite una raza mutada...</div>
                                 <div class="subpanel-head">
                                     <h3 class="subpanel-title">Condiciones</h3>
-                                    <button type="button" mat-stroked-button (click)="abrirSelectorPrerrequisitosMutacion()">
+                                    <button type="button" mat-stroked-button [disabled]="!modeloMutacion" (click)="abrirSelectorPrerrequisitosMutacion()">
                                         Elegir prerrequisitos
                                     </button>
                                 </div>
+                                <p class="mutacion-nota">
+                                    Lo que pide de la raza base lo comprueba la creación al elegirla; lo que pide del personaje, al guardarlo.
+                                    Sin condiciones, vale cualquier raza base que no sea otra raza mutada.
+                                </p>
 
                                 <div class="mod-preview" *ngIf="hayPrerrequisitosMutacionMarcados">
                                     <mat-chip *ngFor="let tipo of prerrequisitosMutacionSeleccionados" class="mod-chip">
@@ -753,17 +755,74 @@
                                 </div>
 
                                 <app-prerrequisito-editor-host
+                                    *ngIf="modeloMutacion"
                                     #prerrequisitoMutacionHost
                                     [selectedTypes]="prerrequisitosMutacionSeleccionados"
                                     [rows]="prerrequisitosMutacionRows"
                                     [catalogContext]="prerrequisitosMutacionCatalogContext"
                                     [ensureCatalogs]="ensureMutacionPrerequisiteCatalogs"
                                     [disabled]="guardando"
-                                    [emptyMessage]="'Elige los prerrequisitos que debe cumplir la raza base para poder mutar.'"
+                                    [emptyMessage]="'Sin condiciones: elige las que pida la mutación (de la raza base, del personaje o del momento).'"
                                     [loadingMessage]="'Cargando configuración de prerrequisitos...'"
                                     (selectedTypesChange)="onPrerrequisitosMutacionSeleccionadosChange($event)"
                                     (rowsChange)="onPrerrequisitosMutacionRowsChange($event)">
                                 </app-prerrequisito-editor-host>
+                            </div>
+                        </section>
+
+                        <section class="step-section form-panel" *ngIf="form.controls.mutada.value === true && modeloMutacion"
+                            [class.insercion-tarjeta--error]="errores.mensajeDe('cambios_mutacion')">
+                            <div class="subpanel-head">
+                                <h3 class="form-panel-title">Cambios sobre la raza base</h3>
+                                <button type="button" mat-stroked-button (click)="agregarCambioMutacion()" [disabled]="guardando">
+                                    Añadir fila
+                                </button>
+                            </div>
+                            <p class="mutacion-nota">
+                                Cada campo de la raza base se combina con la mutación con su regla de hoy; añade una fila solo
+                                donde la mutación se aparte de ella.
+                            </p>
+                            <p class="bloque-error" *ngIf="errores.mensajeDe('cambios_mutacion')">{{errores.mensajeDe('cambios_mutacion')}}</p>
+                            <div class="mod-empty" *ngIf="cambiosMutacionRows.length < 1">
+                                Sin cambios: todos los campos siguen su regla de hoy.
+                            </div>
+                            <div class="cambio-mutacion-row" *ngFor="let row of cambiosMutacionRows; trackBy: trackByCambioMutacion">
+                                <mat-form-field appearance="fill">
+                                    <mat-label>Campo</mat-label>
+                                    <mat-select [value]="row.campo" [disabled]="guardando"
+                                        (selectionChange)="actualizarCambioMutacion(row.uid, { campo: $event.value })">
+                                        <mat-option *ngFor="let campo of camposMutacionLibres(row)" [value]="campo.Campo">{{campo.Nombre}}</mat-option>
+                                    </mat-select>
+                                    <mat-hint *ngIf="campoMutacion(row.campo) as campo">
+                                        Regla de hoy: {{nombreOperacionMutacion(campo.Por_defecto)}} ({{descripcionOperacionMutacion(campo.Por_defecto)}})
+                                    </mat-hint>
+                                </mat-form-field>
+                                <mat-form-field appearance="fill">
+                                    <mat-label>Operación</mat-label>
+                                    <mat-select [value]="row.operacion" [disabled]="guardando || !row.campo"
+                                        (selectionChange)="actualizarCambioMutacion(row.uid, { operacion: $event.value })">
+                                        <mat-option *ngFor="let operacion of operacionesMutacion(row)" [value]="operacion">
+                                            {{nombreOperacionMutacion(operacion)}}
+                                        </mat-option>
+                                    </mat-select>
+                                    <mat-hint *ngIf="row.operacion">{{descripcionOperacionMutacion(row.operacion)}}</mat-hint>
+                                </mat-form-field>
+                                <mat-form-field appearance="fill" *ngIf="operacionConValor(row.operacion)">
+                                    <mat-label>Categorías (±)</mat-label>
+                                    <input matInput type="number" min="-8" max="8" [value]="row.valor ?? ''" [disabled]="guardando"
+                                        (input)="actualizarCambioMutacion(row.uid, { valor: +$any($event.target).value || 0 })">
+                                </mat-form-field>
+                                <mat-form-field appearance="fill" *ngIf="operacionConElementos(row.operacion)">
+                                    <mat-label>{{row.operacion === 'quitar' ? 'Se quitan de la raza base' : 'Se conservan de la raza base'}}</mat-label>
+                                    <mat-select multiple [value]="row.elementos" [disabled]="guardando"
+                                        (selectionChange)="actualizarCambioMutacion(row.uid, { elementos: $event.value })">
+                                        <mat-option *ngFor="let elemento of elementosDeCambio(row)" [value]="elemento.id">{{elemento.nombre}}</mat-option>
+                                    </mat-select>
+                                </mat-form-field>
+                                <button type="button" mat-icon-button class="row-action-btn" aria-label="Quitar el cambio"
+                                    (click)="quitarCambioMutacion(row.uid)" [disabled]="guardando">
+                                    <mat-icon>delete</mat-icon>
+                                </button>
                             </div>
                         </section>
                     </div>

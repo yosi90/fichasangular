@@ -761,7 +761,7 @@ describe('NuevoPersonajeService (borrador local)', () => {
             Resistencia_energia: '',
             Heredada: false,
             Mutada: false,
-            Tamano_mutacion_dependiente: false,
+            Cambios_mutacion: [],
             Prerrequisitos: {
                 actitud_prohibido: [],
                 actitud_requerido: [],
@@ -1580,7 +1580,7 @@ describe('NuevoPersonajeService (clases)', () => {
             Resistencia_energia: '',
             Heredada: false,
             Mutada: false,
-            Tamano_mutacion_dependiente: false,
+            Cambios_mutacion: [],
             Prerrequisitos: {
                 actitud_prohibido: [],
                 actitud_requerido: [],
@@ -6024,7 +6024,7 @@ describe('NuevoPersonajeService (habilidades flujo)', () => {
             Resistencia_energia: '',
             Heredada: false,
             Mutada: false,
-            Tamano_mutacion_dependiente: false,
+            Cambios_mutacion: [],
             Prerrequisitos: {
                 actitud_prohibido: [],
                 actitud_requerido: [],
@@ -8393,7 +8393,7 @@ describe('NuevoPersonajeService (vida final)', () => {
             Resistencia_energia: '',
             Heredada: false,
             Mutada: false,
-            Tamano_mutacion_dependiente: false,
+            Cambios_mutacion: [],
             Prerrequisitos: {
                 actitud_prohibido: [],
                 actitud_requerido: [],

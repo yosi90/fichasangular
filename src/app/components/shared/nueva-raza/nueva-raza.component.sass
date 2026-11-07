@@ -567,3 +567,23 @@
     .selector-actions
         align-items: stretch
         flex-direction: column
+
+// Fase 3 de las razas mutadas: las notas del paso «Mutación» y las filas de «Cambios sobre la raza base».
+.mutacion-nota
+    margin: 4px 0 8px
+    font-size: 0.85rem
+    opacity: 0.8
+
+.cambio-mutacion-row
+    display: grid
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1.2fr) 40px
+    gap: 8px
+    align-items: start
+    margin-bottom: 12px
+    @container insercion (max-width: 760px)
+        grid-template-columns: minmax(0, 1fr) 40px
+        > mat-form-field
+            grid-column: 1
+        > .row-action-btn
+            grid-column: 2
+            grid-row: 1

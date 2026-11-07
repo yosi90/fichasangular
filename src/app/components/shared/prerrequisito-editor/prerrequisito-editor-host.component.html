@@ -32,6 +32,14 @@
                 (patchChange)="updateRow(row.uid, $event)">
             </app-prerrequisito-value-editor>
 
+            <app-prerrequisito-text-editor
+                *ngSwitchCase="'text-only'"
+                [row]="row"
+                [definition]="group.definition"
+                [disabled]="disabled || loading"
+                (patchChange)="updateRow(row.uid, $event)">
+            </app-prerrequisito-text-editor>
+
             <app-prerrequisito-catalog-editor
                 *ngSwitchCase="'catalog-only'"
                 [row]="row"

@@ -71,7 +71,15 @@ export type PrerequisiteType =
     | 'tamano_maximo'
     | 'tamano_minimo'
     | 'tipo_criatura'
-    | 'tipo_dote';
+    | 'tipo_dote'
+    | TipoEditorMutacion;
+
+/**
+ * Un tipo de prerrequisito de una raza mutada en el editor: `mutacion.<clave>`. Sus claves son datos de la API
+ * (`GET /razas/mutaciones/modelo`, fase 3 de las razas mutadas) y sus definiciones se registran al leerlo
+ * (`registrarTiposDeMutacion`); el prefijo las separa de las de dotes, clases y plantillas aunque compartan la clave.
+ */
+export type TipoEditorMutacion = `mutacion.${string}`;
 
 export type PrerequisiteEditorKind =
     | 'flag-only'
@@ -80,7 +88,9 @@ export type PrerequisiteEditorKind =
     | 'catalog-plus-value'
     | 'catalog-plus-special'
     /** Dos elementos del mismo catálogo: el que se pide y en qué se convierte (`criaturas_compatibles` de las plantillas). */
-    | 'catalog-pair';
+    | 'catalog-pair'
+    /** Un texto (la condición que confirma el máster de una raza mutada). */
+    | 'text-only';
 
 export interface PrerequisiteCatalogItem {
     id: number;
@@ -103,6 +113,8 @@ export interface PrerequisiteRowModel {
     extras?: number[];
     /** El comodín 0 de su catálogo elegido (`comodinLabel` de su tipo: «El arma elegida»): la fila apunta al id 0 y está completa. */
     comodin?: boolean;
+    /** El texto de un tipo `text-only` (la condición que confirma el máster). */
+    texto?: string;
 }
 
 export interface PrerequisiteCatalogContext {

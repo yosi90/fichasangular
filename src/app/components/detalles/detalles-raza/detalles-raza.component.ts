@@ -19,7 +19,10 @@ import {
 import { textoListasRaciales } from 'src/app/components/detalles/ficha/personaje-edad';
 import { IdiomaDetalle } from 'src/app/interfaces/idioma';
 import { RacialDetalle, RacialReferencia } from 'src/app/interfaces/racial';
-import { CategoriaEdadRaza, Raza, RazaHabilidadBase, RazaHabilidadCustom, RazaPlantillaReferencia, RacialDeEdad } from 'src/app/interfaces/raza';
+import {
+    CategoriaEdadRaza, Raza, RazaHabilidadBase, RazaHabilidadCustom, RazaPlantillaReferencia, RazaPrerrequisitos, RacialDeEdad,
+    SujetoPrerrequisitoMutacion,
+} from 'src/app/interfaces/raza';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { Id_nombre } from 'src/app/interfaces/genericas';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
@@ -101,6 +104,18 @@ interface GananciaEdadFila {
     sortilegas: { conjuro: Id_nombre; detalle: string; }[];
 }
 
+/** Los prerrequisitos de una raza mutada de un sujeto (la raza base, o el personaje y el momento), por su tipo. */
+function prerrequisitosDe(prerrequisitos: RazaPrerrequisitos | null | undefined,
+                          incluir: (sujeto: SujetoPrerrequisitoMutacion) => boolean): RazaPrerrequisitos {
+    const salida: RazaPrerrequisitos = {};
+    Object.entries(prerrequisitos ?? {}).forEach(([clave, items]) => {
+        const deEse = (items ?? []).filter((item) => incluir(item.Sujeto));
+        if (deEse.length > 0)
+            salida[clave] = deEse;
+    });
+    return salida;
+}
+
 @Component({
     selector: 'app-detalles-raza',
     templateUrl: './detalles-raza.component.html',
@@ -137,7 +152,11 @@ export class DetallesRazaComponent {
     idiomas: IdiomaDetalle[] = [];
     gruposRaciales: GrupoRacialesDetalle[] = [];
     /** Los prerrequisitos de una raza mutada, con la frase de la API, agrupados por `Opcional`. */
-    prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];
+    /** Lo que pide una raza mutada de su raza base y del personaje (o del momento), con la frase de la API. */
+    prerrequisitosDeLaBase: GrupoPrerrequisitos[] = [];
+    prerrequisitosDelPersonaje: GrupoPrerrequisitos[] = [];
+    /** Lo que cambia una raza mutada de su raza base (la frase de cada cambio). */
+    cambiosMutacion: string[] = [];
     dotes: DoteFicha[] = [];
     /** Las plantillas que incorpora por cada subtipo. */
     plantillasPorSubtipo: { subtipo: string; plantillas: RazaPlantillaReferencia[]; }[] = [];
@@ -168,10 +187,11 @@ export class DetallesRazaComponent {
         this.tipoCabecera = unirTipo(['Raza', value?.Tamano?.Nombre, value?.Tipo_criatura?.Nombre]);
         this.etiquetas = [
             value?.Mutada ? 'Mutada' : null,
-            value?.Tamano_mutacion_dependiente ? 'Tamaño según la mutación' : null,
             etiquetaTraducido(value),
         ].filter((etiqueta): etiqueta is string | EtiquetaFicha => etiqueta !== null);
-        this.prerrequisitosAgrupados = agruparPrerrequisitos(value?.Prerrequisitos);
+        this.prerrequisitosDeLaBase = agruparPrerrequisitos(prerrequisitosDe(value?.Prerrequisitos, (sujeto) => sujeto === 'raza_base'));
+        this.prerrequisitosDelPersonaje = agruparPrerrequisitos(prerrequisitosDe(value?.Prerrequisitos, (sujeto) => sujeto !== 'raza_base'));
+        this.cambiosMutacion = (value?.Cambios_mutacion ?? []).map((cambio) => cambio.Frase).filter((frase) => tieneTextoVisible(frase));
         this.dotes = dotesVisibles(value?.DotesContextuales);
         this.plantillasPorSubtipo = (value?.Plantillas_por_subtipo ?? [])
             .map((grupo) => ({

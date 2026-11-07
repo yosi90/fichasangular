@@ -63,7 +63,7 @@ function crearRazaMock(oficial = true): Raza {
         Resistencia_energia: 'No especifica',
         Heredada: false,
         Mutada: false,
-        Tamano_mutacion_dependiente: false,
+        Cambios_mutacion: [],
         Prerrequisitos: {
             actitud_prohibido: [],
             actitud_requerido: [],
@@ -840,8 +840,19 @@ describe('NuevoPersonajeComponent', () => {
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
         const combinada = { ...crearRazaMutadaConPrerequisito(), Nombre: 'Mutada celestial (combinada)' };
         razaSvcMock.getRazaSobreBase.and.resolveTo(combinada);
+        // Lo que la mutación pide del personaje (fase 3): se avisa en Básicos, donde se elige el alineamiento.
+        const requisitos = [
+            { Frase: 'Cualquier alineamiento no maligno', Cumple: null, Confirma_master: false },
+            { Frase: 'Completar el Rito del Renacimiento', Cumple: null, Confirma_master: true },
+        ];
+        razaSvcMock.getBasesDeRazaMutada.and.resolveTo({
+            Raza: { Id: 99, Nombre: 'Mutada celestial' },
+            Bases: [{ Id: 2, Nombre: 'Humano base', Oficial: true, Estado: 'elegible', Avisos: [] }],
+            Requisitos_del_personaje: requisitos,
+        });
 
         await component.seleccionarRaza(crearRazaMutadaConPrerequisito());
+        expect(component.requisitosMutacion).toEqual([]);
         await component.onConfirmarRazaBase({
             ...crearRazaMock(),
             Id: 2,
@@ -858,6 +869,8 @@ describe('NuevoPersonajeComponent', () => {
         expect(nuevoPSvc.PersonajeCreacion.Raza.Nombre).toBe('Mutada celestial (combinada)');
         expect(nuevoPSvc.PersonajeCreacion.RazaBase?.Id).toBe(2);
         expect(component.selectedInternalTabIndex).toBe(1);
+        expect(component.requisitosMutacion).toEqual(requisitos);
+        expect(component.razaMutadaRequisitosNombre).toBe('Mutada celestial (combinada)');
     });
 
     it('si la API no combina la raza, avisa con su texto y no aplica nada', async () => {

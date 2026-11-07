@@ -132,7 +132,7 @@ import { GrupoRacialesOpcionales, SeleccionRacialesOpcionales, agruparRacialesPo
 import { RacialEvaluacionResultado, evaluarRacialParaSeleccion } from 'src/app/services/utils/racial-prerrequisitos';
 import { ClaseEvaluacionResultado } from 'src/app/services/utils/clase-elegibilidad';
 import { esRazaMutada } from 'src/app/services/utils/raza-mutacion';
-import { BasesRazaMutada, EstadoBaseRazaMutada } from 'src/app/interfaces/razas-api';
+import { BasesRazaMutada, EstadoBaseRazaMutada, RequisitoDelPersonajeMutacion } from 'src/app/interfaces/razas-api';
 import {
     distanciaEntreAlineamientos,
     extraerEjesAlineamientoDesdeContrato,
@@ -562,6 +562,14 @@ export class NuevoPersonajeComponent {
     razaContextoOpcionalesNombre = '';
     private seleccionRacialesOpcionalesPendiente: SeleccionRacialesOpcionales = {};
     private contextoRazaPendienteOpcionales: { raza: Raza; razaBase: Raza | null; } | null = null;
+    /**
+     * Lo que la raza mutada elegida pide del personaje (`Requisitos_del_personaje` de `GET /razas/{id}/bases`): se enseña
+     * en Básicos, donde se elige el alineamiento, y lo comprueba la API al guardar. Una condición del máster
+     * (`Confirma_master`) es solo un aviso. Las de la mutada cuyo selector de base está abierto, hasta elegirla.
+     */
+    requisitosMutacion: RequisitoDelPersonajeMutacion[] = [];
+    razaMutadaRequisitosNombre = '';
+    private requisitosMutacionPendientes: { idRaza: number; requisitos: RequisitoDelPersonajeMutacion[]; } | null = null;
     private contextoSelectorIdioma: 'ventaja' | 'idiomasIniciales' | null = null;
     private resolverSelectorIdioma: ((completado: boolean) => void) | null = null;
     selectorDominiosTitulo = 'Seleccionar dominios';
@@ -3549,6 +3557,7 @@ export class NuevoPersonajeComponent {
         }
 
         const catalogo = new Map(this.razasCatalogo.map((raza) => [Number(raza.Id), raza]));
+        this.requisitosMutacionPendientes = { idRaza: Number(razaMutada.Id), requisitos: bases.Requisitos_del_personaje };
         this.razaMutadaPendiente = razaMutada;
         this.incluirHomebrewRazaBase = false;
         this.candidatasRazaBase = bases.Bases
@@ -3770,6 +3779,11 @@ export class NuevoPersonajeComponent {
             return;
 
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        const pendientes = this.requisitosMutacionPendientes;
+        const deLaMutada = !!razaBase && esRazaMutada(raza) && pendientes?.idRaza === Number(raza.Id);
+        this.requisitosMutacion = deLaMutada ? [...(pendientes?.requisitos ?? [])] : [];
+        this.razaMutadaRequisitosNombre = deLaMutada ? `${raza.Nombre ?? ''}` : '';
+        this.requisitosMutacionPendientes = null;
         this.normalizarDeidadSeleccionada();
         this.cerrarSelectorRacialesOpcionalesContexto();
         this.ventanaDetalleAbierta = false;

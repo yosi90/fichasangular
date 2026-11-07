@@ -9,5 +9,5 @@ import { toBoolean } from 'src/app/services/utils/normalizacion';
 export function esRazaMutada(raza: Raza | null | undefined): boolean {
     if (!raza)
         return false;
-    return toBoolean(raza?.Mutada) || toBoolean(raza?.Mutacion?.Es_mutada);
+    return toBoolean(raza?.Mutada);
 }

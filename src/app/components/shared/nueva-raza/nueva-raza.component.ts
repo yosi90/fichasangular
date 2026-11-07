@@ -1,4 +1,7 @@
-import { Component, EventEmitter, HostListener, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild, forwardRef } from '@angular/core';
+import {
+    Component, EventEmitter, HostListener, Injector, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, ViewChild, forwardRef,
+    inject,
+} from '@angular/core';
 import { AbstractControl, FormBuilder, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import Swal from 'sweetalert2';
@@ -21,7 +24,7 @@ import { Manual } from 'src/app/interfaces/manual';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { Raza } from 'src/app/interfaces/raza';
 import { DominioDetalle } from 'src/app/interfaces/dominio';
-import { ActitudCatalogItem, CategoriaEdadCatalogo, RazaCatalogItem, TipoDadoCatalogItem } from 'src/app/interfaces/raza-catalogos';
+import { CategoriaEdadCatalogo, RazaCatalogItem, TipoDadoCatalogItem } from 'src/app/interfaces/raza-catalogos';
 import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
 import { RazaCreateListaLanzamiento, RazaCreateRequest } from 'src/app/interfaces/razas-api';
 import { SubtipoResumen } from 'src/app/interfaces/subtipo';
@@ -50,7 +53,7 @@ import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { recargandoPorCambioDeIdentidad } from 'src/app/services/platform-session.service';
 import { UserService } from 'src/app/services/user.service';
 import { puedeGestionarCatalogo } from 'src/app/services/utils/permisos-catalogo';
-import { alternarControl, elegirEnControl, quitarFila } from '../insercion-marco/filas-repetibles';
+import { alternarControl, elegirEnControl, quitarFila, uidDeFila } from '../insercion-marco/filas-repetibles';
 import { avisarGuardado, avisarSinPermisos } from '../insercion-marco/avisos-insercion';
 import { CatalogosPendientes, EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
@@ -66,13 +69,19 @@ import {
     PrerequisiteCatalogItem,
     PrerequisiteRowModel,
     PrerequisiteType,
+    TipoEditorMutacion,
 } from '../prerrequisito-editor/prerrequisito-editor.models';
 import {
     arePrerequisitesIncomplete,
+    claveEditorMutacion,
+    esTipoDeMutacion,
     findCatalogName,
     getPrerequisiteDefinition,
-    getPrerequisiteTypeOptions,
+    registrarTiposDeMutacion,
+    tipoDeMutacion,
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
+import { CampoMutacion, ModeloMutacion, RazaCreateCambioMutacion, RazaCreatePrerrequisitoMutacion } from 'src/app/interfaces/razas-api';
+import { ArmaNaturalService } from 'src/app/services/arma-natural.service';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { idsUnicosOrdenados, normalizarTexto, toIntOrNull, toNumberOrNull } from 'src/app/services/utils/normalizacion';
 import { idTamanoMediano } from 'src/app/services/utils/tamano-efectivo';
@@ -169,17 +178,22 @@ type RelacionSeleccionKey =
     | 'gruposArmaduraSeleccionados';
 
 type AlineamientoModo = 'basico' | 'preferencia';
-type MutacionPrerequisiteType = Extract<PrerequisiteType,
-    'actitud_requerido'
-    | 'actitud_prohibido'
-    | 'alineamiento_requerido'
-    | 'alineamiento_prohibido'
-    | 'tipo_criatura'
->;
-
+/** Un tipo de prerrequisito de mutación para el selector de tipos: los del modelo de la API, por su nombre. */
 interface MutacionPrerequisiteOption {
-    key: MutacionPrerequisiteType;
+    key: TipoEditorMutacion;
     readonly label: string;
+}
+
+/**
+ * Una fila de «Cambios sobre la raza base» (`cambios_mutacion[]`, fase 3 de las razas mutadas): el campo del modelo, la
+ * operación de las que admite, los pasos de tamaño y los elementos de la lista de la base que se quitan o se conservan.
+ */
+export interface CambioMutacionRow {
+    uid: string;
+    campo: string;
+    operacion: string;
+    valor: number | null;
+    elementos: number[];
 }
 
 const NUEVA_RAZA_DRAFT_AUTOSAVE_MS = 1200;
@@ -228,7 +242,7 @@ function vdDeRazaValidator(control: AbstractControl): ValidationErrors | null {
  */
 const CATALOGOS_PARA_MODIFICAR = [
     'alineamientos', 'alineamientosBasicos', 'prioridades', 'preferenciasLey', 'preferenciasMoral', 'habilidades',
-    'tiposDado', 'tiposCriatura', 'maniobrabilidades', 'tamanos', 'clases',
+    'tiposDado', 'tiposCriatura', 'maniobrabilidades', 'tamanos', 'clases', 'modeloMutacion',
 ] as const;
 type CatalogoParaModificar = typeof CATALOGOS_PARA_MODIFICAR[number];
 
@@ -317,8 +331,8 @@ const CAMPOS_RAZA: CamposDeFormulario = {
     nivel_lanzamiento: { etiqueta: 'Nivel de lanzamiento', paso: 4 },
     lanzamiento_listas: { etiqueta: 'Listas del lanzamiento', paso: 4 },
     mutada: { etiqueta: 'Raza mutada', paso: 5 },
-    tamano_mutacion_dependiente: { etiqueta: 'Tamaño dependiente', paso: 5 },
-    prerrequisitos: { etiqueta: 'Prerrequisitos de mutación', paso: 5 },
+    prerrequisitos_mutacion: { etiqueta: 'Prerrequisitos de mutación', paso: 5 },
+    cambios_mutacion: { etiqueta: 'Cambios sobre la raza base', paso: 5 },
 };
 
 
@@ -343,13 +357,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     private draftInicializado: boolean = false;
     private draftInicializando: boolean = false;
     private racialesPendientesRazaEnCreacionIds = new Set<number>();
-    private readonly mutacionPrerequisiteTypes: MutacionPrerequisiteType[] = [
-        'actitud_requerido',
-        'actitud_prohibido',
-        'alineamiento_requerido',
-        'alineamiento_prohibido',
-        'tipo_criatura',
-    ];
+    /** El catálogo de los elementos de una lista que lo carga solo si hace falta (las armas naturales). */
+    private readonly injector = inject(Injector);
+    private tiposArmasNaturales: PrerequisiteCatalogItem[] | null = null;
 
     /** «Insertar» o «Modificar» (la misma pantalla, con la raza cargada y «Guardar cambios»). */
     @Input() modo: ModoInsercion = 'crear';
@@ -413,7 +423,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     gruposArmaduras: GrupoCompetencia[] = [];
     maniobrabilidades: RazaCatalogItem[] = [];
     tiposDado: TipoDadoCatalogItem[] = [];
-    actitudes: ActitudCatalogItem[] = [];
     clasePredilectaBusqueda: string = '';
     tipoCriaturaDgsBusqueda: string = '';
     mostrarInfoAlineamiento: boolean = false;
@@ -456,17 +465,19 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     opcionesConjuros: OpcionCatalogo[] = [];
 
     prerrequisitosMutacionRows: PrerequisiteRowModel[] = [];
-    prerrequisitosMutacionSeleccionados: MutacionPrerequisiteType[] = [];
+    prerrequisitosMutacionSeleccionados: TipoEditorMutacion[] = [];
+    /** Lo que admite una raza mutada (`GET /razas/mutaciones/modelo`): los tipos de prerrequisito y los campos. */
+    modeloMutacion: ModeloMutacion | null = null;
+    cambiosMutacionRows: CambioMutacionRow[] = [];
     selectorPrerrequisitosMutacionVisible: boolean = false;
     selectorPrerrequisitosMutacionFiltro: string = '';
-    selectorPrerrequisitosMutacionTempKeys: MutacionPrerequisiteType[] = [];
+    selectorPrerrequisitosMutacionTempKeys: TipoEditorMutacion[] = [];
     pasoActivoIndex: number = 0;
     /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera (el paso se guarda en el borrador). */
     readonly pasos = ['Base y cuerpo', 'Valores', 'Relaciones', 'Rasgos', 'Edades', 'Mutación'];
 
-    readonly prerrequisitosMutacionOpciones: MutacionPrerequisiteOption[] = getPrerequisiteTypeOptions<MutacionPrerequisiteType>(
-        (type) => this.esTipoPrerrequisitoMutacion(type)
-    );
+    /** Los tipos de prerrequisito de mutación del modelo de la API (también los que solo existen como datos). */
+    prerrequisitosMutacionOpciones: MutacionPrerequisiteOption[] = [];
 
     readonly prerrequisitosMutacionCatalogContext: PrerequisiteCatalogContext = {
         getCatalog: (type) => this.getCatalogoPrerrequisitoMutacion(type),
@@ -555,7 +566,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         puntos_hab: [0],
         puntos_hab_mult: [0],
         mutada: [false],
-        tamano_mutacion_dependiente: [false],
         id_alineamiento: [0, [this.alineamientoResueltoValidator()]],
         alineamiento_modo: ['basico' as AlineamientoModo],
         id_alineamiento_basico: [0],
@@ -737,7 +747,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     buildPayload(): RazaCreateRequest {
         const raw = this.form.getRawValue();
         const esMutada = raw.mutada === true;
-        const prerrequisitos = this.buildPrerrequisitos();
         const dgsOcultos = this.dgsOcultosAConservar();
         const idClaseLanzamiento = this.numero(raw.id_clase_lanzamiento);
         const lanza = idClaseLanzamiento > 0;
@@ -809,7 +818,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 puntos_hab: this.tieneDgsExtra() ? this.numero(raw.puntos_hab) : (dgsOcultos?.Puntos_habilidad ?? 0),
                 puntos_hab_mult: this.tieneDgsExtra() ? this.numero(raw.puntos_hab_mult) : (dgsOcultos?.Multiplicador_puntos_habilidad ?? 0),
                 mutada: esMutada,
-                tamano_mutacion_dependiente: esMutada && raw.tamano_mutacion_dependiente === true,
                 id_alineamiento: this.numero(raw.id_alineamiento),
                 oficial: raw.oficial === true,
                 cuadrupedo: raw.cuadrupedo === true,
@@ -896,8 +904,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             ...cuerpoDeEdades(this.porEdades ? this.edades : { categorias: [], pasos: [] }),
         };
 
-        if (esMutada && prerrequisitos)
-            payload.prerrequisitos = prerrequisitos;
+        // Lo que pide y lo que cambia una raza mutada (la edición los reemplaza: sin mutar, no se mandan y quedan vacíos).
+        if (esMutada) {
+            payload.prerrequisitos_mutacion = this.buildPrerrequisitosMutacion();
+            payload.cambios_mutacion = this.buildCambiosMutacion();
+        }
 
         return payload;
     }
@@ -979,11 +990,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return this.prerrequisitosMutacionSeleccionados.length > 0;
     }
 
-    isTipoPrerrequisitoMutacionTemporalSeleccionado(key: MutacionPrerequisiteType): boolean {
+    isTipoPrerrequisitoMutacionTemporalSeleccionado(key: TipoEditorMutacion): boolean {
         return this.selectorPrerrequisitosMutacionTempKeys.includes(key);
     }
 
-    toggleTipoPrerrequisitoMutacionTemporal(key: MutacionPrerequisiteType, checked: boolean): void {
+    toggleTipoPrerrequisitoMutacionTemporal(key: TipoEditorMutacion, checked: boolean): void {
         if (checked) {
             this.selectorPrerrequisitosMutacionTempKeys = [...new Set([...this.selectorPrerrequisitosMutacionTempKeys, key])];
             return;
@@ -996,18 +1007,18 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     onPrerrequisitosMutacionSeleccionadosChange(tipos: PrerequisiteType[]): void {
-        this.prerrequisitosMutacionSeleccionados = tipos.filter((type): type is MutacionPrerequisiteType => this.esTipoPrerrequisitoMutacion(type));
+        this.prerrequisitosMutacionSeleccionados = tipos.filter((type): type is TipoEditorMutacion => esTipoDeMutacion(type));
     }
 
     onPrerrequisitosMutacionRowsChange(rows: PrerequisiteRowModel[]): void {
-        this.prerrequisitosMutacionRows = rows.filter((row) => this.esTipoPrerrequisitoMutacion(row.tipo));
+        this.prerrequisitosMutacionRows = rows.filter((row) => esTipoDeMutacion(row.tipo));
     }
 
-    getEtiquetaPrerrequisitoMutacion(key: MutacionPrerequisiteType): string {
+    getEtiquetaPrerrequisitoMutacion(key: TipoEditorMutacion): string {
         return this.prerrequisitosMutacionOpciones.find((item) => item.key === key)?.label ?? key;
     }
 
-    toggleBooleanControl(controlName: 'oficial' | 'mutada' | 'tamano_mutacion_dependiente' | 'cuadrupedo'
+    toggleBooleanControl(controlName: 'oficial' | 'mutada' | 'cuadrupedo'
         | 'idiomas_adicionales_cualquiera'): void {
         alternarControl(this.form.controls[controlName]);
     }
@@ -1861,6 +1872,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 sortilegiosRows: this.clonarProfundo(this.sortilegiosRows),
                 prerrequisitosMutacionRows: this.clonarProfundo(this.prerrequisitosMutacionRows),
                 prerrequisitosMutacionSeleccionados: [...this.prerrequisitosMutacionSeleccionados],
+                cambiosMutacionRows: this.clonarProfundo(this.cambiosMutacionRows),
                 porEdades: this.porEdades,
                 categoriasEdadRows: this.clonarProfundo(this.edades.categorias),
                 pasosEdadRows: this.clonarProfundo(this.edades.pasos),
@@ -1901,9 +1913,11 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         this.racialesPendientesRazaEnCreacionIds = new Set(idsUnicosOrdenados(borrador.rows?.racialesPendientesRazaEnCreacionIds));
         this.sortilegiosRows = this.restaurarRows(borrador.rows?.sortilegiosRows, () => this.crearSortilegioRow()) as SortilegioRow[];
         this.prerrequisitosMutacionSeleccionados = (borrador.rows?.prerrequisitosMutacionSeleccionados ?? [])
-            .filter((type): type is MutacionPrerequisiteType => this.esTipoPrerrequisitoMutacion(type as PrerequisiteType));
+            .filter((type): type is TipoEditorMutacion => esTipoDeMutacion(type));
         this.prerrequisitosMutacionRows = this.restaurarRows(borrador.rows?.prerrequisitosMutacionRows, () => null)
-            .filter((row) => this.esTipoPrerrequisitoMutacion(row?.tipo as PrerequisiteType));
+            .filter((row) => esTipoDeMutacion(row?.tipo));
+        this.cambiosMutacionRows = this.restaurarRows(borrador.rows?.cambiosMutacionRows, () => null)
+            .filter((row) => typeof row?.campo === 'string') as CambioMutacionRow[];
         this.porEdades = borrador.rows?.porEdades === true;
         this.edades = {
             categorias: this.restaurarRows(borrador.rows?.categoriasEdadRows, () => null),
@@ -1957,7 +1971,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             || this.esTextoTecnicoEditado(raw.resistencia_conjuros)
             || this.esTextoTecnicoEditado(raw.resistencia_energia))
             return true;
-        if (raw.oficial !== true || raw.mutada === true || raw.tamano_mutacion_dependiente === true)
+        if (raw.oficial !== true || raw.mutada === true)
             return true;
         if (this.haySeleccionesRelacionadas())
             return true;
@@ -1976,7 +1990,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             || this.gruposArmaSeleccionados.length > 0
             || this.gruposArmaduraSeleccionados.length > 0
             || this.prerrequisitosMutacionSeleccionados.length > 0
-            || this.prerrequisitosMutacionRows.length > 0;
+            || this.prerrequisitosMutacionRows.length > 0
+            || this.cambiosMutacionRows.length > 0;
     }
 
     private hayRowsConContenido(): boolean {
@@ -2265,9 +2280,15 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 this.catalogosParaModificar.marcar('tiposDado');
             } });
 
-        this.razaCatalogosSvc.getActitudes()
-            .pipe(takeUntil(this.destroy$))
-            .subscribe({ next: (items) => this.actitudes = this.ordenar(items), error: () => this.actitudes = [] });
+        // Lo que admite una raza mutada: sus tipos de prerrequisito (que se registran en el editor común) y sus campos.
+        this.razaSvc.getModeloMutacion()
+            .then((modelo) => {
+                this.modeloMutacion = modelo;
+                const tipos = registrarTiposDeMutacion(modelo.Tipos_de_prerrequisito);
+                this.prerrequisitosMutacionOpciones = tipos.map((key) => ({ key, label: getPrerequisiteDefinition(key).label }));
+            })
+            .catch(() => this.modeloMutacion = null)
+            .finally(() => this.catalogosParaModificar.marcar('modeloMutacion'));
     }
 
     private recalcularPermisos(): void {
@@ -2291,13 +2312,13 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         }
         if (this.edicion.nombreOcupado(this.razasExistentes, this.form.controls.nombre.value ?? ''))
             return 'Ya existe una raza con ese nombre.';
-        if (this.form.controls.mutada.value === true && !this.tienePrerrequisitosMutacion())
-            return 'Una raza mutada necesita al menos una familia de prerrequisitos.';
-        if (this.form.controls.mutada.value === true
-            && arePrerequisitesIncomplete(this.prerrequisitosMutacionRows, this.prerrequisitosMutacionSeleccionados))
-            return 'Hay prerrequisitos de mutación pendientes de completar.';
-        if (this.tieneAlineamientoMutacionSinResolver())
-            return 'Hay un prerrequisito de alineamiento sin combinación válida.';
+        if (this.form.controls.mutada.value === true) {
+            const mutacion = this.problemaDeMutacion();
+            if (mutacion) {
+                this.pasoActivoIndex = CAMPOS_RAZA['mutada'].paso;
+                return mutacion;
+            }
+        }
         if (this.habilidadesBaseRows.some((row) => this.numero(row.id_habilidad) > 0 && this.parteCondicionalIncompleta(row))) {
             this.pasoActivoIndex = CAMPOS_RAZA['habilidades'].paso;
             return 'Un bonificador que solo vale en un caso lleva lo que suma y cuándo («+2 bajo tierra»).';
@@ -2328,7 +2349,7 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private limpiarDatosMutacion(): void {
-        this.form.controls.tamano_mutacion_dependiente.setValue(false, { emitEvent: false });
+        this.cambiosMutacionRows = [];
         this.prerrequisitosMutacionRows = [];
         this.prerrequisitosMutacionSeleccionados = [];
         this.selectorPrerrequisitosMutacionTempKeys = [];
@@ -2502,78 +2523,97 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         };
     }
 
-    private buildPrerrequisitos(): RazaCreateRequest['prerrequisitos'] | undefined {
-        const result: RazaCreateRequest['prerrequisitos'] = {};
-        this.prerrequisitosMutacionRows.forEach((row) => {
-            if (!this.prerrequisitosMutacionSeleccionados.includes(row.tipo as MutacionPrerequisiteType))
-                return;
-            const type = row.tipo as MutacionPrerequisiteType;
-            const id = this.numero(row.id);
-            if (id <= 0)
-                return;
-
-            const opcional = this.numero(row.opcional);
-            const withOpcional = <T extends Record<string, number>>(item: T): T & { opcional?: number } =>
-                opcional > 0 ? { ...item, opcional } : item;
-
-            if (type === 'actitud_requerido') {
-                result.actitud_requerido = [...(result.actitud_requerido ?? []), withOpcional({ id_actitud: id })];
-                return;
-            }
-            if (type === 'actitud_prohibido') {
-                result.actitud_prohibido = [...(result.actitud_prohibido ?? []), withOpcional({ id_actitud: id })];
-                return;
-            }
-            if (type === 'alineamiento_requerido' || type === 'alineamiento_prohibido') {
-                const id_alineamiento = this.resolverIdAlineamientoPrerrequisitoDesdeBasico(id);
-                if (id_alineamiento <= 0)
-                    return;
-                const item = withOpcional({ id_alineamiento });
-                if (type === 'alineamiento_requerido')
-                    result.alineamiento_requerido = [...(result.alineamiento_requerido ?? []), item];
-                else
-                    result.alineamiento_prohibido = [...(result.alineamiento_prohibido ?? []), item];
-                return;
-            }
-            if (type === 'tipo_criatura')
-                result.tipo_criatura = [...(result.tipo_criatura ?? []), withOpcional({ id_tipo_criatura: id })];
-        });
-        return Object.keys(result).length > 0 ? result : undefined;
+    /** `prerrequisitos_mutacion[]` del cuerpo: cada fila de un tipo marcado, con lo que pide su tipo. */
+    private buildPrerrequisitosMutacion(): RazaCreatePrerrequisitoMutacion[] {
+        return this.prerrequisitosMutacionRows
+            .filter((row) => this.prerrequisitosMutacionSeleccionados.includes(row.tipo as TipoEditorMutacion))
+            .filter((row) => tipoDeMutacion(row.tipo) !== null)
+            .map((row) => getPrerequisiteDefinition(row.tipo).toPayload(row, this.prerrequisitosMutacionCatalogContext))
+            .filter((item): item is Record<string, any> => !!item) as RazaCreatePrerrequisitoMutacion[];
     }
 
-    private tienePrerrequisitosMutacion(): boolean {
-        return this.prerrequisitosMutacionSeleccionados.length > 0
-            && this.prerrequisitosMutacionRows.some((row) => this.prerrequisitosMutacionSeleccionados.includes(row.tipo as MutacionPrerequisiteType));
+    /** `cambios_mutacion[]` del cuerpo: las filas con campo y operación, con su valor (pasos) o sus elementos. */
+    private buildCambiosMutacion(): RazaCreateCambioMutacion[] {
+        return this.cambiosMutacionRows
+            .filter((row) => this.texto(row.campo).length > 0 && this.texto(row.operacion).length > 0)
+            .map((row) => {
+                const cambio: RazaCreateCambioMutacion = { campo: row.campo, operacion: row.operacion };
+                if (this.operacionConValor(row.operacion))
+                    cambio.valor = this.numero(row.valor);
+                if (this.operacionConElementos(row.operacion))
+                    cambio.elementos = idsUnicosOrdenados(row.elementos);
+                return cambio;
+            });
     }
 
-    private tieneAlineamientoMutacionSinResolver(): boolean {
-        return this.prerrequisitosMutacionRows.some((row) => {
-            if (row.tipo !== 'alineamiento_requerido' && row.tipo !== 'alineamiento_prohibido')
-                return false;
-            if (!this.prerrequisitosMutacionSeleccionados.includes(row.tipo))
-                return false;
-            const id = this.numero(row.id);
-            return id > 0 && this.resolverIdAlineamientoPrerrequisitoDesdeBasico(id) <= 0;
-        });
+    /** Lo que la API rechazaría de la mutación: filas sin completar o repetidas. */
+    private problemaDeMutacion(): string | null {
+        if (this.prerrequisitosMutacionRows.length > 0 && !this.modeloMutacion)
+            return 'Todavía se está cargando lo que admite una raza mutada; vuelve a intentarlo en un momento.';
+        if (arePrerequisitesIncomplete(this.prerrequisitosMutacionRows, this.prerrequisitosMutacionSeleccionados))
+            return 'Hay prerrequisitos de mutación pendientes de completar.';
+        const campos = this.cambiosMutacionRows.map((row) => row.campo).filter((campo) => this.texto(campo).length > 0);
+        if (new Set(campos).size !== campos.length)
+            return 'Cada campo lleva un solo cambio sobre la raza base.';
+        for (const row of this.cambiosMutacionRows) {
+            if (!this.texto(row.campo) || !this.texto(row.operacion))
+                return 'Hay un cambio sobre la raza base sin campo o sin operación.';
+            if (this.operacionConValor(row.operacion) && this.numero(row.valor) === 0)
+                return 'Los pasos de tamaño necesitan cuántas categorías (de −8 a 8, no 0).';
+            if (this.operacionConElementos(row.operacion) && idsUnicosOrdenados(row.elementos).length < 1)
+                return 'Elige qué elementos de la raza base se quitan o se conservan.';
+        }
+        return null;
     }
 
+    /** La referencia de un prerrequisito de mutación, del catálogo que dice su tipo: los grandes, los que ya carga el
+     * formulario; los pequeños, los del modelo. */
     private getCatalogoPrerrequisitoMutacion(type: PrerequisiteType): PrerequisiteCatalogItem[] {
-        if (type === 'actitud_requerido' || type === 'actitud_prohibido')
-            return this.actitudes.map((item) => ({ id: this.numero(item.Id), nombre: `${item.Nombre ?? ''}`.trim() }));
-        if (type === 'alineamiento_requerido' || type === 'alineamiento_prohibido')
-            return this.getAlineamientosBasicosPrerrequisito().map((item) => ({ id: this.numero(item.Id), nombre: `${item.Nombre ?? ''}`.trim() }));
-        if (type === 'tipo_criatura')
-            return this.tiposCriatura.map((item) => ({ id: this.numero(item.Id), nombre: `${item.Nombre ?? ''}`.trim() }));
-        return [];
+        const catalogo = tipoDeMutacion(type)?.Catalogo ?? null;
+        return catalogo ? this.opcionesDeCatalogoMutacion(catalogo) : [];
+    }
+
+    private opcionesDeCatalogoMutacion(catalogo: string): PrerequisiteCatalogItem[] {
+        const de = (items: { Id: unknown; Nombre: unknown; }[]) =>
+            items.map((item) => ({ id: this.numero(item.Id), nombre: this.texto(item.Nombre) })).filter((item) => item.id > 0);
+        switch (catalogo) {
+            case 'tipos_criatura': return de(this.tiposCriatura);
+            case 'subtipos': return de(this.subtipos);
+            case 'razas': return de(this.razasExistentes);
+            case 'tamanos': return de(this.tamanos);
+            case 'clases': return de(this.clases);
+            case 'raciales': return de(this.raciales);
+            case 'conjuros': return de(this.conjuros);
+            case 'dotes': return de(this.dotes);
+            case 'idiomas': return de(this.idiomas);
+            case 'habilidades': return de(this.habilidades.map((item) => ({ Id: item.Id_habilidad, Nombre: item.Nombre })));
+            case 'armas_naturales': return this.opcionesDeArmasNaturales();
+            default: return de(this.modeloMutacion?.Catalogos[catalogo] ?? []);
+        }
+    }
+
+    /** Las armas naturales del catálogo (`GET /armas-naturales`), que se piden la primera vez que hacen falta. */
+    private opcionesDeArmasNaturales(): PrerequisiteCatalogItem[] {
+        if (this.tiposArmasNaturales === null) {
+            this.tiposArmasNaturales = [];
+            this.injector.get(ArmaNaturalService).getTipos()
+                .pipe(takeUntil(this.destroy$))
+                .subscribe({
+                    next: (tipos) => this.tiposArmasNaturales = tipos
+                        .map((tipo) => ({ id: this.numero(tipo.Id), nombre: this.texto(tipo.Nombre) })),
+                    error: () => this.tiposArmasNaturales = [],
+                });
+        }
+        return this.tiposArmasNaturales;
     }
 
     private getNombreCatalogoPrerrequisitoMutacion(type: PrerequisiteType, id: number): string {
         return findCatalogName(type, id, this.getCatalogoPrerrequisitoMutacion(type));
     }
 
-    private syncFilasPrerrequisitosMutacion(tipos: MutacionPrerequisiteType[]): PrerequisiteRowModel[] {
+    private syncFilasPrerrequisitosMutacion(tipos: TipoEditorMutacion[]): PrerequisiteRowModel[] {
         const selected = new Set(tipos);
-        let next = this.prerrequisitosMutacionRows.filter((row) => selected.has(row.tipo as MutacionPrerequisiteType));
+        let next = this.prerrequisitosMutacionRows.filter((row) => selected.has(row.tipo as TipoEditorMutacion));
         tipos.forEach((tipo) => {
             if (!next.some((row) => row.tipo === tipo))
                 next = [...next, getPrerequisiteDefinition(tipo).createDefaultRow()];
@@ -2581,8 +2621,81 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return next;
     }
 
-    private esTipoPrerrequisitoMutacion(type: PrerequisiteType): type is MutacionPrerequisiteType {
-        return this.mutacionPrerequisiteTypes.includes(type as MutacionPrerequisiteType);
+    // --- Los cambios sobre la raza base --------------------------------------------------------------------------------
+
+    get camposMutacion(): CampoMutacion[] {
+        return this.modeloMutacion?.Campos ?? [];
+    }
+
+    campoMutacion(clave: string): CampoMutacion | null {
+        return this.camposMutacion.find((campo) => campo.Campo === clave) ?? null;
+    }
+
+    /** Los campos que se pueden elegir en una fila: los que no lleva ya otra fila. */
+    camposMutacionLibres(row: CambioMutacionRow): CampoMutacion[] {
+        const usados = new Set(this.cambiosMutacionRows.filter((otra) => otra.uid !== row.uid).map((otra) => otra.campo));
+        return this.camposMutacion.filter((campo) => !usados.has(campo.Campo));
+    }
+
+    nombreOperacionMutacion(clave: string): string {
+        return this.modeloMutacion?.Operaciones.find((operacion) => operacion.Clave === clave)?.Nombre ?? clave;
+    }
+
+    descripcionOperacionMutacion(clave: string): string {
+        return this.modeloMutacion?.Operaciones.find((operacion) => operacion.Clave === clave)?.Descripcion ?? '';
+    }
+
+    /** Las operaciones de una fila: las que admite su campo, sin la regla de hoy (sin fila es la que se aplica). */
+    operacionesMutacion(row: CambioMutacionRow): string[] {
+        const campo = this.campoMutacion(row.campo);
+        return (campo?.Operaciones ?? []).filter((operacion) => operacion !== campo?.Por_defecto);
+    }
+
+    operacionConValor(operacion: string): boolean {
+        return operacion === 'pasos';
+    }
+
+    operacionConElementos(operacion: string): boolean {
+        return operacion === 'quitar' || operacion === 'conservar';
+    }
+
+    elementosDeCambio(row: CambioMutacionRow): PrerequisiteCatalogItem[] {
+        const catalogo = this.campoMutacion(row.campo)?.Catalogo_elementos;
+        return catalogo ? this.opcionesDeCatalogoMutacion(catalogo) : [];
+    }
+
+    agregarCambioMutacion(): void {
+        this.cambiosMutacionRows = [...this.cambiosMutacionRows, this.crearCambioMutacionRow()];
+    }
+
+    quitarCambioMutacion(uid: string): void {
+        this.cambiosMutacionRows = this.cambiosMutacionRows.filter((row) => row.uid !== uid);
+    }
+
+    actualizarCambioMutacion(uid: string, patch: Partial<CambioMutacionRow>): void {
+        this.cambiosMutacionRows = this.cambiosMutacionRows.map((row) => {
+            if (row.uid !== uid)
+                return row;
+            const next = { ...row, ...patch };
+            // Otro campo: su operación y lo que va con ella vuelven a empezar.
+            if (patch.campo !== undefined && patch.campo !== row.campo)
+                Object.assign(next, { operacion: patch.operacion ?? '', valor: patch.valor ?? null, elementos: patch.elementos ?? [] });
+            if (!this.operacionConValor(next.operacion))
+                next.valor = null;
+            else if (next.valor === null)
+                next.valor = 1;
+            if (!this.operacionConElementos(next.operacion))
+                next.elementos = [];
+            return next;
+        });
+    }
+
+    trackByCambioMutacion(_: number, row: CambioMutacionRow): string {
+        return row.uid;
+    }
+
+    private crearCambioMutacionRow(): CambioMutacionRow {
+        return { uid: uidDeFila('cambio-mutacion'), campo: '', operacion: '', valor: null, elementos: [] };
     }
 
     private resetRows(): void {
@@ -2659,7 +2772,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             puntos_hab: 0,
             puntos_hab_mult: 0,
             mutada: false,
-            tamano_mutacion_dependiente: false,
             id_alineamiento: 0,
             alineamiento_modo: 'basico',
             id_alineamiento_basico: 0,
@@ -2792,7 +2904,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             puntos_hab: this.numero(dgs?.Puntos_habilidad),
             puntos_hab_mult: this.numero(dgs?.Multiplicador_puntos_habilidad),
             mutada: raza.Mutada === true,
-            tamano_mutacion_dependiente: raza.Mutada === true && raza.Tamano_mutacion_dependiente === true,
             ...alineamiento,
             oficial: raza.Oficial === true,
             id_clase_lanzamiento: this.numero(raza.Lanzamiento?.Clase?.Id),
@@ -2857,8 +2968,14 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
         const filasMutacion = this.filasPrerrequisitosMutacionDesdeRaza(raza);
         this.prerrequisitosMutacionRows = filasMutacion;
-        this.prerrequisitosMutacionSeleccionados = this.mutacionPrerequisiteTypes
-            .filter((tipo) => filasMutacion.some((fila) => fila.tipo === tipo));
+        this.prerrequisitosMutacionSeleccionados = [...new Set(filasMutacion.map((fila) => fila.tipo as TipoEditorMutacion))];
+        this.cambiosMutacionRows = (raza.Cambios_mutacion ?? []).map((cambio) => ({
+            uid: uidDeFila('cambio-mutacion'),
+            campo: cambio.Campo,
+            operacion: cambio.Operacion,
+            valor: cambio.Valor,
+            elementos: idsUnicosOrdenados(cambio.Elementos.map((elemento) => elemento.Id)),
+        }));
 
         this.sincronizarCamposDgsExtra();
         this.sincronizarAlineamientoDesdeSeleccion();
@@ -2890,23 +3007,23 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         };
     }
 
-    /** Las filas del editor de prerrequisitos de mutación con los de la raza (`pr`); el alineamiento, por su básico. */
+    /**
+     * Las filas del editor de prerrequisitos de mutación con los de la raza (`pr`, por la clave de su tipo): su referencia,
+     * su cantidad, su texto y su grupo. Los tipos son los del modelo (`registrarTiposDeMutacion`), que se carga antes.
+     */
     private filasPrerrequisitosMutacionDesdeRaza(raza: Raza): PrerequisiteRowModel[] {
-        const prerrequisitos = raza.Prerrequisitos ?? {};
-        const fila = (tipo: MutacionPrerequisiteType, id: unknown, opcional: unknown): PrerequisiteRowModel => ({
-            ...getPrerequisiteDefinition(tipo).createDefaultRow(),
-            id: this.numero(id),
-            opcional: this.numero(opcional),
+        return Object.entries(raza.Prerrequisitos ?? {}).flatMap(([clave, items]) => {
+            const tipo = claveEditorMutacion(clave);
+            if (!tipoDeMutacion(tipo))
+                return [];
+            return items.map((item) => ({
+                ...getPrerequisiteDefinition(tipo).createDefaultRow(),
+                id: this.numero(item.Id_referencia),
+                valor: item.Cantidad ?? 1,
+                texto: item.Texto ?? '',
+                opcional: this.numero(item.Opcional),
+            }));
         });
-        const de = (tipo: MutacionPrerequisiteType, leerId: (item: any) => unknown) =>
-            (prerrequisitos[tipo] ?? []).map((item: any) => fila(tipo, leerId(item), item?.opcional ?? item?.Opcional));
-        return [
-            ...de('actitud_requerido', (item) => item?.id_actitud),
-            ...de('actitud_prohibido', (item) => item?.id_actitud),
-            ...de('alineamiento_requerido', (item) => item?.id_alineamiento_basico),
-            ...de('alineamiento_prohibido', (item) => item?.id_alineamiento_basico),
-            ...de('tipo_criatura', (item) => item?.id_tipo_criatura),
-        ].filter((item) => item.id > 0);
     }
 
     /**
@@ -3124,11 +3241,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return combinacion ? this.nombreAlineamiento(combinacion) : 'Sin combinación válida';
     }
 
-    getAlineamientosBasicosPrerrequisito(): AlineamientoBasicoCatalogItem[] {
-        return this.alineamientosBasicos
-            .filter((item) => !this.esSinPreferencia(item?.Nombre));
-    }
-
     private sincronizarAlineamientoDesdeSeleccion(): void {
         const modo = this.form.controls.alineamiento_modo.value;
         const idPrioridad = this.numero(this.form.controls.id_prioridad_alineamiento.value);
@@ -3177,23 +3289,6 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     private getIdPrioridadAlineamiento(item: AlineamientoCombinacionCatalogItem): number {
         return this.numero(item?.Prioridad?.Id ?? (item?.Prioridad as any)?.Id_prioridad);
-    }
-
-    private resolverIdAlineamientoPrerrequisitoDesdeBasico(idBasico: number): number {
-        if (!this.esAlineamientoBasicoPrerrequisitoValido(idBasico))
-            return 0;
-        return this.resolverIdAlineamientoDesdeBasico(idBasico);
-    }
-
-    private tieneAlineamientoBasicoSinResolver(values: number[] | null | undefined): boolean {
-        return idsUnicosOrdenados(values)
-            .some((idBasico) => this.resolverIdAlineamientoPrerrequisitoDesdeBasico(idBasico) <= 0);
-    }
-
-    private esAlineamientoBasicoPrerrequisitoValido(idBasico: number): boolean {
-        const id = this.numero(idBasico);
-        const basico = this.alineamientosBasicos.find((item) => this.numero(item.Id) === id);
-        return !!basico && !this.esSinPreferencia(basico.Nombre);
     }
 
     private esSinPreferencia(value: any): boolean {

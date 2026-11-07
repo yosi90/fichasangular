@@ -1,3 +1,4 @@
+import { TipoPrerrequisitoMutacion } from 'src/app/interfaces/razas-api';
 import {
     PrerequisiteCatalogContext,
     PrerequisiteCatalogItem,
@@ -6,6 +7,7 @@ import {
     PrerequisiteEditorKind,
     PrerequisiteRowModel,
     PrerequisiteType,
+    TipoEditorMutacion,
 } from './prerrequisito-editor.models';
 import { idsUnicosOrdenados, toInt } from 'src/app/services/utils/normalizacion';
 import { nombreTipoPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
@@ -511,8 +513,85 @@ const PREREQUISITE_DEFINITION_MAP = new Map<PrerequisiteType, PrerequisiteEditor
     PREREQUISITE_EDITOR_DEFINITIONS.map((item) => [item.type, item])
 );
 
+// --- Los tipos de las razas mutadas: datos de la API -------------------------------------------------------------------
+
+const PREFIJO_MUTACION = 'mutacion.';
+const TIPOS_DE_MUTACION = new Map<TipoEditorMutacion, TipoPrerrequisitoMutacion>();
+const DEFINICIONES_DE_MUTACION = new Map<TipoEditorMutacion, PrerequisiteEditorDefinition>();
+
+/** La clave del editor (`mutacion.<clave>`) de un tipo de prerrequisito de mutación. */
+export function claveEditorMutacion(clave: string): TipoEditorMutacion {
+    return `${PREFIJO_MUTACION}${clave}`;
+}
+
+export function esTipoDeMutacion(type: PrerequisiteType | string | null | undefined): type is TipoEditorMutacion {
+    return typeof type === 'string' && type.startsWith(PREFIJO_MUTACION);
+}
+
+/** La clave de la API (`tipo` del cuerpo) de un tipo del editor de mutación. */
+export function claveDeMutacion(type: TipoEditorMutacion): string {
+    return type.slice(PREFIJO_MUTACION.length);
+}
+
+/** El tipo de la API de una clave del editor, si está registrado. */
+export function tipoDeMutacion(type: PrerequisiteType): TipoPrerrequisitoMutacion | null {
+    return esTipoDeMutacion(type) ? TIPOS_DE_MUTACION.get(type) ?? null : null;
+}
+
+function enteroFinito(valor: unknown): number | null {
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? Math.trunc(numero) : null;
+}
+
+function definicionDeMutacion(tipo: TipoPrerrequisitoMutacion): PrerequisiteEditorDefinition {
+    const type = claveEditorMutacion(tipo.Clave);
+    const editorKind: PrerequisiteEditorKind = tipo.Pide_referencia
+        ? (tipo.Pide_cantidad ? 'catalog-plus-value' : 'catalog-only')
+        : tipo.Pide_cantidad ? 'value-only' : tipo.Pide_texto ? 'text-only' : 'flag-only';
+    return {
+        type,
+        label: tipo.Nombre,
+        editorKind,
+        requiredCatalogs: [],
+        catalogLabel: tipo.Nombre,
+        valueLabel: 'Cantidad',
+        isComplete: (row) => (!tipo.Pide_referencia || toInt(row.id, 0) > 0)
+            && (!tipo.Pide_cantidad || enteroFinito(row.valor) !== null)
+            && (!tipo.Pide_texto || `${row.texto ?? ''}`.trim().length > 0),
+        // El elemento de `prerrequisitos_mutacion[]` del alta de razas: la clave del tipo y lo que pide.
+        toPayload: (row) => {
+            const salida: Record<string, any> = { tipo: tipo.Clave };
+            if (tipo.Pide_referencia)
+                salida['id_referencia'] = toInt(row.id, 0);
+            if (tipo.Pide_cantidad)
+                salida['cantidad'] = enteroFinito(row.valor) ?? 0;
+            if (tipo.Pide_texto)
+                salida['texto'] = `${row.texto ?? ''}`.trim();
+            const opcional = Math.max(0, toInt(row.opcional, 0));
+            if (opcional > 0)
+                salida['opcional'] = opcional;
+            return salida;
+        },
+        createDefaultRow: () => ({ ...createDefaultRow(type), texto: '' }),
+    };
+}
+
+/**
+ * Registra los tipos de prerrequisito de las razas mutadas que da la API (`GET /razas/mutaciones/modelo`): cada uno con
+ * su editor según lo que pide (la referencia de su catálogo, la cantidad, el texto). Así un tipo nuevo de la base sale en
+ * el formulario sin tocar la web. Devuelve sus claves del editor, en su orden.
+ */
+export function registrarTiposDeMutacion(tipos: TipoPrerrequisitoMutacion[]): TipoEditorMutacion[] {
+    return (tipos ?? []).map((tipo) => {
+        const type = claveEditorMutacion(tipo.Clave);
+        TIPOS_DE_MUTACION.set(type, tipo);
+        DEFINICIONES_DE_MUTACION.set(type, definicionDeMutacion(tipo));
+        return type;
+    });
+}
+
 export function getPrerequisiteDefinition(type: PrerequisiteType): PrerequisiteEditorDefinition {
-    const definition = PREREQUISITE_DEFINITION_MAP.get(type);
+    const definition = (esTipoDeMutacion(type) ? DEFINICIONES_DE_MUTACION.get(type) : null) ?? PREREQUISITE_DEFINITION_MAP.get(type);
     if (!definition)
         throw new Error(`Prerequisite definition not found for type "${type}"`);
     return definition;

@@ -52,14 +52,8 @@ function crearRazaMock(extra: Partial<Raza> = {}): Raza {
         Resistencia_energia: 'No especifica',
         Heredada: false,
         Mutada: false,
-        Tamano_mutacion_dependiente: false,
-        Prerrequisitos: {
-            actitud_prohibido: [],
-            actitud_requerido: [],
-            alineamiento_prohibido: [],
-            alineamiento_requerido: [],
-            tipo_criatura: [],
-        },
+        Cambios_mutacion: [],
+        Prerrequisitos: {},
         Armadura_natural: 0,
         Varios_armadura: 0,
         Correr: 30,
@@ -304,10 +298,9 @@ describe('DetallesRazaComponent', () => {
             Resistencia_magica: '16 + niveles de clase',
             Resistencia_energia: '',
             Mutada: true,
-            Tamano_mutacion_dependiente: true,
         });
 
-        expect(etiquetasCabecera()).toEqual(['Mutada', 'Tamaño según la mutación', 'Oficial']);
+        expect(etiquetasCabecera()).toEqual(['Mutada', 'Oficial']);
         expect(limpio(seccion('Ataques naturales')?.querySelector('app-texto-manual'))).toBe('Mordisco (1d8) y golpetazo (1d4).');
         expect(valor('Reducción de daño')).toBe('10/maligna');
         expect(valor('Resistencia a conjuros')).toBe('16 + niveles de clase');
@@ -360,17 +353,21 @@ describe('DetallesRazaComponent', () => {
         expect(valor('Nombre original')).toBeNull();
     });
 
-    it('enseña los prerrequisitos con su frase, las dotes y las plantillas por subtipo, enlazadas', () => {
+    it('enseña lo que pide una mutada (de la base y del personaje), sus cambios, las dotes y las plantillas por subtipo', () => {
         const doteSpy = spyOn(component.doteDetalles, 'emit');
         const plantillaSpy = spyOn(component.plantillaDetalles, 'emit');
+        const prerrequisito = (Tipo: string, Sujeto: any, Frase: string, Opcional = 0) => ({
+            Id: 1, Tipo, Sujeto, Id_referencia: null, Referencia: null, Cantidad: null, Texto: null, Opcional, Frase,
+        });
         pintar({
+            Mutada: true,
             Prerrequisitos: {
-                actitud_prohibido: [],
-                actitud_requerido: [],
-                alineamiento_prohibido: [],
-                alineamiento_requerido: [],
-                tipo_criatura: [{ id_tipo_criatura: 7, tipo_criatura: 'Dragón', opcional: 0, Frase: 'Criatura de tipo dragón' } as any],
+                tipo_criatura: [prerrequisito('tipo_criatura', 'raza_base', 'Criatura de tipo dragón')],
+                actitud_prohibido: [prerrequisito('actitud_prohibido', 'personaje', 'Cualquier alineamiento no maligno')],
+                momento: [prerrequisito('momento', 'creacion', 'Se adquiere al crear el personaje')],
             },
+            Cambios_mutacion: [{ Campo: 'Tamano', Nombre: 'Tamaño', Operacion: 'heredar', Valor: null, Elementos: [],
+                Frase: 'Tamaño: lo de la raza base' }],
             DotesContextuales: [{ Dote: { Id: 9, Nombre: 'Alerta' }, Contexto: { Extra: '' } } as any],
             Plantillas_por_subtipo: [
                 { Subtipo: { Id: 2, Nombre: 'Arconte' }, Plantillas: [{ Id: 1, Nombre: 'Celestial', Descripcion: 'Criaturas de los planos superiores.' }] },
@@ -378,8 +375,11 @@ describe('DetallesRazaComponent', () => {
             ],
         });
 
-        expect(titulos()).toContain('Prerrequisitos');
-        expect(limpio(lateral('Prerrequisitos'))).toContain('Criatura de tipo dragón');
+        expect(limpio(lateral('Pide de la raza base'))).toContain('Criatura de tipo dragón');
+        expect(limpio(lateral('Pide de la raza base'))).not.toContain('no maligno');
+        expect(limpio(lateral('Pide del personaje'))).toContain('Cualquier alineamiento no maligno');
+        expect(limpio(lateral('Pide del personaje'))).toContain('Se adquiere al crear el personaje');
+        expect(limpio(lateral('Cambios sobre la raza base'))).toContain('Tamaño: lo de la raza base');
         expect(Array.from(lateral('Plantillas por subtipo')!.querySelectorAll('.ficha-subtitulo')).map((t) => limpio(t))).toEqual(['Arconte']);
         enlace('Celestial').click();
         enlace('Alerta').click();
