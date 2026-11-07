@@ -1078,6 +1078,7 @@ export class CampanasGestionEstado implements OnDestroy {
             precioMaximoPorObjeto: null,
             permitirCopiarConjuros: true,
             maxTiradasPuntosGolpe: this.campaignHpRollsMax,
+            permitirClasesDeMonstruo: true,
         };
     }
 
@@ -1107,6 +1108,7 @@ export class CampanasGestionEstado implements OnDestroy {
             precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(this.campaignCreatePolicyDraft.precioMaximoPorObjeto),
             permitirCopiarConjuros: this.campaignCreatePolicyDraft.permitirCopiarConjuros !== false,
             maxTiradasPuntosGolpe: tiradasPuntosGolpe(this.campaignCreatePolicyDraft.maxTiradasPuntosGolpe),
+            permitirClasesDeMonstruo: this.campaignCreatePolicyDraft.permitirClasesDeMonstruo !== false,
         };
     }
 
@@ -1391,6 +1393,7 @@ export class CampanasGestionEstado implements OnDestroy {
             precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(source?.precioMaximoPorObjeto),
             permitirCopiarConjuros: source?.permitirCopiarConjuros !== false,
             maxTiradasPuntosGolpe: tiradasPuntosGolpe(source?.maxTiradasPuntosGolpe),
+            permitirClasesDeMonstruo: source?.permitirClasesDeMonstruo !== false,
         };
     }
 

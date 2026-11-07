@@ -170,6 +170,16 @@ export interface ClaseNivelDetalle {
     Conjuros_conocidos_total: number;
     Dotes: ClaseDoteNivel[];
     Especiales: ClaseEspecialNivel[];
+    /**
+     * La tabla por nivel de una clase de monstruo (*Libris Mortis*, págs. 35-40: no dan un DG ni una dote en cada nivel;
+     * `services/utils/clase-niveles.ts`). Si ese nivel da un DG (y con él sus puntos de habilidad). El mapper lo pone
+     * siempre; sin él o en una clase sin tabla, `true`.
+     */
+    Dg?: boolean;
+    /** Si ese nivel da una dote; `null` (o sin él) en una clase sin tabla: las dotes van por nivel de personaje. */
+    Dote?: boolean | null;
+    /** La armadura natural **total** que da la clase a ese nivel (no se suma nivel a nivel; se apila con la de la raza). */
+    Armadura_natural?: number;
 }
 
 export interface ClasePrerrequisitosFlags {
@@ -288,6 +298,16 @@ export interface Clase {
     Grupo_edad_inicial?: number;
     /** Guía del DM, cap. 4: una clase de PNJ (adepto, combatiente…); cuenta distinto en el VD de un PNJ. */
     Clase_pnj?: boolean;
+    /** *Libris Mortis*, págs. 34-35: quien la empieza la termina antes de tomar cualquier otra clase. */
+    Progresion_obligatoria?: boolean;
+    /** *Libris Mortis*, pág. 35: no cuenta para la penalización de PX por multiclase, como las de prestigio. */
+    Sin_penalizacion_multiclase?: boolean;
+    /**
+     * La raza mutada que lleva la clase (su bloque de rasgos raciales: las clases de monstruo muerto viviente de *Libris
+     * Mortis*): solo la toma un personaje de esa raza, y un personaje de esa raza la tiene desde el 1.er nivel. `null` (o
+     * sin él) en las demás. Al escribir basta `{ Id }`; si no viene, la edición conserva la guardada.
+     */
+    Mutacion?: { Id: number; Nombre: string; } | null;
     Alineamiento: Alineamiento;
     Oficial: boolean;
     Competencias: ClaseCompetencias;

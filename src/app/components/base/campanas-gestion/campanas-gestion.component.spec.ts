@@ -126,6 +126,19 @@ describe('CampanasGestionComponent', () => {
         expect(textos('.campanas-cabecera__acciones button')).toContain('link Copiar el enlace para pedir entrar');
     });
 
+    it('las clases de monstruo, junto a las demás opciones de «Contenido»: sin dato, sí; el «no» de la API se lee y se guarda', async () => {
+        await elegir(7);
+        expect(textos('.campanas-fila__etiqueta')).toContain('Clases de monstruo (los muertos vivientes de Libris Mortis)');
+        expect(estado.campaignCreatePolicyDraft.permitirClasesDeMonstruo).toBeTrue();
+
+        campanaSvc.getCampaignDetail.and.resolveTo(detalle({ politicaCreacion: { permitirClasesDeMonstruo: false } }) as any);
+        await elegir(8);
+        expect(estado.campaignCreatePolicyDraft.permitirClasesDeMonstruo).toBeFalse();
+        expect((estado as any).buildCampaignPolicyForSave().permitirClasesDeMonstruo).toBeFalse();
+        estado.campaignCreatePolicyDraft.permitirClasesDeMonstruo = true;
+        expect((estado as any).buildCampaignPolicyForSave().permitirClasesDeMonstruo).toBeTrue();
+    });
+
     it('las pestañas abren jugadores e historias con las mismas acciones de siempre', async () => {
         await elegir(7);
 

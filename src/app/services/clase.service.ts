@@ -275,6 +275,11 @@ function normalizeNivel(raw: any): ClaseNivelDetalle {
             Especial: item?.Especial ?? {},
             ...normalizeOtorgadoNivel(item),
         })),
+        // La tabla por nivel de una clase de monstruo. Sin tabla (y en la caché, que no escribe los `null`): un DG en cada
+        // nivel, las dotes por nivel de personaje y ninguna armadura natural.
+        Dg: raw?.Dg === undefined || raw?.Dg === null ? true : toBoolean(raw.Dg),
+        Dote: raw?.Dote === undefined || raw?.Dote === null ? null : toBoolean(raw.Dote),
+        Armadura_natural: Math.max(0, toNumber(raw?.Armadura_natural, 0)),
     };
 }
 
@@ -344,6 +349,10 @@ export function normalizeClase(raw: any): Clase {
         Alineamiento_deidad: toBoolean(raw?.Alineamiento_deidad),
         Grupo_edad_inicial: toNumber(raw?.Grupo_edad_inicial),
         Clase_pnj: toBoolean(raw?.Clase_pnj),
+        Progresion_obligatoria: toBoolean(raw?.Progresion_obligatoria),
+        Sin_penalizacion_multiclase: toBoolean(raw?.Sin_penalizacion_multiclase),
+        // En la caché, `Mutacion: null` no se escribe: su ausencia es `null`.
+        Mutacion: normalizeRefIdNombre(raw?.Mutacion),
         Alineamiento: normalizeAlineamiento(raw?.Alineamiento),
         Oficial: toBoolean(raw?.Oficial),
         Competencias: {

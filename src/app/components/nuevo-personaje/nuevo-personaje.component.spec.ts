@@ -19,6 +19,7 @@ import { CONVOCADOR_DIVINO_API, GRAN_ARCANO_API, SENDA_ASENDA_API } from 'src/te
 import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
 import { razaPorEdadesApi, razaPorEdadesEnPasoApi } from 'src/testing/raza-por-edades';
 import { claveDeHabilidad } from 'src/app/services/utils/habilidad-clave';
+import { baseApi, claseDeMonstruoApi, ENGENDRO_VAMPIRICO, razaDeMonstruoSobreApi } from 'src/testing/clases-de-monstruo-api';
 
 function crearRazaMock(oficial = true): Raza {
     return {
@@ -1647,6 +1648,46 @@ describe('NuevoPersonajeComponent', () => {
         component.Personaje.Campana = 'Sin campaña';
         (component as any).abrirSelectorIdiomaParaVentaja(5);
         expect(component.idiomasDelSelector.length).toBe(2);
+    });
+
+    it('las clases de monstruo: el aviso de la raza que se mira y del paso de clases, y la campaña que no las permite (Libris Mortis)', () => {
+        const engendro = normalizeClase(claseDeMonstruoApi(ENGENDRO_VAMPIRICO));
+        nuevoPSvc.setCatalogoClases([engendro]);
+        const humano = baseApi('humano');
+        const raza = normalizeRazaApi(razaDeMonstruoSobreApi(ENGENDRO_VAMPIRICO, humano, { Fuerza: 2, Carisma: 2 }));
+
+        component.mirarRaza(raza);
+        expect(component.avisoClaseDeMonstruoRazaMirada).toContain('Se juega con su clase, «Engendro vampírico»');
+        component.mirarRaza(normalizeRazaApi(humano));
+        expect(component.avisoClaseDeMonstruoRazaMirada).toBeNull();
+
+        expect(nuevoPSvc.seleccionarRaza(raza, normalizeRazaApi(humano))).toBeTrue();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        expect(component.avisoClaseObligada).toContain('empieza con su clase, «Engendro vampírico», desde el 1.er nivel');
+
+        component.Personaje.Campana = 'Campaña A';
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: null,
+            nepMaximoPersonajeNuevo: null,
+            maxTablasDadosCaracteristicas: null,
+            permitirHomebrewGeneral: true,
+            permitirVentajasDesventajas: true,
+            permitirIgnorarRestriccionesAlineamiento: true,
+            maxFuentesHomebrewGeneralesPorPersonaje: null,
+            permitirClasesDeMonstruo: false,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+        (component as any).selectedCampaignActiveMasterUid = 'uid-otro';
+        const motivo = 'La campaña no permite las clases de monstruo y la raza «Engendro vampírico» se juega con la suya, '
+            + '«Engendro vampírico». Elige otra campaña o «Sin campaña».';
+        expect(component.motivosBloqueoBasicos).toContain(motivo);
+
+        // Su máster se salta las reglas (`overrideReglasCampana`), y sin la opción en `false` no hay bloqueo.
+        (component as any).selectedCampaignActiveMasterUid = 'uid-actor';
+        expect(component.motivosBloqueoBasicos).not.toContain(motivo);
+        (component as any).selectedCampaignActiveMasterUid = 'uid-otro';
+        component.selectedCampaignPolicy = { ...component.selectedCampaignPolicy, permitirClasesDeMonstruo: true };
+        expect(component.motivosBloqueoBasicos).not.toContain(motivo);
     });
 
     describe('fuentes homebrew de la campaña (las de la API, la misma lista que la oficialidad)', () => {
@@ -7098,6 +7139,26 @@ describe('NuevoPersonajeComponent', () => {
             const opciones = swal.calls.mostRecent().args[0] as any;
             expect(opciones.title).toBe('No se pudo crear el personaje');
             expect(opciones.text).toBe(texto);
+        });
+
+        it('los errores de las clases de monstruo del alta se enseñan con su texto y sin hablar de SQL', async () => {
+            component.seleccionarRaza(crearRazaMock());
+            component.Personaje.Nombre = 'Aldric';
+            component.Personaje.desgloseClases = [{ Id: 9, Nombre: 'Guerrero', Nivel: 1 }];
+            const swal = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+            const errores: Array<[string, string, string]> = [
+                ['clase_requiere_mutacion', '«Engendro vampírico» solo la puede tomar un personaje de la raza «Engendro vampírico».', 'colecciones.clases'],
+                ['mutacion_requiere_clase', 'Un personaje de la raza «Engendro vampírico» tiene que tener la clase «Engendro vampírico».', 'personaje.idRaza'],
+                ['progresion_obligatoria_incompleta', 'Hay que terminar «Engendro vampírico» (8 niveles) antes de tomar otra clase.', 'colecciones.clases'],
+                ['clase_de_monstruo_no_permitida', 'La campaña no permite personajes de una clase de monstruo.', 'personaje.idRaza'],
+            ];
+            for (const [code, texto, field] of errores) {
+                personajeSvcMock.crearPersonajeApiDesdeCreacion.and.rejectWith(new ProfileApiError(texto, code, 400, field));
+                await component.onConfirmarSelectorVisibilidad(false);
+                const opciones = swal.calls.mostRecent().args[0] as any;
+                expect(opciones.title).withContext(code).toBe('No se pudo crear el personaje');
+                expect(opciones.text).withContext(code).toBe(texto);
+            }
         });
 
         it('el error del contrato al guardar se enseña con su texto y sin hablar de SQL', async () => {

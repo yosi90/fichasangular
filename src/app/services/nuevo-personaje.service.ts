@@ -85,6 +85,8 @@ import { OrigenTamano, TamanoEfectivo, tamanoEfectivo, tamanoQueCuenta } from '.
 import { ajusteDePlantillas, dgRacialSustituible, dgsDePlantilla, dgsDePlantillas, dgsRacialesQueCuentan, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
 import { ClaseParaPenalizacion, ClasePredilecta, PenalizacionExperiencia, penalizacionExperiencia } from './utils/penalizacion-experiencia';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
+import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
+import { claseDeLaRaza, claseObligada, ContextoClasesDeMonstruo, motivoClaseDeMonstruo } from './utils/clases-de-monstruo';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
 import { bonoTamano, bonosSinergia } from './utils/habilidades-bonos';
 import { textoAtaqueBase } from './utils/ataque-base';
@@ -1879,6 +1881,16 @@ export class NuevoPersonajeService {
                 advertencias: [],
             };
         }
+        // Las clases de monstruo (`clases-de-monstruo.ts`): la de su raza desde el 1.er nivel y una progresión obligatoria
+        // hasta terminarla; la que lleva una raza mutada, solo con esa raza. Las mismas que comprueba el alta.
+        const motivoMonstruo = motivoClaseDeMonstruo(clase, this.contextoClasesDeMonstruo());
+        if (motivoMonstruo) {
+            return {
+                estado: 'blocked_failed',
+                razones: [motivoMonstruo],
+                advertencias: [],
+            };
+        }
 
         const identidad = this.identidadPrerrequisitosActual();
 
@@ -2256,9 +2268,13 @@ export class NuevoPersonajeService {
         return true;
     }
 
-    /** Llamar con el nivel de clase ya aplicado (`aplicarSiguienteNivelClase`). */
+    /**
+     * Llamar con el nivel de clase ya aplicado (`aplicarSiguienteNivelClase`). Un nivel sin DG de una clase con tabla (las
+     * de monstruo, *Libris Mortis*, pág. 35) no da puntos de habilidad, tampoco los extra de la raza: van con los DG.
+     */
     iniciarDistribucionHabilidadesPorClase(clase: Clase): boolean {
-        const total = puntosHabilidadNivelClase({
+        const daDg = daDgEnNivel(clase, this.obtenerNivelActualClase(clase?.Nombre ?? ''));
+        const total = !daDg ? 0 : puntosHabilidadNivelClase({
             puntosClase: toNumber(clase?.Puntos_habilidad?.Valor),
             modInteligencia: toNumber(this.personajeCreacion?.ModInteligencia),
             primerNivelPersonaje: this.esPrimerNivelDelPersonaje(),
@@ -4037,9 +4053,52 @@ export class NuevoPersonajeService {
         return Math.max(0, total);
     }
 
-    /** Los DG del prerrequisito `dg`: los totales, también los de las plantillas (los del animal de un licántropo). */
+    /**
+     * Los DG del prerrequisito `dg`: los totales, también los de las plantillas (los del animal de un licántropo), con los
+     * DG de cada clase por su tabla (`clase-niveles.ts`: un engendro vampírico 8 tiene 4 DG), no sus niveles.
+     */
     private resolverDgTotalActual(): number {
-        return dgsTotales(this.getPartesNivelPersonaje());
+        const partes = this.getPartesNivelPersonaje();
+        return dgsTotales({ ...partes, nivelesClase: this.getDgsClasesActual() });
+    }
+
+    /** Los DG de las clases del personaje: los niveles con DG de cada una por su tabla; sin tabla, sus niveles. */
+    private getDgsClasesActual(): number {
+        return (this.personajeCreacion?.desgloseClases ?? [])
+            .reduce((acc, entrada) => acc + dgsDeClase(this.obtenerClaseDeDesglose(entrada), toInt(entrada?.Nivel)), 0);
+    }
+
+    /** Lo que miran las reglas de las clases de monstruo: la raza del personaje, el catálogo y las clases que ya tiene. */
+    private contextoClasesDeMonstruo(): ContextoClasesDeMonstruo {
+        return {
+            idRaza: toInt(this.razaSeleccionada?.Id),
+            nombreRaza: `${this.razaSeleccionada?.Nombre ?? ''}`.trim(),
+            catalogo: this.catalogoClases,
+            tomadas: (this.personajeCreacion?.desgloseClases ?? [])
+                .filter((entrada) => toInt(entrada?.Nivel) > 0)
+                .map((entrada) => ({
+                    clase: this.obtenerClaseDeDesglose(entrada),
+                    nombre: `${entrada?.Nombre ?? ''}`.trim(),
+                    nivel: toInt(entrada?.Nivel),
+                })),
+        };
+    }
+
+    /**
+     * La clase que el personaje tiene que tomar ahora y por qué (la de su raza en el 1.er nivel, o una progresión
+     * obligatoria sin terminar): el paso de clases solo ofrece esa. `null` si puede tomar cualquiera.
+     */
+    claseObligadaActual(): { clase: Clase; motivo: string; } | null {
+        const obligada = claseObligada(this.contextoClasesDeMonstruo());
+        if (!obligada)
+            return null;
+        const clase = this.catalogoClases.find((item) => toInt(item?.Id) === toInt(obligada.clase.Id)) ?? null;
+        return clase ? { clase, motivo: obligada.motivo } : null;
+    }
+
+    /** La clase de monstruo que lleva una raza (la que la tiene como `Mutacion`), o `null`. */
+    claseDeMonstruoDeRaza(idRaza: number | null | undefined): Clase | null {
+        return claseDeLaRaza(this.catalogoClases, toInt(idRaza));
     }
 
     /** El tamaño de los prerrequisitos: el del personaje, con los pasos de tamaño de sus plantillas. */
@@ -5210,9 +5269,11 @@ export class NuevoPersonajeService {
         const cambiaCaracteristicas = especialesAplicar.some((especialNivel) =>
             Object.values(modificadoresCaracteristicaEspecialNivel(especialNivel)).some((valor) => toInt(valor) !== 0));
         // Su armadura natural se suma a la de la raza y las plantillas al recalcular (`armaduraNaturalDeAptitudes`).
+        // La de la tabla de la clase (las de monstruo), también: el total de este nivel frente al del anterior.
         const cambiaArmaduraNatural = especialesAplicar.some((especialNivel) =>
             armaduraNaturalEspecialNivel(especialNivel, especialNivel?.Extra) !== 0
-            || (especialNivel?.Especial as Record<string, any>)?.['Extras_soportados']?.['Extra_da_armnat'] === true);
+            || (especialNivel?.Especial as Record<string, any>)?.['Extras_soportados']?.['Extra_da_armnat'] === true)
+            || armaduraNaturalDeClase(clase, siguienteNivel) !== armaduraNaturalDeClase(clase, nivelActual);
         // El primer nivel de clase ocupa el lugar del DG racial único: su ataque base y sus salvaciones dejan de contar.
         const sustituyeDgRacial = this.getNivelClasesActual() === 1 && this.dgRacialSustituible();
         if (cambiaCaracteristicas || cambiaArmaduraNatural || sustituyeDgRacial) {
@@ -6165,7 +6226,7 @@ export class NuevoPersonajeService {
         // El ataque base de los DG raciales, si cuentan (con 1 DG racial y un nivel de clase, no: Guía del DM, pág. 172).
         const ataqueRacial = this.dgsRacialesEfectivos() > 0 ? toNumber(raza?.Dgs_adicionales?.Ataque_base) : 0;
         let ataqueBase = ataqueRacial + ataqueClases;
-        let armaduraNatural = toNumber(raza?.Armadura_natural) + this.armaduraNaturalDeAptitudes();
+        let armaduraNatural = toNumber(raza?.Armadura_natural) + this.armaduraNaturalDeAptitudes() + this.armaduraNaturalDeClases();
         let caVarios = toNumber(raza?.Varios_armadura);
         let dadoGolpe = this.resolverDadoGolpeTipoActual();
 
@@ -8794,7 +8855,8 @@ export class NuevoPersonajeService {
      * La penalización de PX por multiclase (`services/utils/penalizacion-experiencia.ts`, Manual del jugador, cap. 3): con
      * las clases del personaje y, si se pasa `claseNueva`, con un nivel más de esa clase (lo que pasaría al cogerlo). La
      * clase predilecta es la de los datos de su raza (`Id_clase_predilecta` y su comodín «cualquiera»); las de prestigio,
-     * por su dato `Prestigio`.
+     * por su dato `Prestigio`, y como ellas las que no penalizan la multiclase (`Sin_penalizacion_multiclase`: las clases
+     * de monstruo de *Libris Mortis*, pág. 35).
      */
     penalizacionExperiencia(claseNueva?: Clase | null): PenalizacionExperiencia {
         const clases: ClaseParaPenalizacion[] = (this.personajeCreacion?.desgloseClases ?? []).map((entrada) => {
@@ -8803,7 +8865,7 @@ export class NuevoPersonajeService {
                 id: toInt(clase?.Id ?? entrada?.Id),
                 nombre: `${entrada?.Nombre ?? clase?.Nombre ?? ''}`.trim(),
                 nivel: toInt(entrada?.Nivel),
-                prestigio: toBoolean(clase?.Prestigio),
+                prestigio: toBoolean(clase?.Prestigio) || toBoolean(clase?.Sin_penalizacion_multiclase),
             };
         });
         if (claseNueva) {
@@ -8813,7 +8875,12 @@ export class NuevoPersonajeService {
             if (existente)
                 existente.nivel += 1;
             else
-                clases.push({ id, nombre: `${claseNueva.Nombre ?? ''}`.trim(), nivel: 1, prestigio: toBoolean(claseNueva.Prestigio) });
+                clases.push({
+                    id,
+                    nombre: `${claseNueva.Nombre ?? ''}`.trim(),
+                    nivel: 1,
+                    prestigio: toBoolean(claseNueva.Prestigio) || toBoolean(claseNueva.Sin_penalizacion_multiclase),
+                });
         }
         return penalizacionExperiencia(clases, this.clasePredilectaRaza());
     }
@@ -8996,6 +9063,16 @@ export class NuevoPersonajeService {
             porAptitud.set(id, Math.max(porAptitud.get(id) ?? 0, valor));
         });
         return Array.from(porAptitud.values()).reduce((total, valor) => total + valor, 0);
+    }
+
+    /**
+     * La armadura natural de la tabla de sus clases (las de monstruo, *Libris Mortis*, pág. 35): la de la fila del nivel que
+     * tiene de cada una, que es el total a ese nivel (no la suma de las filas), y se apila con la de la raza, las plantillas
+     * y las aptitudes (`armaduraNaturalDeClase`, `clase-niveles.ts`).
+     */
+    private armaduraNaturalDeClases(): number {
+        return (this.personajeCreacion?.desgloseClases ?? [])
+            .reduce((total, entrada) => total + armaduraNaturalDeClase(this.obtenerClaseDeDesglose(entrada), toInt(entrada?.Nivel)), 0);
     }
 
     /**
@@ -10556,10 +10633,15 @@ export class NuevoPersonajeService {
 
         const nivelesClase: GrupoDadosGolpe[] = (this.personajeCreacion.desgloseClases ?? [])
             .filter((entrada) => toInt(entrada?.Nivel) > 0)
-            .map((entrada) => ({
-                cantidad: toInt(entrada.Nivel),
-                caras: dadoComun ?? (carasDado(this.obtenerClaseDeDesglose(entrada)?.Tipo_dado?.Nombre) || dadoRacial),
-            }));
+            .map((entrada) => {
+                const clase = this.obtenerClaseDeDesglose(entrada);
+                // Una clase con tabla por nivel (las de monstruo) solo da DG en sus niveles con `Dg` (`clase-niveles.ts`).
+                return {
+                    cantidad: dgsDeClase(clase, toInt(entrada.Nivel)),
+                    caras: dadoComun ?? (carasDado(clase?.Tipo_dado?.Nombre) || dadoRacial),
+                };
+            })
+            .filter((grupo) => grupo.cantidad > 0);
         flags.dadosGolpe = nivelesClase.length > 0;
 
         // Los DG de una plantilla (los del animal de un licántropo) con la Con de su forma animal: la del personaje + lo
@@ -10676,32 +10758,21 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Las dotes por DG totales (1 en el primer DG y otra cada 3: 3, 6, 9…; Manual del jugador, cap. 3), sin las de los
+     * Las dotes de la progresión (1 en el primer nivel y otra cada 3: 3, 6, 9…; Manual del jugador, cap. 3), sin las de los
      * DG raciales, que da la raza (`Dgs_adicionales.Dotes_extra`). Si el primer DG no fue racial, su dote es de esta
-     * progresión, también con DG de plantilla (un humano licántropo lobo guerrero 1: 3 DG, 2 dotes).
+     * progresión, también con DG de plantilla (un humano licántropo lobo guerrero 1: 3 DG, 2 dotes). En los niveles de una
+     * clase con tabla (las de monstruo), solo las de su tabla (`hitosDotesProgresion`, `clase-niveles.ts`).
      */
     private getHitosDotesProgresion(): number[] {
         const partes = this.getPartesNivelPersonaje();
-        const dgs = dgsTotales(partes);
-        const dgsRaciales = Math.max(0, toInt(partes.dgsRaza));
-        const primerDgRacial = primerDgEsRacial(partes);
-        const dotesDeLaRaza = primerDgRacial ? 1 + Math.floor(dgsRaciales / 3) : 0;
-        const totalPorProgresion = dgs > dgsRaciales
-            ? Math.max(0, 1 + Math.floor(dgs / 3) - dotesDeLaRaza)
-            : 0;
-        if (totalPorProgresion < 1)
-            return [];
-
-        const nivelVisible = dgs;
-        const hitosVisibles: number[] = [];
-        if (!primerDgRacial)
-            hitosVisibles.push(1);
-
-        for (let nivel = 3; nivel <= nivelVisible; nivel += 3)
-            hitosVisibles.push(nivel);
-
-        const inicio = Math.max(0, hitosVisibles.length - totalPorProgresion);
-        return hitosVisibles.slice(inicio);
+        return hitosDotesProgresion({
+            dgsRaza: partes.dgsRaza,
+            dgsPlantillas: partes.dgsPlantillas,
+            clases: (this.personajeCreacion?.desgloseClases ?? []).map((entrada) => ({
+                clase: this.obtenerClaseDeDesglose(entrada),
+                nivel: toInt(entrada?.Nivel),
+            })),
+        });
     }
 
 

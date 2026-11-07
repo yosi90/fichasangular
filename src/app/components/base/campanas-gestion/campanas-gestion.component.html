@@ -156,6 +156,12 @@
                                         [(ngModel)]="g.campaignCreatePolicyDraft.permitirIgnorarRestriccionesAlineamiento" [disabled]="g.campaignEditorFormDisabled"></mat-slide-toggle>
                                 </div>
                             </ng-container>
+                            <!-- No es homebrew: el libro deja al máster permitirlas (Libris Mortis, pág. 31). -->
+                            <div class="campanas-fila">
+                                <span class="campanas-fila__etiqueta">Clases de monstruo (los muertos vivientes de Libris Mortis)</span>
+                                <mat-slide-toggle color="primary" aria-label="Permitir personajes de una clase de monstruo"
+                                    [(ngModel)]="g.campaignCreatePolicyDraft.permitirClasesDeMonstruo" [disabled]="g.campaignEditorFormDisabled"></mat-slide-toggle>
+                            </div>
                         </section>
 
                         <section class="campanas-bloque">

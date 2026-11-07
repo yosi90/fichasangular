@@ -29,6 +29,7 @@
                             (cerrar)="razaMirada = null">
                             <p class="creacion-aviso paso-raza__aviso" *ngIf="esPnjCreacion">Un PNJ no sigue la política de creación de la
                                 campaña, se mide por su VD y nace privado.</p>
+                            <p class="creacion-aviso paso-raza__aviso" *ngIf="avisoClaseDeMonstruoRazaMirada as aviso">{{aviso}}</p>
                             <app-creacion-edad *ngIf="razaMiradaPorEdades" [opciones]="opcionesEdadMirada" [idPaso]="pasoEdadMiradoId"
                                 [pnj]="esPnjCreacion" [permitirSaltar]="puedeElegirEdadSinAjusteIgualmente"
                                 (elegir)="mirarPasoEdad($event)"></app-creacion-edad>
@@ -536,6 +537,7 @@
                             </app-chip-homebrew>
                         </div>
 
+                        <p class="creacion-aviso" *ngIf="!cargandoClases && avisoClaseObligada as aviso">{{aviso}}</p>
                         <p class="creacion-vacio" *ngIf="cargandoClases">Cargando clases…</p>
                         <p class="creacion-vacio" *ngIf="!cargandoClases && clasesListadoFiltrado.length < 1">
                             No hay clases que coincidan con los filtros.</p>

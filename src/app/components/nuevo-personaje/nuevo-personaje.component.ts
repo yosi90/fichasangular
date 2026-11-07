@@ -132,6 +132,7 @@ import { GrupoRacialesOpcionales, SeleccionRacialesOpcionales, agruparRacialesPo
 import { RacialEvaluacionResultado, evaluarRacialParaSeleccion } from 'src/app/services/utils/racial-prerrequisitos';
 import { ClaseEvaluacionResultado } from 'src/app/services/utils/clase-elegibilidad';
 import { esRazaMutada } from 'src/app/services/utils/raza-mutacion';
+import { avisoRazaConClase } from 'src/app/services/utils/clases-de-monstruo';
 import { BasesRazaMutada, EstadoBaseRazaMutada, RequisitoDelPersonajeMutacion } from 'src/app/interfaces/razas-api';
 import {
     distanciaEntreAlineamientos,
@@ -376,11 +377,15 @@ interface SelectorCompaneroBloqueadoItem {
 }
 
 /**
- * Los errores de `POST /personajes/add` del tipo (PJ o PNJ), de la edad y del PJ sin clases (`docs/publica/DRAGONES_FRONT.md`):
- * traen su frase, que se enseña tal cual.
+ * Los errores de `POST /personajes/add` de las reglas del personaje, que traen su frase y se enseñan tal cual: el tipo (PJ o
+ * PNJ), la edad y el PJ sin clases (`docs/publica/DRAGONES_FRONT.md`); la raza mutada y su base; y las clases de monstruo
+ * (`docs/publica/endpoints/personajes.md`, «Raza mutada y raza base» y «Clases de monstruo»).
  */
-const CODIGOS_FALLO_TIPO_Y_EDAD: readonly string[] = [
+const CODIGOS_FALLO_DE_REGLAS: readonly string[] = [
     'tipo_personaje_no_valido', 'paso_edad_obligatorio', 'paso_edad_no_valido', 'paso_edad_no_jugable', 'pnj_solo_master', 'pj_sin_clase',
+    'raza_no_encontrada', 'raza_base_obligatoria', 'raza_base_sin_mutada', 'raza_base_no_encontrada', 'raza_base_mutada',
+    'raza_base_no_cumple_requisitos', 'alineamiento_no_cumple_mutacion', 'mutacion_fuera_de_momento', 'personaje_no_cumple_mutacion',
+    'clase_requiere_mutacion', 'mutacion_requiere_clase', 'progresion_obligatoria_incompleta', 'clase_de_monstruo_no_permitida',
 ];
 
 const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
@@ -392,6 +397,7 @@ const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
     permitirIgnorarRestriccionesAlineamiento: true,
     maxFuentesHomebrewGeneralesPorPersonaje: null,
     maxTiradasPuntosGolpe: null,
+    permitirClasesDeMonstruo: true,
 };
 
 @Component({
@@ -1110,6 +1116,23 @@ export class NuevoPersonajeComponent {
     /** Lo que pinta la vista previa: la raza a la edad que se mira, si ya llegó; si no, la raza. */
     get razaVistaPrevia(): Raza | null {
         return this.razaMiradaAEdad ?? this.razaMirada;
+    }
+
+    /**
+     * Si la raza que se mira lleva una clase de monstruo (la clase que la tiene como `Mutacion`): el aviso de que se juega
+     * con ella desde el 1.er nivel (`avisoRazaConClase`). `null` si no.
+     */
+    get avisoClaseDeMonstruoRazaMirada(): string | null {
+        const clase = this.razaMirada ? this.nuevoPSvc.claseDeMonstruoDeRaza(this.razaMirada.Id) : null;
+        return clase ? avisoRazaConClase(clase) : null;
+    }
+
+    /**
+     * La clase que el personaje tiene que tomar ahora (la de su raza en el 1.er nivel o una progresión obligatoria sin
+     * terminar), con el porqué: el paso de clases solo enseña esa. `null` si puede tomar cualquiera.
+     */
+    get avisoClaseObligada(): string | null {
+        return this.nuevoPSvc.claseObligadaActual()?.motivo ?? null;
     }
 
     /** La raza que elige el botón del pie: en una raza por edades, la resuelta a un paso que puede elegir. */
@@ -5433,8 +5456,8 @@ export class NuevoPersonajeComponent {
             }
             const complianceMessage = this.userSvc.getComplianceErrorMessage(error, 'creation');
             const texto = `${complianceMessage || error?.message || 'Error no identificado'}`.trim();
-            // Los errores del tipo y de la edad (dragones jugables) traen su frase: el título no habla de SQL.
-            const titulo = CODIGOS_FALLO_TIPO_Y_EDAD.includes(codigoDeError(error))
+            // Los errores de las reglas del personaje (tipo, edad, raza mutada, clases de monstruo) traen su frase: el título no habla de SQL.
+            const titulo = CODIGOS_FALLO_DE_REGLAS.includes(codigoDeError(error))
                 ? 'No se pudo crear el personaje'
                 : etapa === 'sql'
                     ? 'No se pudo guardar en SQL'
@@ -7195,6 +7218,14 @@ export class NuevoPersonajeComponent {
 
         if (blocksExistingVentajas) {
             blockers.push(`La campaña no permite ventajas y desventajas y el personaje ya tiene ${ventajasCount} selección(es) en ese sistema.`);
+        }
+
+        // Las clases de monstruo (`permitirClasesDeMonstruo`, Libris Mortis, pág. 31): a un PNJ no le aplica la política
+        // (`policy` es `null`) y el máster de la campaña se salta sus reglas (`overrideReglasCampana`), como la API.
+        const claseDeMonstruo = this.nuevoPSvc.claseDeMonstruoDeRaza(this.razaSeleccionada?.Id);
+        if (policy?.permitirClasesDeMonstruo === false && claseDeMonstruo && !this.isSelectedCampaignActiveMaster) {
+            blockers.push(`La campaña no permite las clases de monstruo y la raza «${`${this.razaSeleccionada?.Nombre ?? ''}`.trim()}» `
+                + `se juega con la suya, «${`${claseDeMonstruo.Nombre ?? ''}`.trim()}». Elige otra campaña o «Sin campaña».`);
         }
 
         return {

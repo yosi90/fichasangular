@@ -80,6 +80,12 @@ export interface CampaignCreationPolicy {
     permitirCopiarConjuros?: boolean;
     /** Cuántas veces se pueden tirar los PG al crear (1 = Manual del jugador, hasta 3); `null` o sin dato, 3. */
     maxTiradasPuntosGolpe?: number | null;
+    /**
+     * Si se pueden crear personajes de una clase de monstruo (la raza mutada que lleva una clase: los muertos vivientes de
+     * *Libris Mortis*, pág. 31, «el DM puede permitir»; 2026-11-07); sin dato, sí. Con `false`, el alta da
+     * `clase_de_monstruo_no_permitida`, salvo a un PNJ o al máster que se salta las reglas.
+     */
+    permitirClasesDeMonstruo?: boolean;
 }
 
 export interface CreateCampaignInput {

@@ -1150,6 +1150,7 @@ export class CampanaService {
             precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(raw?.precioMaximoPorObjeto),
             permitirCopiarConjuros: toBoolean(raw?.permitirCopiarConjuros, true),
             maxTiradasPuntosGolpe: this.normalizeNullableTiradasPuntosGolpe(raw?.maxTiradasPuntosGolpe),
+            permitirClasesDeMonstruo: toBoolean(raw?.permitirClasesDeMonstruo, true),
         };
     }
 
@@ -1277,6 +1278,8 @@ export class CampanaService {
             payload.permitirCopiarConjuros = toBoolean(raw.permitirCopiarConjuros, true);
         if ('maxTiradasPuntosGolpe' in raw)
             payload.maxTiradasPuntosGolpe = this.normalizeNullableTiradasPuntosGolpe(raw.maxTiradasPuntosGolpe);
+        if ('permitirClasesDeMonstruo' in raw)
+            payload.permitirClasesDeMonstruo = toBoolean(raw.permitirClasesDeMonstruo, true);
 
         return payload;
     }
