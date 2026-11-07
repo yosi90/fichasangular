@@ -10693,12 +10693,6 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Los PG del personaje (`services/utils/puntos-golpe.ts`, Manual del jugador cap. 3): cada DG, lo que sale en su dado
-     * + Constitución (mínimo 1 por DG); el máximo solo en el primer DG del personaje, racial o de clase (Guía del DM,
-     * pág. 172; con 1 DG racial o menos, el primer nivel de clase ocupa su lugar); los DG de plantilla también suman; y
-     * los bonos de las dotes (`Modificadores.Pg_a_n` por DG, todos los DG, y `Modificadores.Pg_a`).
-     */
-    /**
      * `niveles` del alta (`services/utils/niveles-creacion.ts`): el orden en que se tomaron sus niveles, la tirada de cada
      * DG de clase (`dados`, los de la tirada de PG elegida) y lo que se eligió en cada uno y se sabe por su origen. `null`
      * si no hay un orden que cuadre con sus clases (un borrador de antes): la API los guarda entonces sin orden.
@@ -10724,6 +10718,12 @@ export class NuevoPersonajeService {
         });
     }
 
+    /**
+     * Los PG del personaje (`services/utils/puntos-golpe.ts`, Manual del jugador cap. 3): cada DG, lo que sale en su dado
+     * + Constitución (mínimo 1 por DG); el máximo solo en el primer DG del personaje, racial o de clase (Guía del DM,
+     * pág. 172; con 1 DG racial o menos, el primer nivel de clase ocupa su lugar); los DG de plantilla también suman; y
+     * los bonos de las dotes (`Modificadores.Pg_a_n` por DG, todos los DG, y `Modificadores.Pg_a`).
+     */
     calcularVidaFinalAleatoria(): ResultadoCalculoVidaFinal {
         const raza = this.razaSeleccionada;
         const plantillas = this.estadoFlujo.plantillas.seleccionadas ?? [];
