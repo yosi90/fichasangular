@@ -103,8 +103,11 @@ export interface PersonajeCreateColeccionesDto {
     idiomas?: Array<{ idIdioma: number; origen?: string; }>;
     dotes?: Array<{ idDote: number; idExtra?: number; origen?: string; }>;
     dominios?: Array<{ idDominio: number; origen?: string; }>;
-    /** `origen`: de dónde sale; `copiado`: se copió al libro (comprado), no se eligió al subir de nivel. */
-    conjurosConocidos?: Array<{ idConjuro: number; origen?: string; copiado?: boolean; }>;
+    /**
+     * `idClase`: la clase que lo da (un mismo conjuro, una vez por clase; desde el 2026-11-07); `origen`: de dónde sale;
+     * `copiado`: se copió al libro (comprado), no se eligió al subir de nivel.
+     */
+    conjurosConocidos?: Array<{ idConjuro: number; idClase?: number; origen?: string; copiado?: boolean; }>;
     sortilegas?: Array<{ idConjuro: number; nivelLanz?: string; usos?: string; dgs?: number; origen?: string; }>;
     raciales?: Array<{ idRacial: number; origen?: string; }>;
 }
@@ -192,6 +195,31 @@ export interface PersonajeCreateRequestDto {
      * oficialidad no se manda: la calcula la API con ellas y con lo que usa el personaje.
      */
     decisionesHomebrew?: DecisionHomebrew[];
+    /**
+     * El orden real de sus niveles de clase, con la tirada de PG y lo que eligió en cada uno (desde el 2026-11-07,
+     * sesiones fase 1; `docs/publica/SESIONES_FRONT.md`). Opcional: sin él, la API los guarda con el orden por conocer.
+     */
+    niveles?: PersonajeCreateNivelDto[];
+}
+
+/** Lo que se eligió en un nivel (`niveles[].elecciones[]`): `idElemento` es del catálogo de su `tipo`. */
+export interface PersonajeCreateNivelEleccionDto {
+    tipo: 'dote' | 'incremento' | 'especial' | 'dominio' | 'conjuro' | 'idioma' | 'rangos' | 'aumento_lanzador';
+    idElemento?: number | null;
+    /** El extra de la dote, la aptitud o la habilidad; en un conjuro, la clase que lo da. */
+    idExtra?: number | null;
+    /** Los rangos, el +1 del incremento o el índice del aumento de lanzador. */
+    valor?: number | null;
+    origen?: string | null;
+}
+
+/** Un nivel de clase en el orden en que se tomó (`niveles[]` de `POST /personajes/add`). */
+export interface PersonajeCreateNivelDto {
+    idClase: number;
+    nivelClase: number;
+    /** Su DG: lo que salió en el dado y si se tomó al máximo sin tirar (el primer DG del personaje). */
+    pg?: { tirada: number | null; maximo: boolean; };
+    elecciones?: PersonajeCreateNivelEleccionDto[];
 }
 
 /** Una habilidad de un familiar o un compañero (`familiar.habilidades[]`, `companero.habilidades[]`). */
@@ -246,12 +274,15 @@ export interface PersonajeCreateApiResponseDto {
     message: string;
     idPersonaje: number;
     ownerUserId: string;
+    /** Su sesión 0 «Creación», abierta (desde el 2026-11-07). */
+    idSesion?: number;
 }
 
 export interface PersonajeCreateResponseDto {
     message: string;
     idPersonaje: number;
     ownerUserId: string;
+    idSesion?: number;
 }
 
 /*

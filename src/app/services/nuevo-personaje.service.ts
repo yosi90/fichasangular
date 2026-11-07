@@ -23,7 +23,7 @@ import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import { SubtipoRef, SubtipoResumen } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
-import { PersonajeCreateMascotasDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
+import { PersonajeCreateColeccionesDto, PersonajeCreateMascotasDto, PersonajeCreateNivelDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { bonoRacialCondicional } from './utils/habilidad-raza-condicional';
 import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { contarArmasNaturales } from './utils/armas-naturales';
@@ -87,7 +87,8 @@ import { ajusteDePlantillas, dgRacialSustituible, dgsDePlantilla, dgsDePlantilla
 import {
     ClaseParaPenalizacion, ClasePredilecta, clasePredilectaDeRaza, noPenalizaMulticlase, PenalizacionExperiencia, penalizacionExperiencia,
 } from './utils/penalizacion-experiencia';
-import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
+import { calcularPuntosGolpe, carasDado, dadoTrasPasos, DadoDeGolpe, GrupoDadosGolpe } from './utils/puntos-golpe';
+import { construirNivelesCreacion } from './utils/niveles-creacion';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
 import { claseDeLaRaza, claseObligada, ContextoClasesDeMonstruo, motivoClaseDeMonstruo } from './utils/clases-de-monstruo';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
@@ -217,6 +218,8 @@ export interface ResultadoCalculoVidaFinal {
         bonoPorDadoClaseDotes: number;
         /** Lo que da la Con de su forma a los DG de las plantillas (el «+4» de «2d8+4»): se guarda en `Pgs_lic`. */
         pgsConstitucionDgsPlantillas: number;
+        /** Cada DG de esta tirada, en orden: la tirada de cada nivel que se manda en `niveles` del alta. */
+        dados?: DadoDeGolpe[];
         flags: {
             dadosGolpe: boolean;
             dgsRacialesExtra: boolean;
@@ -1577,6 +1580,7 @@ export class NuevoPersonajeService {
         this.estadoFlujo.conjuros = this.crearConjurosFlujoBase();
         this.personajeCreacion.Plantillas = [];
         this.personajeCreacion.desgloseClases = [];
+        this.personajeCreacion.Orden_niveles = [];
         this.personajeCreacion.Clases = '';
         this.personajeCreacion.Conjuros = [];
         this.personajeCreacion.Claseas = [];
@@ -5240,6 +5244,11 @@ export class NuevoPersonajeService {
 
         this.cerrarClasesPorMulticlase(clase);
         this.actualizarDesgloseClase(clase, siguienteNivel);
+        // El orden real de los niveles, para el alta (`niveles`; roadmap de sesiones, fase 1).
+        this.personajeCreacion.Orden_niveles = [
+            ...(this.personajeCreacion.Orden_niveles ?? []),
+            { idClase: toInt(clase?.Id), nivelClase: siguienteNivel },
+        ];
         this.aplicarDeltaAtaqueBaseClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
         this.recalcularDerivadasPorCombate();
         this.aplicarDeltaSalvacionesClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
@@ -10685,6 +10694,32 @@ export class NuevoPersonajeService {
      * pág. 172; con 1 DG racial o menos, el primer nivel de clase ocupa su lugar); los DG de plantilla también suman; y
      * los bonos de las dotes (`Modificadores.Pg_a_n` por DG, todos los DG, y `Modificadores.Pg_a`).
      */
+    /**
+     * `niveles` del alta (`services/utils/niveles-creacion.ts`): el orden en que se tomaron sus niveles, la tirada de cada
+     * DG de clase (`dados`, los de la tirada de PG elegida) y lo que se eligió en cada uno y se sabe por su origen. `null`
+     * si no hay un orden que cuadre con sus clases (un borrador de antes): la API los guarda entonces sin orden.
+     */
+    getNivelesParaGuardar(
+        colecciones: PersonajeCreateColeccionesDto | null | undefined,
+        progresionLanzador: PersonajeProgresionLanzadorDto | null | undefined,
+        dados: DadoDeGolpe[] | null | undefined
+    ): PersonajeCreateNivelDto[] | null {
+        const partes = this.getPartesNivelPersonaje();
+        return construirNivelesCreacion({
+            orden: this.personajeCreacion?.Orden_niveles,
+            clases: (this.personajeCreacion?.desgloseClases ?? []).map((entrada) => ({
+                id: toInt(entrada?.Id) || toInt(this.obtenerClaseDeDesglose(entrada)?.Id),
+                nombre: `${entrada?.Nombre ?? ''}`,
+                nivel: toInt(entrada?.Nivel),
+            })),
+            dados,
+            dotes: colecciones?.dotes,
+            conjuros: colecciones?.conjurosConocidos,
+            aumentosLanzador: progresionLanzador?.selecciones,
+            dgsAntesDeLasClases: toInt(partes.dgsRaza) + toInt(partes.dgsPlantillas),
+        });
+    }
+
     calcularVidaFinalAleatoria(): ResultadoCalculoVidaFinal {
         const raza = this.razaSeleccionada;
         const plantillas = this.estadoFlujo.plantillas.seleccionadas ?? [];
@@ -10730,6 +10765,7 @@ export class NuevoPersonajeService {
                 return {
                     cantidad: dgsDeClase(clase, toInt(entrada.Nivel)),
                     caras: dadoComun ?? (carasDado(clase?.Tipo_dado?.Nombre) || dadoRacial),
+                    idClase: toInt(clase?.Id) || toInt(entrada?.Id) || undefined,
                 };
             })
             .filter((grupo) => grupo.cantidad > 0);
@@ -10769,6 +10805,7 @@ export class NuevoPersonajeService {
                 bonoPorDadoClaseDotes: bonoDotes.bonoPorDadoClase,
                 pgsConstitucionDgsPlantillas: dgsPlantillas
                     .reduce((suma, grupo) => suma + toInt(grupo.modConstitucion) * toInt(grupo.cantidad), 0),
+                dados: resultado.dados,
                 flags,
             },
         };

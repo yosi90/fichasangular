@@ -38,6 +38,8 @@ export function tiradasPuntosGolpe(valor: unknown): number {
 export interface GrupoDadosGolpe {
     cantidad: number;
     caras: number;
+    /** La clase de estos DG (los de clase), para apuntar la tirada de cada nivel (`niveles` del alta). */
+    idClase?: number;
     /** El modificador de Constitución de estos DG si no es el del personaje (los del animal: el de su forma animal). */
     modConstitucion?: number;
 }
@@ -54,12 +56,24 @@ export interface EntradaPuntosGolpe {
     tirar: (caras: number) => number;
 }
 
+/** Un DG del cálculo, en su orden: de dónde es, sus caras, lo que salió y si se tomó al máximo sin tirar. */
+export interface DadoDeGolpe {
+    origen: 'racial' | 'clase' | 'plantilla';
+    /** La clase de un DG de clase (`GrupoDadosGolpe.idClase`). */
+    idClase?: number;
+    caras: number;
+    resultado: number;
+    maximizado: boolean;
+}
+
 export interface ResultadoPuntosGolpe {
     total: number;
     maximo: number;
     tiradas: number;
     /** Los DG raciales que han contado (`dgsRacialesQueCuentan`). */
     dgsRaciales: number;
+    /** Cada DG, en el orden en que se cuentan (raciales, los de cada clase y los de las plantillas). */
+    dados: DadoDeGolpe[];
 }
 
 /** Las caras de un dado por su nombre en los datos («d8», «D10») o 0 si no lo dice. */
@@ -86,10 +100,12 @@ export function calcularPuntosGolpe(entrada: EntradaPuntosGolpe): ResultadoPunto
     let maximo = 0;
     let tiradas = 0;
     let primerDgPendiente = true;
+    const dados: DadoDeGolpe[] = [];
 
-    const sumarDg = (caras: number, maximizar: boolean, con = conPersonaje) => {
+    const sumarDg = (caras: number, maximizar: boolean, con = conPersonaje, origen: DadoDeGolpe['origen'] = 'racial', idClase?: number) => {
         const dado = Math.max(1, toInt(caras));
         const resultado = maximizar ? dado : entrada.tirar(dado);
+        dados.push({ origen, ...(idClase ? { idClase } : {}), caras: dado, resultado, maximizado: maximizar });
         if (!maximizar)
             tiradas++;
         total += Math.max(1, resultado + con) + bonoPorDg;
@@ -102,18 +118,18 @@ export function calcularPuntosGolpe(entrada: EntradaPuntosGolpe): ResultadoPunto
     }
     entrada.nivelesClase.forEach((grupo) => {
         for (let i = 0; i < toInt(grupo.cantidad); i++) {
-            sumarDg(grupo.caras, primerDgPendiente);
+            sumarDg(grupo.caras, primerDgPendiente, conPersonaje, 'clase', toInt(grupo.idClase) || undefined);
             primerDgPendiente = false;
         }
     });
     entrada.dgsPlantillas.forEach((grupo) => {
         const con = grupo.modConstitucion === undefined ? conPersonaje : toInt(grupo.modConstitucion);
         for (let i = 0; i < toInt(grupo.cantidad); i++)
-            sumarDg(grupo.caras, false, con);
+            sumarDg(grupo.caras, false, con, 'plantilla');
     });
 
     total += toInt(entrada.bonoPlano);
     maximo += toInt(entrada.bonoPlano);
     const minimo = primerDgPendiente && !entrada.dgsPlantillas.some((grupo) => toInt(grupo.cantidad) > 0) ? 0 : 1;
-    return { total: Math.max(minimo, total), maximo: Math.max(minimo, maximo), tiradas, dgsRaciales };
+    return { total: Math.max(minimo, total), maximo: Math.max(minimo, maximo), tiradas, dgsRaciales, dados };
 }

@@ -107,6 +107,22 @@ describe('puntos-golpe', () => {
         expect(resultado.dgsRaciales).toBe(3);
     });
 
+    it('apunta cada DG con su clase, lo que salió y si fue el máximo (la tirada de cada nivel del alta)', () => {
+        const tiradas = [3, 5, 2];
+        const resultado = calcularPuntosGolpe(entrada({
+            nivelesClase: [{ cantidad: 2, caras: 4, idClase: 9 }, { cantidad: 1, caras: 6, idClase: 8 }],
+            dgsPlantillas: [{ cantidad: 1, caras: 8 }],
+            tirar: () => tiradas.shift() ?? 1,
+        }));
+
+        expect(resultado.dados).toEqual([
+            { origen: 'clase', idClase: 9, caras: 4, resultado: 4, maximizado: true },
+            { origen: 'clase', idClase: 9, caras: 4, resultado: 3, maximizado: false },
+            { origen: 'clase', idClase: 8, caras: 6, resultado: 5, maximizado: false },
+            { origen: 'plantilla', caras: 8, resultado: 2, maximizado: false },
+        ]);
+    });
+
     it('dgsRacialesQueCuentan: 1 o menos con nivel de clase, ninguno; sin clase o con 2 o más, los de la raza', () => {
         expect(dgsRacialesQueCuentan(1, 1)).toBe(0);
         expect(dgsRacialesQueCuentan(0, 3)).toBe(0);

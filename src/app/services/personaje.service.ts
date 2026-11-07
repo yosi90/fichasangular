@@ -726,16 +726,24 @@ export class PersonajeService {
         if (dominios.length > 0)
             colecciones.dominios = dominios;
 
-        // Con su origen y si se copió al libro (comprado), para que los copiados no cuenten en los que da cada nivel.
+        // Con la clase que lo da (un mismo conjuro, una vez por clase: un mago 1 / hechicero 1 con proyectil mágico en las
+        // dos guarda los dos; desde el 2026-11-07), su origen y si se copió al libro (comprado), para que los copiados no
+        // cuenten en los que da cada nivel.
         const conjurosConocidos = toArray<any>(personaje?.Conjuros)
             .map((entrada) => {
                 const idConjuro = toInt(entrada?.Id ?? entrada?.id ?? entrada?.idConjuro ?? entrada?.id_conjuro);
                 if (idConjuro <= 0)
                     return null;
                 const origen = `${entrada?.Origen ?? ''}`.trim().slice(0, 150);
-                return { idConjuro, ...(origen.length > 0 ? { origen } : {}), copiado: entrada?.Copiado === true };
+                const idClase = this.resolverIdPorNombre(entrada?.Clase_origen ?? entrada?.Origen_clase, mapasCatalogo.clases);
+                return {
+                    idConjuro,
+                    ...(idClase > 0 ? { idClase } : {}),
+                    ...(origen.length > 0 ? { origen } : {}),
+                    copiado: entrada?.Copiado === true,
+                };
             })
-            .filter((entrada): entrada is { idConjuro: number; origen?: string; copiado: boolean; } => !!entrada);
+            .filter((entrada): entrada is { idConjuro: number; idClase?: number; origen?: string; copiado: boolean; } => !!entrada);
         if (conjurosConocidos.length > 0)
             colecciones.conjurosConocidos = conjurosConocidos;
 

@@ -222,6 +222,37 @@ describe('Reglas de la magia: el libro del mago (MJ cap. 3)', () => {
         }));
     });
 
+    it('el alta manda la clase de cada conjuro y el orden de los niveles con lo elegido en cada uno (sesiones, fase 1)', () => {
+        const service = preparar(10);
+        service.aplicarSiguienteNivelClase(mago);
+        service.cerrarSesionConjuros();
+        service.aplicarSiguienteNivelClase(mago);
+        service.cerrarSesionConjuros();
+        service.PersonajeCreacion.Nombre = 'Ilsa';
+        service.PersonajeCreacion.Campana = 'Sin campaña';
+        const payload = new PersonajeService({ currentUser: null } as any, {} as any).construirPayloadCreacionDesdePersonaje(
+            service.PersonajeCreacion,
+            { idAlineamiento: 1, idGenero: 1, idCarga: 1, idDeidad: 1, catalogos: { clases: [{ id: 9, nombre: 'Mago' }] } } as any
+        );
+        const conocidos = payload.colecciones?.conjurosConocidos ?? [];
+        expect(conocidos.length).toBeGreaterThan(0);
+        expect(conocidos.every((conjuro) => conjuro.idClase === 9)).toBeTrue();
+
+        const dados = [
+            { origen: 'clase' as const, idClase: 9, caras: 4, resultado: 4, maximizado: true },
+            { origen: 'clase' as const, idClase: 9, caras: 4, resultado: 2, maximizado: false },
+        ];
+        const niveles = service.getNivelesParaGuardar(payload.colecciones, payload.progresionLanzador, dados);
+        expect(niveles?.map((nivelGuardado) => [nivelGuardado.idClase, nivelGuardado.nivelClase, nivelGuardado.pg])).toEqual([
+            [9, 1, { tirada: 4, maximo: true }],
+            [9, 2, { tirada: 2, maximo: false }],
+        ]);
+        const conjurosDelNivel = (i: number) => (niveles?.[i].elecciones ?? []).filter((e) => e.tipo === 'conjuro');
+        expect(conjurosDelNivel(0).length).toBeGreaterThan(0);
+        expect(conjurosDelNivel(0).every((e) => e.idExtra === 9 && e.origen === 'Mago nivel 1 (clase)')).toBeTrue();
+        expect(conjurosDelNivel(1).every((e) => e.origen === 'Mago nivel 2 (clase)')).toBeTrue();
+    });
+
     it('con Int 10 el libro solo tiene los de nivel 0 (MJ cap. 1: 10 + nivel del conjuro)', () => {
         const service = preparar(10);
         service.aplicarSiguienteNivelClase(mago);

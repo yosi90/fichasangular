@@ -143,6 +143,11 @@ export interface Personaje extends PersonajeSimple {
     Region?: { Id: number; Nombre: string; } | null;
     ProgresionLanzador?: PersonajeProgresionLanzadorDto;
     Niveles_lanzador?: PersonajeNivelLanzadorResumen[];
+    /**
+     * Solo en la creación: el orden en que se tomaron sus niveles de clase (`aplicarSiguienteNivelClase`), para mandarlo
+     * en `niveles` del alta (desde el 2026-11-07; `docs/publica/SESIONES_FRONT.md`). Va en el borrador con el personaje.
+     */
+    Orden_niveles?: Array<{ idClase: number; nivelClase: number; }>;
     desgloseClases: {
         Id?: number;
         Nombre: string;
