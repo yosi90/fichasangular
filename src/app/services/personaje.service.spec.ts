@@ -671,6 +671,32 @@ describe('PersonajeService', () => {
         expect(pnj.personaje.idPasoEdad).toBe(15);
     });
 
+    it('la consulta de lo que pide la raza mutada lleva las mismas características y clases que el alta', () => {
+        const service = crearServicio({ post: jasmine.createSpy('post') } as any);
+        const pj = crearPersonajeMock();
+        pj.Fuerza = 16;
+        pj.Inteligencia = 2;
+        pj.desgloseClases = [
+            { Id: 482, Nombre: 'Engendro vampírico', Nivel: 8 },
+            { Id: 9, Nombre: 'Guerrero', Nivel: 1 },
+            { Id: 3, Nombre: 'Sin niveles', Nivel: 0 },
+        ];
+        const payload = service.construirPayloadCreacionDesdePersonaje(pj, { idCampana: 1, idTrama: 1, idSubtrama: 1 });
+
+        const consulta = service.consultaRequisitosMutacion(pj, 25, 3);
+
+        expect(consulta).toEqual({
+            idRazaBase: 25,
+            idAlineamiento: 3,
+            caracteristicas: Object.fromEntries(Object.entries(payload.caracteristicas).map(([nombre, bloque]) => [nombre, bloque.valor])),
+            clases: payload.colecciones?.clases ?? [],
+        });
+        expect(consulta.caracteristicas['fuerza']).toBe(16);
+        expect(consulta.caracteristicas['inteligencia']).toBe(2);
+        expect(consulta.clases).toEqual([{ idClase: 482, nivel: 8 }, { idClase: 9, nivel: 1 }]);
+        expect(service.consultaRequisitosMutacion(pj, 0, null)).toEqual(jasmine.objectContaining({ idRazaBase: null, idAlineamiento: null }));
+    });
+
     it('sin clases también se manda (la API decide con `pj_sin_clase`), y sin ningún DG los PG van a 0', () => {
         const service = crearServicio({ post: jasmine.createSpy('post') } as any);
         const pj = crearPersonajeMock();

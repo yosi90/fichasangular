@@ -1690,6 +1690,105 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.motivosBloqueoBasicos).not.toContain(motivo);
     });
 
+    it('la clase que obliga la raza se ofrece aunque los filtros de la lista la oculten', () => {
+        const engendro = normalizeClase(claseDeMonstruoApi(ENGENDRO_VAMPIRICO));
+        nuevoPSvc.setCatalogoClases([engendro]);
+        component.catalogoClases = [engendro];
+        const humano = baseApi('humano');
+        const raza = normalizeRazaApi(razaDeMonstruoSobreApi(ENGENDRO_VAMPIRICO, humano, { Fuerza: 2, Carisma: 2 }));
+        expect(nuevoPSvc.seleccionarRaza(raza, normalizeRazaApi(humano))).toBeTrue();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        const visibles = () => component.clasesListadoFiltrado.map((item) => item.clase.Nombre);
+
+        // Otro manual, el homebrew apagado, otro tipo de lanzador o un texto que no es el suyo: el engendro sigue.
+        const filtros: Array<() => void> = [
+            () => { component.filtroClasesManual = 'Manual del jugador 3.5'; },
+            () => { component.incluirHomebrewClases = false; (engendro as any).Oficial = false; },
+            () => { component.filtroClasesTipoLanzador = 'arcano'; },
+            () => { component.filtroClasesTexto = 'guerrero'; },
+        ];
+        filtros.forEach((aplicar) => {
+            aplicar();
+            (component as any).recalcularClasesVisibles();
+            expect(visibles()).withContext(JSON.stringify([component.filtroClasesManual, component.filtroClasesTipoLanzador,
+                component.filtroClasesTexto])).toContain('Engendro vampírico');
+        });
+    });
+
+    describe('lo que la raza mutada pide del personaje, al terminar', () => {
+        const consulta = { idRazaBase: 2, idAlineamiento: 1, caracteristicas: { inteligencia: 2 }, clases: [{ idClase: 9, nivel: 1 }] };
+
+        const preparar = (requisitos: any[] | Error) => {
+            (component as any).razaYBaseRequisitos = { idRaza: 99, idBase: 2 };
+            component.razaMutadaRequisitosNombre = 'Prole de Bahamut';
+            personajeSvcMock.consultaRequisitosMutacion = jasmine.createSpy('consultaRequisitosMutacion').and.returnValue(consulta);
+            spyOn(component as any, 'resolverIdAlineamientoCreacion').and.returnValue(1);
+            razaSvcMock.comprobarRequisitosDelPersonaje = jasmine.createSpy('comprobarRequisitosDelPersonaje')
+                .and.callFake(async () => {
+                    if (requisitos instanceof Error)
+                        throw requisitos;
+                    return requisitos;
+                });
+            return spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        };
+
+        it('si algo no se cumple, avisa con sus frases y no sigue a las tiradas de PG', async () => {
+            const requisitos = [
+                { Frase: 'Cualquier alineamiento no maligno', Cumple: true, Confirma_master: false },
+                { Frase: 'Inteligencia 3', Cumple: false, Confirma_master: false },
+                { Frase: 'Completar el Rito del Renacimiento', Cumple: null, Confirma_master: true },
+            ];
+            const swal = preparar(requisitos);
+
+            expect(await (component as any).comprobarRequisitosMutacionAntesDeGuardar()).toBeFalse();
+
+            expect(personajeSvcMock.consultaRequisitosMutacion).toHaveBeenCalledWith(component.Personaje, 2, 1);
+            expect(razaSvcMock.comprobarRequisitosDelPersonaje).toHaveBeenCalledWith(99, consulta);
+            const aviso = swal.calls.mostRecent().args[0] as any;
+            expect(aviso.title).toBe('Prole de Bahamut pide del personaje');
+            expect(aviso.text).toBe('No se cumple: Inteligencia 3. Así no se podrá guardar el personaje con esta raza.');
+            // El aviso de Básicos se queda con lo comprobado.
+            expect(component.requisitosMutacion).toEqual(requisitos);
+            expect(component.requisitosMutacionIncumplidos).toBeTrue();
+        });
+
+        it('si todo se cumple (o lo confirma el máster), sigue sin avisar', async () => {
+            const swal = preparar([
+                { Frase: 'Inteligencia 3', Cumple: true, Confirma_master: false },
+                { Frase: 'Completar el Rito del Renacimiento', Cumple: null, Confirma_master: true },
+            ]);
+            expect(await (component as any).comprobarRequisitosMutacionAntesDeGuardar()).toBeTrue();
+            expect(swal).not.toHaveBeenCalled();
+        });
+
+        it('si la API no responde, sigue (el alta lo comprueba al guardar); sin raza mutada, no pregunta', async () => {
+            const swal = preparar(new Error('sin red'));
+            expect(await (component as any).comprobarRequisitosMutacionAntesDeGuardar()).toBeTrue();
+            expect(swal).not.toHaveBeenCalled();
+
+            (component as any).razaYBaseRequisitos = null;
+            razaSvcMock.comprobarRequisitosDelPersonaje.calls.reset();
+            expect(await (component as any).comprobarRequisitosMutacionAntesDeGuardar()).toBeTrue();
+            expect(razaSvcMock.comprobarRequisitosDelPersonaje).not.toHaveBeenCalled();
+        });
+
+        it('terminar no llega a las tiradas de PG si no se cumple', async () => {
+            preparar([{ Frase: 'Inteligencia 3', Cumple: false, Confirma_master: false }]);
+            spyOnProperty(component, 'mostrarBotonFinalizarCreacion', 'get').and.returnValue(true);
+            spyOn(component as any, 'repartirDgRacialSinClases').and.resolveTo(false);
+            spyOn(component as any, 'pedirIdiomasIniciales').and.resolveTo(true);
+            spyOn(nuevoPSvc, 'hayLanzamientoRacialPendiente').and.returnValue(false);
+            const pg = spyOn(component as any, 'abrirSelectorPuntosGolpe');
+
+            await component.onFinalizarCreacionTemporal();
+            expect(pg).not.toHaveBeenCalled();
+
+            razaSvcMock.comprobarRequisitosDelPersonaje.and.resolveTo([{ Frase: 'Inteligencia 3', Cumple: true, Confirma_master: false }]);
+            await component.onFinalizarCreacionTemporal();
+            expect(pg).toHaveBeenCalledTimes(1);
+        });
+    });
+
     describe('fuentes homebrew de la campaña (las de la API, la misma lista que la oficialidad)', () => {
         const politica = (max: number) => ({
             tiradaMinimaCaracteristica: null,

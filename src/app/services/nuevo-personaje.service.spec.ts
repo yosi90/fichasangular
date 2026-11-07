@@ -18,6 +18,7 @@ import { moldeadoEncarnadoApi } from 'src/testing/incarnum';
 import { claveDeHabilidad } from './utils/habilidad-clave';
 import { normalizeRazaApi } from './utils/raza-mapper';
 import { PROLE_SOBRE_API, RAZAS_API } from 'src/testing/razas-mutadas-api';
+import { SelectorIdiomaModalComponent } from '../components/nuevo-personaje/selector-idioma-modal/selector-idioma-modal.component';
 
 /** Las banderas con las que la API marca los especiales que dan familiar o compañero (`Otorga_*`). */
 const BANDERAS_ESPECIAL_MASCOTA: Record<string, Record<string, boolean>> = {
@@ -7627,6 +7628,27 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
             expect(raza.Modificadores).withContext(idBase).toEqual(sumados as any);
             expect(raza.Varios_armadura).withContext(idBase).toBe(0);
         });
+    });
+
+    it('un idioma automático de la raza no se ofrece como adicional (el Dracónico del drow prole de Bahamut)', () => {
+        // `GET /razas/21/sobre/308` de `rol_dev`: el Dracónico es automático (lo une la prole) y está también en los
+        // adicionales que hereda del drow. La creación lo deja en la lista de su raza, pero el selector no lo ofrece: ya lo
+        // sabe (el componente le pasa los idiomas del personaje como ya elegidos, `idiomasSeleccionadosParaSelector`).
+        const svc = new NuevoPersonajeService();
+        svc.setCatalogoTiposCriatura([crearTipo(11, 'Humanoide')]);
+        const combinada = normalizeRazaApi(PROLE_SOBRE_API['308']);
+        expect(svc.seleccionarRaza(combinada, normalizeRazaApi(RAZAS_API['308']), { 1: 'id:34' })).toBeTrue();
+        const pj = svc.PersonajeCreacion;
+        expect(pj.Idiomas.map((i) => i.Nombre)).toContain('Dracónico');
+        const catalogo = [...(PROLE_SOBRE_API['308'].Idiomas ?? []), ...(PROLE_SOBRE_API['308'].Idiomas_adicionales ?? [])]
+            .map((idioma: any) => ({ Id: idioma.Id, Nombre: idioma.Nombre, Descripcion: '', Secreto: false, Oficial: true }));
+        const permitidos = svc.filtrarIdiomasAdicionalesPermitidos(catalogo as any);
+        expect(permitidos.map((i) => i.Nombre)).toContain('Dracónico');
+
+        const selector = new SelectorIdiomaModalComponent();
+        selector.idiomas = permitidos;
+        selector.idiomasYaSeleccionados = pj.Idiomas.map((i) => i.Nombre);
+        expect(selector.idiomasDisponibles.map((i) => i.Nombre)).toEqual(['Abisal', 'Acuano', 'Gnomo', 'Trasgo']);
     });
 
     it('seleccionarRaza requiere resolver grupos de raciales opcionales', () => {

@@ -108,7 +108,8 @@
                                                 esta combinación, el personaje se marcará como homebrew (no oficial).</p>
                                         </div>
                                         <!-- Lo que la raza mutada pide del personaje (fase 3 de las razas mutadas): la API lo
-                                             comprueba al guardar; lo que confirma el máster es solo un aviso. -->
+                                             comprueba con el alineamiento aquí y con todo al terminar
+                                             (comprobarRequisitosMutacionAntesDeGuardar); lo que confirma el máster es solo un aviso. -->
                                         <div class="creacion-aviso requisitos-mutacion" *ngIf="requisitosMutacion.length > 0">
                                             <p class="tw-m-0"><strong>{{razaMutadaRequisitosNombre}} pide del personaje</strong></p>
                                             <p class="tw-m-0 requisitos-mutacion__item" *ngFor="let requisito of requisitosMutacion"
@@ -117,12 +118,12 @@
                                                 <span *ngIf="requisito.Confirma_master"> · lo confirma el máster</span>
                                                 <span *ngIf="!requisito.Confirma_master && requisito.Cumple === true"> · se cumple</span>
                                                 <span *ngIf="!requisito.Confirma_master && requisito.Cumple === false"> · no se cumple</span>
-                                                <span *ngIf="!requisito.Confirma_master && requisito.Cumple === null"> · se comprueba al guardar</span>
+                                                <span *ngIf="!requisito.Confirma_master && requisito.Cumple === null"> · se comprueba al terminar</span>
                                             </p>
-                                            <p class="tw-m-0" *ngIf="requisitosMutacionIncumplidos">Con este alineamiento no se podrá
-                                                guardar el personaje con esta raza.</p>
+                                            <p class="tw-m-0" *ngIf="requisitosMutacionIncumplidos">Así no se podrá guardar el
+                                                personaje con esta raza.</p>
                                             <p class="tw-m-0" *ngIf="!requisitosMutacionIncumplidos">Lo que no se puede comprobar aún
-                                                (las características, las clases) se comprueba al guardar.</p>
+                                                (las características, las clases) se comprueba al terminar.</p>
                                         </div>
                                     </div>
                                     <div class="deidad-bloque full-span">

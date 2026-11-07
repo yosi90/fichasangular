@@ -268,6 +268,19 @@ export interface RequisitoDelPersonajeMutacion {
 }
 
 /**
+ * `POST /razas/{id}/requisitos-del-personaje` (`RequisitosDelPersonajeConsulta`): lo que la creación ya sabe del
+ * personaje, con la forma de los trozos del alta, para comprobar antes de guardar lo que pide su raza mutada.
+ */
+export interface RequisitosDelPersonajeConsulta {
+    idRazaBase: number | null;
+    /** El alineamiento básico, como `personaje.idAlineamiento` del alta. */
+    idAlineamiento: number | null;
+    /** `{ fuerza: 16, … }`: las puntuaciones que manda el alta. */
+    caracteristicas: Record<string, number>;
+    clases: { idClase: number; nivel: number; }[];
+}
+
+/**
  * `GET /razas/{id}/bases` (`BasesDeRazaMutada`, fase 2 de las razas mutadas): las razas que pueden ser la base de la raza
  * mutada y lo que pide del personaje. La elegibilidad la decide la API (`docs/publica/endpoints/catalogos.md`).
  */

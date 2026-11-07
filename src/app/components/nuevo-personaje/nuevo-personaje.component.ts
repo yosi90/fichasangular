@@ -3858,9 +3858,46 @@ export class NuevoPersonajeComponent {
         }
     }
 
-    /** Si algún requisito de la raza mutada no se cumple con el alineamiento elegido. */
+    /** Si algún requisito de la raza mutada no se cumple (con el alineamiento elegido o, al terminar, con todo). */
     get requisitosMutacionIncumplidos(): boolean {
         return this.requisitosMutacion.some((requisito) => requisito.Cumple === false);
+    }
+
+    /**
+     * Al terminar, antes de las tiradas de PG: lo que la raza mutada pide del personaje, comprobado por la API con todo lo
+     * que ya tiene (`POST /razas/{id}/requisitos-del-personaje`: el alineamiento, las características, el nivel, los DG y
+     * las clases, las mismas que manda el alta), para avisar como del alineamiento en vez de enterarse al guardar. Si algo
+     * no se cumple, avisa con sus frases y no sigue; el aviso de Básicos se queda con lo comprobado. Si la API no
+     * responde, sigue: el alta lo comprueba igual al guardar.
+     */
+    private async comprobarRequisitosMutacionAntesDeGuardar(): Promise<boolean> {
+        const elegidas = this.razaYBaseRequisitos;
+        if (!elegidas)
+            return true;
+        let requisitos: RequisitoDelPersonajeMutacion[];
+        try {
+            requisitos = await this.razaSvc.comprobarRequisitosDelPersonaje(
+                elegidas.idRaza,
+                this.personajeSvc.consultaRequisitosMutacion(this.Personaje, elegidas.idBase, this.resolverIdAlineamientoCreacion())
+            );
+        } catch {
+            return true;
+        }
+        this.requisitosMutacion = [...requisitos];
+        const incumplidos = requisitos.filter((requisito) => requisito.Cumple === false);
+        if (incumplidos.length < 1)
+            return true;
+        await Swal.fire({
+            icon: 'warning',
+            title: `${this.razaMutadaRequisitosNombre} pide del personaje`,
+            text: `No se cumple: ${incumplidos.map((requisito) => requisito.Frase).join('; ')}. `
+                + 'Así no se podrá guardar el personaje con esta raza.',
+            showConfirmButton: true,
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+        return false;
     }
 
     private reconstruirCandidatasRazaBaseModal(): void {
@@ -5241,6 +5278,9 @@ export class NuevoPersonajeComponent {
         if (!await this.pedirIdiomasIniciales(this.nuevoPSvc.getIdiomasPendientesSinClases()))
             return;
         if (this.nuevoPSvc.hayLanzamientoRacialPendiente() && await this.abrirSesionLanzamientoRacial())
+            return;
+        // Lo que la raza mutada pide del personaje, con todo lo que ya tiene, antes de las tiradas de PG.
+        if (!await this.comprobarRequisitosMutacionAntesDeGuardar())
             return;
         // Magic of Incarnum: quien puede moldear pasa antes por la formación de partida (opcional).
         if (!this.formacionAbierta && this.incarnumBorrador?.puedeMoldear) {
@@ -7707,6 +7747,10 @@ export class NuevoPersonajeComponent {
         const manual = this.filtroClasesManual;
         const evaluadas: ClaseListadoItem[] = [];
         const primeraClase = !this.nuevoPSvc.clasePrimerNivel();
+        // La clase que obliga la raza (la de una clase de monstruo, o una progresión obligatoria sin terminar) es la única
+        // que se puede tomar: se ofrece siempre, aunque los filtros de la lista (homebrew, manual, texto, tipo de
+        // lanzador, rol o prestigio) la ocultaran.
+        const idObligada = toInt(this.nuevoPSvc.claseObligadaActual()?.clase?.Id);
 
         this.catalogoClases.forEach((clase) => {
             const nombre = `${clase?.Nombre ?? ''}`.trim();
@@ -7717,23 +7761,7 @@ export class NuevoPersonajeComponent {
             if (!Number.isFinite(claseId) || claseId <= 0)
                 return;
 
-            if (!this.incluirHomebrewClasesEfectivo && clase?.Oficial === false)
-                return;
-            if (manual !== 'Cualquiera' && `${clase?.Manual?.Nombre ?? ''}` !== manual)
-                return;
-
-            if (texto.length > 0) {
-                const nombreNorm = normalizarTexto(nombre);
-                const descNorm = normalizarTexto(descripcion);
-                if (!nombreNorm.includes(texto) && !descNorm.includes(texto))
-                    return;
-            }
-
-            if (!this.cumpleFiltroTipoLanzadorClase(clase))
-                return;
-            if (!this.cumpleFiltroRolClase(clase))
-                return;
-            if (!this.cumpleFiltroPrestigioClase(clase))
+            if (claseId !== idObligada && !this.cumpleFiltrosListadoClase(clase, nombre, descripcion, texto, manual))
                 return;
 
             const evaluacion = this.nuevoPSvc.evaluarClaseParaSeleccion(clase);
@@ -7794,6 +7822,19 @@ export class NuevoPersonajeComponent {
             if (!existeSeleccion)
                 this.claseSeleccionadaId = null;
         }
+    }
+
+    /** Los filtros de la lista de clases (homebrew, manual, texto, tipo de lanzador, rol y prestigio). */
+    private cumpleFiltrosListadoClase(clase: Clase, nombre: string, descripcion: string, texto: string, manual: string): boolean {
+        if (!this.incluirHomebrewClasesEfectivo && clase?.Oficial === false)
+            return false;
+        if (manual !== 'Cualquiera' && `${clase?.Manual?.Nombre ?? ''}` !== manual)
+            return false;
+        if (texto.length > 0 && !normalizarTexto(nombre).includes(texto) && !normalizarTexto(descripcion).includes(texto))
+            return false;
+        return this.cumpleFiltroTipoLanzadorClase(clase)
+            && this.cumpleFiltroRolClase(clase)
+            && this.cumpleFiltroPrestigioClase(clase);
     }
 
     private cumpleFiltroTipoLanzadorClase(clase: Clase): boolean {

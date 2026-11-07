@@ -6,7 +6,8 @@ import { HttpClient } from '@angular/common/http';
 import { Raza, RazaHabilidades } from '../interfaces/raza';
 import {
     BaseRazaMutada, BasesRazaMutada, EstadoBaseRazaMutada, ModeloMutacion, RazaActualizadaResponse, RazaCreateApiResponse,
-    RazaCreateRequest, RazaCreateResponse, TipoPrerrequisitoMutacion,
+    RazaCreateRequest, RazaCreateResponse, RequisitoDelPersonajeMutacion, RequisitosDelPersonajeConsulta,
+    TipoPrerrequisitoMutacion,
 } from '../interfaces/razas-api';
 import { environment } from 'src/environments/environment';
 import { Alineamiento } from '../interfaces/alineamiento';
@@ -377,6 +378,24 @@ export class RazaService {
         }
     }
 
+    /**
+     * Lo que la raza mutada pide del personaje, comprobado con lo que la creación ya sabe de él
+     * (`POST /razas/{id}/requisitos-del-personaje`: el alineamiento, las características, el nivel, los DG y las clases),
+     * con la misma regla que el alta. Lo que no se puede comprobar llega con `Cumple` `null`.
+     */
+    public async comprobarRequisitosDelPersonaje(
+        idRaza: number,
+        consulta: RequisitosDelPersonajeConsulta
+    ): Promise<RequisitoDelPersonajeMutacion[]> {
+        try {
+            const raw: any = await firstValueFrom(
+                this.http.post(`${environment.apiUrl}razas/${toInt(idRaza)}/requisitos-del-personaje`, consulta));
+            return requisitosDelPersonajeDesdeApi(raw?.Requisitos_del_personaje);
+        } catch (error) {
+            throw errorDePerfil(error, 'No se pudo comprobar lo que la raza pide del personaje.');
+        }
+    }
+
     private modeloMutacion: Promise<ModeloMutacion> | null = null;
 
     /**
@@ -516,10 +535,15 @@ export function basesDeRazaMutadaDesdeApi(raw: any): BasesRazaMutada {
     return {
         Raza: { Id: toInt(raw?.Raza?.Id), Nombre: `${raw?.Raza?.Nombre ?? ''}` },
         Bases: bases,
-        Requisitos_del_personaje: toArray(raw?.Requisitos_del_personaje).map((requisito: any) => ({
-            Frase: `${requisito?.Frase ?? ''}`,
-            Cumple: typeof requisito?.Cumple === 'boolean' ? requisito.Cumple : null,
-            Confirma_master: requisito?.Confirma_master === true,
-        })),
+        Requisitos_del_personaje: requisitosDelPersonajeDesdeApi(raw?.Requisitos_del_personaje),
     };
+}
+
+/** `Requisitos_del_personaje` de `/bases` y de `POST /razas/{id}/requisitos-del-personaje` (`RequisitoDelPersonajeMutacion`). */
+export function requisitosDelPersonajeDesdeApi(raw: any): RequisitoDelPersonajeMutacion[] {
+    return toArray(raw).map((requisito: any) => ({
+        Frase: `${requisito?.Frase ?? ''}`,
+        Cumple: typeof requisito?.Cumple === 'boolean' ? requisito.Cumple : null,
+        Confirma_master: requisito?.Confirma_master === true,
+    }));
 }

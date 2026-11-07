@@ -855,6 +855,31 @@ describe('RazaService helpers', () => {
         expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/21\/bases\?idAlineamiento=7$/));
     });
 
+    it('comprobarRequisitosDelPersonaje manda POST /razas/{id}/requisitos-del-personaje con lo que sabe la creación', async () => {
+        const consulta = { idRazaBase: 25, idAlineamiento: 3, caracteristicas: { inteligencia: 2 }, clases: [{ idClase: 9, nivel: 1 }] };
+        const requisitos = [
+            { Frase: 'Cualquier alineamiento no maligno', Cumple: true, Confirma_master: false },
+            { Frase: 'Inteligencia 3', Cumple: false, Confirma_master: false },
+            { Frase: 'Completar el Rito del Renacimiento', Cumple: null, Confirma_master: true },
+        ];
+        const http = { post: jasmine.createSpy().and.returnValue(of({ Raza: { Id: 21, Nombre: 'Prole de Bahamut' },
+            Requisitos_del_personaje: requisitos })) };
+        const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
+
+        expect(await service.comprobarRequisitosDelPersonaje(21, consulta)).toEqual(requisitos);
+        expect(http.post).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/21\/requisitos-del-personaje$/), consulta);
+    });
+
+    it('comprobarRequisitosDelPersonaje da el error de la API con su frase', async () => {
+        const mensaje = '«Mediano» no es una raza mutada: no se aplica sobre otra raza.';
+        const http = { post: jasmine.createSpy().and.returnValue(throwError(() => new HttpErrorResponse({
+            status: 400, error: { error: mensaje, code: 'raza_no_mutada', field: 'idRaza' } }))) };
+        const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
+
+        await expectAsync(service.comprobarRequisitosDelPersonaje(5, { idRazaBase: null, idAlineamiento: null,
+            caracteristicas: {}, clases: [] })).toBeRejectedWithError(mensaje);
+    });
+
     // Fase 3 de las razas mutadas: lo que pide y lo que cambia una mutada, y el modelo de lo que admite.
     const PR_API = {
         tipo_criatura: [{ Id: 1, Tipo: 'tipo_criatura', Sujeto: 'raza_base', Id_referencia: 11, Referencia: 'Humanoide',

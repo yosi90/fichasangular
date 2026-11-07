@@ -58,6 +58,7 @@ import { errorDePerfil, mensajeDeError } from './utils/error-api';
 import { normalizarTamanoFicha } from './utils/tamano-efectivo';
 import { normalizarHomebrewGuardado } from './utils/personaje-oficialidad';
 import { caracteristicasPerdidasDe, normalizarCaracteristicasPerdidas } from './utils/caracteristicas';
+import { RequisitosDelPersonajeConsulta } from 'src/app/interfaces/razas-api';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -318,38 +319,7 @@ export class PersonajeService {
 
         const payload: PersonajeCreateRequestDto = {
             personaje: personajePayload,
-            caracteristicas: {
-                fuerza: {
-                    valor: toInt(personaje?.Fuerza),
-                    minimo: 0,
-                    perdido: !!caracteristicasPerdidas.Fuerza,
-                },
-                destreza: {
-                    valor: toInt(personaje?.Destreza),
-                    minimo: 0,
-                    perdido: !!caracteristicasPerdidas.Destreza,
-                },
-                constitucion: {
-                    valor: toInt(personaje?.Constitucion),
-                    minimo: 0,
-                    perdido: !!caracteristicasPerdidas.Constitucion,
-                },
-                inteligencia: {
-                    valor: toInt(personaje?.Inteligencia),
-                    minimo: 0,
-                    perdido: !!caracteristicasPerdidas.Inteligencia,
-                },
-                sabiduria: {
-                    valor: toInt(personaje?.Sabiduria),
-                    minimo: 0,
-                    perdido: !!caracteristicasPerdidas.Sabiduria,
-                },
-                carisma: {
-                    valor: toInt(personaje?.Carisma),
-                    minimo: 0,
-                    perdido: !!caracteristicasPerdidas.Carisma,
-                },
-            },
+            caracteristicas: this.caracteristicasParaGuardar(personaje, caracteristicasPerdidas),
             tamano: {
                 idTamano: idTamano > 0 ? idTamano : 0,
                 origen: 'Web',
@@ -460,6 +430,59 @@ export class PersonajeService {
         return payload;
     }
 
+    /**
+     * Las características del cuerpo del alta (`caracteristicas`): su puntuación y si la ha perdido. Las mismas comprueba
+     * antes de guardar lo que pide una raza mutada (`consultaRequisitosMutacion`).
+     */
+    private caracteristicasParaGuardar(
+        personaje: Personaje,
+        perdidas: ReturnType<typeof caracteristicasPerdidasDe>
+    ): PersonajeCreateRequestDto['caracteristicas'] {
+        const bloque = (valor: unknown, perdido: unknown) => ({ valor: toInt(valor), minimo: 0, perdido: !!perdido });
+        return {
+            fuerza: bloque(personaje?.Fuerza, perdidas.Fuerza),
+            destreza: bloque(personaje?.Destreza, perdidas.Destreza),
+            constitucion: bloque(personaje?.Constitucion, perdidas.Constitucion),
+            inteligencia: bloque(personaje?.Inteligencia, perdidas.Inteligencia),
+            sabiduria: bloque(personaje?.Sabiduria, perdidas.Sabiduria),
+            carisma: bloque(personaje?.Carisma, perdidas.Carisma),
+        };
+    }
+
+    /** Las clases del cuerpo del alta (`colecciones.clases`): `{ idClase, nivel }` de cada una con algún nivel. */
+    private clasesParaGuardar(personaje: Personaje, mapaClases: Map<string, number>): { idClase: number; nivel: number; }[] {
+        return toArray<any>(personaje?.desgloseClases)
+            .map((entrada) => {
+                const nombre = `${entrada?.Nombre ?? ''}`.trim();
+                const idDirecto = toInt(entrada?.Id ?? entrada?.idClase ?? entrada?.id_clase);
+                const idClase = idDirecto > 0 ? idDirecto : this.resolverIdPorNombre(nombre, mapaClases);
+                const nivel = toInt(entrada?.Nivel ?? entrada?.nivel);
+                if (idClase <= 0 || nivel <= 0)
+                    return null;
+                return { idClase, nivel };
+            })
+            .filter((entrada): entrada is { idClase: number; nivel: number; } => !!entrada);
+    }
+
+    /**
+     * Lo que la creación ya sabe del personaje para comprobar, antes de guardar, lo que pide su raza mutada
+     * (`POST /razas/{id}/requisitos-del-personaje`): su raza base, su alineamiento básico y las mismas características y
+     * clases que manda el alta (`caracteristicasParaGuardar`, `clasesParaGuardar`).
+     */
+    consultaRequisitosMutacion(
+        personaje: Personaje,
+        idRazaBase: number | null,
+        idAlineamiento: number | null
+    ): RequisitosDelPersonajeConsulta {
+        const caracteristicas = this.caracteristicasParaGuardar(personaje, caracteristicasPerdidasDe(personaje));
+        return {
+            idRazaBase: toInt(idRazaBase) > 0 ? toInt(idRazaBase) : null,
+            idAlineamiento: idAlineamiento === null ? null : toInt(idAlineamiento),
+            caracteristicas: Object.fromEntries(Object.entries(caracteristicas).map(([nombre, bloque]) => [nombre, bloque.valor])),
+            clases: this.clasesParaGuardar(personaje, new Map()),
+        };
+    }
+
     private construirPayloadColecciones(
         personaje: Personaje,
         mapasCatalogo: {
@@ -473,17 +496,7 @@ export class PersonajeService {
     ): PersonajeCreateColeccionesDto {
         const colecciones: PersonajeCreateColeccionesDto = {};
 
-        const clases = toArray<any>(personaje?.desgloseClases)
-            .map((entrada) => {
-                const nombre = `${entrada?.Nombre ?? ''}`.trim();
-                const idDirecto = toInt(entrada?.Id ?? entrada?.idClase ?? entrada?.id_clase);
-                const idClase = idDirecto > 0 ? idDirecto : this.resolverIdPorNombre(nombre, mapasCatalogo.clases);
-                const nivel = toInt(entrada?.Nivel ?? entrada?.nivel);
-                if (idClase <= 0 || nivel <= 0)
-                    return null;
-                return { idClase, nivel };
-            })
-            .filter((entrada): entrada is { idClase: number; nivel: number; } => !!entrada);
+        const clases = this.clasesParaGuardar(personaje, mapasCatalogo.clases);
         if (clases.length > 0)
             colecciones.clases = clases;
 
