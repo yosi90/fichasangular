@@ -40,6 +40,7 @@ describe('NuevaPlantillaComponent', () => {
             { getDotes: () => of([{ Id: 30, Nombre: 'Soltura con un arma', Extras_disponibles: { Armas: [{ Id: 5, Nombre: 'Mordisco' }], Armaduras: [], Escuelas: [], Habilidades: [] } }]) } as any,
             { getHabilidades: () => of([{ Id_habilidad: 12, Nombre: 'Avistar', Extras: [] }]) } as any,
             { getSubtipos: () => of([{ Id: 9, Nombre: 'Cambiaformas' }, { Id: 14, Nombre: 'Incorporal' }]) } as any,
+            { getRasgos: () => of([{ Id: 9, Nombre: "Visión en la oscuridad 60'" }, { Id: 13, Nombre: 'Sin alma (ajenos)' }]) } as any,
             { cargar: () => Promise.resolve() } as any,
         );
         nuevo.modo = modo;
@@ -102,6 +103,7 @@ describe('NuevaPlantillaComponent', () => {
             component.anadirRasgo('dotes', 30);
             component.listas.dotes[0].id_extra = 5;
             component.anadirRasgo('subtipos', 9);
+            component.anadirRasgo('rasgos_tipo_quitados', 13);
             component.anadirRequisito('criaturas_compatibles');
             component.listas.prerrequisitos[0].id = 2;
             component.anadirRequisito('subtipo_prohibido');
@@ -120,6 +122,7 @@ describe('NuevaPlantillaComponent', () => {
             expect(cuerpo.ataquesEspeciales).toEqual([{ id_racial: 72, dg: 1 }]);
             expect(cuerpo.dotes).toEqual([{ id_dote: 30, id_extra: 5, dg: 1 }]);
             expect(cuerpo.subtipos).toEqual([9]);
+            expect(cuerpo.rasgos_tipo_quitados).toEqual([13]);
             expect(cuerpo.prerrequisitos.criaturas_compatibles).toEqual([{ id_tipo_comp: 2, id_tipo_nuevo: 0, opcional: 0 }]);
             expect(cuerpo.prerrequisitos.subtipo_prohibido).toEqual([{ id_subtipo: 14, opcional: 0 }]);
             expect(cuerpo.prerrequisitos.nivel_lanzador).toEqual([{ nivel: 11, opcional: 0 }]);
@@ -261,6 +264,28 @@ describe('NuevaPlantillaComponent', () => {
             expect(cuerpo.plantilla.mult_dg_lic).toBe(2);
             expect(actualizadas.length).toBe(1);
             expect(cerrada).toBeTrue();
+        });
+
+        it('ida y vuelta de los rasgos de tipo quitados: sin tocarlos el PUT los lleva igual; quitar uno es un cambio', async () => {
+            // El fantasma de La senda de los fantasmas en `rol_dev` (`GET /plantillas/207`): ajeno sin «sin alma» ni
+            // la visión en la oscuridad.
+            plantillaSvc.getPlantillaFresca.and.returnValue(of(normalizePlantillaApi({
+                ...plantillaApiDeEjemplo(),
+                Rasgos_tipo_quitados: [{ Id: 9, Nombre: "Visión en la oscuridad 60'" }, { Id: 13, Nombre: 'Sin alma (ajenos)' }],
+            })));
+            component = crear('editar');
+            expect(component.listas.rasgos_tipo_quitados.map((f) => f.id)).toEqual([9, 13]);
+            expect(component.cambios).toEqual([]);
+
+            component.form.controls.iniciativa.setValue(2);
+            await component.guardar();
+            expect(plantillaSvc.actualizarPlantilla.calls.argsFor(0)[1].rasgos_tipo_quitados).toEqual([9, 13]);
+
+            component = crear('editar');
+            component.quitarRasgo('rasgos_tipo_quitados', component.listas.rasgos_tipo_quitados[0].uid);
+            expect(component.cambios).toEqual(['rasgos_tipo_quitados']);
+            expect(component.pasosConCambios).toEqual([2]);
+            expect(component.notaPie).toBe('1 cambio: Rasgos de su tipo que no tiene');
         });
 
         it('sin cambios no guarda', async () => {

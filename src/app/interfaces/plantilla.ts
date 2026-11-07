@@ -200,6 +200,11 @@ export interface Plantilla {
     Monstruo_forma_animal?: { Id: number; Nombre: string; } | null;
     Dotes: DoteContextual[];
     Subtipos: SubtipoRef[];
+    /**
+     * Los rasgos de su tipo que no tiene la criatura con la plantilla, aunque sean de su tipo (desde el 2026-11-07): el
+     * fantasma de *La senda de los fantasmas* es ajeno sin «sin alma (ajenos)» ni su visión en la oscuridad.
+     */
+    Rasgos_tipo_quitados?: PlantillaRasgoTipoQuitado[];
     Habilidades: PlantillaHabilidadRef[];
     Sortilegas: PlantillaSortilega[];
     Raciales: PlantillaRacialContextual[];
@@ -297,10 +302,18 @@ export interface PlantillaPrerrequisitosRequest {
 }
 
 /** El cuerpo de `POST /plantillas/add`. */
+/** Un rasgo de tipo que quita la plantilla (`Rasgos_tipo_quitados`). */
+export interface PlantillaRasgoTipoQuitado {
+    Id: number;
+    Nombre: string;
+}
+
 export interface PlantillaCreateRequest {
     plantilla: PlantillaEscalaresRequest;
     prerrequisitos: PlantillaPrerrequisitosRequest;
     subtipos: number[];
+    /** Los ids de los rasgos de tipo que quita; si no viene, la edición conserva los que hay. */
+    rasgos_tipo_quitados?: number[];
     dotes: { id_dote: number; id_extra?: number; dg: number; }[];
     habilidades: { id_habilidad: number; rangos: number; id_extra?: number; varios?: string; }[];
     sortilegas: { id_conjuro: number; nivel_lanzador: number; usos_diarios: string; dg: number; }[];

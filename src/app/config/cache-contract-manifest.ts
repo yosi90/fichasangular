@@ -109,7 +109,7 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "ambitos", label: "Ambitos", schemaVersion: 1 },
     { key: "pabellones", label: "Pabellones", schemaVersion: 1 },
     { key: "deidades", label: "Deidades", schemaVersion: 3 },
-    { key: "plantillas", label: "Plantillas", schemaVersion: 16 },
+    { key: "plantillas", label: "Plantillas", schemaVersion: 17 },
     { key: "ventajas_desventajas", label: "Ventajas y desventajas", schemaVersion: 1 },
     // Magic of Incarnum (docs/publica/INCARNUM.md, «Cachés de la RTDB»): las dos cachés nuevas.
     { key: "fusiones", label: "Fusiones del incarnum", schemaVersion: 1 },

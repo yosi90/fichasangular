@@ -7770,6 +7770,35 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         expect(svc.EstadoFlujo.plantillas.tipoCriaturaSimulada.Id).toBe(5);
     });
 
+    it('un humano fantasma (La senda de los fantasmas) es ajeno sin «sin alma» ni la visión en la oscuridad del ajeno', () => {
+        // Los datos de `rol_dev`: el tipo ajeno (2) con sus dos rasgos y la plantilla 207, humanoide (11) → ajeno, que los quita.
+        const svc = new NuevoPersonajeService();
+        const tipoHumanoide = crearTipo(11, 'Humanoide');
+        const vision = { Id: 9, Nombre: "Visión en la oscuridad 60'", Descripcion: '', Oficial: true };
+        const sinAlma = { Id: 13, Nombre: 'Sin alma (ajenos)', Descripcion: 'Cuando muere un ajeno, no se libera alma alguna.', Oficial: true };
+        const tipoAjeno = { ...crearTipo(2, 'Ajeno'), Rasgos: [vision, sinAlma] } as TipoCriatura;
+        svc.setCatalogoTiposCriatura([tipoHumanoide, tipoAjeno]);
+        svc.seleccionarRaza(crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]));
+        const compatibilidad = [{ Id_tipo_comp: 11, Id_tipo_nuevo: 2, Tipo_comp: 'Humanoide', Tipo_nuevo: 'Ajeno', Opcional: 0 }];
+
+        // Antes: una plantilla que no quita nada da los dos rasgos del ajeno.
+        svc.agregarPlantillaSeleccion(crearPlantillaMock({ Id: 300, Nombre: 'Ajeno de prueba', Compatibilidad_tipos: compatibilidad }));
+        expect(svc.PersonajeCreacion.Tipo_criatura.Rasgos.map((r) => r.Id)).toEqual([9, 13]);
+        svc.quitarPlantillaSeleccion(300);
+
+        svc.agregarPlantillaSeleccion(crearPlantillaMock({
+            Id: 207,
+            Nombre: 'Fantasma (La senda de los fantasmas)',
+            Compatibilidad_tipos: compatibilidad,
+            Rasgos_tipo_quitados: [{ Id: 9, Nombre: "Visión en la oscuridad 60'" }, { Id: 13, Nombre: 'Sin alma (ajenos)' }],
+        }));
+        expect(svc.PersonajeCreacion.Tipo_criatura.Nombre).toBe('Ajeno');
+        expect(svc.PersonajeCreacion.Tipo_criatura.Rasgos).toEqual([]);
+
+        svc.quitarPlantillaSeleccion(207);
+        expect(svc.PersonajeCreacion.Tipo_criatura.Nombre).toBe('Humanoide');
+    });
+
     it('subtipos: acumulativos con union deduplicada y restauracion al quitar', () => {
         const svc = new NuevoPersonajeService();
         const tipoHumanoide = crearTipo(1, 'Humanoide');

@@ -1,5 +1,5 @@
 import { Plantilla } from "src/app/interfaces/plantilla";
-import { evaluarElegibilidadPlantilla, PlantillaEvaluacionContexto, resolverAlineamientoPlantillas, simularEstadoPlantillas } from "./plantilla-elegibilidad";
+import { evaluarElegibilidadPlantilla, PlantillaEvaluacionContexto, rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPlantillas } from "./plantilla-elegibilidad";
 
 function crearPlantillaMock(overrides?: Partial<Plantilla>): Plantilla {
     return {
@@ -514,5 +514,23 @@ describe("plantilla-elegibilidad: los prerrequisitos de las plantillas de los ma
 
         expect(evaluarElegibilidadPlantilla(heredada, { ...crearContextoBase(), dgTotal: 1 }).saltable).toBeTrue();
         expect(evaluarElegibilidadPlantilla(heredada, { ...crearContextoBase(), dgTotal: 1, nivelesClase: 1 }).saltable).toBeFalse();
+    });
+});
+
+describe("rasgosTipoSinQuitados", () => {
+    const vision = { Id: 9, Nombre: "Visión en la oscuridad 60'" };
+    const sinAlma = { Id: 13, Nombre: "Sin alma (ajenos)" };
+
+    it("quita del tipo los rasgos de todas las plantillas, por su id", () => {
+        const fantasma = crearPlantillaMock({ Id: 207, Rasgos_tipo_quitados: [{ Id: 13, Nombre: "Sin alma (ajenos)" }] });
+        const otra = crearPlantillaMock({ Id: 208, Rasgos_tipo_quitados: [{ Id: 9, Nombre: "Visión en la oscuridad 60'" }] });
+        expect(rasgosTipoSinQuitados([vision, sinAlma], [fantasma])).toEqual([vision]);
+        expect(rasgosTipoSinQuitados([vision, sinAlma], [fantasma, otra])).toEqual([]);
+    });
+
+    it("sin plantillas, o sin rasgos quitados, deja los rasgos como estaban", () => {
+        const rasgos = [vision, sinAlma];
+        expect(rasgosTipoSinQuitados(rasgos, [])).toBe(rasgos);
+        expect(rasgosTipoSinQuitados(rasgos, [crearPlantillaMock()])).toBe(rasgos);
     });
 });

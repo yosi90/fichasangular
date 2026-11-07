@@ -62,6 +62,8 @@ export class DetallesPlantillaComponent {
     ataquesEspeciales: RacialPlantilla[] = [];
     compatibilidades: { tipoComp: string; tipoNuevo: string; }[] = [];
     subtipos: SubtipoRef[] = [];
+    /** Los rasgos de su tipo que no tiene la criatura con la plantilla (el fantasma: «sin alma», la visión en la oscuridad). */
+    rasgosTipoQuitados: string[] = [];
 
     @Input()
     set plantilla(value: Plantilla) {
@@ -108,6 +110,9 @@ export class DetallesPlantillaComponent {
         this.subtipos = (value?.Subtipos ?? [])
             .filter(subtipo => tieneTextoVisible(subtipo?.Nombre))
             .sort(porNombre);
+        this.rasgosTipoQuitados = (value?.Rasgos_tipo_quitados ?? [])
+            .map((rasgo) => `${rasgo?.Nombre ?? ''}`.trim())
+            .filter((nombre) => tieneTextoVisible(nombre));
     }
 
     @Output() conjuroDetalles: EventEmitter<number> = new EventEmitter<number>();

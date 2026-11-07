@@ -27,7 +27,7 @@ import { PersonajeCreateMascotasDto, PersonajeParteDto, PersonajeProgresionLanza
 import { bonoRacialCondicional } from './utils/habilidad-raza-condicional';
 import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { contarArmasNaturales } from './utils/armas-naturales';
-import { resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
+import { rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
@@ -9348,10 +9348,11 @@ export class NuevoPersonajeService {
         );
         const subtiposBase = this.copiarSubtipos(this.razaSeleccionada?.Subtipos ?? []);
         const subtiposResultantes = this.resolverSubtiposResultantes(subtiposBase, seleccionadas);
-        const rasgosTipoConOrigen = this.asignarOrigenRasgosTipo(
+        // Sin los rasgos de su tipo que quitan sus plantillas (el fantasma, ajeno sin «sin alma»).
+        const rasgosTipoConOrigen = rasgosTipoSinQuitados(this.asignarOrigenRasgosTipo(
             tipoResultante.Rasgos,
             tipoResultante.Nombre
-        );
+        ), seleccionadas);
 
         this.personajeCreacion.Tipo_criatura = {
             ...tipoResultante,

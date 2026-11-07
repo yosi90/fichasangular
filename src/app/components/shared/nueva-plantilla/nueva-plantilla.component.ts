@@ -14,6 +14,7 @@ import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipo
 import { RacialService } from 'src/app/services/racial.service';
 import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
+import { RasgoService } from 'src/app/services/rasgo.service';
 import { TamanoService } from 'src/app/services/tamano.service';
 import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
 import { UserService } from 'src/app/services/user.service';
@@ -72,7 +73,7 @@ import { OpcionCatalogo, opcionesDeCatalogo, opcionesPorId } from '../catalogo-b
 import { FilaArmaNatural, problemaDeArmasNaturales } from 'src/app/services/utils/armas-naturales';
 
 /** Las listas de rasgos del paso 3 (las tarjetas). */
-export type ListaRasgos = 'raciales' | 'ataquesEspeciales' | 'sortilegas' | 'dotes' | 'habilidades' | 'subtipos';
+export type ListaRasgos = 'raciales' | 'ataquesEspeciales' | 'sortilegas' | 'dotes' | 'habilidades' | 'subtipos' | 'rasgos_tipo_quitados';
 
 /** Lo que se elige en una lista: «Elige uno» (obligatorio, como el manual y el tamaño). */
 function elegido(control: AbstractControl): ValidationErrors | null {
@@ -130,6 +131,8 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
     raciales: OpcionCatalogo[] = [];
     conjuros: OpcionCatalogo[] = [];
     subtipos: OpcionCatalogo[] = [];
+    /** Los rasgos de los tipos de criatura (los que puede quitar la plantilla del tipo de la criatura). */
+    rasgosTipo: OpcionCatalogo[] = [];
     dotes: Dote[] = [];
     dotesOpciones: OpcionCatalogo[] = [];
     habilidades: HabilidadBasicaDetalle[] = [];
@@ -174,6 +177,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
     /** Las tarjetas de rasgos plegadas en el móvil (en el escritorio siempre están abiertas). */
     plegadas: Record<ListaRasgos, boolean> = {
         raciales: true, ataquesEspeciales: true, sortilegas: true, dotes: true, habilidades: true, subtipos: true,
+        rasgos_tipo_quitados: true,
     };
 
     constructor(
@@ -190,6 +194,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         private doteSvc: DoteService,
         private habilidadSvc: HabilidadService,
         private subtipoSvc: SubtipoService,
+        private rasgoSvc: RasgoService,
         private prerrequisitosTiposSvc: PrerrequisitosTiposService,
     ) {
         const inicial = valorPlantillaNueva();
@@ -352,8 +357,8 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         if (!opcion || this.idsDe(lista).includes(opcion.id))
             return;
         const base = { uid: this.uid(), id: opcion.id, nombre: opcion.nombre };
-        if (lista === 'subtipos')
-            this.listas.subtipos = [...this.listas.subtipos, base];
+        if (lista === 'subtipos' || lista === 'rasgos_tipo_quitados')
+            this.listas[lista] = [...this.listas[lista], base];
         else if (lista === 'habilidades')
             this.listas.habilidades = [...this.listas.habilidades, { ...base, rangos: 0, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, varios: '' }];
         else if (lista === 'sortilegas')
@@ -385,6 +390,8 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
             return this.dotesOpciones;
         if (lista === 'habilidades')
             return this.habilidadesOpciones;
+        if (lista === 'rasgos_tipo_quitados')
+            return this.rasgosTipo;
         return this.subtipos;
     }
 
@@ -639,6 +646,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         suscribir(this.racialSvc.getRaciales(), (items) => this.raciales = opcionesDeCatalogo(items));
         suscribir(this.conjuroSvc.getConjuros(), (items) => this.conjuros = opcionesDeCatalogo(items));
         suscribir(this.subtipoSvc.getSubtipos(), (items) => this.subtipos = opcionesDeCatalogo(items).filter((item) => item.id > 0));
+        suscribir(this.rasgoSvc.getRasgos(), (items) => this.rasgosTipo = opcionesDeCatalogo(items).filter((item) => item.id > 0));
         suscribir(this.doteSvc.getDotes(), (items) => {
             this.dotes = items ?? [];
             this.dotesOpciones = opcionesDeCatalogo(items);

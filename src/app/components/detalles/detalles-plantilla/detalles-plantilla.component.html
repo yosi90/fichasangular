@@ -91,6 +91,12 @@
             </ul>
         </app-ficha-lateral>
 
+        <app-ficha-lateral titulo="Rasgos de su tipo que no tiene" *ngIf="rasgosTipoQuitados.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let rasgo of rasgosTipoQuitados">{{rasgo}}</li>
+            </ul>
+        </app-ficha-lateral>
+
         <app-ficha-lateral titulo="Dotes" *ngIf="dotes.length > 0">
             <ul class="ficha-lista">
                 <li class="ficha-lista__item" *ngFor="let dote of dotes">

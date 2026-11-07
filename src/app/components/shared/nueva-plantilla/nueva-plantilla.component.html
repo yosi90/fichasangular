@@ -204,6 +204,7 @@
                     <ng-container *ngTemplateOutlet="tarjetaRasgos; context: { $implicit: 'dotes', icono: 'dote', anadir: 'Añadir dote', vacio: 'No da dotes.' }"></ng-container>
                     <ng-container *ngTemplateOutlet="tarjetaRasgos; context: { $implicit: 'habilidades', icono: null, anadir: 'Añadir habilidad', vacio: 'No da bonos de habilidad.' }"></ng-container>
                     <ng-container *ngTemplateOutlet="tarjetaRasgos; context: { $implicit: 'subtipos', icono: 'subtipo', anadir: 'Añadir subtipo', vacio: 'No añade subtipos.' }"></ng-container>
+                    <ng-container *ngTemplateOutlet="tarjetaRasgos; context: { $implicit: 'rasgos_tipo_quitados', icono: 'rasgo', anadir: 'Añadir rasgo que no tiene', vacio: 'Tiene todos los rasgos de su tipo.' }"></ng-container>
                 </div>
             </div>
 
@@ -310,7 +311,7 @@
                     <div class="plantilla-fila" *ngFor="let fila of $any(listas)[clave]; trackBy: trackByUid"
                         [class.plantilla-fila--sortilega]="clave === 'sortilegas'" [class.plantilla-fila--habilidad]="clave === 'habilidades'">
                         <span class="plantilla-fila__nombre">{{fila.nombre}}</span>
-                        <mat-form-field appearance="fill" class="plantilla-fila__corto" subscriptSizing="dynamic" *ngIf="clave !== 'subtipos' && clave !== 'habilidades'">
+                        <mat-form-field appearance="fill" class="plantilla-fila__corto" subscriptSizing="dynamic" *ngIf="clave !== 'subtipos' && clave !== 'habilidades' && clave !== 'rasgos_tipo_quitados'">
                             <mat-label>Desde DG</mat-label>
                             <input matInput type="number" min="1" step="1" [(ngModel)]="fila.dg" [ngModelOptions]="{ standalone: true }" (ngModelChange)="alCambiar()">
                         </mat-form-field>

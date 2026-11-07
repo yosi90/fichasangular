@@ -314,6 +314,25 @@ describe('DetallesPlantillaComponent', () => {
         expect(manualNav.abrirDetalleManual).toHaveBeenCalledWith({ id: 2, nombre: 'Manual de monstruos' });
     });
 
+    it('enseña los rasgos de su tipo que no tiene la criatura con la plantilla (el fantasma)', () => {
+        component.plantilla = crearPlantilla({
+            Subtipos: [{ Id: 14, Nombre: 'Incorporal' }],
+            Rasgos_tipo_quitados: [{ Id: 9, Nombre: "Visión en la oscuridad 60'" }, { Id: 13, Nombre: 'Sin alma (ajenos)' }],
+        });
+        fixture.detectChanges();
+
+        expect(titulos()).toContain('Rasgos de su tipo que no tiene');
+        expect(titulos().indexOf('Rasgos de su tipo que no tiene')).toBe(titulos().indexOf('Subtipos') + 1);
+        expect(texto()).toContain("Visión en la oscuridad 60'");
+        expect(texto()).toContain('Sin alma (ajenos)');
+    });
+
+    it('sin rasgos de tipo quitados, no enseña ese bloque', () => {
+        component.plantilla = crearPlantilla({ Rasgos_tipo_quitados: [] });
+        fixture.detectChanges();
+        expect(titulos()).not.toContain('Rasgos de su tipo que no tiene');
+    });
+
     it('enseña el lápiz «Modificar» solo con permiso de plantillas y si alguien lo escucha', () => {
         component.plantilla = crearPlantilla();
         fixture.detectChanges();

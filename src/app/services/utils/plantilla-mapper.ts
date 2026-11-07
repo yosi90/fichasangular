@@ -5,6 +5,7 @@ import {
     PlantillaPrerrequisitos,
     PlantillaPrerrequisitosFlags,
     PlantillaRacialContextual,
+    PlantillaRasgoTipoQuitado,
 } from "src/app/interfaces/plantilla";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
@@ -18,6 +19,13 @@ import { leerArmasNaturalesPlantilla } from './armas-naturales';
 
 function toStrictArray<T = any>(raw: any): T[] {
     return Array.isArray(raw) ? raw : [];
+}
+
+/** Los rasgos de su tipo que no tiene la criatura con la plantilla (`{ Id, Nombre }`, la API y la caché igual). */
+function leerRasgosTipoQuitados(raw: any): PlantillaRasgoTipoQuitado[] {
+    return toStrictArray(raw)
+        .map((r: any) => ({ Id: toNumber(r?.Id), Nombre: toText(r?.Nombre) }))
+        .filter((r) => r.Id > 0);
 }
 
 function normalizeCaracteristicas(raw: any): PlantillaCaracteristicas {
@@ -234,6 +242,7 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
             : null,
         Dotes: partes.Dotes,
         Subtipos: partes.Subtipos,
+        Rasgos_tipo_quitados: leerRasgosTipoQuitados(raw?.Rasgos_tipo_quitados),
         Habilidades: toArray(raw?.Habilidades).map((h: any) => ({
             Id_habilidad: toNumber(h?.Id_habilidad),
             Habilidad: toText(h?.Habilidad),

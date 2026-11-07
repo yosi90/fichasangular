@@ -362,6 +362,20 @@ export function simularEstadoPlantillas(
     };
 }
 
+/**
+ * Los rasgos del tipo de la criatura sin los que quitan sus plantillas (`Rasgos_tipo_quitados`): con la plantilla no
+ * los tiene aunque sean de su tipo (el fantasma de *La senda de los fantasmas*, ajeno sin «sin alma (ajenos)» ni su
+ * visión en la oscuridad). La misma regla que la ficha de la API (`tc.Rasgos`, `tipo_sin_rasgos_quitados`).
+ */
+export function rasgosTipoSinQuitados<T extends { Id?: number | null; }>(rasgos: T[], plantillas: Plantilla[]): T[] {
+    const quitados = new Set<number>();
+    (plantillas ?? []).forEach((plantilla) => (plantilla?.Rasgos_tipo_quitados ?? [])
+        .forEach((rasgo) => quitados.add(toNumber(rasgo?.Id))));
+    if (quitados.size < 1)
+        return rasgos;
+    return (rasgos ?? []).filter((rasgo) => !quitados.has(toNumber(rasgo?.Id)));
+}
+
 export function evaluarElegibilidadPlantilla(
     plantilla: Plantilla,
     ctx: PlantillaEvaluacionContexto
