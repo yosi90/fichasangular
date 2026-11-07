@@ -3707,6 +3707,85 @@ describe('NuevoPersonajeService (clases)', () => {
         expect(service.PersonajeCreacion.Conjuros.map((c) => c.Nombre)).toEqual(['Detectar magia', 'Mano de mago', 'Escudo']);
     });
 
+    it('el incremento del 4.º nivel refresca la sesión de conjuros: un mago 3 con Int 11 que sube a 12 ya puede poner conjuros de nivel 2 en su libro (MJ págs. 58-59 y 10)', () => {
+        const nivel = (numero: number, diarios: number[]) => ({
+            Nivel: numero,
+            Ataque_base: '+0',
+            Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' },
+            Nivel_max_poder_accesible_nivel_lanzadorPsionico: -1,
+            Reserva_psionica: 0,
+            Aumentos_clase_lanzadora: [],
+            Conjuros_diarios: crearConjurosDiariosMock(diarios),
+            Conjuros_conocidos_nivel_a_nivel: {},
+            Conjuros_conocidos_total: 0,
+            Dotes: [],
+            Especiales: [],
+        });
+        const conjuro = (id: number, nombre: string, nivelConjuro: number) => ({
+            Id: id,
+            Nombre: nombre,
+            Arcano: true,
+            Divino: false,
+            Psionico: false,
+            Escuela: { Id: 1, Nombre: 'Evocacion' } as any,
+            Disciplina: { Id: 0, Nombre: '' } as any,
+            Descriptores: [],
+            Nivel_clase: [{ Id_clase: 82, Clase: 'Mago', Nivel: nivelConjuro, Espontaneo: false }],
+            Nivel_dominio: [],
+            Nivel_disciplinas: [],
+            Oficial: true,
+        } as any);
+        const deNivel1 = [2101, 2102, 2103, 2104, 2105, 2106, 2107];
+        const deNivel2 = [2201, 2202];
+        const mago = crearClaseBase({
+            Id: 82,
+            Nombre: 'Mago',
+            Mod_salv_conjuros: 'Inteligencia',
+            Conjuros: {
+                ...crearClaseBase().Conjuros,
+                Arcanos: true,
+                Libro: { Nivel_cero_completo: true, Iniciales: 3, Iniciales_suman_caracteristica: true, Por_nivel: 2 },
+                Listado: [
+                    ...deNivel1.map((id) => ({ Id: id, Nombre: `Nivel 1 ${id}`, Nivel: 1, Espontaneo: false })),
+                    ...deNivel2.map((id) => ({ Id: id, Nombre: `Nivel 2 ${id}`, Nivel: 2, Espontaneo: false })),
+                ],
+            },
+            Desglose_niveles: [nivel(1, [0, 1]), nivel(2, [0, 1]), nivel(3, [0, 1, 2]), nivel(4, [0, 1, 2])],
+        });
+        service.setCatalogoClases([mago]);
+        service.setCatalogoConjuros([
+            ...deNivel1.map((id) => conjuro(id, `Nivel 1 ${id}`, 1)),
+            ...deNivel2.map((id) => conjuro(id, `Nivel 2 ${id}`, 2)),
+        ]);
+        expect(service.aplicarCaracteristicasGeneradas({ Fuerza: 10, Destreza: 14, Constitucion: 12, Inteligencia: 11, Sabiduria: 10, Carisma: 8 })).toBeTrue();
+        expect(service.PersonajeCreacion.Inteligencia).toBe(11);
+
+        // Niveles 1 a 3: 3 iniciales y 2 por nivel, todos de nivel 1 (con Int 11 no puede lanzar los de nivel 2).
+        const elegidos = [[2101, 2102, 2103], [2104, 2105], [2106, 2107]];
+        elegidos.forEach((ids) => {
+            service.aplicarSiguienteNivelClase(mago);
+            expect(service.getConjurosSesionActual().entradas[0].elegiblesIds).not.toContain(2201);
+            ids.forEach((id) => expect(service.seleccionarConjuroSesion(id)).toBeTrue());
+            expect(service.cerrarSesionConjuros()).toBe('dotes');
+        });
+
+        // Nivel 4: la sesión se abre con Int 11 y llega el incremento (paso 4, antes que los conjuros del paso 8).
+        service.aplicarSiguienteNivelClase(mago);
+        expect(service.getConjurosSesionActual().entradas[0].elegiblesIds).not.toContain(2201);
+        const pendientes = service.registrarAumentosPendientesPorProgresion('Mago nivel 4');
+        expect(pendientes.length).toBe(1);
+        expect(service.aplicarAumentosCaracteristica([{ idPendiente: pendientes[0].id, caracteristica: 'Inteligencia' }])).toBeTrue();
+        expect(service.PersonajeCreacion.Inteligencia).toBe(12);
+
+        const entrada = service.getConjurosSesionActual().entradas[0];
+        expect(entrada.elegiblesIds).toEqual(jasmine.arrayContaining(deNivel2));
+        expect(entrada.cupoPendiente.total).toBe(2);
+        expect(service.seleccionarConjuroSesion(2201)).toBeTrue();
+        expect(service.seleccionarConjuroSesion(2202)).toBeTrue();
+        expect(service.cerrarSesionConjuros()).toBe('dotes');
+        expect(service.PersonajeCreacion.Conjuros.map((c) => c.Id)).toEqual(jasmine.arrayContaining(deNivel2));
+    });
+
     it('interpreta claves Nivel_X en Conjuros_conocidos_nivel_a_nivel', () => {
         const clasePorNivel = crearClaseBase({
             Id: 811,

@@ -2881,6 +2881,10 @@ export class NuevoPersonajeService {
         this.sincronizarBaseVentajasDesdePersonaje();
 
         this.aumentosPendientesCaracteristica = [];
+        // El incremento (paso 4 del MJ, págs. 58-59) va antes que los conjuros del nivel (paso 8), pero la sesión de
+        // conjuros se abre al aplicar el nivel con la puntuación de antes: se vuelve a calcular con la nueva, que puede
+        // abrir un nivel de conjuro (10 + nivel) o sumar conjuros adicionales.
+        this.refrescarSesionConjurosPorEspecialidad();
         return true;
     }
 
