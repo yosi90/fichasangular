@@ -402,13 +402,8 @@ export class RazaService {
      * categoría (tamaño, modificadores, DG, armadura natural, velocidades, raciales y sortílegas acumulados, lanzamiento).
      * Es la vista previa de la creación y la raza que se elige. Con un error de la API, su texto (`paso_edad_no_valido`).
      */
-    public async getRazaEnPasoEdad(idRaza: number, idPasoEdad: number): Promise<Raza> {
-        try {
-            const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}razas/${idRaza}/pasos-edad/${idPasoEdad}`));
-            return normalizeRazaApi(raw);
-        } catch (error) {
-            throw errorDePerfil(error, 'No se pudo leer la raza a esa edad.');
-        }
+    public getRazaEnPasoEdad(idRaza: number, idPasoEdad: number): Promise<Raza> {
+        return this.leerRazaDeApi(`razas/${idRaza}/pasos-edad/${idPasoEdad}`, 'No se pudo leer la raza a esa edad.');
     }
 
     /**
@@ -430,12 +425,18 @@ export class RazaService {
      * La raza mutada aplicada sobre una raza base, ya combinada por la API (`GET /razas/{id}/sobre/{idBase}`): la raza que
      * se elige en la creación. La web no combina. Con un error de la API, su texto (`raza_base_no_cumple_requisitos`…).
      */
-    public async getRazaSobreBase(idRaza: number, idRazaBase: number): Promise<Raza> {
+    public getRazaSobreBase(idRaza: number, idRazaBase: number): Promise<Raza> {
+        return this.leerRazaDeApi(
+            `razas/${toInt(idRaza)}/sobre/${toInt(idRazaBase)}`, 'No se pudo aplicar la raza mutada sobre esa base.'
+        );
+    }
+
+    /** Una `RazaCompleta` de una ruta de la API (`razas/…`), sin caché; con un error de la API, su texto. */
+    private async leerRazaDeApi(ruta: string, porDefecto: string): Promise<Raza> {
         try {
-            const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}razas/${toInt(idRaza)}/sobre/${toInt(idRazaBase)}`));
-            return normalizeRazaApi(raw);
+            return normalizeRazaApi(await firstValueFrom(this.http.get(`${environment.apiUrl}${ruta}`)));
         } catch (error) {
-            throw errorDePerfil(error, 'No se pudo aplicar la raza mutada sobre esa base.');
+            throw errorDePerfil(error, porDefecto);
         }
     }
 
