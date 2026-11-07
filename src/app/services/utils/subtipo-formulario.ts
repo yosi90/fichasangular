@@ -1,7 +1,7 @@
 import { SubtipoCuerpo, SubtipoDetalle } from 'src/app/interfaces/subtipo';
 import { ID_EXTRA_HABILIDAD_SIN_EXTRA } from './habilidad-extra-visible';
 import { CAMPOS_VELOCIDAD } from './movimientos-mapper';
-import { idsUnicosOrdenados, toInt, toPositiveInt, toText } from './normalizacion';
+import { idsUnicosOrdenados, toInt, toNullableText, toPositiveInt, toText } from './normalizacion';
 import { CARACTERISTICAS_PLANTILLA } from './plantilla-formulario';
 
 /**
@@ -151,15 +151,11 @@ export function listasVaciasDeSubtipo(): ListasSubtipo {
     return { idiomas: [], rasgos: [], plantillas: [], dotes: [], habilidades: [], habilidades_custom: [], sortilegas: [] };
 }
 
-/** El texto de un campo libre: vacío, `null` (la API guarda el texto de relleno que la lectura vuelve a dar `null`). */
-function textoONulo(valor: unknown): string | null {
-    return `${valor ?? ''}`.trim() || null;
-}
-
 /** El cuerpo de `POST /subtipos/add` y `PUT /subtipos/<id>`: las listas de ids, de menor a mayor; las filas, en su orden. */
 export function cuerpoDeSubtipo(valores: ValoresSubtipo, listas: ListasSubtipo): SubtipoCuerpo {
     const numericas = Object.fromEntries(NUMERICAS.map((clave) => [clave, toInt(valores[clave])]));
-    const textos = Object.fromEntries(TEXTOS_SUBTIPO.map(({ clave }) => [clave, textoONulo(valores[clave])]));
+    // Un campo libre vacío va `null` (la API guarda el texto de relleno que la lectura vuelve a dar `null`).
+    const textos = Object.fromEntries(TEXTOS_SUBTIPO.map(({ clave }) => [clave, toNullableText(valores[clave])]));
     return {
         subtipo: {
             ...numericas,
@@ -178,11 +174,11 @@ export function cuerpoDeSubtipo(valores: ValoresSubtipo, listas: ListasSubtipo):
         plantillas: idsUnicosOrdenados(listas.plantillas.map((elemento) => elemento.id)),
         dotes: listas.dotes.map((fila) => ({ id_dote: fila.id, id_extra: toInt(fila.id_extra, -1) })),
         habilidades: listas.habilidades.map((fila) => ({
-            id_habilidad: fila.id, id_extra: toInt(fila.id_extra, -1), cantidad: toInt(fila.cantidad), varios: textoONulo(fila.varios),
+            id_habilidad: fila.id, id_extra: toInt(fila.id_extra, -1), cantidad: toInt(fila.cantidad), varios: toNullableText(fila.varios),
         })),
         habilidades_custom: listas.habilidades_custom.map((fila) => ({ id_habilidad: fila.id, cantidad: toInt(fila.cantidad) })),
         sortilegas: listas.sortilegas.map((fila) => ({
-            id_conjuro: fila.id, nivel_lanzador: toInt(fila.nivel_lanzador), usos_diarios: textoONulo(fila.usos_diarios),
+            id_conjuro: fila.id, nivel_lanzador: toInt(fila.nivel_lanzador), usos_diarios: toNullableText(fila.usos_diarios),
         })),
     };
 }
