@@ -539,6 +539,7 @@
                         </div>
 
                         <p class="creacion-aviso" *ngIf="!cargandoClases && avisoClaseObligada as aviso">{{aviso}}</p>
+                        <p class="creacion-aviso" *ngIf="!cargandoClases && avisoLimiteNepClases as aviso">{{aviso}}</p>
                         <p class="creacion-vacio" *ngIf="cargandoClases">Cargando clases…</p>
                         <p class="creacion-vacio" *ngIf="!cargandoClases && clasesListadoFiltrado.length < 1">
                             No hay clases que coincidan con los filtros.</p>
@@ -566,7 +567,8 @@
                                             <div class="clase-celda-chipline">
                                                 <span class="creacion-etiqueta" *ngIf="item.clase.Prestigio">Prestigio</span>
                                                 <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="item.penalizacionPx.etiqueta"
-                                                    [matTooltip]="item.penalizacionPx.texto" matTooltipClass="tt-accent tt-multiline">{{item.penalizacionPx.etiqueta}}</span>
+                                                    [matTooltip]="item.limiteNep ? item.limiteNep + ' ' + item.penalizacionPx.texto : item.penalizacionPx.texto"
+                                                    matTooltipClass="tt-accent tt-multiline">{{item.penalizacionPx.etiqueta}}</span>
                                                 <span class="creacion-etiqueta creacion-etiqueta--aviso" *ngIf="item.edadInicial.etiqueta"
                                                     [matTooltip]="item.edadInicial.texto" matTooltipClass="tt-accent tt-multiline">{{item.edadInicial.etiqueta}}</span>
                                                 <mat-chip class="bad" *ngIf="item.campaignBlockedReason">{{item.campaignBlockedReason}}</mat-chip>
@@ -679,6 +681,9 @@
                                 No puedes elegirla: {{item.evaluacion.razones.join(' · ')}}</p>
                             <p class="creacion-aviso" *ngIf="item.penalizacionPx.texto">
                                 Si coges este nivel: {{item.penalizacionPx.texto}}</p>
+                            <p class="creacion-aviso" *ngIf="item.limiteNep">{{item.limiteNep}}</p>
+                            <p class="creacion-aviso" *ngIf="item.puedeAplicarse === false && item.campaignBlockedReason">
+                                No puedes elegirla: {{item.campaignBlockedReason}}.</p>
                             <p class="creacion-aviso" *ngIf="item.edadInicial.texto">{{item.edadInicial.texto}}</p>
                             <app-detalles-clase [clase]="item.clase"
                                 (conjuroDetalles)="conjuroDetallesId.emit($event)"

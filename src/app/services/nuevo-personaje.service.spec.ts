@@ -2594,6 +2594,16 @@ describe('NuevoPersonajeService (clases)', () => {
             const prestigio = crearClaseBase({ Id: 500, Nombre: 'Caballero', Prestigio: true, Desglose_niveles: [1].map(nivel) });
             expect(service.penalizacionExperiencia(prestigio).porcentaje).toBe(0);
         });
+
+        it('nepConUnNivelMas: el NEP que tendría con el siguiente nivel (el límite de NEP de la campaña)', () => {
+            conRaza(9, null);
+            // Guerrero 3 y el ajuste de nivel de la raza de prueba: un nivel más, uno más de NEP.
+            const nep = service.PersonajeCreacion.NEP;
+            expect(nep).toBeGreaterThanOrEqual(3);
+            expect(service.nepConUnNivelMas()).toBe(nep + 1);
+            service.aplicarSiguienteNivelClase(picaro());
+            expect(service.PersonajeCreacion.NEP).toBe(nep + 1);
+        });
     });
 
     describe('las habilidades en multiclase (MJ cap. 3, «Personajes multiclase»)', () => {

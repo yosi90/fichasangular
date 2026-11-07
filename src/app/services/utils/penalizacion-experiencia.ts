@@ -1,6 +1,7 @@
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { leerComodin } from 'src/app/services/utils/comodin';
+import { experienciaParaNivel } from 'src/app/services/utils/experiencia-nivel';
 import { toArray, toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
 
 /**
@@ -108,6 +109,83 @@ export function penalizacionExperiencia(
         referencia: conNivel(masAlta),
         predilectas,
     };
+}
+
+/**
+ * El límite de NEP de una campaña cuenta en experiencia (`politicaCreacion.nepMaximoPersonajeNuevo`; propietario,
+ * 2026-11-07: un elfo mago 8 no puede valer lo mismo que un elfo guerrero 5 / pícaro 3): el límite se pasa a PX con la
+ * tabla de PX por nivel (`experienciaParaNivel`, Manual del jugador, tabla 3-2) y un personaje con la penalización p
+ * solo llega al NEP cuyos PX caben en PX del límite × (1 − p), con p como mucho del 100 %. Con límite 8 (28 000 PX) y
+ * −20 %, 22 400 PX: NEP 7. La misma regla que la API (`utils/penalizacion_experiencia.py`), que la comprueba al guardar
+ * (`400 nivel_maximo_por_penalizacion`).
+ */
+export function nepMaximoConPenalizacion(nepLimite: number, porcentaje: number): number {
+    const limite = Math.max(0, toInt(nepLimite));
+    const perdido = Math.min(100, Math.max(0, toInt(porcentaje)));
+    const tope = experienciaParaNivel(limite) * (100 - perdido);
+    let nep = limite;
+    while (nep > 1 && experienciaParaNivel(nep) * 100 > tope)
+        nep--;
+    return nep;
+}
+
+/** El límite de NEP de la campaña para un personaje con esa penalización: el de la campaña y el que le queda. */
+export interface LimiteNepCampana {
+    limite: number;
+    maximo: number;
+    porcentaje: number;
+}
+
+/** `null` sin límite (sin campaña, sin tope, un PNJ o el máster que se lo salta). */
+export function limiteNepConPenalizacion(
+    nepLimite: number | null | undefined,
+    penalizacion: PenalizacionExperiencia | null | undefined,
+): LimiteNepCampana | null {
+    if (nepLimite === null || nepLimite === undefined)
+        return null;
+    const limite = Math.max(0, toInt(nepLimite));
+    const porcentaje = Math.max(0, toInt(penalizacion?.porcentaje));
+    return { limite, maximo: nepMaximoConPenalizacion(limite, porcentaje), porcentaje };
+}
+
+/**
+ * Por qué no puede coger el nivel si con él pasa del NEP que le deja la campaña, como los demás motivos de campaña
+ * («bloqueada por campaña: …»); `null` si cabe.
+ */
+export function motivoLimiteNepCampana(limite: LimiteNepCampana | null, nepTras: number): string | null {
+    if (!limite || toInt(nepTras) <= limite.maximo)
+        return null;
+    return limite.maximo < limite.limite
+        ? `bloqueada por campaña: con un ${limite.porcentaje} % de penalización de experiencia, su NEP máximo baja a `
+            + `${limite.maximo} y tendría NEP ${toInt(nepTras)}`
+        : `bloqueada por campaña: su NEP máximo es ${limite.limite} y tendría NEP ${toInt(nepTras)}`;
+}
+
+/**
+ * El aviso de coger una clase que hace aparecer o subir la penalización en una campaña con límite: «Con esta clase
+ * tendrá un 20 % de penalización de experiencia: en esta campaña, su nivel máximo (NEP) baja de 8 a 7.» `''` si no
+ * sube (o no hay límite).
+ */
+export function avisoPenalizacionConLimite(limite: LimiteNepCampana | null, porcentajeActual: number): string {
+    if (!limite || limite.porcentaje <= Math.max(0, toInt(porcentajeActual)))
+        return '';
+    const baja = limite.maximo < limite.limite
+        ? `su nivel máximo (NEP) baja de ${limite.limite} a ${limite.maximo}`
+        : `su nivel máximo (NEP) sigue en ${limite.limite}`;
+    return `Con esta clase tendrá un ${limite.porcentaje} % de penalización de experiencia: en esta campaña, ${baja}.`;
+}
+
+/**
+ * El máximo efectivo del paso de clases: «La campaña limita el NEP a 8; ahora tiene NEP 6.», y con penalización
+ * «… Con su penalización de experiencia (20 %), su NEP máximo es 7.». `''` sin límite.
+ */
+export function textoLimiteNepCampana(limite: LimiteNepCampana | null, nepActual: number): string {
+    if (!limite)
+        return '';
+    const base = `La campaña limita el NEP de los personajes nuevos a ${limite.limite}; ahora tiene NEP ${Math.max(0, toInt(nepActual))}.`;
+    return limite.maximo < limite.limite
+        ? `${base} Con su penalización de experiencia (${limite.porcentaje} %), su NEP máximo es ${limite.maximo}.`
+        : base;
 }
 
 /** «−20 % de PX» o `''` sin penalización. */

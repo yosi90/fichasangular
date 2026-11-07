@@ -187,7 +187,10 @@ import {
 } from 'src/app/services/utils/tienda-equipo';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
 import { comoSaleLaEdadDelManual, edadesDeLaRaza, edadFueraDelManual, edadMinimaInicial, etapaEdad, EtapaEdad, GRUPOS_EDAD_INICIAL, GrupoEdadInicial, motivoEdadFueraDelManual, motivoEdadInicial, razaTieneEdades, textoDadosEdadInicial, textoEdadMaxima, textoEnvejecimiento, tirarEdadInicial } from 'src/app/services/utils/edad-personaje';
-import { etiquetaPenalizacionExperiencia, textoPenalizacionExperiencia } from 'src/app/services/utils/penalizacion-experiencia';
+import {
+    avisoPenalizacionConLimite, etiquetaPenalizacionExperiencia, limiteNepConPenalizacion, motivoLimiteNepCampana,
+    nepMaximoConPenalizacion, textoLimiteNepCampana, textoPenalizacionExperiencia,
+} from 'src/app/services/utils/penalizacion-experiencia';
 import { textoDesglose } from 'src/app/services/utils/personaje-totales';
 
 interface VectorAlineamiento {
@@ -322,6 +325,12 @@ interface ClaseListadoItem {
      * («−20 % de PX») y su explicación; vacías si no pierde nada. No impide cogerlo ni lo vuelve homebrew.
      */
     penalizacionPx: { etiqueta: string; texto: string; };
+    /**
+     * En una campaña con límite de NEP, lo que la penalización de este nivel le hace a su NEP máximo («Con esta clase
+     * tendrá un 20 % de penalización de experiencia: en esta campaña, su nivel máximo (NEP) baja de 8 a 7.»); vacío si
+     * no hay límite o la penalización no sube. Si con el nivel pasa del máximo, el motivo va en `campaignBlockedReason`.
+     */
+    limiteNep: string;
     /**
      * Si la edad no llega a la edad inicial de la clase (Manual del jugador, tabla 6-4), solo para el primer nivel del
      * personaje: la etiqueta («Edad: homebrew») y el motivo; vacías si llega o no hay dato. Cogerla vuelve homebrew la ficha.
@@ -1133,6 +1142,22 @@ export class NuevoPersonajeComponent {
      */
     get avisoClaseObligada(): string | null {
         return this.nuevoPSvc.claseObligadaActual()?.motivo ?? null;
+    }
+
+    /**
+     * El límite de NEP de la campaña en el paso de clases: `null` sin campaña, sin tope, con un PNJ (no sigue la
+     * política) o para su máster, que se lo salta (`overrideReglasCampana`), como en la API.
+     */
+    private get nepLimiteCampanaClases(): number | null {
+        if (!this.selectedCampaignPolicyResolved || this.isSelectedCampaignActiveMaster)
+            return null;
+        return this.normalizarCampaignMaxNep(this.effectiveSelectedCampaignPolicy?.nepMaximoPersonajeNuevo ?? null);
+    }
+
+    /** El NEP máximo efectivo del paso de clases, con la penalización de PX que ya tiene (`textoLimiteNepCampana`). */
+    get avisoLimiteNepClases(): string {
+        const limite = limiteNepConPenalizacion(this.nepLimiteCampanaClases, this.nuevoPSvc.penalizacionExperiencia());
+        return textoLimiteNepCampana(limite, toInt(this.Personaje?.NEP));
     }
 
     /** La raza que elige el botón del pie: en una raza por edades, la resuelta a un paso que puede elegir. */
@@ -4214,12 +4239,56 @@ export class NuevoPersonajeComponent {
         this.recalcularClasesVisibles();
     }
 
+    /**
+     * En una campaña con límite de NEP, una clase que hace aparecer o subir la penalización de PX baja el NEP máximo del
+     * personaje (`limiteNepConPenalizacion`): se avisa antes de aplicarla, con la penalización y el máximo que quedaría.
+     * Si con ese nivel ya pasa del máximo, no se puede (la lista ya la atenúa; la política pudo llegar después) y no se
+     * aplica. `true` si se sigue.
+     */
+    private async confirmarPenalizacionConLimiteNep(clase: Clase): Promise<boolean> {
+        const penalizacion = this.nuevoPSvc.penalizacionExperiencia(clase);
+        const limite = limiteNepConPenalizacion(this.nepLimiteCampanaClases, penalizacion);
+        if (!limite)
+            return true;
+        const motivo = motivoLimiteNepCampana(limite, this.nuevoPSvc.nepConUnNivelMas());
+        if (motivo) {
+            await Swal.fire({
+                icon: 'warning',
+                title: 'La campaña no permite este nivel',
+                text: `${motivo.charAt(0).toUpperCase()}${motivo.slice(1)}. Así no se podría guardar el personaje.`,
+                confirmButtonText: 'Entendido',
+                target: document.body,
+                heightAuto: false,
+                scrollbarPadding: false,
+            });
+            this.recalcularClasesVisibles();
+            return false;
+        }
+        const aviso = avisoPenalizacionConLimite(limite, this.nuevoPSvc.penalizacionExperiencia().porcentaje);
+        if (!aviso)
+            return true;
+        const confirmacion = await Swal.fire({
+            icon: 'warning',
+            title: 'Penalización de experiencia',
+            text: `${aviso} ${textoPenalizacionExperiencia(penalizacion)}`,
+            showCancelButton: true,
+            confirmButtonText: `Elegir ${`${clase?.Nombre ?? 'la clase'}`.trim()} igualmente`,
+            cancelButtonText: 'Cancelar',
+            target: document.body,
+            heightAuto: false,
+            scrollbarPadding: false,
+        });
+        return confirmacion.isConfirmed;
+    }
+
     async continuarDesdeClases(): Promise<void> {
         const seleccion = this.claseSeleccionadaActual;
         if (!seleccion || !seleccion.puedeAplicarse)
             return;
 
         if (!await this.ensureSelectedCampaignPolicyReady())
+            return;
+        if (!await this.confirmarPenalizacionConLimiteNep(seleccion.clase))
             return;
 
         const primerNivelClase = Number(seleccion.siguienteNivel ?? 0) === 1;
@@ -7247,6 +7316,14 @@ export class NuevoPersonajeComponent {
         if (blocksExistingNep) {
             blockers.push(`La campaña limita el NEP de personajes nuevos a ${nepLimit} y este personaje tiene NEP ${currentNep}.`);
         }
+        // Con penalización de PX por multiclase, el límite cuenta en experiencia (`nepMaximoConPenalizacion`, como la API:
+        // `400 nivel_maximo_por_penalizacion`). El paso de clases ya no deja llegar; esto lo cubre al terminar.
+        const porcentajePx = nepLimit === null ? 0 : this.nuevoPSvc.penalizacionExperiencia().porcentaje;
+        const nepMaximoPx = nepLimit === null ? null : nepMaximoConPenalizacion(nepLimit, porcentajePx);
+        if (!this.isSelectedCampaignActiveMaster && !blocksExistingNep && nepMaximoPx !== null && currentNep > nepMaximoPx) {
+            blockers.push(`Con su penalización de experiencia (${porcentajePx} %), la campaña limita su NEP a ${nepMaximoPx} `
+                + `y este personaje tiene NEP ${currentNep}.`);
+        }
 
         if (blocksExistingHomebrew) {
             if (mode === 'forbidden') {
@@ -7751,6 +7828,11 @@ export class NuevoPersonajeComponent {
         // que se puede tomar: se ofrece siempre, aunque los filtros de la lista (homebrew, manual, texto, tipo de
         // lanzador, rol o prestigio) la ocultaran.
         const idObligada = toInt(this.nuevoPSvc.claseObligadaActual()?.clase?.Id);
+        // El límite de NEP de la campaña cuenta en experiencia (`limiteNepConPenalizacion`): un nivel que, con la
+        // penalización de PX que tendría, pasa del NEP máximo no se puede elegir (la API lo rechazaría al guardar).
+        const nepLimite = this.nepLimiteCampanaClases;
+        const nepTras = nepLimite === null ? 0 : this.nuevoPSvc.nepConUnNivelMas();
+        const porcentajeActual = nepLimite === null ? 0 : this.nuevoPSvc.penalizacionExperiencia().porcentaje;
 
         this.catalogoClases.forEach((clase) => {
             const nombre = `${clase?.Nombre ?? ''}`.trim();
@@ -7766,11 +7848,11 @@ export class NuevoPersonajeComponent {
 
             const evaluacion = this.nuevoPSvc.evaluarClaseParaSeleccion(clase);
             const bloqueoSoloAlineamiento = this.nuevoPSvc.esBloqueoSoloPorAlineamiento(evaluacion);
-            const campaignBlockedReason = this.getCampaignBlockedReasonForCandidate(
-                'clase',
-                clase
-            );
             const elegiblePorReglasBase = evaluacion.estado === 'eligible' || bloqueoSoloAlineamiento;
+            const penalizacion = this.nuevoPSvc.penalizacionExperiencia(clase);
+            const limiteNep = limiteNepConPenalizacion(nepLimite, penalizacion);
+            const campaignBlockedReason = this.getCampaignBlockedReasonForCandidate('clase', clase)
+                ?? (elegiblePorReglasBase ? motivoLimiteNepCampana(limiteNep, nepTras) : null);
             if (!elegiblePorReglasBase && !campaignBlockedReason)
                 return;
             const puedeAplicarse = elegiblePorReglasBase && !campaignBlockedReason;
@@ -7778,7 +7860,6 @@ export class NuevoPersonajeComponent {
             const nivelActual = this.getNivelActualClasePorNombre(clase.Nombre);
             const siguienteNivel = nivelActual + 1;
             const beneficios = this.getBeneficiosSiguienteNivelClase(clase, siguienteNivel);
-            const penalizacion = this.nuevoPSvc.penalizacionExperiencia(clase);
             // Solo para el primer nivel del personaje: su edad tiene que llegar a la edad inicial de la clase (tabla 6-4).
             const motivoEdad = primeraClase ? motivoEdadInicial(this.Personaje?.Edad, this.razaSeleccionada, clase?.Grupo_edad_inicial, nombre) : '';
             evaluadas.push({
@@ -7799,6 +7880,7 @@ export class NuevoPersonajeComponent {
                     etiqueta: etiquetaPenalizacionExperiencia(penalizacion),
                     texto: textoPenalizacionExperiencia(penalizacion),
                 },
+                limiteNep: avisoPenalizacionConLimite(limiteNep, porcentajeActual),
                 edadInicial: {
                     etiqueta: motivoEdad ? 'Edad: homebrew' : '',
                     texto: motivoEdad ? `${motivoEdad} Cogerla vuelve homebrew el personaje.` : '',

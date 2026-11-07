@@ -8905,6 +8905,21 @@ export class NuevoPersonajeService {
     }
 
     /**
+     * El NEP que tendría con un nivel de clase más (lo que pasaría al coger el siguiente nivel de cualquier clase), con la
+     * misma regla que el NEP de ahora (`nivelEfectivoPersonaje`): con 1 DG racial o menos, el primer nivel de clase ocupa
+     * su lugar y el NEP no sube. Lo usa el límite de NEP de la campaña en el paso de clases.
+     */
+    nepConUnNivelMas(): number {
+        const partes = this.getPartesNivelPersonaje();
+        const nivelesClase = partes.nivelesClase + 1;
+        return nivelEfectivoPersonaje({
+            ...partes,
+            nivelesClase,
+            dgsRaza: dgsRacialesQueCuentan(toNumber(this.razaSeleccionada?.Dgs_adicionales?.Cantidad), nivelesClase),
+        });
+    }
+
+    /**
      * La clase del primer nivel del personaje (la primera que cogió: la de la edad inicial, Manual del jugador, tabla
      * 6-4), o `null` si aún no tiene niveles de clase.
      */

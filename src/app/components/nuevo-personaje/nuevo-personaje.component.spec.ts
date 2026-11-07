@@ -3406,6 +3406,70 @@ describe('NuevoPersonajeComponent', () => {
         expect((component as any).getCampaignBlockedReasonForCandidate('clase', { ...claseHomebrew, Manual: { Id: 1, Nombre: 'Manual base', Pagina: 3 } })).toBeNull();
     });
 
+    describe('el límite de NEP de la campaña con la penalización de PX (propietario, 2026-11-07)', () => {
+        const SIN = { porcentaje: 0, penalizadas: [], referencia: null, predilectas: [] };
+        const CON_20 = { porcentaje: 20, penalizadas: ['Pícaro 3'], referencia: 'Guerrero 5', predilectas: [] };
+        let guerrero: Clase;
+        let picaro: Clase;
+
+        // Un elfo guerrero 5 / pícaro 2 (NEP 7) en una campaña con límite 8: subir pícaro lo deja igualado (sin
+        // penalización) o, como aquí, con un 20 % (guerrero 6 / pícaro 2 no; pícaro 3 frente a guerrero 5, sí).
+        function preparar(nepTras: number, masterUid = 'uid-otro'): void {
+            component.Personaje.Campana = 'Campaña A';
+            component.selectedCampaignPolicy = {
+                tiradaMinimaCaracteristica: null,
+                nepMaximoPersonajeNuevo: 8,
+                maxTablasDadosCaracteristicas: null,
+                permitirHomebrewGeneral: true,
+                permitirVentajasDesventajas: true,
+                permitirIgnorarRestriccionesAlineamiento: true,
+                maxFuentesHomebrewGeneralesPorPersonaje: null,
+            };
+            (component as any).selectedCampaignPolicyResolved = true;
+            (component as any).selectedCampaignActiveMasterUid = masterUid;
+            guerrero = crearClaseMock({ Id: 7, Nombre: 'Guerrero' });
+            picaro = crearClaseMock({ Id: 12, Nombre: 'Pícaro' });
+            component.catalogoClases = [guerrero, picaro];
+            nuevoPSvc.setCatalogoClases(component.catalogoClases);
+            spyOn(nuevoPSvc, 'nepConUnNivelMas').and.returnValue(nepTras);
+            spyOn(nuevoPSvc, 'penalizacionExperiencia').and.callFake((clase?: Clase | null) => (clase?.Id === 12 ? CON_20 : SIN) as any);
+            (component as any).recalcularClasesVisibles();
+        }
+
+        const item = (id: number) => component.clasesListadoFiltrado.find((c) => Number(c.clase.Id) === id)!;
+
+        it('un nivel que con su penalización pasa del NEP máximo no se puede elegir', () => {
+            preparar(8);
+            expect(item(7).puedeAplicarse).toBeTrue();
+            expect(item(12).puedeAplicarse).toBeFalse();
+            expect(item(12).campaignBlockedReason)
+                .toBe('bloqueada por campaña: con un 20 % de penalización de experiencia, su NEP máximo baja a 7 y tendría NEP 8');
+            expect(component.avisoLimiteNepClases).toContain('La campaña limita el NEP de los personajes nuevos a 8');
+        });
+
+        it('si cabe, avisa antes de aplicarlo y no lo aplica si cancela', async () => {
+            preparar(7);
+            expect(item(12).puedeAplicarse).toBeTrue();
+            expect(item(12).limiteNep)
+                .toBe('Con esta clase tendrá un 20 % de penalización de experiencia: en esta campaña, su nivel máximo (NEP) baja de 8 a 7.');
+            expect(item(7).limiteNep).toBe('');
+            const fire = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: false } as any);
+            component.abrirClase(picaro);
+
+            await component.continuarDesdeClases();
+
+            expect((fire.calls.mostRecent().args[0] as any).title).toBe('Penalización de experiencia');
+            expect(component.Personaje.desgloseClases.some((c) => c.Nombre === 'Pícaro')).toBeFalse();
+        });
+
+        it('su máster se lo salta, como en la API', () => {
+            preparar(8, 'uid-actor');
+            expect(item(12).puedeAplicarse).toBeTrue();
+            expect(item(12).limiteNep).toBe('');
+            expect(component.avisoLimiteNepClases).toBe('');
+        });
+    });
+
     it('incompatibilidad P3: al confirmar, aplica clase y deja personaje no oficial', async () => {
         const barbaro = crearClaseMock({
             Id: 32,
