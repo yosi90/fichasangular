@@ -1,6 +1,8 @@
 import { Raza } from "src/app/interfaces/raza";
 import { createRacialPlaceholder } from "./racial-mapper";
 import { aplicarMutacion, evaluarElegibilidadRazaBase } from "./raza-mutacion";
+import { normalizeRazaApi } from "./raza-mapper";
+import { PROLE_SOBRE_API, RAZAS_API } from "src/testing/razas-mutadas-api";
 
 function crearRazaMock(partial?: Partial<Raza>): Raza {
     return {
@@ -451,5 +453,32 @@ describe("raza-mutacion utils", () => {
         expect(baseAvistar?.Extra).toBe("Elegir");
         expect(baseAvistar?.Soporta_extra).toBeTrue();
         expect(custom?.Cantidad).toBe(3);
+    });
+});
+
+/**
+ * Ida y vuelta de la fase 2 (roadmap `ACTIVO_razas-mutadas`): la raza combinada que da la API
+ * (`GET /razas/21/sobre/{idBase}`) es la que combinaba la web con `aplicarMutacion`, con los datos de `rol_dev`.
+ */
+describe("aplicarMutacion frente a la combinación de la API", () => {
+    const sinCambios = (raza: any, quitar: string[]) => {
+        const copia = JSON.parse(JSON.stringify(raza));
+        quitar.forEach((clave) => delete copia[clave]);
+        return copia;
+    };
+    // Lo que la API combina distinto a propósito (fase 2): la descripción es la de la mutada (es su nombre) y las
+    // referencias de «Modificar raza», las suyas. Las habilidades se comparan aparte: la web añadía sus marcas.
+    const DISTINTO = ["Descripcion", "Edicion", "Habilidades"];
+    const habilidades = (raza: Raza) => ["Base", "Custom"].flatMap((lista) => ((raza.Habilidades as any)[lista] ?? [])
+        .map((h: any) => [lista, h.Id_habilidad, h.Id_extra, h.Cantidad, h.Cantidad_condicional ?? 0, h.Condicion ?? null]));
+
+    ["5", "18", "308", "26"].forEach((idBase) => {
+        it(`la prole sobre la raza ${idBase}`, () => {
+            const web = aplicarMutacion(normalizeRazaApi(RAZAS_API[idBase]), normalizeRazaApi(RAZAS_API["21"]));
+            const api = normalizeRazaApi(PROLE_SOBRE_API[idBase]);
+            expect(sinCambios(api, DISTINTO)).toEqual(sinCambios(web, DISTINTO));
+            expect(habilidades(api)).toEqual(habilidades(web));
+            expect(api.Descripcion).toBe(normalizeRazaApi(RAZAS_API["21"]).Descripcion);
+        });
     });
 });
