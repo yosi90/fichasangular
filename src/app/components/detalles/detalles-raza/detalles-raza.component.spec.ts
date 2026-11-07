@@ -9,9 +9,6 @@ import { createRacialPlaceholder } from 'src/app/services/utils/racial-mapper';
 import { DetallesRazaComponent } from './detalles-raza.component';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
-import { of } from 'rxjs';
-import { ClaseService, normalizeClase } from 'src/app/services/clase.service';
-import { CLASE_ENGENDRO_VAMPIRICO_API } from 'src/testing/clase-engendro-vampirico-api';
 import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
 import { categoriasEdadContrato, razaPorEdadesApi, razaPorEdadesEnPasoApi } from 'src/testing/raza-por-edades';
 
@@ -91,7 +88,6 @@ describe('DetallesRazaComponent', () => {
     let manualNav: jasmine.SpyObj<ManualDetalleNavigationService>;
     let usuario: { can: jasmine.Spy };
     let navegacion: { abrir: jasmine.Spy };
-    let claseSvc: { getClases: jasmine.Spy };
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
     const { texto, titulos, etiquetasDatos, valor, filasPares, enlace, lateral, seccion, etiquetasCabecera, bloque, textos } = lectorFicha(elemento);
 
@@ -104,14 +100,12 @@ describe('DetallesRazaComponent', () => {
         manualNav = jasmine.createSpyObj<ManualDetalleNavigationService>('ManualDetalleNavigationService', ['abrirDetalleManual']);
         usuario = { can: jasmine.createSpy('can').and.returnValue(false) };
         navegacion = { abrir: jasmine.createSpy('abrir') };
-        claseSvc = { getClases: jasmine.createSpy('getClases').and.returnValue(of([])) };
         await TestBed.configureTestingModule({
             declarations: [DetallesRazaComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
             providers: [
                 { provide: ManualDetalleNavigationService, useValue: manualNav },
                 { provide: UserService, useValue: usuario },
                 { provide: NavegacionRolService, useValue: navegacion },
-                { provide: ClaseService, useValue: claseSvc },
             ],
             schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
@@ -551,29 +545,26 @@ describe('DetallesRazaComponent', () => {
     });
 
     describe('la clase de monstruo que lleva una raza mutada (Libris Mortis)', () => {
-        it('es la clase que la tiene como Mutacion: se ve con su aviso y abre su detalle', () => {
-            claseSvc.getClases.and.returnValue(of([normalizeClase(CLASE_ENGENDRO_VAMPIRICO_API)]));
-            pintar({ Id: 1009, Nombre: 'Engendro vampírico', Mutada: true });
+        // `Clase_de_monstruo` de `GET /razas/1009` de `rol_dev` (2026-11-07): la raza la trae, una sola fuente.
+        const ENGENDRO = normalizeRazaApi({ i: 1009, n: 'Engendro vampírico', Mutada: true, Clase_de_monstruo: { Id: 482, Nombre: 'Engendro vampírico' } });
+
+        it('la lee de la raza (Clase_de_monstruo): se ve con su aviso y abre su detalle', () => {
+            pintar({ Id: 1009, Nombre: 'Engendro vampírico', Mutada: true, Clase_de_monstruo: ENGENDRO.Clase_de_monstruo });
 
             expect(valor('Clase de monstruo')).toBe('Engendro vampírico');
             expect(component.datos.find((dato) => dato.etiqueta === 'Clase de monstruo')?.ayuda)
-                .toBe('Se juega con su clase, «Engendro vampírico»: la toma desde el 1.er nivel y la termina (8 niveles) antes de cualquier otra. '
-                    + 'Una campaña puede no permitir las clases de monstruo.');
+                .toBe('Se juega con su clase, «Engendro vampírico»: la toma desde el 1.er nivel. Una campaña puede no permitir las clases de monstruo.');
             enlace('Engendro vampírico').click();
             expect(navegacion.abrir).toHaveBeenCalledWith({
                 clase: 'referencia-manual', referencia: { tipo: 'clase', id: 482, nombre: 'Engendro vampírico', manualId: 0 },
             });
         });
 
-        it('una mutada que no lleva clase no la enseña, y una raza que no es mutada ni la busca', () => {
-            claseSvc.getClases.calls.reset();
-            claseSvc.getClases.and.returnValue(of([normalizeClase(CLASE_ENGENDRO_VAMPIRICO_API)]));
-            pintar({ Id: 900, Nombre: 'Prole de Bahamut', Mutada: true });
+        it('una mutada que no lleva clase (`null`) no la enseña', () => {
+            pintar({ Id: 21, Nombre: 'Prole de Bahamut', Mutada: true, Clase_de_monstruo: normalizeRazaApi({ i: 21, Clase_de_monstruo: null }).Clase_de_monstruo });
             expect(valor('Clase de monstruo')).toBeNull();
 
-            claseSvc.getClases.calls.reset();
-            pintar({ Id: 1009, Mutada: false });
-            expect(claseSvc.getClases).not.toHaveBeenCalled();
+            pintar({ Id: 25, Mutada: false });
             expect(valor('Clase de monstruo')).toBeNull();
         });
     });

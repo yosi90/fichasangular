@@ -1,5 +1,4 @@
-import { Component, EventEmitter, Input, OnDestroy, Optional, Output } from '@angular/core';
-import { Subscription, take } from 'rxjs';
+import { Component, EventEmitter, Input, Optional, Output } from '@angular/core';
 import {
     DatoFicha,
     DoteFicha,
@@ -29,9 +28,7 @@ import { Id_nombre } from 'src/app/interfaces/genericas';
 import { DoteContextual } from 'src/app/interfaces/dote-contextual';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { ClaseService } from 'src/app/services/clase.service';
-import { Clase } from 'src/app/interfaces/clase';
-import { avisoRazaConClase, claseDeLaRaza } from 'src/app/services/utils/clases-de-monstruo';
+import { avisoRazaConClase } from 'src/app/services/utils/clases-de-monstruo';
 import { UserService } from 'src/app/services/user.service';
 import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
@@ -126,27 +123,19 @@ function prerrequisitosDe(prerrequisitos: RazaPrerrequisitos | null | undefined,
     styleUrls: ['./detalles-raza.component.sass'],
     standalone: false
 })
-export class DetallesRazaComponent implements OnDestroy {
+export class DetallesRazaComponent {
     constructor(
         private manualDetalleNavSvc: ManualDetalleNavigationService,
         private userSvc: UserService,
         // Abre el conjuro de una sortílega y la clase del lanzamiento racial en su pestaña (las pestañas lo escuchan).
         @Optional() private navegacion?: NavegacionRolService,
-        // Las clases, para la de monstruo que lleva una raza mutada (la que la tiene como `Mutacion`).
-        @Optional() private claseSvc?: ClaseService,
     ) { }
 
     /**
-     * La clase de monstruo que lleva la raza (*Libris Mortis*: la raza mutada es su bloque de rasgos raciales), o `null`.
-     * La raza no repite la unión: es la clase que la tiene como `Mutacion` (`docs/publica/RAZAS_MUTADAS.md`, «Cómo sabe la
-     * web qué clase lleva una mutada»). Solo se busca en una raza mutada.
+     * La clase de monstruo que lleva la raza (*Libris Mortis*: la raza mutada es su bloque de rasgos raciales), o `null`:
+     * `Clase_de_monstruo` de la raza (API y caché `Razas` 25, desde el 2026-11-07), una sola fuente.
      */
-    claseDeMonstruo: Clase | null = null;
-    private claseDeMonstruoSub?: Subscription;
-
-    ngOnDestroy(): void {
-        this.claseDeMonstruoSub?.unsubscribe();
-    }
+    claseDeMonstruo: Id_nombre | null = null;
 
     private razaActual!: Raza;
     mostrarInfoManiobrabilidad = false;
@@ -201,6 +190,7 @@ export class DetallesRazaComponent implements OnDestroy {
     @Input()
     set raza(value: Raza) {
         this.razaActual = value;
+        this.claseDeMonstruo = value?.Clase_de_monstruo && value.Clase_de_monstruo.Id > 0 ? value.Clase_de_monstruo : null;
         this.construirEdades();
         this.tipoCabecera = unirTipo(['Raza', value?.Tamano?.Nombre, value?.Tipo_criatura?.Nombre]);
         this.etiquetas = [
@@ -231,7 +221,6 @@ export class DetallesRazaComponent implements OnDestroy {
         this.gruposRaciales = this.getRacialesAgrupados();
         this.sortilegasConDgs = (value?.Sortilegas ?? []).some((s) => tieneNumeroVisible(s?.Dgs_necesarios));
         this.sortilegasConDescripcion = (value?.Sortilegas ?? []).some((s) => tieneTextoVisible(s?.Descripcion));
-        this.buscarClaseDeMonstruo(value);
     }
     get raza(): Raza {
         return this.razaActual;
@@ -281,22 +270,6 @@ export class DetallesRazaComponent implements OnDestroy {
     abrirDetalleClaseDeMonstruo(): void {
         if (this.claseDeMonstruo)
             this.abrirReferencia('clase', { Id: this.claseDeMonstruo.Id, Nombre: this.claseDeMonstruo.Nombre });
-    }
-
-    private buscarClaseDeMonstruo(raza: Raza): void {
-        this.claseDeMonstruoSub?.unsubscribe();
-        this.claseDeMonstruo = null;
-        const id = Number(raza?.Id);
-        if (!this.claseSvc || raza?.Mutada !== true || !Number.isFinite(id) || id <= 0)
-            return;
-        this.claseDeMonstruoSub = this.claseSvc.getClases().pipe(take(1)).subscribe({
-            next: (clases) => {
-                this.claseDeMonstruo = claseDeLaRaza(clases, id);
-                if (this.claseDeMonstruo)
-                    this.datos = this.construirDatos();
-            },
-            error: () => this.claseDeMonstruo = null,
-        });
     }
 
     get puedeAbrirReferencias(): boolean {

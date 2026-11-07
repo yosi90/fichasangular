@@ -1,6 +1,7 @@
 import { FormBuilder } from '@angular/forms';
 import { Subject, of } from 'rxjs';
 import Swal from 'sweetalert2';
+import { normalizeEspecial } from 'src/app/services/especial.service';
 import { NuevaEspecialComponent } from './nueva-especial.component';
 
 describe('NuevaEspecialComponent', () => {
@@ -239,5 +240,60 @@ describe('NuevaEspecialComponent', () => {
         expect((component as any).construirPayload().habilidades).toEqual([{ id_habilidad: 2, id_extra: 1, rangos: 2 }]);
         expect(component.isDirty).toBeFalse();
     });
-});
 
+    describe('las armas naturales de la aptitud (las garras del necrófago: GET /clases/habilidades/3103 de rol_dev)', () => {
+        const GARRAS = normalizeEspecial({
+            Id: 3103, Nombre: 'Garras (Necrófago)', Oficial: true, Extra: true, Activa_extra: true,
+            Bonificadores: { Armadura_natural: 0, CA: 0, Carisma: 0, Constitucion: 0, Destreza: 0, Fuerza: 0, Inteligencia: 0, RD: 0, Sabiduria: 0, Tamano_pasos: 0 },
+            Flags_extra: { Da_CA: false, Da_RD: false, Da_armadura_natural: false, Da_velocidad: false, No_aplica: true },
+            Extras: [{ Extra: '1d3', Id_extra: 154, Orden: 1 }, { Extra: '1d4', Id_extra: 155, Orden: 2 }],
+            Habilidades: [],
+            Armas_naturales: [{ Arma_natural: 'Garra', Cantidad: 2, Dano: null, Id_arma_natural: 2, Primaria: false, Texto: '2 garras (ataques secundarios)' }],
+            Prerrequisitos: { actitud_prohibido: [], actitud_requerido: [] },
+        });
+
+        function editar(): void {
+            especialSvc.getEspecialFresco.and.returnValue(of(GARRAS));
+            component.modo = 'editar';
+            component.idEspecial = 3103;
+            component.ngOnChanges({
+                modo: { currentValue: 'editar', previousValue: 'crear', firstChange: false, isFirstChange: () => false },
+                idEspecial: { currentValue: 3103, previousValue: null, firstChange: false, isFirstChange: () => false },
+            });
+        }
+
+        it('las carga al editar y, sin tocarlas, las manda igual (ida y vuelta)', () => {
+            editar();
+            expect(component.armasNaturales.map((fila) => [fila.id, fila.nombre, fila.cantidad, fila.dano, fila.primaria]))
+                .toEqual([[2, 'Garra', 2, '', false]]);
+            expect(component.isDirty).toBeFalse();
+            expect((component as any).construirPayload().armas_naturales)
+                .toEqual([{ id_arma_natural: 2, cantidad: 2, dano: null, primaria: false }]);
+        });
+
+        it('cambiarlas cuenta como cambio y va al cuerpo; quitarlas manda la lista vacía', () => {
+            editar();
+            component.cambiarArmasNaturales([{ ...component.armasNaturales[0], dano: '1d4' }]);
+            expect(component.isDirty).toBeTrue();
+            expect((component as any).construirPayload().armas_naturales)
+                .toEqual([{ id_arma_natural: 2, cantidad: 2, dano: '1d4', primaria: false }]);
+            component.cambiarArmasNaturales([]);
+            expect((component as any).construirPayload().armas_naturales).toEqual([]);
+        });
+
+        it('un especial nuevo no da ninguna', () => {
+            expect(component.armasNaturales).toEqual([]);
+            expect((component as any).construirPayload().armas_naturales).toEqual([]);
+        });
+
+        it('no guarda una fila que no vale: lo dice y lleva al paso «Bonos»', async () => {
+            editar();
+            component.pasoActual = 2;
+            component.cambiarArmasNaturales([{ ...component.armasNaturales[0], cantidad: 0 }]);
+            await component.guardarEspecial();
+            expect(especialSvc.actualizarEspecial).not.toHaveBeenCalled();
+            expect(component.problemaArmasNaturales).toBe('Garra: la cantidad va de 1 a 99.');
+            expect(component.pasoActual).toBe(1);
+        });
+    });
+});

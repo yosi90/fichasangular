@@ -5,6 +5,7 @@ import {
     filaArmaNatural,
     filasDeArmasNaturales,
     leerArmasNaturales,
+    leerArmasNaturalesPersonaje,
     leerArmasNaturalesPlantilla,
     problemaDeArmasNaturales,
     textoDeArmasNaturales,
@@ -100,5 +101,19 @@ describe('armas naturales', () => {
         expect(problemaDeArmasNaturales([{ ...ala, cantidad: 0 }], false)).toBe('Ala: la cantidad va de 1 a 99.');
         expect(problemaDeArmasNaturales([ala, { ...ala, uid: 'otra' }], false)).toBe('Ala: ese tipo ya está.');
         expect(problemaDeArmasNaturales([ala, { ...ala, uid: 'otra', forma: 'animal' }], true)).toBeNull();
+    });
+});
+
+describe('leerArmasNaturalesPersonaje (las de la ficha de la API, 2026-11-07)', () => {
+    it('las lee con su forma; sin forma conocida, la normal; sin el campo, ninguna', () => {
+        const armas = leerArmasNaturalesPersonaje([
+            { Id_arma_natural: 1, Arma_natural: 'Mordisco', Cantidad: 1, Dano: '1d8', Primaria: true, Forma: 'normal', Texto: 'Mordisco 1d8' },
+            { Id_arma_natural: 1, Arma_natural: 'Mordisco', Cantidad: 1, Dano: '1d6', Primaria: true, Forma: 'animal', Texto: 'Mordisco 1d6 (en forma animal)' },
+            { Id_arma_natural: 2, Arma_natural: 'Garra', Cantidad: 2, Dano: null, Primaria: false, Forma: 'todas', Texto: '2 garras (ataques secundarios)' },
+        ]);
+        expect(armas.map((arma) => [arma.Forma, arma.Texto, arma.Dano])).toEqual([
+            ['normal', 'Mordisco 1d8', '1d8'], ['animal', 'Mordisco 1d6 (en forma animal)', '1d6'], ['normal', '2 garras (ataques secundarios)', null],
+        ]);
+        expect(leerArmasNaturalesPersonaje(undefined)).toEqual([]);
     });
 });

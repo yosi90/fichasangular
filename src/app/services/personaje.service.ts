@@ -11,6 +11,7 @@ import {
     PersonajeTotales
 } from '../interfaces/personaje';
 import { environment } from 'src/environments/environment';
+import { leerArmasNaturalesPersonaje } from './utils/armas-naturales';
 import { toDoteContextualArray, toDoteLegacyArray } from './utils/dote-mapper';
 import {
     CatalogoNombreIdDto,
@@ -1003,6 +1004,8 @@ export class PersonajeService {
                 Id: toInt(clase?.id),
                 Nombre: toText(clase?.nombre).trim(),
                 Nivel: toNumber(clase?.nivel),
+                // Los DG que da a su nivel (desde el 2026-11-07); sin el dato, uno por nivel.
+                Dgs: toNumberOrNull(clase?.dgs) ?? toNumber(clase?.nivel),
                 Caracteristica_lanzamiento: toNullableText(clase?.caracteristicaLanzamiento),
                 // Las cifras de su magia, hechas por la API (desde 2026-10-26).
                 Nivel_lanzador: clase?.nivelLanzador ?? null,
@@ -1135,6 +1138,8 @@ export class PersonajeService {
             Familiares: normalizeFamiliarMonstruoDetalleArray(element?.familiares, 1),
             Companeros: normalizeCompaneroMonstruoDetalleArray(element?.companeros, 1),
             Conjuros: toArray(element?.con),
+            // Sus armas naturales, ya resueltas por la API (desde el 2026-11-07).
+            Armas_naturales: leerArmasNaturalesPersonaje(element?.armasNaturales),
             Claseas: toArray<PersonajeEspecialDto>(element?.especiales)
                 .map((especial) => ({
                     Id: toInt(especial?.id),

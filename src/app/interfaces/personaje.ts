@@ -1,4 +1,5 @@
 import { AptitudSortilega } from "./aptitud-sortilega";
+import { ArmaNaturalPersonaje } from "./arma-natural";
 import type { PenalizacionExperiencia } from "src/app/services/utils/penalizacion-experiencia";
 import type { HomebrewGuardado } from "src/app/services/utils/personaje-oficialidad";
 import { Conjuro } from "./conjuro";
@@ -146,6 +147,11 @@ export interface Personaje extends PersonajeSimple {
         Id?: number;
         Nombre: string;
         Nivel: number;
+        /**
+         * Solo en la ficha de la API (`dgs`, desde el 2026-11-07): los DG que da a su nivel; distinto del nivel en una clase
+         * con tabla (el engendro vampírico 5.º, 3).
+         */
+        Dgs?: number;
         /** La característica de la CD de sus conjuros; `null` o sin dato si no lanza. */
         Caracteristica_lanzamiento?: string | null;
         /** Solo en la ficha de la API (desde 2026-10-26): su nivel de lanzador, sus conjuros al día y sus puntos de poder. */
@@ -364,6 +370,11 @@ export interface Personaje extends PersonajeSimple {
     Familiares: FamiliarMonstruoDetalle[];
     Companeros: CompaneroMonstruoDetalle[];
     Conjuros: Conjuro[];
+    /**
+     * Solo en la ficha de la API (`armasNaturales`, desde el 2026-11-07): sus armas naturales ya resueltas (raza, aptitudes
+     * y plantillas), con la frase hecha.
+     */
+    Armas_naturales?: ArmaNaturalPersonaje[];
     Claseas: {
         Id?: number;
         Id_extra?: number;

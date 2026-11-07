@@ -60,9 +60,10 @@
                 <div class="personaje-rejilla">
                     <ng-container *ngTemplateOutlet="combateTpl; context: { $implicit: false }"></ng-container>
                 </div>
-                <div class="personaje-rejilla" *ngIf="m.dotes.length > 0 || m.aptitudes.length > 0">
+                <div class="personaje-rejilla" *ngIf="m.dotes.length > 0 || m.aptitudes.length > 0 || m.armasNaturales.length > 0">
                     <ng-container *ngTemplateOutlet="dotesTpl"></ng-container>
                     <ng-container *ngTemplateOutlet="aptitudesTpl"></ng-container>
+                    <ng-container *ngTemplateOutlet="armasNaturalesTpl"></ng-container>
                 </div>
                 <ng-container *ngTemplateOutlet="ventajasTpl"></ng-container>
             </div>
@@ -105,6 +106,7 @@
             <div class="personaje-rejilla" *ngSwitchCase="'capacidades'">
                 <ng-container *ngTemplateOutlet="dotesTpl"></ng-container>
                 <ng-container *ngTemplateOutlet="aptitudesTpl"></ng-container>
+                <ng-container *ngTemplateOutlet="armasNaturalesTpl"></ng-container>
                 <ng-container *ngTemplateOutlet="razaTpl"></ng-container>
                 <ng-container *ngTemplateOutlet="ventajasTpl"></ng-container>
                 <ng-container *ngTemplateOutlet="idiomasTpl"></ng-container>
@@ -217,6 +219,13 @@
 <ng-template #aptitudesTpl>
     <app-ficha-lateral titulo="Aptitudes de clase" *ngIf="m.aptitudes.length > 0">
         <ng-container *ngTemplateOutlet="listaTpl; context: { $implicit: m.aptitudes, abrir: abrirEspecial }"></ng-container>
+    </app-ficha-lateral>
+</ng-template>
+
+<!-- Las de su raza, sus aptitudes y sus plantillas, ya resueltas por la API, con su frase («Mordisco 1d8») -->
+<ng-template #armasNaturalesTpl>
+    <app-ficha-lateral titulo="Armas naturales" *ngIf="m.armasNaturales.length > 0">
+        <app-ficha-armas-naturales [armas]="m.armasNaturales"></app-ficha-armas-naturales>
     </app-ficha-lateral>
 </ng-template>
 

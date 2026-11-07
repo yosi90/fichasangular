@@ -28,6 +28,17 @@ export interface ArmaNaturalPlantilla extends ArmaNatural {
     Forma: FormaArmaNatural;
 }
 
+/** La forma del personaje en que tiene un arma natural: la de siempre, o la que le da una plantilla (el licántropo). */
+export type FormaArmaNaturalPersonaje = 'normal' | 'animal' | 'hibrida';
+
+/**
+ * Un arma natural de la ficha de un personaje (`armasNaturales` de `GET /personajes/{id}`, desde el 2026-11-07), ya
+ * resuelta por la API: las de su raza, sus aptitudes y sus plantillas, un mismo tipo una vez en cada forma.
+ */
+export interface ArmaNaturalPersonaje extends ArmaNatural {
+    Forma: FormaArmaNaturalPersonaje;
+}
+
 /** Un tipo del catálogo (`GET /armas-naturales`). */
 export interface ArmaNaturalTipo {
     Id: number;

@@ -318,7 +318,7 @@ describe('PersonajeService', () => {
         })) as Personaje;
 
         expect(personaje.desgloseClases).toEqual([
-            { Id: 6, Nombre: 'Explorador', Nivel: 8, Caracteristica_lanzamiento: 'Sabiduría', Nivel_lanzador: null, Conjuros_diarios: null, Puntos_poder: null },
+            { Id: 6, Nombre: 'Explorador', Nivel: 8, Dgs: 8, Caracteristica_lanzamiento: 'Sabiduría', Nivel_lanzador: null, Conjuros_diarios: null, Puntos_poder: null },
         ]);
         expect(personaje.NEP).toBe(14);
         expect(personaje.Dominios).toEqual([{ Id: 31, Nombre: 'Sol' }]);
@@ -1096,8 +1096,8 @@ describe('PersonajeService', () => {
         } as any) as Personaje;
 
         expect(personaje.desgloseClases).toEqual([
-            { Id: 186, Nombre: 'Mago', Nivel: 10, Caracteristica_lanzamiento: 'Inteligencia', Nivel_lanzador: null, Conjuros_diarios: null, Puntos_poder: null },
-            { Id: 187, Nombre: 'Archimago', Nivel: 2, Caracteristica_lanzamiento: null, Nivel_lanzador: null, Conjuros_diarios: null, Puntos_poder: null },
+            { Id: 186, Nombre: 'Mago', Nivel: 10, Dgs: 10, Caracteristica_lanzamiento: 'Inteligencia', Nivel_lanzador: null, Conjuros_diarios: null, Puntos_poder: null },
+            { Id: 187, Nombre: 'Archimago', Nivel: 2, Dgs: 2, Caracteristica_lanzamiento: null, Nivel_lanzador: null, Conjuros_diarios: null, Puntos_poder: null },
         ]);
         expect(personaje.ProgresionLanzador).toEqual({
             selecciones: [
