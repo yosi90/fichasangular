@@ -5522,3 +5522,900 @@ export const PROLE_SOBRE_API: Record<string, any> = {
   "vo": 0
  }
 };
+
+/**
+ * `GET /razas/952/sobre/25` de `rol_dev` (2026-11-07): el nacido del Infierno (*Fiendish Codex II*, págs. 77-79; fase 5,
+ * `scripts/sql/razas_mutadas_nacido_del_infierno.sql` del backend) sobre el humano, con los textos de más de 60 caracteres
+ * recortados. Sus dos aspectos infernales son rasgos opcionales (`Opcional` 1) con sus ajustes en `Caracteristicas`.
+ */
+export const NACIDO_DEL_INFIERNO_SOBRE_HUMANO_API: Record<string, any> = {
+ "Armas_naturales": [],
+ "Cambios_mutacion": [
+  {
+   "Campo": "Modificadores",
+   "Elementos": [],
+   "Frase": "Ajustes de característica: lo de la mutación, aunque no teng",
+   "Nombre": "Ajustes de característica",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Ajuste_nivel",
+   "Elementos": [],
+   "Frase": "Ajuste de nivel: lo de la mutación, aunque no tenga",
+   "Nombre": "Ajuste de nivel",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Tamano",
+   "Elementos": [],
+   "Frase": "Tamaño: lo de la raza base",
+   "Nombre": "Tamaño",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Tipo_criatura",
+   "Elementos": [],
+   "Frase": "Tipo de criatura: lo de la mutación, aunque no tenga",
+   "Nombre": "Tipo de criatura",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Alineamiento",
+   "Elementos": [],
+   "Frase": "Alineamiento típico: lo de la mutación, aunque no tenga",
+   "Nombre": "Alineamiento típico",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Dgs_adicionales",
+   "Elementos": [],
+   "Frase": "DG raciales: lo de la mutación, aunque no tenga",
+   "Nombre": "DG raciales",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Armadura_natural",
+   "Elementos": [],
+   "Frase": "Armadura natural: lo de la mutación, aunque no tenga",
+   "Nombre": "Armadura natural",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Varios_armadura",
+   "Elementos": [],
+   "Frase": "Otros bonificadores a la CA: lo de la mutación, aunque no te",
+   "Nombre": "Otros bonificadores a la CA",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Correr",
+   "Elementos": [],
+   "Frase": "Velocidad: lo de la raza base",
+   "Nombre": "Velocidad",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Nadar",
+   "Elementos": [],
+   "Frase": "Velocidad de nado: lo de la raza base",
+   "Nombre": "Velocidad de nado",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Volar",
+   "Elementos": [],
+   "Frase": "Velocidad de vuelo: lo de la raza base",
+   "Nombre": "Velocidad de vuelo",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Maniobrabilidad",
+   "Elementos": [],
+   "Frase": "Maniobrabilidad: lo de la raza base",
+   "Nombre": "Maniobrabilidad",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Trepar",
+   "Elementos": [],
+   "Frase": "Velocidad de trepar: lo de la raza base",
+   "Nombre": "Velocidad de trepar",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Excavar",
+   "Elementos": [],
+   "Frase": "Velocidad de excavar: lo de la raza base",
+   "Nombre": "Velocidad de excavar",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Espacio",
+   "Elementos": [],
+   "Frase": "Espacio: lo de la raza base",
+   "Nombre": "Espacio",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Alcance",
+   "Elementos": [],
+   "Frase": "Alcance: lo de la raza base",
+   "Nombre": "Alcance",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Cuadrupedo",
+   "Elementos": [],
+   "Frase": "Carga como un cuadrúpedo: lo de la mutación, aunque no tenga",
+   "Nombre": "Carga como un cuadrúpedo",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Ataques_naturales",
+   "Elementos": [],
+   "Frase": "Ataques naturales (descripción): lo de la mutación, aunque n",
+   "Nombre": "Ataques naturales (descripción)",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Armas_naturales",
+   "Elementos": [],
+   "Frase": "Armas naturales: lo de la mutación, aunque no tenga",
+   "Nombre": "Armas naturales",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Reduccion_dano",
+   "Elementos": [],
+   "Frase": "Reducción del daño: lo de la mutación, aunque no tenga",
+   "Nombre": "Reducción del daño",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Resistencia_magica",
+   "Elementos": [],
+   "Frase": "Resistencia a conjuros: lo de la mutación, aunque no tenga",
+   "Nombre": "Resistencia a conjuros",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Resistencia_energia",
+   "Elementos": [],
+   "Frase": "Resistencia a la energía: lo de la mutación, aunque no tenga",
+   "Nombre": "Resistencia a la energía",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Altura_rango_inf",
+   "Elementos": [],
+   "Frase": "Altura mínima: lo de la raza base",
+   "Nombre": "Altura mínima",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Altura_rango_sup",
+   "Elementos": [],
+   "Frase": "Altura máxima: lo de la raza base",
+   "Nombre": "Altura máxima",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Peso_rango_inf",
+   "Elementos": [],
+   "Frase": "Peso mínimo: lo de la raza base",
+   "Nombre": "Peso mínimo",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Peso_rango_sup",
+   "Elementos": [],
+   "Frase": "Peso máximo: lo de la raza base",
+   "Nombre": "Peso máximo",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Dotes_adicionales",
+   "Elementos": [],
+   "Frase": "Dotes adicionales: lo de la mutación, aunque no tenga",
+   "Nombre": "Dotes adicionales",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Puntos_habilidad_extra_primer_nivel",
+   "Elementos": [],
+   "Frase": "Puntos de habilidad extra a 1.er nivel: lo de la mutación, a",
+   "Nombre": "Puntos de habilidad extra a 1.er nivel",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Puntos_habilidad_extra_por_nivel",
+   "Elementos": [],
+   "Frase": "Puntos de habilidad extra por nivel: lo de la mutación, aunq",
+   "Nombre": "Puntos de habilidad extra por nivel",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Raciales",
+   "Elementos": [],
+   "Frase": "Rasgos raciales: lo de la mutación, aunque no tenga",
+   "Nombre": "Rasgos raciales",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Sortilegas",
+   "Elementos": [],
+   "Frase": "Aptitudes sortílegas: lo de la mutación, aunque no tenga",
+   "Nombre": "Aptitudes sortílegas",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Dotes",
+   "Elementos": [],
+   "Frase": "Dotes raciales: lo de la mutación, aunque no tenga",
+   "Nombre": "Dotes raciales",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Subtipos",
+   "Elementos": [],
+   "Frase": "Subtipos: lo de la mutación, aunque no tenga",
+   "Nombre": "Subtipos",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Idiomas_adicionales",
+   "Elementos": [],
+   "Frase": "Idiomas adicionales: lo de la raza base",
+   "Nombre": "Idiomas adicionales",
+   "Operacion": "heredar",
+   "Valor": null
+  },
+  {
+   "Campo": "Habilidades",
+   "Elementos": [],
+   "Frase": "Bonificadores raciales de habilidad: lo de la mutación, aunq",
+   "Nombre": "Bonificadores raciales de habilidad",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Competencias",
+   "Elementos": [],
+   "Frase": "Competencias: lo de la mutación, aunque no tenga",
+   "Nombre": "Competencias",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Clases_asociadas",
+   "Elementos": [],
+   "Frase": "Clases asociadas: lo de la mutación, aunque no tenga",
+   "Nombre": "Clases asociadas",
+   "Operacion": "sustituir",
+   "Valor": null
+  },
+  {
+   "Campo": "Lanzamiento",
+   "Elementos": [],
+   "Frase": "Lanzamiento racial: lo de la mutación, aunque no tenga",
+   "Nombre": "Lanzamiento racial",
+   "Operacion": "sustituir",
+   "Valor": null
+  }
+ ],
+ "Categorias_edad": [],
+ "Clase_predilecta": {
+  "Id": 11,
+  "Nombre": "Paladín"
+ },
+ "Clase_predilecta_comodin": null,
+ "Clases_asociadas": [],
+ "Comodin": null,
+ "Competencias": {
+  "Armaduras": [],
+  "Armas": [],
+  "Grupos_arma": [],
+  "Grupos_armadura": []
+ },
+ "Cuadrupedo": false,
+ "Descripcion": "Alma condenada al Infierno que se arrepintió en el último in",
+ "Dgs_raciales": {
+  "Ataque_base": 0,
+  "Cantidad": 0,
+  "Dado": "elegir",
+  "Dado_comodin": "elegir",
+  "Dotes_extra": 0,
+  "Fortaleza": 0,
+  "Id_dado": 0,
+  "Id_tipo_criatura": 0,
+  "Multiplicador_puntos_habilidad": 0,
+  "Puntos_habilidad": 0,
+  "Reflejos": 0,
+  "Tipo_criatura": "Cualquiera",
+  "Voluntad": 0
+ },
+ "Dotes_adicionales": 0,
+ "Edad_inicial_caras_1": 4,
+ "Edad_inicial_caras_2": 6,
+ "Edad_inicial_caras_3": 6,
+ "Edad_inicial_dados_1": 1,
+ "Edad_inicial_dados_2": 1,
+ "Edad_inicial_dados_3": 2,
+ "Edad_maxima_caras": 20,
+ "Edad_maxima_dados": 2,
+ "Habilidades": {
+  "Base": [
+   {
+    "Cantidad": 2,
+    "Cantidad_condicional": 0,
+    "Caracteristica": "Carisma",
+    "Condicion": null,
+    "Descripcion": "Utiliza esta habilidad para que un matón se lo piense dos ve",
+    "Entrenada": false,
+    "Extra": null,
+    "Extra_comodin": null,
+    "Habilidad": "Intimidar",
+    "Id_caracteristica": 6,
+    "Id_extra": null,
+    "Id_habilidad": 22,
+    "Soporta_extra": false,
+    "Varios": null
+   }
+  ],
+  "Custom": []
+ },
+ "Id_clase_predilecta": 11,
+ "Idiomas": [
+  {
+   "Descripcion": "Idioma de los humanos, es conocido por la mayoría de razas",
+   "Id": 1,
+   "Nombre": "Común",
+   "Oficial": true,
+   "Secreto": false
+  },
+  {
+   "Descripcion": "Idioma hablado por los demonios",
+   "Id": 5,
+   "Nombre": "Infernal",
+   "Oficial": true,
+   "Secreto": false
+  }
+ ],
+ "Idiomas_adicionales": [],
+ "Idiomas_adicionales_cualquiera": true,
+ "Lanzamiento": null,
+ "Manual": {
+  "Id": 104,
+  "Nombre": "Fiendish Codex II: Tyrants of the Nine Hells",
+  "Pagina": 77
+ },
+ "Mutada": true,
+ "Nombre_original": "Hellbred",
+ "Pasos_edad": [],
+ "Plantillas_por_subtipo": [],
+ "Puntos_habilidad_extra_por_nivel": 0,
+ "Puntos_habilidad_extra_primer_nivel": 0,
+ "Traducido": true,
+ "Vd": null,
+ "Vd_mod_clases_pj": null,
+ "Vd_mod_clases_pnj": null,
+ "aju": 0,
+ "alc": 5,
+ "ali": {
+  "Basico": null,
+  "Descripcion": "Se debe respetar pero existe la posibilidad de individuos fu",
+  "Id": 188,
+  "Ley": {
+   "Id_ley": 1,
+   "Nombre": "Casi siempre Legal"
+  },
+  "Moral": {
+   "Id_moral": 1,
+   "Nombre": "Casi siempre Bueno"
+  },
+  "Prioridad": {
+   "Id_prioridad": 2,
+   "Nombre": "Importante"
+  }
+ },
+ "an": null,
+ "ant": 0,
+ "ari": 1.4,
+ "ars": 1.98,
+ "c": "Paladín",
+ "co": 30,
+ "dg": {
+  "Ataque_base": 0,
+  "Cantidad": 0,
+  "Dado": "",
+  "Dotes_extra": 0,
+  "Multiplicador_puntos_habilidad": 0,
+  "Puntos_habilidad": 0,
+  "Tipo_criatura": ""
+ },
+ "dotes": [
+  {
+   "Contexto": {
+    "Entidad": "raza",
+    "Extra": null,
+    "Extra_comodin": null,
+    "Id_extra": null,
+    "Id_raza": 952
+   },
+   "Dote": {
+    "Beneficio": "- Al intentar un ataque, una salvación o una prueba de cualq",
+    "Comp_arma": 0,
+    "Competencias_otorgadas": {
+     "Armas": [],
+     "Grupos_arma": []
+    },
+    "Cuenta_como": [],
+    "Descripcion": "Dote de tipo Tocado por diablos que requiere un pacto con un",
+    "Especial": null,
+    "Extras_de_todo_el_catalogo": {
+     "Armaduras": false,
+     "Armas": false,
+     "Chakras": false,
+     "Escuelas": false,
+     "Fusiones": false,
+     "Habilidades": false
+    },
+    "Extras_disponibles": {
+     "Armaduras": [],
+     "Armas": [],
+     "Chakras": [],
+     "Escuelas": [],
+     "Fusiones": [],
+     "Habilidades": []
+    },
+    "Extras_soportados": {
+     "Extra_arma": 0,
+     "Extra_armadura": 0,
+     "Extra_armadura_armaduras": 0,
+     "Extra_armadura_escudos": 0,
+     "Extra_chakra": 0,
+     "Extra_escuela": 0,
+     "Extra_fusion": 0,
+     "Extra_habilidad": 0
+    },
+    "Habilidades_otorgadas": [],
+    "Id": 2547,
+    "Incarnum": {
+     "Abre_chakra": false,
+     "Capacidad": null,
+     "Caracteristica_cd_fusion": null,
+     "Descriptores_sin_alineamiento": [],
+     "Divisor_nivel_moldeador": null,
+     "Esencia_reserva": 0,
+     "Esencia_reserva_moldeador": null,
+     "Pg_por_dote": null,
+     "Pg_por_esencia": 0,
+     "Receptaculo": false,
+     "Sustituye_caracteristica": null
+    },
+    "Manual": {
+     "Id": 104,
+     "Nombre": "Fiendish Codex II: Tyrants of the Nine Hells",
+     "Pagina": 81
+    },
+    "Modificadores": {
+     "Alcance": 0,
+     "Armadura_natural": 0,
+     "Ataque_base": 0,
+     "Ca": 0,
+     "Caracteristica": 0,
+     "Carisma": 0,
+     "Constitucion": 0,
+     "Correr": 0,
+     "Desprevenido": 0,
+     "Destreza": 0,
+     "Espacio": 0,
+     "Excavar": 0,
+     "Fortaleza": 0,
+     "Fuerza": 0,
+     "Habilidad": 0,
+     "Iniciativa": 0,
+     "Inteligencia": 0,
+     "Nadar": 0,
+     "Pg_a": 0,
+     "Pg_a_n": 0,
+     "Presa": 0,
+     "Reflejos": 0,
+     "Sabiduria": 0,
+     "Toque": 0,
+     "Trepar": 0,
+     "Volar": 0,
+     "Voluntad": 0
+    },
+    "Nombre": "Favor diabólico",
+    "Normal": null,
+    "Oficial": true,
+    "Prerrequisitos": {
+     "actitud_prohibido": [],
+     "actitud_requerido": [],
+     "alineamiento_prohibido": [],
+     "alineamiento_requerido": [],
+     "aptitud_especial": [],
+     "armas_naturales": [],
+     "ataque_base": [],
+     "caracteristica": [],
+     "clase_especial": [],
+     "competencia_arma": [],
+     "competencia_armadura": [],
+     "competencia_grupo_arma": [],
+     "competencia_grupo_armadura": [],
+     "conjuros_escuela": [],
+     "dg": [],
+     "dominio": [],
+     "dote": [],
+     "escuela_nivel": [],
+     "esencia_minima": [],
+     "fusiones_minimas": [],
+     "habilidad": [],
+     "idioma": [],
+     "lanz_espontaneo": [],
+     "lanzador_arcano": [],
+     "lanzador_divino": [],
+     "lanzador_psionico": [],
+     "lanzar_conjuros_arcanos_nivel": [],
+     "lanzar_conjuros_divinos_nivel": [],
+     "lanzar_poder_psionico_nivel": [],
+     "limite_tipo_dote": [],
+     "nivel": [],
+     "nivel_de_clase": [],
+     "nivel_max": [],
+     "nivel_moldeador": [],
+     "poder_seleccionar_companero": [],
+     "poder_seleccionar_familiar": [],
+     "raza": [],
+     "region": [],
+     "reserva_psionica": [],
+     "salvacion_minimo": [],
+     "sin_esencia": [],
+     "tamano_maximo": [],
+     "tamano_minimo": [],
+     "tipo_criatura": [],
+     "tipo_dote": [],
+     "vinculo_chakra": [],
+     "vinculos_minimos": []
+    },
+    "Repetible": 0,
+    "Repetible_comb": 0,
+    "Repetible_distinto_extra": 0,
+    "Salvaciones_condicionales": [],
+    "Tipos": [
+     {
+      "Id": 88,
+      "Nombre": "Tocado por diablos",
+      "Usado": 1
+     }
+    ]
+   }
+  }
+ ],
+ "ea": 15,
+ "em": 35,
+ "esp": 5,
+ "ev": 53,
+ "eve": 70,
+ "ex": 0,
+ "i": 952,
+ "m": {
+  "Carisma": 0,
+  "Constitucion": 0,
+  "Destreza": 0,
+  "Fuerza": 0,
+  "Inteligencia": 0,
+  "Sabiduria": 0
+ },
+ "ma": "Fiendish Codex II: Tyrants of the Nine Hells, Página: 77",
+ "man": null,
+ "n": "Nacido del Infierno",
+ "na": 0,
+ "o": true,
+ "pr": {
+  "condicion_master": [
+   {
+    "Cantidad": null,
+    "Frase": "Su alma, condenada al Infierno por sus actos, se arrepintió ",
+    "Id": 33,
+    "Id_referencia": null,
+    "Opcional": 0,
+    "Referencia": null,
+    "Sujeto": "personaje",
+    "Texto": "Su alma, condenada al Infierno por sus actos, se arrepintió ",
+    "Tipo": "condicion_master"
+   }
+  ]
+ },
+ "pri": 40.37,
+ "prs": 127.01,
+ "rac": [
+  {
+   "Ataques": [],
+   "Caracteristica_cd": null,
+   "Caracteristicas": [
+    {
+     "Cantidad": 2,
+     "Caracteristica": "Constitución",
+     "Id_caracteristica": 3
+    },
+    {
+     "Cantidad": -2,
+     "Caracteristica": "Inteligencia",
+     "Id_caracteristica": 4
+    }
+   ],
+   "Descripcion": "Aptitud extraordinaria, elegida al terminar la Flagelación y",
+   "Dotes": [],
+   "Esencia": {
+    "Habilidades_por_fusiones": [],
+    "Receptaculo": false,
+    "Reserva": 0
+   },
+   "Habilidades": {
+    "Base": [],
+    "Custom": []
+   },
+   "Id": 4846,
+   "Nombre": "Aspecto infernal (cuerpo)",
+   "Oficial": true,
+   "Opcional": 1,
+   "Prerrequisitos": {
+    "caracteristica": [],
+    "raza": []
+   },
+   "Prerrequisitos_flags": {
+    "caracteristica_minima": false,
+    "raza": false
+   },
+   "Salvaciones": [
+    {
+     "Cantidad": 4,
+     "Condicion": "Contra veneno",
+     "Id_salvacion": 1,
+     "Salvacion": "Fortaleza"
+    },
+    {
+     "Cantidad": 4,
+     "Condicion": "Contra veneno",
+     "Id_salvacion": 2,
+     "Salvacion": "Reflejos"
+    },
+    {
+     "Cantidad": 4,
+     "Condicion": "Contra veneno",
+     "Id_salvacion": 3,
+     "Salvacion": "Voluntad"
+    }
+   ],
+   "Sortilegas": []
+  },
+  {
+   "Ataques": [],
+   "Caracteristica_cd": null,
+   "Caracteristicas": [
+    {
+     "Cantidad": -2,
+     "Caracteristica": "Constitución",
+     "Id_caracteristica": 3
+    },
+    {
+     "Cantidad": 2,
+     "Caracteristica": "Carisma",
+     "Id_caracteristica": 6
+    }
+   ],
+   "Descripcion": "Aptitud sobrenatural, elegida al terminar la Flagelación y p",
+   "Dotes": [],
+   "Esencia": {
+    "Habilidades_por_fusiones": [],
+    "Receptaculo": false,
+    "Reserva": 0
+   },
+   "Habilidades": {
+    "Base": [
+     {
+      "Caracteristica": "Sabiduría",
+      "Condicion": "Siempre",
+      "Descripcion": "Utiliza esta habilidad para saber cuando alguien te está eng",
+      "Entrenada": false,
+      "Extra": null,
+      "Extra_comodin": null,
+      "Habilidad": "Averiguar intenciones",
+      "Id_caracteristica": 5,
+      "Id_extra": null,
+      "Id_habilidad": 5,
+      "Rangos": 2,
+      "Se_considera_clasea": false,
+      "Soporta_extra": false
+     }
+    ],
+    "Custom": []
+   },
+   "Id": 4847,
+   "Nombre": "Aspecto infernal (espíritu)",
+   "Oficial": true,
+   "Opcional": 1,
+   "Prerrequisitos": {
+    "caracteristica": [],
+    "raza": []
+   },
+   "Prerrequisitos_flags": {
+    "caracteristica_minima": false,
+    "raza": false
+   },
+   "Salvaciones": [],
+   "Sortilegas": []
+  },
+  {
+   "Ataques": [],
+   "Caracteristica_cd": null,
+   "Caracteristicas": [],
+   "Descripcion": "Aptitud sobrenatural. Un diablo reclama su alma: solo se le ",
+   "Dotes": [],
+   "Esencia": {
+    "Habilidades_por_fusiones": [],
+    "Receptaculo": false,
+    "Reserva": 0
+   },
+   "Habilidades": {
+    "Base": [],
+    "Custom": []
+   },
+   "Id": 4848,
+   "Nombre": "Condenado al Infierno (nacido del Infierno)",
+   "Oficial": true,
+   "Opcional": 0,
+   "Prerrequisitos": {
+    "caracteristica": [],
+    "raza": []
+   },
+   "Prerrequisitos_flags": {
+    "caracteristica_minima": false,
+    "raza": false
+   },
+   "Salvaciones": [],
+   "Sortilegas": []
+  },
+  {
+   "Ataques": [],
+   "Caracteristica_cd": null,
+   "Caracteristicas": [],
+   "Descripcion": "Aptitud extraordinaria. Puede lanzar conjuros con el descrip",
+   "Dotes": [],
+   "Esencia": {
+    "Habilidades_por_fusiones": [],
+    "Receptaculo": false,
+    "Reserva": 0
+   },
+   "Habilidades": {
+    "Base": [],
+    "Custom": []
+   },
+   "Id": 4849,
+   "Nombre": "Excepción al mal (nacido del Infierno)",
+   "Oficial": true,
+   "Opcional": 0,
+   "Prerrequisitos": {
+    "caracteristica": [],
+    "raza": []
+   },
+   "Prerrequisitos_flags": {
+    "caracteristica_minima": false,
+    "raza": false
+   },
+   "Salvaciones": [],
+   "Sortilegas": []
+  },
+  {
+   "Ataques": [],
+   "Caracteristica_cd": null,
+   "Caracteristicas": [],
+   "Descripcion": "Aptitud extraordinaria. Su aire siniestro le da +2 racial a ",
+   "Dotes": [],
+   "Esencia": {
+    "Habilidades_por_fusiones": [],
+    "Receptaculo": false,
+    "Reserva": 0
+   },
+   "Habilidades": {
+    "Base": [],
+    "Custom": []
+   },
+   "Id": 4850,
+   "Nombre": "Semblante infernal (nacido del Infierno)",
+   "Oficial": true,
+   "Opcional": 0,
+   "Prerrequisitos": {
+    "caracteristica": [],
+    "raza": []
+   },
+   "Prerrequisitos_flags": {
+    "caracteristica_minima": false,
+    "raza": false
+   },
+   "Salvaciones": [],
+   "Sortilegas": []
+  }
+ ],
+ "rc": null,
+ "rd": null,
+ "re": null,
+ "sor": [],
+ "subtipos": [
+  {
+   "Id": 96,
+   "Nombre": "Nacido del Infierno"
+  }
+ ],
+ "t": {
+  "Id": 5,
+  "Modificador": 0,
+  "Modificador_esconderse": 0,
+  "Modificador_presa": 0,
+  "Nombre": "Mediano"
+ },
+ "tc": {
+  "Come": true,
+  "Descripcion": "Un humanoide suele tener dos brazos, dos piernas y una cabez",
+  "Duerme": true,
+  "Id": 11,
+  "Id_alineamiento": 2,
+  "Id_ataque": 2,
+  "Id_fortaleza": 1,
+  "Id_puntos_habilidad": 1,
+  "Id_reflejos": 1,
+  "Id_tipo_dado": 3,
+  "Id_voluntad": 1,
+  "Limite_inteligencia": -1,
+  "Manual": "Manual de monstruos 1, Página: 316",
+  "Nombre": "Humanoide",
+  "Oficial": true,
+  "Pierde_constitucion": false,
+  "Puede_ser_flanqueado": false,
+  "Puntos_habilidad": 2,
+  "Rasgos": [],
+  "Recibe_críticos": false,
+  "Respira": true,
+  "Tesoro": null,
+  "Tipo_dado": "d8",
+  "Tipo_dado_comodin": null
+ },
+ "tr": 0,
+ "va": 0,
+ "vo": 0
+};

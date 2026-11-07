@@ -11,8 +11,11 @@ import { calcularNivelesLanzadorPersonaje } from './utils/nivel-lanzador-persona
 import { libroTienda } from './utils/libro-conjuros';
 import { normalizeEscuela } from './escuela-conjuros.service';
 import { normalizeTamano } from './tamano.service';
-import { conjurosDeAptitudes, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, textoRequisitoNivelConjuro } from './utils/aptitudes-clase';
+import { armaduraNaturalEspecialNivel, conjurosDeAptitudes, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, textoRequisitoNivelConjuro } from './utils/aptitudes-clase';
+import { ajustesCaracteristicaDeRaciales } from './utils/caracteristicas';
+import { normalizeRazaApi } from './utils/raza-mapper';
 import { CONVOCADOR_DIVINO_API, ESCUELAS_API, GUARDAESPALDAS_API, MAGIINGENIERO_API, MAGO_RECORTADO_API, TAMANOS_API } from 'src/testing/clases-propias-api';
+import { NACIDO_DEL_INFIERNO_SOBRE_HUMANO_API } from 'src/testing/razas-mutadas-api';
 
 // Reglas de la magia de la creación (auditoría de la matriz del 2026-10-26, fallos 3, 6, 7, 12, 13, 15, 17, 18, 30 y
 // 31): cada una con el caso del manual y desde los datos de la clase, la escuela, la disciplina o el dominio.
@@ -842,6 +845,92 @@ describe('Clases propias con las respuestas reales de la API', () => {
             expect(pj.Presa).toBe(4 + 3);
         });
     });
+
+    describe('la armadura natural de las aptitudes: Cuerpo férreo, diamantino y perfecto del guardaespaldas', () => {
+        const cuerpos = guardaespaldas.Desglose_niveles.flatMap((nivelClase) => nivelClase.Especiales
+            .filter((item) => armaduraNaturalEspecialNivel(item, item.Extra) !== 0)
+            .map((item) => ({ nivel: nivelClase.Nivel, item })));
+        const conAptitudes = (id: number, nombre: string, especiales: Record<string, any>[]) => clase({
+            Id: id, Nombre: nombre,
+            Desglose_niveles: especiales.map((especial, indice) => nivel(indice + 1, { Especiales: [{ ...especial, Nivel: indice + 1, Opcional: 0 }] })),
+        });
+        const subir = (service: NuevoPersonajeService, claseObjetivo: Clase, veces: number) => {
+            for (let i = 0; i < veces; i++)
+                expect(service.aplicarSiguienteNivelClase(claseObjetivo).aplicado).toBeTrue();
+        };
+
+        it('los datos reales: tres aptitudes con +2 a la armadura natural, a 4.º, 11.º y 18.º', () => {
+            expect(cuerpos.map(({ nivel: n, item }) => [n, item.Especial['Nombre'], armaduraNaturalEspecialNivel(item, item.Extra)]))
+                .toEqual([[4, 'Cuerpo férreo', 2], [11, 'Cuerpo diamantino (Guardaespaldas)', 2], [18, 'Cuerpo perfecto', 2]]);
+        });
+
+        it('guardaespaldas 4.º: Cuerpo férreo sube la armadura natural +2 y la CA con ella, una sola vez', () => {
+            const service = crearServicio({});
+            service.setCatalogoClases([guardaespaldas]);
+            subir(service, guardaespaldas, 3);
+            const caAntes = service.PersonajeCreacion.Ca;
+            expect(service.PersonajeCreacion.Armadura_natural).toBe(0);
+
+            subir(service, guardaespaldas, 1);
+            expect(service.PersonajeCreacion.Claseas.map((aptitud) => aptitud.Nombre)).toContain('Cuerpo férreo');
+            expect(service.PersonajeCreacion.Armadura_natural).toBe(2);
+            expect(service.PersonajeCreacion.Ca).toBe(caAntes + 2);
+            // Un recálculo posterior (una ventaja, una plantilla) no la cuenta dos veces.
+            service.recalcularEfectosVentajas();
+            expect(service.PersonajeCreacion.Armadura_natural).toBe(2);
+            expect(service.PersonajeCreacion.Ca).toBe(caAntes + 2);
+        });
+
+        it('se apila con la de la raza y las tres suman +6 («+6 en total», Cuerpo perfecto)', () => {
+            const service = new NuevoPersonajeService();
+            service.setCatalogoTiposCriatura([TIPO]);
+            service.seleccionarRaza({ ...crearRaza(), Armadura_natural: 1 } as Raza);
+            service.aplicarCaracteristicasGeneradas({ Fuerza: 10, Destreza: 10, Constitucion: 10, Inteligencia: 10, Sabiduria: 10, Carisma: 10 });
+            const prueba = conAptitudes(82, 'Clase de prueba', cuerpos.map(({ item }) => item));
+            service.setCatalogoClases([prueba]);
+            expect(service.PersonajeCreacion.Armadura_natural).toBe(1);
+            const cifras: number[] = [];
+            for (let i = 0; i < 3; i++) {
+                subir(service, prueba, 1);
+                cifras.push(service.PersonajeCreacion.Armadura_natural);
+            }
+            expect(cifras).toEqual([3, 5, 7]);
+            expect(service.PersonajeCreacion.Ca).toBe(10 + 7);
+        });
+
+        it('la misma aptitud de dos clases cuenta una vez (Cuerpo férreo del guardaespaldas y del discípulo de Dispater)', () => {
+            const service = crearServicio({});
+            const ferreo = cuerpos[0].item;
+            const una = conAptitudes(83, 'Clase de prueba A', [ferreo]);
+            const otra = conAptitudes(84, 'Clase de prueba B', [ferreo]);
+            service.setCatalogoClases([una, otra]);
+            subir(service, una, 1);
+            subir(service, otra, 1);
+            expect(service.PersonajeCreacion.Armadura_natural).toBe(2);
+        });
+
+        it('si la cifra la da el extra, es el total a ese nivel y no se suma (discípulo del ojo: +1 a 2.º, +2 a 4.º)', () => {
+            // El especial 163 de `rol_dev`, con sus extras (+0, +1 y +2) y `Extra_da_armnat`.
+            const ojo = {
+                Id: 163, Nombre: 'Bonificador de armadura natural (discípulo del ojo)', Extra: true, Repetible: false,
+                Modificadores: { Armadura_natural: 0, Ca: 0, Rd: 0, Tamano_pasos: 0 },
+                Extras_soportados: { Extra_no_aplica: false, Extra_da_ca: false, Extra_da_armnat: true, Extra_da_rd: false, Extra_da_vel: false },
+            };
+            const prueba = conAptitudes(85, 'Clase de prueba', [
+                { Especial: ojo, Id_extra: 20, Extra: '+0', Id_interno: 0 },
+                { Especial: ojo, Id_extra: 21, Extra: '+1', Id_interno: 0 },
+                { Especial: ojo, Id_extra: 22, Extra: '+2', Id_interno: 0 },
+            ]);
+            const service = crearServicio({});
+            service.setCatalogoClases([prueba]);
+            const cifras: number[] = [];
+            for (let i = 0; i < 3; i++) {
+                subir(service, prueba, 1);
+                cifras.push(service.PersonajeCreacion.Armadura_natural);
+            }
+            expect(cifras).toEqual([0, 1, 2]);
+        });
+    });
 });
 
 describe('Lanzamiento racial (Draconomicón, pág. 24): la raza lanza como una clase y suma sus niveles', () => {
@@ -1010,5 +1099,75 @@ describe('PJ o PNJ y la edad de una raza por edades, en la creación', () => {
         expect(service.PersonajeCreacion.IdPasoEdad).toBeNull();
         expect(service.PersonajeCreacion.CategoriaEdad).toBeNull();
         expect(service.PersonajeCreacion.Edad).toBe(18);
+    });
+});
+
+// Los ajustes de característica de un rasgo racial (`racial_caracteristicas`), con la raza real de `rol_dev`: el nacido del
+// Infierno sobre el humano (*Fiendish Codex II*, pág. 78), cuyos aspectos infernales son rasgos opcionales.
+describe('Los ajustes de característica de los rasgos raciales: los aspectos infernales del nacido del Infierno', () => {
+    const nacido = normalizeRazaApi(NACIDO_DEL_INFIERNO_SOBRE_HUMANO_API);
+    const cuerpo = nacido.Raciales.find((racial) => racial.Nombre === 'Aspecto infernal (cuerpo)')!;
+    const espiritu = nacido.Raciales.find((racial) => racial.Nombre === 'Aspecto infernal (espíritu)')!;
+    const GENERADAS = { Fuerza: 10, Destreza: 10, Constitucion: 14, Inteligencia: 12, Sabiduria: 10, Carisma: 10 };
+
+    function elegir(service: NuevoPersonajeService, aspecto: { Id: number; }): void {
+        expect(service.seleccionarRaza(nacido, crearRaza(), { 1: `id:${aspecto.Id}` })).toBeTrue();
+        service.aplicarCaracteristicasGeneradas(GENERADAS);
+    }
+
+    function nuevo(): NuevoPersonajeService {
+        const service = new NuevoPersonajeService();
+        service.setCatalogoTiposCriatura([TIPO]);
+        return service;
+    }
+
+    const cifras = (service: NuevoPersonajeService) => {
+        const pj = service.PersonajeCreacion;
+        return [pj.Constitucion, pj.ModConstitucion, pj.Inteligencia, pj.Carisma];
+    };
+
+    it('los datos reales: la raza no ajusta nada y cada aspecto, opcional, lleva los suyos', () => {
+        expect(Object.values(nacido.Modificadores).every((valor) => Number(valor) === 0)).toBeTrue();
+        expect([cuerpo.Opcional, espiritu.Opcional]).toEqual([1, 1]);
+        expect(ajustesCaracteristicaDeRaciales([cuerpo])).toEqual([
+            { clave: 'Constitucion', valor: 2, origen: 'Aspecto infernal (cuerpo)' },
+            { clave: 'Inteligencia', valor: -2, origen: 'Aspecto infernal (cuerpo)' },
+        ]);
+    });
+
+    it('un humano nacido del Infierno con el aspecto del cuerpo: Con +2 e Int −2, con el rasgo como origen y una vez', () => {
+        const service = nuevo();
+        elegir(service, cuerpo);
+        expect(service.PersonajeCreacion.Raciales.map((racial) => racial.Nombre)).toContain('Aspecto infernal (cuerpo)');
+        expect(cifras(service)).toEqual([16, 3, 10, 10]);
+        expect(service.PersonajeCreacion.CaracteristicasVarios.Constitucion).toEqual([{ valor: 2, origen: 'Aspecto infernal (cuerpo)' }]);
+        expect(service.PersonajeCreacion.CaracteristicasVarios.Inteligencia).toEqual([{ valor: -2, origen: 'Aspecto infernal (cuerpo)' }]);
+        // Un recálculo posterior (una ventaja, una plantilla) no lo cuenta dos veces.
+        service.recalcularEfectosVentajas();
+        expect(cifras(service)).toEqual([16, 3, 10, 10]);
+    });
+
+    it('con el del espíritu, los suyos: Con −2 y Car +2', () => {
+        const service = nuevo();
+        elegir(service, espiritu);
+        expect(cifras(service)).toEqual([12, 1, 12, 12]);
+    });
+
+    it('al cambiar de aspecto se van los del anterior', () => {
+        const service = nuevo();
+        elegir(service, cuerpo);
+        elegir(service, espiritu);
+        expect(cifras(service)).toEqual([12, 1, 12, 12]);
+        const origenes = Object.values(service.PersonajeCreacion.CaracteristicasVarios).flat().map((item) => item.origen);
+        expect(origenes).not.toContain('Aspecto infernal (cuerpo)');
+    });
+
+    it('un rasgo que no es opcional también suma, y una sola vez aunque llegue repetido', () => {
+        const rasgo = { ...cuerpo, Id: 9001, Nombre: 'Rasgo de prueba', Opcional: 0, Caracteristicas: [{ Id_caracteristica: 1, Caracteristica: 'Fuerza', Cantidad: 2 }] };
+        expect(ajustesCaracteristicaDeRaciales([rasgo, rasgo])).toEqual([{ clave: 'Fuerza', valor: 2, origen: 'Rasgo de prueba' }]);
+        const service = nuevo();
+        service.seleccionarRaza({ ...crearRaza(), Raciales: [rasgo] } as Raza);
+        service.aplicarCaracteristicasGeneradas(GENERADAS);
+        expect([service.PersonajeCreacion.Fuerza, service.PersonajeCreacion.Constitucion]).toEqual([12, 14]);
     });
 });

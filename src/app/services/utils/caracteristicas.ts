@@ -1,6 +1,8 @@
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { MonstruoCaracteristicas } from 'src/app/interfaces/monstruo';
-import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
+import { RacialDetalle } from 'src/app/interfaces/racial';
+import { normalizarTexto, toArray, toBoolean, toInt } from 'src/app/services/utils/normalizacion';
+import { getClaveSeleccionRacial } from 'src/app/services/utils/racial-opcionales';
 
 // El modificador de una característica lo calcula la API (`utils/caracteristicas.py` del backend) para las fichas y los
 // monstruos, familiares y compañeros (`docs/publica/MODIFICADORES_MONSTRUOS_FRONT.md`). La web solo lo calcula para el
@@ -44,6 +46,39 @@ export function caracteristicaPorTexto(texto: string): Caracteristica | null {
 export function valorCaracteristicaPorId(caracteristicas: Readonly<Record<Caracteristica, number>>, idCaracteristica: number): number {
     const clave = caracteristicaPorId(idCaracteristica);
     return clave ? Number(caracteristicas?.[clave] ?? Number.NaN) : Number.NaN;
+}
+
+/** Un ajuste a una característica, con su origen, como los de `CaracteristicasVarios` de la creación. */
+export interface AjusteCaracteristica {
+    clave: Caracteristica;
+    valor: number;
+    origen: string;
+}
+
+/**
+ * Los ajustes de característica de los rasgos raciales (`Caracteristicas` de `RacialDetalle`, de `racial_caracteristicas`:
+ * el aspecto infernal del cuerpo del nacido del Infierno, Con +2 e Int −2, *Fiendish Codex II*, pág. 78), con el nombre
+ * del rasgo como origen. Vale para cualquier rasgo, opcional o no; un rasgo repetido (mismo id o, sin id, mismo nombre)
+ * cuenta una vez. Una fila sin característica conocida o con cantidad 0 no suma.
+ */
+export function ajustesCaracteristicaDeRaciales(raciales: readonly RacialDetalle[] | null | undefined): AjusteCaracteristica[] {
+    const vistos = new Set<string>();
+    const ajustes: AjusteCaracteristica[] = [];
+    (raciales ?? []).forEach((racial) => {
+        const clave = getClaveSeleccionRacial(racial);
+        if (vistos.has(clave))
+            return;
+        vistos.add(clave);
+        const origen = `${racial?.Nombre ?? ''}`.trim();
+        toArray<Record<string, any>>(racial?.Caracteristicas).forEach((fila) => {
+            const caracteristica = caracteristicaPorId(toInt(fila?.['Id_caracteristica']))
+                ?? caracteristicaPorTexto(`${fila?.['Caracteristica'] ?? ''}`);
+            const valor = toInt(fila?.['Cantidad']);
+            if (caracteristica && valor !== 0)
+                ajustes.push({ clave: caracteristica, valor, origen });
+        });
+    });
+    return ajustes;
 }
 
 /** Las seis marcas de característica perdida (`cper` de la ficha, `GET /personajes/{id}`), en booleano. */

@@ -59,7 +59,7 @@ import { NuevoPersonajeGeneradorConfig } from '../interfaces/user-settings';
 import { normalizarTexto, primerEntero, toArray, toBoolean, toInt, toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoPersonaje, TipoPersonaje } from 'src/app/services/utils/tipo-personaje';
 import { extraHabilidadElegido, idExtraHabilidadParaGuardar } from 'src/app/services/utils/habilidad-extra-visible';
-import { caracteristicaPorId, caracteristicaPorTexto, caracteristicasPerdidasDe, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
+import { ajustesCaracteristicaDeRaciales, caracteristicaPorId, caracteristicaPorTexto, caracteristicasPerdidasDe, modificadorCaracteristica, modificadorParaSumar } from './utils/caracteristicas';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { sumarPartes, totalesPersonaje } from './utils/personaje-totales';
@@ -80,7 +80,7 @@ import {
     puntuacionLanzamiento,
 } from './utils/reglas-magia';
 import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './utils/alineamiento-contrato';
-import { AptitudDelPersonaje, evaluarActitudEspecial, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
+import { AptitudDelPersonaje, armaduraNaturalEspecialNivel, evaluarActitudEspecial, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
 import { OrigenTamano, TamanoEfectivo, tamanoEfectivo, tamanoQueCuenta } from './utils/tamano-efectivo';
 import { ajusteDePlantillas, dgRacialSustituible, dgsDePlantilla, dgsDePlantillas, dgsRacialesQueCuentan, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
 import { ClaseParaPenalizacion, ClasePredilecta, PenalizacionExperiencia, penalizacionExperiencia } from './utils/penalizacion-experiencia';
@@ -5209,13 +5209,17 @@ export class NuevoPersonajeService {
         this.aplicarEspecialesNivelClase(clase, especialesAplicar, detalleSiguiente, seleccionesExtrasEspeciales);
         const cambiaCaracteristicas = especialesAplicar.some((especialNivel) =>
             Object.values(modificadoresCaracteristicaEspecialNivel(especialNivel)).some((valor) => toInt(valor) !== 0));
+        // Su armadura natural se suma a la de la raza y las plantillas al recalcular (`armaduraNaturalDeAptitudes`).
+        const cambiaArmaduraNatural = especialesAplicar.some((especialNivel) =>
+            armaduraNaturalEspecialNivel(especialNivel, especialNivel?.Extra) !== 0
+            || (especialNivel?.Especial as Record<string, any>)?.['Extras_soportados']?.['Extra_da_armnat'] === true);
         // El primer nivel de clase ocupa el lugar del DG racial único: su ataque base y sus salvaciones dejan de contar.
         const sustituyeDgRacial = this.getNivelClasesActual() === 1 && this.dgRacialSustituible();
-        if (cambiaCaracteristicas || sustituyeDgRacial) {
+        if (cambiaCaracteristicas || cambiaArmaduraNatural || sustituyeDgRacial) {
             // Sus características se suman con las demás (dotes, plantillas, ventajas) desde la base.
             this.recalcularEfectosVentajas();
         }
-        if (cambiaCaracteristicas || especialesAplicar.some((especialNivel) => pasosTamanoEspecialNivel(especialNivel) !== 0)) {
+        if (cambiaCaracteristicas || cambiaArmaduraNatural || especialesAplicar.some((especialNivel) => pasosTamanoEspecialNivel(especialNivel) !== 0)) {
             // Una aptitud que cambia el tamaño cambia la CA, la presa, Esconderse y la carga.
             this.recalcularDerivadasPorCaracteristicas();
             this.recalcularSinergiasHabilidades();
@@ -5764,6 +5768,7 @@ export class NuevoPersonajeService {
             this.aplicarIdioma(detalle, seleccion, nuevosIdiomas, origen);
             this.registrarPendienteOro(detalle, origen, pendientesOro);
         });
+        this.aplicarCaracteristicasRaciales(nuevosRaciales, caracteristicasVarios);
         this.aplicarEnvejecimiento(caracteristicasVarios);
 
         this.personajeCreacion.CaracteristicasVarios = caracteristicasVarios;
@@ -6160,7 +6165,7 @@ export class NuevoPersonajeService {
         // El ataque base de los DG raciales, si cuentan (con 1 DG racial y un nivel de clase, no: Guía del DM, pág. 172).
         const ataqueRacial = this.dgsRacialesEfectivos() > 0 ? toNumber(raza?.Dgs_adicionales?.Ataque_base) : 0;
         let ataqueBase = ataqueRacial + ataqueClases;
-        let armaduraNatural = toNumber(raza?.Armadura_natural);
+        let armaduraNatural = toNumber(raza?.Armadura_natural) + this.armaduraNaturalDeAptitudes();
         let caVarios = toNumber(raza?.Varios_armadura);
         let dadoGolpe = this.resolverDadoGolpeTipoActual();
 
@@ -8954,15 +8959,53 @@ export class NuevoPersonajeService {
      * mismo especial en cualquier clase y nivel trae los mismos datos, así que vale el primero.
      */
     private especialesDeClaseDelPersonaje(): ClaseEspecialNivel[] {
+        const porId = this.especialesNivelPorId();
+        return this.aptitudesDelPersonaje()
+            .map((aptitud) => porId.get(aptitud.id))
+            .filter((especialNivel): especialNivel is ClaseEspecialNivel => !!especialNivel);
+    }
+
+    /** El primer especial de las tablas de clase de cada id de aptitud (el mismo especial trae los mismos datos). */
+    private especialesNivelPorId(): Map<number, ClaseEspecialNivel> {
         const porId = new Map<number, ClaseEspecialNivel>();
         this.especialesNivelDeLasTablasDeClases().forEach((especialNivel) => {
             const id = toNumber((especialNivel?.Especial as Record<string, any>)?.['Id']);
             if (id > 0 && !porId.has(id))
                 porId.set(id, especialNivel);
         });
-        return this.aptitudesDelPersonaje()
-            .map((aptitud) => porId.get(aptitud.id))
-            .filter((especialNivel): especialNivel is ClaseEspecialNivel => !!especialNivel);
+        return porId;
+    }
+
+    /**
+     * Lo que las aptitudes del personaje suman a su armadura natural (`armaduraNaturalEspecialNivel`). Los datos solo traen
+     * mejoras («+2 a su armadura natural» de Cuerpo férreo, diamantino y perfecto del guardaespaldas; «un bonificador +1 a
+     * la armadura natural» del discípulo del ojo), que se apilan con la de la raza y las plantillas y entre aptitudes
+     * distintas (+6 en total el guardaespaldas 18.º). Una aptitud cuenta una vez aunque la den dos clases (Cuerpo férreo
+     * del guardaespaldas y del discípulo de Dispater) y, si la cifra la da su extra, cuenta la más alta que tiene: es el
+     * total a ese nivel («se incrementa al nivel 4 a +2»), no se suman.
+     */
+    private armaduraNaturalDeAptitudes(): number {
+        const porId = this.especialesNivelPorId();
+        const porAptitud = new Map<number, number>();
+        (this.personajeCreacion?.Claseas ?? []).forEach((aptitud) => {
+            const id = toNumber(aptitud?.Id);
+            const especialNivel = porId.get(id);
+            if (!especialNivel)
+                return;
+            const valor = armaduraNaturalEspecialNivel(especialNivel, aptitud?.Extra);
+            porAptitud.set(id, Math.max(porAptitud.get(id) ?? 0, valor));
+        });
+        return Array.from(porAptitud.values()).reduce((total, valor) => total + valor, 0);
+    }
+
+    /**
+     * Los ajustes de característica de los rasgos raciales que tiene (`Caracteristicas` de cada rasgo: el aspecto infernal
+     * elegido del nacido del Infierno), con el nombre del rasgo como origen. Van con los demás `caracteristicasVarios`, que
+     * se rehacen en cada recálculo: cuentan una vez y, si se deja de elegir el rasgo (otra raza u otro aspecto), se van.
+     */
+    private aplicarCaracteristicasRaciales(raciales: RacialDetalle[], caracteristicasVarios: Personaje['CaracteristicasVarios']): void {
+        ajustesCaracteristicaDeRaciales(raciales)
+            .forEach(({ clave, valor, origen }) => (caracteristicasVarios[clave] ?? []).push({ valor, origen }));
     }
 
     /**

@@ -1,7 +1,7 @@
 import { Clase, ClaseConjuroRef, ClaseEspecialNivel, ClaseNivelConjuroRequisito } from 'src/app/interfaces/clase';
 import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { EspecialClaseDetalle, EspecialPrerrequisitos } from 'src/app/interfaces/especial';
-import { toArray, toInt } from 'src/app/services/utils/normalizacion';
+import { primerEntero, toArray, toInt } from 'src/app/services/utils/normalizacion';
 import { MotivosPrerrequisitos, compararActitud } from 'src/app/services/utils/prerrequisitos-evaluacion';
 import { frasePrerrequisito, grupoOpcionalPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 
@@ -13,7 +13,8 @@ import { frasePrerrequisito, grupoOpcionalPrerrequisito } from 'src/app/services
  * - una aptitud puede sumar conjuros a la lista de la clase (`Conjuros.Listado_por_especial`), algunos solo con un extra
  *   que se elige al tomarla (el elemento de la senda del asenda: `extrasElegiblesEspecial`);
  * - un nivel de conjuro de la clase puede pedir una aptitud o una dote (`Conjuros.Niveles_con_requisito`);
- * - una aptitud puede cambiar el tamaño (`Tamano_pasos`; ver `tamano-efectivo.ts`).
+ * - una aptitud puede cambiar el tamaño (`Tamano_pasos`; ver `tamano-efectivo.ts`);
+ * - una aptitud puede mejorar la armadura natural (`Armadura_natural`, o la cifra de su extra con `Extra_da_armnat`).
  */
 
 /** Una aptitud especial que tiene el personaje: su id y el de su extra (0 o sin él, ninguno). */
@@ -44,6 +45,19 @@ export function pasosTamanoEspecialNivel(especialNivel: ClaseEspecialNivel | nul
 export function modificadoresCaracteristicaEspecialNivel(especialNivel: ClaseEspecialNivel | null | undefined): Record<Caracteristica, number> {
     const modificadores = especialDelNivel(especialNivel)?.['Modificadores'] ?? {};
     return Object.fromEntries(CARACTERISTICAS.map((key) => [key, toInt(modificadores?.[key])])) as Record<Caracteristica, number>;
+}
+
+/**
+ * Lo que el especial de un nivel de la clase suma a la armadura natural del personaje que lo tiene con el extra `extra`:
+ * su columna (`Modificadores.Armadura_natural`: los +2 de «Cuerpo férreo» del guardaespaldas) o, si la cifra la da el
+ * extra (`Extras_soportados.Extra_da_armnat`: el «+1» del discípulo del ojo), la de ese extra. 0 si no da.
+ */
+export function armaduraNaturalEspecialNivel(especialNivel: ClaseEspecialNivel | null | undefined, extra: string | null | undefined): number {
+    const especial = especialDelNivel(especialNivel);
+    const columna = toInt(especial?.['Modificadores']?.['Armadura_natural']);
+    if (columna !== 0)
+        return columna;
+    return especial?.['Extras_soportados']?.['Extra_da_armnat'] === true ? primerEntero(extra) ?? 0 : 0;
 }
 
 /** Los prerrequisitos de actitud del especial de un nivel de la clase. */
