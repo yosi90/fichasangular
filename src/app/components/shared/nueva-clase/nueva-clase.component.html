@@ -124,6 +124,38 @@
                     </div>
                 </section>
 
+                <section class="panel-card">
+                    <span class="panel-title"><mat-icon>transform</mat-icon>Clase de monstruo</span>
+                    <p class="panel-nota">
+                        Como las de <i>Libris Mortis</i>: la lleva una raza mutada (su bloque de rasgos raciales). Solo la toma un personaje de esa raza,
+                        que la tiene desde el 1.er nivel. Su tabla de DG, dotes y armadura natural va en «Progresión».
+                    </p>
+                    <div class="mutacion-con-quitar">
+                        <app-catalogo-buscador etiqueta="Raza mutada que lleva la clase" placeholder="Ninguna"
+                            [opciones]="opcionesMutacion" [valor]="form.controls.mutacion_id.value || null"
+                            [error]="errores.mensajeDe('Mutacion.Id')" (elegir)="seleccionarMutacion($event)">
+                        </app-catalogo-buscador>
+                        <button mat-icon-button type="button" class="row-action-btn" *ngIf="(form.controls.mutacion_id.value ?? 0) > 0"
+                            aria-label="Sin raza mutada" matTooltip="Sin raza mutada" (click)="quitarMutacion()">
+                            <mat-icon>close</mat-icon>
+                        </button>
+                    </div>
+                    <mat-chip-listbox class="boolean-chips" aria-label="Reglas de la clase de monstruo" [multiple]="true">
+                        <mat-chip-option
+                            [selected]="form.controls.progresion_obligatoria.value === true"
+                            (click)="toggleBoolean('progresion_obligatoria')"
+                            matTooltip="Quien la empieza la termina antes de tomar cualquier otra clase">
+                            Progresión obligatoria
+                        </mat-chip-option>
+                        <mat-chip-option
+                            [selected]="form.controls.sin_penalizacion_multiclase.value === true"
+                            (click)="toggleBoolean('sin_penalizacion_multiclase')"
+                            matTooltip="No cuenta para la penalización de PX por multiclase, como las de prestigio">
+                            Sin penalización por multiclase
+                        </mat-chip-option>
+                    </mat-chip-listbox>
+                </section>
+
                 <section class="panel-card magic-basics-card">
                     <span class="panel-title"><mat-icon>auto_fix_high</mat-icon>Lanzamiento</span>
                     <div class="magic-block">
@@ -224,6 +256,20 @@
                         </mat-form-field>
                     </div>
 
+                    <div class="tabla-propia">
+                        <mat-chip-listbox class="boolean-chips" aria-label="Tabla propia de la clase" [multiple]="true">
+                            <mat-chip-option [selected]="tablaPropia" (click)="toggleBoolean('tabla_propia')">
+                                La clase tiene su propia tabla de DG, dotes y armadura natural
+                            </mat-chip-option>
+                        </mat-chip-listbox>
+                        <p class="panel-nota" *ngIf="tablaPropia">
+                            Como las clases de monstruo: los puntos de habilidad van con los DG; las dotes, solo donde lo marca la tabla; la
+                            armadura natural es el total a cada nivel (no baja) y se suma a la de la raza.
+                        </p>
+                        <p class="panel-nota" *ngIf="!tablaPropia">Sin ella, un DG en cada nivel, las dotes por nivel de personaje y ninguna armadura natural.</p>
+                        <p class="tabla-propia__error" role="alert" *ngIf="errorTablaDeNiveles">{{errorTablaDeNiveles}}</p>
+                    </div>
+
                     <div class="progression-table">
                         <div class="progression-head">
                             <span>Nivel</span>
@@ -231,6 +277,10 @@
                             <span>Fort</span>
                             <span>Ref</span>
                             <span>Vol</span>
+                            <span *ngIf="tablaPropia">DG</span>
+                            <span *ngIf="tablaPropia">Da DG</span>
+                            <span *ngIf="tablaPropia">Dote</span>
+                            <span *ngIf="tablaPropia">Armadura natural (total)</span>
                             <span *ngIf="esLanzadorPsionico">Reserva</span>
                             <span *ngIf="esLanzadorPsionico">Poder</span>
                             <span *ngIf="muestraAumentosLanzador" class="progression-head__aumentos">Aumenta lanzador</span>
@@ -241,6 +291,15 @@
                             <span>{{fortalezaSeleccionada.Valores[nivel.nivel - 1]}}</span>
                             <span>{{reflejosSeleccionados.Valores[nivel.nivel - 1]}}</span>
                             <span>{{voluntadSeleccionada.Valores[nivel.nivel - 1]}}</span>
+                            <ng-container *ngIf="tablaPropia">
+                                <span>{{dgsAcumulados(nivel.nivel)}}</span>
+                                <mat-checkbox [(ngModel)]="nivel.dg" [ngModelOptions]="{standalone: true}"
+                                    [attr.aria-label]="'El nivel ' + nivel.nivel + ' da un DG'"></mat-checkbox>
+                                <mat-checkbox [(ngModel)]="nivel.dote" [ngModelOptions]="{standalone: true}"
+                                    [attr.aria-label]="'El nivel ' + nivel.nivel + ' da una dote'"></mat-checkbox>
+                                <input type="number" min="0" [(ngModel)]="nivel.armadura_natural" [ngModelOptions]="{standalone: true}"
+                                    [attr.aria-label]="'Armadura natural total del nivel ' + nivel.nivel">
+                            </ng-container>
                             <input *ngIf="esLanzadorPsionico" type="number" [(ngModel)]="nivel.reserva_psionica" [ngModelOptions]="{standalone: true}">
                             <input *ngIf="esLanzadorPsionico" type="number" [(ngModel)]="nivel.nivel_max_poder" [ngModelOptions]="{standalone: true}">
                             <mat-select

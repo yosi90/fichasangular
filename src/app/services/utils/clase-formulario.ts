@@ -44,6 +44,10 @@ export const CAMPOS_CLASE: Readonly<Record<string, CampoDeClase>> = {
     Alineamiento_deidad: { etiqueta: 'Alineamiento de su deidad', paso: 0, control: 'alineamiento_deidad' },
     Grupo_edad_inicial: { etiqueta: 'Edad inicial', paso: 0, control: 'grupo_edad_inicial' },
     Clase_pnj: { etiqueta: 'Clase de PNJ', paso: 0, control: 'clase_pnj' },
+    Progresion_obligatoria: { etiqueta: 'Progresión obligatoria', paso: 0, control: 'progresion_obligatoria' },
+    Sin_penalizacion_multiclase: { etiqueta: 'Sin penalización por multiclase', paso: 0, control: 'sin_penalizacion_multiclase' },
+    // `400 raza_no_mutada`, `409 mutacion_de_otra_clase` y el `404` de una raza que no existe.
+    'Mutacion.Id': { etiqueta: 'Raza mutada que lleva la clase', paso: 0, control: 'mutacion_id' },
     Roles: { etiqueta: 'Roles', paso: 0 },
     Alineamiento: { etiqueta: 'Alineamiento', paso: 0 },
     'Conjuros.Arcanos': { etiqueta: 'Arcanos', paso: 0, control: 'conjuros_arcanos' },
@@ -60,6 +64,7 @@ export const CAMPOS_CLASE: Readonly<Record<string, CampoDeClase>> = {
     'Salvaciones.Fortaleza.Id': { etiqueta: 'Fortaleza', paso: 1, control: 'fortaleza_id' },
     'Salvaciones.Reflejos.Id': { etiqueta: 'Reflejos', paso: 1, control: 'reflejos_id' },
     'Salvaciones.Voluntad.Id': { etiqueta: 'Voluntad', paso: 1, control: 'voluntad_id' },
+    // También `400 tabla_de_niveles_incompleta` y `tabla_de_niveles_no_valida`: la tabla de DG, dotes y armadura natural.
     Desglose_niveles: { etiqueta: 'Progresión', paso: 1 },
     Competencias: { etiqueta: 'Competencias', paso: 2 },
     Idiomas: { etiqueta: 'Idiomas automáticos', paso: 2 },
@@ -78,6 +83,39 @@ export const CAMPOS_CLASE: Readonly<Record<string, CampoDeClase>> = {
     'Desglose_niveles.Especiales': { etiqueta: 'Especiales por nivel', paso: 5 },
     Prerrequisitos: { etiqueta: 'Prerrequisitos', paso: 6 },
 };
+
+/** Un nivel de la tabla propia de una clase en el formulario: si da un DG, si da una dote y la armadura natural total. */
+export interface FilaTablaDeNiveles {
+    nivel: number;
+    dg: boolean;
+    dote: boolean;
+    armadura_natural: number;
+}
+
+/**
+ * Lo que comprueba la API de la tabla de DG, dotes y armadura natural antes de guardarla (`comprobar_tabla` de
+ * `utils/clase_niveles.py`; `docs/publica/endpoints/catalogos.md`, `tabla_de_niveles_incompleta` y
+ * `tabla_de_niveles_no_valida`), con sus frases, para decirlo en el paso antes de mandar: todos los niveles de 1 a
+ * `nivelMax`, el 1.º da un DG y la armadura natural total no baja. `null` si vale.
+ */
+export function falloDeTablaDeNiveles(filas: readonly FilaTablaDeNiveles[], nivelMax: number): string | null {
+    const porNivel = new Map(filas.map((fila) => [fila.nivel, fila]));
+    const niveles = Array.from({ length: Math.max(0, nivelMax) }, (_, i) => i + 1);
+    if (porNivel.size !== niveles.length || niveles.some((nivel) => !porNivel.has(nivel)))
+        return `La tabla de DG, dotes y armadura natural de la clase lleva todos sus niveles, del 1 al ${nivelMax}.`;
+    if (!porNivel.get(1)?.dg)
+        return 'El 1.er nivel de la clase da un DG.';
+    let anterior = 0;
+    for (const nivel of niveles) {
+        const armadura = Number(porNivel.get(nivel)?.armadura_natural) || 0;
+        if (armadura < 0)
+            return 'La armadura natural de la clase no puede ser negativa.';
+        if (armadura < anterior)
+            return `La armadura natural de la tabla es el total a cada nivel: no puede bajar (nivel ${nivel}).`;
+        anterior = armadura;
+    }
+    return null;
+}
 
 /** La clave de `Prerrequisitos` de la clase que no se llama como el tipo del editor. */
 const TIPO_DE_CLAVE: Readonly<Record<string, PrerequisiteType>> = {

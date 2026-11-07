@@ -362,3 +362,15 @@
     .listado-row,
     .listado-filtros
         grid-template-columns: 1fr
+
+// La raza mutada que lleva una clase de monstruo, con su ✕ para dejarla sin ninguna.
+.mutacion-con-quitar
+    @include inserciones.buscador-con-quitar
+    max-width: 560px
+
+// La tabla propia de DG, dotes y armadura natural (las clases de monstruo): su interruptor, su nota y su error.
+.tabla-propia
+    margin-bottom: 10px
+
+.tabla-propia__error
+    @include inserciones.error-de-lista
