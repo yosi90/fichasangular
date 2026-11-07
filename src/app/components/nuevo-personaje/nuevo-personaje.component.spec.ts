@@ -871,6 +871,25 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.selectedInternalTabIndex).toBe(1);
         expect(component.requisitosMutacion).toEqual(requisitos);
         expect(component.razaMutadaRequisitosNombre).toBe('Mutada celestial (combinada)');
+
+        // Con el alineamiento elegido, se vuelve a pedir con su básico y dice si se cumple; sin cambios, no se repite.
+        const comprobados = [
+            { Frase: 'Cualquier alineamiento no maligno', Cumple: false, Confirma_master: false },
+            { Frase: 'Completar el Rito del Renacimiento', Cumple: null, Confirma_master: true },
+        ];
+        razaSvcMock.getBasesDeRazaMutada.calls.reset();
+        razaSvcMock.getBasesDeRazaMutada.and.resolveTo({ Raza: { Id: 99, Nombre: 'Mutada celestial' }, Bases: [],
+            Requisitos_del_personaje: comprobados });
+        component.Personaje.Alineamiento = 'Neutral maligno';
+        component.onAlineamientoChange();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(razaSvcMock.getBasesDeRazaMutada).toHaveBeenCalledOnceWith(99, 6);
+        expect(component.requisitosMutacion).toEqual(comprobados);
+        expect(component.requisitosMutacionIncumplidos).toBeTrue();
+        component.onAlineamientoChange();
+        await component.refrescarRequisitosMutacion();
+        expect(razaSvcMock.getBasesDeRazaMutada).toHaveBeenCalledTimes(1);
     });
 
     it('si la API no combina la raza, avisa con su texto y no aplica nada', async () => {

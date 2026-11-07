@@ -570,6 +570,9 @@ export class NuevoPersonajeComponent {
     requisitosMutacion: RequisitoDelPersonajeMutacion[] = [];
     razaMutadaRequisitosNombre = '';
     private requisitosMutacionPendientes: { idRaza: number; requisitos: RequisitoDelPersonajeMutacion[]; } | null = null;
+    /** La raza mutada y la base elegidas (para volver a pedir los requisitos con el alineamiento) y lo último pedido. */
+    private razaYBaseRequisitos: { idRaza: number; idBase: number; } | null = null;
+    private requisitosMutacionPedidos = '';
     private contextoSelectorIdioma: 'ventaja' | 'idiomasIniciales' | null = null;
     private resolverSelectorIdioma: ((completado: boolean) => void) | null = null;
     selectorDominiosTitulo = 'Seleccionar dominios';
@@ -3073,6 +3076,7 @@ export class NuevoPersonajeComponent {
         this.resetHardAlignmentOverride();
         this.recalcularOficialidad();
         this.recalcularClasesVisibles();
+        void this.refrescarRequisitosMutacion();
     }
 
     onDeidadChange(): void {
@@ -3784,6 +3788,9 @@ export class NuevoPersonajeComponent {
         this.requisitosMutacion = deLaMutada ? [...(pendientes?.requisitos ?? [])] : [];
         this.razaMutadaRequisitosNombre = deLaMutada ? `${raza.Nombre ?? ''}` : '';
         this.requisitosMutacionPendientes = null;
+        // Lo que ya se pidió (sin alineamiento, al abrir el selector de la base).
+        this.razaYBaseRequisitos = deLaMutada ? { idRaza: Number(raza.Id), idBase: Number(razaBase?.Id) } : null;
+        this.requisitosMutacionPedidos = deLaMutada ? this.claveRequisitosMutacion(null) : '';
         this.normalizarDeidadSeleccionada();
         this.cerrarSelectorRacialesOpcionalesContexto();
         this.ventanaDetalleAbierta = false;
@@ -3795,7 +3802,42 @@ export class NuevoPersonajeComponent {
         this.recalcularOficialidad();
         this.recalcularPlantillasVisibles();
         this.recalcularClasesVisibles();
+        void this.refrescarRequisitosMutacion();
         this.irABasicos();
+    }
+
+    private claveRequisitosMutacion(idAlineamiento: number | null): string {
+        const elegidas = this.razaYBaseRequisitos;
+        return elegidas ? `${elegidas.idRaza}|${elegidas.idBase}|${idAlineamiento ?? ''}` : '';
+    }
+
+    /**
+     * Vuelve a pedir lo que la raza mutada pide del personaje con su alineamiento básico (`GET /razas/{id}/bases
+     * ?idAlineamiento=`), para que el aviso de Básicos diga si se cumple. Solo si cambia la raza, la base o el
+     * alineamiento; sin alineamiento elegido, se quedan las frases sin comprobar. Si falla, se quedan las que había.
+     */
+    async refrescarRequisitosMutacion(): Promise<void> {
+        const elegidas = this.razaYBaseRequisitos;
+        const idAlineamiento = this.resolverIdAlineamientoCreacion();
+        if (!elegidas || idAlineamiento === null)
+            return;
+        const clave = this.claveRequisitosMutacion(idAlineamiento);
+        if (clave === this.requisitosMutacionPedidos)
+            return;
+        this.requisitosMutacionPedidos = clave;
+        try {
+            const bases = await this.razaSvc.getBasesDeRazaMutada(elegidas.idRaza, idAlineamiento);
+            if (this.requisitosMutacionPedidos === clave)
+                this.requisitosMutacion = [...bases.Requisitos_del_personaje];
+        } catch {
+            if (this.requisitosMutacionPedidos === clave)
+                this.requisitosMutacionPedidos = '';
+        }
+    }
+
+    /** Si algún requisito de la raza mutada no se cumple con el alineamiento elegido. */
+    get requisitosMutacionIncumplidos(): boolean {
+        return this.requisitosMutacion.some((requisito) => requisito.Cumple === false);
     }
 
     private reconstruirCandidatasRazaBaseModal(): void {
