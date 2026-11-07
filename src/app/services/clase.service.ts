@@ -277,7 +277,7 @@ function normalizeNivel(raw: any): ClaseNivelDetalle {
         })),
         // La tabla por nivel de una clase de monstruo. Sin tabla (y en la caché, que no escribe los `null`): un DG en cada
         // nivel, las dotes por nivel de personaje y ninguna armadura natural.
-        Dg: raw?.Dg === undefined || raw?.Dg === null ? true : toBoolean(raw.Dg),
+        Dg: toBoolean(raw?.Dg, true),
         Dote: raw?.Dote === undefined || raw?.Dote === null ? null : toBoolean(raw.Dote),
         Armadura_natural: Math.max(0, toNumber(raw?.Armadura_natural, 0)),
     };
