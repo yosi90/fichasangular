@@ -255,6 +255,15 @@ describe('RazaService helpers', () => {
         expect(sinExtras.Puntos_habilidad_extra_por_nivel).toBe(0);
     });
 
+    it('lee la clase de monstruo de una raza mutada, por HTTP y desde la caché (`Razas` 25; nula, en la caché no está)', () => {
+        // `GET /razas/1009` de `rol_dev`: el engendro vampírico lo lleva su clase 482.
+        const engendro = { Mutada: true, Clase_de_monstruo: { Id: 482, Nombre: 'Engendro vampírico' } };
+        [normalizeRazaApi(createRazaApiRaw(engendro)), normalizeRazaLegacy({ Id: 1009, Nombre: 'Engendro vampírico', ...engendro })]
+            .forEach((raza) => expect(raza.Clase_de_monstruo).toEqual({ Id: 482, Nombre: 'Engendro vampírico' }));
+        expect(normalizeRazaApi(createRazaApiRaw({ Clase_de_monstruo: null })).Clase_de_monstruo).toBeNull();
+        expect(normalizeRazaLegacy({ Id: 25, Nombre: 'Humano' }).Clase_de_monstruo).toBeNull();
+    });
+
     it('lee la clase predilecta (id y comodín) y la edad máxima, por HTTP y desde la caché (tanda de noviembre)', () => {
         const humano = { Id_clase_predilecta: 0, Clase_predilecta_comodin: 'cualquiera', Edad_maxima_dados: 2, Edad_maxima_caras: 20 };
         [normalizeRazaApi(createRazaApiRaw(humano)), normalizeRazaLegacy({ Id: 25, Nombre: 'Humano', ...humano })].forEach((raza) => {

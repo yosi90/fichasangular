@@ -519,6 +519,7 @@ export function normalizeRazaApi(raw: any): Raza {
         Mutada: raw?.Mutada === true,
         Prerrequisitos: normalizarPrerrequisitosMutacion(raw?.pr),
         Cambios_mutacion: normalizarCambiosMutacion(raw?.Cambios_mutacion),
+        Clase_de_monstruo: toRefIdNombre(raw?.Clase_de_monstruo),
         Armadura_natural: toNumber(raw?.ant),
         Varios_armadura: toNumber(raw?.va),
         Correr: toNumber(raw?.co),

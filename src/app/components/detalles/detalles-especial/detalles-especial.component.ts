@@ -1,5 +1,6 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { DatoFicha, datosEsenciaRasgo } from 'src/app/components/detalles/ficha';
+import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { Comodin } from 'src/app/interfaces/comodin';
 import { EspecialClaseDetalle, EspecialExtraRef, EspecialHabilidadRef } from 'src/app/interfaces/especial';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
@@ -45,6 +46,8 @@ export class DetallesEspecialComponent {
             extra: this.getExtraVisibleHabilidad(habilidad),
             rangos: habilidad.Rangos,
         }));
+        this.armasNaturales = valor?.Armas_naturales ?? [];
+        this.armasConDanoDelExtra = this.armasNaturales.some((arma) => !tieneTextoVisible(arma.Dano));
     }
     get especial(): EspecialClaseDetalle {
         return this.especialActual;
@@ -61,6 +64,10 @@ export class DetallesEspecialComponent {
     otorga: string[] = [];
     extras: EspecialExtraRef[] = [];
     habilidades: HabilidadVisible[] = [];
+    /** Las armas naturales que da a quien la tiene (`Armas_naturales`: el golpetazo de las clases de monstruo). */
+    armasNaturales: ArmaNatural[] = [];
+    /** Si alguna no trae su daño: es el del extra de cada nivel. */
+    armasConDanoDelExtra = false;
     /** Con qué actitud se puede elegir (`Prerrequisitos`), con la frase de la API. */
     prerrequisitosAgrupados: GrupoPrerrequisitos[] = [];
 

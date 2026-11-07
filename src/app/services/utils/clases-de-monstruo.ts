@@ -11,8 +11,10 @@ import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
  * - la raza que es la `Mutacion` de una clase la lleva desde el 1.er nivel: hasta tener un nivel de ella, solo esa;
  * - una clase con `Progresion_obligatoria` por debajo de su `Nivel_max_claseo`: hasta terminarla, solo esa.
  *
- * La raza no repite la unión (una sola fuente: `clase_raza_mutacion`): la clase de una raza es la que la tiene como
- * `Mutacion` (`docs/publica/RAZAS_MUTADAS.md`, «Cómo sabe la web qué clase lleva una mutada»).
+ * La unión es una sola (`clase_raza_mutacion`): la API la da en la clase (`Mutacion`) y, desde el 2026-11-07, también en la
+ * raza (`Clase_de_monstruo`, que enseñan los detalles). Estas reglas leen las clases porque necesitan la clase entera (su
+ * progresión obligatoria y su nivel máximo): la clase de una raza es la que la tiene como `Mutacion`
+ * (`docs/publica/RAZAS_MUTADAS.md`, «Cómo sabe la web qué clase lleva una mutada»).
  */
 
 /** Lo que estas reglas leen de una clase. */

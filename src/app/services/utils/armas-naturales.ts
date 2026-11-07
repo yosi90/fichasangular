@@ -1,9 +1,11 @@
 import {
     ArmaNatural,
     ArmaNaturalCreate,
+    ArmaNaturalPersonaje,
     ArmaNaturalPlantilla,
     ArmaNaturalTipo,
     FormaArmaNatural,
+    FormaArmaNaturalPersonaje,
     ModoArmaNatural,
 } from 'src/app/interfaces/arma-natural';
 import { uidDeFila } from 'src/app/components/shared/insercion-marco/filas-repetibles';
@@ -18,6 +20,7 @@ import { toArray, toBoolean, toInt, toNullableText, toText } from './normalizaci
 
 const MODOS: readonly ModoArmaNatural[] = ['suma', 'minimo', 'sustituye', 'quita'];
 const FORMAS: readonly FormaArmaNatural[] = ['todas', 'animal', 'hibrida'];
+const FORMAS_PERSONAJE: readonly FormaArmaNaturalPersonaje[] = ['normal', 'animal', 'hibrida'];
 
 function armaNatural(raw: any): ArmaNatural {
     const cantidad = toInt(raw?.Cantidad);
@@ -47,6 +50,14 @@ export function leerArmasNaturalesPlantilla(raw: any): ArmaNaturalPlantilla[] {
         ...armaNatural(item),
         Modo: MODOS.includes(item?.Modo) ? item.Modo : 'suma',
         Forma: FORMAS.includes(item?.Forma) ? item.Forma : 'todas',
+    })).filter(conDato);
+}
+
+/** Las de la ficha de un personaje (`armasNaturales`), ya resueltas por la API; sin `Forma` conocida, la normal. */
+export function leerArmasNaturalesPersonaje(raw: any): ArmaNaturalPersonaje[] {
+    return toArray(raw).map((item) => ({
+        ...armaNatural(item),
+        Forma: FORMAS_PERSONAJE.includes(item?.Forma) ? item.Forma : 'normal' as const,
     })).filter(conDato);
 }
 

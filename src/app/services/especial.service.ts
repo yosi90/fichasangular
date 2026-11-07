@@ -26,6 +26,7 @@ import { leerComodin } from "src/app/services/utils/comodin";
 import { mensajeDeError } from './utils/error-api';
 import { normalizarEsenciaRasgo } from './utils/incarnum-mapper';
 import { normalizarPrerrequisitosEspecial } from './utils/aptitudes-clase';
+import { leerArmasNaturales } from './utils/armas-naturales';
 
 function normalizeRefSimple(raw: any): EspecialRefSimple {
     return {
@@ -99,6 +100,7 @@ export function normalizeEspecial(raw: any): EspecialClaseDetalle {
         Subtipo: normalizeRefSimple(raw?.Subtipo),
         Extras: toArray(raw?.Extras).map(normalizeExtra),
         Habilidades: toArray(raw?.Habilidades).map(normalizeHabilidad),
+        Armas_naturales: leerArmasNaturales(raw?.Armas_naturales),
         Prerrequisitos: normalizarPrerrequisitosEspecial(raw?.Prerrequisitos),
         Esencia: normalizarEsenciaRasgo(raw?.Esencia),
     };

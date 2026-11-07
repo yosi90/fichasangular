@@ -106,6 +106,17 @@ describe('DetallesEspecialComponent', () => {
         expect(lateral('Prerrequisitos')?.textContent).toContain('Cualquier alineamiento no maligno');
     });
 
+    it('las armas naturales que da, con su frase y la nota del daño del extra (las garras del necrófago de rol_dev)', () => {
+        expect(lateral('Armas naturales')).toBeNull();
+        component.especial = furia({
+            Armas_naturales: [{ Id_arma_natural: 2, Arma_natural: 'Garra', Cantidad: 2, Dano: null, Primaria: false, Texto: '2 garras (ataques secundarios)' }],
+        });
+        fixture.detectChanges();
+        const armas = lateral('Armas naturales')!;
+        expect(Array.from(armas.querySelectorAll('li')).map((li) => limpio(li))).toEqual(['2 garras (ataques secundarios)']);
+        expect(limpio(armas.querySelector('.ficha-nota'))).toBe('Sin daño: el del extra de cada nivel. No se suman a las que ya tenga de ese tipo.');
+    });
+
     it('no enseña lo que viene vacío', () => {
         component.especial = furia({
             Descripcion: '',

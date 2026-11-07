@@ -55,6 +55,11 @@
             </table>
         </app-ficha-lateral>
 
+        <app-ficha-lateral titulo="Armas naturales" *ngIf="armasNaturales.length > 0">
+            <app-ficha-armas-naturales [armas]="armasNaturales"></app-ficha-armas-naturales>
+            <p class="ficha-nota" *ngIf="armasConDanoDelExtra">Sin daño: el del extra de cada nivel. No se suman a las que ya tenga de ese tipo.</p>
+        </app-ficha-lateral>
+
         <app-ficha-lateral titulo="Habilidades" *ngIf="habilidades.length > 0">
             <table class="ficha-pares">
                 <tbody>

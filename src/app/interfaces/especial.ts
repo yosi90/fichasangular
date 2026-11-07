@@ -1,3 +1,4 @@
+import { ArmaNatural, ArmaNaturalCreate } from "./arma-natural";
 import { Comodin } from "./comodin";
 import { EsenciaRasgo } from "./incarnum";
 import { PrerrequisitoItem } from "./prerrequisito";
@@ -114,6 +115,11 @@ export interface EspecialClaseMutationRequest {
     especial: EspecialClaseMutationCore;
     extras?: EspecialClaseMutationExtra[];
     habilidades?: EspecialClaseMutationHabilidad[];
+    /**
+     * Las armas naturales que da (`especial_armas_naturales`: el golpetazo de las clases de monstruo); sin el campo, la
+     * edición conserva las que tenía. Sin `dano`, el de su extra en cada nivel.
+     */
+    armas_naturales?: ArmaNaturalCreate[];
     /** Opcional: si viene, reemplaza los dos tipos (el que no viene, vacío); sin él, la edición conserva los que tenía. */
     prerrequisitos?: {
         actitud_requerido: EspecialPrerrequisitoActitudMutation[];
@@ -156,6 +162,11 @@ export interface EspecialClaseDetalle {
     Subtipo: EspecialRefSimple;
     Extras: EspecialExtraRef[];
     Habilidades: EspecialHabilidadRef[];
+    /**
+     * Las armas naturales que da a quien la tiene (`Armas_naturales` de `GET /clases/habilidades/{id}` y de la caché
+     * `Especiales` 8): las tiene si no tenía tantas de ese tipo; sin `Dano`, el del extra de cada nivel.
+     */
+    Armas_naturales?: ArmaNatural[];
     Prerrequisitos: EspecialPrerrequisitos;
     /** Magic of Incarnum: la esencia que da a la reserva y si es receptáculo (`null` si nada). */
     Esencia?: EsenciaRasgo | null;

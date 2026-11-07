@@ -43,9 +43,14 @@ export function casillasCaracteristicasPersonaje(pj: Personaje | null | undefine
     });
 }
 
-/** Una clase con su nivel: «Guerrero 5». */
-export function textoClasePersonaje(clase: { Nombre: string; Nivel: number; }): string {
-    return `${clase.Nombre.trim()} ${toNumber(clase.Nivel)}`;
+/**
+ * Una clase con su nivel: «Guerrero 5»; con los DG de su tabla si no son su nivel (`Dgs` de la ficha de la API: las clases
+ * de monstruo de *Libris Mortis*), «Engendro vampírico 5 (3 DG)».
+ */
+export function textoClasePersonaje(clase: { Nombre: string; Nivel: number; Dgs?: number | null; }): string {
+    const nivel = toNumber(clase.Nivel);
+    const dgs = clase.Dgs === undefined || clase.Dgs === null ? nivel : toNumber(clase.Dgs);
+    return `${clase.Nombre.trim()} ${nivel}${dgs !== nivel ? ` (${dgs} DG)` : ''}`;
 }
 
 /** Las dotes que se ven, con su extra: «Soltura con un arma (espada larga)». */

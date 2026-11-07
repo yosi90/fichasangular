@@ -26,6 +26,7 @@ import { ESPECIAL } from 'src/app/services/utils/nombres-de-catalogo';
 import { EdicionDeCatalogo } from '../insercion-marco/edicion-de-catalogo';
 import { EDITOR_DE_CATALOGO, EditorDeCatalogo } from '../insercion-marco/editor-de-catalogo';
 import { alternarControl, quitarFila } from '../insercion-marco/filas-repetibles';
+import { FilaArmaNatural, cuerpoDeArmasNaturales, filasDeArmasNaturales, problemaDeArmasNaturales } from 'src/app/services/utils/armas-naturales';
 
 /** Los prerrequisitos que admite un especial: con qué actitud se puede elegir (la senda de una clase, por su alineamiento). */
 const TIPOS_PRERREQUISITO_ESPECIAL: readonly PrerequisiteType[] = ['actitud_requerido', 'actitud_prohibido'];
@@ -121,6 +122,13 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
     subtipos: SubtipoResumen[] = [];
     extraRows: EspecialExtraRow[] = [];
     habilidadRows: EspecialHabilidadRow[] = [];
+    /**
+     * Las armas naturales que da la aptitud (`armas_naturales`, con `<app-armas-naturales-editor>`): quien la tiene tiene al
+     * menos esas de ese tipo; sin daño, el de su extra en cada nivel (el golpetazo de las clases de monstruo).
+     */
+    armasNaturales: FilaArmaNatural[] = [];
+    /** Lo que falla de esas filas antes de mandarlas (la API lo comprueba igual); `null` si valen. */
+    problemaArmasNaturales: string | null = null;
     /** Los prerrequisitos de actitud, con el editor compartido. */
     readonly tiposPrerrequisito = getPrerequisiteTypeOptions((tipo) => TIPOS_PRERREQUISITO_ESPECIAL.includes(tipo));
     prerrequisitosTipos: PrerequisiteType[] = [];
@@ -243,6 +251,11 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
         this.form.markAllAsTouched();
         if (this.form.invalid)
             return;
+        this.problemaArmasNaturales = problemaDeArmasNaturales(this.armasNaturales, false);
+        if (this.problemaArmasNaturales) {
+            this.pasoActual = this.pasos.indexOf('Bonos');
+            return;
+        }
 
         const payload = this.construirPayload();
         this.guardando = true;
@@ -290,6 +303,11 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
         this.extraRows = this.extraRows.map((row, rowIndex) => rowIndex === index
             ? { ...row, id_extra: extra?.Id ?? 0, busqueda: extra?.Nombre ?? '' }
             : row);
+    }
+
+    cambiarArmasNaturales(filas: FilaArmaNatural[]): void {
+        this.armasNaturales = filas;
+        this.problemaArmasNaturales = null;
     }
 
     agregarHabilidad(): void {
@@ -391,6 +409,7 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
                 .filter((row) => this.entero(row.id_extra) > 0)
                 .map((row) => ({ id_extra: this.entero(row.id_extra), orden: Math.max(1, this.entero(row.orden, 1)) })),
             habilidades: this.construirHabilidadesPayload(),
+            armas_naturales: cuerpoDeArmasNaturales(this.armasNaturales, false),
             prerrequisitos: prerrequisitosDesdeFilas(this.prerrequisitosFilas, TIPOS_PRERREQUISITO_ESPECIAL) as unknown as EspecialClaseMutationRequest['prerrequisitos'],
         };
         return payload;
@@ -472,6 +491,8 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
         });
         this.extraRows = this.hidratarExtras(especial);
         this.habilidadRows = this.hidratarHabilidades(especial);
+        this.armasNaturales = filasDeArmasNaturales(especial.Armas_naturales);
+        this.problemaArmasNaturales = null;
         this.hidratarPrerrequisitos(especial);
         this.edicion.tomarPuntoDePartida();
     }
@@ -551,6 +572,8 @@ export class NuevaEspecialComponent implements OnInit, OnDestroy, OnChanges, Edi
     private resetFilas(): void {
         this.extraRows = [this.crearExtraRow()];
         this.habilidadRows = [this.crearHabilidadRow()];
+        this.armasNaturales = [];
+        this.problemaArmasNaturales = null;
         this.hidratarPrerrequisitos(null);
     }
 

@@ -19,6 +19,7 @@ import {
     unirTipo,
 } from 'src/app/components/detalles/ficha';
 import { AptitudSortilega } from 'src/app/interfaces/aptitud-sortilega';
+import { ArmaNaturalPersonaje } from 'src/app/interfaces/arma-natural';
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Dote } from 'src/app/interfaces/dote';
@@ -183,6 +184,8 @@ interface ModeloFicha {
     verHabilidades: boolean;
     dotes: EntradaLista<DoteLegacy>[];
     aptitudes: EntradaLista<string>[];
+    /** Sus armas naturales, ya resueltas por la API (`armasNaturales`: raza, aptitudes y plantillas, por forma). */
+    armasNaturales: ArmaNaturalPersonaje[];
     raciales: EntradaLista<RacialReferencia>[];
     rasgosTipo: EntradaLista<Rasgo>[];
     plantillas: EntradaLista<any>[];
@@ -1146,6 +1149,7 @@ ${envejecimiento}` : edades;
                 const extra = this.getExtraVisibleEspecial(c);
                 return { texto: c.Nombre.trim() + (extra ? ` (${extra})` : ''), ref: c.Nombre.trim() };
             }),
+            armasNaturales: (pj.Armas_naturales ?? []).filter((a) => this.esVisible(a?.Texto)),
             raciales: this.getRacialesVisibles().map((r) => ({ texto: r.nombre, nota: this.texto(r.origen), clave: `${r.id ?? ''}`, ref: r })),
             rasgosTipo: (pj.Tipo_criatura?.Rasgos ?? []).filter((r) => this.esVisible(r?.Nombre)).map((r) => ({
                 texto: r.Nombre.trim(),
@@ -1186,7 +1190,7 @@ ${envejecimiento}` : edades;
         return {
             tipoPagina: '', tipoPestanas: '', etiquetas: [], motivosHomebrew: [], creador: null, datos: [], franja: [], caracteristicas: [], casillasPagina: [],
             salvaciones: [], defensa: [], presaIniciativa: [], defensasEspeciales: [], enemigos: [], habilidades: [],
-            habilidadesConRangos: [], verHabilidades: false, dotes: [], aptitudes: [], raciales: [], rasgosTipo: [], plantillas: [],
+            habilidadesConRangos: [], verHabilidades: false, dotes: [], aptitudes: [], armasNaturales: [], raciales: [], rasgosTipo: [], plantillas: [],
             ventajas: [], idiomas: [], magia: [], lanzadores: [], lanzamientoRacial: null, aptitudesEdad: null, conjuros: [], sortilegas: [],
             incarnum: null, piezas: [], equipo: [], carga: [],
             modificadoresEquipo: [], sinEquipo: false, familiares: [], companeros: [], personalidad: '', contexto: '',
@@ -1519,7 +1523,7 @@ ${envejecimiento}` : edades;
         const visibles: Record<PestanaFicha, boolean> = {
             combate: true,
             habilidades: m.verHabilidades,
-            capacidades: !!m.aptitudesEdad || hay(m.dotes, m.aptitudes, m.raciales, m.rasgosTipo, m.plantillas, m.ventajas, m.idiomas, m.familiares, m.companeros),
+            capacidades: !!m.aptitudesEdad || hay(m.dotes, m.aptitudes, m.armasNaturales, m.raciales, m.rasgosTipo, m.plantillas, m.ventajas, m.idiomas, m.familiares, m.companeros),
             magia: !!m.lanzamientoRacial || this.tieneDatos(m.magia) || hay(m.lanzadores, m.conjuros, m.sortilegas),
             incarnum: !!m.incarnum,
             equipo: this.tieneDatos(m.equipo) || this.tieneDatos(m.carga) || hay(m.piezas, m.modificadoresEquipo) || m.sinEquipo,

@@ -118,6 +118,17 @@
 
                 <div class="panel-card">
                     <span class="panel-title">
+                        <mat-icon>pets</mat-icon>
+                        Armas naturales
+                    </span>
+                    <p class="otorga-ayuda">Quien tiene la aptitud tiene al menos estas armas de cada tipo (el golpetazo de la raza y el de la clase son uno). Sin daño, el del extra de cada nivel de la clase.</p>
+                    <app-armas-naturales-editor [filas]="armasNaturales" [deshabilitado]="guardando || cargandoEdicion"
+                        [error]="problemaArmasNaturales" (filasChange)="cambiarArmasNaturales($event)">
+                    </app-armas-naturales-editor>
+                </div>
+
+                <div class="panel-card">
+                    <span class="panel-title">
                         <mat-icon>flag</mat-icon>
                         Flags extra
                     </span>

@@ -713,6 +713,47 @@ describe('DetallesPersonajeComponent', () => {
         });
     });
 
+    // El humano necrófago 7.º de `rol_dev` (`GET /personajes/{id}` de un ensayo en una transacción deshecha, 2026-11-07):
+    // las armas naturales ya resueltas por la API y los DG de su clase (la tabla de la clase 486 da 3 DG a 7.º).
+    describe('las armas naturales y los DG de una clase de monstruo (Libris Mortis)', () => {
+        const NECROFAGO_7 = {
+            clases: [{ id: 486, nombre: 'Necrófago', nivel: 7, dgs: 3, prestigio: false, sinPenalizacionMulticlase: true,
+                lanzaConjuros: false, caracteristicaLanzamiento: null, modificadorLanzamiento: null }],
+            armasNaturales: [
+                { Id_arma_natural: 1, Arma_natural: 'Mordisco', Cantidad: 1, Dano: '1d8', Primaria: true, Forma: 'normal', Texto: 'Mordisco 1d8' },
+                { Id_arma_natural: 2, Arma_natural: 'Garra', Cantidad: 2, Dano: '1d4', Primaria: false, Forma: 'normal', Texto: '2 garras 1d4 (ataques secundarios)' },
+            ],
+        };
+
+        it('en «Página», las armas naturales junto a las aptitudes, y la clase con sus DG', () => {
+            component.pj = fichaDeLaApi(NECROFAGO_7);
+            verPagina();
+            expect(textos('li', lateral('Armas naturales'))).toEqual(['Mordisco 1d8', '2 garras 1d4 (ataques secundarios)']);
+            expect(valor('Clase')).toBe('Necrófago 7 (3 DG)');
+        });
+
+        it('en «Pestañas», en Capacidades', () => {
+            component.pj = fichaDeLaApi(NECROFAGO_7);
+            fixture.detectChanges();
+            abrirPestana('Capacidades');
+            expect(titulos('[role="tabpanel"]')).toContain('Armas naturales');
+        });
+
+        it('cada forma de un licántropo con su frase; sin armas no sale la lateral; una clase normal, sin DG', () => {
+            component.pj = fichaDeLaApi({
+                armasNaturales: [{ Id_arma_natural: 1, Arma_natural: 'Mordisco', Cantidad: 1, Dano: '1d6', Primaria: true, Forma: 'animal', Texto: 'Mordisco 1d6 (en forma animal)' }],
+            });
+            verPagina();
+            expect(textos('li', lateral('Armas naturales'))).toEqual(['Mordisco 1d6 (en forma animal)']);
+            expect(component.pj.Armas_naturales?.[0].Forma).toBe('animal');
+
+            component.pj = fichaDeLaApi({ armasNaturales: [] });
+            fixture.detectChanges();
+            expect(lateral('Armas naturales')).toBeNull();
+            expect(texto()).not.toContain(' DG)');
+        });
+    });
+
     describe('magia', () => {
         it('enseña la progresión de cada clase lanzadora con el catálogo', () => {
             component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 1, Caracteristica_lanzamiento: 'Inteligencia' }];

@@ -276,6 +276,8 @@ export interface PersonajeClaseDto extends PersonajeNombreIdDto {
      * monstruo de *Libris Mortis*); desde el 2026-11-07.
      */
     sinPenalizacionMulticlase?: boolean;
+    /** Los DG que da la clase a su nivel (uno por nivel, o los de su tabla); desde el 2026-11-07. */
+    dgs?: number;
     lanzaConjuros: boolean;
     caracteristicaLanzamiento: string | null;
     modificadorLanzamiento: number | null;

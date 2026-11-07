@@ -297,6 +297,11 @@ export interface Raza {
     Prerrequisitos: RazaPrerrequisitos;
     /** Lo que cambia una raza mutada de su raza base donde se aparta de la regla de hoy. */
     Cambios_mutacion: CambioMutacion[];
+    /**
+     * La clase de monstruo que lleva una raza mutada (`Clase_de_monstruo` de la API y de la caché `Razas` 25, desde el
+     * 2026-11-07: las de *Libris Mortis*); `null` si no la lleva ninguna.
+     */
+    Clase_de_monstruo?: { Id: number; Nombre: string; } | null;
     Armadura_natural: number;
     Varios_armadura: number;
     Correr: number;
