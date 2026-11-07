@@ -1,4 +1,5 @@
 import { NuevoPersonajeService } from './nuevo-personaje.service';
+import { PersonajeService } from './personaje.service';
 import { Clase } from '../interfaces/clase';
 import { Raza } from '../interfaces/raza';
 import { normalizeClase } from './clase.service';
@@ -306,6 +307,20 @@ describe('NuevoPersonajeService (clases de monstruo: habilidades, RD y armas nat
         expect(rds(svc)).toEqual(['5/plateada (Reducción del daño (Engendro vampírico))']);
         svc.recalcularEfectosVentajas();
         expect(rds(svc)).toEqual(['5/plateada (Reducción del daño (Engendro vampírico))']);
+    });
+
+    it('lo guarda la creación: los rangos varios y la RD van en el cuerpo de POST /personajes/add', () => {
+        const { svc, claseMonstruo } = crearLibris(ENGENDRO_VAMPIRICO, 482, 'engendroSobreHumano');
+        subir(svc, claseMonstruo, 8);
+        const vacio = new Map<string, number>();
+        const colecciones = (new PersonajeService({ currentUser: null } as any, {} as any) as any).construirPayloadColecciones(
+            svc.PersonajeCreacion,
+            { clases: vacio, dominios: vacio, idiomas: vacio, ventajas: vacio, escuelas: vacio, disciplinas: vacio });
+
+        expect(colecciones.rd).toEqual([{ rd: '5/plateada', origen: 'Reducción del daño (Engendro vampírico)' }]);
+        const avistar = colecciones.habilidades.base.find((h: any) => h.idHabilidad === 6);
+        expect(avistar).toEqual(jasmine.objectContaining({
+            rangosVarios: 4, modVarios: 'Engendro vampírico +2, Bonificador de habilidad (Engendro vampírico) +2' }));
     });
 
     it('la momia: una sola RD, la de su nivel (2/- a 4.º, 5/- a 13.º; Libris Mortis, pág. 38)', () => {
