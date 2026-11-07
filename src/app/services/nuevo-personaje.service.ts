@@ -83,7 +83,7 @@ import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './
 import { AptitudDelPersonaje, armaduraNaturalEspecialNivel, evaluarActitudEspecial, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
 import { OrigenTamano, TamanoEfectivo, tamanoEfectivo, tamanoQueCuenta } from './utils/tamano-efectivo';
 import { ajusteDePlantillas, dgRacialSustituible, dgsDePlantilla, dgsDePlantillas, dgsRacialesQueCuentan, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
-import { ClaseParaPenalizacion, ClasePredilecta, PenalizacionExperiencia, penalizacionExperiencia } from './utils/penalizacion-experiencia';
+import { ClaseParaPenalizacion, ClasePredilecta, noPenalizaMulticlase, PenalizacionExperiencia, penalizacionExperiencia } from './utils/penalizacion-experiencia';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
 import { claseDeLaRaza, claseObligada, ContextoClasesDeMonstruo, motivoClaseDeMonstruo } from './utils/clases-de-monstruo';
@@ -8865,7 +8865,7 @@ export class NuevoPersonajeService {
                 id: toInt(clase?.Id ?? entrada?.Id),
                 nombre: `${entrada?.Nombre ?? clase?.Nombre ?? ''}`.trim(),
                 nivel: toInt(entrada?.Nivel),
-                prestigio: toBoolean(clase?.Prestigio) || toBoolean(clase?.Sin_penalizacion_multiclase),
+                prestigio: noPenalizaMulticlase(clase),
             };
         });
         if (claseNueva) {
@@ -8879,7 +8879,7 @@ export class NuevoPersonajeService {
                     id,
                     nombre: `${claseNueva.Nombre ?? ''}`.trim(),
                     nivel: 1,
-                    prestigio: toBoolean(claseNueva.Prestigio) || toBoolean(claseNueva.Sin_penalizacion_multiclase),
+                    prestigio: noPenalizaMulticlase(claseNueva),
                 });
         }
         return penalizacionExperiencia(clases, this.clasePredilectaRaza());

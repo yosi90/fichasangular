@@ -1,6 +1,6 @@
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { Comodin } from 'src/app/interfaces/comodin';
-import { toInt, toText } from 'src/app/services/utils/normalizacion';
+import { toBoolean, toInt, toText } from 'src/app/services/utils/normalizacion';
 
 /**
  * La penalización de experiencia por multiclase (Manual del jugador, cap. 3, «Experiencia en multiclase»; SRD 3.5,
@@ -11,7 +11,8 @@ import { toInt, toText } from 'src/app/services/utils/normalizacion';
  * - La clase predilecta de su raza no cuenta. Con la predilecta «Cualquiera» (el humano y el semielfo: el comodín de la
  *   raza, `Clase_predilecta_comodin`), no cuenta su clase de más nivel. Sin clase predilecta (su libro no le da una, como
  *   a los dragones: `Id_clase_predilecta` nulo y sin comodín), cuentan todas.
- * - Las clases de prestigio no cuentan nunca (Guía del DM, cap. 6). Los DG raciales tampoco: no son una clase.
+ * - Las clases de prestigio no cuentan nunca (Guía del DM, cap. 6), ni las que no penalizan la multiclase (las clases de
+ *   monstruo de *Libris Mortis*, pág. 35: `noPenalizaMulticlase`). Los DG raciales tampoco: no son una clase.
  *
  * No cambia la experiencia con la que se crea el personaje (la mínima de su NEP): es la que gane después. Nada va por el
  * nombre ni el id de una clase o una raza: la predilecta es la de los datos de la raza.
@@ -23,6 +24,14 @@ export interface ClaseParaPenalizacion {
     nombre: string;
     nivel: number;
     prestigio: boolean;
+}
+
+/**
+ * Si una clase del catálogo no cuenta para la penalización (`ClaseParaPenalizacion.prestigio`): las de prestigio, por su
+ * dato `Prestigio`, y como ellas las que tienen `Sin_penalizacion_multiclase`.
+ */
+export function noPenalizaMulticlase(clase: { Prestigio?: unknown; Sin_penalizacion_multiclase?: unknown; } | null | undefined): boolean {
+    return toBoolean(clase?.Prestigio) || toBoolean(clase?.Sin_penalizacion_multiclase);
 }
 
 /** La clase predilecta de la raza: su id y, si es el comodín «Cualquiera», `'cualquiera'`; sin clase predilecta, id 0 sin comodín. */
