@@ -5,8 +5,8 @@ import {
     PlantillaPrerrequisitos,
     PlantillaPrerrequisitosFlags,
     PlantillaRacialContextual,
-    PlantillaRasgoTipoQuitado,
 } from "src/app/interfaces/plantilla";
+import { Id_nombre } from "src/app/interfaces/genericas";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeMovimientos } from "./movimientos-mapper";
@@ -22,7 +22,7 @@ function toStrictArray<T = any>(raw: any): T[] {
 }
 
 /** Los rasgos de su tipo que no tiene la criatura con la plantilla (`{ Id, Nombre }`, la API y la caché igual). */
-function leerRasgosTipoQuitados(raw: any): PlantillaRasgoTipoQuitado[] {
+function leerRasgosTipoQuitados(raw: any): Id_nombre[] {
     return toStrictArray(raw)
         .map((r: any) => ({ Id: toNumber(r?.Id), Nombre: toText(r?.Nombre) }))
         .filter((r) => r.Id > 0);

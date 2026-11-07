@@ -4,6 +4,7 @@ import { Alineamiento } from "./alineamiento";
 import { Comodin } from "./comodin";
 import { Conjuro } from "./conjuro";
 import { DoteContextual } from "./dote-contextual";
+import { Id_nombre } from "./genericas";
 import { Maniobrabilidad } from "./maniobrabilidad";
 import { Movimientos } from "./movimientos";
 import { RacialDetalle } from "./racial";
@@ -204,7 +205,7 @@ export interface Plantilla {
      * Los rasgos de su tipo que no tiene la criatura con la plantilla, aunque sean de su tipo (desde el 2026-11-07): el
      * fantasma de *La senda de los fantasmas* es ajeno sin «sin alma (ajenos)» ni su visión en la oscuridad.
      */
-    Rasgos_tipo_quitados?: PlantillaRasgoTipoQuitado[];
+    Rasgos_tipo_quitados?: Id_nombre[];
     Habilidades: PlantillaHabilidadRef[];
     Sortilegas: PlantillaSortilega[];
     Raciales: PlantillaRacialContextual[];
@@ -302,12 +303,6 @@ export interface PlantillaPrerrequisitosRequest {
 }
 
 /** El cuerpo de `POST /plantillas/add`. */
-/** Un rasgo de tipo que quita la plantilla (`Rasgos_tipo_quitados`). */
-export interface PlantillaRasgoTipoQuitado {
-    Id: number;
-    Nombre: string;
-}
-
 export interface PlantillaCreateRequest {
     plantilla: PlantillaEscalaresRequest;
     prerrequisitos: PlantillaPrerrequisitosRequest;
