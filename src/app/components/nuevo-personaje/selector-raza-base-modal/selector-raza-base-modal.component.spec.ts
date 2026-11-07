@@ -22,12 +22,12 @@ describe('SelectorRazaBaseModalComponent', () => {
         component.candidatas = [
             {
                 raza: crearRaza(1, 'Humano', true),
-                estado: 'eligible',
+                estado: 'elegible',
                 advertencias: [],
             },
             {
                 raza: crearRaza(2, 'Elfo lunar', false),
-                estado: 'eligible_with_warning',
+                estado: 'con_aviso',
                 advertencias: ['Formato de prerequisito no reconocido'],
             },
         ];

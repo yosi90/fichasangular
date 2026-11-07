@@ -244,3 +244,31 @@ export interface RazaCreateResponse {
 export interface RazaActualizadaResponse extends RazaCreateResponse {
     raza: Raza;
 }
+
+/** El estado de una raza base en `GET /razas/{id}/bases`: `con_aviso` si algo no se pudo comprobar (falta un dato). */
+export type EstadoBaseRazaMutada = 'elegible' | 'con_aviso';
+
+/** Una raza que puede ser la base de una raza mutada (`BasesDeRazaMutada.Bases[]`). */
+export interface BaseRazaMutada {
+    Id: number;
+    Nombre: string;
+    Oficial: boolean;
+    Estado: EstadoBaseRazaMutada;
+    Avisos: string[];
+}
+
+/** Lo que la mutación pide del personaje (su alineamiento y su actitud): `Cumple` es `null` sin comprobar. */
+export interface RequisitoDelPersonajeMutacion {
+    Frase: string;
+    Cumple: boolean | null;
+}
+
+/**
+ * `GET /razas/{id}/bases` (`BasesDeRazaMutada`, fase 2 de las razas mutadas): las razas que pueden ser la base de la raza
+ * mutada y lo que pide del personaje. La elegibilidad la decide la API (`docs/publica/endpoints/catalogos.md`).
+ */
+export interface BasesRazaMutada {
+    Raza: { Id: number; Nombre: string };
+    Bases: BaseRazaMutada[];
+    Requisitos_del_personaje: RequisitoDelPersonajeMutacion[];
+}

@@ -640,6 +640,16 @@ describe('NuevoPersonajeComponent', () => {
             getDisciplinas: () => of([]),
         };
         razaSvcMock = {
+            getBasesDeRazaMutada: jasmine.createSpy('getBasesDeRazaMutada').and.callFake(async (idRaza: number) => ({
+                Raza: { Id: idRaza, Nombre: '' },
+                Bases: (component?.razasCatalogo ?? []).filter((raza) => raza.Id !== idRaza).map((raza) => ({
+                    Id: raza.Id, Nombre: raza.Nombre, Oficial: raza.Oficial !== false, Estado: 'elegible', Avisos: [],
+                })),
+                Requisitos_del_personaje: [],
+            })),
+            getRazaSobreBase: jasmine.createSpy('getRazaSobreBase').and.callFake(async () => {
+                throw new Error('Sin raza combinada en la prueba');
+            }),
             getRazas: () => of([
                 crearRazaMock(),
                 {
@@ -786,7 +796,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.Personaje.Alineamiento).toBe('Legal bueno');
     });
 
-    it('al seleccionar una raza mutada abre selector de base y no aplica hasta confirmar', () => {
+    it('al seleccionar una raza mutada abre selector de base y no aplica hasta confirmar', async () => {
         nuevoPSvc.reiniciar();
         component.Personaje = nuevoPSvc.PersonajeCreacion;
         component.selectedInternalTabIndex = 0;
@@ -803,9 +813,11 @@ describe('NuevoPersonajeComponent', () => {
             },
         ];
 
-        component.seleccionarRaza(crearRazaMutadaConPrerequisito());
+        await component.seleccionarRaza(crearRazaMutadaConPrerequisito());
 
+        expect(razaSvcMock.getBasesDeRazaMutada).toHaveBeenCalledWith(99);
         expect(component.modalSelectorRazaBaseAbierto).toBeTrue();
+        expect(component.candidatasRazaBaseModal.map((c) => c.raza.Id)).toEqual([1, 2]);
         expect(nuevoPSvc.RazaSeleccionada).toBeNull();
     });
 
@@ -826,8 +838,10 @@ describe('NuevoPersonajeComponent', () => {
             },
         ];
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        const combinada = { ...crearRazaMutadaConPrerequisito(), Nombre: 'Mutada celestial (combinada)' };
+        razaSvcMock.getRazaSobreBase.and.resolveTo(combinada);
 
-        component.seleccionarRaza(crearRazaMutadaConPrerequisito());
+        await component.seleccionarRaza(crearRazaMutadaConPrerequisito());
         await component.onConfirmarRazaBase({
             ...crearRazaMock(),
             Id: 2,
@@ -839,8 +853,27 @@ describe('NuevoPersonajeComponent', () => {
         });
 
         expect(component.modalSelectorRazaBaseAbierto).toBeFalse();
+        expect(razaSvcMock.getRazaSobreBase).toHaveBeenCalledWith(99, 2);
+        // La raza que se aplica es la que combina la API.
+        expect(nuevoPSvc.PersonajeCreacion.Raza.Nombre).toBe('Mutada celestial (combinada)');
         expect(nuevoPSvc.PersonajeCreacion.RazaBase?.Id).toBe(2);
         expect(component.selectedInternalTabIndex).toBe(1);
+    });
+
+    it('si la API no combina la raza, avisa con su texto y no aplica nada', async () => {
+        nuevoPSvc.reiniciar();
+        component.Personaje = nuevoPSvc.PersonajeCreacion;
+        component.razasCatalogo = [{ ...crearRazaMock(), Id: 2, Nombre: 'Humano base' }];
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        razaSvcMock.getRazaSobreBase.and.rejectWith(new Error('La raza base no cumple lo que pide «Mutada celestial».'));
+
+        await component.seleccionarRaza(crearRazaMutadaConPrerequisito());
+        await component.onConfirmarRazaBase({ ...crearRazaMock(), Id: 2, Nombre: 'Humano base' });
+
+        expect(swalSpy).toHaveBeenCalledWith(jasmine.objectContaining({
+            text: 'La raza base no cumple lo que pide «Mutada celestial».',
+        }));
+        expect(nuevoPSvc.RazaSeleccionada).toBeNull();
     });
 
     it('permite base homebrew solo cuando se activa el toggle', async () => {
@@ -861,8 +894,9 @@ describe('NuevoPersonajeComponent', () => {
         };
         component.razasCatalogo = [baseOficial, baseHomebrew];
         spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        razaSvcMock.getRazaSobreBase.and.resolveTo(crearRazaMutadaConWarning());
 
-        component.seleccionarRaza(crearRazaMutadaConWarning());
+        await component.seleccionarRaza(crearRazaMutadaConWarning());
         await component.onConfirmarRazaBase(baseHomebrew);
         expect(nuevoPSvc.PersonajeCreacion.RazaBase).toBeNull();
 
@@ -882,16 +916,24 @@ describe('NuevoPersonajeComponent', () => {
         };
         component.razasCatalogo = [base];
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        // La API la da con un aviso (algo que no pudo comprobar).
+        razaSvcMock.getBasesDeRazaMutada.and.resolveTo({
+            Raza: { Id: 199, Nombre: 'Mutada incierta' },
+            Bases: [{ Id: 2, Nombre: 'Humano base', Oficial: true, Estado: 'con_aviso', Avisos: ['No se ha podido comprobar: x.'] }],
+            Requisitos_del_personaje: [],
+        });
+        razaSvcMock.getRazaSobreBase.and.resolveTo(crearRazaMutadaConWarning());
 
-        component.seleccionarRaza(crearRazaMutadaConWarning());
+        await component.seleccionarRaza(crearRazaMutadaConWarning());
+        expect(component.candidatasRazaBaseModal.map((c) => c.estado)).toEqual(['con_aviso']);
         await component.onConfirmarRazaBase(base);
 
-        expect(swalSpy).toHaveBeenCalled();
+        expect(swalSpy).toHaveBeenCalledWith(jasmine.objectContaining({ text: 'No se ha podido comprobar: x.' }));
         expect(nuevoPSvc.PersonajeCreacion.RazaBase?.Id).toBe(2);
         expect(component.selectedInternalTabIndex).toBe(1);
     });
 
-    it('si no hay candidatas elegibles muestra alerta y no aplica seleccion', () => {
+    it('si no hay candidatas elegibles muestra alerta y no aplica seleccion', async () => {
         nuevoPSvc.reiniciar();
         component.Personaje = nuevoPSvc.PersonajeCreacion;
         component.selectedInternalTabIndex = 0;
@@ -906,8 +948,12 @@ describe('NuevoPersonajeComponent', () => {
         }];
         const mutadaExigente = crearRazaMutadaConPrerequisito();
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        // La API no da ninguna base.
+        razaSvcMock.getBasesDeRazaMutada.and.resolveTo({
+            Raza: { Id: 99, Nombre: 'Mutada celestial' }, Bases: [], Requisitos_del_personaje: [],
+        });
 
-        component.seleccionarRaza(mutadaExigente);
+        await component.seleccionarRaza(mutadaExigente);
 
         expect(swalSpy).toHaveBeenCalled();
         expect(component.modalSelectorRazaBaseAbierto).toBeFalse();
@@ -962,8 +1008,9 @@ describe('NuevoPersonajeComponent', () => {
             Nombre: 'Elfo base',
         };
         component.razasCatalogo = [base];
+        razaSvcMock.getRazaSobreBase.and.resolveTo(crearRazaMutadaConRacialesOpcionalesPrereq());
 
-        component.seleccionarRaza(crearRazaMutadaConRacialesOpcionalesPrereq());
+        await component.seleccionarRaza(crearRazaMutadaConRacialesOpcionalesPrereq());
         await component.onConfirmarRazaBase(base);
 
         expect(component.modalSelectorRacialesOpcionalesAbierto).toBeTrue();
@@ -1000,8 +1047,9 @@ describe('NuevoPersonajeComponent', () => {
             } as any,
         ];
         component.razasCatalogo = [base];
+        razaSvcMock.getRazaSobreBase.and.resolveTo(mutada);
 
-        component.seleccionarRaza(mutada);
+        await component.seleccionarRaza(mutada);
         await component.onConfirmarRazaBase(base);
 
         const bloqueada = component.gruposRacialesOpcionalesModal
@@ -1022,8 +1070,9 @@ describe('NuevoPersonajeComponent', () => {
         };
         component.razasCatalogo = [base];
         const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+        razaSvcMock.getRazaSobreBase.and.resolveTo(crearRazaMutadaConOpcionalesBloqueadas());
 
-        component.seleccionarRaza(crearRazaMutadaConOpcionalesBloqueadas());
+        await component.seleccionarRaza(crearRazaMutadaConOpcionalesBloqueadas());
         await component.onConfirmarRazaBase(base);
 
         expect(swalSpy).toHaveBeenCalled();

@@ -16,6 +16,8 @@ import { totalesPersonaje, totalHabilidad } from './utils/personaje-totales';
 import { normalizarClaseMoldeado } from './utils/incarnum-mapper';
 import { moldeadoEncarnadoApi } from 'src/testing/incarnum';
 import { claveDeHabilidad } from './utils/habilidad-clave';
+import { normalizeRazaApi } from './utils/raza-mapper';
+import { PROLE_SOBRE_API, RAZAS_API } from 'src/testing/razas-mutadas-api';
 
 /** Las banderas con las que la API marca los especiales que dan familiar o compañero (`Otorga_*`). */
 const BANDERAS_ESPECIAL_MASCOTA: Record<string, Record<string, boolean>> = {
@@ -7588,59 +7590,34 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         expect(svc.PersonajeCreacion.RazaBase).toBeNull();
     });
 
-    it('seleccionarRaza mutada con base guarda RazaBase y aplica raza efectiva', () => {
-        const svc = new NuevoPersonajeService();
-        const tipoHumanoide = crearTipo(1, 'Humanoide');
-        svc.setCatalogoTiposCriatura([tipoHumanoide]);
-        const base = {
-            ...crearRazaMock(tipoHumanoide, [{ Id: 11, Nombre: 'Humano' }]),
-            Id: 10,
-            Nombre: 'Humano base',
-            Correr: 30,
-            Modificadores: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
-            Dgs_adicionales: {
-                Cantidad: 1,
-                Dado: 'd8',
-                Tipo_criatura: 'Humanoide',
-                Ataque_base: 0,
-                Dotes_extra: 0,
-                Puntos_habilidad: 0,
-                Multiplicador_puntos_habilidad: 1,
-                Fortaleza: 0,
-                Reflejos: 0,
-                Voluntad: 0,
-            },
-        } as unknown as Raza;
-        const mutada = {
-            ...crearRazaMock(tipoHumanoide, [{ Id: 12, Nombre: 'Celestial' }]),
-            Id: 20,
-            Nombre: 'Mutada',
-            Mutada: true,
-            Mutacion: { Es_mutada: true },
-            Correr: 40,
-            Modificadores: { Fuerza: 4, Destreza: 0, Constitucion: 2, Inteligencia: 0, Sabiduria: 0, Carisma: 0 },
-            Dgs_adicionales: {
-                Cantidad: 2,
-                Dado: 'd10',
-                Tipo_criatura: 'Ajeno',
-                Ataque_base: 0,
-                Dotes_extra: 0,
-                Puntos_habilidad: 0,
-                Multiplicador_puntos_habilidad: 1,
-                Fortaleza: 0,
-                Reflejos: 0,
-                Voluntad: 0,
-            },
-        } as unknown as Raza;
+    it('seleccionarRaza mutada aplica la raza que combina la API y guarda su base aparte', () => {
+        // La prole de Bahamut sobre cuatro bases, como la dan `GET /razas/21/sobre/{idBase}` y `GET /razas/{idBase}`
+        // (datos de `rol_dev`): la web no combina; aplica lo que llega (fase 2 de las razas mutadas).
+        const esperado: Record<string, { tamano: string; ajuste: number; dgs: number; espacio: number }> = {
+            '5': { tamano: 'Pequeño', ajuste: 0, dgs: 0, espacio: 5 },
+            '18': { tamano: 'Mediano', ajuste: 1, dgs: 2, espacio: 5 },
+            '308': { tamano: 'Mediano', ajuste: 2, dgs: 0, espacio: 5 },
+            '26': { tamano: 'Grande', ajuste: 1, dgs: 0, espacio: 10 },
+        };
+        Object.entries(esperado).forEach(([idBase, cifras]) => {
+            const svc = new NuevoPersonajeService();
+            svc.setCatalogoTiposCriatura([crearTipo(11, 'Humanoide')]);
+            const combinada = normalizeRazaApi(PROLE_SOBRE_API[idBase]);
+            const base = normalizeRazaApi(RAZAS_API[idBase]);
 
-        const aplicado = svc.seleccionarRaza(mutada, base);
+            // La prole tiene los tres aspectos dracónicos como raciales opcionales (grupo 1): se elige el corazón.
+            expect(svc.seleccionarRaza(combinada, base, { 1: 'id:34' })).withContext(idBase).toBeTrue();
 
-        expect(aplicado).toBeTrue();
-        expect(svc.PersonajeCreacion.RazaBase?.Id).toBe(10);
-        expect(svc.PersonajeCreacion.Raza.Id).toBe(20);
-        expect(svc.PersonajeCreacion.Raza.Modificadores.Fuerza).toBe(4);
-        expect(svc.PersonajeCreacion.Correr).toBe(40);
-        expect(svc.PersonajeCreacion.Raza.Dgs_adicionales.Cantidad).toBe(3);
+            const pj = svc.PersonajeCreacion;
+            const raza = svc.RazaSeleccionada as Raza;
+            expect([pj.Raza.Id, pj.RazaBase?.Id]).withContext(idBase).toEqual([21, Number(idBase)]);
+            expect([raza.Tamano?.Nombre, raza.Ajuste_nivel, raza.Dgs_adicionales.Cantidad, raza.Espacio])
+                .withContext(idBase).toEqual([cifras.tamano, cifras.ajuste, cifras.dgs, cifras.espacio]);
+            expect(pj.Correr).withContext(idBase).toBe(base.Correr);
+            expect(pj.Raciales.map((r) => r.Id)).withContext(idBase)
+                .toEqual([...base.Raciales.map((r) => r.Id), 168, 34]);
+            expect(pj.Idiomas.map((i) => i.Nombre)).withContext(idBase).toEqual((base.Idiomas ?? []).map((i) => i.Nombre));
+        });
     });
 
     it('seleccionarRaza requiere resolver grupos de raciales opcionales', () => {
@@ -7705,7 +7682,7 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         expect(svc.PersonajeCreacion.RazaBase).toBeNull();
     });
 
-    it('mutada + base + opcionales aplica raza efectiva y conserva RazaBase', () => {
+    it('mutada + base + opcionales aplica la raza combinada y conserva RazaBase', () => {
         const svc = new NuevoPersonajeService();
         const tipoHumanoide = crearTipo(1, 'Humanoide');
         svc.setCatalogoTiposCriatura([tipoHumanoide]);
@@ -7716,6 +7693,7 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
             Nombre: 'Humano base',
             Raciales: [createRacialPlaceholder('Base obligatoria', 1)],
         } as unknown as Raza;
+        // Ya combinada por la API (`GET /razas/{id}/sobre/{idBase}`): los raciales de la base y los de la mutada.
         const mutada = {
             ...crearRazaMock(tipoHumanoide, [{ Id: 12, Nombre: 'Sangre de dragon' }]),
             Id: 20,
@@ -7723,6 +7701,7 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
             Mutada: true,
             Mutacion: { Es_mutada: true },
             Raciales: [
+                createRacialPlaceholder('Base obligatoria', 1),
                 { ...createRacialPlaceholder('Linaje de cobre', 2), Opcional: 1 },
                 { ...createRacialPlaceholder('Linaje de plata', 3), Opcional: 1 },
             ],

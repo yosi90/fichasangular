@@ -26,7 +26,7 @@
                         {{item.raza.Nombre}}
                         <span class="creacion-opcion__nota">{{item.raza.Manual || 'Manual no especificado'}}</span>
                     </span>
-                    <span class="creacion-opcion__estado" *ngIf="item.estado === 'eligible_with_warning'">Validación parcial</span>
+                    <span class="creacion-opcion__estado" *ngIf="item.estado === 'con_aviso'">Validación parcial</span>
                 </div>
             </div>
             <ng-template #sinRazas>
@@ -48,7 +48,7 @@
                     <span class="creacion-etiqueta" *ngIf="getAjusteNivel(seleccion.raza) > 0">Ajuste +{{getAjusteNivel(seleccion.raza)}}</span>
                     <span class="creacion-etiqueta" *ngIf="getDgsExtra(seleccion.raza) > 0">+{{getDgsExtra(seleccion.raza)}} DG</span>
                 </div>
-                <p class="creacion-aviso" *ngIf="seleccion.estado === 'eligible_with_warning'">
+                <p class="creacion-aviso" *ngIf="seleccion.estado === 'con_aviso'">
                     Algunos prerrequisitos no se pudieron validar automáticamente.
                 </p>
             </ng-container>

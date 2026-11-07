@@ -1,13 +1,13 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { Raza } from 'src/app/interfaces/raza';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
-import { EstadoElegibilidadRazaBase } from 'src/app/services/utils/raza-mutacion';
+import { EstadoBaseRazaMutada } from 'src/app/interfaces/razas-api';
 import { esElementoInteractivoParaEnter } from 'src/app/services/utils/teclado';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 
 interface CandidataRazaBaseView {
     raza: Raza;
-    estado: EstadoElegibilidadRazaBase;
+    estado: EstadoBaseRazaMutada;
     advertencias: string[];
 }
 
