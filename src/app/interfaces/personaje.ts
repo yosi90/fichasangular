@@ -2,6 +2,7 @@ import { AptitudSortilega } from "./aptitud-sortilega";
 import { ArmaNaturalPersonaje } from "./arma-natural";
 import type { PenalizacionExperiencia } from "src/app/services/utils/penalizacion-experiencia";
 import type { HomebrewGuardado } from "src/app/services/utils/personaje-oficialidad";
+import type { NivelTomado } from "src/app/services/utils/niveles-creacion";
 import { Conjuro } from "./conjuro";
 import { DoteContextual, DoteLegacy } from "./dote-contextual";
 import { EnemigoPredilectoSeleccion } from "./enemigo-predilecto-seleccion";
@@ -147,7 +148,7 @@ export interface Personaje extends PersonajeSimple {
      * Solo en la creación: el orden en que se tomaron sus niveles de clase (`aplicarSiguienteNivelClase`), para mandarlo
      * en `niveles` del alta (desde el 2026-11-07; `docs/publica/SESIONES_FRONT.md`). Va en el borrador con el personaje.
      */
-    Orden_niveles?: Array<{ idClase: number; nivelClase: number; }>;
+    Orden_niveles?: NivelTomado[];
     desgloseClases: {
         Id?: number;
         Nombre: string;

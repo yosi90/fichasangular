@@ -1,4 +1,5 @@
 import {
+    PersonajeCreateColeccionesDto,
     PersonajeCreateNivelDto,
     PersonajeCreateNivelEleccionDto,
     PersonajeProgresionLanzadorSeleccionDto,
@@ -32,9 +33,9 @@ export interface EntradaNivelesCreacion {
     /** Los DG de la tirada de PG elegida, en su orden (`ResultadoPuntosGolpe.dados`). */
     dados?: DadoDeGolpe[] | null;
     /** Las dotes que se guardan (`colecciones.dotes`). */
-    dotes?: Array<{ idDote: number; idExtra?: number; origen?: string; }>;
+    dotes?: PersonajeCreateColeccionesDto['dotes'];
     /** Los conjuros que se guardan (`colecciones.conjurosConocidos`); los copiados al libro no son de ningún nivel. */
-    conjuros?: Array<{ idConjuro: number; idClase?: number; origen?: string; copiado?: boolean; }>;
+    conjuros?: PersonajeCreateColeccionesDto['conjurosConocidos'];
     /** Los aumentos de nivel de lanzador (`progresionLanzador.selecciones`). */
     aumentosLanzador?: PersonajeProgresionLanzadorSeleccionDto[];
     /** Los DG que tiene antes de sus niveles de clase (los raciales que cuentan y los de sus plantillas). */
