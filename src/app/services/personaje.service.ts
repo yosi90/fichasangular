@@ -915,6 +915,8 @@ export class PersonajeService {
                 message: `${response?.message ?? 'Personaje creado'}`,
                 idPersonaje,
                 ownerUserId,
+                // Su sesión 0 «Creación» (desde el 2026-11-07; `docs/publica/SESIONES_FRONT.md`).
+                ...(toInt(response?.idSesion) > 0 ? { idSesion: toInt(response.idSesion) } : {}),
             };
         } catch (error: any) {
             throw errorDePerfil(error, 'No se pudo crear el personaje en la API.');

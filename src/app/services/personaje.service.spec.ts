@@ -969,6 +969,7 @@ describe('PersonajeService', () => {
                 message: 'ok',
                 idPersonaje: '22',
                 ownerUserId: '00000000-0000-0000-0000-000000000009',
+                idSesion: 41,
             })),
         } as any;
         const service = crearServicio(httpMock);
@@ -999,6 +1000,8 @@ describe('PersonajeService', () => {
         expect(httpMock.post).toHaveBeenCalled();
         expect(response.idPersonaje).toBe(22);
         expect(response.ownerUserId).toBe('00000000-0000-0000-0000-000000000009');
+        // Su sesión 0 (sesiones, fase 1).
+        expect(response.idSesion).toBe(41);
     });
 
     it('crearPersonajeApiDesdeCreacion preserva status y code en 403 funcionales', async () => {
