@@ -412,12 +412,12 @@ export class DetallesRazaComponent {
      * «Cualquiera y guerrero» (sobre un humano). Ninguna de ellas cuenta para la penalización de PX por multiclase.
      */
     private datoClasesPredilectas(): DatoFicha {
-        const otras = this.textoClases(this.raza?.Clases_predilectas_extra);
+        const otras = this.nombresDeClases(this.raza?.Clases_predilectas_extra);
         const principal = mayusculaInicial(this.raza?.Clase_predilecta);
-        return otras
+        return otras.length > 0
             ? {
                 etiqueta: 'Clases predilectas',
-                valor: unirLista([principal, ...(this.raza?.Clases_predilectas_extra ?? []).map((c) => c.Nombre.trim().toLowerCase())], 'y'),
+                valor: unirLista([principal, ...otras], 'y'),
                 ayuda: 'Ninguna cuenta para la penalización de PX por multiclase (Manual del jugador, cap. 3)',
             }
             : { etiqueta: 'Clase predilecta', valor: principal };
@@ -425,8 +425,13 @@ export class DetallesRazaComponent {
 
     /** «Paladín y monje»; `null` sin ninguna. */
     private textoClases(clases: Id_nombre[] | null | undefined): string | null {
-        const nombres = (clases ?? []).map((clase) => `${clase?.Nombre ?? ''}`.trim().toLowerCase()).filter((nombre) => nombre.length > 0);
+        const nombres = this.nombresDeClases(clases);
         return nombres.length > 0 ? mayusculaInicial(unirLista(nombres, 'y')) : null;
+    }
+
+    /** Los nombres de esas clases, en minúscula y sin vacíos («paladín», «monje»). */
+    private nombresDeClases(clases: Id_nombre[] | null | undefined): string[] {
+        return (clases ?? []).map((clase) => `${clase?.Nombre ?? ''}`.trim().toLowerCase()).filter((nombre) => nombre.length > 0);
     }
 
     private construirDatos(): DatoFicha[] {
