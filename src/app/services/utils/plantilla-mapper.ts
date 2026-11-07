@@ -229,6 +229,9 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
         Nombre_original: toNullableText(raw?.Nombre_original),
         Traducido: toBoolean(raw?.Traducido),
         Oficial: toBoolean(raw?.Oficial),
+        Monstruo_forma_animal: toNumber(raw?.Monstruo_forma_animal?.Id) > 0
+            ? { Id: toNumber(raw.Monstruo_forma_animal.Id), Nombre: toText(raw.Monstruo_forma_animal.Nombre) }
+            : null,
         Dotes: partes.Dotes,
         Subtipos: partes.Subtipos,
         Habilidades: toArray(raw?.Habilidades).map((h: any) => ({

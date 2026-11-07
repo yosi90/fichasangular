@@ -16,7 +16,7 @@ import { InsercionMarcoComponent, ModoInsercion, confirmarCierreConCambios } fro
     template: `
         <form (ngSubmit)="envios = envios + 1">
             <app-insercion-marco [modo]="modo" tipo="Raza" [iconoTipo]="iconoTipo" [enVentana]="enVentana" [nombre]="nombre" [oficial]="oficial" [pasos]="pasos"
-                [(pasoActual)]="paso" [pasosConCambios]="pasosConCambios" [detalleTipo]="detalleTipo" [avisoPermisos]="avisoPermisos" [guardando]="guardando" [nota]="nota"
+                [(pasoActual)]="paso" [pasosConCambios]="pasosConCambios" [detalleTipo]="detalleTipo" [avisoPermisos]="avisoPermisos" [avisoBloqueo]="avisoBloqueo" [guardando]="guardando" [nota]="nota"
                 textoAccion="Crear raza">
                 <div class="insercion-paso contenido-uno" [hidden]="paso !== 0">Uno</div>
                 <div class="insercion-paso contenido-dos" [hidden]="paso !== 1">Dos</div>
@@ -36,6 +36,7 @@ class AnfitrionComponent {
     pasosConCambios: number[] = [];
     detalleTipo = '';
     avisoPermisos = '';
+    avisoBloqueo = '';
     guardando = false;
     nota = '';
     envios = 0;
@@ -155,6 +156,15 @@ describe('InsercionMarcoComponent', () => {
         expect(accion().disabled).toBeTrue();
         expect(texto('.insercion-pie__nota')).toBe('No puedes guardar sin permisos.');
         expect(raiz().querySelector('.insercion-pie__nota--aviso')).not.toBeNull();
+    });
+
+    it('con un aviso de bloqueo (un licántropo generado) lo enseña y desactiva la acción, sin hablar de permisos', () => {
+        anfitrion.avisoBloqueo = 'Esta plantilla se genera sola a partir del monstruo «Lobo»: para cambiarla, modifica el monstruo.';
+        fixture.detectChanges();
+
+        expect(texto('.insercion-aviso')).toContain('se genera sola a partir del monstruo «Lobo»');
+        expect(accion().disabled).toBeTrue();
+        expect(texto('.insercion-pie__nota')).not.toContain('permisos');
     });
 
     it('mientras guarda dice «Guardando…» y desactiva la acción', () => {

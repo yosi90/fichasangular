@@ -7,6 +7,8 @@ import {
     construirMonstruoRequest,
     listasDesdeMonstruo,
     listasMonstruoVacias,
+    nombreDeDieta,
+    textoLicantropos,
     valorDesdeMonstruo,
     valorMonstruoNuevo,
 } from './monstruo-formulario';
@@ -41,6 +43,37 @@ describe('monstruo-formulario', () => {
         expect(cuerpo.monstruo.tesoro).toBe('');
         expect(cuerpo.monstruo.espacio).toBe(2.5);
         expect(cuerpo.monstruo.id_maniobrabilidad).toBeNull();
+    });
+
+    it('la dieta va tal cual o null (sin decir), y se lee del monstruo', () => {
+        expect(construirMonstruoRequest(valorMonstruoNuevo(), listasMonstruoVacias()).monstruo.dieta).toBeNull();
+        const carnivoro = construirMonstruoRequest({ ...valorMonstruoNuevo(), dieta: 'carnivoro' }, listasMonstruoVacias());
+        expect(carnivoro.monstruo.dieta).toBe('carnivoro');
+        const raro = construirMonstruoRequest({ ...valorMonstruoNuevo(), dieta: 'frugivoro' as any }, listasMonstruoVacias());
+        expect(raro.monstruo.dieta).toBeNull();
+        const lobo = normalizeMonstruoDetalle({ ...IDA_Y_VUELTA_MONSTRUOS.find((item) => item.id === 48)!.get, Dieta: 'carnivoro' }, 1);
+        expect(valorDesdeMonstruo(lobo).dieta).toBe('carnivoro');
+        expect(nombreDeDieta('omnivoro')).toBe('Omnívoro');
+        expect(nombreDeDieta(null)).toBeNull();
+    });
+
+    it('cuenta en el aviso de guardado lo que ha pasado con sus licántropos', () => {
+        expect(textoLicantropos(null)).toBe('');
+        expect(textoLicantropos({ Generadas: [], Retiradas: [], Desenlazadas: [], Avisos: [] })).toBe('');
+        expect(textoLicantropos({
+            Generadas: [
+                { Id: 300, Nombre: 'Licántropo (jabalí) [Nacido]', Nacimiento: true, Accion: 'creada' },
+                { Id: 301, Nombre: 'Licántropo (jabalí) [Infectado]', Nacimiento: false, Accion: 'creada' },
+            ],
+            Retiradas: [], Desenlazadas: [],
+            Avisos: [{ code: 'sin_armas_naturales', message: '«Jabalí» no tiene armas naturales como dato.' }],
+        })).toBe('Se han creado sus licántropos: Licántropo (jabalí) [Nacido] y Licántropo (jabalí) [Infectado]. '
+            + '«Jabalí» no tiene armas naturales como dato.');
+        expect(textoLicantropos({
+            Generadas: [{ Id: 10, Nombre: 'Licántropo (lobo) [Nacido]', Nacimiento: true, Accion: 'regenerada' }],
+            Retiradas: [{ Id: 11, Nombre: 'Licántropo (lobo) [Infectado]' }], Desenlazadas: [], Avisos: [],
+        })).toBe('Sus licántropos se han regenerado: Licántropo (lobo) [Nacido]. '
+            + 'Ya no puede tener licántropos: se han retirado Licántropo (lobo) [Infectado].');
     });
 
     it('lee los niveles de clase y los alineamientos que pide, con null donde la lectura no da nada', () => {

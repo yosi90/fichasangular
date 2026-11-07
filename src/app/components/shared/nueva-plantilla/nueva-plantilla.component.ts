@@ -248,6 +248,17 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
         return textoSinPermisos(PLANTILLA, this.esEdicion);
     }
 
+    /**
+     * Un licántropo generado de su animal (`Monstruo_forma_animal`) no se modifica a mano: se regenera al editar el
+     * monstruo, y la API da 409 `plantilla_generada` (los licántropos automáticos, 2026-11-06).
+     */
+    get avisoGenerada(): string {
+        const animal = this.esEdicion ? this.plantillaCargada?.Monstruo_forma_animal : null;
+        return animal
+            ? `Esta plantilla se genera sola a partir del monstruo «${animal.Nombre}»: para cambiarla, modifica el monstruo.`
+            : '';
+    }
+
     get textoAccion(): string {
         return this.esEdicion ? 'Guardar cambios' : 'Crear plantilla';
     }
@@ -414,7 +425,7 @@ export class NuevaPlantillaComponent implements OnInit, OnChanges, OnDestroy, Ed
             await avisarSinPermisos(this.userSvc.getPermissionDeniedMessage());
             return;
         }
-        if (this.guardando || this.accionDesactivada)
+        if (this.guardando || this.accionDesactivada || this.avisoGenerada)
             return;
         this.errores.limpiar();
         this.form.markAllAsTouched();

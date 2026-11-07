@@ -332,4 +332,30 @@ describe('DetallesPlantillaComponent', () => {
         lapiz!.click();
         expect(abiertas.map((plantilla) => plantilla.Id)).toEqual([3]);
     });
+
+    it('un licántropo generado dice de qué animal sale, lo enlaza y no tiene lápiz', () => {
+        usuario.can.and.returnValue(true);
+        const animales: number[] = [];
+        component.modificar.subscribe(() => undefined);
+        component.monstruoDetalles.subscribe((id) => animales.push(id));
+        component.plantilla = crearPlantilla({ Nombre: 'Licántropo (lobo) [Nacido]', Monstruo_forma_animal: { Id: 48, Nombre: 'Lobo' } });
+        fixture.detectChanges();
+
+        expect(titulos()).toContain('Animal base');
+        expect(limpio(lateral('Animal base'))).toContain('Se genera sola a partir de este monstruo');
+        enlace('Lobo').click();
+        expect(animales).toEqual([48]);
+        expect(texto()).not.toContain('Modificar');
+    });
+
+    it('sin quien escuche, el animal sale sin enlace; y una plantilla normal no lo pinta', () => {
+        component.plantilla = crearPlantilla({ Monstruo_forma_animal: { Id: 48, Nombre: 'Lobo' } });
+        fixture.detectChanges();
+        expect(limpio(lateral('Animal base'))).toContain('Lobo');
+        expect(Array.from(elemento().querySelectorAll('button')).some((boton) => boton.textContent?.trim() === 'Lobo')).toBeFalse();
+
+        component.plantilla = crearPlantilla({ Monstruo_forma_animal: null });
+        fixture.detectChanges();
+        expect(titulos()).not.toContain('Animal base');
+    });
 });

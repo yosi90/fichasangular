@@ -44,6 +44,10 @@
         <mat-icon aria-hidden="true">lock</mat-icon>
         <span>{{avisoPermisos}}</span>
     </p>
+    <p class="insercion-aviso" *ngIf="bloqueado && !sinPermisos" role="status">
+        <mat-icon aria-hidden="true">link</mat-icon>
+        <span>{{avisoBloqueo}}</span>
+    </p>
     <p class="insercion-cargando" *ngIf="cargando" role="status">
         <mat-icon aria-hidden="true">hourglass_top</mat-icon>
         <span>{{cargando}}</span>

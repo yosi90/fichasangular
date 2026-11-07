@@ -26,6 +26,7 @@ import { textoEjesAlineamiento } from 'src/app/services/utils/alineamiento-contr
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { buildManiobrabilidadInfoSecciones, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { toNumber } from 'src/app/services/utils/normalizacion';
+import { nombreDeDieta } from 'src/app/services/utils/monstruo-formulario';
 import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { porNombre } from 'src/app/services/utils/orden-texto';
 import {
@@ -360,6 +361,8 @@ export class DetallesMonstruoComponent {
                 alPulsar: idTipo > 0 ? () => this.abrirDetallesTipoCriatura(idTipo) : undefined,
             },
             { etiqueta: 'Tamaño', valor: m?.Tamano?.Nombre },
+            // Un animal carnívoro u omnívoro de 1 DG o más tiene licántropos (los licántropos automáticos, 2026-11-06).
+            { etiqueta: 'Dieta', valor: nombreDeDieta(m?.Dieta) },
             datoAlineamiento(this.monstruoData?.Alineamiento),
             { etiqueta: 'Tesoro', valor: m?.Tesoro },
             {

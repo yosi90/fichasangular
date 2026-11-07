@@ -7,6 +7,7 @@ import { environment } from "src/environments/environment";
 import {
     CompaneroMonstruoDetalle,
     FamiliarMonstruoDetalle,
+    LicantroposDelMonstruo,
     MonstruoCreateRequest,
     MonstruoDetalle,
     MonstruoMutacionResponse,
@@ -106,7 +107,12 @@ export class MonstruoService {
 
     private leerMutacion(response: any, mensajePorDefecto: string): MonstruoMutacionResponse {
         const { message, id } = leerRespuestaDeEscritura(response, 'idMonstruo', mensajePorDefecto);
-        return { message, idMonstruo: id, monstruo: response?.monstruo ? normalizeMonstruoDetalle(response.monstruo, 1) : null };
+        return {
+            message,
+            idMonstruo: id,
+            monstruo: response?.monstruo ? normalizeMonstruoDetalle(response.monstruo, 1) : null,
+            licantropos: leerLicantropos(response?.licantropos),
+        };
     }
 
     getFamiliar(idFamiliar: number): Observable<FamiliarMonstruoDetalle> {
@@ -151,4 +157,22 @@ export class MonstruoService {
         );
     }
 
+}
+
+/** `licantropos` de la respuesta del alta y la edición, con las listas siempre presentes; `null` si no viene. */
+export function leerLicantropos(raw: any): LicantroposDelMonstruo | null {
+    if (!raw || typeof raw !== 'object')
+        return null;
+    const lista = (valor: any) => Array.isArray(valor) ? valor : [];
+    const referencia = (item: any) => ({ Id: toInt(item?.Id), Nombre: `${item?.Nombre ?? ''}` });
+    return {
+        Generadas: lista(raw.Generadas).map((item: any) => ({
+            ...referencia(item),
+            Nacimiento: item?.Nacimiento === true,
+            Accion: item?.Accion === 'regenerada' || item?.Accion === 'enlazada' ? item.Accion : 'creada',
+        })),
+        Retiradas: lista(raw.Retiradas).map(referencia),
+        Desenlazadas: lista(raw.Desenlazadas).map(referencia),
+        Avisos: lista(raw.Avisos).map((item: any) => ({ code: `${item?.code ?? ''}`, message: `${item?.message ?? ''}` })),
+    };
 }

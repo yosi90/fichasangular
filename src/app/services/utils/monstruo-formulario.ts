@@ -3,8 +3,11 @@ import { FilaNombrada } from 'src/app/components/shared/insercion-marco/filas-re
 import { CamposDeFormulario } from 'src/app/components/shared/insercion-marco/errores-de-formulario';
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import {
+    DIETAS_MONSTRUO,
+    LicantroposDelMonstruo,
     MonstruoCreateRequest,
     MonstruoDetalle,
+    MonstruoDieta,
     MonstruoEscalaresRequest,
 } from 'src/app/interfaces/monstruo';
 import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
@@ -15,6 +18,38 @@ import { idsUnicosOrdenados, toInt, toNumber, toNumberOrNull, toPositiveInt, toT
 // y su paso, el cuerpo de `POST /monstruos/add` y de `PUT /monstruos/<id>` (`MonstruoCreateRequest` en
 // `docs/publica/endpoints/catalogos.md`), el relleno desde `GET /monstruos/<id>` y lo que cambia al modificar. Todo es
 // puro para probarlo sin la pantalla.
+
+/**
+ * Las dietas que se pueden elegir, con su nombre: un animal carnívoro u omnívoro puede ser la base de un licántropo, y
+ * la API genera sus plantillas al guardarlo (Manual de monstruos 1, pág. 177; 2026-11-06). Sin elegir, «sin decir».
+ */
+export const DIETAS_MONSTRUO_OPCIONES: readonly { valor: MonstruoDieta; nombre: string; }[] = DIETAS_MONSTRUO.map((valor) => ({
+    valor,
+    nombre: { carnivoro: 'Carnívoro', omnivoro: 'Omnívoro', herbivoro: 'Herbívoro' }[valor],
+}));
+
+/** El nombre de una dieta («Carnívoro»), o `null` sin decir. */
+export function nombreDeDieta(dieta: MonstruoDieta | null | undefined): string | null {
+    return DIETAS_MONSTRUO_OPCIONES.find((opcion) => opcion.valor === dieta)?.nombre ?? null;
+}
+
+/**
+ * Lo que dice el aviso de guardado sobre los licántropos del monstruo (`licantropos` de la respuesta): los creados, si
+ * se han regenerado, los retirados y los avisos de la API. Vacío si no ha pasado nada.
+ */
+export function textoLicantropos(licantropos: LicantroposDelMonstruo | null | undefined): string {
+    if (!licantropos)
+        return '';
+    const nombres = (lista: { Nombre: string; }[]) => lista.map((item) => item.Nombre).join(' y ');
+    const creadas = licantropos.Generadas.filter((item) => item.Accion === 'creada');
+    const regeneradas = licantropos.Generadas.filter((item) => item.Accion !== 'creada');
+    return [
+        creadas.length > 0 ? `Se han creado sus licántropos: ${nombres(creadas)}.` : '',
+        regeneradas.length > 0 ? `Sus licántropos se han regenerado: ${nombres(regeneradas)}.` : '',
+        licantropos.Retiradas.length > 0 ? `Ya no puede tener licántropos: se han retirado ${nombres(licantropos.Retiradas)}.` : '',
+        ...licantropos.Avisos.map((aviso) => aviso.message),
+    ].filter((texto) => texto.length > 0).join(' ');
+}
 
 /** Los seis pasos de la pantalla, en orden. */
 export const PASOS_MONSTRUO: readonly string[] = [
@@ -49,6 +84,7 @@ export const CAMPOS_MONSTRUO: CamposDeFormulario = {
     id_tipo: { etiqueta: 'Tipo de criatura', paso: 0 },
     subtipos: { etiqueta: 'Subtipos', paso: 0 },
     id_tamano: { etiqueta: 'Tamaño', paso: 0 },
+    dieta: { etiqueta: 'Dieta', paso: 0 },
     id_alineamiento: { etiqueta: 'Alineamiento', paso: 0 },
     valor_desafio: { etiqueta: 'Valor de desafío', paso: 0 },
     tesoro: { etiqueta: 'Tesoro', paso: 0 },
@@ -185,6 +221,7 @@ export function valorMonstruoNuevo(): MonstruoFormularioValor {
         companero: false,
         id_alineamiento: null,
         oficial: false,
+        dieta: null,
     };
 }
 
@@ -244,6 +281,7 @@ export function valorDesdeMonstruo(monstruo: MonstruoDetalle): MonstruoFormulari
         companero: monstruo.Companero === true,
         id_alineamiento: toPositiveInt(monstruo.Alineamiento?.Id),
         oficial: monstruo.Oficial === true,
+        dieta: monstruo.Dieta ?? null,
     };
 }
 
@@ -307,6 +345,8 @@ export function construirMonstruoRequest(valor: MonstruoFormularioValor, listas:
             monstruo[campo] = toPositiveInt(dato);
         else if (campo === 'espacio')
             monstruo[campo] = toNumber(dato);
+        else if (campo === 'dieta')
+            monstruo[campo] = DIETAS_MONSTRUO.includes(dato as MonstruoDieta) ? dato : null;
         else
             monstruo[campo] = toInt(dato);
     });

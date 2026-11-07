@@ -4,6 +4,7 @@ import { DoteContextual } from "src/app/interfaces/dote-contextual";
 import { IdiomaDetalle } from "src/app/interfaces/idioma";
 import {
     CompaneroMonstruoDetalle,
+    DIETAS_MONSTRUO,
     EspecialContextualMonstruo,
     FamiliarMonstruoDetalle,
     MonstruoAlineamientoBasicoRef,
@@ -13,6 +14,7 @@ import {
     MonstruoDadosGolpe,
     MonstruoDefensa,
     MonstruoDetalle,
+    MonstruoDieta,
     MonstruoHabilidad,
     MonstruoNivelClase,
     MonstruoPersonajesRelacionados,
@@ -277,6 +279,7 @@ function normalizeMonstruoBase(raw: any, depth: number): MonstruoDetalle {
         Familiar: toBoolean(raw?.Familiar),
         Companero: toBoolean(raw?.Companero),
         Oficial: toBoolean(raw?.Oficial),
+        Dieta: leerDieta(raw?.Dieta),
         Idiomas: normalizeIdiomaArray(raw?.Idiomas),
         Alineamientos_requeridos: normalizeAlineamientosRequeridos(raw?.Alineamientos_requeridos),
         Sortilegas: toArray(raw?.Sortilegas).map((item) => normalizeSortilega(item)),
@@ -366,4 +369,10 @@ export function normalizeCompaneroMonstruoDetalleArray(raw: any, depth = 1): Com
     return toArray(raw)
         .map((item) => normalizeCompaneroMonstruoDetalle(item, depth))
         .filter((item) => item.Id_companero > 0);
+}
+
+/** La dieta, si es una de las que da la API; si no, `null` (sin decir). */
+function leerDieta(valor: any): MonstruoDieta | null {
+    const texto = `${valor ?? ''}`.trim() as MonstruoDieta;
+    return DIETAS_MONSTRUO.includes(texto) ? texto : null;
 }

@@ -193,6 +193,11 @@ export interface Plantilla {
     Nombre_original: string | null;
     Traducido: boolean;
     Oficial: boolean;
+    /**
+     * El animal del que sale un licántropo generado (los licántropos automáticos, 2026-11-06): se regenera al editar ese
+     * monstruo y no se modifica a mano (`PUT` da 409 `plantilla_generada`). `null` en las demás.
+     */
+    Monstruo_forma_animal?: { Id: number; Nombre: string; } | null;
     Dotes: DoteContextual[];
     Subtipos: SubtipoRef[];
     Habilidades: PlantillaHabilidadRef[];
