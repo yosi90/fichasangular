@@ -52,7 +52,7 @@ import { modificadoresDePartes, normalizarTotal, totalVacio } from './utils/pers
 import { normalizarDefensa, normalizarDinero, normalizarModificadoresEquipo, normalizarPiezasEquipo } from './utils/personaje-equipo-mapper';
 import { resumenClases } from './utils/resumen-clases';
 import { leerComodin } from './utils/comodin';
-import { penalizacionExperiencia } from './utils/penalizacion-experiencia';
+import { noPenalizaMulticlase, penalizacionExperiencia } from './utils/penalizacion-experiencia';
 import { idExtraHabilidadParaGuardar } from './utils/habilidad-extra-visible';
 import { errorDePerfil, mensajeDeError } from './utils/error-api';
 import { normalizarTamanoFicha } from './utils/tamano-efectivo';
@@ -1066,10 +1066,12 @@ export class PersonajeService {
             ModCarisma: element?.mcar,
             NEP: nep,
             Experiencia: experienciaParaNivel(nep),
-            // La penalización de PX por multiclase, con la misma regla que la creación (MJ cap. 3): no se guarda.
+            // La penalización de PX por multiclase, con la misma regla que la creación (MJ cap. 3): no se guarda. No cuentan
+            // las de prestigio ni las que no penalizan la multiclase (las clases de monstruo), como en la creación.
             Penalizacion_experiencia: penalizacionExperiencia(
                 toArray<PersonajeClaseDto>(element?.clases).map((clase) => ({
-                    id: toInt(clase?.id), nombre: toText(clase?.nombre).trim(), nivel: toNumber(clase?.nivel), prestigio: toBoolean(clase?.prestigio),
+                    id: toInt(clase?.id), nombre: toText(clase?.nombre).trim(), nivel: toNumber(clase?.nivel),
+                    prestigio: noPenalizaMulticlase({ Prestigio: clase?.prestigio, Sin_penalizacion_multiclase: clase?.sinPenalizacionMulticlase }),
                 })),
                 { id: toInt(raza?.Id_clase_predilecta), comodin: leerComodin(raza?.Clase_predilecta_comodin) },
             ),

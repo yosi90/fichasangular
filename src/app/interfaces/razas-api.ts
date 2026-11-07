@@ -307,6 +307,20 @@ export interface OperacionMutacion {
     Clave: string;
     Nombre: string;
     Descripcion: string;
+    /** Si lleva un valor (`cambios_mutacion[].valor`) y cuál; `null`, ninguno (desde el 2026-11-07). */
+    Valor: ValorOperacionMutacion | null;
+}
+
+/**
+ * El valor de una operación de una mutación (`Operaciones[].Valor` del modelo): los pasos de tamaño (obligatorio) o el
+ * mínimo del resultado de un `sumar` (opcional: la momia de *Libris Mortis*, -10' hasta un mínimo de 10').
+ */
+export interface ValorOperacionMutacion {
+    /** La etiqueta del campo («Categorías (±)», «Mínimo del resultado»). */
+    Nombre: string;
+    Obligatorio: boolean;
+    Minimo: number;
+    Maximo: number;
 }
 
 /**

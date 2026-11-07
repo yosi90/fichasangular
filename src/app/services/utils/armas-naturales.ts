@@ -91,16 +91,22 @@ function total(estado: Estado): number {
 
 /**
  * Cuántas armas naturales tiene un personaje (la suma de `Cantidad`) en la forma en que más tiene: las de su raza (una
- * raza por edades ya llega resuelta a su edad) y, encima, las de cada plantilla en su orden. Las de forma `animal` o
- * `hibrida` crean esa forma, que parte de la normal; el personaje puede usar una dote como Ataque múltiple en la forma en
- * que llega (propuesta del máster del 2026-11-06: el licántropo lobo, en la híbrida, con dos garras y el mordisco).
+ * raza por edades ya llega resuelta a su edad), las de sus aptitudes de clase (`aptitudes`: el golpetazo, el mordisco y
+ * las dos garras de las clases de monstruo de *Libris Mortis*; las tiene si no tenía tantas de ese tipo, como el modo
+ * `minimo`, así que el golpetazo de la raza mutada y el de su clase son uno) y, encima, las de cada plantilla en su orden.
+ * Las de forma `animal` o `hibrida` crean esa forma, que parte de la normal; el personaje puede usar una dote como Ataque
+ * múltiple en la forma en que llega (propuesta del máster del 2026-11-06: el licántropo lobo, en la híbrida, con dos
+ * garras y el mordisco).
  */
 export function contarArmasNaturales(
     raza: { Armas_naturales?: readonly ArmaNatural[] | null; } | null | undefined,
     plantillas: readonly ({ Armas_naturales?: readonly ArmaNaturalPlantilla[] | null; } | null | undefined)[] = [],
+    aptitudes: readonly ArmaNatural[] = [],
 ): number {
-    const normal: Estado = new Map();
+    let normal: Estado = new Map();
     (raza?.Armas_naturales ?? []).forEach((arma) => sumar(normal, arma));
+    if (aptitudes.length > 0)
+        normal = aplicar(normal, aptitudes.map((arma) => ({ ...arma, Modo: 'minimo' as const, Forma: 'todas' as const })));
     const formas = new Map<FormaArmaNatural, Estado>([['todas', normal]]);
     plantillas.forEach((plantilla) => {
         const armas = plantilla?.Armas_naturales ?? [];

@@ -893,7 +893,10 @@ describe('RazaService helpers', () => {
                 Pide_texto: false }],
             Campos: [{ Campo: 'Tamano', Nombre: 'Tamaño', Clase: 'tamano', Por_defecto: 'sustituir_si_hay',
                 Operaciones: ['heredar', 'pasos'], Catalogo_elementos: null }],
-            Operaciones: [{ Clave: 'heredar', Nombre: 'Heredar', Descripcion: 'lo de la raza base' }],
+            // `Valor`: si la operación lleva valor y cuál (desde el 2026-11-07); `null`, ninguno.
+            Operaciones: [{ Clave: 'heredar', Nombre: 'Heredar', Descripcion: 'lo de la raza base', Valor: null },
+                { Clave: 'sumar', Nombre: 'Sumar', Descripcion: 'lo de la mutación sumado a lo de la raza base',
+                  Valor: { Nombre: 'Mínimo del resultado', Obligatorio: false, Minimo: -1000, Maximo: 1000 } }],
             Catalogos: { momentos: [{ Id: 1, Nombre: 'Al crear el personaje' }] },
         };
         const http = { get: jasmine.createSpy().and.returnValue(of(modelo)) };
