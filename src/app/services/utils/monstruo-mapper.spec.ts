@@ -126,6 +126,12 @@ function createRawCompanero(overrides: Record<string, any> = {}) {
 }
 
 describe("monstruo-mapper", () => {
+    it("lee la dieta de la API y deja null lo que no es una dieta", () => {
+        expect(normalizeMonstruoDetalle(createRawMonstruo({ Dieta: "omnivoro" }), 1).Dieta).toBe("omnivoro");
+        expect(normalizeMonstruoDetalle(createRawMonstruo({ Dieta: null }), 1).Dieta).toBeNull();
+        expect(normalizeMonstruoDetalle(createRawMonstruo({ Dieta: "Carnívoro" }), 1).Dieta).toBeNull();
+    });
+
     it("normaliza monstruo completo y respeta recursividad con depth=1", () => {
         const raw = createRawMonstruo({
             Familiares: [

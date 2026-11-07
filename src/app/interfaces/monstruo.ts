@@ -170,6 +170,11 @@ export interface MonstruoDetalle {
     Familiar: boolean;
     Companero: boolean;
     Oficial: boolean;
+    /**
+     * Si un animal puede ser la base de un licántropo (Manual de monstruos 1, pág. 177: «cualquier depredador, carroñero
+     * u omnívoro»; 2026-11-06). `null` sin decir; los familiares y compañeros no la traen.
+     */
+    Dieta?: MonstruoDieta | null;
     Idiomas: IdiomaDetalle[];
     Alineamientos_requeridos: MonstruoAlineamientosRequeridos;
     Sortilegas: MonstruoSortilega[];
@@ -264,6 +269,8 @@ export interface MonstruoEscalaresRequest {
     companero: boolean;
     id_alineamiento: number;
     oficial: boolean;
+    /** `null`, sin decir. Dice si un animal puede ser la base de un licántropo (desde el 2026-11-06). */
+    dieta: MonstruoDieta | null;
 }
 
 /** Una clase (y su nivel) con la que el monstruo es familiar o compañero; sin plantilla, dote o preferencia, `null`. */
@@ -290,9 +297,23 @@ export interface MonstruoCreateRequest {
     alineamientos_requeridos: { familiar: number[]; companero: number[]; };
 }
 
-/** La respuesta del alta y de la edición: `{ message, idMonstruo, monstruo }`. */
+/** La respuesta del alta y de la edición: `{ message, idMonstruo, monstruo, licantropos }`. */
 export interface MonstruoMutacionResponse {
     message: string;
     idMonstruo: number;
     monstruo: MonstruoDetalle | null;
+    /** Lo que hizo la API con sus licántropos (desde el 2026-11-06); `null` si no lo dice. */
+    licantropos: LicantroposDelMonstruo | null;
 }
+
+/** `licantropos` del alta y la edición de un monstruo (`docs/publica/endpoints/catalogos.md`, «Licántropos automáticos»). */
+export interface LicantroposDelMonstruo {
+    Generadas: { Id: number; Nombre: string; Nacimiento: boolean; Accion: 'creada' | 'regenerada' | 'enlazada'; }[];
+    Retiradas: { Id: number; Nombre: string; }[];
+    Desenlazadas: { Id: number; Nombre: string; }[];
+    Avisos: { code: string; message: string; }[];
+}
+
+/** La dieta de un monstruo (`monstruos.dieta`). */
+export type MonstruoDieta = 'carnivoro' | 'omnivoro' | 'herbivoro';
+export const DIETAS_MONSTRUO: readonly MonstruoDieta[] = ['carnivoro', 'omnivoro', 'herbivoro'];

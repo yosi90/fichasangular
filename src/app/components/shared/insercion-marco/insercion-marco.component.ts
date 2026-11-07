@@ -73,6 +73,11 @@ export class InsercionMarcoComponent {
     @Input() pasosConCambios: readonly number[] = [];
     /** Sin permisos: el aviso ámbar de arriba; además, desactiva la acción principal y lo explica en el pie. */
     @Input() avisoPermisos: string | null | undefined = '';
+    /**
+     * Lo que impide guardar aunque haya permisos (un licántropo generado de su animal, que se cambia editando el
+     * monstruo): el aviso de arriba, con su motivo, y la acción principal desactivada.
+     */
+    @Input() avisoBloqueo: string | null | undefined = '';
     /** «Cargando clase…», mientras se trae lo que se va a modificar. */
     @Input() cargando: string | null | undefined = '';
     /** Un error global del formulario, en un `bloque-error` arriba. */
@@ -130,8 +135,12 @@ export class InsercionMarcoComponent {
         return `${this.avisoPermisos ?? ''}`.trim().length > 0;
     }
 
+    get bloqueado(): boolean {
+        return `${this.avisoBloqueo ?? ''}`.trim().length > 0;
+    }
+
     get accionBloqueada(): boolean {
-        return this.guardando || this.accionDesactivada || this.sinPermisos;
+        return this.guardando || this.accionDesactivada || this.sinPermisos || this.bloqueado;
     }
 
     get notaVisible(): string {

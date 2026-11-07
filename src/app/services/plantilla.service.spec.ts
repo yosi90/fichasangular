@@ -88,6 +88,13 @@ describe('Plantilla mappers', () => {
         }]);
     });
 
+    it('lee el animal del que sale un licántropo generado; sin él, null', () => {
+        expect(normalizePlantillaApi(createPlantillaRaw({ Monstruo_forma_animal: { Id: 48, Nombre: 'Lobo' } })).Monstruo_forma_animal)
+            .toEqual({ Id: 48, Nombre: 'Lobo' });
+        expect(normalizePlantillaApi(createPlantillaRaw({ Monstruo_forma_animal: null })).Monstruo_forma_animal).toBeNull();
+        expect(normalizePlantillaApi(createPlantillaRaw({})).Monstruo_forma_animal).toBeNull();
+    });
+
     it('lee las aptitudes raciales y los ataques especiales con sus DG, y el comodín del extra de las habilidades', () => {
         const plantilla = normalizePlantillaApi(createPlantillaRaw({
             Raciales: [{ Racial: { Id: 21, Nombre: 'Resistencia al frío', Descripcion: 'Resiste 5.' }, Dg: 4 }],

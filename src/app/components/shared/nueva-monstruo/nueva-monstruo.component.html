@@ -45,6 +45,15 @@
                             </mat-select>
                             <mat-error *ngIf="errorDe('id_tamano') as error">{{error}}</mat-error>
                         </mat-form-field>
+                        <!-- Un animal carnívoro u omnívoro de 1 DG o más tiene licántropos: la API los genera al guardar. -->
+                        <mat-form-field appearance="fill" [class.insercion-campo-cambiado]="cambiado('dieta')">
+                            <mat-label>{{etiqueta('dieta')}}</mat-label>
+                            <mat-select formControlName="dieta">
+                                <mat-option [value]="null">Sin decir</mat-option>
+                                <mat-option *ngFor="let dieta of dietas" [value]="dieta.valor">{{dieta.nombre}}</mat-option>
+                            </mat-select>
+                            <mat-hint>Un animal carnívoro u omnívoro genera sus licántropos.</mat-hint>
+                        </mat-form-field>
                         <div class="monstruo-estados">
                             <mat-chip-listbox class="boolean-chips" aria-label="Estado del monstruo">
                                 <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="alternar('oficial')"

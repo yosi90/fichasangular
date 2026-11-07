@@ -116,10 +116,25 @@ export class DetallesPlantillaComponent {
     @Output() racialDetalles: EventEmitter<RacialDetalle> = new EventEmitter<RacialDetalle>();
     /** El lápiz «Modificar»: abre la pestaña de modificar la plantilla. Sin quien lo escuche (la creación), no sale. */
     @Output() modificar: EventEmitter<Plantilla> = new EventEmitter<Plantilla>();
+    /** El animal del que sale un licántropo generado (su id): abre su detalle. Sin quien lo escuche, el nombre sin enlace. */
+    @Output() monstruoDetalles: EventEmitter<number> = new EventEmitter<number>();
 
-    /** Solo con permiso: el de crear plantillas, que es el que pide `PUT /plantillas/<id>` (`permisos-catalogo.ts`). */
+    /**
+     * Solo con permiso: el de crear plantillas, que es el que pide `PUT /plantillas/<id>` (`permisos-catalogo.ts`). Un
+     * licántropo generado de su animal no se modifica a mano (se regenera al editar el monstruo): sin lápiz.
+     */
     get puedeModificar(): boolean {
-        return puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'plantillas');
+        return !this.plantillaData?.Monstruo_forma_animal && puedeModificarDesdeDetalle(this.modificar, this.userSvc, 'plantillas');
+    }
+
+    get puedeAbrirMonstruo(): boolean {
+        return this.monstruoDetalles.observed && toNumber(this.plantillaData?.Monstruo_forma_animal?.Id) > 0;
+    }
+
+    abrirDetalleMonstruo() {
+        const id = toNumber(this.plantillaData?.Monstruo_forma_animal?.Id);
+        if (id > 0)
+            this.monstruoDetalles.emit(id);
     }
 
     abrirDetalleManual() {

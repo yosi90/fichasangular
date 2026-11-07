@@ -293,5 +293,18 @@ describe('NuevaPlantillaComponent', () => {
             component = crear('editar');
             expect(component.avisoPermisos).toBe('No tienes permisos para modificar plantillas.');
         });
+
+        it('una plantilla de licántropo generada de su animal no se guarda: lo avisa y no llama a la API', async () => {
+            expect(component.avisoGenerada).toBe('');
+            plantillaSvc.getPlantillaFresca.and.returnValue(of({ ...plantilla(), Monstruo_forma_animal: { Id: 48, Nombre: 'Lobo' } }));
+            component.ngOnDestroy();
+            component = crear('editar');
+
+            expect(component.avisoGenerada)
+                .toBe('Esta plantilla se genera sola a partir del monstruo «Lobo»: para cambiarla, modifica el monstruo.');
+            component.form.controls.nombre.setValue('Licántropo revisado');
+            await component.guardar();
+            expect(plantillaSvc.actualizarPlantilla).not.toHaveBeenCalled();
+        });
     });
 });

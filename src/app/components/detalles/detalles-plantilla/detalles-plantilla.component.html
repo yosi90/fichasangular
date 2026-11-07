@@ -42,6 +42,18 @@
             <app-ficha-datos [datos]="ecologia" [columnas]="2" [tarjeta]="false" titulo="Ecología"></app-ficha-datos>
         </app-ficha-seccion>
 
+        <!-- Un licántropo generado de su animal: se regenera al editar ese monstruo y no se modifica a mano. -->
+        <app-ficha-lateral titulo="Animal base" *ngIf="plantillaData.Monstruo_forma_animal as animal">
+            <p class="ficha-nota">Se genera sola a partir de este monstruo: para cambiarla, modifica el monstruo.</p>
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item">
+                    <button type="button" class="ficha-enlace" *ngIf="puedeAbrirMonstruo; else animalSinEnlace"
+                        (click)="abrirDetalleMonstruo()">{{animal.Nombre}}</button>
+                    <ng-template #animalSinEnlace><span>{{animal.Nombre}}</span></ng-template>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+
         <app-ficha-lateral titulo="Prerrequisitos">
             <!-- Cada condición es la frase que escribe la API («Criatura de tipo humanoide (conserva su tipo)»). -->
             <app-ficha-prerrequisitos [grupos]="prerrequisitosAgrupados" textoVacio="Sin prerrequisitos."></app-ficha-prerrequisitos>

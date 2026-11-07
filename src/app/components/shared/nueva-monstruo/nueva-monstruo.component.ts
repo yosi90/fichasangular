@@ -3,7 +3,7 @@ import { AbstractControl, FormBuilder, FormControl, FormGroup, ValidationErrors,
 import { Subject, takeUntil } from 'rxjs';
 import { Dote } from 'src/app/interfaces/dote';
 import { HabilidadBasicaDetalle } from 'src/app/interfaces/habilidad';
-import { MonstruoCreateRequest, MonstruoDetalle } from 'src/app/interfaces/monstruo';
+import { MonstruoCreateRequest, MonstruoDetalle, MonstruoMutacionResponse } from 'src/app/interfaces/monstruo';
 import { Tamano } from 'src/app/interfaces/tamaño';
 import { AlineamientoService } from 'src/app/services/alineamiento.service';
 import { ClaseService } from 'src/app/services/clase.service';
@@ -26,6 +26,7 @@ import { ID_EXTRA_HABILIDAD_SIN_EXTRA, opcionDeHabilidad, opcionesDeExtrasDeHabi
 import {
     CAMPOS_MONSTRUO,
     CARACTERISTICAS_MONSTRUO,
+    DIETAS_MONSTRUO_OPCIONES,
     FilaNivelClaseMonstruo,
     ListasMonstruo,
     MonstruoFormularioValor,
@@ -35,6 +36,7 @@ import {
     filaNivelClaseNueva,
     listasDesdeMonstruo,
     listasMonstruoVacias,
+    textoLicantropos,
     valorDesdeMonstruo,
     valorMonstruoNuevo,
 } from 'src/app/services/utils/monstruo-formulario';
@@ -100,6 +102,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
     readonly pasos = PASOS_MONSTRUO;
     pasoActual = 0;
     readonly caracteristicas = CARACTERISTICAS_MONSTRUO;
+    readonly dietas = DIETAS_MONSTRUO_OPCIONES;
     readonly sinExtraHabilidad = ID_EXTRA_HABILIDAD_SIN_EXTRA;
     readonly velocidades = CAMPOS_VELOCIDAD;
 
@@ -447,7 +450,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
         try {
             if (this.esEdicion) {
                 const respuesta = await this.monstruoSvc.actualizarMonstruo(this.edicion.id, cuerpo);
-                await avisarGuardado(MONSTRUO, true, respuesta.message);
+                await avisarGuardado(MONSTRUO, true, mensajeConLicantropos(respuesta));
                 if (respuesta.monstruo) {
                     this.hidratar(respuesta.monstruo);
                     this.monstruoActualizado.emit(respuesta.monstruo);
@@ -455,7 +458,7 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
                 this.cerrar.emit();
             } else {
                 const respuesta = await this.monstruoSvc.crearMonstruo(cuerpo);
-                await avisarGuardado(MONSTRUO, false, respuesta.message);
+                await avisarGuardado(MONSTRUO, false, mensajeConLicantropos(respuesta));
                 this.monstruoCreado.emit(respuesta.monstruo);
                 this.reiniciar();
             }
@@ -557,4 +560,9 @@ export class NuevaMonstruoComponent implements OnInit, OnChanges, OnDestroy, Edi
         this.uidContador += 1;
         return `monstruo_${this.uidContador}`;
     }
+}
+
+/** El mensaje de la API y, detrás, lo que ha pasado con sus licántropos. */
+function mensajeConLicantropos(respuesta: MonstruoMutacionResponse): string {
+    return [respuesta.message, textoLicantropos(respuesta.licantropos)].filter((texto) => `${texto ?? ''}`.length > 0).join(' ');
 }
