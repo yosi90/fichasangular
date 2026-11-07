@@ -7058,6 +7058,8 @@ export class NuevoPersonajeService {
                 Id: idClase ?? desglose[index].Id,
                 Nombre: desglose[index].Nombre,
                 Nivel: nivelNormalizado,
+                // Los DG que da a su nivel: en una clase con tabla (el engendro vampírico 5.º, 3), distintos del nivel.
+                Dgs: dgsDeClase(clase, nivelNormalizado),
                 Caracteristica_lanzamiento: caracteristicaLanzamiento,
             };
         } else {
@@ -7065,6 +7067,8 @@ export class NuevoPersonajeService {
                 Id: idClase,
                 Nombre: nombre,
                 Nivel: nivelNormalizado,
+                // Los DG que da a su nivel: en una clase con tabla (el engendro vampírico 5.º, 3), distintos del nivel.
+                Dgs: dgsDeClase(clase, nivelNormalizado),
                 Caracteristica_lanzamiento: caracteristicaLanzamiento,
             });
         }

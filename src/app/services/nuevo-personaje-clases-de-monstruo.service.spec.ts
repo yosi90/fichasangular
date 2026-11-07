@@ -15,6 +15,7 @@ import {
 } from 'src/testing/clases-de-monstruo-api';
 import { claseDeMonstruoConEspecialesApi, conIdsDeRolDev, RAZAS_LIBRIS_MORTIS_API } from 'src/testing/clases-de-monstruo-especiales-api';
 import { HabilidadBasicaDetalle } from '../interfaces/habilidad';
+import { textoClasePersonaje } from '../components/detalles/ficha/personaje';
 
 /**
  * La creación con una clase de monstruo muerto viviente de *Libris Mortis* (fase 5.2 del roadmap `ACTIVO_razas-mutadas`;
@@ -190,6 +191,13 @@ describe('NuevoPersonajeService (clases de monstruo de Libris Mortis)', () => {
             expect(svc.getNivelEfectivoParaAumentos()).toBe(8);
             expect(creacion.svc.PersonajeCreacion.NEP).toBe(8);
             expect(svc.resolverDgTotalActual()).toBe(4);
+        });
+
+        it('«Tu personaje» distingue sus DG: el desglose lleva 4 DG a 8.º («Engendro vampírico 8 (4 DG)»)', () => {
+            const entrada = (creacion.svc.PersonajeCreacion.desgloseClases ?? [])[0];
+            expect(entrada?.Nivel).toBe(8);
+            expect(entrada?.Dgs).toBe(4);
+            expect(textoClasePersonaje(entrada!)).toContain('4 DG');
         });
 
         it('engendro 8 / guerrero 1: la dote del 9.º nivel de personaje, 5 DG y sin penalización de PX', () => {
