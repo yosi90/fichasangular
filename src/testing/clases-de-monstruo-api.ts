@@ -1,6 +1,6 @@
 /**
  * Las clases de monstruo muerto viviente de *Libris Mortis* (págs. 35-40), como las dará la API cuando estén sus datos
- * (fase 5.4 del roadmap `ACTIVO_razas-mutadas`): `ClaseDetalle` de `GET /clases` con la forma de la fase 1 del contrato
+ * (fase 5.4 del roadmap `PAUSADO_razas-mutadas`): `ClaseDetalle` de `GET /clases` con la forma de la fase 1 del contrato
  * (`docs/publica/endpoints/catalogos.md`: `Progresion_obligatoria`, `Sin_penalizacion_multiclase`, `Mutacion` y, por nivel,
  * `Dg`, `Dote` y `Armadura_natural`; las demás claves, como las de una clase de `GET /clases` de la API de desarrollo del
  * 2026-11-07). Las tablas son las del estudio (`estudio-libris-mortis-clases-2026-11-07.md`, apartado 3.7). Mientras no hay
