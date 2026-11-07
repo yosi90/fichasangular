@@ -30,6 +30,8 @@ export interface ValoresObjeto extends ValoresComunesDeEquipo {
     nivel_lanzador: number | null;
     id_intensidad_aura: number | null;
     cargas: number | null;
+    /** Si sus cargas se recuperan cada día (entonces no se compra gastado). */
+    cargas_se_recuperan: boolean;
     usos_por_dia: number | null;
     maldito: boolean;
     inteligente: boolean;
@@ -97,7 +99,7 @@ export function valoresObjetoVacios(): ValoresObjeto {
     return {
         nombre: '', descripcion: '', origen_descripcion: 'propia', nombre_original: '', traducido: false, id_manual: null,
         pagina: null, oficial: true, id_tipo_objeto: null, precio: null, nivel_objeto: null, peso: null, id_ranura: null,
-        nivel_lanzador: null, id_intensidad_aura: null, cargas: null, usos_por_dia: null, maldito: false, inteligente: false,
+        nivel_lanzador: null, id_intensidad_aura: null, cargas: null, cargas_se_recuperan: false, usos_por_dia: null, maldito: false, inteligente: false,
         es_reliquia: false, requisitos_uso: '', coste_creacion_po: null, coste_creacion_px: null, dias_creacion: null,
         requisitos_otros: '', id_conjunto: null, id_monstruo: null, es_generico_conjuro: false, precio_por_nivel_conjuro: null,
         nivel_conjuro_maximo: null, usos_componente_caro: null, id_arma_base: null, id_armadura_base: null,
@@ -118,6 +120,7 @@ export function valoresDeObjeto(objeto: ObjetoDetalle): ValoresObjeto {
         nivel_lanzador: toNumberOrNull(objeto.Nivel_lanzador),
         id_intensidad_aura: toNumberOrNull(objeto.Aura?.Intensidad?.Id),
         cargas: toNumberOrNull(objeto.Cargas),
+        cargas_se_recuperan: objeto.Cargas_se_recuperan === true,
         usos_por_dia: toNumberOrNull(objeto.Usos_por_dia),
         maldito: objeto.Maldito === true,
         inteligente: objeto.Inteligente === true,
@@ -189,6 +192,7 @@ export function cuerpoDeObjeto(v: ValoresObjeto, filas: FilasDeObjeto): ObjetoCu
             nivel_lanzador: toNumberOrNull(v.nivel_lanzador),
             id_intensidad_aura: toNumberOrNull(v.id_intensidad_aura),
             cargas: toNumberOrNull(v.cargas),
+            cargas_se_recuperan: v.cargas_se_recuperan === true,
             usos_por_dia: toNumberOrNull(v.usos_por_dia),
             maldito: v.maldito === true,
             inteligente: v.inteligente === true,

@@ -76,6 +76,21 @@ describe('tienda-equipo', () => {
             expect(reglaDineroInicial({ nivelEfectivo: 25, clases: [], duplicaOro: false, aumentaOro: false }, catalogos).maximo).toBeNull();
         });
 
+        it('un PNJ compra con el valor del equipo de un PNJ (Guía del DM, tabla 4-23 y pág. 199), también en el nivel 1', () => {
+            const guerrero = [{ Id: 9, Nombre: 'Guerrero' }];
+            const pnj5 = reglaDineroInicial({ nivelEfectivo: 5, pnj: true, clases: guerrero, duplicaOro: false, aumentaOro: false }, catalogos);
+            expect(pnj5).toEqual(jasmine.objectContaining({ modo: 'riqueza', maximo: 4300, sugerido: 4300 }));
+            expect(pnj5.descripcion).toContain('PNJ de nivel 5');
+            // El mismo nivel como PJ: 9.000 po.
+            expect(reglaDineroInicial({ nivelEfectivo: 5, clases: guerrero, duplicaOro: false, aumentaOro: false }, catalogos).maximo).toBe(9000);
+            // En el nivel 1, sin los dados de su clase ni la ventaja del oro.
+            expect(reglaDineroInicial({ nivelEfectivo: 1, pnj: true, clases: guerrero, duplicaOro: true, aumentaOro: false }, catalogos))
+                .toEqual(jasmine.objectContaining({ modo: 'riqueza', dados: null, maximo: 900 }));
+            // Sin NEP (una edad sin ajuste), por su nivel de personaje; sin fila, sin tope.
+            expect(reglaDineroInicial({ nivelEfectivo: 0, nivelPersonaje: 3, pnj: true, clases: [], duplicaOro: false, aumentaOro: false }, catalogos).maximo).toBe(2500);
+            expect(reglaDineroInicial({ nivelEfectivo: 25, pnj: true, clases: [], duplicaOro: false, aumentaOro: false }, catalogos).modo).toBe('libre');
+        });
+
         it('tira los dados del oro inicial', () => {
             const regla = reglaDineroInicial({ nivelEfectivo: 1, clases: [{ Id: 9, Nombre: 'Guerrero' }], duplicaOro: false, aumentaOro: false }, catalogos);
             expect(tirarOroInicial(regla, () => 0)).toBe(60);
@@ -118,6 +133,39 @@ describe('tienda-equipo', () => {
         expect(faltaEnPieza({ ...pieza, idConjuro: 1, nivelConjuro: 4 })).toBe('Admite conjuros hasta el nivel 3');
         expect(faltaEnPieza({ ...pieza, idConjuro: 1 })).toBeNull();
         expect(faltaEnPieza(nuevaPieza(espada))).toBeNull();
+    });
+
+    describe('los objetos gastados (Guía del DM, pág. 199)', () => {
+        const varita = articuloDeObjeto(normalizeObjeto(crearObjetoGenericoApi({ Id: 3, Nombre: 'Varita', Cargas: 50,
+            Generico_conjuro: { Precio_por_nivel: 750, Nivel_maximo: 4, Usos_componente_caro: 50 } })));
+        const guanteletes = articuloDeObjeto(normalizeObjeto(crearObjetoApi({ Id: 91215, Nombre: 'Guanteletes relampagueantes', Precio: 1000,
+            Cargas: 3, Cargas_se_recuperan: true })));
+        const conConjuro = { ...nuevaPieza(varita), idConjuro: 1, nombreConjuro: 'Proyectil mágico', nivelConjuro: 1, nivelLanzador: 1 };
+
+        it('solo un objeto con cargas que se gastan se puede comprar gastado', () => {
+            expect(varita.cargas).toBe(50);
+            expect(guanteletes.cargas).toBeNull();
+            expect(capa.cargas).toBeNull();
+            expect(espada.cargas).toBeNull();
+            expect(nuevaPieza(varita).cargasRestantes).toBeNull();
+        });
+
+        it('cuesta en proporción a las cargas que le quedan: la mitad con 25, el 20 % con 10', () => {
+            expect(precioEstimado(conConjuro)).toBe(750);
+            expect(precioEstimado({ ...conConjuro, cargasRestantes: 25 })).toBe(375);
+            expect(precioEstimado({ ...conConjuro, cargasRestantes: 10, cantidad: 2 })).toBe(300);
+            expect(precioEstimado({ ...conConjuro, cargasRestantes: 50 })).toBe(750);
+        });
+
+        it('no pasa de las cargas del objeto y la compra las manda solo si está gastado', () => {
+            expect(faltaEnPieza({ ...conConjuro, cargasRestantes: 51 })).toBe('Entre 1 y 50 cargas');
+            expect(faltaEnPieza({ ...conConjuro, cargasRestantes: 0 })).toBe('Entre 1 y 50 cargas');
+            expect(faltaEnPieza({ ...nuevaPieza(guanteletes), cargasRestantes: 1 })).toBe('Se compra con todas sus cargas');
+            expect(faltaEnPieza({ ...conConjuro, cargasRestantes: 25 })).toBeNull();
+            expect(construirCompra(1000, [{ ...conConjuro, cargasRestantes: 25 }]).piezas[0].cargasRestantes).toBe(25);
+            expect(construirCompra(1000, [conConjuro]).piezas[0].cargasRestantes).toBeUndefined();
+            expect(construirCompra(1000, [{ ...conConjuro, cargasRestantes: 50 }]).piezas[0].cargasRestantes).toBeUndefined();
+        });
     });
 
     it('lo que no tiene precio ni fórmula no se puede comprar', () => {

@@ -102,6 +102,13 @@ describe('DetallesEquipoComponent', () => {
         expect(texto()).not.toContain('null');
     });
 
+    it('las cargas que se recuperan cada día lo dicen; las que se gastan, solo su número', () => {
+        mostrar({ tipo: 'objeto', item: normalizeObjeto(crearObjetoApi({ Cargas: 3, Cargas_se_recuperan: true })) });
+        expect(valor('Cargas')).toBe('3 al día (se recuperan al amanecer)');
+        mostrar({ tipo: 'objeto', item: normalizeObjeto(crearObjetoApi({ Cargas: 25 })) });
+        expect(valor('Cargas')).toBe('25');
+    });
+
     it('la descripción va con su origen y, si está traducida, con el nombre original', () => {
         mostrar({ tipo: 'objeto', item: normalizeObjeto(crearObjetoApi({ Traducido: true })) });
         expect(texto()).toContain('Una capa que protege a quien la lleva.');

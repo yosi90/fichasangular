@@ -5,7 +5,9 @@
  * catálogos, en transacciones deshechas). Las pruebas de `nuevo-equipo` y `nuevo-objeto` comprueban que el formulario,
  * cargado con el GET, manda ese mismo cuerpo.
  *
- * Generado desde la comprobación del backend; no se edita a mano.
+ * Generado desde la comprobación del backend; no se edita a mano. Excepción: el 2026-11-07 se añadió `Cargas_se_recuperan`
+ * (y `cargas_se_recuperan` en el cuerpo), con el valor que da `rol_dev` tras `objetos_cargas_se_recuperan.sql` (los anillos
+ * 48 y 91025, sí; los demás, no), porque el generador no está en el repositorio.
  */
 import type { IdaYVuelta } from './cuerpo-de-catalogo';
 
@@ -1069,6 +1071,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
      "bonificador_mejora": 1,
      "bonificador_mejora_2": null,
      "cargas": null,
+     "cargas_se_recuperan": false,
      "coste_creacion_po": null,
      "coste_creacion_px": null,
      "descripcion": "Arma de acero forjada en forma de hacha de batalla, con el filo cuidadosamente afilado. Su empuñadura y el metal le dan un aspecto robusto, y su punto fuerte es que causa estragos a criaturas de determinadas clases.",
@@ -1122,6 +1125,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
     "Bonificador_mejora": 1,
     "Bonificador_mejora_2": null,
     "Cargas": null,
+    "Cargas_se_recuperan": false,
     "Conjunto": null,
     "Conjuros": [],
     "Creacion": {
@@ -1194,6 +1198,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
      "bonificador_mejora": 1,
      "bonificador_mejora_2": null,
      "cargas": null,
+     "cargas_se_recuperan": false,
      "coste_creacion_po": 436500,
      "coste_creacion_px": 18700,
      "descripcion": "Armadura completa de invulnerabilidad negadora +1 fabricada en adamantita, de modo que añade además un bonificador de mejora natural. Quien intenta disipar efectos sobre su portador sufre una penalización a esas pruebas.",
@@ -1262,6 +1267,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
     "Bonificador_mejora": 1,
     "Bonificador_mejora_2": null,
     "Cargas": null,
+    "Cargas_se_recuperan": false,
     "Conjunto": null,
     "Conjuros": [],
     "Creacion": {
@@ -1342,6 +1348,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
      "bonificador_mejora": null,
      "bonificador_mejora_2": null,
      "cargas": null,
+     "cargas_se_recuperan": false,
      "coste_creacion_po": null,
      "coste_creacion_px": null,
      "descripcion": "Un conjuro de nivel 3 o menos guardado en un líquido; quien la bebe recibe su efecto. Un solo uso.",
@@ -1392,6 +1399,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
     "Bonificador_mejora": null,
     "Bonificador_mejora_2": null,
     "Cargas": null,
+    "Cargas_se_recuperan": false,
     "Conjunto": null,
     "Conjuros": [],
     "Creacion": {
@@ -1476,6 +1484,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
      "bonificador_mejora": null,
      "bonificador_mejora_2": null,
      "cargas": null,
+     "cargas_se_recuperan": false,
      "coste_creacion_po": 1000,
      "coste_creacion_px": 80,
      "descripcion": "Unas botas de aspecto rígido que no estorban al moverte. Te hacen más difícil de empujar o derribar mientras estás de pie en el suelo. Al activarlas, te permiten pasar un asalto sin pagar el coste extra de movimiento por terreno accidentado, un número limitado de veces al día.",
@@ -1555,6 +1564,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
     "Bonificador_mejora": null,
     "Bonificador_mejora_2": null,
     "Cargas": null,
+    "Cargas_se_recuperan": false,
     "Conjunto": null,
     "Conjuros": [],
     "Creacion": {
@@ -1676,6 +1686,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
      "bonificador_mejora": null,
      "bonificador_mejora_2": null,
      "cargas": null,
+     "cargas_se_recuperan": false,
      "coste_creacion_po": 1750,
      "coste_creacion_px": 140,
      "descripcion": "Un mecanismo de pequeñas piezas oculto bajo su piedra facilita enormemente abrir cerraduras de forma permanente. Además, una vez al día puede emplearse para provocar el efecto de un conjuro de abrir, siempre que se toque la puerta o el cierre afectado.",
@@ -1755,6 +1766,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
     "Bonificador_mejora": null,
     "Bonificador_mejora_2": null,
     "Cargas": null,
+    "Cargas_se_recuperan": false,
     "Conjunto": null,
     "Conjuros": [
      {
@@ -1870,6 +1882,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
      "bonificador_mejora": null,
      "bonificador_mejora_2": null,
      "cargas": 3,
+     "cargas_se_recuperan": true,
      "coste_creacion_po": 2550,
      "coste_creacion_px": 204,
      "descripcion": "Esta sortija permite levantar una barrera vertical prácticamente impenetrable, equivalente al conjuro del mismo nombre, a corta distancia de quien la lleva. Cuantas más cargas se gasten en un uso, más tiempo permanece la barrera en pie. Las cargas se recuperan al amanecer de cada día.",
@@ -1944,6 +1957,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
     "Bonificador_mejora": null,
     "Bonificador_mejora_2": null,
     "Cargas": 3,
+    "Cargas_se_recuperan": true,
     "Conjunto": null,
     "Conjuros": [
      {
@@ -2055,6 +2069,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
      "bonificador_mejora": null,
      "bonificador_mejora_2": null,
      "cargas": 3,
+     "cargas_se_recuperan": true,
      "coste_creacion_po": 3750,
      "coste_creacion_px": 300,
      "descripcion": "Refuerza los conjuros de fuego de quien lo lleva, haciéndolos más potentes de forma continua. Además, almacena cargas diarias que se pueden gastar para añadir daño de fuego al siguiente conjuro de fuego que se lance en el mismo turno, con más daño cuantas más cargas se empleen.",
@@ -2138,6 +2153,7 @@ export const IDA_Y_VUELTA_OBJETOS: {
     "Bonificador_mejora": null,
     "Bonificador_mejora_2": null,
     "Cargas": 3,
+    "Cargas_se_recuperan": true,
     "Conjunto": null,
     "Conjuros": [],
     "Creacion": {

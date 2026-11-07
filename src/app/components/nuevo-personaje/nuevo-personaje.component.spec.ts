@@ -6120,6 +6120,13 @@ describe('NuevoPersonajeComponent', () => {
             expect(component.tiendaRegla).toEqual(jasmine.objectContaining({ modo: 'riqueza', maximo: 900, sugerido: 900 }));
         });
 
+        it('un PNJ compra con el valor del equipo de un PNJ de su nivel (Guía del DM, tabla 4-23), no con la riqueza de un PJ', async () => {
+            personajeSvcMock.getDetallesPersonaje.and.resolveTo(of({ Id: 123, Nombre: 'Guardia', tipo: 'pnj', NEP: 5, Nivel_personaje: 5,
+                desgloseClases: [{ Id: 9, Nombre: 'Guerrero', Nivel: 5 }] } as any));
+            await component.onConfirmarSelectorVisibilidad(false);
+            expect(component.tiendaRegla).toEqual(jasmine.objectContaining({ modo: 'riqueza', maximo: 4300, sugerido: 4300 }));
+        });
+
         it('sin campaña se ofrece también lo homebrew', async () => {
             await component.onConfirmarSelectorVisibilidad(false);
             expect(component.tiendaSoloOficial).toBeFalse();

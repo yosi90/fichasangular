@@ -318,7 +318,12 @@ export class DetallesEquipoComponent {
                     .map((activacion) => activacion.Accion ? `${activacion.Nombre} (${activacion.Accion.Nombre.toLowerCase()})` : activacion.Nombre)
                     .join(', '),
             },
-            { etiqueta: 'Cargas', valor: this.numero(objeto.Cargas) },
+            {
+                etiqueta: 'Cargas',
+                valor: objeto.Cargas_se_recuperan && objeto.Cargas !== null
+                    ? `${formatoNumero(objeto.Cargas)} al día (se recuperan al amanecer)`
+                    : this.numero(objeto.Cargas),
+            },
             { etiqueta: 'Usos al día', valor: this.numero(objeto.Usos_por_dia) },
             { etiqueta: 'Para usarlo', valor: objeto.Requisitos_uso },
             { etiqueta: 'Montura', valor: objeto.Monstruo?.Nombre },

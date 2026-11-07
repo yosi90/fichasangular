@@ -143,7 +143,7 @@ export function normalizeEquipoCatalogos(raw: any): EquipoCatalogos {
             })),
         })),
         Riqueza_por_nivel: toArray(raw?.Riqueza_por_nivel)
-            .map((item: any) => ({ Nivel: toNumber(item?.Nivel), Po: toNumber(item?.Po) }))
+            .map((item: any) => ({ Nivel: toNumber(item?.Nivel), Po: toNumber(item?.Po), Po_pnj: toNumberOrNull(item?.Po_pnj) }))
             .sort((a, b) => a.Nivel - b.Nivel),
         Oro_inicial_por_clase: toArray(raw?.Oro_inicial_por_clase).map((item: any) => ({
             Clase: normalizeEquipoRef(item?.Clase) ?? { Id: 0, Nombre: '' },
@@ -253,6 +253,7 @@ export function normalizeObjeto(raw: any): ObjetoDetalle {
             Accion: normalizeEquipoRef(activacion?.Accion),
         })),
         Cargas: toNumberOrNull(raw?.Cargas),
+        Cargas_se_recuperan: toBoolean(raw?.Cargas_se_recuperan),
         Usos_por_dia: toNumberOrNull(raw?.Usos_por_dia),
         Maldito: toBoolean(raw?.Maldito),
         Inteligente: toBoolean(raw?.Inteligente),

@@ -207,6 +207,7 @@ export function crearObjetoApi(cambios: Record<string, any> = {}): Record<string
         Aura: { Intensidad: { Id: 1, Nombre: 'Débil' }, Escuelas: [{ Id: 1, Nombre: 'Abjuración' }] },
         Activaciones: [{ Id: 1, Nombre: 'Uso o continuo', Accion: null }],
         Cargas: null,
+        Cargas_se_recuperan: false,
         Usos_por_dia: null,
         Maldito: false,
         Inteligente: false,
@@ -307,7 +308,7 @@ export function crearEquipoCatalogosApi(cambios: Record<string, any> = {}): Reco
             { Id: 10, Nombre: 'Cualquier objeto', Piezas: ['arma', 'municion', 'armadura', 'escudo'], Manejo: null, Peso_armadura: null },
         ],
         Danos_por_tamano: [{ Dano_mediano: '1d4', Danos: [{ Id_tamano: 4, Tamano: 'Pequeño', Dano: '1d3' }, { Id_tamano: 5, Tamano: 'Mediano', Dano: '1d4' }] }],
-        Riqueza_por_nivel: [{ Nivel: 1, Po: 0 }, { Nivel: 2, Po: 900 }, { Nivel: 3, Po: 2700 }],
+        Riqueza_por_nivel: [{ Nivel: 1, Po: 0, Po_pnj: 900 }, { Nivel: 2, Po: 900, Po_pnj: 2000 }, { Nivel: 3, Po: 2700, Po_pnj: 2500 }, { Nivel: 5, Po: 9000, Po_pnj: 4300 }],
         Oro_inicial_por_clase: [
             { Clase: { Id: 2, Nombre: 'Bárbaro' }, Dados: '4d4', Maximo: 160, Multiplicador: 10 },
             { Clase: { Id: 9, Nombre: 'Guerrero' }, Dados: '6d4', Maximo: 240, Multiplicador: 10 },

@@ -5636,6 +5636,8 @@ export class NuevoPersonajeComponent {
         ];
         this.tiendaRegla = reglaDineroInicial({
             nivelEfectivo: ficha.NEP,
+            pnj: esPnj(ficha.tipo),
+            nivelPersonaje: ficha.Nivel_personaje ?? null,
             clases: ficha.desgloseClases ?? [],
             duplicaOro: ventajas.some((ventaja) => !!ventaja.Duplica_oro),
             aumentaOro: ventajas.some((ventaja) => !!ventaja.Aumenta_oro),

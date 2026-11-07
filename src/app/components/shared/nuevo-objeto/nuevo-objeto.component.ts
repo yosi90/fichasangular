@@ -61,7 +61,7 @@ const CAMPOS: CamposDeFormulario = Object.fromEntries(([
     ['id_tipo_objeto', 'Tipo', 0], ['precio', 'Precio', 0], ['nivel_objeto', 'Nivel del objeto', 0], ['peso', 'Peso', 0],
     ['id_ranura', 'Ranura', 0], ['requisitos_uso', 'Requisitos de uso', 0], ['id_conjunto', 'Conjunto', 0],
     ['id_monstruo', 'Montura', 0], ['nivel_lanzador', 'Nivel de lanzador', 1], ['id_intensidad_aura', 'Aura', 1],
-    ['cargas', 'Cargas', 1], ['usos_por_dia', 'Usos al día', 1], ['activaciones', 'Activaciones', 1], ['conjuros', 'Conjuros', 1],
+    ['cargas', 'Cargas', 1], ['cargas_se_recuperan', 'Las cargas se recuperan', 1], ['usos_por_dia', 'Usos al día', 1], ['activaciones', 'Activaciones', 1], ['conjuros', 'Conjuros', 1],
     ['coste_creacion_po', 'Coste de creación', 1], ['coste_creacion_px', 'PX de creación', 1], ['dias_creacion', 'Días de creación', 1],
     ['requisitos_otros', 'Otros requisitos', 1], ['aura_escuelas', 'Escuelas del aura', 1], ['requisitos', 'Requisitos', 1],
     ['modificadores', 'Modificadores', 1], ['id_arma_base', 'Arma base', 2], ['id_armadura_base', 'Armadura base', 2],
@@ -137,6 +137,7 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
         maldito: [false],
         inteligente: [false],
         es_reliquia: [false],
+        cargas_se_recuperan: [false],
         requisitos_uso: ['', [Validators.maxLength(500)]],
         coste_creacion_po: [null as number | null, [Validators.min(0)]],
         coste_creacion_px: [null as number | null, [Validators.min(0)]],
@@ -285,7 +286,7 @@ export class NuevoObjetoComponent implements OnInit, OnDestroy, OnChanges, Edito
             this.form.controls.bonificador_mejora_2.setValue(null);
     }
 
-    alternar(campo: 'oficial' | 'traducido' | 'maldito' | 'inteligente' | 'es_reliquia' | 'es_generico_conjuro'): void {
+    alternar(campo: 'oficial' | 'traducido' | 'maldito' | 'inteligente' | 'es_reliquia' | 'es_generico_conjuro' | 'cargas_se_recuperan'): void {
         alternarControl(this.form.controls[campo]);
     }
 

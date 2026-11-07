@@ -136,6 +136,15 @@ export class ConfigurarPiezaComponent implements OnChanges {
         return Math.max(minimo, toInt(valor, minimo));
     }
 
+    /**
+     * Las cargas escritas de un objeto que las gasta, de 1 a las suyas; con todas, `null`: se compra nuevo, a su precio.
+     * Gastado, cuesta en proporción (Guía del DM, pág. 199).
+     */
+    cargasEscritas(valor: unknown, maximo: number): number | null {
+        const cargas = Math.min(maximo, this.numero(valor, 1));
+        return cargas >= maximo ? null : cargas;
+    }
+
     /** Los conjuros que encajan con lo escrito en el campo del conjuro de un genérico. */
     conjurosPara(texto: string): { Id: number; Nombre: string; }[] {
         const buscado = normalizarTexto(texto, true);

@@ -226,6 +226,8 @@ export interface Personaje extends PersonajeSimple {
         }[];
     }
     NEP: number;
+    /** Sus DG sin ajustes de nivel (`nivelPersonaje` de la ficha): el nivel con el que compra un PNJ sin NEP. */
+    Nivel_personaje?: number | null;
     Experiencia: number;
     /**
      * Solo en la creación: lo que deja de ganar de experiencia por multiclase (Manual del jugador, cap. 3; no cambia la

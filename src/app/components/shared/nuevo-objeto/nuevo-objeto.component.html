@@ -202,6 +202,9 @@
                             <mat-error *ngIf="form.controls.usos_por_dia.invalid">{{errorDe('usos_por_dia', 'Entre 0 y 255.')}}</mat-error>
                         </mat-form-field>
                     </div>
+                    <mat-chip-listbox class="boolean-chips" aria-label="Las cargas">
+                        <mat-chip-option [selected]="form.controls.cargas_se_recuperan.value === true" (click)="alternar('cargas_se_recuperan')">Las cargas se recuperan cada día</mat-chip-option>
+                    </mat-chip-listbox>
                     <div class="subpanel">
                         <div class="subpanel-head"><span>Activaciones · {{filas.activaciones.length}}</span></div>
                         <p class="objeto-error" role="alert" *ngIf="avisoDe('activaciones') as aviso">{{aviso}}</p>

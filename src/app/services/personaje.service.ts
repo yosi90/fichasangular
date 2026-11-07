@@ -1081,6 +1081,7 @@ export class PersonajeService {
             Carisma: element?.car,
             ModCarisma: element?.mcar,
             NEP: nep,
+            Nivel_personaje: toNumberOrNull(element?.nivelPersonaje),
             Experiencia: experienciaParaNivel(nep),
             // La penalización de PX por multiclase, con la misma regla que la creación (MJ cap. 3): no se guarda. No cuentan
             // las de prestigio ni las que no penalizan la multiclase (las clases de monstruo), como en la creación.

@@ -53,7 +53,10 @@ export interface EquipoDanoPorTamano {
 
 export interface EquipoRiquezaNivel {
     Nivel: number;
+    /** La riqueza de un PJ de ese nivel (Guía del DM, tabla 5-1). */
     Po: number;
+    /** El valor del equipo de un PNJ de ese nivel (Guía del DM, tabla 4-23); `null` si la tabla no lo da. */
+    Po_pnj: number | null;
 }
 
 export interface EquipoOroInicialClase {
@@ -214,6 +217,8 @@ export interface ObjetoDetalle extends TextoEquipo {
     Aura: EquipoAura;
     Activaciones: (EquipoRef & { Accion: EquipoRef | null; })[];
     Cargas: number | null;
+    /** Si sus cargas se recuperan cada día: entonces no se compra gastado (Guía del DM, pág. 199). */
+    Cargas_se_recuperan: boolean;
     Usos_por_dia: number | null;
     Maldito: boolean;
     Inteligente: boolean;
@@ -390,6 +395,7 @@ export interface ObjetoCuerpo {
         nivel_lanzador: number | null;
         id_intensidad_aura: number | null;
         cargas: number | null;
+        cargas_se_recuperan: boolean;
         usos_por_dia: number | null;
         maldito: boolean;
         inteligente: boolean;

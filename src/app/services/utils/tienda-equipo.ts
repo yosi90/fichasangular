@@ -57,6 +57,11 @@ export interface ArticuloTienda {
     tipoDano: number | null;
     /** Un objeto mágico o psiónico del catálogo (la campaña puede no dejarlo comprar). */
     magico: boolean;
+    /**
+     * Las cargas con las que se crea un objeto que las gasta para siempre (`Cargas` sin `Cargas_se_recuperan`): se puede
+     * comprar gastado (Guía del DM, pág. 199). `null` en lo demás.
+     */
+    cargas: number | null;
 }
 
 /** Una pieza de la compra, con lo que la persona elige. */
@@ -74,6 +79,8 @@ export interface PiezaTienda {
     nombreConjuro: string;
     nivelConjuro: number | null;
     nivelLanzador: number | null;
+    /** Las que le quedan si se compra gastado (de 1 a `articulo.cargas`); `null`, con todas. */
+    cargasRestantes: number | null;
 }
 
 /** Cómo se decide el dinero inicial de este personaje. */
@@ -94,6 +101,10 @@ export interface ReglaDineroInicial {
 export interface ContextoDineroInicial {
     /** El NEP de la ficha (`nivelEfectivo`): niveles de clase + DG raciales + ajustes de nivel. Lo calcula la API. */
     nivelEfectivo: number;
+    /** Un PNJ compra con el valor del equipo de un PNJ (Guía del DM, tabla 4-23), no con la riqueza de un PJ. */
+    pnj?: boolean;
+    /** Sus DG sin ajustes (`nivelPersonaje` de la ficha): el nivel de un PNJ sin NEP. */
+    nivelPersonaje?: number | null;
     /** Sus clases, con id o con nombre (el borrador de la creación puede no tener el id). */
     clases: { Id?: number; Nombre: string; }[];
     duplicaOro: boolean;
@@ -130,7 +141,7 @@ const SIN_CIFRAS: [string, string] = ['', ''];
 function articuloBase(tipo: PersonajeTipoPiezaDto, id: number, nombre: string): Omit<ArticuloTienda, 'precio' | 'peso' | 'oficial' | 'categoria' | 'sePone'> {
     return {
         tipo, id, nombre, lote: 1, generico: null, cifras: SIN_CIFRAS, pieza: null, manejo: null, pesoArmadura: null,
-        aDistancia: false, arrojadiza: false, tipoDano: null, magico: false,
+        aDistancia: false, arrojadiza: false, tipoDano: null, magico: false, cargas: null,
     };
 }
 
@@ -174,6 +185,7 @@ export function articuloDeObjeto(objeto: ObjetoDetalle): ArticuloTienda {
             ? [base.Nombre, objeto.Bonificador_mejora ? textoConSigno(objeto.Bonificador_mejora) : '—']
             : [objeto.Tipo?.Nombre ?? '', objeto.Ranura?.Nombre ?? '—'],
         magico: !!objeto.Tipo && objeto.Tipo.Categoria !== 'mundano',
+        cargas: (objeto.Cargas ?? 0) > 0 && !objeto.Cargas_se_recuperan ? Math.trunc(objeto.Cargas ?? 0) : null,
     };
 }
 
@@ -202,11 +214,22 @@ export function nuevaPieza(articulo: ArticuloTienda): PiezaTienda {
         nombreConjuro: '',
         nivelConjuro: articulo.generico ? 1 : null,
         nivelLanzador: articulo.generico ? 1 : null,
+        cargasRestantes: null,
     };
 }
 
-/** Si a la pieza le falta algo para poder comprarla (el conjuro de un genérico), qué. */
+/** Si la pieza se compra gastada: con menos cargas de las que tiene recién creada. */
+export function piezaGastada(pieza: PiezaTienda): boolean {
+    const maximo = pieza.articulo.cargas;
+    return maximo !== null && pieza.cargasRestantes !== null && pieza.cargasRestantes < maximo;
+}
+
+/** Si a la pieza le falta algo para poder comprarla (el conjuro de un genérico, sus cargas), qué. */
 export function faltaEnPieza(pieza: PiezaTienda): string | null {
+    const maximo = pieza.articulo.cargas;
+    if (pieza.cargasRestantes !== null && (maximo === null || pieza.cargasRestantes < 1 || pieza.cargasRestantes > maximo
+        || !Number.isInteger(pieza.cargasRestantes)))
+        return maximo === null ? 'Se compra con todas sus cargas' : `Entre 1 y ${maximo} cargas`;
     const generico = pieza.articulo.generico;
     if (!generico)
         return null;
@@ -331,11 +354,17 @@ export function desglosePrecio(pieza: PiezaTienda): LineaPrecio[] {
     const articulo = pieza.articulo;
     const cantidad = Math.max(1, Math.trunc(pieza.cantidad || 1));
     if (articulo.tipo === 'objeto') {
+        // Gastado, en proporción a las cargas que le quedan (Guía del DM, pág. 199), como la API.
+        const gastada = piezaGastada(pieza);
+        const proporcion = gastada ? (pieza.cargasRestantes ?? 0) / (articulo.cargas ?? 1) : 1;
+        const cargas = gastada ? `${pieza.cargasRestantes} de ${articulo.cargas} cargas` : '';
         if (articulo.generico) {
-            return [{ etiqueta: `${articulo.nombre} (conjuro de nivel ${pieza.nivelConjuro ?? 0}, NL ${pieza.nivelLanzador ?? 0})`,
-                po: redondearCentesimas(valorPorNivelDeConjuro(articulo.generico.Precio_por_nivel, pieza.nivelConjuro, pieza.nivelLanzador ?? 0) * cantidad) }];
+            const detalle = [`conjuro de nivel ${pieza.nivelConjuro ?? 0}`, `NL ${pieza.nivelLanzador ?? 0}`, cargas].filter(Boolean).join(', ');
+            return [{ etiqueta: `${articulo.nombre} (${detalle})`,
+                po: redondearCentesimas(valorPorNivelDeConjuro(articulo.generico.Precio_por_nivel, pieza.nivelConjuro, pieza.nivelLanzador ?? 0) * proporcion * cantidad) }];
         }
-        return [{ etiqueta: articulo.nombre, po: redondearCentesimas((articulo.precio ?? 0) * cantidad) }];
+        return [{ etiqueta: gastada ? `${articulo.nombre} (${cargas})` : articulo.nombre,
+            po: redondearCentesimas((articulo.precio ?? 0) * proporcion * cantidad) }];
     }
     const tipo = articulo.tipo;
     const porLote = tipo === 'municion' ? Math.max(1, articulo.lote) : 1;
@@ -509,14 +538,26 @@ export function pestanasTienda(contexto: ContextoPestanasTienda): PestanaTienda[
 // El dinero inicial --------------------------------------------------------------------------------------------------
 
 /**
- * Cómo se decide el dinero inicial (`dineroInicial` de la compra), por el NEP y con las reglas de la API: con NEP 1, el
- * oro inicial de su clase (los dados de la tabla 7-1 del Manual del jugador, el doble con la ventaja que duplica el oro);
- * con NEP 2 o más, la fila de su NEP en `Riqueza_por_nivel` (la única tabla: la web no lleva otra). Sin oro de clase, sin
- * fila para su NEP (por encima de 20) o con la ventaja que aumenta el oro, no hay tope.
+ * Cómo se decide el dinero inicial (`dineroInicial` de la compra), por el NEP y con las reglas de la API: un PJ con NEP 1,
+ * el oro inicial de su clase (los dados de la tabla 7-1 del Manual del jugador, el doble con la ventaja que duplica el
+ * oro); con NEP 2 o más, la fila de su NEP en `Riqueza_por_nivel` (la única tabla: la web no lleva otra). Un PNJ, el valor
+ * del equipo de un PNJ de su nivel (`Po_pnj` de la misma fila; Guía del DM, tabla 4-23 y pág. 199), también en el 1: su
+ * NEP o, sin NEP, su nivel de personaje. Sin oro de clase, sin fila para su nivel (por encima de 20) o con la ventaja que
+ * aumenta el oro, no hay tope.
  */
 export function reglaDineroInicial(contexto: ContextoDineroInicial, catalogos: Pick<EquipoCatalogos, 'Oro_inicial_por_clase' | 'Riqueza_por_nivel'>): ReglaDineroInicial {
     const nep = Math.max(1, Math.trunc(contexto.nivelEfectivo || 1));
     const libre = (descripcion: string): ReglaDineroInicial => ({ modo: 'libre', dados: null, multiplicador: 1, maximo: null, sugerido: 0, descripcion });
+    if (contexto.pnj) {
+        const nivel = Math.trunc((contexto.nivelEfectivo || 0) > 0 ? contexto.nivelEfectivo : (contexto.nivelPersonaje ?? 0));
+        const valor = catalogos.Riqueza_por_nivel.find((fila) => fila.Nivel === nivel)?.Po_pnj ?? null;
+        if (valor === null)
+            return libre(`La Guía del DM no da el valor del equipo de un PNJ de nivel ${nivel}: pon el dinero que quieras darle.`);
+        return {
+            modo: 'riqueza', dados: null, multiplicador: 1, maximo: valor, sugerido: valor,
+            descripcion: `Valor del equipo de un PNJ de nivel ${nivel} (Guía del DM, tabla 4-23).`,
+        };
+    }
     if (nep >= 2) {
         const riqueza = catalogos.Riqueza_por_nivel.find((fila) => fila.Nivel === nep);
         if (!riqueza)
@@ -603,6 +644,8 @@ export function construirCompra(dineroInicial: number, piezas: PiezaTienda[], co
                 dto.nivelConjuro = pieza.nivelConjuro ?? 0;
                 dto.nivelLanzador = pieza.nivelLanzador ?? 1;
             }
+            if (piezaGastada(pieza))
+                dto.cargasRestantes = Math.trunc(pieza.cargasRestantes ?? 0);
             return dto;
         }),
     };

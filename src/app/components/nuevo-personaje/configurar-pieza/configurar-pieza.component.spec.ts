@@ -5,7 +5,7 @@ import { normalizeArma } from 'src/app/services/arma.service';
 import { textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { normalizeEncantamiento, normalizeEquipoCatalogos, normalizeMaterial, normalizeObjeto } from 'src/app/services/utils/equipo-mapper';
 import { aptitudesAplicables, articuloDeArma, articuloDeObjeto, materialesAplicables, nuevaPieza } from 'src/app/services/utils/tienda-equipo';
-import { crearArmaApi, crearEncantamientoApi, crearEquipoCatalogosApi, crearMaterialApi, crearObjetoGenericoApi } from 'src/testing/equipo-api';
+import { crearArmaApi, crearEncantamientoApi, crearEquipoCatalogosApi, crearMaterialApi, crearObjetoApi, crearObjetoGenericoApi } from 'src/testing/equipo-api';
 import { CreacionVentanaComponent } from '../marco/creacion-ventana.component';
 import { ConfigurarPiezaComponent } from './configurar-pieza.component';
 
@@ -148,5 +148,28 @@ describe('ConfigurarPiezaComponent', () => {
         expect(guardar).toHaveBeenCalledWith(jasmine.objectContaining({ idConjuro: 1, nombreConjuro: 'Curar heridas leves' }));
         component.escribirConjuro('curar heridas');
         expect(component.borrador.idConjuro).toBeNull();
+    });
+
+    it('un objeto con cargas que se gastan se puede comprar gastado: el campo Cargas y el precio en proporción (Guía del DM, pág. 199)', () => {
+        const anillo = articuloDeObjeto(normalizeObjeto(crearObjetoApi({ Id: 92985, Nombre: 'Anillo de contraveneno', Precio: 6750, Cargas: 25 })));
+        component.pieza = nuevaPieza(anillo);
+        component.disponible = 10000;
+        component.ngOnChanges();
+        fixture.detectChanges();
+        const campo = (): HTMLInputElement | null => fixture.nativeElement.querySelector('input[max="25"]');
+        expect(campo()?.value).toBe('25');
+        expect(component.precio).toBe(6750);
+        component.cambiar({ cargasRestantes: component.cargasEscritas('10', 25) });
+        expect(component.borrador.cargasRestantes).toBe(10);
+        expect(component.precio).toBe(2700);
+        expect(component.desglose[0].etiqueta).toBe('Anillo de contraveneno (10 de 25 cargas)');
+        // Más de las que tiene: se queda en las suyas, que es comprarlo nuevo.
+        expect(component.cargasEscritas('80', 25)).toBeNull();
+        expect(component.cargasEscritas('0', 25)).toBe(1);
+        // Un objeto sin cargas que se gasten no enseña el campo.
+        component.pieza = nuevaPieza(espada);
+        component.ngOnChanges();
+        fixture.detectChanges();
+        expect(campo()).toBeNull();
     });
 });
