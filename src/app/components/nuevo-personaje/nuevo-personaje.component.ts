@@ -131,7 +131,8 @@ import { normasDeCreacionAceptadas } from 'src/app/services/utils/normas-creacio
 import { GrupoRacialesOpcionales, SeleccionRacialesOpcionales, agruparRacialesPorOpcional, getClaveSeleccionRacial } from 'src/app/services/utils/racial-opcionales';
 import { RacialEvaluacionResultado, evaluarRacialParaSeleccion } from 'src/app/services/utils/racial-prerrequisitos';
 import { ClaseEvaluacionResultado } from 'src/app/services/utils/clase-elegibilidad';
-import { EvaluacionElegibilidadRazaBase, aplicarMutacion, esRazaMutada, evaluarElegibilidadRazaBase } from 'src/app/services/utils/raza-mutacion';
+import { esRazaMutada } from 'src/app/services/utils/raza-mutacion';
+import { BasesRazaMutada, EstadoBaseRazaMutada } from 'src/app/interfaces/razas-api';
 import {
     distanciaEntreAlineamientos,
     extraerEjesAlineamientoDesdeContrato,
@@ -221,14 +222,16 @@ interface BasicosDerivedState {
     evaluacionBasicos: EvaluacionInconsistenciasBasicos;
 }
 
+/** Una raza base que da la API (`GET /razas/{id}/bases`), con su raza del catálogo. */
 interface CandidataRazaBase {
     raza: Raza;
-    evaluacion: EvaluacionElegibilidadRazaBase;
+    estado: EstadoBaseRazaMutada;
+    avisos: string[];
 }
 
 interface CandidataRazaBaseModal {
     raza: Raza;
-    estado: EvaluacionElegibilidadRazaBase['estado'];
+    estado: EstadoBaseRazaMutada;
     advertencias: string[];
 }
 
@@ -3435,15 +3438,18 @@ export class NuevoPersonajeComponent {
 
     @Output() cerrarNuevoPersonajeSolicitado: EventEmitter<void> = new EventEmitter<void>();
 
-    seleccionarRaza(value: Raza) {
+    /**
+     * Elige la raza. Una raza mutada abre antes el selector de su raza base (las bases las da la API); las demás se aplican
+     * en el acto. La promesa acaba cuando la raza queda aplicada o pendiente de un selector.
+     */
+    seleccionarRaza(value: Raza): Promise<void> {
         this.cerrarSelectorRacialesOpcionalesContexto();
         if (!esRazaMutada(value)) {
             this.cerrarSelectorRazaBaseContexto();
-            this.prepararSeleccionRazaFinal(value, null);
-            return;
+            return this.prepararSeleccionRazaFinal(value, null);
         }
 
-        this.abrirSelectorRazaBase(value);
+        return this.abrirSelectorRazaBase(value);
     }
 
     onToggleHomebrewRazaBase(value: boolean): void {
@@ -3484,14 +3490,12 @@ export class NuevoPersonajeComponent {
         if (!this.incluirHomebrewRazaBase && !item.raza.Oficial)
             return;
 
-        if (item.evaluacion.estado === 'blocked')
-            return;
-
-        if (item.evaluacion.estado === 'eligible_with_warning' && item.evaluacion.advertencias.length > 0) {
+        if (item.estado === 'con_aviso' && item.avisos.length > 0) {
             const result = await Swal.fire({
                 icon: 'warning',
                 title: 'Validación parcial de prerrequisitos',
-                html: `<p style="text-align:left; margin:0;">${item.evaluacion.advertencias.join('<br>')}</p>`,
+                // Los avisos son frases de la API: como texto, sin interpretarlos.
+                text: item.avisos.join(' '),
                 showCancelButton: true,
                 confirmButtonText: 'Usar esta base',
                 cancelButtonText: 'Cancelar',
@@ -3504,13 +3508,23 @@ export class NuevoPersonajeComponent {
         }
 
         // Antes de cerrar el selector: una raza base homebrew (si la mutación ya lo era, ya se confirmó).
-        await this.confirmarSiVuelveHomebrew(`Usar ${item.raza.Nombre} como raza base`, [motivoHomebrew('raza_base', item.raza)], () => {
-            this.cerrarSelectorRazaBaseContexto();
-            this.prepararSeleccionRazaFinal(razaMutadaConfirmada, item.raza);
-        }, razaMutadaConfirmada.Oficial === false);
+        const aceptada = await this.confirmarSiVuelveHomebrew(
+            `Usar ${item.raza.Nombre} como raza base`,
+            [motivoHomebrew('raza_base', item.raza)],
+            () => undefined,
+            razaMutadaConfirmada.Oficial === false,
+        );
+        if (!aceptada)
+            return;
+        this.cerrarSelectorRazaBaseContexto();
+        await this.prepararSeleccionRazaFinal(razaMutadaConfirmada, item.raza);
     }
 
-    private abrirSelectorRazaBase(razaMutada: Raza): void {
+    /**
+     * Abre el selector de la raza base con las que da la API (`GET /razas/{id}/bases`: las que cumplen lo que la mutación
+     * pide de la base), cada una con su raza del catálogo. Lo que pide del personaje lo comprueba la API al guardar.
+     */
+    private async abrirSelectorRazaBase(razaMutada: Raza): Promise<void> {
         if (this.razasCatalogo.length < 1) {
             Swal.fire({
                 icon: 'warning',
@@ -3521,15 +3535,25 @@ export class NuevoPersonajeComponent {
             return;
         }
 
+        let bases: BasesRazaMutada;
+        try {
+            bases = await this.razaSvc.getBasesDeRazaMutada(razaMutada.Id);
+        } catch (error) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No se pudo abrir el selector de base',
+                text: mensajeDeError(error, 'No se pudieron leer las razas base.'),
+                showConfirmButton: true,
+            });
+            return;
+        }
+
+        const catalogo = new Map(this.razasCatalogo.map((raza) => [Number(raza.Id), raza]));
         this.razaMutadaPendiente = razaMutada;
         this.incluirHomebrewRazaBase = false;
-        this.candidatasRazaBase = this.razasCatalogo
-            .filter((candidata) => Number(candidata.Id) > 0 && Number(candidata.Id) !== Number(razaMutada.Id))
-            .map((candidata) => ({
-                raza: candidata,
-                evaluacion: evaluarElegibilidadRazaBase(razaMutada, candidata),
-            }))
-            .filter((item) => item.evaluacion.estado !== 'blocked');
+        this.candidatasRazaBase = bases.Bases
+            .filter((base) => base.Id !== Number(razaMutada.Id) && catalogo.has(base.Id))
+            .map((base) => ({ raza: catalogo.get(base.Id) as Raza, estado: base.Estado, avisos: base.Avisos }));
         this.reconstruirCandidatasRazaBaseModal();
 
         if (this.candidatasRazaBase.length < 1) {
@@ -3554,14 +3578,30 @@ export class NuevoPersonajeComponent {
         this.incluirHomebrewRazaBase = false;
     }
 
-    private prepararSeleccionRazaFinal(raza: Raza, razaBase: Raza | null): void {
-        const razaEfectiva = esRazaMutada(raza) && razaBase
-            ? aplicarMutacion(razaBase, raza)
-            : JSON.parse(JSON.stringify(raza ?? {}));
+    /**
+     * La raza que se elige: con una raza mutada y su base, la que combina la API (`GET /razas/{id}/sobre/{idBase}`; la web
+     * no combina); si no, la raza tal cual. Si tiene raciales opcionales, abre antes su selector.
+     */
+    private async prepararSeleccionRazaFinal(raza: Raza, razaBase: Raza | null): Promise<void> {
+        let razaElegida = raza;
+        if (esRazaMutada(raza) && razaBase) {
+            try {
+                razaElegida = await this.razaSvc.getRazaSobreBase(raza.Id, razaBase.Id);
+            } catch (error) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'No se pudo aplicar la raza mutada',
+                    text: mensajeDeError(error, 'No se pudo aplicar la raza mutada sobre esa base.'),
+                    showConfirmButton: true,
+                });
+                return;
+            }
+        }
+        const razaEfectiva: Raza = JSON.parse(JSON.stringify(razaElegida ?? {}));
         const agrupacion = agruparRacialesPorOpcional(razaEfectiva?.Raciales ?? []);
 
         if (agrupacion.grupos.length < 1) {
-            void this.aplicarSeleccionRazaFinal(raza, razaBase, null);
+            void this.aplicarSeleccionRazaFinal(razaElegida, razaBase, null);
             return;
         }
 
@@ -3594,7 +3634,7 @@ export class NuevoPersonajeComponent {
             return;
         }
 
-        this.abrirSelectorRacialesOpcionales(raza, razaBase, gruposEvaluados);
+        this.abrirSelectorRacialesOpcionales(razaElegida, razaBase, gruposEvaluados);
     }
 
     onCerrarModalRacialesOpcionales(): void {
@@ -3747,8 +3787,8 @@ export class NuevoPersonajeComponent {
     private reconstruirCandidatasRazaBaseModal(): void {
         this.candidatasRazaBaseModal = this.candidatasRazaBase.map((item) => ({
             raza: item.raza,
-            estado: item.evaluacion.estado,
-            advertencias: item.evaluacion.advertencias ?? [],
+            estado: item.estado,
+            advertencias: item.avisos,
         }));
     }
 

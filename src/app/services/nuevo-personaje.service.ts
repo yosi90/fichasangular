@@ -31,7 +31,7 @@ import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contr
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
-import { aplicarMutacion, esRazaMutada } from './utils/raza-mutacion';
+import { esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
@@ -1484,6 +1484,11 @@ export class NuevoPersonajeService {
         return true;
     }
 
+    /**
+     * Aplica la raza elegida. Con una raza mutada, `raza` es la que ya combinó la API con su base
+     * (`GET /razas/{id}/sobre/{idBase}`; la web no combina) y `razaBase`, la base del catálogo, que se guarda aparte; sin
+     * base, una mutada no se aplica (`false`).
+     */
     seleccionarRaza(
         raza: Raza,
         razaBase: Raza | null = null,
@@ -1493,9 +1498,7 @@ export class NuevoPersonajeService {
         if (usaMutacion && !razaBase)
             return false;
 
-        const razaEfectiva = usaMutacion && razaBase
-            ? aplicarMutacion(razaBase, raza)
-            : this.copiarRaza(raza);
+        const razaEfectiva = this.copiarRaza(raza);
         const racialesEfectivos = resolverRacialesFinales(
             this.copiarRaciales(razaEfectiva.Raciales),
             seleccionOpcionales

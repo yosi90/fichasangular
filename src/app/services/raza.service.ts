@@ -4,7 +4,10 @@ import { Database, Unsubscribe } from '@angular/fire/database';
 import { Observable, firstValueFrom, map } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { MutacionRaza, Raza, RazaHabilidades, RazaPrerrequisitos, RazaPrerrequisitosFlags } from '../interfaces/raza';
-import { RazaActualizadaResponse, RazaCreateApiResponse, RazaCreateRequest, RazaCreateResponse } from '../interfaces/razas-api';
+import {
+    BaseRazaMutada, BasesRazaMutada, EstadoBaseRazaMutada, RazaActualizadaResponse, RazaCreateApiResponse, RazaCreateRequest,
+    RazaCreateResponse,
+} from '../interfaces/razas-api';
 import { environment } from 'src/environments/environment';
 import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
@@ -408,6 +411,34 @@ export class RazaService {
         }
     }
 
+    /**
+     * Las razas que pueden ser la base de una raza mutada (`GET /razas/{id}/bases`): la API decide cuáles cumplen lo que la
+     * mutación pide de la base. Con `idAlineamiento`, comprueba también lo que pide del personaje. Con un error de la API,
+     * su texto.
+     */
+    public async getBasesDeRazaMutada(idRaza: number, idAlineamiento: number | null = null): Promise<BasesRazaMutada> {
+        try {
+            const consulta = idAlineamiento === null ? '' : `?idAlineamiento=${toInt(idAlineamiento)}`;
+            const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}razas/${toInt(idRaza)}/bases${consulta}`));
+            return basesDeRazaMutadaDesdeApi(raw);
+        } catch (error) {
+            throw errorDePerfil(error, 'No se pudieron leer las razas base.');
+        }
+    }
+
+    /**
+     * La raza mutada aplicada sobre una raza base, ya combinada por la API (`GET /razas/{id}/sobre/{idBase}`): la raza que
+     * se elige en la creación. La web no combina. Con un error de la API, su texto (`raza_base_no_cumple_requisitos`…).
+     */
+    public async getRazaSobreBase(idRaza: number, idRazaBase: number): Promise<Raza> {
+        try {
+            const raw = await firstValueFrom(this.http.get(`${environment.apiUrl}razas/${toInt(idRaza)}/sobre/${toInt(idRazaBase)}`));
+            return normalizeRazaApi(raw);
+        } catch (error) {
+            throw errorDePerfil(error, 'No se pudo aplicar la raza mutada sobre esa base.');
+        }
+    }
+
     public async crearRaza(payload: RazaCreateRequest): Promise<RazaCreateResponse> {
         try {
             const headers = await cabeceraApiConFirebase(this.auth);
@@ -441,4 +472,27 @@ export class RazaService {
 function respuestaDeRaza(response: RazaCreateApiResponse | null | undefined, mensajePorDefecto: string): RazaCreateResponse {
     const { message, id } = leerRespuestaDeEscritura(response, 'idRaza', mensajePorDefecto);
     return { message, idRaza: id };
+}
+
+const ESTADOS_BASE_RAZA_MUTADA: EstadoBaseRazaMutada[] = ['elegible', 'con_aviso'];
+
+/** `BasesDeRazaMutada` de la API (estricto: lo que no trae su forma no se lee). */
+export function basesDeRazaMutadaDesdeApi(raw: any): BasesRazaMutada {
+    const bases: BaseRazaMutada[] = toArray(raw?.Bases)
+        .map((base: any) => ({
+            Id: toInt(base?.Id),
+            Nombre: `${base?.Nombre ?? ''}`,
+            Oficial: base?.Oficial === true,
+            Estado: ESTADOS_BASE_RAZA_MUTADA.includes(base?.Estado) ? base.Estado : 'con_aviso',
+            Avisos: toArray(base?.Avisos).map((aviso: any) => `${aviso}`),
+        }))
+        .filter((base) => base.Id > 0);
+    return {
+        Raza: { Id: toInt(raw?.Raza?.Id), Nombre: `${raw?.Raza?.Nombre ?? ''}` },
+        Bases: bases,
+        Requisitos_del_personaje: toArray(raw?.Requisitos_del_personaje).map((requisito: any) => ({
+            Frase: `${requisito?.Frase ?? ''}`,
+            Cumple: typeof requisito?.Cumple === 'boolean' ? requisito.Cumple : null,
+        })),
+    };
 }

@@ -5,6 +5,7 @@ import { normalizeRazaApi } from './utils/raza-mapper';
 import { RazaService, normalizeAlineamientoRaza, normalizeHabilidadesRaza, normalizeIdiomasRaza, normalizeRazaLegacy } from './raza.service';
 import { simularTokenApi } from 'src/testing/simular-token-api';
 import { razaPorEdadesApi, razaPorEdadesEnPasoApi } from 'src/testing/raza-por-edades';
+import { PROLE_SOBRE_API } from 'src/testing/razas-mutadas-api';
 
 describe('RazaService helpers', () => {
     beforeEach(() => simularTokenApi('token-firebase'));
@@ -807,5 +808,47 @@ describe('RazaService helpers', () => {
         const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
 
         await expectAsync(service.getRazaEnPasoEdad(709, 99)).toBeRejectedWithError('Esa edad no es de esta raza.');
+    });
+
+    it('getRazaSobreBase pide GET /razas/{id}/sobre/{idBase} y da la raza ya combinada', async () => {
+        const http = { get: jasmine.createSpy().and.returnValue(of(PROLE_SOBRE_API['18'])) };
+        const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
+
+        const raza = await service.getRazaSobreBase(21, 18);
+
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/21\/sobre\/18$/));
+        expect(raza).toEqual(normalizeRazaApi(PROLE_SOBRE_API['18']));
+        expect([raza.Id, raza.Ajuste_nivel, raza.Dgs_adicionales.Cantidad]).toEqual([21, 1, 2]);
+    });
+
+    it('getRazaSobreBase da el texto del error de la API (raza_base_no_cumple_requisitos)', async () => {
+        const mensaje = 'La raza base no cumple lo que pide «Prole de bahamut»: criatura de tipo humanoide.';
+        const http = {
+            get: jasmine.createSpy().and.returnValue(throwError(() => new HttpErrorResponse({
+                status: 400,
+                error: { error: mensaje, code: 'raza_base_no_cumple_requisitos', field: 'idBase' },
+            }))),
+        };
+        const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
+
+        await expectAsync(service.getRazaSobreBase(21, 30)).toBeRejectedWithError(mensaje);
+    });
+
+    it('getBasesDeRazaMutada pide GET /razas/{id}/bases (con el alineamiento si se da) y lee su forma', async () => {
+        const respuesta = {
+            Raza: { Id: 21, Nombre: 'Prole de bahamut' },
+            Bases: [
+                { Id: 5, Nombre: 'Mediano', Oficial: true, Estado: 'elegible', Avisos: [] },
+                { Id: 26, Nombre: 'Jacquar', Oficial: false, Estado: 'con_aviso', Avisos: ['No se ha podido comprobar: x.'] },
+            ],
+            Requisitos_del_personaje: [{ Frase: 'Cualquier alineamiento no maligno', Cumple: null }],
+        };
+        const http = { get: jasmine.createSpy().and.returnValue(of(respuesta)) };
+        const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
+
+        expect(await service.getBasesDeRazaMutada(21)).toEqual(respuesta as any);
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/21\/bases$/));
+        await service.getBasesDeRazaMutada(21, 7);
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/21\/bases\?idAlineamiento=7$/));
     });
 });
