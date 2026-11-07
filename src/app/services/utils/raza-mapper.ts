@@ -56,16 +56,8 @@ function normalizeAlineamientoApi(raw: any): Alineamiento {
     };
 }
 
-const SUJETOS_MUTACION: SujetoPrerrequisitoMutacion[] = ['raza_base', 'personaje', 'creacion'];
-
-function numeroONulo(valor: any): number | null {
-    return valor === null || valor === undefined || `${valor}`.trim() === '' ? null : toNumber(valor);
-}
-
-function textoONulo(valor: any): string | null {
-    const texto = valor === null || valor === undefined ? '' : `${valor}`.trim();
-    return texto ? texto : null;
-}
+/** Los sujetos de un prerrequisito de mutación (lo que no es uno de ellos se lee como `raza_base`). */
+export const SUJETOS_MUTACION: SujetoPrerrequisitoMutacion[] = ['raza_base', 'personaje', 'creacion'];
 
 /**
  * Lo que pide una raza mutada (`pr` de la API, `Prerrequisitos` de su caché): por la clave de su tipo, que es un dato
@@ -80,10 +72,10 @@ export function normalizarPrerrequisitosMutacion(raw: any): RazaPrerrequisitos {
             Id: toNumber(item?.Id),
             Tipo: `${item?.Tipo ?? clave}`,
             Sujeto: SUJETOS_MUTACION.includes(item?.Sujeto) ? item.Sujeto : 'raza_base',
-            Id_referencia: numeroONulo(item?.Id_referencia),
-            Referencia: textoONulo(item?.Referencia),
-            Cantidad: numeroONulo(item?.Cantidad),
-            Texto: textoONulo(item?.Texto),
+            Id_referencia: toNumberOrNull(item?.Id_referencia),
+            Referencia: toNullableText(item?.Referencia),
+            Cantidad: toNumberOrNull(item?.Cantidad),
+            Texto: toNullableText(item?.Texto),
             Opcional: toNumber(item?.Opcional),
             Frase: toText(item?.Frase),
         }));
@@ -100,8 +92,8 @@ export function normalizarCambiosMutacion(raw: any): CambioMutacion[] {
             Campo: toText(item?.Campo),
             Nombre: toText(item?.Nombre),
             Operacion: toText(item?.Operacion),
-            Valor: numeroONulo(item?.Valor),
-            Elementos: toStrictArray(item?.Elementos).map((e: any) => ({ Id: toNumber(e?.Id), Nombre: textoONulo(e?.Nombre) })),
+            Valor: toNumberOrNull(item?.Valor),
+            Elementos: toStrictArray(item?.Elementos).map((e: any) => ({ Id: toNumber(e?.Id), Nombre: toNullableText(e?.Nombre) })),
             Frase: toText(item?.Frase),
         }))
         .filter((cambio: CambioMutacion) => cambio.Campo.length > 0 && cambio.Operacion.length > 0);

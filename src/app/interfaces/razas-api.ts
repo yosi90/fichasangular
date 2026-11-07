@@ -1,4 +1,4 @@
-import { Raza } from "./raza";
+import { Raza, SujetoPrerrequisitoMutacion } from "./raza";
 import { ArmaNaturalCreate } from "./arma-natural";
 
 export interface RazaCreateCore {
@@ -282,7 +282,7 @@ export interface TipoPrerrequisitoMutacion {
     Clave: string;
     Nombre: string;
     Ejemplo: string;
-    Sujeto: 'raza_base' | 'personaje' | 'creacion';
+    Sujeto: SujetoPrerrequisitoMutacion;
     Dato: string;
     Comparador: string;
     /** El catálogo de su referencia (`tipos_criatura`, `subtipos`, `razas`, `tamanos`, `clases` o uno de `Catalogos`). */

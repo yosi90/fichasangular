@@ -13,8 +13,8 @@ import { Alineamiento } from '../interfaces/alineamiento';
 import { DoteContextual } from '../interfaces/dote-contextual';
 import { FirebaseInjectionContextService } from './firebase-injection-context.service';
 import {
-    normalizarCambiosMutacion, normalizarCamposCreacionRaza, normalizarCamposEdadRaza, normalizarPrerrequisitosMutacion,
-    normalizarTextosRaza, normalizeRazaApi, textoClasePredilecta,
+    SUJETOS_MUTACION, normalizarCambiosMutacion, normalizarCamposCreacionRaza, normalizarCamposEdadRaza,
+    normalizarPrerrequisitosMutacion, normalizarTextosRaza, normalizeRazaApi, textoClasePredilecta,
 } from './utils/raza-mapper';
 import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
@@ -451,7 +451,6 @@ function respuestaDeRaza(response: RazaCreateApiResponse | null | undefined, men
 }
 
 const ESTADOS_BASE_RAZA_MUTADA: EstadoBaseRazaMutada[] = ['elegible', 'con_aviso'];
-const SUJETOS_TIPO_MUTACION: TipoPrerrequisitoMutacion['Sujeto'][] = ['raza_base', 'personaje', 'creacion'];
 
 function idsNombres(raw: any): { Id: number; Nombre: string; }[] {
     return toArray(raw).map((item: any) => ({ Id: toInt(item?.Id), Nombre: `${item?.Nombre ?? ''}` }));
@@ -468,7 +467,7 @@ export function modeloMutacionDesdeApi(raw: any): ModeloMutacion {
                 Clave: `${tipo?.Clave ?? ''}`,
                 Nombre: `${tipo?.Nombre ?? ''}`,
                 Ejemplo: `${tipo?.Ejemplo ?? ''}`,
-                Sujeto: SUJETOS_TIPO_MUTACION.includes(tipo?.Sujeto) ? tipo.Sujeto : 'raza_base',
+                Sujeto: SUJETOS_MUTACION.includes(tipo?.Sujeto) ? tipo.Sujeto : 'raza_base',
                 Dato: `${tipo?.Dato ?? ''}`,
                 Comparador: `${tipo?.Comparador ?? ''}`,
                 Catalogo: typeof tipo?.Catalogo === 'string' && tipo.Catalogo ? tipo.Catalogo : null,

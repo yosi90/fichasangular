@@ -9,7 +9,7 @@ import {
     PrerequisiteType,
     TipoEditorMutacion,
 } from './prerrequisito-editor.models';
-import { idsUnicosOrdenados, toInt } from 'src/app/services/utils/normalizacion';
+import { idsUnicosOrdenados, toInt, toIntOrNull } from 'src/app/services/utils/normalizacion';
 import { nombreTipoPrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 
 function withOpcional(base: Record<string, any>, payload: Record<string, any>): Record<string, any> {
@@ -538,11 +538,6 @@ export function tipoDeMutacion(type: PrerequisiteType): TipoPrerrequisitoMutacio
     return esTipoDeMutacion(type) ? TIPOS_DE_MUTACION.get(type) ?? null : null;
 }
 
-function enteroFinito(valor: unknown): number | null {
-    const numero = Number(valor);
-    return Number.isFinite(numero) ? Math.trunc(numero) : null;
-}
-
 function definicionDeMutacion(tipo: TipoPrerrequisitoMutacion): PrerequisiteEditorDefinition {
     const type = claveEditorMutacion(tipo.Clave);
     const editorKind: PrerequisiteEditorKind = tipo.Pide_referencia
@@ -556,7 +551,7 @@ function definicionDeMutacion(tipo: TipoPrerrequisitoMutacion): PrerequisiteEdit
         catalogLabel: tipo.Nombre,
         valueLabel: 'Cantidad',
         isComplete: (row) => (!tipo.Pide_referencia || toInt(row.id, 0) > 0)
-            && (!tipo.Pide_cantidad || enteroFinito(row.valor) !== null)
+            && (!tipo.Pide_cantidad || toIntOrNull(row.valor) !== null)
             && (!tipo.Pide_texto || `${row.texto ?? ''}`.trim().length > 0),
         // El elemento de `prerrequisitos_mutacion[]` del alta de razas: la clave del tipo y lo que pide.
         toPayload: (row) => {
@@ -564,7 +559,7 @@ function definicionDeMutacion(tipo: TipoPrerrequisitoMutacion): PrerequisiteEdit
             if (tipo.Pide_referencia)
                 salida['id_referencia'] = toInt(row.id, 0);
             if (tipo.Pide_cantidad)
-                salida['cantidad'] = enteroFinito(row.valor) ?? 0;
+                salida['cantidad'] = toIntOrNull(row.valor) ?? 0;
             if (tipo.Pide_texto)
                 salida['texto'] = `${row.texto ?? ''}`.trim();
             const opcional = Math.max(0, toInt(row.opcional, 0));
