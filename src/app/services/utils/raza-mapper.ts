@@ -188,7 +188,7 @@ type CamposCreacionRaza = 'Dotes_adicionales' | 'Puntos_habilidad_extra_primer_n
     | 'Id_clase_predilecta' | 'Clase_predilecta_comodin' | 'Edad_maxima_dados' | 'Edad_maxima_caras'
     | 'Edad_inicial_dados_1' | 'Edad_inicial_caras_1' | 'Edad_inicial_dados_2' | 'Edad_inicial_caras_2'
     | 'Edad_inicial_dados_3' | 'Edad_inicial_caras_3' | 'Vd' | 'Vd_mod_clases_pj' | 'Vd_mod_clases_pnj' | 'Clases_asociadas'
-    | 'Armas_naturales';
+    | 'Clases_predilectas_extra' | 'Clases_multiclase_libre' | 'Armas_naturales';
 
 /**
  * Lo que la raza aporta a las reglas de la creación: su dote adicional y sus puntos de habilidad extra, si carga como un
@@ -232,6 +232,9 @@ export function normalizarCamposCreacionRaza(raw: any): Pick<Raza, CamposCreacio
         Vd_mod_clases_pj: toNumberOrNull(raw?.Vd_mod_clases_pj),
         Vd_mod_clases_pnj: toNumberOrNull(raw?.Vd_mod_clases_pnj),
         Clases_asociadas: refs(raw?.Clases_asociadas),
+        // Las clases predilectas además de la principal y las de multiclase libre (desde el 2026-11-07, caché `razas` 26).
+        Clases_predilectas_extra: refs(raw?.Clases_predilectas_extra),
+        Clases_multiclase_libre: refs(raw?.Clases_multiclase_libre),
         // Las armas naturales como dato (desde el 2026-11-06), las mismas en la API y en la caché.
         Armas_naturales: leerArmasNaturales(raw?.Armas_naturales),
     };

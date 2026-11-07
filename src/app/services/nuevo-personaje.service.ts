@@ -84,7 +84,9 @@ import { getAlineamientoBasicoIdPorNombre, getVectorDesdeNombreBasico } from './
 import { AptitudDelPersonaje, armaduraNaturalEspecialNivel, armasNaturalesEspecialNivel, evaluarActitudEspecial, habilidadesEspecialNivel, listadoConjurosClase, modificadoresCaracteristicaEspecialNivel, nivelesConjuroSinRequisito, pasosTamanoEspecialNivel, prerrequisitosEspecialNivel, reduccionDanoEspecialNivel, tienePrerrequisitosActitud } from './utils/aptitudes-clase';
 import { OrigenTamano, TamanoEfectivo, tamanoEfectivo, tamanoQueCuenta } from './utils/tamano-efectivo';
 import { ajusteDePlantillas, dgRacialSustituible, dgsDePlantilla, dgsDePlantillas, dgsRacialesQueCuentan, dgsTotales, nivelEfectivoPersonaje, PartesNivelPersonaje, primerDgEsRacial } from './utils/nivel-personaje';
-import { ClaseParaPenalizacion, ClasePredilecta, noPenalizaMulticlase, PenalizacionExperiencia, penalizacionExperiencia } from './utils/penalizacion-experiencia';
+import {
+    ClaseParaPenalizacion, ClasePredilecta, clasePredilectaDeRaza, noPenalizaMulticlase, PenalizacionExperiencia, penalizacionExperiencia,
+} from './utils/penalizacion-experiencia';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, GrupoDadosGolpe } from './utils/puntos-golpe';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
 import { claseDeLaRaza, claseObligada, ContextoClasesDeMonstruo, motivoClaseDeMonstruo } from './utils/clases-de-monstruo';
@@ -7027,15 +7029,19 @@ export class NuevoPersonajeService {
 
     /**
      * MJ cap. 3, monje y paladín: quien gana un nivel de otra clase ya no puede volver a subir la suya. Antes de aplicar
-     * un nivel de `clase`, cierra las que ya tiene con `Multiclase_restringida` (un dato de la clase, no su nombre).
+     * un nivel de `clase`, cierra las que ya tiene con `Multiclase_restringida` (un dato de la clase, no su nombre), salvo
+     * las que su raza deja dejar y retomar (`Clases_multiclase_libre`, por su id: el paladín de la prole de Bahamut y del
+     * nacido del Infierno, el paladín y el monje del iluminiano).
      */
     private cerrarClasesPorMulticlase(clase: Clase): void {
         const nombreNuevo = normalizarTexto(clase?.Nombre ?? '');
+        const libres = new Set((this.razaSeleccionada?.Clases_multiclase_libre ?? []).map((libre) => toInt(libre?.Id)));
         (this.personajeCreacion.desgloseClases ?? []).forEach((entrada) => {
             const nombre = normalizarTexto(entrada?.Nombre ?? '');
             if (nombre.length < 1 || nombre === nombreNuevo || toNumber(entrada?.Nivel) < 1)
                 return;
-            if (this.obtenerClaseCatalogoPorNombre(entrada.Nombre)?.Multiclase_restringida === true)
+            const catalogo = this.obtenerClaseCatalogoPorNombre(entrada.Nombre);
+            if (catalogo?.Multiclase_restringida === true && !libres.has(toInt(catalogo.Id)))
                 this.clasesCerradasPorMulticlase.add(nombre);
         });
     }
@@ -8866,7 +8872,8 @@ export class NuevoPersonajeService {
     /**
      * La penalización de PX por multiclase (`services/utils/penalizacion-experiencia.ts`, Manual del jugador, cap. 3): con
      * las clases del personaje y, si se pasa `claseNueva`, con un nivel más de esa clase (lo que pasaría al cogerlo). La
-     * clase predilecta es la de los datos de su raza (`Id_clase_predilecta` y su comodín «cualquiera»); las de prestigio,
+     * clases predilectas son las de los datos de su raza (`Id_clase_predilecta`, su comodín «cualquiera» y
+     * `Clases_predilectas_extra`, `clasePredilectaDeRaza`); las de prestigio,
      * por su dato `Prestigio`, y como ellas las que no penalizan la multiclase (`Sin_penalizacion_multiclase`: las clases
      * de monstruo de *Libris Mortis*, pág. 35).
      */
@@ -8907,10 +8914,7 @@ export class NuevoPersonajeService {
     }
 
     private clasePredilectaRaza(): ClasePredilecta | null {
-        const raza = this.razaSeleccionada;
-        if (!raza)
-            return null;
-        return { id: toInt(raza.Id_clase_predilecta), comodin: raza.Clase_predilecta_comodin ?? null };
+        return clasePredilectaDeRaza(this.razaSeleccionada);
     }
 
     private recalcularDerivadasPorCaracteristicas(): void {

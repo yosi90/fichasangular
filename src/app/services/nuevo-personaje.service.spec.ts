@@ -2545,11 +2545,12 @@ describe('NuevoPersonajeService (clases)', () => {
         const picaro = () => crearClaseBase({ Id: 12, Nombre: 'Pícaro', Desglose_niveles: [1, 2].map(nivel) });
         const mago = () => crearClaseBase({ Id: 9, Nombre: 'Mago', Desglose_niveles: [1].map(nivel) });
 
-        function conRaza(idPredilecta: number, comodin: 'cualquiera' | null): void {
+        function conRaza(idPredilecta: number, comodin: 'cualquiera' | null, otras: { Id: number; Nombre: string; }[] = []): void {
             const raza = crearRazaBase(crearTipoBase());
             raza.Dgs_adicionales.Cantidad = 0;
             raza.Id_clase_predilecta = idPredilecta;
             raza.Clase_predilecta_comodin = comodin;
+            raza.Clases_predilectas_extra = otras;
             service.seleccionarRaza(raza);
             service.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 11, Carisma: 9 });
             service.setCatalogoClases([guerrero(), picaro(), mago()]);
@@ -2573,6 +2574,19 @@ describe('NuevoPersonajeService (clases)', () => {
             // Pícaro 1 y mago 1 están a la par: nada; la experiencia con la que se crea no cambia (NEP 5: 10.000 PX).
             expect(service.penalizacionExperiencia(mago()).porcentaje).toBe(0);
             expect(service.PersonajeCreacion.Experiencia).toBe(10000);
+        });
+
+        it('la prole de Bahamut sobre un elfo (mago y guerrero; Races of the Dragon, pág. 10) guerrero 4 / pícaro 1 no pierde nada', () => {
+            conRaza(9, null, [{ Id: 7, Nombre: 'Guerrero' }]);
+            service.aplicarSiguienteNivelClase(guerrero());
+            service.aplicarSiguienteNivelClase(picaro());
+            expect(service.PersonajeCreacion.Penalizacion_experiencia?.porcentaje).toBe(0);
+            // Con mago 1 también: mago y guerrero son predilectas y pícaro queda solo.
+            expect(service.penalizacionExperiencia(mago()).porcentaje).toBe(0);
+            // Sin guerrero de predilecta (antes), −20 %.
+            conRaza(9, null);
+            service.aplicarSiguienteNivelClase(guerrero());
+            expect(service.penalizacionExperiencia(picaro()).porcentaje).toBe(20);
         });
 
         it('las clases de prestigio no cuentan', () => {
@@ -9105,6 +9119,26 @@ describe('NuevoPersonajeService (reglas de la auditoría de la matriz, 2026-10-2
         expect(evaluacion.estado).toBe('blocked_failed');
         expect(evaluacion.razones[0]).toContain('paladín');
         expect(svc.evaluarClaseParaSeleccion(guerrero).estado).toBe('eligible');
+    });
+
+    it('un nacido del Infierno paladín / hechicero puede volver a paladín: su raza le da la multiclase libre (Fiendish Codex II, pág. 78)', () => {
+        const svc = new NuevoPersonajeService();
+        const paladin = crearClaseBase({ Id: 11, Nombre: 'Paladín', Multiclase_restringida: true });
+        const monje = crearClaseBase({ Id: 10, Nombre: 'Monje', Multiclase_restringida: true });
+        const hechicero = crearClaseBase({ Id: 8, Nombre: 'Hechicero' });
+        svc.setCatalogoClases([paladin, monje, hechicero]);
+        // La raza combinada del nacido del Infierno (`Clases_multiclase_libre`: el paladín), por su id.
+        (svc as any).razaSeleccionada = { Clases_multiclase_libre: [{ Id: 11, Nombre: 'Paladín' }] };
+
+        expect(svc.aplicarSiguienteNivelClase(paladin).aplicado).toBeTrue();
+        expect(svc.aplicarSiguienteNivelClase(monje).aplicado).toBeTrue();
+        expect(svc.aplicarSiguienteNivelClase(hechicero).aplicado).toBeTrue();
+
+        expect(svc.evaluarClaseParaSeleccion(paladin).estado).toBe('eligible');
+        expect(svc.aplicarSiguienteNivelClase(paladin).aplicado).toBeTrue();
+        expect(svc.PersonajeCreacion.desgloseClases.find((c) => c.Nombre === 'Paladín')?.Nivel).toBe(2);
+        // El monje no es libre para esta raza: tras otra clase se cierra.
+        expect(svc.evaluarClaseParaSeleccion(monje).estado).toBe('blocked_failed');
     });
 
     it('un guerrero que gana un nivel de paladín sí puede seguir subiendo de paladín, y de guerrero', () => {

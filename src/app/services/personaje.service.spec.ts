@@ -410,6 +410,12 @@ describe('PersonajeService', () => {
         // Las de prestigio no cuentan (Guía del DM, cap. 6).
         const prestigio = ficha({ Id_clase_predilecta: 9 }, [clase(3, 'Guerrero', 4), clase(60, 'Maestro del saber', 1, true)]);
         expect(prestigio.Penalizacion_experiencia?.porcentaje).toBe(0);
+        // Un elfo prole de Bahamut (`ra.Clases_predilectas_extra`, 2026-11-07: mago y guerrero) guerrero 4 / pícaro 1 / mago 1:
+        // no cuenta ninguna de sus dos predilectas y el pícaro queda solo.
+        const prole = ficha({ Id_clase_predilecta: 9, Clases_predilectas_extra: [{ Id: 3, Nombre: 'Guerrero' }] },
+            [clase(3, 'Guerrero', 4), clase(12, 'Pícaro', 1), clase(9, 'Mago', 1)]);
+        expect(prole.Penalizacion_experiencia?.porcentaje).toBe(0);
+        expect(prole.Penalizacion_experiencia?.predilectas).toEqual(['Guerrero 4', 'Mago 1']);
     });
 
     it('mapApiDetalleToPersonaje no cuenta para los PX una clase sin penalización por multiclase (Libris Mortis, pág. 35)', () => {

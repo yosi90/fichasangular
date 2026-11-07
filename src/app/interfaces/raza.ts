@@ -247,6 +247,16 @@ export interface Raza {
     Id_clase_predilecta?: number;
     /** `'cualquiera'` si la clase predilecta es la comodín «Cualquiera» (humano y semielfo: la de más nivel). */
     Clase_predilecta_comodin?: Comodin | null;
+    /**
+     * Las clases predilectas además de la principal, que tampoco cuentan para la penalización de PX (la prole de Bahamut
+     * sobre un elfo: guerrero, y mago la principal). Vacía si no tiene.
+     */
+    Clases_predilectas_extra?: Id_nombre[];
+    /**
+     * Las clases con `Multiclase_restringida` (el monje, el paladín) que un personaje de esta raza puede dejar y retomar:
+     * la creación no las cierra al tomar otra clase (`cerrarClasesPorMulticlase`). Vacía si no tiene.
+     */
+    Clases_multiclase_libre?: Id_nombre[];
     Modificadores: {
         Fuerza: number;
         Destreza: number;

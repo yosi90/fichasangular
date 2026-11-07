@@ -1806,6 +1806,28 @@ describe('NuevaRazaComponent', () => {
             expect(component.opcionesClasesLanzamiento.map((opcion) => opcion.nombre)).toContain('Combatiente');
         });
 
+        it('las otras clases predilectas y la multiclase libre (solo las clases con restricción de multiclase)', async () => {
+            const claseSvc = TestBed.inject(ClaseService) as any;
+            claseSvc.getClases = () => of([
+                { Id: 7, Nombre: 'Guerrero' },
+                { Id: 11, Nombre: 'Paladín', Multiclase_restringida: true },
+                { Id: 10, Nombre: 'Monje', Multiclase_restringida: true },
+            ]);
+            await recrearComponenteConUid('');
+
+            expect(component.opcionesClasesMulticlaseLibre.map((opcion) => opcion.nombre)).toEqual(jasmine.arrayWithExactContents(['Monje', 'Paladín']));
+            expect(component.opcionesClasesPredilectasExtra.map((opcion) => opcion.nombre))
+                .toEqual(jasmine.arrayWithExactContents(['Guerrero', 'Monje', 'Paladín']));
+
+            component.seleccionarClasePredilecta(7);
+            component.anadirA('clases_predilectas_extra', 11);
+            component.anadirA('clases_multiclase_libre', 11);
+            component.anadirA('clases_multiclase_libre', 7);
+            const payload = component.buildPayload();
+            expect(payload.clases_predilectas_extra).toEqual([11]);
+            expect(payload.clases_multiclase_libre).toEqual([11]);
+        });
+
         it('se crea con su VD y sus clases asociadas', async () => {
             component.form.patchValue({ dgs_extra: 3, id_tipo_dado: 22, id_tipo_criatura_dgs: 3, vd: 2, vd_mod_clases_pnj: -2 });
             component.anadirA('clases_asociadas', 1);

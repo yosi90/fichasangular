@@ -161,6 +161,13 @@ export interface RazaCreateRequest {
     subtipos?: number[];
     /** Los ids de sus clases asociadas (MM, pág. 294); si no viene, el alta no deja ninguna y la edición conserva las que hay. */
     clases_asociadas?: number[];
+    /**
+     * Los ids de sus clases predilectas además de `raza.id_clase_predilecta` (nunca la principal ni «Cualquiera»; con
+     * «Ninguna», vacía); si no viene, el alta no deja ninguna y la edición conserva las que hay. Desde el 2026-11-07.
+     */
+    clases_predilectas_extra?: number[];
+    /** Los ids de las clases con restricción de multiclase (monje, paladín) que la raza deja dejar y retomar. Desde el 2026-11-07. */
+    clases_multiclase_libre?: number[];
     idiomas?: number[];
     /** Los ids de sus idiomas adicionales si no son cualquiera (el enano); si no viene, la edición conserva los que hay. */
     idiomas_adicionales?: number[];

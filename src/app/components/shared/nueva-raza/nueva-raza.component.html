@@ -52,6 +52,23 @@
                                             <mat-error *ngIf="form.controls.id_clase_predilecta.invalid">Clase obligatoria.</mat-error>
                                         </mat-form-field>
 
+                                        <app-lista-de-catalogo class="favored-class-extra" *ngIf="tieneClasePredilecta"
+                                            titulo="Otras clases predilectas" icono="clase" vacio="Ninguna: solo la principal."
+                                            textoAnadir="Añadir clase predilecta"
+                                            [filas]="clasesPredilectasExtra" [opciones]="opcionesClasesPredilectasExtra" [deshabilitado]="edicion.cargando"
+                                            [error]="errores.mensajeDe('clases_predilectas_extra')"
+                                            (anadir)="anadirA('clases_predilectas_extra', $event)" (quitar)="quitarDe('clases_predilectas_extra', $event)">
+                                        </app-lista-de-catalogo>
+
+                                        <app-lista-de-catalogo class="free-multiclass"
+                                            titulo="Multiclase libre" icono="clase"
+                                            vacio="Ninguna: el monje y el paladín se cierran al tomar otra clase."
+                                            textoAnadir="Añadir clase con multiclase libre"
+                                            [filas]="clasesMulticlaseLibre" [opciones]="opcionesClasesMulticlaseLibre" [deshabilitado]="edicion.cargando"
+                                            [error]="errores.mensajeDe('clases_multiclase_libre')"
+                                            (anadir)="anadirA('clases_multiclase_libre', $event)" (quitar)="quitarDe('clases_multiclase_libre', $event)">
+                                        </app-lista-de-catalogo>
+
                                         <div class="estado-row source-status">
                                             <mat-chip-listbox class="boolean-chips" aria-label="Estado de la raza">
                                                 <mat-chip-option [selected]="form.controls.oficial.value === true" (click)="toggleBooleanControl('oficial')">

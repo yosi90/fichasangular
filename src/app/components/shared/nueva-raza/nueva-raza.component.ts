@@ -167,7 +167,7 @@ interface ListaLanzamientoFila {
 }
 
 /** Las listas de ids del formulario que se editan con `<app-lista-de-catalogo>` (`anadirA`, `quitarDe`). */
-type ListaDeRaza = 'clases_asociadas' | 'idiomas_adicionales';
+type ListaDeRaza = 'clases_asociadas' | 'clases_predilectas_extra' | 'clases_multiclase_libre' | 'idiomas_adicionales';
 
 type RelacionSeleccionKey =
     | 'subtiposSeleccionados'
@@ -275,6 +275,8 @@ const CAMPOS_RAZA: CamposDeFormulario = {
     id_manual: { etiqueta: 'Manual', paso: 0 },
     pagina: { etiqueta: 'Página', paso: 0 },
     id_clase_predilecta: { etiqueta: 'Clase predilecta', paso: 0 },
+    clases_predilectas_extra: { etiqueta: 'Otras clases predilectas', paso: 0 },
+    clases_multiclase_libre: { etiqueta: 'Multiclase libre', paso: 0 },
     oficial: { etiqueta: 'Oficial', paso: 0 },
     descripcion: { etiqueta: 'Descripción', paso: 0 },
     id_alineamiento: { etiqueta: 'Alineamiento', paso: 0 },
@@ -435,6 +437,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
     opcionesManuales: OpcionCatalogo[] = [];
     opcionesClasesLanzamiento: OpcionCatalogo[] = [];
     opcionesClasesAsociadas: OpcionCatalogo[] = [];
+    /** Las demás clases predilectas: cualquier clase de verdad (ni «Cualquiera» ni «Ninguna»). */
+    opcionesClasesPredilectasExtra: OpcionCatalogo[] = [];
+    /** Las clases que pueden tener multiclase libre: las que tienen restricción de multiclase (`Multiclase_restringida`). */
+    opcionesClasesMulticlaseLibre: OpcionCatalogo[] = [];
     opcionesIdiomas: OpcionCatalogo[] = [];
     opcionesDominios: OpcionCatalogo[] = [];
     armas: ArmaDetalle[] = [];
@@ -572,6 +578,10 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         vd_mod_clases_pj: [null as number | null, [entero, Validators.min(-10), Validators.max(10)]],
         vd_mod_clases_pnj: [null as number | null, [entero, Validators.min(-10), Validators.max(10)]],
         clases_asociadas: [[] as FilaDeLista[]],
+        // Las clases predilectas además de la principal (la prole de Bahamut: las de su base y guerrero, con `unir` en la
+        // mutación) y las clases con multiclase libre (el paladín del nacido del Infierno).
+        clases_predilectas_extra: [[] as FilaDeLista[]],
+        clases_multiclase_libre: [[] as FilaDeLista[]],
         // Las armas naturales como dato (`armas_naturales`; el texto de `ataques_naturales` es su descripción).
         armas_naturales: [[] as FilaArmaNatural[]],
         id_tipo_criatura: [0, [Validators.min(1)]],
@@ -849,6 +859,9 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             },
             subtipos: idsUnicosOrdenados(this.subtiposSeleccionados),
             ...(conDgs ? { clases_asociadas: idsUnicosOrdenados(this.clasesAsociadas.map((fila) => fila.id)) } : {}),
+            // Siempre, para que modificar sin tocar nada mande lo que llegó; sin clase predilecta («Ninguna»), ninguna.
+            clases_predilectas_extra: this.idsClasesPredilectasExtra(),
+            clases_multiclase_libre: idsUnicosOrdenados(this.clasesMulticlaseLibre.map((fila) => fila.id)),
             armas_naturales: cuerpoDeArmasNaturales(this.armasNaturales, false),
             idiomas: idsUnicosOrdenados(this.idiomasSeleccionados),
             idiomas_adicionales: this.idiomasAdicionalesCualquiera ? [] : idsUnicosOrdenados(this.idiomasAdicionales.map((fila) => fila.id)),
@@ -1331,6 +1344,30 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
         return this.form.controls.clases_asociadas.value ?? [];
     }
 
+    /** Las clases predilectas además de la principal (no cuentan para la penalización de PX por multiclase). */
+    get clasesPredilectasExtra(): FilaDeLista[] {
+        return this.form.controls.clases_predilectas_extra.value ?? [];
+    }
+
+    /** Si la raza tiene clase predilecta principal: sin ella («Ninguna»), no puede tener otras. */
+    get tieneClasePredilecta(): boolean {
+        const id = this.form.controls.id_clase_predilecta.value;
+        return id !== null && id !== undefined && this.numero(id) >= 0;
+    }
+
+    /** Las otras predilectas que se mandan: ninguna sin principal, y nunca la principal. */
+    private idsClasesPredilectasExtra(): number[] {
+        if (!this.tieneClasePredilecta)
+            return [];
+        const principal = this.numero(this.form.controls.id_clase_predilecta.value);
+        return idsUnicosOrdenados(this.clasesPredilectasExtra.map((fila) => fila.id).filter((id) => id !== principal));
+    }
+
+    /** Las clases con restricción de multiclase que un personaje de la raza puede dejar y retomar. */
+    get clasesMulticlaseLibre(): FilaDeLista[] {
+        return this.form.controls.clases_multiclase_libre.value ?? [];
+    }
+
     /** Si los idiomas adicionales por Inteligencia pueden ser cualquiera no secreto (MJ cap. 2: el humano). */
     get idiomasAdicionalesCualquiera(): boolean {
         return this.form.controls.idiomas_adicionales_cualquiera.value !== false;
@@ -1343,7 +1380,13 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
 
     /** Las opciones de una lista de ids del formulario (`<app-lista-de-catalogo>`). */
     opcionesDe(lista: ListaDeRaza): OpcionCatalogo[] {
-        return lista === 'clases_asociadas' ? this.opcionesClasesAsociadas : this.opcionesIdiomas;
+        const opciones: Record<ListaDeRaza, OpcionCatalogo[]> = {
+            clases_asociadas: this.opcionesClasesAsociadas,
+            clases_predilectas_extra: this.opcionesClasesPredilectasExtra,
+            clases_multiclase_libre: this.opcionesClasesMulticlaseLibre,
+            idiomas_adicionales: this.opcionesIdiomas,
+        };
+        return opciones[lista];
     }
 
     anadirA(lista: ListaDeRaza, id: number): void {
@@ -2124,6 +2167,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
                 this.opcionesClasesLanzamiento = opcionesDeCatalogo(this.clases.filter((clase) => this.numero(clase.Id) > 0));
                 // Las de PNJ (adepto, combatiente…) nunca son asociadas (MM, pág. 294; `Clase_pnj` de la clase).
                 this.opcionesClasesAsociadas = opcionesDeCatalogo(this.clases.filter((clase) => this.numero(clase.Id) > 0 && clase.Clase_pnj !== true));
+                this.opcionesClasesPredilectasExtra = opcionesDeCatalogo(this.clases.filter((clase) => this.numero(clase.Id) > 0));
+                this.opcionesClasesMulticlaseLibre = opcionesDeCatalogo(this.clases.filter((clase) => clase.Multiclase_restringida === true));
                 this.sincronizarBusquedaDesdeControl('id_clase_predilecta', this.clasesPredilectas, (value) => this.clasePredilectaBusqueda = value);
                 this.catalogosParaModificar.marcar('clases');
             }, error: () => {
@@ -2807,6 +2852,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             vd_mod_clases_pj: null,
             vd_mod_clases_pnj: null,
             clases_asociadas: [],
+            clases_predilectas_extra: [],
+            clases_multiclase_libre: [],
             armas_naturales: [],
             id_tipo_criatura: 0,
             ataque_base: 0,
@@ -2939,6 +2986,8 @@ export class NuevaRazaComponent implements OnInit, OnDestroy, OnChanges, EditorD
             vd_mod_clases_pj: toIntOrNull(raza.Vd_mod_clases_pj),
             vd_mod_clases_pnj: toIntOrNull(raza.Vd_mod_clases_pnj),
             clases_asociadas: filasDeIds(raza.Clases_asociadas),
+            clases_predilectas_extra: filasDeIds(raza.Clases_predilectas_extra),
+            clases_multiclase_libre: filasDeIds(raza.Clases_multiclase_libre),
             armas_naturales: filasDeArmasNaturales(raza.Armas_naturales),
             id_tipo_criatura: this.numero(raza.Tipo_criatura?.Id),
             ataque_base: this.numero(dgs?.Ataque_base),
