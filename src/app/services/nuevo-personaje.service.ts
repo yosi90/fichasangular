@@ -1302,16 +1302,22 @@ export class NuevoPersonajeService {
             this.personajeCreacion?.Raciales?.length ? this.personajeCreacion.Raciales : null);
     }
 
-    /** Sus seis características de ahora: para los prerrequisitos (de clases, dotes y rasgos) y la base de las ventajas. */
-    private caracteristicasActuales(): Record<CaracteristicaKey, number> {
+    /**
+     * Sus seis características de ahora: para los prerrequisitos (de clases, dotes, rasgos y plantillas), la base de las
+     * ventajas y los aumentos. Una que no tiene valor cuenta 0 (no cumple lo que la pide) o, con `sinValor:
+     * 'sinComprobar'`, `NaN`: el prerrequisito que la pide queda «sin comprobar», con su aviso (al elegir un rasgo
+     * opcional o una plantilla antes de tener las características).
+     */
+    caracteristicasActuales({ sinValor = 'cero' }: { sinValor?: 'cero' | 'sinComprobar'; } = {}): Record<CaracteristicaKey, number> {
         const pj = this.personajeCreacion;
+        const leer = (valor: unknown) => sinValor === 'sinComprobar' ? Number(valor) : toNumber(valor);
         return {
-            Fuerza: toNumber(pj?.Fuerza),
-            Destreza: toNumber(pj?.Destreza),
-            Constitucion: toNumber(pj?.Constitucion),
-            Inteligencia: toNumber(pj?.Inteligencia),
-            Sabiduria: toNumber(pj?.Sabiduria),
-            Carisma: toNumber(pj?.Carisma),
+            Fuerza: leer(pj?.Fuerza),
+            Destreza: leer(pj?.Destreza),
+            Constitucion: leer(pj?.Constitucion),
+            Inteligencia: leer(pj?.Inteligencia),
+            Sabiduria: leer(pj?.Sabiduria),
+            Carisma: leer(pj?.Carisma),
         };
     }
 

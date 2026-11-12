@@ -294,3 +294,17 @@ describe('Los sigilos de poder en las habilidades de la creación', () => {
         expect(saltar?.rangosVarios ?? 0).toBe(0);
     });
 });
+
+describe('Las características de ahora (caracteristicasActuales), una sola lectura para el servicio y la creación', () => {
+    it('con las seis, las mismas con las dos formas; sin una, 0 o «sin comprobar» (NaN), como pide quien la usa', () => {
+        const svc = motor();
+        Object.assign(svc.PersonajeCreacion, { Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 8, Carisma: 16 });
+        const seis = { Fuerza: 14, Destreza: 12, Constitucion: 13, Inteligencia: 10, Sabiduria: 8, Carisma: 16 };
+        expect(svc.caracteristicasActuales()).toEqual(seis);
+        expect(svc.caracteristicasActuales({ sinValor: 'sinComprobar' })).toEqual(seis);
+        (svc.PersonajeCreacion as any).Carisma = undefined;
+        expect(svc.caracteristicasActuales().Carisma).toBe(0);
+        // Los prerrequisitos de un rasgo opcional o de una plantilla: sin el Carisma, sin comprobar (no incumplido).
+        expect(svc.caracteristicasActuales({ sinValor: 'sinComprobar' }).Carisma).toBeNaN();
+    });
+});
