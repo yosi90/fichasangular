@@ -40,6 +40,7 @@ import {
 } from './utils/monstruo-mapper';
 import { normalizarProgresionLanzadorPersonaje } from './utils/nivel-lanzador-personaje';
 import { normalizeRaciales } from './utils/racial-mapper';
+import { idManiobrabilidadDelPersonaje } from './utils/racial-progresion';
 import { normalizarListasLanzamiento } from './utils/raza-mapper';
 import { normalizarPersonajeIncarnum } from './utils/incarnum-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
@@ -260,10 +261,7 @@ export class PersonajeService {
             || this.resolverIdGeneroDesdeNombre(personaje?.Genero);
         const idDeidadFromContexto = toInt(contextoIds?.idDeidad);
         const idDeidad = idDeidadFromContexto > 0 ? idDeidadFromContexto : 0;
-        // La del vuelo que da la progresión de un rasgo, si la hay; si no, la de su raza.
-        const idManiobrabilidad = toInt(contextoIds?.idManiobrabilidad)
-            || toInt(personaje?.Maniobrabilidad?.Id)
-            || toInt((personaje as any)?.Raza?.Maniobrabilidad?.Id);
+        const idManiobrabilidad = toInt(contextoIds?.idManiobrabilidad) || idManiobrabilidadDelPersonaje(personaje);
         const idEspArcana = toInt(contextoIds?.idEspArcana)
             || this.resolverIdPorNombre((personaje?.Escuela_especialista as any)?.Nombre, mapasCatalogo.escuelas);
         const idEspPsionica = toInt(contextoIds?.idEspPsionica)

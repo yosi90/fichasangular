@@ -158,6 +158,7 @@ import { esPnj, TipoPersonaje, tituloNuevoPersonaje } from 'src/app/services/uti
 import { codigoDeError, mensajeDeError } from 'src/app/services/utils/error-api';
 import { PasoEdadRaza } from 'src/app/interfaces/raza';
 import { normalizarTexto, primerEntero, toInt, toPositiveInt } from 'src/app/services/utils/normalizacion';
+import { idManiobrabilidadDelPersonaje } from 'src/app/services/utils/racial-progresion';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { esTextoExtraPorElegir } from 'src/app/services/utils/habilidad-extra-visible';
@@ -5760,8 +5761,7 @@ export class NuevoPersonajeComponent {
             idAlineamiento: this.resolverIdAlineamientoCreacion(),
             idDeidad: this.resolverIdDeidadCreacion(),
             idGenero: this.resolverIdGeneroCreacion(),
-            // La del vuelo que da la progresión de un rasgo (las alas de la prole de Bahamut a 6 DG) o, si no, la de su raza.
-            idManiobrabilidad: toPositiveInt(this.Personaje?.Maniobrabilidad?.Id) ?? toPositiveInt((this.Personaje as any)?.Raza?.Maniobrabilidad?.Id) ?? 0,
+            idManiobrabilidad: idManiobrabilidadDelPersonaje(this.Personaje),
             idEspArcana: this.resolverIdEscuelaEspecialistaCreacion(),
             idEspPsionica: this.resolverIdDisciplinaEspecialistaCreacion(),
             idDisProhibida: this.resolverIdDisciplinaProhibidaCreacion(),

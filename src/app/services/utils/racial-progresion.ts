@@ -1,4 +1,6 @@
+import type { Personaje } from 'src/app/interfaces/personaje';
 import { RacialDetalle, RacialProgresion, RacialProgresionVelocidad } from 'src/app/interfaces/racial';
+import { toPositiveInt } from 'src/app/services/utils/normalizacion';
 
 /**
  * Lo que un rasgo racial da o cambia al llegar a N DG o a nivel N de personaje (`Progresion` de cada racial; contrato
@@ -112,6 +114,15 @@ export function velocidadConProgresion(
     velocidades: ResultadoProgresionRacial['velocidades'],
 ): number {
     return Math.max(Number(actual) || 0, Number(velocidades[tipo]?.Pies) || 0);
+}
+
+/**
+ * El id de la maniobrabilidad con la que vuela el personaje: la del vuelo que le da la progresión de un rasgo
+ * (`Personaje.Maniobrabilidad`: las alas de la prole de Bahamut a 6 DG) o, si no, la de su raza; 0 si ninguna. La usan la
+ * creación al montar su contexto y `PersonajeService` al guardar.
+ */
+export function idManiobrabilidadDelPersonaje(personaje: Personaje | null | undefined): number {
+    return toPositiveInt(personaje?.Maniobrabilidad?.Id) ?? toPositiveInt((personaje as any)?.Raza?.Maniobrabilidad?.Id) ?? 0;
 }
 
 /** Las frases de lo que da o cambia un rasgo a N DG o a nivel N, para su detalle; `null` si nada. */

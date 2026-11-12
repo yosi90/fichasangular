@@ -1,5 +1,5 @@
 import { normalizarProgresionRacial, normalizeRacial } from './racial-mapper';
-import { aplicarProgresionRacial, frasesProgresionRacial, tieneProgresionRacial, velocidadConProgresion } from './racial-progresion';
+import { aplicarProgresionRacial, frasesProgresionRacial, idManiobrabilidadDelPersonaje, tieneProgresionRacial, velocidadConProgresion } from './racial-progresion';
 
 // Los mismos casos que la regla de la API (`tests/test_racial_progresion.py`): los aspectos de la prole de Bahamut
 // (Races of the Dragon, págs. 9-10) y del nacido del Infierno (Fiendish Codex II, pág. 78).
@@ -84,5 +84,13 @@ describe('racial-progresion: lo que crece con los DG o llega por nivel', () => {
         expect(r.raciales.filter((x) => x.Id === 8).length).toBe(1);
         expect(frasesProgresionRacial(CORAZON)?.length).toBe(7);
         expect(frasesProgresionRacial(VO30)).toBeNull();
+    });
+
+    it('vuela con la maniobrabilidad de la progresión o, si no, con la de su raza', () => {
+        const raza = { Maniobrabilidad: { Id: 2, Nombre: 'Buena' } };
+        expect(idManiobrabilidadDelPersonaje({ Maniobrabilidad: { Id: 3, Nombre: 'Regular' }, Raza: raza } as any)).toBe(3);
+        expect(idManiobrabilidadDelPersonaje({ Maniobrabilidad: null, Raza: raza } as any)).toBe(2);
+        expect(idManiobrabilidadDelPersonaje({ Raza: { Maniobrabilidad: null } } as any)).toBe(0);
+        expect(idManiobrabilidadDelPersonaje(null)).toBe(0);
     });
 });
