@@ -12,6 +12,11 @@ describe('SocialV3ApiService', () => {
         },
     } as any;
 
+    /** Quien ofrece confirmar el correo (`PlatformSessionService`): por defecto, la persona dice «Ahora no». */
+    const sesionMock = (confirma = false) => ({
+        ofrecerConfirmarCorreo: jasmine.createSpy('ofrecerConfirmarCorreo').and.resolveTo(confirma),
+    }) as any;
+
     it('normaliza comunidad con stats relacionales y envelope paginado', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
         httpMock.get.and.returnValue(of({
@@ -39,7 +44,7 @@ describe('SocialV3ApiService', () => {
             offset: 0,
             hasMore: false,
         }));
-        const service = new SocialV3ApiService(httpMock, authMock);
+        const service = new SocialV3ApiService(httpMock, authMock, sesionMock());
 
         const result = await service.listCommunityUsers({
             query: 'yu',
@@ -108,7 +113,7 @@ describe('SocialV3ApiService', () => {
             offset: 0,
             hasMore: false,
         }));
-        const service = new SocialV3ApiService(httpMock, authMock);
+        const service = new SocialV3ApiService(httpMock, authMock, sesionMock());
 
         const result = await service.listLfgApplications(3);
 
@@ -133,7 +138,7 @@ describe('SocialV3ApiService', () => {
 
     it('bloquea en cliente un create LFG con el borrador vacío antes de tocar backend', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
-        const service = new SocialV3ApiService(httpMock, authMock);
+        const service = new SocialV3ApiService(httpMock, authMock, sesionMock());
 
         await expectAsync(service.createLfgPost({
             title: '',
@@ -155,7 +160,7 @@ describe('SocialV3ApiService', () => {
 
     it('bloquea en cliente un patch LFG con horario inválido antes de tocar backend', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
-        const service = new SocialV3ApiService(httpMock, authMock);
+        const service = new SocialV3ApiService(httpMock, authMock, sesionMock());
 
         await expectAsync(service.updateLfgPost(3, {
             scheduleText: 'Viernes por la tarde',
@@ -169,7 +174,7 @@ describe('SocialV3ApiService', () => {
 
     it('convierte localhost a 127.0.0.1 al construir la url websocket', () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
-        const service = new SocialV3ApiService(httpMock, authMock);
+        const service = new SocialV3ApiService(httpMock, authMock, sesionMock());
 
         const socketUrl = service.buildWebSocketUrl('http://localhost:3000/ws/social', 'ticket-1');
 
@@ -178,7 +183,7 @@ describe('SocialV3ApiService', () => {
 
     it('parsea eventos websocket conocidos e ignora desconocidos', () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
-        const service = new SocialV3ApiService(httpMock, authMock);
+        const service = new SocialV3ApiService(httpMock, authMock, sesionMock());
 
         const known = service.parseWebSocketEvent({
             type: 'lfg.post_created',
@@ -224,7 +229,7 @@ describe('SocialV3ApiService', () => {
                 message: 'otro texto',
             },
         })));
-        const service = new SocialV3ApiService(httpMock, authMock);
+        const service = new SocialV3ApiService(httpMock, authMock, sesionMock());
 
         await expectAsync(service.getCommunityStats()).toBeRejectedWith(
             jasmine.objectContaining({
@@ -235,9 +240,53 @@ describe('SocialV3ApiService', () => {
         );
     });
 
+    describe('con el correo sin confirmar (kit 1.87)', () => {
+        const correoSinConfirmar = () => throwError(() => new HttpErrorResponse({
+            status: 403,
+            error: { error: 'Confirma tu correo para usar la parte social.', code: 'correo_sin_confirmar' },
+        }));
+
+        it('ofrece confirmarlo y, si se confirma, repite la escritura una vez', async () => {
+            const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
+            httpMock.post.and.returnValues(correoSinConfirmar(), of({ applicationId: 9, postId: 3, status: 'pending', message: 'Me apunto' }));
+            const sesion = sesionMock(true);
+            const service = new SocialV3ApiService(httpMock, authMock, sesion);
+
+            const aplicacion = await service.createLfgApplication(3, 'Me apunto');
+
+            expect(aplicacion.applicationId).toBe(9);
+            expect(sesion.ofrecerConfirmarCorreo).toHaveBeenCalledOnceWith(true);
+            expect(httpMock.post).toHaveBeenCalledTimes(2);
+        });
+
+        it('si no lo confirma, deja el error de la API y no repite', async () => {
+            const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
+            httpMock.patch.and.returnValue(correoSinConfirmar());
+            const sesion = sesionMock(false);
+            const service = new SocialV3ApiService(httpMock, authMock, sesion);
+
+            await expectAsync(service.updateLfgApplication(3, 9, 'withdrawn')).toBeRejectedWith(jasmine.objectContaining({
+                code: 'correo_sin_confirmar',
+                status: 403,
+                message: 'Confirma tu correo para usar la parte social.',
+            }));
+            expect(httpMock.patch).toHaveBeenCalledTimes(1);
+        });
+
+        it('las lecturas no lo ofrecen', async () => {
+            const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
+            httpMock.get.and.returnValue(correoSinConfirmar());
+            const sesion = sesionMock(true);
+            const service = new SocialV3ApiService(httpMock, authMock, sesion);
+
+            await expectAsync(service.getLfgPost(3)).toBeRejectedWith(jasmine.objectContaining({ code: 'correo_sin_confirmar' }));
+            expect(sesion.ofrecerConfirmarCorreo).not.toHaveBeenCalled();
+        });
+    });
+
     it('sin el error de la API, el texto de cada operación; sin respuesta, el de sin conexión', async () => {
         const httpMock = jasmine.createSpyObj('HttpClient', ['get', 'post', 'patch']);
-        const service = new SocialV3ApiService(httpMock, authMock);
+        const service = new SocialV3ApiService(httpMock, authMock, sesionMock());
 
         httpMock.get.and.returnValue(throwError(() => new HttpErrorResponse({ status: 401, error: { code: 'UNAUTHORIZED', message: 'No autorizado' } })));
         await expectAsync(service.getCommunityStats()).toBeRejectedWith(jasmine.objectContaining({

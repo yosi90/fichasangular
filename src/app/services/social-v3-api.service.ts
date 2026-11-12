@@ -23,7 +23,8 @@ import {
     SocialWebSocketEvent,
     SocialWebSocketTicketResponse,
 } from '../interfaces/social-v3';
-import { cabeceraApiConFirebase } from './platform-session.service';
+import { PlatformSessionService, cabeceraApiConFirebase } from './platform-session.service';
+import { conCorreoConfirmado } from './utils/correo-sin-confirmar';
 import { errorDePerfil } from './utils/error-api';
 import { toNullableText, toPositiveInt } from 'src/app/services/utils/normalizacion';
 
@@ -36,6 +37,7 @@ export class SocialV3ApiService {
     constructor(
         private http: HttpClient,
         private auth: Auth,
+        private platformSessionSvc: PlatformSessionService,
     ) { }
 
     async listCommunityUsers(filters: {
@@ -165,18 +167,20 @@ export class SocialV3ApiService {
 
     async createLfgPost(input: SocialLfgPostUpsertInput): Promise<SocialLfgPost> {
         this.assertValidLfgPostInput(input, false);
-        try {
-            const response = await firstValueFrom(
-                this.http.post<any>(
-                    `${this.socialBaseUrl}/lfg/posts`,
-                    this.normalizeLfgPostInput(input),
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            return this.normalizeLfgPost(response);
-        } catch (error) {
-            throw errorDePerfil(error, 'No se pudo crear la convocatoria.');
-        }
+        return this.escribir(async () => {
+            try {
+                const response = await firstValueFrom(
+                    this.http.post<any>(
+                        `${this.socialBaseUrl}/lfg/posts`,
+                        this.normalizeLfgPostInput(input),
+                        { headers: await this.buildAuthHeaders() }
+                    )
+                );
+                return this.normalizeLfgPost(response);
+            } catch (error) {
+                throw errorDePerfil(error, 'No se pudo crear la convocatoria.');
+            }
+        });
     }
 
     async updateLfgPost(postId: number, input: Partial<SocialLfgPostUpsertInput>): Promise<SocialLfgPost> {
@@ -185,18 +189,20 @@ export class SocialV3ApiService {
             throw new ProfileApiError('Convocatoria inválida.', 'SOCIAL_LFG_POST_INVALID', 400);
         this.assertValidLfgPostInput(input, true);
 
-        try {
-            const response = await firstValueFrom(
-                this.http.patch<any>(
-                    `${this.socialBaseUrl}/lfg/posts/${normalizedPostId}`,
-                    this.normalizeLfgPostInput(input, true),
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            return this.normalizeLfgPost(response);
-        } catch (error) {
-            throw errorDePerfil(error, 'No se pudo actualizar la convocatoria.');
-        }
+        return this.escribir(async () => {
+            try {
+                const response = await firstValueFrom(
+                    this.http.patch<any>(
+                        `${this.socialBaseUrl}/lfg/posts/${normalizedPostId}`,
+                        this.normalizeLfgPostInput(input, true),
+                        { headers: await this.buildAuthHeaders() }
+                    )
+                );
+                return this.normalizeLfgPost(response);
+            } catch (error) {
+                throw errorDePerfil(error, 'No se pudo actualizar la convocatoria.');
+            }
+        });
     }
 
     async listLfgApplications(postId: number, filters: {
@@ -233,18 +239,20 @@ export class SocialV3ApiService {
         if (normalizedMessage.length < 1)
             throw new ProfileApiError('El mensaje de aplicación no puede estar vacío.', 'SOCIAL_LFG_APPLICATION_MESSAGE_EMPTY', 400);
 
-        try {
-            const response = await firstValueFrom(
-                this.http.post<any>(
-                    `${this.socialBaseUrl}/lfg/posts/${normalizedPostId}/applications`,
-                    { message: normalizedMessage },
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            return this.normalizeLfgApplication(response);
-        } catch (error) {
-            throw errorDePerfil(error, 'No se pudo enviar la aplicación.');
-        }
+        return this.escribir(async () => {
+            try {
+                const response = await firstValueFrom(
+                    this.http.post<any>(
+                        `${this.socialBaseUrl}/lfg/posts/${normalizedPostId}/applications`,
+                        { message: normalizedMessage },
+                        { headers: await this.buildAuthHeaders() }
+                    )
+                );
+                return this.normalizeLfgApplication(response);
+            } catch (error) {
+                throw errorDePerfil(error, 'No se pudo enviar la aplicación.');
+            }
+        });
     }
 
     async updateLfgApplication(postId: number, applicationId: number, status: SocialLfgApplicationStatus): Promise<SocialLfgApplication> {
@@ -254,18 +262,20 @@ export class SocialV3ApiService {
         if (!normalizedPostId || !normalizedApplicationId)
             throw new ProfileApiError('Aplicación inválida.', 'SOCIAL_LFG_APPLICATION_INVALID', 400);
 
-        try {
-            const response = await firstValueFrom(
-                this.http.patch<any>(
-                    `${this.socialBaseUrl}/lfg/posts/${normalizedPostId}/applications/${normalizedApplicationId}`,
-                    { status: normalizedStatus },
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            return this.normalizeLfgApplication(response);
-        } catch (error) {
-            throw errorDePerfil(error, 'No se pudo actualizar la aplicación.');
-        }
+        return this.escribir(async () => {
+            try {
+                const response = await firstValueFrom(
+                    this.http.patch<any>(
+                        `${this.socialBaseUrl}/lfg/posts/${normalizedPostId}/applications/${normalizedApplicationId}`,
+                        { status: normalizedStatus },
+                        { headers: await this.buildAuthHeaders() }
+                    )
+                );
+                return this.normalizeLfgApplication(response);
+            } catch (error) {
+                throw errorDePerfil(error, 'No se pudo actualizar la aplicación.');
+            }
+        });
     }
 
     async openLfgContactConversation(postId: number): Promise<SocialContactConversationResponse> {
@@ -273,26 +283,28 @@ export class SocialV3ApiService {
         if (!normalizedPostId)
             throw new ProfileApiError('Convocatoria inválida.', 'SOCIAL_LFG_POST_INVALID', 400);
 
-        try {
-            const response = await firstValueFrom(
-                this.http.post<any>(
-                    `${this.socialBaseUrl}/lfg/posts/${normalizedPostId}/contact-conversation`,
-                    {},
-                    { headers: await this.buildAuthHeaders() }
-                )
-            );
-            const conversationId = `${response?.conversationId ?? ''}`.trim();
-            if (conversationId.length < 1)
-                throw new ProfileApiError('La API no devolvió una conversación válida.', 'SOCIAL_LFG_CONTACT_CONVERSATION_INVALID', 500);
-            return {
-                conversationId,
-                created: response?.created === true,
-                type: 'web',
-                pendingMembers: response?.pendingMembers === true,
-            };
-        } catch (error) {
-            throw errorDePerfil(error, 'No se pudo abrir la conversación contextual.');
-        }
+        return this.escribir(async () => {
+            try {
+                const response = await firstValueFrom(
+                    this.http.post<any>(
+                        `${this.socialBaseUrl}/lfg/posts/${normalizedPostId}/contact-conversation`,
+                        {},
+                        { headers: await this.buildAuthHeaders() }
+                    )
+                );
+                const conversationId = `${response?.conversationId ?? ''}`.trim();
+                if (conversationId.length < 1)
+                    throw new ProfileApiError('La API no devolvió una conversación válida.', 'SOCIAL_LFG_CONTACT_CONVERSATION_INVALID', 500);
+                return {
+                    conversationId,
+                    created: response?.created === true,
+                    type: 'web',
+                    pendingMembers: response?.pendingMembers === true,
+                };
+            } catch (error) {
+                throw errorDePerfil(error, 'No se pudo abrir la conversación contextual.');
+            }
+        });
     }
 
     async requestWebSocketTicket(): Promise<SocialWebSocketTicketResponse> {
@@ -525,6 +537,15 @@ export class SocialV3ApiService {
             if (!Number.isInteger(slotsTotal) || slotsTotal <= 0)
                 throw new ProfileApiError('Las plazas totales deben ser un número mayor que 0.', 'SOCIAL_LFG_SLOTS_TOTAL_INVALID', 400);
         }
+    }
+
+    /**
+     * Lo que escribe en el buscador de partidas: si la cuenta no ha confirmado su correo, la API responde `403
+     * correo_sin_confirmar` (kit 1.87, como lo social de la plataforma); se ofrece confirmarlo ahí mismo y, si se confirma,
+     * se repite una vez con el token nuevo.
+     */
+    private escribir<T>(intento: () => Promise<T>): Promise<T> {
+        return conCorreoConfirmado(this.platformSessionSvc, true, intento);
     }
 
     private async buildAuthHeaders(): Promise<HttpHeaders> {
