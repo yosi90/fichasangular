@@ -42,7 +42,7 @@ import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
 import { claveHabilidad } from 'src/app/services/utils/habilidad-clave';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
-import { carasDado, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
+import { carasDado, MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { claveBorradorSubida, fichaDeLaSubida, modConstitucionDeEntrada, PgSubida, puntosGolpeTrasSubida } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
 
@@ -232,7 +232,9 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             this.pj = this.personajeSvc.fichaDeApi(ficha);
             await this.cargarCatalogos();
             const campana = toInt(entrada.personaje?.campana?.id);
-            this.tiradasPermitidas = campana > 0 ? await this.tiradasDeLaCampana(campana) : 1;
+            // Un PNJ, como al crearlo y como la API: sin el límite de la campaña (propietario, 2026-11-12).
+            this.tiradasPermitidas = entrada.personaje?.tipo === 'pnj' ? MAX_TIRADAS_PUNTOS_GOLPE
+                : campana > 0 ? await this.tiradasDeLaCampana(campana) : 1;
             await this.hidratar();
             if (!this.sigueLaMismaCuenta())
                 return;
