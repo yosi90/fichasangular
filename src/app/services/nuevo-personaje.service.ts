@@ -23,7 +23,7 @@ import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
 import { SubtipoRef, SubtipoResumen } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
-import { PersonajeCreateColeccionesDto, PersonajeCreateMascotasDto, PersonajeCreateNivelDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
+import { PersonajeCreateColeccionesDto, PersonajeCreateMascotasDto, PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { bonoRacialCondicional } from './utils/habilidad-raza-condicional';
 import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { contarArmasNaturales } from './utils/armas-naturales';
@@ -88,7 +88,8 @@ import {
     ClaseParaPenalizacion, ClasePredilecta, clasePredilectaDeRaza, noPenalizaMulticlase, PenalizacionExperiencia, penalizacionExperiencia,
 } from './utils/penalizacion-experiencia';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, DadoDeGolpe, GrupoDadosGolpe } from './utils/puntos-golpe';
-import { construirNivelesCreacion } from './utils/niveles-creacion';
+import { apuntarEleccion, construirNivelesCreacion, RefNivelTomado } from './utils/niveles-creacion';
+import { tocaIntercambioConjuros } from './utils/subida-nivel';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
 import { claseDeLaRaza, claseObligada, ContextoClasesDeMonstruo, motivoClaseDeMonstruo } from './utils/clases-de-monstruo';
 import { capacidadCarga, FilaCapacidadCarga } from './utils/capacidad-carga';
@@ -657,6 +658,8 @@ export interface ConjurosSesionStateEntrada {
     seleccionadosIds: number[];
     autoadicionadosIds: number[];
     avisos: string[];
+    /** El nivel de clase en que se abrió la sesión: el de sus conjuros (`niveles[].elecciones`). */
+    nivel?: RefNivelTomado | null;
 }
 
 /**
@@ -747,6 +750,8 @@ export interface AumentoCaracteristicaPendiente {
     valor: number;
     origen: string;
     descripcion: string;
+    /** El nivel de clase que lo da (el nivel en curso al registrarlo); `null` si no es de ningún nivel de clase. */
+    nivel?: RefNivelTomado | null;
 }
 
 export interface AsignacionAumentoCaracteristica {
@@ -780,6 +785,8 @@ export interface DotePendienteState {
     tipoPermitido: string | null;
     estado: DoteEstadoPendiente;
     nivelProgresion?: number | null;
+    /** El nivel de clase que la da (el nivel en curso al registrarla); `null` en las de los DG raciales o de plantilla. */
+    nivel?: RefNivelTomado | null;
 }
 
 export interface DoteEvaluacionResultado {
@@ -992,6 +999,29 @@ interface NuevoPersonajeDraftEstadoFlujoV1 {
     conjuros: ConjurosFlujoState;
 }
 
+/** Lo que necesita `iniciarSubidaDesdeFicha`. */
+export interface DatosSubidaDesdeFicha {
+    /** La ficha de ahora (`PersonajeService.fichaDeApi` de la de la sesión abierta). */
+    personaje: Personaje;
+    /** La `entrada` de la sesión abierta: el cuerpo del alta con sus `niveles`. */
+    entrada: PersonajeCreateRequestDto;
+    /** La raza del catálogo (la de la ficha si no llega) y su base, si es mutada. */
+    raza?: Raza | null;
+    razaBase?: Raza | null;
+    /** Sus plantillas, del catálogo (cuentan para los DG y el NEP). */
+    plantillas?: Plantilla[];
+}
+
+/** El intercambio de un conjuro conocido en el nivel en curso (`getIntercambioConjurosDelNivel`). */
+export interface IntercambioConjurosNivel {
+    clase: { id: number; nombre: string; };
+    /** El nivel de conjuro más alto que lanza y cuántos por debajo tiene que estar el que olvida. */
+    nivelMaximo: number;
+    margen: number;
+    olvidables: Array<{ conjuro: Conjuro; nivel: number; }>;
+    candidatos: (nivelConjuro: number) => Conjuro[];
+}
+
 interface NuevoPersonajeDraftV1 {
     version: 1;
     uid: string;
@@ -1022,6 +1052,8 @@ interface NuevoPersonajeDraftV1 {
     idsEspecialesInternosActivos: (string | number)[];
     idsDotesInternosActivos: (string | number)[];
     conjurosSesionPlaceholderPorId: Record<number, Conjuro>;
+    /** El nivel de clase en curso (`nivelEnCurso`), para apuntar lo que se elija después de restaurar. */
+    nivelEnCurso?: RefNivelTomado | null;
 }
 
 export interface NuevoPersonajeDraftResumen {
@@ -1149,6 +1181,11 @@ export class NuevoPersonajeService {
     private referenciaRestriccionCampanaGenerador: GeneradorCampanaRestriccionNormalizada | null = null;
     private permiteOverrideRestriccionCampanaGenerador = false;
     private estadoFlujo: EstadoFlujoNuevoPersonaje = this.crearEstadoFlujoBase();
+    /**
+     * El nivel de clase que se está tomando (desde `aplicarSiguienteNivelClase` hasta que se pasa a algo que no es de un
+     * nivel de clase: las plantillas o los DG raciales). Lo que se elige mientras, se apunta en él (`apuntarEnNivel`).
+     */
+    private nivelEnCurso: RefNivelTomado | null = null;
     private draftUidActivo = '';
     private draftAutosaveTimer: ReturnType<typeof setInterval> | null = null;
     private draftPersistTimer: ReturnType<typeof setTimeout> | null = null;
@@ -1453,6 +1490,7 @@ export class NuevoPersonajeService {
         this.aumentosPendientesCaracteristica = [];
         this.aumentosProgresionConcedidos = 0;
         this.secuenciaAumentoPendiente = 1;
+        this.nivelEnCurso = null;
         this.estadoFlujo = this.crearEstadoFlujoBase();
 
         this.setCatalogoHabilidades(catalogoHabilidades);
@@ -1658,6 +1696,8 @@ export class NuevoPersonajeService {
     }
 
     confirmarSeleccionActualPlantillas(): void {
+        // Lo que dan las plantillas (sus DG, sus dotes, sus incrementos) no es de ningún nivel de clase.
+        this.nivelEnCurso = null;
         const merged = this.getIdsPlantillasConfirmadasSet();
         this.estadoFlujo.plantillas.seleccionadas.forEach((plantilla) => {
             const id = toNumber(plantilla?.Id);
@@ -2165,9 +2205,13 @@ export class NuevoPersonajeService {
         };
     }
 
-    /** Los idiomas adicionales del primer nivel ya están elegidos: no se vuelven a pedir. */
-    marcarIdiomasInicialesConcedidos(): void {
+    /**
+     * Los idiomas adicionales del primer nivel ya están elegidos (`elegidos`, que se apuntan en el nivel en curso): no se
+     * vuelven a pedir.
+     */
+    marcarIdiomasInicialesConcedidos(elegidos: Array<{ Nombre?: string; Id?: number; }> = []): void {
         this.idiomasInicialesConcedidos = true;
+        elegidos.forEach((idioma) => this.apuntarIdiomaEnNivel(idioma, 'Idiomas iniciales'));
     }
 
     /**
@@ -2176,6 +2220,7 @@ export class NuevoPersonajeService {
      * termina sin clases se reparten, entonces (`sinClases`, volviendo después al paso en que se termina, `pasoVuelta`).
      */
     iniciarDistribucionHabilidadesPorRazaDG(sinClases: boolean = false, pasoVuelta: StepNuevoPersonaje = 'plantillas'): boolean {
+        this.nivelEnCurso = null;
         const raza = this.razaSeleccionada;
         if (!raza)
             return false;
@@ -2232,6 +2277,7 @@ export class NuevoPersonajeService {
     }
 
     iniciarDistribucionHabilidadesPorPlantillasDG(plantillasObjetivo?: Plantilla[]): boolean {
+        this.nivelEnCurso = null;
         const seleccionadas = plantillasObjetivo ?? this.estadoFlujo.plantillas.seleccionadas ?? [];
         if (seleccionadas.length < 1)
             return false;
@@ -2484,9 +2530,31 @@ export class NuevoPersonajeService {
         const returnStep = this.estadoFlujo.habilidades.returnStep;
         if (this.estadoFlujo.habilidades.origen === 'companero_dg')
             this.guardarHabilidadesCompaneroDeLaSesion();
+        if (this.estadoFlujo.habilidades.origen === 'clase_nivel')
+            this.apuntarRangosDeLaSesion();
         this.estadoFlujo.habilidades = this.crearHabilidadesFlujoBase();
         this.recalcularSinergiasHabilidades();
         return returnStep;
+    }
+
+    /**
+     * Los rangos que se pusieron en el reparto de un nivel de clase (los de ahora menos con los que entró cada habilidad),
+     * en el nivel en curso. Las habilidades personalizadas no van: `rangos` es del catálogo de habilidades.
+     */
+    private apuntarRangosDeLaSesion(): void {
+        const iniciales = this.estadoFlujo.habilidades.rangosIniciales ?? {};
+        (this.personajeCreacion?.Habilidades ?? []).forEach((habilidad) => {
+            if (toNumber(habilidad?.Id) <= 0 || toBoolean((habilidad as any)?.Custom))
+                return;
+            const suma = toInt(habilidad?.Rangos) - toInt(iniciales[claveHabilidad(habilidad)]);
+            if (suma > 0)
+                this.apuntarEnNivel(this.nivelEnCurso, {
+                    tipo: 'rangos',
+                    idElemento: toInt(habilidad.Id),
+                    ...(toInt((habilidad as any)?.Id_extra) > 0 ? { idExtra: toInt((habilidad as any).Id_extra) } : {}),
+                    valor: suma,
+                });
+        });
     }
 
     /**
@@ -2869,20 +2937,27 @@ export class NuevoPersonajeService {
             incrementos[caracteristica] += Math.max(0, toNumber(pendiente?.valor));
         }
 
+        // El incremento se suma a la base (la puntuación sin raza, plantillas, dotes ni aptitudes): antes la base pasaba
+        // a ser la puntuación final, con lo que suman ellas, y el siguiente recálculo lo contaba dos veces.
+        this.sincronizarBaseVentajasDesdePersonaje();
+        const base = this.estadoFlujo.ventajas.baseCaracteristicas!;
         CARACTERISTICAS.forEach((key) => {
             const aumento = toNumber(incrementos[key]);
             if (aumento < 1)
                 return;
-            const actual = toNumber((this.personajeCreacion as Record<string, any>)[key]);
-            const final = actual + aumento;
-            this.setValorCaracteristica(key, final);
-            this.setModCaracteristica(key, modificadorCaracteristica(final));
+            base[key] = toNumber(base[key]) + aumento;
         });
-
-        this.recalcularDerivadasPorCaracteristicas();
-        this.sincronizarAliasConstitucionPerdida();
-        this.estadoFlujo.ventajas.baseCaracteristicas = null;
-        this.sincronizarBaseVentajasDesdePersonaje();
+        this.aplicarCaracteristicasFinalesDesdeBase();
+        pendientes.forEach((pendiente) => {
+            const caracteristica = seleccionPorPendiente.get(toNumber(pendiente?.id));
+            if (caracteristica)
+                this.apuntarEnNivel(pendiente.nivel, {
+                    tipo: 'incremento',
+                    idElemento: CARACTERISTICAS.indexOf(caracteristica) + 1,
+                    valor: Math.max(1, toInt(pendiente?.valor)),
+                    ...(`${pendiente?.origen ?? ''}`.trim() ? { origen: `${pendiente.origen}`.trim() } : {}),
+                });
+        });
 
         this.aumentosPendientesCaracteristica = [];
         // El incremento (paso 4 del MJ, págs. 58-59) va antes que los conjuros del nivel (paso 8), pero la sesión de
@@ -3045,6 +3120,7 @@ export class NuevoPersonajeService {
         const agregado = this.agregarDoteAlPersonaje(dote, origen, idExtra, extraTexto);
         if (!agregado)
             return false;
+        this.apuntarEnNivel(pendiente.nivel, { tipo: 'dote', idElemento: idDote, idExtra, origen });
 
         this.aplicarModificadoresDote(dote, origen, idExtra, extraTexto);
         this.recalcularDerivadasPorCaracteristicas();
@@ -3354,6 +3430,8 @@ export class NuevoPersonajeService {
             nivelProgresion: fuente === 'nivel'
                 ? Math.max(0, toInt(nivelProgresion)) || null
                 : null,
+            // Las de los DG raciales no son de un nivel de clase.
+            nivel: fuente !== 'raza_dg' && this.nivelEnCurso ? { ...this.nivelEnCurso } : null,
         };
     }
 
@@ -4948,7 +5026,8 @@ export class NuevoPersonajeService {
         this.sumarBonoHabilidad(objetivo, valor, origen, bonosHabilidades);
     }
 
-    aplicarIdiomasAutomaticos(origen: string, idiomas: IdiomaDetalle[]): void {
+    aplicarIdiomasAutomaticos(origen: string, idiomas: IdiomaDetalle[]): IdiomaDetalle[] {
+        const agregados: IdiomaDetalle[] = [];
         const origenNormalizado = `${origen ?? ''}`.trim();
         const existentes = new Set(
             (this.personajeCreacion.Idiomas ?? [])
@@ -4978,7 +5057,9 @@ export class NuevoPersonajeService {
             this.personajeCreacion.Idiomas.push(idioma);
             this.agregarIdiomaABaseVentajas(idioma);
             existentes.add(nombreNorm);
+            agregados.push(idiomaRaw);
         });
+        return agregados;
     }
 
     getEspecialidadMagicaPendiente(clase: Clase, nivelAplicado: number): EspecialidadMagicaPendiente | null {
@@ -5253,6 +5334,8 @@ export class NuevoPersonajeService {
             ...(this.personajeCreacion.Orden_niveles ?? []),
             { idClase: toInt(clase?.Id), nivelClase: siguienteNivel },
         ];
+        // Lo que se elija hasta terminar este nivel se apunta en él (`niveles[].elecciones`; sesiones, fase 4).
+        this.nivelEnCurso = { idClase: toInt(clase?.Id), nivelClase: siguienteNivel };
         this.aplicarDeltaAtaqueBaseClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
         this.recalcularDerivadasPorCombate();
         this.aplicarDeltaSalvacionesClase(clase.Nombre, siguienteNivel, detalleSiguiente, detalleAnterior);
@@ -7188,7 +7271,21 @@ export class NuevoPersonajeService {
     }
 
     private aplicarIdiomasPrimerNivelClase(clase: Clase): void {
-        this.aplicarIdiomasAutomaticos(`${clase.Nombre} nivel 1`, clase?.Idiomas ?? []);
+        const origen = `${clase.Nombre} nivel 1`;
+        this.aplicarIdiomasAutomaticos(origen, clase?.Idiomas ?? [])
+            .forEach((idioma) => this.apuntarIdiomaEnNivel(idioma, origen));
+    }
+
+    /** Un idioma del nivel en curso, con su id (el de su catálogo si no lo trae). */
+    private apuntarIdiomaEnNivel(idioma: { Nombre?: string; Id?: number; }, origen: string): void {
+        const idIdioma = toInt(idioma?.Id) || toInt(this.resolverIdIdiomaPorNombre(`${idioma?.Nombre ?? ''}`));
+        if (idIdioma > 0)
+            this.apuntarEnNivel(this.nivelEnCurso, { tipo: 'idioma', idElemento: idIdioma, origen });
+    }
+
+    /** Apunta una elección en su nivel de clase (`Orden_niveles[].elecciones`); sin nivel, no se apunta. */
+    private apuntarEnNivel(nivel: RefNivelTomado | null | undefined, eleccion: PersonajeCreateNivelEleccionDto): void {
+        apuntarEleccion(this.personajeCreacion?.Orden_niveles, nivel, eleccion);
     }
 
     /** Los dominios que elige la clase en su primer nivel: el dato de la clase (el clérigo, 2; MJ cap. 3). */
@@ -7292,6 +7389,9 @@ export class NuevoPersonajeService {
                 return;
             this.personajeCreacion.Dominios.push({ Nombre: nombre });
             nombresActuales.add(nombreNorm);
+            const idDominio = toInt(dominio?.id) || toInt(this.resolverIdDominioPorNombre(nombre));
+            if (idDominio > 0)
+                this.apuntarEnNivel(this.nivelEnCurso, { tipo: 'dominio', idElemento: idDominio, origen: `${clase?.Nombre ?? ''}`.trim() || undefined });
             this.aplicarPoderConcedidoDominio(this.dominioDelCatalogo(dominio.id) ?? null, nombre, clase);
         });
     }
@@ -7601,8 +7701,10 @@ export class NuevoPersonajeService {
             const idExtra = toNumber(doteNivel?.Id_extra);
             const extra = `${doteNivel?.Extra ?? ''}`.trim() || 'No aplica';
             const agregado = this.agregarDoteAlPersonaje(doteNivel.Dote, origen, idExtra, extra);
-            if (agregado)
+            if (agregado) {
                 this.aplicarModificadoresDote(doteNivel.Dote, origen, idExtra, extra);
+                this.apuntarEnNivel(this.nivelEnCurso, { tipo: 'dote', idElemento: toInt(doteNivel?.Dote?.Id), idExtra, origen });
+            }
 
             this.registrarIdInternoDote(clase, toNumber(doteNivel?.Id_interno));
         });
@@ -7637,6 +7739,8 @@ export class NuevoPersonajeService {
                     Nombre: nombre,
                     Extra: extra,
                 });
+                if (idEspecial > 0)
+                    this.apuntarEnNivel(this.nivelEnCurso, { tipo: 'especial', idElemento: idEspecial, idExtra });
             }
             this.registrarIdInternoEspecial(clase, toNumber(especialNivel?.Id_interno));
         });
@@ -7904,6 +8008,11 @@ export class NuevoPersonajeService {
 
     /** Deja abierta la sesión de conjuros con esas entradas (activa si hay alguna), que vuelve a `returnStep` al cerrarla. */
     private abrirSesionConjuros(entradas: ConjurosSesionStateEntrada[], avisos: string[], returnStep: StepNuevoPersonaje): void {
+        // Sus conjuros son del nivel en curso (los de una sesión vuelta a calcular conservan el suyo).
+        entradas.forEach((entrada) => {
+            if (entrada.nivel === undefined)
+                entrada.nivel = this.nivelEnCurso ? { ...this.nivelEnCurso } : null;
+        });
         this.estadoFlujo.conjuros = {
             activa: entradas.length > 0,
             indiceEntradaActual: 0,
@@ -8720,6 +8829,12 @@ export class NuevoPersonajeService {
         }
 
         this.personajeCreacion.Conjuros.push(conjuro);
+        this.apuntarEnNivel(entrada?.nivel, {
+            tipo: 'conjuro',
+            idElemento: id,
+            ...(idClase > 0 ? { idExtra: idClase } : {}),
+            ...(`${entrada?.origen ?? ''}`.trim() ? { origen: `${entrada.origen}`.trim() } : {}),
+        });
     }
 
     private normalizarMapaConjurosPorNivel(mapa: Record<string, number> | undefined | null): Record<number, number> {
@@ -9717,6 +9832,7 @@ export class NuevoPersonajeService {
             idsEspecialesInternosActivos: Array.from(this.idsEspecialesInternosActivos.values()),
             idsDotesInternosActivos: Array.from(this.idsDotesInternosActivos.values()),
             conjurosSesionPlaceholderPorId: this.clonarProfundo(this.conjurosSesionPlaceholderPorId),
+            nivelEnCurso: this.nivelEnCurso ? { ...this.nivelEnCurso } : null,
         };
     }
 
@@ -9798,6 +9914,9 @@ export class NuevoPersonajeService {
             borrador.progresionLanzadorSelecciones
         );
         this.conjurosSesionPlaceholderPorId = this.clonarProfundo(borrador.conjurosSesionPlaceholderPorId ?? {});
+        this.nivelEnCurso = borrador.nivelEnCurso
+            ? { idClase: toInt(borrador.nivelEnCurso.idClase), nivelClase: toInt(borrador.nivelEnCurso.nivelClase) }
+            : null;
         this.idsEspecialesInternosActivos = clavesIdInternoGuardadas(borrador.idsEspecialesInternosActivos);
         this.idsDotesInternosActivos = clavesIdInternoGuardadas(borrador.idsDotesInternosActivos);
 
@@ -10698,11 +10817,9 @@ export class NuevoPersonajeService {
      * si no hay un orden que cuadre con sus clases (un borrador de antes): la API los guarda entonces sin orden.
      */
     getNivelesParaGuardar(
-        colecciones: PersonajeCreateColeccionesDto | null | undefined,
         progresionLanzador: PersonajeProgresionLanzadorDto | null | undefined,
         dados: DadoDeGolpe[] | null | undefined
     ): PersonajeCreateNivelDto[] | null {
-        const partes = this.getPartesNivelPersonaje();
         return construirNivelesCreacion({
             orden: this.personajeCreacion?.Orden_niveles,
             clases: (this.personajeCreacion?.desgloseClases ?? []).map((entrada) => ({
@@ -10711,11 +10828,204 @@ export class NuevoPersonajeService {
                 nivel: toInt(entrada?.Nivel),
             })),
             dados,
-            dotes: colecciones?.dotes,
-            conjuros: colecciones?.conjurosConocidos,
             aumentosLanzador: progresionLanzador?.selecciones,
-            dgsAntesDeLasClases: toInt(partes.dgsRaza) + toInt(partes.dgsPlantillas),
         });
+    }
+
+    // --- La subida de nivel (roadmap de sesiones, fase 4) -----------------------------------------------------------------
+
+    /**
+     * Prepara el motor para subir un nivel a un personaje guardado (`SubirNivelComponent`, con su propia instancia de este
+     * servicio): el `Personaje` de su ficha (`PersonajeService.fichaDeApi`) y los contadores desde los niveles de su
+     * `entrada` (`GET /personajes/{id}/sesiones/{numero}`). Los catálogos se cargan antes, como en la creación.
+     * - Lo ya concedido (las dotes de nivel y de la raza, los incrementos cada 4, los idiomas iniciales) se cuenta como en
+     *   la creación, con lo que tiene ahora: el siguiente nivel solo pide lo suyo.
+     * - Las clases cerradas por multiclase (paladín, monje), con el orden real: una restringida a la que siguió otra clase
+     *   con el orden conocido. Los niveles de las fichas de antes (`ordenConocido: false`) se dan por cumplidos.
+     * - La base de las características: la puntuación final menos lo que suman la raza, las plantillas, las dotes y las
+     *   aptitudes (lo que el motor vuelve a calcular); los incrementos de antes quedan en ella.
+     * - La clase de cada conjuro conocido, de la `entrada` (la ficha no la trae).
+     */
+    iniciarSubidaDesdeFicha(datos: DatosSubidaDesdeFicha): void {
+        this.reiniciar();
+        const ficha = this.clonarProfundo(datos.personaje);
+        this.personajeCreacion = { ...this.crearPersonajeBase(), ...ficha } as Personaje;
+        const pj = this.personajeCreacion;
+        const niveles = datos.entrada?.niveles ?? [];
+        pj.Orden_niveles = niveles.map((n) => ({ idClase: toInt(n?.idClase), nivelClase: toInt(n?.nivelClase) }));
+        this.razaSeleccionada = this.clonarProfundo(datos.raza ?? (pj.Raza as Raza) ?? null);
+        this.razaBaseSeleccionadaCompleta = this.clonarProfundo(datos.razaBase ?? null);
+        const plantillas = this.clonarProfundo(datos.plantillas ?? []);
+        this.estadoFlujo.plantillas.seleccionadas = plantillas;
+        this.estadoFlujo.plantillas.confirmadasIds = plantillas.map((p) => toInt(p?.Id)).filter((id) => id > 0);
+        this.estadoFlujo.caracteristicasGeneradas = true;
+
+        // La clase de cada conjuro conocido, de la entrada.
+        const clasePorConjuro = new Map<number, number[]>();
+        (datos.entrada?.colecciones?.conjurosConocidos ?? []).filter((c) => !c.copiado && toInt(c.idClase) > 0)
+            .forEach((c) => clasePorConjuro.set(toInt(c.idConjuro), [...(clasePorConjuro.get(toInt(c.idConjuro)) ?? []), toInt(c.idClase)]));
+        pj.Conjuros = (pj.Conjuros ?? []).flatMap((conjuro) => {
+            const ids = clasePorConjuro.get(toInt(conjuro?.Id)) ?? [];
+            const nombres = ids.map((id) => this.catalogoClases.find((clase) => toInt(clase?.Id) === id)?.Nombre).filter((n): n is string => !!n);
+            return nombres.length < 1 ? [conjuro] : nombres.map((nombre) => ({ ...conjuro, Clase_origen: nombre, Origen_clase: nombre } as Conjuro));
+        });
+
+        // Lo ya concedido: se registra lo que le toca con lo que tiene y se descarta (ya lo eligió).
+        this.registrarDotesPendientesPorRazaExtras('');
+        this.registrarDotesPendientesPorProgresion('');
+        this.registrarAumentosPendientesPorProgresion('');
+        this.dotesPendientes = [];
+        this.aumentosPendientesCaracteristica = [];
+        this.idiomasInicialesConcedidos = true;
+        this.dgRacialSinClasesRepartido = this.getNivelClasesActual() < 1;
+
+        // Las clases cerradas por multiclase, con el orden real.
+        const libres = new Set((this.razaSeleccionada?.Clases_multiclase_libre ?? []).map((libre) => toInt(libre?.Id)));
+        niveles.forEach((nivel, i) => {
+            const clase = this.catalogoClases.find((c) => toInt(c?.Id) === toInt(nivel?.idClase));
+            if (!clase?.Multiclase_restringida || libres.has(toInt(clase.Id)) || niveles.findIndex((n) => toInt(n.idClase) === toInt(clase.Id)) !== i)
+                return;
+            if (niveles.slice(i + 1).some((n) => toInt(n.idClase) !== toInt(clase.Id) && (n as any).ordenConocido !== false))
+                this.clasesCerradasPorMulticlase.add(normalizarTexto(clase.Nombre));
+        });
+
+        // El lanzador: las selecciones de los aumentos y lo que suman a cada clase.
+        this.progresionLanzadorSelecciones = this.normalizarSeleccionesProgresionLanzadorBorrador(datos.entrada?.progresionLanzador?.selecciones);
+        this.progresionLanzadorSelecciones.forEach((seleccion) => {
+            const objetivo = this.catalogoClases.find((c) => toInt(c?.Id) === toInt(seleccion.idClaseObjetivo));
+            if (objetivo)
+                this.incrementarBonusNivelLanzadorClase(objetivo.Nombre, 1);
+        });
+
+        // Lo que ya tomó de las tablas de sus clases (los ids internos de las dotes y aptitudes, para los opcionales) y de
+        // qué clase es cada habilidad (el coste en la multiclase).
+        const idsDotes = new Set((pj.DotesContextuales ?? []).map((d) => toInt(d?.Dote?.Id)));
+        const idsEspeciales = new Set((pj.Claseas ?? []).map((e) => toInt(e?.Id)));
+        (pj.desgloseClases ?? []).forEach((entrada) => {
+            const clase = this.obtenerClaseDeDesglose(entrada);
+            if (!clase)
+                return;
+            for (let nivel = 1; nivel <= toInt(entrada?.Nivel); nivel++) {
+                const detalle = this.obtenerDetalleNivelClase(clase, nivel);
+                (detalle?.Dotes ?? []).filter((d) => idsDotes.has(toInt(d?.Dote?.Id)))
+                    .forEach((d) => this.registrarIdInternoDote(clase, toInt(d?.Id_interno)));
+                (detalle?.Especiales ?? []).filter((e) => idsEspeciales.has(toInt((e?.Especial as any)?.Id)))
+                    .forEach((e) => this.registrarIdInternoEspecial(clase, toInt(e?.Id_interno)));
+            }
+            this.aplicarHabilidadesPrimerNivelClase(clase);
+        });
+
+        // La base de las características: la final menos lo que suma lo que el motor vuelve a calcular.
+        const finales = {} as Record<CaracteristicaKey, number>;
+        CARACTERISTICAS.forEach((key) => finales[key] = toNumber((pj as Record<string, any>)[key]));
+        this.estadoFlujo.ventajas.baseCaracteristicas = { ...finales };
+        this.estadoFlujo.ventajas.baseRaciales = this.reconstruirBaseRacialesDesdeBorrador();
+        this.estadoFlujo.ventajas.baseIdiomas = this.reconstruirBaseIdiomasDesdeBorrador();
+        const ventajas = [...(pj.Ventajas ?? [])];
+        this.recalcularEfectosVentajas();
+        pj.Ventajas = ventajas;
+        const base = this.estadoFlujo.ventajas.baseCaracteristicas!;
+        CARACTERISTICAS.forEach((key) => {
+            const suma = (pj.CaracteristicasVarios?.[key] ?? []).reduce((acc, mod) => acc + toNumber(mod?.valor), 0);
+            base[key] = this.esCaracteristicaPerdida(key) ? 0 : finales[key] - suma;
+        });
+        this.aplicarCaracteristicasFinalesDesdeBase();
+
+        this.nivelEnCurso = null;
+        this.estadoFlujo.pasoActual = 'clases';
+    }
+
+    /** Las elecciones apuntadas en el nivel que se está tomando (el último del orden). */
+    getEleccionesDelNivelEnCurso(): PersonajeCreateNivelEleccionDto[] {
+        const nivel = this.nivelEnCurso;
+        const destino = nivel
+            ? (this.personajeCreacion?.Orden_niveles ?? []).find((n) => toInt(n.idClase) === nivel.idClase && toInt(n.nivelClase) === nivel.nivelClase)
+            : null;
+        return (destino?.elecciones ?? []).map((e) => ({ ...e }));
+    }
+
+    /** El nivel que se está tomando (`null` sin ninguno). */
+    getNivelEnCurso(): RefNivelTomado | null {
+        return this.nivelEnCurso ? { ...this.nivelEnCurso } : null;
+    }
+
+    /**
+     * El intercambio de un conjuro conocido en el nivel en curso (MJ p. 28 y 43-44), si la clase lo tiene en ese nivel
+     * (`Conjuros.Intercambio`): los conocidos de antes de este nivel que puede olvidar (de un nivel al menos `Margen` por
+     * debajo del más alto que lanza) y, para cada nivel de conjuro, los que puede aprender en su lugar (de su lista, que no
+     * conozca). `null` si no toca.
+     */
+    getIntercambioConjurosDelNivel(): IntercambioConjurosNivel | null {
+        const nivel = this.nivelEnCurso;
+        const clase = nivel ? this.catalogoClases.find((c) => toInt(c?.Id) === nivel.idClase) ?? null : null;
+        const intercambio = clase?.Conjuros?.Intercambio ?? null;
+        if (!clase || !nivel || !intercambio || !tocaIntercambioConjuros(intercambio, nivel.nivelClase))
+            return null;
+        const lanzables = this.nivelesConjuroLanzablesClase(clase, clase.Nombre);
+        if (lanzables.length < 1)
+            return null;
+        const nivelMaximo = Math.max(...lanzables);
+        const tope = nivelMaximo - Math.max(0, toInt(intercambio.Margen));
+        if (tope < 0)
+            return null;
+        const claseNorm = normalizarTexto(clase.Nombre);
+        const nivelEnLaClase = (conjuro: Conjuro): number => {
+            const entrada = nivelesDeClaseDelConjuro(conjuro).find((n) => n.id === toInt(clase.Id) || n.nombre === claseNorm);
+            return entrada ? entrada.nivel : -1;
+        };
+        const deEsteNivel = new Set(this.getEleccionesDelNivelEnCurso().filter((e) => e.tipo === 'conjuro').map((e) => toInt(e.idElemento)));
+        const olvidables = (this.personajeCreacion.Conjuros ?? [])
+            .filter((c) => this.esConjuroDeLaClase(c, claseNorm) && !deEsteNivel.has(toInt(c?.Id)))
+            .map((c) => ({ conjuro: this.obtenerConjuroCatalogoPorId(toInt(c?.Id)) ?? c, nivel: -1 }))
+            .map((o) => ({ ...o, nivel: nivelEnLaClase(o.conjuro) }))
+            .filter((o) => o.nivel >= 0 && o.nivel <= tope)
+            .sort((a, b) => a.nivel - b.nivel || porNombre(a.conjuro, b.conjuro));
+        const conHomebrew = this.personajeCreacion.Oficial === false;
+        const candidatos = (nivelConjuro: number): Conjuro[] => (this.catalogoConjuros ?? [])
+            .filter((c) => (conHomebrew || c?.Oficial !== false) && nivelEnLaClase(c) === nivelConjuro)
+            .filter((c) => !this.esConjuroYaConocidoPorClase(clase.Nombre, toInt(c?.Id)))
+            .sort(porNombre);
+        return { clase: { id: toInt(clase.Id), nombre: clase.Nombre }, nivelMaximo, margen: toInt(intercambio.Margen), olvidables, candidatos };
+    }
+
+    /**
+     * Olvida un conocido y aprende otro del mismo nivel (el intercambio), apuntando `conjuro_olvidado` (con el que entra
+     * en `valor`) y el conjuro nuevo en el nivel en curso. `false` si no vale.
+     */
+    aplicarIntercambioConjuro(idOlvidado: number, idNuevo: number): boolean {
+        const opciones = this.getIntercambioConjurosDelNivel();
+        const olvidado = opciones?.olvidables.find((o) => toInt(o.conjuro?.Id) === toInt(idOlvidado));
+        const nuevo = olvidado ? opciones!.candidatos(olvidado.nivel).find((c) => toInt(c?.Id) === toInt(idNuevo)) : undefined;
+        if (!opciones || !olvidado || !nuevo
+            || this.getEleccionesDelNivelEnCurso().some((e) => e.tipo === 'conjuro_olvidado'))
+            return false;
+        const claseNorm = normalizarTexto(opciones.clase.nombre);
+        const indice = (this.personajeCreacion.Conjuros ?? [])
+            .findIndex((c) => toInt(c?.Id) === toInt(idOlvidado) && this.esConjuroDeLaClase(c, claseNorm));
+        if (indice < 0)
+            return false;
+        this.personajeCreacion.Conjuros.splice(indice, 1);
+        this.apuntarEnNivel(this.nivelEnCurso, { tipo: 'conjuro_olvidado', idElemento: toInt(idOlvidado), idExtra: opciones.clase.id, valor: toInt(idNuevo) });
+        this.agregarConjuroSesionAPersonaje({
+            origen: `${opciones.clase.nombre} nivel ${this.nivelEnCurso!.nivelClase} (intercambio)`,
+            claseObjetivo: { id: opciones.clase.id, nombre: opciones.clase.nombre },
+            nivelesPorConjuro: { [toInt(idNuevo)]: olvidado.nivel },
+            nivel: this.nivelEnCurso,
+        } as unknown as ConjurosSesionStateEntrada, nuevo);
+        return true;
+    }
+
+    /** El estado del motor para el borrador de la subida (el mismo que el de la creación, sin la cuenta). */
+    exportarEstadoSubida(): unknown {
+        return this.construirBorradorLocal('subida');
+    }
+
+    /** Vuelve al estado de un borrador de la subida (`exportarEstadoSubida`). `false` si no vale. */
+    restaurarEstadoSubida(estado: unknown): boolean {
+        if (!this.esBorradorLocalValido(estado as NuevoPersonajeDraftV1, 'subida'))
+            return false;
+        this.hidratarDesdeBorradorLocal(estado as NuevoPersonajeDraftV1);
+        return true;
     }
 
     /**
@@ -10914,6 +11224,7 @@ export class NuevoPersonajeService {
             valor: Math.max(1, toInt(valor)),
             origen: `${origen ?? ''}`.trim(),
             descripcion: `${descripcion ?? ''}`.trim(),
+            nivel: this.nivelEnCurso ? { ...this.nivelEnCurso } : null,
         };
     }
 

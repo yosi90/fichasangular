@@ -10,10 +10,12 @@ import {
     ExperienciaPersonaje,
     HistorialSesiones,
     RespuestaSesion,
+    RespuestaSubidaNivel,
     ResumenSesion,
     SesionConFicha,
     SesionEvento,
     SesionPersonaje,
+    SubidaNivelDto,
     TipoEventoSesion,
 } from 'src/app/interfaces/sesiones';
 import { environment } from 'src/environments/environment';
@@ -153,7 +155,28 @@ export class SesionesService {
     /** Una sesión con la ficha de esa versión (cruda, de la forma de `GET /personajes/{id}`). */
     async sesion(idPersonaje: number, numero: number): Promise<SesionConFicha> {
         const respuesta = await this.pedir<any>('GET', this.ruta(idPersonaje, numero), undefined, 'No se ha podido cargar la sesión.');
-        return { sesion: leerSesion(respuesta), ficha: respuesta?.ficha ?? null };
+        return {
+            sesion: leerSesion(respuesta),
+            ficha: respuesta?.ficha ?? null,
+            entrada: respuesta?.entrada && typeof respuesta.entrada === 'object' ? respuesta.entrada : null,
+        };
+    }
+
+    /** Sube un nivel (`POST /personajes/{id}/niveles`); los errores de la API llegan con su frase, `code` y `field`. */
+    async subirNivel(idPersonaje: number, cuerpo: SubidaNivelDto): Promise<RespuestaSubidaNivel> {
+        const id = toInt(idPersonaje);
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+        const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/niveles`, cuerpo, 'No se ha podido subir de nivel.');
+        return {
+            ...leerRespuestaSesion(respuesta),
+            subida: {
+                idEvento: toInt(respuesta?.subida?.idEvento),
+                numeroSesion: toInt(respuesta?.subida?.numeroSesion),
+                nivel: toInt(respuesta?.subida?.nivel),
+                nivelesPorSubir: Math.max(0, toInt(respuesta?.subida?.nivelesPorSubir)),
+            },
+        };
     }
 
     async abrir(idPersonaje: number, cuerpo: AbrirSesionDto = {}): Promise<RespuestaSesion> {

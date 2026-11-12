@@ -1,0 +1,169 @@
+<section class="subida" aria-live="polite">
+    <header class="subida__cabecera">
+        <div class="subida__titulos">
+            <span class="subida__antetitulo">Subir de nivel<ng-container *ngIf="sesion"> · Sesión {{sesion.numero}}</ng-container></span>
+            <h1 class="subida__titulo">{{pj?.Nombre || 'Personaje'}} sube a nivel {{nivelNuevo}}</h1>
+        </div>
+        <span *ngIf="experiencia" class="subida__px">{{px(experiencia.px)}} PX · nivel {{nivelNuevo}} desde {{px(experiencia.pxSiguienteNivel)}}</span>
+    </header>
+
+    <p *ngIf="cargando" class="subida__estado">Preparando la subida…</p>
+    <div *ngIf="!cargando && error && !claseElegida" class="subida__aviso subida__aviso--error" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{error}}</span>
+    </div>
+
+    <ng-container *ngIf="!cargando && pj && entrada">
+        <nav class="subida__pasos" aria-label="Pasos de la subida">
+            <span *ngFor="let p of pasos" class="subida__paso" [class.subida__paso--hecho]="estadoPaso(p) === 'hecho'"
+                [class.subida__paso--actual]="estadoPaso(p) === 'actual'" [attr.aria-current]="estadoPaso(p) === 'actual' ? 'step' : null">{{etiquetaPaso(p)}}</span>
+        </nav>
+
+        <div *ngIf="error && claseElegida" class="subida__aviso subida__aviso--error" role="alert">
+            <mat-icon aria-hidden="true">error_outline</mat-icon>
+            <span>{{error}}</span>
+        </div>
+
+        <section class="subida__tarjeta" [ngSwitch]="paso">
+            <!-- Clase -->
+            <ng-container *ngSwitchCase="'clase'">
+                <h2 class="subida__seccion">Elige la clase de este nivel</h2>
+                <p class="subida__nota">Una de las que ya tiene o una nueva a nivel 1. Las que no puede tomar dicen por qué.</p>
+                <ul class="subida__lista">
+                    <li *ngFor="let item of clases" class="subida__fila" [class.subida__fila--bloqueada]="!item.elegible">
+                        <div class="subida__fila-texto">
+                            <span class="subida__fila-nombre">{{item.clase.Nombre}} {{item.siguienteNivel}}</span>
+                            <span *ngIf="!item.elegible" class="subida__fila-motivo">{{item.motivo}}</span>
+                            <span *ngIf="item.clase.Oficial === false" class="subida__etiqueta">Homebrew</span>
+                        </div>
+                        <button mat-flat-button color="primary" type="button" [disabled]="!item.elegible" (click)="elegirClase(item.clase)">Elegir</button>
+                    </li>
+                </ul>
+            </ng-container>
+
+            <!-- Incremento: se elige en el selector de la creación -->
+            <ng-container *ngSwitchCase="'incremento'">
+                <h2 class="subida__seccion">Incremento de característica</h2>
+                <p class="subida__nota">En el nivel {{nivelNuevo}} sube +1 la característica que elijas (MJ p. 22). La Constitución suma también en los niveles de antes; la Inteligencia, solo desde este.</p>
+            </ng-container>
+
+            <!-- PG -->
+            <ng-container *ngSwitchCase="'pg'">
+                <h2 class="subida__seccion">Puntos de golpe: 1d{{carasDg}} de {{claseElegida?.Nombre}}</h2>
+                <p class="subida__nota">{{tiradasPermitidas === 1 ? 'Una tirada' : tiradasPermitidas + ' tiradas como mucho'}} ({{entrada.personaje.campana?.id ? 'lo que deja la campaña' : 'sin campaña, como el Manual del jugador'}}); te quedas con la que elijas. Al subir no hay máximo del dado.</p>
+                <div class="subida__tiradas">
+                    <button mat-stroked-button type="button" (click)="tirar()" [disabled]="tiradas.length >= tiradasPermitidas">
+                        <mat-icon aria-hidden="true">casino</mat-icon> Tirar 1d{{carasDg}}
+                    </button>
+                    <label *ngFor="let t of tiradas; let i = index" class="subida__tirada">
+                        <input type="radio" name="tirada" [checked]="tiradaElegida === t" (change)="elegirTirada(t)"> {{t}}
+                    </label>
+                </div>
+                <p *ngIf="pg" class="subida__resultado">
+                    PG {{entrada.personaje.puntosGolpe}} → <strong>{{pg.total}}</strong>
+                    (+{{pg.delNivel}} del dado nuevo<ng-container *ngIf="pg.retroactivo !== 0">, {{pg.retroactivo > 0 ? '+' : ''}}{{pg.retroactivo}} por la Constitución en los niveles de antes</ng-container>)
+                </p>
+                <p *ngIf="pg && !pg.exacto" class="subida__nota">Algunos niveles de antes no tienen guardada su tirada: el cambio de Constitución en ellos se suma entero.</p>
+            </ng-container>
+
+            <!-- Habilidades -->
+            <ng-container *ngSwitchCase="'habilidades'">
+                <h2 class="subida__seccion">Habilidades: te quedan {{puntosHabilidadRestantes}} puntos</h2>
+                <p class="subida__nota">Las de clase de cualquiera de sus clases cuestan 1 y llegan a nivel + 3; las demás cuestan 2 y llegan a la mitad.</p>
+                <table class="subida__tabla">
+                    <thead><tr><th scope="col">Habilidad</th><th scope="col">Rangos</th><th scope="col">Este nivel</th><th scope="col">Tope</th><th scope="col"><span class="cdk-visually-hidden">Cambiar</span></th></tr></thead>
+                    <tbody>
+                        <tr *ngFor="let h of habilidadesSesion">
+                            <th scope="row">{{h.Nombre}}<ng-container *ngIf="h.Extra && h.Extra !== 'No aplica'"> ({{h.Extra}})</ng-container>
+                                <span *ngIf="esDeClase(h)" class="subida__etiqueta subida__etiqueta--clase">de clase</span></th>
+                            <td>{{h.Rangos}}</td>
+                            <td>{{rangosDeLaSesion(h) ? '+' + rangosDeLaSesion(h) : ''}}</td>
+                            <td>{{limite(h)}}</td>
+                            <td class="subida__botones">
+                                <button mat-icon-button type="button" [attr.aria-label]="'Quitar un rango de ' + h.Nombre" [disabled]="rangosDeLaSesion(h) < 1" (click)="ajustar(h, -1)"><mat-icon>remove</mat-icon></button>
+                                <button mat-icon-button type="button" [attr.aria-label]="'Poner un rango en ' + h.Nombre" [disabled]="!puedeSubir(h)" (click)="ajustar(h, 1)"><mat-icon>add</mat-icon></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </ng-container>
+
+            <!-- Dotes: en el selector de la creación -->
+            <ng-container *ngSwitchCase="'dotes'">
+                <h2 class="subida__seccion">Dotes del nivel</h2>
+                <p class="subida__nota">Elige en el selector la dote que da este nivel.</p>
+            </ng-container>
+
+            <!-- Conjuros -->
+            <ng-container *ngSwitchCase="'conjuros'">
+                <h2 class="subida__seccion">Conjuros nuevos<ng-container *ngIf="entradaConjuros"> de {{entradaConjuros.claseObjetivo.nombre}}</ng-container></h2>
+                <ng-container *ngIf="entradaConjuros as e">
+                    <p class="subida__nota">Te quedan {{e.cupoPendiente.total}} por elegir.</p>
+                    <ul class="subida__chips" *ngIf="e.seleccionadosIds.length || e.autoadicionadosIds.length">
+                        <li *ngFor="let id of e.autoadicionadosIds" class="subida__chip">{{nombreConjuro(id)}} <span class="subida__etiqueta">Automático</span></li>
+                        <li *ngFor="let id of e.seleccionadosIds" class="subida__chip">{{nombreConjuro(id)}}
+                            <button mat-icon-button type="button" [attr.aria-label]="'Quitar ' + nombreConjuro(id)" (click)="quitarConjuro(id)"><mat-icon>close</mat-icon></button></li>
+                    </ul>
+                    <label class="subida__filtro">Buscar <input type="search" [(ngModel)]="filtroConjuros" name="filtroConjuros"></label>
+                    <ul class="subida__lista">
+                        <li *ngFor="let c of conjurosDisponibles" class="subida__fila">
+                            <span class="subida__fila-nombre">{{c.Nombre}}</span>
+                            <button mat-stroked-button type="button" (click)="elegirConjuro(c)">Elegir</button>
+                        </li>
+                    </ul>
+                </ng-container>
+            </ng-container>
+
+            <!-- Intercambio -->
+            <ng-container *ngSwitchCase="'intercambio'">
+                <ng-container *ngIf="intercambio as i">
+                    <h2 class="subida__seccion">Cambiar un conjuro conocido (opcional)</h2>
+                    <p class="subida__nota">En este nivel de {{i.clase.nombre.toLowerCase()}} puedes olvidar un conocido y aprender otro del mismo nivel, que esté al menos {{i.margen}} niveles por debajo del más alto que lanzas ({{i.nivelMaximo}}).</p>
+                    <label class="subida__campo">Olvidar
+                        <select [ngModel]="olvidado?.idConjuro" (ngModelChange)="elegirOlvidado($event)" name="olvidado">
+                            <option [ngValue]="null">—</option>
+                            <option *ngFor="let o of i.olvidables" [ngValue]="o.conjuro.Id">{{o.conjuro.Nombre}} (nivel {{o.nivel}})</option>
+                        </select>
+                    </label>
+                    <label class="subida__campo" *ngIf="olvidado">Aprender en su lugar
+                        <select [(ngModel)]="idNuevoIntercambio" name="nuevo">
+                            <option [ngValue]="null">—</option>
+                            <option *ngFor="let c of candidatosIntercambio" [ngValue]="c.Id">{{c.Nombre}}</option>
+                        </select>
+                    </label>
+                </ng-container>
+            </ng-container>
+
+            <!-- Resumen -->
+            <ng-container *ngSwitchCase="'resumen'">
+                <h2 class="subida__seccion">Lo que cambia</h2>
+                <table class="subida__tabla subida__tabla--resumen">
+                    <thead><tr><th scope="col">Qué</th><th scope="col">Antes</th><th scope="col">Ahora</th><th scope="col">Por qué</th></tr></thead>
+                    <tbody>
+                        <tr *ngFor="let c of cambios"><th scope="row">{{c.que}}</th><td>{{c.antes}}</td><td class="subida__ahora">{{c.ahora}}</td><td>{{c.porque}}</td></tr>
+                    </tbody>
+                </table>
+                <p class="subida__nota">La subida queda en la sesión {{sesion?.numero}} y se puede deshacer mientras la sesión siga abierta.</p>
+            </ng-container>
+        </section>
+
+        <footer class="subida__pie">
+            <button mat-button type="button" (click)="claseElegida ? descartar() : cancelar()">{{claseElegida ? 'Empezar de nuevo' : 'Cancelar'}}</button>
+            <span class="subida__hueco"></span>
+            <ng-container [ngSwitch]="paso">
+                <button *ngSwitchCase="'pg'" mat-flat-button color="primary" type="button" [disabled]="!puedeSeguirPg" (click)="siguiente()">Continuar</button>
+                <button *ngSwitchCase="'habilidades'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarDistribucionHabilidades()" (click)="cerrarHabilidades()">Continuar</button>
+                <button *ngSwitchCase="'conjuros'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarSesionConjuros()" (click)="cerrarConjuros()">Continuar</button>
+                <ng-container *ngSwitchCase="'intercambio'">
+                    <button mat-stroked-button type="button" (click)="cerrarIntercambio(false)">No cambiar ninguno</button>
+                    <button mat-flat-button color="primary" type="button" [disabled]="!olvidado || !idNuevoIntercambio" (click)="cerrarIntercambio(true)">Cambiar y continuar</button>
+                </ng-container>
+                <ng-container *ngSwitchCase="'resumen'">
+                    <button *ngIf="puedeSeguir" mat-stroked-button type="button" [disabled]="guardando" (click)="guardar(true)">Guardar y seguir con el nivel {{nivelNuevo + 1}}</button>
+                    <button mat-flat-button color="primary" type="button" [disabled]="guardando" (click)="guardar(false)">Guardar la subida</button>
+                </ng-container>
+            </ng-container>
+        </footer>
+    </ng-container>
+    <ng-container #modalHost></ng-container>
+</section>

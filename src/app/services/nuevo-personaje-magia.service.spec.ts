@@ -242,7 +242,7 @@ describe('Reglas de la magia: el libro del mago (MJ cap. 3)', () => {
             { origen: 'clase' as const, idClase: 9, caras: 4, resultado: 4, maximizado: true },
             { origen: 'clase' as const, idClase: 9, caras: 4, resultado: 2, maximizado: false },
         ];
-        const niveles = service.getNivelesParaGuardar(payload.colecciones, payload.progresionLanzador, dados);
+        const niveles = service.getNivelesParaGuardar(payload.progresionLanzador, dados);
         expect(niveles?.map((nivelGuardado) => [nivelGuardado.idClase, nivelGuardado.nivelClase, nivelGuardado.pg])).toEqual([
             [9, 1, { tirada: 4, maximo: true }],
             [9, 2, { tirada: 2, maximo: false }],

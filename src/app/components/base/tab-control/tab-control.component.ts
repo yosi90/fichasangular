@@ -1,4 +1,5 @@
-import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, QueryList, SimpleChanges, ViewChild, ViewChildren } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, NgZone, OnDestroy, OnInit, Output, QueryList, SimpleChanges, Type, ViewChild, ViewChildren } from '@angular/core';
+import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { SocialHubOpenRequest, UserPrivateProfileOpenRequest, UserPrivateProfileSectionId, UserPublicProfileTab } from 'src/app/interfaces/user-account';
 import { UserService } from '../../../services/user.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
@@ -108,6 +109,10 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public novedadesTabOpen = false;
     public publicProfileTabs: UserPublicProfileTab[] = [];
     public detallesPersonajeAbiertos: Personaje[] = [];
+    /** Las subidas de nivel abiertas (roadmap de sesiones, fase 4): una pestaña por personaje, `subida:<id>`. */
+    public subidasNivelAbiertas: Array<{ idPersonaje: number; nombre: string; cerrar: () => void; }> = [];
+    /** `SubirNivelComponent`, con carga diferida la primera vez que se abre una subida. */
+    public subirNivelComponente: Type<unknown> | null = null;
     public detallesRazaAbiertos: Raza[] = [];
     public detallesConjuroAbiertos: Conjuro[] = [];
     public detallesSortilegaAbiertos: { ap: AptitudSortilega, fuente: string }[] = [];
@@ -170,6 +175,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         private equipoSvc?: EquipoService,
         private incarnumSvc?: IncarnumService,
         private novedadesSvc?: NovedadesService,
+        private puertaSubida?: SubidaNivelPuertaService,
     ) { }
 
     @ViewChild(MatTabGroup) TabGroup!: MatTabGroup;
@@ -194,6 +200,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.navegacionRolSvc.aperturas$
             .pipe(takeUntil(this.destroy$))
             .subscribe((apertura) => this.abrirDesdeNavegacion(apertura));
+        this.puertaSubida?.solicitudes$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje));
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPerfilPrivado(request));
@@ -395,6 +404,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (this.dadosTabOpen)
             keys.push(this.TAB_DADOS);
         keys.push(...this.detallesPersonajeAbiertos.map((pj) => this.getPersonajeTabKey(pj)));
+        keys.push(...this.subidasNivelAbiertas.map((subida) => this.getSubidaTabKey(subida.idPersonaje)));
         keys.push(...this.publicProfileTabs.map((tab) => this.getPublicProfileTabKey(tab)));
         if (this.AbrirNuevoPersonajeTab)
             keys.push(this.TAB_NUEVO);
@@ -621,6 +631,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.dadosTabOpen = false;
         this.publicProfileTabs = [];
         this.detallesPersonajeAbiertos = [];
+        this.subidasNivelAbiertas = [];
         this.detallesRazaAbiertos = [];
         this.detallesConjuroAbiertos = [];
         this.detallesSortilegaAbiertos = [];
@@ -1043,6 +1054,46 @@ export class TabControlComponent implements OnInit, OnDestroy {
     /** Lo que se lee en una pestaña de «Modificar» («Editar Alas»). */
     textoEdicion(tab: EdicionCatalogoTab): string {
         return EDICIONES_CATALOGO[tab.tipo].texto(tab.nombre);
+    }
+
+    /**
+     * Abre la subida de nivel de un personaje (la pide la ficha con «Subir a nivel N», `SubidaNivelPuertaService`) en su
+     * pestaña, junto a las fichas; si ya está abierta, la enseña. El componente se carga la primera vez.
+     */
+    async abrirSubidaNivel(idPersonaje: number): Promise<void> {
+        const id = Math.trunc(Number(idPersonaje));
+        if (!(id > 0))
+            return;
+        const clave = this.getSubidaTabKey(id);
+        if (this.subidasNivelAbiertas.some((subida) => subida.idPersonaje === id)) {
+            this.selectTabByKey(clave);
+            return;
+        }
+        if (!this.subirNivelComponente) {
+            const { SubirNivelComponent } = await import('src/app/components/sesiones/subir-nivel/subir-nivel.component');
+            this.subirNivelComponente = SubirNivelComponent;
+        }
+        const nombre = this.detallesPersonajeAbiertos.find((pj) => Number(pj.Id) === id)?.Nombre ?? 'Personaje';
+        this.subidasNivelAbiertas.push({ idPersonaje: id, nombre, cerrar: () => this.quitarSubidaNivel(id) });
+        this.registerOpenContext(clave, this.getSafeOpenerKey());
+        this.focusOpenedTab(clave);
+    }
+
+    quitarSubidaNivel(idPersonaje: number): boolean {
+        const subida = this.subidasNivelAbiertas.find((item) => item.idPersonaje === Number(idPersonaje));
+        if (!subida)
+            return false;
+        return this.closeTabWithNavigation(this.getSubidaTabKey(subida.idPersonaje), () => {
+            const indice = this.subidasNivelAbiertas.indexOf(subida);
+            if (indice < 0)
+                return false;
+            this.subidasNivelAbiertas.splice(indice, 1);
+            return true;
+        });
+    }
+
+    private getSubidaTabKey(idPersonaje: number): string {
+        return `subida:${Number(idPersonaje)}`;
     }
 
     private getPersonajeTabKey(personaje: Personaje): string {

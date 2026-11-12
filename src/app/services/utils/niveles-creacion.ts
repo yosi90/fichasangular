@@ -1,10 +1,9 @@
 import {
-    PersonajeCreateColeccionesDto,
     PersonajeCreateNivelDto,
     PersonajeCreateNivelEleccionDto,
     PersonajeProgresionLanzadorSeleccionDto,
 } from 'src/app/interfaces/personajes-api';
-import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { toInt } from 'src/app/services/utils/normalizacion';
 import { DadoDeGolpe } from 'src/app/services/utils/puntos-golpe';
 
 /*
@@ -13,37 +12,48 @@ import { DadoDeGolpe } from 'src/app/services/utils/puntos-golpe';
  * se eligió en él, para que la subida de nivel siga con el mismo motor. La API no comprueba las reglas por nivel: guarda
  * lo que llega.
  *
- * Lo que se manda (lo que la creación ya sabe nivel a nivel): el orden (`aplicarSiguienteNivelClase`), la tirada de cada
- * DG de clase (`calcularVidaFinalAleatoria`), las dotes y los conjuros cuyo origen dice su nivel («Mago nivel 3»,
- * «Dote adicional por nivel 3») y los aumentos de nivel de lanzador. Lo que todavía no se manda (no se apunta por nivel):
- * los incrementos de característica, los rangos, los idiomas, los dominios y las aptitudes especiales.
+ * El nivel de cada elección es un dato que el motor apunta al elegir (desde el 2026-11-12, fase 4 de las sesiones):
+ * `NuevoPersonajeService` lleva el nivel en curso (`aplicarSiguienteNivelClase`), las dotes y los incrementos pendientes
+ * nacen con su nivel, y cada dote, aptitud, dominio, conjuro, idioma, incremento y los rangos de su reparto se apuntan en
+ * `Orden_niveles[i].elecciones` (`apuntarEleccion`). Aquí solo se juntan con la tirada de cada DG y los aumentos de nivel
+ * de lanzador (`progresionLanzador`, que ya dicen su clase y su nivel).
  */
 
-/** Un nivel tomado: el n-ésimo de su clase. */
+/** Un nivel tomado: el n-ésimo de su clase, con lo que se eligió en él. */
 export interface NivelTomado {
     idClase: number;
     nivelClase: number;
+    elecciones?: PersonajeCreateNivelEleccionDto[];
 }
 
+/** El nivel de una elección (su clase y su nivel en ella), sin lo elegido. */
+export type RefNivelTomado = Pick<NivelTomado, 'idClase' | 'nivelClase'>;
+
 export interface EntradaNivelesCreacion {
-    /** El orden en que se tomaron los niveles (`Personaje.Orden_niveles`). */
+    /** El orden en que se tomaron los niveles, con sus elecciones (`Personaje.Orden_niveles`). */
     orden: NivelTomado[] | null | undefined;
     /** Las clases que tiene al terminar, con su nivel (`desgloseClases`): si el orden no cuadra con ellas, no se manda. */
     clases: Array<{ id: number; nombre: string; nivel: number; }>;
     /** Los DG de la tirada de PG elegida, en su orden (`ResultadoPuntosGolpe.dados`). */
     dados?: DadoDeGolpe[] | null;
-    /** Las dotes que se guardan (`colecciones.dotes`). */
-    dotes?: PersonajeCreateColeccionesDto['dotes'];
-    /** Los conjuros que se guardan (`colecciones.conjurosConocidos`); los copiados al libro no son de ningún nivel. */
-    conjuros?: PersonajeCreateColeccionesDto['conjurosConocidos'];
     /** Los aumentos de nivel de lanzador (`progresionLanzador.selecciones`). */
     aumentosLanzador?: PersonajeProgresionLanzadorSeleccionDto[];
-    /** Los DG que tiene antes de sus niveles de clase (los raciales que cuentan y los de sus plantillas). */
-    dgsAntesDeLasClases?: number;
 }
 
-const ORIGEN_DE_CLASE = /^(?:dote por nivel: |dote adicional: )?(.+?) nivel (\d+)(?: \(clase\))?$/;
-const ORIGEN_DE_NIVEL_DE_PERSONAJE = /^dote adicional por nivel (\d+)$/;
+/** Apunta una elección en su nivel del orden (si el nivel no está, no se apunta: no es de ningún nivel de clase). */
+export function apuntarEleccion(
+    orden: NivelTomado[] | null | undefined,
+    nivel: RefNivelTomado | null | undefined,
+    eleccion: PersonajeCreateNivelEleccionDto,
+): boolean {
+    const destino = nivel
+        ? (orden ?? []).find((n) => toInt(n?.idClase) === toInt(nivel.idClase) && toInt(n?.nivelClase) === toInt(nivel.nivelClase))
+        : undefined;
+    if (!destino)
+        return false;
+    destino.elecciones = [...(destino.elecciones ?? []), eleccion];
+    return true;
+}
 
 /** Si el orden tiene, de cada clase, sus niveles del 1 al suyo y en orden (y nada de otra clase). */
 export function ordenCuadra(orden: NivelTomado[], clases: EntradaNivelesCreacion['clases']): boolean {
@@ -64,29 +74,15 @@ export function construirNivelesCreacion(entrada: EntradaNivelesCreacion): Perso
     if (orden.length < 1 || !ordenCuadra(orden, entrada.clases))
         return null;
 
-    const niveles: PersonajeCreateNivelDto[] = orden.map((n) => ({ idClase: n.idClase, nivelClase: n.nivelClase, elecciones: [] }));
+    const niveles: PersonajeCreateNivelDto[] = (entrada.orden ?? []).map((n) => ({
+        idClase: toInt(n?.idClase),
+        nivelClase: toInt(n?.nivelClase),
+        elecciones: (n?.elecciones ?? []).map((e) => ({ ...e })),
+    }));
     const indice = new Map(orden.map((n, i) => [`${n.idClase}:${n.nivelClase}`, i]));
     const nivelDe = (idClase: number, nivelClase: number): PersonajeCreateNivelDto | null => {
         const i = indice.get(`${idClase}:${nivelClase}`);
         return i === undefined ? null : niveles[i];
-    };
-    const clasePorNombre = new Map(entrada.clases.map((c) => [normalizarTexto(c.nombre ?? ''), toInt(c.id)]));
-    const nivelDelOrigen = (origen: string | undefined): PersonajeCreateNivelDto | null => {
-        const texto = normalizarTexto(`${origen ?? ''}`.trim());
-        const deClase = texto.match(ORIGEN_DE_CLASE);
-        const idClase = deClase ? clasePorNombre.get(normalizarTexto(deClase[1])) : undefined;
-        if (deClase && idClase)
-            return nivelDe(idClase, toInt(deClase[2]));
-        const dePersonaje = texto.match(ORIGEN_DE_NIVEL_DE_PERSONAJE);
-        if (dePersonaje) {
-            const posicion = toInt(dePersonaje[1]) - Math.max(0, toInt(entrada.dgsAntesDeLasClases));
-            return posicion >= 1 && posicion <= niveles.length ? niveles[posicion - 1] : null;
-        }
-        return null;
-    };
-    const apuntar = (nivel: PersonajeCreateNivelDto | null, eleccion: PersonajeCreateNivelEleccionDto) => {
-        if (nivel)
-            nivel.elecciones!.push(eleccion);
     };
 
     // La tirada de cada DG de clase: el k-ésimo DG de una clase es su k-ésimo nivel, si cada nivel da uno (una clase de
@@ -105,19 +101,7 @@ export function construirNivelesCreacion(entrada: EntradaNivelesCreacion): Perso
         });
     });
 
-    (entrada.dotes ?? []).forEach((dote) => apuntar(nivelDelOrigen(dote.origen), {
-        tipo: 'dote',
-        idElemento: toInt(dote.idDote),
-        idExtra: toInt(dote.idExtra),
-        ...(dote.origen ? { origen: dote.origen } : {}),
-    }));
-    (entrada.conjuros ?? []).filter((conjuro) => conjuro.copiado !== true).forEach((conjuro) => apuntar(nivelDelOrigen(conjuro.origen), {
-        tipo: 'conjuro',
-        idElemento: toInt(conjuro.idConjuro),
-        ...(toInt(conjuro.idClase) > 0 ? { idExtra: toInt(conjuro.idClase) } : {}),
-        ...(conjuro.origen ? { origen: conjuro.origen } : {}),
-    }));
-    (entrada.aumentosLanzador ?? []).forEach((aumento) => apuntar(nivelDe(toInt(aumento.idClaseAplicada), toInt(aumento.nivelClaseAplicado)), {
+    (entrada.aumentosLanzador ?? []).forEach((aumento) => nivelDe(toInt(aumento.idClaseAplicada), toInt(aumento.nivelClaseAplicado))?.elecciones!.push({
         tipo: 'aumento_lanzador',
         idElemento: toInt(aumento.idClaseObjetivo),
         valor: toInt(aumento.indiceAumento),

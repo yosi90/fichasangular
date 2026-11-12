@@ -1,6 +1,7 @@
 import { fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { BehaviorSubject, of, Subject } from 'rxjs';
 import Swal from 'sweetalert2';
+import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { TabControlComponent } from './tab-control.component';
 
 function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; }): TabControlComponent {
@@ -35,6 +36,7 @@ function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; }): TabCo
         getChakra: jasmine.createSpy('getChakra').and.callFake((id: number) => of({ Id: id, Nombre: 'Corona' })),
     } as any;
     const pSvc = overrides?.pSvc ?? {} as any;
+    const puertaSubida = new SubidaNivelPuertaService();
     const navegacionRolSvc = { aperturas$: new Subject<any>() } as any;
     const userProfileNavSvc = {
         privateProfileOpen$: new Subject<any>(),
@@ -67,6 +69,7 @@ function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; }): TabCo
         equipoSvc,
         incarnumSvc,
         overrides?.novedadesSvc,
+        puertaSubida,
     );
 
     const buildTabs = () => {
@@ -83,6 +86,7 @@ function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; }): TabCo
         if (component.dadosTabOpen)
             tabs.push({ textLabel: 'Dados' });
         (component.detallesPersonajeAbiertos ?? []).forEach((pj: any) => tabs.push({ textLabel: pj.Nombre }));
+        (component.subidasNivelAbiertas ?? []).forEach((subida: any) => tabs.push({ textLabel: `Subir de nivel: ${subida.nombre}` }));
         (component.publicProfileTabs ?? []).forEach((tab: any) => tabs.push({ textLabel: component.getEtiquetaPerfilPublico(tab) }));
         if (component.AbrirNuevoPersonajeTab)
             tabs.push({ textLabel: 'Nuevo personaje' });
@@ -125,6 +129,7 @@ function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; }): TabCo
     (component as any).__banStatus$ = banStatus$;
     (component as any).__userProfileNavSvc = userProfileNavSvc;
     (component as any).__navegacionRolSvc = navegacionRolSvc;
+    (component as any).__puertaSubida = puertaSubida;
 
     return component;
 }
@@ -553,6 +558,28 @@ describe('TabControlComponent navegación por origen', () => {
         subject.next({ Id: 42, Nombre: 'Druida actualizado' } as any);
         tick(120);
         expect(component.detallesPersonajeAbiertos.length).toBe(1);
+    }));
+
+    it('«Subir a nivel N» de la ficha abre la subida de ese personaje en su pestaña, una sola vez (sesiones, fase 4)', fakeAsync(() => {
+        const component = crearComponente();
+        component.subirNivelComponente = class { } as any;
+        const abrir = spyOn(component, 'abrirSubidaNivel').and.callThrough();
+        component.ngOnInit();
+        component.detallesPersonajeAbiertos = [{ Id: 42, Nombre: 'Tordek' } as any];
+
+        (component as any).__puertaSubida.solicitar(42);
+        tick(120);
+        (component as any).__puertaSubida.solicitar(42);
+        tick(120);
+
+        expect(abrir).toHaveBeenCalledWith(42);
+        expect(component.subidasNivelAbiertas.map((s) => [s.idPersonaje, s.nombre])).toEqual([[42, 'Tordek']]);
+        expect((component as any).activeTabKey).toBe('subida:42');
+
+        component.subidasNivelAbiertas[0].cerrar();
+        tick(120);
+        expect(component.subidasNivelAbiertas.length).toBe(0);
+        component.ngOnDestroy();
     }));
 
     it('mantiene pestañas separadas para listado e insercion', fakeAsync(() => {

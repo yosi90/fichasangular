@@ -10,6 +10,7 @@ import {
     ClaseConjuroRef,
     ClaseConjurosConfig,
     ClaseEscuelaEspecialista,
+    ClaseIntercambioConjuros,
     ClaseLibroConjuros,
     ClaseMutationApiResponse,
     ClaseMutationRequest,
@@ -132,6 +133,14 @@ function normalizeLibro(raw: any): ClaseLibroConjuros | null {
     };
 }
 
+/** `Conjuros.Intercambio` de la API y de la caché: `null` sin él o con `Desde` 0. */
+export function normalizeIntercambio(raw: any): ClaseIntercambioConjuros | null {
+    const desde = toInt(raw?.Desde);
+    if (!raw || typeof raw !== 'object' || desde < 1)
+        return null;
+    return { Desde: desde, Cada: Math.max(1, toInt(raw?.Cada, 1)), Margen: Math.max(0, toInt(raw?.Margen, 2)) };
+}
+
 function normalizeConjuros(raw: any): ClaseConjurosConfig {
     return {
         Dependientes_alineamiento: toBoolean(raw?.Dependientes_alineamiento),
@@ -150,6 +159,7 @@ function normalizeConjuros(raw: any): ClaseConjurosConfig {
         ),
         Lanzamiento_espontaneo: toBoolean(raw?.Lanzamiento_espontaneo),
         Libro: normalizeLibro(raw?.Libro),
+        Intercambio: normalizeIntercambio(raw?.Intercambio),
         Nivel_lanzador_divisor: Math.max(1, toInt(raw?.Nivel_lanzador_divisor, 1)),
         Clase_origen: {
             Id: toNumber(raw?.Clase_origen?.Id),

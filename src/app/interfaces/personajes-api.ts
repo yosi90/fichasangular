@@ -204,11 +204,14 @@ export interface PersonajeCreateRequestDto {
 
 /** Lo que se eligió en un nivel (`niveles[].elecciones[]`): `idElemento` es del catálogo de su `tipo`. */
 export interface PersonajeCreateNivelEleccionDto {
-    tipo: 'dote' | 'incremento' | 'especial' | 'dominio' | 'conjuro' | 'idioma' | 'rangos' | 'aumento_lanzador';
+    tipo: 'dote' | 'incremento' | 'especial' | 'dominio' | 'conjuro' | 'idioma' | 'rangos' | 'aumento_lanzador' | 'conjuro_olvidado';
     idElemento?: number | null;
-    /** El extra de la dote, la aptitud o la habilidad; en un conjuro, la clase que lo da. */
+    /** El extra de la dote, la aptitud o la habilidad; en un conjuro (también el olvidado), la clase que lo da. */
     idExtra?: number | null;
-    /** Los rangos, el +1 del incremento o el índice del aumento de lanzador. */
+    /**
+     * Los rangos, el +1 del incremento, el índice del aumento de lanzador o, en `conjuro_olvidado` (el intercambio del
+     * bardo y el hechicero, desde el 2026-11-12), el conjuro que aprende en su lugar.
+     */
     valor?: number | null;
     origen?: string | null;
 }
