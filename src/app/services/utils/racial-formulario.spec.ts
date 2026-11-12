@@ -121,7 +121,7 @@ describe('racial-formulario', () => {
         expect(falloDeBonificador(bonificador({ id_objetivo: 18, condicion: '', id_caracteristica: 1 }), 0, OBJETIVOS)).toBeNull();
         expect(falloDeBonificador(bonificador({ id_objetivo: 18, condicion: '' }), 0, OBJETIVOS)).toContain('de qué característica');
         expect(falloDeBonificador(bonificador({ id_caracteristica: 1 }), 0, OBJETIVOS))
-            .toContain('solo vale con las pruebas de característica y habilidades');
+            .toContain('solo vale con un objetivo que pide una característica');
     });
 
     it('el primer fallo dice de qué lista es', () => {
