@@ -344,8 +344,9 @@ describe('Subida de nivel con el motor de la creación (personajes de referencia
         expect(corregir.dotesSinSusPrerrequisitos().map((d) => [d.idDote, d.origen])).toEqual([[60, 'Dote de nivel 1']]);
         expect(corregir.quitarDoteDeLaFicha(60, 0, 'Dote de nivel 1')).toBeTrue();
         expect(corregir.dotesSinSusPrerrequisitos()).toEqual([]);
-        // La Constitución del enano (+2 de raza) se queda: la base es la tirada, no la puntuación.
-        corregir.corregirBaseCaracteristica('Constitucion', 14);
-        expect(corregir.PersonajeCreacion.Constitucion).toBe(16);
+        // Lo que suma lo que el motor vuelve a calcular se queda: la puntuación cambia lo mismo que la base.
+        const con = corregir.PersonajeCreacion.Constitucion;
+        corregir.corregirBaseCaracteristica('Constitucion', corregir.getBaseCaracteristicas().Constitucion + 1);
+        expect(corregir.PersonajeCreacion.Constitucion).toBe(con + 1);
     });
 });
