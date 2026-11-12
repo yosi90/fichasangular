@@ -1,12 +1,13 @@
 /**
- * Una entrada de las idas y vueltas de «Modificar» (`ida-y-vuelta-dotes-conjuros.ts`, `ida-y-vuelta-clases.ts`): la
- * respuesta real del `GET` de `rol_dev` y el cuerpo con el que el `PUT` devolvió ese mismo `GET`.
+ * Una entrada de las idas y vueltas de «Modificar» (`ida-y-vuelta-dotes-conjuros.ts`, `ida-y-vuelta-clases.ts`…): la
+ * respuesta real del `GET` de `rol_dev` y el cuerpo con el que el `PUT` devolvió ese mismo `GET`. `C`, el tipo del
+ * cuerpo si se quiere comprobar (el de los raciales, `RacialCreateRequest`).
  */
-export interface IdaYVuelta {
+export interface IdaYVuelta<C = any> {
     id: number;
     nombre: string;
     get: any;
-    cuerpo: any;
+    cuerpo: C;
 }
 
 /**

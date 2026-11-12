@@ -60,8 +60,8 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
 
     afterEach(() => component.ngOnDestroy());
 
-    IDA_Y_VUELTA_RACIALES.forEach(({ get, cuerpo }) => {
-        it(`guardar sin tocar nada manda el cuerpo de la ida y vuelta: ${get.Nombre}`, () => {
+    IDA_Y_VUELTA_RACIALES.forEach(({ nombre, get, cuerpo }) => {
+        it(`guardar sin tocar nada manda el cuerpo de la ida y vuelta: ${nombre}`, () => {
             editar(get);
             expect((component as any).construirPayload()).toEqual(cuerpo);
             expect(component.isDirty).toBeFalse();
