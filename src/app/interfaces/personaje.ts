@@ -262,6 +262,8 @@ export interface Personaje extends PersonajeSimple {
     Correr: number;
     Nadar: number;
     Volar: number;
+    /** La maniobrabilidad del vuelo que da la progresión de un rasgo (las alas de la prole de Bahamut a 6 DG); sin él, la de la raza. */
+    Maniobrabilidad?: { Id: number; Nombre: string; } | null;
     Trepar: number;
     Excavar: number;
     /** Oficial u homebrew: en una ficha guardada lo calcula la API (`o`; desde el 2026-11-06 no se guarda). */

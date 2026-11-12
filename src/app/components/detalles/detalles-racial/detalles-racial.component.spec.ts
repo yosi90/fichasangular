@@ -112,6 +112,23 @@ describe('DetallesRacialComponent', () => {
         expect(texto()).not.toContain('Requiere característica mínima');
     });
 
+    it('lo que da o cambia con los DG, en su lista y con la frase de la API', () => {
+        component.racial = normalizeRacial({
+            Id: 4847, Nombre: 'Aspecto infernal (espíritu)', Descripcion: 'Aptitud sobrenatural.', Oficial: true,
+            Progresion: [
+                { Medida: 'dg', Desde: 6, Gana: { Id: 8, Nombre: "Visión en la oscuridad 60'" }, Sustituye: { Id: 4972, Nombre: "Visión en la oscuridad 30'" },
+                    Tipo_dote: null, Velocidad: null, Valor: null,
+                    Frase: "A los 6 DG: gana Visión en la oscuridad 60' en lugar de Visión en la oscuridad 30'." },
+                { Medida: 'dg', Desde: 15, Gana: { Id: 4978, Nombre: "Telepatía 100'" }, Sustituye: null, Tipo_dote: null, Velocidad: null,
+                    Valor: null, Frase: "A los 15 DG: gana Telepatía 100'." },
+            ],
+        });
+        fixture.detectChanges();
+        expect(titulos()).toEqual(['Descripción', 'Con los DG o el nivel']);
+        expect(texto()).toContain("A los 6 DG: gana Visión en la oscuridad 60' en lugar de Visión en la oscuridad 30'.");
+        expect(texto()).toContain("A los 15 DG: gana Telepatía 100'.");
+    });
+
     it('no pinta las listas vacías ni la descripción nula', () => {
         component.racial = normalizeRacial({ Id: 3, Nombre: 'Vacío', Descripcion: null, Oficial: false });
         fixture.detectChanges();

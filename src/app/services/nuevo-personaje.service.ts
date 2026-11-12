@@ -32,6 +32,7 @@ import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contr
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
+import { aplicarProgresionRacial, ResultadoProgresionRacial, tieneProgresionRacial, velocidadConProgresion } from './utils/racial-progresion';
 import { esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
@@ -1035,6 +1036,8 @@ interface NuevoPersonajeDraftV1 {
     dotesProgresionConcedidas: number;
     dotesExtraRazaConcedidas: number;
     dotesAdicionalesRazaConcedidas?: number;
+    /** Las dotes de la progresión de los raciales ya concedidas (`DoteDeProgresion.Clave`). */
+    dotesProgresionRacialConcedidas?: string[];
     dgsCompaneroRepartidos?: number;
     /** Si ya se repartieron las habilidades y la dote del DG racial único al terminar sin clases. */
     dgRacialSinClasesRepartido?: boolean;
@@ -1158,6 +1161,8 @@ export class NuevoPersonajeService {
     private dotesProgresionConcedidas = 0;
     private dotesExtraRazaConcedidas = 0;
     private dotesAdicionalesRazaConcedidas = 0;
+    /** Las dotes de la progresión de los raciales ya concedidas (`DoteDeProgresion.Clave`: rasgo, medida, desde y tipo). */
+    private dotesProgresionRacialConcedidas = new Set<string>();
     /**
      * Una raza con 1 DG racial lo cambia por su primer nivel de clase (`dgRacialSustituible`): sus habilidades y su dote
      * solo se reparten si termina sin clases, y entonces una sola vez.
@@ -1484,6 +1489,7 @@ export class NuevoPersonajeService {
         this.dotesProgresionConcedidas = 0;
         this.dotesExtraRazaConcedidas = 0;
         this.dotesAdicionalesRazaConcedidas = 0;
+        this.dotesProgresionRacialConcedidas.clear();
         this.dgRacialSinClasesRepartido = false;
         this.dgsCompaneroRepartidos = 0;
         this.habilidadesDeClasePorOrigen = {};
@@ -1632,6 +1638,7 @@ export class NuevoPersonajeService {
         this.dotesProgresionConcedidas = 0;
         this.dotesExtraRazaConcedidas = 0;
         this.dotesAdicionalesRazaConcedidas = 0;
+        this.dotesProgresionRacialConcedidas.clear();
         this.dgRacialSinClasesRepartido = false;
         this.dgsCompaneroRepartidos = 0;
         this.habilidadesDeClasePorOrigen = {};
@@ -3014,12 +3021,18 @@ export class NuevoPersonajeService {
             ? Math.max(0, toNumber(this.razaSeleccionada?.Dotes_adicionales))
             : 0;
         const nuevasAdicionales = Math.max(0, totalAdicionales - this.dotesAdicionalesRazaConcedidas);
-        if (nuevasDgs + nuevasAdicionales < 1)
+        // Las que dan sus rasgos al llegar a N DG o a nivel N (el aspecto infernal del cuerpo: una de tipo Tocado por
+        // diablos a 4 y a 14 DG), una vez cada una.
+        const deLaProgresion = this.progresionRacialActual().dotes
+            .filter((dote) => !this.dotesProgresionRacialConcedidas.has(dote.Clave));
+        if (nuevasDgs + nuevasAdicionales + deLaProgresion.length < 1)
             return [];
         const creadas = [
             ...Array.from({ length: nuevasAdicionales }, () => this.crearDotePendiente('raza', origenNormalizado, null)),
             ...Array.from({ length: nuevasDgs }, () => this.crearDotePendiente('raza_dg', origenNormalizado, null)),
+            ...deLaProgresion.map((dote) => this.crearDotePendiente('adicional', dote.Racial.Nombre, dote.Tipo_dote.Nombre)),
         ];
+        deLaProgresion.forEach((dote) => this.dotesProgresionRacialConcedidas.add(dote.Clave));
         this.dotesPendientes = [
             ...this.dotesPendientes,
             ...creadas,
@@ -4150,6 +4163,31 @@ export class NuevoPersonajeService {
     private resolverDgTotalActual(): number {
         const partes = this.getPartesNivelPersonaje();
         return dgsTotales({ ...partes, nivelesClase: this.getDgsClasesActual() });
+    }
+
+    /**
+     * Lo que dan o cambian los rasgos del personaje (`raciales`, por defecto los suyos) a sus DG y su nivel de personaje
+     * (`racial-progresion.ts`, la regla de la ficha de la API). Antes de su primer DG o nivel cuenta como 1: el personaje
+     * acabado siempre lo tiene.
+     */
+    progresionRacialActual(raciales: RacialDetalle[] = this.personajeCreacion?.Raciales ?? []): ResultadoProgresionRacial {
+        return aplicarProgresionRacial(raciales, {
+            dg: Math.max(1, this.resolverDgTotalActual()),
+            nivel: Math.max(1, this.getNivelEfectivoParaAumentos()),
+        });
+    }
+
+    /** Las velocidades que da la progresión de sus rasgos (al menos esos pies) y, al volar, su maniobrabilidad. */
+    private aplicarVelocidadesDeProgresionRacial(progresion: ResultadoProgresionRacial): void {
+        const pj = this.personajeCreacion;
+        pj.Correr = velocidadConProgresion(pj.Correr, 'Correr', progresion.velocidades);
+        pj.Nadar = velocidadConProgresion(pj.Nadar, 'Nadar', progresion.velocidades);
+        pj.Trepar = velocidadConProgresion(pj.Trepar, 'Trepar', progresion.velocidades);
+        pj.Excavar = velocidadConProgresion(pj.Excavar, 'Excavar', progresion.velocidades);
+        const volar = progresion.velocidades.Volar;
+        const yaVolaba = toInt(pj.Volar);
+        pj.Volar = velocidadConProgresion(pj.Volar, 'Volar', progresion.velocidades);
+        pj.Maniobrabilidad = volar && volar.Pies > yaVolaba && volar.Maniobrabilidad ? { ...volar.Maniobrabilidad } : null;
     }
 
     /** Los DG de las clases del personaje: los niveles con DG de cada una por su tabla; sin tabla, sus niveles. */
@@ -5380,7 +5418,9 @@ export class NuevoPersonajeService {
             || (especialNivel?.Especial as Record<string, any>)?.['Extras_soportados']?.['Extra_da_rd'] === true);
         // El primer nivel de clase ocupa el lugar del DG racial único: su ataque base y sus salvaciones dejan de contar.
         const sustituyeDgRacial = this.getNivelClasesActual() === 1 && this.dgRacialSustituible();
-        if (cambiaCaracteristicas || cambiaArmaduraNatural || cambiaHabilidadesORd || sustituyeDgRacial) {
+        // Un rasgo que crece con los DG o el nivel (los aspectos de la prole de Bahamut) puede dar algo en este nivel.
+        const creceUnRasgo = tieneProgresionRacial(this.estadoFlujo.ventajas.baseRaciales);
+        if (cambiaCaracteristicas || cambiaArmaduraNatural || cambiaHabilidadesORd || sustituyeDgRacial || creceUnRasgo) {
             // Sus características se suman con las demás (dotes, plantillas, ventajas) desde la base.
             this.recalcularEfectosVentajas();
         }
@@ -5898,10 +5938,14 @@ export class NuevoPersonajeService {
 
         const caracteristicasVarios = this.crearCaracteristicasVariosVacias();
         const nuevosRaciales = this.copiarRaciales(this.estadoFlujo.ventajas.baseRaciales);
+        // Lo que dan o cambian sus rasgos a sus DG y su nivel (`racial-progresion.ts`): lo ganado, con sus efectos.
+        const progresion = this.progresionRacialActual(nuevosRaciales);
+        nuevosRaciales.splice(0, nuevosRaciales.length, ...progresion.raciales);
         const nuevosIdiomas = this.copiarIdiomas(this.estadoFlujo.ventajas.baseIdiomas);
         const bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]> = {};
         const pendientesOro: PendienteOroState[] = [];
         this.aplicarEfectosPlantillasFase2(caracteristicasVarios, nuevosRaciales, bonosHabilidades);
+        this.aplicarVelocidadesDeProgresionRacial(progresion);
         this.aplicarHabilidadesSiempreDeClase(nuevosRaciales);
         this.aplicarModificadoresDotesDelPersonaje({ caracteristicasVarios, bonosHabilidades });
         this.aplicarCaracteristicasEspecialesDelPersonaje(caracteristicasVarios);
@@ -9818,6 +9862,7 @@ export class NuevoPersonajeService {
             dotesProgresionConcedidas: Math.max(0, toInt(this.dotesProgresionConcedidas)),
             dotesExtraRazaConcedidas: Math.max(0, toInt(this.dotesExtraRazaConcedidas)),
             dotesAdicionalesRazaConcedidas: Math.max(0, toInt(this.dotesAdicionalesRazaConcedidas)),
+            dotesProgresionRacialConcedidas: [...this.dotesProgresionRacialConcedidas],
             dgsCompaneroRepartidos: Math.max(0, toInt(this.dgsCompaneroRepartidos)),
             dgRacialSinClasesRepartido: this.dgRacialSinClasesRepartido,
             habilidadesDeClasePorOrigen: this.clonarProfundo(this.habilidadesDeClasePorOrigen),
@@ -9900,6 +9945,7 @@ export class NuevoPersonajeService {
         this.dotesProgresionConcedidas = Math.max(0, toInt(borrador.dotesProgresionConcedidas));
         this.dotesExtraRazaConcedidas = Math.max(0, toInt(borrador.dotesExtraRazaConcedidas));
         this.dotesAdicionalesRazaConcedidas = Math.max(0, toInt(borrador.dotesAdicionalesRazaConcedidas));
+        this.dotesProgresionRacialConcedidas = new Set((borrador.dotesProgresionRacialConcedidas ?? []).map((c) => `${c}`));
         this.dgsCompaneroRepartidos = Math.max(0, toInt(borrador.dgsCompaneroRepartidos));
         this.dgRacialSinClasesRepartido = borrador.dgRacialSinClasesRepartido === true;
         this.habilidadesDeClasePorOrigen = this.clonarProfundo(borrador.habilidadesDeClasePorOrigen ?? {});

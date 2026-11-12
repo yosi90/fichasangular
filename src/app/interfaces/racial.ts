@@ -40,6 +40,35 @@ export interface RacialPrerrequisitos {
     caracteristica: PrerrequisitoItem[];
 }
 
+/** Una velocidad que da la progresión de un rasgo: tiene al menos esos pies (la mayor, si ya tenía). */
+export interface RacialProgresionVelocidad {
+    Tipo: 'Correr' | 'Nadar' | 'Volar' | 'Trepar' | 'Excavar';
+    Pies: number;
+    Maniobrabilidad: { Id: number; Nombre: string; } | null;
+}
+
+/**
+ * Lo que un rasgo racial da o cambia al llegar a N DG (Medida dg) o a nivel N de personaje (
+ivel), desde ahí y
+ * para siempre (RacialProgresion del contrato, docs/publica/endpoints/catalogos.md). La aplica
+ * services/utils/racial-progresion.ts, con la misma regla que la ficha de la API.
+ */
+export interface RacialProgresion {
+    Medida: 'dg' | 'nivel';
+    Desde: number;
+    /** El rasgo que gana, completo (sin progresión propia). */
+    Gana: RacialDetalle | null;
+    /** El rasgo que deja de tener. */
+    Sustituye: { Id: number; Nombre: string; } | null;
+    /** Una dote adicional de ese tipo, a elegir. */
+    Tipo_dote: { Id: number; Nombre: string; } | null;
+    Velocidad: RacialProgresionVelocidad | null;
+    /** La cifra del propio rasgo desde ahí (el daño del aliento). */
+    Valor: string | null;
+    /** La frase para el jugador: «A los 6 DG: gana Visión en la oscuridad 60' en lugar de Visión en la oscuridad 30'.» */
+    Frase: string;
+}
+
 export interface RacialDetalle {
     Id: number;
     Nombre: string;
@@ -65,4 +94,6 @@ export interface RacialDetalle {
     Cd?: number | null;
     Prerrequisitos_flags: RacialPrerrequisitosFlags;
     Prerrequisitos: RacialPrerrequisitos;
+    /** Lo que da o cambia al llegar a N DG o a nivel N; `[]` si nada (o en datos de antes). */
+    Progresion?: RacialProgresion[];
 }

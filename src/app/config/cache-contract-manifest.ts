@@ -63,7 +63,8 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "monstruos", label: "Monstruos", schemaVersion: 11 },
     { key: "familiares", label: "Familiares", schemaVersion: 10 },
     { key: "companeros", label: "Compañeros animales", schemaVersion: 10 },
-    { key: "razas", label: "Razas", schemaVersion: 26 },
+    // 27 desde la `Progresion` de cada racial (lo que crece con los DG o llega por nivel, 2026-11-12).
+    { key: "razas", label: "Razas", schemaVersion: 27 },
     { key: "manuales", label: "Manuales", schemaVersion: 1 },
     { key: "manuales_asociados", label: "Manuales asociados", schemaVersion: 2 },
     { key: "tipos_criatura", label: "Tipos de criatura", schemaVersion: 3 },

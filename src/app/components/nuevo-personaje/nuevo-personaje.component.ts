@@ -5760,7 +5760,8 @@ export class NuevoPersonajeComponent {
             idAlineamiento: this.resolverIdAlineamientoCreacion(),
             idDeidad: this.resolverIdDeidadCreacion(),
             idGenero: this.resolverIdGeneroCreacion(),
-            idManiobrabilidad: toPositiveInt((this.Personaje as any)?.Raza?.Maniobrabilidad?.Id) ?? 0,
+            // La del vuelo que da la progresión de un rasgo (las alas de la prole de Bahamut a 6 DG) o, si no, la de su raza.
+            idManiobrabilidad: toPositiveInt(this.Personaje?.Maniobrabilidad?.Id) ?? toPositiveInt((this.Personaje as any)?.Raza?.Maniobrabilidad?.Id) ?? 0,
             idEspArcana: this.resolverIdEscuelaEspecialistaCreacion(),
             idEspPsionica: this.resolverIdDisciplinaEspecialistaCreacion(),
             idDisProhibida: this.resolverIdDisciplinaProhibidaCreacion(),

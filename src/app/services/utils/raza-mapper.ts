@@ -14,7 +14,7 @@ import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumber
 import { normalizeConjuroApi } from './conjuro-mapper';
 import { leerComodin } from './comodin';
 import { normalizeManualApi } from './manual-mapper';
-import { camposEdadRacial } from './racial-mapper';
+import { camposEdadRacial, normalizarProgresionRacial } from './racial-mapper';
 import { parteCondicionalHabilidadRaza } from 'src/app/services/utils/habilidad-raza-condicional';
 import { leerArmasNaturales } from './armas-naturales';
 
@@ -459,7 +459,11 @@ function normalizeSortilegasApi(raw: any): AptitudSortilega[] {
 }
 
 function normalizeRacialesApi(raw: any): RacialDetalle[] {
-    return toStrictArray(raw).map((item: any) => ({
+    return toStrictArray(raw).map(normalizeRacialApi);
+}
+
+function normalizeRacialApi(item: any): RacialDetalle {
+    return ({
         Id: toNumber(item?.Id),
         Nombre: toText(item?.Nombre),
         Descripcion: toText(item?.Descripcion),
@@ -495,7 +499,8 @@ function normalizeRacialesApi(raw: any): RacialDetalle[] {
             raza: toStrictArray(item?.Prerrequisitos?.raza),
             caracteristica: toStrictArray(item?.Prerrequisitos?.caracteristica),
         },
-    }));
+        Progresion: normalizarProgresionRacial(item?.Progresion, normalizeRacialApi),
+    });
 }
 
 export function normalizeRazaApi(raw: any): Raza {

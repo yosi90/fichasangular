@@ -199,6 +199,29 @@ describe('DetallesRazaComponent', () => {
         expect(texto()).toContain('Solo podrás elegir una de estas raciales');
     });
 
+    it('bajo cada racial, lo que da o cambia con los DG, con la frase de la API (el contrato de una mutada)', () => {
+        // Un racial de `GET /razas/21/sobre/25` (la prole de Bahamut sobre un humano) en `rol_dev`, recortado.
+        const raza = normalizeRazaApi({
+            Id: 21, Nombre: 'Prole de Bahamut', rac: [{
+                Id: 41, Nombre: 'Aspecto dracónico (alas)', Descripcion: 'Aptitud extraordinaria.', Oficial: true, Opcional: 1,
+                Dotes: [], Habilidades: { Base: [], Custom: [] }, Caracteristicas: [], Salvaciones: [], Sortilegas: [], Ataques: [],
+                Prerrequisitos_flags: { raza: false, caracteristica_minima: false }, Prerrequisitos: { raza: [], caracteristica: [] },
+                Progresion: [
+                    { Medida: 'dg', Desde: 6, Gana: { Id: 4980, Nombre: 'Vuelo (aspecto dracónico de las alas)', Descripcion: '', Oficial: true, Progresion: [] },
+                        Sustituye: null, Tipo_dote: null, Velocidad: { Tipo: 'Volar', Pies: 30, Maniobrabilidad: { Id: 3, Nombre: 'Regular' } }, Valor: null,
+                        Frase: "A los 6 DG: gana Vuelo (aspecto dracónico de las alas); velocidad volando 30' (maniobrabilidad regular)." },
+                    { Medida: 'dg', Desde: 12, Gana: { Id: 4981, Nombre: 'Vuelo incansable (aspecto dracónico de las alas)', Descripcion: '', Oficial: true, Progresion: [] },
+                        Sustituye: null, Tipo_dote: null, Velocidad: null, Valor: null,
+                        Frase: 'A los 12 DG: gana Vuelo incansable (aspecto dracónico de las alas).' },
+                ],
+            }],
+        });
+        expect(raza.Raciales[0].Progresion?.map((f) => f.Desde)).toEqual([6, 12]);
+        pintar({ Raciales: raza.Raciales });
+        expect(texto()).toContain("A los 6 DG: gana Vuelo (aspecto dracónico de las alas); velocidad volando 30' (maniobrabilidad regular).");
+        expect(texto()).toContain('A los 12 DG: gana Vuelo incansable (aspecto dracónico de las alas).');
+    });
+
     it('los subtipos son enlaces a su detalle', () => {
         pintar({ Subtipos: [{ Id: 4, Nombre: 'Elfo' } as any] });
         const spy = spyOn(component.subtipoDetalles, 'emit');

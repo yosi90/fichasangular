@@ -5,6 +5,7 @@ import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { toBoolean } from 'src/app/services/utils/normalizacion';
 import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
+import { frasesProgresionRacial } from 'src/app/services/utils/racial-progresion';
 import {
     CondicionPrerrequisito,
     GrupoPrerrequisitos,
@@ -50,6 +51,8 @@ export class DetallesRacialComponent {
     salvaciones: BonificadorRacial[] = [];
     sortilegas: SortilegaRacial[] = [];
     ataques: string[] = [];
+    /** Lo que da o cambia al llegar a N DG o a nivel N (las frases de la API). */
+    progresion: string[] = [];
     /** Magic of Incarnum: la esencia que da y si es receptáculo. */
     datosEsencia: DatoFicha[] = [];
 
@@ -81,6 +84,7 @@ export class DetallesRacialComponent {
             .map((ataque) => `${ataque?.Descripcion ?? ''}`.trim())
             .filter((descripcion) => tieneTextoVisible(descripcion));
         this.datosEsencia = datosVisibles(datosEsenciaRasgo(value?.Esencia));
+        this.progresion = frasesProgresionRacial(value) ?? [];
     }
 
     get racial(): RacialDetalle {

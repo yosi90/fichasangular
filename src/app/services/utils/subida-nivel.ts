@@ -235,8 +235,10 @@ export function fichaDeLaSubida(datos: EntradaFichaSubida): PersonajeCreateReque
     Object.keys({ ...colA, ...colD }).forEach((k) => {
         if (k === 'clases' || k === 'habilidades' || k === 'conjurosConocidos' || !Array.isArray(colD[k] ?? colA[k] ?? []))
             return;
+        // Los raciales, también lo que quitan: el rasgo que sustituye otro al llegar a N DG (la visión en la oscuridad 30'
+        // que pasa a 60'). Lo demás, solo se añade.
         if (claveElemento(colA[k] ?? []) !== claveElemento(colD[k] ?? []))
-            col[k] = aplicarDiferencia(col[k], colA[k], colD[k], false);
+            col[k] = aplicarDiferencia(col[k], colA[k], colD[k], k === 'raciales');
     });
     col.habilidades = {
         ...(col.habilidades ?? {}),

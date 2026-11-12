@@ -1,5 +1,5 @@
 import { Conjuro } from "src/app/interfaces/conjuro";
-import { RacialDetalle } from "src/app/interfaces/racial";
+import { RacialDetalle, RacialProgresion, RacialProgresionVelocidad } from "src/app/interfaces/racial";
 import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizarEsenciaRasgo } from './incarnum-mapper';
@@ -33,6 +33,32 @@ export function camposEdadRacial(raw: any): Pick<RacialDetalle, 'Caracteristica_
         Categoria_edad: toRefIdNombre(raw?.Categoria_edad),
         Cd: toNumberOrNull(raw?.Cd),
     };
+}
+
+const TIPOS_VELOCIDAD: RacialProgresionVelocidad['Tipo'][] = ['Correr', 'Nadar', 'Volar', 'Trepar', 'Excavar'];
+
+/**
+ * La `Progresion` de un racial (lo que da o cambia a N DG o a nivel N), igual en la API, la caché y la ficha.
+ * `normalizarGana` mapea el rasgo que gana (el mapper estricto de HTTP o el permisivo de la caché); una fila sin
+ * `Desde` válido se descarta.
+ */
+export function normalizarProgresionRacial(raw: any, normalizarGana: (gana: any) => RacialDetalle): RacialProgresion[] {
+    return toArray(raw)
+        .filter((fila: any) => fila && typeof fila === 'object' && Number(fila.Desde) >= 1)
+        .map((fila: any) => {
+            const velocidad = fila.Velocidad && typeof fila.Velocidad === 'object' ? fila.Velocidad : null;
+            const tipo = TIPOS_VELOCIDAD.find(t => t === velocidad?.Tipo);
+            return {
+                Medida: fila.Medida === 'nivel' ? 'nivel' : 'dg',
+                Desde: Math.trunc(Number(fila.Desde)),
+                Gana: fila.Gana && typeof fila.Gana === 'object' ? { ...normalizarGana(fila.Gana), Progresion: [] } : null,
+                Sustituye: toRefIdNombre(fila.Sustituye),
+                Tipo_dote: toRefIdNombre(fila.Tipo_dote),
+                Velocidad: tipo ? { Tipo: tipo, Pies: toNumber(velocidad.Pies), Maniobrabilidad: toRefIdNombre(velocidad.Maniobrabilidad) } : null,
+                Valor: toNullableText(fila.Valor),
+                Frase: toText(fila.Frase),
+            } as RacialProgresion;
+        });
 }
 
 export function normalizeRacial(raw: any): RacialDetalle {
@@ -84,6 +110,7 @@ export function normalizeRacial(raw: any): RacialDetalle {
             raza: toArray(pick(prerrequisitosRaw, "raza", "r")),
             caracteristica: toArray(pick(prerrequisitosRaw, "caracteristica", "caracteristicas", "c")),
         },
+        Progresion: normalizarProgresionRacial(pick(raw, "Progresion"), normalizeRacial),
     };
 }
 

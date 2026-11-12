@@ -48,6 +48,7 @@ import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { abreviaturaCaracteristica, NOMBRES_CARACTERISTICAS, SIN_CARACTERISTICA } from 'src/app/services/utils/caracteristicas';
 import { textoVd } from 'src/app/services/utils/tipo-personaje';
 import { textoDeArmasNaturales } from 'src/app/services/utils/armas-naturales';
+import { frasesProgresionRacial } from 'src/app/services/utils/racial-progresion';
 import {
     SOLO_PNJ,
     categoriasEdadOrdenadas,
@@ -401,6 +402,11 @@ export class DetallesRazaComponent {
     /** Magic of Incarnum: «+1 de esencia, receptáculo de esencia» del racial; vacío si no tiene. */
     textoEsencia(racial: RacialDetalle): string {
         return textoEsenciaRasgo(racial?.Esencia);
+    }
+
+    /** Las frases de lo que el rasgo da o cambia a N DG o a nivel N (`Progresion`); `null` si nada. */
+    frasesProgresion(racial: RacialDetalle): string[] | null {
+        return frasesProgresionRacial(racial);
     }
 
     trackByGrupoRacial(_index: number, grupo: GrupoRacialesDetalle): number {
