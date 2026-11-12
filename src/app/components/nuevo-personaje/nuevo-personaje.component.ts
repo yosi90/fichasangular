@@ -128,8 +128,9 @@ import {
 } from 'src/app/services/utils/personaje-oficialidad';
 import { buildIdentidadPrerrequisitos } from 'src/app/services/utils/identidad-prerrequisitos';
 import { normasDeCreacionAceptadas } from 'src/app/services/utils/normas-creacion';
-import { GrupoRacialesOpcionales, SeleccionRacialesOpcionales, agruparRacialesPorOpcional, getClaveSeleccionRacial } from 'src/app/services/utils/racial-opcionales';
-import { RacialEvaluacionResultado, evaluarRacialParaSeleccion } from 'src/app/services/utils/racial-prerrequisitos';
+import { GrupoRacialesOpcionales, SeleccionRacialesOpcionales, agruparRacialesPorOpcional } from 'src/app/services/utils/racial-opcionales';
+import { evaluarGruposParaSelectorRacial } from 'src/app/services/utils/racial-prerrequisitos';
+import type { GrupoRacialOpcionalModal } from './selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { ClaseEvaluacionResultado } from 'src/app/services/utils/clase-elegibilidad';
 import { esRazaMutada } from 'src/app/services/utils/raza-mutacion';
 import { avisoRazaConClase } from 'src/app/services/utils/clases-de-monstruo';
@@ -239,19 +240,6 @@ interface CandidataRazaBaseModal {
     raza: Raza;
     estado: EstadoBaseRazaMutada;
     advertencias: string[];
-}
-
-interface OpcionRacialOpcionalModal {
-    clave: string;
-    racial: RacialDetalle;
-    estado: RacialEvaluacionResultado['estado'];
-    razones: string[];
-    advertencias: string[];
-}
-
-interface GrupoRacialOpcionalModal {
-    grupo: number;
-    opciones: OpcionRacialOpcionalModal[];
 }
 
 type FiltroTipoLanzadorClase = 'todas' | 'no lanzador' | 'arcano' | 'divino' | 'psionico';
@@ -3750,31 +3738,17 @@ export class NuevoPersonajeComponent {
      * aún no tiene. Sin ninguno que elegir, se da por hecha. `false` si se cierra sin elegir (el paso se queda donde está).
      */
     private async resolverEleccionesRacialesPendientes(): Promise<boolean> {
-        while (true) {
-            const pendiente = this.nuevoPSvc.getEleccionesRacialesPendientes()[0];
-            if (!pendiente)
-                return true;
-            if (pendiente.opciones.length < 1) {
-                this.nuevoPSvc.omitirEleccionRacialPendiente(pendiente.clave);
-                continue;
-            }
-            const raza = this.razaSeleccionada;
-            const grupos = this.nuevoPSvc.gruposDeEleccionRacial(pendiente);
-            const clave = await new Promise<string | null>((resolve) => {
+        const hechas = await this.nuevoPSvc.resolverEleccionesRacialesPendientes(({ grupos, titulo }) =>
+            new Promise<string | null>((resolve) => {
                 this.resolverEleccionRacial = resolve;
-                this.razaContextoOpcionalesNombre = `${raza?.Nombre ?? ''}`.trim();
+                this.razaContextoOpcionalesNombre = `${this.razaSeleccionada?.Nombre ?? ''}`.trim();
                 this.seleccionRacialesOpcionalesPendiente = {};
                 this.gruposRacialesOpcionalesModal = grupos;
-                this.tituloSelectorRacialesOpcionales = `Otro rasgo: ${pendiente.origen}`;
+                this.tituloSelectorRacialesOpcionales = titulo;
                 this.modalSelectorRacialesOpcionalesAbierto = true;
-            });
-            if (clave === null)
-                return false;
-            const idRacial = this.nuevoPSvc.idRacialDeEleccion(pendiente, clave);
-            if (idRacial === null || !this.nuevoPSvc.aplicarEleccionRacialPendiente(pendiente.clave, idRacial))
-                continue;
-            this.Personaje = this.nuevoPSvc.PersonajeCreacion;
-        }
+            }));
+        this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        return hechas;
     }
 
     onInformacionRacialesOpcionales(): void {
@@ -3883,20 +3857,7 @@ export class NuevoPersonajeComponent {
             Sabiduria: Number(this.Personaje?.Sabiduria),
             Carisma: Number(this.Personaje?.Carisma),
         };
-
-        return grupos.map((grupo) => ({
-            grupo: grupo.grupo,
-            opciones: grupo.opciones.map((racial) => {
-                const evaluacion = evaluarRacialParaSeleccion(racial, identidad, caracteristicas);
-                return {
-                    clave: getClaveSeleccionRacial(racial),
-                    racial,
-                    estado: evaluacion.estado,
-                    razones: [...(evaluacion.razones ?? [])],
-                    advertencias: [...(evaluacion.advertencias ?? [])],
-                };
-            }),
-        }));
+        return evaluarGruposParaSelectorRacial(grupos, identidad, caracteristicas);
     }
 
     private cerrarSelectorRacialesOpcionalesContexto(): void {
