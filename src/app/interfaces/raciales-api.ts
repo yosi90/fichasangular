@@ -6,6 +6,8 @@ export interface RacialCreateCore {
     oficial: boolean;
     /** La característica de su CD (10 + ½ DG raciales + su modificador); sin ella, no se manda. */
     id_caracteristica_cd?: number;
+    /** Si esa CD cuenta todos los DG y no solo los raciales; al modificar, sin él se conserva (el formulario lo manda siempre). */
+    cd_dg_totales?: boolean;
 }
 
 export interface RacialCreateDote {
@@ -80,7 +82,12 @@ export interface RacialCreateProgresion {
     id_tipo_dote?: number;
     velocidad?: { tipo: 'correr' | 'nadar' | 'volar' | 'trepar' | 'excavar'; pies: number; id_maniobrabilidad?: number; };
     valor?: string;
+    /** Una elección más del grupo opcional de su raza con ese número (1-99): el segundo sigilo de poder del iluminiano. */
+    elige_opcional?: number;
 }
+
+/** Una raza o un tipo de criatura como el que cuenta quien tiene el rasgo (`Cuenta_como` al leer): una sola de las dos claves. */
+export type RacialCreateCuentaComo = { id_raza: number; } | { id_tipo: number; };
 
 /** Contra qué criatura cuenta un bonificador condicional: una sola de las tres claves. */
 export type RacialCreateBonificadorContra = { id_tipo: number; } | { id_subtipo: number; } | { id_raza: number; };
@@ -107,6 +114,8 @@ export interface RacialCreateRequest {
     progresion?: RacialCreateProgresion[];
     /** Al modificar, sin ellos se conservan; el formulario los manda siempre (`[]`, ninguno). */
     bonificadores_condicionales?: RacialCreateBonificadorCondicional[];
+    /** Al modificar, sin él se conserva; el formulario lo manda siempre (`[]`, ninguno). */
+    cuenta_como?: RacialCreateCuentaComo[];
 }
 
 export interface RacialCreateApiResponse {

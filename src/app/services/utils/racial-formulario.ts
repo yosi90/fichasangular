@@ -1,27 +1,31 @@
 import { EquipoObjetivoModificador } from 'src/app/interfaces/equipo';
-import { RacialBonificadorContra, RacialDetalle } from 'src/app/interfaces/racial';
+import { RacialBonificadorContra, RacialCuentaComo, RacialDetalle } from 'src/app/interfaces/racial';
 import {
     RacialCreateBonificadorCondicional,
     RacialCreateBonificadorContra,
+    RacialCreateCuentaComo,
     RacialCreateProgresion,
 } from 'src/app/interfaces/raciales-api';
 import { uidDeFila } from 'src/app/components/shared/insercion-marco/filas-repetibles';
+import type { FilaDeLista } from 'src/app/components/shared/lista-de-catalogo/lista-de-catalogo.component';
 import { mayusculaInicial } from './formato-registros';
 import { toPositiveInt, toText } from './normalizacion';
 import { momentoDeProgresion } from './racial-progresion';
 
 /**
- * La progresión y los bonificadores condicionales de un rasgo racial en «Insertar/Modificar racial» (roadmap
- * `ACTIVO_razas-mutadas`; guía `docs/publica/RAZAS_MUTADAS.md`): sus filas, su lectura del `GET /razas/raciales/<id>`,
- * su cuerpo (`progresion[]` y `bonificadores_condicionales[]` del alta y la edición, `docs/publica/endpoints/catalogos.md`)
- * y lo que se comprueba antes de mandar, lo mismo que la API (`_normalize_racial_progresion` y
- * `_normalize_racial_bonificadores` de `api/controllers/racial_controller.py`). La ida y vuelta con los datos reales está
- * en `src/testing/ida-y-vuelta-raciales.ts`.
+ * La progresión, los bonificadores condicionales y el «cuenta como» de un rasgo racial en «Insertar/Modificar racial»
+ * (roadmap `ACTIVO_razas-mutadas`; guía `docs/publica/RAZAS_MUTADAS.md`): sus filas, su lectura del
+ * `GET /razas/raciales/<id>`, su cuerpo (`progresion[]`, `bonificadores_condicionales[]` y `cuenta_como[]` del alta y la
+ * edición, `docs/publica/endpoints/catalogos.md`) y lo que se comprueba antes de mandar, lo mismo que la API
+ * (`_normalize_racial_progresion`, `_normalize_racial_bonificadores` y `_normalize_racial_cuenta_como` de
+ * `api/controllers/racial_controller.py`). La ida y vuelta con los datos reales está en `src/testing/ida-y-vuelta-raciales.ts`.
  */
 
 /** Hasta dónde llega `desde` (DG o nivel) y lo largo que puede ser el `valor` de una fila de la progresión. */
 export const MAXIMO_DESDE_PROGRESION = 100;
 export const MAXIMO_VALOR_PROGRESION = 100;
+/** El número más alto de un grupo opcional de rasgos (`elige_opcional`, como `Opcional` de los rasgos de una raza). */
+export const MAXIMO_GRUPO_OPCIONAL = 99;
 /** La cantidad de un bonificador condicional va de -100 a 100, sin el 0; su condición, hasta 200 letras. */
 export const MAXIMO_CANTIDAD_BONIFICADOR = 100;
 export const MAXIMO_CONDICION_BONIFICADOR = 200;
@@ -55,6 +59,24 @@ export interface FilaProgresionRacial {
     pies: number | null;
     id_maniobrabilidad: number | null;
     valor: string;
+    /** El grupo opcional de su raza del que elige otro rasgo (el segundo sigilo de poder); `null`, ninguno. */
+    elige_opcional: number | null;
+}
+
+export type CatalogoCuentaComo = RacialCuentaComo['Catalogo'];
+
+/** Los catálogos del «cuenta como» que admite la API (`id_raza` o `id_tipo`), con el título de su lista. */
+export const CATALOGOS_CUENTA_COMO: readonly { clave: CatalogoCuentaComo; titulo: string; vacio: string; }[] = [
+    { clave: 'raza', titulo: 'Cuenta como raza', vacio: 'No cuenta como otra raza (la sangre élfica del semielfo cuenta como elfo).' },
+    { clave: 'tipo_criatura', titulo: 'Cuenta como tipo de criatura', vacio: 'No cuenta como otro tipo (la sangre de gigante del semiogro, como gigante).' },
+];
+
+/** Una raza o un tipo como el que cuenta quien tiene el rasgo; las filas van en su orden, el de la API. */
+export interface FilaCuentaComo extends FilaDeLista {
+    uid: string;
+    catalogo: CatalogoCuentaComo;
+    id: number;
+    nombre: string;
 }
 
 export type CatalogoContra = RacialBonificadorContra['Catalogo'];
@@ -91,7 +113,7 @@ export interface FilaBonificadorRacial {
 export function filaProgresionVacia(): FilaProgresionRacial {
     return {
         uid: uidDeFila('progresion'), medida: 'dg', desde: null, id_racial_gana: null, id_racial_sustituye: null,
-        id_tipo_dote: null, velocidad: null, pies: null, id_maniobrabilidad: null, valor: '',
+        id_tipo_dote: null, velocidad: null, pies: null, id_maniobrabilidad: null, valor: '', elige_opcional: null,
     };
 }
 
@@ -117,8 +139,23 @@ export function filasDeProgresion(racial: RacialDetalle | null | undefined): Fil
             pies: tipo ? Math.trunc(Number(fila.Velocidad?.Pies)) : null,
             id_maniobrabilidad: tipo ? toPositiveInt(fila.Velocidad?.Maniobrabilidad?.Id) : null,
             valor: toText(fila.Valor).trim(),
+            elige_opcional: toPositiveInt(fila.Elige_opcional),
         };
     });
+}
+
+/** El «cuenta como» de un racial tal como llega del `GET`, en su orden. */
+export function filasDeCuentaComo(racial: RacialDetalle | null | undefined): FilaCuentaComo[] {
+    return (racial?.Cuenta_como ?? []).map((c) => filaCuentaComo(c.Catalogo, Math.trunc(Number(c.Id)), toText(c.Nombre).trim()));
+}
+
+export function filaCuentaComo(catalogo: CatalogoCuentaComo, id: number, nombre: string): FilaCuentaComo {
+    return { uid: uidDeFila('cuenta-como'), catalogo, id, nombre };
+}
+
+/** `cuenta_como[]` del cuerpo, en el orden de las filas. */
+export function cuerpoDeCuentaComo(filas: readonly FilaCuentaComo[]): RacialCreateCuentaComo[] {
+    return filas.map((fila) => fila.catalogo === 'raza' ? { id_raza: fila.id } : { id_tipo: fila.id });
 }
 
 /** Las filas de los bonificadores condicionales de un racial tal como llegan del `GET`. */
@@ -151,6 +188,8 @@ export function cuerpoDeProgresion(filas: readonly FilaProgresionRacial[]): Raci
         const valor = toText(fila.valor).trim();
         if (valor.length > 0)
             salida.valor = valor;
+        if (esEntero(fila.elige_opcional))
+            salida.elige_opcional = Math.trunc(Number(fila.elige_opcional));
         return salida;
     });
 }
@@ -166,8 +205,12 @@ export function cuerpoDeBonificadores(filas: readonly FilaBonificadorRacial[]): 
     }));
 }
 
+function vacio(valor: unknown): boolean {
+    return valor === null || valor === undefined || `${valor}`.trim() === '';
+}
+
 function esEntero(valor: unknown): boolean {
-    return valor !== null && valor !== undefined && `${valor}`.trim() !== '' && Number.isInteger(Number(valor));
+    return !vacio(valor) && Number.isInteger(Number(valor));
 }
 
 /**
@@ -183,10 +226,15 @@ export function falloDeProgresion(fila: FilaProgresionRacial, indice: number, id
         return `${n}: el valor no puede pasar de ${MAXIMO_VALOR_PROGRESION} letras.`;
     if (fila.velocidad && (!esEntero(fila.pies) || Number(fila.pies) < 1))
         return `${n}: la velocidad necesita sus pies (al menos 1).`;
+    const eligeOpcional = !vacio(fila.elige_opcional);
+    if (eligeOpcional && (!esEntero(fila.elige_opcional) || Number(fila.elige_opcional) < 1
+        || Number(fila.elige_opcional) > MAXIMO_GRUPO_OPCIONAL))
+        return `${n}: «Otro rasgo del grupo opcional» va de 1 a ${MAXIMO_GRUPO_OPCIONAL}.`;
     const daAlgo = toPositiveInt(fila.id_racial_gana) || toPositiveInt(fila.id_racial_sustituye) || toPositiveInt(fila.id_tipo_dote)
-        || fila.velocidad || valor.length > 0;
+        || fila.velocidad || valor.length > 0 || eligeOpcional;
     if (!daAlgo)
-        return `${n}: tiene que dar o cambiar algo (un rasgo, uno que sustituye, un tipo de dote, una velocidad o un valor).`;
+        return `${n}: tiene que dar o cambiar algo (un rasgo, uno que sustituye, un tipo de dote, una velocidad, un valor o `
+            + 'una elección más de un grupo opcional).';
     if (idRacial !== null && idRacial > 0 && (fila.id_racial_gana === idRacial || fila.id_racial_sustituye === idRacial))
         return `${n}: un rasgo no se gana ni se sustituye a sí mismo.`;
     return null;
@@ -229,21 +277,40 @@ const DONDE_VA: Record<NonNullable<EquipoObjetivoModificador['Lista_del_rasgo']>
     habilidades: 'las habilidades van en «Habilidades base», con su condición',
 };
 
-/** El primer fallo de las dos listas, con su paso: lo que comprueba el formulario antes de mandar. */
-export function falloDeProgresionYBonificadores(progresion: readonly FilaProgresionRacial[],
-    bonificadores: readonly FilaBonificadorRacial[], idRacial: number | null,
-    objetivos: readonly EquipoObjetivoModificador[]): { lista: 'progresion' | 'bonificadores'; mensaje: string; } | null {
-    for (const [indice, fila] of progresion.entries()) {
+/** Lo que la API rechazaría del «cuenta como» (una raza o un tipo repetido, un id que no vale), o `null` si vale. */
+export function falloDeCuentaComo(filas: readonly FilaCuentaComo[]): string | null {
+    const vistas = new Set<string>();
+    for (const fila of filas) {
+        const clave = `${fila.catalogo}:${fila.id}`;
+        if (!Number.isInteger(fila.id) || fila.id < 0 || vistas.has(clave))
+            return `«Cuenta como»: «${fila.nombre || fila.id}» no vale o está repetido.`;
+        vistas.add(clave);
+    }
+    return null;
+}
+
+/** Las listas del racial que se comprueban antes de mandar, cada una en su paso. */
+export interface ListasDelRacial {
+    progresion: readonly FilaProgresionRacial[];
+    bonificadores: readonly FilaBonificadorRacial[];
+    cuentaComo: readonly FilaCuentaComo[];
+}
+
+/** El primer fallo de las listas, con la lista: lo que comprueba el formulario antes de mandar (en el orden de la API). */
+export function falloDeListasDelRacial(listas: ListasDelRacial, idRacial: number | null,
+    objetivos: readonly EquipoObjetivoModificador[]): { lista: keyof ListasDelRacial; mensaje: string; } | null {
+    for (const [indice, fila] of listas.progresion.entries()) {
         const mensaje = falloDeProgresion(fila, indice, idRacial);
         if (mensaje)
             return { lista: 'progresion', mensaje };
     }
-    for (const [indice, fila] of bonificadores.entries()) {
+    for (const [indice, fila] of listas.bonificadores.entries()) {
         const mensaje = falloDeBonificador(fila, indice, objetivos);
         if (mensaje)
             return { lista: 'bonificadores', mensaje };
     }
-    return null;
+    const mensaje = falloDeCuentaComo(listas.cuentaComo);
+    return mensaje ? { lista: 'cuentaComo', mensaje } : null;
 }
 
 /** «1 · A los 6 DG», el resumen de una fila de la progresión en su cabecera. */
