@@ -84,9 +84,12 @@ export interface AplicacionMaterial extends EquipoRef {
 /**
  * Un objetivo de los modificadores (Ataque, CA, Salvaciones…). `Lista_del_rasgo`: en un rasgo racial, la lista propia
  * donde va (sus salvaciones, características o habilidades), así que no vale como bonificador condicional; `null` los demás.
+ * `De_siempre_en_el_rasgo`: en un rasgo racial, un bonificador a este objetivo puede ir sin condición (cuenta siempre y se
+ * suma con su tipo): solo la CA.
  */
 export interface EquipoObjetivoModificador extends EquipoRef {
     Lista_del_rasgo: 'salvaciones' | 'caracteristicas' | 'habilidades' | null;
+    De_siempre_en_el_rasgo: boolean;
 }
 
 export interface EquipoCatalogos {

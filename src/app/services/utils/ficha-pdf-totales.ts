@@ -1,5 +1,7 @@
 import { PDFDict, PDFForm, PDFHexString, PDFName, PDFRawStream, PDFString, decodePDFRawStream } from 'pdf-lib';
 import { Personaje } from 'src/app/interfaces/personaje';
+import { caDeSiempreDeRaciales } from 'src/app/services/utils/habilidades-raciales';
+import { toNumber } from 'src/app/services/utils/normalizacion';
 import { totalHabilidad, totalesPersonaje } from 'src/app/services/utils/personaje-totales';
 
 /** Cada salvación por el campo de la parte de clase que suma la plantilla (`fort_clase`). */
@@ -33,6 +35,22 @@ function javascriptDeCalculo(campo: { acroField: { dict: PDFDict; }; }): string 
  * Lo que suma cada campo calculado de la plantilla: su JavaScript (`AFSimple_Calculate("SUM", new Array ("mod_sab",
  * "rangos5", "varios5"))`), por el nombre de los campos que cita.
  */
+/**
+ * La CA de toque y la desprevenida de la hoja. Con la ficha de la API, las suyas (`defensa`: el equipo y los
+ * bonificadores de siempre de sus rasgos, con su tipo). En la creación, sin `defensa`: la de toque sin la armadura
+ * natural, y la desprevenida sin la Destreza positiva ni las esquivas de siempre de sus rasgos (la del svirfneblin; Manual
+ * del jugador, pág. 136).
+ */
+export function caToqueYDesprevenida(pj: Personaje): { toque: number; desprevenido: number; } {
+    if (pj.Defensa)
+        return { toque: toNumber(pj.Defensa.toque?.total), desprevenido: toNumber(pj.Defensa.desprevenido?.total) };
+    const ca = toNumber(pj.Ca);
+    return {
+        toque: ca - toNumber(pj.Armadura_natural),
+        desprevenido: ca - Math.max(0, toNumber(pj.ModDestreza)) - caDeSiempreDeRaciales(pj.Raciales).esquiva,
+    };
+}
+
 export function sumasDeLaPlantilla(form: PDFForm): Record<string, string[]> {
     const sumas: Record<string, string[]> = {};
     form.getFields().forEach((campo) => {

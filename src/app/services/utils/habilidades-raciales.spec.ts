@@ -1,6 +1,9 @@
+import { Personaje } from 'src/app/interfaces/personaje';
 import { RacialDetalle } from 'src/app/interfaces/racial';
+import { caToqueYDesprevenida } from './ficha-pdf-totales';
 import {
     bonificadoresCondicionalesDeRaciales,
+    caDeSiempreDeRaciales,
     frasesBonificadoresCondicionales,
     habilidadesDeRasgos,
     leerBonificadoresCondicionales,
@@ -78,5 +81,39 @@ describe('habilidades-raciales', () => {
         // La ficha de la API (`bonificadoresCondicionales`) se lee igual.
         expect(leerBonificadoresCondicionales(JSON.parse(JSON.stringify(salida)))).toEqual(salida);
         expect(leerBonificadoresCondicionales([{ objetivo: { Id: 1, Nombre: 'CA' }, valor: 0 }, null])).toEqual([]);
+    });
+
+    // La esquiva del svirfneblin contra todas las criaturas (Manual de monstruos 1, pág. 139): cuenta siempre.
+    const ESQUIVA = { Id: 8, Nombre: 'Esquiva', Apila: true };
+    const deSiempre = (Id: number, Nombre: string, Cantidad: number, Tipo_bonificador: object = ESQUIVA) => racial(Id, Nombre, {
+        Bonificadores_condicionales: [{ Id, Objetivo: { Id: 1, Nombre: 'CA' }, Tipo_bonificador, Cantidad, Condicion: null,
+            Contra: [], Frase: `CA +${Cantidad} (esquiva)` }],
+    });
+    const svirfneblin = deSiempre(4185, 'Bonificador de esquiva +4 a la CA contra todas las criaturas (svirfneblin)', 4);
+
+    it('los de siempre no salen aparte: se suman a la CA con su tipo, como la defensa de la API', () => {
+        const enano = racial(14, '+1 de ataque contra orcos y trasgoides', { Bonificadores_condicionales: [ORCOS] });
+        expect(svirfneblin.Bonificadores_condicionales?.[0].Condicion).toBeNull();
+        expect(svirfneblin.Bonificadores_condicionales?.[0].Tipo_bonificador).toEqual(ESQUIVA);
+        expect(bonificadoresCondicionalesDeRaciales([svirfneblin, enano]).map((b) => b.origen)).toEqual([enano.Nombre]);
+        expect(caDeSiempreDeRaciales([svirfneblin, enano, svirfneblin])).toEqual({
+            total: 4, esquiva: 4, partes: [{ origen: svirfneblin.Nombre, tipo: 'Esquiva', valor: 4 }],
+        });
+        // Dos esquivas se apilan (Manual del jugador, pág. 136); de un tipo que no apila, el mayor.
+        expect(caDeSiempreDeRaciales([svirfneblin, deSiempre(2185, 'Esquiva (svirfneblin)', 1)]).total).toBe(5);
+        const desvio = { Id: 6, Nombre: 'Desvío', Apila: false };
+        expect(caDeSiempreDeRaciales([deSiempre(1, 'A', 1, desvio), deSiempre(2, 'B', 2, desvio)])).toEqual({
+            total: 2, esquiva: 0, partes: [{ origen: 'B', tipo: 'Desvío', valor: 2 }],
+        });
+        expect(caDeSiempreDeRaciales(null).total).toBe(0);
+    });
+
+    it('la hoja: la CA de toque y la desprevenida, de la API o, en la creación, sin la esquiva', () => {
+        const pj = { Ca: 16, ModDestreza: 2, Armadura_natural: 0, Raciales: [svirfneblin], Defensa: null } as unknown as Personaje;
+        expect(caToqueYDesprevenida(pj)).toEqual({ toque: 16, desprevenido: 10 });
+        expect(caToqueYDesprevenida({ ...pj, ModDestreza: -1, Ca: 13, Armadura_natural: 1 } as Personaje)).toEqual({ toque: 12, desprevenido: 9 });
+        const conDefensa = { ...pj, Defensa: { ca: { total: 16, desglose: [] }, toque: { total: 15, desglose: [] },
+            desprevenido: { total: 11, desglose: [] }, destrezaMaxima: null, penalizadorArmadura: 0, falloConjuroArcano: 0 } } as Personaje;
+        expect(caToqueYDesprevenida(conDefensa)).toEqual({ toque: 15, desprevenido: 11 });
     });
 });
