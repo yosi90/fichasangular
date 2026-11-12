@@ -14,7 +14,7 @@ import {
     PersonajeIncarnumRef,
 } from 'src/app/interfaces/incarnum';
 import { normalizeManualApi } from './manual-mapper';
-import { toArray, toBoolean, toInt, toNullableText, toNumberOrNull, toText } from './normalizacion';
+import { idNombres, toArray, toBoolean, toInt, toNullableText, toNumberOrNull, toText } from './normalizacion';
 
 /*
  * Los mappers de Magic of Incarnum (`docs/publica/INCARNUM.md`). Las cachés nuevas (`Fusiones`, `Chakras`) y los
@@ -84,7 +84,7 @@ export function normalizarFusion(raw: any): Fusion {
         Alineado_portador: toBoolean(raw?.Alineado_portador),
         Manual: normalizeManualApi(raw?.Manual),
         Oficial: toBoolean(raw?.Oficial, true),
-        Clases: toArray(raw?.Clases).map(idNombre).filter((clase) => clase.Id > 0),
+        Clases: idNombres(raw?.Clases),
         Descriptores: toArray(raw?.Descriptores).map((descriptor: any) => ({
             ...idNombre(descriptor),
             Actitud: idNombreONulo(descriptor?.Actitud),
@@ -176,7 +176,7 @@ export function normalizarDoteIncarnum(raw: any): DoteIncarnum | null {
         Pg_por_dote: toInt(raw?.Pg_por_dote?.Valor) !== 0 && idNombreONulo(raw?.Pg_por_dote?.Tipo)
             ? { Valor: toInt(raw.Pg_por_dote.Valor), Tipo: idNombre(raw.Pg_por_dote.Tipo) }
             : null,
-        Descriptores_sin_alineamiento: toArray(raw?.Descriptores_sin_alineamiento).map(idNombre).filter((d) => d.Id > 0),
+        Descriptores_sin_alineamiento: idNombres(raw?.Descriptores_sin_alineamiento),
     };
 }
 

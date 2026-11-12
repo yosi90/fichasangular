@@ -54,11 +54,6 @@ function normalizeSalvacionesCondicionales(raw: any): DoteSalvacionCondicional[]
         .filter(item => item.Id_salvacion > 0 && item.Cantidad !== 0);
 }
 
-/** Las dotes a las que sustituye en los prerrequisitos (`Cuenta_como`). */
-function normalizeCuentaComo(raw: any): { Id: number; Nombre: string; }[] {
-    return idNombres(raw);
-}
-
 function normalizeTiposApi(raw: any): DoteTipo[] {
     return asStrictArray(raw)
         .map(item => ({
@@ -190,7 +185,8 @@ export function normalizeDoteApi(raw: any): Dote {
         Habilidades_otorgadas: normalizeHabilidadesOtorgadas(asStrictArray(raw?.Habilidades_otorgadas)),
         Competencias_otorgadas: normalizeCompetenciasOtorgadas(raw?.Competencias_otorgadas),
         Incarnum: normalizarDoteIncarnum(raw?.Incarnum),
-        Cuenta_como: normalizeCuentaComo(raw?.Cuenta_como),
+        // Las dotes a las que sustituye en los prerrequisitos.
+        Cuenta_como: idNombres(raw?.Cuenta_como),
         Salvaciones_condicionales: normalizeSalvacionesCondicionales(raw?.Salvaciones_condicionales),
         Prerrequisitos: normalizePrerrequisitosApi(raw?.Prerrequisitos),
     };
@@ -243,7 +239,8 @@ export function normalizeDoteLegacy(raw: any): Dote {
         Habilidades_otorgadas: normalizeHabilidadesOtorgadas(asArray(raw?.Habilidades_otorgadas)),
         Competencias_otorgadas: normalizeCompetenciasOtorgadas(raw?.Competencias_otorgadas),
         Incarnum: normalizarDoteIncarnum(raw?.Incarnum),
-        Cuenta_como: normalizeCuentaComo(raw?.Cuenta_como),
+        // Las dotes a las que sustituye en los prerrequisitos.
+        Cuenta_como: idNombres(raw?.Cuenta_como),
         Salvaciones_condicionales: normalizeSalvacionesCondicionales(raw?.Salvaciones_condicionales),
         Prerrequisitos: normalizePrerrequisitosLegacy(raw?.Prerrequisitos),
     };
