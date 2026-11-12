@@ -1,3 +1,4 @@
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -9,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
+import { CreacionVentanaComponent } from '../marco/creacion-ventana.component';
 import { SelectorDotesModalComponent } from './selector-dotes-modal.component';
 
 describe('SelectorDotesModalComponent', () => {
@@ -17,7 +19,7 @@ describe('SelectorDotesModalComponent', () => {
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
-            declarations: [SelectorDotesModalComponent],
+            declarations: [SelectorDotesModalComponent, CreacionVentanaComponent],
             imports: [
                 FormsModule,
                 NoopAnimationsModule,
@@ -29,6 +31,7 @@ describe('SelectorDotesModalComponent', () => {
                 MatSelectModule,
                 MatTooltipModule,
             ],
+            schemas: [NO_ERRORS_SCHEMA],
         }).compileComponents();
 
         fixture = TestBed.createComponent(SelectorDotesModalComponent);
