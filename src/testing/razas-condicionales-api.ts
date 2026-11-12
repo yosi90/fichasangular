@@ -1,5 +1,5 @@
 /**
- * Las razas del ensayo de los bonificadores condicionales y las habilidades de un rasgo (roadmap `ACTIVO_razas-mutadas`,
+ * Las razas del ensayo de los bonificadores condicionales y las habilidades de un rasgo (roadmap `FINALIZADO_razas-mutadas`,
  * 2026-11-12), como las da la API de la rama `mutadas/condicionales` del backend contra `rol_dev` (con
  * `raciales_bonificadores_condicionales_esquema.sql` y `_datos.sql`): `GET /razas/4` (gnomo), `/razas/3` (enano),
  * `/razas/25` (humano), `/razas/21/sobre/25` (la prole de Bahamut sobre el humano) y, de `GET /habilidades`, Artesanía 1,

@@ -14,7 +14,7 @@ import { aplicarProgresionRacial, textoCdRacial } from './utils/racial-progresio
 import { getClaveSeleccionRacial } from './utils/racial-opcionales';
 import { HABILIDADES_API } from 'src/testing/razas-condicionales-api';
 
-// Lo que la creación aún no hacía con las razas mutadas (roadmap `ACTIVO_razas-mutadas`, `bugs.md`, 2026-11-12, rama
+// Lo que la creación aún no hacía con las razas mutadas (roadmap `FINALIZADO_razas-mutadas`, `bugs.md`, 2026-11-12, rama
 // `mutadas/creacion-resto`): la elección más de un grupo opcional (el segundo sigilo de poder del iluminiano a 2.º
 // nivel, Races of Destiny, pág. 54), las salvaciones y las dotes de un rasgo ganado por la progresión y la frase de la CD
 // con todos los DG (el aliento del aspecto dracónico del corazón). Con la forma de `Progresion` del contrato y los ids
@@ -253,7 +253,7 @@ describe('La CD de un rasgo con todos los DG', () => {
     });
 });
 
-// Los sigilos de poder suman su cifra (roadmap `ACTIVO_razas-mutadas`, `bugs.md`, rama `mutadas/tipos-bonificador`):
+// Los sigilos de poder suman su cifra (roadmap `FINALIZADO_razas-mutadas`, `bugs.md`, rama `mutadas/tipos-bonificador`):
 // +1 sin tipo a las pruebas de su característica y de sus habilidades, +2 desde 2.º nivel (Races of Destiny, págs.
 // 53-54), como los da la API (`raciales_sigilos_de_poder.sql`).
 describe('Los sigilos de poder en las habilidades de la creación', () => {

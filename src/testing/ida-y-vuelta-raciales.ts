@@ -1,6 +1,6 @@
 /**
  * La ida y vuelta de «Modificar racial» con la progresión, los bonificadores condicionales, la CD con todos los DG y el
- * «cuenta como» (roadmap `ACTIVO_razas-mutadas`, 2026-11-12): respuestas reales de `GET /razas/raciales/<id>` de
+ * «cuenta como» (roadmap `FINALIZADO_razas-mutadas`, 2026-11-12): respuestas reales de `GET /razas/raciales/<id>` de
  * `rol_dev` y, para cada una, el cuerpo con el que `PUT /razas/raciales/<id>` devolvió el mismo GET (la comprobación del
  * backend, `tests/test_racial_editor_rol_dev.py`, con todos los raciales de `rol_dev` en transacciones deshechas: 0
  * diferencias, salvo el `Id` de las filas de los bonificadores, que se vuelven a crear). La spec de `nueva-racial`

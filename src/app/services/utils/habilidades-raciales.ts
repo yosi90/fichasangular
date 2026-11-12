@@ -9,7 +9,7 @@ import { frasesDeRasgo } from 'src/app/services/utils/racial-progresion';
 
 /*
  * Las habilidades y los bonificadores condicionales de los rasgos raciales del personaje (roadmap
- * `ACTIVO_razas-mutadas`, guía `docs/publica/RAZAS_MUTADAS.md`, «Los bonificadores condicionales y las habilidades de un
+ * `FINALIZADO_razas-mutadas`, guía `docs/publica/RAZAS_MUTADAS.md`, «Los bonificadores condicionales y las habilidades de un
  * rasgo»). La misma regla que la ficha de la API (`utils/racial_bonificadores.py`), con los mismos casos en sus pruebas:
  *
  * - la `Cantidad` (`Rangos`) de las habilidades de un rasgo se suma como la de las habilidades de la raza: las que cuentan

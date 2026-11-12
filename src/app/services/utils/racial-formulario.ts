@@ -14,7 +14,7 @@ import { momentoDeProgresion } from './racial-progresion';
 
 /**
  * La progresión, los bonificadores condicionales y el «cuenta como» de un rasgo racial en «Insertar/Modificar racial»
- * (roadmap `ACTIVO_razas-mutadas`; guía `docs/publica/RAZAS_MUTADAS.md`): sus filas, su lectura del
+ * (roadmap `FINALIZADO_razas-mutadas`; guía `docs/publica/RAZAS_MUTADAS.md`): sus filas, su lectura del
  * `GET /razas/raciales/<id>`, su cuerpo (`progresion[]`, `bonificadores_condicionales[]` y `cuenta_como[]` del alta y la
  * edición, `docs/publica/endpoints/catalogos.md`) y lo que se comprueba antes de mandar, lo mismo que la API
  * (`_normalize_racial_progresion`, `_normalize_racial_bonificadores` y `_normalize_racial_cuenta_como` de

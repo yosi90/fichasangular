@@ -7,7 +7,7 @@ import { NuevaRacialComponent } from './nueva-racial.component';
 
 /**
  * «Modificar racial» con la progresión, los bonificadores condicionales, la CD con todos los DG y el «cuenta como» (roadmap
- * `ACTIVO_razas-mutadas`, 2026-11-12): cargado con el GET real de `rol_dev`, guardar sin tocar nada manda el cuerpo con el
+ * `FINALIZADO_razas-mutadas`, 2026-11-12): cargado con el GET real de `rol_dev`, guardar sin tocar nada manda el cuerpo con el
  * que la API devolvió ese mismo GET (`src/testing/ida-y-vuelta-raciales.ts`); y lo que la API rechazaría no se manda.
  */
 describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () => {

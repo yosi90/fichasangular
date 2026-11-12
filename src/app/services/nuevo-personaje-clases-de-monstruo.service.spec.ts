@@ -18,7 +18,7 @@ import { HabilidadBasicaDetalle } from '../interfaces/habilidad';
 import { textoClasePersonaje } from '../components/detalles/ficha/personaje';
 
 /**
- * La creación con una clase de monstruo muerto viviente de *Libris Mortis* (fase 5.2 del roadmap `ACTIVO_razas-mutadas`;
+ * La creación con una clase de monstruo muerto viviente de *Libris Mortis* (fase 5.2 del roadmap `FINALIZADO_razas-mutadas`;
  * estudio, apartado 3.4): la clase obligada desde el 1.er nivel y hasta terminarla; los PG, los puntos de habilidad, las
  * dotes y la armadura natural por la tabla de la clase; los PX. Con los datos del contrato simulados
  * (`src/testing/clases-de-monstruo-api.ts`): aún no hay datos de las cinco clases en `rol_dev`.

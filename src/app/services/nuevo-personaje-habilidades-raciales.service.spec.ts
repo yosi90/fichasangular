@@ -12,7 +12,7 @@ import { fichaDeLaSubida } from './utils/subida-nivel';
 import { ENANO_API, GNOMO_API, HABILIDADES_API, HUMANO_API, PROLE_SOBRE_HUMANO_API } from 'src/testing/razas-condicionales-api';
 
 // Las habilidades de un rasgo racial y sus bonificadores condicionales en la creación y en la subida (roadmap
-// `ACTIVO_razas-mutadas`, `bugs.md`, 2026-11-12), con las razas reales de `rol_dev` (`src/testing/razas-condicionales-api.ts`):
+// `FINALIZADO_razas-mutadas`, `bugs.md`, 2026-11-12), con las razas reales de `rol_dev` (`src/testing/razas-condicionales-api.ts`):
 // el aspecto dracónico de la mente (+2 a Avistar, Buscar y Escuchar, Races of the Dragon, págs. 9-10), el gnomo (+2 a
 // Artesanía (alquimia) en la raza y en su rasgo) y el enano (+2 a Artesanía y Tasación con piedra o metal, +1 al ataque
 // contra orcos y trasgoides y esquiva +4 contra gigantes; Manual del jugador, cap. 2).

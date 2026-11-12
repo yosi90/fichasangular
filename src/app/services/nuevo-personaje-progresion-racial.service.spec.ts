@@ -11,7 +11,7 @@ import { claveHabilidad } from './utils/habilidad-clave';
 import { normalizeRacial } from './utils/racial-mapper';
 import { fichaDeLaSubida, puntosGolpeTrasSubida, modConstitucionDeEntrada } from './utils/subida-nivel';
 
-// Lo que crece con los DG (roadmap `ACTIVO_razas-mutadas`, 2026-11-12) en la creación y en la subida de nivel, con los
+// Lo que crece con los DG (roadmap `FINALIZADO_razas-mutadas`, 2026-11-12) en la creación y en la subida de nivel, con los
 // aspectos de la prole de Bahamut (Races of the Dragon, págs. 9-10) y del nacido del Infierno (Fiendish Codex II,
 // pág. 78) con la forma exacta de `Progresion` del contrato (`GET /razas/{id}/sobre/{idBase}`, los ids de `rol_dev`).
 
