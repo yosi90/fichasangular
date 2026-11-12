@@ -117,7 +117,7 @@ describe('AyudaComponent', () => {
             + 'sin conexión (cifrada, fuera de las copias de seguridad, separada por cuenta y como mucho 3 días desde la última vez que '
             + 'el servidor confirmó tu acceso); los mensajes del chat que aún no se han enviado, cifrados; tus favoritos, lo último que '
             + 'has visto, tus tiradas guardadas y su historial y el rastreador de esencia de tus fichas, por cuenta; y tus preferencias '
-            + 'de la app y del sonido. Lo privado de una cuenta se borra al cerrar su sesión, y todo, al desinstalar la app. Las voces '
+            + 'de la app y del sonido. La copia de tus fichas y campañas y los mensajes sin enviar se borran al cerrar la sesión de esa cuenta; lo demás, al desinstalar la app. Las voces '
             + 'de los personajes se descargan solo mientras suenan. La app no lleva anuncios ni analítica.');
     });
 
