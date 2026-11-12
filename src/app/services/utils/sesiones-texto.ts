@@ -110,5 +110,7 @@ export const ETIQUETA_EVENTO: Record<TipoEventoSesion, string> = {
     compra: 'Compra',
     conjuro_copiado: 'Libro',
     subida_nivel: 'Nivel',
+    modificacion: 'Corrección',
+    correccion_master: 'Corrección del máster',
     nota: 'Nota',
 };

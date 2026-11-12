@@ -15,6 +15,27 @@
                 <p class="bloque-error historial__error" role="alert">{{error}}</p>
             }
 
+            @if (puedeApuntar) {
+                <!-- Modificar y corregir (fase 6): los datos libres aquí mismo; la corrección, en su pestaña -->
+                <div class="historial__nueva historial__modificar">
+                    @if (!datosAbiertos) {
+                        <button type="button" mat-stroked-button class="historial__boton" (click)="datosAbiertos = true">
+                            <mat-icon aria-hidden="true">edit</mat-icon>
+                            Nombre e historia
+                        </button>
+                        @if (puedeCorregir) {
+                            <button type="button" mat-stroked-button class="historial__boton" (click)="corregir()"
+                                matTooltip="Arreglar un error de la ficha: queda en la sesión abierta">
+                                <mat-icon aria-hidden="true">build</mat-icon>
+                                Corregir la ficha
+                            </button>
+                        }
+                    } @else {
+                        <app-datos-libres [pj]="pj" [alTerminar]="alTerminarDatos"></app-datos-libres>
+                    }
+                </div>
+            }
+
             @if (puedeAbrirNueva) {
                 <div class="historial__nueva">
                     @if (!nuevaAbierta) {

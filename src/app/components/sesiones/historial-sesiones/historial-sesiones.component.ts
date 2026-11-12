@@ -3,12 +3,14 @@ import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, Type } f
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subscription } from 'rxjs';
 import Swal from 'sweetalert2';
 import { Clase } from 'src/app/interfaces/clase';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { ExperienciaPersonaje, HistorialSesiones, MAXIMO_TITULO_SESION, RespuestaSesion, SesionPersonaje } from 'src/app/interfaces/sesiones';
 import { SesionesService } from 'src/app/services/sesiones.service';
+import { DatosLibresComponent } from '../datos-libres/datos-libres.component';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { cambiosSesion, fechaSesion, tituloSesion } from 'src/app/services/utils/sesiones-texto';
 import { toNumber } from 'src/app/services/utils/normalizacion';
@@ -51,7 +53,7 @@ interface FilaSesion {
     selector: 'app-historial-sesiones',
     templateUrl: './historial-sesiones.component.html',
     styleUrls: ['./historial-sesiones.component.sass'],
-    imports: [FormsModule, MatButtonModule, MatIconModule, NgComponentOutlet],
+    imports: [FormsModule, MatButtonModule, MatIconModule, MatTooltipModule, NgComponentOutlet, DatosLibresComponent],
 })
 export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy {
     /** La ficha de ahora (la vuelve a leer la ficha tras cada cambio). */
@@ -119,6 +121,24 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
     get abiertaDeJuego(): SesionPersonaje | null {
         return this.datos?.sesiones.find((sesion) => sesion.estado === 'abierta' && sesion.numero > 0) ?? null;
     }
+
+    /** «Corregir la ficha» (fase 6): quien apunta, con una sesión abierta (la de juego o la 0, donde queda la corrección). */
+    get puedeCorregir(): boolean {
+        return this.puedeApuntar && !!this.datos?.sesiones.some((sesion) => sesion.estado === 'abierta');
+    }
+
+    corregir(): void {
+        this.puertaSubida.solicitarCorreccion(this.idPersonaje);
+    }
+
+    /** Los datos libres (fase 6): el formulario se abre aquí mismo. */
+    datosAbiertos = false;
+
+    readonly alTerminarDatos = (guardado: boolean): void => {
+        this.datosAbiertos = false;
+        if (guardado)
+            this.puertaSubida.subidaHecha(this.idPersonaje);
+    };
 
     get puedeAbrirNueva(): boolean {
         return this.puedeApuntar && this.abiertaDeJuego === null;

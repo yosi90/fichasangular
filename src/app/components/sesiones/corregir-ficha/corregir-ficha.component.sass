@@ -1,0 +1,42 @@
+@use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
+
+// La corrección de la ficha (fase 6 del roadmap de sesiones): las piezas de la subida (`subir-nivel.component.sass`, que
+// esta pantalla carga primero) y lo poco que es suyo.
+
+.correccion__numero
+    width: 64px
+    min-height: 36px
+    padding: 0 8px
+    border: 1px solid rgba(255, 255, 255, .12)
+    border-radius: 6px
+    background: rgba(255, 255, 255, .04)
+    color: inherit
+    font: inherit
+
+.correccion__cambios
+    margin: 0
+    padding-left: 20px
+    line-height: 1.6
+
+.correccion__motivo
+    display: flex
+    flex-direction: column
+    gap: 6px
+    margin-top: 12px
+
+    input
+        min-height: 40px
+        padding: 0 10px
+        border: 1px solid rgba(255, 255, 255, .12)
+        border-radius: 6px
+        background: rgba(255, 255, 255, .04)
+        color: inherit
+        font: inherit
+
+.correccion__rotas
+    border-left: 3px solid #d89b3c
+
+@include movil
+    .correccion__numero
+        min-height: 44px

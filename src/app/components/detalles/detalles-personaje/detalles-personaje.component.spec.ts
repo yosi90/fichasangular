@@ -1142,7 +1142,7 @@ describe('DetallesPersonajeComponent', () => {
         });
 
         it('la pestaña «Historial» carga el historial al abrirla', async () => {
-            sesionesSvcMock.historial.and.resolveTo({ idPersonaje: 10, puedeApuntar: true, veNotas: true, experiencia: experienciaParaSubir(), sesiones: [] });
+            sesionesSvcMock.historial.and.resolveTo({ idPersonaje: 10, puedeApuntar: true, veNotas: true, rolActor: 'jugador', experiencia: experienciaParaSubir(), sesiones: [] });
             component.pj = fichaDeLaApi({ experiencia: experienciaParaSubir() });
             fixture.detectChanges();
 

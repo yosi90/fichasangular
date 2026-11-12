@@ -11329,6 +11329,60 @@ export class NuevoPersonajeService {
         return true;
     }
 
+    // --- La corrección de la ficha (roadmap de sesiones, fase 6) -------------------------------------------------------
+    // La corrección es retroactiva: lo corregido vale desde que se creó, y lo que deja de cumplirse se quita o se mantiene
+    // como homebrew (dictamen del máster de Rol). El motor, hidratado como para la subida, recalcula las puntuaciones
+    // desde su base y vuelve a evaluar los prerrequisitos de las dotes que tiene.
+
+    /** La base de las características (lo que el motor no suma: la tirada con los incrementos de antes). */
+    getBaseCaracteristicas(): Record<Caracteristica, number> {
+        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
+        return Object.fromEntries(CARACTERISTICAS.map((key) => [key, toNumber(base?.[key])])) as Record<Caracteristica, number>;
+    }
+
+    /** Corrige la base de una característica y recalcula su puntuación (con la raza, las plantillas, las dotes…). */
+    corregirBaseCaracteristica(key: Caracteristica, valor: number): void {
+        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
+        if (!base || !CARACTERISTICAS.includes(key) || this.esCaracteristicaPerdida(key))
+            return;
+        base[key] = Math.max(1, Math.trunc(toNumber(valor)));
+        this.aplicarCaracteristicasFinalesDesdeBase();
+    }
+
+    /** Quita del personaje una dote que tiene (la primera con ese id, extra y origen). `false` si no la tiene. */
+    quitarDoteDeLaFicha(idDote: number, idExtra: number, origen: string): boolean {
+        const pj = this.personajeCreacion;
+        const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(idDote)
+            && toInt(d?.Contexto?.Id_extra) === toInt(idExtra) && `${(d?.Contexto as any)?.Origen ?? ''}` === `${origen ?? ''}`);
+        if (i < 0)
+            return false;
+        const [quitada] = pj.DotesContextuales.splice(i, 1);
+        const j = (pj.Dotes ?? []).findIndex((d) => normalizarTexto(d?.Nombre ?? '') === normalizarTexto(quitada?.Dote?.Nombre ?? '')
+            && `${d?.Origen ?? ''}` === `${(quitada?.Contexto as any)?.Origen ?? ''}`);
+        if (j >= 0)
+            pj.Dotes.splice(j, 1);
+        return true;
+    }
+
+    /**
+     * Las dotes del personaje que no cumplen sus prerrequisitos con lo que tiene ahora (las del catálogo; una que no se
+     * puede comprobar no cuenta). Se evalúan con el estado de ahora, también las de las fichas sin el nivel de cada
+     * elección.
+     */
+    dotesSinSusPrerrequisitos(): Array<{ idDote: number; idExtra: number; origen: string; nombre: string; razones: string[]; }> {
+        // Solo las del personaje: las de su raza o sus plantillas no se eligen ni se quitan al corregir.
+        return (this.personajeCreacion.DotesContextuales ?? []).filter((d) => (d?.Contexto?.Entidad ?? 'personaje') === 'personaje').flatMap((d) => {
+            const dote = this.catalogoDotes.find((c) => toInt(c?.Id) === toInt(d?.Dote?.Id));
+            if (!dote)
+                return [];
+            const evaluacion = this.evaluarPrerrequisitosDote(dote, toInt(d?.Contexto?.Id_extra), `${d?.Contexto?.Extra ?? ''}`);
+            return evaluacion.estado === 'blocked_failed'
+                ? [{ idDote: toInt(dote.Id), idExtra: toInt(d?.Contexto?.Id_extra), origen: `${(d?.Contexto as any)?.Origen ?? ''}`,
+                    nombre: `${dote.Nombre ?? ''}`, razones: evaluacion.razones ?? [] }]
+                : [];
+        });
+    }
+
     /** El estado del motor para el borrador de la subida (el mismo que el de la creación, sin la cuenta). */
     exportarEstadoSubida(): unknown {
         return this.construirBorradorLocal('subida');

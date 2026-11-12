@@ -6,9 +6,11 @@ import {
     AbrirSesionDto,
     CambiarSesionDto,
     CompraSesionDto,
+    CorreccionFichaDto,
     EventoSesionDto,
     ExperienciaPersonaje,
     HistorialSesiones,
+    RespuestaCorreccion,
     RespuestaSesion,
     RespuestaSubidaNivel,
     ResumenSesion,
@@ -37,7 +39,7 @@ export const CODIGO_SESION_DESACTUALIZADA = 'sesion_desactualizada';
 
 const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
     'alta', 'experiencia', 'experiencia_gastada', 'dinero', 'objeto_obtenido', 'objeto_perdido', 'venta', 'compra',
-    'conjuro_copiado', 'subida_nivel', 'nota',
+    'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'nota',
 ]);
 
 /** Si el error es el `409 sesion_desactualizada` (otra persona apuntó algo entre medias). */
@@ -122,6 +124,7 @@ export function leerHistorial(valor: any): HistorialSesiones {
         idPersonaje: toInt(valor?.idPersonaje),
         puedeApuntar: toBoolean(valor?.puedeApuntar),
         veNotas: toBoolean(valor?.veNotas),
+        rolActor: valor?.rolActor === 'master' || valor?.rolActor === 'jugador' ? valor.rolActor : null,
         experiencia: leerExperiencia(valor?.experiencia),
         sesiones: toArray(valor?.sesiones).map(leerSesion).sort((a, b) => a.numero - b.numero),
     };
@@ -184,6 +187,18 @@ export class SesionesService {
         };
     }
 
+    /** La corrección de la ficha (fase 6): queda en la sesión abierta (la de juego o la 0); el máster, con el aviso de lo que se salta. */
+    async corregirFicha(idPersonaje: number, cuerpo: CorreccionFichaDto): Promise<RespuestaCorreccion> {
+        const id = toInt(idPersonaje);
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+        const respuesta = await this.pedir<any>('PUT', `${environment.apiUrl}personajes/${id}/ficha`, cuerpo, 'No se ha podido corregir la ficha.');
+        return {
+            ...this.conAviso(leerRespuestaSesion(respuesta)),
+            correccion: { idEvento: toInt(respuesta?.correccion?.idEvento), numeroSesion: toInt(respuesta?.correccion?.numeroSesion) },
+        };
+    }
+
     async abrir(idPersonaje: number, cuerpo: AbrirSesionDto = {}): Promise<RespuestaSesion> {
         return leerRespuestaSesion(await this.pedir('POST', this.ruta(idPersonaje), cuerpo, 'No se ha podido abrir la sesión.'));
     }
@@ -232,7 +247,7 @@ export class SesionesService {
         return numero === undefined ? base : `${base}/${Math.max(0, toInt(numero))}`;
     }
 
-    private async pedir<T>(metodo: 'GET' | 'POST' | 'PATCH', url: string, cuerpo: unknown, porDefecto: string): Promise<T> {
+    private async pedir<T>(metodo: 'GET' | 'POST' | 'PATCH' | 'PUT', url: string, cuerpo: unknown, porDefecto: string): Promise<T> {
         try {
             const headers = new HttpHeaders(await cabeceraApiConFirebase(this.auth));
             return await firstValueFrom(this.http.request<T>(metodo, url, { headers, ...(cuerpo !== undefined ? { body: cuerpo } : {}) }));
