@@ -25,6 +25,7 @@ import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeCreateColeccionesDto, PersonajeCreateMascotasDto, PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { bonoRacialCondicional } from './utils/habilidad-raza-condicional';
+import { bonificadoresCondicionalesDeRaciales, habilidadesDeRasgos, sinApilarRaciales } from './utils/habilidades-raciales';
 import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { contarArmasNaturales } from './utils/armas-naturales';
 import { rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
@@ -2615,6 +2616,16 @@ export class NuevoPersonajeService {
                 return;
             const clave = claveHabilidad(habilidad);
             porClave.set(clave, [...(porClave.get(clave) ?? []), parte]);
+        });
+        // Y lo de sus rasgos que solo vale en un caso (el +2 del enano a Artesanía con objetos de piedra o metal).
+        habilidadesDeRasgos(this.personajeCreacion?.Raciales).forEach((h) => {
+            const habilidad = h.condicion !== null && !h.custom
+                ? this.buscarHabilidadDelPersonaje(toNumber(h.ref?.['Id_habilidad']), normalizarTexto(`${h.ref?.['Habilidad'] ?? ''}`), false)
+                : null;
+            if (!habilidad)
+                return;
+            const clave = claveHabilidad(habilidad);
+            porClave.set(clave, [...(porClave.get(clave) ?? []), { tipo: 'varios', origen: h.origen || null, valor: h.cantidad, condicion: h.condicion }]);
         });
         return porClave;
     }
@@ -5947,6 +5958,7 @@ export class NuevoPersonajeService {
         this.aplicarEfectosPlantillasFase2(caracteristicasVarios, nuevosRaciales, bonosHabilidades);
         this.aplicarVelocidadesDeProgresionRacial(progresion);
         this.aplicarHabilidadesSiempreDeClase(nuevosRaciales);
+        this.aplicarHabilidadesDeRasgos(nuevosRaciales, bonosHabilidades);
         this.aplicarModificadoresDotesDelPersonaje({ caracteristicasVarios, bonosHabilidades });
         this.aplicarCaracteristicasEspecialesDelPersonaje(caracteristicasVarios);
         this.aplicarHabilidadesEspecialesDelPersonaje(bonosHabilidades);
@@ -5983,9 +5995,12 @@ export class NuevoPersonajeService {
 
         this.personajeCreacion.CaracteristicasVarios = caracteristicasVarios;
         this.aplicarCaracteristicasFinalesDesdeBase();
-        this.estadoFlujo.ventajas.bonosHabilidades = bonosHabilidades;
+        // Los bonificadores raciales a una habilidad (de la raza y de sus rasgos) no se apilan: cuenta lo mayor.
+        this.estadoFlujo.ventajas.bonosHabilidades = sinApilarRaciales(bonosHabilidades);
         this.aplicarBonosHabilidadEnPersonaje();
         this.personajeCreacion.Raciales = nuevosRaciales;
+        // Lo que sus rasgos suman solo en un caso (el +1 al ataque contra orcos), aparte: no entra en la CA ni en el ataque.
+        this.personajeCreacion.Bonificadores_condicionales = bonificadoresCondicionalesDeRaciales(nuevosRaciales);
         this.personajeCreacion.Idiomas = nuevosIdiomas;
         this.estadoFlujo.ventajas.pendientesOro = pendientesOro;
         this.personajeCreacion.Ventajas = todasLasSelecciones
@@ -6224,9 +6239,18 @@ export class NuevoPersonajeService {
         this.agregarBonoHabilidad(bonosHabilidades, claveHabilidad(habilidadObjetivo), valor, origen);
     }
 
-    /** Un bono a la habilidad en lo que monta el recálculo de las ventajas (`estadoFlujo.ventajas.bonosHabilidades`). */
-    private agregarBonoHabilidad(bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]>, clave: ClaveHabilidad, valor: number, origen: string): void {
-        (bonosHabilidades[clave] ??= []).push({ valor, origen });
+    /**
+     * Un bono a la habilidad en lo que monta el recálculo de las ventajas (`estadoFlujo.ventajas.bonosHabilidades`). Los de
+     * la raza y de sus rasgos son `racial`: no se apilan entre sí (`sinApilarRaciales`).
+     */
+    private agregarBonoHabilidad(
+        bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]>,
+        clave: ClaveHabilidad,
+        valor: number,
+        origen: string,
+        racial?: 'raza' | 'rasgo',
+    ): void {
+        (bonosHabilidades[clave] ??= []).push(racial ? { valor, origen, racial } : { valor, origen });
     }
 
     /**
@@ -7041,8 +7065,25 @@ export class NuevoPersonajeService {
 
             if (toNumber(habilidad.Id) <= 0)
                 return;
-            this.agregarBonoHabilidad(bonosHabilidades, claveHabilidad(habilidad), cantidad, origen);
+            this.agregarBonoHabilidad(bonosHabilidades, claveHabilidad(habilidad), cantidad, origen, 'raza');
         });
+    }
+
+    /**
+     * Las habilidades con cantidad de los rasgos que tiene (`Rangos` de sus `Habilidades`: el +2 a Avistar, Buscar y
+     * Escuchar del aspecto dracónico de la mente, el +10 a Saltar del de las alas), también los ganados por la progresión:
+     * las que cuentan siempre van a los rangos varios con el nombre del rasgo, como las de la raza y sin apilarse con ellas
+     * (`sinApilarRaciales`); las que solo valen en un caso, aparte (`bonosRacialesCondicionales`). Con su especialidad, si la
+     * nombran, en su hueco. Como se rehacen en cada recálculo, se van al elegir otro rasgo u otra raza.
+     */
+    private aplicarHabilidadesDeRasgos(raciales: RacialDetalle[], bonosHabilidades: Record<ClaveHabilidad, HabilidadBonoVario[]>): void {
+        habilidadesDeRasgos(raciales)
+            .filter((h) => h.condicion === null)
+            .forEach((h) => {
+                const habilidad = this.asegurarHabilidadDesdeRaza(h.ref, h.custom);
+                if (habilidad && (h.custom || toNumber(habilidad.Id) > 0))
+                    this.agregarBonoHabilidad(bonosHabilidades, claveHabilidad(habilidad), h.cantidad, h.origen, 'rasgo');
+            });
     }
 
     /**

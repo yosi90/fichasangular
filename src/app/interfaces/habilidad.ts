@@ -39,6 +39,8 @@ export interface HabilidadBasicaDetalle {
 export interface HabilidadBonoVario {
     valor: number;
     origen: string;
+    /** Un bonificador de la raza o de uno de sus rasgos: no se apilan entre sí (`sinApilarRaciales`). */
+    racial?: 'raza' | 'rasgo';
 }
 
 export interface HabilidadCustomCreateRequest {

@@ -135,6 +135,22 @@ export interface LanzamientoRacialPersonaje {
     listas: ListaLanzamientoRaza[];
 }
 
+/**
+ * Un bonificador de un rasgo del personaje que solo cuenta en un caso (`bonificadoresCondicionales` de la ficha; en la
+ * creación, de los rasgos del borrador con `services/utils/habilidades-raciales.ts`): se enseña aparte y no se suma.
+ */
+export interface PersonajeBonificadorCondicional {
+    objetivo: { Id: number; Nombre: string; };
+    tipoBonificador: { Id: number; Nombre: string; };
+    valor: number;
+    condicion: string;
+    contra: { Catalogo: 'tipo_criatura' | 'subtipo' | 'raza'; Id: number; Nombre: string; }[];
+    /** El rasgo de donde sale. */
+    origen: string;
+    /** «Ataque +1 (racial) contra orcos y trasgoides». */
+    frase: string;
+}
+
 export interface Personaje extends PersonajeSimple {
     /** En la creación: el paso de edad elegido de una raza por edades (`personaje.idPasoEdad`); `null` en las demás. */
     IdPasoEdad?: number | null;
@@ -400,6 +416,12 @@ export interface Personaje extends PersonajeSimple {
      * y plantillas), con la frase hecha.
      */
     Armas_naturales?: ArmaNaturalPersonaje[];
+    /**
+     * Lo que sus rasgos suman solo en un caso (el +1 al ataque contra orcos y trasgoides, la esquiva contra gigantes),
+     * aparte: no está en la CA ni en el ataque. En la ficha, de la API (`bonificadoresCondicionales`); en la creación, de
+     * sus rasgos (desde el 2026-11-12).
+     */
+    Bonificadores_condicionales?: PersonajeBonificadorCondicional[];
     Claseas: {
         Id?: number;
         Id_extra?: number;

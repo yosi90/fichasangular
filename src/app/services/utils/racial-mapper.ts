@@ -1,5 +1,5 @@
 import { Conjuro } from "src/app/interfaces/conjuro";
-import { RacialDetalle, RacialProgresion, RacialProgresionVelocidad } from "src/app/interfaces/racial";
+import { RacialBonificadorCondicional, RacialBonificadorContra, RacialDetalle, RacialProgresion, RacialProgresionVelocidad } from "src/app/interfaces/racial";
 import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizarEsenciaRasgo } from './incarnum-mapper';
@@ -61,6 +61,27 @@ export function normalizarProgresionRacial(raw: any, normalizarGana: (gana: any)
         });
 }
 
+const CATALOGOS_CONTRA: RacialBonificadorContra['Catalogo'][] = ['tipo_criatura', 'subtipo', 'raza'];
+
+/**
+ * Los `Bonificadores_condicionales` de un racial (lo que suma solo en un caso), igual en la API, la caché y la ficha.
+ * Uno sin objetivo o con cantidad 0 se descarta, y una criatura de un catálogo que no se conoce, también.
+ */
+export function normalizarBonificadoresCondicionales(raw: any): RacialBonificadorCondicional[] {
+    return toArray(raw)
+        .filter((b: any) => b && typeof b === 'object' && toRefIdNombre(b.Objetivo) !== null && toNumber(b.Cantidad) !== 0)
+        .map((b: any) => ({
+            Objetivo: toRefIdNombre(b.Objetivo)!,
+            Tipo_bonificador: toRefIdNombre(b.Tipo_bonificador) ?? { Id: 0, Nombre: '' },
+            Cantidad: toNumber(b.Cantidad),
+            Condicion: toText(b.Condicion).trim(),
+            Contra: toArray(b.Contra)
+                .filter((c: any) => CATALOGOS_CONTRA.includes(c?.Catalogo))
+                .map((c: any) => ({ Catalogo: c.Catalogo, Id: toNumber(c.Id), Nombre: toText(c.Nombre) })),
+            Frase: toText(b.Frase).trim(),
+        }));
+}
+
 export function normalizeRacial(raw: any): RacialDetalle {
     const dotesRaw = pick(raw, "Dotes", "dotes", "dot");
     const habilidadesRaw = pick(raw, "Habilidades", "habilidades", "hab");
@@ -111,6 +132,7 @@ export function normalizeRacial(raw: any): RacialDetalle {
             caracteristica: toArray(pick(prerrequisitosRaw, "caracteristica", "caracteristicas", "c")),
         },
         Progresion: normalizarProgresionRacial(pick(raw, "Progresion"), normalizeRacial),
+        Bonificadores_condicionales: normalizarBonificadoresCondicionales(pick(raw, "Bonificadores_condicionales")),
     };
 }
 

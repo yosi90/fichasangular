@@ -224,6 +224,10 @@
     <app-ficha-lateral titulo="Clase de armadura" *ngIf="m.defensa.length > 0">
         <ng-container *ngTemplateOutlet="paresTpl; context: { $implicit: m.defensa }"></ng-container>
     </app-ficha-lateral>
+    <!-- Lo que sus rasgos suman solo en un caso: aparte, no entra en la CA ni en el ataque -->
+    <app-ficha-lateral titulo="Bonificadores condicionales" *ngIf="m.bonificadoresCondicionales.length > 0">
+        <ng-container *ngTemplateOutlet="paresTpl; context: { $implicit: m.bonificadoresCondicionales }"></ng-container>
+    </app-ficha-lateral>
     <app-ficha-lateral [titulo]="presaDisponible ? 'Presa e iniciativa' : 'Iniciativa'" *ngIf="m.presaIniciativa.length > 0">
         <ng-container *ngTemplateOutlet="paresTpl; context: { $implicit: m.presaIniciativa }"></ng-container>
     </app-ficha-lateral>

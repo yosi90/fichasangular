@@ -69,6 +69,31 @@ export interface RacialProgresion {
     Frase: string;
 }
 
+/** Contra qué criaturas cuenta un bonificador condicional: un tipo de criatura, un subtipo o una raza. */
+export interface RacialBonificadorContra {
+    Catalogo: 'tipo_criatura' | 'subtipo' | 'raza';
+    Id: number;
+    Nombre: string;
+}
+
+/**
+ * Lo que un rasgo racial suma solo en un caso (`Bonificadores_condicionales` del contrato,
+ * `docs/publica/endpoints/catalogos.md`): el +1 al ataque del enano contra orcos y trasgoides, la esquiva +4 a la CA
+ * contra gigantes. La creación y la ficha lo enseñan aparte y no lo suman.
+ */
+export interface RacialBonificadorCondicional {
+    Objetivo: { Id: number; Nombre: string; };
+    Tipo_bonificador: { Id: number; Nombre: string; };
+    /** Distinta de 0; negativa, un penalizador. */
+    Cantidad: number;
+    /** El caso en que cuenta, en texto: «Contra orcos y trasgoides». */
+    Condicion: string;
+    /** Si es contra unas criaturas, cuáles (el texto puede acotarlo más). */
+    Contra: RacialBonificadorContra[];
+    /** «Ataque +1 (racial) contra orcos y trasgoides». */
+    Frase: string;
+}
+
 export interface RacialDetalle {
     Id: number;
     Nombre: string;
@@ -96,4 +121,6 @@ export interface RacialDetalle {
     Prerrequisitos: RacialPrerrequisitos;
     /** Lo que da o cambia al llegar a N DG o a nivel N; `[]` si nada (o en datos de antes). */
     Progresion?: RacialProgresion[];
+    /** Lo que suma solo en un caso, aparte; `[]` si nada (o en datos de antes). */
+    Bonificadores_condicionales?: RacialBonificadorCondicional[];
 }

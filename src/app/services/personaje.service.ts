@@ -12,6 +12,7 @@ import {
 } from '../interfaces/personaje';
 import { environment } from 'src/environments/environment';
 import { leerArmasNaturalesPersonaje } from './utils/armas-naturales';
+import { leerBonificadoresCondicionales } from './utils/habilidades-raciales';
 import { toDoteContextualArray, toDoteLegacyArray } from './utils/dote-mapper';
 import {
     CatalogoNombreIdDto,
@@ -660,7 +661,8 @@ export class PersonajeService {
                 idExtra: idExtraHabilidadParaGuardar(entrada),
                 clasea: !!entrada?.Clasea,
                 rangos: Math.max(0, toInt(entrada?.Rangos)),
-                rangosVarios: Math.max(0, toInt(entrada?.Rangos_varios)),
+                // Puede ser negativo: un penalizador racial (la API lo admite y la ficha lo suma).
+                rangosVarios: toInt(entrada?.Rangos_varios),
                 modVarios: `${entrada?.Varios ?? ''}`.trim(),
             };
             if (entrada?.Custom)
@@ -1195,6 +1197,8 @@ export class PersonajeService {
             Conjuros: toArray(element?.con),
             // Sus armas naturales, ya resueltas por la API (desde el 2026-11-07).
             Armas_naturales: leerArmasNaturalesPersonaje(element?.armasNaturales),
+            // Lo que sus rasgos suman solo en un caso, aparte (desde el 2026-11-12).
+            Bonificadores_condicionales: leerBonificadoresCondicionales(element?.bonificadoresCondicionales),
             Claseas: toArray<PersonajeEspecialDto>(element?.especiales)
                 .map((especial) => ({
                     Id: toInt(especial?.id),

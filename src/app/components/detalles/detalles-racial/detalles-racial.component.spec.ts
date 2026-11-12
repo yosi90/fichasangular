@@ -5,6 +5,7 @@ import { TextoManualComponent } from 'src/app/components/shared/texto-manual/tex
 import { normalizeRacial } from 'src/app/services/utils/racial-mapper';
 import { DetallesRacialComponent } from './detalles-racial.component';
 import { lectorFicha } from 'src/testing/ficha-detalle';
+import { ENANO_API } from 'src/testing/razas-condicionales-api';
 
 describe('DetallesRacialComponent', () => {
     let component: DetallesRacialComponent;
@@ -127,6 +128,20 @@ describe('DetallesRacialComponent', () => {
         expect(titulos()).toEqual(['Descripción', 'Con los DG o el nivel']);
         expect(texto()).toContain("A los 6 DG: gana Visión en la oscuridad 60' en lugar de Visión en la oscuridad 30'.");
         expect(texto()).toContain("A los 15 DG: gana Telepatía 100'.");
+    });
+
+    it('lo que suma solo en un caso, en su lista con la frase de la API (el enano de rol_dev)', () => {
+        component.racial = normalizeRacial(ENANO_API.rac.find((r: any) => r.Nombre === '+4 de esquiva a la ca contra gigantes'));
+        fixture.detectChanges();
+        expect(titulos()).toContain('Bonificadores condicionales');
+        expect(texto()).toContain('CA +4 (esquiva) contra gigantes');
+    });
+
+    it('una habilidad de un rasgo que cuenta siempre no dice «Siempre»; la condicional, su caso', () => {
+        component.racial = normalizeRacial(ENANO_API.rac.find((r: any) => r.Nombre === '+2 a tasación de objetos de piedra y/o metal'));
+        fixture.detectChanges();
+        expect(texto()).toContain('Objetos de piedra y/o metal');
+        expect(texto()).not.toContain('Siempre');
     });
 
     it('no pinta las listas vacías ni la descripción nula', () => {
