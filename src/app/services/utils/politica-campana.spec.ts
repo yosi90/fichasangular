@@ -3,16 +3,22 @@ import { politicaTienda } from './tienda-equipo';
 
 describe('politica-campana', () => {
     describe('modoHomebrewDeCampana (la regla de la creación y de la tienda de una sesión)', () => {
-        it('sin política o con homebrew general, todo', () => {
+        // La regla del contrato (campanas.md, «Los tres modos de homebrew»), la misma que aplica la API.
+        it('sin política (sin campaña o un PNJ) o con homebrew general sin límite, todo', () => {
             expect(modoHomebrewDeCampana(null)).toBe('unrestricted');
             expect(modoHomebrewDeCampana(undefined)).toBe('unrestricted');
-            expect(modoHomebrewDeCampana({ permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: 0 })).toBe('unrestricted');
+            expect(modoHomebrewDeCampana({ permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: null })).toBe('unrestricted');
         });
 
-        it('sin homebrew general: nada con el límite a 0 o sin él, y hasta el límite con uno mayor', () => {
+        it('con homebrew general y un límite, hasta ese número de fuentes; con 0, nada', () => {
+            expect(modoHomebrewDeCampana({ permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: 2 })).toBe('limited');
+            expect(modoHomebrewDeCampana({ permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: 0 })).toBe('forbidden');
+        });
+
+        it('sin homebrew general, nada, traiga lo que traiga el límite', () => {
             expect(modoHomebrewDeCampana({ permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 0 })).toBe('forbidden');
             expect(modoHomebrewDeCampana({ permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: null })).toBe('forbidden');
-            expect(modoHomebrewDeCampana({ permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 2 })).toBe('limited');
+            expect(modoHomebrewDeCampana({ permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 2 })).toBe('forbidden');
         });
     });
 

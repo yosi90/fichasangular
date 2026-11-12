@@ -23,6 +23,7 @@ import { UserService } from 'src/app/services/user.service';
 import { rolCreaCampanas } from 'src/app/interfaces/user-acl';
 import { compararTexto } from 'src/app/services/utils/orden-texto';
 import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-equipo';
+import { ModoHomebrewCampana, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { MAX_TIRADAS_PUNTOS_GOLPE, MIN_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import {
     mensajeErrorDeAccion,
@@ -39,6 +40,15 @@ import { enteroEntre, toPositiveInt } from 'src/app/services/utils/normalizacion
 
 export type CampaignWorkspaceMode = 'idle' | 'create' | 'config' | 'peopleStories';
 export type CampaignWorkspaceTab = 'usuarios' | 'historias';
+
+type ModoHomebrewEditor = 'none' | 'general' | 'limitado';
+
+/** El modo del editor para cada modo de la regla común (`modoHomebrewDeCampana`). */
+const MODO_HOMEBREW_DEL_EDITOR: Record<ModoHomebrewCampana, ModoHomebrewEditor> = {
+    forbidden: 'none',
+    limited: 'limitado',
+    unrestricted: 'general',
+};
 
 /**
  * El estado y las acciones de la gestión de campañas de «Mi perfil»: la lista de campañas que dirige la cuenta, la
@@ -68,6 +78,11 @@ export class CampanasGestionEstado implements OnDestroy {
     campaignWorkspaceTab: CampaignWorkspaceTab = 'usuarios';
     campaignCreateDraft = '';
     campaignCreatePolicyDraft: CampaignCreationPolicy = this.createDefaultCampaignPolicyDraft();
+    /**
+     * El modo de homebrew que eligió quien edita, para que vaciar o poner a 0 el número de «Solo N fuentes» no cambie de
+     * modo mientras escribe; `null` (al cargar una campaña o empezar una nueva), el de la política.
+     */
+    private campaignHomebrewModeElegido: ModoHomebrewEditor | null = null;
     campaignCreateSaving = false;
     campaignRenameDraft = '';
     campaignRenameSaving = false;
@@ -356,12 +371,12 @@ export class CampanasGestionEstado implements OnDestroy {
         return this.campaignEditorSaving || !this.campaignEditorCanSave;
     }
 
-    get campaignHomebrewMode(): 'none' | 'general' | 'limitado' {
-        if (this.campaignCreatePolicyDraft.permitirHomebrewGeneral === true)
-            return 'general';
-        if ((this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje ?? 0) === 0)
-            return 'none';
-        return 'limitado';
+    /**
+     * Con la regla del contrato (`campanas.md`, «Los tres modos de homebrew»): sin homebrew, `permitirHomebrewGeneral`
+     * en `false`; «Solo N fuentes», `true` y N; «En general», `true` y sin límite.
+     */
+    get campaignHomebrewMode(): ModoHomebrewEditor {
+        return this.campaignHomebrewModeElegido ?? MODO_HOMEBREW_DEL_EDITOR[modoHomebrewDeCampana(this.campaignCreatePolicyDraft)];
     }
 
     get showCampaignHomebrewLimitInput(): boolean {
@@ -435,10 +450,11 @@ export class CampanasGestionEstado implements OnDestroy {
         await this.guardarNombreCampana();
     }
 
-    setCampaignHomebrewMode(mode: 'none' | 'general' | 'limitado'): void {
+    setCampaignHomebrewMode(mode: ModoHomebrewEditor): void {
+        this.campaignHomebrewModeElegido = mode;
         if (mode === 'none') {
             this.campaignCreatePolicyDraft.permitirHomebrewGeneral = false;
-            this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = 0;
+            this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = null;
             this.campaignCreatePolicyDraft.permitirVentajasDesventajas = false;
             this.campaignCreatePolicyDraft.permitirIgnorarRestriccionesAlineamiento = false;
             return;
@@ -450,7 +466,7 @@ export class CampanasGestionEstado implements OnDestroy {
             return;
         }
 
-        this.campaignCreatePolicyDraft.permitirHomebrewGeneral = false;
+        this.campaignCreatePolicyDraft.permitirHomebrewGeneral = true;
         this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = this.normalizeCampaignHomebrewLimit(
             this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje,
             1
@@ -541,7 +557,7 @@ export class CampanasGestionEstado implements OnDestroy {
                 politicaCreacion: normalizedPolicy,
             });
             this.campaignCreateDraft = '';
-            this.campaignCreatePolicyDraft = this.createDefaultCampaignPolicyDraft();
+            this.ponerBorradorDePolitica(this.createDefaultCampaignPolicyDraft());
             this.campaignWorkspaceMode = 'config';
             this.showCampaignSuccess('Campaña creada correctamente.');
             await this.reloadCampaigns(created.id);
@@ -1072,7 +1088,7 @@ export class CampanasGestionEstado implements OnDestroy {
             permitirHomebrewGeneral: false,
             permitirVentajasDesventajas: false,
             permitirIgnorarRestriccionesAlineamiento: false,
-            maxFuentesHomebrewGeneralesPorPersonaje: 0,
+            maxFuentesHomebrewGeneralesPorPersonaje: null,
             permitirObjetosMagicos: true,
             permitirObjetosAMedida: true,
             precioMaximoPorObjeto: null,
@@ -1083,16 +1099,12 @@ export class CampanasGestionEstado implements OnDestroy {
     }
 
     private buildCampaignPolicyForSave(): CampaignCreationPolicy {
+        // `campanas.md`, «Los tres modos de homebrew»: nada = `false` (sin límite); hasta N = `true` + N; libre = `true`.
         const homebrewMode = this.campaignHomebrewMode;
-        const permitirHomebrewGeneral = homebrewMode === 'general';
-        const maxFuentesHomebrew = homebrewMode === 'general'
-            ? null
-            : homebrewMode === 'limitado'
-                ? this.normalizeCampaignHomebrewLimit(
-                    this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje,
-                    1
-                )
-                : 0;
+        const permitirHomebrewGeneral = homebrewMode !== 'none';
+        const maxFuentesHomebrew = homebrewMode === 'limitado'
+            ? this.normalizeCampaignHomebrewLimit(this.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje, 1)
+            : null;
         return {
             tiradaMinimaCaracteristica: this.normalizeCampaignMinimumRoll(this.campaignCreatePolicyDraft.tiradaMinimaCaracteristica),
             nepMaximoPersonajeNuevo: this.normalizeCampaignMaxNep(this.campaignCreatePolicyDraft.nepMaximoPersonajeNuevo),
@@ -1353,14 +1365,20 @@ export class CampanasGestionEstado implements OnDestroy {
 
     private resetCampaignEditorToCreateMode(): void {
         this.campaignCreateDraft = '';
-        this.campaignCreatePolicyDraft = this.createDefaultCampaignPolicyDraft();
+        this.ponerBorradorDePolitica(this.createDefaultCampaignPolicyDraft());
         this.campaignRenameDraft = '';
     }
 
     private syncCampaignEditorFromDetail(detail: CampaignDetailViewModel): void {
         this.campaignCreateDraft = `${detail?.campaign?.nombre ?? ''}`.trim();
-        this.campaignCreatePolicyDraft = this.hydrateCampaignPolicyDraft(detail?.politicaCreacion ?? null);
+        this.ponerBorradorDePolitica(this.hydrateCampaignPolicyDraft(detail?.politicaCreacion ?? null));
         this.campaignRenameDraft = this.campaignCreateDraft;
+    }
+
+    /** Cambia la política que se edita; el modo de homebrew vuelve a ser el suyo. */
+    private ponerBorradorDePolitica(politica: CampaignCreationPolicy): void {
+        this.campaignCreatePolicyDraft = politica;
+        this.campaignHomebrewModeElegido = null;
     }
 
     private hydrateCampaignPolicyDraft(source: Partial<CampaignCreationPolicy> | null | undefined): CampaignCreationPolicy {
@@ -1369,10 +1387,11 @@ export class CampanasGestionEstado implements OnDestroy {
         const rawNep = source?.nepMaximoPersonajeNuevo;
         const rawTablas = source?.maxTablasDadosCaracteristicas;
         const permitirHomebrewGeneral = source?.permitirHomebrewGeneral === true;
+        // El límite solo cuenta con homebrew general (`campanas.md`, «Los tres modos de homebrew»).
         const maxFuentesRaw = source?.maxFuentesHomebrewGeneralesPorPersonaje;
-        const maxFuentes = maxFuentesRaw === null || maxFuentesRaw === undefined
-            ? defaults.maxFuentesHomebrewGeneralesPorPersonaje
-            : this.normalizeCampaignHomebrewLimit(maxFuentesRaw, defaults.maxFuentesHomebrewGeneralesPorPersonaje ?? 0);
+        const maxFuentes = !permitirHomebrewGeneral || maxFuentesRaw === null || maxFuentesRaw === undefined
+            ? null
+            : this.normalizeCampaignHomebrewLimit(maxFuentesRaw, 0);
 
         return {
             tiradaMinimaCaracteristica: rawMinimo === null || rawMinimo === undefined
@@ -1387,7 +1406,7 @@ export class CampanasGestionEstado implements OnDestroy {
             permitirHomebrewGeneral,
             permitirVentajasDesventajas: source?.permitirVentajasDesventajas === true,
             permitirIgnorarRestriccionesAlineamiento: source?.permitirIgnorarRestriccionesAlineamiento === true,
-            maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral ? null : maxFuentes,
+            maxFuentesHomebrewGeneralesPorPersonaje: maxFuentes,
             permitirObjetosMagicos: source?.permitirObjetosMagicos !== false,
             permitirObjetosAMedida: source?.permitirObjetosAMedida !== false,
             precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(source?.precioMaximoPorObjeto),

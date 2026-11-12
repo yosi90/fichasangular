@@ -4,23 +4,27 @@ import { normalizarPrecioMaximoPorPieza } from 'src/app/services/utils/tienda-eq
 
 /**
  * Qué homebrew deja la campaña: todo (`unrestricted`), hasta un número de fuentes (`limited`) o nada (`forbidden`).
- * Sin política (sin campaña, o un PNJ en la creación), todo.
+ * Sin política (sin campaña, o un PNJ, que es del máster y queda fuera de la política de la campaña), todo.
  */
 export type ModoHomebrewCampana = 'unrestricted' | 'limited' | 'forbidden';
 
 /**
- * El modo de homebrew de una política de campaña (`politicaCreacion` o su parte de compra, `politicaCompra` de la ficha).
- * Lo usan la creación (sus selectores y su tienda) y la tienda de una sesión: una sola regla.
+ * El modo de homebrew de una política de campaña (`politicaCreacion` o su parte de compra, `politicaCompra` de la ficha),
+ * con la regla del contrato (`docs/publica/endpoints/campanas.md`, «Los tres modos de homebrew»): `permitirHomebrewGeneral`
+ * en `false`, nada (el límite no cuenta); `true` con un límite, hasta ese número de fuentes (con 0, nada); `true` sin
+ * límite, todo. Lo usan la creación (sus selectores y su tienda), la tienda de una sesión y el editor de campañas.
  */
 export function modoHomebrewDeCampana(
     policy: Partial<Pick<CampaignCreationPolicy, 'permitirHomebrewGeneral' | 'maxFuentesHomebrewGeneralesPorPersonaje'>> | null | undefined,
 ): ModoHomebrewCampana {
-    if (!policy || policy.permitirHomebrewGeneral === true)
+    if (!policy)
         return 'unrestricted';
+    if (policy.permitirHomebrewGeneral === false)
+        return 'forbidden';
     const maximo = maximoFuentesHomebrew(policy.maxFuentesHomebrewGeneralesPorPersonaje);
-    if (maximo !== null)
-        return maximo <= 0 ? 'forbidden' : 'limited';
-    return policy.permitirHomebrewGeneral === false ? 'forbidden' : 'unrestricted';
+    if (maximo === null)
+        return 'unrestricted';
+    return maximo <= 0 ? 'forbidden' : 'limited';
 }
 
 /** El límite de fuentes homebrew de la política: entero, 0 o más; sin dato o algo que no es un número, `null`. */

@@ -1478,7 +1478,7 @@ describe('NuevoPersonajeComponent', () => {
                 tiradaMinimaCaracteristica: 3,
                 nepMaximoPersonajeNuevo: null,
                 maxTablasDadosCaracteristicas: 1,
-                permitirHomebrewGeneral: false,
+                permitirHomebrewGeneral: true,
                 permitirVentajasDesventajas: false,
                 permitirIgnorarRestriccionesAlineamiento: false,
                 maxFuentesHomebrewGeneralesPorPersonaje: 1,
@@ -1512,7 +1512,7 @@ describe('NuevoPersonajeComponent', () => {
                 tiradaMinimaCaracteristica: 3,
                 nepMaximoPersonajeNuevo: null,
                 maxTablasDadosCaracteristicas: 1,
-                permitirHomebrewGeneral: false,
+                permitirHomebrewGeneral: true,
                 permitirVentajasDesventajas: false,
                 permitirIgnorarRestriccionesAlineamiento: false,
                 maxFuentesHomebrewGeneralesPorPersonaje: 1,
@@ -1547,7 +1547,7 @@ describe('NuevoPersonajeComponent', () => {
                 tiradaMinimaCaracteristica: 3,
                 nepMaximoPersonajeNuevo: null,
                 maxTablasDadosCaracteristicas: 1,
-                permitirHomebrewGeneral: false,
+                permitirHomebrewGeneral: true,
                 permitirVentajasDesventajas: false,
                 permitirIgnorarRestriccionesAlineamiento: false,
                 maxFuentesHomebrewGeneralesPorPersonaje: 1,
@@ -1597,7 +1597,7 @@ describe('NuevoPersonajeComponent', () => {
             tiradaMinimaCaracteristica: null,
             nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
-            permitirHomebrewGeneral: false,
+            permitirHomebrewGeneral: true,
             permitirVentajasDesventajas: true,
             permitirIgnorarRestriccionesAlineamiento: true,
             maxFuentesHomebrewGeneralesPorPersonaje: 1,
@@ -1794,7 +1794,7 @@ describe('NuevoPersonajeComponent', () => {
             tiradaMinimaCaracteristica: null,
             nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
-            permitirHomebrewGeneral: false,
+            permitirHomebrewGeneral: true,
             permitirVentajasDesventajas: true,
             permitirIgnorarRestriccionesAlineamiento: true,
             maxFuentesHomebrewGeneralesPorPersonaje: max,
@@ -2273,7 +2273,7 @@ describe('NuevoPersonajeComponent', () => {
             tiradaMinimaCaracteristica: 3,
             nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: 1,
-            permitirHomebrewGeneral: false,
+            permitirHomebrewGeneral: true,
             permitirVentajasDesventajas: false,
             permitirIgnorarRestriccionesAlineamiento: false,
             maxFuentesHomebrewGeneralesPorPersonaje: 1,
@@ -3023,7 +3023,7 @@ describe('NuevoPersonajeComponent', () => {
             tiradaMinimaCaracteristica: null,
             nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
-            permitirHomebrewGeneral: false,
+            permitirHomebrewGeneral: true,
             permitirVentajasDesventajas: true,
             permitirIgnorarRestriccionesAlineamiento: true,
             maxFuentesHomebrewGeneralesPorPersonaje: 1,
@@ -3379,7 +3379,7 @@ describe('NuevoPersonajeComponent', () => {
             tiradaMinimaCaracteristica: null,
             nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
-            permitirHomebrewGeneral: false,
+            permitirHomebrewGeneral: true,
             permitirVentajasDesventajas: true,
             permitirIgnorarRestriccionesAlineamiento: true,
             maxFuentesHomebrewGeneralesPorPersonaje: 1,
@@ -3810,7 +3810,7 @@ describe('NuevoPersonajeComponent', () => {
             tiradaMinimaCaracteristica: 3,
             nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: 1,
-            permitirHomebrewGeneral: false,
+            permitirHomebrewGeneral: true,
             permitirVentajasDesventajas: false,
             permitirIgnorarRestriccionesAlineamiento: false,
             maxFuentesHomebrewGeneralesPorPersonaje: 1,
@@ -5854,7 +5854,7 @@ describe('NuevoPersonajeComponent', () => {
             tiradaMinimaCaracteristica: null,
             nepMaximoPersonajeNuevo: null,
             maxTablasDadosCaracteristicas: null,
-            permitirHomebrewGeneral: false,
+            permitirHomebrewGeneral: true,
             permitirVentajasDesventajas: true,
             permitirIgnorarRestriccionesAlineamiento: true,
             maxFuentesHomebrewGeneralesPorPersonaje: 1,
@@ -6215,7 +6215,7 @@ describe('NuevoPersonajeComponent', () => {
         expect(`${(swalSpy.calls.mostRecent().args[0] as any).title ?? ''}`).toContain('La campaña bloquea la finalización');
     });
 
-    it('trata permitirHomebrewGeneral con límite legacy 0 como campaña permisiva', () => {
+    it('con homebrew general y límite 0 no cabe ninguna fuente, como en la API (campanas.md, los tres modos)', () => {
         component.Personaje.Campana = 'Campaña A';
         component.Personaje.Trama = 'Trama base';
         component.Personaje.Subtrama = 'Subtrama base';
@@ -6232,10 +6232,8 @@ describe('NuevoPersonajeComponent', () => {
 
         const validation = (component as any).getCampaignCreationValidation();
 
-        expect(validation.mode).toBe('unrestricted');
-        expect(validation.maxSources).toBeNull();
-        expect(validation.blocksExistingHomebrew).toBeFalse();
-        expect(validation.blockers).toEqual([]);
+        expect(validation.mode).toBe('forbidden');
+        expect(validation.blocksExistingHomebrew).toBeTrue();
     });
 
     it('finalizarPersonajeCompleto bloquea el POST si compliance exige aceptar normas de creación', async () => {

@@ -240,6 +240,18 @@ describe('SesionPanelComponent', () => {
             expect(tiendaAbierta()!.soloOficial).toBeTrue();
         });
 
+        it('un PNJ del máster compra sin la política de su campaña: la ficha trae la campaña y `politicaCompra` null', async () => {
+            // Propietario, 2026-11-12: como en la tienda de la creación, que no aplica la política a un PNJ.
+            crear({ pj: ficha(0, { idCampana: 2, politicaCompra: null }), clases: [mago] });
+            expect(component.pj.IdCampana).toBe(2);
+            expect(boton('Conjuro al libro')).toBeDefined();
+
+            component.elegirTipo('comprar');
+            await estable();
+            expect(tiendaAbierta()!.politica).toEqual(POLITICA_TIENDA_LIBRE);
+            expect(tiendaAbierta()!.soloOficial).toBeFalse();
+        });
+
         it('«Conjuro al libro» sale solo si la campaña deja copiar conjuros, y sin homebrew ofrece solo los oficiales', () => {
             crear({ pj: ficha(0, { idCampana: 2, politicaCompra: estricta }), clases: [mago] });
             expect(boton('Conjuro al libro')).toBeUndefined();

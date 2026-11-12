@@ -102,20 +102,34 @@ describe('CampanaService', () => {
         }));
     });
 
-    it('createCampaign limpia el límite de fuentes cuando se permite homebrew general', async () => {
+    it('createCampaign manda «hasta N fuentes» como true + N y limpia el límite sin homebrew (campanas.md)', async () => {
         httpMock.post.and.returnValue(of({ idCampana: 7, nombre: 'Campaña nueva' }));
 
         await service.createCampaign({
             nombre: 'Campaña nueva',
             politicaCreacion: {
                 permitirHomebrewGeneral: true,
-                maxFuentesHomebrewGeneralesPorPersonaje: 0,
+                maxFuentesHomebrewGeneralesPorPersonaje: 2,
             },
         });
-
         expect(httpMock.post.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({
             politicaCreacion: jasmine.objectContaining({
                 permitirHomebrewGeneral: true,
+                maxFuentesHomebrewGeneralesPorPersonaje: 2,
+            }),
+        }));
+
+        // Con `false`, el límite no cuenta en la API: no se manda.
+        await service.createCampaign({
+            nombre: 'Campaña nueva',
+            politicaCreacion: {
+                permitirHomebrewGeneral: false,
+                maxFuentesHomebrewGeneralesPorPersonaje: 3,
+            },
+        });
+        expect(httpMock.post.calls.mostRecent().args[1]).toEqual(jasmine.objectContaining({
+            politicaCreacion: jasmine.objectContaining({
+                permitirHomebrewGeneral: false,
                 maxFuentesHomebrewGeneralesPorPersonaje: null,
             }),
         }));
@@ -1061,29 +1075,34 @@ describe('CampanaService', () => {
         expect(detail.tramas[0].subtramas[0].visibleParaJugadores).toBeFalse();
     });
 
-    it('getCampaignDetail normaliza política permisiva legacy con límite 0 como sin límite', async () => {
+    it('getCampaignDetail lee el límite de fuentes solo con homebrew general (campanas.md, los tres modos)', async () => {
+        const politicas: Record<string, any> = {
+            '7': { permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: 2 },
+            '8': { permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 2 },
+        };
         httpMock.get.and.callFake((url: string) => {
-            if (url.endsWith('campanas/7'))
+            const campana = /campanas\/(\d+)$/.exec(url)?.[1];
+            if (campana)
                 return of({
-                    idCampana: 7,
+                    idCampana: Number(campana),
                     nombre: 'Campaña visible',
                     campaignRole: 'master',
                     membershipStatus: 'activo',
-                    politicaCreacion: {
-                        permitirHomebrewGeneral: true,
-                        maxFuentesHomebrewGeneralesPorPersonaje: 0,
-                    },
+                    politicaCreacion: politicas[campana],
                     tramas: [],
                 });
-            if (url.endsWith('campanas/7/jugadores'))
+            if (/campanas\/\d+\/jugadores$/.test(url))
                 return of([]);
             throw new Error(`URL inesperada: ${url}`);
         });
 
-        const detail = await service.getCampaignDetail(7, true);
+        const limitada = await service.getCampaignDetail(7, true);
+        expect(limitada.politicaCreacion.permitirHomebrewGeneral).toBeTrue();
+        expect(limitada.politicaCreacion.maxFuentesHomebrewGeneralesPorPersonaje).toBe(2);
 
-        expect(detail.politicaCreacion.permitirHomebrewGeneral).toBeTrue();
-        expect(detail.politicaCreacion.maxFuentesHomebrewGeneralesPorPersonaje).toBeNull();
+        const sinHomebrew = await service.getCampaignDetail(8, true);
+        expect(sinHomebrew.politicaCreacion.permitirHomebrewGeneral).toBeFalse();
+        expect(sinHomebrew.politicaCreacion.maxFuentesHomebrewGeneralesPorPersonaje).toBeNull();
     });
 
     it('getCampaignDetail acepta el shape canónico idCampana/nombre para jugador sin master activo', async () => {

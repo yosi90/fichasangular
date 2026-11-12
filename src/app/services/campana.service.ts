@@ -1142,9 +1142,10 @@ export class CampanaService {
             permitirHomebrewGeneral,
             permitirVentajasDesventajas: toBoolean(raw?.permitirVentajasDesventajas, true),
             permitirIgnorarRestriccionesAlineamiento: toBoolean(raw?.permitirIgnorarRestriccionesAlineamiento, false),
+            // El límite solo cuenta con homebrew general (`campanas.md`, «Los tres modos de homebrew»).
             maxFuentesHomebrewGeneralesPorPersonaje: permitirHomebrewGeneral
-                ? null
-                : this.normalizeNullableHomebrewSourceLimit(raw?.maxFuentesHomebrewGeneralesPorPersonaje),
+                ? this.normalizeNullableHomebrewSourceLimit(raw?.maxFuentesHomebrewGeneralesPorPersonaje)
+                : null,
             permitirObjetosMagicos: toBoolean(raw?.permitirObjetosMagicos, true),
             permitirObjetosAMedida: toBoolean(raw?.permitirObjetosAMedida, true),
             precioMaximoPorObjeto: normalizarPrecioMaximoPorPieza(raw?.precioMaximoPorObjeto),
@@ -1263,7 +1264,7 @@ export class CampanaService {
             payload.permitirVentajasDesventajas = toBoolean(raw.permitirVentajasDesventajas, true);
         if ('permitirIgnorarRestriccionesAlineamiento' in raw)
             payload.permitirIgnorarRestriccionesAlineamiento = toBoolean(raw.permitirIgnorarRestriccionesAlineamiento, false);
-        if (payload.permitirHomebrewGeneral === true) {
+        if (payload.permitirHomebrewGeneral === false) {
             payload.maxFuentesHomebrewGeneralesPorPersonaje = null;
         } else if ('maxFuentesHomebrewGeneralesPorPersonaje' in raw) {
             payload.maxFuentesHomebrewGeneralesPorPersonaje = this.normalizeNullableHomebrewSourceLimit(raw.maxFuentesHomebrewGeneralesPorPersonaje);

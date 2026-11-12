@@ -1314,7 +1314,7 @@ describe('UserProfileComponent', () => {
             permitirHomebrewGeneral: false,
             permitirVentajasDesventajas: false,
             permitirIgnorarRestriccionesAlineamiento: false,
-            maxFuentesHomebrewGeneralesPorPersonaje: 0,
+            maxFuentesHomebrewGeneralesPorPersonaje: null,
         }));
         expect(component.gestion.campaignWorkspaceMode).toBe('create');
         expect(component.gestion.campaignHomebrewMode).toBe('none');
@@ -1349,11 +1349,62 @@ describe('UserProfileComponent', () => {
             politicaCreacion: jasmine.objectContaining({
                 tiradaMinimaCaracteristica: 3,
                 maxTablasDadosCaracteristicas: 1,
-                permitirHomebrewGeneral: false,
+                permitirHomebrewGeneral: true,
                 maxFuentesHomebrewGeneralesPorPersonaje: 1,
             }),
         }));
     }));
+
+    describe('los tres modos de homebrew, como el contrato (campanas.md)', () => {
+        const politicaGuardada = (modo: 'none' | 'general' | 'limitado', limite: number | null = null) => {
+            component.gestion.seleccionarNuevaCampana();
+            component.gestion.setCampaignHomebrewMode(modo);
+            if (limite !== null)
+                component.gestion.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = limite;
+            const politica = (component.gestion as any).buildCampaignPolicyForSave();
+            return [politica.permitirHomebrewGeneral, politica.maxFuentesHomebrewGeneralesPorPersonaje];
+        };
+
+        it('guarda «Sin homebrew» como false, «Solo N fuentes» como true + N y «En general» como true sin límite', fakeAsync(() => {
+            fixture.detectChanges();
+            tick();
+
+            expect(politicaGuardada('none')).toEqual([false, null]);
+            expect(politicaGuardada('limitado', 3)).toEqual([true, 3]);
+            expect(politicaGuardada('general')).toEqual([true, null]);
+        }));
+
+        it('vaciar el número de «Solo N fuentes» no cambia de modo, y se guarda con 1 como mínimo', fakeAsync(() => {
+            fixture.detectChanges();
+            tick();
+
+            component.gestion.seleccionarNuevaCampana();
+            component.gestion.setCampaignHomebrewMode('limitado');
+            component.gestion.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje = null;
+            expect(component.gestion.campaignHomebrewMode).toBe('limitado');
+            expect(component.gestion.showCampaignHomebrewLimitInput).toBeTrue();
+            expect(politicaGuardada('limitado', 0)).toEqual([true, 1]);
+        }));
+
+        it('lee una campaña con true + N como «Solo N fuentes» y una con false (traiga el límite que traiga) como sin homebrew', fakeAsync(() => {
+            fixture.detectChanges();
+            tick();
+            const sincronizar = (politica: Record<string, any>) =>
+                (component.gestion as any).syncCampaignEditorFromDetail(buildCampaignDetail({ politicaCreacion: politica }));
+
+            sincronizar({ permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: 2 });
+            expect(component.gestion.campaignHomebrewMode).toBe('limitado');
+            expect(component.gestion.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje).toBe(2);
+
+            sincronizar({ permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: null });
+            expect(component.gestion.campaignHomebrewMode).toBe('general');
+
+            // Lo que guardaba antes el editor como «limitado»: la API no deja nada homebrew, y el editor lo enseña así.
+            sincronizar({ permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 2 });
+            expect(component.gestion.campaignHomebrewMode).toBe('none');
+            expect(component.gestion.campaignCreatePolicyDraft.maxFuentesHomebrewGeneralesPorPersonaje).toBeNull();
+        }));
+    });
 
     it('bloquea crear campaña si el nombre tiene menos de 5 caracteres', fakeAsync(() => {
         const campanaSvc = TestBed.inject(CampanaService) as jasmine.SpyObj<CampanaService>;
