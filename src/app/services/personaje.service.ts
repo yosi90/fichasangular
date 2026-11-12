@@ -1061,10 +1061,8 @@ export class PersonajeService {
                 Caracteristica_lanzamiento: toNullableText(clase?.caracteristicaLanzamiento),
                 // Las cifras de su magia, hechas por la API (desde 2026-10-26).
                 Nivel_lanzador: clase?.nivelLanzador ?? null,
-                // Lo que le suman sus rasgos (krau, desde el 2026-11-12).
-                Bonificadores_nivel_lanzador: (Array.isArray(clase?.bonificadoresNivelLanzador) ? clase.bonificadoresNivelLanzador : [])
-                    .map((parte: any) => ({ origen: toText(parte?.origen).trim(), valor: toNumber(parte?.valor) }))
-                    .filter((parte: { valor: number; }) => parte.valor !== 0),
+                // Lo que le suman sus rasgos (krau, desde el 2026-11-12); solo si le suman algo.
+                ...bonificadoresNivelLanzador(clase?.bonificadoresNivelLanzador),
                 Conjuros_diarios: Array.isArray(clase?.conjurosDiarios) ? clase.conjurosDiarios : null,
                 Puntos_poder: clase?.puntosPoder ?? null,
                 // Solo en la clase de su lanzamiento racial.
@@ -1327,6 +1325,14 @@ function normalizarCategoriaEdadPersonaje(raw: any): CategoriaEdadPersonaje | nu
         jugable: toBoolean(raw?.jugable),
         vd: toNumberOrNull(raw?.vd),
     };
+}
+
+/** `Bonificadores_nivel_lanzador` de una clase de la ficha (lo que le suman sus rasgos: krau), solo si hay alguno. */
+function bonificadoresNivelLanzador(raw: unknown): { Bonificadores_nivel_lanzador?: { origen: string; valor: number; }[]; } {
+    const partes = (Array.isArray(raw) ? raw : [])
+        .map((parte: any) => ({ origen: toText(parte?.origen).trim(), valor: toNumber(parte?.valor) }))
+        .filter((parte) => parte.valor !== 0);
+    return partes.length > 0 ? { Bonificadores_nivel_lanzador: partes } : {};
 }
 
 /** `lanzamientoRacial` de la ficha (lanza como la clase de su raza), o `null`. */
