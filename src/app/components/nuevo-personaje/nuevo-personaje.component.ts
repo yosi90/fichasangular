@@ -3889,10 +3889,10 @@ export class NuevoPersonajeComponent {
 
     /**
      * Al terminar, antes de las tiradas de PG: lo que la raza mutada pide del personaje, comprobado por la API con todo lo
-     * que ya tiene (`POST /razas/{id}/requisitos-del-personaje`: el alineamiento, las características, el nivel, los DG y
-     * las clases, las mismas que manda el alta), para avisar como del alineamiento en vez de enterarse al guardar. Si algo
-     * no se cumple, avisa con sus frases y no sigue; el aviso de Básicos se queda con lo comprobado. Si la API no
-     * responde, sigue: el alta lo comprueba igual al guardar.
+     * que ya tiene (`POST /razas/{id}/requisitos-del-personaje`: el alineamiento, las características, el nivel, los DG,
+     * las clases, el NEP, las dotes y el nivel de lanzador, con lo mismo que manda el alta), para avisar como del
+     * alineamiento en vez de enterarse al guardar. Si algo no se cumple, avisa con sus frases y no sigue; el aviso de
+     * Básicos se queda con lo comprobado. Si la API no responde, sigue: el alta lo comprueba igual al guardar.
      */
     private async comprobarRequisitosMutacionAntesDeGuardar(): Promise<boolean> {
         const elegidas = this.razaYBaseRequisitos;
@@ -3902,7 +3902,8 @@ export class NuevoPersonajeComponent {
         try {
             requisitos = await this.razaSvc.comprobarRequisitosDelPersonaje(
                 elegidas.idRaza,
-                this.personajeSvc.consultaRequisitosMutacion(this.Personaje, elegidas.idBase, this.resolverIdAlineamientoCreacion())
+                this.personajeSvc.consultaRequisitosMutacion(this.Personaje, elegidas.idBase, this.resolverIdAlineamientoCreacion(),
+                    this.nuevoPSvc.getProgresionLanzadorPersistible())
             );
         } catch {
             return true;

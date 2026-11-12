@@ -49,6 +49,10 @@ const MODELO_MUTACION: ModeloMutacion = {
         tipoMutacion('caracteristica', 'Característica mínima', 'personaje', 'caracteristicas', { referencia: true, cantidad: true }),
         tipoMutacion('condicion_master', 'Condición que confirma el máster', 'personaje', null, { texto: true }),
         tipoMutacion('dgs_raciales_maximos', 'DG raciales máximos de la raza base', 'raza_base', null, { cantidad: true }),
+        // Los del personaje que quedaban fuera de la fase 3 (R6 y R9, 2026-11-12): el NEP, una dote y el nivel de lanzador.
+        tipoMutacion('nep_max', 'NEP máximo', 'personaje', null, { cantidad: true }),
+        tipoMutacion('dote', 'Dote', 'personaje', 'dotes', { referencia: true }),
+        tipoMutacion('nivel_lanzador', 'Nivel de lanzador', 'personaje', null, { cantidad: true }),
     ],
     Campos: [
         { Campo: 'Tamano', Nombre: 'Tamaño', Clase: 'tamano', Por_defecto: 'sustituir_si_hay',
@@ -555,11 +559,34 @@ describe('NuevaRazaComponent', () => {
             ['mutacion.caracteristica', 'Característica mínima'],
             ['mutacion.condicion_master', 'Condición que confirma el máster'],
             ['mutacion.dgs_raciales_maximos', 'DG raciales máximos de la raza base'],
+            ['mutacion.nep_max', 'NEP máximo'],
+            ['mutacion.dote', 'Dote'],
+            ['mutacion.nivel_lanzador', 'Nivel de lanzador'],
         ]);
         // La referencia sale del catálogo que dice el tipo: los pequeños, del modelo; los grandes, de los del formulario.
         const contexto = component.prerrequisitosMutacionCatalogContext;
         expect(contexto.getCatalog('mutacion.actitud_requerido')).toEqual([{ id: 1, nombre: 'Legal' }, { id: 4, nombre: 'Bueno' }]);
         expect(contexto.getCatalog('mutacion.tipo_criatura').map((item) => item.nombre)).toEqual(['Gigante', 'Humanoide']);
+    });
+
+    it('el NEP máximo, una dote (del catálogo de dotes del formulario) y el nivel de lanzador, como los demás tipos', () => {
+        component.dotes = [{ Id: 30, Nombre: 'Alerta' }, { Id: 31, Nombre: 'Soltura con un arma' }] as any;
+        expect(component.prerrequisitosMutacionCatalogContext.getCatalog('mutacion.dote'))
+            .toEqual([{ id: 30, nombre: 'Alerta' }, { id: 31, nombre: 'Soltura con un arma' }]);
+        component.form.patchValue({ mutada: true });
+        component.prerrequisitosMutacionSeleccionados = ['mutacion.nep_max', 'mutacion.dote', 'mutacion.nivel_lanzador'];
+        component.prerrequisitosMutacionRows = [
+            { ...prerreqRow('nep_max', 0), valor: 15 },
+            prerreqRow('dote', 30),
+            { ...prerreqRow('nivel_lanzador', 0), valor: 11 },
+        ];
+
+        expect((component as any).validarReglasDominio()).toBeNull();
+        expect(component.buildPayload().prerrequisitos_mutacion).toEqual([
+            { tipo: 'nep_max', cantidad: 15 },
+            { tipo: 'dote', id_referencia: 30 },
+            { tipo: 'nivel_lanzador', cantidad: 11 },
+        ]);
     });
 
     it('manda cada tipo con lo que pide: la referencia, la cantidad o el texto', () => {

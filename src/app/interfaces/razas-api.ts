@@ -285,6 +285,13 @@ export interface RequisitosDelPersonajeConsulta {
     /** `{ fuerza: 16, … }`: las puntuaciones que manda el alta. */
     caracteristicas: Record<string, number>;
     clases: { idClase: number; nivel: number; }[];
+    /** Las plantillas y los subtipos del alta (`colecciones.plantillas`, `colecciones.subtipos`): cuentan en su NEP. */
+    plantillas: number[];
+    subtipos: number[];
+    /** Los ids de sus dotes, sin repetir (las de `colecciones.dotes` del alta). */
+    dotes: number[];
+    /** La progresión de lanzador del alta: con las clases, su nivel de lanzador. */
+    progresionLanzador: { selecciones: { idClaseObjetivo: number; }[]; } | null;
 }
 
 /**

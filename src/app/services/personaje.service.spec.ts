@@ -8,6 +8,7 @@ import { AVISO_REGLAS_IGNORADAS } from './utils/reglas-ignoradas';
 import { simularTokenApi } from 'src/testing/simular-token-api';
 import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
 import { textoBonosHabilidad, totalHabilidad } from './utils/personaje-totales';
+import { toDoteContextualArray } from './utils/dote-mapper';
 
 function crearServicio(httpMock: any, toasts?: AppToastService): PersonajeService {
     return new PersonajeService(
@@ -695,7 +696,7 @@ describe('PersonajeService', () => {
         expect(pnj.personaje.idPasoEdad).toBe(15);
     });
 
-    it('la consulta de lo que pide la raza mutada lleva las mismas características y clases que el alta', () => {
+    it('la consulta de lo que pide la raza mutada lleva lo mismo que el alta', () => {
         const service = crearServicio({ post: jasmine.createSpy('post') } as any);
         const pj = crearPersonajeMock();
         pj.Fuerza = 16;
@@ -705,16 +706,30 @@ describe('PersonajeService', () => {
             { Id: 9, Nombre: 'Guerrero', Nivel: 1 },
             { Id: 3, Nombre: 'Sin niveles', Nivel: 0 },
         ];
-        const payload = service.construirPayloadCreacionDesdePersonaje(pj, { idCampana: 1, idTrama: 1, idSubtrama: 1 });
+        // Dos veces la misma dote (con otro extra): la API la pide una vez.
+        const dotes = toDoteContextualArray((pj as any).DotesContextuales);
+        (pj as any).DotesContextuales = [...dotes, { ...dotes[0], Contexto: { ...dotes[0].Contexto, Id_extra: 7 } }];
+        (pj as any).Plantillas = [{ Id: 70, Nombre: 'Licántropo' }];
+        (pj as any).Subtipos = [{ Id: 4, Nombre: 'Fuego' }];
+        const progresion = { selecciones: [{ idClaseAplicada: 30, nivelClaseAplicado: 1, indiceAumento: 1, idClaseObjetivo: 9 }] };
+        const payload = service.construirPayloadCreacionDesdePersonaje(pj, { idCampana: 1, idTrama: 1, idSubtrama: 1 }, null, progresion);
 
-        const consulta = service.consultaRequisitosMutacion(pj, 25, 3);
+        const consulta = service.consultaRequisitosMutacion(pj, 25, 3, progresion);
 
         expect(consulta).toEqual({
             idRazaBase: 25,
             idAlineamiento: 3,
             caracteristicas: Object.fromEntries(Object.entries(payload.caracteristicas).map(([nombre, bloque]) => [nombre, bloque.valor])),
             clases: payload.colecciones?.clases ?? [],
+            plantillas: (payload.colecciones?.plantillas ?? []).map((p) => p.idPlantilla),
+            subtipos: (payload.colecciones?.subtipos ?? []).map((s) => s.idSubtipo),
+            dotes: [...new Set((payload.colecciones?.dotes ?? []).map((d) => d.idDote))],
+            progresionLanzador: { selecciones: [{ idClaseObjetivo: 9 }] },
         });
+        expect(consulta.plantillas).toEqual([70]);
+        expect(consulta.subtipos).toEqual([4]);
+        expect(consulta.dotes.length).toBe(new Set(dotes.map((d) => d.Dote.Id)).size);
+        expect(service.consultaRequisitosMutacion(pj, 25, 3).progresionLanzador).toBeNull();
         expect(consulta.caracteristicas['fuerza']).toBe(16);
         expect(consulta.caracteristicas['inteligencia']).toBe(2);
         expect(consulta.clases).toEqual([{ idClase: 482, nivel: 8 }, { idClase: 9, nivel: 1 }]);
