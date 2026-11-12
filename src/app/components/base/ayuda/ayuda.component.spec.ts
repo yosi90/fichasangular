@@ -83,7 +83,13 @@ describe('AyudaComponent', () => {
         const normas = elemento().querySelector('#legal-normas') as HTMLElement;
         expect(normas.querySelector('.legal-normas__version')?.textContent).toContain('versión 2');
         expect(normas.querySelector('app-texto-manual')?.textContent).toContain('Crea tus personajes.');
-        expect(elemento().querySelector('#legal-medicion')?.textContent).toContain('yosiftadisticas:excluir');
+        const medicion = (elemento().querySelector('#legal-medicion')?.textContent ?? '').replace(/\s+/g, ' ');
+        expect(medicion).toContain('yosiftadisticas:excluir');
+        // La medición, en la versión 4 de estadisticas-kit/POLITICA_DE_COOKIES.md: Cloudflare (la 3) y el responsable (la 4).
+        expect(medicion).toContain('a través de Cloudflare, que conecta los servidores de Yosiftware con Internet');
+        expect(medicion).toContain('El responsable es Antonio Josafat González Correa, titular de Yosiftware.');
+        expect(medicion).toContain('Para que ni siquiera lo descargue, bloquea con una extensión');
+        expect(medicion).not.toContain('El responsable es Yosiftware;');
         http.verify();
     });
 
