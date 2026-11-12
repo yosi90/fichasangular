@@ -80,6 +80,7 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
         expect(cuerpos.some((c) => c.racial.cd_dg_totales === true)).toBeTrue();
         expect(cuerpos.some((c) => (c.cuenta_como ?? []).some((f) => 'id_raza' in f))).toBeTrue();
         expect(cuerpos.some((c) => (c.cuenta_como ?? []).some((f) => 'id_tipo' in f))).toBeTrue();
+        expect(cuerpos.some((c) => (c.bonificadores_condicionales ?? []).some((b) => b.condicion === '' && b.contra.length === 0))).toBeTrue();
     });
 
     it('la elección de un grupo opcional, la CD con todos los DG y el «cuenta como» se cambian y se mandan', () => {
