@@ -10,8 +10,8 @@ import { Observable, map } from "rxjs";
 import { environment } from "src/environments/environment";
 import { ArmaDetalle } from "../interfaces/arma";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
-import { normalizeEquipoRef, normalizeTextoEquipo } from 'src/app/services/utils/equipo-mapper';
+import { idNombre, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeTextoEquipo } from 'src/app/services/utils/equipo-mapper';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
@@ -24,17 +24,17 @@ export function normalizeArma(raw: any): ArmaDetalle {
         Dano: toNullableText(raw?.Dano),
         Dano_pequeno: toNullableText(raw?.Dano_pequeno),
         Dano_mediano: toNullableText(raw?.Dano_mediano),
-        Tipo_dano: normalizeEquipoRef(raw?.Tipo_dano) ?? { Id: 0, Nombre: '' },
-        Tipo_arma: normalizeEquipoRef(raw?.Tipo_arma),
-        Manejo: normalizeEquipoRef(raw?.Manejo),
+        Tipo_dano: idNombre(raw?.Tipo_dano, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' },
+        Tipo_arma: idNombre(raw?.Tipo_arma, { filtro: 'conIdONombre' }),
+        Manejo: idNombre(raw?.Manejo, { filtro: 'conIdONombre' }),
         A_distancia: toBoolean(raw?.A_distancia),
         Arrojadiza: toBoolean(raw?.Arrojadiza),
         Doble: toBoolean(raw?.Doble),
         Alcance: toNumberOrNull(raw?.Alcance),
-        Municion: normalizeEquipoRef(raw?.Municion),
+        Municion: idNombre(raw?.Municion, { filtro: 'conIdONombre' }),
         Precio: toNumber(raw?.Precio),
-        Material: normalizeEquipoRef(raw?.Material),
-        Tamano: normalizeEquipoRef(raw?.Tamano) ?? { Id: 0, Nombre: '' },
+        Material: idNombre(raw?.Material, { filtro: 'conIdONombre' }),
+        Tamano: idNombre(raw?.Tamano, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' },
         Peso: toNumber(raw?.Peso),
         Critico: toNullableText(raw?.Critico),
         Critico_rango: toNumberOrNull(raw?.Critico_rango),

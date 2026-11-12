@@ -19,19 +19,12 @@ import {
     TextoEquipo,
 } from 'src/app/interfaces/equipo';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
-import { idNombres, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { idNombre, idNombres, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 
 /*
  * Los mappers del modelo de objetos, equipo y armas (`docs/publica/endpoints/catalogos.md`, «Equipo»). Las cachés
  * nuevas de la RTDB copian la respuesta de la API tal cual, así que el mismo mapper vale para las dos.
  */
-
-/** Una referencia `{ Id, Nombre }`; `null` si no viene. */
-export function normalizeEquipoRef(raw: any): EquipoRef | null {
-    if (!raw || typeof raw !== 'object')
-        return null;
-    return { Id: toNumber(raw.Id), Nombre: toText(raw.Nombre) };
-}
 
 /** Las referencias de una lista, sin las que no vienen. */
 export function normalizeEquipoRefs(raw: any): EquipoRef[] {
@@ -58,7 +51,7 @@ export function normalizeTextoEquipo(raw: any): TextoEquipo {
 }
 
 function normalizeTipoBonificador(raw: any): EquipoTipoBonificador | null {
-    const ref = normalizeEquipoRef(raw);
+    const ref = idNombre(raw, { filtro: 'conIdONombre' });
     return ref ? { ...ref, Apila: toBoolean(raw?.Apila) } : null;
 }
 
@@ -68,25 +61,25 @@ function normalizeCategoria(raw: any): CategoriaObjeto {
 }
 
 function normalizeTipoObjeto(raw: any): EquipoTipoObjeto | null {
-    const ref = normalizeEquipoRef(raw);
+    const ref = idNombre(raw, { filtro: 'conIdONombre' });
     return ref ? { ...ref, Categoria: normalizeCategoria(raw?.Categoria) } : null;
 }
 
 export function normalizeModificadorEstructurado(raw: any): ModificadorEstructurado {
     return {
-        Objetivo: normalizeEquipoRef(raw?.Objetivo),
+        Objetivo: idNombre(raw?.Objetivo, { filtro: 'conIdONombre' }),
         Tipo_bonificador: normalizeTipoBonificador(raw?.Tipo_bonificador),
         Valor: toNumber(raw?.Valor),
-        Caracteristica: normalizeEquipoRef(raw?.Caracteristica),
-        Habilidad: normalizeEquipoRef(raw?.Habilidad),
-        Tipo_dano: normalizeEquipoRef(raw?.Tipo_dano),
+        Caracteristica: idNombre(raw?.Caracteristica, { filtro: 'conIdONombre' }),
+        Habilidad: idNombre(raw?.Habilidad, { filtro: 'conIdONombre' }),
+        Tipo_dano: idNombre(raw?.Tipo_dano, { filtro: 'conIdONombre' }),
         Condicion: toNullableText(raw?.Condicion),
     };
 }
 
 function normalizeAura(raw: any): EquipoAura {
     return {
-        Intensidad: normalizeEquipoRef(raw?.Intensidad),
+        Intensidad: idNombre(raw?.Intensidad, { filtro: 'conIdONombre' }),
         Escuelas: normalizeEquipoRefs(raw?.Escuelas),
     };
 }
@@ -124,7 +117,7 @@ export function normalizeEquipoCatalogos(raw: any): EquipoCatalogos {
             .filter((item): item is EquipoTipoBonificador => item !== null),
         Objetivos_modificador: toArray<any>(raw?.Objetivos_modificador)
             .map((item) => {
-                const ref = normalizeEquipoRef(item);
+                const ref = idNombre(item, { filtro: 'conIdONombre' });
                 return ref ? {
                     ...ref,
                     Lista_del_rasgo: LISTAS_DEL_RASGO.find((lista) => lista === item?.Lista_del_rasgo) ?? null,
@@ -136,12 +129,12 @@ export function normalizeEquipoCatalogos(raw: any): EquipoCatalogos {
         Empunaduras: refs('Empunaduras'),
         Aplicaciones_material: toArray<any>(raw?.Aplicaciones_material)
             .map((item) => {
-                const ref = normalizeEquipoRef(item);
+                const ref = idNombre(item, { filtro: 'conIdONombre' });
                 return ref ? {
                     ...ref,
                     Piezas: toArray<any>(item?.Piezas).filter((pieza): pieza is PiezaMaterial => PIEZAS_MATERIAL.includes(pieza)),
-                    Manejo: normalizeEquipoRef(item?.Manejo),
-                    Peso_armadura: normalizeEquipoRef(item?.Peso_armadura),
+                    Manejo: idNombre(item?.Manejo, { filtro: 'conIdONombre' }),
+                    Peso_armadura: idNombre(item?.Peso_armadura, { filtro: 'conIdONombre' }),
                 } : null;
             })
             .filter((item): item is AplicacionMaterial => item !== null),
@@ -157,7 +150,7 @@ export function normalizeEquipoCatalogos(raw: any): EquipoCatalogos {
             .map((item: any) => ({ Nivel: toNumber(item?.Nivel), Po: toNumber(item?.Po), Po_pnj: toNumberOrNull(item?.Po_pnj) }))
             .sort((a, b) => a.Nivel - b.Nivel),
         Oro_inicial_por_clase: toArray(raw?.Oro_inicial_por_clase).map((item: any) => ({
-            Clase: normalizeEquipoRef(item?.Clase) ?? { Id: 0, Nombre: '' },
+            Clase: idNombre(item?.Clase, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' },
             Dados: toText(item?.Dados),
             Multiplicador: toNumber(item?.Multiplicador, 1),
             Maximo: toNumber(item?.Maximo),
@@ -183,7 +176,7 @@ export function normalizeMaterial(raw: any): MaterialDetalle {
             Dano_mod: toNumberOrNull(raw?.Efectos?.Dano_mod),
         },
         Costes: toArray(raw?.Costes).map((coste: any) => ({
-            Aplicacion: normalizeEquipoRef(coste?.Aplicacion) ?? { Id: 0, Nombre: '' },
+            Aplicacion: idNombre(coste?.Aplicacion, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' },
             Coste: toNumberOrNull(coste?.Coste),
             Coste_por_libra: toNumberOrNull(coste?.Coste_por_libra),
             Multiplicador_precio: toNumberOrNull(coste?.Multiplicador_precio),
@@ -233,11 +226,11 @@ export function normalizeEncantamiento(raw: any): EncantamientoDetalle {
                 Opcional: Math.max(0, toNumber(conjuro?.Opcional)),
             })),
         },
-        Encantamiento_base: normalizeEquipoRef(raw?.Encantamiento_base),
+        Encantamiento_base: idNombre(raw?.Encantamiento_base, { filtro: 'conIdONombre' }),
         Es_plantilla: toBoolean(raw?.Es_plantilla),
         Danos: toArray(raw?.Danos).map((dano: any) => ({
             Dados: toText(dano?.Dados),
-            Tipo_dano: normalizeEquipoRef(dano?.Tipo_dano),
+            Tipo_dano: idNombre(dano?.Tipo_dano, { filtro: 'conIdONombre' }),
             Condicion: toNullableText(dano?.Condicion),
         })),
         Modificadores: toArray(raw?.Modificadores).map((mod: any) => normalizeModificadorEstructurado(mod)),
@@ -255,13 +248,13 @@ export function normalizeObjeto(raw: any): ObjetoDetalle {
         Precio: toNumberOrNull(raw?.Precio),
         Nivel_objeto: toNumberOrNull(raw?.Nivel_objeto),
         Peso: toNumberOrNull(raw?.Peso),
-        Ranura: normalizeEquipoRef(raw?.Ranura),
+        Ranura: idNombre(raw?.Ranura, { filtro: 'conIdONombre' }),
         Nivel_lanzador: toNumberOrNull(raw?.Nivel_lanzador),
         Aura: normalizeAura(raw?.Aura),
         Activaciones: toArray(raw?.Activaciones).map((activacion: any) => ({
             Id: toNumber(activacion?.Id),
             Nombre: toText(activacion?.Nombre),
-            Accion: normalizeEquipoRef(activacion?.Accion),
+            Accion: idNombre(activacion?.Accion, { filtro: 'conIdONombre' }),
         })),
         Cargas: toNumberOrNull(raw?.Cargas),
         Cargas_se_recuperan: toBoolean(raw?.Cargas_se_recuperan),
@@ -292,13 +285,13 @@ export function normalizeObjeto(raw: any): ObjetoDetalle {
             Usos_por_dia: toNumberOrNull(conjuro?.Usos_por_dia),
         })),
         Modificadores: toArray(raw?.Modificadores).map((mod: any) => normalizeModificadorEstructurado(mod)),
-        Conjunto: normalizeEquipoRef(raw?.Conjunto),
-        Monstruo: normalizeEquipoRef(raw?.Monstruo),
-        Arma_base: normalizeEquipoRef(raw?.Arma_base),
-        Armadura_base: normalizeEquipoRef(raw?.Armadura_base),
+        Conjunto: idNombre(raw?.Conjunto, { filtro: 'conIdONombre' }),
+        Monstruo: idNombre(raw?.Monstruo, { filtro: 'conIdONombre' }),
+        Arma_base: idNombre(raw?.Arma_base, { filtro: 'conIdONombre' }),
+        Armadura_base: idNombre(raw?.Armadura_base, { filtro: 'conIdONombre' }),
         Bonificador_mejora: toNumberOrNull(raw?.Bonificador_mejora),
         Bonificador_mejora_2: toNumberOrNull(raw?.Bonificador_mejora_2),
-        Material: normalizeEquipoRef(raw?.Material),
+        Material: idNombre(raw?.Material, { filtro: 'conIdONombre' }),
         Encantamientos: toArray(raw?.Encantamientos).map((item: any) => ({
             Id: toNumber(item?.Id),
             Nombre: toText(item?.Nombre),

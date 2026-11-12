@@ -1,6 +1,6 @@
 import { Conjuro } from "src/app/interfaces/conjuro";
 import { RacialBonificadorCondicional, RacialBonificadorContra, RacialCuentaComo, RacialDetalle, RacialProgresion, RacialProgresionVelocidad } from "src/app/interfaces/racial";
-import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, idNombre, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizarEsenciaRasgo } from './incarnum-mapper';
 
@@ -28,11 +28,11 @@ function pick(raw: any, ...keys: string[]): any {
  */
 export function camposEdadRacial(raw: any): Pick<RacialDetalle, 'Caracteristica_cd' | 'Cd_dg_totales' | 'Valor' | 'Categoria_edad' | 'Cd'> {
     return {
-        Caracteristica_cd: toRefIdNombre(raw?.Caracteristica_cd),
+        Caracteristica_cd: idNombre(raw?.Caracteristica_cd, { filtro: 'conIdONombre' }),
         // Si la CD cuenta todos los DG del personaje (caché `razas` 29); sin el campo, no.
         Cd_dg_totales: toBoolean(raw?.Cd_dg_totales),
         Valor: toNullableText(raw?.Valor),
-        Categoria_edad: toRefIdNombre(raw?.Categoria_edad),
+        Categoria_edad: idNombre(raw?.Categoria_edad, { filtro: 'conIdONombre' }),
         Cd: toNumberOrNull(raw?.Cd),
     };
 }
@@ -54,9 +54,9 @@ export function normalizarProgresionRacial(raw: any, normalizarGana: (gana: any)
                 Medida: fila.Medida === 'nivel' ? 'nivel' : 'dg',
                 Desde: Math.trunc(Number(fila.Desde)),
                 Gana: fila.Gana && typeof fila.Gana === 'object' ? { ...normalizarGana(fila.Gana), Progresion: [] } : null,
-                Sustituye: toRefIdNombre(fila.Sustituye),
-                Tipo_dote: toRefIdNombre(fila.Tipo_dote),
-                Velocidad: tipo ? { Tipo: tipo, Pies: toNumber(velocidad.Pies), Maniobrabilidad: toRefIdNombre(velocidad.Maniobrabilidad) } : null,
+                Sustituye: idNombre(fila.Sustituye, { filtro: 'conIdONombre' }),
+                Tipo_dote: idNombre(fila.Tipo_dote, { filtro: 'conIdONombre' }),
+                Velocidad: tipo ? { Tipo: tipo, Pies: toNumber(velocidad.Pies), Maniobrabilidad: idNombre(velocidad.Maniobrabilidad, { filtro: 'conIdONombre' }) } : null,
                 Valor: toNullableText(fila.Valor),
                 Elige_opcional: toNumber(fila.Elige_opcional) > 0 ? Math.trunc(toNumber(fila.Elige_opcional)) : null,
                 Frase: toText(fila.Frase),
@@ -99,11 +99,11 @@ export function normalizarContraBonificador(lista: unknown[]): RacialBonificador
  */
 export function normalizarBonificadoresCondicionales(raw: any): RacialBonificadorCondicional[] {
     return toArray(raw)
-        .filter((b: any) => b && typeof b === 'object' && toRefIdNombre(b.Objetivo) !== null && toNumber(b.Cantidad) !== 0)
+        .filter((b: any) => b && typeof b === 'object' && idNombre(b.Objetivo, { filtro: 'conIdONombre' }) !== null && toNumber(b.Cantidad) !== 0)
         .map((b: any) => ({
-            Objetivo: toRefIdNombre(b.Objetivo)!,
+            Objetivo: idNombre(b.Objetivo, { filtro: 'conIdONombre' })!,
             Tipo_bonificador: {
-                ...(toRefIdNombre(b.Tipo_bonificador) ?? { Id: 0, Nombre: '' }),
+                ...(idNombre(b.Tipo_bonificador, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' }),
                 Apila: toBoolean(b.Tipo_bonificador?.Apila),
                 // Sin la marca (una caché anterior), cuenta: el valor por defecto de la base.
                 Cuenta_toque: toBoolean(b.Tipo_bonificador?.Cuenta_toque ?? true),
@@ -112,7 +112,7 @@ export function normalizarBonificadoresCondicionales(raw: any): RacialBonificado
             Cantidad: toNumber(b.Cantidad),
             Condicion: toNullableText(b.Condicion),
             Contra: normalizarContraBonificador(toArray(b.Contra)),
-            Caracteristica: toRefIdNombre(b.Caracteristica),
+            Caracteristica: idNombre(b.Caracteristica, { filtro: 'conIdONombre' }),
             Cantidad_del_valor: toBoolean(b.Cantidad_del_valor),
             Frase: toText(b.Frase).trim(),
         }));

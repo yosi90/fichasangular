@@ -23,7 +23,7 @@ import {
 } from "../interfaces/clase";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { idNombres, normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { idNombre, idNombres, normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
@@ -170,12 +170,12 @@ function normalizeConjuros(raw: any): ClaseConjurosConfig {
         Listado_por_especial: toArray(raw?.Listado_por_especial).map((item: any) => ({
             ...normalizeConjuroDelListado(item),
             Especial: { Id: toNumber(item?.Especial?.Id), Nombre: toText(item?.Especial?.Nombre) },
-            Extra: normalizeRefIdNombre(item?.Extra),
+            Extra: idNombre(item?.Extra),
         })),
         Niveles_con_requisito: toArray(raw?.Niveles_con_requisito).map((item: any) => ({
             Nivel: toInt(item?.Nivel),
-            Especial: normalizeRefIdNombre(item?.Especial),
-            Dote: normalizeRefIdNombre(item?.Dote),
+            Especial: idNombre(item?.Especial),
+            Dote: idNombre(item?.Dote),
         })),
     };
 }
@@ -190,11 +190,6 @@ function normalizeConjuroDelListado(item: any): ClaseConjuroRef {
 }
 
 /** Un `{ Id, Nombre }` que puede no estar (`null`): sin id, `null`. */
-function normalizeRefIdNombre(raw: any): { Id: number; Nombre: string; } | null {
-    const id = toNumber(raw?.Id);
-    return id > 0 ? { Id: id, Nombre: toText(raw?.Nombre) } : null;
-}
-
 function normalizeEscuelaEspecialista(raw: any): ClaseEscuelaEspecialista | null {
     const id = toNumber(raw?.Id);
     return id > 0 ? { Id: id, Nombre: toText(raw?.Nombre), Nombre_esp: toText(raw?.Nombre_esp) } : null;
@@ -362,7 +357,7 @@ export function normalizeClase(raw: any): Clase {
         Progresion_obligatoria: toBoolean(raw?.Progresion_obligatoria),
         Sin_penalizacion_multiclase: toBoolean(raw?.Sin_penalizacion_multiclase),
         // En la caché, `Mutacion: null` no se escribe: su ausencia es `null`.
-        Mutacion: normalizeRefIdNombre(raw?.Mutacion),
+        Mutacion: idNombre(raw?.Mutacion),
         Alineamiento: normalizeAlineamiento(raw?.Alineamiento),
         Oficial: toBoolean(raw?.Oficial),
         Competencias: {

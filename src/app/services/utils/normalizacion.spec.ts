@@ -1,4 +1,4 @@
-import { enteroEntre, idNombres, idsUnicosOrdenados, normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toIntOrNull, toPositiveInt, toRefIdNombre } from './normalizacion';
+import { enteroEntre, idNombres, idsUnicosOrdenados, normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toIntOrNull, toPositiveInt, idNombre } from './normalizacion';
 
 describe('toBoolean', () => {
     it('es sí con true, 1 y los textos de sí, sin distinguir mayúsculas ni espacios alrededor', () => {
@@ -108,12 +108,26 @@ describe('enteroEntre', () => {
     });
 });
 
-describe('toRefIdNombre', () => {
-    it('lee la referencia con id o con nombre, y sin ninguno de los dos da null', () => {
-        expect(toRefIdNombre({ Id: '4', Nombre: ' Carisma ' })).toEqual({ Id: 4, Nombre: 'Carisma' });
-        expect(toRefIdNombre({ Nombre: 'Joven' })).toEqual({ Id: 0, Nombre: 'Joven' });
-        expect(toRefIdNombre({ Id: 0, Nombre: '  ' })).toBeNull();
-        expect(toRefIdNombre(null)).toBeNull();
+describe('idNombre', () => {
+    it('con id o con nombre (conIdONombre); sin ninguno de los dos, o si no es un objeto, null', () => {
+        const conNombre = { filtro: 'conIdONombre' } as const;
+        expect(idNombre({ Id: '4', Nombre: ' Carisma ' }, conNombre)).toEqual({ Id: 4, Nombre: 'Carisma' });
+        expect(idNombre({ Nombre: 'Joven' }, conNombre)).toEqual({ Id: 0, Nombre: 'Joven' });
+        expect(idNombre({ Id: 0, Nombre: '  ' }, conNombre)).toBeNull();
+        expect(idNombre(null, conNombre)).toBeNull();
+        expect(idNombre('Carisma', conNombre)).toBeNull();
+    });
+
+    it('con id (conId, por defecto): sin id, null aunque traiga nombre', () => {
+        expect(idNombre({ Id: 7, Nombre: 'Monje' })).toEqual({ Id: 7, Nombre: 'Monje' });
+        expect(idNombre({ Id: 0, Nombre: 'Elegir' })).toBeNull();
+        expect(idNombre(undefined)).toBeNull();
+    });
+
+    it('es la regla de cada elemento de idNombres', () => {
+        const crudos = [{ Id: 3, Nombre: ' Legal ' }, { Id: 0, Nombre: 'Elegir' }, { Id: 0, Nombre: ' ' }, 'x', null];
+        (['conId', 'conIdONombre'] as const).forEach((filtro) =>
+            expect(idNombres(crudos, { filtro })).toEqual(crudos.map((c) => idNombre(c, { filtro })).filter((c) => c !== null) as any));
     });
 });
 

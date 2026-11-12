@@ -10,7 +10,7 @@ import {
 } from "src/app/interfaces/raza";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
-import { idNombres, normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
+import { idNombres, normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, idNombre, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroApi } from './conjuro-mapper';
 import { leerComodin } from './comodin';
 import { normalizeManualApi } from './manual-mapper';
@@ -253,7 +253,7 @@ function categoriaEdad(raw: any): CategoriaEdadRaza {
     const tamano = raw?.Tamano && typeof raw.Tamano === 'object' ? raw.Tamano : null;
     return {
         Orden: toNumber(raw?.Orden),
-        Categoria: toRefIdNombre(raw?.Categoria) ?? { Id: 0, Nombre: '' },
+        Categoria: idNombre(raw?.Categoria, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' },
         Edad_desde: toNumber(raw?.Edad_desde),
         Edad_hasta: toNumberOrNull(raw?.Edad_hasta),
         Tamano: tamano,
@@ -272,7 +272,7 @@ function categoriaEdad(raw: any): CategoriaEdadRaza {
             Trepar: toNumber(raw?.Velocidades?.Trepar),
             Excavar: toNumber(raw?.Velocidades?.Excavar),
         },
-        Maniobrabilidad: toRefIdNombre(raw?.Maniobrabilidad),
+        Maniobrabilidad: idNombre(raw?.Maniobrabilidad, { filtro: 'conIdONombre' }),
         Ataques_naturales: toNullableText(raw?.Ataques_naturales),
         Armas_naturales: leerArmasNaturales(raw?.Armas_naturales),
         Rd: toNullableText(raw?.Rd),
@@ -284,10 +284,10 @@ function categoriaEdad(raw: any): CategoriaEdadRaza {
             Id: toNumber(racial?.Id),
             Nombre: toText(racial?.Nombre).trim(),
             Valor: toNullableText(racial?.Valor),
-            Caracteristica_cd: toRefIdNombre(racial?.Caracteristica_cd),
+            Caracteristica_cd: idNombre(racial?.Caracteristica_cd, { filtro: 'conIdONombre' }),
         })).filter((racial) => racial.Nombre.length > 0),
         Sortilegas: toArray(raw?.Sortilegas).map((sortilega: any) => ({
-            Conjuro: toRefIdNombre(sortilega?.Conjuro) ?? { Id: 0, Nombre: '' },
+            Conjuro: idNombre(sortilega?.Conjuro, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' },
             Usos_diarios: toText(sortilega?.Usos_diarios).trim(),
             Descripcion: toText(sortilega?.Descripcion).trim(),
         })).filter((sortilega) => sortilega.Conjuro.Nombre.length > 0),
@@ -298,7 +298,7 @@ function pasoEdad(raw: any): PasoEdadRaza {
     return {
         Id: toNumber(raw?.Id),
         Edad: toNumber(raw?.Edad),
-        Categoria: toRefIdNombre(raw?.Categoria) ?? { Id: 0, Nombre: '' },
+        Categoria: idNombre(raw?.Categoria, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' },
         Orden: toNumber(raw?.Orden),
         Dgs: toNumber(raw?.Dgs),
         Ajuste_nivel: toNumberOrNull(raw?.Ajuste_nivel),
@@ -324,7 +324,7 @@ export function normalizarListasLanzamiento(raw: any): ListaLanzamientoRaza[] {
 }
 
 function lanzamientoRaza(raw: any): LanzamientoRaza | null {
-    const clase = toRefIdNombre(raw?.Clase);
+    const clase = idNombre(raw?.Clase, { filtro: 'conIdONombre' });
     if (!clase)
         return null;
     return {
@@ -366,7 +366,7 @@ function referenciasEdicionRaza(raw: any): ReferenciasEdicionRaza | null {
     return {
         Manual: normalizeManualApi(manual),
         // `null`: sin clase predilecta («Ninguna»), que no es la 0 («Cualquiera»).
-        Clase_predilecta: toRefIdNombre(raw?.Clase_predilecta),
+        Clase_predilecta: idNombre(raw?.Clase_predilecta, { filtro: 'conIdONombre' }),
         Dgs_raciales: {
             Cantidad: toNumber(dgs?.Cantidad),
             Id_dado: toNumber(dgs?.Id_dado),
@@ -527,7 +527,7 @@ export function normalizeRazaApi(raw: any): Raza {
         Mutada: raw?.Mutada === true,
         Prerrequisitos: normalizarPrerrequisitosMutacion(raw?.pr),
         Cambios_mutacion: normalizarCambiosMutacion(raw?.Cambios_mutacion),
-        Clase_de_monstruo: toRefIdNombre(raw?.Clase_de_monstruo),
+        Clase_de_monstruo: idNombre(raw?.Clase_de_monstruo, { filtro: 'conIdONombre' }),
         Armadura_natural: toNumber(raw?.ant),
         Varios_armadura: toNumber(raw?.va),
         Correr: toNumber(raw?.co),

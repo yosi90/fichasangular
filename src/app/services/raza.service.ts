@@ -21,7 +21,7 @@ import { toDoteContextualArray } from './utils/dote-mapper';
 import { normalizeRaciales } from './utils/racial-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { toArray, toBoolean, toInt, toNumber, toRefIdNombre } from 'src/app/services/utils/normalizacion';
+import { toArray, toBoolean, toInt, toNumber, idNombre } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 import { errorDeCatalogo } from 'src/app/services/utils/error-catalogo';
 import { RAZA } from 'src/app/services/utils/nombres-de-catalogo';
@@ -245,7 +245,7 @@ function mapRazaDesdeRaw(raw: any, id: any, dotesContextuales: DoteContextual[],
         Prerrequisitos: normalizarPrerrequisitosMutacion(raw?.Prerrequisitos),
         Cambios_mutacion: normalizarCambiosMutacion(raw?.Cambios_mutacion),
         // La caché `Razas` 25: la clase de monstruo que lleva una mutada, como la API.
-        Clase_de_monstruo: toRefIdNombre(raw?.Clase_de_monstruo),
+        Clase_de_monstruo: idNombre(raw?.Clase_de_monstruo, { filtro: 'conIdONombre' }),
         Armadura_natural: toNumber(raw?.Armadura_natural ?? raw?.ant),
         Varios_armadura: toNumber(raw?.Varios_armadura ?? raw?.va),
         Correr: toNumber(raw?.Correr ?? raw?.co),
