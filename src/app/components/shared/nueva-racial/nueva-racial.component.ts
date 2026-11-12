@@ -55,20 +55,28 @@ import { conOpcionDeLaFila } from 'src/app/services/utils/opcion-sin-valor';
 import { ID_EXTRA_HABILIDAD_ELEGIR, ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import {
     CATALOGOS_CONTRA,
+    CATALOGOS_CUENTA_COMO,
     CatalogoContra,
+    CatalogoCuentaComo,
     FilaBonificadorRacial,
+    FilaCuentaComo,
     FilaProgresionRacial,
+    MAXIMO_GRUPO_OPCIONAL,
     MEDIDAS_PROGRESION,
     VELOCIDADES_PROGRESION,
     cuerpoDeBonificadores,
+    cuerpoDeCuentaComo,
     cuerpoDeProgresion,
-    falloDeProgresionYBonificadores,
+    falloDeListasDelRacial,
     filaBonificadorVacia,
+    filaCuentaComo,
     filaProgresionVacia,
     filasDeBonificadores,
+    filasDeCuentaComo,
     filasDeProgresion,
     resumenDeProgresion,
 } from 'src/app/services/utils/racial-formulario';
+import { textoCdRacial } from 'src/app/services/utils/racial-progresion';
 import { EquipoObjetivoModificador, EquipoRef } from 'src/app/interfaces/equipo';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
@@ -185,6 +193,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     guardando: boolean = false;
     /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera. */
     readonly pasos = ['Base', 'Rasgos', 'Progresión', 'Condicionales'];
+    private static readonly PASO_BASE = 0;
     private static readonly PASO_PROGRESION = 2;
     private static readonly PASO_CONDICIONALES = 3;
     pasoActual = 0;
@@ -211,6 +220,9 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     /** El error de la comprobación de antes de mandar, en su tarjeta. */
     errorProgresion: string | null = null;
     errorBonificadores: string | null = null;
+    errorCuentaComo: string | null = null;
+    /** Las razas y los tipos como los que cuenta quien tiene el rasgo (`cuenta_como[]`), en su orden. */
+    cuentaComoRows: FilaCuentaComo[] = [];
     racialesOpciones: OpcionCatalogo[] = [];
     tiposDoteOpciones: OpcionCatalogo[] = [];
     maniobrabilidades: OpcionCatalogo[] = [];
@@ -221,6 +233,8 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     readonly medidasProgresion = MEDIDAS_PROGRESION;
     readonly velocidadesProgresion = VELOCIDADES_PROGRESION;
     readonly catalogosContra = CATALOGOS_CONTRA;
+    readonly catalogosCuentaComo = CATALOGOS_CUENTA_COMO;
+    readonly maximoGrupoOpcional = MAXIMO_GRUPO_OPCIONAL;
     customModalAbierto = false;
     customModalModo: 'crear' | 'editar' = 'crear';
     customModalRowUid = '';
@@ -251,6 +265,8 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         oficial: [true],
         /** La característica de su CD (10 + ½ DG raciales + su modificador); 0, ninguna. */
         id_caracteristica_cd: [0],
+        /** Si esa CD cuenta todos los DG del personaje y no solo los raciales (el aliento del aspecto del corazón). */
+        cd_dg_totales: [false],
     });
 
     constructor(
@@ -344,7 +360,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             return;
         }
 
-        if (this.comprobarProgresionYBonificadores())
+        if (this.comprobarListas())
             return;
 
         const payload = this.construirPayload();
@@ -392,6 +408,54 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
 
     toggleOficial(): void {
         alternarControl(this.form.controls.oficial);
+    }
+
+    toggleCdDgTotales(): void {
+        alternarControl(this.form.controls.cd_dg_totales);
+    }
+
+    /** Al quitar la característica de la CD (lo elige quien edita), la CD deja de contar todos los DG. */
+    alCambiarCaracteristicaCd(): void {
+        if (this.entero(this.form.controls.id_caracteristica_cd.value) <= 0)
+            this.form.controls.cd_dg_totales.setValue(false);
+    }
+
+    /** La CD como la lee el detalle del racial, o que no tiene. */
+    get textoCd(): string {
+        const id = this.entero(this.form.controls.id_caracteristica_cd.value);
+        const caracteristica = this.caracteristicasCatalogo.find((item) => item.id === id);
+        const texto = textoCdRacial({
+            Caracteristica_cd: caracteristica ? { Id: id, Nombre: caracteristica.nombre } : null,
+            Cd_dg_totales: this.form.controls.cd_dg_totales.value === true,
+        });
+        return texto ? `La CD: ${texto}.` : 'Sin CD: la aptitud no pide salvación.';
+    }
+
+    /** El chip de la CD con todos los DG sale con una característica de la CD (o si ya lo tenía, para no esconderlo). */
+    get muestraCdDgTotales(): boolean {
+        return this.entero(this.form.controls.id_caracteristica_cd.value) > 0 || this.form.controls.cd_dg_totales.value === true;
+    }
+
+    filasCuentaComo(catalogo: CatalogoCuentaComo): FilaCuentaComo[] {
+        return this.cuentaComoRows.filter((fila) => fila.catalogo === catalogo);
+    }
+
+    opcionesCuentaComo(catalogo: CatalogoCuentaComo): OpcionCatalogo[] {
+        return catalogo === 'raza' ? this.razasCatalogo : this.tiposCriaturaOpciones;
+    }
+
+    /** Añade al final (las filas van en el orden en que se guardan) la raza o el tipo elegido, si no estaba. */
+    anadirCuentaComo(catalogo: CatalogoCuentaComo, id: number): void {
+        const opcion = this.opcionesCuentaComo(catalogo).find((item) => item.id === id);
+        if (!opcion || this.cuentaComoRows.some((fila) => fila.catalogo === catalogo && fila.id === id))
+            return;
+        this.cuentaComoRows = [...this.cuentaComoRows, filaCuentaComo(catalogo, opcion.id, opcion.nombre)];
+        this.errorCuentaComo = null;
+    }
+
+    quitarCuentaComo(fila: { uid?: string; }): void {
+        this.cuentaComoRows = this.cuentaComoRows.filter((item) => item.uid !== fila.uid);
+        this.errorCuentaComo = null;
     }
 
     confirmarSalidaSiHayCambios(): Promise<boolean> {
@@ -660,14 +724,24 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         this.errorProgresion = null;
     }
 
-    /** Lo que la API rechazaría de la progresión o de los bonificadores: lo enseña en su tarjeta y salta a su paso. */
-    private comprobarProgresionYBonificadores(): boolean {
+    /**
+     * Lo que la API rechazaría de la progresión, de los bonificadores o del «cuenta como»: lo enseña en su tarjeta y salta
+     * a su paso.
+     */
+    private comprobarListas(): boolean {
         const idRacial = this.esModoEdicion ? this.edicion.id : null;
-        const fallo = falloDeProgresionYBonificadores(this.progresionRows, this.bonificadoresRows, idRacial, this.objetivos);
+        const fallo = falloDeListasDelRacial(
+            { progresion: this.progresionRows, bonificadores: this.bonificadoresRows, cuentaComo: this.cuentaComoRows },
+            idRacial, this.objetivos);
         this.errorProgresion = fallo?.lista === 'progresion' ? fallo.mensaje : null;
         this.errorBonificadores = fallo?.lista === 'bonificadores' ? fallo.mensaje : null;
+        this.errorCuentaComo = fallo?.lista === 'cuentaComo' ? fallo.mensaje : null;
         if (fallo)
-            this.pasoActual = fallo.lista === 'progresion' ? NuevaRacialComponent.PASO_PROGRESION : NuevaRacialComponent.PASO_CONDICIONALES;
+            this.pasoActual = {
+                progresion: NuevaRacialComponent.PASO_PROGRESION,
+                bonificadores: NuevaRacialComponent.PASO_CONDICIONALES,
+                cuentaComo: NuevaRacialComponent.PASO_BASE,
+            }[fallo.lista];
         return fallo !== null;
     }
 
@@ -808,12 +882,15 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             descripcion: this.texto(racial?.Descripcion),
             oficial: racial?.Oficial !== false,
             id_caracteristica_cd: this.entero(racial?.Caracteristica_cd?.Id),
+            cd_dg_totales: racial?.Cd_dg_totales === true,
         });
 
         this.progresionRows = filasDeProgresion(racial);
         this.bonificadoresRows = filasDeBonificadores(racial);
+        this.cuentaComoRows = filasDeCuentaComo(racial);
         this.errorProgresion = null;
         this.errorBonificadores = null;
+        this.errorCuentaComo = null;
         this.doteRows = this.hidratarDotes(racial);
         this.habilidadesBaseRows = this.hidratarHabilidadesBase(racial);
         this.habilidadesCustomRows = this.hidratarHabilidadesCustom(racial);
@@ -835,6 +912,8 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
                 ...(descripcion.length > 0 ? { descripcion } : {}),
                 oficial: this.form.value.oficial === true,
                 ...(idCaracteristicaCd > 0 ? { id_caracteristica_cd: idCaracteristicaCd } : {}),
+                // Siempre: al modificar, sin él se conservaría el que había.
+                cd_dg_totales: this.form.value.cd_dg_totales === true,
             },
         };
 
@@ -867,6 +946,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         // Siempre: al modificar, la lista que se manda reemplaza a la que había (`[]`, ninguna).
         payload.progresion = cuerpoDeProgresion(this.progresionRows);
         payload.bonificadores_condicionales = cuerpoDeBonificadores(this.bonificadoresRows);
+        payload.cuenta_como = cuerpoDeCuentaComo(this.cuentaComoRows);
 
         return payload;
     }
@@ -884,10 +964,13 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
                     ? { descripcion: this.texto(payload?.racial?.descripcion) }
                     : {}),
                 ...(payload?.racial?.id_caracteristica_cd ? { id_caracteristica_cd: payload.racial.id_caracteristica_cd } : {}),
+                cd_dg_totales: payload?.racial?.cd_dg_totales === true,
             },
-            // En su orden: el de las filas es el de la progresión (y el de los bonificadores, el de la ficha).
+            // En su orden: el de las filas es el de la progresión (y el de los bonificadores, el de la ficha; el del
+            // «cuenta como», el que se guarda).
             progresion: payload.progresion ?? [],
             bonificadores_condicionales: payload.bonificadores_condicionales ?? [],
+            cuenta_como: payload.cuenta_como ?? [],
         };
 
         if ((payload.dotes?.length ?? 0) > 0) {
@@ -1060,7 +1143,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private resetFormulario(): void {
-        this.form.reset({ nombre: '', descripcion: '', oficial: true, id_caracteristica_cd: 0 });
+        this.form.reset({ nombre: '', descripcion: '', oficial: true, id_caracteristica_cd: 0, cd_dg_totales: false });
         this.resetFilas();
         this.edicion.olvidar();
     }
@@ -1077,8 +1160,10 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         this.prerrequisitosRows = [];
         this.progresionRows = [];
         this.bonificadoresRows = [];
+        this.cuentaComoRows = [];
         this.errorProgresion = null;
         this.errorBonificadores = null;
+        this.errorCuentaComo = null;
     }
 
     private actualizarPermisos(): void {

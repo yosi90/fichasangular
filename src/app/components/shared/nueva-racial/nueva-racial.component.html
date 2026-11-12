@@ -39,12 +39,20 @@
 
                         <mat-form-field appearance="fill" class="insercion-campos__doble">
                             <mat-label>Característica de la CD</mat-label>
-                            <mat-select formControlName="id_caracteristica_cd">
+                            <mat-select formControlName="id_caracteristica_cd" (selectionChange)="alCambiarCaracteristicaCd()">
                                 <mat-option [value]="0">Ninguna</mat-option>
                                 <mat-option *ngFor="let caracteristica of caracteristicasCatalogo; trackBy: trackById" [value]="caracteristica.id">{{caracteristica.nombre}}</mat-option>
                             </mat-select>
-                            <mat-hint>La CD de la aptitud: 10 + ½ DG raciales + su modificador.</mat-hint>
+                            <mat-hint>{{textoCd}}</mat-hint>
                         </mat-form-field>
+
+                        <div class="estado-row racial-status-row insercion-campos__doble" *ngIf="muestraCdDgTotales">
+                            <mat-chip-listbox class="boolean-chips" aria-label="Qué DG cuenta la CD">
+                                <mat-chip-option [selected]="form.controls.cd_dg_totales.value === true" (click)="toggleCdDgTotales()">
+                                    La CD cuenta todos sus DG
+                                </mat-chip-option>
+                            </mat-chip-listbox>
+                        </div>
 
                         <mat-form-field appearance="fill" class="insercion-campos__entero">
                             <mat-label>Descripción</mat-label>
@@ -53,6 +61,15 @@
                         </mat-form-field>
                     </div>
                 </section>
+
+                <div class="insercion-tarjetas">
+                    <app-lista-de-catalogo *ngFor="let catalogo of catalogosCuentaComo; let primera = first"
+                        [titulo]="catalogo.titulo" [filas]="filasCuentaComo(catalogo.clave)" [opciones]="opcionesCuentaComo(catalogo.clave)"
+                        [vacio]="catalogo.vacio" [textoAnadir]="catalogo.clave === 'raza' ? 'Añadir raza' : 'Añadir tipo de criatura'"
+                        [error]="primera ? errorCuentaComo : null" [deshabilitado]="creacionBloqueada"
+                        (anadir)="anadirCuentaComo(catalogo.clave, $event)" (quitar)="quitarCuentaComo($event)">
+                    </app-lista-de-catalogo>
+                </div>
 
                 <div class="insercion-tarjetas">
                     <section class="insercion-tarjeta">
@@ -314,7 +331,7 @@
             <div class="insercion-paso" [hidden]="pasoActual !== 2">
                 <section class="insercion-tarjeta">
                     <h3 class="insercion-tarjeta__titulo">Con los DG o el nivel · {{progresionRows.length}}</h3>
-                    <p class="racial-nota">Lo que el rasgo da o cambia desde que el personaje llega a esos DG (los raciales, los de sus plantillas y los de sus clases) o a ese nivel de personaje, para siempre: un rasgo más, otro que deja de tener, una dote adicional de un tipo, un movimiento o la cifra del propio rasgo.</p>
+                    <p class="racial-nota">Lo que el rasgo da o cambia desde que el personaje llega a esos DG (los raciales, los de sus plantillas y los de sus clases) o a ese nivel de personaje, para siempre: un rasgo más, otro que deja de tener, una dote adicional de un tipo, un movimiento, la cifra del propio rasgo u otro rasgo a elegir de un grupo opcional de su raza.</p>
                     <p class="error-de-lista" role="alert" *ngIf="errorProgresion">{{errorProgresion}}</p>
                     <p class="lista-vacia" *ngIf="progresionRows.length < 1">Sin progresión: el rasgo es igual a cualquier nivel.</p>
                     <div class="subpanel" *ngFor="let fila of progresionRows; let indice = index; trackBy: trackByUid">
@@ -368,6 +385,11 @@
                                 <mat-label>Su cifra desde ahí</mat-label>
                                 <input matInput maxlength="100" placeholder="2d8" [(ngModel)]="fila.valor" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorProgresion()">
                                 <mat-hint>El daño del aliento, el alcance de una visión…</mat-hint>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" class="insercion-campos__doble">
+                                <mat-label>Otro rasgo del grupo opcional</mat-label>
+                                <input matInput type="number" min="1" [max]="maximoGrupoOpcional" step="1" placeholder="Ninguno" [(ngModel)]="fila.elige_opcional" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorProgresion()">
+                                <mat-hint>El número del grupo de su raza (1-{{maximoGrupoOpcional}}): elige otro distinto, como el segundo sigilo de poder.</mat-hint>
                             </mat-form-field>
                             <mat-form-field appearance="fill">
                                 <mat-label>Movimiento</mat-label>

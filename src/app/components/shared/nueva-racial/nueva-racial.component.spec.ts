@@ -81,7 +81,10 @@ describe('NuevaRacialComponent', () => {
 
         const payload = (component as any).construirPayload();
 
-        expect(payload).toEqual({ racial: { nombre: 'Piel pétrea', oficial: true }, progresion: [], bonificadores_condicionales: [] });
+        expect(payload).toEqual({
+            racial: { nombre: 'Piel pétrea', oficial: true, cd_dg_totales: false },
+            progresion: [], bonificadores_condicionales: [], cuenta_como: [],
+        });
     });
 
     it('permite alternar oficial y lo incluye en el payload', () => {

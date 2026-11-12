@@ -6,9 +6,9 @@ import { IDA_Y_VUELTA_RACIALES } from 'src/testing/ida-y-vuelta-raciales';
 import { NuevaRacialComponent } from './nueva-racial.component';
 
 /**
- * «Modificar racial» con la progresión y los bonificadores condicionales (roadmap `ACTIVO_razas-mutadas`, 2026-11-12):
- * cargado con el GET real de `rol_dev`, guardar sin tocar nada manda el cuerpo con el que la API devolvió ese mismo GET
- * (`src/testing/ida-y-vuelta-raciales.ts`); y lo que la API rechazaría no se manda.
+ * «Modificar racial» con la progresión, los bonificadores condicionales, la CD con todos los DG y el «cuenta como» (roadmap
+ * `ACTIVO_razas-mutadas`, 2026-11-12): cargado con el GET real de `rol_dev`, guardar sin tocar nada manda el cuerpo con el
+ * que la API devolvió ese mismo GET (`src/testing/ida-y-vuelta-raciales.ts`); y lo que la API rechazaría no se manda.
  */
 describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () => {
     let component: NuevaRacialComponent;
@@ -47,7 +47,7 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
             { getDotes: () => of([{ Id: 5, Nombre: 'Alerta', Tipos: [{ Id: 30, Nombre: 'Tocado por diablos', Usado: 1 }] }]) } as any,
             { getHabilidades: () => of([]), getHabilidadesCustom: () => of([]), habilidadesCustomMutadas$: EMPTY } as any,
             { getConjuros: () => of([]) } as any,
-            { getRazas: () => of([{ Id: 2, Nombre: 'Elfo' }]) } as any,
+            { getRazas: () => of([{ Id: 2, Nombre: 'Elfo' }, { Id: 24, Nombre: 'Elfo (MJ)' }]) } as any,
             { cargar: () => Promise.resolve() } as any,
             { getCatalogos: () => of({ Objetivos_modificador: OBJETIVOS, Tipos_bonificador: TIPOS }) } as any,
             { getManiobrabilidades: () => of([{ Id: 0, Nombre: 'No vuela' }, { Id: 3, Nombre: 'Regular' }]) } as any,
@@ -68,7 +68,7 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
         });
     });
 
-    it('la muestra tiene progresión, bonificadores, la CD y una habilidad con «Elegir» y su condición', () => {
+    it('la muestra tiene progresión, bonificadores, la CD, el «cuenta como» y una habilidad con «Elegir» y su condición', () => {
         const cuerpos = IDA_Y_VUELTA_RACIALES.map((caso) => caso.cuerpo);
         expect(cuerpos.some((c) => (c.progresion ?? []).some((p) => p.velocidad?.id_maniobrabilidad))).toBeTrue();
         expect(cuerpos.some((c) => (c.progresion ?? []).some((p) => p.id_tipo_dote))).toBeTrue();
@@ -76,6 +76,48 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
         expect(cuerpos.some((c) => (c.bonificadores_condicionales ?? []).some((b) => b.contra.length > 0))).toBeTrue();
         expect(cuerpos.some((c) => c.racial.id_caracteristica_cd)).toBeTrue();
         expect(cuerpos.some((c) => (c.habilidades?.base ?? []).some((h) => h.id_extra === 0 && h.condicion))).toBeTrue();
+        expect(cuerpos.some((c) => (c.progresion ?? []).some((p) => p.elige_opcional))).toBeTrue();
+        expect(cuerpos.some((c) => c.racial.cd_dg_totales === true)).toBeTrue();
+        expect(cuerpos.some((c) => (c.cuenta_como ?? []).some((f) => 'id_raza' in f))).toBeTrue();
+        expect(cuerpos.some((c) => (c.cuenta_como ?? []).some((f) => 'id_tipo' in f))).toBeTrue();
+        expect(cuerpos.some((c) => (c.bonificadores_condicionales ?? []).some((b) => b.condicion === '' && b.contra.length === 0))).toBeTrue();
+    });
+
+    it('la elección de un grupo opcional, la CD con todos los DG y el «cuenta como» se cambian y se mandan', () => {
+        const sigilos = IDA_Y_VUELTA_RACIALES.find((caso) => (caso.cuerpo.progresion ?? []).some((p) => p.elige_opcional))!;
+        editar(sigilos.get);
+        component.progresionRows[0].elige_opcional = 2;
+        component.form.patchValue({ id_caracteristica_cd: 6 });
+        component.toggleCdDgTotales();
+        component.anadirCuentaComo('tipo_criatura', 10);
+        component.anadirCuentaComo('raza', 24);
+        component.anadirCuentaComo('raza', 24);
+
+        const payload = (component as any).construirPayload();
+
+        expect(component.isDirty).toBeTrue();
+        expect(payload.progresion[0].elige_opcional).toBe(2);
+        expect(payload.racial).toEqual(jasmine.objectContaining({ id_caracteristica_cd: 6, cd_dg_totales: true }));
+        expect(payload.cuenta_como).toEqual([{ id_tipo: 10 }, { id_raza: 24 }]);
+        expect(component.filasCuentaComo('raza').map((f) => f.nombre)).toEqual(['Elfo (MJ)']);
+        expect(component.textoCd).toBe('La CD: 10 + ½ de todos sus DG + su modificador de Carisma.');
+
+        component.quitarCuentaComo(component.filasCuentaComo('tipo_criatura')[0]);
+        component.form.patchValue({ id_caracteristica_cd: 0 });
+        component.alCambiarCaracteristicaCd();
+
+        expect((component as any).construirPayload().cuenta_como).toEqual([{ id_raza: 24 }]);
+        expect(component.form.controls.cd_dg_totales.value).toBeFalse();
+        expect(component.muestraCdDgTotales).toBeFalse();
+    });
+
+    it('al quitar el «cuenta como» que tenía, manda la lista vacía (la API lo quita)', () => {
+        const sangre = IDA_Y_VUELTA_RACIALES.find((caso) => (caso.cuerpo.cuenta_como ?? []).length > 0)!;
+        editar(sangre.get);
+        component.cuentaComoRows.forEach((fila) => component.quitarCuentaComo(fila));
+
+        expect((component as any).construirPayload().cuenta_como).toEqual([]);
+        expect(component.isDirty).toBeTrue();
     });
 
     it('las filas nuevas van al cuerpo con lo que tienen', () => {
@@ -147,5 +189,25 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
         expect(component.errorProgresion).toBeNull();
         expect(component.errorBonificadores).toContain('las salvaciones van en «Salvaciones»');
         expect(component.pasoActual).toBe(3);
+
+        component.bonificadoresRows = [];
+        component.agregarProgresion();
+        Object.assign(component.progresionRows[0], { medida: 'nivel', desde: 2, elige_opcional: 100 });
+
+        await component.guardarRacial();
+
+        expect(racialSvc.crearRacial).not.toHaveBeenCalled();
+        expect(component.errorProgresion).toContain('«Otro rasgo del grupo opcional» va de 1 a 99');
+        expect(component.pasoActual).toBe(2);
+
+        component.progresionRows[0].elige_opcional = 1;
+        component.anadirCuentaComo('raza', 24);
+        component.cuentaComoRows = [...component.cuentaComoRows, { ...component.cuentaComoRows[0], uid: 'otra' }];
+
+        await component.guardarRacial();
+
+        expect(racialSvc.crearRacial).not.toHaveBeenCalled();
+        expect(component.errorCuentaComo).toContain('está repetido');
+        expect(component.pasoActual).toBe(0);
     });
 });
