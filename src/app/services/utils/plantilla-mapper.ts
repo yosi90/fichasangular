@@ -12,7 +12,7 @@ import { toDoteContextualArray } from "./dote-mapper";
 import { normalizeMovimientos } from "./movimientos-mapper";
 import { normalizeSubtipoRefArray } from "./subtipo-mapper";
 import { leerComodin } from "./comodin";
-import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { idNombres, normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualLegacy } from './manual-mapper';
 import { normalizeRacial } from './racial-mapper';
 import { leerArmasNaturalesPlantilla } from './armas-naturales';
@@ -23,9 +23,7 @@ function toStrictArray<T = any>(raw: any): T[] {
 
 /** Los rasgos de su tipo que no tiene la criatura con la plantilla (`{ Id, Nombre }`, la API y la caché igual). */
 function leerRasgosTipoQuitados(raw: any): Id_nombre[] {
-    return toStrictArray(raw)
-        .map((r: any) => ({ Id: toNumber(r?.Id), Nombre: toText(r?.Nombre) }))
-        .filter((r) => r.Id > 0);
+    return idNombres(raw, { soloLista: true });
 }
 
 function normalizeCaracteristicas(raw: any): PlantillaCaracteristicas {

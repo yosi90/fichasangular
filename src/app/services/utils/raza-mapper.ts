@@ -10,7 +10,7 @@ import {
 } from "src/app/interfaces/raza";
 import { SubtipoRef } from "src/app/interfaces/subtipo";
 import { toDoteContextualArray } from "./dote-mapper";
-import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
+import { idNombres, normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroApi } from './conjuro-mapper';
 import { leerComodin } from './comodin';
 import { normalizeManualApi } from './manual-mapper';
@@ -197,9 +197,7 @@ type CamposCreacionRaza = 'Dotes_adicionales' | 'Puntos_habilidad_extra_primer_n
  * si la raza mutada lo cambia).
  */
 export function normalizarCamposCreacionRaza(raw: any): Pick<Raza, CamposCreacionRaza> {
-    const refs = (valor: any) => (Array.isArray(valor) ? valor : (valor && typeof valor === 'object' ? Object.values(valor) : []))
-        .map((item: any) => ({ Id: toNumber(item?.Id), Nombre: toText(item?.Nombre) }))
-        .filter((item) => item.Id > 0 || item.Nombre.trim().length > 0);
+    const refs = (valor: any) => idNombres(valor, { filtro: 'conIdONombre' });
     const competencias: RazaCompetencias = {
         Armas: refs(raw?.Competencias?.Armas),
         Armaduras: refs(raw?.Competencias?.Armaduras),

@@ -1,6 +1,6 @@
 import { Dote, DoteCompetenciasOtorgadas, DoteExtraItem, DoteExtrasDeTodoElCatalogo, DoteHabilidadOtorgada, DoteSalvacionCondicional, DoteTipo } from "src/app/interfaces/dote";
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
-import { toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { idNombres, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { normalizeManualApi, normalizeManualLegacy } from './manual-mapper';
 import { normalizarDoteIncarnum, normalizarNombreTraducible } from './incarnum-mapper';
@@ -56,9 +56,7 @@ function normalizeSalvacionesCondicionales(raw: any): DoteSalvacionCondicional[]
 
 /** Las dotes a las que sustituye en los prerrequisitos (`Cuenta_como`). */
 function normalizeCuentaComo(raw: any): { Id: number; Nombre: string; }[] {
-    return asArray(raw)
-        .map((item: any) => ({ Id: toNumber(item?.Id, 0), Nombre: toText(item?.Nombre, "") }))
-        .filter(item => item.Id > 0);
+    return idNombres(raw);
 }
 
 function normalizeTiposApi(raw: any): DoteTipo[] {
@@ -130,7 +128,7 @@ function normalizeCompetenciasOtorgadas(raw: any): DoteCompetenciasOtorgadas {
     const item = (valor: any) => ({ Id: toNumber(valor?.Id, 0), Nombre: toText(valor?.Nombre, "") });
     return {
         Armas: asArray(raw?.Armas).map((arma: any) => ({ ...item(arma), Arma_comodin: leerComodin(arma?.Arma_comodin) })),
-        Grupos_arma: asArray(raw?.Grupos_arma).map(item),
+        Grupos_arma: idNombres(raw?.Grupos_arma, { filtro: 'todos' }),
     };
 }
 

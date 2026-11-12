@@ -1,23 +1,19 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable, map } from 'rxjs';
-import { AptitudEspecial, AptitudEspecialOtorgante } from 'src/app/interfaces/aptitud-especial';
+import { AptitudEspecial } from 'src/app/interfaces/aptitud-especial';
 import { leerComodin } from 'src/app/services/utils/comodin';
-import { toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { idNombres, toArray, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { environment } from 'src/environments/environment';
-
-function normalizeOtorgante(raw: any): AptitudEspecialOtorgante {
-    return { Id: toNumber(raw?.Id), Nombre: toText(raw?.Nombre) };
-}
 
 export function normalizeAptitudEspecial(raw: any): AptitudEspecial {
     return {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
-        Raciales: toArray(raw?.Raciales).map(normalizeOtorgante),
-        Especiales: toArray(raw?.Especiales).map(normalizeOtorgante),
-        Plantillas: toArray(raw?.Plantillas).map(normalizeOtorgante),
-        Dotes: toArray(raw?.Dotes).map(normalizeOtorgante),
+        Raciales: idNombres(raw?.Raciales, { filtro: 'todos' }),
+        Especiales: idNombres(raw?.Especiales, { filtro: 'todos' }),
+        Plantillas: idNombres(raw?.Plantillas, { filtro: 'todos' }),
+        Dotes: idNombres(raw?.Dotes, { filtro: 'todos' }),
         Comodin: leerComodin(raw?.Comodin),
     };
 }

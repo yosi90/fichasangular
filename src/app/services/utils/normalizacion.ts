@@ -98,6 +98,39 @@ export function toRefIdNombre(value: any): Id_nombre | null {
     return id > 0 || nombre.length > 0 ? { Id: id, Nombre: nombre } : null;
 }
 
+/**
+ * Qué elementos de una lista `{ Id, Nombre }` se quedan (`idNombres`):
+ * - `conId` (por defecto): los que tienen id (> 0). Las listas de referencias a otro catálogo, donde una fila sin id es
+ *   de relleno (los rasgos quitados de una plantilla, los alineamientos devotos, las plantillas de familiar).
+ * - `conIdONombre`: también los que solo traen nombre (las competencias y las clases de una raza, los descriptores de un
+ *   conjuro), porque una fila con id 0 y nombre es una opción de verdad.
+ * - `todos`: todos los objetos, también con id 0 y sin nombre (las listas que se enseñan tal cual las da la API).
+ */
+export type FiltroIdNombres = 'conId' | 'conIdONombre' | 'todos';
+
+export interface OpcionesIdNombres {
+    filtro?: FiltroIdNombres;
+    /**
+     * `true`: solo vale una lista de verdad (un objeto da `[]`), como las lecturas que ya eran estrictas (la plantilla,
+     * los descriptores del conjuro). Por defecto, también los valores de un objeto (las listas de la RTDB, `toArray`).
+     */
+    soloLista?: boolean;
+}
+
+/**
+ * Una lista `{ Id, Nombre }` del contrato o de una caché como `Id_nombre[]`: la única lectura de estas listas en la web
+ * (antes, una copia en cada mapper). El id es un entero (`toInt`: los ids de la base son enteros) y el nombre va sin
+ * espacios a los lados (la página los colapsa igual: no cambia lo que se ve). Lo que no es un objeto no es un elemento y
+ * no sale. `filtro` y `soloLista` conservan lo que hacía cada copia (`OpcionesIdNombres`).
+ */
+export function idNombres(raw: unknown, { filtro = 'conId', soloLista = false }: OpcionesIdNombres = {}): Id_nombre[] {
+    const lista: unknown[] = soloLista ? (Array.isArray(raw) ? raw : []) : toArray(raw);
+    return lista
+        .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
+        .map((item) => ({ Id: toInt(item['Id']), Nombre: toText(item['Nombre']).trim() }))
+        .filter((item) => filtro === 'todos' || item.Id > 0 || (filtro === 'conIdONombre' && item.Nombre.length > 0));
+}
+
 const VALORES_SI = new Set(['true', '1', 'sí', 'si', 'yes']);
 
 /**

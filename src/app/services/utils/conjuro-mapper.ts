@@ -1,7 +1,7 @@
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { ConjuroEditable } from 'src/app/interfaces/conjuros-api';
 import { Subdisciplinas } from 'src/app/interfaces/disciplina-conjuros';
-import { toArray, toBoolean, toInt, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { idNombres, toArray, toBoolean, toInt, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 
 function toStrictArray<T = any>(value: any): T[] {
     return Array.isArray(value) ? value : [];
@@ -145,12 +145,7 @@ export function normalizeConjuroApi(raw: any): Conjuro {
         Permanente: toBoolean(raw?.Permanente ?? raw?.per),
         Puntos_poder: toInt(raw?.Puntos_poder ?? raw?.pp),
         Descripcion_aumentos: toText(raw?.Descripcion_aumentos ?? raw?.da),
-        Descriptores: toStrictArray(raw?.Descriptores ?? raw?.des)
-            .map((item: any) => ({
-                Id: toInt(item?.Id),
-                Nombre: toText(item?.Nombre),
-            }))
-            .filter((item) => item.Id > 0 || item.Nombre.trim().length > 0),
+        Descriptores: idNombres(raw?.Descriptores ?? raw?.des, { filtro: 'conIdONombre', soloLista: true }),
         Nivel_clase: toStrictArray(raw?.Niveles_clase ?? raw?.ncl)
             .map((item: any) => ({
                 Id_clase: toInt(item?.Id_clase),
