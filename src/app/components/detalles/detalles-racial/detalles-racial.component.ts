@@ -7,6 +7,7 @@ import { toBoolean } from 'src/app/services/utils/normalizacion';
 import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { frasesProgresionRacial, textoCdRacial } from 'src/app/services/utils/racial-progresion';
 import { frasesBonificadoresCondicionales } from 'src/app/services/utils/habilidades-raciales';
+import { RAZA, TIPO_CRIATURA } from 'src/app/services/utils/nombres-de-catalogo';
 import {
     CondicionPrerrequisito,
     GrupoPrerrequisitos,
@@ -95,7 +96,7 @@ export class DetallesRacialComponent {
         this.cd = textoCdRacial(value);
         this.cuentaComo = (value?.Cuenta_como ?? [])
             .filter((c) => tieneTextoVisible(c?.Nombre))
-            .map((c) => `${c.Nombre} (${c.Catalogo === 'raza' ? 'raza' : 'tipo de criatura'})`);
+            .map((c) => `${c.Nombre} (${(c.Catalogo === 'raza' ? RAZA : TIPO_CRIATURA).singular})`);
         this.bonificadoresCondicionales = frasesBonificadoresCondicionales(value) ?? [];
     }
 

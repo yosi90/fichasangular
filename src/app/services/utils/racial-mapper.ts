@@ -68,13 +68,21 @@ const CATALOGOS_CONTRA: RacialBonificadorContra['Catalogo'][] = ['tipo_criatura'
 const CATALOGOS_CUENTA_COMO: RacialCuentaComo['Catalogo'][] = ['raza', 'tipo_criatura'];
 
 /**
+ * Las criaturas `{ Catalogo, Id, Nombre }` de una lista (las de `Contra` y las de `Cuenta_como`, con la misma forma): una
+ * de un catálogo que no está en `catalogos` se descarta.
+ */
+function criaturasDeCatalogos<C extends string>(lista: unknown[], catalogos: readonly C[]): { Catalogo: C; Id: number; Nombre: string; }[] {
+    return lista
+        .filter((c: any) => catalogos.includes(c?.Catalogo))
+        .map((c: any) => ({ Catalogo: c.Catalogo, Id: toNumber(c.Id), Nombre: toText(c.Nombre).trim() }));
+}
+
+/**
  * El «cuenta como» de un racial (`Cuenta_como`: las razas y los tipos como los que cuenta), igual en la API, la caché y
  * la ficha: uno de un catálogo que no se conoce o sin id se descarta.
  */
 export function normalizarCuentaComo(raw: any): RacialCuentaComo[] {
-    return toArray(raw)
-        .filter((c: any) => CATALOGOS_CUENTA_COMO.includes(c?.Catalogo) && toNumber(c?.Id) > 0)
-        .map((c: any) => ({ Catalogo: c.Catalogo, Id: toNumber(c.Id), Nombre: toText(c.Nombre).trim() }));
+    return criaturasDeCatalogos(toArray(raw), CATALOGOS_CUENTA_COMO).filter((c) => c.Id > 0);
 }
 
 /**
@@ -82,9 +90,7 @@ export function normalizarCuentaComo(raw: any): RacialCuentaComo[] {
  * una de un catálogo que no se conoce se descarta.
  */
 export function normalizarContraBonificador(lista: unknown[]): RacialBonificadorContra[] {
-    return lista
-        .filter((c: any) => CATALOGOS_CONTRA.includes(c?.Catalogo))
-        .map((c: any) => ({ Catalogo: c.Catalogo, Id: toNumber(c.Id), Nombre: toText(c.Nombre).trim() }));
+    return criaturasDeCatalogos(lista, CATALOGOS_CONTRA);
 }
 
 /**
