@@ -37,6 +37,15 @@
                             </mat-chip-listbox>
                         </div>
 
+                        <mat-form-field appearance="fill" class="insercion-campos__doble">
+                            <mat-label>Característica de la CD</mat-label>
+                            <mat-select formControlName="id_caracteristica_cd">
+                                <mat-option [value]="0">Ninguna</mat-option>
+                                <mat-option *ngFor="let caracteristica of caracteristicasCatalogo; trackBy: trackById" [value]="caracteristica.id">{{caracteristica.nombre}}</mat-option>
+                            </mat-select>
+                            <mat-hint>La CD de la aptitud: 10 + ½ DG raciales + su modificador.</mat-hint>
+                        </mat-form-field>
+
                         <mat-form-field appearance="fill" class="insercion-campos__entero">
                             <mat-label>Descripción</mat-label>
                             <textarea matInput formControlName="descripcion" rows="4" maxlength="5000"></textarea>
@@ -90,7 +99,7 @@
 
                             <mat-form-field appearance="fill">
                                 <mat-label>Condición</mat-label>
-                                <input matInput [(ngModel)]="row.condicion" [ngModelOptions]="{standalone: true}">
+                                <input matInput maxlength="200" placeholder="Vacía: cuenta siempre" [(ngModel)]="row.condicion" [ngModelOptions]="{standalone: true}">
                             </mat-form-field>
 
                             <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar salvación" (click)="quitarSalvacion(i)">
@@ -176,14 +185,14 @@
                             <mat-label>Extra</mat-label>
                             <input matInput [value]="row.extraBusqueda" (input)="row.extraBusqueda = $any($event.target).value" [matAutocomplete]="habBaseExtraAuto">
                             <mat-autocomplete #habBaseExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraHabilidadBase(i, $event.option.value)">
-                                <mat-option [value]="0">Sin extra</mat-option>
+                                <mat-option [value]="0">Elegir (al crear el personaje)</mat-option>
                                 <mat-option *ngFor="let extra of getHabilidadBaseExtrasFiltradas(row); trackBy: trackById" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
                             </mat-autocomplete>
                         </mat-form-field>
 
                         <mat-form-field appearance="fill">
                             <mat-label>Condición</mat-label>
-                            <input matInput [(ngModel)]="row.condicion" [ngModelOptions]="{standalone: true}">
+                            <input matInput maxlength="200" placeholder="Vacía: cuenta siempre" [(ngModel)]="row.condicion" [ngModelOptions]="{standalone: true}">
                         </mat-form-field>
 
                         <mat-checkbox [(ngModel)]="row.se_considera_clasea" [ngModelOptions]="{standalone: true}">Clásea</mat-checkbox>
@@ -219,7 +228,7 @@
                             <mat-label>Extra</mat-label>
                             <input matInput [value]="row.extraBusqueda" (input)="row.extraBusqueda = $any($event.target).value" [matAutocomplete]="habCustomExtraAuto">
                             <mat-autocomplete #habCustomExtraAuto="matAutocomplete" (optionSelected)="seleccionarExtraHabilidadCustom(i, $event.option.value)">
-                                <mat-option [value]="0">Sin extra</mat-option>
+                                <mat-option [value]="0">Elegir (al crear el personaje)</mat-option>
                                 <mat-option *ngFor="let extra of getHabilidadCustomExtrasFiltradas(row); trackBy: trackById" [value]="extra.Id_extra">{{extra.Extra}}</mat-option>
                             </mat-autocomplete>
                         </mat-form-field>
@@ -260,7 +269,7 @@
 
                         <mat-form-field appearance="fill">
                             <mat-label>Nivel lanzador</mat-label>
-                            <input matInput type="number" min="1" max="100" [(ngModel)]="row.nivel_lanzador" [ngModelOptions]="{standalone: true}">
+                            <input matInput maxlength="100" [(ngModel)]="row.nivel_lanzador" [ngModelOptions]="{standalone: true}">
                         </mat-form-field>
 
                         <mat-form-field appearance="fill">
@@ -299,6 +308,158 @@
                         (selectedTypesChange)="onPrerrequisitosSeleccionadosChange($event)"
                         (rowsChange)="onPrerrequisitosRowsChange($event)">
                     </app-prerrequisito-editor-host>
+                </section>
+            </div>
+
+            <div class="insercion-paso" [hidden]="pasoActual !== 2">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Con los DG o el nivel · {{progresionRows.length}}</h3>
+                    <p class="racial-nota">Lo que el rasgo da o cambia desde que el personaje llega a esos DG (los raciales, los de sus plantillas y los de sus clases) o a ese nivel de personaje, para siempre: un rasgo más, otro que deja de tener, una dote adicional de un tipo, un movimiento o la cifra del propio rasgo.</p>
+                    <p class="error-de-lista" role="alert" *ngIf="errorProgresion">{{errorProgresion}}</p>
+                    <p class="lista-vacia" *ngIf="progresionRows.length < 1">Sin progresión: el rasgo es igual a cualquier nivel.</p>
+                    <div class="subpanel" *ngFor="let fila of progresionRows; let indice = index; trackBy: trackByUid">
+                        <div class="subpanel-head">
+                            <span>{{resumenProgresion(fila, indice)}}</span>
+                            <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar la fila ' + (indice + 1) + ' de la progresión'"
+                                (click)="quitarProgresion(fila.uid)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                        <div class="insercion-campos">
+                            <mat-form-field appearance="fill">
+                                <mat-label>Cuenta</mat-label>
+                                <mat-select [(ngModel)]="fila.medida" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorProgresion()">
+                                    <mat-option *ngFor="let medida of medidasProgresion" [value]="medida.clave">{{medida.nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Desde</mat-label>
+                                <input matInput type="number" min="1" max="100" step="1" [(ngModel)]="fila.desde" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorProgresion()">
+                                <mat-hint>{{fila.medida === 'nivel' ? 'Nivel de personaje' : 'DG'}} (1-100)</mat-hint>
+                            </mat-form-field>
+                            <div class="racial-con-quitar insercion-campos__doble">
+                                <app-catalogo-buscador etiqueta="Gana el rasgo" placeholder="Ninguno" [opciones]="racialesParaProgresion"
+                                    [valor]="fila.id_racial_gana" (elegir)="elegirRasgoProgresion(fila, 'id_racial_gana', $event)">
+                                </app-catalogo-buscador>
+                                <button mat-icon-button type="button" class="row-action-btn" *ngIf="fila.id_racial_gana !== null"
+                                    aria-label="Sin rasgo que gana" (click)="elegirRasgoProgresion(fila, 'id_racial_gana', null)">
+                                    <mat-icon>close</mat-icon>
+                                </button>
+                            </div>
+                            <div class="racial-con-quitar insercion-campos__doble">
+                                <app-catalogo-buscador etiqueta="Deja de tener" placeholder="Ninguno" [opciones]="racialesParaProgresion"
+                                    [valor]="fila.id_racial_sustituye" (elegir)="elegirRasgoProgresion(fila, 'id_racial_sustituye', $event)">
+                                </app-catalogo-buscador>
+                                <button mat-icon-button type="button" class="row-action-btn" *ngIf="fila.id_racial_sustituye !== null"
+                                    aria-label="Sin rasgo que sustituye" (click)="elegirRasgoProgresion(fila, 'id_racial_sustituye', null)">
+                                    <mat-icon>close</mat-icon>
+                                </button>
+                            </div>
+                            <mat-form-field appearance="fill" class="insercion-campos__doble">
+                                <mat-label>Dote adicional de tipo</mat-label>
+                                <mat-select [(ngModel)]="fila.id_tipo_dote" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorProgresion()">
+                                    <mat-option [value]="null">Ninguna</mat-option>
+                                    <mat-option *ngFor="let tipo of tiposDoteOpciones" [value]="tipo.id">{{tipo.nombre}}</mat-option>
+                                    <mat-option *ngIf="fila.id_tipo_dote !== null && !opcionEsta(tiposDoteOpciones, fila.id_tipo_dote)" [value]="fila.id_tipo_dote">#{{fila.id_tipo_dote}}</mat-option>
+                                </mat-select>
+                                <mat-hint>A elegir al crear o al subir de nivel, como la del guerrero.</mat-hint>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" class="insercion-campos__doble">
+                                <mat-label>Su cifra desde ahí</mat-label>
+                                <input matInput maxlength="100" placeholder="2d8" [(ngModel)]="fila.valor" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorProgresion()">
+                                <mat-hint>El daño del aliento, el alcance de una visión…</mat-hint>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Movimiento</mat-label>
+                                <mat-select [(ngModel)]="fila.velocidad" [ngModelOptions]="{standalone: true}" (ngModelChange)="cambiarVelocidadProgresion(fila)">
+                                    <mat-option [value]="null">Ninguno</mat-option>
+                                    <mat-option *ngFor="let velocidad of velocidadesProgresion" [value]="velocidad.clave">{{velocidad.nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" *ngIf="fila.velocidad">
+                                <mat-label>Pies (al menos)</mat-label>
+                                <input matInput type="number" min="1" step="5" [(ngModel)]="fila.pies" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorProgresion()">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" class="insercion-campos__doble" *ngIf="fila.velocidad === 'volar'">
+                                <mat-label>Maniobrabilidad</mat-label>
+                                <mat-select [(ngModel)]="fila.id_maniobrabilidad" [ngModelOptions]="{standalone: true}">
+                                    <mat-option [value]="null">La que tenga</mat-option>
+                                    <mat-option *ngFor="let item of maniobrabilidades" [value]="item.id">{{item.nombre}}</mat-option>
+                                    <mat-option *ngIf="fila.id_maniobrabilidad !== null && !opcionEsta(maniobrabilidades, fila.id_maniobrabilidad)" [value]="fila.id_maniobrabilidad">#{{fila.id_maniobrabilidad}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                        </div>
+                    </div>
+                    <button mat-stroked-button type="button" (click)="agregarProgresion()">
+                        <mat-icon>add</mat-icon>
+                        Añadir fila
+                    </button>
+                </section>
+            </div>
+
+            <div class="insercion-paso" [hidden]="pasoActual !== 3">
+                <section class="insercion-tarjeta">
+                    <h3 class="insercion-tarjeta__titulo">Bonificadores condicionales · {{bonificadoresRows.length}}</h3>
+                    <p class="racial-nota">Lo que el rasgo suma solo en un caso, como el +1 al ataque contra orcos y trasgoides o la esquiva +4 a la CA contra gigantes. La ficha lo enseña aparte y no lo suma. Las salvaciones, las características y las habilidades van en sus listas, con su condición.</p>
+                    <p class="error-de-lista" role="alert" *ngIf="errorBonificadores">{{errorBonificadores}}</p>
+                    <p class="lista-vacia" *ngIf="bonificadoresRows.length < 1">Sin bonificadores condicionales.</p>
+                    <div class="subpanel" *ngFor="let fila of bonificadoresRows; let indice = index; trackBy: trackByUid">
+                        <div class="subpanel-head">
+                            <span>{{resumenBonificador(fila, indice)}}</span>
+                            <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar el bonificador ' + (indice + 1)"
+                                (click)="quitarBonificador(fila.uid)">
+                                <mat-icon>delete</mat-icon>
+                            </button>
+                        </div>
+                        <div class="insercion-campos">
+                            <mat-form-field appearance="fill">
+                                <mat-label>A qué se aplica</mat-label>
+                                <mat-select [(ngModel)]="fila.id_objetivo" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorBonificadores()">
+                                    <mat-option *ngFor="let item of objetivosDeBonificador(fila)" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Tipo de bonificador</mat-label>
+                                <mat-select [(ngModel)]="fila.id_tipo_bonificador" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorBonificadores()">
+                                    <mat-option *ngFor="let item of tiposDeBonificador(fila)" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Cantidad</mat-label>
+                                <input matInput type="number" min="-100" max="100" step="1" [(ngModel)]="fila.cantidad" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorBonificadores()">
+                                <mat-hint>Negativa, un penalizador; nunca 0.</mat-hint>
+                            </mat-form-field>
+                            <mat-form-field appearance="fill" class="insercion-campos__entero">
+                                <mat-label>Cuándo cuenta</mat-label>
+                                <input matInput maxlength="200" placeholder="contra orcos y trasgoides" [(ngModel)]="fila.condicion" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorBonificadores()">
+                            </mat-form-field>
+                            <mat-form-field appearance="fill">
+                                <mat-label>Contra (catálogo)</mat-label>
+                                <mat-select [(ngModel)]="fila.catalogoContra" [ngModelOptions]="{standalone: true}">
+                                    <mat-option *ngFor="let catalogo of catalogosContra" [value]="catalogo.clave">{{catalogo.nombre}}</mat-option>
+                                </mat-select>
+                            </mat-form-field>
+                            <div class="insercion-campos__doble">
+                                <app-catalogo-buscador [etiqueta]="'Añadir ' + nombreCatalogoContra(fila.catalogoContra).toLowerCase()" [anadir]="true"
+                                    [opciones]="opcionesContra(fila.catalogoContra)" [excluir]="idsContra(fila)" (elegir)="anadirContra(fila, $event)">
+                                </app-catalogo-buscador>
+                            </div>
+                            <div class="insercion-campos__entero racial-contra">
+                                <span class="racial-nota" *ngIf="fila.contra.length < 1">Contra ninguna criatura del catálogo (la condición lo dice en texto).</span>
+                                <span class="fila-de-lista racial-contra__criatura" *ngFor="let criatura of fila.contra; let i = index">
+                                    <span class="nombre-de-fila">{{nombreCatalogoContra(criatura.catalogo)}}: {{criatura.nombre}}</span>
+                                    <button mat-icon-button type="button" class="row-action-btn" [attr.aria-label]="'Quitar ' + criatura.nombre"
+                                        (click)="quitarContra(fila, i)">
+                                        <mat-icon>close</mat-icon>
+                                    </button>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <button mat-stroked-button type="button" (click)="agregarBonificador()">
+                        <mat-icon>add</mat-icon>
+                        Añadir bonificador
+                    </button>
                 </section>
             </div>
 

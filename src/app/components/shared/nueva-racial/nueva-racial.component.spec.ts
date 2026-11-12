@@ -27,7 +27,8 @@ describe('NuevaRacialComponent', () => {
 
     beforeEach(() => {
         canCreate = true;
-        racialSvc = jasmine.createSpyObj('RacialService', ['crearRacial', 'actualizarRacial', 'getRacial']);
+        racialSvc = jasmine.createSpyObj('RacialService', ['crearRacial', 'actualizarRacial', 'getRacial', 'getRaciales']);
+        racialSvc.getRaciales.and.returnValue(of([]));
         racialSvc.crearRacial.and.resolveTo({
             message: 'Creado',
             idRacial: 41,
@@ -62,6 +63,10 @@ describe('NuevaRacialComponent', () => {
             { getConjuros: () => of([{ Id: 9, Nombre: 'Luz' }]) } as any,
             { getRazas: () => of([{ Id: 2, Nombre: 'Elfo' }]) } as any,
             { cargar: () => Promise.resolve() } as any,
+            { getCatalogos: () => of({ Objetivos_modificador: [], Tipos_bonificador: [] }) } as any,
+            { getManiobrabilidades: () => of([]) } as any,
+            { getTiposCriatura: () => of([]) } as any,
+            { getSubtipos: () => of([]) } as any,
         );
         spyOn(Swal, 'fire').and.returnValue(Promise.resolve({ isConfirmed: true } as any));
         component.ngOnInit();
@@ -76,7 +81,7 @@ describe('NuevaRacialComponent', () => {
 
         const payload = (component as any).construirPayload();
 
-        expect(payload).toEqual({ racial: { nombre: 'Piel pétrea', oficial: true } });
+        expect(payload).toEqual({ racial: { nombre: 'Piel pétrea', oficial: true }, progresion: [], bonificadores_condicionales: [] });
     });
 
     it('permite alternar oficial y lo incluye en el payload', () => {
@@ -104,7 +109,7 @@ describe('NuevaRacialComponent', () => {
             uid: 'hb1',
             id_habilidad: 7,
             rangos: 2,
-            id_extra: 0,
+            id_extra: -1,
             se_considera_clasea: true,
             condicion: '',
             busqueda: 'Avistar',
@@ -114,31 +119,32 @@ describe('NuevaRacialComponent', () => {
             uid: 'hc1',
             id_habilidad: 8,
             rangos: 3,
-            id_extra: 0,
+            id_extra: -1,
             se_considera_clasea: false,
             busqueda: 'Saber antiguo',
             extraBusqueda: '',
         }];
         component.salvacionesRows = [{ uid: 's1', id_salvacion: 1, cantidad: 2, condicion: '' }];
-        component.sortilegasRows = [{ uid: 'so1', id_conjuro: 9, nivel_lanzador: 1, usos_diarios: '', busqueda: 'Luz' }];
+        component.sortilegasRows = [{ uid: 'so1', id_conjuro: 9, nivel_lanzador: '', usos_diarios: '', busqueda: 'Luz' }];
         component.ataquesRows = [{ uid: 'a1', descripcion: 'Mordisco 1d6' }];
 
         const payload = (component as any).construirPayload();
 
-        expect(payload.habilidades.base).toEqual([jasmine.objectContaining({
+        // Sin condición, cuenta siempre: no se manda (la API la guarda NULL).
+        expect(payload.habilidades.base).toEqual([{
             id_habilidad: 7,
             rangos: 2,
             id_extra: -1,
             se_considera_clasea: true,
-            condicion: 'No especifica',
-        })]);
+        }]);
         expect(payload.habilidades.custom).toEqual([jasmine.objectContaining({
             id_habilidad: 8,
             rangos: 3,
             id_extra: -1,
         })]);
-        expect(payload.salvaciones).toEqual([{ id_salvacion: 1, cantidad: 2, condicion: 'No especifica' }]);
-        expect(payload.sortilegas).toEqual([{ id_conjuro: 9, nivel_lanzador: 1, usos_diarios: '1/día' }]);
+        expect(payload.salvaciones).toEqual([{ id_salvacion: 1, cantidad: 2 }]);
+        // El nivel de lanzador es texto, como lo pide la API (antes iba como número y la API lo rechazaba).
+        expect(payload.sortilegas).toEqual([{ id_conjuro: 9, nivel_lanzador: '1', usos_diarios: '1/día' }]);
         expect(payload.ataques).toEqual([{ descripcion: 'Mordisco 1d6' }]);
     });
 

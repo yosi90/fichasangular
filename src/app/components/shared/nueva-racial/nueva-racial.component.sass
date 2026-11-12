@@ -56,6 +56,35 @@
     mat-checkbox
         color: #e5e7eb
 
+    // Los pasos «Progresión» y «Condicionales»: subpaneles con las piezas comunes de las listas.
+    .racial-nota
+        @include inserciones.nota-de-insercion
+        margin-bottom: 0.65rem
+
+    .lista-vacia
+        @include inserciones.lista-vacia
+
+    .error-de-lista
+        @include inserciones.error-de-lista
+
+    .racial-con-quitar
+        @include inserciones.buscador-con-quitar
+
+    .racial-contra
+        display: flex
+        flex-wrap: wrap
+        gap: 0.35rem 1rem
+        align-items: center
+
+    .racial-contra__criatura
+        @include inserciones.fila-de-lista
+        grid-template-columns: auto 42px
+        margin-bottom: 0
+        border-bottom: 0
+
+        .nombre-de-fila
+            @include inserciones.nombre-de-fila
+
 @container insercion (max-width: 1000px)
     .nueva-racial-form
         .row-editor,

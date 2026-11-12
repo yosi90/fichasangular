@@ -5,6 +5,7 @@ import {
     EncantamientoDetalle,
     EquipoAura,
     EquipoCatalogos,
+    EquipoObjetivoModificador,
     EquipoRef,
     EquipoTipoBonificador,
     EquipoTipoObjeto,
@@ -92,6 +93,8 @@ function normalizeAura(raw: any): EquipoAura {
 
 const PIEZAS_MATERIAL: readonly PiezaMaterial[] = ['arma', 'municion', 'armadura', 'escudo'];
 
+const LISTAS_DEL_RASGO: NonNullable<EquipoObjetivoModificador['Lista_del_rasgo']>[] = ['salvaciones', 'caracteristicas', 'habilidades'];
+
 export function normalizeEquipoCatalogos(raw: any): EquipoCatalogos {
     const refs = (clave: string) => normalizeEquipoRefs(raw?.[clave]);
     return {
@@ -119,7 +122,12 @@ export function normalizeEquipoCatalogos(raw: any): EquipoCatalogos {
         Tipos_bonificador: toArray(raw?.Tipos_bonificador)
             .map((item: any) => normalizeTipoBonificador(item))
             .filter((item): item is EquipoTipoBonificador => item !== null),
-        Objetivos_modificador: refs('Objetivos_modificador'),
+        Objetivos_modificador: toArray<any>(raw?.Objetivos_modificador)
+            .map((item) => {
+                const ref = normalizeEquipoRef(item);
+                return ref ? { ...ref, Lista_del_rasgo: LISTAS_DEL_RASGO.find((lista) => lista === item?.Lista_del_rasgo) ?? null } : null;
+            })
+            .filter((item): item is EquipoObjetivoModificador => item !== null),
         Empunaduras: refs('Empunaduras'),
         Aplicaciones_material: toArray<any>(raw?.Aplicaciones_material)
             .map((item) => {

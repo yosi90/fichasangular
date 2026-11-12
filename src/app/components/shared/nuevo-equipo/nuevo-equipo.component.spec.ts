@@ -40,7 +40,7 @@ describe('NuevoEquipoComponent', () => {
         Tipos_escudo: [{ Id: 1, Nombre: 'Broquel' }, { Id: 2, Nombre: 'Ligero' }],
         Intensidades_aura: [{ Id: 1, Nombre: 'Tenue' }, { Id: 2, Nombre: 'Débil' }],
         Aplicaciones_material: [{ Id: 6, Nombre: 'Armadura ligera' }, { Id: 9, Nombre: 'Escudo' }],
-        Objetivos_modificador: [{ Id: 1, Nombre: 'CA' }],
+        Objetivos_modificador: [{ Id: 1, Nombre: 'CA', Lista_del_rasgo: null }],
         Tipos_bonificador: [{ Id: 1, Nombre: 'Mejora', Apila: false }],
     };
 

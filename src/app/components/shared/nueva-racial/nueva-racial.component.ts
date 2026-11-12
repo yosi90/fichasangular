@@ -46,13 +46,39 @@ import {
 } from '../prerrequisito-editor/prerrequisito-editor.registry';
 import { PrerrequisitosTiposService } from 'src/app/services/prerrequisitos-tipos.service';
 import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion';
-import { TEXTO_SIN_ESPECIFICAR, USOS_SORTILEGA_INICIALES, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
+import { USOS_SORTILEGA_INICIALES } from 'src/app/services/utils/texto-sin-especificar';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
+import { ID_EXTRA_HABILIDAD_ELEGIR, ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
+import {
+    CATALOGOS_CONTRA,
+    CatalogoContra,
+    FilaBonificadorRacial,
+    FilaProgresionRacial,
+    MEDIDAS_PROGRESION,
+    VELOCIDADES_PROGRESION,
+    cuerpoDeBonificadores,
+    cuerpoDeProgresion,
+    falloDeProgresionYBonificadores,
+    filaBonificadorVacia,
+    filaProgresionVacia,
+    filasDeBonificadores,
+    filasDeProgresion,
+    resumenDeProgresion,
+} from 'src/app/services/utils/racial-formulario';
+import { EquipoObjetivoModificador, EquipoRef } from 'src/app/interfaces/equipo';
+import { EquipoService } from 'src/app/services/equipo.service';
+import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
+import { SubtipoService } from 'src/app/services/subtipo.service';
+import { TipoCriaturaService } from 'src/app/services/tipo-criatura.service';
+import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo, opcionesPorId } from '../catalogo-buscador/catalogo-buscador.component';
+import { cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 
 type RacialPrerequisiteType = Extract<PrerequisiteType, 'raza' | 'caracteristica'>;
 const RAZA_EN_CREACION_PREREQ_ID = 2147483647;
 const RAZA_EN_CREACION_PREREQ_LABEL = 'La raza que estoy creando';
+/** El nivel de lanzador con el que empieza una sortílega nueva (es texto: «Igual a sus DG» también vale). */
+const NIVEL_LANZADOR_INICIAL = '1';
 
 interface RacialCreadoEmitPayload {
     idRacial: number;
@@ -112,7 +138,8 @@ interface SalvacionRow {
 interface SortilegaRow {
     uid: string;
     id_conjuro: number;
-    nivel_lanzador: number;
+    /** Texto, como lo guarda la API: «1», «Igual a sus DG», «Revisar en el manual». */
+    nivel_lanzador: string;
     usos_diarios: string;
     busqueda: string;
 }
@@ -154,7 +181,9 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
 
     guardando: boolean = false;
     /** Los pasos del marco común de las inserciones; se puede saltar a cualquiera. */
-    readonly pasos = ['Base', 'Rasgos'];
+    readonly pasos = ['Base', 'Rasgos', 'Progresión', 'Condicionales'];
+    private static readonly PASO_PROGRESION = 2;
+    private static readonly PASO_CONDICIONALES = 3;
     pasoActual = 0;
     puedeCrear: boolean = false;
     puedeActualizar: boolean = false;
@@ -172,6 +201,23 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     ataquesRows: AtaqueRow[] = [];
     prerrequisitosSeleccionados: RacialPrerequisiteType[] = [];
     prerrequisitosRows: PrerequisiteRowModel[] = [];
+    /** Lo que el rasgo da o cambia a N DG o a nivel N (`progresion[]`). */
+    progresionRows: FilaProgresionRacial[] = [];
+    /** Lo que suma solo en un caso (`bonificadores_condicionales[]`). */
+    bonificadoresRows: FilaBonificadorRacial[] = [];
+    /** El error de la comprobación de antes de mandar, en su tarjeta. */
+    errorProgresion: string | null = null;
+    errorBonificadores: string | null = null;
+    racialesOpciones: OpcionCatalogo[] = [];
+    tiposDoteOpciones: OpcionCatalogo[] = [];
+    maniobrabilidades: OpcionCatalogo[] = [];
+    objetivos: EquipoObjetivoModificador[] = [];
+    tiposBonificador: EquipoRef[] = [];
+    tiposCriaturaOpciones: OpcionCatalogo[] = [];
+    subtiposOpciones: OpcionCatalogo[] = [];
+    readonly medidasProgresion = MEDIDAS_PROGRESION;
+    readonly velocidadesProgresion = VELOCIDADES_PROGRESION;
+    readonly catalogosContra = CATALOGOS_CONTRA;
     customModalAbierto = false;
     customModalModo: 'crear' | 'editar' = 'crear';
     customModalRowUid = '';
@@ -200,6 +246,8 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         nombre: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(200)]],
         descripcion: ['', [Validators.maxLength(5000)]],
         oficial: [true],
+        /** La característica de su CD (10 + ½ DG raciales + su modificador); 0, ninguna. */
+        id_caracteristica_cd: [0],
     });
 
     constructor(
@@ -211,6 +259,10 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         private conjuroSvc: ConjuroService,
         private razaSvc: RazaService,
         private prerrequisitosTiposSvc: PrerrequisitosTiposService,
+        private equipoSvc: EquipoService,
+        private razaCatalogosSvc: RazaCatalogosService,
+        private tipoCriaturaSvc: TipoCriaturaService,
+        private subtipoSvc: SubtipoService,
     ) { }
 
     ngOnInit(): void {
@@ -288,6 +340,9 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             });
             return;
         }
+
+        if (this.comprobarProgresionYBonificadores())
+            return;
 
         const payload = this.construirPayload();
         this.guardando = true;
@@ -382,7 +437,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     seleccionarHabilidadBase(index: number, id: number): void {
         const habilidad = this.buscarHabilidad(this.habilidadesBase, id);
         this.habilidadesBaseRows = this.habilidadesBaseRows.map((row, rowIndex) => rowIndex === index
-            ? { ...row, id_habilidad: habilidad?.Id_habilidad ?? 0, busqueda: habilidad?.Nombre ?? '', id_extra: 0, extraBusqueda: '' }
+            ? { ...row, id_habilidad: habilidad?.Id_habilidad ?? 0, busqueda: habilidad?.Nombre ?? '', id_extra: this.idExtraInicial(habilidad), extraBusqueda: '' }
             : row);
     }
 
@@ -390,7 +445,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         const row = this.habilidadesBaseRows[index];
         const extra = this.getHabilidadBaseExtras(row).find((item) => item.Id_extra === Number(id));
         this.habilidadesBaseRows = this.habilidadesBaseRows.map((item, rowIndex) => rowIndex === index
-            ? { ...item, id_extra: extra?.Id_extra ?? 0, extraBusqueda: extra?.Extra ?? '' }
+            ? { ...item, id_extra: extra?.Id_extra ?? ID_EXTRA_HABILIDAD_ELEGIR, extraBusqueda: extra?.Extra ?? '' }
             : item);
     }
 
@@ -428,13 +483,13 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         const targetUid = this.customModalRowUid;
         if (targetUid) {
             this.habilidadesCustomRows = this.habilidadesCustomRows.map((row) => row.uid === targetUid
-                ? { ...row, id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre, id_extra: 0, extraBusqueda: '' }
+                ? { ...row, id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre, id_extra: this.idExtraInicial(habilidad), extraBusqueda: '' }
                 : row);
         } else {
             const empty = this.habilidadesCustomRows.find((row) => Number(row.id_habilidad) <= 0);
             if (empty)
                 this.habilidadesCustomRows = this.habilidadesCustomRows.map((row) => row.uid === empty.uid
-                    ? { ...row, id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre, id_extra: 0, extraBusqueda: '' }
+                    ? { ...row, id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre, id_extra: this.idExtraInicial(habilidad), extraBusqueda: '' }
                     : row);
             else
                 this.habilidadesCustomRows = [...this.habilidadesCustomRows, { ...this.crearHabilidadCustomRow(), id_habilidad: habilidad.Id_habilidad, busqueda: habilidad.Nombre }];
@@ -449,7 +504,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     seleccionarHabilidadCustom(index: number, id: number): void {
         const habilidad = this.buscarHabilidad(this.habilidadesCustom, id);
         this.habilidadesCustomRows = this.habilidadesCustomRows.map((row, rowIndex) => rowIndex === index
-            ? { ...row, id_habilidad: habilidad?.Id_habilidad ?? 0, busqueda: habilidad?.Nombre ?? '', id_extra: 0, extraBusqueda: '' }
+            ? { ...row, id_habilidad: habilidad?.Id_habilidad ?? 0, busqueda: habilidad?.Nombre ?? '', id_extra: this.idExtraInicial(habilidad), extraBusqueda: '' }
             : row);
     }
 
@@ -457,7 +512,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         const row = this.habilidadesCustomRows[index];
         const extra = this.getHabilidadCustomExtras(row).find((item) => item.Id_extra === Number(id));
         this.habilidadesCustomRows = this.habilidadesCustomRows.map((item, rowIndex) => rowIndex === index
-            ? { ...item, id_extra: extra?.Id_extra ?? 0, extraBusqueda: extra?.Extra ?? '' }
+            ? { ...item, id_extra: extra?.Id_extra ?? ID_EXTRA_HABILIDAD_ELEGIR, extraBusqueda: extra?.Extra ?? '' }
             : item);
     }
 
@@ -498,6 +553,126 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
 
     quitarAtaque(index: number): void {
         this.ataquesRows = quitarFila(this.ataquesRows, index, () => this.crearAtaqueRow());
+    }
+
+    agregarProgresion(): void {
+        this.progresionRows = [...this.progresionRows, filaProgresionVacia()];
+        this.errorProgresion = null;
+    }
+
+    quitarProgresion(uid: string): void {
+        this.progresionRows = this.progresionRows.filter((fila) => fila.uid !== uid);
+        this.errorProgresion = null;
+    }
+
+    elegirRasgoProgresion(fila: FilaProgresionRacial, clave: 'id_racial_gana' | 'id_racial_sustituye', id: number | null): void {
+        fila[clave] = id !== null && id > 0 ? id : null;
+        this.errorProgresion = null;
+    }
+
+    /** Elegir o quitar el movimiento: sin él, no hay pies ni maniobrabilidad; la maniobrabilidad, solo al volar. */
+    cambiarVelocidadProgresion(fila: FilaProgresionRacial): void {
+        if (!fila.velocidad)
+            fila.pies = null;
+        if (fila.velocidad !== 'volar')
+            fila.id_maniobrabilidad = null;
+        this.errorProgresion = null;
+    }
+
+    resumenProgresion(fila: FilaProgresionRacial, indice: number): string {
+        return resumenDeProgresion(fila, indice);
+    }
+
+    /** Los raciales que puede ganar o sustituir una fila (no el propio rasgo que se modifica). */
+    get racialesParaProgresion(): OpcionCatalogo[] {
+        const propio = this.esModoEdicion ? this.edicion.id : 0;
+        return propio > 0 ? this.racialesOpciones.filter((item) => item.id !== propio) : this.racialesOpciones;
+    }
+
+    agregarBonificador(): void {
+        this.bonificadoresRows = [...this.bonificadoresRows, filaBonificadorVacia()];
+        this.errorBonificadores = null;
+    }
+
+    quitarBonificador(uid: string): void {
+        this.bonificadoresRows = this.bonificadoresRows.filter((fila) => fila.uid !== uid);
+        this.errorBonificadores = null;
+    }
+
+    /** Los objetivos que valen en un bonificador condicional (los de `Lista_del_rasgo` van en su lista) y el de la fila. */
+    objetivosDeBonificador(fila: FilaBonificadorRacial): EquipoRef[] {
+        const validos = this.objetivos.filter((item) => item.Lista_del_rasgo === null || item.Id === fila.id_objetivo);
+        if (fila.id_objetivo !== null && !validos.some((item) => item.Id === fila.id_objetivo))
+            return [...validos, { Id: fila.id_objetivo, Nombre: `#${fila.id_objetivo}` }];
+        return validos;
+    }
+
+    tiposDeBonificador(fila: FilaBonificadorRacial): EquipoRef[] {
+        if (fila.id_tipo_bonificador !== null && !this.tiposBonificador.some((item) => item.Id === fila.id_tipo_bonificador))
+            return [...this.tiposBonificador, { Id: fila.id_tipo_bonificador, Nombre: `#${fila.id_tipo_bonificador}` }];
+        return this.tiposBonificador;
+    }
+
+    opcionesContra(catalogo: CatalogoContra): OpcionCatalogo[] {
+        if (catalogo === 'tipo_criatura')
+            return this.tiposCriaturaOpciones;
+        if (catalogo === 'subtipo')
+            return this.subtiposOpciones;
+        return this.razasCatalogo.map((raza) => ({ id: raza.id, nombre: raza.nombre }));
+    }
+
+    idsContra(fila: FilaBonificadorRacial): number[] {
+        return fila.contra.filter((c) => c.catalogo === fila.catalogoContra).map((c) => c.id);
+    }
+
+    anadirContra(fila: FilaBonificadorRacial, id: number): void {
+        if (id < 0 || fila.contra.some((c) => c.catalogo === fila.catalogoContra && c.id === id))
+            return;
+        const nombre = nombreDeOpcion(this.opcionesContra(fila.catalogoContra), id);
+        fila.contra = [...fila.contra, { catalogo: fila.catalogoContra, id, nombre }];
+        this.errorBonificadores = null;
+    }
+
+    quitarContra(fila: FilaBonificadorRacial, indice: number): void {
+        fila.contra = fila.contra.filter((_, i) => i !== indice);
+        this.errorBonificadores = null;
+    }
+
+    nombreCatalogoContra(catalogo: CatalogoContra): string {
+        return CATALOGOS_CONTRA.find((item) => item.clave === catalogo)?.nombre ?? catalogo;
+    }
+
+    /** «1 · Ataque +1 (racial)», el resumen de un bonificador en su cabecera. */
+    resumenBonificador(fila: FilaBonificadorRacial, indice: number): string {
+        const objetivo = this.objetivos.find((item) => item.Id === fila.id_objetivo)?.Nombre ?? 'Sin objetivo';
+        const tipo = this.tiposBonificador.find((item) => item.Id === fila.id_tipo_bonificador)?.Nombre;
+        const cantidad = fila.cantidad === null || `${fila.cantidad}`.trim() === '' ? ''
+            : ` ${Number(fila.cantidad) >= 0 ? '+' : ''}${Number(fila.cantidad)}`;
+        return `${indice + 1} · ${objetivo}${cantidad}${tipo ? ` (${tipo.toLowerCase()})` : ''}`;
+    }
+
+    /** Si el catálogo ya trae la opción de la fila (si no, se enseña con su id para no perderla). */
+    opcionEsta(opciones: readonly OpcionCatalogo[], id: number): boolean {
+        return opciones.some((opcion) => opcion.id === id);
+    }
+
+    limpiarErrorBonificadores(): void {
+        this.errorBonificadores = null;
+    }
+
+    limpiarErrorProgresion(): void {
+        this.errorProgresion = null;
+    }
+
+    /** Lo que la API rechazaría de la progresión o de los bonificadores: lo enseña en su tarjeta y salta a su paso. */
+    private comprobarProgresionYBonificadores(): boolean {
+        const idRacial = this.esModoEdicion ? this.edicion.id : null;
+        const fallo = falloDeProgresionYBonificadores(this.progresionRows, this.bonificadoresRows, idRacial, this.objetivos);
+        this.errorProgresion = fallo?.lista === 'progresion' ? fallo.mensaje : null;
+        this.errorBonificadores = fallo?.lista === 'bonificadores' ? fallo.mensaje : null;
+        if (fallo)
+            this.pasoActual = fallo.lista === 'progresion' ? NuevaRacialComponent.PASO_PROGRESION : NuevaRacialComponent.PASO_CONDICIONALES;
+        return fallo !== null;
     }
 
     async togglePrerrequisito(type: RacialPrerequisiteType, checked: boolean): Promise<void> {
@@ -594,7 +769,23 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     private cargarCatalogos(): void {
         this.doteSvc.getDotes()
             .pipe(takeUntil(this.destroy$))
-            .subscribe({ next: (items) => this.dotes = this.ordenar(items), error: () => this.dotes = [] });
+            .subscribe({
+                next: (items) => {
+                    this.dotes = this.ordenar(items);
+                    this.tiposDoteOpciones = this.tiposDeDoteDe(items);
+                },
+                error: () => this.dotes = [],
+            });
+        const cargar = cargadorDeCatalogos(this.destroy$);
+        cargar(this.racialSvc.getRaciales(), (items) => this.racialesOpciones = opcionesDeCatalogo(items));
+        cargar(this.razaCatalogosSvc.getManiobrabilidades(), (items) =>
+            this.maniobrabilidades = opcionesPorId(opcionesDeCatalogo(items).filter((item) => item.id > 0)));
+        cargar(this.equipoSvc.getCatalogos(), (catalogos) => {
+            this.objetivos = catalogos?.Objetivos_modificador ?? [];
+            this.tiposBonificador = catalogos?.Tipos_bonificador ?? [];
+        });
+        cargar(this.tipoCriaturaSvc.getTiposCriatura(), (items) => this.tiposCriaturaOpciones = opcionesDeCatalogo(items));
+        cargar(this.subtipoSvc.getSubtipos(), (items) => this.subtiposOpciones = opcionesDeCatalogo(items));
         this.habilidadSvc.getHabilidades()
             .pipe(takeUntil(this.destroy$))
             .subscribe({ next: (items) => this.habilidadesBase = this.ordenarHabilidades(items), error: () => this.habilidadesBase = [] });
@@ -620,8 +811,13 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             nombre: this.texto(racial?.Nombre),
             descripcion: this.texto(racial?.Descripcion),
             oficial: racial?.Oficial !== false,
+            id_caracteristica_cd: this.entero(racial?.Caracteristica_cd?.Id),
         });
 
+        this.progresionRows = filasDeProgresion(racial);
+        this.bonificadoresRows = filasDeBonificadores(racial);
+        this.errorProgresion = null;
+        this.errorBonificadores = null;
         this.doteRows = this.hidratarDotes(racial);
         this.habilidadesBaseRows = this.hidratarHabilidadesBase(racial);
         this.habilidadesCustomRows = this.hidratarHabilidadesCustom(racial);
@@ -636,10 +832,14 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     private construirPayload(): RacialCreateRequest {
         const nombre = this.texto(this.form.value.nombre);
         const descripcion = this.texto(this.form.value.descripcion);
+        const idCaracteristicaCd = this.entero(this.form.value.id_caracteristica_cd);
         const payload: RacialCreateRequest = {
-            racial: descripcion.length > 0
-                ? { nombre, descripcion, oficial: this.form.value.oficial === true }
-                : { nombre, oficial: this.form.value.oficial === true },
+            racial: {
+                nombre,
+                ...(descripcion.length > 0 ? { descripcion } : {}),
+                oficial: this.form.value.oficial === true,
+                ...(idCaracteristicaCd > 0 ? { id_caracteristica_cd: idCaracteristicaCd } : {}),
+            },
         };
 
         const dotes = this.construirDotesPayload();
@@ -668,6 +868,9 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             payload.ataques = ataques;
         if ((prerrequisitos.raza?.length ?? 0) > 0 || (prerrequisitos.caracteristica?.length ?? 0) > 0)
             payload.prerrequisitos = prerrequisitos;
+        // Siempre: al modificar, la lista que se manda reemplaza a la que había (`[]`, ninguna).
+        payload.progresion = cuerpoDeProgresion(this.progresionRows);
+        payload.bonificadores_condicionales = cuerpoDeBonificadores(this.bonificadoresRows);
 
         return payload;
     }
@@ -684,7 +887,11 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
                 ...(this.texto(payload?.racial?.descripcion).length > 0
                     ? { descripcion: this.texto(payload?.racial?.descripcion) }
                     : {}),
+                ...(payload?.racial?.id_caracteristica_cd ? { id_caracteristica_cd: payload.racial.id_caracteristica_cd } : {}),
             },
+            // En su orden: el de las filas es el de la progresión (y el de los bonificadores, el de la ficha).
+            progresion: payload.progresion ?? [],
+            bonificadores_condicionales: payload.bonificadores_condicionales ?? [],
         };
 
         if ((payload.dotes?.length ?? 0) > 0) {
@@ -767,9 +974,10 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             .map((row) => ({
                 id_habilidad: this.entero(row.id_habilidad),
                 rangos: this.entero(row.rangos),
-                id_extra: this.entero(row.id_extra) > 0 ? this.entero(row.id_extra) : -1,
+                id_extra: this.idExtraHabilidad(row.id_extra),
                 se_considera_clasea: row.se_considera_clasea === true,
-                condicion: textoOSinEspecificar(row.condicion),
+                // Sin condición, cuenta siempre (la API la guarda NULL).
+                ...(this.texto(row.condicion).length > 0 ? { condicion: this.texto(row.condicion) } : {}),
             }));
     }
 
@@ -779,7 +987,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             .map((row) => ({
                 id_habilidad: this.entero(row.id_habilidad),
                 rangos: this.entero(row.rangos),
-                id_extra: this.entero(row.id_extra) > 0 ? this.entero(row.id_extra) : -1,
+                id_extra: this.idExtraHabilidad(row.id_extra),
                 se_considera_clasea: row.se_considera_clasea === true,
             }));
     }
@@ -799,7 +1007,8 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             .map((row) => ({
                 id_salvacion: this.entero(row.id_salvacion),
                 cantidad: this.entero(row.cantidad),
-                condicion: textoOSinEspecificar(row.condicion),
+                // Sin condición, cuenta siempre (NULL en la base, como el +1 del mediano).
+                ...(this.texto(row.condicion).length > 0 ? { condicion: this.texto(row.condicion) } : {}),
             }));
     }
 
@@ -808,7 +1017,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             .filter((row) => this.entero(row.id_conjuro) > 0)
             .map((row) => ({
                 id_conjuro: this.entero(row.id_conjuro),
-                nivel_lanzador: Math.max(1, this.entero(row.nivel_lanzador, 1)),
+                nivel_lanzador: this.texto(row.nivel_lanzador, NIVEL_LANZADOR_INICIAL),
                 usos_diarios: this.texto(row.usos_diarios, USOS_SORTILEGA_INICIALES),
             }));
     }
@@ -855,7 +1064,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private resetFormulario(): void {
-        this.form.reset({ nombre: '', descripcion: '', oficial: true });
+        this.form.reset({ nombre: '', descripcion: '', oficial: true, id_caracteristica_cd: 0 });
         this.resetFilas();
         this.edicion.olvidar();
     }
@@ -870,6 +1079,10 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         this.ataquesRows = [this.crearAtaqueRow()];
         this.prerrequisitosSeleccionados = [];
         this.prerrequisitosRows = [];
+        this.progresionRows = [];
+        this.bonificadoresRows = [];
+        this.errorProgresion = null;
+        this.errorBonificadores = null;
     }
 
     private actualizarPermisos(): void {
@@ -925,9 +1138,9 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             uid: this.uid(),
             id_habilidad: this.entero(this.pick(item, 'Id_habilidad', 'id_habilidad', 'id_h', 'ih', 'Id', 'id')),
             rangos: this.entero(this.pick(item, 'Rangos', 'rangos', 'Cantidad', 'cantidad', 'r')),
-            id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie')),
+            id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie'), ID_EXTRA_HABILIDAD_SIN_EXTRA),
             se_considera_clasea: toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
-            condicion: textoOSinEspecificar(this.pick(item, 'Condicion', 'condicion', 'c')),
+            condicion: this.texto(this.pick(item, 'Condicion', 'condicion', 'c')),
             busqueda: this.texto(this.pick(item, 'Habilidad', 'habilidad', 'Nombre', 'nombre', 'n')),
             extraBusqueda: this.texto(this.pick(item, 'Extra', 'extra', 'x')),
         }));
@@ -939,7 +1152,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             uid: this.uid(),
             id_habilidad: this.entero(this.pick(item, 'Id_habilidad', 'id_habilidad', 'id_h', 'ih', 'Id', 'id')),
             rangos: this.entero(this.pick(item, 'Rangos', 'rangos', 'Cantidad', 'cantidad', 'r')),
-            id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie')),
+            id_extra: this.entero(this.pick(item, 'Id_extra', 'id_extra', 'i_ex', 'ie'), ID_EXTRA_HABILIDAD_SIN_EXTRA),
             se_considera_clasea: toBoolean(this.pick(item, 'Se_considera_clasea', 'se_considera_clasea', 'Clasea', 'clasea', 'sc')),
             busqueda: this.texto(this.pick(item, 'Habilidad', 'habilidad', 'Nombre', 'nombre', 'n')),
             extraBusqueda: this.texto(this.pick(item, 'Extra', 'extra', 'x')),
@@ -961,7 +1174,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             uid: this.uid(),
             id_salvacion: this.entero(this.pick(item, 'Id_salvacion', 'id_salvacion', 'Id', 'id')),
             cantidad: this.entero(this.pick(item, 'Cantidad', 'cantidad', 'c')),
-            condicion: textoOSinEspecificar(this.pick(item, 'Condicion', 'condicion', 'd')),
+            condicion: this.texto(this.pick(item, 'Condicion', 'condicion', 'd')),
         }));
         return rows.length > 0 ? rows : [this.crearSalvacionRow()];
     }
@@ -970,7 +1183,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         const rows = (racial?.Sortilegas ?? []).map((item) => ({
             uid: this.uid(),
             id_conjuro: this.entero(item?.Conjuro?.Id ?? this.pick(item, 'Id_conjuro', 'id_conjuro', 'Id', 'id')),
-            nivel_lanzador: Math.max(1, this.entero(this.pick(item, 'Nivel_lanzador', 'nivel_lanzador', 'nl'), 1)),
+            nivel_lanzador: this.texto(this.pick(item, 'Nivel_lanzador', 'nivel_lanzador', 'nl'), NIVEL_LANZADOR_INICIAL),
             usos_diarios: this.texto(this.pick(item, 'Usos_diarios', 'usos_diarios', 'ud'), USOS_SORTILEGA_INICIALES),
             busqueda: this.texto(item?.Conjuro?.Nombre ?? this.pick(item, 'Conjuro', 'conjuro', 'Nombre', 'nombre')),
         }));
@@ -1035,11 +1248,11 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private crearHabilidadBaseRow(): HabilidadBaseRow {
-        return { uid: this.uid(), id_habilidad: 0, rangos: 0, id_extra: 0, se_considera_clasea: false, condicion: TEXTO_SIN_ESPECIFICAR, busqueda: '', extraBusqueda: '' };
+        return { uid: this.uid(), id_habilidad: 0, rangos: 0, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, se_considera_clasea: false, condicion: '', busqueda: '', extraBusqueda: '' };
     }
 
     private crearHabilidadCustomRow(): HabilidadCustomRow {
-        return { uid: this.uid(), id_habilidad: 0, rangos: 0, id_extra: 0, se_considera_clasea: false, busqueda: '', extraBusqueda: '' };
+        return { uid: this.uid(), id_habilidad: 0, rangos: 0, id_extra: ID_EXTRA_HABILIDAD_SIN_EXTRA, se_considera_clasea: false, busqueda: '', extraBusqueda: '' };
     }
 
     private upsertHabilidadCustom(habilidad: HabilidadBasicaDetalle): void {
@@ -1057,15 +1270,38 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     }
 
     private crearSalvacionRow(): SalvacionRow {
-        return { uid: this.uid(), id_salvacion: 0, cantidad: 0, condicion: TEXTO_SIN_ESPECIFICAR };
+        return { uid: this.uid(), id_salvacion: 0, cantidad: 0, condicion: '' };
     }
 
     private crearSortilegaRow(): SortilegaRow {
-        return { uid: this.uid(), id_conjuro: 0, nivel_lanzador: 1, usos_diarios: USOS_SORTILEGA_INICIALES, busqueda: '' };
+        return { uid: this.uid(), id_conjuro: 0, nivel_lanzador: NIVEL_LANZADOR_INICIAL, usos_diarios: USOS_SORTILEGA_INICIALES, busqueda: '' };
     }
 
     private crearAtaqueRow(): AtaqueRow {
         return { uid: this.uid(), descripcion: '' };
+    }
+
+    /**
+     * El extra de una habilidad tal como lo guarda la API: el elegido, 0 («Elegir»: la habilidad admite extra y falta
+     * escogerlo) o -1 (no lleva).
+     */
+    private idExtraHabilidad(valor: unknown): number {
+        const id = this.entero(valor, ID_EXTRA_HABILIDAD_SIN_EXTRA);
+        return id >= ID_EXTRA_HABILIDAD_ELEGIR ? id : ID_EXTRA_HABILIDAD_SIN_EXTRA;
+    }
+
+    private idExtraInicial(habilidad: HabilidadBasicaDetalle | undefined): number {
+        return habilidad?.Soporta_extra ? ID_EXTRA_HABILIDAD_ELEGIR : ID_EXTRA_HABILIDAD_SIN_EXTRA;
+    }
+
+    /** Los tipos de dote que tienen las dotes del catálogo (el 0, «Cualquiera», es que no hay tipo). */
+    private tiposDeDoteDe(dotes: Dote[]): OpcionCatalogo[] {
+        const porId = new Map<number, string>();
+        dotes.forEach((dote) => (dote?.Tipos ?? []).forEach((tipo) => {
+            if (this.entero(tipo?.Id) > 0 && !porId.has(this.entero(tipo.Id)))
+                porId.set(this.entero(tipo.Id), this.texto(tipo.Nombre));
+        }));
+        return opcionesDeCatalogo([...porId].map(([id, nombre]) => ({ Id: id, Nombre: nombre })));
     }
 
     private uid(): string {

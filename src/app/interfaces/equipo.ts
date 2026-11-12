@@ -81,6 +81,14 @@ export interface AplicacionMaterial extends EquipoRef {
 }
 
 /** `GET /equipo/catalogos`: los catálogos pequeños del equipo (caché de la RTDB `EquipoCatalogos`). */
+/**
+ * Un objetivo de los modificadores (Ataque, CA, Salvaciones…). `Lista_del_rasgo`: en un rasgo racial, la lista propia
+ * donde va (sus salvaciones, características o habilidades), así que no vale como bonificador condicional; `null` los demás.
+ */
+export interface EquipoObjetivoModificador extends EquipoRef {
+    Lista_del_rasgo: 'salvaciones' | 'caracteristicas' | 'habilidades' | null;
+}
+
 export interface EquipoCatalogos {
     Manejos_armas: EquipoRef[];
     Propiedades_armas: EquipoPropiedadArma[];
@@ -94,7 +102,7 @@ export interface EquipoCatalogos {
     Tipos_activacion: EquipoRef[];
     Tipos_accion: EquipoRef[];
     Tipos_bonificador: EquipoTipoBonificador[];
-    Objetivos_modificador: EquipoRef[];
+    Objetivos_modificador: EquipoObjetivoModificador[];
     Empunaduras: EquipoRef[];
     Aplicaciones_material: AplicacionMaterial[];
     Danos_por_tamano: EquipoDanoPorTamano[];

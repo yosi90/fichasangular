@@ -4,6 +4,8 @@ export interface RacialCreateCore {
     nombre: string;
     descripcion?: string;
     oficial: boolean;
+    /** La característica de su CD (10 + ½ DG raciales + su modificador); sin ella, no se manda. */
+    id_caracteristica_cd?: number;
 }
 
 export interface RacialCreateDote {
@@ -16,7 +18,8 @@ export interface RacialCreateHabilidadBase {
     rangos: number;
     id_extra?: number;
     se_considera_clasea: boolean;
-    condicion: string;
+    /** El caso en que cuenta; sin ella, cuenta siempre. */
+    condicion?: string;
 }
 
 export interface RacialCreateHabilidadCustom {
@@ -39,12 +42,13 @@ export interface RacialCreateCaracteristica {
 export interface RacialCreateSalvacion {
     id_salvacion: number;
     cantidad: number;
-    condicion: string;
+    /** El caso en que cuenta; sin ella, cuenta siempre. */
+    condicion?: string;
 }
 
 export interface RacialCreateSortilega {
     id_conjuro: number;
-    nivel_lanzador: number;
+    nivel_lanzador: string;
     usos_diarios: string;
 }
 
@@ -67,6 +71,29 @@ export interface RacialCreatePrerequisitos {
     caracteristica?: RacialCreatePrerequisitoCaracteristica[];
 }
 
+/** Una fila de `progresion[]`: lo que el rasgo da o cambia desde N DG o nivel N (`RacialProgresion` al leer). */
+export interface RacialCreateProgresion {
+    medida: 'dg' | 'nivel';
+    desde: number;
+    id_racial_gana?: number;
+    id_racial_sustituye?: number;
+    id_tipo_dote?: number;
+    velocidad?: { tipo: 'correr' | 'nadar' | 'volar' | 'trepar' | 'excavar'; pies: number; id_maniobrabilidad?: number; };
+    valor?: string;
+}
+
+/** Contra qué criatura cuenta un bonificador condicional: una sola de las tres claves. */
+export type RacialCreateBonificadorContra = { id_tipo: number; } | { id_subtipo: number; } | { id_raza: number; };
+
+/** Una fila de `bonificadores_condicionales[]` (`RacialBonificadorCondicional` al leer). */
+export interface RacialCreateBonificadorCondicional {
+    id_objetivo: number;
+    id_tipo_bonificador: number;
+    cantidad: number;
+    condicion: string;
+    contra: RacialCreateBonificadorContra[];
+}
+
 export interface RacialCreateRequest {
     racial: RacialCreateCore;
     dotes?: RacialCreateDote[];
@@ -76,6 +103,10 @@ export interface RacialCreateRequest {
     sortilegas?: RacialCreateSortilega[];
     ataques?: RacialCreateAtaque[];
     prerrequisitos?: RacialCreatePrerequisitos;
+    /** Al modificar, sin ella se conserva la que había; el formulario la manda siempre (`[]`, ninguna). */
+    progresion?: RacialCreateProgresion[];
+    /** Al modificar, sin ellos se conservan; el formulario los manda siempre (`[]`, ninguno). */
+    bonificadores_condicionales?: RacialCreateBonificadorCondicional[];
 }
 
 export interface RacialCreateApiResponse {
