@@ -182,6 +182,38 @@ describe('Lo que la creación aún no hacía: las salvaciones y las dotes de un 
     });
 });
 
+describe('La subida de nivel con la raza del catálogo (todos los opcionales de cada grupo)', () => {
+    const conSalvacion = (r: RacialDetalle, cantidad: number) => normalizeRacial({
+        ...r, Salvaciones: [{ Id_salvacion: 1, Salvacion: 'Fortaleza', Cantidad: cantidad, Condicion: null }],
+    });
+    const AESH_F = conSalvacion(AESH, 1);
+    const HOON_F = conSalvacion(HOON, 5);
+
+    function guardar(svc: NuevoPersonajeService): { entrada: PersonajeCreateRequestDto; personaje: Personaje; } {
+        const vida = svc.calcularVidaFinalAleatoria();
+        svc.PersonajeCreacion.Vida = vida.total;
+        const entrada = cuerpo(svc);
+        entrada.niveles = (svc.getNivelesParaGuardar(entrada.progresionLanzador, vida.detalle?.dados) ?? []).map((n) => ({ ...n, ordenConocido: true } as any));
+        return { entrada, personaje: JSON.parse(JSON.stringify(svc.PersonajeCreacion)) };
+    }
+
+    it('solo cuentan las salvaciones del sigilo que eligió, no las de los demás del grupo; y a 2.º nivel elige otro', () => {
+        const catalogo = iluminiano([SIGILOS, AESH_F, HOON_F, KRAU]);
+        const creado = crearIluminiano([SIGILOS, AESH_F, HOON_F, KRAU]);
+        aplicarNivel(creado, GUERRERO);
+        const guardado = guardar(creado);
+        const subida = motor();
+        subida.iniciarSubidaDesdeFicha({ personaje: JSON.parse(JSON.stringify(guardado.personaje)), entrada: guardado.entrada, raza: catalogo });
+        aplicarNivel(subida, GUERRERO);
+        const fortaleza = subida.PersonajeCreacion.Salvaciones.fortaleza.modsVarios.filter((m) => m.origen.includes('Sigilo de poder'));
+        expect(fortaleza.map((m) => m.valor)).toEqual([1]);
+        const [pendiente] = subida.getEleccionesRacialesPendientes();
+        expect(pendiente.opciones.map((o) => o.Id)).toEqual([4872, 4873]);
+        expect(subida.aplicarEleccionRacialPendiente(pendiente.clave, 4873)).toBeTrue();
+        expect(subida.getEleccionesRacialesPendientes()).toEqual([]);
+    });
+});
+
 describe('La CD de un rasgo con todos los DG', () => {
     it('la frase del detalle', () => {
         const corazon = normalizeRacial(racial(34, 'Aspecto dracónico (corazón)', {

@@ -3138,12 +3138,22 @@ export class NuevoPersonajeService {
      * los elegidos con ella. Las salvaciones de la raza salen de aquí (`aplicarSalvacionesRaza`).
      */
     private rasgosDeLaRazaConProgresion(raza: Raza | null = this.razaSeleccionada): RacialDetalle[] {
-        return this.progresionRacialActual([...(raza?.Raciales ?? []), ...this.racialesElegidosPorProgresion]).raciales;
+        return this.progresionRacialActual([...this.rasgosDeSuRaza(raza), ...this.racialesElegidosPorProgresion]).raciales;
+    }
+
+    /**
+     * Los rasgos de su raza que tiene: los fijos y, de los opcionales, los elegidos. En la creación, la raza elegida ya
+     * solo trae los elegidos; en la subida de nivel es la del catálogo, con todos los de cada grupo, y cuentan los que
+     * tiene su ficha (si no, los de un aspecto que no eligió darían sus salvaciones o lo que ganan con la progresión).
+     */
+    private rasgosDeSuRaza(raza: Raza | null): RacialDetalle[] {
+        const tiene = new Set((this.personajeCreacion?.Raciales ?? []).map((racial) => toInt(racial?.Id)));
+        return (raza?.Raciales ?? []).filter((racial) => toInt(racial?.Opcional) <= 0 || tiene.size < 1 || tiene.has(toInt(racial?.Id)));
     }
 
     /** Los rasgos que tiene además de los de su raza: los que gana con la progresión y los elegidos con ella. */
     private rasgosGanadosPorLaProgresion(raza: Raza | null = this.razaSeleccionada): RacialDetalle[] {
-        const deLaRaza = new Set((raza?.Raciales ?? []).map((racial) => toInt(racial?.Id)));
+        const deLaRaza = new Set(this.rasgosDeSuRaza(raza).map((racial) => toInt(racial?.Id)));
         return this.rasgosDeLaRazaConProgresion(raza).filter((racial) => !deLaRaza.has(toInt(racial?.Id)));
     }
 
