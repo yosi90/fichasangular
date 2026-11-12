@@ -27,8 +27,11 @@ export function modoHomebrewDeCampana(
     return maximo <= 0 ? 'forbidden' : 'limited';
 }
 
-/** El límite de fuentes homebrew de la política: entero, 0 o más; sin dato o algo que no es un número, `null`. */
-function maximoFuentesHomebrew(value: unknown): number | null {
+/**
+ * El límite de fuentes homebrew de la política: entero, 0 o más; sin dato o algo que no es un número, `null`. Lo usan
+ * `modoHomebrewDeCampana`, `leerPoliticaCompra` y las comprobaciones de la campaña en la creación.
+ */
+export function maximoFuentesHomebrew(value: unknown): number | null {
     const entero = toIntOrNull(value);
     return entero === null ? null : Math.max(0, entero);
 }

@@ -185,7 +185,7 @@ import {
     politicaTienda,
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
-import { ModoHomebrewCampana, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
+import { ModoHomebrewCampana, maximoFuentesHomebrew, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { comoSaleLaEdadDelManual, edadesDeLaRaza, edadFueraDelManual, edadMinimaInicial, etapaEdad, EtapaEdad, GRUPOS_EDAD_INICIAL, GrupoEdadInicial, motivoEdadFueraDelManual, motivoEdadInicial, razaTieneEdades, textoDadosEdadInicial, textoEdadMaxima, textoEnvejecimiento, tirarEdadInicial } from 'src/app/services/utils/edad-personaje';
@@ -351,10 +351,8 @@ export interface EdadInicialGrupo {
     minima: number;
 }
 
-type CampaignHomebrewMode = ModoHomebrewCampana;
-
 interface CampaignCreationValidationResult {
-    mode: CampaignHomebrewMode;
+    mode: ModoHomebrewCampana;
     nepLimit: number | null;
     currentNep: number;
     maxSources: number | null;
@@ -3979,7 +3977,7 @@ export class NuevoPersonajeComponent {
      * personaje pasa a serlo (sin campaña, siempre).
      */
     get puedeSaltarRequisitosPlantilla(): boolean {
-        return this.getCurrentCampaignHomebrewMode(this.effectiveSelectedCampaignPolicy) === 'unrestricted';
+        return modoHomebrewDeCampana(this.effectiveSelectedCampaignPolicy) === 'unrestricted';
     }
 
     /**
@@ -5633,7 +5631,7 @@ export class NuevoPersonajeComponent {
             .filter((ventaja): ventaja is VentajaDetalle => !!ventaja);
         // Sin campaña, todo (también lo homebrew); en una campaña, su política: si no admite homebrew, solo lo oficial.
         // Con un límite de fuentes homebrew se ofrece todo y la API dice si la compra se pasa.
-        this.tiendaSoloOficial = this.getCurrentCampaignHomebrewMode(this.effectiveSelectedCampaignPolicy) === 'forbidden';
+        this.tiendaSoloOficial = modoHomebrewDeCampana(this.effectiveSelectedCampaignPolicy) === 'forbidden';
         this.tiendaPolitica = politicaTienda(this.effectiveSelectedCampaignPolicy);
         this.tiendaArticulos = [
             ...(this.catalogoArmas ?? []).map((arma) => articuloDeArma(arma)),
@@ -7250,24 +7248,10 @@ export class NuevoPersonajeComponent {
         return this.effectiveSelectedCampaignPolicy?.permitirIgnorarRestriccionesAlineamiento === true;
     }
 
-    /** La regla común (`modoHomebrewDeCampana`), la misma que usa la tienda de una sesión. */
-    private getCurrentCampaignHomebrewMode(policy: CampaignCreationPolicy | null): CampaignHomebrewMode {
-        return modoHomebrewDeCampana(policy);
-    }
-
     private hasCampaignBlockersForBasicos(): boolean {
         if (!this.hasSelectedCampaignContext || !this.selectedCampaignPolicyResolved)
             return false;
         return this.getCampaignCreationValidation().blockers.length > 0;
-    }
-
-    private normalizarCampaignMaxSources(value: number | null | undefined): number | null {
-        if (value === null || value === undefined)
-            return null;
-        const parsed = Math.trunc(Number(value));
-        if (!Number.isFinite(parsed))
-            return null;
-        return Math.max(0, parsed);
     }
 
     private normalizarCampaignMaxNep(value: number | null | undefined): number | null {
@@ -7291,10 +7275,11 @@ export class NuevoPersonajeComponent {
         const policy = this.effectiveSelectedCampaignPolicy;
         const nepLimit = this.normalizarCampaignMaxNep(policy?.nepMaximoPersonajeNuevo ?? null);
         const currentNep = Math.max(0, Math.trunc(Number(this.Personaje?.NEP ?? 0)));
-        const mode = this.getCurrentCampaignHomebrewMode(policy);
+        // La regla común de los tres modos (`modoHomebrewDeCampana`), la misma que la tienda de una sesión y el editor.
+        const mode = modoHomebrewDeCampana(policy);
         const maxSources = mode === 'unrestricted'
             ? null
-            : this.normalizarCampaignMaxSources(policy?.maxFuentesHomebrewGeneralesPorPersonaje ?? null);
+            : maximoFuentesHomebrew(policy?.maxFuentesHomebrewGeneralesPorPersonaje);
         const sources = this.collectCampaignHomebrewSources();
         const sourceKeys = new Set(sources.map((source) => source.key));
         const sourceCount = sources.length;
