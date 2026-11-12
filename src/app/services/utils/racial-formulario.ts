@@ -87,16 +87,28 @@ export const CATALOGOS_CONTRA: readonly { clave: CatalogoContra; nombre: string;
     { clave: 'raza', nombre: 'Raza' },
 ];
 
-const CLAVE_CONTRA: Record<CatalogoContra, 'id_tipo' | 'id_subtipo' | 'id_raza'> = {
+/** La clave de cada catálogo en el cuerpo, la de `contra[]` y la de `cuenta_como[]` (`CATALOGOS_CONTRA` de la API). */
+const CLAVE_DE_CRIATURA: Record<CatalogoContra, 'id_tipo' | 'id_subtipo' | 'id_raza'> = {
     tipo_criatura: 'id_tipo',
     subtipo: 'id_subtipo',
     raza: 'id_raza',
 };
 
-export interface CriaturaContra {
-    catalogo: CatalogoContra;
+/** Una criatura de una lista del racial: las de `contra` de un bonificador y las del «cuenta como». */
+export interface CriaturaDelRacial<C extends CatalogoContra = CatalogoContra> {
+    catalogo: C;
     id: number;
     nombre: string;
+}
+
+/** Una criatura tal como llega del `GET` (`Contra` de un bonificador, `Cuenta_como` de un racial). */
+function criaturaDelGet<C extends CatalogoContra>(c: { Catalogo: C; Id: unknown; Nombre: unknown; }): CriaturaDelRacial<C> {
+    return { catalogo: c.Catalogo, id: Math.trunc(Number(c.Id)), nombre: toText(c.Nombre).trim() };
+}
+
+/** Una criatura en el cuerpo: `{ id_tipo }`, `{ id_subtipo }` o `{ id_raza }`. */
+function cuerpoDeCriatura(c: CriaturaDelRacial): RacialCreateBonificadorContra {
+    return { [CLAVE_DE_CRIATURA[c.catalogo]]: c.id } as RacialCreateBonificadorContra;
 }
 
 export interface FilaBonificadorRacial {
@@ -105,7 +117,7 @@ export interface FilaBonificadorRacial {
     id_tipo_bonificador: number | null;
     cantidad: number | null;
     condicion: string;
-    contra: CriaturaContra[];
+    contra: CriaturaDelRacial[];
     /** De qué catálogo se añade la siguiente criatura. */
     catalogoContra: CatalogoContra;
 }
@@ -146,7 +158,10 @@ export function filasDeProgresion(racial: RacialDetalle | null | undefined): Fil
 
 /** El «cuenta como» de un racial tal como llega del `GET`, en su orden. */
 export function filasDeCuentaComo(racial: RacialDetalle | null | undefined): FilaCuentaComo[] {
-    return (racial?.Cuenta_como ?? []).map((c) => filaCuentaComo(c.Catalogo, Math.trunc(Number(c.Id)), toText(c.Nombre).trim()));
+    return (racial?.Cuenta_como ?? []).map((c) => {
+        const { catalogo, id, nombre } = criaturaDelGet(c);
+        return filaCuentaComo(catalogo, id, nombre);
+    });
 }
 
 export function filaCuentaComo(catalogo: CatalogoCuentaComo, id: number, nombre: string): FilaCuentaComo {
@@ -155,7 +170,7 @@ export function filaCuentaComo(catalogo: CatalogoCuentaComo, id: number, nombre:
 
 /** `cuenta_como[]` del cuerpo, en el orden de las filas. */
 export function cuerpoDeCuentaComo(filas: readonly FilaCuentaComo[]): RacialCreateCuentaComo[] {
-    return filas.map((fila) => fila.catalogo === 'raza' ? { id_raza: fila.id } : { id_tipo: fila.id });
+    return filas.map(cuerpoDeCriatura) as RacialCreateCuentaComo[];
 }
 
 /** Las filas de los bonificadores condicionales de un racial tal como llegan del `GET`. */
@@ -166,7 +181,7 @@ export function filasDeBonificadores(racial: RacialDetalle | null | undefined): 
         id_tipo_bonificador: toPositiveInt(b.Tipo_bonificador?.Id),
         cantidad: Math.trunc(Number(b.Cantidad)),
         condicion: toText(b.Condicion).trim(),
-        contra: (b.Contra ?? []).map((c) => ({ catalogo: c.Catalogo, id: Math.trunc(Number(c.Id)), nombre: toText(c.Nombre).trim() })),
+        contra: (b.Contra ?? []).map(criaturaDelGet),
     }));
 }
 
@@ -201,7 +216,7 @@ export function cuerpoDeBonificadores(filas: readonly FilaBonificadorRacial[]): 
         id_tipo_bonificador: Math.trunc(Number(fila.id_tipo_bonificador)),
         cantidad: Math.trunc(Number(fila.cantidad)),
         condicion: toText(fila.condicion).trim(),
-        contra: fila.contra.map((c) => ({ [CLAVE_CONTRA[c.catalogo]]: c.id }) as RacialCreateBonificadorContra),
+        contra: fila.contra.map(cuerpoDeCriatura),
     }));
 }
 
@@ -274,7 +289,7 @@ export function falloDeBonificador(fila: FilaBonificadorRacial, indice: number,
  * `_criaturas_del_cuerpo` de la API, que valida igual `contra[]` de un bonificador y `cuenta_como[]` de un racial; `null`
  * si valen todas.
  */
-function falloDeCriaturas(criaturas: readonly { catalogo: string; id: number; nombre: string; }[]): string | null {
+function falloDeCriaturas(criaturas: readonly CriaturaDelRacial[]): string | null {
     const vistas = new Set<string>();
     for (const c of criaturas) {
         const clave = `${c.catalogo}:${c.id}`;
