@@ -1,6 +1,7 @@
 import { Comodin } from './comodin';
 import { FormacionIncarnumDto } from './incarnum';
 import type { DecisionHomebrew } from '../services/utils/personaje-oficialidad';
+import type { ReglaIgnorada } from '../services/utils/reglas-ignoradas';
 
 export interface PersonajeContextoIdsDto {
     idCampana?: number | null;
@@ -279,6 +280,8 @@ export interface PersonajeCreateApiResponseDto {
     ownerUserId: string;
     /** Su sesión 0 «Creación», abierta (desde el 2026-11-07). */
     idSesion?: number;
+    /** `[{ code, mensaje, field }]` (desde el 2026-11-12); se lee con `leerReglasIgnoradas`. */
+    reglasIgnoradas?: unknown;
 }
 
 export interface PersonajeCreateResponseDto {
@@ -286,6 +289,8 @@ export interface PersonajeCreateResponseDto {
     idPersonaje: number;
     ownerUserId: string;
     idSesion?: number;
+    /** Lo que el alta se ha saltado de la política de su campaña (el máster con `overrideReglasCampana` o un PNJ). */
+    reglasIgnoradas: ReglaIgnorada[];
 }
 
 /*
@@ -562,4 +567,6 @@ export interface PersonajeCompraResponseDto {
     costesConjuros: number[];
     /** Si es oficial después de la compra, calculado por la API (comprar algo homebrew lo vuelve homebrew). */
     oficial: boolean;
+    /** Lo que un PNJ ha comprado aunque su campaña no lo deje (desde el 2026-11-12). */
+    reglasIgnoradas: ReglaIgnorada[];
 }

@@ -7,7 +7,12 @@
         <mat-icon class="app-toast__icon" *ngIf="toast.type === 'error'">error_outline</mat-icon>
         <mat-icon class="app-toast__icon" *ngIf="toast.type === 'info'">info</mat-icon>
         <mat-icon class="app-toast__icon" *ngIf="toast.type === 'system'">notifications_active</mat-icon>
-        <span class="app-toast__text">{{toast.message}}</span>
+        <div class="app-toast__text">
+            {{toast.message}}
+            <ul class="app-toast__lista" *ngIf="toast.lista.length > 0">
+                <li *ngFor="let linea of toast.lista">{{linea}}</li>
+            </ul>
+        </div>
         <span class="app-toast__repeat" *ngIf="toast.repeatCount > 1">x{{toast.repeatCount}}</span>
         <button
             type="button"

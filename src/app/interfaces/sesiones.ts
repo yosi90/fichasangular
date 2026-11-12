@@ -1,4 +1,5 @@
 import { PersonajeCompraConjuroLibroDto, PersonajeCompraPiezaDto, PersonajeCreateRequestDto } from './personajes-api';
+import type { ReglaIgnorada } from '../services/utils/reglas-ignoradas';
 
 /*
  * Las sesiones de un personaje y su historial (`docs/publica/endpoints/personajes.md`, «Sesiones e historial»; guía
@@ -131,6 +132,8 @@ export interface RespuestaSesion {
     experiencia: ExperienciaPersonaje | null;
     /** En los eventos y las compras. */
     idEvento?: number | null;
+    /** Lo que un PNJ se ha saltado de la política de su campaña (eventos, compras y subida; desde el 2026-11-12). */
+    reglasIgnoradas?: ReglaIgnorada[];
     /** En deshacer. */
     deshecho?: { id: number; tipo: TipoEventoSesion; texto: string; } | null;
 }

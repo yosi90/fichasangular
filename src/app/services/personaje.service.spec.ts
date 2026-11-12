@@ -3,14 +3,17 @@ import { of, throwError } from 'rxjs';
 import { Personaje } from '../interfaces/personaje';
 import { ProfileApiError } from '../interfaces/user-account';
 import { PersonajeService } from './personaje.service';
+import { AppToastService } from './app-toast.service';
+import { AVISO_REGLAS_IGNORADAS } from './utils/reglas-ignoradas';
 import { simularTokenApi } from 'src/testing/simular-token-api';
 import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
 import { textoBonosHabilidad, totalHabilidad } from './utils/personaje-totales';
 
-function crearServicio(httpMock: any): PersonajeService {
+function crearServicio(httpMock: any, toasts?: AppToastService): PersonajeService {
     return new PersonajeService(
         { currentUser: { getIdToken: async () => 'token' } } as any,
         httpMock,
+        toasts,
     );
 }
 
@@ -584,7 +587,22 @@ describe('PersonajeService', () => {
         expect(url).toMatch(/personajes\/15\/equipo$/);
         expect(cuerpo).toEqual(compra);
         expect(opciones.headers.get('Authorization')).toBe('Bearer token');
-        expect(respuesta).toEqual({ idPersonaje: 15, coste: 17, dineroInicial: 60, dinero: 43, costes: [15, 2], costesConjuros: [], oficial: true });
+        expect(respuesta).toEqual({ idPersonaje: 15, coste: 17, dineroInicial: 60, dinero: 43, costes: [15, 2], costesConjuros: [], oficial: true, reglasIgnoradas: [] });
+    });
+
+    it('comprarEquipoPersonaje de un PNJ avisa de las reglas de su campaña que se ha saltado (propietario, 2026-11-12)', async () => {
+        const regla = { code: 'precio_maximo_por_objeto', mensaje: 'La campaña de este personaje no deja comprar piezas de más de 10 po.', field: 'piezas[0]' };
+        const httpMock = {
+            put: jasmine.createSpy('put').and.returnValue(of({
+                idPersonaje: 15, coste: 15, dineroInicial: 100, dinero: 85, costes: [15], oficial: true, reglasIgnoradas: [regla],
+            })),
+        } as any;
+        const toasts = jasmine.createSpyObj<AppToastService>('AppToastService', ['showInfo']);
+
+        const respuesta = await crearServicio(httpMock, toasts).comprarEquipoPersonaje(15, { dineroInicial: 100, piezas: [{ tipo: 'arma', id: 30 }] });
+
+        expect(respuesta.reglasIgnoradas).toEqual([regla]);
+        expect(toasts.showInfo).toHaveBeenCalledOnceWith(AVISO_REGLAS_IGNORADAS, jasmine.objectContaining({ lista: [regla.mensaje] }));
     });
 
     it('comprarEquipoPersonaje da el error de la API (qué pieza no cuadra)', async () => {
@@ -1002,6 +1020,27 @@ describe('PersonajeService', () => {
         expect(response.ownerUserId).toBe('00000000-0000-0000-0000-000000000009');
         // Su sesión 0 (sesiones, fase 1).
         expect(response.idSesion).toBe(41);
+        expect(response.reglasIgnoradas).toEqual([]);
+    });
+
+    it('crearPersonajeApiDesdeCreacion avisa de lo que el máster se ha saltado de su campaña (overrideReglasCampana)', async () => {
+        const reglas = [
+            { code: null, mensaje: 'La tirada mínima declarada no cumple la política de campaña.', field: null },
+            { code: 'clase_de_monstruo_no_permitida', mensaje: 'La campaña no permite personajes de una clase de monstruo («Esqueleto»).', field: 'personaje.idRaza' },
+        ];
+        const httpMock = {
+            post: jasmine.createSpy('post').and.returnValue(of({
+                message: 'ok', idPersonaje: 23, ownerUserId: '00000000-0000-0000-0000-000000000009', idSesion: 42, reglasIgnoradas: reglas,
+            })),
+        } as any;
+        const toasts = jasmine.createSpyObj<AppToastService>('AppToastService', ['showInfo']);
+
+        const response = await crearServicio(httpMock, toasts).crearPersonajeApiDesdeCreacion({} as any);
+
+        expect(response.reglasIgnoradas).toEqual(reglas);
+        expect(toasts.showInfo).toHaveBeenCalledOnceWith(AVISO_REGLAS_IGNORADAS, jasmine.objectContaining({
+            lista: reglas.map((regla) => regla.mensaje),
+        }));
     });
 
     it('crearPersonajeApiDesdeCreacion preserva status y code en 403 funcionales', async () => {

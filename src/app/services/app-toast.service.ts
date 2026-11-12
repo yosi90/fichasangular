@@ -59,6 +59,7 @@ export class AppToastService {
             category: options?.category,
             createdAt: Date.now(),
             durationMs,
+            lista: (options?.lista ?? []).map((linea) => `${linea ?? ''}`.trim()).filter((linea) => linea.length > 0),
             repeatCount: existing && this.sameToastSignature(existing, type, message, options?.category, explicitDedupeKey.length > 0)
                 ? existing.repeatCount + 1
                 : 1,

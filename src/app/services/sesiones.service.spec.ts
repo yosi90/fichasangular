@@ -7,6 +7,8 @@ import { respuestaSesiones } from 'src/testing/sesiones-api';
 import { simularTokenApi } from 'src/testing/simular-token-api';
 import { PersonajeService } from './personaje.service';
 import { SesionesService, esSesionDesactualizada, leerHistorial, leerRespuestaSesion } from './sesiones.service';
+import { AppToastService } from './app-toast.service';
+import { AVISO_REGLAS_IGNORADAS } from './utils/reglas-ignoradas';
 
 describe('SesionesService', () => {
     let http: { request: jasmine.Spy; };
@@ -117,6 +119,29 @@ describe('SesionesService', () => {
                 expect(ultima()[1]).toBe(`${base}/1/${ruta}`);
                 expect(ultima()[2].body).toEqual({ version: sesion.version });
             }
+        });
+
+        it('la compra, el botín y la subida de un PNJ avisan de las reglas de su campaña que se ha saltado', async () => {
+            const toasts = jasmine.createSpyObj<AppToastService>('AppToastService', ['showInfo']);
+            const conAviso = new SesionesService({ currentUser: { uid: 'u' } } as any, http as any, toasts);
+            const regla = { code: 'precio_maximo_por_objeto', mensaje: 'La campaña de este personaje no deja comprar piezas de más de 10 po.', field: 'piezas[0]' };
+
+            http.request.and.returnValue(of({ ...respuestaSesiones<any>('venta'), reglasIgnoradas: [regla] }));
+            const compra = await conAviso.comprar(129, sesion, { piezas: [{ tipo: 'arma', id: 30 }] });
+            expect(compra.reglasIgnoradas).toEqual([regla]);
+            expect(toasts.showInfo).toHaveBeenCalledOnceWith(AVISO_REGLAS_IGNORADAS, jasmine.objectContaining({ lista: [regla.mensaje] }));
+
+            await conAviso.apuntar(129, sesion, { tipo: 'objeto_obtenido', origen: 'botin', pieza: { tipo: 'arma', id: 180 } } as any);
+            http.request.and.returnValue(of({
+                ...respuestaSesiones<any>('venta'), subida: { idEvento: 9, numeroSesion: 1, nivel: 2, nivelesPorSubir: 0 }, reglasIgnoradas: [regla],
+            }));
+            await conAviso.subirNivel(129, {} as any);
+            expect(toasts.showInfo).toHaveBeenCalledTimes(3);
+
+            // Sin nada que se salte, ningún aviso.
+            http.request.and.returnValue(of(respuestaSesiones('venta')));
+            expect((await conAviso.apuntar(129, sesion, { tipo: 'dinero', po: 5 })).reglasIgnoradas).toEqual([]);
+            expect(toasts.showInfo).toHaveBeenCalledTimes(3);
         });
 
         it('abrir no lleva versión (no hay sesión todavía)', async () => {

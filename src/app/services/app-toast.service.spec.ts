@@ -22,6 +22,16 @@ describe('AppToastService', () => {
         expect(currentLength).toBe(0);
     }));
 
+    it('lleva la lista de un aviso (las razones), sin líneas vacías', () => {
+        const service = new AppToastService();
+        let lista: string[] = [];
+        service.toasts$.subscribe((toasts) => lista = toasts[0]?.lista ?? []);
+
+        service.showInfo('Con esa decisión el personaje ha ignorado las restricciones de tu campaña:', { lista: ['Una razón.', ' ', 'Otra.'] });
+
+        expect(lista).toEqual(['Una razón.', 'Otra.']);
+    });
+
     it('permite cerrar manualmente un toast', () => {
         const service = new AppToastService();
         let toastId = '';

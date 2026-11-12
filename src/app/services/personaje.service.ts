@@ -62,6 +62,8 @@ import { caracteristicasPerdidasDe, normalizarCaracteristicasPerdidas } from './
 import { RequisitosDelPersonajeConsulta } from 'src/app/interfaces/razas-api';
 import { leerExperiencia } from './sesiones.service';
 import { leerPoliticaCompra } from 'src/app/services/utils/politica-campana';
+import { AppToastService } from './app-toast.service';
+import { ReglaIgnorada, avisarReglasIgnoradas, leerReglasIgnoradas } from 'src/app/services/utils/reglas-ignoradas';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -82,6 +84,8 @@ export class PersonajeService {
     constructor(
         private auth: Auth,
         private http: HttpClient,
+        // El aviso de las reglas de la campaña que se ha saltado el alta o la compra (`avisarReglasIgnoradas`).
+        private toasts?: AppToastService,
     ) {
         borrarMarcaDeArchivadoAntigua();
     }
@@ -170,7 +174,15 @@ export class PersonajeService {
             costes: toArray(response?.costes).map((coste) => toNumber(coste)),
             costesConjuros: toArray(response?.costesConjuros).map((coste) => toNumber(coste)),
             oficial: toBoolean(response?.oficial),
+            reglasIgnoradas: this.avisarReglasIgnoradas(response?.reglasIgnoradas),
         };
+    }
+
+    /** Lee `reglasIgnoradas` de una escritura y, si se ha saltado alguna regla de la campaña, lo avisa. */
+    private avisarReglasIgnoradas(valor: unknown): ReglaIgnorada[] {
+        const reglas = leerReglasIgnoradas(valor);
+        avisarReglasIgnoradas(this.toasts, reglas);
+        return reglas;
     }
 
     public async actualizarArchivadoPersonaje(
@@ -917,6 +929,8 @@ export class PersonajeService {
                 message: `${response?.message ?? 'Personaje creado'}`,
                 idPersonaje,
                 ownerUserId,
+                // Lo que el máster (`overrideReglasCampana`) o un PNJ se ha saltado de la política, con su aviso.
+                reglasIgnoradas: this.avisarReglasIgnoradas(response?.reglasIgnoradas),
                 // Su sesión 0 «Creación» (desde el 2026-11-07; `docs/publica/SESIONES_FRONT.md`).
                 ...(toInt(response?.idSesion) > 0 ? { idSesion: toInt(response.idSesion) } : {}),
             };

@@ -19,8 +19,10 @@ import {
     TipoEventoSesion,
 } from 'src/app/interfaces/sesiones';
 import { environment } from 'src/environments/environment';
+import { AppToastService } from './app-toast.service';
 import { cabeceraApiConFirebase } from './platform-session.service';
 import { errorDePerfil } from './utils/error-api';
+import { avisarReglasIgnoradas, leerReglasIgnoradas } from './utils/reglas-ignoradas';
 import { toArray, toBoolean, toInt, toIntOrNull, toNumberOrNull, toText } from './utils/normalizacion';
 
 /*
@@ -132,6 +134,7 @@ export function leerRespuestaSesion(valor: any): RespuestaSesion {
         sesion: leerSesion(valor?.sesion),
         experiencia: leerExperiencia(valor?.experiencia),
         idEvento: toIntOrNull(valor?.idEvento),
+        reglasIgnoradas: leerReglasIgnoradas(valor?.reglasIgnoradas),
         deshecho: deshecho && typeof deshecho === 'object'
             ? { id: toInt(deshecho.id), tipo: toText(deshecho.tipo) as TipoEventoSesion, texto: toText(deshecho.texto).trim() }
             : null,
@@ -145,6 +148,8 @@ export class SesionesService {
     constructor(
         private auth: Auth,
         private http: HttpClient,
+        // El aviso de las reglas de la campaña que se salta un PNJ (`avisarReglasIgnoradas`).
+        private toasts?: AppToastService,
     ) { }
 
     async historial(idPersonaje: number): Promise<HistorialSesiones> {
@@ -169,7 +174,7 @@ export class SesionesService {
             throw new Error('Id de personaje no válido');
         const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/niveles`, cuerpo, 'No se ha podido subir de nivel.');
         return {
-            ...leerRespuestaSesion(respuesta),
+            ...this.conAviso(leerRespuestaSesion(respuesta)),
             subida: {
                 idEvento: toInt(respuesta?.subida?.idEvento),
                 numeroSesion: toInt(respuesta?.subida?.numeroSesion),
@@ -189,13 +194,13 @@ export class SesionesService {
     }
 
     async apuntar(idPersonaje: number, sesion: Pick<SesionPersonaje, 'numero' | 'version'>, evento: EventoSesionDto): Promise<RespuestaSesion> {
-        return leerRespuestaSesion(await this.pedir('POST', `${this.ruta(idPersonaje, sesion.numero)}/eventos`,
-            { ...evento, version: sesion.version }, 'No se ha podido apuntar.'));
+        return this.conAviso(leerRespuestaSesion(await this.pedir('POST', `${this.ruta(idPersonaje, sesion.numero)}/eventos`,
+            { ...evento, version: sesion.version }, 'No se ha podido apuntar.')));
     }
 
     async comprar(idPersonaje: number, sesion: Pick<SesionPersonaje, 'numero' | 'version'>, compra: CompraSesionDto): Promise<RespuestaSesion> {
-        return leerRespuestaSesion(await this.pedir('POST', `${this.ruta(idPersonaje, sesion.numero)}/compras`,
-            { ...compra, version: sesion.version }, 'No se ha podido guardar la compra.'));
+        return this.conAviso(leerRespuestaSesion(await this.pedir('POST', `${this.ruta(idPersonaje, sesion.numero)}/compras`,
+            { ...compra, version: sesion.version }, 'No se ha podido guardar la compra.')));
     }
 
     async deshacer(idPersonaje: number, sesion: Pick<SesionPersonaje, 'numero' | 'version'>): Promise<RespuestaSesion> {
@@ -211,6 +216,12 @@ export class SesionesService {
     async reabrir(idPersonaje: number, sesion: Pick<SesionPersonaje, 'numero' | 'version'>): Promise<RespuestaSesion> {
         return leerRespuestaSesion(await this.pedir('POST', `${this.ruta(idPersonaje, sesion.numero)}/reabrir`,
             { version: sesion.version }, 'No se ha podido reabrir la sesión.'));
+    }
+
+    /** Las escrituras que comprueban la política de la campaña: si un PNJ se ha saltado alguna regla, el aviso. */
+    private conAviso(respuesta: RespuestaSesion): RespuestaSesion {
+        avisarReglasIgnoradas(this.toasts, respuesta.reglasIgnoradas ?? []);
+        return respuesta;
     }
 
     private ruta(idPersonaje: number, numero?: number): string {
