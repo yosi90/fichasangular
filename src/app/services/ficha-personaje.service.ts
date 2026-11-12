@@ -19,7 +19,7 @@ import {
     textoValorCaracteristica,
 } from 'src/app/services/utils/caracteristicas';
 import { camposPdfEquipo } from './utils/ficha-pdf-equipo';
-import { camposPdfTotales, caToqueYDesprevenida, sumasDeLaPlantilla } from './utils/ficha-pdf-totales';
+import { camposPdfTotales, caToqueYDesprevenidaSinDefensa, sumasDeLaPlantilla } from './utils/ficha-pdf-totales';
 import { tamanoQueCuenta } from './utils/tamano-efectivo';
 
 /** Cada característica y su campo en la hoja (`fue`, y su modificador `mod_fue`): la del personaje, el familiar y el compañero. */
@@ -85,7 +85,7 @@ export class FichaPersonajeService {
         form.getTextField('armadura_natural').setText(pj.Armadura_natural.toString());
         form.getTextField('mod_desvio').setText(pj.Ca_desvio.toString());
         form.getTextField('mod_varios_ca').setText(pj.Ca_varios.toString());
-        const { toque, desprevenido } = caToqueYDesprevenida(pj);
+        const { toque, desprevenido } = caToqueYDesprevenidaSinDefensa(pj);
         form.getTextField('ca_toque').setText(`${toque}`);
         form.getTextField('ca_desprevenido').setText(`${desprevenido}`);
         form.getTextField('pg').setText(pj.Vida.toString());

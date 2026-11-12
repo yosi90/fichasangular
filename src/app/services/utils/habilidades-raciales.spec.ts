@@ -1,6 +1,6 @@
 import { Personaje } from 'src/app/interfaces/personaje';
 import { RacialDetalle } from 'src/app/interfaces/racial';
-import { caToqueYDesprevenida } from './ficha-pdf-totales';
+import { caToqueYDesprevenidaSinDefensa } from './ficha-pdf-totales';
 import {
     bonificadoresCondicionalesDeRaciales,
     caDeSiempreDeRaciales,
@@ -108,12 +108,10 @@ describe('habilidades-raciales', () => {
         expect(caDeSiempreDeRaciales(null).total).toBe(0);
     });
 
-    it('la hoja: la CA de toque y la desprevenida, de la API o, en la creación, sin la esquiva', () => {
+    // Con la `defensa` de la API, la hoja pone las suyas (`camposPdfEquipo`, en `personaje-equipo-mapper.spec.ts`).
+    it('la hoja en la creación: la CA de toque y la desprevenida, sin la esquiva', () => {
         const pj = { Ca: 16, ModDestreza: 2, Armadura_natural: 0, Raciales: [svirfneblin], Defensa: null } as unknown as Personaje;
-        expect(caToqueYDesprevenida(pj)).toEqual({ toque: 16, desprevenido: 10 });
-        expect(caToqueYDesprevenida({ ...pj, ModDestreza: -1, Ca: 13, Armadura_natural: 1 } as Personaje)).toEqual({ toque: 12, desprevenido: 9 });
-        const conDefensa = { ...pj, Defensa: { ca: { total: 16, desglose: [] }, toque: { total: 15, desglose: [] },
-            desprevenido: { total: 11, desglose: [] }, destrezaMaxima: null, penalizadorArmadura: 0, falloConjuroArcano: 0 } } as Personaje;
-        expect(caToqueYDesprevenida(conDefensa)).toEqual({ toque: 15, desprevenido: 11 });
+        expect(caToqueYDesprevenidaSinDefensa(pj)).toEqual({ toque: 16, desprevenido: 10 });
+        expect(caToqueYDesprevenidaSinDefensa({ ...pj, ModDestreza: -1, Ca: 13, Armadura_natural: 1 } as Personaje)).toEqual({ toque: 12, desprevenido: 9 });
     });
 });

@@ -32,18 +32,11 @@ function javascriptDeCalculo(campo: { acroField: { dict: PDFDict; }; }): string 
 }
 
 /**
- * Lo que suma cada campo calculado de la plantilla: su JavaScript (`AFSimple_Calculate("SUM", new Array ("mod_sab",
- * "rangos5", "varios5"))`), por el nombre de los campos que cita.
+ * La CA de toque y la desprevenida de la hoja sin la `defensa` de la API (la creación, antes de guardar): la de toque sin
+ * la armadura natural, y la desprevenida sin la Destreza positiva ni las esquivas de siempre de sus rasgos (la del
+ * svirfneblin; Manual del jugador, pág. 136). Con la ficha de la API, `camposPdfEquipo` pone encima las de su `defensa`.
  */
-/**
- * La CA de toque y la desprevenida de la hoja. Con la ficha de la API, las suyas (`defensa`: el equipo y los
- * bonificadores de siempre de sus rasgos, con su tipo). En la creación, sin `defensa`: la de toque sin la armadura
- * natural, y la desprevenida sin la Destreza positiva ni las esquivas de siempre de sus rasgos (la del svirfneblin; Manual
- * del jugador, pág. 136).
- */
-export function caToqueYDesprevenida(pj: Personaje): { toque: number; desprevenido: number; } {
-    if (pj.Defensa)
-        return { toque: toNumber(pj.Defensa.toque?.total), desprevenido: toNumber(pj.Defensa.desprevenido?.total) };
+export function caToqueYDesprevenidaSinDefensa(pj: Personaje): { toque: number; desprevenido: number; } {
     const ca = toNumber(pj.Ca);
     return {
         toque: ca - toNumber(pj.Armadura_natural),
@@ -51,6 +44,10 @@ export function caToqueYDesprevenida(pj: Personaje): { toque: number; despreveni
     };
 }
 
+/**
+ * Lo que suma cada campo calculado de la plantilla: su JavaScript (`AFSimple_Calculate("SUM", new Array ("mod_sab",
+ * "rangos5", "varios5"))`), por el nombre de los campos que cita.
+ */
 export function sumasDeLaPlantilla(form: PDFForm): Record<string, string[]> {
     const sumas: Record<string, string[]> = {};
     form.getFields().forEach((campo) => {
