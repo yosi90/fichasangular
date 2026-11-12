@@ -1285,10 +1285,11 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * La identidad del personaje para los prerrequisitos (dotes, clases y plantillas): su raza, su raza base y los
-     * subtipos que tiene ahora, los de la raza y los de las plantillas ya elegidas.
+     * La identidad del personaje para los prerrequisitos (dotes, clases, plantillas y rasgos): su raza, su raza base, los
+     * subtipos que tiene ahora (los de la raza y los de las plantillas ya elegidas) y lo que cuenta como por sus rasgos.
+     * También la de las plantillas en la creación (`getContextoEvaluacionPlantillas` del componente).
      */
-    private identidadPrerrequisitosActual(): IdentidadPrerrequisitos {
+    identidadPrerrequisitosActual(): IdentidadPrerrequisitos {
         // Con los rasgos que tiene ya (los de su raza, los que gana o elige con la progresión): su «cuenta como».
         return buildIdentidadPrerrequisitos(this.razaSeleccionada, this.razaBaseSeleccionadaCompleta, this.personajeCreacion?.Subtipos,
             this.personajeCreacion?.Raciales?.length ? this.personajeCreacion.Raciales : null);

@@ -8625,11 +8625,8 @@ export class NuevoPersonajeComponent {
 
     private getContextoEvaluacionPlantillas(raza: Raza, incluirHomebrew: boolean) {
         const tipoCriaturaActualId = Number(this.Personaje.Tipo_criatura?.Id ?? 0);
-        const tiposCriaturaIdentidadIds = buildIdentidadPrerrequisitos(
-            raza,
-            this.nuevoPSvc.RazaBaseSeleccionadaCompleta,
-            this.Personaje.Subtipos
-        ).tiposCriatura
+        // La identidad de la creación (`identidadPrerrequisitosActual`: la raza es la elegida): con el «cuenta como» de sus rasgos.
+        const tiposCriaturaIdentidadIds = this.nuevoPSvc.identidadPrerrequisitosActual().tiposCriatura
             .map((tipo) => Number(tipo.id))
             .filter((id) => Number.isFinite(id) && id > 0);
         const identidadCriaturaActualIds = tipoCriaturaActualId > 0
