@@ -8,7 +8,8 @@ import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.servic
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { opcionDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
-import { conOpcionSinValor } from 'src/app/services/utils/opcion-sin-valor';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { conOpcionDeLaFila } from 'src/app/services/utils/opcion-sin-valor';
 import { FilaModificador, RelacionesMagicas, filaModificadorVacia } from 'src/app/services/utils/relaciones-equipo-formulario';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
@@ -118,15 +119,13 @@ export class EquipoMagiaComponent implements OnInit, OnDestroy {
     }
 
     /** Las opciones de un selector con la de la fila si el catálogo no la lista (llega con la entrada). */
-    opcionesCon(lista: EquipoRef[], id: number | null): EquipoRef[] {
-        return id === null ? lista : conOpcionSinValor(lista, { Id: id, Nombre: `#${id}` });
-    }
+    readonly opcionesCon = conOpcionDeLaFila;
 
     /** «Salvaciones · resistencia +1», el resumen de la fila en su cabecera. */
     resumen(fila: FilaModificador, indice: number): string {
         const objetivo = this.objetivos.find((item) => item.Id === fila.id_objetivo)?.Nombre ?? 'Sin objetivo';
         const tipo = this.tiposBonificador.find((item) => item.Id === fila.id_tipo_bonificador)?.Nombre;
-        const valor = fila.valor === null || fila.valor === undefined ? '' : ` ${Number(fila.valor) >= 0 ? '+' : ''}${fila.valor}`;
+        const valor = fila.valor === null || fila.valor === undefined ? '' : ` ${textoConSigno(Number(fila.valor))}`;
         return `${indice + 1} · ${objetivo}${tipo ? ` · ${tipo.toLowerCase()}` : ''}${valor}`;
     }
 

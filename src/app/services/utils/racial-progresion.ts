@@ -33,10 +33,14 @@ export interface ResultadoProgresionRacial {
     dotes: DoteDeProgresion[];
 }
 
-function momento(fila: RacialProgresion): string {
-    if (fila.Medida === 'nivel')
-        return `a nivel ${fila.Desde}`;
-    return Number(fila.Desde) === 1 ? 'a 1 DG' : `a los ${fila.Desde} DG`;
+/**
+ * Desde cuándo vale una fila de la progresión («a los 6 DG», «a 1 DG», «a nivel 3»): el `Origen` de lo que gana y, con
+ * mayúscula, la cabecera de su fila en «Insertar/Modificar racial» (`racial-formulario.ts`).
+ */
+export function momentoDeProgresion(medida: RacialProgresion['Medida'], desde: number): string {
+    if (medida === 'nivel')
+        return `a nivel ${desde}`;
+    return desde === 1 ? 'a 1 DG' : `a los ${desde} DG`;
 }
 
 function alcanza(fila: RacialProgresion, dg: number, nivel: number): boolean {
@@ -80,7 +84,7 @@ export function aplicarProgresionRacial(
                 resultado = resultado.filter(r => Number(r.Id) !== sustituye);
             const gana = fila.Gana;
             if (gana && Number(gana.Id) >= 0 && !resultado.some(r => Number(r.Id) === Number(gana.Id))) {
-                const nuevo: RacialDetalle = { ...gana, Origen: `${dueno.Nombre}, ${momento(fila)}` };
+                const nuevo: RacialDetalle = { ...gana, Origen: `${dueno.Nombre}, ${momentoDeProgresion(fila.Medida, Number(fila.Desde))}` };
                 const posicion = resultado.indexOf(dueno);
                 resultado.splice(posicion >= 0 ? posicion + 1 : resultado.length, 0, nuevo);
                 if ((nuevo.Progresion?.length ?? 0) > 0)

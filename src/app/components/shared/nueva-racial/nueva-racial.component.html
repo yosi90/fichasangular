@@ -421,7 +421,7 @@
                             <mat-form-field appearance="fill">
                                 <mat-label>Tipo de bonificador</mat-label>
                                 <mat-select [(ngModel)]="fila.id_tipo_bonificador" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorBonificadores()">
-                                    <mat-option *ngFor="let item of tiposDeBonificador(fila)" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                    <mat-option *ngFor="let item of opcionesCon(tiposBonificador, fila.id_tipo_bonificador)" [value]="item.Id">{{item.Nombre}}</mat-option>
                                 </mat-select>
                             </mat-form-field>
                             <mat-form-field appearance="fill">

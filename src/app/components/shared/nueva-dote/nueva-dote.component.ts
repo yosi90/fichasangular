@@ -39,6 +39,7 @@ import {
     PrerrequisitoConservado,
     prerrequisitosDeDote,
 } from 'src/app/services/utils/dote-formulario';
+import { tiposDeDoteDelCatalogo } from 'src/app/services/utils/dote-mapper';
 import { TEXTO_SIN_ESPECIFICAR, textoOSinEspecificar } from 'src/app/services/utils/texto-sin-especificar';
 import { tiposConFilas } from 'src/app/services/utils/plantilla-formulario';
 import { OpcionCatalogo, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
@@ -1338,19 +1339,7 @@ export class NuevaDoteComponent implements OnInit, OnDestroy, OnChanges, EditorD
     }
 
     private actualizarTiposDoteDesdeCatalogo(dotes: Dote[]): void {
-        const mapa = new Map<number, string>();
-        dotes.forEach((dote) => {
-            (dote?.Tipos ?? []).forEach((tipo) => {
-                const id = toInt(tipo?.Id, -1);
-                const nombre = `${tipo?.Nombre ?? ''}`.trim();
-                if (id >= 0 && nombre.length > 0 && !mapa.has(id))
-                    mapa.set(id, nombre);
-            });
-        });
-
-        const tipos = Array.from(mapa.entries())
-            .map(([Id, Nombre]) => ({ Id, Nombre }))
-            .sort(porNombre);
+        const tipos = tiposDeDoteDelCatalogo(dotes);
 
         // El tipo 0 («Cualquiera», que en una dote quería decir «sin segundo tipo») ya no sale en sus `Tipos`.
         this.tiposDote = conOpcionSinValor(tipos, { Id: 0, Nombre: 'Sin tipo secundario' });

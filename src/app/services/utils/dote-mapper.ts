@@ -2,6 +2,7 @@ import { Dote, DoteCompetenciasOtorgadas, DoteExtraItem, DoteExtrasDeTodoElCatal
 import { DoteContexto, DoteContextual, DoteLegacy } from "src/app/interfaces/dote-contextual";
 import { idNombres, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
+import { porNombre } from './orden-texto';
 import { normalizeManualApi, normalizeManualLegacy } from './manual-mapper';
 import { normalizarDoteIncarnum, normalizarNombreTraducible } from './incarnum-mapper';
 
@@ -342,4 +343,20 @@ export function opcionesDeExtrasDeDote(dotes: readonly Pick<Dote, 'Id' | 'Extras
     return extrasDisponiblesDeDote(dotes.find((dote) => dote.Id === idDote))
         .map((extra) => ({ id: toInt(extra.Id), nombre: toText(extra.Nombre) }))
         .filter((extra) => extra.id > 0);
+}
+
+/**
+ * Los tipos de dote que tienen las dotes del catálogo (`Tipos` de cada una), sin repetir y por nombre: los tipos de
+ * «Insertar/Modificar dote» y la «dote adicional de tipo» de la progresión de un racial. El 0 («Cualquiera», que en una
+ * dote quería decir «sin segundo tipo») ya no sale en sus `Tipos`.
+ */
+export function tiposDeDoteDelCatalogo(dotes: readonly Pick<Dote, 'Tipos'>[] | null | undefined): { Id: number; Nombre: string; }[] {
+    const porId = new Map<number, string>();
+    (dotes ?? []).forEach((dote) => (dote?.Tipos ?? []).forEach((tipo) => {
+        const id = toInt(tipo?.Id, -1);
+        const nombre = toText(tipo?.Nombre).trim();
+        if (id >= 0 && nombre.length > 0 && !porId.has(id))
+            porId.set(id, nombre);
+    }));
+    return Array.from(porId, ([Id, Nombre]) => ({ Id, Nombre })).sort(porNombre);
 }

@@ -8,3 +8,13 @@ export function conOpcionSinValor<T extends { Id: number }>(items: T[] | null | 
     const lista = Array.isArray(items) ? items : [];
     return lista.some((item) => Number(item?.Id) === Number(opcion.Id)) ? lista : [opcion, ...lista];
 }
+
+/**
+ * Las opciones de un desplegable con la que tiene la fila si el catálogo no la lista (llega con la entrada que se
+ * modifica): con su id, `#id`, para no perderla al guardar. Sin id (`null`), la lista tal cual. Los modificadores de
+ * `<app-equipo-magia>` y los bonificadores condicionales de `nueva-racial`.
+ */
+export function conOpcionDeLaFila(items: { Id: number; Nombre: string; }[] | null | undefined, id: number | null): { Id: number; Nombre: string; }[] {
+    const lista = Array.isArray(items) ? items : [];
+    return id === null ? lista : conOpcionSinValor(lista, { Id: id, Nombre: `#${id}` });
+}

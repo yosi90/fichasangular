@@ -6,7 +6,9 @@ import {
     RacialCreateProgresion,
 } from 'src/app/interfaces/raciales-api';
 import { uidDeFila } from 'src/app/components/shared/insercion-marco/filas-repetibles';
-import { toText } from './normalizacion';
+import { mayusculaInicial } from './formato-registros';
+import { toPositiveInt, toText } from './normalizacion';
+import { momentoDeProgresion } from './racial-progresion';
 
 /**
  * La progresión y los bonificadores condicionales de un rasgo racial en «Insertar/Modificar racial» (roadmap
@@ -86,11 +88,6 @@ export interface FilaBonificadorRacial {
     catalogoContra: CatalogoContra;
 }
 
-function idPositivo(valor: unknown): number | null {
-    const numero = Math.trunc(Number(valor));
-    return Number.isFinite(numero) && numero > 0 ? numero : null;
-}
-
 export function filaProgresionVacia(): FilaProgresionRacial {
     return {
         uid: uidDeFila('progresion'), medida: 'dg', desde: null, id_racial_gana: null, id_racial_sustituye: null,
@@ -113,12 +110,12 @@ export function filasDeProgresion(racial: RacialDetalle | null | undefined): Fil
             ...filaProgresionVacia(),
             medida: fila.Medida === 'nivel' ? 'nivel' : 'dg',
             desde: Math.trunc(Number(fila.Desde)),
-            id_racial_gana: idPositivo(fila.Gana?.Id),
-            id_racial_sustituye: idPositivo(fila.Sustituye?.Id),
-            id_tipo_dote: idPositivo(fila.Tipo_dote?.Id),
+            id_racial_gana: toPositiveInt(fila.Gana?.Id),
+            id_racial_sustituye: toPositiveInt(fila.Sustituye?.Id),
+            id_tipo_dote: toPositiveInt(fila.Tipo_dote?.Id),
             velocidad: tipo,
             pies: tipo ? Math.trunc(Number(fila.Velocidad?.Pies)) : null,
-            id_maniobrabilidad: tipo ? idPositivo(fila.Velocidad?.Maniobrabilidad?.Id) : null,
+            id_maniobrabilidad: tipo ? toPositiveInt(fila.Velocidad?.Maniobrabilidad?.Id) : null,
             valor: toText(fila.Valor).trim(),
         };
     });
@@ -128,8 +125,8 @@ export function filasDeProgresion(racial: RacialDetalle | null | undefined): Fil
 export function filasDeBonificadores(racial: RacialDetalle | null | undefined): FilaBonificadorRacial[] {
     return (racial?.Bonificadores_condicionales ?? []).map((b) => ({
         ...filaBonificadorVacia(),
-        id_objetivo: idPositivo(b.Objetivo?.Id),
-        id_tipo_bonificador: idPositivo(b.Tipo_bonificador?.Id),
+        id_objetivo: toPositiveInt(b.Objetivo?.Id),
+        id_tipo_bonificador: toPositiveInt(b.Tipo_bonificador?.Id),
         cantidad: Math.trunc(Number(b.Cantidad)),
         condicion: toText(b.Condicion).trim(),
         contra: (b.Contra ?? []).map((c) => ({ catalogo: c.Catalogo, id: Math.trunc(Number(c.Id)), nombre: toText(c.Nombre).trim() })),
@@ -140,16 +137,16 @@ export function filasDeBonificadores(racial: RacialDetalle | null | undefined): 
 export function cuerpoDeProgresion(filas: readonly FilaProgresionRacial[]): RacialCreateProgresion[] {
     return filas.map((fila) => {
         const salida: RacialCreateProgresion = { medida: fila.medida, desde: Math.trunc(Number(fila.desde)) };
-        if (idPositivo(fila.id_racial_gana))
-            salida.id_racial_gana = idPositivo(fila.id_racial_gana)!;
-        if (idPositivo(fila.id_racial_sustituye))
-            salida.id_racial_sustituye = idPositivo(fila.id_racial_sustituye)!;
-        if (idPositivo(fila.id_tipo_dote))
-            salida.id_tipo_dote = idPositivo(fila.id_tipo_dote)!;
+        if (toPositiveInt(fila.id_racial_gana))
+            salida.id_racial_gana = toPositiveInt(fila.id_racial_gana)!;
+        if (toPositiveInt(fila.id_racial_sustituye))
+            salida.id_racial_sustituye = toPositiveInt(fila.id_racial_sustituye)!;
+        if (toPositiveInt(fila.id_tipo_dote))
+            salida.id_tipo_dote = toPositiveInt(fila.id_tipo_dote)!;
         if (fila.velocidad) {
             salida.velocidad = { tipo: fila.velocidad, pies: Math.trunc(Number(fila.pies)) };
-            if (fila.velocidad === 'volar' && idPositivo(fila.id_maniobrabilidad))
-                salida.velocidad.id_maniobrabilidad = idPositivo(fila.id_maniobrabilidad)!;
+            if (fila.velocidad === 'volar' && toPositiveInt(fila.id_maniobrabilidad))
+                salida.velocidad.id_maniobrabilidad = toPositiveInt(fila.id_maniobrabilidad)!;
         }
         const valor = toText(fila.valor).trim();
         if (valor.length > 0)
@@ -186,7 +183,7 @@ export function falloDeProgresion(fila: FilaProgresionRacial, indice: number, id
         return `${n}: el valor no puede pasar de ${MAXIMO_VALOR_PROGRESION} letras.`;
     if (fila.velocidad && (!esEntero(fila.pies) || Number(fila.pies) < 1))
         return `${n}: la velocidad necesita sus pies (al menos 1).`;
-    const daAlgo = idPositivo(fila.id_racial_gana) || idPositivo(fila.id_racial_sustituye) || idPositivo(fila.id_tipo_dote)
+    const daAlgo = toPositiveInt(fila.id_racial_gana) || toPositiveInt(fila.id_racial_sustituye) || toPositiveInt(fila.id_tipo_dote)
         || fila.velocidad || valor.length > 0;
     if (!daAlgo)
         return `${n}: tiene que dar o cambiar algo (un rasgo, uno que sustituye, un tipo de dote, una velocidad o un valor).`;
@@ -202,12 +199,12 @@ export function falloDeProgresion(fila: FilaProgresionRacial, indice: number, id
 export function falloDeBonificador(fila: FilaBonificadorRacial, indice: number,
     objetivos: readonly EquipoObjetivoModificador[]): string | null {
     const n = `Bonificador ${indice + 1}`;
-    if (!idPositivo(fila.id_objetivo))
+    if (!toPositiveInt(fila.id_objetivo))
         return `${n}: elige a qué se aplica.`;
     const lista = objetivos.find((o) => o.Id === fila.id_objetivo)?.Lista_del_rasgo ?? null;
     if (lista)
         return `${n}: ${DONDE_VA[lista]}.`;
-    if (!idPositivo(fila.id_tipo_bonificador))
+    if (!toPositiveInt(fila.id_tipo_bonificador))
         return `${n}: elige su tipo de bonificador.`;
     if (!esEntero(fila.cantidad) || Number(fila.cantidad) === 0 || Math.abs(Number(fila.cantidad)) > MAXIMO_CANTIDAD_BONIFICADOR)
         return `${n}: la cantidad no puede ser 0 y va de -${MAXIMO_CANTIDAD_BONIFICADOR} a ${MAXIMO_CANTIDAD_BONIFICADOR}.`;
@@ -254,7 +251,5 @@ export function resumenDeProgresion(fila: FilaProgresionRacial, indice: number):
     const desde = esEntero(fila.desde) ? Number(fila.desde) : null;
     if (desde === null)
         return `${indice + 1} · Sin «desde» todavía`;
-    if (fila.medida === 'nivel')
-        return `${indice + 1} · A nivel ${desde}`;
-    return `${indice + 1} · ${desde === 1 ? 'A 1 DG' : `A los ${desde} DG`}`;
+    return `${indice + 1} · ${mayusculaInicial(momentoDeProgresion(fila.medida, desde))}`;
 }

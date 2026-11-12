@@ -49,6 +49,9 @@ import { normalizarTexto, toBoolean } from 'src/app/services/utils/normalizacion
 import { USOS_SORTILEGA_INICIALES } from 'src/app/services/utils/texto-sin-especificar';
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
+import { tiposDeDoteDelCatalogo } from 'src/app/services/utils/dote-mapper';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { conOpcionDeLaFila } from 'src/app/services/utils/opcion-sin-valor';
 import { ID_EXTRA_HABILIDAD_ELEGIR, ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import {
     CATALOGOS_CONTRA,
@@ -601,17 +604,11 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
 
     /** Los objetivos que valen en un bonificador condicional (los de `Lista_del_rasgo` van en su lista) y el de la fila. */
     objetivosDeBonificador(fila: FilaBonificadorRacial): EquipoRef[] {
-        const validos = this.objetivos.filter((item) => item.Lista_del_rasgo === null || item.Id === fila.id_objetivo);
-        if (fila.id_objetivo !== null && !validos.some((item) => item.Id === fila.id_objetivo))
-            return [...validos, { Id: fila.id_objetivo, Nombre: `#${fila.id_objetivo}` }];
-        return validos;
+        return conOpcionDeLaFila(this.objetivos.filter((item) => item.Lista_del_rasgo === null || item.Id === fila.id_objetivo), fila.id_objetivo);
     }
 
-    tiposDeBonificador(fila: FilaBonificadorRacial): EquipoRef[] {
-        if (fila.id_tipo_bonificador !== null && !this.tiposBonificador.some((item) => item.Id === fila.id_tipo_bonificador))
-            return [...this.tiposBonificador, { Id: fila.id_tipo_bonificador, Nombre: `#${fila.id_tipo_bonificador}` }];
-        return this.tiposBonificador;
-    }
+    /** Las opciones de un selector con la de la fila si el catálogo no la lista (llega con el rasgo). */
+    readonly opcionesCon = conOpcionDeLaFila;
 
     opcionesContra(catalogo: CatalogoContra): OpcionCatalogo[] {
         if (catalogo === 'tipo_criatura')
@@ -646,8 +643,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
     resumenBonificador(fila: FilaBonificadorRacial, indice: number): string {
         const objetivo = this.objetivos.find((item) => item.Id === fila.id_objetivo)?.Nombre ?? 'Sin objetivo';
         const tipo = this.tiposBonificador.find((item) => item.Id === fila.id_tipo_bonificador)?.Nombre;
-        const cantidad = fila.cantidad === null || `${fila.cantidad}`.trim() === '' ? ''
-            : ` ${Number(fila.cantidad) >= 0 ? '+' : ''}${Number(fila.cantidad)}`;
+        const cantidad = fila.cantidad === null || `${fila.cantidad}`.trim() === '' ? '' : ` ${textoConSigno(Number(fila.cantidad))}`;
         return `${indice + 1} · ${objetivo}${cantidad}${tipo ? ` (${tipo.toLowerCase()})` : ''}`;
     }
 
@@ -772,7 +768,7 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
             .subscribe({
                 next: (items) => {
                     this.dotes = this.ordenar(items);
-                    this.tiposDoteOpciones = this.tiposDeDoteDe(items);
+                    this.tiposDoteOpciones = opcionesDeCatalogo(tiposDeDoteDelCatalogo(items).filter((tipo) => tipo.Id > 0));
                 },
                 error: () => this.dotes = [],
             });
@@ -1292,16 +1288,6 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
 
     private idExtraInicial(habilidad: HabilidadBasicaDetalle | undefined): number {
         return habilidad?.Soporta_extra ? ID_EXTRA_HABILIDAD_ELEGIR : ID_EXTRA_HABILIDAD_SIN_EXTRA;
-    }
-
-    /** Los tipos de dote que tienen las dotes del catálogo (el 0, «Cualquiera», es que no hay tipo). */
-    private tiposDeDoteDe(dotes: Dote[]): OpcionCatalogo[] {
-        const porId = new Map<number, string>();
-        dotes.forEach((dote) => (dote?.Tipos ?? []).forEach((tipo) => {
-            if (this.entero(tipo?.Id) > 0 && !porId.has(this.entero(tipo.Id)))
-                porId.set(this.entero(tipo.Id), this.texto(tipo.Nombre));
-        }));
-        return opcionesDeCatalogo([...porId].map(([id, nombre]) => ({ Id: id, Nombre: nombre })));
     }
 
     private uid(): string {
