@@ -42,6 +42,7 @@ import { getClaveSeleccionRacial, resolverRacialesFinales, SeleccionRacialesOpci
 import { evaluarGruposParaSelectorRacial } from './utils/racial-prerrequisitos';
 import type { GrupoRacialOpcionalModal } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { aplicarProgresionRacial, momentoDeProgresion, ResultadoProgresionRacial, tieneProgresionRacial, velocidadConProgresion } from './utils/racial-progresion';
+import { sortilegasConLasDeRasgos } from './utils/racial-sortilegas';
 import { esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
@@ -1639,10 +1640,11 @@ export class NuevoPersonajeService {
             this.copiarRaciales(razaEfectiva.Raciales),
             razaEfectiva.Nombre
         );
-        this.personajeCreacion.Sortilegas = this.asignarOrigenSortilegas(
+        // Las de la raza y las de sus rasgos (`racial-sortilegas.ts`), sin repetir un conjuro.
+        this.personajeCreacion.Sortilegas = sortilegasConLasDeRasgos(this.asignarOrigenSortilegas(
             this.copiarSortilegas(razaEfectiva.Sortilegas),
             razaEfectiva.Nombre
-        );
+        ), this.personajeCreacion.Raciales);
         this.clearAutoRepartoGuardado();
         this.personajeCreacion.Idiomas = [];
         this.aplicarIdiomasAutomaticos(razaEfectiva.Nombre, razaEfectiva?.Idiomas ?? []);
@@ -6191,6 +6193,10 @@ export class NuevoPersonajeService {
         this.estadoFlujo.ventajas.bonosHabilidades = sinApilarRaciales(bonosHabilidades);
         this.aplicarBonosHabilidadEnPersonaje();
         this.personajeCreacion.Raciales = nuevosRaciales;
+        // Las sortílegas de sus rasgos, también de los que gana con la progresión (los poderes del githyanki a nivel 3, 6 y
+        // 9), y sin las de uno que ya no tiene (`racial-sortilegas.ts`, la regla de la ficha de la API).
+        this.personajeCreacion.Sortilegas = sortilegasConLasDeRasgos(this.personajeCreacion.Sortilegas, nuevosRaciales,
+            [...(this.estadoFlujo.ventajas.baseRaciales ?? []), ...(this.razaSeleccionada?.Raciales ?? [])]);
         // Lo que sus rasgos suman solo en un caso (el +1 al ataque contra orcos), aparte: no entra en la CA ni en el ataque.
         this.personajeCreacion.Bonificadores_condicionales = bonificadoresCondicionalesDeRaciales(nuevosRaciales);
         // Los de siempre (la esquiva del svirfneblin), en la CA, y los de las pruebas de una característica (el sigilo de

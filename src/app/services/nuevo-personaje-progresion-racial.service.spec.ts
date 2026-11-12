@@ -195,6 +195,61 @@ describe('Lo que crece con los DG: la creación y la subida de nivel', () => {
         expect(nombres(a9)).toEqual(['Aspecto infernal (espíritu)', "Visión en la oscuridad 120'"]);
     });
 
+    // Los poderes del githyanki (Manual de monstruos 1, págs. 135-136) y las salvaciones del genasí de agua (Escenario de
+    // campaña de Reinos Olvidados, págs. 18-19), con la forma de `rol_dev` (`scripts/sql/raciales_gith_y_genasies.sql`).
+    const CONTORNO = racial(4973, 'Poderes psiónicos de githyanki: contorno borroso');
+    (CONTORNO as any).Sortilegas = [{ Conjuro: { Id: 503, Nombre: 'Contorno borroso' }, Nivel_lanzador: 'Igual a sus niveles de clase', Usos_diarios: '3/día' }];
+    const PODERES = normalizeRacial(racial(165, 'Poderes psiónicos de githyanki', [
+        fila(3, { Medida: 'nivel', Gana: CONTORNO }),
+    ]));
+    const salvaciones = (n: number) => [1, 2, 3].map((Id_salvacion) => ({ Id_salvacion, Cantidad: n, Condicion: 'Contra conjuros y efectos de agua' }));
+    const escalon = (n: number) => ({
+        ...racial(5000 + n, `Bonificador racial +${n} a salvaciones contra conjuros y efectos de agua (genasí de agua)`), Salvaciones: salvaciones(n),
+    });
+    const ESCALONES = [1, 2, 3].map(escalon);
+    const AGUA = normalizeRacial(racial(2170, 'Bonificador racial a salvaciones contra conjuros y efectos de agua (Genasí de agua)', [
+        fila(1, { Medida: 'nivel', Gana: ESCALONES[0] }),
+        fila(5, { Medida: 'nivel', Gana: ESCALONES[1], Sustituye: { Id: ESCALONES[0].Id, Nombre: ESCALONES[0].Nombre } }),
+        fila(10, { Medida: 'nivel', Gana: ESCALONES[2], Sustituye: { Id: ESCALONES[1].Id, Nombre: ESCALONES[1].Nombre } }),
+    ]));
+    const contraAgua = (svc: NuevoPersonajeService) => (['fortaleza', 'reflejos', 'voluntad'] as const)
+        .map((tipo) => svc.PersonajeCreacion.Salvaciones[tipo].modsVarios
+            .filter((m) => /agua/i.test(`${m.condicion ?? ''}`)).map((m) => m.valor));
+    const sortilegas = (svc: NuevoPersonajeService) => svc.PersonajeCreacion.Sortilegas.map((s) => [s.Conjuro.Nombre, s.Origen]);
+
+    it('un githyanki tiene contorno borroso entre sus sortílegas desde nivel 3, al crearlo y al subir, y se guarda', () => {
+        const GITHYANKI = raza('Githyanki', PODERES);
+        expect(sortilegas(crear(GITHYANKI, 2))).toEqual([]);
+        const a3 = crear(GITHYANKI, 3);
+        expect(sortilegas(a3)).toEqual([['Contorno borroso', CONTORNO.Nombre]]);
+        expect(cuerpo(a3).colecciones?.sortilegas).toEqual([
+            { idConjuro: 503, nivelLanz: 'Igual a sus niveles de clase', usos: '3/día', dgs: 0, origen: CONTORNO.Nombre },
+        ]);
+        const subida = subir(guardar(crear(GITHYANKI, 2)), GITHYANKI);
+        expect(sortilegas(subida)).toEqual([]);
+        aplicarNivel(subida, GUERRERO);
+        expect(sortilegas(subida)).toEqual([['Contorno borroso', CONTORNO.Nombre]]);
+        expect(cuerpo(subida).colecciones?.sortilegas?.map((s) => s.idConjuro)).toEqual([503]);
+    });
+
+    it('un genasí de agua: +1 contra el agua hasta nivel 4 y +2 desde 5, y la subida quita las del rasgo sustituido', () => {
+        const GENASI = raza('Genasí de agua', AGUA);
+        expect(contraAgua(crear(GENASI, 4))).toEqual([[1], [1], [1]]);
+        expect(contraAgua(crear(GENASI, 5))).toEqual([[2], [2], [2]]);
+        const guardado = guardar(crear(GENASI, 4));
+        expect(guardado.entrada.colecciones?.raciales?.map((x: any) => x.idRacial)).toEqual([2170, 5001]);
+        const subida = subir(guardado, GENASI);
+        expect(contraAgua(subida)).toEqual([[1], [1], [1]]);
+        aplicarNivel(subida, GUERRERO);
+        expect(contraAgua(subida)).toEqual([[2], [2], [2]]);
+        expect(nombres(subida)).toEqual([AGUA.Nombre, ESCALONES[1].Nombre]);
+        // Y de la ficha guardada a nivel 9 (el de la raza y el de +2) a nivel 10, el de +3.
+        const a9 = guardar(crear(GENASI, 9));
+        const de9a10 = subir(a9, GENASI);
+        aplicarNivel(de9a10, GUERRERO);
+        expect(contraAgua(de9a10)).toEqual([[3], [3], [3]]);
+    });
+
     it('el cuerpo del nacido del Infierno pide una dote de tipo Tocado por diablos a los 4 DG, una sola vez', () => {
         const svc = motor();
         svc.seleccionarRaza(raza('Nacido del Infierno', CUERPO));
