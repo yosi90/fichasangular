@@ -178,9 +178,7 @@ import {
     PoliticaTienda,
     indiceConjuroLibroDelCampo,
     ReglaDineroInicial,
-    articuloDeArma,
-    articuloDeArmadura,
-    articuloDeMunicion,
+    articulosDeCatalogo,
     indicePiezaDelCampo,
     politicaTienda,
     reglaDineroInicial,
@@ -5633,11 +5631,7 @@ export class NuevoPersonajeComponent {
         // Con un límite de fuentes homebrew se ofrece todo y la API dice si la compra se pasa.
         this.tiendaSoloOficial = modoHomebrewDeCampana(this.effectiveSelectedCampaignPolicy) === 'forbidden';
         this.tiendaPolitica = politicaTienda(this.effectiveSelectedCampaignPolicy);
-        this.tiendaArticulos = [
-            ...(this.catalogoArmas ?? []).map((arma) => articuloDeArma(arma)),
-            ...(this.catalogoArmaduras ?? []).map((armadura) => articuloDeArmadura(armadura)),
-            ...municiones.map((municion) => articuloDeMunicion(municion)),
-        ];
+        this.tiendaArticulos = articulosDeCatalogo(this.catalogoArmas, this.catalogoArmaduras, municiones);
         this.tiendaRegla = reglaDineroInicial({
             nivelEfectivo: ficha.NEP,
             pnj: esPnj(ficha.tipo),

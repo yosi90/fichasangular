@@ -175,6 +175,22 @@ export function articuloDeMunicion(municion: MunicionDetalle): ArticuloTienda {
     };
 }
 
+/**
+ * Lo que la tienda tiene siempre a la vista, de los catálogos: las armas, las armaduras y escudos y la munición (los
+ * objetos se buscan en la API). La misma lista para la tienda de la creación y la de una sesión.
+ */
+export function articulosDeCatalogo(
+    armas: readonly ArmaDetalle[] | null | undefined,
+    armaduras: readonly ArmaduraDetalle[] | null | undefined,
+    municiones: readonly MunicionDetalle[] | null | undefined,
+): ArticuloTienda[] {
+    return [
+        ...(armas ?? []).map((arma) => articuloDeArma(arma)),
+        ...(armaduras ?? []).map((armadura) => articuloDeArmadura(armadura)),
+        ...(municiones ?? []).map((municion) => articuloDeMunicion(municion)),
+    ];
+}
+
 export function articuloDeObjeto(objeto: ObjetoDetalle): ArticuloTienda {
     const base = objeto.Arma_base ?? objeto.Armadura_base;
     return {

@@ -37,9 +37,7 @@ import {
     POLITICA_TIENDA_LIBRE,
     PoliticaTienda,
     ReglaDineroInicial,
-    articuloDeArma,
-    articuloDeArmadura,
-    articuloDeMunicion,
+    articulosDeCatalogo,
     indicePiezaDelCampo,
     politicaTienda,
 } from 'src/app/services/utils/tienda-equipo';
@@ -655,11 +653,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             lista(this.armaduraSvc.getArmaduras()),
             lista(this.equipoSvc.getMuniciones()),
         ]);
-        this.articulos = [
-            ...(armas ?? []).map((arma) => articuloDeArma(arma)),
-            ...(armaduras ?? []).map((armadura) => articuloDeArmadura(armadura)),
-            ...(municiones ?? []).map((municion) => articuloDeMunicion(municion)),
-        ];
+        this.articulos = articulosDeCatalogo(armas, armaduras, municiones);
         return this.articulos;
     }
 
