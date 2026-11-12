@@ -51,8 +51,9 @@
     font-size: 12px
     color: $accent
 
-    input
-        height: 44px
+    // Los datos libres (fase 6) usan también el desplegable y el área de texto.
+    input, select, textarea
+        min-height: 44px
         box-sizing: border-box
         padding: 0 12px
         border: 1px solid rgba(255, 255, 255, .25)
@@ -63,10 +64,14 @@
         font-size: 15px
         color-scheme: dark
 
+    textarea
+        padding: 10px 12px
+        resize: vertical
+
 .historial__campo--ancho
     flex: 1 1 280px
 
-    input
+    input, textarea
         width: 100%
 
 .historial__acciones

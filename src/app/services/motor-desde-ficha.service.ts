@@ -1,0 +1,91 @@
+import { Injectable } from '@angular/core';
+import { firstValueFrom, Observable, take } from 'rxjs';
+import { Personaje } from 'src/app/interfaces/personaje';
+import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { ArmaService } from './arma.service';
+import { ArmaduraService } from './armadura.service';
+import { ClaseService } from './clase.service';
+import { ConjuroService } from './conjuro.service';
+import { DominioService } from './dominio.service';
+import { DoteService } from './dote.service';
+import { EscuelaConjurosService } from './escuela-conjuros.service';
+import { GrupoArmaService } from './grupo-arma.service';
+import { GrupoArmaduraService } from './grupo-armadura.service';
+import { HabilidadService } from './habilidad.service';
+import { IdiomaService } from './idioma.service';
+import { NuevoPersonajeService } from './nuevo-personaje.service';
+import { PlantillaService } from './plantilla.service';
+import { RazaService } from './raza.service';
+import { extraConTipoArma, extraDeArmadura, extraDeDote } from './utils/extras-dotes';
+import { toInt } from './utils/normalizacion';
+
+/**
+ * Prepara una instancia del motor de la creación (`NuevoPersonajeService`) para un personaje guardado: carga sus
+ * catálogos y lo hidrata desde su ficha y su `entrada` (`iniciarSubidaDesdeFicha`). Lo usan la subida de nivel (fase 4) y
+ * la corrección de la ficha (fase 6) del roadmap de sesiones, cada una con su propia instancia del motor, sin tocar la
+ * creación en curso.
+ */
+@Injectable({
+    providedIn: 'root'
+})
+export class MotorDesdeFichaService {
+    constructor(
+        private claseSvc: ClaseService,
+        private doteSvc: DoteService,
+        private conjuroSvc: ConjuroService,
+        private habilidadSvc: HabilidadService,
+        private idiomaSvc: IdiomaService,
+        private dominioSvc: DominioService,
+        private razaSvc: RazaService,
+        private plantillaSvc: PlantillaService,
+        private escuelaSvc: EscuelaConjurosService,
+        private armaSvc: ArmaService,
+        private armaduraSvc: ArmaduraService,
+        private grupoArmaSvc: GrupoArmaService,
+        private grupoArmaduraSvc: GrupoArmaduraService,
+    ) { }
+
+    /** El primer valor de un catálogo, o `null` si falla. */
+    async primero<T>(origen: Observable<T> | Promise<Observable<T>>): Promise<T | null> {
+        try {
+            return await firstValueFrom((await origen).pipe(take(1)));
+        } catch {
+            return null;
+        }
+    }
+
+    /** Los catálogos que usa el motor, como en la creación. */
+    async cargarCatalogos(motor: NuevoPersonajeService): Promise<void> {
+        const [clases, dotes, conjuros, habilidades, custom, idiomas, dominios, escuelas, armas, armaduras, gruposArmas, gruposArmaduras] = await Promise.all([
+            this.primero(this.claseSvc.getClases()), this.primero(this.doteSvc.getDotes()), this.primero(this.conjuroSvc.getConjuros()),
+            this.primero(this.habilidadSvc.getHabilidades()), this.primero(this.habilidadSvc.getHabilidadesCustom()),
+            this.primero(this.idiomaSvc.getIdiomas()), this.primero(this.dominioSvc.getDominios()), this.primero(this.escuelaSvc.getEscuelas()),
+            this.primero(this.armaSvc.getArmas()), this.primero(this.armaduraSvc.getArmaduras()),
+            this.primero(this.grupoArmaSvc.getGruposArmas()), this.primero(this.grupoArmaduraSvc.getGruposArmaduras()),
+        ]);
+        motor.setCatalogoClases(clases ?? []);
+        motor.setCatalogoDotes(dotes ?? []);
+        motor.setCatalogoConjuros(conjuros ?? []);
+        motor.setCatalogoHabilidades(habilidades ?? []);
+        motor.setCatalogoHabilidadesCustom(custom ?? []);
+        motor.setCatalogoIdiomas(idiomas ?? []);
+        motor.setCatalogoDominios(dominios ?? []);
+        motor.setCatalogoEscuelasDotes((escuelas ?? []).map((e) => extraDeDote(e)));
+        motor.setCatalogoArmasDotes((armas ?? []).map((a) => extraConTipoArma(a)));
+        motor.setCatalogoArmadurasDotes((armaduras ?? []).map((a) => extraDeArmadura(a)));
+        motor.setCatalogoGruposArmasDotes((gruposArmas ?? []).map((g) => extraConTipoArma(g)));
+        motor.setCatalogoGruposArmadurasDotes((gruposArmaduras ?? []).map((g) => extraDeDote(g)));
+    }
+
+    /** El motor con el personaje guardado: su raza (y su base), sus plantillas y lo que ya eligió. */
+    async hidratar(motor: NuevoPersonajeService, pj: Personaje, entrada: PersonajeCreateRequestDto): Promise<void> {
+        const idRaza = toInt(entrada.personaje?.idRaza);
+        const idRazaBase = toInt(entrada.personaje?.idRazaBase);
+        const raza = idRaza > 0 ? await this.primero(this.razaSvc.getRaza(idRaza)) : null;
+        const razaBase = idRazaBase > 0 && idRazaBase !== idRaza ? await this.primero(this.razaSvc.getRaza(idRazaBase)) : null;
+        const plantillas = (await Promise.all((entrada.colecciones?.plantillas ?? [])
+            .map((p) => this.primero(this.plantillaSvc.getPlantilla(toInt(p.idPlantilla))))))
+            .filter((p): p is NonNullable<typeof p> => !!p);
+        motor.iniciarSubidaDesdeFicha({ personaje: pj, entrada, raza, razaBase, plantillas });
+    }
+}

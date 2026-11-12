@@ -4,7 +4,6 @@ import { Auth } from '@angular/fire/auth';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { firstValueFrom, Observable, take } from 'rxjs';
 import Swal from 'sweetalert2';
 import { SelectorAumentosCaracteristicaModalComponent } from 'src/app/components/nuevo-personaje/selector-aumentos-caracteristica-modal/selector-aumentos-caracteristica-modal.component';
 import { SelectorClaseOpcionalModalComponent } from 'src/app/components/nuevo-personaje/selector-clase-opcional-modal/selector-clase-opcional-modal.component';
@@ -18,34 +17,22 @@ import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeContextoIdsDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ExperienciaPersonaje, SesionPersonaje } from 'src/app/interfaces/sesiones';
-import { ArmaService } from 'src/app/services/arma.service';
-import { ArmaduraService } from 'src/app/services/armadura.service';
 import { CampanaService } from 'src/app/services/campana.service';
-import { ClaseService } from 'src/app/services/clase.service';
-import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.service';
-import { DominioService } from 'src/app/services/dominio.service';
-import { DoteService } from 'src/app/services/dote.service';
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
-import { GrupoArmaService } from 'src/app/services/grupo-arma.service';
-import { GrupoArmaduraService } from 'src/app/services/grupo-armadura.service';
-import { HabilidadService } from 'src/app/services/habilidad.service';
-import { IdiomaService } from 'src/app/services/idioma.service';
+import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import { DoteSeleccionConfirmada, IntercambioConjurosNivel, NuevoPersonajeService, SeleccionAumentosClaseLanzadora, SeleccionDominiosClase, SeleccionOpcionalesClase } from 'src/app/services/nuevo-personaje.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
-import { PlantillaService } from 'src/app/services/plantilla.service';
-import { RazaService } from 'src/app/services/raza.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
-import { extraConTipoArma, extraDeArmadura, extraDeDote } from 'src/app/services/utils/extras-dotes';
 import { claveHabilidad } from 'src/app/services/utils/habilidad-clave';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { carasDado, MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
-import { claveBorradorSubida, fichaDeLaSubida, modConstitucionDeEntrada, PgSubida, puntosGolpeTrasSubida } from 'src/app/services/utils/subida-nivel';
+import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
 
 /** El borrador de la subida (`fichas35.subidaNivel.draft.v1.<uid>.<id>`), solo de esta cuenta y este personaje. */
@@ -128,21 +115,10 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         private personajeSvc: PersonajeService,
         private puerta: SubidaNivelPuertaService,
         private campanaSvc: CampanaService,
-        private claseSvc: ClaseService,
-        private doteSvc: DoteService,
-        private conjuroSvc: ConjuroService,
-        private habilidadSvc: HabilidadService,
-        private idiomaSvc: IdiomaService,
-        private dominioSvc: DominioService,
-        private razaSvc: RazaService,
-        private plantillaSvc: PlantillaService,
+        private motor: MotorDesdeFichaService,
         private escuelaSvc: EscuelaConjurosService,
         private disciplinaSvc: DisciplinaConjurosService,
         private enemigoSvc: EnemigoPredilectoService,
-        private armaSvc: ArmaService,
-        private armaduraSvc: ArmaduraService,
-        private grupoArmaSvc: GrupoArmaService,
-        private grupoArmaduraSvc: GrupoArmaduraService,
     ) { }
 
     ngOnInit(): void {
@@ -232,7 +208,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             this.sesion = sesion;
             this.entrada = entrada;
             this.pj = this.personajeSvc.fichaDeApi(ficha);
-            await this.cargarCatalogos();
+            await this.motor.cargarCatalogos(this.svc);
             const campana = toInt(entrada.personaje?.campana?.id);
             // Un PNJ, como al crearlo y como la API: sin el límite de la campaña (propietario, 2026-11-12).
             this.tiradasPermitidas = entrada.personaje?.tipo === 'pnj' ? MAX_TIRADAS_PUNTOS_GOLPE
@@ -258,47 +234,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         }
     }
 
-    private async primero<T>(origen: Observable<T> | Promise<Observable<T>>): Promise<T | null> {
-        try {
-            return await firstValueFrom((await origen).pipe(take(1)));
-        } catch {
-            return null;
-        }
-    }
-
-    private async cargarCatalogos(): Promise<void> {
-        const [clases, dotes, conjuros, habilidades, custom, idiomas, dominios, escuelas, armas, armaduras, gruposArmas, gruposArmaduras] = await Promise.all([
-            this.primero(this.claseSvc.getClases()), this.primero(this.doteSvc.getDotes()), this.primero(this.conjuroSvc.getConjuros()),
-            this.primero(this.habilidadSvc.getHabilidades()), this.primero(this.habilidadSvc.getHabilidadesCustom()),
-            this.primero(this.idiomaSvc.getIdiomas()), this.primero(this.dominioSvc.getDominios()), this.primero(this.escuelaSvc.getEscuelas()),
-            this.primero(this.armaSvc.getArmas()), this.primero(this.armaduraSvc.getArmaduras()),
-            this.primero(this.grupoArmaSvc.getGruposArmas()), this.primero(this.grupoArmaduraSvc.getGruposArmaduras()),
-        ]);
-        this.svc.setCatalogoClases(clases ?? []);
-        this.svc.setCatalogoDotes(dotes ?? []);
-        this.svc.setCatalogoConjuros(conjuros ?? []);
-        this.svc.setCatalogoHabilidades(habilidades ?? []);
-        this.svc.setCatalogoHabilidadesCustom(custom ?? []);
-        this.svc.setCatalogoIdiomas(idiomas ?? []);
-        this.svc.setCatalogoDominios(dominios ?? []);
-        this.svc.setCatalogoEscuelasDotes((escuelas ?? []).map((e) => extraDeDote(e)));
-        this.svc.setCatalogoArmasDotes((armas ?? []).map((a) => extraConTipoArma(a)));
-        this.svc.setCatalogoArmadurasDotes((armaduras ?? []).map((a) => extraDeArmadura(a)));
-        this.svc.setCatalogoGruposArmasDotes((gruposArmas ?? []).map((g) => extraConTipoArma(g)));
-        this.svc.setCatalogoGruposArmadurasDotes((gruposArmaduras ?? []).map((g) => extraDeDote(g)));
-    }
-
     private async hidratar(): Promise<void> {
-        const pj = this.pj!;
-        const entrada = this.entrada!;
-        const idRaza = toInt(entrada.personaje?.idRaza);
-        const idRazaBase = toInt(entrada.personaje?.idRazaBase);
-        const raza = idRaza > 0 ? await this.primero(this.razaSvc.getRaza(idRaza)) : null;
-        const razaBase = idRazaBase > 0 && idRazaBase !== idRaza ? await this.primero(this.razaSvc.getRaza(idRazaBase)) : null;
-        const plantillas = (await Promise.all((entrada.colecciones?.plantillas ?? [])
-            .map((p) => this.primero(this.plantillaSvc.getPlantilla(toInt(p.idPlantilla))))))
-            .filter((p): p is NonNullable<typeof p> => !!p);
-        this.svc.iniciarSubidaDesdeFicha({ personaje: pj, entrada, raza, razaBase, plantillas });
+        await this.motor.hidratar(this.svc, this.pj!, this.entrada!);
         this.antes = this.cuerpoDelMotor();
         this.recalcularClases();
     }
@@ -462,7 +399,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         const pendiente = this.svc.getEspecialidadMagicaPendiente(clase, this.nivelClase);
         if (!pendiente)
             return true;
-        const [escuelas, disciplinas] = await Promise.all([this.primero(this.escuelaSvc.getEscuelas()), this.primero(this.disciplinaSvc.getDisciplinas())]);
+        const [escuelas, disciplinas] = await Promise.all([this.motor.primero(this.escuelaSvc.getEscuelas()), this.motor.primero(this.disciplinaSvc.getDisciplinas())]);
         const escuelaFija = this.svc.escuelaFijaEnCatalogo(pendiente, escuelas ?? []);
         const seleccion = await this.abrirModal<any>(SelectorEspecialidadMagicaModalComponent, {
             titulo: 'Especialización mágica', nombreClase: clase.Nombre, mostrarArcano: pendiente.requiereArcano,
@@ -483,7 +420,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         const total = this.svc.contarSeleccionesEnemigoPredilectoPorEspeciales(especiales);
         if (total < 1)
             return true;
-        const enemigos = (await this.primero(this.enemigoSvc.getEnemigosPredilectos())) ?? [];
+        const enemigos = (await this.motor.primero(this.enemigoSvc.getEnemigosPredilectos())) ?? [];
         for (let i = 1; i <= total; i++) {
             const id = await this.abrirModal<number>(SelectorEnemigoPredilectoModalComponent, {
                 titulo: total > 1 ? `Enemigo predilecto (${i} de ${total})` : 'Enemigo predilecto',
@@ -580,17 +517,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     private calcularPg(): void {
-        const entrada = this.entrada!;
-        const tiradasGuardadas = (entrada.niveles ?? []).map((n) => n?.pg?.tirada).filter((t): t is number => toInt(t) > 0);
-        const dgsAntes = Math.max(toInt(this.pj?.Nivel_personaje), (entrada.niveles ?? []).length);
-        this.pg = puntosGolpeTrasSubida({
-            pgAntes: toInt(entrada.personaje.puntosGolpe),
-            modConAntes: modConstitucionDeEntrada(entrada),
-            modConDespues: toInt(this.svc.PersonajeCreacion.ModConstitucion),
-            tiradasAnteriores: tiradasGuardadas,
-            dgsSinTirada: Math.max(0, dgsAntes - tiradasGuardadas.length),
-            tirada: this.daDg ? this.tiradaElegida : null,
-        });
+        this.pg = pgTrasCambioDeCon(this.entrada!, toInt(this.pj?.Nivel_personaje),
+            toInt(this.svc.PersonajeCreacion.ModConstitucion), this.daDg ? this.tiradaElegida : null);
     }
 
     get puedeSeguirPg(): boolean {

@@ -325,4 +325,27 @@ describe('Subida de nivel con el motor de la creación (personajes de referencia
         const deAntes = { ...guardado, entrada: { ...guardado.entrada, niveles: guardado.entrada.niveles!.map((n) => ({ ...n, ordenConocido: false } as any)) } };
         expect(subir(deAntes, HUMANO).evaluarClaseParaSeleccion(PALADIN).estado).toBe('eligible');
     });
+
+    it('la corrección (fase 6): la base corregida recalcula la puntuación, y la dote que deja de cumplirse se ve y se quita', () => {
+        const svc = crear(ENANO, { Fuerza: 15, Constitucion: 13 });
+        aplicarNivel(svc, GUERRERO);
+        const guardado = guardar(svc);
+        const corregir = subir(guardado, ENANO);
+        const poderoso = { ...dote(60, 'Ataque poderoso'), Prerrequisitos: { caracteristica: [
+            { Id_caracteristica: 1, Caracteristica: 'Fuerza', Cantidad: 13, Opcional: 0, Frase: 'Fuerza 13' }] } };
+        corregir.setCatalogoDotes([...DOTES, poderoso]);
+        corregir.PersonajeCreacion.DotesContextuales.push({
+            Dote: poderoso, Contexto: { Entidad: 'personaje', Id_personaje: 0, Id_extra: 0, Extra: '', Origen: 'Dote de nivel 1' },
+        } as any);
+        expect(corregir.getBaseCaracteristicas().Fuerza).toBe(15);
+        expect(corregir.dotesSinSusPrerrequisitos()).toEqual([]);
+        corregir.corregirBaseCaracteristica('Fuerza', 11);
+        expect(corregir.PersonajeCreacion.Fuerza).toBe(11);
+        expect(corregir.dotesSinSusPrerrequisitos().map((d) => [d.idDote, d.origen])).toEqual([[60, 'Dote de nivel 1']]);
+        expect(corregir.quitarDoteDeLaFicha(60, 0, 'Dote de nivel 1')).toBeTrue();
+        expect(corregir.dotesSinSusPrerrequisitos()).toEqual([]);
+        // La Constitución del enano (+2 de raza) se queda: la base es la tirada, no la puntuación.
+        corregir.corregirBaseCaracteristica('Constitucion', 14);
+        expect(corregir.PersonajeCreacion.Constitucion).toBe(16);
+    });
 });

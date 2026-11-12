@@ -32,6 +32,9 @@ export type TipoEventoSesion =
     | 'compra'
     | 'conjuro_copiado'
     | 'subida_nivel'
+    /** La corrección de la ficha del jugador o del máster (fase 6, `PUT /personajes/{id}/ficha`). */
+    | 'modificacion'
+    | 'correccion_master'
     | 'nota';
 
 export type ActorRolSesion = 'jugador' | 'master' | 'sistema';
@@ -95,6 +98,8 @@ export interface HistorialSesiones {
     idPersonaje: number;
     puedeApuntar: boolean;
     veNotas: boolean;
+    /** Con qué rol apunta (`jugador` o `master`; `null` si no apunta): lo que solo corrige el máster (fase 6). */
+    rolActor: 'jugador' | 'master' | null;
     experiencia: ExperienciaPersonaje | null;
     sesiones: SesionPersonaje[];
 }
@@ -138,6 +143,19 @@ export interface RespuestaSesion {
     deshecho?: { id: number; tipo: TipoEventoSesion; texto: string; } | null;
 }
 
+/** El cuerpo de `PUT /personajes/{id}/ficha`: la ficha completa con lo corregido (fase 6). */
+export interface CorreccionFichaDto {
+    ficha: PersonajeCreateRequestDto;
+    version: string;
+    /** Por qué se corrige (como mucho `MAXIMO_MOTIVO_CORRECCION`). */
+    motivo?: string;
+}
+
+/** Lo que responde la corrección: la sesión donde queda, los PX y su evento. */
+export interface RespuestaCorreccion extends RespuestaSesion {
+    correccion: { idEvento: number; numeroSesion: number; };
+}
+
 /** El cuerpo de abrir una sesión (todo opcional). */
 export interface AbrirSesionDto {
     titulo?: string;
@@ -176,3 +194,4 @@ export const MAXIMO_TITULO_SESION = 150;
 export const MAXIMO_NOTAS_SESION = 4000;
 export const MAXIMO_CONCEPTO_EVENTO = 150;
 export const MAXIMO_TEXTO_NOTA = 990;
+export const MAXIMO_MOTIVO_CORRECCION = 150;

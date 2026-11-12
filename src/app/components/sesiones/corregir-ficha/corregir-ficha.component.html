@@ -1,0 +1,110 @@
+<section class="subida correccion" aria-live="polite">
+    <header class="subida__cabecera">
+        <div class="subida__titulos">
+            <span class="subida__antetitulo">Corregir la ficha<ng-container *ngIf="sesion"> · {{sesion.numero === 0 ? 'Creación' : 'Sesión ' + sesion.numero}}</ng-container></span>
+            <h1 class="subida__titulo">{{pj?.Nombre || 'Personaje'}}</h1>
+        </div>
+    </header>
+
+    <p *ngIf="cargando" class="subida__estado">Preparando la corrección…</p>
+    <div *ngIf="!cargando && error" class="subida__aviso subida__aviso--error" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{error}}</span>
+    </div>
+
+    <ng-container *ngIf="!cargando && pj && sesion">
+        <p class="subida__nota">Para arreglar un error: lo corregido vale desde que se creó, y lo que deja de cumplirse se quita o
+            se mantiene como homebrew. La raza, las plantillas y las clases no se corrigen.</p>
+
+        <section class="subida__tarjeta">
+            <h2 class="subida__seccion">Características</h2>
+            <p *ngIf="!puedeCaracteristicas" class="subida__nota">En una campaña, las puntuaciones solo las corrige el máster.</p>
+            <table class="subida__tabla correccion__caracteristicas">
+                <thead><tr><th scope="col">Característica</th><th scope="col">Base</th><th scope="col">Puntuación</th></tr></thead>
+                <tbody>
+                    <tr *ngFor="let c of caracteristicas">
+                        <th scope="row">{{c[1] === 'Constitucion' ? 'Constitución' : c[1] === 'Sabiduria' ? 'Sabiduría' : c[1]}}</th>
+                        <td>
+                            <input *ngIf="puedeCaracteristicas; else soloBase" type="number" min="1" max="99" class="correccion__numero"
+                                [attr.aria-label]="'Base de ' + c[1]" [ngModel]="base[c[1]]" (ngModelChange)="cambiarBase(c[1], $event)">
+                            <ng-template #soloBase>{{base[c[1]]}}</ng-template>
+                        </td>
+                        <td class="subida__ahora">{{final(c[1])}}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p *ngIf="pg" class="subida__nota">PG: {{pg.total}}<ng-container *ngIf="pg.retroactivo"> ({{pg.retroactivo > 0 ? '+' : ''}}{{pg.retroactivo}} por la Constitución en los DG de antes{{pg.exacto ? '' : ', aproximado: hay DG sin su tirada'}})</ng-container>.</p>
+        </section>
+
+        <section class="subida__tarjeta">
+            <h2 class="subida__seccion">Dotes</h2>
+            <p *ngIf="dotes.length === 0" class="subida__nota">No tiene dotes que se puedan quitar.</p>
+            <ul class="subida__lista">
+                <li *ngFor="let d of dotes" class="subida__fila" [class.subida__fila--bloqueada]="d.quitada">
+                    <div class="subida__fila-texto">
+                        <span class="subida__fila-nombre">{{d.nombre}}<ng-container *ngIf="d.extra"> ({{d.extra}})</ng-container></span>
+                        <span *ngIf="d.origen" class="subida__fila-motivo">{{d.origen}}</span>
+                    </div>
+                    <span *ngIf="d.quitada" class="subida__etiqueta">Se quita</span>
+                    <button *ngIf="!d.quitada" mat-stroked-button type="button" (click)="quitarDote(d)">Quitar</button>
+                </li>
+            </ul>
+        </section>
+
+        <section class="subida__tarjeta" *ngIf="idiomas.length || conjuros.length">
+            <h2 class="subida__seccion">Idiomas y conjuros conocidos</h2>
+            <ul class="subida__lista">
+                <li *ngFor="let i of idiomas" class="subida__fila" [class.subida__fila--bloqueada]="i.quitado">
+                    <div class="subida__fila-texto"><span class="subida__fila-nombre">{{i.nombre}}</span><span class="subida__fila-motivo">Idioma</span></div>
+                    <span *ngIf="i.quitado" class="subida__etiqueta">Se quita</span>
+                    <button *ngIf="!i.quitado" mat-stroked-button type="button" (click)="quitar(i)">Quitar</button>
+                </li>
+                <li *ngFor="let c of conjuros" class="subida__fila" [class.subida__fila--bloqueada]="c.quitado">
+                    <div class="subida__fila-texto"><span class="subida__fila-nombre">{{c.nombre}}</span><span class="subida__fila-motivo">Conjuro conocido</span></div>
+                    <span *ngIf="c.quitado" class="subida__etiqueta">Se quita</span>
+                    <button *ngIf="!c.quitado" mat-stroked-button type="button" (click)="quitar(c)">Quitar</button>
+                </li>
+            </ul>
+        </section>
+
+        <section class="subida__tarjeta correccion__rotas" *ngIf="rotas.length" aria-label="Lo que deja de cumplirse">
+            <h2 class="subida__seccion">Lo que deja de cumplirse</h2>
+            <ul class="subida__lista">
+                <li *ngFor="let r of rotas" class="subida__fila">
+                    <div class="subida__fila-texto">
+                        <span class="subida__fila-nombre">{{r.nombre}}</span>
+                        <span class="subida__fila-motivo">{{r.razones.join(' · ')}}</span>
+                    </div>
+                    <span *ngIf="r.mantenida" class="subida__etiqueta">Homebrew</span>
+                    <ng-container *ngIf="!r.mantenida">
+                        <button mat-stroked-button type="button" (click)="mantener(r)">Mantenerla (homebrew)</button>
+                        <button mat-flat-button color="primary" type="button" (click)="quitarDote(r)">Quitarla</button>
+                    </ng-container>
+                </li>
+            </ul>
+        </section>
+
+        <section class="subida__tarjeta">
+            <h2 class="subida__seccion">Lo que cambia</h2>
+            <p *ngIf="cambios.length === 0" class="subida__nota">Aún no has corregido nada.</p>
+            <ul class="correccion__cambios">
+                <li *ngFor="let c of cambios">{{c}}</li>
+            </ul>
+            <label class="correccion__motivo">
+                <span>Por qué (opcional)</span>
+                <input type="text" name="motivo" [(ngModel)]="motivo" [maxlength]="maximoMotivo" placeholder="Me equivoqué al crearlo">
+            </label>
+            <p class="subida__nota">La corrección queda en {{sesion.numero === 0 ? 'la sesión de creación' : 'la sesión ' + sesion.numero}} y se puede deshacer mientras siga abierta.</p>
+        </section>
+
+        <footer class="subida__pie">
+            <button mat-button type="button" (click)="cancelar()">Cancelar</button>
+            <button mat-button type="button" (click)="empezarDeNuevo()" [disabled]="guardando">Empezar de nuevo</button>
+            <span class="subida__hueco"></span>
+            <span *ngIf="pendientes.length" class="subida__nota">Decide qué hacer con lo que deja de cumplirse.</span>
+            <button mat-flat-button color="primary" type="button" [disabled]="!puedeGuardar" (click)="guardar()">
+                {{guardando ? 'Guardando…' : 'Guardar la corrección'}}
+            </button>
+        </footer>
+    </ng-container>
+</section>

@@ -269,7 +269,7 @@ export function motivoHomebrew(familia: FamiliaHomebrew, elemento: ConOficial | 
  * ajuste, con el permiso del máster) y `desconocida`, la migración de las fichas de antes.
  */
 export type TipoDecisionHomebrew =
-    | 'alineamiento_raza' | 'alineamiento_deidad' | 'alineamiento_clase' | 'requisitos_plantilla'
+    | 'alineamiento_raza' | 'alineamiento_deidad' | 'alineamiento_clase' | 'requisitos_plantilla' | 'requisitos_dote'
     | 'edad_menor_que_la_mayoria' | 'edad_menor_que_la_inicial' | 'edad_mayor_que_la_maxima'
     | 'altura_fuera_de_rango' | 'peso_fuera_de_rango' | 'edad_sin_ajuste' | 'desconocida';
 
@@ -391,6 +391,7 @@ const TEXTO_POR_DECISION: Readonly<Record<TipoDecisionHomebrew, string>> = {
     alineamiento_deidad: 'Alineamiento que no admite su deidad',
     alineamiento_clase: 'Alineamiento que no admite su clase',
     requisitos_plantilla: 'Plantilla sin sus requisitos',
+    requisitos_dote: 'Dote sin sus prerrequisitos (mantenida al corregir la ficha)',
     edad_menor_que_la_mayoria: 'Edad por debajo de la mayoría de edad de su raza',
     edad_menor_que_la_inicial: 'Edad por debajo de la inicial de su clase',
     edad_mayor_que_la_maxima: 'Edad por encima de la máxima de su raza',

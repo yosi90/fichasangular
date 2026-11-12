@@ -109,10 +109,15 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public novedadesTabOpen = false;
     public publicProfileTabs: UserPublicProfileTab[] = [];
     public detallesPersonajeAbiertos: Personaje[] = [];
-    /** Las subidas de nivel abiertas (roadmap de sesiones, fase 4): una pestaña por personaje, `subida:<id>`. */
-    public subidasNivelAbiertas: Array<{ idPersonaje: number; nombre: string; cerrar: () => void; }> = [];
+    /**
+     * Las subidas de nivel (roadmap de sesiones, fase 4) y las correcciones de la ficha (fase 6) abiertas: una pestaña por
+     * personaje y modo, `subida:<id>` o `correccion:<id>`.
+     */
+    public subidasNivelAbiertas: Array<{ idPersonaje: number; nombre: string; modo: 'subida' | 'correccion'; cerrar: () => void; }> = [];
     /** `SubirNivelComponent`, con carga diferida la primera vez que se abre una subida. */
     public subirNivelComponente: Type<unknown> | null = null;
+    /** `CorregirFichaComponent`, con carga diferida la primera vez que se abre una corrección. */
+    public corregirFichaComponente: Type<unknown> | null = null;
     public detallesRazaAbiertos: Raza[] = [];
     public detallesConjuroAbiertos: Conjuro[] = [];
     public detallesSortilegaAbiertos: { ap: AptitudSortilega, fuente: string }[] = [];
@@ -203,6 +208,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.puertaSubida?.solicitudes$
             .pipe(takeUntil(this.destroy$))
             .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje));
+        this.puertaSubida?.correcciones$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'correccion'));
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPerfilPrivado(request));
@@ -404,7 +412,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         if (this.dadosTabOpen)
             keys.push(this.TAB_DADOS);
         keys.push(...this.detallesPersonajeAbiertos.map((pj) => this.getPersonajeTabKey(pj)));
-        keys.push(...this.subidasNivelAbiertas.map((subida) => this.getSubidaTabKey(subida.idPersonaje)));
+        keys.push(...this.subidasNivelAbiertas.map((subida) => this.getSubidaTabKey(subida.idPersonaje, subida.modo)));
         keys.push(...this.publicProfileTabs.map((tab) => this.getPublicProfileTabKey(tab)));
         if (this.AbrirNuevoPersonajeTab)
             keys.push(this.TAB_NUEVO);
@@ -1057,33 +1065,38 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     /**
-     * Abre la subida de nivel de un personaje (la pide la ficha con «Subir a nivel N», `SubidaNivelPuertaService`) en su
-     * pestaña, junto a las fichas; si ya está abierta, la enseña. El componente se carga la primera vez.
+     * Abre la subida de nivel de un personaje (la pide la ficha con «Subir a nivel N», `SubidaNivelPuertaService`) o la
+     * corrección de su ficha («Corregir la ficha», fase 6) en su pestaña, junto a las fichas; si ya está abierta, la
+     * enseña. Cada componente se carga la primera vez.
      */
-    async abrirSubidaNivel(idPersonaje: number): Promise<void> {
+    async abrirSubidaNivel(idPersonaje: number, modo: 'subida' | 'correccion' = 'subida'): Promise<void> {
         const id = Math.trunc(Number(idPersonaje));
         if (!(id > 0))
             return;
-        const clave = this.getSubidaTabKey(id);
-        if (this.subidasNivelAbiertas.some((subida) => subida.idPersonaje === id)) {
+        const clave = this.getSubidaTabKey(id, modo);
+        if (this.subidasNivelAbiertas.some((subida) => subida.idPersonaje === id && subida.modo === modo)) {
             this.selectTabByKey(clave);
             return;
         }
-        if (!this.subirNivelComponente) {
+        if (modo === 'subida' && !this.subirNivelComponente) {
             const { SubirNivelComponent } = await import('src/app/components/sesiones/subir-nivel/subir-nivel.component');
             this.subirNivelComponente = SubirNivelComponent;
         }
+        if (modo === 'correccion' && !this.corregirFichaComponente) {
+            const { CorregirFichaComponent } = await import('src/app/components/sesiones/corregir-ficha/corregir-ficha.component');
+            this.corregirFichaComponente = CorregirFichaComponent;
+        }
         const nombre = this.detallesPersonajeAbiertos.find((pj) => Number(pj.Id) === id)?.Nombre ?? 'Personaje';
-        this.subidasNivelAbiertas.push({ idPersonaje: id, nombre, cerrar: () => this.quitarSubidaNivel(id) });
+        this.subidasNivelAbiertas.push({ idPersonaje: id, nombre, modo, cerrar: () => this.quitarSubidaNivel(id, modo) });
         this.registerOpenContext(clave, this.getSafeOpenerKey());
         this.focusOpenedTab(clave);
     }
 
-    quitarSubidaNivel(idPersonaje: number): boolean {
-        const subida = this.subidasNivelAbiertas.find((item) => item.idPersonaje === Number(idPersonaje));
+    quitarSubidaNivel(idPersonaje: number, modo: 'subida' | 'correccion' = 'subida'): boolean {
+        const subida = this.subidasNivelAbiertas.find((item) => item.idPersonaje === Number(idPersonaje) && item.modo === modo);
         if (!subida)
             return false;
-        return this.closeTabWithNavigation(this.getSubidaTabKey(subida.idPersonaje), () => {
+        return this.closeTabWithNavigation(this.getSubidaTabKey(subida.idPersonaje, subida.modo), () => {
             const indice = this.subidasNivelAbiertas.indexOf(subida);
             if (indice < 0)
                 return false;
@@ -1092,8 +1105,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    private getSubidaTabKey(idPersonaje: number): string {
-        return `subida:${Number(idPersonaje)}`;
+    private getSubidaTabKey(idPersonaje: number, modo: 'subida' | 'correccion' = 'subida'): string {
+        return `${modo}:${Number(idPersonaje)}`;
     }
 
     private getPersonajeTabKey(personaje: Personaje): string {

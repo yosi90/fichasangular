@@ -149,6 +149,33 @@ export class PersonajeService {
     }
 
     /**
+     * Los cambios libres (`PATCH /personajes/{id}`, roadmap de sesiones, fase 6): el nombre, la personalidad, la historia,
+     * la región y el género. Sin versión ni sesión; los hacen el dueño y el máster de su campaña. Devuelve los cinco
+     * como quedan.
+     */
+    public async cambiarDatosLibres(idPersonaje: number, cambios: PersonajeCamposLibresDto): Promise<PersonajeCamposLibresDto> {
+        const id = toInt(idPersonaje);
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+        try {
+            const respuesta = await firstValueFrom(this.http.patch<{ personaje?: PersonajeCamposLibresDto; }>(
+                `${environment.apiUrl}personajes/${id}`, cambios,
+                { headers: new HttpHeaders(await cabeceraApiConFirebase(this.auth)) },
+            ));
+            const p: any = respuesta?.personaje ?? {};
+            return {
+                nombre: `${p.nombre ?? ''}`,
+                descripcionPersonalidad: p.descripcionPersonalidad ?? null,
+                descripcionHistoria: p.descripcionHistoria ?? null,
+                idRegion: toInt(p.idRegion),
+                idGenero: toInt(p.idGenero),
+            };
+        } catch (error) {
+            throw errorDePerfil(error, 'No se han podido guardar los datos del personaje.');
+        }
+    }
+
+    /**
      * Las compras del final de la creación (`PUT /personajes/{id}/equipo`): la API calcula el precio de cada pieza,
      * comprueba el dinero inicial y guarda el equipo y lo que le queda. Solo el dueño. Sustituye la compra anterior.
      */
@@ -1478,4 +1505,13 @@ function resolveCompetenciaNombre(item: any, nombreKeys: string[]): string {
     }
 
     return '';
+}
+
+/** Los cambios libres de `PATCH /personajes/{id}` (fase 6 de las sesiones): solo los que se mandan. */
+export interface PersonajeCamposLibresDto {
+    nombre?: string;
+    descripcionPersonalidad?: string | null;
+    descripcionHistoria?: string | null;
+    idRegion?: number;
+    idGenero?: number;
 }

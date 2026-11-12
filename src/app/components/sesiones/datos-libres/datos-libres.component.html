@@ -1,0 +1,40 @@
+<form class="historial__formulario" (ngSubmit)="guardar()" aria-label="Datos del personaje">
+    <label class="historial__campo historial__campo--ancho">
+        <span>Nombre</span>
+        <input type="text" name="nombre" [(ngModel)]="nombre" [maxlength]="maximoNombre" required [disabled]="guardando">
+    </label>
+    <label class="historial__campo">
+        <span>Región</span>
+        <select name="region" [(ngModel)]="idRegion" [disabled]="guardando">
+            @for (r of regiones; track r.Id) {
+                <option [ngValue]="r.Id">{{r.Nombre}}</option>
+            }
+        </select>
+    </label>
+    <label class="historial__campo">
+        <span>Género</span>
+        <select name="genero" [(ngModel)]="idGenero" [disabled]="guardando">
+            @for (g of generos; track g.Id) {
+                <option [ngValue]="g.Id">{{g.Nombre}}</option>
+            }
+        </select>
+    </label>
+    <label class="historial__campo historial__campo--ancho">
+        <span>Personalidad</span>
+        <textarea name="personalidad" rows="3" [(ngModel)]="personalidad" [disabled]="guardando"></textarea>
+    </label>
+    <label class="historial__campo historial__campo--ancho">
+        <span>Historia</span>
+        <textarea name="historia" rows="4" [(ngModel)]="historia" [disabled]="guardando"></textarea>
+    </label>
+    <p class="historial__nota">Son cambios libres: no salen en el historial ni pasan por una sesión.</p>
+    <div class="historial__acciones">
+        <button type="button" mat-button (click)="alTerminar(false)" [disabled]="guardando">Cancelar</button>
+        <button type="submit" mat-raised-button color="primary" [disabled]="guardando || !hayCambios">
+            {{guardando ? 'Guardando…' : 'Guardar'}}
+        </button>
+    </div>
+    @if (error) {
+        <p class="bloque-error historial__error" role="alert">{{error}}</p>
+    }
+</form>

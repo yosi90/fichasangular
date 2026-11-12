@@ -74,6 +74,25 @@ export function puntosGolpeTrasSubida(entrada: EntradaPgSubida): PgSubida {
     return { total: Math.max(1, toInt(entrada.pgAntes) + retroactivo + delNivel), delNivel, retroactivo, exacto };
 }
 
+/**
+ * Los PG de una ficha guardada (`entrada`) con el modificador de Constitución `modConDespues` y, si da DG, la tirada de
+ * un DG nuevo: lo que usan la subida (un nivel más) y la corrección (`tirada` `null`: solo el retroactivo de la Con). Los
+ * DG de antes son los de su nivel de personaje (`nivelPersonaje`) o, si son más, sus niveles guardados.
+ */
+export function pgTrasCambioDeCon(entrada: PersonajeCreateRequestDto, nivelPersonaje: number, modConDespues: number,
+    tirada: number | null): PgSubida {
+    const tiradasGuardadas = (entrada.niveles ?? []).map((n) => n?.pg?.tirada).filter((t): t is number => toInt(t) > 0);
+    const dgsAntes = Math.max(toInt(nivelPersonaje), (entrada.niveles ?? []).length);
+    return puntosGolpeTrasSubida({
+        pgAntes: toInt(entrada.personaje.puntosGolpe),
+        modConAntes: modConstitucionDeEntrada(entrada),
+        modConDespues: toInt(modConDespues),
+        tiradasAnteriores: tiradasGuardadas,
+        dgsSinTirada: Math.max(0, dgsAntes - tiradasGuardadas.length),
+        tirada,
+    });
+}
+
 /** El modificador de Constitución de una ficha del alta (sin Constitución, 0). */
 export function modConstitucionDeEntrada(ficha: PersonajeCreateRequestDto | null | undefined): number {
     const con = ficha?.caracteristicas?.constitucion;
