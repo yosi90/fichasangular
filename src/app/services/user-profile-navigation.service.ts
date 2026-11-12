@@ -7,7 +7,7 @@ import {
     UserPrivateProfileSectionId,
     UserPublicProfileTab
 } from '../interfaces/user-account';
-import { AyudaSolicitud, SeccionAyuda } from '../interfaces/ayuda';
+import { AyudaSolicitud, SeccionAyuda, esSeccionAyuda } from '../interfaces/ayuda';
 import { PlatformSessionService } from './platform-session.service';
 
 @Injectable({
@@ -67,9 +67,9 @@ export class UserProfileNavigationService {
         window.open(this.platformSessionSvc.urlSocial('moderacion'), '_blank', 'noopener');
     }
 
-    /** La Ayuda, una sola pestaña, abierta en una sección (Primeros pasos, si no se dice). */
-    openAyuda(seccion: SeccionAyuda = 'primeros-pasos'): void {
-        this.ayudaSubject.next({ seccion, id: Date.now() });
+    /** La Ayuda, una sola pestaña, abierta en una sección (Primeros pasos, si no se dice) y, si se pide, en un apartado. */
+    openAyuda(seccion: SeccionAyuda = 'primeros-pasos', apartado: string | null = null): void {
+        this.ayudaSubject.next({ seccion, id: Date.now(), apartado });
     }
 
     /** Errores y propuestas: el formulario de la plataforma, sobre la web (ecosistema-kit/ACCESO.md). */
@@ -82,11 +82,26 @@ export class UserProfileNavigationService {
     }
 
     /**
-     * Los enlaces de las notificaciones de Rol en el centro de la plataforma (docs/publica/MIGRACION_PLATAFORMA_FRONT.md):
-     * `?vista=campanas&campana={id}` y `?vista=cuenta`. Devuelve `true` si el enlace era de una vista de Rol.
+     * Las vistas que se abren sin sesión: la Ayuda (`?vista=ayuda&seccion={sección}#{apartado}`). Su enlace público es la
+     * información de privacidad de 3.5 Companion (`?vista=ayuda&seccion=legal#legal-companion`, docs/publica/ANDROID_COMPANION.md).
      */
-    abrirVista(parametros: URLSearchParams): boolean {
+    esVistaSinSesion(parametros: URLSearchParams): boolean {
+        return `${parametros.get('vista') ?? ''}`.trim() === 'ayuda';
+    }
+
+    /**
+     * Las vistas de Rol de un enlace: las de las notificaciones de Rol en el centro de la plataforma
+     * (docs/publica/MIGRACION_PLATAFORMA_FRONT.md), `?vista=campanas&campana={id}` y `?vista=cuenta`, y la Ayuda
+     * ([esVistaSinSesion]), con `ancla` (el `#` del enlace) como apartado. Devuelve `true` si el enlace era de una vista de Rol.
+     */
+    abrirVista(parametros: URLSearchParams, ancla: string = ''): boolean {
         const vista = `${parametros.get('vista') ?? ''}`.trim();
+        if (vista === 'ayuda') {
+            const seccion = `${parametros.get('seccion') ?? ''}`.trim();
+            const apartado = `${ancla ?? ''}`.replace(/^#/, '').trim();
+            this.openAyuda(esSeccionAyuda(seccion) ? seccion : 'primeros-pasos', apartado.length > 0 ? apartado : null);
+            return true;
+        }
         if (vista === 'campanas') {
             const campana = Math.trunc(Number(parametros.get('campana')));
             this.openSocial({

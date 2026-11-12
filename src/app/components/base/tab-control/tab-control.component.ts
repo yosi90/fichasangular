@@ -100,6 +100,8 @@ export class TabControlComponent implements OnInit, OnDestroy {
     /** La Ayuda: una sola pestaña, abierta en la sección que se pida (lienzo, vista 9). */
     public ayudaTabOpen = false;
     public ayudaSolicitud: AyudaSolicitud | null = null;
+    /** Si al cargar se ha abierto una vista sin sesión de la dirección (`?vista=ayuda`): Novedades se abre sin elegirse. */
+    private vistaDeLaUrlAbierta = false;
     /** Los dados (lienzo «Dados: Companion y web»): una sola pestaña, como la Ayuda. */
     public dadosTabOpen = false;
     /**
@@ -192,8 +194,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.usrSvc.isLoggedIn$
             .pipe(takeUntil(this.destroy$))
             .subscribe((loggedIn) => {
+                const teniaSesion = this.usrLoggedIn;
                 this.usrLoggedIn = loggedIn === true;
-                if (!this.usrLoggedIn)
+                // Solo al perder la sesión: sin cuenta llegan varios `false` al cargar (el inicial y el de Firebase), y no
+                // deben cerrar lo público que ya esté abierto, como la Ayuda de un enlace `?vista=ayuda`.
+                if (teniaSesion && !this.usrLoggedIn)
                     this.cerrarTodasLasTabsPorLogout();
             });
         this.usrPerm = this.usrSvc.Usuario.permisos;
@@ -234,21 +239,32 @@ export class TabControlComponent implements OnInit, OnDestroy {
     private async abrirNovedadesAlEntrar(): Promise<void> {
         if (!this.novedadesSvc || !(await this.novedadesSvc.abrirAlEntrar()) || this.novedadesTabOpen)
             return;
-        const sinMoverse = this.activeTabKey === this.TAB_PERSONAJES;
+        // Un enlace a una vista sin sesión (`?vista=ayuda`) cuenta como haberse ido ya a otra pestaña.
+        const sinMoverse = this.activeTabKey === this.TAB_PERSONAJES && !this.vistaDeLaUrlAbierta;
         this.novedadesTabOpen = true;
         if (sinMoverse)
             this.focusOpenedTab(this.TAB_NOVEDADES);
     }
 
-    /** `?vista=campanas&campana={id}` y `?vista=cuenta` (notificaciones de Rol): se abren al tener sesión. */
+    /**
+     * `?vista=campanas&campana={id}` y `?vista=cuenta` (notificaciones de Rol): se abren al tener sesión.
+     * `?vista=ayuda&seccion={sección}#{apartado}` (la información de privacidad de 3.5 Companion): al momento, sin sesión.
+     */
     private atenderVistaDeLaUrl(): void {
         const url = new URL(window.location.href);
         if (!url.searchParams.has('vista'))
             return;
         const parametros = new URLSearchParams(url.searchParams);
+        const ancla = url.hash;
         url.searchParams.delete('vista');
         url.searchParams.delete('campana');
+        url.searchParams.delete('seccion');
+        url.hash = '';
         window.history.replaceState(window.history.state, '', url);
+        if (this.userProfileNavSvc?.esVistaSinSesion(parametros)) {
+            this.vistaDeLaUrlAbierta = this.userProfileNavSvc.abrirVista(parametros, ancla);
+            return;
+        }
         this.usrSvc.isLoggedIn$
             .pipe(filter((logueado) => logueado === true), take(1), takeUntil(this.destroy$))
             .subscribe(() => this.userProfileNavSvc?.abrirVista(parametros));

@@ -164,7 +164,7 @@ export class NavbarComponent implements OnInit, OnDestroy {
         }
         if (destino.origin !== window.location.origin)
             return;
-        if (this.userProfileNavSvc.abrirVista(destino.searchParams))
+        if (this.userProfileNavSvc.abrirVista(destino.searchParams, destino.hash))
             evento.preventDefault();
     }
 

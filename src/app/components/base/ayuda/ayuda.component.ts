@@ -1,14 +1,7 @@
 import { Component, ElementRef, Input, OnChanges, ViewEncapsulation, inject } from '@angular/core';
-import { AyudaSolicitud, SeccionAyuda } from 'src/app/interfaces/ayuda';
+import { AyudaSolicitud, SECCIONES_AYUDA, SeccionAyuda } from 'src/app/interfaces/ayuda';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { AUTORES_ICONOS_ROL, ICONOS_PROPIOS_ROL } from 'src/app/services/utils/iconos-rol';
-
-export const SECCIONES_AYUDA: readonly { id: SeccionAyuda; titulo: string }[] = [
-    { id: 'primeros-pasos', titulo: 'Primeros pasos' },
-    { id: 'legal', titulo: 'Legal y privacidad' },
-    { id: 'companion', titulo: '3.5 Companion' },
-    { id: 'creditos', titulo: 'Créditos' },
-];
 
 /**
  * La Ayuda, en una sola pestaña (lienzo «Rol: las vistas que faltan», vista 9): navegación lateral (el patrón de
@@ -30,6 +23,8 @@ export class AyudaComponent implements OnChanges {
     readonly iconosPropios = ICONOS_PROPIOS_ROL;
     readonly urlCompanion = inject(PlatformSessionService).urlCompanion;
     seccion: SeccionAyuda = 'primeros-pasos';
+    /** La petición que pide bajar a un apartado (`?vista=ayuda&seccion=legal#legal-companion`), hasta cambiar de sección. */
+    solicitudDeApartado: AyudaSolicitud | null = null;
 
     constructor(private host: ElementRef<HTMLElement>) { }
 
@@ -38,12 +33,15 @@ export class AyudaComponent implements OnChanges {
     }
 
     ngOnChanges(): void {
-        if (this.solicitud)
-            this.ir(this.solicitud.seccion);
+        if (!this.solicitud)
+            return;
+        this.ir(this.solicitud.seccion);
+        this.solicitudDeApartado = this.solicitud.apartado ? this.solicitud : null;
     }
 
     ir(seccion: SeccionAyuda): void {
         this.seccion = seccion;
+        this.solicitudDeApartado = null;
         setTimeout(() => this.host.nativeElement.querySelector('.ayuda-contenido')?.scrollTo?.({ top: 0 }));
     }
 }

@@ -11,7 +11,7 @@
 
         <ng-container [ngSwitch]="seccion">
             <app-help-usage-about *ngSwitchCase="'primeros-pasos'"></app-help-usage-about>
-            <app-help-legal *ngSwitchCase="'legal'"></app-help-legal>
+            <app-help-legal *ngSwitchCase="'legal'" [solicitud]="solicitudDeApartado"></app-help-legal>
 
             <section class="ayuda-tarjeta" *ngSwitchCase="'companion'" aria-label="3.5 Companion">
                 <div class="ayuda-prosa">

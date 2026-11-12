@@ -2,9 +2,10 @@ import { fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { BehaviorSubject, of, Subject } from 'rxjs';
 import Swal from 'sweetalert2';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { UserProfileNavigationService } from 'src/app/services/user-profile-navigation.service';
 import { TabControlComponent } from './tab-control.component';
 
-function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; }): TabControlComponent {
+function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; userProfileNavSvc?: any; }): TabControlComponent {
     const isLoggedIn$ = new BehaviorSubject<boolean>(false);
     const permisos$ = new BehaviorSubject<number>(0);
     const banStatus$ = new BehaviorSubject<any>({
@@ -38,7 +39,7 @@ function crearComponente(overrides?: { pSvc?: any; novedadesSvc?: any; }): TabCo
     const pSvc = overrides?.pSvc ?? {} as any;
     const puertaSubida = new SubidaNivelPuertaService();
     const navegacionRolSvc = { aperturas$: new Subject<any>() } as any;
-    const userProfileNavSvc = {
+    const userProfileNavSvc = overrides?.userProfileNavSvc ?? {
         privateProfileOpen$: new Subject<any>(),
         publicProfileOpen$: new Subject<any>(),
         socialOpen$: new Subject<any>(),
@@ -812,6 +813,59 @@ describe('TabControlComponent navegación por origen', () => {
         expect(component.dadosTabOpen).toBeFalse();
         component.ngOnDestroy();
     }));
+
+    describe('la Ayuda de un enlace (?vista=ayuda, la privacidad de 3.5 Companion)', () => {
+        let direccionOriginal: string;
+        const irA = (direccion: string) => window.history.replaceState(window.history.state, '', `${window.location.pathname}${direccion}`);
+
+        beforeEach(() => direccionOriginal = window.location.href);
+        afterEach(() => window.history.replaceState(window.history.state, '', direccionOriginal));
+
+        it('se abre al cargar, sin sesión, en Legal y su apartado, y limpia la dirección', fakeAsync(() => {
+            irA('?vista=ayuda&seccion=legal#legal-companion');
+            const component = crearComponente({ userProfileNavSvc: new UserProfileNavigationService({} as any) });
+            component.ngOnInit();
+
+            expect(component.ayudaTabOpen).toBeTrue();
+            expect(component.ayudaSolicitud?.seccion).toBe('legal');
+            expect(component.ayudaSolicitud?.apartado).toBe('legal-companion');
+            expect(window.location.search).toBe('');
+            expect(window.location.hash).toBe('');
+
+            // Sin cuenta llega otro `false` (el de Firebase): no es cerrar sesión y la Ayuda sigue abierta.
+            (component as any).__isLoggedIn$.next(false);
+            tick(120);
+            expect(component.ayudaTabOpen).toBeTrue();
+            expect((component as any).activeTabKey).toBe('base:ayuda');
+            component.ngOnDestroy();
+        }));
+
+        it('una sección desconocida abre Primeros pasos, sin apartado', fakeAsync(() => {
+            irA('?vista=ayuda&seccion=otra');
+            const component = crearComponente({ userProfileNavSvc: new UserProfileNavigationService({} as any) });
+            component.ngOnInit();
+            tick(120);
+
+            expect(component.ayudaSolicitud?.seccion).toBe('primeros-pasos');
+            expect(component.ayudaSolicitud?.apartado).toBeNull();
+            component.ngOnDestroy();
+        }));
+
+        it('las vistas con cuenta siguen esperando a la sesión', fakeAsync(() => {
+            irA('?vista=cuenta');
+            const navegacion = new UserProfileNavigationService({} as any);
+            const abrirPerfil = spyOn(navegacion, 'openPrivateProfile');
+            const component = crearComponente({ userProfileNavSvc: navegacion });
+            component.ngOnInit();
+            expect(abrirPerfil).not.toHaveBeenCalled();
+            expect(component.ayudaTabOpen).toBeFalse();
+
+            (component as any).__isLoggedIn$.next(true);
+            expect(abrirPerfil).toHaveBeenCalledWith('resumen');
+            tick(120);
+            component.ngOnDestroy();
+        }));
+    });
 
     it('cerrar la Ayuda vuelve al origen', fakeAsync(() => {
         const component = crearComponente();

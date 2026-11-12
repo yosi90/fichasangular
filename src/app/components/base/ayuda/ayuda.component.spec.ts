@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks, tick } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TextoManualComponent } from '../../shared/texto-manual/texto-manual.component';
@@ -45,7 +45,7 @@ describe('AyudaComponent', () => {
         expect(elemento().querySelector('#legal-medicion')?.textContent).toContain('yosiftadisticas:ultima');
         expect(Array.from(elemento().querySelectorAll('.ayuda-indice__enlace')).map((e) => e.textContent?.trim())).toEqual([
             'Proyecto no oficial', 'Propiedad intelectual', 'Uso de la web', 'Normas de Rol', 'Datos de usuario',
-            'Medición de audiencia', 'Alcance del texto',
+            '3.5 Companion', 'Medición de audiencia', 'Alcance del texto',
         ]);
         TestBed.inject(HttpTestingController).match(() => true);
 
@@ -106,4 +106,81 @@ describe('AyudaComponent', () => {
             http.expectOne((req) => req.url.endsWith('/v1/webs/rol/normas'));
         });
     });
+    it('Legal: el apartado «3.5 Companion», con el texto de privacidad aprobado el 2026-11-12, tal cual', () => {
+        abrir('legal', 8);
+        TestBed.inject(HttpTestingController).match(() => true);
+        const apartado = elemento().querySelector('section#legal-companion') as HTMLElement;
+        expect(apartado.querySelector('h3')?.textContent?.trim()).toBe('3.5 Companion');
+        expect((apartado.querySelector('p')?.textContent ?? '').replace(/\s+/g, ' ').trim()).toBe(
+            '3.5 Companion, la app de Rol para Android, usa tu cuenta de Yosiftware, que se rige por la política de privacidad de '
+            + 'Yosiftware. Además, guarda en tu móvil, solo para funcionar: una copia de tus fichas y campañas privadas, para usarlas '
+            + 'sin conexión (cifrada, fuera de las copias de seguridad, separada por cuenta y como mucho 3 días desde la última vez que '
+            + 'el servidor confirmó tu acceso); los mensajes del chat que aún no se han enviado, cifrados; tus favoritos, lo último que '
+            + 'has visto, tus tiradas guardadas y su historial y el rastreador de esencia de tus fichas, por cuenta; y tus preferencias '
+            + 'de la app y del sonido. Lo privado de una cuenta se borra al cerrar su sesión, y todo, al desinstalar la app. Las voces '
+            + 'de los personajes se descargan solo mientras suenan. La app no lleva anuncios ni analítica.');
+    });
+
+    it('con un apartado en la petición, baja a él al abrir y otra vez al llegar las normas, que van antes y lo empujan', fakeAsync(() => {
+        const bajadas: string[] = [];
+        spyOn(Element.prototype, 'scrollIntoView').and.callFake(function (this: Element) { bajadas.push(this.id); });
+        const http = TestBed.inject(HttpTestingController);
+        fixture.componentRef.setInput('solicitud', { seccion: 'legal', id: 9, apartado: 'legal-companion' });
+        fixture.detectChanges();
+        tick();
+        expect(titulo()).toBe('Legal y privacidad');
+        expect(bajadas).toEqual(['legal-companion']);
+
+        http.expectOne((req) => req.url.endsWith('/v1/webs/rol/normas'))
+            .flush({ id: 3, web: 'rol', version: 2, titulo: 'Normas de Rol', texto: 'Texto largo.', importante: true, publicadas: '2026-10-29T10:00:00Z' });
+        flushMicrotasks();
+        fixture.detectChanges();
+        tick();
+        expect(bajadas).toEqual(['legal-companion', 'legal-companion']);
+        expect(elemento().querySelector('#legal-companion-titulo')?.getAttribute('tabindex')).toBe('-1');
+
+        // Cambiar de sección y volver a Legal desde la navegación ya no baja al apartado.
+        (elemento().querySelectorAll('.ayuda-nav__boton')[0] as HTMLButtonElement).click();
+        fixture.detectChanges();
+        (elemento().querySelectorAll('.ayuda-nav__boton')[1] as HTMLButtonElement).click();
+        fixture.detectChanges();
+        http.expectOne((req) => req.url.endsWith('/v1/webs/rol/normas')).flush({ id: 3, web: 'rol', version: 2, titulo: 'Normas de Rol', texto: 'Texto.', importante: true, publicadas: '' });
+        flushMicrotasks();
+        fixture.detectChanges();
+        tick();
+        expect(bajadas.length).toBe(2);
+        http.verify();
+    }));
+
+    it('un apartado que no es de la página no mueve nada', fakeAsync(() => {
+        const scroll = spyOn(Element.prototype, 'scrollIntoView');
+        fixture.componentRef.setInput('solicitud', { seccion: 'legal', id: 10, apartado: 'otro"], img' });
+        fixture.detectChanges();
+        tick();
+        TestBed.inject(HttpTestingController).match(() => true);
+        flushMicrotasks();
+        tick();
+        expect(titulo()).toBe('Legal y privacidad');
+        expect(scroll).not.toHaveBeenCalled();
+    }));
+    it('si la pestaña aún no se ve (se elige después de abrirla), espera a que se vea para bajar', fakeAsync(() => {
+        const bajadas: string[] = [];
+        spyOn(Element.prototype, 'scrollIntoView').and.callFake(function (this: Element) { bajadas.push(this.id); });
+        elemento().style.display = 'none';
+        fixture.componentRef.setInput('solicitud', { seccion: 'legal', id: 11, apartado: 'legal-companion' });
+        fixture.detectChanges();
+        // Las normas fallan mientras sigue oculta: no hay nada que las empuje, pero aún no se puede bajar.
+        TestBed.inject(HttpTestingController).expectOne((req) => req.url.endsWith('/v1/webs/rol/normas'))
+            .flush({ code: 'normas_no_encontradas' }, { status: 404, statusText: 'Not Found' });
+        flushMicrotasks();
+        fixture.detectChanges();
+        tick(300);
+        expect(bajadas).toEqual([]);
+
+        elemento().style.display = '';
+        tick(50);
+        expect(bajadas).toEqual(['legal-companion']);
+        tick(3000);
+        expect(bajadas).toEqual(['legal-companion']);
+    }));
 });

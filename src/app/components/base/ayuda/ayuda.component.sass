@@ -94,7 +94,9 @@ app-ayuda
 .ayuda-prosa
     display: flex
     flex-direction: column
+    align-self: stretch
     gap: 10px
+    min-width: 0
     max-width: 74ch
     font-size: 15px
     line-height: 1.65
@@ -240,8 +242,10 @@ app-ayuda
     scroll-margin-top: 8px
 
 @media (max-width: 1100px)
+    // A todo el ancho: ajustada a su contenido, la tabla de la medición la hacía más ancha que la pantalla del móvil.
     .ayuda-legal
         flex-direction: column-reverse
+        align-items: stretch
 
     .ayuda-indice
         position: static
