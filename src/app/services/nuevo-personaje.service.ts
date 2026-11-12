@@ -3067,7 +3067,7 @@ export class NuevoPersonajeService {
             .map((eleccion) => ({
                 clave: eleccion.Clave,
                 grupo: eleccion.Grupo,
-                origen: `${eleccion.Racial.Nombre}, ${momentoDeProgresion(eleccion)}`,
+                origen: `${eleccion.Racial.Nombre}, ${momentoDeProgresion(eleccion.Medida, Number(eleccion.Desde))}`,
                 opciones: this.copiarRaciales(delGrupo.filter((racial) =>
                     toInt(racial?.Opcional) === eleccion.Grupo && !tiene.has(toInt(racial?.Id)))),
             }));

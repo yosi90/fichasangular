@@ -48,11 +48,6 @@ export interface ResultadoProgresionRacial {
     elecciones: EleccionDeProgresion[];
 }
 
-/** «a nivel 2», «a los 6 DG»: el momento de una fila, para el origen de lo que da. */
-export function momentoDeProgresion(fila: Pick<RacialProgresion, 'Medida' | 'Desde'>): string {
-    return momento(fila as RacialProgresion);
-}
-
 /**
  * Desde cuándo vale una fila de la progresión («a los 6 DG», «a 1 DG», «a nivel 3»): el `Origen` de lo que gana y, con
  * mayúscula, la cabecera de su fila en «Insertar/Modificar racial» (`racial-formulario.ts`).
