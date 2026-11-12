@@ -265,11 +265,21 @@ export function falloDeBonificador(fila: FilaBonificadorRacial, indice: number,
         return `${n}: la condición es obligatoria si cuenta contra unas criaturas («contra gigantes»).`;
     if (condicion.length > MAXIMO_CONDICION_BONIFICADOR)
         return `${n}: la condición no puede pasar de ${MAXIMO_CONDICION_BONIFICADOR} letras.`;
+    const criatura = falloDeCriaturas(fila.contra);
+    return criatura ? `${n}, contra: ${criatura}` : null;
+}
+
+/**
+ * La primera criatura de una lista que la API rechazaría (un id que no vale o repetido en su catálogo), como
+ * `_criaturas_del_cuerpo` de la API, que valida igual `contra[]` de un bonificador y `cuenta_como[]` de un racial; `null`
+ * si valen todas.
+ */
+function falloDeCriaturas(criaturas: readonly { catalogo: string; id: number; nombre: string; }[]): string | null {
     const vistas = new Set<string>();
-    for (const c of fila.contra) {
+    for (const c of criaturas) {
         const clave = `${c.catalogo}:${c.id}`;
-        if (c.id < 0 || vistas.has(clave))
-            return `${n}: «${c.nombre}» está repetida.`;
+        if (!Number.isInteger(c.id) || c.id < 0 || vistas.has(clave))
+            return `«${c.nombre || c.id}» no es válido o está repetido.`;
         vistas.add(clave);
     }
     return null;
@@ -283,14 +293,8 @@ const DONDE_VA: Record<NonNullable<EquipoObjetivoModificador['Lista_del_rasgo']>
 
 /** Lo que la API rechazaría del «cuenta como» (una raza o un tipo repetido, un id que no vale), o `null` si vale. */
 export function falloDeCuentaComo(filas: readonly FilaCuentaComo[]): string | null {
-    const vistas = new Set<string>();
-    for (const fila of filas) {
-        const clave = `${fila.catalogo}:${fila.id}`;
-        if (!Number.isInteger(fila.id) || fila.id < 0 || vistas.has(clave))
-            return `«Cuenta como»: «${fila.nombre || fila.id}» no vale o está repetido.`;
-        vistas.add(clave);
-    }
-    return null;
+    const criatura = falloDeCriaturas(filas);
+    return criatura ? `Cuenta como: ${criatura}` : null;
 }
 
 /** Las listas del racial que se comprueban antes de mandar, cada una en su paso. */

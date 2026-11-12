@@ -85,7 +85,7 @@ describe('racial-formulario', () => {
 
         expect(cuerpoDeCuentaComo(filas)).toEqual([{ id_tipo: 10 }, { id_raza: 24 }]);
         expect(falloDeCuentaComo(filas)).toBeNull();
-        expect(falloDeCuentaComo([...filas, filaCuentaComo('raza', 24, 'Elfo')])).toContain('«Elfo» no vale o está repetido');
+        expect(falloDeCuentaComo([...filas, filaCuentaComo('raza', 24, 'Elfo')])).toBe('Cuenta como: «Elfo» no es válido o está repetido.');
         expect(falloDeCuentaComo([filaCuentaComo('raza', 10, 'Gigante'), filaCuentaComo('tipo_criatura', 10, 'Gigante')])).toBeNull();
     });
 
@@ -98,7 +98,7 @@ describe('racial-formulario', () => {
         expect(falloDeBonificador(bonificador({ condicion: '  ' }), 0, OBJETIVOS)).toContain('obligatoria');
         expect(falloDeBonificador(bonificador({ condicion: 'x'.repeat(201) }), 0, OBJETIVOS)).toContain('200 letras');
         const repetida = { catalogo: 'subtipo' as const, id: 68, nombre: 'Orco' };
-        expect(falloDeBonificador(bonificador({ contra: [repetida, repetida] }), 0, OBJETIVOS)).toContain('repetida');
+        expect(falloDeBonificador(bonificador({ contra: [repetida, repetida] }), 0, OBJETIVOS)).toBe('Bonificador 1, contra: «Orco» no es válido o está repetido.');
         expect(falloDeBonificador(bonificador({ cantidad: -1 }), 0, OBJETIVOS)).toBeNull();
         // Sin condición, solo a la CA (cuenta siempre: la esquiva del svirfneblin) y sin criaturas.
         expect(falloDeBonificador(bonificador({ id_objetivo: 1, condicion: '' }), 0, OBJETIVOS)).toBeNull();
