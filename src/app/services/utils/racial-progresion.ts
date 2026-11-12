@@ -1,5 +1,6 @@
 import type { Personaje } from 'src/app/interfaces/personaje';
 import { RacialDetalle, RacialProgresion, RacialProgresionVelocidad } from 'src/app/interfaces/racial';
+import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { toPositiveInt } from 'src/app/services/utils/normalizacion';
 
 /**
@@ -148,13 +149,12 @@ function conLaCifraDelRasgo(racial: RacialDetalle): RacialDetalle {
     const cantidad = Number(valor);
     if (!CIFRA_ENTERA.test(valor) || cantidad === 0 || !(racial.Bonificadores_condicionales ?? []).some(b => b.Cantidad_del_valor))
         return racial;
-    const conSigno = (n: number) => `${n > 0 ? '+' : ''}${n}`;
     return {
         ...racial,
         Bonificadores_condicionales: (racial.Bonificadores_condicionales ?? []).map(b => !b.Cantidad_del_valor ? b : {
             ...b,
             Cantidad: cantidad,
-            Frase: `${b.Frase ?? ''}`.replace(` ${conSigno(Number(b.Cantidad))}`, ` ${conSigno(cantidad)}`),
+            Frase: `${b.Frase ?? ''}`.replace(` ${textoConSigno(Number(b.Cantidad))}`, ` ${textoConSigno(cantidad)}`),
         }),
     };
 }
