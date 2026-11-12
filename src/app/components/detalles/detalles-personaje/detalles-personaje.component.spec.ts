@@ -856,6 +856,40 @@ describe('DetallesPersonajeComponent', () => {
             expect(component.pj.Niveles_lanzador?.[0]?.nivelLanzador).toBe(12);
         });
 
+        // Krau (Races of Destiny, pág. 54): +2 desde el 2.º nivel al nivel de lanzador, sin pasar de sus DG, como la ficha
+        // de la API (`nivelLanzadorConRasgos`), también sin ella (la vista previa de la creación).
+        it('sin el nivel de lanzador de la API, cuenta lo que le suma krau sin pasar de sus DG', () => {
+            const krau = {
+                Id: 4873, Nombre: 'Sigilo de poder: krau (magia)',
+                Bonificadores_condicionales: [{ Id: 69, Objetivo: { Id: 15, Nombre: 'Nivel de lanzador', Cifra_ficha: 'nivel_lanzador' },
+                    Tipo_bonificador: { Id: 19, Nombre: 'Sin tipo', Apila: true }, Cantidad: 2, Condicion: null, Contra: [], Tope_dg: true }],
+            } as any;
+            // La vista previa de la creación: se recalcula en cada revisión.
+            component.esPreviewNuevoPersonaje = true;
+            component.pj.Raza = { ...component.pj.Raza, Dgs_adicionales: { Cantidad: 0, Dado: '', Tipo_criatura: '' } } as any;
+            component.pj.Raciales = [krau];
+            component.pj.Plantillas = [];
+            component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 5 }, { Nombre: 'Guerrero', Nivel: 2 }];
+            component.clasesCatalogo = [
+                claseLanzadora(1, 'Mago', 20),
+                { Id: 2, Nombre: 'Guerrero', Conjuros: { Arcanos: false, Divinos: false, Psionicos: false }, Desglose_niveles: [] } as any,
+            ];
+            verPagina();
+
+            // Mago 5 / guerrero 2 (7 DG): 5 + 2.
+            expect(component.getSubchipsLanzadorClase({ Nombre: 'Mago', Nivel: 5 })).toContain('Nivel de lanzador 7');
+            expect(component.pj.Niveles_lanzador?.[0]?.nivelLanzador).toBe(7);
+
+            // Mago 6 (6 DG): sin pasar de sus DG, 6; sin krau, lo de la clase.
+            component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 6 }];
+            verPagina();
+            expect(component.getSubchipsLanzadorClase({ Nombre: 'Mago', Nivel: 6 })).toContain('Nivel de lanzador 6');
+            component.pj.Raciales = [];
+            component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 5 }, { Nombre: 'Guerrero', Nivel: 2 }];
+            verPagina();
+            expect(component.getSubchipsLanzadorClase({ Nombre: 'Mago', Nivel: 5 })).toContain('Nivel de lanzador 5');
+        });
+
         it('con el nivel de lanzador de la API no añade el calculado; el de su raza va aparte (lanzamiento racial)', () => {
             component.pj.desgloseClases = [{ Nombre: 'Mago', Nivel: 10 }, { Nombre: 'Archimago', Nivel: 2 }];
             component.pj.ProgresionLanzador = {

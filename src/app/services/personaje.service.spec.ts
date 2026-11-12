@@ -711,6 +711,12 @@ describe('PersonajeService', () => {
         (pj as any).DotesContextuales = [...dotes, { ...dotes[0], Contexto: { ...dotes[0].Contexto, Id_extra: 7 } }];
         (pj as any).Plantillas = [{ Id: 70, Nombre: 'Licántropo' }];
         (pj as any).Subtipos = [{ Id: 4, Nombre: 'Fuego' }];
+        // Sus rasgos (los de `colecciones.raciales`): krau suma al nivel de lanzador. Uno ganado dos veces va una vez.
+        (pj as any).Raciales = [
+            { Id: 4877, Nombre: 'Sigilos de poder (iluminiano)' },
+            { Id: 4873, Nombre: 'Sigilo de poder: krau (magia)' },
+            { Id: 4873, Nombre: 'Sigilo de poder: krau (magia)', Origen: 'Sigilos de poder (iluminiano), a nivel 2' },
+        ];
         const progresion = { selecciones: [{ idClaseAplicada: 30, nivelClaseAplicado: 1, indiceAumento: 1, idClaseObjetivo: 9 }] };
         const payload = service.construirPayloadCreacionDesdePersonaje(pj, { idCampana: 1, idTrama: 1, idSubtrama: 1 }, null, progresion);
 
@@ -725,9 +731,11 @@ describe('PersonajeService', () => {
             subtipos: (payload.colecciones?.subtipos ?? []).map((s) => s.idSubtipo),
             dotes: [...new Set((payload.colecciones?.dotes ?? []).map((d) => d.idDote))],
             progresionLanzador: { selecciones: [{ idClaseObjetivo: 9 }] },
+            idsRaciales: [...new Set((payload.colecciones?.raciales ?? []).map((r) => r.idRacial))],
             idPasoEdad: null,
         });
         expect(consulta.plantillas).toEqual([70]);
+        expect(consulta.idsRaciales).toEqual([4877, 4873]);
         // Con una base por edades, su paso (el del alta).
         expect(service.consultaRequisitosMutacion({ ...pj, IdPasoEdad: 3053 } as any, 864, 3).idPasoEdad).toBe(3053);
         expect(consulta.subtipos).toEqual([4]);

@@ -724,10 +724,14 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
         return (this.clasesCatalogo ?? []).length > 0 ? this.clasesCatalogo : this.clasesCatalogoInterno;
     }
 
+    /**
+     * Los niveles de lanzador del personaje, con lo que le suman sus rasgos (krau, sin pasar de sus DG), como la ficha de
+     * la API: el chip «Nivel de lanzador» sin la ficha de la API y las notas de la hoja en PDF.
+     */
     private actualizarNivelesLanzadorDerivados(): void {
         const catalogo = this.getCatalogoClasesEfectivo();
         this.nivelesLanzador = catalogo.length > 0
-            ? calcularNivelesLanzadorPersonaje(this.pj, catalogo)
+            ? calcularNivelesLanzadorPersonaje(this.pj, catalogo, this.dgsTotalesPersonaje())
             : (this.pj?.Niveles_lanzador ?? []);
         if (this.pj)
             this.pj.Niveles_lanzador = this.nivelesLanzador;
@@ -808,6 +812,12 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
             clase,
             ajuste: toNumber(this.pj?.Raza?.Ajuste_nivel) + plantillas.reduce((c, p) => c + toNumber(p?.Ajuste_nivel), 0),
         };
+    }
+
+    /** Sus DG: los raciales que cuentan y los de plantilla (`partesNep`) más los de sus clases, con su tabla (`Dgs`). */
+    private dgsTotalesPersonaje(): number {
+        const deClases = (this.pj?.desgloseClases ?? []).reduce((c, d) => c + toNumber(d?.Dgs ?? d?.Nivel), 0);
+        return this.partesNep().dg + deClases;
     }
 
     private getNivelPersonaje(): number {

@@ -295,6 +295,62 @@ describe('Los sigilos de poder en las habilidades de la creación', () => {
     });
 });
 
+// Krau en lo que pide una raza mutada (rama `mutadas/krau-requisitos`, 2026-11-12): la creación manda sus rasgos
+// (`idsRaciales`) a `POST /razas/{id}/requisitos-del-personaje` y la API cuenta krau en su nivel de lanzador (la misma
+// cuenta, con este personaje, en `tests/test_razas_mutadas_requisitos_personaje.py` de la API, también contra `rol_dev`).
+describe('Krau en el nivel de lanzador que pide una raza mutada', () => {
+    const SIN_TIPO = { Id: 19, Nombre: 'Sin tipo', Apila: true, Cuenta_toque: true, Cuenta_desprevenido: true };
+    const sigilo = (Id: number, Nombre: string, bonificadores: object[]) => normalizeRacial(racial(Id, `Sigilo de poder: ${Nombre}`, {
+        Opcional: 1, Bonificadores_condicionales: bonificadores, Progresion: [fila(2, { Valor: '+2' })],
+    }));
+    // Races of Destiny, pág. 54: +1 sin tipo al nivel de lanzador (+2 desde el 2.º nivel), sin pasar de sus DG.
+    const KRAU_NL = sigilo(4873, 'krau (magia)', [{
+        Id: 69, Objetivo: { Id: 15, Nombre: 'Nivel de lanzador', Cifra_ficha: 'nivel_lanzador' }, Tipo_bonificador: SIN_TIPO,
+        Cantidad: 1, Condicion: null, Contra: [], Caracteristica: null, Cantidad_del_valor: true, Tope_dg: true,
+        Frase: 'Nivel de lanzador +1 (sin tipo), sin pasar de sus DG',
+    }]);
+    const AESH_NL = sigilo(4871, 'aesh (vigor)', [{
+        Id: 70, Objetivo: { Id: 18, Nombre: 'Pruebas de característica y habilidades', Cifra_ficha: 'pruebas_caracteristica' },
+        Tipo_bonificador: SIN_TIPO, Cantidad: 1, Condicion: null, Contra: [], Caracteristica: { Id: 1, Nombre: 'Fuerza' },
+        Cantidad_del_valor: true, Frase: 'Pruebas de característica y habilidades de Fuerza +1 (sin tipo)',
+    }]);
+    const diarios = { Nivel_0: 3, Nivel_1: 1, Nivel_2: -1, Nivel_3: -1, Nivel_4: -1, Nivel_5: -1, Nivel_6: -1, Nivel_7: -1, Nivel_8: -1, Nivel_9: -1 };
+    const MAGO = normalizeClase({
+        Id: 9, Nombre: 'Mago', Nivel_max_claseo: 20, Mod_salv_conjuros: 'Inteligencia', Conjuros: { Arcanos: true },
+        Tipo_dado: { Id: 1, Nombre: 'd4' }, Puntos_habilidad: { Id: 1, Valor: 2 }, Habilidades: { Base: [], Custom: [] },
+        Desglose_niveles: Array.from({ length: 5 }, (_x, i) => ({
+            Nivel: i + 1, Ataque_base: '+0', Salvaciones: { Fortaleza: '+0', Reflejos: '+0', Voluntad: '+2' }, Conjuros_diarios: diarios,
+        })),
+    });
+
+    /** Un iluminiano mago 5 / guerrero 2 (7 DG, nivel 7) con el sigilo `elegido`. */
+    const crear = (elegido: RacialDetalle) => {
+        const svc = motor();
+        svc.setCatalogoClases([GUERRERO, MAGO]);
+        svc.seleccionarRaza(iluminiano([KRAU_NL, AESH_NL]), null, { 1: getClaveSeleccionRacial(elegido) });
+        svc.aplicarCaracteristicasGeneradas({ Fuerza: 10, Destreza: 12, Constitucion: 12, Inteligencia: 16, Sabiduria: 10, Carisma: 10 });
+        [MAGO, MAGO, MAGO, MAGO, MAGO, GUERRERO, GUERRERO].forEach((c) => aplicarNivel(svc, c));
+        return svc;
+    };
+    const consulta = (svc: NuevoPersonajeService) => new PersonajeService({ currentUser: null } as any, {} as any)
+        .consultaRequisitosMutacion(svc.PersonajeCreacion, 963, 1, svc.getProgresionLanzadorPersistible());
+
+    it('con krau manda sus rasgos y su mago lanza a nivel 7 (sin pasar de sus 7 DG); con aesh, a 5', () => {
+        const conKrau = crear(KRAU_NL);
+        const pedido = consulta(conKrau);
+        // Lo que manda la creación: sus clases y sus rasgos, los mismos del alta.
+        expect(pedido.clases).toEqual([{ idClase: 9, nivel: 5 }, { idClase: 7, nivel: 2 }]);
+        expect(pedido.idsRaciales).toEqual([4873]);
+        expect(pedido.idsRaciales).toEqual((cuerpo(conKrau).colecciones?.raciales ?? []).map((r) => r.idRacial));
+        // Lo que cuenta la creación con la misma regla (la hoja y los prerrequisitos de dotes y clases).
+        expect(conKrau.getNivelesLanzadorPersistibles().map((n) => [n.nombreClase, n.nivelLanzador])).toEqual([['Mago', 7]]);
+
+        const conAesh = crear(AESH_NL);
+        expect(consulta(conAesh).idsRaciales).toEqual([4871]);
+        expect(conAesh.getNivelesLanzadorPersistibles().map((n) => [n.nombreClase, n.nivelLanzador])).toEqual([['Mago', 5]]);
+    });
+});
+
 describe('Las características de ahora (caracteristicasActuales), una sola lectura para el servicio y la creación', () => {
     it('con las seis, las mismas con las dos formas; sin una, 0 o «sin comprobar» (NaN), como pide quien la usa', () => {
         const svc = motor();

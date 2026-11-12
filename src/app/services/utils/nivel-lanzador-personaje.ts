@@ -8,6 +8,7 @@ import {
     PersonajeProgresionLanzadorDto,
     PersonajeProgresionLanzadorSeleccionDto
 } from 'src/app/interfaces/personajes-api';
+import { nivelLanzadorConRasgos } from 'src/app/services/utils/habilidades-raciales';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { nivelLanzadorDeClase } from 'src/app/services/utils/reglas-magia';
 
@@ -80,9 +81,16 @@ export function normalizarProgresionLanzadorPersonaje(
     };
 }
 
+/**
+ * El nivel de lanzador de cada clase del personaje que lanza (su tabla, los aumentos de prestigio de `ProgresionLanzador`
+ * y el divisor del paladín y el explorador). Con `dgsTotales` (los DG del personaje), también lo que le suman sus rasgos
+ * (`personaje.Raciales`) a una clase que lanza conjuros, no al nivel de manifestador: krau, sin pasar de sus DG, con
+ * `nivelLanzadorConRasgos`, la regla de la ficha de la API (`bonificadoresNivelLanzador`). Sin ellos, solo las clases.
+ */
 export function calcularNivelesLanzadorPersonaje(
     personaje: Personaje | null | undefined,
-    clasesCatalogo: Clase[] | null | undefined
+    clasesCatalogo: Clase[] | null | undefined,
+    dgsTotales?: number | null
 ): PersonajeNivelLanzadorResumen[] {
     const clases = Array.isArray(clasesCatalogo) ? clasesCatalogo : [];
     const desglose = Array.isArray(personaje?.desgloseClases) ? personaje.desgloseClases : [];
@@ -122,7 +130,11 @@ export function calcularNivelesLanzadorPersonaje(
             const progresion = Math.max(0, nivelLanzadorBase + bonusNivelLanzador);
             if (progresion < 1)
                 return null;
-            const nivelLanzador = nivelLanzadorDeClase(clase, progresion, nivelClase, bonusNivelLanzador);
+            const tipoLanzamiento = resolverTipoLanzamientoClase(clase);
+            const deLaClase = nivelLanzadorDeClase(clase, progresion, nivelClase, bonusNivelLanzador);
+            const nivelLanzador = dgsTotales === null || dgsTotales === undefined || tipoLanzamiento === 'psionico'
+                ? deLaClase
+                : nivelLanzadorConRasgos(deLaClase, personaje?.Raciales, dgsTotales);
 
             const nivelDesgloseLanzador = nivelesDesgloseLanzador[progresion - 1]
                 ?? nivelesDesgloseLanzador[nivelesDesgloseLanzador.length - 1]
@@ -131,7 +143,7 @@ export function calcularNivelesLanzadorPersonaje(
             return {
                 idClase,
                 nombreClase,
-                tipoLanzamiento: resolverTipoLanzamientoClase(clase),
+                tipoLanzamiento,
                 nivelClase,
                 nivelLanzadorBase,
                 bonusNivelLanzador,

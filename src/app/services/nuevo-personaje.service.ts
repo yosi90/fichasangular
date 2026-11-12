@@ -1373,7 +1373,9 @@ export class NuevoPersonajeService {
                 ...this.personajeCreacion,
                 ProgresionLanzador: this.getProgresionLanzadorPersistible() ?? { selecciones: [] },
             },
-            this.catalogoClases
+            this.catalogoClases,
+            // Con lo que le suman sus rasgos (krau, sin pasar de sus DG), como los prerrequisitos y la ficha de la API.
+            this.resolverDgTotalActual()
         );
     }
 

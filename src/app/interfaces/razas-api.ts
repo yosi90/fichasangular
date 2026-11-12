@@ -292,6 +292,11 @@ export interface RequisitosDelPersonajeConsulta {
     dotes: number[];
     /** La progresión de lanzador del alta: con las clases, su nivel de lanzador. */
     progresionLanzador: { selecciones: { idClaseObjetivo: number; }[]; } | null;
+    /**
+     * Los ids de sus rasgos raciales, sin repetir (los de `colecciones.raciales` del alta): con las clases, lo que le
+     * suman a su nivel de lanzador (krau, sin pasar de sus DG), como en la ficha.
+     */
+    idsRaciales: number[];
     /** El paso de edad (`personaje.idPasoEdad`): con una base por edades, sus DG y su ajuste a esa edad. */
     idPasoEdad: number | null;
 }
