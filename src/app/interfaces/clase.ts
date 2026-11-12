@@ -50,6 +50,17 @@ export interface ClaseLibroConjuros {
     Por_nivel: number;
 }
 
+/**
+ * El intercambio de conjuros conocidos (MJ: el bardo en su nivel 5 y cada 3; el hechicero en el 4 y cada nivel par): en su
+ * nivel `Desde` y cada `Cada` niveles después puede olvidar un conocido y aprender otro del mismo nivel, al menos `Margen`
+ * niveles por debajo del más alto que lanza. `null` si la clase no intercambia (desde el 2026-11-12).
+ */
+export interface ClaseIntercambioConjuros {
+    Desde: number;
+    Cada: number;
+    Margen: number;
+}
+
 /** Un aumento de lanzador de una clase de prestigio, con los tipos de magia de la clase que puede subir (GDM cap. 6). */
 export interface ClaseAumentoLanzador {
     Id: number;
@@ -73,6 +84,8 @@ export interface ClaseConjurosConfig {
     Lanzamiento_espontaneo: boolean;
     /** `null` si la clase no tiene libro de conjuros. */
     Libro?: ClaseLibroConjuros | null;
+    /** El intercambio de conjuros conocidos al subir de nivel; `null` si no intercambia. */
+    Intercambio?: ClaseIntercambioConjuros | null;
     /** 1: su nivel de lanzador son sus niveles con conjuros; 2: la mitad de su nivel (paladín, explorador). */
     Nivel_lanzador_divisor?: number;
     Clase_origen: {

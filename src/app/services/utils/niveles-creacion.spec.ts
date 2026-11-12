@@ -1,4 +1,4 @@
-import { construirNivelesCreacion, ordenCuadra } from './niveles-creacion';
+import { apuntarEleccion, construirNivelesCreacion, NivelTomado, ordenCuadra } from './niveles-creacion';
 
 describe('niveles-creacion (el orden de los niveles del alta)', () => {
     const clases = [{ id: 8, nombre: 'Hechicero', nivel: 2 }, { id: 9, nombre: 'Mago', nivel: 1 }];
@@ -38,41 +38,27 @@ describe('niveles-creacion (el orden de los niveles del alta)', () => {
         expect(niveles?.map((n) => n.pg)).toEqual([undefined, undefined]);
     });
 
-    it('las dotes, los conjuros y los aumentos de lanzador van al nivel que dice su origen', () => {
+    it('cada nivel lleva las elecciones que se apuntaron en él, y los aumentos de lanzador el suyo', () => {
+        const conElecciones: NivelTomado[] = orden.map((n) => ({ ...n }));
+        expect(apuntarEleccion(conElecciones, { idClase: 9, nivelClase: 1 }, { tipo: 'dote', idElemento: 2, idExtra: 5, origen: 'Mago nivel 1' })).toBeTrue();
+        apuntarEleccion(conElecciones, { idClase: 9, nivelClase: 1 }, { tipo: 'conjuro', idElemento: 60, idExtra: 9 });
+        apuntarEleccion(conElecciones, { idClase: 8, nivelClase: 2 }, { tipo: 'incremento', idElemento: 4, valor: 1 });
+        // Lo que no es de ningún nivel de clase (una dote de los DG raciales) no se apunta.
+        expect(apuntarEleccion(conElecciones, null, { tipo: 'dote', idElemento: 3 })).toBeFalse();
+        expect(apuntarEleccion(conElecciones, { idClase: 8, nivelClase: 5 }, { tipo: 'dote', idElemento: 3 })).toBeFalse();
+
         const niveles = construirNivelesCreacion({
-            orden,
+            orden: conElecciones,
             clases,
-            dotes: [
-                { idDote: 1, idExtra: 0, origen: 'Dote adicional por nivel 3' },
-                { idDote: 2, idExtra: 5, origen: 'Mago nivel 1' },
-                { idDote: 3, origen: 'Humano' },
-            ],
-            conjuros: [
-                { idConjuro: 60, idClase: 9, origen: 'Mago nivel 1 (clase)' },
-                { idConjuro: 60, idClase: 8, origen: 'Hechicero nivel 2 (clase)' },
-                { idConjuro: 61, idClase: 9, origen: 'Mago: copiado al libro', copiado: true },
-            ],
             aumentosLanzador: [{ idClaseAplicada: 8, nivelClaseAplicado: 1, indiceAumento: 1, idClaseObjetivo: 9 }],
-            dgsAntesDeLasClases: 0,
         });
         expect(niveles?.[0].elecciones).toEqual([{ tipo: 'aumento_lanzador', idElemento: 9, valor: 1 }]);
         expect(niveles?.[1].elecciones).toEqual([
             { tipo: 'dote', idElemento: 2, idExtra: 5, origen: 'Mago nivel 1' },
-            { tipo: 'conjuro', idElemento: 60, idExtra: 9, origen: 'Mago nivel 1 (clase)' },
+            { tipo: 'conjuro', idElemento: 60, idExtra: 9 },
         ]);
-        expect(niveles?.[2].elecciones).toEqual([
-            { tipo: 'dote', idElemento: 1, idExtra: 0, origen: 'Dote adicional por nivel 3' },
-            { tipo: 'conjuro', idElemento: 60, idExtra: 8, origen: 'Hechicero nivel 2 (clase)' },
-        ]);
-    });
-
-    it('la dote «por nivel N» cuenta los DG de antes de las clases (los raciales y los de plantilla)', () => {
-        const niveles = construirNivelesCreacion({
-            orden,
-            clases,
-            dotes: [{ idDote: 1, origen: 'Dote adicional por nivel 3' }, { idDote: 2, origen: 'Dote adicional por nivel 1' }],
-            dgsAntesDeLasClases: 2,
-        });
-        expect(niveles?.map((n) => (n.elecciones ?? []).map((e) => e.idElemento))).toEqual([[1], [], []]);
+        expect(niveles?.[2].elecciones).toEqual([{ tipo: 'incremento', idElemento: 4, valor: 1 }]);
+        // Las elecciones del orden no cambian al construir (se copian).
+        expect(conElecciones[0].elecciones).toBeUndefined();
     });
 });

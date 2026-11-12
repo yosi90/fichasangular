@@ -78,6 +78,16 @@
             (chakraDetallesId)="abrirDetallesChakraPorId($event);">
         </app-detalles-personaje>
     </mat-tab>
+    <mat-tab *ngFor="let subida of subidasNivelAbiertas" [label]="'Subir de nivel: ' + subida.nombre">
+        <ng-template mat-tab-label>
+            <mat-icon class="pestana-icono">trending_up</mat-icon>
+            <span class="pestana-etiqueta" [matTooltip]="'Subir de nivel: ' + subida.nombre" matTooltipClass="tt-accent" [matTooltipShowDelay]="400">Subir: {{subida.nombre}}</span>
+            <button (click)="quitarSubidaNivel(subida.idPersonaje)" mat-icon-button class="pestana-cerrar" aria-label="Cerrar la pestaña"><mat-icon>close</mat-icon></button>
+        </ng-template>
+        <ng-container *ngIf="subirNivelComponente"
+            [ngComponentOutlet]="subirNivelComponente"
+            [ngComponentOutletInputs]="{ idPersonaje: subida.idPersonaje, alTerminar: subida.cerrar }"></ng-container>
+    </mat-tab>
     <mat-tab *ngFor="let publicProfileTab of publicProfileTabs" [label]="getEtiquetaPerfilPublico(publicProfileTab)">
         <ng-template mat-tab-label>
             <mat-icon class="pestana-icono">badge</mat-icon>

@@ -1,4 +1,4 @@
-import { PersonajeCompraConjuroLibroDto, PersonajeCompraPiezaDto } from './personajes-api';
+import { PersonajeCompraConjuroLibroDto, PersonajeCompraPiezaDto, PersonajeCreateRequestDto } from './personajes-api';
 
 /*
  * Las sesiones de un personaje y su historial (`docs/publica/endpoints/personajes.md`, «Sesiones e historial»; guía
@@ -100,12 +100,29 @@ export interface HistorialSesiones {
 
 /**
  * `GET /personajes/{id}/sesiones/{numero}`: la sesión con la ficha de esa versión (la de `GET /personajes/{id}`, cruda:
- * la normaliza `PersonajeService.fichaDeApi`). La `entrada` (el cuerpo del alta, para la subida de nivel) no la usa esta
- * fase y no se propaga.
+ * la normaliza `PersonajeService.fichaDeApi`) y, para quien apunta, su `entrada` (el cuerpo del alta de esa versión, con
+ * sus `niveles`: el punto de partida de la subida de nivel; `null` para quien no apunta).
  */
 export interface SesionConFicha {
     sesion: SesionPersonaje;
     ficha: unknown;
+    entrada?: PersonajeCreateRequestDto | null;
+}
+
+/** El cuerpo de `POST /personajes/{id}/niveles`: la ficha completa con un nivel más, la clase y la tirada de PG. */
+export interface SubidaNivelDto {
+    idClase: number;
+    /** La tirada del DG nuevo y todas las que se hicieron (sin DG, sin `pg`). */
+    pg?: { tirada: number; tiradas?: number[]; };
+    ficha: PersonajeCreateRequestDto;
+    version: string;
+}
+
+/** Lo que responde la subida: la sesión, los PX y la subida (cuántos niveles le quedan por subir). */
+export interface RespuestaSubidaNivel {
+    sesion: SesionPersonaje;
+    experiencia: ExperienciaPersonaje | null;
+    subida: { idEvento: number; numeroSesion: number; nivel: number; nivelesPorSubir: number; };
 }
 
 /** Lo que responde cada escritura: la sesión con su `version` nueva y los PX de ahora. */

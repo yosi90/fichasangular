@@ -5531,7 +5531,7 @@ export class NuevoPersonajeComponent {
                     payload.decisionesHomebrew = decisionesHomebrew;
                 // El orden de los niveles con la tirada de PG elegida y lo que se eligió en cada uno (roadmap de sesiones,
                 // fase 1). Sin un orden que cuadre (un borrador de antes), no va y la API los guarda sin orden.
-                const niveles = this.nuevoPSvc.getNivelesParaGuardar(payload.colecciones, payload.progresionLanzador, this.resultadoVidaActual?.detalle?.dados);
+                const niveles = this.nuevoPSvc.getNivelesParaGuardar(payload.progresionLanzador, this.resultadoVidaActual?.detalle?.dados);
                 if (niveles)
                     payload.niveles = niveles;
                 const response = await this.personajeSvc.crearPersonajeApiDesdeCreacion(payload);
@@ -6969,7 +6969,7 @@ export class NuevoPersonajeComponent {
             return true;
         if (!await this.abrirSelectorIdiomasIniciales(pendientes.cantidad))
             return false;
-        this.nuevoPSvc.marcarIdiomasInicialesConcedidos();
+        this.nuevoPSvc.marcarIdiomasInicialesConcedidos(this.idiomasTemporalesSeleccionados);
         this.Personaje = this.nuevoPSvc.PersonajeCreacion;
         return true;
     }

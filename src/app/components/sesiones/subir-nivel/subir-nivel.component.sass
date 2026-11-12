@@ -1,0 +1,245 @@
+@use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// La subida de nivel (lienzo de sesiones, pantalla 4): la cabecera «Tordek sube a nivel 4» con sus PX, la fila de pasos
+// (los hechos en gris, el actual en rosa), la tarjeta del paso y el pie con «Guardar la subida».
+
+:host
+    display: block
+
+.subida
+    display: flex
+    flex-direction: column
+    gap: 16px
+    padding: 16px 0
+    color: $ficha-texto
+
+.subida__cabecera
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 12px 18px
+    padding: 16px 24px
+    @include ficha-cabecera
+
+.subida__titulos
+    display: flex
+    flex-direction: column
+    gap: 4px
+    flex-grow: 1
+
+.subida__antetitulo
+    @include ficha-versalitas
+
+.subida__titulo
+    margin: 0
+    font-size: 30px
+    font-weight: 500
+    line-height: 1.2
+    color: $ficha-blanco
+
+.subida__px
+    font-size: 14px
+    color: $ficha-texto-suave
+
+.subida__pasos
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+
+.subida__paso
+    display: flex
+    align-items: center
+    min-height: 40px
+    padding: 0 14px
+    border-radius: 20px
+    background: $ficha-tarjeta
+    color: $accent
+    font-size: 14px
+    font-weight: 500
+
+.subida__paso--hecho
+    background: $primary
+    color: $ficha-blanco
+
+.subida__paso--actual
+    background: $active
+    color: $ficha-blanco
+
+.subida__tarjeta
+    display: flex
+    flex-direction: column
+    gap: 12px
+    padding: 18px 24px
+    @include ficha-tarjeta
+
+.subida__seccion
+    @include ficha-versalitas
+
+.subida__nota
+    margin: 0
+    font-size: 13px
+    color: $ficha-texto-suave
+
+.subida__estado
+    color: $ficha-texto-suave
+
+.subida__aviso
+    display: flex
+    align-items: center
+    gap: 8px
+    padding: 10px 14px
+    border-left: 3px solid $ficha-aviso
+    border-radius: $ficha-radio
+    background: $ficha-tarjeta
+
+.subida__aviso--error
+    border-left-color: $active
+
+.subida__lista
+    display: flex
+    flex-direction: column
+    margin: 0
+    padding: 0
+    list-style: none
+    max-height: 420px
+    overflow-y: auto
+
+.subida__fila
+    display: flex
+    align-items: center
+    gap: 12px
+    min-height: 44px
+    padding: 4px 8px
+    border-top: 1px solid $ficha-separador
+
+    &:nth-child(even)
+        background: $ficha-fila-alterna
+
+.subida__fila--bloqueada .subida__fila-nombre
+    color: $ficha-texto-suave
+
+.subida__fila-texto
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 4px 10px
+    flex-grow: 1
+
+.subida__fila-nombre
+    flex-grow: 1
+    font-weight: 500
+
+.subida__fila-motivo
+    font-size: 13px
+    color: $ficha-aviso
+
+.subida__etiqueta
+    @include ficha-etiqueta-borde
+
+.subida__etiqueta--clase
+    margin-left: 8px
+
+.subida__tiradas
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 12px
+
+.subida__tirada
+    display: inline-flex
+    align-items: center
+    gap: 6px
+    min-height: 44px
+    padding: 0 12px
+    border-radius: $ficha-radio
+    background: $ficha-fila-alterna
+    font-size: 18px
+    font-weight: 700
+
+.subida__resultado
+    margin: 0
+    font-size: 16px
+
+.subida__tabla
+    width: 100%
+    border-collapse: collapse
+    font-size: 15px
+
+    th, td
+        padding: 8px 12px
+        text-align: left
+        border-top: 1px solid $ficha-separador
+
+    thead th
+        @include ficha-versalitas($margen: null)
+
+    tbody th
+        font-weight: 500
+        color: $ficha-blanco
+
+.subida__ahora
+    color: #a5d6a7
+    font-weight: 500
+
+.subida__botones
+    white-space: nowrap
+
+.subida__chips
+    display: flex
+    flex-wrap: wrap
+    gap: 8px
+    margin: 0
+    padding: 0
+    list-style: none
+
+.subida__chip
+    display: inline-flex
+    align-items: center
+    gap: 4px
+    min-height: 36px
+    padding: 0 4px 0 12px
+    border-radius: 18px
+    background: $ficha-elegida
+
+.subida__filtro, .subida__campo
+    display: flex
+    flex-direction: column
+    gap: 4px
+    font-size: 13px
+    color: $ficha-texto-suave
+
+    input, select
+        min-height: 40px
+        padding: 0 10px
+        border: 1px solid $ficha-separador
+        border-radius: 4px
+        background: $primary
+        color: $ficha-texto
+        font: inherit
+
+.subida__pie
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 12px
+
+    button
+        min-height: 44px
+
+.subida__hueco
+    flex-grow: 1
+
+@include movil
+    .subida__titulo
+        font-size: 22px
+
+    .subida__tarjeta
+        padding: 14px 16px
+
+    .subida__tabla
+        font-size: 14px
+
+        th, td
+            padding: 6px 8px
