@@ -88,7 +88,7 @@ import {
     ClaseParaPenalizacion, ClasePredilecta, clasePredilectaDeRaza, noPenalizaMulticlase, PenalizacionExperiencia, penalizacionExperiencia,
 } from './utils/penalizacion-experiencia';
 import { calcularPuntosGolpe, carasDado, dadoTrasPasos, DadoDeGolpe, GrupoDadosGolpe } from './utils/puntos-golpe';
-import { apuntarEleccion, construirNivelesCreacion, RefNivelTomado } from './utils/niveles-creacion';
+import { apuntarEleccion, construirNivelesCreacion, nivelDelOrden, RefNivelTomado } from './utils/niveles-creacion';
 import { tocaIntercambioConjuros } from './utils/subida-nivel';
 import { armaduraNaturalDeClase, daDgEnNivel, dgsDeClase, hitosDotesProgresion } from './utils/clase-niveles';
 import { claseDeLaRaza, claseObligada, ContextoClasesDeMonstruo, motivoClaseDeMonstruo } from './utils/clases-de-monstruo';
@@ -10937,11 +10937,7 @@ export class NuevoPersonajeService {
 
     /** Las elecciones apuntadas en el nivel que se está tomando (el último del orden). */
     getEleccionesDelNivelEnCurso(): PersonajeCreateNivelEleccionDto[] {
-        const nivel = this.nivelEnCurso;
-        const destino = nivel
-            ? (this.personajeCreacion?.Orden_niveles ?? []).find((n) => toInt(n.idClase) === nivel.idClase && toInt(n.nivelClase) === nivel.nivelClase)
-            : null;
-        return (destino?.elecciones ?? []).map((e) => ({ ...e }));
+        return (nivelDelOrden(this.personajeCreacion?.Orden_niveles, this.nivelEnCurso)?.elecciones ?? []).map((e) => ({ ...e }));
     }
 
     /** El nivel que se está tomando (`null` sin ninguno). */

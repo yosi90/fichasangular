@@ -1,6 +1,9 @@
+import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
 import { Clase } from 'src/app/interfaces/clase';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateNivelEleccionDto } from 'src/app/interfaces/personajes-api';
+import { NOMBRES_CARACTERISTICAS } from './caracteristicas';
+import { textoConSigno } from './equipo-texto';
 import { normalizarTexto, toInt } from './normalizacion';
 import { PgSubida } from './subida-nivel';
 
@@ -13,15 +16,6 @@ export interface CambioSubida {
     antes: string;
     ahora: string;
     porque: string;
-}
-
-const CARACTERISTICAS = ['Fuerza', 'Destreza', 'Constitucion', 'Inteligencia', 'Sabiduria', 'Carisma'] as const;
-const NOMBRES_CARACTERISTICA: Record<string, string> = {
-    Fuerza: 'Fuerza', Destreza: 'Destreza', Constitucion: 'Constitución', Inteligencia: 'Inteligencia', Sabiduria: 'Sabiduría', Carisma: 'Carisma',
-};
-
-function conSigno(valor: number): string {
-    return valor >= 0 ? `+${valor}` : `${valor}`;
 }
 
 function clasesTexto(pj: Personaje): string {
@@ -60,15 +54,15 @@ export function cambiosDeLaSubida(e: EntradaCambiosSubida): CambioSubida[] {
         const a = toInt((e.antes as any)?.[k]);
         const d = toInt((e.despues as any)?.[k]);
         if (a !== d)
-            filas.push({ que: NOMBRES_CARACTERISTICA[k], antes: `${a}`, ahora: `${d}`, porque: `Incremento del nivel ${e.nivelNuevo}` });
+            filas.push({ que: NOMBRES_CARACTERISTICAS[k], antes: `${a}`, ahora: `${d}`, porque: `Incremento del nivel ${e.nivelNuevo}` });
     });
 
     if (e.pg) {
         const partes = e.tirada !== null
-            ? [`Tirada ${e.tirada} de 1d${e.caras} ${conSigno(toInt(e.despues?.ModConstitucion))} Con`]
+            ? [`Tirada ${e.tirada} de 1d${e.caras} ${textoConSigno(toInt(e.despues?.ModConstitucion))} Con`]
             : ['Este nivel no da DG'];
         if (e.pg.retroactivo !== 0)
-            partes.push(`${conSigno(e.pg.retroactivo)} por la Constitución en los niveles de antes${e.pg.exacto ? '' : ' (sin las tiradas de antes, aproximado)'}`);
+            partes.push(`${textoConSigno(e.pg.retroactivo)} por la Constitución en los niveles de antes${e.pg.exacto ? '' : ' (sin las tiradas de antes, aproximado)'}`);
         filas.push({ que: 'Puntos de golpe', antes: `${toInt(e.antes?.Vida)}`, ahora: `${e.pg.total}`, porque: partes.join('; ') });
     }
 
@@ -79,7 +73,7 @@ export function cambiosDeLaSubida(e: EntradaCambiosSubida): CambioSubida[] {
         const a = salvacion(e.antes, k);
         const d = salvacion(e.despues, k);
         if (a !== d)
-            filas.push({ que: `${nombre} (de clase)`, antes: conSigno(a), ahora: conSigno(d), porque: `${nombreClase} ${e.nivelClase}` });
+            filas.push({ que: `${nombre} (de clase)`, antes: textoConSigno(a), ahora: textoConSigno(d), porque: `${nombreClase} ${e.nivelClase}` });
     });
 
     const nombreHabilidad = (id: number) => (e.despues?.Habilidades ?? []).find((h) => toInt(h?.Id) === id && !(h as any)?.Custom)?.Nombre ?? `#${id}`;

@@ -40,15 +40,20 @@ export interface EntradaNivelesCreacion {
     aumentosLanzador?: PersonajeProgresionLanzadorSeleccionDto[];
 }
 
+/** Ese nivel en el orden (su clase y su nivel en ella), o `undefined` si no está o no hay nivel. */
+export function nivelDelOrden(orden: NivelTomado[] | null | undefined, nivel: RefNivelTomado | null | undefined): NivelTomado | undefined {
+    return nivel
+        ? (orden ?? []).find((n) => toInt(n?.idClase) === toInt(nivel.idClase) && toInt(n?.nivelClase) === toInt(nivel.nivelClase))
+        : undefined;
+}
+
 /** Apunta una elección en su nivel del orden (si el nivel no está, no se apunta: no es de ningún nivel de clase). */
 export function apuntarEleccion(
     orden: NivelTomado[] | null | undefined,
     nivel: RefNivelTomado | null | undefined,
     eleccion: PersonajeCreateNivelEleccionDto,
 ): boolean {
-    const destino = nivel
-        ? (orden ?? []).find((n) => toInt(n?.idClase) === toInt(nivel.idClase) && toInt(n?.nivelClase) === toInt(nivel.nivelClase))
-        : undefined;
+    const destino = nivelDelOrden(orden, nivel);
     if (!destino)
         return false;
     destino.elecciones = [...(destino.elecciones ?? []), eleccion];

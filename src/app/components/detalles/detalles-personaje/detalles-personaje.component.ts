@@ -43,7 +43,7 @@ import { RegionService } from 'src/app/services/region.service';
 import { UserService } from 'src/app/services/user.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
-import { BarraExperiencia, barraExperiencia, fechaSesion } from 'src/app/services/utils/sesiones-texto';
+import { BarraExperiencia, barraExperiencia, fechaSesion, tituloPropioSesion } from 'src/app/services/utils/sesiones-texto';
 import { esNombreComodin } from 'src/app/services/utils/comodin';
 import {
     detallesPiezaEquipo,
@@ -428,7 +428,8 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
             const pjVersion = this.pSvc.fichaDeApi(ficha);
             const fecha = fechaSesion(sesion);
             const cabecera = sesion.numero === 0 ? 'Así era al crearlo' : `Así era tras la sesión ${sesion.numero}`;
-            const titulo = sesion.titulo && sesion.titulo !== `Sesión ${sesion.numero}` ? ` · ${sesion.titulo}` : '';
+            const propio = tituloPropioSesion(sesion);
+            const titulo = propio ? ` · ${propio}` : '';
             this.pjActual = actual;
             this.pjData = pjVersion;
             this.version = {

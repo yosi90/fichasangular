@@ -74,11 +74,17 @@ export function fechaSesion(sesion: Pick<SesionPersonaje, 'fechaJuego' | 'abiert
     return texto && !Number.isNaN(fecha.getTime()) ? FECHA_CORTA.format(fecha).replace('.', '') : '';
 }
 
+/** El título que le ha puesto quien la abrió («La mina inundada»); vacío si no tiene o es el de por defecto («Sesión 3»). */
+export function tituloPropioSesion(sesion: Pick<SesionPersonaje, 'numero' | 'titulo'>): string {
+    const titulo = `${sesion.titulo ?? ''}`.trim();
+    return titulo === `Sesión ${sesion.numero}` ? '' : titulo;
+}
+
 /** «Sesión 3 · La mina inundada»; si el título es el de por defecto («Sesión 3»), solo él. */
 export function tituloSesion(sesion: Pick<SesionPersonaje, 'numero' | 'titulo'>): string {
     const base = `Sesión ${sesion.numero}`;
-    const titulo = `${sesion.titulo ?? ''}`.trim();
-    return titulo.length < 1 || titulo === base ? base : `${base} · ${titulo}`;
+    const titulo = tituloPropioSesion(sesion);
+    return titulo ? `${base} · ${titulo}` : base;
 }
 
 /** Lo que ha ganado o gastado en la sesión, de su `resumen`: «+3.000 PX · +45 po»; vacío si no ha cambiado nada. */
