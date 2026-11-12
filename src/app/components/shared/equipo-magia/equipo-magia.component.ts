@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { Subject } from 'rxjs';
-import { EquipoCatalogos, EquipoRef } from 'src/app/interfaces/equipo';
+import { EquipoCatalogos, EquipoObjetivoModificador, EquipoRef } from 'src/app/interfaces/equipo';
 import { ConjuroService } from 'src/app/services/conjuro.service';
 import { DoteService } from 'src/app/services/dote.service';
 import { EquipoService } from 'src/app/services/equipo.service';
@@ -8,9 +8,10 @@ import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.servic
 import { HabilidadService } from 'src/app/services/habilidad.service';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { opcionDeHabilidad } from 'src/app/services/utils/habilidad-extra-visible';
-import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { conOpcionDeLaFila } from 'src/app/services/utils/opcion-sin-valor';
-import { FilaModificador, RelacionesMagicas, filaModificadorVacia } from 'src/app/services/utils/relaciones-equipo-formulario';
+import {
+    FilaModificador, RelacionesMagicas, filaModificadorVacia, resumenDeModificador, tiposDeLaFila,
+} from 'src/app/services/utils/relaciones-equipo-formulario';
 import { OpcionCatalogo, nombreDeOpcion, opcionesDeCatalogo } from '../catalogo-buscador/catalogo-buscador.component';
 import { cargadorDeCatalogos } from '../insercion-marco/edicion-de-catalogo';
 import { uidDeFila } from '../insercion-marco/filas-repetibles';
@@ -42,7 +43,7 @@ export class EquipoMagiaComponent implements OnInit, OnDestroy {
     conjuros: OpcionCatalogo[] = [];
     habilidades: OpcionCatalogo[] = [];
     readonly caracteristicas: readonly OpcionCatalogo[] = CATALOGO_CARACTERISTICAS;
-    objetivos: EquipoRef[] = [];
+    objetivos: EquipoObjetivoModificador[] = [];
     tiposBonificador: EquipoRef[] = [];
     tiposDano: EquipoRef[] = [];
 
@@ -121,12 +122,17 @@ export class EquipoMagiaComponent implements OnInit, OnDestroy {
     /** Las opciones de un selector con la de la fila si el catálogo no la lista (llega con la entrada). */
     readonly opcionesCon = conOpcionDeLaFila;
 
-    /** «Salvaciones · resistencia +1», el resumen de la fila en su cabecera. */
+    /** «1 · Salvaciones +1 (resistencia)», el resumen de la fila en su cabecera (`resumenDeModificador`, el de los dos editores). */
     resumen(fila: FilaModificador, indice: number): string {
-        const objetivo = this.objetivos.find((item) => item.Id === fila.id_objetivo)?.Nombre ?? 'Sin objetivo';
-        const tipo = this.tiposBonificador.find((item) => item.Id === fila.id_tipo_bonificador)?.Nombre;
-        const valor = fila.valor === null || fila.valor === undefined ? '' : ` ${textoConSigno(Number(fila.valor))}`;
-        return `${indice + 1} · ${objetivo}${tipo ? ` · ${tipo.toLowerCase()}` : ''}${valor}`;
+        const de = this.caracteristicas.find((item) => item.id === fila.id_caracteristica)?.nombre
+            ?? this.habilidades.find((item) => item.id === fila.id_habilidad)?.nombre ?? null;
+        return resumenDeModificador(this.objetivos, this.tiposBonificador,
+            { id_objetivo: fila.id_objetivo, id_tipo_bonificador: fila.id_tipo_bonificador, cifra: fila.valor, de }, indice);
+    }
+
+    /** Los tipos que valen con el objetivo de la fila (no la «Mejora» a la CA) y el de la fila. */
+    tiposDeFila(fila: FilaModificador): EquipoRef[] {
+        return tiposDeLaFila(this.tiposBonificador, this.objetivos, fila.id_objetivo, fila.id_tipo_bonificador);
     }
 
     trackByUid(_indice: number, fila: FilaModificador): string {

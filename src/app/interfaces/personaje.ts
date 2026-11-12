@@ -180,6 +180,8 @@ export interface Personaje extends PersonajeSimple {
         Caracteristica_lanzamiento?: string | null;
         /** Solo en la ficha de la API (desde 2026-10-26): su nivel de lanzador, sus conjuros al día y sus puntos de poder. */
         Nivel_lanzador?: number | null;
+        /** Lo que le suman sus rasgos a ese nivel de lanzador (krau, el sigilo de poder del iluminiano), con su rasgo. */
+        Bonificadores_nivel_lanzador?: { origen: string; valor: number; }[];
         Conjuros_diarios?: PersonajeConjurosDiariosNivelDto[] | null;
         Puntos_poder?: PersonajePuntosPoderDto | null;
         /** Solo en la ficha: el nivel de su raza que se suma a esta clase para los conjuros (lanzamiento racial). */

@@ -103,6 +103,8 @@ export interface RacialCreateBonificadorCondicional {
     id_caracteristica: number | null;
     /** Si la cantidad sigue la cifra del rasgo (`Valor` de su progresión). */
     cantidad_del_valor: boolean;
+    /** Si no pasa de los DG del personaje (krau, al nivel de lanzador). */
+    tope_dg: boolean;
 }
 
 export interface RacialCreateRequest {

@@ -57,7 +57,7 @@ import {
     textoPrecio,
 } from 'src/app/services/utils/equipo-texto';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
-import { caDeSiempreDeRaciales } from 'src/app/services/utils/habilidades-raciales';
+import { caDeSiempreDeRaciales, camposCaDeLaRaza } from 'src/app/services/utils/habilidades-raciales';
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
@@ -980,8 +980,12 @@ ${envejecimiento}` : edades;
         const resumenLanzador = this.getNivelLanzadorResumenClase(nombreClase);
         // El nivel de lanzador lo da la API en la ficha (con el divisor del paladín y el explorador); si no, el calculado.
         const nivelLanzadorApi = claseDesglose?.Nivel_lanzador;
-        if (typeof nivelLanzadorApi === 'number' && nivelLanzadorApi > 0)
-            chips.push(`Nivel de lanzador ${nivelLanzadorApi}`);
+        if (typeof nivelLanzadorApi === 'number' && nivelLanzadorApi > 0) {
+            // Con lo que le suman sus rasgos (krau): «Nivel de lanzador 7 (Sigilo de poder: krau (magia) +2)».
+            const deRasgos = (claseDesglose?.Bonificadores_nivel_lanzador ?? [])
+                .map((parte) => `${parte.origen} ${textoConSigno(parte.valor)}`).join(', ');
+            chips.push(`Nivel de lanzador ${nivelLanzadorApi}${deRasgos ? ` (${deRasgos})` : ''}`);
+        }
         else if (resumenLanzador)
             chips.push(`Nivel de lanzador ${resumenLanzador.nivelLanzador}`);
         // Con la clase de su lanzamiento racial, el nivel de su raza se suma para los conjuros (*Draconomicón*, pág. 24).
@@ -1281,7 +1285,7 @@ ${envejecimiento}` : edades;
                 ['Desvío', this.pj.Ca_desvio],
                 ['Varios', this.pj.Ca_varios],
                 // En la creación, los bonificadores de siempre de sus rasgos (la esquiva del svirfneblin).
-                ...caDeSiempreDeRaciales(this.pj.Raciales).partes.map((p) => [`${p.origen} (${p.tipo.toLowerCase()})`, p.valor]),
+                ...caDeSiempreDeRaciales(this.pj.Raciales, camposCaDeLaRaza(this.pj)).partes.map((p) => [`${p.origen} (${p.tipo.toLowerCase()})`, p.valor]),
             ].filter(([, valor]) => toNumber(valor) !== 0).map(([nombre, valor]) => `${nombre} ${textoConSigno(toNumber(valor))}`).join('\n');
         this.salvacionesVisibles = SALVACIONES.map(({ tipo, nombre }) => {
             const salvacion = totales.salvaciones[tipo];

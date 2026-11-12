@@ -1,6 +1,7 @@
 import { PrerrequisitoItem } from "./prerrequisito";
 import { Conjuro } from "./conjuro";
 import { EsenciaRasgo } from "./incarnum";
+import { CifraFichaObjetivo, EquipoTipoBonificador } from "./equipo";
 
 export interface RacialReferencia {
     id?: number | null;
@@ -87,16 +88,17 @@ export interface RacialBonificadorContra {
  * contra gigantes. La creación y la ficha lo enseñan aparte y no lo suman. Uno sin condición (`Condicion` `null`, solo a
  * la CA: la esquiva +4 del svirfneblin contra todas las criaturas) cuenta siempre y se suma a la CA con su tipo; uno de
  * siempre con `Caracteristica` (a las pruebas de una característica: el sigilo de poder del iluminiano), a las
- * habilidades de esa característica.
+ * habilidades de esa característica; uno de siempre al nivel de lanzador (krau, con `Tope_dg`), al de cada clase que lanza.
  */
 export interface RacialBonificadorCondicional {
-    Objetivo: { Id: number; Nombre: string; };
+    /** A qué se aplica, con qué cifra de la ficha es (`Cifra_ficha`: `ca`, `nivel_lanzador`…; `null` los demás). */
+    Objetivo: { Id: number; Nombre: string; Cifra_ficha: CifraFichaObjetivo | null; };
     /**
-     * `Apila`: si se apila con los del mismo tipo (esquiva, sin tipo), para sumar los de siempre; `Cuenta_toque` y
-     * `Cuenta_desprevenido`: si cuenta en la CA de toque y en la desprevenida (Manual del jugador, pág. 136: la armadura
-     * natural no cuenta de toque y la esquiva se pierde desprevenido).
+     * El tipo, en la única forma del contrato (`EquipoTipoBonificador`): `Apila`, para sumar los de siempre;
+     * `Cuenta_toque` y `Cuenta_desprevenido` (Manual del jugador, pág. 136); `Campo_ficha`, la cifra de la ficha que es
+     * (la armadura natural, el desvío…), para apilarlo con la de la raza.
      */
-    Tipo_bonificador: { Id: number; Nombre: string; Apila: boolean; Cuenta_toque: boolean; Cuenta_desprevenido: boolean; };
+    Tipo_bonificador: EquipoTipoBonificador;
     /** Distinta de 0; negativa, un penalizador. */
     Cantidad: number;
     /** El caso en que cuenta, en texto: «Contra orcos y trasgoides»; `null`, cuenta siempre. */
@@ -107,6 +109,8 @@ export interface RacialBonificadorCondicional {
     Caracteristica: { Id: number; Nombre: string; } | null;
     /** Si la cantidad sigue la cifra del rasgo (`Valor` que le da su progresión: el sigilo, +2 desde nivel 2). */
     Cantidad_del_valor: boolean;
+    /** Si no pasa de los DG del personaje (krau, al nivel de lanzador: *Races of Destiny*, pág. 54). */
+    Tope_dg: boolean;
     /** «Ataque +1 (racial) contra orcos y trasgoides». */
     Frase: string;
 }

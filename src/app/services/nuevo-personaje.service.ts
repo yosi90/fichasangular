@@ -29,6 +29,8 @@ import {
     bonificadoresCondicionalesDeRaciales,
     bonosDeCaracteristicaDeRaciales,
     caDeSiempreDeRaciales,
+    camposCaDeLaRaza,
+    nivelLanzadorConRasgos,
     habilidadesDeRasgos,
     sinApilarRaciales,
 } from './utils/habilidades-raciales';
@@ -4247,7 +4249,11 @@ export class NuevoPersonajeService {
             const coincide = tipoClase === tipo || (tipoClase === 'mixto' && (tipo === 'arcano' || tipo === 'divino'));
             if (!coincide || this.nivelesConjuroLanzablesClase(clase, nombre).length < 1)
                 return;
-            maximo = Math.max(maximo, this.getNivelLanzadorRealClase(clase, nombre));
+            const nivel = this.getNivelLanzadorRealClase(clase, nombre);
+            // Lo que suman sus rasgos al nivel de lanzador de una clase que lanza conjuros (krau, sin pasar de sus DG);
+            // no al de manifestador (máster de Rol).
+            maximo = Math.max(maximo, tipo === 'psionico' ? nivel
+                : nivelLanzadorConRasgos(nivel, this.personajeCreacion?.Raciales, this.resolverDgTotalActual()));
         });
         return Math.max(0, maximo);
     }
@@ -9633,9 +9639,10 @@ export class NuevoPersonajeService {
             + toNumber(this.personajeCreacion.Armadura_natural)
             + toNumber(this.personajeCreacion.Ca_desvio)
             + toNumber(this.personajeCreacion.Ca_varios)
-            // Los bonificadores de siempre de sus rasgos, con su tipo (la esquiva +4 del svirfneblin); la API los suma al
-            // leer la ficha, así que no se guardan en `Ca_varios`.
-            + caDeSiempreDeRaciales(this.personajeCreacion.Raciales).total;
+            // Los bonificadores de siempre de sus rasgos, con su tipo (la esquiva +4 del svirfneblin) y apilados con la
+            // armadura natural, el desvío y los varios de la raza, como la defensa de la API; la API los suma al leer la
+            // ficha, así que no se guardan en `Ca_varios`.
+            + caDeSiempreDeRaciales(this.personajeCreacion.Raciales, camposCaDeLaRaza(this.personajeCreacion)).total;
 
         // Ataque base + Fuerza + tamaño + varios, la misma regla que la presa de la API.
         this.personajeCreacion.Presa = totalesPersonaje(this.personajeCreacion).presa?.total ?? 0;

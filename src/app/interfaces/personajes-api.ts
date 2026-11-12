@@ -322,6 +322,8 @@ export interface PersonajeClaseDto extends PersonajeNombreIdDto {
     modificadorLanzamiento: number | null;
     /** Su nivel de lanzador o de manifestador; `null` si no lanza (desde 2026-10-26). */
     nivelLanzador?: number | null;
+    /** Lo que le suman sus rasgos a ese nivel de lanzador (krau, sin pasar de sus DG); desde el 2026-11-12. */
+    bonificadoresNivelLanzador?: PersonajeParteDto[];
     /** Los conjuros al día de cada nivel con acceso; `null` si no usa conjuros diarios. */
     conjurosDiarios?: PersonajeConjurosDiariosNivelDto[] | null;
     /** Su reserva de puntos de poder; `null` si no es psiónica. */

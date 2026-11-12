@@ -50,8 +50,8 @@ import { USOS_SORTILEGA_INICIALES } from 'src/app/services/utils/texto-sin-espec
 import { compararTexto, porNombre } from 'src/app/services/utils/orden-texto';
 import { CATALOGO_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { tiposDeDoteDelCatalogo } from 'src/app/services/utils/dote-mapper';
-import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { conOpcionDeLaFila } from 'src/app/services/utils/opcion-sin-valor';
+import { resumenDeModificador, tiposDeLaFila } from 'src/app/services/utils/relaciones-equipo-formulario';
 import { ID_EXTRA_HABILIDAD_ELEGIR, ID_EXTRA_HABILIDAD_SIN_EXTRA } from 'src/app/services/utils/habilidad-extra-visible';
 import {
     CATALOGOS_CONTRA,
@@ -721,14 +721,22 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         this.errorBonificadores = null;
     }
 
-    /** «1 · Ataque +1 (racial)», el resumen de un bonificador en su cabecera. */
+    /** «1 · Ataque +1 (racial)», el resumen de un bonificador en su cabecera (`resumenDeModificador`, el de los dos editores). */
     resumenBonificador(fila: FilaBonificadorRacial, indice: number): string {
-        const caracteristica = this.caracteristicasCatalogo.find((item) => item.id === fila.id_caracteristica)?.nombre;
-        const objetivo = (this.objetivos.find((item) => item.Id === fila.id_objetivo)?.Nombre ?? 'Sin objetivo')
-            + (caracteristica ? ` de ${caracteristica}` : '');
-        const tipo = this.tiposBonificador.find((item) => item.Id === fila.id_tipo_bonificador)?.Nombre;
-        const cantidad = fila.cantidad === null || `${fila.cantidad}`.trim() === '' ? '' : ` ${textoConSigno(Number(fila.cantidad))}`;
-        return `${indice + 1} · ${objetivo}${cantidad}${tipo ? ` (${tipo.toLowerCase()})` : ''}`;
+        const de = this.caracteristicasCatalogo.find((item) => item.id === fila.id_caracteristica)?.nombre ?? null;
+        return resumenDeModificador(this.objetivos, this.tiposBonificador,
+            { id_objetivo: fila.id_objetivo, id_tipo_bonificador: fila.id_tipo_bonificador, cifra: fila.cantidad, de }, indice);
+    }
+
+    /** Los tipos que valen con el objetivo de la fila (no la «Mejora» a la CA) y el de la fila. */
+    tiposDeBonificador(fila: FilaBonificadorRacial): EquipoRef[] {
+        return tiposDeLaFila(this.tiposBonificador, this.objetivos, fila.id_objetivo, fila.id_tipo_bonificador);
+    }
+
+    /** No pasa de los DG del personaje (krau, al nivel de lanzador). */
+    alternarTopeDg(fila: FilaBonificadorRacial): void {
+        fila.tope_dg = !fila.tope_dg;
+        this.errorBonificadores = null;
     }
 
     /** Si el catálogo ya trae la opción de la fila (si no, se enseña con su id para no perderla). */

@@ -42,8 +42,27 @@ export interface EquipoRanura extends EquipoRef {
     Maximo: number;
 }
 
+/**
+ * Qué cifra de la ficha es un objetivo de los modificadores (`Cifra_ficha`, de `objetivos_modificador.cifra_ficha`): a la
+ * que suman la ficha y la creación un bonificador de siempre (`null` los demás).
+ */
+export type CifraFichaObjetivo = 'ca' | 'salvaciones' | 'fortaleza' | 'reflejos' | 'voluntad' | 'nivel_lanzador' | 'pruebas_caracteristica';
+
+/** Qué cifra de la ficha es un tipo de bonificador (`Campo_ficha`): la armadura y el escudo puestos, la armadura natural,
+ * el desvío y los varios. */
+export type CampoFichaBonificador = 'armadura' | 'escudo' | 'armadura_natural' | 'desvio' | 'varios';
+
+/**
+ * Un tipo de bonificador, en la única forma del contrato (`Tipos_bonificador` de `GET /equipo/catalogos`, el
+ * `Tipo_bonificador` de un modificador de un objeto o una aptitud y el de un bonificador de un rasgo): si se apila con los
+ * del mismo tipo, si cuenta en la CA de toque y en la desprevenida (Manual del jugador, pág. 136) y qué cifra de la ficha
+ * es (`null` los demás).
+ */
 export interface EquipoTipoBonificador extends EquipoRef {
     Apila: boolean;
+    Cuenta_toque: boolean;
+    Cuenta_desprevenido: boolean;
+    Campo_ficha: CampoFichaBonificador | null;
 }
 
 export interface EquipoDanoPorTamano {
@@ -85,13 +104,17 @@ export interface AplicacionMaterial extends EquipoRef {
  * Un objetivo de los modificadores (Ataque, CA, Salvaciones…). `Lista_del_rasgo`: en un rasgo racial, la lista propia
  * donde va (sus salvaciones, características o habilidades), así que no vale como bonificador condicional; `null` los demás.
  * `De_siempre_en_el_rasgo`: en un rasgo racial, un bonificador a este objetivo puede ir sin condición (cuenta siempre y se
- * suma con su tipo): solo la CA.
+ * suma con su tipo): la CA, las pruebas de característica y habilidades y el nivel de lanzador. Las tres marcas salen de
+ * las columnas de `objetivos_modificador`.
  */
 export interface EquipoObjetivoModificador extends EquipoRef {
+    Cifra_ficha: CifraFichaObjetivo | null;
     Lista_del_rasgo: 'salvaciones' | 'caracteristicas' | 'habilidades' | null;
     De_siempre_en_el_rasgo: boolean;
     /** Si en un rasgo pide una característica (las pruebas de característica y habilidades). */
     Caracteristica_en_el_rasgo: boolean;
+    /** Los tipos de bonificador que no valen con este objetivo, en ningún modificador (la «Mejora» a la CA). */
+    Tipos_no_validos: EquipoRef[];
 }
 
 export interface EquipoCatalogos {

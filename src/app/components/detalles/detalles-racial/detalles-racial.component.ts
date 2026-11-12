@@ -6,7 +6,7 @@ import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-
 import { toBoolean } from 'src/app/services/utils/normalizacion';
 import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 import { frasesProgresionRacial, textoCdRacial } from 'src/app/services/utils/racial-progresion';
-import { frasesBonificadoresCondicionales } from 'src/app/services/utils/habilidades-raciales';
+import { frasesBonificadoresDeRasgo } from 'src/app/services/utils/habilidades-raciales';
 import { RAZA, TIPO_CRIATURA } from 'src/app/services/utils/nombres-de-catalogo';
 import {
     CondicionPrerrequisito,
@@ -60,6 +60,8 @@ export class DetallesRacialComponent {
     /** Como qué cuenta quien lo tiene («Elfo (raza)», «Gigante (tipo de criatura)»). */
     cuentaComo: string[] = [];
     /** Lo que suma solo en un caso (el +1 al ataque contra orcos y trasgoides), con las frases de la API. */
+    /** Lo que el rasgo suma siempre (la esquiva +4 del svirfneblin, krau al nivel de lanzador): frases de la API. */
+    bonificadoresDeSiempre: string[] = [];
     bonificadoresCondicionales: string[] = [];
     /** Magic of Incarnum: la esencia que da y si es receptáculo. */
     datosEsencia: DatoFicha[] = [];
@@ -97,7 +99,10 @@ export class DetallesRacialComponent {
         this.cuentaComo = (value?.Cuenta_como ?? [])
             .filter((c) => tieneTextoVisible(c?.Nombre))
             .map((c) => `${c.Nombre} (${(c.Catalogo === 'raza' ? RAZA : TIPO_CRIATURA).singular})`);
-        this.bonificadoresCondicionales = frasesBonificadoresCondicionales(value) ?? [];
+        // Aparte lo que cuenta siempre (la esquiva +4 del svirfneblin, krau) de lo que solo cuenta en un caso.
+        const bonificadores = frasesBonificadoresDeRasgo(value);
+        this.bonificadoresDeSiempre = bonificadores.deSiempre;
+        this.bonificadoresCondicionales = bonificadores.condicionales;
     }
 
     get racial(): RacialDetalle {

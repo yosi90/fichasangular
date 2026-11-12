@@ -1061,6 +1061,10 @@ export class PersonajeService {
                 Caracteristica_lanzamiento: toNullableText(clase?.caracteristicaLanzamiento),
                 // Las cifras de su magia, hechas por la API (desde 2026-10-26).
                 Nivel_lanzador: clase?.nivelLanzador ?? null,
+                // Lo que le suman sus rasgos (krau, desde el 2026-11-12).
+                Bonificadores_nivel_lanzador: (Array.isArray(clase?.bonificadoresNivelLanzador) ? clase.bonificadoresNivelLanzador : [])
+                    .map((parte: any) => ({ origen: toText(parte?.origen).trim(), valor: toNumber(parte?.valor) }))
+                    .filter((parte: { valor: number; }) => parte.valor !== 0),
                 Conjuros_diarios: Array.isArray(clase?.conjurosDiarios) ? clase.conjurosDiarios : null,
                 Puntos_poder: clase?.puntosPoder ?? null,
                 // Solo en la clase de su lanzamiento racial.

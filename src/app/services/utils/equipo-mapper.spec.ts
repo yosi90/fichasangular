@@ -27,7 +27,8 @@ describe('equipo-mapper', () => {
         expect(capa.Ranura?.Nombre).toBe('Hombros');
         expect(capa.Modificadores[0]).toEqual({
             Objetivo: { Id: 3, Nombre: 'Salvaciones' },
-            Tipo_bonificador: { Id: 15, Nombre: 'Resistencia', Apila: false },
+            // El tipo, en la forma de todos (sin las marcas en la respuesta, cuenta de toque y desprevenido).
+            Tipo_bonificador: { Id: 15, Nombre: 'Resistencia', Apila: false, Cuenta_toque: true, Cuenta_desprevenido: true, Campo_ficha: null },
             Valor: 1,
             Caracteristica: null,
             Habilidad: null,

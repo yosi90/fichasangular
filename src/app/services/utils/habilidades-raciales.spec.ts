@@ -5,7 +5,8 @@ import {
     bonificadoresCondicionalesDeRaciales,
     bonosDeCaracteristicaDeRaciales,
     caDeSiempreDeRaciales,
-    frasesBonificadoresCondicionales,
+    frasesBonificadoresDeRasgo,
+    nivelLanzadorConRasgos,
     habilidadesDeRasgos,
     leerBonificadoresCondicionales,
     sinApilarRaciales,
@@ -78,8 +79,8 @@ describe('habilidades-raciales', () => {
             contra: [{ Catalogo: 'subtipo', Id: 68, Nombre: 'Orco' }, { Catalogo: 'subtipo', Id: 61, Nombre: 'Trasgoide' }],
             origen: '+1 de ataque contra orcos y trasgoides', frase: 'Ataque +1 (racial) contra orcos y trasgoides',
         }]);
-        expect(frasesBonificadoresCondicionales(enano)).toEqual(['Ataque +1 (racial) contra orcos y trasgoides']);
-        expect(frasesBonificadoresCondicionales(racial(9, 'Afinidad con la piedra'))).toBeNull();
+        expect(frasesBonificadoresDeRasgo(enano)).toEqual({ deSiempre: [], condicionales: ['Ataque +1 (racial) contra orcos y trasgoides'] });
+        expect(frasesBonificadoresDeRasgo(racial(9, 'Afinidad con la piedra'))).toEqual({ deSiempre: [], condicionales: [] });
         // La ficha de la API (`bonificadoresCondicionales`) se lee igual.
         expect(leerBonificadoresCondicionales(JSON.parse(JSON.stringify(salida)))).toEqual(salida);
         expect(leerBonificadoresCondicionales([{ objetivo: { Id: 1, Nombre: 'CA' }, valor: 0 }, null])).toEqual([]);
@@ -87,9 +88,9 @@ describe('habilidades-raciales', () => {
 
     // La esquiva del svirfneblin contra todas las criaturas (Manual de monstruos 1, pág. 139): cuenta siempre.
     // Si cuenta de toque y desprevenido lo dice el tipo (tipos_bonificador), no su nombre.
-    const ESQUIVA = { Id: 8, Nombre: 'Esquiva', Apila: true, Cuenta_toque: true, Cuenta_desprevenido: false };
+    const ESQUIVA = { Id: 8, Nombre: 'Esquiva', Apila: true, Cuenta_toque: true, Cuenta_desprevenido: false, Campo_ficha: null };
     const deSiempre = (Id: number, Nombre: string, Cantidad: number, Tipo_bonificador: object = ESQUIVA) => racial(Id, Nombre, {
-        Bonificadores_condicionales: [{ Id, Objetivo: { Id: 1, Nombre: 'CA' }, Tipo_bonificador, Cantidad, Condicion: null,
+        Bonificadores_condicionales: [{ Id, Objetivo: { Id: 1, Nombre: 'CA', Cifra_ficha: 'ca' }, Tipo_bonificador, Cantidad, Condicion: null,
             Contra: [], Frase: `CA +${Cantidad} (esquiva)` }],
     });
     const svirfneblin = deSiempre(4185, 'Bonificador de esquiva +4 a la CA contra todas las criaturas (svirfneblin)', 4);
@@ -104,12 +105,12 @@ describe('habilidades-raciales', () => {
         });
         // Dos esquivas se apilan (Manual del jugador, pág. 136); de un tipo que no apila, el mayor.
         expect(caDeSiempreDeRaciales([svirfneblin, deSiempre(2185, 'Esquiva (svirfneblin)', 1)]).total).toBe(5);
-        const desvio = { Id: 6, Nombre: 'Desvío', Apila: false, Cuenta_toque: true, Cuenta_desprevenido: true };
+        const desvio = { Id: 6, Nombre: 'Desvío', Apila: false, Cuenta_toque: true, Cuenta_desprevenido: true, Campo_ficha: 'desvio' };
         expect(caDeSiempreDeRaciales([deSiempre(1, 'A', 1, desvio), deSiempre(2, 'B', 2, desvio)])).toEqual({
             total: 2, sinToque: 0, sinDesprevenido: 0, partes: [{ origen: 'B', tipo: 'Desvío', valor: 2 }],
         });
         // Un tipo que no cuenta de toque (la armadura natural, o uno homebrew con esa marca), por su dato.
-        const natural = { Id: 3, Nombre: 'Armadura natural', Apila: false, Cuenta_toque: false, Cuenta_desprevenido: true };
+        const natural = { Id: 3, Nombre: 'Armadura natural', Apila: false, Cuenta_toque: false, Cuenta_desprevenido: true, Campo_ficha: 'armadura_natural' };
         expect(caDeSiempreDeRaciales([deSiempre(5, 'Piel', 1, natural), svirfneblin])).toEqual(jasmine.objectContaining({
             total: 5, sinToque: 1, sinDesprevenido: 4,
         }));
@@ -117,6 +118,40 @@ describe('habilidades-raciales', () => {
         expect(deSiempre(6, 'Viejo', 1, { Id: 8, Nombre: 'Esquiva', Apila: true }).Bonificadores_condicionales?.[0].Tipo_bonificador)
             .toEqual(jasmine.objectContaining({ Cuenta_toque: true, Cuenta_desprevenido: true }));
         expect(caDeSiempreDeRaciales(null).total).toBe(0);
+    });
+
+    // La última tanda de las razas mutadas (2026-11-12): lo de los rasgos se apila por tipo con los campos de la raza,
+    // como la defensa de la API (máster de Rol: la armadura natural, el desvío y los varios «sin tipo»).
+    it('los de siempre se apilan por tipo con la armadura natural, el desvío y los varios de la raza', () => {
+        const natural = { Id: 3, Nombre: 'Armadura natural', Apila: false, Cuenta_toque: false, Cuenta_desprevenido: true, Campo_ficha: 'armadura_natural' };
+        const sinTipo = { Id: 19, Nombre: 'Sin tipo', Apila: true, Cuenta_toque: true, Cuenta_desprevenido: true, Campo_ficha: 'varios' };
+        const piel = deSiempre(5, 'Piel', 3, natural);
+        // Un +3 de armadura natural de un rasgo sobre una raza con +2: suma 1 más (y ese 1 no cuenta de toque).
+        expect(caDeSiempreDeRaciales([piel], { armadura_natural: 2 })).toEqual({
+            total: 1, sinToque: 1, sinDesprevenido: 0, partes: [{ origen: 'Piel', tipo: 'Armadura natural', valor: 1 }],
+        });
+        // Con una raza de +4, el rasgo no suma nada.
+        expect(caDeSiempreDeRaciales([piel], { armadura_natural: 4 })).toEqual({ total: 0, sinToque: 0, sinDesprevenido: 0, partes: [] });
+        // Los varios de la raza son «sin tipo» y se apilan; la esquiva, con todo.
+        expect(caDeSiempreDeRaciales([deSiempre(6, 'Varios', 1, sinTipo), svirfneblin], { armadura_natural: 2, varios: 1 }).total).toBe(5);
+        // La hoja en la creación: la de toque quita la armadura natural de la raza y lo que el rasgo suma de más.
+        const pj = { Ca: 10 + 3, ModDestreza: 0, Armadura_natural: 2, Raciales: [piel], Defensa: null } as unknown as Personaje;
+        expect(caToqueYDesprevenidaSinDefensa(pj)).toEqual({ toque: 10, desprevenido: 13 });
+    });
+
+    // Krau (Races of Destiny, pág. 54): +1 sin tipo (+2 desde nivel 2) al nivel de lanzador, sin pasar de sus DG.
+    it('krau suma al nivel de lanzador sin pasar de sus DG, y solo a una clase que ya lanza', () => {
+        const krau = racial(4873, 'Sigilo de poder: krau (magia)', {
+            Bonificadores_condicionales: [{ Id: 69, Objetivo: { Id: 15, Nombre: 'Nivel de lanzador', Cifra_ficha: 'nivel_lanzador' },
+                Tipo_bonificador: SIN_TIPO, Cantidad: 2, Condicion: null, Contra: [], Tope_dg: true, Frase: 'Nivel de lanzador +2 (sin tipo), sin pasar de sus DG' }],
+        });
+        // Los ejemplos del máster: mago 5/guerrero 2, clérigo 3/mago 3, paladín 4, mago 6 y mago 1.
+        expect([[5, 7], [3, 6], [2, 4], [6, 6], [1, 1], [0, 4]].map(([nivel, dgs]) => nivelLanzadorConRasgos(nivel, [krau], dgs)))
+            .toEqual([7, 5, 4, 6, 1, 0]);
+        // No es de la CA ni condicional: en el detalle, aparte.
+        expect(caDeSiempreDeRaciales([krau]).total).toBe(0);
+        expect(bonificadoresCondicionalesDeRaciales([krau])).toEqual([]);
+        expect(frasesBonificadoresDeRasgo(krau)).toEqual({ deSiempre: ['Nivel de lanzador +2 (sin tipo), sin pasar de sus DG'], condicionales: [] });
     });
 
     // Con la `defensa` de la API, la hoja pone las suyas (`camposPdfEquipo`, en `personaje-equipo-mapper.spec.ts`).
@@ -128,10 +163,10 @@ describe('habilidades-raciales', () => {
 
     // Los sigilos de poder del iluminiano (Races of Destiny, págs. 53-54): +1 sin tipo a las pruebas de una característica
     // y de sus habilidades, +2 desde nivel 2. Los mismos casos que `SigilosDePoderTests` de la API.
-    const SIN_TIPO = { Id: 19, Nombre: 'Sin tipo', Apila: true, Cuenta_toque: true, Cuenta_desprevenido: true };
+    const SIN_TIPO = { Id: 19, Nombre: 'Sin tipo', Apila: true, Cuenta_toque: true, Cuenta_desprevenido: true, Campo_ficha: 'varios' };
     const sigilo = (Id: number, Nombre: string, caracteristicas: { Id: number; Nombre: string; }[]) => racial(Id, Nombre, {
         Bonificadores_condicionales: caracteristicas.map((Caracteristica, i) => ({
-            Id: Id * 10 + i, Objetivo: { Id: 18, Nombre: 'Pruebas de característica y habilidades' }, Tipo_bonificador: SIN_TIPO,
+            Id: Id * 10 + i, Objetivo: { Id: 18, Nombre: 'Pruebas de característica y habilidades', Cifra_ficha: 'pruebas_caracteristica' }, Tipo_bonificador: SIN_TIPO,
             Cantidad: 1, Condicion: null, Contra: [], Caracteristica, Cantidad_del_valor: true,
             Frase: `Pruebas de característica y habilidades de ${Caracteristica.Nombre} +1 (sin tipo)`,
         })),

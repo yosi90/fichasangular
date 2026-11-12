@@ -20,11 +20,16 @@ import { normalizeRacial } from './racial-mapper';
 /** Las mismas reglas que `_normalize_racial_progresion`, `_normalize_racial_bonificadores` y `_normalize_racial_cuenta_como` de la API. */
 describe('racial-formulario', () => {
     const OBJETIVOS: EquipoObjetivoModificador[] = [
-        { Id: 1, Nombre: 'CA', Lista_del_rasgo: null, De_siempre_en_el_rasgo: true, Caracteristica_en_el_rasgo: false },
-        { Id: 2, Nombre: 'Ataque', Lista_del_rasgo: null, De_siempre_en_el_rasgo: false, Caracteristica_en_el_rasgo: false },
-        { Id: 8, Nombre: 'Característica', Lista_del_rasgo: 'caracteristicas', De_siempre_en_el_rasgo: false, Caracteristica_en_el_rasgo: false },
-        { Id: 18, Nombre: 'Pruebas de característica y habilidades', Lista_del_rasgo: null, De_siempre_en_el_rasgo: true,
-            Caracteristica_en_el_rasgo: true },
+        { Id: 1, Nombre: 'CA', Cifra_ficha: 'ca', Lista_del_rasgo: null, De_siempre_en_el_rasgo: true, Caracteristica_en_el_rasgo: false,
+            Tipos_no_validos: [{ Id: 10, Nombre: 'Mejora' }] },
+        { Id: 2, Nombre: 'Ataque', Cifra_ficha: null, Lista_del_rasgo: null, De_siempre_en_el_rasgo: false, Caracteristica_en_el_rasgo: false,
+            Tipos_no_validos: [] },
+        { Id: 8, Nombre: 'Característica', Cifra_ficha: null, Lista_del_rasgo: 'caracteristicas', De_siempre_en_el_rasgo: false,
+            Caracteristica_en_el_rasgo: false, Tipos_no_validos: [] },
+        { Id: 15, Nombre: 'Nivel de lanzador', Cifra_ficha: 'nivel_lanzador', Lista_del_rasgo: null, De_siempre_en_el_rasgo: true,
+            Caracteristica_en_el_rasgo: false, Tipos_no_validos: [] },
+        { Id: 18, Nombre: 'Pruebas de característica y habilidades', Cifra_ficha: 'pruebas_caracteristica', Lista_del_rasgo: null,
+            De_siempre_en_el_rasgo: true, Caracteristica_en_el_rasgo: true, Tipos_no_validos: [] },
     ];
     const progresion = (cambios: object) => ({ ...filaProgresionVacia(), desde: 6, ...cambios });
     const bonificador = (cambios: object) => ({
@@ -53,9 +58,9 @@ describe('racial-formulario', () => {
         ]);
         expect(cuerpoDeBonificadores(filasDeBonificadores(racial))).toEqual([
             { id_objetivo: 1, id_tipo_bonificador: 8, cantidad: 2, condicion: 'Contra dragones', contra: [{ id_tipo: 6 }],
-                id_caracteristica: null, cantidad_del_valor: false },
+                id_caracteristica: null, cantidad_del_valor: false, tope_dg: false },
             { id_objetivo: 18, id_tipo_bonificador: 19, cantidad: 1, condicion: '', contra: [], id_caracteristica: 1,
-                cantidad_del_valor: true },
+                cantidad_del_valor: true, tope_dg: false },
         ]);
     });
 
@@ -109,7 +114,7 @@ describe('racial-formulario', () => {
         expect(falloDeBonificador(bonificador({ cantidad: -1 }), 0, OBJETIVOS)).toBeNull();
         // Sin condición, solo a la CA (cuenta siempre: la esquiva del svirfneblin) y sin criaturas.
         expect(falloDeBonificador(bonificador({ id_objetivo: 1, condicion: '' }), 0, OBJETIVOS)).toBeNull();
-        expect(falloDeBonificador(bonificador({ condicion: '' }), 0, OBJETIVOS)).toContain('solo vale un bonificador a la CA');
+        expect(falloDeBonificador(bonificador({ condicion: '' }), 0, OBJETIVOS)).toContain('solo vale un bonificador a «CA»');
         expect(falloDeBonificador(bonificador({ id_objetivo: 1, condicion: '', contra: [repetida] }), 0, OBJETIVOS))
             .toContain('contra unas criaturas');
         // Las pruebas de una característica (el sigilo de poder): de siempre, y piden su característica; los demás no.
@@ -133,5 +138,16 @@ describe('racial-formulario', () => {
         expect(resumenDeProgresion(progresion({ desde: 1 }), 1)).toBe('2 · A 1 DG');
         expect(resumenDeProgresion(progresion({ medida: 'nivel', desde: 2 }), 2)).toBe('3 · A nivel 2');
         expect(resumenDeProgresion(progresion({ desde: null }), 0)).toBe('1 · Sin «desde» todavía');
+    });
+
+    it('la última tanda: krau sin condición y con su tope, y la «Mejora» no vale con la CA', () => {
+        const krau = bonificador({ id_objetivo: 15, id_tipo_bonificador: 19, condicion: '', tope_dg: true, cantidad_del_valor: true });
+        expect(falloDeBonificador(krau, 0, OBJETIVOS)).toBeNull();
+        expect(cuerpoDeBonificadores([krau])[0]).toEqual(jasmine.objectContaining({ id_objetivo: 15, condicion: '', tope_dg: true }));
+        expect(falloDeBonificador(bonificador({ id_objetivo: 1, id_tipo_bonificador: 10, condicion: '' }), 0, OBJETIVOS))
+            .toBe('Bonificador 1: con «CA» no vale el tipo «Mejora».');
+        // Sin condición, los objetivos que pueden ir así, por su dato.
+        expect(falloDeBonificador(bonificador({ condicion: '' }), 1, OBJETIVOS)).toContain(
+            'solo vale un bonificador a «CA», «Nivel de lanzador», «Pruebas de característica y habilidades».');
     });
 });

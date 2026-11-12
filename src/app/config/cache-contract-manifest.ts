@@ -69,7 +69,8 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     // `Bonificadores_condicionales` (el +1 al ataque contra orcos, la esquiva contra gigantes; 2026-11-12); 30 desde su
     // `Condicion` `null` si cuentan siempre y el `Apila` de su tipo (la esquiva del svirfneblin; 2026-11-12); 31 con
     // `Cuenta_toque` y `Cuenta_desprevenido` de su tipo y su `Caracteristica` y `Cantidad_del_valor` (los sigilos de poder).
-    { key: "razas", label: "Razas", schemaVersion: 31 },
+    // 32 con `Tope_dg` en cada bonificador (krau), `Cifra_ficha` en su `Objetivo` y `Campo_ficha` en su tipo.
+    { key: "razas", label: "Razas", schemaVersion: 32 },
     { key: "manuales", label: "Manuales", schemaVersion: 1 },
     { key: "manuales_asociados", label: "Manuales asociados", schemaVersion: 2 },
     { key: "tipos_criatura", label: "Tipos de criatura", schemaVersion: 3 },
@@ -104,10 +105,13 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "armas", label: "Armas", schemaVersion: 3 },
     { key: "armaduras", label: "Armaduras", schemaVersion: 5 },
     // 5 desde `De_siempre_en_el_rasgo` en cada objetivo (2026-11-12).
-    { key: "equipo_catalogos", label: "Catálogos del equipo", schemaVersion: 6 },
+    // 7 con `Campo_ficha` en cada tipo, los tipos «Mejora de la armadura» y «Mejora del escudo», y `Cifra_ficha` y
+    // `Tipos_no_validos` en cada objetivo (2026-11-12).
+    { key: "equipo_catalogos", label: "Catálogos del equipo", schemaVersion: 7 },
     { key: "materiales", label: "Materiales", schemaVersion: 1 },
     { key: "municiones", label: "Munición", schemaVersion: 1 },
-    { key: "encantamientos", label: "Aptitudes especiales de armas y armaduras", schemaVersion: 1 },
+    // 2 con el tipo de cada modificador en la forma de todos (2026-11-12).
+    { key: "encantamientos", label: "Aptitudes especiales de armas y armaduras", schemaVersion: 2 },
     { key: "conjuntos_objetos", label: "Conjuntos de objetos", schemaVersion: 1 },
     { key: "grupos_armas", label: "Grupos de armas", schemaVersion: 2 },
     { key: "grupos_armaduras", label: "Grupos de armaduras", schemaVersion: 1 },

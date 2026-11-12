@@ -1,6 +1,6 @@
 import { PDFDict, PDFForm, PDFHexString, PDFName, PDFRawStream, PDFString, decodePDFRawStream } from 'pdf-lib';
 import { Personaje } from 'src/app/interfaces/personaje';
-import { caDeSiempreDeRaciales } from 'src/app/services/utils/habilidades-raciales';
+import { caDeSiempreDeRaciales, camposCaDeLaRaza } from 'src/app/services/utils/habilidades-raciales';
 import { toNumber } from 'src/app/services/utils/normalizacion';
 import { totalHabilidad, totalesPersonaje } from 'src/app/services/utils/personaje-totales';
 
@@ -39,7 +39,7 @@ function javascriptDeCalculo(campo: { acroField: { dict: PDFDict; }; }): string 
  */
 export function caToqueYDesprevenidaSinDefensa(pj: Personaje): { toque: number; desprevenido: number; } {
     const ca = toNumber(pj.Ca);
-    const deRasgos = caDeSiempreDeRaciales(pj.Raciales);
+    const deRasgos = caDeSiempreDeRaciales(pj.Raciales, camposCaDeLaRaza(pj));
     return {
         toque: ca - toNumber(pj.Armadura_natural) - deRasgos.sinToque,
         desprevenido: ca - Math.max(0, toNumber(pj.ModDestreza)) - deRasgos.sinDesprevenido,

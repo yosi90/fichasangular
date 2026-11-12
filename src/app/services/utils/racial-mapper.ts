@@ -2,6 +2,7 @@ import { Conjuro } from "src/app/interfaces/conjuro";
 import { RacialBonificadorCondicional, RacialBonificadorContra, RacialCuentaComo, RacialDetalle, RacialProgresion, RacialProgresionVelocidad } from "src/app/interfaces/racial";
 import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
+import { cifraFichaObjetivo, normalizeTipoBonificador } from './equipo-mapper';
 import { normalizarEsenciaRasgo } from './incarnum-mapper';
 
 function toOptionalNumber(value: any): number {
@@ -101,19 +102,16 @@ export function normalizarBonificadoresCondicionales(raw: any): RacialBonificado
     return toArray(raw)
         .filter((b: any) => b && typeof b === 'object' && toRefIdNombre(b.Objetivo) !== null && toNumber(b.Cantidad) !== 0)
         .map((b: any) => ({
-            Objetivo: toRefIdNombre(b.Objetivo)!,
-            Tipo_bonificador: {
-                ...(toRefIdNombre(b.Tipo_bonificador) ?? { Id: 0, Nombre: '' }),
-                Apila: toBoolean(b.Tipo_bonificador?.Apila),
-                // Sin la marca (una caché anterior), cuenta: el valor por defecto de la base.
-                Cuenta_toque: toBoolean(b.Tipo_bonificador?.Cuenta_toque ?? true),
-                Cuenta_desprevenido: toBoolean(b.Tipo_bonificador?.Cuenta_desprevenido ?? true),
-            },
+            Objetivo: { ...toRefIdNombre(b.Objetivo)!, Cifra_ficha: cifraFichaObjetivo(b.Objetivo?.Cifra_ficha) },
+            // La misma lectura que el tipo de un modificador de un objeto (una sola forma en el contrato).
+            Tipo_bonificador: normalizeTipoBonificador(b.Tipo_bonificador)
+                ?? { Id: 0, Nombre: '', Apila: false, Cuenta_toque: true, Cuenta_desprevenido: true, Campo_ficha: null },
             Cantidad: toNumber(b.Cantidad),
             Condicion: toNullableText(b.Condicion),
             Contra: normalizarContraBonificador(toArray(b.Contra)),
             Caracteristica: toRefIdNombre(b.Caracteristica),
             Cantidad_del_valor: toBoolean(b.Cantidad_del_valor),
+            Tope_dg: toBoolean(b.Tope_dg),
             Frase: toText(b.Frase).trim(),
         }));
 }

@@ -49,7 +49,7 @@ import { abreviaturaCaracteristica, NOMBRES_CARACTERISTICAS, SIN_CARACTERISTICA 
 import { textoVd } from 'src/app/services/utils/tipo-personaje';
 import { textoDeArmasNaturales } from 'src/app/services/utils/armas-naturales';
 import { frasesProgresionRacial } from 'src/app/services/utils/racial-progresion';
-import { frasesBonificadoresCondicionales } from 'src/app/services/utils/habilidades-raciales';
+import { frasesBonificadoresDeRasgo } from 'src/app/services/utils/habilidades-raciales';
 import {
     SOLO_PNJ,
     categoriasEdadOrdenadas,
@@ -410,9 +410,16 @@ export class DetallesRazaComponent {
         return frasesProgresionRacial(racial);
     }
 
-    /** Las frases de lo que el rasgo suma solo en un caso (`Bonificadores_condicionales`); `null` si nada. */
+    /** Las frases de lo que el rasgo suma siempre (la esquiva del svirfneblin, krau); `null` si nada. */
+    frasesBonificadoresDeSiempre(racial: RacialDetalle): string[] | null {
+        const frases = frasesBonificadoresDeRasgo(racial).deSiempre;
+        return frases.length > 0 ? frases : null;
+    }
+
+    /** Las frases de lo que el rasgo suma solo en un caso (`Bonificadores_condicionales` con condición); `null` si nada. */
     frasesBonificadores(racial: RacialDetalle): string[] | null {
-        return frasesBonificadoresCondicionales(racial);
+        const frases = frasesBonificadoresDeRasgo(racial).condicionales;
+        return frases.length > 0 ? frases : null;
     }
 
     trackByGrupoRacial(_index: number, grupo: GrupoRacialesDetalle): number {

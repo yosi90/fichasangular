@@ -87,6 +87,8 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
         // Los sigilos de poder: a las pruebas de una característica y con la cantidad que sigue la cifra del rasgo.
         expect(cuerpos.some((c) => (c.bonificadores_condicionales ?? []).some((b) => b.id_caracteristica && b.cantidad_del_valor))).toBeTrue();
         expect(cuerpos.some((c) => (c.bonificadores_condicionales ?? []).some((b) => !b.id_caracteristica && b.cantidad_del_valor))).toBeTrue();
+        // Krau: sin condición y sin pasar de sus DG (la última tanda, 2026-11-12).
+        expect(cuerpos.some((c) => (c.bonificadores_condicionales ?? []).some((b) => b.tope_dg && b.condicion === ''))).toBeTrue();
     });
 
     it('un bonificador a las pruebas de característica pide la característica; al cambiar de objetivo se vacía', () => {
@@ -163,7 +165,7 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
         ]);
         expect(payload.bonificadores_condicionales).toEqual([
             { id_objetivo: 2, id_tipo_bonificador: 14, cantidad: 1, condicion: 'contra orcos', contra: [{ id_subtipo: 68 }],
-                id_caracteristica: null, cantidad_del_valor: false },
+                id_caracteristica: null, cantidad_del_valor: false, tope_dg: false },
         ]);
         expect(component.bonificadoresRows[0].contra[0].nombre).toBe('Orco');
     });

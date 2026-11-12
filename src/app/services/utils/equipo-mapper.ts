@@ -1,6 +1,8 @@
 import {
     AplicacionMaterial,
+    CampoFichaBonificador,
     CategoriaObjeto,
+    CifraFichaObjetivo,
     ConjuntoObjetosDetalle,
     EncantamientoDetalle,
     EquipoAura,
@@ -57,9 +59,33 @@ export function normalizeTextoEquipo(raw: any): TextoEquipo {
     };
 }
 
-function normalizeTipoBonificador(raw: any): EquipoTipoBonificador | null {
+const CAMPOS_FICHA: readonly CampoFichaBonificador[] = ['armadura', 'escudo', 'armadura_natural', 'desvio', 'varios'];
+const CIFRAS_FICHA: readonly CifraFichaObjetivo[] = ['ca', 'salvaciones', 'fortaleza', 'reflejos', 'voluntad', 'nivel_lanzador', 'pruebas_caracteristica'];
+
+/** La cifra de la ficha de un objetivo (`Cifra_ficha`), o `null` si no es una que se conozca. */
+export function cifraFichaObjetivo(valor: unknown): CifraFichaObjetivo | null {
+    return CIFRAS_FICHA.find((cifra) => cifra === valor) ?? null;
+}
+
+/**
+ * Un tipo de bonificador del contrato (la misma forma en el catálogo, en los modificadores y en los bonificadores de un
+ * rasgo). Sin las marcas (una caché anterior), cuenta de toque y desprevenido, como el valor por defecto de la base.
+ */
+export function normalizeTipoBonificador(raw: any): EquipoTipoBonificador | null {
     const ref = normalizeEquipoRef(raw);
-    return ref ? { ...ref, Apila: toBoolean(raw?.Apila) } : null;
+    return ref ? {
+        ...ref,
+        Apila: toBoolean(raw?.Apila),
+        Cuenta_toque: toBoolean(raw?.Cuenta_toque ?? true),
+        Cuenta_desprevenido: toBoolean(raw?.Cuenta_desprevenido ?? true),
+        Campo_ficha: CAMPOS_FICHA.find((campo) => campo === raw?.Campo_ficha) ?? null,
+    } : null;
+}
+
+/** Los tipos de bonificador que valen con un objetivo (sin los de su `Tipos_no_validos`: la «Mejora» a la CA). */
+export function tiposValidosConObjetivo<T extends EquipoRef>(tipos: readonly T[], objetivo: EquipoObjetivoModificador | null | undefined): T[] {
+    const fuera = new Set((objetivo?.Tipos_no_validos ?? []).map((tipo) => tipo.Id));
+    return tipos.filter((tipo) => !fuera.has(tipo.Id));
 }
 
 function normalizeCategoria(raw: any): CategoriaObjeto {
@@ -127,9 +153,11 @@ export function normalizeEquipoCatalogos(raw: any): EquipoCatalogos {
                 const ref = normalizeEquipoRef(item);
                 return ref ? {
                     ...ref,
+                    Cifra_ficha: cifraFichaObjetivo(item?.Cifra_ficha),
                     Lista_del_rasgo: LISTAS_DEL_RASGO.find((lista) => lista === item?.Lista_del_rasgo) ?? null,
                     De_siempre_en_el_rasgo: toBoolean(item?.De_siempre_en_el_rasgo),
                     Caracteristica_en_el_rasgo: toBoolean(item?.Caracteristica_en_el_rasgo),
+                    Tipos_no_validos: normalizeEquipoRefs(item?.Tipos_no_validos),
                 } : null;
             })
             .filter((item): item is EquipoObjetivoModificador => item !== null),

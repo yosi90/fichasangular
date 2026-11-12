@@ -259,7 +259,7 @@ describe('La CD de un rasgo con todos los DG', () => {
 describe('Los sigilos de poder en las habilidades de la creación', () => {
     const SIN_TIPO = { Id: 19, Nombre: 'Sin tipo', Apila: true, Cuenta_toque: true, Cuenta_desprevenido: true };
     const aCaracteristica = (Id: number, Caracteristica: { Id: number; Nombre: string; }) => ({
-        Id, Objetivo: { Id: 18, Nombre: 'Pruebas de característica y habilidades' }, Tipo_bonificador: SIN_TIPO, Cantidad: 1,
+        Id, Objetivo: { Id: 18, Nombre: 'Pruebas de característica y habilidades', Cifra_ficha: 'pruebas_caracteristica' }, Tipo_bonificador: SIN_TIPO, Cantidad: 1,
         Condicion: null, Contra: [], Caracteristica, Cantidad_del_valor: true,
         Frase: `Pruebas de característica y habilidades de ${Caracteristica.Nombre} +1 (sin tipo)`,
     });

@@ -422,7 +422,7 @@
             <div class="insercion-paso" [hidden]="pasoActual !== 3">
                 <section class="insercion-tarjeta">
                     <h3 class="insercion-tarjeta__titulo">Bonificadores condicionales · {{bonificadoresRows.length}}</h3>
-                    <p class="racial-nota">Lo que el rasgo suma solo en un caso, como el +1 al ataque contra orcos y trasgoides o la esquiva +4 a la CA contra gigantes. La ficha lo enseña aparte y no lo suma. Sin condición cuenta siempre: a la CA, con su tipo, o a las pruebas de una característica y a todas sus habilidades, como un sigilo de poder. Las salvaciones, las características y las habilidades concretas van en sus listas, con su condición.</p>
+                    <p class="racial-nota">Lo que el rasgo suma solo en un caso, como el +1 al ataque contra orcos y trasgoides o la esquiva +4 a la CA contra gigantes. La ficha lo enseña aparte y no lo suma. Sin condición cuenta siempre: a la CA, con su tipo; a las pruebas de una característica y a todas sus habilidades, como un sigilo de poder; o al nivel de lanzador de cada clase que lanza conjuros, como krau («Sin pasar de sus DG»: no sube el nivel de lanzador por encima de sus DG). Las salvaciones, las características y las habilidades concretas van en sus listas, con su condición.</p>
                     <p class="error-de-lista" role="alert" *ngIf="errorBonificadores">{{errorBonificadores}}</p>
                     <p class="lista-vacia" *ngIf="bonificadoresRows.length < 1">Sin bonificadores condicionales.</p>
                     <div class="subpanel" *ngFor="let fila of bonificadoresRows; let indice = index; trackBy: trackByUid">
@@ -450,7 +450,7 @@
                             <mat-form-field appearance="fill">
                                 <mat-label>Tipo de bonificador</mat-label>
                                 <mat-select [(ngModel)]="fila.id_tipo_bonificador" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorBonificadores()">
-                                    <mat-option *ngFor="let item of opcionesCon(tiposBonificador, fila.id_tipo_bonificador)" [value]="item.Id">{{item.Nombre}}</mat-option>
+                                    <mat-option *ngFor="let item of tiposDeBonificador(fila)" [value]="item.Id">{{item.Nombre}}</mat-option>
                                 </mat-select>
                             </mat-form-field>
                             <mat-form-field appearance="fill">
@@ -458,9 +458,12 @@
                                 <input matInput type="number" min="-100" max="100" step="1" [(ngModel)]="fila.cantidad" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorBonificadores()">
                                 <mat-hint>Negativa, un penalizador; nunca 0.</mat-hint>
                             </mat-form-field>
-                            <mat-chip-listbox class="boolean-chips" aria-label="Si la cantidad crece con el rasgo">
+                            <mat-chip-listbox class="boolean-chips" aria-label="Si la cantidad crece con el rasgo y si tiene tope">
                                 <mat-chip-option [selected]="fila.cantidad_del_valor" (click)="alternarCantidadDelValor(fila)">
                                     La cantidad sigue la cifra del rasgo
+                                </mat-chip-option>
+                                <mat-chip-option [selected]="fila.tope_dg" (click)="alternarTopeDg(fila)">
+                                    Sin pasar de sus DG
                                 </mat-chip-option>
                             </mat-chip-listbox>
                             <mat-form-field appearance="fill" class="insercion-campos__entero">

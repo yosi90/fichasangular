@@ -1,4 +1,7 @@
-import { EquipoAura, EquipoRef, ModificadorCuerpo, ModificadorEstructurado, RequisitosCuerpo } from 'src/app/interfaces/equipo';
+import { EquipoAura, EquipoObjetivoModificador, EquipoRef, ModificadorCuerpo, ModificadorEstructurado, RequisitosCuerpo } from 'src/app/interfaces/equipo';
+import { textoConSigno } from './equipo-texto';
+import { tiposValidosConObjetivo } from './equipo-mapper';
+import { conOpcionDeLaFila } from './opcion-sin-valor';
 import { toNullableText, toNumber, toNumberOrNull, toText } from './normalizacion';
 
 /**
@@ -103,6 +106,34 @@ export function requisitosDelCuerpo(relaciones: RelacionesMagicas): RequisitosCu
 
 export function escuelasDelCuerpo(relaciones: RelacionesMagicas): number[] {
     return relaciones.escuelas.map((escuela) => escuela.id);
+}
+
+/**
+ * La cabecera de un modificador en su fila, igual en los dos editores (los modificadores de `<app-equipo-magia>` y los
+ * bonificadores de `nueva-racial`; guía de inserciones): «1 · Ataque +1 (racial)», con la frase de la API (el objetivo,
+ * la cifra con su signo y el tipo entre paréntesis) y, si el objetivo pide una característica o una habilidad, «de …»
+ * («2 · Pruebas de característica y habilidades de Fuerza +1 (sin tipo)»). Sin objetivo, «Sin objetivo»; sin cifra o sin
+ * tipo, sin ellos.
+ */
+export function resumenDeModificador(objetivos: readonly EquipoRef[], tipos: readonly EquipoRef[], fila: {
+    id_objetivo: number | null; id_tipo_bonificador: number | null; cifra: number | string | null; de?: string | null;
+}, indice: number): string {
+    const de = toText(fila.de).trim();
+    const objetivo = (objetivos.find((item) => item.Id === fila.id_objetivo)?.Nombre ?? 'Sin objetivo') + (de ? ` de ${de}` : '');
+    const tipo = tipos.find((item) => item.Id === fila.id_tipo_bonificador)?.Nombre;
+    const cifra = fila.cifra === null || fila.cifra === undefined || `${fila.cifra}`.trim() === '' ? '' : ` ${textoConSigno(Number(fila.cifra))}`;
+    return `${indice + 1} · ${objetivo}${cifra}${tipo ? ` (${tipo.toLowerCase()})` : ''}`;
+}
+
+/**
+ * Los tipos de bonificador que se ofrecen en una fila: los que valen con su objetivo (sin sus `Tipos_no_validos`: la
+ * «Mejora» a la CA, que va como la de la armadura, la del escudo o la de la armadura natural) y, si la fila ya trae uno que
+ * no está, ese, para no perderlo. Los dos editores.
+ */
+export function tiposDeLaFila<T extends EquipoRef>(tipos: readonly T[], objetivos: readonly EquipoObjetivoModificador[],
+    idObjetivo: number | null, idTipo: number | null): EquipoRef[] {
+    const objetivo = objetivos.find((item) => item.Id === idObjetivo);
+    return conOpcionDeLaFila(tiposValidosConObjetivo(tipos, objetivo), idTipo);
 }
 
 /** Un problema de una lista, con el `field` de la API en el que se enseña («modificadores[1]»). */
