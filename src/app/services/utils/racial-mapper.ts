@@ -26,9 +26,11 @@ function pick(raw: any, ...keys: string[]): any {
  * característica de su CD, su cifra a esa edad, la categoría en la que se ganó y la CD ya calculada. Igual en la API, la
  * caché y la ficha; sin dato, cada campo es `null`.
  */
-export function camposEdadRacial(raw: any): Pick<RacialDetalle, 'Caracteristica_cd' | 'Valor' | 'Categoria_edad' | 'Cd'> {
+export function camposEdadRacial(raw: any): Pick<RacialDetalle, 'Caracteristica_cd' | 'Cd_dg_totales' | 'Valor' | 'Categoria_edad' | 'Cd'> {
     return {
         Caracteristica_cd: toRefIdNombre(raw?.Caracteristica_cd),
+        // Si la CD cuenta todos los DG del personaje (caché `razas` 29); sin el campo, no.
+        Cd_dg_totales: toBoolean(raw?.Cd_dg_totales),
         Valor: toNullableText(raw?.Valor),
         Categoria_edad: toRefIdNombre(raw?.Categoria_edad),
         Cd: toNumberOrNull(raw?.Cd),
@@ -56,6 +58,7 @@ export function normalizarProgresionRacial(raw: any, normalizarGana: (gana: any)
                 Tipo_dote: toRefIdNombre(fila.Tipo_dote),
                 Velocidad: tipo ? { Tipo: tipo, Pies: toNumber(velocidad.Pies), Maniobrabilidad: toRefIdNombre(velocidad.Maniobrabilidad) } : null,
                 Valor: toNullableText(fila.Valor),
+                Elige_opcional: toNumber(fila.Elige_opcional) > 0 ? Math.trunc(toNumber(fila.Elige_opcional)) : null,
                 Frase: toText(fila.Frase),
             } as RacialProgresion;
         });

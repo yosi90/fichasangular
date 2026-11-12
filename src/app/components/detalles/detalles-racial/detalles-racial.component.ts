@@ -5,7 +5,7 @@ import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
 import { toBoolean } from 'src/app/services/utils/normalizacion';
 import { textoVisible, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
-import { frasesProgresionRacial } from 'src/app/services/utils/racial-progresion';
+import { frasesProgresionRacial, textoCdRacial } from 'src/app/services/utils/racial-progresion';
 import { frasesBonificadoresCondicionales } from 'src/app/services/utils/habilidades-raciales';
 import {
     CondicionPrerrequisito,
@@ -54,6 +54,8 @@ export class DetallesRacialComponent {
     ataques: string[] = [];
     /** Lo que da o cambia al llegar a N DG o a nivel N (las frases de la API). */
     progresion: string[] = [];
+    /** Cómo sale la CD del rasgo («10 + ½ de todos sus DG + su modificador de Constitución»), o `null`. */
+    cd: string | null = null;
     /** Lo que suma solo en un caso (el +1 al ataque contra orcos y trasgoides), con las frases de la API. */
     bonificadoresCondicionales: string[] = [];
     /** Magic of Incarnum: la esencia que da y si es receptáculo. */
@@ -88,6 +90,7 @@ export class DetallesRacialComponent {
             .filter((descripcion) => tieneTextoVisible(descripcion));
         this.datosEsencia = datosVisibles(datosEsenciaRasgo(value?.Esencia));
         this.progresion = frasesProgresionRacial(value) ?? [];
+        this.cd = textoCdRacial(value);
         this.bonificadoresCondicionales = frasesBonificadoresCondicionales(value) ?? [];
     }
 

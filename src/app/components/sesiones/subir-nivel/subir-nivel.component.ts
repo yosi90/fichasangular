@@ -12,6 +12,7 @@ import { SelectorDominiosModalComponent } from 'src/app/components/nuevo-persona
 import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import { SelectorEnemigoPredilectoModalComponent } from 'src/app/components/nuevo-personaje/selector-enemigo-predilecto-modal/selector-enemigo-predilecto-modal.component';
 import { SelectorEspecialidadMagicaModalComponent } from 'src/app/components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
+import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { Clase } from 'src/app/interfaces/clase';
 import { Conjuro } from 'src/app/interfaces/conjuro';
 import { Personaje } from 'src/app/interfaces/personaje';
@@ -415,6 +416,10 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         const contexto = `${clase.Nombre} nivel ${this.nivelClase}`;
         this.svc.registrarAumentosPendientesPorEspeciales(resultado.especialesAplicados ?? [], contexto);
         this.svc.registrarAumentosPendientesPorProgresion(contexto);
+        if (!await this.resolverEleccionesRaciales()) {
+            await this.descartar(false);
+            return;
+        }
         this.svc.registrarDotesPendientesPorRazaExtras(`${this.svc.RazaSeleccionada?.Nombre ?? 'Raza'}`);
         this.svc.registrarDotesPendientesPorEspeciales(resultado.especialesAplicados ?? [], contexto);
         this.svc.registrarDotesPendientesPorProgresion(contexto);
@@ -437,6 +442,32 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     private nivelDe(clase: Clase): number {
         return toInt((this.svc.PersonajeCreacion.desgloseClases ?? []).find((c) => normalizarTexto(c?.Nombre ?? '') === normalizarTexto(clase.Nombre))?.Nivel) + 1;
+    }
+
+    /**
+     * Lo que la progresión de sus rasgos le deja elegir a este nivel (`Elige_opcional`: el segundo sigilo de poder del
+     * iluminiano a 2.º nivel), con el selector de raciales opcionales de la creación y solo los de ese grupo que aún no
+     * tiene. `false` si se cierra sin elegir.
+     */
+    private async resolverEleccionesRaciales(): Promise<boolean> {
+        while (true) {
+            const pendiente = this.svc.getEleccionesRacialesPendientes()[0];
+            if (!pendiente)
+                return true;
+            if (pendiente.opciones.length < 1) {
+                this.svc.omitirEleccionRacialPendiente(pendiente.clave);
+                continue;
+            }
+            const seleccion = await this.abrirModal<Record<number, string>>(SelectorRacialesOpcionalesModalComponent, {
+                grupos: this.svc.gruposDeEleccionRacial(pendiente), titulo: `Otro rasgo: ${pendiente.origen}`,
+                razaContextoNombre: `${this.svc.RazaSeleccionada?.Nombre ?? ''}`.trim(),
+            }, ['confirmar'], ['cerrar']);
+            if (!seleccion)
+                return false;
+            const idRacial = this.svc.idRacialDeEleccion(pendiente, seleccion[pendiente.grupo]);
+            if (idRacial === null || !this.svc.aplicarEleccionRacialPendiente(pendiente.clave, idRacial))
+                continue;
+        }
     }
 
     private async resolverEspecialidad(clase: Clase): Promise<boolean> {

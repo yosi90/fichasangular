@@ -841,6 +841,11 @@ describe('RazaService helpers', () => {
         expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/21\/sobre\/18$/));
         expect(raza).toEqual(normalizeRazaApi(PROLE_SOBRE_API['18']));
         expect([raza.Id, raza.Ajuste_nivel, raza.Dgs_adicionales.Cantidad]).toEqual([21, 1, 2]);
+        // A una edad de la base (`?idPasoEdad=`); sin paso o con 0, sin él.
+        await service.getRazaSobreBase(952, 864, 3053);
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/952\/sobre\/864\?idPasoEdad=3053$/));
+        await service.getRazaSobreBase(952, 864, 0);
+        expect(http.get).toHaveBeenCalledWith(jasmine.stringMatching(/razas\/952\/sobre\/864$/));
     });
 
     it('getRazaSobreBase da el texto del error de la API (raza_base_no_cumple_requisitos)', async () => {
@@ -879,7 +884,7 @@ describe('RazaService helpers', () => {
 
     it('comprobarRequisitosDelPersonaje manda POST /razas/{id}/requisitos-del-personaje con lo que sabe la creación', async () => {
         const consulta = { idRazaBase: 25, idAlineamiento: 3, caracteristicas: { inteligencia: 2 }, clases: [{ idClase: 9, nivel: 1 }],
-            plantillas: [], subtipos: [], dotes: [12], progresionLanzador: null };
+            plantillas: [], subtipos: [], dotes: [12], progresionLanzador: null, idPasoEdad: 3053 };
         const requisitos = [
             { Frase: 'Cualquier alineamiento no maligno', Cumple: true, Confirma_master: false },
             { Frase: 'Inteligencia 3', Cumple: false, Confirma_master: false },
@@ -900,7 +905,7 @@ describe('RazaService helpers', () => {
         const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
 
         await expectAsync(service.comprobarRequisitosDelPersonaje(5, { idRazaBase: null, idAlineamiento: null,
-            caracteristicas: {}, clases: [], plantillas: [], subtipos: [], dotes: [], progresionLanzador: null }))
+            caracteristicas: {}, clases: [], plantillas: [], subtipos: [], dotes: [], progresionLanzador: null, idPasoEdad: null }))
             .toBeRejectedWithError(mensaje);
     });
 

@@ -65,6 +65,11 @@ export interface RacialProgresion {
     Velocidad: RacialProgresionVelocidad | null;
     /** La cifra del propio rasgo desde ahí (el daño del aliento). */
     Valor: string | null;
+    /**
+     * Una elección más del grupo opcional de rasgos de su raza con ese número (`Opcional`), distinta de los que ya tiene:
+     * el segundo sigilo de poder del iluminiano a 2.º nivel. `null` si no.
+     */
+    Elige_opcional: number | null;
     /** La frase para el jugador: «A los 6 DG: gana Visión en la oscuridad 60' en lugar de Visión en la oscuridad 30'.» */
     Frase: string;
 }
@@ -111,6 +116,8 @@ export interface RacialDetalle {
     Esencia?: EsenciaRasgo | null;
     /** La característica de la CD de la aptitud (10 + ½ DG raciales + su modificador); `null` si no tiene. */
     Caracteristica_cd?: { Id: number; Nombre: string; } | null;
+    /** Si esa CD cuenta todos los DG del personaje y no solo los raciales (el aliento del aspecto dracónico del corazón). */
+    Cd_dg_totales?: boolean;
     /** En una raza por edades: su cifra a esa edad («4d10»), si la edad la cambia. */
     Valor?: string | null;
     /** En una raza resuelta a una edad: la categoría en la que se ganó. */

@@ -32,8 +32,10 @@ import { rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPla
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
-import { resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
-import { aplicarProgresionRacial, ResultadoProgresionRacial, tieneProgresionRacial, velocidadConProgresion } from './utils/racial-progresion';
+import { getClaveSeleccionRacial, resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
+import { evaluarRacialParaSeleccion } from './utils/racial-prerrequisitos';
+import type { GrupoRacialOpcionalModal } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
+import { aplicarProgresionRacial, momentoDeProgresion, ResultadoProgresionRacial, tieneProgresionRacial, velocidadConProgresion } from './utils/racial-progresion';
 import { esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
@@ -780,6 +782,18 @@ export type DoteFuentePendiente = 'nivel' | 'adicional' | 'raza' | 'raza_dg';
 export type DoteEstadoPendiente = 'pendiente' | 'resuelta' | 'omitida';
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
 
+/**
+ * Una elección más de un grupo opcional de rasgos de su raza que da la progresión de un rasgo y aún no ha hecho (el
+ * segundo sigilo de poder del iluminiano a 2.º nivel): los rasgos de ese grupo que todavía no tiene.
+ */
+export interface EleccionRacialPendiente {
+    clave: string;
+    grupo: number;
+    /** «Sigilos de poder (iluminiano), a nivel 2». */
+    origen: string;
+    opciones: RacialDetalle[];
+}
+
 export interface DotePendienteState {
     id: number;
     fuente: DoteFuentePendiente;
@@ -1039,6 +1053,14 @@ interface NuevoPersonajeDraftV1 {
     dotesAdicionalesRazaConcedidas?: number;
     /** Las dotes de la progresión de los raciales ya concedidas (`DoteDeProgresion.Clave`). */
     dotesProgresionRacialConcedidas?: string[];
+    /** Las elecciones de un grupo opcional de la progresión ya hechas (`EleccionDeProgresion.Clave`). */
+    eleccionesProgresionRacialConcedidas?: string[];
+    /** Los rasgos opcionales de la raza elegida (los de cada grupo, antes de elegir), para esas elecciones. */
+    racialesOpcionalesRaza?: RacialDetalle[];
+    /** Los rasgos elegidos con esas elecciones (el segundo sigilo de poder del iluminiano). */
+    racialesElegidosPorProgresion?: RacialDetalle[];
+    /** Las dotes de los rasgos ganados por la progresión ya añadidas (`racial:dote:extra`). */
+    dotesRasgosGanadosConcedidas?: string[];
     dgsCompaneroRepartidos?: number;
     /** Si ya se repartieron las habilidades y la dote del DG racial único al terminar sin clases. */
     dgRacialSinClasesRepartido?: boolean;
@@ -1164,6 +1186,17 @@ export class NuevoPersonajeService {
     private dotesAdicionalesRazaConcedidas = 0;
     /** Las dotes de la progresión de los raciales ya concedidas (`DoteDeProgresion.Clave`: rasgo, medida, desde y tipo). */
     private dotesProgresionRacialConcedidas = new Set<string>();
+    /** Las elecciones de un grupo opcional que da la progresión, ya hechas u omitidas (`EleccionDeProgresion.Clave`). */
+    private eleccionesProgresionRacialConcedidas = new Set<string>();
+    /**
+     * Los rasgos opcionales de la raza elegida, todos los de cada grupo (al elegir la raza solo queda el elegido): de ellos
+     * salen las elecciones de la progresión. Sin ellos (la subida de nivel, con la raza del catálogo), los de la raza.
+     */
+    private racialesOpcionalesRaza: RacialDetalle[] = [];
+    /** Los rasgos elegidos con esas elecciones: cuentan como los de la raza (sus salvaciones, sus dotes). */
+    private racialesElegidosPorProgresion: RacialDetalle[] = [];
+    /** Las dotes de los rasgos que da la progresión (o se eligen con ella) ya añadidas al personaje (`racial:dote:extra`). */
+    private dotesRasgosGanadosConcedidas = new Set<string>();
     /**
      * Una raza con 1 DG racial lo cambia por su primer nivel de clase (`dgRacialSustituible`): sus habilidades y su dote
      * solo se reparten si termina sin clases, y entonces una sola vez.
@@ -1491,6 +1524,10 @@ export class NuevoPersonajeService {
         this.dotesExtraRazaConcedidas = 0;
         this.dotesAdicionalesRazaConcedidas = 0;
         this.dotesProgresionRacialConcedidas.clear();
+        this.eleccionesProgresionRacialConcedidas.clear();
+        this.racialesOpcionalesRaza = [];
+        this.racialesElegidosPorProgresion = [];
+        this.dotesRasgosGanadosConcedidas.clear();
         this.dgRacialSinClasesRepartido = false;
         this.dgsCompaneroRepartidos = 0;
         this.habilidadesDeClasePorOrigen = {};
@@ -1552,6 +1589,8 @@ export class NuevoPersonajeService {
             return false;
 
         const razaEfectiva = this.copiarRaza(raza);
+        // Todos los opcionales de cada grupo, antes de quedarse con el elegido: las elecciones de la progresión salen de ahí.
+        this.racialesOpcionalesRaza = this.copiarRaciales(razaEfectiva.Raciales).filter((racial) => toInt(racial?.Opcional) > 0);
         const racialesEfectivos = resolverRacialesFinales(
             this.copiarRaciales(razaEfectiva.Raciales),
             seleccionOpcionales
@@ -1640,6 +1679,9 @@ export class NuevoPersonajeService {
         this.dotesExtraRazaConcedidas = 0;
         this.dotesAdicionalesRazaConcedidas = 0;
         this.dotesProgresionRacialConcedidas.clear();
+        this.eleccionesProgresionRacialConcedidas.clear();
+        this.racialesElegidosPorProgresion = [];
+        this.dotesRasgosGanadosConcedidas.clear();
         this.dgRacialSinClasesRepartido = false;
         this.dgsCompaneroRepartidos = 0;
         this.habilidadesDeClasePorOrigen = {};
@@ -3008,12 +3050,135 @@ export class NuevoPersonajeService {
     }
 
     /**
+     * Las elecciones de un grupo opcional que da la progresión de sus rasgos (`Elige_opcional`: el segundo sigilo de poder
+     * del iluminiano a 2.º nivel) y aún no ha hecho, con los rasgos de ese grupo de su raza que todavía no tiene. Los del
+     * grupo son los de la raza elegida antes de quedarse con uno (`racialesOpcionalesRaza`) o, en la subida de nivel, los
+     * de la raza del catálogo.
+     */
+    getEleccionesRacialesPendientes(): EleccionRacialPendiente[] {
+        const tiene = new Set((this.personajeCreacion?.Raciales ?? []).map((racial) => toInt(racial?.Id)));
+        const delGrupo = this.racialesOpcionalesRaza.length > 0
+            ? this.racialesOpcionalesRaza
+            : (this.razaSeleccionada?.Raciales ?? []).filter((racial) => toInt(racial?.Opcional) > 0);
+        return this.progresionRacialActual().elecciones
+            .filter((eleccion) => !this.eleccionesProgresionRacialConcedidas.has(eleccion.Clave))
+            .map((eleccion) => ({
+                clave: eleccion.Clave,
+                grupo: eleccion.Grupo,
+                origen: `${eleccion.Racial.Nombre}, ${momentoDeProgresion(eleccion)}`,
+                opciones: this.copiarRaciales(delGrupo.filter((racial) =>
+                    toInt(racial?.Opcional) === eleccion.Grupo && !tiene.has(toInt(racial?.Id)))),
+            }));
+    }
+
+    /**
+     * Elige el rasgo de una elección de la progresión: pasa a sus rasgos con su origen (como uno de la raza: con sus
+     * efectos, sus salvaciones y sus dotes). `false` si la elección no está pendiente o el rasgo no es de sus opciones.
+     */
+    aplicarEleccionRacialPendiente(clave: string, idRacial: number): boolean {
+        const pendiente = this.getEleccionesRacialesPendientes().find((eleccion) => eleccion.clave === clave);
+        const elegido = pendiente?.opciones.find((racial) => toInt(racial?.Id) === toInt(idRacial));
+        if (!pendiente || !elegido)
+            return false;
+        const racial: RacialDetalle = { ...this.copiarRaciales([elegido])[0], Origen: pendiente.origen };
+        this.eleccionesProgresionRacialConcedidas.add(clave);
+        this.racialesElegidosPorProgresion = [...this.racialesElegidosPorProgresion, racial];
+        const sinRepetir = (lista: RacialDetalle[]) => lista.some((r) => toInt(r?.Id) === toInt(racial.Id)) ? lista : [...lista, racial];
+        this.estadoFlujo.ventajas.baseRaciales = sinRepetir(this.estadoFlujo.ventajas.baseRaciales ?? []);
+        this.personajeCreacion.Raciales = sinRepetir(this.personajeCreacion.Raciales ?? []);
+        if (this.estadoFlujo.ventajas.baseCaracteristicas !== null)
+            this.recalcularEfectosVentajas();
+        this.agregarDotesDeRasgosGanados();
+        this.programarPersistenciaBorradorLocal();
+        return true;
+    }
+
+    /**
+     * El grupo de una elección de la progresión para el selector de raciales opcionales (la creación y la subida de nivel):
+     * cada rasgo con lo que cumple de sus prerrequisitos (raza y características), con la identidad del personaje.
+     */
+    gruposDeEleccionRacial(pendiente: EleccionRacialPendiente): GrupoRacialOpcionalModal[] {
+        const identidad = this.identidadPrerrequisitosActual();
+        const pj = this.personajeCreacion;
+        const caracteristicas = {
+            Fuerza: toNumber(pj?.Fuerza), Destreza: toNumber(pj?.Destreza), Constitucion: toNumber(pj?.Constitucion),
+            Inteligencia: toNumber(pj?.Inteligencia), Sabiduria: toNumber(pj?.Sabiduria), Carisma: toNumber(pj?.Carisma),
+        };
+        return [{
+            grupo: pendiente.grupo,
+            opciones: pendiente.opciones.map((racial) => {
+                const evaluacion = evaluarRacialParaSeleccion(racial, identidad, caracteristicas);
+                return {
+                    clave: getClaveSeleccionRacial(racial),
+                    racial,
+                    estado: evaluacion.estado,
+                    razones: [...(evaluacion.razones ?? [])],
+                    advertencias: [...(evaluacion.advertencias ?? [])],
+                };
+            }),
+        }];
+    }
+
+    /** El rasgo de una elección pendiente que corresponde a la clave del selector (`getClaveSeleccionRacial`). */
+    idRacialDeEleccion(pendiente: EleccionRacialPendiente, clave: string | null | undefined): number | null {
+        const racial = pendiente.opciones.find((opcion) => getClaveSeleccionRacial(opcion) === `${clave ?? ''}`.trim());
+        return racial ? toInt(racial.Id) : null;
+    }
+
+    /** Da por hecha una elección sin elegir nada (no quedan rasgos de su grupo que no tenga). */
+    omitirEleccionRacialPendiente(clave: string): void {
+        this.eleccionesProgresionRacialConcedidas.add(clave);
+        this.programarPersistenciaBorradorLocal();
+    }
+
+    /**
+     * Los rasgos de su raza con lo que les da la progresión (los que gana a N DG o a nivel N, sin los que deja de tener) y
+     * los elegidos con ella. Las salvaciones de la raza salen de aquí (`aplicarSalvacionesRaza`).
+     */
+    private rasgosDeLaRazaConProgresion(raza: Raza | null = this.razaSeleccionada): RacialDetalle[] {
+        return this.progresionRacialActual([...(raza?.Raciales ?? []), ...this.racialesElegidosPorProgresion]).raciales;
+    }
+
+    /** Los rasgos que tiene además de los de su raza: los que gana con la progresión y los elegidos con ella. */
+    private rasgosGanadosPorLaProgresion(raza: Raza | null = this.razaSeleccionada): RacialDetalle[] {
+        const deLaRaza = new Set((raza?.Raciales ?? []).map((racial) => toInt(racial?.Id)));
+        return this.rasgosDeLaRazaConProgresion(raza).filter((racial) => !deLaRaza.has(toInt(racial?.Id)));
+    }
+
+    /**
+     * Las dotes de los rasgos que gana con la progresión o elige con ella (`racial_dotes`), una vez cada una: las de los
+     * rasgos de su raza se añaden al elegirla (`agregarDotesDeRaza`).
+     */
+    private agregarDotesDeRasgosGanados(): void {
+        this.rasgosGanadosPorLaProgresion().forEach((racial) => (racial?.Dotes ?? [])
+            .filter((entrada) => toNumber(entrada?.Id_dote) > 0)
+            .forEach((entrada) => {
+                const clave = `${toInt(racial.Id)}:${toNumber(entrada.Id_dote)}:${toNumber(entrada?.Id_extra)}`;
+                if (this.dotesRasgosGanadosConcedidas.has(clave))
+                    return;
+                this.dotesRasgosGanadosConcedidas.add(clave);
+                const dote = this.doteDelCatalogo(toNumber(entrada.Id_dote))
+                    ?? this.crearDotePlaceholder(toNumber(entrada.Id_dote), `${entrada?.Dote ?? ''}`.trim());
+                this.agregarDoteAlPersonaje(dote, `${racial?.Nombre ?? ''}`.trim(), toNumber(entrada?.Id_extra),
+                    `${entrada?.Extra ?? ''}`.trim() || 'No aplica');
+            }));
+    }
+
+    /** En la subida de nivel: lo que la progresión de sus rasgos ya le dio (lo eligió al crearlo o al subir) no se repite. */
+    private marcarProgresionRacialConcedida(): void {
+        this.progresionRacialActual().elecciones.forEach((eleccion) => this.eleccionesProgresionRacialConcedidas.add(eleccion.Clave));
+        this.rasgosGanadosPorLaProgresion().forEach((racial) => (racial?.Dotes ?? []).forEach((entrada) =>
+            this.dotesRasgosGanadosConcedidas.add(`${toInt(racial.Id)}:${toNumber(entrada?.Id_dote)}:${toNumber(entrada?.Id_extra)}`)));
+    }
+
+    /**
      * Las dotes que da la raza: las de sus DG raciales (`Dgs_adicionales.Dotes_extra`) y su dote adicional
      * (`Dotes_adicionales`, la del humano), que se concede una vez, en el primer DG o nivel del personaje: con DG
      * raciales, al repartir los de la raza (antes de cualquier clase); sin ellos, con el primer nivel de clase. Las dos
      * salen de los datos de la raza, también de una homebrew.
      */
     registrarDotesPendientesPorRazaExtras(origen: string): DotePendienteState[] {
+        this.agregarDotesDeRasgosGanados();
         const origenNormalizado = `${origen ?? ''}`.trim() || `${this.razaSeleccionada?.Nombre ?? 'Raza'}`;
         // Las del DG racial único, solo al terminar sin clases (con sus habilidades); con un nivel de clase no cuentan.
         const cuentanLasDeLosDg = !this.dgRacialSustituible()
@@ -6169,10 +6334,9 @@ export class NuevoPersonajeService {
         (['fortaleza', 'reflejos', 'voluntad'] as SalvacionKey[])
             .forEach((tipo) => registrar(tipo, deDgsRaciales[tipo], `${nombreRaza} DG racial`));
 
-        const racialesRaw = raza?.Raciales;
-        const raciales = Array.isArray(racialesRaw)
-            ? racialesRaw
-            : (racialesRaw && typeof racialesRaw === 'object' ? Object.values(racialesRaw as any) : []);
+        // Los de su raza con lo que les da la progresión: también los que gana a N DG o a nivel N o elige con ella, sin
+        // los que deja de tener (los de sus plantillas van aparte).
+        const raciales = this.rasgosDeLaRazaConProgresion(raza);
         raciales.forEach((racial: any) => {
             const nombreRacial = `${racial?.Nombre ?? racial?.nombre ?? 'Racial'}`.trim() || 'Racial';
             const origen = `${nombreRaza} - ${nombreRacial}`;
@@ -9900,6 +10064,10 @@ export class NuevoPersonajeService {
             dotesExtraRazaConcedidas: Math.max(0, toInt(this.dotesExtraRazaConcedidas)),
             dotesAdicionalesRazaConcedidas: Math.max(0, toInt(this.dotesAdicionalesRazaConcedidas)),
             dotesProgresionRacialConcedidas: [...this.dotesProgresionRacialConcedidas],
+            eleccionesProgresionRacialConcedidas: [...this.eleccionesProgresionRacialConcedidas],
+            racialesOpcionalesRaza: this.clonarProfundo(this.racialesOpcionalesRaza),
+            racialesElegidosPorProgresion: this.clonarProfundo(this.racialesElegidosPorProgresion),
+            dotesRasgosGanadosConcedidas: [...this.dotesRasgosGanadosConcedidas],
             dgsCompaneroRepartidos: Math.max(0, toInt(this.dgsCompaneroRepartidos)),
             dgRacialSinClasesRepartido: this.dgRacialSinClasesRepartido,
             habilidadesDeClasePorOrigen: this.clonarProfundo(this.habilidadesDeClasePorOrigen),
@@ -9983,6 +10151,10 @@ export class NuevoPersonajeService {
         this.dotesExtraRazaConcedidas = Math.max(0, toInt(borrador.dotesExtraRazaConcedidas));
         this.dotesAdicionalesRazaConcedidas = Math.max(0, toInt(borrador.dotesAdicionalesRazaConcedidas));
         this.dotesProgresionRacialConcedidas = new Set((borrador.dotesProgresionRacialConcedidas ?? []).map((c) => `${c}`));
+        this.eleccionesProgresionRacialConcedidas = new Set((borrador.eleccionesProgresionRacialConcedidas ?? []).map((c) => `${c}`));
+        this.racialesOpcionalesRaza = this.copiarRaciales(borrador.racialesOpcionalesRaza ?? []);
+        this.racialesElegidosPorProgresion = this.copiarRaciales(borrador.racialesElegidosPorProgresion ?? []);
+        this.dotesRasgosGanadosConcedidas = new Set((borrador.dotesRasgosGanadosConcedidas ?? []).map((c) => `${c}`));
         this.dgsCompaneroRepartidos = Math.max(0, toInt(borrador.dgsCompaneroRepartidos));
         this.dgRacialSinClasesRepartido = borrador.dgRacialSinClasesRepartido === true;
         this.habilidadesDeClasePorOrigen = this.clonarProfundo(borrador.habilidadesDeClasePorOrigen ?? {});
@@ -10954,6 +11126,7 @@ export class NuevoPersonajeService {
         });
 
         // Lo ya concedido: se registra lo que le toca con lo que tiene y se descarta (ya lo eligió).
+        this.marcarProgresionRacialConcedida();
         this.registrarDotesPendientesPorRazaExtras('');
         this.registrarDotesPendientesPorProgresion('');
         this.registrarAumentosPendientesPorProgresion('');

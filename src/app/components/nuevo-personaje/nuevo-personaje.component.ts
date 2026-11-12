@@ -409,6 +409,9 @@ const DEFAULT_CAMPAIGN_CREATION_POLICY: CampaignCreationPolicy = {
     permitirClasesDeMonstruo: true,
 };
 
+/** El título del selector de raciales opcionales al elegir la raza. */
+const TITULO_RACIALES_OPCIONALES = 'Seleccionar raciales opcionales';
+
 @Component({
     selector: 'app-nuevo-personaje',
     templateUrl: './nuevo-personaje.component.html',
@@ -577,6 +580,8 @@ export class NuevoPersonajeComponent {
     razaContextoOpcionalesNombre = '';
     private seleccionRacialesOpcionalesPendiente: SeleccionRacialesOpcionales = {};
     private contextoRazaPendienteOpcionales: { raza: Raza; razaBase: Raza | null; } | null = null;
+    /** El título del selector de raciales opcionales: el de la raza o el de una elección de la progresión. */
+    tituloSelectorRacialesOpcionales = TITULO_RACIALES_OPCIONALES;
     /**
      * Lo que la raza mutada elegida pide del personaje (`Requisitos_del_personaje` de `GET /razas/{id}/bases`): se enseña
      * en Básicos, donde se elige el alineamiento, y lo comprueba la API al guardar. Una condición del máster
@@ -617,6 +622,8 @@ export class NuevoPersonajeComponent {
     /** La clase cuya especialización mágica se elige (para no volver a confirmar el homebrew de su escuela fija). */
     private claseEspecialidadEnCurso: Clase | null = null;
     private resolverSelectorDotes: ((seleccion: DoteSeleccionConfirmada | 'omitir' | null) => void) | null = null;
+    /** Con el selector de raciales abierto para una elección de la progresión: lo que se elige (`null`, cerrado sin elegir). */
+    private resolverEleccionRacial: ((clave: string | null) => void) | null = null;
     private resolverSelectorEnemigoPredilecto: ((seleccionId: number | null) => void) | null = null;
     private resolverSelectorExtraHabilidad: ((valor: string | null) => void) | null = null;
     selectorIdiomaTitulo = 'Seleccionar idioma extra';
@@ -725,6 +732,12 @@ export class NuevoPersonajeComponent {
     /** En una raza por edades: el paso de edad que se mira y la raza resuelta a esa edad (`GET /razas/{id}/pasos-edad/{idPaso}`). */
     pasoEdadMiradoId: number | null = null;
     razaMiradaAEdad: Raza | null = null;
+    /**
+     * Con una raza mutada sobre una base por edades (el nacido del Infierno sobre un dragón): la base, ya elegida. La raza
+     * que se mira es entonces la combinada (`GET /razas/{id}/sobre/{idBase}`), y su edad se elige como la de una raza por
+     * edades, a esa edad (`?idPasoEdad=`).
+     */
+    baseDeLaRazaMirada: Raza | null = null;
     cargandoRazaAEdad = false;
     errorRazaAEdad: string | null = null;
     private razaMiradaAEdadPasoId: number | null = null;
@@ -1001,8 +1014,9 @@ export class NuevoPersonajeComponent {
         }
     }
 
-    mirarRaza(raza: Raza): void {
+    mirarRaza(raza: Raza, base: Raza | null = null): void {
         this.razaMirada = raza;
+        this.baseDeLaRazaMirada = base;
         this.razaMiradaAEdad = null;
         this.razaMiradaAEdadPasoId = null;
         this.errorRazaAEdad = null;
@@ -1079,7 +1093,7 @@ export class NuevoPersonajeComponent {
         if (!raza || !razaPorEdades(raza))
             return [];
         const contexto = this.contextoEdad;
-        const clave = `${raza.Id}|${contexto.tipo}|${contexto.nepMaximo ?? ''}|${raza.Pasos_edad?.length ?? 0}`;
+        const clave = `${raza.Id}|${this.baseDeLaRazaMirada?.Id ?? ''}|${contexto.tipo}|${contexto.nepMaximo ?? ''}|${raza.Pasos_edad?.length ?? 0}`;
         if (this.opcionesEdadCache.clave !== clave)
             this.opcionesEdadCache = { clave, valor: opcionesEdad(raza, contexto) };
         return this.opcionesEdadCache.valor;
@@ -1099,7 +1113,11 @@ export class NuevoPersonajeComponent {
         this.cargandoRazaAEdad = true;
         this.errorRazaAEdad = null;
         try {
-            const resuelta = await this.razaSvc.getRazaEnPasoEdad(raza.Id, paso.Id);
+            // Una mutada sobre una base por edades: la combinación a esa edad de la base.
+            const base = this.baseDeLaRazaMirada;
+            const resuelta = base
+                ? await this.razaSvc.getRazaSobreBase(raza.Id, base.Id, paso.Id)
+                : await this.razaSvc.getRazaEnPasoEdad(raza.Id, paso.Id);
             if (peticion !== this.peticionRazaAEdad)
                 return;
             // Las edades de la raza se conservan aunque la respuesta a una edad no las traiga: Básicos limita los años con ellas.
@@ -1120,6 +1138,12 @@ export class NuevoPersonajeComponent {
             if (peticion === this.peticionRazaAEdad)
                 this.cargandoRazaAEdad = false;
         }
+    }
+
+    /** Deja de mirar la raza (y, con una mutada sobre una base por edades, su base). */
+    cerrarRazaMirada(): void {
+        this.razaMirada = null;
+        this.baseDeLaRazaMirada = null;
     }
 
     /** Lo que pinta la vista previa: la raza a la edad que se mira, si ya llegó; si no, la raza. */
@@ -1242,6 +1266,8 @@ export class NuevoPersonajeComponent {
                 };
             if (!opcion)
                 return { texto: 'Esta raza no tiene ninguna edad que puedas elegir como personaje jugador; créala como PNJ.', aviso: true };
+            if (this.baseDeLaRazaMirada)
+                return { texto: `Sobre ${this.baseDeLaRazaMirada.Nombre}: elige la edad de la raza base; cuentan sus DG y su ajuste con los de la mutación.`, aviso: false };
             return this.esPnjCreacion
                 ? { texto: 'Creando un PNJ: todas las edades, sin la política de la campaña.', aviso: false }
                 : { texto: 'Las edades sin ajuste de nivel solo se eligen creando un PNJ.', aviso: false };
@@ -2863,6 +2889,8 @@ export class NuevoPersonajeComponent {
             return;
         }
 
+        if (!await this.resolverEleccionesRacialesPendientes())
+            return;
         this.nuevoPSvc.registrarDotesPendientesPorRazaExtras(`${this.razaSeleccionada?.Nombre ?? 'Raza'}`);
         const dotesCompletadas = await this.resolverDotesPendientes();
         if (!dotesCompletadas)
@@ -3504,6 +3532,10 @@ export class NuevoPersonajeComponent {
      */
     seleccionarRaza(value: Raza): Promise<void> {
         this.cerrarSelectorRacialesOpcionalesContexto();
+        // La combinada a la edad elegida de su base por edades: ya está combinada (su base ya se eligió).
+        const base = this.baseDeLaRazaMirada;
+        if (base && esRazaMutada(value) && Number(value.Id) === Number(this.razaMirada?.Id))
+            return this.prepararSeleccionRazaFinal(value, base, true);
         if (!esRazaMutada(value)) {
             this.cerrarSelectorRazaBaseContexto();
             return this.prepararSeleccionRazaFinal(value, null);
@@ -3643,11 +3675,12 @@ export class NuevoPersonajeComponent {
      * La raza que se elige: con una raza mutada y su base, la que combina la API (`GET /razas/{id}/sobre/{idBase}`; la web
      * no combina); si no, la raza tal cual. Si tiene raciales opcionales, abre antes su selector.
      */
-    private async prepararSeleccionRazaFinal(raza: Raza, razaBase: Raza | null): Promise<void> {
+    private async prepararSeleccionRazaFinal(raza: Raza, razaBase: Raza | null, yaCombinada = false): Promise<void> {
         let razaElegida = raza;
-        if (esRazaMutada(raza) && razaBase) {
+        if (esRazaMutada(raza) && razaBase && !yaCombinada) {
             try {
-                razaElegida = await this.razaSvc.getRazaSobreBase(raza.Id, razaBase.Id);
+                // Si la mutada se miró a una edad (trae sus edades), a esa edad.
+                razaElegida = await this.razaSvc.getRazaSobreBase(raza.Id, razaBase.Id, raza.Paso_edad?.Id ?? null);
             } catch (error) {
                 Swal.fire({
                     icon: 'warning',
@@ -3655,6 +3688,12 @@ export class NuevoPersonajeComponent {
                     text: mensajeDeError(error, 'No se pudo aplicar la raza mutada sobre esa base.'),
                     showConfirmButton: true,
                 });
+                return;
+            }
+            // Una base por edades cuyas edades se quedan (el nacido del Infierno sobre un dragón): antes, su edad. Se mira la
+            // combinada como una raza por edades, a la derecha, y el pie la elige a esa edad (`baseDeLaRazaMirada`).
+            if (razaPorEdades(razaElegida) && !razaElegida.Paso_edad) {
+                this.mirarRaza(razaElegida, razaBase);
                 return;
             }
         }
@@ -3699,7 +3738,43 @@ export class NuevoPersonajeComponent {
     }
 
     onCerrarModalRacialesOpcionales(): void {
+        const resolver = this.resolverEleccionRacial;
+        this.resolverEleccionRacial = null;
         this.cerrarSelectorRacialesOpcionalesContexto();
+        resolver?.(null);
+    }
+
+    /**
+     * Las elecciones de un grupo opcional que da la progresión de sus rasgos (`Elige_opcional`: el segundo sigilo de poder
+     * del iluminiano a 2.º nivel), una a una, con el selector de raciales opcionales de la raza y solo los de ese grupo que
+     * aún no tiene. Sin ninguno que elegir, se da por hecha. `false` si se cierra sin elegir (el paso se queda donde está).
+     */
+    private async resolverEleccionesRacialesPendientes(): Promise<boolean> {
+        while (true) {
+            const pendiente = this.nuevoPSvc.getEleccionesRacialesPendientes()[0];
+            if (!pendiente)
+                return true;
+            if (pendiente.opciones.length < 1) {
+                this.nuevoPSvc.omitirEleccionRacialPendiente(pendiente.clave);
+                continue;
+            }
+            const raza = this.razaSeleccionada;
+            const grupos = this.nuevoPSvc.gruposDeEleccionRacial(pendiente);
+            const clave = await new Promise<string | null>((resolve) => {
+                this.resolverEleccionRacial = resolve;
+                this.razaContextoOpcionalesNombre = `${raza?.Nombre ?? ''}`.trim();
+                this.seleccionRacialesOpcionalesPendiente = {};
+                this.gruposRacialesOpcionalesModal = grupos;
+                this.tituloSelectorRacialesOpcionales = `Otro rasgo: ${pendiente.origen}`;
+                this.modalSelectorRacialesOpcionalesAbierto = true;
+            });
+            if (clave === null)
+                return false;
+            const idRacial = this.nuevoPSvc.idRacialDeEleccion(pendiente, clave);
+            if (idRacial === null || !this.nuevoPSvc.aplicarEleccionRacialPendiente(pendiente.clave, idRacial))
+                continue;
+            this.Personaje = this.nuevoPSvc.PersonajeCreacion;
+        }
     }
 
     onInformacionRacialesOpcionales(): void {
@@ -3727,7 +3802,7 @@ export class NuevoPersonajeComponent {
     }
 
     onConfirmarRacialesOpcionales(seleccion: SeleccionRacialesOpcionales): void {
-        if (!this.contextoRazaPendienteOpcionales)
+        if (!this.contextoRazaPendienteOpcionales && !this.resolverEleccionRacial)
             return;
         const seleccionValida = this.gruposRacialesOpcionalesModal.every((grupo) => {
             const clave = `${seleccion?.[grupo.grupo] ?? ''}`.trim();
@@ -3745,8 +3820,19 @@ export class NuevoPersonajeComponent {
             return;
         }
 
+        // Una elección de la progresión (un solo grupo): su rasgo, sin el aviso de homebrew (lo es de su raza, ya elegida).
+        if (this.resolverEleccionRacial) {
+            const resolver = this.resolverEleccionRacial;
+            this.resolverEleccionRacial = null;
+            const grupo = this.gruposRacialesOpcionalesModal[0];
+            this.cerrarSelectorRacialesOpcionalesContexto();
+            resolver(`${seleccion?.[grupo?.grupo ?? 0] ?? ''}`.trim());
+            return;
+        }
         // Antes de cerrar el selector: los raciales homebrew elegidos (si la raza o su base ya lo eran, ya se confirmó).
         const contexto = this.contextoRazaPendienteOpcionales;
+        if (!contexto)
+            return;
         const motivos = this.gruposRacialesOpcionalesModal.map((grupo) => {
             const clave = `${seleccion?.[grupo.grupo] ?? ''}`.trim();
             return motivoHomebrew('racial', grupo.opciones.find((opcion) => opcion.clave === clave)?.racial);
@@ -3819,6 +3905,7 @@ export class NuevoPersonajeComponent {
         this.razaContextoOpcionalesNombre = '';
         this.gruposRacialesOpcionalesModal = [];
         this.seleccionRacialesOpcionalesPendiente = {};
+        this.tituloSelectorRacialesOpcionales = TITULO_RACIALES_OPCIONALES;
     }
 
     private aplicarSeleccionRazaFinal(
@@ -4433,6 +4520,9 @@ export class NuevoPersonajeComponent {
         if (!aumentosCompletados)
             return;
 
+        // Lo que la progresión de sus rasgos le deja elegir a este nivel (el segundo sigilo de poder del iluminiano).
+        if (!await this.resolverEleccionesRacialesPendientes())
+            return;
         this.nuevoPSvc.registrarDotesPendientesPorRazaExtras(`${this.razaSeleccionada?.Nombre ?? 'Raza'}`);
         this.nuevoPSvc.registrarDotesPendientesPorEspeciales(resultado.especialesAplicados ?? [], contextoAumentos);
         this.nuevoPSvc.registrarDotesPendientesPorProgresion(contextoAumentos);
@@ -4910,8 +5000,11 @@ export class NuevoPersonajeComponent {
             (origenHabilidades === 'raza_dg' || origenHabilidades === 'clase_nivel')
             && returnStepHabilidades !== 'conjuros'
         ) {
-            if (origenHabilidades === 'raza_dg')
+            if (origenHabilidades === 'raza_dg') {
+                if (!await this.resolverEleccionesRacialesPendientes())
+                    return;
                 this.nuevoPSvc.registrarDotesPendientesPorRazaExtras(`${this.razaSeleccionada?.Nombre ?? 'Raza'}`);
+            }
             const dotesCompletadas = await this.resolverDotesPendientes();
             if (!dotesCompletadas)
                 return;
@@ -5375,6 +5468,8 @@ export class NuevoPersonajeComponent {
             return true;
         }
         this.nuevoPSvc.marcarDgRacialSinClasesRepartido();
+        if (!await this.resolverEleccionesRacialesPendientes())
+            return true;
         this.nuevoPSvc.registrarDotesPendientesPorRazaExtras(`${this.razaSeleccionada?.Nombre ?? 'Raza'}`);
         return !await this.resolverDotesPendientes();
     }

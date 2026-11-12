@@ -865,7 +865,7 @@ describe('NuevoPersonajeComponent', () => {
         });
 
         expect(component.modalSelectorRazaBaseAbierto).toBeFalse();
-        expect(razaSvcMock.getRazaSobreBase).toHaveBeenCalledWith(99, 2);
+        expect(razaSvcMock.getRazaSobreBase).toHaveBeenCalledWith(99, 2, null);
         // La raza que se aplica es la que combina la API.
         expect(nuevoPSvc.PersonajeCreacion.Raza.Nombre).toBe('Mutada celestial (combinada)');
         expect(nuevoPSvc.PersonajeCreacion.RazaBase?.Id).toBe(2);
@@ -7147,6 +7147,44 @@ describe('NuevoPersonajeComponent', () => {
             component.Personaje.Edad = 30;
             expect(component.motivoEdadFueraDeCategoria).toBe('La edad tiene que estar de 16 a 19 años (joven).');
             expect(component.motivosBloqueoBasicos).toContain('La edad tiene que estar de 16 a 19 años (joven).');
+        });
+
+        it('una mutada sobre una base por edades: tras la base se elige su edad, a esa edad, y se guarda el paso de la base', async () => {
+            // El nacido del Infierno sobre un dragón (`GET /razas/{id}/sobre/{idBase}?idPasoEdad=`; bugs.md, 2026-11-12).
+            const dragon = razaPorEdades();
+            const nacido = { ...crearRazaMock(), Id: 99, Nombre: 'Nacido del Infierno', Mutada: true } as any;
+            const combinada = (idPaso: number | null) => ({
+                ...(idPaso ? normalizeRazaApi(razaPorEdadesEnPasoApi(idPaso)) : dragon),
+                Id: 99, Nombre: 'Nacido del Infierno', Mutada: true,
+            } as any);
+            razaSvcMock.getRazaSobreBase.and.callFake(async (_id: number, _base: number, idPaso: number | null = null) => combinada(idPaso));
+            component.razasCatalogo = [dragon, nacido];
+            component.elegirTipoPersonaje('pj');
+
+            await component.seleccionarRaza(nacido);
+            expect(component.modalSelectorRazaBaseAbierto).toBeTrue();
+            await component.onConfirmarRazaBase(dragon);
+            await esperar();
+
+            // No se aplica todavía: se mira la combinada, con las edades de la base, a su primera edad jugable.
+            expect(nuevoPSvc.PersonajeCreacion.Raza?.Id).not.toBe(99);
+            expect(component.baseDeLaRazaMirada?.Id).toBe(709);
+            expect(component.razaMirada?.Nombre).toBe('Nacido del Infierno');
+            expect(razaSvcMock.getRazaSobreBase).toHaveBeenCalledWith(99, 709, 11);
+            expect(razaSvcMock.getRazaEnPasoEdad).not.toHaveBeenCalled();
+            expect(component.notaPieRaza.texto).toContain('Sobre Dragón rojo: elige la edad de la raza base');
+            await component.mirarPasoEdad(component.opcionesEdadMirada[2].pasos[0].paso);
+            expect(razaSvcMock.getRazaSobreBase).toHaveBeenCalledWith(99, 709, 13);
+            expect(component.textoElegirRaza).toBe('Elegir Nacido del Infierno (joven) y continuar');
+
+            await component.elegirRazaMirada();
+            expect(component.Personaje.IdPasoEdad).toBe(13);
+            expect(component.Personaje.RazaBase?.Id).toBe(709);
+            expect(component.Personaje.Raza.Nombre).toBe('Nacido del Infierno');
+
+            // Mirar otra raza del listado olvida la base.
+            component.mirarRaza(crearRazaMock());
+            expect(component.baseDeLaRazaMirada).toBeNull();
         });
 
         it('un PNJ en una campaña solo lo crea su máster: las demás campañas salen desactivadas', () => {
