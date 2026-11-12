@@ -93,7 +93,7 @@ export class DeidadService {
     /** El catálogo de géneros (`GET /generos`), el de las deidades y los personajes. */
     getGeneros(): Observable<DeidadGeneroRef[]> {
         return this.http.get<any[]>(`${environment.apiUrl}generos`)
-            .pipe(map((listado) => idNombres(listado, { filtro: 'todos' })));
+            .pipe(map((listado) => idNombres(listado, { filtro: 'conIdONombre' })));
     }
 
     getDeidad(id: number): Observable<DeidadDetalle> {

@@ -34,7 +34,7 @@ export function normalizeEquipoRef(raw: any): EquipoRef | null {
 
 /** Las referencias de una lista, sin las que no vienen. */
 export function normalizeEquipoRefs(raw: any): EquipoRef[] {
-    return idNombres(raw, { filtro: 'todos' });
+    return idNombres(raw, { filtro: 'conIdONombre' });
 }
 
 function normalizeOrigenDescripcion(raw: any): OrigenDescripcion {

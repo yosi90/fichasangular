@@ -123,7 +123,7 @@ function normalizeCompetenciasOtorgadas(raw: any): DoteCompetenciasOtorgadas {
     const item = (valor: any) => ({ Id: toNumber(valor?.Id, 0), Nombre: toText(valor?.Nombre, "") });
     return {
         Armas: asArray(raw?.Armas).map((arma: any) => ({ ...item(arma), Arma_comodin: leerComodin(arma?.Arma_comodin) })),
-        Grupos_arma: idNombres(raw?.Grupos_arma, { filtro: 'todos' }),
+        Grupos_arma: idNombres(raw?.Grupos_arma, { filtro: 'conIdONombre' }),
     };
 }
 

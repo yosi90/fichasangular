@@ -15,7 +15,7 @@ export function normalizeDominio(raw: any): DominioDetalle {
         Nombre: toText(raw?.Nombre),
         Oficial: toBoolean(raw?.Oficial),
         Poder: toNullableText(raw?.Poder),
-        Alineamientos: idNombres(raw?.Alineamientos, { filtro: 'todos' }),
+        Alineamientos: idNombres(raw?.Alineamientos, { filtro: 'conIdONombre' }),
         Dotes: toArray(raw?.Dotes).map((item: any) => ({
             Id: toInt(item?.Id),
             Nombre: toText(item?.Nombre),
@@ -30,7 +30,7 @@ export function normalizeDominio(raw: any): DominioDetalle {
             Id_extra: toInt(item?.Id_extra, -1),
             Extra: toNullableText(item?.Extra),
         })),
-        Especiales: idNombres(raw?.Especiales, { filtro: 'todos' }),
+        Especiales: idNombres(raw?.Especiales, { filtro: 'conIdONombre' }),
     };
 }
 

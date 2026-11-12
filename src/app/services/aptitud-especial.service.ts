@@ -10,10 +10,10 @@ export function normalizeAptitudEspecial(raw: any): AptitudEspecial {
     return {
         Id: toNumber(raw?.Id),
         Nombre: toText(raw?.Nombre),
-        Raciales: idNombres(raw?.Raciales, { filtro: 'todos' }),
-        Especiales: idNombres(raw?.Especiales, { filtro: 'todos' }),
-        Plantillas: idNombres(raw?.Plantillas, { filtro: 'todos' }),
-        Dotes: idNombres(raw?.Dotes, { filtro: 'todos' }),
+        Raciales: idNombres(raw?.Raciales, { filtro: 'conIdONombre' }),
+        Especiales: idNombres(raw?.Especiales, { filtro: 'conIdONombre' }),
+        Plantillas: idNombres(raw?.Plantillas, { filtro: 'conIdONombre' }),
+        Dotes: idNombres(raw?.Dotes, { filtro: 'conIdONombre' }),
         Comodin: leerComodin(raw?.Comodin),
     };
 }

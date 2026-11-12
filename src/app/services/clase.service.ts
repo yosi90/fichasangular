@@ -446,7 +446,7 @@ export class ClaseService {
                     Id: toNumber(item?.Id),
                     Valor: toNumber(item?.Valor),
                 })),
-                aumentos_clase_lanzadora: idNombres(raw?.aumentos_clase_lanzadora, { filtro: 'todos' }),
+                aumentos_clase_lanzadora: idNombres(raw?.aumentos_clase_lanzadora, { filtro: 'conIdONombre' }),
             })));
     }
 

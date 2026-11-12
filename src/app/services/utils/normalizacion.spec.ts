@@ -145,9 +145,10 @@ describe('idNombres', () => {
         ]);
     });
 
-    it('con «todos», todos los objetos (lo que no es un objeto no es un elemento)', () => {
-        expect(idNombres(crudos, { filtro: 'todos' }).length).toBe(5);
-        expect(idNombres(crudos, { filtro: 'todos' })[3]).toEqual({ Id: 0, Nombre: '' });
+    it('nunca deja uno sin id ni nombre, ni lo que no es un objeto', () => {
+        for (const filtro of ['conId', 'conIdONombre'] as const)
+            expect(idNombres(crudos, { filtro }).some((item) => item.Id === 0 && item.Nombre === ''))
+                .withContext(filtro).toBeFalse();
     });
 
     it('lee los valores de un objeto (las listas de la RTDB) salvo con «soloLista»', () => {
