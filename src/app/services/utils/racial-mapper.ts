@@ -82,9 +82,9 @@ export function normalizarBonificadoresCondicionales(raw: any): RacialBonificado
         .filter((b: any) => b && typeof b === 'object' && toRefIdNombre(b.Objetivo) !== null && toNumber(b.Cantidad) !== 0)
         .map((b: any) => ({
             Objetivo: toRefIdNombre(b.Objetivo)!,
-            Tipo_bonificador: toRefIdNombre(b.Tipo_bonificador) ?? { Id: 0, Nombre: '' },
+            Tipo_bonificador: { ...(toRefIdNombre(b.Tipo_bonificador) ?? { Id: 0, Nombre: '' }), Apila: toBoolean(b.Tipo_bonificador?.Apila) },
             Cantidad: toNumber(b.Cantidad),
-            Condicion: toText(b.Condicion).trim(),
+            Condicion: toNullableText(b.Condicion),
             Contra: normalizarContraBonificador(toArray(b.Contra)),
             Frase: toText(b.Frase).trim(),
         }));

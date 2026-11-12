@@ -79,15 +79,17 @@ export interface RacialBonificadorContra {
 /**
  * Lo que un rasgo racial suma solo en un caso (`Bonificadores_condicionales` del contrato,
  * `docs/publica/endpoints/catalogos.md`): el +1 al ataque del enano contra orcos y trasgoides, la esquiva +4 a la CA
- * contra gigantes. La creación y la ficha lo enseñan aparte y no lo suman.
+ * contra gigantes. La creación y la ficha lo enseñan aparte y no lo suman. Uno sin condición (`Condicion` `null`, solo a
+ * la CA: la esquiva +4 del svirfneblin contra todas las criaturas) cuenta siempre y se suma a la CA con su tipo.
  */
 export interface RacialBonificadorCondicional {
     Objetivo: { Id: number; Nombre: string; };
-    Tipo_bonificador: { Id: number; Nombre: string; };
+    /** `Apila`: si se apila con los del mismo tipo (esquiva, sin tipo), para sumar los de siempre. */
+    Tipo_bonificador: { Id: number; Nombre: string; Apila: boolean; };
     /** Distinta de 0; negativa, un penalizador. */
     Cantidad: number;
-    /** El caso en que cuenta, en texto: «Contra orcos y trasgoides». */
-    Condicion: string;
+    /** El caso en que cuenta, en texto: «Contra orcos y trasgoides»; `null`, cuenta siempre. */
+    Condicion: string | null;
     /** Si es contra unas criaturas, cuáles (el texto puede acotarlo más). */
     Contra: RacialBonificadorContra[];
     /** «Ataque +1 (racial) contra orcos y trasgoides». */

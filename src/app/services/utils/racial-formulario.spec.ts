@@ -16,8 +16,9 @@ import { normalizeRacial } from './racial-mapper';
 /** Las mismas reglas que `_normalize_racial_progresion` y `_normalize_racial_bonificadores` de la API. */
 describe('racial-formulario', () => {
     const OBJETIVOS: EquipoObjetivoModificador[] = [
-        { Id: 2, Nombre: 'Ataque', Lista_del_rasgo: null },
-        { Id: 8, Nombre: 'Característica', Lista_del_rasgo: 'caracteristicas' },
+        { Id: 1, Nombre: 'CA', Lista_del_rasgo: null, De_siempre_en_el_rasgo: true },
+        { Id: 2, Nombre: 'Ataque', Lista_del_rasgo: null, De_siempre_en_el_rasgo: false },
+        { Id: 8, Nombre: 'Característica', Lista_del_rasgo: 'caracteristicas', De_siempre_en_el_rasgo: false },
     ];
     const progresion = (cambios: object) => ({ ...filaProgresionVacia(), desde: 6, ...cambios });
     const bonificador = (cambios: object) => ({
@@ -74,6 +75,11 @@ describe('racial-formulario', () => {
         const repetida = { catalogo: 'subtipo' as const, id: 68, nombre: 'Orco' };
         expect(falloDeBonificador(bonificador({ contra: [repetida, repetida] }), 0, OBJETIVOS)).toContain('repetida');
         expect(falloDeBonificador(bonificador({ cantidad: -1 }), 0, OBJETIVOS)).toBeNull();
+        // Sin condición, solo a la CA (cuenta siempre: la esquiva del svirfneblin) y sin criaturas.
+        expect(falloDeBonificador(bonificador({ id_objetivo: 1, condicion: '' }), 0, OBJETIVOS)).toBeNull();
+        expect(falloDeBonificador(bonificador({ condicion: '' }), 0, OBJETIVOS)).toContain('solo vale un bonificador a la CA');
+        expect(falloDeBonificador(bonificador({ id_objetivo: 1, condicion: '', contra: [repetida] }), 0, OBJETIVOS))
+            .toContain('contra unas criaturas');
     });
 
     it('el primer fallo dice de qué lista es', () => {

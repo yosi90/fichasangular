@@ -431,7 +431,7 @@
                             </mat-form-field>
                             <mat-form-field appearance="fill" class="insercion-campos__entero">
                                 <mat-label>Cuándo cuenta</mat-label>
-                                <input matInput maxlength="200" placeholder="contra orcos y trasgoides" [(ngModel)]="fila.condicion" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorBonificadores()">
+                                <input matInput maxlength="200" placeholder="contra orcos y trasgoides (a la CA, vacía: cuenta siempre)" [(ngModel)]="fila.condicion" [ngModelOptions]="{standalone: true}" (ngModelChange)="limpiarErrorBonificadores()">
                             </mat-form-field>
                             <mat-form-field appearance="fill">
                                 <mat-label>Contra (catálogo)</mat-label>

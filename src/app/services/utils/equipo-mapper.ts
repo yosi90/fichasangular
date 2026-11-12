@@ -125,7 +125,11 @@ export function normalizeEquipoCatalogos(raw: any): EquipoCatalogos {
         Objetivos_modificador: toArray<any>(raw?.Objetivos_modificador)
             .map((item) => {
                 const ref = normalizeEquipoRef(item);
-                return ref ? { ...ref, Lista_del_rasgo: LISTAS_DEL_RASGO.find((lista) => lista === item?.Lista_del_rasgo) ?? null } : null;
+                return ref ? {
+                    ...ref,
+                    Lista_del_rasgo: LISTAS_DEL_RASGO.find((lista) => lista === item?.Lista_del_rasgo) ?? null,
+                    De_siempre_en_el_rasgo: toBoolean(item?.De_siempre_en_el_rasgo),
+                } : null;
             })
             .filter((item): item is EquipoObjetivoModificador => item !== null),
         Empunaduras: refs('Empunaduras'),

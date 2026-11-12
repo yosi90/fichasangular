@@ -19,7 +19,7 @@ import {
     textoValorCaracteristica,
 } from 'src/app/services/utils/caracteristicas';
 import { camposPdfEquipo } from './utils/ficha-pdf-equipo';
-import { camposPdfTotales, sumasDeLaPlantilla } from './utils/ficha-pdf-totales';
+import { camposPdfTotales, caToqueYDesprevenida, sumasDeLaPlantilla } from './utils/ficha-pdf-totales';
 import { tamanoQueCuenta } from './utils/tamano-efectivo';
 
 /** Cada característica y su campo en la hoja (`fue`, y su modificador `mod_fue`): la del personaje, el familiar y el compañero. */
@@ -85,8 +85,9 @@ export class FichaPersonajeService {
         form.getTextField('armadura_natural').setText(pj.Armadura_natural.toString());
         form.getTextField('mod_desvio').setText(pj.Ca_desvio.toString());
         form.getTextField('mod_varios_ca').setText(pj.Ca_varios.toString());
-        form.getTextField('ca_toque').setText(pj.Ca.toString());
-        form.getTextField('ca_desprevenido').setText((pj.Ca - pj.ModDestreza).toString());
+        const { toque, desprevenido } = caToqueYDesprevenida(pj);
+        form.getTextField('ca_toque').setText(`${toque}`);
+        form.getTextField('ca_desprevenido').setText(`${desprevenido}`);
         form.getTextField('pg').setText(pj.Vida.toString());
         form.getTextField('fort_clase').setText(`${sumarPartes(totales.salvaciones.fortaleza, 'clase')}`);
         form.getTextField('mod_magico_fortaleza').setText('0');

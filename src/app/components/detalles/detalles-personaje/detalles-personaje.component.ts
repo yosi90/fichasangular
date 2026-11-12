@@ -57,6 +57,7 @@ import {
     textoPrecio,
 } from 'src/app/services/utils/equipo-texto';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
+import { caDeSiempreDeRaciales } from 'src/app/services/utils/habilidades-raciales';
 import { buildManiobrabilidadInfoSecciones, ManiobrabilidadLike, tieneManiobrabilidadVisible } from 'src/app/services/utils/maniobrabilidad-info';
 import { calcularNivelesLanzadorPersonaje } from 'src/app/services/utils/nivel-lanzador-personaje';
 import { normalizarTexto, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
@@ -1279,6 +1280,8 @@ ${envejecimiento}` : edades;
                 ['Armadura natural', this.pj.Armadura_natural],
                 ['Desvío', this.pj.Ca_desvio],
                 ['Varios', this.pj.Ca_varios],
+                // En la creación, los bonificadores de siempre de sus rasgos (la esquiva del svirfneblin).
+                ...caDeSiempreDeRaciales(this.pj.Raciales).partes.map((p) => [`${p.origen} (${p.tipo.toLowerCase()})`, p.valor]),
             ].filter(([, valor]) => toNumber(valor) !== 0).map(([nombre, valor]) => `${nombre} ${textoConSigno(toNumber(valor))}`).join('\n');
         this.salvacionesVisibles = SALVACIONES.map(({ tipo, nombre }) => {
             const salvacion = totales.salvaciones[tipo];

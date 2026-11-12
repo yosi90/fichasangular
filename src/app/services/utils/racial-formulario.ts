@@ -194,14 +194,16 @@ export function falloDeProgresion(fila: FilaProgresionRacial, indice: number, id
 
 /**
  * Lo que la API rechazaría de un bonificador condicional, o `null` si vale. `objetivos`, los del catálogo: los que en
- * un rasgo van en su propia lista (`Lista_del_rasgo`) no valen aquí.
+ * un rasgo van en su propia lista (`Lista_del_rasgo`) no valen aquí, y solo los de `De_siempre_en_el_rasgo` (la CA)
+ * pueden ir sin condición (cuentan siempre: la esquiva del svirfneblin), y entonces sin criaturas.
  */
 export function falloDeBonificador(fila: FilaBonificadorRacial, indice: number,
     objetivos: readonly EquipoObjetivoModificador[]): string | null {
     const n = `Bonificador ${indice + 1}`;
     if (!toPositiveInt(fila.id_objetivo))
         return `${n}: elige a qué se aplica.`;
-    const lista = objetivos.find((o) => o.Id === fila.id_objetivo)?.Lista_del_rasgo ?? null;
+    const objetivo = objetivos.find((o) => o.Id === fila.id_objetivo);
+    const lista = objetivo?.Lista_del_rasgo ?? null;
     if (lista)
         return `${n}: ${DONDE_VA[lista]}.`;
     if (!toPositiveInt(fila.id_tipo_bonificador))
@@ -209,8 +211,10 @@ export function falloDeBonificador(fila: FilaBonificadorRacial, indice: number,
     if (!esEntero(fila.cantidad) || Number(fila.cantidad) === 0 || Math.abs(Number(fila.cantidad)) > MAXIMO_CANTIDAD_BONIFICADOR)
         return `${n}: la cantidad no puede ser 0 y va de -${MAXIMO_CANTIDAD_BONIFICADOR} a ${MAXIMO_CANTIDAD_BONIFICADOR}.`;
     const condicion = toText(fila.condicion).trim();
-    if (condicion.length < 1)
-        return `${n}: la condición es obligatoria (el caso en que cuenta: «contra gigantes»).`;
+    if (condicion.length < 1 && !objetivo?.De_siempre_en_el_rasgo)
+        return `${n}: la condición es obligatoria (el caso en que cuenta: «contra gigantes»). Sin condición (cuenta siempre) solo vale un bonificador a la CA.`;
+    if (condicion.length < 1 && fila.contra.length > 0)
+        return `${n}: la condición es obligatoria si cuenta contra unas criaturas («contra gigantes»).`;
     if (condicion.length > MAXIMO_CONDICION_BONIFICADOR)
         return `${n}: la condición no puede pasar de ${MAXIMO_CONDICION_BONIFICADOR} letras.`;
     const vistas = new Set<string>();
