@@ -1,0 +1,343 @@
+@use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// La sesión abierta (lienzo de sesiones, pantalla 2): la cabecera con título, fecha y cifras; a la izquierda, lo que
+// se apunta (los tipos como botones grandes y su formulario corto en la misma tarjeta, y las notas); a la derecha, lo
+// que ha pasado, la subida y «Cerrar la sesión». En el móvil (pantalla 5), una columna y los tipos en dos columnas.
+
+:host
+    display: block
+
+.sesion
+    display: flex
+    flex-direction: column
+    gap: 14px
+
+.sesion__volver
+    display: inline-flex
+    align-items: center
+    gap: 4px
+    align-self: flex-start
+    min-height: 44px
+    font-size: 14px
+
+    .mat-icon
+        width: 18px
+        height: 18px
+        font-size: 18px
+
+.sesion__cabecera
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 14px 18px
+    padding: 16px 24px
+    @include ficha-cabecera
+
+.sesion__identidad
+    display: flex
+    flex-direction: column
+    gap: 6px
+    flex: 1 1 420px
+    min-width: 0
+
+.sesion__tipo
+    @include ficha-versalitas
+
+.sesion__titulo
+    margin: 0
+    font-size: 22px
+    font-weight: 500
+    color: $ficha-blanco
+
+.sesion__campos, .sesion__fila
+    display: flex
+    flex-wrap: wrap
+    align-items: flex-end
+    gap: 12px 16px
+
+.sesion__campo
+    display: flex
+    flex-direction: column
+    gap: 4px
+    font-size: 12px
+    color: $accent
+
+    input, select, textarea
+        min-height: 44px
+        box-sizing: border-box
+        padding: 0 12px
+        border: 1px solid rgba(255, 255, 255, .25)
+        border-radius: 4px
+        background: $contrast-dark
+        color: $ficha-blanco
+        font: inherit
+        font-size: 15px
+        color-scheme: dark
+
+    textarea
+        padding: 10px 12px
+        resize: vertical
+
+    input:focus-visible, select:focus-visible, textarea:focus-visible
+        outline: 2px solid $active
+        outline-offset: 0
+
+.sesion__campo--titulo
+    flex: 1 1 260px
+
+    input
+        width: 100%
+
+.sesion__campo--ancho
+    flex: 1 1 240px
+
+    input, select, textarea
+        width: 100%
+
+.sesion__cifras
+    display: flex
+    flex-direction: column
+    align-items: flex-end
+    gap: 4px
+
+.sesion__cifras-etiqueta, .sesion__cifras-saldo
+    font-size: 13px
+    color: $ficha-texto-suave
+
+.sesion__cifras-valor
+    font-size: 18px
+    font-weight: 500
+    color: $ficha-blanco
+
+.sesion__aviso
+    margin: 0
+    padding: 10px 14px
+    border: 1px solid #8fa8ff
+    border-radius: $ficha-radio
+    background: rgba(143, 168, 255, .12)
+    font-size: 14px
+    color: $ficha-texto
+
+.sesion__cuerpo
+    display: grid
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+    gap: 16px
+    align-items: stretch
+
+.sesion__tarjeta
+    display: flex
+    flex-direction: column
+    gap: 14px
+    padding: 18px 22px
+    min-width: 0
+    @include ficha-tarjeta
+
+.sesion__tarjeta--oculta
+    display: none
+
+.sesion__seccion
+    @include ficha-versalitas
+
+.sesion__tipos
+    display: grid
+    grid-template-columns: repeat(4, minmax(0, 1fr))
+    gap: 10px
+
+.sesion__tipo-boton
+    min-height: 64px
+    padding: 6px 8px
+    border: 1px solid transparent
+    border-radius: $ficha-radio
+    background: $primary
+    color: $ficha-blanco
+    font: inherit
+    font-size: 14px
+    font-weight: 500
+    cursor: pointer
+
+    &:hover:not(:disabled)
+        background: $primary-hover
+
+    &[aria-pressed="true"]
+        border-color: $active
+        background: rgba($active, .22)
+
+    &:focus-visible
+        outline: 2px solid $active
+        outline-offset: 2px
+
+    &:disabled
+        opacity: .52
+        cursor: default
+
+.sesion__formulario
+    display: flex
+    flex-direction: column
+    gap: 12px
+    padding: 16px 18px
+    border-radius: $ficha-radio
+    background: $primary
+
+.sesion__conmutador
+    display: inline-flex
+    align-self: flex-start
+    border: 1px solid $accent
+    border-radius: 4px
+    overflow: hidden
+
+    button
+        min-height: 40px
+        padding: 0 14px
+        border: 0
+        background: $contrast-dark
+        color: $accent
+        font: inherit
+        font-size: 14px
+        cursor: pointer
+
+        &[aria-pressed="true"]
+            background: $active
+            color: $ficha-blanco
+
+        &:focus-visible
+            outline: 2px solid $ficha-blanco
+            outline-offset: -2px
+
+    button + button
+        border-left: 1px solid $accent
+
+.sesion__nota
+    margin: 0
+    font-size: 13px
+    line-height: 1.5
+    color: $ficha-texto-suave
+
+.sesion__error
+    margin: 0
+    padding: 10px 14px
+
+.sesion__acciones, .sesion__cerrar
+    display: flex
+    justify-content: flex-end
+    gap: 10px
+
+    button
+        min-height: 44px
+
+.sesion__conjuros
+    display: flex
+    flex-direction: column
+    gap: 4px
+    max-height: 240px
+    margin: 0
+    padding: 0
+    overflow: auto
+    list-style: none
+
+.sesion__conjuro
+    display: flex
+    justify-content: space-between
+    gap: 12px
+    width: 100%
+    min-height: 44px
+    padding: 6px 12px
+    border: 1px solid transparent
+    border-radius: 4px
+    background: $contrast-dark
+    color: $ficha-blanco
+    font: inherit
+    font-size: 14px
+    text-align: left
+    cursor: pointer
+
+    &[aria-pressed="true"]
+        border-color: $active
+        background: $ficha-elegida
+
+.sesion__conjuro-dato
+    color: $ficha-texto-suave
+    white-space: nowrap
+
+.sesion__eventos
+    display: flex
+    flex-direction: column
+    gap: 8px
+    margin: 0
+    padding: 0
+    list-style: none
+
+.sesion__evento
+    display: flex
+    align-items: center
+    gap: 12px
+    padding: 12px 14px
+    border-radius: $ficha-radio
+    background: $primary
+
+.sesion__evento-tipo
+    flex: 0 0 92px
+    @include ficha-versalitas($tamano: 12px)
+    letter-spacing: .08em
+
+.sesion__evento-texto
+    flex-grow: 1
+    min-width: 0
+    font-size: 14px
+    line-height: 1.45
+    color: $ficha-texto
+    overflow-wrap: anywhere
+
+.sesion__deshacer
+    min-height: 36px
+
+.sesion__hueco
+    flex-grow: 1
+
+.sesion__subida
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 12px
+    padding: 14px 16px
+    border-radius: $ficha-radio
+    background: rgba($active, .14)
+    font-size: 14px
+    color: $ficha-blanco
+
+    span
+        flex: 1 1 200px
+
+    button
+        min-height: 44px
+
+@include movil
+    .sesion__cabecera
+        padding: 14px 16px
+
+    .sesion__cifras
+        align-items: flex-start
+
+    .sesion__cuerpo
+        grid-template-columns: minmax(0, 1fr)
+
+    .sesion__tarjeta
+        padding: 14px 16px
+
+    .sesion__tipos
+        grid-template-columns: repeat(2, minmax(0, 1fr))
+        gap: 8px
+
+    .sesion__tipo-boton
+        min-height: 44px
+
+    .sesion__evento
+        flex-wrap: wrap
+        gap: 6px 12px
+
+    .sesion__evento-tipo
+        flex-basis: 100%
+
+    .sesion__subida button, .sesion__cerrar button
+        width: 100%

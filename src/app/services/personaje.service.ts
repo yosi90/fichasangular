@@ -60,6 +60,7 @@ import { normalizarTamanoFicha } from './utils/tamano-efectivo';
 import { normalizarHomebrewGuardado } from './utils/personaje-oficialidad';
 import { caracteristicasPerdidasDe, normalizarCaracteristicasPerdidas } from './utils/caracteristicas';
 import { RequisitosDelPersonajeConsulta } from 'src/app/interfaces/razas-api';
+import { leerExperiencia } from './sesiones.service';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -1007,6 +1008,14 @@ export class PersonajeService {
      * totales y los rellenos a `null` siguen el contrato desde el 2026-10-24 (`docs/publica/FICHA_NUEVA_FRONT.md`): los
      * totales se toman tal cual y un `null` se queda en vacío.
      */
+    /**
+     * Una ficha cruda de la API (la forma de `GET /personajes/{id}`) como la enseña la web: la de una sesión pasada
+     * (`GET /personajes/{id}/sesiones/{numero}`, «Ver la ficha en esta sesión») pasa por el mismo mapper que la de ahora.
+     */
+    fichaDeApi(element: unknown): Personaje {
+        return this.mapApiDetalleToPersonaje(element);
+    }
+
     private mapApiDetalleToPersonaje(element: any): Personaje {
         const raza = element?.ra;
         const clases = toArray<PersonajeClaseDto>(element?.clases)
@@ -1028,6 +1037,7 @@ export class PersonajeService {
         const plantillas = toArray<any>(element?.pla);
         // El NEP lo da la API (`nivelEfectivo`, un solo sitio): niveles de clase + DG raciales + ajustes de nivel.
         const nep = toNumber(element?.nivelEfectivo);
+        const experienciaSesiones = leerExperiencia(element?.experiencia);
 
         const dotesContextuales = toDoteContextualArray(element?.dotes);
         const totales: PersonajeTotales = {
@@ -1092,7 +1102,9 @@ export class PersonajeService {
             ModCarisma: element?.mcar,
             NEP: nep,
             Nivel_personaje: toNumberOrNull(element?.nivelPersonaje),
-            Experiencia: experienciaParaNivel(nep),
+            // Los PX vigentes de la API (`experiencia`, desde las sesiones); sin ella, los mínimos de su NEP, como antes.
+            Experiencia: experienciaSesiones?.px ?? experienciaParaNivel(nep),
+            ExperienciaSesiones: experienciaSesiones,
             // La penalización de PX por multiclase, con la misma regla que la creación (MJ cap. 3): no se guarda. No cuentan
             // las de prestigio ni las que no penalizan la multiclase (las clases de monstruo), como en la creación.
             Penalizacion_experiencia: penalizacionExperiencia(

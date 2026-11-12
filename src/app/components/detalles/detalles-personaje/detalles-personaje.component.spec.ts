@@ -12,6 +12,13 @@ import { PersonajeService } from 'src/app/services/personaje.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { RegionService } from 'src/app/services/region.service';
 import { UserService } from 'src/app/services/user.service';
+import { SesionesService, leerSesion } from 'src/app/services/sesiones.service';
+import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { ArmaService } from 'src/app/services/arma.service';
+import { ArmaduraService } from 'src/app/services/armadura.service';
+import { ConjuroService } from 'src/app/services/conjuro.service';
+import { EquipoService } from 'src/app/services/equipo.service';
+import { respuestaSesiones } from 'src/testing/sesiones-api';
 import { crearEquipoFichaApi } from 'src/testing/equipo-api';
 import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
@@ -63,6 +70,8 @@ describe('DetallesPersonajeComponent', () => {
     let listaPersonajesSvcMock: any;
     let userSvcMock: any;
     let sesion: { cuenta: { id: string; } | null; estado$: BehaviorSubject<unknown>; };
+    let sesionesSvcMock: jasmine.SpyObj<SesionesService>;
+    let personajeSvcMock: any;
     const elemento = (): HTMLElement => fixture.nativeElement as HTMLElement;
     const { texto, textos, titulos, valor, enlace, lateral, filasPares, franja, casillas, etiquetasCabecera, tipoCabecera } = lectorFicha(elemento);
 
@@ -97,18 +106,24 @@ describe('DetallesPersonajeComponent', () => {
         regionSvcMock = { getRegiones: () => of([]) };
         userSvcMock = { CurrentUserUid: 'test-uid', IsLoggedIn: true };
         sesion = { cuenta: { id: 'cuenta-a' }, estado$: new BehaviorSubject<unknown>({ tipo: 'con_sesion' }) };
+        sesionesSvcMock = jasmine.createSpyObj<SesionesService>('SesionesService', ['historial', 'sesion']);
+        personajeSvcMock = {
+            actualizarVisibilidadPersonaje: async () => ({ idPersonaje: 1, visible_otros_usuarios: false }),
+            actualizarArchivadoPersonaje: async () => ({ idPersonaje: 1, archivado: true }),
+            fichaDeApi: (ficha: unknown) => (new PersonajeService({ currentUser: null } as any, {} as any)).fichaDeApi(ficha),
+            getDetallesPersonaje: jasmine.createSpy('getDetallesPersonaje'),
+        };
         await TestBed.configureTestingModule({
             declarations: [DetallesPersonajeComponent, TextoManualComponent, ...FICHA_DETALLE_COMPONENTES],
             providers: [
                 { provide: FichasDescargaBackgroundService, useValue: fichasDescargaBgSvcMock },
                 { provide: ClaseService, useValue: { getClases: () => of([]) } },
-                {
-                    provide: PersonajeService,
-                    useValue: {
-                        actualizarVisibilidadPersonaje: async () => ({ idPersonaje: 1, visible_otros_usuarios: false }),
-                        actualizarArchivadoPersonaje: async () => ({ idPersonaje: 1, archivado: true }),
-                    },
-                },
+                { provide: PersonajeService, useValue: personajeSvcMock },
+                { provide: SesionesService, useValue: sesionesSvcMock },
+                { provide: ArmaService, useValue: { getArmas: () => of([]) } },
+                { provide: ArmaduraService, useValue: { getArmaduras: () => of([]) } },
+                { provide: EquipoService, useValue: { getMuniciones: () => of([]) } },
+                { provide: ConjuroService, useValue: { getConjuros: () => of([]) } },
                 { provide: ListaPersonajesService, useValue: listaPersonajesSvcMock },
                 { provide: UserService, useValue: userSvcMock },
                 { provide: RegionService, useValue: regionSvcMock },
@@ -1029,6 +1044,93 @@ describe('DetallesPersonajeComponent', () => {
             verPagina();
 
             expect(franja().find(([etiqueta]) => etiqueta === 'Iniciativa')?.[1]).toBe('+5');
+        });
+    });
+
+    describe('sesiones (lienzo de sesiones, pantallas 1 y 3)', () => {
+        const experienciaParaSubir = () => respuestaSesiones<any>('venta').experiencia;
+
+        it('la barra de PX bajo la cabecera y, si le llegan, «Subir a nivel N» por la puerta de la subida', () => {
+            const puerta = TestBed.inject(SubidaNivelPuertaService);
+            spyOn(puerta, 'solicitar');
+            component.pj = fichaDeLaApi({ experiencia: experienciaParaSubir() });
+            fixture.detectChanges();
+
+            const barra = elemento().querySelector('.personaje-experiencia')!;
+            expect(limpio(barra.querySelector('.personaje-experiencia__px'))).toBe('1.000 / 1.000 PX');
+            expect(limpio(barra.querySelector('.personaje-experiencia__niveles'))).toBe('nivel 1 → 2');
+            expect(barra.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('100');
+            expect(limpio(barra.querySelector('.personaje-experiencia__aviso'))).toBe('Puede subir de nivel');
+            (barra.querySelector('.personaje-experiencia__boton') as HTMLButtonElement).click();
+            expect(puerta.solicitar).toHaveBeenCalledWith(10);
+            expect(pestanas()).toContain('Historial');
+        });
+
+        it('sin `experiencia` en la ficha (o sin sesión), ni barra ni historial', () => {
+            component.pj = fichaDeLaApi();
+            fixture.detectChanges();
+            expect(elemento().querySelector('.personaje-experiencia')).toBeNull();
+            expect(pestanas()).not.toContain('Historial');
+
+            userSvcMock.IsLoggedIn = false;
+            component.pj = fichaDeLaApi({ experiencia: experienciaParaSubir() });
+            fixture.detectChanges();
+            expect(elemento().querySelector('.personaje-experiencia')).toBeNull();
+        });
+
+        it('la pestaña «Historial» carga el historial al abrirla', async () => {
+            sesionesSvcMock.historial.and.resolveTo({ idPersonaje: 10, puedeApuntar: true, veNotas: true, experiencia: experienciaParaSubir(), sesiones: [] });
+            component.pj = fichaDeLaApi({ experiencia: experienciaParaSubir() });
+            fixture.detectChanges();
+
+            abrirPestana('Historial');
+            await component.cargarHistorial();
+            fixture.detectChanges();
+            await fixture.whenStable();
+            fixture.detectChanges();
+
+            expect(elemento().querySelector('app-historial-sesiones')).not.toBeNull();
+            expect(sesionesSvcMock.historial).toHaveBeenCalledWith(10);
+        });
+
+        it('«Ver la ficha en esta sesión»: la de esa versión con su franja, sin editar, y la vuelta a la de ahora', async () => {
+            const cerrada = { ...respuestaSesiones<any>('detalle_abierta'), estado: 'cerrada' };
+            sesionesSvcMock.sesion.and.resolveTo({ sesion: leerSesion(cerrada), ficha: crearDetalleApi({ n: 'Myra de antes' }) });
+            component.pj = fichaDeLaApi({ experiencia: experienciaParaSubir() });
+            fixture.detectChanges();
+
+            await component.verVersion(1, 2);
+            fixture.detectChanges();
+
+            expect(sesionesSvcMock.sesion).toHaveBeenCalledWith(10, 1);
+            expect(limpio(elemento().querySelector('.personaje-version__titulo'))).toBe('Así era tras la sesión 1 · El camino de Zorvintal · 12 nov 2026');
+            expect(textos('.personaje-version__flechas button')).toEqual(['‹ Sesión 0', 'Sesión 2 ›']);
+            expect(elemento().querySelector('h1')?.textContent).toContain('Myra de antes');
+            expect(elemento().querySelector('.personaje-experiencia')).toBeNull();
+            expect(elemento().querySelector('mat-slide-toggle')).toBeNull();
+            expect(pestanas()).not.toContain('Historial');
+
+            (Array.from(elemento().querySelectorAll<HTMLButtonElement>('.personaje-version button')).find((b) => limpio(b) === 'Volver a la ficha actual'))!.click();
+            fixture.detectChanges();
+            expect(elemento().querySelector('.personaje-version')).toBeNull();
+            expect(elemento().querySelector('h1')?.textContent).toContain('Myra');
+            expect(elemento().querySelector('h1')?.textContent).not.toContain('de antes');
+            expect(component.pestanaActiva).toBe('historial');
+        });
+
+        it('lo que se apunta en una sesión pone los PX al momento y vuelve a leer la ficha', async () => {
+            const nueva = fichaDeLaApi({ experiencia: { ...experienciaParaSubir(), px: 1500 } });
+            personajeSvcMock.getDetallesPersonaje.and.resolveTo(of(nueva));
+            component.pj = fichaDeLaApi({ experiencia: { ...experienciaParaSubir(), puedeSubir: false, px: 500 } });
+            fixture.detectChanges();
+            await component.cargarHistorial();
+
+            component.historialEntradas!.alCambiar({ ...experienciaParaSubir(), px: 1500 });
+            await fixture.whenStable();
+            fixture.detectChanges();
+
+            expect(limpio(elemento().querySelector('.personaje-experiencia__px'))).toBe('1.500 / 1.000 PX');
+            expect(personajeSvcMock.getDetallesPersonaje).toHaveBeenCalledWith(10);
         });
     });
 });

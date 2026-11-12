@@ -311,4 +311,46 @@ describe('TiendaEquipoComponent', () => {
         component.cambiarPieza(0, { cantidad: 2 });
         expect(component.piezaSenalada).toBeNull();
     });
+
+    describe('en una sesión (lienzo de sesiones, pantalla 2)', () => {
+        const saldo = (po: number) => ({ modo: 'libre' as const, dados: null, multiplicador: 1, maximo: null, sugerido: po, descripcion: 'Lo paga del saldo.' });
+
+        function abrirEnSesion(modo: 'compra' | 'botin', po: number): void {
+            component.modo = modo;
+            component.regla = saldo(po);
+            component.articulos = [espada, cota, flechas];
+            component.ngOnChanges({ regla: new SimpleChange(null, component.regla, true) });
+            component.ngOnInit();
+        }
+
+        it('la compra paga del saldo: sin dinero inicial, «Saldo» en la franja y no deja pasarse', () => {
+            abrirEnSesion('compra', 20);
+            expect(component.franja.map((dato) => dato.etiqueta)).toEqual(['Saldo', 'Gastado', 'Te queda', 'Peso']);
+            expect(component.franja[0].valor).toBe('20 po');
+            expect(component.motivoNoComprar).toBe('Añade algo a la compra.');
+            component.anadir(espada);
+            expect(component.motivoNoComprar).toBeNull();
+            component.anadir(espada);
+            expect(component.motivoNoComprar).toBe('No te llega el saldo para todo.');
+        });
+
+        it('el botín no se paga: solo lo que vale y el peso, y se apunta aunque valga más que el saldo', () => {
+            abrirEnSesion('botin', 0);
+            expect(component.franja.map((dato) => dato.etiqueta)).toEqual(['Lo que vale', 'Peso']);
+            expect(component.motivoNoComprar).toBe('Añade lo que obtiene.');
+            component.anadir(espada);
+            component.anadir(cota);
+            expect(component.motivoNoComprar).toBeNull();
+            let emitido: any = null;
+            component.confirmar.subscribe((compra) => emitido = compra);
+            component.onConfirmar();
+            expect(emitido.piezas.map((pieza: any) => pieza.id)).toEqual([30, cota.id]);
+        });
+
+        it('al configurar una pieza del botín no hay límite de dinero', () => {
+            abrirEnSesion('botin', 0);
+            component.configurarNueva(espada);
+            expect(component.configurando?.disponible).toBeNull();
+        });
+    });
 });

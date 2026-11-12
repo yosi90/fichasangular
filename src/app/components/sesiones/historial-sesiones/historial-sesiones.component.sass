@@ -1,0 +1,236 @@
+@use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
+@use '../../detalles/ficha/ficha-tonos' as *
+
+// El historial de sesiones (lienzo de sesiones, pantallas 1 y 5): una tarjeta por sesión; la de juego abierta, con el
+// borde rosa y «Seguir la sesión». En el móvil las cerradas van plegadas (su título y su resumen) y se despliegan.
+
+:host
+    display: block
+
+.historial
+    display: flex
+    flex-direction: column
+    gap: 12px
+
+.historial__nota
+    margin: 0
+    font-size: 14px
+    color: $ficha-texto-suave
+
+.historial__error
+    display: flex
+    align-items: center
+    gap: 12px
+    margin: 0
+    padding: 10px 14px
+
+.historial__nueva
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 8px 16px
+
+.historial__boton
+    min-height: 44px
+
+.historial__formulario
+    display: flex
+    flex-wrap: wrap
+    align-items: flex-end
+    gap: 12px 16px
+    width: 100%
+    padding: 16px 20px
+    box-sizing: border-box
+    @include ficha-tarjeta
+
+.historial__campo
+    display: flex
+    flex-direction: column
+    gap: 4px
+    font-size: 12px
+    color: $accent
+
+    input
+        height: 44px
+        box-sizing: border-box
+        padding: 0 12px
+        border: 1px solid rgba(255, 255, 255, .25)
+        border-radius: 4px
+        background: $contrast-dark
+        color: $ficha-blanco
+        font: inherit
+        font-size: 15px
+        color-scheme: dark
+
+.historial__campo--ancho
+    flex: 1 1 280px
+
+    input
+        width: 100%
+
+.historial__acciones
+    display: flex
+    gap: 8px
+    margin-left: auto
+
+.historial__lista
+    display: flex
+    flex-direction: column
+    gap: 12px
+    margin: 0
+    padding: 0
+    list-style: none
+
+.historial__sesion
+    display: flex
+    flex-direction: column
+    gap: 8px
+    padding: 14px 22px
+    @include ficha-tarjeta
+
+.historial__sesion--abierta
+    border: 2px solid $active
+    padding: 14px 20px
+
+.historial__cabecera
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 8px 12px
+
+.historial__titulo
+    font-size: 16px
+    font-weight: 500
+    color: $ficha-blanco
+
+.historial__fecha
+    font-size: 13px
+    color: $accent
+
+.historial__estado
+    padding: 2px 8px
+    border-radius: 4px
+    background: rgba($active, .2)
+    font-size: 12px
+    font-weight: 700
+    color: #f48fb1
+
+.historial__estado--neutro
+    background: rgba(255, 255, 255, .08)
+    color: $ficha-texto-suave
+
+.historial__hueco
+    flex-grow: 1
+
+// El botón de plegar solo sale en el móvil; en el escritorio, el título va suelto y el cuerpo siempre se ve.
+.historial__plegar
+    display: none
+
+.historial__eventos
+    display: flex
+    flex-direction: column
+    gap: 4px
+    margin: 0
+    padding-left: 18px
+    font-size: 14px
+    line-height: 1.5
+    color: $ficha-texto
+
+.historial__notas
+    margin: 0
+    font-size: 14px
+    line-height: 1.5
+    color: $ficha-texto-suave
+    white-space: pre-line
+
+.historial__notas-etiqueta
+    @include ficha-versalitas($tamano: 11px)
+    margin-right: 6px
+
+.historial__pie
+    display: flex
+    flex-wrap: wrap
+    gap: 8px 18px
+    font-size: 14px
+
+@include movil
+    .historial__sesion
+        padding: 0
+        gap: 0
+        overflow: hidden
+
+    .historial__sesion--abierta
+        padding: 0
+
+    .historial__cabecera
+        gap: 8px
+        padding: 0 12px 0 0
+
+    .historial__titulo--escritorio, .historial__fecha
+        display: none
+
+    .historial__plegar
+        display: flex
+        align-items: center
+        gap: 8px
+        flex: 1 1 200px
+        min-height: 56px
+        padding: 10px 16px
+        border: 0
+        background: transparent
+        color: $ficha-blanco
+        font: inherit
+        text-align: left
+        cursor: pointer
+
+        &:focus-visible
+            outline: 2px solid $active
+            outline-offset: -2px
+
+    .historial__textos
+        display: flex
+        flex-direction: column
+        gap: 2px
+        flex-grow: 1
+        min-width: 0
+
+    .historial__resumen
+        font-size: 12px
+        color: $ficha-texto-suave
+
+    .historial__chevron
+        color: $ficha-texto-suave
+        transition: transform .15s
+
+    .historial__sesion--desplegada .historial__chevron
+        transform: rotate(180deg)
+
+    .historial__seguir
+        width: calc(100% - 16px)
+        margin: 0 0 8px 16px
+
+    .historial__cuerpo
+        display: none
+        flex-direction: column
+        gap: 8px
+        padding: 0 16px 14px
+
+    .historial__sesion--desplegada .historial__cuerpo
+        display: flex
+
+    .historial__formulario
+        padding: 14px 16px
+
+    .historial__acciones
+        width: 100%
+        justify-content: flex-end
+
+@media (min-width: 700px)
+    .historial__cuerpo
+        display: flex
+        flex-direction: column
+        gap: 8px
+
+    .historial__resumen
+        display: none

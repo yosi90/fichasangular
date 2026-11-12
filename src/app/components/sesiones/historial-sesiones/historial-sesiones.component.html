@@ -1,0 +1,111 @@
+<!-- El historial de sesiones (lienzo de sesiones, pantallas 1 y 5) o, al seguir la abierta, su panel (pantalla 2) -->
+@if (panelComponente && panelEntradas) {
+    <ng-container *ngComponentOutlet="panelComponente; inputs: panelEntradas"></ng-container>
+} @else {
+    <div class="historial">
+        @if (cargando) {
+            <p class="historial__nota">Cargando el historial…</p>
+        } @else if (error && !datos) {
+            <div class="bloque-error historial__error" role="alert">
+                <span>{{error}}</span>
+                <button type="button" mat-stroked-button (click)="cargar()">Reintentar</button>
+            </div>
+        } @else if (datos) {
+            @if (error) {
+                <p class="bloque-error historial__error" role="alert">{{error}}</p>
+            }
+
+            @if (puedeAbrirNueva) {
+                <div class="historial__nueva">
+                    @if (!nuevaAbierta) {
+                        <button type="button" mat-raised-button color="primary" class="historial__boton" (click)="mostrarNueva()">
+                            <mat-icon aria-hidden="true">add</mat-icon>
+                            Nueva sesión
+                        </button>
+                        @if (cierraCompraInicial) {
+                            <span class="historial__nota">Al abrirla se cierra la compra inicial: lo que compre después va en la sesión.</span>
+                        }
+                    } @else {
+                        <form class="historial__formulario" (ngSubmit)="abrirNueva()" aria-label="Nueva sesión">
+                            <label class="historial__campo historial__campo--ancho">
+                                <span>Título (opcional)</span>
+                                <input type="text" name="titulo" [(ngModel)]="nuevaTitulo" [maxlength]="maximoTitulo"
+                                    placeholder="Sesión {{(datos.sesiones.length)}}" [disabled]="abriendo">
+                            </label>
+                            <label class="historial__campo">
+                                <span>Fecha de juego (opcional)</span>
+                                <input type="date" name="fecha" [(ngModel)]="nuevaFecha" [disabled]="abriendo">
+                            </label>
+                            <div class="historial__acciones">
+                                <button type="button" mat-button (click)="cancelarNueva()" [disabled]="abriendo">Cancelar</button>
+                                <button type="submit" mat-raised-button color="primary" [disabled]="abriendo">
+                                    {{abriendo ? 'Abriendo…' : 'Abrir la sesión'}}
+                                </button>
+                            </div>
+                            @if (errorNueva) {
+                                <p class="bloque-error historial__error" role="alert">{{errorNueva}}</p>
+                            }
+                            @if (cierraCompraInicial) {
+                                <p class="historial__nota">Al abrirla se cierra la compra inicial.</p>
+                            }
+                        </form>
+                    }
+                </div>
+            }
+
+            <ol class="historial__lista" aria-label="Sesiones">
+                @for (fila of filas; track fila.sesion.numero) {
+                    <li class="historial__sesion" [class.historial__sesion--abierta]="fila.deJuego"
+                        [class.historial__sesion--desplegada]="fila.deJuego || desplegadas.has(fila.sesion.numero)">
+                        <div class="historial__cabecera">
+                            <button type="button" class="historial__plegar" [attr.aria-expanded]="fila.deJuego || desplegadas.has(fila.sesion.numero)"
+                                [attr.aria-controls]="'historial-cuerpo-' + fila.sesion.numero" (click)="alternar(fila.sesion.numero)">
+                                <span class="historial__textos">
+                                    <span class="historial__titulo">{{fila.titulo}}</span>
+                                    <span class="historial__resumen">{{fila.fecha}}@if (fila.fecha && fila.cambios) { · }{{fila.cambios}}</span>
+                                </span>
+                                <mat-icon class="historial__chevron" aria-hidden="true">expand_more</mat-icon>
+                            </button>
+                            <span class="historial__titulo historial__titulo--escritorio">{{fila.titulo}}</span>
+                            @if (fila.fecha) {
+                                <span class="historial__fecha">{{fila.fecha}}</span>
+                            }
+                            @if (fila.abierta) {
+                                <span class="historial__estado">Abierta</span>
+                            }
+                            @if (fila.sesion.sinHistorial) {
+                                <span class="historial__estado historial__estado--neutro">Sin historial</span>
+                            }
+                            <span class="historial__hueco"></span>
+                            @if (fila.deJuego) {
+                                <button type="button" mat-stroked-button class="historial__boton historial__seguir" (click)="seguir(fila.sesion)">
+                                    {{puedeApuntar ? 'Seguir la sesión' : 'Ver la sesión'}}
+                                </button>
+                            }
+                        </div>
+                        <div class="historial__cuerpo" [id]="'historial-cuerpo-' + fila.sesion.numero">
+                            @if (fila.lineas.length > 0) {
+                                <ul class="historial__eventos">
+                                    @for (linea of fila.lineas; track $index) {
+                                        <li>{{linea}}</li>
+                                    }
+                                </ul>
+                            } @else {
+                                <p class="historial__nota">Todavía no ha pasado nada.</p>
+                            }
+                            @if (datos.veNotas && fila.sesion.notas) {
+                                <p class="historial__notas"><span class="historial__notas-etiqueta">Notas</span> {{fila.sesion.notas}}</p>
+                            }
+                            <div class="historial__pie">
+                                <button type="button" class="ficha-enlace" (click)="verVersion(fila)">Ver la ficha en esta sesión</button>
+                                @if (fila.puedeReabrir) {
+                                    <button type="button" class="ficha-enlace" [disabled]="reabriendo" (click)="reabrir(fila)">Reabrir</button>
+                                }
+                            </div>
+                        </div>
+                    </li>
+                }
+            </ol>
+        }
+    </div>
+}

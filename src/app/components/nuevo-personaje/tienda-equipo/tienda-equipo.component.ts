@@ -58,8 +58,16 @@ interface PiezaEnConfiguracion {
     pieza: PiezaTienda;
     materiales: MaterialAplicable[];
     aptitudes: EncantamientoDetalle[];
-    disponible: number;
+    /** `null` en el botín: no se paga. */
+    disponible: number | null;
 }
+
+/**
+ * Para qué se abre la tienda: la compra inicial de la creación (`creacion`, con el dinero inicial), una compra en una
+ * sesión (`compra`: paga del saldo, que llega como el `sugerido` de la regla, sin tope) o el botín o regalo de una sesión
+ * (`botin`: lo que obtiene no se paga; los precios solo informan). Lienzo de sesiones, pantalla 2.
+ */
+export type ModoTienda = 'creacion' | 'compra' | 'botin';
 
 /**
  * La tienda, último paso de la creación («Equipo»), con el personaje ya guardado (puntos de golpe y experiencia
@@ -98,6 +106,8 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     @Input() libros: LibroTienda[] = [];
     /** El conjuro copiado que señala el error de la API (`field: conjurosLibro[i]`), o `null`. */
     @Input() copiaConError: number | null = null;
+    /** Ver `ModoTienda`; en `compra` y `botin` no se pide el dinero inicial ni sale la tarjeta de los dados. */
+    @Input() modo: ModoTienda = 'creacion';
     @Output() confirmar = new EventEmitter<PersonajeCompraRequestDto>();
     @Output() omitir = new EventEmitter<void>();
 
@@ -268,6 +278,16 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     /** Las cifras del paso: el dinero, lo gastado, lo que queda, el peso y su carga (y las de otras pestañas). */
     get franja(): DatoFranja[] {
         const resumen = this.resumen;
+        const peso: DatoFranja = { etiqueta: 'Peso', valor: textoPeso(resumen.peso), detalle: textoCarga(resumen.peso, this.capacidadCarga) || null };
+        if (this.modo === 'botin')
+            return [{ etiqueta: 'Lo que vale', valor: textoPrecio(resumen.gastado), detalle: 'no se paga' }, peso];
+        if (this.modo === 'compra')
+            return [
+                { etiqueta: 'Saldo', valor: textoPrecio(this.dineroInicial) },
+                { etiqueta: 'Gastado', valor: textoPrecio(resumen.gastado) },
+                { etiqueta: 'Te queda', valor: textoPrecio(resumen.queda) },
+                peso,
+            ];
         return [
             {
                 etiqueta: 'Dinero inicial', valor: textoPrecio(this.dineroInicial),
@@ -301,12 +321,16 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
     /** Por qué no se puede comprar aún, o `null` si se puede. */
     get motivoNoComprar(): string | null {
         const resumen = this.resumen;
+        if (this.modo !== 'creacion' && this.cuantasCompras < 1)
+            return this.modo === 'botin' ? 'Añade lo que obtiene.' : 'Añade algo a la compra.';
+        if (this.modo === 'botin')
+            return this.motivosPiezas.some((motivo) => motivo !== null) ? 'Completa las piezas marcadas.' : null;
         if (!(this.dineroInicial >= 0))
             return 'Pon el dinero inicial.';
         if (!resumen.dentroDelTope)
             return `El dinero inicial no puede pasar de ${textoPrecio(this.regla.maximo)}.`;
         if (!resumen.alcanza)
-            return 'No te llega el dinero para todo.';
+            return this.modo === 'compra' ? 'No te llega el saldo para todo.' : 'No te llega el dinero para todo.';
         if (this.motivosPiezas.some((motivo) => motivo !== null))
             return 'Completa las piezas marcadas.';
         return null;
@@ -321,7 +345,9 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
             this.seccion === 'libro' ? 'Solo salen los conjuros que puedes lanzar y que no son de tus escuelas prohibidas ni están ya en tu libro.' : '',
             notaPoliticaTienda(this.politica),
             this.hayHomebrew ? 'Comprar algo homebrew hace homebrew al personaje.' : '',
-        ].filter(Boolean).join(' ') || 'Comprar algo homebrew hace homebrew al personaje. La API comprueba los precios al guardar.';
+        ].filter(Boolean).join(' ') || (this.modo === 'botin'
+            ? 'Lo que obtiene no se paga; si es homebrew, el personaje pasa a homebrew.'
+            : 'Comprar algo homebrew hace homebrew al personaje. La API comprueba los precios al guardar.');
     }
 
     get puedeTirar(): boolean {
@@ -435,8 +461,8 @@ export class TiendaEquipoComponent implements OnInit, OnChanges, OnDestroy {
             materiales: materialesAplicables(pieza.articulo, this.materiales, this.aplicaciones)
                 .filter((item) => !this.soloOficial || item.material.Oficial),
             aptitudes: aptitudesAplicables(pieza.articulo, this.aptitudes).filter((aptitud) => !this.soloOficial || aptitud.Oficial),
-            // Lo que le queda más lo que ya costaba esta pieza.
-            disponible: this.resumen.queda + yaCostaba,
+            // Lo que le queda más lo que ya costaba esta pieza; el botín no se paga.
+            disponible: this.modo === 'botin' ? null : this.resumen.queda + yaCostaba,
         };
     }
 }

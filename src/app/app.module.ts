@@ -146,6 +146,7 @@ import { ListadoObjetosComponent } from './components/shared/listado-objetos/lis
 import { DetallesEquipoComponent } from './components/detalles/detalles-equipo/detalles-equipo.component';
 import { TiendaEquipoComponent } from './components/nuevo-personaje/tienda-equipo/tienda-equipo.component';
 import { ConfigurarPiezaComponent } from './components/nuevo-personaje/configurar-pieza/configurar-pieza.component';
+import { TiendaSesionComponent } from './components/sesiones/tienda-sesion/tienda-sesion.component';
 import { DetallesDeidadComponent } from './components/detalles/detalles-deidad/detalles-deidad.component';
 import { ListadoDeidadesComponent } from './components/shared/listado-deidades/listado-deidades.component';
 import { DetallesFusionComponent } from './components/detalles/detalles-fusion/detalles-fusion.component';
@@ -272,6 +273,7 @@ import { PROVEEDORES_PAGINADOR } from './services/utils/paginador-es';
         DetallesEquipoComponent,
         TiendaEquipoComponent,
         ConfigurarPiezaComponent,
+        TiendaSesionComponent,
         DetallesDeidadComponent,
         ListadoDeidadesComponent,
         DetallesFusionComponent,

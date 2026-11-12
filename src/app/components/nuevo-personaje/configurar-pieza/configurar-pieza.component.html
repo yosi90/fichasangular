@@ -117,7 +117,7 @@
                 </div>
             </div>
             <div class="configurar__total"><span>Total</span><b>{{textoPrecio(precio)}}</b></div>
-            <p class="creacion-texto-suave">Para esta pieza tienes {{textoPrecio(disponible)}} (lo que te queda más lo que ya costaba).</p>
+            <p class="creacion-texto-suave" *ngIf="disponible !== null">Para esta pieza tienes {{textoPrecio(disponible)}} (lo que te queda más lo que ya costaba).</p>
             <p class="creacion-aviso" role="status" *ngIf="motivo || falta > 0">
                 {{motivo || ('No te llega: te faltan ' + textoPrecio(falta) + '. Quita algo de lo que compra o baja la mejora.')}}
             </p>

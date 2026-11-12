@@ -1,5 +1,5 @@
-import { Component, DoCheck, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
-import { Subscription } from 'rxjs';
+import { Component, DoCheck, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, Type } from '@angular/core';
+import { Subscription, firstValueFrom, take } from 'rxjs';
 import {
     CasillaFicha,
     DatoFicha,
@@ -33,6 +33,7 @@ import { Rasgo } from 'src/app/interfaces/rasgo';
 import { RegionDetalle } from 'src/app/interfaces/region';
 import { SubtipoRef } from 'src/app/interfaces/subtipo';
 import { TipoCriatura } from 'src/app/interfaces/tipo_criatura';
+import { ExperienciaPersonaje } from 'src/app/interfaces/sesiones';
 import { ClaseService } from 'src/app/services/clase.service';
 import { FichasDescargaBackgroundService } from 'src/app/services/fichas-descarga-background.service';
 import { ListaPersonajesService } from 'src/app/services/listas/lista-personajes.service';
@@ -40,6 +41,9 @@ import { PersonajeService } from 'src/app/services/personaje.service';
 import { PlatformSessionService } from 'src/app/services/platform-session.service';
 import { RegionService } from 'src/app/services/region.service';
 import { UserService } from 'src/app/services/user.service';
+import { SesionesService } from 'src/app/services/sesiones.service';
+import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { BarraExperiencia, barraExperiencia, fechaSesion } from 'src/app/services/utils/sesiones-texto';
 import { esNombreComodin } from 'src/app/services/utils/comodin';
 import {
     detallesPiezaEquipo,
@@ -82,7 +86,7 @@ import {
 
 /** Cómo se enseña la ficha: toda en una página o con pestañas internas (las dos propuestas aprobadas del lienzo). */
 export type VistaFicha = 'pagina' | 'pestanas';
-export type PestanaFicha = 'combate' | 'habilidades' | 'capacidades' | 'magia' | 'incarnum' | 'equipo' | 'historia';
+export type PestanaFicha = 'combate' | 'habilidades' | 'capacidades' | 'magia' | 'incarnum' | 'equipo' | 'historia' | 'historial';
 
 /** La vista que se recuerda en este navegador, por cuenta (`clavePorCuenta`); sin cuenta, con este sufijo. */
 export const PREFIJO_PREFERENCIA_VISTA = 'rol.ficha.vista';
@@ -97,6 +101,28 @@ const NOMBRES_PESTANAS: Record<PestanaFicha, string> = {
     incarnum: 'Incarnum',
     equipo: 'Equipo',
     historia: 'Historia',
+    historial: 'Historial',
+};
+
+/**
+ * La ficha de una sesión pasada (lienzo de sesiones, pantalla 3): la `ficha` de `GET /personajes/{id}/sesiones/{numero}`,
+ * con lo que dice la franja de arriba y hasta dónde llegan las flechas.
+ */
+interface VersionFicha {
+    numero: number;
+    /** «Así era tras la sesión 2 · El puente de piedra · 7 nov» (o «Así está en la sesión 3, abierta…»). */
+    titulo: string;
+    nota: string;
+    /** La última sesión (para la flecha de la siguiente). */
+    ultima: number;
+}
+
+/** Lo que recibe el historial (con carga diferida, por `ngComponentOutlet`): ver `HistorialSesionesComponent`. */
+type EntradasHistorial = {
+    pj: Personaje;
+    clases: Clase[];
+    alCambiar: (experiencia: ExperienciaPersonaje | null) => void;
+    alVerVersion: (numero: number, ultima: number) => void;
 };
 
 /** Una salvación como se enseña: el total y, por separado, la parte de clase, la de varios y la del equipo con sus orígenes. */
@@ -236,7 +262,11 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
 
     @Input()
     set pj(value: Personaje) {
+        // Una ficha nueva desde fuera deja la versión que se estuviera viendo.
+        this.version = null;
+        this.pjActual = null;
         this.pjData = value;
+        this.actualizarSesiones();
         if (this.iniciado)
             this.calcular();
     }
@@ -275,6 +305,20 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
     perfilPublicoDisponible = false;
     nivelesLanzador: PersonajeNivelLanzadorResumen[] = [];
 
+    // Sesiones (lienzo de sesiones, pantallas 1 y 3): la barra de experiencia, el historial y la ficha de una versión.
+    /** La barra de PX, de `experiencia` de la ficha (y de cada respuesta de las sesiones); `null` sin ella. */
+    barra: BarraExperiencia | null = null;
+    /** La sesión pasada que se está viendo; `null`, la ficha de ahora. */
+    version: VersionFicha | null = null;
+    cargandoVersion = false;
+    /** El historial, que se carga al abrir su pestaña (o al pedirlo en la vista de página). */
+    historialComponente: Type<unknown> | null = null;
+    historialEntradas: EntradasHistorial | null = null;
+    private experiencia: ExperienciaPersonaje | null = null;
+    /** La ficha de ahora mientras se ve una versión. */
+    private pjActual: Personaje | null = null;
+    private subidasSub?: Subscription;
+
     private iniciado = false;
     private firma = '';
     private cuentaPreferencia: string | null | undefined = undefined;
@@ -293,6 +337,8 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
         private userSvc: UserService,
         private platformSessionSvc: PlatformSessionService,
         private hostElement: ElementRef<HTMLElement>,
+        private sesionesSvc: SesionesService,
+        private puertaSubida: SubidaNivelPuertaService,
     ) { }
 
     ngOnInit(): void {
@@ -302,6 +348,11 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
         this.sesionSub = this.platformSessionSvc.estado$?.subscribe(() => this.leerVistaGuardada());
         this.cargarCatalogoRegiones();
         this.cargarCatalogoClasesSiNecesario();
+        // Cuando la subida de nivel (fase 4) guarda un nivel de este personaje, su ficha se vuelve a leer.
+        this.subidasSub = this.puertaSubida.subidasHechas$.subscribe((id) => {
+            if (id === toNumber(this.fichaActual?.Id))
+                void this.recargarFicha();
+        });
         this.calcular();
     }
 
@@ -327,6 +378,135 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
         this.regionesSub?.unsubscribe();
         this.clasesSub?.unsubscribe();
         this.sesionSub?.unsubscribe();
+        this.subidasSub?.unsubscribe();
+    }
+
+    // Sesiones: la barra de experiencia, el historial y la ficha de una versión
+
+    /** La ficha de ahora: la que llegó o, mientras se ve una versión, la que se guardó al entrar en ella. */
+    private get fichaActual(): Personaje | null {
+        return this.pjActual ?? this.pjData ?? null;
+    }
+
+    /**
+     * Si la ficha enseña la barra de PX y el historial: la de la API de un personaje guardado (con `experiencia`), con
+     * sesión (las rutas de sesiones piden el token) y fuera de la vista previa de la creación y de una versión.
+     */
+    get muestraSesiones(): boolean {
+        return !this.esPreviewNuevoPersonaje
+            && this.version === null
+            && toNumber(this.pj?.Id) > 0
+            && this.experiencia !== null
+            && !!this.userSvc.IsLoggedIn;
+    }
+
+    /** «Subir a nivel N»: lo abre la pantalla de la subida (fase 4), que escucha la puerta. */
+    pedirSubida(): void {
+        const id = toNumber(this.fichaActual?.Id);
+        if (id > 0)
+            this.puertaSubida.solicitar(id);
+    }
+
+    /** Carga el historial (un componente aparte, con carga diferida) la primera vez que hace falta. */
+    async cargarHistorial(): Promise<void> {
+        if (this.historialComponente || !this.muestraSesiones)
+            return;
+        const { HistorialSesionesComponent } = await import('src/app/components/sesiones/historial-sesiones/historial-sesiones.component');
+        this.historialEntradas = this.crearEntradasHistorial();
+        this.historialComponente = HistorialSesionesComponent;
+    }
+
+    /** «Ver la ficha en esta sesión» (y las flechas): la ficha de esa versión, sin botones de editar. */
+    async verVersion(numero: number, ultima: number): Promise<void> {
+        const actual = this.fichaActual;
+        const id = toNumber(actual?.Id);
+        if (id <= 0 || this.cargandoVersion)
+            return;
+        this.cargandoVersion = true;
+        try {
+            const { sesion, ficha } = await this.sesionesSvc.sesion(id, numero);
+            const pjVersion = this.pSvc.fichaDeApi(ficha);
+            const fecha = fechaSesion(sesion);
+            const cabecera = sesion.numero === 0 ? 'Así era al crearlo' : `Así era tras la sesión ${sesion.numero}`;
+            const titulo = sesion.titulo && sesion.titulo !== `Sesión ${sesion.numero}` ? ` · ${sesion.titulo}` : '';
+            this.pjActual = actual;
+            this.pjData = pjVersion;
+            this.version = {
+                numero: sesion.numero,
+                ultima: Math.max(ultima, sesion.numero),
+                titulo: sesion.estado === 'abierta'
+                    ? `Así está en la sesión ${sesion.numero}${titulo}, todavía abierta`
+                    : `${cabecera}${titulo}${fecha ? ` · ${fecha}` : ''}`,
+                nota: sesion.estado === 'abierta'
+                    ? 'La sesión sigue abierta: su versión se guarda al cerrarla.'
+                    : 'Versión guardada al cerrar la sesión. Si las reglas o los catálogos han cambiado desde entonces, la ficha actual puede no coincidir.',
+            };
+            this.firma = '';
+            this.calcular();
+        } catch (error: any) {
+            await this.avisar('No se pudo cargar esa versión', error);
+        } finally {
+            this.cargandoVersion = false;
+        }
+    }
+
+    /** «Volver a la ficha actual»: la de ahora, en su historial. */
+    volverAFichaActual(): void {
+        if (!this.pjActual)
+            return;
+        this.pjData = this.pjActual;
+        this.pjActual = null;
+        this.version = null;
+        this.pestana = 'historial';
+        this.firma = '';
+        this.calcular();
+    }
+
+    private actualizarSesiones(): void {
+        this.experiencia = this.fichaActual?.ExperienciaSesiones ?? null;
+        this.barra = this.experiencia ? barraExperiencia(this.experiencia) : null;
+        if (this.historialEntradas && this.fichaActual)
+            this.historialEntradas = this.crearEntradasHistorial();
+    }
+
+    private crearEntradasHistorial(): EntradasHistorial {
+        return {
+            pj: this.fichaActual as Personaje,
+            clases: this.getCatalogoClasesEfectivo(),
+            alCambiar: this.alCambiarSesion,
+            alVerVersion: this.alVerVersion,
+        };
+    }
+
+    /** Lo que se apunta en una sesión cambia los PX (al momento) y la ficha (se vuelve a leer). */
+    private readonly alCambiarSesion = (experiencia: ExperienciaPersonaje | null): void => {
+        if (experiencia) {
+            this.experiencia = experiencia;
+            this.barra = barraExperiencia(experiencia);
+        }
+        void this.recargarFicha();
+    };
+
+    private readonly alVerVersion = (numero: number, ultima: number): void => {
+        void this.verVersion(numero, ultima);
+    };
+
+    /** Vuelve a leer la ficha de ahora (tras apuntar algo o subir de nivel) sin salir de la pestaña. */
+    private async recargarFicha(): Promise<void> {
+        const id = toNumber(this.fichaActual?.Id);
+        if (id <= 0)
+            return;
+        try {
+            const nueva = await firstValueFrom((await this.pSvc.getDetallesPersonaje(id)).pipe(take(1)));
+            if (this.pjActual)
+                this.pjActual = nueva;
+            else
+                this.pjData = nueva;
+            this.actualizarSesiones();
+            this.calcular();
+        } catch {
+            // Si no llega, se queda la que había: la barra ya tiene los PX de la respuesta.
+        }
     }
 
     // Vista y pestañas
@@ -344,6 +524,8 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
 
     elegirPestana(pestana: PestanaFicha): void {
         this.pestana = pestana;
+        if (pestana === 'historial')
+            void this.cargarHistorial();
     }
 
     idPestana(pestana: PestanaFicha): string {
@@ -362,7 +544,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
         if (destino === null)
             return;
         evento.preventDefault();
-        this.pestana = ids[destino];
+        this.elegirPestana(ids[destino]);
         Promise.resolve().then(() => this.hostElement.nativeElement.querySelector<HTMLElement>(`#${this.idPestana(this.pestana)}`)?.focus());
     }
 
@@ -418,6 +600,7 @@ export class DetallesPersonajeComponent implements OnInit, OnChanges, DoCheck, O
     get mostrarControlVisibilidad(): boolean {
         return !this.esPreviewNuevoPersonaje
             && toNumber(this.pj?.Id) > 0
+            && this.version === null
             && this.actorPuedeGestionarEstadoPersonaje();
     }
 
@@ -1178,7 +1361,8 @@ ${envejecimiento}` : edades;
             companeros: this.monstruosVisibles((pj as any).Companeros),
             personalidad: this.tienePersonalidadVisible() ? `${pj.Personalidad}`.trim() : '',
             contexto: this.tieneContextoVisible() ? `${pj.Contexto}`.trim() : '',
-            multimedia: !preview,
+            // Las imágenes y las voces son las de ahora: en una versión pasada no salen.
+            multimedia: !preview && this.version === null,
         };
         modelo.casillasPagina = [...modelo.caracteristicas, ...this.calcularCasillasSalvaciones()];
         Object.assign(modelo, this.calcularHabilidades());
@@ -1528,6 +1712,7 @@ ${envejecimiento}` : edades;
             incarnum: !!m.incarnum,
             equipo: this.tieneDatos(m.equipo) || this.tieneDatos(m.carga) || hay(m.piezas, m.modificadoresEquipo) || m.sinEquipo,
             historia: true,
+            historial: this.muestraSesiones,
         };
         return (Object.keys(NOMBRES_PESTANAS) as PestanaFicha[])
             .filter((id) => visibles[id])

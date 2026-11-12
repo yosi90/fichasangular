@@ -1,0 +1,17 @@
+<div class="tienda-sesion" role="dialog" aria-modal="true" aria-labelledby="tienda-sesion-titulo">
+    <header class="tienda-sesion__cabecera">
+        <h2 class="tienda-sesion__titulo" id="tienda-sesion-titulo">{{titulo}}</h2>
+        <button type="button" mat-icon-button class="tienda-sesion__cerrar" [disabled]="guardando" aria-label="Cerrar"
+            matTooltip="Cerrar" (click)="cancelar.emit()">
+            <mat-icon>close</mat-icon>
+        </button>
+    </header>
+    <div class="tienda-sesion__cuerpo">
+        <app-creacion-marco>
+            <app-tienda-equipo [modo]="modo" [regla]="regla" [articulos]="articulos" [conjuros]="conjuros"
+                [politica]="politica" [capacidadCarga]="capacidadCarga" [guardando]="guardando" [error]="error"
+                [piezaConError]="piezaConError" (confirmar)="confirmar.emit($event)" (omitir)="cancelar.emit()">
+            </app-tienda-equipo>
+        </app-creacion-marco>
+    </div>
+</div>

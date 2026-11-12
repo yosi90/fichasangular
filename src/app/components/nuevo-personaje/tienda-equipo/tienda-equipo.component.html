@@ -1,6 +1,6 @@
-<app-ficha-franja [datos]="franja" titulo="El dinero de la compra"></app-ficha-franja>
+<app-ficha-franja [datos]="franja" [titulo]="modo === 'botin' ? 'Lo que obtiene' : 'El dinero de la compra'"></app-ficha-franja>
 
-<app-creacion-cuerpo tituloTarea="Catálogo" tituloLateral="Lo que compra">
+<app-creacion-cuerpo tituloTarea="Catálogo" [tituloLateral]="modo === 'botin' ? 'Lo que obtiene' : 'Lo que compra'">
     <div creacionTarea class="tienda-catalogo">
         <div class="tienda-pestanas" role="tablist" aria-label="Qué comprar" (keydown)="moverPestana($event)">
             <button type="button" role="tab" class="tienda-pestana" *ngFor="let pestana of pestanas; trackBy: trackPestana"
@@ -119,7 +119,7 @@
     </div>
 
     <div creacionLateral class="tienda-lateral">
-        <section class="ficha-tarjeta tienda-tarjeta" aria-labelledby="tienda-dinero">
+        <section class="ficha-tarjeta tienda-tarjeta" aria-labelledby="tienda-dinero" *ngIf="modo === 'creacion'">
             <h2 class="ficha-titulo" id="tienda-dinero">Dinero inicial</h2>
             <p class="ficha-nota">{{regla.descripcion}}</p>
             <div class="tienda-dinero">
@@ -138,8 +138,8 @@
         </section>
 
         <section class="ficha-tarjeta tienda-tarjeta tienda-compra" aria-labelledby="tienda-compra">
-            <h2 class="ficha-titulo" id="tienda-compra">Lo que compra ({{cuantasCompras}})</h2>
-            <p class="ficha-nota" *ngIf="cuantasCompras < 1">Todavía nada. Puedes terminar sin comprar y quedarte con todo el dinero.</p>
+            <h2 class="ficha-titulo" id="tienda-compra">{{modo === 'botin' ? 'Lo que obtiene' : 'Lo que compra'}} ({{cuantasCompras}})</h2>
+            <p class="ficha-nota" *ngIf="cuantasCompras < 1">{{modo === 'creacion' ? 'Todavía nada. Puedes terminar sin comprar y quedarte con todo el dinero.' : 'Todavía nada.'}}</p>
             <ul class="tienda-piezas" *ngIf="cuantasCompras > 0">
                 <li class="tienda-pieza" *ngFor="let copia of copias; let i = index" [class.tienda-pieza--marcada]="i === copiaSenalada">
                     <div class="tienda-pieza__texto">
@@ -191,15 +191,15 @@
                     </div>
                 </li>
             </ul>
-            <div class="tienda-total"><span>Total</span><b>{{textoPrecio(resumen.gastado)}}</b></div>
+            <div class="tienda-total"><span>{{modo === 'botin' ? 'Lo que vale' : 'Total'}}</span><b>{{textoPrecio(resumen.gastado)}}</b></div>
         </section>
     </div>
 </app-creacion-cuerpo>
 
 <app-creacion-pie [nota]="notaPie" [aviso]="!!error || (!!motivoNoComprar && cuantasCompras > 0)">
-    <button mat-stroked-button type="button" [disabled]="guardando" (click)="onOmitir()">Terminar sin comprar</button>
+    <button mat-stroked-button type="button" [disabled]="guardando" (click)="onOmitir()">{{modo === 'creacion' ? 'Terminar sin comprar' : 'Cancelar'}}</button>
     <button mat-raised-button color="primary" type="button" [disabled]="guardando || motivoNoComprar !== null" (click)="onConfirmar()">
-        {{guardando ? 'Guardando…' : 'Comprar y terminar'}}
+        {{guardando ? 'Guardando…' : modo === 'creacion' ? 'Comprar y terminar' : modo === 'compra' ? 'Comprar' : 'Apuntar'}}
     </button>
 </app-creacion-pie>
 

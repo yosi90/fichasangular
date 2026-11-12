@@ -1,3 +1,4 @@
+import { ExperienciaPersonaje } from './sesiones';
 import { AptitudSortilega } from "./aptitud-sortilega";
 import { ArmaNaturalPersonaje } from "./arma-natural";
 import type { PenalizacionExperiencia } from "src/app/services/utils/penalizacion-experiencia";
@@ -235,6 +236,12 @@ export interface Personaje extends PersonajeSimple {
     /** Sus DG sin ajustes de nivel (`nivelPersonaje` de la ficha): el nivel con el que compra un PNJ sin NEP. */
     Nivel_personaje?: number | null;
     Experiencia: number;
+    /**
+     * Solo en la ficha de la API (desde las sesiones, `experiencia` de `GET /personajes/{id}`): sus PX vigentes, los de su
+     * nivel y del siguiente, si puede subir y cuántos niveles, y su sesión abierta. Sin ella (una ficha de la creación o de
+     * una API anterior), `null`: la ficha no enseña la barra de experiencia ni el historial.
+     */
+    ExperienciaSesiones?: ExperienciaPersonaje | null;
     /**
      * Solo en la creación: lo que deja de ganar de experiencia por multiclase (Manual del jugador, cap. 3; no cambia la
      * experiencia con la que se crea). No se guarda: sale de sus clases y de la clase predilecta de su raza.

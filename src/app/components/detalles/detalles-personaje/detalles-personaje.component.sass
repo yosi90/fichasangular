@@ -194,6 +194,109 @@
     font-size: 12px
     color: $font-base
 
+// Sesiones (lienzo de sesiones, pantallas 1 y 3). La barra de experiencia bajo la cabecera: los PX hacia el siguiente
+// nivel y, si le llegan, «Puede subir de nivel» con su botón (la barra, rosa).
+.personaje-experiencia
+    display: flex
+    align-items: center
+    gap: 20px
+    padding: 14px 24px
+    background: $ficha-tarjeta
+    border-radius: $ficha-radio
+    box-shadow: $ficha-sombra
+
+.personaje-experiencia__datos
+    display: flex
+    flex-direction: column
+    gap: 8px
+    flex-grow: 1
+    min-width: 0
+
+.personaje-experiencia__linea
+    display: flex
+    flex-wrap: wrap
+    align-items: baseline
+    gap: 4px 12px
+
+.personaje-experiencia__etiqueta
+    @include ficha-versalitas
+
+.personaje-experiencia__px
+    font-size: 18px
+    font-weight: 500
+    color: $ficha-blanco
+
+.personaje-experiencia__niveles
+    font-size: 14px
+    color: $ficha-texto-suave
+
+.personaje-experiencia__barra
+    height: 10px
+    border-radius: 5px
+    background: $contrast-dark
+    overflow: hidden
+
+.personaje-experiencia__relleno
+    height: 100%
+    background: $accent
+
+.personaje-experiencia--subir .personaje-experiencia__relleno
+    background: $active
+
+.personaje-experiencia__subida
+    display: flex
+    flex-direction: column
+    align-items: flex-end
+    gap: 6px
+
+.personaje-experiencia__aviso
+    font-size: 14px
+    font-weight: 500
+    color: #f48fb1
+
+.personaje-experiencia__boton
+    min-height: 44px
+
+// La franja de una versión pasada: azul de información, con las flechas y la vuelta a la ficha de ahora.
+.personaje-version
+    display: flex
+    flex-wrap: wrap
+    align-items: center
+    gap: 12px 16px
+    padding: 12px 20px
+    background: $contrast-dark
+    border: 1px solid #8fa8ff
+    border-radius: $ficha-radio
+
+.personaje-version__icono
+    color: #8fa8ff
+
+.personaje-version__textos
+    display: flex
+    flex-direction: column
+    gap: 2px
+    flex: 1 1 280px
+    min-width: 0
+
+.personaje-version__titulo
+    font-size: 15px
+    font-weight: 500
+    color: $ficha-blanco
+
+.personaje-version__nota
+    font-size: 13px
+    color: $ficha-texto-suave
+
+.personaje-version__flechas
+    display: flex
+    gap: 8px
+
+.personaje-version .personaje-boton
+    height: 44px
+
+.personaje-version__volver
+    border-color: #8fa8ff
+
 @container ficha (max-width: 1100px)
     .personaje-resumen
         grid-template-columns: minmax(0, 1fr)
@@ -205,6 +308,19 @@
 @container ficha (max-width: 640px)
     .personaje-acciones
         justify-content: flex-start
+
+    .personaje-experiencia
+        flex-direction: column
+        align-items: stretch
+        gap: 10px
+        padding: 14px 16px
+
+    .personaje-experiencia__subida
+        align-items: stretch
+
+    .personaje-version__volver
+        width: 100%
+        justify-content: center
 
     .personaje-pestanas__pestana
         padding: 0 12px

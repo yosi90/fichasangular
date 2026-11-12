@@ -35,8 +35,8 @@ export class ConfigurarPiezaComponent implements OnChanges {
     @Input() nueva = false;
     @Input() materiales: MaterialAplicable[] = [];
     @Input() aptitudes: EncantamientoDetalle[] = [];
-    /** El dinero que hay para esta pieza: lo que le queda más lo que ya costaba. */
-    @Input() disponible = 0;
+    /** El dinero que hay para esta pieza: lo que le queda más lo que ya costaba; `null`, sin límite (el botín de una sesión). */
+    @Input() disponible: number | null = 0;
     @Input() politica: PoliticaTienda = POLITICA_TIENDA_LIBRE;
     @Input() conjuros: { Id: number; Nombre: string; }[] = [];
     @Output() guardar = new EventEmitter<PiezaTienda>();
@@ -174,6 +174,6 @@ export class ConfigurarPiezaComponent implements OnChanges {
         this.precio = precioEstimado(borrador);
         this.total = bonificadorTotal(borrador);
         this.motivo = motivoPiezaNoValida(borrador, this.politica);
-        this.falta = Math.max(0, redondearCentesimas(this.precio - this.disponible));
+        this.falta = this.disponible === null ? 0 : Math.max(0, redondearCentesimas(this.precio - this.disponible));
     }
 }

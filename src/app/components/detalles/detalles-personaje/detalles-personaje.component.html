@@ -1,6 +1,22 @@
 <!-- La ficha del personaje: las dos propuestas aprobadas del lienzo (página continua y pestañas internas), con un
      interruptor en la cabecera. Las dos leen el mismo cálculo (`m`) y pintan cada bloque con las mismas plantillas. -->
 <app-ficha-detalle *ngIf="pj">
+    <!-- La ficha de una sesión pasada (lienzo de sesiones, pantalla 3): la franja, las flechas y la vuelta a la de ahora -->
+    <div class="personaje-version" role="status" *ngIf="version as v">
+        <mat-icon class="personaje-version__icono" aria-hidden="true">history</mat-icon>
+        <div class="personaje-version__textos">
+            <span class="personaje-version__titulo">{{v.titulo}}</span>
+            <span class="personaje-version__nota">{{v.nota}}</span>
+        </div>
+        <nav class="personaje-version__flechas" aria-label="Otras versiones">
+            <button type="button" class="personaje-boton" *ngIf="v.numero > 0" [disabled]="cargandoVersion"
+                (click)="verVersion(v.numero - 1, v.ultima)">‹ Sesión {{v.numero - 1}}</button>
+            <button type="button" class="personaje-boton" *ngIf="v.numero < v.ultima" [disabled]="cargandoVersion"
+                (click)="verVersion(v.numero + 1, v.ultima)">Sesión {{v.numero + 1}} ›</button>
+        </nav>
+        <button type="button" class="personaje-boton personaje-version__volver" (click)="volverAFichaActual()">Volver a la ficha actual</button>
+    </div>
+
     <app-ficha-cabecera icono="personaje"
         [tipo]="vista === 'pagina' ? m.tipoPagina : m.tipoPestanas"
         [nombre]="pj.Nombre"
@@ -32,7 +48,7 @@
                     <span>Pestañas</span>
                 </button>
             </div>
-            <button type="button" class="personaje-boton" *ngIf="mostrarBotonGenerarPdf" (click)="generarFicha()">
+            <button type="button" class="personaje-boton" *ngIf="mostrarBotonGenerarPdf && !version" (click)="generarFicha()">
                 <mat-icon aria-hidden="true">download</mat-icon>
                 <span>Generar PDF</span>
             </button>
@@ -48,6 +64,28 @@
             </ng-container>
         </div>
     </app-ficha-cabecera>
+
+    <!-- La experiencia (lienzo de sesiones, pantalla 1): PX hacia el siguiente nivel y, si le llegan, la subida -->
+    <section class="personaje-experiencia" aria-label="Experiencia" *ngIf="muestraSesiones && barra as b"
+        [class.personaje-experiencia--subir]="b.puedeSubir">
+        <div class="personaje-experiencia__datos">
+            <div class="personaje-experiencia__linea">
+                <span class="personaje-experiencia__etiqueta">Experiencia</span>
+                <span class="personaje-experiencia__px">{{b.texto}}</span>
+                <span class="personaje-experiencia__niveles">{{b.niveles}}</span>
+            </div>
+            <div class="personaje-experiencia__barra" role="progressbar" [attr.aria-label]="b.etiqueta"
+                aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="b.porcentaje">
+                <div class="personaje-experiencia__relleno" [style.width.%]="b.porcentaje"></div>
+            </div>
+        </div>
+        <div class="personaje-experiencia__subida" *ngIf="b.puedeSubir">
+            <span class="personaje-experiencia__aviso">Puede subir de nivel</span>
+            <button type="button" mat-raised-button color="primary" class="personaje-experiencia__boton" (click)="pedirSubida()">
+                {{b.boton}}<ng-container *ngIf="b.varios"> {{b.varios}}</ng-container>
+            </button>
+        </div>
+    </section>
 
     <!-- Vista A: página continua -->
     <ng-container *ngIf="vista === 'pagina'; else vistaPestanas">
@@ -82,6 +120,11 @@
         <div class="personaje-rejilla" *ngIf="m.multimedia">
             <ng-container *ngTemplateOutlet="multimediaTpl"></ng-container>
         </div>
+        <app-ficha-lateral titulo="Historial" *ngIf="muestraSesiones">
+            <button type="button" class="ficha-enlace" *ngIf="!historialComponente; else historialTpl" (click)="cargarHistorial()">
+                Ver el historial de sesiones
+            </button>
+        </app-ficha-lateral>
     </ng-container>
 
     <!-- Vista B: pestañas internas, con la franja y las características siempre arriba -->
@@ -121,6 +164,12 @@
             <div class="personaje-rejilla" *ngSwitchCase="'equipo'">
                 <ng-container *ngTemplateOutlet="equipoTpl"></ng-container>
             </div>
+            <ng-container *ngSwitchCase="'historial'">
+                <ng-container *ngIf="historialComponente; else historialCargando">
+                    <ng-container *ngTemplateOutlet="historialTpl"></ng-container>
+                </ng-container>
+                <ng-template #historialCargando><p class="ficha-nota">Cargando el historial…</p></ng-template>
+            </ng-container>
             <ng-container *ngSwitchCase="'historia'">
                 <app-ficha-datos [datos]="m.datos" titulo="Datos del personaje"></app-ficha-datos>
                 <div class="personaje-rejilla" *ngIf="m.personalidad || m.contexto">
@@ -135,6 +184,11 @@
 </app-ficha-detalle>
 
 <!-- Los bloques, comunes a las dos vistas -->
+
+<!-- El historial de sesiones, con carga diferida (`cargarHistorial`): sus sesiones, la abierta y su panel -->
+<ng-template #historialTpl>
+    <ng-container *ngComponentOutlet="historialComponente; inputs: historialEntradas ?? undefined"></ng-container>
+</ng-template>
 
 <ng-template #paresTpl let-filas>
     <table class="ficha-pares">

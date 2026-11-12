@@ -1,0 +1,46 @@
+@use '../../../../assets/css/variables' as *
+@use '../../../../assets/css/marco' as *
+
+// La tienda de una sesión, a pantalla completa (lienzo de sesiones, pantallas 2 y 5). Lo de dentro es la tienda de la
+// creación con su marco (`<app-creacion-marco>`); aquí solo la capa, la cabecera con la ✕ y el desplazamiento.
+
+.tienda-sesion
+    position: fixed
+    inset: 0
+    z-index: 1000
+    display: flex
+    flex-direction: column
+    background: #505050
+    color: #e6e9eb
+
+.tienda-sesion__cabecera
+    display: flex
+    align-items: center
+    gap: 12px
+    min-height: 56px
+    padding: 0 12px 0 24px
+    background: $primary
+    border-bottom: 3px solid $active
+
+.tienda-sesion__titulo
+    flex-grow: 1
+    margin: 0
+    font-size: 18px
+    font-weight: 500
+    color: #fff
+
+.tienda-sesion__cerrar
+    width: 44px
+    height: 44px
+
+.tienda-sesion__cuerpo
+    flex-grow: 1
+    min-height: 0
+    overflow: auto
+    padding: 16px 20px
+
+@include movil
+    .tienda-sesion__cabecera
+        padding-left: 16px
+    .tienda-sesion__cuerpo
+        padding: 8px

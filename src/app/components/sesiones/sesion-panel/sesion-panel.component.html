@@ -1,0 +1,237 @@
+<!-- La sesión abierta (lienzo de sesiones, pantallas 2 y 5): la cabecera editable, lo que se apunta y lo que ha pasado -->
+<section class="sesion" [attr.aria-label]="'Sesión ' + actual.numero">
+    <button type="button" class="ficha-enlace sesion__volver" (click)="salir()">
+        <mat-icon aria-hidden="true">arrow_back</mat-icon>
+        Volver al historial
+    </button>
+
+    <header class="sesion__cabecera">
+        <div class="sesion__identidad">
+            <span class="sesion__tipo">{{pj.Nombre}} · Sesión {{actual.numero}} · {{abierta ? 'Abierta' : 'Cerrada'}}</span>
+            @if (puedeApuntar) {
+                <div class="sesion__campos">
+                    <label class="sesion__campo sesion__campo--titulo">
+                        <span>Título</span>
+                        <input type="text" name="titulo" [(ngModel)]="titulo" [maxlength]="maximoTitulo" [disabled]="guardando"
+                            (change)="guardarCabecera('titulo')">
+                    </label>
+                    <label class="sesion__campo">
+                        <span>Fecha de juego</span>
+                        <input type="date" name="fecha" [(ngModel)]="fecha" [disabled]="guardando" (change)="guardarCabecera('fecha')">
+                    </label>
+                </div>
+            } @else {
+                <h2 class="sesion__titulo">{{actual.titulo}}</h2>
+            }
+        </div>
+        <div class="sesion__cifras">
+            <span class="sesion__cifras-etiqueta">En esta sesión</span>
+            <span class="sesion__cifras-valor">{{cambios || 'Nada todavía'}}</span>
+            <span class="sesion__cifras-saldo">Saldo: {{textoPrecio(saldo)}}</span>
+        </div>
+    </header>
+
+    @if (aviso) {
+        <p class="sesion__aviso" role="status">{{aviso}}</p>
+    }
+
+    <div class="sesion__cuerpo">
+        <section class="sesion__tarjeta" aria-labelledby="sesion-apuntar" [class.sesion__tarjeta--oculta]="!editable && !veNotas">
+            @if (editable) {
+                <h3 class="sesion__seccion" id="sesion-apuntar">Apuntar</h3>
+                <div class="sesion__tipos" role="group" aria-label="Qué apuntar">
+                    @for (boton of botones; track boton.id) {
+                        <button type="button" class="sesion__tipo-boton" [attr.aria-pressed]="tipo === boton.id"
+                            [disabled]="guardando || cargandoTienda" (click)="elegirTipo(boton.id)">{{boton.nombre}}</button>
+                    }
+                </div>
+                @if (cargandoTienda) {
+                    <p class="sesion__nota" role="status">Abriendo la tienda…</p>
+                }
+
+                @if (tipo) {
+                    <form class="sesion__formulario" (ngSubmit)="apuntar()" [attr.aria-label]="'Apuntar: ' + tipo">
+                        @switch (tipo) {
+                            @case ('experiencia') {
+                                <div class="sesion__conmutador" role="group" aria-label="Gana o gasta">
+                                    <button type="button" [attr.aria-pressed]="pxModo === 'gana'" (click)="pxModo = 'gana'">Gana PX</button>
+                                    <button type="button" [attr.aria-pressed]="pxModo === 'gasta'" (click)="pxModo = 'gasta'">Gasta PX</button>
+                                </div>
+                                <div class="sesion__fila">
+                                    <label class="sesion__campo">
+                                        <span>{{pxModo === 'gana' ? 'PX ganados' : 'PX gastados'}}</span>
+                                        <input type="number" name="px" min="1" step="1" inputmode="numeric" [(ngModel)]="px">
+                                    </label>
+                                    <label class="sesion__campo sesion__campo--ancho">
+                                        <span>Concepto (opcional)</span>
+                                        <input type="text" name="pxConcepto" [(ngModel)]="pxConcepto" [maxlength]="maximoConcepto">
+                                    </label>
+                                </div>
+                                @if (notaExperiencia) {
+                                    <p class="sesion__nota">{{notaExperiencia}}</p>
+                                }
+                            }
+                            @case ('dinero') {
+                                <div class="sesion__conmutador" role="group" aria-label="Gana o gasta">
+                                    <button type="button" [attr.aria-pressed]="poModo === 'gana'" (click)="poModo = 'gana'">Gana</button>
+                                    <button type="button" [attr.aria-pressed]="poModo === 'gasta'" (click)="poModo = 'gasta'">Gasta</button>
+                                </div>
+                                <div class="sesion__fila">
+                                    <label class="sesion__campo">
+                                        <span>Cantidad (po)</span>
+                                        <input type="number" name="po" min="0.01" step="0.01" inputmode="decimal" [(ngModel)]="po">
+                                    </label>
+                                    <label class="sesion__campo sesion__campo--ancho">
+                                        <span>Concepto (opcional)</span>
+                                        <input type="text" name="poConcepto" [(ngModel)]="poConcepto" [maxlength]="maximoConcepto">
+                                    </label>
+                                </div>
+                                <p class="sesion__nota">Saldo: {{textoPrecio(saldo)}}; no puede quedar por debajo de 0.</p>
+                            }
+                            @case ('objeto') {
+                                <div class="sesion__conmutador" role="group" aria-label="De dónde viene">
+                                    <button type="button" [attr.aria-pressed]="origenObjeto === 'botin'" (click)="origenObjeto = 'botin'">Botín</button>
+                                    <button type="button" [attr.aria-pressed]="origenObjeto === 'regalo'" (click)="origenObjeto = 'regalo'">Regalo</button>
+                                </div>
+                                <p class="sesion__nota">Se elige en la tienda, sin pagarlo. Lo homebrew sigue lo que deje la campaña.</p>
+                            }
+                            @case ('vender') {
+                                <div class="sesion__conmutador" role="group" aria-label="Vende o pierde">
+                                    <button type="button" [attr.aria-pressed]="venderModo === 'vende'" (click)="venderModo = 'vende'">Vende</button>
+                                    <button type="button" [attr.aria-pressed]="venderModo === 'pierde'" (click)="venderModo = 'pierde'">Pierde o gasta</button>
+                                </div>
+                                @if (piezas.length > 0) {
+                                    <div class="sesion__fila">
+                                        <label class="sesion__campo sesion__campo--ancho">
+                                            <span>Pieza</span>
+                                            <select name="pieza" [(ngModel)]="idPieza">
+                                                <option [ngValue]="null" disabled>Elige una pieza</option>
+                                                @for (pieza of piezas; track pieza.id) {
+                                                    <option [ngValue]="pieza.id">{{pieza.nombre}}@if (pieza.cantidad > 1) { ({{pieza.cantidad}}) }</option>
+                                                }
+                                            </select>
+                                        </label>
+                                        <label class="sesion__campo">
+                                            <span>Cantidad</span>
+                                            <input type="number" name="cantidad" min="1" step="1" [max]="piezaElegida?.cantidad ?? 1" [(ngModel)]="cantidad">
+                                        </label>
+                                    </div>
+                                    @if (venderModo === 'pierde') {
+                                        <label class="sesion__campo sesion__campo--ancho">
+                                            <span>Concepto (opcional)</span>
+                                            <input type="text" name="perdidaConcepto" [(ngModel)]="perdidaConcepto" [maxlength]="maximoConcepto">
+                                        </label>
+                                    }
+                                    <p class="sesion__nota">
+                                        {{venderModo === 'vende'
+                                            ? 'Se vende por la mitad de su precio (Guía del DM, cap. 7); lo calcula la API y lo suma al saldo.'
+                                            : 'La pieza (o esas unidades) sale de su equipo.'}}
+                                    </p>
+                                } @else {
+                                    <p class="sesion__nota">No tiene equipo.</p>
+                                }
+                            }
+                            @case ('libro') {
+                                <div class="sesion__fila">
+                                    @if (libros.length > 1) {
+                                        <label class="sesion__campo">
+                                            <span>Libro</span>
+                                            <select name="libro" [(ngModel)]="idLibro" (ngModelChange)="conjuroElegido = null">
+                                                @for (libro of libros; track libro.clase.Id) {
+                                                    <option [ngValue]="libro.clase.Id">{{libro.clase.Nombre}}</option>
+                                                }
+                                            </select>
+                                        </label>
+                                    }
+                                    <label class="sesion__campo sesion__campo--ancho">
+                                        <span>Conjuro{{libros.length === 1 ? ' (libro de ' + libros[0].clase.Nombre + ')' : ''}}</span>
+                                        <input type="search" name="conjuro" [(ngModel)]="busquedaConjuro" placeholder="Escribe al menos dos letras"
+                                            autocomplete="off">
+                                    </label>
+                                </div>
+                                @if (cargandoConjuros) {
+                                    <p class="sesion__nota" role="status">Cargando los conjuros…</p>
+                                } @else if (busquedaConjuro.trim().length >= 2) {
+                                    <ul class="sesion__conjuros" aria-label="Conjuros que encajan">
+                                        @for (item of conjurosDelLibro; track item.conjuro.Id) {
+                                            <li>
+                                                <button type="button" class="sesion__conjuro" [attr.aria-pressed]="conjuroElegido?.conjuro?.Id === item.conjuro.Id"
+                                                    (click)="elegirConjuro(item)">
+                                                    <span>{{item.conjuro.Nombre}}</span>
+                                                    <span class="sesion__conjuro-dato">Nivel {{item.nivel}} · {{textoPrecio(item.precio)}}</span>
+                                                </button>
+                                            </li>
+                                        } @empty {
+                                            <li class="sesion__nota">Ningún conjuro de su lista con ese nombre.</li>
+                                        }
+                                    </ul>
+                                }
+                                <p class="sesion__nota">El precio es el del pergamino más escribirlo (la API pone el de verdad y comprueba que pueda lanzarlo y que no esté ya en el libro).</p>
+                            }
+                            @case ('nota') {
+                                <label class="sesion__campo sesion__campo--ancho">
+                                    <span>Nota (solo la veis tú y el máster)</span>
+                                    <textarea name="nota" rows="3" [(ngModel)]="notaTexto" [maxlength]="maximoNota"></textarea>
+                                </label>
+                            }
+                        }
+                        @if (error) {
+                            <p class="bloque-error sesion__error" role="alert">{{error}}</p>
+                        }
+                        <div class="sesion__acciones">
+                            <button type="button" mat-button (click)="cancelarFormulario()" [disabled]="guardando">Cancelar</button>
+                            <button type="submit" mat-raised-button color="primary" [disabled]="guardando || motivoNoApuntar !== null"
+                                [attr.title]="motivoNoApuntar">
+                                {{guardando ? 'Guardando…' : tipo === 'objeto' ? 'Elegir en la tienda' : 'Apuntar'}}
+                            </button>
+                        </div>
+                    </form>
+                } @else if (error) {
+                    <p class="bloque-error sesion__error" role="alert">{{error}}</p>
+                }
+            }
+
+            @if (veNotas) {
+                <label class="sesion__campo sesion__campo--ancho sesion__notas">
+                    <span>Notas de la sesión (solo las veis tú y el máster)</span>
+                    <textarea name="notas" rows="4" [(ngModel)]="notas" [maxlength]="maximoNotas" [disabled]="!puedeApuntar || guardando"
+                        (change)="guardarCabecera('notas')"></textarea>
+                </label>
+            }
+        </section>
+
+        <section class="sesion__tarjeta" aria-labelledby="sesion-eventos">
+            <h3 class="sesion__seccion" id="sesion-eventos">Lo que ha pasado</h3>
+            <ol class="sesion__eventos">
+                @for (evento of eventos; track evento.id) {
+                    <li class="sesion__evento">
+                        <span class="sesion__evento-tipo">{{etiquetaEvento[evento.tipo]}}</span>
+                        <span class="sesion__evento-texto">{{evento.texto}}</span>
+                        @if (editable && evento.deshacible) {
+                            <button type="button" mat-stroked-button class="sesion__deshacer" [disabled]="guardando"
+                                (click)="deshacer(evento)">Deshacer</button>
+                        }
+                    </li>
+                } @empty {
+                    <li class="sesion__nota">Todavía no ha pasado nada.</li>
+                }
+            </ol>
+            @if (!tipo && error && !editable) {
+                <p class="bloque-error sesion__error" role="alert">{{error}}</p>
+            }
+            <span class="sesion__hueco"></span>
+            @if (subida; as s) {
+                <div class="sesion__subida">
+                    <span>{{s.texto}}</span>
+                    <button type="button" mat-raised-button color="primary" (click)="pedirSubida()">{{s.boton}}</button>
+                </div>
+            }
+            @if (editable) {
+                <div class="sesion__cerrar">
+                    <button type="button" mat-stroked-button [disabled]="guardando" (click)="cerrarSesion()">Cerrar la sesión</button>
+                </div>
+            }
+        </section>
+    </div>
+</section>
+<ng-container #tiendaHost></ng-container>
