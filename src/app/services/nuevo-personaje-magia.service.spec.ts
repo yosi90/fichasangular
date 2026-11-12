@@ -944,7 +944,7 @@ describe('Clases propias con las respuestas reales de la API', () => {
             // El especial 163 de `rol_dev`, con sus extras (+0, +1 y +2) y `Extra_da_armnat`.
             const ojo = {
                 Id: 163, Nombre: 'Bonificador de armadura natural (discípulo del ojo)', Extra: true, Repetible: false,
-                Modificadores: { Armadura_natural: 0, Ca: 0, Rd: 0, Tamano_pasos: 0 },
+                Modificadores: { Armadura_natural: 0, Ca: 0, Tamano_pasos: 0 },
                 Extras_soportados: { Extra_no_aplica: false, Extra_da_ca: false, Extra_da_armnat: true, Extra_da_rd: false, Extra_da_vel: false },
             };
             const prueba = conAptitudes(85, 'Clase de prueba', [

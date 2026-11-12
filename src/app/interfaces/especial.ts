@@ -17,7 +17,6 @@ export interface EspecialBonificadores {
     Carisma: number;
     CA: number;
     Armadura_natural: number;
-    RD: number;
     /** Las categorías de tamaño que suma para siempre (+1, una más grande, como *agrandar persona*); 0 sin cambio. */
     Tamano_pasos: number;
 }
@@ -81,7 +80,6 @@ export interface EspecialClaseMutationCore {
         carisma: number;
         ca: number;
         arm_nat: number;
-        rd: number;
         /** Opcional: sin él, el alta guarda 0 y la edición conserva el que tenía. */
         tamano_pasos?: number;
     };

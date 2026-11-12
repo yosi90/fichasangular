@@ -45,7 +45,6 @@ function normalizeBonificadores(raw: any): EspecialBonificadores {
         Carisma: toNumber(raw?.Carisma),
         CA: toNumber(raw?.CA),
         Armadura_natural: toNumber(raw?.Armadura_natural),
-        RD: toNumber(raw?.RD),
         Tamano_pasos: toInt(raw?.Tamano_pasos),
     };
 }
@@ -260,7 +259,6 @@ export class EspecialService {
                     Carisma: payload.especial.bonificadores.carisma,
                     CA: payload.especial.bonificadores.ca,
                     Armadura_natural: payload.especial.bonificadores.arm_nat,
-                    RD: payload.especial.bonificadores.rd,
                     Tamano_pasos: payload.especial.bonificadores.tamano_pasos ?? 0,
                 },
                 Flags_extra: {

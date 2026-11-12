@@ -26,7 +26,6 @@ describe('EspecialService', () => {
                 carisma: 2,
                 ca: 0,
                 arm_nat: 0,
-                rd: 0,
             },
             flags_extra: {
                 no_aplica: true,
@@ -75,7 +74,7 @@ describe('EspecialService', () => {
                 Repite_combinacion: false,
                 Activa_extra: false,
                 Caracteristica: { Id: 0, Nombre: '' },
-                Bonificadores: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 2, CA: 0, Armadura_natural: 0, RD: 0 },
+                Bonificadores: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 2, CA: 0, Armadura_natural: 0 },
                 Flags_extra: { No_aplica: true, Da_CA: false, Da_armadura_natural: false, Da_RD: false, Da_velocidad: false },
                 Subtipo: { Id: 0, Nombre: '' },
                 Extras: [],
