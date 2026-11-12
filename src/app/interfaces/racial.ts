@@ -130,4 +130,16 @@ export interface RacialDetalle {
     Progresion?: RacialProgresion[];
     /** Lo que suma solo en un caso, aparte; `[]` si nada (o en datos de antes). */
     Bonificadores_condicionales?: RacialBonificadorCondicional[];
+    /**
+     * Las razas y los tipos como los que cuenta quien tiene el rasgo para lo que depende de la raza (la sangre élfica del
+     * semielfo: elfo); `[]` si nada (o en datos de antes). Los cuenta la identidad de los prerrequisitos.
+     */
+    Cuenta_como?: RacialCuentaComo[];
+}
+
+/** Una raza o un tipo de criatura como el que cuenta quien tiene un rasgo («cuenta como»). */
+export interface RacialCuentaComo {
+    Catalogo: 'raza' | 'tipo_criatura';
+    Id: number;
+    Nombre: string;
 }

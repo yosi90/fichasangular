@@ -56,6 +56,8 @@ export class DetallesRacialComponent {
     progresion: string[] = [];
     /** Cómo sale la CD del rasgo («10 + ½ de todos sus DG + su modificador de Constitución»), o `null`. */
     cd: string | null = null;
+    /** Como qué cuenta quien lo tiene («Elfo (raza)», «Gigante (tipo de criatura)»). */
+    cuentaComo: string[] = [];
     /** Lo que suma solo en un caso (el +1 al ataque contra orcos y trasgoides), con las frases de la API. */
     bonificadoresCondicionales: string[] = [];
     /** Magic of Incarnum: la esencia que da y si es receptáculo. */
@@ -91,6 +93,9 @@ export class DetallesRacialComponent {
         this.datosEsencia = datosVisibles(datosEsenciaRasgo(value?.Esencia));
         this.progresion = frasesProgresionRacial(value) ?? [];
         this.cd = textoCdRacial(value);
+        this.cuentaComo = (value?.Cuenta_como ?? [])
+            .filter((c) => tieneTextoVisible(c?.Nombre))
+            .map((c) => `${c.Nombre} (${c.Catalogo === 'raza' ? 'raza' : 'tipo de criatura'})`);
         this.bonificadoresCondicionales = frasesBonificadoresCondicionales(value) ?? [];
     }
 

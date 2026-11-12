@@ -1,5 +1,5 @@
 import { Conjuro } from "src/app/interfaces/conjuro";
-import { RacialBonificadorCondicional, RacialBonificadorContra, RacialDetalle, RacialProgresion, RacialProgresionVelocidad } from "src/app/interfaces/racial";
+import { RacialBonificadorCondicional, RacialBonificadorContra, RacialCuentaComo, RacialDetalle, RacialProgresion, RacialProgresionVelocidad } from "src/app/interfaces/racial";
 import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeConjuroLegacy } from './conjuro-mapper';
 import { normalizarEsenciaRasgo } from './incarnum-mapper';
@@ -65,6 +65,17 @@ export function normalizarProgresionRacial(raw: any, normalizarGana: (gana: any)
 }
 
 const CATALOGOS_CONTRA: RacialBonificadorContra['Catalogo'][] = ['tipo_criatura', 'subtipo', 'raza'];
+const CATALOGOS_CUENTA_COMO: RacialCuentaComo['Catalogo'][] = ['raza', 'tipo_criatura'];
+
+/**
+ * El «cuenta como» de un racial (`Cuenta_como`: las razas y los tipos como los que cuenta), igual en la API, la caché y
+ * la ficha: uno de un catálogo que no se conoce o sin id se descarta.
+ */
+export function normalizarCuentaComo(raw: any): RacialCuentaComo[] {
+    return toArray(raw)
+        .filter((c: any) => CATALOGOS_CUENTA_COMO.includes(c?.Catalogo) && toNumber(c?.Id) > 0)
+        .map((c: any) => ({ Catalogo: c.Catalogo, Id: toNumber(c.Id), Nombre: toText(c.Nombre).trim() }));
+}
 
 /**
  * Contra qué criaturas cuenta un bonificador condicional (`Contra` del racial y `contra` de la ficha, con la misma forma):
@@ -134,6 +145,7 @@ export function normalizeRacial(raw: any): RacialDetalle {
         })),
         Esencia: normalizarEsenciaRasgo(pick(raw, "Esencia")),
         ...camposEdadRacial(raw),
+        Cuenta_como: normalizarCuentaComo(pick(raw, "Cuenta_como")),
         Prerrequisitos_flags: {
             raza: toBoolean(pick(flagsRaw, "raza", "r")),
             caracteristica_minima: toBoolean(pick(flagsRaw, "caracteristica_minima", "caracteristica", "c")),

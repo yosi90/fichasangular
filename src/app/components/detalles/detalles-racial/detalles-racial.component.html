@@ -79,6 +79,10 @@
             </ul>
         </app-ficha-lateral>
 
+        <app-ficha-lateral titulo="Cuenta como" *ngIf="cuentaComo.length > 0">
+            <p class="ficha-texto">Para todo lo que depende de la raza: {{cuentaComo.join(', ')}}.</p>
+        </app-ficha-lateral>
+
         <app-ficha-lateral titulo="CD" *ngIf="cd">
             <p class="ficha-texto">{{cd}}</p>
         </app-ficha-lateral>

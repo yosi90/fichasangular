@@ -1289,7 +1289,9 @@ export class NuevoPersonajeService {
      * subtipos que tiene ahora, los de la raza y los de las plantillas ya elegidas.
      */
     private identidadPrerrequisitosActual(): IdentidadPrerrequisitos {
-        return buildIdentidadPrerrequisitos(this.razaSeleccionada, this.razaBaseSeleccionadaCompleta, this.personajeCreacion?.Subtipos);
+        // Con los rasgos que tiene ya (los de su raza, los que gana o elige con la progresión): su «cuenta como».
+        return buildIdentidadPrerrequisitos(this.razaSeleccionada, this.razaBaseSeleccionadaCompleta, this.personajeCreacion?.Subtipos,
+            this.personajeCreacion?.Raciales?.length ? this.personajeCreacion.Raciales : null);
     }
 
     /**
