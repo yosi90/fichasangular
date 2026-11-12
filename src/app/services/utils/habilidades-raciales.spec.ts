@@ -4,7 +4,6 @@ import {
     frasesBonificadoresCondicionales,
     habilidadesDeRasgos,
     leerBonificadoresCondicionales,
-    rangosRacialesQueCuentan,
     sinApilarRaciales,
 } from './habilidades-raciales';
 import { normalizeRacial } from './racial-mapper';
@@ -20,14 +19,22 @@ const ORCOS = {
 
 const racial = (Id: number, Nombre: string, extra: Record<string, any> = {}): RacialDetalle => normalizeRacial({ Id, Nombre, ...extra });
 
+/** Lo que suman a una habilidad lo de la raza (ya sumado) y lo de sus rasgos, sin apilar (`rangos_que_cuentan` de la API). */
+const rangosQueCuentan = (deLaRaza: number, deLosRasgos: number[]): number => sinApilarRaciales<string>({
+    h: [
+        ...(deLaRaza !== 0 ? [{ valor: deLaRaza, origen: 'Raza', racial: 'raza' as const }] : []),
+        ...deLosRasgos.map((valor) => ({ valor, origen: 'Rasgo', racial: 'rasgo' as const })),
+    ],
+})['h'].reduce((suma, b) => suma + b.valor, 0);
+
 describe('habilidades-raciales', () => {
     it('los bonificadores raciales no se apilan: lo mayor entre la raza y sus rasgos; los penalizadores, todos', () => {
-        expect(rangosRacialesQueCuentan(2, [2])).toBe(2);
-        expect(rangosRacialesQueCuentan(2, [4])).toBe(4);
-        expect(rangosRacialesQueCuentan(0, [2, 4])).toBe(4);
-        expect(rangosRacialesQueCuentan(3, [2])).toBe(3);
-        expect(rangosRacialesQueCuentan(2, [-4])).toBe(-2);
-        expect(rangosRacialesQueCuentan(0, [])).toBe(0);
+        expect(rangosQueCuentan(2, [2])).toBe(2);
+        expect(rangosQueCuentan(2, [4])).toBe(4);
+        expect(rangosQueCuentan(0, [2, 4])).toBe(4);
+        expect(rangosQueCuentan(3, [2])).toBe(3);
+        expect(rangosQueCuentan(2, [-4])).toBe(-2);
+        expect(rangosQueCuentan(0, [])).toBe(0);
         const bonos = sinApilarRaciales<string>({
             'b:2': [{ valor: 2, origen: 'Gnomo', racial: 'raza' }, { valor: 2, origen: '+2 a artesanía alquimia', racial: 'rasgo' }, { valor: 2, origen: 'Dote' }],
             'b:6': [{ valor: 2, origen: 'Elfo', racial: 'raza' }, { valor: 4, origen: 'Rasgo', racial: 'rasgo' }, { valor: -1, origen: 'Pen', racial: 'rasgo' }],

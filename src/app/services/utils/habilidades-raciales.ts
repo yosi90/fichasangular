@@ -1,7 +1,9 @@
 import { HabilidadBonoVario } from 'src/app/interfaces/habilidad';
 import { PersonajeBonificadorCondicional } from 'src/app/interfaces/personaje';
 import { RacialDetalle } from 'src/app/interfaces/racial';
-import { toNullableText, toNumber } from 'src/app/services/utils/normalizacion';
+import { toNullableText, toNumber, toRefIdNombre } from 'src/app/services/utils/normalizacion';
+import { normalizarContraBonificador } from 'src/app/services/utils/racial-mapper';
+import { frasesDeRasgo } from 'src/app/services/utils/racial-progresion';
 
 /*
  * Las habilidades y los bonificadores condicionales de los rasgos raciales del personaje (roadmap
@@ -27,14 +29,16 @@ export interface HabilidadDeRasgo {
     condicion: string | null;
 }
 
+/** Los rasgos que tiene el personaje (con su progresión) sin repetir uno (por `Id`). */
+function unaVezPorRasgo(raciales: RacialDetalle[] | null | undefined): RacialDetalle[] {
+    const vistos = new Set<number>();
+    return (raciales ?? []).filter((racial) => !!racial && !vistos.has(Number(racial.Id)) && !!vistos.add(Number(racial.Id)));
+}
+
 /** Las habilidades con cantidad de los rasgos (los que tiene el personaje, con su progresión), una vez por rasgo. */
 export function habilidadesDeRasgos(raciales: RacialDetalle[] | null | undefined): HabilidadDeRasgo[] {
-    const vistos = new Set<number>();
     const salida: HabilidadDeRasgo[] = [];
-    (raciales ?? []).forEach((racial) => {
-        if (!racial || vistos.has(Number(racial.Id)))
-            return;
-        vistos.add(Number(racial.Id));
+    unaVezPorRasgo(raciales).forEach((racial) => {
         const origen = `${racial.Nombre ?? ''}`.trim();
         const filas = [
             ...(racial.Habilidades?.Base ?? []).map((ref) => ({ ref, custom: false })),
@@ -68,25 +72,13 @@ export function sinApilarRaciales<K extends string>(bonos: Record<K, HabilidadBo
     return salida;
 }
 
-/** Lo que suman a una habilidad los bonificadores raciales de la raza (lo que ya suma) y de sus rasgos (`sinApilarRaciales`). */
-export function rangosRacialesQueCuentan(deLaRaza: number, deLosRasgos: number[]): number {
-    const raza = toNumber(deLaRaza);
-    const rasgos = deLosRasgos.map(toNumber);
-    const mayorRasgo = Math.max(0, ...rasgos.filter((v) => v > 0));
-    return Math.max(Math.max(raza, 0), mayorRasgo) + Math.min(raza, 0) + rasgos.filter((v) => v < 0).reduce((a, v) => a + v, 0);
-}
-
 /**
  * Los bonificadores condicionales de los rasgos que tiene el personaje, como los da la ficha de la API
  * (`bonificadoresCondicionales`): cada uno con su rasgo de origen, una vez por rasgo.
  */
 export function bonificadoresCondicionalesDeRaciales(raciales: RacialDetalle[] | null | undefined): PersonajeBonificadorCondicional[] {
-    const vistos = new Set<number>();
     const salida: PersonajeBonificadorCondicional[] = [];
-    (raciales ?? []).forEach((racial) => {
-        if (!racial || vistos.has(Number(racial.Id)))
-            return;
-        vistos.add(Number(racial.Id));
+    unaVezPorRasgo(raciales).forEach((racial) => {
         (racial.Bonificadores_condicionales ?? []).forEach((b) => salida.push({
             objetivo: { ...b.Objetivo },
             tipoBonificador: { ...b.Tipo_bonificador },
@@ -100,20 +92,16 @@ export function bonificadoresCondicionalesDeRaciales(raciales: RacialDetalle[] |
     return salida;
 }
 
-const CATALOGOS_CONTRA = ['tipo_criatura', 'subtipo', 'raza'];
-
 /** `bonificadoresCondicionales` de la ficha de la API; los que no traen objetivo o valen 0 no se leen. */
 export function leerBonificadoresCondicionales(raw: unknown): PersonajeBonificadorCondicional[] {
     return (Array.isArray(raw) ? raw : [])
         .filter((b: any) => b && typeof b === 'object' && b.objetivo && toNumber(b.valor) !== 0)
         .map((b: any) => ({
-            objetivo: { Id: toNumber(b.objetivo?.Id), Nombre: `${b.objetivo?.Nombre ?? ''}`.trim() },
-            tipoBonificador: { Id: toNumber(b.tipoBonificador?.Id), Nombre: `${b.tipoBonificador?.Nombre ?? ''}`.trim() },
+            objetivo: toRefIdNombre(b.objetivo) ?? { Id: 0, Nombre: '' },
+            tipoBonificador: toRefIdNombre(b.tipoBonificador) ?? { Id: 0, Nombre: '' },
             valor: toNumber(b.valor),
             condicion: `${b.condicion ?? ''}`.trim(),
-            contra: (Array.isArray(b.contra) ? b.contra : [])
-                .filter((c: any) => CATALOGOS_CONTRA.includes(c?.Catalogo))
-                .map((c: any) => ({ Catalogo: c.Catalogo, Id: toNumber(c.Id), Nombre: `${c.Nombre ?? ''}`.trim() })),
+            contra: normalizarContraBonificador(Array.isArray(b.contra) ? b.contra : []),
             origen: `${b.origen ?? ''}`.trim(),
             frase: `${b.frase ?? ''}`.trim(),
         }));
@@ -121,6 +109,5 @@ export function leerBonificadoresCondicionales(raw: unknown): PersonajeBonificad
 
 /** Las frases de lo que un rasgo suma solo en un caso, para su detalle (las de la API); `null` si nada. */
 export function frasesBonificadoresCondicionales(racial: RacialDetalle | null | undefined): string[] | null {
-    const frases = (racial?.Bonificadores_condicionales ?? []).map((b) => `${b?.Frase ?? ''}`.trim()).filter((f) => f.length > 0);
-    return frases.length > 0 ? frases : null;
+    return frasesDeRasgo(racial?.Bonificadores_condicionales);
 }

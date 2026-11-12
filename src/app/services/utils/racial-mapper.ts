@@ -64,6 +64,16 @@ export function normalizarProgresionRacial(raw: any, normalizarGana: (gana: any)
 const CATALOGOS_CONTRA: RacialBonificadorContra['Catalogo'][] = ['tipo_criatura', 'subtipo', 'raza'];
 
 /**
+ * Contra qué criaturas cuenta un bonificador condicional (`Contra` del racial y `contra` de la ficha, con la misma forma):
+ * una de un catálogo que no se conoce se descarta.
+ */
+export function normalizarContraBonificador(lista: unknown[]): RacialBonificadorContra[] {
+    return lista
+        .filter((c: any) => CATALOGOS_CONTRA.includes(c?.Catalogo))
+        .map((c: any) => ({ Catalogo: c.Catalogo, Id: toNumber(c.Id), Nombre: toText(c.Nombre).trim() }));
+}
+
+/**
  * Los `Bonificadores_condicionales` de un racial (lo que suma solo en un caso), igual en la API, la caché y la ficha.
  * Uno sin objetivo o con cantidad 0 se descarta, y una criatura de un catálogo que no se conoce, también.
  */
@@ -75,9 +85,7 @@ export function normalizarBonificadoresCondicionales(raw: any): RacialBonificado
             Tipo_bonificador: toRefIdNombre(b.Tipo_bonificador) ?? { Id: 0, Nombre: '' },
             Cantidad: toNumber(b.Cantidad),
             Condicion: toText(b.Condicion).trim(),
-            Contra: toArray(b.Contra)
-                .filter((c: any) => CATALOGOS_CONTRA.includes(c?.Catalogo))
-                .map((c: any) => ({ Catalogo: c.Catalogo, Id: toNumber(c.Id), Nombre: toText(c.Nombre) })),
+            Contra: normalizarContraBonificador(toArray(b.Contra)),
             Frase: toText(b.Frase).trim(),
         }));
 }

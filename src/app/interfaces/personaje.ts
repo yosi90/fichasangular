@@ -10,7 +10,7 @@ import { DoteContextual, DoteLegacy } from "./dote-contextual";
 import { EnemigoPredilectoSeleccion } from "./enemigo-predilecto-seleccion";
 import { PersonajeIncarnum } from "./incarnum";
 import { CompaneroMonstruoDetalle, FamiliarMonstruoDetalle } from "./monstruo";
-import { RacialDetalle } from "./racial";
+import { RacialBonificadorContra, RacialDetalle } from "./racial";
 import { ListaLanzamientoRaza } from "./raza";
 import { PersonajeSimple } from "./simplificaciones/personaje-simple";
 import { SubtipoRef } from "./subtipo";
@@ -144,7 +144,7 @@ export interface PersonajeBonificadorCondicional {
     tipoBonificador: { Id: number; Nombre: string; };
     valor: number;
     condicion: string;
-    contra: { Catalogo: 'tipo_criatura' | 'subtipo' | 'raza'; Id: number; Nombre: string; }[];
+    contra: RacialBonificadorContra[];
     /** El rasgo de donde sale. */
     origen: string;
     /** «Ataque +1 (racial) contra orcos y trasgoides». */

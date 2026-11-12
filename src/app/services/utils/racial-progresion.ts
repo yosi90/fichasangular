@@ -125,8 +125,16 @@ export function idManiobrabilidadDelPersonaje(personaje: Personaje | null | unde
     return toPositiveInt(personaje?.Maniobrabilidad?.Id) ?? toPositiveInt((personaje as any)?.Raza?.Maniobrabilidad?.Id) ?? 0;
 }
 
+/**
+ * Las frases que escribe la API en una lista de un rasgo (su `Progresion`, sus `Bonificadores_condicionales`), para su
+ * detalle; `null` si no hay ninguna.
+ */
+export function frasesDeRasgo(filas: ReadonlyArray<{ Frase?: string | null; } | null | undefined> | null | undefined): string[] | null {
+    const frases = (filas ?? []).map((fila) => `${fila?.Frase ?? ''}`.trim()).filter((frase) => frase.length > 0);
+    return frases.length > 0 ? frases : null;
+}
+
 /** Las frases de lo que da o cambia un rasgo a N DG o a nivel N, para su detalle; `null` si nada. */
 export function frasesProgresionRacial(racial: RacialDetalle | null | undefined): string[] | null {
-    const frases = (racial?.Progresion ?? []).map((fila) => `${fila?.Frase ?? ''}`.trim()).filter((frase) => frase.length > 0);
-    return frases.length > 0 ? frases : null;
+    return frasesDeRasgo(racial?.Progresion);
 }
