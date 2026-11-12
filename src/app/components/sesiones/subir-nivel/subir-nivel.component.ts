@@ -39,6 +39,7 @@ import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
+import { extraConTipoArma, extraDeArmadura, extraDeDote } from 'src/app/services/utils/extras-dotes';
 import { claveHabilidad } from 'src/app/services/utils/habilidad-clave';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
@@ -279,11 +280,11 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.svc.setCatalogoHabilidadesCustom(custom ?? []);
         this.svc.setCatalogoIdiomas(idiomas ?? []);
         this.svc.setCatalogoDominios(dominios ?? []);
-        this.svc.setCatalogoEscuelasDotes((escuelas ?? []).map((e: any) => ({ Id: toInt(e?.Id), Nombre: `${e?.Nombre ?? ''}`.trim() })));
-        this.svc.setCatalogoArmasDotes((armas ?? []).map((a: any) => ({ Id: toInt(a?.Id), Nombre: `${a?.Nombre ?? ''}`.trim(), Id_tipo_arma: a?.Tipo_arma?.Id ?? null })));
-        this.svc.setCatalogoArmadurasDotes((armaduras ?? []).map((a: any) => ({ Id: toInt(a?.Id), Nombre: `${a?.Nombre ?? ''}`.trim(), Es_escudo: !!a?.Es_escudo })));
-        this.svc.setCatalogoGruposArmasDotes((gruposArmas ?? []).map((g: any) => ({ Id: toInt(g?.Id), Nombre: `${g?.Nombre ?? ''}`.trim() })));
-        this.svc.setCatalogoGruposArmadurasDotes((gruposArmaduras ?? []).map((g: any) => ({ Id: toInt(g?.Id), Nombre: `${g?.Nombre ?? ''}`.trim() })));
+        this.svc.setCatalogoEscuelasDotes((escuelas ?? []).map((e) => extraDeDote(e)));
+        this.svc.setCatalogoArmasDotes((armas ?? []).map((a) => extraConTipoArma(a)));
+        this.svc.setCatalogoArmadurasDotes((armaduras ?? []).map((a) => extraDeArmadura(a)));
+        this.svc.setCatalogoGruposArmasDotes((gruposArmas ?? []).map((g) => extraConTipoArma(g)));
+        this.svc.setCatalogoGruposArmadurasDotes((gruposArmaduras ?? []).map((g) => extraDeDote(g)));
     }
 
     private async hidratar(): Promise<void> {

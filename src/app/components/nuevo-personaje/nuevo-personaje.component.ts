@@ -184,6 +184,7 @@ import {
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
 import { ModoHomebrewCampana, maximoFuentesHomebrew, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
+import { extraConTipoArma, extraDeArmadura, extraDeDote } from 'src/app/services/utils/extras-dotes';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { comoSaleLaEdadDelManual, edadesDeLaRaza, edadFueraDelManual, edadMinimaInicial, etapaEdad, EtapaEdad, GRUPOS_EDAD_INICIAL, GrupoEdadInicial, motivoEdadFueraDelManual, motivoEdadInicial, razaTieneEdades, textoDadosEdadInicial, textoEdadMaxima, textoEnvejecimiento, tirarEdadInicial } from 'src/app/services/utils/edad-personaje';
@@ -7525,13 +7526,7 @@ export class NuevoPersonajeComponent {
         this.armasSub = this.armaSvc.getArmas().subscribe({
             next: (armas) => {
                 this.catalogoArmas = armas ?? [];
-                this.nuevoPSvc.setCatalogoArmasDotes(
-                    this.catalogoArmas.map((arma) => ({
-                        Id: Number(arma?.Id ?? 0),
-                        Nombre: `${arma?.Nombre ?? ''}`.trim(),
-                        Id_tipo_arma: arma?.Tipo_arma?.Id ?? null,
-                    }))
-                );
+                this.nuevoPSvc.setCatalogoArmasDotes(this.catalogoArmas.map((arma) => extraConTipoArma(arma)));
                 this.recalcularClasesVisibles();
             },
             error: () => {
@@ -7547,12 +7542,7 @@ export class NuevoPersonajeComponent {
         this.armadurasSub = this.armaduraSvc.getArmaduras().subscribe({
             next: (armaduras) => {
                 this.catalogoArmaduras = armaduras ?? [];
-                this.nuevoPSvc.setCatalogoArmadurasDotes(
-                    this.catalogoArmaduras.map((armadura) => ({
-                        Id: Number(armadura?.Id ?? 0),
-                        Nombre: `${armadura?.Nombre ?? ''}`.trim(),
-                    }))
-                );
+                this.nuevoPSvc.setCatalogoArmadurasDotes(this.catalogoArmaduras.map((armadura) => extraDeArmadura(armadura)));
                 this.recalcularClasesVisibles();
             },
             error: () => {
@@ -7568,13 +7558,7 @@ export class NuevoPersonajeComponent {
         this.gruposArmasSub = this.grupoArmaSvc.getGruposArmas().subscribe({
             next: (grupos) => {
                 this.catalogoGruposArmas = grupos ?? [];
-                this.nuevoPSvc.setCatalogoGruposArmasDotes(
-                    this.catalogoGruposArmas.map((grupo) => ({
-                        Id: Number(grupo?.Id ?? 0),
-                        Nombre: `${grupo?.Nombre ?? ''}`.trim(),
-                        Id_tipo_arma: grupo?.Tipo_arma?.Id ?? null,
-                    }))
-                );
+                this.nuevoPSvc.setCatalogoGruposArmasDotes(this.catalogoGruposArmas.map((grupo) => extraConTipoArma(grupo)));
                 this.recalcularClasesVisibles();
             },
             error: () => {
@@ -7590,12 +7574,7 @@ export class NuevoPersonajeComponent {
         this.gruposArmadurasSub = this.grupoArmaduraSvc.getGruposArmaduras().subscribe({
             next: (grupos) => {
                 this.catalogoGruposArmaduras = grupos ?? [];
-                this.nuevoPSvc.setCatalogoGruposArmadurasDotes(
-                    this.catalogoGruposArmaduras.map((grupo) => ({
-                        Id: Number(grupo?.Id ?? 0),
-                        Nombre: `${grupo?.Nombre ?? ''}`.trim(),
-                    }))
-                );
+                this.nuevoPSvc.setCatalogoGruposArmadurasDotes(this.catalogoGruposArmaduras.map((grupo) => extraDeDote(grupo)));
                 this.recalcularClasesVisibles();
             },
             error: () => {
@@ -7629,12 +7608,7 @@ export class NuevoPersonajeComponent {
         try {
             const escuelas = await firstValueFrom(this.escSvc.getEscuelas().pipe(take(1)));
             this.catalogoEscuelas = escuelas ?? [];
-            this.nuevoPSvc.setCatalogoEscuelasDotes(
-                this.catalogoEscuelas.map((escuela) => ({
-                    Id: Number(escuela?.Id ?? 0),
-                    Nombre: `${escuela?.Nombre ?? ''}`.trim(),
-                }))
-            );
+            this.nuevoPSvc.setCatalogoEscuelasDotes(this.catalogoEscuelas.map((escuela) => extraDeDote(escuela)));
         } catch {
             this.catalogoEscuelas = [];
             this.nuevoPSvc.setCatalogoEscuelasDotes([]);
