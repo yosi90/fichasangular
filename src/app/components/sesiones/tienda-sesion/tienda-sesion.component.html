@@ -10,7 +10,7 @@
         <app-creacion-marco>
             <app-tienda-equipo [modo]="modo" [regla]="regla" [articulos]="articulos" [conjuros]="conjuros"
                 [politica]="politica" [capacidadCarga]="capacidadCarga" [guardando]="guardando" [error]="error"
-                [piezaConError]="piezaConError" (confirmar)="confirmar.emit($event)" (omitir)="cancelar.emit()">
+                [piezaConError]="piezaConError" [soloOficial]="soloOficial" (confirmar)="confirmar.emit($event)" (omitir)="cancelar.emit()">
             </app-tienda-equipo>
         </app-creacion-marco>
     </div>

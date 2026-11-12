@@ -185,6 +185,7 @@ import {
     politicaTienda,
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
+import { ModoHomebrewCampana, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
 import { comoSaleLaEdadDelManual, edadesDeLaRaza, edadFueraDelManual, edadMinimaInicial, etapaEdad, EtapaEdad, GRUPOS_EDAD_INICIAL, GrupoEdadInicial, motivoEdadFueraDelManual, motivoEdadInicial, razaTieneEdades, textoDadosEdadInicial, textoEdadMaxima, textoEnvejecimiento, tirarEdadInicial } from 'src/app/services/utils/edad-personaje';
@@ -350,7 +351,7 @@ export interface EdadInicialGrupo {
     minima: number;
 }
 
-type CampaignHomebrewMode = 'unrestricted' | 'limited' | 'forbidden';
+type CampaignHomebrewMode = ModoHomebrewCampana;
 
 interface CampaignCreationValidationResult {
     mode: CampaignHomebrewMode;
@@ -7249,20 +7250,9 @@ export class NuevoPersonajeComponent {
         return this.effectiveSelectedCampaignPolicy?.permitirIgnorarRestriccionesAlineamiento === true;
     }
 
+    /** La regla común (`modoHomebrewDeCampana`), la misma que usa la tienda de una sesión. */
     private getCurrentCampaignHomebrewMode(policy: CampaignCreationPolicy | null): CampaignHomebrewMode {
-        if (!policy)
-            return 'unrestricted';
-        if (policy.permitirHomebrewGeneral === true)
-            return 'unrestricted';
-
-        const maxSources = this.normalizarCampaignMaxSources(policy.maxFuentesHomebrewGeneralesPorPersonaje);
-        if (maxSources !== null) {
-            if (maxSources <= 0)
-                return 'forbidden';
-            return 'limited';
-        }
-
-        return policy.permitirHomebrewGeneral === false ? 'forbidden' : 'unrestricted';
+        return modoHomebrewDeCampana(policy);
     }
 
     private hasCampaignBlockersForBasicos(): boolean {

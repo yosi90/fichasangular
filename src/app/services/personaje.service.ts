@@ -44,7 +44,7 @@ import { normalizarListasLanzamiento } from './utils/raza-mapper';
 import { normalizarPersonajeIncarnum } from './utils/incarnum-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toNumberOrNull, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toNumberOrNull, toPositiveInt, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoYNivelPersonaje } from './utils/tipo-personaje';
 import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
@@ -61,6 +61,7 @@ import { normalizarHomebrewGuardado } from './utils/personaje-oficialidad';
 import { caracteristicasPerdidasDe, normalizarCaracteristicasPerdidas } from './utils/caracteristicas';
 import { RequisitosDelPersonajeConsulta } from 'src/app/interfaces/razas-api';
 import { leerExperiencia } from './sesiones.service';
+import { leerPoliticaCompra } from 'src/app/services/utils/politica-campana';
 
 interface PersonajeVisibilityUpdateResponse {
     message: string;
@@ -1118,6 +1119,9 @@ export class PersonajeService {
             Alineamiento: toText(element?.ali),
             Genero: toText(element?.g),
             Campana: toText(element?.ncam),
+            // Su campaña y lo que deja comprar u obtener, para la tienda de sus sesiones (solo en `GET /personajes/{id}`).
+            IdCampana: toPositiveInt(element?.idCampana),
+            PoliticaCompra: leerPoliticaCompra(element?.politicaCompra),
             Trama: toText(element?.ntr),
             Subtrama: toText(element?.nst),
             Vida: element?.v,

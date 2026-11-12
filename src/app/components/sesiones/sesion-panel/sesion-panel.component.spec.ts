@@ -14,6 +14,7 @@ import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeService } from 'src/app/services/personaje.service';
 import { SesionesService, leerHistorial, leerRespuestaSesion } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { POLITICA_TIENDA_LIBRE } from 'src/app/services/utils/tienda-equipo';
 import { crearEquipoFichaApi } from 'src/testing/equipo-api';
 import { crearDetalleApi } from 'src/testing/personaje-detalle-api';
 import { respuestaSesiones } from 'src/testing/sesiones-api';
@@ -29,10 +30,10 @@ describe('SesionPanelComponent', () => {
     const boton = (texto: string): HTMLButtonElement | undefined =>
         Array.from(elemento().querySelectorAll<HTMLButtonElement>('button')).find((b) => limpio(b) === texto);
 
-    /** La ficha de ahora, con una daga en el equipo y la penalización de PX que se pida. */
-    function ficha(porcentaje = 0): Personaje {
+    /** La ficha de ahora, con una daga en el equipo, la penalización de PX que se pida y lo que se cambie de la de la API. */
+    function ficha(porcentaje = 0, api: Record<string, any> = {}): Personaje {
         const pj = new PersonajeService({ currentUser: null } as any, {} as any).fichaDeApi(crearDetalleApi({
-            i: 129, n: 'Prueba guerrero', experiencia: respuestaSesiones<any>('venta').experiencia,
+            i: 129, n: 'Prueba guerrero', experiencia: respuestaSesiones<any>('venta').experiencia, ...api,
         }));
         pj.Equipo = [crearEquipoFichaApi()['equipo'][0]].map((pieza: any) => ({ ...pieza, id: 33, nombre: 'Daga', cantidad: 2 })) as any;
         pj.Penalizacion_experiencia = { porcentaje, penalizadas: [], referencia: null, predilectas: [] };
@@ -183,6 +184,9 @@ describe('SesionPanelComponent', () => {
         expect(tienda.modo).toBe('compra');
         expect(tienda.regla.sugerido).toBe(132);
         expect(tienda.titulo).toBe('Comprar en la sesión 1');
+        // Sin campaña (`politicaCompra: null`), todo.
+        expect(tienda.politica).toEqual(POLITICA_TIENDA_LIBRE);
+        expect(tienda.soloOficial).toBeFalse();
 
         tienda.confirmar.emit({ dineroInicial: 132, piezas: [{ tipo: 'arma', id: 5, cantidad: 2, equipado: false }] });
         await estable();
@@ -206,6 +210,60 @@ describe('SesionPanelComponent', () => {
         expect(tienda.error).toBe('Esta campaña no deja comprar objetos mágicos.');
         expect(tienda.piezaConError).toBe(0);
         expect(tienda.guardando).toBeFalse();
+    });
+
+    describe('con la política de compra de su campaña (`politicaCompra` de la ficha)', () => {
+        const estricta = {
+            permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 0, permitirObjetosMagicos: false,
+            permitirObjetosAMedida: false, precioMaximoPorObjeto: 500, permitirCopiarConjuros: false,
+        };
+        const mago = { Id: 6, Nombre: 'Explorador', Conjuros: { Libro: true } } as any;
+        const tiendaAbierta = () => fixture.debugElement.query(By.directive(TiendaSesionComponent))?.componentInstance as TiendaSesionComponent | undefined;
+
+        it('la compra no ofrece lo que la campaña no deja, como la tienda de la creación; el botín solo filtra lo homebrew', async () => {
+            crear({ pj: ficha(0, { idCampana: 2, politicaCompra: estricta }) });
+            expect(component.pj.IdCampana).toBe(2);
+
+            component.elegirTipo('comprar');
+            await estable();
+            expect(tiendaAbierta()!.politica).toEqual({ objetosMagicos: false, aMedida: false, precioMaximo: 500, copiarConjuros: false });
+            expect(tiendaAbierta()!.soloOficial).toBeTrue();
+            tiendaAbierta()!.cancelar.emit();
+            await estable();
+
+            // El botín o regalo no se compra: la API no mira ahí los límites de la tienda, solo lo homebrew.
+            component.elegirTipo('objeto');
+            await component.apuntar();
+            await estable();
+            expect(tiendaAbierta()!.modo).toBe('botin');
+            expect(tiendaAbierta()!.politica).toEqual(POLITICA_TIENDA_LIBRE);
+            expect(tiendaAbierta()!.soloOficial).toBeTrue();
+        });
+
+        it('«Conjuro al libro» sale solo si la campaña deja copiar conjuros, y sin homebrew ofrece solo los oficiales', () => {
+            crear({ pj: ficha(0, { idCampana: 2, politicaCompra: estricta }), clases: [mago] });
+            expect(boton('Conjuro al libro')).toBeUndefined();
+
+            crear({ pj: ficha(0, { idCampana: 2, politicaCompra: { ...estricta, permitirCopiarConjuros: true } }), clases: [mago] });
+            expect(boton('Conjuro al libro')).toBeDefined();
+            (component as any).conjurosCatalogo = [
+                { Id: 1, Nombre: 'Luz de las hadas', Oficial: true, Nivel_clase: [{ Id_clase: 6, Nivel: 1 }] },
+                { Id: 2, Nombre: 'Luz casera', Oficial: false, Nivel_clase: [{ Id_clase: 6, Nivel: 1 }] },
+            ];
+            component.elegirTipo('libro');
+            component.busquedaConjuro = 'luz';
+            expect(component.conjurosDelLibro.map((item) => item.conjuro.Nombre)).toEqual(['Luz de las hadas']);
+
+            // Sin campaña, también los homebrew.
+            crear({ clases: [mago] });
+            (component as any).conjurosCatalogo = [
+                { Id: 1, Nombre: 'Luz de las hadas', Oficial: true, Nivel_clase: [{ Id_clase: 6, Nivel: 1 }] },
+                { Id: 2, Nombre: 'Luz casera', Oficial: false, Nivel_clase: [{ Id_clase: 6, Nivel: 1 }] },
+            ];
+            component.elegirTipo('libro');
+            component.busquedaConjuro = 'luz';
+            expect(component.conjurosDelLibro.map((item) => item.conjuro.Nombre)).toEqual(['Luz casera', 'Luz de las hadas']);
+        });
     });
 
     it('el botín: un evento por pieza, cada uno con la versión de la respuesta anterior', async () => {

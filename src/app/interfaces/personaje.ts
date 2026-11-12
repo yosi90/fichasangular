@@ -1,4 +1,5 @@
 import { ExperienciaPersonaje } from './sesiones';
+import type { CampaignPurchasePolicy } from './campaign-management';
 import { AptitudSortilega } from "./aptitud-sortilega";
 import { ArmaNaturalPersonaje } from "./arma-natural";
 import type { PenalizacionExperiencia } from "src/app/services/utils/penalizacion-experiencia";
@@ -242,6 +243,13 @@ export interface Personaje extends PersonajeSimple {
      * una API anterior), `null`: la ficha no enseña la barra de experiencia ni el historial.
      */
     ExperienciaSesiones?: ExperienciaPersonaje | null;
+    /**
+     * Solo en la ficha de la API (`idCampana` y `politicaCompra` de `GET /personajes/{id}`, desde el 2026-11-12): el id de su
+     * campaña y lo que deja comprar u obtener en la tienda de sus sesiones. `null` sin campaña (se puede todo) o si la API
+     * no la da. El nombre de la campaña sigue en `Campana`.
+     */
+    IdCampana?: number | null;
+    PoliticaCompra?: CampaignPurchasePolicy | null;
     /**
      * Solo en la creación: lo que deja de ganar de experiencia por multiclase (Manual del jugador, cap. 3; no cambia la
      * experiencia con la que se crea). No se guarda: sale de sus clases y de la clase predilecta de su raza.

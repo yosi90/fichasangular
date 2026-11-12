@@ -30,14 +30,18 @@ import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.s
 import { textoPrecio } from 'src/app/services/utils/equipo-texto';
 import { nivelLanzadorMinimo, precioCopiaLibro } from 'src/app/services/utils/libro-conjuros';
 import { normalizarTexto, toInt, toNumber } from 'src/app/services/utils/normalizacion';
+import { modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { ETIQUETA_EVENTO, barraExperiencia, cambiosSesion, formatoPx, pxConPenalizacion } from 'src/app/services/utils/sesiones-texto';
 import {
     ArticuloTienda,
+    POLITICA_TIENDA_LIBRE,
+    PoliticaTienda,
     ReglaDineroInicial,
     articuloDeArma,
     articuloDeArmadura,
     articuloDeMunicion,
     indicePiezaDelCampo,
+    politicaTienda,
 } from 'src/app/services/utils/tienda-equipo';
 
 /** Los tipos de lo que se apunta (lienzo de sesiones, pantalla 2), cada uno con su formulario corto; «Comprar» abre la tienda. */
@@ -191,7 +195,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             { id: 'objeto', nombre: 'Objeto obtenido' },
             { id: 'comprar', nombre: 'Comprar' },
             { id: 'vender', nombre: 'Vender' },
-            ...(this.libros.length > 0 ? [{ id: 'libro' as const, nombre: 'Conjuro al libro' }] : []),
+            ...(this.libros.length > 0 && this.politica.copiarConjuros ? [{ id: 'libro' as const, nombre: 'Conjuro al libro' }] : []),
             { id: 'nota', nombre: 'Nota' },
         ];
     }
@@ -226,6 +230,19 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             : `Sin penalización por multiclase: suma ${formatoPx(px)} PX.`;
     }
 
+    /**
+     * Lo que deja comprar su campaña (`PoliticaCompra` de la ficha; sin campaña, todo), leído como en la tienda de la
+     * creación: objetos mágicos, a medida, el precio por pieza y copiar conjuros al libro.
+     */
+    get politica(): PoliticaTienda {
+        return politicaTienda(this.pj?.PoliticaCompra);
+    }
+
+    /** En una campaña que no admite homebrew, solo lo oficial: en la compra, en el botín y en los conjuros para el libro. */
+    get soloOficial(): boolean {
+        return modoHomebrewDeCampana(this.pj?.PoliticaCompra) === 'forbidden';
+    }
+
     /** Lo que tiene para vender o perder: las piezas de su equipo. */
     get piezas(): PersonajeEquipoPiezaDto[] {
         return (this.pj?.Equipo ?? []).filter((pieza) => toInt(pieza?.id) > 0);
@@ -256,6 +273,7 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
         return this.conjurosCatalogo
             .map((conjuro) => ({ conjuro, nivel: (conjuro.Nivel_clase ?? []).find((n) => toInt(n?.Id_clase) === libro.clase.Id)?.Nivel }))
             .filter((item): item is { conjuro: Conjuro; nivel: number; } => item.nivel !== undefined && item.nivel !== null)
+            .filter((item) => !this.soloOficial || item.conjuro.Oficial)
             .filter((item) => normalizarTexto(item.conjuro.Nombre ?? '', true).includes(busqueda))
             .sort((a, b) => a.nivel - b.nivel || `${a.conjuro.Nombre}`.localeCompare(`${b.conjuro.Nombre}`, 'es'))
             .slice(0, MAXIMO_CONJUROS_LISTA)
@@ -452,6 +470,9 @@ export class SesionPanelComponent implements OnChanges, OnDestroy {
             ref.setInput('articulos', articulos);
             ref.setInput('conjuros', conjuros.map((conjuro) => ({ Id: conjuro.Id, Nombre: conjuro.Nombre })));
             ref.setInput('capacidadCarga', this.pj?.Capacidad_carga ?? null);
+            // Al comprar, todo lo que deja su campaña; el botín o regalo no se compra: la API solo mira ahí lo homebrew.
+            ref.setInput('politica', modo === 'compra' ? this.politica : POLITICA_TIENDA_LIBRE);
+            ref.setInput('soloOficial', this.soloOficial);
             ref.instance.confirmar.subscribe((compra) => void this.confirmarTienda(modo, compra));
             ref.instance.cancelar.subscribe(() => this.cerrarTienda());
             this.tienda = ref;

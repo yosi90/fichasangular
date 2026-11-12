@@ -88,6 +88,14 @@ export interface CampaignCreationPolicy {
     permitirClasesDeMonstruo?: boolean;
 }
 
+/**
+ * La parte de la política que decide qué se puede comprar u obtener en la tienda (`politicaCompra` de
+ * `GET /personajes/{id}`, desde el 2026-11-12): la que comprueba la API en la compra de la creación y en la de una sesión.
+ */
+export type CampaignPurchasePolicy = Required<Pick<CampaignCreationPolicy,
+    'permitirHomebrewGeneral' | 'maxFuentesHomebrewGeneralesPorPersonaje' | 'permitirObjetosMagicos' | 'permitirObjetosAMedida'
+    | 'precioMaximoPorObjeto' | 'permitirCopiarConjuros'>>;
+
 export interface CreateCampaignInput {
     nombre: string;
     politicaCreacion?: Partial<CampaignCreationPolicy> | null;

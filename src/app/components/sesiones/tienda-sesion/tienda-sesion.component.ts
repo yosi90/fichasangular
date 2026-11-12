@@ -24,7 +24,10 @@ export class TiendaSesionComponent {
     @Input() regla!: ReglaDineroInicial;
     @Input() articulos: ArticuloTienda[] = [];
     @Input() conjuros: { Id: number; Nombre: string; }[] = [];
+    /** Lo que deja comprar su campaña (en el botín, todo: no se compra). */
     @Input() politica: PoliticaTienda = POLITICA_TIENDA_LIBRE;
+    /** En una campaña que no admite homebrew, solo lo oficial (también en el botín). */
+    @Input() soloOficial = false;
     @Input() capacidadCarga: Personaje['Capacidad_carga'] | null = null;
     @Input() guardando = false;
     @Input() error = '';
