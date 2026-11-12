@@ -484,8 +484,8 @@ export class PersonajeService {
      * Lo que la creación ya sabe del personaje para comprobar, antes de guardar, lo que pide su raza mutada
      * (`POST /razas/{id}/requisitos-del-personaje`): su raza base, su alineamiento básico y lo mismo que manda el alta
      * (`caracteristicasParaGuardar`, `construirPayloadColecciones` y `normalizarProgresionLanzadorParaPayload`): sus
-     * características, sus clases, sus plantillas y sus subtipos (su NEP), sus dotes y su progresión de lanzador (su nivel
-     * de lanzador). La regla la aplica la API.
+     * características, sus clases, sus plantillas y sus subtipos (su NEP), sus dotes, su progresión de lanzador (su nivel
+     * de lanzador) y su paso de edad (con una base por edades). La regla la aplica la API.
      */
     consultaRequisitosMutacion(
         personaje: Personaje,
@@ -510,6 +510,8 @@ export class PersonajeService {
             progresionLanzador: progresion
                 ? { selecciones: progresion.selecciones.map((s) => ({ idClaseObjetivo: s.idClaseObjetivo })) }
                 : null,
+            // La edad de una base por edades (la del alta): sus DG y su ajuste cuentan con los de la mutación.
+            idPasoEdad: toInt(personaje?.IdPasoEdad) > 0 ? toInt(personaje?.IdPasoEdad) : null,
         };
     }
 

@@ -725,8 +725,11 @@ describe('PersonajeService', () => {
             subtipos: (payload.colecciones?.subtipos ?? []).map((s) => s.idSubtipo),
             dotes: [...new Set((payload.colecciones?.dotes ?? []).map((d) => d.idDote))],
             progresionLanzador: { selecciones: [{ idClaseObjetivo: 9 }] },
+            idPasoEdad: null,
         });
         expect(consulta.plantillas).toEqual([70]);
+        // Con una base por edades, su paso (el del alta).
+        expect(service.consultaRequisitosMutacion({ ...pj, IdPasoEdad: 3053 } as any, 864, 3).idPasoEdad).toBe(3053);
         expect(consulta.subtipos).toEqual([4]);
         expect(consulta.dotes.length).toBe(new Set(dotes.map((d) => d.Dote.Id)).size);
         expect(service.consultaRequisitosMutacion(pj, 25, 3).progresionLanzador).toBeNull();

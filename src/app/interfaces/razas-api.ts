@@ -292,6 +292,8 @@ export interface RequisitosDelPersonajeConsulta {
     dotes: number[];
     /** La progresión de lanzador del alta: con las clases, su nivel de lanzador. */
     progresionLanzador: { selecciones: { idClaseObjetivo: number; }[]; } | null;
+    /** El paso de edad (`personaje.idPasoEdad`): con una base por edades, sus DG y su ajuste a esa edad. */
+    idPasoEdad: number | null;
 }
 
 /**

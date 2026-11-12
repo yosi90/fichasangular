@@ -26,7 +26,7 @@
                     </div>
                     <div creacionLateral class="paso-lateral">
                         <app-creacion-vista-previa *ngIf="razaMirada as raza" titulo="La raza que miras" [clave]="raza.Id"
-                            (cerrar)="razaMirada = null">
+                            (cerrar)="cerrarRazaMirada()">
                             <p class="creacion-aviso paso-raza__aviso" *ngIf="esPnjCreacion">Un PNJ no sigue la política de creación de la
                                 campaña, se mide por su VD y nace privado.</p>
                             <p class="creacion-aviso paso-raza__aviso" *ngIf="avisoClaseDeMonstruoRazaMirada as aviso">{{aviso}}</p>
@@ -1118,7 +1118,7 @@
 
     <ng-container *ngIf="modalSelectorRacialesOpcionalesAbierto">
         <app-selector-raciales-opcionales-modal [grupos]="gruposRacialesOpcionalesModal"
-            [titulo]="'Seleccionar raciales opcionales'" [razaContextoNombre]="razaContextoOpcionalesNombre"
+            [titulo]="tituloSelectorRacialesOpcionales" [razaContextoNombre]="razaContextoOpcionalesNombre"
             (info)="onInformacionRacialesOpcionales()" (verDetalleRacial)="onVerDetalleRacialOpcional($event)"
             (cerrar)="onCerrarModalRacialesOpcionales()" (confirmar)="onConfirmarRacialesOpcionales($event)">
         </app-selector-raciales-opcionales-modal>

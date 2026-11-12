@@ -420,10 +420,13 @@ export class RazaService {
     /**
      * La raza mutada aplicada sobre una raza base, ya combinada por la API (`GET /razas/{id}/sobre/{idBase}`): la raza que
      * se elige en la creación. La web no combina. Con un error de la API, su texto (`raza_base_no_cumple_requisitos`…).
+     * Con `idPasoEdad`, a esa edad (`?idPasoEdad=`): el paso es de la raza cuyas edades se quedan (la base si la mutada no
+     * trae las suyas), que la API resuelve a esa edad antes de combinar; la respuesta trae su `Paso_edad`.
      */
-    public getRazaSobreBase(idRaza: number, idRazaBase: number): Promise<Raza> {
+    public getRazaSobreBase(idRaza: number, idRazaBase: number, idPasoEdad: number | null = null): Promise<Raza> {
+        const edad = toInt(idPasoEdad) > 0 ? `?idPasoEdad=${toInt(idPasoEdad)}` : '';
         return this.leerRazaDeApi(
-            `razas/${toInt(idRaza)}/sobre/${toInt(idRazaBase)}`, 'No se pudo aplicar la raza mutada sobre esa base.'
+            `razas/${toInt(idRaza)}/sobre/${toInt(idRazaBase)}${edad}`, 'No se pudo aplicar la raza mutada sobre esa base.'
         );
     }
 

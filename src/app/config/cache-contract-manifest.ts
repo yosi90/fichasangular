@@ -64,8 +64,9 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "familiares", label: "Familiares", schemaVersion: 10 },
     { key: "companeros", label: "Compañeros animales", schemaVersion: 10 },
     // 27 desde la `Progresion` de cada racial (lo que crece con los DG o llega por nivel, 2026-11-12) y 28 desde sus
-    // `Bonificadores_condicionales` (el +1 al ataque contra orcos, la esquiva contra gigantes; 2026-11-12).
-    { key: "razas", label: "Razas", schemaVersion: 28 },
+    // `Bonificadores_condicionales` (el +1 al ataque contra orcos, la esquiva contra gigantes; 2026-11-12); 29 desde
+    // `Cd_dg_totales` de cada racial y `Elige_opcional` en su `Progresion` (rama `mutadas/creacion-resto`, 2026-11-12).
+    { key: "razas", label: "Razas", schemaVersion: 29 },
     { key: "manuales", label: "Manuales", schemaVersion: 1 },
     { key: "manuales_asociados", label: "Manuales asociados", schemaVersion: 2 },
     { key: "tipos_criatura", label: "Tipos de criatura", schemaVersion: 3 },

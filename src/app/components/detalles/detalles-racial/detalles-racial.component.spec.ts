@@ -144,6 +144,25 @@ describe('DetallesRacialComponent', () => {
         expect(texto()).not.toContain('Siempre');
     });
 
+    it('como qué cuenta y cómo sale su CD (rama mutadas/creacion-resto, datos de rol_dev)', () => {
+        component.racial = normalizeRacial({
+            Id: 37, Nombre: 'Sangre élfica', Descripcion: 'Cuenta como elfo.', Oficial: true,
+            Cuenta_como: [{ Catalogo: 'raza', Id: 24, Nombre: 'Elfo' }, { Catalogo: 'otro', Id: 1, Nombre: 'X' }],
+        });
+        fixture.detectChanges();
+        expect(titulos()).toContain('Cuenta como');
+        expect(texto()).toContain('Para todo lo que depende de la raza: Elfo (raza).');
+        expect(titulos()).not.toContain('CD');
+
+        component.racial = normalizeRacial({
+            Id: 34, Nombre: 'Aspecto dracónico (corazón)', Descripcion: 'Aliento.', Oficial: true,
+            Caracteristica_cd: { Id: 3, Nombre: 'Constitución' }, Cd_dg_totales: true,
+        });
+        fixture.detectChanges();
+        expect(texto()).toContain('10 + ½ de todos sus DG + su modificador de Constitución');
+        expect(titulos()).not.toContain('Cuenta como');
+    });
+
     it('no pinta las listas vacías ni la descripción nula', () => {
         component.racial = normalizeRacial({ Id: 3, Nombre: 'Vacío', Descripcion: null, Oficial: false });
         fixture.detectChanges();

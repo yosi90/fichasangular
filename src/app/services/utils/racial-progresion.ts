@@ -7,7 +7,8 @@ import { toPositiveInt } from 'src/app/services/utils/normalizacion';
  * en `docs/publica/endpoints/catalogos.md`, guía `docs/publica/RAZAS_MUTADAS.md`). La misma regla que la ficha de la API
  * (`utils/racial_progresion.py`), con los mismos casos en sus pruebas: cada fila vale desde `Desde` y para siempre, en
  * orden; gana un rasgo (tras el que lo da, con `Origen`), quita el que sustituye, suma una dote adicional de un tipo,
- * al menos una velocidad y pone la última cifra que alcanza en el `Valor` del rasgo. Los DG son los del personaje (los
+ * al menos una velocidad, pone la última cifra que alcanza en el `Valor` del rasgo y pide una elección más de un grupo
+ * opcional de su raza (`Elige_opcional`). Los DG son los del personaje (los
  * raciales que cuentan, los de plantilla y los de sus clases con su tabla); el nivel, su nivel de personaje.
  */
 
@@ -27,10 +28,29 @@ export interface DoteDeProgresion {
     Clave: string;
 }
 
+/**
+ * Una elección más de un grupo opcional de rasgos de su raza (`Elige_opcional`: el segundo sigilo de poder del iluminiano
+ * a 2.º nivel), distinta de los que ya tiene. La creación la pide como una dote de la progresión, una vez.
+ */
+export interface EleccionDeProgresion {
+    Grupo: number;
+    Racial: { Id: number; Nombre: string; };
+    Desde: number;
+    Medida: 'dg' | 'nivel';
+    /** Única por rasgo y fila: con ella la creación no la pide dos veces. */
+    Clave: string;
+}
+
 export interface ResultadoProgresionRacial {
     raciales: RacialDetalle[];
     velocidades: Partial<Record<TipoVelocidadProgresion, VelocidadDeProgresion>>;
     dotes: DoteDeProgresion[];
+    elecciones: EleccionDeProgresion[];
+}
+
+/** «a nivel 2», «a los 6 DG»: el momento de una fila, para el origen de lo que da. */
+export function momentoDeProgresion(fila: Pick<RacialProgresion, 'Medida' | 'Desde'>): string {
+    return momento(fila as RacialProgresion);
 }
 
 /**
@@ -69,6 +89,7 @@ export function aplicarProgresionRacial(
     let resultado: RacialDetalle[] = (raciales ?? []).filter(r => !!r).map(r => ({ ...r }));
     const velocidades: ResultadoProgresionRacial['velocidades'] = {};
     const dotes: DoteDeProgresion[] = [];
+    const elecciones: EleccionDeProgresion[] = [];
     const pendientes = resultado.filter(r => (r.Progresion?.length ?? 0) > 0);
     const vistos = new Set<number>();
     while (pendientes.length > 0) {
@@ -106,9 +127,17 @@ export function aplicarProgresionRacial(
                     Medida: fila.Medida,
                     Clave: `${dueno.Id}:${fila.Medida}:${fila.Desde}:${fila.Tipo_dote.Id}`,
                 });
+            if (Number(fila.Elige_opcional) > 0)
+                elecciones.push({
+                    Grupo: Number(fila.Elige_opcional),
+                    Racial: { Id: Number(dueno.Id), Nombre: dueno.Nombre },
+                    Desde: Number(fila.Desde),
+                    Medida: fila.Medida,
+                    Clave: `${dueno.Id}:${fila.Medida}:${fila.Desde}:opcional:${fila.Elige_opcional}`,
+                });
         }
     }
-    return { raciales: resultado, velocidades, dotes };
+    return { raciales: resultado, velocidades, dotes, elecciones };
 }
 
 /** La velocidad que cuenta: la que tiene o, si es menor, la que da la progresión. */
@@ -141,4 +170,17 @@ export function frasesDeRasgo(filas: ReadonlyArray<{ Frase?: string | null; } | 
 /** Las frases de lo que da o cambia un rasgo a N DG o a nivel N, para su detalle; `null` si nada. */
 export function frasesProgresionRacial(racial: RacialDetalle | null | undefined): string[] | null {
     return frasesDeRasgo(racial?.Progresion);
+}
+
+/**
+ * La CD de un rasgo, en frase para su detalle: «10 + ½ de sus DG raciales + su modificador de Constitución» (MM, pág.
+ * 300) o, si la cuenta con todos sus DG (`Cd_dg_totales`), «10 + ½ de todos sus DG + …» (el aliento del aspecto dracónico
+ * del corazón). `null` si el rasgo no tiene CD.
+ */
+export function textoCdRacial(racial: Pick<RacialDetalle, 'Caracteristica_cd' | 'Cd_dg_totales'> | null | undefined): string | null {
+    const caracteristica = `${racial?.Caracteristica_cd?.Nombre ?? ''}`.trim();
+    if (!caracteristica)
+        return null;
+    const dg = racial?.Cd_dg_totales ? 'todos sus DG' : 'sus DG raciales';
+    return `10 + ½ de ${dg} + su modificador de ${caracteristica}`;
 }

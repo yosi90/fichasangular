@@ -74,11 +74,29 @@ function extraerTipoCriatura(raza: Partial<Raza> | null | undefined): TipoCriatu
     return tipo as TipoCriatura;
 }
 
+/**
+ * Las razas y los tipos como los que cuenta por sus rasgos (`Cuenta_como` de cada racial: la sangre élfica del semielfo,
+ * como elfo; la de gigante del semiogro, como gigante), de la lista que se le pase.
+ */
+function cuentaComoDeRaciales(raciales: unknown, catalogo: 'raza' | 'tipo_criatura'): (ClaveEntidadPrerrequisito | null)[] {
+    return toArray<any>(raciales)
+        .flatMap((racial) => toArray<any>(racial?.Cuenta_como))
+        .filter((c) => c?.Catalogo === catalogo)
+        .map((c) => crearClave(c?.Id, c?.Nombre));
+}
+
+/**
+ * La identidad del personaje para los prerrequisitos de dotes, clases, plantillas y rasgos: su raza y su raza base (una
+ * mutada cuenta como su raza original), sus tipos de criatura, sus subtipos y lo que cuenta como por sus rasgos
+ * (`Cuenta_como`, de los rasgos de su raza o de `raciales` si se pasan: los que tiene ya).
+ */
 export function buildIdentidadPrerrequisitos(
     razaEfectiva: Partial<Raza> | null | undefined,
     razaBase: Partial<Raza> | null | undefined,
     subtiposActuales?: SubtipoRef[] | null,
+    raciales?: unknown[] | null,
 ): IdentidadPrerrequisitos {
+    const rasgos = raciales ?? (razaEfectiva as any)?.Raciales;
     const tipoRazaEfectiva = extraerTipoCriatura(razaEfectiva);
     const tipoRazaBase = extraerTipoCriatura(razaBase);
 
@@ -90,10 +108,12 @@ export function buildIdentidadPrerrequisitos(
         razas: dedupeClaves([
             crearClave((razaEfectiva as any)?.Id, (razaEfectiva as any)?.Nombre),
             crearClave((razaBase as any)?.Id, (razaBase as any)?.Nombre),
+            ...cuentaComoDeRaciales(rasgos, 'raza'),
         ]),
         tiposCriatura: dedupeClaves([
             crearClave(tipoRazaEfectiva?.Id, tipoRazaEfectiva?.Nombre),
             crearClave(tipoRazaBase?.Id, tipoRazaBase?.Nombre),
+            ...cuentaComoDeRaciales(rasgos, 'tipo_criatura'),
         ]),
         subtipos: dedupeClaves([
             ...subtiposRazaEfectiva.map((s) => crearClave((s as any)?.Id, (s as any)?.Nombre)),
