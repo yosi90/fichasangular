@@ -25,7 +25,7 @@ import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeCreateColeccionesDto, PersonajeCreateMascotasDto, PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { bonoRacialCondicional, parteCondicionalVarios } from './utils/habilidad-raza-condicional';
-import { bonificadoresCondicionalesDeRaciales, habilidadesDeRasgos, sinApilarRaciales } from './utils/habilidades-raciales';
+import { bonificadoresCondicionalesDeRaciales, caDeSiempreDeRaciales, habilidadesDeRasgos, sinApilarRaciales } from './utils/habilidades-raciales';
 import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { contarArmasNaturales } from './utils/armas-naturales';
 import { rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
@@ -6174,6 +6174,8 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Raciales = nuevosRaciales;
         // Lo que sus rasgos suman solo en un caso (el +1 al ataque contra orcos), aparte: no entra en la CA ni en el ataque.
         this.personajeCreacion.Bonificadores_condicionales = bonificadoresCondicionalesDeRaciales(nuevosRaciales);
+        // Los de siempre (la esquiva del svirfneblin), en la CA.
+        this.recalcularDefensasYPresa();
         this.personajeCreacion.Idiomas = nuevosIdiomas;
         this.estadoFlujo.ventajas.pendientesOro = pendientesOro;
         this.personajeCreacion.Ventajas = todasLasSelecciones
@@ -9606,7 +9608,10 @@ export class NuevoPersonajeService {
             + modTamanoCa
             + toNumber(this.personajeCreacion.Armadura_natural)
             + toNumber(this.personajeCreacion.Ca_desvio)
-            + toNumber(this.personajeCreacion.Ca_varios);
+            + toNumber(this.personajeCreacion.Ca_varios)
+            // Los bonificadores de siempre de sus rasgos, con su tipo (la esquiva +4 del svirfneblin); la API los suma al
+            // leer la ficha, así que no se guardan en `Ca_varios`.
+            + caDeSiempreDeRaciales(this.personajeCreacion.Raciales).total;
 
         // Ataque base + Fuerza + tamaño + varios, la misma regla que la presa de la API.
         this.personajeCreacion.Presa = totalesPersonaje(this.personajeCreacion).presa?.total ?? 0;

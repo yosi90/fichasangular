@@ -66,7 +66,9 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     // 27 desde la `Progresion` de cada racial (lo que crece con los DG o llega por nivel, 2026-11-12) y 28 desde sus
     // `Bonificadores_condicionales` (el +1 al ataque contra orcos, la esquiva contra gigantes; 2026-11-12); 29 desde
     // `Cd_dg_totales` de cada racial y `Elige_opcional` en su `Progresion` (rama `mutadas/creacion-resto`, 2026-11-12).
-    { key: "razas", label: "Razas", schemaVersion: 29 },
+    // `Bonificadores_condicionales` (el +1 al ataque contra orcos, la esquiva contra gigantes; 2026-11-12); 30 desde su
+    // `Condicion` `null` si cuentan siempre y el `Apila` de su tipo (la esquiva del svirfneblin; 2026-11-12).
+    { key: "razas", label: "Razas", schemaVersion: 30 },
     { key: "manuales", label: "Manuales", schemaVersion: 1 },
     { key: "manuales_asociados", label: "Manuales asociados", schemaVersion: 2 },
     { key: "tipos_criatura", label: "Tipos de criatura", schemaVersion: 3 },
@@ -100,7 +102,8 @@ export const CACHE_CONTRACT_MANIFEST: CacheContractEntry[] = [
     { key: "tamanos", label: "Tamaños", schemaVersion: 3 },
     { key: "armas", label: "Armas", schemaVersion: 3 },
     { key: "armaduras", label: "Armaduras", schemaVersion: 5 },
-    { key: "equipo_catalogos", label: "Catálogos del equipo", schemaVersion: 4 },
+    // 5 desde `De_siempre_en_el_rasgo` en cada objetivo (2026-11-12).
+    { key: "equipo_catalogos", label: "Catálogos del equipo", schemaVersion: 5 },
     { key: "materiales", label: "Materiales", schemaVersion: 1 },
     { key: "municiones", label: "Munición", schemaVersion: 1 },
     { key: "encantamientos", label: "Aptitudes especiales de armas y armaduras", schemaVersion: 1 },

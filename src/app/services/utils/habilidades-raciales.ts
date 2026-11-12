@@ -1,7 +1,7 @@
 import { HabilidadBonoVario } from 'src/app/interfaces/habilidad';
 import { PersonajeBonificadorCondicional } from 'src/app/interfaces/personaje';
-import { RacialDetalle } from 'src/app/interfaces/racial';
-import { toNullableText, toNumber, toRefIdNombre } from 'src/app/services/utils/normalizacion';
+import { RacialBonificadorCondicional, RacialDetalle } from 'src/app/interfaces/racial';
+import { normalizarTexto, toNullableText, toNumber, toRefIdNombre } from 'src/app/services/utils/normalizacion';
 import { normalizarContraBonificador } from 'src/app/services/utils/racial-mapper';
 import { frasesDeRasgo } from 'src/app/services/utils/racial-progresion';
 
@@ -16,7 +16,8 @@ import { frasesDeRasgo } from 'src/app/services/utils/racial-progresion';
  *   da la raza a una habilidad (sumado como siempre) y lo que dan sus rasgos (el mayor), cuenta lo mayor; los
  *   penalizadores, todos;
  * - los `Bonificadores_condicionales` de un rasgo (el +1 al ataque contra orcos y trasgoides) se enseñan aparte y no se
- *   suman a ninguna cifra.
+ *   suman a ninguna cifra; los de siempre (sin `Condicion`, solo a la CA: la esquiva +4 del svirfneblin), sí, a la CA con
+ *   su tipo (`caDeSiempreDeRaciales`; en la ficha, la `defensa` de la API).
  */
 
 /** Una habilidad con cantidad de un rasgo: de qué rasgo, la referencia tal como llega, si es personalizada y su condición. */
@@ -72,18 +73,63 @@ export function sinApilarRaciales<K extends string>(bonos: Record<K, HabilidadBo
     return salida;
 }
 
+/** Si un bonificador de un rasgo cuenta siempre: sin condición. */
+export function esBonificadorDeSiempre(b: RacialBonificadorCondicional): boolean {
+    return toNullableText(b?.Condicion) === null;
+}
+
+/** Una parte de la CA que suman los bonificadores de siempre de los rasgos: de qué rasgo, su tipo y cuánto. */
+export interface ParteCaDeRasgo {
+    origen: string;
+    tipo: string;
+    valor: number;
+}
+
+/**
+ * Lo que suman a la CA los bonificadores de siempre de los rasgos que tiene el personaje (la esquiva +4 del svirfneblin),
+ * una vez por rasgo y con la misma regla que la defensa de la API (`personaje_equipo.defensa`): los de un tipo que apila
+ * (esquiva, sin tipo), todos; de los demás, el mayor de cada tipo y todos los penalizadores. `esquiva`, lo que es de
+ * esquiva: no cuenta desprevenido.
+ */
+export function caDeSiempreDeRaciales(raciales: RacialDetalle[] | null | undefined): { total: number; esquiva: number; partes: ParteCaDeRasgo[]; } {
+    const porTipo = new Map<number, { apila: boolean; filas: (ParteCaDeRasgo & { esquiva: boolean; })[]; }>();
+    unaVezPorRasgo(raciales).forEach((racial) => {
+        (racial.Bonificadores_condicionales ?? [])
+            .filter((b) => esBonificadorDeSiempre(b) && toNumber(b.Cantidad) !== 0)
+            .forEach((b) => {
+                const id = toNumber(b.Tipo_bonificador?.Id);
+                const grupo = porTipo.get(id) ?? { apila: !!b.Tipo_bonificador?.Apila, filas: [] };
+                const tipo = `${b.Tipo_bonificador?.Nombre ?? ''}`.trim();
+                grupo.filas.push({ origen: `${racial.Nombre ?? ''}`.trim(), tipo, valor: toNumber(b.Cantidad),
+                    esquiva: normalizarTexto(tipo) === 'esquiva' });
+                porTipo.set(id, grupo);
+            });
+    });
+    const cuentan = [...porTipo.values()].flatMap(({ apila, filas }) => {
+        if (apila)
+            return filas;
+        const mayor = filas.filter((f) => f.valor > 0).reduce<typeof filas[number] | null>((m, f) => (!m || f.valor > m.valor ? f : m), null);
+        return [...(mayor ? [mayor] : []), ...filas.filter((f) => f.valor < 0)];
+    });
+    return {
+        total: cuentan.reduce((a, f) => a + f.valor, 0),
+        esquiva: cuentan.filter((f) => f.esquiva).reduce((a, f) => a + f.valor, 0),
+        partes: cuentan.map(({ origen, tipo, valor }) => ({ origen, tipo, valor })),
+    };
+}
+
 /**
  * Los bonificadores condicionales de los rasgos que tiene el personaje, como los da la ficha de la API
- * (`bonificadoresCondicionales`): cada uno con su rasgo de origen, una vez por rasgo.
+ * (`bonificadoresCondicionales`): cada uno con su rasgo de origen, una vez por rasgo. Los de siempre no: se suman a la CA.
  */
 export function bonificadoresCondicionalesDeRaciales(raciales: RacialDetalle[] | null | undefined): PersonajeBonificadorCondicional[] {
     const salida: PersonajeBonificadorCondicional[] = [];
     unaVezPorRasgo(raciales).forEach((racial) => {
-        (racial.Bonificadores_condicionales ?? []).forEach((b) => salida.push({
+        (racial.Bonificadores_condicionales ?? []).filter((b) => !esBonificadorDeSiempre(b)).forEach((b) => salida.push({
             objetivo: { ...b.Objetivo },
-            tipoBonificador: { ...b.Tipo_bonificador },
+            tipoBonificador: { Id: b.Tipo_bonificador.Id, Nombre: b.Tipo_bonificador.Nombre },
             valor: toNumber(b.Cantidad),
-            condicion: b.Condicion,
+            condicion: b.Condicion ?? '',
             contra: (b.Contra ?? []).map((c) => ({ ...c })),
             origen: `${racial.Nombre ?? ''}`.trim(),
             frase: b.Frase,
