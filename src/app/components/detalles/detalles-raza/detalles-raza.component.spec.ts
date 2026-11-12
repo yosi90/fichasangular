@@ -11,6 +11,7 @@ import { lectorFicha, limpio } from 'src/testing/ficha-detalle';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
 import { normalizeRazaApi } from 'src/app/services/utils/raza-mapper';
 import { categoriasEdadContrato, razaPorEdadesApi, razaPorEdadesEnPasoApi } from 'src/testing/raza-por-edades';
+import { ENANO_API } from 'src/testing/razas-condicionales-api';
 
 function crearRazaMock(extra: Partial<Raza> = {}): Raza {
     return {
@@ -220,6 +221,12 @@ describe('DetallesRazaComponent', () => {
         pintar({ Raciales: raza.Raciales });
         expect(texto()).toContain("A los 6 DG: gana Vuelo (aspecto dracónico de las alas); velocidad volando 30' (maniobrabilidad regular).");
         expect(texto()).toContain('A los 12 DG: gana Vuelo incansable (aspecto dracónico de las alas).');
+    });
+
+    it('bajo cada racial, lo que suma solo en un caso, con la frase de la API (el enano de rol_dev)', () => {
+        pintar({ Raciales: normalizeRazaApi(ENANO_API).Raciales });
+        expect(texto()).toContain('Ataque +1 (racial) contra orcos y trasgoides');
+        expect(texto()).toContain('CA +4 (esquiva) contra gigantes');
     });
 
     it('los subtipos son enlaces a su detalle', () => {

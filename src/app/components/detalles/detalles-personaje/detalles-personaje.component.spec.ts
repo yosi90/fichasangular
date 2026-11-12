@@ -728,6 +728,35 @@ describe('DetallesPersonajeComponent', () => {
         });
     });
 
+    // Un enano (`GET /personajes/{id}` de la rama `mutadas/condicionales` en `rol_dev`, en una transacción deshecha,
+    // 2026-11-12): lo que sus rasgos suman solo en un caso, aparte de la CA y del ataque.
+    describe('los bonificadores condicionales de sus rasgos', () => {
+        const ENANO = {
+            bonificadoresCondicionales: [
+                { objetivo: { Id: 2, Nombre: 'Ataque' }, tipoBonificador: { Id: 14, Nombre: 'Racial' }, valor: 1,
+                    condicion: 'Contra orcos y trasgoides', contra: [{ Catalogo: 'subtipo', Id: 68, Nombre: 'Orco' }],
+                    origen: '+1 de ataque contra orcos y trasgoides', frase: 'Ataque +1 (racial) contra orcos y trasgoides' },
+                { objetivo: { Id: 1, Nombre: 'CA' }, tipoBonificador: { Id: 8, Nombre: 'Esquiva' }, valor: 4,
+                    condicion: 'Contra gigantes', contra: [{ Catalogo: 'tipo_criatura', Id: 10, Nombre: 'Gigante' }],
+                    origen: '+4 de esquiva a la ca contra gigantes', frase: 'CA +4 (esquiva) contra gigantes' },
+            ],
+        };
+
+        it('en su lateral, con la cifra, el tipo, la condición y el rasgo; sin ninguno no sale', () => {
+            component.pj = fichaDeLaApi(ENANO);
+            verPagina();
+            const bloque = limpio(lateral('Bonificadores condicionales'));
+            expect(bloque).toContain('Ataque (racial)');
+            expect(bloque).toContain('+1');
+            expect(bloque).toContain('Contra orcos y trasgoides · +1 de ataque contra orcos y trasgoides');
+            expect(bloque).toContain('CA (esquiva)');
+            expect(bloque).toContain('+4');
+            component.pj = fichaDeLaApi({ bonificadoresCondicionales: [] });
+            fixture.detectChanges();
+            expect(lateral('Bonificadores condicionales')).toBeNull();
+        });
+    });
+
     // El humano necrófago 7.º de `rol_dev` (`GET /personajes/{id}` de un ensayo en una transacción deshecha, 2026-11-07):
     // las armas naturales ya resueltas por la API y los DG de su clase (la tabla de la clase 486 da 3 DG a 7.º).
     describe('las armas naturales y los DG de una clase de monstruo (Libris Mortis)', () => {

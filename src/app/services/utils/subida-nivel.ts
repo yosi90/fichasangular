@@ -142,22 +142,33 @@ function aplicarDiferencia(guardada: Lista | undefined, antes: Lista | undefined
     return [...resultado, ...nuevos];
 }
 
-/** Las habilidades de la `entrada` con los rangos que el motor ha puesto (por habilidad y extra). */
+/**
+ * Las habilidades de la `entrada` con los rangos que el motor ha puesto (por habilidad y extra) y lo que ha cambiado en
+ * sus rangos varios (un rasgo que se gana a N DG con su bonificador de habilidad): la diferencia del motor, con su texto
+ * de varios. Lo que el motor ya contaba antes y la ficha guardada no (una ficha de antes) no se toca.
+ */
 function aplicarRangos(guardadas: Lista | undefined, antes: Lista | undefined, despues: Lista | undefined): Lista {
     const clave = (h: Record<string, any>) => `${toInt(h?.['idHabilidad'])}:${Math.max(0, toInt(h?.['idExtra']))}`;
     const previas = new Map((antes ?? []).map((h) => [clave(h), h]));
     const resultado = (guardadas ?? []).map((h) => ({ ...h }));
     (despues ?? []).forEach((h) => {
-        const suma = toInt(h?.['rangos']) - toInt(previas.get(clave(h))?.['rangos']);
-        const deClase = !!h?.['clasea'] && !previas.get(clave(h))?.['clasea'];
-        if (suma === 0 && !deClase)
+        const previa = previas.get(clave(h));
+        const suma = toInt(h?.['rangos']) - toInt(previa?.['rangos']);
+        const sumaVarios = toInt(h?.['rangosVarios']) - toInt(previa?.['rangosVarios']);
+        const deClase = !!h?.['clasea'] && !previa?.['clasea'];
+        if (suma === 0 && sumaVarios === 0 && !deClase)
             return;
         const fila = resultado.find((g) => clave(g) === clave(h));
         if (fila) {
             fila['rangos'] = toInt(fila['rangos']) + suma;
+            if (sumaVarios !== 0) {
+                fila['rangosVarios'] = toInt(fila['rangosVarios']) + sumaVarios;
+                fila['modVarios'] = h?.['modVarios'] ?? fila['modVarios'];
+            }
             if (deClase)
                 fila['clasea'] = true;
         } else
+            // Una que la ficha no guardaba: entra como la deja el motor (con sus rangos varios), solo con los rangos nuevos.
             resultado.push({ ...h, rangos: Math.max(0, suma) });
     });
     return resultado;

@@ -202,6 +202,8 @@ interface ModeloFicha {
     casillasPagina: CasillaFicha[];
     salvaciones: FilaPares[];
     defensa: FilaPares[];
+    /** Lo que sus rasgos suman solo en un caso (el +1 al ataque contra orcos), aparte de la CA y el ataque. */
+    bonificadoresCondicionales: FilaPares[];
     presaIniciativa: FilaPares[];
     defensasEspeciales: FilaPares[];
     enemigos: FilaPares[];
@@ -1317,6 +1319,12 @@ ${envejecimiento}` : edades;
             caracteristicas: this.calcularCaracteristicas(),
             salvaciones: this.salvacionesVisibles.map((s) => ({ nombre: s.nombre, valor: textoConSigno(s.total), nota: enLinea(s.desglose) })),
             defensa: this.calcularDefensa(),
+            bonificadoresCondicionales: (pj.Bonificadores_condicionales ?? []).map((b) => ({
+                nombre: `${b.objetivo?.Nombre ?? ''}`.trim() + (tieneTextoVisible(b.tipoBonificador?.Nombre) ? ` (${`${b.tipoBonificador.Nombre}`.trim().toLowerCase()})` : ''),
+                valor: textoConSigno(b.valor),
+                nota: [b.condicion, b.origen].filter((texto) => tieneTextoVisible(texto)).join(' · '),
+                ayuda: b.frase,
+            })),
             presaIniciativa: this.calcularPresaIniciativa(),
             defensasEspeciales: [
                 ...(pj.Rds ?? []).map((r) => ({ nombre: 'Reducción de daño', valor: `${r?.Modificador ?? ''}`.trim(), nota: this.texto(r?.Origen) })),
@@ -1374,7 +1382,7 @@ ${envejecimiento}` : edades;
     private modeloVacio(): ModeloFicha {
         return {
             tipoPagina: '', tipoPestanas: '', etiquetas: [], motivosHomebrew: [], creador: null, datos: [], franja: [], caracteristicas: [], casillasPagina: [],
-            salvaciones: [], defensa: [], presaIniciativa: [], defensasEspeciales: [], enemigos: [], habilidades: [],
+            salvaciones: [], defensa: [], bonificadoresCondicionales: [], presaIniciativa: [], defensasEspeciales: [], enemigos: [], habilidades: [],
             habilidadesConRangos: [], verHabilidades: false, dotes: [], aptitudes: [], armasNaturales: [], raciales: [], rasgosTipo: [], plantillas: [],
             ventajas: [], idiomas: [], magia: [], lanzadores: [], lanzamientoRacial: null, aptitudesEdad: null, conjuros: [], sortilegas: [],
             incarnum: null, piezas: [], equipo: [], carga: [],

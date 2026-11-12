@@ -49,6 +49,7 @@ import { abreviaturaCaracteristica, NOMBRES_CARACTERISTICAS, SIN_CARACTERISTICA 
 import { textoVd } from 'src/app/services/utils/tipo-personaje';
 import { textoDeArmasNaturales } from 'src/app/services/utils/armas-naturales';
 import { frasesProgresionRacial } from 'src/app/services/utils/racial-progresion';
+import { frasesBonificadoresCondicionales } from 'src/app/services/utils/habilidades-raciales';
 import {
     SOLO_PNJ,
     categoriasEdadOrdenadas,
@@ -407,6 +408,11 @@ export class DetallesRazaComponent {
     /** Las frases de lo que el rasgo da o cambia a N DG o a nivel N (`Progresion`); `null` si nada. */
     frasesProgresion(racial: RacialDetalle): string[] | null {
         return frasesProgresionRacial(racial);
+    }
+
+    /** Las frases de lo que el rasgo suma solo en un caso (`Bonificadores_condicionales`); `null` si nada. */
+    frasesBonificadores(racial: RacialDetalle): string[] | null {
+        return frasesBonificadoresCondicionales(racial);
     }
 
     trackByGrupoRacial(_index: number, grupo: GrupoRacialesDetalle): number {

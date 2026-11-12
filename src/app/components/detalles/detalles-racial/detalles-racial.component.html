@@ -69,6 +69,16 @@
         </app-ficha-lateral>
 
         <!-- Lo que da o cambia al llegar a N DG o a nivel N (la visión de la prole de Bahamut que pasa de 30' a 60' a 6 DG). -->
+        <!-- Lo que suma solo en un caso (el +1 al ataque del enano contra orcos y trasgoides): no entra en la cifra. -->
+        <app-ficha-lateral titulo="Bonificadores condicionales" *ngIf="bonificadoresCondicionales.length > 0">
+            <ul class="ficha-lista">
+                <li class="ficha-lista__item" *ngFor="let frase of bonificadoresCondicionales">
+                    <mat-icon class="ficha-icono" aria-hidden="true">adjust</mat-icon>
+                    <span>{{frase}}</span>
+                </li>
+            </ul>
+        </app-ficha-lateral>
+
         <app-ficha-lateral titulo="Con los DG o el nivel" *ngIf="progresion.length > 0">
             <ul class="ficha-lista">
                 <li class="ficha-lista__item" *ngFor="let frase of progresion">

@@ -14,7 +14,7 @@ import { normalizarTexto, toArray, toBoolean, toNullableText, toNumber, toNumber
 import { normalizeConjuroApi } from './conjuro-mapper';
 import { leerComodin } from './comodin';
 import { normalizeManualApi } from './manual-mapper';
-import { camposEdadRacial, normalizarProgresionRacial } from './racial-mapper';
+import { camposEdadRacial, normalizarBonificadoresCondicionales, normalizarProgresionRacial } from './racial-mapper';
 import { parteCondicionalHabilidadRaza } from 'src/app/services/utils/habilidad-raza-condicional';
 import { leerArmasNaturales } from './armas-naturales';
 
@@ -500,6 +500,7 @@ function normalizeRacialApi(item: any): RacialDetalle {
             caracteristica: toStrictArray(item?.Prerrequisitos?.caracteristica),
         },
         Progresion: normalizarProgresionRacial(item?.Progresion, normalizeRacialApi),
+        Bonificadores_condicionales: normalizarBonificadoresCondicionales(toStrictArray(item?.Bonificadores_condicionales)),
     });
 }
 
