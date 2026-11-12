@@ -1225,8 +1225,10 @@ export class PersonajeService {
                 Total: toNumber(habilidad?.total),
                 Guardada: habilidad?.guardada !== false,
                 Extra_comodin: habilidad?.extraComodin ?? null,
+                // `bonificador`: lo que suman sus rasgos a las pruebas de su característica (el sigilo de poder).
                 Bonos: (normalizarTotal(habilidad)?.desglose ?? [])
-                    .filter((parte) => parte.tipo === 'tamano' || parte.tipo === 'sinergia' || parte.tipo === 'armadura'),
+                    .filter((parte) => parte.tipo === 'tamano' || parte.tipo === 'sinergia' || parte.tipo === 'armadura'
+                        || parte.tipo === 'bonificador'),
                 Bonos_condicionales: normalizarTotal(habilidad)?.condicionales ?? [],
             })),
             Dotes: toDoteLegacyArray(dotesContextuales),

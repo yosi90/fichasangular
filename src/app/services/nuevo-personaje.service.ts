@@ -25,7 +25,13 @@ import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeCreateColeccionesDto, PersonajeCreateMascotasDto, PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
 import { bonoRacialCondicional, parteCondicionalVarios } from './utils/habilidad-raza-condicional';
-import { bonificadoresCondicionalesDeRaciales, caDeSiempreDeRaciales, habilidadesDeRasgos, sinApilarRaciales } from './utils/habilidades-raciales';
+import {
+    bonificadoresCondicionalesDeRaciales,
+    bonosDeCaracteristicaDeRaciales,
+    caDeSiempreDeRaciales,
+    habilidadesDeRasgos,
+    sinApilarRaciales,
+} from './utils/habilidades-raciales';
 import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { contarArmasNaturales } from './utils/armas-naturales';
 import { rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
@@ -2621,7 +2627,9 @@ export class NuevoPersonajeService {
      * del catálogo de habilidades: las que suman van a `Bonos` y las condicionales, a `Bonos_condicionales`. También el
      * modificador de tamaño a Esconderse de las habilidades que lo suman (`Modificador_tamano`), con el tamaño de la
      * raza, como la ficha, y lo que la raza suma solo en un caso (`Cantidad_condicional` y `Condicion`, el svirfneblin
-     * «+2 bajo tierra»), que va con las condicionales y no se suma. La ficha guardada los calcula la API: no se guardan.
+     * «+2 bajo tierra»), que va con las condicionales y no se suma. También lo que suman sus rasgos a las pruebas de
+     * la característica de cada habilidad (el sigilo de poder del iluminiano, `bonosDeCaracteristicaDeRaciales`), a las
+     * del catálogo y a las personalizadas. La ficha guardada los calcula la API: no se guardan.
      */
     recalcularSinergiasHabilidades(): void {
         const catalogo = this.estadoFlujo.ventajas.catalogoHabilidades ?? [];
@@ -2638,16 +2646,25 @@ export class NuevoPersonajeService {
             rangos: toNumber(habilidad.Rangos),
         }));
         const condicionalesRaza = this.bonosRacialesCondicionales();
+        const deCaracteristica = bonosDeCaracteristicaDeRaciales(this.personajeCreacion.Raciales);
+        const deSuCaracteristica = (habilidad: { Car?: string; }) => deCaracteristica.get(normalizarTexto(`${habilidad?.Car ?? ''}`)) ?? [];
         habilidades.forEach((habilidad, indice) => {
             const bonos = bonosSinergia(refs[indice], refs, reglas);
             habilidad.Bonos = [
                 ...(sumanTamano.has(toNumber(habilidad.Id)) ? parteTamano : []),
                 ...bonos.filter((bono) => !bono.condicion),
+                ...deSuCaracteristica(habilidad),
             ];
             habilidad.Bonos_condicionales = [
                 ...bonos.filter((bono) => !!bono.condicion),
                 ...(condicionalesRaza.get(claveHabilidad(habilidad)) ?? []),
             ];
+        });
+        // Las personalizadas no tienen sinergias ni tamaño: solo lo de su característica.
+        (this.personajeCreacion.Habilidades ?? []).filter((habilidad) => !!habilidad?.Custom).forEach((habilidad) => {
+            const partes = deSuCaracteristica(habilidad);
+            if (partes.length > 0 || habilidad.Bonos)
+                habilidad.Bonos = partes;
         });
     }
 
@@ -6176,8 +6193,10 @@ export class NuevoPersonajeService {
         this.personajeCreacion.Raciales = nuevosRaciales;
         // Lo que sus rasgos suman solo en un caso (el +1 al ataque contra orcos), aparte: no entra en la CA ni en el ataque.
         this.personajeCreacion.Bonificadores_condicionales = bonificadoresCondicionalesDeRaciales(nuevosRaciales);
-        // Los de siempre (la esquiva del svirfneblin), en la CA.
+        // Los de siempre (la esquiva del svirfneblin), en la CA, y los de las pruebas de una característica (el sigilo de
+        // poder del iluminiano), en sus habilidades.
         this.recalcularDefensasYPresa();
+        this.recalcularSinergiasHabilidades();
         this.personajeCreacion.Idiomas = nuevosIdiomas;
         this.estadoFlujo.ventajas.pendientesOro = pendientesOro;
         this.personajeCreacion.Ventajas = todasLasSelecciones

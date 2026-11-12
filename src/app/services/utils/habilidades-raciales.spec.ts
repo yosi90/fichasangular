@@ -3,6 +3,7 @@ import { RacialDetalle } from 'src/app/interfaces/racial';
 import { caToqueYDesprevenidaSinDefensa } from './ficha-pdf-totales';
 import {
     bonificadoresCondicionalesDeRaciales,
+    bonosDeCaracteristicaDeRaciales,
     caDeSiempreDeRaciales,
     frasesBonificadoresCondicionales,
     habilidadesDeRasgos,
@@ -10,6 +11,7 @@ import {
     sinApilarRaciales,
 } from './habilidades-raciales';
 import { normalizeRacial } from './racial-mapper';
+import { aplicarProgresionRacial } from './racial-progresion';
 
 // Los mismos casos que `tests/test_racial_bonificadores.py` del backend (`utils/racial_bonificadores.py`).
 
@@ -84,7 +86,8 @@ describe('habilidades-raciales', () => {
     });
 
     // La esquiva del svirfneblin contra todas las criaturas (Manual de monstruos 1, pág. 139): cuenta siempre.
-    const ESQUIVA = { Id: 8, Nombre: 'Esquiva', Apila: true };
+    // Si cuenta de toque y desprevenido lo dice el tipo (tipos_bonificador), no su nombre.
+    const ESQUIVA = { Id: 8, Nombre: 'Esquiva', Apila: true, Cuenta_toque: true, Cuenta_desprevenido: false };
     const deSiempre = (Id: number, Nombre: string, Cantidad: number, Tipo_bonificador: object = ESQUIVA) => racial(Id, Nombre, {
         Bonificadores_condicionales: [{ Id, Objetivo: { Id: 1, Nombre: 'CA' }, Tipo_bonificador, Cantidad, Condicion: null,
             Contra: [], Frase: `CA +${Cantidad} (esquiva)` }],
@@ -97,14 +100,22 @@ describe('habilidades-raciales', () => {
         expect(svirfneblin.Bonificadores_condicionales?.[0].Tipo_bonificador).toEqual(ESQUIVA);
         expect(bonificadoresCondicionalesDeRaciales([svirfneblin, enano]).map((b) => b.origen)).toEqual([enano.Nombre]);
         expect(caDeSiempreDeRaciales([svirfneblin, enano, svirfneblin])).toEqual({
-            total: 4, esquiva: 4, partes: [{ origen: svirfneblin.Nombre, tipo: 'Esquiva', valor: 4 }],
+            total: 4, sinToque: 0, sinDesprevenido: 4, partes: [{ origen: svirfneblin.Nombre, tipo: 'Esquiva', valor: 4 }],
         });
         // Dos esquivas se apilan (Manual del jugador, pág. 136); de un tipo que no apila, el mayor.
         expect(caDeSiempreDeRaciales([svirfneblin, deSiempre(2185, 'Esquiva (svirfneblin)', 1)]).total).toBe(5);
-        const desvio = { Id: 6, Nombre: 'Desvío', Apila: false };
+        const desvio = { Id: 6, Nombre: 'Desvío', Apila: false, Cuenta_toque: true, Cuenta_desprevenido: true };
         expect(caDeSiempreDeRaciales([deSiempre(1, 'A', 1, desvio), deSiempre(2, 'B', 2, desvio)])).toEqual({
-            total: 2, esquiva: 0, partes: [{ origen: 'B', tipo: 'Desvío', valor: 2 }],
+            total: 2, sinToque: 0, sinDesprevenido: 0, partes: [{ origen: 'B', tipo: 'Desvío', valor: 2 }],
         });
+        // Un tipo que no cuenta de toque (la armadura natural, o uno homebrew con esa marca), por su dato.
+        const natural = { Id: 3, Nombre: 'Armadura natural', Apila: false, Cuenta_toque: false, Cuenta_desprevenido: true };
+        expect(caDeSiempreDeRaciales([deSiempre(5, 'Piel', 1, natural), svirfneblin])).toEqual(jasmine.objectContaining({
+            total: 5, sinToque: 1, sinDesprevenido: 4,
+        }));
+        // Una caché anterior sin las marcas: cuenta en las dos, como el valor por defecto de la base.
+        expect(deSiempre(6, 'Viejo', 1, { Id: 8, Nombre: 'Esquiva', Apila: true }).Bonificadores_condicionales?.[0].Tipo_bonificador)
+            .toEqual(jasmine.objectContaining({ Cuenta_toque: true, Cuenta_desprevenido: true }));
         expect(caDeSiempreDeRaciales(null).total).toBe(0);
     });
 
@@ -113,5 +124,35 @@ describe('habilidades-raciales', () => {
         const pj = { Ca: 16, ModDestreza: 2, Armadura_natural: 0, Raciales: [svirfneblin], Defensa: null } as unknown as Personaje;
         expect(caToqueYDesprevenidaSinDefensa(pj)).toEqual({ toque: 16, desprevenido: 10 });
         expect(caToqueYDesprevenidaSinDefensa({ ...pj, ModDestreza: -1, Ca: 13, Armadura_natural: 1 } as Personaje)).toEqual({ toque: 12, desprevenido: 9 });
+    });
+
+    // Los sigilos de poder del iluminiano (Races of Destiny, págs. 53-54): +1 sin tipo a las pruebas de una característica
+    // y de sus habilidades, +2 desde nivel 2. Los mismos casos que `SigilosDePoderTests` de la API.
+    const SIN_TIPO = { Id: 19, Nombre: 'Sin tipo', Apila: true, Cuenta_toque: true, Cuenta_desprevenido: true };
+    const sigilo = (Id: number, Nombre: string, caracteristicas: { Id: number; Nombre: string; }[]) => racial(Id, Nombre, {
+        Bonificadores_condicionales: caracteristicas.map((Caracteristica, i) => ({
+            Id: Id * 10 + i, Objetivo: { Id: 18, Nombre: 'Pruebas de característica y habilidades' }, Tipo_bonificador: SIN_TIPO,
+            Cantidad: 1, Condicion: null, Contra: [], Caracteristica, Cantidad_del_valor: true,
+            Frase: `Pruebas de característica y habilidades de ${Caracteristica.Nombre} +1 (sin tipo)`,
+        })),
+        Progresion: [{ Medida: 'nivel', Desde: 2, Gana: null, Sustituye: null, Tipo_dote: null, Velocidad: null, Valor: '+2',
+            Elige_opcional: null, Frase: 'A nivel 2: pasa a +2.' }],
+    });
+    const aesh = sigilo(4871, 'Sigilo de poder: aesh (vigor)', [{ Id: 1, Nombre: 'Fuerza' }]);
+    const hoon = sigilo(4872, 'Sigilo de poder: hoon (vida)', [{ Id: 5, Nombre: 'Sabiduría' }, { Id: 3, Nombre: 'Constitución' }]);
+
+    it('los sigilos de poder suman a las habilidades de su característica, +2 desde nivel 2', () => {
+        const parte = (origen: string, valor: number) => ({ tipo: 'bonificador' as const, origen, valor, bonificador: 'Sin tipo' });
+        const uno = bonosDeCaracteristicaDeRaciales(aplicarProgresionRacial([aesh, hoon], { dg: 1, nivel: 1 }).raciales);
+        expect(uno.get('fuerza')).toEqual([parte(aesh.Nombre, 1)]);
+        expect(uno.get('constitucion')).toEqual([parte(hoon.Nombre, 1)]);
+        expect(uno.has('inteligencia')).toBeFalse();
+        const dos = aplicarProgresionRacial([aesh, hoon], { dg: 2, nivel: 2 }).raciales;
+        expect(bonosDeCaracteristicaDeRaciales(dos).get('sabiduria')).toEqual([parte(hoon.Nombre, 2)]);
+        expect(dos[0].Bonificadores_condicionales?.[0].Frase).toBe('Pruebas de característica y habilidades de Fuerza +2 (sin tipo)');
+        // La entrada no cambia, y no van a la CA.
+        expect(aesh.Bonificadores_condicionales?.[0].Cantidad).toBe(1);
+        expect(caDeSiempreDeRaciales(dos).total).toBe(0);
+        expect(bonificadoresCondicionalesDeRaciales(dos)).toEqual([]);
     });
 });

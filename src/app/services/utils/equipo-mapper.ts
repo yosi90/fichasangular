@@ -129,6 +129,7 @@ export function normalizeEquipoCatalogos(raw: any): EquipoCatalogos {
                     ...ref,
                     Lista_del_rasgo: LISTAS_DEL_RASGO.find((lista) => lista === item?.Lista_del_rasgo) ?? null,
                     De_siempre_en_el_rasgo: toBoolean(item?.De_siempre_en_el_rasgo),
+                    Caracteristica_en_el_rasgo: toBoolean(item?.Caracteristica_en_el_rasgo),
                 } : null;
             })
             .filter((item): item is EquipoObjetivoModificador => item !== null),

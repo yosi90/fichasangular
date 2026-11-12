@@ -33,14 +33,16 @@ function javascriptDeCalculo(campo: { acroField: { dict: PDFDict; }; }): string 
 
 /**
  * La CA de toque y la desprevenida de la hoja sin la `defensa` de la API (la creación, antes de guardar): la de toque sin
- * la armadura natural, y la desprevenida sin la Destreza positiva ni las esquivas de siempre de sus rasgos (la del
- * svirfneblin; Manual del jugador, pág. 136). Con la ficha de la API, `camposPdfEquipo` pone encima las de su `defensa`.
+ * la armadura natural ni lo de sus rasgos que no cuenta de toque, y la desprevenida sin la Destreza positiva ni lo de sus
+ * rasgos que se pierde desprevenido (la esquiva del svirfneblin; Manual del jugador, pág. 136), por el tipo de cada
+ * bonificador. Con la ficha de la API, `camposPdfEquipo` pone encima las de su `defensa`.
  */
 export function caToqueYDesprevenidaSinDefensa(pj: Personaje): { toque: number; desprevenido: number; } {
     const ca = toNumber(pj.Ca);
+    const deRasgos = caDeSiempreDeRaciales(pj.Raciales);
     return {
-        toque: ca - toNumber(pj.Armadura_natural),
-        desprevenido: ca - Math.max(0, toNumber(pj.ModDestreza)) - caDeSiempreDeRaciales(pj.Raciales).esquiva,
+        toque: ca - toNumber(pj.Armadura_natural) - deRasgos.sinToque,
+        desprevenido: ca - Math.max(0, toNumber(pj.ModDestreza)) - deRasgos.sinDesprevenido,
     };
 }
 

@@ -90,6 +90,8 @@ export interface AplicacionMaterial extends EquipoRef {
 export interface EquipoObjetivoModificador extends EquipoRef {
     Lista_del_rasgo: 'salvaciones' | 'caracteristicas' | 'habilidades' | null;
     De_siempre_en_el_rasgo: boolean;
+    /** Si en un rasgo pide una característica (las pruebas de característica y habilidades). */
+    Caracteristica_en_el_rasgo: boolean;
 }
 
 export interface EquipoCatalogos {

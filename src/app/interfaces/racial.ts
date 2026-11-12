@@ -85,18 +85,28 @@ export interface RacialBonificadorContra {
  * Lo que un rasgo racial suma solo en un caso (`Bonificadores_condicionales` del contrato,
  * `docs/publica/endpoints/catalogos.md`): el +1 al ataque del enano contra orcos y trasgoides, la esquiva +4 a la CA
  * contra gigantes. La creación y la ficha lo enseñan aparte y no lo suman. Uno sin condición (`Condicion` `null`, solo a
- * la CA: la esquiva +4 del svirfneblin contra todas las criaturas) cuenta siempre y se suma a la CA con su tipo.
+ * la CA: la esquiva +4 del svirfneblin contra todas las criaturas) cuenta siempre y se suma a la CA con su tipo; uno de
+ * siempre con `Caracteristica` (a las pruebas de una característica: el sigilo de poder del iluminiano), a las
+ * habilidades de esa característica.
  */
 export interface RacialBonificadorCondicional {
     Objetivo: { Id: number; Nombre: string; };
-    /** `Apila`: si se apila con los del mismo tipo (esquiva, sin tipo), para sumar los de siempre. */
-    Tipo_bonificador: { Id: number; Nombre: string; Apila: boolean; };
+    /**
+     * `Apila`: si se apila con los del mismo tipo (esquiva, sin tipo), para sumar los de siempre; `Cuenta_toque` y
+     * `Cuenta_desprevenido`: si cuenta en la CA de toque y en la desprevenida (Manual del jugador, pág. 136: la armadura
+     * natural no cuenta de toque y la esquiva se pierde desprevenido).
+     */
+    Tipo_bonificador: { Id: number; Nombre: string; Apila: boolean; Cuenta_toque: boolean; Cuenta_desprevenido: boolean; };
     /** Distinta de 0; negativa, un penalizador. */
     Cantidad: number;
     /** El caso en que cuenta, en texto: «Contra orcos y trasgoides»; `null`, cuenta siempre. */
     Condicion: string | null;
     /** Si es contra unas criaturas, cuáles (el texto puede acotarlo más). */
     Contra: RacialBonificadorContra[];
+    /** La de las pruebas de característica y habilidades (el sigilo de poder: Fuerza); `null` con los demás objetivos. */
+    Caracteristica: { Id: number; Nombre: string; } | null;
+    /** Si la cantidad sigue la cifra del rasgo (`Valor` que le da su progresión: el sigilo, +2 desde nivel 2). */
+    Cantidad_del_valor: boolean;
     /** «Ataque +1 (racial) contra orcos y trasgoides». */
     Frase: string;
 }

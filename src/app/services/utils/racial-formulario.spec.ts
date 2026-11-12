@@ -20,9 +20,11 @@ import { normalizeRacial } from './racial-mapper';
 /** Las mismas reglas que `_normalize_racial_progresion`, `_normalize_racial_bonificadores` y `_normalize_racial_cuenta_como` de la API. */
 describe('racial-formulario', () => {
     const OBJETIVOS: EquipoObjetivoModificador[] = [
-        { Id: 1, Nombre: 'CA', Lista_del_rasgo: null, De_siempre_en_el_rasgo: true },
-        { Id: 2, Nombre: 'Ataque', Lista_del_rasgo: null, De_siempre_en_el_rasgo: false },
-        { Id: 8, Nombre: 'Característica', Lista_del_rasgo: 'caracteristicas', De_siempre_en_el_rasgo: false },
+        { Id: 1, Nombre: 'CA', Lista_del_rasgo: null, De_siempre_en_el_rasgo: true, Caracteristica_en_el_rasgo: false },
+        { Id: 2, Nombre: 'Ataque', Lista_del_rasgo: null, De_siempre_en_el_rasgo: false, Caracteristica_en_el_rasgo: false },
+        { Id: 8, Nombre: 'Característica', Lista_del_rasgo: 'caracteristicas', De_siempre_en_el_rasgo: false, Caracteristica_en_el_rasgo: false },
+        { Id: 18, Nombre: 'Pruebas de característica y habilidades', Lista_del_rasgo: null, De_siempre_en_el_rasgo: true,
+            Caracteristica_en_el_rasgo: true },
     ];
     const progresion = (cambios: object) => ({ ...filaProgresionVacia(), desde: 6, ...cambios });
     const bonificador = (cambios: object) => ({
@@ -39,7 +41,9 @@ describe('racial-formulario', () => {
                 { Medida: 'nivel', Desde: 2, Gana: null, Sustituye: null, Tipo_dote: null, Velocidad: null, Valor: null,
                     Elige_opcional: 1, Frase: 'w' }],
             Bonificadores_condicionales: [{ Id: 4, Objetivo: { Id: 1, Nombre: 'CA' }, Tipo_bonificador: { Id: 8, Nombre: 'Esquiva' },
-                Cantidad: 2, Condicion: 'Contra dragones', Contra: [{ Catalogo: 'tipo_criatura', Id: 6, Nombre: 'Dragón' }], Frase: 'z' }],
+                Cantidad: 2, Condicion: 'Contra dragones', Contra: [{ Catalogo: 'tipo_criatura', Id: 6, Nombre: 'Dragón' }], Frase: 'z' },
+            { Id: 5, Objetivo: { Id: 18, Nombre: 'Pruebas de característica y habilidades' }, Tipo_bonificador: { Id: 19, Nombre: 'Sin tipo' },
+                Cantidad: 1, Condicion: null, Contra: [], Caracteristica: { Id: 1, Nombre: 'Fuerza' }, Cantidad_del_valor: true, Frase: 'v' }],
         });
 
         expect(cuerpoDeProgresion(filasDeProgresion(racial))).toEqual([
@@ -48,7 +52,10 @@ describe('racial-formulario', () => {
             { medida: 'nivel', desde: 2, elige_opcional: 1 },
         ]);
         expect(cuerpoDeBonificadores(filasDeBonificadores(racial))).toEqual([
-            { id_objetivo: 1, id_tipo_bonificador: 8, cantidad: 2, condicion: 'Contra dragones', contra: [{ id_tipo: 6 }] },
+            { id_objetivo: 1, id_tipo_bonificador: 8, cantidad: 2, condicion: 'Contra dragones', contra: [{ id_tipo: 6 }],
+                id_caracteristica: null, cantidad_del_valor: false },
+            { id_objetivo: 18, id_tipo_bonificador: 19, cantidad: 1, condicion: '', contra: [], id_caracteristica: 1,
+                cantidad_del_valor: true },
         ]);
     });
 
@@ -105,6 +112,11 @@ describe('racial-formulario', () => {
         expect(falloDeBonificador(bonificador({ condicion: '' }), 0, OBJETIVOS)).toContain('solo vale un bonificador a la CA');
         expect(falloDeBonificador(bonificador({ id_objetivo: 1, condicion: '', contra: [repetida] }), 0, OBJETIVOS))
             .toContain('contra unas criaturas');
+        // Las pruebas de una característica (el sigilo de poder): de siempre, y piden su característica; los demás no.
+        expect(falloDeBonificador(bonificador({ id_objetivo: 18, condicion: '', id_caracteristica: 1 }), 0, OBJETIVOS)).toBeNull();
+        expect(falloDeBonificador(bonificador({ id_objetivo: 18, condicion: '' }), 0, OBJETIVOS)).toContain('de qué característica');
+        expect(falloDeBonificador(bonificador({ id_caracteristica: 1 }), 0, OBJETIVOS))
+            .toContain('solo vale con las pruebas de característica y habilidades');
     });
 
     it('el primer fallo dice de qué lista es', () => {

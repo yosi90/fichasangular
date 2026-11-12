@@ -120,6 +120,10 @@ export interface FilaBonificadorRacial {
     contra: CriaturaDelRacial[];
     /** De qué catálogo se añade la siguiente criatura. */
     catalogoContra: CatalogoContra;
+    /** La de las pruebas de característica y habilidades (`Caracteristica_en_el_rasgo` del objetivo). */
+    id_caracteristica: number | null;
+    /** Si la cantidad sigue la cifra del rasgo (`Valor` de su progresión: el sigilo de poder, +2 desde nivel 2). */
+    cantidad_del_valor: boolean;
 }
 
 export function filaProgresionVacia(): FilaProgresionRacial {
@@ -132,7 +136,7 @@ export function filaProgresionVacia(): FilaProgresionRacial {
 export function filaBonificadorVacia(): FilaBonificadorRacial {
     return {
         uid: uidDeFila('bonificador'), id_objetivo: null, id_tipo_bonificador: null, cantidad: null, condicion: '',
-        contra: [], catalogoContra: 'tipo_criatura',
+        contra: [], catalogoContra: 'tipo_criatura', id_caracteristica: null, cantidad_del_valor: false,
     };
 }
 
@@ -182,6 +186,8 @@ export function filasDeBonificadores(racial: RacialDetalle | null | undefined): 
         cantidad: Math.trunc(Number(b.Cantidad)),
         condicion: toText(b.Condicion).trim(),
         contra: (b.Contra ?? []).map(criaturaDelGet),
+        id_caracteristica: toPositiveInt(b.Caracteristica?.Id),
+        cantidad_del_valor: b.Cantidad_del_valor === true,
     }));
 }
 
@@ -217,6 +223,8 @@ export function cuerpoDeBonificadores(filas: readonly FilaBonificadorRacial[]): 
         cantidad: Math.trunc(Number(fila.cantidad)),
         condicion: toText(fila.condicion).trim(),
         contra: fila.contra.map(cuerpoDeCriatura),
+        id_caracteristica: toPositiveInt(fila.id_caracteristica),
+        cantidad_del_valor: fila.cantidad_del_valor === true,
     }));
 }
 
@@ -257,8 +265,9 @@ export function falloDeProgresion(fila: FilaProgresionRacial, indice: number, id
 
 /**
  * Lo que la API rechazaría de un bonificador condicional, o `null` si vale. `objetivos`, los del catálogo: los que en
- * un rasgo van en su propia lista (`Lista_del_rasgo`) no valen aquí, y solo los de `De_siempre_en_el_rasgo` (la CA)
- * pueden ir sin condición (cuentan siempre: la esquiva del svirfneblin), y entonces sin criaturas.
+ * un rasgo van en su propia lista (`Lista_del_rasgo`) no valen aquí; solo los de `De_siempre_en_el_rasgo` (la CA y las
+ * pruebas de característica) pueden ir sin condición (cuentan siempre: la esquiva del svirfneblin), y entonces sin
+ * criaturas; y la característica la piden los de `Caracteristica_en_el_rasgo`, y solo ellos.
  */
 export function falloDeBonificador(fila: FilaBonificadorRacial, indice: number,
     objetivos: readonly EquipoObjetivoModificador[]): string | null {
@@ -275,7 +284,12 @@ export function falloDeBonificador(fila: FilaBonificadorRacial, indice: number,
         return `${n}: la cantidad no puede ser 0 y va de -${MAXIMO_CANTIDAD_BONIFICADOR} a ${MAXIMO_CANTIDAD_BONIFICADOR}.`;
     const condicion = toText(fila.condicion).trim();
     if (condicion.length < 1 && !objetivo?.De_siempre_en_el_rasgo)
-        return `${n}: la condición es obligatoria (el caso en que cuenta: «contra gigantes»). Sin condición (cuenta siempre) solo vale un bonificador a la CA.`;
+        return `${n}: la condición es obligatoria (el caso en que cuenta: «contra gigantes»). Sin condición (cuenta siempre) solo vale un bonificador a la CA o a las pruebas de una característica.`;
+    const caracteristica = toPositiveInt(fila.id_caracteristica);
+    if (objetivo?.Caracteristica_en_el_rasgo && !caracteristica)
+        return `${n}: elige de qué característica.`;
+    if (!objetivo?.Caracteristica_en_el_rasgo && caracteristica)
+        return `${n}: la característica solo vale con las pruebas de característica y habilidades.`;
     if (condicion.length < 1 && fila.contra.length > 0)
         return `${n}: la condición es obligatoria si cuenta contra unas criaturas («contra gigantes»).`;
     if (condicion.length > MAXIMO_CONDICION_BONIFICADOR)

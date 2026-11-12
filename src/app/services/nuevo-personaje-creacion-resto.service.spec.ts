@@ -1,6 +1,7 @@
 import { NuevoPersonajeService } from './nuevo-personaje.service';
 import { PersonajeService } from './personaje.service';
 import { normalizeClase } from './clase.service';
+import { normalizeHabilidadBasica } from './habilidad.service';
 import { Clase } from '../interfaces/clase';
 import { Personaje } from '../interfaces/personaje';
 import { PersonajeCreateRequestDto } from '../interfaces/personajes-api';
@@ -11,6 +12,7 @@ import { claveHabilidad } from './utils/habilidad-clave';
 import { normalizeRacial } from './utils/racial-mapper';
 import { aplicarProgresionRacial, textoCdRacial } from './utils/racial-progresion';
 import { getClaveSeleccionRacial } from './utils/racial-opcionales';
+import { HABILIDADES_API } from 'src/testing/razas-condicionales-api';
 
 // Lo que la creación aún no hacía con las razas mutadas (roadmap `ACTIVO_razas-mutadas`, `bugs.md`, 2026-11-12, rama
 // `mutadas/creacion-resto`): la elección más de un grupo opcional (el segundo sigilo de poder del iluminiano a 2.º
@@ -248,5 +250,47 @@ describe('La CD de un rasgo con todos los DG', () => {
         expect(textoCdRacial(corazon)).toBe('10 + ½ de todos sus DG + su modificador de Constitución');
         expect(textoCdRacial({ ...corazon, Cd_dg_totales: false })).toBe('10 + ½ de sus DG raciales + su modificador de Constitución');
         expect(textoCdRacial(normalizeRacial(racial(1, 'Sin CD')))).toBeNull();
+    });
+});
+
+// Los sigilos de poder suman su cifra (roadmap `ACTIVO_razas-mutadas`, `bugs.md`, rama `mutadas/tipos-bonificador`):
+// +1 sin tipo a las pruebas de su característica y de sus habilidades, +2 desde 2.º nivel (Races of Destiny, págs.
+// 53-54), como los da la API (`raciales_sigilos_de_poder.sql`).
+describe('Los sigilos de poder en las habilidades de la creación', () => {
+    const SIN_TIPO = { Id: 19, Nombre: 'Sin tipo', Apila: true, Cuenta_toque: true, Cuenta_desprevenido: true };
+    const aCaracteristica = (Id: number, Caracteristica: { Id: number; Nombre: string; }) => ({
+        Id, Objetivo: { Id: 18, Nombre: 'Pruebas de característica y habilidades' }, Tipo_bonificador: SIN_TIPO, Cantidad: 1,
+        Condicion: null, Contra: [], Caracteristica, Cantidad_del_valor: true,
+        Frase: `Pruebas de característica y habilidades de ${Caracteristica.Nombre} +1 (sin tipo)`,
+    });
+    const conSuCifra = (Id: number, Nombre: string, bonificadores: object[]) => normalizeRacial(racial(Id, `Sigilo de poder: ${Nombre}`, {
+        Opcional: 1, Bonificadores_condicionales: bonificadores, Progresion: [fila(2, { Valor: '+2' })],
+    }));
+    const AESH_C = conSuCifra(4871, 'aesh (vigor)', [aCaracteristica(1, { Id: 1, Nombre: 'Fuerza' })]);
+    const HOON_C = conSuCifra(4872, 'hoon (vida)', [aCaracteristica(2, { Id: 5, Nombre: 'Sabiduría' }), aCaracteristica(3, { Id: 3, Nombre: 'Constitución' })]);
+    const conHabilidades = () => {
+        const svc = motor();
+        svc.setCatalogoHabilidades(HABILIDADES_API.map(normalizeHabilidadBasica));
+        svc.seleccionarRaza(iluminiano([SIGILOS, AESH_C, HOON_C]), null, { 1: getClaveSeleccionRacial(AESH_C) });
+        svc.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 12, Constitucion: 12, Inteligencia: 10, Sabiduria: 10, Carisma: 10 });
+        return svc;
+    };
+    const bonos = (svc: NuevoPersonajeService, nombre: string) =>
+        (svc.PersonajeCreacion.Habilidades.find((h) => !h.Custom && h.Nombre === nombre)?.Bonos ?? []).filter((b) => b.tipo === 'bonificador');
+    const parte = (origen: string, valor: number) => ({ tipo: 'bonificador' as const, origen, valor, bonificador: 'Sin tipo' });
+
+    it('aesh suma +1 a Saltar (Fuerza) y no a Escuchar; a 2.º nivel, con hoon, +2 a las dos; y no se guardan', () => {
+        const svc = conHabilidades();
+        aplicarNivel(svc, GUERRERO);
+        expect(bonos(svc, 'Saltar')).toEqual([parte('Sigilo de poder: aesh (vigor)', 1)]);
+        expect(bonos(svc, 'Escuchar')).toEqual([]);
+        aplicarNivel(svc, GUERRERO);
+        const [pendiente] = svc.getEleccionesRacialesPendientes();
+        expect(svc.aplicarEleccionRacialPendiente(pendiente.clave, 4872)).toBeTrue();
+        expect(bonos(svc, 'Saltar')).toEqual([parte('Sigilo de poder: aesh (vigor)', 2)]);
+        expect(bonos(svc, 'Escuchar')).toEqual([parte('Sigilo de poder: hoon (vida)', 2)]);
+        // La API los suma al leer: el alta no los mete en los rangos varios.
+        const saltar = cuerpo(svc).colecciones?.habilidades?.base?.find((h: any) => h.idHabilidad === 37) as any;
+        expect(saltar?.rangosVarios ?? 0).toBe(0);
     });
 });

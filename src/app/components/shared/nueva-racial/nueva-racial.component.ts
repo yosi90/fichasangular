@@ -703,9 +703,29 @@ export class NuevaRacialComponent implements OnInit, OnDestroy, OnChanges, Edito
         return CATALOGOS_CONTRA.find((item) => item.clave === catalogo)?.nombre ?? catalogo;
     }
 
+    /** Si el objetivo de la fila pide una característica (`Caracteristica_en_el_rasgo`: las pruebas de característica). */
+    pideCaracteristica(fila: FilaBonificadorRacial): boolean {
+        return this.objetivos.some((item) => item.Id === fila.id_objetivo && item.Caracteristica_en_el_rasgo);
+    }
+
+    /** Al cambiar a qué se aplica: un objetivo que no pide característica no la lleva (la API la rechazaría). */
+    cambiarObjetivoBonificador(fila: FilaBonificadorRacial): void {
+        if (!this.pideCaracteristica(fila))
+            fila.id_caracteristica = null;
+        this.errorBonificadores = null;
+    }
+
+    /** La cantidad sigue la cifra del rasgo (la que le da su progresión: el sigilo de poder, +2 desde nivel 2). */
+    alternarCantidadDelValor(fila: FilaBonificadorRacial): void {
+        fila.cantidad_del_valor = !fila.cantidad_del_valor;
+        this.errorBonificadores = null;
+    }
+
     /** «1 · Ataque +1 (racial)», el resumen de un bonificador en su cabecera. */
     resumenBonificador(fila: FilaBonificadorRacial, indice: number): string {
-        const objetivo = this.objetivos.find((item) => item.Id === fila.id_objetivo)?.Nombre ?? 'Sin objetivo';
+        const caracteristica = this.caracteristicasCatalogo.find((item) => item.id === fila.id_caracteristica)?.nombre;
+        const objetivo = (this.objetivos.find((item) => item.Id === fila.id_objetivo)?.Nombre ?? 'Sin objetivo')
+            + (caracteristica ? ` de ${caracteristica}` : '');
         const tipo = this.tiposBonificador.find((item) => item.Id === fila.id_tipo_bonificador)?.Nombre;
         const cantidad = fila.cantidad === null || `${fila.cantidad}`.trim() === '' ? '' : ` ${textoConSigno(Number(fila.cantidad))}`;
         return `${indice + 1} · ${objetivo}${cantidad}${tipo ? ` (${tipo.toLowerCase()})` : ''}`;

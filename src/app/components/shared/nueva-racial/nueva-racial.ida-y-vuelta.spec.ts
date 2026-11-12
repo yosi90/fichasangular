@@ -18,8 +18,11 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
         { Id: 2, Nombre: 'Ataque', Lista_del_rasgo: null },
         { Id: 5, Nombre: 'Fortaleza', Lista_del_rasgo: 'salvaciones' },
         { Id: 9, Nombre: 'Habilidad', Lista_del_rasgo: 'habilidades' },
+        { Id: 15, Nombre: 'Nivel de lanzador', Lista_del_rasgo: null },
+        { Id: 18, Nombre: 'Pruebas de característica y habilidades', Lista_del_rasgo: null, De_siempre_en_el_rasgo: true,
+            Caracteristica_en_el_rasgo: true },
     ];
-    const TIPOS = [{ Id: 8, Nombre: 'Esquiva', Apila: true }, { Id: 14, Nombre: 'Racial', Apila: false }];
+    const TIPOS = [{ Id: 8, Nombre: 'Esquiva', Apila: true }, { Id: 14, Nombre: 'Racial', Apila: false }, { Id: 19, Nombre: 'Sin tipo', Apila: true }];
 
     const editar = (get: any) => {
         racialSvc.getRacial.and.returnValue(of(normalizeRacial(get)));
@@ -81,6 +84,24 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
         expect(cuerpos.some((c) => (c.cuenta_como ?? []).some((f) => 'id_raza' in f))).toBeTrue();
         expect(cuerpos.some((c) => (c.cuenta_como ?? []).some((f) => 'id_tipo' in f))).toBeTrue();
         expect(cuerpos.some((c) => (c.bonificadores_condicionales ?? []).some((b) => b.condicion === '' && b.contra.length === 0))).toBeTrue();
+        // Los sigilos de poder: a las pruebas de una característica y con la cantidad que sigue la cifra del rasgo.
+        expect(cuerpos.some((c) => (c.bonificadores_condicionales ?? []).some((b) => b.id_caracteristica && b.cantidad_del_valor))).toBeTrue();
+        expect(cuerpos.some((c) => (c.bonificadores_condicionales ?? []).some((b) => !b.id_caracteristica && b.cantidad_del_valor))).toBeTrue();
+    });
+
+    it('un bonificador a las pruebas de característica pide la característica; al cambiar de objetivo se vacía', () => {
+        const hoon = IDA_Y_VUELTA_RACIALES.find((caso) => caso.nombre === 'Sigilo de poder: hoon (vida)')!;
+        editar(hoon.get);
+        const [sabiduria] = component.bonificadoresRows;
+        expect(component.pideCaracteristica(sabiduria)).toBeTrue();
+        expect(component.resumenBonificador(sabiduria, 0)).toBe('1 · Pruebas de característica y habilidades de Sabiduría +1 (sin tipo)');
+        component.alternarCantidadDelValor(sabiduria);
+        sabiduria.id_objetivo = 1;
+        component.cambiarObjetivoBonificador(sabiduria);
+
+        const [enviado] = (component as any).construirPayload().bonificadores_condicionales;
+        expect(enviado).toEqual(jasmine.objectContaining({ id_objetivo: 1, id_caracteristica: null, cantidad_del_valor: false }));
+        expect(component.isDirty).toBeTrue();
     });
 
     it('la elección de un grupo opcional, la CD con todos los DG y el «cuenta como» se cambian y se mandan', () => {
@@ -141,7 +162,8 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
             { medida: 'dg', desde: 6, id_racial_gana: 13, velocidad: { tipo: 'volar', pies: 30, id_maniobrabilidad: 3 } },
         ]);
         expect(payload.bonificadores_condicionales).toEqual([
-            { id_objetivo: 2, id_tipo_bonificador: 14, cantidad: 1, condicion: 'contra orcos', contra: [{ id_subtipo: 68 }] },
+            { id_objetivo: 2, id_tipo_bonificador: 14, cantidad: 1, condicion: 'contra orcos', contra: [{ id_subtipo: 68 }],
+                id_caracteristica: null, cantidad_del_valor: false },
         ]);
         expect(component.bonificadoresRows[0].contra[0].nombre).toBe('Orco');
     });
@@ -161,7 +183,7 @@ describe('NuevaRacialComponent (progresión, bonificadores e ida y vuelta)', () 
 
     it('no ofrece como bonificador condicional lo que va en su lista ni el propio rasgo en la progresión', () => {
         component.agregarBonificador();
-        expect(component.objetivosDeBonificador(component.bonificadoresRows[0]).map((o) => o.Id)).toEqual([1, 2]);
+        expect(component.objetivosDeBonificador(component.bonificadoresRows[0]).map((o) => o.Id)).toEqual([1, 2, 15, 18]);
         expect(component.tiposDoteOpciones).toEqual([{ id: 30, nombre: 'Tocado por diablos' }]);
         expect(component.maniobrabilidades).toEqual([{ id: 3, nombre: 'Regular' }]);
         editar({ ...IDA_Y_VUELTA_RACIALES[0].get, Id: 12 });

@@ -7,7 +7,8 @@ import { toPositiveInt } from 'src/app/services/utils/normalizacion';
  * en `docs/publica/endpoints/catalogos.md`, guía `docs/publica/RAZAS_MUTADAS.md`). La misma regla que la ficha de la API
  * (`utils/racial_progresion.py`), con los mismos casos en sus pruebas: cada fila vale desde `Desde` y para siempre, en
  * orden; gana un rasgo (tras el que lo da, con `Origen`), quita el que sustituye, suma una dote adicional de un tipo,
- * al menos una velocidad, pone la última cifra que alcanza en el `Valor` del rasgo y pide una elección más de un grupo
+ * al menos una velocidad, pone la última cifra que alcanza en el `Valor` del rasgo (y en la cantidad de sus bonificadores
+ * con `Cantidad_del_valor`: el sigilo de poder, +2 desde nivel 2) y pide una elección más de un grupo
  * opcional de su raza (`Elige_opcional`). Los DG son los del personaje (los
  * raciales que cuentan, los de plantilla y los de sus clases con su tabla); el nivel, su nivel de personaje.
  */
@@ -132,7 +133,30 @@ export function aplicarProgresionRacial(
                 });
         }
     }
-    return { raciales: resultado, velocidades, dotes, elecciones };
+    return { raciales: resultado.map(conLaCifraDelRasgo), velocidades, dotes, elecciones };
+}
+
+const CIFRA_ENTERA = /^[+-]?\d+$/;
+
+/**
+ * El rasgo con la cifra que alcanza (`Valor`: «+2») como cantidad de sus bonificadores con `Cantidad_del_valor`, y la
+ * frase de la API con esa cantidad. Sin `Valor` o si no es un entero (el aliento, «2d8»), igual. Como
+ * `racial_bonificadores.con_la_cifra_del_rasgo` de la API.
+ */
+function conLaCifraDelRasgo(racial: RacialDetalle): RacialDetalle {
+    const valor = `${racial.Valor ?? ''}`.trim();
+    const cantidad = Number(valor);
+    if (!CIFRA_ENTERA.test(valor) || cantidad === 0 || !(racial.Bonificadores_condicionales ?? []).some(b => b.Cantidad_del_valor))
+        return racial;
+    const conSigno = (n: number) => `${n > 0 ? '+' : ''}${n}`;
+    return {
+        ...racial,
+        Bonificadores_condicionales: (racial.Bonificadores_condicionales ?? []).map(b => !b.Cantidad_del_valor ? b : {
+            ...b,
+            Cantidad: cantidad,
+            Frase: `${b.Frase ?? ''}`.replace(` ${conSigno(Number(b.Cantidad))}`, ` ${conSigno(cantidad)}`),
+        }),
+    };
 }
 
 /** La velocidad que cuenta: la que tiene o, si es menor, la que da la progresión. */

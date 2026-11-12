@@ -99,6 +99,10 @@ export interface RacialCreateBonificadorCondicional {
     cantidad: number;
     condicion: string;
     contra: RacialCreateBonificadorContra[];
+    /** La piden las pruebas de característica y habilidades (`Caracteristica_en_el_rasgo` del objetivo), y solo ellas. */
+    id_caracteristica: number | null;
+    /** Si la cantidad sigue la cifra del rasgo (`Valor` de su progresión). */
+    cantidad_del_valor: boolean;
 }
 
 export interface RacialCreateRequest {
