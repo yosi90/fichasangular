@@ -14,7 +14,7 @@ import { normalizeAmbito } from "./ambito.service";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { normalizeDominio } from "./dominio.service";
 import { normalizePabellon } from "./pabellon.service";
-import { toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { idNombres, toArray, toBoolean, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
@@ -52,9 +52,7 @@ export function normalizeDeidad(raw: any): DeidadDetalle {
         },
         Ambitos: normalizeAmbitos(raw?.Ambitos),
         Dominios: normalizeDominios(raw?.Dominios),
-        Alineamientos_devotos: toArray(raw?.Alineamientos_devotos)
-            .map((item: any) => ({ Id: toNumber(item?.Id), Nombre: toText(item?.Nombre) }))
-            .filter((item) => item.Id > 0),
+        Alineamientos_devotos: idNombres(raw?.Alineamientos_devotos),
         Oficial: toBoolean(raw?.Oficial),
     };
 }
@@ -95,7 +93,7 @@ export class DeidadService {
     /** El catálogo de géneros (`GET /generos`), el de las deidades y los personajes. */
     getGeneros(): Observable<DeidadGeneroRef[]> {
         return this.http.get<any[]>(`${environment.apiUrl}generos`)
-            .pipe(map((listado) => toArray(listado).map((raw: any) => ({ Id: toNumber(raw?.Id), Nombre: toText(raw?.Nombre) }))));
+            .pipe(map((listado) => idNombres(listado, { filtro: 'todos' })));
     }
 
     getDeidad(id: number): Observable<DeidadDetalle> {

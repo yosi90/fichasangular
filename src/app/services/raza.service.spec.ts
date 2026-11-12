@@ -878,7 +878,8 @@ describe('RazaService helpers', () => {
     });
 
     it('comprobarRequisitosDelPersonaje manda POST /razas/{id}/requisitos-del-personaje con lo que sabe la creación', async () => {
-        const consulta = { idRazaBase: 25, idAlineamiento: 3, caracteristicas: { inteligencia: 2 }, clases: [{ idClase: 9, nivel: 1 }] };
+        const consulta = { idRazaBase: 25, idAlineamiento: 3, caracteristicas: { inteligencia: 2 }, clases: [{ idClase: 9, nivel: 1 }],
+            plantillas: [], subtipos: [], dotes: [12], progresionLanzador: null };
         const requisitos = [
             { Frase: 'Cualquier alineamiento no maligno', Cumple: true, Confirma_master: false },
             { Frase: 'Inteligencia 3', Cumple: false, Confirma_master: false },
@@ -899,7 +900,8 @@ describe('RazaService helpers', () => {
         const service = new TestRazaService({} as any, http as any, { run: (fn: () => any) => fn() } as any);
 
         await expectAsync(service.comprobarRequisitosDelPersonaje(5, { idRazaBase: null, idAlineamiento: null,
-            caracteristicas: {}, clases: [] })).toBeRejectedWithError(mensaje);
+            caracteristicas: {}, clases: [], plantillas: [], subtipos: [], dotes: [], progresionLanzador: null }))
+            .toBeRejectedWithError(mensaje);
     });
 
     // Fase 3 de las razas mutadas: lo que pide y lo que cambia una mutada, y el modelo de lo que admite.

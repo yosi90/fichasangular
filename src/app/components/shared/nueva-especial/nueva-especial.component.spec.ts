@@ -25,7 +25,7 @@ describe('NuevaEspecialComponent', () => {
         Repite_combinacion: false,
         Activa_extra: false,
         Caracteristica: { Id: 0, Nombre: '' },
-        Bonificadores: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 2, CA: 0, Armadura_natural: 0, RD: 0 },
+        Bonificadores: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 2, CA: 0, Armadura_natural: 0 },
         Flags_extra: { No_aplica: true, Da_CA: false, Da_armadura_natural: false, Da_RD: false, Da_velocidad: false },
         Subtipo: { Id: 0, Nombre: '' },
         Extras: [],
@@ -244,7 +244,7 @@ describe('NuevaEspecialComponent', () => {
     describe('las armas naturales de la aptitud (las garras del necrófago: GET /clases/habilidades/3103 de rol_dev)', () => {
         const GARRAS = normalizeEspecial({
             Id: 3103, Nombre: 'Garras (Necrófago)', Oficial: true, Extra: true, Activa_extra: true,
-            Bonificadores: { Armadura_natural: 0, CA: 0, Carisma: 0, Constitucion: 0, Destreza: 0, Fuerza: 0, Inteligencia: 0, RD: 0, Sabiduria: 0, Tamano_pasos: 0 },
+            Bonificadores: { Armadura_natural: 0, CA: 0, Carisma: 0, Constitucion: 0, Destreza: 0, Fuerza: 0, Inteligencia: 0, Sabiduria: 0, Tamano_pasos: 0 },
             Flags_extra: { Da_CA: false, Da_RD: false, Da_armadura_natural: false, Da_velocidad: false, No_aplica: true },
             Extras: [{ Extra: '1d3', Id_extra: 154, Orden: 1 }, { Extra: '1d4', Id_extra: 155, Orden: 2 }],
             Habilidades: [],

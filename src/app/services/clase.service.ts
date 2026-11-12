@@ -23,7 +23,7 @@ import {
 } from "../interfaces/clase";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { idNombres, normalizarTexto, toArray, toBoolean, toInt, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 import { errorDeCatalogo } from "src/app/services/utils/error-catalogo";
@@ -446,10 +446,7 @@ export class ClaseService {
                     Id: toNumber(item?.Id),
                     Valor: toNumber(item?.Valor),
                 })),
-                aumentos_clase_lanzadora: toArray(raw?.aumentos_clase_lanzadora).map((item: any) => ({
-                    Id: toNumber(item?.Id),
-                    Nombre: toText(item?.Nombre),
-                })),
+                aumentos_clase_lanzadora: idNombres(raw?.aumentos_clase_lanzadora, { filtro: 'todos' }),
             })));
     }
 

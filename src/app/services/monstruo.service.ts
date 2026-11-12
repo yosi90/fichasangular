@@ -15,7 +15,7 @@ import {
 import { cabeceraApiConFirebase } from "./platform-session.service";
 import { errorDeCatalogo } from "./utils/error-catalogo";
 import { MONSTRUO } from "./utils/nombres-de-catalogo";
-import { toArray, toInt, toText } from "./utils/normalizacion";
+import { idNombres, toInt } from "./utils/normalizacion";
 import { leerRespuestaDeEscritura } from "./utils/respuesta-de-escritura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
 import {
@@ -70,9 +70,7 @@ export class MonstruoService {
      */
     getPlantillasFamiliar(): Observable<{ Id: number; Nombre: string; }[]> {
         return this.http.get(`${environment.apiUrl}monstruos/plantillas-familiar`).pipe(
-            map((raw) => toArray(raw)
-                .map((item) => ({ Id: toInt(item?.Id), Nombre: toText(item?.Nombre) }))
-                .filter((item) => item.Id > 0)),
+            map((raw) => idNombres(raw)),
         );
     }
 

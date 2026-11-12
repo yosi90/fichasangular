@@ -1742,7 +1742,8 @@ describe('NuevoPersonajeComponent', () => {
 
             expect(await (component as any).comprobarRequisitosMutacionAntesDeGuardar()).toBeFalse();
 
-            expect(personajeSvcMock.consultaRequisitosMutacion).toHaveBeenCalledWith(component.Personaje, 2, 1);
+            expect(personajeSvcMock.consultaRequisitosMutacion).toHaveBeenCalledWith(
+                component.Personaje, 2, 1, (component as any).nuevoPSvc.getProgresionLanzadorPersistible());
             expect(razaSvcMock.comprobarRequisitosDelPersonaje).toHaveBeenCalledWith(99, consulta);
             const aviso = swal.calls.mostRecent().args[0] as any;
             expect(aviso.title).toBe('Prole de Bahamut pide del personaje');

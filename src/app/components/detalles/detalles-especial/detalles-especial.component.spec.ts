@@ -30,7 +30,7 @@ describe('DetallesEspecialComponent', () => {
             Otorga_familiar: false,
             Otorga_companero: false,
             Caracteristica: { Id: 3, Nombre: 'Constitución' },
-            Bonificadores: { Fuerza: 4, Destreza: 0, Constitucion: 4, Inteligencia: 0, Sabiduria: 0, Carisma: 0, CA: -2, Armadura_natural: 1, RD: 0, Tamano_pasos: 0 },
+            Bonificadores: { Fuerza: 4, Destreza: 0, Constitucion: 4, Inteligencia: 0, Sabiduria: 0, Carisma: 0, CA: -2, Armadura_natural: 1, Tamano_pasos: 0 },
             Flags_extra: { No_aplica: false, Da_CA: true, Da_armadura_natural: false, Da_RD: false, Da_velocidad: true },
             Subtipo: { Id: 12, Nombre: 'Fuego' },
             Extras: [{ Id_extra: 2, Extra: 'Frío', Orden: 2 }, { Id_extra: 1, Extra: 'Fuego', Orden: 1 }],
@@ -90,7 +90,7 @@ describe('DetallesEspecialComponent', () => {
 
     it('enseña el cambio de tamaño entre los bonificadores y los prerrequisitos de actitud con su frase', () => {
         component.especial = furia({
-            Bonificadores: { Fuerza: 2, Destreza: -2, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0, CA: 0, Armadura_natural: 0, RD: 0, Tamano_pasos: 1 },
+            Bonificadores: { Fuerza: 2, Destreza: -2, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0, CA: 0, Armadura_natural: 0, Tamano_pasos: 1 },
             Prerrequisitos: {
                 actitud_requerido: [],
                 actitud_prohibido: [
@@ -125,7 +125,7 @@ describe('DetallesEspecialComponent', () => {
             Repite_combinacion: false,
             Caracteristica: { Id: 0, Nombre: '' },
             Subtipo: { Id: 0, Nombre: '' },
-            Bonificadores: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0, CA: 0, Armadura_natural: 0, RD: 0, Tamano_pasos: 0 },
+            Bonificadores: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 0, Carisma: 0, CA: 0, Armadura_natural: 0, Tamano_pasos: 0 },
             Flags_extra: { No_aplica: true, Da_CA: false, Da_armadura_natural: false, Da_RD: false, Da_velocidad: false },
             Extras: [],
             Habilidades: [],

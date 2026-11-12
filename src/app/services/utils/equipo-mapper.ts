@@ -18,7 +18,7 @@ import {
     TextoEquipo,
 } from 'src/app/interfaces/equipo';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
-import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { idNombres, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
 
 /*
  * Los mappers del modelo de objetos, equipo y armas (`docs/publica/endpoints/catalogos.md`, «Equipo»). Las cachés
@@ -34,9 +34,7 @@ export function normalizeEquipoRef(raw: any): EquipoRef | null {
 
 /** Las referencias de una lista, sin las que no vienen. */
 export function normalizeEquipoRefs(raw: any): EquipoRef[] {
-    return toArray(raw)
-        .map((item) => normalizeEquipoRef(item))
-        .filter((item): item is EquipoRef => item !== null);
+    return idNombres(raw, { filtro: 'todos' });
 }
 
 function normalizeOrigenDescripcion(raw: any): OrigenDescripcion {

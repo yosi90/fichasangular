@@ -481,20 +481,34 @@ export class PersonajeService {
 
     /**
      * Lo que la creación ya sabe del personaje para comprobar, antes de guardar, lo que pide su raza mutada
-     * (`POST /razas/{id}/requisitos-del-personaje`): su raza base, su alineamiento básico y las mismas características y
-     * clases que manda el alta (`caracteristicasParaGuardar`, `clasesParaGuardar`).
+     * (`POST /razas/{id}/requisitos-del-personaje`): su raza base, su alineamiento básico y lo mismo que manda el alta
+     * (`caracteristicasParaGuardar`, `construirPayloadColecciones` y `normalizarProgresionLanzadorParaPayload`): sus
+     * características, sus clases, sus plantillas y sus subtipos (su NEP), sus dotes y su progresión de lanzador (su nivel
+     * de lanzador). La regla la aplica la API.
      */
     consultaRequisitosMutacion(
         personaje: Personaje,
         idRazaBase: number | null,
-        idAlineamiento: number | null
+        idAlineamiento: number | null,
+        progresionLanzador?: PersonajeProgresionLanzadorDto | null
     ): RequisitosDelPersonajeConsulta {
         const caracteristicas = this.caracteristicasParaGuardar(personaje, caracteristicasPerdidasDe(personaje));
+        const vacio = new Map<string, number>();
+        const colecciones = this.construirPayloadColecciones(personaje, {
+            clases: vacio, dominios: vacio, idiomas: vacio, ventajas: vacio, escuelas: vacio, disciplinas: vacio,
+        });
+        const progresion = this.normalizarProgresionLanzadorParaPayload(progresionLanzador);
         return {
             idRazaBase: toInt(idRazaBase) > 0 ? toInt(idRazaBase) : null,
             idAlineamiento: idAlineamiento === null ? null : toInt(idAlineamiento),
             caracteristicas: Object.fromEntries(Object.entries(caracteristicas).map(([nombre, bloque]) => [nombre, bloque.valor])),
-            clases: this.clasesParaGuardar(personaje, new Map()),
+            clases: colecciones.clases ?? [],
+            plantillas: (colecciones.plantillas ?? []).map((p) => p.idPlantilla),
+            subtipos: (colecciones.subtipos ?? []).map((s) => s.idSubtipo),
+            dotes: [...new Set((colecciones.dotes ?? []).map((d) => d.idDote))],
+            progresionLanzador: progresion
+                ? { selecciones: progresion.selecciones.map((s) => ({ idClaseObjetivo: s.idClaseObjetivo })) }
+                : null,
         };
     }
 

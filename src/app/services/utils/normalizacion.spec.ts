@@ -1,4 +1,4 @@
-import { enteroEntre, idsUnicosOrdenados, normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toIntOrNull, toPositiveInt, toRefIdNombre } from './normalizacion';
+import { enteroEntre, idNombres, idsUnicosOrdenados, normalizarTexto, redondearCentesimas, textosUnicos, toBoolean, toInt, toIntOrNull, toPositiveInt, toRefIdNombre } from './normalizacion';
 
 describe('toBoolean', () => {
     it('es sí con true, 1 y los textos de sí, sin distinguir mayúsculas ni espacios alrededor', () => {
@@ -114,5 +114,51 @@ describe('toRefIdNombre', () => {
         expect(toRefIdNombre({ Nombre: 'Joven' })).toEqual({ Id: 0, Nombre: 'Joven' });
         expect(toRefIdNombre({ Id: 0, Nombre: '  ' })).toBeNull();
         expect(toRefIdNombre(null)).toBeNull();
+    });
+});
+
+describe('idNombres', () => {
+    const crudos = [
+        { Id: 3, Nombre: ' Legal bueno ' },
+        { Id: '7', Nombre: 'Caótico neutral' },
+        { Id: 0, Nombre: 'Elegir' },
+        { Id: 0, Nombre: '  ' },
+        { Nombre: 'Sin id' },
+        null,
+        5,
+        'texto',
+    ];
+
+    it('por defecto, solo los que tienen id, con el id entero y el nombre sin espacios a los lados', () => {
+        expect(idNombres(crudos)).toEqual([
+            { Id: 3, Nombre: 'Legal bueno' },
+            { Id: 7, Nombre: 'Caótico neutral' },
+        ]);
+    });
+
+    it('con «conIdONombre», también los que solo traen nombre', () => {
+        expect(idNombres(crudos, { filtro: 'conIdONombre' })).toEqual([
+            { Id: 3, Nombre: 'Legal bueno' },
+            { Id: 7, Nombre: 'Caótico neutral' },
+            { Id: 0, Nombre: 'Elegir' },
+            { Id: 0, Nombre: 'Sin id' },
+        ]);
+    });
+
+    it('con «todos», todos los objetos (lo que no es un objeto no es un elemento)', () => {
+        expect(idNombres(crudos, { filtro: 'todos' }).length).toBe(5);
+        expect(idNombres(crudos, { filtro: 'todos' })[3]).toEqual({ Id: 0, Nombre: '' });
+    });
+
+    it('lee los valores de un objeto (las listas de la RTDB) salvo con «soloLista»', () => {
+        const rtdb = { a: { Id: 1, Nombre: 'Uno' }, b: { Id: 2, Nombre: 'Dos' } };
+        expect(idNombres(rtdb)).toEqual([{ Id: 1, Nombre: 'Uno' }, { Id: 2, Nombre: 'Dos' }]);
+        expect(idNombres(rtdb, { soloLista: true })).toEqual([]);
+        expect(idNombres([{ Id: 1, Nombre: 'Uno' }], { soloLista: true })).toEqual([{ Id: 1, Nombre: 'Uno' }]);
+    });
+
+    it('sin lista, una lista vacía', () => {
+        for (const valor of [null, undefined, '', 0, 'texto'])
+            expect(idNombres(valor)).withContext(JSON.stringify(valor)).toEqual([]);
     });
 });

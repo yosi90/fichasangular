@@ -5,7 +5,7 @@ import { Observable } from "rxjs";
 import { environment } from "src/environments/environment";
 import { DominioDetalle } from "../interfaces/dominio";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toBoolean, toInt, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
+import { idNombres, toArray, toBoolean, toInt, toNullableText, toNumber, toText } from 'src/app/services/utils/normalizacion';
 import { cacheRtdbOApi, escucharRtdb, listaRtdb } from './catalogo-api';
 
 /** Un dominio con su poder concedido y lo que da (`DominioCatalogo` de la API; los de una deidad lo traen vacío). */
@@ -15,7 +15,7 @@ export function normalizeDominio(raw: any): DominioDetalle {
         Nombre: toText(raw?.Nombre),
         Oficial: toBoolean(raw?.Oficial),
         Poder: toNullableText(raw?.Poder),
-        Alineamientos: toArray(raw?.Alineamientos).map((item: any) => ({ Id: toInt(item?.Id), Nombre: toText(item?.Nombre) })),
+        Alineamientos: idNombres(raw?.Alineamientos, { filtro: 'todos' }),
         Dotes: toArray(raw?.Dotes).map((item: any) => ({
             Id: toInt(item?.Id),
             Nombre: toText(item?.Nombre),
@@ -30,7 +30,7 @@ export function normalizeDominio(raw: any): DominioDetalle {
             Id_extra: toInt(item?.Id_extra, -1),
             Extra: toNullableText(item?.Extra),
         })),
-        Especiales: toArray(raw?.Especiales).map((item: any) => ({ Id: toInt(item?.Id), Nombre: toText(item?.Nombre) })),
+        Especiales: idNombres(raw?.Especiales, { filtro: 'todos' }),
     };
 }
 
