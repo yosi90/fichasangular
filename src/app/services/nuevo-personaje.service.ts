@@ -24,7 +24,7 @@ import { SubtipoRef, SubtipoResumen } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
 import { PersonajeCreateColeccionesDto, PersonajeCreateMascotasDto, PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto, PersonajeParteDto, PersonajeProgresionLanzadorDto, PersonajeProgresionLanzadorSeleccionDto } from '../interfaces/personajes-api';
-import { bonoRacialCondicional } from './utils/habilidad-raza-condicional';
+import { bonoRacialCondicional, parteCondicionalVarios } from './utils/habilidad-raza-condicional';
 import { bonificadoresCondicionalesDeRaciales, habilidadesDeRasgos, sinApilarRaciales } from './utils/habilidades-raciales';
 import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { contarArmasNaturales } from './utils/armas-naturales';
@@ -2601,31 +2601,27 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * Lo que suman las habilidades de la raza solo en un caso, por la clave de la habilidad del personaje a la que van (la
-     * del hueco de su referencia, como el bonificador de siempre: `aplicarHabilidadesOtorgadasPorRaza`).
+     * Lo que suman las habilidades de la raza y de sus rasgos solo en un caso (el +2 del enano a Artesanía con objetos de
+     * piedra o metal), por la clave de la habilidad del personaje a la que van (la del hueco de su referencia, como el
+     * bonificador de siempre: `aplicarHabilidadesOtorgadasPorRaza` y `aplicarHabilidadesDeRasgos`).
      */
     private bonosRacialesCondicionales(): Map<ClaveHabilidad, PersonajeParteDto[]> {
         const raza = this.razaSeleccionada;
         const porClave = new Map<ClaveHabilidad, PersonajeParteDto[]>();
-        (raza?.Habilidades?.Base ?? []).forEach((ref) => {
-            const parte = bonoRacialCondicional(ref, `${raza?.Nombre ?? ''}`);
+        const partes: Array<{ ref: Record<string, any>; parte: PersonajeParteDto | null; }> = [
+            ...(raza?.Habilidades?.Base ?? []).map((ref) => ({ ref, parte: bonoRacialCondicional(ref, `${raza?.Nombre ?? ''}`) })),
+            ...habilidadesDeRasgos(this.personajeCreacion?.Raciales)
+                .filter((h) => h.condicion !== null && !h.custom)
+                .map((h) => ({ ref: h.ref, parte: parteCondicionalVarios(h.origen, h.cantidad, `${h.condicion}`) })),
+        ];
+        partes.forEach(({ ref, parte }) => {
             const habilidad = parte
-                ? this.buscarHabilidadDelPersonaje(toNumber(ref?.Id_habilidad), normalizarTexto(`${ref?.Habilidad ?? ''}`), false)
+                ? this.buscarHabilidadDelPersonaje(toNumber(ref?.['Id_habilidad']), normalizarTexto(`${ref?.['Habilidad'] ?? ''}`), false)
                 : null;
             if (!parte || !habilidad)
                 return;
             const clave = claveHabilidad(habilidad);
             porClave.set(clave, [...(porClave.get(clave) ?? []), parte]);
-        });
-        // Y lo de sus rasgos que solo vale en un caso (el +2 del enano a Artesanía con objetos de piedra o metal).
-        habilidadesDeRasgos(this.personajeCreacion?.Raciales).forEach((h) => {
-            const habilidad = h.condicion !== null && !h.custom
-                ? this.buscarHabilidadDelPersonaje(toNumber(h.ref?.['Id_habilidad']), normalizarTexto(`${h.ref?.['Habilidad'] ?? ''}`), false)
-                : null;
-            if (!habilidad)
-                return;
-            const clave = claveHabilidad(habilidad);
-            porClave.set(clave, [...(porClave.get(clave) ?? []), { tipo: 'varios', origen: h.origen || null, valor: h.cantidad, condicion: h.condicion }]);
         });
         return porClave;
     }

@@ -30,5 +30,14 @@ export function bonoRacialCondicional(raw: any, origen: string): PersonajeParteD
     const parte = parteCondicionalHabilidadRaza(raw);
     if (parte.Condicion === null)
         return null;
-    return { tipo: 'varios', origen: `${origen ?? ''}`.trim() || null, valor: parte.Cantidad_condicional, condicion: parte.Condicion };
+    return parteCondicionalVarios(origen, parte.Cantidad_condicional, parte.Condicion);
+}
+
+/**
+ * Lo que suma a una habilidad solo en un caso, con la forma de lo condicional de la ficha: `{ tipo: 'varios', origen,
+ * valor, condicion }`. La parte situacional de una habilidad de la raza (`bonoRacialCondicional`) y la habilidad con
+ * condición de uno de sus rasgos (`habilidadesDeRasgos`).
+ */
+export function parteCondicionalVarios(origen: string, valor: number, condicion: string): PersonajeParteDto {
+    return { tipo: 'varios', origen: `${origen ?? ''}`.trim() || null, valor, condicion };
 }
