@@ -5,6 +5,8 @@ import {
     existeCoincidenciaClaveEntidad,
 } from './identidad-prerrequisitos';
 import { textosUnicos, toArray, toBoolean, toNumber } from 'src/app/services/utils/normalizacion';
+import { getClaveSeleccionRacial } from './racial-opcionales';
+import type { GrupoRacialOpcionalModal } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 
 export type EstadoEvaluacionRacial = 'eligible' | 'blocked' | 'eligible_with_warning';
 
@@ -317,4 +319,29 @@ export function evaluarRacialParaSeleccion(
         razones: [],
         advertencias: [],
     };
+}
+
+/**
+ * Los grupos de rasgos opcionales para su selector (`selector-raciales-opcionales-modal`), al elegir la raza y en una
+ * elección de la progresión (el segundo sigilo del iluminiano): cada rasgo con lo que cumple de sus prerrequisitos (raza
+ * y características) con esa identidad y esas características.
+ */
+export function evaluarGruposParaSelectorRacial(
+    grupos: ReadonlyArray<{ grupo: number; opciones: RacialDetalle[]; }>,
+    identidad: IdentidadPrerrequisitos,
+    caracteristicas?: Partial<RacialEvaluacionCaracteristicas> | null,
+): GrupoRacialOpcionalModal[] {
+    return grupos.map((grupo) => ({
+        grupo: grupo.grupo,
+        opciones: grupo.opciones.map((racial) => {
+            const evaluacion = evaluarRacialParaSeleccion(racial, identidad, caracteristicas);
+            return {
+                clave: getClaveSeleccionRacial(racial),
+                racial,
+                estado: evaluacion.estado,
+                razones: [...(evaluacion.razones ?? [])],
+                advertencias: [...(evaluacion.advertencias ?? [])],
+            };
+        }),
+    }));
 }

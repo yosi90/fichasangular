@@ -449,25 +449,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
      * iluminiano a 2.º nivel), con el selector de raciales opcionales de la creación y solo los de ese grupo que aún no
      * tiene. `false` si se cierra sin elegir.
      */
-    private async resolverEleccionesRaciales(): Promise<boolean> {
-        while (true) {
-            const pendiente = this.svc.getEleccionesRacialesPendientes()[0];
-            if (!pendiente)
-                return true;
-            if (pendiente.opciones.length < 1) {
-                this.svc.omitirEleccionRacialPendiente(pendiente.clave);
-                continue;
-            }
+    private resolverEleccionesRaciales(): Promise<boolean> {
+        return this.svc.resolverEleccionesRacialesPendientes(async ({ pendiente, grupos, titulo }) => {
             const seleccion = await this.abrirModal<Record<number, string>>(SelectorRacialesOpcionalesModalComponent, {
-                grupos: this.svc.gruposDeEleccionRacial(pendiente), titulo: `Otro rasgo: ${pendiente.origen}`,
-                razaContextoNombre: `${this.svc.RazaSeleccionada?.Nombre ?? ''}`.trim(),
+                grupos, titulo, razaContextoNombre: `${this.svc.RazaSeleccionada?.Nombre ?? ''}`.trim(),
             }, ['confirmar'], ['cerrar']);
-            if (!seleccion)
-                return false;
-            const idRacial = this.svc.idRacialDeEleccion(pendiente, seleccion[pendiente.grupo]);
-            if (idRacial === null || !this.svc.aplicarEleccionRacialPendiente(pendiente.clave, idRacial))
-                continue;
-        }
+            return seleccion ? `${seleccion[pendiente.grupo] ?? ''}` : null;
+        });
     }
 
     private async resolverEspecialidad(clase: Clase): Promise<boolean> {

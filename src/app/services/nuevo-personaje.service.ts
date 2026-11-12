@@ -33,7 +33,7 @@ import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contr
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
 import { getClaveSeleccionRacial, resolverRacialesFinales, SeleccionRacialesOpcionales } from './utils/racial-opcionales';
-import { evaluarRacialParaSeleccion } from './utils/racial-prerrequisitos';
+import { evaluarGruposParaSelectorRacial } from './utils/racial-prerrequisitos';
 import type { GrupoRacialOpcionalModal } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { aplicarProgresionRacial, momentoDeProgresion, ResultadoProgresionRacial, tieneProgresionRacial, velocidadConProgresion } from './utils/racial-progresion';
 import { esRazaMutada } from './utils/raza-mutacion';
@@ -1285,13 +1285,27 @@ export class NuevoPersonajeService {
     }
 
     /**
-     * La identidad del personaje para los prerrequisitos (dotes, clases y plantillas): su raza, su raza base y los
-     * subtipos que tiene ahora, los de la raza y los de las plantillas ya elegidas.
+     * La identidad del personaje para los prerrequisitos (dotes, clases, plantillas y rasgos): su raza, su raza base, los
+     * subtipos que tiene ahora (los de la raza y los de las plantillas ya elegidas) y lo que cuenta como por sus rasgos.
+     * También la de las plantillas en la creación (`getContextoEvaluacionPlantillas` del componente).
      */
-    private identidadPrerrequisitosActual(): IdentidadPrerrequisitos {
+    identidadPrerrequisitosActual(): IdentidadPrerrequisitos {
         // Con los rasgos que tiene ya (los de su raza, los que gana o elige con la progresión): su «cuenta como».
         return buildIdentidadPrerrequisitos(this.razaSeleccionada, this.razaBaseSeleccionadaCompleta, this.personajeCreacion?.Subtipos,
             this.personajeCreacion?.Raciales?.length ? this.personajeCreacion.Raciales : null);
+    }
+
+    /** Sus seis características de ahora: para los prerrequisitos (de clases, dotes y rasgos) y la base de las ventajas. */
+    private caracteristicasActuales(): Record<CaracteristicaKey, number> {
+        const pj = this.personajeCreacion;
+        return {
+            Fuerza: toNumber(pj?.Fuerza),
+            Destreza: toNumber(pj?.Destreza),
+            Constitucion: toNumber(pj?.Constitucion),
+            Inteligencia: toNumber(pj?.Inteligencia),
+            Sabiduria: toNumber(pj?.Sabiduria),
+            Carisma: toNumber(pj?.Carisma),
+        };
     }
 
     /**
@@ -2082,14 +2096,7 @@ export class NuevoPersonajeService {
 
         return evaluarElegibilidadClase(clase, {
             identidad,
-            caracteristicas: {
-                Fuerza: toNumber(this.personajeCreacion.Fuerza),
-                Destreza: toNumber(this.personajeCreacion.Destreza),
-                Constitucion: toNumber(this.personajeCreacion.Constitucion),
-                Inteligencia: toNumber(this.personajeCreacion.Inteligencia),
-                Sabiduria: toNumber(this.personajeCreacion.Sabiduria),
-                Carisma: toNumber(this.personajeCreacion.Carisma),
-            },
+            caracteristicas: this.caracteristicasActuales(),
             ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
             alineamiento: `${this.personajeCreacion.Alineamiento ?? ''}`,
             genero: `${this.personajeCreacion.Genero ?? ''}`,
@@ -3100,25 +3107,8 @@ export class NuevoPersonajeService {
      * cada rasgo con lo que cumple de sus prerrequisitos (raza y características), con la identidad del personaje.
      */
     gruposDeEleccionRacial(pendiente: EleccionRacialPendiente): GrupoRacialOpcionalModal[] {
-        const identidad = this.identidadPrerrequisitosActual();
-        const pj = this.personajeCreacion;
-        const caracteristicas = {
-            Fuerza: toNumber(pj?.Fuerza), Destreza: toNumber(pj?.Destreza), Constitucion: toNumber(pj?.Constitucion),
-            Inteligencia: toNumber(pj?.Inteligencia), Sabiduria: toNumber(pj?.Sabiduria), Carisma: toNumber(pj?.Carisma),
-        };
-        return [{
-            grupo: pendiente.grupo,
-            opciones: pendiente.opciones.map((racial) => {
-                const evaluacion = evaluarRacialParaSeleccion(racial, identidad, caracteristicas);
-                return {
-                    clave: getClaveSeleccionRacial(racial),
-                    racial,
-                    estado: evaluacion.estado,
-                    razones: [...(evaluacion.razones ?? [])],
-                    advertencias: [...(evaluacion.advertencias ?? [])],
-                };
-            }),
-        }];
+        return evaluarGruposParaSelectorRacial([{ grupo: pendiente.grupo, opciones: pendiente.opciones }],
+            this.identidadPrerrequisitosActual(), this.caracteristicasActuales());
     }
 
     /** El rasgo de una elección pendiente que corresponde a la clave del selector (`getClaveSeleccionRacial`). */
@@ -3131,6 +3121,32 @@ export class NuevoPersonajeService {
     omitirEleccionRacialPendiente(clave: string): void {
         this.eleccionesProgresionRacialConcedidas.add(clave);
         this.programarPersistenciaBorradorLocal();
+    }
+
+    /**
+     * Las elecciones de la progresión que tiene pendientes, una a una (la creación y la subida de nivel): sin rasgos de su
+     * grupo que no tenga, se da por hecha; si no, `elegir` abre el selector de raciales opcionales con su grupo y su
+     * título y devuelve la clave elegida (`getClaveSeleccionRacial`) o `null` si se cierra sin elegir. Una clave que no es
+     * de sus opciones la vuelve a pedir. `false` si se cierra sin elegir.
+     */
+    async resolverEleccionesRacialesPendientes(
+        elegir: (eleccion: { pendiente: EleccionRacialPendiente; grupos: GrupoRacialOpcionalModal[]; titulo: string; }) => Promise<string | null>,
+    ): Promise<boolean> {
+        while (true) {
+            const pendiente = this.getEleccionesRacialesPendientes()[0];
+            if (!pendiente)
+                return true;
+            if (pendiente.opciones.length < 1) {
+                this.omitirEleccionRacialPendiente(pendiente.clave);
+                continue;
+            }
+            const clave = await elegir({ pendiente, grupos: this.gruposDeEleccionRacial(pendiente), titulo: `Otro rasgo: ${pendiente.origen}` });
+            if (clave === null)
+                return false;
+            const idRacial = this.idRacialDeEleccion(pendiente, clave);
+            if (idRacial !== null)
+                this.aplicarEleccionRacialPendiente(pendiente.clave, idRacial);
+        }
     }
 
     /**
@@ -3162,25 +3178,18 @@ export class NuevoPersonajeService {
      * rasgos de su raza se añaden al elegirla (`agregarDotesDeRaza`).
      */
     private agregarDotesDeRasgosGanados(): void {
-        this.rasgosGanadosPorLaProgresion().forEach((racial) => (racial?.Dotes ?? [])
-            .filter((entrada) => toNumber(entrada?.Id_dote) > 0)
-            .forEach((entrada) => {
-                const clave = `${toInt(racial.Id)}:${toNumber(entrada.Id_dote)}:${toNumber(entrada?.Id_extra)}`;
-                if (this.dotesRasgosGanadosConcedidas.has(clave))
-                    return;
-                this.dotesRasgosGanadosConcedidas.add(clave);
-                const dote = this.doteDelCatalogo(toNumber(entrada.Id_dote))
-                    ?? this.crearDotePlaceholder(toNumber(entrada.Id_dote), `${entrada?.Dote ?? ''}`.trim());
-                this.agregarDoteAlPersonaje(dote, `${racial?.Nombre ?? ''}`.trim(), toNumber(entrada?.Id_extra),
-                    `${entrada?.Extra ?? ''}`.trim() || 'No aplica');
-            }));
+        this.dotesDeRaciales(this.rasgosGanadosPorLaProgresion(), '').forEach(({ clave, dote, origen, idExtra, extra }) => {
+            if (this.dotesRasgosGanadosConcedidas.has(clave))
+                return;
+            this.dotesRasgosGanadosConcedidas.add(clave);
+            this.agregarDoteAlPersonaje(dote, origen, idExtra, extra);
+        });
     }
 
     /** En la subida de nivel: lo que la progresión de sus rasgos ya le dio (lo eligió al crearlo o al subir) no se repite. */
     private marcarProgresionRacialConcedida(): void {
         this.progresionRacialActual().elecciones.forEach((eleccion) => this.eleccionesProgresionRacialConcedidas.add(eleccion.Clave));
-        this.rasgosGanadosPorLaProgresion().forEach((racial) => (racial?.Dotes ?? []).forEach((entrada) =>
-            this.dotesRasgosGanadosConcedidas.add(`${toInt(racial.Id)}:${toNumber(entrada?.Id_dote)}:${toNumber(entrada?.Id_extra)}`)));
+        this.dotesDeRaciales(this.rasgosGanadosPorLaProgresion(), '').forEach(({ clave }) => this.dotesRasgosGanadosConcedidas.add(clave));
     }
 
     /**
@@ -4080,14 +4089,7 @@ export class NuevoPersonajeService {
 
         const contexto: DoteEvaluacionContexto = {
             identidad,
-            caracteristicas: {
-                Fuerza: toNumber(this.personajeCreacion.Fuerza),
-                Destreza: toNumber(this.personajeCreacion.Destreza),
-                Constitucion: toNumber(this.personajeCreacion.Constitucion),
-                Inteligencia: toNumber(this.personajeCreacion.Inteligencia),
-                Sabiduria: toNumber(this.personajeCreacion.Sabiduria),
-                Carisma: toNumber(this.personajeCreacion.Carisma),
-            },
+            caracteristicas: this.caracteristicasActuales(),
             ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,
             nivelesClase,
             dotes: dotesConCuentaComo([...dotes, ...legacySinContexto], (id) => this.doteDelCatalogo(id)),
@@ -6226,14 +6228,7 @@ export class NuevoPersonajeService {
         if (this.estadoFlujo.ventajas.baseCaracteristicas !== null)
             return;
 
-        this.estadoFlujo.ventajas.baseCaracteristicas = {
-            Fuerza: toNumber(this.personajeCreacion.Fuerza),
-            Destreza: toNumber(this.personajeCreacion.Destreza),
-            Constitucion: toNumber(this.personajeCreacion.Constitucion),
-            Inteligencia: toNumber(this.personajeCreacion.Inteligencia),
-            Sabiduria: toNumber(this.personajeCreacion.Sabiduria),
-            Carisma: toNumber(this.personajeCreacion.Carisma),
-        };
+        this.estadoFlujo.ventajas.baseCaracteristicas = this.caracteristicasActuales();
         this.estadoFlujo.ventajas.baseRaciales = this.copiarRaciales(this.personajeCreacion.Raciales);
         this.estadoFlujo.ventajas.baseIdiomas = this.copiarIdiomas(this.personajeCreacion.Idiomas);
     }
@@ -6726,16 +6721,26 @@ export class NuevoPersonajeService {
                 extra: `${entrada?.Contexto?.Extra ?? ''}`.trim() || 'No aplica',
                 origen: origenRaza,
             }));
-        const deSusRaciales = (raza?.Raciales ?? []).flatMap((racial) => (racial?.Dotes ?? [])
+        const deSusRaciales = this.dotesDeRaciales(raza?.Raciales ?? [], origenRaza);
+        return [...deLaRaza, ...deSusRaciales];
+    }
+
+    /**
+     * Las dotes de unos rasgos (`racial_dotes`), con el rasgo como origen (o `origenSinNombre`, si no tiene nombre): la del
+     * catálogo si está o, si no, su id y su nombre. `clave` (rasgo, dote y extra) distingue cada una: las de los rasgos
+     * de su raza (`resolverDotesDeRaza`) y las de los que gana con la progresión (`agregarDotesDeRasgosGanados`).
+     */
+    private dotesDeRaciales(raciales: RacialDetalle[], origenSinNombre: string): (DoteDeRaza & { clave: string; })[] {
+        return raciales.flatMap((racial) => (racial?.Dotes ?? [])
             .filter((entrada) => toNumber(entrada?.Id_dote) > 0)
             .map((entrada) => ({
                 dote: this.doteDelCatalogo(toNumber(entrada.Id_dote))
                     ?? this.crearDotePlaceholder(toNumber(entrada.Id_dote), `${entrada?.Dote ?? ''}`.trim()),
                 idExtra: toNumber(entrada?.Id_extra),
                 extra: `${entrada?.Extra ?? ''}`.trim() || 'No aplica',
-                origen: `${racial?.Nombre ?? ''}`.trim() || origenRaza,
+                origen: `${racial?.Nombre ?? ''}`.trim() || origenSinNombre,
+                clave: `${toInt(racial?.Id)}:${toNumber(entrada.Id_dote)}:${toNumber(entrada?.Id_extra)}`,
             })));
-        return [...deLaRaza, ...deSusRaciales];
     }
 
     /** Las dotes de la raza pasan al personaje: se guardan con él y cuentan para los prerrequisitos. */

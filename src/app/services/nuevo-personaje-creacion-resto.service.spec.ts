@@ -152,6 +152,31 @@ describe('Lo que la creación aún no hacía: la elección más de un grupo opci
         svc.omitirEleccionRacialPendiente(pendiente.clave);
         expect(svc.getEleccionesRacialesPendientes()).toEqual([]);
     });
+
+    it('las resuelve una a una con el selector que se le pasa (el de la creación o el de la subida de nivel)', async () => {
+        const svc = crearIluminiano();
+        aplicarNivel(svc, GUERRERO);
+        aplicarNivel(svc, GUERRERO);
+        // Cerrado sin elegir: sigue pendiente.
+        expect(await svc.resolverEleccionesRacialesPendientes(async () => null)).toBeFalse();
+        expect(svc.getEleccionesRacialesPendientes().length).toBe(1);
+        // Una clave que no es de sus opciones la vuelve a pedir; después, la elegida.
+        const respuestas = ['', getClaveSeleccionRacial(KRAU)];
+        const titulos: string[] = [];
+        expect(await svc.resolverEleccionesRacialesPendientes(async ({ grupos, titulo }) => {
+            titulos.push(titulo);
+            expect(grupos[0].opciones.map((o) => o.racial.Id)).toEqual([4872, 4873]);
+            return respuestas.shift() ?? null;
+        })).toBeTrue();
+        expect(titulos).toEqual(Array(2).fill('Otro rasgo: Sigilos de poder (iluminiano), a nivel 2'));
+        expect(ids(svc)).toContain(4873);
+        expect(svc.getEleccionesRacialesPendientes()).toEqual([]);
+        // Sin rasgos que elegir, se da por hecha sin abrir el selector.
+        const sinOpciones = crearIluminiano([SIGILOS, AESH]);
+        aplicarNivel(sinOpciones, GUERRERO);
+        aplicarNivel(sinOpciones, GUERRERO);
+        expect(await sinOpciones.resolverEleccionesRacialesPendientes(() => fail('no se abre') as never)).toBeTrue();
+    });
 });
 
 describe('Lo que la creación aún no hacía: las salvaciones y las dotes de un rasgo ganado por la progresión', () => {
