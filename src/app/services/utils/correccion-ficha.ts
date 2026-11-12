@@ -1,4 +1,4 @@
-import { Caracteristica } from 'src/app/interfaces/caracteristica';
+import { CARACTERISTICAS, Caracteristica } from 'src/app/interfaces/caracteristica';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { toInt } from './normalizacion';
 
@@ -10,11 +10,9 @@ import { toInt } from './normalizacion';
  * no se pierde nada de lo que el motor no sabe leer de la ficha (orígenes, extras, competencias, la mascota…).
  */
 
-/** Las claves de las características en la ficha del alta y en el motor. */
-export const CARACTERISTICAS_DEL_ALTA: ReadonlyArray<readonly [string, Caracteristica]> = [
-    ['fuerza', 'Fuerza'], ['destreza', 'Destreza'], ['constitucion', 'Constitucion'],
-    ['inteligencia', 'Inteligencia'], ['sabiduria', 'Sabiduria'], ['carisma', 'Carisma'],
-];
+/** Las claves de las características en la ficha del alta (en minúsculas, «fuerza») y en el motor («Fuerza»). */
+export const CARACTERISTICAS_DEL_ALTA: ReadonlyArray<readonly [string, Caracteristica]> = CARACTERISTICAS
+    .map((key) => [key.toLowerCase(), key] as const);
 
 export interface DoteDeLaFicha {
     idDote: number;
