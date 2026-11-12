@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { firstValueFrom, Observable, take } from 'rxjs';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { SesionPersonaje } from 'src/app/interfaces/sesiones';
 import { ArmaService } from './arma.service';
 import { ArmaduraService } from './armadura.service';
 import { ClaseService } from './clase.service';
@@ -14,16 +15,18 @@ import { GrupoArmaduraService } from './grupo-armadura.service';
 import { HabilidadService } from './habilidad.service';
 import { IdiomaService } from './idioma.service';
 import { NuevoPersonajeService } from './nuevo-personaje.service';
+import { PersonajeService } from './personaje.service';
 import { PlantillaService } from './plantilla.service';
 import { RazaService } from './raza.service';
+import { SesionesService } from './sesiones.service';
 import { extraConTipoArma, extraDeArmadura, extraDeDote } from './utils/extras-dotes';
 import { toInt } from './utils/normalizacion';
 
 /**
- * Prepara una instancia del motor de la creación (`NuevoPersonajeService`) para un personaje guardado: carga sus
- * catálogos y lo hidrata desde su ficha y su `entrada` (`iniciarSubidaDesdeFicha`). Lo usan la subida de nivel (fase 4) y
- * la corrección de la ficha (fase 6) del roadmap de sesiones, cada una con su propia instancia del motor, sin tocar la
- * creación en curso.
+ * Prepara una instancia del motor de la creación (`NuevoPersonajeService`) para un personaje guardado: lee la sesión
+ * abierta con su ficha, carga sus catálogos y lo hidrata desde su ficha y su `entrada` (`iniciarSubidaDesdeFicha`). Lo
+ * usan la subida de nivel (fase 4) y la corrección de la ficha (fase 6) del roadmap de sesiones, cada una con su propia
+ * instancia del motor, sin tocar la creación en curso.
  */
 @Injectable({
     providedIn: 'root'
@@ -43,6 +46,8 @@ export class MotorDesdeFichaService {
         private armaduraSvc: ArmaduraService,
         private grupoArmaSvc: GrupoArmaService,
         private grupoArmaduraSvc: GrupoArmaduraService,
+        private sesionesSvc: SesionesService,
+        private personajeSvc: PersonajeService,
     ) { }
 
     /** El primer valor de un catálogo, o `null` si falla. */
@@ -52,6 +57,23 @@ export class MotorDesdeFichaService {
         } catch {
             return null;
         }
+    }
+
+    /**
+     * La sesión abierta `numero` del personaje con su ficha y su `entrada` (`GET /personajes/{id}/sesiones/{numero}`), y
+     * el motor con sus catálogos: lo que necesitan la subida y la corrección antes de hidratarlo. Si al responder ya no
+     * es la misma cuenta (`sigue`), `null` sin cargar nada; sin la `entrada`, un error.
+     */
+    async cargarSesion(motor: NuevoPersonajeService, idPersonaje: number, numero: number, sigue: () => boolean)
+        : Promise<{ sesion: SesionPersonaje; entrada: PersonajeCreateRequestDto; pj: Personaje; } | null> {
+        const { sesion, ficha, entrada } = await this.sesionesSvc.sesion(idPersonaje, numero);
+        if (!sigue())
+            return null;
+        if (!entrada)
+            throw new Error('La API no ha dado la ficha de la sesión abierta.');
+        const pj = this.personajeSvc.fichaDeApi(ficha);
+        await this.cargarCatalogos(motor);
+        return { sesion, entrada, pj };
     }
 
     /** Los catálogos que usa el motor, como en la creación. */

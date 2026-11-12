@@ -11365,13 +11365,20 @@ export class NuevoPersonajeService {
     }
 
     /**
+     * Las dotes del propio personaje (sin `Entidad` o con la del personaje): las de su raza o sus plantillas no se eligen
+     * ni se quitan al corregir la ficha.
+     */
+    dotesDelPersonaje(): DoteContextual[] {
+        return (this.personajeCreacion.DotesContextuales ?? []).filter((d) => !d?.Contexto?.Entidad || d.Contexto.Entidad === 'personaje');
+    }
+
+    /**
      * Las dotes del personaje que no cumplen sus prerrequisitos con lo que tiene ahora (las del catálogo; una que no se
      * puede comprobar no cuenta). Se evalúan con el estado de ahora, también las de las fichas sin el nivel de cada
      * elección.
      */
     dotesSinSusPrerrequisitos(): Array<{ idDote: number; idExtra: number; origen: string; nombre: string; razones: string[]; }> {
-        // Solo las del personaje: las de su raza o sus plantillas no se eligen ni se quitan al corregir.
-        return (this.personajeCreacion.DotesContextuales ?? []).filter((d) => (d?.Contexto?.Entidad ?? 'personaje') === 'personaje').flatMap((d) => {
+        return this.dotesDelPersonaje().flatMap((d) => {
             const dote = this.catalogoDotes.find((c) => toInt(c?.Id) === toInt(d?.Dote?.Id));
             if (!dote)
                 return [];

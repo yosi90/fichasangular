@@ -23,10 +23,10 @@
                 <thead><tr><th scope="col">Característica</th><th scope="col">Base</th><th scope="col">Puntuación</th></tr></thead>
                 <tbody>
                     <tr *ngFor="let c of caracteristicas">
-                        <th scope="row">{{c[1] === 'Constitucion' ? 'Constitución' : c[1] === 'Sabiduria' ? 'Sabiduría' : c[1]}}</th>
+                        <th scope="row">{{nombres[c[1]]}}</th>
                         <td>
                             <input *ngIf="puedeCaracteristicas; else soloBase" type="number" min="1" max="99" class="correccion__numero"
-                                [attr.aria-label]="'Base de ' + c[1]" [ngModel]="base[c[1]]" (ngModelChange)="cambiarBase(c[1], $event)">
+                                [attr.aria-label]="'Base de ' + nombres[c[1]]" [ngModel]="base[c[1]]" (ngModelChange)="cambiarBase(c[1], $event)">
                             <ng-template #soloBase>{{base[c[1]]}}</ng-template>
                         </td>
                         <td class="subida__ahora">{{final(c[1])}}</td>

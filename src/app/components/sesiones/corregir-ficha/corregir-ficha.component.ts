@@ -10,9 +10,9 @@ import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { MAXIMO_MOTIVO_CORRECCION, SesionPersonaje } from 'src/app/interfaces/sesiones';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
-import { PersonajeService } from 'src/app/services/personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
+import { NOMBRES_CARACTERISTICAS } from 'src/app/services/utils/caracteristicas';
 import { CARACTERISTICAS_DEL_ALTA, CambiosCorreccion, DoteDeLaFicha, fichaDeLaCorreccion } from 'src/app/services/utils/correccion-ficha';
 import { toInt } from 'src/app/services/utils/normalizacion';
 import { PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
@@ -62,6 +62,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
 
     readonly maximoMotivo = MAXIMO_MOTIVO_CORRECCION;
     readonly caracteristicas = CARACTERISTICAS_DEL_ALTA;
+    readonly nombres = NOMBRES_CARACTERISTICAS;
 
     cargando = true;
     guardando = false;
@@ -89,7 +90,6 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         public svc: NuevoPersonajeService,
         private auth: Auth,
         private sesionesSvc: SesionesService,
-        private personajeSvc: PersonajeService,
         private puerta: SubidaNivelPuertaService,
         private motor: MotorDesdeFichaService,
     ) { }
@@ -115,7 +115,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         const salida: string[] = [];
         this.caracteristicas.forEach(([, key]) => {
             if (this.final(key) !== toInt(this.finalesAntes[key]))
-                salida.push(`${key === 'Constitucion' ? 'Constitución' : key === 'Sabiduria' ? 'Sabiduría' : key} ${this.finalesAntes[key]} → ${this.final(key)}`);
+                salida.push(`${this.nombres[key]} ${this.finalesAntes[key]} → ${this.final(key)}`);
         });
         if (this.pg && this.pg.total !== toInt(this.entrada?.personaje?.puntosGolpe))
             salida.push(`PG ${toInt(this.entrada?.personaje?.puntosGolpe)} → ${this.pg.total}${this.pg.exacto ? '' : ' (aproximado: hay DG sin su tirada)'}`);
@@ -143,16 +143,14 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             const abierta = historial.sesiones.find((s) => s.estado === 'abierta') ?? null;
             if (!abierta)
                 throw new Error('Para corregir la ficha hace falta una sesión abierta: ábrela o reabre la última desde el historial.');
-            const { sesion, ficha, entrada } = await this.sesionesSvc.sesion(this.idPersonaje, abierta.numero);
-            if (!this.sigueLaMismaCuenta())
+            const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta.numero, () => this.sigueLaMismaCuenta());
+            if (!cargada)
                 return;
-            if (!entrada)
-                throw new Error('La API no ha dado la ficha de la sesión abierta.');
+            const { sesion, entrada, pj } = cargada;
             this.sesion = sesion;
             this.entrada = entrada;
-            this.pj = this.personajeSvc.fichaDeApi(ficha);
+            this.pj = pj;
             this.puedeCaracteristicas = historial.rolActor === 'master' || toInt(entrada.personaje?.campana?.id) <= 0;
-            await this.motor.cargarCatalogos(this.svc);
             await this.hidratar();
         } catch (error: any) {
             this.error = `${error?.message ?? ''}`.trim() || 'No se ha podido preparar la corrección.';
@@ -167,8 +165,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         this.caracteristicas.forEach(([, key]) => this.finalesAntes[key] = this.final(key));
         this.mantenidas = new Set((this.entrada!.decisionesHomebrew ?? [])
             .filter((d) => d.tipo === 'requisitos_dote').map((d) => toInt(d.idElemento)));
-        this.dotes = (this.svc.PersonajeCreacion.DotesContextuales ?? [])
-            .filter((d) => d?.Contexto?.Entidad === 'personaje' || !d?.Contexto?.Entidad)
+        this.dotes = this.svc.dotesDelPersonaje()
             .map((d) => ({
                 idDote: toInt(d?.Dote?.Id), idExtra: toInt(d?.Contexto?.Id_extra), origen: `${(d?.Contexto as any)?.Origen ?? ''}`,
                 nombre: `${d?.Dote?.Nombre ?? ''}`, extra: toInt(d?.Contexto?.Id_extra) > 0 ? `${d?.Contexto?.Extra ?? ''}` : '', quitada: false,

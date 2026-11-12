@@ -37,6 +37,8 @@ export class DatosLibresComponent implements OnInit {
     historia = '';
     idRegion = 0;
     idGenero = 0;
+    /** El género que tiene (la ficha lo trae por su nombre: su id, del catálogo). */
+    private idGeneroAntes = 0;
     regiones: RegionDetalle[] = [];
     generos: DeidadGeneroRef[] = [];
     guardando = false;
@@ -63,8 +65,8 @@ export class DatosLibresComponent implements OnInit {
         ]);
         this.regiones = regiones ?? [];
         this.generos = generos ?? [];
-        // La ficha trae el género por su nombre: su id, del catálogo.
-        this.idGenero = toInt(this.generos.find((g) => normalizarTexto(g.Nombre) === normalizarTexto(this.pj?.Genero ?? ''))?.Id);
+        this.idGeneroAntes = toInt(this.generos.find((g) => normalizarTexto(g.Nombre) === normalizarTexto(this.pj?.Genero ?? ''))?.Id);
+        this.idGenero = this.idGeneroAntes;
     }
 
     /** Solo lo que cambia. */
@@ -78,8 +80,7 @@ export class DatosLibresComponent implements OnInit {
             cambios.descripcionHistoria = this.historia.trim() || null;
         if (this.idRegion !== toInt(this.pj?.Region?.Id))
             cambios.idRegion = this.idRegion;
-        const generoAntes = toInt(this.generos.find((g) => normalizarTexto(g.Nombre) === normalizarTexto(this.pj?.Genero ?? ''))?.Id);
-        if (this.idGenero > 0 && this.idGenero !== generoAntes)
+        if (this.idGenero > 0 && this.idGenero !== this.idGeneroAntes)
             cambios.idGenero = this.idGenero;
         return cambios;
     }

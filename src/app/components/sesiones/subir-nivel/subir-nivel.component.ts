@@ -200,15 +200,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
                 throw new Error('Para subir de nivel hace falta una sesión de juego abierta: ábrela desde el historial.');
             if (!historial.experiencia?.puedeSubir)
                 throw new Error('Aún no le llegan los PX para el siguiente nivel.');
-            const { sesion, ficha, entrada } = await this.sesionesSvc.sesion(this.idPersonaje, abierta);
-            if (!this.sigueLaMismaCuenta())
+            const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta, () => this.sigueLaMismaCuenta());
+            if (!cargada)
                 return;
-            if (!entrada)
-                throw new Error('La API no ha dado la ficha de la sesión abierta.');
+            const { sesion, entrada, pj } = cargada;
             this.sesion = sesion;
             this.entrada = entrada;
-            this.pj = this.personajeSvc.fichaDeApi(ficha);
-            await this.motor.cargarCatalogos(this.svc);
+            this.pj = pj;
             const campana = toInt(entrada.personaje?.campana?.id);
             // Un PNJ, como al crearlo y como la API: sin el límite de la campaña (propietario, 2026-11-12).
             this.tiradasPermitidas = entrada.personaje?.tipo === 'pnj' ? MAX_TIRADAS_PUNTOS_GOLPE

@@ -22,15 +22,19 @@ describe('CorregirFichaComponent (la corrección de la ficha, fase 6)', () => {
             sesion: sesion(0), ficha: {},
             entrada: { personaje: { nombre: 'Brunilda', puntosGolpe: 12, campana: { id: 2 } }, colecciones: {}, niveles: [], ...entrada },
         } as any);
-        motor = jasmine.createSpyObj<MotorDesdeFichaService>('MotorDesdeFichaService', ['cargarCatalogos', 'hidratar', 'primero']);
-        motor.cargarCatalogos.and.resolveTo();
+        motor = jasmine.createSpyObj<MotorDesdeFichaService>('MotorDesdeFichaService', ['cargarSesion', 'hidratar', 'primero']);
+        // La sesión, de `SesionesService` como la lee el motor (`cargarSesion`).
+        motor.cargarSesion.and.callFake(async (_motor, idPersonaje, numero) => {
+            const { sesion, entrada } = await sesiones.sesion(idPersonaje, numero);
+            return { sesion, entrada: entrada!, pj: { Nombre: 'Brunilda', Nivel_personaje: 1 } as any };
+        });
         motor.hidratar.and.resolveTo();
         await TestBed.configureTestingModule({
             imports: [CorregirFichaComponent, NoopAnimationsModule],
             providers: [
                 { provide: Auth, useValue: { currentUser: { uid: 'cuenta-a' } } },
                 { provide: SesionesService, useValue: sesiones },
-                { provide: PersonajeService, useValue: { fichaDeApi: () => ({ Nombre: 'Brunilda', Nivel_personaje: 1 }) } },
+                { provide: PersonajeService, useValue: {} },
                 { provide: UserSettingsService, useValue: {} },
                 { provide: SubidaNivelPuertaService, useValue: new SubidaNivelPuertaService() },
                 { provide: MotorDesdeFichaService, useValue: motor },
