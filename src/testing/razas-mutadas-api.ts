@@ -1,5 +1,5 @@
 /**
- * Las razas del ensayo de las razas mutadas (roadmap `PAUSADO_razas-mutadas`), como las da la API: `GET /razas/{id}` de
+ * Las razas del ensayo de las razas mutadas (roadmap `ACTIVO_razas-mutadas`), como las da la API: `GET /razas/{id}` de
  * `rol_dev` (2026-11-07) de la prole de Bahamut (21), el mediano (5), el gnoll (18), el drow (308) y el jacquar (26), con
  * los textos de más de 60 caracteres recortados (los mismos datos que `tests/datos/razas_mutadas.json` del backend), y
  * `GET /razas/21/sobre/{idBase}` de cada base (`utils/raza_mutacion.combinar_raza`, rama `mutadas/fase-2` del backend).
