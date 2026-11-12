@@ -38,7 +38,8 @@ export interface SortilegaFicha {
 /** Lo que leen de una aptitud sortílega de monstruo, plantilla o subtipo. */
 interface SortilegaCriatura {
     Conjuro: { Id: number; Nombre: string; };
-    Nivel_lanzador: number;
+    /** Un número o, la de un rasgo racial, un texto («igual a sus niveles de clase»). */
+    Nivel_lanzador: number | string;
     Usos_diarios: string;
     /** Los DG que hacen falta para tenerla (las de una plantilla). */
     Dg?: number | null;
@@ -49,6 +50,23 @@ export function textoDesdeDg(dg: unknown): string {
     return tieneNumeroVisible(dg) ? `desde ${Number(dg)} DG` : '';
 }
 
+/**
+ * El nivel de lanzador de una aptitud sortílega para ir tras «Nivel de lanzador»: la cifra («5») o, si es un texto (el de
+ * los poderes de un rasgo del gith), en minúscula («igual a sus niveles de clase»).
+ */
+export function nivelLanzadorEnFrase(valor: unknown): string {
+    const texto = `${valor ?? ''}`.trim();
+    if (texto.length < 1 || Number.isFinite(Number(texto)))
+        return `${toNumber(valor)}`;
+    return `${texto.charAt(0).toLowerCase()}${texto.slice(1)}`;
+}
+
+/** El nivel de lanzador de una aptitud sortílega en su línea: «NL 5» o «Nivel de lanzador igual a sus niveles de clase». */
+export function textoNivelLanzadorSortilega(valor: unknown): string {
+    const frase = nivelLanzadorEnFrase(valor);
+    return Number.isFinite(Number(frase)) ? `NL ${frase}` : `Nivel de lanzador ${frase}`;
+}
+
 /** Las aptitudes sortílegas cuyo conjuro tiene nombre, con su nivel de lanzador, sus usos y los DG que pide. */
 export function sortilegasVisibles(sortilegas: SortilegaCriatura[] | null | undefined): SortilegaFicha[] {
     return (sortilegas ?? [])
@@ -56,7 +74,7 @@ export function sortilegasVisibles(sortilegas: SortilegaCriatura[] | null | unde
         .map((s) => ({
             id: toNumber(s.Conjuro.Id),
             nombre: `${s.Conjuro.Nombre}`.trim(),
-            detalle: [`NL ${toNumber(s.Nivel_lanzador)}`, textoVisible(s.Usos_diarios), textoDesdeDg(s.Dg)]
+            detalle: [textoNivelLanzadorSortilega(s.Nivel_lanzador), textoVisible(s.Usos_diarios), textoDesdeDg(s.Dg)]
                 .filter(Boolean).join(' · '),
         }));
 }

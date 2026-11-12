@@ -46,7 +46,7 @@ import { normalizarListasLanzamiento } from './utils/raza-mapper';
 import { normalizarPersonajeIncarnum } from './utils/incarnum-mapper';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { cabeceraApiConFirebase } from './platform-session.service';
-import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toNumberOrNull, toPositiveInt, toRefIdNombre, toText } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toArray, toBoolean, toInt, toNullableText, toNumber, toNumberOrNull, toPositiveInt, idNombre, toText } from 'src/app/services/utils/normalizacion';
 import { esPnj, leerTipoYNivelPersonaje } from './utils/tipo-personaje';
 import { esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { experienciaParaNivel } from './utils/experiencia-nivel';
@@ -1121,7 +1121,7 @@ export class PersonajeService {
             Presa_varios: modificadoresDePartes(totales.presa, 'varios').map(({ valor, origen }) => ({ Valor: valor, Origen: origen })),
             Raza: raza,
             // La raza base de una raza mutada (`rb`, `{ Id, Nombre }`); `null` en las demás.
-            RazaBase: toRefIdNombre(element?.rb),
+            RazaBase: idNombre(element?.rb, { filtro: 'conIdONombre' }),
             Tipo_criatura: element?.tc,
             Fuerza: element?.f,
             ModFuerza: element?.mf,
@@ -1320,7 +1320,7 @@ function normalizarCategoriaEdadPersonaje(raw: any): CategoriaEdadPersonaje | nu
     return {
         idPasoEdad: toInt(raw.idPasoEdad),
         edad: toNumber(raw?.edad),
-        categoria: toRefIdNombre(raw?.categoria) ?? { Id: 0, Nombre: '' },
+        categoria: idNombre(raw?.categoria, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' },
         orden: toNumber(raw?.orden),
         dgs: toNumber(raw?.dgs),
         ajusteNivel: toNumberOrNull(raw?.ajusteNivel),

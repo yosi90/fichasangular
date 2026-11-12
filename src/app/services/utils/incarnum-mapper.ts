@@ -14,7 +14,7 @@ import {
     PersonajeIncarnumRef,
 } from 'src/app/interfaces/incarnum';
 import { normalizeManualApi } from './manual-mapper';
-import { idNombres, toArray, toBoolean, toInt, toNullableText, toNumberOrNull, toText } from './normalizacion';
+import { idNombre, idNombres, toArray, toBoolean, toInt, toNullableText, toNumberOrNull, toText } from './normalizacion';
 
 /*
  * Los mappers de Magic of Incarnum (`docs/publica/INCARNUM.md`). Las cachés nuevas (`Fusiones`, `Chakras`) y los
@@ -23,12 +23,9 @@ import { idNombres, toArray, toBoolean, toInt, toNullableText, toNumberOrNull, t
  * RTDB una clave a `null` no está: «no está» se lee como `null` o lista vacía.
  */
 
-function idNombre(raw: any): { Id: number; Nombre: string; } {
-    return { Id: toInt(raw?.Id), Nombre: toText(raw?.Nombre).trim() };
-}
-
-function idNombreONulo(raw: any): { Id: number; Nombre: string; } | null {
-    return raw && typeof raw === 'object' && toInt(raw?.Id) > 0 ? idNombre(raw) : null;
+/** Una referencia que siempre tiene valor: la de la API o, si no trae ni id ni nombre, la vacía. */
+function idNombreOVacio(raw: unknown): { Id: number; Nombre: string; } {
+    return idNombre(raw, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' };
 }
 
 export function normalizarNombreTraducible(raw: any): NombreTraducible {
@@ -49,7 +46,7 @@ export function normalizarChakra(raw: any): Chakra {
     return {
         ...normalizarNombreTraducible(raw),
         Categoria: categoria ? { ...categoria, Orden: toInt(raw?.Categoria?.Orden) } : null,
-        Ranura: idNombreONulo(raw?.Ranura),
+        Ranura: idNombre(raw?.Ranura),
         Orden: toInt(raw?.Orden),
         Descripcion: toNullableText(raw?.Descripcion),
         // Sin el campo (la caché de antes de la versión 2), del libro: los once lo son.
@@ -65,7 +62,7 @@ export function normalizarChakraDetalle(raw: any): ChakraDetalle {
             Ocupa: toBoolean(fusion?.Ocupa),
             Vinculo: toBoolean(fusion?.Vinculo),
         })).filter((fusion) => fusion.Id > 0),
-        Clases: toArray(raw?.Clases).map((clase: any) => ({ ...idNombre(clase), Nivel: toInt(clase?.Nivel) }))
+        Clases: toArray(raw?.Clases).map((clase: any) => ({ ...idNombreOVacio(clase), Nivel: toInt(clase?.Nivel) }))
             .filter((clase) => clase.Id > 0),
     };
 }
@@ -86,8 +83,8 @@ export function normalizarFusion(raw: any): Fusion {
         Oficial: toBoolean(raw?.Oficial, true),
         Clases: idNombres(raw?.Clases),
         Descriptores: toArray(raw?.Descriptores).map((descriptor: any) => ({
-            ...idNombre(descriptor),
-            Actitud: idNombreONulo(descriptor?.Actitud),
+            ...idNombreOVacio(descriptor),
+            Actitud: idNombre(descriptor?.Actitud),
         })).filter((descriptor) => descriptor.Id > 0),
         Chakras: toArray(raw?.Chakras).map((chakra: any) => ({
             ...normalizarNombreTraducible(chakra),
@@ -122,8 +119,8 @@ export function normalizarClaseMoldeado(raw: any): ClaseMoldeado | null {
         return null;
     return {
         Divisor_nivel_moldeador: Math.max(1, toInt(raw?.Divisor_nivel_moldeador, 1)),
-        Caracteristica_cd: idNombreONulo(raw?.Caracteristica_cd),
-        Caracteristica_fusiones: idNombreONulo(raw?.Caracteristica_fusiones),
+        Caracteristica_cd: idNombre(raw?.Caracteristica_cd),
+        Caracteristica_fusiones: idNombre(raw?.Caracteristica_fusiones),
         Limitado_por_alineamiento: toBoolean(raw?.Limitado_por_alineamiento),
         Niveles: toArray(raw?.Niveles).map((nivel: any) => ({
             Nivel: toInt(nivel?.Nivel),
@@ -146,7 +143,7 @@ export function normalizarHabilidadesPorAlineamiento(raw: any): ClaseHabilidadPo
         Habilidad: toText(item?.Habilidad).trim(),
         Id_extra: toNumberOrNull(item?.Id_extra),
         Extra: toNullableText(item?.Extra),
-        Alineamiento: idNombre(item?.Alineamiento),
+        Alineamiento: idNombreOVacio(item?.Alineamiento),
     })).filter((item) => item.Id_habilidad > 0 && item.Alineamiento.Id > 0);
 }
 
@@ -168,13 +165,13 @@ export function normalizarDoteIncarnum(raw: any): DoteIncarnum | null {
         Capacidad: capacidad,
         Abre_chakra: toBoolean(raw?.Abre_chakra),
         Divisor_nivel_moldeador: toNumberOrNull(raw?.Divisor_nivel_moldeador),
-        Caracteristica_cd_fusion: idNombreONulo(raw?.Caracteristica_cd_fusion),
-        Sustituye_caracteristica: idNombreONulo(raw?.Sustituye_caracteristica?.De) && idNombreONulo(raw?.Sustituye_caracteristica?.Por)
-            ? { De: idNombre(raw.Sustituye_caracteristica.De), Por: idNombre(raw.Sustituye_caracteristica.Por) }
+        Caracteristica_cd_fusion: idNombre(raw?.Caracteristica_cd_fusion),
+        Sustituye_caracteristica: idNombre(raw?.Sustituye_caracteristica?.De) && idNombre(raw?.Sustituye_caracteristica?.Por)
+            ? { De: idNombre(raw.Sustituye_caracteristica.De)!, Por: idNombre(raw.Sustituye_caracteristica.Por)! }
             : null,
         Pg_por_esencia: toInt(raw?.Pg_por_esencia),
-        Pg_por_dote: toInt(raw?.Pg_por_dote?.Valor) !== 0 && idNombreONulo(raw?.Pg_por_dote?.Tipo)
-            ? { Valor: toInt(raw.Pg_por_dote.Valor), Tipo: idNombre(raw.Pg_por_dote.Tipo) }
+        Pg_por_dote: toInt(raw?.Pg_por_dote?.Valor) !== 0 && idNombre(raw?.Pg_por_dote?.Tipo)
+            ? { Valor: toInt(raw.Pg_por_dote.Valor), Tipo: idNombre(raw.Pg_por_dote.Tipo)! }
             : null,
         Descriptores_sin_alineamiento: idNombres(raw?.Descriptores_sin_alineamiento),
     };

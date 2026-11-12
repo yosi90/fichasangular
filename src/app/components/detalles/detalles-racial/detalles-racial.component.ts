@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
-import { DatoFicha, datosEsenciaRasgo, datosVisibles } from 'src/app/components/detalles/ficha';
+import { DatoFicha, datosEsenciaRasgo, datosVisibles, nivelLanzadorEnFrase } from 'src/app/components/detalles/ficha';
 import { RacialDetalle } from 'src/app/interfaces/racial';
 import { textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { resolverExtraHabilidadVisible } from 'src/app/services/utils/habilidad-extra-visible';
@@ -86,7 +86,7 @@ export class DetallesRacialComponent {
             id: Number(sortilega?.Conjuro?.Id),
             nombre: tieneTextoVisible(sortilega?.Conjuro?.Nombre) ? `${sortilega.Conjuro.Nombre}`.trim() : 'Conjuro sin nombre',
             detalle: [
-                tieneTextoVisible(sortilega?.Nivel_lanzador) ? `Nivel de lanzador ${sortilega.Nivel_lanzador}` : '',
+                tieneTextoVisible(sortilega?.Nivel_lanzador) ? `Nivel de lanzador ${nivelLanzadorEnFrase(sortilega.Nivel_lanzador)}` : '',
                 tieneTextoVisible(sortilega?.Usos_diarios) ? `Usos: ${sortilega.Usos_diarios}` : '',
             ].filter(Boolean).join(' · '),
         }));

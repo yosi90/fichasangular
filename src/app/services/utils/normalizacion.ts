@@ -91,13 +91,6 @@ export function toNullableText(value: unknown): string | null {
     return text.length > 0 ? text : null;
 }
 
-/** Una referencia `{ Id, Nombre }` del contrato (el nombre, sin espacios a los lados), o `null` si no trae ni id ni nombre. */
-export function toRefIdNombre(value: any): Id_nombre | null {
-    const id = toNumber(value?.Id);
-    const nombre = toText(value?.Nombre).trim();
-    return id > 0 || nombre.length > 0 ? { Id: id, Nombre: nombre } : null;
-}
-
 /**
  * Qué elementos de una lista `{ Id, Nombre }` se quedan (`idNombres`):
  * - `conId` (por defecto): los que tienen id (> 0). Las listas de referencias a otro catálogo, donde una fila sin id es
@@ -126,10 +119,22 @@ export interface OpcionesIdNombres {
  */
 export function idNombres(raw: unknown, { filtro = 'conId', soloLista = false }: OpcionesIdNombres = {}): Id_nombre[] {
     const lista: unknown[] = soloLista ? (Array.isArray(raw) ? raw : []) : toArray(raw);
-    return lista
-        .filter((item): item is Record<string, unknown> => !!item && typeof item === 'object')
-        .map((item) => ({ Id: toInt(item['Id']), Nombre: toText(item['Nombre']).trim() }))
-        .filter((item) => item.Id > 0 || (filtro === 'conIdONombre' && item.Nombre.length > 0));
+    return lista.map((item) => idNombre(item, { filtro })).filter((item): item is Id_nombre => item !== null);
+}
+
+/**
+ * Una sola referencia `{ Id, Nombre }` del contrato o de una caché, la pareja de `idNombres` para un elemento: la única
+ * lectura de una referencia en la web (antes, `toRefIdNombre`, `normalizeRefIdNombre` de las clases, `idNombre` e
+ * `idNombreONulo` de incarnum y `normalizeEquipoRef`). Con la misma regla que las listas: el id entero (`toInt`), el
+ * nombre sin espacios a los lados, `null` si no es un objeto y el mismo `filtro` (`conId`, por defecto: `null` sin id;
+ * `conIdONombre`: `null` sin id ni nombre). Quien necesita un valor siempre pone el suyo (`?? { Id: 0, Nombre: '' }`).
+ */
+export function idNombre(raw: unknown, { filtro = 'conId' }: Pick<OpcionesIdNombres, 'filtro'> = {}): Id_nombre | null {
+    if (!raw || typeof raw !== 'object')
+        return null;
+    const item = raw as Record<string, unknown>;
+    const ref = { Id: toInt(item['Id']), Nombre: toText(item['Nombre']).trim() };
+    return ref.Id > 0 || (filtro === 'conIdONombre' && ref.Nombre.length > 0) ? ref : null;
 }
 
 const VALORES_SI = new Set(['true', '1', 'sí', 'si', 'yes']);

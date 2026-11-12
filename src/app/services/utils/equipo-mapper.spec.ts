@@ -1,4 +1,5 @@
-import { normalizeEquipoRef, normalizeMaterial, normalizeObjeto, normalizeTextoEquipo } from './equipo-mapper';
+import { normalizeMaterial, normalizeObjeto, normalizeTextoEquipo } from './equipo-mapper';
+import { idNombre } from './normalizacion';
 import { crearArmaEspecificaApi, crearMaterialApi, crearObjetoApi, crearObjetoGenericoApi } from 'src/testing/equipo-api';
 
 describe('equipo-mapper', () => {
@@ -10,8 +11,8 @@ describe('equipo-mapper', () => {
     });
 
     it('una referencia que no viene es null', () => {
-        expect(normalizeEquipoRef(null)).toBeNull();
-        expect(normalizeEquipoRef({ Id: '3', Nombre: 'Hombros' })).toEqual({ Id: 3, Nombre: 'Hombros' });
+        expect(idNombre(null, { filtro: 'conIdONombre' })).toBeNull();
+        expect(idNombre({ Id: '3', Nombre: 'Hombros' }, { filtro: 'conIdONombre' })).toEqual({ Id: 3, Nombre: 'Hombros' });
     });
 
     it('lee los efectos y costes de un material', () => {

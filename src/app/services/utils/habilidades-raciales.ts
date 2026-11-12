@@ -3,7 +3,7 @@ import { PersonajeBonificadorCondicional } from 'src/app/interfaces/personaje';
 import { PersonajeParteDto } from 'src/app/interfaces/personajes-api';
 import { CampoFichaBonificador, CifraFichaObjetivo } from 'src/app/interfaces/equipo';
 import { RacialBonificadorCondicional, RacialDetalle } from 'src/app/interfaces/racial';
-import { normalizarTexto, toNullableText, toNumber, toRefIdNombre } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toNullableText, toNumber, idNombre } from 'src/app/services/utils/normalizacion';
 import { normalizarContraBonificador } from 'src/app/services/utils/racial-mapper';
 import { frasesDeRasgo } from 'src/app/services/utils/racial-progresion';
 
@@ -268,8 +268,8 @@ export function leerBonificadoresCondicionales(raw: unknown): PersonajeBonificad
     return (Array.isArray(raw) ? raw : [])
         .filter((b: any) => b && typeof b === 'object' && b.objetivo && toNumber(b.valor) !== 0)
         .map((b: any) => ({
-            objetivo: toRefIdNombre(b.objetivo) ?? { Id: 0, Nombre: '' },
-            tipoBonificador: toRefIdNombre(b.tipoBonificador) ?? { Id: 0, Nombre: '' },
+            objetivo: idNombre(b.objetivo, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' },
+            tipoBonificador: idNombre(b.tipoBonificador, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' },
             valor: toNumber(b.valor),
             condicion: `${b.condicion ?? ''}`.trim(),
             contra: normalizarContraBonificador(Array.isArray(b.contra) ? b.contra : []),

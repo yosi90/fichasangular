@@ -3849,14 +3849,8 @@ export class NuevoPersonajeComponent {
             razaBase,
             razaEfectiva?.Subtipos ?? []
         );
-        const caracteristicas = {
-            Fuerza: Number(this.Personaje?.Fuerza),
-            Destreza: Number(this.Personaje?.Destreza),
-            Constitucion: Number(this.Personaje?.Constitucion),
-            Inteligencia: Number(this.Personaje?.Inteligencia),
-            Sabiduria: Number(this.Personaje?.Sabiduria),
-            Carisma: Number(this.Personaje?.Carisma),
-        };
+        // Una característica que aún no tiene deja el prerrequisito «sin comprobar», con aviso (no lo da por incumplido).
+        const caracteristicas = this.nuevoPSvc.caracteristicasActuales({ sinValor: 'sinComprobar' });
         return evaluarGruposParaSelectorRacial(grupos, identidad, caracteristicas);
     }
 
@@ -7114,14 +7108,7 @@ export class NuevoPersonajeComponent {
     }
 
     private construirSnapshotCaracteristicasAumentos(): Record<CaracteristicaAumentoKey, number> {
-        return {
-            Fuerza: Number(this.Personaje?.Fuerza ?? 0),
-            Destreza: Number(this.Personaje?.Destreza ?? 0),
-            Constitucion: Number(this.Personaje?.Constitucion ?? 0),
-            Inteligencia: Number(this.Personaje?.Inteligencia ?? 0),
-            Sabiduria: Number(this.Personaje?.Sabiduria ?? 0),
-            Carisma: Number(this.Personaje?.Carisma ?? 0),
-        };
+        return this.nuevoPSvc.caracteristicasActuales();
     }
 
     private agregarIdiomaInicialTemporal(idioma: IdiomaDetalle): boolean {
@@ -8635,14 +8622,8 @@ export class NuevoPersonajeComponent {
 
         return {
             alineamiento: this.Personaje.Alineamiento,
-            caracteristicas: {
-                Fuerza: Number(this.Personaje.Fuerza),
-                Destreza: Number(this.Personaje.Destreza),
-                Constitucion: Number(this.Personaje.Constitucion),
-                Inteligencia: Number(this.Personaje.Inteligencia),
-                Sabiduria: Number(this.Personaje.Sabiduria),
-                Carisma: Number(this.Personaje.Carisma),
-            },
+            // Sin una característica, el requisito que la pide queda «sin comprobar» (no incumplido).
+            caracteristicas: this.nuevoPSvc.caracteristicasActuales({ sinValor: 'sinComprobar' }),
             tamanoRazaId: Number(raza.Tamano?.Id ?? 0),
             tiposCriaturaMiembroIds: identidadCriaturaActualIds,
             tipoCriaturaActualId,

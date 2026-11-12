@@ -44,6 +44,7 @@ import { getClaveSeleccionRacial, resolverRacialesFinales, SeleccionRacialesOpci
 import { evaluarGruposParaSelectorRacial } from './utils/racial-prerrequisitos';
 import type { GrupoRacialOpcionalModal } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { aplicarProgresionRacial, momentoDeProgresion, ResultadoProgresionRacial, tieneProgresionRacial, velocidadConProgresion } from './utils/racial-progresion';
+import { sortilegasConLasDeRasgos } from './utils/racial-sortilegas';
 import { esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
 import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
@@ -1303,16 +1304,22 @@ export class NuevoPersonajeService {
             this.personajeCreacion?.Raciales?.length ? this.personajeCreacion.Raciales : null);
     }
 
-    /** Sus seis características de ahora: para los prerrequisitos (de clases, dotes y rasgos) y la base de las ventajas. */
-    private caracteristicasActuales(): Record<CaracteristicaKey, number> {
+    /**
+     * Sus seis características de ahora: para los prerrequisitos (de clases, dotes, rasgos y plantillas), la base de las
+     * ventajas y los aumentos. Una que no tiene valor cuenta 0 (no cumple lo que la pide) o, con `sinValor:
+     * 'sinComprobar'`, `NaN`: el prerrequisito que la pide queda «sin comprobar», con su aviso (al elegir un rasgo
+     * opcional o una plantilla antes de tener las características).
+     */
+    caracteristicasActuales({ sinValor = 'cero' }: { sinValor?: 'cero' | 'sinComprobar'; } = {}): Record<CaracteristicaKey, number> {
         const pj = this.personajeCreacion;
+        const leer = (valor: unknown) => sinValor === 'sinComprobar' ? Number(valor) : toNumber(valor);
         return {
-            Fuerza: toNumber(pj?.Fuerza),
-            Destreza: toNumber(pj?.Destreza),
-            Constitucion: toNumber(pj?.Constitucion),
-            Inteligencia: toNumber(pj?.Inteligencia),
-            Sabiduria: toNumber(pj?.Sabiduria),
-            Carisma: toNumber(pj?.Carisma),
+            Fuerza: leer(pj?.Fuerza),
+            Destreza: leer(pj?.Destreza),
+            Constitucion: leer(pj?.Constitucion),
+            Inteligencia: leer(pj?.Inteligencia),
+            Sabiduria: leer(pj?.Sabiduria),
+            Carisma: leer(pj?.Carisma),
         };
     }
 
@@ -1641,10 +1648,11 @@ export class NuevoPersonajeService {
             this.copiarRaciales(razaEfectiva.Raciales),
             razaEfectiva.Nombre
         );
-        this.personajeCreacion.Sortilegas = this.asignarOrigenSortilegas(
+        // Las de la raza y las de sus rasgos (`racial-sortilegas.ts`), sin repetir un conjuro.
+        this.personajeCreacion.Sortilegas = sortilegasConLasDeRasgos(this.asignarOrigenSortilegas(
             this.copiarSortilegas(razaEfectiva.Sortilegas),
             razaEfectiva.Nombre
-        );
+        ), this.personajeCreacion.Raciales);
         this.clearAutoRepartoGuardado();
         this.personajeCreacion.Idiomas = [];
         this.aplicarIdiomasAutomaticos(razaEfectiva.Nombre, razaEfectiva?.Idiomas ?? []);
@@ -6197,6 +6205,10 @@ export class NuevoPersonajeService {
         this.estadoFlujo.ventajas.bonosHabilidades = sinApilarRaciales(bonosHabilidades);
         this.aplicarBonosHabilidadEnPersonaje();
         this.personajeCreacion.Raciales = nuevosRaciales;
+        // Las sortílegas de sus rasgos, también de los que gana con la progresión (los poderes del githyanki a nivel 3, 6 y
+        // 9), y sin las de uno que ya no tiene (`racial-sortilegas.ts`, la regla de la ficha de la API).
+        this.personajeCreacion.Sortilegas = sortilegasConLasDeRasgos(this.personajeCreacion.Sortilegas, nuevosRaciales,
+            [...(this.estadoFlujo.ventajas.baseRaciales ?? []), ...(this.razaSeleccionada?.Raciales ?? [])]);
         // Lo que sus rasgos suman solo en un caso (el +1 al ataque contra orcos), aparte: no entra en la CA ni en el ataque.
         this.personajeCreacion.Bonificadores_condicionales = bonificadoresCondicionalesDeRaciales(nuevosRaciales);
         // Los de siempre (la esquiva del svirfneblin), en la CA, y los de las pruebas de una característica (el sigilo de

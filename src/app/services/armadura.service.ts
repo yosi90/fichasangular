@@ -10,8 +10,8 @@ import { Observable, map } from "rxjs";
 import { environment } from "src/environments/environment";
 import { ArmaduraDetalle } from "../interfaces/armadura";
 import { FirebaseInjectionContextService } from "./firebase-injection-context.service";
-import { toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
-import { normalizeEquipoRef, normalizeTextoEquipo } from 'src/app/services/utils/equipo-mapper';
+import { idNombre, toArray, toBoolean, toNullableText, toNumber, toNumberOrNull, toText } from 'src/app/services/utils/normalizacion';
+import { normalizeTextoEquipo } from 'src/app/services/utils/equipo-mapper';
 import { normalizeManualApi } from 'src/app/services/utils/manual-mapper';
 import { cacheRtdbOApi, escucharRtdb } from './catalogo-api';
 import { porNombre } from "src/app/services/utils/orden-texto";
@@ -26,11 +26,11 @@ export function normalizeArmadura(raw: any): ArmaduraDetalle {
         Bon_des: toNumberOrNull(raw?.Bon_des),
         Penalizador: toNumber(raw?.Penalizador),
         Precio: toNumber(raw?.Precio),
-        Material: normalizeEquipoRef(raw?.Material),
-        Peso_armadura: normalizeEquipoRef(raw?.Peso_armadura),
-        Tipo_escudo: normalizeEquipoRef(raw?.Tipo_escudo),
+        Material: idNombre(raw?.Material, { filtro: 'conIdONombre' }),
+        Peso_armadura: idNombre(raw?.Peso_armadura, { filtro: 'conIdONombre' }),
+        Tipo_escudo: idNombre(raw?.Tipo_escudo, { filtro: 'conIdONombre' }),
         Peso: toNumber(raw?.Peso),
-        Tamano: normalizeEquipoRef(raw?.Tamano) ?? { Id: 0, Nombre: '' },
+        Tamano: idNombre(raw?.Tamano, { filtro: 'conIdONombre' }) ?? { Id: 0, Nombre: '' },
         Fallo_arcano: toNumber(raw?.Fallo_arcano),
         Es_escudo: toBoolean(raw?.Es_escudo),
         Velocidad_30: toNumberOrNull(raw?.Velocidad_30),
