@@ -2293,6 +2293,36 @@ describe('NuevoPersonajeComponent', () => {
         expect(component.modalCaracteristicasAbierto).toBeFalse();
     });
 
+    it('un PNJ de una campaña que no deja saltarse el alineamiento puede saltárselo, como en la corrección y la API (homebrew, con aviso)', async () => {
+        component.seleccionarRaza(crearRazaConConflictoDuroAlineamiento());
+        component.Personaje.tipo = 'pnj';
+        expect(component.esPnjCreacion).toBeTrue();
+        component.Personaje.Campana = 'Caballeros';
+        component.Personaje.Alineamiento = 'Legal neutral';
+        component.Personaje.Deidad = 'No tener deidad';
+        component.selectedCampaignPolicy = {
+            tiradaMinimaCaracteristica: 3,
+            nepMaximoPersonajeNuevo: null,
+            maxTablasDadosCaracteristicas: 1,
+            permitirHomebrewGeneral: true,
+            permitirVentajasDesventajas: false,
+            permitirIgnorarRestriccionesAlineamiento: false,
+            maxFuentesHomebrewGeneralesPorPersonaje: 1,
+        };
+        (component as any).selectedCampaignPolicyResolved = true;
+        // Solo su máster crea PNJ en la campaña.
+        (component as any).selectedCampaignActiveMasterUid = 'uid-actor';
+        const swalSpy = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+
+        await component.continuarDesdeBasicos();
+
+        const swalConfig = swalSpy.calls.mostRecent().args[0] as any;
+        expect(`${swalConfig.title ?? ''}`).not.toContain('La campaña no permite');
+        expect(`${swalConfig.html ?? ''}`).toContain('quedará marcado como homebrew');
+        expect(component.Personaje.Oficial).toBeFalse();
+        expect(component.modalCaracteristicasAbierto).toBeTrue();
+    });
+
     it('continuarDesdeBasicos no exige el alineamiento de la deidad a todos (MJ cap. 3: un guerrero LB de Gruumsh sigue siendo oficial)', async () => {
         component.Personaje.Alineamiento = 'Legal bueno';
         component.Personaje.Deidad = 'Gruumsh';

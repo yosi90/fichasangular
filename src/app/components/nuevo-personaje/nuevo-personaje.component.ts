@@ -183,7 +183,7 @@ import {
     politicaTienda,
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
-import { ModoHomebrewCampana, campanaDejaSaltarRequisitosPlantilla, maximoFuentesHomebrew, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
+import { ModoHomebrewCampana, campanaDejaSaltarAlineamiento, campanaDejaSaltarRequisitosPlantilla, maximoFuentesHomebrew, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { extraConTipoArma, extraDeArmadura, extraDeDote } from 'src/app/services/utils/extras-dotes';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
@@ -7109,10 +7109,12 @@ export class NuevoPersonajeComponent {
         return normalizarTexto(this.Personaje?.Campana ?? '') !== normalizarTexto('Sin campaña');
     }
 
+    /**
+     * Si puede saltarse una regla de alineamiento, con la regla común de la corrección y la API
+     * (`campanaDejaSaltarAlineamiento`): sin campaña o con un PNJ (sin política efectiva), sí; en una campaña, si lo deja.
+     */
     private get canIgnoreAlignmentRestrictionsForCurrentContext(): boolean {
-        if (!this.hasSelectedCampaignContext)
-            return true;
-        return this.effectiveSelectedCampaignPolicy?.permitirIgnorarRestriccionesAlineamiento === true;
+        return campanaDejaSaltarAlineamiento(this.effectiveSelectedCampaignPolicy);
     }
 
     private hasCampaignBlockersForBasicos(): boolean {
