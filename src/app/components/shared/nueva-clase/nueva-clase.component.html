@@ -137,24 +137,60 @@
                         Con la multiclase restringida, un nivel de otra clase la cierra; los de estas no (el paladín que se hace hospitalario,
                         <i>El divino completo</i>, pág. 48). Un nivel de cualquier otra la sigue cerrando.
                     </p>
-                    <mat-chip-listbox *ngIf="compatiblesMulticlase.length > 0; else sinCompatibles" class="boolean-chips"
-                        aria-label="Clases que no la cierran" [multiple]="true">
-                        <mat-chip-option *ngFor="let compatible of compatiblesMulticlase" [selected]="true"
-                            (click)="quitarCompatible(compatible.Id)" matTooltip="Quitar">
-                            {{compatible.Nombre}}<ng-container *ngIf="compatible.Condicion"> (con niveles de {{compatible.Condicion.Nombre}})</ng-container>
-                        </mat-chip-option>
-                    </mat-chip-listbox>
-                    <ng-template #sinCompatibles>
-                        <p class="panel-nota">Ninguna: cualquier otra clase la cierra.</p>
-                    </ng-template>
-                    <p class="panel-nota" *ngFor="let familia of lanzadorasMulticlase">
-                        Tampoco la cierran las clases que lanzan conjuros {{familia.Arcanos && familia.Divinos ? 'arcanos o divinos' : familia.Arcanos ? 'arcanos' : 'divinos'}}<ng-container *ngIf="familia.Condicion">, si tiene niveles de {{familia.Condicion.Nombre}}</ng-container>.
-                    </p>
+                    <div class="lista-vacia" *ngIf="compatiblesMulticlase.length < 1">Ninguna: cualquier otra clase la cierra.</div>
+                    <div class="compatible-fila" *ngFor="let compatible of compatiblesMulticlase">
+                        <span class="nombre-de-fila">{{compatible.Nombre}}</span>
+                        <div class="compatible-condicion">
+                            <app-catalogo-buscador etiqueta="Solo con niveles de (opcional)" placeholder="Sin condición"
+                                [opciones]="opcionesCondicion" [valor]="compatible.Condicion?.Id || null"
+                                (elegir)="condicionDeCompatible(compatible, $event)">
+                            </app-catalogo-buscador>
+                            <button mat-icon-button type="button" class="row-action-btn" *ngIf="compatible.Condicion"
+                                aria-label="Sin condición" matTooltip="Sin condición" (click)="condicionDeCompatible(compatible, 0)">
+                                <mat-icon>close</mat-icon>
+                            </button>
+                        </div>
+                        <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar" matTooltip="Quitar"
+                            (click)="quitarCompatible(compatible.Id)">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
                     <div class="mutacion-con-quitar">
                         <app-catalogo-buscador etiqueta="Añadir clase" [opciones]="opcionesCompatibles" [anadir]="true"
                             [error]="errores.mensajeDe('Clases_multiclase_compatibles')" (elegir)="anadirCompatible($event)">
                         </app-catalogo-buscador>
                     </div>
+                    <span class="ex-clase-subtitulo">Clases que lanzan conjuros</span>
+                    <p class="panel-nota">
+                        Tampoco la cierran las clases que lanzan conjuros de una familia (el monje con niveles de puño iluminado y las clases
+                        arcanas, <i>El arcano completo</i>, pág. 67). «Lanza» es tener conjuros diarios propios: una clase que solo aumenta
+                        otra, o que no tiene conjuros diarios, no cuenta.
+                    </p>
+                    <div class="lista-vacia" *ngIf="lanzadorasMulticlase.length < 1">Ninguna familia.</div>
+                    <div class="compatible-fila" *ngFor="let familia of lanzadorasMulticlase; let i = index">
+                        <mat-chip-listbox class="boolean-chips" aria-label="Familia de lanzadores" [multiple]="true">
+                            <mat-chip-option [selected]="familia.Arcanos" (click)="alternarFamilia(i, 'Arcanos')">Arcanos</mat-chip-option>
+                            <mat-chip-option [selected]="familia.Divinos" (click)="alternarFamilia(i, 'Divinos')">Divinos</mat-chip-option>
+                        </mat-chip-listbox>
+                        <div class="compatible-condicion">
+                            <app-catalogo-buscador etiqueta="Solo con niveles de (opcional)" placeholder="Sin condición"
+                                [opciones]="opcionesCondicion" [valor]="familia.Condicion?.Id || null"
+                                (elegir)="condicionDeFamilia(i, $event)">
+                            </app-catalogo-buscador>
+                            <button mat-icon-button type="button" class="row-action-btn" *ngIf="familia.Condicion"
+                                aria-label="Sin condición" matTooltip="Sin condición" (click)="condicionDeFamilia(i, 0)">
+                                <mat-icon>close</mat-icon>
+                            </button>
+                        </div>
+                        <button mat-icon-button type="button" class="row-action-btn" aria-label="Quitar" matTooltip="Quitar"
+                            (click)="quitarFamilia(i)">
+                            <mat-icon>delete</mat-icon>
+                        </button>
+                    </div>
+                    <div class="error-de-lista" *ngIf="errores.mensajeDe('Clases_multiclase_lanzadoras')">{{errores.mensajeDe('Clases_multiclase_lanzadoras')}}</div>
+                    <button mat-stroked-button type="button" (click)="anadirFamilia()">
+                        <mat-icon>add</mat-icon>Añadir familia de lanzadores
+                    </button>
                 </section>
 
                 <section class="panel-card">

@@ -267,7 +267,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
      * formulario aún no la edita). Sin la restricción no se manda ninguna.
      */
     compatiblesMulticlase: { Id: number; Nombre: string; Condicion?: { Id: number; Nombre: string; } | null; }[] = [];
-    /** Las familias de lanzadores que no la cierran (`Clases_multiclase_lanzadoras`), tal como llegaron (no se editan aquí). */
+    /** Las familias de lanzadores que no la cierran (`Clases_multiclase_lanzadoras`), con su condición opcional. */
     lanzadorasMulticlase: NonNullable<Clase['Clases_multiclase_lanzadoras']> = [];
     conjurosPorEspecialRows: ClaseConjuroPorEspecialRow[] = [];
     nivelesRequisitoRows: ClaseNivelRequisitoRow[] = [];
@@ -726,6 +726,49 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
 
     quitarCompatible(id: number): void {
         this.compatiblesMulticlase = this.compatiblesMulticlase.filter((item) => item.Id !== this.entero(id));
+    }
+
+    /** Las clases que pueden ser la condición de una compatible o de una familia: las del catálogo, sin ella misma. */
+    get opcionesCondicion(): OpcionCatalogo[] {
+        const propia = this.entero(this.idClase);
+        return opcionesDeCatalogo(this.clasesCatalogo.filter((item) => this.entero(item.Id) > 0 && this.entero(item.Id) !== propia));
+    }
+
+    /** La condición de una compatible («solo con niveles de…»: el pícaro del paladín inquisidor azote de sombras); 0, ninguna. */
+    condicionDeCompatible(compatible: { Id: number; }, id: number): void {
+        const condicion = this.condicionDelCatalogo(id);
+        this.compatiblesMulticlase = this.compatiblesMulticlase
+            .map((item) => item.Id === compatible.Id ? { ...item, Condicion: condicion } : item);
+    }
+
+    anadirFamilia(): void {
+        this.lanzadorasMulticlase = [...this.lanzadorasMulticlase, { Arcanos: true, Divinos: false, Condicion: null }];
+    }
+
+    quitarFamilia(indice: number): void {
+        this.lanzadorasMulticlase = this.lanzadorasMulticlase.filter((_, i) => i !== indice);
+    }
+
+    /** Arcanos o divinos de una familia; una familia no se queda sin ninguno de los dos (pasa al otro). */
+    alternarFamilia(indice: number, campo: 'Arcanos' | 'Divinos'): void {
+        this.lanzadorasMulticlase = this.lanzadorasMulticlase.map((item, i) => {
+            if (i !== indice)
+                return item;
+            const cambiada = { ...item, [campo]: !item[campo] };
+            if (!cambiada.Arcanos && !cambiada.Divinos)
+                cambiada[campo === 'Arcanos' ? 'Divinos' : 'Arcanos'] = true;
+            return cambiada;
+        });
+    }
+
+    condicionDeFamilia(indice: number, id: number): void {
+        const condicion = this.condicionDelCatalogo(id);
+        this.lanzadorasMulticlase = this.lanzadorasMulticlase.map((item, i) => i === indice ? { ...item, Condicion: condicion } : item);
+    }
+
+    private condicionDelCatalogo(id: number): { Id: number; Nombre: string; } | null {
+        const clase = this.clasesCatalogo.find((item) => item.Id === this.entero(id));
+        return clase ? { Id: clase.Id, Nombre: clase.Nombre } : null;
     }
 
     toggleConjurosConocidosLimitados(): void {

@@ -46,6 +46,7 @@ export const CAMPOS_CLASE: Readonly<Record<string, CampoDeClase>> = {
     Alineamiento_deidad_igual: { etiqueta: 'El mismo alineamiento que su deidad', paso: 0, control: 'alineamiento_deidad_igual' },
     // `400 clase_sin_restriccion_de_multiclase`, `dato_no_valido` (ella misma) y el `404` de una clase que no existe.
     Clases_multiclase_compatibles: { etiqueta: 'Clases que no la cierran', paso: 0 },
+    Clases_multiclase_lanzadoras: { etiqueta: 'Clases que lanzan conjuros y no la cierran', paso: 0 },
     Grupo_edad_inicial: { etiqueta: 'Edad inicial', paso: 0, control: 'grupo_edad_inicial' },
     Clase_pnj: { etiqueta: 'Clase de PNJ', paso: 0, control: 'clase_pnj' },
     Progresion_obligatoria: { etiqueta: 'Progresión obligatoria', paso: 0, control: 'progresion_obligatoria' },

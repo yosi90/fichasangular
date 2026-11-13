@@ -638,7 +638,7 @@ describe('NuevaClaseComponent (las clases que no cierran una restringida y el mi
             Clases_multiclase_compatibles: [{ Id: 189, Nombre: 'Hospitalario' }, { Id: 226, Nombre: 'Kensai' }],
         });
         const cuerpo = (editor as any).construirPayload();
-        // La condición, tal como llegó (sin ella, `null`): el formulario aún no la edita.
+        // La condición, tal como llegó (sin ella, `null`).
         expect(cuerpo.Clases_multiclase_compatibles).toEqual([{ Id: 189, Nombre: 'Hospitalario', Condicion: null }, { Id: 226, Nombre: 'Kensai', Condicion: null }]);
         expect(cuerpo.Alineamiento_deidad_igual).toBeTrue();
         expect(editor.isDirty).toBeFalse();
@@ -665,8 +665,36 @@ describe('NuevaClaseComponent (las clases que no cierran una restringida y el mi
         expect((editor as any).construirPayload().Clases_multiclase_compatibles).toEqual([]);
     });
 
+    it('edita la condición de una compatible y las familias de lanzadores (el pícaro del paladín inquisidor, el monje puño iluminado)', () => {
+        const editor = cargada({
+            Multiclase_restringida: true,
+            Clases_multiclase_compatibles: [{ Id: 12, Nombre: 'Pícaro' }],
+        });
+        editor.idClase = 11;
+        (editor as any).clasesCatalogo = [{ Id: 11, Nombre: 'Paladín de prueba' }, { Id: 12, Nombre: 'Pícaro' },
+            { Id: 239, Nombre: 'Puño iluminado' }, { Id: 364, Nombre: 'Inquisidor azote de sombras' }];
+        expect(editor.opcionesCondicion.map((o) => o.id)).not.toContain(11);
+        editor.condicionDeCompatible({ Id: 12 }, 364);
+        expect((editor as any).construirPayload().Clases_multiclase_compatibles)
+            .toEqual([{ Id: 12, Nombre: 'Pícaro', Condicion: { Id: 364, Nombre: 'Inquisidor azote de sombras' } }]);
+        expect(editor.isDirty).toBeTrue();
+        editor.condicionDeCompatible({ Id: 12 }, 0);
+        expect((editor as any).construirPayload().Clases_multiclase_compatibles[0].Condicion).toBeNull();
+
+        editor.anadirFamilia();
+        editor.condicionDeFamilia(0, 239);
+        expect((editor as any).construirPayload().Clases_multiclase_lanzadoras)
+            .toEqual([{ Arcanos: true, Divinos: false, Condicion: { Id: 239, Nombre: 'Puño iluminado' } }]);
+        // Una familia no se queda sin arcanos ni divinos.
+        editor.alternarFamilia(0, 'Arcanos');
+        expect((editor as any).construirPayload().Clases_multiclase_lanzadoras[0]).toEqual(jasmine.objectContaining({ Arcanos: false, Divinos: true }));
+        editor.quitarFamilia(0);
+        expect((editor as any).construirPayload().Clases_multiclase_lanzadoras).toEqual([]);
+    });
+
     it('los errores de la API van a su paso', () => {
         expect(CAMPOS_CLASE['Clases_multiclase_compatibles'].paso).toBe(0);
+        expect(CAMPOS_CLASE['Clases_multiclase_lanzadoras'].paso).toBe(0);
         expect(CAMPOS_CLASE['Alineamiento_deidad_igual'].control).toBe('alineamiento_deidad_igual');
     });
 });

@@ -363,6 +363,29 @@
     .listado-filtros
         grid-template-columns: 1fr
 
+// Las clases y las familias de lanzadores que no cierran una restringida: una fila con su condición y quitar.
+.compatible-fila
+    @include inserciones.fila-de-lista
+    display: flex
+    align-items: center
+    gap: 8px
+    flex-wrap: wrap
+
+    .nombre-de-fila
+        @include inserciones.nombre-de-fila
+        min-width: 160px
+
+.compatible-condicion
+    @include inserciones.buscador-con-quitar
+    flex: 1 1 260px
+    min-width: 0
+
+.lista-vacia
+    @include inserciones.lista-vacia
+
+.error-de-lista
+    @include inserciones.error-de-lista
+
 // La raza mutada que lleva una clase de monstruo, con su ✕ para dejarla sin ninguna.
 .mutacion-con-quitar
     @include inserciones.buscador-con-quitar
