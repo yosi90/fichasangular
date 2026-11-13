@@ -74,6 +74,18 @@ describe('adquirir una plantilla (sesiones, fase 7)', () => {
         expect(fichaDeLaPlantilla({ entrada, antes, despues: antes, idPlantilla: 9, puntosGolpe: 52, idAlineamiento: null }).personaje.idAlineamiento).toBe(1);
     });
 
+    it('las decisiones de la adquisición se suman a las de la ficha sin repetir (sin requisitos, la clase que se mantiene)', () => {
+        const entrada = guerrero(6, 52);
+        (entrada as any).decisionesHomebrew = [{ tipo: 'alineamiento_raza', idElemento: 3 }];
+        const ficha = fichaDeLaPlantilla({
+            entrada, antes: entrada, despues: entrada, idPlantilla: 8, puntosGolpe: 52, idAlineamiento: 9,
+            decisionesNuevas: [{ tipo: 'alineamiento_clase', idElemento: 7 }, { tipo: 'alineamiento_raza', idElemento: 3 }],
+        });
+        expect(ficha.decisionesHomebrew).toEqual([{ tipo: 'alineamiento_raza', idElemento: 3 }, { tipo: 'alineamiento_clase', idElemento: 7 }]);
+        expect(fichaDeLaPlantilla({ entrada, antes: entrada, despues: entrada, idPlantilla: 8, puntosGolpe: 52, idAlineamiento: 9 })
+            .decisionesHomebrew).toEqual([{ tipo: 'alineamiento_raza', idElemento: 3 }]);
+    });
+
     it('el resumen: el NEP que sube, los PX que no cambian, lo que cambia y la clase que deja de admitir su alineamiento', () => {
         const pj = (cambios: Record<string, unknown>) => ({
             Tipo_criatura: { Nombre: 'Humanoide' }, Alineamiento: 'Legal bueno', Fuerza: 16, Destreza: 13, Constitucion: 14,

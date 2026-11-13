@@ -19,7 +19,7 @@ import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service'
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
-import { cambiosDeLaPlantilla, CambioPlantilla, EntradaCambiosPlantilla, esPlantillaAdquirible, fichaDeLaPlantilla, PgPlantilla, puntosGolpeTrasPlantilla } from 'src/app/services/utils/adquirir-plantilla';
+import { cambiosDeLaPlantilla, CambioPlantilla, esPlantillaAdquirible, fichaDeLaPlantilla, PgPlantilla, puntosGolpeTrasPlantilla } from 'src/app/services/utils/adquirir-plantilla';
 import { evaluarAlineamientoClase } from 'src/app/services/utils/alineamiento-clase';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
@@ -27,13 +27,29 @@ import { caracteristicasPerdidasDe, modificadorCaracteristica } from 'src/app/se
 import { ajusteDePlantillas, dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
-import { motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
+import { DecisionHomebrew, motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
 import { evaluarPlantillaParaElegir, PlantillaEvaluacionParaElegir } from 'src/app/services/utils/plantilla-elegibilidad';
-import { campanaDejaSaltarRequisitosPlantilla, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
+import { campanaDejaSaltarAlineamiento, campanaDejaSaltarRequisitosPlantilla, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { carasDado } from 'src/app/services/utils/puntos-golpe';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 
 export type PasoPlantilla = 'plantilla' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'resumen';
+
+/**
+ * Una clase que deja de admitir el alineamiento que fija la plantilla (el paladín que se vuelve vampiro): queda ex (la
+ * regla) o, si se puede (`puedeMantener`), se mantiene como homebrew con la decisión `alineamiento_clase`.
+ */
+export interface ClaseContraAlineamiento {
+    idClase: number;
+    nombre: string;
+    razones: string[];
+    pierde: string[];
+    expiacion: boolean;
+    puedeMantener: boolean;
+    /** Por qué no se puede mantener (la campaña no deja saltarse el alineamiento). */
+    motivoNoMantener?: string;
+    mantenida: boolean;
+}
 
 /** Una plantilla de la lista, con lo que dice su evaluación (la de la creación) y si se puede elegir. */
 export interface OpcionPlantilla {
@@ -91,6 +107,10 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
     tiradaElegida: number | null = null;
     pg: PgPlantilla | null = null;
     cambios: CambioPlantilla[] = [];
+    /** Las clases que dejan de admitir su alineamiento con la plantilla: ex, o mantenidas como homebrew. */
+    clasesContraAlineamiento: ClaseContraAlineamiento[] = [];
+    /** Las que se mantienen como homebrew (la decisión `alineamiento_clase`), por su id. */
+    private clasesMantenidas = new Set<number>();
 
     private antes: PersonajeCreateRequestDto | null = null;
     private pjAntes: Personaje | null = null;
@@ -380,6 +400,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
 
     private prepararResumen(): void {
         this.calcularPg();
+        this.clasesContraAlineamiento = this.clasesQueDejanSuAlineamiento();
         this.cambios = cambiosDeLaPlantilla({
             antes: this.pjAntes!,
             despues: this.svc.PersonajeCreacion,
@@ -388,7 +409,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             tiradas: this.tiradaElegida !== null ? this.tiradas[this.tiradaElegida] ?? [] : [],
             experiencia: this.experiencia,
             nepDespues: this.nepDespues,
-            exClases: this.clasesQueDejanSuAlineamiento(),
+            exClases: this.clasesContraAlineamiento,
             razaContraAlineamiento: this.razaContraElAlineamientoNuevo(),
         });
     }
@@ -399,19 +420,63 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
      * pág. 179): queda ex. No es homebrew: es la regla (dictamen del máster de Rol, fase 7). Con el evaluador común
      * (`evaluarAlineamientoClase`); la API lo deriva igual (`utils/ex_clases.py`).
      */
-    private clasesQueDejanSuAlineamiento(): EntradaCambiosPlantilla['exClases'] {
+    private clasesQueDejanSuAlineamiento(): ClaseContraAlineamiento[] {
         if (this.idAlineamientoDespues() === null)
             return [];
         const alineamiento = this.svc.PersonajeCreacion.Alineamiento;
+        const puede = this.puedeMantenerClaseContraAlineamiento;
         return (this.entrada?.colecciones?.clases ?? []).flatMap((c) => {
             const clase = this.svc.claseDelCatalogo(c?.idClase);
             const antes = evaluarAlineamientoClase(clase, { alineamiento: this.pjAntes?.Alineamiento ?? '' });
             const despues = evaluarAlineamientoClase(clase, { alineamiento });
             if (!clase || !despues.estricta || antes.estricta)
                 return [];
+            const idClase = toInt(clase.Id);
             const pierde = [...(clase.Ex?.Especiales ?? []).map((e) => e.Nombre), ...(clase.Ex?.Pierde_magia ? ['su magia'] : [])];
-            return [{ nombre: `${clase.Nombre}`, razones: despues.incumple, pierde, expiacion: !!clase.Ex?.Requiere_expiacion }];
+            return [{
+                idClase, nombre: `${clase.Nombre}`, razones: despues.incumple, pierde, expiacion: !!clase.Ex?.Requiere_expiacion,
+                puedeMantener: puede, mantenida: puede && this.clasesMantenidas.has(idClase),
+                motivoNoMantener: puede ? undefined : 'la campaña no deja saltarse las restricciones de alineamiento',
+            }];
         });
+    }
+
+    /**
+     * Si se puede mantener como homebrew una clase que deja de admitir su alineamiento (la decisión `alineamiento_clase`,
+     * dictamen del máster de Rol): el máster y un PNJ, que se saltan la política de la campaña (con aviso:
+     * `reglasIgnoradas`), o quien la campaña deje saltarse el alineamiento (`campanaDejaSaltarAlineamiento`; sin campaña,
+     * siempre). La API aplica la misma regla (`decisiones_homebrew.incumplimientos_politica`).
+     */
+    get puedeMantenerClaseContraAlineamiento(): boolean {
+        return this.rolActor === 'master' || this.entrada?.personaje?.tipo === 'pnj'
+            || campanaDejaSaltarAlineamiento(this.pj?.PoliticaCompra);
+    }
+
+    /** El aviso del máster de la campaña: mantener una clase contra su alineamiento se salta la política de su campaña. */
+    get avisoDelMaster(): string {
+        return this.rolActor === 'master' && this.pj?.PoliticaCompra && !campanaDejaSaltarAlineamiento(this.pj.PoliticaCompra)
+            && this.clasesContraAlineamiento.some((c) => c.puedeMantener)
+            ? 'Como máster, puedes mantener la clase aunque tu campaña no deje saltarse el alineamiento: al guardar te diremos qué reglas se salta.'
+            : '';
+    }
+
+    /** «Mantenerla (homebrew)»: avisa antes de volver homebrew la ficha, y la clase conserva lo que le da (no queda ex). */
+    async mantenerClase(clase: ClaseContraAlineamiento): Promise<void> {
+        if (!clase.puedeMantener || clase.mantenida || this.guardando)
+            return;
+        const yaEsHomebrew = this.pj?.Oficial === false || this.sinRequisitos || this.elegida?.Oficial === false
+            || this.clasesMantenidas.size > 0;
+        const motivos = motivosQueConfirmar([`${clase.nombre} contra su alineamiento (${clase.razones.join(' · ')})`], yaEsHomebrew);
+        if (motivos.length > 0 && !await confirmarEleccionHomebrew(`Mantener ${clase.nombre}`, motivos))
+            return;
+        this.clasesMantenidas.add(clase.idClase);
+        this.prepararResumen();
+    }
+
+    /** «Dejarla ex»: vuelve a la regla (conserva sus niveles, pierde lo que dice su clase y no sube). */
+    dejarEx(clase: ClaseContraAlineamiento): void {
+        this.clasesMantenidas.delete(clase.idClase);
+        this.prepararResumen();
     }
 
     /**
@@ -429,21 +494,24 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
 
     private fichaParaGuardar(): PersonajeCreateRequestDto {
         const idAlineamiento = this.idAlineamientoDespues();
-        const ficha = fichaDeLaPlantilla({
+        return fichaDeLaPlantilla({
             entrada: this.entrada!,
             antes: this.antes!,
             despues: this.motor.cuerpoDelMotor(this.svc, this.entrada!, idAlineamiento),
             idPlantilla: toInt(this.elegida?.Id),
             puntosGolpe: this.pg?.total ?? toInt(this.entrada?.personaje.puntosGolpe),
             idAlineamiento,
+            decisionesNuevas: this.decisionesNuevas(),
         });
-        if (this.sinRequisitos) {
-            const decisiones = [...(ficha.decisionesHomebrew ?? [])];
-            if (!decisiones.some((d) => d.tipo === 'requisitos_plantilla' && toInt(d.idElemento) === toInt(this.elegida?.Id)))
-                decisiones.push({ tipo: 'requisitos_plantilla', idElemento: toInt(this.elegida?.Id) });
-            ficha.decisionesHomebrew = decisiones;
-        }
-        return ficha;
+    }
+
+    /** Lo que vuelve homebrew la adquisición: sin sus requisitos y las clases que se mantienen contra su alineamiento. */
+    private decisionesNuevas(): DecisionHomebrew[] {
+        return [
+            ...(this.sinRequisitos ? [{ tipo: 'requisitos_plantilla' as const, idElemento: toInt(this.elegida?.Id) }] : []),
+            ...this.clasesContraAlineamiento.filter((c) => c.mantenida)
+                .map((c) => ({ tipo: 'alineamiento_clase' as const, idElemento: c.idClase })),
+        ];
     }
 
     async guardar(): Promise<void> {
@@ -490,6 +558,8 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         this.tiradaElegida = null;
         this.pg = null;
         this.cambios = [];
+        this.clasesContraAlineamiento = [];
+        this.clasesMantenidas = new Set();
         this.error = '';
         await this.hidratar();
     }

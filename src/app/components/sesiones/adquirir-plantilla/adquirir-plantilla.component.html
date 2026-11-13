@@ -99,6 +99,26 @@
                         <tr *ngFor="let c of cambios" [class.subida__fila--bloqueada]="c.aviso"><th scope="row">{{c.que}}</th><td>{{c.antes}}</td><td class="subida__ahora">{{c.ahora}}</td><td>{{c.porque}}</td></tr>
                     </tbody>
                 </table>
+                <ng-container *ngIf="clasesContraAlineamiento.length > 0">
+                    <h2 class="subida__seccion">Las clases que dejan de admitir su alineamiento</h2>
+                    <p class="subida__nota">Por la regla quedan ex: conservan sus niveles, pierden lo que dice su clase y no suben más en ella (MJ, págs. 26-55). Se pueden mantener como homebrew: conservan todo y siguen subiendo, y el personaje queda homebrew.</p>
+                    <div *ngIf="avisoDelMaster" class="subida__aviso" role="status">
+                        <mat-icon aria-hidden="true">info</mat-icon>
+                        <span>{{avisoDelMaster}}</span>
+                    </div>
+                    <ul class="subida__lista" aria-label="Las clases que dejan de admitir su alineamiento">
+                        <li *ngFor="let c of clasesContraAlineamiento" class="subida__fila">
+                            <div class="subida__fila-texto">
+                                <span class="subida__fila-nombre">{{c.nombre}}</span>
+                                <span class="subida__fila-motivo">{{c.razones.join(' · ')}}<ng-container *ngIf="!c.puedeMantener && c.motivoNoMantener"> · {{c.motivoNoMantener}}: queda ex</ng-container></span>
+                            </div>
+                            <span *ngIf="c.mantenida" class="subida__etiqueta">Homebrew</span>
+                            <span *ngIf="!c.mantenida" class="subida__etiqueta">Queda ex</span>
+                            <button *ngIf="c.puedeMantener && !c.mantenida" mat-stroked-button type="button" [disabled]="guardando" (click)="mantenerClase(c)">Mantenerla (homebrew)</button>
+                            <button *ngIf="c.mantenida" mat-stroked-button type="button" [disabled]="guardando" (click)="dejarEx(c)">Dejarla ex</button>
+                        </li>
+                    </ul>
+                </ng-container>
                 <p *ngIf="sinRequisitos" class="subida__nota">La adquiere sin cumplir sus prerrequisitos: el personaje queda homebrew.</p>
                 <p class="subida__nota">La plantilla queda en la sesión {{sesion?.numero}} y se puede deshacer mientras la sesión siga abierta. Lo que cueste adquirirla (la filacteria del liche, un ritual) se apunta en la sesión como siempre.</p>
             </ng-container>

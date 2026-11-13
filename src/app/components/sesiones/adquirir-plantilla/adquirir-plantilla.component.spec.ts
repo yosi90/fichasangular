@@ -23,6 +23,7 @@ import { SubtipoService } from 'src/app/services/subtipo.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { UserSettingsService } from 'src/app/services/user-settings.service';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
+import Swal from 'sweetalert2';
 import { AdquirirPlantillaComponent } from './adquirir-plantilla.component';
 
 describe('AdquirirPlantillaComponent (adquirir una plantilla, fase 7)', () => {
@@ -86,5 +87,70 @@ describe('AdquirirPlantillaComponent (adquirir una plantilla, fase 7)', () => {
         const texto = fixture.nativeElement.querySelector('.subida__cabecera')?.textContent ?? '';
         expect(texto).toContain('Adquirir una plantilla');
         expect(texto).toContain('6.100 PX · NEP 3');
+    });
+
+    describe('una clase que deja de admitir su alineamiento (el paladín que se vuelve vampiro)', () => {
+        const paladin = {
+            Id: 6, Nombre: 'Paladín',
+            Alineamiento: {
+                Id: 1, Basico: { Id_basico: 1, Nombre: '' }, Ley: { Id_ley: 0, Nombre: '', Valor: null, Prohibe: false, Id_prioridad: 0 },
+                Moral: { Id_moral: 0, Nombre: '', Valor: null, Prohibe: false, Id_prioridad: 0 }, Prioridad: { Id_prioridad: 3, Nombre: '' },
+                Descripcion: '',
+            },
+            Alineamiento_deidad: false, Prerrequisitos_flags: {}, Prerrequisitos: {},
+            Ex: { Pierde_magia: true, Requiere_expiacion: true, Especiales: [{ Id: 30, Nombre: 'Castigar al mal' }] },
+        };
+
+        async function preparado(rolActor: 'jugador' | 'master', politica: Record<string, unknown> | null, tipo = 'pj'): Promise<any> {
+            const componente: any = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+            componente.rolActor = rolActor;
+            componente.pj = { Oficial: true, PoliticaCompra: politica };
+            componente.pjAntes = { Alineamiento: 'Legal bueno' };
+            componente.entrada = { personaje: { tipo }, colecciones: { clases: [{ idClase: 6 }] }, decisionesHomebrew: [] };
+            componente.elegida = { Id: 9, Nombre: 'Vampiro', Oficial: true };
+            spyOn(componente.svc, 'claseDelCatalogo').and.returnValue(paladin);
+            componente.svc.PersonajeCreacion.Alineamiento = 'Legal maligno';
+            spyOn(componente, 'calcularPg');
+            spyOn(componente, 'razaContraElAlineamientoNuevo').and.returnValue(null);
+            return componente;
+        }
+
+        const sinAlineamiento = { permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: null, permitirIgnorarRestriccionesAlineamiento: false };
+
+        it('el jugador de una campaña que no deja saltarse el alineamiento no puede mantenerla: queda ex', async () => {
+            const componente = await preparado('jugador', sinAlineamiento);
+            componente.prepararResumen();
+            const [clase] = componente.clasesContraAlineamiento;
+            expect(clase.puedeMantener).toBeFalse();
+            expect(clase.motivoNoMantener).toContain('no deja saltarse');
+            expect(componente.avisoDelMaster).toBe('');
+            expect(componente.cambios.some((c: any) => c.que === 'Ex paladín' && c.porque.includes('Castigar al mal'))).toBeTrue();
+        });
+
+        it('el máster la mantiene como homebrew, con su aviso y la decisión alineamiento_clase; y puede dejarla ex', async () => {
+            const componente = await preparado('master', sinAlineamiento);
+            componente.prepararResumen();
+            expect(componente.avisoDelMaster).toContain('Como máster');
+            // Avisa antes de volver homebrew la ficha (la confirmación de siempre).
+            const swal = spyOn(Swal, 'fire').and.resolveTo({ isConfirmed: true } as any);
+            await componente.mantenerClase(componente.clasesContraAlineamiento[0]);
+            expect(swal).toHaveBeenCalledTimes(1);
+            expect(componente.clasesContraAlineamiento[0].mantenida).toBeTrue();
+            expect(componente.cambios.find((c: any) => c.que === 'Paladín').porque).toContain('Se mantiene como homebrew');
+            componente.dejarEx(componente.clasesContraAlineamiento[0]);
+            expect(componente.clasesContraAlineamiento[0].mantenida).toBeFalse();
+        });
+
+        it('quien la campaña deja saltarse el alineamiento, y un PNJ, también; la ficha lleva la decisión', async () => {
+            for (const [rol, politica, tipo] of [['jugador', { ...sinAlineamiento, permitirIgnorarRestriccionesAlineamiento: true }, 'pj'],
+                ['jugador', sinAlineamiento, 'pnj'], ['jugador', null, 'pj']] as const) {
+                TestBed.resetTestingModule();
+                const componente = await preparado(rol, politica, tipo);
+                componente.prepararResumen();
+                expect(componente.clasesContraAlineamiento[0].puedeMantener).withContext(`${tipo} ${JSON.stringify(politica)}`).toBeTrue();
+                componente.clasesContraAlineamiento[0].mantenida = true;
+                expect(componente.decisionesNuevas()).toEqual([{ tipo: 'alineamiento_clase', idElemento: 6 }]);
+            }
+        });
     });
 });

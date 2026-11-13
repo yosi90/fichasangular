@@ -7,6 +7,7 @@ import { unirLista } from 'src/app/components/detalles/ficha/ficha';
 import { nombreExClase } from './alineamiento-clase';
 import { caracteristicasPerdidasDe, NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { normalizarTexto, toInt } from './normalizacion';
+import { DecisionHomebrew } from './personaje-oficialidad';
 import { experienciaParaNivel } from './experiencia-nivel';
 import { formatoPx } from './sesiones-texto';
 import { fichaConLoDelMotor, SE_CONSERVAN_PERSONAJE } from './subida-nivel';
@@ -37,6 +38,11 @@ export interface EntradaFichaPlantilla {
     puntosGolpe: number;
     /** El alineamiento que deja la plantilla (una que lo fija, como el vampiro); `null`, el de la `entrada`. */
     idAlineamiento: number | null;
+    /**
+     * Las decisiones homebrew de la adquisición, que se suman a las de la ficha sin repetir: `requisitos_plantilla` (sin
+     * sus prerrequisitos) y `alineamiento_clase` (una clase que se mantiene contra el alineamiento que fija).
+     */
+    decisionesNuevas?: DecisionHomebrew[];
 }
 
 /** La ficha de la adquisición: la `entrada` con lo que cambia el motor y la plantilla nueva en sus plantillas. */
@@ -47,6 +53,14 @@ export function fichaDeLaPlantilla(datos: EntradaFichaPlantilla): PersonajeCreat
     col.plantillas = [...previas.filter((p) => p.idPlantilla !== toInt(datos.idPlantilla)), { idPlantilla: toInt(datos.idPlantilla) }];
     if (toInt(datos.idAlineamiento) > 0)
         ficha.personaje.idAlineamiento = toInt(datos.idAlineamiento);
+    if ((datos.decisionesNuevas ?? []).length > 0) {
+        const decisiones = [...(ficha.decisionesHomebrew ?? [])];
+        (datos.decisionesNuevas ?? []).forEach((nueva) => {
+            if (!decisiones.some((d) => d.tipo === nueva.tipo && toInt(d.idElemento) === toInt(nueva.idElemento)))
+                decisiones.push(nueva);
+        });
+        ficha.decisionesHomebrew = decisiones;
+    }
     return ficha;
 }
 
@@ -143,8 +157,12 @@ export interface EntradaCambiosPlantilla {
     tiradas: number[];
     experiencia: ExperienciaPersonaje | null;
     nepDespues: number;
-    /** Las clases que dejan de admitir su alineamiento y quedan ex (ex paladín), con lo que pierden (`Clase.Ex`). */
-    exClases: Array<{ nombre: string; razones: string[]; pierde?: string[]; expiacion?: boolean; }>;
+    /**
+     * Las clases que dejan de admitir su alineamiento y quedan ex (ex paladín), con lo que pierden (`Clase.Ex`); o, si el
+     * máster (o quien deja la campaña) la mantiene como homebrew (`mantenida`: la decisión `alineamiento_clase`), lo
+     * conservan todo.
+     */
+    exClases: Array<{ nombre: string; razones: string[]; pierde?: string[]; expiacion?: boolean; mantenida?: boolean; }>;
     /** Lo que exige su raza si la plantilla le fija un alineamiento que la raza no suele tener (un aviso, no homebrew). */
     razaContraAlineamiento?: string | null;
 }
@@ -219,6 +237,13 @@ export function cambiosDeLaPlantilla(e: EntradaCambiosPlantilla): CambioPlantill
             porque: `${nombre} fija su alineamiento: manda la plantilla y no es homebrew (Manual de monstruos, pág. 291)`,
         });
     e.exClases.forEach((c) => {
+        if (c.mantenida) {
+            filas.push({
+                que: c.nombre, antes: 'Admite su alineamiento', ahora: c.razones.join(' · ') || 'Ya no lo admite', aviso: true,
+                porque: 'Se mantiene como homebrew: conserva lo que le da y puede seguir subiendo en ella',
+            });
+            return;
+        }
         const lista = unirLista(c.pierde ?? [], 'y');
         filas.push({
             que: nombreExClase(c.nombre), antes: 'Admite su alineamiento', ahora: c.razones.join(' · ') || 'Ya no lo admite', aviso: true,
