@@ -1,6 +1,6 @@
 import { Alineamiento } from 'src/app/interfaces/alineamiento';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
-import { normalizarTexto } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, toBoolean, toInt, toIntOrNull } from 'src/app/services/utils/normalizacion';
 import { tieneTextoVisible } from 'src/app/services/utils/texto-visible';
 
 export interface AlineamientoVector {
@@ -78,13 +78,11 @@ export interface DatoPreferenciaAlineamiento {
 
 /** El dato de una preferencia tal como llega de la API o de la caché (sin `Valor`, no pide nada). */
 export function datoDePreferencia(raw: any): Required<DatoPreferenciaAlineamiento> {
-    const valor = raw?.Valor;
-    const numero = valor === null || valor === undefined || `${valor}`.trim() === '' ? NaN : Number(valor);
-    const prohibe = raw?.Prohibe;
+    const valor = toIntOrNull(raw?.Valor);
     return {
-        Valor: Number.isFinite(numero) ? Math.max(-1, Math.min(1, Math.trunc(numero))) : null,
-        Prohibe: prohibe === true || prohibe === 1 || prohibe === '1' || `${prohibe}`.toLowerCase() === 'true',
-        Id_prioridad: Number.isFinite(Number(raw?.Id_prioridad)) ? Math.trunc(Number(raw?.Id_prioridad)) : 0,
+        Valor: valor === null ? null : Math.max(-1, Math.min(1, valor)),
+        Prohibe: toBoolean(raw?.Prohibe),
+        Id_prioridad: toInt(raw?.Id_prioridad),
     };
 }
 

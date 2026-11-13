@@ -20,7 +20,7 @@ import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.servi
 import { DoteSeleccionConfirmada, NuevoPersonajeService, PasoRepartoRangos } from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
-import { evaluarAlineamientoClase } from 'src/app/services/utils/alineamiento-clase';
+import { evaluarAlineamientoClase, nombreExClase } from 'src/app/services/utils/alineamiento-clase';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { CampaignPurchasePolicy } from 'src/app/interfaces/campaign-management';
 import {
@@ -417,7 +417,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             // Una ex clase (ya incumplía y no se mantuvo como homebrew: el paladín que se volvió vampiro) sigue ex: una
             // corrección no le devuelve lo que perdió (dictamen del máster de Rol; la API lo rechaza con `clase_ex`).
             if (!this.reglasDeAntes.has(clave) && evaluarAlineamientoClase(clase, { alineamiento: alineamientoAntes, deidad: deidadAntes }).estricta) {
-                this.avisos.push(`Ex ${clase.Nombre.toLowerCase()}: sigue sin poder subir de nivel en esta clase, y una corrección no le devuelve lo que perdió.`);
+                this.avisos.push(`${nombreExClase(clase.Nombre)}: sigue sin poder subir de nivel en esta clase, y una corrección no le devuelve lo que perdió.`);
                 return;
             }
             const puede = this.puedeLoDelMaster && dejaSaltarAlineamiento;

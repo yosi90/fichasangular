@@ -3,6 +3,8 @@ import { Personaje } from 'src/app/interfaces/personaje';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { ExperienciaPersonaje } from 'src/app/interfaces/sesiones';
+import { unirLista } from 'src/app/components/detalles/ficha/ficha';
+import { nombreExClase } from './alineamiento-clase';
 import { caracteristicasPerdidasDe, NOMBRES_CARACTERISTICAS } from './caracteristicas';
 import { normalizarTexto, toInt } from './normalizacion';
 import { experienciaParaNivel } from './experiencia-nivel';
@@ -217,10 +219,9 @@ export function cambiosDeLaPlantilla(e: EntradaCambiosPlantilla): CambioPlantill
             porque: `${nombre} fija su alineamiento: manda la plantilla y no es homebrew (Manual de monstruos, pág. 291)`,
         });
     e.exClases.forEach((c) => {
-        const pierde = c.pierde ?? [];
-        const lista = pierde.length > 1 ? `${pierde.slice(0, -1).join(', ')} y ${pierde[pierde.length - 1]}` : pierde[0] ?? '';
+        const lista = unirLista(c.pierde ?? [], 'y');
         filas.push({
-            que: `Ex ${c.nombre.toLowerCase()}`, antes: 'Admite su alineamiento', ahora: c.razones.join(' · ') || 'Ya no lo admite', aviso: true,
+            que: nombreExClase(c.nombre), antes: 'Admite su alineamiento', ahora: c.razones.join(' · ') || 'Ya no lo admite', aviso: true,
             porque: `Conserva sus niveles, pero no puede subir en ella${lista ? ` y pierde ${lista}` : ''}`
                 + `${c.expiacion ? '; lo recupera con una expiación' : ''} (MJ, págs. 26-55)`,
         });

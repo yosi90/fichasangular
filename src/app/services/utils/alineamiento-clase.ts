@@ -20,7 +20,13 @@ import { toInt } from './normalizacion';
  * aplica la misma regla (`utils/alineamiento_clase.py`) para saber qué clases quedan ex.
  */
 
-export { PRIORIDAD_ALINEAMIENTO_ESTRICTA };
+/**
+ * El nombre de una ex clase: «Ex paladín», con «ex» separado como en la edición española (MJ, «Ex paladines»). El de la
+ * ficha lo da la API (`clases[].ex.nombre`, `utils/ex_clases.frase_ex`); este, el de lo que aún no se ha guardado.
+ */
+export function nombreExClase(nombreClase: string | null | undefined): string {
+    return `Ex ${`${nombreClase ?? ''}`.trim().toLowerCase()}`.trim();
+}
 
 export interface EvaluacionAlineamientoClase {
     /** Lo que no cumple, en frases («Requiere legal», «Prohíbe bueno», «Debe estar a un paso del alineamiento de…»). */
