@@ -20,6 +20,7 @@ import { RegionDetalle } from '../interfaces/region';
 import { RacialDetalle } from '../interfaces/racial';
 import { ListaLanzamientoRaza, Raza, RazaPlantillaReferencia } from '../interfaces/raza';
 import { RazaSimple } from '../interfaces/simplificaciones/raza-simple';
+import { NivelPerdido } from '../interfaces/sesiones';
 import { SubtipoRef, SubtipoResumen } from '../interfaces/subtipo';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { VentajaDetalle } from '../interfaces/ventaja';
@@ -1055,7 +1056,7 @@ export interface DatosSubidaDesdeFicha {
      * Los niveles que ha perdido (`nivelesPerdidos` de la sesión, fase 7): uno de otra clase, perdido después de empezar
      * una con restricción de multiclase, la cierra igual (*Manual del jugador*, pág. 55).
      */
-    nivelesPerdidos?: Array<{ idClase: number; ordenConocido: boolean; clasesAnteriores: number[]; }>;
+    nivelesPerdidos?: Array<Pick<NivelPerdido, 'idClase' | 'ordenConocido' | 'clasesAnteriores'>>;
 }
 
 /** El intercambio de un conjuro conocido en el nivel en curso (`getIntercambioConjurosDelNivel`). */
