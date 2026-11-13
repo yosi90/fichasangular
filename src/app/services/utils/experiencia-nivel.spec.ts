@@ -1,4 +1,4 @@
-import { experienciaParaNivel } from './experiencia-nivel';
+import { experienciaParaNivel, nivelPorExperiencia } from './experiencia-nivel';
 
 describe('experienciaParaNivel', () => {
     it('da la experiencia mínima de cada nivel', () => {
@@ -9,5 +9,11 @@ describe('experienciaParaNivel', () => {
         expect(experienciaParaNivel(-2)).toBe(0);
         expect(experienciaParaNivel(NaN)).toBe(0);
         expect(experienciaParaNivel(3.7)).toBe(3000);
+    });
+});
+
+describe('nivelPorExperiencia', () => {
+    it('es la inversa de experienciaParaNivel, como la API', () => {
+        expect([0, 999, 1000, 2999, 3000, 45000, 44999].map(nivelPorExperiencia)).toEqual([1, 1, 2, 2, 3, 10, 9]);
     });
 });

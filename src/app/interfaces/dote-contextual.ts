@@ -7,6 +7,8 @@ export interface DoteLegacy {
     Pagina: number;
     Extra: string;
     Origen: string;
+    /** La conserva sin poder usarla hasta que vuelva a cumplir sus prerrequisitos (MJ pág. 87; desde el 2026-11-13). */
+    Sin_prerrequisitos?: boolean;
 }
 
 interface DoteContextoBase {
@@ -24,6 +26,11 @@ export interface DoteContextoPersonaje extends DoteContextoBase {
     Entidad: "personaje";
     Id_personaje: number;
     Origen?: string;
+    /**
+     * La conserva sin poder usarla hasta que vuelva a cumplir sus prerrequisitos (al perder un nivel: MJ pág. 87); no es
+     * homebrew. Desde el 2026-11-13.
+     */
+    Sin_prerrequisitos?: boolean;
 }
 
 export interface DoteContextoRaza extends DoteContextoBase {

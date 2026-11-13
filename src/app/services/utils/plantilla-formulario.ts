@@ -125,6 +125,9 @@ export const CAMPOS_PLANTILLA: CamposDeFormulario = {
     volar: { etiqueta: 'Volar', paso: 1 },
     trepar: { etiqueta: 'Trepar', paso: 1 },
     excavar: { etiqueta: 'Excavar', paso: 1 },
+    coste_px: { etiqueta: 'PX que cuesta adquirirla', paso: 1 },
+    coste_po: { etiqueta: 'Po que cuesta adquirirla', paso: 1 },
+    coste_niveles: { etiqueta: 'Niveles que pierde antes', paso: 1 },
     id_maniobrabilidad: { etiqueta: 'Maniobrabilidad', paso: 1 },
     puntos_hab_suma: { etiqueta: 'Puntos de habilidad por DG', paso: 1 },
     puntos_hab_suma_fija: { etiqueta: 'Puntos de habilidad fijos', paso: 1 },
@@ -161,6 +164,10 @@ export type PlantillaFormularioValor =
         avance: string;
         nombre_original: string;
         con_dg_lic: boolean;
+        /** Lo que cuesta adquirirla: PX, po y niveles que pierde antes (van en `coste_al_adquirir`). */
+        coste_px: number;
+        coste_po: number;
+        coste_niveles: number;
     };
 
 /** Una aptitud racial o un ataque especial que da la plantilla, desde sus DG (1: desde el principio). */
@@ -250,6 +257,9 @@ export function valorPlantillaNueva(): PlantillaFormularioValor {
         volar: 0,
         trepar: 0,
         excavar: 0,
+        coste_px: 0,
+        coste_po: 0,
+        coste_niveles: 0,
         id_maniobrabilidad: 0,
         puntos_hab_suma: 0,
         puntos_hab_suma_fija: 0,
@@ -320,6 +330,9 @@ export function valorDesdePlantilla(plantilla: Plantilla): PlantillaFormularioVa
         volar: toInt(plantilla.Movimientos?.Volar),
         trepar: toInt(plantilla.Movimientos?.Trepar),
         excavar: toInt(plantilla.Movimientos?.Excavar),
+        coste_px: toInt(plantilla.Coste_al_adquirir?.Px),
+        coste_po: toInt(plantilla.Coste_al_adquirir?.Po),
+        coste_niveles: toInt(plantilla.Coste_al_adquirir?.Niveles_perdidos),
         id_maniobrabilidad: toInt(plantilla.Maniobrabilidad?.Id),
         puntos_hab_suma: toInt(plantilla.Puntos_habilidad?.Suma),
         puntos_hab_suma_fija: toInt(plantilla.Puntos_habilidad?.Suma_fija),
@@ -485,7 +498,7 @@ export function prerrequisitosDesdeFilas(
 
 /** El cuerpo de `POST /plantillas/add` (y del `PUT` de la modificación, que lleva el mismo). */
 export function construirPlantillaRequest(valor: PlantillaFormularioValor, listas: ListasPlantilla): PlantillaCreateRequest {
-    const { con_dg_lic, ...escalares } = valor;
+    const { con_dg_lic, coste_px, coste_po, coste_niveles, ...escalares } = valor;
     const plantilla: PlantillaEscalaresRequest = {
         ...escalares,
         nombre: `${valor.nombre ?? ''}`.trim(),
@@ -512,6 +525,12 @@ export function construirPlantillaRequest(valor: PlantillaFormularioValor, lista
     Object.keys(escritura)
         .filter((campo) => !CAMPOS_NO_NUMERICOS.has(campo))
         .forEach((campo) => escritura[campo] = toInt(escritura[campo]));
+    // Lo que cuesta adquirirla, siempre (la edición lo pone tal como está en el formulario).
+    plantilla.coste_al_adquirir = {
+        px: Math.max(0, toInt(coste_px)),
+        po: Math.max(0, toInt(coste_po)),
+        niveles_perdidos: Math.min(20, Math.max(0, toInt(coste_niveles))),
+    };
 
     return {
         plantilla,

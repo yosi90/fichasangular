@@ -103,6 +103,17 @@ describe('plantilla-formulario', () => {
         expect(sin.plantilla).toEqual(jasmine.objectContaining({ fue_forma_animal: 0, des_forma_animal: 0, con_forma_animal: 0 }));
     });
 
+    it('manda lo que cuesta adquirirla (el necropolita: 1 nivel, 1.000 PX y 3.000 po) y lo lee de la plantilla', () => {
+        const cuerpo = construirPlantillaRequest({ ...valorPlantillaNueva(), coste_px: 1000, coste_po: 3000, coste_niveles: 1 }, listasPlantillaVacias());
+        expect(cuerpo.plantilla.coste_al_adquirir).toEqual({ px: 1000, po: 3000, niveles_perdidos: 1 });
+        expect((cuerpo.plantilla as any).coste_px).toBeUndefined();
+        const plantilla = normalizePlantillaApi({ ...plantillaApiDeEjemplo(), Coste_al_adquirir: { Px: 4800, Po: 120000, Niveles_perdidos: 0 } });
+        expect(plantilla.Coste_al_adquirir).toEqual({ Px: 4800, Po: 120000, Niveles_perdidos: 0 });
+        expect(valorDesdePlantilla(plantilla)).toEqual(jasmine.objectContaining({ coste_px: 4800, coste_po: 120000, coste_niveles: 0 }));
+        // Una caché de antes, sin coste: nada.
+        expect(normalizePlantillaApi(plantillaApiDeEjemplo()).Coste_al_adquirir).toEqual({ Px: 0, Po: 0, Niveles_perdidos: 0 });
+    });
+
     it('cambiar la forma animal marca su campo, en el paso de los DG', () => {
         const plantilla = normalizePlantillaApi(plantillaApiDeEjemplo());
         const antes = construirPlantillaRequest(valorDesdePlantilla(plantilla), listasPlantillaVacias());

@@ -187,6 +187,11 @@ export interface Plantilla {
     Cd: number;
     Puntos_habilidad: PlantillaPuntosHabilidad;
     Nacimiento: boolean;
+    /**
+     * Lo que cuesta adquirirla con el personaje ya creado (desde el 2026-11-13): los PX, las po y los niveles que pierde
+     * antes (el liche, 4.800 PX y 120.000 po; el necropolita, 1 nivel, 1.000 PX y 3.000 po). 0 si nada.
+     */
+    Coste_al_adquirir?: PlantillaCosteAlAdquirir;
     Movimientos: Movimientos;
     Maniobrabilidad: Maniobrabilidad;
     Alineamiento: Alineamiento;
@@ -291,6 +296,8 @@ export interface PlantillaEscalaresRequest {
     avance: string | null;
     nombre_original: string | null;
     traducido: boolean;
+    /** Lo que cuesta adquirirla (desde el 2026-11-13); sin él, la edición conserva el que tiene. */
+    coste_al_adquirir?: { px: number; po: number; niveles_perdidos: number; };
 }
 
 /** `PlantillaCreateRequest.prerrequisitos`: cada familia con sus campos de escritura en minúscula. */
@@ -332,4 +339,11 @@ export interface PlantillaMutacionResponse {
     message: string;
     idPlantilla: number;
     plantilla: Plantilla | null;
+}
+
+/** Lo que cuesta adquirir una plantilla (`Coste_al_adquirir`). */
+export interface PlantillaCosteAlAdquirir {
+    Px: number;
+    Po: number;
+    Niveles_perdidos: number;
 }

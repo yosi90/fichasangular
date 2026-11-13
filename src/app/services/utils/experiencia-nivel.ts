@@ -8,3 +8,12 @@ export function experienciaParaNivel(nivel: number): number {
     const n = Math.max(0, toInt(nivel));
     return n > 0 ? 1000 * n * (n - 1) / 2 : 0;
 }
+
+/** El nivel que dan unos PX (el más alto cuyos PX mínimos no pasan de ellos; al menos el 1): la inversa, como la API. */
+export function nivelPorExperiencia(px: number): number {
+    const total = Math.max(0, toInt(px));
+    let nivel = 1;
+    while (nivel < 1000 && experienciaParaNivel(nivel + 1) <= total)
+        nivel++;
+    return nivel;
+}

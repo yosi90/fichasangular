@@ -146,6 +146,69 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
         this.puertaSubida.solicitarPerdida(this.idPersonaje);
     }
 
+    /** Cuántos niveles consumidos por un nivel negativo le devolvería un restablecimiento (lo dice la API). */
+    get nivelesRestablecibles(): number {
+        return this.puedeAdquirirPlantilla ? toNumber(this.datos?.nivelesRestablecibles) : 0;
+    }
+
+    restableciendo = false;
+
+    /**
+     * «Restablecer un nivel» (*Manual del jugador*, pág. 284): el conjuro (el mayor los devuelve todos, uno a uno) y, si se
+     * quiere, el nivel del lanzador; el plazo lo confirma quien lo apunta. La API devuelve el nivel tal como era.
+     */
+    async restablecerNivel(): Promise<void> {
+        const sesion = this.abiertaDeJuego;
+        if (!sesion || this.restableciendo)
+            return;
+        const cuantos = this.nivelesRestablecibles;
+        const r = await Swal.fire({
+            icon: 'question',
+            title: 'Restablecer un nivel',
+            html: `<p>Devuelve el último nivel consumido por un nivel negativo, tal como era (su clase, lo que eligió y su tirada).
+                Solo si no ha pasado más de 1 día por nivel del lanzador (una semana con el mayor).</p>
+                <label style="display:block;margin-top:.75rem;text-align:left">Conjuro
+                    <select id="restablecer-conjuro" class="swal2-select">
+                        <option value="restablecimiento">Restablecimiento (un nivel)</option>
+                        <option value="restablecimiento_mayor">Restablecimiento mayor (${cuantos > 1 ? `los ${cuantos}` : 'el que puede'})</option>
+                    </select>
+                </label>
+                <label style="display:block;margin-top:.75rem;text-align:left">Nivel del lanzador (opcional)
+                    <input id="restablecer-lanzador" type="number" min="1" max="60" class="swal2-input">
+                </label>`,
+            showCancelButton: true, confirmButtonText: 'Restablecer', cancelButtonText: 'Volver',
+            target: document.body, heightAuto: false, scrollbarPadding: false,
+            preConfirm: () => ({
+                conjuro: (document.getElementById('restablecer-conjuro') as HTMLSelectElement | null)?.value === 'restablecimiento_mayor'
+                    ? 'restablecimiento_mayor' as const : 'restablecimiento' as const,
+                nivelLanzador: toNumber((document.getElementById('restablecer-lanzador') as HTMLInputElement | null)?.value),
+            }),
+        });
+        if (!r.isConfirmed || !r.value)
+            return;
+        this.restableciendo = true;
+        try {
+            let version = sesion.version;
+            let quedan = 1;
+            const nivelLanzador = r.value.nivelLanzador >= 1 && r.value.nivelLanzador <= 60 ? Math.trunc(r.value.nivelLanzador) : undefined;
+            while (quedan > 0) {
+                const respuesta = await this.sesionesSvc.restablecerNivel(this.idPersonaje, {
+                    conjuro: r.value.conjuro, ...(nivelLanzador ? { nivelLanzador } : {}), version,
+                });
+                version = respuesta.sesion.version;
+                quedan = r.value.conjuro === 'restablecimiento_mayor' ? respuesta.restablecimiento.quedan : 0;
+            }
+            this.puertaSubida.subidaHecha(this.idPersonaje);
+        } catch (error: any) {
+            await Swal.fire({
+                icon: 'error', title: 'Restablecer un nivel', text: `${error?.message ?? ''}`.trim() || 'No se ha podido restablecer el nivel.',
+                target: document.body, heightAuto: false, scrollbarPadding: false,
+            });
+        } finally {
+            this.restableciendo = false;
+        }
+    }
+
     /** Los datos libres (fase 6): el formulario se abre aquí mismo. */
     datosAbiertos = false;
 

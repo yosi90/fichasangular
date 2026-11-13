@@ -39,6 +39,8 @@ export type TipoEventoSesion =
     | 'plantilla_adquirida'
     /** Un nivel perdido con el personaje ya creado (fase 7, segunda tanda, `POST /personajes/{id}/niveles/perdida`). */
     | 'nivel_perdido'
+    /** Un nivel consumido que devuelve un restablecimiento (`POST /personajes/{id}/niveles/restablecimiento`). */
+    | 'nivel_restablecido'
     /** El alineamiento o la deidad cambian en juego, una clase cae por su conducta o la recupera con una expiación (solo el máster). */
     | 'cambio_alineamiento'
     | 'caida'
@@ -109,6 +111,8 @@ export interface HistorialSesiones {
     /** Con qué rol apunta (`jugador` o `master`; `null` si no apunta): lo que solo corrige el máster (fase 6). */
     rolActor: 'jugador' | 'master' | null;
     experiencia: ExperienciaPersonaje | null;
+    /** Cuántos niveles perdidos por consunción de energía le devolvería un restablecimiento (0 si no apunta). */
+    nivelesRestablecibles?: number;
     sesiones: SesionPersonaje[];
 }
 
@@ -131,6 +135,9 @@ export interface NivelPerdido {
     nivelClase: number;
     ordenConocido: boolean;
     clasesAnteriores: number[];
+    /** La causa de la pérdida y si un restablecimiento lo devuelve ahora (desde el 2026-11-13). */
+    causa?: CausaPerdidaDto | null;
+    restablecible?: boolean;
 }
 
 /** El cuerpo de `POST /personajes/{id}/niveles`: la ficha completa con un nivel más, la clase y la tirada de PG. */
@@ -181,16 +188,34 @@ export interface AdquirirPlantillaDto {
     version: string;
     /** Lo que salió en cada DG que añade la plantilla (los del animal de un licántropo); sin DG nuevos, nada. */
     pg?: { tiradas: number[]; };
+    /** Las po que cuesta adquirirla las paga otro (un mecenas, o ya se apuntaron): no salen de su saldo. */
+    poPagadasPorOtro?: boolean;
+}
+
+/** Lo que costó adquirir una plantilla (`plantilla.coste` de la respuesta). */
+export interface CosteDePlantillaCobrado {
+    px: number;
+    po: number;
+    poCoste: number;
+    niveles: number;
+    poPagadasPorOtro: boolean;
 }
 
 /** Lo que responde la adquisición: la sesión donde queda, los PX (que no cambian) y el NEP de antes y de ahora. */
 export interface RespuestaPlantilla extends RespuestaSesion {
-    plantilla: { idEvento: number; numeroSesion: number; id: number; nombre: string; nepAntes: number | null; nepDespues: number | null; };
+    plantilla: {
+        idEvento: number; numeroSesion: number; id: number; nombre: string; nepAntes: number | null; nepDespues: number | null;
+        coste: CosteDePlantillaCobrado | null;
+    };
 }
 
 /** El cuerpo de `POST /personajes/{id}/niveles/perdida`: la ficha sin lo del nivel que pierde (fase 7, segunda tanda). */
+export type CausaPerdidaDto = 'revivir' | 'nivel_negativo' | 'plantilla' | 'experiencia' | 'otro';
+
 export interface PerderNivelDto {
-    causa: 'revivir' | 'nivel_negativo' | 'plantilla' | 'otro';
+    causa: CausaPerdidaDto;
+    /** Con la causa `experiencia`: los PX que pierde (0, el siguiente de una pérdida que baja varios niveles). */
+    px?: number;
     /** Texto libre al final de la frase (como mucho 150 caracteres). */
     concepto?: string;
     /** Solo con el orden de sus niveles por conocer: la clase que pierde el nivel. */
@@ -211,6 +236,29 @@ export interface RespuestaPerdida extends RespuestaSesion {
         pxAntes: number;
         pxDespues: number;
         constitucion: { antes: number; despues: number; } | null;
+    };
+}
+
+export type ConjuroRestablecimiento = 'restablecimiento' | 'restablecimiento_mayor';
+
+/** El cuerpo de `POST /personajes/{id}/niveles/restablecimiento`: el conjuro y, opcional, el nivel del lanzador. */
+export interface RestablecerNivelDto {
+    conjuro: ConjuroRestablecimiento;
+    nivelLanzador?: number;
+    concepto?: string;
+    version: string;
+}
+
+/** Lo que responde restablecer un nivel: la sesión, los PX de ahora, el nivel que vuelve y cuántos quedan. */
+export interface RespuestaRestablecimiento extends RespuestaSesion {
+    restablecimiento: {
+        idEvento: number;
+        numeroSesion: number;
+        clase: { id: number; nombre: string; } | null;
+        nivelClase: number | null;
+        pxAntes: number;
+        pxDespues: number;
+        quedan: number;
     };
 }
 

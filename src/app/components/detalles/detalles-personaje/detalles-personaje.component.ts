@@ -1353,7 +1353,12 @@ ${envejecimiento}` : edades;
                 valor: textoConSigno(e.bono),
                 nota: e.veces > 1 ? `${e.veces} veces` : '',
             })),
-            dotes: dotesVisiblesPersonaje(pj).map((d) => ({ texto: d.texto, nota: this.texto(d.ref.Origen), ref: d.ref })),
+            // La que conserva sin sus prerrequisitos (al perder un nivel, MJ pág. 87): «… · sin sus prerrequisitos (no se puede usar)».
+            dotes: dotesVisiblesPersonaje(pj).map((d) => ({
+                texto: d.texto,
+                nota: [this.texto(d.ref.Origen), d.ref.Sin_prerrequisitos ? 'sin sus prerrequisitos (no se puede usar)' : ''].filter(Boolean).join(' · '),
+                ref: d.ref,
+            })),
             aptitudes: (pj.Claseas ?? []).filter((c) => this.esVisible(c?.Nombre)).map((c) => {
                 const extra = this.getExtraVisibleEspecial(c);
                 // La que ha perdido por una ex clase: «Castigar al mal · perdida (ex paladín)».
@@ -1656,6 +1661,7 @@ ${envejecimiento}` : edades;
             toNumber(p?.Multiplicador_dgs_lic) > 0 ? `${toNumber(p.Multiplicador_dgs_lic)}${`${p?.Tipo_dgs_lic ?? ''}`.trim()} DG adicionales` : '',
             toNumber(p?.Ajuste_nivel) > 0 ? `ajuste de nivel +${toNumber(p.Ajuste_nivel)}` : '',
             p?.Heredada ? 'heredada' : 'adquirida',
+            toNumber(p?.Sesion_adquirida) > 0 ? `en la sesión ${toNumber(p.Sesion_adquirida)}` : '',
         ].filter(Boolean).join(' · ');
     }
 

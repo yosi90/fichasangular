@@ -749,4 +749,46 @@ describe('Los rasgos y los ataques especiales de las plantillas, en la ficha (20
         conEllos.iniciarSubidaDesdeFicha({ personaje: JSON.parse(JSON.stringify(motor.PersonajeCreacion)), entrada: guardado.entrada, raza: HUMANO, plantillas: [CELESTIAL] });
         expect(raciales(conEllos)).toEqual([[8, 'Celestial'], [128, 'Celestial']]);
     });
+
+    it('las dotes de sus rasgos (`racial_dotes`), por sus DG, con el rasgo como origen, y se van con la plantilla', () => {
+        const conDote = { ...racial(140, 'Rasgo con dote'), Dotes: [{ Id_dote: 21, Dote: 'Alerta', Id_extra: 0, Extra: '' }] };
+        const deMasDg = { ...racial(141, 'Rasgo de 8 DG con dote'), Dotes: [{ Id_dote: 22, Dote: 'Aguante', Id_extra: 0, Extra: '' }] };
+        const plantilla = { ...CELESTIAL, Id: 2, Nombre: 'Con dotes', Raciales: [{ Racial: conDote, Dg: 0 }, { Racial: deMasDg, Dg: 8 }], Ataques_especiales: [] } as unknown as Plantilla;
+        const svc = crear(HUMANO, { Fuerza: 15 });
+        aplicarNivel(svc, GUERRERO, 'Fuerza');
+        const dotes = () => (svc.PersonajeCreacion.DotesContextuales ?? []).map((d) => [toInt(d.Dote?.Id), (d.Contexto as any)?.Origen]);
+        expect(svc.agregarPlantillaSeleccion(plantilla)).toBeTrue();
+        expect(dotes()).toEqual(jasmine.arrayContaining([[21, 'Rasgo con dote']]));
+        expect(dotes().some(([id]) => id === 22)).toBeFalse();
+        svc.quitarPlantillaSeleccion(2);
+        expect(dotes().some(([id]) => id === 21)).toBeFalse();
+    });
+});
+
+describe('Las dotes que se quedan sin un prerrequisito al perder un nivel (MJ pág. 87)', () => {
+    const HUMANO = crearRaza('Humano');
+
+    it('la Constitución perdida a 1.er nivel o el nivel que se pierde: solo las que antes cumplían, y el motor queda como estaba', () => {
+        const svc = crear(HUMANO, { Fuerza: 13, Constitucion: 13 });
+        aplicarNivel(svc, GUERRERO);
+        const guardado = guardar(svc);
+        const motor = subir(guardado, HUMANO);
+        const conCon = { ...dote(61, 'Dureza mejorada'), Prerrequisitos: { caracteristica: [
+            { Id_caracteristica: 3, Caracteristica: 'Constitucion', Cantidad: 13, Opcional: 0, Frase: 'Constitución 13' }] } };
+        const conFue = { ...dote(62, 'Ataque poderoso'), Prerrequisitos: { caracteristica: [
+            { Id_caracteristica: 1, Caracteristica: 'Fuerza', Cantidad: 13, Opcional: 0, Frase: 'Fuerza 13' }] } };
+        motor.setCatalogoDotes([...DOTES, conCon, conFue]);
+        [conCon, conFue].forEach((d) => motor.PersonajeCreacion.DotesContextuales.push({
+            Dote: d, Contexto: { Entidad: 'personaje', Id_personaje: 0, Id_extra: 0, Extra: '', Origen: 'Dote de nivel 1' },
+        } as any));
+        const con = motor.PersonajeCreacion.Constitucion;
+        expect(motor.dotesSinPrerrequisitosTrasPerder({ caracteristica: { clave: 'Constitucion', menos: 2 } }).map((d) => d.idDote)).toEqual([61]);
+        expect(motor.PersonajeCreacion.Constitucion).toBe(con);
+        expect(motor.dotesSinSusPrerrequisitos()).toEqual([]);
+        // El incremento que se pierde baja la Fuerza: Ataque poderoso.
+        expect(motor.dotesSinPrerrequisitosTrasPerder({ caracteristica: { clave: 'Fuerza', menos: 1 } }).map((d) => d.idDote)).toEqual([62]);
+        // Una que se va con el nivel no cuenta.
+        expect(motor.dotesSinPrerrequisitosTrasPerder({ caracteristica: { clave: 'Fuerza', menos: 1 }, dotesQuitadas: [{ idDote: 62, idExtra: 0 }] })).toEqual([]);
+        expect((motor.PersonajeCreacion.DotesContextuales ?? []).some((d) => toInt(d.Dote?.Id) === 62)).toBeTrue();
+    });
 });

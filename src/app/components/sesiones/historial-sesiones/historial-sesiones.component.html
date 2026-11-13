@@ -43,6 +43,15 @@
                                 <mat-icon aria-hidden="true">trending_down</mat-icon>
                                 Perder un nivel
                             </button>
+                            @if (nivelesRestablecibles > 0) {
+                                <!-- Restablecimiento: devuelve el nivel consumido por un nivel negativo, tal como era -->
+                                <button type="button" mat-stroked-button class="historial__boton" (click)="restablecerNivel()"
+                                    [disabled]="restableciendo"
+                                    matTooltip="Restablecimiento o restablecimiento mayor: devuelve el nivel consumido tal como era">
+                                    <mat-icon aria-hidden="true">trending_up</mat-icon>
+                                    Restablecer un nivel
+                                </button>
+                            }
                         }
                     } @else {
                         <app-datos-libres [pj]="pj" [alTerminar]="alTerminarDatos"></app-datos-libres>

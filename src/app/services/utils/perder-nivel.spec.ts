@@ -1,6 +1,7 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import {
-    caracteristicaMasAlta, fichaConConstitucionPerdida, fichaSinElNivel, indiceDelNivelQueSePierde, puntoMedioDelNivel, pxTrasPerder,
+    caracteristicaMasAlta, fichaConConstitucionPerdida, fichaSinElNivel, indiceDelNivelQueSePierde, marcarDotesSinPrerrequisitos,
+    puntoMedioDelNivel, pxTrasPerder, pxTrasPerderExperiencia,
 } from './perder-nivel';
 
 /*
@@ -142,5 +143,33 @@ describe('perder-nivel (fase 7, segunda tanda)', () => {
         expect(con.ficha.caracteristicas.constitucion.valor).toBe(10);
         // Con 2 no se le puede devolver la vida.
         expect(fichaConConstitucionPerdida(guerrero([], { caracteristicas: caracteristicas(2) }), 1)).toBeNull();
+    });
+});
+
+describe('perder-nivel: perder PX y las dotes sin sus prerrequisitos', () => {
+    it('perder PX que bajan un nivel: los que le quedan, sin punto medio (el familiar del hechicero 3, MJ pág. 45)', () => {
+        // El hechicero 3 con 3.230 PX pierde 300: vuelve a 2.º con 2.930.
+        expect(pxTrasPerderExperiencia(3230, 300)).toEqual({ px: 2930, bajaNivel: true });
+        // 200 no le bajan del 3.º (3.000): son PX gastados.
+        expect(pxTrasPerderExperiencia(3230, 200)).toEqual({ px: 3030, bajaNivel: false });
+        // Nunca por debajo de 0; con 0, el siguiente de una pérdida que baja varios (lo comprueba la API).
+        expect(pxTrasPerderExperiencia(500, 9000).px).toBe(0);
+        expect(pxTrasPerderExperiencia(5000, 0)).toEqual({ px: 5000, bajaNivel: true });
+    });
+
+    it('marca las dotes que se quedan sin un prerrequisito y quita la marca a las que ya lo cumplen', () => {
+        const ficha = {
+            personaje: {}, colecciones: { dotes: [
+                { idDote: 5, idExtra: 0, origen: 'Guerrero nivel 2' },
+                { idDote: 9, idExtra: 3, origen: 'Nivel 3', sinPrerrequisitos: true },
+            ] },
+        } as unknown as PersonajeCreateRequestDto;
+        const marcada = marcarDotesSinPrerrequisitos(ficha, [{ idDote: 5, idExtra: 0 }], [{ idDote: 9, idExtra: 3 }]);
+        expect((marcada.colecciones as any).dotes).toEqual([
+            { idDote: 5, idExtra: 0, origen: 'Guerrero nivel 2', sinPrerrequisitos: true },
+            { idDote: 9, idExtra: 3, origen: 'Nivel 3' },
+        ]);
+        // La ficha de partida no cambia.
+        expect((ficha.colecciones as any).dotes[1].sinPrerrequisitos).toBeTrue();
     });
 });

@@ -100,6 +100,18 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
     elegida: Plantilla | null = null;
     /** Se adquiere sin cumplir sus prerrequisitos (homebrew: `requisitos_plantilla`). */
     sinRequisitos = false;
+    /** Las po que cuesta las paga otro (un mecenas, o ya se apuntaron): no salen de su saldo. */
+    poPagadasPorOtro = false;
+
+    /** Lo que cuesta adquirir la elegida (los PX y las po se cobran al guardar; los niveles se pierden antes). */
+    get coste(): { px: number; po: number; niveles: number; } | null {
+        const c = this.elegida?.Coste_al_adquirir;
+        return c && (c.Px > 0 || c.Po > 0 || c.Niveles_perdidos > 0) ? { px: c.Px, po: c.Po, niveles: c.Niveles_perdidos } : null;
+    }
+
+    textoPx(valor: number): string {
+        return formatoPx(valor);
+    }
 
     tiradasPermitidas = 1;
     /** Cada tirada, todos los DG nuevos a la vez; se queda con la que elija. */
@@ -528,6 +540,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
                 ficha: this.fichaParaGuardar(),
                 version: this.sesion.version,
                 ...(this.dgsNuevos > 0 ? { pg: { tiradas } } : {}),
+                ...(this.coste && this.coste.po > 0 && this.poPagadasPorOtro ? { poPagadasPorOtro: true } : {}),
             });
             if (!this.cuenta.sigue())
                 return;

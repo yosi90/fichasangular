@@ -6945,6 +6945,16 @@ export class NuevoPersonajeService {
             this.agregarDoteAlPersonaje(dote, origen, idExtra, extra);
             this.registrarFirmaDotePlantilla(dote, origen, idExtra, extra);
         });
+        // Las de sus rasgos (`racial_dotes`) que ya tiene por sus DG, como las de los rasgos de la raza
+        // (`resolverDotesDeRaza`), con el rasgo como origen; se vuelven a poner en cada recálculo, como las de la plantilla.
+        const dgs = this.resolverDgTotalActual();
+        const rasgos = [...(plantilla?.Raciales ?? []), ...(plantilla?.Ataques_especiales ?? [])]
+            .filter((item) => toInt(item?.Racial?.Id) > 0 && toNumber(item?.Dg) <= dgs)
+            .map((item) => item.Racial as RacialDetalle);
+        this.dotesDeRaciales(rasgos, origen).forEach(({ dote, origen: deDonde, idExtra, extra }) => {
+            this.agregarDoteAlPersonaje(dote, deDonde, idExtra, extra);
+            this.registrarFirmaDotePlantilla(dote, deDonde, idExtra, extra);
+        });
     }
 
     /**
@@ -11744,6 +11754,66 @@ export class NuevoPersonajeService {
      * cuenta), cada una con lo que tenía en el nivel en que la eligió (`indiceNivelDeLaDote`, `contextoAlNivel`) o, sin
      * ese dato, con lo de ahora. `nivel` es su nivel en ese orden (1, 2…), o `null`.
      */
+    /**
+     * Las dotes que dejan de cumplir sus prerrequisitos con lo que quita una pérdida de nivel (o la Constitución perdida a
+     * 1.er nivel): se conservan sin poder usarse hasta que vuelva a cumplirlos (*Manual del jugador*, pág. 87; no es
+     * homebrew). Se evalúa con el motor cambiado por lo que quita (un nivel menos de su clase, el ataque base, la
+     * característica que baja, los rangos y las dotes que se van) y se deja como estaba; solo las que antes cumplían.
+     * Con el registro por nivel, cada dote se juzga en el nivel en que la eligió, como en la corrección.
+     */
+    dotesSinPrerrequisitosTrasPerder(cambios: {
+        idClase?: number | null;
+        ataqueBase?: string | null;
+        caracteristica?: { clave: Caracteristica; menos: number; } | null;
+        rangos?: ReadonlyArray<{ idHabilidad: number; idExtra: number; rangos: number; }>;
+        dotesQuitadas?: ReadonlyArray<{ idDote: number; idExtra: number; }>;
+    }): Array<{ idDote: number; idExtra: number; origen: string; nombre: string; }> {
+        const clave = (d: { idDote: number; idExtra: number; origen: string; }) => `${d.idDote}|${d.idExtra}|${d.origen}`;
+        const antes = new Set(this.dotesSinSusPrerrequisitos().map(clave));
+        const pj = this.personajeCreacion;
+        const guardado = {
+            ataqueBase: pj.Ataque_base,
+            desglose: (pj.desgloseClases ?? []).map((c) => ({ ...c })),
+            habilidades: (pj.Habilidades ?? []).map((h) => ({ ...h })),
+            dotes: [...(pj.DotesContextuales ?? [])],
+        };
+        const base = this.estadoFlujo.ventajas.baseCaracteristicas;
+        const caracteristica = cambios.caracteristica && base && !this.esCaracteristicaPerdida(cambios.caracteristica.clave)
+            ? { clave: cambios.caracteristica.clave, valor: toNumber(base[cambios.caracteristica.clave]) - this.ajusteRacialCaracteristica(cambios.caracteristica.clave) }
+            : null;
+        try {
+            if (tieneTextoVisible(cambios.ataqueBase ?? ''))
+                pj.Ataque_base = `${cambios.ataqueBase}`;
+            const clase = cambios.idClase ? this.claseDelCatalogo(cambios.idClase) : null;
+            if (clase)
+                pj.desgloseClases = (pj.desgloseClases ?? [])
+                    .map((c) => normalizarTexto(c?.Nombre ?? '') === normalizarTexto(clase.Nombre ?? '') ? { ...c, Nivel: toNumber(c.Nivel) - 1 } : c)
+                    .filter((c) => toNumber(c.Nivel) > 0);
+            (cambios.rangos ?? []).forEach((r) => {
+                const h = (pj.Habilidades ?? []).find((x) => !x?.Custom && toInt(x?.Id) === toInt(r.idHabilidad)
+                    && idExtraHabilidadParaGuardar(x) === toInt(r.idExtra));
+                if (h)
+                    h.Rangos = Math.max(0, toNumber(h.Rangos) - toInt(r.rangos));
+            });
+            (cambios.dotesQuitadas ?? []).forEach((q) => {
+                const i = (pj.DotesContextuales ?? []).findIndex((d) => toInt(d?.Dote?.Id) === toInt(q.idDote) && toInt(d?.Contexto?.Id_extra) === toInt(q.idExtra));
+                if (i >= 0)
+                    pj.DotesContextuales.splice(i, 1);
+            });
+            if (caracteristica)
+                this.corregirBaseCaracteristica(caracteristica.clave, caracteristica.valor - toInt(cambios.caracteristica?.menos));
+            return this.dotesSinSusPrerrequisitos().filter((d) => !antes.has(clave(d)))
+                .map(({ idDote, idExtra, origen, nombre }) => ({ idDote, idExtra, origen, nombre }));
+        } finally {
+            if (caracteristica)
+                this.corregirBaseCaracteristica(caracteristica.clave, caracteristica.valor);
+            pj.Ataque_base = guardado.ataqueBase;
+            pj.desgloseClases = guardado.desglose;
+            pj.Habilidades = guardado.habilidades;
+            pj.DotesContextuales = guardado.dotes;
+        }
+    }
+
     dotesSinSusPrerrequisitos(): Array<{ idDote: number; idExtra: number; origen: string; nombre: string; razones: string[]; nivel: number | null; }> {
         return this.dotesDelPersonaje().flatMap((d) => {
             const dote = this.catalogoDotes.find((c) => toInt(c?.Id) === toInt(d?.Dote?.Id));

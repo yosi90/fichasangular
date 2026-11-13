@@ -24,13 +24,19 @@
                         <option *ngFor="let c of causas" [value]="c.valor">{{c.texto}}</option>
                     </select>
                 </label>
+                <label class="subida__campo" *ngIf="causa === 'experiencia'">
+                    PX que pierde
+                    <input type="number" min="0" step="1" [value]="pxPerdidos" (input)="elegirPx($any($event.target).value)">
+                </label>
                 <label class="subida__campo">
                     Concepto (opcional)
                     <input type="text" maxlength="150" [value]="concepto" (input)="concepto = $any($event.target).value"
                         placeholder="Resurrección en el templo de Pelor">
                 </label>
             </div>
-            <p class="subida__nota" *ngIf="!unSoloDg">Pierde el último nivel que ganó y lo que eligió en él (Guía del DM, pág. 295). Sus PX quedan en la mitad entre el mínimo de su nuevo nivel y el del siguiente (Manual del jugador, pág. 171), o en los que tiene si ya son menos. Lo vuelve a subir cuando le lleguen los PX, eligiendo otra vez lo de ese nivel.</p>
+            <p class="subida__nota" *ngIf="!unSoloDg && causa !== 'experiencia'">Pierde el último nivel que ganó y lo que eligió en él (Guía del DM, pág. 295). Sus PX quedan en la mitad entre el mínimo de su nuevo nivel y el del siguiente (Manual del jugador, pág. 171), o en los que tiene si ya son menos. Lo vuelve a subir cuando le lleguen los PX, eligiendo otra vez lo de ese nivel.</p>
+            <p class="subida__nota" *ngIf="!unSoloDg && causa === 'experiencia'">Pierde los PX (sin bajar de 0) y, si le bajan del nivel que le dan sus PX, el último nivel que ganó, sin punto medio (Manual del jugador, pág. 45: la muerte de su familiar). Si le bajan varios niveles, se pierden uno a uno: los siguientes, con 0 PX.</p>
+            <p class="subida__nota" *ngIf="causa === 'nivel_negativo'">Es el único nivel perdido que se puede restablecer (restablecimiento, Manual del jugador, pág. 284) tal como era.</p>
             <p class="subida__nota" *ngIf="unSoloDg">Tiene un solo DG: al volver a la vida pierde 2 puntos de Constitución en lugar del nivel y conserva sus PX (Manual del jugador, pág. 171).</p>
 
             <ng-container *ngIf="sinOrden && !unSoloDg">

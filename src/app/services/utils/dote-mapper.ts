@@ -289,6 +289,7 @@ export function normalizeContexto(raw: any): DoteContexto {
         Id_extra: toNumber(raw?.Id_extra, 0),
         Id_personaje: toNumber(raw?.Id_personaje, 0),
         Origen: raw?.Origen ?? "Desconocido",
+        ...(raw?.Sin_prerrequisitos === true ? { Sin_prerrequisitos: true } : {}),
         // La de un monstruo (`Entidad` «Monstruo»), la «(B)» de su bloque.
         ...(typeof raw?.Adicional === "boolean" ? { Adicional: raw.Adicional } : {}),
     };
@@ -322,6 +323,7 @@ export function toDoteLegacyArray(ctx: DoteContextual[]): DoteLegacy[] {
         Pagina: item.Dote.Manual?.Pagina ?? 0,
         Extra: item.Contexto?.Extra ?? "",
         Origen: getOrigenFromContexto(item.Contexto),
+        ...((item.Contexto as any)?.Sin_prerrequisitos === true ? { Sin_prerrequisitos: true } : {}),
     }));
 }
 

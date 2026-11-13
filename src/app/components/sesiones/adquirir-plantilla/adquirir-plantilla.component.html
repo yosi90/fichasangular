@@ -120,7 +120,19 @@
                     </ul>
                 </ng-container>
                 <p *ngIf="sinRequisitos" class="subida__nota">La adquiere sin cumplir sus prerrequisitos: el personaje queda homebrew.</p>
-                <p class="subida__nota">La plantilla queda en la sesión {{sesion?.numero}} y se puede deshacer mientras la sesión siga abierta. Lo que cueste adquirirla (la filacteria del liche, un ritual) se apunta en la sesión como siempre.</p>
+                <ng-container *ngIf="coste as c">
+                    <h2 class="subida__seccion">Lo que cuesta</h2>
+                    <p class="subida__nota">
+                        <ng-container *ngIf="c.niveles > 0">Antes, pierde {{c.niveles}} nivel{{c.niveles > 1 ? 'es' : ''}} en esta sesión («Perder un nivel», por el coste de una plantilla). </ng-container>
+                        <ng-container *ngIf="c.px > 0">Paga {{textoPx(c.px)}} PX, que no le pueden bajar de nivel. </ng-container>
+                        <ng-container *ngIf="c.po > 0">Paga {{textoPx(c.po)}} po de su dinero.</ng-container>
+                    </p>
+                    <label *ngIf="c.po > 0" class="subida__campo">
+                        <input type="checkbox" [checked]="poPagadasPorOtro" (change)="poPagadasPorOtro = $any($event.target).checked">
+                        Las po las paga otro (un mecenas) o ya están apuntadas
+                    </label>
+                </ng-container>
+                <p class="subida__nota">La plantilla queda en la sesión {{sesion?.numero}} y se puede deshacer mientras la sesión siga abierta (también lo que costó).</p>
             </ng-container>
         </section>
 

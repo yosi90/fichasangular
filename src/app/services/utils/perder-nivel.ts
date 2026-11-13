@@ -1,10 +1,11 @@
 import { Clase } from 'src/app/interfaces/clase';
 import { PersonajeCreateNivelDto, PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
+import { CausaPerdidaDto } from 'src/app/interfaces/sesiones';
 import { textoAtaqueBase } from './ataque-base';
 import { modificadorCaracteristica } from './caracteristicas';
 import { daDgEnNivel, daIncrementoPorNivelDePersonaje, filaDeNivel } from './clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA } from './correccion-ficha';
-import { experienciaParaNivel } from './experiencia-nivel';
+import { experienciaParaNivel, nivelPorExperiencia } from './experiencia-nivel';
 import { primerEntero, toInt } from './normalizacion';
 import { modConstitucionDeEntrada, pgTrasCambioDeCon } from './subida-nivel';
 
@@ -17,15 +18,50 @@ import { modConstitucionDeEntrada, pgTrasCambioDeCon } from './subida-nivel';
  * DG). Reglas: *Guía del DM*, pág. 295, «Pérdida de nivel», y el dictamen del máster de Rol, en el roadmap.
  */
 
-export type CausaPerdida = 'revivir' | 'nivel_negativo' | 'plantilla' | 'otro';
+export type CausaPerdida = CausaPerdidaDto;
 
 /** Las causas que ofrece la web, con su texto (la API las valida: `causa`). */
 export const CAUSAS_PERDIDA: ReadonlyArray<{ valor: CausaPerdida; texto: string; }> = [
     { valor: 'revivir', texto: 'Volver a la vida (revivir a los muertos, resurrección, reencarnar)' },
     { valor: 'nivel_negativo', texto: 'Un nivel negativo que se hace permanente' },
     { valor: 'plantilla', texto: 'El coste de una plantilla (el necropolita)' },
+    { valor: 'experiencia', texto: 'Pierde PX que le bajan de nivel (la muerte de su familiar)' },
     { valor: 'otro', texto: 'Otra causa' },
 ];
+
+/**
+ * Los PX tras perder `perdidos` (la causa `experiencia`: el familiar muerto, MJ pág. 45): los que le quedan, sin bajar de 0
+ * y sin punto medio, y si le bajan del nivel que le dan sus PX (si no, no pierde un nivel: son PX gastados). Con
+ * `perdidos` 0, el siguiente nivel de una pérdida que baja varios (lo comprueba la API).
+ */
+export function pxTrasPerderExperiencia(px: number, perdidos: number): { px: number; bajaNivel: boolean; } {
+    const actuales = Math.max(0, toInt(px));
+    const quedan = Math.max(0, actuales - Math.max(0, toInt(perdidos)));
+    return { px: quedan, bajaNivel: toInt(perdidos) === 0 || nivelPorExperiencia(quedan) < nivelPorExperiencia(actuales) };
+}
+
+/**
+ * La ficha con las dotes de `claves` marcadas sin sus prerrequisitos (`sinPrerrequisitos`): las conserva sin poder usarlas
+ * hasta que vuelva a cumplirlos (*Manual del jugador*, pág. 87); no es homebrew. `quitar`, las que ya cumple otra vez.
+ */
+export function marcarDotesSinPrerrequisitos(
+    ficha: PersonajeCreateRequestDto,
+    claves: ReadonlyArray<{ idDote: number; idExtra: number; origen?: string; }>,
+    quitar: ReadonlyArray<{ idDote: number; idExtra: number; origen?: string; }> = [],
+): PersonajeCreateRequestDto {
+    const es = (d: any, c: { idDote: number; idExtra: number; origen?: string; }) => toInt(d?.idDote) === toInt(c.idDote)
+        && toInt(d?.idExtra) === toInt(c.idExtra) && (c.origen === undefined || `${d?.origen ?? ''}` === `${c.origen}`);
+    const dotes = (ficha.colecciones?.dotes ?? []).map((d: any) => {
+        if (claves.some((c) => es(d, c)))
+            return { ...d, sinPrerrequisitos: true };
+        if (d?.sinPrerrequisitos && quitar.some((c) => es(d, c))) {
+            const { sinPrerrequisitos: _quitada, ...resto } = d;
+            return resto;
+        }
+        return d;
+    });
+    return { ...ficha, colecciones: { ...(ficha.colecciones ?? {}), dotes } } as PersonajeCreateRequestDto;
+}
 
 /** Los puntos de Constitución que pierde, con un solo DG, al volver a la vida (*Manual del jugador*, pág. 171). */
 export const CONSTITUCION_PERDIDA = 2;

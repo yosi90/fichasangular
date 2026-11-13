@@ -151,6 +151,16 @@
                         </div>
                     </section>
 
+                    <!-- Lo que cuesta adquirirla con el personaje ya creado (la filacteria del liche; el nivel del necropolita) -->
+                    <section class="insercion-tarjeta">
+                        <h3 class="insercion-tarjeta__titulo">Lo que cuesta adquirirla</h3>
+                        <div class="insercion-campos plantilla-campos-2">
+                            <ng-container *ngFor="let campo of ['coste_px', 'coste_po', 'coste_niveles']">
+                                <ng-container *ngTemplateOutlet="numero; context: { $implicit: campo }"></ng-container>
+                            </ng-container>
+                        </div>
+                    </section>
+
                     <!-- Las armas naturales como dato (las cuenta la creación: Ataque múltiple pide tres o más); los textos de
                          arriba se quedan como su descripción. -->
                     <app-armas-naturales-editor [plantilla]="true" [filas]="listas.armasNaturales" [deshabilitado]="guardando"

@@ -18,7 +18,7 @@ import { CARACTERISTICAS_DEL_ALTA } from 'src/app/services/utils/correccion-fich
 import { toInt } from 'src/app/services/utils/normalizacion';
 import {
     CAUSAS_PERDIDA, CausaPerdida, caracteristicaMasAlta, fichaConConstitucionPerdida, fichaSinElNivel, indiceDelNivelQueSePierde,
-    ordenConocido, pxTrasPerder, quitadoVacio, ResultadoPerdida,
+    marcarDotesSinPrerrequisitos, ordenConocido, pxTrasPerder, pxTrasPerderExperiencia, quitadoVacio, ResultadoPerdida,
 } from 'src/app/services/utils/perder-nivel';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { nombreDoteConExtra, tieneTextoVisible } from 'src/app/services/utils/texto-visible';
@@ -63,6 +63,10 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
 
     causa: CausaPerdida = 'revivir';
     concepto = '';
+    /** Con la causa `experiencia`: los PX que pierde (0, el siguiente nivel de una pérdida que baja varios). */
+    pxPerdidos = 0;
+    /** Las dotes que se quedan sin un prerrequisito: se conservan sin poder usarse (MJ pág. 87). */
+    sinPrerrequisitos: Array<{ idDote: number; idExtra: number; origen: string; nombre: string; }> = [];
     /** Con el orden de sus niveles por conocer: la clase que pierde el nivel, la característica del incremento y la dote. */
     idClaseElegida: number | null = null;
     incrementoElegido: number | null = null;
@@ -182,6 +186,16 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         this.recalcular();
     }
 
+    elegirPx(valor: string): void {
+        this.pxPerdidos = Math.max(0, toInt(valor));
+        this.recalcular();
+    }
+
+    /** Sin Constitución es inmune a la consunción de energía (MM pág. 306); un rasgo que lo diga, lo comprueba la API. */
+    get sinConstitucion(): boolean {
+        return !!(this.entrada?.caracteristicas as any)?.constitucion?.perdido;
+    }
+
     elegirClase(id: string): void {
         this.idClaseElegida = toInt(id) || null;
         this.recalcular();
@@ -202,11 +216,21 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
         this.resultado = null;
         this.filas = [];
         this.impedimento = '';
+        this.sinPrerrequisitos = [];
         const entrada = this.entrada;
         if (!entrada)
             return;
         const px = toInt(this.experiencia?.px);
         const nep = toInt(this.experiencia?.nivel);
+        if (this.causa === 'nivel_negativo' && this.sinConstitucion) {
+            this.impedimento = 'No tiene Constitución: es inmune a la consunción de energía y un nivel negativo no le quita un nivel (Manual de monstruos, pág. 306).';
+            return;
+        }
+        const porExperiencia = this.causa === 'experiencia' ? pxTrasPerderExperiencia(px, this.pxPerdidos) : null;
+        if (porExperiencia && !porExperiencia.bajaNivel) {
+            this.impedimento = `Perder ${this.px(this.pxPerdidos)} PX no le baja del nivel que le dan sus PX: apúntalos como PX gastados, sin perder un nivel.`;
+            return;
+        }
         if (this.unSoloDg) {
             if (this.causa !== 'revivir') {
                 this.impedimento = this.causa === 'nivel_negativo'
@@ -221,11 +245,16 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
                 this.impedimento = 'Con su Constitución no se le puede devolver la vida: los 2 puntos que pierde la dejarían en 0 (Manual del jugador, pág. 285).';
                 return;
             }
-            this.resultado = { ficha: con.ficha, quitado: quitadoVacio(), pg: { ...con.pg, exacto: true }, ataqueBase: { antes: '', despues: '' }, salvaciones: {}, avisos: [] };
+            this.sinPrerrequisitos = this.svc.dotesSinPrerrequisitosTrasPerder({ caracteristica: { clave: 'Constitucion', menos: con.antes - con.despues } });
+            this.resultado = {
+                ficha: marcarDotesSinPrerrequisitos(con.ficha, this.sinPrerrequisitos), quitado: quitadoVacio(),
+                pg: { ...con.pg, exacto: true }, ataqueBase: { antes: '', despues: '' }, salvaciones: {}, avisos: [],
+            };
             this.filas = [
                 { que: 'Constitución', antes: `${con.antes}`, ahora: `${con.despues}` },
                 { que: 'Puntos de golpe', antes: `${con.pg.antes}`, ahora: `${con.pg.despues}` },
                 { que: 'PX', antes: this.px(px), ahora: `${this.px(px)} (los conserva)` },
+                ...this.filaSinPrerrequisitos(),
             ];
             return;
         }
@@ -246,12 +275,20 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
             incrementoSinRegistro: this.incrementoElegido,
             doteSinRegistro: this.pideDote && toInt(idDote) > 0 ? { idDote: toInt(idDote), idExtra: toInt(idExtra), origen: origen.join('|') } : null,
         });
-        this.resultado = resultado;
+        const caracteristicaQueBaja = resultado.quitado.incremento !== null ? CARACTERISTICAS_DEL_ALTA[resultado.quitado.incremento - 1]?.[1] : null;
+        this.sinPrerrequisitos = this.svc.dotesSinPrerrequisitosTrasPerder({
+            idClase: nivel.idClase,
+            ataqueBase: resultado.ataqueBase.despues,
+            caracteristica: caracteristicaQueBaja ? { clave: caracteristicaQueBaja, menos: 1 } : null,
+            rangos: resultado.quitado.rangos,
+            dotesQuitadas: resultado.quitado.dotes,
+        });
+        this.resultado = { ...resultado, ficha: marcarDotesSinPrerrequisitos(resultado.ficha, this.sinPrerrequisitos) };
         const nombreClase = clase?.Nombre ?? `Clase ${nivel.idClase}`;
         const filas: FilaPerdida[] = [
             { que: 'Nivel de clase', antes: `${nombreClase} ${nivel.nivelClase}`, ahora: nivel.nivelClase > 1 ? `${nombreClase} ${nivel.nivelClase - 1}` : 'Deja la clase' },
             { que: 'NEP', antes: `${nep}`, ahora: `${nep - 1}` },
-            { que: 'PX', antes: this.px(px), ahora: this.px(pxTrasPerder(px, nep - 1)) },
+            { que: 'PX', antes: this.px(px), ahora: this.px(porExperiencia ? porExperiencia.px : pxTrasPerder(px, nep - 1)) },
             { que: 'Puntos de golpe', antes: `${resultado.pg.antes}`, ahora: `${resultado.pg.despues}${resultado.pg.exacto ? '' : ' (aproximado)'}` },
         ];
         if (resultado.ataqueBase.antes !== resultado.ataqueBase.despues)
@@ -276,7 +313,15 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
             const nombre = h ? `${h.Nombre}${tieneTextoVisible(h.Extra) && toInt(r.idExtra) > 0 ? ` (${h.Extra})` : ''}` : `Habilidad ${r.idHabilidad}`;
             filas.push({ que: `Rangos de ${nombre}`, antes: `${h?.Rangos ?? ''}`, ahora: `${toInt(h?.Rangos) - r.rangos}` });
         });
+        filas.push(...this.filaSinPrerrequisitos());
         this.filas = filas;
+    }
+
+    /** «Sin poder usar»: las dotes que se conservan sin sus prerrequisitos (vuelven a valer al cumplirlos). */
+    private filaSinPrerrequisitos(): FilaPerdida[] {
+        return this.sinPrerrequisitos.length > 0
+            ? [{ que: 'Sin poder usar (hasta cumplir de nuevo sus prerrequisitos)', antes: this.sinPrerrequisitos.map((d) => d.nombre).join(', '), ahora: 'Las conserva' }]
+            : [];
     }
 
     private nombreDote(idDote: number, idExtra: number): string {
@@ -310,6 +355,7 @@ export class PerderNivelComponent implements OnInit, OnDestroy {
             const concepto = this.concepto.trim();
             await this.sesionesSvc.perderNivel(this.idPersonaje, {
                 causa: this.causa,
+                ...(this.causa === 'experiencia' ? { px: this.pxPerdidos } : {}),
                 ...(concepto ? { concepto } : {}),
                 ...(this.sinOrden && this.idClaseElegida ? { idClase: this.idClaseElegida } : {}),
                 ficha: this.resultado.ficha,

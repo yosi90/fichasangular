@@ -167,6 +167,12 @@ function construirPlantilla(raw: any, partes: Pick<Plantilla, 'Dotes' | 'Subtipo
         },
         Minimos_caracteristicas: normalizeCaracteristicas(raw?.Minimos_caracteristicas),
         Ajuste_nivel: toNumber(raw?.Ajuste_nivel),
+        // Lo que cuesta adquirirla (desde el 2026-11-13); una caché anterior, nada.
+        Coste_al_adquirir: {
+            Px: Math.max(0, toNumber(raw?.Coste_al_adquirir?.Px)),
+            Po: Math.max(0, toNumber(raw?.Coste_al_adquirir?.Po)),
+            Niveles_perdidos: Math.max(0, toNumber(raw?.Coste_al_adquirir?.Niveles_perdidos)),
+        },
         // Solo los licántropos traen los DG de su animal; en las demás, la API (y la caché) los dan a `null`.
         Licantronia_dg: raw?.Licantronia_dg === null || raw?.Licantronia_dg === undefined ? null : {
             Id_dado: toNumber(raw.Licantronia_dg.Id_dado),

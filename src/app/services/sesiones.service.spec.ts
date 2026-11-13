@@ -156,9 +156,38 @@ describe('SesionesService', () => {
             const cuerpo = { idPlantilla: 9, ficha: {} as any, version: sesion.version, pg: { tiradas: [5, 3] } };
             const respuesta = await servicio.adquirirPlantilla(129, cuerpo);
             expect(ultima()).toEqual(['POST', `${environment.apiUrl}personajes/129/plantillas`, jasmine.objectContaining({ body: cuerpo })]);
-            expect(respuesta.plantilla).toEqual({ idEvento: 99, numeroSesion: 1, id: 9, nombre: 'Licántropo (lobo) [Infectado]', nepAntes: 5, nepDespues: 9 });
+            expect(respuesta.plantilla).toEqual({ idEvento: 99, numeroSesion: 1, id: 9, nombre: 'Licántropo (lobo) [Infectado]', nepAntes: 5, nepDespues: 9, coste: null });
             const ultimo = respuesta.sesion.eventos[respuesta.sesion.eventos.length - 1];
             expect([ultimo.tipo, ultimo.texto, ultimo.deshacible]).toEqual(['plantilla_adquirida', texto, true]);
+        });
+
+        it('lo que costó una plantilla, y lo que paga otro', async () => {
+            const venta = respuestaSesiones<any>('venta');
+            http.request.and.returnValue(of({
+                ...venta, reglasIgnoradas: [],
+                plantilla: { idEvento: 99, numeroSesion: 1, plantilla: { id: 4, nombre: 'Liche' }, nepAntes: 11, nepDespues: 15,
+                    coste: { px: 4800, po: 0, poCoste: 120000, niveles: 0, poPagadasPorOtro: true } },
+            }));
+            const cuerpo = { idPlantilla: 4, ficha: {} as any, version: sesion.version, poPagadasPorOtro: true };
+            const respuesta = await servicio.adquirirPlantilla(129, cuerpo);
+            expect(ultima()[2].body.poPagadasPorOtro).toBeTrue();
+            expect(respuesta.plantilla.coste).toEqual({ px: 4800, po: 0, poCoste: 120000, niveles: 0, poPagadasPorOtro: true });
+        });
+
+        it('restablecer un nivel: la ruta, el conjuro y cuántos quedan; el historial dice cuántos se pueden', async () => {
+            const venta = respuestaSesiones<any>('venta');
+            http.request.and.returnValue(of({
+                ...venta, reglasIgnoradas: [],
+                restablecimiento: { idEvento: 7, numeroSesion: 1, conjuro: 'restablecimiento_mayor', clase: { id: 5, nombre: 'Guerrero' },
+                    nivelClase: 5, nepAntes: 4, nepDespues: 5, pxAntes: 8000, pxDespues: 10000, quedan: 1 },
+            }));
+            const respuesta = await servicio.restablecerNivel(129, { conjuro: 'restablecimiento_mayor', nivelLanzador: 13, version: sesion.version });
+            expect(ultima()).toEqual(['POST', `${environment.apiUrl}personajes/129/niveles/restablecimiento`,
+                jasmine.objectContaining({ body: { conjuro: 'restablecimiento_mayor', nivelLanzador: 13, version: sesion.version } })]);
+            expect(respuesta.restablecimiento).toEqual({ idEvento: 7, numeroSesion: 1, clase: { id: 5, nombre: 'Guerrero' }, nivelClase: 5,
+                pxAntes: 8000, pxDespues: 10000, quedan: 1 });
+            expect(leerHistorial({ ...respuestaSesiones<any>('historial'), nivelesRestablecibles: 2 }).nivelesRestablecibles).toBe(2);
+            expect(leerHistorial(respuestaSesiones<any>('historial')).nivelesRestablecibles).toBe(0);
         });
 
         it('abrir no lleva versión (no hay sesión todavía)', async () => {

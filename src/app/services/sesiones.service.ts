@@ -5,6 +5,9 @@ import { firstValueFrom } from 'rxjs';
 import {
     AbrirSesionDto,
     AdquirirPlantillaDto,
+    CosteDePlantillaCobrado,
+    RestablecerNivelDto,
+    RespuestaRestablecimiento,
     PerderNivelDto,
     CambiarSesionDto,
     CompraSesionDto,
@@ -44,7 +47,7 @@ export const CODIGO_SESION_DESACTUALIZADA = 'sesion_desactualizada';
 const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
     'alta', 'experiencia', 'experiencia_gastada', 'dinero', 'objeto_obtenido', 'objeto_perdido', 'venta', 'compra',
     'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'nivel_perdido',
-    'cambio_alineamiento', 'caida', 'expiacion', 'nota',
+    'nivel_restablecido', 'cambio_alineamiento', 'caida', 'expiacion', 'nota',
 ]);
 
 /** Si el error es el `409 sesion_desactualizada` (otra persona apuntó algo entre medias). */
@@ -131,7 +134,21 @@ export function leerHistorial(valor: any): HistorialSesiones {
         veNotas: toBoolean(valor?.veNotas),
         rolActor: valor?.rolActor === 'master' || valor?.rolActor === 'jugador' ? valor.rolActor : null,
         experiencia: leerExperiencia(valor?.experiencia),
+        nivelesRestablecibles: Math.max(0, toInt(valor?.nivelesRestablecibles)),
         sesiones: toArray(valor?.sesiones).map(leerSesion).sort((a, b) => a.numero - b.numero),
+    };
+}
+
+/** Lo que costó adquirir una plantilla, o `null` si la API no lo da. */
+export function leerCosteDePlantilla(valor: any): CosteDePlantillaCobrado | null {
+    if (!valor || typeof valor !== 'object')
+        return null;
+    return {
+        px: toInt(valor.px),
+        po: Number(valor.po) || 0,
+        poCoste: Number(valor.poCoste) || 0,
+        niveles: toInt(valor.niveles),
+        poPagadasPorOtro: valor.poPagadasPorOtro === true,
     };
 }
 
@@ -177,6 +194,8 @@ export class SesionesService {
                 nivelClase: toInt(n?.nivelClase),
                 ordenConocido: n?.ordenConocido !== false,
                 clasesAnteriores: (Array.isArray(n?.clasesAnteriores) ? n.clasesAnteriores : []).map((c: unknown) => toInt(c)),
+                causa: typeof n?.causa === 'string' ? n.causa : null,
+                restablecible: n?.restablecible === true,
             })),
         };
     }
@@ -226,6 +245,7 @@ export class SesionesService {
                 nombre: `${respuesta?.plantilla?.plantilla?.nombre ?? ''}`,
                 nepAntes: nep(respuesta?.plantilla?.nepAntes),
                 nepDespues: nep(respuesta?.plantilla?.nepDespues),
+                coste: leerCosteDePlantilla(respuesta?.plantilla?.coste),
             },
         };
     }
@@ -250,6 +270,28 @@ export class SesionesService {
                 pxAntes: toInt(p.pxAntes),
                 pxDespues: toInt(p.pxDespues),
                 constitucion: p.constitucion ? { antes: toInt(p.constitucion.antes), despues: toInt(p.constitucion.despues) } : null,
+            },
+        };
+    }
+
+    /** Restablecer el último nivel perdido por consunción de energía: vuelve tal como era (lo calcula la API). */
+    async restablecerNivel(idPersonaje: number, cuerpo: RestablecerNivelDto): Promise<RespuestaRestablecimiento> {
+        const id = toInt(idPersonaje);
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+        const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/niveles/restablecimiento`, cuerpo,
+            'No se ha podido restablecer el nivel.');
+        const r = respuesta?.restablecimiento ?? {};
+        return {
+            ...this.conAviso(leerRespuestaSesion(respuesta)),
+            restablecimiento: {
+                idEvento: toInt(r.idEvento),
+                numeroSesion: toInt(r.numeroSesion),
+                clase: r.clase ? { id: toInt(r.clase.id), nombre: `${r.clase.nombre ?? ''}` } : null,
+                nivelClase: r.nivelClase === null || r.nivelClase === undefined ? null : toInt(r.nivelClase),
+                pxAntes: toInt(r.pxAntes),
+                pxDespues: toInt(r.pxDespues),
+                quedan: Math.max(0, toInt(r.quedan)),
             },
         };
     }

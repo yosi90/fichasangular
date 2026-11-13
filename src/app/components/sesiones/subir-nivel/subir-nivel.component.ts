@@ -29,6 +29,7 @@ import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
+import { marcarDotesSinPrerrequisitos } from 'src/app/services/utils/perder-nivel';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
@@ -521,6 +522,16 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     private fichaParaGuardar(): PersonajeCreateRequestDto {
         const elecciones: PersonajeCreateNivelEleccionDto[] = this.svc.getEleccionesDelNivelEnCurso();
+        // Las dotes que conservaba sin sus prerrequisitos (tras perder un nivel) y que con este nivel vuelve a cumplir
+        // vuelven a valer (Manual del jugador, pág. 87).
+        const siguenSin = this.svc.dotesSinSusPrerrequisitos();
+        const yaCumple = (this.entrada?.colecciones?.dotes ?? []).filter((d: any) => d?.sinPrerrequisitos
+            && !siguenSin.some((f) => f.idDote === toInt(d.idDote) && f.idExtra === toInt(d.idExtra)))
+            .map((d: any) => ({ idDote: toInt(d.idDote), idExtra: toInt(d.idExtra) }));
+        return marcarDotesSinPrerrequisitos(this.fichaDeLaSubidaSinMarcas(elecciones), [], yaCumple);
+    }
+
+    private fichaDeLaSubidaSinMarcas(elecciones: PersonajeCreateNivelEleccionDto[]): PersonajeCreateRequestDto {
         return fichaDeLaSubida({
             entrada: this.entrada!,
             antes: this.antes!,
