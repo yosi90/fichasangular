@@ -722,6 +722,40 @@
                         </button>
                     </div>
                 </div>
+
+                <section class="panel-card ex-clase-card">
+                    <span class="panel-title"><mat-icon>heart_broken</mat-icon>Si deja de cumplir su alineamiento</span>
+                    <p class="panel-nota">
+                        Como el ex paladín (<i>Manual del jugador</i>, págs. 26-55): quien deja de cumplir su alineamiento sin mantenerla como homebrew
+                        conserva sus niveles, no sube más en ella y pierde lo que marques aquí.
+                    </p>
+                    <mat-chip-listbox class="boolean-chips" aria-label="Lo que pierde la ex clase" [multiple]="true">
+                        <mat-chip-option
+                            [selected]="form.controls.ex_pierde_magia.value === true"
+                            (click)="toggleBoolean('ex_pierde_magia')"
+                            matTooltip="Pierde sus conjuros, sus dominios y su moldeado (clérigo, druida, paladín)">
+                            Pierde su magia
+                        </mat-chip-option>
+                        <mat-chip-option
+                            [selected]="form.controls.ex_requiere_expiacion.value === true"
+                            (click)="toggleBoolean('ex_requiere_expiacion')"
+                            matTooltip="No basta con volver a su alineamiento: necesita una expiación (MJ, pág. 242)">
+                            Solo con una expiación
+                        </mat-chip-option>
+                    </mat-chip-listbox>
+                    <span class="ex-clase-subtitulo">Aptitudes que pierde</span>
+                    <mat-chip-listbox *ngIf="aptitudesDeLaClase.length > 0; else sinAptitudesEx" class="boolean-chips"
+                        aria-label="Aptitudes que pierde la ex clase" [multiple]="true">
+                        <mat-chip-option *ngFor="let aptitud of aptitudesDeLaClase"
+                            [selected]="exEspeciales.has(aptitud.Id)" (click)="toggleExEspecial(aptitud.Id)">
+                            {{aptitud.Nombre}}
+                        </mat-chip-option>
+                    </mat-chip-listbox>
+                    <ng-template #sinAptitudesEx>
+                        <p class="panel-nota">La clase aún no da ninguna aptitud en «Otorgados por nivel».</p>
+                    </ng-template>
+                    <div class="ex-clase__error" *ngIf="errores.mensajeDe('Ex') as error">{{error}}</div>
+                </section>
             </div>
 
             <div class="insercion-paso" [hidden]="pasoActual !== 6">

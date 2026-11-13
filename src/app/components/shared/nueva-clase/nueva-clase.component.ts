@@ -259,6 +259,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     opcionesConjuros: OpcionCatalogo[] = [];
     habilidadesRows: ClaseHabilidadRow[] = [];
     relacionesRows: ClaseRelacionNivelRow[] = [];
+    /** La ex clase: los ids de las aptitudes de la clase que pierde (`Ex.Especiales`). */
+    exEspeciales = new Set<number>();
     conjurosPorEspecialRows: ClaseConjuroPorEspecialRow[] = [];
     nivelesRequisitoRows: ClaseNivelRequisitoRow[] = [];
     habilidadesAlineamientoRows: ClaseHabilidadAlineamientoRow[] = [];
@@ -416,6 +418,9 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         // multiclase, la raza mutada que lleva (0: ninguna) y si tiene su propia tabla de DG, dotes y armadura natural.
         progresion_obligatoria: [false],
         sin_penalizacion_multiclase: [false],
+        // La ex clase (MJ págs. 26-55): si pierde su magia y si solo lo recupera con una expiación.
+        ex_pierde_magia: [false],
+        ex_requiere_expiacion: [false],
         mutacion_id: [0],
         tabla_propia: [false],
         aumenta_clase_lanzadora: [false],
@@ -1109,6 +1114,11 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             Clase_pnj: raw.clase_pnj === true,
             Progresion_obligatoria: raw.progresion_obligatoria === true,
             Sin_penalizacion_multiclase: raw.sin_penalizacion_multiclase === true,
+            Ex: {
+                Pierde_magia: raw.ex_pierde_magia === true,
+                Requiere_expiacion: raw.ex_requiere_expiacion === true,
+                Especiales: this.aptitudesDeLaClase.filter((item) => this.exEspeciales.has(item.Id)),
+            },
             // `null`: ninguna (al modificar, la quita). La API solo lee el `Id`.
             Mutacion: this.entero(raw.mutacion_id) > 0 ? { Id: this.entero(raw.mutacion_id), Nombre: this.mutacionNombre } : null,
             Tiene_prerrequisitos: Object.values(prerrequisitos).some((items) => Array.isArray(items) && items.length > 0),
@@ -1213,6 +1223,29 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         this.conjurosPorEspecialRows = this.conjurosPorEspecialRows.map((actual) => actual.uid === row.uid
             ? { ...actual, id_conjuro: conjuro ? this.getId(conjuro) : 0, conjuroBusqueda: conjuro?.Nombre ?? '' }
             : actual);
+    }
+
+    /**
+     * Las aptitudes que da la clase en sus niveles (las filas de «Otorgados por nivel» con su aptitud elegida, hasta su
+     * nivel máximo), sin repetir y por nombre: las que puede perder al ser ex.
+     */
+    get aptitudesDeLaClase(): { Id: number; Nombre: string; }[] {
+        const nivelMax = this.entero(this.form.controls.nivel_max_claseo.value, 20);
+        const porId = new Map<number, string>();
+        for (const row of this.relacionesRows) {
+            const id = this.entero(row.id);
+            if (row.tipo !== 'especial' || id <= 0 || row.nivel < 1 || row.nivel > nivelMax || porId.has(id))
+                continue;
+            porId.set(id, this.texto(this.especiales.find((item) => item.Id === id)?.Nombre ?? row.busqueda));
+        }
+        return [...porId].map(([Id, Nombre]) => ({ Id, Nombre })).sort((a, b) => compararTexto(a.Nombre, b.Nombre));
+    }
+
+    toggleExEspecial(id: number): void {
+        const siguiente = new Set(this.exEspeciales);
+        if (!siguiente.delete(id))
+            siguiente.add(id);
+        this.exEspeciales = siguiente;
     }
 
     /** Las aptitudes que da la clase en sus niveles (las del paso «Dotes y especiales»); sin ninguna, todas. */
@@ -1615,6 +1648,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             clase_pnj: clase.Clase_pnj === true,
             progresion_obligatoria: clase.Progresion_obligatoria === true,
             sin_penalizacion_multiclase: clase.Sin_penalizacion_multiclase === true,
+            ex_pierde_magia: clase.Ex?.Pierde_magia === true,
+            ex_requiere_expiacion: clase.Ex?.Requiere_expiacion === true,
             mutacion_id: this.entero(clase.Mutacion?.Id),
             tabla_propia: tieneTablaPorNivel(clase),
             aumenta_clase_lanzadora: clase.Aumenta_clase_lanzadora === true,
@@ -1663,6 +1698,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         this.habilidadesRows = this.hidratarHabilidades(clase);
         this.niveles = this.hidratarNiveles(clase);
         this.relacionesRows = this.hidratarRelaciones(clase);
+        this.exEspeciales = new Set((clase.Ex?.Especiales ?? []).map((item) => this.entero(item.Id)).filter((id) => id > 0));
         this.conjurosPorEspecialRows = this.hidratarConjurosPorEspecial(clase);
         this.nivelesRequisitoRows = this.hidratarNivelesRequisito(clase);
         const prerrequisitos = prerrequisitosDeClase(clase, this.tiposPrerrequisitoClase, () => this.uid());
@@ -1775,6 +1811,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     private reiniciarFilas(): void {
         this.habilidadesRows = [this.crearHabilidadRow('base')];
         this.relacionesRows = [];
+        this.exEspeciales = new Set();
         this.conjurosPorEspecialRows = [];
         this.nivelesRequisitoRows = [];
         this.habilidadesAlineamientoRows = [];
@@ -1815,6 +1852,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             clase_pnj: false,
             progresion_obligatoria: false,
             sin_penalizacion_multiclase: false,
+            ex_pierde_magia: false,
+            ex_requiere_expiacion: false,
             mutacion_id: 0,
             tabla_propia: false,
             aumenta_clase_lanzadora: false,

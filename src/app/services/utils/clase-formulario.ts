@@ -81,6 +81,10 @@ export const CAMPOS_CLASE: Readonly<Record<string, CampoDeClase>> = {
     'Desglose_niveles.Conjuros_conocidos_total': { etiqueta: 'Conjuros conocidos en total', paso: 4 },
     'Desglose_niveles.Dotes': { etiqueta: 'Dotes por nivel', paso: 5 },
     'Desglose_niveles.Especiales': { etiqueta: 'Especiales por nivel', paso: 5 },
+    // La ex clase (`400 ex_especial_ajeno`: una aptitud que pierde y la clase no da).
+    'Ex.Pierde_magia': { etiqueta: 'Pierde su magia', paso: 5, control: 'ex_pierde_magia' },
+    'Ex.Requiere_expiacion': { etiqueta: 'Solo con una expiación', paso: 5, control: 'ex_requiere_expiacion' },
+    Ex: { etiqueta: 'Si deja de cumplir su alineamiento', paso: 5 },
     Prerrequisitos: { etiqueta: 'Prerrequisitos', paso: 6 },
 };
 

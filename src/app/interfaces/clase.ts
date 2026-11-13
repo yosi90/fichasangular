@@ -358,8 +358,10 @@ export interface ClaseNivelMutation extends Omit<ClaseNivelDetalle, 'Nivel_max_p
     nivel_max_poder_accesible_nivel_lanzadorPsionico: number;
 }
 
-export interface ClaseMutationRequest extends Omit<Clase, 'Id' | 'Desglose_niveles' | 'Conjuros' | 'Ex'> {
+export interface ClaseMutationRequest extends Omit<Clase, 'Id' | 'Desglose_niveles' | 'Conjuros'> {
     Id?: number;
+    /** Si no viene, la edición conserva la guardada (la API solo lee los `Id` de `Especiales`, de las que da la clase). */
+    Ex?: ClaseEx;
     /** `Clase_origen` `null`: sin clase de origen. */
     Conjuros: Omit<ClaseConjurosConfig, 'Clase_origen'> & { Clase_origen: { Id: number; Nombre: string; } | null; };
     Desglose_niveles: ClaseNivelMutation[];

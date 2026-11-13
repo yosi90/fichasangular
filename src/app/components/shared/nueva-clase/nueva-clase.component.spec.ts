@@ -572,3 +572,49 @@ describe('NuevaClaseComponent (las clases de monstruo de Libris Mortis)', () => 
         expect(editor.errorTablaDeNiveles).toBe('El 1.er nivel de la clase da un DG.');
     });
 });
+
+describe('NuevaClaseComponent (la ex clase: lo que pierde al dejar de cumplir su alineamiento)', () => {
+    function paladinCargado(): NuevaClaseComponent {
+        const editor = crearEditor();
+        (editor as any).hidratarDesdeClase(normalizeClase({
+            Id: 6, Nombre: 'Paladín de prueba', Nivel_max_claseo: 2,
+            Manual: { Id: 1, Nombre: 'Manual', Pagina: 42 },
+            Ataque_base: { Id: 1 }, Salvaciones: { Fortaleza: { Id: 1 }, Reflejos: { Id: 2 }, Voluntad: { Id: 2 } },
+            Desglose_niveles: [
+                { Nivel: 1, Especiales: [{ Especial: { Id: 30, Nombre: 'Castigar al mal' } }, { Especial: { Id: 31, Nombre: 'Aura de bien' } }] },
+                { Nivel: 2, Especiales: [{ Especial: { Id: 30, Nombre: 'Castigar al mal' } }, { Especial: { Id: 32, Nombre: 'Gracia divina' } }] },
+            ],
+            Ex: { Pierde_magia: true, Requiere_expiacion: true, Especiales: [{ Id: 30, Nombre: 'Castigar al mal' }] },
+        }));
+        return editor;
+    }
+
+    it('al editar, guardar sin tocar nada manda su Ex como llegó, y ofrece las aptitudes de la clase sin repetir', () => {
+        const editor = paladinCargado();
+        expect(editor.aptitudesDeLaClase.map((item) => item.Nombre)).toEqual(['Aura de bien', 'Castigar al mal', 'Gracia divina']);
+        expect((editor as any).construirPayload().Ex).toEqual({
+            Pierde_magia: true, Requiere_expiacion: true, Especiales: [{ Id: 30, Nombre: 'Castigar al mal' }],
+        });
+        expect(editor.isDirty).toBeFalse();
+    });
+
+    it('se editan las dos marcas y las aptitudes que pierde; una aptitud que la clase ya no da no se manda', () => {
+        const editor = paladinCargado();
+        editor.toggleBoolean('ex_pierde_magia');
+        editor.toggleExEspecial(32);
+        editor.toggleExEspecial(30);
+        expect(editor.isDirty).toBeTrue();
+        expect((editor as any).construirPayload().Ex).toEqual({
+            Pierde_magia: false, Requiere_expiacion: true, Especiales: [{ Id: 32, Nombre: 'Gracia divina' }],
+        });
+        editor.quitarRelacion(editor.relacionesRows.findIndex((row) => row.id === 32));
+        expect((editor as any).construirPayload().Ex.Especiales).toEqual([]);
+    });
+
+    it('al crear no pierde nada; el error de la API va a su paso', () => {
+        const editor = crearEditor();
+        editor.modo = 'crear';
+        expect((editor as any).construirPayload().Ex).toEqual({ Pierde_magia: false, Requiere_expiacion: false, Especiales: [] });
+        expect(CAMPOS_CLASE['Ex'].paso).toBe(CAMPOS_CLASE['Desglose_niveles.Especiales'].paso);
+    });
+});
