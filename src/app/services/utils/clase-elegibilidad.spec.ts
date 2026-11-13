@@ -661,10 +661,16 @@ describe('clase-elegibilidad', () => {
             Multiclase_restringida: true,
             Clases_multiclase_lanzadoras: [{ Arcanos: true, Divinos: false, Condicion: { Id: 239, Nombre: 'Puño iluminado' } }],
         });
-        const mago = crearClaseBase({ Id: 9, Conjuros: { ...crearClaseBase().Conjuros, Arcanos: true } });
-        const archimago = crearClaseBase({ Id: 500, Aumenta_clase_lanzadora: true, Conjuros: { ...crearClaseBase().Conjuros, Arcanos: true } });
-        const clerigo = crearClaseBase({ Id: 4, Conjuros: { ...crearClaseBase().Conjuros, Divinos: true } });
-        const catalogo = (id: number) => [mago, archimago, clerigo].find((c) => c.Id === id);
+        // Lanza quien tiene conjuros diarios en su tabla (-1 es «sin acceso»).
+        const conDiarios = [{ Nivel: 1, Conjuros_diarios: { Nivel_0: 3, Nivel_1: 1 } }] as any;
+        const sinDiarios = [{ Nivel: 1, Conjuros_diarios: { Nivel_0: -1, Nivel_1: -1 } }] as any;
+        const mago = crearClaseBase({ Id: 9, Desglose_niveles: conDiarios, Conjuros: { ...crearClaseBase().Conjuros, Arcanos: true } });
+        const archimago = crearClaseBase({ Id: 500, Aumenta_clase_lanzadora: true, Desglose_niveles: conDiarios, Conjuros: { ...crearClaseBase().Conjuros, Arcanos: true } });
+        const clerigo = crearClaseBase({ Id: 4, Desglose_niveles: conDiarios, Conjuros: { ...crearClaseBase().Conjuros, Divinos: true } });
+        // El brujo arcano tiene la marca arcana por sus invocaciones, sin conjuros diarios (AC pág. 18): cierra al monje.
+        const brujo = crearClaseBase({ Id: 306, Desglose_niveles: sinDiarios, Conjuros: { ...crearClaseBase().Conjuros, Arcanos: true } });
+        const catalogo = (id: number) => [mago, archimago, clerigo, brujo].find((c) => c.Id === id);
+        expect(esClaseCompatibleConRestringida(monje, 306, { tiene: [10, 239], clase: catalogo })).toBeFalse();
         expect(esClaseCompatibleConRestringida(monje, 9, { tiene: [10, 239, 9], clase: catalogo })).toBeTrue();
         expect(esClaseCompatibleConRestringida(monje, 9, { tiene: [10, 9], clase: catalogo })).toBeFalse();
         expect(esClaseCompatibleConRestringida(monje, 500, { tiene: [10, 239], clase: catalogo })).toBeFalse();

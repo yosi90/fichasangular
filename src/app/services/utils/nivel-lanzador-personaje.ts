@@ -37,6 +37,16 @@ function tieneAccesoRealConjurosDiarios(detalle: ClaseNivelDetalle | null | unde
     return Object.values(mapa).some((valor) => toNumber(valor) >= 0);
 }
 
+/**
+ * Si la clase lanza de verdad conjuros: algún nivel de su tabla con conjuros diarios (un valor desde 0; -1 es «sin
+ * acceso»). El brujo arcano tiene la marca de conjuros arcanos por el nivel de lanzador de sus invocaciones, pero «nunca
+ * aprende a lanzarlos» (*El arcano completo*, pág. 18). Como la API (`subida_nivel._lanzan`).
+ */
+export function lanzaConjurosDiarios(clase: Pick<Clase, 'Desglose_niveles'> | null | undefined): boolean {
+    return (Array.isArray(clase?.Desglose_niveles) ? clase!.Desglose_niveles : [])
+        .some((detalle) => tieneAccesoRealConjurosDiarios(detalle));
+}
+
 function tieneEscalonLanzador(clase: Clase, detalle: ClaseNivelDetalle): boolean {
     if (clase?.Conjuros?.Psionicos && toNumber(detalle?.Nivel_max_poder_accesible_nivel_lanzadorPsionico) >= 0)
         return true;

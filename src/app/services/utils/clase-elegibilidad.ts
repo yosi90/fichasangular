@@ -4,6 +4,7 @@ import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, existeCoincidenciaC
 import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento } from "./alineamiento-contrato";
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito } from './prerrequisito-frase';
+import { lanzaConjurosDiarios } from './nivel-lanzador-personaje';
 import { EvaluacionPrerrequisito, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararRangosHabilidad, compararSubtipo, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
@@ -113,7 +114,7 @@ export interface ContextoCompatibles {
     /** Los ids de las clases de las que tiene niveles. */
     tiene: Iterable<number>;
     /** La clase del catálogo de un id (para saber si la otra lanza conjuros arcanos o divinos). */
-    clase?: (id: number) => Pick<Clase, 'Conjuros' | 'Aumenta_clase_lanzadora'> | null | undefined;
+    clase?: (id: number) => Pick<Clase, 'Conjuros' | 'Aumenta_clase_lanzadora' | 'Desglose_niveles'> | null | undefined;
 }
 
 /**
@@ -124,7 +125,7 @@ export interface ContextoCompatibles {
  *   completo, págs. 46-47);
  * - o lanza conjuros de una familia de sus `Clases_multiclase_lanzadoras`, con su condición (el monje con niveles de puño
  *   iluminado y las clases arcanas, El arcano completo, págs. 66-67). «Lanza» es tener esa magia sin solo aumentar la de
- *   otra (`Aumenta_clase_lanzadora`).
+ *   otra (`Aumenta_clase_lanzadora`) y con conjuros diarios en su tabla (`lanzaConjurosDiarios`: el brujo arcano no).
  * La condición se mira con las clases que tiene al subir la restringida (`contexto.tiene`). La API comprueba lo mismo en el
  * alta y la subida (`400 multiclase_restringida`).
  */
@@ -141,7 +142,7 @@ export function esClaseCompatibleConRestringida(
     if ((restringida?.Clases_multiclase_compatibles ?? []).some((c) => toInt(c?.Id) === id && cumple(c?.Condicion)))
         return true;
     const otra = contexto.clase?.(id);
-    if (!otra || otra.Aumenta_clase_lanzadora === true)
+    if (!otra || otra.Aumenta_clase_lanzadora === true || !lanzaConjurosDiarios(otra))
         return false;
     return (restringida?.Clases_multiclase_lanzadoras ?? []).some((familia) => cumple(familia?.Condicion)
         && ((familia?.Arcanos === true && otra.Conjuros?.Arcanos === true) || (familia?.Divinos === true && otra.Conjuros?.Divinos === true)));
