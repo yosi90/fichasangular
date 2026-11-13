@@ -28,8 +28,10 @@ export function modoHomebrewDeCampana(
 }
 
 /**
- * Si la campaña deja elegir una plantilla sin cumplir sus prerrequisitos: solo si admite homebrew sin límite, porque el
- * personaje pasa a serlo (sin campaña, siempre). La usan la creación y la adquisición de una plantilla (sesiones, fase 7).
+ * Si la campaña deja elegir una plantilla sin cumplir sus prerrequisitos (la decisión `requisitos_plantilla`): solo si
+ * admite homebrew sin límite de fuentes, porque el personaje pasa a serlo (sin campaña, siempre). La usan la creación y la
+ * adquisición de una plantilla (sesiones, fase 7); la API aplica la misma regla en el alta y en
+ * `POST /personajes/{id}/plantillas` (`campaign_policy_service.deja_saltar_requisitos_plantilla`, desde el 2026-11-13).
  */
 export function campanaDejaSaltarRequisitosPlantilla(
     policy: Parameters<typeof modoHomebrewDeCampana>[0],

@@ -10,6 +10,7 @@ import { SelectorDominiosModalComponent } from 'src/app/components/nuevo-persona
 import { SelectorEnemigoPredilectoModalComponent } from 'src/app/components/nuevo-personaje/selector-enemigo-predilecto-modal/selector-enemigo-predilecto-modal.component';
 import { SelectorEspecialidadMagicaModalComponent } from 'src/app/components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
+import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { avisarPaso, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
@@ -101,13 +102,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     cambios: CambioSubida[] = [];
     private antes: PersonajeCreateRequestDto | null = null;
-    private uid = '';
+    /** La cuenta con la que se abrió: lo que llega después de cerrarla o de cambiar de cuenta se descarta. */
+    private readonly cuenta: MismaCuenta;
     private readonly selectores = new HuecoDeSelectores(() => this.modalHost);
-    private destruido = false;
 
     constructor(
         public svc: NuevoPersonajeService,
-        private auth: Auth,
+        auth: Auth,
         private sesionesSvc: SesionesService,
         private puerta: SubidaNivelPuertaService,
         private campanaSvc: CampanaService,
@@ -115,14 +116,16 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         private escuelaSvc: EscuelaConjurosService,
         private disciplinaSvc: DisciplinaConjurosService,
         private enemigoSvc: EnemigoPredilectoService,
-    ) { }
+    ) {
+        this.cuenta = new MismaCuenta(auth);
+    }
 
     ngOnInit(): void {
         void this.cargar();
     }
 
     ngOnDestroy(): void {
-        this.destruido = true;
+        this.cuenta.destruir();
         this.cerrarModal();
     }
 
@@ -177,7 +180,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.cargando = true;
         this.error = '';
         this.errorPaso = null;
-        this.uid = `${this.auth.currentUser?.uid ?? ''}`.trim();
+        this.cuenta.fijar();
         try {
             const historial = await this.sesionesSvc.historial(this.idPersonaje);
             this.experiencia = historial.experiencia;
@@ -188,7 +191,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
                 throw new Error('Para subir de nivel hace falta una sesión de juego abierta: ábrela desde el historial.');
             if (!historial.experiencia?.puedeSubir)
                 throw new Error('Aún no le llegan los PX para el siguiente nivel.');
-            const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta, () => this.sigueLaMismaCuenta());
+            const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta, () => this.cuenta.sigue());
             if (!cargada)
                 return;
             const { sesion, entrada, pj } = cargada;
@@ -197,7 +200,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             this.pj = pj;
             this.tiradasPermitidas = await tiradasPermitidasDe(entrada, this.campanaSvc);
             await this.hidratar();
-            if (!this.sigueLaMismaCuenta())
+            if (!this.cuenta.sigue())
                 return;
             if (!await this.restaurarBorrador())
                 this.irA('clase');
@@ -217,10 +220,6 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     /** El cuerpo del alta que arma el motor ahora (para la diferencia de la subida). */
     private cuerpoDelMotor(): PersonajeCreateRequestDto {
         return this.motor.cuerpoDelMotor(this.svc, this.entrada!);
-    }
-
-    private sigueLaMismaCuenta(): boolean {
-        return !this.destruido && `${this.auth.currentUser?.uid ?? ''}`.trim() === this.uid && this.uid.length > 0;
     }
 
     // --- La clase ------------------------------------------------------------------------------------------------------
@@ -544,7 +543,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
                 ficha: this.fichaParaGuardar(),
                 version: this.sesion.version,
             });
-            if (!this.sigueLaMismaCuenta())
+            if (!this.cuenta.sigue())
                 return;
             this.borrarBorrador();
             this.puerta.subidaHecha(this.idPersonaje);
@@ -555,7 +554,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             }
             this.alTerminar?.();
         } catch (error: any) {
-            if (!this.sigueLaMismaCuenta())
+            if (!this.cuenta.sigue())
                 return;
             this.error = `${error?.message ?? ''}`.trim() || 'No se ha podido guardar la subida.';
             this.errorPaso = campoDelErrorASubida(error?.code, error?.field, this.pasos);
@@ -602,21 +601,21 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     // --- El borrador (por cuenta y personaje) --------------------------------------------------------------------------
 
     private guardarBorrador(): void {
-        if (!this.sigueLaMismaCuenta() || !this.claseElegida || !this.sesion || !this.antes)
+        if (!this.cuenta.sigue() || !this.claseElegida || !this.sesion || !this.antes)
             return;
         const borrador: BorradorSubida = {
-            version: 1, uid: this.uid, idPersonaje: this.idPersonaje, versionSesion: this.sesion.version, actualizado: Date.now(),
+            version: 1, uid: this.cuenta.uid, idPersonaje: this.idPersonaje, versionSesion: this.sesion.version, actualizado: Date.now(),
             paso: this.paso, idClase: toInt(this.claseElegida.Id), motor: this.svc.exportarEstadoSubida(), antes: this.antes,
             tiradas: this.tiradas, tiradaElegida: this.tiradaElegida, olvidado: this.olvidado,
         };
         try {
-            localStorage.setItem(claveBorradorSubida(this.uid, this.idPersonaje), JSON.stringify({ ...borrador, pasos: this.pasos, nivelClase: this.nivelClase }));
+            localStorage.setItem(claveBorradorSubida(this.cuenta.uid, this.idPersonaje), JSON.stringify({ ...borrador, pasos: this.pasos, nivelClase: this.nivelClase }));
         } catch { /* sin almacenamiento, la subida sigue sin borrador */ }
     }
 
     private borrarBorrador(): void {
         try {
-            localStorage.removeItem(claveBorradorSubida(this.uid, this.idPersonaje));
+            localStorage.removeItem(claveBorradorSubida(this.cuenta.uid, this.idPersonaje));
         } catch { /* sin almacenamiento */ }
     }
 
@@ -624,13 +623,13 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     private async restaurarBorrador(): Promise<boolean> {
         let borrador: (BorradorSubida & { pasos?: PasoSubida[]; nivelClase?: number; }) | null = null;
         try {
-            borrador = JSON.parse(localStorage.getItem(claveBorradorSubida(this.uid, this.idPersonaje)) ?? 'null');
+            borrador = JSON.parse(localStorage.getItem(claveBorradorSubida(this.cuenta.uid, this.idPersonaje)) ?? 'null');
         } catch {
             borrador = null;
         }
         if (!borrador)
             return false;
-        const vale = borrador.version === 1 && borrador.uid === this.uid && toInt(borrador.idPersonaje) === toInt(this.idPersonaje)
+        const vale = borrador.version === 1 && borrador.uid === this.cuenta.uid && toInt(borrador.idPersonaje) === toInt(this.idPersonaje)
             && borrador.versionSesion === this.sesion?.version && Date.now() - toInt(borrador.actualizado) < CADUCIDAD_BORRADOR_MS;
         if (!vale) {
             this.borrarBorrador();

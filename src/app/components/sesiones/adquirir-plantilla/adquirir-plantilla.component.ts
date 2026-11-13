@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
+import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { Personaje } from 'src/app/interfaces/personaje';
@@ -26,7 +27,7 @@ import { ajusteDePlantillas, dgsDePlantilla } from 'src/app/services/utils/nivel
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
 import { motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
-import { evaluarElegibilidadPlantilla, PlantillaEvaluacionResultado, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
+import { evaluarPlantillaParaElegir, PlantillaEvaluacionParaElegir } from 'src/app/services/utils/plantilla-elegibilidad';
 import { campanaDejaSaltarRequisitosPlantilla, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { carasDado } from 'src/app/services/utils/puntos-golpe';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
@@ -42,7 +43,7 @@ export interface OpcionPlantilla {
 
 /**
  * Adquirir una plantilla con el personaje ya creado (roadmap de sesiones, fase 7): la lista de las que puede adquirir con
- * la misma evaluación que el paso de plantillas de la creación (`evaluarElegibilidadPlantilla` con el contexto del motor),
+ * la misma evaluación que el paso de plantillas de la creación (`evaluarPlantillaParaElegir` con el contexto del motor),
  * los pasos que dispara (el incremento y las dotes por los DG que añade, sus PG, sus rangos) con los selectores de la
  * creación (en el hueco común, `HuecoDeSelectores`) y el resumen con lo que cambia antes de guardar
  * (`POST /personajes/{id}/plantillas`). Usa el motor de la creación en su propia instancia (`MotorDesdeFichaService`) y las
@@ -95,27 +96,29 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
     private carasClaseAntes = new Map<number, number>();
     private carasRacialAntes = 0;
     private modConAntes = 0;
-    private uid = '';
+    /** La cuenta con la que se abrió: lo que llega después de cerrarla o de cambiar de cuenta se descarta. */
+    private readonly cuenta: MismaCuenta;
     private readonly selectores = new HuecoDeSelectores(() => this.modalHost);
-    private destruido = false;
 
     constructor(
         public svc: NuevoPersonajeService,
-        private auth: Auth,
+        auth: Auth,
         private sesionesSvc: SesionesService,
         private puerta: SubidaNivelPuertaService,
         private campanaSvc: CampanaService,
         private motor: MotorDesdeFichaService,
         private plantillaSvc: PlantillaService,
         private navegacion: NavegacionRolService,
-    ) { }
+    ) {
+        this.cuenta = new MismaCuenta(auth);
+    }
 
     ngOnInit(): void {
         void this.cargar();
     }
 
     ngOnDestroy(): void {
-        this.destruido = true;
+        this.cuenta.destruir();
         this.selectores.cerrar();
     }
 
@@ -162,7 +165,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
     private async cargar(): Promise<void> {
         this.cargando = true;
         this.error = '';
-        this.uid = `${this.auth.currentUser?.uid ?? ''}`.trim();
+        this.cuenta.fijar();
         try {
             const historial = await this.sesionesSvc.historial(this.idPersonaje);
             this.experiencia = historial.experiencia;
@@ -172,7 +175,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
                 throw new Error('Solo su dueño o el máster de su campaña pueden darle una plantilla.');
             if (abierta < 1)
                 throw new Error('Para adquirir una plantilla hace falta una sesión de juego abierta: ábrela desde el historial.');
-            const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta, () => this.sigueLaMismaCuenta());
+            const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta, () => this.cuenta.sigue());
             if (!cargada)
                 return;
             this.sesion = cargada.sesion;
@@ -181,7 +184,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             this.tiradasPermitidas = await tiradasPermitidasDe(this.entrada, this.campanaSvc);
             await this.hidratar();
             const catalogo = await this.motor.primero(this.plantillaSvc.getPlantillas());
-            if (!this.sigueLaMismaCuenta())
+            if (!this.cuenta.sigue())
                 return;
             this.recalcularOpciones(catalogo ?? []);
         } catch (error: any) {
@@ -201,10 +204,6 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         this.modConAntes = this.modConstitucion();
     }
 
-    private sigueLaMismaCuenta(): boolean {
-        return !this.destruido && `${this.auth.currentUser?.uid ?? ''}`.trim() === this.uid && this.uid.length > 0;
-    }
-
     private modConstitucion(): number {
         const p = this.svc.PersonajeCreacion;
         return caracteristicasPerdidasDe(p).Constitucion ? 0 : toInt(p.ModConstitucion);
@@ -222,23 +221,26 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         // Sin sus requisitos, con la regla de la creación: solo si la campaña admite homebrew sin límite (o se salta su política).
         const saltaRequisitos = salta || campanaDejaSaltarRequisitosPlantilla(this.pj?.PoliticaCompra);
         const actuales = this.svc.EstadoFlujo.plantillas.seleccionadas ?? [];
+        const alineamiento = this.svc.PersonajeCreacion.Alineamiento;
         this.opciones = (catalogo ?? [])
             .filter((p) => esPlantillaAdquirible(p) && !tiene.has(toInt(p.Id)))
-            .map((plantilla) => this.opcion(plantilla, evaluarElegibilidadPlantilla(plantilla, ctx), sinHomebrew && !salta, saltaRequisitos, actuales))
+            .map((plantilla) => this.opcion(plantilla, evaluarPlantillaParaElegir(plantilla, ctx, alineamiento, actuales),
+                sinHomebrew && !salta, saltaRequisitos))
             .filter((o) => o.estado !== 'bloqueada' || o.plantilla.Oficial !== false || homebrewPj || !sinHomebrew)
             .sort((a, b) => ORDEN_ESTADO[a.estado] - ORDEN_ESTADO[b.estado] || a.plantilla.Nombre.localeCompare(b.plantilla.Nombre, 'es'));
     }
 
-    private opcion(plantilla: Plantilla, evaluacion: PlantillaEvaluacionResultado, bloqueaHomebrew: boolean, saltaRequisitos: boolean,
-        actuales: Plantilla[]): OpcionPlantilla {
+    /**
+     * Una plantilla de la lista: antes que nada, el homebrew que no admite la campaña; después, la evaluación de la creación
+     * (`evaluarPlantillaParaElegir`: sus reglas y el alineamiento con las que ya tiene, que no se salta) y, si solo fallan
+     * sus prerrequisitos (`saltable`), si la campaña deja saltárselos (`saltaRequisitos`).
+     */
+    private opcion(plantilla: Plantilla, evaluacion: PlantillaEvaluacionParaElegir, bloqueaHomebrew: boolean,
+        saltaRequisitos: boolean): OpcionPlantilla {
         if (bloqueaHomebrew && plantilla.Oficial === false)
             return { plantilla, estado: 'bloqueada', motivo: 'La campaña no admite contenido homebrew.' };
-        if (evaluacion.estado === 'eligible') {
-            const alineamiento = resolverAlineamientoPlantillas(this.svc.PersonajeCreacion.Alineamiento, [...actuales, plantilla]);
-            if (alineamiento.conflicto)
-                return { plantilla, estado: 'bloqueada', motivo: alineamiento.razones.join(' · ') };
+        if (evaluacion.estado === 'eligible')
             return { plantilla, estado: 'elegible', motivo: '' };
-        }
         const motivo = evaluacion.razones.join(' · ') || 'No cumple sus prerrequisitos.';
         if (evaluacion.saltable && !saltaRequisitos)
             return { plantilla, estado: 'bloqueada', motivo: `${motivo} · La campaña no admite homebrew: no se pueden saltar sus requisitos.` };
@@ -438,12 +440,12 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
                 version: this.sesion.version,
                 ...(this.dgsNuevos > 0 ? { pg: { tiradas } } : {}),
             });
-            if (!this.sigueLaMismaCuenta())
+            if (!this.cuenta.sigue())
                 return;
             this.puerta.subidaHecha(this.idPersonaje);
             this.alTerminar?.();
         } catch (error: any) {
-            if (!this.sigueLaMismaCuenta())
+            if (!this.cuenta.sigue())
                 return;
             this.error = `${error?.message ?? ''}`.trim() || 'No se ha podido adquirir la plantilla.';
             if (`${error?.field ?? ''}`.startsWith('pg') && this.pasos.includes('pg'))

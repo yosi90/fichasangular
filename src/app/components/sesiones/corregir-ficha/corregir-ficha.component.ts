@@ -6,6 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
+import { MismaCuenta } from 'src/app/components/sesiones/misma-cuenta';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
 import { Caracteristica } from 'src/app/interfaces/caracteristica';
@@ -24,7 +25,7 @@ import { modificadorCaracteristica, NOMBRES_CARACTERISTICAS } from 'src/app/serv
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
 import { CARACTERISTICAS_DEL_ALTA, CambiosCorreccion, DoteDeLaFicha, fichaDeLaCorreccion } from 'src/app/services/utils/correccion-ficha';
 import { comoSaleLaEdadDelManual, motivoEdadFueraDelManual } from 'src/app/services/utils/edad-personaje';
-import { alturaFueraDeRango, pesoFueraDeRango } from 'src/app/services/utils/medidas-raza';
+import { alturaFueraDeRango, pesoFueraDeRango, textoRangoAltura, textoRangoPeso } from 'src/app/services/utils/medidas-raza';
 import { toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { decisionesHomebrewPersonaje, DecisionHomebrew } from 'src/app/services/utils/personaje-oficialidad';
 import { carasDado } from 'src/app/services/utils/puntos-golpe';
@@ -147,26 +148,28 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
     private reglasMantenidas = new Set<string>();
     /** Las reglas que la ficha ya se saltaba al cargarla (sus decisiones homebrew): siguen mantenidas, sea quien sea. */
     private reglasDeAntes = new Set<string>();
-    private uid = '';
+    /** La cuenta con la que se abrió: lo que llega después de cerrarla o de cambiar de cuenta se descarta. */
+    private readonly cuenta: MismaCuenta;
     private readonly selectores = new HuecoDeSelectores(() => this.modalHost);
-    private destruido = false;
 
     constructor(
         public svc: NuevoPersonajeService,
-        private auth: Auth,
+        auth: Auth,
         private sesionesSvc: SesionesService,
         private puerta: SubidaNivelPuertaService,
         private motor: MotorDesdeFichaService,
         private alineamientoSvc: AlineamientoService,
         private deidadSvc: DeidadService,
-    ) { }
+    ) {
+        this.cuenta = new MismaCuenta(auth);
+    }
 
     ngOnInit(): void {
         void this.cargar();
     }
 
     ngOnDestroy(): void {
-        this.destruido = true;
+        this.cuenta.destruir();
         this.cerrarModal();
     }
 
@@ -193,13 +196,11 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
     }
 
     get rangoAltura(): string {
-        const r = this.svc.RazaSeleccionada;
-        return toNumber(r?.Altura_rango_sup) > 0 ? `${r!.Altura_rango_inf}-${r!.Altura_rango_sup} m` : '';
+        return textoRangoAltura(this.svc.RazaSeleccionada);
     }
 
     get rangoPeso(): string {
-        const r = this.svc.RazaSeleccionada;
-        return toNumber(r?.Peso_rango_sup) > 0 ? `${r!.Peso_rango_inf}-${r!.Peso_rango_sup} kg` : '';
+        return textoRangoPeso(this.svc.RazaSeleccionada);
     }
 
     /** Lo que cambia, en frases (el resumen antes de guardar). */
@@ -252,7 +253,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
     private async cargar(): Promise<void> {
         this.cargando = true;
         this.error = '';
-        this.uid = `${this.auth.currentUser?.uid ?? ''}`.trim();
+        this.cuenta.fijar();
         try {
             const historial = await this.sesionesSvc.historial(this.idPersonaje);
             if (!historial.puedeApuntar)
@@ -260,7 +261,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             const abierta = historial.sesiones.find((s) => s.estado === 'abierta') ?? null;
             if (!abierta)
                 throw new Error('Para corregir la ficha hace falta una sesión abierta: ábrela o reabre la última desde el historial.');
-            const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta.numero, () => this.sigueLaMismaCuenta());
+            const cargada = await this.motor.cargarSesion(this.svc, this.idPersonaje, abierta.numero, () => this.cuenta.sigue());
             if (!cargada)
                 return;
             const { sesion, entrada, pj } = cargada;
@@ -338,10 +339,6 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             return [fila];
         });
         this.recalcular();
-    }
-
-    private sigueLaMismaCuenta(): boolean {
-        return !this.destruido && `${this.auth.currentUser?.uid ?? ''}`.trim() === this.uid && this.uid.length > 0;
     }
 
     // --- La cascada ----------------------------------------------------------------------------------------------------
@@ -616,12 +613,12 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
                 version: this.sesion.version,
                 ...(this.motivo.trim() ? { motivo: this.motivo.trim().slice(0, this.maximoMotivo) } : {}),
             });
-            if (!this.sigueLaMismaCuenta())
+            if (!this.cuenta.sigue())
                 return;
             this.puerta.subidaHecha(this.idPersonaje);
             this.alTerminar?.();
         } catch (error: any) {
-            if (this.sigueLaMismaCuenta())
+            if (this.cuenta.sigue())
                 this.error = `${error?.message ?? ''}`.trim() || 'No se ha podido guardar la corrección.';
         } finally {
             this.guardando = false;

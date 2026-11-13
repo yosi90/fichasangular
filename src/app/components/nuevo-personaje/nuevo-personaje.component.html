@@ -242,13 +242,13 @@
                                         <mat-label>Peso (kg)</mat-label>
                                         <input matInput type="number" min="0" step="0.01" [ngModel]="Personaje.Peso"
                                             (ngModelChange)="onPesoChange($event)">
-                                        <mat-hint>Recomendado {{raza.Peso_rango_inf}} - {{raza.Peso_rango_sup}}</mat-hint>
+                                        <mat-hint *ngIf="rangoPesoRaza">Recomendado {{rangoPesoRaza}}</mat-hint>
                                     </mat-form-field>
                                     <mat-form-field appearance="fill">
                                         <mat-label>Altura (m)</mat-label>
                                         <input matInput type="number" min="0" step="0.01" [ngModel]="Personaje.Altura"
                                             (ngModelChange)="onAlturaChange($event)">
-                                        <mat-hint>Recomendado {{raza.Altura_rango_inf}} - {{raza.Altura_rango_sup}}</mat-hint>
+                                        <mat-hint *ngIf="rangoAlturaRaza">Recomendado {{rangoAlturaRaza}}</mat-hint>
                                     </mat-form-field>
                                 </div>
                             </section>

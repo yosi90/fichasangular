@@ -108,11 +108,11 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
-import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
+import { PlantillaEvaluacionResultado, evaluarPlantillaParaElegir } from 'src/app/services/utils/plantilla-elegibilidad';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { evaluarAlineamientoClase } from 'src/app/services/utils/alineamiento-clase';
-import { alturaFueraDeRango, pesoFueraDeRango } from 'src/app/services/utils/medidas-raza';
+import { alturaFueraDeRango, pesoFueraDeRango, textoRangoAltura, textoRangoPeso } from 'src/app/services/utils/medidas-raza';
 import {
     ConOficial,
     ContextoOficialidad,
@@ -160,7 +160,7 @@ import {
 import { esPnj, TipoPersonaje, tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
 import { codigoDeError, mensajeDeError } from 'src/app/services/utils/error-api';
 import { PasoEdadRaza } from 'src/app/interfaces/raza';
-import { normalizarTexto, primerEntero, toInt, toPositiveInt } from 'src/app/services/utils/normalizacion';
+import { normalizarTexto, primerEntero, toInt, toNumber, toPositiveInt } from 'src/app/services/utils/normalizacion';
 import { idManiobrabilidadDelPersonaje } from 'src/app/services/utils/racial-progresion';
 import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { unirLista } from 'src/app/components/detalles/ficha/ficha';
@@ -172,7 +172,7 @@ import { esEspecializable, prohibidasAlEspecializarse } from 'src/app/services/u
 import { etiquetaManual } from 'src/app/services/utils/manual-mapper';
 import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { dgsDePlantilla } from 'src/app/services/utils/nivel-personaje';
-import { textoConSigno } from 'src/app/services/utils/equipo-texto';
+import { formatoNumero, textoConSigno } from 'src/app/services/utils/equipo-texto';
 import { EquipoService } from 'src/app/services/equipo.service';
 import { PersonajeCompraRequestDto } from 'src/app/interfaces/personajes-api';
 import { EquipoCatalogos, MunicionDetalle } from 'src/app/interfaces/equipo';
@@ -2086,6 +2086,16 @@ export class NuevoPersonajeComponent {
         return alturaFueraDeRango(this.Personaje.Altura, this.razaSeleccionada);
     }
 
+    /** El rango de peso de la raza en texto («30-45 kg»), o vacío si no lo da (`medidas-raza.ts`). */
+    get rangoPesoRaza(): string {
+        return textoRangoPeso(this.razaSeleccionada);
+    }
+
+    /** El rango de altura de la raza en texto («1,2-1,5 m»), o vacío si no lo da. */
+    get rangoAlturaRaza(): string {
+        return textoRangoAltura(this.razaSeleccionada);
+    }
+
     get mostrarPanelDeidad(): boolean {
         return !esSinDeidad(this.Personaje.Deidad);
     }
@@ -2407,10 +2417,10 @@ export class NuevoPersonajeComponent {
             otherOfficialBlockers.push(this.motivoEdadFueraRango);
         }
         if (this.pesoFueraRango) {
-            otherOfficialBlockers.push(`Peso fuera de rango: ${this.Personaje.Peso} kg (tipico ${this.razaSeleccionada?.Peso_rango_inf}-${this.razaSeleccionada?.Peso_rango_sup} kg).`);
+            otherOfficialBlockers.push(`Peso fuera de rango: ${formatoNumero(toNumber(this.Personaje.Peso))} kg (típico ${this.rangoPesoRaza}).`);
         }
         if (this.alturaFueraRango) {
-            otherOfficialBlockers.push(`Altura fuera de rango: ${this.Personaje.Altura} m (tipico ${this.razaSeleccionada?.Altura_rango_inf}-${this.razaSeleccionada?.Altura_rango_sup} m).`);
+            otherOfficialBlockers.push(`Altura fuera de rango: ${formatoNumero(toNumber(this.Personaje.Altura))} m (típico ${this.rangoAlturaRaza}).`);
         }
 
         if (!this.esDeidadOficial()) {
@@ -8330,39 +8340,16 @@ export class NuevoPersonajeComponent {
             if (porManual !== 'Cualquiera' && (plantilla.Manual?.Nombre ?? '') !== porManual)
                 return;
 
-            const evaluacion = evaluarElegibilidadPlantilla(plantilla, ctx);
+            // Sus reglas, la campaña y el alineamiento con las ya elegidas, en ese orden (`evaluarPlantillaParaElegir`).
+            const { bloqueo, ...evaluacion } = evaluarPlantillaParaElegir(plantilla, ctx, this.Personaje.Alineamiento,
+                this.plantillasSeleccionadas, () => this.getCampaignBlockedReasonForCandidate('plantilla', plantilla));
             if (evaluacion.estado === 'eligible') {
-                const campaignBlockedReason = this.getCampaignBlockedReasonForCandidate(
-                    'plantilla',
-                    plantilla
-                );
-                if (campaignBlockedReason) {
-                    bloqueadasCampana.push({
-                        plantilla,
-                        evaluacion: {
-                            estado: 'blocked_failed',
-                            razones: [campaignBlockedReason],
-                            advertencias: [],
-                        },
-                    });
-                    return;
-                }
-                const alineamientoResuelto = resolverAlineamientoPlantillas(
-                    this.Personaje.Alineamiento,
-                    [...this.plantillasSeleccionadas, plantilla]
-                );
-                if (alineamientoResuelto.conflicto) {
-                    bloqueadasFailed.push({
-                        plantilla,
-                        evaluacion: {
-                            estado: 'blocked_failed',
-                            razones: alineamientoResuelto.razones,
-                            advertencias: [],
-                        },
-                    });
-                    return;
-                }
                 elegibles.push(plantilla);
+                return;
+            }
+
+            if (bloqueo === 'externo') {
+                bloqueadasCampana.push({ plantilla, evaluacion });
                 return;
             }
 
@@ -8398,15 +8385,7 @@ export class NuevoPersonajeComponent {
                 || this.nuevoPSvc.esPlantillaConfirmada(idPlantilla))
                 return false;
 
-            const evaluacion = evaluarElegibilidadPlantilla(plantilla, ctx);
-            if (evaluacion.estado !== 'eligible')
-                return false;
-
-            const alineamientoResuelto = resolverAlineamientoPlantillas(
-                this.Personaje.Alineamiento,
-                [...this.plantillasSeleccionadas, plantilla]
-            );
-            return !alineamientoResuelto.conflicto;
+            return evaluarPlantillaParaElegir(plantilla, ctx, this.Personaje.Alineamiento, this.plantillasSeleccionadas).estado === 'eligible';
         });
     }
 }

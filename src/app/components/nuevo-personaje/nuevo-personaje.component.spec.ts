@@ -1919,8 +1919,8 @@ describe('NuevoPersonajeComponent', () => {
         const inconsistencias = component.getInconsistenciasManual();
 
         expect(inconsistencias.some(i => i.includes('Edad por debajo de la mayoría de edad'))).toBeTrue();
-        expect(inconsistencias.some(i => i.includes('Peso fuera de rango'))).toBeTrue();
-        expect(inconsistencias.some(i => i.includes('Altura fuera de rango'))).toBeTrue();
+        expect(inconsistencias).toContain('Peso fuera de rango: 120 kg (típico 55-85 kg).');
+        expect(inconsistencias).toContain('Altura fuera de rango: 2,2 m (típico 1,5-1,9 m).');
     });
 
     it('getInconsistenciasManual incluye deidad no oficial', () => {

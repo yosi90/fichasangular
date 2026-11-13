@@ -1,5 +1,5 @@
 import { Plantilla } from "src/app/interfaces/plantilla";
-import { evaluarElegibilidadPlantilla, PlantillaEvaluacionContexto, rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPlantillas } from "./plantilla-elegibilidad";
+import { evaluarElegibilidadPlantilla, evaluarPlantillaParaElegir, PlantillaEvaluacionContexto, rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPlantillas } from "./plantilla-elegibilidad";
 
 function crearPlantillaMock(overrides?: Partial<Plantilla>): Plantilla {
     return {
@@ -532,5 +532,58 @@ describe("rasgosTipoSinQuitados", () => {
         const rasgos = [vision, sinAlma];
         expect(rasgosTipoSinQuitados(rasgos, [])).toBe(rasgos);
         expect(rasgosTipoSinQuitados(rasgos, [crearPlantillaMock()])).toBe(rasgos);
+    });
+});
+
+describe("evaluarPlantillaParaElegir (la creación y la adquisición de una plantilla)", () => {
+    const conMoral = (Id: number, Nombre: string, moral: string) => crearPlantillaMock({
+        Id, Nombre,
+        Alineamiento: {
+            Id: 0,
+            Basico: { Id_basico: 0, Nombre: "No aplica" },
+            Ley: { Id_ley: 10, Nombre: "Ninguna preferencia" },
+            Moral: { Id_moral: 0, Nombre: moral },
+            Prioridad: { Id_prioridad: 3, Nombre: "Siempre" },
+            Descripcion: "",
+        },
+    });
+    const santa = conMoral(601, "Plantilla santa", "Siempre bueno");
+    const profana = conMoral(602, "Plantilla profana", "Siempre maligno");
+    const fuerte = crearPlantillaMock({
+        Prerrequisitos_flags: { caracteristica: true },
+        Prerrequisitos: {
+            actitud_requerido: [], actitud_prohibido: [], alineamiento_requerido: [],
+            caracteristica: [{ Id_caracteristica: 1, Cantidad: 15, opcional: 0, Frase: "Fuerza 15" }],
+            criaturas_compatibles: [],
+        },
+    });
+
+    it("elegible: sus reglas, la comprobación de quien llama y el alineamiento, todo bien", () => {
+        const campana = jasmine.createSpy("campana").and.returnValue(null);
+        const res = evaluarPlantillaParaElegir(santa, crearContextoBase(), "Neutral autentico", [], campana);
+        expect(res.estado).toBe("eligible");
+        expect(res.bloqueo).toBeUndefined();
+        expect(campana).toHaveBeenCalledTimes(1);
+    });
+
+    it("si fallan sus reglas, se devuelve su evaluación tal cual (saltable) y no se mira lo demás", () => {
+        const campana = jasmine.createSpy("campana").and.returnValue("La campaña no la admite.");
+        const res = evaluarPlantillaParaElegir(fuerte, crearContextoBase(), "Neutral autentico", [profana], campana);
+        expect(res).toEqual(evaluarElegibilidadPlantilla(fuerte, crearContextoBase()));
+        expect(res.saltable).toBeTrue();
+        expect(campana).not.toHaveBeenCalled();
+    });
+
+    it("la comprobación de quien llama (la campaña en la creación) va antes que el alineamiento", () => {
+        const res = evaluarPlantillaParaElegir(santa, crearContextoBase(), "Neutral autentico", [profana], () => "La campaña no la admite.");
+        expect(res).toEqual({ estado: "blocked_failed", razones: ["La campaña no la admite."], advertencias: [], bloqueo: "externo" });
+    });
+
+    it("el alineamiento que fija frente al de las ya elegidas, al final, con sus razones", () => {
+        const res = evaluarPlantillaParaElegir(santa, crearContextoBase(), "Neutral autentico", [profana], () => null);
+        const esperado = resolverAlineamientoPlantillas("Neutral autentico", [profana, santa]);
+        expect(esperado.conflicto).toBeTrue();
+        expect(res).toEqual({ estado: "blocked_failed", razones: esperado.razones, advertencias: [], bloqueo: "alineamiento" });
+        expect(evaluarPlantillaParaElegir(santa, crearContextoBase(), "Neutral autentico", [profana]).bloqueo).toBe("alineamiento");
     });
 });

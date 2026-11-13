@@ -547,3 +547,41 @@ export function evaluarElegibilidadPlantilla(
         advertencias: [],
     };
 }
+
+/**
+ * La evaluación de una plantilla para elegirla, con su alineamiento: la creación (su paso de plantillas) y la adquisición
+ * de una plantilla con el personaje ya creado (`AdquirirPlantillaComponent`).
+ */
+export interface PlantillaEvaluacionParaElegir extends PlantillaEvaluacionResultado {
+    /**
+     * Qué la bloquea si sus reglas la dejan (`evaluarElegibilidadPlantilla` da `eligible`): la comprobación de quien la
+     * llama (`antesDelAlineamiento`: en la creación, la campaña) o el alineamiento que fija frente al de las ya elegidas.
+     */
+    bloqueo?: 'externo' | 'alineamiento';
+}
+
+/**
+ * Si se puede elegir `plantilla`, en este orden: sus reglas (`evaluarElegibilidadPlantilla` con `ctx`); si las cumple, la
+ * comprobación de quien la llama (`antesDelAlineamiento`, que da la razón del bloqueo o `null`: en la creación, la de la
+ * campaña); y, al final, si el alineamiento que fija choca con el de `seleccionadas` (`resolverAlineamientoPlantillas` con
+ * `alineamiento`). Un bloqueo de los dos últimos es `blocked_failed` con sus razones y su `bloqueo`; lo que falla en sus
+ * reglas se devuelve tal cual (con su `saltable`).
+ */
+export function evaluarPlantillaParaElegir(
+    plantilla: Plantilla,
+    ctx: PlantillaEvaluacionContexto,
+    alineamiento: string,
+    seleccionadas: Plantilla[],
+    antesDelAlineamiento?: () => string | null | undefined,
+): PlantillaEvaluacionParaElegir {
+    const evaluacion = evaluarElegibilidadPlantilla(plantilla, ctx);
+    if (evaluacion.estado !== 'eligible')
+        return evaluacion;
+    const externo = antesDelAlineamiento?.();
+    if (externo)
+        return { estado: 'blocked_failed', razones: [externo], advertencias: [], bloqueo: 'externo' };
+    const resuelto = resolverAlineamientoPlantillas(alineamiento, [...(seleccionadas ?? []), plantilla]);
+    if (resuelto.conflicto)
+        return { estado: 'blocked_failed', razones: resuelto.razones, advertencias: [], bloqueo: 'alineamiento' };
+    return evaluacion;
+}
