@@ -8180,6 +8180,30 @@ describe('NuevoPersonajeService (tipo y subtipos derivados)', () => {
         expect(svc.PersonajeCreacion.ModConstitucion).toBe(1);
     });
 
+    it('el constructo viviente conserva la Constitución aunque su tipo no la tenga (el forjado, ECS pág. 17)', () => {
+        const svc = new NuevoPersonajeService();
+        const tipoConstructo = crearTipo(6, 'Constructo');
+        tipoConstructo.Pierde_constitucion = true;
+        svc.setCatalogoTiposCriatura([tipoConstructo]);
+        svc.setCatalogoSubtipos([
+            { Id: 70, Nombre: 'constructo viviente', Conserva_constitucion: true } as any,
+            { Id: 71, Nombre: 'otro', Conserva_constitucion: false } as any,
+        ]);
+        const caracteristicas = { Fuerza: 14, Destreza: 12, Constitucion: 15, Inteligencia: 10, Sabiduria: 11, Carisma: 9 };
+
+        svc.seleccionarRaza(crearRazaMock(tipoConstructo, [{ Id: 70, Nombre: 'constructo viviente' }]));
+        svc.aplicarCaracteristicasGeneradas(caracteristicas);
+        expect(svc.PersonajeCreacion.Constitucion_perdida).toBeFalse();
+        expect(svc.PersonajeCreacion.Constitucion).toBe(15);
+        expect(svc.PersonajeCreacion.ModConstitucion).toBe(2);
+
+        // El mismo tipo sin ese subtipo la pierde.
+        svc.seleccionarRaza(crearRazaMock(tipoConstructo, [{ Id: 71, Nombre: 'otro' }]));
+        svc.aplicarCaracteristicasGeneradas(caracteristicas);
+        expect(svc.PersonajeCreacion.Constitucion_perdida).toBeTrue();
+        expect(svc.PersonajeCreacion.Constitucion).toBe(0);
+    });
+
     it('interpreta Pierde_constitucion=1 como activo', () => {
         const svc = new NuevoPersonajeService();
         const tipoNoMuerto = {

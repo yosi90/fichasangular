@@ -69,6 +69,11 @@ export interface SubtipoResumen {
      * creación lo añade. Desde el 2026-11-13 (caché `Subtipos` 4).
      */
     Al_cambiar_tipo?: boolean;
+    /**
+     * La criatura conserva la Constitución aunque su tipo no la tenga (el constructo viviente del forjado, *Escenario de
+     * campaña de Eberron*, pág. 17): la creación no se la quita. Desde el 2026-11-13 (caché `Subtipos` 5).
+     */
+    Conserva_constitucion?: boolean;
 }
 
 export interface SubtipoReferenciaCorta {
@@ -89,6 +94,8 @@ export interface SubtipoDetalle {
     Ajuste_nivel: number;
     /** Lo gana una criatura cuando una plantilla le cambia el tipo (el agrandado). */
     Al_cambiar_tipo?: boolean;
+    /** La criatura conserva la Constitución aunque su tipo no la tenga (el constructo viviente). */
+    Conserva_constitucion?: boolean;
     Presa: number;
     Fortaleza: number;
     Reflejos: number;
@@ -128,6 +135,8 @@ export interface SubtipoCuerpo {
         heredada: boolean;
         /** Opcional en el contrato: sin él, la edición conserva el que tiene. */
         al_cambiar_tipo?: boolean;
+        /** Opcional, igual: sin él, la edición conserva el que tiene. */
+        conserva_constitucion?: boolean;
         fuerza: number;
         destreza: number;
         constitucion: number;

@@ -1736,7 +1736,7 @@ export class NuevoPersonajeService {
         this.aplicarIdiomasAutomaticos(razaEfectiva.Nombre, razaEfectiva?.Idiomas ?? []);
         if (razaEfectiva?.Tipo_criatura) {
             this.personajeCreacion.Tipo_criatura = this.copiarTipoCriatura(razaEfectiva.Tipo_criatura);
-            this.sincronizarCaracteristicasPerdidasConTipoActual();
+            this.sincronizarCaracteristicasPerdidasConTipoActual(razaEfectiva?.Subtipos ?? []);
         }
         // Una raza por edades llega ya resuelta a la edad elegida (`GET /razas/{id}/pasos-edad/{idPaso}`): guarda su paso y
         // empieza con los años de ese paso; las demás, con la edad más baja que vale para cualquier clase (la mayoría de
@@ -1952,9 +1952,11 @@ export class NuevoPersonajeService {
 
     setCatalogoSubtipos(subtipos: SubtipoResumen[]): void {
         this.catalogoSubtipos = [...(subtipos ?? [])];
-        // El subtipo que da cambiar de tipo (`Al_cambiar_tipo`) sale de este catálogo.
+        // El subtipo que da cambiar de tipo (`Al_cambiar_tipo`) y el que conserva la Constitución salen de este catálogo.
         if ((this.estadoFlujo.plantillas.seleccionadas ?? []).length > 0)
             this.recalcularTipoYSubtiposDerivados();
+        else if (this.personajeCreacion?.Tipo_criatura)
+            this.sincronizarCaracteristicasPerdidasConTipoActual();
         this.recalcularNepExperienciaOro();
     }
 
@@ -12079,7 +12081,7 @@ export class NuevoPersonajeService {
     }
 
     private resolverModConstitucionParaVida(): { aplica: boolean; modificador: number; } {
-        const pierdeConstitucion = toBoolean(this.personajeCreacion?.Tipo_criatura?.Pierde_constitucion)
+        const pierdeConstitucion = this.tipoQuitaLaConstitucion(this.personajeCreacion?.Tipo_criatura, this.personajeCreacion?.Subtipos ?? [])
             || toBoolean(this.personajeCreacion?.Constitucion_perdida);
         if (pierdeConstitucion)
             return { aplica: false, modificador: 0 };
@@ -12235,10 +12237,22 @@ export class NuevoPersonajeService {
         };
     }
 
-    private sincronizarCaracteristicasPerdidasConTipoActual(): void {
-        const tipoActual = this.personajeCreacion?.Tipo_criatura;
-        const pierdeConstitucion = toBoolean(tipoActual?.Pierde_constitucion);
-        this.setCaracteristicaPerdida('Constitucion', pierdeConstitucion, 'tipo_criatura');
+    /**
+     * Las características que quita el tipo actual: la Constitución si el tipo no la tiene (`Pierde_constitucion`), salvo
+     * que uno de sus subtipos la conserve (`Conserva_constitucion` del catálogo de subtipos: el constructo viviente del
+     * forjado, *Escenario de campaña de Eberron*, pág. 17). Sale de los datos, no del nombre; como la API.
+     */
+    private sincronizarCaracteristicasPerdidasConTipoActual(subtipos: SubtipoRef[] = this.personajeCreacion?.Subtipos ?? []): void {
+        this.setCaracteristicaPerdida('Constitucion', this.tipoQuitaLaConstitucion(this.personajeCreacion?.Tipo_criatura, subtipos), 'tipo_criatura');
+    }
+
+    private tipoQuitaLaConstitucion(tipo: TipoCriatura | null | undefined, subtipos: SubtipoRef[]): boolean {
+        if (!toBoolean(tipo?.Pierde_constitucion))
+            return false;
+        const conservan = new Set(this.catalogoSubtipos
+            .filter((subtipo) => subtipo?.Conserva_constitucion === true)
+            .map((subtipo) => toNumber(subtipo?.Id)));
+        return !(subtipos ?? []).some((subtipo) => conservan.has(toNumber(subtipo?.Id)));
     }
 
     private aplicarPerdidasSinGenerador(): void {

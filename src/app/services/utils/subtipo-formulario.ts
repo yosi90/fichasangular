@@ -46,6 +46,8 @@ export type ValoresSubtipo = Record<ClaveNumerica, number | null> & Record<Clave
     heredada: boolean;
     /** Lo gana una criatura cuando una plantilla le cambia el tipo (el agrandado, MM1, pág. 291). */
     al_cambiar_tipo: boolean;
+    /** La criatura conserva la Constitución aunque su tipo no la tenga (el constructo viviente). */
+    conserva_constitucion: boolean;
     /** `null`: no vuela. */
     id_maniobrabilidad: number | null;
     id_alineamiento: number | null;
@@ -83,7 +85,8 @@ export function valoresVaciosDeSubtipo(): ValoresSubtipo {
     return {
         ...Object.fromEntries(NUMERICAS.map((clave) => [clave, 0])),
         ...Object.fromEntries(TEXTOS_SUBTIPO.map(({ clave }) => [clave, ''])),
-        nombre: '', descripcion: '', id_manual: null, pagina: null, heredada: true, al_cambiar_tipo: false, id_maniobrabilidad: null,
+        nombre: '', descripcion: '', id_manual: null, pagina: null, heredada: true, al_cambiar_tipo: false, conserva_constitucion: false,
+        id_maniobrabilidad: null,
         id_alineamiento: null, oficial: true,
     } as ValoresSubtipo;
 }
@@ -113,6 +116,7 @@ export function valoresDeSubtipo(subtipo: SubtipoDetalle): ValoresSubtipo {
         pagina: toInt(subtipo.Manual?.Pagina),
         heredada: subtipo.Heredada === true,
         al_cambiar_tipo: subtipo.Al_cambiar_tipo === true,
+        conserva_constitucion: subtipo.Conserva_constitucion === true,
         // Sin vuelo, la API da la maniobrabilidad `null` (el mapper la deja vacía).
         id_maniobrabilidad: toPositiveInt(subtipo.Maniobrabilidad?.['Id']),
         id_alineamiento: toInt(subtipo.Alineamiento?.Id),
@@ -169,6 +173,7 @@ export function cuerpoDeSubtipo(valores: ValoresSubtipo, listas: ListasSubtipo):
             pagina: toInt(valores.pagina),
             heredada: valores.heredada === true,
             al_cambiar_tipo: valores.al_cambiar_tipo === true,
+            conserva_constitucion: valores.conserva_constitucion === true,
             id_maniobrabilidad: valores.id_maniobrabilidad ?? null,
             id_alineamiento: toInt(valores.id_alineamiento),
             oficial: valores.oficial === true,

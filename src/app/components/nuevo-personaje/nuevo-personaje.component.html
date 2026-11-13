@@ -1002,7 +1002,7 @@
     <ng-container *ngIf="modalCaracteristicasAbierto && razaSeleccionada as razaActual">
         <app-generador-caracteristicas-modal [raza]="razaActual"
             [caracteristicasPerdidas]="Personaje.Caracteristicas_perdidas ?? null"
-            [pierdeConstitucion]="razaActual.Tipo_criatura.Pierde_constitucion" (cerrar)="cerrarModalCaracteristicas()"
+            [pierdeConstitucion]="Personaje.Constitucion_perdida === true" (cerrar)="cerrarModalCaracteristicas()"
             (finalizar)="finalizarGeneracionCaracteristicas($event)">
         </app-generador-caracteristicas-modal>
     </ng-container>

@@ -156,6 +156,7 @@ export class NuevoSubtipoComponent implements OnInit, OnDestroy, OnChanges, Edit
             pagina: new FormControl(vacios.pagina, [Validators.required, Validators.min(0), entero]),
             heredada: new FormControl(vacios.heredada),
             al_cambiar_tipo: new FormControl(vacios.al_cambiar_tipo),
+            conserva_constitucion: new FormControl(vacios.conserva_constitucion),
             id_maniobrabilidad: new FormControl(vacios.id_maniobrabilidad),
             id_alineamiento: new FormControl(vacios.id_alineamiento, [Validators.required]),
             oficial: new FormControl(vacios.oficial),
@@ -189,7 +190,7 @@ export class NuevoSubtipoComponent implements OnInit, OnDestroy, OnChanges, Edit
         return (this.form.controls as Record<string, FormControl>)[campo];
     }
 
-    alternar(campo: 'oficial' | 'heredada' | 'al_cambiar_tipo'): void {
+    alternar(campo: 'oficial' | 'heredada' | 'al_cambiar_tipo' | 'conserva_constitucion'): void {
         alternarControl(this.form.controls[campo]);
     }
 

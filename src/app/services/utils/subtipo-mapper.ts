@@ -95,6 +95,7 @@ export function normalizeSubtipoResumen(raw: any): SubtipoResumen {
         Oficial: toBoolean(raw?.Oficial),
         Ajuste_nivel: toNumber(raw?.Ajuste_nivel),
         Al_cambiar_tipo: toBoolean(raw?.Al_cambiar_tipo),
+        Conserva_constitucion: toBoolean(raw?.Conserva_constitucion),
     };
 }
 
@@ -126,6 +127,7 @@ export function normalizeSubtipoDetalle(raw: any): SubtipoDetalle {
         },
         Ajuste_nivel: toNumber(raw?.Ajuste_nivel),
         Al_cambiar_tipo: toBoolean(raw?.Al_cambiar_tipo),
+        Conserva_constitucion: toBoolean(raw?.Conserva_constitucion),
         Presa: toNumber(raw?.Presa),
         Fortaleza: toNumber(raw?.Fortaleza),
         Reflejos: toNumber(raw?.Reflejos),

@@ -58,7 +58,11 @@ export class DetallesSubtipoComponent {
     @Input()
     set subtipo(value: SubtipoDetalle) {
         this.subtipoData = value;
-        this.etiquetas = value?.Heredada ? ['Heredado'] : [];
+        this.etiquetas = [
+            ...(value?.Heredada ? ['Heredado'] : []),
+            ...(value?.Al_cambiar_tipo ? ['Al cambiar de tipo'] : []),
+            ...(value?.Conserva_constitucion ? ['Conserva la Constitución'] : []),
+        ];
         const cambio = (valor: unknown) => toNumber(valor) !== 0 ? textoConSigno(toNumber(valor)) : null;
         this.datos = datosVisibles([
             { etiqueta: 'Ajuste de nivel', valor: cambio(value?.Ajuste_nivel) },
