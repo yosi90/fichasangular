@@ -25,8 +25,8 @@ import { toInt } from './utils/normalizacion';
 /**
  * Prepara una instancia del motor de la creación (`NuevoPersonajeService`) para un personaje guardado: lee la sesión
  * abierta con su ficha, carga sus catálogos y lo hidrata desde su ficha y su `entrada` (`iniciarSubidaDesdeFicha`). Lo
- * usan la subida de nivel (fase 4) y la corrección de la ficha (fase 6) del roadmap de sesiones, cada una con su propia
- * instancia del motor, sin tocar la creación en curso.
+ * usan la subida de nivel (fase 4), la corrección de la ficha (fase 6) y la adquisición de una plantilla (fase 7) del
+ * roadmap de sesiones, cada una con su propia instancia del motor, sin tocar la creación en curso.
  */
 @Injectable({
     providedIn: 'root'
@@ -101,15 +101,17 @@ export class MotorDesdeFichaService {
 
     /**
      * El cuerpo del alta que arma el motor ahora con los datos de la `entrada` que no lleva (nombre, alineamiento, deidad,
-     * región…): lo que comparan antes y después la subida (`fichaDeLaSubida`) y la corrección (los rangos).
+     * región…): lo que comparan antes y después la subida (`fichaDeLaSubida`), la corrección (los rangos) y la adquisición de
+     * una plantilla (`fichaDeLaPlantilla`). El alineamiento, el de la `entrada` o `idAlineamiento` (el que deja una plantilla
+     * que lo fija, como el vampiro).
      */
-    cuerpoDelMotor(motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto): PersonajeCreateRequestDto {
+    cuerpoDelMotor(motor: NuevoPersonajeService, entrada: PersonajeCreateRequestDto, idAlineamiento?: number | null): PersonajeCreateRequestDto {
         const personaje = { ...motor.PersonajeCreacion, Nombre: entrada.personaje.nombre, Campana: 'Sin campaña' } as Personaje;
         const catalogo = (lista: Array<{ Id?: number; Nombre?: string; }>) => lista
             .map((x) => ({ id: toInt(x?.Id), nombre: `${x?.Nombre ?? ''}` })).filter((x) => x.id > 0);
         const s: any = motor;
         const contexto: PersonajeContextoIdsDto = {
-            idAlineamiento: toInt(entrada.personaje.idAlineamiento) || 1,
+            idAlineamiento: toInt(idAlineamiento) || toInt(entrada.personaje.idAlineamiento) || 1,
             idGenero: toInt(entrada.personaje.idGenero) || 1,
             idDeidad: toInt(entrada.personaje.deidad),
             idRegion: toInt(entrada.personaje.idRegion),

@@ -108,7 +108,8 @@ import { TamanoService } from 'src/app/services/tamano.service';
 import { SubtipoService } from 'src/app/services/subtipo.service';
 import { RazaCatalogosService } from 'src/app/services/raza-catalogos.service';
 import { VentajaService } from 'src/app/services/ventaja.service';
-import { PlantillaEvaluacionResultado, esPlantillaLicantropa, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
+import { PlantillaEvaluacionResultado, evaluarElegibilidadPlantilla, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
+import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
 import { DEIDAD_SIN_SELECCION, esSinDeidad } from 'src/app/services/utils/deidad-seleccion';
 import { evaluarAlineamientoClase } from 'src/app/services/utils/alineamiento-clase';
 import { alturaFueraDeRango, pesoFueraDeRango } from 'src/app/services/utils/medidas-raza';
@@ -4045,24 +4046,12 @@ export class NuevoPersonajeComponent {
     }
 
     /**
-     * Confirma elegir algo que vuelve homebrew la ficha (un elemento homebrew, una plantilla sin sus requisitos, una edad
-     * sin ajuste para un PJ…): sus motivos en lista y el aviso de homebrew de siempre. `true` si acepta. Se llama desde
-     * `confirmarSiVuelveHomebrew`, salvo la edad sin ajuste del máster, que se pregunta siempre.
+     * Confirma elegir algo que vuelve homebrew la ficha (`confirmarEleccionHomebrew` de `services/utils/confirmar-homebrew.ts`,
+     * la misma de la adquisición de una plantilla). Se llama desde `confirmarSiVuelveHomebrew`, salvo la edad sin ajuste del
+     * máster, que se pregunta siempre.
      */
-    private async confirmarEleccionHomebrew(titulo: string, motivos: string[]): Promise<boolean> {
-        const lista = motivos.map((motivo) => `<li>${motivo}</li>`).join('');
-        const confirmacion = await Swal.fire({
-            icon: 'warning',
-            title: titulo,
-            html: `<ul style="text-align:left; margin-top: 4px;">${lista}</ul>${AVISO_HOMEBREW_REGLA_SALTADA}`,
-            showCancelButton: true,
-            confirmButtonText: 'Aceptar y elegir',
-            cancelButtonText: 'Cancelar',
-            target: document.body,
-            heightAuto: false,
-            scrollbarPadding: false,
-        });
-        return confirmacion.isConfirmed;
+    private confirmarEleccionHomebrew(titulo: string, motivos: string[]): Promise<boolean> {
+        return confirmarEleccionHomebrew(titulo, motivos);
     }
 
     /** La plantilla cuya vista previa está abierta (pulsar su tarjeta); se elige con su botón del pie. */
@@ -8434,39 +8423,13 @@ export class NuevoPersonajeComponent {
     }
 
     private getContextoEvaluacionPlantillas(raza: Raza, incluirHomebrew: boolean) {
-        const tipoCriaturaActualId = Number(this.Personaje.Tipo_criatura?.Id ?? 0);
-        // La identidad de la creación (`identidadPrerrequisitosActual`: la raza es la elegida): con el «cuenta como» de sus rasgos.
-        const tiposCriaturaIdentidadIds = this.nuevoPSvc.identidadPrerrequisitosActual().tiposCriatura
-            .map((tipo) => Number(tipo.id))
-            .filter((id) => Number.isFinite(id) && id > 0);
-        const identidadCriaturaActualIds = tipoCriaturaActualId > 0
-            ? [tipoCriaturaActualId]
-            : Array.from(new Set(tiposCriaturaIdentidadIds));
-
-        return {
-            alineamiento: this.Personaje.Alineamiento,
-            // Sin una característica, el requisito que la pide queda «sin comprobar» (no incumplido).
-            caracteristicas: this.nuevoPSvc.caracteristicasActuales({ sinValor: 'sinComprobar' }),
-            tamanoRazaId: Number(raza.Tamano?.Id ?? 0),
-            tiposCriaturaMiembroIds: identidadCriaturaActualIds,
-            tipoCriaturaActualId,
-            incluirHomebrew,
-            seleccionadas: this.plantillasSeleccionadas.map((plantilla) => ({
-                Id: Number(plantilla.Id),
-                Nombre: plantilla.Nombre,
-                Nacimiento: !!plantilla.Nacimiento,
-                Licantropia: esPlantillaLicantropa(plantilla),
-            })),
-            ...this.nuevoPSvc.getContextoRequisitosPlantillas(),
-        };
+        return this.nuevoPSvc.getContextoEvaluacionPlantillas(raza, incluirHomebrew);
     }
 }
 
 /** Un PJ en una edad sin ajuste: solo lo guarda el máster de su campaña saltándose sus reglas (`overrideReglasCampana`). */
 const MOTIVO_EDAD_SIN_AJUSTE_CAMPANA = 'Un personaje jugador en una edad sin ajuste de nivel solo lo guarda el máster de su campaña, saltándose sus reglas.';
 const AVISO_EDAD_SIN_AJUSTE_MASTER = `${MOTIVO_EDAD_SIN_AJUSTE_CAMPANA} En Básicos solo podrás elegir una campaña que dirijas.`;
-/** El aviso de siempre cuando una elección se salta una regla del sistema y vuelve homebrew el personaje. */
-const AVISO_HOMEBREW_REGLA_SALTADA = '<strong>Esta elección está saltándose una regla importante del sistema. El personaje quedará marcado como Homebrew y será una rareza excepcional en el mundo.</strong>';
 
 /** La progresión de moldeado del paso de clases: las filas de su tabla con los especiales y el nivel que toma. */
 interface ProgresionMoldeado {

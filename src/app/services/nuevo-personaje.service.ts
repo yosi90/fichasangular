@@ -36,7 +36,7 @@ import {
 } from './utils/habilidades-raciales';
 import { ArmaNatural } from 'src/app/interfaces/arma-natural';
 import { contarArmasNaturales } from './utils/armas-naturales';
-import { rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
+import { esPlantillaLicantropa, PlantillaEvaluacionContexto, rasgosTipoSinQuitados, resolverAlineamientoPlantillas, simularEstadoPlantillas } from './utils/plantilla-elegibilidad';
 import { extraerEjesAlineamientoDesdeContrato } from './utils/alineamiento-contrato';
 import { ClaveEntidadPrerrequisito, IdentidadPrerrequisitos, buildIdentidadPrerrequisitos, clavesDeEntidades, existeCoincidenciaClaveEntidad } from './utils/identidad-prerrequisitos';
 import { createRacialPlaceholder, normalizeRaciales } from './utils/racial-mapper';
@@ -1348,6 +1348,40 @@ export class NuevoPersonajeService {
      * tamaño de la raza con los pasos de las plantillas ya elegidas, los DG totales y los subtipos de la raza y de esas
      * plantillas (`docs/publica/endpoints/catalogos.md`, prerrequisitos de las plantillas).
      */
+    /**
+     * El contexto con el que se evalúa si puede tomar una plantilla (`evaluarElegibilidadPlantilla`): su alineamiento, sus
+     * características, su tipo (o la identidad de la creación, con el «cuenta como» de sus rasgos), el tamaño de su raza,
+     * las plantillas que ya tiene y lo de `getContextoRequisitosPlantillas`. Lo usan el paso de plantillas de la creación
+     * y la adquisición de una plantilla con el personaje ya creado (roadmap de sesiones, fase 7).
+     */
+    getContextoEvaluacionPlantillas(raza: Raza | null, incluirHomebrew: boolean): PlantillaEvaluacionContexto {
+        const pj = this.personajeCreacion;
+        const tipoCriaturaActualId = Number(pj.Tipo_criatura?.Id ?? 0);
+        const tiposCriaturaIdentidadIds = this.identidadPrerrequisitosActual().tiposCriatura
+            .map((tipo) => Number(tipo.id))
+            .filter((id) => Number.isFinite(id) && id > 0);
+        const identidadCriaturaActualIds = tipoCriaturaActualId > 0
+            ? [tipoCriaturaActualId]
+            : Array.from(new Set(tiposCriaturaIdentidadIds));
+
+        return {
+            alineamiento: pj.Alineamiento,
+            // Sin una característica, el requisito que la pide queda «sin comprobar» (no incumplido).
+            caracteristicas: this.caracteristicasActuales({ sinValor: 'sinComprobar' }),
+            tamanoRazaId: Number(raza?.Tamano?.Id ?? 0),
+            tiposCriaturaMiembroIds: identidadCriaturaActualIds,
+            tipoCriaturaActualId,
+            incluirHomebrew,
+            seleccionadas: (this.estadoFlujo.plantillas.seleccionadas ?? []).map((plantilla) => ({
+                Id: Number(plantilla.Id),
+                Nombre: plantilla.Nombre,
+                Nacimiento: !!plantilla.Nacimiento,
+                Licantropia: esPlantillaLicantropa(plantilla),
+            })),
+            ...this.getContextoRequisitosPlantillas(),
+        };
+    }
+
     getContextoRequisitosPlantillas(): {
         nivelesClase: number;
         nivelLanzador: number;
@@ -9423,6 +9457,31 @@ export class NuevoPersonajeService {
         return carasDado(plantilla?.Tipo_dado?.Nombre);
     }
 
+    /**
+     * El dado al que pasan todos los DG por una plantilla que los actualiza (`Actualiza_dg` con su dado: el liche y el
+     * vampiro, d12; Manual de monstruos, págs. 180 y 257: «todos los DG actuales y futuros»), también los de los niveles de
+     * clase; `null` si ninguna. La misma regla que la API (`subida_nivel.caras_por_plantillas`).
+     */
+    private dadoComunDePlantillas(plantillas: Plantilla[]): number | null {
+        let comun: number | null = null;
+        (plantillas ?? []).forEach((plantilla) => {
+            const directo = this.resolverDadoDesdePlantilla(plantilla);
+            if (toBoolean(plantilla?.Actualiza_dg) && directo > 0)
+                comun = directo;
+        });
+        return comun;
+    }
+
+    /** Las caras del DG de un nivel de la clase con sus plantillas de ahora (`dadoComunDePlantillas`), o las de la clase. */
+    carasDadoGolpeDeClase(clase: Clase | null | undefined): number {
+        return this.dadoComunDePlantillas(this.estadoFlujo.plantillas.seleccionadas ?? []) ?? carasDado(clase?.Tipo_dado?.Nombre);
+    }
+
+    /** Las caras del dado de los DG raciales de ahora (el de su tipo, movido por sus plantillas: `Dados_golpe`). */
+    carasDadoGolpeRacial(): number {
+        return toInt(this.personajeCreacion?.Dados_golpe);
+    }
+
     /** Sube o baja el dado por la escalera de los tipos de dado del catálogo (`setCatalogoTiposDado`). */
     private aplicarPasoDado(actual: number, pasos: number): number {
         return dadoTrasPasos(actual, pasos, this.escaleraDados);
@@ -11685,7 +11744,8 @@ export class NuevoPersonajeService {
         };
 
         let dadoRacial = this.resolverCarasDadoRacialParaVida(raza);
-        let dadoComun: number | null = null;
+        // Una plantilla que actualiza los DG (liche, vampiro, fantasma) cambia el dado de todos, también los de clase.
+        const dadoComun = this.dadoComunDePlantillas(plantillas);
         plantillas.forEach((plantilla) => {
             const dadoDirecto = this.resolverDadoDesdePlantilla(plantilla);
             const pasoDado = toInt(plantilla?.Modificacion_dg?.Id_paso_modificacion);
@@ -11696,9 +11756,6 @@ export class NuevoPersonajeService {
             else if (pasoDado !== 0)
                 dadoRacial = this.aplicarPasoDado(dadoRacial, pasoDado);
 
-            // Una plantilla que actualiza los DG (liche, vampiro, fantasma) cambia el dado de todos, también los de clase.
-            if (actualizaDg && dadoDirecto > 0)
-                dadoComun = dadoDirecto;
 
             flags.plantillasAumentoReduccionDgs = flags.plantillasAumentoReduccionDgs || pasoDado !== 0;
             flags.plantillasActualizacionDgsRazaClase = flags.plantillasActualizacionDgsRazaClase || actualizaDg;

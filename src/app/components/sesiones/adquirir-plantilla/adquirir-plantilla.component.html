@@ -1,0 +1,118 @@
+<!-- Adquirir una plantilla (sesiones, fase 7): las piezas de la subida (subir-nivel.component.sass) -->
+<section class="subida" aria-live="polite">
+    <header class="subida__cabecera">
+        <div class="subida__titulos">
+            <span class="subida__antetitulo">Adquirir una plantilla<ng-container *ngIf="sesion"> · Sesión {{sesion.numero}}</ng-container></span>
+            <h1 class="subida__titulo">{{pj?.Nombre || 'Personaje'}}<ng-container *ngIf="elegida"> adquiere {{elegida.Nombre}}</ng-container></h1>
+        </div>
+        <span *ngIf="experiencia" class="subida__px">{{px(experiencia.px)}} PX · NEP {{experiencia.nivel}}<ng-container *ngIf="elegida"> → {{nepDespues}}</ng-container></span>
+    </header>
+
+    <p *ngIf="cargando" class="subida__estado">Preparando las plantillas…</p>
+    <div *ngIf="!cargando && error && !elegida" class="subida__aviso subida__aviso--error" role="alert">
+        <mat-icon aria-hidden="true">error_outline</mat-icon>
+        <span>{{error}}</span>
+    </div>
+
+    <ng-container *ngIf="!cargando && pj && entrada">
+        <nav class="subida__pasos" aria-label="Pasos de la plantilla">
+            <span *ngFor="let p of pasos" class="subida__paso" [class.subida__paso--hecho]="estadoPaso(p) === 'hecho'"
+                [class.subida__paso--actual]="estadoPaso(p) === 'actual'" [attr.aria-current]="estadoPaso(p) === 'actual' ? 'step' : null">{{etiquetaPaso(p)}}</span>
+        </nav>
+
+        <div *ngIf="error && elegida" class="subida__aviso subida__aviso--error" role="alert">
+            <mat-icon aria-hidden="true">error_outline</mat-icon>
+            <span>{{error}}</span>
+        </div>
+
+        <section class="subida__tarjeta" [ngSwitch]="paso">
+            <!-- La plantilla: las adquiridas que no tiene, con la evaluación de la creación -->
+            <ng-container *ngSwitchCase="'plantilla'">
+                <h2 class="subida__seccion">Elige la plantilla que adquiere</h2>
+                <p class="subida__nota">Solo las adquiridas: las heredadas (el semidragón, el semicelestial…) se tienen desde que nace y se eligen al crear el personaje (Manual de monstruos, pág. 291). Sus PX no cambian: sube su NEP y necesitará los PX del nuevo para subir de nivel.</p>
+                <p *ngIf="opciones.length < 1" class="subida__nota">No hay plantillas que pueda adquirir.</p>
+                <ul class="subida__lista">
+                    <li *ngFor="let o of opciones" class="subida__fila" [class.subida__fila--bloqueada]="o.estado === 'bloqueada'">
+                        <div class="subida__fila-texto">
+                            <span class="subida__fila-nombre">{{o.plantilla.Nombre}}</span>
+                            <span class="subida__fila-motivo" *ngIf="o.motivo">{{o.motivo}}</span>
+                            <span *ngIf="o.plantilla.Oficial === false" class="subida__etiqueta">Homebrew</span>
+                            <span *ngIf="o.plantilla.Ajuste_nivel" class="subida__etiqueta">Ajuste {{o.plantilla.Ajuste_nivel > 0 ? '+' : ''}}{{o.plantilla.Ajuste_nivel}}</span>
+                        </div>
+                        <button mat-stroked-button type="button" (click)="verDetalles(o.plantilla)">Detalles</button>
+                        <button *ngIf="o.estado !== 'saltable'" mat-flat-button color="primary" type="button" [disabled]="o.estado === 'bloqueada'"
+                            (click)="elegir(o)">Elegir</button>
+                        <button *ngIf="o.estado === 'saltable'" mat-flat-button color="warn" type="button" (click)="elegir(o)">Elegir igualmente</button>
+                    </li>
+                </ul>
+            </ng-container>
+
+            <!-- Incremento: se elige en el selector de la creación -->
+            <ng-container *ngSwitchCase="'incremento'">
+                <h2 class="subida__seccion">Incremento de característica</h2>
+                <p class="subida__nota">Sus DG nuevos le llevan a un múltiplo de 4 DG: +1 a la característica que elijas (Manual de monstruos, pág. 178).</p>
+            </ng-container>
+
+            <!-- PG -->
+            <ng-container *ngSwitchCase="'pg'">
+                <ng-container *ngIf="dgsNuevos > 0; else pgSinDados">
+                    <h2 class="subida__seccion">Puntos de golpe: {{dgsNuevos}}d{{carasNuevos}} de sus DG nuevos</h2>
+                    <p class="subida__nota">{{tiradasPermitidas === 1 ? 'Una tirada' : tiradasPermitidas + ' tiradas como mucho'}} de todos a la vez; te quedas con la que elijas. Suman la Constitución de su forma animal y no van al máximo (Manual de monstruos, pág. 179).</p>
+                    <div class="subida__tiradas">
+                        <button mat-stroked-button type="button" (click)="tirar()" [disabled]="tiradas.length >= tiradasPermitidas">
+                            <mat-icon aria-hidden="true">casino</mat-icon> Tirar {{dgsNuevos}}d{{carasNuevos}}
+                        </button>
+                        <label *ngFor="let t of tiradas; let i = index" class="subida__tirada">
+                            <input type="radio" name="tirada" [checked]="tiradaElegida === i" (change)="elegirTirada(i)"> {{t.join(' + ')}} = {{sumaTirada(t)}}
+                        </label>
+                    </div>
+                </ng-container>
+                <ng-template #pgSinDados>
+                    <h2 class="subida__seccion">Puntos de golpe</h2>
+                    <p class="subida__nota">No añade DG. Si cambia su dado de golpe (el vampiro y el liche pasan todos a d12) o su Constitución, sus PG se vuelven a contar con las tiradas guardadas.</p>
+                </ng-template>
+                <p *ngIf="pg" class="subida__resultado">
+                    PG {{entrada.personaje.puntosGolpe}} → <strong>{{pg.total}}</strong>
+                    <ng-container *ngIf="pg.nuevos"> (+{{pg.nuevos}} de los DG nuevos)</ng-container>
+                    <ng-container *ngIf="pg.cambio !== 0"> ({{pg.cambio > 0 ? '+' : ''}}{{pg.cambio}} en los DG de antes)</ng-container>
+                </p>
+                <p *ngIf="pg && !pg.exacto" class="subida__nota">Algunos DG de antes no tienen guardada su tirada: el cambio en ellos es la media. El máster lo puede corregir después.</p>
+            </ng-container>
+
+            <!-- Habilidades: los puntos de sus DG nuevos -->
+            <ng-container *ngSwitchCase="'habilidades'">
+                <app-reparto-rangos [motor]="svc" titulo="Habilidades de sus DG nuevos"></app-reparto-rangos>
+            </ng-container>
+
+            <!-- Dotes: en el selector de la creación -->
+            <ng-container *ngSwitchCase="'dotes'">
+                <h2 class="subida__seccion">Dotes por sus DG nuevos</h2>
+                <p class="subida__nota">Elige en el selector la dote que le dan sus DG totales.</p>
+            </ng-container>
+
+            <!-- Resumen -->
+            <ng-container *ngSwitchCase="'resumen'">
+                <h2 class="subida__seccion">Lo que cambia</h2>
+                <table class="subida__tabla subida__tabla--resumen">
+                    <thead><tr><th scope="col">Qué</th><th scope="col">Antes</th><th scope="col">Ahora</th><th scope="col">Por qué</th></tr></thead>
+                    <tbody>
+                        <tr *ngFor="let c of cambios" [class.subida__fila--bloqueada]="c.aviso"><th scope="row">{{c.que}}</th><td>{{c.antes}}</td><td class="subida__ahora">{{c.ahora}}</td><td>{{c.porque}}</td></tr>
+                    </tbody>
+                </table>
+                <p *ngIf="sinRequisitos" class="subida__nota">La adquiere sin cumplir sus prerrequisitos: el personaje queda homebrew.</p>
+                <p class="subida__nota">La plantilla queda en la sesión {{sesion?.numero}} y se puede deshacer mientras la sesión siga abierta. Lo que cueste adquirirla (la filacteria del liche, un ritual) se apunta en la sesión como siempre.</p>
+            </ng-container>
+        </section>
+
+        <footer class="subida__pie">
+            <button mat-button type="button" (click)="elegida ? descartar() : cancelar()">{{elegida ? 'Empezar de nuevo' : 'Cancelar'}}</button>
+            <span class="subida__hueco"></span>
+            <ng-container [ngSwitch]="paso">
+                <button *ngSwitchCase="'pg'" mat-flat-button color="primary" type="button" [disabled]="!puedeSeguirPg" (click)="siguiente()">Continuar</button>
+                <button *ngSwitchCase="'habilidades'" mat-flat-button color="primary" type="button" [disabled]="!svc.puedeCerrarDistribucionHabilidades()" (click)="cerrarHabilidades()">Continuar</button>
+                <button *ngSwitchCase="'resumen'" mat-flat-button color="primary" type="button" [disabled]="guardando" (click)="guardar()">Adquirir la plantilla</button>
+            </ng-container>
+        </footer>
+    </ng-container>
+    <ng-container #modalHost></ng-container>
+</section>

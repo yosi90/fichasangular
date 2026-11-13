@@ -131,6 +131,15 @@ export class HistorialSesionesComponent implements OnInit, OnChanges, OnDestroy 
         this.puertaSubida.solicitarCorreccion(this.idPersonaje);
     }
 
+    /** «Adquirir una plantilla» (fase 7): quien apunta, con una sesión de juego abierta (en la 0 se eligen al crear). */
+    get puedeAdquirirPlantilla(): boolean {
+        return this.puedeApuntar && !!this.abiertaDeJuego;
+    }
+
+    adquirirPlantilla(): void {
+        this.puertaSubida.solicitarPlantilla(this.idPersonaje);
+    }
+
     /** Los datos libres (fase 6): el formulario se abre aquí mismo. */
     datosAbiertos = false;
 

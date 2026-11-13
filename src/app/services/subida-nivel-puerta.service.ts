@@ -15,15 +15,18 @@ import { toInt } from './utils/normalizacion';
 export class SubidaNivelPuertaService {
     private readonly solicitudesSubject = new Subject<number>();
     private readonly correccionesSubject = new Subject<number>();
+    private readonly plantillasSubject = new Subject<number>();
     private readonly subidasHechasSubject = new Subject<number>();
 
     /** Cada vez que alguien pulsa «Subir a nivel N»: el id del personaje. */
     readonly solicitudes$: Observable<number> = this.solicitudesSubject.asObservable();
     /** «Corregir la ficha» (fase 6): el id del personaje; la pestaña de la corrección se abre como la de la subida. */
     readonly correcciones$: Observable<number> = this.correccionesSubject.asObservable();
+    /** «Adquirir una plantilla» (fase 7): el id del personaje; su pestaña se abre como la de la subida. */
+    readonly plantillas$: Observable<number> = this.plantillasSubject.asObservable();
     /**
-     * Cada vez que la subida guarda un nivel, la corrección guarda la ficha o se cambian sus datos libres (fase 6): el id
-     * del personaje, para volver a cargar su ficha y su historial.
+     * Cada vez que la subida guarda un nivel, la corrección guarda la ficha, se cambian sus datos libres (fase 6) o se
+     * adquiere una plantilla (fase 7): el id del personaje, para volver a cargar su ficha y su historial.
      */
     readonly subidasHechas$: Observable<number> = this.subidasHechasSubject.asObservable();
 
@@ -37,6 +40,12 @@ export class SubidaNivelPuertaService {
         const id = toInt(idPersonaje);
         if (id > 0)
             this.correccionesSubject.next(id);
+    }
+
+    solicitarPlantilla(idPersonaje: number): void {
+        const id = toInt(idPersonaje);
+        if (id > 0)
+            this.plantillasSubject.next(id);
     }
 
     subidaHecha(idPersonaje: number): void {

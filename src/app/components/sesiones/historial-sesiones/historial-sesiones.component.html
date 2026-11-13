@@ -30,6 +30,14 @@
                                 Corregir la ficha
                             </button>
                         }
+                        @if (puedeAdquirirPlantilla) {
+                            <!-- Elecciones después de crear (fase 7): una plantilla adquirida, en su pestaña -->
+                            <button type="button" mat-stroked-button class="historial__boton" (click)="adquirirPlantilla()"
+                                matTooltip="El licántropo infectado, el vampiro, el liche…: queda en la sesión abierta">
+                                <mat-icon aria-hidden="true">auto_fix_high</mat-icon>
+                                Adquirir una plantilla
+                            </button>
+                        }
                     } @else {
                         <app-datos-libres [pj]="pj" [alTerminar]="alTerminarDatos"></app-datos-libres>
                     }

@@ -35,6 +35,8 @@ export type TipoEventoSesion =
     /** La corrección de la ficha del jugador o del máster (fase 6, `PUT /personajes/{id}/ficha`). */
     | 'modificacion'
     | 'correccion_master'
+    /** Una plantilla adquirida con el personaje ya creado (fase 7, `POST /personajes/{id}/plantillas`). */
+    | 'plantilla_adquirida'
     | 'nota';
 
 export type ActorRolSesion = 'jugador' | 'master' | 'sistema';
@@ -154,6 +156,20 @@ export interface CorreccionFichaDto {
 /** Lo que responde la corrección: la sesión donde queda, los PX y su evento. */
 export interface RespuestaCorreccion extends RespuestaSesion {
     correccion: { idEvento: number; numeroSesion: number; };
+}
+
+/** El cuerpo de `POST /personajes/{id}/plantillas`: la ficha completa con la plantilla aplicada (fase 7). */
+export interface AdquirirPlantillaDto {
+    idPlantilla: number;
+    ficha: PersonajeCreateRequestDto;
+    version: string;
+    /** Lo que salió en cada DG que añade la plantilla (los del animal de un licántropo); sin DG nuevos, nada. */
+    pg?: { tiradas: number[]; };
+}
+
+/** Lo que responde la adquisición: la sesión donde queda, los PX (que no cambian) y el NEP de antes y de ahora. */
+export interface RespuestaPlantilla extends RespuestaSesion {
+    plantilla: { idEvento: number; numeroSesion: number; id: number; nombre: string; nepAntes: number | null; nepDespues: number | null; };
 }
 
 /** El cuerpo de abrir una sesión (todo opcional). */

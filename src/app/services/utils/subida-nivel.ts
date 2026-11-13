@@ -118,7 +118,7 @@ export function modConstitucionDeEntrada(ficha: PersonajeCreateRequestDto | null
     return !con || con.perdido ? 0 : modificadorCaracteristica(toInt(con.valor));
 }
 
-const SE_CONSERVAN_PERSONAJE = new Set([
+export const SE_CONSERVAN_PERSONAJE: ReadonlySet<string> = new Set([
     // Lo que una subida no cambia (si llega distinto, la API responde `subida_cambio_no_permitido`) o no toca.
     'nombre', 'idRaza', 'idRazaBase', 'idAlineamiento', 'deidad', 'edad', 'idPasoEdad', 'tipo', 'campana', 'trama', 'subtrama',
     'descripcionPersonalidad', 'descripcionHistoria', 'idRegion', 'idGenero', 'visible_otros_usuarios', 'idTipoCriatura',
@@ -212,30 +212,62 @@ export function aplicarRangos(guardadas: Lista | undefined, antes: Lista | undef
     return resultado;
 }
 
-export interface EntradaFichaSubida {
+export interface EntradaFichaDelMotor {
     /** La `entrada` de la sesión abierta (`GET /personajes/{id}/sesiones/{numero}`). */
     entrada: PersonajeCreateRequestDto;
-    /** El cuerpo del alta que arma el motor antes y después de aplicar el nivel. */
+    /** El cuerpo del alta que arma el motor antes y después del cambio (un nivel, una plantilla). */
     antes: PersonajeCreateRequestDto;
     despues: PersonajeCreateRequestDto;
+    /** Los PG totales tras el cambio. */
+    puntosGolpe: number;
+    /** Los conocidos que olvida en el intercambio (`conjuro_olvidado`). */
+    olvidados?: Array<{ idConjuro: number; idClase: number; }>;
+    /** Lo de `personaje` que se queda como en la `entrada` aunque el motor lo cambie (por defecto, lo de la subida). */
+    seConservan?: ReadonlySet<string>;
+}
+
+export interface EntradaFichaSubida extends EntradaFichaDelMotor {
     /** La clase que sube. */
     idClase: number;
     /** El nivel nuevo con sus elecciones. */
     nivel: PersonajeCreateNivelDto;
-    /** Los PG totales tras subir (`puntosGolpeTrasSubida`). */
-    puntosGolpe: number;
-    /** Los conocidos que olvida en el intercambio (`conjuro_olvidado`). */
-    olvidados?: Array<{ idConjuro: number; idClase: number; }>;
 }
 
 /** La ficha completa de la subida: la `entrada` con lo que ha cambiado el motor y el nivel nuevo al final. */
 export function fichaDeLaSubida(datos: EntradaFichaSubida): PersonajeCreateRequestDto {
+    const ficha = fichaConLoDelMotor(datos);
+    const col: any = ficha.colecciones;
+    // Las clases: las guardadas con un nivel más en la que sube.
+    const clases = (col.clases ?? []).map((c: any) => ({ ...c }));
+    const deLaClase = clases.find((c: any) => toInt(c.idClase) === toInt(datos.idClase));
+    if (deLaClase)
+        deLaClase.nivel = toInt(deLaClase.nivel) + 1;
+    else
+        clases.push({ idClase: toInt(datos.idClase), nivel: 1 });
+    col.clases = clases;
+
+    // Los niveles guardados tal cual (la API los conserva) y el nuevo al final, con sus elecciones.
+    ficha.niveles = [
+        ...(datos.entrada.niveles ?? []).map((n) => ({ ...n })),
+        { idClase: toInt(datos.nivel.idClase), nivelClase: toInt(datos.nivel.nivelClase), elecciones: [...(datos.nivel.elecciones ?? [])] },
+    ];
+    return ficha;
+}
+
+/**
+ * La `entrada` con lo que ha cambiado el motor (la diferencia entre su cuerpo del alta antes y después): lo de `personaje`
+ * que no se conserva, las características (como diferencia), el tamaño, los modificadores, las colecciones (salvo las
+ * clases, que no toca), los rangos, los conjuros conocidos nuevos y la progresión de lanzador; los niveles, como en la
+ * `entrada`. La usan la subida (`fichaDeLaSubida`) y la adquisición de una plantilla (`fichaDeLaPlantilla`).
+ */
+export function fichaConLoDelMotor(datos: EntradaFichaDelMotor): PersonajeCreateRequestDto {
     const ficha: PersonajeCreateRequestDto = JSON.parse(JSON.stringify(datos.entrada));
     const antes = datos.antes;
     const despues = datos.despues;
+    const seConservan = datos.seConservan ?? SE_CONSERVAN_PERSONAJE;
 
     Object.entries(despues.personaje ?? {}).forEach(([k, valor]) => {
-        if (!SE_CONSERVAN_PERSONAJE.has(k) && claveElemento(valor) !== claveElemento((antes.personaje as any)?.[k]))
+        if (!seConservan.has(k) && claveElemento(valor) !== claveElemento((antes.personaje as any)?.[k]))
             (ficha.personaje as any)[k] = valor;
     });
     ficha.personaje.puntosGolpe = Math.max(0, toInt(datos.puntosGolpe));
@@ -273,14 +305,6 @@ export function fichaDeLaSubida(datos: EntradaFichaSubida): PersonajeCreateReque
     const colA: any = antes.colecciones ?? {};
     const colD: any = despues.colecciones ?? {};
     const col: any = ficha.colecciones = { ...(ficha.colecciones ?? {}) };
-    // Las clases: las guardadas con un nivel más en la que sube.
-    const clases = (col.clases ?? []).map((c: any) => ({ ...c }));
-    const deLaClase = clases.find((c: any) => toInt(c.idClase) === toInt(datos.idClase));
-    if (deLaClase)
-        deLaClase.nivel = toInt(deLaClase.nivel) + 1;
-    else
-        clases.push({ idClase: toInt(datos.idClase), nivel: 1 });
-    col.clases = clases;
     Object.keys({ ...colA, ...colD }).forEach((k) => {
         if (k === 'clases' || k === 'habilidades' || k === 'conjurosConocidos' || !Array.isArray(colD[k] ?? colA[k] ?? []))
             return;
@@ -307,10 +331,6 @@ export function fichaDeLaSubida(datos: EntradaFichaSubida): PersonajeCreateReque
                 despues.progresionLanzador?.selecciones as any, false) as any,
         };
 
-    // Los niveles guardados tal cual (la API los conserva) y el nuevo al final, con sus elecciones.
-    ficha.niveles = [
-        ...(datos.entrada.niveles ?? []).map((n) => ({ ...n })),
-        { idClase: toInt(datos.nivel.idClase), nivelClase: toInt(datos.nivel.nivelClase), elecciones: [...(datos.nivel.elecciones ?? [])] },
-    ];
+    ficha.niveles = (datos.entrada.niveles ?? []).map((n) => ({ ...n }));
     return ficha;
 }

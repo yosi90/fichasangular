@@ -144,6 +144,23 @@ describe('SesionesService', () => {
             expect(toasts.showInfo).toHaveBeenCalledTimes(3);
         });
 
+        it('adquirir una plantilla (fase 7): la ruta, su cuerpo, el NEP de antes y de ahora y el evento nuevo con su frase', async () => {
+            const venta = respuestaSesiones<any>('venta');
+            const texto = 'adquirió la plantilla Licántropo (lobo) [Infectado] (NEP 5 → 9): Sabiduría 16 → 18, PG 10 → 24, 2 DG nuevos (tiradas 5, 3)';
+            const evento = { ...venta.sesion.eventos[venta.sesion.eventos.length - 1], id: 99, tipo: 'plantilla_adquirida', texto, deshacible: true };
+            http.request.and.returnValue(of({
+                ...venta, sesion: { ...venta.sesion, eventos: [...venta.sesion.eventos.map((e: any) => ({ ...e, deshacible: false })), evento] },
+                plantilla: { idEvento: 99, numeroSesion: 1, plantilla: { id: 9, nombre: 'Licántropo (lobo) [Infectado]' }, nepAntes: 5, nepDespues: 9 },
+                reglasIgnoradas: [],
+            }));
+            const cuerpo = { idPlantilla: 9, ficha: {} as any, version: sesion.version, pg: { tiradas: [5, 3] } };
+            const respuesta = await servicio.adquirirPlantilla(129, cuerpo);
+            expect(ultima()).toEqual(['POST', `${environment.apiUrl}personajes/129/plantillas`, jasmine.objectContaining({ body: cuerpo })]);
+            expect(respuesta.plantilla).toEqual({ idEvento: 99, numeroSesion: 1, id: 9, nombre: 'Licántropo (lobo) [Infectado]', nepAntes: 5, nepDespues: 9 });
+            const ultimo = respuesta.sesion.eventos[respuesta.sesion.eventos.length - 1];
+            expect([ultimo.tipo, ultimo.texto, ultimo.deshacible]).toEqual(['plantilla_adquirida', texto, true]);
+        });
+
         it('abrir no lleva versión (no hay sesión todavía)', async () => {
             http.request.and.returnValue(of(respuestaSesiones('abrir')));
             const respuesta = await servicio.abrir(129, { titulo: 'El camino de Zorvintal' });

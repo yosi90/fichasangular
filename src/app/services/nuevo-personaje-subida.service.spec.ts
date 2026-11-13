@@ -4,11 +4,13 @@ import { normalizeClase } from './clase.service';
 import { Clase } from '../interfaces/clase';
 import { Conjuro } from '../interfaces/conjuro';
 import { Personaje } from '../interfaces/personaje';
+import { Plantilla } from '../interfaces/plantilla';
 import { PersonajeCreateRequestDto } from '../interfaces/personajes-api';
 import { Raza } from '../interfaces/raza';
 import { TipoCriatura } from '../interfaces/tipo_criatura';
 import { claveHabilidad } from './utils/habilidad-clave';
 import { toNumber } from './utils/normalizacion';
+import { plantillaApiDeEjemplo } from 'src/testing/plantilla-api';
 import { fichaDeLaSubida, modConstitucionDeEntrada, puntosGolpeTrasSubida } from './utils/subida-nivel';
 
 // La subida de nivel con el motor de la creación (roadmap de sesiones, fase 4; estudio de reglas, apartado 1): personajes
@@ -438,5 +440,49 @@ describe('Subida de nivel con el motor de la creación (personajes de referencia
         expect(corregir.PersonajeCreacion.Sabiduria).toBe(sabiduria + 1);
         corregir.corregirEdad(50);
         expect(corregir.PersonajeCreacion.Fuerza).toBe(fuerza);
+    });
+});
+
+describe('Adquirir una plantilla con el motor de la creación (sesiones, fase 7)', () => {
+    const HUMANO = crearRaza('Humano');
+    // Un licántropo infectado (adquirida): 2 DG de animal (d8), +2 a la Sabiduría, sin dotes propias ni prerrequisitos.
+    const LOBO_INFECTADO = plantillaApiDeEjemplo({
+        Id: 9, Nombre: 'Licántropo (lobo) [Infectado]', Nacimiento: false, Ajuste_nivel: 2, Dotes: [], Habilidades: [], Sortilegas: [],
+        Raciales: [], Ataques_especiales: [], Subtipos: [], Modificacion_tamano: null,
+        Modificadores_caracteristicas: { Fuerza: 0, Destreza: 0, Constitucion: 0, Inteligencia: 0, Sabiduria: 2, Carisma: 0 },
+        Prerrequisitos: { ...plantillaApiDeEjemplo().Prerrequisitos, caracteristica: [], criaturas_compatibles: [], tamano_minimo: [], subtipo_prohibido: [] },
+    }) as Plantilla;
+    // Un vampiro: actualiza los DG a d12 (Manual de monstruos, pág. 257).
+    const VAMPIRO = { ...LOBO_INFECTADO, Id: 8, Nombre: 'Vampiro', Ajuste_nivel: 8, Actualiza_dg: true, Tipo_dado: { Id_tipo_dado: 5, Nombre: 'd12' },
+        Licantronia_dg: null, Modificadores_caracteristicas: { Fuerza: 6, Destreza: 4, Constitucion: 0, Inteligencia: 2, Sabiduria: 2, Carisma: 4 } } as Plantilla;
+
+    it('el guerrero 2 que se vuelve licántropo: +2 a la Sabiduría y sus DG nuevos dan el incremento y la dote de 4 DG y 3 DG', () => {
+        const svc = crear(HUMANO, { Fuerza: 15, Sabiduria: 12 });
+        [1, 2].forEach(() => aplicarNivel(svc, GUERRERO, 'Fuerza'));
+        const guardado = guardar(svc);
+        const motor = subir(guardado, HUMANO);
+        const sabiduria = motor.PersonajeCreacion.Sabiduria;
+        expect(motor.getContextoEvaluacionPlantillas(HUMANO, true).seleccionadas).toEqual([]);
+        expect(motor.agregarPlantillaSeleccion(LOBO_INFECTADO)).toBeTrue();
+        expect(motor.PersonajeCreacion.Sabiduria).toBe(sabiduria + 2);
+        expect(motor.registrarAumentosPendientesPorProgresion('Plantilla').length).toBe(1);
+        motor.confirmarSeleccionActualPlantillas();
+        expect(motor.iniciarDistribucionHabilidadesPorPlantillasDG([LOBO_INFECTADO])).toBeTrue();
+        expect(motor.registrarDotesPendientesPorProgresion('Plantilla').length).toBe(1);
+        expect(motor.carasDadoGolpeDeClase(GUERRERO)).toBe(10);
+    });
+
+    it('el vampiro pasa a d12 los DG de clase de antes y de después', () => {
+        const svc = crear(HUMANO, { Fuerza: 15 });
+        aplicarNivel(svc, GUERRERO, 'Fuerza');
+        const motor = subir(guardar(svc), HUMANO);
+        expect(motor.carasDadoGolpeDeClase(GUERRERO)).toBe(10);
+        const fuerza = motor.PersonajeCreacion.Fuerza;
+        expect(motor.agregarPlantillaSeleccion(VAMPIRO)).toBeTrue();
+        expect(motor.carasDadoGolpeDeClase(GUERRERO)).toBe(12);
+        expect(motor.PersonajeCreacion.Fuerza).toBe(fuerza + 6);
+        // Sin DG nuevos: ni incremento ni dote.
+        expect(motor.registrarAumentosPendientesPorProgresion('Plantilla').length).toBe(0);
+        expect(motor.registrarDotesPendientesPorProgresion('Plantilla').length).toBe(0);
     });
 });

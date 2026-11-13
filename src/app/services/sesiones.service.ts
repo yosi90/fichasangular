@@ -4,6 +4,7 @@ import { Auth } from '@angular/fire/auth';
 import { firstValueFrom } from 'rxjs';
 import {
     AbrirSesionDto,
+    AdquirirPlantillaDto,
     CambiarSesionDto,
     CompraSesionDto,
     CorreccionFichaDto,
@@ -11,6 +12,7 @@ import {
     ExperienciaPersonaje,
     HistorialSesiones,
     RespuestaCorreccion,
+    RespuestaPlantilla,
     RespuestaSesion,
     RespuestaSubidaNivel,
     ResumenSesion,
@@ -39,7 +41,7 @@ export const CODIGO_SESION_DESACTUALIZADA = 'sesion_desactualizada';
 
 const TIPOS_EVENTO: ReadonlySet<string> = new Set<TipoEventoSesion>([
     'alta', 'experiencia', 'experiencia_gastada', 'dinero', 'objeto_obtenido', 'objeto_perdido', 'venta', 'compra',
-    'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'nota',
+    'conjuro_copiado', 'subida_nivel', 'modificacion', 'correccion_master', 'plantilla_adquirida', 'nota',
 ]);
 
 /** Si el error es el `409 sesion_desactualizada` (otra persona apuntó algo entre medias). */
@@ -196,6 +198,26 @@ export class SesionesService {
         return {
             ...this.conAviso(leerRespuestaSesion(respuesta)),
             correccion: { idEvento: toInt(respuesta?.correccion?.idEvento), numeroSesion: toInt(respuesta?.correccion?.numeroSesion) },
+        };
+    }
+
+    /** Adquirir una plantilla (fase 7): queda en la sesión de juego abierta; el máster, con el aviso de lo que se salta. */
+    async adquirirPlantilla(idPersonaje: number, cuerpo: AdquirirPlantillaDto): Promise<RespuestaPlantilla> {
+        const id = toInt(idPersonaje);
+        if (id <= 0)
+            throw new Error('Id de personaje no válido');
+        const respuesta = await this.pedir<any>('POST', `${environment.apiUrl}personajes/${id}/plantillas`, cuerpo, 'No se ha podido adquirir la plantilla.');
+        const nep = (valor: unknown) => valor === null || valor === undefined ? null : toInt(valor);
+        return {
+            ...this.conAviso(leerRespuestaSesion(respuesta)),
+            plantilla: {
+                idEvento: toInt(respuesta?.plantilla?.idEvento),
+                numeroSesion: toInt(respuesta?.plantilla?.numeroSesion),
+                id: toInt(respuesta?.plantilla?.plantilla?.id),
+                nombre: `${respuesta?.plantilla?.plantilla?.nombre ?? ''}`,
+                nepAntes: nep(respuesta?.plantilla?.nepAntes),
+                nepDespues: nep(respuesta?.plantilla?.nepDespues),
+            },
         };
     }
 

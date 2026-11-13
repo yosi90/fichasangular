@@ -65,6 +65,25 @@ import { tituloNuevoPersonaje } from 'src/app/services/utils/tipo-personaje';
 /** Lo que hace falta de una entrada para abrir o refrescar su pestaña de «Modificar»: su id y su nombre. */
 type EntradaEditable = { Id?: unknown; Nombre?: unknown; };
 
+/** Las pestañas que se abren desde la ficha o el historial de sesiones: la subida, la corrección y la plantilla. */
+export type ModoPestanaSesion = 'subida' | 'correccion' | 'plantilla';
+
+/** Lo que enseña la pestaña de cada modo y cómo se carga su componente (carga diferida: el bundle inicial va al tope). */
+export const PESTANAS_DE_SESION: Record<ModoPestanaSesion, { titulo: string; corta: string; icono: string; cargar: () => Promise<Type<unknown>>; }> = {
+    subida: {
+        titulo: 'Subir de nivel', corta: 'Subir', icono: 'trending_up',
+        cargar: async () => (await import('src/app/components/sesiones/subir-nivel/subir-nivel.component')).SubirNivelComponent,
+    },
+    correccion: {
+        titulo: 'Corregir la ficha', corta: 'Corregir', icono: 'build',
+        cargar: async () => (await import('src/app/components/sesiones/corregir-ficha/corregir-ficha.component')).CorregirFichaComponent,
+    },
+    plantilla: {
+        titulo: 'Adquirir una plantilla', corta: 'Plantilla', icono: 'auto_fix_high',
+        cargar: async () => (await import('src/app/components/sesiones/adquirir-plantilla/adquirir-plantilla.component')).AdquirirPlantillaComponent,
+    },
+};
+
 interface ListadoTabAbierto {
     key: string;
     tipo: string;
@@ -112,14 +131,14 @@ export class TabControlComponent implements OnInit, OnDestroy {
     public publicProfileTabs: UserPublicProfileTab[] = [];
     public detallesPersonajeAbiertos: Personaje[] = [];
     /**
-     * Las subidas de nivel (roadmap de sesiones, fase 4) y las correcciones de la ficha (fase 6) abiertas: una pestaña por
-     * personaje y modo, `subida:<id>` o `correccion:<id>`.
+     * Las subidas de nivel (roadmap de sesiones, fase 4), las correcciones de la ficha (fase 6) y las plantillas que se
+     * adquieren (fase 7) abiertas: una pestaña por personaje y modo, `subida:<id>`, `correccion:<id>` o `plantilla:<id>`.
      */
-    public subidasNivelAbiertas: Array<{ idPersonaje: number; nombre: string; modo: 'subida' | 'correccion'; cerrar: () => void; }> = [];
-    /** `SubirNivelComponent`, con carga diferida la primera vez que se abre una subida. */
-    public subirNivelComponente: Type<unknown> | null = null;
-    /** `CorregirFichaComponent`, con carga diferida la primera vez que se abre una corrección. */
-    public corregirFichaComponente: Type<unknown> | null = null;
+    public subidasNivelAbiertas: Array<{ idPersonaje: number; nombre: string; modo: ModoPestanaSesion; cerrar: () => void; }> = [];
+    /** Lo que enseña la pestaña de cada modo. */
+    public readonly PESTANAS_DE_SESION = PESTANAS_DE_SESION;
+    /** El componente de cada modo, con carga diferida la primera vez que se abre (`SubirNivelComponent`…). */
+    public componentesDeSesion: Partial<Record<ModoPestanaSesion, Type<unknown>>> = {};
     public detallesRazaAbiertos: Raza[] = [];
     public detallesConjuroAbiertos: Conjuro[] = [];
     public detallesSortilegaAbiertos: { ap: AptitudSortilega, fuente: string }[] = [];
@@ -216,6 +235,9 @@ export class TabControlComponent implements OnInit, OnDestroy {
         this.puertaSubida?.correcciones$
             .pipe(takeUntil(this.destroy$))
             .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'correccion'));
+        this.puertaSubida?.plantillas$
+            .pipe(takeUntil(this.destroy$))
+            .subscribe((idPersonaje) => void this.abrirSubidaNivel(idPersonaje, 'plantilla'));
         this.userProfileNavSvc?.privateProfileOpen$
             .pipe(takeUntil(this.destroy$))
             .subscribe((request) => this.abrirPerfilPrivado(request));
@@ -1081,11 +1103,11 @@ export class TabControlComponent implements OnInit, OnDestroy {
     }
 
     /**
-     * Abre la subida de nivel de un personaje (la pide la ficha con «Subir a nivel N», `SubidaNivelPuertaService`) o la
-     * corrección de su ficha («Corregir la ficha», fase 6) en su pestaña, junto a las fichas; si ya está abierta, la
-     * enseña. Cada componente se carga la primera vez.
+     * Abre la subida de nivel de un personaje (la pide la ficha con «Subir a nivel N», `SubidaNivelPuertaService`), la
+     * corrección de su ficha («Corregir la ficha», fase 6) o la plantilla que adquiere («Adquirir una plantilla», fase 7)
+     * en su pestaña, junto a las fichas; si ya está abierta, la enseña. Cada componente se carga la primera vez.
      */
-    async abrirSubidaNivel(idPersonaje: number, modo: 'subida' | 'correccion' = 'subida'): Promise<void> {
+    async abrirSubidaNivel(idPersonaje: number, modo: ModoPestanaSesion = 'subida'): Promise<void> {
         const id = Math.trunc(Number(idPersonaje));
         if (!(id > 0))
             return;
@@ -1094,21 +1116,15 @@ export class TabControlComponent implements OnInit, OnDestroy {
             this.selectTabByKey(clave);
             return;
         }
-        if (modo === 'subida' && !this.subirNivelComponente) {
-            const { SubirNivelComponent } = await import('src/app/components/sesiones/subir-nivel/subir-nivel.component');
-            this.subirNivelComponente = SubirNivelComponent;
-        }
-        if (modo === 'correccion' && !this.corregirFichaComponente) {
-            const { CorregirFichaComponent } = await import('src/app/components/sesiones/corregir-ficha/corregir-ficha.component');
-            this.corregirFichaComponente = CorregirFichaComponent;
-        }
+        if (!this.componentesDeSesion[modo])
+            this.componentesDeSesion[modo] = await PESTANAS_DE_SESION[modo].cargar();
         const nombre = this.detallesPersonajeAbiertos.find((pj) => Number(pj.Id) === id)?.Nombre ?? 'Personaje';
         this.subidasNivelAbiertas.push({ idPersonaje: id, nombre, modo, cerrar: () => this.quitarSubidaNivel(id, modo) });
         this.registerOpenContext(clave, this.getSafeOpenerKey());
         this.focusOpenedTab(clave);
     }
 
-    quitarSubidaNivel(idPersonaje: number, modo: 'subida' | 'correccion' = 'subida'): boolean {
+    quitarSubidaNivel(idPersonaje: number, modo: ModoPestanaSesion = 'subida'): boolean {
         const subida = this.subidasNivelAbiertas.find((item) => item.idPersonaje === Number(idPersonaje) && item.modo === modo);
         if (!subida)
             return false;
@@ -1121,7 +1137,7 @@ export class TabControlComponent implements OnInit, OnDestroy {
         });
     }
 
-    private getSubidaTabKey(idPersonaje: number, modo: 'subida' | 'correccion' = 'subida'): string {
+    private getSubidaTabKey(idPersonaje: number, modo: ModoPestanaSesion = 'subida'): string {
         return `${modo}:${Number(idPersonaje)}`;
     }
 

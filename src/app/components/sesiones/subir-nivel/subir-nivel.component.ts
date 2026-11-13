@@ -31,7 +31,7 @@ import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristica
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
-import { carasDado, MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
+import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
 
@@ -333,7 +333,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.svc.registrarDotesPendientesPorEspeciales(resultado.especialesAplicados ?? [], contexto);
         this.svc.registrarDotesPendientesPorProgresion(contexto);
         this.daDg = daDgEnNivel(clase, this.nivelClase);
-        this.carasDg = carasDado(clase?.Tipo_dado?.Nombre);
+        // Con una plantilla que actualiza los DG (el vampiro), su dado: d12.
+        this.carasDg = this.svc.carasDadoGolpeDeClase(clase);
         this.svc.iniciarDistribucionHabilidadesPorClase(clase);
         this.intercambio = this.svc.getIntercambioConjurosDelNivel();
         this.pasos = [
@@ -698,7 +699,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
         this.tiradas = borrador.tiradas ?? [];
         this.tiradaElegida = borrador.tiradaElegida ?? null;
         this.daDg = daDgEnNivel(clase, this.nivelClase);
-        this.carasDg = carasDado(clase?.Tipo_dado?.Nombre);
+        // Con una plantilla que actualiza los DG (el vampiro), su dado: d12.
+        this.carasDg = this.svc.carasDadoGolpeDeClase(clase);
         this.intercambio = this.svc.getIntercambioConjurosDelNivel();
         this.olvidado = borrador.olvidado ? { ...borrador.olvidado, nivel: -1 } as any : null;
         this.calcularPg();

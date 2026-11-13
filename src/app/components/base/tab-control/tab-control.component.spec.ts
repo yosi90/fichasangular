@@ -563,7 +563,7 @@ describe('TabControlComponent navegación por origen', () => {
 
     it('«Subir a nivel N» de la ficha abre la subida de ese personaje en su pestaña, una sola vez (sesiones, fase 4)', fakeAsync(() => {
         const component = crearComponente();
-        component.subirNivelComponente = class { } as any;
+        component.componentesDeSesion.subida = class { } as any;
         const abrir = spyOn(component, 'abrirSubidaNivel').and.callThrough();
         component.ngOnInit();
         component.detallesPersonajeAbiertos = [{ Id: 42, Nombre: 'Tordek' } as any];
@@ -580,6 +580,24 @@ describe('TabControlComponent navegación por origen', () => {
         component.subidasNivelAbiertas[0].cerrar();
         tick(120);
         expect(component.subidasNivelAbiertas.length).toBe(0);
+        component.ngOnDestroy();
+    }));
+
+    it('«Adquirir una plantilla» del historial abre su pestaña, aparte de la subida del mismo personaje (sesiones, fase 7)', fakeAsync(() => {
+        const component = crearComponente();
+        component.componentesDeSesion.subida = class { } as any;
+        component.componentesDeSesion.plantilla = class { } as any;
+        component.ngOnInit();
+        component.detallesPersonajeAbiertos = [{ Id: 42, Nombre: 'Tordek' } as any];
+
+        (component as any).__puertaSubida.solicitar(42);
+        tick(120);
+        (component as any).__puertaSubida.solicitarPlantilla(42);
+        tick(120);
+
+        expect(component.subidasNivelAbiertas.map((s) => [s.idPersonaje, s.modo])).toEqual([[42, 'subida'], [42, 'plantilla']]);
+        expect((component as any).activeTabKey).toBe('plantilla:42');
+        expect(component.PESTANAS_DE_SESION.plantilla.titulo).toBe('Adquirir una plantilla');
         component.ngOnDestroy();
     }));
 
