@@ -9472,6 +9472,11 @@ export class NuevoPersonajeService {
         return comun;
     }
 
+    /** La clase del catálogo con ese id; `null` si no está (las pantallas de las sesiones la buscan por su `idClase`). */
+    claseDelCatalogo(idClase: number | null | undefined): Clase | null {
+        return this.catalogoClases.find((item) => toInt(item?.Id) === toInt(idClase)) ?? null;
+    }
+
     /** Las caras del DG de un nivel de la clase con sus plantillas de ahora (`dadoComunDePlantillas`), o las de la clase. */
     carasDadoGolpeDeClase(clase: Clase | null | undefined): number {
         return this.dadoComunDePlantillas(this.estadoFlujo.plantillas.seleccionadas ?? []) ?? carasDado(clase?.Tipo_dado?.Nombre);

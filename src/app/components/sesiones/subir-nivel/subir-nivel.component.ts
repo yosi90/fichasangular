@@ -5,13 +5,12 @@ import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
-import { SelectorAumentosCaracteristicaModalComponent } from 'src/app/components/nuevo-personaje/selector-aumentos-caracteristica-modal/selector-aumentos-caracteristica-modal.component';
 import { SelectorClaseOpcionalModalComponent } from 'src/app/components/nuevo-personaje/selector-clase-opcional-modal/selector-clase-opcional-modal.component';
 import { SelectorDominiosModalComponent } from 'src/app/components/nuevo-personaje/selector-dominios-modal/selector-dominios-modal.component';
-import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import { SelectorEnemigoPredilectoModalComponent } from 'src/app/components/nuevo-personaje/selector-enemigo-predilecto-modal/selector-enemigo-predilecto-modal.component';
 import { SelectorEspecialidadMagicaModalComponent } from 'src/app/components/nuevo-personaje/selector-especialidad-magica-modal/selector-especialidad-magica-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
+import { avisarPaso, resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { SelectorRacialesOpcionalesModalComponent } from 'src/app/components/nuevo-personaje/selector-raciales-opcionales-modal/selector-raciales-opcionales-modal.component';
 import { Clase } from 'src/app/interfaces/clase';
@@ -24,14 +23,12 @@ import { DisciplinaConjurosService } from 'src/app/services/disciplina-conjuros.
 import { EnemigoPredilectoService } from 'src/app/services/enemigo-predilecto.service';
 import { EscuelaConjurosService } from 'src/app/services/escuela-conjuros.service';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
-import { DoteSeleccionConfirmada, IntercambioConjurosNivel, NuevoPersonajeService, SeleccionAumentosClaseLanzadora, SeleccionDominiosClase, SeleccionOpcionalesClase } from 'src/app/services/nuevo-personaje.service';
+import { IntercambioConjurosNivel, NuevoPersonajeService, SeleccionAumentosClaseLanzadora, SeleccionDominiosClase, SeleccionOpcionalesClase } from 'src/app/services/nuevo-personaje.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
-import { caracteristicasPerdidasDe } from 'src/app/services/utils/caracteristicas';
 import { daDgEnNivel } from 'src/app/services/utils/clase-niveles';
 import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
-import { MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
 import { claveBorradorSubida, fichaDeLaSubida, PgSubida, pgTrasCambioDeCon } from 'src/app/services/utils/subida-nivel';
 import { cambiosDeLaSubida, CambioSubida, campoDelErrorASubida, PasoSubida } from 'src/app/services/utils/subida-nivel-vista';
 
@@ -198,10 +195,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             this.sesion = sesion;
             this.entrada = entrada;
             this.pj = pj;
-            const campana = toInt(entrada.personaje?.campana?.id);
-            // Un PNJ, como al crearlo y como la API: sin el límite de la campaña (propietario, 2026-11-12).
-            this.tiradasPermitidas = entrada.personaje?.tipo === 'pnj' ? MAX_TIRADAS_PUNTOS_GOLPE
-                : campana > 0 ? await this.tiradasDeLaCampana(campana) : 1;
+            this.tiradasPermitidas = await tiradasPermitidasDe(entrada, this.campanaSvc);
             await this.hidratar();
             if (!this.sigueLaMismaCuenta())
                 return;
@@ -211,15 +205,6 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             this.error = `${error?.message ?? ''}`.trim() || 'No se ha podido preparar la subida de nivel.';
         } finally {
             this.cargando = false;
-        }
-    }
-
-    private async tiradasDeLaCampana(idCampana: number): Promise<number> {
-        try {
-            const detalle = await this.campanaSvc.getCampaignDetail(idCampana);
-            return tiradasPuntosGolpe(detalle?.politicaCreacion?.maxTiradasPuntosGolpe);
-        } catch {
-            return 1;
         }
     }
 
@@ -280,7 +265,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             seleccionesOpcionales = { ...(seleccionesOpcionales ?? {}), [grupo.grupo]: clave };
         }
         if (this.svc.obtenerEspecialesExtraPendientesSiguienteNivelClase(clase, seleccionesOpcionales).length > 0) {
-            await this.avisar('Aún no disponible', `El nivel ${this.nivelDe(clase)} de ${clase.Nombre} pide elegir el extra de una aptitud: la subida todavía no lo ofrece.`);
+            await avisarPaso('Aún no disponible', `El nivel ${this.nivelDe(clase)} de ${clase.Nombre} pide elegir el extra de una aptitud: la subida todavía no lo ofrece.`);
             return;
         }
         let seleccionesDominios: SeleccionDominiosClase | null = null;
@@ -313,7 +298,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             resultado = this.svc.aplicarSiguienteNivelClase(clase, seleccionesOpcionales, seleccionesDominios, false, aumentos, null);
         }
         if (!resultado.aplicado) {
-            await this.avisar('No se puede subir en esta clase', resultado.evaluacion?.razones?.join(' · ') || resultado.razon || 'No se puede aplicar el nivel.');
+            await avisarPaso('No se puede subir en esta clase', resultado.evaluacion?.razones?.join(' · ') || resultado.razon || 'No se puede aplicar el nivel.');
             return;
         }
         this.claseElegida = clase;
@@ -382,7 +367,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             return false;
         const aplicado = this.svc.aplicarEspecialidadMagicaClase(clase, this.nivelClase, seleccion, escuelas ?? [], disciplinas ?? []);
         if (!aplicado.aplicado) {
-            await this.avisar('Especialización inválida', aplicado.razon ?? 'No se ha podido aplicar la especialización.');
+            await avisarPaso('Especialización inválida', aplicado.razon ?? 'No se ha podido aplicar la especialización.');
             return false;
         }
         this.svc.refrescarSesionConjurosPorEspecialidad();
@@ -429,19 +414,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     private async resolverIncremento(): Promise<void> {
-        const pendientes = this.svc.getAumentosCaracteristicaPendientes();
-        const p = this.svc.PersonajeCreacion;
-        const asignaciones = await this.abrirModal<any[]>(SelectorAumentosCaracteristicaModalComponent, {
-            titulo: `Incremento de característica del nivel ${this.nivelNuevo}`,
-            pendientes,
-            caracteristicasActuales: { Fuerza: p.Fuerza, Destreza: p.Destreza, Constitucion: p.Constitucion, Inteligencia: p.Inteligencia, Sabiduria: p.Sabiduria, Carisma: p.Carisma },
-            caracteristicasPerdidas: caracteristicasPerdidasDe(p),
-            topesCaracteristicas: this.svc.getTopesCaracteristicas(),
-        }, ['confirmar'], []);
-        if (!asignaciones || !this.svc.aplicarAumentosCaracteristica(asignaciones)) {
-            await this.avisar('Falta el incremento', 'Elige a qué característica va el +1 para seguir.');
-            return this.resolverIncremento();
-        }
+        await resolverIncrementoPendiente(this.svc, this.selectores, `Incremento de característica del nivel ${this.nivelNuevo}`);
         // Con más Inteligencia, los puntos de este nivel también suben (MJ p. 59): el reparto se vuelve a abrir.
         if (this.svc.EstadoFlujo.habilidades.activa && this.claseElegida)
             this.svc.iniciarDistribucionHabilidadesPorClase(this.claseElegida);
@@ -449,27 +422,8 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
     }
 
     private async resolverDotes(): Promise<void> {
-        while (true) {
-            const pendiente = this.svc.getSiguienteDotePendiente();
-            if (!pendiente)
-                break;
-            const candidatos = this.svc.obtenerCandidatosDotePendiente(pendiente.id);
-            if (!candidatos.some((c) => c.evaluacion?.estado === 'eligible' && c.repeticionValida && !c.restringidaPorTipo)) {
-                this.svc.omitirDotePendiente(pendiente.id);
-                continue;
-            }
-            const restantes = this.svc.getDotesPendientes().filter((d) => d.estado === 'pendiente').length;
-            const seleccion = await this.abrirModal<DoteSeleccionConfirmada | 'omitir'>(SelectorDotesModalComponent, {
-                titulo: 'Seleccionar dote', pendiente, candidatos, pendientesRestantes: restantes,
-            }, ['confirmar'], [], { omitir: 'omitir' });
-            if (!seleccion)
-                return;
-            if (seleccion === 'omitir')
-                this.svc.omitirDotePendiente(pendiente.id);
-            else if (!this.svc.aplicarDotePendiente(pendiente.id, seleccion))
-                await this.avisar('No se pudo aplicar la dote', 'La selección ya no vale con el personaje de ahora. Elige otra.');
-        }
-        await this.siguiente();
+        if (await resolverDotesPendientes(this.svc, this.selectores))
+            await this.siguiente();
     }
 
     // PG
@@ -687,7 +641,7 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
             showCancelButton: true, confirmButtonText: 'Seguir', cancelButtonText: 'Empezar de nuevo',
             target: document.body, heightAuto: false, scrollbarPadding: false,
         });
-        const clase = ((this.svc as any).catalogoClases as Clase[]).find((c) => toInt(c?.Id) === toInt(borrador!.idClase)) ?? null;
+        const clase = this.svc.claseDelCatalogo(borrador.idClase);
         if (!r.isConfirmed || !clase || !this.svc.restaurarEstadoSubida(borrador.motor)) {
             this.borrarBorrador();
             return false;
@@ -719,9 +673,5 @@ export class SubirNivelComponent implements OnInit, OnDestroy {
 
     private cerrarModal(): void {
         this.selectores.cerrar();
-    }
-
-    private async avisar(titulo: string, texto: string): Promise<void> {
-        await Swal.fire({ icon: 'warning', title: titulo, text: texto, confirmButtonText: 'Entendido', target: document.body, heightAuto: false, scrollbarPadding: false });
     }
 }

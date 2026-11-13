@@ -187,7 +187,7 @@ import {
     politicaTienda,
     reglaDineroInicial,
 } from 'src/app/services/utils/tienda-equipo';
-import { ModoHomebrewCampana, maximoFuentesHomebrew, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
+import { ModoHomebrewCampana, campanaDejaSaltarRequisitosPlantilla, maximoFuentesHomebrew, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
 import { extraConTipoArma, extraDeArmadura, extraDeDote } from 'src/app/services/utils/extras-dotes';
 import { LibroTienda, libroTienda } from 'src/app/services/utils/libro-conjuros';
 import { mayusculaInicial } from 'src/app/services/utils/formato-registros';
@@ -1226,7 +1226,7 @@ export class NuevoPersonajeComponent {
         const titulo = `Elegir ${razaConEdad(this.razaMirada?.Nombre, opcion.paso.Categoria.Nombre)} como personaje jugador`;
         // Se pregunta siempre (es una excepción del máster); si la raza también es homebrew, va en el mismo aviso.
         const motivos = motivosQueConfirmar([opcion.motivo, AVISO_EDAD_SIN_AJUSTE_MASTER, motivoHomebrew('raza', raza)], false);
-        if (!await this.confirmarEleccionHomebrew(titulo, motivos) || this.razaParaElegirIgualmente !== raza)
+        if (!await confirmarEleccionHomebrew(titulo, motivos) || this.razaParaElegirIgualmente !== raza)
             return;
         this.seleccionarRaza(raza);
     }
@@ -3997,12 +3997,9 @@ export class NuevoPersonajeComponent {
         this.recalcularOficialidad();
     }
 
-    /**
-     * Si la campaña deja saltarse los prerrequisitos de una plantilla: solo si admite homebrew sin límite, porque el
-     * personaje pasa a serlo (sin campaña, siempre).
-     */
+    /** Si la campaña deja saltarse los prerrequisitos de una plantilla (`campanaDejaSaltarRequisitosPlantilla`). */
     get puedeSaltarRequisitosPlantilla(): boolean {
-        return modoHomebrewDeCampana(this.effectiveSelectedCampaignPolicy) === 'unrestricted';
+        return campanaDejaSaltarRequisitosPlantilla(this.effectiveSelectedCampaignPolicy);
     }
 
     /**
@@ -4038,20 +4035,11 @@ export class NuevoPersonajeComponent {
             aplicar();
             return Promise.resolve(true);
         }
-        return this.confirmarEleccionHomebrew(titulo, pendientes).then((acepta) => {
+        return confirmarEleccionHomebrew(titulo, pendientes).then((acepta) => {
             if (acepta)
                 aplicar();
             return acepta;
         });
-    }
-
-    /**
-     * Confirma elegir algo que vuelve homebrew la ficha (`confirmarEleccionHomebrew` de `services/utils/confirmar-homebrew.ts`,
-     * la misma de la adquisición de una plantilla). Se llama desde `confirmarSiVuelveHomebrew`, salvo la edad sin ajuste del
-     * máster, que se pregunta siempre.
-     */
-    private confirmarEleccionHomebrew(titulo: string, motivos: string[]): Promise<boolean> {
-        return confirmarEleccionHomebrew(titulo, motivos);
     }
 
     /** La plantilla cuya vista previa está abierta (pulsar su tarjeta); se elige con su botón del pie. */
@@ -8319,7 +8307,7 @@ export class NuevoPersonajeComponent {
 
         const search = normalizarTexto(this.filtroPlantillasTexto);
         const porManual = this.filtroPlantillasManual;
-        const ctx = this.getContextoEvaluacionPlantillas(raza, this.incluirHomebrewPlantillasEfectivo);
+        const ctx = this.nuevoPSvc.getContextoEvaluacionPlantillas(raza, this.incluirHomebrewPlantillasEfectivo);
 
         const elegibles: Plantilla[] = [];
         const bloqueadasCampana: { plantilla: Plantilla; evaluacion: PlantillaEvaluacionResultado; }[] = [];
@@ -8399,7 +8387,7 @@ export class NuevoPersonajeComponent {
         if (!raza)
             return false;
 
-        const ctx = this.getContextoEvaluacionPlantillas(raza, this.incluirHomebrewPlantillasEfectivo);
+        const ctx = this.nuevoPSvc.getContextoEvaluacionPlantillas(raza, this.incluirHomebrewPlantillasEfectivo);
         const idsNoDisponibles = new Set<number>(this.plantillasSeleccionadas
             .map((plantilla) => Number(plantilla?.Id))
             .filter((id) => Number.isFinite(id) && id > 0));
@@ -8420,10 +8408,6 @@ export class NuevoPersonajeComponent {
             );
             return !alineamientoResuelto.conflicto;
         });
-    }
-
-    private getContextoEvaluacionPlantillas(raza: Raza, incluirHomebrew: boolean) {
-        return this.nuevoPSvc.getContextoEvaluacionPlantillas(raza, incluirHomebrew);
     }
 }
 

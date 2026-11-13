@@ -1,4 +1,4 @@
-import { leerPoliticaCompra, modoHomebrewDeCampana } from './politica-campana';
+import { campanaDejaSaltarRequisitosPlantilla, leerPoliticaCompra, modoHomebrewDeCampana } from './politica-campana';
 import { politicaTienda } from './tienda-equipo';
 
 describe('politica-campana', () => {
@@ -20,6 +20,13 @@ describe('politica-campana', () => {
             expect(modoHomebrewDeCampana({ permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: null })).toBe('forbidden');
             expect(modoHomebrewDeCampana({ permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: 2 })).toBe('forbidden');
         });
+    });
+
+    it('campanaDejaSaltarRequisitosPlantilla: solo sin campaña o con homebrew sin límite (creación y adquisición)', () => {
+        expect(campanaDejaSaltarRequisitosPlantilla(null)).toBeTrue();
+        expect(campanaDejaSaltarRequisitosPlantilla({ permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: null })).toBeTrue();
+        expect(campanaDejaSaltarRequisitosPlantilla({ permitirHomebrewGeneral: true, maxFuentesHomebrewGeneralesPorPersonaje: 2 })).toBeFalse();
+        expect(campanaDejaSaltarRequisitosPlantilla({ permitirHomebrewGeneral: false, maxFuentesHomebrewGeneralesPorPersonaje: null })).toBeFalse();
     });
 
     describe('leerPoliticaCompra (`politicaCompra` de GET /personajes/{id})', () => {

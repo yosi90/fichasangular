@@ -1,8 +1,9 @@
 import { ComponentRef, Type, ViewContainerRef } from '@angular/core';
 
 /**
- * El hueco donde la subida de nivel y la corrección de la ficha abren los selectores de la creación (declarados en
- * `AppModule`, con `createComponent`): uno cada vez, con sus entradas, y la promesa de lo que emita.
+ * El hueco donde la subida de nivel, la corrección de la ficha y la adquisición de una plantilla abren los selectores de
+ * la creación (declarados en `AppModule`, con `createComponent`): uno cada vez, con sus entradas, y la promesa de lo que
+ * emita. Los pasos que resuelven igual con él (el incremento y las dotes pendientes) están en `pasos-con-selectores.ts`.
  */
 export class HuecoDeSelectores {
     private abierto: ComponentRef<unknown> | null = null;

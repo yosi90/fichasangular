@@ -1,13 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnDestroy, OnInit, Type, ViewChild, ViewContainerRef } from '@angular/core';
+import { Component, Input, OnDestroy, OnInit, ViewChild, ViewContainerRef } from '@angular/core';
 import { Auth } from '@angular/fire/auth';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import Swal from 'sweetalert2';
-import { SelectorAumentosCaracteristicaModalComponent } from 'src/app/components/nuevo-personaje/selector-aumentos-caracteristica-modal/selector-aumentos-caracteristica-modal.component';
 import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores';
+import { resolverDotesPendientes, resolverIncrementoPendiente, tiradasPermitidasDe } from 'src/app/components/sesiones/pasos-con-selectores';
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
-import { SelectorDotesModalComponent } from 'src/app/components/nuevo-personaje/selector-dotes-modal/selector-dotes-modal.component';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
 import { Plantilla } from 'src/app/interfaces/plantilla';
@@ -15,7 +14,7 @@ import { ExperienciaPersonaje, SesionPersonaje } from 'src/app/interfaces/sesion
 import { CampanaService } from 'src/app/services/campana.service';
 import { MotorDesdeFichaService } from 'src/app/services/motor-desde-ficha.service';
 import { NavegacionRolService } from 'src/app/services/navegacion-rol.service';
-import { DoteSeleccionConfirmada, NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
+import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service';
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
@@ -28,8 +27,8 @@ import { normalizarTexto, toInt } from 'src/app/services/utils/normalizacion';
 import { confirmarEleccionHomebrew } from 'src/app/services/utils/confirmar-homebrew';
 import { motivoHomebrew, motivosQueConfirmar } from 'src/app/services/utils/personaje-oficialidad';
 import { evaluarElegibilidadPlantilla, PlantillaEvaluacionResultado, resolverAlineamientoPlantillas } from 'src/app/services/utils/plantilla-elegibilidad';
-import { modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
-import { carasDado, MAX_TIRADAS_PUNTOS_GOLPE, tiradasPuntosGolpe } from 'src/app/services/utils/puntos-golpe';
+import { campanaDejaSaltarRequisitosPlantilla, modoHomebrewDeCampana } from 'src/app/services/utils/politica-campana';
+import { carasDado } from 'src/app/services/utils/puntos-golpe';
 import { formatoPx } from 'src/app/services/utils/sesiones-texto';
 
 export type PasoPlantilla = 'plantilla' | 'incremento' | 'pg' | 'habilidades' | 'dotes' | 'resumen';
@@ -117,7 +116,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
 
     ngOnDestroy(): void {
         this.destruido = true;
-        this.cerrarModal();
+        this.selectores.cerrar();
     }
 
     get dgsNuevos(): number {
@@ -179,10 +178,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             this.sesion = cargada.sesion;
             this.entrada = cargada.entrada;
             this.pj = cargada.pj;
-            const campana = toInt(this.entrada.personaje?.campana?.id);
-            // Un PNJ, como al crearlo y como la API: sin el límite de la campaña (propietario, 2026-11-12).
-            this.tiradasPermitidas = this.entrada.personaje?.tipo === 'pnj' ? MAX_TIRADAS_PUNTOS_GOLPE
-                : campana > 0 ? await this.tiradasDeLaCampana(campana) : 1;
+            this.tiradasPermitidas = await tiradasPermitidasDe(this.entrada, this.campanaSvc);
             await this.hidratar();
             const catalogo = await this.motor.primero(this.plantillaSvc.getPlantillas());
             if (!this.sigueLaMismaCuenta())
@@ -195,24 +191,12 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         }
     }
 
-    private async tiradasDeLaCampana(idCampana: number): Promise<number> {
-        try {
-            const detalle = await this.campanaSvc.getCampaignDetail(idCampana);
-            return tiradasPuntosGolpe(detalle?.politicaCreacion?.maxTiradasPuntosGolpe);
-        } catch {
-            return 1;
-        }
-    }
-
     private async hidratar(): Promise<void> {
         await this.motor.hidratar(this.svc, this.pj!, this.entrada!);
         this.antes = this.motor.cuerpoDelMotor(this.svc, this.entrada!);
         this.pjAntes = JSON.parse(JSON.stringify(this.svc.PersonajeCreacion));
-        const s: any = this.svc;
-        this.carasClaseAntes = new Map((this.entrada!.niveles ?? []).map((n) => {
-            const clase = (s.catalogoClases ?? []).find((c: any) => toInt(c?.Id) === toInt(n?.idClase));
-            return [toInt(n?.idClase), this.svc.carasDadoGolpeDeClase(clase)] as const;
-        }));
+        this.carasClaseAntes = new Map((this.entrada!.niveles ?? []).map((n) =>
+            [toInt(n?.idClase), this.svc.carasDadoGolpeDeClase(this.svc.claseDelCatalogo(n?.idClase))] as const));
         this.carasRacialAntes = this.svc.carasDadoGolpeRacial();
         this.modConAntes = this.modConstitucion();
     }
@@ -235,15 +219,18 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         const ctx = this.svc.getContextoEvaluacionPlantillas(this.svc.RazaSeleccionada, true);
         const sinHomebrew = modoHomebrewDeCampana(this.pj?.PoliticaCompra) === 'forbidden';
         const salta = this.rolActor === 'master' || this.entrada?.personaje?.tipo === 'pnj';
+        // Sin sus requisitos, con la regla de la creación: solo si la campaña admite homebrew sin límite (o se salta su política).
+        const saltaRequisitos = salta || campanaDejaSaltarRequisitosPlantilla(this.pj?.PoliticaCompra);
         const actuales = this.svc.EstadoFlujo.plantillas.seleccionadas ?? [];
         this.opciones = (catalogo ?? [])
             .filter((p) => esPlantillaAdquirible(p) && !tiene.has(toInt(p.Id)))
-            .map((plantilla) => this.opcion(plantilla, evaluarElegibilidadPlantilla(plantilla, ctx), sinHomebrew && !salta, actuales))
+            .map((plantilla) => this.opcion(plantilla, evaluarElegibilidadPlantilla(plantilla, ctx), sinHomebrew && !salta, saltaRequisitos, actuales))
             .filter((o) => o.estado !== 'bloqueada' || o.plantilla.Oficial !== false || homebrewPj || !sinHomebrew)
             .sort((a, b) => ORDEN_ESTADO[a.estado] - ORDEN_ESTADO[b.estado] || a.plantilla.Nombre.localeCompare(b.plantilla.Nombre, 'es'));
     }
 
-    private opcion(plantilla: Plantilla, evaluacion: PlantillaEvaluacionResultado, bloqueaHomebrew: boolean, actuales: Plantilla[]): OpcionPlantilla {
+    private opcion(plantilla: Plantilla, evaluacion: PlantillaEvaluacionResultado, bloqueaHomebrew: boolean, saltaRequisitos: boolean,
+        actuales: Plantilla[]): OpcionPlantilla {
         if (bloqueaHomebrew && plantilla.Oficial === false)
             return { plantilla, estado: 'bloqueada', motivo: 'La campaña no admite contenido homebrew.' };
         if (evaluacion.estado === 'eligible') {
@@ -253,6 +240,8 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             return { plantilla, estado: 'elegible', motivo: '' };
         }
         const motivo = evaluacion.razones.join(' · ') || 'No cumple sus prerrequisitos.';
+        if (evaluacion.saltable && !saltaRequisitos)
+            return { plantilla, estado: 'bloqueada', motivo: `${motivo} · La campaña no admite homebrew: no se pueden saltar sus requisitos.` };
         return { plantilla, estado: evaluacion.saltable ? 'saltable' : 'bloqueada', motivo };
     }
 
@@ -315,43 +304,13 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
     }
 
     private async resolverIncremento(): Promise<void> {
-        const p = this.svc.PersonajeCreacion;
-        const asignaciones = await this.abrirModal<any[]>(SelectorAumentosCaracteristicaModalComponent, {
-            titulo: `Incremento de característica por sus DG nuevos`,
-            pendientes: this.svc.getAumentosCaracteristicaPendientes(),
-            caracteristicasActuales: { Fuerza: p.Fuerza, Destreza: p.Destreza, Constitucion: p.Constitucion, Inteligencia: p.Inteligencia, Sabiduria: p.Sabiduria, Carisma: p.Carisma },
-            caracteristicasPerdidas: caracteristicasPerdidasDe(p),
-            topesCaracteristicas: this.svc.getTopesCaracteristicas(),
-        }, ['confirmar'], []);
-        if (!asignaciones || !this.svc.aplicarAumentosCaracteristica(asignaciones)) {
-            await this.avisar('Falta el incremento', 'Elige a qué característica va el +1 para seguir.');
-            return this.resolverIncremento();
-        }
+        await resolverIncrementoPendiente(this.svc, this.selectores, 'Incremento de característica por sus DG nuevos');
         await this.siguiente();
     }
 
     private async resolverDotes(): Promise<void> {
-        while (true) {
-            const pendiente = this.svc.getSiguienteDotePendiente();
-            if (!pendiente)
-                break;
-            const candidatos = this.svc.obtenerCandidatosDotePendiente(pendiente.id);
-            if (!candidatos.some((c) => c.evaluacion?.estado === 'eligible' && c.repeticionValida && !c.restringidaPorTipo)) {
-                this.svc.omitirDotePendiente(pendiente.id);
-                continue;
-            }
-            const restantes = this.svc.getDotesPendientes().filter((d) => d.estado === 'pendiente').length;
-            const seleccion = await this.abrirModal<DoteSeleccionConfirmada | 'omitir'>(SelectorDotesModalComponent, {
-                titulo: 'Seleccionar dote', pendiente, candidatos, pendientesRestantes: restantes,
-            }, ['confirmar'], [], { omitir: 'omitir' });
-            if (!seleccion)
-                return;
-            if (seleccion === 'omitir')
-                this.svc.omitirDotePendiente(pendiente.id);
-            else if (!this.svc.aplicarDotePendiente(pendiente.id, seleccion))
-                await this.avisar('No se pudo aplicar la dote', 'La selección ya no vale con el personaje de ahora. Elige otra.');
-        }
-        await this.siguiente();
+        if (await resolverDotesPendientes(this.svc, this.selectores))
+            await this.siguiente();
     }
 
     // PG
@@ -385,8 +344,7 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
     private calcularPg(): void {
         if (!this.entrada || !this.elegida)
             return;
-        const s: any = this.svc;
-        const clase = (id: number) => (s.catalogoClases ?? []).find((c: any) => toInt(c?.Id) === id);
+        const clase = (id: number) => this.svc.claseDelCatalogo(id);
         this.pg = puntosGolpeTrasPlantilla({
             entrada: this.entrada,
             dgsAntes: toInt(this.pj?.Nivel_personaje),
@@ -439,10 +397,9 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
     private clasesQueDejanSuAlineamiento(): Array<{ nombre: string; razones: string[]; }> {
         if (this.idAlineamientoDespues() === null)
             return [];
-        const s: any = this.svc;
         const alineamiento = this.svc.PersonajeCreacion.Alineamiento;
         return (this.entrada?.colecciones?.clases ?? []).flatMap((c) => {
-            const clase = (s.catalogoClases ?? []).find((x: any) => toInt(x?.Id) === toInt(c?.idClase));
+            const clase = this.svc.claseDelCatalogo(c?.idClase);
             const antes = evaluarAlineamientoClase(clase, { alineamiento: this.pjAntes?.Alineamiento ?? '' });
             const despues = evaluarAlineamientoClase(clase, { alineamiento });
             return clase && despues.estricta && !antes.estricta ? [{ nombre: `${clase.Nombre}`, razones: despues.incumple }] : [];
@@ -520,21 +477,6 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
         this.alTerminar?.();
     }
 
-    // --- Los selectores de la creación ---------------------------------------------------------------------------------
-
-    /** Abre un selector de la creación en el hueco común de la subida y la corrección (`HuecoDeSelectores`). */
-    private abrirModal<T>(tipo: Type<unknown>, entradas: Record<string, unknown>, aceptar: string[], rechazar: string[],
-        fijos: Record<string, unknown> = {}): Promise<T | null> {
-        return this.selectores.abrir<T>(tipo, entradas, aceptar, rechazar, fijos);
-    }
-
-    private cerrarModal(): void {
-        this.selectores.cerrar();
-    }
-
-    private async avisar(titulo: string, texto: string): Promise<void> {
-        await Swal.fire({ icon: 'warning', title: titulo, text: texto, confirmButtonText: 'Entendido', target: document.body, heightAuto: false, scrollbarPadding: false });
-    }
 }
 
 const ORDEN_ESTADO: Record<OpcionPlantilla['estado'], number> = { elegible: 0, saltable: 1, bloqueada: 2 };

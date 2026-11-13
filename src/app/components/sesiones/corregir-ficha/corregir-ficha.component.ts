@@ -9,7 +9,6 @@ import { HuecoDeSelectores } from 'src/app/components/sesiones/hueco-selectores'
 import { RepartoRangosComponent } from 'src/app/components/sesiones/reparto-rangos/reparto-rangos.component';
 import { AlineamientoBasicoCatalogItem } from 'src/app/interfaces/alineamiento';
 import { Caracteristica } from 'src/app/interfaces/caracteristica';
-import { Clase } from 'src/app/interfaces/clase';
 import { DeidadDetalle } from 'src/app/interfaces/deidad';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { PersonajeCreateNivelEleccionDto, PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
@@ -327,7 +326,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             return { id: toInt(c.idConjuro), idClase, nombre: `${nombre(s.catalogoConjuros, toInt(c.idConjuro))}${clase}`, quitado: false };
         });
         this.tiradas = (entrada.niveles ?? []).flatMap((n, indice) => {
-            const clase = this.claseDelCatalogo(toInt(n.idClase));
+            const clase = this.svc.claseDelCatalogo(toInt(n.idClase));
             const caras = carasDado(clase?.Tipo_dado?.Nombre);
             if (!clase || caras < 1 || !daDgEnNivel(clase, toInt(n.nivelClase)))
                 return [];
@@ -339,10 +338,6 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
             return [fila];
         });
         this.recalcular();
-    }
-
-    private claseDelCatalogo(idClase: number): Clase | undefined {
-        return ((this.svc as any).catalogoClases as Clase[] ?? []).find((c) => toInt(c?.Id) === toInt(idClase));
     }
 
     private sigueLaMismaCuenta(): boolean {
@@ -372,7 +367,7 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
         const deidad = this.deidades.find((d) => toInt(d.Id) === this.idDeidad) ?? null;
         const cambiaAlineamiento = this.idAlineamiento !== toInt(p.idAlineamiento) || this.idDeidad !== toInt(p.deidad);
         (cambiaAlineamiento ? this.entrada?.colecciones?.clases ?? [] : []).forEach((c) => {
-            const clase = this.claseDelCatalogo(toInt(c.idClase));
+            const clase = this.svc.claseDelCatalogo(toInt(c.idClase));
             const evaluacion = evaluarAlineamientoClase(clase, { alineamiento, deidad });
             if (!clase || !evaluacion.estricta)
                 return;

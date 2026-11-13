@@ -70,6 +70,16 @@ describe('AdquirirPlantillaComponent (adquirir una plantilla, fase 7)', () => {
         expect(sesiones.sesion).not.toHaveBeenCalled();
     });
 
+    it('sin sus requisitos solo se ofrece si la campaña lo deja o se salta su política (la regla de la creación)', async () => {
+        const componente: any = await crear({ experiencia: experiencia({ sesionAbierta: null }) });
+        const plantilla = { Id: 9, Nombre: 'Vampiro', Oficial: true } as any;
+        const evaluacion = { estado: 'blocked_failed', razones: ['Requiere 5 DG'], advertencias: [], saltable: true };
+        expect(componente.opcion(plantilla, evaluacion, false, true, []).estado).toBe('saltable');
+        const bloqueada = componente.opcion(plantilla, evaluacion, false, false, []);
+        expect(bloqueada.estado).toBe('bloqueada');
+        expect(bloqueada.motivo).toContain('no se pueden saltar sus requisitos');
+    });
+
     it('la cabecera dice qué hace y sus PX con su NEP', async () => {
         await crear({ experiencia: experiencia({ sesionAbierta: null }) });
         const texto = fixture.nativeElement.querySelector('.subida__cabecera')?.textContent ?? '';

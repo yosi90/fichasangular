@@ -28,6 +28,16 @@ export function modoHomebrewDeCampana(
 }
 
 /**
+ * Si la campaña deja elegir una plantilla sin cumplir sus prerrequisitos: solo si admite homebrew sin límite, porque el
+ * personaje pasa a serlo (sin campaña, siempre). La usan la creación y la adquisición de una plantilla (sesiones, fase 7).
+ */
+export function campanaDejaSaltarRequisitosPlantilla(
+    policy: Parameters<typeof modoHomebrewDeCampana>[0],
+): boolean {
+    return modoHomebrewDeCampana(policy) === 'unrestricted';
+}
+
+/**
  * El límite de fuentes homebrew de la política: entero, 0 o más; sin dato o algo que no es un número, `null`. Lo usan
  * `modoHomebrewDeCampana`, `leerPoliticaCompra` y las comprobaciones de la campaña en la creación.
  */
