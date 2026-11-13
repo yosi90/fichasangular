@@ -6256,6 +6256,8 @@ export class NuevoPersonajeService {
 
         const caracteristicasVarios = this.crearCaracteristicasVariosVacias();
         const nuevosRaciales = this.copiarRaciales(this.estadoFlujo.ventajas.baseRaciales);
+        // Los de sus plantillas, por sus DG (la base es la de la raza: `reconstruirBaseRacialesDesdeBorrador` los quita).
+        this.agregarRacialesDeSusPlantillas(nuevosRaciales);
         // Lo que dan o cambian sus rasgos a sus DG y su nivel (`racial-progresion.ts`): lo ganado, con sus efectos.
         const progresion = this.progresionRacialActual(nuevosRaciales);
         nuevosRaciales.splice(0, nuevosRaciales.length, ...progresion.raciales);
@@ -6264,8 +6266,7 @@ export class NuevoPersonajeService {
         const pendientesOro: PendienteOroState[] = [];
         this.aplicarEfectosPlantillasFase2(caracteristicasVarios, nuevosRaciales, bonosHabilidades);
         this.aplicarVelocidadesDeProgresionRacial(progresion);
-        // También las de los rasgos de sus plantillas (Control de forma del licántropo infectado, MM1, pág. 303).
-        this.aplicarHabilidadesSiempreDeClase([...nuevosRaciales, ...this.racialesDeSusPlantillas()]);
+        this.aplicarHabilidadesSiempreDeClase(nuevosRaciales);
         this.aplicarHabilidadesDeRasgos(nuevosRaciales, bonosHabilidades);
         this.aplicarModificadoresDotesDelPersonaje({ caracteristicasVarios, bonosHabilidades });
         this.aplicarCaracteristicasEspecialesDelPersonaje(caracteristicasVarios);
@@ -6724,7 +6725,7 @@ export class NuevoPersonajeService {
         }
 
         seleccionadas.forEach((plantilla) => {
-            const origen = `${plantilla?.Nombre ?? ''}`.trim() || `Plantilla ${toNumber(plantilla?.Id)}`;
+            const origen = this.origenDePlantilla(plantilla);
             // Con DG de un tipo que se conoce (el animal del licántropo), su ataque base y sus salvaciones base salen de sus
             // progresiones; las columnas de la plantilla son las del animal en su forma (sus salvaciones, con su Des, su
             // Con y su Sab) y no se suman. Sin tipo, como antes: lo que diga la plantilla.
@@ -7455,22 +7456,40 @@ export class NuevoPersonajeService {
             });
     }
 
+    /** El origen de lo que da una plantilla: su nombre (el que excluye `getOrigenesExcluidosRestauracionBorrador`). */
+    private origenDePlantilla(plantilla: Plantilla): string {
+        return `${plantilla?.Nombre ?? ''}`.trim() || `Plantilla ${toNumber(plantilla?.Id)}`;
+    }
+
+    /**
+     * Los rasgos y los ataques especiales de sus plantillas que ya tiene por sus DG (`Raciales[].Dg` y
+     * `Ataques_especiales[].Dg`: desde cuántos DG; 0, desde el principio), en sus `raciales`, con la plantilla como origen:
+     * la ficha los enseña (las inmunidades del liche, el olfato del licántropo) y cuentan como los de la raza (la
+     * «licantropía contraída» del licántropo infectado hace de clase Control de forma, MM1, pág. 303). El que ya tiene (de
+     * la raza o de otra plantilla) no se repite.
+     */
+    private agregarRacialesDeSusPlantillas(raciales: RacialDetalle[]): void {
+        const dgs = this.resolverDgTotalActual();
+        const tiene = new Set(raciales.map((racial) => toInt(racial?.Id)).filter((id) => id > 0));
+        (this.estadoFlujo.plantillas.seleccionadas ?? []).forEach((plantilla) => {
+            const origen = this.origenDePlantilla(plantilla);
+            [...(plantilla?.Raciales ?? []), ...(plantilla?.Ataques_especiales ?? [])]
+                .filter((item) => toInt(item?.Racial?.Id) > 0 && toNumber(item?.Dg) <= dgs)
+                .forEach((item) => {
+                    const [racial] = this.copiarRaciales([item.Racial]);
+                    if (!racial || tiene.has(toInt(racial.Id)))
+                        return;
+                    tiene.add(toInt(racial.Id));
+                    raciales.push({ ...racial, Origen: origen });
+                });
+        });
+    }
+
     /**
      * Las habilidades que un racial hace siempre de clase (`Se_considera_clasea` de sus `Habilidades`: el uldra, Saber
      * (naturaleza), *Escarcha ardiente*, pág. 41): de clase en todos los repartos (niveles de clase y DG raciales), como
      * las `Habilidades_claseas` de un dominio. Con su especialidad, si la nombra (`Id_extra`), en su hueco.
      */
-    /**
-     * Los rasgos de sus plantillas que ya tiene por sus DG (`Raciales[].Dg`: desde cuántos DG; 0, desde el principio): la
-     * «licantropía contraída» del licántropo infectado, que hace de clase Control de forma (MM1, pág. 303).
-     */
-    private racialesDeSusPlantillas(): RacialDetalle[] {
-        const dgs = this.resolverDgTotalActual();
-        return (this.estadoFlujo.plantillas.seleccionadas ?? []).flatMap((plantilla) => (plantilla?.Raciales ?? [])
-            .filter((item) => !!item?.Racial && toNumber(item?.Dg) <= dgs)
-            .map((item) => item.Racial));
-    }
-
     private aplicarHabilidadesSiempreDeClase(raciales: RacialDetalle[]): void {
         const aseguradas = (raciales ?? []).flatMap((racial) => {
             const habilidades = racial?.Habilidades;
