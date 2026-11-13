@@ -54,6 +54,11 @@ describe('prerrequisito-editor.registry', () => {
         });
     });
 
+    it('serializa la dote con el arma predilecta de su deidad (la de una clase: el cruzado divino)', () => {
+        const payload = buildPrerequisitePayload([row({ tipo: 'dote', id: 1, repetido: 0, id_extra: -1, arma_deidad: true })], context);
+        expect(payload['dote'][0]).toEqual(jasmine.objectContaining({ Id_extra: -1, Extra_arma_deidad: true }));
+    });
+
     it('serializa clase_especial con id_extra', () => {
         const payload = buildPrerequisitePayload([
             row({ tipo: 'clase_especial', id: 8, id_extra: 0 }),

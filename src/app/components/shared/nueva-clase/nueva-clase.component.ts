@@ -394,6 +394,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         getCatalogName: (type, id) => this.getNombreCatalogo(type, id),
         getDoteExtraOptions: (idDote) => this.getOpcionesExtraDote(idDote),
         dotePermiteExtra: (idDote) => this.getOpcionesExtraDote(idDote).length > 0,
+        admiteArmaDeidad: () => true,
         getGlobalExtraOptions: () => this.catalogosPrerrequisito['extras'],
         habilidadPermiteExtra: (idHabilidad) => this.habilidadesBase.some((item) => item.Id_habilidad === this.entero(idHabilidad) && item.Soporta_extra),
         getHabilidadExtraOptions: (idHabilidad) => opcionesDeExtrasDeHabilidad(this.habilidadesBase, idHabilidad),

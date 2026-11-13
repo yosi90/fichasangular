@@ -5,7 +5,7 @@ import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento }
 import { normalizarTexto, textosUnicos, toArray, toBoolean, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { frasePrerrequisito } from './prerrequisito-frase';
 import { lanzaConjurosDiarios } from './nivel-lanzador-personaje';
-import { EvaluacionPrerrequisito, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararRangosHabilidad, compararSubtipo, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { EvaluacionPrerrequisito, DeidadDelPersonaje, compararDeidad, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararRangosHabilidad, compararSubtipo, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadClase = "eligible" | "blocked_failed" | "blocked_unknown";
@@ -50,11 +50,7 @@ export interface ClaseEvaluacionContexto {
     deidad?: DeidadDelPersonaje | null;
 }
 
-/** La deidad del personaje para los prerrequisitos de clase: su id y su nombre (cualquiera de los dos basta). */
-export interface DeidadDelPersonaje {
-    id: number | null;
-    nombre: string;
-}
+export type { DeidadDelPersonaje } from './prerrequisitos-evaluacion';
 
 export interface ClaseEvaluacionResultado {
     estado: EstadoElegibilidadClase;
@@ -226,18 +222,22 @@ function buildEvaluacionNoRaza(entry: Record<string, any>, ctx: ClaseEvaluacionC
     };
 }
 
-/** La deidad tutelar (la Hoja brillante de Heironeous, El divino completo, pág. 46): por su id o, sin él, por su nombre. */
-function buildEvaluacionDeidad(entry: Record<string, any>, deidad: DeidadDelPersonaje | null | undefined): EvaluacionItem {
-    const grupoOpcional = parseOpcional(entry);
-    const id = parseId(entry, ["Id_deidad", "id_deidad", "Id"]);
-    const nombre = parseNombre(entry, ["Deidad", "deidad", "Nombre"]);
-    const razonUnknown = "Prerrequisito de deidad con formato no reconocido";
-    if (id <= 0 && normalizarTexto(nombre).length < 1)
-        return { grupoOpcional, evaluable: false, cumple: false, razonUnknown };
-    const cumple = !!deidad && (id > 0 && toInt(deidad.id) > 0
-        ? toInt(deidad.id) === id
-        : normalizarTexto(deidad.nombre).length > 0 && normalizarTexto(deidad.nombre) === normalizarTexto(nombre));
-    return { grupoOpcional, evaluable: true, cumple, razonUnknown };
+/**
+ * Si con esa deidad (y esas dotes: las de la ficha, `{ idDote, idExtra }`) la clase deja de tener la dote que pide con el
+ * arma predilecta de su deidad (`dote_elegida` con `Extra_arma_deidad`: «Soltura con un arma (el arma predilecta de su
+ * deidad)», el cruzado divino, *El divino completo*, pág. 30): sus frases, o vacío. Lo usa la corrección de la ficha para
+ * no ofrecer una deidad que se la rompa (la API: `409 cambio_rompe_prerrequisito`).
+ */
+export function incumpleArmaDeSuDeidad(
+    clase: Clase | null | undefined,
+    deidad: DeidadDelPersonaje | null,
+    dotes: Array<{ idDote: number; idExtra?: number | null; }>,
+): string[] {
+    const arma = toInt(deidad?.idArma);
+    return toArray<Record<string, any>>(clase?.Prerrequisitos?.dote_elegida)
+        .filter((entry) => entry?.['Extra_arma_deidad'] === true)
+        .filter((entry) => arma <= 0 || !(dotes ?? []).some((d) => toInt(d.idDote) === toInt(entry?.['Id_dote_prerrequisito']) && toInt(d.idExtra) === arma))
+        .map((entry) => frasePrerrequisito('dote_elegida', entry));
 }
 
 /**
@@ -250,7 +250,7 @@ export function incumpleDeidadTutelar(clase: Clase | null | undefined, deidad: D
     if (entradas.length < 1)
         return [];
     const motivos = new MotivosPrerrequisitos();
-    evaluarFamilia(motivos, "deidad", true, entradas, (entry) => buildEvaluacionDeidad(entry, deidad));
+    evaluarFamilia(motivos, "deidad", true, entradas, (entry) => compararDeidad(entry, deidad));
     motivos.cerrarGrupos();
     return Array.from(new Set(motivos.fail));
 }
@@ -336,9 +336,14 @@ function buildEvaluacionDote(entry: Record<string, any>, ctx: ClaseEvaluacionCon
     const nombreNorm = normalizarTexto(nombreDote);
     const repetidoReq = Math.max(0, toInt(pick(entry, ["Repetido", "repetido", "r"]), 0));
     const cantidadReq = repetidoReq > 0 ? repetidoReq : 1;
+    // Con `Extra_arma_deidad`, el extra es el arma predilecta de su deidad (el cruzado divino, El divino completo, pág. 30):
+    // sin deidad o con una sin arma, no la cumple.
+    const armaDeidad = entry?.["Extra_arma_deidad"] === true ? toInt(ctx.deidad?.idArma) : null;
     const coincidencias = ctx.dotes.filter((d) => {
         const coincideDote = (idDote > 0 && toNumber(d.id) === idDote)
             || (nombreNorm.length > 0 && normalizarTexto(d.nombre) === nombreNorm);
+        if (armaDeidad !== null)
+            return coincideDote && armaDeidad > 0 && toInt(d.idExtra) === armaDeidad;
         return coincideDote && cumpleExtraPedido(entry, d);
     });
     const evaluable = idDote > 0 || nombreNorm.length > 0;
@@ -660,7 +665,7 @@ export function evaluarElegibilidadClase(clase: Clase, ctx: ClaseEvaluacionConte
     evaluarFamilia(motivos, "clase_especial", (flags as any)?.clase_especial, toArray(prer?.clase_especial), (entry) => buildEvaluacionClaseEspecial(entry, ctx), { permitirSinDatos: true });
     evaluarFamilia(motivos, "tamano_maximo", flags?.tamano_maximo, toArray(prer?.tamano_maximo), (entry) => buildEvaluacionTamano(entry, ctx, true));
     evaluarFamilia(motivos, "tamano_minimo", flags?.tamano_minimo, toArray(prer?.tamano_minimo), (entry) => buildEvaluacionTamano(entry, ctx, false));
-    evaluarFamilia(motivos, "deidad", flags?.deidad, toArray(prer?.deidad), (entry) => buildEvaluacionDeidad(entry, ctx.deidad));
+    evaluarFamilia(motivos, "deidad", flags?.deidad, toArray(prer?.deidad), (entry) => compararDeidad(entry, ctx.deidad));
     const incarnum = ctx.incarnum ?? incarnumParaPrerrequisitos(null);
     CLAVES_PRERREQUISITOS_INCARNUM.forEach((clave) => evaluarFamilia(
         motivos,

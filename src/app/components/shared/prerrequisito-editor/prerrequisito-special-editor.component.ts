@@ -18,6 +18,8 @@ export class PrerrequisitoSpecialEditorComponent {
     @Input() doteExtraOptions: PrerequisiteCatalogItem[] = [];
     @Input() globalExtraOptions: PrerequisiteCatalogItem[] = [];
     @Input() allowExtraSelector: boolean = false;
+    /** Ofrece «Con el arma predilecta de su deidad» (las dotes que pide una clase). */
+    @Input() admiteArmaDeidad: boolean = false;
     @Input() extraDisabledMessage: string = 'Esta habilidad no puede tener extras.';
     @Input() disabled: boolean = false;
 

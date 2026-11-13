@@ -12,6 +12,33 @@ import { frasePrerrequisito, grupoOpcionalPrerrequisito, avisoSinComprobar, razo
 // Lo común de evaluar los prerrequisitos contra el personaje (`dote-elegibilidad`, `clase-elegibilidad`,
 // `plantilla-elegibilidad` y `aptitudes-clase`).
 
+/**
+ * La deidad del personaje para los prerrequisitos de clases y dotes: su id y su nombre (cualquiera de los dos basta) y el
+ * id de su arma predilecta (`Arma` de la deidad; `null` o 0, no tiene), para la dote con el arma de su deidad.
+ */
+export interface DeidadDelPersonaje {
+    id: number | null;
+    nombre: string;
+    idArma?: number | null;
+}
+
+/**
+ * La deidad tutelar (`deidad`: la Hoja brillante de Heironeous, *El divino completo*, pág. 46; Bendecido por Tem-Et-Nu,
+ * *Tormenta de arena*, pág. 49): por su id o, sin él, por su nombre. Sin deidad no la cumple.
+ */
+export function compararDeidad(pedido: Record<string, any>, deidad: DeidadDelPersonaje | null | undefined): Omit<EvaluacionPrerrequisito, 'frase'> {
+    const grupoOpcional = grupoOpcionalPrerrequisito(pedido);
+    const id = toInt(pedido?.['Id_deidad'] ?? pedido?.['id_deidad'] ?? pedido?.['Id']);
+    const nombre = `${pedido?.['Deidad'] ?? pedido?.['deidad'] ?? pedido?.['Nombre'] ?? ''}`;
+    const razonUnknown = 'Prerrequisito de deidad con formato no reconocido';
+    if (id <= 0 && normalizarTexto(nombre).length < 1)
+        return { grupoOpcional, evaluable: false, cumple: false, razonUnknown };
+    const cumple = !!deidad && (id > 0 && toInt(deidad.id) > 0
+        ? toInt(deidad.id) === id
+        : normalizarTexto(deidad.nombre).length > 0 && normalizarTexto(deidad.nombre) === normalizarTexto(nombre));
+    return { grupoOpcional, evaluable: true, cumple, razonUnknown };
+}
+
 /** Lo que dice la evaluación de un prerrequisito contra el personaje. */
 export interface EvaluacionPrerrequisito {
     /** 0 es obligatorio; el mismo número mayor que 0, alternativas (basta con una). */

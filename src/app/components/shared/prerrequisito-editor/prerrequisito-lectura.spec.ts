@@ -18,6 +18,9 @@ describe('filaDeLectura (los prerrequisitos de la API como filas del editor)', (
         expect(filaDeLectura('dote', { Id_dote_prerrequisito: 4, Id_extra: -1, Repetido: 0 }, 'u'))
             .toEqual(jasmine.objectContaining({ id: 4, id_extra: -1, repetido: 0 }));
         expect(filaDeLectura('dote', { Id_dote_prerrequisito: 4 }, 'u').id_extra).toBeNull();
+        // La de una clase con el arma predilecta de su deidad (el cruzado divino) conserva la marca.
+        expect(filaDeLectura('dote', { Id_dote_prerrequisito: 4, Id_extra: -1, Extra_arma_deidad: true }, 'u').arma_deidad).toBeTrue();
+        expect(filaDeLectura('dote', { Id_dote_prerrequisito: 4, Id_extra: -1 }, 'u').arma_deidad).toBeUndefined();
     });
 
     it('la salvación mínima lee la que tiene valor', () => {

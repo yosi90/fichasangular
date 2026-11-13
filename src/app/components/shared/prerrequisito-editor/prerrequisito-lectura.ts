@@ -133,6 +133,8 @@ export function filaDeLectura(tipo: PrerequisiteType, item: PrerrequisitoItem, u
         // El código de la base tal cual: -1 sin extra, 0 el comodín, > 0 uno concreto (y `null` si no viene).
         fila.id_extra = idExtraLeido(item);
         fila.repetido = Math.max(0, toInt(item?.['Repetido']));
+        if (item?.['Extra_arma_deidad'] === true)
+            fila.arma_deidad = true;
     }
     if (tipo === 'habilidad') {
         fila.requiere_extra = toInt(item?.['Requiere_extra']) > 0;

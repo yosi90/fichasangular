@@ -21,7 +21,7 @@ import { DoteSeleccionConfirmada, NuevoPersonajeService, PasoRepartoRangos } fro
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { evaluarAlineamientoClase, nombreExClase } from 'src/app/services/utils/alineamiento-clase';
-import { incumpleDeidadTutelar } from 'src/app/services/utils/clase-elegibilidad';
+import { incumpleArmaDeSuDeidad, incumpleDeidadTutelar } from 'src/app/services/utils/clase-elegibilidad';
 import { frasePrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { CampaignPurchasePolicy } from 'src/app/interfaces/campaign-management';
@@ -586,9 +586,12 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
 
     /** Si con esa deidad (o sin ninguna) alguna de sus clases deja de tener su deidad tutelar. */
     private rompeDeidadTutelar(deidad: DeidadDetalle | null): boolean {
-        const suya = deidad ? { id: toInt(deidad.Id), nombre: `${deidad.Nombre ?? ''}` } : null;
-        return (this.entrada?.colecciones?.clases ?? [])
-            .some((c) => incumpleDeidadTutelar(this.svc.claseDelCatalogo(toInt(c.idClase)), suya).length > 0);
+        const suya = deidad ? { id: toInt(deidad.Id), nombre: `${deidad.Nombre ?? ''}`, idArma: toInt(deidad.Arma?.Id) || null } : null;
+        const dotes = this.entrada?.colecciones?.dotes ?? [];
+        return (this.entrada?.colecciones?.clases ?? []).some((c) => {
+            const clase = this.svc.claseDelCatalogo(toInt(c.idClase));
+            return incumpleDeidadTutelar(clase, suya).length > 0 || incumpleArmaDeSuDeidad(clase, suya, dotes).length > 0;
+        });
     }
 
     cambiarTirada(fila: FilaTirada, valor: number): void {

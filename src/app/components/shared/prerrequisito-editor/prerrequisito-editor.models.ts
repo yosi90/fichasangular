@@ -117,6 +117,11 @@ export interface PrerequisiteRowModel {
     comodin?: boolean;
     /** El texto de un tipo `text-only` (la condición que confirma el máster). */
     texto?: string;
+    /**
+     * Una `dote` de una clase con el arma predilecta de su deidad (`Extra_arma_deidad`: «Soltura con un arma (el arma
+     * predilecta de su deidad)», el cruzado divino, *El divino completo*, pág. 30).
+     */
+    arma_deidad?: boolean;
 }
 
 export interface PrerequisiteCatalogContext {
@@ -124,6 +129,8 @@ export interface PrerequisiteCatalogContext {
     getCatalogName(type: PrerequisiteType, id: number): string;
     getDoteExtraOptions(idDote: number): PrerequisiteCatalogItem[];
     dotePermiteExtra(idDote: number): boolean;
+    /** Si quien edita admite «con el arma predilecta de su deidad» en sus dotes (las clases; las dotes no). */
+    admiteArmaDeidad?(): boolean;
     getGlobalExtraOptions(): PrerequisiteCatalogItem[];
     habilidadPermiteExtra(idHabilidad: number): boolean;
     /** Los extras de esa habilidad, para elegir los que pide una fila con «requiere extra». Sin él, `getGlobalExtraOptions`. */

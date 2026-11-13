@@ -2235,13 +2235,17 @@ export class NuevoPersonajeService {
         });
     }
 
-    /** Su deidad para la deidad tutelar de las clases (`Prerrequisitos.deidad`): la del catálogo o, si no está, su nombre. */
-    private deidadParaPrerrequisitos(): { id: number | null; nombre: string; } | null {
+    /**
+     * Su deidad para la deidad tutelar de las clases y las dotes (`Prerrequisitos.deidad`) y la dote con el arma de su deidad
+     * (`Extra_arma_deidad`): la del catálogo (con su arma) o, si no está, su nombre.
+     */
+    private deidadParaPrerrequisitos(): { id: number | null; nombre: string; idArma: number | null; } | null {
         if (esSinDeidad(this.personajeCreacion.Deidad))
             return null;
         const deidad = this.obtenerDeidadSeleccionada();
         const nombre = `${deidad?.Nombre ?? this.personajeCreacion.Deidad ?? ''}`.trim();
-        return nombre.length > 0 ? { id: deidad ? toInt(deidad.Id) : null, nombre } : null;
+        const idArma = toInt(deidad?.Arma?.Id);
+        return nombre.length > 0 ? { id: deidad ? toInt(deidad.Id) : null, nombre, idArma: idArma > 0 ? idArma : null } : null;
     }
 
     /**
@@ -4225,6 +4229,7 @@ export class NuevoPersonajeService {
         const estadoCuposFamiliar = this.getEstadoCuposFamiliarEspecial47();
 
         const contexto: DoteEvaluacionContexto = {
+            deidad: this.deidadParaPrerrequisitos(),
             identidad,
             caracteristicas: this.caracteristicasActuales(),
             ataqueBase: primerEntero(this.personajeCreacion.Ataque_base) ?? 0,

@@ -291,8 +291,8 @@ describe('NuevaDoteComponent', () => {
 
     it('ofrece la aptitud especial con las aptitudes de su catálogo, no con los especiales de clase', async () => {
         expect(component.prerrequisitoOpciones.some((item) => item.key === 'aptitud_especial')).toBeTrue();
-        // La deidad tutelar es solo de las clases.
-        expect(component.prerrequisitoOpciones.some((item) => item.key === 'deidad')).toBeFalse();
+        // La deidad tutelar (Bendecido por Tem-Et-Nu, Tormenta de arena, pág. 49), como en las clases.
+        expect(component.prerrequisitoOpciones.some((item) => item.key === 'deidad')).toBeTrue();
 
         await (component as any).asegurarCatalogo('aptitudes_especiales');
 

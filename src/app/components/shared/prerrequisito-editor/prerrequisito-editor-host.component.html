@@ -77,6 +77,7 @@
                 [doteExtraOptions]="getDoteExtraOptions(row.id)"
                 [globalExtraOptions]="catalogContext.getGlobalExtraOptions()"
                 [allowExtraSelector]="group.type === 'dote' ? catalogContext.dotePermiteExtra(row.id) === true : catalogContext.especialPermiteExtra(row.id) === true"
+                [admiteArmaDeidad]="group.type === 'dote' && catalogContext.admiteArmaDeidad?.() === true"
                 [disabled]="disabled || loading"
                 (patchChange)="updateRow(row.uid, $event)">
             </app-prerrequisito-special-editor>

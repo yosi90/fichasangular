@@ -1,5 +1,5 @@
 import { Clase } from 'src/app/interfaces/clase';
-import { ClaseEvaluacionContexto, esClaseCompatibleConRestringida, evaluarElegibilidadClase, incumpleDeidadTutelar } from './clase-elegibilidad';
+import { ClaseEvaluacionContexto, esClaseCompatibleConRestringida, evaluarElegibilidadClase, incumpleArmaDeSuDeidad, incumpleDeidadTutelar } from './clase-elegibilidad';
 
 function crearClaseBase(partial?: Partial<Clase>): Clase {
     return {
@@ -638,6 +638,40 @@ describe('clase-elegibilidad', () => {
             expect(incumpleDeidadTutelar(hoja, { id: 9, nombre: 'Heironeous' })).toEqual([]);
             expect(incumpleDeidadTutelar(hoja, null)).toEqual(['No cumple: Deidad tutelar: Heironeous']);
             expect(incumpleDeidadTutelar(crearClaseBase(), null)).toEqual([]);
+        });
+    });
+
+    describe('la Soltura con un arma con el arma predilecta de su deidad (el cruzado divino, El divino completo, pág. 30)', () => {
+        const soltura = {
+            Id_dote_prerrequisito: 4, Dote_prerrequisito: 'Soltura con un arma', Id_extra: -1, Extra: 'El arma predilecta de su deidad',
+            Extra_arma_deidad: true, Repetido: 0, Opcional: 0, Frase: 'Soltura con un arma (el arma predilecta de su deidad)',
+        };
+        const cruzado = crearClaseBase({
+            Prerrequisitos_flags: { dote_elegida: true } as any,
+            Prerrequisitos: { dote_elegida: [soltura] } as any,
+        });
+        const conSoltura = (idExtra: number) => ({
+            ...crearContextoBase(),
+            dotes: [{ id: 4, nombre: 'Soltura con un arma', idExtra, extra: '' }],
+        });
+
+        it('solo con el arma de su deidad', () => {
+            const heironeous = { id: 9, nombre: 'Heironeous', idArma: 30 };
+            expect(evaluarElegibilidadClase(cruzado, { ...conSoltura(30), deidad: heironeous }).estado).toBe('eligible');
+            const otraArma = evaluarElegibilidadClase(cruzado, { ...conSoltura(8), deidad: heironeous });
+            expect(otraArma.estado).toBe('blocked_failed');
+            expect(otraArma.razones).toEqual(['No cumple: Soltura con un arma (el arma predilecta de su deidad)']);
+            // Sin deidad o con una sin arma predilecta, no la cumple.
+            expect(evaluarElegibilidadClase(cruzado, conSoltura(30)).estado).toBe('blocked_failed');
+            expect(evaluarElegibilidadClase(cruzado, { ...conSoltura(30), deidad: { id: 5, nombre: 'Sin arma', idArma: null } }).estado).toBe('blocked_failed');
+        });
+
+        it('lo que la corrección no deja romper al cambiar de deidad', () => {
+            const dotes = [{ idDote: 4, idExtra: 30 }];
+            expect(incumpleArmaDeSuDeidad(cruzado, { id: 9, nombre: 'Heironeous', idArma: 30 }, dotes)).toEqual([]);
+            expect(incumpleArmaDeSuDeidad(cruzado, { id: 18, nombre: 'Pelor', idArma: 8 }, dotes))
+                .toEqual(['Soltura con un arma (el arma predilecta de su deidad)']);
+            expect(incumpleArmaDeSuDeidad(crearClaseBase(), null, dotes)).toEqual([]);
         });
     });
 

@@ -860,4 +860,14 @@ describe('dote-elegibilidad', () => {
             expect(evaluarElegibilidadDote({ dote: pideDureza, contexto: crearContextoBase({ dotes }) }).estado).toBe('eligible');
         });
     });
+
+    it('la deidad tutelar (Bendecido por Tem-Et-Nu, Tormenta de arena, pág. 49): solo con esa deidad', () => {
+        const dote = crearDoteBase({
+            Prerrequisitos: { deidad: [{ Id_deidad: 221, Deidad: 'Tem-Et-Nu', Opcional: 0, Frase: 'Deidad tutelar: Tem-Et-Nu' }] } as any,
+        });
+        expect(evaluarElegibilidadDote({ dote, contexto: crearContextoBase({ deidad: { id: 221, nombre: 'Tem-Et-Nu' } }) }).estado).toBe('eligible');
+        const otra = evaluarElegibilidadDote({ dote, contexto: crearContextoBase({ deidad: { id: 18, nombre: 'Pelor' } }) });
+        expect(otra.estado).toBe('blocked_failed');
+        expect(evaluarElegibilidadDote({ dote, contexto: crearContextoBase() }).estado).toBe('blocked_failed');
+    });
 });

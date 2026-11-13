@@ -9,7 +9,7 @@ import { getAlineamientoBasicoIdPorNombre, idBasicoDePrerrequisitoAlineamiento }
 import { normalizarTexto, textosUnicos, toArray, toInt, toNumber } from 'src/app/services/utils/normalizacion';
 import { leerComodin } from './comodin';
 import { frasePrerrequisito } from './prerrequisito-frase';
-import { ClaseConNivel, EvaluacionPrerrequisito, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararNivelDeClase, compararRangosHabilidad, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
+import { ClaseConNivel, DeidadDelPersonaje, EvaluacionPrerrequisito, compararDeidad, HabilidadParaPrerrequisitos, MotivosPrerrequisitos, compararActitud, compararNivelDeClase, compararRangosHabilidad, compararTamano, cumpleExtraPedido, evaluarAptitudEspecial } from './prerrequisitos-evaluacion';
 import { CLAVES_PRERREQUISITOS_INCARNUM, IncarnumPrerrequisitos, cumplePrerrequisitoIncarnum, incarnumParaPrerrequisitos } from './incarnum';
 
 export type EstadoElegibilidadDote = 'eligible' | 'blocked_failed' | 'blocked_unknown';
@@ -90,6 +90,8 @@ export interface DoteEvaluacionContexto {
      * plantillas), para `armas_naturales` (Ataque múltiple, tres o más).
      */
     armasNaturales?: number;
+    /** Su deidad, para la deidad tutelar (`deidad`: Bendecido por Tem-Et-Nu); `null` o sin él, no tiene. */
+    deidad?: DeidadDelPersonaje | null;
 }
 
 /**
@@ -655,6 +657,8 @@ function evaluateFamily(
         return entries.map((entry) => buildEvaluacionCaracteristica(entry, ctx));
     if (keyNorm === 'raza')
         return entries.map((entry) => buildEvaluacionRaza(entry, ctx));
+    if (keyNorm === 'deidad')
+        return entries.map((entry) => compararDeidad(entry, ctx.deidad));
     if (keyNorm === 'idioma')
         return entries.map((entry) => buildEvaluacionIdioma(entry, ctx));
     if (keyNorm === 'habilidad')

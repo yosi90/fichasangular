@@ -37,6 +37,13 @@
         </mat-select>
     </mat-form-field>
 
+    <mat-chip-listbox class="boolean-chips" aria-label="Arma de su deidad" [multiple]="true"
+        *ngIf="showExtraSelector && (admiteArmaDeidad || row.arma_deidad)">
+        <mat-chip-option [selected]="row.arma_deidad === true" [disabled]="disabled"
+            matTooltip="El extra es el arma predilecta de su deidad (el cruzado divino, El divino completo, pág. 30)"
+            (click)="patchChange.emit({ arma_deidad: row.arma_deidad !== true })">Con el arma predilecta de su deidad</mat-chip-option>
+    </mat-chip-listbox>
+
     <div class="prereq-hint" *ngIf="showExtraDisabledMessage">
         {{extraDisabledMessage}}
     </div>
