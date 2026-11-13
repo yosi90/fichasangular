@@ -72,4 +72,16 @@ describe('evaluarAlineamientoClase (el alineamiento de una clase, de sus datos)'
         expect(evaluarAlineamientoClase(clase({}), { alineamiento: 'Legal maligno' })).toEqual(jasmine.objectContaining({ incumple: [], restringe: false }));
         expect(evaluarAlineamientoClase(clase({ ley: [1, true, 3], prioridad: 3 }), { alineamiento: '' }).sinComprobar.length).toBe(1);
     });
+
+    it('el cruzado divino: el mismo alineamiento que su deidad (Alineamiento_deidad_igual), estricto, y sin deidad no vale', () => {
+        const cruzado = { ...clase({ deidad: true }), Alineamiento_deidad_igual: true } as Clase;
+        const heironeous = { Nombre: 'Heironeous', Alineamiento: { Id: 1, Id_basico: 1, Nombre: 'Legal bueno' } } as DeidadDetalle;
+        expect(evaluarAlineamientoClase(cruzado, { alineamiento: 'Legal bueno', deidad: heironeous }).incumple).toEqual([]);
+        const neutral = evaluarAlineamientoClase(cruzado, { alineamiento: 'Legal neutral', deidad: heironeous });
+        expect(neutral.incumple).toEqual(['Debe tener el mismo alineamiento que Heironeous (legal bueno)']);
+        expect(neutral.estricta).toBeTrue();
+        expect(evaluarAlineamientoClase(cruzado, { alineamiento: 'Legal bueno', deidad: null }).incumple).toEqual(['Debe tener una deidad']);
+        // El clérigo, a un paso.
+        expect(evaluarAlineamientoClase(clase({ deidad: true }), { alineamiento: 'Legal neutral', deidad: heironeous }).incumple).toEqual([]);
+    });
 });

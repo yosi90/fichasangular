@@ -1,5 +1,5 @@
 import { Clase } from 'src/app/interfaces/clase';
-import { ClaseEvaluacionContexto, evaluarElegibilidadClase } from './clase-elegibilidad';
+import { ClaseEvaluacionContexto, esClaseCompatibleConRestringida, evaluarElegibilidadClase, incumpleDeidadTutelar } from './clase-elegibilidad';
 
 function crearClaseBase(partial?: Partial<Clase>): Clase {
     return {
@@ -617,5 +617,34 @@ describe('clase-elegibilidad', () => {
             .toBe('eligible');
         expect(evaluarElegibilidadClase(clase, { ...contexto, incarnum: moldeador, lanzador: { arcano: 1, divino: 0, psionico: 0 } }).razones)
             .toEqual(['No cumple: No tener niveles de lanzador arcano']);
+    });
+
+    describe('la deidad tutelar (la Hoja brillante de Heironeous, El divino completo, pág. 46)', () => {
+        const hoja = crearClaseBase({
+            Prerrequisitos_flags: { deidad: true } as any,
+            Prerrequisitos: { deidad: [{ Id_deidad: 9, Deidad: 'Heironeous', Opcional: 0, Frase: 'Deidad tutelar: Heironeous' }] } as any,
+        });
+
+        it('solo con esa deidad, por su id o por su nombre', () => {
+            expect(evaluarElegibilidadClase(hoja, { ...crearContextoBase(), deidad: { id: 9, nombre: 'Heironeous' } }).estado).toBe('eligible');
+            expect(evaluarElegibilidadClase(hoja, { ...crearContextoBase(), deidad: { id: null, nombre: 'heironeous' } }).estado).toBe('eligible');
+            const otra = evaluarElegibilidadClase(hoja, { ...crearContextoBase(), deidad: { id: 18, nombre: 'Pelor' } });
+            expect(otra.estado).toBe('blocked_failed');
+            expect(otra.razones).toEqual(['No cumple: Deidad tutelar: Heironeous']);
+            expect(evaluarElegibilidadClase(hoja, crearContextoBase()).estado).toBe('blocked_failed');
+        });
+
+        it('lo que la corrección no deja quitar', () => {
+            expect(incumpleDeidadTutelar(hoja, { id: 9, nombre: 'Heironeous' })).toEqual([]);
+            expect(incumpleDeidadTutelar(hoja, null)).toEqual(['No cumple: Deidad tutelar: Heironeous']);
+            expect(incumpleDeidadTutelar(crearClaseBase(), null)).toEqual([]);
+        });
+    });
+
+    it('las clases compatibles con una restringida, por su id (el paladín y el hospitalario)', () => {
+        const paladin = crearClaseBase({ Multiclase_restringida: true, Clases_multiclase_compatibles: [{ Id: 189, Nombre: 'Hospitalario' }] });
+        expect(esClaseCompatibleConRestringida(paladin, 189)).toBeTrue();
+        expect(esClaseCompatibleConRestringida(paladin, 7)).toBeFalse();
+        expect(esClaseCompatibleConRestringida(crearClaseBase(), 189)).toBeFalse();
     });
 });

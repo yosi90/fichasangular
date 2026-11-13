@@ -104,6 +104,13 @@
                                         Alineamiento de su deidad
                                     </mat-chip-option>
                                     <mat-chip-option
+                                        [selected]="form.controls.alineamiento_deidad_igual.value === true"
+                                        [disabled]="form.controls.alineamiento_deidad.value !== true"
+                                        (click)="toggleBoolean('alineamiento_deidad_igual')"
+                                        matTooltip="Con «Alineamiento de su deidad»: el mismo que ella, no a un paso, y con deidad (cruzado divino)">
+                                        El mismo alineamiento que su deidad
+                                    </mat-chip-option>
+                                    <mat-chip-option
                                         [selected]="form.controls.clase_pnj.value === true"
                                         (click)="toggleBoolean('clase_pnj')"
                                         matTooltip="Clase de PNJ (Guía del DM, cap. 4: adepto, combatiente…); cuenta distinto en el VD">
@@ -121,6 +128,29 @@
                                 </mat-chip-listbox>
                             </div>
                         </div>
+                    </div>
+                </section>
+
+                <section class="panel-card" *ngIf="form.controls.multiclase_restringida.value === true">
+                    <span class="panel-title"><mat-icon>call_split</mat-icon>Clases que no la cierran</span>
+                    <p class="panel-nota">
+                        Con la multiclase restringida, un nivel de otra clase la cierra; los de estas no (el paladín que se hace hospitalario,
+                        <i>El divino completo</i>, pág. 48). Un nivel de cualquier otra la sigue cerrando.
+                    </p>
+                    <mat-chip-listbox *ngIf="compatiblesMulticlase.length > 0; else sinCompatibles" class="boolean-chips"
+                        aria-label="Clases que no la cierran" [multiple]="true">
+                        <mat-chip-option *ngFor="let compatible of compatiblesMulticlase" [selected]="true"
+                            (click)="quitarCompatible(compatible.Id)" matTooltip="Quitar">
+                            {{compatible.Nombre}}
+                        </mat-chip-option>
+                    </mat-chip-listbox>
+                    <ng-template #sinCompatibles>
+                        <p class="panel-nota">Ninguna: cualquier otra clase la cierra.</p>
+                    </ng-template>
+                    <div class="mutacion-con-quitar">
+                        <app-catalogo-buscador etiqueta="Añadir clase" [opciones]="opcionesCompatibles" [anadir]="true"
+                            [error]="errores.mensajeDe('Clases_multiclase_compatibles')" (elegir)="anadirCompatible($event)">
+                        </app-catalogo-buscador>
                     </div>
                 </section>
 

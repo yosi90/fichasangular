@@ -21,16 +21,22 @@ export function vectorAlineamientoDeidad(deidad: Pick<DeidadDetalle, 'Alineamien
 /**
  * La regla del alineamiento de la deidad de las clases con `Alineamiento_deidad` (MJ cap. 3, clérigo): a un paso del
  * alineamiento de su deidad (en un eje, no en los dos) y neutral solo si la deidad también lo es; si la deidad tiene
- * `Alineamientos_devotos` (San Cuthbert: LB o LN), solo esos. Devuelve el motivo si no se cumple, o `null` si se cumple
- * o no se puede saber (sin deidad o sin alineamiento interpretable).
+ * `Alineamientos_devotos` (San Cuthbert: LB o LN), solo esos. Con `igual` (`Alineamiento_deidad_igual`, el cruzado
+ * divino: El divino completo, págs. 30-31), el mismo alineamiento que la deidad, sin los devotos ni la regla del neutral, y
+ * sin deidad no se cumple. Devuelve el motivo si no se cumple, o `null` si se cumple o no se puede saber (sin deidad, salvo
+ * con `igual`, o sin alineamiento interpretable). La API aplica la misma regla (`utils/alineamiento_clase.incumple_deidad`).
  */
-export function incumpleAlineamientoDeidad(alineamiento: string, deidad: DeidadDetalle | null | undefined): string | null {
-    if (!deidad)
-        return null;
+export function incumpleAlineamientoDeidad(alineamiento: string, deidad: DeidadDetalle | null | undefined, igual = false): string | null {
     const personaje = getVectorDesdeNombreBasico(alineamiento);
+    if (!deidad)
+        return igual && personaje ? 'Debe tener una deidad' : null;
     const vectorDeidad = vectorAlineamientoDeidad(deidad);
     if (!personaje || !vectorDeidad)
         return null;
+    if (igual)
+        return vectorDeidad.ley === personaje.ley && vectorDeidad.moral === personaje.moral
+            ? null
+            : `Debe tener el mismo alineamiento que ${deidad.Nombre} (${`${deidad.Alineamiento?.Nombre ?? ''}`.toLowerCase()})`;
 
     const permitidos = deidad.Alineamientos_devotos ?? [];
     if (permitidos.length > 0) {

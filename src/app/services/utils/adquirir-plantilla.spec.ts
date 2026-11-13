@@ -1,5 +1,5 @@
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
-import { cambiosDeLaPlantilla, esPlantillaAdquirible, fichaDeLaPlantilla, puntosGolpeTrasPlantilla } from './adquirir-plantilla';
+import { cambiosDeLaPlantilla, esPlantillaAdquirible, fichaDeLaPlantilla, loQuePierdeDeSuMagia, puntosGolpeTrasPlantilla } from './adquirir-plantilla';
 
 // Adquirir una plantilla con el personaje ya creado (roadmap de sesiones, fase 7). Los casos son los del dictamen del
 // máster de Rol (roadmap, «Adquirir una plantilla»).
@@ -114,5 +114,15 @@ describe('adquirir una plantilla (sesiones, fase 7)', () => {
             aviso: true, ahora: 'Requiere legal bueno',
             porque: 'Conserva sus niveles, pero no puede subir en ella y pierde Castigar al mal y su magia; lo recupera con una expiación (MJ, págs. 26-55)',
         }));
+    });
+});
+
+describe('loQuePierdeDeSuMagia (la ex clase que pierde su magia)', () => {
+    const ex = { Pierde_magia: true, Requiere_expiacion: true, Especiales: [] };
+
+    it('el ex hospitalario pierde también los niveles de lanzador que suma (El divino completo, pág. 48)', () => {
+        expect(loQuePierdeDeSuMagia({ Ex: ex, Aumenta_clase_lanzadora: true })).toEqual(['su magia', 'los niveles de lanzador que suma a otra clase']);
+        expect(loQuePierdeDeSuMagia({ Ex: ex, Aumenta_clase_lanzadora: false })).toEqual(['su magia']);
+        expect(loQuePierdeDeSuMagia({ Ex: { ...ex, Pierde_magia: false }, Aumenta_clase_lanzadora: true })).toEqual([]);
     });
 });

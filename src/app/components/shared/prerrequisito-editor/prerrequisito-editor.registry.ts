@@ -124,6 +124,8 @@ function buildCatalogPayload(
         return { ...base, Id_raza: id, Raza: context.getCatalogName(tipo, id) };
     if (tipo === 'no_raza')
         return { ...base, Id_raza: id, Raza: context.getCatalogName(tipo, id) };
+    if (tipo === 'deidad')
+        return { ...base, Id_deidad: id, Deidad: context.getCatalogName(tipo, id) };
     if (tipo === 'region')
         return { ...base, Id_region: id, Region: context.getCatalogName(tipo, id) };
     if (tipo === 'salvacion_minimo') {
@@ -441,6 +443,13 @@ export const PREREQUISITE_EDITOR_DEFINITIONS: PrerequisiteEditorDefinition[] = [
     definition('no_raza', 'catalog-only', {
         requiredCatalogs: ['razas'],
         catalogLabel: 'Raza',
+        isComplete: isCatalogOnlyComplete,
+        toPayload: buildCatalogPayload,
+    }),
+    // La deidad tutelar que pide una clase (la Hoja brillante de Heironeous, El divino completo, pág. 46).
+    definition('deidad', 'catalog-only', {
+        requiredCatalogs: ['deidades'],
+        catalogLabel: 'Deidad',
         isComplete: isCatalogOnlyComplete,
         toPayload: buildCatalogPayload,
     }),

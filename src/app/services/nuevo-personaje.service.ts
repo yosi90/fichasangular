@@ -48,7 +48,7 @@ import { aplicarProgresionRacial, momentoDeProgresion, ResultadoProgresionRacial
 import { sortilegasConLasDeRasgos } from './utils/racial-sortilegas';
 import { esRazaMutada } from './utils/raza-mutacion';
 import { normalizeSubtipoRefArray } from './utils/subtipo-mapper';
-import { ClaseEvaluacionResultado, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
+import { ClaseEvaluacionResultado, esClaseCompatibleConRestringida, evaluarElegibilidadClase } from './utils/clase-elegibilidad';
 import { DoteEvaluacionContexto, dotesConCuentaComo, evaluarElegibilidadDote } from './utils/dote-elegibilidad';
 import { ClaseConNivel, HabilidadParaPrerrequisitos } from './utils/prerrequisitos-evaluacion';
 import { especialidadesDelHueco, sonDeLaMismaFamilia } from './utils/habilidad-familia';
@@ -2229,7 +2229,17 @@ export class NuevoPersonajeService {
                 nivelArcano: nivelLanzadorArcano,
             },
             tamanoId: this.resolverTamanoActualId(),
+            deidad: this.deidadParaPrerrequisitos(),
         });
+    }
+
+    /** Su deidad para la deidad tutelar de las clases (`Prerrequisitos.deidad`): la del catálogo o, si no está, su nombre. */
+    private deidadParaPrerrequisitos(): { id: number | null; nombre: string; } | null {
+        if (esSinDeidad(this.personajeCreacion.Deidad))
+            return null;
+        const deidad = this.obtenerDeidadSeleccionada();
+        const nombre = `${deidad?.Nombre ?? this.personajeCreacion.Deidad ?? ''}`.trim();
+        return nombre.length > 0 ? { id: deidad ? toInt(deidad.Id) : null, nombre } : null;
     }
 
     /**
@@ -7611,7 +7621,8 @@ export class NuevoPersonajeService {
      * MJ cap. 3, monje y paladín: quien gana un nivel de otra clase ya no puede volver a subir la suya. Antes de aplicar
      * un nivel de `clase`, cierra las que ya tiene con `Multiclase_restringida` (un dato de la clase, no su nombre), salvo
      * las que su raza deja dejar y retomar (`Clases_multiclase_libre`, por su id: el paladín de la prole de Bahamut y del
-     * nacido del Infierno, el paladín y el monje del iluminiano).
+     * nacido del Infierno, el paladín y el monje del iluminiano) y salvo que `clase` sea una de sus compatibles
+     * (`Clases_multiclase_compatibles`, por su id: el paladín que se hace hospitalario, El divino completo, pág. 48).
      */
     private cerrarClasesPorMulticlase(clase: Clase): void {
         const nombreNuevo = normalizarTexto(clase?.Nombre ?? '');
@@ -7621,7 +7632,8 @@ export class NuevoPersonajeService {
             if (nombre.length < 1 || nombre === nombreNuevo || toNumber(entrada?.Nivel) < 1)
                 return;
             const catalogo = this.obtenerClaseCatalogoPorNombre(entrada.Nombre);
-            if (catalogo?.Multiclase_restringida === true && !libres.has(toInt(catalogo.Id)))
+            if (catalogo?.Multiclase_restringida === true && !libres.has(toInt(catalogo.Id))
+                && !esClaseCompatibleConRestringida(catalogo, toInt(clase?.Id)))
                 this.clasesCerradasPorMulticlase.add(nombre);
         });
     }
@@ -7945,6 +7957,11 @@ export class NuevoPersonajeService {
     private obtenerDominiosDeidadSeleccionada(): DominioDetalle[] {
         const deidadActual = this.obtenerDeidadSeleccionada();
         return deidadActual?.Dominios ?? [];
+    }
+
+    /** La deidad del personaje, del catálogo (para la regla de la deidad de sus clases); sin deidad, `null`. */
+    deidadDelPersonaje(): DeidadDetalle | null {
+        return this.obtenerDeidadSeleccionada();
     }
 
     /** La deidad elegida del catálogo; sin deidad (la fila de relleno no está en el catálogo), `null`. */
@@ -11429,23 +11446,29 @@ export class NuevoPersonajeService {
         this.idiomasInicialesConcedidos = true;
         this.dgRacialSinClasesRepartido = this.getNivelClasesActual() < 1;
 
-        // Las clases cerradas por multiclase, con el orden real.
+        // Las clases cerradas por multiclase, con el orden real (sin contar las de sus compatibles).
         const libres = new Set((this.razaSeleccionada?.Clases_multiclase_libre ?? []).map((libre) => toInt(libre?.Id)));
         niveles.forEach((nivel, i) => {
             const clase = this.catalogoClases.find((c) => toInt(c?.Id) === toInt(nivel?.idClase));
             if (!clase?.Multiclase_restringida || libres.has(toInt(clase.Id)) || niveles.findIndex((n) => toInt(n.idClase) === toInt(clase.Id)) !== i)
                 return;
-            if (niveles.slice(i + 1).some((n) => toInt(n.idClase) !== toInt(clase.Id) && (n as any).ordenConocido !== false)
-                || (datos.nivelesPerdidos ?? []).some((p) => toInt(p.idClase) !== toInt(clase.Id) && p.ordenConocido !== false
+            const laCierra = (idClase: number) => idClase !== toInt(clase.Id) && !esClaseCompatibleConRestringida(clase, idClase);
+            if (niveles.slice(i + 1).some((n) => laCierra(toInt(n.idClase)) && (n as any).ordenConocido !== false)
+                || (datos.nivelesPerdidos ?? []).some((p) => laCierra(toInt(p.idClase)) && p.ordenConocido !== false
                     && (p.clasesAnteriores ?? []).map((c) => toInt(c)).includes(toInt(clase.Id))))
                 this.clasesCerradasPorMulticlase.add(normalizarTexto(clase.Nombre));
         });
 
-        // El lanzador: las selecciones de los aumentos y lo que suman a cada clase.
+        // El lanzador: las selecciones de los aumentos y lo que suman a cada clase. Las de una ex clase que pierde su magia
+        // no suman (el ex hospitalario, El divino completo, pág. 48: la ficha de la API tampoco las cuenta).
+        const exSinMagia = new Set((ficha.desgloseClases ?? [])
+            .filter((c) => c?.Ex?.Pierde_magia === true)
+            .map((c) => normalizarTexto(c?.Nombre ?? '')));
         this.progresionLanzadorSelecciones = this.normalizarSeleccionesProgresionLanzadorBorrador(datos.entrada?.progresionLanzador?.selecciones);
         this.progresionLanzadorSelecciones.forEach((seleccion) => {
             const objetivo = this.catalogoClases.find((c) => toInt(c?.Id) === toInt(seleccion.idClaseObjetivo));
-            if (objetivo)
+            const aplicada = this.catalogoClases.find((c) => toInt(c?.Id) === toInt(seleccion.idClaseAplicada));
+            if (objetivo && !(aplicada && exSinMagia.has(normalizarTexto(aplicada.Nombre))))
                 this.incrementarBonusNivelLanzadorClase(objetivo.Nombre, 1);
         });
 

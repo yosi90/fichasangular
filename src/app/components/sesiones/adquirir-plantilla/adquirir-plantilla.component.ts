@@ -19,7 +19,7 @@ import { NuevoPersonajeService } from 'src/app/services/nuevo-personaje.service'
 import { PlantillaService } from 'src/app/services/plantilla.service';
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
-import { cambiosDeLaPlantilla, CambioPlantilla, esPlantillaAdquirible, fichaDeLaPlantilla, PgPlantilla, puntosGolpeTrasPlantilla } from 'src/app/services/utils/adquirir-plantilla';
+import { cambiosDeLaPlantilla, CambioPlantilla, esPlantillaAdquirible, fichaDeLaPlantilla, loQuePierdeDeSuMagia, PgPlantilla, puntosGolpeTrasPlantilla } from 'src/app/services/utils/adquirir-plantilla';
 import { evaluarAlineamientoClase } from 'src/app/services/utils/alineamiento-clase';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { getAlineamientoBasicoIdPorNombre } from 'src/app/services/utils/alineamiento-contrato';
@@ -425,14 +425,16 @@ export class AdquirirPlantillaComponent implements OnInit, OnDestroy {
             return [];
         const alineamiento = this.svc.PersonajeCreacion.Alineamiento;
         const puede = this.puedeMantenerClaseContraAlineamiento;
+        // La deidad no cambia al adquirir una plantilla: cuenta para la regla de la deidad de sus clases (el cruzado divino).
+        const deidad = this.svc.deidadDelPersonaje();
         return (this.entrada?.colecciones?.clases ?? []).flatMap((c) => {
             const clase = this.svc.claseDelCatalogo(c?.idClase);
-            const antes = evaluarAlineamientoClase(clase, { alineamiento: this.pjAntes?.Alineamiento ?? '' });
-            const despues = evaluarAlineamientoClase(clase, { alineamiento });
+            const antes = evaluarAlineamientoClase(clase, { alineamiento: this.pjAntes?.Alineamiento ?? '', deidad });
+            const despues = evaluarAlineamientoClase(clase, { alineamiento, deidad });
             if (!clase || !despues.estricta || antes.estricta)
                 return [];
             const idClase = toInt(clase.Id);
-            const pierde = [...(clase.Ex?.Especiales ?? []).map((e) => e.Nombre), ...(clase.Ex?.Pierde_magia ? ['su magia'] : [])];
+            const pierde = [...(clase.Ex?.Especiales ?? []).map((e) => e.Nombre), ...loQuePierdeDeSuMagia(clase)];
             return [{
                 idClase, nombre: `${clase.Nombre}`, razones: despues.incumple, pierde, expiacion: !!clase.Ex?.Requiere_expiacion,
                 puedeMantener: puede, mantenida: puede && this.clasesMantenidas.has(idClase),

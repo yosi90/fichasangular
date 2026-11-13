@@ -202,4 +202,17 @@ describe('CorregirFichaComponent (la corrección de la ficha, fase 6)', () => {
             expect(componente.avisos).toEqual(['Ex paladín: sigue sin poder subir de nivel en esta clase, y una corrección no le devuelve lo que perdió.']);
         });
     });
+
+    it('la deidad tutelar de sus clases: no ofrece otra deidad ni «Sin deidad», y lo dice', async () => {
+        const componente = await crear({}, {
+            personaje: { nombre: 'Brunilda', puntosGolpe: 12, campana: { id: 2 }, idAlineamiento: 1, deidad: 9 },
+            colecciones: { clases: [{ idClase: 188, nivel: 1 }] },
+        });
+        componente.deidades = [{ Id: 9, Nombre: 'Heironeous', Oficial: true }, { Id: 18, Nombre: 'Pelor', Oficial: true }] as any;
+        componente.svc.setCatalogoClases([{ Id: 188, Nombre: 'Hoja brillante de Heironeous', Tipo_dado: { Id: 4, Nombre: 'd10' }, Desglose_niveles: [],
+            Prerrequisitos_flags: { deidad: true }, Prerrequisitos: { deidad: [{ Id_deidad: 9, Deidad: 'Heironeous', Opcional: 0, Frase: 'Deidad tutelar: Heironeous' }] } } as any]);
+        expect(componente.deidadesElegibles.map((d) => d.Nombre)).toEqual(['Heironeous']);
+        expect(componente.sinDeidadElegible).toBeFalse();
+        expect(componente.deidadesTutelares).toEqual(['Hoja brillante de Heironeous: Deidad tutelar: Heironeous']);
+    });
 });

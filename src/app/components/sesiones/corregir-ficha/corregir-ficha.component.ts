@@ -21,6 +21,8 @@ import { DoteSeleccionConfirmada, NuevoPersonajeService, PasoRepartoRangos } fro
 import { SesionesService } from 'src/app/services/sesiones.service';
 import { SubidaNivelPuertaService } from 'src/app/services/subida-nivel-puerta.service';
 import { evaluarAlineamientoClase, nombreExClase } from 'src/app/services/utils/alineamiento-clase';
+import { incumpleDeidadTutelar } from 'src/app/services/utils/clase-elegibilidad';
+import { frasePrerrequisito } from 'src/app/services/utils/prerrequisito-frase';
 import { evaluarAlineamientoRaza } from 'src/app/services/utils/alineamiento-raza';
 import { CampaignPurchasePolicy } from 'src/app/interfaces/campaign-management';
 import {
@@ -493,7 +495,32 @@ export class CorregirFichaComponent implements OnInit, OnDestroy {
      */
     get deidadesElegibles(): DeidadDetalle[] {
         const conHomebrew = this.pj?.Oficial === false && modoHomebrewDeCampana(this.politica) !== 'forbidden';
-        return this.deidades.filter((d) => conHomebrew || d.Oficial !== false || toInt(d.Id) === toInt(this.entrada?.personaje?.deidad));
+        const actual = toInt(this.entrada?.personaje?.deidad);
+        return this.deidades.filter((d) => toInt(d.Id) === actual
+            || ((conHomebrew || d.Oficial !== false) && !this.rompeDeidadTutelar(d)));
+    }
+
+    /** «Sin deidad», si ninguna de sus clases pide una deidad tutelar (o si ya no la tenía). */
+    get sinDeidadElegible(): boolean {
+        return toInt(this.entrada?.personaje?.deidad) <= 0 || !this.rompeDeidadTutelar(null);
+    }
+
+    /**
+     * La deidad tutelar que piden sus clases (`Prerrequisitos.deidad`: la Hoja brillante de Heironeous), con la frase de la
+     * API: una corrección no puede quitársela (la API: `409 cambio_rompe_prerrequisito`). Vacío si ninguna la pide.
+     */
+    get deidadesTutelares(): string[] {
+        return (this.entrada?.colecciones?.clases ?? []).flatMap((c) => {
+            const clase = this.svc.claseDelCatalogo(toInt(c.idClase));
+            return (clase?.Prerrequisitos?.deidad ?? []).map((item) => `${clase?.Nombre}: ${frasePrerrequisito('deidad', item)}`);
+        });
+    }
+
+    /** Si con esa deidad (o sin ninguna) alguna de sus clases deja de tener su deidad tutelar. */
+    private rompeDeidadTutelar(deidad: DeidadDetalle | null): boolean {
+        const suya = deidad ? { id: toInt(deidad.Id), nombre: `${deidad.Nombre ?? ''}` } : null;
+        return (this.entrada?.colecciones?.clases ?? [])
+            .some((c) => incumpleDeidadTutelar(this.svc.claseDelCatalogo(toInt(c.idClase)), suya).length > 0);
     }
 
     cambiarTirada(fila: FilaTirada, valor: number): void {

@@ -67,6 +67,7 @@ export const CLAVES_PRERREQUISITOS: (keyof ClasePrerrequisitos)[] = [
     "tamano_minimo",
     "raza",
     "no_raza",
+    "deidad",
     ...(CLAVES_PRERREQUISITOS_INCARNUM as (keyof ClasePrerrequisitos)[]),
 ];
 
@@ -103,6 +104,7 @@ const ALIAS_PRERREQUISITOS: Record<keyof ClasePrerrequisitos, string[]> = {
     tamano_minimo: ["tamano_minimo"],
     raza: ["raza"],
     no_raza: ["no_raza"],
+    deidad: ["deidad"],
     esencia_minima: ["esencia_minima"],
     sin_esencia: ["sin_esencia"],
     nivel_moldeador: ["nivel_moldeador"],
@@ -355,6 +357,10 @@ export function normalizeClase(raw: any): Clase {
         Tiene_prerrequisitos: tienePrerrequisitos,
         Multiclase_restringida: toBoolean(raw?.Multiclase_restringida),
         Alineamiento_deidad: toBoolean(raw?.Alineamiento_deidad),
+        Alineamiento_deidad_igual: toBoolean(raw?.Alineamiento_deidad_igual),
+        Clases_multiclase_compatibles: toArray(raw?.Clases_multiclase_compatibles)
+            .map((item: any) => ({ Id: toNumber(item?.Id), Nombre: toText(item?.Nombre) }))
+            .filter((item) => item.Id > 0),
         Ex: {
             Pierde_magia: toBoolean(raw?.Ex?.Pierde_magia),
             Requiere_expiacion: toBoolean(raw?.Ex?.Requiere_expiacion),

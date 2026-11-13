@@ -228,6 +228,8 @@ export interface ClasePrerrequisitosFlags {
     subtipo?: boolean;
     tamano_maximo?: boolean;
     tamano_minimo?: boolean;
+    /** La deidad tutelar (`Prerrequisitos.deidad`): la bandera sale de sus filas. */
+    deidad?: boolean;
     esencia_minima?: boolean;
     sin_esencia?: boolean;
     nivel_moldeador?: boolean;
@@ -270,6 +272,11 @@ export interface ClasePrerrequisitos {
     tamano_minimo: PrerrequisitoItem[];
     raza: PrerrequisitoItem[];
     no_raza: PrerrequisitoItem[];
+    /**
+     * La deidad tutelar que pide la clase (`{ Id_deidad, Deidad, Opcional, Frase }`: la Hoja brillante de Heironeous, El
+     * divino completo, pág. 46). Opcional en los borradores de antes.
+     */
+    deidad?: PrerrequisitoItem[];
     /** Magic of Incarnum (el mapper de la clase siempre los pone; los borradores de la web pueden no traerlos). */
     esencia_minima?: PrerrequisitoItem[];
     sin_esencia?: PrerrequisitoItem[];
@@ -313,6 +320,17 @@ export interface Clase {
     Multiclase_restringida?: boolean;
     /** MJ cap. 3, clérigo: su alineamiento, a un paso del de su deidad, y neutral solo si ella lo es. */
     Alineamiento_deidad?: boolean;
+    /**
+     * Con `Alineamiento_deidad`: el mismo alineamiento que su deidad, no a un paso, y con deidad (el cruzado divino; El
+     * divino completo, págs. 30-31), sin los devotos de la deidad ni la regla del neutral del clérigo.
+     */
+    Alineamiento_deidad_igual?: boolean;
+    /**
+     * Con `Multiclase_restringida`: las clases que puede tomar sin cerrarla (el paladín que se hace hospitalario, El divino
+     * completo, pág. 48). Un nivel de cualquier otra la cierra. Al escribir basta `{ Id }`; sin la lista, la edición
+     * conserva la guardada.
+     */
+    Clases_multiclase_compatibles?: { Id: number; Nombre: string; }[];
     /** MJ tabla 6-4: la columna de la edad inicial de la clase (1, como el bárbaro; 2, el guerrero; 3, el mago); 0, sin dato. */
     Grupo_edad_inicial?: number;
     /** Guía del DM, cap. 4: una clase de PNJ (adepto, combatiente…); cuenta distinto en el VD de un PNJ. */

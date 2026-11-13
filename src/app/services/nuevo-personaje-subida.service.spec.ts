@@ -330,6 +330,27 @@ describe('Subida de nivel con el motor de la creación (personajes de referencia
         expect(subir(deAntes, HUMANO).evaluarClaseParaSeleccion(PALADIN).estado).toBe('eligible');
     });
 
+    it('el paladín que se hace hospitalario sigue pudiendo subir de paladín (Clases_multiclase_compatibles); tras otra clase, no', () => {
+        const hospitalario = clase({ ...GUERRERO, Id: 189, Nombre: 'Hospitalario' });
+        const paladin = clase({ ...PALADIN, Clases_multiclase_compatibles: [{ Id: 189, Nombre: 'Hospitalario' }] });
+        const conCompatibles = (svc: NuevoPersonajeService) => {
+            catalogos(svc).setCatalogoClases([...CLASES.filter((c) => toInt(c.Id) !== toInt(PALADIN.Id)), paladin, hospitalario]);
+            return svc;
+        };
+        const svc = conCompatibles(new NuevoPersonajeService());
+        svc.seleccionarRaza(HUMANO);
+        svc.aplicarCaracteristicasGeneradas({ Fuerza: 14, Destreza: 10, Constitucion: 10, Inteligencia: 10, Sabiduria: 10, Carisma: 14 });
+        [paladin, paladin, hospitalario].forEach((c) => aplicarNivel(svc, c));
+        expect(svc.evaluarClaseParaSeleccion(paladin).estado).toBe('eligible');
+        // La subida, con el orden real de la ficha guardada, igual.
+        const guardado = guardar(svc);
+        const motor = conCompatibles(new NuevoPersonajeService());
+        motor.iniciarSubidaDesdeFicha({ personaje: JSON.parse(JSON.stringify(guardado.personaje)), entrada: guardado.entrada, raza: HUMANO });
+        expect(motor.evaluarClaseParaSeleccion(paladin).estado).toBe('eligible');
+        aplicarNivel(svc, GUERRERO);
+        expect(svc.evaluarClaseParaSeleccion(paladin).estado).not.toBe('eligible');
+    });
+
     it('el paladín 3 que perdió su nivel de guerrero tampoco vuelve a paladín (fase 7: MJ pág. 55)', () => {
         const svc = crear(HUMANO, { Fuerza: 14, Carisma: 14 });
         [PALADIN, PALADIN, PALADIN].forEach((c) => aplicarNivel(svc, c));

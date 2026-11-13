@@ -45,4 +45,14 @@ describe('alineamiento-deidad (MJ cap. 3, clérigo)', () => {
     it('sin deidad no hay regla', () => {
         expect(incumpleAlineamientoDeidad('Caotico maligno', null)).toBeNull();
     });
+
+    it('el cruzado divino: el mismo alineamiento que su deidad, y con deidad (El divino completo, págs. 30-31)', () => {
+        expect(incumpleAlineamientoDeidad('Legal bueno', heironeous, true)).toBeNull();
+        expect(incumpleAlineamientoDeidad('Legal neutral', heironeous, true)).toBe('Debe tener el mismo alineamiento que Heironeous (legal bueno)');
+        // Sin los devotos ni la regla del neutral del clérigo.
+        expect(incumpleAlineamientoDeidad('Legal bueno', sanCuthbert, true)).toContain('mismo alineamiento');
+        expect(incumpleAlineamientoDeidad('Legal neutral', sanCuthbert, true)).toBeNull();
+        expect(incumpleAlineamientoDeidad('Neutral autentico', obadHai, true)).toBeNull();
+        expect(incumpleAlineamientoDeidad('Legal bueno', null, true)).toBe('Debe tener una deidad');
+    });
 });

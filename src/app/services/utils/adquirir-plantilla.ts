@@ -1,4 +1,5 @@
 import { CARACTERISTICAS } from 'src/app/interfaces/caracteristica';
+import { Clase } from 'src/app/interfaces/clase';
 import { Personaje } from 'src/app/interfaces/personaje';
 import { Plantilla } from 'src/app/interfaces/plantilla';
 import { PersonajeCreateRequestDto } from 'src/app/interfaces/personajes-api';
@@ -22,6 +23,17 @@ import { fichaConLoDelMotor, SE_CONSERVAN_PERSONAJE } from './subida-nivel';
  */
 
 /** Lo de `personaje` que no cambia al adquirir una plantilla: lo de la subida, salvo el tipo de criatura y el alineamiento. */
+/**
+ * Lo que pierde de su magia una ex clase (`Ex.Pierde_magia`): sus conjuros, dominios y moldeado y, si suma niveles de
+ * lanzador a otra clase (`Aumenta_clase_lanzadora`), también esos (el ex hospitalario «pierde todos los rasgos de clase y
+ * conjuros», El divino completo, pág. 48; la ficha de la API ya no los cuenta). Vacío si no pierde su magia.
+ */
+export function loQuePierdeDeSuMagia(clase: Pick<Clase, 'Ex' | 'Aumenta_clase_lanzadora'> | null | undefined): string[] {
+    if (!clase?.Ex?.Pierde_magia)
+        return [];
+    return clase.Aumenta_clase_lanzadora ? ['su magia', 'los niveles de lanzador que suma a otra clase'] : ['su magia'];
+}
+
 export const SE_CONSERVAN_EN_PLANTILLA: ReadonlySet<string> = new Set(
     [...SE_CONSERVAN_PERSONAJE].filter((k) => k !== 'idTipoCriatura' && k !== 'idAlineamiento'));
 

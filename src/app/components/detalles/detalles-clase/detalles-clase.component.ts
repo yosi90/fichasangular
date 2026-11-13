@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, Optional, Output } from '@angular/core'
 import { UserService } from 'src/app/services/user.service';
 import { puedeModificarDesdeDetalle } from 'src/app/services/utils/permisos-catalogo';
 import { ICONOS_ROL, TipoRol, tipoRolDeClase } from 'src/app/services/utils/iconos-rol';
-import { DatoFicha, EtiquetaFicha, FilaMoldeado, datoAlineamiento, datosMoldeadoClase, datosVisibles, filasMoldeado, textoBonoCapacidad, unirTipo } from 'src/app/components/detalles/ficha';
+import { DatoFicha, EtiquetaFicha, FilaMoldeado, datoAlineamiento, datosMoldeadoClase, datosVisibles, filasMoldeado, textoBonoCapacidad, unirLista, unirTipo } from 'src/app/components/detalles/ficha';
 import { NombreTraducible } from 'src/app/interfaces/incarnum';
 import { Clase, ClaseConjuroRef, ClaseDoteNivel, ClaseNivelDetalle } from 'src/app/interfaces/clase';
 import { ManualDetalleNavigationService } from 'src/app/services/manual-detalle-navigation.service';
@@ -586,6 +586,7 @@ export class DetallesClaseComponent {
         // Con su propia tabla, los puntos de habilidad van con los DG, no con cada nivel (Libris Mortis, pág. 35).
         const porDg = tieneTablaPorNivel(c);
         const mutacion = `${c?.Mutacion?.Nombre ?? ''}`.trim();
+        const compatibles = (c?.Clases_multiclase_compatibles ?? []).map((item) => `${item?.Nombre ?? ''}`.trim()).filter(Boolean);
         return [
             {
                 etiqueta: 'Raza mutada',
@@ -616,6 +617,20 @@ export class DetallesClaseComponent {
                 etiqueta: 'Penalización por multiclase',
                 valor: c?.Sin_penalizacion_multiclase ? 'No' : null,
                 ayuda: 'No cuenta para la penalización de PX por multiclase, como las de prestigio.',
+            },
+            {
+                etiqueta: 'Multiclase restringida',
+                valor: c?.Multiclase_restringida
+                    ? (compatibles.length > 0 ? `Salvo con ${unirLista(compatibles, 'o')}` : 'Sí')
+                    : null,
+                ayuda: 'Tras subir un nivel de otra clase ya no puede subir esta; los de sus clases compatibles no la cierran.',
+            },
+            {
+                etiqueta: 'Su deidad',
+                valor: c?.Alineamiento_deidad ? (c?.Alineamiento_deidad_igual ? 'El mismo alineamiento' : 'A un paso de su alineamiento') : null,
+                ayuda: c?.Alineamiento_deidad_igual
+                    ? 'Tiene que tener deidad y su mismo alineamiento.'
+                    : 'Su alineamiento, a un paso del de su deidad, y neutral solo si ella lo es.',
             },
         ];
     }

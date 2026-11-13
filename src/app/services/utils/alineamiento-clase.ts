@@ -13,7 +13,8 @@ import { toInt } from './normalizacion';
  *   sus preferencias de ley y de moral (su `Valor`, si lo prohíbe y su `Id_prioridad`, como dato: «Nunca legal»,
  *   «Siempre maligno»), con la prioridad del alineamiento (`Prioridad.Id_prioridad`);
  * - sus prerrequisitos de alineamiento y de actitud (`alineamiento_requerido`, `actitud_prohibido`…, el druida);
- * - la regla de la deidad (`Alineamiento_deidad`, el clérigo: MJ cap. 3).
+ * - la regla de la deidad (`Alineamiento_deidad`, el clérigo: MJ cap. 3); con `Alineamiento_deidad_igual`, el mismo
+ *   alineamiento que su deidad y con deidad (el cruzado divino: El divino completo, págs. 30-31).
  * Solo una regla de prioridad «siempre» (3) o más vuelve homebrew la ficha (MJ págs. 26, 30, 52 y 55: el ex paladín, el
  * ex monje…); las demás («casi siempre», «tendencia a») se avisan. Los prerrequisitos, la deidad y una preferencia
  * de prioridad 3 («Siempre …» o «Nunca …») cuentan como «siempre» aunque la clase no traiga esa prioridad. La API
@@ -44,7 +45,7 @@ export interface EvaluacionAlineamientoClase {
 export interface EntradaAlineamientoClase {
     /** El alineamiento del personaje (su nombre básico: «Legal bueno»). */
     alineamiento: string;
-    /** Su deidad, para las clases con `Alineamiento_deidad`. */
+    /** Su deidad, para las clases con `Alineamiento_deidad` (`null`, sin deidad: el cruzado divino no lo admite). */
     deidad?: DeidadDetalle | null;
     /**
      * Si cuentan sus prerrequisitos de alineamiento (por defecto, sí). La creación los evalúa con los demás prerrequisitos
@@ -95,8 +96,9 @@ export function evaluarAlineamientoClase(clase: Clase | null | undefined, entrad
     });
 
     if (clase.Alineamiento_deidad === true) {
-        const motivo = incumpleAlineamientoDeidad(entrada.alineamiento, entrada.deidad ?? null);
-        restringe = restringe || !!entrada.deidad;
+        const igual = clase.Alineamiento_deidad_igual === true;
+        const motivo = incumpleAlineamientoDeidad(entrada.alineamiento, entrada.deidad ?? null, igual);
+        restringe = restringe || !!entrada.deidad || igual;
         if (motivo) {
             incumple.push(motivo);
             estrictoPorRegla = true;

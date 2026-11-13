@@ -28,6 +28,7 @@ export const ID_DE_LECTURA: Partial<Readonly<Record<PrerequisiteType, string>>> 
     conjuros_escuela: 'Id_escuela',
     conocer_poder_psionico: 'Id_conjuro',
     criaturas_compatibles: 'Id_tipo_compatible',
+    deidad: 'Id_deidad',
     dominio: 'Id_dominio',
     dote: 'Id_dote_prerrequisito',
     escuela_nivel: 'Id_escuela',

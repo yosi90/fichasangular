@@ -64,7 +64,11 @@ export function textoExClasePersonaje(clase: { Nombre: string; Ex?: { Nombre: st
     if (!ex)
         return '';
     const motivos = ex.Motivos.map((m) => m.charAt(0).toLowerCase() + m.slice(1)).join('; ');
-    const pierde = ex.Pierde_magia ? 'Pierde las aptitudes que dice su clase y su magia' : 'Pierde las aptitudes que dice su clase, si alguna';
+    // Con su magia pierde también los niveles de lanzador que sume a otra clase (el ex hospitalario: la ficha de la API ya
+    // no los cuenta en el nivel de lanzador de esa clase).
+    const pierde = ex.Pierde_magia
+        ? 'Pierde las aptitudes que dice su clase y su magia, también los niveles de lanzador que sume a otra clase'
+        : 'Pierde las aptitudes que dice su clase, si alguna';
     const vuelta = ex.Requiere_expiacion ? '; las recupera con una expiación' : '';
     return `${ex.Nombre}: no puede subir niveles de ${clase.Nombre.trim().toLowerCase()}${motivos ? ` (${motivos})` : ''}. ${pierde}${vuelta}.`;
 }

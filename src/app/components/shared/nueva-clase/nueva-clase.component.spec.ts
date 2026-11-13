@@ -618,3 +618,54 @@ describe('NuevaClaseComponent (la ex clase: lo que pierde al dejar de cumplir su
         expect(CAMPOS_CLASE['Ex'].paso).toBe(CAMPOS_CLASE['Desglose_niveles.Especiales'].paso);
     });
 });
+
+describe('NuevaClaseComponent (las clases que no cierran una restringida y el mismo alineamiento que su deidad)', () => {
+    function cargada(extra: Record<string, any>): NuevaClaseComponent {
+        const editor = crearEditor();
+        (editor as any).hidratarDesdeClase(normalizeClase({
+            Id: 11, Nombre: 'Paladín de prueba', Nivel_max_claseo: 1,
+            Manual: { Id: 1, Nombre: 'Manual', Pagina: 52 },
+            Ataque_base: { Id: 1 }, Salvaciones: { Fortaleza: { Id: 1 }, Reflejos: { Id: 2 }, Voluntad: { Id: 2 } },
+            Desglose_niveles: [{ Nivel: 1 }],
+            ...extra,
+        }));
+        return editor;
+    }
+
+    it('guardar sin tocar nada manda sus compatibles y su marca como llegaron', () => {
+        const editor = cargada({
+            Multiclase_restringida: true, Alineamiento_deidad: true, Alineamiento_deidad_igual: true,
+            Clases_multiclase_compatibles: [{ Id: 189, Nombre: 'Hospitalario' }, { Id: 226, Nombre: 'Kensai' }],
+        });
+        const cuerpo = (editor as any).construirPayload();
+        expect(cuerpo.Clases_multiclase_compatibles).toEqual([{ Id: 189, Nombre: 'Hospitalario' }, { Id: 226, Nombre: 'Kensai' }]);
+        expect(cuerpo.Alineamiento_deidad_igual).toBeTrue();
+        expect(editor.isDirty).toBeFalse();
+    });
+
+    it('se añaden y se quitan; sin la restricción no se manda ninguna, y sin la regla de la deidad tampoco la marca', () => {
+        const editor = cargada({ Multiclase_restringida: true, Alineamiento_deidad: true });
+        editor.idClase = 11;
+        (editor as any).clasesCatalogo = [{ Id: 11, Nombre: 'Paladín de prueba' }, { Id: 189, Nombre: 'Hospitalario' }, { Id: 226, Nombre: 'Kensai' }];
+        expect(editor.opcionesCompatibles.map((o) => o.id)).toEqual([189, 226]);
+        editor.anadirCompatible(226);
+        editor.anadirCompatible(189);
+        expect(editor.opcionesCompatibles).toEqual([]);
+        expect((editor as any).construirPayload().Clases_multiclase_compatibles.map((c: any) => c.Id)).toEqual([189, 226]);
+        editor.quitarCompatible(189);
+        expect((editor as any).construirPayload().Clases_multiclase_compatibles.map((c: any) => c.Id)).toEqual([226]);
+        editor.toggleBoolean('alineamiento_deidad_igual');
+        expect((editor as any).construirPayload().Alineamiento_deidad_igual).toBeTrue();
+        editor.toggleBoolean('alineamiento_deidad');
+        expect((editor as any).construirPayload().Alineamiento_deidad_igual).toBeFalse();
+        editor.toggleBoolean('alineamiento_deidad_igual');
+        expect(editor.form.controls.alineamiento_deidad_igual.value).toBeFalse();
+        editor.toggleBoolean('multiclase_restringida');
+        expect((editor as any).construirPayload().Clases_multiclase_compatibles).toEqual([]);
+    });
+
+    it('los errores de la API van a su paso', () => {
+        expect(CAMPOS_CLASE['Clases_multiclase_compatibles'].paso).toBe(0);
+        expect(CAMPOS_CLASE['Alineamiento_deidad_igual'].control).toBe('alineamiento_deidad_igual');
+    });
+});

@@ -261,6 +261,11 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     relacionesRows: ClaseRelacionNivelRow[] = [];
     /** La ex clase: los ids de las aptitudes de la clase que pierde (`Ex.Especiales`). */
     exEspeciales = new Set<number>();
+    /**
+     * Con «Multiclase restringida»: las clases que puede tomar sin cerrarla (`Clases_multiclase_compatibles`: el paladín que
+     * se hace hospitalario, El divino completo, pág. 48). Sin la restricción no se manda ninguna.
+     */
+    compatiblesMulticlase: { Id: number; Nombre: string; }[] = [];
     conjurosPorEspecialRows: ClaseConjuroPorEspecialRow[] = [];
     nivelesRequisitoRows: ClaseNivelRequisitoRow[] = [];
     habilidadesAlineamientoRows: ClaseHabilidadAlineamientoRow[] = [];
@@ -361,6 +366,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         armas: [],
         clases: [],
         conjuros: [],
+        deidades: [],
         dominios: [],
         dotes: [],
         escuelas: [],
@@ -411,6 +417,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         es_predilecta: [false],
         multiclase_restringida: [false],
         alineamiento_deidad: [false],
+        alineamiento_deidad_igual: [false],
         // La columna de la tabla 6-4 del Manual del jugador (la edad inicial); 0, sin dato. Y si es una clase de PNJ (el VD).
         grupo_edad_inicial: [0],
         clase_pnj: [false],
@@ -690,8 +697,32 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
     }
 
     toggleBoolean(controlName: keyof typeof this.form.controls): void {
+        if (controlName === 'alineamiento_deidad_igual' && this.form.controls.alineamiento_deidad.value !== true)
+            return;
         alternarControl(this.form.controls[controlName]);
+        // «El mismo alineamiento que su deidad» solo vale con la regla de la deidad (la API: `400 dato_no_valido`).
+        if (controlName === 'alineamiento_deidad' && this.form.controls.alineamiento_deidad.value !== true
+            && this.form.controls.alineamiento_deidad_igual.value === true)
+            alternarControl(this.form.controls.alineamiento_deidad_igual);
         this.normalizarControlesMagia(controlName);
+    }
+
+    /** Las clases que se pueden añadir como compatibles: las del catálogo, sin ella misma ni las que ya están. */
+    get opcionesCompatibles(): OpcionCatalogo[] {
+        const fuera = new Set([this.entero(this.idClase), ...this.compatiblesMulticlase.map((item) => item.Id)]);
+        return opcionesDeCatalogo(this.clasesCatalogo.filter((item) => this.entero(item.Id) > 0 && !fuera.has(this.entero(item.Id))));
+    }
+
+    anadirCompatible(id: number): void {
+        const clase = this.clasesCatalogo.find((item) => item.Id === this.entero(id));
+        if (!clase || this.compatiblesMulticlase.some((item) => item.Id === clase.Id))
+            return;
+        this.compatiblesMulticlase = [...this.compatiblesMulticlase, { Id: clase.Id, Nombre: clase.Nombre }]
+            .sort((a, b) => compararTexto(a.Nombre, b.Nombre));
+    }
+
+    quitarCompatible(id: number): void {
+        this.compatiblesMulticlase = this.compatiblesMulticlase.filter((item) => item.Id !== this.entero(id));
     }
 
     toggleConjurosConocidosLimitados(): void {
@@ -1110,6 +1141,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             Prestigio: raw.prestigio === true,
             Multiclase_restringida: raw.multiclase_restringida === true,
             Alineamiento_deidad: raw.alineamiento_deidad === true,
+            Alineamiento_deidad_igual: raw.alineamiento_deidad === true && raw.alineamiento_deidad_igual === true,
+            Clases_multiclase_compatibles: raw.multiclase_restringida === true ? this.compatiblesMulticlase.map((item) => ({ ...item })) : [],
             Grupo_edad_inicial: Number(raw.grupo_edad_inicial) || 0,
             Clase_pnj: raw.clase_pnj === true,
             Progresion_obligatoria: raw.progresion_obligatoria === true,
@@ -1644,6 +1677,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             es_predilecta: clase.Es_predilecta === true,
             multiclase_restringida: clase.Multiclase_restringida === true,
             alineamiento_deidad: clase.Alineamiento_deidad === true,
+            alineamiento_deidad_igual: clase.Alineamiento_deidad_igual === true,
             grupo_edad_inicial: Number(clase.Grupo_edad_inicial) || 0,
             clase_pnj: clase.Clase_pnj === true,
             progresion_obligatoria: clase.Progresion_obligatoria === true,
@@ -1699,6 +1733,9 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         this.niveles = this.hidratarNiveles(clase);
         this.relacionesRows = this.hidratarRelaciones(clase);
         this.exEspeciales = new Set((clase.Ex?.Especiales ?? []).map((item) => this.entero(item.Id)).filter((id) => id > 0));
+        this.compatiblesMulticlase = (clase.Clases_multiclase_compatibles ?? [])
+            .map((item) => ({ Id: this.entero(item.Id), Nombre: this.texto(item.Nombre) }))
+            .filter((item) => item.Id > 0);
         this.conjurosPorEspecialRows = this.hidratarConjurosPorEspecial(clase);
         this.nivelesRequisitoRows = this.hidratarNivelesRequisito(clase);
         const prerrequisitos = prerrequisitosDeClase(clase, this.tiposPrerrequisitoClase, () => this.uid());
@@ -1812,6 +1849,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
         this.habilidadesRows = [this.crearHabilidadRow('base')];
         this.relacionesRows = [];
         this.exEspeciales = new Set();
+        this.compatiblesMulticlase = [];
         this.conjurosPorEspecialRows = [];
         this.nivelesRequisitoRows = [];
         this.habilidadesAlineamientoRows = [];
@@ -1848,6 +1886,7 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             es_predilecta: false,
             multiclase_restringida: false,
             alineamiento_deidad: false,
+            alineamiento_deidad_igual: false,
             grupo_edad_inicial: 0,
             clase_pnj: false,
             progresion_obligatoria: false,
@@ -1968,6 +2007,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
                 this.alineamientoSvc.getAlineamientosCombinacionesCatalogo().pipe(take(1)).subscribe({ next: (items: any[]) => done(this.toCatalog((items ?? []).map((item) => ({ Id: item?.Id, Nombre: nombreCombinacionAlineamiento(item) })), 'Id', 'Nombre')), error: () => done([]) });
             } else if (key === 'aptitudes_especiales') {
                 this.aptitudEspecialSvc.getAptitudesEspeciales().pipe(take(1)).subscribe({ next: (items) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
+            } else if (key === 'deidades') {
+                this.deidadSvc.getDeidades().pipe(take(1)).subscribe({ next: (items) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
             } else if (key === 'dominios') {
                 this.dominioSvc.getDominios().pipe(take(1)).subscribe({ next: (items) => done(this.toCatalog(items, 'Id', 'Nombre')), error: () => done([]) });
             } else if (key === 'generos') {
@@ -2025,6 +2066,8 @@ export class NuevaClaseComponent implements OnInit, OnDestroy, OnChanges, Editor
             return this.catalogosPrerrequisito['especiales'];
         if (type === 'raza' || type === 'no_raza')
             return this.catalogosPrerrequisito['razas'];
+        if (type === 'deidad')
+            return this.catalogosPrerrequisito['deidades'];
         if (type === 'subtipo')
             return this.catalogosPrerrequisito['subtipos'];
         if (type === 'tamano_maximo' || type === 'tamano_minimo')

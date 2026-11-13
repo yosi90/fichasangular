@@ -81,11 +81,13 @@
                 <label class="correccion__campo">
                     <span>Deidad</span>
                     <select name="deidad" [(ngModel)]="idDeidad" (ngModelChange)="cambiarAlineamiento()">
-                        <option [ngValue]="0">Sin deidad</option>
+                        <option *ngIf="sinDeidadElegible" [ngValue]="0">Sin deidad</option>
                         <option *ngFor="let d of deidadesElegibles" [ngValue]="d.Id">{{d.Nombre}}</option>
                     </select>
                 </label>
             </div>
+            <p class="subida__nota" *ngIf="deidadesTutelares.length > 0">Sus clases piden su deidad tutelar, y una corrección no se
+                la puede quitar: {{deidadesTutelares.join(' · ')}}.</p>
         </section>
 
         <section class="subida__tarjeta">

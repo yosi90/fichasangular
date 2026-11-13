@@ -45,6 +45,14 @@ export interface ClaseEvaluacionContexto {
     tamanoId?: number | null;
     /** Magic of Incarnum: reserva, nivel de moldeador, fusiones, vínculos y chakras que puede vincular. */
     incarnum?: IncarnumPrerrequisitos;
+    /** Su deidad, para la deidad tutelar (`deidad`); `null` o sin él, no tiene. */
+    deidad?: DeidadDelPersonaje | null;
+}
+
+/** La deidad del personaje para los prerrequisitos de clase: su id y su nombre (cualquiera de los dos basta). */
+export interface DeidadDelPersonaje {
+    id: number | null;
+    nombre: string;
 }
 
 export interface ClaseEvaluacionResultado {
@@ -96,8 +104,19 @@ const FLAGS_SOPORTADAS: (keyof Clase["Prerrequisitos_flags"])[] = [
     "dominio",
     "tamano_maximo",
     "tamano_minimo",
+    "deidad",
     ...(CLAVES_PRERREQUISITOS_INCARNUM as (keyof Clase["Prerrequisitos_flags"])[]),
 ];
+
+/**
+ * Si un nivel de la clase `idOtra` no cierra la clase restringida `restringida` (`Multiclase_restringida`, el paladín):
+ * está en sus `Clases_multiclase_compatibles` (el hospitalario, El divino completo, pág. 48), por su id. La API comprueba
+ * lo mismo en el alta y la subida (`400 multiclase_restringida`).
+ */
+export function esClaseCompatibleConRestringida(restringida: Pick<Clase, 'Clases_multiclase_compatibles'> | null | undefined, idOtra: number): boolean {
+    const id = toInt(idOtra);
+    return id > 0 && (restringida?.Clases_multiclase_compatibles ?? []).some((compatible) => toInt(compatible?.Id) === id);
+}
 
 function pick(entry: Record<string, any>, keys: string[]): any {
     for (const key of keys) {
@@ -175,6 +194,35 @@ function buildEvaluacionNoRaza(entry: Record<string, any>, ctx: ClaseEvaluacionC
         cumple,
         razonUnknown: "Prerrequisito no_raza con formato no reconocido",
     };
+}
+
+/** La deidad tutelar (la Hoja brillante de Heironeous, El divino completo, pág. 46): por su id o, sin él, por su nombre. */
+function buildEvaluacionDeidad(entry: Record<string, any>, deidad: DeidadDelPersonaje | null | undefined): EvaluacionItem {
+    const grupoOpcional = parseOpcional(entry);
+    const id = parseId(entry, ["Id_deidad", "id_deidad", "Id"]);
+    const nombre = parseNombre(entry, ["Deidad", "deidad", "Nombre"]);
+    const razonUnknown = "Prerrequisito de deidad con formato no reconocido";
+    if (id <= 0 && normalizarTexto(nombre).length < 1)
+        return { grupoOpcional, evaluable: false, cumple: false, razonUnknown };
+    const cumple = !!deidad && (id > 0 && toInt(deidad.id) > 0
+        ? toInt(deidad.id) === id
+        : normalizarTexto(deidad.nombre).length > 0 && normalizarTexto(deidad.nombre) === normalizarTexto(nombre));
+    return { grupoOpcional, evaluable: true, cumple, razonUnknown };
+}
+
+/**
+ * Si una deidad no es la deidad tutelar que pide la clase (`Prerrequisitos.deidad`, con sus grupos): sus motivos («No
+ * cumple: Deidad tutelar: Heironeous»), o vacío si la cumple o no pide ninguna. Lo usa la corrección de la ficha para no
+ * ofrecer una deidad que deje a una clase sin la suya (la API: `409 cambio_rompe_prerrequisito`).
+ */
+export function incumpleDeidadTutelar(clase: Clase | null | undefined, deidad: DeidadDelPersonaje | null): string[] {
+    const entradas = toArray<Record<string, any>>(clase?.Prerrequisitos?.deidad);
+    if (entradas.length < 1)
+        return [];
+    const motivos = new MotivosPrerrequisitos();
+    evaluarFamilia(motivos, "deidad", true, entradas, (entry) => buildEvaluacionDeidad(entry, deidad));
+    motivos.cerrarGrupos();
+    return Array.from(new Set(motivos.fail));
 }
 
 function buildEvaluacionSubtipo(entry: Record<string, any>, ctx: ClaseEvaluacionContexto): EvaluacionItem {
@@ -582,6 +630,7 @@ export function evaluarElegibilidadClase(clase: Clase, ctx: ClaseEvaluacionConte
     evaluarFamilia(motivos, "clase_especial", (flags as any)?.clase_especial, toArray(prer?.clase_especial), (entry) => buildEvaluacionClaseEspecial(entry, ctx), { permitirSinDatos: true });
     evaluarFamilia(motivos, "tamano_maximo", flags?.tamano_maximo, toArray(prer?.tamano_maximo), (entry) => buildEvaluacionTamano(entry, ctx, true));
     evaluarFamilia(motivos, "tamano_minimo", flags?.tamano_minimo, toArray(prer?.tamano_minimo), (entry) => buildEvaluacionTamano(entry, ctx, false));
+    evaluarFamilia(motivos, "deidad", flags?.deidad, toArray(prer?.deidad), (entry) => buildEvaluacionDeidad(entry, ctx.deidad));
     const incarnum = ctx.incarnum ?? incarnumParaPrerrequisitos(null);
     CLAVES_PRERREQUISITOS_INCARNUM.forEach((clave) => evaluarFamilia(
         motivos,
